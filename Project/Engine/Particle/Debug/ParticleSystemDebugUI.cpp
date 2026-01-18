@@ -1,4 +1,4 @@
-﻿#include "ParticleSystemDebugUI.h"
+#include "ParticleSystemDebugUI.h"
 
 #ifdef _DEBUG
 
@@ -181,5 +181,6 @@ void ParticleSystemDebugUI::ShowStatistics(ParticleSystem* particleSystem) {
 	}
 }
 
-#endif // _DEBUG
 }
+
+#endif // _DEBUG

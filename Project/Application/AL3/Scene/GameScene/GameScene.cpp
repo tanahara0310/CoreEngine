@@ -35,6 +35,8 @@
 #include <dinput.h>
 #include <numbers>
 
+using namespace CoreEngine;
+
 #ifdef _DEBUG
 #include "Engine/Utility/Debug/ImGui/ImGuiManager.h"
 #include "Engine/Utility/Debug/ImGui/SceneViewport.h"
@@ -44,8 +46,6 @@
 #include "Engine/Graphics/Line/DebugLineDrawer.h"
 #include "Engine/Collider/SphereCollider.h"
 #include "Engine/Collider/Collider.h"
-
-using namespace CoreEngine;
 
 
 using Vector3 = CoreEngine::Vector3;

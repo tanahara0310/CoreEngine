@@ -28,7 +28,7 @@ void Camera::UpdateMatrix()
 {
 	// カメラ行列を計算
 	cameraMatrix_ = Matrix::MakeAffine(scale_, rotate_, translate_);
-	// ビュー行列を計算
+	// ビュー行列を計算（外部ビュー行列を使用しない場合のみ）
 	if (!useExternalViewMatrix_) {
 		viewMatrix_ = Matrix::Inverse(cameraMatrix_);
 	}
