@@ -1,4 +1,4 @@
-﻿#include "SkinnedModelRenderer.h"
+#include "SkinnedModelRenderer.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Light/LightManager.h"
 #include <cassert>
@@ -71,6 +71,13 @@ void SkinnedModelRenderer::Initialize(ID3D12Device* device) {
     spotLightsRange.baseShaderRegister = 3;
     rootSignatureMg_->AddDescriptorTable({ spotLightsRange }, D3D12_SHADER_VISIBILITY_PIXEL);
     
+    // Root Parameter 9: 環境マップ用ディスクリプタテーブル (t4, PS)
+    RootSignatureManager::DescriptorRangeConfig environmentMapRange;
+    environmentMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    environmentMapRange.numDescriptors = 1;
+    environmentMapRange.baseShaderRegister = 4;
+    rootSignatureMg_->AddDescriptorTable({ environmentMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+    
     // Static Sampler (s0, PS)
     rootSignatureMg_->AddDefaultLinearSampler(0, D3D12_SHADER_VISIBILITY_PIXEL);
     
@@ -124,6 +131,10 @@ void SkinnedModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMo
             SkinnedModelRendererRootParam::kPointLights,
             SkinnedModelRendererRootParam::kSpotLights
         );
+    }
+
+    if (environmentMapHandle_.ptr != 0) {
+        cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kEnvironmentMap, environmentMapHandle_);
     }
 }
 

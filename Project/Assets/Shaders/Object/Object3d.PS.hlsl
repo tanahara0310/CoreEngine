@@ -14,6 +14,8 @@ struct Material
     float toonSmoothness; // トゥーンシェーディングの滑らかさ
     int enableDithering; // ディザリング有効化フラグ
     float ditheringScale; // ディザリングのスケール（パターンの大きさ調整）
+    int enableEnvironmentMap; // 環境マップ有効化フラグ
+    float environmentMapIntensity; // 環境マップの反射強度
 };
 
 //カメラ
@@ -35,6 +37,9 @@ SamplerState gSampler : register(s0);
 StructuredBuffer<DirectionalLightData> gDirectionalLights : register(t1);
 StructuredBuffer<PointLightData> gPointLights : register(t2);
 StructuredBuffer<SpotLightData> gSpotLights : register(t3);
+
+// ===== Environment Map =====
+TextureCube<float4> gEnvironmentTexture : register(t4);
 
 // ディザリングパターン関数（4x4 Bayer Matrix）
 float GetDitheringThreshold(float2 screenPos)
@@ -206,6 +211,24 @@ PixelShaderOutput main(VertexShaderOutput input)
         //==============================
         output.color.rgb = totalDiffuse + totalSpecular;
         output.color.a = gMaterial.color.a * textureColor.a; //アルファ値はそのまま保持
+        
+        //==============================
+        // 環境マップの追加
+        //==============================
+        if (gMaterial.enableEnvironmentMap != 0)
+        {
+            // カメラから見た入射光ベクトル（ワールド座標でのピクセル位置 - カメラ位置）
+            float3 cameraToPosition = normalize(input.worldPosition - gCamera.worldPosition);
+            
+            // 法線で反射させて、入射光を求める
+            float3 reflectedVector = reflect(cameraToPosition, normalize(input.normal));
+            
+            // 環境マップをサンプリング
+            float4 environmentColor = gEnvironmentTexture.Sample(gSampler, reflectedVector);
+            
+            // 環境マップの色を反射強度で合成
+            output.color.rgb += environmentColor.rgb * gMaterial.environmentMapIntensity;
+        }
 
     }
     else // Lightingしない場合

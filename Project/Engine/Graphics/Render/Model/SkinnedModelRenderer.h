@@ -26,6 +26,7 @@ namespace SkinnedModelRendererRootParam {
     static constexpr UINT kDirectionalLights = 6;     // t1: DirectionalLights (PS)
     static constexpr UINT kPointLights = 7;           // t2: PointLights (PS)
     static constexpr UINT kSpotLights = 8;            // t3: SpotLights (PS)
+    static constexpr UINT kEnvironmentMap = 9;        // t4: EnvironmentMap (PS)
 }
 
 /// @brief スキニングモデル描画用レンダラー
@@ -40,6 +41,7 @@ public:
     ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
 
     void SetLightManager(LightManager* lightManager) { lightManager_ = lightManager; }
+    void SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle) { environmentMapHandle_ = environmentMapHandle; }
     
 private:
     std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
@@ -51,5 +53,6 @@ private:
     D3D12_GPU_VIRTUAL_ADDRESS cameraCBV_ = 0;
 
     CoreEngine::LightManager* lightManager_ = nullptr;
+    D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle_ = {};
 };
 }

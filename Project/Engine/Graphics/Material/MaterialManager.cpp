@@ -22,5 +22,7 @@ void MaterialManager::Initialize(ID3D12Device* device, ResourceFactory* resource
     materialData_->toonSmoothness = 0.1f; // トゥーンシェーディングの滑らかさ
     materialData_->enableDithering = 1; // ディザリング有効
     materialData_->ditheringScale = 1.0f; // ディザリングスケール
+    materialData_->enableEnvironmentMap = 0; // 環境マップ無効（デフォルト）
+    materialData_->environmentMapIntensity = 0.3f; // 環境マップ反射強度（デフォルト: 0.3）
 }
 }
