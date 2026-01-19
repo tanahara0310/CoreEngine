@@ -2,6 +2,10 @@
 #include "Engine/Input/KeyboardInput.h"
 #include "Scene/SceneManager.h"
 
+#ifdef _DEBUG
+#include "Engine/Camera/Debug/CameraDebugUI.h"
+#endif
+
 void ResultScene::Initialize(CoreEngine::EngineSystem* engine)
 {
 	// 基底クラスの初期化（カメラ、ライト、グリッド等のセットアップ）

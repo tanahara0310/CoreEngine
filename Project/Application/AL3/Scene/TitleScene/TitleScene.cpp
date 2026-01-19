@@ -12,6 +12,10 @@
 #include "WinApp/WinApp.h"
 #include <cmath>
 
+#ifdef _DEBUG
+#include "Engine/Camera/Debug/CameraDebugUI.h"
+#endif
+
 using namespace CoreEngine;
 
 void TitleScene::Initialize(CoreEngine::EngineSystem* engine)

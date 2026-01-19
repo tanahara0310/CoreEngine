@@ -187,7 +187,10 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Application\AL3\Scene\TitleScene\TitleScene.cpp" />
     <ClCompile Include="Engine\Camera\Camera2D.cpp" />
     <ClCompile Include="Engine\Camera\CameraManager.cpp" />
+    <ClCompile Include="Engine\Camera\CameraPresetManager.cpp" />
     <ClCompile Include="Engine\Camera\CameraShake.cpp" />
+    <ClCompile Include="Engine\Camera\Debug\CameraDebugUI.cpp" />
+    <ClCompile Include="Engine\Camera\ICamera.cpp" />
     <ClCompile Include="Engine\Collider\AABBCollider.cpp" />
     <ClCompile Include="Engine\Collider\Collider.cpp" />
     <ClCompile Include="Engine\Collider\CollisionConfig.cpp" />
@@ -387,8 +390,10 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Application\AL3\Scene\TitleScene\TitleScene.h" />
     <ClInclude Include="Engine\Camera\Camera2D.h" />
     <ClInclude Include="Engine\Camera\CameraManager.h" />
+    <ClInclude Include="Engine\Camera\CameraPresetManager.h" />
     <ClInclude Include="Engine\Camera\CameraShake.h" />
     <ClInclude Include="Engine\Camera\CameraStructs.h" />
+    <ClInclude Include="Engine\Camera\Debug\CameraDebugUI.h" />
     <ClInclude Include="Engine\Camera\ICamera.h" />
     <ClInclude Include="Engine\Collider\AABBCollider.h" />
     <ClInclude Include="Engine\Collider\Collider.h" />

@@ -35,6 +35,10 @@
 #include <dinput.h>
 #include <numbers>
 
+#ifdef _DEBUG
+#include "Engine/Camera/Debug/CameraDebugUI.h"
+#endif
+
 using namespace CoreEngine;
 
 #ifdef _DEBUG
