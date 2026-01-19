@@ -24,16 +24,16 @@ namespace CoreEngine
 	public:
 		virtual ~GameObject() = default;
 
-	/// @brief 初期化処理（エンジンシステムを設定）
-	/// @param engine エンジンシステムへのポインタ
-	static void Initialize(EngineSystem* engine);
+		/// @brief 初期化処理（エンジンシステムを設定）
+		/// @param engine エンジンシステムへのポインタ
+		static void Initialize(EngineSystem* engine);
 
-	/// @brief 更新処理（派生クラスでオーバーライド可能）
-	virtual void Update() {}
+		/// @brief 更新処理（派生クラスでオーバーライド可能）
+		virtual void Update() {}
 
-	/// @brief 描画処理（派生クラスでオーバーライド可能）
-	/// @param camera カメラオブジェクト（2Dオブジェクトの場合は nullptr でも可）
-	virtual void Draw(const ICamera* camera) { (void)camera; }
+		/// @brief 描画処理（派生クラスでオーバーライド可能）
+		/// @param camera カメラオブジェクト（2Dオブジェクトの場合は nullptr でも可）
+		virtual void Draw(const ICamera* camera) { (void)camera; }
 
 		/// @brief アクティブ状態を設定
 		void SetActive(bool active) { isActive_ = active; }
@@ -47,21 +47,21 @@ namespace CoreEngine
 		/// @brief 削除マークされているか確認
 		bool IsMarkedForDestroy() const { return markedForDestroy_; }
 
-	/// @brief 描画パスタイプを取得（派生クラスでオーバーライド）
-	/// @return 描画パスタイプ（デフォルトは3Dモデル）
-	virtual RenderPassType GetRenderPassType() const { return RenderPassType::Model; }
+		/// @brief 描画パスタイプを取得（派生クラスでオーバーライド）
+		/// @return 描画パスタイプ（デフォルトは3Dモデル）
+		virtual RenderPassType GetRenderPassType() const { return RenderPassType::Model; }
 
-	/// @brief ブレンドモードを取得（派生クラスでオーバーライド可能）
-	/// @return ブレンドモード（デフォルトは kBlendModeNone）
-	virtual BlendMode GetBlendMode() const { return BlendMode::kBlendModeNone; }
+		/// @brief ブレンドモードを取得（派生クラスでオーバーライド可能）
+		/// @return ブレンドモード（デフォルトは kBlendModeNone）
+		virtual BlendMode GetBlendMode() const { return BlendMode::kBlendModeNone; }
 
-	/// @brief ブレンドモードを設定（派生クラスでオーバーライド可能）
-	/// @param blendMode 設定するブレンドモード
-	virtual void SetBlendMode(BlendMode blendMode) { (void)blendMode; }
+		/// @brief ブレンドモードを設定（派生クラスでオーバーライド可能）
+		/// @param blendMode 設定するブレンドモード
+		virtual void SetBlendMode(BlendMode blendMode) { (void)blendMode; }
 
-	/// @brief エンジンシステムを取得
-	/// @return エンジンシステムへのポインタ
-	EngineSystem* GetEngineSystem() const;
+		/// @brief エンジンシステムを取得
+		/// @return エンジンシステムへのポインタ
+		EngineSystem* GetEngineSystem() const;
 
 		/// @brief 衝突開始イベント（派生クラスでオーバーライド可能）
 		/// @param other 衝突相手のオブジェクト
@@ -75,42 +75,42 @@ namespace CoreEngine
 		/// @param other 衝突相手のオブジェクト
 		virtual void OnCollisionExit(GameObject* other) { (void)other; }
 
-	/// @brief ワールド座標での位置を取得（Collider用）
-	virtual Vector3 GetWorldPosition() const { return transform_.GetWorldPosition(); }
+		/// @brief ワールド座標での位置を取得（Collider用）
+		virtual Vector3 GetWorldPosition() const { return transform_.GetWorldPosition(); }
 
-	/// @brief オブジェクト名を設定
-	/// @param name 設定する名前
-	void SetName(const std::string& name) { name_ = name; }
+		/// @brief オブジェクト名を設定
+		/// @param name 設定する名前
+		void SetName(const std::string& name) { name_ = name; }
 
-	/// @brief 設定されたオブジェクト名を取得
-	/// @return 設定された名前（空の場合はクラス名）
-	const std::string& GetName() const { return name_; }
+		/// @brief 設定されたオブジェクト名を取得
+		/// @return 設定された名前（空の場合はクラス名）
+		const std::string& GetName() const { return name_; }
 
 #ifdef _DEBUG
-	/// @brief ImGuiデバッグUI描画（基本パラメータ：Transform、Active）
-	/// @return ImGuiで変更があった場合 true
-	virtual bool DrawImGui();
+		/// @brief ImGuiデバッグUI描画（基本パラメータ：Transform、Active）
+		/// @return ImGuiで変更があった場合 true
+		virtual bool DrawImGui();
 
-	/// @brief ImGui拡張UI描画（派生クラスでオーバーライドして追加パラメータを表示）
-	/// @return ImGuiで変更があった場合 true
-	virtual bool DrawImGuiExtended() { return false; }
+		/// @brief ImGui拡張UI描画（派生クラスでオーバーライドして追加パラメータを表示）
+		/// @return ImGuiで変更があった場合 true
+		virtual bool DrawImGuiExtended() { return false; }
 
-	/// @brief オブジェクト名を取得（派生クラスでオーバーライド推奨）
-	/// @return オブジェクト名
-	virtual const char* GetObjectName() const { return "GameObject"; }
+		/// @brief オブジェクト名を取得（派生クラスでオーバーライド推奨）
+		/// @return オブジェクト名
+		virtual const char* GetObjectName() const { return "GameObject"; }
 #endif
 
-protected:
-// === 共通描画リソース ===
+	protected:
+		// === 共通描画リソース ===
 
-/// @brief 3Dモデル
-std::unique_ptr<Model> model_;
+		/// @brief 3Dモデル
+		std::unique_ptr<Model> model_;
 
-/// @brief ワールドトランスフォーム（位置・回転・スケール）
-WorldTransform transform_;
+		/// @brief ワールドトランスフォーム（位置・回転・スケール）
+		WorldTransform transform_;
 
-/// @brief テクスチャハンドル
-TextureManager::LoadedTexture texture_;
+		/// @brief テクスチャハンドル
+		TextureManager::LoadedTexture texture_;
 
 		/// @brief オブジェクト名（ImGui表示用）
 		std::string name_;

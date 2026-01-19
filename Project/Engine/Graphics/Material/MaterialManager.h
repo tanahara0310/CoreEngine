@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
@@ -132,6 +132,34 @@ public: // メンバ関数
     float GetDitheringScale() const
     {
         return materialData_->ditheringScale;
+    }
+
+    /// @brief 環境マップを有効/無効にする
+    /// @param enable true: 有効, false: 無効
+    void SetEnableEnvironmentMap(bool enable)
+    {
+        materialData_->enableEnvironmentMap = enable ? 1 : 0;
+    }
+
+    /// @brief 環境マップが有効かどうかを取得
+    /// @return true: 有効, false: 無効
+    bool IsEnableEnvironmentMap() const
+    {
+        return materialData_->enableEnvironmentMap != 0;
+    }
+
+    /// @brief 環境マップの反射強度を設定
+    /// @param intensity 反射強度 (0.0-1.0)
+    void SetEnvironmentMapIntensity(float intensity)
+    {
+        materialData_->environmentMapIntensity = intensity;
+    }
+
+    /// @brief 環境マップの反射強度を取得
+    /// @return 現在の反射強度
+    float GetEnvironmentMapIntensity() const
+    {
+        return materialData_->environmentMapIntensity;
     }
 
     /// @brief マテリアルのGPU仮想アドレスを取得

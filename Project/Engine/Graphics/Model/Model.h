@@ -142,6 +142,40 @@ public:
 		return Vector4{ 1.0f, 1.0f, 1.0f, 1.0f };
 	}
 
+	/// @brief 環境マップを有効/無効にする
+	/// @param enable true: 有効, false: 無効
+	void SetEnableEnvironmentMap(bool enable) {
+		if (materialManager_) {
+			materialManager_->SetEnableEnvironmentMap(enable);
+		}
+	}
+
+	/// @brief 環境マップが有効かどうかを取得
+	/// @return true: 有効, false: 無効
+	bool IsEnableEnvironmentMap() const {
+		if (materialManager_) {
+			return materialManager_->IsEnableEnvironmentMap();
+		}
+		return false;
+	}
+
+	/// @brief 環境マップの反射強度を設定
+	/// @param intensity 反射強度 (0.0-1.0)
+	void SetEnvironmentMapIntensity(float intensity) {
+		if (materialManager_) {
+			materialManager_->SetEnvironmentMapIntensity(intensity);
+		}
+	}
+
+	/// @brief 環境マップの反射強度を取得
+	/// @return 現在の反射強度
+	float GetEnvironmentMapIntensity() const {
+		if (materialManager_) {
+			return materialManager_->GetEnvironmentMapIntensity();
+		}
+		return 0.0f;
+	}
+
 	void SetModelResource(ModelResource* resource);
 
 private:

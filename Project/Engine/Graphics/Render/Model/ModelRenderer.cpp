@@ -64,6 +64,13 @@ namespace CoreEngine
 		spotLightsRange.baseShaderRegister = 3;
 		rootSignatureMg_->AddDescriptorTable({ spotLightsRange }, D3D12_SHADER_VISIBILITY_PIXEL);
 
+		// Root Parameter 8: 環境マップ用ディスクリプタテーブル (t4, PS)
+		RootSignatureManager::DescriptorRangeConfig environmentMapRange;
+		environmentMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		environmentMapRange.numDescriptors = 1;
+		environmentMapRange.baseShaderRegister = 4;
+		rootSignatureMg_->AddDescriptorTable({ environmentMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+
 		// Static Sampler (s0, PS)
 		rootSignatureMg_->AddDefaultLinearSampler(0, D3D12_SHADER_VISIBILITY_PIXEL);
 
@@ -117,6 +124,11 @@ namespace CoreEngine
 				ModelRendererRootParam::kPointLights,
 				ModelRendererRootParam::kSpotLights
 			);
+		}
+
+		// 環境マップをセット
+		if (environmentMapHandle_.ptr != 0) {
+			cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kEnvironmentMap, environmentMapHandle_);
 		}
 	}
 

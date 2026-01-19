@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
 
@@ -17,6 +17,11 @@ public:
     /// @brief 描画処理
     /// @param camera カメラ
     void Draw(const ICamera* camera) override;
+    
+#ifdef _DEBUG
+    /// @brief ImGui拡張UI描画
+    bool DrawImGuiExtended() override;
+#endif
 
     /// @brief 描画パスタイプを取得（スキニングモデル用）
     /// @return 描画パスタイプ

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Matrix/Matrix4x4.h"
 #include "Vector/Vector4.h"
 #include "Vector/Vector3.h"
@@ -18,7 +18,9 @@ struct Material {
     float toonSmoothness; // トゥーンシェーディングの滑らかさ (0.0-0.5)
     int32_t enableDithering; // ディザリング有効化フラグ (0: 無効, 1: 有効)
     float ditheringScale; // ディザリングのスケール（デフォルト: 1.0f）
+    int32_t enableEnvironmentMap; // 環境マップ有効化フラグ (0: 無効, 1: 有効)
+    float environmentMapIntensity; // 環境マップの反射強度 (0.0-1.0)
     
-    float padding2[4]; // パディング調整
+    float padding2[2]; // パディング調整
 };
 }
