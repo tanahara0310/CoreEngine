@@ -21,6 +21,7 @@ namespace CoreEngine
 		, draggingLeft_(false)
 		, draggingMiddle_(false)
 		, settings_{}
+		, parameters_{}  // デフォルトパラメータ
 		, targetSmooth_{ 0.0f, 0.0f, 0.0f }
 		, distanceSmooth_(20.0f)
 		, pitchSmooth_(0.25f)
@@ -28,9 +29,14 @@ namespace CoreEngine
 		, engineSystem_(nullptr)
 		, mouseState_{}
 	{
-		// プロジェクション行列を初期化（アスペクト比 = 幅 / 高さ）
+		// プロジェクション行列をパラメータから初期化
 		float aspectRatio = static_cast<float>(WinApp::kClientWidth) / static_cast<float>(WinApp::kClientHeight);
-		projectionMatrix_ = Rendering::PerspectiveFov(0.45f, aspectRatio, 0.1f, 1000.0f);
+		projectionMatrix_ = Rendering::PerspectiveFov(
+			parameters_.fov,
+			aspectRatio,
+			parameters_.nearClip,
+			parameters_.farClip
+		);
 	}
 
 	void DebugCamera::Initialize(EngineSystem* engine, ID3D12Device* device)
@@ -99,6 +105,19 @@ namespace CoreEngine
 		: Vector3{ 0.0f, -1.0f, 0.0f };
 
 		viewMatrix_ = Matrix::LookAt(eye, targetPos, up);
+
+		// プロジェクション行列をパラメータから更新
+		float aspectRatio = parameters_.aspectRatio;
+		if (aspectRatio <= 0.0f) {
+			aspectRatio = static_cast<float>(WinApp::kClientWidth) / static_cast<float>(WinApp::kClientHeight);
+		}
+
+		projectionMatrix_ = Rendering::PerspectiveFov(
+			parameters_.fov,
+			aspectRatio,
+			parameters_.nearClip,
+			parameters_.farClip
+		);
 	}
 
 	void DebugCamera::TransferMatrix()
@@ -420,5 +439,51 @@ namespace CoreEngine
 			angle += 2.0f * std::numbers::pi_v<float>;
 		}
 		return angle;
+	}
+
+	// 現在の状態をスナップショットとして保存
+	CameraSnapshot DebugCamera::CaptureSnapshot(const std::string& name) const
+	{
+		CameraSnapshot snapshot;
+		snapshot.name = name;
+		snapshot.isDebugCamera = true;
+
+		// DebugCamera用パラメータ
+		snapshot.target = target_;
+		snapshot.distance = distance_;
+		snapshot.pitch = pitch_;
+		snapshot.yaw = yaw_;
+
+		// カメラパラメータ
+		snapshot.parameters = parameters_;
+
+		return snapshot;
+	}
+
+	// スナップショットから状態を復元
+	void DebugCamera::RestoreSnapshot(const CameraSnapshot& snapshot)
+	{
+		// ReleaseCamera用のスナップショットは無視
+		if (!snapshot.isDebugCamera) {
+			return;
+		}
+
+		// DebugCamera用パラメータを復元
+		target_ = snapshot.target;
+		distance_ = snapshot.distance;
+		pitch_ = snapshot.pitch;
+		yaw_ = snapshot.yaw;
+
+		// スムーズ移動用の値も同期
+		targetSmooth_ = target_;
+		distanceSmooth_ = distance_;
+		pitchSmooth_ = pitch_;
+		yawSmooth_ = yaw_;
+
+		// カメラパラメータを復元
+		parameters_ = snapshot.parameters;
+
+		// 行列を更新
+		UpdateMatrices();
 	}
 }

@@ -479,6 +479,9 @@
     <ClCompile Include="Application\AL3\Scene\TitleScene\TitleScene.cpp">
       <Filter>Application\AL3\Scene\TitleScene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Camera\Debug\CameraDebugUI.cpp" />
+    <ClCompile Include="Engine\Camera\ICamera.cpp" />
+    <ClCompile Include="Engine\Camera\CameraPresetManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1054,9 +1057,6 @@
     <ClInclude Include="Engine\Utility\Logger\ScopedTimer.h">
       <Filter>Engine\Utility\Logger</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Camera\ICamera.h">
-      <Filter>Engine\Camera</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Camera\CameraManager.h">
       <Filter>Engine\Camera</Filter>
     </ClInclude>
@@ -1382,6 +1382,9 @@
       <Filter>Application\AL3\Scene\TitleScene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\\EngineSystem\\EngineSystem.h" />
+    <ClInclude Include="Engine\Camera\Debug\CameraDebugUI.h" />
+    <ClInclude Include="Engine\Camera\ICamera.h" />
+    <ClInclude Include="Engine\Camera\CameraPresetManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">

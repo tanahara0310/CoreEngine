@@ -1,7 +1,10 @@
-﻿#include "ParticleTestScene.h"
+#include "ParticleTestScene.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 
+#ifdef _DEBUG
+#include "Engine/Camera/Debug/CameraDebugUI.h"
+#endif
 
 namespace CoreEngine
 {

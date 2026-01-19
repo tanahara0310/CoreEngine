@@ -53,6 +53,12 @@ namespace CoreEngine {
 		/// @brief カメラのタイプを取得
 		CameraType GetCameraType() const override { return CameraType::Camera3D; }
 
+		/// @brief カメラパラメータを取得
+		CameraParameters GetParameters() const override { return parameters_; }
+
+		/// @brief カメラパラメータを設定
+		void SetParameters(const CameraParameters& params) override { parameters_ = params; }
+
 		// ====== Camera 固有のアクセッサ ======
 
 		void SetScale(const Vector3& scale) { this->scale_ = scale; }
@@ -71,6 +77,36 @@ namespace CoreEngine {
 			useExternalViewMatrix_ = true;
 		}
 
+		/// @brief 指定した位置を注視するようにカメラを回転
+		/// @param target 注視点
+		void LookAt(const Vector3& target);
+
+		/// @brief カメラの前方向ベクトルを取得
+		/// @return 前方向ベクトル（正規化済み）
+		Vector3 GetForward() const;
+
+		/// @brief カメラの右方向ベクトルを取得
+		/// @return 右方向ベクトル（正規化済み）
+		Vector3 GetRight() const;
+
+		/// @brief カメラの上方向ベクトルを取得
+		/// @return 上方向ベクトル（正規化済み）
+		Vector3 GetUp() const;
+
+		/// @brief カメラをリセット（初期状態に戻す）
+		void Reset();
+
+		/// @brief カメラパラメータをリセット
+		void ResetParameters() { parameters_.Reset(); }
+
+		/// @brief 現在の状態をスナップショットとして保存
+		/// @return カメラスナップショット
+		CameraSnapshot CaptureSnapshot(const std::string& name = "Snapshot") const;
+
+		/// @brief スナップショットから状態を復元
+		/// @param snapshot 復元するスナップショット
+		void RestoreSnapshot(const CameraSnapshot& snapshot);
+
 	private:
 		Vector3 scale_ = { 1.0f, 1.0f, 1.0f }; // スケール
 		Vector3 rotate_ = { 0.0f, 0.0f, 0.0f }; // 回転
@@ -87,5 +123,7 @@ namespace CoreEngine {
 		CameraForGPU* cameraGPUData_ = nullptr;
 
 		bool useExternalViewMatrix_ = false; // 外部ビュー行列を使用するかどうか
+
+		CameraParameters parameters_; // カメラパラメータ
 	};
 }

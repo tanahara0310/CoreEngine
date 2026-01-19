@@ -1,5 +1,8 @@
 #include <EngineSystem.h>
 
+#ifdef _DEBUG
+#include "Engine/Camera/Debug/CameraDebugUI.h"
+#endif
 
 #include "TestScene.h"
 #include "WinApp/WinApp.h"

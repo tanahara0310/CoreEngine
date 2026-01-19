@@ -1,4 +1,4 @@
-﻿#include "ParticlePresetManager.h"
+#include "ParticlePresetManager.h"
 #include "ParticleSystem.h"
 #include <filesystem>
 #include <iostream>
@@ -460,12 +460,12 @@ void ParticlePresetManager::ShowImGui(ParticleSystem* particleSystem)
 					fileName += ".json";
 				}
 
-				std::string fullPath = std::string(directoryPathBuffer_) + fileName;
+			std::string fullPath = std::string(directoryPathBuffer_) + fileName;
 
-				// ディレクトリが存在しない場合は作成
-				JsonManager::GetInstance().CreateDirectory(directoryPathBuffer_);
+			// ディレクトリが存在しない場合は作成
+			JsonManager::GetInstance().CreateJsonDirectory(directoryPathBuffer_);
 
-				if (SavePreset(particleSystem, fullPath)) {
+			if (SavePreset(particleSystem, fullPath)) {
 					ImGui::OpenPopup("保存成功");
 				} else {
 					ImGui::OpenPopup("保存失敗");
