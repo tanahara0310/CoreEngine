@@ -8,6 +8,7 @@
 #include "Engine/Graphics/Light/LightManager.h"
 #include "Engine/Graphics/Render/RenderManager.h"
 #include "Engine/Graphics/Render/Line/LineRendererPipeline.h"
+#include "Engine/Graphics/Line/LineManager.h"
 #include "Engine/Graphics/GridRenderer.h"
 #include "Engine/Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
@@ -75,6 +76,9 @@ namespace CoreEngine
             cameraManager_->DrawImGui();
         }
 
+        // LineManagerのImGui
+        LineManager::GetInstance().DrawImGui();
+
         // ゲームオブジェクトのImGuiデバッグUI表示
         if (ImGui::Begin("オブジェクト制御")) {
             gameObjectManager_.DrawAllImGui();
@@ -85,6 +89,11 @@ namespace CoreEngine
 
         // 派生クラスの更新処理（GameObjectの更新前）
         OnUpdate();
+
+#ifdef _DEBUG
+        // LineManagerのデバッグ描画（OnUpdate後に実行）
+        LineManager::GetInstance().DrawDebugShapes();
+#endif
 
         // ゲームオブジェクトの更新
         gameObjectManager_.UpdateAll();
