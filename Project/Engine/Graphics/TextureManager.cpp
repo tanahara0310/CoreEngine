@@ -3,6 +3,7 @@
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Utility/Logger/Logger.h"
 #include "Engine/Utility/FileErrorDialog/FileErrorDialog.h"
+#include "Engine/Utility/ProcessExecutor/ProcessExecutor.h"
 
 #include "externals/DirectXTex/d3dx12.h"
 #include <Windows.h>
@@ -430,45 +431,97 @@ namespace CoreEngine
         }
     }
 
+	// ========================================
+	// ヘルパー関数実装
+	// ========================================
+
+	std::filesystem::path TextureManager::FindCmftExecutable() const
+	{
+		std::filesystem::path cmftPath = cmtfRelativePath_;
+
+		// 相対パスで存在チェック
+		if (std::filesystem::exists(cmftPath))
+		{
+			return cmftPath;
+		}
+
+		// ビルドパスで存在チェック
+		cmftPath = cmtfBuildPath_;
+		if (std::filesystem::exists(cmftPath))
+		{
+			return cmftPath;
+		}
+
+		// 見つからない場合は空のパスを返す
+		return std::filesystem::path();
+	}
+
+	std::string TextureManager::ConvertToUnixPath(const std::filesystem::path& path)
+	{
+		std::string str = path.string();
+		std::replace(str.begin(), str.end(), '\\', '/');
+		return str;
+	}
+
+	bool TextureManager::ValidateGeneratedCubemap(const std::string& filePath) const
+	{
+		if (!std::filesystem::exists(filePath))
+		{
+			return false;
+		}
+
+		try
+		{
+			auto fileSize = std::filesystem::file_size(filePath);
+			if (fileSize == 0)
+			{
+				Logger::GetInstance().Log(std::format("Cubemap file is empty: {}", filePath), LogLevel::WARNING, LogCategory::Graphics);
+				return false;
+			}
+
+			Logger::GetInstance().Log(std::format("Cubemap DDS generated: {} (size: {} bytes)", filePath, fileSize), LogLevel::INFO, LogCategory::Graphics);
+			return true;
+		}
+		catch (const std::filesystem::filesystem_error& e)
+		{
+			Logger::GetInstance().Log(std::format("Failed to validate cubemap file: {}", e.what()), LogLevel::WARNING, LogCategory::Graphics);
+			return false;
+		}
+	}
+
+	// ========================================
+	// キューブマップ生成
+	// ========================================
+
     bool TextureManager::GenerateCubemapFromHDR(const std::string& hdrPath, const std::string& cubemapDDSPath)
     {
         try {
-            // cmftのパスを構築
-            std::filesystem::path cmftPath = "externals/cmft/cmftRelease.exe";
-            
-            // cmftが存在しない場合は、ビルド済みの場所を探す
-            if (!std::filesystem::exists(cmftPath)) {
-                cmftPath = "externals/cmft/_build/win64_vs2015/bin/cmftRelease.exe";
-            }
-            if (!std::filesystem::exists(cmftPath)) {
+            // cmft実行ファイルを検索
+            std::filesystem::path cmftPath = FindCmftExecutable();
+            if (cmftPath.empty())
+            {
                 Logger::GetInstance().Log("cmft executable not found. Please build cmft first.", LogLevel::WARNING, LogCategory::Graphics);
                 return false;
             }
 
-			// パスを絶対パスに変換（カレントディレクトリ依存を回避）
-			std::filesystem::path hdrPathFS = std::filesystem::absolute(hdrPath);
-			std::filesystem::path outputPathFS = std::filesystem::absolute(cubemapDDSPath);
-			std::filesystem::path outputBase = outputPathFS.parent_path() / outputPathFS.stem();
+            // パスを絶対パスに変換
+            std::filesystem::path hdrPathAbs = std::filesystem::absolute(hdrPath);
+            std::filesystem::path outputPathAbs = std::filesystem::absolute(cubemapDDSPath);
+            std::filesystem::path outputBase = outputPathAbs.parent_path() / outputPathAbs.stem();
 
-			// cmftの絶対パスも取得
-			std::filesystem::path cmftPathAbs = std::filesystem::absolute(cmftPath);
+            // cmftの絶対パスも取得
+            std::filesystem::path cmftPathAbs = std::filesystem::absolute(cmftPath);
 
-			// パスを文字列に変換し、バックスラッシュをスラッシュに変換（cmft互換）
-			auto pathToUnixStyle = [](const std::filesystem::path& p) -> std::string {
-				std::string str = p.string();
-				std::replace(str.begin(), str.end(), '\\', '/');
-				return str;
-			};
+            // Unix形式のパスに変換（cmft互換）
+            std::string cmftPathStr = ConvertToUnixPath(cmftPathAbs);
+            std::string hdrPathStr = ConvertToUnixPath(hdrPathAbs);
+            std::string outputBaseStr = ConvertToUnixPath(outputBase);
 
-			std::string cmftPathStr = pathToUnixStyle(cmftPathAbs);
-			std::string hdrPathStr = pathToUnixStyle(hdrPathFS);
-			std::string outputBaseStr = pathToUnixStyle(outputBase);
+            Logger::GetInstance().Log(std::format("cmft path: {}", cmftPathStr), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Log(std::format("HDR input: {}", hdrPathStr), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Log(std::format("Output base: {}", outputBaseStr), LogLevel::INFO, LogCategory::Graphics);
 
-			Logger::GetInstance().Log(std::format("cmft path: {}", cmftPathStr), LogLevel::INFO, LogCategory::Graphics);
-			Logger::GetInstance().Log(std::format("HDR input path: {}", hdrPathStr), LogLevel::INFO, LogCategory::Graphics);
-			Logger::GetInstance().Log(std::format("DDS output base: {}", outputBaseStr), LogLevel::INFO, LogCategory::Graphics);
-
-			// cmftコマンドを構築（元のHDR解像度を使用）
+			// cmftコマンドライン構築
 			std::string command = std::format(
 				"\"{}\" --input \"{}\" --output0 \"{}\" --output0params dds,rgba16f,cubemap",
 				cmftPathStr,
@@ -476,72 +529,26 @@ namespace CoreEngine
 				outputBaseStr
 			);
 
-			Logger::GetInstance().Log(std::format("Executing cmft: {}", command), LogLevel::INFO, LogCategory::Graphics);
+			Logger::GetInstance().Log(std::format("Executing: {}", command), LogLevel::INFO, LogCategory::Graphics);
 
-			// コマンドをCreateProcessで実行（std::system()より信頼性が高い）
-			STARTUPINFOA si = {};
-			si.cb = sizeof(si);
-			si.dwFlags = STARTF_USESHOWWINDOW;
-			si.wShowWindow = SW_HIDE; // ウィンドウを非表示
+			// プロセス実行
+			auto result = ProcessExecutor::Execute(command);
 
-			PROCESS_INFORMATION pi = {};
-
-			// コマンドライン文字列を書き込み可能なバッファにコピー
-			std::string cmdLine = command;
-			std::vector<char> cmdBuffer(cmdLine.begin(), cmdLine.end());
-			cmdBuffer.push_back('\0');
-
-			BOOL result = CreateProcessA(
-				nullptr,                // アプリケーション名（コマンドラインから取得）
-				cmdBuffer.data(),       // コマンドライン
-				nullptr,                // プロセスハンドル継承なし
-				nullptr,                // スレッドハンドル継承なし
-				FALSE,                  // ハンドル継承なし
-				0,                      // 作成フラグなし
-				nullptr,                // 親の環境変数を使用
-				nullptr,                // 親のカレントディレクトリを使用
-				&si,                    // STARTUPINFO
-				&pi                     // PROCESS_INFORMATION
-			);
-
-			int exitCode = 1; // デフォルトは失敗
-			if (result) {
-				// プロセス完了を待機
-				WaitForSingleObject(pi.hProcess, INFINITE);
-				
-				// 終了コードを取得
-				DWORD dwExitCode = 0;
-				GetExitCodeProcess(pi.hProcess, &dwExitCode);
-				exitCode = static_cast<int>(dwExitCode);
-
-				// ハンドルをクローズ
-				CloseHandle(pi.hProcess);
-				CloseHandle(pi.hThread);
-			} else {
-				DWORD error = GetLastError();
-				Logger::GetInstance().Log(std::format("Failed to create process: GetLastError={}", error), LogLevel::WARNING, LogCategory::Graphics);
-			}
-
-			// 実行後に少し待機（ファイルシステムの同期待ち）
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-			// 結果を確認
-			bool fileExists = std::filesystem::exists(cubemapDDSPath);
-			
-			Logger::GetInstance().Log(std::format("cmft result: exit code={}, output file exists={}", 
-				exitCode, fileExists), LogLevel::INFO, LogCategory::Graphics);
-
-			if (fileExists) {
-				// ファイルサイズも確認
-				auto fileSize = std::filesystem::file_size(cubemapDDSPath);
-				Logger::GetInstance().Log(std::format("Cubemap DDS generated: {} (size: {} bytes)", 
-					cubemapDDSPath, fileSize), LogLevel::INFO, LogCategory::Graphics);
-				return true;
-			} else {
-				Logger::GetInstance().Log(std::format("Failed to generate cubemap DDS: exit code={}, file not found: {}", 
-					exitCode, cubemapDDSPath), LogLevel::WARNING, LogCategory::Graphics);
+			if (!result.success)
+			{
+				Logger::GetInstance().Log(std::format("Failed to execute cmft: GetLastError={}", result.lastError), LogLevel::WARNING, LogCategory::Graphics);
 				return false;
 			}
+
+			// ファイルシステムの同期待ち
+			std::this_thread::sleep_for(std::chrono::milliseconds(processWaitTimeOutMs_));
+
+			// 生成されたファイルを検証
+			bool isValid = ValidateGeneratedCubemap(cubemapDDSPath);
+
+			Logger::GetInstance().Log(std::format("cmft exit code: {}, validation: {}", result.exitCode, isValid ? "OK" : "FAILED"), LogLevel::INFO, LogCategory::Graphics);
+
+			return isValid;
 
         }
         catch (const std::exception& e) {
