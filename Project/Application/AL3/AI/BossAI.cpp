@@ -41,25 +41,28 @@ void BossAI::BuildBehaviorTree() {
     // ビヘイビアツリーの構築（距離判定を含む）
     // 構造:
     // Root(Selector)
+    //   ├── Sequence: 超遠距離突進攻撃（15.0以上）
+    //   │     ├── Condition: プレイヤーが超遠距離
+    //   │     └── ActionNode(DashAttack)
     //   ├── Sequence: 近距離パンチ攻撃
     //   │     ├── Condition: プレイヤーが近い（3.0未満）
     //   │     ├── Random(70%確率)
     //   │     └── ActionNode(PunchAttack)
     //   ├── Sequence: 中距離突進攻撃
     //   │     ├── Condition: プレイヤーが中距離（5.0～12.0）
-    //   │     ├── Random(35%確率)
+    //   │     ├── Random(45%確率)
     //   │     └── ActionNode(DashAttack)
     //   ├── Sequence: 中距離円形弾幕攻撃
     //   │     ├── Condition: プレイヤーが中距離（8.0～15.0）
-    //   │     ├── Random(30%確率)
+    //   │     ├── Random(35%確率)
     //   │     └── ActionNode(CircularBarrage)
     //   ├── Sequence: 中距離ジャンプ攻撃
     //   │     ├── Condition: プレイヤーが中距離（3.0～8.0）
-    //   │     ├── Random(40%確率)
+    //   │     ├── Random(50%確率)
     //   │     └── ActionNode(JumpAttack)
     //   ├── Sequence: 中距離パンチ攻撃
     //   │     ├── Condition: プレイヤーが中距離（3.0～8.0）
-    //   │     ├── Random(25%確率)
+    //   │     ├── Random(30%確率)
     //   │     └── ActionNode(PunchAttack)
     //   ├── Sequence: 遠距離接近
     //   │     ├── Condition: プレイヤーが遠い（8.0以上）
@@ -67,6 +70,15 @@ void BossAI::BuildBehaviorTree() {
     //   └── ActionNode(Idle) ← デフォルト行動
 
     auto root = std::make_unique<SelectorNode>();
+
+    // ===== 超遠距離: 突進攻撃で即座に距離を詰める =====
+    auto veryLongRangeDashSequence = std::make_unique<SequenceNode>();
+    // 距離判定: 15.0以上なら突進攻撃で即座に接近
+    veryLongRangeDashSequence->AddChild(std::make_unique<ConditionNode>([this]() {
+        return GetDistanceToPlayer() >= 15.0f;
+    }));
+    veryLongRangeDashSequence->AddChild(std::make_unique<ActionNode>(&actionManager_, "DashAttack"));
+    root->AddChild(std::move(veryLongRangeDashSequence));
 
     // ===== 近距離: パンチ攻撃パターン =====
     auto closeRangePunchSequence = std::make_unique<SequenceNode>();
@@ -86,8 +98,8 @@ void BossAI::BuildBehaviorTree() {
         float distance = GetDistanceToPlayer();
         return distance >= 5.0f && distance < 12.0f;
     }));
-    // 35%の確率で突進攻撃
-    midRangeDashSequence->AddChild(std::make_unique<RandomNode>(0.35f));
+    // 45%の確率で突進攻撃（頻度を上げる）
+    midRangeDashSequence->AddChild(std::make_unique<RandomNode>(0.45f));
     midRangeDashSequence->AddChild(std::make_unique<ActionNode>(&actionManager_, "DashAttack"));
     root->AddChild(std::move(midRangeDashSequence));
 
@@ -98,8 +110,8 @@ void BossAI::BuildBehaviorTree() {
         float distance = GetDistanceToPlayer();
         return distance >= 8.0f && distance < 15.0f;
     }));
-    // 30%の確率で弾幕攻撃
-    midRangeBarrageSequence->AddChild(std::make_unique<RandomNode>(0.3f));
+    // 35%の確率で弾幕攻撃（頻度を上げる）
+    midRangeBarrageSequence->AddChild(std::make_unique<RandomNode>(0.35f));
     midRangeBarrageSequence->AddChild(std::make_unique<ActionNode>(&actionManager_, "CircularBarrage"));
     root->AddChild(std::move(midRangeBarrageSequence));
 
@@ -110,8 +122,8 @@ void BossAI::BuildBehaviorTree() {
         float distance = GetDistanceToPlayer();
         return distance >= 3.0f && distance < 8.0f;
     }));
-    // 40%の確率でジャンプ攻撃（頻度を少し抑える）
-    midRangeJumpSequence->AddChild(std::make_unique<RandomNode>(0.4f));
+    // 50%の確率でジャンプ攻撃（頻度を上げる）
+    midRangeJumpSequence->AddChild(std::make_unique<RandomNode>(0.5f));
     midRangeJumpSequence->AddChild(std::make_unique<ActionNode>(&actionManager_, "JumpAttack"));
     root->AddChild(std::move(midRangeJumpSequence));
 
@@ -122,8 +134,8 @@ void BossAI::BuildBehaviorTree() {
         float distance = GetDistanceToPlayer();
         return distance >= 3.0f && distance < 8.0f;
     }));
-    // 25%の確率でパンチ攻撃
-    midRangePunchSequence->AddChild(std::make_unique<RandomNode>(0.25f));
+    // 30%の確率でパンチ攻撃（頻度を上げる）
+    midRangePunchSequence->AddChild(std::make_unique<RandomNode>(0.3f));
     midRangePunchSequence->AddChild(std::make_unique<ActionNode>(&actionManager_, "PunchAttack"));
     root->AddChild(std::move(midRangePunchSequence));
 

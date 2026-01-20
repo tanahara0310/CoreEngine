@@ -347,9 +347,6 @@
     <ClCompile Include="Engine\Particle\Modules\MainModule.cpp">
       <Filter>Engine\Particle\Modules</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Particle\Modules\ShapeModule.cpp">
-      <Filter>Engine\Particle\Modules</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Particle\Modules\NoiseModule.cpp">
       <Filter>Engine\Particle\Modules</Filter>
     </ClCompile>
@@ -479,6 +476,7 @@
     <ClCompile Include="Engine\Graphics\TextureManager.cpp" />
     <ClCompile Include="Engine\Utility\ProcessExecutor\ProcessExecutor.cpp" />
     <ClCompile Include="Engine\Graphics\Line\LineManager.cpp" />
+    <ClCompile Include="Engine\Particle\Modules\ShapeModule.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">

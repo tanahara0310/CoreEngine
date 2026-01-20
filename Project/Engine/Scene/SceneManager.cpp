@@ -1,4 +1,4 @@
-﻿#include "SceneManager.h"
+#include "SceneManager.h"
 #include <EngineSystem.h>
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Light/LightManager.h"

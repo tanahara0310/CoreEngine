@@ -1,4 +1,4 @@
-﻿#include "DescriptorManager.h"
+#include "DescriptorManager.h"
 #include "Engine/Utility/Logger/Logger.h"
 
 #include <cassert>

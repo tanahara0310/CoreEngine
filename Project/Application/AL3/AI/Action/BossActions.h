@@ -49,7 +49,7 @@ public:
 private:
     BossObject* boss_;
     float duration_ = 2.0f;  // ボスのジャンプ攻撃アニメーション時間と同じ
-    float cooldownDuration_ = 0.5f;  // 攻撃後のクールダウン時間
+    float cooldownDuration_ = 0.3f;  // 攻撃後のクールダウン時間（短縮）
     float elapsedTime_ = 0.0f;
     bool isInCooldown_ = false;  // クールダウン中フラグ
     bool hitboxSpawned_ = false;  // ヒットボックス生成済みフラグ
@@ -69,7 +69,7 @@ public:
 private:
     BossObject* boss_;
     float duration_ = 1.0f;  // ボスのパンチアニメーション時間と同じ
-    float cooldownDuration_ = 0.3f;  // 攻撃後のクールダウン時間
+    float cooldownDuration_ = 0.2f;  // 攻撃後のクールダウン時間（短縮）
     float elapsedTime_ = 0.0f;
     bool isInCooldown_ = false;  // クールダウン中フラグ
 };
@@ -86,9 +86,9 @@ public:
 
 private:
     BossObject* boss_;
-    float chargeDuration_ = 0.5f;     // チャージ時間
+    float chargeDuration_ = 0.3f;     // チャージ時間（短縮）
     float dashDuration_ = 0.8f;       // 突進時間
-    float cooldownDuration_ = 0.5f;   // 攻撃後のクールダウン時間
+    float cooldownDuration_ = 0.3f;   // 攻撃後のクールダウン時間（短縮）
     float elapsedTime_ = 0.0f;
     
     enum class Phase {
@@ -99,7 +99,7 @@ private:
     
     Phase currentPhase_ = Phase::Charging;
     CoreEngine::Vector3 dashDirection_;  // 突進方向
-    float dashSpeed_ = 12.0f;  // 突進速度
+    float dashSpeed_ = 15.0f;  // 突進速度（高速化）
 };
 
 /// @brief 円形弾幕攻撃アクション
@@ -114,7 +114,7 @@ public:
 
 private:
     BossObject* boss_;
-    float cooldownDuration_ = 0.5f;    // 攻撃後のクールダウン時間
+    float cooldownDuration_ = 0.3f;    // 攻撃後のクールダウン時間（短縮）
     float elapsedTime_ = 0.0f;
     bool hasFired_ = false;            // 弾を発射したかのフラグ
     int bulletCount_ = 12;             // 発射する弾の数

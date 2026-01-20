@@ -151,8 +151,8 @@ void GameUIManager::InitializeControlUI(std::function<CoreEngine::SpriteObject* 
 	xboxStickRVerticalSprite_->GetSpriteTransform().translate = { 455.0f, -257.0f, 0.0f };  // 右スティック横移動と同じ座標
 	xboxStickRVerticalSprite_->GetSpriteTransform().scale = { 1.0f, 1.0f, 1.0f };
 
-	// RBボタンUI（右下、bulletShotの上に配置）
-	xboxRbSprite_ = createSpriteCallback("Assets/AppAssets/Texture/xbox_rb.png", "XboxRb");
+	// RTボタンUI（右下、bulletShotの上に配置）
+	xboxRbSprite_ = createSpriteCallback("Assets/AppAssets/Texture/xbox_rt.png", "XboxRb");
 	xboxRbSprite_->SetActive(true);  // 常に表示
 	xboxRbSprite_->GetSpriteTransform().translate = { 545.0f, -143.0f, 0.0f };
 	xboxRbSprite_->GetSpriteTransform().scale = { 1.0f, 1.0f, 1.0f };
