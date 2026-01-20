@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
 #include <wrl/client.h>
@@ -43,6 +43,10 @@ public:
 
 	/// @brief トランスフォームを取得
 	WorldTransform& GetTransform() { return transform_; }
+
+	/// @brief テクスチャを設定
+	/// @param texture 設定するテクスチャ
+	void SetTexture(const TextureManager::LoadedTexture& texture) { texture_ = texture; }
 
 private:
 	/// @brief 箱の頂点データを生成
