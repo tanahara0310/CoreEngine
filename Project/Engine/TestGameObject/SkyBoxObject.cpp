@@ -35,8 +35,6 @@ void SkyBoxObject::Initialize() {
    // トランスフォーム用定数バッファ生成
    CreateTransformBuffer();
 
-   // デフォルトテクスチャ読み込み（後でキューブマップに差し替え）
-   texture_ = TextureManager::GetInstance().Load("SampleAssets/SkyBox/rostock_laage_airport_4k.dds");
 }
 
 void SkyBoxObject::CreateBoxVertices() {

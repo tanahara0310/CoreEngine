@@ -8,7 +8,6 @@
 #include <cstdio>
 #ifdef _DEBUG
 #include "Engine/Utility/Debug/ImGui/ImguiManager.h"
-#include "Engine/Graphics/Line/DebugLineDrawer.h"
 #include "Engine/Graphics/Render/Line/LineRendererPipeline.h"
 #include "Engine/Graphics/Render/RenderManager.h"
 #endif

@@ -202,7 +202,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\Font\FontManager.cpp" />
     <ClCompile Include="Engine\Graphics\Font\TextRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\GridRenderer.cpp" />
-    <ClCompile Include="Engine\Graphics\Line\DebugLineDrawer.cpp" />
     <ClCompile Include="Engine\Graphics\Line\LineDrawable.cpp" />
     <ClCompile Include="Engine\Graphics\Line\LineManager.cpp" />
     <ClCompile Include="Engine\Graphics\Model\Animation\AnimationBlender.cpp" />
@@ -411,7 +410,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Graphics\Font\TextRenderer.h" />
     <ClInclude Include="Engine\Graphics\GridRenderer.h" />
     <ClInclude Include="Engine\Graphics\Light\LightData.h" />
-    <ClInclude Include="Engine\Graphics\Line\DebugLineDrawer.h" />
     <ClInclude Include="Engine\Graphics\Line\Line.h" />
     <ClInclude Include="Engine\Graphics\Line\LineDrawable.h" />
     <ClInclude Include="Engine\Graphics\Line\LineManager.h" />

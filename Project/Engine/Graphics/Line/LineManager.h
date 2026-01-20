@@ -95,6 +95,18 @@ public:
                    const Vector3& color = {1.0f, 0.0f, 0.0f},
                    float alpha = 1.0f);
 
+    /// @brief ライン配列を生成するヘルパー関数群（バッチング用）
+    static std::vector<Line> GenerateSphereLines(const Vector3& center, float radius,
+                                                  const Vector3& color, float alpha, int segments = 16);
+    static std::vector<Line> GenerateBoxLines(const Vector3& center, const Vector3& size,
+                                               const Vector3& color, float alpha);
+    static std::vector<Line> GenerateCircleLines(const Vector3& center, float radius,
+                                                  const Vector3& normal, const Vector3& color, float alpha, int segments = 32);
+    static std::vector<Line> GenerateConeLines(const Vector3& apex, const Vector3& direction,
+                                                float height, float angle, const Vector3& color, float alpha, int segments = 16);
+    static std::vector<Line> GenerateCylinderLines(const Vector3& center, float radius,
+                                                    float height, const Vector3& direction, const Vector3& color, float alpha, int segments = 16);
+
     /// @brief すべてのラインをクリア
     void ClearAll();
 
@@ -102,12 +114,8 @@ public:
     /// @brief ImGuiデバッグUI描画
     void DrawImGui();
 
-    /// @brief デバッグ用グリッドの有効/無効
-    void SetDebugGridEnabled(bool enabled) { debugGridEnabled_ = enabled; }
-    bool IsDebugGridEnabled() const { return debugGridEnabled_; }
-
-    /// @brief デバッグ描画を実行（BeginFrame後、Update中に呼び出す）
-    void DrawDebugShapes();
+    /// @brief デバッグラインの更新・描画（ImGuiの表示状態に依存しない）
+    void UpdateDebugDrawing();
 #endif
 
 private:
@@ -119,7 +127,15 @@ private:
     LineRendererPipeline* lineRenderer_ = nullptr;
 
 #ifdef _DEBUG
-    // デバッグ描画設定
+    // デバッグライン設定（ImGuiから編集可能）
+    struct DebugLineSettings {
+        bool enabled = false;
+        Vector3 start = {0.0f, 0.0f, 0.0f};
+        Vector3 end = {5.0f, 0.0f, 0.0f};
+        Vector3 color = {1.0f, 0.0f, 0.0f};
+        float alpha = 1.0f;
+    };
+
     struct DebugGridSettings {
         bool enabled = false;
         float size = 20.0f;
@@ -129,18 +145,18 @@ private:
         float alpha = 0.5f;
     };
 
-    struct DebugAxisSettings {
-        bool enabled = false;
-        Vector3 origin = {0.0f, 0.0f, 0.0f};
-        float length = 5.0f;
-        float alpha = 1.0f;
-    };
-
-    struct DebugBoxSettings {
+    struct DebugWireBoxSettings {
         bool enabled = false;
         Vector3 center = {3.0f, 1.0f, 0.0f};
         Vector3 size = {2.0f, 2.0f, 2.0f};
         Vector3 color = {1.0f, 1.0f, 0.0f};
+        float alpha = 1.0f;
+    };
+
+    struct DebugAxisSettings {
+        bool enabled = false;
+        Vector3 origin = {0.0f, 0.0f, 0.0f};
+        float length = 5.0f;
         float alpha = 1.0f;
     };
 
@@ -153,7 +169,7 @@ private:
         float alpha = 1.0f;
     };
 
-    struct DebugSphereSettings {
+    struct DebugWireSphereSettings {
         bool enabled = false;
         Vector3 center = {-5.0f, 3.0f, -5.0f};
         float radius = 1.5f;
@@ -170,14 +186,13 @@ private:
         float alpha = 1.0f;
     };
 
+    DebugLineSettings debugLine_;
     DebugGridSettings debugGrid_;
+    DebugWireBoxSettings debugWireBox_;
     DebugAxisSettings debugAxis_;
-    DebugBoxSettings debugBox_;
     DebugCircleSettings debugCircle_;
-    DebugSphereSettings debugSphere_;
+    DebugWireSphereSettings debugWireSphere_;
     DebugCrossSettings debugCross_;
-
-    bool debugGridEnabled_ = false;
 #endif
 };
 }
