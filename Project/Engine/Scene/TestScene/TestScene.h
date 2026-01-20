@@ -21,6 +21,7 @@
 #include "Engine/Graphics/Light/LightData.h"
 #include "Engine/Graphics/Model/ModelManager.h"
 #include "Engine/Graphics/Model/Model.h"
+#include "Engine/Graphics/Line/LineManager.h"
 
 // シーン関連
 #include "Scene/BaseScene.h"

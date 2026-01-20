@@ -111,6 +111,58 @@ namespace CoreEngine
 			}
 			return;
 		}
+
+		// ===== LineManagerの使用例 =====
+		// ImGuiの「ラインデバッグ」ウィンドウからも設定できますが、
+		// シーン側から動的に描画することもできます
+
+		auto& lineManager = LineManager::GetInstance();
+
+		// 例1: 原点にクロスマーカーを表示
+		lineManager.DrawCross(
+			Vector3(0.0f, 0.0f, 0.0f),  // 位置
+			0.3f,                        // サイズ
+			Vector3(1.0f, 0.0f, 0.0f),  // 色（赤）
+			1.0f                         // 透明度
+		);
+
+		// 例2: Spaceキーを押している間、デバッググリッドを表示
+		if (keyboard->IsKeyPressed(DIK_SPACE)) {
+			lineManager.DrawGrid(
+				30.0f,                       // サイズ
+				15,                          // 分割数
+				Vector3(0.0f, 0.0f, 0.0f),  // 中心
+				Vector3(0.0f, 0.8f, 1.0f),  // 色（シアン）
+				0.8f                         // 透明度
+			);
+		}
+
+		// 例3: 移動する球のデバッグ表示
+		static float time = 0.0f;
+		time += 0.016f; // 約60FPS想定
+
+		Vector3 movingPosition = {
+			std::sin(time) * 5.0f,
+			2.0f,
+			std::cos(time) * 5.0f
+		};
+
+		// 移動する位置にワイヤー球を表示
+		lineManager.DrawWireSphere(
+			movingPosition,
+			1.0f,                        // 半径
+			16,                          // セグメント数
+			Vector3(1.0f, 1.0f, 0.0f),  // 色（黄色）
+			1.0f                         // 透明度
+		);
+
+		// その位置から原点への線を引く
+		lineManager.DrawLine(
+			Vector3(0.0f, 2.0f, 0.0f),  // 始点（原点、高さ2）
+			movingPosition,              // 終点（移動する位置）
+			Vector3(1.0f, 0.5f, 0.0f),  // 色（オレンジ）
+			0.5f                         // 透明度
+		);
 	}
 
 	void TestScene::Draw()

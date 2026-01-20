@@ -481,6 +481,7 @@
     <ClCompile Include="Engine\Camera\CameraPresetManager.cpp" />
     <ClCompile Include="Engine\Graphics\TextureManager.cpp" />
     <ClCompile Include="Engine\Utility\ProcessExecutor\ProcessExecutor.cpp" />
+    <ClCompile Include="Engine\Graphics\Line\LineManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1385,6 +1386,7 @@
     <ClInclude Include="Engine\Camera\ICamera.h" />
     <ClInclude Include="Engine\Camera\CameraPresetManager.h" />
     <ClInclude Include="Engine\Utility\ProcessExecutor\ProcessExecutor.h" />
+    <ClInclude Include="Engine\Graphics\Line\LineManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">
