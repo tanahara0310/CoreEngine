@@ -47,9 +47,6 @@
     <ClCompile Include="Engine\Graphics\RootSignatureManager.cpp">
       <Filter>Engine\Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Graphics\TextureManager.cpp">
-      <Filter>Engine\Graphics</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Graphics\Model\ModelLoader.cpp">
       <Filter>Engine\Graphics\Model</Filter>
     </ClCompile>
@@ -482,6 +479,7 @@
     <ClCompile Include="Engine\Camera\Debug\CameraDebugUI.cpp" />
     <ClCompile Include="Engine\Camera\ICamera.cpp" />
     <ClCompile Include="Engine\Camera\CameraPresetManager.cpp" />
+    <ClCompile Include="Engine\Graphics\TextureManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">

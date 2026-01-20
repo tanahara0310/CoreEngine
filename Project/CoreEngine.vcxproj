@@ -223,6 +223,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\Render\RenderManager.cpp" />
     <ClCompile Include="Engine\Graphics\Render\SkyBox\SkyBoxRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Sprite\SpriteRenderer.cpp" />
+    <ClCompile Include="Engine\Graphics\TextureManager.cpp" />
     <ClCompile Include="Engine\ObjectCommon\GameObject.cpp" />
     <ClCompile Include="Engine\ObjectCommon\GameObjectManager.cpp" />
     <ClCompile Include="Engine\ObjectCommon\SpriteObject.cpp" />
@@ -351,7 +352,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\WinApp\WinApp.cpp" />
     <ClCompile Include="Engine\Graphics\RootSignatureManager.cpp" />
     <ClCompile Include="Engine\Graphics\PipelineStateManager.cpp" />
-    <ClCompile Include="Engine\Graphics\TextureManager.cpp" />
     <ClCompile Include="Engine\Audio\SoundManager.cpp" />
     <ClCompile Include="Engine\Graphics\Shader\ShaderCompiler.cpp" />
     <ClCompile Include="Engine\Graphics\Resource\ResourceFactory.cpp" />

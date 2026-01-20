@@ -1,4 +1,4 @@
-﻿#include "SkyBoxObject.h"
+#include "SkyBoxObject.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
