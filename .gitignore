@@ -58,6 +58,7 @@ StyleCopReport.xml
 *.pdb
 *.log
 *imgui.ini
+*.dds
 
 # Chutzpah Test files
 _Chutzpah*

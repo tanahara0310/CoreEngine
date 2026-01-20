@@ -48,11 +48,14 @@ namespace CoreEngine
 
         // パスを解決
         std::string resolvedPath = ResolveFilePath(filePath);
+        
+        // キャッシュキーとして元のresolvedPathを保存（DDSに変換される前）
+        std::string cacheKey = resolvedPath;
 
         // すでに読み込んでいるならキャッシュを返す
-        auto it = textureCache_.find(resolvedPath);
+        auto it = textureCache_.find(cacheKey);
         if (it != textureCache_.end()) {
-            Logger::GetInstance().Log(std::format("Texture already loaded (cache hit): {}", resolvedPath), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Log(std::format("Texture already loaded (cache hit): {}", cacheKey), LogLevel::INFO, LogCategory::Graphics);
             return it->second;
         }
 
@@ -241,8 +244,8 @@ namespace CoreEngine
         result.cpuHandle = cpuHandle;
         result.gpuHandle = gpuHandle;
 
-        // 最後にキャッシュに保存
-        textureCache_[resolvedPath] = result;
+        // 最後にキャッシュに保存（元のキーで保存）
+        textureCache_[cacheKey] = result;
 
         return result;
     }
@@ -301,18 +304,25 @@ namespace CoreEngine
 
     std::string TextureManager::ResolveFilePath(const std::string& filePath) const
     {
-        // すでにAssetsで始まっている場合はそのまま返す
+        std::string resolvedPath;
+
+        // すでにAssetsで始まっている場合はそのまま使用
         if (filePath.starts_with("Assets/") || filePath.starts_with("Assets\\")) {
-            return filePath;
+            resolvedPath = filePath;
         }
-
-        // 絶対パス（C:/ など）の場合はそのまま返す
-        if (filePath.length() >= 2 && filePath[1] == ':') {
-            return filePath;
+        // 絶対パス（C:/ など）の場合はそのまま使用
+        else if (filePath.length() >= 2 && filePath[1] == ':') {
+            resolvedPath = filePath;
         }
-
         // それ以外の場合はbasePath_を前に追加
-        return basePath_ + filePath;
+        else {
+            resolvedPath = basePath_ + filePath;
+        }
+
+        // パスの正規化：バックスラッシュをスラッシュに統一
+        std::replace(resolvedPath.begin(), resolvedPath.end(), '\\', '/');
+
+        return resolvedPath;
     }
 
     std::string TextureManager::GetDDSCachePath(const std::string& originalPath) const
@@ -323,11 +333,17 @@ namespace CoreEngine
         std::string fileName = path.stem().string(); // 拡張子なしのファイル名
 
         // 親ディレクトリ + ファイル名 + .dds
+        std::string result;
         if (parentPath.empty()) {
-            return fileName + ".dds";
+            result = fileName + ".dds";
         } else {
-            return (parentPath / (fileName + ".dds")).string();
+            result = (parentPath / (fileName + ".dds")).string();
         }
+
+        // パスの正規化：バックスラッシュをスラッシュに統一
+        std::replace(result.begin(), result.end(), '\\', '/');
+
+        return result;
     }
 
     std::string TextureManager::GetCubemapDDSPath(const std::string& originalPath) const

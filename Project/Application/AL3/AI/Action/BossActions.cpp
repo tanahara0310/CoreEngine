@@ -51,8 +51,8 @@ void WalkAction::Update(float deltaTime) {
         if (length > 0.0f) {
             direction = CoreEngine::MathCore::Vector::Multiply(1.0f / length, direction);
             
-            // 移動速度
-            constexpr float walkSpeed = 2.0f;
+            // 移動速度（高速化）
+            constexpr float walkSpeed = 3.5f;
             
             // 移動量を計算
             CoreEngine::Vector3 velocity = CoreEngine::MathCore::Vector::Multiply(walkSpeed * deltaTime, direction);
