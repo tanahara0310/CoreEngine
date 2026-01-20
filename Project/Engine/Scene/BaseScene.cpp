@@ -46,8 +46,8 @@ namespace CoreEngine
         if (!keyboard) {
             return; // キーボードは必須
         }
-#ifdef _DEBUG
 
+#ifdef _DEBUG
         // デバッグカメラへの切り替え
         if (keyboard->IsKeyTriggered(DIK_F1)) {
             cameraManager_->SetActiveCamera("Debug", CameraType::Camera3D);
@@ -89,11 +89,6 @@ namespace CoreEngine
 
         // 派生クラスの更新処理（GameObjectの更新前）
         OnUpdate();
-
-#ifdef _DEBUG
-        // LineManagerのデバッグ描画（OnUpdate後に実行）
-        LineManager::GetInstance().DrawDebugShapes();
-#endif
 
         // ゲームオブジェクトの更新
         gameObjectManager_.UpdateAll();

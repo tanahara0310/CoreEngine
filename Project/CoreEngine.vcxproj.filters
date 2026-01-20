@@ -374,9 +374,6 @@
     <ClCompile Include="Engine\ObjectCommon\GameObjectManager.cpp">
       <Filter>Engine\ObjectCommon</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Graphics\Line\DebugLineDrawer.cpp">
-      <Filter>Engine\Graphics\Line</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Graphics\Line\LineDrawable.cpp">
       <Filter>Engine\Graphics\Line</Filter>
     </ClCompile>
@@ -1262,9 +1259,6 @@
       <Filter>Engine\ObjectCommon</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Line\Line.h">
-      <Filter>Engine\Graphics\Line</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Line\DebugLineDrawer.h">
       <Filter>Engine\Graphics\Line</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Line\LineDrawable.h">

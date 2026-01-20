@@ -163,6 +163,11 @@ namespace CoreEngine
 			Vector3(1.0f, 0.5f, 0.0f),  // 色（オレンジ）
 			0.5f                         // 透明度
 		);
+
+#ifdef _DEBUG
+		// デバッグUIから設定したラインを描画（テストシーンのみ）
+		lineManager.UpdateDebugDrawing();
+#endif
 	}
 
 	void TestScene::Draw()

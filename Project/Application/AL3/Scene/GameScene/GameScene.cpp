@@ -47,7 +47,7 @@ using namespace CoreEngine;
 #include "Engine/Graphics/Render/Line/LineRendererPipeline.h"
 #include "Engine/Graphics/Render/RenderManager.h"
 #include "Engine/Graphics/Line/LineDrawable.h"
-#include "Engine/Graphics/Line/DebugLineDrawer.h"
+#include "Engine/Graphics/Line/LineManager.h"
 #include "Engine/Collider/SphereCollider.h"
 #include "Engine/Collider/Collider.h"
 
@@ -773,7 +773,7 @@ void GameScene::UpdateColliderDebug() {
     if (player_ && player_->GetCollider()) {
         Vector3 center = player_->GetCollider()->GetPosition();
         Vector3 size = player_->GetCollider()->GetSize();
-        auto lines = DebugLineDrawer::GenerateBoxLines(center, size, Vector3{ 0.0f, 1.0f, 0.0f }, 1.0f);
+        auto lines = LineManager::GenerateBoxLines(center, size, Vector3{ 0.0f, 1.0f, 0.0f }, 1.0f);
         debugLines.insert(debugLines.end(), lines.begin(), lines.end());
     }
 
@@ -781,7 +781,7 @@ void GameScene::UpdateColliderDebug() {
     if (boss_ && boss_->GetCollider()) {
         Vector3 center = boss_->GetCollider()->GetPosition();
         Vector3 size = boss_->GetCollider()->GetSize();
-        auto lines = DebugLineDrawer::GenerateBoxLines(center, size, Vector3{ 1.0f, 0.0f, 0.0f }, 1.0f);
+        auto lines = LineManager::GenerateBoxLines(center, size, Vector3{ 1.0f, 0.0f, 0.0f }, 1.0f);
         debugLines.insert(debugLines.end(), lines.begin(), lines.end());
     }
 
@@ -805,7 +805,7 @@ void GameScene::UpdateColliderDebug() {
                     color = { 1.0f, 1.0f, 0.0f };  // 黄色
                 }
 
-                auto lines = DebugLineDrawer::GenerateSphereLines(center, radius, color, 1.0f, 16);
+                auto lines = LineManager::GenerateSphereLines(center, radius, color, 1.0f, 16);
                 debugLines.insert(debugLines.end(), lines.begin(), lines.end());
             }
             else {
@@ -820,7 +820,7 @@ void GameScene::UpdateColliderDebug() {
                         color = { 1.0f, 0.5f, 0.0f };  // オレンジ
                     }
 
-                    auto lines = DebugLineDrawer::GenerateBoxLines(center, size, color, 1.0f);
+                    auto lines = LineManager::GenerateBoxLines(center, size, color, 1.0f);
                     debugLines.insert(debugLines.end(), lines.begin(), lines.end());
                 }
             }

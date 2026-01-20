@@ -3,8 +3,8 @@
 #include "Engine/Utility/Collision/CollisionUtils.h"
 
 #ifdef _DEBUG
-#include "Engine/Graphics/Line/DebugLineDrawer.h"
 #include "Engine/Graphics/Render/Line/LineRendererPipeline.h"
+#include "Engine/Graphics/Line/LineManager.h"
 #include "Engine/Camera/ICamera.h"
 #endif
 
@@ -52,7 +52,8 @@ void AABBCollider::DrawDebug(CoreEngine::LineRendererPipeline* pipeline, const C
    if (!pipeline || !camera) return;
 
    CoreEngine::Vector3 center = GetPosition();
-   CoreEngine::DebugLineDrawer::DrawBox(pipeline, camera, center, size_, color, 1.0f);
+   auto lines = CoreEngine::LineManager::GenerateBoxLines(center, size_, color, 1.0f);
+   pipeline->AddLines(lines);
 }
 #endif
 }

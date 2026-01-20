@@ -4,7 +4,7 @@
 #include <algorithm>
 
 #ifdef _DEBUG
-#include "Engine/Graphics/Line/DebugLineDrawer.h"
+#include "Engine/Graphics/Line/LineManager.h"
 #include "Engine/Graphics/Render/Line/LineRendererPipeline.h"
 #include "Engine/Camera/ICamera.h"
 #endif
@@ -395,11 +395,11 @@ void ShapeModule::DrawEmitterShape(LineRendererPipeline* pipeline, const ICamera
 	break;
 
 	case ShapeType::Box:
-		lines = DebugLineDrawer::GenerateBoxLines(emitterPosition, shapeData_.scale, color, alpha);
+	lines = LineManager::GenerateBoxLines(emitterPosition, shapeData_.scale, color, alpha);
 		break;
 
 	case ShapeType::Sphere:
-		lines = DebugLineDrawer::GenerateSphereLines(emitterPosition, shapeData_.radius, color, alpha);
+	lines = LineManager::GenerateSphereLines(emitterPosition, shapeData_.radius, color, alpha);
 		break;
 
 	case ShapeType::Circle:
@@ -419,19 +419,19 @@ void ShapeModule::DrawEmitterShape(LineRendererPipeline* pipeline, const ICamera
 			normal = { 0.0f, 1.0f, 0.0f };
 			break;
 		}
-		lines = DebugLineDrawer::GenerateCircleLines(emitterPosition, shapeData_.radius, normal, color, alpha);
+		lines = LineManager::GenerateCircleLines(emitterPosition, shapeData_.radius, normal, color, alpha);
 	}
 	break;
 
 	case ShapeType::Cone:
-		lines = DebugLineDrawer::GenerateConeLines(emitterPosition, { 0.0f, 1.0f, 0.0f },
-			shapeData_.height, shapeData_.angle, color, alpha);
+	lines = LineManager::GenerateConeLines(emitterPosition, { 0.0f, 1.0f, 0.0f },
+		shapeData_.height, shapeData_.angle, color, alpha);
 		break;
 
 	case ShapeType::Hemisphere:
 	{
-		auto sphereLines = DebugLineDrawer::GenerateSphereLines(emitterPosition, shapeData_.radius, color, alpha, 16);
-		auto circleLines = DebugLineDrawer::GenerateCircleLines(emitterPosition, shapeData_.radius,
+		auto sphereLines = LineManager::GenerateSphereLines(emitterPosition, shapeData_.radius, color, alpha, 16);
+		auto circleLines = LineManager::GenerateCircleLines(emitterPosition, shapeData_.radius,
 			{ 0.0f, 1.0f, 0.0f }, color, alpha);
 		lines.insert(lines.end(), sphereLines.begin(), sphereLines.end());
 		lines.insert(lines.end(), circleLines.begin(), circleLines.end());
@@ -455,8 +455,8 @@ void ShapeModule::DrawEmitterShape(LineRendererPipeline* pipeline, const ICamera
 			normal = { 0.0f, 1.0f, 0.0f };
 			break;
 		}
-		auto outerLines = DebugLineDrawer::GenerateCircleLines(emitterPosition, shapeData_.radius, normal, color, alpha);
-		auto innerLines = DebugLineDrawer::GenerateCircleLines(emitterPosition, shapeData_.innerRadius, normal, color, alpha);
+		auto outerLines = LineManager::GenerateCircleLines(emitterPosition, shapeData_.radius, normal, color, alpha);
+		auto innerLines = LineManager::GenerateCircleLines(emitterPosition, shapeData_.innerRadius, normal, color, alpha);
 		lines.insert(lines.end(), outerLines.begin(), outerLines.end());
 		lines.insert(lines.end(), innerLines.begin(), innerLines.end());
 	}
@@ -491,8 +491,8 @@ void ShapeModule::DrawEmitterShape(LineRendererPipeline* pipeline, const ICamera
 	break;
 
 	case ShapeType::Cylinder:
-		lines = DebugLineDrawer::GenerateCylinderLines(emitterPosition, shapeData_.radius,
-			shapeData_.height, { 0.0f, 1.0f, 0.0f }, color, alpha);
+	lines = LineManager::GenerateCylinderLines(emitterPosition, shapeData_.radius,
+		shapeData_.height, { 0.0f, 1.0f, 0.0f }, color, alpha);
 		break;
 
 	default:
