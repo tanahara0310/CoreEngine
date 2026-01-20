@@ -43,7 +43,7 @@ namespace CoreEngine
 
 		// HDRファイルを読み込み（自動的にキューブマップDDSに変換される）
 		TextureManager::LoadedTexture environmentMapTexture;
-		environmentMapTexture = textureManager.Load("Texture/rogland_clear_night_4k.hdr");
+		environmentMapTexture = textureManager.Load("Texture/kloppenheim_06_puresky_4k.hdr");
 
 
 		// SkinnedModelRendererに環境マップを設定

@@ -260,6 +260,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Utility\Debug\ConsoleUI.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\SceneManagerTab.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\TextureViewer.cpp" />
+    <ClCompile Include="Engine\Utility\ProcessExecutor\ProcessExecutor.cpp" />
     <ClCompile Include="Engine\Utility\Random\RandomGenerator.cpp" />
     <ClCompile Include="Engine\Graphics\Common\Core\DepthStencilManager.cpp" />
     <ClCompile Include="Engine\Graphics\Common\Core\CommandManager.cpp" />
@@ -484,6 +485,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Utility\Debug\ImGui\TextureViewer.h" />
     <ClInclude Include="Engine\Utility\FileErrorDialog\FileErrorDialog.h" />
     <ClInclude Include="Engine\Utility\Logger\ScopedTimer.h" />
+    <ClInclude Include="Engine\Utility\ProcessExecutor\ProcessExecutor.h" />
     <ClInclude Include="Engine\Utility\Random\RandomGenerator.h" />
     <ClInclude Include="Engine\\EngineSystem\\EngineSystem.h" />
     <ClInclude Include="Engine\Graphics\Common\Core\DepthStencilManager.h" />

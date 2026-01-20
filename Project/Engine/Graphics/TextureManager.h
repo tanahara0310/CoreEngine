@@ -6,6 +6,7 @@
 #include <wrl.h>
 #include <unordered_map>
 #include <mutex>
+#include <filesystem>
 
 // 前方宣言
 namespace CoreEngine {
@@ -97,6 +98,27 @@ namespace CoreEngine {
 		/// @param cubemapDDSPath 出力キューブマップDDSパス
 		/// @return 成功したらtrue
 		bool GenerateCubemapFromHDR(const std::string& hdrPath, const std::string& cubemapDDSPath);
+
+		// ===== ヘルパー関数 =====
+
+		/// @brief cmft実行ファイルのパスを検索
+		/// @return cmftのパス（見つからない場合は空）
+		std::filesystem::path FindCmftExecutable() const;
+
+		/// @brief パスをUnix形式（スラッシュ）に変換
+		/// @param path 変換対象のパス
+		/// @return Unix形式の文字列パス
+		static std::string ConvertToUnixPath(const std::filesystem::path& path);
+
+		/// @brief 生成されたキューブマップファイルを検証
+		/// @param filePath ファイルパス
+		/// @return ファイルが存在し、サイズが0より大きければtrue
+		bool ValidateGeneratedCubemap(const std::string& filePath) const;
+
+		// ===== 定数 =====
+		static constexpr int processWaitTimeOutMs_ = 100;  ///< プロセス実行後の待機時間（ms）
+		static constexpr const char* cmtfRelativePath_ = "externals/cmft/cmftRelease.exe";  ///< cmftの相対パス
+		static constexpr const char* cmtfBuildPath_ = "externals/cmft/_build/win64_vs2015/bin/cmftRelease.exe";  ///< cmftのビルドパス
 
 		CoreEngine::DirectXCommon* dxCommon_ = nullptr;
 		bool isInitialized_ = false;

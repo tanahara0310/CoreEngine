@@ -57,6 +57,7 @@ StyleCopReport.xml
 # Files built by Visual Studio
 *.pdb
 *.log
+*imgui.ini
 
 # Chutzpah Test files
 _Chutzpah*
