@@ -16,6 +16,7 @@
 #include "Effect/RasterScroll.h"
 #include "Effect/FadeEffect.h"
 #include "Effect/Bloom.h"
+#include "Effect/Dissolve.h"
 #include "PostEffectPresetManager.h"
 #include "Engine/Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
@@ -133,6 +134,7 @@ void PostEffectManager::RegisterAllEffects()
 	RegisterEffect<Invert>(PostEffectNames::Invert, false);
 	RegisterEffect<RasterScroll>(PostEffectNames::RasterScroll, false);
 	RegisterEffect<Bloom>(PostEffectNames::Bloom, false);
+	RegisterEffect<Dissolve>(PostEffectNames::Dissolve, false);
 }
 
 void PostEffectManager::RegisterEffectInternal(const std::string& name, std::unique_ptr<PostEffectBase> effect)

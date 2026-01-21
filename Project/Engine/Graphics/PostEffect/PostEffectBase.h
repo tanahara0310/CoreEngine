@@ -14,8 +14,8 @@ namespace CoreEngine
 class PostEffectBase {
 public:
     virtual ~PostEffectBase() = default;
-    void Initialize(DirectXCommon* dxCommon);
-    void Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
+    virtual void Initialize(DirectXCommon* dxCommon);
+    virtual void Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
 
     /// @brief ImGuiでパラメータを調整する関数
     virtual void DrawImGui() {}
