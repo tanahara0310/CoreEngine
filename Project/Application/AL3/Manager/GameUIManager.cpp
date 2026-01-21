@@ -40,21 +40,21 @@ void GameUIManager::InitializeBossHPBar(std::function<CoreEngine::SpriteObject* 
 	constexpr float FRAME_PADDING = 3.0f;  // 4 → 3に縮小
 
 	// HPバー背景（黒）- 枠として少し大きく
-	bossHPBarBackground_ = createSpriteCallback("Assets/Texture/white1x1.png", "BossHPBarBackground");
+	bossHPBarBackground_ = createSpriteCallback("Assets/Texture/white2x2.png", "BossHPBarBackground");
 	bossHPBarBackground_->SetActive(true);
 	bossHPBarBackground_->GetSpriteTransform().translate = { 0.0f, HP_BAR_Y, 0.1f };  // Z=0.1で一番奥
 	bossHPBarBackground_->GetSpriteTransform().scale = { HP_BAR_WIDTH + FRAME_PADDING * 2, HP_BAR_HEIGHT + FRAME_PADDING * 2, 1.0f };
 	bossHPBarBackground_->SetColor({ 0.0f, 0.0f, 0.0f, 1.0f });  // 黒色に変更
 
 	// HPバー遅延（赤・ダメージ表示用）- 背景と前景の間に配置
-	bossHPBarDelay_ = createSpriteCallback("Assets/Texture/white1x1.png", "BossHPBarDelay");
+	bossHPBarDelay_ = createSpriteCallback("Assets/Texture/white2x2.png", "BossHPBarDelay");
 	bossHPBarDelay_->SetActive(true);
 	bossHPBarDelay_->GetSpriteTransform().translate = { 0.0f, HP_BAR_Y, 0.05f };  // Z=0.05で中間
 	bossHPBarDelay_->GetSpriteTransform().scale = { HP_BAR_WIDTH, HP_BAR_HEIGHT, 1.0f };
 	bossHPBarDelay_->SetColor({ 1.0f, 0.2f, 0.2f, 1.0f });  // より鮮やかで明るい赤に変更
 
 	// HPバー前景（緑）
-	bossHPBarForeground_ = createSpriteCallback("Assets/Texture/white1x1.png", "BossHPBarForeground");
+	bossHPBarForeground_ = createSpriteCallback("Assets/Texture/white2x2.png", "BossHPBarForeground");
 	bossHPBarForeground_->SetActive(true);
 	bossHPBarForeground_->GetSpriteTransform().translate = { 0.0f, HP_BAR_Y, 0.0f };  // Z=0.0で一番手前
 	bossHPBarForeground_->GetSpriteTransform().scale = { HP_BAR_WIDTH, HP_BAR_HEIGHT, 1.0f };

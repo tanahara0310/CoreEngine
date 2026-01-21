@@ -1,4 +1,4 @@
-﻿#include "GameObjectManager.h"
+#include "GameObjectManager.h"
 #include "Engine/Graphics/Render/RenderManager.h"
 #include <algorithm>
 
@@ -32,22 +32,10 @@ void GameObjectManager::RegisterAllToRender(RenderManager* renderManager) {
 }
 
 void GameObjectManager::CleanupDestroyed() {
-	// ===== ダブルバッファリング同期による安全な削除 =====
-	// 
-	// 削除の流れ:
-	// 1. 前フレームの削除キューをクリア（GPU使用完了を保証）
-	//    → BackBufferPostDraw()でWaitForFrame()により、前フレームのGPU処理完了を待機済み
-	//    → 安全にデストラクタを呼び出せる
-	// 
-	// 2. 現在フレームで削除マークされたオブジェクトを削除キューに移動
-	//    → 次フレームのCleanupDestroyedで実際に破棄
-	//    → GPU処理中のリソースを誤って破棄することを防ぐ
 	
 	// 前フレームの削除キューをクリア（デストラクタ呼び出し）
 	destroyQueue_.clear();
 
-	// 削除マークされたオブジェクトを削除キューに移動
-	// std::remove_ifとeraseのイディオムを使用して効率的に削除
 	objects_.erase(
 		std::remove_if(objects_.begin(), objects_.end(),
 			[this](auto& obj) {

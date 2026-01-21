@@ -1,4 +1,4 @@
-﻿#include "ShaderCompiler.h"
+#include "ShaderCompiler.h"
 
 #include <cassert>
 
@@ -54,7 +54,7 @@ IDxcBlob* ShaderCompiler::CompileShader(const std::wstring& filePath, const wcha
         L"-Zi", // デバッグ情報を埋め込む
         L"-Od", // 最適化を外す
         L"-Zpr", // メモリレイアウトは行優先
-        L"-I", L"Resources/Shader", // インクルードディレクトリを追加
+        L"-I", L"Assets/Shader", // インクルードディレクトリを追加
     };
 
     // 実際にshaderをcompileする
