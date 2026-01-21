@@ -166,7 +166,8 @@ private:
         PostEffectNames::Invert, 
         PostEffectNames::GrayScale, 
         PostEffectNames::Vignette,
-        PostEffectNames::Bloom
+        PostEffectNames::Bloom,
+        PostEffectNames::Dissolve
     };
     
     std::unique_ptr<PostEffectPresetManager> presetManager_;

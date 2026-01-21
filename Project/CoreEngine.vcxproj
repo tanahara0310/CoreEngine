@@ -212,6 +212,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\Model\Skeleton\SkeletonLoader.cpp" />
     <ClCompile Include="Engine\Graphics\Model\Skeleton\SkinClusterGenerator.cpp" />
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Bloom.cpp" />
+    <ClCompile Include="Engine\Graphics\PostEffect\Effect\Dissolve.cpp" />
     <ClCompile Include="Engine\Graphics\PostEffect\PostEffectPresetManager.cpp" />
     <ClCompile Include="Engine\Graphics\Primitive\PrimitivePlane.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Line\LineRendererPipeline.cpp" />
@@ -427,6 +428,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Graphics\Model\Skeleton\SkeletonLoader.h" />
     <ClInclude Include="Engine\Graphics\Model\Skeleton\SkinClusterGenerator.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Bloom.h" />
+    <ClInclude Include="Engine\Graphics\PostEffect\Effect\Dissolve.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\PostEffectNames.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\PostEffectPresetManager.h" />
     <ClInclude Include="Engine\Graphics\Primitive\PrimitivePlane.h" />

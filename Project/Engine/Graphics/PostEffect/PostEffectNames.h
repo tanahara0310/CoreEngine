@@ -19,5 +19,6 @@ namespace PostEffectNames {
     constexpr const char* Invert = "Invert";
     constexpr const char* RasterScroll = "RasterScroll";
     constexpr const char* Bloom = "Bloom";
+    constexpr const char* Dissolve = "Dissolve";
 }
 }
