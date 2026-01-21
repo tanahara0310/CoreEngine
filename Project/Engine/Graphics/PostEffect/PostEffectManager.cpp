@@ -1,4 +1,4 @@
-﻿#include "PostEffectManager.h"
+#include "PostEffectManager.h"
 
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Render/Render.h"
