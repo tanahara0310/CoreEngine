@@ -140,8 +140,8 @@ namespace CoreEngine
     // 便利な名前空間エイリアス
     // ========================================
     // 新しいコードではこれらのエイリアスを使用することを推奨します
-    namespace Math = MathCore;
+  /*  namespace Math = MathCore;
     namespace Vec = MathCore::Vector;
     namespace Mat = MathCore::Matrix;
-    namespace Quat = MathCore::QuaternionMath;
+    namespace Quat = MathCore::QuaternionMath;*/
 }
