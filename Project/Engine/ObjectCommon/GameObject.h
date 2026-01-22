@@ -47,6 +47,14 @@ namespace CoreEngine
 		/// @brief 削除マークされているか確認
 		bool IsMarkedForDestroy() const { return markedForDestroy_; }
 
+		/// @brief 自動更新を設定（falseにすると手動更新が必要）
+		/// @param autoUpdate 自動更新フラグ（true: GameObjectManagerが自動更新、false: 手動更新）
+		void SetAutoUpdate(bool autoUpdate) { autoUpdate_ = autoUpdate; }
+
+		/// @brief 自動更新が有効か確認
+		/// @return 自動更新フラグ
+		bool IsAutoUpdate() const { return autoUpdate_; }
+
 		/// @brief 描画パスタイプを取得（派生クラスでオーバーライド）
 		/// @return 描画パスタイプ（デフォルトは3Dモデル）
 		virtual RenderPassType GetRenderPassType() const { return RenderPassType::Model; }
@@ -120,5 +128,8 @@ namespace CoreEngine
 
 		/// @brief 削除マークフラグ（フレーム終了時に自動削除される）
 		bool markedForDestroy_ = false;
+
+		/// @brief 自動更新フラグ（true: GameObjectManagerが自動で更新、false: 手動更新）
+		bool autoUpdate_ = true;
 	};
 }
