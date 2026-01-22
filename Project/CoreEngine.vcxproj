@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -219,7 +219,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\Render\Model\ModelRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Model\SkinnedModelRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Particle\BaseParticleRenderer.cpp" />
-    <ClCompile Include="Engine\Graphics\Render\Particle\LightningParticleRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Particle\ModelParticleRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Particle\ParticleRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\RenderManager.cpp" />
@@ -438,7 +437,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Graphics\Render\Model\ModelRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\Model\SkinnedModelRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\Particle\BaseParticleRenderer.h" />
-    <ClInclude Include="Engine\Graphics\Render\Particle\LightningParticleRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\Particle\ModelParticleRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\Particle\ParticleRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\RenderManager.h" />
