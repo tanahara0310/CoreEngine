@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /// @brief 描画パスタイプ
 

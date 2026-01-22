@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <xaudio2.h>
 #include <mfapi.h>
 #include <mfidl.h>
@@ -12,11 +12,6 @@
 #include <unordered_map>
 #include <memory>
 #include <string>
-
-#pragma comment(lib, "xaudio2.lib")
-#pragma comment(lib, "mfplat.lib")
-#pragma comment(lib, "mfreadwrite.lib")
-#pragma comment(lib, "mfuuid.lib")
 
 // チャンクヘッダ（WAV用）
 
@@ -78,6 +73,8 @@ public:
     void Resume();
     void SetVolume(float volume);
     float GetVolume() const;
+    void SetPitch(float pitch);
+    float GetPitch() const;
     bool IsPlaying() const;
     bool IsPaused() const;
 
@@ -86,6 +83,7 @@ private:
     bool isPlaying_;
     bool isPaused_;
     float volume_;
+    float pitch_;
     XAUDIO2_BUFFER buffer_;
 
     void CleanupVoice();
@@ -121,6 +119,8 @@ public:
         void Resume();
         void SetVolume(float volume);
         float GetVolume() const;
+        void SetPitch(float pitch);
+        float GetPitch() const;
         bool IsPlaying() const;
         bool IsPaused() const;
 
@@ -186,8 +186,9 @@ private:
     std::unordered_map<SoundHandle, std::unique_ptr<SoundVoice>> soundVoiceMap_;
     SoundHandle nextHandle_;
 
-    // まだボイスが作られていないサウンドの希望音量を保持
+    // まだボイスが作られていないサウンドの希望音量・ピッチを保持
     std::unordered_map<SoundHandle, float> pendingVolume_;
+    std::unordered_map<SoundHandle, float> pendingPitch_;
 
     // マスター音量
     float masterVolume_;
@@ -221,6 +222,10 @@ private:
     // 音量制御
     void SetVolume(SoundHandle handle, float volume);
     float GetVolume(SoundHandle handle) const;
+
+    // ピッチ制御
+    void SetPitch(SoundHandle handle, float pitch);
+    float GetPitch(SoundHandle handle) const;
 
     // 状態取得
     bool IsPlaying(SoundHandle handle) const;
