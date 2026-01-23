@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <list>
 #include <cstdint>
@@ -38,7 +38,7 @@ public:
 
 	/// @brief パーティクルを放出
 	/// @param count 放出数
-    /// @param emitterTransform エミッターのトランスフォーム
+	/// @param emitterTransform エミッターのトランスフォーム
 	/// @param maxParticles 最大パーティクル数
 	/// @param outParticles 出力先のパーティクルリスト
 	/// @return 実際に放出されたパーティクル数

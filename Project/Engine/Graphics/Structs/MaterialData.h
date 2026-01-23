@@ -6,6 +6,6 @@ namespace CoreEngine
 {
 struct MaterialData {
 
-    std::string textureFilePath;
+	std::string textureFilePath;
 };
 }

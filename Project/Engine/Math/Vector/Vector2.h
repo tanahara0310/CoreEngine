@@ -57,12 +57,12 @@ struct Vector2 {
 		return { x / length, y / length };
 	}
 
-    float Length() const {
-        return std::sqrtf(x * x + y * y);
-    }
+	float Length() const {
+		return std::sqrtf(x * x + y * y);
+	}
 
-    float Dot(const Vector2& v) const {
-        return x * v.x + y * v.y;
+	float Dot(const Vector2& v) const {
+		return x * v.x + y * v.y;
 	}
 };
 

@@ -38,7 +38,7 @@ void TerrainObject::Initialize() {
 
 void TerrainObject::Update() {
    if (!IsActive() || !model_) {
-      return;
+	  return;
    }
 
    // トランスフォームの更新

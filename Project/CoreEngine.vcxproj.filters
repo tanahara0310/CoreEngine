@@ -1424,6 +1424,8 @@
     <None Include="Docs\SceneGuide.md">
       <Filter>Docs</Filter>
     </None>
+    <None Include="Scripts\ConvertToTabs.ps1" />
+    <None Include="Scripts\ConvertToCRLF.ps1" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">

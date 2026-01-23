@@ -32,7 +32,7 @@ void SphereObject::Initialize() {
 
 void SphereObject::Update() {
    if (!IsActive() || !model_) {
-      return;
+	  return;
    }
 
    // トランスフォームの更新

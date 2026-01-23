@@ -9,13 +9,13 @@ namespace CoreEngine
 {
 class CrashDump {
 public:
-    /// <summary>
-    /// 例外フィルターを登録
-    /// </summary>
-    static void Register();
+	/// <summary>
+	/// 例外フィルターを登録
+	/// </summary>
+	static void Register();
 
 private: // メンバ変数
-    // SHE(構造化例外)のコールバック関数
-    static LONG WINAPI HandleException(EXCEPTION_POINTERS* exception);
+	// SHE(構造化例外)のコールバック関数
+	static LONG WINAPI HandleException(EXCEPTION_POINTERS* exception);
 };
 }

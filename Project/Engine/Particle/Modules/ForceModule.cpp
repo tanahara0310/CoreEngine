@@ -7,10 +7,10 @@
 namespace CoreEngine
 {
 ForceModule::ForceModule() {
-    forceData_.gravity = { 0.0f, -9.8f, 0.0f };
-    forceData_.wind = { 0.0f, 0.0f, 0.0f };
-    forceData_.drag = 0.0f;
-    forceData_.useAccelerationField = false;
+	forceData_.gravity = { 0.0f, -9.8f, 0.0f };
+	forceData_.wind = { 0.0f, 0.0f, 0.0f };
+	forceData_.drag = 0.0f;
+	forceData_.useAccelerationField = false;
   forceData_.acceleration = { 0.0f, 0.0f, 0.0f };
  forceData_.area = BoundingBox();
 }
@@ -52,35 +52,35 @@ void ForceModule::ApplyForces(Particle& particle, float deltaTime, float gravity
 
 #ifdef _DEBUG
 bool ForceModule::ShowImGui() {
-    bool changed = false;
-    
-    // 有効/無効の切り替え
-    if (ImGui::Checkbox("有効##力場", &enabled_)) {
-        changed = true;
-    }
+	bool changed = false;
+	
+	// 有効/無効の切り替え
+	if (ImGui::Checkbox("有効##力場", &enabled_)) {
+		changed = true;
+	}
 
-    if (!enabled_) {
-        ImGui::BeginDisabled();
-    }
+	if (!enabled_) {
+		ImGui::BeginDisabled();
+	}
 
-    changed |= ImGui::DragFloat3("重力", &forceData_.gravity.x, 0.1f);
-    changed |= ImGui::DragFloat3("風", &forceData_.wind.x, 0.1f);
-    changed |= ImGui::DragFloat("抵抗", &forceData_.drag, 0.01f, 0.0f, 1.0f);
-    
-    ImGui::Separator();
-    changed |= ImGui::Checkbox("加速フィールド使用", &forceData_.useAccelerationField);
-    
-    if (forceData_.useAccelerationField) {
-        changed |= ImGui::DragFloat3("加速度", &forceData_.acceleration.x, 0.1f);
-        changed |= ImGui::DragFloat3("エリア最小", &forceData_.area.min.x, 0.1f);
-        changed |= ImGui::DragFloat3("エリア最大", &forceData_.area.max.x, 0.1f);
-    }
+	changed |= ImGui::DragFloat3("重力", &forceData_.gravity.x, 0.1f);
+	changed |= ImGui::DragFloat3("風", &forceData_.wind.x, 0.1f);
+	changed |= ImGui::DragFloat("抵抗", &forceData_.drag, 0.01f, 0.0f, 1.0f);
+	
+	ImGui::Separator();
+	changed |= ImGui::Checkbox("加速フィールド使用", &forceData_.useAccelerationField);
+	
+	if (forceData_.useAccelerationField) {
+		changed |= ImGui::DragFloat3("加速度", &forceData_.acceleration.x, 0.1f);
+		changed |= ImGui::DragFloat3("エリア最小", &forceData_.area.min.x, 0.1f);
+		changed |= ImGui::DragFloat3("エリア最大", &forceData_.area.max.x, 0.1f);
+	}
 
-    if (!enabled_) {
-        ImGui::EndDisabled();
-    }
+	if (!enabled_) {
+		ImGui::EndDisabled();
+	}
 
-    return changed;
+	return changed;
 }
 #endif
 }

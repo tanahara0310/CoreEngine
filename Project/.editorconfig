@@ -1,6 +1,13 @@
 [*.{cpp,h,hlsl,hlsli}]
 charset = utf-8
 
+# インデントはタブを使用
+indent_style = tab
+indent_size = 4
+
+# 改行コードはCRLFに固定
+end_of_line = crlf
+
 # スペルミスをintellisense上での「エラー」として扱う
 spelling_error_severity = error
 

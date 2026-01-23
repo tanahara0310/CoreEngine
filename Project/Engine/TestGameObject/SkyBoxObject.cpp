@@ -1,4 +1,4 @@
-#include "SkyBoxObject.h"
+﻿#include "SkyBoxObject.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
@@ -234,9 +234,9 @@ bool SkyBoxObject::DrawImGuiExtended() {
 
    // SkyBox特有パラメータ（リセットボタンのみ、transformは基本側で表示される）
    if (ImGui::Button("トランスフォームをリセット")) {
-      transform_.scale = { 1.0f, 1.0f, 1.0f };
-      transform_.rotate = { 0.0f, 0.0f, 0.0f };
-      changed = true;
+	  transform_.scale = { 1.0f, 1.0f, 1.0f };
+	  transform_.rotate = { 0.0f, 0.0f, 0.0f };
+	  changed = true;
    }
 
    return changed;

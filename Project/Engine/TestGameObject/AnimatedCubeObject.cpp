@@ -58,41 +58,41 @@ void AnimatedCubeObject::Update() {
 }
 
 void AnimatedCubeObject::Draw(const ICamera* camera) {
-    if (!camera || !model_) return;
-    
-    // モデルの描画
-    model_->Draw(transform_, camera, texture_.gpuHandle);
+	if (!camera || !model_) return;
+	
+	// モデルの描画
+	model_->Draw(transform_, camera, texture_.gpuHandle);
 }
 
 #ifdef _DEBUG
 bool AnimatedCubeObject::DrawImGuiExtended() {
-    bool changed = false;
+	bool changed = false;
 
-    // アニメーション制御（拡張部分）
-    if (model_ && model_->HasAnimationController()) {
-       if (ImGui::TreeNode("アニメーション")) {
-          // 再生速度
-          float animSpeed = GetAnimationSpeed();
-          if (ImGui::SliderFloat("速度", &animSpeed, 0.0f, 3.0f)) {
-             SetAnimationSpeed(animSpeed);
-             changed = true;
-          }
+	// アニメーション制御（拡張部分）
+	if (model_ && model_->HasAnimationController()) {
+	   if (ImGui::TreeNode("アニメーション")) {
+		  // 再生速度
+		  float animSpeed = GetAnimationSpeed();
+		  if (ImGui::SliderFloat("速度", &animSpeed, 0.0f, 3.0f)) {
+			 SetAnimationSpeed(animSpeed);
+			 changed = true;
+		  }
 
-          // アニメーション時間表示
-          float animTime = GetAnimationTime();
-          ImGui::Text("時間: %.2f 秒", animTime);
+		  // アニメーション時間表示
+		  float animTime = GetAnimationTime();
+		  ImGui::Text("時間: %.2f 秒", animTime);
 
-          // リセットボタン
-          if (ImGui::Button("アニメーションをリセット")) {
-             ResetAnimation();
-             changed = true;
-          }
+		  // リセットボタン
+		  if (ImGui::Button("アニメーションをリセット")) {
+			 ResetAnimation();
+			 changed = true;
+		  }
 
-          ImGui::TreePop();
-       }
-    }
+		  ImGui::TreePop();
+	   }
+	}
 
-    return changed;
+	return changed;
 }
 #endif
 

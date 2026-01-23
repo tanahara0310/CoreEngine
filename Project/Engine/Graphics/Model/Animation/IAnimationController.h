@@ -10,21 +10,21 @@ namespace CoreEngine
 {
 class IAnimationController {
 public:
-    virtual ~IAnimationController() = default;
+	virtual ~IAnimationController() = default;
 
-    /// @brief アニメーションを更新
+	/// @brief アニメーションを更新
   /// @param deltaTime デルタタイム（秒）
-    virtual void Update(float deltaTime) = 0;
+	virtual void Update(float deltaTime) = 0;
 
-    /// @brief アニメーション時刻を取得
-    /// @return 現在の再生時刻（秒）
-    virtual float GetAnimationTime() const = 0;
+	/// @brief アニメーション時刻を取得
+	/// @return 現在の再生時刻（秒）
+	virtual float GetAnimationTime() const = 0;
 
-    /// @brief アニメーションをリセット
-    virtual void Reset() = 0;
+	/// @brief アニメーションをリセット
+	virtual void Reset() = 0;
 
-    /// @brief アニメーションが終了したか確認
-    /// @return アニメーションが終了していればtrue
-    virtual bool IsFinished() const = 0;
+	/// @brief アニメーションが終了したか確認
+	/// @return アニメーションが終了していればtrue
+	virtual bool IsFinished() const = 0;
 };
 }

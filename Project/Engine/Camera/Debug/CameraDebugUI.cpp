@@ -1,4 +1,4 @@
-#include "CameraDebugUI.h"
+﻿#include "CameraDebugUI.h"
 
 #ifdef _DEBUG
 
@@ -553,66 +553,66 @@ namespace CoreEngine {
 		}
 	}
 
-    // アニメーション開始
-    void CameraDebugUI::StartAnimation(int fromIndex, int toIndex)
-    {
-        // プリセットファイルリストを取得
-        const auto& presetFiles = presetManager_.GetCurrentPresetList();
+	// アニメーション開始
+	void CameraDebugUI::StartAnimation(int fromIndex, int toIndex)
+	{
+		// プリセットファイルリストを取得
+		const auto& presetFiles = presetManager_.GetCurrentPresetList();
 
-        if (fromIndex < 0 || fromIndex >= static_cast<int>(presetFiles.size())) return;
-        if (toIndex < 0 || toIndex >= static_cast<int>(presetFiles.size())) return;
+		if (fromIndex < 0 || fromIndex >= static_cast<int>(presetFiles.size())) return;
+		if (toIndex < 0 || toIndex >= static_cast<int>(presetFiles.size())) return;
 
-        // JSONファイルからスナップショットを読み込み
-        ICamera* dummyCamera = cameraManager_->GetActiveCamera(CameraType::Camera3D);
-        if (!dummyCamera) return;
+		// JSONファイルからスナップショットを読み込み
+		ICamera* dummyCamera = cameraManager_->GetActiveCamera(CameraType::Camera3D);
+		if (!dummyCamera) return;
 
-        // ディレクトリパスを取得（PresetManagerから）
-        std::string directory = "Assets/Presets/Camera/";  // デフォルト
+		// ディレクトリパスを取得（PresetManagerから）
+		std::string directory = "Assets/Presets/Camera/";  // デフォルト
 
-        std::string fromPath = directory + presetFiles[fromIndex];
-        std::string toPath = directory + presetFiles[toIndex];
+		std::string fromPath = directory + presetFiles[fromIndex];
+		std::string toPath = directory + presetFiles[toIndex];
 
-        // 一時的にJSONを読み込んでスナップショットに変換
-        json fromJson = JsonManager::GetInstance().LoadJson(fromPath);
-        json toJson = JsonManager::GetInstance().LoadJson(toPath);
+		// 一時的にJSONを読み込んでスナップショットに変換
+		json fromJson = JsonManager::GetInstance().LoadJson(fromPath);
+		json toJson = JsonManager::GetInstance().LoadJson(toPath);
 
-        if (fromJson.empty() || toJson.empty()) {
-            return;
-        }
+		if (fromJson.empty() || toJson.empty()) {
+			return;
+		}
 
-        // JSONからスナップショットに変換（PresetManagerのヘルパー関数は使えないのでここで実装）
-        auto jsonToSnapshot = [](const json& jsonData) -> CameraSnapshot {
-            CameraSnapshot snapshot;
-            snapshot.isDebugCamera = JsonManager::SafeGet(jsonData, "isDebugCamera", false);
+		// JSONからスナップショットに変換（PresetManagerのヘルパー関数は使えないのでここで実装）
+		auto jsonToSnapshot = [](const json& jsonData) -> CameraSnapshot {
+			CameraSnapshot snapshot;
+			snapshot.isDebugCamera = JsonManager::SafeGet(jsonData, "isDebugCamera", false);
 
-            if (snapshot.isDebugCamera) {
-                snapshot.target = JsonManager::JsonToVector3(jsonData["target"]);
-                snapshot.distance = JsonManager::SafeGet(jsonData, "distance", 20.0f);
-                snapshot.pitch = JsonManager::SafeGet(jsonData, "pitch", 0.25f);
-                snapshot.yaw = JsonManager::SafeGet(jsonData, "yaw", 3.14159265359f);
-            } else {
-                snapshot.position = JsonManager::JsonToVector3(jsonData["position"]);
-                snapshot.rotation = JsonManager::JsonToVector3(jsonData["rotation"]);
-                snapshot.scale = JsonManager::JsonToVector3(jsonData["scale"]);
-            }
+			if (snapshot.isDebugCamera) {
+				snapshot.target = JsonManager::JsonToVector3(jsonData["target"]);
+				snapshot.distance = JsonManager::SafeGet(jsonData, "distance", 20.0f);
+				snapshot.pitch = JsonManager::SafeGet(jsonData, "pitch", 0.25f);
+				snapshot.yaw = JsonManager::SafeGet(jsonData, "yaw", 3.14159265359f);
+			} else {
+				snapshot.position = JsonManager::JsonToVector3(jsonData["position"]);
+				snapshot.rotation = JsonManager::JsonToVector3(jsonData["rotation"]);
+				snapshot.scale = JsonManager::JsonToVector3(jsonData["scale"]);
+			}
 
-            if (jsonData.contains("parameters")) {
-                const auto& params = jsonData["parameters"];
-                snapshot.parameters.fov = JsonManager::SafeGet(params, "fov", 0.45f);
-                snapshot.parameters.nearClip = JsonManager::SafeGet(params, "nearClip", 0.1f);
-                snapshot.parameters.farClip = JsonManager::SafeGet(params, "farClip", 1000.0f);
-                snapshot.parameters.aspectRatio = JsonManager::SafeGet(params, "aspectRatio", 0.0f);
-            }
+			if (jsonData.contains("parameters")) {
+				const auto& params = jsonData["parameters"];
+				snapshot.parameters.fov = JsonManager::SafeGet(params, "fov", 0.45f);
+				snapshot.parameters.nearClip = JsonManager::SafeGet(params, "nearClip", 0.1f);
+				snapshot.parameters.farClip = JsonManager::SafeGet(params, "farClip", 1000.0f);
+				snapshot.parameters.aspectRatio = JsonManager::SafeGet(params, "aspectRatio", 0.0f);
+			}
 
-            return snapshot;
-        };
+			return snapshot;
+		};
 
-        animation_.isAnimating = true;
-        animation_.progress = 0.0f;
-        animation_.duration = animDuration_;
-        animation_.fromSnapshot = jsonToSnapshot(fromJson);
-        animation_.toSnapshot = jsonToSnapshot(toJson);
-    }
+		animation_.isAnimating = true;
+		animation_.progress = 0.0f;
+		animation_.duration = animDuration_;
+		animation_.fromSnapshot = jsonToSnapshot(fromJson);
+		animation_.toSnapshot = jsonToSnapshot(toJson);
+	}
 
 	// アニメーション更新
 	void CameraDebugUI::UpdateAnimation()
