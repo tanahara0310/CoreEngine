@@ -1,4 +1,4 @@
-﻿#include "SkinnedModelRenderer.h"
+#include "SkinnedModelRenderer.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Light/LightManager.h"
 #include <cassert>
