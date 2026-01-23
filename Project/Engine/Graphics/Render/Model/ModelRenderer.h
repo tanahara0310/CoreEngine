@@ -25,7 +25,8 @@ namespace ModelRendererRootParam {
     static constexpr UINT kDirectionalLights = 5;     // t1: DirectionalLights (PS)
     static constexpr UINT kPointLights = 6;           // t2: PointLights (PS)
     static constexpr UINT kSpotLights = 7;            // t3: SpotLights (PS)
-    static constexpr UINT kEnvironmentMap = 8;        // t4: EnvironmentMap (PS)
+    static constexpr UINT kAreaLights = 8;            // t4: AreaLights (PS)
+    static constexpr UINT kEnvironmentMap = 9;        // t5: EnvironmentMap (PS)
 }
 
 /// @brief 通常モデル描画用レンダラー

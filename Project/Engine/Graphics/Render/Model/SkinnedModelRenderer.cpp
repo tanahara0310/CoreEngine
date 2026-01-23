@@ -71,11 +71,18 @@ void SkinnedModelRenderer::Initialize(ID3D12Device* device) {
     spotLightsRange.baseShaderRegister = 3;
     rootSignatureMg_->AddDescriptorTable({ spotLightsRange }, D3D12_SHADER_VISIBILITY_PIXEL);
     
-    // Root Parameter 9: 環境マップ用ディスクリプタテーブル (t4, PS)
+    // Root Parameter 9: エリアライト用ディスクリプタテーブル (t4, PS)
+    RootSignatureManager::DescriptorRangeConfig areaLightsRange;
+    areaLightsRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    areaLightsRange.numDescriptors = 1;
+    areaLightsRange.baseShaderRegister = 4;
+    rootSignatureMg_->AddDescriptorTable({ areaLightsRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+    
+    // Root Parameter 10: 環境マップ用ディスクリプタテーブル (t5, PS)
     RootSignatureManager::DescriptorRangeConfig environmentMapRange;
     environmentMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     environmentMapRange.numDescriptors = 1;
-    environmentMapRange.baseShaderRegister = 4;
+    environmentMapRange.baseShaderRegister = 5;
     rootSignatureMg_->AddDescriptorTable({ environmentMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
     
     // Static Sampler (s0, PS)
@@ -129,7 +136,8 @@ void SkinnedModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMo
             SkinnedModelRendererRootParam::kLightCounts,
             SkinnedModelRendererRootParam::kDirectionalLights,
             SkinnedModelRendererRootParam::kPointLights,
-            SkinnedModelRendererRootParam::kSpotLights
+            SkinnedModelRendererRootParam::kSpotLights,
+            SkinnedModelRendererRootParam::kAreaLights
         );
     }
 

@@ -68,23 +68,24 @@ namespace CoreEngine
         auto lightManager = engine_->GetComponent<LightManager>();
         if (lightManager) {
             lightManager->UpdateAll();
+
         }
 
 #ifdef _DEBUG
-        // カメラマネージャーのImGui
-        if (cameraManager_) {
-            cameraManager_->DrawImGui();
-        }
+		// カメラマネージャーのImGui
+		if (cameraManager_) {
+			cameraManager_->DrawImGui();
+		}
 
-        // LineManagerのImGui
-        LineManager::GetInstance().DrawImGui();
+		// LineManagerのImGui
+		LineManager::GetInstance().DrawImGui();
 
-        // ゲームオブジェクトのImGuiデバッグUI表示
-        if (ImGui::Begin("オブジェクト制御")) {
-            gameObjectManager_.DrawAllImGui();
+		// ゲームオブジェクトのImGuiデバッグUI表示
+		if (ImGui::Begin("オブジェクト制御")) {
+			gameObjectManager_.DrawAllImGui();
 
-        }
-        ImGui::End();
+		}
+		ImGui::End();
 #endif
 
         // 派生クラスの更新処理（GameObjectの更新前）

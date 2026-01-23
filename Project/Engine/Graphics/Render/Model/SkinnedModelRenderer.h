@@ -26,7 +26,8 @@ namespace SkinnedModelRendererRootParam {
     static constexpr UINT kDirectionalLights = 6;     // t1: DirectionalLights (PS)
     static constexpr UINT kPointLights = 7;           // t2: PointLights (PS)
     static constexpr UINT kSpotLights = 8;            // t3: SpotLights (PS)
-    static constexpr UINT kEnvironmentMap = 9;        // t4: EnvironmentMap (PS)
+    static constexpr UINT kAreaLights = 9;            // t4: AreaLights (PS)
+    static constexpr UINT kEnvironmentMap = 10;       // t5: EnvironmentMap (PS)
 }
 
 /// @brief スキニングモデル描画用レンダラー
