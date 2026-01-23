@@ -14,6 +14,7 @@
 // GameObjectのインクルード
 #include "TestGameObject/SphereObject.h"
 #include "TestGameObject/TerrainObject.h"
+#include "TestGameObject/WalkModelObject.h"
 
 /// @brief 課題専用シーン
 /// Sphere、Terrainモデル、複数のPointLight、複数のSpotLightを表示
@@ -39,5 +40,7 @@ namespace CoreEngine
 	// オブジェクトへのポインタ（デバッグUI用）
 	SphereObject* sphere_ = nullptr;
 	TerrainObject* terrain_ = nullptr;
+	WalkModelObject* walkModel1_ = nullptr;
+	WalkModelObject* walkModel2_ = nullptr;
 	};
 }

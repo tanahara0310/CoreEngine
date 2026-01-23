@@ -50,6 +50,20 @@ namespace CoreEngine
 		terrain_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
 		terrain_->GetTransform().scale = { 3.0f, 3.0f, 3.0f };
 
+		// WalkModelオブジェクト1（モンスターボールの左側）
+		walkModel1_ = CreateObject<WalkModelObject>();
+		walkModel1_->Initialize();
+		walkModel1_->SetActive(true);
+		walkModel1_->GetTransform().translate = { -4.0f, 0.0f, 0.0f };
+		walkModel1_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+
+		// WalkModelオブジェクト2（モンスターボールの右側）
+		walkModel2_ = CreateObject<WalkModelObject>();
+		walkModel2_->Initialize();
+		walkModel2_->SetActive(true);
+		walkModel2_->GetTransform().translate = { 4.0f, 0.0f, 0.0f };
+		walkModel2_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+
 		// ===== ライトの設定 =====
 
 		// ポイントライト1 - 左側（赤色）

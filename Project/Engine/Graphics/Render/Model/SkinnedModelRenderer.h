@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Engine/Graphics/Render/IRenderer.h"
 #include "Engine/Graphics/PipelineStateManager.h"
 #include "Engine/Graphics/RootSignatureManager.h"

@@ -35,9 +35,6 @@
     <ClCompile Include="Engine\Graphics\Common\Core\SwapChainManager.cpp">
       <Filter>Engine\Graphics\Common\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Graphics\Light\LightManager.cpp">
-      <Filter>Engine\Graphics\Light</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Graphics\Material\MaterialManager.cpp">
       <Filter>Engine\Graphics\Material</Filter>
     </ClCompile>
@@ -479,6 +476,9 @@
     <ClCompile Include="Engine\Particle\Modules\ShapeModule.cpp" />
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Dissolve.cpp" />
     <ClCompile Include="Engine\Scene\AssignmentScene\AssignmentScene.cpp" />
+    <ClCompile Include="Engine\Graphics\Light\LightBufferManager.cpp" />
+    <ClCompile Include="Engine\Graphics\Light\LightDebugVisualizer.cpp" />
+    <ClCompile Include="Engine\Graphics\Light\LightManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1383,6 +1383,8 @@
     <ClInclude Include="Engine\Graphics\Line\LineManager.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Dissolve.h" />
     <ClInclude Include="Engine\Scene\AssignmentScene\AssignmentScene.h" />
+    <ClInclude Include="Engine\Graphics\Light\LightBufferManager.h" />
+    <ClInclude Include="Engine\Graphics\Light\LightDebugVisualizer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">
@@ -1426,6 +1428,7 @@
     </None>
     <None Include="Scripts\ConvertToTabs.ps1" />
     <None Include="Scripts\ConvertToCRLF.ps1" />
+    <None Include="Project\Assets\Shaders\Common\LightStructures.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">
