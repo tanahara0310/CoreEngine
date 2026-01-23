@@ -66,13 +66,21 @@ namespace CoreEngine
 
 		// ===== ライトの設定 =====
 
+		// ベースシーンのディレクショナルライト（インデックス0）の輝度を変更
+		auto directionalLight = lightManager->GetDirectionalLight(0);
+		if (directionalLight) {
+			directionalLight->intensity = 0.3f;
+		}
+
+		// ===== ポイントライト x2（左右に配置、赤と青）=====
+		
 		// ポイントライト1 - 左側（赤色）
 		auto pointLight1 = lightManager->AddPointLight();
 		if (pointLight1) {
 			pointLight1->color = { 1.0f, 0.2f, 0.2f, 1.0f };
-			pointLight1->position = { -5.0f, 3.0f, 0.0f };
-			pointLight1->intensity = 1.0f;
-			pointLight1->radius = 15.0f;
+			pointLight1->position = { -19.0f, 2.5f, 0.0f };
+			pointLight1->intensity = 3.0f;
+			pointLight1->radius = 10.0f;
 			pointLight1->decay = 1.0f;
 			pointLight1->enabled = true;
 		}
@@ -81,20 +89,22 @@ namespace CoreEngine
 		auto pointLight2 = lightManager->AddPointLight();
 		if (pointLight2) {
 			pointLight2->color = { 0.2f, 0.2f, 1.0f, 1.0f };
-			pointLight2->position = { 5.0f, 3.0f, 0.0f };
-			pointLight2->intensity = 1.0f;
-			pointLight2->radius = 15.0f;
+			pointLight2->position = { 19.0f, 2.5f, 0.0f };
+			pointLight2->intensity = 3.0f;
+			pointLight2->radius = 10.0f;
 			pointLight2->decay = 1.0f;
 			pointLight2->enabled = true;
 		}
 
+		// ===== スポットライト x2（前後に配置、黄色と緑色）=====
+		
 		// スポットライト1 - 前側（黄色）
 		auto spotLight1 = lightManager->AddSpotLight();
 		if (spotLight1) {
 			spotLight1->color = { 1.0f, 1.0f, 0.2f, 1.0f };
-			spotLight1->position = { 0.0f, 8.0f, -8.0f };
-			spotLight1->direction = Vector::Normalize({ 0.0f, -1.0f, 1.0f });
-			spotLight1->intensity = 2.0f;
+			spotLight1->position = { 0.0f, 8.0f, -24.0f };
+			spotLight1->direction = Vector::Normalize({ 0.0f, -0.7f, 1.0f });
+			spotLight1->intensity = 4.0f;
 			spotLight1->distance = 20.0f;
 			spotLight1->decay = 1.0f;
 			spotLight1->cosAngle = std::cos(30.0f * 3.14159f / 180.0f);  // 30度
@@ -105,10 +115,10 @@ namespace CoreEngine
 		// スポットライト2 - 後側（緑色）
 		auto spotLight2 = lightManager->AddSpotLight();
 		if (spotLight2) {
-			spotLight2->color = { 0.2f, 1.0f, 0.2f, 1.0f };
-			spotLight2->position = { 0.0f, 8.0f, 8.0f };
-			spotLight2->direction = Vector::Normalize({ 0.0f, -1.0f, -1.0f });
-			spotLight2->intensity = 2.0f;
+			spotLight2->color = { 0.2f, 1.0f, 0.2f, 12.0f };
+			spotLight2->position = { 0.0f, 8.0f, 24.0f };
+			spotLight2->direction = Vector::Normalize({ 0.0f, -0.7f, -1.0f });
+			spotLight2->intensity = 4.0f;
 			spotLight2->distance = 20.0f;
 			spotLight2->decay = 1.0f;
 			spotLight2->cosAngle = std::cos(30.0f * 3.14159f / 180.0f);  // 30度
@@ -116,26 +126,47 @@ namespace CoreEngine
 			spotLight2->enabled = true;
 		}
 
-		// エリアライト - 上部中央（白色）
-		auto areaLight = lightManager->AddAreaLight();
-		if (areaLight) {
-			areaLight->color = { 1.0f, 0.9f, 0.8f, 1.0f };  // 暖色系の白
-			areaLight->position = { 0.0f, 6.0f, 0.0f };
-			areaLight->direction = Vector::Normalize({ 0.0f, -1.0f, 0.0f });  // 下向き
-			areaLight->intensity = 1.5f;
-			areaLight->width = 3.0f;
-			areaLight->height = 3.0f;
-			areaLight->right = { 1.0f, 0.0f, 0.0f };
-			areaLight->up = { 0.0f, 0.0f, 1.0f };
-			areaLight->decay = 1.0f;
-			areaLight->enabled = true;
+		// ===== エリアライト x2（左右上に配置、暖色と寒色）=====
+		
+		// エリアライト1 - 左上（暖色系）
+		auto areaLight1 = lightManager->AddAreaLight();
+		if (areaLight1) {
+			areaLight1->color = { 1.0f, 0.8f, 0.6f, 1.0f };  // オレンジ系暖色
+			areaLight1->position = { -6.0f, 10.0f, 0.0f };
+			areaLight1->normal = { 0.0f, -1.0f, 0.0f };  // 下向き
+			areaLight1->intensity = 5.0f;
+			areaLight1->width = 6.0f;
+			areaLight1->height = 6.0f;
+			areaLight1->right = { 1.0f, 0.0f, 0.0f };
+			areaLight1->up = { 0.0f, 0.0f, 1.0f };
+			areaLight1->range = 18.0f;
+			areaLight1->enabled = true;
+		}
+
+		// エリアライト2 - 右上（寒色系）
+		auto areaLight2 = lightManager->AddAreaLight();
+		if (areaLight2) {
+			areaLight2->color = { 0.6f, 0.8f, 1.0f, 1.0f };  // 青系寒色
+			areaLight2->position = { 6.0f, 10.0f, 0.0f };
+			areaLight2->normal = { 0.0f, -1.0f, 0.0f };  // 下向き
+			areaLight2->intensity = 5.0f;
+			areaLight2->width = 6.0f;
+			areaLight2->height = 6.0f;
+			areaLight2->right = { 1.0f, 0.0f, 0.0f };
+			areaLight2->up = { 0.0f, 0.0f, 1.0f };
+			areaLight2->range = 18.0f;
+			areaLight2->enabled = true;
 		}
 
 #ifdef _DEBUG
 		auto console = engine_->GetConsole();
 		if (console) {
 			console->LogInfo("AssignmentScene: シーン初期化完了");
-			console->LogInfo("AssignmentScene: ポイントライト x2、スポットライト x2、エリアライト x1 を設定");
+			console->LogInfo("AssignmentScene: ライト配置完了");
+			console->LogInfo("  - ディレクショナルライト x1（環境光・輝度0.1）");
+			console->LogInfo("  - ポイントライト x2（左右配置・赤青）");
+			console->LogInfo("  - スポットライト x2（前後配置・黄緑）");
+			console->LogInfo("  - エリアライト x2（左右上配置・暖色寒色）");
 		}
 #endif
 	}

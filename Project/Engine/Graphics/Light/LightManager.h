@@ -101,6 +101,11 @@ namespace CoreEngine
 		/// @param enabled 有効にする場合true
 		void SetAreaLightEnabled(size_t index, bool enabled);
 
+		/// @brief ディレクショナルライトを取得
+		/// @param index ライトのインデックス
+		/// @return ライトデータへのポインタ（範囲外の場合はnullptr）
+		DirectionalLightData* GetDirectionalLight(size_t index);
+
 		/// @brief 全てのライトをクリア（シーン切り替え時に使用）
 		void ClearAllLights();
 
