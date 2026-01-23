@@ -197,11 +197,10 @@ LightingResult CalculateSpotLight(
     );
 }
 
-/// @brief エリアライト（矩形）の計算
 LightingResult CalculateAreaLight(
     float3 normal,
     float3 lightPosition,
-    float3 lightDirection,
+    float3 lightNormal,
     float3 lightRight,
     float3 lightUp,
     float lightWidth,
@@ -209,7 +208,7 @@ LightingResult CalculateAreaLight(
     float3 worldPosition,
     float3 lightColor,
     float intensity,
-    float decay,
+    float range,
     float3 toEye,
     float3 materialColor,
     float4 textureColor,
@@ -217,56 +216,77 @@ LightingResult CalculateAreaLight(
     int shadingMode,
     float toonThreshold)
 {
-    // ライト中心から表面への方向ベクトル
-    float3 toSurface = worldPosition - lightPosition;
+    // ワールド座標から光源中心へのベクトル
+    float3 toLight = lightPosition - worldPosition;
+    float3 toLightNormalized = normalize(toLight);
     
-    // ライト平面との距離（法線方向の成分）
-    float distAlongNormal = dot(toSurface, lightDirection);
+    // 光源の各軸（すでに正規化されているはず）
+    float3 axisRight = lightRight;
+    float3 axisUp = lightUp;
+    float3 axisNormal = lightNormal;
     
-    // ライトの裏側にある場合は照明なし
-    if (distAlongNormal <= 0.0f)
-    {
-        LightingResult result;
-        result.diffuse = float3(0.0f, 0.0f, 0.0f);
-        result.specular = float3(0.0f, 0.0f, 0.0f);
-        return result;
-    }
+    // 光源平面への距離
+    float distToPlane = dot(toLight, axisNormal);
     
-    // 表面の点をライト平面に投影
-    float3 projectedPoint = worldPosition - lightDirection * distAlongNormal;
+    // 光源平面上への投影点
+    float3 projectedPoint = worldPosition + axisNormal * distToPlane;
     
-    // 投影された点の矩形ローカル座標系での位置
-    float3 localPos = projectedPoint - lightPosition;
-    float u = dot(localPos, lightRight);
-    float v = dot(localPos, lightUp);
+    // 光源中心から投影点へのオフセット
+    float3 offset = projectedPoint - lightPosition;
     
-    // 矩形の範囲内にクランプ
-    float clampedU = clamp(u, -lightWidth * 0.5f, lightWidth * 0.5f);
-    float clampedV = clamp(v, -lightHeight * 0.5f, lightHeight * 0.5f);
+    // ローカル座標での位置（u, v）
+    float u = dot(offset, axisRight);
+    float v = dot(offset, axisUp);
+    
+    // 矩形の範囲
+    float halfW = lightWidth * 0.5f;
+    float halfH = lightHeight * 0.5f;
+    
+    // 矩形内にクランプ
+    float clampedU = clamp(u, -halfW, halfW);
+    float clampedV = clamp(v, -halfH, halfH);
     
     // 矩形上の最近接点
-    float3 closestPoint = lightPosition + lightRight * clampedU + lightUp * clampedV;
+    float3 closestPoint = lightPosition + axisRight * clampedU + axisUp * clampedV;
     
     // 最近接点への方向と距離
-    float3 lightDir = closestPoint - worldPosition;
-    float distance = length(lightDir);
-    lightDir = normalize(lightDir);
+    float3 toClosest = closestPoint - worldPosition;
+    float dist = length(toClosest);
+    float3 L = toClosest / max(dist, 0.001f); // 正規化（ゼロ除算回避）
     
-    // 減衰の最大距離を矩形のサイズに基づいて設定
-    float maxDistance = max(lightWidth, lightHeight) * 1.5f;
-    float distanceAttenuation = pow(saturate(1.0f - distance / maxDistance), decay);
+    // 距離減衰
+    float distFactor = 1.0f - saturate(dist / range);
+    float distAttenuation = distFactor * distFactor;
     
-    // ライト平面の法線との角度による減衰（ライトが表面を向いているか）
-    float normalDot = saturate(dot(-lightDir, lightDirection));
+    // 矩形の形状係数
+    float shapeFactor = 1.0f;
     
-    float attenuation = distanceAttenuation * normalDot;
+    // 矩形外の場合の減衰
+    float outsideU = max(0.0f, abs(u) - halfW);
+    float outsideV = max(0.0f, abs(v) - halfH);
+    float outsideDist = sqrt(outsideU * outsideU + outsideV * outsideV);
     
+    if (outsideDist > 0.001f)
+    {
+        // エッジからの距離による減衰
+        float falloffRange = max(halfW, halfH);
+        shapeFactor = 1.0f - saturate(outsideDist / falloffRange);
+        shapeFactor = shapeFactor * shapeFactor * shapeFactor; // より急峻な減衰
+    }
+    
+    // 光源の向きによる減衰（光源は片面のみ）
+    float facingFactor = max(0.0f, dot(axisNormal, -L));
+    
+    // 総合減衰
+    float finalAttenuation = distAttenuation * shapeFactor * facingFactor;
+    
+    // ライティング計算
     return CalculateLighting(
         normal,
-        lightDir,
+        L,
         lightColor,
         intensity,
-        attenuation,
+        finalAttenuation,
         toEye,
         materialColor,
         textureColor,

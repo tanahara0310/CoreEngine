@@ -130,6 +130,7 @@ void SkinnedModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMo
 		cmdList->SetGraphicsRootConstantBufferView(SkinnedModelRendererRootParam::kCamera, cameraCBV_);
 	}
 
+
 	if (lightManager_) {
 		lightManager_->SetLightsToCommandList(
 			cmdList,

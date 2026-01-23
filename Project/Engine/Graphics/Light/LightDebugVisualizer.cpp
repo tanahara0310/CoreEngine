@@ -181,38 +181,17 @@ namespace CoreEngine
 						ImGui::Checkbox("有効", &light.enabled);
 						ImGui::ColorEdit4("色", &light.color.x);
 						ImGui::DragFloat3("位置", &light.position.x, 0.1f, -50.0f, 50.0f);
-						ImGui::DragFloat3("方向（法線）", &light.direction.x, 0.01f, -1.0f, 1.0f);
+						ImGui::DragFloat3("法線", &light.normal.x, 0.01f, -1.0f, 1.0f);
 						ImGui::DragFloat("強度", &light.intensity, 0.01f, 0.0f, 10.0f);
 						ImGui::DragFloat("幅", &light.width, 0.1f, 0.1f, 20.0f);
 						ImGui::DragFloat("高さ", &light.height, 0.1f, 0.1f, 20.0f);
-						ImGui::DragFloat3("右方向", &light.right.x, 0.01f, -1.0f, 1.0f);
-						ImGui::DragFloat3("上方向", &light.up.x, 0.01f, -1.0f, 1.0f);
-						ImGui::DragFloat("減衰率", &light.decay, 0.01f, 0.0f, 10.0f);
+						ImGui::DragFloat("範囲", &light.range, 0.1f, 0.1f, 100.0f);
+						ImGui::DragFloat3("右ベクトル", &light.right.x, 0.01f, -1.0f, 1.0f);
+						ImGui::DragFloat3("上ベクトル", &light.up.x, 0.01f, -1.0f, 1.0f);
 
-						if (ImGui::Button("方向を正規化"))
+						if (ImGui::Button("法線を正規化"))
 						{
-							light.direction = MathCore::Vector::Normalize(light.direction);
-						}
-						ImGui::SameLine();
-						if (ImGui::Button("右方向を正規化"))
-						{
-							light.right = MathCore::Vector::Normalize(light.right);
-						}
-						ImGui::SameLine();
-						if (ImGui::Button("上方向を正規化"))
-						{
-							light.up = MathCore::Vector::Normalize(light.up);
-						}
-
-						if (ImGui::Button("方向から直交ベクトルを生成"))
-						{
-							Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
-							if (std::abs(light.direction.y) > 0.99f)
-							{
-								worldUp = { 1.0f, 0.0f, 0.0f };
-							}
-							light.right = MathCore::Vector::Normalize(MathCore::Vector::Cross(worldUp, light.direction));
-							light.up = MathCore::Vector::Normalize(MathCore::Vector::Cross(light.direction, light.right));
+							light.normal = MathCore::Vector::Normalize(light.normal);
 						}
 
 						ImGui::TreePop();
@@ -235,15 +214,28 @@ namespace CoreEngine
 
 				ImGui::TreePop();
 			}
-		}
+	}
+#else
+		// Release builds - avoid unused parameter warnings
+		(void)directionalLights;
+		(void)pointLights;
+		(void)spotLights;
+		(void)areaLights;
+		(void)maxDirectionalLights;
+		(void)maxPointLights;
+		(void)maxSpotLights;
+		(void)maxAreaLights;
+		(void)onAddDirectionalLight;
+		(void)onAddPointLight;
+		(void)onAddSpotLight;
+		(void)onAddAreaLight;
 #endif
 	}
 
 	void LightDebugVisualizer::DrawVisualization(
 		const std::vector<DirectionalLightData>& directionalLights,
 		const std::vector<PointLightData>& pointLights,
-		const std::vector<SpotLightData>& spotLights,
-		const std::vector<AreaLightData>& areaLights
+		const std::vector<SpotLightData>& spotLights
 	)
 	{
 #ifdef _DEBUG
@@ -266,11 +258,10 @@ namespace CoreEngine
 		{
 			DrawSpotLightVisualization(light);
 		}
-
-		for (const auto& light : areaLights)
-		{
-			DrawAreaLightVisualization(light);
-		}
+#else
+		(void)directionalLights;
+		(void)pointLights;
+		(void)spotLights;
 #endif
 	}
 
@@ -577,152 +568,94 @@ namespace CoreEngine
 		auto& lineManager = LineManager::GetInstance();
 		Vector3 lightColor = { light.color.x, light.color.y, light.color.z };
 
-		lineManager.DrawCross(light.position, 0.8f, lightColor, 1.0f);
-
+		// 矩形の4つの角を計算
 		Vector3 halfRight = light.right * (light.width * 0.5f);
 		Vector3 halfUp = light.up * (light.height * 0.5f);
 
-		Vector3 corner1 = light.position - halfRight - halfUp;
-		Vector3 corner2 = light.position + halfRight - halfUp;
-		Vector3 corner3 = light.position + halfRight + halfUp;
-		Vector3 corner4 = light.position - halfRight + halfUp;
+		Vector3 corner0 = light.position - halfRight - halfUp;  // 左下
+		Vector3 corner1 = light.position + halfRight - halfUp;  // 右下
+		Vector3 corner2 = light.position + halfRight + halfUp;  // 右上
+		Vector3 corner3 = light.position - halfRight + halfUp;  // 左上
 
-		lineManager.DrawLine(corner1, corner2, lightColor, 1.0f);
-		lineManager.DrawLine(corner2, corner3, lightColor, 1.0f);
-		lineManager.DrawLine(corner3, corner4, lightColor, 1.0f);
-		lineManager.DrawLine(corner4, corner1, lightColor, 1.0f);
+		// 矩形のエッジを描画（太線）
+		lineManager.DrawLine(corner0, corner1, lightColor, 2.0f);
+		lineManager.DrawLine(corner1, corner2, lightColor, 2.0f);
+		lineManager.DrawLine(corner2, corner3, lightColor, 2.0f);
+		lineManager.DrawLine(corner3, corner0, lightColor, 2.0f);
 
-		const int divisions = 4;
+		// 対角線を描画（矩形の形状を明確にする）
+		lineManager.DrawLine(corner0, corner2, lightColor, 0.5f);
+		lineManager.DrawLine(corner1, corner3, lightColor, 0.5f);
 
-		for (int j = 1; j < divisions; ++j)
+		// 中心点を示す十字
+		lineManager.DrawCross(light.position, 0.5f, lightColor, 1.5f);
+
+		// 法線方向を示す矢印
+		Vector3 normalEnd = light.position + light.normal * (light.width * 0.3f);
+		lineManager.DrawLine(light.position, normalEnd, lightColor, 1.5f);
+
+		// 法線の先端に小さな十字（方向を明確にする）
+		lineManager.DrawCross(normalEnd, 0.2f, lightColor, 1.0f);
+
+		// 範囲を示す外側の矩形（range分だけ拡大）
+		float rangeScale = 1.0f + (light.range / std::max(light.width, light.height));
+		Vector3 rangeHalfRight = light.right * (light.width * 0.5f * rangeScale);
+		Vector3 rangeHalfUp = light.up * (light.height * 0.5f * rangeScale);
+
+		Vector3 rangeCorner0 = light.position - rangeHalfRight - rangeHalfUp;
+		Vector3 rangeCorner1 = light.position + rangeHalfRight - rangeHalfUp;
+		Vector3 rangeCorner2 = light.position + rangeHalfRight + rangeHalfUp;
+		Vector3 rangeCorner3 = light.position - rangeHalfRight + rangeHalfUp;
+
+		// 範囲の外側矩形（点線風に）
+		const int segments = 8;
+		for (int i = 0; i < segments; ++i)
 		{
-			float t = (float)j / divisions;
-			Vector3 start = corner1 + (corner4 - corner1) * t;
-			Vector3 end = corner2 + (corner3 - corner2) * t;
-			lineManager.DrawLine(start, end, lightColor, 0.3f);
-		}
+			float t0 = (float)i / segments;
+			float t1 = (float)(i + 1) / segments;
 
-		for (int j = 1; j < divisions; ++j)
-		{
-			float t = (float)j / divisions;
-			Vector3 start = corner1 + (corner2 - corner1) * t;
-			Vector3 end = corner4 + (corner3 - corner4) * t;
-			lineManager.DrawLine(start, end, lightColor, 0.3f);
-		}
-
-		lineManager.DrawLine(corner1, corner3, lightColor, 0.2f);
-		lineManager.DrawLine(corner2, corner4, lightColor, 0.2f);
-
-		Vector3 normalEnd = light.position + MathCore::Vector::Normalize(light.direction) * 3.0f;
-		lineManager.DrawLine(light.position, normalEnd, lightColor, 1.0f);
-
-		Vector3 arrowBase = normalEnd - MathCore::Vector::Normalize(light.direction) * 0.8f;
-		lineManager.DrawLine(normalEnd, arrowBase + light.right * 0.3f, lightColor, 1.0f);
-		lineManager.DrawLine(normalEnd, arrowBase - light.right * 0.3f, lightColor, 1.0f);
-		lineManager.DrawLine(normalEnd, arrowBase + light.up * 0.3f, lightColor, 1.0f);
-		lineManager.DrawLine(normalEnd, arrowBase - light.up * 0.3f, lightColor, 1.0f);
-
-		float maxDistance = (light.width > light.height ? light.width : light.height) * 1.5f;
-
-		Vector3 normalizedDir = MathCore::Vector::Normalize(light.direction);
-
-		const int gridSize = 20;
-		const float gridRange = maxDistance * 1.2f;
-		const float gridSpacing = gridRange * 2.0f / gridSize;
-
-		for (int gx = -gridSize / 2; gx <= gridSize / 2; ++gx)
-		{
-			for (int gy = -gridSize / 2; gy <= gridSize / 2; ++gy)
+			// 4辺それぞれに点線を描画
+			if (i % 2 == 0)
 			{
-				for (int gz = 1; gz <= gridSize / 2; ++gz)
-				{
-					Vector3 samplePoint = light.position +
-						light.right * (gx * gridSpacing) +
-						light.up * (gy * gridSpacing) +
-						normalizedDir * (gz * gridSpacing);
-
-					Vector3 toSurface = samplePoint - light.position;
-
-					float distAlongNormal = MathCore::Vector::Dot(toSurface, normalizedDir);
-
-					if (distAlongNormal <= 0.0f)
-					{
-						continue;
-					}
-
-					Vector3 projectedPoint = samplePoint - normalizedDir * distAlongNormal;
-
-					Vector3 localPos = projectedPoint - light.position;
-					float u = MathCore::Vector::Dot(localPos, light.right);
-					float v = MathCore::Vector::Dot(localPos, light.up);
-
-					float clampedU = (std::max)(-light.width * 0.5f, (std::min)(light.width * 0.5f, u));
-					float clampedV = (std::max)(-light.height * 0.5f, (std::min)(light.height * 0.5f, v));
-
-					Vector3 closestPoint = light.position + light.right * clampedU + light.up * clampedV;
-
-					Vector3 lightDir = closestPoint - samplePoint;
-					float distance = MathCore::Vector::Length(lightDir);
-					lightDir = MathCore::Vector::Normalize(lightDir);
-
-					float distanceAttenuation = std::pow((std::max)(0.0f, (std::min)(1.0f, 1.0f - distance / maxDistance)), light.decay);
-
-					float normalDot = (std::max)(0.0f, (std::min)(1.0f, MathCore::Vector::Dot(-lightDir, normalizedDir)));
-
-					float attenuation = distanceAttenuation * normalDot;
-
-					float finalBrightness = attenuation * light.intensity;
-
-					if (finalBrightness >= 0.05f)
-					{
-						if ((gx + gy + gz) % 2 == 0)
-						{
-							float crossSize = 0.05f + finalBrightness * 0.15f;
-							float alpha = (std::min)(1.0f, finalBrightness);
-							lineManager.DrawCross(samplePoint, crossSize, lightColor, alpha);
-						}
-					}
-				}
+				lineManager.DrawLine(
+					rangeCorner0 + (rangeCorner1 - rangeCorner0) * t0,
+					rangeCorner0 + (rangeCorner1 - rangeCorner0) * t1,
+					lightColor, 0.5f);
+				lineManager.DrawLine(
+					rangeCorner1 + (rangeCorner2 - rangeCorner1) * t0,
+					rangeCorner1 + (rangeCorner2 - rangeCorner1) * t1,
+					lightColor, 0.5f);
+				lineManager.DrawLine(
+					rangeCorner2 + (rangeCorner3 - rangeCorner2) * t0,
+					rangeCorner2 + (rangeCorner3 - rangeCorner2) * t1,
+					lightColor, 0.5f);
+				lineManager.DrawLine(
+					rangeCorner3 + (rangeCorner0 - rangeCorner3) * t0,
+					rangeCorner3 + (rangeCorner0 - rangeCorner3) * t1,
+					lightColor, 0.5f);
 			}
 		}
 
-		const int boundaryLevels = 4;
-		for (int level = 1; level <= boundaryLevels; ++level)
+		// 四隅から中心へのガイドライン（薄く）
+		lineManager.DrawLine(corner0, light.position, lightColor, 0.3f);
+		lineManager.DrawLine(corner1, light.position, lightColor, 0.3f);
+		lineManager.DrawLine(corner2, light.position, lightColor, 0.3f);
+		lineManager.DrawLine(corner3, light.position, lightColor, 0.3f);
+
+		// 照射範囲を示す放射線（法線方向）
+		const int rayCount = 4;
+		for (int i = 0; i < rayCount; ++i)
 		{
-			float dist = maxDistance * level / boundaryLevels;
-			Vector3 offset = normalizedDir * dist;
-
-			float levelAttenuation = std::pow((std::max)(0.0f, 1.0f - dist / maxDistance), light.decay);
-			float levelBrightness = levelAttenuation * light.intensity;
-
-			if (levelBrightness >= 0.05f)
+			for (int j = 0; j < rayCount; ++j)
 			{
-				float alpha = (std::min)(1.0f, levelBrightness);
+				float u = ((float)i / (rayCount - 1) - 0.5f) * light.width;
+				float v = ((float)j / (rayCount - 1) - 0.5f) * light.height;
 
-				Vector3 c1 = corner1 + offset;
-				Vector3 c2 = corner2 + offset;
-				Vector3 c3 = corner3 + offset;
-				Vector3 c4 = corner4 + offset;
+				Vector3 pointOnRect = light.position + light.right * u + light.up * v;
+				Vector3 rayEnd = pointOnRect + light.normal * light.range * 0.3f;
 
-				lineManager.DrawLine(c1, c2, lightColor, alpha * 0.6f);
-				lineManager.DrawLine(c2, c3, lightColor, alpha * 0.6f);
-				lineManager.DrawLine(c3, c4, lightColor, alpha * 0.6f);
-				lineManager.DrawLine(c4, c1, lightColor, alpha * 0.6f);
+				lineManager.DrawLine(pointOnRect, rayEnd, lightColor, 0.2f);
 			}
-		}
-
-		{
-			Vector3 offset = normalizedDir * maxDistance;
-
-			Vector3 c1 = corner1 + offset;
-			Vector3 c2 = corner2 + offset;
-			Vector3 c3 = corner3 + offset;
-			Vector3 c4 = corner4 + offset;
-
-			lineManager.DrawLine(corner1, c1, lightColor, 0.2f);
-			lineManager.DrawLine(corner2, c2, lightColor, 0.2f);
-			lineManager.DrawLine(corner3, c3, lightColor, 0.2f);
-			lineManager.DrawLine(corner4, c4, lightColor, 0.2f);
 		}
 #endif
 	}

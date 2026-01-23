@@ -42,19 +42,19 @@ namespace CoreEngine
 		bool enabled;             // 有効フラグ
 	};
 
-	/// @brief エリアライト（矩形）のデータ構造体（StructuredBuffer用）
+	/// @brief エリアライトのデータ構造体（StructuredBuffer用）
 	struct AreaLightData {
-		Vector4 color;            // 光源の色
-		Vector3 position;         // 光源の中心位置
-		float intensity;          // 光源の強度
-		Vector3 direction;        // ライトの向き（法線方向）
-		float width;              // 矩形の幅
-		Vector3 right;            // 矩形の右方向ベクトル
-		float height;             // 矩形の高さ
-		Vector3 up;               // 矩形の上方向ベクトル
-		float decay;              // 光の減衰率
-		bool enabled;             // 有効フラグ
-		Vector3 padding;          // パディング（16バイトアライメント）
+		Vector4 color;        // 光源の色
+		Vector3 position;     // 光源の中心位置
+		float intensity;      // 光源の強度
+		Vector3 normal;       // 光源の向き（法線）
+		float width;          // 矩形の幅
+		Vector3 right;        // 矩形の右方向ベクトル
+		float height;         // 矩形の高さ
+		Vector3 up;           // 矩形の上方向ベクトル
+		float range;          // ライトの届く最大距離
+		bool enabled;         // 有効フラグ
+		Vector3 padding;      // パディング（16バイトアライメント）
 	};
 
 	/// @brief ライトカウント用の定数バッファ構造体

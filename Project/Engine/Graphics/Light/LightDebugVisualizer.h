@@ -42,13 +42,15 @@ namespace CoreEngine
 		/// @param directionalLights ディレクショナルライトデータ
 		/// @param pointLights ポイントライトデータ
 		/// @param spotLights スポットライトデータ
-		/// @param areaLights エリアライトデータ
 		void DrawVisualization(
 			const std::vector<DirectionalLightData>& directionalLights,
 			const std::vector<PointLightData>& pointLights,
-			const std::vector<SpotLightData>& spotLights,
-			const std::vector<AreaLightData>& areaLights
+			const std::vector<SpotLightData>& spotLights
 		);
+
+		/// @brief エリアライトのデバッグ可視化を描画
+		/// @param light エリアライトデータ
+		void DrawAreaLightVisualization(const AreaLightData& light);
 
 		/// @brief デバッグ可視化の有効/無効を設定
 		void SetVisualizationEnabled(bool enabled) { enableVisualization_ = enabled; }
@@ -60,7 +62,6 @@ namespace CoreEngine
 		void DrawDirectionalLightVisualization(const DirectionalLightData& light);
 		void DrawPointLightVisualization(const PointLightData& light);
 		void DrawSpotLightVisualization(const SpotLightData& light);
-		void DrawAreaLightVisualization(const AreaLightData& light);
 
 	private:
 #ifdef _DEBUG

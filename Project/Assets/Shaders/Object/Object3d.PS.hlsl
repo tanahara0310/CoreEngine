@@ -217,7 +217,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                 LightingResult result = CalculateAreaLight(
                     input.normal,
                     gAreaLights[l].position,
-                    gAreaLights[l].direction,
+                    gAreaLights[l].normal,
                     gAreaLights[l].right,
                     gAreaLights[l].up,
                     gAreaLights[l].width,
@@ -225,7 +225,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                     input.worldPosition,
                     gAreaLights[l].color.rgb,
                     gAreaLights[l].intensity,
-                    gAreaLights[l].decay,
+                    gAreaLights[l].range,
                     toEye,
                     gMaterial.color.rgb,
                     textureColor,

@@ -21,7 +21,15 @@ namespace CoreEngine
 	void LightManager::UpdateAll()
 	{
 		bufferManager_.UpdateBuffers(directionalLights_, pointLights_, spotLights_, areaLights_);
-		debugVisualizer_.DrawVisualization(directionalLights_, pointLights_, spotLights_, areaLights_);
+		debugVisualizer_.DrawVisualization(directionalLights_, pointLights_, spotLights_);
+		
+		// エリアライトの可視化
+#ifdef _DEBUG
+		for (const auto& light : areaLights_)
+		{
+			debugVisualizer_.DrawAreaLightVisualization(light);
+		}
+#endif
 	}
 
 	void LightManager::DrawAllImGui()
@@ -116,12 +124,12 @@ namespace CoreEngine
 		newLight.color = { 1.0f, 1.0f, 1.0f, 1.0f };
 		newLight.position = { 0.0f, 0.0f, 0.0f };
 		newLight.intensity = 1.0f;
-		newLight.direction = { 0.0f, -1.0f, 0.0f };
+		newLight.normal = { 0.0f, -1.0f, 0.0f };
 		newLight.width = 2.0f;
-		newLight.height = 2.0f;
 		newLight.right = { 1.0f, 0.0f, 0.0f };
+		newLight.height = 2.0f;
 		newLight.up = { 0.0f, 0.0f, 1.0f };
-		newLight.decay = 1.0f;
+		newLight.range = 10.0f;
 		newLight.enabled = true;
 
 		areaLights_.push_back(newLight);
@@ -202,6 +210,15 @@ namespace CoreEngine
 		{
 			areaLights_[index].enabled = enabled;
 		}
+	}
+
+	DirectionalLightData* LightManager::GetDirectionalLight(size_t index)
+	{
+		if (index < directionalLights_.size())
+		{
+			return &directionalLights_[index];
+		}
+		return nullptr;
 	}
 
 	void LightManager::ClearAllLights()
