@@ -37,9 +37,10 @@ SamplerState gSampler : register(s0);
 StructuredBuffer<DirectionalLightData> gDirectionalLights : register(t1);
 StructuredBuffer<PointLightData> gPointLights : register(t2);
 StructuredBuffer<SpotLightData> gSpotLights : register(t3);
+StructuredBuffer<AreaLightData> gAreaLights : register(t4);
 
 // ===== Environment Map =====
-TextureCube<float4> gEnvironmentTexture : register(t4);
+TextureCube<float4> gEnvironmentTexture : register(t5);
 
 // ディザリングパターン関数（4x4 Bayer Matrix）
 float GetDitheringThreshold(float2 screenPos)
@@ -194,6 +195,37 @@ PixelShaderOutput main(VertexShaderOutput input)
                     gSpotLights[k].decay,
                     gSpotLights[k].cosAngle,
                     gSpotLights[k].cosFalloffStart,
+                    toEye,
+                    gMaterial.color.rgb,
+                    textureColor,
+                    gMaterial.shininess,
+                    gMaterial.shadingMode,
+                    gMaterial.toonThreshold
+                );
+                totalDiffuse += result.diffuse;
+                totalSpecular += result.specular;
+            }
+        }
+
+        //==============================
+        // エリアライトの計算（複数対応）
+        //==============================
+        for (uint l = 0; l < gLightCounts.areaLightCount; ++l)
+        {
+            if (gAreaLights[l].enabled != 0)
+            {
+                LightingResult result = CalculateAreaLight(
+                    input.normal,
+                    gAreaLights[l].position,
+                    gAreaLights[l].direction,
+                    gAreaLights[l].right,
+                    gAreaLights[l].up,
+                    gAreaLights[l].width,
+                    gAreaLights[l].height,
+                    input.worldPosition,
+                    gAreaLights[l].color.rgb,
+                    gAreaLights[l].intensity,
+                    gAreaLights[l].decay,
                     toEye,
                     gMaterial.color.rgb,
                     textureColor,

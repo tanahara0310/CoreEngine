@@ -197,4 +197,84 @@ LightingResult CalculateSpotLight(
     );
 }
 
+/// @brief エリアライト（矩形）の計算
+LightingResult CalculateAreaLight(
+    float3 normal,
+    float3 lightPosition,
+    float3 lightDirection,
+    float3 lightRight,
+    float3 lightUp,
+    float lightWidth,
+    float lightHeight,
+    float3 worldPosition,
+    float3 lightColor,
+    float intensity,
+    float decay,
+    float3 toEye,
+    float3 materialColor,
+    float4 textureColor,
+    float shininess,
+    int shadingMode,
+    float toonThreshold)
+{
+    // ライト中心から表面への方向ベクトル
+    float3 toSurface = worldPosition - lightPosition;
+    
+    // ライト平面との距離（法線方向の成分）
+    float distAlongNormal = dot(toSurface, lightDirection);
+    
+    // ライトの裏側にある場合は照明なし
+    if (distAlongNormal <= 0.0f)
+    {
+        LightingResult result;
+        result.diffuse = float3(0.0f, 0.0f, 0.0f);
+        result.specular = float3(0.0f, 0.0f, 0.0f);
+        return result;
+    }
+    
+    // 表面の点をライト平面に投影
+    float3 projectedPoint = worldPosition - lightDirection * distAlongNormal;
+    
+    // 投影された点の矩形ローカル座標系での位置
+    float3 localPos = projectedPoint - lightPosition;
+    float u = dot(localPos, lightRight);
+    float v = dot(localPos, lightUp);
+    
+    // 矩形の範囲内にクランプ
+    float clampedU = clamp(u, -lightWidth * 0.5f, lightWidth * 0.5f);
+    float clampedV = clamp(v, -lightHeight * 0.5f, lightHeight * 0.5f);
+    
+    // 矩形上の最近接点
+    float3 closestPoint = lightPosition + lightRight * clampedU + lightUp * clampedV;
+    
+    // 最近接点への方向と距離
+    float3 lightDir = closestPoint - worldPosition;
+    float distance = length(lightDir);
+    lightDir = normalize(lightDir);
+    
+    // 減衰の最大距離を矩形のサイズに基づいて設定
+    float maxDistance = max(lightWidth, lightHeight) * 1.5f;
+    float distanceAttenuation = pow(saturate(1.0f - distance / maxDistance), decay);
+    
+    // ライト平面の法線との角度による減衰（ライトが表面を向いているか）
+    float normalDot = saturate(dot(-lightDir, lightDirection));
+    
+    float attenuation = distanceAttenuation * normalDot;
+    
+    return CalculateLighting(
+        normal,
+        lightDir,
+        lightColor,
+        intensity,
+        attenuation,
+        toEye,
+        materialColor,
+        textureColor,
+        shininess,
+        shadingMode,
+        toonThreshold
+    );
+}
+
 #endif
+

@@ -34,11 +34,27 @@ struct SpotLightData
     bool enabled;            // 有効フラグ
 };
 
+/// @brief エリアライト（矩形）の構造体
+struct AreaLightData
+{
+    float4 color;            // 光源の色
+    float3 position;         // 光源の中心位置
+    float intensity;         // 光源の強度
+    float3 direction;        // ライトの向き（法線方向）
+    float width;             // 矩形の幅
+    float3 right;            // 矩形の右方向ベクトル
+    float height;            // 矩形の高さ
+    float3 up;               // 矩形の上方向ベクトル
+    float decay;             // 光の減衰率
+    bool enabled;            // 有効フラグ
+    float3 padding;          // パディング
+};
+
 /// @brief ライトカウント用の構造体
 struct LightCounts
 {
     uint directionalLightCount;
     uint pointLightCount;
     uint spotLightCount;
-    uint padding;
+    uint areaLightCount;
 };

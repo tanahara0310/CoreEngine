@@ -478,6 +478,7 @@
     <ClCompile Include="Engine\Graphics\Line\LineManager.cpp" />
     <ClCompile Include="Engine\Particle\Modules\ShapeModule.cpp" />
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Dissolve.cpp" />
+    <ClCompile Include="Engine\Scene\AssignmentScene\AssignmentScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1381,6 +1382,7 @@
     <ClInclude Include="Engine\Utility\ProcessExecutor\ProcessExecutor.h" />
     <ClInclude Include="Engine\Graphics\Line\LineManager.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Dissolve.h" />
+    <ClInclude Include="Engine\Scene\AssignmentScene\AssignmentScene.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">
