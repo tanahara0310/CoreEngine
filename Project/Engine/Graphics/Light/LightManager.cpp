@@ -9,8 +9,8 @@ namespace CoreEngine
 	{
 		bufferManager_.Initialize(
 			device,
-			resourceFactory,
 			descriptorManager,
+			resourceFactory,
 			MAX_DIRECTIONAL_LIGHTS,
 			MAX_POINT_LIGHTS,
 			MAX_SPOT_LIGHTS,
@@ -114,7 +114,7 @@ namespace CoreEngine
 
 		AreaLightData newLight{};
 		newLight.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-		newLight.position = { 0.0f, 5.0f, 0.0f };
+		newLight.position = { 0.0f, 0.0f, 0.0f };
 		newLight.intensity = 1.0f;
 		newLight.direction = { 0.0f, -1.0f, 0.0f };
 		newLight.width = 2.0f;
