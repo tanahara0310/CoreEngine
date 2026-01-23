@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
@@ -16,10 +16,10 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class ICamera;
-    class DirectXCommon;
-    class ResourceFactory;
-    class LightBase;
+	class ICamera;
+	class DirectXCommon;
+	class ResourceFactory;
+	class LightBase;
 }
 
 /// @brief 配置された3Dモデルのインスタンスクラス

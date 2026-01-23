@@ -10,61 +10,61 @@
 namespace CoreEngine
 {
 void ModelParticleRenderer::Draw(ParticleSystem* particle) {
-    // 基本的な検証
-    if (!ValidateDrawCall(particle)) {
-        return;
-    }
+	// 基本的な検証
+	if (!ValidateDrawCall(particle)) {
+		return;
+	}
 
-    // モデルパーティクルかチェック
-    if (!particle->IsModelParticle()) {
-        return;
-    }
+	// モデルパーティクルかチェック
+	if (!particle->IsModelParticle()) {
+		return;
+	}
 
-    ModelResource* modelResource = particle->GetModelResource();
-    if (!modelResource || !modelResource->IsLoaded()) {
-        return;
-    }
+	ModelResource* modelResource = particle->GetModelResource();
+	if (!modelResource || !modelResource->IsLoaded()) {
+		return;
+	}
 
-    uint32_t instanceCount = particle->GetInstanceCount();
+	uint32_t instanceCount = particle->GetInstanceCount();
 
-    // モデルの頂点バッファとインデックスバッファを設定
-    cmdList_->IASetVertexBuffers(0, 1, &modelResource->vertexBufferView_);
-    cmdList_->IASetIndexBuffer(&modelResource->indexBufferView_);
+	// モデルの頂点バッファとインデックスバッファを設定
+	cmdList_->IASetVertexBuffers(0, 1, &modelResource->vertexBufferView_);
+	cmdList_->IASetIndexBuffer(&modelResource->indexBufferView_);
 
-    // テクスチャハンドルを決定（パーティクル設定 > モデルデフォルト）
-    D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = particle->GetTextureHandle();
-    if (textureHandle.ptr == 0 && !modelResource->modelData_.material.textureFilePath.empty()) {
-        // モデルのテクスチャを使用
-        textureHandle = TextureManager::GetInstance().Load(modelResource->modelData_.material.textureFilePath).gpuHandle;
-    }
+	// テクスチャハンドルを決定（パーティクル設定 > モデルデフォルト）
+	D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = particle->GetTextureHandle();
+	if (textureHandle.ptr == 0 && !modelResource->modelData_.material.textureFilePath.empty()) {
+		// モデルのテクスチャを使用
+		textureHandle = TextureManager::GetInstance().Load(modelResource->modelData_.material.textureFilePath).gpuHandle;
+	}
 
-    // 共通リソースを設定
-    SetupCommonResources(particle, textureHandle);
+	// 共通リソースを設定
+	SetupCommonResources(particle, textureHandle);
 
-    // インスタンシング描画（モデルのインデックス数 × インスタンス数）
-    cmdList_->DrawIndexedInstanced(modelResource->indexCount_, instanceCount, 0, 0, 0);
+	// インスタンシング描画（モデルのインデックス数 × インスタンス数）
+	cmdList_->DrawIndexedInstanced(modelResource->indexCount_, instanceCount, 0, 0, 0);
 }
 
 void ModelParticleRenderer::CreatePSO() {
-    // モデルパーティクル用のシェーダーコンパイル
-    auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Assets/Shaders/Particle/ModelParticle.VS.hlsl", L"vs_6_0");
-    assert(vertexShaderBlob != nullptr);
+	// モデルパーティクル用のシェーダーコンパイル
+	auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Assets/Shaders/Particle/ModelParticle.VS.hlsl", L"vs_6_0");
+	assert(vertexShaderBlob != nullptr);
 
-    auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Assets/Shaders/Particle/Particle.PS.hlsl", L"ps_6_0");
-    assert(pixelShaderBlob != nullptr);
+	auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Assets/Shaders/Particle/Particle.PS.hlsl", L"ps_6_0");
+	assert(pixelShaderBlob != nullptr);
 
-    // ビルダーパターンでPSOを構築
-    bool result = pipelineMg_->CreateBuilder()
-        .AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-        .AddInputElement("TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-        .AddInputElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-        .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
-        .SetDepthStencil(true, true)  // 深度テストと深度書き込みを有効化
-        .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-        .BuildAllBlendModes(device_, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
+	// ビルダーパターンでPSOを構築
+	bool result = pipelineMg_->CreateBuilder()
+		.AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
+		.AddInputElement("TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
+		.AddInputElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
+		.SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
+		.SetDepthStencil(true, true)  // 深度テストと深度書き込みを有効化
+		.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
+		.BuildAllBlendModes(device_, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
 
-    if (!result) {
-        throw std::runtime_error("Failed to create PSO in ModelParticleRenderer");
-    }
+	if (!result) {
+		throw std::runtime_error("Failed to create PSO in ModelParticleRenderer");
+	}
 }
 }

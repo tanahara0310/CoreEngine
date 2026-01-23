@@ -16,19 +16,19 @@ ColliderType Collider::GetType() const {
 
 void Collider::OnCollisionEnter(Collider* other) {
    if (owner_ && other && other->owner_) {
-      owner_->OnCollisionEnter(other->owner_);
+	  owner_->OnCollisionEnter(other->owner_);
    }
 }
 
 void Collider::OnCollisionStay(Collider* other) {
    if (owner_ && other && other->owner_) {
-      owner_->OnCollisionStay(other->owner_);
+	  owner_->OnCollisionStay(other->owner_);
    }
 }
 
 void Collider::OnCollisionExit(Collider* other) {
    if (owner_ && other && other->owner_) {
-      owner_->OnCollisionExit(other->owner_);
+	  owner_->OnCollisionExit(other->owner_);
    }
 }
 }

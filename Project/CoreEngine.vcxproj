@@ -693,6 +693,8 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <None Include="Engine\Graphics\Font\README.md" />
     <None Include="Engine\Particle\README.md" />
     <None Include="Engine\Utility\Debug\ImGui\README.md" />
+    <None Include="Scripts\ConvertToCRLF.ps1" />
+    <None Include="Scripts\ConvertToTabs.ps1" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

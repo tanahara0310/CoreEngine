@@ -7,8 +7,8 @@
 namespace CoreEngine
 {
 struct VertexData {
-    Vector4 position; // 頂点の位置
-    Vector2 texcoord; // UV座標
-    Vector3 normal; // 法線ベクトル
+	Vector4 position; // 頂点の位置
+	Vector2 texcoord; // UV座標
+	Vector3 normal; // 法線ベクトル
 };
 }

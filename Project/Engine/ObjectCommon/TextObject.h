@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
 #include "Engine/WorldTransfom/WorldTransform.h"
@@ -50,27 +50,27 @@ namespace CoreEngine
 		/// @return 描画パスタイプ（Text）
 		RenderPassType GetRenderPassType() const override { return RenderPassType::Text; }
 
-    /// @brief ブレンドモードを取得
-    BlendMode GetBlendMode() const override { return blendMode_; }
+	/// @brief ブレンドモードを取得
+	BlendMode GetBlendMode() const override { return blendMode_; }
 
-    /// @brief ブレンドモードを設定
-    void SetBlendMode(BlendMode blendMode) override { blendMode_ = blendMode; }
+	/// @brief ブレンドモードを設定
+	void SetBlendMode(BlendMode blendMode) override { blendMode_ = blendMode; }
 
 		/// @brief 表示テキストを設定
 		void SetText(const std::string& text);
 		std::string GetText() const { return text_; }
 
-    /// @brief 色を設定
-    void SetColor(const Vector4& color) { color_ = color; }
-    Vector4 GetColor() const { return color_; }
+	/// @brief 色を設定
+	void SetColor(const Vector4& color) { color_ = color; }
+	Vector4 GetColor() const { return color_; }
 
-    /// @brief スケールを設定
-    void SetScale(float scale) { scale_ = scale; }
-    float GetScale() const { return scale_; }
+	/// @brief スケールを設定
+	void SetScale(float scale) { scale_ = scale; }
+	float GetScale() const { return scale_; }
 
-    /// @brief トランスフォームを取得（位置設定用）
-    EulerTransform& GetTransform() { return transform_; }
-    const EulerTransform& GetTransform() const { return transform_; }
+	/// @brief トランスフォームを取得（位置設定用）
+	EulerTransform& GetTransform() { return transform_; }
+	const EulerTransform& GetTransform() const { return transform_; }
 
 	private:
 		/// @brief テキストメッシュを構築
@@ -79,23 +79,23 @@ namespace CoreEngine
 		/// @brief UTF-8からUTF-32へ変換
 		uint32_t GetUTF32CharCode(size_t& index);
 
-    /// @brief グリフ描画情報
-    struct GlyphDrawInfo {
-        const Glyph* glyph;
-        float xPos;
-        float yPos;
-        float width;
-        float height;
-    };
+	/// @brief グリフ描画情報
+	struct GlyphDrawInfo {
+		const Glyph* glyph;
+		float xPos;
+		float yPos;
+		float width;
+		float height;
+	};
 
 private:
-    Font* font_ = nullptr;
-    std::string text_;
-    Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    float scale_ = 1.0f;
-    BlendMode blendMode_ = BlendMode::kBlendModeNormal;
+	Font* font_ = nullptr;
+	std::string text_;
+	Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+	float scale_ = 1.0f;
+	BlendMode blendMode_ = BlendMode::kBlendModeNormal;
 
-    EulerTransform transform_;
+	EulerTransform transform_;
 
 		// 頂点バッファ（動的にリサイズ）
 		Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;

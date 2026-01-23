@@ -1,4 +1,4 @@
-#include "ParticleRenderDataBuilder.h"
+﻿#include "ParticleRenderDataBuilder.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Particle/ParticleSystem.h" // Particle, BillboardType, ParticleRenderMode定義のため
 #include <cmath>
@@ -54,9 +54,9 @@ uint32_t ParticleRenderDataBuilder::BuildRenderData(
 }
 
 Matrix4x4 ParticleRenderDataBuilder::CalculateWorldMatrix(
-    const Particle& particle,
-    BillboardType billboardType,
-    const Matrix4x4& billboardMatrix
+	const Particle& particle,
+	BillboardType billboardType,
+	const Matrix4x4& billboardMatrix
 ) {
 	if (billboardType != BillboardType::None) {
 		// スケールと回転のみでローカル行列を作成（位置は原点）
@@ -86,7 +86,7 @@ Matrix4x4 ParticleRenderDataBuilder::CalculateWorldMatrix(
 }
 
 Matrix4x4 ParticleRenderDataBuilder::CreateBillboardMatrix(const Matrix4x4& viewMatrix, BillboardType type) {
-    switch (type) {
+	switch (type) {
 	case BillboardType::ViewFacing:
 	{
 		Matrix4x4 billboardMatrix = Matrix::Inverse(viewMatrix);

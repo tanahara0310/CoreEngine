@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <memory>
 #include <vector>
@@ -17,138 +17,138 @@ class DescriptorManager;
 /// @brief ライトマネージャー
 class LightManager {
 public:
-    /// @brief 各ライトタイプの最大数
-    static constexpr uint32_t MAX_DIRECTIONAL_LIGHTS = 4;
-    static constexpr uint32_t MAX_POINT_LIGHTS = 16;
-    static constexpr uint32_t MAX_SPOT_LIGHTS = 16;
-    static constexpr uint32_t MAX_AREA_LIGHTS = 8;
+	/// @brief 各ライトタイプの最大数
+	static constexpr uint32_t MAX_DIRECTIONAL_LIGHTS = 4;
+	static constexpr uint32_t MAX_POINT_LIGHTS = 16;
+	static constexpr uint32_t MAX_SPOT_LIGHTS = 16;
+	static constexpr uint32_t MAX_AREA_LIGHTS = 8;
 
 public:
-    /// @brief 初期化
-    /// @param device D3D12デバイス
-    /// @param resourceFactory リソースファクトリ
-    /// @param descriptorManager ディスクリプタマネージャー
-    void Initialize(ID3D12Device* device, ResourceFactory* resourceFactory, DescriptorManager* descriptorManager);
+	/// @brief 初期化
+	/// @param device D3D12デバイス
+	/// @param resourceFactory リソースファクトリ
+	/// @param descriptorManager ディスクリプタマネージャー
+	void Initialize(ID3D12Device* device, ResourceFactory* resourceFactory, DescriptorManager* descriptorManager);
 
-    /// @brief 全てのライトを更新
-    void UpdateAll();
+	/// @brief 全てのライトを更新
+	void UpdateAll();
 
-    /// @brief ライトのImGuiを描画
-    void DrawAllImGui();
+	/// @brief ライトのImGuiを描画
+	void DrawAllImGui();
 
-    /// @brief ライトのデバッグ可視化を描画
-    void DrawDebugVisualization();
+	/// @brief ライトのデバッグ可視化を描画
+	void DrawDebugVisualization();
 
-    /// @brief ディレクショナルライトを追加
-    /// @return 追加されたライトデータへのポインタ（最大数を超えた場合はnullptr）
-    DirectionalLightData* AddDirectionalLight();
+	/// @brief ディレクショナルライトを追加
+	/// @return 追加されたライトデータへのポインタ（最大数を超えた場合はnullptr）
+	DirectionalLightData* AddDirectionalLight();
 
-    /// @brief ポイントライトを追加
-    /// @return 追加されたライトデータへのポインタ（最大数を超えた場合はnullptr）
-    PointLightData* AddPointLight();
+	/// @brief ポイントライトを追加
+	/// @return 追加されたライトデータへのポインタ（最大数を超えた場合はnullptr）
+	PointLightData* AddPointLight();
 
-    /// @brief スポットライトを追加
-    /// @return 追加されたライトデータへのポインタ（最大数を超えた場合はnullptr）
-    SpotLightData* AddSpotLight();
+	/// @brief スポットライトを追加
+	/// @return 追加されたライトデータへのポインタ（最大数を超えた場合はnullptr）
+	SpotLightData* AddSpotLight();
 
-    /// @brief エリアライトを追加
-    /// @return 追加されたライトデータへのポインタ（最大数を超えた場合はnullptr）
-    AreaLightData* AddAreaLight();
+	/// @brief エリアライトを追加
+	/// @return 追加されたライトデータへのポインタ（最大数を超えた場合はnullptr）
+	AreaLightData* AddAreaLight();
 
-    /// @brief GPU用のライトバッファを更新
-    void UpdateLightBuffers();
+	/// @brief GPU用のライトバッファを更新
+	void UpdateLightBuffers();
 
-    /// @brief コマンドリストにライトをセット
-    /// @param commandList コマンドリスト
-    /// @param lightCountsRootParameterIndex ライトカウント用のルートパラメータインデックス
-    /// @param directionalLightsRootParameterIndex ディレクショナルライト用のルートパラメータインデックス
-    /// @param pointLightsRootParameterIndex ポイントライト用のルートパラメータインデックス
-    /// @param spotLightsRootParameterIndex スポットライト用のルートパラメータインデックス
-    /// @param areaLightsRootParameterIndex エリアライト用のルートパラメータインデックス
-    void SetLightsToCommandList(
-        ID3D12GraphicsCommandList* commandList,
-        UINT lightCountsRootParameterIndex,
-        UINT directionalLightsRootParameterIndex,
-        UINT pointLightsRootParameterIndex,
-        UINT spotLightsRootParameterIndex,
-        UINT areaLightsRootParameterIndex
-    );
+	/// @brief コマンドリストにライトをセット
+	/// @param commandList コマンドリスト
+	/// @param lightCountsRootParameterIndex ライトカウント用のルートパラメータインデックス
+	/// @param directionalLightsRootParameterIndex ディレクショナルライト用のルートパラメータインデックス
+	/// @param pointLightsRootParameterIndex ポイントライト用のルートパラメータインデックス
+	/// @param spotLightsRootParameterIndex スポットライト用のルートパラメータインデックス
+	/// @param areaLightsRootParameterIndex エリアライト用のルートパラメータインデックス
+	void SetLightsToCommandList(
+		ID3D12GraphicsCommandList* commandList,
+		UINT lightCountsRootParameterIndex,
+		UINT directionalLightsRootParameterIndex,
+		UINT pointLightsRootParameterIndex,
+		UINT spotLightsRootParameterIndex,
+		UINT areaLightsRootParameterIndex
+	);
 
-    /// @brief ライトカウントバッファのGPU仮想アドレスを取得
-    D3D12_GPU_VIRTUAL_ADDRESS GetLightCountsGPUAddress() const;
+	/// @brief ライトカウントバッファのGPU仮想アドレスを取得
+	D3D12_GPU_VIRTUAL_ADDRESS GetLightCountsGPUAddress() const;
 
-    /// @brief ディレクショナルライトSRVのGPUハンドルを取得
-    D3D12_GPU_DESCRIPTOR_HANDLE GetDirectionalLightsSRVHandle() const { return directionalLightsSRVHandle_; }
+	/// @brief ディレクショナルライトSRVのGPUハンドルを取得
+	D3D12_GPU_DESCRIPTOR_HANDLE GetDirectionalLightsSRVHandle() const { return directionalLightsSRVHandle_; }
 
-    /// @brief ポイントライトSRVのGPUハンドルを取得
-    D3D12_GPU_DESCRIPTOR_HANDLE GetPointLightsSRVHandle() const { return pointLightsSRVHandle_; }
+	/// @brief ポイントライトSRVのGPUハンドルを取得
+	D3D12_GPU_DESCRIPTOR_HANDLE GetPointLightsSRVHandle() const { return pointLightsSRVHandle_; }
 
-    /// @brief スポットライトSRVのGPUハンドルを取得
-    D3D12_GPU_DESCRIPTOR_HANDLE GetSpotLightsSRVHandle() const { return spotLightsSRVHandle_; }
+	/// @brief スポットライトSRVのGPUハンドルを取得
+	D3D12_GPU_DESCRIPTOR_HANDLE GetSpotLightsSRVHandle() const { return spotLightsSRVHandle_; }
 
-    /// @brief エリアライトSRVのGPUハンドルを取得
-    D3D12_GPU_DESCRIPTOR_HANDLE GetAreaLightsSRVHandle() const { return areaLightsSRVHandle_; }
+	/// @brief エリアライトSRVのGPUハンドルを取得
+	D3D12_GPU_DESCRIPTOR_HANDLE GetAreaLightsSRVHandle() const { return areaLightsSRVHandle_; }
 
-    /// @brief ディレクショナルライトの有効/無効を設定
-    /// @param index ライトのインデックス
-    /// @param enabled 有効にする場合true
-    void SetDirectionalLightEnabled(size_t index, bool enabled);
+	/// @brief ディレクショナルライトの有効/無効を設定
+	/// @param index ライトのインデックス
+	/// @param enabled 有効にする場合true
+	void SetDirectionalLightEnabled(size_t index, bool enabled);
 
-    /// @brief ポイントライトの有効/無効を設定
-    /// @param index ライトのインデックス
-    /// @param enabled 有効にする場合true
-    void SetPointLightEnabled(size_t index, bool enabled);
+	/// @brief ポイントライトの有効/無効を設定
+	/// @param index ライトのインデックス
+	/// @param enabled 有効にする場合true
+	void SetPointLightEnabled(size_t index, bool enabled);
 
-    /// @brief スポットライトの有効/無効を設定
-    /// @param index ライトのインデックス
-    /// @param enabled 有効にする場合true
-    void SetSpotLightEnabled(size_t index, bool enabled);
+	/// @brief スポットライトの有効/無効を設定
+	/// @param index ライトのインデックス
+	/// @param enabled 有効にする場合true
+	void SetSpotLightEnabled(size_t index, bool enabled);
 
-    /// @brief エリアライトの有効/無効を設定
-    /// @param index ライトのインデックス
-    /// @param enabled 有効にする場合true
-    void SetAreaLightEnabled(size_t index, bool enabled);
+	/// @brief エリアライトの有効/無効を設定
+	/// @param index ライトのインデックス
+	/// @param enabled 有効にする場合true
+	void SetAreaLightEnabled(size_t index, bool enabled);
 
-    /// @brief 全てのライトをクリア（シーン切り替え時に使用）
-    void ClearAllLights();
-
-private:
-    /// @brief StructuredBuffer用のリソースを作成
-    void CreateStructuredBufferResources(ID3D12Device* device);
-
-    /// @brief StructuredBuffer用のSRVを作成
-    void CreateStructuredBufferSRVs(DescriptorManager* descriptorManager);
+	/// @brief 全てのライトをクリア（シーン切り替え時に使用）
+	void ClearAllLights();
 
 private:
-    // CPU側のライトデータ配列
-    std::vector<DirectionalLightData> directionalLights_;
-    std::vector<PointLightData> pointLights_;
-    std::vector<SpotLightData> spotLights_;
-    std::vector<AreaLightData> areaLights_;
+	/// @brief StructuredBuffer用のリソースを作成
+	void CreateStructuredBufferResources(ID3D12Device* device);
 
-    // GPU側のStructuredBufferリソース
-    Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightsBuffer_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> pointLightsBuffer_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> spotLightsBuffer_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> areaLightsBuffer_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> lightCountsBuffer_;
+	/// @brief StructuredBuffer用のSRVを作成
+	void CreateStructuredBufferSRVs(DescriptorManager* descriptorManager);
 
-    // StructuredBufferのSRV用GPUハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE directionalLightsSRVHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE pointLightsSRVHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE spotLightsSRVHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE areaLightsSRVHandle_{};
+private:
+	// CPU側のライトデータ配列
+	std::vector<DirectionalLightData> directionalLights_;
+	std::vector<PointLightData> pointLights_;
+	std::vector<SpotLightData> spotLights_;
+	std::vector<AreaLightData> areaLights_;
 
-    // マップされたライトカウントデータ
-    LightCounts* lightCountsData_ = nullptr;
+	// GPU側のStructuredBufferリソース
+	Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightsBuffer_;
+	Microsoft::WRL::ComPtr<ID3D12Resource> pointLightsBuffer_;
+	Microsoft::WRL::ComPtr<ID3D12Resource> spotLightsBuffer_;
+	Microsoft::WRL::ComPtr<ID3D12Resource> areaLightsBuffer_;
+	Microsoft::WRL::ComPtr<ID3D12Resource> lightCountsBuffer_;
 
-    // デバイスとリソースファクトリの保持
-    ID3D12Device* device_ = nullptr;
-    ResourceFactory* resourceFactory_ = nullptr;
+	// StructuredBufferのSRV用GPUハンドル
+	D3D12_GPU_DESCRIPTOR_HANDLE directionalLightsSRVHandle_{};
+	D3D12_GPU_DESCRIPTOR_HANDLE pointLightsSRVHandle_{};
+	D3D12_GPU_DESCRIPTOR_HANDLE spotLightsSRVHandle_{};
+	D3D12_GPU_DESCRIPTOR_HANDLE areaLightsSRVHandle_{};
+
+	// マップされたライトカウントデータ
+	LightCounts* lightCountsData_ = nullptr;
+
+	// デバイスとリソースファクトリの保持
+	ID3D12Device* device_ = nullptr;
+	ResourceFactory* resourceFactory_ = nullptr;
 
 #ifdef _DEBUG
-    // デバッグ可視化のON/OFF
-    bool enableDebugVisualization_ = true;
+	// デバッグ可視化のON/OFF
+	bool enableDebugVisualization_ = true;
 #endif
 };
 }

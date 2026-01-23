@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
@@ -9,8 +9,8 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class DirectXCommon;
-    class DescriptorManager;
+	class DirectXCommon;
+	class DescriptorManager;
 }
 
 /// @brief スキンクラスターを生成するクラス

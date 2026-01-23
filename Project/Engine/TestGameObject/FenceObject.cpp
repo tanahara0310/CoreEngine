@@ -31,7 +31,7 @@ void FenceObject::Initialize() {
 
 void FenceObject::Update() {
    if (!IsActive() || !model_) {
-      return;
+	  return;
    }
 
    // トランスフォームの更新
