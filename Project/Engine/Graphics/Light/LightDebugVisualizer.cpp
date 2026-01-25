@@ -75,8 +75,7 @@ namespace CoreEngine
 					{
 						if (onAddDirectionalLight) onAddDirectionalLight();
 					}
-				}
-				else
+				} else
 				{
 					ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "最大数に達しました");
 				}
@@ -113,8 +112,7 @@ namespace CoreEngine
 					{
 						if (onAddPointLight) onAddPointLight();
 					}
-				}
-				else
+				} else
 				{
 					ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "最大数に達しました");
 				}
@@ -159,8 +157,7 @@ namespace CoreEngine
 					{
 						if (onAddSpotLight) onAddSpotLight();
 					}
-				}
-				else
+				} else
 				{
 					ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "最大数に達しました");
 				}
@@ -206,15 +203,14 @@ namespace CoreEngine
 					{
 						if (onAddAreaLight) onAddAreaLight();
 					}
-				}
-				else
+				} else
 				{
 					ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "最大数に達しました");
 				}
 
 				ImGui::TreePop();
 			}
-	}
+		}
 #else
 		// Release builds - avoid unused parameter warnings
 		(void)directionalLights;
@@ -267,6 +263,7 @@ namespace CoreEngine
 
 	void LightDebugVisualizer::DrawDirectionalLightVisualization(const DirectionalLightData& light)
 	{
+		(void)light;
 #ifdef _DEBUG
 		if (!light.enabled) return;
 
@@ -321,6 +318,8 @@ namespace CoreEngine
 
 	void LightDebugVisualizer::DrawPointLightVisualization(const PointLightData& light)
 	{
+		(void)light;
+
 #ifdef _DEBUG
 		if (!light.enabled) return;
 
@@ -469,6 +468,7 @@ namespace CoreEngine
 
 	void LightDebugVisualizer::DrawSpotLightVisualization(const SpotLightData& light)
 	{
+		(void)light;
 #ifdef _DEBUG
 		if (!light.enabled) return;
 
@@ -562,6 +562,7 @@ namespace CoreEngine
 
 	void LightDebugVisualizer::DrawAreaLightVisualization(const AreaLightData& light)
 	{
+		(void)light;
 #ifdef _DEBUG
 		if (!light.enabled) return;
 
