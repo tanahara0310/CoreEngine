@@ -227,6 +227,16 @@ namespace CoreEngine
 		barrier.Transition.StateBefore = stateBefore;
 		barrier.Transition.StateAfter = stateAfter;
 
-		dxCommon_->GetCommandList()->ResourceBarrier(1, &barrier);
-	}
+	dxCommon_->GetCommandList()->ResourceBarrier(1, &barrier);
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Render::GetOffscreenRTVHandle(int offscreenIndex) const
+{
+	return (offscreenIndex == 0) ? offscreenRtvHandle_ : offscreen2RtvHandle_;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE Render::GetDSVHandle() const
+{
+	return dsvHeap_->GetCPUDescriptorHandleForHeapStart();
+}
 }

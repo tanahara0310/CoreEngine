@@ -76,4 +76,11 @@ namespace CoreEngine
 	}
 
 #endif // _DEBUG
+
+	void GameObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {
+		// モデルがある場合のみシャドウを描画
+		if (model_ && model_->IsInitialized()) {
+			model_->DrawShadow(transform_, cmdList);
+		}
+	}
 }

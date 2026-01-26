@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Engine/Graphics/PipelineStateManager.h"
 #include <cstdint>
 #include <d3d12.h>
@@ -34,6 +34,23 @@ public: // メンバ関数
 
 	/// @brief バックバッファ用の描画後処理
 	void BackBufferPostDraw();
+
+	/// @brief オフスクリーンのRTVハンドルを取得
+	/// @param offscreenIndex オフスクリーンのインデックス（0=1枚目、1=2枚目）
+	/// @return RTVハンドル
+	D3D12_CPU_DESCRIPTOR_HANDLE GetOffscreenRTVHandle(int offscreenIndex = 0) const;
+
+	/// @brief DSVハンドルを取得
+	/// @return DSVハンドル
+	D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const;
+
+	/// @brief ビューポートを取得
+	/// @return ビューポート
+	D3D12_VIEWPORT GetViewport() const { return viewport_; }
+
+	/// @brief シザー矩形を取得
+	/// @return シザー矩形
+	D3D12_RECT GetScissorRect() const { return scissorRect_; }
 
 	/// @brief リソースバリアを設定
 	/// @param resource 遷移対象のリソース

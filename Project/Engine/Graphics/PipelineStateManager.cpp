@@ -1,4 +1,4 @@
-﻿#include "PipelineStateManager.h"
+#include "PipelineStateManager.h"
 
 #include <cassert>
 #include <stdexcept>
@@ -112,7 +112,11 @@ PipelineStateBuilder& PipelineStateBuilder::SetRenderTargetFormat(DXGI_FORMAT fo
 {
 	if (index < 8) {
 		rtvFormats_[index] = format;
-		if (index >= numRenderTargets_) {
+		
+		// DXGI_FORMAT_UNKNOWNの場合、レンダーターゲット数を0にする（深度のみのパス用）
+		if (index == 0 && format == DXGI_FORMAT_UNKNOWN) {
+			numRenderTargets_ = 0;
+		} else if (index >= numRenderTargets_) {
 			numRenderTargets_ = index + 1;
 		}
 	}
@@ -272,7 +276,13 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC PipelineStateBuilder::CreatePipelineStateDesc
 
 	// シェーダー
 	desc.VS = { vs->GetBufferPointer(), vs->GetBufferSize() };
-	desc.PS = { ps->GetBufferPointer(), ps->GetBufferSize() };
+	
+	// ピクセルシェーダーがnullptrの場合は設定しない（シャドウマップ用など）
+	if (ps != nullptr) {
+		desc.PS = { ps->GetBufferPointer(), ps->GetBufferSize() };
+	} else {
+		desc.PS = { nullptr, 0 };
+	}
 
 	// ブレンド設定
 	desc.BlendState = CreateBlendDesc(mode);

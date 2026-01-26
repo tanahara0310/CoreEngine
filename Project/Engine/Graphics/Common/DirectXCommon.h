@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cassert>
 #include <d3d12.h>
@@ -16,6 +16,7 @@
 #include "Graphics/Common/Core/SwapChainManager.h"
 #include "Graphics/Common/Core/OffScreenRenderTargetManager.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/Shadow/ShadowMapManager.h"
 
 using namespace Microsoft::WRL;
 
@@ -62,6 +63,12 @@ public:
 	// マネージャーへの直接アクセス（必要に応じて）
 	DescriptorManager* GetDescriptorManager() { return descriptorManager_.get(); }
 	DepthStencilManager* GetDepthStencilManager() { return depthStencilManager_.get(); }
+	
+	// シャドウマップ関連のアクセッサ
+	ShadowMapManager* GetShadowMapManager() { return shadowMapManager_.get(); }
+	ID3D12Resource* GetShadowMapResource() { return shadowMapManager_->GetShadowMapResource(); }
+	D3D12_CPU_DESCRIPTOR_HANDLE GetShadowMapDSVHandle() { return shadowMapManager_->GetDSVHandle(); }
+	D3D12_GPU_DESCRIPTOR_HANDLE GetShadowMapSRVHandle() { return shadowMapManager_->GetSRVHandle(); }
 
 	// オフスクリーン用のアクセッサ（1枚目）
 	ID3D12Resource* GetOffScreenResource() { return offScreenManager_->GetOffScreenResource(); }
@@ -89,5 +96,6 @@ private:
 	std::unique_ptr<SwapChainManager> swapChainManager_ = std::make_unique<SwapChainManager>();
 	std::unique_ptr<OffScreenRenderTargetManager> offScreenManager_ = std::make_unique<OffScreenRenderTargetManager>();
 	std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
+	std::unique_ptr<ShadowMapManager> shadowMapManager_ = std::make_unique<ShadowMapManager>();
 };
 }
