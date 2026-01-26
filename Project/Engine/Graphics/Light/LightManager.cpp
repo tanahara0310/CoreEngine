@@ -223,9 +223,45 @@ namespace CoreEngine
 
 	void LightManager::ClearAllLights()
 	{
-		directionalLights_.clear();
-		pointLights_.clear();
-		spotLights_.clear();
-		areaLights_.clear();
+	directionalLights_.clear();
+	pointLights_.clear();
+	spotLights_.clear();
+	areaLights_.clear();
 	}
-}
+
+	Matrix4x4 LightManager::CalculateMainDirectionalLightViewProjection(const Vector3& sceneCenter, float sceneRadius)
+	{
+	// メインディレクショナルライト（インデックス0）を使用
+	if (directionalLights_.empty() || !directionalLights_[0].enabled) {
+	// ライトがない場合は単位行列を返す
+	return MathCore::Matrix::Identity();
+	}
+
+	const DirectionalLightData& light = directionalLights_[0];
+
+	// ライトの方向（正規化）
+	Vector3 lightDir = MathCore::Vector::Normalize(light.direction);
+
+	// ライトの位置（シーンの中心からライト方向の逆方向に配置）
+	Vector3 lightPos = sceneCenter - lightDir * sceneRadius * 2.0f;
+
+	// ライトのビュー行列を計算
+	Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
+	// ライト方向がほぼ上向きの場合は別の上方向を使用
+	if (std::abs(MathCore::Vector::Dot(lightDir, up)) > 0.99f) {
+	up = Vector3(1.0f, 0.0f, 0.0f);
+	}
+	Matrix4x4 lightView = MathCore::Matrix::LookAt(lightPos, sceneCenter, up);
+
+	// ライトの正射影行列を計算（シーン全体をカバーするサイズ）
+	float orthoSize = sceneRadius * 2.0f;
+	Matrix4x4 lightProjection = MathCore::Rendering::Orthographic(
+		-orthoSize, orthoSize,  // left, right
+		orthoSize, -orthoSize,  // top, bottom (Y軸反転に注意)
+		0.1f, sceneRadius * 4.0f // near, far
+	);
+
+	// ビュープロジェクション行列を返す
+	return lightView * lightProjection;
+	}
+	}

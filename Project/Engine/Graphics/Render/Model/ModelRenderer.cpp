@@ -57,29 +57,54 @@ namespace CoreEngine
 		pointLightsRange.baseShaderRegister = 2;
 		rootSignatureMg_->AddDescriptorTable({ pointLightsRange }, D3D12_SHADER_VISIBILITY_PIXEL);
 
-	// Root Parameter 7: スポットライト用ディスクリプタテーブル (t3, PS)
-	RootSignatureManager::DescriptorRangeConfig spotLightsRange;
-	spotLightsRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	spotLightsRange.numDescriptors = 1;
-	spotLightsRange.baseShaderRegister = 3;
-	rootSignatureMg_->AddDescriptorTable({ spotLightsRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+		// Root Parameter 7: スポットライト用ディスクリプタテーブル (t3, PS)
+		RootSignatureManager::DescriptorRangeConfig spotLightsRange;
+		spotLightsRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		spotLightsRange.numDescriptors = 1;
+		spotLightsRange.baseShaderRegister = 3;
+		rootSignatureMg_->AddDescriptorTable({ spotLightsRange }, D3D12_SHADER_VISIBILITY_PIXEL);
 
-	// Root Parameter 8: エリアライト用ディスクリプタテーブル (t4, PS)
-	RootSignatureManager::DescriptorRangeConfig areaLightsRange;
-	areaLightsRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	areaLightsRange.numDescriptors = 1;
-	areaLightsRange.baseShaderRegister = 4;
-	rootSignatureMg_->AddDescriptorTable({ areaLightsRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+		// Root Parameter 8: エリアライト用ディスクリプタテーブル (t4, PS)
+		RootSignatureManager::DescriptorRangeConfig areaLightsRange;
+		areaLightsRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		areaLightsRange.numDescriptors = 1;
+		areaLightsRange.baseShaderRegister = 4;
+		rootSignatureMg_->AddDescriptorTable({ areaLightsRange }, D3D12_SHADER_VISIBILITY_PIXEL);
 
-	// Root Parameter 9: 環境マップ用ディスクリプタテーブル (t5, PS)
-	RootSignatureManager::DescriptorRangeConfig environmentMapRange;
-	environmentMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	environmentMapRange.numDescriptors = 1;
-	environmentMapRange.baseShaderRegister = 5;
-	rootSignatureMg_->AddDescriptorTable({ environmentMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+		// Root Parameter 9: 環境マップ用ディスクリプタテーブル (t5, PS)
+		RootSignatureManager::DescriptorRangeConfig environmentMapRange;
+		environmentMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		environmentMapRange.numDescriptors = 1;
+		environmentMapRange.baseShaderRegister = 5;
+		rootSignatureMg_->AddDescriptorTable({ environmentMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+
+		// Root Parameter 10: LightViewProjection用CBV (b1, VS)
+		RootSignatureManager::RootDescriptorConfig lightVPCBV;
+		lightVPCBV.shaderRegister = 1;
+		lightVPCBV.visibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		rootSignatureMg_->AddRootCBV(lightVPCBV);
+
+		// Root Parameter 11: ShadowMap用ディスクリプタテーブル (t6, PS)
+		RootSignatureManager::DescriptorRangeConfig shadowMapRange;
+		shadowMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		shadowMapRange.numDescriptors = 1;
+		shadowMapRange.baseShaderRegister = 6;
+		rootSignatureMg_->AddDescriptorTable({ shadowMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
 
 		// Static Sampler (s0, PS)
 		rootSignatureMg_->AddDefaultLinearSampler(0, D3D12_SHADER_VISIBILITY_PIXEL);
+
+		// Static Sampler (s1, PS) - Comparison Sampler for Shadow Map
+		RootSignatureManager::StaticSamplerConfig shadowSampler;
+		shadowSampler.shaderRegister = 1;
+		shadowSampler.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		shadowSampler.filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+		shadowSampler.comparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		shadowSampler.addressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		shadowSampler.addressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		shadowSampler.addressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		shadowSampler.borderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+		rootSignatureMg_->AddStaticSampler(shadowSampler);
 
 		rootSignatureMg_->Create(device);
 
@@ -138,7 +163,19 @@ namespace CoreEngine
 		if (environmentMapHandle_.ptr != 0) {
 			cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kEnvironmentMap, environmentMapHandle_);
 		}
+
+		// ライトビュープロジェクション行列をセット（未設定の場合はスキップ）
+		// 注意: シェーダーがこのリソースを期待している場合、ダミーデータが必要
+		if (lightViewProjectionCBV_ != 0) {
+			cmdList->SetGraphicsRootConstantBufferView(ModelRendererRootParam::kLightViewProjection, lightViewProjectionCBV_);
+		}
+
+	// シャドウマップをセット（未設定の場合はスキップ）
+	// 注意: シェーダーがこのリソースを期待している場合、ダミーテクスチャが必要
+	if (shadowMapHandle_.ptr != 0) {
+		cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kShadowMap, shadowMapHandle_);
 	}
+}
 
 	void ModelRenderer::EndPass() {
 	}

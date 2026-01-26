@@ -479,6 +479,8 @@
     <ClCompile Include="Engine\Graphics\Light\LightBufferManager.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightDebugVisualizer.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightManager.cpp" />
+    <ClCompile Include="Engine\Graphics\Shadow\ShadowMapManager.cpp" />
+    <ClCompile Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1385,6 +1387,8 @@
     <ClInclude Include="Engine\Scene\AssignmentScene\AssignmentScene.h" />
     <ClInclude Include="Engine\Graphics\Light\LightBufferManager.h" />
     <ClInclude Include="Engine\Graphics\Light\LightDebugVisualizer.h" />
+    <ClInclude Include="Engine\Graphics\Shadow\ShadowMapManager.h" />
+    <ClInclude Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">

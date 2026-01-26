@@ -225,8 +225,10 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\Render\Particle\ModelParticleRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Particle\ParticleRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\RenderManager.cpp" />
+    <ClCompile Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\SkyBox\SkyBoxRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Sprite\SpriteRenderer.cpp" />
+    <ClCompile Include="Engine\Graphics\Shadow\ShadowMapManager.cpp" />
     <ClCompile Include="Engine\Graphics\TextureManager.cpp" />
     <ClCompile Include="Engine\ObjectCommon\GameObject.cpp" />
     <ClCompile Include="Engine\ObjectCommon\GameObjectManager.cpp" />
@@ -446,8 +448,10 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Graphics\Render\Particle\ParticleRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\RenderManager.h" />
     <ClInclude Include="Engine\Graphics\Render\RenderPassType.h" />
+    <ClInclude Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\SkyBox\SkyBoxRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\Sprite\SpriteRenderer.h" />
+    <ClInclude Include="Engine\Graphics\Shadow\ShadowMapManager.h" />
     <ClInclude Include="Engine\Graphics\Structs\Node.h" />
     <ClInclude Include="Engine\Graphics\Structs\SkinCluster.h" />
     <ClInclude Include="Engine\Math\EulerTransform.h" />

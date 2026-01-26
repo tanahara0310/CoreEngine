@@ -14,7 +14,7 @@ namespace CoreEngine
 	class DescriptorManager;
 
 	/// @brief ライトマネージャー（ライトの管理と制御を担当）
-	class LightManager{
+	class LightManager {
 	public:
 		static constexpr uint32_t MAX_DIRECTIONAL_LIGHTS = 4;
 		static constexpr uint32_t MAX_POINT_LIGHTS = 16;
@@ -108,6 +108,12 @@ namespace CoreEngine
 
 		/// @brief 全てのライトをクリア（シーン切り替え時に使用）
 		void ClearAllLights();
+
+		/// @brief メインディレクショナルライトのビュープロジェクション行列を計算
+		/// @param sceneCenter シーンの中心座標
+		/// @param sceneRadius シーンを囲む半径
+		/// @return ライトビュープロジェクション行列
+		Matrix4x4 CalculateMainDirectionalLightViewProjection(const Vector3& sceneCenter, float sceneRadius);
 
 	private:
 		std::vector<DirectionalLightData> directionalLights_;

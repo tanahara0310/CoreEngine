@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
 #include "Engine/Math/Vector/Vector3.h"

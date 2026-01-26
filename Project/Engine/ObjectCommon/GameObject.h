@@ -35,6 +35,10 @@ namespace CoreEngine
 		/// @param camera カメラオブジェクト（2Dオブジェクトの場合は nullptr でも可）
 		virtual void Draw(const ICamera* camera) { (void)camera; }
 
+		/// @brief シャドウマップ用の描画処理（派生クラスでオーバーライド可能）
+		/// @param cmdList コマンドリスト
+		virtual void DrawShadow(ID3D12GraphicsCommandList* cmdList);
+
 		/// @brief アクティブ状態を設定
 		void SetActive(bool active) { isActive_ = active; }
 

@@ -64,12 +64,40 @@ namespace CoreEngine
 			cameraManager_->Update();
 		}
 
-		// ライトマネージャーの更新
-		auto lightManager = engine_->GetComponent<LightManager>();
-		if (lightManager) {
-			lightManager->UpdateAll();
+	// ライトマネージャーの更新
+	auto lightManager = engine_->GetComponent<LightManager>();
+	if (lightManager) {
+		lightManager->UpdateAll();
 
+		// シャドウマップ用のライトView-Projection行列を計算
+		if (directionalLight_ && directionalLight_->enabled) {
+			// ライトの方向から位置を計算（シーンの中心から一定距離離れた位置）
+			Vector3 lightDir = MathCore::Vector::Normalize(directionalLight_->direction);
+			Vector3 lightPos = MathCore::Vector::Multiply(-50.0f, lightDir); // ライトをシーンから50単位離す
+
+			// ライトのビュー行列を計算
+			Vector3 target = { 0.0f, 0.0f, 0.0f }; // シーンの中心を見る
+			Vector3 up = { 0.0f, 1.0f, 0.0f };
+			Matrix4x4 lightView = MathCore::Matrix::LookAt(lightPos, target, up);
+
+			// 正射影行列を計算（シャドウマップ用）
+			float orthoSize = 50.0f; // シャドウマップが描画する範囲
+			Matrix4x4 lightProjection = MathCore::Rendering::Orthographic(
+				-orthoSize, orthoSize,  // 左、上
+				orthoSize, -orthoSize,  // 右、下
+				0.1f, 100.0f           // 近平面・遠平面
+			);
+
+			// ライトView-Projection行列を計算
+			Matrix4x4 lightViewProjection = MathCore::Matrix::Multiply(lightView, lightProjection);
+
+			// RenderManagerに設定
+			auto renderManager = engine_->GetComponent<RenderManager>();
+			if (renderManager) {
+				renderManager->SetLightViewProjection(lightViewProjection);
+			}
 		}
+	}
 
 #ifdef _DEBUG
 		// カメラマネージャーのImGui
