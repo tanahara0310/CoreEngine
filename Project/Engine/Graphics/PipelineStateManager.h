@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <dxcapi.h>
@@ -49,6 +49,16 @@ public:
 	PipelineStateBuilder& SetRasterizer(
 		D3D12_CULL_MODE cullMode = D3D12_CULL_MODE_BACK,
 		D3D12_FILL_MODE fillMode = D3D12_FILL_MODE_SOLID);
+
+	/// @brief 深度バイアスの設定（シャドウアクネ対策）
+	/// @param depthBias 深度バイアス値
+	/// @param slopeScaledDepthBias スロープスケール深度バイアス
+	/// @param depthBiasClamp 深度バイアスクランプ
+	/// @return ビルダー自身
+	PipelineStateBuilder& SetDepthBias(
+		INT depthBias = 0,
+		float slopeScaledDepthBias = 0.0f,
+		float depthBiasClamp = 0.0f);
 
 	/// @brief 深度ステンシルの設定
 	/// @param enableDepth 深度テストの有効化

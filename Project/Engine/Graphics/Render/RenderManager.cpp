@@ -71,16 +71,6 @@ namespace CoreEngine
 		cmd.blendMode = obj->GetBlendMode();
 
 		drawQueue_.push_back(cmd);
-
-#ifdef _DEBUG
-		static int totalAdded = 0;
-		totalAdded++;
-		if (totalAdded % 100 == 0) {
-			char debugMsg[256];
-			sprintf_s(debugMsg, "AddDrawable called: total=%d, queue size=%zu\n", totalAdded, drawQueue_.size());
-			OutputDebugStringA(debugMsg);
-		}
-#endif
 	}
 
 	const ICamera* RenderManager::GetCameraForPass(RenderPassType passType) {
@@ -112,9 +102,6 @@ namespace CoreEngine
 #endif
 			return;
 		}
-
-// デバッグログは必要に応じてコメントアウトを解除
-// OutputDebugStringA("DrawAll() called\n");
 
 		if (!cmdList_) {
 #ifdef _DEBUG
@@ -168,9 +155,6 @@ namespace CoreEngine
 		if (!renderer) {
 			return; // シャドウマップレンダラーが登録されていない
 		}
-
-// デバッグログは必要に応じてコメントアウトを解除
-// OutputDebugStringA("RenderShadowMapPass() called\n");
 
 		// 型の安全チェック
 		auto* shadowMapRenderer = static_cast<ShadowMapRenderer*>(renderer);
@@ -229,25 +213,12 @@ namespace CoreEngine
 			}
 		}
 
-// デバッグログは必要に応じてコメントアウトを解除
-// OutputDebugStringA("Shadow objects drawn\n");
-
 		// シャドウマップパスを終了
 		shadowMapRenderer->EndPass();
-
-		// 注意: DSVのリセットは行わない
-		// ExecuteRenderPipeline()で再度OffscreenPreDraw()が呼ばれ、正しいRTV/DSVが設定される
 	}
 
 
 	void RenderManager::RenderNormalPass() {
-		// シャドウマップパス後、通常のRTV/DSVとビューポートを復元
-		if (render_) {
-			// 注意: この処理はRenderクラスのOffscreenPreDraw()で既に行われているはずだが、
-			// シャドウマップパス後に明示的に復元する
-			// TODO: Renderクラスに専用のメソッドを追加することを検討
-		}
-
 		RenderPassType currentPass = RenderPassType::Invalid;
 		IRenderer* currentRenderer = nullptr;
 		const ICamera* currentCamera = nullptr;

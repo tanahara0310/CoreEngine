@@ -52,6 +52,9 @@ namespace CoreEngine
 		/// @brief ライトのセットアップ
 		void SetupLight();
 
+		/// @brief シャドウマップ用のライトView-Projection行列を更新
+		void UpdateLightViewProjection();
+
 #ifdef _DEBUG
 		/// @brief グリッドのセットアップ（デバッグビルドのみ）
 		void SetupGrid();
@@ -62,6 +65,12 @@ namespace CoreEngine
 		EngineSystem* engine_ = nullptr;
 		std::unique_ptr<CameraManager> cameraManager_;
 		DirectionalLightData* directionalLight_ = nullptr;
+
+		// シャドウマップ設定（派生クラスで調整可能）
+		static constexpr float kShadowLightDistance = 50.0f;  // ライトの距離
+		static constexpr float kShadowOrthoSize = 50.0f;      // 正射影範囲
+		static constexpr float kShadowNearPlane = 0.1f;       // 近平面
+		static constexpr float kShadowFarPlane = 100.0f;      // 遠平面
 
 		// ゲームオブジェクト管理（新システム）
 		GameObjectManager gameObjectManager_;

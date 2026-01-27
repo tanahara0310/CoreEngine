@@ -87,6 +87,17 @@ PipelineStateBuilder& PipelineStateBuilder::SetRasterizer(D3D12_CULL_MODE cullMo
 	return *this;
 }
 
+PipelineStateBuilder& PipelineStateBuilder::SetDepthBias(
+	INT depthBias,
+	float slopeScaledDepthBias,
+	float depthBiasClamp)
+{
+	rasterizerDesc_.DepthBias = depthBias;
+	rasterizerDesc_.SlopeScaledDepthBias = slopeScaledDepthBias;
+	rasterizerDesc_.DepthBiasClamp = depthBiasClamp;
+	return *this;
+}
+
 PipelineStateBuilder& PipelineStateBuilder::SetDepthStencil(
 	bool enableDepth,
 	bool enableWrite,

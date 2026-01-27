@@ -1,4 +1,4 @@
-﻿#include "TerrainObject.h"
+#include "TerrainObject.h"
 #include "Engine/EngineSystem/EngineSystem.h"
 #include "Engine/Graphics/Model/ModelManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
