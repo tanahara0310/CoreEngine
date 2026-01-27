@@ -1,4 +1,4 @@
-﻿#include "GameScene.h"
+#include "GameScene.h"
 #include "Engine/Input/KeyboardInput.h"
 #include "Engine/Input/InputManager.h"
 #include "Engine/Input/GamepadInput.h"
@@ -258,7 +258,7 @@ void GameScene::InitializePlayer() {
 void GameScene::InitializeReticle() {
 	// レティクルの初期化
 	reticle_ = CreateObject<ReticleObject>();
-	reticle_->Initialize("Assets/Texture/rethicle.png");
+	reticle_->Initialize("Assets/AppAssets/Texture/reticle.png");
 	reticle_->SetMoveSpeed(400.0f);
 	reticle_->SetMoveMargin(30.0f, 30.0f);
 	reticle_->SetActive(true);

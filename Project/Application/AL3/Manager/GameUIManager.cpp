@@ -270,86 +270,16 @@ void GameUIManager::UpdateBossHPBar(float deltaTime) {
 		fillProgress = fillEasedT;  // ローカル変数をメンバに反映（次のセクションで使用）
 	}
 
-	// 現在のHP割合を取得
-	float currentHPRatio = boss_->GetHPRatio();
-
-	// UI表示演出中はHPバーを徐々に増やす
-	float displayHPRatio = currentHPRatio;
-	if (isUIAnimating_) {
-		// 回転完了後からHP増加開始
-		float fillStartTime = HP_BAR_ROTATION_DURATION;
-		float fillProgress = 0.0f;
-
-		if (uiAnimationTimer_ > fillStartTime) {
-			float fillElapsed = uiAnimationTimer_ - fillStartTime;
-			fillProgress = (fillElapsed < HP_FILL_DURATION)
-				? (fillElapsed / HP_FILL_DURATION)
-				: 1.0f;
-
-			// HP増加のイージング（EaseOutQuad）
-			float fillEasedT = 1.0f - std::pow(1.0f - fillProgress, 2.0f);
-			displayHPRatio = currentHPRatio * fillEasedT;
-		} else {
-			// 回転中はHPを0に
-			displayHPRatio = 0.0f;
-		}
-	}
-
-	// 遅延HPを更新（常に現在HPと比較して大きい方を保持し、徐々に減少）
-	if (delayedHPRatio_ > currentHPRatio) {
-		// 現在のHPとの差分を計算
-		float hpDifference = delayedHPRatio_ - currentHPRatio;
-
-		// 差分が大きい場合は速く、小さい場合は遅く減少させる（段階的な減速）
-		float decaySpeed;
-		if (hpDifference > HP_DELAY_THRESHOLD) {
-			// 差が大きい時は速めに減少
-			decaySpeed = HP_DELAY_SPEED_FAST;
-		} else {
-			// 差が小さくなったらゆっくり減少（ダメージ量を確認しやすく）
-			decaySpeed = HP_DELAY_SPEED_SLOW;
-		}
-
-		// 遅延HPを減少
-		delayedHPRatio_ -= decaySpeed * deltaTime;
-
-		// 現在のHPを下回らないようにクランプ
-		if (delayedHPRatio_ < currentHPRatio) {
-			delayedHPRatio_ = currentHPRatio;
-		}
-	}
-
-	// UI表示演出中は遅延HPも演出に合わせる
-	float displayDelayedHPRatio = delayedHPRatio_;
-	if (isUIAnimating_) {
-		// 回転完了後からHP増加開始
-		float fillStartTime = HP_BAR_ROTATION_DURATION;
-		float fillProgress = 0.0f;
-
-		if (uiAnimationTimer_ > fillStartTime) {
-			float fillElapsed = uiAnimationTimer_ - fillStartTime;
-			fillProgress = (fillElapsed < HP_FILL_DURATION)
-				? (fillElapsed / HP_FILL_DURATION)
-				: 1.0f;
-
-			// HP増加のイージング（EaseOutQuad）
-			float fillEasedT = 1.0f - std::pow(1.0f - fillProgress, 2.0f);
-			displayDelayedHPRatio = delayedHPRatio_ * fillEasedT;
-		} else {
-			// 回転中はHPを0に
-			displayDelayedHPRatio = 0.0f;
-		}
-	}
-
-	// 前景バー（緑）の更新
-	bossHPBarForeground_->GetSpriteTransform().scale.x = HP_BAR_WIDTH * displayHPRatio;
-	float foregroundOffset = HP_BAR_WIDTH * (1.0f - displayHPRatio) * -0.5f;
-	bossHPBarForeground_->GetSpriteTransform().translate.x = foregroundOffset;
-
-	// 遅延バー（赤）の更新
-	bossHPBarDelay_->GetSpriteTransform().scale.x = HP_BAR_WIDTH * displayDelayedHPRatio;
-	float delayOffset = HP_BAR_WIDTH * (1.0f - displayDelayedHPRatio) * -0.5f;
-	bossHPBarDelay_->GetSpriteTransform().translate.x = delayOffset;
+	// 共通ロジックでHPバーを更新
+	HPBarUpdateParams params{
+		boss_->GetHPRatio(),
+		delayedHPRatio_,
+		bossHPBarForeground_,
+		bossHPBarDelay_,
+		HP_BAR_WIDTH,
+		deltaTime
+	};
+	UpdateHPBarCommon(params);
 }
 
 void GameUIManager::UpdatePlayerHPBar(float deltaTime) {
@@ -357,8 +287,21 @@ void GameUIManager::UpdatePlayerHPBar(float deltaTime) {
 		return;
 	}
 
+	// 共通ロジックでHPバーを更新
+	HPBarUpdateParams params{
+		player_->GetHPRatio(),
+		playerDelayedHPRatio_,
+		playerHPBarForeground_,
+		playerHPBarDelay_,
+		PLAYER_HP_BAR_WIDTH,
+		deltaTime
+	};
+	UpdateHPBarCommon(params);
+}
+
+void GameUIManager::UpdateHPBarCommon(HPBarUpdateParams& params) {
 	// 現在のHP割合を取得
-	float currentHPRatio = player_->GetHPRatio();
+	float currentHPRatio = params.currentHPRatio;
 
 	// UI表示演出中はHPバーを徐々に増やす
 	float displayHPRatio = currentHPRatio;
@@ -383,9 +326,9 @@ void GameUIManager::UpdatePlayerHPBar(float deltaTime) {
 	}
 
 	// 遅延HPを更新（常に現在HPと比較して大きい方を保持し、徐々に減少）
-	if (playerDelayedHPRatio_ > currentHPRatio) {
+	if (params.delayedHPRatio > currentHPRatio) {
 		// 現在のHPとの差分を計算
-		float hpDifference = playerDelayedHPRatio_ - currentHPRatio;
+		float hpDifference = params.delayedHPRatio - currentHPRatio;
 
 		// 差分が大きい場合は速く、小さい場合は遅く減少させる（段階的な減速）
 		float decaySpeed;
@@ -398,16 +341,16 @@ void GameUIManager::UpdatePlayerHPBar(float deltaTime) {
 		}
 
 		// 遅延HPを減少
-		playerDelayedHPRatio_ -= decaySpeed * deltaTime;
+		params.delayedHPRatio -= decaySpeed * params.deltaTime;
 
 		// 現在のHPを下回らないようにクランプ
-		if (playerDelayedHPRatio_ < currentHPRatio) {
-			playerDelayedHPRatio_ = currentHPRatio;
+		if (params.delayedHPRatio < currentHPRatio) {
+			params.delayedHPRatio = currentHPRatio;
 		}
 	}
 
 	// UI表示演出中は遅延HPも演出に合わせる
-	float displayDelayedHPRatio = playerDelayedHPRatio_;
+	float displayDelayedHPRatio = params.delayedHPRatio;
 	if (isUIAnimating_) {
 		// 回転完了後からHP増加開始
 		float fillStartTime = HP_BAR_ROTATION_DURATION;
@@ -421,7 +364,7 @@ void GameUIManager::UpdatePlayerHPBar(float deltaTime) {
 
 			// HP増加のイージング（EaseOutQuad）
 			float fillEasedT = 1.0f - std::pow(1.0f - fillProgress, 2.0f);
-			displayDelayedHPRatio = playerDelayedHPRatio_ * fillEasedT;
+			displayDelayedHPRatio = params.delayedHPRatio * fillEasedT;
 		} else {
 			// 回転中はHPを0に
 			displayDelayedHPRatio = 0.0f;
@@ -429,14 +372,14 @@ void GameUIManager::UpdatePlayerHPBar(float deltaTime) {
 	}
 
 	// 前景バー（緑）の更新
-	playerHPBarForeground_->GetSpriteTransform().scale.x = PLAYER_HP_BAR_WIDTH * displayHPRatio;
-	float foregroundOffset = PLAYER_HP_BAR_WIDTH * (1.0f - displayHPRatio) * -0.5f;
-	playerHPBarForeground_->GetSpriteTransform().translate.x = foregroundOffset;
+	params.foregroundBar->GetSpriteTransform().scale.x = params.barWidth * displayHPRatio;
+	float foregroundOffset = params.barWidth * (1.0f - displayHPRatio) * -0.5f;
+	params.foregroundBar->GetSpriteTransform().translate.x = foregroundOffset;
 
 	// 遅延バー（赤）の更新
-	playerHPBarDelay_->GetSpriteTransform().scale.x = PLAYER_HP_BAR_WIDTH * displayDelayedHPRatio;
-	float delayOffset = PLAYER_HP_BAR_WIDTH * (1.0f - displayDelayedHPRatio) * -0.5f;
-	playerHPBarDelay_->GetSpriteTransform().translate.x = delayOffset;
+	params.delayBar->GetSpriteTransform().scale.x = params.barWidth * displayDelayedHPRatio;
+	float delayOffset = params.barWidth * (1.0f - displayDelayedHPRatio) * -0.5f;
+	params.delayBar->GetSpriteTransform().translate.x = delayOffset;
 }
 
 void GameUIManager::UpdateResultAnimation(float deltaTime) {

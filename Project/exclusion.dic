@@ -128,3 +128,5 @@ mfreadwrite
 mfuuid
 hlsl
 hlsl
+cubemap
+cmft
