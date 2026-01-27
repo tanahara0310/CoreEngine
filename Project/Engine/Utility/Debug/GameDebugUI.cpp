@@ -1,4 +1,4 @@
-﻿#include "GameDebugUI.h"
+#include "GameDebugUI.h"
 
 #include "Utility/Debug/ImGui/DockingUI.h"
 #include <EngineSystem.h>

@@ -35,7 +35,7 @@ namespace CoreEngine
 		}
 
 		// ===== 3Dゲームオブジェクトの生成と初期化 =====
-		
+
 		// Sphereオブジェクト
 		sphere_ = CreateObject<SphereObject>();
 		sphere_->Initialize();
@@ -43,37 +43,38 @@ namespace CoreEngine
 		sphere_->GetTransform().translate = { 0.0f, 2.0f, 0.0f };
 		sphere_->GetTransform().scale = { 2.0f, 2.0f, 2.0f };
 
-		// Terrainオブジェクト
-		terrain_ = CreateObject<TerrainObject>();
-		terrain_->Initialize();
-		terrain_->SetActive(true);
-		terrain_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-		terrain_->GetTransform().scale = { 3.0f, 3.0f, 3.0f };
+		// Planeオブジェクト
+		plane_ = CreateObject<Plane>();
+		plane_->Initialize();
+		plane_->SetActive(true);
+		plane_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
+		plane_->GetTransform().scale = { 10.0f, 10.0f, 10.0f };
+
 
 		// WalkModelオブジェクト1（モンスターボールの左側）
 		walkModel1_ = CreateObject<WalkModelObject>();
 		walkModel1_->Initialize();
 		walkModel1_->SetActive(true);
 		walkModel1_->GetTransform().translate = { -4.0f, 0.0f, 0.0f };
-		walkModel1_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+		walkModel1_->GetTransform().scale = { 2.0f, 2.0f, 2.0f };
 
 		// WalkModelオブジェクト2（モンスターボールの右側）
 		walkModel2_ = CreateObject<WalkModelObject>();
 		walkModel2_->Initialize();
 		walkModel2_->SetActive(true);
 		walkModel2_->GetTransform().translate = { 4.0f, 0.0f, 0.0f };
-		walkModel2_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+		walkModel2_->GetTransform().scale = { 2.0f, 2.0f, 2.0f };
 
 		// ===== ライトの設定 =====
 
 		// ベースシーンのディレクショナルライト（インデックス0）の輝度を変更
 		auto directionalLight = lightManager->GetDirectionalLight(0);
 		if (directionalLight) {
-			directionalLight->intensity = 0.3f;
+			directionalLight->intensity = 1.0f;
 		}
 
 		// ===== ポイントライト x2（左右に配置、赤と青）=====
-		
+
 		// ポイントライト1 - 左側（赤色）
 		auto pointLight1 = lightManager->AddPointLight();
 		if (pointLight1) {
@@ -82,7 +83,7 @@ namespace CoreEngine
 			pointLight1->intensity = 3.0f;
 			pointLight1->radius = 10.0f;
 			pointLight1->decay = 1.0f;
-			pointLight1->enabled = true;
+			pointLight1->enabled = false;
 		}
 
 		// ポイントライト2 - 右側（青色）
@@ -93,11 +94,11 @@ namespace CoreEngine
 			pointLight2->intensity = 3.0f;
 			pointLight2->radius = 10.0f;
 			pointLight2->decay = 1.0f;
-			pointLight2->enabled = true;
+			pointLight2->enabled = false;
 		}
 
 		// ===== スポットライト x2（前後に配置、黄色と緑色）=====
-		
+
 		// スポットライト1 - 前側（黄色）
 		auto spotLight1 = lightManager->AddSpotLight();
 		if (spotLight1) {
@@ -109,7 +110,7 @@ namespace CoreEngine
 			spotLight1->decay = 1.0f;
 			spotLight1->cosAngle = std::cos(30.0f * 3.14159f / 180.0f);  // 30度
 			spotLight1->cosFalloffStart = std::cos(20.0f * 3.14159f / 180.0f);  // 20度
-			spotLight1->enabled = true;
+			spotLight1->enabled = false;
 		}
 
 		// スポットライト2 - 後側（緑色）
@@ -123,11 +124,11 @@ namespace CoreEngine
 			spotLight2->decay = 1.0f;
 			spotLight2->cosAngle = std::cos(30.0f * 3.14159f / 180.0f);  // 30度
 			spotLight2->cosFalloffStart = std::cos(20.0f * 3.14159f / 180.0f);  // 20度
-			spotLight2->enabled = true;
+			spotLight2->enabled = false;
 		}
 
 		// ===== エリアライト x2（左右上に配置、暖色と寒色）=====
-		
+
 		// エリアライト1 - 左上（暖色系）
 		auto areaLight1 = lightManager->AddAreaLight();
 		if (areaLight1) {
@@ -140,7 +141,7 @@ namespace CoreEngine
 			areaLight1->right = { 1.0f, 0.0f, 0.0f };
 			areaLight1->up = { 0.0f, 0.0f, 1.0f };
 			areaLight1->range = 18.0f;
-			areaLight1->enabled = true;
+			areaLight1->enabled = false;
 		}
 
 		// エリアライト2 - 右上（寒色系）
@@ -155,7 +156,7 @@ namespace CoreEngine
 			areaLight2->right = { 1.0f, 0.0f, 0.0f };
 			areaLight2->up = { 0.0f, 0.0f, 1.0f };
 			areaLight2->range = 18.0f;
-			areaLight2->enabled = true;
+			areaLight2->enabled = false;
 		}
 
 #ifdef _DEBUG

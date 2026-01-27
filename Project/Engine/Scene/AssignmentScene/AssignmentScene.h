@@ -13,7 +13,7 @@
 
 // GameObjectのインクルード
 #include "TestGameObject/SphereObject.h"
-#include "TestGameObject/TerrainObject.h"
+#include "TestGameObject/Plane.h"
 #include "TestGameObject/WalkModelObject.h"
 
 /// @brief 課題専用シーン
@@ -39,7 +39,7 @@ namespace CoreEngine
 	private:
 	// オブジェクトへのポインタ（デバッグUI用）
 	SphereObject* sphere_ = nullptr;
-	TerrainObject* terrain_ = nullptr;
+	Plane* plane_ = nullptr;
 	WalkModelObject* walkModel1_ = nullptr;
 	WalkModelObject* walkModel2_ = nullptr;
 	};

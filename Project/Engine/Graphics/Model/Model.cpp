@@ -85,17 +85,6 @@ namespace CoreEngine
 	void Model::UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera) {
 		assert(wvpResource_);
 
-		// デバッグ: ConstantBufferのサイズを確認
-#ifdef _DEBUG
-		D3D12_RESOURCE_DESC desc = wvpResource_->GetDesc();
-		if (desc.Width != sizeof(TransformationMatrix)) {
-			char debugMsg[256];
-			sprintf_s(debugMsg, "WARNING: ConstantBuffer size mismatch! Expected: %zu, Actual: %llu\n",
-				sizeof(TransformationMatrix), desc.Width);
-			OutputDebugStringA(debugMsg);
-		}
-#endif
-
 		// 行列計算
 		Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 		Matrix4x4 viewMatrix = camera->GetViewMatrix();

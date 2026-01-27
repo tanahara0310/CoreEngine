@@ -38,6 +38,7 @@ namespace CoreEngine
 		bool normalResult = normalModelPSO_->CreateBuilder()
 			.AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
 			.SetRasterizer(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID) // フロントフェースカリング
+			.SetDepthBias(3000, 3.0f, 0.0f) // DepthBiasとSlopeScaledDepthBiasを設定
 			.SetDepthStencil(true, true, D3D12_COMPARISON_FUNC_LESS)
 			.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
 			.SetRenderTargetFormat(DXGI_FORMAT_UNKNOWN, 0) // レンダーターゲットなし
@@ -62,6 +63,7 @@ namespace CoreEngine
 			.AddInputElement("WEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT, 1)
 			.AddInputElement("INDEX", 0, DXGI_FORMAT_R32G32B32A32_SINT, D3D12_APPEND_ALIGNED_ELEMENT, 1)
 			.SetRasterizer(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID) // フロントフェースカリング
+			.SetDepthBias(3000, 3.0f, 0.0f) // DepthBiasとSlopeScaledDepthBiasを設定
 			.SetDepthStencil(true, true, D3D12_COMPARISON_FUNC_LESS)
 			.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
 			.SetRenderTargetFormat(DXGI_FORMAT_UNKNOWN, 0) // レンダーターゲットなし
