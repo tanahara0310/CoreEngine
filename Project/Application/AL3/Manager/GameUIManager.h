@@ -68,17 +68,31 @@ public:
 	void Update();
 
 private:
-	/// @brief ボスHPバーの更新
-	/// @param deltaTime デルタタイム
-	void UpdateBossHPBar(float deltaTime);
+/// @brief ボスHPバーの更新
+/// @param deltaTime デルタタイム
+void UpdateBossHPBar(float deltaTime);
 
-	/// @brief プレイヤーHPバーの更新
-	/// @param deltaTime デルタタイム
-	void UpdatePlayerHPBar(float deltaTime);
+/// @brief プレイヤーHPバーの更新
+/// @param deltaTime デルタタイム
+void UpdatePlayerHPBar(float deltaTime);
 
-	/// @brief リザルト演出の更新
-	/// @param deltaTime デルタタイム
-	void UpdateResultAnimation(float deltaTime);
+/// @brief リザルト演出の更新
+/// @param deltaTime デルタタイム
+void UpdateResultAnimation(float deltaTime);
+
+/// @brief HPバー更新の共通ロジック
+struct HPBarUpdateParams {
+float currentHPRatio;
+float& delayedHPRatio;
+CoreEngine::SpriteObject* foregroundBar;
+CoreEngine::SpriteObject* delayBar;
+float barWidth;
+float deltaTime;
+};
+
+/// @brief HPバーを共通ロジックで更新
+/// @param params 更新パラメータ
+void UpdateHPBarCommon(HPBarUpdateParams& params);
 
 	CoreEngine::EngineSystem* engine_ = nullptr;
 	PlayerObject* player_ = nullptr;

@@ -1,4 +1,4 @@
-﻿#include "TitleScene.h"
+#include "TitleScene.h"
 #include "Engine/Input/KeyboardInput.h"
 #include "Engine/Input/InputManager.h"
 #include "Engine/Input/GamepadInput.h"
@@ -90,7 +90,7 @@ void TitleScene::InitializeMenuButtons()
 {
 	// スタートボタンの初期化
 	auto startSprite = CreateObject<SpriteObject>();
-	startSprite->Initialize("AppAssets/Texture/stert.png");
+	startSprite->Initialize("AppAssets/Texture/start.png");
 	startSprite->GetSpriteTransform().translate = { kStartButtonStartX, kStartButtonTargetY, 0.0f };
 	startSprite->GetSpriteTransform().scale = { 0.7f, 0.7f, 1.0f };
 	startSprite->SetColor({ 1.0f, 1.0f, 1.0f, 0.0f });
