@@ -404,69 +404,6 @@
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Bloom.cpp">
       <Filter>Engine\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
-    <ClCompile Include="Application\AL3\AI\Action\BossActionManager.cpp">
-      <Filter>Application\AL3\AI\Action</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\AI\Action\BossActions.cpp">
-      <Filter>Application\AL3\AI\Action</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\AI\BehaviorTree\BehaviorTreeNodes.cpp">
-      <Filter>Application\AL3\AI\BehaviorTree</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\AI\BossAI.cpp">
-      <Filter>Application\AL3\AI</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\Camera\GameCameraController.cpp">
-      <Filter>Application\AL3\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\Debug\BossAIDebugUI.cpp">
-      <Filter>Application\AL3\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\BossBulletObject.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\BossObject.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\BulletObject.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\CircleShadowObject.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\FloorObject.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\JumpAttackHitbox.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\PlayerObject.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\ReticleObject.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\SkydomeObject.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\GameObject\WallObject.cpp">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\Manager\GamePlayManager.cpp">
-      <Filter>Application\AL3\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\Manager\GameUIManager.cpp">
-      <Filter>Application\AL3\Manager</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\Scene\GameScene\GameScene.cpp">
-      <Filter>Application\AL3\Scene\GameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\Scene\ResultScene\ResultScene.cpp">
-      <Filter>Application\AL3\Scene\ResultScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\AL3\Scene\TitleScene\TitleScene.cpp">
-      <Filter>Application\AL3\Scene\TitleScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Camera\Debug\CameraDebugUI.cpp" />
     <ClCompile Include="Engine\Camera\ICamera.cpp" />
     <ClCompile Include="Engine\Camera\CameraPresetManager.cpp" />
@@ -1306,78 +1243,6 @@
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Bloom.h">
       <Filter>Engine\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
-    <ClInclude Include="Application\AL3\AI\Action\BossAction.h">
-      <Filter>Application\AL3\AI\Action</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\AI\Action\BossActionManager.h">
-      <Filter>Application\AL3\AI\Action</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\AI\Action\BossActions.h">
-      <Filter>Application\AL3\AI\Action</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\AI\BehaviorTree\BehaviorNode.h">
-      <Filter>Application\AL3\AI\BehaviorTree</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\AI\BehaviorTree\BehaviorTreeNodes.h">
-      <Filter>Application\AL3\AI\BehaviorTree</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\AI\BehaviorTree\CompositeNode.h">
-      <Filter>Application\AL3\AI\BehaviorTree</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\AI\BossAI.h">
-      <Filter>Application\AL3\AI</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\Camera\GameCameraController.h">
-      <Filter>Application\AL3\Camera</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\Debug\BossAIDebugUI.h">
-      <Filter>Application\AL3\Debug</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\BossBulletObject.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\BossObject.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\BulletObject.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\CircleShadowObject.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\FloorObject.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\JumpAttackHitbox.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\PlayerObject.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\ReticleObject.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\SkydomeObject.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\GameObject\WallObject.h">
-      <Filter>Application\AL3\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\Manager\GamePlayManager.h">
-      <Filter>Application\AL3\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\Manager\GameUIManager.h">
-      <Filter>Application\AL3\Manager</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\Scene\GameScene\GameScene.h">
-      <Filter>Application\AL3\Scene\GameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\Scene\ResultScene\ResultScene.h">
-      <Filter>Application\AL3\Scene\ResultScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\AL3\Scene\TitleScene\TitleScene.h">
-      <Filter>Application\AL3\Scene\TitleScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\\EngineSystem\\EngineSystem.h" />
     <ClInclude Include="Engine\Camera\Debug\CameraDebugUI.h" />
     <ClInclude Include="Engine\Camera\ICamera.h" />
@@ -1425,12 +1290,6 @@
     </None>
     <None Include="Engine\Graphics\Font\README.md">
       <Filter>Engine\Graphics\Font</Filter>
-    </None>
-    <None Include="Docs\README.md">
-      <Filter>Docs</Filter>
-    </None>
-    <None Include="Docs\SceneGuide.md">
-      <Filter>Docs</Filter>
     </None>
     <None Include="Scripts\ConvertToTabs.ps1" />
     <None Include="Scripts\ConvertToCRLF.ps1" />

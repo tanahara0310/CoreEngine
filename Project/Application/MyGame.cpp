@@ -3,10 +3,7 @@
 #include "WinApp/WinApp.h"
 #include "Scene/TestScene/TestScene.h"
 #include "Scene/ParticleTestScene/ParticleTestScene.h"
-#include "Application/AL3/Scene/TitleScene/TitleScene.h"
 #include "Scene/AssignmentScene/AssignmentScene.h"
-#include "Application/AL3/Scene/GameScene/GameScene.h"
-#include "Application/AL3/Scene/ResultScene/ResultScene.h"
 
 using namespace CoreEngine;
 
@@ -25,9 +22,6 @@ void MyGame::Initialize()
 	sceneManager_->RegisterScene<TestScene>("TestScene");
 	sceneManager_->RegisterScene<ParticleTestScene>("ParticleTestScene");
 	sceneManager_->RegisterScene<AssignmentScene>("AssignmentScene");
-	sceneManager_->RegisterScene<TitleScene>("TitleScene");
-	sceneManager_->RegisterScene<GameScene>("GameScene");
-	sceneManager_->RegisterScene<ResultScene>("ResultScene");
 
 	// 初期シーンを設定（トランジション無し）
 	sceneManager_->SetInitialScene("AssignmentScene");

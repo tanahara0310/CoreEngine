@@ -164,27 +164,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Application\AL3\AI\Action\BossActionManager.cpp" />
-    <ClCompile Include="Application\AL3\AI\Action\BossActions.cpp" />
-    <ClCompile Include="Application\AL3\AI\BehaviorTree\BehaviorTreeNodes.cpp" />
-    <ClCompile Include="Application\AL3\AI\BossAI.cpp" />
-    <ClCompile Include="Application\AL3\Camera\GameCameraController.cpp" />
-    <ClCompile Include="Application\AL3\Debug\BossAIDebugUI.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\BossBulletObject.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\BossObject.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\BulletObject.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\CircleShadowObject.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\FloorObject.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\JumpAttackHitbox.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\PlayerObject.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\ReticleObject.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\SkydomeObject.cpp" />
-    <ClCompile Include="Application\AL3\GameObject\WallObject.cpp" />
-    <ClCompile Include="Application\AL3\Manager\GamePlayManager.cpp" />
-    <ClCompile Include="Application\AL3\Manager\GameUIManager.cpp" />
-    <ClCompile Include="Application\AL3\Scene\GameScene\GameScene.cpp" />
-    <ClCompile Include="Application\AL3\Scene\ResultScene\ResultScene.cpp" />
-    <ClCompile Include="Application\AL3\Scene\TitleScene\TitleScene.cpp" />
     <ClCompile Include="Engine\Camera\Camera2D.cpp" />
     <ClCompile Include="Engine\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Camera\CameraPresetManager.cpp" />
@@ -372,30 +351,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\TestGameObject\Plane.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\AL3\AI\Action\BossAction.h" />
-    <ClInclude Include="Application\AL3\AI\Action\BossActionManager.h" />
-    <ClInclude Include="Application\AL3\AI\Action\BossActions.h" />
-    <ClInclude Include="Application\AL3\AI\BehaviorTree\BehaviorNode.h" />
-    <ClInclude Include="Application\AL3\AI\BehaviorTree\BehaviorTreeNodes.h" />
-    <ClInclude Include="Application\AL3\AI\BehaviorTree\CompositeNode.h" />
-    <ClInclude Include="Application\AL3\AI\BossAI.h" />
-    <ClInclude Include="Application\AL3\Camera\GameCameraController.h" />
-    <ClInclude Include="Application\AL3\Debug\BossAIDebugUI.h" />
-    <ClInclude Include="Application\AL3\GameObject\BossBulletObject.h" />
-    <ClInclude Include="Application\AL3\GameObject\BossObject.h" />
-    <ClInclude Include="Application\AL3\GameObject\BulletObject.h" />
-    <ClInclude Include="Application\AL3\GameObject\CircleShadowObject.h" />
-    <ClInclude Include="Application\AL3\GameObject\FloorObject.h" />
-    <ClInclude Include="Application\AL3\GameObject\JumpAttackHitbox.h" />
-    <ClInclude Include="Application\AL3\GameObject\PlayerObject.h" />
-    <ClInclude Include="Application\AL3\GameObject\ReticleObject.h" />
-    <ClInclude Include="Application\AL3\GameObject\SkydomeObject.h" />
-    <ClInclude Include="Application\AL3\GameObject\WallObject.h" />
-    <ClInclude Include="Application\AL3\Manager\GamePlayManager.h" />
-    <ClInclude Include="Application\AL3\Manager\GameUIManager.h" />
-    <ClInclude Include="Application\AL3\Scene\GameScene\GameScene.h" />
-    <ClInclude Include="Application\AL3\Scene\ResultScene\ResultScene.h" />
-    <ClInclude Include="Application\AL3\Scene\TitleScene\TitleScene.h" />
     <ClInclude Include="Engine\Camera\Camera2D.h" />
     <ClInclude Include="Engine\Camera\CameraManager.h" />
     <ClInclude Include="Engine\Camera\CameraPresetManager.h" />
@@ -699,8 +654,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <None Include="docs\ParticleSystem_Refactoring_Final.md" />
     <None Include="docs\ParticleSystem_Refactoring_Progress.md" />
     <None Include="docs\ParticleSystem_Refactoring_Summary.md" />
-    <None Include="Docs\README.md" />
-    <None Include="Docs\SceneGuide.md" />
     <None Include="Docs\ShadowSystemImplementation.md" />
     <None Include="Engine\Graphics\Font\README.md" />
     <None Include="Engine\Particle\README.md" />
