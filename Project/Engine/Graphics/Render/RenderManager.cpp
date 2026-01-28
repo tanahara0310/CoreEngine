@@ -60,7 +60,10 @@ namespace CoreEngine
 	}
 
 	void RenderManager::SetLightViewProjection(const Matrix4x4& lightViewProjection) {
-		lightViewProjection_ = lightViewProjection;
+		// ShadowMapManagerに委譲（一元管理）
+		if (shadowMapManager_) {
+			shadowMapManager_->SetLightViewProjection(lightViewProjection);
+		}
 	}
 
 	void RenderManager::AddDrawable(GameObject* obj) {
@@ -111,9 +114,6 @@ namespace CoreEngine
 		}
 
 		SortDrawQueue();
-
-		// ライトVP行列をModelクラスに設定（全Modelで共有）
-		Model::SetLightViewProjection(lightViewProjection_);
 
 		// === Phase 1: シャドウマップパス ===
 		if (shadowMapManager_) {
@@ -188,8 +188,8 @@ namespace CoreEngine
 		scissorRect.bottom = static_cast<LONG>(shadowMapSize);
 		cmdList_->RSSetScissorRects(1, &scissorRect);
 
-		// ライトVP行列を設定
-		shadowMapRenderer->SetLightViewProjection(lightViewProjection_);
+		// ライトVP行列を設定（ShadowMapManagerから取得）
+		shadowMapRenderer->SetLightViewProjection(shadowMapManager_->GetLightViewProjection());
 
 		// シャドウマップパスを開始
 		shadowMapRenderer->BeginPass(cmdList_, BlendMode::kBlendModeNone);

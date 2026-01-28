@@ -20,6 +20,7 @@ namespace CoreEngine {
 	class DirectXCommon;
 	class ResourceFactory;
 	class LightBase;
+	class ShadowMapManager;
 }
 
 /// @brief 配置された3Dモデルのインスタンスクラス
@@ -46,9 +47,9 @@ namespace CoreEngine
 		/// @param factory リソースファクトリのポインタ
 		static void Initialize(CoreEngine::DirectXCommon* dxCommon, CoreEngine::ResourceFactory* factory);
 
-		/// @brief シャドウマップ用のライトビュープロジェクション行列を設定（全Modelで共有）
-		/// @param lightViewProjection ライトビュープロジェクション行列
-		static void SetLightViewProjection(const Matrix4x4& lightViewProjection);
+		/// @brief ShadowMapManagerを設定（ライトVP行列の一元管理）
+		/// @param shadowMapManager ShadowMapManagerのポインタ
+		static void SetShadowMapManager(ShadowMapManager* shadowMapManager);
 
 		/// @brief 初期化（アニメーションコントローラーなし）
 		/// @param resource 共有するModelResourceのポインタ

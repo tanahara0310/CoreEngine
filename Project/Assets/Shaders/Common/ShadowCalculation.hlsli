@@ -1,5 +1,15 @@
 /// @brief シャドウマップ関連の共通関数
 
+// PCFカーネルサイズ設定（0: 3x3, 1: 5x5, 2: 7x7）
+#ifndef PCF_KERNEL_SIZE
+#define PCF_KERNEL_SIZE 1  // デフォルト: 5x5
+#endif
+
+// シャドウマップの解像度
+#ifndef SHADOW_MAP_SIZE
+#define SHADOW_MAP_SIZE 4096.0f
+#endif
+
 /// @brief シャドウ計算（PCFあり・RasterizerStateバイアス使用）
 /// @param lightSpacePos ライト空間での座標
 /// @param normal ワールド空間での法線ベクトル（現在未使用）
@@ -33,19 +43,50 @@ float CalculateShadow(float4 lightSpacePos, float3 normal, float3 lightDir, Text
     
     // PCF (Percentage Closer Filtering)
     float shadow = 0.0f;
-    float texelSize = 1.0f / 4096.0f; // シャドウマップサイズ
+    float texelSize = 1.0f / SHADOW_MAP_SIZE;
     
-    // 7x7カーネルでサンプリング
-    for (int x = -3; x <= 3; ++x)
+#if PCF_KERNEL_SIZE == 0
+    // 3x3 カーネル (9サンプル) - 最も高速
+    [unroll]
+    for (int x = -1; x <= 1; ++x)
     {
+        [unroll]
+        for (int y = -1; y <= 1; ++y)
+        {
+            float2 offset = float2(x, y) * texelSize;
+            shadow += shadowMap.SampleCmpLevelZero(shadowSampler, uv + offset, currentDepth);
+        }
+    }
+    shadow /= 9.0f;
+    
+#elif PCF_KERNEL_SIZE == 1
+    // 5x5 カーネル (25サンプル) - バランス型
+    [unroll]
+    for (int x = -2; x <= 2; ++x)
+    {
+        [unroll]
         for (int y = -2; y <= 2; ++y)
         {
             float2 offset = float2(x, y) * texelSize;
             shadow += shadowMap.SampleCmpLevelZero(shadowSampler, uv + offset, currentDepth);
         }
     }
+    shadow /= 25.0f;
     
+#else
+    // 7x7 カーネル (49サンプル) - 最も高品質だが重い
+    [unroll]
+    for (int x = -3; x <= 3; ++x)
+    {
+        [unroll]
+        for (int y = -3; y <= 3; ++y)
+        {
+            float2 offset = float2(x, y) * texelSize;
+            shadow += shadowMap.SampleCmpLevelZero(shadowSampler, uv + offset, currentDepth);
+        }
+    }
     shadow /= 49.0f;
+#endif
     
     return shadow;
 }

@@ -1,6 +1,7 @@
 #include "Model.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
+#include "Engine/Graphics/Shadow/ShadowMapManager.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Render/Model/ModelRenderer.h"
 #include "Engine/Graphics/Render/Model/SkinnedModelRenderer.h"
@@ -18,22 +19,17 @@ namespace CoreEngine
 	namespace {
 		DirectXCommon* sDxCommon_ = nullptr;
 		ResourceFactory* sResourceFactory_ = nullptr;
-		Matrix4x4 sLightViewProjection_ = {};	// シャドウマップ用ライトVP行列
-		bool sLightVPInitialized_ = false;
+		ShadowMapManager* sShadowMapManager_ = nullptr;
 	}
 
 	void Model::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory) {
 		assert(dxCommon && factory);
 		sDxCommon_ = dxCommon;
 		sResourceFactory_ = factory;
-
-		// ライトVP行列を単位行列で初期化
-		sLightViewProjection_ = MathCore::Matrix::Identity();
-		sLightVPInitialized_ = true;
 	}
 
-	void Model::SetLightViewProjection(const Matrix4x4& lightViewProjection) {
-	sLightViewProjection_ = lightViewProjection;
+	void Model::SetShadowMapManager(ShadowMapManager* shadowMapManager) {
+		sShadowMapManager_ = shadowMapManager;
 	}
 
 	void Model::Initialize(ModelResource* resource) {
@@ -82,6 +78,7 @@ namespace CoreEngine
 		}
 	}
 
+
 	void Model::UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera) {
 		assert(wvpResource_);
 
@@ -94,13 +91,17 @@ namespace CoreEngine
 			MathCore::Matrix::Multiply(viewMatrix, projectionMatrix)
 		);
 
+		// ShadowMapManagerからライトVP行列を取得
+		Matrix4x4 lightVP = sShadowMapManager_ ? 
+			sShadowMapManager_->GetLightViewProjection() : MathCore::Matrix::Identity();
+
 		// GPUメモリに書き込み
 		TransformationMatrix* mappedData = nullptr;
 		wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
 		mappedData->world = worldMatrix;
 		mappedData->WVP = worldViewProjectionMatrix;
 		mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
-		mappedData->lightViewProjection = sLightViewProjection_;
+		mappedData->lightViewProjection = lightVP;
 		wvpResource_->Unmap(0, nullptr);
 	}
 
@@ -131,9 +132,13 @@ namespace CoreEngine
 		assert(IsInitialized());
 		assert(cmdList);
 
+		// ShadowMapManagerからライトVP行列を取得
+		Matrix4x4 lightVP = sShadowMapManager_ ? 
+			sShadowMapManager_->GetLightViewProjection() : MathCore::Matrix::Identity();
+
 		// シャドウマップ用のWVP行列を計算（ライトVP行列を使用）
 		Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-		Matrix4x4 lightWVP = MathCore::Matrix::Multiply(worldMatrix, sLightViewProjection_);
+		Matrix4x4 lightWVP = MathCore::Matrix::Multiply(worldMatrix, lightVP);
 
 		// GPUメモリに書き込み
 		TransformationMatrix* mappedData = nullptr;
@@ -141,7 +146,7 @@ namespace CoreEngine
 		mappedData->WVP = lightWVP;
 		mappedData->world = worldMatrix;
 		mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
-		mappedData->lightViewProjection = sLightViewProjection_;
+		mappedData->lightViewProjection = lightVP;
 		wvpResource_->Unmap(0, nullptr);
 
 		// 頂点バッファを設定

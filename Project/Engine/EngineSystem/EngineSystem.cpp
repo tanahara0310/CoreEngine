@@ -21,6 +21,7 @@
 #include "Engine/Graphics/Render/Particle/ParticleRenderer.h"
 #include "Engine/Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Engine/Graphics/Font/TextRenderer.h"
+#include "Engine/Graphics/Model/Model.h"
 
 // 入力管理
 #include "Engine/Input/InputManager.h"
@@ -348,6 +349,7 @@ namespace CoreEngine
 		// RenderManagerを登録
 		RegisterComponent(std::move(renderManager));
 
+
 		// LineManagerの初期化（シングルトン、RenderManager登録後に実行）
 		LineManager::GetInstance().Initialize(lineRendererPtr);
 
@@ -360,6 +362,9 @@ namespace CoreEngine
 		auto modelManager = std::make_unique<ModelManager>();
 		modelManager->Initialize(dxPtr, resourcePtr);
 		RegisterComponent(std::move(modelManager));
+
+		// ModelクラスにShadowMapManagerを設定（ライトVP行列の一元管理）
+		Model::SetShadowMapManager(dxPtr->GetShadowMapManager());
 	}
 
 	void EngineSystem::CreateInputComponents()

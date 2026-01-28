@@ -1,6 +1,7 @@
 #include "ShadowMapManager.h"
 #include "Engine/Graphics/Common/Core/DescriptorManager.h"
 #include "Engine/Utility/Logger/Logger.h"
+#include "Engine/Math/MathCore.h"
 
 #include <cassert>
 #include <format>
@@ -13,13 +14,17 @@ namespace CoreEngine
 		Logger& logger = Logger::GetInstance();
 	}
 
-	void ShadowMapManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager)
+	void ShadowMapManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, std::uint32_t shadowMapSize)
 	{
 		assert(device != nullptr && "Device must not be null");
 		assert(descriptorManager != nullptr && "DescriptorManager must not be null");
 
 		device_ = device;
 		descriptorManager_ = descriptorManager;
+		shadowMapSize_ = shadowMapSize;
+
+		// ライトVP行列を単位行列で初期化
+		lightViewProjection_ = MathCore::Matrix::Identity();
 
 		// シャドウマップリソースを作成
 		CreateShadowMapResource();
@@ -35,6 +40,11 @@ namespace CoreEngine
 			std::format("ShadowMapManagerを初期化しました ({}x{})\n", shadowMapSize_, shadowMapSize_),
 			LogLevel::INFO, LogCategory::Graphics);
 #endif
+	}
+
+	void ShadowMapManager::SetLightViewProjection(const Matrix4x4& lightViewProjection)
+	{
+		lightViewProjection_ = lightViewProjection;
 	}
 
 	void ShadowMapManager::ClearDepth(ID3D12GraphicsCommandList* cmdList)
