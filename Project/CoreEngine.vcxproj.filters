@@ -1435,6 +1435,8 @@
     <None Include="Scripts\ConvertToTabs.ps1" />
     <None Include="Scripts\ConvertToCRLF.ps1" />
     <None Include="Project\Assets\Shaders\Common\LightStructures.hlsli" />
+    <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
+    <None Include="Docs\ShadowSystemImplementation.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">

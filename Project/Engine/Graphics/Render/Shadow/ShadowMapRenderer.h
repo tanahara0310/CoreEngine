@@ -17,6 +17,13 @@ namespace CoreEngine
 		static constexpr UINT kMatrixPalette = 1;         // t0: MatrixPalette (VS) - スキニング用
 	}
 
+	/// @brief シャドウバイアス設定
+	struct ShadowBiasSettings {
+		int depthBias = 3000;              // 固定バイアス
+		float slopeScaledDepthBias = 3.0f; // 傾斜スケールバイアス
+		float depthBiasClamp = 0.0f;       // バイアスクランプ
+	};
+
 	/// @brief シャドウマップ生成用レンダラー
 	/// @note 通常モデルとスキニングモデルの両方に対応
 	class ShadowMapRenderer : public IRenderer {
@@ -37,7 +44,24 @@ namespace CoreEngine
 		/// @brief スキニングモデル用のPSOを設定
 		void SetPSOForSkinnedModel();
 
+		/// @brief バイアス設定を変更（PSOを再作成）
+		/// @param settings 新しいバイアス設定
+		void SetBiasSettings(const ShadowBiasSettings& settings);
+
+		/// @brief 現在のバイアス設定を取得
+		/// @return バイアス設定
+		const ShadowBiasSettings& GetBiasSettings() const { return biasSettings_; }
+
+#ifdef _DEBUG
+		/// @brief ImGuiでバイアス設定を調整
+		void DrawImGui();
+#endif
+
 		ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
+
+	private:
+		/// @brief PSOを作成（バイアス設定反映）
+		void CreatePipelineStates();
 
 	private:
 		std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
@@ -45,8 +69,12 @@ namespace CoreEngine
 		std::unique_ptr<PipelineStateManager> skinnedModelPSO_ = std::make_unique<PipelineStateManager>();
 		std::unique_ptr<ShaderCompiler> shaderCompiler_ = std::make_unique<ShaderCompiler>();
 
+		ID3D12Device* device_ = nullptr;
 		ID3D12PipelineState* currentPipelineState_ = nullptr;
 		ID3D12GraphicsCommandList* cmdList_ = nullptr;
+
+		// バイアス設定
+		ShadowBiasSettings biasSettings_;
 
 	// ライトビュープロジェクション行列（CPU側で保持）
 	Matrix4x4 lightViewProjection_;

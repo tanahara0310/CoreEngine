@@ -3,10 +3,15 @@
 #include <cassert>
 #include <DirectXMath.h>
 
+#ifdef _DEBUG
+#include <imgui.h>
+#endif
+
 namespace CoreEngine
 {
 	void ShadowMapRenderer::Initialize(ID3D12Device* device) {
 
+		device_ = device;
 		shaderCompiler_->Initialize();
 
 		// ===================================
@@ -28,6 +33,17 @@ namespace CoreEngine
 
 		rootSignatureMg_->Create(device);
 
+		// PSOを作成
+		CreatePipelineStates();
+
+		// デフォルトは通常モデル用PSOを使用
+		currentPipelineState_ = normalModelPSO_->GetPipelineState(BlendMode::kBlendModeNone);
+
+		// ライトビュープロジェクション行列を単位行列で初期化
+		lightViewProjection_ = CoreEngine::MathCore::Matrix::Identity();
+	}
+
+	void ShadowMapRenderer::CreatePipelineStates() {
 		// ===================================
 		// 通常モデル用 Pipeline State 作成
 		// ===================================
@@ -37,13 +53,13 @@ namespace CoreEngine
 
 		bool normalResult = normalModelPSO_->CreateBuilder()
 			.AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-			.SetRasterizer(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID) // フロントフェースカリング
-			.SetDepthBias(3000, 3.0f, 0.0f) // DepthBiasとSlopeScaledDepthBiasを設定
+			.SetRasterizer(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID)
+			.SetDepthBias(biasSettings_.depthBias, biasSettings_.slopeScaledDepthBias, biasSettings_.depthBiasClamp)
 			.SetDepthStencil(true, true, D3D12_COMPARISON_FUNC_LESS)
 			.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-			.SetRenderTargetFormat(DXGI_FORMAT_UNKNOWN, 0) // レンダーターゲットなし
+			.SetRenderTargetFormat(DXGI_FORMAT_UNKNOWN, 0)
 			.SetDepthStencilFormat(DXGI_FORMAT_D32_FLOAT)
-			.Build(device, normalVertexShader, nullptr, rootSignatureMg_->GetRootSignature()); // PS = nullptr
+			.Build(device_, normalVertexShader, nullptr, rootSignatureMg_->GetRootSignature());
 
 		if (!normalResult) {
 			throw std::runtime_error("Failed to create ShadowMap Pipeline State Object for Normal Model");
@@ -62,23 +78,17 @@ namespace CoreEngine
 			.AddInputElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT, 0)
 			.AddInputElement("WEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT, 1)
 			.AddInputElement("INDEX", 0, DXGI_FORMAT_R32G32B32A32_SINT, D3D12_APPEND_ALIGNED_ELEMENT, 1)
-			.SetRasterizer(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID) // フロントフェースカリング
-			.SetDepthBias(3000, 3.0f, 0.0f) // DepthBiasとSlopeScaledDepthBiasを設定
+			.SetRasterizer(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID)
+			.SetDepthBias(biasSettings_.depthBias, biasSettings_.slopeScaledDepthBias, biasSettings_.depthBiasClamp)
 			.SetDepthStencil(true, true, D3D12_COMPARISON_FUNC_LESS)
 			.SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-			.SetRenderTargetFormat(DXGI_FORMAT_UNKNOWN, 0) // レンダーターゲットなし
+			.SetRenderTargetFormat(DXGI_FORMAT_UNKNOWN, 0)
 			.SetDepthStencilFormat(DXGI_FORMAT_D32_FLOAT)
-			.Build(device, skinningVertexShader, nullptr, rootSignatureMg_->GetRootSignature()); // PS = nullptr
+			.Build(device_, skinningVertexShader, nullptr, rootSignatureMg_->GetRootSignature());
 
 		if (!skinningResult) {
 			throw std::runtime_error("Failed to create ShadowMap Pipeline State Object for Skinned Model");
 		}
-
-		// デフォルトは通常モデル用PSOを使用
-		currentPipelineState_ = normalModelPSO_->GetPipelineState(BlendMode::kBlendModeNone);
-
-		// ライトビュープロジェクション行列を単位行列で初期化
-		lightViewProjection_ = CoreEngine::MathCore::Matrix::Identity();
 	}
 
 	void ShadowMapRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
@@ -124,4 +134,32 @@ namespace CoreEngine
 			cmdList_->SetPipelineState(currentPipelineState_);
 		}
 	}
+
+	void ShadowMapRenderer::SetBiasSettings(const ShadowBiasSettings& settings) {
+		biasSettings_ = settings;
+		// PSOを再作成
+		CreatePipelineStates();
+		// 現在のPSOを更新
+		currentPipelineState_ = normalModelPSO_->GetPipelineState(BlendMode::kBlendModeNone);
+	}
+
+#ifdef _DEBUG
+	void ShadowMapRenderer::DrawImGui() {
+		if (ImGui::CollapsingHeader("Shadow Bias Settings")) {
+			bool changed = false;
+
+			changed |= ImGui::DragInt("Depth Bias", &biasSettings_.depthBias, 100, 0, 100000);
+			changed |= ImGui::DragFloat("Slope Scaled Bias", &biasSettings_.slopeScaledDepthBias, 0.1f, 0.0f, 10.0f);
+			changed |= ImGui::DragFloat("Bias Clamp", &biasSettings_.depthBiasClamp, 0.001f, 0.0f, 1.0f);
+
+			if (changed) {
+				SetBiasSettings(biasSettings_);
+			}
+
+			if (ImGui::Button("Reset to Default")) {
+				SetBiasSettings(ShadowBiasSettings{});
+			}
+		}
+	}
+#endif
 }

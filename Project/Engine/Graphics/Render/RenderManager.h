@@ -61,7 +61,7 @@ namespace CoreEngine
 	/// @param render Renderクラスのポインタ
 	void SetRender(Render* render);
 
-	/// @brief ライトビュープロジェクション行列を設定
+	/// @brief ライトビュープロジェクション行列を設定（ShadowMapManagerに委譲）
 	/// @param lightViewProjection ライトから見たビュープロジェクション行列
 	void SetLightViewProjection(const Matrix4x4& lightViewProjection);
 
@@ -96,7 +96,6 @@ namespace CoreEngine
 	// シャドウマップ関連
 	ShadowMapManager* shadowMapManager_ = nullptr;
 	Render* render_ = nullptr;
-	Matrix4x4 lightViewProjection_;
 
 		/// @brief 描画パスごとにソート
 		void SortDrawQueue();
