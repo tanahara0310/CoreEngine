@@ -1,4 +1,4 @@
-﻿#include "RootSignatureManager.h"
+#include "RootSignatureManager.h"
 
 #include <cassert>
 

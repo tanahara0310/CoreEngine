@@ -91,15 +91,64 @@ namespace CoreEngine
 		lightVPCBV.visibility = D3D12_SHADER_VISIBILITY_VERTEX;
 		rootSignatureMg_->AddRootCBV(lightVPCBV);
 
-		// Root Parameter 12: ShadowMap用ディスクリプタテーブル (t6, PS)
-		RootSignatureManager::DescriptorRangeConfig shadowMapRange;
-		shadowMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		shadowMapRange.numDescriptors = 1;
-		shadowMapRange.baseShaderRegister = 6;
-		rootSignatureMg_->AddDescriptorTable({ shadowMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+	// Root Parameter 12: ShadowMap用ディスクリプタテーブル (t6, PS)
+	RootSignatureManager::DescriptorRangeConfig shadowMapRange;
+	shadowMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	shadowMapRange.numDescriptors = 1;
+	shadowMapRange.baseShaderRegister = 6;
+	rootSignatureMg_->AddDescriptorTable({ shadowMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
 
-		// Static Sampler (s0, PS)
-		rootSignatureMg_->AddDefaultLinearSampler(0, D3D12_SHADER_VISIBILITY_PIXEL);
+	// Root Parameter 13: PBR NormalMap用ディスクリプタテーブル (t7, PS)
+	RootSignatureManager::DescriptorRangeConfig normalMapRange;
+	normalMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	normalMapRange.numDescriptors = 1;
+	normalMapRange.baseShaderRegister = 7;
+	rootSignatureMg_->AddDescriptorTable({ normalMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+
+	// Root Parameter 14: PBR MetallicMap用ディスクリプタテーブル (t8, PS)
+	RootSignatureManager::DescriptorRangeConfig metallicMapRange;
+	metallicMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	metallicMapRange.numDescriptors = 1;
+	metallicMapRange.baseShaderRegister = 8;
+	rootSignatureMg_->AddDescriptorTable({ metallicMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+
+	// Root Parameter 15: PBR RoughnessMap用ディスクリプタテーブル (t9, PS)
+	RootSignatureManager::DescriptorRangeConfig roughnessMapRange;
+	roughnessMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	roughnessMapRange.numDescriptors = 1;
+	roughnessMapRange.baseShaderRegister = 9;
+	rootSignatureMg_->AddDescriptorTable({ roughnessMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+
+	// Root Parameter 16: PBR AOMap用ディスクリプタテーブル (t10, PS)
+	RootSignatureManager::DescriptorRangeConfig aoMapRange;
+	aoMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	aoMapRange.numDescriptors = 1;
+	aoMapRange.baseShaderRegister = 10;
+	rootSignatureMg_->AddDescriptorTable({ aoMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+
+	// Root Parameter 17: IBL IrradianceMap用ディスクリプタテーブル (t11, PS)
+	RootSignatureManager::DescriptorRangeConfig irradianceMapRange;
+	irradianceMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	irradianceMapRange.numDescriptors = 1;
+	irradianceMapRange.baseShaderRegister = 11;
+	rootSignatureMg_->AddDescriptorTable({ irradianceMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+
+	// Root Parameter 18: IBL PrefilteredMap用ディスクリプタテーブル (t12, PS)
+	RootSignatureManager::DescriptorRangeConfig prefilteredMapRange;
+	prefilteredMapRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	prefilteredMapRange.numDescriptors = 1;
+	prefilteredMapRange.baseShaderRegister = 12;
+	rootSignatureMg_->AddDescriptorTable({ prefilteredMapRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+
+	// Root Parameter 19: IBL BRDF LUT用ディスクリプタテーブル (t13, PS)
+	RootSignatureManager::DescriptorRangeConfig brdfLUTRange;
+	brdfLUTRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	brdfLUTRange.numDescriptors = 1;
+	brdfLUTRange.baseShaderRegister = 13;
+	rootSignatureMg_->AddDescriptorTable({ brdfLUTRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+
+	// Static Sampler (s0, PS)
+	rootSignatureMg_->AddDefaultLinearSampler(0, D3D12_SHADER_VISIBILITY_PIXEL);
 
 		// Static Sampler (s1, PS) - Comparison Sampler for Shadow Map
 		RootSignatureManager::StaticSamplerConfig shadowSampler;
@@ -176,11 +225,26 @@ namespace CoreEngine
 			cmdList->SetGraphicsRootConstantBufferView(SkinnedModelRendererRootParam::kLightViewProjection, lightViewProjectionCBV_);
 		}
 
-		// シャドウマップをセット
-		if (shadowMapHandle_.ptr != 0) {
-			cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kShadowMap, shadowMapHandle_);
-		}
+	// シャドウマップをセット
+	if (shadowMapHandle_.ptr != 0) {
+		cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kShadowMap, shadowMapHandle_);
 	}
+
+	// IBL Irradiance Mapをセット（未設定の場合はスキップ）
+	if (irradianceMapHandle_.ptr != 0) {
+		cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kIrradianceMap, irradianceMapHandle_);
+	}
+
+	// IBL Prefiltered Mapをセット（未設定の場合はスキップ）
+	if (prefilteredMapHandle_.ptr != 0) {
+		cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kPrefilteredMap, prefilteredMapHandle_);
+	}
+
+	// BRDF LUTをセット（未設定の場合はスキップ）
+	if (brdfLUTHandle_.ptr != 0) {
+		cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kBRDFLUT, brdfLUTHandle_);
+	}
+}
 
 	void SkinnedModelRenderer::EndPass() {
 	}

@@ -1,4 +1,4 @@
-﻿#include "ShaderCompiler.h"
+#include "ShaderCompiler.h"
 
 #include <cassert>
 

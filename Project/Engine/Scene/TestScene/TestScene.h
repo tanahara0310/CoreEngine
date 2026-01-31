@@ -62,5 +62,10 @@ protected:
 private: // メンバ変数
 
 	Logger& logger = Logger::GetInstance();
+
+	// IBL用リソース（生存期間を保証）
+	Microsoft::WRL::ComPtr<ID3D12Resource> irradianceMap_;
+	Microsoft::WRL::ComPtr<ID3D12Resource> prefilteredMap_;
+	Microsoft::WRL::ComPtr<ID3D12Resource> brdfLUT_;
 };
 }

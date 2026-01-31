@@ -181,6 +181,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\Font\FontManager.cpp" />
     <ClCompile Include="Engine\Graphics\Font\TextRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\GridRenderer.cpp" />
+    <ClCompile Include="Engine\Graphics\IBL\IBLGenerator.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightBufferManager.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightDebugVisualizer.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightManager.cpp" />
@@ -371,6 +372,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Graphics\Font\Glyph.h" />
     <ClInclude Include="Engine\Graphics\Font\TextRenderer.h" />
     <ClInclude Include="Engine\Graphics\GridRenderer.h" />
+    <ClInclude Include="Engine\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Graphics\Light\LightBufferManager.h" />
     <ClInclude Include="Engine\Graphics\Light\LightData.h" />
     <ClInclude Include="Engine\Graphics\Light\LightDebugVisualizer.h" />

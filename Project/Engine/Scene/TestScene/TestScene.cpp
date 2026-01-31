@@ -43,21 +43,199 @@ namespace CoreEngine
 
 		// HDRファイルを読み込み（自動的にキューブマップDDSに変換される）
 		TextureManager::LoadedTexture environmentMapTexture;
-		environmentMapTexture = textureManager.Load("Texture/kloppenheim_06_puresky_4k.hdr");
+		environmentMapTexture = textureManager.Load("Texture/rostock_laage_airport_4k.dds");
 
+		// ===== IBL Irradiance Mapの生成 =====
+		auto* iblGenerator = engine_->GetComponent<IBLGenerator>();
+		D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapSRVHandle = {};
+		D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapSRVHandle = {};
+		D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTSRVHandle = {};
 
-		// SkinnedModelRendererに環境マップを設定
+		if (iblGenerator) {
+			// Irradiance Mapを生成（64x64x6面）← 32から64に増加
+			irradianceMap_ = iblGenerator->GenerateIrradianceMap(
+				environmentMapTexture.texture.Get(),
+				64);
+
+			// 生成成功した場合、SRVを作成
+			if (irradianceMap_) {
+				Logger::GetInstance().Log("Irradiance Map generated successfully for scene",
+					LogLevel::INFO, LogCategory::Graphics);
+
+				// SRVを作成
+				D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+				auto* descriptorManager = dxCommon->GetDescriptorManager();
+
+				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+				srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc.TextureCube.MipLevels = 1;
+				srvDesc.TextureCube.MostDetailedMip = 0;
+
+				descriptorManager->CreateSRV(
+					irradianceMap_.Get(),
+					srvDesc,
+					cpuHandle,
+					irradianceMapSRVHandle,
+					"IBL_IrradianceMap");
+
+				// DirectXCommonにIrradiance Mapを登録
+				dxCommon->SetIrradianceMap(irradianceMap_.Get(), irradianceMapSRVHandle);
+
+				Logger::GetInstance().Log("Irradiance Map SRV created successfully",
+					LogLevel::INFO, LogCategory::Graphics);
+			}
+
+			// Prefiltered Environment Mapを生成（128x128、5ミップレベル）
+			prefilteredMap_ = iblGenerator->GeneratePrefilteredEnvironmentMap(
+				environmentMapTexture.texture.Get(),
+				128);
+
+			if (prefilteredMap_) {
+				Logger::GetInstance().Log("Prefiltered Environment Map generated successfully",
+					LogLevel::INFO, LogCategory::Graphics);
+
+				// SRVを作成（全ミップレベル）
+				D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+				auto* descriptorManager = dxCommon->GetDescriptorManager();
+
+				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+				srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc.TextureCube.MostDetailedMip = 0;
+				srvDesc.TextureCube.MipLevels = 5; // 5ミップレベル
+				srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+
+				descriptorManager->CreateSRV(
+					prefilteredMap_.Get(),
+					srvDesc,
+					cpuHandle,
+					prefilteredMapSRVHandle,
+					"IBL_PrefilteredMap");
+
+				// DirectXCommonにPrefiltered Mapを登録
+				dxCommon->SetPrefilteredMap(prefilteredMap_.Get(), prefilteredMapSRVHandle);
+
+				Logger::GetInstance().Log("Prefiltered Map SRV created successfully",
+					LogLevel::INFO, LogCategory::Graphics);
+			}
+
+			// BRDF LUTを生成（512x512）
+			brdfLUT_ = iblGenerator->GenerateBRDFLUT(512);
+
+			if (brdfLUT_) {
+				Logger::GetInstance().Log("BRDF LUT generated successfully",
+					LogLevel::INFO, LogCategory::Graphics);
+
+				// SRVを作成
+				D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
+				auto* descriptorManager = dxCommon->GetDescriptorManager();
+
+				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+				srvDesc.Format = DXGI_FORMAT_R16G16_FLOAT;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc.Texture2D.MostDetailedMip = 0;
+				srvDesc.Texture2D.MipLevels = 1;
+
+				descriptorManager->CreateSRV(
+					brdfLUT_.Get(),
+					srvDesc,
+					cpuHandle,
+					brdfLUTSRVHandle,
+					"IBL_BRDF_LUT");
+
+				// DirectXCommonにBRDF LUTを登録
+				dxCommon->SetBRDFLUT(brdfLUT_.Get(), brdfLUTSRVHandle);
+
+				Logger::GetInstance().Log("BRDF LUT SRV created successfully",
+					LogLevel::INFO, LogCategory::Graphics);
+			}
+		}
+
+		// SkinnedModelRendererに環境マップとIBLリソースを設定
 		auto* skinnedModelRenderer = renderManager->GetRenderer(RenderPassType::SkinnedModel);
 		if (skinnedModelRenderer) {
 			static_cast<SkinnedModelRenderer*>(skinnedModelRenderer)->SetEnvironmentMap(environmentMapTexture.gpuHandle);
+
+			// IBL Irradiance Mapを設定
+			if (irradianceMapSRVHandle.ptr != 0) {
+				static_cast<SkinnedModelRenderer*>(skinnedModelRenderer)->SetIrradianceMap(irradianceMapSRVHandle);
+			}
+			// Prefiltered Mapを設定
+			if (prefilteredMapSRVHandle.ptr != 0) {
+				static_cast<SkinnedModelRenderer*>(skinnedModelRenderer)->SetPrefilteredMap(prefilteredMapSRVHandle);
+			}
+			// BRDF LUTを設定
+			if (brdfLUTSRVHandle.ptr != 0) {
+				static_cast<SkinnedModelRenderer*>(skinnedModelRenderer)->SetBRDFLUT(brdfLUTSRVHandle);
+			}
+		}
+
+		//ModelRendererに環境マップを設定
+		auto* modelRenderer = renderManager->GetRenderer(RenderPassType::Model);
+		if (modelRenderer) {
+			static_cast<ModelRenderer*>(modelRenderer)->SetEnvironmentMap(environmentMapTexture.gpuHandle);
+
+			// IBL Irradiance Mapを設定
+			if (irradianceMapSRVHandle.ptr != 0) {
+				static_cast<ModelRenderer*>(modelRenderer)->SetIrradianceMap(irradianceMapSRVHandle);
+			}
+			// Prefiltered Mapを設定
+			if (prefilteredMapSRVHandle.ptr != 0) {
+				static_cast<ModelRenderer*>(modelRenderer)->SetPrefilteredMap(prefilteredMapSRVHandle);
+			}
+			// BRDF LUTを設定
+			if (brdfLUTSRVHandle.ptr != 0) {
+				static_cast<ModelRenderer*>(modelRenderer)->SetBRDFLUT(brdfLUTSRVHandle);
+			}
 		}
 
 
 		// ===== 3Dゲームオブジェクトの生成と初期化=====
-		// Sphereオブジェクト
-		auto sphere = CreateObject<SphereObject>();
-		sphere->Initialize();
-		sphere->SetActive(false);  // Skeletonテスト中は非表示
+		// PBRテスト用に5x5グリッドで球体を配置
+		// 横軸(X): Metallic (0.0 → 1.0)
+		// 縦軸(Y): Roughness (0.0 → 1.0)
+
+		const int gridSizeX = 5;  // Metallic軸
+		const int gridSizeY = 5;  // Roughness軸
+		const float spacingX = 3.0f;  // 横間隔
+		const float spacingY = 3.0f;  // 縦間隔
+
+		for (int row = 0; row < gridSizeY; ++row) {
+			for (int col = 0; col < gridSizeX; ++col) {
+				auto sphere = CreateObject<SphereObject>();
+				sphere->Initialize();
+				sphere->SetPBREnabled(true);
+
+				// マテリアルカラーを設定（グレーでPBRテスト）
+				sphere->SetMaterialColor({ 0.5f, 0.5f, 0.5f, 1.0f });
+
+				// 環境マップを有効化
+				sphere->SetEnvironmentMapEnabled(true);
+				sphere->SetEnvironmentMapIntensity(1.0f);
+
+				// IBLを有効化
+				sphere->SetIBLEnabled(true);
+				sphere->SetIBLIntensity(1.0f);
+
+				// Metallic: 左(0.0) → 右(1.0)
+				float metallic = static_cast<float>(col) / static_cast<float>(gridSizeX - 1);
+
+				// Roughness: 下(0.0) → 上(1.0)
+				float roughness = static_cast<float>(row) / static_cast<float>(gridSizeY - 1);
+
+				sphere->SetPBRParameters(metallic, roughness, 1.0f);
+
+				// XY平面上にグリッド配置（中央を原点に、Z=0）
+				float xPos = (col - gridSizeX / 2.0f) * spacingX;
+				float yPos = (row - gridSizeY / 2.0f) * spacingY;
+				sphere->GetTransform().translate = { xPos, yPos, 0.0f };
+				sphere->SetActive(true);
+			}
+		}
 
 		// Fenceオブジェクト
 		auto fence = CreateObject<FenceObject>();
@@ -77,17 +255,17 @@ namespace CoreEngine
 		// SkeletonModelオブジェクト
 		auto skeletonModel = CreateObject<SkeletonModelObject>();
 		skeletonModel->Initialize();
-		skeletonModel->SetActive(true);
+		skeletonModel->SetActive(false);  // PBRテスト中は非表示
 
 		// WalkModelオブジェクト
 		auto walkModel = CreateObject<WalkModelObject>();
 		walkModel->Initialize();
-		walkModel->SetActive(true);
+		walkModel->SetActive(false);  // PBRテスト中は非表示
 
 		// SneakWalkModelオブジェクト
 		auto sneakWalkModel = CreateObject<SneakWalkModelObject>();
 		sneakWalkModel->Initialize();
-		sneakWalkModel->SetActive(true);
+		sneakWalkModel->SetActive(false);  // PBRテスト中は非表示
 
 		// SkyBoxの初期化
 		auto skyBox = CreateObject<SkyBoxObject>();
