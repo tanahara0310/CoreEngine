@@ -36,6 +36,7 @@ namespace CoreEngine
 	// ===== IBL Parameters =====
 	int32_t enableIBL; // IBL有効化フラグ (0: 無効, 1: 有効)
 	float iblIntensity; // IBL強度 (0.0-1.0, デフォルト: 1.0)
-	float padding2[2]; // パディング（16バイトアライメント）
+	float environmentRotationY; // 環境マップY軸回転（ラジアン）
+	float padding2[1]; // パディング（16バイトアライメント）
 };
 }

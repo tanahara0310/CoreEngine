@@ -13,22 +13,36 @@ namespace CoreEngine
 
 void IBLGenerator::Initialize(DirectXCommon* dxCommon, ShaderCompiler* shaderCompiler)
 {
-    assert(dxCommon != nullptr);
-    assert(shaderCompiler != nullptr);
+    // パラメータのnullptrチェック
+    if (!dxCommon || !shaderCompiler)
+    {
+        Logger::GetInstance().Log("IBLGenerator::Initialize: Invalid parameters (dxCommon or shaderCompiler is null)",
+                                  LogLevel::Error, LogCategory::Graphics);
+        throw std::invalid_argument("dxCommon and shaderCompiler must not be null");
+    }
 
     dxCommon_ = dxCommon;
     shaderCompiler_ = shaderCompiler;
 
     Logger::GetInstance().Log("Initializing IBLGenerator...", LogLevel::INFO, LogCategory::Graphics);
 
-    CreateBRDFLUTRootSignature();
-    CreateBRDFLUTPipeline();
-    CreateIrradianceRootSignature();
-    CreateIrradiancePipeline();
-    CreatePrefilteredRootSignature();
-    CreatePrefilteredPipeline();
-
-    Logger::GetInstance().Log("IBLGenerator initialized successfully", LogLevel::INFO, LogCategory::Graphics);
+    try
+    {
+        CreateBRDFLUTRootSignature();
+        CreateBRDFLUTPipeline();
+        CreateIrradianceRootSignature();
+        CreateIrradiancePipeline();
+        CreatePrefilteredRootSignature();
+        CreatePrefilteredPipeline();
+        
+        Logger::GetInstance().Log("IBLGenerator initialized successfully", LogLevel::INFO, LogCategory::Graphics);
+    }
+    catch (const std::exception& e)
+    {
+        Logger::GetInstance().Log(std::format("IBLGenerator initialization failed: {}", e.what()),
+                                  LogLevel::Error, LogCategory::Graphics);
+        throw;
+    }
 }
 
 void IBLGenerator::CreateBRDFLUTRootSignature()

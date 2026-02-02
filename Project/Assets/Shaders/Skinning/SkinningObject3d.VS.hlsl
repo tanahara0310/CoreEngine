@@ -5,8 +5,8 @@ ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
 // GPU側のWellの定義
 struct Well
 {
-	float4x4 skeletonSpaceMatrix;
-	float4x4 skeletonSpaceInverseTransposeMatrix;
+    float4x4 skeletonSpaceMatrix;
+    float4x4 skeletonSpaceInverseTransposeMatrix;
 };
 
 // MatrixPaletteをStructuredBufferとして受け取る
@@ -15,61 +15,78 @@ StructuredBuffer<Well> gMatrixPalette : register(t0);
 // 入力項点の拡張
 struct VertexShaderInput
 {
-	float4 position : POSITION0;
-	float2 texcoord : TEXCOORD0;
-	float3 normal : NORMAL0;
-	float4 weight : WEIGHT0;
-	int4 index : INDEX0;
+    float4 position : POSITION0;
+    float2 texcoord : TEXCOORD0;
+    float3 normal : NORMAL0;
+    float3 tangent : TANGENT0;  // タンジェント（接線）
+    float4 weight : WEIGHT0;
+    int4 index : INDEX0;
 };
 
 // Skinningの結果を受け取るための構造体
 struct Skinned
 {
-	float4 position;
-	float3 normal;
+    float4 position;
+    float3 normal;
+    float3 tangent;  // タンジェント
 };
 
 // Skinningを行う関数。入力項点に加工を行ってSkinning後の頂点を返却する
 Skinned Skinning(VertexShaderInput input)
 {
-	Skinned skinned;
-	
-	// 位置の変換
-	skinned.position = mul(input.position, gMatrixPalette[input.index.x].skeletonSpaceMatrix) * input.weight.x;
-	skinned.position += mul(input.position, gMatrixPalette[input.index.y].skeletonSpaceMatrix) * input.weight.y;
-	skinned.position += mul(input.position, gMatrixPalette[input.index.z].skeletonSpaceMatrix) * input.weight.z;
-	skinned.position += mul(input.position, gMatrixPalette[input.index.w].skeletonSpaceMatrix) * input.weight.w;
-	skinned.position.w = 1.0f; // 確実にwを1にする
-	
-	// 法線の変換
-	skinned.normal = mul(input.normal, (float3x3) gMatrixPalette[input.index.x].skeletonSpaceInverseTransposeMatrix) * input.weight.x;
-	skinned.normal += mul(input.normal, (float3x3) gMatrixPalette[input.index.y].skeletonSpaceInverseTransposeMatrix) * input.weight.y;
-	skinned.normal += mul(input.normal, (float3x3) gMatrixPalette[input.index.z].skeletonSpaceInverseTransposeMatrix) * input.weight.z;
-	skinned.normal += mul(input.normal, (float3x3) gMatrixPalette[input.index.w].skeletonSpaceInverseTransposeMatrix) * input.weight.w;
-	skinned.normal = normalize(skinned.normal); // 正規化して返してあげる
-	
-	
-	return skinned;
+    Skinned skinned;
+    
+    // 位置の変換
+    skinned.position = mul(input.position, gMatrixPalette[input.index.x].skeletonSpaceMatrix) * input.weight.x;
+    skinned.position += mul(input.position, gMatrixPalette[input.index.y].skeletonSpaceMatrix) * input.weight.y;
+    skinned.position += mul(input.position, gMatrixPalette[input.index.z].skeletonSpaceMatrix) * input.weight.z;
+    skinned.position += mul(input.position, gMatrixPalette[input.index.w].skeletonSpaceMatrix) * input.weight.w;
+    skinned.position.w = 1.0f; // 確実にwを1にする
+    
+    // 法線の変換
+    skinned.normal = mul(input.normal, (float3x3) gMatrixPalette[input.index.x].skeletonSpaceInverseTransposeMatrix) * input.weight.x;
+    skinned.normal += mul(input.normal, (float3x3) gMatrixPalette[input.index.y].skeletonSpaceInverseTransposeMatrix) * input.weight.y;
+    skinned.normal += mul(input.normal, (float3x3) gMatrixPalette[input.index.z].skeletonSpaceInverseTransposeMatrix) * input.weight.z;
+    skinned.normal += mul(input.normal, (float3x3) gMatrixPalette[input.index.w].skeletonSpaceInverseTransposeMatrix) * input.weight.w;
+    skinned.normal = normalize(skinned.normal); // 正規化して返してあげる
+    
+    // タンジェントの変換（位置と同じワールド行列を使用）
+    skinned.tangent = mul(input.tangent, (float3x3) gMatrixPalette[input.index.x].skeletonSpaceMatrix) * input.weight.x;
+    skinned.tangent += mul(input.tangent, (float3x3) gMatrixPalette[input.index.y].skeletonSpaceMatrix) * input.weight.y;
+    skinned.tangent += mul(input.tangent, (float3x3) gMatrixPalette[input.index.z].skeletonSpaceMatrix) * input.weight.z;
+    skinned.tangent += mul(input.tangent, (float3x3) gMatrixPalette[input.index.w].skeletonSpaceMatrix) * input.weight.w;
+    skinned.tangent = normalize(skinned.tangent); // 正規化
+    
+    
+    return skinned;
 }
 
 VertexShaderOutput main(VertexShaderInput input)
 {
-	VertexShaderOutput output;
-	
-	// Skinning計算を行う
-	Skinned skinned = Skinning(input);
-	
-	// Skinning後の頂点を使用して変換
-	output.texcoord = input.texcoord;
-	output.position = mul(skinned.position, gTransformationMatrix.WVP);
-	output.normal = normalize(mul(skinned.normal, (float3x3) gTransformationMatrix.WorldInversTranspose));
-	
-	// ワールド座標を計算
-	float4 worldPos = mul(skinned.position, gTransformationMatrix.World);
-	output.worldPosition = worldPos.xyz;
-	
-	// ライト空間座標を計算（シャドウマップ用）
-	output.lightSpacePos = mul(worldPos, gTransformationMatrix.LightViewProjection);
-	
-	return output;
+    VertexShaderOutput output;
+    
+    // Skinning計算を行う
+    Skinned skinned = Skinning(input);
+    
+    // Skinning後の頂点を使用して変換
+    output.texcoord = input.texcoord;
+    output.position = mul(skinned.position, gTransformationMatrix.WVP);
+    
+    // 法線をワールド空間に変換
+    output.normal = normalize(mul(skinned.normal, (float3x3) gTransformationMatrix.WorldInversTranspose));
+    
+    // タンジェントをワールド空間に変換
+    output.tangent = normalize(mul(skinned.tangent, (float3x3) gTransformationMatrix.World));
+    
+    // バイタンジェント（従接線）を計算（法線とタンジェントの外積）
+    output.bitangent = normalize(cross(output.normal, output.tangent));
+    
+    // ワールド座標を計算
+    float4 worldPos = mul(skinned.position, gTransformationMatrix.World);
+    output.worldPosition = worldPos.xyz;
+    
+    // ライト空間座標を計算（シャドウマップ用）
+    output.lightSpacePos = mul(worldPos, gTransformationMatrix.LightViewProjection);
+    
+    return output;
 }
