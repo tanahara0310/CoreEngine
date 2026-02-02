@@ -155,19 +155,114 @@ namespace CoreEngine
 			materialData_->environmentMapIntensity = intensity;
 		}
 
-		/// @brief 環境マップの反射強度を取得
-		/// @return 現在の反射強度
-		float GetEnvironmentMapIntensity() const
-		{
-			return materialData_->environmentMapIntensity;
-		}
+	/// @brief 環境マップの反射強度を取得
+	/// @return 現在の反射強度
+	float GetEnvironmentMapIntensity() const
+	{
+		return materialData_->environmentMapIntensity;
+	}
 
-		/// @brief マテリアルのGPU仮想アドレスを取得
-		/// @return GPU仮想アドレス
-		D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const
-		{
-			return materialResource_->GetGPUVirtualAddress(); // GPU仮想アドレスを取得
-		}
+	/// @brief PBRを有効/無効にする
+	/// @param enable true: PBR有効, false: 従来のライティング
+	void SetEnablePBR(bool enable)
+	{
+		materialData_->enablePBR = enable ? 1 : 0;
+	}
+
+	/// @brief PBRが有効かどうかを取得
+	/// @return true: 有効, false: 無効
+	bool IsEnablePBR() const
+	{
+		return materialData_->enablePBR != 0;
+	}
+
+	/// @brief PBRパラメータを設定
+	/// @param metallic 金属性 (0.0-1.0)
+	/// @param roughness 粗さ (0.0-1.0)
+	/// @param ao 環境遮蔽 (0.0-1.0)
+	void SetPBRParameters(float metallic, float roughness, float ao)
+	{
+		materialData_->metallic = metallic;
+		materialData_->roughness = roughness;
+		materialData_->ao = ao;
+	}
+
+	/// @brief 金属性を設定
+	/// @param metallic 金属性 (0.0-1.0)
+	void SetMetallic(float metallic)
+	{
+		materialData_->metallic = metallic;
+	}
+
+	/// @brief 金属性を取得
+	/// @return 現在の金属性
+	float GetMetallic() const
+	{
+		return materialData_->metallic;
+	}
+
+	/// @brief 粗さを設定
+	/// @param roughness 粗さ (0.0-1.0)
+	void SetRoughness(float roughness)
+	{
+		materialData_->roughness = roughness;
+	}
+
+	/// @brief 粗さを取得
+	/// @return 現在の粗さ
+	float GetRoughness() const
+	{
+		return materialData_->roughness;
+	}
+
+	/// @brief 環境遮蔽を設定
+	/// @param ao 環境遮蔽 (0.0-1.0)
+	void SetAO(float ao)
+	{
+		materialData_->ao = ao;
+	}
+
+	/// @brief 環境遮蔽を取得
+	/// @return 現在の環境遮蔽
+	float GetAO() const
+	{
+		return materialData_->ao;
+	}
+
+	/// @brief IBLを有効/無効にする
+	/// @param enable true: IBL有効, false: IBL無効
+	void SetEnableIBL(bool enable)
+	{
+		materialData_->enableIBL = enable ? 1 : 0;
+	}
+
+	/// @brief IBLが有効かどうかを取得
+	/// @return true: 有効, false: 無効
+	bool IsEnableIBL() const
+	{
+		return materialData_->enableIBL != 0;
+	}
+
+	/// @brief IBL強度を設定
+	/// @param intensity IBL強度 (0.0-1.0)
+	void SetIBLIntensity(float intensity)
+	{
+		materialData_->iblIntensity = intensity;
+	}
+
+	/// @brief IBL強度を取得
+	/// @return 現在のIBL強度
+	float GetIBLIntensity() const
+	{
+		return materialData_->iblIntensity;
+	}
+
+	/// @brief マテリアルのGPU仮想アドレスを取得
+	/// @return GPU仮想アドレス
+	D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const
+	{
+		return materialResource_->GetGPUVirtualAddress(); // GPU仮想アドレスを取得
+	}
 
 		/// @brief マテリアルデータを取得
 		/// @return

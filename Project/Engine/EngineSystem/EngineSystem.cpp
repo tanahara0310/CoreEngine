@@ -6,6 +6,7 @@
 #include "Engine/Utility/Logger/Logger.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Graphics/Font/FontManager.h"
+#include "Engine/Graphics/Shader/ShaderCompiler.h"
 
 // レンダリング関連
 #include "Engine/Graphics/Render/Render.h"
@@ -363,9 +364,17 @@ namespace CoreEngine
 		modelManager->Initialize(dxPtr, resourcePtr);
 		RegisterComponent(std::move(modelManager));
 
-		// ModelクラスにShadowMapManagerを設定（ライトVP行列の一元管理）
-		Model::SetShadowMapManager(dxPtr->GetShadowMapManager());
-	}
+	// ModelクラスにShadowMapManagerを設定（ライトVP行列の一元管理）
+	Model::SetShadowMapManager(dxPtr->GetShadowMapManager());
+
+	// IBLGeneratorの作成と初期化
+	auto iblGenerator = std::make_unique<IBLGenerator>();
+	auto shaderCompiler = std::make_unique<ShaderCompiler>();
+	shaderCompiler->Initialize();
+	iblGenerator->Initialize(dxPtr, shaderCompiler.get());
+	RegisterComponent(std::move(iblGenerator));
+	RegisterComponent(std::move(shaderCompiler));
+}
 
 	void EngineSystem::CreateInputComponents()
 	{

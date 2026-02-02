@@ -20,9 +20,13 @@ namespace CoreEngine
 		materialData_->shadingMode = 2; // シェーディングモードをHalf-Lambertに設定
 		materialData_->toonThreshold = 0.5f; // トゥーンシェーディングの閾値
 		materialData_->toonSmoothness = 0.1f; // トゥーンシェーディングの滑らかさ
-		materialData_->enableDithering = 1; // ディザリング有効
-		materialData_->ditheringScale = 1.0f; // ディザリングスケール
-		materialData_->enableEnvironmentMap = 0; // 環境マップ無効（デフォルト）
-		materialData_->environmentMapIntensity = 0.3f; // 環境マップ反射強度（デフォルト: 0.3）
-	}
+	materialData_->enableDithering = 1; // ディザリング有効
+	materialData_->ditheringScale = 1.0f; // ディザリングスケール
+	materialData_->enableEnvironmentMap = 0; // 環境マップ無効（デフォルト）
+	materialData_->environmentMapIntensity = 0.3f; // 環境マップ反射強度（デフォルト: 0.3）
+	
+	// IBLパラメータのデフォルト値
+	materialData_->enableIBL = 0; // IBL無効（デフォルト）
+	materialData_->iblIntensity = 1.0f; // IBL強度（デフォルト: 1.0）
+}
 }
