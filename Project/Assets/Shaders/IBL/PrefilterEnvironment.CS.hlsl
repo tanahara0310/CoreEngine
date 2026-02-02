@@ -4,7 +4,7 @@
 
 // ===== 定数 =====
 static const float PI = 3.14159265359f;
-static const uint SAMPLE_COUNT = 1024u; // サンプル数（高品質）
+static const uint SAMPLE_COUNT = 2048u; // サンプル数（超高品質）
 
 // ===== SRV & UAV =====
 TextureCube<float4> gEnvironmentMap : register(t0); // 入力環境マップ
@@ -82,23 +82,38 @@ float DistributionGGX(float NdotH, float roughness)
 }
 
 /// @brief キューブマップ面IDと2D座標から方向ベクトルを計算
+/// @details DirectX標準キューブマップ座標系に準拠
 float3 GetCubemapDirection(uint faceIndex, float2 uv)
 {
-    // UV座標を-1～1に変換
+    // UV座標を-1～1に変換（中心が(0,0)、右上が(1,1)、左下が(-1,-1)）
     float2 texCoord = uv * 2.0f - 1.0f;
     
     float3 dir;
     switch (faceIndex)
     {
-        case 0: dir = float3(1.0f, -texCoord.y, -texCoord.x); break; // +X
-        case 1: dir = float3(-1.0f, -texCoord.y, texCoord.x); break; // -X
-        case 2: dir = float3(texCoord.x, 1.0f, texCoord.y); break; // +Y
-        case 3: dir = float3(texCoord.x, -1.0f, -texCoord.y); break; // -Y
-        case 4: dir = float3(texCoord.x, -texCoord.y, 1.0f); break; // +Z
-        case 5: dir = float3(-texCoord.x, -texCoord.y, -1.0f); break; // -Z
-        default: dir = float3(0.0f, 0.0f, 1.0f); break;
+        case 0: // +X (右)
+            dir = normalize(float3(1.0f, -texCoord.y, -texCoord.x));
+            break;
+        case 1: // -X (左)
+            dir = normalize(float3(-1.0f, -texCoord.y, texCoord.x));
+            break;
+        case 2: // +Y (上)
+            dir = normalize(float3(texCoord.x, 1.0f, texCoord.y));
+            break;
+        case 3: // -Y (下)
+            dir = normalize(float3(texCoord.x, -1.0f, -texCoord.y));
+            break;
+        case 4: // +Z (前)
+            dir = normalize(float3(texCoord.x, -texCoord.y, 1.0f));
+            break;
+        case 5: // -Z (後ろ)
+            dir = normalize(float3(-texCoord.x, -texCoord.y, -1.0f));
+            break;
+        default:
+            dir = float3(0.0f, 1.0f, 0.0f);
+            break;
     }
-    return normalize(dir);
+    return dir;
 }
 
 // ===== メインコンピュートシェーダー =====
@@ -123,31 +138,58 @@ void main(uint3 DTid : SV_DispatchThreadID)
     float totalWeight = 0.0f;
     float3 prefilteredColor = float3(0.0f, 0.0f, 0.0f);
     
-    for (uint i = 0; i < SAMPLE_COUNT; ++i)
+    // roughnessが0に近い場合は環境マップを直接サンプリング
+    const float MIN_ROUGHNESS = 0.01f;
+    if (roughness < MIN_ROUGHNESS)
     {
-        // Hammersley低不一致サンプリング
-        float2 Xi = Hammersley(i, SAMPLE_COUNT);
-        
-        // GGX Importance Samplingでハーフベクトルを生成
-        float3 H = ImportanceSampleGGX(Xi, N, roughness);
-        float3 L = normalize(2.0f * dot(V, H) * H - V);
-        
-        float NdotL = max(dot(N, L), 0.0f);
-        if (NdotL > 0.0f)
-        {
-            // 環境マップから色をサンプリング
-            // roughness > 0の場合、低いミップレベルからサンプル（事前ぼかし）
-            float envMapMip = roughness * 4.0f; // ミップレベル0-4
-            float3 envColor = gEnvironmentMap.SampleLevel(gSampler, L, envMapMip).rgb;
-            
-            // サンプルの重み付け
-            prefilteredColor += envColor * NdotL;
-            totalWeight += NdotL;
-        }
+        prefilteredColor = gEnvironmentMap.SampleLevel(gSampler, N, 0.0f).rgb;
     }
-    
-    // 正規化
-    prefilteredColor = totalWeight > 0.0f ? prefilteredColor / totalWeight : prefilteredColor;
+    else
+    {
+        for (uint i = 0; i < SAMPLE_COUNT; ++i)
+        {
+            // Hammersley低不一致サンプリング
+            float2 Xi = Hammersley(i, SAMPLE_COUNT);
+            
+            // GGX Importance Samplingでハーフベクトルを生成
+            float3 H = ImportanceSampleGGX(Xi, N, roughness);
+            float3 L = normalize(2.0f * dot(V, H) * H - V);
+            
+            float NdotL = max(dot(N, L), 0.0f);
+            float NdotH = max(dot(N, H), 0.0f);
+            float VdotH = max(dot(V, H), 0.0f);
+            
+            if (NdotL > 0.0f)
+            {
+                // GGX分布関数
+                float D = DistributionGGX(NdotH, roughness);
+                
+                // 確率密度関数 (PDF)
+                float pdf = (D * NdotH / (4.0f * VdotH)) + 0.0001f;
+                
+                // ソリッドアングル（1ピクセルあたり）
+                float resolution = 1024.0f; // 入力環境マップの解像度
+                float saTexel = 4.0f * PI / (6.0f * resolution * resolution);
+                
+                // サンプルのソリッドアングル
+                float saSample = 1.0f / (float(SAMPLE_COUNT) * pdf + 0.0001f);
+                
+                // ミップレベル選択（テクスチャフィルタリング）
+                float mipLevel = roughness == 0.0f ? 0.0f : 0.5f * log2(saSample / saTexel);
+                mipLevel = max(0.0f, mipLevel);
+                
+                // 環境マップから色をサンプリング
+                float3 envColor = gEnvironmentMap.SampleLevel(gSampler, L, mipLevel).rgb;
+                
+                // サンプルの重み付け（NdotL係数）
+                prefilteredColor += envColor * NdotL;
+                totalWeight += NdotL;
+            }
+        }
+        
+        // 正規化
+        prefilteredColor = totalWeight > 0.0f ? prefilteredColor / totalWeight : prefilteredColor;
+    }
     
     // 出力
     gPrefilteredMap[DTid] = float4(prefilteredColor, 1.0f);

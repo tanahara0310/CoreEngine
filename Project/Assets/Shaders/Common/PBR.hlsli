@@ -424,15 +424,16 @@ float3 CalculateIrradianceIBL(
     TextureCube irradianceMap,
     SamplerState samp)
 {
-    // Irradianceマップから環境光を取得
-	float3 irradiance = irradianceMap.Sample(samp, N).rgb;
+    // 法線を正規化してIrradianceマップから環境光を取得
+	float3 normalizedN = normalize(N);
+	float3 irradiance = irradianceMap.SampleLevel(samp, normalizedN, 0.0f).rgb;
     
     // F0計算（垂直入射時の反射率）
 	float3 F0 = float3(0.04f, 0.04f, 0.04f);
 	F0 = lerp(F0, albedo, metallic);
     
     // Fresnel項（環境光用、実際のroughnessを使用）
-	float NdotV = max(dot(N, V), 0.0f);
+	float NdotV = max(dot(normalizedN, V), 0.0f);
 	float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
     
     // 拡散反射成分（金属は拡散しない）
@@ -529,12 +530,15 @@ float3 CalculateFullIBL(
     float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
     
     // === 拡散IBL（Irradiance Map） ===
-    float3 irradiance = irradianceMap.Sample(samp, N).rgb;
+    // 法線を確実に正規化してサンプリング
+    float3 normalizedN = normalize(N);
+    float3 irradiance = irradianceMap.SampleLevel(samp, normalizedN, 0.0f).rgb;
     float3 kD = (1.0f - F) * (1.0f - metallic); // 金属は拡散しない
     float3 diffuseIBL = kD * albedo * irradiance;
     
     // === スペキュラIBL（Prefiltered Map + BRDF LUT） ===
-    float3 R = reflect(-V, N);
+    // 反射ベクトルR（Vはカメラへの方向なので、-Vが入射方向）
+    float3 R = normalize(reflect(-V, normalizedN));
     float mipLevel = roughness * 4.0f; // 5ミップレベル（0-4）
     float3 prefilteredColor = prefilteredMap.SampleLevel(samp, R, mipLevel).rgb;
     

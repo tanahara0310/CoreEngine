@@ -22,6 +22,7 @@ RWTexture2DArray<float4> gOutputIrradiance : register(u0);
 /// @param face キューブマップの面（0-5）
 /// @param uv UV座標 [0,1]
 /// @return 正規化された方向ベクトル
+/// @details DirectX標準キューブマップ座標系に準拠
 float3 GetDirectionFromCubemapUV(uint face, float2 uv)
 {
     // [0,1] -> [-1,1] に変換
@@ -30,14 +31,29 @@ float3 GetDirectionFromCubemapUV(uint face, float2 uv)
     float3 dir;
     switch(face)
     {
-        case 0: dir = float3(1.0,  -coord.y, -coord.x); break; // +X
-        case 1: dir = float3(-1.0, -coord.y,  coord.x); break; // -X
-        case 2: dir = float3(coord.x, 1.0,   coord.y); break; // +Y
-        case 3: dir = float3(coord.x, -1.0, -coord.y); break; // -Y
-        case 4: dir = float3(coord.x, -coord.y, 1.0);  break; // +Z
-        case 5: dir = float3(-coord.x, -coord.y, -1.0); break; // -Z
+        case 0: // +X (右)
+            dir = normalize(float3(1.0, -coord.y, -coord.x));
+            break;
+        case 1: // -X (左)
+            dir = normalize(float3(-1.0, -coord.y, coord.x));
+            break;
+        case 2: // +Y (上)
+            dir = normalize(float3(coord.x, 1.0, coord.y));
+            break;
+        case 3: // -Y (下)
+            dir = normalize(float3(coord.x, -1.0, -coord.y));
+            break;
+        case 4: // +Z (前)
+            dir = normalize(float3(coord.x, -coord.y, 1.0));
+            break;
+        case 5: // -Z (後ろ)
+            dir = normalize(float3(-coord.x, -coord.y, -1.0));
+            break;
+        default:
+            dir = float3(0.0, 1.0, 0.0);
+            break;
     }
-    return normalize(dir);
+    return dir;
 }
 
 // ===================================================================
@@ -74,13 +90,15 @@ float3 ComputeIrradiance(float3 N)
     float3 irradiance = float3(0, 0, 0);
     float totalWeight = 0.0;
     
-    // サンプリングパラメータ（最適化された値）
-    // 高品質でありながらアーティファクトを避ける
-    const uint phiSamples = 256;   // 方位角サンプル数
-    const uint thetaSamples = 64;  // 極角サンプル数
+    // サンプリングパラメータ（超高品質）
+    const uint phiSamples = 1024;   // 方位角サンプル数
+    const uint thetaSamples = 256;  // 極角サンプル数
     
     float deltaPhi = TWO_PI / float(phiSamples);
     float deltaTheta = HALF_PI / float(thetaSamples);
+    
+    // 適切なミップレベルを計算（半球全体からサンプリングするため）
+    float mipLevel = 1.0; // わずかにぼかしたレベルを使用
     
     // 半球上でサンプリング
     for (uint phiIndex = 0; phiIndex < phiSamples; ++phiIndex)
@@ -102,17 +120,18 @@ float3 ComputeIrradiance(float3 N)
             );
             
             // タンジェント空間からワールド空間へ変換
-            float3 sampleVec = tangentSample.x * right + 
-                              tangentSample.y * up + 
-                              tangentSample.z * N;
+            float3 sampleVec = normalize(tangentSample.x * right + 
+                                         tangentSample.y * up + 
+                                         tangentSample.z * N);
             
-            // 環境マップをサンプリング
-            float3 envColor = gInputEnvironment.SampleLevel(gSampler, sampleVec, 0).rgb;
+            // 環境マップをサンプリング（適切なミップレベル使用）
+            float3 envColor = gInputEnvironment.SampleLevel(gSampler, sampleVec, mipLevel).rgb;
             
             // Lambertian拡散反射の積分
             // ∫∫ L(ω) * cos(θ) * sin(θ) dω
-            irradiance += envColor * cosTheta * sinTheta;
-            totalWeight += cosTheta * sinTheta;
+            float weight = cosTheta * sinTheta;
+            irradiance += envColor * weight;
+            totalWeight += weight;
         }
     }
     

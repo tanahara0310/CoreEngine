@@ -52,10 +52,10 @@ namespace CoreEngine
 		D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTSRVHandle = {};
 
 		if (iblGenerator) {
-			// Irradiance Mapを生成（64x64x6面）← 32から64に増加
+			// Irradiance Mapを生成（128x128x6面）← より高解像度に
 			irradianceMap_ = iblGenerator->GenerateIrradianceMap(
 				environmentMapTexture.texture.Get(),
-				64);
+				128);
 
 			// 生成成功した場合、SRVを作成
 			if (irradianceMap_) {
@@ -87,10 +87,10 @@ namespace CoreEngine
 					LogLevel::INFO, LogCategory::Graphics);
 			}
 
-			// Prefiltered Environment Mapを生成（128x128、5ミップレベル）
+			// Prefiltered Environment Mapを生成（256x256、5ミップレベル）
 			prefilteredMap_ = iblGenerator->GeneratePrefilteredEnvironmentMap(
 				environmentMapTexture.texture.Get(),
-				128);
+				256);
 
 			if (prefilteredMap_) {
 				Logger::GetInstance().Log("Prefiltered Environment Map generated successfully",
