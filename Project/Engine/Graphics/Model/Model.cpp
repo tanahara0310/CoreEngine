@@ -196,6 +196,32 @@ namespace CoreEngine
 		// テクスチャを設定（Root Parameter 2）
 		cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kTexture, textureHandle);
 
+		// ===== PBRテクスチャマップを設定 =====
+		
+		// ノーマルマップを設定（Root Parameter 12）
+		D3D12_GPU_DESCRIPTOR_HANDLE normalMapHandle = materialManager_->GetNormalMapHandle();
+		if (normalMapHandle.ptr != 0) {
+			cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kNormalMap, normalMapHandle);
+		}
+
+		// Metallicマップを設定（Root Parameter 13）
+		D3D12_GPU_DESCRIPTOR_HANDLE metallicMapHandle = materialManager_->GetMetallicMapHandle();
+		if (metallicMapHandle.ptr != 0) {
+			cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kMetallicMap, metallicMapHandle);
+		}
+
+		// Roughnessマップを設定（Root Parameter 14）
+		D3D12_GPU_DESCRIPTOR_HANDLE roughnessMapHandle = materialManager_->GetRoughnessMapHandle();
+		if (roughnessMapHandle.ptr != 0) {
+			cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kRoughnessMap, roughnessMapHandle);
+		}
+
+		// AOマップを設定（Root Parameter 15）
+		D3D12_GPU_DESCRIPTOR_HANDLE aoMapHandle = materialManager_->GetAOMapHandle();
+		if (aoMapHandle.ptr != 0) {
+			cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kAOMap, aoMapHandle);
+		}
+
 		// ライトはBeginPassで自動的にセットされるため、ここでは何もしない
 	}
 

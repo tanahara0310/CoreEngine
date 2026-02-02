@@ -113,6 +113,66 @@ namespace CoreEngine
 		}
 	}
 
+	void SphereObject::SetEnvironmentRotationY(float rotationY) {
+		if (!model_) return;
+
+		auto* materialManager = model_->GetMaterialManager();
+		if (materialManager) {
+			materialManager->SetEnvironmentRotationY(rotationY);
+		}
+	}
+
+	void SphereObject::SetNormalMap(const std::string& texturePath) {
+		if (!model_) return;
+
+		auto* materialManager = model_->GetMaterialManager();
+		if (materialManager) {
+			materialManager->SetNormalMap(texturePath);
+		}
+	}
+
+	void SphereObject::SetNormalMapEnabled(bool enable) {
+		if (!model_) return;
+
+		auto* materialManager = model_->GetMaterialManager();
+		if (materialManager) {
+			materialManager->SetUseNormalMap(enable);
+		}
+	}
+
+	void SphereObject::SetAlbedoTexture(const std::string& texturePath) {
+		// テクスチャを読み込み
+		auto& textureManager = TextureManager::GetInstance();
+		texture_ = textureManager.Load(texturePath);
+	}
+
+	void SphereObject::SetMetallicMap(const std::string& texturePath) {
+		if (!model_) return;
+
+		auto* materialManager = model_->GetMaterialManager();
+		if (materialManager) {
+			materialManager->SetMetallicMap(texturePath);
+		}
+	}
+
+	void SphereObject::SetRoughnessMap(const std::string& texturePath) {
+		if (!model_) return;
+
+		auto* materialManager = model_->GetMaterialManager();
+		if (materialManager) {
+			materialManager->SetRoughnessMap(texturePath);
+		}
+	}
+
+	void SphereObject::SetAOMap(const std::string& texturePath) {
+		if (!model_) return;
+
+		auto* materialManager = model_->GetMaterialManager();
+		if (materialManager) {
+			materialManager->SetAOMap(texturePath);
+		}
+	}
+
 #ifdef _DEBUG
 	bool SphereObject::DrawImGuiExtended() {
 		bool changed = false;

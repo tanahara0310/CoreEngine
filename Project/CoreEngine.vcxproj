@@ -182,6 +182,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\Font\TextRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\GridRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLGenerator.cpp" />
+    <ClCompile Include="Engine\Graphics\IBL\IBLManager.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightBufferManager.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightDebugVisualizer.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightManager.cpp" />
@@ -229,6 +230,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Scene\SceneTransition.cpp" />
     <ClCompile Include="Engine\TestGameObject\AnimatedCubeObject.cpp" />
     <ClCompile Include="Engine\TestGameObject\FenceObject.cpp" />
+    <ClCompile Include="Engine\TestGameObject\ModelObject.cpp" />
     <ClCompile Include="Engine\TestGameObject\SkeletonModelObject.cpp" />
     <ClCompile Include="Engine\TestGameObject\SkyBoxObject.cpp" />
     <ClCompile Include="Engine\TestGameObject\SneakWalkModelObject.cpp" />
@@ -373,6 +375,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Graphics\Font\TextRenderer.h" />
     <ClInclude Include="Engine\Graphics\GridRenderer.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLGenerator.h" />
+    <ClInclude Include="Engine\Graphics\IBL\IBLManager.h" />
     <ClInclude Include="Engine\Graphics\Light\LightBufferManager.h" />
     <ClInclude Include="Engine\Graphics\Light\LightData.h" />
     <ClInclude Include="Engine\Graphics\Light\LightDebugVisualizer.h" />
@@ -433,6 +436,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Scene\SceneTransition.h" />
     <ClInclude Include="Engine\TestGameObject\AnimatedCubeObject.h" />
     <ClInclude Include="Engine\TestGameObject\FenceObject.h" />
+    <ClInclude Include="Engine\TestGameObject\ModelObject.h" />
     <ClInclude Include="Engine\TestGameObject\SkeletonModelObject.h" />
     <ClInclude Include="Engine\TestGameObject\SkyBoxObject.h" />
     <ClInclude Include="Engine\TestGameObject\SneakWalkModelObject.h" />

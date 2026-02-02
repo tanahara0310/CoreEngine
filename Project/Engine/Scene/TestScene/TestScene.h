@@ -27,6 +27,9 @@
 #include "Scene/BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
 
+// IBL
+#include "Engine/Graphics/IBL/IBLManager.h"
+
 // GameObjectのインクルード
 #include "TestGameObject/SphereObject.h"
 #include "TestGameObject/FenceObject.h"
@@ -63,9 +66,7 @@ private: // メンバ変数
 
 	Logger& logger = Logger::GetInstance();
 
-	// IBL用リソース（生存期間を保証）
-	Microsoft::WRL::ComPtr<ID3D12Resource> irradianceMap_;
-	Microsoft::WRL::ComPtr<ID3D12Resource> prefilteredMap_;
-	Microsoft::WRL::ComPtr<ID3D12Resource> brdfLUT_;
+	// IBL管理
+	std::unique_ptr<IBLManager> iblManager_;
 };
 }

@@ -189,7 +189,7 @@ namespace CoreEngine
 			directionalLight_ = lightManager->AddDirectionalLight();
 			if (directionalLight_) {
 				directionalLight_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-				directionalLight_->direction = MathCore::Vector::Normalize({ 0.0f, -1.0f, 0.5f });
+				directionalLight_->direction = MathCore::Vector::Normalize({ 0.0f, -1.0f, 0.0f });
 				directionalLight_->intensity = 1.0f;
 				directionalLight_->enabled = true;
 			}

@@ -48,6 +48,10 @@ public:
 	/// @param texture 設定するテクスチャ
 	void SetTexture(const TextureManager::LoadedTexture& texture) { texture_ = texture; }
 
+	/// @brief Y軸回転を取得（ラジアン）
+	/// @return Y軸回転角度
+	float GetRotationY() const { return transform_.rotate.y; }
+
 private:
 	/// @brief 箱の頂点データを生成
 	void CreateBoxVertices();

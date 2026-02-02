@@ -61,6 +61,34 @@ public:
 	/// @param intensity IBL強度 (0.0-1.0)
 	void SetIBLIntensity(float intensity);
 
+	/// @brief 環境マップY軸回転を設定
+	/// @param rotationY Y軸回転（ラジアン）
+	void SetEnvironmentRotationY(float rotationY);
+
+	/// @brief ノーマルマップを設定
+	/// @param texturePath ノーマルマップテクスチャのパス
+	void SetNormalMap(const std::string& texturePath);
+
+	/// @brief ノーマルマップの使用を有効/無効にする
+	/// @param enable true: 使用する, false: 使用しない
+	void SetNormalMapEnabled(bool enable);
+
+	/// @brief アルベド（Diffuse）テクスチャを設定
+	/// @param texturePath アルベドテクスチャのパス
+	void SetAlbedoTexture(const std::string& texturePath);
+
+	/// @brief Metallicマップを設定
+	/// @param texturePath Metallicマップテクスチャのパス
+	void SetMetallicMap(const std::string& texturePath);
+
+	/// @brief Roughnessマップを設定
+	/// @param texturePath Roughnessマップテクスチャのパス
+	void SetRoughnessMap(const std::string& texturePath);
+
+	/// @brief AOマップを設定
+	/// @param texturePath AOマップテクスチャのパス
+	void SetAOMap(const std::string& texturePath);
+
 #ifdef _DEBUG
 	/// @brief ImGui拡張UI描画（PBR/IBLパラメータを表示）
 	/// @return ImGuiで変更があった場合 true

@@ -1,4 +1,5 @@
 #include "MaterialManager.h"
+#include "Engine/Graphics/TextureManager.h"
 
 namespace CoreEngine
 {
@@ -20,13 +21,60 @@ namespace CoreEngine
 		materialData_->shadingMode = 2; // シェーディングモードをHalf-Lambertに設定
 		materialData_->toonThreshold = 0.5f; // トゥーンシェーディングの閾値
 		materialData_->toonSmoothness = 0.1f; // トゥーンシェーディングの滑らかさ
-	materialData_->enableDithering = 1; // ディザリング有効
-	materialData_->ditheringScale = 1.0f; // ディザリングスケール
-	materialData_->enableEnvironmentMap = 0; // 環境マップ無効（デフォルト）
-	materialData_->environmentMapIntensity = 0.3f; // 環境マップ反射強度（デフォルト: 0.3）
+		materialData_->enableDithering = 1; // ディザリング有効
+		materialData_->ditheringScale = 1.0f; // ディザリングスケール
+		materialData_->enableEnvironmentMap = 0; // 環境マップ無効（デフォルト）
+		materialData_->environmentMapIntensity = 0.3f; // 環境マップ反射強度（デフォルト: 0.3）
 	
-	// IBLパラメータのデフォルト値
-	materialData_->enableIBL = 0; // IBL無効（デフォルト）
-	materialData_->iblIntensity = 1.0f; // IBL強度（デフォルト: 1.0）
-}
+		// IBLパラメータのデフォルト値
+		materialData_->enableIBL = 0; // IBL無効（デフォルト）
+		materialData_->iblIntensity = 1.0f; // IBL強度（デフォルト: 1.0）
+		materialData_->environmentRotationY = 0.0f; // 環境マップ回転（デフォルト: 0.0）
+		
+		// PBRテクスチャマップのデフォルト値（全て無効）
+		materialData_->useNormalMap = 0;
+		materialData_->useMetallicMap = 0;
+		materialData_->useRoughnessMap = 0;
+		materialData_->useAOMap = 0;
+	}
+
+	void MaterialManager::SetNormalMap(const std::string& texturePath)
+	{
+		auto& textureManager = TextureManager::GetInstance();
+		auto loadedTexture = textureManager.Load(texturePath);
+		normalMapHandle_ = loadedTexture.gpuHandle;
+		
+		// ノーマルマップの使用を自動的に有効化
+		materialData_->useNormalMap = 1;
+	}
+
+	void MaterialManager::SetMetallicMap(const std::string& texturePath)
+	{
+		auto& textureManager = TextureManager::GetInstance();
+		auto loadedTexture = textureManager.Load(texturePath);
+		metallicMapHandle_ = loadedTexture.gpuHandle;
+		
+		// Metallicマップの使用を自動的に有効化
+		materialData_->useMetallicMap = 1;
+	}
+
+	void MaterialManager::SetRoughnessMap(const std::string& texturePath)
+	{
+		auto& textureManager = TextureManager::GetInstance();
+		auto loadedTexture = textureManager.Load(texturePath);
+		roughnessMapHandle_ = loadedTexture.gpuHandle;
+		
+		// Roughnessマップの使用を自動的に有効化
+		materialData_->useRoughnessMap = 1;
+	}
+
+	void MaterialManager::SetAOMap(const std::string& texturePath)
+	{
+		auto& textureManager = TextureManager::GetInstance();
+		auto loadedTexture = textureManager.Load(texturePath);
+		aoMapHandle_ = loadedTexture.gpuHandle;
+		
+		// AOマップの使用を自動的に有効化
+		materialData_->useAOMap = 1;
+	}
 }

@@ -420,6 +420,8 @@
     <ClCompile Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
     <ClCompile Include="Engine\TestGameObject\Plane.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLGenerator.cpp" />
+    <ClCompile Include="Engine\Graphics\IBL\IBLManager.cpp" />
+    <ClCompile Include="Engine\TestGameObject\ModelObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1258,6 +1260,8 @@
     <ClInclude Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.h" />
     <ClInclude Include="Engine\TestGameObject\Plane.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLGenerator.h" />
+    <ClInclude Include="Engine\Graphics\IBL\IBLManager.h" />
+    <ClInclude Include="Engine\TestGameObject\ModelObject.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">
