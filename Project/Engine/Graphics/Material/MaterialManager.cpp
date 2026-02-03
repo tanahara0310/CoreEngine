@@ -30,7 +30,7 @@ namespace CoreEngine
 		materialData_->enableIBL = 0; // IBL無効（デフォルト）
 		materialData_->iblIntensity = 1.0f; // IBL強度（デフォルト: 1.0）
 		materialData_->environmentRotationY = 0.0f; // 環境マップ回転（デフォルト: 0.0）
-		
+
 		// PBRテクスチャマップのデフォルト値（全て無効）
 		materialData_->useNormalMap = 0;
 		materialData_->useMetallicMap = 0;

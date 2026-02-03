@@ -1,4 +1,4 @@
-﻿#include "ModelParticleRenderer.h"
+#include "ModelParticleRenderer.h"
 #include "Engine/Particle/ParticleSystem.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Graphics/Model/ModelResource.h"
