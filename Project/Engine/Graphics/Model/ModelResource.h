@@ -82,6 +82,26 @@ public:
 	/// @param name アニメーション名
 	/// @param animation アニメーションデータ
 	void AddAnimation(const std::string& name, const Animation& animation);
+	
+	/// @brief サブメッシュ情報を取得
+	/// @return サブメッシュデータのベクター
+	const std::vector<SubMeshData>& GetSubMeshes() const { return modelData_.subMeshes; }
+	
+	/// @brief マテリアルデータを取得
+	/// @return マテリアルデータのベクター
+	const std::vector<MaterialData>& GetMaterials() const { return modelData_.materials; }
+	
+	/// @brief 指定マテリアルのPBRテクスチャハンドルを取得
+	/// @param materialIndex マテリアルインデックス
+	/// @return PBRテクスチャハンドル構造体
+	struct PBRTextureHandles {
+		D3D12_GPU_DESCRIPTOR_HANDLE baseColor;
+		D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughness;
+		D3D12_GPU_DESCRIPTOR_HANDLE normal;
+		D3D12_GPU_DESCRIPTOR_HANDLE occlusion;
+		D3D12_GPU_DESCRIPTOR_HANDLE emissive;
+	};
+	const PBRTextureHandles& GetMaterialTextures(uint32_t materialIndex) const;
 
 private:
 	friend class Model;
@@ -108,5 +128,8 @@ private:
 	bool isLoaded_ = false;
 
 	std::map<std::string, Animation> animations_;
+	
+	// マテリアルごとのPBRテクスチャハンドル
+	std::vector<PBRTextureHandles> materialTextureHandles_;
 };
 }

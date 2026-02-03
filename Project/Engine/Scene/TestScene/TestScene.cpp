@@ -91,12 +91,6 @@ namespace CoreEngine
         }
 
 
-
-
-
-
-
-
         // ===== glTF PBRテストモデルの読み込み =====
         // A Beautiful Game（チェスのモデル）を中央に配置
 
@@ -113,35 +107,6 @@ namespace CoreEngine
         chessModel->GetTransform().scale = { 20.0f, 20.0f, 20.0f };
         chessModel->SetActive(true);
 
-        // Fenceオブジェクト
-        auto fence = CreateObject<FenceObject>();
-        fence->Initialize();
-        fence->SetActive(false);  // PBRテスト中は非表示
-
-        // Terrainオブジェクト
-        auto terrain = CreateObject<TerrainObject>();
-        terrain->Initialize();
-        terrain->SetActive(false);  // Skeletonテスト中は非表示
-
-        // AnimatedCubeオブジェクト
-        auto animatedCube = CreateObject<AnimatedCubeObject>();
-        animatedCube->Initialize();
-        animatedCube->SetActive(false);  // Skeletonテスト中は非表示
-
-        // SkeletonModelオブジェクト
-        auto skeletonModel = CreateObject<SkeletonModelObject>();
-        skeletonModel->Initialize();
-        skeletonModel->SetActive(false);  // PBRテスト中は非表示
-
-        // WalkModelオブジェクト
-        auto walkModel = CreateObject<WalkModelObject>();
-        walkModel->Initialize();
-        walkModel->SetActive(false);  // PBRテスト中は非表示
-
-        // SneakWalkModelオブジェクト
-        auto sneakWalkModel = CreateObject<SneakWalkModelObject>();
-        sneakWalkModel->Initialize();
-        sneakWalkModel->SetActive(false);  // PBRテスト中は非表示
 
         // SkyBoxの初期化
         auto skyBox = CreateObject<SkyBoxObject>();

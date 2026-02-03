@@ -13,6 +13,7 @@ namespace CoreEngine
 ModelData ModelLoader::LoadModelFile(const std::string& directoryPath, const std::string& filename)
 {
     std::string fullPath = directoryPath + "/" + filename;
+    Logger::GetInstance().Log(std::format("============================================"), LogLevel::INFO, LogCategory::Graphics);
     Logger::GetInstance().Log(std::format("Loading model: {} from directory: {}", filename, directoryPath), LogLevel::INFO, LogCategory::Graphics);
 
     const aiScene* scene = LoadAssimpFile(fullPath);
@@ -25,11 +26,75 @@ ModelData ModelLoader::LoadModelFile(const std::string& directoryPath, const std
 
     ModelData result;
 
+    // ===== マテリアルデータを先に読み込む =====
+    Logger::GetInstance().Log(std::format("Loading {} materials...", scene->mNumMaterials), LogLevel::INFO, LogCategory::Graphics);
+    
+    result.materials.resize(scene->mNumMaterials);
+    for (uint32_t matIndex = 0; matIndex < scene->mNumMaterials; ++matIndex) {
+        aiMaterial* aiMat = scene->mMaterials[matIndex];
+        MaterialData& material = result.materials[matIndex];
+        
+        // マテリアル名を取得
+        aiString matName;
+        if (aiMat->Get(AI_MATKEY_NAME, matName) == AI_SUCCESS) {
+            material.name = matName.C_Str();
+        } else {
+            material.name = std::format("Material_{}", matIndex);
+        }
+        
+        Logger::GetInstance().Log(std::format("  Material[{}]: {}", matIndex, material.name), LogLevel::INFO, LogCategory::Graphics);
+        
+        // BaseColor（Diffuse/Albedo）テクスチャ
+        aiString texPath;
+        if (aiMat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
+            material.baseColorTexture = directoryPath + "/" + texPath.C_Str();
+            Logger::GetInstance().Log(std::format("    - BaseColor: {}", texPath.C_Str()), LogLevel::INFO, LogCategory::Graphics);
+        }
+        
+        // Metallic-Roughnessテクスチャ（glTFの場合）
+        if (aiMat->GetTexture(aiTextureType_UNKNOWN, 0, &texPath) == AI_SUCCESS) {
+            material.metallicRoughnessTexture = directoryPath + "/" + texPath.C_Str();
+            Logger::GetInstance().Log(std::format("    - MetallicRoughness: {}", texPath.C_Str()), LogLevel::INFO, LogCategory::Graphics);
+        }
+        
+        // Normalマップ
+        if (aiMat->GetTexture(aiTextureType_NORMALS, 0, &texPath) == AI_SUCCESS) {
+            material.normalTexture = directoryPath + "/" + texPath.C_Str();
+            Logger::GetInstance().Log(std::format("    - Normal: {}", texPath.C_Str()), LogLevel::INFO, LogCategory::Graphics);
+        }
+        
+        // Occlusionマップ
+        if (aiMat->GetTexture(aiTextureType_LIGHTMAP, 0, &texPath) == AI_SUCCESS) {
+            material.occlusionTexture = directoryPath + "/" + texPath.C_Str();
+            Logger::GetInstance().Log(std::format("    - Occlusion: {}", texPath.C_Str()), LogLevel::INFO, LogCategory::Graphics);
+        }
+        
+        // Emissiveマップ
+        if (aiMat->GetTexture(aiTextureType_EMISSIVE, 0, &texPath) == AI_SUCCESS) {
+            material.emissiveTexture = directoryPath + "/" + texPath.C_Str();
+            Logger::GetInstance().Log(std::format("    - Emissive: {}", texPath.C_Str()), LogLevel::INFO, LogCategory::Graphics);
+        }
+    }
+
+    // ===== メッシュデータを読み込む =====
+    Logger::GetInstance().Log(std::format("Loading {} meshes...", scene->mNumMeshes), LogLevel::INFO, LogCategory::Graphics);
+    
     // 全メッシュを統合して頂点データとインデックスデータを作成
     for (uint32_t meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex) {
         aiMesh* mesh = scene->mMeshes[meshIndex];
         assert(mesh->HasNormals());
         assert(mesh->HasTextureCoords(0));
+        
+        // サブメッシュ情報を記録
+        SubMeshData subMesh;
+        subMesh.name = mesh->mName.C_Str();
+        subMesh.startIndex = static_cast<uint32_t>(result.indices.size());
+        subMesh.materialIndex = mesh->mMaterialIndex;
+        
+        Logger::GetInstance().Log(std::format("  Mesh[{}]: \"{}\"", meshIndex, subMesh.name), LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Log(std::format("    - Vertices: {}", mesh->mNumVertices), LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Log(std::format("    - Faces: {}", mesh->mNumFaces), LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Log(std::format("    - MaterialIndex: {}", subMesh.materialIndex), LogLevel::INFO, LogCategory::Graphics);
 
         // 頂点データの変換
         uint32_t baseVertexIndex = static_cast<uint32_t>(result.vertices.size());
@@ -65,6 +130,12 @@ ModelData ModelLoader::LoadModelFile(const std::string& directoryPath, const std
                 result.indices.push_back(baseVertexIndex + vertexIndex);
             }
         }
+        
+        // サブメッシュのインデックス数を計算
+        subMesh.indexCount = static_cast<uint32_t>(result.indices.size()) - subMesh.startIndex;
+        Logger::GetInstance().Log(std::format("    - IndexRange: [{}, {})", subMesh.startIndex, subMesh.startIndex + subMesh.indexCount), LogLevel::INFO, LogCategory::Graphics);
+        
+        result.subMeshes.push_back(subMesh);
 
         // SkinCluster情報の読み込み
         for (uint32_t boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex) {
@@ -87,22 +158,23 @@ ModelData ModelLoader::LoadModelFile(const std::string& directoryPath, const std
                 jointWeightData.vertexWeights.push_back({ bone->mWeights[weightIndex].mWeight, bone->mWeights[weightIndex].mVertexId });
             }
         }
-
-        // 最初のメッシュのマテリアルデータを取得
-        if (meshIndex == 0 && mesh->mMaterialIndex < scene->mNumMaterials) {
-            aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-            if (material->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
-                aiString texPath;
-                if (material->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
-                    result.material.textureFilePath = directoryPath + "/" + texPath.C_Str();
-                    Logger::GetInstance().Log(std::format("Model references texture: {}", result.material.textureFilePath), LogLevel::INFO, LogCategory::Graphics);
-                }
-            }
-        }
     }
 
     // Node階層構造の読み込み
     result.rootNode = ReadNode(scene->mRootNode);
+    
+    // 下位互換性のために最初のマテリアルのbaseColorTextureを設定
+    if (!result.materials.empty()) {
+        result.material.baseColorTexture = result.materials[0].baseColorTexture;
+        result.material.textureFilePath = result.materials[0].baseColorTexture;
+        result.material.name = result.materials[0].name;
+    }
+    
+    Logger::GetInstance().Log(std::format("Model loading completed: Total {} vertices, {} indices, {} materials, {} submeshes", 
+        result.vertices.size(), result.indices.size(), result.materials.size(), result.subMeshes.size()), 
+        LogLevel::INFO, LogCategory::Graphics);
+    Logger::GetInstance().Log(std::format("============================================"), LogLevel::INFO, LogCategory::Graphics);
+
 
     return result;
 }
