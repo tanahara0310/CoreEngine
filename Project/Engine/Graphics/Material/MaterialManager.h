@@ -6,9 +6,22 @@
 
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "MathCore.h"
-#include "Structs/Material.h"
+#include "Structs/MaterialConstants.h"
 
 /// @brief マテリアル管理クラス
+/// @details GPU定数バッファの管理を行います。
+/// 
+/// 【推奨される使用方法】
+/// 直接アクセスを使用することで、より効率的にマテリアルパラメータを設定できます：
+/// @code
+/// auto* constants = materialManager->GetConstants();
+/// constants->metallic = 0.5f;
+/// constants->roughness = 0.3f;
+/// constants->enablePBR = 1;
+/// @endcode
+/// 
+/// 従来のセッターメソッドも互換性のために残されていますが、
+/// 新しいコードでは直接アクセスの使用を推奨します。
 
 namespace CoreEngine
 {
@@ -20,8 +33,34 @@ namespace CoreEngine
         /// @param resourceFactory リソース生成
         void Initialize(ID3D12Device* device, ResourceFactory* resourceFactory);
 
+        // ===== 直接アクセスAPI（推奨） =====
+
+        /// @brief マテリアル定数データへの直接アクセスを取得
+        /// @return マテリアル定数データへのポインタ
+        MaterialConstants* GetConstants()
+        {
+            return materialData_;
+        }
+
+        /// @brief マテリアル定数データへの直接アクセスを取得（const版）
+        /// @return マテリアル定数データへのポインタ
+        const MaterialConstants* GetConstants() const
+        {
+            return materialData_;
+        }
+
+        /// @brief マテリアルのGPU仮想アドレスを取得
+        /// @return GPU仮想アドレス
+        D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const
+        {
+            return materialResource_->GetGPUVirtualAddress();
+        }
+
+        // ===== レガシーAPI（下位互換性のために残存、新しいコードでは GetConstants() を使用してください） =====
+
         /// @brief 色を変更
         /// @param color
+        /// @deprecated 新しいコードでは GetConstants()->color を使用してください
         void SetColor(const Vector4& color)
         {
             materialData_->color = color; // マテリアルの色を設定
@@ -272,77 +311,9 @@ namespace CoreEngine
         return materialData_->environmentRotationY;
     }
 
-    // ===== PBRテクスチャマップ設定 =====
-
-    /// @brief ノーマルマップの使用を有効/無効にする
-    /// @param enable true: 使用する, false: 使用しない
-    void SetUseNormalMap(bool enable)
-    {
-        materialData_->useNormalMap = enable ? 1 : 0;
-    }
-
-    /// @brief ノーマルマップの使用状態を取得
-    /// @return true: 使用中, false: 未使用
-    bool IsUseNormalMap() const
-    {
-        return materialData_->useNormalMap != 0;
-    }
-
-
-    /// @brief ノーマルマップを設定（テクスチャパスから）
-    /// @param texturePath ノーマルマップテクスチャのパス
-    void SetNormalMap(const std::string& texturePath);
-
-    /// @brief ノーマルマップのGPUハンドルを取得
-    /// @return GPUディスクリプタハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE GetNormalMapHandle() const
-    {
-        return normalMapHandle_;
-    }
-
-    /// @brief Metallicマップを設定（テクスチャパスから）
-    /// @param texturePath Metallicマップテクスチャのパス
-    void SetMetallicMap(const std::string& texturePath);
-
-    /// @brief MetallicマップのGPUハンドルを取得
-    /// @return GPUディスクリプタハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE GetMetallicMapHandle() const
-    {
-        return metallicMapHandle_;
-    }
-
-    /// @brief Roughnessマップを設定（テクスチャパスから）
-    /// @param texturePath Roughnessマップテクスチャのパス
-    void SetRoughnessMap(const std::string& texturePath);
-
-    /// @brief RoughnessマップのGPUハンドルを取得
-    /// @return GPUディスクリプタハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE GetRoughnessMapHandle() const
-    {
-        return roughnessMapHandle_;
-    }
-
-    /// @brief AOマップを設定（テクスチャパスから）
-    /// @param texturePath AOマップテクスチャのパス
-    void SetAOMap(const std::string& texturePath);
-
-    /// @brief AOマップのGPUハンドルを取得
-    /// @return GPUディスクリプタハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE GetAOMapHandle() const
-    {
-        return aoMapHandle_;
-    }
-
-    /// @brief マテリアルのGPU仮想アドレスを取得
-    /// @return GPU仮想アドレス
-    D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const
-    {
-        return materialResource_->GetGPUVirtualAddress(); // GPU仮想アドレスを取得
-    }
-
-        /// @brief マテリアルデータを取得
+        /// @brief マテリアルデータを取得（下位互換性のため残存）
         /// @return
-        Material* GetMaterialData() const
+        MaterialConstants* GetMaterialData() const
         {
             return materialData_; // マテリアルデータを取得
         }
@@ -351,12 +322,6 @@ namespace CoreEngine
         // マテリアルリソース
         Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_ = nullptr;
         // マテリアルデータ
-        Material* materialData_ = nullptr;
-        
-        // PBRテクスチャマップのGPUハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE normalMapHandle_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE metallicMapHandle_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE roughnessMapHandle_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE aoMapHandle_ = {};
+        MaterialConstants* materialData_ = nullptr;
     };
 }

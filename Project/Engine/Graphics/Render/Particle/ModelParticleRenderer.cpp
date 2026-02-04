@@ -33,9 +33,12 @@ void ModelParticleRenderer::Draw(ParticleSystem* particle) {
 
 	// テクスチャハンドルを決定（パーティクル設定 > モデルデフォルト）
 	D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = particle->GetTextureHandle();
-	if (textureHandle.ptr == 0 && !modelResource->modelData_.material.textureFilePath.empty()) {
-		// モデルのテクスチャを使用
-		textureHandle = TextureManager::GetInstance().Load(modelResource->modelData_.material.textureFilePath).gpuHandle;
+	if (textureHandle.ptr == 0) {
+		// モデルの最初のマテリアルのテクスチャを使用
+		const auto& materials = modelResource->GetMaterials();
+		if (!materials.empty() && !materials[0].baseColorTexture.empty()) {
+			textureHandle = TextureManager::GetInstance().Load(materials[0].baseColorTexture).gpuHandle;
+		}
 	}
 
 	// 共通リソースを設定

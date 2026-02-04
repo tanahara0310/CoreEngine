@@ -1,4 +1,4 @@
-﻿#include "SneakWalkModelObject.h"
+#include "SneakWalkModelObject.h"
 #include "Engine/EngineSystem/EngineSystem.h"
 #include "Engine/Graphics/Model/ModelManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"

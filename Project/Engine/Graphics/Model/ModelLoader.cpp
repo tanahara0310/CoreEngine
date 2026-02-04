@@ -32,7 +32,7 @@ ModelData ModelLoader::LoadModelFile(const std::string& directoryPath, const std
     result.materials.resize(scene->mNumMaterials);
     for (uint32_t matIndex = 0; matIndex < scene->mNumMaterials; ++matIndex) {
         aiMaterial* aiMat = scene->mMaterials[matIndex];
-        MaterialData& material = result.materials[matIndex];
+        MaterialAsset& material = result.materials[matIndex];
         
         // マテリアル名を取得
         aiString matName;
@@ -162,13 +162,6 @@ ModelData ModelLoader::LoadModelFile(const std::string& directoryPath, const std
 
     // Node階層構造の読み込み
     result.rootNode = ReadNode(scene->mRootNode);
-    
-    // 下位互換性のために最初のマテリアルのbaseColorTextureを設定
-    if (!result.materials.empty()) {
-        result.material.baseColorTexture = result.materials[0].baseColorTexture;
-        result.material.textureFilePath = result.materials[0].baseColorTexture;
-        result.material.name = result.materials[0].name;
-    }
     
     Logger::GetInstance().Log(std::format("Model loading completed: Total {} vertices, {} indices, {} materials, {} submeshes", 
         result.vertices.size(), result.indices.size(), result.materials.size(), result.subMeshes.size()), 

@@ -50,7 +50,10 @@ namespace CoreEngine
 
 		auto* materialManager = model_->GetMaterialManager();
 		if (materialManager) {
-			materialManager->SetPBRParameters(metallic, roughness, ao);
+			auto* constants = materialManager->GetConstants();
+			constants->metallic = metallic;
+			constants->roughness = roughness;
+			constants->ao = ao;
 		}
 	}
 
@@ -59,7 +62,7 @@ namespace CoreEngine
 
 		auto* materialManager = model_->GetMaterialManager();
 		if (materialManager) {
-			materialManager->SetEnablePBR(enable);
+			materialManager->GetConstants()->enablePBR = enable ? 1 : 0;
 		}
 	}
 
@@ -68,7 +71,7 @@ namespace CoreEngine
 
 		auto* materialManager = model_->GetMaterialManager();
 		if (materialManager) {
-			materialManager->SetEnableEnvironmentMap(enable);
+			materialManager->GetConstants()->enableEnvironmentMap = enable ? 1 : 0;
 		}
 	}
 
@@ -77,7 +80,7 @@ namespace CoreEngine
 
 		auto* materialManager = model_->GetMaterialManager();
 		if (materialManager) {
-			materialManager->SetEnvironmentMapIntensity(intensity);
+			materialManager->GetConstants()->environmentMapIntensity = intensity;
 		}
 	}
 
@@ -86,7 +89,7 @@ namespace CoreEngine
 
 		auto* materialManager = model_->GetMaterialManager();
 		if (materialManager) {
-			materialManager->SetColor(color);
+			materialManager->GetConstants()->color = color;
 		}
 	}
 
@@ -95,7 +98,7 @@ namespace CoreEngine
 
 		auto* materialManager = model_->GetMaterialManager();
 		if (materialManager) {
-			materialManager->SetEnableIBL(enable);
+			materialManager->GetConstants()->enableIBL = enable ? 1 : 0;
 		}
 	}
 
@@ -104,7 +107,7 @@ namespace CoreEngine
 
 		auto* materialManager = model_->GetMaterialManager();
 		if (materialManager) {
-			materialManager->SetIBLIntensity(intensity);
+			materialManager->GetConstants()->iblIntensity = intensity;
 		}
 	}
 
@@ -113,7 +116,7 @@ namespace CoreEngine
 
 		auto* materialManager = model_->GetMaterialManager();
 		if (materialManager) {
-			materialManager->SetEnvironmentRotationY(rotationY);
+			materialManager->GetConstants()->environmentRotationY = rotationY;
 		}
 	}
 }

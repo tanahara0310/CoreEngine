@@ -613,10 +613,10 @@
     <ClInclude Include="Engine\Graphics\Shader\ShaderCompiler.h">
       <Filter>Engine\Graphics\Shader</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\Material.h">
+    <ClInclude Include="Engine\Graphics\Structs\MaterialConstants.h">
       <Filter>Engine\Graphics\Structs</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\MaterialData.h">
+    <ClInclude Include="Engine\Graphics\Structs\MaterialAsset.h">
       <Filter>Engine\Graphics\Structs</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Structs\ModelData.h">
@@ -1302,6 +1302,7 @@
     <None Include="Project\Assets\Shaders\Common\LightStructures.hlsli" />
     <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
     <None Include="Docs\ShadowSystemImplementation.md" />
+    <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">
