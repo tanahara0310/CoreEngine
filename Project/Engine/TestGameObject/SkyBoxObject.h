@@ -81,10 +81,10 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> transformBuffer_;
 
 	/// @brief マテリアルデータ
-	struct Material {
+	struct SkyBoxMaterial {
 		Vector4 color;
 	};
-	Material* materialData_ = nullptr;
+	SkyBoxMaterial* materialData_ = nullptr;
 
 	/// @brief トランスフォームデータ
 	struct TransformationMatrix {

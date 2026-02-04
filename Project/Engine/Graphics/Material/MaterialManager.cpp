@@ -1,5 +1,4 @@
 #include "MaterialManager.h"
-#include "Engine/Graphics/TextureManager.h"
 
 namespace CoreEngine
 {
@@ -9,7 +8,7 @@ namespace CoreEngine
 	void MaterialManager::Initialize(ID3D12Device* device, ResourceFactory* resourceFactory)
 	{
 		// マテリアル用のリソースを作る
-		materialResource_ = resourceFactory->CreateBufferResource(device, sizeof(Material));
+		materialResource_ = resourceFactory->CreateBufferResource(device, sizeof(MaterialConstants));
 		// マテリアルのデータを書き込む
 		materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
 
@@ -36,45 +35,5 @@ namespace CoreEngine
 		materialData_->useMetallicMap = 0;
 		materialData_->useRoughnessMap = 0;
 		materialData_->useAOMap = 0;
-	}
-
-	void MaterialManager::SetNormalMap(const std::string& texturePath)
-	{
-		auto& textureManager = TextureManager::GetInstance();
-		auto loadedTexture = textureManager.Load(texturePath);
-		normalMapHandle_ = loadedTexture.gpuHandle;
-		
-		// ノーマルマップの使用を自動的に有効化
-		materialData_->useNormalMap = 1;
-	}
-
-	void MaterialManager::SetMetallicMap(const std::string& texturePath)
-	{
-		auto& textureManager = TextureManager::GetInstance();
-		auto loadedTexture = textureManager.Load(texturePath);
-		metallicMapHandle_ = loadedTexture.gpuHandle;
-		
-		// Metallicマップの使用を自動的に有効化
-		materialData_->useMetallicMap = 1;
-	}
-
-	void MaterialManager::SetRoughnessMap(const std::string& texturePath)
-	{
-		auto& textureManager = TextureManager::GetInstance();
-		auto loadedTexture = textureManager.Load(texturePath);
-		roughnessMapHandle_ = loadedTexture.gpuHandle;
-		
-		// Roughnessマップの使用を自動的に有効化
-		materialData_->useRoughnessMap = 1;
-	}
-
-	void MaterialManager::SetAOMap(const std::string& texturePath)
-	{
-		auto& textureManager = TextureManager::GetInstance();
-		auto loadedTexture = textureManager.Load(texturePath);
-		aoMapHandle_ = loadedTexture.gpuHandle;
-		
-		// AOマップの使用を自動的に有効化
-		materialData_->useAOMap = 1;
 	}
 }

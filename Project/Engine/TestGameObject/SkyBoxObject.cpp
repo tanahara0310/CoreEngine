@@ -153,7 +153,7 @@ void SkyBoxObject::CreateMaterialBuffer() {
    assert(dxCommon != nullptr);
 
    // マテリアル用定数バッファの作成
-   materialBuffer_ = ResourceFactory::CreateBufferResource(dxCommon->GetDevice(), sizeof(Material));
+   materialBuffer_ = ResourceFactory::CreateBufferResource(dxCommon->GetDevice(), sizeof(SkyBoxMaterial));
 
    // マテリアルデータをマップ
    materialBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));

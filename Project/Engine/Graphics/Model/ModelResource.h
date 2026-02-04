@@ -6,7 +6,7 @@
 #include <map>
 #include <optional>
 
-#include "Engine/Graphics/Structs/MaterialData.h"
+#include "Engine/Graphics/Structs/MaterialAsset.h"
 #include "Engine/Graphics/Structs/ModelData.h"
 #include "Engine/Graphics/Structs/Node.h"
 #include "Animation/Animation.h"
@@ -89,7 +89,7 @@ public:
 	
 	/// @brief マテリアルデータを取得
 	/// @return マテリアルデータのベクター
-	const std::vector<MaterialData>& GetMaterials() const { return modelData_.materials; }
+	const std::vector<MaterialAsset>& GetMaterials() const { return modelData_.materials; }
 	
 	/// @brief 指定マテリアルのPBRテクスチャハンドルを取得
 	/// @param materialIndex マテリアルインデックス
@@ -116,7 +116,6 @@ private:
 	UINT indexCount_ = 0;
 	
 	ModelData modelData_;
-	MaterialData materialData_;
 	Node rootNode_;
 	std::optional<Skeleton> skeleton_;
 

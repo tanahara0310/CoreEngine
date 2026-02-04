@@ -493,8 +493,8 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Utility\Debug\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Camera\Debug\DebugCamera.h" />
     <ClInclude Include="Engine\Camera\Release\Camera.h" />
-    <ClInclude Include="Engine\Graphics\Structs\Material.h" />
-    <ClInclude Include="Engine\Graphics\Structs\MaterialData.h" />
+    <ClInclude Include="Engine\Graphics\Structs\MaterialConstants.h" />
+    <ClInclude Include="Engine\Graphics\Structs\MaterialAsset.h" />
     <ClInclude Include="Engine\Graphics\Structs\ModelData.h" />
     <ClInclude Include="Engine\Graphics\Structs\TransformationMatrix.h" />
     <ClInclude Include="Engine\Graphics\Structs\VertexData.h" />
@@ -662,6 +662,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <None Include="docs\ParticleSystem_Refactoring_Summary.md" />
     <None Include="Docs\ShadowSystemImplementation.md" />
     <None Include="Engine\Graphics\Font\README.md" />
+    <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
     <None Include="Engine\Particle\README.md" />
     <None Include="Engine\Utility\Debug\ImGui\README.md" />
     <None Include="Project\Assets\Shaders\Common\LightStructures.hlsli" />
