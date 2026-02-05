@@ -8,8 +8,8 @@ namespace CoreEngine
 template<typename tValue>
 struct Keyframe {
 
-	float time;      //!< キーフレームの時刻(単位は秒)
-	tValue value;   //!< キーフレームの値
+    float time;      //!< キーフレームの時刻(単位は秒)
+    tValue value;   //!< キーフレームの値
 
 };
 

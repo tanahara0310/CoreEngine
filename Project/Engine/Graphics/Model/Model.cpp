@@ -1,4 +1,4 @@
-#include "Model.h"
+﻿#include "Model.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Graphics/Shadow/ShadowMapManager.h"
@@ -114,13 +114,13 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList = sDxCommon_->GetCommandList();
         assert(cmdList);
 
-		// WVP行列を更新（共通処理）
-		UpdateTransformationMatrix(transform, camera);
-		
-		// 複数サブメッシュがある場合はサブメッシュごとに描画
-		const auto& subMeshes = resource_->GetSubMeshes();
-		
-		if (!subMeshes.empty()) {
+        // WVP行列を更新（共通処理）
+        UpdateTransformationMatrix(transform, camera);
+        
+        // 複数サブメッシュがある場合はサブメッシュごとに描画
+        const auto& subMeshes = resource_->GetSubMeshes();
+        
+        if (!subMeshes.empty()) {
             // サブメッシュごとに描画
             for (const auto& subMesh : subMeshes) {
                 // マテリアルのテクスチャを取得
@@ -138,21 +138,21 @@ namespace CoreEngine
                 // このサブメッシュの範囲を描画
                 cmdList->DrawIndexedInstanced(subMesh.indexCount, 1, subMesh.startIndex, 0, 0);
             }
-		} else {
-			// 下位互換性：サブメッシュがない場合は全体を1つのテクスチャで描画
-			// デフォルトの白テクスチャを使用（空のハンドルを渡すとデフォルトテクスチャが使われる）
-			D3D12_GPU_DESCRIPTOR_HANDLE emptyHandle = {};
-			
-			if (HasSkinCluster()) {
-				SetupSkinningDrawCommands(cmdList, textureHandle, emptyHandle, emptyHandle, emptyHandle);
-			} else {
-				SetupNormalDrawCommands(cmdList, textureHandle, emptyHandle, emptyHandle, emptyHandle);
-			}
-			
-			// 描画実行
-			cmdList->DrawIndexedInstanced(resource_->indexCount_, 1, 0, 0, 0);
-		}
-	}
+        } else {
+            // 下位互換性：サブメッシュがない場合は全体を1つのテクスチャで描画
+            // デフォルトの白テクスチャを使用（空のハンドルを渡すとデフォルトテクスチャが使われる）
+            D3D12_GPU_DESCRIPTOR_HANDLE emptyHandle = {};
+            
+            if (HasSkinCluster()) {
+                SetupSkinningDrawCommands(cmdList, textureHandle, emptyHandle, emptyHandle, emptyHandle);
+            } else {
+                SetupNormalDrawCommands(cmdList, textureHandle, emptyHandle, emptyHandle, emptyHandle);
+            }
+            
+            // 描画実行
+            cmdList->DrawIndexedInstanced(resource_->indexCount_, 1, 0, 0, 0);
+        }
+    }
 
     void Model::DrawShadow(const WorldTransform& transform, ID3D12GraphicsCommandList* cmdList) {
         assert(IsInitialized());

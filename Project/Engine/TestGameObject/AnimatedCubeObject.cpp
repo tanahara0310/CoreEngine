@@ -18,22 +18,22 @@ void AnimatedCubeObject::Initialize() {
    auto modelManager = engine->GetComponent<ModelManager>();
 
    if (!dxCommon || !modelManager) {
-	  return;
+      return;
    }
 
    // アニメーションを事前に読み込む
    AnimationLoadInfo animLoadInfo{
-	   .directory = "SampleAssets/AnimatedCube",
-	   .modelFilename = "AnimatedCube.gltf",
-	   .animationName = "default"
+       .directory = "SampleAssets/AnimatedCube",
+       .modelFilename = "AnimatedCube.gltf",
+       .animationName = "default"
    };
    modelManager->LoadAnimation(animLoadInfo);
 
    // キーフレームアニメーションモデルとして作成
    model_ = modelManager->CreateKeyframeModel(
-	  "SampleAssets/AnimatedCube/AnimatedCube.gltf",
-	  "default",  // アニメーション名
-	  true    // ループ再生
+      "SampleAssets/AnimatedCube/AnimatedCube.gltf",
+      "default",  // アニメーション名
+      true    // ループ再生
    );
 
    // トランスフォームの初期化
@@ -50,7 +50,7 @@ void AnimatedCubeObject::Initialize() {
 void AnimatedCubeObject::Update() {
    // アニメーションの更新
    if (model_ && model_->HasAnimationController()) {
-	  model_->UpdateAnimation(deltaTime_);
+      model_->UpdateAnimation(deltaTime_);
    }
 
    // トランスフォームの更新
@@ -58,41 +58,41 @@ void AnimatedCubeObject::Update() {
 }
 
 void AnimatedCubeObject::Draw(const ICamera* camera) {
-	if (!camera || !model_) return;
-	
-	// モデルの描画
-	model_->Draw(transform_, camera, texture_.gpuHandle);
+    if (!camera || !model_) return;
+    
+    // モデルの描画
+    model_->Draw(transform_, camera, texture_.gpuHandle);
 }
 
 #ifdef _DEBUG
 bool AnimatedCubeObject::DrawImGuiExtended() {
-	bool changed = false;
+    bool changed = false;
 
-	// アニメーション制御（拡張部分）
-	if (model_ && model_->HasAnimationController()) {
-	   if (ImGui::TreeNode("アニメーション")) {
-		  // 再生速度
-		  float animSpeed = GetAnimationSpeed();
-		  if (ImGui::SliderFloat("速度", &animSpeed, 0.0f, 3.0f)) {
-			 SetAnimationSpeed(animSpeed);
-			 changed = true;
-		  }
+    // アニメーション制御（拡張部分）
+    if (model_ && model_->HasAnimationController()) {
+       if (ImGui::TreeNode("アニメーション")) {
+          // 再生速度
+          float animSpeed = GetAnimationSpeed();
+          if (ImGui::SliderFloat("速度", &animSpeed, 0.0f, 3.0f)) {
+             SetAnimationSpeed(animSpeed);
+             changed = true;
+          }
 
-		  // アニメーション時間表示
-		  float animTime = GetAnimationTime();
-		  ImGui::Text("時間: %.2f 秒", animTime);
+          // アニメーション時間表示
+          float animTime = GetAnimationTime();
+          ImGui::Text("時間: %.2f 秒", animTime);
 
-		  // リセットボタン
-		  if (ImGui::Button("アニメーションをリセット")) {
-			 ResetAnimation();
-			 changed = true;
-		  }
+          // リセットボタン
+          if (ImGui::Button("アニメーションをリセット")) {
+             ResetAnimation();
+             changed = true;
+          }
 
-		  ImGui::TreePop();
-	   }
-	}
+          ImGui::TreePop();
+       }
+    }
 
-	return changed;
+    return changed;
 }
 #endif
 
@@ -108,20 +108,20 @@ float AnimatedCubeObject::GetAnimationSpeed() const {
 
 void AnimatedCubeObject::ResetAnimation() {
    if (model_) {
-	  model_->ResetAnimation();
+      model_->ResetAnimation();
    }
 }
 
 float AnimatedCubeObject::GetAnimationTime() const {
    if (model_) {
-	  return model_->GetAnimationTime();
+      return model_->GetAnimationTime();
    }
    return 0.0f;
 }
 
 bool AnimatedCubeObject::IsAnimationFinished() const {
    if (model_) {
-	  return model_->IsAnimationFinished();
+      return model_->IsAnimationFinished();
    }
    return true;
 }

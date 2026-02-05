@@ -7,8 +7,8 @@
 namespace CoreEngine
 {
 struct QuaternionTransform {
-	Vector3 scale;
-	Quaternion rotate;
-	Vector3 translate;
+    Vector3 scale;
+    Quaternion rotate;
+    Vector3 translate;
 };
 }

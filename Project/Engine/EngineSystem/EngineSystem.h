@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <wrl.h>
 #include <functional>
 #include <memory>
@@ -56,119 +56,119 @@ namespace CoreEngine
 {
 class EngineSystem {
 public:
-	/// @brief エンジンシステムの初期化
-	/// @param winApp ウィンドウアプリケーション
-	void Initialize(WinApp* winApp);
+    /// @brief エンジンシステムの初期化
+    /// @param winApp ウィンドウアプリケーション
+    void Initialize(WinApp* winApp);
 
-	/// @brief エンジンシステムの終了処理
-	void Finalize();
+    /// @brief エンジンシステムの終了処理
+    void Finalize();
 
-	/// @brief フレーム開始処理
-	void BeginFrame();
+    /// @brief フレーム開始処理
+    void BeginFrame();
 
-	/// @brief フレーム終了処理
-	void EndFrame();
+    /// @brief フレーム終了処理
+    void EndFrame();
 
-	/// @brief 共通描画パイプライン - オフスクリーンレンダリングとポストエフェクトを自動処理
-	/// @param renderCallback シーン固有の描画処理を記述するコールバック
-	void ExecuteRenderPipeline(std::function<void()> renderCallback);
+    /// @brief 共通描画パイプライン - オフスクリーンレンダリングとポストエフェクトを自動処理
+    /// @param renderCallback シーン固有の描画処理を記述するコールバック
+    void ExecuteRenderPipeline(std::function<void()> renderCallback);
 
-	// ──────────────────────────────────────────────────────────
-	// コンポーネントアクセッサ
-	// ──────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────
+    // コンポーネントアクセッサ
+    // ──────────────────────────────────────────────────────────
 
-	/// @brief コンポーネントを取得（型安全）
-	/// @tparam T コンポーネントの型
-	/// 
-	/// 代表的なコンポーネント例:
-	/// 
-	/// - DirectXCommon: DirectX12の基本機能
-	/// 
-	/// - TextureManager: テクスチャ管理
-	/// 
-	/// - ModelManager: 3Dモデル管理
-	/// 
-	/// - Input 系: Keyboard / Mouse / Gamepad
-	/// 
-	/// - Audio / Light / FrameRate など
-	/// 
-	/// @return コンポーネントへのポインタ（登録されていない場合nullptr）
-	template<typename T>
-	T* GetComponent() {
-		return componentManager_.Get<T>();
-	}
+    /// @brief コンポーネントを取得（型安全）
+    /// @tparam T コンポーネントの型
+    /// 
+    /// 代表的なコンポーネント例:
+    /// 
+    /// - DirectXCommon: DirectX12の基本機能
+    /// 
+    /// - TextureManager: テクスチャ管理
+    /// 
+    /// - ModelManager: 3Dモデル管理
+    /// 
+    /// - Input 系: Keyboard / Mouse / Gamepad
+    /// 
+    /// - Audio / Light / FrameRate など
+    /// 
+    /// @return コンポーネントへのポインタ（登録されていない場合nullptr）
+    template<typename T>
+    T* GetComponent() {
+        return componentManager_.Get<T>();
+    }
 
-	/// @brief コンポーネントが登録されているか確認
-	/// @tparam T コンポーネントの型（GetComponentと同じ型を指定可能）
-	/// @return 登録されている場合true
-	template<typename T>
-	bool HasComponent() const {
-		return componentManager_.Has<T>();
-	}
+    /// @brief コンポーネントが登録されているか確認
+    /// @tparam T コンポーネントの型（GetComponentと同じ型を指定可能）
+    /// @return 登録されている場合true
+    template<typename T>
+    bool HasComponent() const {
+        return componentManager_.Has<T>();
+    }
 
 #ifdef _DEBUG
-	// ──────────────────────────────────────────────────────────
-	// デバッグ機能アクセッサ（デバッグビルドのみ）
-	// ──────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────
+    // デバッグ機能アクセッサ（デバッグビルドのみ）
+    // ──────────────────────────────────────────────────────────
 
-	/// @brief ImGuiマネージャーへのアクセッサ
-	ImGuiManager* GetImGuiManager() { return imGui_.get(); }
+    /// @brief ImGuiマネージャーへのアクセッサ
+    ImGuiManager* GetImGuiManager() { return imGui_.get(); }
 
-	/// @brief ゲームデバッグUIへのアクセッサ
-	GameDebugUI* GetGameDebugUI() { return gameDebugUI_.get(); }
+    /// @brief ゲームデバッグUIへのアクセッサ
+    GameDebugUI* GetGameDebugUI() { return gameDebugUI_.get(); }
 
-	/// @brief ドッキングUIへのアクセッサ
-	/// @return ドッキングUIへのポインタ
-	DockingUI* GetDockingUI() { return imGui_ ? imGui_->GetDockingUI() : nullptr; }
+    /// @brief ドッキングUIへのアクセッサ
+    /// @return ドッキングUIへのポインタ
+    DockingUI* GetDockingUI() { return imGui_ ? imGui_->GetDockingUI() : nullptr; }
 
-	/// @brief コンソールUIへのアクセッサ
-	/// @return コンソールUIへのポインタ
-	ConsoleUI* GetConsole() { return gameDebugUI_ ? gameDebugUI_->GetConsole() : nullptr; }
+    /// @brief コンソールUIへのアクセッサ
+    /// @return コンソールUIへのポインタ
+    ConsoleUI* GetConsole() { return gameDebugUI_ ? gameDebugUI_->GetConsole() : nullptr; }
 #endif
 
 private:
-	// ──────────────────────────────────────────────────────────
-	// コンポーネント登録ヘルパー
-	// ──────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────
+    // コンポーネント登録ヘルパー
+    // ──────────────────────────────────────────────────────────
 
-	/// @brief コンポーネントを登録
-	/// @tparam T コンポーネントの型
-	/// @param component コンポーネントのunique_ptr
-	template<typename T>
-	void RegisterComponent(std::unique_ptr<T> component) {
-		T* ptr = component.get();
-		componentOwners_.emplace_back(
-			component.release(),
-			[](void* p) { delete static_cast<T*>(p); }
-		);
-		componentManager_.Register(ptr);
-	}
+    /// @brief コンポーネントを登録
+    /// @tparam T コンポーネントの型
+    /// @param component コンポーネントのunique_ptr
+    template<typename T>
+    void RegisterComponent(std::unique_ptr<T> component) {
+        T* ptr = component.get();
+        componentOwners_.emplace_back(
+            component.release(),
+            [](void* p) { delete static_cast<T*>(p); }
+        );
+        componentManager_.Register(ptr);
+    }
 
-	// ──────────────────────────────────────────────────────────
-	// コンポーネント作成ヘルパーメソッド
-	// ──────────────────────────────────────────────────────────
-	void CreateGraphicsComponents();
-	void CreateInputComponents();
-	void CreateAudioComponents();
-	void CreateLightComponents();
-	void CreateFrameRateController();
+    // ──────────────────────────────────────────────────────────
+    // コンポーネント作成ヘルパーメソッド
+    // ──────────────────────────────────────────────────────────
+    void CreateGraphicsComponents();
+    void CreateInputComponents();
+    void CreateAudioComponents();
+    void CreateLightComponents();
+    void CreateFrameRateController();
 
-	// ──────────────────────────────────────────────────────────
-	// コアメンバ変数
-	// ──────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────
+    // コアメンバ変数
+    // ──────────────────────────────────────────────────────────
 
-	WinApp* winApp_ = nullptr;
+    WinApp* winApp_ = nullptr;
 
-	// コンポーネント管理
-	ComponentManager componentManager_;
+    // コンポーネント管理
+    ComponentManager componentManager_;
 
-	// コンポーネントの所有権管理（型消去されたポインタのコンテナ）
-	std::vector<std::unique_ptr<void, void(*)(void*)>> componentOwners_;
+    // コンポーネントの所有権管理（型消去されたポインタのコンテナ）
+    std::vector<std::unique_ptr<void, void(*)(void*)>> componentOwners_;
 
 #ifdef _DEBUG
-	// デバッグ機能（デバッグビルドのみ）
-	std::unique_ptr<ImGuiManager> imGui_ = std::make_unique<ImGuiManager>(); // ImGuiマネージャークラスのインスタンス
-	std::unique_ptr<GameDebugUI> gameDebugUI_ = std::make_unique<GameDebugUI>(); // ゲームデバッグUIのインスタンス
+    // デバッグ機能（デバッグビルドのみ）
+    std::unique_ptr<ImGuiManager> imGui_ = std::make_unique<ImGuiManager>(); // ImGuiマネージャークラスのインスタンス
+    std::unique_ptr<GameDebugUI> gameDebugUI_ = std::make_unique<GameDebugUI>(); // ゲームデバッグUIのインスタンス
 #endif // _DEBUG
 };
 }

@@ -652,6 +652,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
+    <None Include="convert-tabs-to-spaces.ps1" />
     <None Include="docs\BulletHitParticle_Implementation.md" />
     <None Include="docs\LineRenderer_Refactoring.md" />
     <None Include="docs\Logger_Usage.md" />

@@ -16,9 +16,9 @@
 
 // 前方宣言
 namespace CoreEngine {
-	class DirectXCommon;
-	class PostEffectManager;
-	class GameDebugUI;
+    class DirectXCommon;
+    class PostEffectManager;
+    class GameDebugUI;
 }
 
 /// @brief ImGui管理クラス
@@ -58,23 +58,23 @@ DockingUI* GetDockingUI() const { return dockingUI_.get(); }
 SceneViewport* GetSceneViewport() const { return sceneViewport_.get(); }
 
 /// @brief テクスチャビューアへのアクセッサ
-	/// @return テクスチャビューアへのポインタ
-	TextureViewer* GetTextureViewer() const { return textureViewer_.get(); }
+    /// @return テクスチャビューアへのポインタ
+    TextureViewer* GetTextureViewer() const { return textureViewer_.get(); }
 
 private:
-	HWND hwnd_ = nullptr; // ウィンドウハンドル
-	DirectXCommon* dxCommon_ = nullptr; // DirectX共通クラスへのポインタ
+    HWND hwnd_ = nullptr; // ウィンドウハンドル
+    DirectXCommon* dxCommon_ = nullptr; // DirectX共通クラスへのポインタ
 
-	// サブモジュール
-	std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();
-	std::unique_ptr<SceneViewport> sceneViewport_ = std::make_unique<SceneViewport>();
-	std::unique_ptr<TextureViewer> textureViewer_ = std::make_unique<TextureViewer>();
+    // サブモジュール
+    std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();
+    std::unique_ptr<SceneViewport> sceneViewport_ = std::make_unique<SceneViewport>();
+    std::unique_ptr<TextureViewer> textureViewer_ = std::make_unique<TextureViewer>();
 
 private: // メンバ関数
-	/// @brief レイアウトや見た目を変更
-	void ApplyCustomTheme();
+    /// @brief レイアウトや見た目を変更
+    void ApplyCustomTheme();
 
-	/// @brief フレームの開始
-	void StartNewFrame();
+    /// @brief フレームの開始
+    void StartNewFrame();
 };
 }

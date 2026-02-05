@@ -1,4 +1,4 @@
-#include "ModelLoader.h"
+﻿#include "ModelLoader.h"
 
 #include <cassert>
 #include <format>
@@ -178,15 +178,15 @@ const aiScene* ModelLoader::LoadAssimpFile(const std::string& filepath)
 
     Logger::GetInstance().Log(std::format("Loading model file: {}", filepath), LogLevel::INFO, LogCategory::Graphics);
 
-	const aiScene* scene = importer.ReadFile(
-		filepath.c_str(),
-		aiProcess_Triangulate |
-		aiProcess_GenSmoothNormals |
-		aiProcess_CalcTangentSpace |  // タンジェント/バイタンジェントを自動計算
-		aiProcess_PreTransformVertices |  // Node変換を頂点に適用（glTF複数メッシュ対応）
-		aiProcess_ConvertToLeftHanded |
-		aiProcess_FlipUVs
-	);
+    const aiScene* scene = importer.ReadFile(
+        filepath.c_str(),
+        aiProcess_Triangulate |
+        aiProcess_GenSmoothNormals |
+        aiProcess_CalcTangentSpace |  // タンジェント/バイタンジェントを自動計算
+        aiProcess_PreTransformVertices |  // Node変換を頂点に適用（glTF複数メッシュ対応）
+        aiProcess_ConvertToLeftHanded |
+        aiProcess_FlipUVs
+    );
 
     if (!scene) {
         std::string errorMsg = std::format("Failed to load model file: {}\nAssimp Error: {}\nPlease check if the file exists and the path is correct.", 

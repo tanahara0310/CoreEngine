@@ -10,9 +10,9 @@
 namespace CoreEngine
 {
 struct Node {
-	QuaternionTransform transform; //!< このNodeの変換情報（平行移動、回転、拡縮）
-	Matrix4x4 localMatrix;     //!< このNodeのローカル変換行列
-	std::string name;            //!< Node名
-	std::vector<Node> children;      //!< 子Nodeのリスト
+    QuaternionTransform transform; //!< このNodeの変換情報（平行移動、回転、拡縮）
+    Matrix4x4 localMatrix;     //!< このNodeのローカル変換行列
+    std::string name;            //!< Node名
+    std::vector<Node> children;      //!< 子Nodeのリスト
 };
 }

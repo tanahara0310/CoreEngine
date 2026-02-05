@@ -1,4 +1,4 @@
-#include "ModelResource.h"
+﻿#include "ModelResource.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
@@ -32,10 +32,10 @@ void ModelResource::LoadFromFile(const std::string& directoryPath, const std::st
     // RootNodeを保存
     rootNode_ = modelData_.rootNode;
     
-	// Skeletonを作成
-	skeleton_ = SkeletonLoader::CreateSkeleton(modelData_.rootNode);
-	
-	// 頂点数を設定
+    // Skeletonを作成
+    skeleton_ = SkeletonLoader::CreateSkeleton(modelData_.rootNode);
+    
+    // 頂点数を設定
     vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
     
     // インデックス数を設定
@@ -79,9 +79,9 @@ void ModelResource::LoadFromFile(const std::string& directoryPath, const std::st
     // デフォルトの白テクスチャを取得（テクスチャが存在しない場合に使用）
     D3D12_GPU_DESCRIPTOR_HANDLE defaultWhiteTexture = textureManager_->Load("Texture/white1x1.png").gpuHandle;
     
-	for (size_t i = 0; i < modelData_.materials.size(); ++i) {
-		const MaterialAsset& material = modelData_.materials[i];
-		PBRTextureHandles& handles = materialTextureHandles_[i];
+    for (size_t i = 0; i < modelData_.materials.size(); ++i) {
+        const MaterialAsset& material = modelData_.materials[i];
+        PBRTextureHandles& handles = materialTextureHandles_[i];
         
         // BaseColor（Albedo）テクスチャ
         if (!material.baseColorTexture.empty()) {

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <vector>
 #include <map>
 
@@ -33,7 +33,7 @@ struct ModelData {
     std::vector<VertexData> vertices;       // 頂点データ
     std::vector<int32_t> indices;           // インデックスデータ
     std::vector<MaterialAsset> materials;    // マテリアルデータ（複数対応）
-	std::vector<SubMeshData> subMeshes;     // サブメッシュ情報
-	Node rootNode;                          // Node階層構造のルート
+    std::vector<SubMeshData> subMeshes;     // サブメッシュ情報
+    Node rootNode;                          // Node階層構造のルート
 };
 }
