@@ -1,4 +1,4 @@
-#include "TerrainObject.h"
+﻿#include "TerrainObject.h"
 #include "Engine/EngineSystem/EngineSystem.h"
 #include "Engine/Graphics/Model/ModelManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
@@ -16,7 +16,7 @@ void TerrainObject::Initialize() {
    auto modelManager = engine->GetComponent<ModelManager>();
 
    if (!dxCommon || !modelManager) {
-	  return;
+      return;
    }
 
    // 静的モデルとして作成
@@ -38,7 +38,7 @@ void TerrainObject::Initialize() {
 
 void TerrainObject::Update() {
    if (!IsActive() || !model_) {
-	  return;
+      return;
    }
 
    // トランスフォームの更新

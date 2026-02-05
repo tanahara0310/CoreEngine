@@ -1,4 +1,4 @@
-#include "SneakWalkModelObject.h"
+﻿#include "SneakWalkModelObject.h"
 #include "Engine/EngineSystem/EngineSystem.h"
 #include "Engine/Graphics/Model/ModelManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
@@ -19,7 +19,7 @@ void SneakWalkModelObject::Initialize() {
    // ModelManagerを取得
    auto modelManager = engine->GetComponent<ModelManager>();
    if (!modelManager) {
-	  return;
+      return;
    }
 
    // アニメーションを事前に読み込む
@@ -32,15 +32,15 @@ void SneakWalkModelObject::Initialize() {
 
    // スケルトンアニメーションモデルとして作成
    model_ = modelManager->CreateSkeletonModel(
-	  "SampleAssets/human/sneakWalk.gltf",
-	  "sneakWalkAnimation",
-	  true
+      "SampleAssets/human/sneakWalk.gltf",
+      "sneakWalkAnimation",
+      true
    );
 
    // Transformの初期化
    auto dxCommon = engine->GetComponent<DirectXCommon>();
    if (dxCommon) {
-	  transform_.Initialize(dxCommon->GetDevice());
+      transform_.Initialize(dxCommon->GetDevice());
    }
 
    // 初期位置・スケール設定（中央に配置）
@@ -57,7 +57,7 @@ void SneakWalkModelObject::Initialize() {
 
 void SneakWalkModelObject::Update() {
    if (!IsActive() || !model_) {
-	  return;
+      return;
    }
 
    auto engine = GetEngineSystem();
@@ -68,77 +68,77 @@ void SneakWalkModelObject::Update() {
    // FrameRateControllerから1フレームあたりの時間を取得
    auto frameRateController = engine->GetComponent<FrameRateController>();
    if (!frameRateController) {
-	  return;
+      return;
    }
 
    float deltaTime = frameRateController->GetDeltaTime();
 
    // アニメーションの更新（コントローラー経由で自動的にスケルトンも更新される）
    if (model_->HasAnimationController()) {
-	  model_->UpdateAnimation(deltaTime);
+      model_->UpdateAnimation(deltaTime);
    }
 }
 
 void SneakWalkModelObject::Draw(const ICamera* camera) {
-	if (!camera || !model_) return;
-	
-	// モデルの描画
-	model_->Draw(transform_, camera, uvCheckerTexture_.gpuHandle);
+    if (!camera || !model_) return;
+    
+    // モデルの描画
+    model_->Draw(transform_, camera, uvCheckerTexture_.gpuHandle);
 }
 
 #ifdef _DEBUG
 bool SneakWalkModelObject::DrawImGuiExtended() {
-	if (!model_) return false;
-	
-	bool changed = false;
-	
-	if (ImGui::TreeNode("SneakWalk Model Material")) {
-		auto* materialManager = model_->GetMaterialManager();
-		if (materialManager) {
-			// 色の設定
-			Vector4 color = materialManager->GetColor();
-			float colorArray[4] = { color.x, color.y, color.z, color.w };
-			if (ImGui::ColorEdit4("Color", colorArray)) {
-				materialManager->SetColor({ colorArray[0], colorArray[1], colorArray[2], colorArray[3] });
-				changed = true;
-			}
-			
-			// ライティング有効/無効
-			bool enableLighting = materialManager->GetMaterialData()->enableLighting != 0;
-			if (ImGui::Checkbox("Enable Lighting", &enableLighting)) {
-				materialManager->SetEnableLighting(enableLighting);
-				changed = true;
-			}
-			
-			// シェーディングモード
-			const char* shadingModes[] = { "None", "Lambert", "Half-Lambert", "Toon" };
-			int shadingMode = materialManager->GetShadingMode();
-			if (ImGui::Combo("Shading Mode", &shadingMode, shadingModes, 4)) {
-				materialManager->SetShadingMode(shadingMode);
-				changed = true;
-			}
-			
-			ImGui::Separator();
-			
-			// 環境マップ設定
-			bool enableEnvironmentMap = materialManager->IsEnableEnvironmentMap();
-			if (ImGui::Checkbox("Enable Environment Map", &enableEnvironmentMap)) {
-				materialManager->SetEnableEnvironmentMap(enableEnvironmentMap);
-				changed = true;
-			}
-			
-			if (enableEnvironmentMap) {
-				float envMapIntensity = materialManager->GetEnvironmentMapIntensity();
-				if (ImGui::SliderFloat("Environment Map Intensity", &envMapIntensity, 0.0f, 1.0f)) {
-					materialManager->SetEnvironmentMapIntensity(envMapIntensity);
-					changed = true;
-				}
-			}
-		}
-		ImGui::TreePop();
-	}
-	
-	return changed;
+    if (!model_) return false;
+    
+    bool changed = false;
+    
+    if (ImGui::TreeNode("SneakWalk Model Material")) {
+        auto* materialManager = model_->GetMaterialManager();
+        if (materialManager) {
+            // 色の設定
+            Vector4 color = materialManager->GetColor();
+            float colorArray[4] = { color.x, color.y, color.z, color.w };
+            if (ImGui::ColorEdit4("Color", colorArray)) {
+                materialManager->SetColor({ colorArray[0], colorArray[1], colorArray[2], colorArray[3] });
+                changed = true;
+            }
+            
+            // ライティング有効/無効
+            bool enableLighting = materialManager->GetMaterialData()->enableLighting != 0;
+            if (ImGui::Checkbox("Enable Lighting", &enableLighting)) {
+                materialManager->SetEnableLighting(enableLighting);
+                changed = true;
+            }
+            
+            // シェーディングモード
+            const char* shadingModes[] = { "None", "Lambert", "Half-Lambert", "Toon" };
+            int shadingMode = materialManager->GetShadingMode();
+            if (ImGui::Combo("Shading Mode", &shadingMode, shadingModes, 4)) {
+                materialManager->SetShadingMode(shadingMode);
+                changed = true;
+            }
+            
+            ImGui::Separator();
+            
+            // 環境マップ設定
+            bool enableEnvironmentMap = materialManager->IsEnableEnvironmentMap();
+            if (ImGui::Checkbox("Enable Environment Map", &enableEnvironmentMap)) {
+                materialManager->SetEnableEnvironmentMap(enableEnvironmentMap);
+                changed = true;
+            }
+            
+            if (enableEnvironmentMap) {
+                float envMapIntensity = materialManager->GetEnvironmentMapIntensity();
+                if (ImGui::SliderFloat("Environment Map Intensity", &envMapIntensity, 0.0f, 1.0f)) {
+                    materialManager->SetEnvironmentMapIntensity(envMapIntensity);
+                    changed = true;
+                }
+            }
+        }
+        ImGui::TreePop();
+    }
+    
+    return changed;
 }
 #endif
 }

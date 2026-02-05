@@ -12,7 +12,7 @@ void FenceObject::Initialize() {
    auto modelManager = engine->GetComponent<ModelManager>();
 
    if (!dxCommon || !modelManager) {
-	  return;
+      return;
    }
 
    // 静的モデルとして作成
@@ -31,7 +31,7 @@ void FenceObject::Initialize() {
 
 void FenceObject::Update() {
    if (!IsActive() || !model_) {
-	  return;
+      return;
    }
 
    // トランスフォームの更新

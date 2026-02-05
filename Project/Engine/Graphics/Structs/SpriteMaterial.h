@@ -7,7 +7,7 @@
 namespace CoreEngine
 {
 struct SpriteMaterial {
-	Vector4 color;
-	Matrix4x4 uvTransform;
+    Vector4 color;
+    Matrix4x4 uvTransform;
 };
 }

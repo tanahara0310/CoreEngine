@@ -1303,6 +1303,7 @@
     <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
     <None Include="Docs\ShadowSystemImplementation.md" />
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
+    <None Include="convert-tabs-to-spaces.ps1" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">

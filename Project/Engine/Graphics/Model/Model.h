@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
@@ -221,11 +221,11 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture = {},
             D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture = {});
 
-		/// @brief スキニングモデルの描画コマンドを設定
-		void SetupSkinningDrawCommands(ID3D12GraphicsCommandList* cmdList,
-			D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
-			D3D12_GPU_DESCRIPTOR_HANDLE normalTexture = {},
-			D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture = {},
-			D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture = {});
-	};
+        /// @brief スキニングモデルの描画コマンドを設定
+        void SetupSkinningDrawCommands(ID3D12GraphicsCommandList* cmdList,
+            D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
+            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture = {},
+            D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture = {},
+            D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture = {});
+    };
 }

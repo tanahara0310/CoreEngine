@@ -29,9 +29,9 @@ public:
    const std::vector<Collider*>& GetAllColliders() const { return colliders_; }
 
    struct ColliderPairHash {
-	  size_t operator()(const std::pair<Collider*, Collider*>& p) const noexcept {
-		 return reinterpret_cast<size_t>(p.first) ^ reinterpret_cast<size_t>(p.second);
-	  }
+      size_t operator()(const std::pair<Collider*, Collider*>& p) const noexcept {
+         return reinterpret_cast<size_t>(p.first) ^ reinterpret_cast<size_t>(p.second);
+      }
    };
 
 private:

@@ -8,8 +8,8 @@ namespace CoreEngine
 {
 class IInputDevice {
 public:
-	virtual ~IInputDevice() = default;
-	virtual void Initialize(IDirectInput8* directInput, HWND hwnd) = 0;
-	virtual void Update() = 0;
+    virtual ~IInputDevice() = default;
+    virtual void Initialize(IDirectInput8* directInput, HWND hwnd) = 0;
+    virtual void Update() = 0;
 };
 }

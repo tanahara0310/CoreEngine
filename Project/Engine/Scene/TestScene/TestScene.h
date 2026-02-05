@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cassert>
 #include <cstdint>
@@ -42,24 +42,24 @@ namespace CoreEngine
 {
 class TestScene : public BaseScene {
 public:
-	/// @brief 初期化
-	void Initialize(EngineSystem* engine) override;
+    /// @brief 初期化
+    void Initialize(EngineSystem* engine) override;
 
-	/// @brief 描画処理
-	void Draw() override;
+    /// @brief 描画処理
+    void Draw() override;
 
-	/// @brief 解放
-	void Finalize() override;
+    /// @brief 解放
+    void Finalize() override;
 
 protected:
-	/// @brief 更新処理（BaseSceneのOnUpdate()をオーバーライド）
-	void OnUpdate() override;
+    /// @brief 更新処理（BaseSceneのOnUpdate()をオーバーライド）
+    void OnUpdate() override;
 
 private: // メンバ変数
 
-	Logger& logger = Logger::GetInstance();
+    Logger& logger = Logger::GetInstance();
 
-	// IBL管理
-	std::unique_ptr<IBLManager> iblManager_;
+    // IBL管理
+    std::unique_ptr<IBLManager> iblManager_;
 };
 }
