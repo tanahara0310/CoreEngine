@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
@@ -63,9 +63,9 @@ namespace CoreEngine
         /// @brief モデルを描画（スキニングモデルか通常モデルかは内部で自動判別）
         /// @param transform ワールドトランスフォーム
         /// @param camera カメラ（ICamera インターフェース）
-        /// @param textureHandle テクスチャハンドル
+        /// @param textureHandle テクスチャハンドル（省略時はモデル組み込みテクスチャを使用）
         void Draw(const WorldTransform& transform, const CoreEngine::ICamera* camera,
-            D3D12_GPU_DESCRIPTOR_HANDLE textureHandle);
+            D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
 
         /// @brief シャドウマップ用の描画（深度のみ）
         /// @param transform ワールドトランスフォーム
@@ -139,7 +139,7 @@ namespace CoreEngine
         /// @param color カラー（RGBA）
         void SetMaterialColor(const Vector4& color) {
             if (materialManager_) {
-                materialManager_->SetColor(color);
+                materialManager_->GetConstants()->color = color;
             }
         }
 
@@ -147,7 +147,7 @@ namespace CoreEngine
         /// @return 現在のカラー
         Vector4 GetMaterialColor() const {
             if (materialManager_) {
-                return materialManager_->GetColor();
+                return materialManager_->GetConstants()->color;
             }
             return Vector4{ 1.0f, 1.0f, 1.0f, 1.0f };
         }
@@ -156,7 +156,7 @@ namespace CoreEngine
         /// @param enable true: 有効, false: 無効
         void SetEnableEnvironmentMap(bool enable) {
             if (materialManager_) {
-                materialManager_->SetEnableEnvironmentMap(enable);
+                materialManager_->GetConstants()->enableEnvironmentMap = enable ? 1 : 0;
             }
         }
 
@@ -164,7 +164,7 @@ namespace CoreEngine
         /// @return true: 有効, false: 無効
         bool IsEnableEnvironmentMap() const {
             if (materialManager_) {
-                return materialManager_->IsEnableEnvironmentMap();
+                return materialManager_->GetConstants()->enableEnvironmentMap != 0;
             }
             return false;
         }
@@ -173,7 +173,7 @@ namespace CoreEngine
         /// @param intensity 反射強度 (0.0-1.0)
         void SetEnvironmentMapIntensity(float intensity) {
             if (materialManager_) {
-                materialManager_->SetEnvironmentMapIntensity(intensity);
+                materialManager_->GetConstants()->environmentMapIntensity = intensity;
             }
         }
 
@@ -181,7 +181,7 @@ namespace CoreEngine
         /// @return 現在の反射強度
         float GetEnvironmentMapIntensity() const {
             if (materialManager_) {
-                return materialManager_->GetEnvironmentMapIntensity();
+                return materialManager_->GetConstants()->environmentMapIntensity;
             }
             return 0.0f;
         }

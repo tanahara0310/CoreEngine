@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
 
@@ -23,6 +23,9 @@ public:
     /// @brief オブジェクト名を取得
     /// @return オブジェクト名
     const char* GetObjectName() const override { return "Model"; }
+    
+    /// @brief デバッグUI描画
+    bool DrawImGuiExtended() override;
 #endif
 
     /// @brief トランスフォームを取得
@@ -36,6 +39,14 @@ public:
 
     /// @brief PBRを有効/無効にする
     void SetPBREnabled(bool enable);
+    
+    /// @brief PBRテクスチャマップを有効/無効にする
+    /// @param useNormal ノーマルマップを使用するか
+    /// @param useMetallic メタリックマップを使用するか
+    /// @param useRoughness ラフネスマップを使用するか
+    /// @param useAO AOマップを使用するか
+    void SetPBRTextureMapsEnabled(bool useNormal = true, bool useMetallic = true, 
+                                   bool useRoughness = true, bool useAO = true);
 
     /// @brief 環境マップを有効/無効にする
     void SetEnvironmentMapEnabled(bool enable);

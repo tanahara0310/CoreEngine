@@ -1,4 +1,4 @@
-﻿#include "SneakWalkModelObject.h"
+#include "SneakWalkModelObject.h"
 #include "Engine/EngineSystem/EngineSystem.h"
 #include "Engine/Graphics/Model/ModelManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
@@ -95,48 +95,46 @@ bool SneakWalkModelObject::DrawImGuiExtended() {
     if (ImGui::TreeNode("SneakWalk Model Material")) {
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
+            auto* constants = materialManager->GetConstants();
+            
             // 色の設定
-            Vector4 color = materialManager->GetColor();
-            float colorArray[4] = { color.x, color.y, color.z, color.w };
+            float colorArray[4] = { constants->color.x, constants->color.y, constants->color.z, constants->color.w };
             if (ImGui::ColorEdit4("Color", colorArray)) {
-                materialManager->SetColor({ colorArray[0], colorArray[1], colorArray[2], colorArray[3] });
+                constants->color = { colorArray[0], colorArray[1], colorArray[2], colorArray[3] };
                 changed = true;
             }
             
             // ライティング有効/無効
-            bool enableLighting = materialManager->GetMaterialData()->enableLighting != 0;
+            bool enableLighting = constants->enableLighting != 0;
             if (ImGui::Checkbox("Enable Lighting", &enableLighting)) {
-                materialManager->SetEnableLighting(enableLighting);
+                constants->enableLighting = enableLighting ? 1 : 0;
                 changed = true;
             }
             
             // シェーディングモード
             const char* shadingModes[] = { "None", "Lambert", "Half-Lambert", "Toon" };
-            int shadingMode = materialManager->GetShadingMode();
-            if (ImGui::Combo("Shading Mode", &shadingMode, shadingModes, 4)) {
-                materialManager->SetShadingMode(shadingMode);
+            if (ImGui::Combo("Shading Mode", &constants->shadingMode, shadingModes, 4)) {
                 changed = true;
             }
             
             ImGui::Separator();
             
             // 環境マップ設定
-            bool enableEnvironmentMap = materialManager->IsEnableEnvironmentMap();
+            bool enableEnvironmentMap = constants->enableEnvironmentMap != 0;
             if (ImGui::Checkbox("Enable Environment Map", &enableEnvironmentMap)) {
-                materialManager->SetEnableEnvironmentMap(enableEnvironmentMap);
+                constants->enableEnvironmentMap = enableEnvironmentMap ? 1 : 0;
                 changed = true;
             }
             
             if (enableEnvironmentMap) {
-                float envMapIntensity = materialManager->GetEnvironmentMapIntensity();
-                if (ImGui::SliderFloat("Environment Map Intensity", &envMapIntensity, 0.0f, 1.0f)) {
-                    materialManager->SetEnvironmentMapIntensity(envMapIntensity);
+                if (ImGui::SliderFloat("Environment Map Intensity", &constants->environmentMapIntensity, 0.0f, 1.0f)) {
                     changed = true;
                 }
             }
         }
         ImGui::TreePop();
     }
+    
     
     return changed;
 }

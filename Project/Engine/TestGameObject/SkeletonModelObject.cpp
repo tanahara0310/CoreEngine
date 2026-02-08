@@ -1,4 +1,4 @@
-﻿#include "SkeletonModelObject.h"
+#include "SkeletonModelObject.h"
 #include "Engine/EngineSystem/EngineSystem.h"
 #include "Engine/Graphics/Model/ModelManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
@@ -96,55 +96,48 @@ bool SkeletonModelObject::DrawImGuiExtended() {
     if (ImGui::TreeNode("Skeleton Model Material")) {
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
+            auto* constants = materialManager->GetConstants();
+            
             // 色の設定
-            Vector4 color = materialManager->GetColor();
-            float colorArray[4] = { color.x, color.y, color.z, color.w };
+            float colorArray[4] = { constants->color.x, constants->color.y, constants->color.z, constants->color.w };
             if (ImGui::ColorEdit4("Color", colorArray)) {
-                materialManager->SetColor({ colorArray[0], colorArray[1], colorArray[2], colorArray[3] });
+                constants->color = { colorArray[0], colorArray[1], colorArray[2], colorArray[3] };
                 changed = true;
             }
             
             // ライティング有効/無効
-            bool enableLighting = materialManager->GetMaterialData()->enableLighting != 0;
+            bool enableLighting = constants->enableLighting != 0;
             if (ImGui::Checkbox("Enable Lighting", &enableLighting)) {
-                materialManager->SetEnableLighting(enableLighting);
+                constants->enableLighting = enableLighting ? 1 : 0;
                 changed = true;
             }
             
             // シェーディングモード
             const char* shadingModes[] = { "None", "Lambert", "Half-Lambert", "Toon" };
-            int shadingMode = materialManager->GetShadingMode();
-            if (ImGui::Combo("Shading Mode", &shadingMode, shadingModes, 4)) {
-                materialManager->SetShadingMode(shadingMode);
+            if (ImGui::Combo("Shading Mode", &constants->shadingMode, shadingModes, 4)) {
                 changed = true;
             }
             
             // トゥーンシェーディング設定
-            if (shadingMode == 3) {
-                float toonThreshold = materialManager->GetToonThreshold();
-                if (ImGui::SliderFloat("Toon Threshold", &toonThreshold, 0.0f, 1.0f)) {
-                    materialManager->SetToonThreshold(toonThreshold);
+            if (constants->shadingMode == 3) {
+                if (ImGui::SliderFloat("Toon Threshold", &constants->toonThreshold, 0.0f, 1.0f)) {
                     changed = true;
                 }
                 
-                float toonSmoothness = materialManager->GetToonSmoothness();
-                if (ImGui::SliderFloat("Toon Smoothness", &toonSmoothness, 0.0f, 0.5f)) {
-                    materialManager->SetToonSmoothness(toonSmoothness);
+                if (ImGui::SliderFloat("Toon Smoothness", &constants->toonSmoothness, 0.0f, 0.5f)) {
                     changed = true;
                 }
             }
             
             // ディザリング設定
-            bool enableDithering = materialManager->IsEnableDithering();
+            bool enableDithering = constants->enableDithering != 0;
             if (ImGui::Checkbox("Enable Dithering", &enableDithering)) {
-                materialManager->SetEnableDithering(enableDithering);
+                constants->enableDithering = enableDithering ? 1 : 0;
                 changed = true;
             }
             
             if (enableDithering) {
-                float ditheringScale = materialManager->GetDitheringScale();
-                if (ImGui::SliderFloat("Dithering Scale", &ditheringScale, 0.1f, 5.0f)) {
-                    materialManager->SetDitheringScale(ditheringScale);
+                if (ImGui::SliderFloat("Dithering Scale", &constants->ditheringScale, 0.1f, 5.0f)) {
                     changed = true;
                 }
             }
@@ -152,16 +145,14 @@ bool SkeletonModelObject::DrawImGuiExtended() {
             ImGui::Separator();
             
             // 環境マップ設定
-            bool enableEnvironmentMap = materialManager->IsEnableEnvironmentMap();
+            bool enableEnvironmentMap = constants->enableEnvironmentMap != 0;
             if (ImGui::Checkbox("Enable Environment Map", &enableEnvironmentMap)) {
-                materialManager->SetEnableEnvironmentMap(enableEnvironmentMap);
+                constants->enableEnvironmentMap = enableEnvironmentMap ? 1 : 0;
                 changed = true;
             }
             
             if (enableEnvironmentMap) {
-                float envMapIntensity = materialManager->GetEnvironmentMapIntensity();
-                if (ImGui::SliderFloat("Environment Map Intensity", &envMapIntensity, 0.0f, 1.0f)) {
-                    materialManager->SetEnvironmentMapIntensity(envMapIntensity);
+                if (ImGui::SliderFloat("Environment Map Intensity", &constants->environmentMapIntensity, 0.0f, 1.0f)) {
                     changed = true;
                 }
             }

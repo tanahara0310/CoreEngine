@@ -55,7 +55,10 @@ namespace CoreEngine
 
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
-            materialManager->SetPBRParameters(metallic, roughness, ao);
+            auto* constants = materialManager->GetConstants();
+            constants->metallic = metallic;
+            constants->roughness = roughness;
+            constants->ao = ao;
         }
     }
 
@@ -64,7 +67,7 @@ namespace CoreEngine
 
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
-            materialManager->SetEnablePBR(enable);
+            materialManager->GetConstants()->enablePBR = enable ? 1 : 0;
         }
     }
 
@@ -73,7 +76,7 @@ namespace CoreEngine
 
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
-            materialManager->SetEnableEnvironmentMap(enable);
+            materialManager->GetConstants()->enableEnvironmentMap = enable ? 1 : 0;
         }
     }
 
@@ -82,7 +85,7 @@ namespace CoreEngine
 
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
-            materialManager->SetEnvironmentMapIntensity(intensity);
+            materialManager->GetConstants()->environmentMapIntensity = intensity;
         }
     }
 
@@ -91,7 +94,7 @@ namespace CoreEngine
 
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
-            materialManager->SetColor(color);
+            materialManager->GetConstants()->color = color;
         }
     }
 
@@ -100,7 +103,7 @@ namespace CoreEngine
 
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
-            materialManager->SetEnableIBL(enable);
+            materialManager->GetConstants()->enableIBL = enable ? 1 : 0;
         }
     }
 
@@ -109,7 +112,7 @@ namespace CoreEngine
 
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
-            materialManager->SetIBLIntensity(intensity);
+            materialManager->GetConstants()->iblIntensity = intensity;
         }
     }
 
@@ -118,7 +121,7 @@ namespace CoreEngine
 
         auto* materialManager = model_->GetMaterialManager();
         if (materialManager) {
-            materialManager->SetEnvironmentRotationY(rotationY);
+            materialManager->GetConstants()->environmentRotationY = rotationY;
         }
     }
 
@@ -158,10 +161,13 @@ namespace CoreEngine
         auto* materialManager = model_->GetMaterialManager();
         if (!materialManager) return changed;
 
+
         // === PBR Settings ===
         if (ImGui::CollapsingHeader("PBR Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
+            auto* constants = materialManager->GetConstants();
+            
             // PBR有効/無効
-            bool enablePBR = materialManager->IsEnablePBR();
+            bool enablePBR = constants->enablePBR != 0;
             if (ImGui::Checkbox("Enable PBR", &enablePBR)) {
                 SetPBREnabled(enablePBR);
                 changed = true;
@@ -169,23 +175,17 @@ namespace CoreEngine
 
             if (enablePBR) {
                 // Metallic
-                float metallic = materialManager->GetMetallic();
-                if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f)) {
-                    materialManager->SetMetallic(metallic);
+                if (ImGui::SliderFloat("Metallic", &constants->metallic, 0.0f, 1.0f)) {
                     changed = true;
                 }
 
                 // Roughness
-                float roughness = materialManager->GetRoughness();
-                if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f)) {
-                    materialManager->SetRoughness(roughness);
+                if (ImGui::SliderFloat("Roughness", &constants->roughness, 0.0f, 1.0f)) {
                     changed = true;
                 }
 
                 // AO (Ambient Occlusion)
-                float ao = materialManager->GetAO();
-                if (ImGui::SliderFloat("AO", &ao, 0.0f, 1.0f)) {
-                    materialManager->SetAO(ao);
+                if (ImGui::SliderFloat("AO", &constants->ao, 0.0f, 1.0f)) {
                     changed = true;
                 }
             }
@@ -193,8 +193,10 @@ namespace CoreEngine
 
         // === Environment Map Settings ===
         if (ImGui::CollapsingHeader("Environment Map", ImGuiTreeNodeFlags_DefaultOpen)) {
+            auto* constants = materialManager->GetConstants();
+            
             // 環境マップ有効/無効
-            bool enableEnvMap = materialManager->IsEnableEnvironmentMap();
+            bool enableEnvMap = constants->enableEnvironmentMap != 0;
             if (ImGui::Checkbox("Enable Environment Map", &enableEnvMap)) {
                 SetEnvironmentMapEnabled(enableEnvMap);
                 changed = true;
@@ -202,9 +204,7 @@ namespace CoreEngine
 
             if (enableEnvMap) {
                 // 環境マップ強度
-                float envIntensity = materialManager->GetEnvironmentMapIntensity();
-                if (ImGui::SliderFloat("Env Intensity", &envIntensity, 0.0f, 2.0f)) {
-                    SetEnvironmentMapIntensity(envIntensity);
+                if (ImGui::SliderFloat("Env Intensity", &constants->environmentMapIntensity, 0.0f, 2.0f)) {
                     changed = true;
                 }
             }
@@ -212,8 +212,10 @@ namespace CoreEngine
 
         // === IBL Settings ===
         if (ImGui::CollapsingHeader("IBL (Image-Based Lighting)", ImGuiTreeNodeFlags_DefaultOpen)) {
+            auto* constants = materialManager->GetConstants();
+            
             // IBL有効/無効
-            bool enableIBL = materialManager->IsEnableIBL();
+            bool enableIBL = constants->enableIBL != 0;
             if (ImGui::Checkbox("Enable IBL", &enableIBL)) {
                 SetIBLEnabled(enableIBL);
                 changed = true;
@@ -221,9 +223,7 @@ namespace CoreEngine
 
             if (enableIBL) {
                 // IBL強度
-                float iblIntensity = materialManager->GetIBLIntensity();
-                if (ImGui::SliderFloat("IBL Intensity", &iblIntensity, 0.0f, 2.0f)) {
-                    SetIBLIntensity(iblIntensity);
+                if (ImGui::SliderFloat("IBL Intensity", &constants->iblIntensity, 0.0f, 2.0f)) {
                     changed = true;
                 }
             }
@@ -231,10 +231,10 @@ namespace CoreEngine
 
         // === Material Color ===
         if (ImGui::CollapsingHeader("Material Color")) {
-            Vector4 color = materialManager->GetColor();
-            float colorArray[4] = { color.x, color.y, color.z, color.w };
+            auto* constants = materialManager->GetConstants();
+            float colorArray[4] = { constants->color.x, constants->color.y, constants->color.z, constants->color.w };
             if (ImGui::ColorEdit4("Color", colorArray)) {
-                SetMaterialColor(Vector4(colorArray[0], colorArray[1], colorArray[2], colorArray[3]));
+                constants->color = Vector4(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
                 changed = true;
             }
         }
