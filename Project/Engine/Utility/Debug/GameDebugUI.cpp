@@ -1,4 +1,4 @@
-﻿#include "GameDebugUI.h"
+#include "GameDebugUI.h"
 
 #include "Utility/Debug/ImGui/DockingUI.h"
 #include <EngineSystem.h>
@@ -427,10 +427,13 @@ void GameDebugUI::RegisterWindowsForDocking()
     // ライティング情報を右側に配置（インスペクター系と統一）
     dockingUI_->RegisterWindow(LightWindow, DockArea::Right);
 
-    // コンソールを下部左に配置
-    dockingUI_->RegisterWindow(consoleWindow, DockArea::BottomLeft);
+    // コンソールを下部に配置（Projectビューとタブで統一）
+    dockingUI_->RegisterWindow(consoleWindow, DockArea::Bottom);
 
-    // シーンマネージャーを下部右に配置
-    dockingUI_->RegisterWindow(sceneManagerWindow, DockArea::BottomRight);
+    // シーンマネージャーを左下に配置
+    dockingUI_->RegisterWindow(sceneManagerWindow, DockArea::LeftBottom);
+
+    // プロジェクトビューを下部全体に配置
+    dockingUI_->RegisterWindow("Project", DockArea::Bottom);
 }
 }

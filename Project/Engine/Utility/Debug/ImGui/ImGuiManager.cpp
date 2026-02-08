@@ -1,4 +1,4 @@
-﻿#include "ImGuiManager.h"
+#include "ImGuiManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Utility/Debug/GameDebugUI.h"
 #include <ImGuizmo.h>
@@ -65,6 +65,9 @@ void ImGuiManager::Initialize(HWND hwnd, DirectXCommon* dxCommon)
 
     ImGui::GetIO().Fonts->GetTexDataAsRGBA32(nullptr, nullptr, nullptr);
     ImGui_ImplDX12_CreateDeviceObjects(); // これがないとアクセス違反が起きる
+
+    // ProjectViewの初期化
+    projectView_->Initialize(dxCommon_);
 }
 
 void ImGuiManager::Begin(PostEffectManager* postEffectManager, GameDebugUI* gameDebugUI)
@@ -85,6 +88,9 @@ void ImGuiManager::Begin(PostEffectManager* postEffectManager, GameDebugUI* game
     bool showTextureViewer = gameDebugUI ? gameDebugUI->IsTextureViewerVisible() : false;
     textureViewer_->DrawTextureViewer(showTextureViewer);
 
+    // プロジェクトビューの更新
+    projectView_->Update();
+
     ImGui::End();
 }
 
@@ -100,6 +106,7 @@ void ImGuiManager::Draw()
 
 void ImGuiManager::Finalize()
 {
+    projectView_->Finalize();
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
