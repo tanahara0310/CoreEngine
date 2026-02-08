@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -13,6 +13,7 @@
 #include "DockingUI.h"
 #include "SceneViewport.h"
 #include "TextureViewer.h"
+#include "ProjectView.h"
 
 // 前方宣言
 namespace CoreEngine {
@@ -61,6 +62,10 @@ SceneViewport* GetSceneViewport() const { return sceneViewport_.get(); }
     /// @return テクスチャビューアへのポインタ
     TextureViewer* GetTextureViewer() const { return textureViewer_.get(); }
 
+/// @brief プロジェクトビューへのアクセッサ
+    /// @return プロジェクトビューへのポインタ
+    ProjectView* GetProjectView() const { return projectView_.get(); }
+
 private:
     HWND hwnd_ = nullptr; // ウィンドウハンドル
     DirectXCommon* dxCommon_ = nullptr; // DirectX共通クラスへのポインタ
@@ -69,6 +74,7 @@ private:
     std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();
     std::unique_ptr<SceneViewport> sceneViewport_ = std::make_unique<SceneViewport>();
     std::unique_ptr<TextureViewer> textureViewer_ = std::make_unique<TextureViewer>();
+    std::unique_ptr<ProjectView> projectView_ = std::make_unique<ProjectView>();
 
 private: // メンバ関数
     /// @brief レイアウトや見た目を変更

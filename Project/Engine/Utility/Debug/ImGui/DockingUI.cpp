@@ -1,4 +1,4 @@
-﻿#include "DockingUI.h"
+#include "DockingUI.h"
 
 
 namespace CoreEngine
@@ -90,33 +90,31 @@ void DockingUI::BuildDockLayout()
     ImGui::DockBuilderAddNode(dockMain, ImGuiDockNodeFlags_None);
     ImGui::DockBuilderSetNodeSize(dockMain, dockSpaceSize);
 
-    // 1) 左 20% を分割
-    ImGuiID idLeft, idCentre;
-    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Left, 0.2f, &idLeft, &idCentre);
+    // Unity風レイアウト:
+    // 1) 右側エリア（Inspector）を最初に分割（25%）
+    ImGuiID idMainArea, idRight;
+    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.25f, &idRight, &idMainArea);
 
-    // 左側をさらに上下に分割
+    // 2) 残りのエリアを上下に分割（下部30%）
+    ImGuiID idTop, idBottom;
+    ImGui::DockBuilderSplitNode(idMainArea, ImGuiDir_Down, 0.30f, &idBottom, &idTop);
+
+    // 3) 上部エリアを左側と中央に分割（左側25%）
+    ImGuiID idLeft, idCenter;
+    ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Left, 0.25f, &idLeft, &idCenter);
+
+    // 4) 左側をさらに上下に分割
     ImGuiID idLeftTop, idLeftBottom;
     ImGui::DockBuilderSplitNode(idLeft, ImGuiDir_Down, 0.5f, &idLeftBottom, &idLeftTop);
-
-    // 2) 右 25% を分割
-    ImGuiID idCentre2, idRight;
-    ImGui::DockBuilderSplitNode(idCentre, ImGuiDir_Right, 0.25f, &idRight, &idCentre2);
-
-    // 3) 中央エリアを上下分割
-    ImGuiID idTop, idBottom;
-    ImGui::DockBuilderSplitNode(idCentre2, ImGuiDir_Down, 0.30f, &idBottom, &idTop);
-
-    // 4) 下部を左右分割
-    ImGuiID idLighting, idObjectControl;
-    ImGui::DockBuilderSplitNode(idBottom, ImGuiDir_Left, 0.50f, &idLighting, &idObjectControl);
 
     // ノードIDを保存
     nodeIds_[static_cast<int>(DockArea::LeftTop)] = idLeftTop;
     nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idLeftBottom;
-    nodeIds_[static_cast<int>(DockArea::Center)] = idTop;
+    nodeIds_[static_cast<int>(DockArea::Center)] = idCenter;
     nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
-    nodeIds_[static_cast<int>(DockArea::BottomLeft)] = idLighting;
-    nodeIds_[static_cast<int>(DockArea::BottomRight)] = idObjectControl;
+    nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;  // 使用しない
+    nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0; // 使用しない
+    nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
 
     // 登録されているウィンドウを各ノードにドッキング
     for (const auto& [windowName, area] : registeredWindows_) {

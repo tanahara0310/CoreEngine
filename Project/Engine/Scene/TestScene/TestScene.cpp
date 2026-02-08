@@ -105,7 +105,7 @@ namespace CoreEngine
         chessModel->SetIBLIntensity(1.0f);
         chessModel->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
         chessModel->GetTransform().scale = { 20.0f, 20.0f, 20.0f };
-        chessModel->SetActive(true);
+        chessModel->SetActive(false);
 
 
         // SkyBoxの初期化

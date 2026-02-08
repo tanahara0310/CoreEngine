@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -16,7 +16,8 @@ enum class DockArea {
     Center,         // 中央（シーンビュー）
     Right,          // 右側（インスペクター）
     BottomLeft,     // 下部左（ライティング）
-    BottomRight     // 下部右（オブジェクト制御）
+    BottomRight,    // 下部右（オブジェクト制御）
+    Bottom          // 下部中央（プロジェクトビュー）
 };
 
 /// @brief ドッキングUI管理クラス（改良版）
@@ -52,6 +53,6 @@ private:
     bool layoutInitialized_ = false; // レイアウトが初期化されたかどうか
     
     // エリアごとのノードID
-    ImGuiID nodeIds_[6] = {0}; // DockAreaの数だけ
+    ImGuiID nodeIds_[7] = {0}; // DockAreaの数だけ（Bottomを追加したため7に変更）
 };
 }

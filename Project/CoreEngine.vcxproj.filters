@@ -422,6 +422,7 @@
     <ClCompile Include="Engine\Graphics\IBL\IBLGenerator.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLManager.cpp" />
     <ClCompile Include="Engine\TestGameObject\ModelObject.cpp" />
+    <ClCompile Include="Engine\Utility\Debug\ImGui\ProjectView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1262,6 +1263,7 @@
     <ClInclude Include="Engine\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLManager.h" />
     <ClInclude Include="Engine\TestGameObject\ModelObject.h" />
+    <ClInclude Include="Engine\Utility\Debug\ImGui\ProjectView.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">
