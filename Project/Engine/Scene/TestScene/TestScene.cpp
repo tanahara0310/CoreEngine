@@ -97,12 +97,12 @@ namespace CoreEngine
         auto chessModel = CreateObject<ModelObject>();
         chessModel->Initialize("SampleAssets/PblTestModel/ABeautifulGame.gltf");
         chessModel->SetPBREnabled(true);
+        chessModel->SetPBRTextureMapsEnabled(true, true, true, true); // Normal, Metallic, Roughness, AOマップを有効化
         chessModel->SetMaterialColor({ 1.0f, 1.0f, 1.0f, 1.0f });
         chessModel->SetEnvironmentMapEnabled(true);
         chessModel->SetEnvironmentMapIntensity(0.5f);
         chessModel->SetIBLEnabled(true);
         chessModel->SetIBLIntensity(1.0f);
-        chessModel->SetPBRParameters(0.5f, 0.3f, 1.0f); // Metallic: 0.5, Roughness: 0.3, AO: 1.0
         chessModel->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
         chessModel->GetTransform().scale = { 20.0f, 20.0f, 20.0f };
         chessModel->SetActive(true);

@@ -1,4 +1,4 @@
-﻿#include "Model.h"
+#include "Model.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Graphics/Shadow/ShadowMapManager.h"
@@ -39,7 +39,7 @@ namespace CoreEngine
         // マテリアルマネージャーを作成
         materialManager_ = std::make_unique<MaterialManager>();
         materialManager_->Initialize(sDxCommon_->GetDevice(), sResourceFactory_);
-        materialManager_->SetEnableLighting(true);
+        materialManager_->GetConstants()->enableLighting = 1;
 
         // WVP行列用のリソースを作成（1つのみ）
         wvpResource_ = ResourceFactory::CreateBufferResource(
@@ -117,40 +117,29 @@ namespace CoreEngine
         // WVP行列を更新（共通処理）
         UpdateTransformationMatrix(transform, camera);
         
-        // 複数サブメッシュがある場合はサブメッシュごとに描画
+        // サブメッシュごとに描画
         const auto& subMeshes = resource_->GetSubMeshes();
+        assert(!subMeshes.empty() && "Model must have at least one submesh");
         
-        if (!subMeshes.empty()) {
-            // サブメッシュごとに描画
-            for (const auto& subMesh : subMeshes) {
-                // マテリアルのテクスチャを取得
-                const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
-                
-                // スキンクラスターの有無で描画方法を自動判別
-                if (HasSkinCluster()) {
-                    SetupSkinningDrawCommands(cmdList, textures.baseColor, textures.normal, 
-                        textures.metallicRoughness, textures.occlusion);
-                } else {
-                    SetupNormalDrawCommands(cmdList, textures.baseColor, textures.normal, 
-                        textures.metallicRoughness, textures.occlusion);
-                }
-                
-                // このサブメッシュの範囲を描画
-                cmdList->DrawIndexedInstanced(subMesh.indexCount, 1, subMesh.startIndex, 0, 0);
-            }
-        } else {
-            // 下位互換性：サブメッシュがない場合は全体を1つのテクスチャで描画
-            // デフォルトの白テクスチャを使用（空のハンドルを渡すとデフォルトテクスチャが使われる）
-            D3D12_GPU_DESCRIPTOR_HANDLE emptyHandle = {};
+        for (const auto& subMesh : subMeshes) {
+            // マテリアルのテクスチャを取得
+            const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
             
+            // textureHandleが指定されている場合はBaseColorをオーバーライド
+            D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0) 
+                ? textureHandle : textures.baseColor;
+            
+            // スキンクラスターの有無で描画方法を自動判別
             if (HasSkinCluster()) {
-                SetupSkinningDrawCommands(cmdList, textureHandle, emptyHandle, emptyHandle, emptyHandle);
+                SetupSkinningDrawCommands(cmdList, baseColorTex, textures.normal, 
+                    textures.metallicRoughness, textures.occlusion);
             } else {
-                SetupNormalDrawCommands(cmdList, textureHandle, emptyHandle, emptyHandle, emptyHandle);
+                SetupNormalDrawCommands(cmdList, baseColorTex, textures.normal, 
+                    textures.metallicRoughness, textures.occlusion);
             }
             
-            // 描画実行
-            cmdList->DrawIndexedInstanced(resource_->indexCount_, 1, 0, 0, 0);
+            // このサブメッシュの範囲を描画
+            cmdList->DrawIndexedInstanced(subMesh.indexCount, 1, subMesh.startIndex, 0, 0);
         }
     }
 
@@ -200,13 +189,13 @@ namespace CoreEngine
 
     void Model::SetUVTransform(const Matrix4x4& uvTransform) {
         if (materialManager_) {
-            materialManager_->SetUVTransform(uvTransform);
+            materialManager_->GetConstants()->uvTransform = uvTransform;
         }
     }
 
     Matrix4x4 Model::GetUVTransform() const {
         if (materialManager_) {
-            return materialManager_->GetUVTransform();
+            return materialManager_->GetConstants()->uvTransform;
         }
         return MathCore::Matrix::Identity();
     }

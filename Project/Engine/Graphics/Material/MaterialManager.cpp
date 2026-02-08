@@ -1,4 +1,4 @@
-﻿#include "MaterialManager.h"
+#include "MaterialManager.h"
 
 namespace CoreEngine
 {
@@ -12,10 +12,10 @@ namespace CoreEngine
         // マテリアルのデータを書き込む
         materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
 
-        // 初期値の設定 (白・ライティング有効・単位行列)
-        materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f }; // 色を白に設定
-        SetEnableLighting(true); // ライティングを有効にする
-        materialData_->uvTransform = Matrix::Identity(); // UVの変換行列を単位行列にする
+		// 初期値の設定 (白・ライティング有効・単位行列)
+		materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f }; // 色を白に設定
+		materialData_->enableLighting = 1; // ライティングを有効にする
+		materialData_->uvTransform = Matrix::Identity(); // UVの変換行列を単位行列にする
         materialData_->shininess = 64.0f; // シェーダーの光沢度を設定
         materialData_->shadingMode = 2; // シェーディングモードをHalf-Lambertに設定
         materialData_->toonThreshold = 0.5f; // トゥーンシェーディングの閾値
