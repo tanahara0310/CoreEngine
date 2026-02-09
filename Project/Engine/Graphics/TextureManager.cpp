@@ -1,4 +1,4 @@
-﻿#include "TextureManager.h"
+#include "TextureManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Utility/Logger/Logger.h"
@@ -77,8 +77,25 @@ namespace CoreEngine
             std::string cubemapDDSPath = GetCubemapDDSPath(resolvedPath);
             std::wstring cubemapDDSPathW = Logger::GetInstance().ConvertString(cubemapDDSPath);
 
+            bool needsRegeneration = false;
+
             // キューブマップDDSが存在しない場合は生成
             if (!std::filesystem::exists(cubemapDDSPathW)) {
+                needsRegeneration = true;
+            } else {
+                // 存在する場合、タイムスタンプを比較
+                auto sourceTime = std::filesystem::last_write_time(filePathW);
+                auto ddsTime = std::filesystem::last_write_time(cubemapDDSPathW);
+
+                if (sourceTime > ddsTime) {
+                    Logger::GetInstance().Log(std::format("HDR source file is newer than cubemap DDS, regenerating: {}", resolvedPath), LogLevel::INFO, LogCategory::Graphics);
+                    needsRegeneration = true;
+                    // 古いDDSを削除
+                    std::filesystem::remove(cubemapDDSPathW);
+                }
+            }
+
+            if (needsRegeneration) {
                 Logger::GetInstance().Log(std::format("Generating cubemap DDS from HDR: {}", resolvedPath), LogLevel::INFO, LogCategory::Graphics);
                 if (GenerateCubemapFromHDR(resolvedPath, cubemapDDSPath)) {
                     // 生成成功、キューブマップDDSから読み込み
@@ -90,7 +107,7 @@ namespace CoreEngine
                     Logger::GetInstance().Log(std::format("Failed to generate cubemap, loading HDR as 2D texture: {}", resolvedPath), LogLevel::WARNING, LogCategory::Graphics);
                 }
             } else {
-                // キューブマップDDSが既に存在する場合はそれを使用
+                // キューブマップDDSが既に存在し、最新の場合はそれを使用
                 Logger::GetInstance().Log(std::format("Loading from cubemap DDS cache: {}", cubemapDDSPath), LogLevel::INFO, LogCategory::Graphics);
                 filePathW = cubemapDDSPathW;
                 resolvedPath = cubemapDDSPath;
@@ -106,10 +123,22 @@ namespace CoreEngine
 
             // DDSキャッシュが存在するかチェック
             if (std::filesystem::exists(ddsPathW)) {
-                Logger::GetInstance().Log(std::format("Loading from DDS cache: {}", ddsPath), LogLevel::INFO, LogCategory::Graphics);
-                filePathW = ddsPathW;
-                resolvedPath = ddsPath;
-                isDDS = true;
+                // 元ファイルとDDSファイルのタイムスタンプを比較
+                auto sourceTime = std::filesystem::last_write_time(filePathW);
+                auto ddsTime = std::filesystem::last_write_time(ddsPathW);
+
+                if (sourceTime > ddsTime) {
+                    // 元ファイルの方が新しい場合は、DDSを再生成
+                    Logger::GetInstance().Log(std::format("Source file is newer than DDS cache, regenerating: {}", resolvedPath), LogLevel::INFO, LogCategory::Graphics);
+                    // 古いDDSを削除
+                    std::filesystem::remove(ddsPathW);
+                } else {
+                    // DDSの方が新しいか同じ場合は、DDSから読み込み
+                    Logger::GetInstance().Log(std::format("Loading from DDS cache: {}", ddsPath), LogLevel::INFO, LogCategory::Graphics);
+                    filePathW = ddsPathW;
+                    resolvedPath = ddsPath;
+                    isDDS = true;
+                }
             }
         }
 

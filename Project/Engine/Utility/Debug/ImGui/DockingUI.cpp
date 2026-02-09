@@ -90,7 +90,6 @@ void DockingUI::BuildDockLayout()
     ImGui::DockBuilderAddNode(dockMain, ImGuiDockNodeFlags_None);
     ImGui::DockBuilderSetNodeSize(dockMain, dockSpaceSize);
 
-    // Unity風レイアウト:
     // 1) 右側エリア（Inspector）を最初に分割（25%）
     ImGuiID idMainArea, idRight;
     ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.25f, &idRight, &idMainArea);
