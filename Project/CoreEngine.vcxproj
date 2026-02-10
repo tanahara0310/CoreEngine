@@ -247,6 +247,8 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\TestGameObject\WalkModelObject.cpp" />
     <ClCompile Include="Engine\Utility\Collision\CollisionUtils.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ConsoleUI.cpp" />
+    <ClCompile Include="Engine\Utility\Debug\ImGui\Gizmo.cpp" />
+    <ClCompile Include="Engine\Utility\Debug\ImGui\ObjectSelector.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\SceneManagerTab.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\TextureViewer.cpp" />
@@ -293,7 +295,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Input\KeyboardInput.cpp" />
     <ClCompile Include="Engine\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Utility\Debug\GameDebugUI.cpp" />
-    <ClCompile Include="Engine\Utility\Debug\ImGui\Gizmo.cpp" />
     <ClCompile Include="Application\MyGame.cpp" />
     <ClCompile Include="externals\imgui\imgui.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
@@ -456,6 +457,8 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\TestGameObject\WalkModelObject.h" />
     <ClInclude Include="Engine\Utility\Collision\CollisionUtils.h" />
     <ClInclude Include="Engine\Utility\Debug\ConsoleUI.h" />
+    <ClInclude Include="Engine\Utility\Debug\ImGui\Gizmo.h" />
+    <ClInclude Include="Engine\Utility\Debug\ImGui\ObjectSelector.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\SceneManagerTab.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\TextureViewer.h" />
@@ -521,7 +524,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Input\MouseInput.h" />
     <ClInclude Include="Engine\Input\GamepadInput.h" />
     <ClInclude Include="Engine\Utility\Debug\GameDebugUI.h" />
-    <ClInclude Include="Engine\Utility\Debug\ImGui\Gizmo.h" />
     <ClInclude Include="Engine\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Graphics\RootSignatureManager.h" />
     <ClInclude Include="Engine\Graphics\TextureManager.h" />

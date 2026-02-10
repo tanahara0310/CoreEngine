@@ -1,13 +1,22 @@
-﻿#include "SceneViewport.h"
+#include "SceneViewport.h"
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
 #include "WinApp/WinApp.h"
 #include "Gizmo.h"
+#include "Engine/ObjectCommon/GameObjectManager.h"
+#include "Engine/Camera/ICamera.h"
 
 
 namespace CoreEngine
 {
+
+void SceneViewport::Initialize()
+{
+    objectSelector_ = std::make_unique<ObjectSelector>();
+    objectSelector_->Initialize();
+}
+
 void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
 {
     // Sceneウィンドウを描画開始（背景透過・スクロール無効）
@@ -44,9 +53,6 @@ void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, PostEffectManager
         // ビューポートがホバー状態かチェック
         isViewportHovered_ = ImGui::IsWindowHovered();
 
-        // ギズモ準備
-        Gizmo::Prepare(viewportPos_, viewportSize_);
-
         // シーンのレンダリング結果を表示
         // PostEffectManagerから最終テクスチャを取得（責務をカプセル化）
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle;
@@ -61,7 +67,60 @@ void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, PostEffectManager
         
         ImTextureID texID = (ImTextureID)textureHandle.ptr;
         ImGui::Image(texID, ImVec2(drawW, drawH));
+
+        // ギズモ準備（Imageの後に設定）
+        Gizmo::Prepare(viewportPos_, viewportSize_);
+        
+        // ImGuizmoが正しいDrawListを使用するように設定
+        ImGuizmo::SetDrawlist();
+
+        // ギズモの描画（Imageの後に描画することで、シーン上に重ねて表示）
+        if (objectSelector_) {
+            // 3Dオブジェクトのギズモ描画
+            if (currentCamera_ && objectSelector_->GetSelectedObject()) {
+                objectSelector_->DrawGizmo(currentCamera_);
+            }
+            // 2Dスプライトのギズモ描画
+            else if (currentCamera2D_ && objectSelector_->GetSelectedSprite()) {
+                objectSelector_->DrawGizmo2D(currentCamera2D_);
+            }
+        }
     }
     ImGui::End();
 }
+
+void SceneViewport::UpdateObjectSelection(GameObjectManager* gameObjectManager, const ICamera* camera)
+{
+    if (!objectSelector_ || !gameObjectManager || !camera) {
+        return;
+    }
+
+    // マウス座標をビューポート座標系に変換（0.0〜1.0の範囲）
+    ImVec2 mousePos = ImGui::GetMousePos();
+    Vector2 normalizedMousePos = Vector2(
+        (mousePos.x - viewportPos_.x) / viewportSize_.x,
+        (mousePos.y - viewportPos_.y) / viewportSize_.y
+    );
+
+    // オブジェクトセレクターを更新
+    objectSelector_->Update(gameObjectManager, camera, normalizedMousePos, isViewportHovered_);
+}
+
+void SceneViewport::UpdateSpriteSelection(GameObjectManager* gameObjectManager, const ICamera* camera)
+{
+    if (!objectSelector_ || !gameObjectManager || !camera) {
+        return;
+    }
+
+    // マウス座標をビューポート座標系に変換（0.0〜1.0の範囲）
+    ImVec2 mousePos = ImGui::GetMousePos();
+    Vector2 normalizedMousePos = Vector2(
+        (mousePos.x - viewportPos_.x) / viewportSize_.x,
+        (mousePos.y - viewportPos_.y) / viewportSize_.y
+    );
+
+    // 2D用のオブジェクトセレクターを更新
+    objectSelector_->Update2D(gameObjectManager, camera, normalizedMousePos, isViewportHovered_);
+}
+
 }

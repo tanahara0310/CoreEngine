@@ -1,73 +1,54 @@
-﻿#pragma once
-#include <vector>
-#include <cfloat>
+#pragma once
 
-#include "Engine/WorldTransfom/WorldTransform.h"
-#include "Engine/Math/BoundingBox.h"
-#include <imgui_impl_dx12.h>
-#include <imgui_impl_win32.h>
-
-#include <ImGuizmo.h>
 #include <imgui.h>
-
-// 簡易バウンディングスフィア(ローカル)
+#include <ImGuizmo.h>
+#include "Engine/Math/Matrix/Matrix4x4.h"
 
 namespace CoreEngine
 {
-struct BoundingSphere {
-    Vector3 center; ///< 中心座標
-    float radius; ///< 半径
-};
+    class GameObject;
+    class SpriteObject;
+    class ICamera;
 
-enum class GizmoOperation {
-    Translate,
-    Rotate,
-    Scale
-};
+    /// @brief ImGuizmo操作クラス
+    class Gizmo {
+    public:
+        /// @brief ギズモの操作モード
+        enum class Mode {
+            Translate,  // 移動
+            Rotate,     // 回転
+            Scale       // スケール
+        };
 
-/// @brief ギズモ描画クラス
-class Gizmo {
-public: // メンバ関数
-    static void SetOperation(GizmoOperation operation);
+        /// @brief フレーム開始時の準備
+        /// @param viewportPos ビューポートの位置
+        /// @param viewportSize ビューポートのサイズ
+        static void Prepare(const ImVec2& viewportPos, const ImVec2& viewportSize);
 
-    static GizmoOperation GetOperation();
+        /// @brief ギズモを描画し、オブジェクトのトランスフォームを操作（3D用）
+        /// @param object 操作対象のオブジェクト
+        /// @param camera カメラ
+        /// @param mode 操作モード
+        /// @return トランスフォームが変更された場合true
+        static bool Manipulate(GameObject* object, const ICamera* camera, Mode mode = Mode::Translate);
 
-    /// @brief ギズモ描画準備（矩形設定も含む）
-    /// @param pos ビューポート左上座標
-    /// @param size ビューポートサイズ
-    static void Prepare(const ImVec2& pos, const ImVec2& size);
+        /// @brief スプライト用ギズモを描画し、2Dトランスフォームを操作
+        /// @param sprite 操作対象のスプライトオブジェクト
+        /// @param camera 2Dカメラ
+        /// @param mode 操作モード
+        /// @return トランスフォームが変更された場合true
+        static bool Manipulate2D(SpriteObject* sprite, const ICamera* camera, Mode mode = Mode::Translate);
 
-    /// @brief 従来のスフィア当たり判定でターゲット登録
-    /// @param worldTransform ワールドトランスフォーム
-    /// @param bounds バウンディングスフィア
-    /// @param visible 表示フラグ
-    void RegisterTarget(WorldTransform* worldTransform, const BoundingSphere& bounds, bool* visible);
+        /// @brief ギズモが現在操作中かどうか
+        /// @return 操作中ならtrue
+        static bool IsUsing();
 
-    void BeginFrame(const Matrix4x4& view, const Matrix4x4& proj);
+        /// @brief ギズモがホバー中かどうか
+        /// @return ホバー中ならtrue
+        static bool IsOver();
 
-    bool HasSelection() const;
-
-private: // メンバ変数
-    struct Target {
-        WorldTransform* wt;
-        BoundingSphere bounds;
-        bool* visible;
-        
-        Target(WorldTransform* worldTransform, const BoundingSphere& boundingSphere, bool* visibleFlag)
-            : wt(worldTransform), bounds(boundingSphere), visible(visibleFlag) {}
+    private:
+        static ImVec2 viewportPos_;
+        static ImVec2 viewportSize_;
     };
-
-    std::vector<Target> targets_;
-    int hoveredIndex_ = -1;
-    int selectedIndex_ = -1;
-
-    static GizmoOperation operation_;
-
-private: // メンバ関数
-    void PerformPicking(const Matrix4x4& view, const Matrix4x4& proj);
-    void DrawGizmo(const Matrix4x4& view, const Matrix4x4& proj);
-
-    // レイと球の交差判定
-    bool RayIntersectsSphere(const Vector3& rayOrigin, const Vector3& rayDir, const BoundingSphere& sphere);
-};
 }

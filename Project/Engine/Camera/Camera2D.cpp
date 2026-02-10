@@ -1,4 +1,4 @@
-﻿#include "Camera2D.h"
+#include "Camera2D.h"
 #include "MathCore.h"
 #include "WinApp/WinApp.h"
 

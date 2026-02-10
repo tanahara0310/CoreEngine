@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/Graphics/Render/RenderPassType.h"
 #include "Engine/Graphics/PipelineStateManager.h"
@@ -89,6 +89,22 @@ namespace CoreEngine
 
         /// @brief ワールド座標での位置を取得（Collider用）
         virtual Vector3 GetWorldPosition() const { return transform_.GetWorldPosition(); }
+
+        /// @brief トランスフォームを取得
+        /// @return トランスフォームへの参照
+        WorldTransform& GetTransform() { return transform_; }
+
+        /// @brief トランスフォームを取得（const版）
+        /// @return トランスフォームへのconst参照
+        const WorldTransform& GetTransform() const { return transform_; }
+
+        /// @brief モデルを取得
+        /// @return モデルへのポインタ（nullptrの場合はモデルを持たない）
+        Model* GetModel() { return model_.get(); }
+
+        /// @brief モデルを取得（const版）
+        /// @return モデルへのconstポインタ（nullptrの場合はモデルを持たない）
+        const Model* GetModel() const { return model_.get(); }
 
         /// @brief オブジェクト名を設定
         /// @param name 設定する名前

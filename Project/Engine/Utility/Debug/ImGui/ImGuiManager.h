@@ -20,6 +20,7 @@ namespace CoreEngine {
     class DirectXCommon;
     class PostEffectManager;
     class GameDebugUI;
+    class ICamera;
 }
 
 /// @brief ImGui管理クラス
