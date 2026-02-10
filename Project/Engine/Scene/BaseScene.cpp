@@ -1,4 +1,4 @@
-﻿#include "BaseScene.h"
+#include "BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Engine/Camera/CameraManager.h"
 #include "Engine/Camera/Debug/DebugCamera.h"
@@ -73,6 +73,7 @@ namespace CoreEngine
             UpdateLightViewProjection();
         }
 
+
 #ifdef _DEBUG
         // カメラマネージャーのImGui
         if (cameraManager_) {
@@ -88,6 +89,29 @@ namespace CoreEngine
 
         }
         ImGui::End();
+
+        // シーンビューポートでのオブジェクト選択とギズモ更新（デバッグビルドのみ）
+        auto imGuiManager = engine_->GetImGuiManager();
+        ICamera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
+        ICamera* activeCamera2D = cameraManager_->GetActiveCamera(CameraType::Camera2D);
+        if (imGuiManager) {
+            auto sceneViewport = imGuiManager->GetSceneViewport();
+            if (sceneViewport) {
+                // 3Dカメラを設定
+                if (activeCamera3D) {
+                    sceneViewport->SetCamera(activeCamera3D);
+                    // 3Dオブジェクト選択を更新
+                    sceneViewport->UpdateObjectSelection(&gameObjectManager_, activeCamera3D);
+                }
+                
+                // 2Dカメラを設定
+                if (activeCamera2D) {
+                    sceneViewport->SetCamera2D(activeCamera2D);
+                    // スプライト選択を更新
+                    sceneViewport->UpdateSpriteSelection(&gameObjectManager_, activeCamera2D);
+                }
+            }
+        }
 #endif
 
         // 派生クラスの更新処理（GameObjectの更新前）

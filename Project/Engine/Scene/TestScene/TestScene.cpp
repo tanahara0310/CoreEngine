@@ -12,6 +12,7 @@
 #include "Engine/Graphics/Render/Model/SkinnedModelRenderer.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/TestGameObject/ModelObject.h"
+#include "ObjectCommon/SpriteObject.h"
 
 #include <iostream>
 
@@ -113,6 +114,12 @@ namespace CoreEngine
         skyBox->Initialize();
         skyBox->SetTexture(environmentMapTexture);  // HDRから生成されたキューブマップを設定
         skyBox->SetActive(true);  // SkyBoxを表示
+
+        // テストスプライト
+        auto sprite = CreateObject<SpriteObject>();
+        sprite->Initialize("Texture/uvChecker.png");
+        sprite->GetTransform().translate = { 100.0f, 100.0f, 0.0f };
+        sprite->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
     }
 
     void TestScene::OnUpdate()

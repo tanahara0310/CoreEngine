@@ -186,6 +186,14 @@ namespace CoreEngine
             return 0.0f;
         }
 
+        /// @brief ModelResourceを取得
+        /// @return ModelResourceへのポインタ（nullptrの場合は未初期化）
+        ModelResource* GetModelResource() { return resource_; }
+
+        /// @brief ModelResourceを取得（const版）
+        /// @return ModelResourceへのconstポインタ（nullptrの場合は未初期化）
+        const ModelResource* GetModelResource() const { return resource_; }
+
         void SetModelResource(ModelResource* resource);
 
     private:

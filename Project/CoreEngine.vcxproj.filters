@@ -146,9 +146,6 @@
     <ClCompile Include="Engine\Utility\Debug\ImGui\ImGuiManager.cpp">
       <Filter>Engine\Utility\Debug\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Utility\Debug\ImGui\Gizmo.cpp">
-      <Filter>Engine\Utility\Debug\ImGui</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Utility\Debug\ImGui\DockingUI.cpp">
       <Filter>Engine\Utility\Debug\ImGui</Filter>
     </ClCompile>
@@ -423,6 +420,8 @@
     <ClCompile Include="Engine\Graphics\IBL\IBLManager.cpp" />
     <ClCompile Include="Engine\TestGameObject\ModelObject.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\ProjectView.cpp" />
+    <ClCompile Include="Engine\Utility\Debug\ImGui\Gizmo.cpp" />
+    <ClCompile Include="Engine\Utility\Debug\ImGui\ObjectSelector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -492,9 +491,6 @@
       <Filter>Engine\Utility\Collision</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Utility\Debug\ImGui\DockingUI.h">
-      <Filter>Engine\Utility\Debug\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Utility\Debug\ImGui\Gizmo.h">
       <Filter>Engine\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Utility\Debug\ImGui\ImGuiManager.h">
@@ -1264,6 +1260,8 @@
     <ClInclude Include="Engine\Graphics\IBL\IBLManager.h" />
     <ClInclude Include="Engine\TestGameObject\ModelObject.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\ProjectView.h" />
+    <ClInclude Include="Engine\Utility\Debug\ImGui\Gizmo.h" />
+    <ClInclude Include="Engine\Utility\Debug\ImGui\ObjectSelector.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">

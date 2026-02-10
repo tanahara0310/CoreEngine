@@ -66,6 +66,9 @@ void ImGuiManager::Initialize(HWND hwnd, DirectXCommon* dxCommon)
     ImGui::GetIO().Fonts->GetTexDataAsRGBA32(nullptr, nullptr, nullptr);
     ImGui_ImplDX12_CreateDeviceObjects(); // これがないとアクセス違反が起きる
 
+    // SceneViewportの初期化
+    sceneViewport_->Initialize();
+
     // ProjectViewの初期化
     projectView_->Initialize(dxCommon_);
 }
