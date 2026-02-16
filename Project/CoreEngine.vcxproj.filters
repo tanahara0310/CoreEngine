@@ -409,7 +409,6 @@
     <ClCompile Include="Engine\Graphics\Line\LineManager.cpp" />
     <ClCompile Include="Engine\Particle\Modules\ShapeModule.cpp" />
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Dissolve.cpp" />
-    <ClCompile Include="Engine\Scene\AssignmentScene\AssignmentScene.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightBufferManager.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightDebugVisualizer.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightManager.cpp" />
@@ -1250,7 +1249,6 @@
     <ClInclude Include="Engine\Utility\ProcessExecutor\ProcessExecutor.h" />
     <ClInclude Include="Engine\Graphics\Line\LineManager.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Dissolve.h" />
-    <ClInclude Include="Engine\Scene\AssignmentScene\AssignmentScene.h" />
     <ClInclude Include="Engine\Graphics\Light\LightBufferManager.h" />
     <ClInclude Include="Engine\Graphics\Light\LightDebugVisualizer.h" />
     <ClInclude Include="Engine\Graphics\Shadow\ShadowMapManager.h" />

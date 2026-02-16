@@ -224,7 +224,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Particle\Modules\NoiseModule.cpp" />
     <ClCompile Include="Engine\Particle\Modules\ShapeModule.cpp" />
     <ClCompile Include="Engine\Particle\ParticlePresetManager.cpp" />
-    <ClCompile Include="Engine\Scene\AssignmentScene\AssignmentScene.cpp" />
     <ClCompile Include="Engine\Scene\BaseScene.cpp" />
     <ClCompile Include="Engine\Scene\ParticleTestScene\ParticleTestScene.cpp" />
     <ClCompile Include="Engine\Scene\SceneTransition.cpp" />
@@ -432,7 +431,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Particle\Modules\NoiseModule.h" />
     <ClInclude Include="Engine\Particle\Modules\ShapeModule.h" />
     <ClInclude Include="Engine\Particle\ParticlePresetManager.h" />
-    <ClInclude Include="Engine\Scene\AssignmentScene\AssignmentScene.h" />
     <ClInclude Include="Engine\Scene\BaseScene.h" />
     <ClInclude Include="Engine\Scene\ParticleTestScene\ParticleTestScene.h" />
     <ClInclude Include="Engine\Scene\SceneTransition.h" />

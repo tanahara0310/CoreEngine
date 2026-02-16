@@ -115,11 +115,37 @@ namespace CoreEngine
         skyBox->SetTexture(environmentMapTexture);  // HDRから生成されたキューブマップを設定
         skyBox->SetActive(true);  // SkyBoxを表示
 
-        // テストスプライト
-        auto sprite = CreateObject<SpriteObject>();
-        sprite->Initialize("Texture/uvChecker.png");
-        sprite->GetTransform().translate = { 100.0f, 100.0f, 0.0f };
-        sprite->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        // ===== 平面モデルの追加（影を受ける床） =====
+        auto plane = CreateObject<Plane>();
+        plane->Initialize();
+        plane->GetTransform().translate = { 0.0f, -2.0f, 0.0f };
+        plane->GetTransform().scale = { 10.0f, 1.0f, 10.0f };
+        plane->SetActive(true);
+
+        // ===== 球体オブジェクトの追加（影を落とす） =====
+        auto sphere = CreateObject<SphereObject>();
+        sphere->Initialize();
+        sphere->GetTransform().translate = { 0.0f, 2.0f, 0.0f };
+        sphere->GetTransform().scale = { 1.5f, 1.5f, 1.5f };
+        sphere->SetPBREnabled(true);
+        sphere->SetPBRParameters(0.0f, 0.5f, 1.0f); // メタリック0、ラフネス0.5、AO1
+        sphere->SetEnvironmentMapEnabled(true);
+        sphere->SetEnvironmentMapIntensity(0.3f);
+        sphere->SetMaterialColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        sphere->SetActive(true);
+
+        // ===== スキニングモデルの追加（アニメーション付き） =====
+        auto skeletonModel = CreateObject<SneakWalkModelObject>();
+        skeletonModel->Initialize();
+        skeletonModel->GetTransform().translate = { 3.0f, 0.0f, 0.0f }; // 右側に配置
+        skeletonModel->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        skeletonModel->SetActive(true);
+
+        //// テストスプライト
+        //auto sprite = CreateObject<SpriteObject>();
+        //sprite->Initialize("Texture/uvChecker.png");
+        //sprite->GetTransform().translate = { 100.0f, 100.0f, 0.0f };
+        //sprite->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
     }
 
     void TestScene::OnUpdate()
