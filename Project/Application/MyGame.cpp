@@ -3,7 +3,6 @@
 #include "WinApp/WinApp.h"
 #include "Scene/TestScene/TestScene.h"
 #include "Scene/ParticleTestScene/ParticleTestScene.h"
-#include "Scene/AssignmentScene/AssignmentScene.h"
 
 using namespace CoreEngine;
 
@@ -21,7 +20,6 @@ void MyGame::Initialize()
     // 全シーンを登録（アプリ層で実装）
     sceneManager_->RegisterScene<TestScene>("TestScene");
     sceneManager_->RegisterScene<ParticleTestScene>("ParticleTestScene");
-    sceneManager_->RegisterScene<AssignmentScene>("AssignmentScene");
 
     // 初期シーンを設定（トランジション無し）
     sceneManager_->SetInitialScene("TestScene");
@@ -74,7 +72,7 @@ void MyGame::Update()
             std::string requestedScene = sceneManagerTab->GetRequestedSceneName();
             if (sceneManager_ && sceneManager_->HasScene(requestedScene)) {
                 sceneManager_->ChangeScene(requestedScene);
-                
+
                 auto console = GetEngineSystem()->GetConsole();
                 if (console) {
                     console->LogInfo("シーン切り替え: " + requestedScene);

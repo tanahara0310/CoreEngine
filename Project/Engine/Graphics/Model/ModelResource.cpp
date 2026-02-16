@@ -1,4 +1,4 @@
-﻿#include "ModelResource.h"
+#include "ModelResource.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"

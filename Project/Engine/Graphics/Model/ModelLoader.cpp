@@ -42,25 +42,71 @@ namespace CoreEngine
 
     const aiScene* ModelLoader::LoadAssimpFile(const std::string& filepath)
     {
-        static Assimp::Importer importer;
+        // 静的Importerを2つ用意（通常用とスキニング用）
+        static Assimp::Importer importerNormal;
+        static Assimp::Importer importerSkinned;
 
         Logger::GetInstance().Log(std::format("Loading model file: {}", filepath), LogLevel::INFO, LogCategory::Graphics);
 
-        const aiScene* scene = importer.ReadFile(
+        // まず軽量なフラグでシーンを読み込み、スキニングデータがあるか確認
+        Assimp::Importer checkImporter;
+        const aiScene* checkScene = checkImporter.ReadFile(
             filepath.c_str(),
-            aiProcess_Triangulate |
-            aiProcess_GenSmoothNormals |
-            aiProcess_CalcTangentSpace |  // タンジェント/バイタンジェントを自動計算
-            aiProcess_PreTransformVertices |  // Node変換を頂点に適用（glTF複数メッシュ対応）
-            aiProcess_ConvertToLeftHanded |
-            aiProcess_FlipUVs
+            aiProcess_Triangulate  // 最小限のフラグで読み込み
         );
 
-        if (!scene) {
+        if (!checkScene) {
             std::string errorMsg = std::format("Failed to load model file: {}\nAssimp Error: {}\nPlease check if the file exists and the path is correct.",
-                filepath, importer.GetErrorString());
+                filepath, checkImporter.GetErrorString());
             Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Graphics);
-            FileErrorDialog::ShowModelError("Failed to load model file", filepath, importer.GetErrorString());
+            FileErrorDialog::ShowModelError("Failed to load model file", filepath, checkImporter.GetErrorString());
+            assert(false && errorMsg.c_str());
+            return nullptr;
+        }
+
+        // スキニングデータがあるかチェック
+        bool hasSkinning = false;
+        for (uint32_t i = 0; i < checkScene->mNumMeshes; ++i) {
+            if (checkScene->mMeshes[i]->HasBones()) {
+                hasSkinning = true;
+                break;
+            }
+        }
+
+        // スキニングデータの有無に応じてフラグを決定
+        const aiScene* scene = nullptr;
+        if (hasSkinning) {
+            // スキニングモデル: aiProcess_PreTransformVerticesを使用しない
+            Logger::GetInstance().Log(std::format("Detected skinning data, loading without PreTransformVertices: {}", filepath), LogLevel::INFO, LogCategory::Graphics);
+            scene = importerSkinned.ReadFile(
+                filepath.c_str(),
+                aiProcess_Triangulate |
+                aiProcess_GenSmoothNormals |
+                aiProcess_CalcTangentSpace |
+                aiProcess_LimitBoneWeights |      // ボーンウェイトを4つに制限
+                aiProcess_ConvertToLeftHanded |
+                aiProcess_FlipUVs
+            );
+        } else {
+            // 通常モデル: aiProcess_PreTransformVerticesを使用
+            Logger::GetInstance().Log(std::format("No skinning data, loading with PreTransformVertices: {}", filepath), LogLevel::INFO, LogCategory::Graphics);
+            scene = importerNormal.ReadFile(
+                filepath.c_str(),
+                aiProcess_Triangulate |
+                aiProcess_GenSmoothNormals |
+                aiProcess_CalcTangentSpace |
+                aiProcess_PreTransformVertices |  // Node変換を頂点に適用（スキニングなしの場合のみ）
+                aiProcess_ConvertToLeftHanded |
+                aiProcess_FlipUVs
+            );
+        }
+
+        if (!scene) {
+            const char* errorStr = hasSkinning ? importerSkinned.GetErrorString() : importerNormal.GetErrorString();
+            std::string errorMsg = std::format("Failed to load model file: {}\nAssimp Error: {}\nPlease check if the file exists and the path is correct.",
+                filepath, errorStr);
+            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Graphics);
+            FileErrorDialog::ShowModelError("Failed to load model file", filepath, errorStr);
             assert(false && errorMsg.c_str());
             return nullptr;
         }

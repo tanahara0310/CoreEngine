@@ -33,6 +33,8 @@
 // GameObjectのインクルード
 #include "TestGameObject/SphereObject.h"
 #include "TestGameObject/SkyBoxObject.h"
+#include "TestGameObject/Plane.h"
+#include "TestGameObject/SneakWalkModelObject.h"
 
 using namespace Microsoft::WRL;
 

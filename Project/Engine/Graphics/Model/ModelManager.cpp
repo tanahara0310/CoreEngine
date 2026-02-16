@@ -1,4 +1,4 @@
-﻿#include "ModelManager.h"
+#include "ModelManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Animation/AnimationLoader.h"
