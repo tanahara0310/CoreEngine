@@ -20,6 +20,7 @@ namespace CoreEngine
         DirectXCommon* sDxCommon_ = nullptr;
         ResourceFactory* sResourceFactory_ = nullptr;
         ShadowMapManager* sShadowMapManager_ = nullptr;
+        ModelRenderer* sModelRenderer_ = nullptr;
     }
 
     void Model::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory) {
@@ -30,6 +31,10 @@ namespace CoreEngine
 
     void Model::SetShadowMapManager(ShadowMapManager* shadowMapManager) {
         sShadowMapManager_ = shadowMapManager;
+    }
+
+    void Model::SetModelRenderer(ModelRenderer* modelRenderer) {
+        sModelRenderer_ = modelRenderer;
     }
 
     void Model::Initialize(ModelResource* resource) {
@@ -339,38 +344,33 @@ namespace CoreEngine
         // インデックスバッファを設定
         cmdList->IASetIndexBuffer(&resource_->indexBufferView_);
 
-        // マテリアルを設定（Root Parameter 0）
+        if (!sModelRenderer_) {
+            throw std::runtime_error("ModelRenderer is not set. Call Model::SetModelRenderer first.");
+        }
+
         cmdList->SetGraphicsRootConstantBufferView(
-            ModelRendererRootParam::kMaterial,
+            sModelRenderer_->GetMaterialRootParamIndex(),
             materialManager_->GetGPUVirtualAddress()
         );
 
-        // WVP行列を設定（Root Parameter 1）
         cmdList->SetGraphicsRootConstantBufferView(
-            ModelRendererRootParam::kWVP,
+            sModelRenderer_->GetTransformRootParamIndex(),
             wvpResource_->GetGPUVirtualAddress()
         );
 
-        // BaseColorテクスチャを設定（Root Parameter 2）
-        cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kTexture, baseColorTexture);
+        cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetTextureRootParamIndex(), baseColorTexture);
 
-        // ===== PBRテクスチャマップを設定 =====
-        
-        // ノーマルマップを設定（Root Parameter 12）
         if (normalTexture.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kNormalMap, normalTexture);
+            cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetNormalMapRootParamIndex(), normalTexture);
         }
 
-        // MetallicRoughnessマップを設定（Root Parameter 13, 14）
-        // glTFのMetallicRoughnessテクスチャはRチャンネル=Occlusion, Gチャンネル=Roughness, Bチャンネル=Metallic
         if (metallicRoughnessTexture.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kMetallicMap, metallicRoughnessTexture);
-            cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kRoughnessMap, metallicRoughnessTexture);
+            cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetMetallicMapRootParamIndex(), metallicRoughnessTexture);
+            cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetRoughnessMapRootParamIndex(), metallicRoughnessTexture);
         }
 
-        // AOマップを設定（Root Parameter 15）
         if (occlusionTexture.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(ModelRendererRootParam::kAOMap, occlusionTexture);
+            cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetAOMapRootParamIndex(), occlusionTexture);
         }
     }
 

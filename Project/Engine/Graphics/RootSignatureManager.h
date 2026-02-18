@@ -1,10 +1,15 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <vector>
 #include <wrl.h>
 
 #include "Engine/Utility/Logger/Logger.h"
+
+// 前方宣言
+namespace CoreEngine {
+    class ShaderReflectionData;
+}
 
 // RootSignatureの管理クラス
 
@@ -140,6 +145,15 @@ public:
     /// @brief ルートシグネチャを作成
     /// @param device D3D12デバイス
     void Create(ID3D12Device* device);
+
+    /// @brief シェーダーリフレクションデータから自動的にルートシグネチャを構築
+    /// @param device D3D12デバイス
+    /// @param reflectionData シェーダーリフレクションデータ
+    /// @param useDescriptorTables trueの場合SRV/UAVをDescriptorTableに、falseの場合RootDescriptorに
+    void BuildFromReflection(
+        ID3D12Device* device,
+        const ShaderReflectionData& reflectionData,
+        bool useDescriptorTables = true);
 
     /// @brief 設定をクリア (再利用する場合)
     void Clear();

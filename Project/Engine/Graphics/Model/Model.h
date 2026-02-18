@@ -51,6 +51,10 @@ namespace CoreEngine
         /// @param shadowMapManager ShadowMapManagerのポインタ
         static void SetShadowMapManager(ShadowMapManager* shadowMapManager);
 
+        /// @brief ModelRendererを設定（ルートパラメータインデックス取得用）
+        /// @param modelRenderer ModelRendererのポインタ
+        static void SetModelRenderer(class ModelRenderer* modelRenderer);
+
         /// @brief 初期化（アニメーションコントローラーなし）
         /// @param resource 共有するModelResourceのポインタ
         void Initialize(ModelResource* resource);

@@ -1,4 +1,4 @@
-﻿#include "RenderManager.h"
+#include "RenderManager.h"
 #include "Engine/ObjectCommon/GameObject.h"
 #include "Engine/Particle/ParticleSystem.h"
 #include "Engine/Graphics/Render/Particle/ParticleRenderer.h"
@@ -24,6 +24,14 @@ namespace CoreEngine
 
     void RenderManager::RegisterRenderer(RenderPassType type, std::unique_ptr<IRenderer> renderer) {
         renderers_[type] = std::move(renderer);
+        
+        // ModelRendererが登録された場合、Model クラスに設定
+        if (type == RenderPassType::Model) {
+            auto* modelRenderer = dynamic_cast<ModelRenderer*>(renderers_[type].get());
+            if (modelRenderer) {
+                Model::SetModelRenderer(modelRenderer);
+            }
+        }
     }
 
     IRenderer* RenderManager::GetRenderer(RenderPassType type) {

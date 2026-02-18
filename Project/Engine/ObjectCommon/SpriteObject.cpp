@@ -1,4 +1,4 @@
-﻿#include "SpriteObject.h"
+#include "SpriteObject.h"
 #include "Engine/EngineSystem/EngineSystem.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Graphics/Render/RenderManager.h"
@@ -170,10 +170,16 @@ void SpriteObject::Draw2D(const ICamera* camera) {
     transformData->WVP = spriteRenderer_->CalculateWVPMatrix(transform_.translate, actualScale, transform_.rotate, camera);
     transformData->world = worldMatrix;
     
-    // 定数バッファ設定
-    commandList->SetGraphicsRootConstantBufferView(0, spriteRenderer_->GetMaterialResource(bufferIndex)->GetGPUVirtualAddress());
-    commandList->SetGraphicsRootConstantBufferView(1, spriteRenderer_->GetTransformResource(bufferIndex)->GetGPUVirtualAddress());
-    commandList->SetGraphicsRootDescriptorTable(2, textureHandle_.gpuHandle);
+    // 定数バッファ設定（シェーダーリフレクションから取得したインデックスを使用）
+    commandList->SetGraphicsRootConstantBufferView(
+        spriteRenderer_->GetMaterialRootParamIndex(), 
+        spriteRenderer_->GetMaterialResource(bufferIndex)->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(
+        spriteRenderer_->GetTransformRootParamIndex(), 
+        spriteRenderer_->GetTransformResource(bufferIndex)->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootDescriptorTable(
+        spriteRenderer_->GetTextureRootParamIndex(), 
+        textureHandle_.gpuHandle);
     
     // 頂点バッファ・インデックスバッファを設定
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
