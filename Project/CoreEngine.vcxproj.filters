@@ -421,6 +421,8 @@
     <ClCompile Include="Engine\Utility\Debug\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\Gizmo.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\ObjectSelector.cpp" />
+    <ClCompile Include="Engine\Graphics\Shader\ShaderReflectionData.cpp" />
+    <ClCompile Include="Engine\Graphics\Shader\ShaderReflectionBuilder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1260,6 +1262,9 @@
     <ClInclude Include="Engine\Utility\Debug\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\Gizmo.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\ObjectSelector.h" />
+    <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionData.h" />
+    <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionBuilder.h" />
+    <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionUsageExample.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">
@@ -1302,6 +1307,7 @@
     <None Include="Docs\ShadowSystemImplementation.md" />
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
     <None Include="convert-tabs-to-spaces.ps1" />
+    <None Include="Engine\Graphics\Shader\ShaderReflection_README.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">
