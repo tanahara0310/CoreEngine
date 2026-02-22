@@ -1,4 +1,4 @@
-﻿#include "FadeEffect.h"
+#include "FadeEffect.h"
 #include "Engine/Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 #include <algorithm> // std::clampのために追加
@@ -172,9 +172,10 @@ void FadeEffect::SetColorShift(float shift)
 
 void FadeEffect::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
 {
-    // 定数バッファをピクセルシェーダーにバインド (register(b0)なのでルートパラメータインデックス1)
-    if (constantBuffer_) {
-        commandList->SetGraphicsRootConstantBufferView(1, constantBuffer_->GetGPUVirtualAddress());
+    // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）
+    int paramsIdx = GetRootParamIndex("FadeParams");
+    if (constantBuffer_ && paramsIdx >= 0) {
+        commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
     }
 }
 

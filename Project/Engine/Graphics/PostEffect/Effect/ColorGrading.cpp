@@ -1,4 +1,4 @@
-﻿#include "ColorGrading.h"
+#include "ColorGrading.h"
 #include "Engine/Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -220,9 +220,10 @@ void ColorGrading::SetParams(const ColorGradingParams& params)
 
 void ColorGrading::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
 {
-    // 定数バッファをピクセルシェーダーにバインド (register(b0)なのでルートパラメータインデックス1)
-    if (constantBuffer_) {
-        commandList->SetGraphicsRootConstantBufferView(1, constantBuffer_->GetGPUVirtualAddress());
+    // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）
+    int paramsIdx = GetRootParamIndex("ColorGradingParams");
+    if (constantBuffer_ && paramsIdx >= 0) {
+        commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
     }
 }
 

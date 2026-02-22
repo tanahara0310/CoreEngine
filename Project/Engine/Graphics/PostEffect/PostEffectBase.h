@@ -1,16 +1,21 @@
-﻿#pragma once
+#pragma once
 #include <d3d12.h>
 #include <string>
 #include <wrl.h>
+#include <memory>
 
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/PipelineStateManager.h"
 #include "Engine/Graphics/RootSignatureManager.h"
 #include "Engine/Graphics/Shader/ShaderCompiler.h"
+#include "Engine/Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 
 
 namespace CoreEngine
 {
+class ShaderReflectionData;
+
 class PostEffectBase {
 public:
     virtual ~PostEffectBase() = default;
@@ -32,8 +37,12 @@ public:
     /// @return 有効ならtrue
     bool IsEnabled() const { return enabled_; }
 
+    /// @brief シェーダーリソース名からルートパラメータインデックスを取得
+    int GetRootParamIndex(const std::string& resourceName) const;
+
 protected:
     virtual const std::wstring& GetPixelShaderPath() const = 0;
+    virtual std::string GetEffectName() const { return "PostEffect"; }
     virtual void BindOptionalCBVs(ID3D12GraphicsCommandList*/* commandList*/) { }
 
 protected:
@@ -42,8 +51,11 @@ protected:
     Microsoft::WRL::ComPtr<IDxcBlob> fullscreenVertexShaderBlob_;
     Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob_;
 
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
+    std::unique_ptr<RootSignatureManager> rootSignatureManager_;
     PipelineStateManager pipelineStateManager_;
+
+    // シェーダーリフレクションデータ
+    std::unique_ptr<ShaderReflectionData> reflectionData_;
 
     bool enabled_ = true; // デフォルトで有効
 };

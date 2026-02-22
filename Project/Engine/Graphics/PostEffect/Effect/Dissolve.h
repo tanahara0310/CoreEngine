@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "../PostEffectBase.h"
 #include <wrl.h>

@@ -1,7 +1,9 @@
-﻿#include "Dissolve.h"
+#include "Dissolve.h"
 #include "Engine/Utility/Debug/ImGui/ImguiManager.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Graphics/RootSignatureManager.h"
+#include "Engine/Graphics/Shader/ShaderReflectionData.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include <cassert>
 
 namespace CoreEngine
@@ -28,7 +30,8 @@ void Dissolve::Initialize(DirectXCommon* dxCommon)
         .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
         .SetDepthStencil(false, false)
         .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-        .Build(dxCommon->GetDevice(), fullscreenVertexShaderBlob_.Get(), pixelShaderBlob_.Get(), rootSignature_.Get());
+        .Build(dxCommon->GetDevice(), fullscreenVertexShaderBlob_.Get(), pixelShaderBlob_.Get(), 
+               rootSignatureManager_->GetRootSignature());
 
     if (!result) {
         throw std::runtime_error("Failed to create PSO in Dissolve");
@@ -43,68 +46,56 @@ void Dissolve::Initialize(DirectXCommon* dxCommon)
 
 void Dissolve::CreateCustomRootSignature()
 {
-    RootSignatureManager rootSignatureManager;
+    // シェーダーコンパイラを初期化してDxcUtilsを取得
+    ShaderCompiler shaderCompiler;
+    shaderCompiler.Initialize();
+
+    // リフレクション
+    ShaderReflectionBuilder reflectionBuilder;
+    reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
     
-    // Root Parameter 0: 入力テクスチャ用ディスクリプタテーブル (t0, Pixel Shader)
-    RootSignatureManager::DescriptorRangeConfig inputTextureRange;
-    inputTextureRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    inputTextureRange.numDescriptors = 1;
-    inputTextureRange.baseShaderRegister = 0;  // t0
-    rootSignatureManager.AddDescriptorTable({ inputTextureRange }, D3D12_SHADER_VISIBILITY_PIXEL);
-    
-    // Root Parameter 1: 定数バッファ用CBV (b0, Pixel Shader)
-    RootSignatureManager::RootDescriptorConfig paramsCBV;
-    paramsCBV.shaderRegister = 0;
-    paramsCBV.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    rootSignatureManager.AddRootCBV(paramsCBV);
+    reflectionData_ = reflectionBuilder.BuildFromShaders(
+        fullscreenVertexShaderBlob_.Get(), pixelShaderBlob_.Get(), "Dissolve");
 
-    // Root Parameter 2: ノイズテクスチャ用ディスクリプタテーブル (t1, Pixel Shader)
-    RootSignatureManager::DescriptorRangeConfig noiseTextureRange;
-    noiseTextureRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    noiseTextureRange.numDescriptors = 1;
-    noiseTextureRange.baseShaderRegister = 1;  // t1
-    rootSignatureManager.AddDescriptorTable({ noiseTextureRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+    // シンプルな設定でRootSignatureを構築
+    RootSignatureConfig config = RootSignatureConfig::Simple();
+    config.ConfigureSampler("gSampler", SamplerConfig::Linear());
 
-    // Static Sampler (s0, Pixel Shader)
-    RootSignatureManager::StaticSamplerConfig samplerConfig;
-    samplerConfig.shaderRegister = 0;
-    samplerConfig.visibility = D3D12_SHADER_VISIBILITY_PIXEL;
-    samplerConfig.filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    samplerConfig.addressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerConfig.addressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerConfig.addressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    samplerConfig.comparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-    samplerConfig.maxLOD = D3D12_FLOAT32_MAX;
-    rootSignatureManager.AddStaticSampler(samplerConfig);
+    rootSignatureManager_ = std::make_unique<RootSignatureManager>();
+    auto buildResult = rootSignatureManager_->Build(directXCommon_->GetDevice(), *reflectionData_, config);
 
-    rootSignatureManager.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-    rootSignatureManager.Create(directXCommon_->GetDevice());
-    rootSignature_ = rootSignatureManager.GetRootSignature();
+    if (!buildResult.success) {
+        throw std::runtime_error("Failed to create Dissolve Root Signature: " + buildResult.errorMessage);
+    }
 }
 
 void Dissolve::Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
 {
     auto* commandList = directXCommon_->GetCommandList();
 
-    // デバッグ出力
-    OutputDebugStringA("Dissolve::Draw called\n");
-
-    commandList->SetGraphicsRootSignature(rootSignature_.Get());
+    commandList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
     commandList->SetPipelineState(
         pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
-    // Root Parameter 0: 入力テクスチャ
-    commandList->SetGraphicsRootDescriptorTable(0, inputSrvHandle);
-
-    // Root Parameter 1: 定数バッファ
-    if (constantBuffer_) {
-        commandList->SetGraphicsRootConstantBufferView(1, constantBuffer_->GetGPUVirtualAddress());
+    // 入力テクスチャ
+    int inputTextureIdx = GetRootParamIndex("inputTexture");
+    if (inputTextureIdx >= 0) {
+        commandList->SetGraphicsRootDescriptorTable(inputTextureIdx, inputSrvHandle);
     }
 
-    // Root Parameter 2: ノイズテクスチャ
-    commandList->SetGraphicsRootDescriptorTable(2, noiseTextureHandle_);
+    // 定数バッファ
+    int paramsIdx = GetRootParamIndex("DissolveParams");
+    if (constantBuffer_ && paramsIdx >= 0) {
+        commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
+    }
+
+    // ノイズテクスチャ
+    int noiseTextureIdx = GetRootParamIndex("noiseTexture");
+    if (noiseTextureIdx >= 0) {
+        commandList->SetGraphicsRootDescriptorTable(noiseTextureIdx, noiseTextureHandle_);
+    }
     
     commandList->DrawInstanced(3, 1, 0, 0);
 }

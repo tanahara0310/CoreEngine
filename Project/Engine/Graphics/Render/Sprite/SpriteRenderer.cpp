@@ -2,6 +2,7 @@
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Structs/SpriteMaterial.h"
 #include "Engine/Graphics/Shader/ShaderReflectionData.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include "WinApp/WinApp.h"
 #include <cassert>
 
@@ -18,22 +19,23 @@ namespace CoreEngine
         assert(pixelShaderBlob != nullptr);
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob);
-        rootSignatureMg_->BuildFromReflection(device, *reflectionData_, true);
-
-        // シェーダーのリソース名からルートパラメータインデックスを取得
-        // HLSL VS: cbuffer TransformationMatrix : register(b1)
-        // HLSL PS: ConstantBuffer<Material> gMaterial : register(b0)
-        // HLSL PS: Texture2D<float4> gTexture : register(t0)
-
-        materialRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gMaterial");
-        transformRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("TransformationMatrix");
-        textureRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gTexture");
+        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "SpriteRenderer");
+        
+        // シンプルな設定を使用
+        RootSignatureConfig config = RootSignatureConfig::Simple();
+        
+        // スプライト用サンプラー設定（ポイントフィルタリング＋クランプ）
+        config.ConfigureSampler("gSampler", SamplerConfig::Linear());
+        
+        // RootSignatureを構築
+        auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
+        
+        if (!buildResult.success) {
+            throw std::runtime_error("Failed to create Sprite Root Signature: " + buildResult.errorMessage);
+        }
 
         bool result = psoMg_->CreateBuilder()
-            .AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-            .AddInputElement("TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-            .AddInputElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
+            .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
@@ -44,6 +46,13 @@ namespace CoreEngine
         }
 
         pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNormal);
+    }
+
+    int SpriteRenderer::GetRootParamIndex(const std::string& resourceName) const {
+        if (!reflectionData_) {
+            return -1;
+        }
+        return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
     void SpriteRenderer::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory) {

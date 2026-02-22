@@ -172,13 +172,13 @@ void SpriteObject::Draw2D(const ICamera* camera) {
     
     // 定数バッファ設定（シェーダーリフレクションから取得したインデックスを使用）
     commandList->SetGraphicsRootConstantBufferView(
-        spriteRenderer_->GetMaterialRootParamIndex(), 
+        spriteRenderer_->GetRootParamIndex("gMaterial"), 
         spriteRenderer_->GetMaterialResource(bufferIndex)->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(
-        spriteRenderer_->GetTransformRootParamIndex(), 
+        spriteRenderer_->GetRootParamIndex("TransformationMatrix"), 
         spriteRenderer_->GetTransformResource(bufferIndex)->GetGPUVirtualAddress());
     commandList->SetGraphicsRootDescriptorTable(
-        spriteRenderer_->GetTextureRootParamIndex(), 
+        spriteRenderer_->GetRootParamIndex("gTexture"), 
         textureHandle_.gpuHandle);
     
     // 頂点バッファ・インデックスバッファを設定

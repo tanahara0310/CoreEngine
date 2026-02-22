@@ -1,4 +1,4 @@
-﻿#include "SkyBoxObject.h"
+#include "SkyBoxObject.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
@@ -15,6 +15,14 @@
 
 namespace CoreEngine
 {
+namespace {
+    SkyBoxRenderer* sSkyBoxRenderer_ = nullptr;
+}
+
+void SkyBoxObject::SetSkyBoxRenderer(SkyBoxRenderer* renderer) {
+    sSkyBoxRenderer_ = renderer;
+}
+
 struct SkyBoxVertex {
    Vector4 position; // Vector3からVector4に変更
 };
@@ -206,21 +214,23 @@ void SkyBoxObject::Draw(const ICamera* camera) {
 
    transformData_->WVP = MathCore::Matrix::Multiply(worldMatrix, viewProjectionMatrix);
 
-   // Root Parameter 0: トランスフォーム行列CBV (b0, VS)
+   assert(sSkyBoxRenderer_ != nullptr);
+
+   // トランスフォーム行列CBV
    commandList->SetGraphicsRootConstantBufferView(
-      SkyBoxRendererRootParam::kWVP,
+      sSkyBoxRenderer_->GetRootParamIndex("gTransformationMatrix"),
       transformBuffer_->GetGPUVirtualAddress()
    );
 
-   // Root Parameter 1: マテリアルCBV (b0, PS)
+   // マテリアルCBV
    commandList->SetGraphicsRootConstantBufferView(
-      SkyBoxRendererRootParam::kMaterial,
+      sSkyBoxRenderer_->GetRootParamIndex("gMaterial"),
       materialBuffer_->GetGPUVirtualAddress()
    );
 
-   // Root Parameter 2: テクスチャの設定
+   // テクスチャの設定
    commandList->SetGraphicsRootDescriptorTable(
-      SkyBoxRendererRootParam::kTexture,
+      sSkyBoxRenderer_->GetRootParamIndex("gTexture"),
       texture_.gpuHandle
    );
 

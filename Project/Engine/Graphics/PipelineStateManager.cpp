@@ -1,7 +1,38 @@
-﻿#include "PipelineStateManager.h"
+#include "PipelineStateManager.h"
+#include "Engine/Graphics/Shader/ShaderReflectionData.h"
+#include "Engine/Utility/Logger/Logger.h"
 
 #include <cassert>
 #include <stdexcept>
+#include <sstream>
+#include <iomanip>
+
+namespace
+{
+    // DXGI_FORMATを文字列に変換するヘルパー関数
+    std::string FormatToString(DXGI_FORMAT format)
+    {
+        switch (format) {
+            case DXGI_FORMAT_R32G32B32A32_FLOAT: return "R32G32B32A32_FLOAT";
+            case DXGI_FORMAT_R32G32B32A32_UINT:  return "R32G32B32A32_UINT";
+            case DXGI_FORMAT_R32G32B32A32_SINT:  return "R32G32B32A32_SINT";
+            case DXGI_FORMAT_R32G32B32_FLOAT:    return "R32G32B32_FLOAT";
+            case DXGI_FORMAT_R32G32B32_UINT:     return "R32G32B32_UINT";
+            case DXGI_FORMAT_R32G32B32_SINT:     return "R32G32B32_SINT";
+            case DXGI_FORMAT_R32G32_FLOAT:       return "R32G32_FLOAT";
+            case DXGI_FORMAT_R32G32_UINT:        return "R32G32_UINT";
+            case DXGI_FORMAT_R32G32_SINT:        return "R32G32_SINT";
+            case DXGI_FORMAT_R32_FLOAT:          return "R32_FLOAT";
+            case DXGI_FORMAT_R32_UINT:           return "R32_UINT";
+            case DXGI_FORMAT_R32_SINT:           return "R32_SINT";
+            case DXGI_FORMAT_R16G16B16A16_FLOAT: return "R16G16B16A16_FLOAT";
+            case DXGI_FORMAT_R16G16_FLOAT:       return "R16G16_FLOAT";
+            case DXGI_FORMAT_R8G8B8A8_UNORM:     return "R8G8B8A8_UNORM";
+            case DXGI_FORMAT_R8G8B8A8_UINT:      return "R8G8B8A8_UINT";
+            default:                             return "UNKNOWN";
+        }
+    }
+}
 
 // ================================================================================
 // PSOビルダークラス
@@ -77,6 +108,61 @@ PipelineStateBuilder& PipelineStateBuilder::AddInputElement(
     elementDesc.InstanceDataStepRate = 0;
 
     inputElementDescs_.push_back(elementDesc);
+    return *this;
+}
+
+PipelineStateBuilder& PipelineStateBuilder::SetInputLayoutFromReflection(const ShaderReflectionData& reflectionData)
+{
+    // 既存の入力レイアウトをクリア
+    inputElementDescs_.clear();
+    semanticNameStorage_.clear();
+    
+    // 自動スロット検出を適用した入力要素を取得
+    const auto inputElements = reflectionData.GetInputElementsWithAutoSlots();
+    
+    // セマンティック名を永続的に保持するためのストレージを確保
+    semanticNameStorage_.reserve(inputElements.size());
+    
+    for (const auto& element : inputElements) {
+        // セマンティック名を永続化（D3D12_INPUT_ELEMENT_DESCはポインタを保持するため）
+        semanticNameStorage_.push_back(element.semanticName);
+        
+        D3D12_INPUT_ELEMENT_DESC desc{};
+        desc.SemanticName = semanticNameStorage_.back().c_str();
+        desc.SemanticIndex = element.semanticIndex;
+        desc.Format = element.format;
+        desc.InputSlot = element.inputSlot;
+        desc.AlignedByteOffset = element.alignedByteOffset;
+        desc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+        desc.InstanceDataStepRate = 0;
+        
+        inputElementDescs_.push_back(desc);
+    }
+    
+#ifdef _DEBUG
+    // ログ出力
+    if (!inputElements.empty()) {
+        std::ostringstream oss;
+        oss << "\n";
+        oss << "┌─────────────────────────────────────────────────────────────────┐\n";
+        oss << "│" << std::setw(35) << reflectionData.GetShaderName() << " - InputLayout" << std::setw(17) << "│\n";
+        oss << "├─────────────────────────────────────────────────────────────────┤\n";
+        oss << "│  Applied Input Elements: " << inputElements.size() << std::setw(38 - std::to_string(inputElements.size()).length()) << "│\n";
+        oss << "├─────────────────────────────────────────────────────────────────┤\n";
+        
+        for (const auto& element : inputElements) {
+            std::string formatStr = FormatToString(element.format);
+            oss << "│    • " << element.semanticName << element.semanticIndex 
+                << "  (Slot:" << element.inputSlot << ", " << formatStr << ")" 
+                << std::setw(static_cast<int>(55 - element.semanticName.length() - formatStr.length())) << "│\n";
+        }
+        
+        oss << "└─────────────────────────────────────────────────────────────────┘\n";
+        
+        Logger::GetInstance().Log(oss.str(), LogLevel::INFO, LogCategory::Shader);
+    }
+#endif
+    
     return *this;
 }
 

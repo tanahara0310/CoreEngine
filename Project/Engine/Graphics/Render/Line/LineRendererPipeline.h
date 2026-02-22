@@ -83,6 +83,9 @@ namespace CoreEngine
         /// @brief ResourceFactoryを取得
         ResourceFactory* GetResourceFactory() { return resourceFactory_; }
 
+        /// @brief シェーダーリソース名からルートパラメータインデックスを取得
+        int GetRootParamIndex(const std::string& resourceName) const;
+
     private:
         std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
         std::unique_ptr<PipelineStateManager> psoMg_ = std::make_unique<PipelineStateManager>();
@@ -116,8 +119,5 @@ namespace CoreEngine
 
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> reflectionData_;
-
-        // ルートパラメータインデックス（リフレクションから取得）
-        UINT wvpRootParamIndex_ = 0;
     };
 }

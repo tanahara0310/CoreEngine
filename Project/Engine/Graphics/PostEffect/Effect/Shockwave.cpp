@@ -1,4 +1,4 @@
-﻿#include "Shockwave.h"
+#include "Shockwave.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Utility/Debug/ImGui/ImguiManager.h"
@@ -115,9 +115,10 @@ const std::wstring& Shockwave::GetPixelShaderPath() const
 
 void Shockwave::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
 {
-    // 定数バッファをピクセルシェーダーにバインド
-    if (constantBuffer_) {
-        commandList->SetGraphicsRootConstantBufferView(1, constantBuffer_->GetGPUVirtualAddress());
+    // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）
+    int paramsIdx = GetRootParamIndex("ShockwaveParams");
+    if (constantBuffer_ && paramsIdx >= 0) {
+        commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
     }
 }
 

@@ -1,4 +1,4 @@
-﻿#include "ChromaticAberration.h"
+#include "ChromaticAberration.h"
 #include "Engine/Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -188,9 +188,10 @@ params_.falloff = 0.5f;
 
 void ChromaticAberration::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
 {
-    // 定数バッファをピクセルシェーダーにバインド (register(b0)なのでルートパラメータインデックス1)
-    if (constantBuffer_) {
-        commandList->SetGraphicsRootConstantBufferView(1, constantBuffer_->GetGPUVirtualAddress());
+    // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）
+    int paramsIdx = GetRootParamIndex("ChromaticAberrationParams");
+    if (constantBuffer_ && paramsIdx >= 0) {
+        commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
     }
 }
 

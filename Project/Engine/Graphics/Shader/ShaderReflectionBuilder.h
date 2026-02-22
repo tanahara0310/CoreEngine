@@ -22,24 +22,30 @@ namespace CoreEngine
         /// @brief 頂点シェーダーとピクセルシェーダーからリフレクションデータを構築
         /// @param vertexShaderBlob 頂点シェーダーのコンパイル済みBlob
         /// @param pixelShaderBlob ピクセルシェーダーのコンパイル済みBlob
+        /// @param shaderName シェーダー識別名（ログ出力用）
         /// @return リフレクション結果のデータ
         std::unique_ptr<ShaderReflectionData> BuildFromShaders(
             IDxcBlob* vertexShaderBlob,
-            IDxcBlob* pixelShaderBlob);
+            IDxcBlob* pixelShaderBlob,
+            const std::string& shaderName = "");
 
         /// @brief 単一のシェーダーからリフレクションデータを構築
         /// @param shaderBlob シェーダーのコンパイル済みBlob
         /// @param visibility シェーダーの可視性（VS, PS, ALL）
+        /// @param shaderName シェーダー識別名（ログ出力用）
         /// @return リフレクション結果のデータ
         std::unique_ptr<ShaderReflectionData> BuildFromShader(
             IDxcBlob* shaderBlob,
-            D3D12_SHADER_VISIBILITY visibility);
+            D3D12_SHADER_VISIBILITY visibility,
+            const std::string& shaderName = "");
 
         /// @brief コンピュートシェーダーからリフレクションデータを構築
         /// @param computeShaderBlob コンピュートシェーダーのコンパイル済みBlob
+        /// @param shaderName シェーダー識別名（ログ出力用）
         /// @return リフレクション結果のデータ
         std::unique_ptr<ShaderReflectionData> BuildFromComputeShader(
-            IDxcBlob* computeShaderBlob);
+            IDxcBlob* computeShaderBlob,
+            const std::string& shaderName = "");
 
     private:
         /// @brief シェーダーリフレクションを実行

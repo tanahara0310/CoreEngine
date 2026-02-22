@@ -11,9 +11,11 @@ namespace CoreEngine
 
     std::unique_ptr<ShaderReflectionData> ShaderReflectionBuilder::BuildFromShaders(
         IDxcBlob* vertexShaderBlob,
-        IDxcBlob* pixelShaderBlob) {
+        IDxcBlob* pixelShaderBlob,
+        const std::string& shaderName) {
 
         auto reflectionData = std::make_unique<ShaderReflectionData>();
+        reflectionData->SetShaderName(shaderName);
 
         // 頂点シェーダーをリフレクション
         if (vertexShaderBlob) {
@@ -37,9 +39,11 @@ namespace CoreEngine
 
     std::unique_ptr<ShaderReflectionData> ShaderReflectionBuilder::BuildFromShader(
         IDxcBlob* shaderBlob,
-        D3D12_SHADER_VISIBILITY visibility) {
+        D3D12_SHADER_VISIBILITY visibility,
+        const std::string& shaderName) {
 
         auto reflectionData = std::make_unique<ShaderReflectionData>();
+        reflectionData->SetShaderName(shaderName);
 
         if (shaderBlob) {
             ReflectShader(shaderBlob, visibility, *reflectionData);
@@ -53,10 +57,12 @@ namespace CoreEngine
     }
 
     std::unique_ptr<ShaderReflectionData> ShaderReflectionBuilder::BuildFromComputeShader(
-        IDxcBlob* computeShaderBlob) {
+        IDxcBlob* computeShaderBlob,
+        const std::string& shaderName) {
 
-        return BuildFromShader(computeShaderBlob, D3D12_SHADER_VISIBILITY_ALL);
+        return BuildFromShader(computeShaderBlob, D3D12_SHADER_VISIBILITY_ALL, shaderName);
     }
+
 
     void ShaderReflectionBuilder::ReflectShader(
         IDxcBlob* shaderBlob,
@@ -104,28 +110,13 @@ namespace CoreEngine
         D3D12_SHADER_DESC shaderDesc;
         reflection->GetDesc(&shaderDesc);
 
-#ifdef _DEBUG
-        Logger::GetInstance().Log("=== ReflectConstantBuffers Debug ===", LogLevel::INFO, LogCategory::Shader);
-        Logger::GetInstance().Log("Total ConstantBuffers: " + std::to_string(shaderDesc.ConstantBuffers), LogLevel::INFO, LogCategory::Shader);
-#endif
-
         for (UINT i = 0; i < shaderDesc.ConstantBuffers; ++i) {
             ID3D12ShaderReflectionConstantBuffer* cbuffer = reflection->GetConstantBufferByIndex(i);
             D3D12_SHADER_BUFFER_DESC bufferDesc;
             cbuffer->GetDesc(&bufferDesc);
 
-#ifdef _DEBUG
-            Logger::GetInstance().Log(
-                "  [" + std::to_string(i) + "] " + std::string(bufferDesc.Name) + 
-                " : Size=" + std::to_string(bufferDesc.Size) + " bytes",
-                LogLevel::INFO, LogCategory::Shader);
-#endif
-
             // $Globalsは除外（グローバル変数用の内部バッファ）
             if (std::string(bufferDesc.Name).find("$Globals") != std::string::npos) {
-#ifdef _DEBUG
-                Logger::GetInstance().Log("    -> Skipped ($Globals)", LogLevel::INFO, LogCategory::Shader);
-#endif
                 continue;
             }
 
@@ -145,9 +136,6 @@ namespace CoreEngine
                     // StructuredBufferの場合はスキップ（ReflectBoundResourcesで処理される）
                     if (bindDesc.Type == D3D_SIT_STRUCTURED) {
                         isStructuredBuffer = true;
-#ifdef _DEBUG
-                        Logger::GetInstance().Log("    -> Skipped (StructuredBuffer)", LogLevel::INFO, LogCategory::Shader);
-#endif
                         break;
                     }
                     
@@ -155,12 +143,6 @@ namespace CoreEngine
                     binding.bindCount = bindDesc.BindCount;
                     binding.space = bindDesc.Space;
                     found = true;
-#ifdef _DEBUG
-                    Logger::GetInstance().Log(
-                        "    -> Found in BoundResources: b" + std::to_string(bindDesc.BindPoint) +
-                        ", space=" + std::to_string(bindDesc.Space),
-                        LogLevel::INFO, LogCategory::Shader);
-#endif
                     break;
                 }
             }
@@ -171,7 +153,9 @@ namespace CoreEngine
 
 #ifdef _DEBUG
             if (!found) {
-                Logger::GetInstance().Log("    -> NOT found in BoundResources!", LogLevel::WARNING, LogCategory::Shader);
+                Logger::GetInstance().Log(
+                    "[Warning] CBV '" + std::string(bufferDesc.Name) + "' not found in BoundResources",
+                    LogLevel::WARNING, LogCategory::Shader);
             }
 #endif
 
@@ -187,36 +171,9 @@ namespace CoreEngine
         D3D12_SHADER_DESC shaderDesc;
         reflection->GetDesc(&shaderDesc);
 
-#ifdef _DEBUG
-        Logger::GetInstance().Log("=== ReflectBoundResources Debug ===", LogLevel::INFO, LogCategory::Shader);
-        Logger::GetInstance().Log("Total BoundResources: " + std::to_string(shaderDesc.BoundResources), LogLevel::INFO, LogCategory::Shader);
-#endif
-
         for (UINT i = 0; i < shaderDesc.BoundResources; ++i) {
             D3D12_SHADER_INPUT_BIND_DESC bindDesc;
             reflection->GetResourceBindingDesc(i, &bindDesc);
-
-#ifdef _DEBUG
-            std::string typeStr;
-            switch (bindDesc.Type) {
-            case D3D_SIT_CBUFFER: typeStr = "CBUFFER"; break;
-            case D3D_SIT_TBUFFER: typeStr = "TBUFFER"; break;
-            case D3D_SIT_TEXTURE: typeStr = "TEXTURE"; break;
-            case D3D_SIT_SAMPLER: typeStr = "SAMPLER"; break;
-            case D3D_SIT_UAV_RWTYPED: typeStr = "UAV_RWTYPED"; break;
-            case D3D_SIT_STRUCTURED: typeStr = "STRUCTURED"; break;
-            case D3D_SIT_UAV_RWSTRUCTURED: typeStr = "UAV_RWSTRUCTURED"; break;
-            case D3D_SIT_BYTEADDRESS: typeStr = "BYTEADDRESS"; break;
-            case D3D_SIT_UAV_RWBYTEADDRESS: typeStr = "UAV_RWBYTEADDRESS"; break;
-            default: typeStr = "UNKNOWN(" + std::to_string(bindDesc.Type) + ")"; break;
-            }
-            Logger::GetInstance().Log(
-                "  [" + std::to_string(i) + "] " + std::string(bindDesc.Name) + 
-                " : Type=" + typeStr + 
-                ", BindPoint=" + std::to_string(bindDesc.BindPoint) + 
-                ", Space=" + std::to_string(bindDesc.Space),
-                LogLevel::INFO, LogCategory::Shader);
-#endif
 
             ShaderResourceBinding binding;
             binding.name = bindDesc.Name;

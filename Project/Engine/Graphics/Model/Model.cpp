@@ -5,6 +5,7 @@
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Render/Model/ModelRenderer.h"
 #include "Engine/Graphics/Render/Model/SkinnedModelRenderer.h"
+#include "Engine/Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Engine/Graphics/Model/Skeleton/SkeletonAnimator.h"
 #include "Engine/Graphics/Model/Skeleton/SkinClusterGenerator.h"
 #include "Engine/Graphics/Model/Animation/AnimationBlender.h"
@@ -21,6 +22,8 @@ namespace CoreEngine
         ResourceFactory* sResourceFactory_ = nullptr;
         ShadowMapManager* sShadowMapManager_ = nullptr;
         ModelRenderer* sModelRenderer_ = nullptr;
+        SkinnedModelRenderer* sSkinnedModelRenderer_ = nullptr;
+        ShadowMapRenderer* sShadowMapRenderer_ = nullptr;
     }
 
     void Model::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory) {
@@ -35,6 +38,14 @@ namespace CoreEngine
 
     void Model::SetModelRenderer(ModelRenderer* modelRenderer) {
         sModelRenderer_ = modelRenderer;
+    }
+
+    void Model::SetSkinnedModelRenderer(SkinnedModelRenderer* skinnedModelRenderer) {
+        sSkinnedModelRenderer_ = skinnedModelRenderer;
+    }
+
+    void Model::SetShadowMapRenderer(ShadowMapRenderer* shadowMapRenderer) {
+        sShadowMapRenderer_ = shadowMapRenderer;
     }
 
     void Model::Initialize(ModelResource* resource) {
@@ -175,8 +186,11 @@ namespace CoreEngine
         // インデックスバッファを設定
         cmdList->IASetIndexBuffer(&resource_->indexBufferView_);
 
-        // WVP行列を設定（ShadowMapRendererのRoot Parameter 0）
-        cmdList->SetGraphicsRootConstantBufferView(0, wvpResource_->GetGPUVirtualAddress());
+        // WVP行列を設定（シェーダーリフレクションからインデックスを取得）
+        int lightTransformIdx = sShadowMapRenderer_ ? sShadowMapRenderer_->GetRootParamIndex("gLightTransform") : 0;
+        if (lightTransformIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(lightTransformIdx, wvpResource_->GetGPUVirtualAddress());
+        }
 
         // スキニングモデルの場合はMatrixPaletteも設定
         if (HasSkinCluster()) {
@@ -184,8 +198,11 @@ namespace CoreEngine
             D3D12_VERTEX_BUFFER_VIEW skinningVBV = skinCluster_->influenceBufferView;
             cmdList->IASetVertexBuffers(1, 1, &skinningVBV);
 
-            // MatrixPalette SRV（ShadowMapRendererのRoot Parameter 1）
-            cmdList->SetGraphicsRootDescriptorTable(1, skinCluster_->paletteSrvHandle.second);
+            // MatrixPalette SRV（シェーダーリフレクションからインデックスを取得）
+            int matrixPaletteIdx = sShadowMapRenderer_ ? sShadowMapRenderer_->GetRootParamIndex("gMatrixPalette") : 1;
+            if (matrixPaletteIdx >= 0) {
+                cmdList->SetGraphicsRootDescriptorTable(matrixPaletteIdx, skinCluster_->paletteSrvHandle.second);
+            }
         }
 
         // 描画実行
@@ -349,28 +366,37 @@ namespace CoreEngine
         }
 
         cmdList->SetGraphicsRootConstantBufferView(
-            sModelRenderer_->GetMaterialRootParamIndex(),
+            sModelRenderer_->GetRootParamIndex("gMaterial"),
             materialManager_->GetGPUVirtualAddress()
         );
 
         cmdList->SetGraphicsRootConstantBufferView(
-            sModelRenderer_->GetTransformRootParamIndex(),
+            sModelRenderer_->GetRootParamIndex("gTransformationMatrix"),
             wvpResource_->GetGPUVirtualAddress()
         );
 
-        cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetTextureRootParamIndex(), baseColorTexture);
+        cmdList->SetGraphicsRootDescriptorTable(
+            sModelRenderer_->GetRootParamIndex("gTexture"), baseColorTexture);
 
-        if (normalTexture.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetNormalMapRootParamIndex(), normalTexture);
+        int normalMapIdx = sModelRenderer_->GetRootParamIndex("gNormalMap");
+        if (normalTexture.ptr != 0 && normalMapIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(normalMapIdx, normalTexture);
         }
 
         if (metallicRoughnessTexture.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetMetallicMapRootParamIndex(), metallicRoughnessTexture);
-            cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetRoughnessMapRootParamIndex(), metallicRoughnessTexture);
+            int metallicIdx = sModelRenderer_->GetRootParamIndex("gMetallicMap");
+            int roughnessIdx = sModelRenderer_->GetRootParamIndex("gRoughnessMap");
+            if (metallicIdx >= 0) {
+                cmdList->SetGraphicsRootDescriptorTable(metallicIdx, metallicRoughnessTexture);
+            }
+            if (roughnessIdx >= 0) {
+                cmdList->SetGraphicsRootDescriptorTable(roughnessIdx, metallicRoughnessTexture);
+            }
         }
 
-        if (occlusionTexture.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(sModelRenderer_->GetAOMapRootParamIndex(), occlusionTexture);
+        int aoIdx = sModelRenderer_->GetRootParamIndex("gAOMap");
+        if (occlusionTexture.ptr != 0 && aoIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(aoIdx, occlusionTexture);
         }
     }
 
@@ -381,6 +407,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture) {
 
         assert(skinCluster_.has_value());
+        assert(sSkinnedModelRenderer_ != nullptr);
 
         // 頂点バッファを2つ設定（通常の頂点データとInfluenceデータ）
         D3D12_VERTEX_BUFFER_VIEW vbvs[2] = {
@@ -392,43 +419,52 @@ namespace CoreEngine
         // インデックスバッファを設定
         cmdList->IASetIndexBuffer(&resource_->indexBufferView_);
 
-        // WVP行列を設定（Root Parameter 0）
+        // WVP行列を設定
         cmdList->SetGraphicsRootConstantBufferView(
-            SkinnedModelRendererRootParam::kWVP,
+            sSkinnedModelRenderer_->GetRootParamIndex("gTransformationMatrix"),
             wvpResource_->GetGPUVirtualAddress()
         );
 
-        // MatrixPaletteを設定（Root Parameter 1）
+        // MatrixPaletteを設定
         cmdList->SetGraphicsRootDescriptorTable(
-            SkinnedModelRendererRootParam::kMatrixPalette,
+            sSkinnedModelRenderer_->GetRootParamIndex("gMatrixPalette"),
             skinCluster_->paletteSrvHandle.second
         );
 
-        // マテリアルを設定（Root Parameter 2）
+        // マテリアルを設定
         cmdList->SetGraphicsRootConstantBufferView(
-            SkinnedModelRendererRootParam::kMaterial,
+            sSkinnedModelRenderer_->GetRootParamIndex("gMaterial"),
             materialManager_->GetGPUVirtualAddress()
         );
 
-        // BaseColorテクスチャを設定（Root Parameter 3）
-        cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kTexture, baseColorTexture);
+        // BaseColorテクスチャを設定
+        cmdList->SetGraphicsRootDescriptorTable(
+            sSkinnedModelRenderer_->GetRootParamIndex("gTexture"), baseColorTexture);
 
         // ===== PBRテクスチャマップを設定 =====
         
         // ノーマルマップを設定
-        if (normalTexture.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kNormalMap, normalTexture);
+        int normalMapIdx = sSkinnedModelRenderer_->GetRootParamIndex("gNormalMap");
+        if (normalTexture.ptr != 0 && normalMapIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(normalMapIdx, normalTexture);
         }
 
         // MetallicRoughnessマップを設定
         if (metallicRoughnessTexture.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kMetallicMap, metallicRoughnessTexture);
-            cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kRoughnessMap, metallicRoughnessTexture);
+            int metallicIdx = sSkinnedModelRenderer_->GetRootParamIndex("gMetallicMap");
+            int roughnessIdx = sSkinnedModelRenderer_->GetRootParamIndex("gRoughnessMap");
+            if (metallicIdx >= 0) {
+                cmdList->SetGraphicsRootDescriptorTable(metallicIdx, metallicRoughnessTexture);
+            }
+            if (roughnessIdx >= 0) {
+                cmdList->SetGraphicsRootDescriptorTable(roughnessIdx, metallicRoughnessTexture);
+            }
         }
 
         // AOマップを設定
-        if (occlusionTexture.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(SkinnedModelRendererRootParam::kAOMap, occlusionTexture);
+        int aoIdx = sSkinnedModelRenderer_->GetRootParamIndex("gAOMap");
+        if (occlusionTexture.ptr != 0 && aoIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(aoIdx, occlusionTexture);
         }
     }
 }

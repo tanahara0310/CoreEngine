@@ -1,4 +1,4 @@
-﻿#include "ModelParticleRenderer.h"
+#include "ModelParticleRenderer.h"
 #include "Engine/Particle/ParticleSystem.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Graphics/Model/ModelResource.h"
@@ -56,11 +56,13 @@ void ModelParticleRenderer::CreatePSO() {
     auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Assets/Shaders/Particle/Particle.PS.hlsl", L"ps_6_0");
     assert(pixelShaderBlob != nullptr);
 
-    // ビルダーパターンでPSOを構築
+    // モデルパーティクル用リフレクション（基底クラスとは別シェーダー）
+    auto modelParticleReflection = reflectionBuilder_->BuildFromShaders(
+        vertexShaderBlob, pixelShaderBlob, "ModelParticleRenderer");
+
+    // ビルダーパターンでPSOを構築（入力レイアウト自動化）
     bool result = pipelineMg_->CreateBuilder()
-        .AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-        .AddInputElement("TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-        .AddInputElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
+        .SetInputLayoutFromReflection(*modelParticleReflection)
         .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
         .SetDepthStencil(true, true)  // 深度テストと深度書き込みを有効化
         .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)

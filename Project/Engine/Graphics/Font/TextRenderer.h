@@ -1,9 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/Graphics/Render/IRenderer.h"
 #include "Engine/Graphics/PipelineStateManager.h"
 #include "Engine/Graphics/RootSignatureManager.h"
 #include "Engine/Graphics/Shader/ShaderCompiler.h"
+#include "Engine/Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "MathCore.h"
@@ -17,11 +19,7 @@ namespace CoreEngine
 
 class Font;
 struct SpriteMaterial;
-namespace TextRendererRootParam {
-    static constexpr UINT kMaterial = 0;
-    static constexpr UINT kTransform = 1;
-    static constexpr UINT kTexture = 2;
-}
+class ShaderReflectionData;
 
 /// @brief テキスト描画用レンダラー
 class TextRenderer : public IRenderer {
@@ -59,10 +57,14 @@ public:
     Microsoft::WRL::ComPtr<ID3D12Resource>& GetMaterialResource(size_t index) { return materialResources_[currentFrameIndex_][index]; }
     Microsoft::WRL::ComPtr<ID3D12Resource>& GetTransformResource(size_t index) { return transformResources_[currentFrameIndex_][index]; }
 
+    /// @brief シェーダーリソース名からルートパラメータインデックスを取得
+    int GetRootParamIndex(const std::string& resourceName) const;
+
 private:
     std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
     std::unique_ptr<PipelineStateManager> psoMg_ = std::make_unique<PipelineStateManager>();
     std::unique_ptr<ShaderCompiler> shaderCompiler_ = std::make_unique<ShaderCompiler>();
+    std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
 
     ID3D12PipelineState* pipelineState_ = nullptr;
     BlendMode currentBlendMode_ = BlendMode::kBlendModeAdd;
@@ -77,5 +79,8 @@ private:
 
     size_t currentBufferIndex_ = 0;
     UINT currentFrameIndex_ = 0;
+
+    // シェーダーリフレクションデータ
+    std::unique_ptr<ShaderReflectionData> reflectionData_;
 };
 }

@@ -209,6 +209,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\SkyBox\SkyBoxRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Sprite\SpriteRenderer.cpp" />
+    <ClCompile Include="Engine\Graphics\RootSignature\RootSignatureBuilder.cpp" />
     <ClCompile Include="Engine\Graphics\Shader\ShaderReflectionBuilder.cpp" />
     <ClCompile Include="Engine\Graphics\Shader\ShaderReflectionData.cpp" />
     <ClCompile Include="Engine\Graphics\Shadow\ShadowMapManager.cpp" />
@@ -415,6 +416,8 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\SkyBox\SkyBoxRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\Sprite\SpriteRenderer.h" />
+    <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureBuilder.h" />
+    <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureConfig.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionBuilder.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionData.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionUsageExample.h" />
@@ -668,9 +671,11 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <None Include="docs\ParticleSystem_Refactoring_Final.md" />
     <None Include="docs\ParticleSystem_Refactoring_Progress.md" />
     <None Include="docs\ParticleSystem_Refactoring_Summary.md" />
+    <None Include="docs\ShaderReflectionReport.md" />
     <None Include="Docs\ShadowSystemImplementation.md" />
     <None Include="Engine\Graphics\Font\README.md" />
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
+    <None Include="Engine\Graphics\RootSignatureManager.h.new" />
     <None Include="Engine\Graphics\Shader\ShaderReflection_README.md" />
     <None Include="Engine\Particle\README.md" />
     <None Include="Engine\Utility\Debug\ImGui\README.md" />

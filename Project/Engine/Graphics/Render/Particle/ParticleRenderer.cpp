@@ -1,4 +1,4 @@
-﻿#include "ParticleRenderer.h"
+#include "ParticleRenderer.h"
 #include "Engine/Particle/ParticleSystem.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Camera/ICamera.h"
@@ -45,9 +45,7 @@ void ParticleRenderer::CreatePSO() {
 
     // ビルダーパターンでPSOを構築
     bool result = pipelineMg_->CreateBuilder()
-        .AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-        .AddInputElement("TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-        .AddInputElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
+        .SetInputLayoutFromReflection(*reflectionData_)
         .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
         .SetDepthStencil(true, false)
         .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)

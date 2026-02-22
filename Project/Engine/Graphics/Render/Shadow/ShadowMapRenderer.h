@@ -1,21 +1,19 @@
-﻿#pragma once
+#pragma once
 #include "Engine/Graphics/Render/IRenderer.h"
 #include "Engine/Graphics/PipelineStateManager.h"
 #include "Engine/Graphics/RootSignatureManager.h"
 #include "Engine/Graphics/Shader/ShaderCompiler.h"
+#include "Engine/Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include "Engine/Math/Matrix/Matrix4x4.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <memory>
 
-// Root Parameter インデックス定数
-
 namespace CoreEngine
 {
-    namespace ShadowMapRendererRootParam {
-        static constexpr UINT kLightTransform = 0;        // b0: LightTransform (VS)
-        static constexpr UINT kMatrixPalette = 1;         // t0: MatrixPalette (VS) - スキニング用
-    }
+    // 前方宣言
+    class ShaderReflectionData;
 
     /// @brief シャドウバイアス設定
     struct ShadowBiasSettings {
@@ -59,6 +57,9 @@ namespace CoreEngine
 
         ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
 
+        /// @brief シェーダーリソース名からルートパラメータインデックスを取得
+        int GetRootParamIndex(const std::string& resourceName) const;
+
     private:
         /// @brief PSOを作成（バイアス設定反映）
         void CreatePipelineStates();
@@ -68,6 +69,7 @@ namespace CoreEngine
         std::unique_ptr<PipelineStateManager> normalModelPSO_ = std::make_unique<PipelineStateManager>();
         std::unique_ptr<PipelineStateManager> skinnedModelPSO_ = std::make_unique<PipelineStateManager>();
         std::unique_ptr<ShaderCompiler> shaderCompiler_ = std::make_unique<ShaderCompiler>();
+        std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
 
         ID3D12Device* device_ = nullptr;
         ID3D12PipelineState* currentPipelineState_ = nullptr;
@@ -76,7 +78,10 @@ namespace CoreEngine
         // バイアス設定
         ShadowBiasSettings biasSettings_;
 
-    // ライトビュープロジェクション行列（CPU側で保持）
-    Matrix4x4 lightViewProjection_;
+        // ライトビュープロジェクション行列（CPU側で保持）
+        Matrix4x4 lightViewProjection_;
+
+        // シェーダーリフレクションデータ
+        std::unique_ptr<ShaderReflectionData> reflectionData_;
     };
 }

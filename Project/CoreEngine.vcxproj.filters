@@ -423,6 +423,7 @@
     <ClCompile Include="Engine\Utility\Debug\ImGui\ObjectSelector.cpp" />
     <ClCompile Include="Engine\Graphics\Shader\ShaderReflectionData.cpp" />
     <ClCompile Include="Engine\Graphics\Shader\ShaderReflectionBuilder.cpp" />
+    <ClCompile Include="Engine\Graphics\RootSignature\RootSignatureBuilder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1265,6 +1266,8 @@
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionData.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionBuilder.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionUsageExample.h" />
+    <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureConfig.h" />
+    <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureBuilder.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">
@@ -1308,6 +1311,8 @@
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
     <None Include="convert-tabs-to-spaces.ps1" />
     <None Include="Engine\Graphics\Shader\ShaderReflection_README.md" />
+    <None Include="Engine\Graphics\RootSignatureManager.h.new" />
+    <None Include="docs\ShaderReflectionReport.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">

@@ -4,6 +4,7 @@
 #include "Engine/Graphics/RootSignatureManager.h"
 #include "Engine/Graphics/Shader/ShaderCompiler.h"
 #include "Engine/Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "MathCore.h"
@@ -94,10 +95,8 @@ namespace CoreEngine
         /// @brief トランスフォームリソースを取得
         Microsoft::WRL::ComPtr<ID3D12Resource>& GetTransformResource(size_t index) { return transformResources_[currentFrameIndex_][index]; }
 
-        /// @brief ルートパラメータインデックスを取得（リフレクションベース）
-        UINT GetMaterialRootParamIndex() const { return materialRootParamIndex_; }
-        UINT GetTransformRootParamIndex() const { return transformRootParamIndex_; }
-        UINT GetTextureRootParamIndex() const { return textureRootParamIndex_; }
+        /// @brief シェーダーリソース名からルートパラメータインデックスを取得
+        int GetRootParamIndex(const std::string& resourceName) const;
 
     private:
         std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
@@ -124,10 +123,5 @@ namespace CoreEngine
 
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> reflectionData_;
-
-        // ルートパラメータインデックス（リフレクションから取得）
-        UINT materialRootParamIndex_ = 0;    // b0 (PS)
-        UINT transformRootParamIndex_ = 0;   // b1 (VS)
-        UINT textureRootParamIndex_ = 0;     // t0 (PS)
     };
 }

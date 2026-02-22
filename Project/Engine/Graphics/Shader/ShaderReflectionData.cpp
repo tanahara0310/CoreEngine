@@ -1,5 +1,7 @@
 #include "ShaderReflectionData.h"
+#include "Engine/Utility/Logger/Logger.h"
 #include <algorithm>
+#include <cctype>
 #include <sstream>
 
 namespace CoreEngine
@@ -83,55 +85,92 @@ namespace CoreEngine
 
     std::string ShaderReflectionData::ToString() const {
         std::stringstream ss;
-        ss << "=== Shader Reflection Data ===\n";
+        
+        // シェーダー名のタイトル作成
+        std::string title = "SHADER REFLECTION";
+        if (!shaderName_.empty()) {
+            title = shaderName_;
+        }
+        
+        // タイトルを中央揃え（最大幅65文字）
+        const size_t boxWidth = 65;
+        size_t padding = (boxWidth > title.length()) ? (boxWidth - title.length()) / 2 : 0;
+        std::string centeredTitle = std::string(padding, ' ') + title;
+        
+        // ヘッダーライン
+        ss << "\n";
+        ss << "┌─────────────────────────────────────────────────────────────────┐\n";
+        ss << "│" << centeredTitle;
+        // 右側のパディング
+        size_t rightPad = boxWidth - centeredTitle.length();
+        ss << std::string(rightPad, ' ') << "│\n";
+        ss << "├─────────────────────────────────────────────────────────────────┤\n";
+
+        // サマリー
+        ss << "│  Summary: CBV=" << cbvBindings_.size() 
+           << "  SRV=" << srvBindings_.size() 
+           << "  UAV=" << uavBindings_.size()
+           << "  Sampler=" << samplerBindings_.size() 
+           << "  InputLayout=" << inputElements_.size() << "\n";
+        ss << "├─────────────────────────────────────────────────────────────────┤\n";
 
         // CBVs
-        ss << "\n[Constant Buffers] Count: " << cbvBindings_.size() << "\n";
-        for (const auto& cbv : cbvBindings_) {
-            ss << "  - " << cbv.name << " : b" << cbv.bindPoint;
-            if (cbv.space > 0) ss << ", space" << cbv.space;
-            ss << " (Size: " << cbv.size << " bytes)";
-            ss << " [" << GetShaderVisibilityString(cbv.visibility) << "]\n";
+        if (!cbvBindings_.empty()) {
+            ss << "│  [Constant Buffers] (" << cbvBindings_.size() << ")\n";
+            for (const auto& cbv : cbvBindings_) {
+                ss << "│    • " << cbv.name;
+                ss << "  →  b" << cbv.bindPoint;
+                if (cbv.space > 0) ss << ", space" << cbv.space;
+                ss << "  (" << cbv.size << " bytes)";
+                ss << "  [" << GetShaderVisibilityString(cbv.visibility) << "]\n";
+            }
         }
 
         // SRVs
-        ss << "\n[Shader Resource Views] Count: " << srvBindings_.size() << "\n";
-        for (const auto& srv : srvBindings_) {
-            ss << "  - " << srv.name << " : t" << srv.bindPoint;
-            if (srv.space > 0) ss << ", space" << srv.space;
-            if (srv.bindCount > 1) ss << " [Array: " << srv.bindCount << "]";
-            ss << " [" << GetShaderVisibilityString(srv.visibility) << "]\n";
+        if (!srvBindings_.empty()) {
+            ss << "│  [Shader Resource Views] (" << srvBindings_.size() << ")\n";
+            for (const auto& srv : srvBindings_) {
+                ss << "│    • " << srv.name;
+                ss << "  →  t" << srv.bindPoint;
+                if (srv.space > 0) ss << ", space" << srv.space;
+                if (srv.bindCount > 1) ss << " [×" << srv.bindCount << "]";
+                ss << "  [" << GetShaderVisibilityString(srv.visibility) << "]\n";
+            }
         }
 
         // UAVs
         if (!uavBindings_.empty()) {
-            ss << "\n[Unordered Access Views] Count: " << uavBindings_.size() << "\n";
+            ss << "│  [Unordered Access Views] (" << uavBindings_.size() << ")\n";
             for (const auto& uav : uavBindings_) {
-                ss << "  - " << uav.name << " : u" << uav.bindPoint;
+                ss << "│    • " << uav.name;
+                ss << "  →  u" << uav.bindPoint;
                 if (uav.space > 0) ss << ", space" << uav.space;
-                if (uav.bindCount > 1) ss << " [Array: " << uav.bindCount << "]";
-                ss << " [" << GetShaderVisibilityString(uav.visibility) << "]\n";
+                if (uav.bindCount > 1) ss << " [×" << uav.bindCount << "]";
+                ss << "  [" << GetShaderVisibilityString(uav.visibility) << "]\n";
             }
         }
 
         // Samplers
-        ss << "\n[Samplers] Count: " << samplerBindings_.size() << "\n";
-        for (const auto& sampler : samplerBindings_) {
-            ss << "  - " << sampler.name << " : s" << sampler.bindPoint;
-            if (sampler.space > 0) ss << ", space" << sampler.space;
-            ss << " [" << GetShaderVisibilityString(sampler.visibility) << "]\n";
+        if (!samplerBindings_.empty()) {
+            ss << "│  [Samplers] (" << samplerBindings_.size() << ")\n";
+            for (const auto& sampler : samplerBindings_) {
+                ss << "│    • " << sampler.name;
+                ss << "  →  s" << sampler.bindPoint;
+                if (sampler.space > 0) ss << ", space" << sampler.space;
+                ss << "  [" << GetShaderVisibilityString(sampler.visibility) << "]\n";
+            }
         }
 
         // Input Layout
         if (!inputElements_.empty()) {
-            ss << "\n[Input Layout] Count: " << inputElements_.size() << "\n";
+            ss << "│  [Input Layout] (" << inputElements_.size() << ")\n";
             for (const auto& input : inputElements_) {
-                ss << "  - " << input.semanticName << input.semanticIndex;
-                ss << " (Slot: " << input.inputSlot << ", Format: " << GetFormatString(input.format) << ")\n";
+                ss << "│    • " << input.semanticName << input.semanticIndex;
+                ss << "  (Slot:" << input.inputSlot << ", " << GetFormatString(input.format) << ")\n";
             }
         }
 
-        ss << "==============================\n";
+        ss << "└─────────────────────────────────────────────────────────────────┘\n";
         return ss.str();
     }
 
@@ -223,5 +262,173 @@ namespace CoreEngine
         case DXGI_FORMAT_R8G8B8A8_UNORM: return "R8G8B8A8_UNORM";
         default: return "UNKNOWN";
         }
+    }
+
+    bool ShaderReflectionData::ValidateCBVSize(const std::string& cbvName, size_t cppStructSize) const {
+        const auto* cbv = FindCBV(cbvName);
+        
+        if (!cbv) {
+            // CBVが見つからない場合は警告（オプショナルなリソースかもしれない）
+            Logger::GetInstance().Log(
+                "[CBV Validation] Warning: CBV '" + cbvName + "' not found in " + shaderName_,
+                LogLevel::WARNING, LogCategory::Shader);
+            return true;  // 見つからない場合は検証スキップ（オプショナルとみなす）
+        }
+        
+        // HLSLの16バイトアライメントを考慮
+        // シェーダーのサイズは既にアライメント済みのはず
+        size_t shaderSize = cbv->size;
+        
+        // C++側のサイズとシェーダー側のサイズを比較
+        if (cppStructSize != shaderSize) {
+            std::ostringstream oss;
+            oss << "\n";
+            oss << "┌─────────────────────────────────────────────────────────────────┐\n";
+            oss << "│  [ERROR] CBV Size Mismatch Detected!                           │\n";
+            oss << "├─────────────────────────────────────────────────────────────────┤\n";
+            oss << "│  Shader:    " << shaderName_ << "\n";
+            oss << "│  CBV Name:  " << cbvName << "\n";
+            oss << "├─────────────────────────────────────────────────────────────────┤\n";
+            oss << "│  Shader expects:  " << shaderSize << " bytes\n";
+            oss << "│  C++ provides:    " << cppStructSize << " bytes\n";
+            oss << "│  Difference:      " << static_cast<int>(shaderSize) - static_cast<int>(cppStructSize) << " bytes\n";
+            oss << "├─────────────────────────────────────────────────────────────────┤\n";
+            oss << "│  [Possible Causes]                                             │\n";
+            
+            if (cppStructSize < shaderSize) {
+                oss << "│    • C++ struct is missing members                             │\n";
+                oss << "│    • HLSL has additional padding                               │\n";
+            } else {
+                oss << "│    • C++ struct has extra members                              │\n";
+                oss << "│    • HLSL struct is missing members                            │\n";
+            }
+            oss << "│    • Alignment mismatch (HLSL uses 16-byte alignment)          │\n";
+            oss << "└─────────────────────────────────────────────────────────────────┘\n";
+            
+            Logger::GetInstance().Log(oss.str(), LogLevel::Error, LogCategory::Shader);
+            return false;
+        }
+        
+        return true;
+    }
+
+    bool ShaderReflectionData::ValidateAllCBVSizes(
+        const std::vector<std::pair<std::string, size_t>>& validations) const {
+        
+        bool allValid = true;
+        
+        for (const auto& [cbvName, structSize] : validations) {
+            if (!ValidateCBVSize(cbvName, structSize)) {
+                allValid = false;
+            }
+        }
+        
+        // 全て成功した場合はログ出力
+        if (allValid && !validations.empty()) {
+#ifdef _DEBUG
+            std::ostringstream oss;
+            oss << "\n";
+            oss << "┌─────────────────────────────────────────────────────────────────┐\n";
+            oss << "│  [OK] CBV Size Validation Passed - " << shaderName_ << "\n";
+            oss << "├─────────────────────────────────────────────────────────────────┤\n";
+            
+            for (const auto& [cbvName, structSize] : validations) {
+                const auto* cbv = FindCBV(cbvName);
+                if (cbv) {
+                    oss << "│    ✓ " << cbvName << ": " << structSize << " bytes\n";
+                }
+            }
+            
+            oss << "└─────────────────────────────────────────────────────────────────┘\n";
+            Logger::GetInstance().Log(oss.str(), LogLevel::INFO, LogCategory::Shader);
+#endif
+        }
+        
+        return allValid;
+    }
+
+    // ================================================================================
+    // スロット自動検出
+    // ================================================================================
+    
+    namespace {
+        // スキニング関連のセマンティック（スロット1に割り当て）
+        const std::vector<std::string> kSkinningSemantics = {
+            "WEIGHT", "INDEX", "BONEINDEX", "BONEWEIGHT", "BLENDWEIGHT", "BLENDINDICES"
+        };
+        
+        // インスタンシング関連のセマンティック（スロット2に割り当て）
+        const std::vector<std::string> kInstancingSemantics = {
+            "INSTANCE", "INSTANCEID", "INSTANCEDATA"
+        };
+        
+        // セマンティック名からスロットを判定
+        UINT DetectSlotFromSemantic(const std::string& semanticName) {
+            // 大文字に変換して比較
+            std::string upperSemantic = semanticName;
+            std::transform(upperSemantic.begin(), upperSemantic.end(), 
+                          upperSemantic.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+            
+            // スキニングセマンティックチェック
+            for (const auto& skinSemantic : kSkinningSemantics) {
+                if (upperSemantic.find(skinSemantic) != std::string::npos) {
+                    return 1;  // スロット1
+                }
+            }
+            
+            // インスタンシングセマンティックチェック
+            for (const auto& instSemantic : kInstancingSemantics) {
+                if (upperSemantic.find(instSemantic) != std::string::npos) {
+                    return 2;  // スロット2
+                }
+            }
+            
+            return 0;  // デフォルトはスロット0
+        }
+    }
+
+    void ShaderReflectionData::ApplyAutoSlotDetection() {
+        bool hasSlotChange = false;
+        
+        for (auto& element : inputElements_) {
+            UINT detectedSlot = DetectSlotFromSemantic(element.semanticName);
+            if (detectedSlot != element.inputSlot) {
+                element.inputSlot = detectedSlot;
+                hasSlotChange = true;
+            }
+        }
+        
+#ifdef _DEBUG
+        if (hasSlotChange) {
+            std::ostringstream oss;
+            oss << "\n";
+            oss << "┌─────────────────────────────────────────────────────────────────┐\n";
+            oss << "│  [Auto Slot Detection] " << shaderName_ << "\n";
+            oss << "├─────────────────────────────────────────────────────────────────┤\n";
+            
+            for (const auto& element : inputElements_) {
+                oss << "│    • " << element.semanticName << element.semanticIndex 
+                    << " → Slot " << element.inputSlot;
+                if (element.inputSlot > 0) {
+                    oss << " (auto-detected)";
+                }
+                oss << "\n";
+            }
+            
+            oss << "└─────────────────────────────────────────────────────────────────┘\n";
+            Logger::GetInstance().Log(oss.str(), LogLevel::INFO, LogCategory::Shader);
+        }
+#endif
+    }
+
+    std::vector<InputElementInfo> ShaderReflectionData::GetInputElementsWithAutoSlots() const {
+        std::vector<InputElementInfo> elements = inputElements_;
+        
+        for (auto& element : elements) {
+            UINT detectedSlot = DetectSlotFromSemantic(element.semanticName);
+            element.inputSlot = detectedSlot;
+        }
+        
+        return elements;
     }
 }

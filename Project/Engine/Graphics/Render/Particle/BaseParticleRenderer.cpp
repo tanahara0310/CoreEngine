@@ -1,6 +1,8 @@
-﻿#include "BaseParticleRenderer.h"
+#include "BaseParticleRenderer.h"
 #include "Engine/Particle/ParticleSystem.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
+#include "Engine/Graphics/Shader/ShaderReflectionData.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include "Engine/Camera/ICamera.h"
 #include <cassert>
 
@@ -17,6 +19,7 @@ void BaseParticleRenderer::Initialize(ID3D12Device* device) {
     pipelineMg_ = std::make_unique<PipelineStateManager>();
     rootSignatureMg_ = std::make_unique<RootSignatureManager>();
     shaderCompiler_ = std::make_unique<ShaderCompiler>();
+    reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
 
     // シェーダーコンパイラの初期化
     shaderCompiler_->Initialize();
@@ -51,25 +54,32 @@ void BaseParticleRenderer::SetCamera(const ICamera* camera) {
 }
 
 void BaseParticleRenderer::CreateRootSignature() {
-    // Root Parameter 0: インスタンシング用SRV (t0, Vertex Shader)
-    RootSignatureManager::DescriptorRangeConfig instanceRange;
-    instanceRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    instanceRange.numDescriptors = 1;
-    instanceRange.baseShaderRegister = 0;  // t0
-    rootSignatureMg_->AddDescriptorTable({ instanceRange }, D3D12_SHADER_VISIBILITY_VERTEX);
+    // パーティクル用シェーダーをコンパイルしてリフレクション
+    auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Assets/Shaders/Particle/Particle.VS.hlsl", L"vs_6_0");
+    assert(vertexShaderBlob != nullptr);
 
-    // Root Parameter 1: テクスチャ用ディスクリプタテーブル (t0, Pixel Shader)
-    RootSignatureManager::DescriptorRangeConfig textureRange;
-    textureRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    textureRange.numDescriptors = 1;
-    textureRange.baseShaderRegister = 0;  // t0
-    rootSignatureMg_->AddDescriptorTable({ textureRange }, D3D12_SHADER_VISIBILITY_PIXEL);
+    auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Assets/Shaders/Particle/Particle.PS.hlsl", L"ps_6_0");
+    assert(pixelShaderBlob != nullptr);
 
-    // Static Sampler (s0, Pixel Shader)
-    rootSignatureMg_->AddDefaultLinearSampler(0, D3D12_SHADER_VISIBILITY_PIXEL);
+    reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
+    reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "ParticleRenderer");
 
-    // RootSignature の作成
-    rootSignatureMg_->Create(device_);
+    // シンプルな設定でRootSignatureを構築
+    RootSignatureConfig config = RootSignatureConfig::Simple();
+    config.ConfigureSampler("gSampler", SamplerConfig::Linear());
+
+    auto buildResult = rootSignatureMg_->Build(device_, *reflectionData_, config);
+
+    if (!buildResult.success) {
+        throw std::runtime_error("Failed to create Particle Root Signature: " + buildResult.errorMessage);
+    }
+}
+
+int BaseParticleRenderer::GetRootParamIndex(const std::string& resourceName) const {
+    if (!reflectionData_) {
+        return -1;
+    }
+    return reflectionData_->GetRootParameterIndexByName(resourceName);
 }
 
 bool BaseParticleRenderer::ValidateDrawCall(ParticleSystem* particle) const {
@@ -86,10 +96,16 @@ bool BaseParticleRenderer::ValidateDrawCall(ParticleSystem* particle) const {
 }
 
 void BaseParticleRenderer::SetupCommonResources(ParticleSystem* particle, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
-    // インスタンシングリソースを設定（Root Parameter 0）
-    cmdList_->SetGraphicsRootDescriptorTable(0, particle->GetInstancingSrvHandleGPU());
+    // インスタンシングリソースを設定
+    int instanceIdx = GetRootParamIndex("gParticle");
+    if (instanceIdx >= 0) {
+        cmdList_->SetGraphicsRootDescriptorTable(instanceIdx, particle->GetInstancingSrvHandleGPU());
+    }
     
-    // テクスチャを設定（Root Parameter 1）
-    cmdList_->SetGraphicsRootDescriptorTable(1, textureHandle);
+    // テクスチャを設定
+    int texIdx = GetRootParamIndex("gTexture");
+    if (texIdx >= 0) {
+        cmdList_->SetGraphicsRootDescriptorTable(texIdx, textureHandle);
+    }
 }
 }

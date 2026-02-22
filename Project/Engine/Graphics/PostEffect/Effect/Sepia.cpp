@@ -1,4 +1,4 @@
-﻿#include "Sepia.h"
+#include "Sepia.h"
 #include "Engine/Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -102,9 +102,10 @@ void Sepia::ForceUpdateConstantBuffer()
 
 void Sepia::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
 {
-    // 定数バッファをピクセルシェーダーにバインド（ルートパラメータ1がb0に対応）
-    if (constantBuffer_) {
-        commandList->SetGraphicsRootConstantBufferView(1, constantBuffer_->GetGPUVirtualAddress());
+    // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）
+    int paramsIdx = GetRootParamIndex("SepiaParams");
+    if (constantBuffer_ && paramsIdx >= 0) {
+        commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
     }
 }
 
