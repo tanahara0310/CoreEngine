@@ -1,4 +1,4 @@
-﻿#include "RadialBlur.h"
+#include "RadialBlur.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
@@ -80,9 +80,10 @@ void RadialBlur::SetParams(const RadialBlurParams& newParams)
 
 void RadialBlur::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
 {
-    // 定数バッファをピクセルシェーダーにバインド
-    if (constantBuffer_) {
-        commandList->SetGraphicsRootConstantBufferView(1, constantBuffer_->GetGPUVirtualAddress());
+    // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）
+    int paramsIdx = GetRootParamIndex("RadialBlurParams");
+    if (constantBuffer_ && paramsIdx >= 0) {
+        commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
     }
 }
 

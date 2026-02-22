@@ -1,5 +1,7 @@
-﻿#include "ShadowMapRenderer.h"
+#include "ShadowMapRenderer.h"
 #include "Engine/Camera/ICamera.h"
+#include "Engine/Graphics/Shader/ShaderReflectionData.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include <cassert>
 #include <DirectXMath.h>
 
@@ -13,25 +15,24 @@ namespace CoreEngine
 
         device_ = device;
         shaderCompiler_->Initialize();
+        reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
 
-        // ===================================
-        // Root Signature の作成
-        // ===================================
+        // スキニング用シェーダーをコンパイル（リフレクション用）
+        auto skinningVertexShader = shaderCompiler_->CompileShader(L"Assets/Shaders/Shadow/ShadowMapSkinning.VS.hlsl", L"vs_6_0");
+        assert(skinningVertexShader != nullptr);
 
-        // Root Parameter 0: LightTransform用CBV (b0, VS)
-        RootSignatureManager::RootDescriptorConfig lightTransformCBV;
-        lightTransformCBV.shaderRegister = 0;
-        lightTransformCBV.visibility = D3D12_SHADER_VISIBILITY_VERTEX;
-        rootSignatureMg_->AddRootCBV(lightTransformCBV);
+        // リフレクション
+        reflectionData_ = reflectionBuilder_->BuildFromShader(skinningVertexShader, D3D12_SHADER_VISIBILITY_VERTEX, "ShadowMapRenderer");
 
-        // Root Parameter 1: MatrixPalette用ディスクリプタテーブル (t0, VS) - スキニング用
-        RootSignatureManager::DescriptorRangeConfig matrixPaletteRange;
-        matrixPaletteRange.type = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        matrixPaletteRange.numDescriptors = 1;
-        matrixPaletteRange.baseShaderRegister = 0;
-        rootSignatureMg_->AddDescriptorTable({ matrixPaletteRange }, D3D12_SHADER_VISIBILITY_VERTEX);
+        // シンプルな設定でRootSignatureを構築
+        RootSignatureConfig config = RootSignatureConfig::Simple();
+        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-        rootSignatureMg_->Create(device);
+        auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
+
+        if (!buildResult.success) {
+            throw std::runtime_error("Failed to create ShadowMap Root Signature: " + buildResult.errorMessage);
+        }
 
         // PSOを作成
         CreatePipelineStates();
@@ -43,6 +44,13 @@ namespace CoreEngine
         lightViewProjection_ = CoreEngine::MathCore::Matrix::Identity();
     }
 
+    int ShadowMapRenderer::GetRootParamIndex(const std::string& resourceName) const {
+        if (!reflectionData_) {
+            return -1;
+        }
+        return reflectionData_->GetRootParameterIndexByName(resourceName);
+    }
+
     void ShadowMapRenderer::CreatePipelineStates() {
         // ===================================
         // 通常モデル用 Pipeline State 作成
@@ -51,8 +59,12 @@ namespace CoreEngine
         auto normalVertexShader = shaderCompiler_->CompileShader(L"Assets/Shaders/Shadow/ShadowMap.VS.hlsl", L"vs_6_0");
         assert(normalVertexShader != nullptr);
 
+        // 通常モデル用リフレクション
+        auto normalReflection = reflectionBuilder_->BuildFromShader(
+            normalVertexShader, D3D12_SHADER_VISIBILITY_VERTEX, "ShadowMap_Normal");
+
         bool normalResult = normalModelPSO_->CreateBuilder()
-            .AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
+            .SetInputLayoutFromReflection(*normalReflection)
             .SetRasterizer(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID)
             .SetDepthBias(biasSettings_.depthBias, biasSettings_.slopeScaledDepthBias, biasSettings_.depthBiasClamp)
             .SetDepthStencil(true, true, D3D12_COMPARISON_FUNC_LESS)
@@ -72,12 +84,12 @@ namespace CoreEngine
         auto skinningVertexShader = shaderCompiler_->CompileShader(L"Assets/Shaders/Shadow/ShadowMapSkinning.VS.hlsl", L"vs_6_0");
         assert(skinningVertexShader != nullptr);
 
+        // スキニングモデル用リフレクション（自動スロット検出でWEIGHT/INDEXはスロット1に）
+        auto skinningReflection = reflectionBuilder_->BuildFromShader(
+            skinningVertexShader, D3D12_SHADER_VISIBILITY_VERTEX, "ShadowMap_Skinning");
+
         bool skinningResult = skinnedModelPSO_->CreateBuilder()
-            .AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT, 0)
-            .AddInputElement("TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT, 0)
-            .AddInputElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT, 0)
-            .AddInputElement("WEIGHT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT, 1)
-            .AddInputElement("INDEX", 0, DXGI_FORMAT_R32G32B32A32_SINT, D3D12_APPEND_ALIGNED_ELEMENT, 1)
+            .SetInputLayoutFromReflection(*skinningReflection)
             .SetRasterizer(D3D12_CULL_MODE_FRONT, D3D12_FILL_MODE_SOLID)
             .SetDepthBias(biasSettings_.depthBias, biasSettings_.slopeScaledDepthBias, biasSettings_.depthBiasClamp)
             .SetDepthStencil(true, true, D3D12_COMPARISON_FUNC_LESS)

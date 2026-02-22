@@ -6,8 +6,10 @@
 #include "Engine/Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Engine/Graphics/Render/Model/ModelRenderer.h"
 #include "Engine/Graphics/Render/Model/SkinnedModelRenderer.h"
+#include "Engine/Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Engine/Graphics/Shadow/ShadowMapManager.h"
 #include "Engine/Graphics/Model/Model.h"
+#include "Engine/TestGameObject/SkyBoxObject.h"
 #include "Engine/Camera/CameraManager.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Math/MathCore.h"
@@ -30,6 +32,30 @@ namespace CoreEngine
             auto* modelRenderer = dynamic_cast<ModelRenderer*>(renderers_[type].get());
             if (modelRenderer) {
                 Model::SetModelRenderer(modelRenderer);
+            }
+        }
+
+        // SkinnedModelRendererが登録された場合、Model クラスに設定
+        if (type == RenderPassType::SkinnedModel) {
+            auto* skinnedModelRenderer = dynamic_cast<SkinnedModelRenderer*>(renderers_[type].get());
+            if (skinnedModelRenderer) {
+                Model::SetSkinnedModelRenderer(skinnedModelRenderer);
+            }
+        }
+
+        // SkyBoxRendererが登録された場合、SkyBoxObject クラスに設定
+        if (type == RenderPassType::SkyBox) {
+            auto* skyBoxRenderer = dynamic_cast<SkyBoxRenderer*>(renderers_[type].get());
+            if (skyBoxRenderer) {
+                SkyBoxObject::SetSkyBoxRenderer(skyBoxRenderer);
+            }
+        }
+
+        // ShadowMapRendererが登録された場合、Model クラスに設定
+        if (type == RenderPassType::ShadowMap) {
+            auto* shadowMapRenderer = dynamic_cast<ShadowMapRenderer*>(renderers_[type].get());
+            if (shadowMapRenderer) {
+                Model::SetShadowMapRenderer(shadowMapRenderer);
             }
         }
     }

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
 #include <wrl/client.h>
@@ -8,6 +8,8 @@
 
 namespace CoreEngine
 {
+class SkyBoxRenderer;
+
 class SkyBoxObject : public GameObject {
 public:
     /// @brief コンストラクタ
@@ -15,6 +17,10 @@ public:
 
     /// @brief デストラクタ
     ~SkyBoxObject() override = default;
+
+    /// @brief SkyBoxRendererを設定（ルートパラメータインデックス取得用）
+    /// @param renderer SkyBoxRendererのポインタ
+    static void SetSkyBoxRenderer(SkyBoxRenderer* renderer);
 
     /// @brief 初期化
     /// @param engine エンジンシステム

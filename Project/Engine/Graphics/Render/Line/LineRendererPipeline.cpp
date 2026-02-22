@@ -1,6 +1,7 @@
 #include "LineRendererPipeline.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Shader/ShaderReflectionData.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include <cassert>
 
 
@@ -16,21 +17,18 @@ namespace CoreEngine
         assert(pixelShaderBlob != nullptr);
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob);
-        rootSignatureMg_->BuildFromReflection(device, *reflectionData_, false);
+        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "LineRenderer");
 
-        // シェーダーのリソース名からルートパラメータインデックスを取得
-        // HLSL: cbuffer Camera : register(b0) in Line.VS.hlsl
-        wvpRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("Camera");
+        // 新しいAPIでRootSignatureを構築
+        RootSignatureConfig config = RootSignatureConfig::Simple();
+        auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
 
-        if (wvpRootParamIndex_ < 0) {
-            throw std::runtime_error("Camera constant buffer not found in Line.VS.hlsl");
+        if (!buildResult.success) {
+            throw std::runtime_error("Failed to create Line Root Signature: " + buildResult.errorMessage);
         }
 
         bool result = psoMg_->CreateBuilder()
-            .AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0)
-            .AddInputElement("COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-            .AddInputElement("ALPHA", 0, DXGI_FORMAT_R32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
+            .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE)
@@ -130,6 +128,13 @@ namespace CoreEngine
         vertexBuffer_->Unmap(0, nullptr);
     }
 
+    int LineRendererPipeline::GetRootParamIndex(const std::string& resourceName) const {
+        if (!reflectionData_) {
+            return -1;
+        }
+        return reflectionData_->GetRootParameterIndexByName(resourceName);
+    }
+
     void LineRendererPipeline::DrawLines(ID3D12GraphicsCommandList* cmdList, uint32_t vertexCount) {
         if (vertexCount == 0 || !currentCmdList_) {
             return;
@@ -139,9 +144,12 @@ namespace CoreEngine
         cmdList->IASetVertexBuffers(0, 1, &vbView_);
 
         // WVP行列を設定（リフレクションから取得したインデックスを使用）
-        cmdList->SetGraphicsRootConstantBufferView(
-            wvpRootParamIndex_,  // シェーダーリフレクションから自動決定
-            wvpBuffer_->GetGPUVirtualAddress());
+        int cameraIdx = GetRootParamIndex("Camera");
+        if (cameraIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(
+                cameraIdx,  // シェーダーリフレクションから自動決定
+                wvpBuffer_->GetGPUVirtualAddress());
+        }
         cmdList->DrawInstanced(vertexCount, 1, 0, 0);
     }
 

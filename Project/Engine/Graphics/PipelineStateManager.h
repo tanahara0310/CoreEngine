@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <dxcapi.h>
 #include <map>
 #include <vector>
+#include <string>
 #include <wrl.h>
 
 using namespace Microsoft::WRL;
@@ -11,6 +12,9 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
+// 前方宣言
+class ShaderReflectionData;
+
 enum class BlendMode {
     kBlendModeNone, // ブレンドなし
     kBlendModeNormal, // アルファブレンド
@@ -41,6 +45,11 @@ public:
         DXGI_FORMAT format,
         UINT alignedByteOffset,
         UINT inputSlot = 0);
+
+    /// @brief シェーダーリフレクションから入力レイアウトを自動設定
+    /// @param reflectionData シェーダーリフレクションデータ
+    /// @return ビルダー自身(メソッドチェーン用)
+    PipelineStateBuilder& SetInputLayoutFromReflection(const ShaderReflectionData& reflectionData);
 
     /// @brief ラスタライザの設定
     /// @param cullMode カリングモード
@@ -131,20 +140,21 @@ public:
         ID3D12RootSignature* rootSignature);
 
 private:
-    friend class PipelineStateManager;
+friend class PipelineStateManager;
 
-    PipelineStateManager* manager_;
-    std::vector<D3D12_INPUT_ELEMENT_DESC> inputElementDescs_;
-    D3D12_RASTERIZER_DESC rasterizerDesc_;
-    D3D12_DEPTH_STENCIL_DESC depthStencilDesc_;
-    D3D12_PRIMITIVE_TOPOLOGY_TYPE primitiveTopologyType_;
-    DXGI_FORMAT rtvFormats_[8];
-    UINT numRenderTargets_;
-    DXGI_FORMAT dsvFormat_;
-    DXGI_SAMPLE_DESC sampleDesc_;
-    D3D12_COLOR_WRITE_ENABLE colorWriteMask_;
-    bool enableAlphaWrite_;
-    bool depthWriteEnabled_;
+PipelineStateManager* manager_;
+std::vector<D3D12_INPUT_ELEMENT_DESC> inputElementDescs_;
+std::vector<std::string> semanticNameStorage_;  // セマンティック名の永続化用
+D3D12_RASTERIZER_DESC rasterizerDesc_;
+D3D12_DEPTH_STENCIL_DESC depthStencilDesc_;
+D3D12_PRIMITIVE_TOPOLOGY_TYPE primitiveTopologyType_;
+DXGI_FORMAT rtvFormats_[8];
+UINT numRenderTargets_;
+DXGI_FORMAT dsvFormat_;
+DXGI_SAMPLE_DESC sampleDesc_;
+D3D12_COLOR_WRITE_ENABLE colorWriteMask_;
+bool enableAlphaWrite_;
+bool depthWriteEnabled_;
 
     /// @brief デフォルト値で初期化
     void InitializeDefaults();

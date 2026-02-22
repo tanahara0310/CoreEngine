@@ -2,6 +2,9 @@
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Graphics/Light/LightManager.h"
 #include "Engine/Graphics/Shader/ShaderReflectionData.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
+#include "Engine/Graphics/Structs/TransformationMatrix.h"
+#include "Engine/Graphics/Structs/MaterialConstants.h"
 #include "Engine/Utility/Logger/Logger.h"
 #include <cassert>
 
@@ -18,62 +21,49 @@ namespace CoreEngine
         assert(pixelShaderBlob != nullptr);
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob);
+        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "ModelRenderer");
         
-        // リフレクション結果をデバッグ出力
-#ifdef _DEBUG
-        Logger::GetInstance().Log("=== ModelRenderer Reflection Results ===", LogLevel::INFO, LogCategory::Shader);
-        Logger::GetInstance().Log(reflectionData_->ToString(), LogLevel::INFO, LogCategory::Shader);
-#endif
+        // 新しい設定ベースのRootSignature構築
+        RootSignatureConfig config = RootSignatureConfig::PerformanceOptimized();
         
-        rootSignatureMg_->BuildFromReflection(device, *reflectionData_, true);
+        // CBVは全てRoot Descriptor（高速アクセス）
+        config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
+        
+        // SRVは個別のDescriptor Table
+        config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
+        
+        // シャドウマップ用サンプラーを特別設定
+        config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
+        
+        // 通常サンプラーはリニア
+        config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
+        
+        // RootSignatureを構築
+        auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
+        
+        if (!buildResult.success) {
+            throw std::runtime_error("Failed to create Root Signature: " + buildResult.errorMessage);
+        }
 
-        // シェーダーのリソース名からルートパラメータインデックスを取得
-        materialRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gMaterial");
-        transformRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gTransformationMatrix");
-        textureRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gTexture");
-        lightCountsRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gLightCounts");
-        cameraRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gCamera");
-        directionalLightsRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gDirectionalLights");
-        pointLightsRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gPointLights");
-        spotLightsRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gSpotLights");
-        areaLightsRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gAreaLights");
-        environmentMapRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gEnvironmentTexture");
-        shadowMapRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gShadowMap");
-        normalMapRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gNormalMap");
-        metallicMapRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gMetallicMap");
-        roughnessMapRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gRoughnessMap");
-        aoMapRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gAOMap");
-        irradianceMapRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gIrradianceMap");
-        prefilteredMapRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gPrefilteredMap");
-        brdfLUTRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gBRDFLUT");
-        lightViewProjectionRootParamIndex_ = reflectionData_->GetRootParameterIndexByName("gLightViewProjection");
+        // CBVサイズ検証（C++構造体とHLSL構造体のサイズ一致を確認）
+        reflectionData_->ValidateAllCBVSizes({
+            {"gTransformationMatrix", sizeof(TransformationMatrix)},
+            {"gMaterial", sizeof(MaterialConstants)}
+        });
 
-#ifdef _DEBUG
-        Logger::GetInstance().Log("=== ModelRenderer Root Parameter Indices ===", LogLevel::INFO, LogCategory::Shader);
-        Logger::GetInstance().Log("gMaterial: " + std::to_string(materialRootParamIndex_), LogLevel::INFO, LogCategory::Shader);
-        Logger::GetInstance().Log("gTransformationMatrix: " + std::to_string(transformRootParamIndex_), LogLevel::INFO, LogCategory::Shader);
-        Logger::GetInstance().Log("gTexture: " + std::to_string(textureRootParamIndex_), LogLevel::INFO, LogCategory::Shader);
-        Logger::GetInstance().Log("gCamera: " + std::to_string(cameraRootParamIndex_), LogLevel::INFO, LogCategory::Shader);
-        Logger::GetInstance().Log("gLightCounts: " + std::to_string(lightCountsRootParamIndex_), LogLevel::INFO, LogCategory::Shader);
-#endif
-
-        if (materialRootParamIndex_ < 0) {
+        // 必須リソースの存在チェック
+        if (GetRootParamIndex("gMaterial") < 0) {
             throw std::runtime_error("gMaterial constant buffer not found in Object3d.PS.hlsl");
         }
-        if (transformRootParamIndex_ < 0) {
+        if (GetRootParamIndex("gTransformationMatrix") < 0) {
             throw std::runtime_error("gTransformationMatrix constant buffer not found in Object3d.VS.hlsl");
         }
-        if (textureRootParamIndex_ < 0) {
+        if (GetRootParamIndex("gTexture") < 0) {
             throw std::runtime_error("gTexture resource not found in Object3d.PS.hlsl");
         }
 
-
         bool result = psoMg_->CreateBuilder()
-            .AddInputElement("POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-            .AddInputElement("TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-            .AddInputElement("NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
-            .AddInputElement("TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, D3D12_APPEND_ALIGNED_ELEMENT)
+            .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
@@ -84,6 +74,13 @@ namespace CoreEngine
         }
 
         pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNone);
+    }
+
+    int ModelRenderer::GetRootParamIndex(const std::string& resourceName) const {
+        if (!reflectionData_) {
+            return -1;
+        }
+        return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
     void ModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
@@ -97,43 +94,50 @@ namespace CoreEngine
         cmdList->SetPipelineState(pipelineState_);
         cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        if (cameraCBV_ != 0 && cameraRootParamIndex_ >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(cameraRootParamIndex_, cameraCBV_);
+        int cameraIdx = GetRootParamIndex("gCamera");
+        if (cameraCBV_ != 0 && cameraIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(cameraIdx, cameraCBV_);
         }
 
         if (lightManager_) {
             lightManager_->SetLightsToCommandList(
                 cmdList,
-                lightCountsRootParamIndex_,
-                directionalLightsRootParamIndex_,
-                pointLightsRootParamIndex_,
-                spotLightsRootParamIndex_,
-                areaLightsRootParamIndex_
+                GetRootParamIndex("gLightCounts"),
+                GetRootParamIndex("gDirectionalLights"),
+                GetRootParamIndex("gPointLights"),
+                GetRootParamIndex("gSpotLights"),
+                GetRootParamIndex("gAreaLights")
             );
         }
 
-        if (environmentMapHandle_.ptr != 0 && environmentMapRootParamIndex_ >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(environmentMapRootParamIndex_, environmentMapHandle_);
+        int envMapIdx = GetRootParamIndex("gEnvironmentTexture");
+        if (environmentMapHandle_.ptr != 0 && envMapIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(envMapIdx, environmentMapHandle_);
         }
 
-        if (lightViewProjectionCBV_ != 0 && lightViewProjectionRootParamIndex_ >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(lightViewProjectionRootParamIndex_, lightViewProjectionCBV_);
+        int lightVPIdx = GetRootParamIndex("gLightViewProjection");
+        if (lightViewProjectionCBV_ != 0 && lightVPIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(lightVPIdx, lightViewProjectionCBV_);
         }
 
-        if (shadowMapHandle_.ptr != 0 && shadowMapRootParamIndex_ >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(shadowMapRootParamIndex_, shadowMapHandle_);
+        int shadowMapIdx = GetRootParamIndex("gShadowMap");
+        if (shadowMapHandle_.ptr != 0 && shadowMapIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(shadowMapIdx, shadowMapHandle_);
         }
 
-        if (irradianceMapHandle_.ptr != 0 && irradianceMapRootParamIndex_ >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(irradianceMapRootParamIndex_, irradianceMapHandle_);
+        int irradianceIdx = GetRootParamIndex("gIrradianceMap");
+        if (irradianceMapHandle_.ptr != 0 && irradianceIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(irradianceIdx, irradianceMapHandle_);
         }
 
-        if (prefilteredMapHandle_.ptr != 0 && prefilteredMapRootParamIndex_ >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(prefilteredMapRootParamIndex_, prefilteredMapHandle_);
+        int prefilteredIdx = GetRootParamIndex("gPrefilteredMap");
+        if (prefilteredMapHandle_.ptr != 0 && prefilteredIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(prefilteredIdx, prefilteredMapHandle_);
         }
 
-        if (brdfLUTHandle_.ptr != 0 && brdfLUTRootParamIndex_ >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(brdfLUTRootParamIndex_, brdfLUTHandle_);
+        int brdfLUTIdx = GetRootParamIndex("gBRDFLUT");
+        if (brdfLUTHandle_.ptr != 0 && brdfLUTIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(brdfLUTIdx, brdfLUTHandle_);
         }
     }
 

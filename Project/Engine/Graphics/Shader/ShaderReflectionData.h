@@ -83,6 +83,10 @@ namespace CoreEngine
         size_t GetSamplerCount() const { return samplerBindings_.size(); }
         size_t GetInputElementCount() const { return inputElements_.size(); }
 
+        // シェーダー名の設定・取得
+        void SetShaderName(const std::string& name) { shaderName_ = name; }
+        const std::string& GetShaderName() const { return shaderName_; }
+
         // データをクリア
         void Clear();
 
@@ -96,7 +100,27 @@ namespace CoreEngine
         // ルートパラメータインデックスマッピングを設定（RootSignatureManagerから呼ばれる）
         void SetRootParameterMapping(const std::map<std::string, UINT>& mapping);
 
+        /// @brief 定数バッファのサイズを検証
+        /// @param cbvName 定数バッファ名
+        /// @param cppStructSize C++側の構造体サイズ
+        /// @return サイズが一致すればtrue、不一致またはCBVが見つからなければfalse
+        bool ValidateCBVSize(const std::string& cbvName, size_t cppStructSize) const;
+
+        /// @brief 全ての定数バッファサイズを検証（複数CBVを一度に検証）
+        /// @param validations CBV名とC++構造体サイズのペアのリスト
+        /// @return 全て一致すればtrue
+        bool ValidateAllCBVSizes(const std::vector<std::pair<std::string, size_t>>& validations) const;
+
+        /// @brief セマンティック名に基づいて入力スロットを自動検出・設定
+        /// @note WEIGHT/INDEX等のスキニング関連セマンティックはスロット1に自動割り当て
+        void ApplyAutoSlotDetection();
+
+        /// @brief 自動スロット検出済みの入力要素を取得
+        /// @return スロット自動検出後の入力要素リスト
+        std::vector<InputElementInfo> GetInputElementsWithAutoSlots() const;
+
     private:
+        std::string shaderName_;                              // シェーダー識別名
         std::vector<ShaderResourceBinding> cbvBindings_;      // 定数バッファ
         std::vector<ShaderResourceBinding> srvBindings_;      // シェーダーリソースビュー
         std::vector<ShaderResourceBinding> uavBindings_;      // アンオーダードアクセスビュー

@@ -1,9 +1,11 @@
-﻿#pragma once
+#pragma once
 
 #include "../IRenderer.h"
 #include "Engine/Graphics/PipelineStateManager.h"
 #include "Engine/Graphics/RootSignatureManager.h"
 #include "Engine/Graphics/Shader/ShaderCompiler.h"
+#include "Engine/Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <memory>
@@ -13,6 +15,7 @@ namespace CoreEngine {
     class ParticleSystem;
     class ICamera;
     class ResourceFactory;
+    class ShaderReflectionData;
 }
 
 /// @brief パーティクルレンダラーの基底クラス
@@ -49,6 +52,9 @@ public:
     /// @param particle パーティクルシステム
     virtual void Draw(CoreEngine::ParticleSystem* particle) = 0;
 
+    /// @brief シェーダーリソース名からルートパラメータインデックスを取得
+    int GetRootParamIndex(const std::string& resourceName) const;
+
 protected:
     // ──────────────────────────────────────────────────────────
     // 共通リソース
@@ -63,6 +69,10 @@ protected:
     std::unique_ptr<PipelineStateManager> pipelineMg_;
     std::unique_ptr<RootSignatureManager> rootSignatureMg_;
     std::unique_ptr<ShaderCompiler> shaderCompiler_;
+    std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_;
+
+    // シェーダーリフレクションデータ
+    std::unique_ptr<ShaderReflectionData> reflectionData_;
 
     // ──────────────────────────────────────────────────────────
     // 共通処理メソッド

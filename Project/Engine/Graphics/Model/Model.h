@@ -55,6 +55,14 @@ namespace CoreEngine
         /// @param modelRenderer ModelRendererのポインタ
         static void SetModelRenderer(class ModelRenderer* modelRenderer);
 
+        /// @brief SkinnedModelRendererを設定（ルートパラメータインデックス取得用）
+        /// @param skinnedModelRenderer SkinnedModelRendererのポインタ
+        static void SetSkinnedModelRenderer(class SkinnedModelRenderer* skinnedModelRenderer);
+
+        /// @brief ShadowMapRendererを設定（ルートパラメータインデックス取得用）
+        /// @param shadowMapRenderer ShadowMapRendererのポインタ
+        static void SetShadowMapRenderer(class ShadowMapRenderer* shadowMapRenderer);
+
         /// @brief 初期化（アニメーションコントローラーなし）
         /// @param resource 共有するModelResourceのポインタ
         void Initialize(ModelResource* resource);

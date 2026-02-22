@@ -1,21 +1,19 @@
-﻿#pragma once
+#pragma once
 #include "Engine/Graphics/Render/IRenderer.h"
 #include "Engine/Graphics/PipelineStateManager.h"
 #include "Engine/Graphics/RootSignatureManager.h"
 #include "Engine/Graphics/Shader/ShaderCompiler.h"
+#include "Engine/Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <memory>
-
-// SkyBox用 Root Parameter インデックス定数
+#include <string>
 
 namespace CoreEngine
 {
-namespace SkyBoxRendererRootParam {
-    static constexpr UINT kWVP = 0;          // トランスフォーム用CBV (b0, VS)
-    static constexpr UINT kMaterial = 1;     // マテリアル用CBV (b0, PS)
-    static constexpr UINT kTexture = 2;      // テクスチャ用SRV (t0, PS)
-}
+// 前方宣言
+class ShaderReflectionData;
 
 /// @brief SkyBox描画用レンダラー
 class SkyBoxRenderer : public IRenderer {
@@ -29,12 +27,19 @@ public:
     
     /// @brief ルートシグネチャを取得
     ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
+
+    /// @brief シェーダーリソース名からルートパラメータインデックスを取得
+    int GetRootParamIndex(const std::string& resourceName) const;
     
 private:
     std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
     std::unique_ptr<PipelineStateManager> psoMg_ = std::make_unique<PipelineStateManager>();
     std::unique_ptr<ShaderCompiler> shaderCompiler_ = std::make_unique<ShaderCompiler>();
+    std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
     
     ID3D12PipelineState* pipelineState_ = nullptr;
+
+    // シェーダーリフレクションデータ
+    std::unique_ptr<ShaderReflectionData> reflectionData_;
 };
 }
