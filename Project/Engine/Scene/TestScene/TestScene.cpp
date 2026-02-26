@@ -141,11 +141,11 @@ namespace CoreEngine
         skeletonModel->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
         skeletonModel->SetActive(true);
 
-        //// テストスプライト
-        //auto sprite = CreateObject<SpriteObject>();
-        //sprite->Initialize("Texture/uvChecker.png");
-        //sprite->GetTransform().translate = { 100.0f, 100.0f, 0.0f };
-        //sprite->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        // テストスプライト
+        auto sprite = CreateObject<SpriteObject>();
+        sprite->Initialize("Texture/uvChecker.png");
+        sprite->GetTransform().translate = { 100.0f, 100.0f, 0.0f };
+        sprite->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
     }
 
     void TestScene::OnUpdate()

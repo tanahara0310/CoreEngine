@@ -1,4 +1,4 @@
-﻿#include "EngineSystem.h"
+#include "EngineSystem.h"
 
 
 // ユーティリティ
@@ -200,12 +200,9 @@ namespace CoreEngine
             renderManager->SetLightViewProjection(lightVP);
         }
 
-        // === Phase 1: シャドウマップパス ===
-        // レンダリング開始前に実行（RTV/DSV設定前）
+        // コマンドリストを設定（シャドウマップパスと通常パスはDrawAll内で一括処理）
         if (renderManager) {
-            // コマンドリストを設定
             renderManager->SetCommandList(dx->GetCommandList());
-            renderManager->RenderShadowMapPass();
         }
 
     // レンダリングの開始（1枚目のオフスクリーン）

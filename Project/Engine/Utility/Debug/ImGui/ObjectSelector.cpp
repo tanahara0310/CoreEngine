@@ -88,7 +88,8 @@ namespace CoreEngine
                 if (hitSprite) {
                     SelectSprite(hitSprite);
                 } else {
-                    ClearSelection();
+                    // スプライト選択のみクリア（3Dオブジェクトの選択はUpdate()側で管理する）
+                    selectedSprite_ = nullptr;
                 }
             }
         }

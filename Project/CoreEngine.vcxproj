@@ -676,7 +676,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <None Include="Engine\Graphics\Font\README.md" />
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
     <None Include="Engine\Graphics\RootSignatureManager.h.new" />
-    <None Include="Engine\Graphics\Shader\ShaderReflection_README.md" />
     <None Include="Engine\Particle\README.md" />
     <None Include="Engine\Utility\Debug\ImGui\README.md" />
     <None Include="Project\Assets\Shaders\Common\LightStructures.hlsli" />

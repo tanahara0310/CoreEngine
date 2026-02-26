@@ -1310,7 +1310,6 @@
     <None Include="Docs\ShadowSystemImplementation.md" />
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
     <None Include="convert-tabs-to-spaces.ps1" />
-    <None Include="Engine\Graphics\Shader\ShaderReflection_README.md" />
     <None Include="Engine\Graphics\RootSignatureManager.h.new" />
     <None Include="docs\ShaderReflectionReport.md" />
   </ItemGroup>

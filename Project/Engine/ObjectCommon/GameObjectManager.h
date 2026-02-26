@@ -1,8 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include "GameObject.h"
 #include <memory>
 #include <vector>
+#include <deque>
 
 // Forward declaration
 namespace CoreEngine {
@@ -50,7 +51,7 @@ namespace CoreEngine
 
         /// @brief 全オブジェクトのリストを取得（読み取り専用）
         /// @return オブジェクトリストの const 参照
-        const std::vector<std::unique_ptr<GameObject>>& GetAllObjects() const { return objects_; }
+        const std::deque<std::unique_ptr<GameObject>>& GetAllObjects() const { return objects_; }
 
 #ifdef _DEBUG
         /// @brief 全オブジェクトのImGuiデバッグUI表示
@@ -59,7 +60,7 @@ namespace CoreEngine
 
     private:
         /// @brief 管理中のオブジェクトリスト
-        std::vector<std::unique_ptr<GameObject>> objects_;
+        std::deque<std::unique_ptr<GameObject>> objects_;
 
         /// @brief 削除待ちキュー（フレーム終了後に破棄）
         std::vector<std::unique_ptr<GameObject>> destroyQueue_;
