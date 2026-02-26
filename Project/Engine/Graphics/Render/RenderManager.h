@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "IRenderer.h"
 #include "RenderPassType.h"
@@ -83,10 +83,12 @@ namespace CoreEngine
             CoreEngine::GameObject* object;
             RenderPassType passType;
             BlendMode blendMode;
+            size_t registrationOrder;
         };
 
         std::vector<DrawCommand> drawQueue_;
         std::unordered_map<RenderPassType, std::unique_ptr<IRenderer>> renderers_;
+        size_t registrationCounter_ = 0;
 
     // フレームごとに設定されるコンテキスト
     ID3D12GraphicsCommandList* cmdList_ = nullptr;

@@ -91,8 +91,13 @@ namespace CoreEngine
     }
 
     void SpriteRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
-        currentBufferIndex_ = 0;
-        currentFrameIndex_ = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
+        UINT frameIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
+
+        // フレームが切り替わったときのみバッファインデックスをリセット
+        if (frameIndex != currentFrameIndex_) {
+            currentFrameIndex_ = frameIndex;
+            currentBufferIndex_ = 0;
+        }
 
         if (blendMode != currentBlendMode_) {
             currentBlendMode_ = blendMode;

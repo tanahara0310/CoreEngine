@@ -122,11 +122,6 @@ namespace CoreEngine
 
         // 派生クラスの後処理（クリーンアップ前）
         OnLateUpdate();
-
-        // フレーム終了時に削除マークされたオブジェクトをクリーンアップ
-        // すべての更新処理が完了した後に実行することで、
-        // 派生クラスが保持する生ポインタが無効化される前に安全に処理できる
-        gameObjectManager_.CleanupDestroyed();
     }
 
     void BaseScene::Draw()
@@ -155,6 +150,9 @@ namespace CoreEngine
 
         // フレーム終了時にキューをクリア
         renderManager->ClearQueue();
+
+        // 描画完了後に削除マークされたオブジェクトをクリーンアップ
+        gameObjectManager_.CleanupDestroyed();
     }
 
     void BaseScene::Finalize()

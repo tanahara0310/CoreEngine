@@ -106,6 +106,7 @@ namespace CoreEngine
         cmd.object = obj;
         cmd.passType = obj->GetRenderPassType();
         cmd.blendMode = obj->GetBlendMode();
+        cmd.registrationOrder = registrationCounter_++;
 
         drawQueue_.push_back(cmd);
     }
@@ -254,6 +255,7 @@ namespace CoreEngine
 
     void RenderManager::RenderNormalPass() {
         RenderPassType currentPass = RenderPassType::Invalid;
+        BlendMode currentBlendMode = BlendMode::kBlendModeNone;
         IRenderer* currentRenderer = nullptr;
         const ICamera* currentCamera = nullptr;
 
@@ -264,8 +266,11 @@ namespace CoreEngine
                 continue;
             }
 
+            const bool passChanged  = cmd.passType  != currentPass;
+            const bool blendChanged = cmd.blendMode != currentBlendMode;
+
             // パスが切り替わったら処理
-            if (cmd.passType != currentPass) {
+            if (passChanged) {
                 // 前のパスを終了
                 if (currentRenderer) {
                     currentRenderer->EndPass();
@@ -273,6 +278,7 @@ namespace CoreEngine
 
                 // 新しいパスを開始
                 currentPass = cmd.passType;
+                currentBlendMode = cmd.blendMode;
                 auto it = renderers_.find(currentPass);
                 if (it != renderers_.end()) {
                     currentRenderer = it->second.get();
@@ -289,6 +295,10 @@ namespace CoreEngine
                     currentRenderer = nullptr;
                     currentCamera = nullptr;
                 }
+            } else if (blendChanged && currentRenderer) {
+                // 同一パス内でブレンドモードが変わった場合はPSOを切り替え
+                currentBlendMode = cmd.blendMode;
+                currentRenderer->BeginPass(cmdList_, cmd.blendMode);
             }
 
             // オブジェクトを描画
@@ -320,12 +330,13 @@ namespace CoreEngine
 
     void RenderManager::ClearQueue() {
         drawQueue_.clear();
+        registrationCounter_ = 0;
     }
 
     void RenderManager::SortDrawQueue() {
         // 描画コマンドを最適化してステート変更を最小化
         // 優先順位: 1. パスタイプ > 2. ブレンドモード
-        std::sort(drawQueue_.begin(), drawQueue_.end(),
+        std::stable_sort(drawQueue_.begin(), drawQueue_.end(),
             [](const DrawCommand& a, const DrawCommand& b) {
                 // 1. パスタイプでソート（パイプライン切り替え最小化）
                 if (a.passType != b.passType) {
@@ -337,8 +348,8 @@ namespace CoreEngine
                     return static_cast<int>(a.blendMode) < static_cast<int>(b.blendMode);
                 }
 
-                // 3. その他の条件が同じ場合は順序を維持（安定ソート）
-                return false;
+                // 3. 同一パス・ブレンドモード内では登録順序を維持
+                return a.registrationOrder < b.registrationOrder;
             });
     }
 }
