@@ -115,7 +115,7 @@ namespace CoreEngine
         // カメラマネージャーがある場合はタイプ別のカメラを取得
         if (cameraManager_) {
             // 2D描画パス（Sprite、Text）は2Dカメラを使用
-            if (passType == RenderPassType::Sprite || passType == RenderPassType::Text) {
+            if (passType == RenderPassType::Sprite) {
                 return cameraManager_->GetActiveCamera(CameraType::Camera2D);
             }
             // その他は3Dカメラを使用

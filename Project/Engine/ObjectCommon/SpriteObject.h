@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
-#include "Engine/WorldTransfom/WorldTransform.h"
+#include "Engine/WorldTransform/WorldTransform.h"
 #include "Engine/Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Engine/Graphics/TextureManager.h"
 #include <memory>

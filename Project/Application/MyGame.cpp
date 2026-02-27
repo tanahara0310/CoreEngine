@@ -1,8 +1,8 @@
 #include "MyGame.h"
 #include <EngineSystem.h>
 #include "WinApp/WinApp.h"
-#include "Scene/TestScene/TestScene.h"
-#include "Scene/ParticleTestScene/ParticleTestScene.h"
+#include "Application/Sample/SampleScene/TestScene/TestScene.h"
+#include "Application/Sample/SampleScene/ParticleTestScene/ParticleTestScene.h"
 
 using namespace CoreEngine;
 

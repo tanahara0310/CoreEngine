@@ -11,7 +11,7 @@
 #include "Engine/Graphics/Render/Model/ModelRenderer.h"
 #include "Engine/Graphics/Render/Model/SkinnedModelRenderer.h"
 #include "Engine/Graphics/TextureManager.h"
-#include "Engine/TestGameObject/ModelObject.h"
+#include "Application/Sample/TestGameObject/ModelObject.h"
 #include "ObjectCommon/SpriteObject.h"
 
 #include <iostream>

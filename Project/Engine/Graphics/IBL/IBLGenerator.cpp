@@ -94,7 +94,7 @@ void IBLGenerator::CreateBRDFLUTPipeline()
     psoDesc.pRootSignature = brdfLutRootSignature_.Get();
     psoDesc.CS = { computeShader->GetBufferPointer(), computeShader->GetBufferSize() };
 
-    HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
+    [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
         &psoDesc,
         IID_PPV_ARGS(&brdfLutPSO_));
 
@@ -175,7 +175,7 @@ void IBLGenerator::CreateIrradiancePipeline()
     psoDesc.pRootSignature = irradianceRootSignature_.Get();
     psoDesc.CS = { computeShader->GetBufferPointer(), computeShader->GetBufferSize() };
 
-    HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
+    [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
         &psoDesc,
         IID_PPV_ARGS(&irradiancePSO_));
 
@@ -202,7 +202,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> IBLGenerator::CreateUAVCubemap(
     heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-    HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
+    [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
         &desc,
@@ -233,7 +233,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> IBLGenerator::CreateUAVTexture(
     heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-    HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
+    [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
         &desc,
@@ -255,7 +255,7 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> IBLGenerator::CreateDescriptorHeap(
     desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> heap;
-    HRESULT hr = dxCommon_->GetDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
+    [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
     assert(SUCCEEDED(hr));
     return heap;
 }
@@ -695,7 +695,7 @@ void IBLGenerator::CreatePrefilteredPipeline()
     psoDesc.pRootSignature = prefilteredRootSignature_.Get();
     psoDesc.CS = { computeShader->GetBufferPointer(), computeShader->GetBufferSize() };
 
-    HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
+    [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
         &psoDesc,
         IID_PPV_ARGS(&prefilteredPSO_));
 
@@ -723,7 +723,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> IBLGenerator::CreateUAVCubemapWithMips(
     heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-    HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
+    [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
         &desc,

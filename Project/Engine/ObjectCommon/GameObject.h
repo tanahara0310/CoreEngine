@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Engine/Graphics/Render/RenderPassType.h"
-#include "Engine/Graphics/PipelineStateManager.h"
+#include "Engine/Graphics/Pipeline/PipelineStateManager.h"
 #include "Engine/Math/Vector/Vector3.h"
-#include "Engine/WorldTransfom/WorldTransform.h"
+#include "Engine/WorldTransform/WorldTransform.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Graphics/Model/Model.h"
 
