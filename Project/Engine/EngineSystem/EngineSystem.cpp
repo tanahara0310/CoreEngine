@@ -5,7 +5,6 @@
 #include "Engine/Utility/Random/RandomGenerator.h"
 #include "Engine/Utility/Logger/Logger.h"
 #include "Engine/Graphics/TextureManager.h"
-#include "Engine/Graphics/Font/FontManager.h"
 #include "Engine/Graphics/Shader/ShaderCompiler.h"
 
 // レンダリング関連
@@ -21,7 +20,6 @@
 #include "Engine/Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Engine/Graphics/Render/Particle/ParticleRenderer.h"
 #include "Engine/Graphics/Render/Particle/ModelParticleRenderer.h"
-#include "Engine/Graphics/Font/TextRenderer.h"
 #include "Engine/Graphics/Model/Model.h"
 
 // 入力管理
@@ -107,8 +105,6 @@ namespace CoreEngine
         // TextureManagerのキャッシュをクリア
         TextureManager::GetInstance().Clear();
 
-        // FontManagerの終了処理
-        FontManager::GetInstance().Finalize();
 
         componentOwners_.clear();
 
@@ -264,9 +260,6 @@ namespace CoreEngine
         // TextureManagerの初期化（シングルトン）
         TextureManager::GetInstance().Initialize(dxPtr);
 
-        // FontManagerの初期化（シングルトン）
-        FontManager::GetInstance().Initialize(dxPtr);
-
         // ResourceFactoryの作成（コンストラクタで初期化済み）
         auto resourceFactory = std::make_unique<ResourceFactory>();
         ResourceFactory* resourcePtr = resourceFactory.get();
@@ -320,11 +313,7 @@ namespace CoreEngine
         auto spriteRenderer = std::make_unique<SpriteRenderer>();
         spriteRenderer->Initialize(dxPtr, resourcePtr);
         renderManager->RegisterRenderer(RenderPassType::Sprite, std::move(spriteRenderer));
-
-        // TextRendererの作成と登録
-        auto textRenderer = std::make_unique<TextRenderer>();
-        textRenderer->Initialize(dxPtr, resourcePtr);
-        renderManager->RegisterRenderer(RenderPassType::Text, std::move(textRenderer));
+ 
 
         // ParticleRendererの作成と登録
         auto particleRenderer = std::make_unique<ParticleRenderer>();

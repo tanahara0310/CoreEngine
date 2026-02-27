@@ -1,7 +1,7 @@
 #pragma once
 #include "Engine/Graphics/Render/IRenderer.h"
-#include "Engine/Graphics/PipelineStateManager.h"
-#include "Engine/Graphics/RootSignatureManager.h"
+#include "Engine/Graphics/Pipeline/PipelineStateManager.h"
+#include "Engine/Graphics/RootSignature/RootSignatureManager.h"
 #include "Engine/Graphics/Shader/ShaderCompiler.h"
 #include "Engine/Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
@@ -13,20 +13,12 @@
 #include <memory>
 #include <vector>
 
-// Sprite用 Root Parameter インデックス定数
-// 【廃止予定】シェーダーリフレクションにより自動化されます
-// 互換性のために残していますが、新規コードでは使用しないでください
 
 namespace CoreEngine
 {
 
     // 前方宣言
     struct SpriteMaterial;
-    // namespace SpriteRendererRootParam {
-    //     static constexpr UINT kMaterial = 0;     // マテリアル用CBV (b0, PS)
-    //     static constexpr UINT kTransform = 1;    // トランスフォーム用CBV (b1, VS)
-    //     static constexpr UINT kTexture = 2;      // テクスチャ用SRV (t0, PS)
-    // }
 
     /// @brief スプライト描画用レンダラー
     class SpriteRenderer : public IRenderer {

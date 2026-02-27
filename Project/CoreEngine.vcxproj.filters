@@ -38,10 +38,7 @@
     <ClCompile Include="Engine\Graphics\Material\MaterialManager.cpp">
       <Filter>Engine\Graphics\Material</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Graphics\PipelineStateManager.cpp">
-      <Filter>Engine\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Graphics\RootSignatureManager.cpp">
+    <ClCompile Include="Engine\Graphics\Pipeline\PipelineStateManager.cpp">
       <Filter>Engine\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Graphics\Model\ModelLoader.cpp">
@@ -182,9 +179,6 @@
     <ClCompile Include="Engine\Utility\JsonManager\JsonManager.cpp">
       <Filter>Engine\Utility\JsonManager</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\WorldTransfom\WorldTransform.cpp">
-      <Filter>Engine\WorldTransfom</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Graphics\Model\ModelResource.cpp">
       <Filter>Engine\Graphics\Model</Filter>
     </ClCompile>
@@ -194,19 +188,19 @@
     <ClCompile Include="Engine\Graphics\Model\ModelManager.cpp">
       <Filter>Engine\Graphics\Model</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Scene\TestScene\TestScene.cpp">
+    <ClCompile Include="Application\Sample\SampleScene\TestScene\TestScene.cpp">
       <Filter>Engine\Scene\TestScene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\EngineSystem\EngineSystem.cpp">
       <Filter>Engine\EngineSystem</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\TestGameObject\SphereObject.cpp">
+    <ClCompile Include="Application\Sample\TestGameObject\SphereObject.cpp">
       <Filter>Engine\TestGameObject</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\TestGameObject\FenceObject.cpp">
+    <ClCompile Include="Application\Sample\TestGameObject\FenceObject.cpp">
       <Filter>Engine\TestGameObject</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\TestGameObject\TerrainObject.cpp">
+    <ClCompile Include="Application\Sample\TestGameObject\TerrainObject.cpp">
       <Filter>Engine\TestGameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Framework\Framework.cpp">
@@ -224,7 +218,7 @@
     <ClCompile Include="Engine\Graphics\Model\Animation\Animator.cpp">
       <Filter>Engine\Graphics\Model\Animation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\TestGameObject\AnimatedCubeObject.cpp">
+    <ClCompile Include="Application\Sample\TestGameObject\AnimatedCubeObject.cpp">
       <Filter>Engine\TestGameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Graphics\Model\Skeleton\SkeletonLoader.cpp">
@@ -233,22 +227,22 @@
     <ClCompile Include="Engine\Graphics\Model\Skeleton\SkeletonAnimator.cpp">
       <Filter>Engine\Graphics\Model\Skeleton</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\TestGameObject\SkeletonModelObject.cpp">
+    <ClCompile Include="Application\Sample\TestGameObject\SkeletonModelObject.cpp">
       <Filter>Engine\TestGameObject</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\TestGameObject\WalkModelObject.cpp">
+    <ClCompile Include="Application\Sample\TestGameObject\WalkModelObject.cpp">
       <Filter>Engine\TestGameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Graphics\Model\Animation\AnimationUtils.cpp">
       <Filter>Engine\Graphics\Model\Animation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\TestGameObject\SneakWalkModelObject.cpp">
+    <ClCompile Include="Application\Sample\TestGameObject\SneakWalkModelObject.cpp">
       <Filter>Engine\TestGameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Graphics\Model\Skeleton\SkinClusterGenerator.cpp">
       <Filter>Engine\Graphics\Model\Skeleton</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\TestGameObject\SkyBoxObject.cpp">
+    <ClCompile Include="Application\Sample\TestGameObject\SkyBoxObject.cpp">
       <Filter>Engine\TestGameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Graphics\Render\RenderManager.cpp">
@@ -368,23 +362,11 @@
     <ClCompile Include="Engine\Graphics\Line\LineDrawable.cpp">
       <Filter>Engine\Graphics\Line</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Graphics\GridRenderer.cpp">
+    <ClCompile Include="Engine\Graphics\Render\Line\GridRenderer.cpp">
       <Filter>Engine\Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Scene\ParticleTestScene\ParticleTestScene.cpp">
+    <ClCompile Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.cpp">
       <Filter>Engine\Scene\ParticleTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Graphics\Font\Font.cpp">
-      <Filter>Engine\Graphics\Font</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Graphics\Font\FontManager.cpp">
-      <Filter>Engine\Graphics\Font</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Graphics\Font\TextRenderer.cpp">
-      <Filter>Engine\Graphics\Font</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\ObjectCommon\TextObject.cpp">
-      <Filter>Engine\ObjectCommon</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Utility\Debug\ImGui\TextureViewer.cpp">
       <Filter>Engine\Utility\Debug\ImGui</Filter>
@@ -394,9 +376,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Camera\CameraShake.cpp">
       <Filter>Engine\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Graphics\Primitive\PrimitivePlane.cpp">
-      <Filter>Engine\Graphics\Primitive</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Bloom.cpp">
       <Filter>Engine\Graphics\PostEffect\Effect</Filter>
@@ -414,16 +393,18 @@
     <ClCompile Include="Engine\Graphics\Light\LightManager.cpp" />
     <ClCompile Include="Engine\Graphics\Shadow\ShadowMapManager.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
-    <ClCompile Include="Engine\TestGameObject\Plane.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\Plane.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLGenerator.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLManager.cpp" />
-    <ClCompile Include="Engine\TestGameObject\ModelObject.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\ModelObject.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\Gizmo.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\ObjectSelector.cpp" />
     <ClCompile Include="Engine\Graphics\Shader\ShaderReflectionData.cpp" />
     <ClCompile Include="Engine\Graphics\Shader\ShaderReflectionBuilder.cpp" />
     <ClCompile Include="Engine\Graphics\RootSignature\RootSignatureBuilder.cpp" />
+    <ClCompile Include="Engine\Graphics\RootSignature\RootSignatureManager.cpp" />
+    <ClCompile Include="Engine\WorldTransform\WorldTransform.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -459,7 +440,7 @@
     <ClInclude Include="Engine\Scene\IScene.h">
       <Filter>Engine\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Scene\TestScene\TestScene.h">
+    <ClInclude Include="Application\Sample\SampleScene\TestScene\TestScene.h">
       <Filter>Engine\Scene\TestScene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Scene\SceneManager.h">
@@ -527,9 +508,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Utility\Timer\GameTimer.h">
       <Filter>Engine\Utility\Timer</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\WorldTransfom\WorldTransform.h">
-      <Filter>Engine\WorldTransfom</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Common\DirectXCommon.h">
       <Filter>Engine\Graphics\Common</Filter>
@@ -630,10 +608,7 @@
     <ClInclude Include="Engine\Graphics\TextureManager.h">
       <Filter>Engine\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Graphics\RootSignatureManager.h">
-      <Filter>Engine\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\PipelineStateManager.h">
+    <ClInclude Include="Engine\Graphics\Pipeline\PipelineStateManager.h">
       <Filter>Engine\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Math\Easing\EasingUtil.h">
@@ -666,13 +641,13 @@
     <ClInclude Include="Engine\EngineSystem\ComponentManager.h">
       <Filter>Engine\EngineSystem</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\TestGameObject\SphereObject.h">
+    <ClInclude Include="Application\Sample\TestGameObject\SphereObject.h">
       <Filter>Engine\TestGameObject</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\TestGameObject\FenceObject.h">
+    <ClInclude Include="Application\Sample\TestGameObject\FenceObject.h">
       <Filter>Engine\TestGameObject</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\TestGameObject\TerrainObject.h">
+    <ClInclude Include="Application\Sample\TestGameObject\TerrainObject.h">
       <Filter>Engine\TestGameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Framework\Framework.h">
@@ -1017,7 +992,7 @@
     <ClInclude Include="Engine\Graphics\Model\Animation\Animator.h">
       <Filter>Engine\Graphics\Model\Animation</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\TestGameObject\AnimatedCubeObject.h">
+    <ClInclude Include="Application\Sample\TestGameObject\AnimatedCubeObject.h">
       <Filter>Engine\TestGameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Math\QuaternionTransform.h">
@@ -1041,10 +1016,10 @@
     <ClInclude Include="Engine\Graphics\Model\Skeleton\SkeletonAnimator.h">
       <Filter>Engine\Graphics\Model\Skeleton</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\TestGameObject\SkeletonModelObject.h">
+    <ClInclude Include="Application\Sample\TestGameObject\SkeletonModelObject.h">
       <Filter>Engine\TestGameObject</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\TestGameObject\WalkModelObject.h">
+    <ClInclude Include="Application\Sample\TestGameObject\WalkModelObject.h">
       <Filter>Engine\TestGameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Model\Animation\IAnimationController.h">
@@ -1053,7 +1028,7 @@
     <ClInclude Include="Engine\Graphics\Model\Animation\AnimationUtils.h">
       <Filter>Engine\Graphics\Model\Animation</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\TestGameObject\SneakWalkModelObject.h">
+    <ClInclude Include="Application\Sample\TestGameObject\SneakWalkModelObject.h">
       <Filter>Engine\TestGameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Structs\SkinCluster.h">
@@ -1062,7 +1037,7 @@
     <ClInclude Include="Engine\Graphics\Model\Skeleton\SkinClusterGenerator.h">
       <Filter>Engine\Graphics\Model\Skeleton</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\TestGameObject\SkyBoxObject.h">
+    <ClInclude Include="Application\Sample\TestGameObject\SkyBoxObject.h">
       <Filter>Engine\TestGameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Render\RenderPassType.h">
@@ -1206,29 +1181,14 @@
     <ClInclude Include="Engine\Graphics\Line\LineDrawable.h">
       <Filter>Engine\Graphics\Line</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Graphics\GridRenderer.h">
+    <ClInclude Include="Engine\Graphics\Render\Line\GridRenderer.h">
       <Filter>Engine\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Scene\ParticleTestScene\ParticleTestScene.h">
+    <ClInclude Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.h">
       <Filter>Engine\Scene\ParticleTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Utility\FileErrorDialog\FileErrorDialog.h">
       <Filter>Engine\Utility\FileErrorDialog</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Font\Glyph.h">
-      <Filter>Engine\Graphics\Font</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Font\Font.h">
-      <Filter>Engine\Graphics\Font</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Font\FontManager.h">
-      <Filter>Engine\Graphics\Font</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Font\TextRenderer.h">
-      <Filter>Engine\Graphics\Font</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\ObjectCommon\TextObject.h">
-      <Filter>Engine\ObjectCommon</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Utility\Debug\ImGui\TextureViewer.h">
       <Filter>Engine\Utility\Debug\ImGui</Filter>
@@ -1238,9 +1198,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Camera\CameraShake.h">
       <Filter>Engine\Camera</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Primitive\PrimitivePlane.h">
-      <Filter>Engine\Graphics\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Bloom.h">
       <Filter>Engine\Graphics\PostEffect\Effect</Filter>
@@ -1256,10 +1213,10 @@
     <ClInclude Include="Engine\Graphics\Light\LightDebugVisualizer.h" />
     <ClInclude Include="Engine\Graphics\Shadow\ShadowMapManager.h" />
     <ClInclude Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.h" />
-    <ClInclude Include="Engine\TestGameObject\Plane.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\Plane.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLManager.h" />
-    <ClInclude Include="Engine\TestGameObject\ModelObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\ModelObject.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\Gizmo.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\ObjectSelector.h" />
@@ -1268,6 +1225,8 @@
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionUsageExample.h" />
     <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureConfig.h" />
     <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureBuilder.h" />
+    <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureManager.h" />
+    <ClInclude Include="Engine\WorldTransform\WorldTransform.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">
@@ -1300,9 +1259,6 @@
     <None Include="docs\ParticleSystem_Refactoring_Final.md">
       <Filter>docs</Filter>
     </None>
-    <None Include="Engine\Graphics\Font\README.md">
-      <Filter>Engine\Graphics\Font</Filter>
-    </None>
     <None Include="Scripts\ConvertToTabs.ps1" />
     <None Include="Scripts\ConvertToCRLF.ps1" />
     <None Include="Project\Assets\Shaders\Common\LightStructures.hlsli" />
@@ -1310,8 +1266,8 @@
     <None Include="Docs\ShadowSystemImplementation.md" />
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
     <None Include="convert-tabs-to-spaces.ps1" />
-    <None Include="Engine\Graphics\RootSignatureManager.h.new" />
     <None Include="docs\ShaderReflectionReport.md" />
+    <None Include="Engine\Graphics\RootSignature\RootSignatureManager.h.new" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">

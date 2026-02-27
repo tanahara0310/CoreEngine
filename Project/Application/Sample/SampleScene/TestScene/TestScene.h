@@ -31,10 +31,10 @@
 #include "Engine/Graphics/IBL/IBLManager.h"
 
 // GameObjectのインクルード
-#include "TestGameObject/SphereObject.h"
-#include "TestGameObject/SkyBoxObject.h"
-#include "TestGameObject/Plane.h"
-#include "TestGameObject/SneakWalkModelObject.h"
+#include "Application/Sample/TestGameObject/SphereObject.h"
+#include "Application/Sample/TestGameObject/SkyBoxObject.h"
+#include "Application/Sample/TestGameObject/Plane.h"
+#include "Application/Sample/TestGameObject/SneakWalkModelObject.h"
 
 using namespace Microsoft::WRL;
 

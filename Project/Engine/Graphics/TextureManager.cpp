@@ -339,6 +339,10 @@ namespace CoreEngine
         if (filePath.starts_with("Assets/") || filePath.starts_with("Assets\\")) {
             resolvedPath = filePath;
         }
+        // EngineAssetsはexeと同じ階層に配置されているためそのまま使用
+        else if (filePath.starts_with("EngineAssets/") || filePath.starts_with("EngineAssets\\")) {
+            resolvedPath = filePath;
+        }
         // 絶対パス（C:/ など）の場合はそのまま使用
         else if (filePath.length() >= 2 && filePath[1] == ':') {
             resolvedPath = filePath;

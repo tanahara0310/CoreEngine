@@ -7,7 +7,7 @@
 #include <optional>
 
 #include "ModelResource.h"
-#include "Engine/WorldTransfom/WorldTransform.h"
+#include "Engine/WorldTransform/WorldTransform.h"
 #include "Engine/Graphics/Material/MaterialManager.h"
 #include "Engine/Graphics/Structs/TransformationMatrix.h"
 #include "Engine/Graphics/Structs/SkinCluster.h"

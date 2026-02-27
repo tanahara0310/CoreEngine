@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -100,7 +100,8 @@
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
-xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
+xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D
+xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -123,13 +124,15 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalLibraryDirectories>$(SolutionDir)..\generated\imgui\outputs\$(Configuration)\;$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>imgui.lib;assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
-xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
+xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D
+xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
@@ -153,6 +156,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalLibraryDirectories>$(SolutionDir)..\generated\imgui\outputs\Release;$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>imgui.lib;assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
       <LinkTimeCodeGeneration />
@@ -160,7 +164,8 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
-xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
+xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D
+xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -177,10 +182,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Collider\SphereCollider.cpp" />
     <ClCompile Include="Engine\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Framework\Framework.cpp" />
-    <ClCompile Include="Engine\Graphics\Font\Font.cpp" />
-    <ClCompile Include="Engine\Graphics\Font\FontManager.cpp" />
-    <ClCompile Include="Engine\Graphics\Font\TextRenderer.cpp" />
-    <ClCompile Include="Engine\Graphics\GridRenderer.cpp" />
+    <ClCompile Include="Engine\Graphics\Render\Line\GridRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLGenerator.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLManager.cpp" />
     <ClCompile Include="Engine\Graphics\Light\LightBufferManager.cpp" />
@@ -198,7 +200,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Bloom.cpp" />
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Dissolve.cpp" />
     <ClCompile Include="Engine\Graphics\PostEffect\PostEffectPresetManager.cpp" />
-    <ClCompile Include="Engine\Graphics\Primitive\PrimitivePlane.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Line\LineRendererPipeline.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Model\ModelRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Model\SkinnedModelRenderer.cpp" />
@@ -217,7 +218,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\ObjectCommon\GameObject.cpp" />
     <ClCompile Include="Engine\ObjectCommon\GameObjectManager.cpp" />
     <ClCompile Include="Engine\ObjectCommon\SpriteObject.cpp" />
-    <ClCompile Include="Engine\ObjectCommon\TextObject.cpp" />
     <ClCompile Include="Engine\Particle\Core\ParticleEmitter.cpp" />
     <ClCompile Include="Engine\Particle\Core\ParticleRenderDataBuilder.cpp" />
     <ClCompile Include="Engine\Particle\Core\ParticleResourceManager.cpp" />
@@ -228,16 +228,16 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Particle\Modules\ShapeModule.cpp" />
     <ClCompile Include="Engine\Particle\ParticlePresetManager.cpp" />
     <ClCompile Include="Engine\Scene\BaseScene.cpp" />
-    <ClCompile Include="Engine\Scene\ParticleTestScene\ParticleTestScene.cpp" />
+    <ClCompile Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.cpp" />
     <ClCompile Include="Engine\Scene\SceneTransition.cpp" />
-    <ClCompile Include="Engine\TestGameObject\AnimatedCubeObject.cpp" />
-    <ClCompile Include="Engine\TestGameObject\FenceObject.cpp" />
-    <ClCompile Include="Engine\TestGameObject\ModelObject.cpp" />
-    <ClCompile Include="Engine\TestGameObject\SkeletonModelObject.cpp" />
-    <ClCompile Include="Engine\TestGameObject\SkyBoxObject.cpp" />
-    <ClCompile Include="Engine\TestGameObject\SneakWalkModelObject.cpp" />
-    <ClCompile Include="Engine\TestGameObject\SphereObject.cpp" />
-    <ClCompile Include="Engine\TestGameObject\TerrainObject.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\AnimatedCubeObject.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\FenceObject.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\ModelObject.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\SkeletonModelObject.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\SkyBoxObject.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\SneakWalkModelObject.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\SphereObject.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\TerrainObject.cpp" />
     <ClCompile Include="Engine\Graphics\Model\Model.cpp" />
     <ClCompile Include="Engine\Graphics\Model\ModelManager.cpp" />
     <ClCompile Include="Engine\Graphics\Model\ModelResource.cpp" />
@@ -245,8 +245,8 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Invert.cpp" />
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\RasterScroll.cpp" />
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Sepia.cpp" />
-    <ClCompile Include="Engine\Scene\TestScene\TestScene.cpp" />
-    <ClCompile Include="Engine\TestGameObject\WalkModelObject.cpp" />
+    <ClCompile Include="Application\Sample\SampleScene\TestScene\TestScene.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\WalkModelObject.cpp" />
     <ClCompile Include="Engine\Utility\Collision\CollisionUtils.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ConsoleUI.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\Gizmo.cpp" />
@@ -343,19 +343,19 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
     <ClCompile Include="Engine\WinApp\WinApp.cpp" />
-    <ClCompile Include="Engine\Graphics\RootSignatureManager.cpp" />
-    <ClCompile Include="Engine\Graphics\PipelineStateManager.cpp" />
+    <ClCompile Include="Engine\Graphics\RootSignature\RootSignatureManager.cpp" />
+    <ClCompile Include="Engine\Graphics\Pipeline\PipelineStateManager.cpp" />
     <ClCompile Include="Engine\Audio\SoundManager.cpp" />
     <ClCompile Include="Engine\Graphics\Shader\ShaderCompiler.cpp" />
     <ClCompile Include="Engine\Graphics\Resource\ResourceFactory.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Render.cpp" />
-    <ClCompile Include="Engine\WorldTransfom\WorldTransform.cpp" />
+    <ClCompile Include="Engine\WorldTransform\WorldTransform.cpp" />
     <ClCompile Include="Engine\Graphics\Material\MaterialManager.cpp" />
     <ClCompile Include="Engine\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Input\MouseInput.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\SceneViewport.cpp" />
-    <ClCompile Include="Engine\TestGameObject\Plane.cpp" />
+    <ClCompile Include="Application\Sample\TestGameObject\Plane.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Camera\Camera2D.h" />
@@ -373,11 +373,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Collider\SphereCollider.h" />
     <ClInclude Include="Engine\EngineSystem\ComponentManager.h" />
     <ClInclude Include="Engine\Framework\Framework.h" />
-    <ClInclude Include="Engine\Graphics\Font\Font.h" />
-    <ClInclude Include="Engine\Graphics\Font\FontManager.h" />
-    <ClInclude Include="Engine\Graphics\Font\Glyph.h" />
-    <ClInclude Include="Engine\Graphics\Font\TextRenderer.h" />
-    <ClInclude Include="Engine\Graphics\GridRenderer.h" />
+    <ClInclude Include="Engine\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLManager.h" />
     <ClInclude Include="Engine\Graphics\Light\LightBufferManager.h" />
@@ -403,7 +399,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Dissolve.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\PostEffectNames.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\PostEffectPresetManager.h" />
-    <ClInclude Include="Engine\Graphics\Primitive\PrimitivePlane.h" />
     <ClInclude Include="Engine\Graphics\Render\IRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\Line\LineRendererPipeline.h" />
     <ClInclude Include="Engine\Graphics\Render\Model\ModelRenderer.h" />
@@ -429,7 +424,6 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\ObjectCommon\GameObject.h" />
     <ClInclude Include="Engine\ObjectCommon\GameObjectManager.h" />
     <ClInclude Include="Engine\ObjectCommon\SpriteObject.h" />
-    <ClInclude Include="Engine\ObjectCommon\TextObject.h" />
     <ClInclude Include="Engine\Particle\Core\ParticleEmitter.h" />
     <ClInclude Include="Engine\Particle\Core\ParticleRenderDataBuilder.h" />
     <ClInclude Include="Engine\Particle\Core\ParticleResourceManager.h" />
@@ -440,16 +434,16 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Particle\Modules\ShapeModule.h" />
     <ClInclude Include="Engine\Particle\ParticlePresetManager.h" />
     <ClInclude Include="Engine\Scene\BaseScene.h" />
-    <ClInclude Include="Engine\Scene\ParticleTestScene\ParticleTestScene.h" />
+    <ClInclude Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.h" />
     <ClInclude Include="Engine\Scene\SceneTransition.h" />
-    <ClInclude Include="Engine\TestGameObject\AnimatedCubeObject.h" />
-    <ClInclude Include="Engine\TestGameObject\FenceObject.h" />
-    <ClInclude Include="Engine\TestGameObject\ModelObject.h" />
-    <ClInclude Include="Engine\TestGameObject\SkeletonModelObject.h" />
-    <ClInclude Include="Engine\TestGameObject\SkyBoxObject.h" />
-    <ClInclude Include="Engine\TestGameObject\SneakWalkModelObject.h" />
-    <ClInclude Include="Engine\TestGameObject\SphereObject.h" />
-    <ClInclude Include="Engine\TestGameObject\TerrainObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\AnimatedCubeObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\FenceObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\ModelObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\SkeletonModelObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\SkyBoxObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\SneakWalkModelObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\SphereObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\TerrainObject.h" />
     <ClInclude Include="Engine\Graphics\Light\LightBuffers.h" />
     <ClInclude Include="Engine\Graphics\Model\Model.h" />
     <ClInclude Include="Engine\Graphics\Model\ModelManager.h" />
@@ -460,7 +454,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Sepia.h" />
     <ClInclude Include="Engine\Math\BoundingBox.h" />
     <ClInclude Include="Engine\Math\Quaternion\Quaternion.h" />
-    <ClInclude Include="Engine\TestGameObject\WalkModelObject.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\WalkModelObject.h" />
     <ClInclude Include="Engine\Utility\Collision\CollisionUtils.h" />
     <ClInclude Include="Engine\Utility\Debug\ConsoleUI.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\Gizmo.h" />
@@ -500,7 +494,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Particle\Modules\RotationModule.h" />
     <ClInclude Include="Engine\Particle\Modules\SizeModule.h" />
     <ClInclude Include="Engine\Particle\Modules\VelocityModule.h" />
-    <ClInclude Include="Engine\Scene\TestScene\TestScene.h" />
+    <ClInclude Include="Application\Sample\SampleScene\TestScene\TestScene.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Camera\Debug\DebugCamera.h" />
     <ClInclude Include="Engine\Camera\Release\Camera.h" />
@@ -518,7 +512,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Utility\Logger\Logger.h" />
     <ClInclude Include="Engine\Math\Easing\EasingUtil.h" />
     <ClInclude Include="Engine\Utility\Timer\GameTimer.h" />
-    <ClInclude Include="Engine\Graphics\PipelineStateManager.h" />
+    <ClInclude Include="Engine\Graphics\Pipeline\PipelineStateManager.h" />
     <ClInclude Include="Engine\Graphics\Render\Render.h" />
     <ClInclude Include="Engine\Input\InputManager.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\ImGuiManager.h" />
@@ -531,12 +525,12 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="Engine\Input\GamepadInput.h" />
     <ClInclude Include="Engine\Utility\Debug\GameDebugUI.h" />
     <ClInclude Include="Engine\WinApp\WinApp.h" />
-    <ClInclude Include="Engine\Graphics\RootSignatureManager.h" />
+    <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\Graphics\TextureManager.h" />
     <ClInclude Include="Engine\Audio\SoundManager.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderCompiler.h" />
     <ClInclude Include="Engine\Graphics\Resource\ResourceFactory.h" />
-    <ClInclude Include="Engine\WorldTransfom\WorldTransform.h" />
+    <ClInclude Include="Engine\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Scene\SceneManager.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\SceneViewport.h" />
     <ClInclude Include="Application\MyGame.h" />
@@ -653,7 +647,7 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <ClInclude Include="externals\imgui\imstb_rectpack.h" />
     <ClInclude Include="externals\imgui\imstb_textedit.h" />
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
-    <ClInclude Include="Engine\TestGameObject\Plane.h" />
+    <ClInclude Include="Application\Sample\TestGameObject\Plane.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
@@ -673,9 +667,8 @@ xcopy "$(ProjectDir)Assets" "$(TargetDir)Assets\" /E /I /Y /D</Command>
     <None Include="docs\ParticleSystem_Refactoring_Summary.md" />
     <None Include="docs\ShaderReflectionReport.md" />
     <None Include="Docs\ShadowSystemImplementation.md" />
-    <None Include="Engine\Graphics\Font\README.md" />
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
-    <None Include="Engine\Graphics\RootSignatureManager.h.new" />
+    <None Include="Engine\Graphics\RootSignature\RootSignatureManager.h.new" />
     <None Include="Engine\Particle\README.md" />
     <None Include="Engine\Utility\Debug\ImGui\README.md" />
     <None Include="Project\Assets\Shaders\Common\LightStructures.hlsli" />

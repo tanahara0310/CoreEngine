@@ -2,7 +2,7 @@
 #include "Engine/ObjectCommon/GameObject.h"
 #include "Engine/ObjectCommon/SpriteObject.h"
 #include "Engine/Camera/ICamera.h"
-#include "Engine/WorldTransfom/WorldTransform.h"
+#include "Engine/WorldTransform/WorldTransform.h"
 #include <numbers>
 
 namespace CoreEngine

@@ -9,7 +9,7 @@
 #include "Engine/Graphics/Render/RenderManager.h"
 #include "Engine/Graphics/Render/Line/LineRendererPipeline.h"
 #include "Engine/Graphics/Line/LineManager.h"
-#include "Engine/Graphics/GridRenderer.h"
+#include "Engine/Graphics/Render/Line/GridRenderer.h"
 #include "Engine/Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
 #include "WinApp/WinApp.h"
