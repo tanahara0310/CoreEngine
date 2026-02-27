@@ -4,6 +4,8 @@
 #include "Engine/Graphics/Light/LightData.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "Engine/Audio/SoundManager.h"
+#include "Engine/Collider/CollisionManager.h"
+#include "Engine/Collider/CollisionConfig.h"
 #include <memory>
 
 // 前方宣言
@@ -75,6 +77,10 @@ namespace CoreEngine
         // ゲームオブジェクト管理（新システム）
         GameObjectManager gameObjectManager_;
 
+        // コリジョン管理
+        CollisionConfig collisionConfig_;
+        CollisionManager collisionManager_{ &collisionConfig_ };
+
 #ifdef _DEBUG
         // グリッドレンダラー（デバッグビルドのみ）
         GridRenderer* gridRenderer_ = nullptr;
@@ -91,6 +97,14 @@ namespace CoreEngine
         T* CreateObject(Args&&... args) {
             auto obj = std::make_unique<T>(std::forward<Args>(args)...);
             return gameObjectManager_.AddObject(std::move(obj));
+        }
+
+        /// @brief レイヤー間の衝突判定を有効/無効に設定
+        /// @param a レイヤーA
+        /// @param b レイヤーB
+        /// @param enable true:衝突判定有効 / false:衝突判定無効
+        void SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable = true) {
+            collisionConfig_.SetCollisionEnabled(a, b, enable);
         }
 
         /// @brief シーンのBGMを登録し、トランジション時の自動フェードを有効化

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 #include "MathCore.h"
@@ -8,10 +8,10 @@
 
 using json = nlohmann::json;
 
-/// @brief 汎用JSONマネージャークラス
-
 namespace CoreEngine
 {
+
+    /// @brief JSON管理クラス
     class JsonManager {
     public:
         /// @brief シングルトンインスタンスを取得
@@ -23,21 +23,21 @@ namespace CoreEngine
         /// @return 読み込んだJSONオブジェクト
         json LoadJson(const std::string& filePath);
 
-    /// @brief JSONファイルに保存
-    /// @param filePath ファイルパス
-    /// @param jsonData 保存するJSONオブジェクト
-    /// @return 保存に成功した場合true
-    bool SaveJson(const std::string& filePath, const json& jsonData);
+        /// @brief JSONファイルに保存
+        /// @param filePath ファイルパス
+        /// @param jsonData 保存するJSONオブジェクト
+        /// @return 保存に成功した場合true
+        bool SaveJson(const std::string& filePath, const json& jsonData);
 
-    /// @brief ディレクトリを作成（存在しない場合）
-    /// @param dirPath ディレクトリパス
-    /// @return 作成に成功した場合true
-    bool CreateJsonDirectory(const std::string& dirPath);
+        /// @brief ディレクトリを作成（存在しない場合）
+        /// @param dirPath ディレクトリパス
+        /// @return 作成に成功した場合true
+        bool CreateJsonDirectory(const std::string& dirPath);
 
-    /// @brief ファイルが存在するかチェック
-    /// @param filePath ファイルパス
-    /// @return ファイルが存在する場合true
-    bool FileExists(const std::string& filePath);
+        /// @brief ファイルが存在するかチェック
+        /// @param filePath ファイルパス
+        /// @return ファイルが存在する場合true
+        bool FileExists(const std::string& filePath);
 
         // ──────────────────────────────────────────────────────────
         // Vector3, Vector4, Transform等の変換ヘルパー関数

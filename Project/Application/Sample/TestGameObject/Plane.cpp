@@ -1,44 +1,43 @@
-﻿#include "Plane.h"
+#include "Plane.h"
 
 #include <EngineSystem.h>
 #include "Engine/Camera/ICamera.h"
 
+using namespace CoreEngine;
 
-namespace CoreEngine
+
+void Plane::Initialize()
 {
+    auto engine = GetEngineSystem();
+    // 必須コンポーネントの取得
+    auto dxCommon = engine->GetComponent<DirectXCommon>();
+    auto modelManager = engine->GetComponent<ModelManager>();
 
-    void CoreEngine::Plane::Initialize()
-    {
-        auto engine = GetEngineSystem();
-        // 必須コンポーネントの取得
-        auto dxCommon = engine->GetComponent<DirectXCommon>();
-        auto modelManager = engine->GetComponent<ModelManager>();
-
-        if (!dxCommon || !modelManager) {
-            return;
-        }
-
-        // 静的モデルとして作成
-        model_ = modelManager->CreateStaticModel("SampleAssets/plane/plane.obj");
-        // トランスフォームの初期化
-        transform_.Initialize(dxCommon->GetDevice());
-
-        //テクスチャの読み込み
-        auto& textureMgr = TextureManager::GetInstance();
-        texture_ = textureMgr.Load("Texture/white1x1.png");
-
+    if (!dxCommon || !modelManager) {
+        return;
     }
 
-    void CoreEngine::Plane::Update()
-    {
-        // トランスフォームの更新
-        transform_.TransferMatrix();
-    }
+    // 静的モデルとして作成
+    model_ = modelManager->CreateStaticModel("SampleAssets/plane/plane.obj");
+    // トランスフォームの初期化
+    transform_.Initialize(dxCommon->GetDevice());
 
-    void CoreEngine::Plane::Draw(const ICamera* camera)
-    {
-        //テクスチャ無しで描画
-        model_->Draw(transform_, camera, texture_.gpuHandle);
-    }
+    //テクスチャの読み込み
+    auto& textureMgr = CoreEngine::TextureManager::GetInstance();
+    texture_ = textureMgr.Load("Texture/white1x1.png");
 
 }
+
+void Plane::Update()
+{
+    // トランスフォームの更新
+    transform_.TransferMatrix();
+}
+
+void Plane::Draw(const CoreEngine::ICamera* camera)
+{
+    //テクスチャ無しで描画
+    model_->Draw(transform_, camera, texture_.gpuHandle);
+}
+
+

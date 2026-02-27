@@ -1,12 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
 
 /// @brief AnimatedCubeモデルオブジェクト
-
-namespace CoreEngine
-{
-class AnimatedCubeObject : public GameObject {
+class AnimatedCubeObject : public CoreEngine::GameObject {
 public:
     /// @brief 初期化処理
     /// @param engine エンジンシステムへのポインタ
@@ -17,7 +14,7 @@ public:
 
     /// @brief 描画処理
     /// @param camera カメラ
-    void Draw(const ICamera* camera) override;
+    void Draw(const CoreEngine::ICamera* camera) override;
 
 #ifdef _DEBUG
     /// @brief ImGui拡張UI描画（アニメーション制御を追加）
@@ -49,12 +46,12 @@ public:
     bool IsAnimationFinished() const;
 
     /// @brief トランスフォームを取得
-    WorldTransform& GetTransform() { return transform_; }
+    CoreEngine::WorldTransform& GetTransform() { return transform_; }
 
     /// @brief モデルを取得
-    Model* GetModel() { return model_.get(); }
+    CoreEngine::Model* GetModel() { return model_.get(); }
 
 private:
     float deltaTime_ = 1.0f / 60.0f;  //!< デルタタイム（60FPS想定）
 };
-}
+

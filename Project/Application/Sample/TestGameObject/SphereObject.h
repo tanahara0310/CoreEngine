@@ -1,98 +1,54 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
 
 /// @brief Sphereモデルオブジェクト
+    class SphereObject : public CoreEngine::GameObject {
+    public:
+        /// @brief 初期化処理
+        /// @param engine エンジンシステムへのポインタ
+        void Initialize();
 
-namespace CoreEngine
-{
-class SphereObject : public GameObject {
-public:
-    /// @brief 初期化処理
-    /// @param engine エンジンシステムへのポインタ
-    void Initialize();
+        /// @brief 更新処理
+        void Update() override;
 
-    /// @brief 更新処理
-    void Update() override;
-
-    /// @brief 描画処理
-    /// @param camera カメラ
-    void Draw(const ICamera* camera) override;
+        /// @brief 描画処理
+        /// @param camera カメラ
+        void Draw(const CoreEngine::ICamera* camera) override;
 
 #ifdef _DEBUG
-    /// @brief オブジェクト名を取得
-    /// @return オブジェクト名
-    const char* GetObjectName() const override { return "Sphere"; }
+        /// @brief オブジェクト名を取得
+        /// @return オブジェクト名
+        const char* GetObjectName() const override { return "Sphere"; }
 #endif
 
-    /// @brief トランスフォームを取得
-    WorldTransform& GetTransform() { return transform_; }
+        /// @brief トランスフォームを取得
+        CoreEngine::WorldTransform& GetTransform() { return transform_; }
 
-    /// @brief モデルを取得
-    Model* GetModel() { return model_.get(); }
+        /// @brief モデルを取得
+        CoreEngine::Model* GetModel() { return model_.get(); }
 
-    /// @brief PBRパラメータを設定
-    /// @param metallic 金属性 (0.0-1.0)
-    /// @param roughness 粗さ (0.0-1.0)
-    /// @param ao 環境遮蔽 (0.0-1.0)
-    void SetPBRParameters(float metallic, float roughness, float ao);
+        /// @brief デフォルトカラーを設定（衝突終了時に復帰するカラー）
+        /// @param color カラー（RGBA）
+        void SetMaterialColor(const CoreEngine::Vector4& color);
 
-    /// @brief PBRを有効/無効にする
-    /// @param enable true: PBR有効, false: 従来のライティング
-    void SetPBREnabled(bool enable);
+        /// @brief 衝突時のカラーを設定
+        /// @param color 衝突中に表示されるカラー（デフォルト: 赤）
+        void SetHitColor(const CoreEngine::Vector4& color) { hitColor_ = color; }
 
-    /// @brief 環境マップを有効/無効にする
-    /// @param enable true: 有効, false: 無効
-    void SetEnvironmentMapEnabled(bool enable);
+        /// @brief 衝突開始イベント
+        void OnCollisionEnter(GameObject* other) override;
 
-    /// @brief 環境マップの反射強度を設定
-    /// @param intensity 反射強度 (0.0-1.0)
-    void SetEnvironmentMapIntensity(float intensity);
+        /// @brief 衝突中イベント
+        void OnCollisionStay(GameObject* other) override;
 
-    /// @brief マテリアルカラーを設定
-    /// @param color カラー（RGBA）
-    void SetMaterialColor(const Vector4& color);
+        /// @brief 衝突終了イベント
+        void OnCollisionExit(GameObject* other) override;
 
-    /// @brief IBLを有効/無効にする
-    /// @param enable true: IBL有効, false: IBL無効
-    void SetIBLEnabled(bool enable);
 
-    /// @brief IBL強度を設定
-    /// @param intensity IBL強度 (0.0-1.0)
-    void SetIBLIntensity(float intensity);
+    private:
+        CoreEngine::Vector4 defaultColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+        CoreEngine::Vector4 hitColor_ = { 1.0f, 0.2f, 0.2f, 1.0f };
+        int hitCount_ = 0;  // 同時衝突数（複数衝突でも正しく元の色に戻すため）
+    };
 
-    /// @brief 環境マップY軸回転を設定
-    /// @param rotationY Y軸回転（ラジアン）
-    void SetEnvironmentRotationY(float rotationY);
-
-    /// @brief ノーマルマップを設定
-    /// @param texturePath ノーマルマップテクスチャのパス
-    void SetNormalMap(const std::string& texturePath);
-
-    /// @brief ノーマルマップの使用を有効/無効にする
-    /// @param enable true: 使用する, false: 使用しない
-    void SetNormalMapEnabled(bool enable);
-
-    /// @brief アルベド（Diffuse）テクスチャを設定
-    /// @param texturePath アルベドテクスチャのパス
-    void SetAlbedoTexture(const std::string& texturePath);
-
-    /// @brief Metallicマップを設定
-    /// @param texturePath Metallicマップテクスチャのパス
-    void SetMetallicMap(const std::string& texturePath);
-
-    /// @brief Roughnessマップを設定
-    /// @param texturePath Roughnessマップテクスチャのパス
-    void SetRoughnessMap(const std::string& texturePath);
-
-    /// @brief AOマップを設定
-    /// @param texturePath AOマップテクスチャのパス
-    void SetAOMap(const std::string& texturePath);
-
-#ifdef _DEBUG
-    /// @brief ImGui拡張UI描画（PBR/IBLパラメータを表示）
-    /// @return ImGuiで変更があった場合 true
-    bool DrawImGuiExtended() override;
-#endif
-};
-}

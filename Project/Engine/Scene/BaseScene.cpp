@@ -120,6 +120,12 @@ namespace CoreEngine
         // ゲームオブジェクトの更新
         gameObjectManager_.UpdateAll();
 
+        // コリジョン判定（毎フレーム: 収集 → 判定）
+        // ClearColliders()でコライダーリストのみリセット（previousCollisions_は保持してEnter/Stay/Exitを正しく検出）
+        collisionManager_.ClearColliders();
+        gameObjectManager_.RegisterAllColliders(&collisionManager_);
+        collisionManager_.CheckAllCollisions();
+
         // 派生クラスの後処理（クリーンアップ前）
         OnLateUpdate();
     }

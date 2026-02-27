@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <memory>
 
@@ -9,14 +9,12 @@
 // パーティクルシステム
 #include "Engine/Particle/ParticleSystem.h"
 
-/// @brief パーティクルテスト専用シーンクラス
 
-namespace CoreEngine
-{
-class ParticleTestScene : public BaseScene {
+    /// @brief パーティクルシステムのテストシーン
+class ParticleTestScene : public CoreEngine::BaseScene {
 public:
     /// @brief 初期化
-    void Initialize(EngineSystem* engine) override;
+    void Initialize(CoreEngine::EngineSystem* engine) override;
 
     /// @brief 描画
     void Draw() override;
@@ -30,6 +28,6 @@ protected:
 
 private:
     // パーティクルシステム
-    ParticleSystem* particleSystem_ = nullptr;
+    CoreEngine::ParticleSystem* particleSystem_ = nullptr;
 };
-}
+

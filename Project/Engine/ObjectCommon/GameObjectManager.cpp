@@ -1,5 +1,6 @@
-﻿#include "GameObjectManager.h"
+#include "GameObjectManager.h"
 #include "Engine/Graphics/Render/RenderManager.h"
+#include "Engine/Collider/CollisionManager.h"
 #include <algorithm>
 
 #ifdef _DEBUG
@@ -59,6 +60,19 @@ namespace CoreEngine
     void GameObjectManager::Clear() {
         objects_.clear();
         destroyQueue_.clear();
+    }
+
+    void GameObjectManager::RegisterAllColliders(CollisionManager* collisionManager) {
+        if (!collisionManager) return;
+
+        for (auto& obj : objects_) {
+            if (obj && obj->IsActive() && !obj->IsMarkedForDestroy() && obj->HasCollider()) {
+                Collider* collider = obj->GetCollider();
+                if (collider && collider->IsEnabled()) {
+                    collisionManager->RegisterCollider(collider);
+                }
+            }
+        }
     }
 
 #ifdef _DEBUG

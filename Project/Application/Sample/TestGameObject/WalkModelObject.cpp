@@ -11,8 +11,8 @@
 #endif
 
 
-namespace CoreEngine
-{
+using namespace CoreEngine;
+
 void WalkModelObject::Initialize() {
    auto engine = GetEngineSystem();
 
@@ -49,7 +49,7 @@ void WalkModelObject::Initialize() {
    transform_.rotate = { 0.0f, 0.0f, 0.0f };
 
    // テクスチャを初期化時に読み込む
-   texture_ = TextureManager::GetInstance().Load("SampleAssets/human/white.png");
+   texture_ = CoreEngine::TextureManager::GetInstance().Load("SampleAssets/human/white.png");
 
    // アクティブ状態に設定
    SetActive(true);
@@ -79,7 +79,7 @@ void WalkModelObject::Update() {
    }
 }
 
-void WalkModelObject::Draw(const ICamera* camera) {
+void WalkModelObject::Draw(const CoreEngine::ICamera* camera) {
     if (!camera || !model_) return;
     
     // モデルの描画
@@ -139,4 +139,4 @@ bool WalkModelObject::DrawImGuiExtended() {
     return changed;
 }
 #endif
-}
+

@@ -11,12 +11,10 @@
 #include <cassert>
 #include <EngineSystem.h>
 
-// 頂点データ構造体
+using namespace CoreEngine;
 
-namespace CoreEngine
-{
 namespace {
-    SkyBoxRenderer* sSkyBoxRenderer_ = nullptr;
+    CoreEngine::SkyBoxRenderer* sSkyBoxRenderer_ = nullptr;
 }
 
 void SkyBoxObject::SetSkyBoxRenderer(SkyBoxRenderer* renderer) {
@@ -182,7 +180,7 @@ void SkyBoxObject::CreateTransformBuffer() {
    transformBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&transformData_));
 }
 
-void SkyBoxObject::Draw(const ICamera* camera) {
+void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
    if (!camera) return;
    auto engine = GetEngineSystem();
    auto* dxCommon = engine->GetComponent<DirectXCommon>();
@@ -252,4 +250,4 @@ bool SkyBoxObject::DrawImGuiExtended() {
    return changed;
 }
 #endif
-}
+

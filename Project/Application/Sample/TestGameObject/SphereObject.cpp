@@ -6,240 +6,73 @@
 #include "externals/imgui/imgui.h"
 #endif
 
+using namespace CoreEngine;
 
-namespace CoreEngine
-{
-    void SphereObject::Initialize() {
-        // 必須コンポーネントの取得
-        auto engine = GetEngineSystem();
+void SphereObject::Initialize() {
+    // 必須コンポーネントの取得
+    auto engine = GetEngineSystem();
 
-        auto dxCommon = engine->GetComponent<DirectXCommon>();
-        auto modelManager = engine->GetComponent<ModelManager>();
+    auto dxCommon = engine->GetComponent<DirectXCommon>();
+    auto modelManager = engine->GetComponent<ModelManager>();
 
-        if (!dxCommon || !modelManager) {
-            return;
-        }
-
-        // 静的モデルとして作成
-        model_ = modelManager->CreateStaticModel("SampleAssets/Sphere/sphere.obj");
-
-        // トランスフォームの初期化
-        transform_.Initialize(dxCommon->GetDevice());
-
-        // テクスチャの読み込み
-        auto& textureManager = TextureManager::GetInstance();
-        texture_ = textureManager.Load("Texture/white1x1.png");
-
-        // アクティブ状態に設定
-        SetActive(true);
+    if (!dxCommon || !modelManager) {
+        return;
     }
 
-    void SphereObject::Update() {
-        if (!IsActive() || !model_) {
-            return;
-        }
+    // 静的モデルとして作成
+    model_ = modelManager->CreateStaticModel("SampleAssets/Sphere/sphere.obj");
 
-        // トランスフォームの更新
-        transform_.TransferMatrix();
-    }
+    // トランスフォームの初期化
+    transform_.Initialize(dxCommon->GetDevice());
 
-    void SphereObject::Draw(const ICamera* camera) {
-        if (!camera || !model_) return;
+    // テクスチャの読み込み
+    auto& textureManager = CoreEngine::TextureManager::GetInstance();
+    texture_ = textureManager.Load("Texture/white1x1.png");
 
-        // モデルの描画
-        model_->Draw(transform_, camera, texture_.gpuHandle);
-    }
-
-    void SphereObject::SetPBRParameters(float metallic, float roughness, float ao) {
-        if (!model_) return;
-
-        auto* materialManager = model_->GetMaterialManager();
-        if (materialManager) {
-            auto* constants = materialManager->GetConstants();
-            constants->metallic = metallic;
-            constants->roughness = roughness;
-            constants->ao = ao;
-        }
-    }
-
-    void SphereObject::SetPBREnabled(bool enable) {
-        if (!model_) return;
-
-        auto* materialManager = model_->GetMaterialManager();
-        if (materialManager) {
-            materialManager->GetConstants()->enablePBR = enable ? 1 : 0;
-        }
-    }
-
-    void SphereObject::SetEnvironmentMapEnabled(bool enable) {
-        if (!model_) return;
-
-        auto* materialManager = model_->GetMaterialManager();
-        if (materialManager) {
-            materialManager->GetConstants()->enableEnvironmentMap = enable ? 1 : 0;
-        }
-    }
-
-    void SphereObject::SetEnvironmentMapIntensity(float intensity) {
-        if (!model_) return;
-
-        auto* materialManager = model_->GetMaterialManager();
-        if (materialManager) {
-            materialManager->GetConstants()->environmentMapIntensity = intensity;
-        }
-    }
-
-    void SphereObject::SetMaterialColor(const Vector4& color) {
-        if (!model_) return;
-
-        auto* materialManager = model_->GetMaterialManager();
-        if (materialManager) {
-            materialManager->GetConstants()->color = color;
-        }
-    }
-
-    void SphereObject::SetIBLEnabled(bool enable) {
-        if (!model_) return;
-
-        auto* materialManager = model_->GetMaterialManager();
-        if (materialManager) {
-            materialManager->GetConstants()->enableIBL = enable ? 1 : 0;
-        }
-    }
-
-    void SphereObject::SetIBLIntensity(float intensity) {
-        if (!model_) return;
-
-        auto* materialManager = model_->GetMaterialManager();
-        if (materialManager) {
-            materialManager->GetConstants()->iblIntensity = intensity;
-        }
-    }
-
-    void SphereObject::SetEnvironmentRotationY(float rotationY) {
-        if (!model_) return;
-
-        auto* materialManager = model_->GetMaterialManager();
-        if (materialManager) {
-            materialManager->GetConstants()->environmentRotationY = rotationY;
-        }
-    }
-
-    void SphereObject::SetNormalMap(const std::string& /*texturePath*/) {
-        // TODO: 新しいマテリアルシステムでは、ModelResourceがテクスチャを管理します
-        // 現在、個別のテクスチャ設定はサポートされていません
-    }
-
-    void SphereObject::SetNormalMapEnabled(bool /*enable*/) {
-        // TODO: 新しいマテリアルシステムでは、ModelResourceがテクスチャを管理します
-    }
-
-    void SphereObject::SetAlbedoTexture(const std::string& texturePath) {
-        // テクスチャを読み込み
-        auto& textureManager = TextureManager::GetInstance();
-        texture_ = textureManager.Load(texturePath);
-    }
-
-    void SphereObject::SetMetallicMap(const std::string& /*texturePath*/) {
-        // TODO: 新しいマテリアルシステムでは、ModelResourceがテクスチャを管理します
-    }
-
-    void SphereObject::SetRoughnessMap(const std::string& /*texturePath*/) {
-        // TODO: 新しいマテリアルシステムでは、ModelResourceがテクスチャを管理します
-    }
-
-    void SphereObject::SetAOMap(const std::string& /*texturePath*/) {
-        // TODO: 新しいマテリアルシステムでは、ModelResourceがテクスチャを管理します
-    }
-
-#ifdef _DEBUG
-    bool SphereObject::DrawImGuiExtended() {
-        bool changed = false;
-
-        if (!model_) return changed;
-
-        auto* materialManager = model_->GetMaterialManager();
-        if (!materialManager) return changed;
-
-
-        // === PBR Settings ===
-        if (ImGui::CollapsingHeader("PBR Settings", ImGuiTreeNodeFlags_DefaultOpen)) {
-            auto* constants = materialManager->GetConstants();
-            
-            // PBR有効/無効
-            bool enablePBR = constants->enablePBR != 0;
-            if (ImGui::Checkbox("Enable PBR", &enablePBR)) {
-                SetPBREnabled(enablePBR);
-                changed = true;
-            }
-
-            if (enablePBR) {
-                // Metallic
-                if (ImGui::SliderFloat("Metallic", &constants->metallic, 0.0f, 1.0f)) {
-                    changed = true;
-                }
-
-                // Roughness
-                if (ImGui::SliderFloat("Roughness", &constants->roughness, 0.0f, 1.0f)) {
-                    changed = true;
-                }
-
-                // AO (Ambient Occlusion)
-                if (ImGui::SliderFloat("AO", &constants->ao, 0.0f, 1.0f)) {
-                    changed = true;
-                }
-            }
-        }
-
-        // === Environment Map Settings ===
-        if (ImGui::CollapsingHeader("Environment Map", ImGuiTreeNodeFlags_DefaultOpen)) {
-            auto* constants = materialManager->GetConstants();
-            
-            // 環境マップ有効/無効
-            bool enableEnvMap = constants->enableEnvironmentMap != 0;
-            if (ImGui::Checkbox("Enable Environment Map", &enableEnvMap)) {
-                SetEnvironmentMapEnabled(enableEnvMap);
-                changed = true;
-            }
-
-            if (enableEnvMap) {
-                // 環境マップ強度
-                if (ImGui::SliderFloat("Env Intensity", &constants->environmentMapIntensity, 0.0f, 2.0f)) {
-                    changed = true;
-                }
-            }
-        }
-
-        // === IBL Settings ===
-        if (ImGui::CollapsingHeader("IBL (Image-Based Lighting)", ImGuiTreeNodeFlags_DefaultOpen)) {
-            auto* constants = materialManager->GetConstants();
-            
-            // IBL有効/無効
-            bool enableIBL = constants->enableIBL != 0;
-            if (ImGui::Checkbox("Enable IBL", &enableIBL)) {
-                SetIBLEnabled(enableIBL);
-                changed = true;
-            }
-
-            if (enableIBL) {
-                // IBL強度
-                if (ImGui::SliderFloat("IBL Intensity", &constants->iblIntensity, 0.0f, 2.0f)) {
-                    changed = true;
-                }
-            }
-        }
-
-        // === Material Color ===
-        if (ImGui::CollapsingHeader("Material Color")) {
-            auto* constants = materialManager->GetConstants();
-            float colorArray[4] = { constants->color.x, constants->color.y, constants->color.z, constants->color.w };
-            if (ImGui::ColorEdit4("Color", colorArray)) {
-                constants->color = Vector4(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
-                changed = true;
-            }
-        }
-
-        return changed;
-    }
-#endif
+    // アクティブ状態に設定
+    SetActive(true);
 }
+
+void SphereObject::Update() {
+    if (!IsActive() || !model_) {
+        return;
+    }
+
+    // トランスフォームの更新
+    transform_.TransferMatrix();
+}
+
+void SphereObject::Draw(const CoreEngine::ICamera* camera) {
+    if (!camera || !model_) return;
+
+    // モデルの描画
+    model_->Draw(transform_, camera, texture_.gpuHandle);
+}
+
+void SphereObject::SetMaterialColor(const Vector4& color) {
+    defaultColor_ = color;  // 復帰用に記録
+    if (!model_) return;
+
+    auto* materialManager = model_->GetMaterialManager();
+    if (materialManager) {
+        materialManager->GetConstants()->color = color;
+    }
+}
+
+void SphereObject::OnCollisionEnter([[maybe_unused]] GameObject* other) {
+    if (++hitCount_ == 1) {
+        model_->SetMaterialColor(hitColor_);
+    }
+}
+
+void SphereObject::OnCollisionStay([[maybe_unused]] GameObject* other) {
+    // Enter でカラー変更済みのため何もしない
+}
+
+void SphereObject::OnCollisionExit([[maybe_unused]] GameObject* other) {
+    if (--hitCount_ <= 0) {
+        hitCount_ = 0;
+        model_->SetMaterialColor(defaultColor_);
+    }
+}
+

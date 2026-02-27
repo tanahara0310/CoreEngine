@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <vector>
 #include <unordered_set>
 #include "Collider.h"
@@ -21,7 +21,10 @@ public:
    /// @brief 登録されているすべてのコライダー間の衝突判定を実行
    void CheckAllCollisions();
 
-   /// @brief 登録されているコライダーをすべてクリア
+   /// @brief 登録されているコライダーをすべてクリア（previousCollisions_は保持）
+   void ClearColliders();
+
+   /// @brief 登録されているコライダーと衝突履歴をすべてクリア（シーン遷移時など）
    void Clear();
 
    /// @brief 登録されているすべてのコライダーを取得
