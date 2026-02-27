@@ -1,4 +1,4 @@
-﻿#include "CollisionManager.h"
+#include "CollisionManager.h"
 #include <algorithm>
 
 
@@ -60,6 +60,10 @@ namespace CoreEngine
         }
 
         previousCollisions_ = std::move(currentCollisions);
+    }
+
+    void CollisionManager::ClearColliders() {
+        colliders_.clear();
     }
 
     void CollisionManager::Clear() {

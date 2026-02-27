@@ -1,4 +1,4 @@
-﻿#include "GameObject.h"
+#include "GameObject.h"
 #include "Engine/Graphics/Model/Model.h"
 #include <cstdio>
 
@@ -82,5 +82,17 @@ namespace CoreEngine
         if (model_ && model_->IsInitialized()) {
             model_->DrawShadow(transform_, cmdList);
         }
+    }
+
+    Collider& GameObject::AddSphereCollider(float radius, CollisionLayer layer) {
+        collider_ = std::make_unique<SphereCollider>(this, radius);
+        collider_->SetLayer(layer);
+        return *collider_;
+    }
+
+    Collider& GameObject::AddAABBCollider(const Vector3& size, CollisionLayer layer) {
+        collider_ = std::make_unique<AABBCollider>(this, size);
+        collider_->SetLayer(layer);
+        return *collider_;
     }
 }

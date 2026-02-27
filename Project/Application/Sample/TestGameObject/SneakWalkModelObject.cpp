@@ -10,9 +10,9 @@
 #include "externals/imgui/imgui.h"
 #endif
 
+using namespace CoreEngine;
 
-namespace CoreEngine
-{
+
 void SneakWalkModelObject::Initialize() {
    auto engine = GetEngineSystem();
 
@@ -49,7 +49,7 @@ void SneakWalkModelObject::Initialize() {
    transform_.rotate = { 0.0f, 0.0f, 0.0f };
 
    // テクスチャを初期化時に読み込む
-   uvCheckerTexture_ = TextureManager::GetInstance().Load("SampleAssets/human/white.png");
+   uvCheckerTexture_ = CoreEngine::TextureManager::GetInstance().Load("SampleAssets/human/white.png");
 
    // アクティブ状態に設定
    SetActive(true);
@@ -79,7 +79,7 @@ void SneakWalkModelObject::Update() {
    }
 }
 
-void SneakWalkModelObject::Draw(const ICamera* camera) {
+void SneakWalkModelObject::Draw(const CoreEngine::ICamera* camera) {
     if (!camera || !model_) return;
     
     // モデルの描画
@@ -139,4 +139,4 @@ bool SneakWalkModelObject::DrawImGuiExtended() {
     return changed;
 }
 #endif
-}
+

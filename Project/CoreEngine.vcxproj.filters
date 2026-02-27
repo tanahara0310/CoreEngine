@@ -405,6 +405,7 @@
     <ClCompile Include="Engine\Graphics\RootSignature\RootSignatureBuilder.cpp" />
     <ClCompile Include="Engine\Graphics\RootSignature\RootSignatureManager.cpp" />
     <ClCompile Include="Engine\WorldTransform\WorldTransform.cpp" />
+    <ClCompile Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1227,6 +1228,7 @@
     <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureBuilder.h" />
     <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\WorldTransform\WorldTransform.h" />
+    <ClInclude Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">

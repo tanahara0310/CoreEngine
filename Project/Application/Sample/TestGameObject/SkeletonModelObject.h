@@ -5,10 +5,7 @@
 #include <memory>
 
 /// @brief Skeletonモデルオブジェクト
-
-namespace CoreEngine
-{
-class SkeletonModelObject : public GameObject {
+class SkeletonModelObject : public CoreEngine::GameObject {
 public:
     /// @brief 初期化処理
     void Initialize();
@@ -18,7 +15,7 @@ public:
 
     /// @brief 描画処理
     /// @param camera カメラ
-    void Draw(const ICamera* camera) override;
+    void Draw(const CoreEngine::ICamera* camera) override;
     
 #ifdef _DEBUG
     /// @brief ImGui拡張UI描画
@@ -27,7 +24,7 @@ public:
 
     /// @brief 描画パスタイプを取得（スキニングモデル用）
     /// @return 描画パスタイプ
-    RenderPassType GetRenderPassType() const override { return RenderPassType::SkinnedModel; }
+    CoreEngine::RenderPassType GetRenderPassType() const override { return CoreEngine::RenderPassType::SkinnedModel; }
 
 #ifdef _DEBUG
     /// @brief オブジェクト名を取得
@@ -36,13 +33,13 @@ public:
 #endif
 
     /// @brief トランスフォームを取得
-    WorldTransform& GetTransform() { return transform_; }
+    CoreEngine::WorldTransform& GetTransform() { return transform_; }
 
     /// @brief モデルを取得
-    Model* GetModel() { return model_.get(); }
+    CoreEngine::Model* GetModel() { return model_.get(); }
 
 private:
     /// @brief テクスチャハンドル
-    TextureManager::LoadedTexture uvCheckerTexture_;
+    CoreEngine::TextureManager::LoadedTexture uvCheckerTexture_;
 };
-}
+

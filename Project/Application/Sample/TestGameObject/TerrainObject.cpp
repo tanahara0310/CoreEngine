@@ -1,4 +1,4 @@
-﻿#include "TerrainObject.h"
+#include "TerrainObject.h"
 #include "Engine/EngineSystem/EngineSystem.h"
 #include "Engine/Graphics/Model/ModelManager.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
@@ -6,9 +6,8 @@
 #include "Engine/Camera/ICamera.h"
 #include <numbers>
 
+using namespace CoreEngine;
 
-namespace CoreEngine
-{
 void TerrainObject::Initialize() {
    auto engine = GetEngineSystem();
    // 必須コンポーネントの取得
@@ -29,7 +28,7 @@ void TerrainObject::Initialize() {
    transform_.rotate = { 0.0f, std::numbers::pi_v<float> *0.5f, 0.0f };
 
    // テクスチャの読み込み
-   auto& textureManager = TextureManager::GetInstance();
+   auto& textureManager = CoreEngine::TextureManager::GetInstance();
    texture_ = textureManager.Load("SampleAssets/terrain/grass.png");
 
    // アクティブ状態に設定
@@ -45,10 +44,10 @@ void TerrainObject::Update() {
    transform_.TransferMatrix();
 }
 
-void TerrainObject::Draw(const ICamera* camera) {
+void TerrainObject::Draw(const CoreEngine::ICamera* camera) {
    if (!model_ || !camera) return;
 
    // モデルの描画
    model_->Draw(transform_, camera, texture_.gpuHandle);
 }
-}
+

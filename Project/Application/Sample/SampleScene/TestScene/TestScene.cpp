@@ -127,10 +127,6 @@ namespace CoreEngine
         sphere->Initialize();
         sphere->GetTransform().translate = { 0.0f, 2.0f, 0.0f };
         sphere->GetTransform().scale = { 1.5f, 1.5f, 1.5f };
-        sphere->SetPBREnabled(true);
-        sphere->SetPBRParameters(0.0f, 0.5f, 1.0f); // メタリック0、ラフネス0.5、AO1
-        sphere->SetEnvironmentMapEnabled(true);
-        sphere->SetEnvironmentMapIntensity(0.3f);
         sphere->SetMaterialColor({ 1.0f, 1.0f, 1.0f, 1.0f });
         sphere->SetActive(true);
 
@@ -172,20 +168,6 @@ namespace CoreEngine
             if (auto* sb = dynamic_cast<SkyBoxObject*>(obj.get())) {
                 skyBox = sb;
                 break;
-            }
-        }
-
-        // SkyBoxの回転を全球体とモデルのマテリアルに反映
-        if (skyBox) {
-            float skyBoxRotationY = skyBox->GetRotationY();
-
-            for (const auto& obj : gameObjectManager_.GetAllObjects()) {
-                if (auto* sphere = dynamic_cast<SphereObject*>(obj.get())) {
-                    sphere->SetEnvironmentRotationY(skyBoxRotationY);
-                }
-                else if (auto* model = dynamic_cast<ModelObject*>(obj.get())) {
-                    model->SetEnvironmentRotationY(skyBoxRotationY);
-                }
             }
         }
     }

@@ -169,6 +169,7 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp" />
     <ClCompile Include="Engine\Camera\Camera2D.cpp" />
     <ClCompile Include="Engine\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Camera\CameraPresetManager.cpp" />
@@ -358,6 +359,7 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClCompile Include="Application\Sample\TestGameObject\Plane.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h" />
     <ClInclude Include="Engine\Camera\Camera2D.h" />
     <ClInclude Include="Engine\Camera\CameraManager.h" />
     <ClInclude Include="Engine\Camera\CameraPresetManager.h" />

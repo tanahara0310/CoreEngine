@@ -4,13 +4,12 @@
 #include <wrl/client.h>
 #include <d3d12.h>
 
+namespace CoreEngine {
+    class SkyBoxRenderer;
+}
+
 /// @brief SkyBoxオブジェクト
-
-namespace CoreEngine
-{
-class SkyBoxRenderer;
-
-class SkyBoxObject : public GameObject {
+class SkyBoxObject : public CoreEngine::GameObject {
 public:
     /// @brief コンストラクタ
     SkyBoxObject() = default;
@@ -20,7 +19,7 @@ public:
 
     /// @brief SkyBoxRendererを設定（ルートパラメータインデックス取得用）
     /// @param renderer SkyBoxRendererのポインタ
-    static void SetSkyBoxRenderer(SkyBoxRenderer* renderer);
+    static void SetSkyBoxRenderer(CoreEngine::SkyBoxRenderer* renderer);
 
     /// @brief 初期化
     /// @param engine エンジンシステム
@@ -31,7 +30,7 @@ public:
 
     /// @brief 描画
     /// @param camera カメラ
-    void Draw(const ICamera* camera) override;
+    void Draw(const CoreEngine::ICamera* camera) override;
 
 #ifdef _DEBUG
     /// @brief 拡張ImGuiデバッグUI描画（SkyBox固有パラメータ）
@@ -45,14 +44,14 @@ public:
 
     /// @brief このオブジェクトの描画パスタイプを取得
     /// @return 描画パスタイプ（SkyBox）
-    RenderPassType GetRenderPassType() const override { return RenderPassType::SkyBox; }
+    CoreEngine::RenderPassType GetRenderPassType() const override { return CoreEngine::RenderPassType::SkyBox; }
 
     /// @brief トランスフォームを取得
-    WorldTransform& GetTransform() { return transform_; }
+    CoreEngine::WorldTransform& GetTransform() { return transform_; }
 
     /// @brief テクスチャを設定
     /// @param texture 設定するテクスチャ
-    void SetTexture(const TextureManager::LoadedTexture& texture) { texture_ = texture; }
+    void SetTexture(const CoreEngine::TextureManager::LoadedTexture& texture) { texture_ = texture; }
 
     /// @brief Y軸回転を取得（ラジアン）
     /// @return Y軸回転角度
@@ -88,13 +87,13 @@ private:
 
     /// @brief マテリアルデータ
     struct SkyBoxMaterial {
-        Vector4 color;
+        CoreEngine::Vector4 color;
     };
     SkyBoxMaterial* materialData_ = nullptr;
 
     /// @brief トランスフォームデータ
     struct TransformationMatrix {
-        Matrix4x4 WVP;
+        CoreEngine::Matrix4x4 WVP;
     };
     TransformationMatrix* transformData_ = nullptr;
 
@@ -104,4 +103,4 @@ private:
     /// @brief インデックス数
     static constexpr UINT kIndexCount = 36;
 };
-}
+

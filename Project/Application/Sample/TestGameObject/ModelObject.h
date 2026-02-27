@@ -3,10 +3,7 @@
 #include "Engine/ObjectCommon/GameObject.h"
 
 /// @brief 汎用モデルオブジェクト（glTFなどのモデル読み込み用）
-
-namespace CoreEngine
-{
-class ModelObject : public GameObject {
+class ModelObject : public CoreEngine::GameObject {
 public:
     /// @brief 初期化処理
     /// @param modelPath モデルファイルのパス（例: "SampleAssets/PblTestModel/ABeautifulGame.gltf"）
@@ -17,36 +14,36 @@ public:
 
     /// @brief 描画処理
     /// @param camera カメラ
-    void Draw(const ICamera* camera) override;
+    void Draw(const CoreEngine::ICamera* camera) override;
 
 #ifdef _DEBUG
     /// @brief オブジェクト名を取得
     /// @return オブジェクト名
     const char* GetObjectName() const override { return "Model"; }
-    
+
     /// @brief デバッグUI描画
     bool DrawImGuiExtended() override;
 #endif
 
     /// @brief トランスフォームを取得
-    WorldTransform& GetTransform() { return transform_; }
+    CoreEngine::WorldTransform& GetTransform() { return transform_; }
 
     /// @brief モデルを取得
-    Model* GetModel() { return model_.get(); }
+    CoreEngine::Model* GetModel() { return model_.get(); }
 
     /// @brief PBRパラメータを設定
     void SetPBRParameters(float metallic, float roughness, float ao);
 
     /// @brief PBRを有効/無効にする
     void SetPBREnabled(bool enable);
-    
+
     /// @brief PBRテクスチャマップを有効/無効にする
     /// @param useNormal ノーマルマップを使用するか
     /// @param useMetallic メタリックマップを使用するか
     /// @param useRoughness ラフネスマップを使用するか
     /// @param useAO AOマップを使用するか
-    void SetPBRTextureMapsEnabled(bool useNormal = true, bool useMetallic = true, 
-                                   bool useRoughness = true, bool useAO = true);
+    void SetPBRTextureMapsEnabled(bool useNormal = true, bool useMetallic = true,
+        bool useRoughness = true, bool useAO = true);
 
     /// @brief 環境マップを有効/無効にする
     void SetEnvironmentMapEnabled(bool enable);
@@ -55,7 +52,7 @@ public:
     void SetEnvironmentMapIntensity(float intensity);
 
     /// @brief マテリアルカラーを設定
-    void SetMaterialColor(const Vector4& color);
+    void SetMaterialColor(const CoreEngine::Vector4& color);
 
     /// @brief IBLを有効/無効にする
     void SetIBLEnabled(bool enable);
@@ -66,4 +63,4 @@ public:
     /// @brief 環境マップY軸回転を設定
     void SetEnvironmentRotationY(float rotationY);
 };
-}
+

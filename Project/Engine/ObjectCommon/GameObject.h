@@ -6,6 +6,9 @@
 #include "Engine/WorldTransform/WorldTransform.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Graphics/Model/Model.h"
+#include "Engine/Collider/Collider.h"
+#include "Engine/Collider/SphereCollider.h"
+#include "Engine/Collider/AABBCollider.h"
 
 #include <memory>
 #include <string>
@@ -90,6 +93,35 @@ namespace CoreEngine
         /// @brief ワールド座標での位置を取得（Collider用）
         virtual Vector3 GetWorldPosition() const { return transform_.GetWorldPosition(); }
 
+        // === コライダー簡易設定API ===
+
+        /// @brief 球体コライダーを追加
+        /// @param radius 球の半径
+        /// @param layer コリジョンレイヤー（デフォルト: Default）
+        /// @return 追加されたコライダーへの参照（チェーン呼び出し用）
+        Collider& AddSphereCollider(float radius, CollisionLayer layer = CollisionLayer::Default);
+
+        /// @brief AABBコライダーを追加
+        /// @param size AABBのサイズ（幅, 高さ, 奥行き）
+        /// @param layer コリジョンレイヤー（デフォルト: Default）
+        /// @return 追加されたコライダーへの参照（チェーン呼び出し用）
+        Collider& AddAABBCollider(const Vector3& size, CollisionLayer layer = CollisionLayer::Default);
+
+        /// @brief コライダーを持っているか確認
+        /// @return コライダーを持っている場合 true
+        bool HasCollider() const { return collider_ != nullptr; }
+
+        /// @brief コライダーを取得
+        /// @return コライダーへのポインタ（未設定の場合 nullptr）
+        Collider* GetCollider() { return collider_.get(); }
+
+        /// @brief コライダーを取得（const版）
+        /// @return コライダーへのconstポインタ（未設定の場合 nullptr）
+        const Collider* GetCollider() const { return collider_.get(); }
+
+        /// @brief コライダーを削除
+        void RemoveCollider() { collider_.reset(); }
+
         /// @brief トランスフォームを取得
         /// @return トランスフォームへの参照
         WorldTransform& GetTransform() { return transform_; }
@@ -139,6 +171,9 @@ namespace CoreEngine
 
         /// @brief テクスチャハンドル
         TextureManager::LoadedTexture texture_;
+
+        /// @brief コライダー（オブジェクトが所有）
+        std::unique_ptr<Collider> collider_;
 
         /// @brief オブジェクト名（ImGui表示用）
         std::string name_;
