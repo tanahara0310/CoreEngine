@@ -298,42 +298,42 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClCompile Include="Engine\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Utility\Debug\GameDebugUI.cpp" />
     <ClCompile Include="Application\MyGame.cpp" />
-    <ClCompile Include="externals\imgui\imgui.cpp">
+    <ClCompile Include="Externals\imgui\imgui.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="externals\imgui\ImGuizmo.cpp">
+    <ClCompile Include="Externals\imgui\ImGuizmo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_demo.cpp">
+    <ClCompile Include="Externals\imgui\imgui_demo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_draw.cpp">
+    <ClCompile Include="Externals\imgui\imgui_draw.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_impl_dx12.cpp">
+    <ClCompile Include="Externals\imgui\imgui_impl_dx12.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_impl_win32.cpp">
+    <ClCompile Include="Externals\imgui\imgui_impl_win32.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_tables.cpp">
+    <ClCompile Include="Externals\imgui\imgui_tables.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="externals\imgui\imgui_widgets.cpp">
+    <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -534,119 +534,119 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Scene\SceneManager.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\SceneViewport.h" />
     <ClInclude Include="Application\MyGame.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\async.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\async_logger-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\async_logger.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\cfg\argv.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\cfg\env.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\cfg\helpers-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\cfg\helpers.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\common-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\common.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\backtracer-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\backtracer.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\circular_q.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\console_globals.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\file_helper-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\file_helper.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\fmt_helper.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\log_msg-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\log_msg.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\log_msg_buffer-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\log_msg_buffer.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\mpmc_blocking_q.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\null_mutex.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\os-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\os.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\periodic_worker-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\periodic_worker.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\registry-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\registry.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\synchronous_factory.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\tcp_client-windows.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\tcp_client.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\thread_pool-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\thread_pool.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\udp_client-windows.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\udp_client.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\details\windows_include.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bin_to_hex.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\args.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\base.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\chrono.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\color.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\compile.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\core.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\format-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\format.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\os.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\ostream.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\printf.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\ranges.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\std.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\bundled\xchar.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\chrono.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\compile.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\fmt.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\ostr.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\ranges.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\std.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fmt\xchar.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\formatter.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\fwd.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\logger-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\logger.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\mdc.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\pattern_formatter-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\pattern_formatter.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\android_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\ansicolor_sink-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\ansicolor_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\base_sink-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\base_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\basic_file_sink-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\basic_file_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\callback_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\daily_file_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\dist_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\dup_filter_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\hourly_file_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\kafka_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\mongo_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\msvc_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\null_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\ostream_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\qt_sinks.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\ringbuffer_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\rotating_file_sink-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\rotating_file_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\sink-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\stdout_color_sinks-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\stdout_color_sinks.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\stdout_sinks-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\stdout_sinks.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\syslog_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\systemd_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\tcp_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\udp_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\wincolor_sink-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\wincolor_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\sinks\win_eventlog_sink.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\spdlog-inl.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\spdlog.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\stopwatch.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\tweakme.h" />
-    <ClInclude Include="externals\spdlog\include\spdlog\version.h" />
-    <ClInclude Include="externals\imgui\imconfig.h" />
-    <ClInclude Include="externals\imgui\imgui.h" />
-    <ClInclude Include="externals\imgui\ImGuizmo.h" />
-    <ClInclude Include="externals\imgui\imgui_impl_dx12.h" />
-    <ClInclude Include="externals\imgui\imgui_impl_win32.h" />
-    <ClInclude Include="externals\imgui\imgui_internal.h" />
-    <ClInclude Include="externals\imgui\imstb_rectpack.h" />
-    <ClInclude Include="externals\imgui\imstb_textedit.h" />
-    <ClInclude Include="externals\imgui\imstb_truetype.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\async.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\async_logger-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\async_logger.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\cfg\argv.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\cfg\env.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\cfg\helpers-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\cfg\helpers.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\common-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\common.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\backtracer-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\backtracer.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\circular_q.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\console_globals.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\file_helper-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\file_helper.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\fmt_helper.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\log_msg-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\log_msg.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\log_msg_buffer-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\log_msg_buffer.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\mpmc_blocking_q.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\null_mutex.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\os-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\os.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\periodic_worker-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\periodic_worker.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\registry-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\registry.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\synchronous_factory.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\tcp_client-windows.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\tcp_client.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\thread_pool-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\thread_pool.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\udp_client-windows.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\udp_client.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\details\windows_include.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bin_to_hex.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\args.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\base.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\chrono.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\color.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\compile.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\core.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\format-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\format.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\os.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\ostream.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\printf.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\ranges.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\std.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\xchar.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\chrono.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\compile.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\fmt.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\ostr.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\ranges.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\std.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\xchar.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\formatter.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\fwd.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\logger-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\logger.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\mdc.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\pattern_formatter-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\pattern_formatter.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\android_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\ansicolor_sink-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\ansicolor_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\base_sink-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\base_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\basic_file_sink-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\basic_file_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\callback_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\daily_file_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\dist_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\dup_filter_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\hourly_file_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\kafka_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\mongo_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\msvc_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\null_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\ostream_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\qt_sinks.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\ringbuffer_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\rotating_file_sink-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\rotating_file_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\sink-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\stdout_color_sinks-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\stdout_color_sinks.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\stdout_sinks-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\stdout_sinks.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\syslog_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\systemd_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\tcp_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\udp_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\wincolor_sink-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\wincolor_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\win_eventlog_sink.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\spdlog-inl.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\spdlog.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\stopwatch.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\tweakme.h" />
+    <ClInclude Include="Externals\spdlog\include\spdlog\version.h" />
+    <ClInclude Include="Externals\imgui\imconfig.h" />
+    <ClInclude Include="Externals\imgui\imgui.h" />
+    <ClInclude Include="Externals\imgui\ImGuizmo.h" />
+    <ClInclude Include="Externals\imgui\imgui_impl_dx12.h" />
+    <ClInclude Include="Externals\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="Externals\imgui\imgui_internal.h" />
+    <ClInclude Include="Externals\imgui\imstb_rectpack.h" />
+    <ClInclude Include="Externals\imgui\imstb_textedit.h" />
+    <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Application\Sample\TestGameObject\Plane.h" />
   </ItemGroup>
   <ItemGroup>
@@ -656,7 +656,7 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
-    <None Include="convert-tabs-to-spaces.ps1" />
+    <None Include="Script\convert-tabs-to-spaces.ps1" />
     <None Include="docs\BulletHitParticle_Implementation.md" />
     <None Include="docs\LineRenderer_Refactoring.md" />
     <None Include="docs\Logger_Usage.md" />
@@ -665,7 +665,6 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <None Include="docs\ParticleSystem_Refactoring_Final.md" />
     <None Include="docs\ParticleSystem_Refactoring_Progress.md" />
     <None Include="docs\ParticleSystem_Refactoring_Summary.md" />
-    <None Include="docs\ShaderReflectionReport.md" />
     <None Include="Docs\ShadowSystemImplementation.md" />
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
     <None Include="Engine\Graphics\RootSignature\RootSignatureManager.h.new" />

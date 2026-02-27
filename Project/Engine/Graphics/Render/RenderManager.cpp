@@ -9,7 +9,7 @@
 #include "Engine/Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Engine/Graphics/Shadow/ShadowMapManager.h"
 #include "Engine/Graphics/Model/Model.h"
-#include "Engine/TestGameObject/SkyBoxObject.h"
+#include "Application/Sample/TestGameObject/SkyBoxObject.h"
 #include "Engine/Camera/CameraManager.h"
 #include "Engine/Camera/ICamera.h"
 #include "Engine/Math/MathCore.h"
