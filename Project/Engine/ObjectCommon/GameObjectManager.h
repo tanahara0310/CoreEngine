@@ -4,6 +4,9 @@
 #include <memory>
 #include <vector>
 #include <deque>
+#include <functional>
+#include <map>
+#include <string>
 
 // Forward declaration
 namespace CoreEngine {
@@ -26,6 +29,12 @@ namespace CoreEngine
         T* AddObject(std::unique_ptr<T> obj) {
             static_assert(std::is_base_of_v<GameObject, T>, "T must derive from GameObject");
             T* ptr = obj.get();
+            // 名前未設定の場合は GetObjectName() + 連番番号で自動付与
+            if (ptr->GetName().empty()) {
+                std::string baseName = ptr->GetObjectName();
+                int idx = nameCounters_[baseName]++;
+                ptr->SetName(baseName + "_" + std::to_string(idx));
+            }
             objects_.push_back(std::move(obj));
             return ptr;
         }
@@ -63,11 +72,34 @@ namespace CoreEngine
         void DrawAllImGui();
 #endif
 
+        /// @brief オブジェクトの値が ImGui で変更されたときのコールバックを設定
+        void SetOnChangedCallback(std::function<void(GameObject*)> callback) {
+            onChangedCallback_ = std::move(callback);
+        }
+
+#ifdef _DEBUG
+        /// @brief ImGui 編集コミット時コールバックを設定（Undo/Redo 用）
+        void SetEditCommitCallback(GameObject::EditCommitCallback cb) {
+            editCommitCallback_ = std::move(cb);
+        }
+#endif
+
     private:
         /// @brief 管理中のオブジェクトリスト
         std::deque<std::unique_ptr<GameObject>> objects_;
 
         /// @brief 削除待ちキュー（フレーム終了後に破棄）
         std::vector<std::unique_ptr<GameObject>> destroyQueue_;
+
+        /// @brief オブジェクト名の連番番号管理（名前重複を防ぐ）
+        std::map<std::string, int> nameCounters_;
+
+        /// @brief ImGui変更時コールバック（デバッグビルドのみ使用）
+        std::function<void(GameObject*)> onChangedCallback_;
+
+#ifdef _DEBUG
+        /// @brief ImGui 編集コミット時コールバック（Undo/Redo 用）
+        GameObject::EditCommitCallback editCommitCallback_;
+#endif
     };
 }

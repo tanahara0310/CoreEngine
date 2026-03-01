@@ -406,6 +406,8 @@
     <ClCompile Include="Engine\Graphics\RootSignature\RootSignatureManager.cpp" />
     <ClCompile Include="Engine\WorldTransform\WorldTransform.cpp" />
     <ClCompile Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp" />
+    <ClCompile Include="Engine\Scene\SceneSerializer.cpp" />
+    <ClCompile Include="Engine\Scene\UndoRedoHistory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1229,6 +1231,8 @@
     <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h" />
+    <ClInclude Include="Engine\Scene\SceneSerializer.h" />
+    <ClInclude Include="Engine\Scene\UndoRedoHistory.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">

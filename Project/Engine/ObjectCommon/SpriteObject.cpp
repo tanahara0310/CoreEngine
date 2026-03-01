@@ -272,76 +272,130 @@ void SpriteObject::ChangeAnchorKeepingPosition(const Vector2& newAnchor) {
 #ifdef _DEBUG
 bool SpriteObject::DrawImGui() {
     bool changed = false;
-    
+
     // 一意のヘッダーラベル
     // 設定された名前がある場合はそれを使用、なければクラス名を使用
     const char* displayName = name_.empty() ? GetObjectName() : name_.c_str();
     char headerLabel[256];
     snprintf(headerLabel, sizeof(headerLabel), "%s##%p", displayName, (void*)this);
-    
+
     if (ImGui::CollapsingHeader(headerLabel)) {
         ImGui::PushID(this);
-        
+
         // アクティブ状態
+        bool prevActive = isActive_;
         bool active = isActive_;
         if (ImGui::Checkbox("Active", &active)) {
             isActive_ = active;
             changed = true;
+            // Active 変更は即時確定 → コールバックを呼ぶ
+            if (onEditCommitted_) {
+                onEditCommitted_(this,
+                    transform_.translate, transform_.rotate, transform_.scale,
+                    prevActive);
+            }
         }
-        
+
         ImGui::Separator();
-        
+
         // 位置（Sprite用：X, Y, Z個別表示）
         ImGui::Text("位置 (Position):");
         if (ImGui::DragFloat("X##pos", &transform_.translate.x, 0.1f, -FLT_MAX, FLT_MAX, "%.2f")) {
             changed = true;
         }
+        if (ImGui::IsItemActivated()) {
+            imguiSnapTranslate_ = transform_.translate;
+            imguiSnapRotate_ = transform_.rotate;
+            imguiSnapScale_ = transform_.scale;
+            imguiSnapActive_ = isActive_;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+        }
+
         if (ImGui::DragFloat("Y##pos", &transform_.translate.y, 0.1f, -FLT_MAX, FLT_MAX, "%.2f")) {
             changed = true;
         }
+        if (ImGui::IsItemActivated()) {
+            imguiSnapTranslate_ = transform_.translate;
+            imguiSnapRotate_ = transform_.rotate;
+            imguiSnapScale_ = transform_.scale;
+            imguiSnapActive_ = isActive_;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+        }
+
         if (ImGui::DragFloat("Z##pos", &transform_.translate.z, 0.1f, -FLT_MAX, FLT_MAX, "%.2f")) {
             changed = true;
         }
-        
+        if (ImGui::IsItemActivated()) {
+            imguiSnapTranslate_ = transform_.translate;
+            imguiSnapRotate_ = transform_.rotate;
+            imguiSnapScale_ = transform_.scale;
+            imguiSnapActive_ = isActive_;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+        }
+
         ImGui::Separator();
-        
+
         // スケール
         ImGui::Text("スケール (Scale):");
         ImGui::Text("倍率（テクスチャサイズに対する）");
         if (ImGui::DragFloat3("##scale", &transform_.scale.x, 0.01f, 0.0f, 10.0f)) {
             changed = true;
         }
-        
+        if (ImGui::IsItemActivated()) {
+            imguiSnapTranslate_ = transform_.translate;
+            imguiSnapRotate_ = transform_.rotate;
+            imguiSnapScale_ = transform_.scale;
+            imguiSnapActive_ = isActive_;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+        }
+
         ImGui::Text("テクスチャサイズ: %.0fx%.0f px", textureSize_.x, textureSize_.y);
         Vector2 actualSize = GetActualSize();
         ImGui::Text("実際の描画サイズ: %.0fx%.0f px", actualSize.x, actualSize.y);
-        
+
         ImGui::Separator();
-        
+
         // 回転
         ImGui::Text("回転 (Rotation):");
         if (ImGui::DragFloat3("##rotate", &transform_.rotate.x, 0.01f, -6.28f, 6.28f)) {
             changed = true;
         }
-        
+        if (ImGui::IsItemActivated()) {
+            imguiSnapTranslate_ = transform_.translate;
+            imguiSnapRotate_ = transform_.rotate;
+            imguiSnapScale_ = transform_.scale;
+            imguiSnapActive_ = isActive_;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+        }
+
         ImGui::Separator();
-        
+
         // 色
         ImGui::Text("色 (Color):");
         if (ImGui::ColorEdit4("##color", &color_.x)) {
             changed = true;
         }
-        
+
         ImGui::Separator();
         ImGui::Text("アンカーポイント (Anchor Point):");
-        
+
         // アンカーポイントのドラッグ
         Vector2 anchorTemp = anchorPoint_;
         if (ImGui::DragFloat2("##anchor", &anchorTemp.x, 0.01f, 0.0f, 1.0f, "%.3f")) {
             ChangeAnchorKeepingPosition(anchorTemp);
             changed = true;
         }
-        
+
         // プリセットボタン
         ImGui::Text("プリセット:");
         if (ImGui::Button("左上##topleft")) {
@@ -358,16 +412,16 @@ bool SpriteObject::DrawImGui() {
             ChangeAnchorKeepingPosition({ 1.0f, 1.0f });
             changed = true;
         }
-        
+
         ImGui::Separator();
         if (ImGui::Button("リセット##reset")) {
             Reset();
             changed = true;
         }
-        
+
         ImGui::PopID();
     }
-    
+
     return changed;
 }
 #endif

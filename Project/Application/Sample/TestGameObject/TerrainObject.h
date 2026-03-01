@@ -16,11 +16,8 @@ public:
     /// @param camera カメラ
     void Draw(const CoreEngine::ICamera* camera) override;
 
-#ifdef _DEBUG
     /// @brief オブジェクト名を取得
-    /// @return オブジェクト名
     const char* GetObjectName() const override { return "Terrain"; }
-#endif
 
     /// @brief トランスフォームを取得
     CoreEngine::WorldTransform& GetTransform() { return transform_; }

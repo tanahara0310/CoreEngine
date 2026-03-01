@@ -16,11 +16,10 @@ public:
     /// @param camera カメラ
     void Draw(const CoreEngine::ICamera* camera) override;
 
-#ifdef _DEBUG
     /// @brief オブジェクト名を取得
-    /// @return オブジェクト名
     const char* GetObjectName() const override { return "Model"; }
 
+#ifdef _DEBUG
     /// @brief デバッグUI描画
     bool DrawImGuiExtended() override;
 #endif

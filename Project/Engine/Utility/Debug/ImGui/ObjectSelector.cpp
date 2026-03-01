@@ -25,7 +25,7 @@ namespace CoreEngine
     }
 
     void ObjectSelector::Update(GameObjectManager* gameObjectManager, const ICamera* camera,
-                                 const Vector2& mousePos, bool isViewportHovered)
+        const Vector2& mousePos, bool isViewportHovered)
     {
         if (!gameObjectManager || !camera) {
             return;
@@ -64,12 +64,33 @@ namespace CoreEngine
     void ObjectSelector::DrawGizmo(const ICamera* camera)
     {
         if (selectedObject_ && camera) {
+            // ギズモ非使用中は操作前スナップショットを連続更新する
+            if (!Gizmo::IsUsing()) {
+                beforeGizmoTranslate_ = selectedObject_->GetTransform().translate;
+                beforeGizmoRotate_ = selectedObject_->GetTransform().rotate;
+                beforeGizmoScale_ = selectedObject_->GetTransform().scale;
+                beforeGizmoActive_ = selectedObject_->IsActive();
+            }
+
             Gizmo::Manipulate(selectedObject_, camera, gizmoMode_);
+
+            // ギズモ操作中→操作完了の遷移を検出
+            bool isUsing = Gizmo::IsUsing();
+            if (wasGizmoUsing_ && !isUsing) {
+                if (onTransformChanged_) {
+                    onTransformChanged_(selectedObject_);
+                }
+                if (onGizmoEditCommitted_) {
+                    onGizmoEditCommitted_(selectedObject_,
+                        beforeGizmoTranslate_, beforeGizmoRotate_, beforeGizmoScale_, beforeGizmoActive_);
+                }
+            }
+            wasGizmoUsing_ = isUsing;
         }
     }
 
     void ObjectSelector::Update2D(GameObjectManager* gameObjectManager, const ICamera* camera,
-                                   const Vector2& mousePos, bool isViewportHovered)
+        const Vector2& mousePos, bool isViewportHovered)
     {
         if (!gameObjectManager || !camera) {
             return;
@@ -109,7 +130,28 @@ namespace CoreEngine
     void ObjectSelector::DrawGizmo2D(const ICamera* camera)
     {
         if (selectedSprite_ && camera) {
+            // ギズモ非使用中は操作前スナップショットを連続更新する
+            if (!Gizmo::IsUsing()) {
+                beforeGizmoTranslate_ = selectedSprite_->GetSpriteTransform().translate;
+                beforeGizmoRotate_ = selectedSprite_->GetSpriteTransform().rotate;
+                beforeGizmoScale_ = selectedSprite_->GetSpriteTransform().scale;
+                beforeGizmoActive_ = selectedSprite_->IsActive();
+            }
+
             Gizmo::Manipulate2D(selectedSprite_, camera, gizmoMode_);
+
+            // ギズモ操作中→操作完了の遷移を検出
+            bool isUsing = Gizmo::IsUsing();
+            if (wasGizmoUsing_ && !isUsing) {
+                if (onTransformChanged_) {
+                    onTransformChanged_(selectedSprite_);
+                }
+                if (onGizmoEditCommitted_) {
+                    onGizmoEditCommitted_(selectedSprite_,
+                        beforeGizmoTranslate_, beforeGizmoRotate_, beforeGizmoScale_, beforeGizmoActive_);
+                }
+            }
+            wasGizmoUsing_ = isUsing;
         }
     }
 
@@ -123,7 +165,7 @@ namespace CoreEngine
 
         // スクリーンサイズを取得
         Vector2 screenSize = camera2D->GetScreenSize();
-        
+
         // 正規化座標（0.0〜1.0）をスクリーン座標に変換
         // 画面中央が原点、Y軸上が正
         float screenX = (mousePos.x - 0.5f) * screenSize.x;
@@ -140,7 +182,7 @@ namespace CoreEngine
     }
 
     SpriteObject* ObjectSelector::RaycastSprite(GameObjectManager* gameObjectManager,
-                                                  const ICamera* camera, const Vector2& mousePos)
+        const ICamera* camera, const Vector2& mousePos)
     {
         // マウス位置をワールド座標に変換
         Vector2 worldMousePos = ScreenToWorld2D(mousePos, camera);
@@ -192,7 +234,7 @@ namespace CoreEngine
     }
 
     void ObjectSelector::ScreenToWorldRay(const Vector2& mousePos, const ICamera* camera,
-                                          Vector3& rayOrigin, Vector3& rayDirection)
+        Vector3& rayOrigin, Vector3& rayDirection)
     {
         // カメラの位置を取得（レイの始点）
         rayOrigin = camera->GetPosition();
@@ -209,7 +251,7 @@ namespace CoreEngine
         // プロジェクション行列の逆変換を近似的に計算
         float fovY = 2.0f * std::atan(1.0f / projectionMatrix.m[1][1]);
         float aspectRatio = projectionMatrix.m[1][1] / projectionMatrix.m[0][0];
-        
+
         // ビュー空間でのレイ方向を計算
         float viewX = ndcX * std::tan(fovY * 0.5f) * aspectRatio;
         float viewY = ndcY * std::tan(fovY * 0.5f);
@@ -235,7 +277,7 @@ namespace CoreEngine
     }
 
     bool ObjectSelector::RayIntersectsSphere(const Vector3& rayOrigin, const Vector3& rayDirection,
-                                              const Vector3& sphereCenter, float sphereRadius, float& distance)
+        const Vector3& sphereCenter, float sphereRadius, float& distance)
     {
         // レイの始点からスフィアの中心へのベクトル
         Vector3 oc = Vector3(
@@ -245,14 +287,14 @@ namespace CoreEngine
         );
 
         // 二次方程式の係数を計算
-        float a = rayDirection.x * rayDirection.x + 
-                  rayDirection.y * rayDirection.y + 
-                  rayDirection.z * rayDirection.z;
-        
-        float b = 2.0f * (oc.x * rayDirection.x + 
-                          oc.y * rayDirection.y + 
-                          oc.z * rayDirection.z);
-        
+        float a = rayDirection.x * rayDirection.x +
+            rayDirection.y * rayDirection.y +
+            rayDirection.z * rayDirection.z;
+
+        float b = 2.0f * (oc.x * rayDirection.x +
+            oc.y * rayDirection.y +
+            oc.z * rayDirection.z);
+
         float c = oc.x * oc.x + oc.y * oc.y + oc.z * oc.z - sphereRadius * sphereRadius;
 
         // 判別式
@@ -280,8 +322,8 @@ namespace CoreEngine
     }
 
     bool ObjectSelector::RayIntersectsTriangle(const Vector3& rayOrigin, const Vector3& rayDirection,
-                                                const Vector3& v0, const Vector3& v1, const Vector3& v2,
-                                                float& distance)
+        const Vector3& v0, const Vector3& v1, const Vector3& v2,
+        float& distance)
     {
         const float kEpsilon = 0.0000001f;
 
@@ -306,7 +348,7 @@ namespace CoreEngine
 
         float f = 1.0f / a;
         Vector3 s = Vector3(rayOrigin.x - v0.x, rayOrigin.y - v0.y, rayOrigin.z - v0.z);
-        
+
         // u座標を計算
         float u = f * (s.x * h.x + s.y * h.y + s.z * h.z);
         if (u < 0.0f || u > 1.0f) {
@@ -338,7 +380,7 @@ namespace CoreEngine
     }
 
     bool ObjectSelector::RayIntersectsMesh(const Vector3& rayOrigin, const Vector3& rayDirection,
-                                            GameObject* object, float& distance)
+        GameObject* object, float& distance)
     {
         // GameObjectからModelを取得
         Model* model = object->GetModel();
@@ -364,7 +406,7 @@ namespace CoreEngine
 
         // ModelDataを取得
         const ModelData& modelData = modelResource->GetModelData();
-        
+
         // 頂点データとインデックスデータを取得
         const std::vector<VertexData>& vertices = modelData.vertices;
         const std::vector<int32_t>& indices = modelData.indices;
@@ -455,7 +497,7 @@ namespace CoreEngine
     }
 
     GameObject* ObjectSelector::RaycastObject(GameObjectManager* gameObjectManager,
-                                                const ICamera* camera, const Vector2& mousePos)
+        const ICamera* camera, const Vector2& mousePos)
     {
         const auto& objects = gameObjectManager->GetAllObjects();
         GameObject* closestObject = nullptr;

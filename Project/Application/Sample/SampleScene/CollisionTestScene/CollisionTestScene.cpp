@@ -9,6 +9,7 @@ void CollisionTestScene::Initialize(EngineSystem* engine)
 {
     // 基底クラスの初期化（カメラ、ライト、グリッド）
     BaseScene::Initialize(engine);
+    SetSceneName("CollisionTestScene");
 
     // Player ↔ Enemy レイヤー間の衝突を有効化
     SetCollisionEnabled(CollisionLayer::Player, CollisionLayer::Enemy);
@@ -37,6 +38,9 @@ void CollisionTestScene::Initialize(EngineSystem* engine)
         staticSpheres_[i]->SetMaterialColor(kStaticColors[i]);
         staticSpheres_[i]->AddSphereCollider(kSphereRadius, CollisionLayer::Enemy);
     }
+
+    // JSON からオブジェクトのトランスフォームを復元（ファイルがなければコード値をそのまま使用）
+    LoadObjectsFromJson();
 }
 
 void CollisionTestScene::OnUpdate()

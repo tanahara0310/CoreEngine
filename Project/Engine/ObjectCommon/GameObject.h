@@ -8,6 +8,7 @@
 #include "Engine/Graphics/Model/Model.h"
 #include "Engine/Collider/Collider.h"
 #include "Engine/Collider/SphereCollider.h"
+#include <functional>
 #include "Engine/Collider/AABBCollider.h"
 
 #include <memory>
@@ -146,6 +147,16 @@ namespace CoreEngine
         /// @return 設定された名前（空の場合はクラス名）
         const std::string& GetName() const { return name_; }
 
+        /// @brief オブジェクト名を取得（派生クラスでオーバーライド推奨）
+        /// @return オブジェクト名（シリアライズキーとしても使用）
+        virtual const char* GetObjectName() const { return "GameObject"; }
+
+        /// @brief JSON シリアライズ対象かどうかを取得
+        bool IsSerializeEnabled() const { return shouldSerialize_; }
+
+        /// @brief JSON シリアライズ対象かどうかを設定
+        void SetSerializeEnabled(bool enable) { shouldSerialize_ = enable; }
+
 #ifdef _DEBUG
         /// @brief ImGuiデバッグUI描画（基本パラメータ：Transform、Active）
         /// @return ImGuiで変更があった場合 true
@@ -155,9 +166,14 @@ namespace CoreEngine
         /// @return ImGuiで変更があった場合 true
         virtual bool DrawImGuiExtended() { return false; }
 
-        /// @brief オブジェクト名を取得（派生クラスでオーバーライド推奨）
-        /// @return オブジェクト名
-        virtual const char* GetObjectName() const { return "GameObject"; }
+        /// @brief ImGui 編集コミット時コールバック型（Undo/Redo 用）
+        using EditCommitCallback = std::function<void(
+            GameObject*,
+            const Vector3& translateBefore, const Vector3& rotateBefore,
+            const Vector3& scaleBefore, bool activeBefore)>;
+
+        /// @brief ImGui 編集コミット時コールバックを設定（Undo/Redo 用）
+        void SetEditCommitCallback(EditCommitCallback cb) { onEditCommitted_ = std::move(cb); }
 #endif
 
     protected:
@@ -186,5 +202,17 @@ namespace CoreEngine
 
         /// @brief 自動更新フラグ（true: GameObjectManagerが自動で更新、false: 手動更新）
         bool autoUpdate_ = true;
+
+        /// @brief JSON シリアライズ対象フラグ（falseにするとシーンデータに保存されない）
+        bool shouldSerialize_ = true;
+
+#ifdef _DEBUG
+        // ImGui 編集追跡用（操作前スナップショット）
+        Vector3 imguiSnapTranslate_ = { 0.0f, 0.0f, 0.0f };
+        Vector3 imguiSnapRotate_    = { 0.0f, 0.0f, 0.0f };
+        Vector3 imguiSnapScale_     = { 1.0f, 1.0f, 1.0f };
+        bool    imguiSnapActive_    = true;
+        EditCommitCallback onEditCommitted_;
+#endif
     };
 }

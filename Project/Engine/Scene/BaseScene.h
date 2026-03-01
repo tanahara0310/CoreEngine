@@ -8,6 +8,10 @@
 #include "Engine/Collider/CollisionConfig.h"
 #include <memory>
 
+#ifdef _DEBUG
+#include "Engine/Scene/UndoRedoHistory.h"
+#endif
+
 // 前方宣言
 namespace CoreEngine {
     class EngineSystem;
@@ -107,7 +111,22 @@ namespace CoreEngine
             collisionConfig_.SetCollisionEnabled(a, b, enable);
         }
 
-        /// @brief シーンのBGMを登録し、トランジション時の自動フェードを有効化
+        /// @brief シーン名を設定（JSON ファイルパスに使用）
+        /// @note 派生クラスの Initialize()内、BaseScene::Initialize() の後に呼ぶ
+        void SetSceneName(const std::string& name) { sceneName_ = name; }
+
+        /// @brief シーンのオブジェクトデータを JSON から読み込んで登録済みオブジェクトに適用
+        /// @note 派生クラスの Initialize()内、全 CreateObject() の後に呼ぶ
+        void LoadObjectsFromJson();
+
+        /// @brief シーン名を取得
+        const std::string& GetSceneName() const { return sceneName_; }
+
+        /// @brief シーンのオブジェクトデータを JSON に保存（デバッグビルドのみ）
+        /// @note ギズモ・ ImGui 変更時に自動呼び出される
+        void SaveObjectsToJson();
+
+        /// @brief シーンBGMを登録し、トランジション時の自動フェードを有効化
         /// @param bgm BGMのSoundResourceポインタ（現在のSetVolume()で設定した音量が使用されます）
         void RegisterSceneBGM(std::unique_ptr<SoundManager::SoundResource>* bgm);
 
@@ -115,5 +134,13 @@ namespace CoreEngine
         // BGM管理用
         std::unique_ptr<SoundManager::SoundResource>* sceneBGM_ = nullptr;
         float baseBGMVolume_ = 1.0f;
+
+        // データドリブン用
+        std::string sceneName_;         // JSONファイル名に使用するシーン名
+        bool isDirty_ = false;          // 変更フラグ（trueのとき次のフレーム末に保存）
+
+#ifdef _DEBUG
+        UndoRedoHistory undoRedoHistory_;  // Undo/Redo 履歴管理
+#endif
     };
 }

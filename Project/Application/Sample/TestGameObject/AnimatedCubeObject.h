@@ -20,11 +20,10 @@ public:
     /// @brief ImGui拡張UI描画（アニメーション制御を追加）
     /// @return ImGuiで変更があった場合 true
     bool DrawImGuiExtended() override;
+#endif
 
     /// @brief オブジェクト名を取得
-    /// @return オブジェクト名
     const char* GetObjectName() const override { return "AnimatedCube"; }
-#endif
 
     /// @brief アニメーション速度を設定
     /// @param speed 再生速度（1.0が通常速度）

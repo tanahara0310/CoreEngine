@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
 #include "Engine/Graphics/Line/Line.h"
@@ -36,12 +36,12 @@ public:
     BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
 
 #ifdef _DEBUG
-    /// @brief オブジェクト名を取得
-    const char* GetObjectName() const override { return "GridRenderer"; }
-
     /// @brief ImGuiデバッグUI
     bool DrawImGui() override;
 #endif
+
+    /// @brief オブジェクト名を取得
+    const char* GetObjectName() const override { return "GridRenderer"; }
 
     /// @brief グリッドサイズを設定
     /// @param size グリッドのサイズ（カメラからの距離）
