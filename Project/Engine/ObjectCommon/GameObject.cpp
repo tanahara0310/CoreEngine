@@ -38,10 +38,17 @@ namespace CoreEngine
             ImGui::PushID(this);
 
             // アクティブ状態
+            bool prevActive = isActive_;
             bool active = isActive_;
             if (ImGui::Checkbox("Active", &active)) {
                 isActive_ = active;
                 changed = true;
+                // Active 変更は即時確定 → コールバックを呼ぶ
+                if (onEditCommitted_) {
+                    onEditCommitted_(this,
+                        transform_.translate, transform_.rotate, transform_.scale,
+                        prevActive);
+                }
             }
 
             // 自動更新フラグ
@@ -60,8 +67,37 @@ namespace CoreEngine
                 Vector3& scale = transform_.scale;
 
                 changed |= ImGui::DragFloat3("Position", &pos.x, 0.1f);
+                if (ImGui::IsItemActivated()) {
+                    imguiSnapTranslate_ = transform_.translate;
+                    imguiSnapRotate_ = transform_.rotate;
+                    imguiSnapScale_ = transform_.scale;
+                    imguiSnapActive_ = isActive_;
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+                    onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+                }
+
                 changed |= ImGui::DragFloat3("Rotation", &rot.x, 0.01f);
+                if (ImGui::IsItemActivated()) {
+                    imguiSnapTranslate_ = transform_.translate;
+                    imguiSnapRotate_ = transform_.rotate;
+                    imguiSnapScale_ = transform_.scale;
+                    imguiSnapActive_ = isActive_;
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+                    onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+                }
+
                 changed |= ImGui::DragFloat3("Scale", &scale.x, 0.01f);
+                if (ImGui::IsItemActivated()) {
+                    imguiSnapTranslate_ = transform_.translate;
+                    imguiSnapRotate_ = transform_.rotate;
+                    imguiSnapScale_ = transform_.scale;
+                    imguiSnapActive_ = isActive_;
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+                    onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+                }
 
                 ImGui::TreePop();
             }

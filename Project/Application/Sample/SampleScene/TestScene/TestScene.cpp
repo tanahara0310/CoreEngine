@@ -24,8 +24,8 @@ namespace CoreEngine
 {
     void TestScene::Initialize(EngineSystem* engine)
     {
-
         BaseScene::Initialize(engine);
+        SetSceneName("TestScene");
 
         ///========================================================
         // モデルの読み込みと初期化
@@ -140,8 +140,11 @@ namespace CoreEngine
         // テストスプライト
         auto sprite = CreateObject<SpriteObject>();
         sprite->Initialize("Texture/uvChecker.png");
-        sprite->GetTransform().translate = { 100.0f, 100.0f, 0.0f };
-        sprite->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        sprite->GetSpriteTransform().translate = { 100.0f, 100.0f, 0.0f };
+        sprite->GetSpriteTransform().scale = { 1.0f, 1.0f, 1.0f };
+
+        // JSON からオブジェクトのトランスフォームを復元（ファイルがなければコード値をそのまま使用）
+        LoadObjectsFromJson();
     }
 
     void TestScene::OnUpdate()

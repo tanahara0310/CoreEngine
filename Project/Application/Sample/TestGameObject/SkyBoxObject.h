@@ -36,11 +36,10 @@ public:
     /// @brief 拡張ImGuiデバッグUI描画（SkyBox固有パラメータ）
     /// @return 変更があった場合 true
     bool DrawImGuiExtended() override;
+#endif
 
     /// @brief オブジェクト名を取得
-    /// @return オブジェクト名
     const char* GetObjectName() const override { return "SkyBox"; }
-#endif
 
     /// @brief このオブジェクトの描画パスタイプを取得
     /// @return 描画パスタイプ（SkyBox）

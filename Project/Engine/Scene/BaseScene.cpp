@@ -12,12 +12,17 @@
 #include "Engine/Graphics/Render/Line/GridRenderer.h"
 #include "Engine/Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
+#include "Scene/SceneSerializer.h"
+#include "Engine/ObjectCommon/SpriteObject.h"
+#include "Engine/Utility/JsonManager/JsonManager.h"
 #include "WinApp/WinApp.h"
 #include <numbers>
 
 #ifdef _DEBUG
 #include <imgui.h>
 #include "Engine/Camera/Debug/CameraDebugUI.h"
+#include "Engine/Utility/Debug/ImGui/SceneViewport.h"
+#include "Engine/Utility/Debug/ImGui/ObjectSelector.h"
 #endif
 
 
@@ -36,6 +41,82 @@ namespace CoreEngine
 #ifdef _DEBUG
         //グリッド（デバッグビルドのみ）
         SetupGrid();
+
+        // ギズモ変更時コールバックを設定
+        auto imGuiManager = engine_->GetImGuiManager();
+        if (imGuiManager) {
+            auto* sceneViewport = imGuiManager->GetSceneViewport();
+            if (sceneViewport) {
+                auto* objectSelector = sceneViewport->GetObjectSelector();
+                if (objectSelector) {
+                    // JSON 保存トリガー
+                    objectSelector->SetOnTransformChanged([this](GameObject*) {
+                        isDirty_ = true;
+                        });
+
+                    // Undo/Redo 記録（ギズモ操作完了時）
+                    objectSelector->SetOnGizmoEditCommitted([this](
+                        GameObject* obj,
+                        const Vector3& tBefore, const Vector3& rBefore,
+                        const Vector3& sBefore, bool aBefore) {
+                            if (!obj) return;
+                            TransformRecord record;
+                            record.objectName = obj->GetName();
+                            record.translateBefore = tBefore;
+                            record.rotateBefore = rBefore;
+                            record.scaleBefore = sBefore;
+                            record.activeBefore = aBefore;
+                            // SpriteObject の場合は独自トランスフォームから取得
+                            auto* spriteObj = dynamic_cast<SpriteObject*>(obj);
+                            if (spriteObj) {
+                                record.translateAfter = spriteObj->GetSpriteTransform().translate;
+                                record.rotateAfter = spriteObj->GetSpriteTransform().rotate;
+                                record.scaleAfter = spriteObj->GetSpriteTransform().scale;
+                            } else {
+                                record.translateAfter = obj->GetTransform().translate;
+                                record.rotateAfter = obj->GetTransform().rotate;
+                                record.scaleAfter = obj->GetTransform().scale;
+                            }
+                            record.activeAfter = obj->IsActive();
+                            undoRedoHistory_.Push(record);
+                            isDirty_ = true;
+                        });
+                }
+            }
+        }
+
+        // ImGui 変更通知コールバック（JSON 保存トリガー）
+        gameObjectManager_.SetOnChangedCallback([this](GameObject*) {
+            isDirty_ = true;
+            });
+
+        // Undo/Redo 記録（ImGui 操作完了時）
+        gameObjectManager_.SetEditCommitCallback([this](
+            GameObject* obj,
+            const Vector3& tBefore, const Vector3& rBefore,
+            const Vector3& sBefore, bool aBefore) {
+                if (!obj) return;
+                TransformRecord record;
+                record.objectName = obj->GetName();
+                record.translateBefore = tBefore;
+                record.rotateBefore = rBefore;
+                record.scaleBefore = sBefore;
+                record.activeBefore = aBefore;
+                // SpriteObject の場合は独自トランスフォームから取得
+                auto* spriteObj = dynamic_cast<SpriteObject*>(obj);
+                if (spriteObj) {
+                    record.translateAfter = spriteObj->GetSpriteTransform().translate;
+                    record.rotateAfter = spriteObj->GetSpriteTransform().rotate;
+                    record.scaleAfter = spriteObj->GetSpriteTransform().scale;
+                } else {
+                    record.translateAfter = obj->GetTransform().translate;
+                    record.rotateAfter = obj->GetTransform().rotate;
+                    record.scaleAfter = obj->GetTransform().scale;
+                }
+                record.activeAfter = obj->IsActive();
+                undoRedoHistory_.Push(record);
+                isDirty_ = true;
+            });
 #endif
     }
 
@@ -83,10 +164,39 @@ namespace CoreEngine
         // LineManagerのImGui
         LineManager::GetInstance().DrawImGui();
 
+        // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）
+        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) {
+            if (undoRedoHistory_.Undo(&gameObjectManager_)) {
+                isDirty_ = true;
+            }
+        }
+        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Y)) {
+            if (undoRedoHistory_.Redo(&gameObjectManager_)) {
+                isDirty_ = true;
+            }
+        }
+
         // ゲームオブジェクトのImGuiデバッグUI表示
         if (ImGui::Begin("オブジェクト制御")) {
-            gameObjectManager_.DrawAllImGui();
+            // Undo/Redo ボタンと履歴件数を表示
+            ImGui::BeginDisabled(!undoRedoHistory_.CanUndo());
+            if (ImGui::Button("Undo")) {
+                if (undoRedoHistory_.Undo(&gameObjectManager_)) isDirty_ = true;
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!undoRedoHistory_.CanRedo());
+            if (ImGui::Button("Redo")) {
+                if (undoRedoHistory_.Redo(&gameObjectManager_)) isDirty_ = true;
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::Text("(%d / %d)",
+                undoRedoHistory_.GetUndoCount(),
+                undoRedoHistory_.GetUndoCount() + undoRedoHistory_.GetRedoCount());
+            ImGui::Separator();
 
+            gameObjectManager_.DrawAllImGui();
         }
         ImGui::End();
 
@@ -103,7 +213,7 @@ namespace CoreEngine
                     // 3Dオブジェクト選択を更新
                     sceneViewport->UpdateObjectSelection(&gameObjectManager_, activeCamera3D);
                 }
-                
+
                 // 2Dカメラを設定
                 if (activeCamera2D) {
                     sceneViewport->SetCamera2D(activeCamera2D);
@@ -128,6 +238,14 @@ namespace CoreEngine
 
         // 派生クラスの後処理（クリーンアップ前）
         OnLateUpdate();
+
+#ifdef _DEBUG
+        // 変更があった場合のみ JSON に保存（フレーム末尾で1回だけ）
+        if (isDirty_ && !sceneName_.empty()) {
+            SaveObjectsToJson();
+            isDirty_ = false;
+        }
+#endif
     }
 
     void BaseScene::Draw()
@@ -165,6 +283,11 @@ namespace CoreEngine
     {
         // ゲームオブジェクトをクリア（新システム）
         gameObjectManager_.Clear();
+
+#ifdef _DEBUG
+        // Undo/Redo 履歴をクリア
+        undoRedoHistory_.Clear();
+#endif
     }
 
     void BaseScene::SetupCamera()
@@ -235,6 +358,9 @@ namespace CoreEngine
         gridRenderer_->SetGridSize(100.0f);
         gridRenderer_->SetSpacing(1.0f);
         gridRenderer_->SetVisible(true);
+
+        // グリッドはシーンデータに保存しない
+        gridRenderer_->SetSerializeEnabled(false);
     }
 #endif
 
@@ -288,5 +414,61 @@ namespace CoreEngine
                 }
                 });
         }
+    }
+
+    void BaseScene::LoadObjectsFromJson()
+    {
+        if (sceneName_.empty()) return;
+
+        std::string filePath = "Assets/Scene/" + sceneName_ + ".json";
+        auto& jsonManager = JsonManager::GetInstance();
+
+        if (!jsonManager.FileExists(filePath)) return;
+
+        json j = jsonManager.LoadJson(filePath);
+        if (!j.contains("objects")) return;
+
+        const json& objects = j["objects"];
+        for (const auto& obj : gameObjectManager_.GetAllObjects()) {
+            if (!obj || !obj->IsSerializeEnabled()) continue;
+            const std::string& name = obj->GetName();
+            if (name.empty()) continue;
+            if (objects.contains(name)) {
+                // SpriteObject の場合は専用シリアライザを使用
+                auto* spriteObj = dynamic_cast<SpriteObject*>(obj.get());
+                if (spriteObj) {
+                    SceneSerializer::LoadSpriteObject(spriteObj, objects[name]);
+                } else {
+                    SceneSerializer::LoadObject(obj.get(), objects[name]);
+                }
+            }
+        }
+    }
+
+    void BaseScene::SaveObjectsToJson()
+    {
+        if (sceneName_.empty()) return;
+
+        std::string dirPath = "Assets/Scene";
+        std::string filePath = dirPath + "/" + sceneName_ + ".json";
+        auto& jsonManager = JsonManager::GetInstance();
+
+        jsonManager.CreateJsonDirectory(dirPath);
+
+        json j;
+        for (const auto& obj : gameObjectManager_.GetAllObjects()) {
+            if (!obj || !obj->IsSerializeEnabled()) continue;
+            const std::string& name = obj->GetName();
+            if (name.empty()) continue;
+            // SpriteObject の場合は専用シリアライザを使用
+            auto* spriteObj = dynamic_cast<SpriteObject*>(obj.get());
+            if (spriteObj) {
+                SceneSerializer::SaveSpriteObject(spriteObj, j["objects"][name]);
+            } else {
+                SceneSerializer::SaveObject(obj.get(), j["objects"][name]);
+            }
+        }
+
+        jsonManager.SaveJson(filePath, j);
     }
 }

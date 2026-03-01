@@ -43,11 +43,10 @@ public:
     /// @brief ImGuiデバッグUI描画（Sprite独自実装）
     /// @return 変更があった場合 true
     bool DrawImGui() override;
-    
-    /// @brief オブジェクト名を取得
-    /// @return オブジェクト名
-    const char* GetObjectName() const override { return "Sprite"; }
 #endif
+
+    /// @brief オブジェクト名を取得
+    const char* GetObjectName() const override { return "Sprite"; }
     
     /// @brief このオブジェクトの描画パスタイプを取得
     /// @return 描画パスタイプ（Sprite）

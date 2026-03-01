@@ -230,6 +230,7 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClCompile Include="Engine\Particle\ParticlePresetManager.cpp" />
     <ClCompile Include="Engine\Scene\BaseScene.cpp" />
     <ClCompile Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.cpp" />
+    <ClCompile Include="Engine\Scene\SceneSerializer.cpp" />
     <ClCompile Include="Engine\Scene\SceneTransition.cpp" />
     <ClCompile Include="Application\Sample\TestGameObject\AnimatedCubeObject.cpp" />
     <ClCompile Include="Application\Sample\TestGameObject\FenceObject.cpp" />
@@ -248,6 +249,7 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClCompile Include="Engine\Graphics\PostEffect\Effect\Sepia.cpp" />
     <ClCompile Include="Application\Sample\SampleScene\TestScene\TestScene.cpp" />
     <ClCompile Include="Application\Sample\TestGameObject\WalkModelObject.cpp" />
+    <ClCompile Include="Engine\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Utility\Collision\CollisionUtils.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ConsoleUI.cpp" />
     <ClCompile Include="Engine\Utility\Debug\ImGui\Gizmo.cpp" />
@@ -437,6 +439,7 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Particle\ParticlePresetManager.h" />
     <ClInclude Include="Engine\Scene\BaseScene.h" />
     <ClInclude Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.h" />
+    <ClInclude Include="Engine\Scene\SceneSerializer.h" />
     <ClInclude Include="Engine\Scene\SceneTransition.h" />
     <ClInclude Include="Application\Sample\TestGameObject\AnimatedCubeObject.h" />
     <ClInclude Include="Application\Sample\TestGameObject\FenceObject.h" />
@@ -457,6 +460,7 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Math\BoundingBox.h" />
     <ClInclude Include="Engine\Math\Quaternion\Quaternion.h" />
     <ClInclude Include="Application\Sample\TestGameObject\WalkModelObject.h" />
+    <ClInclude Include="Engine\Scene\UndoRedoHistory.h" />
     <ClInclude Include="Engine\Utility\Collision\CollisionUtils.h" />
     <ClInclude Include="Engine\Utility\Debug\ConsoleUI.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\Gizmo.h" />

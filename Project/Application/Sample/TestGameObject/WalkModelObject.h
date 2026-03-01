@@ -24,11 +24,8 @@ public:
     /// @return 描画パスタイプ
     CoreEngine::RenderPassType GetRenderPassType() const override { return CoreEngine::RenderPassType::SkinnedModel; }
 
-#ifdef _DEBUG
     /// @brief オブジェクト名を取得
-    /// @return オブジェクト名
     const char* GetObjectName() const override { return "WalkModel"; }
-#endif
 
     /// @brief トランスフォームを取得
     CoreEngine::WorldTransform& GetTransform() { return transform_; }

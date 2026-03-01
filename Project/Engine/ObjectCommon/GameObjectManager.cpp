@@ -60,6 +60,7 @@ namespace CoreEngine
     void GameObjectManager::Clear() {
         objects_.clear();
         destroyQueue_.clear();
+        nameCounters_.clear();
     }
 
     void GameObjectManager::RegisterAllColliders(CollisionManager* collisionManager) {
@@ -81,18 +82,25 @@ namespace CoreEngine
         ImGui::Text("Destroy Queue: %zu", destroyQueue_.size());
         ImGui::Separator();
 
-        // アクティブなオブジェクトのImGuiを表示
         for (auto& obj : objects_) {
             if (obj) {
-                // 削除マークされているオブジェクトは赤で表示
+                // Undo/Redo 用コールバックを毎フレーム設定
+                if (editCommitCallback_) {
+                    obj->SetEditCommitCallback(editCommitCallback_);
+                }
+
                 if (obj->IsMarkedForDestroy()) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
                 }
 
-                obj->DrawImGui();
+                bool changed = obj->DrawImGui();
 
                 if (obj->IsMarkedForDestroy()) {
                     ImGui::PopStyleColor();
+                }
+
+                if (changed && onChangedCallback_) {
+                    onChangedCallback_(obj.get());
                 }
             }
         }

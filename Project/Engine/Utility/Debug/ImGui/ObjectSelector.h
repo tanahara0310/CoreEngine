@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <functional>
 #include "Engine/Math/Vector/Vector2.h"
 #include "Engine/Math/Vector/Vector3.h"
 #include "Engine/Math/Matrix/Matrix4x4.h"
@@ -69,6 +70,18 @@ namespace CoreEngine
         /// @brief ギズモモードを取得
         /// @return 現在のギズモモード
         Gizmo::Mode GetGizmoMode() const { return gizmoMode_; }
+
+        /// @brief ギズモ操作でトランスフォームが変更されたときのコールバックを設定
+        void SetOnTransformChanged(std::function<void(GameObject*)> callback) {
+            onTransformChanged_ = std::move(callback);
+        }
+
+        /// @brief ギズモ操作完了時のコールバックを設定（Undo/Redo 用）
+        /// @note 操作前の translate / rotate / scale / active を受け取る
+        void SetOnGizmoEditCommitted(
+                std::function<void(GameObject*, const Vector3&, const Vector3&, const Vector3&, bool)> cb) {
+            onGizmoEditCommitted_ = std::move(cb);
+        }
 
     private:
         /// @brief マウス位置からレイを飛ばしてオブジェクトを検出
@@ -142,5 +155,20 @@ namespace CoreEngine
         GameObject* selectedObject_ = nullptr;         // 選択中の3Dオブジェクト
         SpriteObject* selectedSprite_ = nullptr;       // 選択中のスプライト
         Gizmo::Mode gizmoMode_ = Gizmo::Mode::Translate;  // ギズモモード
+
+        /// @brief ギズモ操作完了時に呼び出すコールバック（isDirty_用）
+        std::function<void(GameObject*)> onTransformChanged_;
+
+        /// @brief ギズモ操作完了時に呼び出すコールバック（Undo/Redo 用）
+        std::function<void(GameObject*, const Vector3&, const Vector3&, const Vector3&, bool)> onGizmoEditCommitted_;
+
+        /// @brief ギズモ操作前スナップショット（非使用時に連続更新する）
+        Vector3 beforeGizmoTranslate_;
+        Vector3 beforeGizmoRotate_;
+        Vector3 beforeGizmoScale_;
+        bool    beforeGizmoActive_ = true;
+
+        /// @brief 前フレームのギズモ使用状態（操作完了検出用）
+        bool wasGizmoUsing_ = false;
     };
 }
