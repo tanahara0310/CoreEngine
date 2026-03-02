@@ -408,6 +408,8 @@
     <ClCompile Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp" />
     <ClCompile Include="Engine\Scene\SceneSerializer.cpp" />
     <ClCompile Include="Engine\Scene\UndoRedoHistory.cpp" />
+    <ClCompile Include="Engine\Scene\SceneSaveSystem.cpp" />
+    <ClCompile Include="Engine\Scene\SceneDebugEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -1233,6 +1235,8 @@
     <ClInclude Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h" />
     <ClInclude Include="Engine\Scene\SceneSerializer.h" />
     <ClInclude Include="Engine\Scene\UndoRedoHistory.h" />
+    <ClInclude Include="Engine\Scene\SceneSaveSystem.h" />
+    <ClInclude Include="Engine\Scene\SceneDebugEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">

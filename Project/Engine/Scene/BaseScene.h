@@ -8,8 +8,10 @@
 #include "Engine/Collider/CollisionConfig.h"
 #include <memory>
 
+#include "Engine/Scene/SceneSaveSystem.h"
+
 #ifdef _DEBUG
-#include "Engine/Scene/UndoRedoHistory.h"
+#include "Engine/Scene/SceneDebugEditor.h"
 #endif
 
 // 前方宣言
@@ -113,14 +115,14 @@ namespace CoreEngine
 
         /// @brief シーン名を設定（JSON ファイルパスに使用）
         /// @note 派生クラスの Initialize()内、BaseScene::Initialize() の後に呼ぶ
-        void SetSceneName(const std::string& name) { sceneName_ = name; }
+        void SetSceneName(const std::string& name) { sceneSaveSystem_->SetSceneName(name); }
 
         /// @brief シーンのオブジェクトデータを JSON から読み込んで登録済みオブジェクトに適用
         /// @note 派生クラスの Initialize()内、全 CreateObject() の後に呼ぶ
         void LoadObjectsFromJson();
 
         /// @brief シーン名を取得
-        const std::string& GetSceneName() const { return sceneName_; }
+        const std::string& GetSceneName() const { return sceneSaveSystem_->GetSceneName(); }
 
         /// @brief シーンのオブジェクトデータを JSON に保存（手動呼び出し）
         void SaveObjectsToJson();
@@ -138,22 +140,11 @@ namespace CoreEngine
         std::unique_ptr<SoundManager::SoundResource>* sceneBGM_ = nullptr;
         float baseBGMVolume_ = 1.0f;
 
-        // データドリブン用
-        std::string sceneName_;         // JSONファイル名に使用するシーン名
+        // シーン保存/読み込み
+        std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
 
 #ifdef _DEBUG
-        UndoRedoHistory undoRedoHistory_;  // Undo/Redo 履歴管理
-
-        // 保存通知用
-        std::string saveNotificationMessage_;
-        double saveNotificationEndTime_ = 0.0;
-        static constexpr double kNotificationDuration = 2.5;  // 通知表示時間（秒）
-
-        /// @brief 保存通知を表示開始する
-        void ShowSaveNotification(const std::string& message);
-
-        /// @brief 保存通知オーバーレイを描画する
-        void DrawSaveNotification();
+        std::unique_ptr<SceneDebugEditor> debugEditor_;  // Undo/Redo・デバッグ編集機能
 #endif
     };
 }

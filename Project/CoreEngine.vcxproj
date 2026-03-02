@@ -230,6 +230,8 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClCompile Include="Engine\Particle\ParticlePresetManager.cpp" />
     <ClCompile Include="Engine\Scene\BaseScene.cpp" />
     <ClCompile Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.cpp" />
+    <ClCompile Include="Engine\Scene\SceneDebugEditor.cpp" />
+    <ClCompile Include="Engine\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Scene\SceneSerializer.cpp" />
     <ClCompile Include="Engine\Scene\SceneTransition.cpp" />
     <ClCompile Include="Application\Sample\TestGameObject\AnimatedCubeObject.cpp" />
@@ -439,6 +441,8 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Particle\ParticlePresetManager.h" />
     <ClInclude Include="Engine\Scene\BaseScene.h" />
     <ClInclude Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.h" />
+    <ClInclude Include="Engine\Scene\SceneDebugEditor.h" />
+    <ClInclude Include="Engine\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Scene\SceneSerializer.h" />
     <ClInclude Include="Engine\Scene\SceneTransition.h" />
     <ClInclude Include="Application\Sample\TestGameObject\AnimatedCubeObject.h" />
