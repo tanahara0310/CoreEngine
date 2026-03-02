@@ -49,11 +49,6 @@ namespace CoreEngine
             if (sceneViewport) {
                 auto* objectSelector = sceneViewport->GetObjectSelector();
                 if (objectSelector) {
-                    // JSON 保存トリガー
-                    objectSelector->SetOnTransformChanged([this](GameObject*) {
-                        isDirty_ = true;
-                        });
-
                     // Undo/Redo 記録（ギズモ操作完了時）
                     objectSelector->SetOnGizmoEditCommitted([this](
                         GameObject* obj,
@@ -79,16 +74,10 @@ namespace CoreEngine
                             }
                             record.activeAfter = obj->IsActive();
                             undoRedoHistory_.Push(record);
-                            isDirty_ = true;
                         });
                 }
             }
         }
-
-        // ImGui 変更通知コールバック（JSON 保存トリガー）
-        gameObjectManager_.SetOnChangedCallback([this](GameObject*) {
-            isDirty_ = true;
-            });
 
         // Undo/Redo 記録（ImGui 操作完了時）
         gameObjectManager_.SetEditCommitCallback([this](
@@ -115,7 +104,11 @@ namespace CoreEngine
                 }
                 record.activeAfter = obj->IsActive();
                 undoRedoHistory_.Push(record);
-                isDirty_ = true;
+            });
+
+        // 個別オブジェクト保存コールバック
+        gameObjectManager_.SetOnSaveRequestCallback([this](GameObject* obj) {
+            SaveSingleObjectToJson(obj);
             });
 #endif
     }
@@ -166,28 +159,39 @@ namespace CoreEngine
 
         // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) {
-            if (undoRedoHistory_.Undo(&gameObjectManager_)) {
-                isDirty_ = true;
-            }
+            undoRedoHistory_.Undo(&gameObjectManager_);
         }
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Y)) {
-            if (undoRedoHistory_.Redo(&gameObjectManager_)) {
-                isDirty_ = true;
+            undoRedoHistory_.Redo(&gameObjectManager_);
+        }
+
+        // Ctrl+S でシーン全体保存
+        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) {
+            if (!sceneName_.empty()) {
+                SaveObjectsToJson();
             }
         }
 
         // ゲームオブジェクトのImGuiデバッグUI表示
         if (ImGui::Begin("オブジェクト制御")) {
+            // === 保存ボタン ===
+            ImGui::BeginDisabled(sceneName_.empty());
+            if (ImGui::Button("シーン全体保存 (Ctrl+S)")) {
+                SaveObjectsToJson();
+            }
+            ImGui::EndDisabled();
+            ImGui::Separator();
+
             // Undo/Redo ボタンと履歴件数を表示
             ImGui::BeginDisabled(!undoRedoHistory_.CanUndo());
             if (ImGui::Button("Undo")) {
-                if (undoRedoHistory_.Undo(&gameObjectManager_)) isDirty_ = true;
+                undoRedoHistory_.Undo(&gameObjectManager_);
             }
             ImGui::EndDisabled();
             ImGui::SameLine();
             ImGui::BeginDisabled(!undoRedoHistory_.CanRedo());
             if (ImGui::Button("Redo")) {
-                if (undoRedoHistory_.Redo(&gameObjectManager_)) isDirty_ = true;
+                undoRedoHistory_.Redo(&gameObjectManager_);
             }
             ImGui::EndDisabled();
             ImGui::SameLine();
@@ -222,6 +226,9 @@ namespace CoreEngine
                 }
             }
         }
+
+        // 保存通知オーバーレイの描画
+        DrawSaveNotification();
 #endif
 
         // 派生クラスの更新処理（GameObjectの更新前）
@@ -238,14 +245,6 @@ namespace CoreEngine
 
         // 派生クラスの後処理（クリーンアップ前）
         OnLateUpdate();
-
-#ifdef _DEBUG
-        // 変更があった場合のみ JSON に保存（フレーム末尾で1回だけ）
-        if (isDirty_ && !sceneName_.empty()) {
-            SaveObjectsToJson();
-            isDirty_ = false;
-        }
-#endif
     }
 
     void BaseScene::Draw()
@@ -470,5 +469,92 @@ namespace CoreEngine
         }
 
         jsonManager.SaveJson(filePath, j);
+
+#ifdef _DEBUG
+        ShowSaveNotification("シーン全体を保存しました: " + sceneName_ + ".json");
+#endif
     }
+
+    void BaseScene::SaveSingleObjectToJson(GameObject* obj)
+    {
+        if (sceneName_.empty() || !obj || !obj->IsSerializeEnabled()) return;
+        const std::string& name = obj->GetName();
+        if (name.empty()) return;
+
+        std::string dirPath = "Assets/Scene";
+        std::string filePath = dirPath + "/" + sceneName_ + ".json";
+        auto& jsonManager = JsonManager::GetInstance();
+
+        jsonManager.CreateJsonDirectory(dirPath);
+
+        // 既存の JSON を読み込み（なければ空オブジェクト）
+        json j;
+        if (jsonManager.FileExists(filePath)) {
+            j = jsonManager.LoadJson(filePath);
+        }
+
+        // 対象オブジェクトのエントリだけ更新
+        auto* spriteObj = dynamic_cast<SpriteObject*>(obj);
+        if (spriteObj) {
+            SceneSerializer::SaveSpriteObject(spriteObj, j["objects"][name]);
+        } else {
+            SceneSerializer::SaveObject(obj, j["objects"][name]);
+        }
+
+        jsonManager.SaveJson(filePath, j);
+
+#ifdef _DEBUG
+        ShowSaveNotification("\"" + name + "\" を保存しました");
+#endif
+    }
+
+#ifdef _DEBUG
+    void BaseScene::ShowSaveNotification(const std::string& message)
+    {
+        saveNotificationMessage_ = message;
+        saveNotificationEndTime_ = ImGui::GetTime() + kNotificationDuration;
+    }
+
+    void BaseScene::DrawSaveNotification()
+    {
+        double currentTime = ImGui::GetTime();
+        if (currentTime >= saveNotificationEndTime_) return;
+
+        // 残り時間からアルファ値を計算（最後の0.5秒でフェードアウト）
+        double remaining = saveNotificationEndTime_ - currentTime;
+        float alpha = (remaining < 0.5) ? static_cast<float>(remaining / 0.5) : 1.0f;
+
+        // 画面中央上部に表示
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImVec2 windowPos = ImVec2(
+            viewport->WorkPos.x + viewport->WorkSize.x * 0.5f,
+            viewport->WorkPos.y + 20.0f
+        );
+
+        ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+        ImGui::SetNextWindowBgAlpha(0.75f * alpha);
+
+        ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoInputs |
+            ImGuiWindowFlags_NoNav |
+            ImGuiWindowFlags_AlwaysAutoResize |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoFocusOnAppearing;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.55f, 0.15f, 1.0f));
+
+        if (ImGui::Begin("##SaveNotification", nullptr, flags)) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, alpha));
+            ImGui::Text("%s", saveNotificationMessage_.c_str());
+            ImGui::PopStyleColor();
+        }
+        ImGui::End();
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(2);
+    }
+#endif
 }

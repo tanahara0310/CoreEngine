@@ -77,6 +77,11 @@ namespace CoreEngine
             onChangedCallback_ = std::move(callback);
         }
 
+        /// @brief 個別オブジェクト保存コールバックを設定
+        void SetOnSaveRequestCallback(std::function<void(GameObject*)> callback) {
+            onSaveRequestCallback_ = std::move(callback);
+        }
+
 #ifdef _DEBUG
         /// @brief ImGui 編集コミット時コールバックを設定（Undo/Redo 用）
         void SetEditCommitCallback(GameObject::EditCommitCallback cb) {
@@ -96,6 +101,9 @@ namespace CoreEngine
 
         /// @brief ImGui変更時コールバック（デバッグビルドのみ使用）
         std::function<void(GameObject*)> onChangedCallback_;
+
+        /// @brief 個別オブジェクト保存リクエスト時コールバック
+        std::function<void(GameObject*)> onSaveRequestCallback_;
 
 #ifdef _DEBUG
         /// @brief ImGui 編集コミット時コールバック（Undo/Redo 用）

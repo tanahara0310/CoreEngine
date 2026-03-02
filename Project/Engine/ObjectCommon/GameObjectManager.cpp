@@ -88,6 +88,10 @@ namespace CoreEngine
                 if (editCommitCallback_) {
                     obj->SetEditCommitCallback(editCommitCallback_);
                 }
+                // 個別保存コールバックを毎フレーム設定
+                if (onSaveRequestCallback_) {
+                    obj->SetSaveRequestCallback(onSaveRequestCallback_);
+                }
 
                 if (obj->IsMarkedForDestroy()) {
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
