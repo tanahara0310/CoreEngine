@@ -174,6 +174,12 @@ namespace CoreEngine
 
         /// @brief ImGui 編集コミット時コールバックを設定（Undo/Redo 用）
         void SetEditCommitCallback(EditCommitCallback cb) { onEditCommitted_ = std::move(cb); }
+
+        /// @brief 個別保存リクエストコールバック型
+        using SaveRequestCallback = std::function<void(GameObject*)>;
+
+        /// @brief 個別保存リクエストコールバックを設定
+        void SetSaveRequestCallback(SaveRequestCallback cb) { onSaveRequested_ = std::move(cb); }
 #endif
 
     protected:
@@ -213,6 +219,10 @@ namespace CoreEngine
         Vector3 imguiSnapScale_     = { 1.0f, 1.0f, 1.0f };
         bool    imguiSnapActive_    = true;
         EditCommitCallback onEditCommitted_;
+        SaveRequestCallback onSaveRequested_;
+
+        /// @brief 個別保存ボタンを描画するヘルパー（DrawImGui 内で使用）
+        void DrawSaveButton();
 #endif
     };
 }

@@ -122,9 +122,12 @@ namespace CoreEngine
         /// @brief シーン名を取得
         const std::string& GetSceneName() const { return sceneName_; }
 
-        /// @brief シーンのオブジェクトデータを JSON に保存（デバッグビルドのみ）
-        /// @note ギズモ・ ImGui 変更時に自動呼び出される
+        /// @brief シーンのオブジェクトデータを JSON に保存（手動呼び出し）
         void SaveObjectsToJson();
+
+        /// @brief 単一オブジェクトのデータだけを JSON に上書き保存（手動呼び出し）
+        /// @param obj 保存対象のオブジェクト
+        void SaveSingleObjectToJson(GameObject* obj);
 
         /// @brief シーンBGMを登録し、トランジション時の自動フェードを有効化
         /// @param bgm BGMのSoundResourceポインタ（現在のSetVolume()で設定した音量が使用されます）
@@ -137,10 +140,20 @@ namespace CoreEngine
 
         // データドリブン用
         std::string sceneName_;         // JSONファイル名に使用するシーン名
-        bool isDirty_ = false;          // 変更フラグ（trueのとき次のフレーム末に保存）
 
 #ifdef _DEBUG
         UndoRedoHistory undoRedoHistory_;  // Undo/Redo 履歴管理
+
+        // 保存通知用
+        std::string saveNotificationMessage_;
+        double saveNotificationEndTime_ = 0.0;
+        static constexpr double kNotificationDuration = 2.5;  // 通知表示時間（秒）
+
+        /// @brief 保存通知を表示開始する
+        void ShowSaveNotification(const std::string& message);
+
+        /// @brief 保存通知オーバーレイを描画する
+        void DrawSaveNotification();
 #endif
     };
 }

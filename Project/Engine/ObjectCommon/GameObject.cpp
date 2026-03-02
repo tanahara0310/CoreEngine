@@ -105,10 +105,26 @@ namespace CoreEngine
             // 派生クラスの拡張UI
             changed |= DrawImGuiExtended();
 
+            // 個別保存ボタン
+            DrawSaveButton();
+
             ImGui::PopID();
         }
 
         return changed;
+    }
+
+    void GameObject::DrawSaveButton() {
+        if (!shouldSerialize_ || name_.empty()) return;
+
+        ImGui::Separator();
+        if (ImGui::Button("保存##save_single")) {
+            if (onSaveRequested_) {
+                onSaveRequested_(this);
+            }
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("このオブジェクトのみ");
     }
 
 #endif // _DEBUG

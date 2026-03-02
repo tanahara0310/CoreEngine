@@ -419,6 +419,9 @@ bool SpriteObject::DrawImGui() {
             changed = true;
         }
 
+        // 個別保存ボタン
+        DrawSaveButton();
+
         ImGui::PopID();
     }
 
