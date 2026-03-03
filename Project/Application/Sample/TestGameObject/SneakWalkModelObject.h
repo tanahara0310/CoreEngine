@@ -2,6 +2,10 @@
 
 #include "Engine/ObjectCommon/GameObject.h"
 
+#ifdef _DEBUG
+#include "Engine/Graphics/Material/Debug/MaterialDebugUI.h"
+#endif
+
 /// @brief SneakWalkモデルオブジェクト
 class SneakWalkModelObject : public CoreEngine::GameObject {
 public:
@@ -35,5 +39,8 @@ public:
 
 private:
     CoreEngine::TextureManager::LoadedTexture uvCheckerTexture_;  // テクスチャハンドル
+#ifdef _DEBUG
+    std::unique_ptr<CoreEngine::MaterialDebugUI> materialDebugUI_;
+#endif
 };
 

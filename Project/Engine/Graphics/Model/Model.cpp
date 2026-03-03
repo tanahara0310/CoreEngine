@@ -24,6 +24,38 @@ namespace CoreEngine
         ModelRenderer* sModelRenderer_ = nullptr;
         SkinnedModelRenderer* sSkinnedModelRenderer_ = nullptr;
         ShadowMapRenderer* sShadowMapRenderer_ = nullptr;
+
+        /// @brief PBRテクスチャを描画コマンドにバインドする共通処理
+        /// @tparam TRenderer GetRootParamIndex() を持つレンダラー型
+        template<typename TRenderer>
+        void BindPBRTextures(
+            ID3D12GraphicsCommandList* cmdList,
+            TRenderer* renderer,
+            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
+            D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
+            D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture)
+        {
+            int normalMapIdx = renderer->GetRootParamIndex("gNormalMap");
+            if (normalTexture.ptr != 0 && normalMapIdx >= 0) {
+                cmdList->SetGraphicsRootDescriptorTable(normalMapIdx, normalTexture);
+            }
+
+            if (metallicRoughnessTexture.ptr != 0) {
+                int metallicIdx = renderer->GetRootParamIndex("gMetallicMap");
+                int roughnessIdx = renderer->GetRootParamIndex("gRoughnessMap");
+                if (metallicIdx >= 0) {
+                    cmdList->SetGraphicsRootDescriptorTable(metallicIdx, metallicRoughnessTexture);
+                }
+                if (roughnessIdx >= 0) {
+                    cmdList->SetGraphicsRootDescriptorTable(roughnessIdx, metallicRoughnessTexture);
+                }
+            }
+
+            int aoIdx = renderer->GetRootParamIndex("gAOMap");
+            if (occlusionTexture.ptr != 0 && aoIdx >= 0) {
+                cmdList->SetGraphicsRootDescriptorTable(aoIdx, occlusionTexture);
+            }
+        }
     }
 
     void Model::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory) {
@@ -52,10 +84,9 @@ namespace CoreEngine
         assert(resource && resource->IsLoaded());
         resource_ = resource;
 
-        // マテリアルマネージャーを作成
-        materialManager_ = std::make_unique<MaterialManager>();
-        materialManager_->Initialize(sDxCommon_->GetDevice(), sResourceFactory_);
-        materialManager_->GetConstants()->enableLighting = 1;
+        // MaterialInstanceを作成
+        materialInstance_ = std::make_unique<MaterialInstance>();
+        materialInstance_->Initialize(sDxCommon_->GetDevice(), sResourceFactory_);
 
         // WVP行列用のリソースを作成（1つのみ）
         wvpResource_ = ResourceFactory::CreateBufferResource(
@@ -209,19 +240,6 @@ namespace CoreEngine
         cmdList->DrawIndexedInstanced(resource_->indexCount_, 1, 0, 0, 0);
     }
 
-    void Model::SetUVTransform(const Matrix4x4& uvTransform) {
-        if (materialManager_) {
-            materialManager_->GetConstants()->uvTransform = uvTransform;
-        }
-    }
-
-    Matrix4x4 Model::GetUVTransform() const {
-        if (materialManager_) {
-            return materialManager_->GetConstants()->uvTransform;
-        }
-        return MathCore::Matrix::Identity();
-    }
-
     void Model::UpdateAnimation(float deltaTime) {
         if (!animationController_) return;
 
@@ -260,6 +278,7 @@ namespace CoreEngine
     }
 
     bool Model::SwitchAnimation(const std::string& animationName, bool loop) {
+
         // リソースがない場合は失敗
         if (!resource_) {
             Logger::GetInstance().Log("Cannot switch animation: ModelResource is null",
@@ -367,7 +386,7 @@ namespace CoreEngine
 
         cmdList->SetGraphicsRootConstantBufferView(
             sModelRenderer_->GetRootParamIndex("gMaterial"),
-            materialManager_->GetGPUVirtualAddress()
+            materialInstance_->GetGPUVirtualAddress()
         );
 
         cmdList->SetGraphicsRootConstantBufferView(
@@ -378,26 +397,7 @@ namespace CoreEngine
         cmdList->SetGraphicsRootDescriptorTable(
             sModelRenderer_->GetRootParamIndex("gTexture"), baseColorTexture);
 
-        int normalMapIdx = sModelRenderer_->GetRootParamIndex("gNormalMap");
-        if (normalTexture.ptr != 0 && normalMapIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(normalMapIdx, normalTexture);
-        }
-
-        if (metallicRoughnessTexture.ptr != 0) {
-            int metallicIdx = sModelRenderer_->GetRootParamIndex("gMetallicMap");
-            int roughnessIdx = sModelRenderer_->GetRootParamIndex("gRoughnessMap");
-            if (metallicIdx >= 0) {
-                cmdList->SetGraphicsRootDescriptorTable(metallicIdx, metallicRoughnessTexture);
-            }
-            if (roughnessIdx >= 0) {
-                cmdList->SetGraphicsRootDescriptorTable(roughnessIdx, metallicRoughnessTexture);
-            }
-        }
-
-        int aoIdx = sModelRenderer_->GetRootParamIndex("gAOMap");
-        if (occlusionTexture.ptr != 0 && aoIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(aoIdx, occlusionTexture);
-        }
+        BindPBRTextures(cmdList, sModelRenderer_, normalTexture, metallicRoughnessTexture, occlusionTexture);
     }
 
     void Model::SetupSkinningDrawCommands(ID3D12GraphicsCommandList* cmdList,
@@ -434,37 +434,44 @@ namespace CoreEngine
         // マテリアルを設定
         cmdList->SetGraphicsRootConstantBufferView(
             sSkinnedModelRenderer_->GetRootParamIndex("gMaterial"),
-            materialManager_->GetGPUVirtualAddress()
+            materialInstance_->GetGPUVirtualAddress()
         );
 
         // BaseColorテクスチャを設定
         cmdList->SetGraphicsRootDescriptorTable(
             sSkinnedModelRenderer_->GetRootParamIndex("gTexture"), baseColorTexture);
 
-        // ===== PBRテクスチャマップを設定 =====
-        
-        // ノーマルマップを設定
-        int normalMapIdx = sSkinnedModelRenderer_->GetRootParamIndex("gNormalMap");
-        if (normalTexture.ptr != 0 && normalMapIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(normalMapIdx, normalTexture);
-        }
-
-        // MetallicRoughnessマップを設定
-        if (metallicRoughnessTexture.ptr != 0) {
-            int metallicIdx = sSkinnedModelRenderer_->GetRootParamIndex("gMetallicMap");
-            int roughnessIdx = sSkinnedModelRenderer_->GetRootParamIndex("gRoughnessMap");
-            if (metallicIdx >= 0) {
-                cmdList->SetGraphicsRootDescriptorTable(metallicIdx, metallicRoughnessTexture);
-            }
-            if (roughnessIdx >= 0) {
-                cmdList->SetGraphicsRootDescriptorTable(roughnessIdx, metallicRoughnessTexture);
-            }
-        }
-
-        // AOマップを設定
-        int aoIdx = sSkinnedModelRenderer_->GetRootParamIndex("gAOMap");
-        if (occlusionTexture.ptr != 0 && aoIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(aoIdx, occlusionTexture);
-        }
+        BindPBRTextures(cmdList, sSkinnedModelRenderer_, normalTexture, metallicRoughnessTexture, occlusionTexture);
     }
-}
+
+    // ===== クエリ =====
+
+    bool Model::IsInitialized() const {
+        return resource_ != nullptr && materialInstance_ != nullptr;
+    }
+
+    const std::optional<Skeleton>& Model::GetSkeleton() const {
+        return skeleton_;
+    }
+
+    bool Model::HasSkinCluster() const {
+        return skinCluster_.has_value();
+    }
+
+    bool Model::HasAnimationController() const {
+        return animationController_ != nullptr;
+    }
+
+    Model::RenderType Model::GetRenderType() const {
+        return HasSkinCluster() ? RenderType::Skinning : RenderType::Normal;
+    }
+
+    ModelResource* Model::GetModelResource() {
+        return resource_;
+    }
+
+    const ModelResource* Model::GetModelResource() const {
+        return resource_;
+    }
+
+    }

@@ -8,7 +8,7 @@
 
 #include "ModelResource.h"
 #include "Engine/WorldTransform/WorldTransform.h"
-#include "Engine/Graphics/Material/MaterialManager.h"
+#include "Engine/Graphics/Material/MaterialInstance.h"
 #include "Engine/Graphics/Structs/TransformationMatrix.h"
 #include "Engine/Graphics/Structs/SkinCluster.h"
 #include "Animation/IAnimationController.h"
@@ -86,32 +86,24 @@ namespace CoreEngine
 
         /// @brief 初期化されているか確認
         /// @return 初期化済みならtrue
-        bool IsInitialized() const { return resource_ != nullptr && materialManager_ != nullptr; }
+        bool IsInitialized() const;
 
-        /// @brief マテリアルマネージャーを取得
-        /// @return マテリアルマネージャー
-        MaterialManager* GetMaterialManager() { return materialManager_.get(); }
-        const MaterialManager* GetMaterialManager() const { return materialManager_.get(); }
-
-        /// @brief UV変換行列を設定
-        /// @param uvTransform UV変換行列
-        void SetUVTransform(const Matrix4x4& uvTransform);
-
-        /// @brief UV変換行列を取得
-        /// @return UV変換行列
-        Matrix4x4 GetUVTransform() const;
+        /// @brief マテリアルインスタンスを取得（パラメータの直接操作用）
+        /// @return MaterialInstance へのポインタ
+        MaterialInstance* GetMaterial() { return materialInstance_.get(); }
+        const MaterialInstance* GetMaterial() const { return materialInstance_.get(); }
 
         /// @brief Skeletonを取得（スケルトンアニメーションから同期）
         /// @return Skeleton（存在しない場合はnullopt）
-        const std::optional<Skeleton>& GetSkeleton() const { return skeleton_; }
+        const std::optional<Skeleton>& GetSkeleton() const;
 
         /// @brief SkinClusterを持っているか確認
         /// @return SkinClusterがあればtrue
-        bool HasSkinCluster() const { return skinCluster_.has_value(); }
+        bool HasSkinCluster() const;
 
         /// @brief アニメーションコントローラーを持っているか確認
         /// @return コントローラーがあればtrue
-        bool HasAnimationController() const { return animationController_ != nullptr; }
+        bool HasAnimationController() const;
 
         /// @brief アニメーションを更新
         /// @param deltaTime デルタタイム（秒）
@@ -143,68 +135,15 @@ namespace CoreEngine
 
         /// @brief 描画タイプを取得（スキニングか通常かを判別）
         /// @return 描画タイプ
-        RenderType GetRenderType() const {
-            return HasSkinCluster() ? RenderType::Skinning : RenderType::Normal;
-        }
-
-        /// @brief マテリアルカラーを設定
-        /// @param color カラー（RGBA）
-        void SetMaterialColor(const Vector4& color) {
-            if (materialManager_) {
-                materialManager_->GetConstants()->color = color;
-            }
-        }
-
-        /// @brief マテリアルカラーを取得
-        /// @return 現在のカラー
-        Vector4 GetMaterialColor() const {
-            if (materialManager_) {
-                return materialManager_->GetConstants()->color;
-            }
-            return Vector4{ 1.0f, 1.0f, 1.0f, 1.0f };
-        }
-
-        /// @brief 環境マップを有効/無効にする
-        /// @param enable true: 有効, false: 無効
-        void SetEnableEnvironmentMap(bool enable) {
-            if (materialManager_) {
-                materialManager_->GetConstants()->enableEnvironmentMap = enable ? 1 : 0;
-            }
-        }
-
-        /// @brief 環境マップが有効かどうかを取得
-        /// @return true: 有効, false: 無効
-        bool IsEnableEnvironmentMap() const {
-            if (materialManager_) {
-                return materialManager_->GetConstants()->enableEnvironmentMap != 0;
-            }
-            return false;
-        }
-
-        /// @brief 環境マップの反射強度を設定
-        /// @param intensity 反射強度 (0.0-1.0)
-        void SetEnvironmentMapIntensity(float intensity) {
-            if (materialManager_) {
-                materialManager_->GetConstants()->environmentMapIntensity = intensity;
-            }
-        }
-
-        /// @brief 環境マップの反射強度を取得
-        /// @return 現在の反射強度
-        float GetEnvironmentMapIntensity() const {
-            if (materialManager_) {
-                return materialManager_->GetConstants()->environmentMapIntensity;
-            }
-            return 0.0f;
-        }
+        RenderType GetRenderType() const;
 
         /// @brief ModelResourceを取得
         /// @return ModelResourceへのポインタ（nullptrの場合は未初期化）
-        ModelResource* GetModelResource() { return resource_; }
+        ModelResource* GetModelResource();
 
         /// @brief ModelResourceを取得（const版）
         /// @return ModelResourceへのconstポインタ（nullptrの場合は未初期化）
-        const ModelResource* GetModelResource() const { return resource_; }
+        const ModelResource* GetModelResource() const;
 
         void SetModelResource(ModelResource* resource);
 
@@ -213,7 +152,7 @@ namespace CoreEngine
         ModelResource* resource_ = nullptr;
 
         // インスタンス固有のマテリアル
-        std::unique_ptr<MaterialManager> materialManager_;
+        std::unique_ptr<MaterialInstance> materialInstance_;
 
         // WVP行列用のリソース（1インスタンスにつき1つのみ）
         Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;

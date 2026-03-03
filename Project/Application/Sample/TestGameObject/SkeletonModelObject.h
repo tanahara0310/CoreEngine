@@ -4,6 +4,10 @@
 #include "Engine/Graphics/Model/Skeleton/SkeletonAnimator.h"
 #include <memory>
 
+#ifdef _DEBUG
+#include "Engine/Graphics/Material/Debug/MaterialDebugUI.h"
+#endif
+
 /// @brief Skeletonモデルオブジェクト
 class SkeletonModelObject : public CoreEngine::GameObject {
 public:
@@ -36,7 +40,9 @@ public:
     CoreEngine::Model* GetModel() { return model_.get(); }
 
 private:
-    /// @brief テクスチャハンドル
     CoreEngine::TextureManager::LoadedTexture uvCheckerTexture_;
+#ifdef _DEBUG
+    std::unique_ptr<CoreEngine::MaterialDebugUI> materialDebugUI_;
+#endif
 };
 

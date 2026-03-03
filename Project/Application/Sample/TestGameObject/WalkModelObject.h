@@ -2,6 +2,10 @@
 
 #include "Engine/ObjectCommon/GameObject.h"
 
+#ifdef _DEBUG
+#include "Engine/Graphics/Material/Debug/MaterialDebugUI.h"
+#endif
+
 /// @brief Walkモデルオブジェクト
 class WalkModelObject : public CoreEngine::GameObject {
 public:
@@ -35,5 +39,8 @@ public:
 
 private:
     float animationTime_ = 0.0f;   // アニメーション時刻
+#ifdef _DEBUG
+    std::unique_ptr<CoreEngine::MaterialDebugUI> materialDebugUI_;
+#endif
 };
 
