@@ -4,11 +4,11 @@
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/TextureManager.h"
 #include "Engine/Utility/FrameRate/FrameRateController.h"
-#include "Engine/Graphics/Material/MaterialManager.h"
+#include "Engine/Graphics/Material/MaterialInstance.h"
 #include "Engine/Camera/ICamera.h"
 
 #ifdef _DEBUG
-#include "externals/imgui/imgui.h"
+#include "Engine/Graphics/Material/Debug/MaterialDebugUI.h"
 #endif
 
 using namespace CoreEngine;
@@ -90,77 +90,8 @@ void SkeletonModelObject::Draw(const CoreEngine::ICamera* camera) {
 #ifdef _DEBUG
 bool SkeletonModelObject::DrawImGuiExtended() {
     if (!model_) return false;
-
-    bool changed = false;
-
-    if (ImGui::TreeNode("Skeleton Model Material")) {
-        auto* materialManager = model_->GetMaterialManager();
-        if (materialManager) {
-            auto* constants = materialManager->GetConstants();
-
-            // 色の設定
-            float colorArray[4] = { constants->color.x, constants->color.y, constants->color.z, constants->color.w };
-            if (ImGui::ColorEdit4("Color", colorArray)) {
-                constants->color = { colorArray[0], colorArray[1], colorArray[2], colorArray[3] };
-                changed = true;
-            }
-
-            // ライティング有効/無効
-            bool enableLighting = constants->enableLighting != 0;
-            if (ImGui::Checkbox("Enable Lighting", &enableLighting)) {
-                constants->enableLighting = enableLighting ? 1 : 0;
-                changed = true;
-            }
-
-            // シェーディングモード
-            const char* shadingModes[] = { "None", "Lambert", "Half-Lambert", "Toon" };
-            if (ImGui::Combo("Shading Mode", &constants->shadingMode, shadingModes, 4)) {
-                changed = true;
-            }
-
-            // トゥーンシェーディング設定
-            if (constants->shadingMode == 3) {
-                if (ImGui::SliderFloat("Toon Threshold", &constants->toonThreshold, 0.0f, 1.0f)) {
-                    changed = true;
-                }
-
-                if (ImGui::SliderFloat("Toon Smoothness", &constants->toonSmoothness, 0.0f, 0.5f)) {
-                    changed = true;
-                }
-            }
-
-            // ディザリング設定
-            bool enableDithering = constants->enableDithering != 0;
-            if (ImGui::Checkbox("Enable Dithering", &enableDithering)) {
-                constants->enableDithering = enableDithering ? 1 : 0;
-                changed = true;
-            }
-
-            if (enableDithering) {
-                if (ImGui::SliderFloat("Dithering Scale", &constants->ditheringScale, 0.1f, 5.0f)) {
-                    changed = true;
-                }
-            }
-
-            ImGui::Separator();
-
-            // 環境マップ設定
-            bool enableEnvironmentMap = constants->enableEnvironmentMap != 0;
-            if (ImGui::Checkbox("Enable Environment Map", &enableEnvironmentMap)) {
-                constants->enableEnvironmentMap = enableEnvironmentMap ? 1 : 0;
-                changed = true;
-            }
-
-            if (enableEnvironmentMap) {
-                if (ImGui::SliderFloat("Environment Map Intensity", &constants->environmentMapIntensity, 0.0f, 1.0f)) {
-                    changed = true;
-                }
-            }
-        }
-        ImGui::TreePop();
-    }
-
-    return changed;
+    if (!materialDebugUI_) materialDebugUI_ = std::make_unique<CoreEngine::MaterialDebugUI>();
+    return materialDebugUI_->Draw(model_.get());
 }
 #endif
 

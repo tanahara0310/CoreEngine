@@ -2,6 +2,10 @@
 
 #include "Engine/ObjectCommon/GameObject.h"
 
+#ifdef _DEBUG
+#include "Engine/Graphics/Material/Debug/MaterialDebugUI.h"
+#endif
+
 /// @brief 汎用モデルオブジェクト（glTFなどのモデル読み込み用）
 class ModelObject : public CoreEngine::GameObject {
 public:
@@ -29,6 +33,10 @@ public:
 
     /// @brief モデルを取得
     CoreEngine::Model* GetModel() { return model_.get(); }
+
+    /// @brief マテリアルインスタンスを直接取得（パラメータ直接操作用）
+    /// @return MaterialInstance へのポインタ（未初期化の場合 nullptr）
+    CoreEngine::MaterialInstance* GetMaterial();
 
     /// @brief PBRパラメータを設定
     void SetPBRParameters(float metallic, float roughness, float ao);
@@ -61,5 +69,10 @@ public:
 
     /// @brief 環境マップY軸回転を設定
     void SetEnvironmentRotationY(float rotationY);
+
+private:
+#ifdef _DEBUG
+    std::unique_ptr<CoreEngine::MaterialDebugUI> materialDebugUI_;
+#endif
 };
 

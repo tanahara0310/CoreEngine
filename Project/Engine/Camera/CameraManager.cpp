@@ -1,4 +1,4 @@
-﻿#include "CameraManager.h"
+#include "CameraManager.h"
 
 #ifdef _DEBUG
 #include "Camera/Debug/CameraDebugUI.h"
@@ -7,6 +7,8 @@
 namespace CoreEngine
 {
 
+
+    CameraManager::CameraManager() = default;
 
     CameraManager::~CameraManager() = default;
 

@@ -7,6 +7,15 @@
 
 namespace CoreEngine
 {
+    /// @brief シェーディングモードの種別
+    /// @note GPU定数バッファの shadingMode フィールドと値を一致させること
+    enum class ShadingMode : int32_t {
+        None       = 0, // ライティングなし
+        Lambert    = 1, // ランバートシェーディング
+        HalfLambert = 2, // ハーフランバートシェーディング
+        Toon       = 3  // トゥーンシェーディング
+    };
+
     /// @brief GPU定数バッファに送信するマテリアルパラメータ
     /// @note シェーダーとのメモリレイアウトを一致させる必要があります
     struct MaterialConstants {
@@ -14,8 +23,8 @@ namespace CoreEngine
         int32_t enableLighting;
         float padding[3];
         Matrix4x4 uvTransform;
-        float shininess; // 光沢度
-        int shadingMode; // シェーディングモード(0: None, 1: Lambert, 2: Half-Lambert, 3: Toon)
+        float shininess;     // 光沢度
+        int32_t shadingMode; // シェーディングモード (ShadingMode 列挙型を int32_t としてキャストして使用)
         float toonThreshold; // トゥーンシェーディングの閾値 (0.0-1.0)
         float toonSmoothness; // トゥーンシェーディングの滑らかさ (0.0-0.5)
         int32_t enableDithering; // ディザリング有効化フラグ (0: 無効, 1: 有効)

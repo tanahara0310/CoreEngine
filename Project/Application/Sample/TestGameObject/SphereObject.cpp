@@ -50,18 +50,13 @@ void SphereObject::Draw(const CoreEngine::ICamera* camera) {
 }
 
 void SphereObject::SetMaterialColor(const Vector4& color) {
-    defaultColor_ = color;  // 復帰用に記録
-    if (!model_) return;
-
-    auto* materialManager = model_->GetMaterialManager();
-    if (materialManager) {
-        materialManager->GetConstants()->color = color;
-    }
+    defaultColor_ = color;
+    if (model_) model_->GetMaterial()->SetColor(color);
 }
 
 void SphereObject::OnCollisionEnter([[maybe_unused]] GameObject* other) {
     if (++hitCount_ == 1) {
-        model_->SetMaterialColor(hitColor_);
+        model_->GetMaterial()->SetColor(hitColor_);
     }
 }
 
@@ -72,7 +67,7 @@ void SphereObject::OnCollisionStay([[maybe_unused]] GameObject* other) {
 void SphereObject::OnCollisionExit([[maybe_unused]] GameObject* other) {
     if (--hitCount_ <= 0) {
         hitCount_ = 0;
-        model_->SetMaterialColor(defaultColor_);
+        model_->GetMaterial()->SetColor(defaultColor_);
     }
 }
 

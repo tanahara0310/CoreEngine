@@ -183,6 +183,8 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClCompile Include="Engine\Collider\SphereCollider.cpp" />
     <ClCompile Include="Engine\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Framework\Framework.cpp" />
+    <ClCompile Include="Engine\Graphics\Material\Debug\MaterialDebugUI.cpp" />
+    <ClCompile Include="Engine\Graphics\Material\MaterialInstance.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Line\GridRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLGenerator.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLManager.cpp" />
@@ -230,6 +232,8 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClCompile Include="Engine\Particle\ParticlePresetManager.cpp" />
     <ClCompile Include="Engine\Scene\BaseScene.cpp" />
     <ClCompile Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.cpp" />
+    <ClCompile Include="Engine\Scene\SceneDebugEditor.cpp" />
+    <ClCompile Include="Engine\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Scene\SceneSerializer.cpp" />
     <ClCompile Include="Engine\Scene\SceneTransition.cpp" />
     <ClCompile Include="Application\Sample\TestGameObject\AnimatedCubeObject.cpp" />
@@ -353,7 +357,6 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClCompile Include="Engine\Graphics\Resource\ResourceFactory.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Render.cpp" />
     <ClCompile Include="Engine\WorldTransform\WorldTransform.cpp" />
-    <ClCompile Include="Engine\Graphics\Material\MaterialManager.cpp" />
     <ClCompile Include="Engine\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Input\MouseInput.cpp" />
@@ -377,6 +380,8 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Collider\SphereCollider.h" />
     <ClInclude Include="Engine\EngineSystem\ComponentManager.h" />
     <ClInclude Include="Engine\Framework\Framework.h" />
+    <ClInclude Include="Engine\Graphics\Material\Debug\MaterialDebugUI.h" />
+    <ClInclude Include="Engine\Graphics\Material\MaterialInstance.h" />
     <ClInclude Include="Engine\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLManager.h" />
@@ -439,6 +444,8 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Particle\ParticlePresetManager.h" />
     <ClInclude Include="Engine\Scene\BaseScene.h" />
     <ClInclude Include="Application\Sample\SampleScene\ParticleTestScene\ParticleTestScene.h" />
+    <ClInclude Include="Engine\Scene\SceneDebugEditor.h" />
+    <ClInclude Include="Engine\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Scene\SceneSerializer.h" />
     <ClInclude Include="Engine\Scene\SceneTransition.h" />
     <ClInclude Include="Application\Sample\TestGameObject\AnimatedCubeObject.h" />
@@ -522,7 +529,6 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Graphics\Render\Render.h" />
     <ClInclude Include="Engine\Input\InputManager.h" />
     <ClInclude Include="Engine\Utility\Debug\ImGui\ImGuiManager.h" />
-    <ClInclude Include="Engine\Graphics\Material\MaterialManager.h" />
     <ClInclude Include="Engine\Graphics\Light\LightManager.h" />
     <ClInclude Include="Engine\Particle\ParticleSystem.h" />
     <ClInclude Include="Engine\Input\IInputDevice.h" />

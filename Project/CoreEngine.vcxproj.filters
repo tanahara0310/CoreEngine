@@ -35,9 +35,6 @@
     <ClCompile Include="Engine\Graphics\Common\Core\SwapChainManager.cpp">
       <Filter>Engine\Graphics\Common\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Graphics\Material\MaterialManager.cpp">
-      <Filter>Engine\Graphics\Material</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Graphics\Pipeline\PipelineStateManager.cpp">
       <Filter>Engine\Graphics</Filter>
     </ClCompile>
@@ -408,6 +405,10 @@
     <ClCompile Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp" />
     <ClCompile Include="Engine\Scene\SceneSerializer.cpp" />
     <ClCompile Include="Engine\Scene\UndoRedoHistory.cpp" />
+    <ClCompile Include="Engine\Scene\SceneSaveSystem.cpp" />
+    <ClCompile Include="Engine\Scene\SceneDebugEditor.cpp" />
+    <ClCompile Include="Engine\Graphics\Material\Debug\MaterialDebugUI.cpp" />
+    <ClCompile Include="Engine\Graphics\Material\MaterialInstance.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\WinApp\WinApp.h">
@@ -535,9 +536,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Light\LightManager.h">
       <Filter>Engine\Graphics\Light</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Material\MaterialManager.h">
-      <Filter>Engine\Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Model\ModelLoader.h">
       <Filter>Engine\Graphics\Model</Filter>
@@ -1233,6 +1231,10 @@
     <ClInclude Include="Application\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h" />
     <ClInclude Include="Engine\Scene\SceneSerializer.h" />
     <ClInclude Include="Engine\Scene\UndoRedoHistory.h" />
+    <ClInclude Include="Engine\Scene\SceneSaveSystem.h" />
+    <ClInclude Include="Engine\Scene\SceneDebugEditor.h" />
+    <ClInclude Include="Engine\Graphics\Material\Debug\MaterialDebugUI.h" />
+    <ClInclude Include="Engine\Graphics\Material\MaterialInstance.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">

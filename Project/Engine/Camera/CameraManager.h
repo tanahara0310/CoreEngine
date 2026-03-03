@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ICamera.h"
 #include <memory>
@@ -18,7 +18,7 @@ namespace CoreEngine
     class CameraManager {
     public:
         /// @brief コンストラクタ
-        CameraManager() = default;
+        CameraManager();
 
         /// @brief デストラクタ
         ~CameraManager();
