@@ -1,9 +1,9 @@
 #include "MyGame.h"
-#include <EngineSystem.h>
+#include <EngineSystem/EngineSystem.h>
 #include "WinApp/WinApp.h"
-#include "Application/Sample/SampleScene/TestScene/TestScene.h"
-#include "Application/Sample/SampleScene/ParticleTestScene/ParticleTestScene.h"
-#include "Application/Sample/SampleScene/CollisionTestScene/CollisionTestScene.h"
+#include "Sample/SampleScene/TestScene/TestScene.h"
+#include "Sample/SampleScene/ParticleTestScene/ParticleTestScene.h"
+#include "Sample/SampleScene/CollisionTestScene/CollisionTestScene.h"
 
 using namespace CoreEngine;
 
