@@ -3,7 +3,7 @@
 #include <d3d12.h>
 #include <wrl.h>
 
-#include "Engine/Graphics/Resource/ResourceFactory.h"
+#include "Engine/Graphics/Material/IMaterial.h"
 #include "MathCore.h"
 #include "Structs/MaterialConstants.h"
 
@@ -11,12 +11,11 @@ namespace CoreEngine
 {
     /// @brief 1つのマテリアルのGPU定数バッファを保持するクラス
     /// @details モデルインスタンスごとに1つ生成し、GPU側の定数バッファを管理します。
-    class MaterialInstance {
+    class MaterialInstance : public IMaterial {
     public:
         /// @brief 初期化
         /// @param device デバイス
-        /// @param resourceFactory リソース生成
-        void Initialize(ID3D12Device* device, ResourceFactory* resourceFactory);
+        void Initialize(ID3D12Device* device);
 
         // ===== Color =====
         void SetColor(const Vector4& color) { materialData_->color = color; }

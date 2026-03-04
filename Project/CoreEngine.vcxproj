@@ -185,6 +185,8 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClCompile Include="Engine\Framework\Framework.cpp" />
     <ClCompile Include="Engine\Graphics\Material\Debug\MaterialDebugUI.cpp" />
     <ClCompile Include="Engine\Graphics\Material\MaterialInstance.cpp" />
+    <ClCompile Include="Engine\Graphics\Material\SkyBoxMaterialInstance.cpp" />
+    <ClCompile Include="Engine\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Graphics\Render\Line\GridRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLGenerator.cpp" />
     <ClCompile Include="Engine\Graphics\IBL\IBLManager.cpp" />
@@ -381,7 +383,10 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\EngineSystem\ComponentManager.h" />
     <ClInclude Include="Engine\Framework\Framework.h" />
     <ClInclude Include="Engine\Graphics\Material\Debug\MaterialDebugUI.h" />
+    <ClInclude Include="Engine\Graphics\Material\IMaterial.h" />
     <ClInclude Include="Engine\Graphics\Material\MaterialInstance.h" />
+    <ClInclude Include="Engine\Graphics\Material\SkyBoxMaterialInstance.h" />
+    <ClInclude Include="Engine\Graphics\Material\SpriteMaterialInstance.h" />
     <ClInclude Include="Engine\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLManager.h" />

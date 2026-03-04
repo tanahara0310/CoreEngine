@@ -1,8 +1,10 @@
 #pragma once
 
 #include "Engine/ObjectCommon/GameObject.h"
+#include "Engine/Graphics/Material/SkyBoxMaterialInstance.h"
 #include <wrl/client.h>
 #include <d3d12.h>
+#include <memory>
 
 namespace CoreEngine {
     class SkyBoxRenderer;
@@ -56,12 +58,12 @@ public:
     /// @return Y軸回転角度
     float GetRotationY() const { return transform_.rotate.y; }
 
+    /// @brief マテリアルインスタンスを直接取得
+    CoreEngine::SkyBoxMaterialInstance* GetMaterial() { return material_.get(); }
+
 private:
     /// @brief 箱の頂点データを生成
     void CreateBoxVertices();
-
-    /// @brief マテリアル用定数バッファを作成
-    void CreateMaterialBuffer();
 
     /// @brief トランスフォーム用定数バッファを作成
     void CreateTransformBuffer();
@@ -78,17 +80,11 @@ private:
     /// @brief インデックスバッファビュー
     D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
 
-    /// @brief マテリアル用定数バッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
+    /// @brief マテリアル
+    std::unique_ptr<CoreEngine::SkyBoxMaterialInstance> material_;
 
     /// @brief トランスフォーム用定数バッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> transformBuffer_;
-
-    /// @brief マテリアルデータ
-    struct SkyBoxMaterial {
-        CoreEngine::Vector4 color;
-    };
-    SkyBoxMaterial* materialData_ = nullptr;
 
     /// @brief トランスフォームデータ
     struct TransformationMatrix {

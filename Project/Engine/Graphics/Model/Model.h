@@ -44,8 +44,7 @@ namespace CoreEngine
 
         /// @brief 静的初期化（全Modelインスタンス共通のリソースを初期化）
         /// @param dxCommon DirectXCommonのポインタ
-        /// @param factory リソースファクトリのポインタ
-        static void Initialize(CoreEngine::DirectXCommon* dxCommon, CoreEngine::ResourceFactory* factory);
+        static void Initialize(CoreEngine::DirectXCommon* dxCommon);
 
         /// @brief ShadowMapManagerを設定（ライトVP行列の一元管理）
         /// @param shadowMapManager ShadowMapManagerのポインタ

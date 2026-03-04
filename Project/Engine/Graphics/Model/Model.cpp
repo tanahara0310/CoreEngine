@@ -19,7 +19,6 @@ namespace CoreEngine
 {
     namespace {
         DirectXCommon* sDxCommon_ = nullptr;
-        ResourceFactory* sResourceFactory_ = nullptr;
         ShadowMapManager* sShadowMapManager_ = nullptr;
         ModelRenderer* sModelRenderer_ = nullptr;
         SkinnedModelRenderer* sSkinnedModelRenderer_ = nullptr;
@@ -58,10 +57,9 @@ namespace CoreEngine
         }
     }
 
-    void Model::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory) {
-        assert(dxCommon && factory);
+    void Model::Initialize(DirectXCommon* dxCommon) {
+        assert(dxCommon);
         sDxCommon_ = dxCommon;
-        sResourceFactory_ = factory;
     }
 
     void Model::SetShadowMapManager(ShadowMapManager* shadowMapManager) {
@@ -86,7 +84,7 @@ namespace CoreEngine
 
         // MaterialInstanceを作成
         materialInstance_ = std::make_unique<MaterialInstance>();
-        materialInstance_->Initialize(sDxCommon_->GetDevice(), sResourceFactory_);
+        materialInstance_->Initialize(sDxCommon_->GetDevice());
 
         // WVP行列用のリソースを作成（1つのみ）
         wvpResource_ = ResourceFactory::CreateBufferResource(
