@@ -2,10 +2,6 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/ICamera.h"
 
-#ifdef _DEBUG
-#include "Graphics/Material/Debug/MaterialDebugUI.h"
-#endif
-
 
 void ModelObject::Initialize(const std::string& modelPath) {
     // 必須コンポーネントの取得
@@ -94,10 +90,3 @@ void ModelObject::SetEnvironmentRotationY(float rotationY) {
     if (auto* mat = GetMaterial()) mat->SetEnvironmentRotationY(rotationY);
 }
 
-#ifdef _DEBUG
-bool ModelObject::DrawImGuiExtended() {
-    if (!model_) return false;
-    if (!materialDebugUI_) materialDebugUI_ = std::make_unique<CoreEngine::MaterialDebugUI>();
-    return materialDebugUI_->Draw(model_.get());
-}
-#endif

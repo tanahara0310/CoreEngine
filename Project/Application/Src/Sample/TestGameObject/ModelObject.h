@@ -2,10 +2,6 @@
 
 #include "ObjectCommon/GameObject.h"
 
-#ifdef _DEBUG
-#include "Graphics/Material/Debug/MaterialDebugUI.h"
-#endif
-
 /// @brief 汎用モデルオブジェクト（glTFなどのモデル読み込み用）
 class ModelObject : public CoreEngine::GameObject {
 public:
@@ -22,11 +18,6 @@ public:
 
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "Model"; }
-
-#ifdef _DEBUG
-    /// @brief デバッグUI描画
-    bool DrawImGuiExtended() override;
-#endif
 
     /// @brief トランスフォームを取得
     CoreEngine::WorldTransform& GetTransform() { return transform_; }
@@ -71,8 +62,5 @@ public:
     void SetEnvironmentRotationY(float rotationY);
 
 private:
-#ifdef _DEBUG
-    std::unique_ptr<CoreEngine::MaterialDebugUI> materialDebugUI_;
-#endif
 };
 

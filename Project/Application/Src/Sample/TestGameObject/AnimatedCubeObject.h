@@ -2,10 +2,6 @@
 
 #include "ObjectCommon/GameObject.h"
 
-#ifdef _DEBUG
-#include "Graphics/Material/Debug/MaterialDebugUI.h"
-#endif
-
 /// @brief AnimatedCubeモデルオブジェクト
 class AnimatedCubeObject : public CoreEngine::GameObject {
 public:
@@ -56,8 +52,5 @@ public:
 
 private:
     float deltaTime_ = 1.0f / 60.0f;  //!< デルタタイム（60FPS想定）
-#ifdef _DEBUG
-    std::unique_ptr<CoreEngine::MaterialDebugUI> materialDebugUI_;
-#endif
 };
 

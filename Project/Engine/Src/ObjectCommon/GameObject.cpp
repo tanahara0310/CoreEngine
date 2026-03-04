@@ -51,6 +51,11 @@ namespace CoreEngine
                 }
             }
 
+            // 表示状態（Activeとは独立：falseにすると描画のみスキップ）
+            if (ImGui::Checkbox("Visible", &isVisible_)) {
+                changed = true;
+            }
+
             // 自動更新フラグ
             bool autoUpdate = autoUpdate_;
             if (ImGui::Checkbox("Auto Update", &autoUpdate)) {
@@ -102,6 +107,9 @@ namespace CoreEngine
                 ImGui::TreePop();
             }
 
+            // マテリアル（モデルを持つ場合は共通で表示）
+            changed |= DrawMaterialImGui();
+
             // 派生クラスの拡張UI
             changed |= DrawImGuiExtended();
 
@@ -125,6 +133,12 @@ namespace CoreEngine
         }
         ImGui::SameLine();
         ImGui::TextDisabled("このオブジェクトのみ");
+    }
+
+    bool GameObject::DrawMaterialImGui() {
+        if (!model_ || !model_->GetMaterial()) return false;
+        if (!materialDebugUI_) materialDebugUI_ = std::make_unique<MaterialDebugUI>();
+        return materialDebugUI_->Draw(model_.get());
     }
 
 #endif // _DEBUG

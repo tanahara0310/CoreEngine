@@ -78,6 +78,14 @@ namespace CoreEngine
         sShadowMapRenderer_ = shadowMapRenderer;
     }
 
+    bool Model::IsEnvironmentMapAvailable() {
+        return sModelRenderer_ != nullptr && sModelRenderer_->HasEnvironmentMap();
+    }
+
+    bool Model::IsIBLAvailable() {
+        return sModelRenderer_ != nullptr && sModelRenderer_->HasIBLMaps();
+    }
+
     void Model::Initialize(ModelResource* resource) {
         assert(resource && resource->IsLoaded());
         resource_ = resource;
@@ -85,6 +93,29 @@ namespace CoreEngine
         // MaterialInstanceを作成
         materialInstance_ = std::make_unique<MaterialInstance>();
         materialInstance_->Initialize(sDxCommon_->GetDevice());
+
+        // モデルに埋め込まれた PBR テクスチャに基づきマテリアルフラグを自動設定
+        const auto& subMeshes = resource_->GetSubMeshes();
+        if (!subMeshes.empty()) {
+            const auto& textures = resource_->GetMaterialTextures(subMeshes[0].materialIndex);
+            bool hasPBRTextures = false;
+
+            if (textures.hasNormal) {
+                materialInstance_->SetNormalMapEnabled(true);
+            }
+            if (textures.hasMetallicRoughness) {
+                materialInstance_->SetMetallicMapEnabled(true);
+                materialInstance_->SetRoughnessMapEnabled(true);
+                hasPBRTextures = true;
+            }
+            if (textures.hasOcclusion) {
+                materialInstance_->SetAOMapEnabled(true);
+                hasPBRTextures = true;
+            }
+            if (hasPBRTextures) {
+                materialInstance_->SetPBREnabled(true);
+            }
+        }
 
         // WVP行列用のリソースを作成（1つのみ）
         wvpResource_ = ResourceFactory::CreateBufferResource(
@@ -458,6 +489,21 @@ namespace CoreEngine
 
     bool Model::HasAnimationController() const {
         return animationController_ != nullptr;
+    }
+
+    bool Model::HasNormalMap() const {
+        if (!resource_ || resource_->GetSubMeshes().empty()) return false;
+        return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasNormal;
+    }
+
+    bool Model::HasMetallicRoughnessMap() const {
+        if (!resource_ || resource_->GetSubMeshes().empty()) return false;
+        return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasMetallicRoughness;
+    }
+
+    bool Model::HasOcclusionMap() const {
+        if (!resource_ || resource_->GetSubMeshes().empty()) return false;
+        return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasOcclusion;
     }
 
     Model::RenderType Model::GetRenderType() const {

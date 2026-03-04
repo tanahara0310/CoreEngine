@@ -193,10 +193,11 @@ void SpriteObject::Reset() {
     transform_.translate = { 0.0f, 0.0f, 0.0f };
     material_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
     material_->SetUVTransform(Matrix::Identity());
-    anchorPoint_ = { 0.5f, 0.5f };  // デフォルトを中央に変更
+    uvTransform_ = { { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
+    anchorPoint_ = { 0.5f, 0.5f };
     uvMin_ = { 0.0f, 0.0f };
     uvMax_ = { 1.0f, 1.0f };
-    
+
     vertexDataDirty_ = true;
 }
 
@@ -271,160 +272,136 @@ void SpriteObject::ChangeAnchorKeepingPosition(const Vector2& newAnchor) {
 bool SpriteObject::DrawImGui() {
     bool changed = false;
 
-    // 一意のヘッダーラベル
-    // 設定された名前がある場合はそれを使用、なければクラス名を使用
     const char* displayName = name_.empty() ? GetObjectName() : name_.c_str();
     char headerLabel[256];
     snprintf(headerLabel, sizeof(headerLabel), "%s##%p", displayName, (void*)this);
 
-    if (ImGui::CollapsingHeader(headerLabel)) {
-        ImGui::PushID(this);
+    if (!ImGui::CollapsingHeader(headerLabel)) {
+        return false;
+    }
 
-        // アクティブ状態
-        bool prevActive = isActive_;
-        bool active = isActive_;
-        if (ImGui::Checkbox("Active", &active)) {
-            isActive_ = active;
-            changed = true;
-            // Active 変更は即時確定 → コールバックを呼ぶ
-            if (onEditCommitted_) {
-                onEditCommitted_(this,
-                    transform_.translate, transform_.rotate, transform_.scale,
-                    prevActive);
+    ImGui::PushID(this);
+
+    // ─────────────── フラグ ───────────────
+    bool prevActive = isActive_;
+    bool active = isActive_;
+    if (ImGui::Checkbox("Active", &active)) {
+        isActive_ = active;
+        changed = true;
+        if (onEditCommitted_) {
+            onEditCommitted_(this,
+                transform_.translate, transform_.rotate, transform_.scale, prevActive);
+        }
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Checkbox("Visible", &isVisible_)) {
+        changed = true;
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Checkbox("Auto Update", &autoUpdate_)) {
+        changed = true;
+    }
+
+    ImGui::Separator();
+
+    // ─────────────── Transform ───────────────
+    if (ImGui::TreeNode("Transform")) {
+        auto snapAndCommit = [&](auto editFn) {
+            editFn();
+            if (ImGui::IsItemActivated()) {
+                imguiSnapTranslate_ = transform_.translate;
+                imguiSnapRotate_    = transform_.rotate;
+                imguiSnapScale_     = transform_.scale;
+                imguiSnapActive_    = isActive_;
             }
-        }
+            if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+                onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+            }
+        };
 
-        ImGui::Separator();
+        snapAndCommit([&] { changed |= ImGui::DragFloat3("Position", &transform_.translate.x, 0.5f); });
+        snapAndCommit([&] { changed |= ImGui::DragFloat3("Rotation", &transform_.rotate.x, 0.01f); });
+        snapAndCommit([&] { changed |= ImGui::DragFloat3("Scale",    &transform_.scale.x,    0.01f, 0.0f, 100.0f); });
 
-        // 位置（Sprite用：X, Y, Z個別表示）
-        ImGui::Text("位置 (Position):");
-        if (ImGui::DragFloat("X##pos", &transform_.translate.x, 0.1f, -FLT_MAX, FLT_MAX, "%.2f")) {
-            changed = true;
-        }
-        if (ImGui::IsItemActivated()) {
-            imguiSnapTranslate_ = transform_.translate;
-            imguiSnapRotate_ = transform_.rotate;
-            imguiSnapScale_ = transform_.scale;
-            imguiSnapActive_ = isActive_;
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
-            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
-        }
-
-        if (ImGui::DragFloat("Y##pos", &transform_.translate.y, 0.1f, -FLT_MAX, FLT_MAX, "%.2f")) {
-            changed = true;
-        }
-        if (ImGui::IsItemActivated()) {
-            imguiSnapTranslate_ = transform_.translate;
-            imguiSnapRotate_ = transform_.rotate;
-            imguiSnapScale_ = transform_.scale;
-            imguiSnapActive_ = isActive_;
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
-            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
-        }
-
-        if (ImGui::DragFloat("Z##pos", &transform_.translate.z, 0.1f, -FLT_MAX, FLT_MAX, "%.2f")) {
-            changed = true;
-        }
-        if (ImGui::IsItemActivated()) {
-            imguiSnapTranslate_ = transform_.translate;
-            imguiSnapRotate_ = transform_.rotate;
-            imguiSnapScale_ = transform_.scale;
-            imguiSnapActive_ = isActive_;
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
-            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
-        }
-
-        ImGui::Separator();
-
-        // スケール
-        ImGui::Text("スケール (Scale):");
-        ImGui::Text("倍率（テクスチャサイズに対する）");
-        if (ImGui::DragFloat3("##scale", &transform_.scale.x, 0.01f, 0.0f, 10.0f)) {
-            changed = true;
-        }
-        if (ImGui::IsItemActivated()) {
-            imguiSnapTranslate_ = transform_.translate;
-            imguiSnapRotate_ = transform_.rotate;
-            imguiSnapScale_ = transform_.scale;
-            imguiSnapActive_ = isActive_;
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
-            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
-        }
-
-        ImGui::Text("テクスチャサイズ: %.0fx%.0f px", textureSize_.x, textureSize_.y);
+        ImGui::Spacing();
+        ImGui::TextDisabled("Texture: %.0f x %.0f px", textureSize_.x, textureSize_.y);
         Vector2 actualSize = GetActualSize();
-        ImGui::Text("実際の描画サイズ: %.0fx%.0f px", actualSize.x, actualSize.y);
+        ImGui::TextDisabled("Rendered: %.0f x %.0f px", actualSize.x, actualSize.y);
 
-        ImGui::Separator();
+        ImGui::TreePop();
+    }
 
-        // 回転
-        ImGui::Text("回転 (Rotation):");
-        if (ImGui::DragFloat3("##rotate", &transform_.rotate.x, 0.01f, -6.28f, 6.28f)) {
-            changed = true;
-        }
-        if (ImGui::IsItemActivated()) {
-            imguiSnapTranslate_ = transform_.translate;
-            imguiSnapRotate_ = transform_.rotate;
-            imguiSnapScale_ = transform_.scale;
-            imguiSnapActive_ = isActive_;
-        }
-        if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
-            onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
-        }
+    // ─────────────── Material ───────────────
+    if (ImGui::TreeNode("Material")) {
+        ImGui::SeparatorText("Base");
 
-        ImGui::Separator();
-
-        // 色
-        ImGui::Text("色 (Color):");
         Vector4 color = material_->GetColor();
-        if (ImGui::ColorEdit4("##color", &color.x)) {
+        if (ImGui::ColorEdit4("Color", &color.x)) {
             material_->SetColor(color);
             changed = true;
         }
 
-        ImGui::Separator();
-        ImGui::Text("アンカーポイント (Anchor Point):");
+        ImGui::SeparatorText("UV Transform");
 
-        // アンカーポイントのドラッグ
-        Vector2 anchorTemp = anchorPoint_;
-        if (ImGui::DragFloat2("##anchor", &anchorTemp.x, 0.01f, 0.0f, 1.0f, "%.3f")) {
-            ChangeAnchorKeepingPosition(anchorTemp);
+        bool uvChanged = false;
+        uvChanged |= ImGui::DragFloat2("Offset##UV", &uvTransform_.translate.x, 0.01f);
+        uvChanged |= ImGui::DragFloat2("Scale##UV",  &uvTransform_.scale.x,     0.01f, 0.01f, 10.0f);
+        uvChanged |= ImGui::SliderFloat("Rotation##UV", &uvTransform_.rotate.z, -3.14159f, 3.14159f);
+
+        if (uvChanged) {
+            UpdateUVTransformMatrix(uvTransform_);
             changed = true;
         }
 
-        // プリセットボタン
-        ImGui::Text("プリセット:");
-        if (ImGui::Button("左上##topleft")) {
-            ChangeAnchorKeepingPosition({ 0.0f, 0.0f });
-            changed = true;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("中央##center")) {
-            ChangeAnchorKeepingPosition({ 0.5f, 0.5f });
-            changed = true;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("右下##bottomright")) {
-            ChangeAnchorKeepingPosition({ 1.0f, 1.0f });
+        if (ImGui::Button("Reset UV")) {
+            uvTransform_ = { { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
+            material_->SetUVTransform(Matrix::Identity());
             changed = true;
         }
 
-        ImGui::Separator();
-        if (ImGui::Button("リセット##reset")) {
-            Reset();
-            changed = true;
-        }
-
-        // 個別保存ボタン
-        DrawSaveButton();
-
-        ImGui::PopID();
+        ImGui::TreePop();
     }
 
+    // ─────────────── Sprite ───────────────
+    ImGui::SeparatorText("Sprite");
+
+    // ブレンドモード
+    {
+        const char* blendModes[] = { "None", "Normal", "Add", "Subtract", "Multiply", "Screen" };
+        int blendModeInt = static_cast<int>(blendMode_);
+        if (ImGui::Combo("Blend Mode", &blendModeInt, blendModes, 6)) {
+            blendMode_ = static_cast<BlendMode>(blendModeInt);
+            changed = true;
+        }
+    }
+
+    // アンカーポイント
+    ImGui::Spacing();
+    ImGui::Text("Anchor Point");
+    Vector2 anchorTemp = anchorPoint_;
+    if (ImGui::DragFloat2("##anchor", &anchorTemp.x, 0.01f, 0.0f, 1.0f, "%.2f")) {
+        ChangeAnchorKeepingPosition(anchorTemp);
+        changed = true;
+    }
+    if (ImGui::Button("TL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 0.0f }); changed = true; } ImGui::SameLine();
+    if (ImGui::Button("TC##anchor")) { ChangeAnchorKeepingPosition({ 0.5f, 0.0f }); changed = true; } ImGui::SameLine();
+    if (ImGui::Button("TR##anchor")) { ChangeAnchorKeepingPosition({ 1.0f, 0.0f }); changed = true; } ImGui::SameLine();
+    if (ImGui::Button("C##anchor"))  { ChangeAnchorKeepingPosition({ 0.5f, 0.5f }); changed = true; } ImGui::SameLine();
+    if (ImGui::Button("BL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 1.0f }); changed = true; } ImGui::SameLine();
+    if (ImGui::Button("BR##anchor")) { ChangeAnchorKeepingPosition({ 1.0f, 1.0f }); changed = true; }
+
+    ImGui::Spacing();
+    if (ImGui::Button("Reset##sprite")) {
+        Reset();
+        changed = true;
+    }
+
+    // 個別保存ボタン
+    DrawSaveButton();
+
+    ImGui::PopID();
     return changed;
 }
 #endif

@@ -2,10 +2,6 @@
 
 #include "ObjectCommon/GameObject.h"
 
-#ifdef _DEBUG
-#include "Graphics/Material/Debug/MaterialDebugUI.h"
-#endif
-
 /// @brief Walkモデルオブジェクト
 class WalkModelObject : public CoreEngine::GameObject {
 public:
@@ -18,11 +14,6 @@ public:
     /// @brief 描画処理
     /// @param camera カメラ
     void Draw(const CoreEngine::ICamera* camera) override;
-    
-#ifdef _DEBUG
-    /// @brief ImGui拡張UI描画
-    bool DrawImGuiExtended() override;
-#endif
 
     /// @brief 描画パスタイプを取得（スキニングモデル用）
     /// @return 描画パスタイプ
@@ -39,8 +30,5 @@ public:
 
 private:
     float animationTime_ = 0.0f;   // アニメーション時刻
-#ifdef _DEBUG
-    std::unique_ptr<CoreEngine::MaterialDebugUI> materialDebugUI_;
-#endif
 };
 

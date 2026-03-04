@@ -5,6 +5,7 @@
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/TextureManager.h"
 #include "Graphics/Material/SpriteMaterialInstance.h"
+#include "Math/EulerTransform.h"
 #include <memory>
 #include <string>
 #include <d3d12.h>
@@ -153,7 +154,10 @@ private:
     /// @brief UV座標範囲
     Vector2 uvMin_ = { 0.0f, 0.0f };
     Vector2 uvMax_ = { 1.0f, 1.0f };
-    
+
+    /// @brief UV変換パラメータ（ImGui編集用に分解して保持）
+    EulerTransform uvTransform_ = { { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
+
     /// @brief ブレンドモード（デフォルトはアルファブレンド）
     BlendMode blendMode_ = BlendMode::kBlendModeNormal;
     

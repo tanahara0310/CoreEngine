@@ -16,160 +16,203 @@ namespace CoreEngine {
 
         bool changed = false;
 
-        if (ImGui::CollapsingHeader("Material")) {
-
-            Vector4 color = mat->GetColor();
-
-            if (ImGui::ColorEdit4("Color", &color.x)) {
-                mat->SetColor(color);
-                changed = true;
-            }
-
-            float shininess = mat->GetShininess();
-            if (ImGui::SliderFloat("Shininess", &shininess, 1.0f, 128.0f)) {
-                mat->SetShininess(shininess);
-                changed = true;
-            }
+        if (!ImGui::TreeNode("Material")) {
+            return false;
         }
 
-        if (ImGui::CollapsingHeader("Lighting")) {
+        // ─────────────── Base ───────────────
+        ImGui::SeparatorText("Base");
 
-            bool enableLighting = mat->IsLightingEnabled();
+        Vector4 color = mat->GetColor();
+        if (ImGui::ColorEdit4("Color", &color.x)) {
+            mat->SetColor(color);
+            changed = true;
+        }
 
-            if (ImGui::Checkbox("Enable Lighting", &enableLighting)) {
-                mat->SetLightingEnabled(enableLighting);
-                changed = true;
-            }
+        float shininess = mat->GetShininess();
+        if (ImGui::SliderFloat("Shininess", &shininess, 1.0f, 128.0f)) {
+            mat->SetShininess(shininess);
+            changed = true;
+        }
 
+        // ─────────────── Lighting ───────────────
+        ImGui::SeparatorText("Lighting");
+
+        bool enableLighting = mat->IsLightingEnabled();
+        if (ImGui::Checkbox("Enable Lighting", &enableLighting)) {
+            mat->SetLightingEnabled(enableLighting);
+            changed = true;
+        }
+
+        if (enableLighting) {
             const char* shadingModes[] = { "None", "Lambert", "Half-Lambert", "Toon" };
-
             int shadingModeInt = static_cast<int>(mat->GetShadingMode());
 
             if (ImGui::Combo("Shading Mode", &shadingModeInt, shadingModes, 4)) {
-
                 mat->SetShadingMode(static_cast<ShadingMode>(shadingModeInt));
                 changed = true;
             }
 
             if (mat->GetShadingMode() == ShadingMode::Toon) {
+                ImGui::Indent();
                 float toonThreshold = mat->GetToonThreshold();
-                if (ImGui::SliderFloat("Toon Threshold", &toonThreshold, 0.0f, 1.0f)) { mat->SetToonThreshold(toonThreshold); changed = true; }
+                if (ImGui::SliderFloat("Threshold##Toon", &toonThreshold, 0.0f, 1.0f)) {
+                    mat->SetToonThreshold(toonThreshold);
+                    changed = true;
+                }
                 float toonSmoothness = mat->GetToonSmoothness();
-                if (ImGui::SliderFloat("Toon Smoothness", &toonSmoothness, 0.0f, 0.5f)) { mat->SetToonSmoothness(toonSmoothness); changed = true; }
+                if (ImGui::SliderFloat("Smoothness##Toon", &toonSmoothness, 0.0f, 0.5f)) {
+                    mat->SetToonSmoothness(toonSmoothness);
+                    changed = true;
+                }
+                ImGui::Unindent();
             }
         }
 
-        if (ImGui::CollapsingHeader("PBR")) {
+        // ─────────────── PBR ───────────────
+        ImGui::SeparatorText("PBR");
 
-            bool enablePBR = mat->IsPBREnabled();
+        bool enablePBR = mat->IsPBREnabled();
+        if (ImGui::Checkbox("Enable PBR", &enablePBR)) {
+            mat->SetPBREnabled(enablePBR);
+            changed = true;
+        }
 
-            if (ImGui::Checkbox("Enable PBR", &enablePBR)) {
-                mat->SetPBREnabled(enablePBR);
+        if (enablePBR) {
+            if (ImGui::TreeNode("Texture Maps##PBR")) {
+                const bool hasNormal    = model->HasNormalMap();
+                const bool hasMetallic  = model->HasMetallicRoughnessMap();
+                const bool hasOcclusion = model->HasOcclusionMap();
+
+                auto drawMapCheckbox = [&](const char* label, bool hasTexture,
+                    bool (MaterialInstance::*getter)() const,
+                    void (MaterialInstance::*setter)(bool)) {
+                    ImGui::BeginDisabled(!hasTexture);
+                    bool val = (mat->*getter)();
+                    if (ImGui::Checkbox(label, &val)) {
+                        (mat->*setter)(val);
+                        changed = true;
+                    }
+                    ImGui::EndDisabled();
+                    if (!hasTexture) {
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("(なし)");
+                    }
+                };
+
+                drawMapCheckbox("Normal Map",    hasNormal,    &MaterialInstance::IsNormalMapEnabled,    &MaterialInstance::SetNormalMapEnabled);
+                drawMapCheckbox("Metallic Map",  hasMetallic,  &MaterialInstance::IsMetallicMapEnabled,  &MaterialInstance::SetMetallicMapEnabled);
+                drawMapCheckbox("Roughness Map", hasMetallic,  &MaterialInstance::IsRoughnessMapEnabled, &MaterialInstance::SetRoughnessMapEnabled);
+                drawMapCheckbox("AO Map",        hasOcclusion, &MaterialInstance::IsAOMapEnabled,        &MaterialInstance::SetAOMapEnabled);
+
+                ImGui::TreePop();
+            }
+
+            ImGui::TextDisabled("Parameters (when maps disabled)");
+
+            // テクスチャが存在しないか、マップが無効な場合のみスライダーを有効化
+            ImGui::BeginDisabled(mat->IsMetallicMapEnabled() && model->HasMetallicRoughnessMap());
+            float metallic = mat->GetMetallic();
+            if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f)) {
+                mat->SetMetallic(metallic);
                 changed = true;
             }
-            if (enablePBR) {
+            ImGui::EndDisabled();
 
-                ImGui::Separator();
-                ImGui::Text("Texture Maps");
-
-                bool useNormalMap = mat->IsNormalMapEnabled();
-                bool useMetallicMap = mat->IsMetallicMapEnabled();
-                bool useRoughnessMap = mat->IsRoughnessMapEnabled();
-                bool useAOMap = mat->IsAOMapEnabled();
-
-                if (ImGui::Checkbox("Normal Map", &useNormalMap)) {
-                    mat->SetNormalMapEnabled(useNormalMap);
-                    changed = true;
-                }
-
-                if (ImGui::Checkbox("Metallic Map", &useMetallicMap)) {
-                    mat->SetMetallicMapEnabled(useMetallicMap);
-                    changed = true;
-                }
-
-                if (ImGui::Checkbox("Roughness Map", &useRoughnessMap)) {
-                    mat->SetRoughnessMapEnabled(useRoughnessMap);
-                    changed = true;
-                }
-
-                if (ImGui::Checkbox("AO Map", &useAOMap)) {
-
-                    mat->SetAOMapEnabled(useAOMap);
-
-                    changed = true;
-                }
-
-                ImGui::Separator();
-
-                ImGui::Text("Parameters (used when maps are disabled)");
-                float metallic = mat->GetMetallic();
-
-                if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f)) {
-                    mat->SetMetallic(metallic);
-                    changed = true;
-                }
-
-                float roughness = mat->GetRoughness();
-                if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f)) {
-                    mat->SetRoughness(roughness);
-                    changed = true;
-                }
-                float ao = mat->GetAO();
-                if (ImGui::SliderFloat("AO", &ao, 0.0f, 1.0f)) {
-                    mat->SetAO(ao);
-                    changed = true;
-                }
+            ImGui::BeginDisabled(mat->IsRoughnessMapEnabled() && model->HasMetallicRoughnessMap());
+            float roughness = mat->GetRoughness();
+            if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f)) {
+                mat->SetRoughness(roughness);
+                changed = true;
             }
+            ImGui::EndDisabled();
+
+            ImGui::BeginDisabled(mat->IsAOMapEnabled() && model->HasOcclusionMap());
+            float ao = mat->GetAO();
+            if (ImGui::SliderFloat("AO", &ao, 0.0f, 1.0f)) {
+                mat->SetAO(ao);
+                changed = true;
+            }
+            ImGui::EndDisabled();
         }
 
-        if (ImGui::CollapsingHeader("Environment Map")) {
-            bool enableEnvMap = mat->IsEnvironmentMapEnabled();
-            if (ImGui::Checkbox("Enable Environment Map", &enableEnvMap)) { mat->SetEnvironmentMapEnabled(enableEnvMap); changed = true; }
-            if (enableEnvMap) {
-                float intensity = mat->GetEnvironmentMapIntensity();
+        // ─────────────── Environment ───────────────
+        ImGui::SeparatorText("Environment");
 
-                if (ImGui::SliderFloat("Intensity##EnvMap", &intensity, 0.0f, 1.0f)) {
-                    mat->SetEnvironmentMapIntensity(intensity);
-                    changed = true;
-                }
-                float rotationDeg = mat->GetEnvironmentRotationY() * 57.2958f;
-
-                if (ImGui::SliderFloat("Rotation Y (deg)", &rotationDeg, 0.0f, 360.0f)) {
-
-                    mat->SetEnvironmentRotationY(rotationDeg / 57.2958f);
-                    changed = true;
-                }
+        const bool envMapAvailable = Model::IsEnvironmentMapAvailable();
+        ImGui::BeginDisabled(!envMapAvailable);
+        bool enableEnvMap = mat->IsEnvironmentMapEnabled();
+        if (ImGui::Checkbox("Enable Environment Map", &enableEnvMap)) {
+            mat->SetEnvironmentMapEnabled(enableEnvMap);
+            changed = true;
+        }
+        ImGui::EndDisabled();
+        if (!envMapAvailable) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("(テクスチャ未設定)");
+            if (mat->IsEnvironmentMapEnabled()) {
+                mat->SetEnvironmentMapEnabled(false);
             }
         }
-
-        if (ImGui::CollapsingHeader("IBL (Image-Based Lighting)")) {
-            bool enableIBL = mat->IsIBLEnabled();
-            if (ImGui::Checkbox("Enable IBL", &enableIBL)) {
-                mat->SetIBLEnabled(enableIBL); changed = true;
+        if (enableEnvMap && envMapAvailable) {
+            ImGui::Indent();
+            float intensity = mat->GetEnvironmentMapIntensity();
+            if (ImGui::SliderFloat("Intensity##EnvMap", &intensity, 0.0f, 1.0f)) {
+                mat->SetEnvironmentMapIntensity(intensity);
+                changed = true;
             }
-
-            if (enableIBL) {
-
-                float iblIntensity = mat->GetIBLIntensity();
-                if (ImGui::SliderFloat("IBL Intensity", &iblIntensity, 0.0f, 2.0f)) {
-                    mat->SetIBLIntensity(iblIntensity); changed = true;
-                }
+            float rotationDeg = mat->GetEnvironmentRotationY() * 57.2958f;
+            if (ImGui::SliderFloat("Rotation Y (deg)", &rotationDeg, 0.0f, 360.0f)) {
+                mat->SetEnvironmentRotationY(rotationDeg / 57.2958f);
+                changed = true;
             }
+            ImGui::Unindent();
         }
 
-        if (ImGui::CollapsingHeader("Dithering")) {
-            bool enableDithering = mat->IsDitheringEnabled();
-            if (ImGui::Checkbox("Enable Dithering", &enableDithering)) {
-                mat->SetDitheringEnabled(enableDithering); changed = true;
-            }
-            if (enableDithering) {
-                float ditheringScale = mat->GetDitheringScale();
-                if (ImGui::SliderFloat("Dithering Scale", &ditheringScale, 0.1f, 5.0f)) {
-                    mat->SetDitheringScale(ditheringScale); changed = true;
-                }
+        const bool iblAvailable = Model::IsIBLAvailable();
+        ImGui::BeginDisabled(!iblAvailable);
+        bool enableIBL = mat->IsIBLEnabled();
+        if (ImGui::Checkbox("Enable IBL", &enableIBL)) {
+            mat->SetIBLEnabled(enableIBL);
+            changed = true;
+        }
+        ImGui::EndDisabled();
+        if (!iblAvailable) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("(Irradiance/Prefiltered/BRDF LUT 未設定)");
+            if (mat->IsIBLEnabled()) {
+                mat->SetIBLEnabled(false);
             }
         }
+        if (enableIBL && iblAvailable) {
+            ImGui::Indent();
+            float iblIntensity = mat->GetIBLIntensity();
+            if (ImGui::SliderFloat("IBL Intensity", &iblIntensity, 0.0f, 2.0f)) {
+                mat->SetIBLIntensity(iblIntensity);
+                changed = true;
+            }
+            ImGui::Unindent();
+        }
 
+        // ─────────────── Effects ───────────────
+        ImGui::SeparatorText("Effects");
+
+        bool enableDithering = mat->IsDitheringEnabled();
+        if (ImGui::Checkbox("Enable Dithering", &enableDithering)) {
+            mat->SetDitheringEnabled(enableDithering);
+            changed = true;
+        }
+        if (enableDithering) {
+            ImGui::Indent();
+            float ditheringScale = mat->GetDitheringScale();
+            if (ImGui::SliderFloat("Scale##Dithering", &ditheringScale, 0.1f, 5.0f)) {
+                mat->SetDitheringScale(ditheringScale);
+                changed = true;
+            }
+            ImGui::Unindent();
+        }
+
+        ImGui::TreePop();
         return changed;
     }
 

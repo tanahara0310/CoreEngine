@@ -37,6 +37,16 @@ namespace CoreEngine
         void SetPrefilteredMap(D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle) { prefilteredMapHandle_ = prefilteredMapHandle; }
         void SetBRDFLUT(D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle) { brdfLUTHandle_ = brdfLUTHandle; }
 
+        /// @brief 環境マップテクスチャが設定済みか確認
+        bool HasEnvironmentMap() const { return environmentMapHandle_.ptr != 0; }
+
+        /// @brief IBLに必要なテクスチャ（Irradiance / Prefiltered / BRDF LUT）が全て設定済みか確認
+        bool HasIBLMaps() const {
+            return irradianceMapHandle_.ptr != 0
+                && prefilteredMapHandle_.ptr != 0
+                && brdfLUTHandle_.ptr != 0;
+        }
+
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得
         /// @param resourceName シェーダーで定義されたリソース名（例: "gMaterial", "gTexture"）
         /// @return ルートパラメータインデックス（見つからない場合は-1）

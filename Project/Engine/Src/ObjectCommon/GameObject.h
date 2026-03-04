@@ -14,6 +14,10 @@
 #include <memory>
 #include <string>
 
+#ifdef _DEBUG
+#include "Graphics/Material/Debug/MaterialDebugUI.h"
+#endif
+
 // Forward declaration
 namespace CoreEngine {
     class ICamera;
@@ -48,6 +52,12 @@ namespace CoreEngine
 
         /// @brief アクティブ状態を取得
         bool IsActive() const { return isActive_; }
+
+        /// @brief 表示状態を設定（falseにすると描画のみスキップ、更新は継続）
+        void SetVisible(bool visible) { isVisible_ = visible; }
+
+        /// @brief 表示状態を取得
+        bool IsVisible() const { return isVisible_; }
 
         /// @brief オブジェクトを削除マーク（フレーム終了時に自動削除）
         void Destroy() { markedForDestroy_ = true; }
@@ -203,6 +213,9 @@ namespace CoreEngine
         /// @brief アクティブ状態フラグ
         bool isActive_ = true;
 
+        /// @brief 表示状態フラグ（falseにすると描画のみスキップ、Active=falseとは異なり更新は継続）
+        bool isVisible_ = true;
+
         /// @brief 削除マークフラグ（フレーム終了時に自動削除される）
         bool markedForDestroy_ = false;
 
@@ -221,8 +234,15 @@ namespace CoreEngine
         EditCommitCallback onEditCommitted_;
         SaveRequestCallback onSaveRequested_;
 
+        /// @brief マテリアルデバッグUI（モデルを持つオブジェクト共通）
+        std::unique_ptr<MaterialDebugUI> materialDebugUI_;
+
         /// @brief 個別保存ボタンを描画するヘルパー（DrawImGui 内で使用）
         void DrawSaveButton();
+
+        /// @brief マテリアルUIを描画するヘルパー（モデルがある場合のみ）
+        /// @return 変更があった場合 true
+        bool DrawMaterialImGui();
 #endif
     };
 }

@@ -23,10 +23,9 @@ namespace CoreEngine
     void GameObjectManager::RegisterAllToRender(RenderManager* renderManager) {
         if (!renderManager) return;
 
-        // アクティブで削除マークされていないオブジェクトのみ登録
-        // 事前フィルタリング済みのため、RenderManager側では簡易チェックのみ
+        // アクティブかつ表示状態で削除マークされていないオブジェクトのみ登録
         for (auto& obj : objects_) {
-            if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
+            if (obj && obj->IsActive() && obj->IsVisible() && !obj->IsMarkedForDestroy()) {
                 renderManager->AddDrawable(obj.get());
             }
         }

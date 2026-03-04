@@ -62,6 +62,21 @@ namespace CoreEngine
         /// @param shadowMapRenderer ShadowMapRendererのポインタ
         static void SetShadowMapRenderer(class ShadowMapRenderer* shadowMapRenderer);
 
+        /// @brief 環境マップテクスチャがレンダラーに設定済みか確認
+        static bool IsEnvironmentMapAvailable();
+
+        /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
+        static bool IsIBLAvailable();
+
+        /// @brief モデルリソースに法線マップテクスチャがあるか確認
+        bool HasNormalMap() const;
+
+        /// @brief モデルリソースに MetallicRoughness テクスチャがあるか確認
+        bool HasMetallicRoughnessMap() const;
+
+        /// @brief モデルリソースに AO（陰影）テクスチャがあるか確認
+        bool HasOcclusionMap() const;
+
         /// @brief 初期化（アニメーションコントローラーなし）
         /// @param resource 共有するModelResourceのポインタ
         void Initialize(ModelResource* resource);
