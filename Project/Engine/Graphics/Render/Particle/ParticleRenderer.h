@@ -1,7 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "BaseParticleRenderer.h"
-#include "Engine/Graphics/Structs/VertexData.h"
+#include "Engine/Graphics/Model/VertexData.h"
 #include <d3d12.h>
 #include <wrl.h>
 

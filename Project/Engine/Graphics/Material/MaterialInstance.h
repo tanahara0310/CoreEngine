@@ -1,28 +1,23 @@
 #pragma once
 
-#include <d3d12.h>
-#include <wrl.h>
-
-#include "Engine/Graphics/Material/IMaterial.h"
+#include "MaterialBase.h"
 #include "MathCore.h"
-#include "Structs/MaterialConstants.h"
+#include "MaterialConstants.h"
 
 namespace CoreEngine
 {
     /// @brief 1つのマテリアルのGPU定数バッファを保持するクラス
     /// @details モデルインスタンスごとに1つ生成し、GPU側の定数バッファを管理します。
-    class MaterialInstance : public IMaterial {
+    class MaterialInstance : public MaterialBase<MaterialConstants> {
     public:
-        /// @brief 初期化
-        /// @param device デバイス
-        void Initialize(ID3D12Device* device);
+        void Initialize(ID3D12Device* device) override;
 
         // ===== Color =====
-        void SetColor(const Vector4& color) { materialData_->color = color; }
-        Vector4 GetColor() const { return materialData_->color; }
+        void SetColor(const Vector4& color) override { materialData_->color = color; }
+        Vector4 GetColor() const override { return materialData_->color; }
 
         // ===== Lighting =====
-        void SetLightingEnabled(bool enable) { materialData_->enableLighting = enable ? 1 : 0; }
+        void SetLightingEnabled(bool enable) { materialData_->enableLighting = static_cast<int32_t>(enable); }
         bool IsLightingEnabled() const { return materialData_->enableLighting != 0; }
 
         // ===== UV Transform =====
@@ -44,13 +39,13 @@ namespace CoreEngine
         float GetToonSmoothness() const { return materialData_->toonSmoothness; }
 
         // ===== Dithering =====
-        void SetDitheringEnabled(bool enable) { materialData_->enableDithering = enable ? 1 : 0; }
+        void SetDitheringEnabled(bool enable) { materialData_->enableDithering = static_cast<int32_t>(enable); }
         bool IsDitheringEnabled() const { return materialData_->enableDithering != 0; }
         void SetDitheringScale(float scale) { materialData_->ditheringScale = scale; }
         float GetDitheringScale() const { return materialData_->ditheringScale; }
 
         // ===== Environment Map =====
-        void SetEnvironmentMapEnabled(bool enable) { materialData_->enableEnvironmentMap = enable ? 1 : 0; }
+        void SetEnvironmentMapEnabled(bool enable) { materialData_->enableEnvironmentMap = static_cast<int32_t>(enable); }
         bool IsEnvironmentMapEnabled() const { return materialData_->enableEnvironmentMap != 0; }
         void SetEnvironmentMapIntensity(float intensity) { materialData_->environmentMapIntensity = intensity; }
         float GetEnvironmentMapIntensity() const { return materialData_->environmentMapIntensity; }
@@ -58,7 +53,7 @@ namespace CoreEngine
         float GetEnvironmentRotationY() const { return materialData_->environmentRotationY; }
 
         // ===== PBR =====
-        void SetPBREnabled(bool enable) { materialData_->enablePBR = enable ? 1 : 0; }
+        void SetPBREnabled(bool enable) { materialData_->enablePBR = static_cast<int32_t>(enable); }
         bool IsPBREnabled() const { return materialData_->enablePBR != 0; }
         void SetMetallic(float metallic) { materialData_->metallic = metallic; }
         float GetMetallic() const { return materialData_->metallic; }
@@ -68,31 +63,20 @@ namespace CoreEngine
         float GetAO() const { return materialData_->ao; }
 
         // ===== PBR Texture Maps =====
-        void SetNormalMapEnabled(bool enable) { materialData_->useNormalMap = enable ? 1 : 0; }
+        void SetNormalMapEnabled(bool enable) { materialData_->useNormalMap = static_cast<int32_t>(enable); }
         bool IsNormalMapEnabled() const { return materialData_->useNormalMap != 0; }
-        void SetMetallicMapEnabled(bool enable) { materialData_->useMetallicMap = enable ? 1 : 0; }
+        void SetMetallicMapEnabled(bool enable) { materialData_->useMetallicMap = static_cast<int32_t>(enable); }
         bool IsMetallicMapEnabled() const { return materialData_->useMetallicMap != 0; }
-        void SetRoughnessMapEnabled(bool enable) { materialData_->useRoughnessMap = enable ? 1 : 0; }
+        void SetRoughnessMapEnabled(bool enable) { materialData_->useRoughnessMap = static_cast<int32_t>(enable); }
         bool IsRoughnessMapEnabled() const { return materialData_->useRoughnessMap != 0; }
-        void SetAOMapEnabled(bool enable) { materialData_->useAOMap = enable ? 1 : 0; }
+        void SetAOMapEnabled(bool enable) { materialData_->useAOMap = static_cast<int32_t>(enable); }
         bool IsAOMapEnabled() const { return materialData_->useAOMap != 0; }
 
         // ===== IBL =====
-        void SetIBLEnabled(bool enable) { materialData_->enableIBL = enable ? 1 : 0; }
+        void SetIBLEnabled(bool enable) { materialData_->enableIBL = static_cast<int32_t>(enable); }
         bool IsIBLEnabled() const { return materialData_->enableIBL != 0; }
         void SetIBLIntensity(float intensity) { materialData_->iblIntensity = intensity; }
         float GetIBLIntensity() const { return materialData_->iblIntensity; }
-
-        // ===== GPU Access =====
-        /// @brief GPU仮想アドレスを取得
-        D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const
-        {
-            return materialResource_->GetGPUVirtualAddress();
-        }
-
-    private:
-        Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_ = nullptr;
-        MaterialConstants* materialData_ = nullptr;
     };
 
 } // namespace CoreEngine

@@ -9,8 +9,8 @@
 #include "ModelResource.h"
 #include "Engine/WorldTransform/WorldTransform.h"
 #include "Engine/Graphics/Material/MaterialInstance.h"
-#include "Engine/Graphics/Structs/TransformationMatrix.h"
-#include "Engine/Graphics/Structs/SkinCluster.h"
+#include "Engine/Graphics/Model/TransformationMatrix.h"
+#include "Engine/Graphics/Model/Skeleton/SkinCluster.h"
 #include "Animation/IAnimationController.h"
 #include "Skeleton/Skeleton.h"
 

@@ -593,21 +593,6 @@
     <ClInclude Include="Engine\Graphics\Shader\ShaderCompiler.h">
       <Filter>Engine\Graphics\Shader</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\MaterialConstants.h">
-      <Filter>Engine\Graphics\Structs</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\MaterialAsset.h">
-      <Filter>Engine\Graphics\Structs</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\ModelData.h">
-      <Filter>Engine\Graphics\Structs</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\TransformationMatrix.h">
-      <Filter>Engine\Graphics\Structs</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\VertexData.h">
-      <Filter>Engine\Graphics\Structs</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Graphics\TextureManager.h">
       <Filter>Engine\Graphics</Filter>
     </ClInclude>
@@ -619,9 +604,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Math\Spline\Spline.h">
       <Filter>Engine\Math\Spline</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\SpriteMaterial.h">
-      <Filter>Engine\Graphics\Structs</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Math\BoundingBox.h">
       <Filter>Engine\Math</Filter>
@@ -1004,9 +986,6 @@
     <ClInclude Include="Engine\Math\EulerTransform.h">
       <Filter>Engine\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\Node.h">
-      <Filter>Engine\Graphics\Structs</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Graphics\Model\Skeleton\Joint.h">
       <Filter>Engine\Graphics\Model\Skeleton</Filter>
     </ClInclude>
@@ -1033,9 +1012,6 @@
     </ClInclude>
     <ClInclude Include="Application\Sample\TestGameObject\SneakWalkModelObject.h">
       <Filter>Engine\TestGameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Graphics\Structs\SkinCluster.h">
-      <Filter>Engine\Graphics\Structs</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Model\Skeleton\SkinClusterGenerator.h">
       <Filter>Engine\Graphics\Model\Skeleton</Filter>
@@ -1240,6 +1216,15 @@
     <ClInclude Include="Engine\Graphics\Material\IMaterial.h" />
     <ClInclude Include="Engine\Graphics\Material\SkyBoxMaterialInstance.h" />
     <ClInclude Include="Engine\Graphics\Material\SpriteMaterialInstance.h" />
+    <ClInclude Include="Engine\Graphics\Material\MaterialBase.h" />
+    <ClInclude Include="Engine\Graphics\Model\MaterialAsset.h" />
+    <ClInclude Include="Engine\Graphics\Material\MaterialConstants.h" />
+    <ClInclude Include="Engine\Graphics\Model\ModelData.h" />
+    <ClInclude Include="Engine\Graphics\Model\Node.h" />
+    <ClInclude Include="Engine\Graphics\Model\Skeleton\SkinCluster.h" />
+    <ClInclude Include="Engine\Graphics\Render\Sprite\SpriteMaterial.h" />
+    <ClInclude Include="Engine\Graphics\Model\TransformationMatrix.h" />
+    <ClInclude Include="Engine\Graphics\Model\VertexData.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Particle\README.md">

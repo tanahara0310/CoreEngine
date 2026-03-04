@@ -384,9 +384,17 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Framework\Framework.h" />
     <ClInclude Include="Engine\Graphics\Material\Debug\MaterialDebugUI.h" />
     <ClInclude Include="Engine\Graphics\Material\IMaterial.h" />
+    <ClInclude Include="Engine\Graphics\Material\MaterialBase.h" />
+    <ClInclude Include="Engine\Graphics\Material\MaterialConstants.h" />
     <ClInclude Include="Engine\Graphics\Material\MaterialInstance.h" />
     <ClInclude Include="Engine\Graphics\Material\SkyBoxMaterialInstance.h" />
     <ClInclude Include="Engine\Graphics\Material\SpriteMaterialInstance.h" />
+    <ClInclude Include="Engine\Graphics\Model\MaterialAsset.h" />
+    <ClInclude Include="Engine\Graphics\Model\ModelData.h" />
+    <ClInclude Include="Engine\Graphics\Model\Node.h" />
+    <ClInclude Include="Engine\Graphics\Model\Skeleton\SkinCluster.h" />
+    <ClInclude Include="Engine\Graphics\Model\TransformationMatrix.h" />
+    <ClInclude Include="Engine\Graphics\Model\VertexData.h" />
     <ClInclude Include="Engine\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Graphics\IBL\IBLManager.h" />
@@ -424,6 +432,7 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Graphics\Render\RenderPassType.h" />
     <ClInclude Include="Engine\Graphics\Render\Shadow\ShadowMapRenderer.h" />
     <ClInclude Include="Engine\Graphics\Render\SkyBox\SkyBoxRenderer.h" />
+    <ClInclude Include="Engine\Graphics\Render\Sprite\SpriteMaterial.h" />
     <ClInclude Include="Engine\Graphics\Render\Sprite\SpriteRenderer.h" />
     <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureBuilder.h" />
     <ClInclude Include="Engine\Graphics\RootSignature\RootSignatureConfig.h" />
@@ -431,8 +440,6 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionData.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionUsageExample.h" />
     <ClInclude Include="Engine\Graphics\Shadow\ShadowMapManager.h" />
-    <ClInclude Include="Engine\Graphics\Structs\Node.h" />
-    <ClInclude Include="Engine\Graphics\Structs\SkinCluster.h" />
     <ClInclude Include="Engine\Math\EulerTransform.h" />
     <ClInclude Include="Engine\Math\QuaternionTransform.h" />
     <ClInclude Include="Engine\ObjectCommon\GameObject.h" />
@@ -502,7 +509,6 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\RadialBlur.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Shockwave.h" />
     <ClInclude Include="Engine\Graphics\PostEffect\Effect\Vignette.h" />
-    <ClInclude Include="Engine\Graphics\Structs\SpriteMaterial.h" />
     <ClInclude Include="Engine\Math\MathCore.h" />
     <ClInclude Include="Engine\Math\Spline\Spline.h" />
     <ClInclude Include="Engine\Particle\Modules\ColorModule.h" />
@@ -516,11 +522,6 @@ xcopy "$(ProjectDir)EngineAssets" "$(TargetDir)EngineAssets\" /E /I /Y /D</Comma
     <ClInclude Include="Engine\Utility\Debug\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Camera\Debug\DebugCamera.h" />
     <ClInclude Include="Engine\Camera\Release\Camera.h" />
-    <ClInclude Include="Engine\Graphics\Structs\MaterialConstants.h" />
-    <ClInclude Include="Engine\Graphics\Structs\MaterialAsset.h" />
-    <ClInclude Include="Engine\Graphics\Structs\ModelData.h" />
-    <ClInclude Include="Engine\Graphics\Structs\TransformationMatrix.h" />
-    <ClInclude Include="Engine\Graphics\Structs\VertexData.h" />
     <ClInclude Include="Engine\Scene\IScene.h" />
     <ClInclude Include="Engine\Utility\Debug\CrashDump.h" />
     <ClInclude Include="Engine\Graphics\Common\DirectXCommon.h" />

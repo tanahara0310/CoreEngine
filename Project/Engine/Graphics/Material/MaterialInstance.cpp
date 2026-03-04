@@ -1,5 +1,4 @@
 #include "MaterialInstance.h"
-#include "Engine/Graphics/Resource/ResourceFactory.h"
 
 namespace CoreEngine
 {
@@ -7,8 +6,7 @@ namespace CoreEngine
 
     void MaterialInstance::Initialize(ID3D12Device* device)
     {
-        materialResource_ = ResourceFactory::CreateBufferResource(device, sizeof(MaterialConstants));
-        materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+        InitializeBuffer(device);
 
         // 初期値の設定 (白・ライティング有効・単位行列)
         materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Matrix/Matrix4x4.h"
 #include "QuaternionTransform.h"
 #include <string>

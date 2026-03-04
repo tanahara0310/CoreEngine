@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
 
-#include "Engine/Graphics/Structs/SkinCluster.h"
-#include "Engine/Graphics/Structs/ModelData.h"
+#include "Engine/Graphics/Model/Skeleton/SkinCluster.h"
+#include "Engine/Graphics/Model/ModelData.h"
 #include "Skeleton.h"
 
 // 前方宣言

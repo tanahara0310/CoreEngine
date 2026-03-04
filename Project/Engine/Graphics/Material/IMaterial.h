@@ -12,6 +12,10 @@ namespace CoreEngine
     public:
         virtual ~IMaterial() = default;
 
+        /// @brief GPUバッファを初期化します
+        /// @param device D3D12デバイス
+        virtual void Initialize(ID3D12Device* device) = 0;
+
         /// @brief カラーを設定
         virtual void SetColor(const Vector4& color) = 0;
 

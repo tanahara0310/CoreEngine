@@ -5,7 +5,7 @@
 #include "Engine/Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
-#include "Engine/Graphics/Structs/VertexData.h"
+#include "Engine/Graphics/Model/VertexData.h"
 #include <cmath>
 #include <cstdio>
 #include <imgui.h>

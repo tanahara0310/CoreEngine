@@ -59,7 +59,7 @@ public:
     float GetRotationY() const { return transform_.rotate.y; }
 
     /// @brief マテリアルインスタンスを直接取得
-    CoreEngine::SkyBoxMaterialInstance* GetMaterial() { return material_.get(); }
+    CoreEngine::IMaterial* GetMaterial() { return material_.get(); }
 
 private:
     /// @brief 箱の頂点データを生成

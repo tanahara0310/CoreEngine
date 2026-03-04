@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "Engine/Graphics/Structs/ModelData.h"
-#include "Engine/Graphics/Structs/MaterialAsset.h"
-#include "Engine/Graphics/Structs/Node.h"
-#include "Engine/Graphics/Structs/VertexData.h"
+#include "Engine/Graphics/Model/ModelData.h"
+#include "Engine/Graphics/Model/MaterialAsset.h"
+#include "Engine/Graphics/Model/Node.h"
+#include "Engine/Graphics/Model/VertexData.h"
 #include "Engine/Math/Matrix/Matrix4x4.h"
 
 /// @brief モデルファイル読み込みクラス
