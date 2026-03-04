@@ -8,7 +8,7 @@
 #include "Engine/WorldTransform/WorldTransform.h"
 #include "Engine/Graphics/Model/Model.h"
 #include "Engine/Graphics/Model/ModelResource.h"
-#include "Engine/Graphics/Structs/ModelData.h"
+#include "Engine/Graphics/Model/ModelData.h"
 #include "Engine/Graphics/Render/RenderPassType.h"
 #include <algorithm>
 #include <limits>

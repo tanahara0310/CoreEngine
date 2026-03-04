@@ -2,7 +2,7 @@
 
 #include <cassert>
 #include <format>
-#include "Engine/Graphics/Structs/VertexData.h"
+#include "Engine/Graphics/Model/VertexData.h"
 #include "Engine/Math/MathCore.h"
 #include "Engine/Utility/Logger/Logger.h"
 #include "Engine/Utility/FileErrorDialog/FileErrorDialog.h"

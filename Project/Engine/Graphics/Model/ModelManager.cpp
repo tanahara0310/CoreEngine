@@ -17,7 +17,7 @@ void ModelManager::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory)
     assert(dxCommon && factory);
     dxCommon_ = dxCommon;
     resourceFactory_ = factory;
-    Model::Initialize(dxCommon, factory);
+    Model::Initialize(dxCommon);
 }
 
 std::unique_ptr<Model> ModelManager::CreateStaticModel(const std::string& filePath)

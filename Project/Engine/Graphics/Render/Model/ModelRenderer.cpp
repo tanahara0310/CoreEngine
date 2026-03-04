@@ -3,8 +3,8 @@
 #include "Engine/Graphics/Light/LightManager.h"
 #include "Engine/Graphics/Shader/ShaderReflectionData.h"
 #include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
-#include "Engine/Graphics/Structs/TransformationMatrix.h"
-#include "Engine/Graphics/Structs/MaterialConstants.h"
+#include "Engine/Graphics/Model/TransformationMatrix.h"
+#include "Engine/Graphics/Material/MaterialConstants.h"
 #include "Engine/Utility/Logger/Logger.h"
 #include <cassert>
 

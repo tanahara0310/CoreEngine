@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 #include "Skeleton.h"
-#include "Engine/Graphics/Structs/Node.h"
+#include "Engine/Graphics/Model/Node.h"
 
 /// @brief Skeletonローダークラス
 

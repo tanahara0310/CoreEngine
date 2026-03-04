@@ -10,10 +10,10 @@ namespace CoreEngine
     /// @brief シェーディングモードの種別
     /// @note GPU定数バッファの shadingMode フィールドと値を一致させること
     enum class ShadingMode : int32_t {
-        None       = 0, // ライティングなし
-        Lambert    = 1, // ランバートシェーディング
+        None = 0, // ライティングなし
+        Lambert = 1, // ランバートシェーディング
         HalfLambert = 2, // ハーフランバートシェーディング
-        Toon       = 3  // トゥーンシェーディング
+        Toon = 3  // トゥーンシェーディング
     };
 
     /// @brief GPU定数バッファに送信するマテリアルパラメータ
@@ -38,17 +38,20 @@ namespace CoreEngine
         float ao; // Ambient Occlusion (環境遮蔽: 0.0 = 完全遮蔽, 1.0 = 遮蔽なし)
         int32_t enablePBR; // PBR有効化フラグ (0: 無効(従来のライティング), 1: 有効)
 
-    // ===== PBR Texture Map Flags =====
-    int32_t useNormalMap; // 法線マップ使用フラグ (0: 使用しない, 1: 使用する)
-    int32_t useMetallicMap; // メタリックマップ使用フラグ (0: 使用しない, 1: 使用する)
-    int32_t useRoughnessMap; // ラフネスマップ使用フラグ (0: 使用しない, 1: 使用する)
-    int32_t useAOMap; // AOマップ使用フラグ (0: 使用しない, 1: 使用する)
-    
-    // ===== IBL Parameters =====
-    int32_t enableIBL; // IBL有効化フラグ (0: 無効, 1: 有効)
-    float iblIntensity; // IBL強度 (0.0-1.0, デフォルト: 1.0)
-    float environmentRotationY; // 環境マップY軸回転（ラジアン）
-    float padding2[1]; // パディング（16バイトアライメント）
-};
+        // ===== PBR Texture Map Flags =====
+        int32_t useNormalMap;    // 法線マップ使用フラグ (0: 使用しない, 1: 使用する)
+        int32_t useMetallicMap;  // メタリックマップ使用フラグ (0: 使用しない, 1: 使用する)
+        int32_t useRoughnessMap; // ラフネスマップ使用フラグ (0: 使用しない, 1: 使用する)
+        int32_t useAOMap;        // AOマップ使用フラグ (0: 使用しない, 1: 使用する)
+
+        // ===== IBL Parameters =====
+        int32_t enableIBL; // IBL有効化フラグ (0: 無効, 1: 有効)
+        float iblIntensity; // IBL強度 (0.0-1.0, デフォルト: 1.0)
+        float environmentRotationY; // 環境マップY軸回転（ラジアン）
+        float padding2[1]; // パディング（16バイトアライメント）
+    };
+
+    static_assert(sizeof(MaterialConstants) % 16 == 0,
+        "MaterialConstants must be 16-byte aligned for HLSL cbuffer");
 
 }

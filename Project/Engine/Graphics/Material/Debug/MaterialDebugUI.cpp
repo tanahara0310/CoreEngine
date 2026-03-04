@@ -3,7 +3,7 @@
 #ifdef _DEBUG
 
 #include "Engine/Graphics/Model/Model.h"
-#include "Engine/Graphics/Structs/MaterialConstants.h"
+#include "Engine/Graphics/Material/MaterialConstants.h"
 #include "externals/imgui/imgui.h"
 
 namespace CoreEngine {

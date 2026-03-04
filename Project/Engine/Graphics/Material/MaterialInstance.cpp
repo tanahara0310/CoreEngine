@@ -4,10 +4,9 @@ namespace CoreEngine
 {
     using namespace CoreEngine::MathCore;
 
-    void MaterialInstance::Initialize(ID3D12Device* device, ResourceFactory* resourceFactory)
+    void MaterialInstance::Initialize(ID3D12Device* device)
     {
-        materialResource_ = resourceFactory->CreateBufferResource(device, sizeof(MaterialConstants));
-        materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+        InitializeBuffer(device);
 
         // 初期値の設定 (白・ライティング有効・単位行列)
         materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };

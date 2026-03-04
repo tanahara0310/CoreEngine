@@ -9,8 +9,8 @@
 #include "ModelResource.h"
 #include "Engine/WorldTransform/WorldTransform.h"
 #include "Engine/Graphics/Material/MaterialInstance.h"
-#include "Engine/Graphics/Structs/TransformationMatrix.h"
-#include "Engine/Graphics/Structs/SkinCluster.h"
+#include "Engine/Graphics/Model/TransformationMatrix.h"
+#include "Engine/Graphics/Model/Skeleton/SkinCluster.h"
 #include "Animation/IAnimationController.h"
 #include "Skeleton/Skeleton.h"
 
@@ -44,8 +44,7 @@ namespace CoreEngine
 
         /// @brief 静的初期化（全Modelインスタンス共通のリソースを初期化）
         /// @param dxCommon DirectXCommonのポインタ
-        /// @param factory リソースファクトリのポインタ
-        static void Initialize(CoreEngine::DirectXCommon* dxCommon, CoreEngine::ResourceFactory* factory);
+        static void Initialize(CoreEngine::DirectXCommon* dxCommon);
 
         /// @brief ShadowMapManagerを設定（ライトVP行列の一元管理）
         /// @param shadowMapManager ShadowMapManagerのポインタ

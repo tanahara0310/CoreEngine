@@ -4,7 +4,7 @@
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Graphics/Model/ModelLoader.h"
 #include "Engine/Graphics/Model/Skeleton/SkeletonLoader.h"
-#include "Engine/Graphics/Structs/VertexData.h"
+#include "Engine/Graphics/Model/VertexData.h"
 
 #include <cassert>
 

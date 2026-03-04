@@ -3,7 +3,7 @@
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
 #include "Engine/Graphics/TextureManager.h"
-#include "Engine/Graphics/Material/MaterialInstance.h"
+#include "Engine/Graphics/Material/SkyBoxMaterialInstance.h"
 #include "Engine/Graphics/Render/RenderManager.h"
 #include "Engine/Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Engine/Math/Vector/Vector4.h"
@@ -36,8 +36,12 @@ void SkyBoxObject::Initialize() {
     // 頂点データ生成
     CreateBoxVertices();
 
-    // マテリアル用定数バッファ生成
-    CreateMaterialBuffer();
+    // マテリアル初期化
+    auto engine = GetEngineSystem();
+    auto* dxCommon = engine->GetComponent<DirectXCommon>();
+    assert(dxCommon != nullptr);
+    material_ = std::make_unique<SkyBoxMaterialInstance>();
+    material_->Initialize(dxCommon->GetDevice());
 
     // トランスフォーム用定数バッファ生成
     CreateTransformBuffer();
@@ -154,21 +158,6 @@ void SkyBoxObject::Update() {
     transform_.TransferMatrix();
 }
 
-void SkyBoxObject::CreateMaterialBuffer() {
-    auto engine = GetEngineSystem();
-    auto* dxCommon = engine->GetComponent<DirectXCommon>();
-    assert(dxCommon != nullptr);
-
-    // マテリアル用定数バッファの作成
-    materialBuffer_ = ResourceFactory::CreateBufferResource(dxCommon->GetDevice(), sizeof(SkyBoxMaterial));
-
-    // マテリアルデータをマップ
-    materialBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
-
-    // デフォルトカラー（白）
-    materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-}
-
 void SkyBoxObject::CreateTransformBuffer() {
     auto engine = GetEngineSystem();
     auto* dxCommon = engine->GetComponent<DirectXCommon>();
@@ -224,7 +213,7 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
     // マテリアルCBV
     commandList->SetGraphicsRootConstantBufferView(
         sSkyBoxRenderer_->GetRootParamIndex("gMaterial"),
-        materialBuffer_->GetGPUVirtualAddress()
+        material_->GetGPUVirtualAddress()
     );
 
     // テクスチャの設定

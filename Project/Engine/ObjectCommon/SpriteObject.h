@@ -4,6 +4,7 @@
 #include "Engine/WorldTransform/WorldTransform.h"
 #include "Engine/Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Engine/Graphics/TextureManager.h"
+#include "Engine/Graphics/Material/SpriteMaterialInstance.h"
 #include <memory>
 #include <string>
 #include <d3d12.h>
@@ -57,12 +58,12 @@ public:
     void SetTexture(const std::string& textureFilePath);
     
     /// @brief 色を設定
-    void SetColor(const Vector4& color) { color_ = color; }
-    Vector4 GetColor() const { return color_; }
-    
+    void SetColor(const Vector4& color) { material_->SetColor(color); }
+    Vector4 GetColor() const { return material_->GetColor(); }
+
     /// @brief UV変換行列を設定
-    void SetUVTransform(const Matrix4x4& uvTransform) { uvTransform_ = uvTransform; }
-    Matrix4x4 GetUVTransform() const { return uvTransform_; }
+    void SetUVTransform(const Matrix4x4& uvTransform) { material_->SetUVTransform(uvTransform); }
+    Matrix4x4 GetUVTransform() const { return material_->GetUVTransform(); }
     
     /// @brief アンカーポイントを設定
     /// @param anchor アンカーポイント (0.0f, 0.0f)=左上、(0.5f, 0.5f)=中央、(1.0f, 1.0f)=右下
@@ -138,8 +139,7 @@ private:
     Vector2 textureSize_ = { 1.0f, 1.0f };
     
     /// @brief マテリアル
-    Vector4 color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    Matrix4x4 uvTransform_ = MathCore::Matrix::Identity();
+    std::unique_ptr<SpriteMaterialInstance> material_;
     
     /// @brief アンカーポイント（0.0f, 0.0f = 左上、0.5f, 0.5f = 中央、1.0f, 1.0f = 右下）
     Vector2 anchorPoint_ = { 0.5f, 0.5f };  // デフォルトを中央に変更

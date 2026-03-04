@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
 
 #include "MathCore.h"
-#include "Structs/TransformationMatrix.h"
+#include "Engine/Graphics/Model/TransformationMatrix.h"
 #include "Camera/ICamera.h"
 #include "Camera/CameraStructs.h"
 

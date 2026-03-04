@@ -5,8 +5,7 @@
 #include "Engine/Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Engine/Graphics/Common/DirectXCommon.h"
 #include "Engine/Graphics/Resource/ResourceFactory.h"
-#include "Engine/Graphics/Structs/VertexData.h"
-#include "Engine/Graphics/Structs/SpriteMaterial.h"
+#include "Engine/Graphics/Model/VertexData.h"
 #include <cmath>
 #include <cstdio>
 #include <imgui.h>
@@ -36,7 +35,11 @@ void SpriteObject::Initialize(const std::string& textureFilePath, const std::str
     
     // 頂点バッファを作成
     CreateVertexBuffer();
-    
+
+    // マテリアルインスタンスを生成
+    material_ = std::make_unique<SpriteMaterialInstance>();
+    material_->Initialize(spriteRenderer_->GetDirectXCommon()->GetDevice());
+
     // デフォルト値を設定
     Reset();
     
@@ -149,12 +152,7 @@ void SpriteObject::Draw2D(const ICamera* camera) {
     auto* commandList = spriteRenderer_->GetDirectXCommon()->GetCommandList();
     
     size_t bufferIndex = spriteRenderer_->GetAvailableConstantBuffer();
-    
-    // マテリアルデータ設定（必ず最新の値で上書き）
-    auto& materialData = spriteRenderer_->GetMaterialDataPool()[bufferIndex];
-    materialData->color = color_;
-    materialData->uvTransform = uvTransform_;
-    
+
     // 実際の描画サイズを計算（テクスチャサイズ × スケール）
     Vector3 actualScale = {
         textureSize_.x * transform_.scale.x,
@@ -173,7 +171,7 @@ void SpriteObject::Draw2D(const ICamera* camera) {
     // 定数バッファ設定（シェーダーリフレクションから取得したインデックスを使用）
     commandList->SetGraphicsRootConstantBufferView(
         spriteRenderer_->GetRootParamIndex("gMaterial"), 
-        spriteRenderer_->GetMaterialResource(bufferIndex)->GetGPUVirtualAddress());
+        material_->GetGPUVirtualAddress());
     commandList->SetGraphicsRootConstantBufferView(
         spriteRenderer_->GetRootParamIndex("TransformationMatrix"), 
         spriteRenderer_->GetTransformResource(bufferIndex)->GetGPUVirtualAddress());
@@ -193,8 +191,8 @@ void SpriteObject::Reset() {
     transform_.scale = { 1.0f, 1.0f, 1.0f };
     transform_.rotate = { 0.0f, 0.0f, 0.0f };
     transform_.translate = { 0.0f, 0.0f, 0.0f };
-    color_ = { 1.0f, 1.0f, 1.0f, 1.0f };
-    uvTransform_ = Matrix::Identity();
+    material_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+    material_->SetUVTransform(Matrix::Identity());
     anchorPoint_ = { 0.5f, 0.5f };  // デフォルトを中央に変更
     uvMin_ = { 0.0f, 0.0f };
     uvMax_ = { 1.0f, 1.0f };
@@ -240,26 +238,26 @@ void SpriteObject::SetUVRect(float uvLeft, float uvTop, float uvRight, float uvB
 }
 
 void SpriteObject::SetUVOffset(float offsetX, float offsetY) {
-    uvTransform_ = Matrix::Translation({ offsetX, offsetY, 0.0f });
+    material_->SetUVTransform(Matrix::Translation({ offsetX, offsetY, 0.0f }));
 }
 
 void SpriteObject::SetUVScale(float scaleX, float scaleY) {
-    uvTransform_ = Matrix::Scale({ scaleX, scaleY, 1.0f });
+    material_->SetUVTransform(Matrix::Scale({ scaleX, scaleY, 1.0f }));
 }
 
 void SpriteObject::SetUVRotation(float rotation) {
-    uvTransform_ = Matrix::RotationZ(rotation);
+    material_->SetUVTransform(Matrix::RotationZ(rotation));
 }
 
 void SpriteObject::ResetUVTransform() {
-    uvTransform_ = Matrix::Identity();
+    material_->SetUVTransform(Matrix::Identity());
 }
 
 void SpriteObject::UpdateUVTransformMatrix(const EulerTransform& uvTransform) {
     Matrix4x4 scaleMatrix = Matrix::Scale(uvTransform.scale);
     Matrix4x4 rotateMatrix = Matrix::RotationZ(uvTransform.rotate.z);
     Matrix4x4 translateMatrix = Matrix::Translation(uvTransform.translate);
-    uvTransform_ = Matrix::Multiply(Matrix::Multiply(scaleMatrix, rotateMatrix), translateMatrix);
+    material_->SetUVTransform(Matrix::Multiply(Matrix::Multiply(scaleMatrix, rotateMatrix), translateMatrix));
 }
 
 void SpriteObject::ChangeAnchorKeepingPosition(const Vector2& newAnchor) {
@@ -382,7 +380,9 @@ bool SpriteObject::DrawImGui() {
 
         // 色
         ImGui::Text("色 (Color):");
-        if (ImGui::ColorEdit4("##color", &color_.x)) {
+        Vector4 color = material_->GetColor();
+        if (ImGui::ColorEdit4("##color", &color.x)) {
+            material_->SetColor(color);
             changed = true;
         }
 

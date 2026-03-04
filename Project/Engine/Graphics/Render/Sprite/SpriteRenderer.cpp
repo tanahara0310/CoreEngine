@@ -1,6 +1,6 @@
 #include "SpriteRenderer.h"
 #include "Engine/Camera/ICamera.h"
-#include "Engine/Graphics/Structs/SpriteMaterial.h"
+#include "SpriteMaterial.h"
 #include "Engine/Graphics/Shader/ShaderReflectionData.h"
 #include "Engine/Graphics/RootSignature/RootSignatureConfig.h"
 #include "WinApp/WinApp.h"

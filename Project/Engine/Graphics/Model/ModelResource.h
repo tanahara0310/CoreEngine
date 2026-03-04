@@ -6,9 +6,9 @@
 #include <map>
 #include <optional>
 
-#include "Engine/Graphics/Structs/MaterialAsset.h"
-#include "Engine/Graphics/Structs/ModelData.h"
-#include "Engine/Graphics/Structs/Node.h"
+#include "Engine/Graphics/Model/MaterialAsset.h"
+#include "Engine/Graphics/Model/ModelData.h"
+#include "Engine/Graphics/Model/Node.h"
 #include "Animation/Animation.h"
 #include "Skeleton/Skeleton.h"
 
