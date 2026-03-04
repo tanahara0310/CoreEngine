@@ -1,6 +1,6 @@
-﻿#pragma once
-#include "../Engine/Framework/Framework.h"
-#include "../Engine/Scene/SceneManager.h"
+#pragma once
+#include "Framework/Framework.h"
+#include "Scene/SceneManager.h"
 #include <memory>
 
 /// @brief ゲーム固有のアプリケーションクラス
