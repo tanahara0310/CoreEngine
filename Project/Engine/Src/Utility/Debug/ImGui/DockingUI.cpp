@@ -1,4 +1,8 @@
 #include "DockingUI.h"
+#include "Graphics/TextureManager.h"
+#include "EngineSystem/PlaybackState.h"
+#include "Utility/Logger/Logger.h"
+#include <format>
 
 
 namespace CoreEngine
@@ -29,12 +33,16 @@ void DockingUI::BeginDockSpaceHostWindow()
     // メニューバーの高さを取得
     float menuBarHeight = ImGui::GetFrameHeight();
 
-    // メニューバーの下にドッキングエリアを配置
+    // 再生ツールバーを描画（メニューバーの直下）
+    DrawPlaybackToolbar();
+
+    // メニューバー + ツールバーの下にドッキングエリアを配置
+    float totalTopHeight = menuBarHeight + toolbarHeight_;
     ImVec2 pos = vp->Pos;
-    pos.y += menuBarHeight; // メニューバーの分だけ下にずらす
+    pos.y += totalTopHeight;
 
     ImVec2 size = vp->Size;
-    size.y -= menuBarHeight; // メニューバーの分だけ高さを減らす
+    size.y -= totalTopHeight;
 
     ImGui::SetNextWindowPos(pos);
     ImGui::SetNextWindowSize(size);
@@ -81,9 +89,10 @@ void DockingUI::BuildDockLayout()
     // ルートノード作成＆リセット
     ImGuiViewport* vp = ImGui::GetMainViewport();
 
-    // メニューバーの高さを考慮したサイズを設定
+    // メニューバー + ツールバーの高さを考慮したサイズを設定
     float menuBarHeight = ImGui::GetFrameHeight();
-    ImVec2 dockSpaceSize = ImVec2(vp->Size.x, vp->Size.y - menuBarHeight);
+    float totalTopHeight = menuBarHeight + toolbarHeight_;
+    ImVec2 dockSpaceSize = ImVec2(vp->Size.x, vp->Size.y - totalTopHeight);
 
     ImGuiID dockMain = ImGui::GetID("MyDockSpace");
     ImGui::DockBuilderRemoveNode(dockMain);
@@ -125,5 +134,210 @@ void DockingUI::BuildDockLayout()
 
     // レイアウト構築完了
     ImGui::DockBuilderFinish(dockMain);
+}
+
+void DockingUI::LoadPlaybackIcons()
+{
+    auto& texManager = TextureManager::GetInstance();
+
+    // テクスチャマネージャーが初期化されているか確認
+    if (!texManager.IsInitialized()) {
+        return;
+    }
+
+    try {
+        // 再生制御アイコンを読み込む
+        auto playTex = texManager.Load("reproduction.png");
+        auto pauseTex = texManager.Load("pause.png");
+        auto gridTex = texManager.Load("grid.png");
+
+        // GPUハンドルを保存
+        playIcon_ = playTex.gpuHandle;
+        pauseIcon_ = pauseTex.gpuHandle;
+        gridIcon_ = gridTex.gpuHandle;
+
+        playbackIconsLoaded_ = true;
+        Logger::GetInstance().Log("Playback icons loaded successfully (DockingUI)", LogLevel::INFO, LogCategory::Graphics);
+    }
+    catch (const std::exception& e) {
+        std::string errorMsg = std::format("Failed to load playback icons: {}", e.what());
+        Logger::GetInstance().Log(errorMsg, LogLevel::WARNING, LogCategory::Graphics);
+        playbackIconsLoaded_ = false;
+    }
+}
+
+void DockingUI::DrawPlaybackToolbar()
+{
+    // アイコンがまだ読み込まれていない場合は読み込む
+    if (!playbackIconsLoaded_) {
+        LoadPlaybackIcons();
+    }
+
+    ImGuiViewport* vp = ImGui::GetMainViewport();
+    float menuBarHeight = ImGui::GetFrameHeight();
+
+    // ツールバーの位置とサイズを設定
+    ImVec2 toolbarPos = ImVec2(vp->Pos.x, vp->Pos.y + menuBarHeight);
+    ImVec2 toolbarSize = ImVec2(vp->Size.x, toolbarHeight_);
+
+    ImGui::SetNextWindowPos(toolbarPos);
+    ImGui::SetNextWindowSize(toolbarSize);
+
+    ImGuiWindowFlags toolbarFlags = ImGuiWindowFlags_NoTitleBar
+        | ImGuiWindowFlags_NoResize
+        | ImGuiWindowFlags_NoMove
+        | ImGuiWindowFlags_NoScrollbar
+        | ImGuiWindowFlags_NoScrollWithMouse
+        | ImGuiWindowFlags_NoDocking
+        | ImGuiWindowFlags_NoSavedSettings;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
+
+    // ポーズ中は背景色を少し暗くする
+    auto& playbackManager = PlaybackStateManager::GetInstance();
+    if (playbackManager.IsPaused()) {
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));  // 少し暗め
+    } else {
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));  // 通常
+    }
+
+    if (ImGui::Begin("##PlaybackToolbar", nullptr, toolbarFlags)) {
+
+        if (!playbackIconsLoaded_) {
+            // アイコンが読み込まれていない場合はテキストボタンを表示
+            PlaybackState currentState = playbackManager.GetState();
+
+            // 中央に配置（2ボタンのみ）
+            float buttonWidth = 50.0f;
+            float spacing = 8.0f;
+            float totalWidth = buttonWidth * 2 + spacing;
+            float startX = (vp->Size.x - totalWidth) * 0.5f;
+
+            ImGui::SetCursorPosX(startX);
+
+            if (currentState == PlaybackState::Playing) {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
+            }
+            if (ImGui::Button("Play", ImVec2(buttonWidth, 22.0f))) {
+                playbackManager.Play();
+            }
+            if (currentState == PlaybackState::Playing) {
+                ImGui::PopStyleColor();
+            }
+
+            ImGui::SameLine(0, spacing);
+
+            if (currentState == PlaybackState::Paused) {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
+            }
+            if (ImGui::Button("Pause", ImVec2(buttonWidth, 22.0f))) {
+                playbackManager.Pause();
+            }
+            if (currentState == PlaybackState::Paused) {
+                ImGui::PopStyleColor();
+            }
+
+        } else {
+            // アイコンボタンを表示（再生/ポーズ + グリッド）
+            PlaybackState currentState = playbackManager.GetState();
+
+            constexpr float kIconSize = 18.0f;  // アイコンサイズを小さく
+            constexpr float kPadding = 3.0f;
+            constexpr float kSpacing = 6.0f;
+            constexpr float kGroupSpacing = 16.0f;  // グループ間のスペース（再生ボタンとグリッドの間）
+            const float buttonSize = kIconSize + kPadding * 2.0f;
+            const float playbackGroupWidth = buttonSize * 2 + kSpacing;  // 再生/ポーズボタン
+            const float gridButtonWidth = buttonSize;  // グリッドボタン
+            const float totalWidth = playbackGroupWidth + kGroupSpacing + gridButtonWidth;
+            const float startX = (vp->Size.x - totalWidth) * 0.5f;
+
+            ImGui::SetCursorPosX(startX);
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kPadding, kPadding));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+
+            // 再生ボタン
+            {
+                bool isActive = (currentState == PlaybackState::Playing);
+                if (isActive) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
+                } else {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
+                }
+
+                if (ImGui::ImageButton("##PlayBtn", (ImTextureID)playIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
+                    playbackManager.Play();
+                }
+                ImGui::PopStyleColor(3);
+
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+                    ImGui::SetTooltip("再生 (Play)");
+                }
+            }
+
+            ImGui::SameLine(0, kSpacing);
+
+            // 一時停止ボタン
+            {
+                bool isActive = (currentState == PlaybackState::Paused);
+                if (isActive) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
+                } else {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
+                }
+
+                if (ImGui::ImageButton("##PauseBtn", (ImTextureID)pauseIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
+                    playbackManager.Pause();
+                }
+                ImGui::PopStyleColor(3);
+
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+                    ImGui::SetTooltip("一時停止 (Pause)");
+                }
+            }
+
+            // グループ間のスペーシング
+            ImGui::SameLine(0, kGroupSpacing);
+
+            // グリッドボタン
+            {
+                bool isActive = isGridVisible_;
+                if (isActive) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
+                } else {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 1.00f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
+                }
+
+                if (ImGui::ImageButton("##GridBtn", (ImTextureID)gridIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
+                    isGridVisible_ = !isGridVisible_;
+                }
+                ImGui::PopStyleColor(3);
+
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+                    ImGui::SetTooltip(isGridVisible_ ? "グリッドを非表示 (Hide Grid)" : "グリッドを表示 (Show Grid)");
+                }
+            }
+
+            ImGui::PopStyleVar(2);
+        }
+    }
+    ImGui::End();
+
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar(3);
 }
 }

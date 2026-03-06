@@ -62,6 +62,12 @@ namespace CoreEngine
         /// @brief ギズモアイコンテクスチャを読み込む
         void LoadGizmoIcons();
 
+        /// @brief ツールバー（再生/停止/ポーズ）を描画
+        void DrawPlaybackToolbar();
+
+        /// @brief 再生制御アイコンテクスチャを読み込む
+        void LoadPlaybackIcons();
+
     private: // メンバ変数
         ImVec2 viewportPos_{};
         ImVec2 viewportSize_{};
@@ -76,6 +82,11 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE gizmoScaleIcon_{};
         D3D12_GPU_DESCRIPTOR_HANDLE gizmoToggleIcon_{};
         bool iconsLoaded_ = false;
+
+        // 再生制御アイコン用テクスチャハンドル
+        D3D12_GPU_DESCRIPTOR_HANDLE playIcon_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE pauseIcon_{};
+        bool playbackIconsLoaded_ = false;
 
         // ツールバーの折り畳み状態
         bool isToolbarCollapsed_ = false;
