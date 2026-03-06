@@ -91,6 +91,11 @@ namespace CoreEngine
 
         try {
             for (const auto& entry : std::filesystem::directory_iterator(currentPath_)) {
+                // .meta ファイルは非表示にする
+                if (!entry.is_directory() && entry.path().extension() == ".meta") {
+                    continue;
+                }
+
                 Entry e;
                 e.name = entry.path().filename().string();
                 e.path = entry.path();
@@ -338,10 +343,10 @@ namespace CoreEngine
     void ProjectView::LoadDefaultIcon()
     {
         auto& textureManager = TextureManager::GetInstance();
-        
+
         // ディレクトリアイコンを読み込み
         try {
-            auto texture = textureManager.Load("Engine/Assets/Icon/File/directoryIcon.png");
+            auto texture = textureManager.Load("directoryIcon.png");
             if (texture.texture) {
                 directoryIconTexture_ = texture.texture;
                 directoryIconGpuHandle_ = texture.gpuHandle;
@@ -355,10 +360,10 @@ namespace CoreEngine
                 LogLevel::WARNING, LogCategory::System);
             directoryIconLoaded_ = false;
         }
-        
+
         // PNGアイコンを読み込み
         try {
-            auto texture = textureManager.Load("Engine/Assets/Icon/File/pngIcon.png");
+            auto texture = textureManager.Load("pngIcon.png");
             if (texture.texture) {
                 pngIconTexture_ = texture.texture;
                 pngIconGpuHandle_ = texture.gpuHandle;
@@ -372,10 +377,10 @@ namespace CoreEngine
                 LogLevel::WARNING, LogCategory::System);
             pngIconLoaded_ = false;
         }
-        
-        // ファイルアイコンを読み込み
+
+        // ファイルアイコンを読み込み（ファイル名のみ - AssetDatabaseが自動解決）
         try {
-            auto texture = textureManager.Load("Engine/Assets/Icon/File/fileIcon.png");
+            auto texture = textureManager.Load("fileIcon.png");
             if (texture.texture) {
                 fileIconTexture_ = texture.texture;
                 fileIconGpuHandle_ = texture.gpuHandle;

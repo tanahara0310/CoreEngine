@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -183,6 +183,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Collider\SphereCollider.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Src\Framework\Framework.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />
@@ -381,6 +383,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Collider\SphereCollider.h" />
     <ClInclude Include="Engine\Src\EngineSystem\ComponentManager.h" />
     <ClInclude Include="Engine\Src\Framework\Framework.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetDatabase.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetInfo.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\IMaterial.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h" />

@@ -272,10 +272,10 @@ namespace CoreEngine
 
         try {
             // ギズモアイコンを読み込む（Icon/Gizumoフォルダから）
-            auto translateTex = texManager.Load("Engine/Assets/Icon/Gizumo/gizumoTransform.png");
-            auto rotateTex = texManager.Load("Engine/Assets/Icon/Gizumo/gizumoRotate.png");
-            auto scaleTex = texManager.Load("Engine/Assets/Icon/Gizumo/gizumoScale.png");
-            auto toggleTex = texManager.Load("Engine/Assets/Icon/Gizumo/bottomArrow.png");
+            auto translateTex = texManager.Load("gizumoTransform.png");
+            auto rotateTex = texManager.Load("gizumoRotate.png");
+            auto scaleTex = texManager.Load("gizumoScale.png");
+            auto toggleTex = texManager.Load("bottomArrow.png");
 
             // GPUハンドルを保存
             gizmoTranslateIcon_ = translateTex.gpuHandle;

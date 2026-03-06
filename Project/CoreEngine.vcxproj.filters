@@ -408,6 +408,8 @@
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1219,6 +1221,10 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteMaterial.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetInfo.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetDatabase.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">
