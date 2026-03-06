@@ -341,7 +341,7 @@ namespace CoreEngine
         
         // ディレクトリアイコンを読み込み
         try {
-            auto texture = textureManager.Load("Engine/Assets/directoryIcon.png");
+            auto texture = textureManager.Load("Engine/Assets/Icon/File/directoryIcon.png");
             if (texture.texture) {
                 directoryIconTexture_ = texture.texture;
                 directoryIconGpuHandle_ = texture.gpuHandle;
@@ -358,7 +358,7 @@ namespace CoreEngine
         
         // PNGアイコンを読み込み
         try {
-            auto texture = textureManager.Load("Engine/Assets/pngIcon.png");
+            auto texture = textureManager.Load("Engine/Assets/Icon/File/pngIcon.png");
             if (texture.texture) {
                 pngIconTexture_ = texture.texture;
                 pngIconGpuHandle_ = texture.gpuHandle;
@@ -375,7 +375,7 @@ namespace CoreEngine
         
         // ファイルアイコンを読み込み
         try {
-            auto texture = textureManager.Load("Engine/Assets/fileIcon.png");
+            auto texture = textureManager.Load("Engine/Assets/Icon/File/fileIcon.png");
             if (texture.texture) {
                 fileIconTexture_ = texture.texture;
                 fileIconGpuHandle_ = texture.gpuHandle;
