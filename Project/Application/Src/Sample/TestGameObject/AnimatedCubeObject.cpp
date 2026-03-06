@@ -4,7 +4,6 @@
 #include "Camera/ICamera.h"
 
 #ifdef _DEBUG
-#include "Graphics/Material/Debug/MaterialDebugUI.h"
 #include "externals/imgui/imgui.h"
 #endif
 
@@ -67,9 +66,6 @@ void AnimatedCubeObject::Draw(const CoreEngine::ICamera* camera) {
 #ifdef _DEBUG
 bool AnimatedCubeObject::DrawImGuiExtended() {
     bool changed = false;
-
-    if (!materialDebugUI_) materialDebugUI_ = std::make_unique<CoreEngine::MaterialDebugUI>();
-    if (materialDebugUI_->Draw(model_.get())) changed = true;
 
     // アニメーション制御（拡張部分）
     if (model_ && model_->HasAnimationController()) {

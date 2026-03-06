@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <d3d12.h>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -38,8 +39,23 @@ public:
     /// @brief ドッキングのセットアップ
     void SetupDockSpace();
 
+    /// @brief 再生制御ツールバーを描画（メニューバーの直下）
+    void DrawPlaybackToolbar();
+
+    /// @brief 再生制御アイコンを読み込む
+    void LoadPlaybackIcons();
+
     /// @brief 登録されているウィンドウ一覧を取得（デバッグ用）
     const std::unordered_map<std::string, DockArea>& GetRegisteredWindows() const { return registeredWindows_; }
+
+    /// @brief ツールバーの高さを取得
+    float GetToolbarHeight() const { return toolbarHeight_; }
+
+    /// @brief グリッド表示状態を取得
+    bool IsGridVisible() const { return isGridVisible_; }
+
+    /// @brief グリッド表示状態を設定
+    void SetGridVisible(bool visible) { isGridVisible_ = visible; }
 
 private:
     /// @brief エリアごとのノードIDを取得
@@ -51,8 +67,20 @@ private:
 private:
     std::unordered_map<std::string, DockArea> registeredWindows_; // 登録されたウィンドウとそのエリア
     bool layoutInitialized_ = false; // レイアウトが初期化されたかどうか
-    
+
     // エリアごとのノードID
     ImGuiID nodeIds_[7] = {0}; // DockAreaの数だけ（Bottomを追加したため7に変更）
+
+    // 再生制御アイコン用テクスチャハンドル
+    D3D12_GPU_DESCRIPTOR_HANDLE playIcon_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE pauseIcon_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE gridIcon_{};
+    bool playbackIconsLoaded_ = false;
+
+    // グリッド表示状態
+    bool isGridVisible_ = true;
+
+    // ツールバーの高さ
+    static constexpr float toolbarHeight_ = 32.0f;
 };
 }

@@ -12,7 +12,6 @@
 
 #include "DockingUI.h"
 #include "SceneViewport.h"
-#include "TextureViewer.h"
 #include "ProjectView.h"
 
 // 前方宣言
@@ -59,10 +58,6 @@ DockingUI* GetDockingUI() const { return dockingUI_.get(); }
 /// @return シーンビューポートへのポインタ
 SceneViewport* GetSceneViewport() const { return sceneViewport_.get(); }
 
-/// @brief テクスチャビューアへのアクセッサ
-    /// @return テクスチャビューアへのポインタ
-    TextureViewer* GetTextureViewer() const { return textureViewer_.get(); }
-
 /// @brief プロジェクトビューへのアクセッサ
     /// @return プロジェクトビューへのポインタ
     ProjectView* GetProjectView() const { return projectView_.get(); }
@@ -74,7 +69,6 @@ private:
     // サブモジュール
     std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();
     std::unique_ptr<SceneViewport> sceneViewport_ = std::make_unique<SceneViewport>();
-    std::unique_ptr<TextureViewer> textureViewer_ = std::make_unique<TextureViewer>();
     std::unique_ptr<ProjectView> projectView_ = std::make_unique<ProjectView>();
 
 private: // メンバ関数

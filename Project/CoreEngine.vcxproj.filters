@@ -365,9 +365,6 @@
     <ClCompile Include="Application\Src\Sample\SampleScene\ParticleTestScene\ParticleTestScene.cpp">
       <Filter>Engine\Scene\ParticleTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\TextureViewer.cpp">
-      <Filter>Engine\Utility\Debug\ImGui</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.cpp">
       <Filter>Engine\Graphics\Model\Animation</Filter>
     </ClCompile>
@@ -411,6 +408,8 @@
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1169,9 +1168,6 @@
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h">
       <Filter>Engine\Utility\FileErrorDialog</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\TextureViewer.h">
-      <Filter>Engine\Utility\Debug\ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.h">
       <Filter>Engine\Graphics\Model\Animation</Filter>
     </ClInclude>
@@ -1225,6 +1221,11 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteMaterial.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetInfo.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
+    <ClInclude Include="Engine\Src\Graphics\Asset\AssetDatabase.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

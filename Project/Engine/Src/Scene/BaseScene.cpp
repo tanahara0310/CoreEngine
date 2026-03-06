@@ -60,6 +60,17 @@ namespace CoreEngine
 
 #ifdef _DEBUG
         debugEditor_->Update();
+
+        // グリッド表示状態を更新
+        if (gridRenderer_) {
+            auto imguiManager = engine_->GetImGuiManager();
+            if (imguiManager) {
+                auto dockingUI = imguiManager->GetDockingUI();
+                if (dockingUI) {
+                    gridRenderer_->SetVisible(dockingUI->IsGridVisible());
+                }
+            }
+        }
 #endif
 
         // 派生クラスの更新処理（GameObjectの更新前）

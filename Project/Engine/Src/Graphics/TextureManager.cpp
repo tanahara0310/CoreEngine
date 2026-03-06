@@ -1,6 +1,7 @@
 #include "TextureManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FileErrorDialog/FileErrorDialog.h"
 #include "Utility/ProcessExecutor/ProcessExecutor.h"
@@ -46,9 +47,23 @@ namespace CoreEngine
 
         assert(isInitialized_ && "TextureManager is not initialized!");
 
-        // パスを解決
-        std::string resolvedPath = ResolveFilePath(filePath);
-        
+        // まずAssetDatabaseでパスを解決
+        std::string resolvedPath;
+        auto& assetDB = AssetDatabase::GetInstance();
+        std::string assetPath = assetDB.FindAssetPath(filePath);
+
+        if (!assetPath.empty()) {
+            // AssetDatabaseで見つかった場合
+            resolvedPath = assetPath;
+            Logger::GetInstance().Log(
+                std::format("AssetDatabase resolved '{}' to '{}'", filePath, resolvedPath),
+                LogLevel::INFO, LogCategory::Graphics
+            );
+        } else {
+            // 見つからない場合は従来の方法でパスを解決
+            resolvedPath = ResolveFilePath(filePath);
+        }
+
         // キャッシュキーとして元のresolvedPathを保存（DDSに変換される前）
         std::string cacheKey = resolvedPath;
 
@@ -342,8 +357,7 @@ namespace CoreEngine
         // Application/Assets または Engine/Assets で始まる場合はそのまま使用
         if (normalized.starts_with("Application/Assets/")) {
             resolvedPath = normalized;
-        }
-        else if (normalized.starts_with("Engine/Assets/")) {
+        } else if (normalized.starts_with("Engine/Assets/")) {
             resolvedPath = normalized;
         }
         // 絶対パス（C:/ など）の場合はそのまま使用
@@ -360,36 +374,72 @@ namespace CoreEngine
 
     std::string TextureManager::GetDDSCachePath(const std::string& originalPath) const
     {
-        // 元のファイルと同じディレクトリに、拡張子を.ddsに変更して保存
-        std::filesystem::path path(originalPath);
-        std::filesystem::path parentPath = path.parent_path();
-        std::string fileName = path.stem().string(); // 拡張子なしのファイル名
+        // AssetDatabase から GUID を取得
+        auto& assetDB = AssetDatabase::GetInstance();
 
-        // 親ディレクトリ + ファイル名 + .dds
-        std::string result;
-        if (parentPath.empty()) {
-            result = fileName + ".dds";
-        } else {
-            result = (parentPath / (fileName + ".dds")).string();
+        // 絶対パスに変換
+        std::filesystem::path absPath = std::filesystem::absolute(originalPath);
+
+        // GUID を取得
+        std::string guid = assetDB.GetGUID(absPath);
+
+        if (!guid.empty())
+        {
+            // GUID が存在する場合は Library/TextureCache/{GUID}.dds を使用
+            std::filesystem::path cachePath = assetDB.GetCachedTexturePath(guid, ".dds");
+            return cachePath.string();
+        } else
+        {
+            // GUID が存在しない場合は従来の方法（互換性のため）
+            // 元のファイルと同じディレクトリに、拡張子を.ddsに変更して保存
+            std::filesystem::path path(originalPath);
+            std::filesystem::path parentPath = path.parent_path();
+            std::string fileName = path.stem().string(); // 拡張子なしのファイル名
+
+            // 親ディレクトリ + ファイル名 + .dds
+            std::string result;
+            if (parentPath.empty()) {
+                result = fileName + ".dds";
+            } else {
+                result = (parentPath / (fileName + ".dds")).string();
+            }
+
+            // パスの正規化：バックスラッシュをスラッシュに統一
+            std::replace(result.begin(), result.end(), '\\', '/');
+
+            return result;
         }
-
-        // パスの正規化：バックスラッシュをスラッシュに統一
-        std::replace(result.begin(), result.end(), '\\', '/');
-
-        return result;
     }
 
     std::string TextureManager::GetCubemapDDSPath(const std::string& originalPath) const
     {
-        // HDRファイルのキューブマップDDSパスを生成（ファイル名_cubemap.dds）
-        std::filesystem::path path(originalPath);
-        std::filesystem::path parentPath = path.parent_path();
-        std::string fileName = path.stem().string();
+        // AssetDatabase から GUID を取得
+        auto& assetDB = AssetDatabase::GetInstance();
 
-        if (parentPath.empty()) {
-            return fileName + "_cubemap.dds";
-        } else {
-            return (parentPath / (fileName + "_cubemap.dds")).string();
+        // 絶対パスに変換
+        std::filesystem::path absPath = std::filesystem::absolute(originalPath);
+
+        // GUID を取得
+        std::string guid = assetDB.GetGUID(absPath);
+
+        if (!guid.empty())
+        {
+            // GUID が存在する場合は Library/TextureCache/{GUID}_cubemap.dds を使用
+            std::filesystem::path cachePath = assetDB.GetCachedTexturePath(guid, "_cubemap.dds");
+            return cachePath.string();
+        } else
+        {
+            // GUID が存在しない場合は従来の方法（互換性のため）
+            // HDRファイルのキューブマップDDSパスを生成（ファイル名_cubemap.dds）
+            std::filesystem::path path(originalPath);
+            std::filesystem::path parentPath = path.parent_path();
+            std::string fileName = path.stem().string();
+
+            if (parentPath.empty()) {
+                return fileName + "_cubemap.dds";
+            } else {
+                return (parentPath / (fileName + "_cubemap.dds")).string();
+            }
         }
     }
 

@@ -75,6 +75,7 @@ void ImGuiManager::Initialize(HWND hwnd, DirectXCommon* dxCommon)
 
 void ImGuiManager::Begin(PostEffectManager* postEffectManager, GameDebugUI* gameDebugUI)
 {
+    (void)gameDebugUI; // 未使用警告を回避
 
     // フレームの開始
     StartNewFrame();
@@ -86,10 +87,6 @@ void ImGuiManager::Begin(PostEffectManager* postEffectManager, GameDebugUI* game
 
     // シーンビューポートの開始（PostEffectManagerを渡す）
     sceneViewport_->DrawSceneViewport(dxCommon_, postEffectManager);
-
-    // テクスチャビューアの描画（GameDebugUIの状態に応じて）
-    bool showTextureViewer = gameDebugUI ? gameDebugUI->IsTextureViewerVisible() : false;
-    textureViewer_->DrawTextureViewer(showTextureViewer);
 
     // プロジェクトビューの更新
     projectView_->Update();

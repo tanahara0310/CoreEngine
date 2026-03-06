@@ -23,6 +23,10 @@ namespace CoreEngine
         materialData_->enableIBL = 0;
         materialData_->iblIntensity = 1.0f;
         materialData_->environmentRotationY = 0.0f;
+        materialData_->metallic = 0.0f;
+        materialData_->roughness = 0.5f;
+        materialData_->ao = 1.0f;
+        materialData_->enablePBR = 0;
         materialData_->useNormalMap = 0;
         materialData_->useMetallicMap = 0;
         materialData_->useRoughnessMap = 0;

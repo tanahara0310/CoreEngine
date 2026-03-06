@@ -93,29 +93,37 @@ void ModelResource::LoadFromFile(const std::string& directoryPath, const std::st
         // MetallicRoughnessテクスチャ
         if (!material.metallicRoughnessTexture.empty()) {
             handles.metallicRoughness = textureManager_->Load(material.metallicRoughnessTexture).gpuHandle;
+            handles.hasMetallicRoughness = true;
         } else {
             handles.metallicRoughness = defaultWhiteTexture;
+            handles.hasMetallicRoughness = false;
         }
-        
+
         // Normalマップ
         if (!material.normalTexture.empty()) {
             handles.normal = textureManager_->Load(material.normalTexture).gpuHandle;
+            handles.hasNormal = true;
         } else {
             handles.normal = defaultWhiteTexture;
+            handles.hasNormal = false;
         }
-        
+
         // Occlusionマップ
         if (!material.occlusionTexture.empty()) {
             handles.occlusion = textureManager_->Load(material.occlusionTexture).gpuHandle;
+            handles.hasOcclusion = true;
         } else {
             handles.occlusion = defaultWhiteTexture;
+            handles.hasOcclusion = false;
         }
-        
+
         // Emissiveマップ
         if (!material.emissiveTexture.empty()) {
             handles.emissive = textureManager_->Load(material.emissiveTexture).gpuHandle;
+            handles.hasEmissive = true;
         } else {
             handles.emissive = defaultWhiteTexture;
+            handles.hasEmissive = false;
         }
     }
     

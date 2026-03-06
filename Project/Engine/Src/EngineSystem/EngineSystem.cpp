@@ -6,6 +6,7 @@
 #include "Utility/Logger/Logger.h"
 #include "Graphics/TextureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
+#include "Graphics/Asset/AssetDatabase.h"
 
 // レンダリング関連
 #include "Graphics/Render/Render.h"
@@ -65,6 +66,9 @@ namespace CoreEngine
         // 統一乱数生成器の初期化
         RandomGenerator::GetInstance().Initialize();
 
+        // アセットデータベースの初期化
+        AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
+
 #ifdef _DEBUG
         // ImGuiマネージャークラスの初期化
         imGui_->Initialize(winApp_->GetHwnd(), GetComponent<DirectXCommon>());
@@ -86,9 +90,6 @@ namespace CoreEngine
 
             // パーティクルシステムデバッグを下部に配置
             dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
-
-            // ラインデバッグウィンドウを右側に配置
-            dockingUI->RegisterWindow("ラインデバッグ", DockArea::Right);
         }
 #endif // _DEBUG
 
@@ -105,6 +106,8 @@ namespace CoreEngine
         // TextureManagerのキャッシュをクリア
         TextureManager::GetInstance().Clear();
 
+        // AssetDatabaseの終了処理
+        AssetDatabase::GetInstance().Finalize();
 
         componentOwners_.clear();
 

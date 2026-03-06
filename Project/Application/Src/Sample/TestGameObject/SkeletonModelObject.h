@@ -4,10 +4,6 @@
 #include "Graphics/Model/Skeleton/SkeletonAnimator.h"
 #include <memory>
 
-#ifdef _DEBUG
-#include "Graphics/Material/Debug/MaterialDebugUI.h"
-#endif
-
 /// @brief Skeletonモデルオブジェクト
 class SkeletonModelObject : public CoreEngine::GameObject {
 public:
@@ -20,11 +16,6 @@ public:
     /// @brief 描画処理
     /// @param camera カメラ
     void Draw(const CoreEngine::ICamera* camera) override;
-    
-#ifdef _DEBUG
-    /// @brief ImGui拡張UI描画
-    bool DrawImGuiExtended() override;
-#endif
 
     /// @brief 描画パスタイプを取得（スキニングモデル用）
     /// @return 描画パスタイプ
@@ -41,8 +32,5 @@ public:
 
 private:
     CoreEngine::TextureManager::LoadedTexture uvCheckerTexture_;
-#ifdef _DEBUG
-    std::unique_ptr<CoreEngine::MaterialDebugUI> materialDebugUI_;
-#endif
 };
 

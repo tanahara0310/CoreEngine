@@ -7,10 +7,6 @@
 #include "Graphics/Material/MaterialInstance.h"
 #include "Camera/ICamera.h"
 
-#ifdef _DEBUG
-#include "Graphics/Material/Debug/MaterialDebugUI.h"
-#endif
-
 using namespace CoreEngine;
 
 
@@ -86,12 +82,4 @@ void SkeletonModelObject::Draw(const CoreEngine::ICamera* camera) {
     // モデルの描画
     model_->Draw(transform_, camera, uvCheckerTexture_.gpuHandle);
 }
-
-#ifdef _DEBUG
-bool SkeletonModelObject::DrawImGuiExtended() {
-    if (!model_) return false;
-    if (!materialDebugUI_) materialDebugUI_ = std::make_unique<CoreEngine::MaterialDebugUI>();
-    return materialDebugUI_->Draw(model_.get());
-}
-#endif
 
