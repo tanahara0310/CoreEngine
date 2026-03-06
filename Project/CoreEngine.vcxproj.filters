@@ -365,9 +365,6 @@
     <ClCompile Include="Application\Src\Sample\SampleScene\ParticleTestScene\ParticleTestScene.cpp">
       <Filter>Engine\Scene\ParticleTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\TextureViewer.cpp">
-      <Filter>Engine\Utility\Debug\ImGui</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.cpp">
       <Filter>Engine\Graphics\Model\Animation</Filter>
     </ClCompile>
@@ -1168,9 +1165,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h">
       <Filter>Engine\Utility\FileErrorDialog</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\TextureViewer.h">
-      <Filter>Engine\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.h">
       <Filter>Engine\Graphics\Model\Animation</Filter>

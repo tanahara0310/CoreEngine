@@ -86,9 +86,6 @@ namespace CoreEngine
 
             // パーティクルシステムデバッグを下部に配置
             dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
-
-            // ラインデバッグウィンドウを右側に配置
-            dockingUI->RegisterWindow("ラインデバッグ", DockArea::Right);
         }
 #endif // _DEBUG
 

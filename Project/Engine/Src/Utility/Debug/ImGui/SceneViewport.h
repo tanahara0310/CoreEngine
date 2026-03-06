@@ -2,6 +2,8 @@
 #include <imgui.h>
 #include "ObjectSelector.h"
 #include <memory>
+#include <wrl.h>
+#include <d3d12.h>
 
 /// @brief シーンビューポートクラス
 
@@ -53,6 +55,13 @@ namespace CoreEngine
         /// @return オブジェクトセレクターへのポインタ
         ObjectSelector* GetObjectSelector() { return objectSelector_.get(); }
 
+    private: // メンバ関数
+        /// @brief ギズモ操作タイプ切替ツールバーを描画（ビューポート内オーバーレイ）
+        void DrawGizmoToolbar();
+
+        /// @brief ギズモアイコンテクスチャを読み込む
+        void LoadGizmoIcons();
+
     private: // メンバ変数
         ImVec2 viewportPos_{};
         ImVec2 viewportSize_{};
@@ -60,5 +69,15 @@ namespace CoreEngine
         std::unique_ptr<ObjectSelector> objectSelector_;
         const ICamera* currentCamera_ = nullptr;    // 現在の3Dカメラ
         const ICamera* currentCamera2D_ = nullptr;  // 現在の2Dカメラ
+
+        // ギズモアイコン用テクスチャハンドル
+        D3D12_GPU_DESCRIPTOR_HANDLE gizmoTranslateIcon_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE gizmoRotateIcon_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE gizmoScaleIcon_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE gizmoToggleIcon_{};
+        bool iconsLoaded_ = false;
+
+        // ツールバーの折り畳み状態
+        bool isToolbarCollapsed_ = false;
     };
 }

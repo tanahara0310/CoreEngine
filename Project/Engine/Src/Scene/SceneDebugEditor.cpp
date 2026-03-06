@@ -117,9 +117,6 @@ namespace CoreEngine
             cameraManager_->DrawImGui();
         }
 
-        // LineManagerのImGui
-        LineManager::GetInstance().DrawImGui();
-
         // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) {
             undoRedoHistory_.Undo(gameObjectManager_);

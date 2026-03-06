@@ -42,10 +42,6 @@ public:
     /// @return シーンマネージャータブのポインタ
     SceneManagerTab* GetSceneManagerTab() { return sceneManagerTab_.get(); }
 
-    /// @brief テクスチャビューアの表示状態を取得
-    /// @return テクスチャビューアの表示状態
-    bool IsTextureViewerVisible() const { return showTextureViewer_; }
-
 private: // メンバ変数
     EngineSystem* engine_ = nullptr; // エンジンシステムへのポインタ
     DockingUI* dockingUI_ = nullptr; // ドッキングUIへのポインタ
@@ -60,7 +56,6 @@ private: // メンバ変数
     bool showEngineInfo_ = true;
     bool showConsole_ = true; // コンソールウィンドウの表示フラグ
     bool showSceneManager_ = true; // シーンマネージャーウィンドウの表示フラグ
-    bool showTextureViewer_ = false; // テクスチャビューアの表示フラグ
 
     // ウィンドウ名定数（変更しやすくするため）
     static constexpr const char* engineDebugWindow = "Engine Debug Info";
@@ -77,9 +72,6 @@ private: // デバッグ用のUIを表示するためのメソッド
 
     /// @brief 詳細パフォーマンスタブを表示
     void ShowDetailedPerformanceTab(FrameRateController* frameRate);
-
-    /// @brief システム状態タブを表示
-    void ShowSystemStatusTab();
 
     /// @brief ライティングデバッグUIを表示（独立ウィンドウ）
     void ShowLightingDebugUI();

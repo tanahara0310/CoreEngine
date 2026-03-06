@@ -262,7 +262,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\TextureViewer.cpp" />
     <ClCompile Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DepthStencilManager.cpp" />
@@ -486,7 +485,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\TextureViewer.h" />
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h" />
     <ClInclude Include="Engine\Utility\Logger\ScopedTimer.h" />
     <ClInclude Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.h" />

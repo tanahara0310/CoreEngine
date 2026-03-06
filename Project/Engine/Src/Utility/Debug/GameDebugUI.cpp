@@ -58,11 +58,6 @@ void GameDebugUI::ShowMainMenuBar()
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Tools")) {
-            ImGui::Checkbox("Texture Viewer", &showTextureViewer_);
-            ImGui::EndMenu();
-        }
-
         ImGui::EndMainMenuBar();
     }
 }
@@ -132,9 +127,9 @@ void GameDebugUI::ShowEngineInfoUI()
 
     auto* frameRate = engine_->GetComponent<FrameRateController>();
     
-    // ===== タブバーでFPS情報とシステム状態を切り替え =====
+    // ===== タブバーでFPS情報を表示 =====
     if (ImGui::BeginTabBar("EngineInfoTabs", ImGuiTabBarFlags_None)) {
-        
+
         // ========== タブ1: FPS情報 ==========
         if (ImGui::BeginTabItem("FPS情報")) {
             if (frameRate) {
@@ -144,7 +139,7 @@ void GameDebugUI::ShowEngineInfoUI()
             }
             ImGui::EndTabItem();
         }
-        
+
         // ========== タブ2: 詳細パフォーマンス ==========
         if (ImGui::BeginTabItem("詳細")) {
             if (frameRate) {
@@ -154,13 +149,7 @@ void GameDebugUI::ShowEngineInfoUI()
             }
             ImGui::EndTabItem();
         }
-        
-        // ========== タブ3: システム状態 ==========
-        if (ImGui::BeginTabItem("システム")) {
-            ShowSystemStatusTab();
-            ImGui::EndTabItem();
-        }
-        
+
         ImGui::EndTabBar();
     }
 }
@@ -345,73 +334,6 @@ void GameDebugUI::ShowDetailedPerformanceTab(FrameRateController* frameRate)
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
-}
-
-void GameDebugUI::ShowSystemStatusTab()
-{
-    ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "[エンジンシステム状態]");
-    ImGui::Spacing();
-    
-    // エンジンシステムの状態確認
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.2f, 1.0f));
-    ImGui::Text("- エンジンシステム: 正常動作中");
-    ImGui::PopStyleColor();
-    
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-    
-    // コンポーネントの状態確認
-    ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "[システムコンポーネント]");
-    ImGui::Spacing();
-    
-    struct ComponentStatus {
-        const char* name;
-        bool available;
-    };
-    
-    std::vector<ComponentStatus> components;
-    
-    auto directXCommon = engine_->GetComponent<DirectXCommon>();
-    components.push_back({"グラフィックス", directXCommon != nullptr});
-    
-    auto inputManager = engine_->GetComponent<InputManager>();
-    components.push_back({"入力システム", inputManager != nullptr});
-    
-    auto soundManager = engine_->GetComponent<SoundManager>();
-    components.push_back({"オーディオ", soundManager != nullptr});
-    
-    auto lightManager = engine_->GetComponent<LightManager>();
-    components.push_back({"ライティング", lightManager != nullptr});
-    
-    auto particleSystem = engine_->GetComponent<ParticleSystem>();
-    components.push_back({"パーティクル", particleSystem != nullptr});
-    
-    // コンポーネント状態を表示
-    for (const auto& comp : components) {
-        if (comp.available) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-            ImGui::Text("- %s: 利用可能", comp.name);
-            ImGui::PopStyleColor();
-        } else {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-            ImGui::Text("- %s: 利用不可", comp.name);
-            ImGui::PopStyleColor();
-        }
-    }
-    
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-    
-    // 統計情報
-    int availableCount = 0;
-    for (const auto& comp : components) {
-        if (comp.available) availableCount++;
-    }
-    
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f),
-        "利用可能なコンポーネント: %d / %d", availableCount, (int)components.size());
 }
 
 void GameDebugUI::RegisterWindowsForDocking()
