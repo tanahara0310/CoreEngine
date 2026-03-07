@@ -24,7 +24,7 @@ void MyGame::Initialize()
     sceneManager_->RegisterScene<CollisionTestScene>("CollisionTestScene");
 
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene("CollisionTestScene");
+    sceneManager_->SetInitialScene("TestScene");
 
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
 #ifdef _DEBUG

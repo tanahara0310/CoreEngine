@@ -111,8 +111,8 @@ void SwapChainManager::CreateSwapChain()
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc_{};
     swapChainDesc_ = {};
-    swapChainDesc_.Width = WinApp::kClientWidth; // WinAppのスタティック定数から取得
-    swapChainDesc_.Height = WinApp::kClientHeight; // WinAppのスタティック定数から取得
+    swapChainDesc_.Width = static_cast<UINT>(winApp_->GetClientWidth());
+    swapChainDesc_.Height = static_cast<UINT>(winApp_->GetClientHeight());
     swapChainDesc_.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // 色の形式
     swapChainDesc_.SampleDesc.Count = 1; // マルチサンプルしない
     swapChainDesc_.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // 描画のターゲットして利用する

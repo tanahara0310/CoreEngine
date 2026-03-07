@@ -105,6 +105,9 @@ public:
     // フェンスを待機
     void WaitForPreviousFrame() { commandManager_->WaitForPreviousFrame(); }
 
+    int32_t GetClientWidth() const { return winApp_ ? winApp_->GetClientWidth() : WinApp::kClientWidth; }
+    int32_t GetClientHeight() const { return winApp_ ? winApp_->GetClientHeight() : WinApp::kClientHeight; }
+
 private:
     // ウィンドウズアプリケーション管理
     WinApp* winApp_ = nullptr;

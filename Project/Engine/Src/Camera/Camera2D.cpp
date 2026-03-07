@@ -7,8 +7,8 @@ namespace CoreEngine
 {
 Camera2D::Camera2D() {
     // WinAppからスクリーンサイズを取得
-    screenWidth_ = static_cast<float>(WinApp::kClientWidth);
-    screenHeight_ = static_cast<float>(WinApp::kClientHeight);
+    screenWidth_ = static_cast<float>(WinApp::GetCurrentClientWidthStatic());
+    screenHeight_ = static_cast<float>(WinApp::GetCurrentClientHeightStatic());
     
     // 初期状態の行列を更新
     UpdateMatrix();

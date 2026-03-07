@@ -1,6 +1,5 @@
 #include "Render.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "WinApp/WinApp.h"
 
 using namespace Microsoft::WRL;
 
@@ -23,26 +22,19 @@ namespace CoreEngine
         offscreen2RtvHandle_ = dxCommon->GetOffScreen2RtvHandle();
         offscreen2Resource_ = dxCommon->GetOffScreen2Resource();
 
-        // Viewportの設定
-        // クライアント領域のサイズと一緒にして画面全体に表示
-        viewport_.Width = WinApp::kClientWidth;
-        viewport_.Height = WinApp::kClientHeight;
-        viewport_.TopLeftX = 0;
-        viewport_.TopLeftY = 0;
-        viewport_.MinDepth = 0.0f;
-        viewport_.MaxDepth = 1.0f;
-
-        // ScissorRectの設定
-        // ビューポートと同じ矩形が構成
-        scissorRect_.left = 0;
-        scissorRect_.right = WinApp::kClientWidth;
-        scissorRect_.top = 0;
-        scissorRect_.bottom = WinApp::kClientHeight;
+        UpdateViewportAndScissor(dxCommon_->GetClientWidth(), dxCommon_->GetClientHeight());
     }
 
     // 描画前処理（1枚目のオフスクリーン）
     void Render::OffscreenPreDraw(int offscreenIndex)
     {
+        UpdateViewportAndScissor(dxCommon_->GetClientWidth(), dxCommon_->GetClientHeight());
+
+        offscreenRtvHandle_ = dxCommon_->GetOffScreenRtvHandle();
+        offscreenResource_ = dxCommon_->GetOffScreenResource();
+        offscreen2RtvHandle_ = dxCommon_->GetOffScreen2RtvHandle();
+        offscreen2Resource_ = dxCommon_->GetOffScreen2Resource();
+
         ID3D12Resource* resource = nullptr;
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = {};
 
@@ -103,6 +95,8 @@ namespace CoreEngine
 
     void Render::BackBufferPreDraw()
     {
+        UpdateViewportAndScissor(dxCommon_->GetClientWidth(), dxCommon_->GetClientHeight());
+
         auto* cmdList = dxCommon_->GetCommandList();
         UINT backBufferIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
         ID3D12Resource* backBuffer = dxCommon_->GetSwapChainBackBuffer(backBufferIndex);
@@ -238,5 +232,20 @@ D3D12_CPU_DESCRIPTOR_HANDLE Render::GetOffscreenRTVHandle(int offscreenIndex) co
 D3D12_CPU_DESCRIPTOR_HANDLE Render::GetDSVHandle() const
 {
     return dsvHeap_->GetCPUDescriptorHandleForHeapStart();
+}
+
+void Render::UpdateViewportAndScissor(int32_t width, int32_t height)
+{
+    viewport_.Width = static_cast<float>(width);
+    viewport_.Height = static_cast<float>(height);
+    viewport_.TopLeftX = 0.0f;
+    viewport_.TopLeftY = 0.0f;
+    viewport_.MinDepth = 0.0f;
+    viewport_.MaxDepth = 1.0f;
+
+    scissorRect_.left = 0;
+    scissorRect_.right = width;
+    scissorRect_.top = 0;
+    scissorRect_.bottom = height;
 }
 }

@@ -144,8 +144,8 @@ namespace CoreEngine
         // 左上原点(0,0)から右下(width,height)の座標系
         Matrix4x4 projectionMatrix = MathCore::Rendering::Orthographic(
             0.0f, 0.0f,
-            static_cast<float>(WinApp::kClientWidth),
-            static_cast<float>(WinApp::kClientHeight),
+            static_cast<float>(WinApp::GetCurrentClientWidthStatic()),
+            static_cast<float>(WinApp::GetCurrentClientHeightStatic()),
             0.0f, 100.0f);
 
         return MathCore::Matrix::Multiply(worldMatrix, MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
@@ -165,8 +165,8 @@ namespace CoreEngine
             Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
             Matrix4x4 projectionMatrix = MathCore::Rendering::Orthographic(
                 0.0f, 0.0f,
-                static_cast<float>(WinApp::kClientWidth),
-                static_cast<float>(WinApp::kClientHeight),
+                static_cast<float>(WinApp::GetCurrentClientWidthStatic()),
+                static_cast<float>(WinApp::GetCurrentClientHeightStatic()),
                 0.0f, 100.0f);
             return MathCore::Matrix::Multiply(worldMatrix, MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
         }

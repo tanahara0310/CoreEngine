@@ -37,7 +37,8 @@ void Camera::UpdateMatrix()
     // アスペクト比の計算（パラメータで指定されていない場合は自動計算）
     float aspectRatio = parameters_.aspectRatio;
     if (aspectRatio <= 0.0f) {
-        aspectRatio = static_cast<float>(WinApp::kClientWidth) / static_cast<float>(WinApp::kClientHeight);
+        aspectRatio = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
+            static_cast<float>(WinApp::GetCurrentClientHeightStatic());
     }
 
     // プロジェクション行列をパラメータから初期化

@@ -59,6 +59,8 @@ public: // メンバ関数
     void ResourceBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter);
 
 private:
+    void UpdateViewportAndScissor(int32_t width, int32_t height);
+
     /// @brief オフスクリーンの描画前処理（汎用）
     /// @param resource 対象のオフスクリーンリソース
     /// @param rtvHandle 対象のRTVハンドル

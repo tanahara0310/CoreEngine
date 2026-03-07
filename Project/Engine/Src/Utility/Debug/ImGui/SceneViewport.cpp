@@ -39,7 +39,8 @@ namespace CoreEngine
 
             // ウィンドウ内サイズ取得と描画サイズ計算（アスペクト比維持）
             ImVec2 winSize = ImGui::GetWindowSize();
-            const float aspect = static_cast<float>(WinApp::kClientWidth) / static_cast<float>(WinApp::kClientHeight);
+            const float aspect = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
+                static_cast<float>(WinApp::GetCurrentClientHeightStatic());
             float drawW = winSize.x;
             float drawH = drawW / aspect;
             if (drawH > winSize.y) {
