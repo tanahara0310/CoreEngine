@@ -1,4 +1,4 @@
-﻿#include "WinApp.h"
+#include "WinApp.h"
 
 #pragma comment(lib, "winmm.lib")
 
@@ -7,6 +7,8 @@
 namespace CoreEngine
 {
 WinApp* WinApp::instance_ = nullptr;
+int32_t WinApp::currentClientWidthStatic_ = WinApp::kClientWidth;
+int32_t WinApp::currentClientHeightStatic_ = WinApp::kClientHeight;
 
 void WinApp::Initialize(int32_t width, int32_t height, const wchar_t* title)
 {
@@ -15,8 +17,10 @@ void WinApp::Initialize(int32_t width, int32_t height, const wchar_t* title)
     instance_ = this; // インスタンスポインタを設定
     currentClientWidth_ = width;
     currentClientHeight_ = height;
+    currentClientWidthStatic_ = width;
+    currentClientHeightStatic_ = height;
     RegisterWindowClass();
-    CreateAppWindow(title, width, height);
+    CreateAppWindow(title);
 }
 
 // ウィンドウクラスの登録
@@ -39,16 +43,13 @@ void WinApp::RegisterWindowClass()
 }
 
 // ウィンドウの生成
-void WinApp::CreateAppWindow(const wchar_t* title, int32_t clientWidth, int32_t clientHeight)
+void WinApp::CreateAppWindow(const wchar_t* title)
 {
+    // 1280x720を基準サイズにした通常ウィンドウ（起動時に最大化表示）
+    UINT style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 
-    // ウィンドウサイズを表す構造体にクライアント領域を入れる
-    RECT wrc = { 0, 0, clientWidth, clientHeight };
-
-    UINT style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX /*| WS_MAXIMIZE*/;
-
-    // クライアント領域を元に実際のサイズにwrcを変更
-    AdjustWindowRect(&wrc, style, false);
+    RECT windowRect = { 0, 0, kClientWidth, kClientHeight };
+    AdjustWindowRect(&windowRect, style, FALSE);
 
     // ウィンドウの生成
     hwnd_ = CreateWindowEx(
@@ -58,15 +59,15 @@ void WinApp::CreateAppWindow(const wchar_t* title, int32_t clientWidth, int32_t 
         style, // ウィンドウスタイル
         CW_USEDEFAULT,                 // ウィンドウのX座標
         CW_USEDEFAULT,                 // ウィンドウのY座標
-        wrc.right - wrc.left,         // ウィンドウの横幅
-        wrc.bottom - wrc.top,         // ウィンドウの縦幅
+        windowRect.right - windowRect.left,   // ウィンドウの横幅
+        windowRect.bottom - windowRect.top,   // ウィンドウの縦幅
         nullptr,                       // 親ウィンドウのハンドル
         nullptr,                       // メニューハンドル
         wc_.hInstance,                 // インスタンスハンドル
         nullptr);                      // その他のパラメータ
 
-    // ウィンドウを表示
-    ShowWindow(hwnd_, SW_SHOW);
+    // ウィンドウを最大化表示
+    ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
 }
 
 // ウィンドウプロシージャ
@@ -104,6 +105,8 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
 
                 instance_->currentClientWidth_ = newWidth;
                 instance_->currentClientHeight_ = newHeight;
+                currentClientWidthStatic_ = newWidth;
+                currentClientHeightStatic_ = newHeight;
 
                 // コールバックが設定されていれば呼び出す
                 if (instance_->resizeCallback_) {

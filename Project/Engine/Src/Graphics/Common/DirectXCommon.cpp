@@ -29,14 +29,18 @@ namespace CoreEngine
             winApp);
 
         // オフスクリーンレンダリングターゲットの作成
-        offScreenManager_->Initialize(deviceManager_->GetDevice(), descriptorManager_.get());
+        offScreenManager_->Initialize(
+            deviceManager_->GetDevice(),
+            descriptorManager_.get(),
+            winApp_->GetClientWidth(),
+            winApp_->GetClientHeight());
 
         // 深度ステンシルの初期化（DescriptorManagerを渡す）
         depthStencilManager_->Initialize(
             deviceManager_->GetDevice(),
             descriptorManager_.get(),
-            WinApp::kClientWidth,
-            WinApp::kClientHeight);
+            winApp_->GetClientWidth(),
+            winApp_->GetClientHeight());
 
         // シャドウマップの初期化
         shadowMapManager_->Initialize(
@@ -61,6 +65,9 @@ namespace CoreEngine
 
         // 深度ステンシルのリサイズ（DSVハンドルは再利用）
         depthStencilManager_->ResizeResource(width, height);
+
+        // オフスクリーンレンダリングターゲットのリサイズ
+        offScreenManager_->Resize(width, height);
 
         Logger::GetInstance().Log(L"Window Resized: " + std::to_wstring(width) + L"x" + std::to_wstring(height),
             LogLevel::INFO, LogCategory::Graphics);

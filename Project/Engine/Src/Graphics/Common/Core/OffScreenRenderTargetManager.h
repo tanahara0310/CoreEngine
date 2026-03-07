@@ -2,6 +2,7 @@
 
 #include <d3d12.h>
 #include <wrl.h>
+#include <cstdint>
 
 namespace CoreEngine
 {
@@ -14,7 +15,12 @@ public:
     /// @brief 初期化
     /// @param device D3D12デバイス
     /// @param descriptorManager ディスクリプタマネージャー
-    void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager);
+    /// @param width 初期幅
+    /// @param height 初期高さ
+    void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, std::int32_t width, std::int32_t height);
+
+    /// @brief オフスクリーンリソースをリサイズ
+    void Resize(std::int32_t width, std::int32_t height);
 
     // オフスクリーン用のアクセッサ（1枚目）
     ID3D12Resource* GetOffScreenResource() const { return offScreenResource_.Get(); }
@@ -28,22 +34,28 @@ public:
 
 private:
     /// @brief オフスクリーン用のレンダリングターゲットを作成
-    void CreateOffScreenRenderTarget();
+    void CreateOffScreenRenderTarget(std::int32_t width, std::int32_t height);
+
+    /// @brief 既存ディスクリプタにビューを再作成
+    void UpdateViews();
 
 private:
     // 1枚目のオフスクリーンバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> offScreenResource_;
     D3D12_CPU_DESCRIPTOR_HANDLE offscreenRtvHandle_ {};
+    D3D12_CPU_DESCRIPTOR_HANDLE offscreenSrvCpuHandle_ {};
     D3D12_GPU_DESCRIPTOR_HANDLE offscreenSrvHandle_ {};
 
     // 2枚目のオフスクリーンバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> offScreen2Resource_;
     D3D12_CPU_DESCRIPTOR_HANDLE offscreen2RtvHandle_ {};
+    D3D12_CPU_DESCRIPTOR_HANDLE offscreen2SrvCpuHandle_ {};
     D3D12_GPU_DESCRIPTOR_HANDLE offscreen2SrvHandle_ {};
 
     // 依存関係
     ID3D12Device* device_ = nullptr;
     DescriptorManager* descriptorManager_ = nullptr;
+    bool isInitialized_ = false;
 };
 }
 

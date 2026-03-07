@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <Windows.h>
 #include <cstdint>
@@ -19,6 +19,12 @@ namespace CoreEngine
         // ウィンドウの大きさ（スタティック定数）
         static const int32_t kClientWidth = 1280;
         static const int32_t kClientHeight = 720;
+
+        /// @brief 現在のクライアント領域の幅を静的に取得
+        static int32_t GetCurrentClientWidthStatic() { return currentClientWidthStatic_; }
+
+        /// @brief 現在のクライアント領域の高さを静的に取得
+        static int32_t GetCurrentClientHeightStatic() { return currentClientHeightStatic_; }
 
         /// @brief 指定された幅、高さ、タイトルで初期化
         /// @param width ウィンドウの幅
@@ -61,7 +67,7 @@ namespace CoreEngine
         void RegisterWindowClass();
 
         // ウィンドウの生成
-        void CreateAppWindow(const wchar_t* title, int32_t clientWidth = kClientWidth, int32_t clientHeight = kClientHeight);
+        void CreateAppWindow(const wchar_t* title);
 
         // ウィンドウハンドル
         HWND hwnd_;
@@ -77,5 +83,9 @@ namespace CoreEngine
 
         // WinAppインスタンスへのポインタ（WindowProcから参照するため）
         static WinApp* instance_;
+
+        // 現在のクライアント領域のサイズ（静的アクセス用）
+        static int32_t currentClientWidthStatic_;
+        static int32_t currentClientHeightStatic_;
     };
 };

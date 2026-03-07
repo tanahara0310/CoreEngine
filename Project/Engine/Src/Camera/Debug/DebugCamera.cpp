@@ -1,6 +1,7 @@
 #include "DebugCamera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#include "WinApp/WinApp.h"
 
 // 新しい数学
 using namespace CoreEngine::MathCore;
@@ -30,7 +31,8 @@ namespace CoreEngine
         , mouseState_{}
     {
         // プロジェクション行列をパラメータから初期化
-        float aspectRatio = static_cast<float>(WinApp::kClientWidth) / static_cast<float>(WinApp::kClientHeight);
+        float aspectRatio = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
+            static_cast<float>(WinApp::GetCurrentClientHeightStatic());
         projectionMatrix_ = Rendering::PerspectiveFov(
             parameters_.fov,
             aspectRatio,
@@ -109,7 +111,8 @@ namespace CoreEngine
         // プロジェクション行列をパラメータから更新
         float aspectRatio = parameters_.aspectRatio;
         if (aspectRatio <= 0.0f) {
-            aspectRatio = static_cast<float>(WinApp::kClientWidth) / static_cast<float>(WinApp::kClientHeight);
+            aspectRatio = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
+                static_cast<float>(WinApp::GetCurrentClientHeightStatic());
         }
 
         projectionMatrix_ = Rendering::PerspectiveFov(
@@ -352,24 +355,38 @@ namespace CoreEngine
 
         // === ホイールによるズーム ===
         int wheelDelta = mouse->GetWheelDelta();
+        if (!isInSceneWindow) {
+            // シーン外で溜まった値を持ち越さない
+            mouseState_.accumulatedWheelDelta = 0;
+        }
+
         if (isInSceneWindow && wheelDelta != 0) {
             // ホイールの値をフレーム単位で累積
             mouseState_.accumulatedWheelDelta += wheelDelta;
 
+            // 異常に大きい入力はクリップ
+            const int maxAccumulated = 1200; // 10ノッチ分
+            mouseState_.accumulatedWheelDelta = std::clamp(
+                mouseState_.accumulatedWheelDelta,
+                -maxAccumulated,
+                maxAccumulated);
+
             // 一定以上累積されたらズーム処理
             const int wheelThreshold = 120; // DirectInputの標準的なホイール1クリック分
-            if (abs(mouseState_.accumulatedWheelDelta) >= wheelThreshold) {
-                float zoomDelta = static_cast<float>(-mouseState_.accumulatedWheelDelta) / wheelThreshold * settings_.zoomSensitivity;
+            if (std::abs(mouseState_.accumulatedWheelDelta) >= wheelThreshold) {
+                int wheelSteps = mouseState_.accumulatedWheelDelta / wheelThreshold;
+                wheelSteps = std::clamp(wheelSteps, -3, 3); // 1フレームあたり最大3ノッチ
+
+                float zoomDelta = static_cast<float>(-wheelSteps) * settings_.zoomSensitivity;
 
                 // 距離に応じてズーム量を調整（近い時は細かく、遠い時は大きく）
-                float adaptiveZoom = (0.1f > distance_ * 0.1f) ? 0.1f : distance_ * 0.1f;
+                float adaptiveZoom = (0.1f > distance_ * 0.08f) ? 0.1f : distance_ * 0.08f;
                 zoomDelta *= adaptiveZoom;
 
                 SetDistance(distance_ + zoomDelta);
 
-                // 処理した分だけ累積値を減らす
-                int processedDelta = (mouseState_.accumulatedWheelDelta / wheelThreshold) * wheelThreshold;
-                mouseState_.accumulatedWheelDelta -= processedDelta;
+                // 持ち越しで連続ジャンプしないよう処理後はリセット
+                mouseState_.accumulatedWheelDelta = 0;
             }
         }
     }
