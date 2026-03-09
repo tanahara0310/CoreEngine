@@ -410,6 +410,11 @@
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\GeometryPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1226,6 +1231,12 @@
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetDatabase.h" />
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\GeometryPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">
@@ -1266,6 +1277,11 @@
     <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
     <None Include="Script\convert-tabs-to-spaces.ps1" />
     <None Include="Engine\Graphics\RootSignature\RootSignatureManager.h.new" />
+    <None Include="Application\Assets\SampleAssets\AnimatedCube\AnimatedCube.bin" />
+    <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin" />
+    <None Include="Application\Assets\SampleAssets\human\walk.bin" />
+    <None Include="Application\Assets\SampleAssets\PblTestModel\ABeautifulGame.bin" />
+    <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">

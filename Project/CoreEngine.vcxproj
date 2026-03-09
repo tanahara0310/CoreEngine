@@ -213,6 +213,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\GeometryPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.cpp" />
@@ -434,6 +439,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\GeometryPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderPassType.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.h" />
@@ -678,6 +689,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Application\Assets\SampleAssets\AnimatedCube\AnimatedCube.bin" />
+    <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin" />
+    <None Include="Application\Assets\SampleAssets\human\walk.bin" />
+    <None Include="Application\Assets\SampleAssets\PblTestModel\ABeautifulGame.bin" />
+    <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
     <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
     <None Include="Script\convert-tabs-to-spaces.ps1" />
     <None Include="docs\BulletHitParticle_Implementation.md" />

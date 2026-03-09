@@ -221,31 +221,31 @@ namespace CoreEngine
         barrier.Transition.StateBefore = stateBefore;
         barrier.Transition.StateAfter = stateAfter;
 
-    dxCommon_->GetCommandList()->ResourceBarrier(1, &barrier);
-}
+        dxCommon_->GetCommandList()->ResourceBarrier(1, &barrier);
+    }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Render::GetOffscreenRTVHandle(int offscreenIndex) const
-{
-    return (offscreenIndex == 0) ? offscreenRtvHandle_ : offscreen2RtvHandle_;
-}
+    D3D12_CPU_DESCRIPTOR_HANDLE Render::GetOffscreenRTVHandle(int offscreenIndex) const
+    {
+        return (offscreenIndex == 0) ? offscreenRtvHandle_ : offscreen2RtvHandle_;
+    }
 
-D3D12_CPU_DESCRIPTOR_HANDLE Render::GetDSVHandle() const
-{
-    return dsvHeap_->GetCPUDescriptorHandleForHeapStart();
-}
+    D3D12_CPU_DESCRIPTOR_HANDLE Render::GetDSVHandle() const
+    {
+        return dsvHeap_->GetCPUDescriptorHandleForHeapStart();
+    }
 
-void Render::UpdateViewportAndScissor(int32_t width, int32_t height)
-{
-    viewport_.Width = static_cast<float>(width);
-    viewport_.Height = static_cast<float>(height);
-    viewport_.TopLeftX = 0.0f;
-    viewport_.TopLeftY = 0.0f;
-    viewport_.MinDepth = 0.0f;
-    viewport_.MaxDepth = 1.0f;
+    void Render::UpdateViewportAndScissor(int32_t width, int32_t height)
+    {
+        viewport_.Width = static_cast<float>(width);
+        viewport_.Height = static_cast<float>(height);
+        viewport_.TopLeftX = 0.0f;
+        viewport_.TopLeftY = 0.0f;
+        viewport_.MinDepth = 0.0f;
+        viewport_.MaxDepth = 1.0f;
 
-    scissorRect_.left = 0;
-    scissorRect_.right = width;
-    scissorRect_.top = 0;
-    scissorRect_.bottom = height;
-}
+        scissorRect_.left = 0;
+        scissorRect_.right = width;
+        scissorRect_.top = 0;
+        scissorRect_.bottom = height;
+    }
 }

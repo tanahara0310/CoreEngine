@@ -11,6 +11,11 @@
 
 namespace CoreEngine
 {
+enum class DockLayoutPreset {
+    Standard,
+    Unity2By3
+};
+
 enum class DockArea {
     LeftTop,        // 左上（エンジン情報など）
     LeftBottom,     // 左下（カメラ情報など）
@@ -39,6 +44,12 @@ public:
     /// @brief ドッキングのセットアップ
     void SetupDockSpace();
 
+    /// @brief レイアウトプリセットを設定
+    void SetLayoutPreset(DockLayoutPreset preset);
+
+    /// @brief 現在のレイアウトプリセットを取得
+    DockLayoutPreset GetLayoutPreset() const { return layoutPreset_; }
+
     /// @brief 再生制御ツールバーを描画（メニューバーの直下）
     void DrawPlaybackToolbar();
 
@@ -61,15 +72,23 @@ private:
     /// @brief エリアごとのノードIDを取得
     ImGuiID GetNodeIdForArea(DockArea area) const;
 
+    /// @brief ウィンドウ名とエリアから実際のドッキング先ノードIDを解決
+    ImGuiID ResolveNodeIdForWindow(const std::string& windowName, DockArea area) const;
+
     /// @brief ドッキングレイアウトを構築
     void BuildDockLayout();
 
 private:
     std::unordered_map<std::string, DockArea> registeredWindows_; // 登録されたウィンドウとそのエリア
     bool layoutInitialized_ = false; // レイアウトが初期化されたかどうか
+    bool layoutDirty_ = false; // レイアウト再構築が必要かどうか
+    DockLayoutPreset layoutPreset_ = DockLayoutPreset::Unity2By3;
 
     // エリアごとのノードID
     ImGuiID nodeIds_[7] = {0}; // DockAreaの数だけ（Bottomを追加したため7に変更）
+    ImGuiID gameNodeId_ = 0;
+    ImGuiID sceneNodeId_ = 0;
+    ImGuiID toolNodeId_ = 0;
 
     // 再生制御アイコン用テクスチャハンドル
     D3D12_GPU_DESCRIPTOR_HANDLE playIcon_{};

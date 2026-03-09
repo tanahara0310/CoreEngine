@@ -168,7 +168,7 @@ namespace CoreEngine
         );
 
         // ShadowMapManagerからライトVP行列を取得
-        Matrix4x4 lightVP = sShadowMapManager_ ? 
+        Matrix4x4 lightVP = sShadowMapManager_ ?
             sShadowMapManager_->GetLightViewProjection() : MathCore::Matrix::Identity();
 
         // GPUメモリに書き込み
@@ -192,28 +192,28 @@ namespace CoreEngine
 
         // WVP行列を更新（共通処理）
         UpdateTransformationMatrix(transform, camera);
-        
+
         // サブメッシュごとに描画
         const auto& subMeshes = resource_->GetSubMeshes();
         assert(!subMeshes.empty() && "Model must have at least one submesh");
-        
+
         for (const auto& subMesh : subMeshes) {
             // マテリアルのテクスチャを取得
             const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
-            
+
             // textureHandleが指定されている場合はBaseColorをオーバーライド
-            D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0) 
+            D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
                 ? textureHandle : textures.baseColor;
-            
+
             // スキンクラスターの有無で描画方法を自動判別
             if (HasSkinCluster()) {
-                SetupSkinningDrawCommands(cmdList, baseColorTex, textures.normal, 
+                SetupSkinningDrawCommands(cmdList, baseColorTex, textures.normal,
                     textures.metallicRoughness, textures.occlusion);
             } else {
-                SetupNormalDrawCommands(cmdList, baseColorTex, textures.normal, 
+                SetupNormalDrawCommands(cmdList, baseColorTex, textures.normal,
                     textures.metallicRoughness, textures.occlusion);
             }
-            
+
             // このサブメッシュの範囲を描画
             cmdList->DrawIndexedInstanced(subMesh.indexCount, 1, subMesh.startIndex, 0, 0);
         }
@@ -224,7 +224,7 @@ namespace CoreEngine
         assert(cmdList);
 
         // ShadowMapManagerからライトVP行列を取得
-        Matrix4x4 lightVP = sShadowMapManager_ ? 
+        Matrix4x4 lightVP = sShadowMapManager_ ?
             sShadowMapManager_->GetLightViewProjection() : MathCore::Matrix::Identity();
 
         // シャドウマップ用のWVP行列を計算（ライトVP行列を使用）
@@ -396,7 +396,7 @@ namespace CoreEngine
     }
 
     // ===== PBRテクスチャ対応のSetup描画コマンド =====
-    
+
     void Model::SetupNormalDrawCommands(ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
         D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
@@ -518,4 +518,4 @@ namespace CoreEngine
         return resource_;
     }
 
-    }
+}

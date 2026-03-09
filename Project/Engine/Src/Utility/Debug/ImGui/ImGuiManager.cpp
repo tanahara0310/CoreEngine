@@ -85,7 +85,8 @@ void ImGuiManager::Begin(PostEffectManager* postEffectManager, GameDebugUI* game
     dockingUI_->BeginDockSpaceHostWindow();
     dockingUI_->SetupDockSpace();
 
-    // シーンビューポートの開始（PostEffectManagerを渡す）
+    // ゲーム / シーンビューポートの開始（PostEffectManagerを渡す）
+    sceneViewport_->DrawGameViewport(dxCommon_, postEffectManager);
     sceneViewport_->DrawSceneViewport(dxCommon_, postEffectManager);
 
     // プロジェクトビューの更新
