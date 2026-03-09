@@ -30,8 +30,17 @@ namespace CoreEngine
 
     void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
     {
-        // Sceneウィンドウを描画開始（背景透過・スクロール無効）
-        if (ImGui::Begin("Scene", nullptr,
+        DrawViewportWindow("Scene", dxCommon, postEffectManager, true);
+    }
+
+    void SceneViewport::DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
+    {
+        DrawViewportWindow("Game", dxCommon, postEffectManager, false);
+    }
+
+    void SceneViewport::DrawViewportWindow(const char* windowName, DirectXCommon* dxCommon, PostEffectManager* postEffectManager, bool enableGizmo)
+    {
+        if (ImGui::Begin(windowName, nullptr,
             ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoScrollbar
             | ImGuiWindowFlags_NoScrollWithMouse
@@ -58,12 +67,11 @@ namespace CoreEngine
                 contentPos.x + offsetX,
                 contentPos.y + offsetY));
 
-            // ビューポートの矩形情報を記録（スクリーン座標系）
-            viewportPos_ = ImVec2(contentPos.x + offsetX, contentPos.y + offsetY);
-            viewportSize_ = ImVec2(drawW, drawH);
-
-            // ビューポートがホバー状態かチェック
-            isViewportHovered_ = ImGui::IsWindowHovered();
+            if (enableGizmo) {
+                viewportPos_ = ImVec2(contentPos.x + offsetX, contentPos.y + offsetY);
+                viewportSize_ = ImVec2(drawW, drawH);
+                isViewportHovered_ = ImGui::IsWindowHovered();
+            }
 
             // シーンのレンダリング結果を表示
             // PostEffectManagerから最終テクスチャを取得（責務をカプセル化）
@@ -80,24 +88,26 @@ namespace CoreEngine
             ImTextureID texID = (ImTextureID)textureHandle.ptr;
             ImGui::Image(texID, ImVec2(drawW, drawH));
 
-            // ギズモ準備（Imageの後に設定）
-            Gizmo::Prepare(viewportPos_, viewportSize_);
+            if (enableGizmo) {
+                // ギズモ準備（Imageの後に設定）
+                Gizmo::Prepare(viewportPos_, viewportSize_);
 
-            // ImGuizmoが正しいDrawListを使用するように設定
-            ImGuizmo::SetDrawlist();
+                // ImGuizmoが正しいDrawListを使用するように設定
+                ImGuizmo::SetDrawlist();
 
-            // ビューポート内にギズモ操作タイプ切替ツールバーを描画
-            DrawGizmoToolbar();
+                // ビューポート内にギズモ操作タイプ切替ツールバーを描画
+                DrawGizmoToolbar();
 
-            // ギズモの描画（Imageの後に描画することで、シーン上に重ねて表示）
-            if (objectSelector_) {
-                // 3Dオブジェクトのギズモ描画
-                if (currentCamera_ && objectSelector_->GetSelectedObject()) {
-                    objectSelector_->DrawGizmo(currentCamera_);
-                }
-                // 2Dスプライトのギズモ描画
-                else if (currentCamera2D_ && objectSelector_->GetSelectedSprite()) {
-                    objectSelector_->DrawGizmo2D(currentCamera2D_);
+                // ギズモの描画（Imageの後に描画することで、シーン上に重ねて表示）
+                if (objectSelector_) {
+                    // 3Dオブジェクトのギズモ描画
+                    if (currentCamera_ && objectSelector_->GetSelectedObject()) {
+                        objectSelector_->DrawGizmo(currentCamera_);
+                    }
+                    // 2Dスプライトのギズモ描画
+                    else if (currentCamera2D_ && objectSelector_->GetSelectedSprite()) {
+                        objectSelector_->DrawGizmo2D(currentCamera2D_);
+                    }
                 }
             }
         }

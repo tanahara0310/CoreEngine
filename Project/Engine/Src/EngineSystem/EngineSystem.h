@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <wrl.h>
 #include <functional>
 #include <memory>
@@ -48,6 +48,9 @@ class ConsoleUI; // 前方宣言（デバッグビルドのみ）
 
 // ユーティリティ
 #include "Utility/Collision/CollisionUtils.h"
+
+// レンダーパイプライン
+#include "Graphics/Render/Pass/RenderPipeline.h"
 
 
 /// @brief エンジンシステム中核システム管理クラス
@@ -153,6 +156,9 @@ private:
     void CreateLightComponents();
     void CreateFrameRateController();
 
+    /// @brief デフォルトのレンダーパイプラインを構築
+    void BuildDefaultRenderPipeline();
+
     // ──────────────────────────────────────────────────────────
     // コアメンバ変数
     // ──────────────────────────────────────────────────────────
@@ -164,6 +170,9 @@ private:
 
     // コンポーネントの所有権管理（型消去されたポインタのコンテナ）
     std::vector<std::unique_ptr<void, void(*)(void*)>> componentOwners_;
+
+    // レンダーパイプライン
+    std::unique_ptr<RenderPipeline> renderPipeline_;
 
 #ifdef _DEBUG
     // デバッグ機能（デバッグビルドのみ）

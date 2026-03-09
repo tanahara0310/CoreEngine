@@ -13,7 +13,7 @@ void DockingUI::RegisterWindow(const std::string& windowName, DockArea area)
     
     // レイアウトが既に初期化されている場合、動的にドッキング
     if (layoutInitialized_) {
-        ImGuiID nodeId = GetNodeIdForArea(area);
+        ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
         if (nodeId != 0) {
             ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
         }
@@ -71,17 +71,47 @@ void DockingUI::BeginDockSpaceHostWindow()
 
 void DockingUI::SetupDockSpace()
 {
-    // 初回のみドッキングレイアウトを構築
-    if (layoutInitialized_)
+    // 初回またはレイアウト変更時のみドッキングレイアウトを構築
+    if (layoutInitialized_ && !layoutDirty_)
         return;
 
     BuildDockLayout();
     layoutInitialized_ = true;
+    layoutDirty_ = false;
+}
+
+void DockingUI::SetLayoutPreset(DockLayoutPreset preset)
+{
+    if (layoutPreset_ == preset) {
+        return;
+    }
+
+    layoutPreset_ = preset;
+    layoutDirty_ = true;
 }
 
 ImGuiID DockingUI::GetNodeIdForArea(DockArea area) const
 {
     return nodeIds_[static_cast<int>(area)];
+}
+
+ImGuiID DockingUI::ResolveNodeIdForWindow(const std::string& windowName, DockArea area) const
+{
+    if (layoutPreset_ == DockLayoutPreset::Unity2By3) {
+        if (windowName == "Game") {
+            return gameNodeId_;
+        }
+
+        if (windowName == "Scene") {
+            return sceneNodeId_;
+        }
+
+        if ((area == DockArea::LeftTop || area == DockArea::LeftBottom || area == DockArea::Center) && toolNodeId_ != 0) {
+            return toolNodeId_;
+        }
+    }
+
+    return GetNodeIdForArea(area);
 }
 
 void DockingUI::BuildDockLayout()
@@ -99,34 +129,66 @@ void DockingUI::BuildDockLayout()
     ImGui::DockBuilderAddNode(dockMain, ImGuiDockNodeFlags_None);
     ImGui::DockBuilderSetNodeSize(dockMain, dockSpaceSize);
 
-    // 1) 右側エリア（Inspector）を最初に分割（25%）
-    ImGuiID idMainArea, idRight;
-    ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.25f, &idRight, &idMainArea);
+    for (ImGuiID& nodeId : nodeIds_) {
+        nodeId = 0;
+    }
+    gameNodeId_ = 0;
+    sceneNodeId_ = 0;
+    toolNodeId_ = 0;
 
-    // 2) 残りのエリアを上下に分割（下部30%）
-    ImGuiID idTop, idBottom;
-    ImGui::DockBuilderSplitNode(idMainArea, ImGuiDir_Down, 0.30f, &idBottom, &idTop);
+    if (layoutPreset_ == DockLayoutPreset::Unity2By3) {
+        ImGuiID idTop, idBottom;
+        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Down, 0.28f, &idBottom, &idTop);
 
-    // 3) 上部エリアを左側と中央に分割（左側25%）
-    ImGuiID idLeft, idCenter;
-    ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Left, 0.25f, &idLeft, &idCenter);
+        ImGuiID idMainLeft, idRight;
+        ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Right, 0.25f, &idRight, &idMainLeft);
 
-    // 4) 左側をさらに上下に分割
-    ImGuiID idLeftTop, idLeftBottom;
-    ImGui::DockBuilderSplitNode(idLeft, ImGuiDir_Down, 0.5f, &idLeftBottom, &idLeftTop);
+        ImGuiID idViewportColumn, idToolColumn;
+        ImGui::DockBuilderSplitNode(idMainLeft, ImGuiDir_Right, 0.38f, &idToolColumn, &idViewportColumn);
 
-    // ノードIDを保存
-    nodeIds_[static_cast<int>(DockArea::LeftTop)] = idLeftTop;
-    nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idLeftBottom;
-    nodeIds_[static_cast<int>(DockArea::Center)] = idCenter;
-    nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
-    nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;  // 使用しない
-    nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0; // 使用しない
-    nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
+        ImGuiID idGame, idScene;
+        ImGui::DockBuilderSplitNode(idViewportColumn, ImGuiDir_Down, 0.5f, &idScene, &idGame);
+
+        gameNodeId_ = idGame;
+        sceneNodeId_ = idScene;
+        toolNodeId_ = idToolColumn;
+
+        nodeIds_[static_cast<int>(DockArea::LeftTop)] = idToolColumn;
+        nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idToolColumn;
+        nodeIds_[static_cast<int>(DockArea::Center)] = idToolColumn;
+        nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
+        nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
+        nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
+        nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
+    } else {
+        // 1) 右側エリア（Inspector）を最初に分割（25%）
+        ImGuiID idMainArea, idRight;
+        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.25f, &idRight, &idMainArea);
+
+        // 2) 残りのエリアを上下に分割（下部30%）
+        ImGuiID idTop, idBottom;
+        ImGui::DockBuilderSplitNode(idMainArea, ImGuiDir_Down, 0.30f, &idBottom, &idTop);
+
+        // 3) 上部エリアを左側と中央に分割（左側25%）
+        ImGuiID idLeft, idCenter;
+        ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Left, 0.25f, &idLeft, &idCenter);
+
+        // 4) 左側をさらに上下に分割
+        ImGuiID idLeftTop, idLeftBottom;
+        ImGui::DockBuilderSplitNode(idLeft, ImGuiDir_Down, 0.5f, &idLeftBottom, &idLeftTop);
+
+        nodeIds_[static_cast<int>(DockArea::LeftTop)] = idLeftTop;
+        nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idLeftBottom;
+        nodeIds_[static_cast<int>(DockArea::Center)] = idCenter;
+        nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
+        nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
+        nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
+        nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
+    }
 
     // 登録されているウィンドウを各ノードにドッキング
     for (const auto& [windowName, area] : registeredWindows_) {
-        ImGuiID nodeId = GetNodeIdForArea(area);
+        ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
         if (nodeId != 0) {
             ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
         }

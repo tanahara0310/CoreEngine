@@ -25,6 +25,11 @@ namespace CoreEngine
         /// @param postEffectManager PostEffectManagerへのポインタ（オプション）
         void DrawSceneViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager = nullptr);
 
+        /// @brief ゲームビューポートの描画
+        /// @param dxCommon DirectXCommonへのポインタ
+        /// @param postEffectManager PostEffectManagerへのポインタ（オプション）
+        void DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager = nullptr);
+
         /// @brief 3Dカメラを設定（ギズモ描画用）
         /// @param camera 3Dカメラ
         void SetCamera(const ICamera* camera) { currentCamera_ = camera; }
@@ -67,6 +72,9 @@ namespace CoreEngine
 
         /// @brief 再生制御アイコンテクスチャを読み込む
         void LoadPlaybackIcons();
+
+        /// @brief 共通ビューポート描画
+        void DrawViewportWindow(const char* windowName, DirectXCommon* dxCommon, PostEffectManager* postEffectManager, bool enableGizmo);
 
     private: // メンバ変数
         ImVec2 viewportPos_{};

@@ -58,6 +58,22 @@ void GameDebugUI::ShowMainMenuBar()
             ImGui::EndMenu();
         }
 
+        if (dockingUI_ && ImGui::BeginMenu("Layout")) {
+            const DockLayoutPreset currentLayout = dockingUI_->GetLayoutPreset();
+            const bool isStandard = (currentLayout == DockLayoutPreset::Standard);
+            const bool isUnity2By3 = (currentLayout == DockLayoutPreset::Unity2By3);
+
+            if (ImGui::MenuItem("Standard", nullptr, isStandard)) {
+                dockingUI_->SetLayoutPreset(DockLayoutPreset::Standard);
+            }
+
+            if (ImGui::MenuItem("Unity 2 by 3", nullptr, isUnity2By3)) {
+                dockingUI_->SetLayoutPreset(DockLayoutPreset::Unity2By3);
+            }
+
+            ImGui::EndMenu();
+        }
+
         ImGui::EndMainMenuBar();
     }
 }

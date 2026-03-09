@@ -23,6 +23,12 @@
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Model/Model.h"
 
+// レンダーパス
+#include "Graphics/Render/Pass/ShadowMapPass.h"
+#include "Graphics/Render/Pass/GeometryPass.h"
+#include "Graphics/Render/Pass/PostEffectPass.h"
+#include "Graphics/Render/Pass/BackBufferPass.h"
+
 // 入力管理
 #include "Input/InputManager.h"
 
@@ -79,6 +85,9 @@ namespace CoreEngine
         // その他の固定ウィンドウをドッキングシステムに登録
         DockingUI* dockingUI = imGui_->GetDockingUI();
         if (dockingUI) {
+            // GameViewportが作成するウィンドウを中央に配置
+            dockingUI->RegisterWindow("Game", DockArea::Center);
+
             // SceneViewportが作成するウィンドウを中央に配置
             dockingUI->RegisterWindow("Scene", DockArea::Center);
 
@@ -94,6 +103,9 @@ namespace CoreEngine
 #endif // _DEBUG
 
         GameObject::Initialize(this);
+
+        // デフォルトレンダーパイプラインの構築
+        BuildDefaultRenderPipeline();
     }
 
     void EngineSystem::Finalize()
@@ -179,61 +191,75 @@ namespace CoreEngine
 
     void EngineSystem::ExecuteRenderPipeline(std::function<void()> renderCallback)
     {
-        auto* render = GetComponent<Render>();
-        auto* postEffect = GetComponent<PostEffectManager>();
-        auto* dx = GetComponent<DirectXCommon>();
-        auto* lightManager = GetComponent<LightManager>();
-        auto* renderManager = GetComponent<RenderManager>();
-
-        if (!render || !postEffect || !dx) {
+        if (!renderPipeline_) {
             return;
         }
 
-        // ライトVP行列を計算してRenderManagerに設定
-        if (lightManager && renderManager) {
-            // シーンの中心と半径（必要に応じて調整）
-            Vector3 sceneCenter = Vector3(0.0f, 5.0f, 0.0f);
-            float sceneRadius = 30.0f;
+        auto* dx = GetComponent<DirectXCommon>();
+        auto* renderManager = GetComponent<RenderManager>();
+        auto* render = GetComponent<Render>();
 
-            Matrix4x4 lightVP = lightManager->CalculateMainDirectionalLightViewProjection(sceneCenter, sceneRadius);
-            renderManager->SetLightViewProjection(lightVP);
-        }
-
-        // コマンドリストを設定（シャドウマップパスと通常パスはDrawAll内で一括処理）
-        if (renderManager) {
+        // コマンドリストを設定
+        if (renderManager && dx) {
             renderManager->SetCommandList(dx->GetCommandList());
         }
 
-    // レンダリングの開始（1枚目のオフスクリーン）
-    render->OffscreenPreDraw(0);
+        // レンダリングコンテキストの構築
+        RenderContext context;
+        context.dxCommon = dx;
+        context.render = render;
+        context.renderManager = renderManager;
+        context.postEffectManager = GetComponent<PostEffectManager>();
+        context.lightManager = GetComponent<LightManager>();
 
-    // シーン固有の描画処理を実行
-    if (renderCallback) {
-        renderCallback();
-    }
+        // ジオメトリパスに描画コールバックを設定
+        if (auto* geometryPass = renderPipeline_->GetPass<GeometryPass>()) {
+            geometryPass->SetRenderCallback(renderCallback);
+        }
 
-    // 1枚目のオフスクリーン描画の終了
-    render->OffscreenPostDraw(0);
+        // パスを順番に実行してデータを繋ぐ
+        // 1. ShadowMapPass
+        if (auto* shadowMapPass = renderPipeline_->GetPass<ShadowMapPass>()) {
+            if (shadowMapPass->IsEnabled()) {
+                shadowMapPass->Execute(context);
+            }
+        }
 
-        // ポストエフェクトチェーンの適用
-        D3D12_GPU_DESCRIPTOR_HANDLE outputHandle = postEffect->ExecuteEffectChain(
-            dx->GetOffScreenSrvHandle());
+        // 2. GeometryPass
+        if (auto* geometryPass = renderPipeline_->GetPass<GeometryPass>()) {
+            if (geometryPass->IsEnabled()) {
+                geometryPass->Execute(context);
+            }
+        }
 
-        render->BackBufferPreDraw();
+        // 3. PostEffectPass
+        D3D12_GPU_DESCRIPTOR_HANDLE postEffectOutput{};
+        if (auto* postEffectPass = renderPipeline_->GetPass<PostEffectPass>()) {
+            if (postEffectPass->IsEnabled()) {
+                postEffectPass->Execute(context);
+                postEffectOutput = postEffectPass->GetOutputHandle();
+            }
+        }
+
+        // 4. BackBufferPass（ポストエフェクトの出力を使用）
+        if (auto* backBufferPass = renderPipeline_->GetPass<BackBufferPass>()) {
+            if (backBufferPass->IsEnabled()) {
+                backBufferPass->SetInputTexture(postEffectOutput);
+                backBufferPass->Execute(context);
+            }
+        }
 
 #ifdef _DEBUG
-        // 最終結果をバックバッファに描画
-        postEffect->ExecuteEffect("FullScreen", outputHandle);
-
         // ImGuiの描画コマンドを積む
-        imGui_->Draw();
-#else
-        // 最終結果をバックバッファに描画
-        postEffect->ExecuteEffect("FullScreen", outputHandle);
+        if (imGui_) {
+            imGui_->Draw();
+        }
 #endif // _DEBUG
 
-        // バックバッファの描画終了
-        render->BackBufferPostDraw();
+        // バックバッファの描画終了（ImGuiの後）
+        if (render) {
+            render->BackBufferPostDraw();
+        }
     }
 
     // ──────────────────────────────────────────────────────────
@@ -433,6 +459,29 @@ namespace CoreEngine
                 skinnedRenderer->SetLightManager(lightManagerPtr);
             }
         }
+    }
+
+    void EngineSystem::BuildDefaultRenderPipeline()
+    {
+        // レンダーパイプラインの作成
+        renderPipeline_ = std::make_unique<RenderPipeline>();
+
+        // 1. シャドウマップパス
+        auto shadowMapPass = std::make_unique<ShadowMapPass>();
+        renderPipeline_->AddPass(std::move(shadowMapPass));
+
+        // 2. ジオメトリパス（オフスクリーンレンダリング）
+        auto geometryPass = std::make_unique<GeometryPass>();
+        geometryPass->SetOffscreenIndex(0); // 1枚目のオフスクリーンを使用
+        renderPipeline_->AddPass(std::move(geometryPass));
+
+        // 3. ポストエフェクトパス
+        auto postEffectPass = std::make_unique<PostEffectPass>();
+        renderPipeline_->AddPass(std::move(postEffectPass));
+
+        // 4. バックバッファパス（最終出力）
+        auto backBufferPass = std::make_unique<BackBufferPass>();
+        renderPipeline_->AddPass(std::move(backBufferPass));
     }
 
 #pragma endregion
