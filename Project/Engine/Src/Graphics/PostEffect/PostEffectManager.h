@@ -15,6 +15,7 @@ namespace CoreEngine
 // 前方宣言
 class DirectXCommon;
 class Render;
+class RenderTarget;
 
 /// @brief ポストエフェクト管理クラス
 class PostEffectManager {
@@ -123,6 +124,7 @@ private:
         D3D12_GPU_DESCRIPTOR_HANDLE currentInput_;
         int currentOutputIndex_;
 
+        RenderTarget* GetRenderTarget(int index) const;
         D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandle(int index) const;
     };
 

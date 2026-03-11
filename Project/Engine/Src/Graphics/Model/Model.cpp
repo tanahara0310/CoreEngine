@@ -260,9 +260,14 @@ namespace CoreEngine
 
             // MatrixPalette SRV（シェーダーリフレクションからインデックスを取得）
             int matrixPaletteIdx = sShadowMapRenderer_ ? sShadowMapRenderer_->GetRootParamIndex("gMatrixPalette") : 1;
-            if (matrixPaletteIdx >= 0) {
+            if (matrixPaletteIdx >= 0 && skinCluster_->paletteSrvHandle.second.ptr != 0) {
                 cmdList->SetGraphicsRootDescriptorTable(matrixPaletteIdx, skinCluster_->paletteSrvHandle.second);
             }
+#ifdef _DEBUG
+            else if (matrixPaletteIdx >= 0 && skinCluster_->paletteSrvHandle.second.ptr == 0) {
+                OutputDebugStringA("WARNING: Model::DrawShadow - MatrixPalette SRV is null for skinned model.\n");
+            }
+#endif
         }
 
         // 描画実行

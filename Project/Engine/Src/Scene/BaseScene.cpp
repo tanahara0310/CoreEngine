@@ -89,6 +89,22 @@ namespace CoreEngine
         OnLateUpdate();
     }
 
+    void BaseScene::PrepareRender()
+    {
+        auto renderManager = engine_->GetComponent<RenderManager>();
+        ICamera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
+
+        if (!renderManager || !activeCamera3D) {
+            return;
+        }
+
+        // カメラマネージャーを設定（タイプ別カメラを自動選択）
+        renderManager->SetCameraManager(cameraManager_.get());
+
+        // 全てのゲームオブジェクトを描画キューに追加
+        gameObjectManager_.RegisterAllToRender(renderManager);
+    }
+
     void BaseScene::Draw()
     {
         auto renderManager = engine_->GetComponent<RenderManager>();
@@ -100,18 +116,10 @@ namespace CoreEngine
         }
 
         ID3D12GraphicsCommandList* cmdList = dxCommon->GetCommandList();
-
-        // ===== RenderManagerによる統一描画システム =====
-        // カメラマネージャーを設定（タイプ別カメラを自動選択）
-        renderManager->SetCameraManager(cameraManager_.get());
         renderManager->SetCommandList(cmdList);
 
-        // 全てのゲームオブジェクトを描画キューに追加
-        gameObjectManager_.RegisterAllToRender(renderManager);
-
-        // 一括描画（自動的にパスごとにソート・グループ化）
-        // この中でGridRenderer、LineDrawable、ParticleSystemのデバッグラインが全て描画される
-        renderManager->DrawAll();
+        // Geometryパスのみ描画（ShadowはRenderPipeline側で実行）
+        renderManager->DrawGeometryPass();
 
         // フレーム終了時にキューをクリア
         renderManager->ClearQueue();

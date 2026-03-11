@@ -415,6 +415,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1237,6 +1240,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

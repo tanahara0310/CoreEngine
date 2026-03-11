@@ -207,7 +207,6 @@ namespace CoreEngine
         // レンダリングコンテキストの構築
         RenderContext context;
         context.dxCommon = dx;
-        context.render = render;
         context.renderManager = renderManager;
         context.postEffectManager = GetComponent<PostEffectManager>();
         context.lightManager = GetComponent<LightManager>();
@@ -217,37 +216,8 @@ namespace CoreEngine
             geometryPass->SetRenderCallback(renderCallback);
         }
 
-        // パスを順番に実行してデータを繋ぐ
-        // 1. ShadowMapPass
-        if (auto* shadowMapPass = renderPipeline_->GetPass<ShadowMapPass>()) {
-            if (shadowMapPass->IsEnabled()) {
-                shadowMapPass->Execute(context);
-            }
-        }
-
-        // 2. GeometryPass
-        if (auto* geometryPass = renderPipeline_->GetPass<GeometryPass>()) {
-            if (geometryPass->IsEnabled()) {
-                geometryPass->Execute(context);
-            }
-        }
-
-        // 3. PostEffectPass
-        D3D12_GPU_DESCRIPTOR_HANDLE postEffectOutput{};
-        if (auto* postEffectPass = renderPipeline_->GetPass<PostEffectPass>()) {
-            if (postEffectPass->IsEnabled()) {
-                postEffectPass->Execute(context);
-                postEffectOutput = postEffectPass->GetOutputHandle();
-            }
-        }
-
-        // 4. BackBufferPass（ポストエフェクトの出力を使用）
-        if (auto* backBufferPass = renderPipeline_->GetPass<BackBufferPass>()) {
-            if (backBufferPass->IsEnabled()) {
-                backBufferPass->SetInputTexture(postEffectOutput);
-                backBufferPass->Execute(context);
-            }
-        }
+        // パイプラインを実行（自動的にパス間のデータが繋がる）
+        renderPipeline_->Execute(context);
 
 #ifdef _DEBUG
         // ImGuiの描画コマンドを積む
@@ -256,9 +226,9 @@ namespace CoreEngine
         }
 #endif // _DEBUG
 
-        // バックバッファの描画終了（ImGuiの後）
+        // フレームの最終処理（バックバッファ終了、コマンド実行、Present）
         if (render) {
-            render->BackBufferPostDraw();
+            render->FinalizeFrame();
         }
     }
 
@@ -306,9 +276,6 @@ namespace CoreEngine
 
         // ShadowMapManagerを設定
         renderManager->SetShadowMapManager(dxPtr->GetShadowMapManager());
-
-        // Renderへの参照を設定
-        renderManager->SetRender(renderPtr);
 
         // ShadowMapRendererの作成と登録（最優先）
         auto shadowMapRenderer = std::make_unique<ShadowMapRenderer>();
@@ -463,6 +430,8 @@ namespace CoreEngine
 
     void EngineSystem::BuildDefaultRenderPipeline()
     {
+        auto* render = GetComponent<Render>();
+
         // レンダーパイプラインの作成
         renderPipeline_ = std::make_unique<RenderPipeline>();
 
@@ -472,7 +441,7 @@ namespace CoreEngine
 
         // 2. ジオメトリパス（オフスクリーンレンダリング）
         auto geometryPass = std::make_unique<GeometryPass>();
-        geometryPass->SetOffscreenIndex(0); // 1枚目のオフスクリーンを使用
+        geometryPass->SetRenderTarget(render->GetOffscreenTarget(0));
         renderPipeline_->AddPass(std::move(geometryPass));
 
         // 3. ポストエフェクトパス
@@ -481,6 +450,7 @@ namespace CoreEngine
 
         // 4. バックバッファパス（最終出力）
         auto backBufferPass = std::make_unique<BackBufferPass>();
+        backBufferPass->SetRenderTarget(render->GetBackBufferTarget());
         renderPipeline_->AddPass(std::move(backBufferPass));
     }
 

@@ -13,7 +13,6 @@
 #include "Camera/CameraManager.h"
 #include "Camera/ICamera.h"
 #include "Math/MathCore.h"
-#include "Graphics/Render/Render.h"
 #include <algorithm>
 
 
@@ -26,7 +25,7 @@ namespace CoreEngine
 
     void RenderManager::RegisterRenderer(RenderPassType type, std::unique_ptr<IRenderer> renderer) {
         renderers_[type] = std::move(renderer);
-        
+
         // ModelRendererが登録された場合、Model クラスに設定
         if (type == RenderPassType::Model) {
             auto* modelRenderer = dynamic_cast<ModelRenderer*>(renderers_[type].get());
@@ -89,10 +88,6 @@ namespace CoreEngine
         shadowMapManager_ = shadowMapManager;
     }
 
-    void RenderManager::SetRender(Render* render) {
-        render_ = render;
-    }
-
     void RenderManager::SetLightViewProjection(const Matrix4x4& lightViewProjection) {
         // ShadowMapManagerに委譲（一元管理）
         if (shadowMapManager_) {
@@ -109,6 +104,7 @@ namespace CoreEngine
         cmd.registrationOrder = registrationCounter_++;
 
         drawQueue_.push_back(cmd);
+        isQueueSorted_ = false;
     }
 
     const ICamera* RenderManager::GetCameraForPass(RenderPassType passType) {
@@ -128,27 +124,12 @@ namespace CoreEngine
         return camera_;
     }
 
-    void RenderManager::DrawAll() {
-        if (drawQueue_.empty()) {
-#ifdef _DEBUG
-            // 描画キューが空の場合は警告を出力（通常は問題ないが、意図しない場合に気づくため）
-            static bool firstWarning = true;
-            if (firstWarning) {
-                OutputDebugStringA("WARNING: RenderManager draw queue is empty in DrawAll().\n");
-                firstWarning = false;
-            }
-#endif
+    void RenderManager::DrawShadowPass() {
+        if (drawQueue_.empty() || !cmdList_) {
             return;
         }
 
-        if (!cmdList_) {
-#ifdef _DEBUG
-            OutputDebugStringA("ERROR: CommandList is null in RenderManager::DrawAll!\n");
-#endif
-            return;
-        }
-
-        SortDrawQueue();
+        EnsureQueueSorted();
 
         // === Phase 1: シャドウマップパス ===
         if (shadowMapManager_) {
@@ -158,19 +139,6 @@ namespace CoreEngine
             // DEPTH_WRITE -> PIXEL_SHADER_RESOURCE
             shadowMapManager_->TransitionToShaderResource(cmdList_);
 
-            // 通常描画用のRTV/DSVを復元
-            if (render_) {
-                D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = render_->GetOffscreenRTVHandle(0);
-                D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = render_->GetDSVHandle();
-                cmdList_->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-
-                // ビューポートとシザー矩形を復元
-                D3D12_VIEWPORT viewport = render_->GetViewport();
-                D3D12_RECT scissorRect = render_->GetScissorRect();
-                cmdList_->RSSetViewports(1, &viewport);
-                cmdList_->RSSetScissorRects(1, &scissorRect);
-            }
-
             // ModelRendererにシャドウマップを設定
             if (auto* modelRenderer = static_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model))) {
                 modelRenderer->SetShadowMap(shadowMapManager_->GetSRVHandle());
@@ -179,6 +147,14 @@ namespace CoreEngine
                 skinnedRenderer->SetShadowMap(shadowMapManager_->GetSRVHandle());
             }
         }
+    }
+
+    void RenderManager::DrawGeometryPass() {
+        if (drawQueue_.empty() || !cmdList_) {
+            return;
+        }
+
+        EnsureQueueSorted();
 
         // === Phase 2: 通常描画パス ===
         RenderNormalPass();
@@ -266,7 +242,7 @@ namespace CoreEngine
                 continue;
             }
 
-            const bool passChanged  = cmd.passType  != currentPass;
+            const bool passChanged = cmd.passType != currentPass;
             const bool blendChanged = cmd.blendMode != currentBlendMode;
 
             // パスが切り替わったら処理
@@ -331,6 +307,14 @@ namespace CoreEngine
     void RenderManager::ClearQueue() {
         drawQueue_.clear();
         registrationCounter_ = 0;
+        isQueueSorted_ = false;
+    }
+
+    void RenderManager::EnsureQueueSorted() {
+        if (!isQueueSorted_) {
+            SortDrawQueue();
+            isQueueSorted_ = true;
+        }
     }
 
     void RenderManager::SortDrawQueue() {

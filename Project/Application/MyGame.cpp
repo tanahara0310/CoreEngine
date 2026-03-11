@@ -104,3 +104,10 @@ void MyGame::Draw()
         sceneManager_->Draw();
     }
 }
+
+void MyGame::PrepareRender()
+{
+    if (sceneManager_) {
+        sceneManager_->PrepareRender();
+    }
+}

@@ -66,6 +66,12 @@ void SceneManager::Draw() {
     }
 }
 
+void SceneManager::PrepareRender() {
+    if (currentScene_) {
+        currentScene_->PrepareRender();
+    }
+}
+
 void SceneManager::Finalize() {
     // GPUの処理完了を待機してからシーンを解放
     auto dxCommon = engine_->GetComponent<DirectXCommon>();

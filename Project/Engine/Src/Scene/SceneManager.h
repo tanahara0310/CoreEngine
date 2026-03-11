@@ -47,6 +47,9 @@ public:
     /// @brief 描画処理
     void Draw();
 
+    /// @brief 描画前準備（描画キュー構築など）
+    void PrepareRender();
+
     /// @brief シーンの終了処理
     void Finalize();
 

@@ -219,6 +219,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.cpp" />
@@ -447,6 +450,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderPassType.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteMaterial.h" />
