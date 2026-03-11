@@ -9,10 +9,7 @@
 #include "Gizmo.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "Camera/ICamera.h"
-#include "EngineSystem/PlaybackState.h"
-#include "Utility/Logger/Logger.h"
 #include <string>
-#include <format>
 
 
 namespace CoreEngine
@@ -25,9 +22,6 @@ namespace CoreEngine
 
         // ギズモアイコンを読み込む
         LoadGizmoIcons();
-
-        // 再生制御アイコンを読み込む
-        LoadPlaybackIcons();
     }
 
     void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, Render* render, PostEffectManager* postEffectManager)
@@ -320,122 +314,6 @@ namespace CoreEngine
             // テクスチャ読み込みに失敗した場合は、アイコンを使用しない
             iconsLoaded_ = false;
         }
-    }
-
-    void SceneViewport::LoadPlaybackIcons()
-    {
-        auto& texManager = TextureManager::GetInstance();
-
-        // テクスチャマネージャーが初期化されているか確認
-        if (!texManager.IsInitialized()) {
-            return;
-        }
-
-        // 再生制御アイコンを読み込む
-        auto playTex = texManager.Load("reproduction.png");
-        auto pauseTex = texManager.Load("pause.png");
-
-        // GPUハンドルを保存
-        playIcon_ = playTex.gpuHandle;
-        pauseIcon_ = pauseTex.gpuHandle;
-
-        playbackIconsLoaded_ = true;
-    }
-
-    void SceneViewport::DrawPlaybackToolbar()
-    {
-        if (!playbackIconsLoaded_) return;
-
-        auto& playbackManager = CoreEngine::PlaybackStateManager::GetInstance();
-
-        // スタイル設定
-        constexpr float kIconSize = 32.0f;   // アイコンサイズ
-        constexpr float kPadding = 6.0f;     // パディング
-        constexpr float kSpacing = 8.0f;     // ボタン間スペース
-        constexpr float kRounding = 6.0f;    // 丸み
-        constexpr float kMarginTop = 8.0f;   // 上部マージン
-
-        const float buttonSize = kIconSize + kPadding * 2.0f;
-        const int kButtonCount = 3; // 再生、一時停止、停止
-
-        // ツールバー全体の幅を計算
-        const float toolbarWidth = buttonSize * kButtonCount + kSpacing * (kButtonCount - 1);
-
-        // ビューポート中央上部に配置
-        ImVec2 toolbarOrigin = ImVec2(
-            viewportPos_.x + (viewportSize_.x - toolbarWidth) * 0.5f,
-            viewportPos_.y + kMarginTop
-        );
-
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-        // 背景矩形描画
-        drawList->AddRectFilled(
-            toolbarOrigin,
-            ImVec2(toolbarOrigin.x + toolbarWidth, toolbarOrigin.y + buttonSize),
-            IM_COL32(20, 20, 20, 185),
-            kRounding);
-
-        // スタイル設定
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kPadding, kPadding));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, kRounding);
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(kSpacing, 0.0f));
-
-        CoreEngine::PlaybackState currentState = playbackManager.GetState();
-
-        // 再生ボタン
-        {
-            ImGui::SetCursorScreenPos(toolbarOrigin);
-            bool isActive = (currentState == CoreEngine::PlaybackState::Playing);
-
-            if (isActive) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
-            } else {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.18f, 0.85f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.32f, 0.32f, 0.32f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.12f, 0.12f, 1.00f));
-            }
-
-            if (ImGui::ImageButton("##PlayButton", (ImTextureID)playIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
-                playbackManager.Play();
-            }
-
-            ImGui::PopStyleColor(3);
-
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                ImGui::SetTooltip("再生 (Play)");
-            }
-        }
-
-        // 一時停止ボタン
-        {
-            ImGui::SetCursorScreenPos(ImVec2(toolbarOrigin.x + buttonSize + kSpacing, toolbarOrigin.y));
-            bool isActive = (currentState == CoreEngine::PlaybackState::Paused);
-
-            if (isActive) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
-            } else {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.18f, 0.85f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.32f, 0.32f, 0.32f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.12f, 0.12f, 1.00f));
-            }
-
-            if (ImGui::ImageButton("##PauseButton", (ImTextureID)pauseIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
-                playbackManager.Pause();
-            }
-
-            ImGui::PopStyleColor(3);
-
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                ImGui::SetTooltip("一時停止 (Pause)");
-            }
-        }
-
-        ImGui::PopStyleVar(3);
     }
 
 }

@@ -130,10 +130,6 @@ ICamera* SceneManager::GetSceneViewCamera() const {
     return currentScene_ ? currentScene_->GetSceneViewCamera() : nullptr;
 }
 
-ICamera* SceneManager::GetGameViewCamera() const {
-    return currentScene_ ? currentScene_->GetGameViewCamera() : nullptr;
-}
-
 ICamera* SceneManager::GetGameViewCamera2D() const {
     return currentScene_ ? currentScene_->GetGameViewCamera2D() : nullptr;
 }

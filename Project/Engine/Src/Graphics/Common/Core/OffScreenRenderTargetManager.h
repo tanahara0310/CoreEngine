@@ -34,11 +34,6 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreenRtvHandle(uint32_t index = 0) const;
     D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle(uint32_t index = 0) const;
 
-    // オフスクリーン用のアクセッサ（互換API）
-    ID3D12Resource* GetOffScreen2Resource() const { return GetOffScreenResource(1); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreen2RtvHandle() const { return GetOffScreenRtvHandle(1); }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreen2SrvHandle() const { return GetOffScreenSrvHandle(1); }
-
 private:
     struct OffScreenTarget {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;

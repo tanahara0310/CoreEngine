@@ -76,11 +76,6 @@ public:
     D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenSrvHandle(index); }
     void EnsureOffScreenTargetCount(uint32_t count) { offScreenManager_->EnsureTargetCount(count); }
 
-    // オフスクリーン用のアクセッサ（2枚目）
-    ID3D12Resource* GetOffScreen2Resource() { return GetOffScreenResource(1); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreen2RtvHandle() { return GetOffScreenRtvHandle(1); }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreen2SrvHandle() { return GetOffScreenSrvHandle(1); }
-
     // IBL（Image-Based Lighting）関連のアクセッサ
     void SetIrradianceMap(ID3D12Resource* resource, D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
         irradianceMapResource_ = resource;

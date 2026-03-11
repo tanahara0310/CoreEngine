@@ -54,9 +54,6 @@ namespace CoreEngine
         /// @brief Sceneビュー用カメラを取得
         ICamera* GetSceneViewCamera() const override;
 
-        /// @brief Gameビュー用3Dカメラを取得
-        ICamera* GetGameViewCamera() const override;
-
         /// @brief Gameビュー用2Dカメラを取得
         ICamera* GetGameViewCamera2D() const override;
 

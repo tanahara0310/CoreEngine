@@ -137,19 +137,6 @@ namespace CoreEngine
         return cameraManager_->GetActiveCamera(CameraType::Camera3D);
     }
 
-    ICamera* BaseScene::GetGameViewCamera() const
-    {
-        if (!cameraManager_) {
-            return nullptr;
-        }
-
-        if (ICamera* gameCamera = cameraManager_->GetCamera(ResolveGameViewCameraName())) {
-            return gameCamera;
-        }
-
-        return cameraManager_->GetActiveCamera(CameraType::Camera3D);
-    }
-
     ICamera* BaseScene::GetGameViewCamera2D() const
     {
         return cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
