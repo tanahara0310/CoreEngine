@@ -1,8 +1,13 @@
 #pragma once
 #include "Graphics/Pipeline/PipelineStateManager.h"
+#include "Graphics/Render/RenderTarget/RenderTarget.h"
+#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
+#include "Graphics/Render/RenderTarget/BackBufferRenderTarget.h"
 #include <cstdint>
 #include <d3d12.h>
 #include <wrl.h>
+#include <memory>
+#include <array>
 
 namespace CoreEngine
 {
@@ -10,81 +15,45 @@ namespace CoreEngine
 class DirectXCommon;
 
 class Render {
-public: // メンバ関数
-    // 統一クリアカラー（黒）
+public:
+    // 統一クリアカラー
     static constexpr float kClearColor[4] = {0.1f, 0.25f, 0.5f, 1.0f};
 
-    /// <summary>                                    
-    /// 初期化                                    
-    /// </summary>
-    /// <param name="dxCommon">DirectXCommon</param>
-    /// <param name="dsvHeap">DSVヒープ</param>
+    /// @brief オフスクリーンターゲットの数
+    static constexpr int kOffscreenCount = 2;
+
+    /// @brief 初期化
+    /// @param dxCommon DirectXCommon
+    /// @param dsvHeap DSVヒープ
     void Initialize(DirectXCommon* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap);
 
-    /// @brief オフスクリーンの描画前処理
-    /// @param offscreenIndex オフスクリーンのインデックス（0=1枚目、1=2枚目）
-    void OffscreenPreDraw(int offscreenIndex = 0);
+    // ===== RenderTarget API =====
 
-    /// @brief 描画前処理(バックバッファ用)
-    void BackBufferPreDraw();
+    /// @brief オフスクリーンターゲットを取得
+    /// @param index オフスクリーンのインデックス（0 or 1）
+    /// @return オフスクリーンレンダーターゲット
+    RenderTarget* GetOffscreenTarget(int index);
 
-    /// @brief オフスクリーンの描画後処理
-    /// @param offscreenIndex オフスクリーンのインデックス（0=1枚目、1=2枚目）
-    void OffscreenPostDraw(int offscreenIndex = 0);
+    /// @brief バックバッファターゲットを取得
+    /// @return バックバッファレンダーターゲット
+    RenderTarget* GetBackBufferTarget();
 
-    /// @brief バックバッファ用の描画後処理
-    void BackBufferPostDraw();
+    /// @brief バックバッファの最終処理（コマンド実行、Present）
+    void FinalizeFrame();
 
-    /// @brief オフスクリーンのRTVハンドルを取得
-    /// @param offscreenIndex オフスクリーンのインデックス（0=1枚目、1=2枚目）
-    /// @return RTVハンドル
-    D3D12_CPU_DESCRIPTOR_HANDLE GetOffscreenRTVHandle(int offscreenIndex = 0) const;
-
-    /// @brief DSVハンドルを取得
-    /// @return DSVハンドル
-    D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const;
-
-    /// @brief ビューポートを取得
-    /// @return ビューポート
-    D3D12_VIEWPORT GetViewport() const { return viewport_; }
-
-    /// @brief シザー矩形を取得
-    /// @return シザー矩形
-    D3D12_RECT GetScissorRect() const { return scissorRect_; }
-
-    /// @brief リソースバリアを設定
-    /// @param resource 遷移対象のリソース
-    /// @param stateBefore 現在のステート
-    /// @param stateAfter 遷移先のステート
-    void ResourceBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter);
+    /// @brief DirectXCommonを取得
+    /// @return DirectXCommon
+    DirectXCommon* GetDirectXCommon() const { return dxCommon_; }
 
 private:
-    void UpdateViewportAndScissor(int32_t width, int32_t height);
-
-    /// @brief オフスクリーンの描画前処理（汎用）
-    /// @param resource 対象のオフスクリーンリソース
-    /// @param rtvHandle 対象のRTVハンドル
-    void OffscreenPreDrawCommon(ID3D12Resource* resource, const D3D12_CPU_DESCRIPTOR_HANDLE& rtvHandle);
-
-    /// @brief オフスクリーンの描画後処理（汎用）
-    /// @param resource 対象のオフスクリーンリソース
-    void OffscreenPostDrawCommon(ID3D12Resource* resource);
-
     // クラスをポインタで保持
     DirectXCommon* dxCommon_ = nullptr;
 
-    // DSVヒープとサイズ（DirectXCommonから取得）
+    // DSVヒープ
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap_;
-    UINT dsvSize_ = 0;
 
-    // オフスクリーンリソース情報（DirectXCommonから取得）
-    ID3D12Resource* offscreenResource_ = nullptr;
-    D3D12_CPU_DESCRIPTOR_HANDLE offscreenRtvHandle_ {};
-    ID3D12Resource* offscreen2Resource_ = nullptr;
-    D3D12_CPU_DESCRIPTOR_HANDLE offscreen2RtvHandle_ {};
-
-    // ビューポートとシザー矩形
-    D3D12_VIEWPORT viewport_ {};
-    D3D12_RECT scissorRect_ {};
+    // RenderTarget
+    std::array<std::unique_ptr<OffscreenRenderTarget>, kOffscreenCount> offscreenTargets_;
+    std::unique_ptr<BackBufferRenderTarget> backBufferTarget_;
 };
 }

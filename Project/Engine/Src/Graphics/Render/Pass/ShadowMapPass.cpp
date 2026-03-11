@@ -12,12 +12,21 @@ namespace CoreEngine
             return;
         }
 
+        // ShadowパスでスキニングのMatrixPalette SRVを使うため、
+        // このパス自身でSRVヒープを明示的に設定する。
+        if (context.dxCommon) {
+            if (auto* cmdList = context.dxCommon->GetCommandList()) {
+                ID3D12DescriptorHeap* heaps[] = { context.dxCommon->GetSRVHeap() };
+                cmdList->SetDescriptorHeaps(1, heaps);
+            }
+        }
+
         // ライトVP行列を計算してRenderManagerに設定
         Matrix4x4 lightVP = context.lightManager->CalculateMainDirectionalLightViewProjection(
             sceneCenter_, sceneRadius_);
         context.renderManager->SetLightViewProjection(lightVP);
 
         // シャドウマップパスの実行
-        context.renderManager->RenderShadowMapPass();
+        context.renderManager->DrawShadowPass();
     }
 }

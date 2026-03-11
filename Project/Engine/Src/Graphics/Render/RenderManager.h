@@ -16,7 +16,6 @@ namespace CoreEngine {
     class ICamera;
     class CameraManager;
     class ShadowMapManager;
-    class Render;
 }
 
 /// @brief レンダリング全体を自動管理するマネージャー
@@ -57,10 +56,6 @@ namespace CoreEngine
     /// @param shadowMapManager シャドウマップマネージャー
     void SetShadowMapManager(ShadowMapManager* shadowMapManager);
 
-    /// @brief Renderクラスへの参照を設定
-    /// @param render Renderクラスのポインタ
-    void SetRender(Render* render);
-
     /// @brief ライトビュープロジェクション行列を設定（ShadowMapManagerに委譲）
     /// @param lightViewProjection ライトから見たビュープロジェクション行列
     void SetLightViewProjection(const Matrix4x4& lightViewProjection);
@@ -69,11 +64,11 @@ namespace CoreEngine
         /// @param obj 描画するGameObject
         void AddDrawable(CoreEngine::GameObject* obj);
 
-    /// @brief キューに登録された全オブジェクトを描画
-    void DrawAll();
+    /// @brief シャドウパスのみ描画（描画キュー必須）
+    void DrawShadowPass();
 
-    /// @brief シャドウマップパスのみを実行
-    void RenderShadowMapPass();
+    /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
+    void DrawGeometryPass();
 
     /// @brief フレーム終了時にキューをクリア
     void ClearQueue();
@@ -89,6 +84,7 @@ namespace CoreEngine
         std::vector<DrawCommand> drawQueue_;
         std::unordered_map<RenderPassType, std::unique_ptr<IRenderer>> renderers_;
         size_t registrationCounter_ = 0;
+        bool isQueueSorted_ = false;
 
     // フレームごとに設定されるコンテキスト
     ID3D12GraphicsCommandList* cmdList_ = nullptr;
@@ -97,10 +93,12 @@ namespace CoreEngine
 
     // シャドウマップ関連
     ShadowMapManager* shadowMapManager_ = nullptr;
-    Render* render_ = nullptr;
 
         /// @brief 描画パスごとにソート
         void SortDrawQueue();
+
+        /// @brief 必要な場合のみ描画キューをソート
+        void EnsureQueueSorted();
 
     /// @brief 描画パスタイプに応じた適切なカメラを取得
     /// @param passType 描画パスタイプ
@@ -109,5 +107,8 @@ namespace CoreEngine
 
     /// @brief 通常描画パス
     void RenderNormalPass();
+
+    /// @brief シャドウマップ描画の内部実行
+    void RenderShadowMapPass();
 };
 }

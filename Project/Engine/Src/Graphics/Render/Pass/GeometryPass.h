@@ -4,6 +4,8 @@
 
 namespace CoreEngine
 {
+    class RenderTarget;
+
     /// @brief ジオメトリ描画パス（オフスクリーンレンダリング）
     class GeometryPass : public RenderPass {
     public:
@@ -14,20 +16,23 @@ namespace CoreEngine
 
         void Execute(const RenderContext& context) override;
 
+        /// @brief このパスの出力を取得
+        PassOutput GetOutput() const override { return output_; }
+
         /// @brief シーン固有の描画コールバックを設定
         /// @param callback 描画コールバック関数
         void SetRenderCallback(std::function<void()> callback) {
             renderCallback_ = callback;
         }
 
-        /// @brief 使用するオフスクリーンターゲットのインデックスを設定
-        /// @param index オフスクリーンインデックス（0=1枚目、1=2枚目）
-        void SetOffscreenIndex(int index) {
-            offscreenIndex_ = index;
+        /// @brief レンダーターゲットを設定
+        /// @param target レンダーターゲット
+        void SetRenderTarget(RenderTarget* target) {
+            renderTarget_ = target;
         }
 
     private:
         std::function<void()> renderCallback_;
-        int offscreenIndex_ = 0;
+        RenderTarget* renderTarget_ = nullptr;
     };
 }

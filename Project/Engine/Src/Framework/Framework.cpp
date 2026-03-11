@@ -62,6 +62,7 @@ void Framework::Run()
 
         // ゲーム固有の描画処理（派生クラスで実装）
         // 描画は停止中でも実行する（シーンの表示を維持）
+        PrepareRender();
         engineSystem_->ExecuteRenderPipeline([this]() {
             Draw();
             });

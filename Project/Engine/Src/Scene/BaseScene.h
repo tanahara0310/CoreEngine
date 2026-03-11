@@ -40,6 +40,9 @@ namespace CoreEngine
         virtual void Update() override final;
 
         /// @brief 描画処理（共通処理 + 派生クラスの描画）
+        virtual void PrepareRender() override;
+
+        /// @brief 描画処理（共通処理 + 派生クラスの描画）
         virtual void Draw() override;
 
         /// @brief 解放（共通処理 + 派生クラスの解放）

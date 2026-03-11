@@ -4,6 +4,8 @@
 
 namespace CoreEngine
 {
+    class RenderTarget;
+
     /// @brief バックバッファへの最終出力パス
     class BackBufferPass : public RenderPass {
     public:
@@ -14,13 +16,19 @@ namespace CoreEngine
 
         void Execute(const RenderContext& context) override;
 
-        /// @brief 入力テクスチャを設定
-        /// @param inputHandle 入力SRVハンドル
-        void SetInputTexture(D3D12_GPU_DESCRIPTOR_HANDLE inputHandle) {
-            inputHandle_ = inputHandle;
+        /// @brief 前のパスからの入力を設定
+        void SetInput(const PassOutput& input) override {
+            inputHandle_ = input.srvHandle;
+        }
+
+        /// @brief レンダーターゲットを設定
+        /// @param target レンダーターゲット
+        void SetRenderTarget(RenderTarget* target) {
+            renderTarget_ = target;
         }
 
     private:
         D3D12_GPU_DESCRIPTOR_HANDLE inputHandle_{};
+        RenderTarget* renderTarget_ = nullptr;
     };
 }

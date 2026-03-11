@@ -21,9 +21,16 @@ namespace CoreEngine
 
     void RenderPipeline::Execute(const RenderContext& context)
     {
+        PassOutput previousOutput{};
+
         for (auto& pass : passes_) {
             if (!pass->IsEnabled()) {
                 continue;
+            }
+
+            // 前のパスの出力を次のパスの入力に設定
+            if (previousOutput.isValid) {
+                pass->SetInput(previousOutput);
             }
 
             // パスのセットアップ
@@ -34,6 +41,9 @@ namespace CoreEngine
 
             // パスのクリーンアップ
             pass->Cleanup(context);
+
+            // 出力を次のパスに繋ぐ
+            previousOutput = pass->GetOutput();
         }
     }
 

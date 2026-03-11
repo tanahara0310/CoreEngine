@@ -2,6 +2,7 @@
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/Render.h"
+#include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/PostEffect/PostEffectNames.h"
 #include "Effect/GrayScale.h"
 #include "FullScreen.h"
@@ -48,13 +49,16 @@ bool PostEffectManager::PingPongBuffer::ApplyEffect(PostEffectBase* effect)
         return false;
     }
 
+    auto* cmdList = dxCommon_->GetCommandList();
+    auto* renderTarget = GetRenderTarget(currentOutputIndex_);
+
     // エフェクトを現在の出力バッファに描画
-    render_->OffscreenPreDraw(currentOutputIndex_);
+    renderTarget->Begin(cmdList);
     effect->Draw(currentInput_);
-    render_->OffscreenPostDraw(currentOutputIndex_);
+    renderTarget->End(cmdList);
 
     // 今書き込んだバッファが次の入力になる
-    currentInput_ = GetSrvHandle(currentOutputIndex_);
+    currentInput_ = renderTarget->GetSRVHandle();
 
     // 次回の出力先を切り替え（ping-pong）
     currentOutputIndex_ = (currentOutputIndex_ == 0) ? 1 : 0;
@@ -77,21 +81,28 @@ void PostEffectManager::PingPongBuffer::EnsureOutputInBuffer1(PostEffectBase* fu
         return;
     }
 
+    auto* cmdList = dxCommon_->GetCommandList();
+    auto* renderTarget = GetRenderTarget(1);
+
     // バッファ0にある場合、バッファ1にコピー
-    render_->OffscreenPreDraw(1);
+    renderTarget->Begin(cmdList);
     fullScreenEffect->Draw(currentInput_);
-    render_->OffscreenPostDraw(1);
+    renderTarget->End(cmdList);
 
     // 出力を更新
-    currentInput_ = GetSrvHandle(1);
+    currentInput_ = renderTarget->GetSRVHandle();
     currentOutputIndex_ = 0; // 次回は0に書き込む
+}
+
+RenderTarget* PostEffectManager::PingPongBuffer::GetRenderTarget(int index) const
+{
+    return render_->GetOffscreenTarget(index);
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE PostEffectManager::PingPongBuffer::GetSrvHandle(int index) const
 {
-    return (index == 0)
-        ? dxCommon_->GetOffScreenSrvHandle()
-        : dxCommon_->GetOffScreen2SrvHandle();
+    auto* renderTarget = GetRenderTarget(index);
+    return renderTarget ? renderTarget->GetSRVHandle() : D3D12_GPU_DESCRIPTOR_HANDLE{};
 }
 
 // =============================================================================

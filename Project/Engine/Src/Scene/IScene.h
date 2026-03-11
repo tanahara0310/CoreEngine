@@ -18,6 +18,7 @@ public:
 
     virtual void Initialize(CoreEngine::EngineSystem* engine) = 0;
     virtual void Update() = 0;
+    virtual void PrepareRender() {}
     virtual void Draw() = 0;
     virtual void Finalize() = 0;
 
