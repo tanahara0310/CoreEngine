@@ -2,6 +2,7 @@
 
 #include <d3d12.h>
 #include <wrl.h>
+#include <array>
 #include <memory>
 #include <vector>
 #include <optional>
@@ -30,6 +31,12 @@ namespace CoreEngine
 {
     class Model {
     public:
+        enum class TransformBufferSlot : uint32_t {
+            Game = 0,
+            Scene = 1,
+            Shadow = 2
+        };
+
         /// @brief モデルの描画タイプ
         enum class RenderType {
             Normal,   // 通常モデル
@@ -67,6 +74,9 @@ namespace CoreEngine
 
         /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
         static bool IsIBLAvailable();
+
+        /// @brief 現在の描画スロットを設定
+        static void SetTransformBufferSlot(TransformBufferSlot slot);
 
         /// @brief モデルリソースに法線マップテクスチャがあるか確認
         bool HasNormalMap() const;
@@ -168,8 +178,10 @@ namespace CoreEngine
         // インスタンス固有のマテリアル
         std::unique_ptr<MaterialInstance> materialInstance_;
 
-        // WVP行列用のリソース（1インスタンスにつき1つのみ）
-        Microsoft::WRL::ComPtr<ID3D12Resource> wvpResource_;
+        static constexpr size_t kTransformBufferCount = 3;
+
+        // WVP行列用のリソース（ビュー/パスごとに分離）
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kTransformBufferCount> wvpResources_;
 
         // Skeleton（スケルトンアニメーターから同期される）
         std::optional<Skeleton> skeleton_;
@@ -186,6 +198,12 @@ namespace CoreEngine
 
         /// @brief SkinClusterを更新（スケルトンアニメーションの場合のみ）
         void UpdateSkinCluster();
+
+        /// @brief 現在の描画スロット用行列バッファを取得
+        ID3D12Resource* GetCurrentTransformBuffer() const;
+
+        /// @brief 指定スロット用行列バッファを取得
+        ID3D12Resource* GetTransformBuffer(TransformBufferSlot slot) const;
 
         /// @brief 通常モデルの描画コマンドを設定
         void SetupNormalDrawCommands(ID3D12GraphicsCommandList* cmdList,

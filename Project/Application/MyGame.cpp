@@ -17,6 +17,7 @@ void MyGame::Initialize()
 
     sceneManager_ = std::make_unique<CoreEngine::SceneManager>();
     sceneManager_->Initialize(GetEngineSystem());
+    GetEngineSystem()->SetSceneManager(sceneManager_.get());
 
     // 全シーンを登録（アプリ層で実装）
     sceneManager_->RegisterScene<TestScene>("TestScene");
@@ -56,6 +57,7 @@ void MyGame::Finalize()
 #endif
 
     if (sceneManager_) {
+        GetEngineSystem()->SetSceneManager(nullptr);
         sceneManager_->Finalize();
         sceneManager_.reset();
     }

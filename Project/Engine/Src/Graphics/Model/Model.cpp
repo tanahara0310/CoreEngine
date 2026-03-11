@@ -23,6 +23,7 @@ namespace CoreEngine
         ModelRenderer* sModelRenderer_ = nullptr;
         SkinnedModelRenderer* sSkinnedModelRenderer_ = nullptr;
         ShadowMapRenderer* sShadowMapRenderer_ = nullptr;
+        uint32_t sCurrentTransformBufferIndex_ = static_cast<uint32_t>(Model::TransformBufferSlot::Game);
 
         /// @brief PBRテクスチャを描画コマンドにバインドする共通処理
         /// @tparam TRenderer GetRootParamIndex() を持つレンダラー型
@@ -86,6 +87,11 @@ namespace CoreEngine
         return sModelRenderer_ != nullptr && sModelRenderer_->HasIBLMaps();
     }
 
+    void Model::SetTransformBufferSlot(TransformBufferSlot slot)
+    {
+        sCurrentTransformBufferIndex_ = static_cast<uint32_t>(slot);
+    }
+
     void Model::Initialize(ModelResource* resource) {
         assert(resource && resource->IsLoaded());
         resource_ = resource;
@@ -117,11 +123,12 @@ namespace CoreEngine
             }
         }
 
-        // WVP行列用のリソースを作成（1つのみ）
-        wvpResource_ = ResourceFactory::CreateBufferResource(
-            sDxCommon_->GetDevice(),
-            sizeof(TransformationMatrix)
-        );
+        for (auto& wvpResource : wvpResources_) {
+            wvpResource = ResourceFactory::CreateBufferResource(
+                sDxCommon_->GetDevice(),
+                sizeof(TransformationMatrix)
+            );
+        }
 
         // Skeletonをコピー
         if (resource_->GetSkeleton()) {
@@ -156,7 +163,8 @@ namespace CoreEngine
 
 
     void Model::UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera) {
-        assert(wvpResource_);
+        ID3D12Resource* transformBuffer = GetCurrentTransformBuffer();
+        assert(transformBuffer);
 
         // 行列計算
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
@@ -173,12 +181,12 @@ namespace CoreEngine
 
         // GPUメモリに書き込み
         TransformationMatrix* mappedData = nullptr;
-        wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
+        transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
         mappedData->world = worldMatrix;
         mappedData->WVP = worldViewProjectionMatrix;
         mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mappedData->lightViewProjection = lightVP;
-        wvpResource_->Unmap(0, nullptr);
+        transformBuffer->Unmap(0, nullptr);
     }
 
     void Model::Draw(const WorldTransform& transform, const ICamera* camera,
@@ -223,6 +231,9 @@ namespace CoreEngine
         assert(IsInitialized());
         assert(cmdList);
 
+        ID3D12Resource* transformBuffer = GetTransformBuffer(TransformBufferSlot::Shadow);
+        assert(transformBuffer);
+
         // ShadowMapManagerからライトVP行列を取得
         Matrix4x4 lightVP = sShadowMapManager_ ?
             sShadowMapManager_->GetLightViewProjection() : MathCore::Matrix::Identity();
@@ -233,12 +244,12 @@ namespace CoreEngine
 
         // GPUメモリに書き込み
         TransformationMatrix* mappedData = nullptr;
-        wvpResource_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
+        transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
         mappedData->WVP = lightWVP;
         mappedData->world = worldMatrix;
         mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mappedData->lightViewProjection = lightVP;
-        wvpResource_->Unmap(0, nullptr);
+        transformBuffer->Unmap(0, nullptr);
 
         // 頂点バッファを設定
         cmdList->IASetVertexBuffers(0, 1, &resource_->vertexBufferView_);
@@ -249,7 +260,7 @@ namespace CoreEngine
         // WVP行列を設定（シェーダーリフレクションからインデックスを取得）
         int lightTransformIdx = sShadowMapRenderer_ ? sShadowMapRenderer_->GetRootParamIndex("gLightTransform") : 0;
         if (lightTransformIdx >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(lightTransformIdx, wvpResource_->GetGPUVirtualAddress());
+            cmdList->SetGraphicsRootConstantBufferView(lightTransformIdx, transformBuffer->GetGPUVirtualAddress());
         }
 
         // スキニングモデルの場合はMatrixPaletteも設定
@@ -408,6 +419,9 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
         D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture) {
 
+        ID3D12Resource* transformBuffer = GetCurrentTransformBuffer();
+        assert(transformBuffer);
+
         // 頂点バッファを設定
         cmdList->IASetVertexBuffers(0, 1, &resource_->vertexBufferView_);
 
@@ -425,7 +439,7 @@ namespace CoreEngine
 
         cmdList->SetGraphicsRootConstantBufferView(
             sModelRenderer_->GetRootParamIndex("gTransformationMatrix"),
-            wvpResource_->GetGPUVirtualAddress()
+            transformBuffer->GetGPUVirtualAddress()
         );
 
         cmdList->SetGraphicsRootDescriptorTable(
@@ -439,6 +453,9 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
         D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
         D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture) {
+
+        ID3D12Resource* transformBuffer = GetCurrentTransformBuffer();
+        assert(transformBuffer);
 
         assert(skinCluster_.has_value());
         assert(sSkinnedModelRenderer_ != nullptr);
@@ -456,7 +473,7 @@ namespace CoreEngine
         // WVP行列を設定
         cmdList->SetGraphicsRootConstantBufferView(
             sSkinnedModelRenderer_->GetRootParamIndex("gTransformationMatrix"),
-            wvpResource_->GetGPUVirtualAddress()
+            transformBuffer->GetGPUVirtualAddress()
         );
 
         // MatrixPaletteを設定
@@ -476,6 +493,19 @@ namespace CoreEngine
             sSkinnedModelRenderer_->GetRootParamIndex("gTexture"), baseColorTexture);
 
         BindPBRTextures(cmdList, sSkinnedModelRenderer_, normalTexture, metallicRoughnessTexture, occlusionTexture);
+    }
+
+    ID3D12Resource* Model::GetCurrentTransformBuffer() const
+    {
+        assert(sCurrentTransformBufferIndex_ < wvpResources_.size());
+        return wvpResources_[sCurrentTransformBufferIndex_].Get();
+    }
+
+    ID3D12Resource* Model::GetTransformBuffer(TransformBufferSlot slot) const
+    {
+        const size_t index = static_cast<size_t>(slot);
+        assert(index < wvpResources_.size());
+        return wvpResources_[index].Get();
     }
 
     // ===== クエリ =====

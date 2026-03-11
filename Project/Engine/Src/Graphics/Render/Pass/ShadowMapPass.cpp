@@ -3,6 +3,7 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Light/LightManager.h"
+#include "Graphics/Model/Model.h"
 
 namespace CoreEngine
 {
@@ -25,6 +26,8 @@ namespace CoreEngine
         Matrix4x4 lightVP = context.lightManager->CalculateMainDirectionalLightViewProjection(
             sceneCenter_, sceneRadius_);
         context.renderManager->SetLightViewProjection(lightVP);
+
+        Model::SetTransformBufferSlot(Model::TransformBufferSlot::Shadow);
 
         // シャドウマップパスの実行
         context.renderManager->DrawShadowPass();

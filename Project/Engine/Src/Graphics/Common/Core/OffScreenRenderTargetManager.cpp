@@ -10,11 +10,13 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
-void OffScreenRenderTargetManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, std::int32_t width, std::int32_t height)
+void OffScreenRenderTargetManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, std::int32_t width, std::int32_t height, uint32_t initialTargetCount)
 {
     device_ = device;
     descriptorManager_ = descriptorManager;
-    CreateOffScreenRenderTarget(width, height);
+    currentWidth_ = width;
+    currentHeight_ = height;
+    EnsureTargetCount(initialTargetCount);
     isInitialized_ = true;
 }
 
@@ -24,12 +26,29 @@ void OffScreenRenderTargetManager::Resize(std::int32_t width, std::int32_t heigh
         return;
     }
 
-    CreateOffScreenRenderTarget(width, height);
+    currentWidth_ = width;
+    currentHeight_ = height;
+
+    for (uint32_t i = 0; i < offScreenTargets_.size(); ++i) {
+        CreateOrResizeTargetResource(offScreenTargets_[i], i, width, height);
+        UpdateTargetViews(offScreenTargets_[i]);
+    }
 }
 
-void OffScreenRenderTargetManager::CreateOffScreenRenderTarget(std::int32_t width, std::int32_t height)
+void OffScreenRenderTargetManager::EnsureTargetCount(uint32_t count)
 {
-    // リソース設定（共通）
+    while (offScreenTargets_.size() < count) {
+        const uint32_t index = static_cast<uint32_t>(offScreenTargets_.size());
+        offScreenTargets_.emplace_back();
+        auto& target = offScreenTargets_.back();
+
+        CreateOrResizeTargetResource(target, index, currentWidth_, currentHeight_);
+        CreateTargetViews(target, index);
+    }
+}
+
+void OffScreenRenderTargetManager::CreateOrResizeTargetResource(OffScreenTarget& target, uint32_t index, std::int32_t width, std::int32_t height)
+{
     D3D12_RESOURCE_DESC texDesc = {};
     texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     texDesc.Width = static_cast<UINT64>(width);
@@ -52,93 +71,56 @@ void OffScreenRenderTargetManager::CreateOffScreenRenderTarget(std::int32_t widt
     D3D12_HEAP_PROPERTIES heapProps = {};
     heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-    // ===== 1枚目のオフスクリーンバッファ作成 =====
     HRESULT hr = device_->CreateCommittedResource(
         &heapProps,
         D3D12_HEAP_FLAG_NONE,
         &texDesc,
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
         &clearValue,
-        IID_PPV_ARGS(&offScreenResource_));
+        IID_PPV_ARGS(&target.resource));
     assert(SUCCEEDED(hr));
 
-    // ===== 2枚目のオフスクリーンバッファ作成 =====
-    hr = device_->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &texDesc,
-        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-        &clearValue,
-        IID_PPV_ARGS(&offScreen2Resource_));
-    assert(SUCCEEDED(hr));
+#ifdef _DEBUG
+    Logger::GetInstance().Log(
+        std::format("オフスクリーンレンダーターゲット{}を作成中...\n", index),
+        LogLevel::INFO, LogCategory::Graphics);
+#endif
+}
 
-    // SRV設定（共通）
+void OffScreenRenderTargetManager::CreateTargetViews(OffScreenTarget& target, uint32_t index)
+{
+    assert(target.resource);
+
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-    srvDesc.Format = texDesc.Format;
+    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = 1;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-    // RTV設定（共通）
     D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
     rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
-    // ===== 1枚目のRTV・SRV作成 =====
-#ifdef _DEBUG
-    Logger::GetInstance().Log(
-        std::format("オフスクリーンレンダーターゲット1を作成中...\n"),
-        LogLevel::INFO, LogCategory::Graphics);
-#endif
+    descriptorManager_->CreateRTV(
+        target.resource.Get(),
+        rtvDesc,
+        target.rtvHandle,
+        std::format("OffScreenRenderTarget{}", index)
+    );
 
-    if (!isInitialized_) {
-        descriptorManager_->CreateRTV(
-            offScreenResource_.Get(),
-            rtvDesc,
-            offscreenRtvHandle_,
-            "OffScreenRenderTarget1"
-        );
-
-        descriptorManager_->CreateSRV(
-            offScreenResource_.Get(),
-            srvDesc,
-            offscreenSrvCpuHandle_,
-            offscreenSrvHandle_,
-            "OffScreenRenderTarget1"
-        );
-    }
-
-    // ===== 2枚目のRTV・SRV作成 =====
-#ifdef _DEBUG
-    Logger::GetInstance().Log(
-        std::format("オフスクリーンレンダーターゲット2を作成中...\n"),
-        LogLevel::INFO, LogCategory::Graphics);
-#endif
-
-    if (!isInitialized_) {
-        descriptorManager_->CreateRTV(
-            offScreen2Resource_.Get(),
-            rtvDesc,
-            offscreen2RtvHandle_,
-            "OffScreenRenderTarget2"
-        );
-
-        descriptorManager_->CreateSRV(
-            offScreen2Resource_.Get(),
-            srvDesc,
-            offscreen2SrvCpuHandle_,
-            offscreen2SrvHandle_,
-            "OffScreenRenderTarget2"
-        );
-    }
-
-    if (isInitialized_) {
-        UpdateViews();
-    }
+    descriptorManager_->CreateSRV(
+        target.resource.Get(),
+        srvDesc,
+        target.srvCpuHandle,
+        target.srvHandle,
+        std::format("OffScreenRenderTarget{}", index)
+    );
 }
 
-void OffScreenRenderTargetManager::UpdateViews()
+void OffScreenRenderTargetManager::UpdateTargetViews(const OffScreenTarget& target)
 {
+    assert(target.resource);
+
     D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
     rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
@@ -149,10 +131,30 @@ void OffScreenRenderTargetManager::UpdateViews()
     srvDesc.Texture2D.MipLevels = 1;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-    device_->CreateRenderTargetView(offScreenResource_.Get(), &rtvDesc, offscreenRtvHandle_);
-    device_->CreateShaderResourceView(offScreenResource_.Get(), &srvDesc, offscreenSrvCpuHandle_);
+    device_->CreateRenderTargetView(target.resource.Get(), &rtvDesc, target.rtvHandle);
+    device_->CreateShaderResourceView(target.resource.Get(), &srvDesc, target.srvCpuHandle);
+}
 
-    device_->CreateRenderTargetView(offScreen2Resource_.Get(), &rtvDesc, offscreen2RtvHandle_);
-    device_->CreateShaderResourceView(offScreen2Resource_.Get(), &srvDesc, offscreen2SrvCpuHandle_);
+void OffScreenRenderTargetManager::ValidateIndex(uint32_t index) const
+{
+    assert(index < offScreenTargets_.size());
+}
+
+ID3D12Resource* OffScreenRenderTargetManager::GetOffScreenResource(uint32_t index) const
+{
+    ValidateIndex(index);
+    return offScreenTargets_[index].resource.Get();
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE OffScreenRenderTargetManager::GetOffScreenRtvHandle(uint32_t index) const
+{
+    ValidateIndex(index);
+    return offScreenTargets_[index].rtvHandle;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE OffScreenRenderTargetManager::GetOffScreenSrvHandle(uint32_t index) const
+{
+    ValidateIndex(index);
+    return offScreenTargets_[index].srvHandle;
 }
 }

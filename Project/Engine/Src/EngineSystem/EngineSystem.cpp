@@ -36,6 +36,7 @@
 #include "Utility/FrameRate/FrameRateController.h"
 
 #include "ObjectCommon/GameObject.h"
+#include "Scene/SceneManager.h"
 
 
 namespace CoreEngine
@@ -161,9 +162,16 @@ namespace CoreEngine
         }
 
 #ifdef _DEBUG
+        if (sceneManager_) {
+            if (auto* sceneViewport = imGui_->GetSceneViewport()) {
+                sceneViewport->SetCamera(sceneManager_->GetSceneViewCamera());
+                sceneViewport->SetCamera2D(sceneManager_->GetGameViewCamera2D());
+            }
+        }
+
         // ImGuiの開始（PostEffectManagerとGameDebugUIを渡す）
         if (auto* postEffect = GetComponent<PostEffectManager>()) {
-            imGui_->Begin(postEffect, gameDebugUI_.get());
+            imGui_->Begin(postEffect, GetComponent<Render>(), gameDebugUI_.get());
         }
 
         //メニューバーを最初に描画（ドッキングスペースより前）
@@ -175,6 +183,19 @@ namespace CoreEngine
         // ポストエフェクトのImGui描画
         if (auto* postEffect = GetComponent<PostEffectManager>()) {
             postEffect->DrawImGui();
+        }
+
+        if (sceneManager_) {
+            if (auto* sceneViewport = imGui_->GetSceneViewport()) {
+                if (auto* gameObjectManager = sceneManager_->GetCurrentGameObjectManager()) {
+                    if (auto* sceneCamera = sceneManager_->GetSceneViewCamera()) {
+                        sceneViewport->UpdateObjectSelection(gameObjectManager, sceneCamera);
+                    }
+                    if (auto* camera2D = sceneManager_->GetGameViewCamera2D()) {
+                        sceneViewport->UpdateSpriteSelection(gameObjectManager, camera2D);
+                    }
+                }
+            }
         }
 #endif // _DEBUG
     }
@@ -211,13 +232,47 @@ namespace CoreEngine
         context.postEffectManager = GetComponent<PostEffectManager>();
         context.lightManager = GetComponent<LightManager>();
 
+        // RenderTargetManagerを設定（Phase 1で追加）
+        if (render) {
+            context.renderTargetManager = render->GetRenderTargetManager();
+        }
+
         // ジオメトリパスに描画コールバックを設定
         if (auto* geometryPass = renderPipeline_->GetPass<GeometryPass>()) {
             geometryPass->SetRenderCallback(renderCallback);
         }
 
-        // パイプラインを実行（自動的にパス間のデータが繋がる）
-        renderPipeline_->Execute(context);
+        PassOutput previousOutput{};
+        auto executePass = [&](RenderPass* pass) {
+            if (!pass || !pass->IsEnabled()) {
+                return;
+            }
+
+            if (previousOutput.isValid) {
+                pass->SetInput(previousOutput);
+            }
+
+            pass->Setup(context);
+            pass->Execute(context);
+            pass->Cleanup(context);
+            previousOutput = pass->GetOutput();
+        };
+
+        executePass(renderPipeline_->GetPass<ShadowMapPass>());
+
+#ifdef _DEBUG
+        if (sceneManager_ && render) {
+            if (auto* sceneViewTarget = render->GetRenderTarget("SceneView")) {
+                sceneViewTarget->Begin(dx->GetCommandList());
+                sceneManager_->DrawSceneView();
+                sceneViewTarget->End(dx->GetCommandList());
+            }
+        }
+#endif // _DEBUG
+
+        executePass(renderPipeline_->GetPass<GeometryPass>());
+        executePass(renderPipeline_->GetPass<PostEffectPass>());
+        executePass(renderPipeline_->GetPass<BackBufferPass>());
 
 #ifdef _DEBUG
         // ImGuiの描画コマンドを積む
@@ -430,8 +485,6 @@ namespace CoreEngine
 
     void EngineSystem::BuildDefaultRenderPipeline()
     {
-        auto* render = GetComponent<Render>();
-
         // レンダーパイプラインの作成
         renderPipeline_ = std::make_unique<RenderPipeline>();
 
@@ -441,7 +494,7 @@ namespace CoreEngine
 
         // 2. ジオメトリパス（オフスクリーンレンダリング）
         auto geometryPass = std::make_unique<GeometryPass>();
-        geometryPass->SetRenderTarget(render->GetOffscreenTarget(0));
+        geometryPass->SetRenderTargetName("Offscreen0");  // 名前ベースで指定
         renderPipeline_->AddPass(std::move(geometryPass));
 
         // 3. ポストエフェクトパス
@@ -450,7 +503,7 @@ namespace CoreEngine
 
         // 4. バックバッファパス（最終出力）
         auto backBufferPass = std::make_unique<BackBufferPass>();
-        backBufferPass->SetRenderTarget(render->GetBackBufferTarget());
+        backBufferPass->SetRenderTargetName("BackBuffer");  // 名前ベースで指定
         renderPipeline_->AddPass(std::move(backBufferPass));
     }
 

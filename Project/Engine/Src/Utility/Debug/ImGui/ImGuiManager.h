@@ -19,6 +19,7 @@ namespace CoreEngine {
     class DirectXCommon;
     class PostEffectManager;
     class GameDebugUI;
+    class Render;
     class ICamera;
 }
 
@@ -37,8 +38,9 @@ void Initialize(HWND hwnd, CoreEngine::DirectXCommon* dxCommon);
 
 /// @brief ImGuiの開始処理
 /// @param postEffectManager PostEffectManagerへのポインタ（オプション）
+    /// @param render Renderへのポインタ（オプション）
 /// @param gameDebugUI GameDebugUIへのポインタ（オプション）
-void Begin(CoreEngine::PostEffectManager* postEffectManager = nullptr, CoreEngine::GameDebugUI* gameDebugUI = nullptr);
+    void Begin(CoreEngine::PostEffectManager* postEffectManager = nullptr, CoreEngine::Render* render = nullptr, CoreEngine::GameDebugUI* gameDebugUI = nullptr);
 
 /// @brief ImGuiの終了処理
 void End();

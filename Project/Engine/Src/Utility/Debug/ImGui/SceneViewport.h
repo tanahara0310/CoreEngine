@@ -14,6 +14,7 @@ namespace CoreEngine
     class PostEffectManager;
     class GameObjectManager;
     class ICamera;
+    class Render;
 
     class SceneViewport {
     public: // メンバ関数
@@ -22,8 +23,9 @@ namespace CoreEngine
 
         /// @brief シーンビューポートの描画
         /// @param dxCommon DirectXCommonへのポインタ
+        /// @param render Renderへのポインタ
         /// @param postEffectManager PostEffectManagerへのポインタ（オプション）
-        void DrawSceneViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager = nullptr);
+        void DrawSceneViewport(DirectXCommon* dxCommon, Render* render, PostEffectManager* postEffectManager = nullptr);
 
         /// @brief ゲームビューポートの描画
         /// @param dxCommon DirectXCommonへのポインタ
@@ -67,14 +69,8 @@ namespace CoreEngine
         /// @brief ギズモアイコンテクスチャを読み込む
         void LoadGizmoIcons();
 
-        /// @brief ツールバー（再生/停止/ポーズ）を描画
-        void DrawPlaybackToolbar();
-
-        /// @brief 再生制御アイコンテクスチャを読み込む
-        void LoadPlaybackIcons();
-
         /// @brief 共通ビューポート描画
-        void DrawViewportWindow(const char* windowName, DirectXCommon* dxCommon, PostEffectManager* postEffectManager, bool enableGizmo);
+        void DrawViewportWindow(const char* windowName, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle, bool enableGizmo);
 
     private: // メンバ変数
         ImVec2 viewportPos_{};
@@ -90,11 +86,6 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE gizmoScaleIcon_{};
         D3D12_GPU_DESCRIPTOR_HANDLE gizmoToggleIcon_{};
         bool iconsLoaded_ = false;
-
-        // 再生制御アイコン用テクスチャハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE playIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE pauseIcon_{};
-        bool playbackIconsLoaded_ = false;
 
         // ツールバーの折り畳み状態
         bool isToolbarCollapsed_ = false;

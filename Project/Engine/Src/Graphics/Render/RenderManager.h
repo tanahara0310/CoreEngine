@@ -73,6 +73,9 @@ namespace CoreEngine
     /// @brief フレーム終了時にキューをクリア
     void ClearQueue();
 
+        /// @brief デバッグライン描画の有効/無効を設定
+        void SetDebugLineRenderingEnabled(bool enabled) { renderDebugLines_ = enabled; }
+
     private:
         struct DrawCommand {
             CoreEngine::GameObject* object;
@@ -93,6 +96,7 @@ namespace CoreEngine
 
     // シャドウマップ関連
     ShadowMapManager* shadowMapManager_ = nullptr;
+    bool renderDebugLines_ = true;
 
         /// @brief 描画パスごとにソート
         void SortDrawQueue();

@@ -242,6 +242,10 @@ namespace CoreEngine
                 continue;
             }
 
+            if (!renderDebugLines_ && cmd.passType == RenderPassType::Line) {
+                continue;
+            }
+
             const bool passChanged = cmd.passType != currentPass;
             const bool blendChanged = cmd.blendMode != currentBlendMode;
 

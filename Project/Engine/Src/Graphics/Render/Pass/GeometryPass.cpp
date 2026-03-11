@@ -2,18 +2,31 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
+#include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include <cassert>
 
 namespace CoreEngine
 {
     void GeometryPass::Execute(const RenderContext& context)
     {
-        // RenderTargetが設定されていない場合はエラー
-        if (!renderTarget_) {
+        // RenderTargetManagerが必要
+        if (!context.renderTargetManager) {
 #ifdef _DEBUG
-            OutputDebugStringA("ERROR: GeometryPass: RenderTarget not set! Call SetRenderTarget() in BuildDefaultRenderPipeline().\n");
+            OutputDebugStringA("ERROR: GeometryPass: RenderTargetManager is null in RenderContext!\n");
 #endif
-            assert(false && "GeometryPass requires a valid RenderTarget. Call SetRenderTarget() before execution.");
+            assert(false && "GeometryPass requires RenderTargetManager in RenderContext");
+            return;
+        }
+
+        // 名前ベースでターゲットを取得
+        RenderTarget* targetToUse = context.renderTargetManager->GetRenderTarget(targetName_);
+
+        if (!targetToUse) {
+#ifdef _DEBUG
+            std::string msg = "ERROR: GeometryPass: RenderTarget '" + targetName_ + "' not found in RenderTargetManager!\n";
+            OutputDebugStringA(msg.c_str());
+#endif
+            assert(false && "GeometryPass requires a valid RenderTarget.");
             return;
         }
 
@@ -29,7 +42,7 @@ namespace CoreEngine
         auto* cmdList = context.dxCommon->GetCommandList();
 
         // レンダーターゲット開始（自動でRTV/DSV/ビューポート/シザー設定）
-        renderTarget_->Begin(cmdList);
+        targetToUse->Begin(cmdList);
 
         // シーン固有の描画処理を実行
         if (renderCallback_) {
@@ -37,11 +50,11 @@ namespace CoreEngine
         }
 
         // レンダーターゲット終了（自動でリソースバリア）
-        renderTarget_->End(cmdList);
+        targetToUse->End(cmdList);
 
         // 出力を設定（次のパスに渡す）
-        output_.srvHandle = renderTarget_->GetSRVHandle();
-        output_.resource = renderTarget_->GetResource();
+        output_.srvHandle = targetToUse->GetSRVHandle();
+        output_.resource = targetToUse->GetResource();
         output_.isValid = true;
     }
 }

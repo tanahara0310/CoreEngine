@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
@@ -15,7 +15,7 @@ namespace CoreEngine
 class DescriptorManager {
 public:
     // ディスクリプタヒープの最大サイズ
-    static constexpr UINT kMaxRTVDescriptors = 10;   // スワップチェーン2 + オフスクリーン2
+    static constexpr UINT kMaxRTVDescriptors = 256;   // スワップチェーン + 任意数オフスクリーン用
     static constexpr UINT kMaxSRVDescriptors = 65536; // テクスチャやバッファ用（SRV/CBV/UAV共有）
     static constexpr UINT kMaxDSVDescriptors = 10;   // デプスステンシル用
 

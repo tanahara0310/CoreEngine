@@ -8,6 +8,7 @@ namespace CoreEngine
     class RenderManager;
     class PostEffectManager;
     class LightManager;
+    class RenderTargetManager;
 
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
@@ -15,6 +16,7 @@ namespace CoreEngine
         RenderManager* renderManager = nullptr;
         PostEffectManager* postEffectManager = nullptr;
         LightManager* lightManager = nullptr;
+        RenderTargetManager* renderTargetManager = nullptr;  ///< レンダーターゲット管理（Phase 1で追加）
     };
 
     /// @brief パス間のデータ受け渡し用構造体

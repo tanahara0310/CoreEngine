@@ -137,17 +137,17 @@ void DockingUI::BuildDockLayout()
     toolNodeId_ = 0;
 
     if (layoutPreset_ == DockLayoutPreset::Unity2By3) {
-        ImGuiID idTop, idBottom;
-        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Down, 0.28f, &idBottom, &idTop);
-
-        ImGuiID idMainLeft, idRight;
-        ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Right, 0.25f, &idRight, &idMainLeft);
-
-        ImGuiID idViewportColumn, idToolColumn;
-        ImGui::DockBuilderSplitNode(idMainLeft, ImGuiDir_Right, 0.38f, &idToolColumn, &idViewportColumn);
+        ImGuiID idViewportColumn, idRightColumn;
+        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.50f, &idRightColumn, &idViewportColumn);
 
         ImGuiID idGame, idScene;
-        ImGui::DockBuilderSplitNode(idViewportColumn, ImGuiDir_Down, 0.5f, &idScene, &idGame);
+        ImGui::DockBuilderSplitNode(idViewportColumn, ImGuiDir_Down, 0.50f, &idGame, &idScene);
+
+        ImGuiID idProject, idRightTop;
+        ImGui::DockBuilderSplitNode(idRightColumn, ImGuiDir_Down, 0.34f, &idProject, &idRightTop);
+
+        ImGuiID idInspector, idToolColumn;
+        ImGui::DockBuilderSplitNode(idRightTop, ImGuiDir_Right, 0.52f, &idInspector, &idToolColumn);
 
         gameNodeId_ = idGame;
         sceneNodeId_ = idScene;
@@ -156,10 +156,10 @@ void DockingUI::BuildDockLayout()
         nodeIds_[static_cast<int>(DockArea::LeftTop)] = idToolColumn;
         nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idToolColumn;
         nodeIds_[static_cast<int>(DockArea::Center)] = idToolColumn;
-        nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
+        nodeIds_[static_cast<int>(DockArea::Right)] = idInspector;
         nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
         nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
-        nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
+        nodeIds_[static_cast<int>(DockArea::Bottom)] = idProject;
     } else {
         // 1) 右側エリア（Inspector）を最初に分割（25%）
         ImGuiID idMainArea, idRight;

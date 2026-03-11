@@ -2,15 +2,14 @@
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/Render/Render.h"
+#include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/TextureManager.h"
 #include "WinApp/WinApp.h"
 #include "Gizmo.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "Camera/ICamera.h"
-#include "EngineSystem/PlaybackState.h"
-#include "Utility/Logger/Logger.h"
 #include <string>
-#include <format>
 
 
 namespace CoreEngine
@@ -23,22 +22,43 @@ namespace CoreEngine
 
         // ギズモアイコンを読み込む
         LoadGizmoIcons();
-
-        // 再生制御アイコンを読み込む
-        LoadPlaybackIcons();
     }
 
-    void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
+    void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, Render* render, PostEffectManager* postEffectManager)
     {
-        DrawViewportWindow("Scene", dxCommon, postEffectManager, true);
+        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
+
+        if (render) {
+            if (auto* sceneViewTarget = render->GetRenderTarget("SceneView")) {
+                textureHandle = sceneViewTarget->GetSRVHandle();
+            }
+        }
+
+        if (textureHandle.ptr == 0) {
+            if (postEffectManager) {
+                textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
+            } else {
+                textureHandle = dxCommon->GetOffScreenSrvHandle();
+            }
+        }
+
+        DrawViewportWindow("Scene", textureHandle, true);
     }
 
     void SceneViewport::DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
     {
-        DrawViewportWindow("Game", dxCommon, postEffectManager, false);
+        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
+
+        if (postEffectManager) {
+            textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
+        } else {
+            textureHandle = dxCommon->GetOffScreenSrvHandle();
+        }
+
+        DrawViewportWindow("Game", textureHandle, false);
     }
 
-    void SceneViewport::DrawViewportWindow(const char* windowName, DirectXCommon* dxCommon, PostEffectManager* postEffectManager, bool enableGizmo)
+    void SceneViewport::DrawViewportWindow(const char* windowName, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle, bool enableGizmo)
     {
         if (ImGui::Begin(windowName, nullptr,
             ImGuiWindowFlags_NoCollapse
@@ -46,49 +66,37 @@ namespace CoreEngine
             | ImGuiWindowFlags_NoScrollWithMouse
             | ImGuiWindowFlags_NoBackground)) {
 
-            // ウィンドウ内サイズ取得と描画サイズ計算（アスペクト比維持）
-            ImVec2 winSize = ImGui::GetWindowSize();
+            // コンテンツ領域サイズを基準に描画サイズを計算（アスペクト比維持）
+            ImVec2 contentRegionSize = ImGui::GetContentRegionAvail();
             const float aspect = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
                 static_cast<float>(WinApp::GetCurrentClientHeightStatic());
-            float drawW = winSize.x;
+            float drawW = contentRegionSize.x;
             float drawH = drawW / aspect;
-            if (drawH > winSize.y) {
-                drawH = winSize.y;
+            if (drawH > contentRegionSize.y) {
+                drawH = contentRegionSize.y;
                 drawW = drawH * aspect;
             }
 
             // ビューポート左上位置（中央寄せオフセット適用）
             ImVec2 contentPos = ImGui::GetCursorScreenPos();
-            float offsetX = (winSize.x - drawW) * 0.5f;
-            float offsetY = (winSize.y - drawH) * 0.5f;
+            float offsetX = (contentRegionSize.x - drawW) * 0.5f;
+            float offsetY = (contentRegionSize.y - drawH) * 0.5f;
 
             // カーソルを描画開始位置に移動
             ImGui::SetCursorScreenPos(ImVec2(
                 contentPos.x + offsetX,
                 contentPos.y + offsetY));
 
-            if (enableGizmo) {
-                viewportPos_ = ImVec2(contentPos.x + offsetX, contentPos.y + offsetY);
-                viewportSize_ = ImVec2(drawW, drawH);
-                isViewportHovered_ = ImGui::IsWindowHovered();
-            }
-
-            // シーンのレンダリング結果を表示
-            // PostEffectManagerから最終テクスチャを取得（責務をカプセル化）
-            D3D12_GPU_DESCRIPTOR_HANDLE textureHandle;
-
-            if (postEffectManager) {
-                // PostEffectManagerが管理する最終表示テクスチャを取得
-                textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
-            } else {
-                // PostEffectManagerが無い場合のフォールバック（1枚目のオフスクリーン）
-                textureHandle = dxCommon->GetOffScreenSrvHandle();
-            }
-
             ImTextureID texID = (ImTextureID)textureHandle.ptr;
             ImGui::Image(texID, ImVec2(drawW, drawH));
 
             if (enableGizmo) {
+                const ImVec2 imageMin = ImGui::GetItemRectMin();
+                const ImVec2 imageMax = ImGui::GetItemRectMax();
+                viewportPos_ = imageMin;
+                viewportSize_ = ImVec2(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
+                isViewportHovered_ = ImGui::IsItemHovered();
+
                 // ギズモ準備（Imageの後に設定）
                 Gizmo::Prepare(viewportPos_, viewportSize_);
 
@@ -250,6 +258,10 @@ namespace CoreEngine
             return;
         }
 
+        if (viewportSize_.x <= 0.0f || viewportSize_.y <= 0.0f) {
+            return;
+        }
+
         // マウス座標をビューポート座標系に変換（0.0〜1.0の範囲）
         ImVec2 mousePos = ImGui::GetMousePos();
         Vector2 normalizedMousePos = Vector2(
@@ -264,6 +276,10 @@ namespace CoreEngine
     void SceneViewport::UpdateSpriteSelection(GameObjectManager* gameObjectManager, const ICamera* camera)
     {
         if (!objectSelector_ || !gameObjectManager || !camera) {
+            return;
+        }
+
+        if (viewportSize_.x <= 0.0f || viewportSize_.y <= 0.0f) {
             return;
         }
 
@@ -306,122 +322,6 @@ namespace CoreEngine
             // テクスチャ読み込みに失敗した場合は、アイコンを使用しない
             iconsLoaded_ = false;
         }
-    }
-
-    void SceneViewport::LoadPlaybackIcons()
-    {
-        auto& texManager = TextureManager::GetInstance();
-
-        // テクスチャマネージャーが初期化されているか確認
-        if (!texManager.IsInitialized()) {
-            return;
-        }
-
-        // 再生制御アイコンを読み込む
-        auto playTex = texManager.Load("reproduction.png");
-        auto pauseTex = texManager.Load("pause.png");
-
-        // GPUハンドルを保存
-        playIcon_ = playTex.gpuHandle;
-        pauseIcon_ = pauseTex.gpuHandle;
-
-        playbackIconsLoaded_ = true;
-    }
-
-    void SceneViewport::DrawPlaybackToolbar()
-    {
-        if (!playbackIconsLoaded_) return;
-
-        auto& playbackManager = CoreEngine::PlaybackStateManager::GetInstance();
-
-        // スタイル設定
-        constexpr float kIconSize = 32.0f;   // アイコンサイズ
-        constexpr float kPadding = 6.0f;     // パディング
-        constexpr float kSpacing = 8.0f;     // ボタン間スペース
-        constexpr float kRounding = 6.0f;    // 丸み
-        constexpr float kMarginTop = 8.0f;   // 上部マージン
-
-        const float buttonSize = kIconSize + kPadding * 2.0f;
-        const int kButtonCount = 3; // 再生、一時停止、停止
-
-        // ツールバー全体の幅を計算
-        const float toolbarWidth = buttonSize * kButtonCount + kSpacing * (kButtonCount - 1);
-
-        // ビューポート中央上部に配置
-        ImVec2 toolbarOrigin = ImVec2(
-            viewportPos_.x + (viewportSize_.x - toolbarWidth) * 0.5f,
-            viewportPos_.y + kMarginTop
-        );
-
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-
-        // 背景矩形描画
-        drawList->AddRectFilled(
-            toolbarOrigin,
-            ImVec2(toolbarOrigin.x + toolbarWidth, toolbarOrigin.y + buttonSize),
-            IM_COL32(20, 20, 20, 185),
-            kRounding);
-
-        // スタイル設定
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kPadding, kPadding));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, kRounding);
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(kSpacing, 0.0f));
-
-        CoreEngine::PlaybackState currentState = playbackManager.GetState();
-
-        // 再生ボタン
-        {
-            ImGui::SetCursorScreenPos(toolbarOrigin);
-            bool isActive = (currentState == CoreEngine::PlaybackState::Playing);
-
-            if (isActive) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
-            } else {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.18f, 0.85f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.32f, 0.32f, 0.32f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.12f, 0.12f, 1.00f));
-            }
-
-            if (ImGui::ImageButton("##PlayButton", (ImTextureID)playIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
-                playbackManager.Play();
-            }
-
-            ImGui::PopStyleColor(3);
-
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                ImGui::SetTooltip("再生 (Play)");
-            }
-        }
-
-        // 一時停止ボタン
-        {
-            ImGui::SetCursorScreenPos(ImVec2(toolbarOrigin.x + buttonSize + kSpacing, toolbarOrigin.y));
-            bool isActive = (currentState == CoreEngine::PlaybackState::Paused);
-
-            if (isActive) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
-            } else {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.18f, 0.85f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.32f, 0.32f, 0.32f, 1.00f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.12f, 0.12f, 1.00f));
-            }
-
-            if (ImGui::ImageButton("##PauseButton", (ImTextureID)pauseIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
-                playbackManager.Pause();
-            }
-
-            ImGui::PopStyleColor(3);
-
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                ImGui::SetTooltip("一時停止 (Pause)");
-            }
-        }
-
-        ImGui::PopStyleVar(3);
     }
 
 }

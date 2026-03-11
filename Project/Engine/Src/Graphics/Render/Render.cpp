@@ -1,5 +1,6 @@
 #include "Render.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 
 using namespace Microsoft::WRL;
 
@@ -11,29 +12,39 @@ namespace CoreEngine
         dxCommon_ = dxCommon;
         dsvHeap_ = dsvHeap;
 
-        // RenderTargetの初期化
-        for (int i = 0; i < kOffscreenCount; ++i) {
-            offscreenTargets_[i] = std::make_unique<OffscreenRenderTarget>();
-            offscreenTargets_[i]->Initialize(dxCommon, i);
-            offscreenTargets_[i]->SetClearColor(kClearColor);
-        }
+        // RenderTargetManagerの初期化
+        renderTargetManager_ = std::make_unique<RenderTargetManager>();
+        renderTargetManager_->Initialize(dxCommon, dsvHeap);
 
-        backBufferTarget_ = std::make_unique<BackBufferRenderTarget>();
-        backBufferTarget_->Initialize(dxCommon);
-        backBufferTarget_->SetClearColor(kClearColor);
+        // デフォルトのレンダーターゲットを作成（名前ベース）
+        RenderTargetDescriptor offscreen0Desc("Offscreen0");
+        offscreen0Desc.clearColor[0] = kClearColor[0];
+        offscreen0Desc.clearColor[1] = kClearColor[1];
+        offscreen0Desc.clearColor[2] = kClearColor[2];
+        offscreen0Desc.clearColor[3] = kClearColor[3];
+        renderTargetManager_->CreateRenderTarget(offscreen0Desc);
+
+        RenderTargetDescriptor offscreen1Desc("Offscreen1");
+        offscreen1Desc.clearColor[0] = kClearColor[0];
+        offscreen1Desc.clearColor[1] = kClearColor[1];
+        offscreen1Desc.clearColor[2] = kClearColor[2];
+        offscreen1Desc.clearColor[3] = kClearColor[3];
+        renderTargetManager_->CreateRenderTarget(offscreen1Desc);
+
+        RenderTargetDescriptor sceneViewDesc("SceneView");
+        sceneViewDesc.clearColor[0] = kClearColor[0];
+        sceneViewDesc.clearColor[1] = kClearColor[1];
+        sceneViewDesc.clearColor[2] = kClearColor[2];
+        sceneViewDesc.clearColor[3] = kClearColor[3];
+        renderTargetManager_->CreateRenderTarget(sceneViewDesc);
+
+        // バックバッファターゲットを作成
+        renderTargetManager_->CreateBackBufferTarget("BackBuffer");
     }
 
-    RenderTarget* Render::GetOffscreenTarget(int index)
+    RenderTarget* Render::GetRenderTarget(const std::string& name)
     {
-        if (index < 0 || index >= kOffscreenCount) {
-            return nullptr;
-        }
-        return offscreenTargets_[index].get();
-    }
-
-    RenderTarget* Render::GetBackBufferTarget()
-    {
-        return backBufferTarget_.get();
+        return renderTargetManager_->GetRenderTarget(name);
     }
 
     void Render::FinalizeFrame()
@@ -42,7 +53,10 @@ namespace CoreEngine
         UINT backBufferIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
 
         // バックバッファの終了処理
-        backBufferTarget_->End(cmdList);
+        auto* backBuffer = renderTargetManager_->GetRenderTarget("BackBuffer");
+        if (backBuffer) {
+            backBuffer->End(cmdList);
+        }
 
         // コマンドリストをClose
         HRESULT hr = cmdList->Close();
