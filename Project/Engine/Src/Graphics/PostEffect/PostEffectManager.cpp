@@ -96,7 +96,13 @@ void PostEffectManager::PingPongBuffer::EnsureOutputInBuffer1(PostEffectBase* fu
 
 RenderTarget* PostEffectManager::PingPongBuffer::GetRenderTarget(int index) const
 {
-    return render_->GetOffscreenTarget(index);
+    // 名前ベースでレンダーターゲットを取得
+    if (index == 0) {
+        return render_->GetRenderTarget("Offscreen0");
+    } else if (index == 1) {
+        return render_->GetRenderTarget("Offscreen1");
+    }
+    return nullptr;
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE PostEffectManager::PingPongBuffer::GetSrvHandle(int index) const

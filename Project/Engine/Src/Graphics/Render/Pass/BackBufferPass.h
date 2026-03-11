@@ -1,6 +1,7 @@
 #pragma once
 #include "RenderPass.h"
 #include <d3d12.h>
+#include <string>
 
 namespace CoreEngine
 {
@@ -21,14 +22,20 @@ namespace CoreEngine
             inputHandle_ = input.srvHandle;
         }
 
-        /// @brief レンダーターゲットを設定
-        /// @param target レンダーターゲット
-        void SetRenderTarget(RenderTarget* target) {
-            renderTarget_ = target;
+        /// @brief レンダーターゲット名を設定
+        /// @param name ターゲット名
+        void SetRenderTargetName(const std::string& name) {
+            targetName_ = name;
+        }
+
+        /// @brief 設定されているターゲット名を取得
+        /// @return ターゲット名
+        const std::string& GetRenderTargetName() const {
+            return targetName_;
         }
 
     private:
         D3D12_GPU_DESCRIPTOR_HANDLE inputHandle_{};
-        RenderTarget* renderTarget_ = nullptr;
+        std::string targetName_ = "BackBuffer";  ///< デフォルトターゲット名
     };
 }

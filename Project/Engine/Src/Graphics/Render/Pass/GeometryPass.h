@@ -1,6 +1,7 @@
 #pragma once
 #include "RenderPass.h"
 #include <functional>
+#include <string>
 
 namespace CoreEngine
 {
@@ -25,14 +26,20 @@ namespace CoreEngine
             renderCallback_ = callback;
         }
 
-        /// @brief レンダーターゲットを設定
-        /// @param target レンダーターゲット
-        void SetRenderTarget(RenderTarget* target) {
-            renderTarget_ = target;
+        /// @brief レンダーターゲット名を設定
+        /// @param name ターゲット名
+        void SetRenderTargetName(const std::string& name) {
+            targetName_ = name;
+        }
+
+        /// @brief 設定されているターゲット名を取得
+        /// @return ターゲット名
+        const std::string& GetRenderTargetName() const {
+            return targetName_;
         }
 
     private:
         std::function<void()> renderCallback_;
-        RenderTarget* renderTarget_ = nullptr;
+        std::string targetName_ = "Offscreen0";  ///< デフォルトターゲット名
     };
 }

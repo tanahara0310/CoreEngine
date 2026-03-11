@@ -211,6 +211,11 @@ namespace CoreEngine
         context.postEffectManager = GetComponent<PostEffectManager>();
         context.lightManager = GetComponent<LightManager>();
 
+        // RenderTargetManagerを設定（Phase 1で追加）
+        if (render) {
+            context.renderTargetManager = render->GetRenderTargetManager();
+        }
+
         // ジオメトリパスに描画コールバックを設定
         if (auto* geometryPass = renderPipeline_->GetPass<GeometryPass>()) {
             geometryPass->SetRenderCallback(renderCallback);
@@ -430,8 +435,6 @@ namespace CoreEngine
 
     void EngineSystem::BuildDefaultRenderPipeline()
     {
-        auto* render = GetComponent<Render>();
-
         // レンダーパイプラインの作成
         renderPipeline_ = std::make_unique<RenderPipeline>();
 
@@ -441,7 +444,7 @@ namespace CoreEngine
 
         // 2. ジオメトリパス（オフスクリーンレンダリング）
         auto geometryPass = std::make_unique<GeometryPass>();
-        geometryPass->SetRenderTarget(render->GetOffscreenTarget(0));
+        geometryPass->SetRenderTargetName("Offscreen0");  // 名前ベースで指定
         renderPipeline_->AddPass(std::move(geometryPass));
 
         // 3. ポストエフェクトパス
@@ -450,7 +453,7 @@ namespace CoreEngine
 
         // 4. バックバッファパス（最終出力）
         auto backBufferPass = std::make_unique<BackBufferPass>();
-        backBufferPass->SetRenderTarget(render->GetBackBufferTarget());
+        backBufferPass->SetRenderTargetName("BackBuffer");  // 名前ベースで指定
         renderPipeline_->AddPass(std::move(backBufferPass));
     }
 
