@@ -162,14 +162,11 @@ namespace CoreEngine
 
     void CameraManager::Update()
     {
-        // 3Dカメラの更新
-        if (activeCamera3D_ && activeCamera3D_->GetActive()) {
-            activeCamera3D_->Update();
-        }
-
-        // 2Dカメラの更新
-        if (activeCamera2D_ && activeCamera2D_->GetActive()) {
-            activeCamera2D_->Update();
+        for (auto& [name, camera] : cameras_) {
+            (void)name;
+            if (camera && camera->GetActive()) {
+                camera->Update();
+            }
         }
     }
 

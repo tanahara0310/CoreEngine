@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace CoreEngine
 {
@@ -100,5 +101,8 @@ namespace CoreEngine
 
         // 次に使用するオフスクリーンインデックス（内部管理用）
         int nextOffscreenIndex_ = 0;
+
+        // 再利用可能なオフスクリーンインデックス
+        std::vector<int> freeOffscreenIndices_;
     };
 }

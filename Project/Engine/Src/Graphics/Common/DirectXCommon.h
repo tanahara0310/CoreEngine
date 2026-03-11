@@ -70,15 +70,16 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE GetShadowMapDSVHandle() { return shadowMapManager_->GetDSVHandle(); }
     D3D12_GPU_DESCRIPTOR_HANDLE GetShadowMapSRVHandle() { return shadowMapManager_->GetSRVHandle(); }
 
-    // オフスクリーン用のアクセッサ（1枚目）
-    ID3D12Resource* GetOffScreenResource() { return offScreenManager_->GetOffScreenResource(); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreenRtvHandle() { return offScreenManager_->GetOffScreenRtvHandle(); }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle() { return offScreenManager_->GetOffScreenSrvHandle(); }
+    // オフスクリーン用のアクセッサ（任意インデックス）
+    ID3D12Resource* GetOffScreenResource(uint32_t index = 0) { return offScreenManager_->GetOffScreenResource(index); }
+    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreenRtvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenRtvHandle(index); }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenSrvHandle(index); }
+    void EnsureOffScreenTargetCount(uint32_t count) { offScreenManager_->EnsureTargetCount(count); }
 
     // オフスクリーン用のアクセッサ（2枚目）
-    ID3D12Resource* GetOffScreen2Resource() { return offScreenManager_->GetOffScreen2Resource(); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreen2RtvHandle() { return offScreenManager_->GetOffScreen2RtvHandle(); }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreen2SrvHandle() { return offScreenManager_->GetOffScreen2SrvHandle(); }
+    ID3D12Resource* GetOffScreen2Resource() { return GetOffScreenResource(1); }
+    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreen2RtvHandle() { return GetOffScreenRtvHandle(1); }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreen2SrvHandle() { return GetOffScreenSrvHandle(1); }
 
     // IBL（Image-Based Lighting）関連のアクセッサ
     void SetIrradianceMap(ID3D12Resource* resource, D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {

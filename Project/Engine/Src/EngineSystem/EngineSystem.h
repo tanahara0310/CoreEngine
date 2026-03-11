@@ -57,6 +57,8 @@ class ConsoleUI; // 前方宣言（デバッグビルドのみ）
 
 namespace CoreEngine
 {
+class SceneManager;
+
 class EngineSystem {
 public:
     /// @brief エンジンシステムの初期化
@@ -75,6 +77,12 @@ public:
     /// @brief 共通描画パイプライン - オフスクリーンレンダリングとポストエフェクトを自動処理
     /// @param renderCallback シーン固有の描画処理を記述するコールバック
     void ExecuteRenderPipeline(std::function<void()> renderCallback);
+
+    /// @brief SceneManagerを設定
+    void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
+
+    /// @brief SceneManagerを取得
+    SceneManager* GetSceneManager() const { return sceneManager_; }
 
     // ──────────────────────────────────────────────────────────
     // コンポーネントアクセッサ
@@ -179,5 +187,7 @@ private:
     std::unique_ptr<ImGuiManager> imGui_ = std::make_unique<ImGuiManager>(); // ImGuiマネージャークラスのインスタンス
     std::unique_ptr<GameDebugUI> gameDebugUI_ = std::make_unique<GameDebugUI>(); // ゲームデバッグUIのインスタンス
 #endif // _DEBUG
+
+    SceneManager* sceneManager_ = nullptr;
 };
 }

@@ -13,6 +13,9 @@ class EngineSystem; // 前方宣言
 
 namespace CoreEngine
 {
+class ICamera;
+class GameObjectManager;
+
 class SceneManager {
 public:
 
@@ -47,6 +50,9 @@ public:
     /// @brief 描画処理
     void Draw();
 
+    /// @brief Sceneビュー用描画
+    void DrawSceneView();
+
     /// @brief 描画前準備（描画キュー構築など）
     void PrepareRender();
 
@@ -76,6 +82,18 @@ public:
     /// @brief 現在のシーンのBGM音量コールバックを登録
     /// @param callback 音量倍率(0.0～1.0)を受け取るコールバック関数
     void RegisterSceneBGMCallback(std::function<void(float)> callback);
+
+    /// @brief Sceneビュー用カメラを取得
+    ICamera* GetSceneViewCamera() const;
+
+    /// @brief Gameビュー用3Dカメラを取得
+    ICamera* GetGameViewCamera() const;
+
+    /// @brief Gameビュー用2Dカメラを取得
+    ICamera* GetGameViewCamera2D() const;
+
+    /// @brief 現在シーンのオブジェクトマネージャーを取得
+    GameObjectManager* GetCurrentGameObjectManager() const;
 
 private:
     std::unordered_map<std::string, std::function<std::unique_ptr<IScene>()>> sceneFactories_;

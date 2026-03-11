@@ -2,6 +2,8 @@
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/Render/Render.h"
+#include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/TextureManager.h"
 #include "WinApp/WinApp.h"
 #include "Gizmo.h"
@@ -28,17 +30,41 @@ namespace CoreEngine
         LoadPlaybackIcons();
     }
 
-    void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
+    void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, Render* render, PostEffectManager* postEffectManager)
     {
-        DrawViewportWindow("Scene", dxCommon, postEffectManager, true);
+        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
+
+        if (render) {
+            if (auto* sceneViewTarget = render->GetRenderTarget("SceneView")) {
+                textureHandle = sceneViewTarget->GetSRVHandle();
+            }
+        }
+
+        if (textureHandle.ptr == 0) {
+            if (postEffectManager) {
+                textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
+            } else {
+                textureHandle = dxCommon->GetOffScreenSrvHandle();
+            }
+        }
+
+        DrawViewportWindow("Scene", textureHandle, true);
     }
 
     void SceneViewport::DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
     {
-        DrawViewportWindow("Game", dxCommon, postEffectManager, false);
+        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
+
+        if (postEffectManager) {
+            textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
+        } else {
+            textureHandle = dxCommon->GetOffScreenSrvHandle();
+        }
+
+        DrawViewportWindow("Game", textureHandle, false);
     }
 
-    void SceneViewport::DrawViewportWindow(const char* windowName, DirectXCommon* dxCommon, PostEffectManager* postEffectManager, bool enableGizmo)
+    void SceneViewport::DrawViewportWindow(const char* windowName, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle, bool enableGizmo)
     {
         if (ImGui::Begin(windowName, nullptr,
             ImGuiWindowFlags_NoCollapse
@@ -71,18 +97,6 @@ namespace CoreEngine
                 viewportPos_ = ImVec2(contentPos.x + offsetX, contentPos.y + offsetY);
                 viewportSize_ = ImVec2(drawW, drawH);
                 isViewportHovered_ = ImGui::IsWindowHovered();
-            }
-
-            // シーンのレンダリング結果を表示
-            // PostEffectManagerから最終テクスチャを取得（責務をカプセル化）
-            D3D12_GPU_DESCRIPTOR_HANDLE textureHandle;
-
-            if (postEffectManager) {
-                // PostEffectManagerが管理する最終表示テクスチャを取得
-                textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
-            } else {
-                // PostEffectManagerが無い場合のフォールバック（1枚目のオフスクリーン）
-                textureHandle = dxCommon->GetOffScreenSrvHandle();
             }
 
             ImTextureID texID = (ImTextureID)textureHandle.ptr;

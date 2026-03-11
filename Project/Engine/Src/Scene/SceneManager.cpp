@@ -66,6 +66,12 @@ void SceneManager::Draw() {
     }
 }
 
+void SceneManager::DrawSceneView() {
+    if (currentScene_) {
+        currentScene_->DrawSceneView();
+    }
+}
+
 void SceneManager::PrepareRender() {
     if (currentScene_) {
         currentScene_->PrepareRender();
@@ -118,6 +124,22 @@ void SceneManager::RegisterSceneBGMCallback(std::function<void(float)> callback)
     if (sceneTransition_) {
         sceneTransition_->SetBGMVolumeCallback(callback);
     }
+}
+
+ICamera* SceneManager::GetSceneViewCamera() const {
+    return currentScene_ ? currentScene_->GetSceneViewCamera() : nullptr;
+}
+
+ICamera* SceneManager::GetGameViewCamera() const {
+    return currentScene_ ? currentScene_->GetGameViewCamera() : nullptr;
+}
+
+ICamera* SceneManager::GetGameViewCamera2D() const {
+    return currentScene_ ? currentScene_->GetGameViewCamera2D() : nullptr;
+}
+
+GameObjectManager* SceneManager::GetCurrentGameObjectManager() const {
+    return currentScene_ ? currentScene_->GetGameObjectManager() : nullptr;
 }
 
 void SceneManager::DoChangeScene(const std::string& name) {

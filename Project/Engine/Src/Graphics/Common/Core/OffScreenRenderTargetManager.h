@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <wrl.h>
 #include <cstdint>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -17,45 +18,56 @@ public:
     /// @param descriptorManager ディスクリプタマネージャー
     /// @param width 初期幅
     /// @param height 初期高さ
-    void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, std::int32_t width, std::int32_t height);
+    void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, std::int32_t width, std::int32_t height, uint32_t initialTargetCount = 2);
 
     /// @brief オフスクリーンリソースをリサイズ
     void Resize(std::int32_t width, std::int32_t height);
 
-    // オフスクリーン用のアクセッサ（1枚目）
-    ID3D12Resource* GetOffScreenResource() const { return offScreenResource_.Get(); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreenRtvHandle() const { return offscreenRtvHandle_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle() const { return offscreenSrvHandle_; }
+    /// @brief 指定枚数までオフスクリーンターゲットを確保
+    void EnsureTargetCount(uint32_t count);
 
-    // オフスクリーン用のアクセッサ（2枚目）
-    ID3D12Resource* GetOffScreen2Resource() const { return offScreen2Resource_.Get(); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreen2RtvHandle() const { return offscreen2RtvHandle_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreen2SrvHandle() const { return offscreen2SrvHandle_; }
+    /// @brief オフスクリーンターゲット数を取得
+    uint32_t GetTargetCount() const { return static_cast<uint32_t>(offScreenTargets_.size()); }
+
+    // オフスクリーン用のアクセッサ（任意インデックス）
+    ID3D12Resource* GetOffScreenResource(uint32_t index = 0) const;
+    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreenRtvHandle(uint32_t index = 0) const;
+    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle(uint32_t index = 0) const;
+
+    // オフスクリーン用のアクセッサ（互換API）
+    ID3D12Resource* GetOffScreen2Resource() const { return GetOffScreenResource(1); }
+    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreen2RtvHandle() const { return GetOffScreenRtvHandle(1); }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreen2SrvHandle() const { return GetOffScreenSrvHandle(1); }
 
 private:
-    /// @brief オフスクリーン用のレンダリングターゲットを作成
-    void CreateOffScreenRenderTarget(std::int32_t width, std::int32_t height);
+    struct OffScreenTarget {
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
+        D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
+        D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
+    };
 
-    /// @brief 既存ディスクリプタにビューを再作成
-    void UpdateViews();
+    /// @brief 単一ターゲットのリソースを作成または再作成
+    void CreateOrResizeTargetResource(OffScreenTarget& target, uint32_t index, std::int32_t width, std::int32_t height);
+
+    /// @brief 単一ターゲットのビューを新規作成
+    void CreateTargetViews(OffScreenTarget& target, uint32_t index);
+
+    /// @brief 単一ターゲットのビューを更新
+    void UpdateTargetViews(const OffScreenTarget& target);
+
+    /// @brief インデックスの妥当性を検証
+    void ValidateIndex(uint32_t index) const;
 
 private:
-    // 1枚目のオフスクリーンバッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> offScreenResource_;
-    D3D12_CPU_DESCRIPTOR_HANDLE offscreenRtvHandle_ {};
-    D3D12_CPU_DESCRIPTOR_HANDLE offscreenSrvCpuHandle_ {};
-    D3D12_GPU_DESCRIPTOR_HANDLE offscreenSrvHandle_ {};
-
-    // 2枚目のオフスクリーンバッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> offScreen2Resource_;
-    D3D12_CPU_DESCRIPTOR_HANDLE offscreen2RtvHandle_ {};
-    D3D12_CPU_DESCRIPTOR_HANDLE offscreen2SrvCpuHandle_ {};
-    D3D12_GPU_DESCRIPTOR_HANDLE offscreen2SrvHandle_ {};
+    std::vector<OffScreenTarget> offScreenTargets_;
 
     // 依存関係
     ID3D12Device* device_ = nullptr;
     DescriptorManager* descriptorManager_ = nullptr;
     bool isInitialized_ = false;
+    std::int32_t currentWidth_ = 0;
+    std::int32_t currentHeight_ = 0;
 };
 }
 

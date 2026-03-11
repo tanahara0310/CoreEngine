@@ -41,10 +41,18 @@ namespace CoreEngine
 
         // OffscreenRenderTargetを作成
         auto offscreenTarget = std::make_unique<OffscreenRenderTarget>();
+
+        int targetIndex = 0;
+        if (!freeOffscreenIndices_.empty()) {
+            targetIndex = freeOffscreenIndices_.back();
+            freeOffscreenIndices_.pop_back();
+        } else {
+            targetIndex = nextOffscreenIndex_;
+            nextOffscreenIndex_++;
+        }
         
         // 初期化
-        offscreenTarget->Initialize(dxCommon_, nextOffscreenIndex_);
-        nextOffscreenIndex_++;
+        offscreenTarget->Initialize(dxCommon_, targetIndex);
 
         // クリアカラーを設定
         offscreenTarget->SetClearColor(desc.clearColor);
@@ -58,7 +66,7 @@ namespace CoreEngine
 
 #ifdef _DEBUG
         std::string msg = "[RenderTargetManager] Created RenderTarget: " + desc.name + 
-                         " (Index: " + std::to_string(nextOffscreenIndex_ - 1) + ")\n";
+                         " (Index: " + std::to_string(targetIndex) + ")\n";
         OutputDebugStringA(msg.c_str());
 #endif
 
@@ -134,6 +142,10 @@ namespace CoreEngine
     {
         auto it = targets_.find(name);
         if (it != targets_.end()) {
+            if (auto* offscreenTarget = dynamic_cast<OffscreenRenderTarget*>(it->second.get())) {
+                freeOffscreenIndices_.push_back(offscreenTarget->GetIndex());
+            }
+
             targets_.erase(it);
             descriptors_.erase(name);
 
@@ -149,6 +161,7 @@ namespace CoreEngine
         targets_.clear();
         descriptors_.clear();
         nextOffscreenIndex_ = 0;
+        freeOffscreenIndices_.clear();
 
 #ifdef _DEBUG
         OutputDebugStringA("[RenderTargetManager] Cleared all render targets.\n");

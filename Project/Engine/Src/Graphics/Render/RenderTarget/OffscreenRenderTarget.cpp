@@ -7,21 +7,17 @@ namespace CoreEngine
     void OffscreenRenderTarget::Initialize(DirectXCommon* dx, int index)
     {
         assert(dx);
-        assert(index >= 0 && index <= 1);
+        assert(index >= 0);
 
         dxCommon_ = dx;
         index_ = index;
 
+        dx->EnsureOffScreenTargetCount(static_cast<uint32_t>(index + 1));
+
         // インデックスに応じてリソースを取得
-        if (index == 0) {
-            resource_ = dx->GetOffScreenResource();
-            rtvHandle_ = dx->GetOffScreenRtvHandle();
-            srvHandle_ = dx->GetOffScreenSrvHandle();
-        } else {
-            resource_ = dx->GetOffScreen2Resource();
-            rtvHandle_ = dx->GetOffScreen2RtvHandle();
-            srvHandle_ = dx->GetOffScreen2SrvHandle();
-        }
+        resource_ = dx->GetOffScreenResource(static_cast<uint32_t>(index));
+        rtvHandle_ = dx->GetOffScreenRtvHandle(static_cast<uint32_t>(index));
+        srvHandle_ = dx->GetOffScreenSrvHandle(static_cast<uint32_t>(index));
 
         dsvHandle_ = dx->GetDSVHandle();
         width_ = dx->GetClientWidth();

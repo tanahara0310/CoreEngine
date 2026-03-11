@@ -1,5 +1,6 @@
 #include "ImGuiManager.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Render/Render.h"
 #include "Utility/Debug/GameDebugUI.h"
 #include <ImGuizmo.h>
 #include <filesystem>
@@ -73,7 +74,7 @@ void ImGuiManager::Initialize(HWND hwnd, DirectXCommon* dxCommon)
     projectView_->Initialize(dxCommon_);
 }
 
-void ImGuiManager::Begin(PostEffectManager* postEffectManager, GameDebugUI* gameDebugUI)
+void ImGuiManager::Begin(PostEffectManager* postEffectManager, Render* render, GameDebugUI* gameDebugUI)
 {
     (void)gameDebugUI; // 未使用警告を回避
 
@@ -87,7 +88,7 @@ void ImGuiManager::Begin(PostEffectManager* postEffectManager, GameDebugUI* game
 
     // ゲーム / シーンビューポートの開始（PostEffectManagerを渡す）
     sceneViewport_->DrawGameViewport(dxCommon_, postEffectManager);
-    sceneViewport_->DrawSceneViewport(dxCommon_, postEffectManager);
+    sceneViewport_->DrawSceneViewport(dxCommon_, render, postEffectManager);
 
     // プロジェクトビューの更新
     projectView_->Update();

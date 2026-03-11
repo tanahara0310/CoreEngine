@@ -14,6 +14,7 @@ namespace CoreEngine
     class PostEffectManager;
     class GameObjectManager;
     class ICamera;
+    class Render;
 
     class SceneViewport {
     public: // メンバ関数
@@ -22,8 +23,9 @@ namespace CoreEngine
 
         /// @brief シーンビューポートの描画
         /// @param dxCommon DirectXCommonへのポインタ
+        /// @param render Renderへのポインタ
         /// @param postEffectManager PostEffectManagerへのポインタ（オプション）
-        void DrawSceneViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager = nullptr);
+        void DrawSceneViewport(DirectXCommon* dxCommon, Render* render, PostEffectManager* postEffectManager = nullptr);
 
         /// @brief ゲームビューポートの描画
         /// @param dxCommon DirectXCommonへのポインタ
@@ -74,7 +76,7 @@ namespace CoreEngine
         void LoadPlaybackIcons();
 
         /// @brief 共通ビューポート描画
-        void DrawViewportWindow(const char* windowName, DirectXCommon* dxCommon, PostEffectManager* postEffectManager, bool enableGizmo);
+        void DrawViewportWindow(const char* windowName, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle, bool enableGizmo);
 
     private: // メンバ変数
         ImVec2 viewportPos_{};

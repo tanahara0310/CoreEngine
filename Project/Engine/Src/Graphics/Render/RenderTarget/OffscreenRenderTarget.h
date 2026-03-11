@@ -14,7 +14,7 @@ namespace CoreEngine
 
         /// @brief 初期化
         /// @param dx DirectXCommon
-        /// @param index オフスクリーンのインデックス（0 or 1）
+        /// @param index オフスクリーンのインデックス
         void Initialize(DirectXCommon* dx, int index);
 
         /// @brief レンダリング開始

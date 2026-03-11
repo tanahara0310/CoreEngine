@@ -45,8 +45,23 @@ namespace CoreEngine
         /// @brief 描画処理（共通処理 + 派生クラスの描画）
         virtual void Draw() override;
 
+        /// @brief Sceneビュー用描画
+        virtual void DrawSceneView() override;
+
         /// @brief 解放（共通処理 + 派生クラスの解放）
         virtual void Finalize() override;
+
+        /// @brief Sceneビュー用カメラを取得
+        ICamera* GetSceneViewCamera() const override;
+
+        /// @brief Gameビュー用3Dカメラを取得
+        ICamera* GetGameViewCamera() const override;
+
+        /// @brief Gameビュー用2Dカメラを取得
+        ICamera* GetGameViewCamera2D() const override;
+
+        /// @brief 現在のゲームオブジェクトマネージャーを取得
+        GameObjectManager* GetGameObjectManager() override { return &gameObjectManager_; }
 
     protected:
         /// @brief 派生クラスでオーバーライドする更新処理（GameObjectの更新前）
@@ -59,6 +74,15 @@ namespace CoreEngine
 
         /// @brief カメラのセットアップ
         void SetupCamera();
+
+        /// @brief 指定カメラでジオメトリ描画
+        void DrawWithCamera(const std::string& cameraName, bool finalizeFrame);
+
+        /// @brief Gameビューに使用する3Dカメラ名を解決
+        std::string ResolveGameViewCameraName() const;
+
+        /// @brief Sceneビューに使用する3Dカメラ名を解決
+        std::string ResolveSceneViewCameraName() const;
 
         /// @brief ライトのセットアップ
         void SetupLight();
@@ -149,5 +173,8 @@ namespace CoreEngine
 #ifdef _DEBUG
         std::unique_ptr<SceneDebugEditor> debugEditor_;  // Undo/Redo・デバッグ編集機能
 #endif
+
+        std::string gameViewCameraName_ = "Release";
+        std::string sceneViewCameraName_ = "Debug";
     };
 }

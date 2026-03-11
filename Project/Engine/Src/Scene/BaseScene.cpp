@@ -10,6 +10,7 @@
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Line/GridRenderer.h"
+#include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
 #include "ObjectCommon/SpriteObject.h"
@@ -107,11 +108,74 @@ namespace CoreEngine
 
     void BaseScene::Draw()
     {
+        Model::SetTransformBufferSlot(Model::TransformBufferSlot::Game);
+        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
+            renderManager->SetDebugLineRenderingEnabled(false);
+        }
+        DrawWithCamera(ResolveGameViewCameraName(), true);
+    }
+
+    void BaseScene::DrawSceneView()
+    {
+        Model::SetTransformBufferSlot(Model::TransformBufferSlot::Scene);
+        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
+            renderManager->SetDebugLineRenderingEnabled(true);
+        }
+        DrawWithCamera(ResolveSceneViewCameraName(), false);
+    }
+
+    ICamera* BaseScene::GetSceneViewCamera() const
+    {
+        if (!cameraManager_) {
+            return nullptr;
+        }
+
+        if (ICamera* sceneCamera = cameraManager_->GetCamera(ResolveSceneViewCameraName())) {
+            return sceneCamera;
+        }
+
+        return cameraManager_->GetActiveCamera(CameraType::Camera3D);
+    }
+
+    ICamera* BaseScene::GetGameViewCamera() const
+    {
+        if (!cameraManager_) {
+            return nullptr;
+        }
+
+        if (ICamera* gameCamera = cameraManager_->GetCamera(ResolveGameViewCameraName())) {
+            return gameCamera;
+        }
+
+        return cameraManager_->GetActiveCamera(CameraType::Camera3D);
+    }
+
+    ICamera* BaseScene::GetGameViewCamera2D() const
+    {
+        return cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
+    }
+
+    void BaseScene::DrawWithCamera(const std::string& cameraName, bool finalizeFrame)
+    {
         auto renderManager = engine_->GetComponent<RenderManager>();
         auto dxCommon = engine_->GetComponent<DirectXCommon>();
+        if (!cameraManager_) {
+            return;
+        }
+
+        const std::string previousCameraName = cameraManager_->GetActiveCameraName(CameraType::Camera3D);
+        const bool shouldSwitchCamera = !cameraName.empty() && cameraName != previousCameraName;
+
+        if (shouldSwitchCamera) {
+            cameraManager_->SetActiveCamera(cameraName, CameraType::Camera3D);
+        }
+
         ICamera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
 
         if (!renderManager || !dxCommon || !activeCamera3D) {
+            if (shouldSwitchCamera && !previousCameraName.empty()) {
+                cameraManager_->SetActiveCamera(previousCameraName, CameraType::Camera3D);
+            }
             return;
         }
 
@@ -121,11 +185,17 @@ namespace CoreEngine
         // Geometryパスのみ描画（ShadowはRenderPipeline側で実行）
         renderManager->DrawGeometryPass();
 
-        // フレーム終了時にキューをクリア
-        renderManager->ClearQueue();
+        if (shouldSwitchCamera && !previousCameraName.empty()) {
+            cameraManager_->SetActiveCamera(previousCameraName, CameraType::Camera3D);
+        }
 
-        // 描画完了後に削除マークされたオブジェクトをクリーンアップ
-        gameObjectManager_.CleanupDestroyed();
+        if (finalizeFrame) {
+            // フレーム終了時にキューをクリア
+            renderManager->ClearQueue();
+
+            // 描画完了後に削除マークされたオブジェクトをクリーンアップ
+            gameObjectManager_.CleanupDestroyed();
+        }
     }
 
     void BaseScene::Finalize()
@@ -179,6 +249,32 @@ namespace CoreEngine
 
         // 2Dカメラをアクティブに設定
         cameraManager_->SetActiveCamera("Camera2D", CameraType::Camera2D);
+    }
+
+    std::string BaseScene::ResolveGameViewCameraName() const
+    {
+        if (!cameraManager_) {
+            return {};
+        }
+
+        if (!gameViewCameraName_.empty() && cameraManager_->GetCamera(gameViewCameraName_)) {
+            return gameViewCameraName_;
+        }
+
+        return cameraManager_->GetActiveCameraName(CameraType::Camera3D);
+    }
+
+    std::string BaseScene::ResolveSceneViewCameraName() const
+    {
+        if (!cameraManager_) {
+            return {};
+        }
+
+        if (!sceneViewCameraName_.empty() && cameraManager_->GetCamera(sceneViewCameraName_)) {
+            return sceneViewCameraName_;
+        }
+
+        return cameraManager_->GetActiveCameraName(CameraType::Camera3D);
     }
 
     void BaseScene::SetupLight()
