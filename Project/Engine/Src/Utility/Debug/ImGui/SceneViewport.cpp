@@ -66,37 +66,37 @@ namespace CoreEngine
             | ImGuiWindowFlags_NoScrollWithMouse
             | ImGuiWindowFlags_NoBackground)) {
 
-            // ウィンドウ内サイズ取得と描画サイズ計算（アスペクト比維持）
-            ImVec2 winSize = ImGui::GetWindowSize();
+            // コンテンツ領域サイズを基準に描画サイズを計算（アスペクト比維持）
+            ImVec2 contentRegionSize = ImGui::GetContentRegionAvail();
             const float aspect = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
                 static_cast<float>(WinApp::GetCurrentClientHeightStatic());
-            float drawW = winSize.x;
+            float drawW = contentRegionSize.x;
             float drawH = drawW / aspect;
-            if (drawH > winSize.y) {
-                drawH = winSize.y;
+            if (drawH > contentRegionSize.y) {
+                drawH = contentRegionSize.y;
                 drawW = drawH * aspect;
             }
 
             // ビューポート左上位置（中央寄せオフセット適用）
             ImVec2 contentPos = ImGui::GetCursorScreenPos();
-            float offsetX = (winSize.x - drawW) * 0.5f;
-            float offsetY = (winSize.y - drawH) * 0.5f;
+            float offsetX = (contentRegionSize.x - drawW) * 0.5f;
+            float offsetY = (contentRegionSize.y - drawH) * 0.5f;
 
             // カーソルを描画開始位置に移動
             ImGui::SetCursorScreenPos(ImVec2(
                 contentPos.x + offsetX,
                 contentPos.y + offsetY));
 
-            if (enableGizmo) {
-                viewportPos_ = ImVec2(contentPos.x + offsetX, contentPos.y + offsetY);
-                viewportSize_ = ImVec2(drawW, drawH);
-                isViewportHovered_ = ImGui::IsWindowHovered();
-            }
-
             ImTextureID texID = (ImTextureID)textureHandle.ptr;
             ImGui::Image(texID, ImVec2(drawW, drawH));
 
             if (enableGizmo) {
+                const ImVec2 imageMin = ImGui::GetItemRectMin();
+                const ImVec2 imageMax = ImGui::GetItemRectMax();
+                viewportPos_ = imageMin;
+                viewportSize_ = ImVec2(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
+                isViewportHovered_ = ImGui::IsItemHovered();
+
                 // ギズモ準備（Imageの後に設定）
                 Gizmo::Prepare(viewportPos_, viewportSize_);
 
@@ -258,6 +258,10 @@ namespace CoreEngine
             return;
         }
 
+        if (viewportSize_.x <= 0.0f || viewportSize_.y <= 0.0f) {
+            return;
+        }
+
         // マウス座標をビューポート座標系に変換（0.0〜1.0の範囲）
         ImVec2 mousePos = ImGui::GetMousePos();
         Vector2 normalizedMousePos = Vector2(
@@ -272,6 +276,10 @@ namespace CoreEngine
     void SceneViewport::UpdateSpriteSelection(GameObjectManager* gameObjectManager, const ICamera* camera)
     {
         if (!objectSelector_ || !gameObjectManager || !camera) {
+            return;
+        }
+
+        if (viewportSize_.x <= 0.0f || viewportSize_.y <= 0.0f) {
             return;
         }
 

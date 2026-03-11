@@ -144,11 +144,9 @@ namespace CoreEngine
             if (sceneViewport) {
                 if (activeCamera3D) {
                     sceneViewport->SetCamera(activeCamera3D);
-                    sceneViewport->UpdateObjectSelection(gameObjectManager_, activeCamera3D);
                 }
                 if (activeCamera2D) {
                     sceneViewport->SetCamera2D(activeCamera2D);
-                    sceneViewport->UpdateSpriteSelection(gameObjectManager_, activeCamera2D);
                 }
             }
         }
