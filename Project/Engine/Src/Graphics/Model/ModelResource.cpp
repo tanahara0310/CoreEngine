@@ -77,7 +77,7 @@ void ModelResource::LoadFromFile(const std::string& directoryPath, const std::st
     materialTextureHandles_.resize(modelData_.materials.size());
     
     // デフォルトの白テクスチャを取得（テクスチャが存在しない場合に使用）
-    D3D12_GPU_DESCRIPTOR_HANDLE defaultWhiteTexture = textureManager_->Load("Texture/white1x1.png").gpuHandle;
+    D3D12_GPU_DESCRIPTOR_HANDLE defaultWhiteTexture = textureManager_->Load("white1x1.png").gpuHandle;
     
     for (size_t i = 0; i < modelData_.materials.size(); ++i) {
         const MaterialAsset& material = modelData_.materials[i];

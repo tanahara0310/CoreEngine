@@ -300,8 +300,17 @@ namespace CoreEngine
 
         assert(isInitialized_ && "TextureManager is not initialized!");
 
-        // パスを解決
-        std::string resolvedPath = ResolveFilePath(filePath);
+        // まずAssetDatabaseでパスを解決
+        std::string resolvedPath;
+        auto& assetDB = AssetDatabase::GetInstance();
+        std::string assetPath = assetDB.FindAssetPath(filePath);
+
+        if (!assetPath.empty()) {
+            resolvedPath = assetPath;
+        } else {
+            // 見つからない場合は従来の方法でパスを解決
+            resolvedPath = ResolveFilePath(filePath);
+        }
 
         // キャッシュから検索
         auto it = metadataCache_.find(resolvedPath);

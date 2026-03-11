@@ -351,7 +351,7 @@ namespace CoreEngine
             [](unsigned char c) { return static_cast<char>(::tolower(c)); });
 
         // テクスチャ
-        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".tga" || ext == ".dds")
+        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".bmp" || ext == ".tga" || ext == ".dds" || ext == ".hdr")
         {
             return AssetType::Texture;
         }

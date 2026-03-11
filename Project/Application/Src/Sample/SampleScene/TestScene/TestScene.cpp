@@ -45,7 +45,7 @@ namespace CoreEngine
 
         // HDRファイルを読み込み（自動的にキューブマップDDSに変換される）
         TextureManager::LoadedTexture environmentMapTexture;
-        environmentMapTexture = textureManager.Load("Application/Assets/Texture/kloppenheim_06_puresky_4k.hdr");
+        environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
 
         // ===== IBLシステムの初期化 =====
         auto* iblGenerator = engine_->GetComponent<IBLGenerator>();
@@ -96,7 +96,7 @@ namespace CoreEngine
         // A Beautiful Game（チェスのモデル）を中央に配置
 
         auto chessModel = CreateObject<ModelObject>();
-        chessModel->Initialize("Application/Assets/SampleAssets/PblTestModel/ABeautifulGame.gltf");
+        chessModel->Initialize("ABeautifulGame.gltf");
         chessModel->SetPBREnabled(true);
         chessModel->SetPBRTextureMapsEnabled(true, true, true, true); // Normal, Metallic, Roughness, AOマップを有効化
         chessModel->SetMaterialColor({ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -139,7 +139,7 @@ namespace CoreEngine
 
         // テストスプライト
         auto sprite = CreateObject<SpriteObject>();
-        sprite->Initialize("Application/Assets/Texture/uvChecker.png");
+        sprite->Initialize("uvChecker.png");
         sprite->GetSpriteTransform().translate = { 100.0f, 100.0f, 0.0f };
         sprite->GetSpriteTransform().scale = { 1.0f, 1.0f, 1.0f };
 

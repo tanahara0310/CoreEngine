@@ -45,7 +45,7 @@ void SneakWalkModelObject::Initialize() {
    transform_.rotate = { 0.0f, 0.0f, 0.0f };
 
    // テクスチャを初期化時に読み込む
-   uvCheckerTexture_ = CoreEngine::TextureManager::GetInstance().Load("SampleAssets/human/white.png");
+   uvCheckerTexture_ = CoreEngine::TextureManager::GetInstance().Load("white1x1.png");
 
    // アクティブ状態に設定
    SetActive(true);
