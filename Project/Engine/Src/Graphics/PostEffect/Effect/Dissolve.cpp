@@ -249,7 +249,7 @@ namespace CoreEngine
     {
         // ノイズテクスチャを読み込み
         auto& textureManager = TextureManager::GetInstance();
-        auto texture = textureManager.Load("Application/Assets/Texture/noise0.png");
+        auto texture = textureManager.Load("noise0.png");
         noiseTextureHandle_ = texture.gpuHandle;
     }
 }

@@ -6,7 +6,7 @@
 class ModelObject : public CoreEngine::GameObject {
 public:
     /// @brief 初期化処理
-    /// @param modelPath モデルファイルのパス（例: "SampleAssets/PblTestModel/ABeautifulGame.gltf"）
+    /// @param modelPath モデルファイルのパス
     void Initialize(const std::string& modelPath);
 
     /// @brief 更新処理

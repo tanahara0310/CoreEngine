@@ -1,6 +1,7 @@
 #include "ModelManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/TextureManager.h"
+#include "Graphics/Asset/AssetDatabase.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/Animator.h"
 #include "Skeleton/SkeletonAnimator.h"
@@ -268,6 +269,22 @@ std::string ModelManager::ResolveFilePath(const std::string& filePath) const
     // 入力パスのバックスラッシュをスラッシュに統一
     std::string normalized = filePath;
     std::replace(normalized.begin(), normalized.end(), '\\', '/');
+
+    // まずAssetDatabaseで名前解決（移動・リネーム耐性）
+    std::filesystem::path inputPath(normalized);
+    std::string searchName = inputPath.filename().string();
+    if (searchName.empty()) {
+        searchName = normalized;
+    }
+
+    auto& assetDB = AssetDatabase::GetInstance();
+    std::string assetPath = assetDB.FindAssetPath(searchName);
+    if (assetPath.empty() && inputPath.has_stem()) {
+        assetPath = assetDB.FindAssetPath(inputPath.stem().string());
+    }
+    if (!assetPath.empty()) {
+        return assetPath;
+    }
 
     // Application/Assets または Engine/Assets で始まる場合はそのまま返す
     if (normalized.starts_with("Application/Assets/")) {

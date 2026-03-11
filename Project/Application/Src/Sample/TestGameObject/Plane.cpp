@@ -24,7 +24,7 @@ void Plane::Initialize()
 
     //テクスチャの読み込み
     auto& textureMgr = CoreEngine::TextureManager::GetInstance();
-    texture_ = textureMgr.Load("Texture/white1x1.png");
+    texture_ = textureMgr.Load("white1x1.png");
 
 }
 

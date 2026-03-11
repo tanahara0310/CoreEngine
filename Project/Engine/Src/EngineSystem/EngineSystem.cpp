@@ -53,6 +53,9 @@ namespace CoreEngine
         // WinAppのインスタンスを保持
         winApp_ = winApp;
 
+        // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
+        AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
+
         // ===== コンポーネントの作成と初期化 =====
 
         // フレームレート制御（最初に初期化）
@@ -72,9 +75,6 @@ namespace CoreEngine
 
         // 統一乱数生成器の初期化
         RandomGenerator::GetInstance().Initialize();
-
-        // アセットデータベースの初期化
-        AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
 
 #ifdef _DEBUG
         // ImGuiマネージャークラスの初期化

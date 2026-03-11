@@ -27,7 +27,7 @@ void SphereObject::Initialize() {
 
     // テクスチャの読み込み
     auto& textureManager = CoreEngine::TextureManager::GetInstance();
-    texture_ = textureManager.Load("Texture/white1x1.png");
+    texture_ = textureManager.Load("white1x1.png");
 
     // アクティブ状態に設定
     SetActive(true);

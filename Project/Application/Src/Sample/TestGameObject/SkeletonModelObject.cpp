@@ -46,7 +46,7 @@ void SkeletonModelObject::Initialize() {
     transform_.rotate = { 0.0f, 0.0f, 0.0f };
 
     // テクスチャを初期化時に読み込む
-    uvCheckerTexture_ = CoreEngine::TextureManager::GetInstance().Load("SampleAssets/simpleSkin/uvChecker.png");
+    uvCheckerTexture_ = CoreEngine::TextureManager::GetInstance().Load("uvChecker.png");
 
     // アクティブ状態に設定
     SetActive(true);
