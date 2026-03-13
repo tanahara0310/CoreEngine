@@ -1,5 +1,5 @@
 #include "DockingUI.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "EngineSystem/PlaybackState.h"
 #include "Utility/Logger/Logger.h"
 #include <format>

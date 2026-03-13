@@ -10,7 +10,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Model/ModelRenderer.h"
 #include "Graphics/Render/Model/SkinnedModelRenderer.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Sample/TestGameObject/ModelObject.h"
 #include "ObjectCommon/SpriteObject.h"
 

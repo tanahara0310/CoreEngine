@@ -4,7 +4,7 @@
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Vector/Vector3.h"
 #include "WorldTransform/WorldTransform.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/Model.h"
 #include "Collider/Collider.h"
 #include "Collider/SphereCollider.h"

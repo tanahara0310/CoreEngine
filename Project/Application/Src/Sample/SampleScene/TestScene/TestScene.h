@@ -17,7 +17,7 @@
 #include "Camera/Release/Camera.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Light/LightData.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/Model.h"

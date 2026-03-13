@@ -1,6 +1,6 @@
 #include "ProjectView.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
 
 #include <imgui.h>

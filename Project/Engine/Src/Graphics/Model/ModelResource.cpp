@@ -1,6 +1,6 @@
 #include "ModelResource.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Model/ModelLoader.h"
 #include "Graphics/Model/Skeleton/SkeletonLoader.h"

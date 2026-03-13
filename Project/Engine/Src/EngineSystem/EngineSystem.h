@@ -27,7 +27,7 @@ class ConsoleUI; // 前方宣言（デバッグビルドのみ）
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Light/LightManager.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/IBL/IBLGenerator.h"
 #include "Particle/ParticleSystem.h"
 

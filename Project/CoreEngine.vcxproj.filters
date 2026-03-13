@@ -377,7 +377,7 @@
     <ClCompile Include="Engine\Src\Camera\Debug\CameraDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Camera\ICamera.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraPresetManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\TextureManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\TextureManager.cpp" />
     <ClCompile Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Line\LineManager.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\ShapeModule.cpp" />
@@ -419,6 +419,15 @@
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureLoadExecutor.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -601,7 +610,7 @@
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h">
       <Filter>Engine\Graphics\Shader</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\TextureManager.h">
+    <ClInclude Include="Engine\Src\Graphics\Texture\TextureManager.h">
       <Filter>Engine\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.h">
@@ -1246,6 +1255,17 @@
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetDescriptor.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
+    <ClInclude Include="Project\Engine\Src\Graphics\TextureManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadExecutor.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Runtime\TextureLoadedResource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

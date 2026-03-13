@@ -1,6 +1,6 @@
 #include "SpriteObject.h"
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Common/DirectXCommon.h"

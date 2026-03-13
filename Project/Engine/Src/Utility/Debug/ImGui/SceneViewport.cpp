@@ -4,7 +4,7 @@
 #include "Graphics/PostEffect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "WinApp/WinApp.h"
 #include "Gizmo.h"
 #include "ObjectCommon/GameObjectManager.h"
