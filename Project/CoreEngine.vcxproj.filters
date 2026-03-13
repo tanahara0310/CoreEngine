@@ -203,7 +203,7 @@
     <ClCompile Include="Engine\Src\Framework\Framework.cpp">
       <Filter>Engine\Framework</Filter>
     </ClCompile>
-    <ClCompile Include="Application\MyGame.cpp">
+    <ClCompile Include="Application\Src\MyGame.cpp">
       <Filter>Application</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
@@ -661,7 +661,7 @@
     <ClInclude Include="Engine\Src\Framework\Framework.h">
       <Filter>Engine\Framework</Filter>
     </ClInclude>
-    <ClInclude Include="Application\MyGame.h">
+    <ClInclude Include="Application\Src\MyGame.h">
       <Filter>Application</Filter>
     </ClInclude>
     <ClInclude Include="Externals\spdlog\include\spdlog\cfg\argv.h">
