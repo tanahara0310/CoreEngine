@@ -1,12 +1,12 @@
-﻿#include "Logger.h"
+#include "Logger.h"
 
 #include <chrono>
 #include <filesystem>
 #include <format>
 #include <vector>
 #include <algorithm>
-#include <optional>
 
+#include <spdlog/async.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 
 //========================================
@@ -16,6 +16,50 @@
 
 namespace CoreEngine
 {
+namespace
+{
+    constexpr const char* kLogPattern = "[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%^%l%$] %v";
+
+    /// @brief カテゴリ別の既定ログレベルを返す。
+    spdlog::level::level_enum GetDefaultCategoryLevel(LogCategory category)
+    {
+        switch (category) {
+        case LogCategory::System:
+            return spdlog::level::debug;
+        case LogCategory::Graphics:
+        case LogCategory::Resource:
+        case LogCategory::Shader:
+            return spdlog::level::debug;
+        case LogCategory::General:
+        case LogCategory::Game:
+        case LogCategory::Audio:
+        case LogCategory::Input:
+        default:
+            return spdlog::level::info;
+        }
+    }
+}
+
+spdlog::level::level_enum Logger::ToSpdLevel(LogLevel level)
+{
+    switch (level) {
+    case LogLevel::Trace:
+        return spdlog::level::trace;
+    case LogLevel::Debug:
+        return spdlog::level::debug;
+    case LogLevel::Info:
+        return spdlog::level::info;
+    case LogLevel::Warn:
+        return spdlog::level::warn;
+    case LogLevel::Error:
+        return spdlog::level::err;
+    case LogLevel::Critical:
+        return spdlog::level::critical;
+    default:
+        return spdlog::level::info;
+    }
+}
+
 Logger& Logger::GetInstance()
 {
     static Logger instance;
@@ -45,10 +89,24 @@ Logger::~Logger()
 
     // ロガーマップをクリア
     loggers_.clear();
+
+    // 非同期ロガーのワーカースレッドと定期フラッシュを安全に停止する。
+    spdlog::shutdown();
 }
 
 void Logger::Initialize()
 {
+    // 非同期ロギング用のグローバルスレッドプールを初期化する。
+    if (!spdlog::thread_pool()) {
+        spdlog::init_thread_pool(kAsyncQueueSize, kAsyncThreadCount);
+    }
+
+    // ログパターンを設定（時刻/スレッドID/カテゴリ/ログレベル/メッセージ）
+    spdlog::set_pattern(kLogPattern);
+
+    // 通常時は定期フラッシュ、重大ログはflush_on(err)で即時フラッシュする。
+    spdlog::flush_every(std::chrono::seconds(2));
+
     // 現在の時間を取得してビルドタイムスタンプを作成
     auto now = std::chrono::system_clock::now();
     auto nowSeconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
@@ -66,9 +124,6 @@ void Logger::Initialize()
     loggers_[LogCategory::Game] = CreateLogger(LogCategory::Game, buildTimestamp);
     loggers_[LogCategory::Resource] = CreateLogger(LogCategory::Resource, buildTimestamp);
     loggers_[LogCategory::Shader] = CreateLogger(LogCategory::Shader, buildTimestamp);
-
-    // ログパターンを設定（時刻、ログレベル、メッセージ）
-    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] %v");
 }
 
 void Logger::Log(const std::wstring& message, LogLevel level, LogCategory category)
@@ -83,21 +138,8 @@ void Logger::Log(const std::string& message, LogLevel level, LogCategory categor
         return;
     }
 
-    // LogLevelをspdlogのレベルに変換して出力
-    switch (level) {
-    case LogLevel::INFO:
-        logger->info(message);
-        break;
-    case LogLevel::WARNING:
-        logger->warn(message);
-        break;
-    case LogLevel::Error:
-        logger->error(message);
-        break;
-    case LogLevel::Critical:
-        logger->critical(message);
-        break;
-    }
+    // LogLevelをspdlogレベルへ変換して一元的に出力する。
+    logger->log(ToSpdLevel(level), message);
 }
 
 std::shared_ptr<spdlog::logger> Logger::GetLogger(LogCategory category)
@@ -137,16 +179,32 @@ std::shared_ptr<spdlog::logger> Logger::CreateLogger(LogCategory category, const
 
     std::string logFilePath = logDir + "/" + categoryName + "_" + buildTimestamp + ".log";
 
-    // シンクの作成（ファイル出力のみ）
+    // シンクの作成（ローテーションファイル + Visual Studio出力）
     std::vector<spdlog::sink_ptr> sinks;
+    sinks.reserve(2);
 
-    // ファイル出力シンク（新規作成モード）
-    auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath, false);
-    sinks.push_back(fileSink);
+    // ファイルサイズが上限を超えたらローテーションする。
+    auto rotatingFileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        logFilePath,
+        kMaxLogFileSizeBytes,
+        kMaxLogFiles);
+    sinks.push_back(rotatingFileSink);
 
-    // ロガーを作成
-    auto logger = std::make_shared<spdlog::logger>(categoryName, sinks.begin(), sinks.end());
-    logger->set_level(spdlog::level::trace); // 全レベルを出力
+    // デバッグ時の追跡性向上のため、Visual StudioのOutputウィンドウにも出力する。
+    auto msvcSink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
+    sinks.push_back(msvcSink);
+
+    // ロガーを非同期モードで作成する（高頻度ログでメイン処理を止めにくくする）。
+    auto logger = std::make_shared<spdlog::async_logger>(
+        categoryName,
+        sinks.begin(),
+        sinks.end(),
+        spdlog::thread_pool(),
+        spdlog::async_overflow_policy::overrun_oldest);
+
+    // カテゴリごとの既定ログレベルを適用する。
+    logger->set_level(GetDefaultCategoryLevel(category));
+    logger->set_pattern(kLogPattern);
     logger->flush_on(spdlog::level::err);  // エラー時は即座にフラッシュ
 
     return logger;
@@ -178,8 +236,8 @@ void Logger::CleanupOldLogFiles()
             }
         }
 
-        // ファイルが5個以下なら何もしない
-        if (logFiles.size() <= 5) {
+        // 上限以下なら何もしない
+        if (logFiles.size() <= kMaxLogFiles) {
             continue;
         }
 
@@ -189,8 +247,8 @@ void Logger::CleanupOldLogFiles()
                 return std::filesystem::last_write_time(a) > std::filesystem::last_write_time(b);
             });
 
-        // 新しいファイルから5個を残して古いものを削除
-        for (size_t i = 5; i < logFiles.size(); ++i) {
+        // 新しいファイルから上限個数を残して古いものを削除
+        for (size_t i = kMaxLogFiles; i < logFiles.size(); ++i) {
             std::filesystem::remove(logFiles[i]);
         }
     }

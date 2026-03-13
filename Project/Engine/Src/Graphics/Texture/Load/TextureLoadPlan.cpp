@@ -1,4 +1,4 @@
-#include "TextureLoadPlan.h"
+﻿#include "TextureLoadPlan.h"
 
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Logger/Logger.h"
@@ -41,36 +41,28 @@ namespace CoreEngine
                 const auto ddsTime = std::filesystem::last_write_time(cubemapDDSPathW);
 
                 if (sourceTime > ddsTime) {
-                    Logger::GetInstance().Log(
-                        std::format("HDR source file is newer than cubemap DDS, regenerating: {}", plan.resolvedPath),
-                        LogLevel::INFO,
-                        LogCategory::Graphics);
+                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+                        std::format("HDR source file is newer than cubemap DDS, regenerating: {}", plan.resolvedPath));
                     needsRegeneration = true;
                     std::filesystem::remove(cubemapDDSPathW);
                 }
             }
 
             if (needsRegeneration) {
-                Logger::GetInstance().Log(
-                    std::format("Generating cubemap DDS from HDR: {}", plan.resolvedPath),
-                    LogLevel::INFO,
-                    LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+                    std::format("Generating cubemap DDS from HDR: {}", plan.resolvedPath));
 
                 if (cubemapGenerator(plan.resolvedPath, cubemapDDSPath)) {
                     plan.resolvedPath = cubemapDDSPath;
                     plan.isDDS = true;
                     plan.isHDR = false;
                 } else {
-                    Logger::GetInstance().Log(
-                        std::format("Failed to generate cubemap, loading HDR as 2D texture: {}", plan.resolvedPath),
-                        LogLevel::WARNING,
-                        LogCategory::Graphics);
+                    Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", 
+                        std::format("Failed to generate cubemap, loading HDR as 2D texture: {}", plan.resolvedPath));
                 }
             } else {
-                Logger::GetInstance().Log(
-                    std::format("Loading from cubemap DDS cache: {}", cubemapDDSPath),
-                    LogLevel::INFO,
-                    LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+                    std::format("Loading from cubemap DDS cache: {}", cubemapDDSPath));
 
                 plan.resolvedPath = cubemapDDSPath;
                 plan.isDDS = true;
@@ -90,16 +82,12 @@ namespace CoreEngine
                 const auto ddsTime = std::filesystem::last_write_time(ddsPathW);
 
                 if (sourceTime > ddsTime) {
-                    Logger::GetInstance().Log(
-                        std::format("Source file is newer than DDS cache, regenerating: {}", plan.resolvedPath),
-                        LogLevel::INFO,
-                        LogCategory::Graphics);
+                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+                        std::format("Source file is newer than DDS cache, regenerating: {}", plan.resolvedPath));
                     std::filesystem::remove(ddsPathW);
                 } else {
-                    Logger::GetInstance().Log(
-                        std::format("Loading from DDS cache: {}", plan.ddsPathToGenerate),
-                        LogLevel::INFO,
-                        LogCategory::Graphics);
+                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+                        std::format("Loading from DDS cache: {}", plan.ddsPathToGenerate));
 
                     plan.resolvedPath = plan.ddsPathToGenerate;
                     plan.isDDS = true;
@@ -110,3 +98,5 @@ namespace CoreEngine
         return plan;
     }
 }
+
+

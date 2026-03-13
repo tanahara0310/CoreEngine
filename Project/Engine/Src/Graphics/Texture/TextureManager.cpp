@@ -1,4 +1,4 @@
-#include "TextureManager.h"
+﻿#include "TextureManager.h"
 #include "Cache/TextureCacheStore.h"
 #include "Load/TextureLoadPlan.h"
 #include "Generate/TextureCubemapGenerator.h"
@@ -62,14 +62,14 @@ namespace CoreEngine
         // キャッシュヒット時は即時返却し、重い処理を回避する。
         LoadedTexture cachedTexture{};
         if (cacheStore_->TryGetTexture(cacheKey, cachedTexture)) {
-            Logger::GetInstance().Log(std::format("Texture already loaded (cache hit): {}", cacheKey), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Texture already loaded (cache hit): {}", cacheKey));
             return cachedTexture;
         }
 
         // 同一キーの重複ロードを避けるため、ロード権を獲得できるまで待機する。
         while (true) {
             if (cacheStore_->TryGetTexture(cacheKey, cachedTexture)) {
-                Logger::GetInstance().Log(std::format("Texture loaded by another thread: {}", cacheKey), LogLevel::INFO, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Texture loaded by another thread: {}", cacheKey));
                 return cachedTexture;
             }
 
@@ -96,7 +96,7 @@ namespace CoreEngine
         assert(dxCommon != nullptr);
 
         // ロード開始ログ
-        Logger::GetInstance().Log(std::format("Loading texture: {}", resolvedPath), LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Loading texture: {}", resolvedPath));
 
         // 読み込み対象の実パスを事前に計画し、変換やキャッシュ判定を一箇所に集約する。
         TextureLoadPlan::PlanResult loadPlan = textureLoadPlan_.BuildPlan(
@@ -176,3 +176,5 @@ namespace CoreEngine
     }
 
 }
+
+

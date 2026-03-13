@@ -1,4 +1,4 @@
-#include "ModelLoader.h"
+﻿#include "ModelLoader.h"
 
 #include <cassert>
 #include <format>
@@ -46,7 +46,7 @@ namespace CoreEngine
         static Assimp::Importer importerNormal;
         static Assimp::Importer importerSkinned;
 
-        Logger::GetInstance().Log(std::format("Loading model file: {}", filepath), LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Loading model file: {}", filepath));
 
         // まず軽量なフラグでシーンを読み込み、スキニングデータがあるか確認
         Assimp::Importer checkImporter;
@@ -58,7 +58,7 @@ namespace CoreEngine
         if (!checkScene) {
             std::string errorMsg = std::format("Failed to load model file: {}\nAssimp Error: {}\nPlease check if the file exists and the path is correct.",
                 filepath, checkImporter.GetErrorString());
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
             FileErrorDialog::ShowModelError("Failed to load model file", filepath, checkImporter.GetErrorString());
             assert(false && errorMsg.c_str());
             return nullptr;
@@ -77,7 +77,7 @@ namespace CoreEngine
         const aiScene* scene = nullptr;
         if (hasSkinning) {
             // スキニングモデル: aiProcess_PreTransformVerticesを使用しない
-            Logger::GetInstance().Log(std::format("Detected skinning data, loading without PreTransformVertices: {}", filepath), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Detected skinning data, loading without PreTransformVertices: {}", filepath));
             scene = importerSkinned.ReadFile(
                 filepath.c_str(),
                 aiProcess_Triangulate |
@@ -89,7 +89,7 @@ namespace CoreEngine
             );
         } else {
             // 通常モデル: aiProcess_PreTransformVerticesを使用
-            Logger::GetInstance().Log(std::format("No skinning data, loading with PreTransformVertices: {}", filepath), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("No skinning data, loading with PreTransformVertices: {}", filepath));
             scene = importerNormal.ReadFile(
                 filepath.c_str(),
                 aiProcess_Triangulate |
@@ -105,13 +105,13 @@ namespace CoreEngine
             const char* errorStr = hasSkinning ? importerSkinned.GetErrorString() : importerNormal.GetErrorString();
             std::string errorMsg = std::format("Failed to load model file: {}\nAssimp Error: {}\nPlease check if the file exists and the path is correct.",
                 filepath, errorStr);
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
             FileErrorDialog::ShowModelError("Failed to load model file", filepath, errorStr);
             assert(false && errorMsg.c_str());
             return nullptr;
         }
 
-        Logger::GetInstance().Log(std::format("Model loaded successfully: {}", filepath), LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Model loaded successfully: {}", filepath));
         return scene;
     }
 
@@ -119,7 +119,7 @@ namespace CoreEngine
     {
         if (!scene || !scene->HasMeshes()) {
             std::string errorMsg = std::format("Failed to load model or model has no meshes: {}", filepath);
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
             assert(false && errorMsg.c_str());
         }
     }
@@ -128,7 +128,7 @@ namespace CoreEngine
 
     std::vector<MaterialAsset> ModelLoader::LoadMaterials(const aiScene* scene, const std::string& directoryPath)
     {
-        Logger::GetInstance().Log(std::format("Loading {} materials...", scene->mNumMaterials), LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Loading {} materials...", scene->mNumMaterials));
 
         std::vector<MaterialAsset> materials(scene->mNumMaterials);
 
@@ -144,7 +144,7 @@ namespace CoreEngine
                 material.name = std::format("Material_{}", matIndex);
             }
 
-            Logger::GetInstance().Log(std::format("  Material[{}]: {}", matIndex, material.name), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("  Material[{}]: {}", matIndex, material.name));
 
             // 各種テクスチャパスを取得
             material.baseColorTexture = ExtractTexturePath(aiMat, aiTextureType_DIFFUSE, 0, directoryPath);
@@ -155,15 +155,15 @@ namespace CoreEngine
 
             // ログ出力
             if (!material.baseColorTexture.empty())
-                Logger::GetInstance().Log(std::format("    - BaseColor: {}", material.baseColorTexture), LogLevel::INFO, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("    - BaseColor: {}", material.baseColorTexture));
             if (!material.metallicRoughnessTexture.empty())
-                Logger::GetInstance().Log(std::format("    - MetallicRoughness: {}", material.metallicRoughnessTexture), LogLevel::INFO, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("    - MetallicRoughness: {}", material.metallicRoughnessTexture));
             if (!material.normalTexture.empty())
-                Logger::GetInstance().Log(std::format("    - Normal: {}", material.normalTexture), LogLevel::INFO, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("    - Normal: {}", material.normalTexture));
             if (!material.occlusionTexture.empty())
-                Logger::GetInstance().Log(std::format("    - Occlusion: {}", material.occlusionTexture), LogLevel::INFO, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("    - Occlusion: {}", material.occlusionTexture));
             if (!material.emissiveTexture.empty())
-                Logger::GetInstance().Log(std::format("    - Emissive: {}", material.emissiveTexture), LogLevel::INFO, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("    - Emissive: {}", material.emissiveTexture));
         }
 
         return materials;
@@ -171,7 +171,7 @@ namespace CoreEngine
 
     void ModelLoader::LoadMeshData(const aiScene* scene, ModelData& outResult)
     {
-        Logger::GetInstance().Log(std::format("Loading {} meshes...", scene->mNumMeshes), LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Loading {} meshes...", scene->mNumMeshes));
 
         for (uint32_t meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex) {
             aiMesh* mesh = scene->mMeshes[meshIndex];
@@ -184,10 +184,10 @@ namespace CoreEngine
             subMesh.startIndex = static_cast<uint32_t>(outResult.indices.size());
             subMesh.materialIndex = mesh->mMaterialIndex;
 
-            Logger::GetInstance().Log(std::format("  Mesh[{}]: \"{}\"", meshIndex, subMesh.name), LogLevel::INFO, LogCategory::Graphics);
-            Logger::GetInstance().Log(std::format("    - Vertices: {}", mesh->mNumVertices), LogLevel::INFO, LogCategory::Graphics);
-            Logger::GetInstance().Log(std::format("    - Faces: {}", mesh->mNumFaces), LogLevel::INFO, LogCategory::Graphics);
-            Logger::GetInstance().Log(std::format("    - MaterialIndex: {}", subMesh.materialIndex), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("  Mesh[{}]: \"{}\"", meshIndex, subMesh.name));
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("    - Vertices: {}", mesh->mNumVertices));
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("    - Faces: {}", mesh->mNumFaces));
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("    - MaterialIndex: {}", subMesh.materialIndex));
 
             // 頂点データの変換
             uint32_t baseVertexIndex = static_cast<uint32_t>(outResult.vertices.size());
@@ -208,7 +208,7 @@ namespace CoreEngine
 
             // サブメッシュのインデックス数を計算
             subMesh.indexCount = static_cast<uint32_t>(outResult.indices.size()) - subMesh.startIndex;
-            Logger::GetInstance().Log(std::format("    - IndexRange: [{}, {})", subMesh.startIndex, subMesh.startIndex + subMesh.indexCount), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("    - IndexRange: [{}, {})", subMesh.startIndex, subMesh.startIndex + subMesh.indexCount));
 
             outResult.subMeshes.push_back(subMesh);
 
@@ -331,16 +331,17 @@ namespace CoreEngine
 
     void ModelLoader::LogLoadStart(const std::string& filename, const std::string& directoryPath)
     {
-        Logger::GetInstance().Log("============================================", LogLevel::INFO, LogCategory::Graphics);
-        Logger::GetInstance().Log(std::format("Loading model: {} from directory: {}", filename, directoryPath), LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "============================================");
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Loading model: {} from directory: {}", filename, directoryPath));
     }
 
     void ModelLoader::LogLoadComplete(const ModelData& result)
     {
-        Logger::GetInstance().Log(
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
             std::format("Model loading completed: Total {} vertices, {} indices, {} materials, {} submeshes",
-                result.vertices.size(), result.indices.size(), result.materials.size(), result.subMeshes.size()),
-            LogLevel::INFO, LogCategory::Graphics);
-        Logger::GetInstance().Log("============================================", LogLevel::INFO, LogCategory::Graphics);
+                result.vertices.size(), result.indices.size(), result.materials.size(), result.subMeshes.size()));
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "============================================");
     }
 }
+
+

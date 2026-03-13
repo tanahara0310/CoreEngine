@@ -1,4 +1,4 @@
-#include "ProjectView.h"
+﻿#include "ProjectView.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
@@ -112,8 +112,7 @@ namespace CoreEngine
                 });
         }
         catch (const std::exception& e) {
-            Logger::GetInstance().Log("Failed to read directory: " + std::string(e.what()),
-                LogLevel::Error, LogCategory::System);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", "Failed to read directory: " + std::string(e.what()));
         }
 
         return entries;
@@ -238,8 +237,7 @@ namespace CoreEngine
                         NavigateToDirectory(entry.path);
                     } else {
                         // ファイルの場合は将来的に開く処理を実装
-                        Logger::GetInstance().Log("File selected: " + entry.name,
-                            LogLevel::INFO, LogCategory::System);
+                        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", "File selected: " + entry.name);
                     }
 
                     lastClickedIndex_ = -1;
@@ -351,13 +349,11 @@ namespace CoreEngine
                 directoryIconTexture_ = texture.texture;
                 directoryIconGpuHandle_ = texture.gpuHandle;
                 directoryIconLoaded_ = true;
-                Logger::GetInstance().Log("Loaded directory icon for ProjectView",
-                    LogLevel::INFO, LogCategory::System);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", "Loaded directory icon for ProjectView");
             }
         }
         catch (const std::exception& e) {
-            Logger::GetInstance().Log("Failed to load directory icon: " + std::string(e.what()),
-                LogLevel::WARNING, LogCategory::System);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to load directory icon: " + std::string(e.what()));
             directoryIconLoaded_ = false;
         }
 
@@ -368,13 +364,11 @@ namespace CoreEngine
                 pngIconTexture_ = texture.texture;
                 pngIconGpuHandle_ = texture.gpuHandle;
                 pngIconLoaded_ = true;
-                Logger::GetInstance().Log("Loaded PNG icon for ProjectView",
-                    LogLevel::INFO, LogCategory::System);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", "Loaded PNG icon for ProjectView");
             }
         }
         catch (const std::exception& e) {
-            Logger::GetInstance().Log("Failed to load PNG icon: " + std::string(e.what()),
-                LogLevel::WARNING, LogCategory::System);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to load PNG icon: " + std::string(e.what()));
             pngIconLoaded_ = false;
         }
 
@@ -385,13 +379,11 @@ namespace CoreEngine
                 fileIconTexture_ = texture.texture;
                 fileIconGpuHandle_ = texture.gpuHandle;
                 fileIconLoaded_ = true;
-                Logger::GetInstance().Log("Loaded file icon for ProjectView",
-                    LogLevel::INFO, LogCategory::System);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", "Loaded file icon for ProjectView");
             }
         }
         catch (const std::exception& e) {
-            Logger::GetInstance().Log("Failed to load file icon: " + std::string(e.what()),
-                LogLevel::WARNING, LogCategory::System);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to load file icon: " + std::string(e.what()));
             fileIconLoaded_ = false;
         }
     }
@@ -483,8 +475,7 @@ namespace CoreEngine
             }
         }
         catch (const std::exception& e) {
-            Logger::GetInstance().Log("Failed to draw folder tree: " + std::string(e.what()),
-                LogLevel::Error, LogCategory::System);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", "Failed to draw folder tree: " + std::string(e.what()));
         }
     }
 
@@ -596,10 +587,11 @@ namespace CoreEngine
             }
         }
         catch (const std::exception& e) {
-            Logger::GetInstance().Log("Failed to load PNG preview: " + std::string(e.what()),
-                LogLevel::WARNING, LogCategory::System);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to load PNG preview: " + std::string(e.what()));
         }
         
         return result;
     }
 }
+
+

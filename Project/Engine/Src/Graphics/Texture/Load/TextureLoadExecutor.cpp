@@ -1,4 +1,4 @@
-#include "TextureLoadExecutor.h"
+﻿#include "TextureLoadExecutor.h"
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
@@ -38,7 +38,7 @@ namespace CoreEngine
                 "Failed to load texture file: {}\nHRESULT: 0x{:08X}\nPlease check if the file exists and the path is correct.",
                 resolvedPath,
                 static_cast<unsigned int>(hr));
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
             FileErrorDialog::ShowTextureError("Failed to load texture file", resolvedPath, hr);
             throw std::runtime_error(errorMsg);
         }
@@ -52,7 +52,7 @@ namespace CoreEngine
                 "Failed to generate mipmaps for texture: {}\nHRESULT: 0x{:08X}",
                 resolvedPath,
                 static_cast<unsigned int>(hr));
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
             FileErrorDialog::ShowTextureError("Failed to generate mipmaps for texture", resolvedPath, hr);
             throw std::runtime_error(errorMsg);
         }
@@ -64,3 +64,5 @@ namespace CoreEngine
         return result;
     }
 }
+
+

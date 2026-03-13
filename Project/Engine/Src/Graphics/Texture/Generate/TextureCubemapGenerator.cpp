@@ -1,4 +1,4 @@
-#include "TextureCubemapGenerator.h"
+﻿#include "TextureCubemapGenerator.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/ProcessExecutor/ProcessExecutor.h"
 
@@ -15,7 +15,7 @@ namespace CoreEngine
             // まずcmft実行ファイルを確認し、見つからない場合は早期終了する。
             std::filesystem::path cmftPath = FindCmftExecutable();
             if (cmftPath.empty()) {
-                Logger::GetInstance().Log("cmft executable not found. Please build cmft first.", LogLevel::WARNING, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "cmft executable not found. Please build cmft first.");
                 return false;
             }
 
@@ -29,9 +29,9 @@ namespace CoreEngine
             std::string hdrPathStr = ConvertToUnixPath(hdrPathAbs);
             std::string outputBaseStr = ConvertToUnixPath(outputBase);
 
-            Logger::GetInstance().Log(std::format("cmft path: {}", cmftPathStr), LogLevel::INFO, LogCategory::Graphics);
-            Logger::GetInstance().Log(std::format("HDR input: {}", hdrPathStr), LogLevel::INFO, LogCategory::Graphics);
-            Logger::GetInstance().Log(std::format("Output base: {}", outputBaseStr), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("cmft path: {}", cmftPathStr));
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("HDR input: {}", hdrPathStr));
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Output base: {}", outputBaseStr));
 
             std::string command = std::format(
                 "\"{}\" --input \"{}\" --output0 \"{}\" --output0params dds,rgba16f,cubemap",
@@ -39,12 +39,12 @@ namespace CoreEngine
                 hdrPathStr,
                 outputBaseStr);
 
-            Logger::GetInstance().Log(std::format("Executing: {}", command), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Executing: {}", command));
 
             // 外部プロセスで変換を実行し、失敗時は詳細をログ出力する。
             auto result = ProcessExecutor::Execute(command);
             if (!result.success) {
-                Logger::GetInstance().Log(std::format("Failed to execute cmft: GetLastError={}", result.lastError), LogLevel::WARNING, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", std::format("Failed to execute cmft: GetLastError={}", result.lastError));
                 return false;
             }
 
@@ -52,11 +52,11 @@ namespace CoreEngine
             std::this_thread::sleep_for(std::chrono::milliseconds(processWaitTimeOutMs_));
             bool isValid = ValidateGeneratedCubemap(cubemapDDSPath);
 
-            Logger::GetInstance().Log(std::format("cmft exit code: {}, validation: {}", result.exitCode, isValid ? "OK" : "FAILED"), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("cmft exit code: {}, validation: {}", result.exitCode, isValid ? "OK" : "FAILED"));
             return isValid;
         }
         catch (const std::exception& e) {
-            Logger::GetInstance().Log(std::format("Exception during cubemap generation: {}", e.what()), LogLevel::WARNING, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", std::format("Exception during cubemap generation: {}", e.what()));
             return false;
         }
     }
@@ -90,16 +90,18 @@ namespace CoreEngine
         try {
             auto fileSize = std::filesystem::file_size(filePath);
             if (fileSize == 0) {
-                Logger::GetInstance().Log(std::format("Cubemap file is empty: {}", filePath), LogLevel::WARNING, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", std::format("Cubemap file is empty: {}", filePath));
                 return false;
             }
 
-            Logger::GetInstance().Log(std::format("Cubemap DDS generated: {} (size: {} bytes)", filePath, fileSize), LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Cubemap DDS generated: {} (size: {} bytes)", filePath, fileSize));
             return true;
         }
         catch (const std::filesystem::filesystem_error& e) {
-            Logger::GetInstance().Log(std::format("Failed to validate cubemap file: {}", e.what()), LogLevel::WARNING, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", std::format("Failed to validate cubemap file: {}", e.what()));
             return false;
         }
     }
 }
+
+

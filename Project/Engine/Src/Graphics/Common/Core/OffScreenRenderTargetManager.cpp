@@ -1,4 +1,4 @@
-#include "OffScreenRenderTargetManager.h"
+﻿#include "OffScreenRenderTargetManager.h"
 #include "DescriptorManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/Render.h"
@@ -81,9 +81,8 @@ void OffScreenRenderTargetManager::CreateOrResizeTargetResource(OffScreenTarget&
     assert(SUCCEEDED(hr));
 
 #ifdef _DEBUG
-    Logger::GetInstance().Log(
-        std::format("オフスクリーンレンダーターゲット{}を作成中...\n", index),
-        LogLevel::INFO, LogCategory::Graphics);
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+        std::format("オフスクリーンレンダーターゲット{}を作成中...\n", index));
 #endif
 }
 
@@ -158,3 +157,5 @@ D3D12_GPU_DESCRIPTOR_HANDLE OffScreenRenderTargetManager::GetOffScreenSrvHandle(
     return offScreenTargets_[index].srvHandle;
 }
 }
+
+

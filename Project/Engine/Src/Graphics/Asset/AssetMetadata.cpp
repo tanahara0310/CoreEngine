@@ -1,4 +1,4 @@
-#include "AssetMetadata.h"
+﻿#include "AssetMetadata.h"
 #include "Utility/Logger/Logger.h"
 #include <fstream>
 #include <sstream>
@@ -27,10 +27,8 @@ namespace CoreEngine
         std::string newGuid = GenerateGUID();
         SaveMetaFile(assetPath, newGuid, type);
 
-        Logger::GetInstance().Log(
-            "Created meta file for: " + assetPath.filename().string() + " (GUID: " + newGuid + ")",
-            LogLevel::INFO, LogCategory::System
-        );
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
+            "Created meta file for: " + assetPath.filename().string() + " (GUID: " + newGuid + ")");
 
         return newGuid;
     }
@@ -94,10 +92,8 @@ namespace CoreEngine
             std::ofstream file(metaFilePath);
             if (!file.is_open())
             {
-                Logger::GetInstance().Log(
-                    "Failed to create meta file: " + metaFilePath.string(),
-                    LogLevel::Error, LogCategory::System
-                );
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", 
+                    "Failed to create meta file: " + metaFilePath.string());
                 return;
             }
 
@@ -122,10 +118,8 @@ namespace CoreEngine
         }
         catch (const std::exception& e)
         {
-            Logger::GetInstance().Log(
-                "Exception while saving meta file: " + std::string(e.what()),
-                LogLevel::Error, LogCategory::System
-            );
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", 
+                "Exception while saving meta file: " + std::string(e.what()));
         }
     }
 
@@ -184,11 +178,11 @@ namespace CoreEngine
         }
         catch (const std::exception& e)
         {
-            Logger::GetInstance().Log(
-                "Exception while loading meta file: " + std::string(e.what()),
-                LogLevel::Error, LogCategory::System
-            );
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", 
+                "Exception while loading meta file: " + std::string(e.what()));
             return false;
         }
     }
 }
+
+

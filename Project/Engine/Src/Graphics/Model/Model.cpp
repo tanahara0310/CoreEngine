@@ -1,4 +1,4 @@
-#include "Model.h"
+﻿#include "Model.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
@@ -326,24 +326,21 @@ namespace CoreEngine
 
         // リソースがない場合は失敗
         if (!resource_) {
-            Logger::GetInstance().Log("Cannot switch animation: ModelResource is null",
-                LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: ModelResource is null");
             return false;
         }
 
         // アニメーションを取得
         const Animation* newAnimation = resource_->GetAnimation(animationName);
         if (!newAnimation) {
-            Logger::GetInstance().Log("Animation not found: " + animationName,
-                LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Animation not found: " + animationName);
             return false;
         }
 
         // SkeletonAnimatorの場合のみアニメーション切り替えが可能
         auto* skeletonAnimator = dynamic_cast<SkeletonAnimator*>(animationController_.get());
         if (!skeletonAnimator) {
-            Logger::GetInstance().Log("Animation switching is only supported for SkeletonAnimator",
-                LogLevel::WARNING, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "Animation switching is only supported for SkeletonAnimator");
             return false;
         }
 
@@ -351,8 +348,7 @@ namespace CoreEngine
         Skeleton currentSkeleton = skeletonAnimator->GetSkeleton();
         animationController_ = std::make_unique<SkeletonAnimator>(currentSkeleton, *newAnimation, loop);
 
-        Logger::GetInstance().Log("Switched to animation: " + animationName,
-            LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Switched to animation: " + animationName);
 
         return true;
     }
@@ -360,16 +356,14 @@ namespace CoreEngine
     bool Model::SwitchAnimationWithBlend(const std::string& animationName, float blendDuration, bool loop) {
         // リソースがない場合は失敗
         if (!resource_) {
-            Logger::GetInstance().Log("Cannot switch animation: ModelResource is null",
-                LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: ModelResource is null");
             return false;
         }
 
         // アニメーションを取得
         const Animation* newAnimation = resource_->GetAnimation(animationName);
         if (!newAnimation) {
-            Logger::GetInstance().Log("Animation not found: " + animationName,
-                LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Animation not found: " + animationName);
             return false;
         }
 
@@ -381,8 +375,7 @@ namespace CoreEngine
             auto newAnimator = std::make_unique<SkeletonAnimator>(currentSkeleton, *newAnimation, loop);
             blender->StartBlend(std::move(newAnimator), blendDuration);
 
-            Logger::GetInstance().Log("Started blend to animation: " + animationName,
-                LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Started blend to animation: " + animationName);
             return true;
         }
 
@@ -401,13 +394,11 @@ namespace CoreEngine
             blenderController->StartBlend(std::move(newAnimator), blendDuration);
             animationController_ = std::move(blenderController);
 
-            Logger::GetInstance().Log("Started blend to animation: " + animationName,
-                LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Started blend to animation: " + animationName);
             return true;
         }
 
-        Logger::GetInstance().Log("Animation blending is only supported for SkeletonAnimator",
-            LogLevel::WARNING, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "Animation blending is only supported for SkeletonAnimator");
         return false;
     }
 
@@ -554,3 +545,5 @@ namespace CoreEngine
     }
 
 }
+
+

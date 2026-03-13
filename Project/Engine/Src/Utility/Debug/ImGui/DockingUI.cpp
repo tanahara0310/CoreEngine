@@ -1,4 +1,4 @@
-#include "DockingUI.h"
+﻿#include "DockingUI.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "EngineSystem/PlaybackState.h"
 #include "Utility/Logger/Logger.h"
@@ -219,11 +219,11 @@ void DockingUI::LoadPlaybackIcons()
         gridIcon_ = gridTex.gpuHandle;
 
         playbackIconsLoaded_ = true;
-        Logger::GetInstance().Log("Playback icons loaded successfully (DockingUI)", LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Playback icons loaded successfully (DockingUI)");
     }
     catch (const std::exception& e) {
         std::string errorMsg = std::format("Failed to load playback icons: {}", e.what());
-        Logger::GetInstance().Log(errorMsg, LogLevel::WARNING, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", errorMsg);
         playbackIconsLoaded_ = false;
     }
 }
@@ -403,3 +403,5 @@ void DockingUI::DrawPlaybackToolbar()
     ImGui::PopStyleVar(3);
 }
 }
+
+

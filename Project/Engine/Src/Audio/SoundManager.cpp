@@ -1,4 +1,4 @@
-#include "SoundManager.h"
+﻿#include "SoundManager.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -270,7 +270,7 @@ namespace CoreEngine
 
     bool SoundManager::LoadWaveFileInternal(const std::string& filename, SoundData& outSoundData)
     {
-        Logger::GetInstance().Log(std::format("Loading audio file (WAV): {}", filename), LogLevel::INFO, LogCategory::Audio);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Audio, "{}", std::format("Loading audio file (WAV): {}", filename));
 
         // ファイル入力ストリームのインスタンス
         std::ifstream file;
@@ -279,7 +279,7 @@ namespace CoreEngine
         // ファイルが開けなかったらエラー
         if (!file.is_open()) {
             std::string errorMsg = std::format("Failed to open audio file: {}\nPlease check if the file exists and the path is correct.", filename);
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Audio);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Audio, "{}", errorMsg);
             FileErrorDialog::ShowAudioError("Failed to open WAV file", filename);
             return false;
         }
@@ -290,13 +290,13 @@ namespace CoreEngine
         // RIFFヘッダのチェック
         if (strncmp(riff.chunk.id, "RIFF", 4) != 0) {
             std::string errorMsg = std::format("Invalid RIFF header in audio file: {}", filename);
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Audio);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Audio, "{}", errorMsg);
             return false;
         }
         // タイプがWAVEかチェック
         if (strncmp(riff.type, "WAVE", 4) != 0) {
             std::string errorMsg = std::format("Invalid WAVE type in audio file: {}", filename);
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Audio);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Audio, "{}", errorMsg);
             return false;
         }
 
@@ -306,7 +306,7 @@ namespace CoreEngine
         file.read(reinterpret_cast<char*>(&format), sizeof(ChunkHeader));
         if (strncmp(format.chunk.id, "fmt ", 4) != 0) {
             std::string errorMsg = std::format("Invalid format chunk in audio file: {}", filename);
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Audio);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Audio, "{}", errorMsg);
             return false;
         }
 
@@ -348,10 +348,10 @@ namespace CoreEngine
 
     bool SoundManager::ExtractPCMDataFromFile(const std::string& filename, SoundData& outSoundData)
     {
-        Logger::GetInstance().Log(std::format("Loading audio file (MP3/compressed): {}", filename), LogLevel::INFO, LogCategory::Audio);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Audio, "{}", std::format("Loading audio file (MP3/compressed): {}", filename));
 
         if (!mfInitialized_) {
-            Logger::GetInstance().Log("Media Foundation not initialized", LogLevel::Error, LogCategory::Audio);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Audio, "{}", "Media Foundation not initialized");
             return false;
         }
 
@@ -363,7 +363,7 @@ namespace CoreEngine
         if (FAILED(hr)) {
             std::string errorMsg = std::format("Failed to create source reader for audio file: {}\nHRESULT: 0x{:08X}\nPlease check if the file exists and is a valid audio file.",
                 filename, static_cast<unsigned int>(hr));
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Audio);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Audio, "{}", errorMsg);
             FileErrorDialog::ShowAudioError("Failed to open MP3/compressed audio file", filename, hr);
             return false;
         }
@@ -895,3 +895,5 @@ namespace CoreEngine
 
 #pragma warning(pop) // 警告設定を復元
 }
+
+

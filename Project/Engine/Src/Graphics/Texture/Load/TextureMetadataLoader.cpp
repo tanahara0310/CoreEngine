@@ -1,4 +1,4 @@
-#include "TextureMetadataLoader.h"
+﻿#include "TextureMetadataLoader.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FileErrorDialog/FileErrorDialog.h"
@@ -21,7 +21,7 @@ namespace CoreEngine
                 "Failed to load texture file: {}\nHRESULT: 0x{:08X}\nPlease check if the file exists and the path is correct.",
                 resolvedPath,
                 static_cast<unsigned int>(hr));
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
             FileErrorDialog::ShowTextureError("Failed to load texture file", resolvedPath, hr);
             throw std::runtime_error(errorMsg);
         }
@@ -29,3 +29,5 @@ namespace CoreEngine
         return metadata;
     }
 }
+
+
