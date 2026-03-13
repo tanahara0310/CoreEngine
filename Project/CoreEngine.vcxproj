@@ -331,7 +331,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Input\KeyboardInput.cpp" />
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp" />
-    <ClCompile Include="Application\MyGame.cpp" />
+    <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Externals\imgui\imgui.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
@@ -607,7 +607,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.h" />
-    <ClInclude Include="Application\MyGame.h" />
+    <ClInclude Include="Application\Src\MyGame.h" />
     <ClInclude Include="Externals\spdlog\include\spdlog\async.h" />
     <ClInclude Include="Externals\spdlog\include\spdlog\async_logger-inl.h" />
     <ClInclude Include="Externals\spdlog\include\spdlog\async_logger.h" />
