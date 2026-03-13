@@ -1,4 +1,4 @@
-#include "IBLManager.h"
+﻿#include "IBLManager.h"
 #include "IBLGenerator.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/Model/ModelRenderer.h"
@@ -12,79 +12,77 @@ bool IBLManager::Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator,
 {
     if (!dxCommon || !iblGenerator)
     {
-        Logger::GetInstance().Log("IBLManager::Initialize: Invalid parameters (dxCommon or iblGenerator is null)",
-                                  LogLevel::Error, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "IBLManager::Initialize: Invalid parameters (dxCommon or iblGenerator is null)");
         return false;
     }
 
     if (!params.environmentMap)
     {
-        Logger::GetInstance().Log("IBLManager::Initialize: Invalid environment map",
-                                  LogLevel::Error, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "IBLManager::Initialize: Invalid environment map");
         return false;
     }
 
     dxCommon_ = dxCommon;
 
     // ===== Irradiance Map生成 =====
-    Logger::GetInstance().Log("Generating Irradiance Map...", LogLevel::INFO, LogCategory::Graphics);
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Generating Irradiance Map...");
     irradianceMap_ = iblGenerator->GenerateIrradianceMap(params.environmentMap, params.irradianceSize);
     
     if (!irradianceMap_)
     {
-        Logger::GetInstance().Log("Failed to generate Irradiance Map", LogLevel::Error, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to generate Irradiance Map");
         return false;
     }
 
     if (!CreateIrradianceSRV())
     {
-        Logger::GetInstance().Log("Failed to create Irradiance Map SRV", LogLevel::Error, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to create Irradiance Map SRV");
         return false;
     }
 
     dxCommon_->SetIrradianceMap(irradianceMap_.Get(), irradianceSRV_);
-    Logger::GetInstance().Log("Irradiance Map generated successfully", LogLevel::INFO, LogCategory::Graphics);
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Irradiance Map generated successfully");
 
     // ===== Prefiltered Environment Map生成 =====
-    Logger::GetInstance().Log("Generating Prefiltered Environment Map...", LogLevel::INFO, LogCategory::Graphics);
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Generating Prefiltered Environment Map...");
     prefilteredMap_ = iblGenerator->GeneratePrefilteredEnvironmentMap(params.environmentMap, params.prefilteredSize);
 
     if (!prefilteredMap_)
     {
-        Logger::GetInstance().Log("Failed to generate Prefiltered Map", LogLevel::Error, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to generate Prefiltered Map");
         return false;
     }
 
     if (!CreatePrefilteredSRV())
     {
-        Logger::GetInstance().Log("Failed to create Prefiltered Map SRV", LogLevel::Error, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to create Prefiltered Map SRV");
         return false;
     }
 
     dxCommon_->SetPrefilteredMap(prefilteredMap_.Get(), prefilteredSRV_);
-    Logger::GetInstance().Log("Prefiltered Map generated successfully", LogLevel::INFO, LogCategory::Graphics);
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Prefiltered Map generated successfully");
 
     // ===== BRDF LUT生成 =====
-    Logger::GetInstance().Log("Generating BRDF LUT...", LogLevel::INFO, LogCategory::Graphics);
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Generating BRDF LUT...");
     brdfLUT_ = iblGenerator->GenerateBRDFLUT(params.brdfLUTSize);
 
     if (!brdfLUT_)
     {
-        Logger::GetInstance().Log("Failed to generate BRDF LUT", LogLevel::Error, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to generate BRDF LUT");
         return false;
     }
 
     if (!CreateBRDFLUTSRV())
     {
-        Logger::GetInstance().Log("Failed to create BRDF LUT SRV", LogLevel::Error, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to create BRDF LUT SRV");
         return false;
     }
 
     dxCommon_->SetBRDFLUT(brdfLUT_.Get(), brdfLUTSRV_);
-    Logger::GetInstance().Log("BRDF LUT generated successfully", LogLevel::INFO, LogCategory::Graphics);
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "BRDF LUT generated successfully");
 
     isInitialized_ = true;
-    Logger::GetInstance().Log("IBL system initialized successfully", LogLevel::INFO, LogCategory::Graphics);
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "IBL system initialized successfully");
     return true;
 }
 
@@ -92,7 +90,7 @@ void IBLManager::SetToModelRenderer(ModelRenderer* renderer)
 {
     if (!renderer || !isInitialized_)
     {
-        Logger::GetInstance().Log("IBLManager::SetToModelRenderer: Invalid state", LogLevel::WARNING, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "IBLManager::SetToModelRenderer: Invalid state");
         return;
     }
 
@@ -105,7 +103,7 @@ void IBLManager::SetToSkinnedModelRenderer(SkinnedModelRenderer* renderer)
 {
     if (!renderer || !isInitialized_)
     {
-        Logger::GetInstance().Log("IBLManager::SetToSkinnedModelRenderer: Invalid state", LogLevel::WARNING, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "IBLManager::SetToSkinnedModelRenderer: Invalid state");
         return;
     }
 
@@ -188,3 +186,5 @@ bool IBLManager::CreateBRDFLUTSRV()
 }
 
 } // namespace CoreEngine
+
+

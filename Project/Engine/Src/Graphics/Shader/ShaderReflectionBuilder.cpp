@@ -1,4 +1,4 @@
-#include "ShaderReflectionBuilder.h"
+﻿#include "ShaderReflectionBuilder.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 
@@ -31,7 +31,7 @@ namespace CoreEngine
 
         // デバッグ出力
 #ifdef _DEBUG
-        Logger::GetInstance().Log(reflectionData->ToString(), LogLevel::INFO, LogCategory::Shader);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", reflectionData->ToString());
 #endif
 
         return reflectionData;
@@ -50,7 +50,7 @@ namespace CoreEngine
         }
 
 #ifdef _DEBUG
-        Logger::GetInstance().Log(reflectionData->ToString(), LogLevel::INFO, LogCategory::Shader);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", reflectionData->ToString());
 #endif
 
         return reflectionData;
@@ -82,7 +82,7 @@ namespace CoreEngine
         HRESULT hr = dxcUtils_->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(reflection.GetAddressOf()));
 
         if (FAILED(hr)) {
-            Logger::GetInstance().Log("Failed to create shader reflection", LogLevel::Error, LogCategory::Shader);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", "Failed to create shader reflection");
             return;
         }
 
@@ -153,9 +153,8 @@ namespace CoreEngine
 
 #ifdef _DEBUG
             if (!found) {
-                Logger::GetInstance().Log(
-                    "[Warning] CBV '" + std::string(bufferDesc.Name) + "' not found in BoundResources",
-                    LogLevel::WARNING, LogCategory::Shader);
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader, "{}", 
+                    "[Warning] CBV '" + std::string(bufferDesc.Name) + "' not found in BoundResources");
             }
 #endif
 
@@ -289,3 +288,5 @@ namespace CoreEngine
         return DXGI_FORMAT_UNKNOWN;
     }
 }
+
+

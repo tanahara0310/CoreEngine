@@ -1,4 +1,4 @@
-#include "EngineSystem/EngineSystem.h"
+﻿#include "EngineSystem/EngineSystem.h"
 
 #ifdef _DEBUG
 #include "Camera/Debug/CameraDebugUI.h"
@@ -60,11 +60,9 @@ namespace CoreEngine
             iblParams.brdfLUTSize = 512;
 
             if (iblManager_->Initialize(dxCommon, iblGenerator, iblParams)) {
-                Logger::GetInstance().Log("IBL system initialized successfully",
-                    LogLevel::INFO, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "IBL system initialized successfully");
             } else {
-                Logger::GetInstance().Log("Failed to initialize IBL system",
-                    LogLevel::Error, LogCategory::Graphics);
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBL system");
             }
         }
 
@@ -185,3 +183,5 @@ namespace CoreEngine
     {
     }
 }
+
+

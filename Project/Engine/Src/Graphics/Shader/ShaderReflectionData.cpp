@@ -1,4 +1,4 @@
-#include "ShaderReflectionData.h"
+﻿#include "ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 #include <cctype>
@@ -269,9 +269,8 @@ namespace CoreEngine
         
         if (!cbv) {
             // CBVが見つからない場合は警告（オプショナルなリソースかもしれない）
-            Logger::GetInstance().Log(
-                "[CBV Validation] Warning: CBV '" + cbvName + "' not found in " + shaderName_,
-                LogLevel::WARNING, LogCategory::Shader);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader, "{}", 
+                "[CBV Validation] Warning: CBV '" + cbvName + "' not found in " + shaderName_);
             return true;  // 見つからない場合は検証スキップ（オプショナルとみなす）
         }
         
@@ -305,7 +304,7 @@ namespace CoreEngine
             oss << "│    • Alignment mismatch (HLSL uses 16-byte alignment)          │\n";
             oss << "└─────────────────────────────────────────────────────────────────┘\n";
             
-            Logger::GetInstance().Log(oss.str(), LogLevel::Error, LogCategory::Shader);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", oss.str());
             return false;
         }
         
@@ -340,7 +339,7 @@ namespace CoreEngine
             }
             
             oss << "└─────────────────────────────────────────────────────────────────┘\n";
-            Logger::GetInstance().Log(oss.str(), LogLevel::INFO, LogCategory::Shader);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", oss.str());
 #endif
         }
         
@@ -416,7 +415,7 @@ namespace CoreEngine
             }
             
             oss << "└─────────────────────────────────────────────────────────────────┘\n";
-            Logger::GetInstance().Log(oss.str(), LogLevel::INFO, LogCategory::Shader);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", oss.str());
         }
 #endif
     }
@@ -432,3 +431,5 @@ namespace CoreEngine
         return elements;
     }
 }
+
+

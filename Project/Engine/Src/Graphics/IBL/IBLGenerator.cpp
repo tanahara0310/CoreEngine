@@ -1,4 +1,4 @@
-#include "IBLGenerator.h"
+﻿#include "IBLGenerator.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
@@ -16,15 +16,14 @@ namespace CoreEngine
         // パラメータのnullptrチェック
         if (!dxCommon || !shaderCompiler)
         {
-            Logger::GetInstance().Log("IBLGenerator::Initialize: Invalid parameters (dxCommon or shaderCompiler is null)",
-                LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "IBLGenerator::Initialize: Invalid parameters (dxCommon or shaderCompiler is null)");
             throw std::invalid_argument("dxCommon and shaderCompiler must not be null");
         }
 
         dxCommon_ = dxCommon;
         shaderCompiler_ = shaderCompiler;
 
-        Logger::GetInstance().Log("Initializing IBLGenerator...", LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Initializing IBLGenerator...");
 
         try
         {
@@ -35,12 +34,11 @@ namespace CoreEngine
             CreatePrefilteredRootSignature();
             CreatePrefilteredPipeline();
 
-            Logger::GetInstance().Log("IBLGenerator initialized successfully", LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "IBLGenerator initialized successfully");
         }
         catch (const std::exception& e)
         {
-            Logger::GetInstance().Log(std::format("IBLGenerator initialization failed: {}", e.what()),
-                LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", std::format("IBLGenerator initialization failed: {}", e.what()));
             throw;
         }
     }
@@ -64,11 +62,9 @@ namespace CoreEngine
         {
             if (error)
             {
-                Logger::GetInstance().Log(
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", 
                     std::format("Failed to serialize BRDF LUT root signature: {}",
-                        static_cast<char*>(error->GetBufferPointer())),
-                    LogLevel::Error,
-                    LogCategory::Graphics);
+                        static_cast<char*>(error->GetBufferPointer())));
             }
             assert(false);
         }
@@ -145,11 +141,9 @@ namespace CoreEngine
         {
             if (error)
             {
-                Logger::GetInstance().Log(
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", 
                     std::format("Failed to serialize Irradiance root signature: {}",
-                        static_cast<char*>(error->GetBufferPointer())),
-                    LogLevel::Error,
-                    LogCategory::Graphics);
+                        static_cast<char*>(error->GetBufferPointer())));
             }
             assert(false);
         }
@@ -262,10 +256,8 @@ namespace CoreEngine
 
     Microsoft::WRL::ComPtr<ID3D12Resource> IBLGenerator::GenerateBRDFLUT(uint32_t size)
     {
-        Logger::GetInstance().Log(
-            std::format("Generating BRDF LUT ({}x{})...", size, size),
-            LogLevel::INFO,
-            LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+            std::format("Generating BRDF LUT ({}x{})...", size, size));
 
         // UAVテクスチャ作成（RG16F）
         auto brdfLUT = CreateUAVTexture(size, size, DXGI_FORMAT_R16G16_FLOAT);
@@ -327,7 +319,7 @@ namespace CoreEngine
         hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
         assert(SUCCEEDED(hr));
 
-        Logger::GetInstance().Log("BRDF LUT generated successfully", LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "BRDF LUT generated successfully");
 
         return brdfLUT;
     }
@@ -337,10 +329,8 @@ namespace CoreEngine
         if (!brdfLUT)
             return false;
 
-        Logger::GetInstance().Log(
-            std::format("Saving BRDF LUT to: {}", outputPath),
-            LogLevel::INFO,
-            LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+            std::format("Saving BRDF LUT to: {}", outputPath));
 
         // Readbackバッファ作成
         D3D12_RESOURCE_DESC desc = brdfLUT->GetDesc();
@@ -451,20 +441,18 @@ namespace CoreEngine
 
         if (SUCCEEDED(hr))
         {
-            Logger::GetInstance().Log("BRDF LUT saved successfully", LogLevel::INFO, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "BRDF LUT saved successfully");
             return true;
         }
 
-        Logger::GetInstance().Log("Failed to save BRDF LUT", LogLevel::Error, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to save BRDF LUT");
         return false;
     }
 
     Microsoft::WRL::ComPtr<ID3D12Resource> IBLGenerator::LoadBRDFLUT(const std::string& filePath)
     {
-        Logger::GetInstance().Log(
-            std::format("Loading BRDF LUT from: {}", filePath),
-            LogLevel::INFO,
-            LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+            std::format("Loading BRDF LUT from: {}", filePath));
 
         std::wstring wFilePath = Logger::GetInstance().ConvertString(filePath);
 
@@ -473,7 +461,7 @@ namespace CoreEngine
 
         if (FAILED(hr))
         {
-            Logger::GetInstance().Log("Failed to load BRDF LUT", LogLevel::WARNING, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "Failed to load BRDF LUT");
             return nullptr;
         }
 
@@ -507,7 +495,7 @@ namespace CoreEngine
         // アップロード処理（省略: TextureManagerと同様の処理）
         // 実際のプロジェクトではTextureManagerのLoad処理を使用することを推奨
 
-        Logger::GetInstance().Log("BRDF LUT loaded successfully", LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "BRDF LUT loaded successfully");
         return texture;
     }
 
@@ -517,14 +505,12 @@ namespace CoreEngine
     {
         if (!environmentMap)
         {
-            Logger::GetInstance().Log("Invalid environment map", LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Invalid environment map");
             return nullptr;
         }
 
-        Logger::GetInstance().Log(
-            std::format("Generating Irradiance Map ({}x{})...", size, size),
-            LogLevel::INFO,
-            LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+            std::format("Generating Irradiance Map ({}x{})...", size, size));
 
         // UAVキューブマップ作成（RGBA16F）
         auto irradianceMap = CreateUAVCubemap(size, DXGI_FORMAT_R16G16B16A16_FLOAT);
@@ -612,7 +598,7 @@ namespace CoreEngine
         hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
         assert(SUCCEEDED(hr));
 
-        Logger::GetInstance().Log("Irradiance Map generated successfully", LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Irradiance Map generated successfully");
 
         return irradianceMap;
     }
@@ -665,11 +651,9 @@ namespace CoreEngine
         {
             if (error)
             {
-                Logger::GetInstance().Log(
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", 
                     std::format("Failed to serialize Prefiltered root signature: {}",
-                        static_cast<char*>(error->GetBufferPointer())),
-                    LogLevel::Error,
-                    LogCategory::Graphics);
+                        static_cast<char*>(error->GetBufferPointer())));
             }
             assert(false);
         }
@@ -741,14 +725,12 @@ namespace CoreEngine
     {
         if (!environmentMap)
         {
-            Logger::GetInstance().Log("Invalid environment map", LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Invalid environment map");
             return nullptr;
         }
 
-        Logger::GetInstance().Log(
-            std::format("Generating Prefiltered Environment Map ({}x{}, 5 mips)...", size, size),
-            LogLevel::INFO,
-            LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+            std::format("Generating Prefiltered Environment Map ({}x{}, 5 mips)...", size, size));
 
         // ミップマップ5レベルのキューブマップ作成
         // mip0: 128x128 (roughness=0.0)
@@ -863,10 +845,12 @@ namespace CoreEngine
         hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
         assert(SUCCEEDED(hr));
 
-        Logger::GetInstance().Log("Prefiltered Environment Map generated successfully", LogLevel::INFO, LogCategory::Graphics);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Prefiltered Environment Map generated successfully");
 
         return prefilteredMap;
     }
 
 }
+
+
 

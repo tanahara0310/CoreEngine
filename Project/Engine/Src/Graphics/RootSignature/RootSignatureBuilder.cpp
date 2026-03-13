@@ -1,4 +1,4 @@
-#include "RootSignatureBuilder.h"
+﻿#include "RootSignatureBuilder.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 #include <algorithm>
@@ -51,8 +51,7 @@ namespace CoreEngine
         if (FAILED(hr)) {
             if (errorBlob) {
                 result.errorMessage = reinterpret_cast<char*>(errorBlob->GetBufferPointer());
-                Logger::GetInstance().Log("RootSignature serialization failed: " + result.errorMessage, 
-                    LogLevel::Error, LogCategory::Shader);
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", "RootSignature serialization failed: " + result.errorMessage);
             }
             return result;
         }
@@ -64,7 +63,7 @@ namespace CoreEngine
 
         if (FAILED(hr)) {
             result.errorMessage = "Failed to create RootSignature";
-            Logger::GetInstance().Log(result.errorMessage, LogLevel::Error, LogCategory::Shader);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", result.errorMessage);
             return result;
         }
 
@@ -100,7 +99,7 @@ namespace CoreEngine
             ss << "│    • " << name << "  →  [" << index << "]\n";
         }
         ss << "└─────────────────────────────────────────────────────────────────┘\n";
-        Logger::GetInstance().Log(ss.str(), LogLevel::INFO, LogCategory::Shader);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", ss.str());
 #endif
 
         return result;
@@ -497,3 +496,5 @@ namespace CoreEngine
         return param;
     }
 }
+
+

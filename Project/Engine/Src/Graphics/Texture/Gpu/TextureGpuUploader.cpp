@@ -1,4 +1,4 @@
-#include "TextureGpuUploader.h"
+﻿#include "TextureGpuUploader.h"
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -43,7 +43,7 @@ namespace CoreEngine
 
         if (FAILED(hr)) {
             std::string errorMsg = "Failed to create texture resource: " + resolvedPath;
-            Logger::GetInstance().Log(errorMsg, LogLevel::Error, LogCategory::Graphics);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
             FileErrorDialog::ShowTextureError("Failed to create texture resource", resolvedPath, hr);
             throw std::runtime_error(errorMsg);
         }
@@ -90,3 +90,5 @@ namespace CoreEngine
         return result;
     }
 }
+
+

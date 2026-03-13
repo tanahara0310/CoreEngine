@@ -1,4 +1,4 @@
-#include "ShaderCompiler.h"
+﻿#include "ShaderCompiler.h"
 
 #include <cassert>
 
@@ -29,7 +29,7 @@ namespace CoreEngine
     {
 
         // これからシェーダーをコンパイルする旨をログ出力
-        Logger::GetInstance().Log(std::format(L"Begin CompileShader, path:{}, profile:{}", filePath, profile), LogLevel::INFO, LogCategory::Shader);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", std::format(L"Begin CompileShader, path:{}, profile:{}", filePath, profile));
 
         // hlslファイルを読み込む
         IDxcBlobEncoding* shaderSource = nullptr;
@@ -75,7 +75,7 @@ namespace CoreEngine
         shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
         if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
             std::string errorMessage(shaderError->GetStringPointer());
-            Logger::GetInstance().Log(errorMessage, LogLevel::Error, LogCategory::Shader);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", errorMessage);
             assert(false);
         }
 
@@ -86,7 +86,7 @@ namespace CoreEngine
         assert(SUCCEEDED(hr));
 
         // コンパイル成功ログ
-        Logger::GetInstance().Log(std::format(L"Compile Succeeded, path:{}, profile:{}", filePath, profile), LogLevel::INFO, LogCategory::Shader);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", std::format(L"Compile Succeeded, path:{}, profile:{}", filePath, profile));
 
         // 使わないリソースを解放
         shaderResult->Release();
@@ -96,3 +96,5 @@ namespace CoreEngine
         return shaderBlob;
     }
 }
+
+

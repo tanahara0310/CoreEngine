@@ -1,4 +1,4 @@
-#include "PipelineStateManager.h"
+﻿#include "PipelineStateManager.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
 
@@ -159,7 +159,7 @@ PipelineStateBuilder& PipelineStateBuilder::SetInputLayoutFromReflection(const S
         
         oss << "└─────────────────────────────────────────────────────────────────┘\n";
         
-        Logger::GetInstance().Log(oss.str(), LogLevel::INFO, LogCategory::Shader);
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", oss.str());
     }
 #endif
     
@@ -437,3 +437,5 @@ void PipelineStateManager::RegisterPipelineState(BlendMode mode, ComPtr<ID3D12Pi
     pipelineStates_[mode] = pso;
 }
 }
+
+
