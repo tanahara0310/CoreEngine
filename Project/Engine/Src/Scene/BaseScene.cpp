@@ -121,6 +121,9 @@ namespace CoreEngine
         if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
             renderManager->SetDebugLineRenderingEnabled(true);
         }
+#ifdef _DEBUG
+        DrawGameCameraFrustumDebug();
+#endif
         DrawWithCamera(ResolveSceneViewCameraName(), false);
     }
 
@@ -132,6 +135,19 @@ namespace CoreEngine
 
         if (ICamera* sceneCamera = cameraManager_->GetCamera(ResolveSceneViewCameraName())) {
             return sceneCamera;
+        }
+
+        return cameraManager_->GetActiveCamera(CameraType::Camera3D);
+    }
+
+    ICamera* BaseScene::GetGameViewCamera3D() const
+    {
+        if (!cameraManager_) {
+            return nullptr;
+        }
+
+        if (ICamera* gameCamera = cameraManager_->GetCamera(ResolveGameViewCameraName())) {
+            return gameCamera;
         }
 
         return cameraManager_->GetActiveCamera(CameraType::Camera3D);
@@ -293,6 +309,69 @@ namespace CoreEngine
 
         // グリッドはシーンデータに保存しない
         gridRenderer_->SetSerializeEnabled(false);
+    }
+
+    void BaseScene::DrawGameCameraFrustumDebug()
+    {
+        ICamera* gameCamera = GetGameViewCamera3D();
+        if (!gameCamera) {
+            return;
+        }
+
+        const CameraParameters params = gameCamera->GetParameters();
+        const float nearClip = params.nearClip;
+        const float farClip = params.farClip;
+
+        if (nearClip <= 0.0f || farClip <= nearClip) {
+            return;
+        }
+
+        auto Unproject = [&](float ndcX, float ndcY, float ndcZ) -> Vector3 {
+            Matrix4x4 viewProj = MathCore::Matrix::Multiply(
+                gameCamera->GetViewMatrix(),
+                gameCamera->GetProjectionMatrix());
+            Matrix4x4 invViewProj = MathCore::Matrix::Inverse(viewProj);
+            return MathCore::CoordinateTransform::TransformCoord(Vector3{ ndcX, ndcY, ndcZ }, invViewProj);
+        };
+
+        const Vector3 nearLT = Unproject(-1.0f, 1.0f, 0.0f);
+        const Vector3 nearRT = Unproject(1.0f, 1.0f, 0.0f);
+        const Vector3 nearLB = Unproject(-1.0f, -1.0f, 0.0f);
+        const Vector3 nearRB = Unproject(1.0f, -1.0f, 0.0f);
+
+        const Vector3 farLT = Unproject(-1.0f, 1.0f, 1.0f);
+        const Vector3 farRT = Unproject(1.0f, 1.0f, 1.0f);
+        const Vector3 farLB = Unproject(-1.0f, -1.0f, 1.0f);
+        const Vector3 farRB = Unproject(1.0f, -1.0f, 1.0f);
+
+        auto& lineManager = LineManager::GetInstance();
+        const Vector3 lineColor = { 0.0f, 0.0f, 0.0f };
+        constexpr float alpha = 0.95f;
+
+        // Near面
+        lineManager.DrawLine(nearLT, nearRT, lineColor, alpha);
+        lineManager.DrawLine(nearRT, nearRB, lineColor, alpha);
+        lineManager.DrawLine(nearRB, nearLB, lineColor, alpha);
+        lineManager.DrawLine(nearLB, nearLT, lineColor, alpha);
+
+        // Far面
+        lineManager.DrawLine(farLT, farRT, lineColor, alpha);
+        lineManager.DrawLine(farRT, farRB, lineColor, alpha);
+        lineManager.DrawLine(farRB, farLB, lineColor, alpha);
+        lineManager.DrawLine(farLB, farLT, lineColor, alpha);
+
+        // Near-Far接続
+        lineManager.DrawLine(nearLT, farLT, lineColor, alpha);
+        lineManager.DrawLine(nearRT, farRT, lineColor, alpha);
+        lineManager.DrawLine(nearLB, farLB, lineColor, alpha);
+        lineManager.DrawLine(nearRB, farRB, lineColor, alpha);
+
+        // カメラ位置からNear面への補助線
+        const Vector3 cameraPos = gameCamera->GetPosition();
+        lineManager.DrawLine(cameraPos, nearLT, lineColor, 0.7f);
+        lineManager.DrawLine(cameraPos, nearRT, lineColor, 0.7f);
+        lineManager.DrawLine(cameraPos, nearLB, lineColor, 0.7f);
+        lineManager.DrawLine(cameraPos, nearRB, lineColor, 0.7f);
     }
 #endif
 

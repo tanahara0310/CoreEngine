@@ -126,6 +126,9 @@ namespace CoreEngine
 
         // COMの解放
         CoUninitialize();
+
+        // 非同期ロガーを明示的に停止し、終了時の待ち状態を防ぐ。
+        Logger::GetInstance().Shutdown();
     }
 
     void EngineSystem::BeginFrame()
@@ -165,6 +168,7 @@ namespace CoreEngine
         if (sceneManager_) {
             if (auto* sceneViewport = imGui_->GetSceneViewport()) {
                 sceneViewport->SetCamera(sceneManager_->GetSceneViewCamera());
+                sceneViewport->SetGameCamera3D(sceneManager_->GetGameViewCamera3D());
                 sceneViewport->SetCamera2D(sceneManager_->GetGameViewCamera2D());
             }
         }

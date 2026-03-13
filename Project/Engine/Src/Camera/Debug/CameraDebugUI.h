@@ -1,12 +1,16 @@
-﻿#pragma once
+#pragma once
 
 #ifdef _DEBUG
 
 #include <string>
 #include <vector>
+#include <memory>
 #include <Math/MathCore.h>
 #include "Camera/CameraStructs.h"
 #include "Camera/CameraPresetManager.h"
+#include "CameraAnimationEditor.h"
+#include "CameraPresetEditor.h"
+#include "CameraInspectorEditor.h"
 
 namespace CoreEngine {
 
@@ -37,66 +41,26 @@ namespace CoreEngine {
         /// @brief 2Dカメラセクションを描画
         void DrawCamera2DSection();
 
-        /// @brief DebugCamera専用コントロールを描画
-        /// @param debugCamera デバッグカメラへのポインタ
-        void DrawDebugCameraControls(DebugCamera* debugCamera);
-
-        /// @brief Releaseカメラ専用コントロールを描画
-        /// @param camera リリースカメラへのポインタ
-        void DrawReleaseCameraControls(Camera* camera);
-
-        /// @brief カメラ基本情報を描画
-        /// @param camera カメラへのポインタ
-        void DrawCameraBasicInfo(ICamera* camera);
-
-    /// @brief カメラ方向ベクトル情報を描画
-    /// @param camera リリースカメラへのポインタ
-    void DrawCameraVectorInfo(Camera* camera);
-
     /// @brief プリセット管理セクションを描画
     void DrawPresetSection();
 
     /// @brief アニメーションセクションを描画
     void DrawAnimationSection();
 
-    /// @brief アニメーション開始
-    /// @param fromIndex 開始スナップショットのインデックス
-    /// @param toIndex 終了スナップショットのインデックス
-    void StartAnimation(int fromIndex, int toIndex);
-
-    /// @brief アニメーション更新
-    void UpdateAnimation();
-
 private:
     CameraManager* cameraManager_ = nullptr;
 
-    // UI状態
-    bool showAdvancedSettings_ = false;
-
-    // リリースカメラ用のLookAtモード
-    bool releaseCameraLookAtMode_ = false;
-    Vector3 releaseCameraLookAtTarget_;
-
-    // プリセットマネージャー
+    // プリセットのデータ管理
     CameraPresetManager presetManager_;
 
-    // アニメーション用JSONファイル選択
-    int animFromFileIndex_ = 0;
-    int animToFileIndex_ = 0;
+    // インスペクターUI責務を分離する。
+    std::unique_ptr<CameraInspectorEditor> inspectorEditor_;
 
-    // アニメーション
-    struct AnimationState {
-        bool isAnimating = false;
-        float progress = 0.0f;
-        float duration = 1.0f;
-        CameraSnapshot fromSnapshot;
-        CameraSnapshot toSnapshot;
-    };
-    AnimationState animation_;
+    // プリセットUI責務を分離する。
+    std::unique_ptr<CameraPresetEditor> presetEditor_;
 
-    // アニメーション設定UI
-    float animDuration_ = 1.0f;
-    int easingTypeIndex_ = 0;  // 0=Linear, 1=EaseInOut, 2=EaseIn, 3=EaseOut
+    // アニメーションUI/更新の責務を分離する。
+    std::unique_ptr<CameraAnimationEditor> animationEditor_;
 };
 
 }

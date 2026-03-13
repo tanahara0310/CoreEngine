@@ -35,13 +35,12 @@ public:
     /// @return プリセットファイル名のリスト
     std::vector<std::string> GetPresetList(const std::string& directory);
 
-    /// @brief ImGuiでファイル操作UIを表示
-    /// @param camera 対象のカメラ
-    void ShowImGui(ICamera* camera);
-
     /// @brief 現在読み込まれているプリセットファイルのパスを取得
     /// @return ファイルパス（読み込まれていない場合は空文字列）
     std::string GetCurrentPresetPath() const { return currentPresetPath_; }
+
+    /// @brief 現在のプリセット参照をクリア
+    void ClearCurrentPreset();
 
     /// @brief 現在のプリセットを上書き保存
     /// @param camera 対象のカメラ
@@ -57,15 +56,34 @@ public:
     /// @return プリセットファイル名のリスト
     const std::vector<std::string>& GetCurrentPresetList();
 
+    /// @brief JSONプリセットファイルをスナップショットとして読み込む
+    /// @param filePath 読み込むJSONファイルのフルパス
+    /// @param outSnapshot 読み込み結果を書き込む先
+    /// @return 読み込みに成功した場合true
+    bool LoadSnapshotFromFile(const std::string& filePath, CameraSnapshot& outSnapshot) const;
+
+    /// @brief 現在のプリセットディレクトリを取得
+    /// @return プリセットディレクトリ
+    std::string GetPresetDirectoryPath() const { return presetDirectoryPath_; }
+
+    /// @brief プリセットディレクトリを設定
+    /// @param directoryPath 新しいプリセットディレクトリ
+    void SetPresetDirectoryPath(const std::string& directoryPath);
+
+    /// @brief プリセットファイル一覧キャッシュを強制更新
+    void RefreshPresetFileList();
+
+    /// @brief ファイル名からプリセットのフルパスを組み立てる
+    /// @param fileName プリセットファイル名
+    /// @return フルパス
+    std::string BuildPresetFilePath(const std::string& fileName) const;
+
 private:
-    // UI関連の状態
-    char saveFileNameBuffer_[256] = "NewCameraPreset";
-    char directoryPathBuffer_[512] = "Assets/Presets/Camera/";
+    // プリセット状態
+    std::string presetDirectoryPath_ = "Assets/Presets/Camera/";
     std::vector<std::string> presetFileList_;
-    int selectedPresetIndex_ = -1;
     bool needUpdateFileList_ = true;
     std::string currentPresetPath_;  // 現在読み込まれているプリセットのパス
-    std::string currentPresetName_;  // 現在読み込まれているプリセット名（表示用）
 
     /// @brief プリセットファイルリストを更新
     void UpdatePresetFileList();
@@ -78,11 +96,11 @@ private:
     /// @brief CameraSnapshotをJSONに変換
     /// @param snapshot スナップショット
     /// @return JSONオブジェクト
-    json SnapshotToJson(const CameraSnapshot& snapshot);
+    json SnapshotToJson(const CameraSnapshot& snapshot) const;
 
     /// @brief JSONからCameraSnapshotに変換
     /// @param jsonData JSONオブジェクト
     /// @return スナップショット
-    CameraSnapshot JsonToSnapshot(const json& jsonData);
+    CameraSnapshot JsonToSnapshot(const json& jsonData) const;
 };
 }

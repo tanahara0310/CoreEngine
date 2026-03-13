@@ -46,7 +46,7 @@ namespace CoreEngine
 
         /// @brief 指定キーのロード完了を待機する
         /// @param cacheKey キャッシュキー
-        void WaitForLoad(const std::string& cacheKey) const;
+        void WaitForLoad(const std::string& cacheKey);
 
         /// @brief 指定キーのロード完了を通知する
         /// @param cacheKey キャッシュキー

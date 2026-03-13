@@ -86,6 +86,9 @@ public:
     /// @brief Sceneビュー用カメラを取得
     ICamera* GetSceneViewCamera() const;
 
+    /// @brief Gameビュー用3Dカメラを取得
+    ICamera* GetGameViewCamera3D() const;
+
     /// @brief Gameビュー用2Dカメラを取得
     ICamera* GetGameViewCamera2D() const;
 

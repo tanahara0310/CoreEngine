@@ -49,14 +49,14 @@ namespace CoreEngine
             }
         }
 
-        // キーボードでギズモモードを切り替え（Qキー：移動、Wキー：回転、Eキー：スケール）
-        if (ImGui::IsKeyPressed(ImGuiKey_Q)) {
+        // キーボードでギズモモードを切り替え（W:移動 / E:回転 / R:拡縮）
+        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_W, false)) {
             SetGizmoMode(Gizmo::Mode::Translate);
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_W)) {
+        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_E, false)) {
             SetGizmoMode(Gizmo::Mode::Rotate);
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_E)) {
+        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_R, false)) {
             SetGizmoMode(Gizmo::Mode::Scale);
         }
     }
@@ -115,14 +115,14 @@ namespace CoreEngine
             }
         }
 
-        // キーボードでギズモモードを切り替え（Qキー：移動、Wキー：回転、Eキー：スケール）
-        if (ImGui::IsKeyPressed(ImGuiKey_Q)) {
+        // キーボードでギズモモードを切り替え（W:移動 / E:回転 / R:拡縮）
+        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_W, false)) {
             SetGizmoMode(Gizmo::Mode::Translate);
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_W)) {
+        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_E, false)) {
             SetGizmoMode(Gizmo::Mode::Rotate);
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_E)) {
+        if (isViewportHovered && ImGui::IsKeyPressed(ImGuiKey_R, false)) {
             SetGizmoMode(Gizmo::Mode::Scale);
         }
     }

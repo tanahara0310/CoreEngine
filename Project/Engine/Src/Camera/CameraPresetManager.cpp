@@ -1,9 +1,5 @@
 #include "CameraPresetManager.h"
 
-#ifdef _DEBUG
-#include <imgui.h>
-#endif
-
 #include <filesystem>
 #include <iostream>
 #include "Camera/ICamera.h"
@@ -48,7 +44,6 @@ namespace CoreEngine
 
             // 保存したファイルを現在のプリセットとして設定
             currentPresetPath_ = filePath;
-            currentPresetName_ = GetFileNameWithoutExtension(std::filesystem::path(filePath).filename().string());
         } else {
             std::cerr << "Failed to save camera preset: " << filePath << std::endl;
         }
@@ -62,21 +57,11 @@ namespace CoreEngine
             return false;
         }
 
-        // ファイルが存在するかチェック
-        if (!JsonManager::GetInstance().FileExists(filePath)) {
-            std::cerr << "Camera preset file not found: " << filePath << std::endl;
+        // JSON読み込みとスナップショット変換は共通関数へ委譲する。
+        CameraSnapshot snapshot;
+        if (!LoadSnapshotFromFile(filePath, snapshot)) {
             return false;
         }
-
-        // ファイルを読み込み
-        json presetData = JsonManager::GetInstance().LoadJson(filePath);
-        if (presetData.empty()) {
-            std::cerr << "Failed to load camera preset: " << filePath << std::endl;
-            return false;
-        }
-
-        // スナップショットに変換
-        CameraSnapshot snapshot = JsonToSnapshot(presetData);
 
         // カメラタイプに応じて復元
         if (snapshot.isDebugCamera) {
@@ -101,9 +86,55 @@ namespace CoreEngine
 
         // 読み込み成功したら現在のプリセットとして設定
         currentPresetPath_ = filePath;
-        currentPresetName_ = GetFileNameWithoutExtension(std::filesystem::path(filePath).filename().string());
 
         return true;
+    }
+
+    void CameraPresetManager::ClearCurrentPreset()
+    {
+        currentPresetPath_.clear();
+    }
+
+    void CameraPresetManager::SetPresetDirectoryPath(const std::string& directoryPath)
+    {
+        if (directoryPath == presetDirectoryPath_) {
+            return;
+        }
+
+        presetDirectoryPath_ = directoryPath;
+        needUpdateFileList_ = true;
+    }
+
+    void CameraPresetManager::RefreshPresetFileList()
+    {
+        UpdatePresetFileList();
+    }
+
+    bool CameraPresetManager::LoadSnapshotFromFile(const std::string& filePath, CameraSnapshot& outSnapshot) const
+    {
+        // ファイルが存在するかチェック
+        if (!JsonManager::GetInstance().FileExists(filePath)) {
+            std::cerr << "Camera preset file not found: " << filePath << std::endl;
+            return false;
+        }
+
+        // ファイルを読み込んでJSON→Snapshotへ変換
+        json presetData = JsonManager::GetInstance().LoadJson(filePath);
+        if (presetData.empty()) {
+            std::cerr << "Failed to load camera preset: " << filePath << std::endl;
+            return false;
+        }
+
+        outSnapshot = JsonToSnapshot(presetData);
+        return true;
+    }
+
+    std::string CameraPresetManager::BuildPresetFilePath(const std::string& fileName) const
+    {
+        // ディレクトリ連結を`std::filesystem::path`で行い、
+        // 末尾スラッシュ有無によるパス崩れを防ぐ。
+        const std::filesystem::path baseDir(presetDirectoryPath_);
+        return (baseDir / fileName).string();
     }
 
     std::vector<std::string> CameraPresetManager::GetPresetList(const std::string& directory)
@@ -125,7 +156,7 @@ namespace CoreEngine
 
     void CameraPresetManager::UpdatePresetFileList()
     {
-        presetFileList_ = GetPresetList(directoryPathBuffer_);
+        presetFileList_ = GetPresetList(presetDirectoryPath_);
         needUpdateFileList_ = false;
     }
 
@@ -138,7 +169,7 @@ namespace CoreEngine
         return filename;
     }
 
-    json CameraPresetManager::SnapshotToJson(const CameraSnapshot& snapshot)
+    json CameraPresetManager::SnapshotToJson(const CameraSnapshot& snapshot) const
     {
         json jsonData;
 
@@ -166,7 +197,7 @@ namespace CoreEngine
         return jsonData;
     }
 
-    CameraSnapshot CameraPresetManager::JsonToSnapshot(const json& jsonData)
+    CameraSnapshot CameraPresetManager::JsonToSnapshot(const json& jsonData) const
     {
         CameraSnapshot snapshot;
 
@@ -214,7 +245,6 @@ namespace CoreEngine
                 // 削除したファイルが現在のプリセットだった場合はクリア
                 if (filePath == currentPresetPath_) {
                     currentPresetPath_.clear();
-                    currentPresetName_.clear();
                 }
 
                 needUpdateFileList_ = true;
@@ -234,235 +264,5 @@ namespace CoreEngine
         }
         return presetFileList_;
     }
-
-#ifdef _DEBUG
-
-    void CameraPresetManager::ShowImGui(ICamera* camera)
-    {
-        if (!camera) {
-            return;
-        }
-
-        if (ImGui::CollapsingHeader("プリセット管理", ImGuiTreeNodeFlags_DefaultOpen)) {
-            // 現在読み込まれているプリセット表示
-            if (!currentPresetPath_.empty()) {
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "現在のプリセット: %s", currentPresetName_.c_str());
-
-                // 上書き保存ボタン
-                if (ImGui::Button("上書き保存 (Ctrl+S)", ImVec2(200, 0))) {
-                    if (SaveCurrentPreset(camera)) {
-                        ImGui::OpenPopup("上書き保存成功");
-                    } else {
-                        ImGui::OpenPopup("上書き保存失敗");
-                    }
-                }
-
-                ImGui::SameLine();
-
-                // プリセットをクリア
-                if (ImGui::Button("プリセットをクリア", ImVec2(150, 0))) {
-                    currentPresetPath_.clear();
-                    currentPresetName_.clear();
-                }
-
-                ImGui::Separator();
-            } else {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "現在のプリセット: なし");
-                ImGui::Separator();
-            }
-
-            // 上書き保存成功ポップアップ
-            if (ImGui::BeginPopupModal("上書き保存成功", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text("プリセットを上書き保存しました。");
-                if (ImGui::Button("OK", ImVec2(120, 0))) {
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-            }
-
-            // 上書き保存失敗ポップアップ
-            if (ImGui::BeginPopupModal("上書き保存失敗", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text("プリセットの上書き保存に失敗しました。");
-                if (ImGui::Button("OK", ImVec2(120, 0))) {
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-            }
-
-            ImGui::Separator();
-
-            // ディレクトリパス設定
-            ImGui::Text("保存先ディレクトリ");
-            if (ImGui::InputText("##Directory", directoryPathBuffer_, sizeof(directoryPathBuffer_))) {
-                needUpdateFileList_ = true;
-            }
-
-            ImGui::Separator();
-
-            // 保存セクション
-            ImGui::Text("=== 保存 ===");
-            ImGui::InputText("ファイル名", saveFileNameBuffer_, sizeof(saveFileNameBuffer_));
-
-            if (ImGui::Button("プリセットを保存", ImVec2(200, 0))) {
-                std::string fileName = std::string(saveFileNameBuffer_);
-                if (!fileName.empty()) {
-                    // 拡張子がない場合は追加
-                    if (fileName.find(".json") == std::string::npos) {
-                        fileName += ".json";
-                    }
-
-                std::string fullPath = std::string(directoryPathBuffer_) + fileName;
-
-                // ディレクトリが存在しない場合は作成
-                JsonManager::GetInstance().CreateJsonDirectory(directoryPathBuffer_);
-
-                if (SavePreset(camera, fullPath)) {
-                        ImGui::OpenPopup("保存成功");
-                    } else {
-                        ImGui::OpenPopup("保存失敗");
-                    }
-                }
-            }
-
-            // 保存成功ポップアップ
-            if (ImGui::BeginPopupModal("保存成功", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text("プリセットを保存しました。");
-                if (ImGui::Button("OK", ImVec2(120, 0))) {
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-            }
-
-            // 保存失敗ポップアップ
-            if (ImGui::BeginPopupModal("保存失敗", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text("プリセットの保存に失敗しました。");
-                if (ImGui::Button("OK", ImVec2(120, 0))) {
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-            }
-
-            ImGui::Separator();
-
-            // 読み込みセクション
-            ImGui::Text("=== 読み込み ===");
-
-            // ファイルリスト更新ボタン
-            if (ImGui::Button("リストを更新") || needUpdateFileList_) {
-                UpdatePresetFileList();
-            }
-
-            // プリセットファイルリスト表示
-            if (presetFileList_.empty()) {
-                ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "プリセットがありません");
-            } else {
-                ImGui::BeginChild("PresetFileList", ImVec2(0, 150), true);
-
-                for (int i = 0; i < static_cast<int>(presetFileList_.size()); i++) {
-                    bool isSelected = (i == selectedPresetIndex_);
-
-                    if (ImGui::Selectable(presetFileList_[i].c_str(), isSelected)) {
-                        selectedPresetIndex_ = i;
-                    }
-
-                    // ダブルクリックで読み込み
-                    if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
-                        std::string fullPath = std::string(directoryPathBuffer_) + presetFileList_[i];
-                        if (LoadPreset(camera, fullPath)) {
-                            ImGui::OpenPopup("読み込み成功");
-                        } else {
-                            ImGui::OpenPopup("読み込み失敗");
-                        }
-                    }
-                }
-
-                ImGui::EndChild();
-
-            // 選択中のプリセット操作
-            if (selectedPresetIndex_ >= 0 && selectedPresetIndex_ < static_cast<int>(presetFileList_.size())) {
-                if (ImGui::Button("選択したプリセットを読み込み", ImVec2(150, 0))) {
-                    std::string fullPath = std::string(directoryPathBuffer_) + presetFileList_[selectedPresetIndex_];
-                    if (LoadPreset(camera, fullPath)) {
-                        ImGui::OpenPopup("読み込み成功");
-                    } else {
-                        ImGui::OpenPopup("読み込み失敗");
-                    }
-                }
-
-                ImGui::SameLine();
-
-                if (ImGui::Button("選択したプリセットを削除", ImVec2(150, 0))) {
-                    ImGui::OpenPopup("削除確認");
-                }
-
-                // 削除確認ポップアップ
-                if (ImGui::BeginPopupModal("削除確認", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::Text("本当に削除しますか？");
-                    ImGui::Text("ファイル: %s", presetFileList_[selectedPresetIndex_].c_str());
-                    ImGui::Separator();
-
-                    if (ImGui::Button("削除", ImVec2(120, 0))) {
-                        std::string fullPath = std::string(directoryPathBuffer_) + presetFileList_[selectedPresetIndex_];
-                        if (DeletePreset(fullPath)) {
-                            selectedPresetIndex_ = -1;
-                            ImGui::CloseCurrentPopup();
-                            ImGui::OpenPopup("削除成功");
-                        } else {
-                            ImGui::CloseCurrentPopup();
-                            ImGui::OpenPopup("削除失敗");
-                        }
-                    }
-
-                    ImGui::SameLine();
-
-                    if (ImGui::Button("キャンセル", ImVec2(120, 0))) {
-                        ImGui::CloseCurrentPopup();
-                    }
-
-                    ImGui::EndPopup();
-                }
-
-                // 削除成功ポップアップ
-                if (ImGui::BeginPopupModal("削除成功", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::Text("プリセットを削除しました。");
-                    if (ImGui::Button("OK", ImVec2(120, 0))) {
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::EndPopup();
-                }
-
-                // 削除失敗ポップアップ
-                if (ImGui::BeginPopupModal("削除失敗", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                    ImGui::Text("プリセットの削除に失敗しました。");
-                    if (ImGui::Button("OK", ImVec2(120, 0))) {
-                        ImGui::CloseCurrentPopup();
-                    }
-                    ImGui::EndPopup();
-                }
-            }
-        }
-
-            // 読み込み成功ポップアップ
-            if (ImGui::BeginPopupModal("読み込み成功", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text("プリセットを読み込みました。");
-                if (ImGui::Button("OK", ImVec2(120, 0))) {
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-            }
-
-            // 読み込み失敗ポップアップ
-            if (ImGui::BeginPopupModal("読み込み失敗", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text("プリセットの読み込みに失敗しました。");
-                ImGui::Text("カメラタイプが一致しているか確認してください。");
-                if (ImGui::Button("OK", ImVec2(120, 0))) {
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-            }
-        }
-    }
-
-#endif // _DEBUG
 
 }

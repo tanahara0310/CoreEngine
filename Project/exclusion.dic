@@ -136,3 +136,7 @@ gizumo
 Cubemap
 cmft
 cmtf
+cubemap
+normals
+Assimp
+spdlog
