@@ -3,7 +3,7 @@
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Camera/ICamera.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include <cassert>
 
 

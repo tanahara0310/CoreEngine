@@ -2,7 +2,7 @@
 #include "Camera/ICamera.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Material/SkyBoxMaterialInstance.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"

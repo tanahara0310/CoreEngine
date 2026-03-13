@@ -2,7 +2,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Camera/ICamera.h"
 #include <numbers>
 

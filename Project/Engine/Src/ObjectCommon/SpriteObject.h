@@ -3,7 +3,7 @@
 #include "ObjectCommon/GameObject.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Material/SpriteMaterialInstance.h"
 #include "Math/EulerTransform.h"
 #include <memory>

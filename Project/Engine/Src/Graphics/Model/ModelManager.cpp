@@ -1,6 +1,6 @@
 #include "ModelManager.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/Animator.h"

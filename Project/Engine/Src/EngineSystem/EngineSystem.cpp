@@ -4,7 +4,7 @@
 // ユーティリティ
 #include "Utility/Random/RandomGenerator.h"
 #include "Utility/Logger/Logger.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Asset/AssetDatabase.h"
 

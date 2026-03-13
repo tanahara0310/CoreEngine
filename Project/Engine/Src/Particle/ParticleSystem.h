@@ -19,7 +19,7 @@
 // Graphics関連
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/TextureManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 
 // GameObject基底クラス

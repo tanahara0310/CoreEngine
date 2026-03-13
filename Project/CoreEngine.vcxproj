@@ -230,7 +230,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionData.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shadow\ShadowMapManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\TextureManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureLoadExecutor.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\TextureManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\GameObject.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\GameObjectManager.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\SpriteObject.cpp" />
@@ -466,6 +475,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionData.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionUsageExample.h" />
     <ClInclude Include="Engine\Src\Graphics\Shadow\ShadowMapManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Runtime\TextureLoadedResource.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadExecutor.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
     <ClInclude Include="Engine\Src\Math\EulerTransform.h" />
     <ClInclude Include="Engine\Src\Math\QuaternionTransform.h" />
     <ClInclude Include="Engine\Src\ObjectCommon\GameObject.h" />
@@ -569,7 +588,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\GameDebugUI.h" />
     <ClInclude Include="Engine\Src\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\TextureManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\TextureManager.h" />
     <ClInclude Include="Engine\Src\Audio\SoundManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h" />
     <ClInclude Include="Engine\Src\Graphics\Resource\ResourceFactory.h" />
@@ -691,6 +710,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Externals\imgui\imstb_textedit.h" />
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h" />
+    <ClInclude Include="Project\Engine\Src\Graphics\TextureManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
