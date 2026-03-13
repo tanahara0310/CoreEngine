@@ -51,6 +51,9 @@ public:
     /// @brief ログシステムの初期化
     void Initialize();
 
+    /// @brief ログシステムの明示的終了処理（非同期スレッドを安全に停止）
+    void Shutdown();
+
     /// @brief ログレベルを指定して出力
     /// @param message ログメッセージ
     /// @param level ログレベル
@@ -128,6 +131,9 @@ private:
 
     // カテゴリ別のロガー管理
     std::unordered_map<LogCategory, std::shared_ptr<spdlog::logger>> loggers_;
+    mutable std::mutex loggerMutex_;
+    bool isInitialized_ = false;
+    bool isShuttingDown_ = false;
 
     // フレーム時間管理
     mutable std::mutex frameTimeMutex_;

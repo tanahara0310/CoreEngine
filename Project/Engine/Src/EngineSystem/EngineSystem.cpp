@@ -126,6 +126,9 @@ namespace CoreEngine
 
         // COMの解放
         CoUninitialize();
+
+        // 非同期ロガーを明示的に停止し、終了時の待ち状態を防ぐ。
+        Logger::GetInstance().Shutdown();
     }
 
     void EngineSystem::BeginFrame()

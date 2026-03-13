@@ -1,4 +1,4 @@
-﻿#include "DirectXCommon.h"
+#include "DirectXCommon.h"
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
 #include <iostream>
@@ -69,7 +69,10 @@ namespace CoreEngine
         // オフスクリーンレンダリングターゲットのリサイズ
         offScreenManager_->Resize(width, height);
 
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", L"Window Resized: " + std::to_wstring(width) + L"x" + std::to_wstring(height));
+        Logger::GetInstance().Log(
+            L"Window Resized: " + std::to_wstring(width) + L"x" + std::to_wstring(height),
+            LogLevel::INFO,
+            LogCategory::Graphics);
     }
 }
 
