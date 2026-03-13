@@ -26,6 +26,7 @@ public:
     virtual void Finalize() = 0;
 
     virtual ICamera* GetSceneViewCamera() const { return nullptr; }
+    virtual ICamera* GetGameViewCamera3D() const { return nullptr; }
     virtual ICamera* GetGameViewCamera2D() const { return nullptr; }
     virtual GameObjectManager* GetGameObjectManager() { return nullptr; }
 

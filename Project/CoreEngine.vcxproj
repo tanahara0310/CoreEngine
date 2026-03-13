@@ -174,7 +174,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraPresetManager.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraShake.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraAnimationEditor.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\CameraDebugUI.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraInspectorEditor.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraPresetEditor.cpp" />
     <ClCompile Include="Engine\Src\Camera\ICamera.cpp" />
     <ClCompile Include="Engine\Src\Collider\AABBCollider.cpp" />
     <ClCompile Include="Engine\Src\Collider\Collider.cpp" />
@@ -282,6 +285,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
     <ClCompile Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DepthStencilManager.cpp" />
@@ -391,7 +397,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Camera\CameraPresetManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraShake.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraAnimationEditor.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\CameraDebugUI.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraInspectorEditor.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraPresetEditor.h" />
     <ClInclude Include="Engine\Src\Camera\ICamera.h" />
     <ClInclude Include="Engine\Src\Collider\AABBCollider.h" />
     <ClInclude Include="Engine\Src\Collider\Collider.h" />
@@ -531,6 +540,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h" />
     <ClInclude Include="Engine\Utility\Logger\ScopedTimer.h" />
     <ClInclude Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.h" />

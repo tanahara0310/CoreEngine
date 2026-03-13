@@ -168,6 +168,7 @@ namespace CoreEngine
         if (sceneManager_) {
             if (auto* sceneViewport = imGui_->GetSceneViewport()) {
                 sceneViewport->SetCamera(sceneManager_->GetSceneViewCamera());
+                sceneViewport->SetGameCamera3D(sceneManager_->GetGameViewCamera3D());
                 sceneViewport->SetCamera2D(sceneManager_->GetGameViewCamera2D());
             }
         }

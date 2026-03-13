@@ -428,6 +428,12 @@
     <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureLoadExecutor.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraAnimationEditor.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraPresetEditor.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraInspectorEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1266,6 +1272,12 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Runtime\TextureLoadedResource.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraAnimationEditor.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraPresetEditor.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraInspectorEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

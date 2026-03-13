@@ -54,6 +54,9 @@ namespace CoreEngine
         /// @brief Sceneビュー用カメラを取得
         ICamera* GetSceneViewCamera() const override;
 
+        /// @brief Gameビュー用3Dカメラを取得
+        ICamera* GetGameViewCamera3D() const override;
+
         /// @brief Gameビュー用2Dカメラを取得
         ICamera* GetGameViewCamera2D() const override;
 
@@ -90,6 +93,9 @@ namespace CoreEngine
 #ifdef _DEBUG
         /// @brief グリッドのセットアップ（デバッグビルドのみ）
         void SetupGrid();
+
+        /// @brief Sceneビュー上にGameカメラの視錐台デバッグラインを描画
+        void DrawGameCameraFrustumDebug();
 #endif
 
     protected:

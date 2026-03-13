@@ -1,6 +1,9 @@
 #pragma once
 #include <imgui.h>
 #include "ObjectSelector.h"
+#include "SceneViewportGizmoController.h"
+#include "SceneViewportWindowRenderer.h"
+#include "SceneViewportSelectionController.h"
 #include <memory>
 #include <wrl.h>
 #include <d3d12.h>
@@ -40,6 +43,10 @@ namespace CoreEngine
         /// @param camera 2Dカメラ
         void SetCamera2D(const ICamera* camera) { currentCamera2D_ = camera; }
 
+        /// @brief Gameビュー用3Dカメラを設定（Sceneビュー上のカメラアイコン表示/操作用）
+        /// @param camera Gameビューで使用する3Dカメラ
+        void SetGameCamera3D(ICamera* camera) { currentGameCamera3D_ = camera; }
+
         /// @brief オブジェクト選択とギズモの更新（3D）
         /// @param gameObjectManager ゲームオブジェクトマネージャー
         /// @param camera カメラ
@@ -62,16 +69,6 @@ namespace CoreEngine
         /// @return オブジェクトセレクターへのポインタ
         ObjectSelector* GetObjectSelector() { return objectSelector_.get(); }
 
-    private: // メンバ関数
-        /// @brief ギズモ操作タイプ切替ツールバーを描画（ビューポート内オーバーレイ）
-        void DrawGizmoToolbar();
-
-        /// @brief ギズモアイコンテクスチャを読み込む
-        void LoadGizmoIcons();
-
-        /// @brief 共通ビューポート描画
-        void DrawViewportWindow(const char* windowName, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle, bool enableGizmo);
-
     private: // メンバ変数
         ImVec2 viewportPos_{};
         ImVec2 viewportSize_{};
@@ -79,15 +76,15 @@ namespace CoreEngine
         std::unique_ptr<ObjectSelector> objectSelector_;
         const ICamera* currentCamera_ = nullptr;    // 現在の3Dカメラ
         const ICamera* currentCamera2D_ = nullptr;  // 現在の2Dカメラ
+        ICamera* currentGameCamera3D_ = nullptr; // Gameビュー用3Dカメラ
 
-        // ギズモアイコン用テクスチャハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoTranslateIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoRotateIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoScaleIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoToggleIcon_{};
-        bool iconsLoaded_ = false;
+        // Scene/Gameウィンドウの描画責務を分離するレンダラー
+        std::unique_ptr<SceneViewportWindowRenderer> windowRenderer_;
 
-        // ツールバーの折り畳み状態
-        bool isToolbarCollapsed_ = false;
+        // Sceneビューの選択更新責務を分離するコントローラー
+        std::unique_ptr<SceneViewportSelectionController> selectionController_;
+
+        // Sceneビューのギズモ関連描画責務を分離するコントローラー
+        std::unique_ptr<SceneViewportGizmoController> gizmoController_;
     };
 }
