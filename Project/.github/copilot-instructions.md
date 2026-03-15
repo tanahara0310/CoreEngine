@@ -5,3 +5,6 @@
 - During refactoring, write explanatory comments for functions and processing steps in the code to enhance clarity and maintainability. Aim for a separation of concerns in the Scene view implementation to avoid responsibility concentration and ensure extensibility for future feature additions. Specifically, separate functionalities into distinct classes, with the SceneViewport acting as a management class to limit its responsibilities.
 - Prohibit PowerShell-based project/file addition operations; created files are considered already added to the project.
 - Avoid excessive use of macros in logging implementations to maintain code clarity and simplicity.
+
+## UI Localization
+- Standardize the UI text for the camera editor in Japanese to ensure consistency across the application.

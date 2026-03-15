@@ -1,0 +1,23 @@
+#pragma once
+
+#ifdef _DEBUG
+
+#include "ICameraEditorModule.h"
+
+namespace CoreEngine
+{
+    /// @brief アクティブ3DカメラのTransform編集を担当するモジュール
+    class CameraTransformEditorModule final : public ICameraEditorModule {
+    public:
+        /// @brief タブ名を取得
+        const char* GetTabName() const override { return "トランスフォーム"; }
+
+        /// @brief 毎フレーム更新（現時点では状態更新なし）
+        void Update(const CameraEditorContext& context) override;
+
+        /// @brief タブ内容を描画
+        void Draw(const CameraEditorContext& context) override;
+    };
+}
+
+#endif // _DEBUG

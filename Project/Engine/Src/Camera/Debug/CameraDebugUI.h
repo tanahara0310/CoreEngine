@@ -5,21 +5,13 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <Math/MathCore.h>
-#include "Camera/CameraStructs.h"
-#include "Camera/CameraPresetManager.h"
-#include "CameraAnimationEditor.h"
-#include "CameraPresetEditor.h"
-#include "CameraInspectorEditor.h"
+#include "CameraEditorContext.h"
+#include "ICameraEditorModule.h"
 
 namespace CoreEngine {
 
     // 前方宣言
     class CameraManager;
-    class ICamera;
-    class DebugCamera;
-    class Camera;
-
     /// @brief カメラデバッグUI - ImGuiを使用したカメラ制御インターフェース
     class CameraDebugUI {
     public:
@@ -34,33 +26,22 @@ namespace CoreEngine {
         /// @brief ImGuiウィンドウを描画
         void Draw();
 
+        /// @brief エディター機能モジュールを追加登録
+        /// @param module 追加するモジュール
+        void RegisterModule(std::unique_ptr<ICameraEditorModule> module);
+
+        /// @brief モジュール登録をクリア
+        void ClearModules();
+
     private:
-        /// @brief 3Dカメラセクションを描画
-        void DrawCamera3DSection();
-
-        /// @brief 2Dカメラセクションを描画
-        void DrawCamera2DSection();
-
-    /// @brief プリセット管理セクションを描画
-    void DrawPresetSection();
-
-    /// @brief アニメーションセクションを描画
-    void DrawAnimationSection();
+        /// @brief 現在フレーム用のコンテキストを構築
+        CameraEditorContext BuildContext();
 
 private:
     CameraManager* cameraManager_ = nullptr;
 
-    // プリセットのデータ管理
-    CameraPresetManager presetManager_;
-
-    // インスペクターUI責務を分離する。
-    std::unique_ptr<CameraInspectorEditor> inspectorEditor_;
-
-    // プリセットUI責務を分離する。
-    std::unique_ptr<CameraPresetEditor> presetEditor_;
-
-    // アニメーションUI/更新の責務を分離する。
-    std::unique_ptr<CameraAnimationEditor> animationEditor_;
+    // 機能追加しやすいよう、エディター機能はモジュール列として管理する。
+    std::vector<std::unique_ptr<ICameraEditorModule>> modules_;
 };
 
 }

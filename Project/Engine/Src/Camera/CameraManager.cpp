@@ -86,18 +86,6 @@ namespace CoreEngine
         return true;
     }
 
-    bool CameraManager::SetActiveCamera(const std::string& name)
-    {
-        // 従来の互換性維持: カメラを検索してタイプに応じて設定
-        auto it = cameras_.find(name);
-        if (it == cameras_.end()) {
-            return false;
-        }
-
-        CameraType type = it->second->GetCameraType();
-        return SetActiveCamera(name, type);
-    }
-
     ICamera* CameraManager::GetActiveCamera(CameraType type) const
     {
         if (type == CameraType::Camera3D) {
@@ -106,12 +94,6 @@ namespace CoreEngine
             return activeCamera2D_;
         }
         return nullptr;
-    }
-
-    ICamera* CameraManager::GetActiveCamera() const
-    {
-        // 従来の互換性維持: Camera3Dを返す
-        return activeCamera3D_;
     }
 
     ICamera* CameraManager::GetCamera(const std::string& name) const
