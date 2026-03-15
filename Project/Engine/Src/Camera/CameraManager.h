@@ -38,19 +38,10 @@ namespace CoreEngine
         /// @return 設定に成功した場合true
         bool SetActiveCamera(const std::string& name, CameraType type);
 
-        /// @brief アクティブカメラを設定（従来の互換性維持版）
-        /// @param name カメラの名前
-        /// @return 設定に成功した場合true
-        bool SetActiveCamera(const std::string& name);
-
         /// @brief アクティブカメラを取得（カメラタイプ別）
         /// @param type カメラタイプ（3D or 2D）
         /// @return アクティブカメラのポインタ（存在しない場合nullptr）
         ICamera* GetActiveCamera(CameraType type) const;
-
-        /// @brief アクティブカメラを取得（従来の互換性維持版 - Camera3Dを返す）
-        /// @return アクティブカメラのポインタ（存在しない場合nullptr）
-        ICamera* GetActiveCamera() const;
 
         /// @brief 名前でカメラを取得
         /// @param name カメラの名前
@@ -75,10 +66,6 @@ namespace CoreEngine
         /// @brief 登録されているカメラの数を取得
         /// @return カメラの数
         size_t GetCameraCount() const { return cameras_.size(); }
-
-        /// @brief アクティブカメラの名前（Camera3D）を取得
-        /// @return アクティブカメラの名前
-        const std::string& GetActiveCameraName() const { return activeCamera3DName_; }
 
         /// @brief アクティブカメラの名前を取得（タイプ別）
         /// @param type カメラタイプ

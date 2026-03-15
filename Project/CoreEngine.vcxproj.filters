@@ -431,9 +431,12 @@
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraAnimationEditor.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraPresetEditor.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraInspectorEditor.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraListEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraTransformEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraParametersEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraActivationEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraSnapshotEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\CameraKeyframeEditorModule.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1275,9 +1278,14 @@
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraAnimationEditor.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraPresetEditor.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraInspectorEditor.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraEditorContext.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\ICameraEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraListEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraTransformEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraParametersEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraActivationEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraSnapshotEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraKeyframeEditorModule.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">
