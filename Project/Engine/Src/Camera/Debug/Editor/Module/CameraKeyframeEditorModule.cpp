@@ -12,6 +12,7 @@
 #include "Camera/CameraManager.h"
 #include "Camera/Debug/DebugCamera.h"
 #include "Camera/Release/Camera.h"
+#include "Graphics/Line/LineManager.h"
 
 namespace CoreEngine
 {
@@ -47,6 +48,8 @@ namespace CoreEngine
     void CameraKeyframeEditorModule::Update(const CameraEditorContext& context)
     {
         if (!context.cameraManager || !isPlaying_ || keyframes_.size() < 2) {
+            UpdateAutoKey(context);
+            DrawViewportVisualization();
             return;
         }
 
@@ -66,6 +69,9 @@ namespace CoreEngine
         if (EvaluateSnapshotAt(playhead_, evaluated)) {
             ApplyToActiveCamera(context, evaluated);
         }
+
+        UpdateAutoKey(context);
+        DrawViewportVisualization();
     }
 
     void CameraKeyframeEditorModule::Draw(const CameraEditorContext& context)
@@ -95,8 +101,28 @@ namespace CoreEngine
             Redo();
         }
         ImGui::SameLine();
-        ImGui::TextDisabled("Ctrl+Z / Ctrl+Y");
+        ImGui::TextDisabled("ショートカット: Ctrl+Z / Ctrl+Y");
         ImGui::Separator();
+
+        ImGui::Checkbox("Auto Key", &autoKeyEnabled_);
+        ImGui::SameLine();
+        ImGui::TextDisabled("Transform/Parametersの変更時に自動でキーを作成・更新");
+
+        ImGui::SeparatorText("ビューポート可視化");
+        ImGui::Checkbox("可視化を有効", &viewportVisualizationEnabled_);
+        ImGui::Checkbox("カメラ軌跡", &viewportShowTrajectory_);
+        ImGui::Checkbox("キーフレーム位置", &viewportShowKeyMarkers_);
+        ImGui::Checkbox("DebugCamera注視点", &viewportShowDebugTarget_);
+        ImGui::DragInt("軌跡サンプル/区間", &viewportTrajectorySamplesPerSegment_, 1.0f, 2, 64);
+        ImGui::DragFloat("マーカーサイズ", &viewportMarkerSize_, 0.01f, 0.02f, 2.0f, "%.2f");
+        ImGui::SliderFloat("軌跡アルファ", &viewportTrajectoryAlpha_, 0.1f, 1.0f, "%.2f");
+        ImGui::ColorEdit3("軌跡色", &viewportTrajectoryColor_.x);
+        ImGui::ColorEdit3("キー色", &viewportKeyMarkerColor_.x);
+        ImGui::ColorEdit3("選択キー色", &viewportSelectedKeyColor_.x);
+        ImGui::ColorEdit3("注視点色", &viewportDebugTargetColor_.x);
+
+        viewportTrajectorySamplesPerSegment_ = std::clamp(viewportTrajectorySamplesPerSegment_, 2, 64);
+        viewportMarkerSize_ = std::clamp(viewportMarkerSize_, 0.02f, 2.0f);
 
         // タイムライン長と再生ヘッドを編集する。
         ImGui::DragFloat("タイムライン長(秒)", &timelineLength_, 0.1f, 0.1f, 600.0f, "%.2f");
@@ -246,6 +272,27 @@ namespace CoreEngine
 
                     selectedIndex_ = FindNearestKeyframeIndex(playhead_);
                 }
+            }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("選択キーフレームを複製")) {
+            if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
+                PushUndoState();
+
+                Keyframe duplicated = keyframes_[selectedIndex_];
+                duplicated.time = std::clamp(duplicated.time + 0.1f, 0.0f, timelineLength_);
+                if (std::fabs(duplicated.time - keyframes_[selectedIndex_].time) <= updateThreshold_) {
+                    duplicated.time = std::clamp(duplicated.time + updateThreshold_, 0.0f, timelineLength_);
+                }
+
+                keyframes_.push_back(duplicated);
+                std::sort(keyframes_.begin(), keyframes_.end(),
+                    [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
+
+                selectedIndex_ = FindNearestKeyframeIndex(duplicated.time);
+                playhead_ = duplicated.time;
+                playheadChanged = true;
             }
         }
 
@@ -490,7 +537,7 @@ namespace CoreEngine
         return false;
     }
 
-    bool CameraKeyframeEditorModule::ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot) const
+    bool CameraKeyframeEditorModule::ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot)
     {
         ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
         if (!active3D) {
@@ -500,6 +547,9 @@ namespace CoreEngine
         if (snapshot.isDebugCamera) {
             if (auto* debugCamera = dynamic_cast<DebugCamera*>(active3D)) {
                 debugCamera->RestoreSnapshot(snapshot);
+                ignoreNextAutoKey_ = true;
+                observedSnapshot_ = snapshot;
+                hasObservedSnapshot_ = true;
                 return true;
             }
             return false;
@@ -507,10 +557,168 @@ namespace CoreEngine
 
         if (auto* releaseCamera = dynamic_cast<Camera*>(active3D)) {
             releaseCamera->RestoreSnapshot(snapshot);
+            ignoreNextAutoKey_ = true;
+            observedSnapshot_ = snapshot;
+            hasObservedSnapshot_ = true;
             return true;
         }
 
         return false;
+    }
+
+    bool CameraKeyframeEditorModule::IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const
+    {
+        constexpr float epsilon = 0.0001f;
+
+        const auto nearEqual = [](float a, float b) {
+            return std::fabs(a - b) <= 0.0001f;
+        };
+
+        if (lhs.isDebugCamera != rhs.isDebugCamera) {
+            return false;
+        }
+
+        if (!nearEqual(lhs.parameters.fov, rhs.parameters.fov)
+            || !nearEqual(lhs.parameters.nearClip, rhs.parameters.nearClip)
+            || !nearEqual(lhs.parameters.farClip, rhs.parameters.farClip)
+            || !nearEqual(lhs.parameters.aspectRatio, rhs.parameters.aspectRatio)) {
+            return false;
+        }
+
+        if (lhs.isDebugCamera) {
+            return nearEqual(lhs.target.x, rhs.target.x)
+                && nearEqual(lhs.target.y, rhs.target.y)
+                && nearEqual(lhs.target.z, rhs.target.z)
+                && nearEqual(lhs.distance, rhs.distance)
+                && nearEqual(lhs.pitch, rhs.pitch)
+                && nearEqual(lhs.yaw, rhs.yaw);
+        }
+
+        return nearEqual(lhs.position.x, rhs.position.x)
+            && nearEqual(lhs.position.y, rhs.position.y)
+            && nearEqual(lhs.position.z, rhs.position.z)
+            && nearEqual(lhs.rotation.x, rhs.rotation.x)
+            && nearEqual(lhs.rotation.y, rhs.rotation.y)
+            && nearEqual(lhs.rotation.z, rhs.rotation.z)
+            && nearEqual(lhs.scale.x, rhs.scale.x)
+            && nearEqual(lhs.scale.y, rhs.scale.y)
+            && nearEqual(lhs.scale.z, rhs.scale.z)
+            && std::fabs(lhs.parameters.fov - rhs.parameters.fov) <= epsilon;
+    }
+
+    void CameraKeyframeEditorModule::UpdateAutoKey(const CameraEditorContext& context)
+    {
+        if (!context.cameraManager || !autoKeyEnabled_ || isPlaying_) {
+            autoKeyEditing_ = false;
+            return;
+        }
+
+        CameraSnapshot current{};
+        if (!CaptureFromActiveCamera(context, current)) {
+            autoKeyEditing_ = false;
+            hasObservedSnapshot_ = false;
+            return;
+        }
+
+        if (ignoreNextAutoKey_) {
+            ignoreNextAutoKey_ = false;
+            observedSnapshot_ = current;
+            hasObservedSnapshot_ = true;
+            autoKeyEditing_ = false;
+            return;
+        }
+
+        if (!hasObservedSnapshot_) {
+            observedSnapshot_ = current;
+            hasObservedSnapshot_ = true;
+            autoKeyEditing_ = false;
+            return;
+        }
+
+        const bool changed = !IsSameSnapshot(observedSnapshot_, current);
+        if (!changed) {
+            autoKeyEditing_ = false;
+            return;
+        }
+
+        if (!autoKeyEditing_) {
+            PushUndoState();
+            autoKeyEditing_ = true;
+        }
+
+        const int nearest = FindNearestKeyframeIndex(playhead_);
+        if (nearest >= 0 && std::fabs(keyframes_[nearest].time - playhead_) <= updateThreshold_) {
+            keyframes_[nearest].snapshot = current;
+            selectedIndex_ = nearest;
+        } else {
+            Keyframe key{};
+            key.time = playhead_;
+            key.snapshot = current;
+            keyframes_.push_back(key);
+            std::sort(keyframes_.begin(), keyframes_.end(),
+                [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
+
+            selectedIndex_ = FindNearestKeyframeIndex(playhead_);
+        }
+
+        observedSnapshot_ = current;
+    }
+
+    void CameraKeyframeEditorModule::DrawViewportVisualization()
+    {
+        if (!viewportVisualizationEnabled_ || keyframes_.empty()) {
+            return;
+        }
+
+        auto& lineManager = LineManager::GetInstance();
+
+        if (viewportShowTrajectory_ && keyframes_.size() >= 2) {
+            // 区間ごとの補間結果を細かくサンプルし、Sceneビュー上で軌跡として可視化する。
+            for (size_t i = 0; i + 1 < keyframes_.size(); ++i) {
+                const Keyframe& from = keyframes_[i];
+                const Keyframe& to = keyframes_[i + 1];
+
+                if (to.time <= from.time) {
+                    continue;
+                }
+
+                Vector3 prev = GetSnapshotWorldPosition(from.snapshot);
+                for (int sampleIndex = 1; sampleIndex <= viewportTrajectorySamplesPerSegment_; ++sampleIndex) {
+                    const float localT = static_cast<float>(sampleIndex) / static_cast<float>(viewportTrajectorySamplesPerSegment_);
+                    CameraSnapshot interpolated = InterpolateSnapshot(from.snapshot, to.snapshot, localT);
+                    const Vector3 current = GetSnapshotWorldPosition(interpolated);
+                    lineManager.DrawLine(prev, current, viewportTrajectoryColor_, viewportTrajectoryAlpha_);
+                    prev = current;
+                }
+            }
+        }
+
+        if (viewportShowKeyMarkers_) {
+            // キーフレーム位置をマーカー表示し、選択中キーを色で区別する。
+            for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
+                const Vector3 position = GetSnapshotWorldPosition(keyframes_[i].snapshot);
+                const Vector3 color = (i == selectedIndex_) ? viewportSelectedKeyColor_ : viewportKeyMarkerColor_;
+                lineManager.DrawWireSphere(position, viewportMarkerSize_, 8, color, 0.95f);
+
+                if (viewportShowDebugTarget_ && keyframes_[i].snapshot.isDebugCamera) {
+                    lineManager.DrawCross(keyframes_[i].snapshot.target, viewportMarkerSize_ * 1.2f, viewportDebugTargetColor_, 0.95f);
+                    lineManager.DrawLine(position, keyframes_[i].snapshot.target, viewportDebugTargetColor_, 0.5f);
+                }
+            }
+        }
+    }
+
+    Vector3 CameraKeyframeEditorModule::GetSnapshotWorldPosition(const CameraSnapshot& snapshot) const
+    {
+        if (!snapshot.isDebugCamera) {
+            return snapshot.position;
+        }
+
+        return {
+            snapshot.target.x + snapshot.distance * std::cos(snapshot.pitch) * std::sin(snapshot.yaw),
+            snapshot.target.y + snapshot.distance * std::sin(snapshot.pitch),
+            snapshot.target.z + snapshot.distance * std::cos(snapshot.pitch) * std::cos(snapshot.yaw)
+        };
     }
 
     int CameraKeyframeEditorModule::FindNearestKeyframeIndex(float time) const

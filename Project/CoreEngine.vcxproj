@@ -174,13 +174,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraPresetManager.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraShake.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraActivationEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraDebugUI.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraKeyframeEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraListEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraParametersEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraSnapshotEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraTransformEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\CameraDebugUI.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraTransformEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\ICamera.cpp" />
     <ClCompile Include="Engine\Src\Collider\AABBCollider.cpp" />
     <ClCompile Include="Engine\Src\Collider\Collider.cpp" />
@@ -400,15 +400,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Camera\CameraPresetManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraShake.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraActivationEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraDebugUI.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraEditorContext.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraKeyframeEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraListEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraParametersEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraSnapshotEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraTransformEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\ICameraEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraClipPlayerEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\CameraDebugUI.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraEditorContext.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraTransformEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\ICameraEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\ICamera.h" />
     <ClInclude Include="Engine\Src\Collider\AABBCollider.h" />
     <ClInclude Include="Engine\Src\Collider\Collider.h" />
@@ -730,7 +731,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Externals\imgui\imstb_textedit.h" />
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h" />
-    <ClInclude Include="Project\Engine\Src\Graphics\TextureManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
@@ -738,7 +738,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include=".github\copilot-instructions.md" />
     <None Include="Application\Assets\SampleAssets\AnimatedCube\AnimatedCube.bin" />
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin" />
     <None Include="Application\Assets\SampleAssets\human\walk.bin" />

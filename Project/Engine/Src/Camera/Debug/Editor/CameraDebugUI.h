@@ -5,13 +5,14 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "CameraEditorContext.h"
-#include "ICameraEditorModule.h"
+#include "Module/CameraEditorContext.h"
+#include "Module/ICameraEditorModule.h"
 
 namespace CoreEngine {
 
     // 前方宣言
     class CameraManager;
+    class GameObjectManager;
     /// @brief カメラデバッグUI - ImGuiを使用したカメラ制御インターフェース
     class CameraDebugUI {
     public:
@@ -22,6 +23,10 @@ namespace CoreEngine {
         /// @brief 初期化
         /// @param cameraManager カメラマネージャーへのポインタ
         void Initialize(CameraManager* cameraManager);
+
+        /// @brief 追従対象探索に使うオブジェクトマネージャーを設定
+        /// @param gameObjectManager ゲームオブジェクトマネージャー
+        void SetGameObjectManager(GameObjectManager* gameObjectManager) { gameObjectManager_ = gameObjectManager; }
 
         /// @brief ImGuiウィンドウを描画
         void Draw();
@@ -37,12 +42,13 @@ namespace CoreEngine {
         /// @brief 現在フレーム用のコンテキストを構築
         CameraEditorContext BuildContext();
 
-private:
-    CameraManager* cameraManager_ = nullptr;
+    private:
+        CameraManager* cameraManager_ = nullptr;
+        GameObjectManager* gameObjectManager_ = nullptr;
 
-    // 機能追加しやすいよう、エディター機能はモジュール列として管理する。
-    std::vector<std::unique_ptr<ICameraEditorModule>> modules_;
-};
+        // 機能追加しやすいよう、エディター機能はモジュール列として管理する。
+        std::vector<std::unique_ptr<ICameraEditorModule>> modules_;
+    };
 
 }
 

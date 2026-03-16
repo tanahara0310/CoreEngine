@@ -1,7 +1,7 @@
-﻿#include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/EngineSystem.h"
 
 #ifdef _DEBUG
-#include "Camera/Debug/CameraDebugUI.h"
+#include "Camera/Debug/Editor/CameraDebugUI.h"
 #endif
 
 #include "TestScene.h"
@@ -11,7 +11,6 @@
 #include "Graphics/Render/Model/ModelRenderer.h"
 #include "Graphics/Render/Model/SkinnedModelRenderer.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "Sample/TestGameObject/ModelObject.h"
 #include "ObjectCommon/SpriteObject.h"
 
 #include <iostream>
@@ -88,23 +87,6 @@ namespace CoreEngine
                 iblManager_->SetToModelRenderer(static_cast<ModelRenderer*>(modelRenderer));
             }
         }
-
-
-        // ===== glTF PBRテストモデルの読み込み =====
-        // A Beautiful Game（チェスのモデル）を中央に配置
-
-        auto chessModel = CreateObject<ModelObject>();
-        chessModel->Initialize("ABeautifulGame.gltf");
-        chessModel->SetPBREnabled(true);
-        chessModel->SetPBRTextureMapsEnabled(true, true, true, true); // Normal, Metallic, Roughness, AOマップを有効化
-        chessModel->SetMaterialColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        chessModel->SetEnvironmentMapEnabled(true);
-        chessModel->SetEnvironmentMapIntensity(0.5f);
-        chessModel->SetIBLEnabled(true);
-        chessModel->SetIBLIntensity(1.0f);
-        chessModel->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-        chessModel->GetTransform().scale = { 20.0f, 20.0f, 20.0f };
-        chessModel->SetActive(false);
 
 
         // SkyBoxの初期化

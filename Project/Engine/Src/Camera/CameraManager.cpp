@@ -1,12 +1,12 @@
 #include "CameraManager.h"
 
 #ifdef _DEBUG
-#include "Camera/Debug/CameraDebugUI.h"
+#include "Camera/Debug/Editor/CameraDebugUI.h"
+#include "ObjectCommon/GameObjectManager.h"
 #endif
 
 namespace CoreEngine
 {
-
 
     CameraManager::CameraManager() = default;
 
@@ -153,6 +153,14 @@ namespace CoreEngine
     }
 
 #ifdef _DEBUG
+    void CameraManager::SetDebugGameObjectManager(GameObjectManager* gameObjectManager)
+    {
+        debugGameObjectManager_ = gameObjectManager;
+        if (debugUI_) {
+            debugUI_->SetGameObjectManager(debugGameObjectManager_);
+        }
+    }
+
     void CameraManager::DrawImGui()
     {
         // デバッグUIを遅延初期化
@@ -160,6 +168,9 @@ namespace CoreEngine
             debugUI_ = std::make_unique<CameraDebugUI>();
             debugUI_->Initialize(this);
         }
+
+        // デバッグUI側へ必要依存を同期する。
+        debugUI_->SetGameObjectManager(debugGameObjectManager_);
 
         // デバッグUIに描画を委譲
         debugUI_->Draw();
