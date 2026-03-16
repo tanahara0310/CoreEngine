@@ -1,4 +1,5 @@
 #include "CameraKeyframeEditorModule.h"
+#include "CameraSequenceAssetIO.h"
 
 #ifdef _DEBUG
 
@@ -13,6 +14,7 @@
 #include "Camera/Debug/DebugCamera.h"
 #include "Camera/Release/Camera.h"
 #include "Graphics/Line/LineManager.h"
+#include "Utility/JsonManager/JsonManager.h"
 
 namespace CoreEngine
 {
@@ -43,6 +45,14 @@ namespace CoreEngine
         };
 
         constexpr int kEasingOptionCount = static_cast<int>(sizeof(kEasingOptions) / sizeof(kEasingOptions[0]));
+
+        constexpr const char* kShotTransitionLabels[] = {
+            "カット",
+            "ブレンド"
+        };
+
+        constexpr int kShotTransitionLabelCount = static_cast<int>(sizeof(kShotTransitionLabels) / sizeof(kShotTransitionLabels[0]));
+
     }
 
     void CameraKeyframeEditorModule::Update(const CameraEditorContext& context)
@@ -318,6 +328,137 @@ namespace CoreEngine
 
         ImGui::Separator();
 
+        if (ImGui::CollapsingHeader("詳細: ショット遷移", ImGuiTreeNodeFlags_None)) {
+            ImGui::Checkbox("ショット遷移を有効", &shotsEnabled_);
+
+            if (ImGui::Button("現在位置にショットを追加")) {
+                PushUndoState();
+
+                Shot shot{};
+                shot.name = "ショット" + std::to_string(shots_.size() + 1);
+                shot.startTime = std::clamp(playhead_ - 0.5f, 0.0f, timelineLength_);
+                shot.endTime = std::clamp(playhead_ + 0.5f, 0.0f, timelineLength_);
+                if (shot.endTime <= shot.startTime + 0.01f) {
+                    shot.endTime = std::clamp(shot.startTime + 0.01f, 0.01f, timelineLength_);
+                }
+
+                shots_.push_back(shot);
+                selectedShotIndex_ = static_cast<int>(shots_.size()) - 1;
+                editingShotNameIndex_ = -1;
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("現在位置のショットを選択")) {
+                selectedShotIndex_ = FindShotIndexAt(playhead_);
+                editingShotNameIndex_ = -1;
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button("選択ショットを削除")) {
+                if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(shots_.size())) {
+                    PushUndoState();
+                    shots_.erase(shots_.begin() + selectedShotIndex_);
+                    if (shots_.empty()) {
+                        selectedShotIndex_ = -1;
+                    } else {
+                        selectedShotIndex_ = std::clamp(selectedShotIndex_, 0, static_cast<int>(shots_.size()) - 1);
+                    }
+                    editingShotNameIndex_ = -1;
+                }
+            }
+
+            if (shots_.empty()) {
+                ImGui::TextDisabled("ショットがありません。必要な場合のみ追加してください。");
+            } else {
+                selectedShotIndex_ = std::clamp(selectedShotIndex_, -1, static_cast<int>(shots_.size()) - 1);
+
+                if (ImGui::BeginListBox("ショット一覧", ImVec2(-1.0f, 100.0f))) {
+                    for (int i = 0; i < static_cast<int>(shots_.size()); ++i) {
+                        char label[256]{};
+                        std::snprintf(label, sizeof(label), "%s [%.2f - %.2f]%s",
+                            shots_[i].name.c_str(),
+                            shots_[i].startTime,
+                            shots_[i].endTime,
+                            shots_[i].enabled ? "" : " (無効)");
+
+                        const bool selected = (selectedShotIndex_ == i);
+                        if (ImGui::Selectable(label, selected)) {
+                            selectedShotIndex_ = i;
+                            editingShotNameIndex_ = -1;
+                        }
+                    }
+                    ImGui::EndListBox();
+                }
+            }
+
+            if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(shots_.size())) {
+                Shot& shot = shots_[selectedShotIndex_];
+
+                if (editingShotNameIndex_ != selectedShotIndex_) {
+                    std::snprintf(shotNameBuffer_, sizeof(shotNameBuffer_), "%s", shot.name.c_str());
+                    editingShotNameIndex_ = selectedShotIndex_;
+                }
+
+                if (ImGui::InputText("ショット名", shotNameBuffer_, sizeof(shotNameBuffer_))) {
+                    PushUndoState();
+                    shot.name = shotNameBuffer_;
+                }
+
+                Shot editedShot = shot;
+                bool shotChanged = false;
+
+                shotChanged |= ImGui::Checkbox("ショットを有効", &editedShot.enabled);
+                shotChanged |= ImGui::DragFloat("開始時刻", &editedShot.startTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
+                shotChanged |= ImGui::DragFloat("終了時刻", &editedShot.endTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
+
+                int transitionIndex = static_cast<int>(editedShot.transitionType);
+                if (transitionIndex < 0 || transitionIndex >= kShotTransitionLabelCount) {
+                    transitionIndex = 0;
+                }
+
+                if (ImGui::BeginCombo("遷移", kShotTransitionLabels[transitionIndex])) {
+                    for (int i = 0; i < kShotTransitionLabelCount; ++i) {
+                        const bool selected = (i == transitionIndex);
+                        if (ImGui::Selectable(kShotTransitionLabels[i], selected)) {
+                            transitionIndex = i;
+                            shotChanged = true;
+                        }
+                        if (selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                editedShot.transitionType = static_cast<ShotTransitionType>(transitionIndex);
+
+                if (editedShot.transitionType == ShotTransitionType::Blend) {
+                    shotChanged |= ImGui::DragFloat("ブレンド時間", &editedShot.blendDuration, 0.01f, 0.0f, timelineLength_, "%.2f 秒");
+                }
+
+                editedShot.startTime = std::clamp(editedShot.startTime, 0.0f, timelineLength_);
+                editedShot.endTime = std::clamp(editedShot.endTime, 0.0f, timelineLength_);
+                if (editedShot.endTime <= editedShot.startTime) {
+                    editedShot.endTime = std::clamp(editedShot.startTime + 0.01f, 0.01f, timelineLength_);
+                }
+
+                if (editedShot.blendDuration < 0.0f) {
+                    editedShot.blendDuration = 0.0f;
+                }
+
+                if (shotChanged) {
+                    PushUndoState();
+                    shot = editedShot;
+                }
+
+                if (ImGui::Button("再生ヘッドをショット先頭へ")) {
+                    playhead_ = shot.startTime;
+                    playheadChanged = true;
+                }
+            }
+        }
+
+        ImGui::Separator();
+
         if (keyframes_.empty()) {
             ImGui::TextDisabled("キーフレームがありません。");
             return;
@@ -372,10 +513,11 @@ namespace CoreEngine
         }
 
         ImGui::Separator();
-        ImGui::Text("クリップ保存/読み込み");
-        ImGui::InputText("クリップ名", clipFileNameBuffer_, sizeof(clipFileNameBuffer_));
+        ImGui::SeparatorText("シーケンス資産");
+        ImGui::TextDisabled("実ゲームで使うデータは、このシーケンス(.json)です。ショットはシーケンス内の補助情報です。");
+        ImGui::InputText("シーケンス名", clipFileNameBuffer_, sizeof(clipFileNameBuffer_));
 
-        if (ImGui::Button("クリップを保存")) {
+        if (ImGui::Button("シーケンスを保存")) {
             std::string fileName = clipFileNameBuffer_;
             if (!fileName.empty()) {
                 if (fileName.find(".json") == std::string::npos) {
@@ -396,11 +538,11 @@ namespace CoreEngine
         }
 
         if (clipFileList_.empty()) {
-            ImGui::TextDisabled("保存済みクリップがありません。");
+            ImGui::TextDisabled("保存済みシーケンスがありません。");
         } else {
             selectedClipFileIndex_ = std::clamp(selectedClipFileIndex_, -1, static_cast<int>(clipFileList_.size()) - 1);
 
-            if (ImGui::BeginListBox("クリップ一覧", ImVec2(-1.0f, 120.0f))) {
+            if (ImGui::BeginListBox("シーケンス一覧", ImVec2(-1.0f, 120.0f))) {
                 for (int i = 0; i < static_cast<int>(clipFileList_.size()); ++i) {
                     const bool isSelected = (selectedClipFileIndex_ == i);
                     if (ImGui::Selectable(clipFileList_[i].c_str(), isSelected)) {
@@ -411,7 +553,7 @@ namespace CoreEngine
             }
 
             if (selectedClipFileIndex_ >= 0 && selectedClipFileIndex_ < static_cast<int>(clipFileList_.size())) {
-                if (ImGui::Button("選択クリップを読み込み")) {
+                if (ImGui::Button("選択シーケンスを読み込み")) {
                     const std::filesystem::path fullPath = std::filesystem::path(clipDirectoryPath_) / clipFileList_[selectedClipFileIndex_];
                     PushUndoState();
                     if (LoadClipFromFile(fullPath.string())) {
@@ -432,6 +574,68 @@ namespace CoreEngine
     }
 
     bool CameraKeyframeEditorModule::EvaluateSnapshotAt(float time, CameraSnapshot& outSnapshot) const
+    {
+        if (!EvaluateSnapshotRaw(time, outSnapshot)) {
+            return false;
+        }
+
+        // ショット管理有効時は、ショット定義に従って遷移処理（カット/ブレンド）を適用する。
+        if (!shotsEnabled_ || shots_.empty()) {
+            return true;
+        }
+
+        const float clampedTime = std::clamp(time, 0.0f, timelineLength_);
+        const int shotIndex = FindShotIndexAt(clampedTime);
+        if (shotIndex < 0 || shotIndex >= static_cast<int>(shots_.size())) {
+            return true;
+        }
+
+        const Shot& currentShot = shots_[shotIndex];
+        if (!currentShot.enabled || currentShot.transitionType != ShotTransitionType::Blend) {
+            return true;
+        }
+
+        int previousShotIndex = -1;
+        for (int i = shotIndex - 1; i >= 0; --i) {
+            if (shots_[i].enabled) {
+                previousShotIndex = i;
+                break;
+            }
+        }
+
+        if (previousShotIndex < 0) {
+            return true;
+        }
+
+        const Shot& previousShot = shots_[previousShotIndex];
+        const float currentShotDuration = (std::max)(currentShot.endTime - currentShot.startTime, 0.0f);
+        const float blendDuration = std::clamp(currentShot.blendDuration, 0.0f, currentShotDuration);
+        if (blendDuration <= 0.0001f) {
+            return true;
+        }
+
+        const float blendStart = currentShot.startTime;
+        const float blendEnd = blendStart + blendDuration;
+        if (clampedTime < blendStart || clampedTime > blendEnd) {
+            return true;
+        }
+
+        CameraSnapshot fromSnapshot{};
+        if (!EvaluateSnapshotRaw(previousShot.endTime, fromSnapshot)) {
+            return true;
+        }
+
+        CameraSnapshot toSnapshot{};
+        if (!EvaluateSnapshotRaw(clampedTime, toSnapshot)) {
+            return true;
+        }
+
+        const float blendT = std::clamp((clampedTime - blendStart) / blendDuration, 0.0f, 1.0f);
+        outSnapshot = InterpolateSnapshot(fromSnapshot, toSnapshot, blendT);
+        return true;
+    }
+
+    bool CameraKeyframeEditorModule::EvaluateSnapshotRaw(float time, CameraSnapshot& outSnapshot) const
     {
         if (keyframes_.empty()) {
             return false;
@@ -741,6 +945,23 @@ namespace CoreEngine
         return bestIndex;
     }
 
+    int CameraKeyframeEditorModule::FindShotIndexAt(float time) const
+    {
+        int found = -1;
+        for (int i = 0; i < static_cast<int>(shots_.size()); ++i) {
+            const Shot& shot = shots_[i];
+            if (!shot.enabled) {
+                continue;
+            }
+
+            if (time >= shot.startTime && time <= shot.endTime) {
+                found = i;
+                break;
+            }
+        }
+        return found;
+    }
+
     int CameraKeyframeEditorModule::FindPreviousKeyframeIndex(float time) const
     {
         int index = -1;
@@ -764,125 +985,81 @@ namespace CoreEngine
         return -1;
     }
 
-    json CameraKeyframeEditorModule::SnapshotToJson(const CameraSnapshot& snapshot) const
-    {
-        json jsonData;
-
-        jsonData["isDebugCamera"] = snapshot.isDebugCamera;
-        if (snapshot.isDebugCamera) {
-            jsonData["target"] = JsonManager::Vector3ToJson(snapshot.target);
-            jsonData["distance"] = snapshot.distance;
-            jsonData["pitch"] = snapshot.pitch;
-            jsonData["yaw"] = snapshot.yaw;
-        } else {
-            jsonData["position"] = JsonManager::Vector3ToJson(snapshot.position);
-            jsonData["rotation"] = JsonManager::Vector3ToJson(snapshot.rotation);
-            jsonData["scale"] = JsonManager::Vector3ToJson(snapshot.scale);
-        }
-
-        json paramsJson;
-        paramsJson["fov"] = snapshot.parameters.fov;
-        paramsJson["nearClip"] = snapshot.parameters.nearClip;
-        paramsJson["farClip"] = snapshot.parameters.farClip;
-        paramsJson["aspectRatio"] = snapshot.parameters.aspectRatio;
-        jsonData["parameters"] = paramsJson;
-
-        return jsonData;
-    }
-
-    CameraSnapshot CameraKeyframeEditorModule::JsonToSnapshot(const json& jsonData) const
-    {
-        CameraSnapshot snapshot{};
-        snapshot.isDebugCamera = JsonManager::SafeGet(jsonData, "isDebugCamera", false);
-
-        if (snapshot.isDebugCamera) {
-            snapshot.target = JsonManager::JsonToVector3(jsonData["target"]);
-            snapshot.distance = JsonManager::SafeGet(jsonData, "distance", 20.0f);
-            snapshot.pitch = JsonManager::SafeGet(jsonData, "pitch", 0.25f);
-            snapshot.yaw = JsonManager::SafeGet(jsonData, "yaw", 3.14159265359f);
-        } else {
-            snapshot.position = JsonManager::JsonToVector3(jsonData["position"]);
-            snapshot.rotation = JsonManager::JsonToVector3(jsonData["rotation"]);
-            snapshot.scale = JsonManager::JsonToVector3(jsonData["scale"]);
-        }
-
-        if (jsonData.contains("parameters")) {
-            const auto& params = jsonData["parameters"];
-            snapshot.parameters.fov = JsonManager::SafeGet(params, "fov", 0.45f);
-            snapshot.parameters.nearClip = JsonManager::SafeGet(params, "nearClip", 0.1f);
-            snapshot.parameters.farClip = JsonManager::SafeGet(params, "farClip", 1000.0f);
-            snapshot.parameters.aspectRatio = JsonManager::SafeGet(params, "aspectRatio", 0.0f);
-        }
-
-        return snapshot;
-    }
-
     void CameraKeyframeEditorModule::RefreshClipFileList()
     {
-        clipFileList_.clear();
-
-        if (std::filesystem::exists(clipDirectoryPath_)) {
-            for (const auto& entry : std::filesystem::directory_iterator(clipDirectoryPath_)) {
-                if (entry.is_regular_file() && entry.path().extension() == ".json") {
-                    clipFileList_.push_back(entry.path().filename().string());
-                }
-            }
-
-            std::sort(clipFileList_.begin(), clipFileList_.end());
-        }
-
+        clipFileList_ = CameraSequenceAssetIO::GetSequenceFileList(clipDirectoryPath_);
         needRefreshClipFileList_ = false;
     }
 
     bool CameraKeyframeEditorModule::SaveCurrentClipToFile(const std::string& filePath) const
     {
-        json root;
-        root["version"] = "1.0";
-        root["timelineLength"] = timelineLength_;
-        root["easingTypeIndex"] = easingTypeIndex_;
+        CameraSequenceAsset asset{};
+        asset.timelineLength = timelineLength_;
+        asset.easingTypeIndex = easingTypeIndex_;
+        asset.shotsEnabled = shotsEnabled_;
 
-        json keyframesJson = json::array();
         for (const auto& key : keyframes_) {
-            json keyJson;
-            keyJson["time"] = key.time;
-            keyJson["snapshot"] = SnapshotToJson(key.snapshot);
-            keyframesJson.push_back(keyJson);
+            CameraSequenceAsset::Keyframe sequenceKey{};
+            sequenceKey.time = key.time;
+            sequenceKey.snapshot = key.snapshot;
+            asset.keyframes.push_back(sequenceKey);
         }
-        root["keyframes"] = keyframesJson;
 
-        return JsonManager::GetInstance().SaveJson(filePath, root);
+        for (const auto& shot : shots_) {
+            CameraSequenceShot sequenceShot{};
+            sequenceShot.name = shot.name;
+            sequenceShot.startTime = shot.startTime;
+            sequenceShot.endTime = shot.endTime;
+            sequenceShot.enabled = shot.enabled;
+            sequenceShot.transitionType = (shot.transitionType == ShotTransitionType::Blend)
+                ? CameraSequenceTransitionType::Blend
+                : CameraSequenceTransitionType::Cut;
+            sequenceShot.blendDuration = shot.blendDuration;
+            asset.shots.push_back(sequenceShot);
+        }
+
+        return CameraSequenceAssetIO::Save(filePath, asset);
     }
 
     bool CameraKeyframeEditorModule::LoadClipFromFile(const std::string& filePath)
     {
-        if (!JsonManager::GetInstance().FileExists(filePath)) {
+        CameraSequenceAsset asset{};
+        if (!CameraSequenceAssetIO::Load(filePath, asset)) {
             return false;
         }
 
-        json root = JsonManager::GetInstance().LoadJson(filePath);
-        if (root.empty()) {
-            return false;
-        }
-
-        timelineLength_ = JsonManager::SafeGet(root, "timelineLength", 10.0f);
-        easingTypeIndex_ = JsonManager::SafeGet(root, "easingTypeIndex", 0);
+        timelineLength_ = asset.timelineLength;
+        easingTypeIndex_ = asset.easingTypeIndex;
+        shotsEnabled_ = asset.shotsEnabled;
 
         keyframes_.clear();
-        if (root.contains("keyframes") && root["keyframes"].is_array()) {
-            for (const auto& keyJson : root["keyframes"]) {
-                Keyframe key{};
-                key.time = JsonManager::SafeGet(keyJson, "time", 0.0f);
-                if (keyJson.contains("snapshot")) {
-                    key.snapshot = JsonToSnapshot(keyJson["snapshot"]);
-                }
-                keyframes_.push_back(key);
-            }
+        for (const auto& key : asset.keyframes) {
+            Keyframe localKey{};
+            localKey.time = key.time;
+            localKey.snapshot = key.snapshot;
+            keyframes_.push_back(localKey);
         }
 
         std::sort(keyframes_.begin(), keyframes_.end(),
             [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
 
+        shots_.clear();
+        for (const auto& shot : asset.shots) {
+            Shot localShot{};
+            localShot.name = shot.name;
+            localShot.startTime = shot.startTime;
+            localShot.endTime = shot.endTime;
+            localShot.enabled = shot.enabled;
+            localShot.transitionType = (shot.transitionType == CameraSequenceTransitionType::Blend)
+                ? ShotTransitionType::Blend
+                : ShotTransitionType::Cut;
+            localShot.blendDuration = shot.blendDuration;
+            shots_.push_back(localShot);
+        }
+
         selectedIndex_ = keyframes_.empty() ? -1 : 0;
+        selectedShotIndex_ = shots_.empty() ? -1 : 0;
+        editingShotNameIndex_ = -1;
         playhead_ = 0.0f;
         isPlaying_ = false;
         return true;
@@ -892,10 +1069,13 @@ namespace CoreEngine
     {
         EditorState state{};
         state.keyframes = keyframes_;
+        state.shots = shots_;
         state.timelineLength = timelineLength_;
         state.playhead = playhead_;
         state.selectedIndex = selectedIndex_;
+        state.selectedShotIndex = selectedShotIndex_;
         state.isPlaying = isPlaying_;
+        state.shotsEnabled = shotsEnabled_;
         state.loopPlayback = loopPlayback_;
         state.playbackSpeed = playbackSpeed_;
         state.easingTypeIndex = easingTypeIndex_;
@@ -905,13 +1085,17 @@ namespace CoreEngine
     void CameraKeyframeEditorModule::ApplyEditorState(const EditorState& state)
     {
         keyframes_ = state.keyframes;
+        shots_ = state.shots;
         timelineLength_ = state.timelineLength;
         playhead_ = state.playhead;
         selectedIndex_ = state.selectedIndex;
+        selectedShotIndex_ = state.selectedShotIndex;
         isPlaying_ = state.isPlaying;
+        shotsEnabled_ = state.shotsEnabled;
         loopPlayback_ = state.loopPlayback;
         playbackSpeed_ = state.playbackSpeed;
         easingTypeIndex_ = state.easingTypeIndex;
+        editingShotNameIndex_ = -1;
     }
 
     void CameraKeyframeEditorModule::PushUndoState()

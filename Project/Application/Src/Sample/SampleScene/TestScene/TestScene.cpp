@@ -10,8 +10,8 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Model/ModelRenderer.h"
 #include "Graphics/Render/Model/SkinnedModelRenderer.h"
+#include "Sample/TestGameObject/SkyBoxObject.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "ObjectCommon/SpriteObject.h"
 
 #include <iostream>
 
@@ -88,43 +88,18 @@ namespace CoreEngine
             }
         }
 
-
         // SkyBoxの初期化
         auto skyBox = CreateObject<SkyBoxObject>();
         skyBox->Initialize();
         skyBox->SetTexture(environmentMapTexture);  // HDRから生成されたキューブマップを設定
         skyBox->SetActive(true);  // SkyBoxを表示
 
-        // ===== 平面モデルの追加（影を受ける床） =====
-        auto plane = CreateObject<Plane>();
-        plane->Initialize();
-        plane->GetTransform().translate = { 0.0f, -2.0f, 0.0f };
-        plane->GetTransform().scale = { 10.0f, 1.0f, 10.0f };
-        plane->SetActive(true);
-
-        // ===== 球体オブジェクトの追加（影を落とす） =====
-        auto sphere = CreateObject<SphereObject>();
-        sphere->Initialize();
-        sphere->GetTransform().translate = { 0.0f, 2.0f, 0.0f };
-        sphere->GetTransform().scale = { 1.5f, 1.5f, 1.5f };
-        sphere->SetMaterialColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-        sphere->SetActive(true);
-
-        // ===== スキニングモデルの追加（アニメーション付き） =====
-        auto skeletonModel = CreateObject<SneakWalkModelObject>();
-        skeletonModel->Initialize();
-        skeletonModel->GetTransform().translate = { 3.0f, 0.0f, 0.0f }; // 右側に配置
-        skeletonModel->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        skeletonModel->SetActive(true);
-
-        // テストスプライト
-        auto sprite = CreateObject<SpriteObject>();
-        sprite->Initialize("uvChecker.png");
-        sprite->GetSpriteTransform().translate = { 100.0f, 100.0f, 0.0f };
-        sprite->GetSpriteTransform().scale = { 1.0f, 1.0f, 1.0f };
-
-        // JSON からオブジェクトのトランスフォームを復元（ファイルがなければコード値をそのまま使用）
-        LoadObjectsFromJson();
+        // ===== sponzaモデルのみ配置 =====
+        auto sponza = CreateObject<ModelObject>();
+        sponza->Initialize("C:/CoreEngine/Project/Engine/Assets/Model/sponza/Sponza.gltf");
+        sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
+        sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        sponza->SetActive(true);
     }
 
     void TestScene::OnUpdate()

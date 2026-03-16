@@ -437,6 +437,7 @@
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1286,6 +1287,7 @@
     <ClInclude Include="Engine\Src\Camera\Debug\CameraClipPlayerEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

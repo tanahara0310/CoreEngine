@@ -180,6 +180,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraTransformEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\ICamera.cpp" />
     <ClCompile Include="Engine\Src\Collider\AABBCollider.cpp" />
@@ -408,6 +409,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraTransformEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\ICameraEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\ICamera.h" />
