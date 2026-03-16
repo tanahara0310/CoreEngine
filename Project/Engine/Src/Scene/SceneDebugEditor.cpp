@@ -3,7 +3,7 @@
 #include "SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/CameraManager.h"
-#include "Camera/Debug/CameraDebugUI.h"
+#include "Camera/Debug/Editor/CameraDebugUI.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "ObjectCommon/SpriteObject.h"
 #include "Scene/SceneSaveSystem.h"
@@ -21,6 +21,11 @@ namespace CoreEngine
         gameObjectManager_ = mgr;
         cameraManager_ = camMgr;
         saveSystem_ = saveSystem;
+
+        // カメラエディター側で追従対象を参照できるよう、オブジェクトマネージャーを注入する。
+        if (cameraManager_) {
+            cameraManager_->SetDebugGameObjectManager(gameObjectManager_);
+        }
 
         // 保存通知コールバックを設定
         saveSystem_->SetSaveNotificationCallback([this](const std::string& msg) {

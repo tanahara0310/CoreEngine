@@ -13,6 +13,7 @@ namespace CoreEngine
 #ifdef _DEBUG
     // 前方宣言
     class CameraDebugUI;
+    class GameObjectManager;
 #endif
 
     class CameraManager {
@@ -79,6 +80,10 @@ namespace CoreEngine
 #ifdef _DEBUG
         /// @brief ImGuiデバッグウィンドウを描画
         void DrawImGui();
+
+        /// @brief カメラエディターで参照するGameObjectManagerを設定
+        /// @param gameObjectManager ゲームオブジェクトマネージャー
+        void SetDebugGameObjectManager(GameObjectManager* gameObjectManager);
 #endif
 
     private:
@@ -96,6 +101,9 @@ namespace CoreEngine
 #ifdef _DEBUG
         /// @brief デバッグUI（遅延初期化）
         std::unique_ptr<CameraDebugUI> debugUI_;
+
+        /// @brief デバッグUIへ渡すゲームオブジェクトマネージャー（非所有）
+        GameObjectManager* debugGameObjectManager_ = nullptr;
 #endif
     };
 }

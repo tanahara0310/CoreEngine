@@ -1,10 +1,10 @@
 #include "CameraDebugUI.h"
-#include "CameraActivationEditorModule.h"
-#include "CameraKeyframeEditorModule.h"
-#include "CameraListEditorModule.h"
-#include "CameraParametersEditorModule.h"
-#include "CameraSnapshotEditorModule.h"
-#include "CameraTransformEditorModule.h"
+#include "Module/CameraKeyframeEditorModule.h"
+#include "Module/CameraClipPlayerModule.h"
+#include "Module/CameraFollowEditorModule.h"
+#include "Module/CameraListEditorModule.h"
+#include "Module/CameraParametersEditorModule.h"
+#include "Module/CameraTransformEditorModule.h"
 
 #ifdef _DEBUG
 
@@ -28,10 +28,10 @@ namespace CoreEngine {
         if (modules_.empty()) {
             RegisterModule(std::make_unique<CameraListEditorModule>());
             RegisterModule(std::make_unique<CameraTransformEditorModule>());
+            RegisterModule(std::make_unique<CameraFollowEditorModule>());
             RegisterModule(std::make_unique<CameraParametersEditorModule>());
-            RegisterModule(std::make_unique<CameraActivationEditorModule>());
-            RegisterModule(std::make_unique<CameraSnapshotEditorModule>());
             RegisterModule(std::make_unique<CameraKeyframeEditorModule>());
+            RegisterModule(std::make_unique<CameraClipPlayerModule>());
         }
     }
 
@@ -66,23 +66,47 @@ namespace CoreEngine {
         // 専用のカメラウィンドウを作成
         if (ImGui::Begin("Camera", nullptr, ImGuiWindowFlags_None)) {
             ImGui::Text("登録カメラ数: %zu", cameraManager_->GetCameraCount());
+            ImGui::Text("アクティブ3D: %s", cameraManager_->GetActiveCameraName(CameraType::Camera3D).c_str());
             ImGui::Separator();
 
-            // タブバーで整理
-            if (ImGui::BeginTabBar("CameraTabs")) {
-                // 登録済みモジュールをタブとして順次描画する。
-                for (const auto& module : modules_) {
+            // タブ遷移ではなく縦長レイアウトで表示し、機能全体の見通しを維持する。
+            bool expandAll = false;
+            bool collapseAll = false;
+            if (ImGui::Button("すべて展開")) {
+                expandAll = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("すべて折りたたみ")) {
+                collapseAll = true;
+            }
+
+            ImGui::Separator();
+
+            // モジュール描画領域をスクロール可能にし、項目追加時の視認性を確保する。
+            if (ImGui::BeginChild("CameraModuleVerticalLayout", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
+                for (size_t i = 0; i < modules_.size(); ++i) {
+                    const auto& module = modules_[i];
                     if (!module) {
                         continue;
                     }
 
-                    if (ImGui::BeginTabItem(module->GetTabName())) {
-                        module->Draw(context);
-                        ImGui::EndTabItem();
+                    ImGui::PushID(static_cast<int>(i));
+
+                    if (expandAll) {
+                        ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+                    } else if (collapseAll) {
+                        ImGui::SetNextItemOpen(false, ImGuiCond_Always);
                     }
+
+                    if (ImGui::CollapsingHeader(module->GetTabName(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                        module->Draw(context);
+                    }
+
+                    ImGui::Separator();
+                    ImGui::PopID();
                 }
 
-                ImGui::EndTabBar();
+                ImGui::EndChild();
             }
 
             // 基盤状態ではモジュールが未登録でもエディターが空白にならないように案内を表示する。
@@ -98,6 +122,7 @@ namespace CoreEngine {
     {
         CameraEditorContext context{};
         context.cameraManager = cameraManager_;
+        context.gameObjectManager = gameObjectManager_;
         return context;
     }
 

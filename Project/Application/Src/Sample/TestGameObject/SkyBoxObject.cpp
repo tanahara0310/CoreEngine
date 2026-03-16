@@ -188,15 +188,21 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
     commandList->IASetIndexBuffer(&indexBufferView_);
 
-    // トランスフォーム行列の更新（カメラの位置に追従）
+    // SkyBoxは平行移動の影響を受けないようにする。
+    // カメラ平行移動を含むView行列をそのまま使うと追従カメラ時に精度劣化で見た目が崩れる場合がある
     Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(
         transform_.scale,
         transform_.rotate,
-        camera->GetPosition() // カメラ位置に追従
+        transform_.translate
     );
 
+    Matrix4x4 viewNoTranslation = camera->GetViewMatrix();
+    viewNoTranslation.m[3][0] = 0.0f;
+    viewNoTranslation.m[3][1] = 0.0f;
+    viewNoTranslation.m[3][2] = 0.0f;
+
     Matrix4x4 viewProjectionMatrix = MathCore::Matrix::Multiply(
-        camera->GetViewMatrix(),
+        viewNoTranslation,
         camera->GetProjectionMatrix()
     );
 

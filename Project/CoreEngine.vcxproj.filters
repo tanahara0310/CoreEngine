@@ -374,7 +374,7 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom.cpp">
       <Filter>Engine\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraDebugUI.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\CameraDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Camera\ICamera.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraPresetManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\TextureManager.cpp" />
@@ -431,12 +431,12 @@
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraListEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraTransformEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraParametersEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraActivationEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraSnapshotEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\CameraKeyframeEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraTransformEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1205,7 +1205,7 @@
       <Filter>Engine\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraDebugUI.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\CameraDebugUI.h" />
     <ClInclude Include="Engine\Src\Camera\ICamera.h" />
     <ClInclude Include="Engine\Src\Camera\CameraPresetManager.h" />
     <ClInclude Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.h" />
@@ -1265,7 +1265,6 @@
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetDescriptor.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
-    <ClInclude Include="Project\Engine\Src\Graphics\TextureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.h" />
@@ -1278,14 +1277,15 @@
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraEditorContext.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\ICameraEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraListEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraTransformEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraParametersEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraActivationEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraSnapshotEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraKeyframeEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraEditorContext.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\ICameraEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraTransformEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\CameraClipPlayerEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">
@@ -1331,7 +1331,6 @@
     <None Include="Application\Assets\SampleAssets\human\walk.bin" />
     <None Include="Application\Assets\SampleAssets\PblTestModel\ABeautifulGame.bin" />
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
-    <None Include=".github\copilot-instructions.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">

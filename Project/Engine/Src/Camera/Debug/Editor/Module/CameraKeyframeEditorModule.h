@@ -12,7 +12,7 @@
 
 namespace CoreEngine
 {
-    /// @brief カメラワーク用のキーフレーム編集（基礎）モジュール
+    /// @brief カメラワーク用のキーフレーム編集モジュール
     class CameraKeyframeEditorModule final : public ICameraEditorModule {
     public:
         /// @brief タブ名を取得
@@ -54,7 +54,19 @@ namespace CoreEngine
         bool CaptureFromActiveCamera(const CameraEditorContext& context, CameraSnapshot& outSnapshot) const;
 
         /// @brief スナップショットをアクティブ3Dカメラへ適用
-        bool ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot) const;
+        bool ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot);
+
+        /// @brief スナップショットが同一かを誤差込みで判定
+        bool IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const;
+
+        /// @brief Auto Key更新を実行
+        void UpdateAutoKey(const CameraEditorContext& context);
+
+        /// @brief Sceneビュー向けのカメラワーク可視化を描画
+        void DrawViewportVisualization();
+
+        /// @brief スナップショットからワールド座標のカメラ位置を取得
+        Vector3 GetSnapshotWorldPosition(const CameraSnapshot& snapshot) const;
 
         /// @brief 指定時刻に最も近いキーフレームを検索
         int FindNearestKeyframeIndex(float time) const;
@@ -117,6 +129,26 @@ namespace CoreEngine
         std::vector<EditorState> undoStack_;
         std::vector<EditorState> redoStack_;
         size_t maxHistoryCount_ = 64;
+
+        // Auto Key
+        bool autoKeyEnabled_ = false;
+        bool ignoreNextAutoKey_ = false;
+        bool hasObservedSnapshot_ = false;
+        bool autoKeyEditing_ = false;
+        CameraSnapshot observedSnapshot_{};
+
+        // ビューポート可視化
+        bool viewportVisualizationEnabled_ = true;
+        bool viewportShowTrajectory_ = true;
+        bool viewportShowKeyMarkers_ = true;
+        bool viewportShowDebugTarget_ = true;
+        int viewportTrajectorySamplesPerSegment_ = 12;
+        float viewportMarkerSize_ = 0.2f;
+        Vector3 viewportTrajectoryColor_ = { 1.0f, 0.8f, 0.2f };
+        Vector3 viewportKeyMarkerColor_ = { 0.2f, 0.8f, 1.0f };
+        Vector3 viewportSelectedKeyColor_ = { 1.0f, 0.4f, 0.2f };
+        Vector3 viewportDebugTargetColor_ = { 0.2f, 1.0f, 0.3f };
+        float viewportTrajectoryAlpha_ = 0.9f;
     };
 }
 
