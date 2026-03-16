@@ -94,12 +94,12 @@ namespace CoreEngine
         skyBox->SetTexture(environmentMapTexture);  // HDRから生成されたキューブマップを設定
         skyBox->SetActive(true);  // SkyBoxを表示
 
-        // ===== sponzaモデルのみ配置 =====
-        auto sponza = CreateObject<ModelObject>();
-        sponza->Initialize("C:/CoreEngine/Project/Engine/Assets/Model/sponza/Sponza.gltf");
-        sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-        sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        sponza->SetActive(true);
+        //// ===== sponzaモデルのみ配置 =====
+        //auto sponza = CreateObject<ModelObject>();
+        //sponza->Initialize("C:/CoreEngine/Project/Engine/Assets/Model/sponza/Sponza.gltf");
+        //sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
+        //sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        //sponza->SetActive(true);
     }
 
     void TestScene::OnUpdate()
