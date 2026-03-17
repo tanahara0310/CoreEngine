@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
@@ -8,14 +8,19 @@ namespace CoreEngine
 {
     class DirectXCommon;
     class IBLGenerator;
-    class ModelRenderer;
-    class SkinnedModelRenderer;
 
     /// @brief IBLシステム管理クラス
     /// @details Irradiance Map、Prefiltered Map、BRDF LUTの生成と管理を一元化
     class IBLManager
     {
     public:
+        struct IBLSRVHandles
+        {
+            D3D12_GPU_DESCRIPTOR_HANDLE irradiance = {};
+            D3D12_GPU_DESCRIPTOR_HANDLE prefiltered = {};
+            D3D12_GPU_DESCRIPTOR_HANDLE brdfLUT = {};
+        };
+
         // ===== デフォルトサイズ定数 =====
         static constexpr uint32_t DEFAULT_IRRADIANCE_SIZE = 128;
         static constexpr uint32_t DEFAULT_PREFILTERED_SIZE = 256;
@@ -41,14 +46,6 @@ namespace CoreEngine
         /// @return 成功したらtrue
         bool Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator, const InitParams& params);
 
-        /// @brief ModelRendererにIBLリソースを設定
-        /// @param renderer ModelRendererポインタ
-        void SetToModelRenderer(ModelRenderer* renderer);
-
-        /// @brief SkinnedModelRendererにIBLリソースを設定
-        /// @param renderer SkinnedModelRendererポインタ
-        void SetToSkinnedModelRenderer(SkinnedModelRenderer* renderer);
-
         /// @brief Irradiance Mapを取得
         /// @return Irradiance Mapリソース
         ID3D12Resource* GetIrradianceMap() const { return irradianceMap_.Get(); }
@@ -64,6 +61,10 @@ namespace CoreEngine
         /// @brief 初期化済みかどうかを取得
         /// @return 初期化済みならtrue
         bool IsInitialized() const { return isInitialized_; }
+
+        /// @brief IBL SRVハンドルを取得
+        /// @return Irradiance / Prefiltered / BRDF LUT のSRVハンドル
+        IBLSRVHandles GetSRVHandles() const { return { irradianceSRV_, prefilteredSRV_, brdfLUTSRV_ }; }
 
     private:
         DirectXCommon* dxCommon_ = nullptr;

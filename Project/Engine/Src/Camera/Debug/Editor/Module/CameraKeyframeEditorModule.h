@@ -5,7 +5,6 @@
 #include "ICameraEditorModule.h"
 #include "Camera/CameraStructs.h"
 #include "Math/Easing/EasingUtil.h"
-#include "Utility/JsonManager/JsonManager.h"
 
 #include <string>
 #include <vector>
@@ -30,12 +29,31 @@ namespace CoreEngine
             CameraSnapshot snapshot{};
         };
 
+        /// @brief ショット間の遷移方式
+        enum class ShotTransitionType {
+            Cut = 0,
+            Blend = 1
+        };
+
+        /// @brief タイムライン上のショット定義
+        struct Shot {
+            std::string name;
+            float startTime = 0.0f;
+            float endTime = 1.0f;
+            bool enabled = true;
+            ShotTransitionType transitionType = ShotTransitionType::Cut;
+            float blendDuration = 0.2f;
+        };
+
         struct EditorState {
             std::vector<Keyframe> keyframes;
+            std::vector<Shot> shots;
             float timelineLength = 10.0f;
             float playhead = 0.0f;
             int selectedIndex = -1;
+            int selectedShotIndex = -1;
             bool isPlaying = false;
+            bool shotsEnabled = true;
             bool loopPlayback = true;
             float playbackSpeed = 1.0f;
             int easingTypeIndex = 0;
@@ -46,6 +64,9 @@ namespace CoreEngine
 
         /// @brief 指定時刻の補間済みスナップショットを評価
         bool EvaluateSnapshotAt(float time, CameraSnapshot& outSnapshot) const;
+
+        /// @brief 生タイムライン時刻で補間済みスナップショットを評価
+        bool EvaluateSnapshotRaw(float time, CameraSnapshot& outSnapshot) const;
 
         /// @brief 2つのスナップショットを線形補間
         CameraSnapshot InterpolateSnapshot(const CameraSnapshot& from, const CameraSnapshot& to, float t) const;
@@ -77,19 +98,16 @@ namespace CoreEngine
         /// @brief 指定時刻より後の最も近いキーフレームを検索
         int FindNextKeyframeIndex(float time) const;
 
-        /// @brief スナップショットをJSONへ変換
-        json SnapshotToJson(const CameraSnapshot& snapshot) const;
+        /// @brief 指定時刻のショットインデックスを検索
+        int FindShotIndexAt(float time) const;
 
-        /// @brief JSONからスナップショットを復元
-        CameraSnapshot JsonToSnapshot(const json& jsonData) const;
-
-        /// @brief クリップファイル一覧を更新
+        /// @brief シーケンスファイル一覧を更新
         void RefreshClipFileList();
 
-        /// @brief 現在のキーフレーム群をファイル保存
+        /// @brief 現在の編集状態をシーケンスとしてファイル保存
         bool SaveCurrentClipToFile(const std::string& filePath) const;
 
-        /// @brief ファイルからキーフレーム群を読み込み
+        /// @brief ファイルからシーケンスを読み込み
         bool LoadClipFromFile(const std::string& filePath);
 
         /// @brief 現在の編集状態を取得
@@ -109,17 +127,23 @@ namespace CoreEngine
 
     private:
         std::vector<Keyframe> keyframes_;
+        std::vector<Shot> shots_;
         float timelineLength_ = 10.0f;
         float playhead_ = 0.0f;
         int selectedIndex_ = -1;
+        int selectedShotIndex_ = -1;
         float updateThreshold_ = 0.01f;
         bool isPlaying_ = false;
+        bool shotsEnabled_ = true;
         bool loopPlayback_ = true;
         float playbackSpeed_ = 1.0f;
         int easingTypeIndex_ = 0;
 
-        // クリップ保存/読み込み
-        char clipFileNameBuffer_[128] = "新規カメラクリップ";
+        int editingShotNameIndex_ = -1;
+        char shotNameBuffer_[128] = "";
+
+        // シーケンス保存/読み込み
+        char clipFileNameBuffer_[128] = "新規カメラシーケンス";
         std::string clipDirectoryPath_ = "Application/Assets/Presets/CameraClips/";
         std::vector<std::string> clipFileList_;
         int selectedClipFileIndex_ = -1;

@@ -29,6 +29,7 @@ class ConsoleUI; // 前方宣言（デバッグビルドのみ）
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/IBL/IBLGenerator.h"
+#include "Graphics/IBL/IBLSystem.h"
 #include "Particle/ParticleSystem.h"
 
 // 入力関連

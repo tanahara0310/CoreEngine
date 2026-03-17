@@ -437,6 +437,7 @@
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1286,6 +1287,8 @@
     <ClInclude Include="Engine\Src\Camera\Debug\CameraClipPlayerEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.h" />
+    <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">
@@ -1331,6 +1334,7 @@
     <None Include="Application\Assets\SampleAssets\human\walk.bin" />
     <None Include="Application\Assets\SampleAssets\PblTestModel\ABeautifulGame.bin" />
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
+    <None Include=".github\copilot-instructions.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">

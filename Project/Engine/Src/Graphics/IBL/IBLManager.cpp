@@ -1,8 +1,6 @@
-﻿#include "IBLManager.h"
+#include "IBLManager.h"
 #include "IBLGenerator.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Render/Model/ModelRenderer.h"
-#include "Graphics/Render/Model/SkinnedModelRenderer.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -40,7 +38,6 @@ bool IBLManager::Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator,
         return false;
     }
 
-    dxCommon_->SetIrradianceMap(irradianceMap_.Get(), irradianceSRV_);
     Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Irradiance Map generated successfully");
 
     // ===== Prefiltered Environment Map生成 =====
@@ -59,7 +56,6 @@ bool IBLManager::Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator,
         return false;
     }
 
-    dxCommon_->SetPrefilteredMap(prefilteredMap_.Get(), prefilteredSRV_);
     Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Prefiltered Map generated successfully");
 
     // ===== BRDF LUT生成 =====
@@ -78,38 +74,11 @@ bool IBLManager::Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator,
         return false;
     }
 
-    dxCommon_->SetBRDFLUT(brdfLUT_.Get(), brdfLUTSRV_);
     Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "BRDF LUT generated successfully");
 
     isInitialized_ = true;
     Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "IBL system initialized successfully");
     return true;
-}
-
-void IBLManager::SetToModelRenderer(ModelRenderer* renderer)
-{
-    if (!renderer || !isInitialized_)
-    {
-        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "IBLManager::SetToModelRenderer: Invalid state");
-        return;
-    }
-
-    renderer->SetIrradianceMap(irradianceSRV_);
-    renderer->SetPrefilteredMap(prefilteredSRV_);
-    renderer->SetBRDFLUT(brdfLUTSRV_);
-}
-
-void IBLManager::SetToSkinnedModelRenderer(SkinnedModelRenderer* renderer)
-{
-    if (!renderer || !isInitialized_)
-    {
-        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "IBLManager::SetToSkinnedModelRenderer: Invalid state");
-        return;
-    }
-
-    renderer->SetIrradianceMap(irradianceSRV_);
-    renderer->SetPrefilteredMap(prefilteredSRV_);
-    renderer->SetBRDFLUT(brdfLUTSRV_);
 }
 
 bool IBLManager::CreateIrradianceSRV()

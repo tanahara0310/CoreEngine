@@ -1,4 +1,4 @@
-﻿#include "IBLGenerator.h"
+#include "IBLGenerator.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"

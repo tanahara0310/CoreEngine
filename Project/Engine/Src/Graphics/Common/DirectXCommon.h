@@ -76,28 +76,6 @@ public:
     D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenSrvHandle(index); }
     void EnsureOffScreenTargetCount(uint32_t count) { offScreenManager_->EnsureTargetCount(count); }
 
-    // IBL（Image-Based Lighting）関連のアクセッサ
-    void SetIrradianceMap(ID3D12Resource* resource, D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
-        irradianceMapResource_ = resource;
-        irradianceMapSRVHandle_ = srvHandle;
-    }
-    ID3D12Resource* GetIrradianceMapResource() const { return irradianceMapResource_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetIrradianceMapSRVHandle() const { return irradianceMapSRVHandle_; }
-
-    void SetPrefilteredMap(ID3D12Resource* resource, D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
-        prefilteredMapResource_ = resource;
-        prefilteredMapSRVHandle_ = srvHandle;
-    }
-    ID3D12Resource* GetPrefilteredMapResource() const { return prefilteredMapResource_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetPrefilteredMapSRVHandle() const { return prefilteredMapSRVHandle_; }
-
-    void SetBRDFLUT(ID3D12Resource* resource, D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
-        brdfLUTResource_ = resource;
-        brdfLUTSRVHandle_ = srvHandle;
-    }
-    ID3D12Resource* GetBRDFLUTResource() const { return brdfLUTResource_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetBRDFLUTSRVHandle() const { return brdfLUTSRVHandle_; }
-
     // フェンスを待機
     void WaitForPreviousFrame() { commandManager_->WaitForPreviousFrame(); }
 
@@ -119,12 +97,5 @@ private:
     std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
     std::unique_ptr<ShadowMapManager> shadowMapManager_ = std::make_unique<ShadowMapManager>();
 
-    // IBL（Image-Based Lighting）リソース
-    ID3D12Resource* irradianceMapResource_ = nullptr;
-    D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapSRVHandle_ = {};
-    ID3D12Resource* prefilteredMapResource_ = nullptr;
-    D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapSRVHandle_ = {};
-    ID3D12Resource* brdfLUTResource_ = nullptr;
-    D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTSRVHandle_ = {};
 };
 }

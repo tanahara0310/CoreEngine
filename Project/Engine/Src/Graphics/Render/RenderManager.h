@@ -48,6 +48,19 @@ namespace CoreEngine
         /// @param camera カメラオブジェクト
         void SetCamera(const CoreEngine::ICamera* camera);
 
+        /// @brief 環境マップをPBR対象レンダラーへ設定
+        /// @param environmentMapHandle 環境マップSRV
+        void SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle);
+
+        /// @brief IBLテクスチャ群をPBR対象レンダラーへ設定
+        /// @param irradianceHandle Irradiance Map SRV
+        /// @param prefilteredHandle Prefiltered Map SRV
+        /// @param brdfLUTHandle BRDF LUT SRV
+        void SetIBLMaps(
+            D3D12_GPU_DESCRIPTOR_HANDLE irradianceHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE prefilteredHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle);
+
         /// @brief コマンドリストを設定（フレームごとに1回）
         /// @param cmdList コマンドリスト
         void SetCommandList(ID3D12GraphicsCommandList* cmdList);
@@ -98,6 +111,12 @@ namespace CoreEngine
     ShadowMapManager* shadowMapManager_ = nullptr;
     bool renderDebugLines_ = true;
 
+    // IBL / Environment関連
+    D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle_ = {};
+    D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle_ = {};
+    D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_ = {};
+    D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_ = {};
+
         /// @brief 描画パスごとにソート
         void SortDrawQueue();
 
@@ -114,5 +133,8 @@ namespace CoreEngine
 
     /// @brief シャドウマップ描画の内部実行
     void RenderShadowMapPass();
+
+    /// @brief PBR対象レンダラーへ環境/IBLを適用
+    void ApplyEnvironmentLightingToRenderers();
 };
 }

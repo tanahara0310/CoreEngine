@@ -332,6 +332,7 @@ namespace CoreEngine
         // RenderManagerの作成と初期化
         auto renderManager = std::make_unique<RenderManager>();
         renderManager->Initialize(dxPtr->GetDevice());
+        RenderManager* renderManagerPtr = renderManager.get();
 
         // ShadowMapManagerを設定
         renderManager->SetShadowMapManager(dxPtr->GetShadowMapManager());
@@ -410,11 +411,18 @@ namespace CoreEngine
 
     // IBLGeneratorの作成と初期化
     auto iblGenerator = std::make_unique<IBLGenerator>();
+    IBLGenerator* iblGeneratorPtr = iblGenerator.get();
     auto shaderCompiler = std::make_unique<ShaderCompiler>();
     shaderCompiler->Initialize();
     iblGenerator->Initialize(dxPtr, shaderCompiler.get());
     RegisterComponent(std::move(iblGenerator));
     RegisterComponent(std::move(shaderCompiler));
+
+    auto iblSystem = std::make_unique<IBLSystem>();
+    if (!iblSystem->Initialize(dxPtr, iblGeneratorPtr, renderManagerPtr)) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBLSystem");
+    }
+    RegisterComponent(std::move(iblSystem));
 }
 
     void EngineSystem::CreateInputComponents()

@@ -1,4 +1,5 @@
 #include "CameraClipPlayerModule.h"
+#include "CameraSequenceAssetIO.h"
 
 #ifdef _DEBUG
 
@@ -48,7 +49,7 @@ namespace CoreEngine
             return;
         }
 
-        // 再生ヘッドを進め、クリップの補間結果を現在カメラに適用する。
+        // 再生ヘッドを進め、シーケンスの補間結果を現在カメラに適用する。
         playhead_ += ImGui::GetIO().DeltaTime * playbackSpeed_;
 
         if (playhead_ > timelineLength_) {
@@ -77,19 +78,20 @@ namespace CoreEngine
         }
 
         ImGui::Text("アクティブ3D: %s", context.cameraManager->GetActiveCameraName(CameraType::Camera3D).c_str());
-        ImGui::Text("読み込み中クリップ: %s", loadedClipName_.empty() ? "なし" : loadedClipName_.c_str());
+        ImGui::Text("読み込み中シーケンス: %s", loadedClipName_.empty() ? "なし" : loadedClipName_.c_str());
+        ImGui::TextDisabled("ここで読み込んだシーケンスがゲームカメラ再生データです。");
         ImGui::Separator();
 
-        if (ImGui::Button("クリップ一覧を更新")) {
+        if (ImGui::Button("シーケンス一覧を更新")) {
             needRefreshClipFileList_ = true;
         }
 
         if (clipFileList_.empty()) {
-            ImGui::TextDisabled("保存済みクリップがありません。");
+            ImGui::TextDisabled("保存済みシーケンスがありません。");
         } else {
             selectedClipFileIndex_ = std::clamp(selectedClipFileIndex_, -1, static_cast<int>(clipFileList_.size()) - 1);
 
-            if (ImGui::BeginListBox("保存済みクリップ", ImVec2(-1.0f, 140.0f))) {
+            if (ImGui::BeginListBox("保存済みシーケンス", ImVec2(-1.0f, 140.0f))) {
                 for (int i = 0; i < static_cast<int>(clipFileList_.size()); ++i) {
                     const bool isSelected = (selectedClipFileIndex_ == i);
                     if (ImGui::Selectable(clipFileList_[i].c_str(), isSelected)) {
@@ -100,10 +102,10 @@ namespace CoreEngine
             }
 
             if (selectedClipFileIndex_ >= 0 && selectedClipFileIndex_ < static_cast<int>(clipFileList_.size())) {
-                if (ImGui::Button("選択クリップを読み込み")) {
+                if (ImGui::Button("選択シーケンスを読み込み")) {
                     const std::filesystem::path fullPath = std::filesystem::path(clipDirectoryPath_) / clipFileList_[selectedClipFileIndex_];
                     if (!LoadClipFromFile(fullPath.string())) {
-                        statusMessage_ = "クリップ読み込みに失敗しました。";
+                        statusMessage_ = "シーケンス読み込みに失敗しました。";
                     }
                 }
             }
@@ -116,11 +118,12 @@ namespace CoreEngine
         }
 
         if (clipKeyframes_.empty()) {
-            ImGui::TextDisabled("再生可能なクリップが読み込まれていません。");
+            ImGui::TextDisabled("再生可能なシーケンスが読み込まれていません。");
             return;
         }
 
         ImGui::Text("キーフレーム数: %d", static_cast<int>(clipKeyframes_.size()));
+        ImGui::Text("ショット数: %d (%s)", static_cast<int>(clipShots_.size()), shotsEnabled_ ? "有効" : "無効");
         ImGui::DragFloat("再生速度", &playbackSpeed_, 0.05f, 0.1f, 4.0f, "%.2fx");
         ImGui::Checkbox("ループ再生", &loopPlayback_);
 
@@ -157,52 +160,48 @@ namespace CoreEngine
 
     void CameraClipPlayerModule::RefreshClipFileList()
     {
-        clipFileList_.clear();
-
-        if (std::filesystem::exists(clipDirectoryPath_)) {
-            for (const auto& entry : std::filesystem::directory_iterator(clipDirectoryPath_)) {
-                if (entry.is_regular_file() && entry.path().extension() == ".json") {
-                    clipFileList_.push_back(entry.path().filename().string());
-                }
-            }
-
-            std::sort(clipFileList_.begin(), clipFileList_.end());
-        }
-
+        clipFileList_ = CameraSequenceAssetIO::GetSequenceFileList(clipDirectoryPath_);
         needRefreshClipFileList_ = false;
     }
 
     bool CameraClipPlayerModule::LoadClipFromFile(const std::string& filePath)
     {
-        if (!JsonManager::GetInstance().FileExists(filePath)) {
+        CameraSequenceAsset asset{};
+        if (!CameraSequenceAssetIO::Load(filePath, asset)) {
             return false;
         }
 
-        const json root = JsonManager::GetInstance().LoadJson(filePath);
-        if (root.empty()) {
-            return false;
-        }
-
-        timelineLength_ = JsonManager::SafeGet(root, "timelineLength", 10.0f);
-        easingTypeIndex_ = JsonManager::SafeGet(root, "easingTypeIndex", 0);
+        timelineLength_ = asset.timelineLength;
+        easingTypeIndex_ = asset.easingTypeIndex;
+        shotsEnabled_ = asset.shotsEnabled;
         if (timelineLength_ < 0.1f) {
             timelineLength_ = 0.1f;
         }
 
         clipKeyframes_.clear();
-        if (root.contains("keyframes") && root["keyframes"].is_array()) {
-            for (const auto& keyJson : root["keyframes"]) {
-                ClipKeyframe key{};
-                key.time = JsonManager::SafeGet(keyJson, "time", 0.0f);
-                if (keyJson.contains("snapshot")) {
-                    key.snapshot = JsonToSnapshot(keyJson["snapshot"]);
-                }
-                clipKeyframes_.push_back(key);
-            }
+        for (const auto& key : asset.keyframes) {
+            ClipKeyframe localKey{};
+            localKey.time = key.time;
+            localKey.snapshot = key.snapshot;
+            clipKeyframes_.push_back(localKey);
         }
 
         std::sort(clipKeyframes_.begin(), clipKeyframes_.end(),
             [](const ClipKeyframe& a, const ClipKeyframe& b) { return a.time < b.time; });
+
+        clipShots_.clear();
+        for (const auto& shot : asset.shots) {
+            ClipShot localShot{};
+            localShot.name = shot.name;
+            localShot.startTime = shot.startTime;
+            localShot.endTime = shot.endTime;
+            localShot.enabled = shot.enabled;
+            localShot.transitionType = (shot.transitionType == CameraSequenceTransitionType::Blend)
+                ? ShotTransitionType::Blend
+                : ShotTransitionType::Cut;
+            localShot.blendDuration = shot.blendDuration;
+            clipShots_.push_back(localShot);
+        }
 
         playhead_ = 0.0f;
         isPlaying_ = false;
@@ -212,6 +211,68 @@ namespace CoreEngine
     }
 
     bool CameraClipPlayerModule::EvaluateSnapshotAt(float time, CameraSnapshot& outSnapshot) const
+    {
+        if (!EvaluateSnapshotRaw(time, outSnapshot)) {
+            return false;
+        }
+
+        // ショット管理有効時は、ショット境界での遷移方式（カット/ブレンド）を適用する。
+        if (!shotsEnabled_ || clipShots_.empty()) {
+            return true;
+        }
+
+        const float clampedTime = std::clamp(time, 0.0f, timelineLength_);
+        const int shotIndex = FindShotIndexAt(clampedTime);
+        if (shotIndex < 0 || shotIndex >= static_cast<int>(clipShots_.size())) {
+            return true;
+        }
+
+        const ClipShot& currentShot = clipShots_[shotIndex];
+        if (!currentShot.enabled || currentShot.transitionType != ShotTransitionType::Blend) {
+            return true;
+        }
+
+        int previousShotIndex = -1;
+        for (int i = shotIndex - 1; i >= 0; --i) {
+            if (clipShots_[i].enabled) {
+                previousShotIndex = i;
+                break;
+            }
+        }
+
+        if (previousShotIndex < 0) {
+            return true;
+        }
+
+        const ClipShot& previousShot = clipShots_[previousShotIndex];
+        const float currentShotDuration = (std::max)(currentShot.endTime - currentShot.startTime, 0.0f);
+        const float blendDuration = std::clamp(currentShot.blendDuration, 0.0f, currentShotDuration);
+        if (blendDuration <= 0.0001f) {
+            return true;
+        }
+
+        const float blendStart = currentShot.startTime;
+        const float blendEnd = blendStart + blendDuration;
+        if (clampedTime < blendStart || clampedTime > blendEnd) {
+            return true;
+        }
+
+        CameraSnapshot fromSnapshot{};
+        if (!EvaluateSnapshotRaw(previousShot.endTime, fromSnapshot)) {
+            return true;
+        }
+
+        CameraSnapshot toSnapshot{};
+        if (!EvaluateSnapshotRaw(clampedTime, toSnapshot)) {
+            return true;
+        }
+
+        const float blendT = std::clamp((clampedTime - blendStart) / blendDuration, 0.0f, 1.0f);
+        outSnapshot = InterpolateSnapshot(fromSnapshot, toSnapshot, blendT);
+        return true;
+    }
+
+    bool CameraClipPlayerModule::EvaluateSnapshotRaw(float time, CameraSnapshot& outSnapshot) const
     {
         if (clipKeyframes_.empty()) {
             return false;
@@ -296,31 +357,22 @@ namespace CoreEngine
         return kEasingOptions[easingTypeIndex_].type;
     }
 
-    CameraSnapshot CameraClipPlayerModule::JsonToSnapshot(const json& jsonData) const
+    int CameraClipPlayerModule::FindShotIndexAt(float time) const
     {
-        CameraSnapshot snapshot{};
-        snapshot.isDebugCamera = JsonManager::SafeGet(jsonData, "isDebugCamera", false);
+        int found = -1;
+        for (int i = 0; i < static_cast<int>(clipShots_.size()); ++i) {
+            const ClipShot& shot = clipShots_[i];
+            if (!shot.enabled) {
+                continue;
+            }
 
-        if (snapshot.isDebugCamera) {
-            snapshot.target = JsonManager::JsonToVector3(jsonData["target"]);
-            snapshot.distance = JsonManager::SafeGet(jsonData, "distance", 20.0f);
-            snapshot.pitch = JsonManager::SafeGet(jsonData, "pitch", 0.25f);
-            snapshot.yaw = JsonManager::SafeGet(jsonData, "yaw", 3.14159265359f);
-        } else {
-            snapshot.position = JsonManager::JsonToVector3(jsonData["position"]);
-            snapshot.rotation = JsonManager::JsonToVector3(jsonData["rotation"]);
-            snapshot.scale = JsonManager::JsonToVector3(jsonData["scale"]);
+            if (time >= shot.startTime && time <= shot.endTime) {
+                found = i;
+                break;
+            }
         }
 
-        if (jsonData.contains("parameters")) {
-            const auto& params = jsonData["parameters"];
-            snapshot.parameters.fov = JsonManager::SafeGet(params, "fov", 0.45f);
-            snapshot.parameters.nearClip = JsonManager::SafeGet(params, "nearClip", 0.1f);
-            snapshot.parameters.farClip = JsonManager::SafeGet(params, "farClip", 1000.0f);
-            snapshot.parameters.aspectRatio = JsonManager::SafeGet(params, "aspectRatio", 0.0f);
-        }
-
-        return snapshot;
+        return found;
     }
 
     bool CameraClipPlayerModule::ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot) const

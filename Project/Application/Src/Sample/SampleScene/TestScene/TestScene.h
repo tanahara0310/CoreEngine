@@ -27,14 +27,8 @@
 #include "Scene/BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
 
-// IBL
-#include "Graphics/IBL/IBLManager.h"
-
 // GameObjectのインクルード
-#include "Sample/TestGameObject/SphereObject.h"
-#include "Sample/TestGameObject/SkyBoxObject.h"
-#include "Sample/TestGameObject/Plane.h"
-#include "Sample/TestGameObject/SneakWalkModelObject.h"
+#include "Sample/TestGameObject/ModelObject.h"
 
 using namespace Microsoft::WRL;
 
@@ -60,8 +54,5 @@ protected:
 private: // メンバ変数
 
     Logger& logger = Logger::GetInstance();
-
-    // IBL管理
-    std::unique_ptr<IBLManager> iblManager_;
 };
 }
