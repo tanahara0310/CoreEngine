@@ -27,9 +27,6 @@
 #include "Scene/BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
 
-// IBL
-#include "Graphics/IBL/IBLManager.h"
-
 // GameObjectのインクルード
 #include "Sample/TestGameObject/ModelObject.h"
 
@@ -57,8 +54,5 @@ protected:
 private: // メンバ変数
 
     Logger& logger = Logger::GetInstance();
-
-    // IBL管理
-    std::unique_ptr<IBLManager> iblManager_;
 };
 }

@@ -26,20 +26,20 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -426,6 +426,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
+    <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\IMaterial.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h" />
@@ -740,6 +741,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include=".github\copilot-instructions.md" />
     <None Include="Application\Assets\SampleAssets\AnimatedCube\AnimatedCube.bin" />
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin" />
     <None Include="Application\Assets\SampleAssets\human\walk.bin" />

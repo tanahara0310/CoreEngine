@@ -8,8 +8,6 @@
 #include "WinApp/WinApp.h"
 #include "Scene/SceneManager.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Graphics/Render/Model/ModelRenderer.h"
-#include "Graphics/Render/Model/SkinnedModelRenderer.h"
 #include "Sample/TestGameObject/SkyBoxObject.h"
 #include "Graphics/Texture/TextureManager.h"
 
@@ -31,11 +29,10 @@ namespace CoreEngine
         ///========================================================
 
         // コンポーネントを直接取得
-        auto dxCommon = engine_->GetComponent<DirectXCommon>();
         auto modelManager = engine_->GetComponent<ModelManager>();
-        auto renderManager = engine_->GetComponent<RenderManager>();
+        auto iblSystem = engine_->GetComponent<IBLSystem>();
 
-        if (!dxCommon || !modelManager || !renderManager) {
+        if (!modelManager || !iblSystem) {
             return; // 必須コンポーネントがない場合は終了
         }
 
@@ -44,48 +41,22 @@ namespace CoreEngine
 
         // HDRファイルを読み込み（自動的にキューブマップDDSに変換される）
         TextureManager::LoadedTexture environmentMapTexture;
-        environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
+        environmentMapTexture = textureManager.Load("rogland_clear_night_4k.hdr");
 
         // ===== IBLシステムの初期化 =====
-        auto* iblGenerator = engine_->GetComponent<IBLGenerator>();
-        if (iblGenerator) {
-            // IBLManagerを使用してIBLシステムを初期化
-            iblManager_ = std::make_unique<IBLManager>();
+        IBLSystem::SetupParams iblParams;
+        iblParams.environmentMap = environmentMapTexture.texture.Get();
+        iblParams.environmentMapSRV = environmentMapTexture.gpuHandle;
+        iblParams.environmentKey = "rogland_clear_night_4k.hdr";
+        iblParams.irradianceSize = 128;
+        iblParams.prefilteredSize = 256;
+        iblParams.brdfLUTSize = 512;
 
-            IBLManager::InitParams iblParams;
-            iblParams.environmentMap = environmentMapTexture.texture.Get();
-            iblParams.irradianceSize = 128;
-            iblParams.prefilteredSize = 256;
-            iblParams.brdfLUTSize = 512;
-
-            if (iblManager_->Initialize(dxCommon, iblGenerator, iblParams)) {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "IBL system initialized successfully");
-            } else {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBL system");
-            }
+        if (iblSystem->Setup(iblParams)) {
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "IBL system initialized successfully");
         }
-
-        // ===== レンダラーに環境マップとIBLリソースを設定 =====
-
-        // SkinnedModelRendererに設定
-        auto* skinnedModelRenderer = renderManager->GetRenderer(RenderPassType::SkinnedModel);
-        if (skinnedModelRenderer) {
-            static_cast<SkinnedModelRenderer*>(skinnedModelRenderer)->SetEnvironmentMap(environmentMapTexture.gpuHandle);
-
-            if (iblManager_ && iblManager_->IsInitialized()) {
-                iblManager_->SetToSkinnedModelRenderer(static_cast<SkinnedModelRenderer*>(skinnedModelRenderer));
-            }
-        }
-
-        // ModelRendererに設定
-        auto* modelRenderer = renderManager->GetRenderer(RenderPassType::Model);
-        if (modelRenderer) {
-            static_cast<ModelRenderer*>(modelRenderer)->SetEnvironmentMap(environmentMapTexture.gpuHandle);
-
-
-            if (iblManager_ && iblManager_->IsInitialized()) {
-                iblManager_->SetToModelRenderer(static_cast<ModelRenderer*>(modelRenderer));
-            }
+        else {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBL system");
         }
 
         // SkyBoxの初期化
@@ -95,11 +66,11 @@ namespace CoreEngine
         skyBox->SetActive(true);  // SkyBoxを表示
 
         //// ===== sponzaモデルのみ配置 =====
-        //auto sponza = CreateObject<ModelObject>();
-        //sponza->Initialize("C:/CoreEngine/Project/Engine/Assets/Model/sponza/Sponza.gltf");
-        //sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-        //sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        //sponza->SetActive(true);
+        auto sponza = CreateObject<ModelObject>();
+        sponza->Initialize("Sponza.gltf");
+        sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
+        sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        sponza->SetActive(true);
     }
 
     void TestScene::OnUpdate()

@@ -57,6 +57,10 @@ namespace CoreEngine
                 Model::SetShadowMapRenderer(shadowMapRenderer);
             }
         }
+
+        if (type == RenderPassType::Model || type == RenderPassType::SkinnedModel) {
+            ApplyEnvironmentLightingToRenderers();
+        }
     }
 
     IRenderer* RenderManager::GetRenderer(RenderPassType type) {
@@ -78,6 +82,21 @@ namespace CoreEngine
         for (auto& [type, renderer] : renderers_) {
             renderer->SetCamera(camera);
         }
+    }
+
+    void RenderManager::SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle) {
+        environmentMapHandle_ = environmentMapHandle;
+        ApplyEnvironmentLightingToRenderers();
+    }
+
+    void RenderManager::SetIBLMaps(
+        D3D12_GPU_DESCRIPTOR_HANDLE irradianceHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE prefilteredHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle) {
+        irradianceMapHandle_ = irradianceHandle;
+        prefilteredMapHandle_ = prefilteredHandle;
+        brdfLUTHandle_ = brdfLUTHandle;
+        ApplyEnvironmentLightingToRenderers();
     }
 
     void RenderManager::SetCommandList(ID3D12GraphicsCommandList* cmdList) {
@@ -226,6 +245,22 @@ namespace CoreEngine
 
         // シャドウマップパスを終了
         shadowMapRenderer->EndPass();
+    }
+
+    void RenderManager::ApplyEnvironmentLightingToRenderers() {
+        if (auto* renderer = dynamic_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model))) {
+            renderer->SetEnvironmentMap(environmentMapHandle_);
+            renderer->SetIrradianceMap(irradianceMapHandle_);
+            renderer->SetPrefilteredMap(prefilteredMapHandle_);
+            renderer->SetBRDFLUT(brdfLUTHandle_);
+        }
+
+        if (auto* renderer = dynamic_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel))) {
+            renderer->SetEnvironmentMap(environmentMapHandle_);
+            renderer->SetIrradianceMap(irradianceMapHandle_);
+            renderer->SetPrefilteredMap(prefilteredMapHandle_);
+            renderer->SetBRDFLUT(brdfLUTHandle_);
+        }
     }
 
 

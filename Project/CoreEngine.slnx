@@ -1,0 +1,18 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Development" />
+    <BuildType Name="Release" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/ソリューション項目/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="CoreEngine.vcxproj">
+    <BuildDependency Project="externals/imgui/imgui.vcxproj" />
+  </Project>
+  <Project Path="externals/DirectXTex/DirectXTex_Desktop_2022_Win10.vcxproj" />
+  <Project Path="externals/imgui/imgui.vcxproj">
+    <BuildType Solution="Development|*" Project="Release" />
+  </Project>
+</Solution>
