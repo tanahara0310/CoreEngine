@@ -196,6 +196,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\GridRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLManager.cpp" />
@@ -221,6 +223,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GeometryPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
@@ -440,6 +444,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinCluster.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLManager.h" />
@@ -474,6 +480,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GeometryPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPass.h" />

@@ -3,6 +3,10 @@
 #include "../Common/ShadowCalculation.hlsli"
 #include "../Common/PBR.hlsli" // PBR.hlsliが内部でLighting.hlsliをインクルード
 
+// ハイブリッドレンダリングの Forward パスシェーダー。
+// 不透明モデル（ブレンドあり）および SceneView の全オブジェクト描画に使用する。
+// 不透明モデルは GBuffer.PS.hlsl → DeferredLighting.PS.hlsl 経由でライティング済み。
+
 // ===== トーンマッピング関数 =====
 
 /// @brief ACESトーンマッピング（映画業界標準）

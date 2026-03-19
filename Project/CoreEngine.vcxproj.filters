@@ -438,6 +438,10 @@
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1289,6 +1293,10 @@
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

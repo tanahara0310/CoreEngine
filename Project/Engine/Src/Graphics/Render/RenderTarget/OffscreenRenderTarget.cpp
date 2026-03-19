@@ -44,9 +44,12 @@ namespace CoreEngine
         // RTV & DSV設定
         cmdList->OMSetRenderTargets(1, &rtvHandle_, false, &dsvHandle_);
 
-        // クリア
-        cmdList->ClearRenderTargetView(rtvHandle_, clearColor_, 0, nullptr);
-        cmdList->ClearDepthStencilView(dsvHandle_, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        // クリア（clearEnabled_ が false の場合はスキップ）
+        // DeferredLightingPass など直前のパスで描き込んだ内容を保持したい場合に使用する
+        if (clearEnabled_) {
+            cmdList->ClearRenderTargetView(rtvHandle_, clearColor_, 0, nullptr);
+            cmdList->ClearDepthStencilView(dsvHandle_, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        }
 
         // ビューポート設定
         D3D12_VIEWPORT viewport{};

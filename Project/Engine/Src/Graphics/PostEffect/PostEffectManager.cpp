@@ -18,6 +18,7 @@
 #include "Effect/FadeEffect.h"
 #include "Effect/Bloom.h"
 #include "Effect/Dissolve.h"
+#include "Effect/DeferredLighting.h"
 #include "PostEffectPresetManager.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
@@ -135,6 +136,9 @@ void PostEffectManager::RegisterAllEffects()
 {
     // FullScreenは常に有効（コピー用）
     RegisterEffect<FullScreen>(PostEffectNames::FullScreen, true);
+
+    // DeferredLightingはRenderPass側から明示実行する（チェーンには含めない）
+    RegisterEffect<DeferredLighting>(PostEffectNames::DeferredLighting, true);
 
     // FadeEffectはデフォルトで有効
     RegisterEffect<FadeEffect>(PostEffectNames::FadeEffect, true);

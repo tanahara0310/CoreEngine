@@ -8,6 +8,17 @@
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 
+namespace
+{
+    /// @brief GBuffer PSO のレンダーターゲットフォーマット（GBufferManager::Target と共必ず順序を合わせる）
+    constexpr DXGI_FORMAT kSkinnedGBufferFormats[] = {
+        DXGI_FORMAT_R8G8B8A8_UNORM,       // AlbedoAO
+        DXGI_FORMAT_R16G16B16A16_FLOAT,   // NormalRoughness
+        DXGI_FORMAT_R8G8B8A8_UNORM,       // EmissiveMetallic
+        DXGI_FORMAT_R32G32B32A32_FLOAT    // WorldPosition
+    };
+}
+
 
 namespace CoreEngine
 {
@@ -21,9 +32,16 @@ namespace CoreEngine
         auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Object/Object3d.PS.hlsl", L"ps_6_0");
         assert(pixelShaderBlob != nullptr);
 
+        auto gBufferVertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skinning/GBufferSkinning.VS.hlsl", L"vs_6_0");
+        assert(gBufferVertexShaderBlob != nullptr);
+
+        auto gBufferPixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Object/GBuffer.PS.hlsl", L"ps_6_0");
+        assert(gBufferPixelShaderBlob != nullptr);
+
         // シェーダーリフレクション
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(skinningVertexShaderBlob, pixelShaderBlob, "SkinnedModelRenderer");
+        forwardReflectionData_ = reflectionBuilder_->BuildFromShaders(skinningVertexShaderBlob, pixelShaderBlob, "SkinnedModelRenderer");
+        gBufferReflectionData_ = reflectionBuilder_->BuildFromShaders(gBufferVertexShaderBlob, gBufferPixelShaderBlob, "SkinnedModelRenderer_GBuffer");
 
         // 新しい設定ベースのRootSignature構築
         RootSignatureConfig config = RootSignatureConfig::PerformanceOptimized();
@@ -41,49 +59,77 @@ namespace CoreEngine
         config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
 
         // RootSignatureを構築
-        auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
+        auto buildResult = forwardRootSignatureMg_->Build(device, *forwardReflectionData_, config);
 
         if (!buildResult.success) {
             throw std::runtime_error("Failed to create Skinned Root Signature: " + buildResult.errorMessage);
         }
 
+        auto gBufferBuildResult = gBufferRootSignatureMg_->Build(device, *gBufferReflectionData_, config);
+
+        if (!gBufferBuildResult.success) {
+            throw std::runtime_error("Failed to create Skinned GBuffer Root Signature: " + gBufferBuildResult.errorMessage);
+        }
+
         // CBVサイズ検証（C++構造体とHLSL構造体のサイズ一致を確認）
-        reflectionData_->ValidateAllCBVSizes({
+        forwardReflectionData_->ValidateAllCBVSizes({
+            {"gTransformationMatrix", sizeof(TransformationMatrix)},
+            {"gMaterial", sizeof(MaterialConstants)}
+            });
+
+        gBufferReflectionData_->ValidateAllCBVSizes({
             {"gTransformationMatrix", sizeof(TransformationMatrix)},
             {"gMaterial", sizeof(MaterialConstants)}
             });
 
         // PSO作成（自動スロット検出でWEIGHT/INDEXは自動的にスロット1に割り当て）
-        bool skinningResult = psoMg_->CreateBuilder()
-            .SetInputLayoutFromReflection(*reflectionData_)
+        bool skinningResult = forwardPsoMg_->CreateBuilder()
+            .SetInputLayoutFromReflection(*forwardReflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, skinningVertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device, skinningVertexShaderBlob, pixelShaderBlob, forwardRootSignatureMg_->GetRootSignature());
 
-        if (!skinningResult) {
+        bool gBufferResult = gBufferPsoMg_->CreateBuilder()
+            .SetInputLayoutFromReflection(*gBufferReflectionData_)
+            .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
+            .SetDepthStencil(true, true)
+            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
+            .SetRenderTargetFormats(kSkinnedGBufferFormats, static_cast<UINT>(std::size(kSkinnedGBufferFormats)))
+            .BuildGBuffer(device, gBufferVertexShaderBlob, gBufferPixelShaderBlob, gBufferRootSignatureMg_->GetRootSignature());
+
+        if (!skinningResult || !gBufferResult) {
             throw std::runtime_error("Failed to create Skinning Pipeline State Object");
         }
 
-        pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNone);
+        forwardPipelineState_ = forwardPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
+        gBufferPipelineState_ = gBufferPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
     }
 
     int SkinnedModelRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        if (!reflectionData_) {
+        if (!forwardReflectionData_) {
             return -1;
         }
-        return reflectionData_->GetRootParameterIndexByName(resourceName);
+        return forwardReflectionData_->GetRootParameterIndexByName(resourceName);
+    }
+
+    int SkinnedModelRenderer::GetGBufferRootParamIndex(const std::string& resourceName) const {
+        if (!gBufferReflectionData_) {
+            return -1;
+        }
+        return gBufferReflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
     void SkinnedModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
+        isInGBufferPass_ = false;
 
         if (blendMode != currentBlendMode_) {
             currentBlendMode_ = blendMode;
-            pipelineState_ = psoMg_->GetPipelineState(blendMode);
+            forwardPipelineState_ = forwardPsoMg_->GetPipelineState(blendMode);
         }
 
-        cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
-        cmdList->SetPipelineState(pipelineState_);
+        cmdList->SetGraphicsRootSignature(forwardRootSignatureMg_->GetRootSignature());
+        cmdList->SetPipelineState(forwardPipelineState_);
         cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         int cameraIdx = GetRootParamIndex("gCamera");
@@ -133,7 +179,33 @@ namespace CoreEngine
         }
     }
 
+    void SkinnedModelRenderer::BeginGBufferPass(ID3D12GraphicsCommandList* cmdList) {
+        isInGBufferPass_ = true;
+        cmdList->SetGraphicsRootSignature(gBufferRootSignatureMg_->GetRootSignature());
+        cmdList->SetPipelineState(gBufferPipelineState_);
+        cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        int materialIdx = GetGBufferRootParamIndex("gMaterial");
+        int transformIdx = GetGBufferRootParamIndex("gTransformationMatrix");
+        int textureIdx = GetGBufferRootParamIndex("gTexture");
+        int matrixPaletteIdx = GetGBufferRootParamIndex("gMatrixPalette");
+
+        (void)materialIdx;
+        (void)transformIdx;
+        (void)matrixPaletteIdx;
+
+#ifdef _DEBUG
+        if (textureIdx < 0) {
+            Logger::GetInstance().Logf(
+                LogLevel::Warn,
+                LogCategory::Graphics,
+                "SkinnedModelRenderer::BeginGBufferPass() could not find gTexture in GBuffer root signature.");
+        }
+#endif
+    }
+
     void SkinnedModelRenderer::EndPass() {
+        isInGBufferPass_ = false;
     }
 
     void SkinnedModelRenderer::SetCamera(const ICamera* camera) {

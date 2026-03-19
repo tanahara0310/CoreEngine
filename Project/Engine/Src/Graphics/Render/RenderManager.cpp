@@ -168,6 +168,67 @@ namespace CoreEngine
         }
     }
 
+    void RenderManager::DrawGBufferPass() {
+        if (drawQueue_.empty() || !cmdList_) {
+            return;
+        }
+
+        EnsureQueueSorted();
+
+        auto* modelRenderer = dynamic_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model));
+        auto* skinnedRenderer = dynamic_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel));
+        const ICamera* currentCamera = GetCameraForPass(RenderPassType::Model);
+
+        if (modelRenderer) {
+            modelRenderer->SetCamera(currentCamera);
+        }
+        if (skinnedRenderer) {
+            skinnedRenderer->SetCamera(currentCamera);
+        }
+
+        IRenderer* activeRenderer = nullptr;
+        RenderPassType activePass = RenderPassType::Invalid;
+
+        for (const auto& cmd : drawQueue_) {
+            if (!cmd.object || cmd.object->IsMarkedForDestroy()) {
+                continue;
+            }
+
+            const bool isGBufferTarget =
+                (cmd.passType == RenderPassType::Model || cmd.passType == RenderPassType::SkinnedModel)
+                && cmd.blendMode == BlendMode::kBlendModeNone;
+
+            if (!isGBufferTarget) {
+                continue;
+            }
+
+            if (cmd.passType != activePass) {
+                if (activeRenderer) {
+                    activeRenderer->EndPass();
+                }
+
+                activePass = cmd.passType;
+                activeRenderer = nullptr;
+
+                if (cmd.passType == RenderPassType::Model && modelRenderer) {
+                    modelRenderer->BeginGBufferPass(cmdList_);
+                    activeRenderer = modelRenderer;
+                } else if (cmd.passType == RenderPassType::SkinnedModel && skinnedRenderer) {
+                    skinnedRenderer->BeginGBufferPass(cmdList_);
+                    activeRenderer = skinnedRenderer;
+                }
+            }
+
+            if (activeRenderer) {
+                cmd.object->Draw(currentCamera);
+            }
+        }
+
+        if (activeRenderer) {
+            activeRenderer->EndPass();
+        }
+    }
+
     void RenderManager::DrawGeometryPass() {
         if (drawQueue_.empty() || !cmdList_) {
             return;
@@ -279,6 +340,17 @@ namespace CoreEngine
 
             if (!renderDebugLines_ && cmd.passType == RenderPassType::Line) {
                 continue;
+            }
+
+            // ハイブリッド: 不透明の Model/SkinnedModel は GBufferPass + DeferredLightingPass 済みなのでスキップする。
+            // 透明（ブレンドあり）の Model/SkinnedModel は Forward 経路で描画するためスキップしない。
+            if (skipOpaqueModelsInForward_) {
+                const bool isOpaqueModel =
+                    (cmd.passType == RenderPassType::Model || cmd.passType == RenderPassType::SkinnedModel)
+                    && cmd.blendMode == BlendMode::kBlendModeNone;
+                if (isOpaqueModel) {
+                    continue;
+                }
             }
 
             const bool passChanged = cmd.passType != currentPass;

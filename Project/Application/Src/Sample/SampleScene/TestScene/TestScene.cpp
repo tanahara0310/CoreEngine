@@ -70,7 +70,7 @@ namespace CoreEngine
         sponza->Initialize("Sponza.gltf");
         sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
         sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        sponza->SetActive(true);
+        sponza->SetActive(false);
     }
 
     void TestScene::OnUpdate()
