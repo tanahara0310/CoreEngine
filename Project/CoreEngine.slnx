@@ -8,11 +8,11 @@
   <Folder Name="/ソリューション項目/">
     <File Path=".editorconfig" />
   </Folder>
-  <Project Path="CoreEngine.vcxproj">
+  <Project Path="CoreEngine.vcxproj" Id="e734df21-9a76-4ab3-89c9-9eebaa036a5a">
     <BuildDependency Project="externals/imgui/imgui.vcxproj" />
   </Project>
-  <Project Path="externals/DirectXTex/DirectXTex_Desktop_2022_Win10.vcxproj" />
-  <Project Path="externals/imgui/imgui.vcxproj">
+  <Project Path="externals/DirectXTex/DirectXTex_Desktop_2022_Win10.vcxproj" Id="371b9fa9-4c90-4ac6-a123-aced756d6c77" />
+  <Project Path="externals/imgui/imgui.vcxproj" Id="4e5794cf-9afa-453d-a5ec-3d3d3535ee75">
     <BuildType Solution="Development|*" Project="Release" />
   </Project>
 </Solution>

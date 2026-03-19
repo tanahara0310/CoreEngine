@@ -38,8 +38,20 @@ namespace CoreEngine
             return targetName_;
         }
 
+        /// @brief Execute() 開始時にレンダーターゲットをクリアするか設定する
+        /// @param enabled true: クリアする（デフォルト） / false: クリアしない
+        /// @note DeferredLightingPass などで前段に書き込み済みのコンテンツを上書きしたくない場合に false を指定する
+        void SetClearEnabled(bool enabled) { clearEnabled_ = enabled; }
+
+        /// @brief クリアが有効かどうか取得
+        bool IsClearEnabled() const { return clearEnabled_; }
+
     private:
         std::function<void()> renderCallback_;
         std::string targetName_ = "Offscreen0";  ///< デフォルトターゲット名
+
+        /// @brief レンダーターゲットをクリアするかどうか
+        /// false にすると DeferredLightingPass などで書き込んだ内容を保持する
+        bool clearEnabled_ = true;
     };
 }

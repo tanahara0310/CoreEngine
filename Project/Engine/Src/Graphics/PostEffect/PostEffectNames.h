@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /// @brief ポストエフェクト名を一元管理する名前空間
 /// @details エフェクト登録と取得で同じ文字列を使用するため、タイポを防ぐ
@@ -7,6 +7,7 @@ namespace CoreEngine
 {
 namespace PostEffectNames {
     constexpr const char* FullScreen = "FullScreen";
+    constexpr const char* DeferredLighting = "DeferredLighting";
     constexpr const char* FadeEffect = "FadeEffect";
     constexpr const char* GrayScale = "GrayScale";
     constexpr const char* Blur = "Blur";

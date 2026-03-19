@@ -9,14 +9,18 @@ namespace CoreEngine
     class PostEffectManager;
     class LightManager;
     class RenderTargetManager;
+    class GBufferManager;
+    class ShadowMapManager;
 
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
-        DirectXCommon* dxCommon = nullptr;
-        RenderManager* renderManager = nullptr;
-        PostEffectManager* postEffectManager = nullptr;
-        LightManager* lightManager = nullptr;
-        RenderTargetManager* renderTargetManager = nullptr;  ///< レンダーターゲット管理（Phase 1で追加）
+        DirectXCommon*      dxCommon            = nullptr;
+        RenderManager*      renderManager       = nullptr;
+        PostEffectManager*  postEffectManager   = nullptr;
+        LightManager*       lightManager        = nullptr;
+        ShadowMapManager*   shadowMapManager    = nullptr;  ///< シャドウマップ管理（LVP記列・ SRV 取得用）
+        RenderTargetManager* renderTargetManager = nullptr;
+        GBufferManager*     gBufferManager      = nullptr;  ///< G-Buffer管理（Deferred/Hybrid移行基盤）
     };
 
     /// @brief パス間のデータ受け渡し用構造体

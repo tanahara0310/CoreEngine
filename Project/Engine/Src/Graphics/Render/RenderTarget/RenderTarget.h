@@ -59,6 +59,14 @@ namespace CoreEngine
         /// @return クリアカラー配列
         const float* GetClearColor() const { return clearColor_; }
 
+        /// @brief Begin() 時にRTVクリアを行うか設定する
+        /// @param enabled true: クリアする（デフォルト） / false: クリアしない
+        /// @note DeferredLightingPass など前段パスの書き込みを保持したい場合に false を指定する
+        void SetClearEnabled(bool enabled) { clearEnabled_ = enabled; }
+
+        /// @brief Begin() 時のクリアが有効かどうか取得
+        bool IsClearEnabled() const { return clearEnabled_; }
+
     protected:
         /// @brief リソースバリアを設定するヘルパー関数
         /// @param cmdList コマンドリスト
@@ -71,6 +79,10 @@ namespace CoreEngine
             D3D12_RESOURCE_STATES stateBefore,
             D3D12_RESOURCE_STATES stateAfter);
 
+        /// @brief RTVのクリア色（RGBA）
         float clearColor_[4] = {0.1f, 0.25f, 0.5f, 1.0f};
+
+        /// @brief Begin() でRTVクリアを行うかどうか（true がデフォルト）
+        bool clearEnabled_ = true;
     };
 }

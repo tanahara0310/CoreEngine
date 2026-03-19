@@ -42,6 +42,13 @@ namespace CoreEngine
             winApp_->GetClientWidth(),
             winApp_->GetClientHeight());
 
+        // G-Bufferの初期化
+        gBufferManager_->Initialize(
+            deviceManager_->GetDevice(),
+            descriptorManager_.get(),
+            winApp_->GetClientWidth(),
+            winApp_->GetClientHeight());
+
         // シャドウマップの初期化
         shadowMapManager_->Initialize(
             deviceManager_->GetDevice(),
@@ -68,6 +75,9 @@ namespace CoreEngine
 
         // オフスクリーンレンダリングターゲットのリサイズ
         offScreenManager_->Resize(width, height);
+
+        // G-Bufferのリサイズ
+        gBufferManager_->Resize(width, height);
 
         Logger::GetInstance().Log(
             L"Window Resized: " + std::to_wstring(width) + L"x" + std::to_wstring(height),

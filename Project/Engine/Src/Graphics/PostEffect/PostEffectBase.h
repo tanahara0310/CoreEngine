@@ -45,6 +45,11 @@ protected:
     virtual std::string GetEffectName() const { return "PostEffect"; }
     virtual void BindOptionalCBVs(ID3D12GraphicsCommandList*/* commandList*/) { }
 
+    /// @brief ルートシグネチャ構築前に呼ばれる設定フック
+    /// @details サブクラスでオーバーライドすることで追加サンプラーなどを設定できる
+    /// @param config 構築中のルートシグネチャ設定
+    virtual void OnConfigureRootSignature(RootSignatureConfig& /*config*/) {}
+
 protected:
     DirectXCommon* directXCommon_ = nullptr;
 

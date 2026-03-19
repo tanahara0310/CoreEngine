@@ -1,4 +1,4 @@
-﻿#include "PipelineStateManager.h"
+#include "PipelineStateManager.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
 
@@ -209,7 +209,7 @@ PipelineStateBuilder& PipelineStateBuilder::SetRenderTargetFormat(DXGI_FORMAT fo
 {
     if (index < 8) {
         rtvFormats_[index] = format;
-        
+
         // DXGI_FORMAT_UNKNOWNの場合、レンダーターゲット数を0にする（深度のみのパス用）
         if (index == 0 && format == DXGI_FORMAT_UNKNOWN) {
             numRenderTargets_ = 0;
@@ -217,6 +217,24 @@ PipelineStateBuilder& PipelineStateBuilder::SetRenderTargetFormat(DXGI_FORMAT fo
             numRenderTargets_ = index + 1;
         }
     }
+    return *this;
+}
+
+PipelineStateBuilder& PipelineStateBuilder::SetRenderTargetFormats(const DXGI_FORMAT* formats, UINT count)
+{
+    assert(formats != nullptr && "SetRenderTargetFormats: formats が nullptr です");
+    assert(count > 0 && count <= 8 && "SetRenderTargetFormats: count は 1〜8 の範囲で指定してください");
+
+    // 一度全スロットをリセット
+    for (int i = 0; i < 8; ++i) {
+        rtvFormats_[i] = DXGI_FORMAT_UNKNOWN;
+    }
+
+    for (UINT i = 0; i < count; ++i) {
+        rtvFormats_[i] = formats[i];
+    }
+    numRenderTargets_ = count;
+
     return *this;
 }
 
@@ -274,6 +292,19 @@ bool PipelineStateBuilder::BuildAllBlendModes(
     IDxcBlob* ps,
     ID3D12RootSignature* rootSignature)
 {
+#ifdef _DEBUG
+    // MRT設定（G-Bufferパス）で BuildAllBlendModes() を呼び出した場合の誤用警告
+    // G-BufferパスのPSOは kBlendModeNone のみ必要なため BuildGBuffer() を使用してください
+    if (numRenderTargets_ > 1) {
+        Logger::GetInstance().Logf(
+            LogLevel::Warn,
+            LogCategory::Graphics,
+            "PipelineStateBuilder::BuildAllBlendModes() が MRT ({} RTs) で呼び出されました。"
+            " G-BufferパスのPSOには BuildGBuffer() を使用してください。",
+            numRenderTargets_);
+    }
+#endif
+
     std::vector<BlendMode> allModes = {
         BlendMode::kBlendModeNone,
         BlendMode::kBlendModeNormal,
@@ -286,6 +317,28 @@ bool PipelineStateBuilder::BuildAllBlendModes(
     return Build(device, vs, ps, rootSignature, allModes);
 }
 
+bool PipelineStateBuilder::BuildGBuffer(
+    ID3D12Device* device,
+    IDxcBlob* vs,
+    IDxcBlob* ps,
+    ID3D12RootSignature* rootSignature)
+{
+#ifdef _DEBUG
+    // G-Buffer は必ず MRT を使用するため単一RTで呼び出した場合は警告
+    if (numRenderTargets_ <= 1) {
+        Logger::GetInstance().Logf(
+            LogLevel::Warn,
+            LogCategory::Graphics,
+            "PipelineStateBuilder::BuildGBuffer() が単一RT ({} RTs) で呼び出されました。"
+            " G-BufferパスではSetRenderTargetFormats()で複数RTを設定してください。",
+            numRenderTargets_);
+    }
+#endif
+
+    // G-Bufferは kBlendModeNone のみ生成する（透過はフォワードパスで行う）
+    return Build(device, vs, ps, rootSignature, { BlendMode::kBlendModeNone });
+}
+
 D3D12_BLEND_DESC PipelineStateBuilder::CreateBlendDesc(BlendMode mode) const
 {
     D3D12_BLEND_DESC desc{};
@@ -295,8 +348,15 @@ D3D12_BLEND_DESC PipelineStateBuilder::CreateBlendDesc(BlendMode mode) const
     if (!enableAlphaWrite_) {
         writeMask &= ~D3D12_COLOR_WRITE_ENABLE_ALPHA;
     }
-    desc.RenderTarget[0].RenderTargetWriteMask = writeMask;
 
+    // MRT対応: 全アクティブスロットにライトマスクを設定する
+    // G-Bufferパスでは全スロットが BlendEnable = FALSE（ブレンドなし）になる
+    // 単一RTの場合は numRenderTargets_ = 1 のため従来と同じ動作
+    for (UINT i = 0; i < numRenderTargets_; ++i) {
+        desc.RenderTarget[i].RenderTargetWriteMask = writeMask;
+    }
+
+    // ブレンド設定は RT[0] にのみ適用する（MRT時もRT[0]のみがブレンド対象）
     switch (mode) {
     case BlendMode::kBlendModeNone:
         desc.RenderTarget[0].BlendEnable = FALSE;

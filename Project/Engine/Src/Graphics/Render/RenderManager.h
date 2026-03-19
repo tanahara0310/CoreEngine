@@ -80,6 +80,9 @@ namespace CoreEngine
     /// @brief シャドウパスのみ描画（描画キュー必須）
     void DrawShadowPass();
 
+    /// @brief G-Bufferパスのみ描画（不透明 Model / SkinnedModel を蓄積）
+    void DrawGBufferPass();
+
     /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
     void DrawGeometryPass();
 
@@ -88,6 +91,20 @@ namespace CoreEngine
 
         /// @brief デバッグライン描画の有効/無効を設定
         void SetDebugLineRenderingEnabled(bool enabled) { renderDebugLines_ = enabled; }
+
+        /// @brief 不透明の Model/SkinnedModel を GeometryPass でスキップするか設定する
+        /// @param skip true: スキップ（DeferredLighting に任せる）/ false: 旧従来 Forwardで描画
+        /// @note GBufferPass + DeferredLightingPass が有効な場合に true を設定する
+        void SetSkipOpaqueMeshInForwardPass(bool skip) { skipOpaqueModelsInForward_ = skip; }
+
+        /// @brief Irradiance Map の GPU SRV ハンドルを取得（DeferredLightingPass の IBL 接続用）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetIrradianceMapHandle() const { return irradianceMapHandle_; }
+
+        /// @brief Prefiltered Map の GPU SRV ハンドルを取得（DeferredLightingPass の IBL 接続用）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetPrefilteredMapHandle() const { return prefilteredMapHandle_; }
+
+        /// @brief BRDF LUT の GPU SRV ハンドルを取得（DeferredLightingPass の IBL 接続用）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetBRDFLUTHandle() const { return brdfLUTHandle_; }
 
     private:
         struct DrawCommand {
@@ -110,6 +127,11 @@ namespace CoreEngine
     // シャドウマップ関連
     ShadowMapManager* shadowMapManager_ = nullptr;
     bool renderDebugLines_ = true;
+
+    // GBuffer 移行制御
+    // true にすると RenderNormalPass で不透明 Model/SkinnedModel をスキップする
+    // DeferredLightingPass が有効な場合に使用する
+    bool skipOpaqueModelsInForward_ = false;
 
     // IBL / Environment関連
     D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle_ = {};

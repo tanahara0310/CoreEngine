@@ -23,11 +23,13 @@ namespace CoreEngine
     public:
         void Initialize(ID3D12Device* device) override;
         void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) override;
+        void BeginGBufferPass(ID3D12GraphicsCommandList* cmdList);
         void EndPass() override;
         RenderPassType GetRenderPassType() const override { return RenderPassType::SkinnedModel; }
         void SetCamera(const ICamera* camera) override;
 
-        ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
+        ID3D12RootSignature* GetRootSignature() const { return forwardRootSignatureMg_->GetRootSignature(); }
+        ID3D12RootSignature* GetGBufferRootSignature() const { return gBufferRootSignatureMg_->GetRootSignature(); }
 
         void SetLightManager(LightManager* lightManager) { lightManager_ = lightManager; }
         void SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle) { environmentMapHandle_ = environmentMapHandle; }
@@ -41,26 +43,33 @@ namespace CoreEngine
         /// @param resourceName シェーダーで定義されたリソース名（例: "gMaterial", "gMatrixPalette"）
         /// @return ルートパラメータインデックス（見つからない場合は-1）
         int GetRootParamIndex(const std::string& resourceName) const;
+        int GetGBufferRootParamIndex(const std::string& resourceName) const;
+        bool IsInGBufferPass() const { return isInGBufferPass_; }
 
     private:
-        std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
-        std::unique_ptr<PipelineStateManager> psoMg_ = std::make_unique<PipelineStateManager>();
-        std::unique_ptr<ShaderCompiler> shaderCompiler_ = std::make_unique<ShaderCompiler>();
-        std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
+        std::unique_ptr<RootSignatureManager> forwardRootSignatureMg_ = std::make_unique<RootSignatureManager>();
+        std::unique_ptr<RootSignatureManager> gBufferRootSignatureMg_  = std::make_unique<RootSignatureManager>();
+        std::unique_ptr<PipelineStateManager> forwardPsoMg_            = std::make_unique<PipelineStateManager>();
+        std::unique_ptr<PipelineStateManager> gBufferPsoMg_            = std::make_unique<PipelineStateManager>();
+        std::unique_ptr<ShaderCompiler>        shaderCompiler_         = std::make_unique<ShaderCompiler>();
+        std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_    = std::make_unique<ShaderReflectionBuilder>();
 
-        ID3D12PipelineState* pipelineState_ = nullptr;
+        ID3D12PipelineState* forwardPipelineState_ = nullptr;
+        ID3D12PipelineState* gBufferPipelineState_ = nullptr;
         BlendMode currentBlendMode_;
         D3D12_GPU_VIRTUAL_ADDRESS cameraCBV_ = 0;
 
         CoreEngine::LightManager* lightManager_ = nullptr;
         D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE shadowMapHandle_ = {};
-        D3D12_GPU_VIRTUAL_ADDRESS lightViewProjectionCBV_ = 0;
-        D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle_ = {};
+        D3D12_GPU_DESCRIPTOR_HANDLE shadowMapHandle_      = {};
+        D3D12_GPU_VIRTUAL_ADDRESS   lightViewProjectionCBV_ = 0;
+        D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle_  = {};
         D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_ = {};
+        D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_        = {};
 
         // シェーダーリフレクションデータ
-        std::unique_ptr<ShaderReflectionData> reflectionData_;
+        std::unique_ptr<ShaderReflectionData> forwardReflectionData_;
+        std::unique_ptr<ShaderReflectionData> gBufferReflectionData_;
+        bool isInGBufferPass_ = false;
     };
 }

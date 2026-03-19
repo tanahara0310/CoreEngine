@@ -85,13 +85,22 @@ public:
     PipelineStateBuilder& SetPrimitiveTopology(
         D3D12_PRIMITIVE_TOPOLOGY_TYPE topologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
 
-    /// @brief レンダーターゲットフォーマットの設定
+    /// @brief レンダーターゲットフォーマットの設定（単一RT用）
+    /// @note G-Bufferなど複数RTを設定する場合は SetRenderTargetFormats() を使用してください。
     /// @param format レンダーターゲットフォーマット
     /// @param index レンダーターゲットのインデックス
     /// @return ビルダー自身
     PipelineStateBuilder& SetRenderTargetFormat(
         DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
         UINT index = 0);
+
+    /// @brief [MRT] 複数レンダーターゲットのフォーマットを一括設定（G-Buffer向け）
+    /// @note 単一RTの場合は SetRenderTargetFormat() で十分です。
+    ///       G-BufferパスなどMRTを使用する場合はこちらを使用してください。
+    /// @param formats フォーマット配列（要素数は count 個）
+    /// @param count レンダーターゲット数（最大8）
+    /// @return ビルダー自身
+    PipelineStateBuilder& SetRenderTargetFormats(const DXGI_FORMAT* formats, UINT count);
 
     /// @brief 深度ステンシルフォーマットの設定
     /// @param format 深度ステンシルフォーマット
@@ -127,13 +136,28 @@ public:
         ID3D12RootSignature* rootSignature,
         const std::vector<BlendMode>& modes = {});
 
-    /// @brief 全ブレンドモードでPSOを構築
+    /// @brief 全ブレンドモードでPSOを構築（単一RT・フォワードパス向け）
+    /// @note G-BufferパスのPSOはブレンドが不要なため BuildGBuffer() を使用してください。
+    ///       MRT（numRenderTargets > 1）でこの関数を呼び出した場合は警告を出力します。
     /// @param device デバイス
     /// @param vs 頂点シェーダー
     /// @param ps ピクセルシェーダー
     /// @param rootSignature ルートシグネチャ
     /// @return 構築に成功したか
     bool BuildAllBlendModes(
+        ID3D12Device* device,
+        IDxcBlob* vs,
+        IDxcBlob* ps,
+        ID3D12RootSignature* rootSignature);
+
+    /// @brief G-Buffer専用PSO構築（kBlendModeNone のみ、全RTスロットのブレンド設定済み）
+    /// @note G-Buffer書き出しパスのPSOは透過が不要なため BuildAllBlendModes() は使用しないでください。
+    /// @param device デバイス
+    /// @param vs 頂点シェーダー
+    /// @param ps ピクセルシェーダー
+    /// @param rootSignature ルートシグネチャ
+    /// @return 構築に成功したか
+    bool BuildGBuffer(
         ID3D12Device* device,
         IDxcBlob* vs,
         IDxcBlob* ps,

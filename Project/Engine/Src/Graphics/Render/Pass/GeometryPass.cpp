@@ -41,10 +41,14 @@ namespace CoreEngine
 
         auto* cmdList = context.dxCommon->GetCommandList();
 
+        // clearEnabled_ フラグを RenderTarget に伝播する
+        // DeferredLightingPass が先に Offscreen0 に書き込んでいる場合はクリアしない
+        targetToUse->SetClearEnabled(clearEnabled_);
+
         // レンダーターゲット開始（自動でRTV/DSV/ビューポート/シザー設定）
         targetToUse->Begin(cmdList);
 
-        // シーン固有の描画処理を実行
+        // シーン固有の描画処理を実行（透過・Skybox・UI など）
         if (renderCallback_) {
             renderCallback_();
         }

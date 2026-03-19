@@ -29,6 +29,9 @@ namespace CoreEngine
         RootSignatureConfig config = RootSignatureConfig::Simple();
         config.ConfigureSampler("gSampler", SamplerConfig::LinearClamp());
 
+        // サブクラスの追加サンプラー設定を適用（例: DeferredLighting のシャドウ比較サンプラー）
+        OnConfigureRootSignature(config);
+
         rootSignatureManager_ = std::make_unique<RootSignatureManager>();
         auto buildResult = rootSignatureManager_->Build(dxCommon->GetDevice(), *reflectionData_, config);
 

@@ -16,6 +16,7 @@
 #include "Graphics/Common/Core/SwapChainManager.h"
 #include "Graphics/Common/Core/OffScreenRenderTargetManager.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
 
 using namespace Microsoft::WRL;
@@ -70,7 +71,13 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE GetShadowMapDSVHandle() { return shadowMapManager_->GetDSVHandle(); }
     D3D12_GPU_DESCRIPTOR_HANDLE GetShadowMapSRVHandle() { return shadowMapManager_->GetSRVHandle(); }
 
+    // G-Buffer関連のアクセッサ
+    GBufferManager* GetGBufferManager() { return gBufferManager_.get(); }
+    const GBufferManager* GetGBufferManager() const { return gBufferManager_.get(); }
+
     // オフスクリーン用のアクセッサ（任意インデックス）
+    // @note G-Buffer移行中の互換経路。
+    //       不透明ジオメトリの新規描画パスでは GBufferManager の利用を優先する。
     ID3D12Resource* GetOffScreenResource(uint32_t index = 0) { return offScreenManager_->GetOffScreenResource(index); }
     D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreenRtvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenRtvHandle(index); }
     D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenSrvHandle(index); }
@@ -95,6 +102,7 @@ private:
     std::unique_ptr<SwapChainManager> swapChainManager_ = std::make_unique<SwapChainManager>();
     std::unique_ptr<OffScreenRenderTargetManager> offScreenManager_ = std::make_unique<OffScreenRenderTargetManager>();
     std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
+    std::unique_ptr<GBufferManager> gBufferManager_ = std::make_unique<GBufferManager>();
     std::unique_ptr<ShadowMapManager> shadowMapManager_ = std::make_unique<ShadowMapManager>();
 
 };

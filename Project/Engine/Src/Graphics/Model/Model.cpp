@@ -1,4 +1,4 @@
-﻿#include "Model.h"
+#include "Model.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
@@ -26,23 +26,23 @@ namespace CoreEngine
         uint32_t sCurrentTransformBufferIndex_ = static_cast<uint32_t>(Model::TransformBufferSlot::Game);
 
         /// @brief PBRテクスチャを描画コマンドにバインドする共通処理
-        /// @tparam TRenderer GetRootParamIndex() を持つレンダラー型
-        template<typename TRenderer>
+        /// @tparam TIndexGetter ルートパラメータインデックス取得関数
+        template<typename TIndexGetter>
         void BindPBRTextures(
             ID3D12GraphicsCommandList* cmdList,
-            TRenderer* renderer,
+            TIndexGetter&& getIndex,
             D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
             D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
             D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture)
         {
-            int normalMapIdx = renderer->GetRootParamIndex("gNormalMap");
+            int normalMapIdx = getIndex("gNormalMap");
             if (normalTexture.ptr != 0 && normalMapIdx >= 0) {
                 cmdList->SetGraphicsRootDescriptorTable(normalMapIdx, normalTexture);
             }
 
             if (metallicRoughnessTexture.ptr != 0) {
-                int metallicIdx = renderer->GetRootParamIndex("gMetallicMap");
-                int roughnessIdx = renderer->GetRootParamIndex("gRoughnessMap");
+                int metallicIdx = getIndex("gMetallicMap");
+                int roughnessIdx = getIndex("gRoughnessMap");
                 if (metallicIdx >= 0) {
                     cmdList->SetGraphicsRootDescriptorTable(metallicIdx, metallicRoughnessTexture);
                 }
@@ -51,7 +51,7 @@ namespace CoreEngine
                 }
             }
 
-            int aoIdx = renderer->GetRootParamIndex("gAOMap");
+            int aoIdx = getIndex("gAOMap");
             if (occlusionTexture.ptr != 0 && aoIdx >= 0) {
                 cmdList->SetGraphicsRootDescriptorTable(aoIdx, occlusionTexture);
             }
@@ -423,20 +423,30 @@ namespace CoreEngine
             throw std::runtime_error("ModelRenderer is not set. Call Model::SetModelRenderer first.");
         }
 
-        cmdList->SetGraphicsRootConstantBufferView(
-            sModelRenderer_->GetRootParamIndex("gMaterial"),
-            materialInstance_->GetGPUVirtualAddress()
-        );
+        const bool useGBufferBinding = sModelRenderer_->IsInGBufferPass();
+        auto getModelRootIndex = [&](const std::string& name) {
+            return useGBufferBinding
+                ? sModelRenderer_->GetGBufferRootParamIndex(name)
+                : sModelRenderer_->GetRootParamIndex(name);
+        };
 
-        cmdList->SetGraphicsRootConstantBufferView(
-            sModelRenderer_->GetRootParamIndex("gTransformationMatrix"),
-            transformBuffer->GetGPUVirtualAddress()
-        );
+        const int materialIdx = getModelRootIndex("gMaterial");
+        const int transformIdx = getModelRootIndex("gTransformationMatrix");
+        const int textureIdx = getModelRootIndex("gTexture");
 
-        cmdList->SetGraphicsRootDescriptorTable(
-            sModelRenderer_->GetRootParamIndex("gTexture"), baseColorTexture);
+        if (materialIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(materialIdx, materialInstance_->GetGPUVirtualAddress());
+        }
 
-        BindPBRTextures(cmdList, sModelRenderer_, normalTexture, metallicRoughnessTexture, occlusionTexture);
+        if (transformIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(transformIdx, transformBuffer->GetGPUVirtualAddress());
+        }
+
+        if (textureIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(textureIdx, baseColorTexture);
+        }
+
+        BindPBRTextures(cmdList, getModelRootIndex, normalTexture, metallicRoughnessTexture, occlusionTexture);
     }
 
     void Model::SetupSkinningDrawCommands(ID3D12GraphicsCommandList* cmdList,
@@ -451,6 +461,13 @@ namespace CoreEngine
         assert(skinCluster_.has_value());
         assert(sSkinnedModelRenderer_ != nullptr);
 
+        const bool useGBufferBinding = sSkinnedModelRenderer_->IsInGBufferPass();
+        auto getSkinnedRootIndex = [&](const std::string& name) {
+            return useGBufferBinding
+                ? sSkinnedModelRenderer_->GetGBufferRootParamIndex(name)
+                : sSkinnedModelRenderer_->GetRootParamIndex(name);
+        };
+
         // 頂点バッファを2つ設定（通常の頂点データとInfluenceデータ）
         D3D12_VERTEX_BUFFER_VIEW vbvs[2] = {
             resource_->vertexBufferView_,      // Slot 0: VertexData
@@ -462,28 +479,30 @@ namespace CoreEngine
         cmdList->IASetIndexBuffer(&resource_->indexBufferView_);
 
         // WVP行列を設定
-        cmdList->SetGraphicsRootConstantBufferView(
-            sSkinnedModelRenderer_->GetRootParamIndex("gTransformationMatrix"),
-            transformBuffer->GetGPUVirtualAddress()
-        );
+        const int transformIdx = getSkinnedRootIndex("gTransformationMatrix");
+        if (transformIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(transformIdx, transformBuffer->GetGPUVirtualAddress());
+        }
 
         // MatrixPaletteを設定
-        cmdList->SetGraphicsRootDescriptorTable(
-            sSkinnedModelRenderer_->GetRootParamIndex("gMatrixPalette"),
-            skinCluster_->paletteSrvHandle.second
-        );
+        const int matrixPaletteIdx = getSkinnedRootIndex("gMatrixPalette");
+        if (matrixPaletteIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(matrixPaletteIdx, skinCluster_->paletteSrvHandle.second);
+        }
 
         // マテリアルを設定
-        cmdList->SetGraphicsRootConstantBufferView(
-            sSkinnedModelRenderer_->GetRootParamIndex("gMaterial"),
-            materialInstance_->GetGPUVirtualAddress()
-        );
+        const int materialIdx = getSkinnedRootIndex("gMaterial");
+        if (materialIdx >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(materialIdx, materialInstance_->GetGPUVirtualAddress());
+        }
 
         // BaseColorテクスチャを設定
-        cmdList->SetGraphicsRootDescriptorTable(
-            sSkinnedModelRenderer_->GetRootParamIndex("gTexture"), baseColorTexture);
+        const int textureIdx = getSkinnedRootIndex("gTexture");
+        if (textureIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(textureIdx, baseColorTexture);
+        }
 
-        BindPBRTextures(cmdList, sSkinnedModelRenderer_, normalTexture, metallicRoughnessTexture, occlusionTexture);
+        BindPBRTextures(cmdList, getSkinnedRootIndex, normalTexture, metallicRoughnessTexture, occlusionTexture);
     }
 
     ID3D12Resource* Model::GetCurrentTransformBuffer() const

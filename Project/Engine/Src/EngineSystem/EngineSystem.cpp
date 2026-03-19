@@ -25,6 +25,8 @@
 
 // レンダーパス
 #include "Graphics/Render/Pass/ShadowMapPass.h"
+#include "Graphics/Render/Pass/GBufferPass.h"
+#include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
 #include "Graphics/Render/Pass/BackBufferPass.h"
@@ -235,15 +237,32 @@ namespace CoreEngine
         context.renderManager = renderManager;
         context.postEffectManager = GetComponent<PostEffectManager>();
         context.lightManager = GetComponent<LightManager>();
+        context.gBufferManager = dx ? dx->GetGBufferManager() : nullptr;
+        context.shadowMapManager = dx ? dx->GetShadowMapManager() : nullptr;  // DeferredLighting でシャドウ/LVP に使用
 
         // RenderTargetManagerを設定（Phase 1で追加）
         if (render) {
             context.renderTargetManager = render->GetRenderTargetManager();
         }
 
-        // ジオメトリパスに描画コールバックを設定
+        // ジオメトリパスに描画コールバックを設定する
+        // GBufferPass + DeferredLightingPass が有効なため、不透明 Model/SkinnedModel は GeometryPass でクリアしない
         if (auto* geometryPass = renderPipeline_->GetPass<GeometryPass>()) {
             geometryPass->SetRenderCallback(renderCallback);
+
+            // DeferredLightingPass が Offscreen0 に書き込んだ結果を保持するためクリアを無効にする
+            // GeometryPass はその上に透過オブジェクト / SkyBox / UI 等を重ねて描画する
+            const bool deferredEnabled = renderPipeline_->GetPass<DeferredLightingPass>()
+                && renderPipeline_->GetPass<DeferredLightingPass>()->IsEnabled();
+            geometryPass->SetClearEnabled(!deferredEnabled);
+        }
+
+        // DeferredLightingPass が有効な場合は、RenderManager の Forward パスで
+        // 不透明 Model/SkinnedModel を二重描画しないようスキップフラグを立てる
+        if (renderManager) {
+            const bool deferredEnabled = renderPipeline_->GetPass<DeferredLightingPass>()
+                && renderPipeline_->GetPass<DeferredLightingPass>()->IsEnabled();
+            renderManager->SetSkipOpaqueMeshInForwardPass(deferredEnabled);
         }
 
         PassOutput previousOutput{};
@@ -260,20 +279,35 @@ namespace CoreEngine
             pass->Execute(context);
             pass->Cleanup(context);
             previousOutput = pass->GetOutput();
-        };
+            };
 
         executePass(renderPipeline_->GetPass<ShadowMapPass>());
 
 #ifdef _DEBUG
+        // SceneView を GBufferPass より前に描画する。
+        // SceneView::Begin() は共有 DSV をクリアするため、後に実行すると
+        // GBufferPass が書いたゲーム用深度値を破壊し、GeometryPass での
+        // 深度テストが正しく行われなくなる（デバッグラインが Game view に透過する原因）。
+        // SceneView は全オブジェクトを Forward で描画するため、
+        // skipOpaqueModelsInForward_ を一時的に無効化して不透明モデルも表示させる。
         if (sceneManager_ && render) {
             if (auto* sceneViewTarget = render->GetRenderTarget("SceneView")) {
+                if (renderManager) renderManager->SetSkipOpaqueMeshInForwardPass(false);
                 sceneViewTarget->Begin(dx->GetCommandList());
                 sceneManager_->DrawSceneView();
                 sceneViewTarget->End(dx->GetCommandList());
+                // ゲームビュー用に復元
+                if (renderManager) {
+                    const bool deferredEnabled = renderPipeline_->GetPass<DeferredLightingPass>()
+                        && renderPipeline_->GetPass<DeferredLightingPass>()->IsEnabled();
+                    renderManager->SetSkipOpaqueMeshInForwardPass(deferredEnabled);
+                }
             }
         }
 #endif // _DEBUG
 
+        executePass(renderPipeline_->GetPass<GBufferPass>());
+        executePass(renderPipeline_->GetPass<DeferredLightingPass>());
         executePass(renderPipeline_->GetPass<GeometryPass>());
         executePass(renderPipeline_->GetPass<PostEffectPass>());
         executePass(renderPipeline_->GetPass<BackBufferPass>());
@@ -369,7 +403,7 @@ namespace CoreEngine
         auto spriteRenderer = std::make_unique<SpriteRenderer>();
         spriteRenderer->Initialize(dxPtr, resourcePtr);
         renderManager->RegisterRenderer(RenderPassType::Sprite, std::move(spriteRenderer));
- 
+
 
         // ParticleRendererの作成と登録
         auto particleRenderer = std::make_unique<ParticleRenderer>();
@@ -406,24 +440,24 @@ namespace CoreEngine
         modelManager->Initialize(dxPtr, resourcePtr);
         RegisterComponent(std::move(modelManager));
 
-    // ModelクラスにShadowMapManagerを設定（ライトVP行列の一元管理）
-    Model::SetShadowMapManager(dxPtr->GetShadowMapManager());
+        // ModelクラスにShadowMapManagerを設定（ライトVP行列の一元管理）
+        Model::SetShadowMapManager(dxPtr->GetShadowMapManager());
 
-    // IBLGeneratorの作成と初期化
-    auto iblGenerator = std::make_unique<IBLGenerator>();
-    IBLGenerator* iblGeneratorPtr = iblGenerator.get();
-    auto shaderCompiler = std::make_unique<ShaderCompiler>();
-    shaderCompiler->Initialize();
-    iblGenerator->Initialize(dxPtr, shaderCompiler.get());
-    RegisterComponent(std::move(iblGenerator));
-    RegisterComponent(std::move(shaderCompiler));
+        // IBLGeneratorの作成と初期化
+        auto iblGenerator = std::make_unique<IBLGenerator>();
+        IBLGenerator* iblGeneratorPtr = iblGenerator.get();
+        auto shaderCompiler = std::make_unique<ShaderCompiler>();
+        shaderCompiler->Initialize();
+        iblGenerator->Initialize(dxPtr, shaderCompiler.get());
+        RegisterComponent(std::move(iblGenerator));
+        RegisterComponent(std::move(shaderCompiler));
 
-    auto iblSystem = std::make_unique<IBLSystem>();
-    if (!iblSystem->Initialize(dxPtr, iblGeneratorPtr, renderManagerPtr)) {
-        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBLSystem");
+        auto iblSystem = std::make_unique<IBLSystem>();
+        if (!iblSystem->Initialize(dxPtr, iblGeneratorPtr, renderManagerPtr)) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBLSystem");
+        }
+        RegisterComponent(std::move(iblSystem));
     }
-    RegisterComponent(std::move(iblSystem));
-}
 
     void EngineSystem::CreateInputComponents()
     {
@@ -504,16 +538,29 @@ namespace CoreEngine
         auto shadowMapPass = std::make_unique<ShadowMapPass>();
         renderPipeline_->AddPass(std::move(shadowMapPass));
 
-        // 2. ジオメトリパス（オフスクリーンレンダリング）
+        // 2. G-Bufferパス（不透明 Model / SkinnedModel の蓄積）
+        auto gBufferPass = std::make_unique<GBufferPass>();
+        renderPipeline_->AddPass(std::move(gBufferPass));
+
+        // 3. DeferredLightingパス
+        // G-Buffer (AlbedoAO / NormalRoughness / EmissiveMetallic) を読み取り、
+        // 簡易ライティングを計算して Offscreen0 に書き込む
+        auto deferredLightingPass = std::make_unique<DeferredLightingPass>();
+        deferredLightingPass->SetRenderTargetName("Offscreen0");
+        renderPipeline_->AddPass(std::move(deferredLightingPass));
+
+        // 4. ジオメトリパス（透過オブジェクト / SkyBox / UI / パーティクル 等の Forward 描画）
+        // DeferredLightingPass が Offscreen0 に書き込んだ結果の上に重ね描きする
+        // 不透明 Model/SkinnedModel は GBufferPass + DeferredLightingPass で処理済みなので描画しない
         auto geometryPass = std::make_unique<GeometryPass>();
         geometryPass->SetRenderTargetName("Offscreen0");  // 名前ベースで指定
         renderPipeline_->AddPass(std::move(geometryPass));
 
-        // 3. ポストエフェクトパス
+        // 5. ポストエフェクトパス
         auto postEffectPass = std::make_unique<PostEffectPass>();
         renderPipeline_->AddPass(std::move(postEffectPass));
 
-        // 4. バックバッファパス（最終出力）
+        // 6. バックバッファパス（最終出力）
         auto backBufferPass = std::make_unique<BackBufferPass>();
         backBufferPass->SetRenderTargetName("BackBuffer");  // 名前ベースで指定
         renderPipeline_->AddPass(std::move(backBufferPass));
