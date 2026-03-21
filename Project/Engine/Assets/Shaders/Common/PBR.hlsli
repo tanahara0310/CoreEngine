@@ -32,20 +32,33 @@ static const float DIELECTRIC_F0 = 0.04f;
 // ユーティリティ関数: Y軸回転
 // ===================================================================
 /// @brief ベクトルをY軸周りに回転
-/// @param v 回転するベクトル
-/// @param angleY Y軸回転角度（ラジアン）
-/// @return 回転後のベクトル
 float3 RotateVectorY(float3 v, float angleY)
 {
     float cosY = cos(angleY);
     float sinY = sin(angleY);
-    
-    // Y軸回転行列を適用
     return float3(
         v.x * cosY - v.z * sinY,
         v.y,
         v.x * sinY + v.z * cosY
     );
+}
+
+/// @brief ベクトルをXYZオイラー角で回転（X→Y→Z の順に適用）
+/// @param v 回転するベクトル
+/// @param euler XYZ 回転角度（ラジアン）
+/// @return 回転後のベクトル
+float3 RotateVector(float3 v, float3 euler)
+{
+    // X軸回転
+    float cx = cos(euler.x), sx = sin(euler.x);
+    v = float3(v.x, v.y * cx - v.z * sx, v.y * sx + v.z * cx);
+    // Y軸回転
+    float cy = cos(euler.y), sy = sin(euler.y);
+    v = float3(v.x * cy + v.z * sy, v.y, -v.x * sy + v.z * cy);
+    // Z軸回転
+    float cz = cos(euler.z), sz = sin(euler.z);
+    v = float3(v.x * cz - v.y * sz, v.x * sz + v.y * cz, v.z);
+    return v;
 }
 
 // ===================================================================
@@ -451,24 +464,21 @@ LightingResult CalculateSpotLightPBR(
 /// @param ao 環境遮蔽 (0.0-1.0)
 /// @param irradianceMap Irradianceキューブマップ
 /// @param samp サンプラー
-/// @param environmentRotationY 環境マップY軸回転（ラジアン）
+/// @param environmentRotation 環境マップXYZ回転（ラジアン）
 /// @return 拡散IBL色
 float3 CalculateIrradianceIBL(
-    float3 N,
-    float3 V,
-    float3 albedo,
-    float metallic,
-    float roughness,
-    float ao,
-    TextureCube irradianceMap,
-    SamplerState samp,
-    float environmentRotationY)
+	float3 N,
+	float3 V,
+	float3 albedo,
+	float metallic,
+	float roughness,
+	float ao,
+	TextureCube irradianceMap,
+	SamplerState samp,
+	float3 environmentRotation)
 {
-    // 法線を正規化してIrradianceマップから環境光を取得
 	float3 normalizedN = normalize(N);
-	
-	// 環境マップ回転を適用
-	float3 rotatedN = RotateVectorY(normalizedN, environmentRotationY);
+	float3 rotatedN = RotateVector(normalizedN, environmentRotation);
 	
 	float3 irradiance = irradianceMap.SampleLevel(samp, rotatedN, 0.0f).rgb;
     
@@ -498,7 +508,7 @@ float3 CalculateIrradianceIBL(
 /// @param prefilteredMap Prefiltered Environment Mapキューブマップ
 /// @param brdfLUT BRDF LUTテクスチャ（RG16形式）
 /// @param samp サンプラー
-/// @param environmentRotationY 環境マップY軸回転（ラジアン）
+/// @param environmentRotation 環境マップXYZ回転（ラジアン）
 /// @return スペキュラIBL色
 float3 CalculateSpecularIBL(
     float3 N,
@@ -510,17 +520,12 @@ float3 CalculateSpecularIBL(
     TextureCube prefilteredMap,
     Texture2D<float2> brdfLUT,
     SamplerState samp,
-    float environmentRotationY)
+    float3 environmentRotation)
 {
-    // F0計算（垂直入射時の反射率）
     float3 F0 = float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0);
     F0 = lerp(F0, albedo, metallic);
-    
-    // 反射ベクトルR（視線Vを法線Nで反射）
     float3 R = reflect(-V, N);
-    
-    // 環境マップ回転を適用
-    float3 rotatedR = RotateVectorY(R, environmentRotationY);
+    float3 rotatedR = RotateVector(R, environmentRotation);
     
     // NdotV
     float NdotV = max(dot(N, V), 0.0f);
@@ -555,7 +560,7 @@ float3 CalculateSpecularIBL(
 /// @param prefilteredMap Prefiltered Environment Mapキューブマップ
 /// @param brdfLUT BRDF LUTテクスチャ（RG16形式）
 /// @param samp サンプラー
-/// @param environmentRotationY 環境マップY軸回転（ラジアン）
+/// @param environmentRotation 環境マップXYZ回転（ラジアン）
 /// @return 完全なIBL色（Diffuse + Specular）
 float3 CalculateFullIBL(
     float3 N,
@@ -568,49 +573,27 @@ float3 CalculateFullIBL(
     TextureCube prefilteredMap,
     Texture2D<float2> brdfLUT,
     SamplerState samp,
-    float environmentRotationY)
+    float3 environmentRotation)
 {
-    // F0計算（垂直入射時の反射率）
     float3 F0 = float3(0.04f, 0.04f, 0.04f);
     F0 = lerp(F0, albedo, metallic);
-    
-    // NdotV
     float NdotV = max(dot(N, V), 0.0f);
-    
-    // Fresnel-Schlick（roughness考慮版）
     float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
-    
-    // === 拡散IBL（Irradiance Map） ===
-    // 法線を確実に正規化してサンプリング
+
     float3 normalizedN = normalize(N);
-    
-    // 環境マップ回転を適用
-    float3 rotatedN = RotateVectorY(normalizedN, environmentRotationY);
-    
+    float3 rotatedN = RotateVector(normalizedN, environmentRotation);
     float3 irradiance = irradianceMap.SampleLevel(samp, rotatedN, 0.0f).rgb;
-    float3 kD = (1.0f - F) * (1.0f - metallic); // 金属は拡散しない
+    float3 kD = (1.0f - F) * (1.0f - metallic);
     float3 diffuseIBL = kD * albedo * irradiance;
-    
-    // === スペキュラIBL（Prefiltered Map + BRDF LUT） ===
-    // 反射ベクトルR（Vはカメラへの方向なので、-Vが入射方向）
+
     float3 R = normalize(reflect(-V, normalizedN));
-    
-    // 環境マップ回転を反射ベクトルにも適用
-    float3 rotatedR = RotateVectorY(R, environmentRotationY);
-    
-    float mipLevel = roughness * 4.0f; // 5ミップレベル（0-4）
+    float3 rotatedR = RotateVector(R, environmentRotation);
+    float mipLevel = roughness * 4.0f;
     float3 prefilteredColor = prefilteredMap.SampleLevel(samp, rotatedR, mipLevel).rgb;
-    
-    // BRDF LUTからサンプリング
     float2 envBRDF = brdfLUT.Sample(samp, float2(NdotV, roughness)).rg;
-    
-    // Split-Sum近似
     float3 specularIBL = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-    
-    // 最終的なIBL = Diffuse + Specular
-    float3 ibl = (diffuseIBL + specularIBL) * ao;
-    
-    return ibl;
+
+    return (diffuseIBL + specularIBL) * ao;
 }
 
 #endif // PBR_HLSLI

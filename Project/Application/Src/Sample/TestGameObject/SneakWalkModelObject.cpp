@@ -18,17 +18,16 @@ void SneakWalkModelObject::Initialize() {
       return;
    }
 
-   // アニメーションを事前に読み込む
+   // アニメーションを事前に読み込む（ファイル名のみ指定、ディレクトリは AssetDatabase が解決）
    AnimationLoadInfo animInfo;
-   animInfo.directory = "SampleAssets/human";
-   animInfo.modelFilename = "sneakWalk.gltf";
+   animInfo.modelFile = "sneakWalk.gltf";
    animInfo.animationName = "sneakWalkAnimation";
-   animInfo.animationFilename = "sneakWalk.gltf";
+   animInfo.animationFile = "sneakWalk.gltf";
    modelManager->LoadAnimation(animInfo);
 
-   // スケルトンアニメーションモデルとして作成
+   // スケルトンアニメーションモデルとして作成（ファイル名のみ指定）
    model_ = modelManager->CreateSkeletonModel(
-      "SampleAssets/human/sneakWalk.gltf",
+      "sneakWalk.gltf",
       "sneakWalkAnimation",
       true
    );

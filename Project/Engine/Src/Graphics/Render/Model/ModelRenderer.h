@@ -5,6 +5,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Math/Vector/Vector3.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <memory>
@@ -38,6 +39,9 @@ namespace CoreEngine
         void SetIrradianceMap(D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle) { irradianceMapHandle_ = irradianceMapHandle; }
         void SetPrefilteredMap(D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle) { prefilteredMapHandle_ = prefilteredMapHandle; }
         void SetBRDFLUT(D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle) { brdfLUTHandle_ = brdfLUTHandle; }
+
+        /// @brief シーン共通 IBL 環境回転角度を設定（ラジアン）
+        void SetIBLRotation(const Vector3& rotation) { iblRotation_ = rotation; }
 
         /// @brief 環境マップテクスチャが設定済みか確認
         bool HasEnvironmentMap() const { return environmentMapHandle_.ptr != 0; }
@@ -80,6 +84,11 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle_ = {};
         D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_ = {};
         D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_ = {};
+
+        // IBL シーンパラメータ定数バッファ（environmentRotation）
+        Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;
+        D3D12_GPU_VIRTUAL_ADDRESS              iblParamsCBVAddress_ = 0;
+        Vector3 iblRotation_ = {};
 
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> forwardReflectionData_;

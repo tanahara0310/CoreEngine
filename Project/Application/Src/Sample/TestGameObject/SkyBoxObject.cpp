@@ -156,6 +156,12 @@ void SkyBoxObject::Update() {
     // SkyBoxは基本的にカメラ位置に追従するため、ここでは何もしない
     // 必要に応じて回転などのアニメーションを追加可能
     transform_.TransferMatrix();
+
+    // スカイボックスのXYZ回転をIBL回転としてシーン全体へ伝播
+    auto engine = GetEngineSystem();
+    if (auto* renderManager = engine->GetComponent<RenderManager>()) {
+        renderManager->SetIBLRotation(transform_.rotate);
+    }
 }
 
 void SkyBoxObject::CreateTransformBuffer() {

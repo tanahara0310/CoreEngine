@@ -79,10 +79,6 @@ namespace CoreEngine
         sShadowMapRenderer_ = shadowMapRenderer;
     }
 
-    bool Model::IsEnvironmentMapAvailable() {
-        return sModelRenderer_ != nullptr && sModelRenderer_->HasEnvironmentMap();
-    }
-
     bool Model::IsIBLAvailable() {
         return sModelRenderer_ != nullptr && sModelRenderer_->HasIBLMaps();
     }
@@ -119,7 +115,7 @@ namespace CoreEngine
                 hasPBRTextures = true;
             }
             if (hasPBRTextures) {
-                materialInstance_->SetPBREnabled(true);
+                // PBR は常に有効。テクスチャマップフラグは上で個別に設定済み。
             }
         }
 

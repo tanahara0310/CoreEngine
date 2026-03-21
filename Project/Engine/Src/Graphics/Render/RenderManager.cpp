@@ -84,6 +84,16 @@ namespace CoreEngine
         }
     }
 
+    void RenderManager::SetIBLRotation(const Vector3& rotation) {
+        iblRotation_ = rotation;
+        if (auto* r = dynamic_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model))) {
+            r->SetIBLRotation(rotation);
+        }
+        if (auto* r = dynamic_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel))) {
+            r->SetIBLRotation(rotation);
+        }
+    }
+
     void RenderManager::SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle) {
         environmentMapHandle_ = environmentMapHandle;
         ApplyEnvironmentLightingToRenderers();
@@ -314,6 +324,7 @@ namespace CoreEngine
             renderer->SetIrradianceMap(irradianceMapHandle_);
             renderer->SetPrefilteredMap(prefilteredMapHandle_);
             renderer->SetBRDFLUT(brdfLUTHandle_);
+            renderer->SetIBLRotation(iblRotation_);
         }
 
         if (auto* renderer = dynamic_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel))) {
@@ -321,6 +332,7 @@ namespace CoreEngine
             renderer->SetIrradianceMap(irradianceMapHandle_);
             renderer->SetPrefilteredMap(prefilteredMapHandle_);
             renderer->SetBRDFLUT(brdfLUTHandle_);
+            renderer->SetIBLRotation(iblRotation_);
         }
     }
 

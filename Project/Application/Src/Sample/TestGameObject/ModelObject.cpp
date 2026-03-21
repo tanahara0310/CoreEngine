@@ -52,10 +52,6 @@ void ModelObject::SetPBRParameters(float metallic, float roughness, float ao) {
     }
 }
 
-void ModelObject::SetPBREnabled(bool enable) {
-    if (auto* mat = GetMaterial()) mat->SetPBREnabled(enable);
-}
-
 void ModelObject::SetPBRTextureMapsEnabled(bool useNormal, bool useMetallic,
     bool useRoughness, bool useAO) {
     if (auto* mat = GetMaterial()) {
@@ -64,14 +60,6 @@ void ModelObject::SetPBRTextureMapsEnabled(bool useNormal, bool useMetallic,
         mat->SetRoughnessMapEnabled(useRoughness);
         mat->SetAOMapEnabled(useAO);
     }
-}
-
-void ModelObject::SetEnvironmentMapEnabled(bool enable) {
-    if (auto* mat = GetMaterial()) mat->SetEnvironmentMapEnabled(enable);
-}
-
-void ModelObject::SetEnvironmentMapIntensity(float intensity) {
-    if (auto* mat = GetMaterial()) mat->SetEnvironmentMapIntensity(intensity);
 }
 
 void ModelObject::SetMaterialColor(const CoreEngine::Vector4& color) {
@@ -84,9 +72,5 @@ void ModelObject::SetIBLEnabled(bool enable) {
 
 void ModelObject::SetIBLIntensity(float intensity) {
     if (auto* mat = GetMaterial()) mat->SetIBLIntensity(intensity);
-}
-
-void ModelObject::SetEnvironmentRotationY(float rotationY) {
-    if (auto* mat = GetMaterial()) mat->SetEnvironmentRotationY(rotationY);
 }
 

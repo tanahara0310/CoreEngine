@@ -142,21 +142,20 @@ std::unique_ptr<Model> ModelManager::CreateSkeletonModel(
 
 bool ModelManager::LoadAnimation(const AnimationLoadInfo& loadInfo)
 {
-    // パスを解決
-    std::string resolvedDirectory = ResolveFilePath(loadInfo.directory);
+    // modelFile をファイル名として直接 ResolveFilePath に渡す。
+    // AssetDatabase がファイル名からディレクトリを含むフルパスを解決する。
+    std::string resolvedModelPath = ResolveFilePath(loadInfo.modelFile);
 
-    // モデルリソースを取得
-    std::string normalizedModelPath = MakeNormalizedPath(
-        resolvedDirectory,
-        loadInfo.modelFilename
-    );
+    std::string resolvedDirectory, resolvedFilename;
+    SplitPath(resolvedModelPath, resolvedDirectory, resolvedFilename);
+
+    // モデルリソースを取得（キャッシュになければ読み込む）
+    std::string normalizedModelPath = MakeNormalizedPath(resolvedDirectory, resolvedFilename);
 
     auto it = resourceCache_.find(normalizedModelPath);
     if (it == resourceCache_.end()) {
-        // モデルがキャッシュにない場合は読み込む
-        LoadModelResourceInternal(resolvedDirectory, loadInfo.modelFilename);
+        LoadModelResourceInternal(resolvedDirectory, resolvedFilename);
         it = resourceCache_.find(normalizedModelPath);
-
         if (it == resourceCache_.end()) {
             return false;
         }
@@ -164,20 +163,15 @@ bool ModelManager::LoadAnimation(const AnimationLoadInfo& loadInfo)
 
     ModelResource* resource = it->second.get();
 
-    // アニメーションファイル名が指定されていない場合はモデルファイル名と同じ
-    std::string animFilename = loadInfo.animationFilename.empty()
-        ? loadInfo.modelFilename
-        : loadInfo.animationFilename;
+    // animationFile が未指定の場合はモデルファイルと同じ
+    const std::string& animFile = loadInfo.animationFile.empty()
+        ? resolvedFilename
+        : loadInfo.animationFile;
 
     // アニメーションを読み込み（解決済みのディレクトリを使用）
-    Animation animation = AnimationLoader::LoadAnimationFile(
-        resolvedDirectory,
-        animFilename
-    );
+    Animation animation = AnimationLoader::LoadAnimationFile(resolvedDirectory, animFile);
 
-    // モデルリソースにアニメーションを追加
     resource->AddAnimation(loadInfo.animationName, animation);
-
     return true;
 }
 
@@ -186,11 +180,12 @@ void ModelManager::ClearCache()
     resourceCache_.clear();
 }
 
-void ModelManager::LoadModelResource(const std::string& directoryPath, const std::string& filename)
+void ModelManager::LoadModelResource(const std::string& filePath)
 {
-    // パスを解決
-    std::string resolvedPath = ResolveFilePath(directoryPath);
-    LoadModelResourceInternal(resolvedPath, filename);
+    std::string resolvedPath = ResolveFilePath(filePath);
+    std::string resolvedDirectory, resolvedFilename;
+    SplitPath(resolvedPath, resolvedDirectory, resolvedFilename);
+    LoadModelResourceInternal(resolvedDirectory, resolvedFilename);
 }
 
 ModelResource* ModelManager::LoadModelResourceInternal(const std::string& directoryPath, const std::string& filename)

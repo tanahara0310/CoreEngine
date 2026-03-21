@@ -57,10 +57,16 @@ namespace CoreEngine
             deferredLighting->SetIrradianceMapHandle(context.renderManager->GetIrradianceMapHandle());
             deferredLighting->SetPrefilteredMapHandle(context.renderManager->GetPrefilteredMapHandle());
             deferredLighting->SetBRDFLUTHandle(context.renderManager->GetBRDFLUTHandle());
+
+            // シーン共通 IBL 回転を転送（スカイボックス回転と連動）
+            deferredLighting->SetEnvironmentRotation(context.renderManager->GetIBLRotation());
         }
 
         // ===== LightManager を渡す（4種ライトバインド） =====
         deferredLighting->SetLightManager(context.lightManager);
+
+        // ===== IBL パラメータを GPU バッファに書き込む =====
+        deferredLighting->UpdateIBLParams();
 
         // ===== Shadow Map と LightViewProjection の設定 =====
         if (context.shadowMapManager) {

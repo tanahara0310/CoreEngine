@@ -9,25 +9,18 @@ struct Material
     float4 color;
     int enableLighting;
     float4x4 uvTransform;
-    float shininess;
-    int shadingMode;
-    float toonThreshold;
-    float toonSmoothness;
-    int enableDithering;
-    float ditheringScale;
-    int enableEnvironmentMap;
-    float environmentMapIntensity;
     float metallic;
     float roughness;
     float ao;
-    int enablePBR;
     int useNormalMap;
     int useMetallicMap;
     int useRoughnessMap;
     int useAOMap;
+    int enableDithering;
+    float ditheringScale;
     int enableIBL;
     float iblIntensity;
-    float environmentRotationY;
+    float padding2; ///< アライメント用
 };
 
 ConstantBuffer<Material> gMaterial : register(b0);
@@ -129,65 +122,41 @@ GBufferOutput main(VertexShaderOutput input)
     float3 albedo = saturate((gMaterial.color * textureColor).rgb);
 
     // ===== アンリットマテリアル処理 =====
-    // enableLighting=0 または shadingMode=0(None) の場合、
-    // Forwardパスと同様に素のテクスチャ色を返す。
-    // DeferredLightingパスに roughness=0 のセンチネル値を書き込み、
-    // emissiveMetallic.rgb にアンリットカラーを格納する。
-    // DeferredLighting.PS.hlsl 側で検出して PBR をスキップする。
-    if (gMaterial.enableLighting == 0 || gMaterial.shadingMode == 0)
+    // enableLighting=0 の場合、DeferredLighting パスに roughness=0 のセンチネル値を書き込む。
+    // emissiveMetallic.rgb にアンリットカラーを格納し、DeferredLighting 側で検出して PBR をスキップする。
+    if (gMaterial.enableLighting == 0)
     {
-        output.albedoAO = float4(0.0f, 0.0f, 0.0f, 1.0f);
+        output.albedoAO        = float4(0.0f, 0.0f, 0.0f, 1.0f);
         output.normalRoughness = float4(0.5f, 0.5f, 1.0f, 0.0f); // roughness=0 = アンリットセンチネル
-        output.emissiveMetallic = float4(albedo, 0.0f); // rgb にアンリットカラーを格納
-        output.worldPosition = float4(input.worldPosition, 1.0f); // アンリットは常に IBL 無効
+        output.emissiveMetallic = float4(albedo, 0.0f);            // rgb にアンリットカラーを格納
+        output.worldPosition   = float4(input.worldPosition, 1.0f);
         return output;
     }
 
-    float3 worldNormal = GetNormalFromMap(input, uv);
+    // ===== PBR パス（常にここに到達） =====
+    float3 worldNormal   = GetNormalFromMap(input, uv);
     float3 encodedNormal = worldNormal * 0.5f + 0.5f;
 
-    // ===== worldPosition.a ピクセルフラグ =====
-    // 0.0 = 背景（クリア値）
-    // 1.0 = 非PBR（従来ライティング: Lambert / Half-Lambert / Toon）
-    // 2.0 = PBR, IBL 無効
-    // 3.0 = PBR, IBL 有効
-    // DeferredLighting.PS.hlsl 側でフラグを読み取り、ライティング経路を切り替える。
+    float metallic  = 0.0f;
+    float roughness = 1.0f;
+    float ao        = 1.0f;
+    GetPBRParameters(uv, metallic, roughness, ao);
 
-    if (gMaterial.enablePBR != 0)
-    {
-        // ===== PBR パス =====
-        float metallic = 0.0f;
-        float roughness = 1.0f;
-        float ao = 1.0f;
-        GetPBRParameters(uv, metallic, roughness, ao);
+    metallic  = saturate(metallic);
+    roughness = saturate(max(roughness, 0.01f));
+    ao        = saturate(ao);
 
-        metallic = saturate(metallic);
-        roughness = saturate(max(roughness, 0.01f));
-        ao = saturate(ao);
+    // worldPosition.a ピクセルフラグ:
+    // 0 = 背景（クリア値）
+    // 1 = アンリット（normalRoughness.a=0 のセンチネルで識別）
+    // 2 = PBR + IBL 無効
+    // 3 = PBR + IBL 有効
+    float pixelFlag = (gMaterial.enableIBL != 0) ? 3.0f : 2.0f;
 
-        float pixelFlag = (gMaterial.enableIBL != 0) ? 3.0f : 2.0f;
-
-        output.albedoAO = float4(albedo, ao);
-        output.normalRoughness = float4(encodedNormal, roughness);
-        output.emissiveMetallic = float4(0.0f, 0.0f, 0.0f, metallic);
-        output.worldPosition = float4(input.worldPosition, pixelFlag);
-    }
-    else
-    {
-        // ===== 非PBR パス =====
-        // DeferredLighting で Forward と同じ従来ライティング
-        // (Lambert / Half-Lambert / Toon) を再現するため、
-        // PBR 専用チャネルにライティングパラメータをエンコードする。
-        //
-        // albedoAO.a     → toonThreshold（非PBR では AO を使用しない）
-        // normalRoughness.a → shininess（roughness チャネルを流用、min 0.01 で unlit sentinel 回避）
-        // emissiveMetallic.a → shadingMode * 0.25（1=Lambert→0.25, 2=Half-Lambert→0.5, 3=Toon→0.75）
-        // worldPosition.a → 1.0（非PBR フラグ）
-        output.albedoAO = float4(albedo, gMaterial.toonThreshold);
-        output.normalRoughness = float4(encodedNormal, max(gMaterial.shininess, 0.01f));
-        output.emissiveMetallic = float4(0.0f, 0.0f, 0.0f, gMaterial.shadingMode * 0.25f);
-        output.worldPosition = float4(input.worldPosition, 1.0f);
-    }
+    output.albedoAO        = float4(albedo, ao);
+    output.normalRoughness = float4(encodedNormal, roughness);
+    output.emissiveMetallic = float4(0.0f, 0.0f, 0.0f, metallic);
+    output.worldPosition   = float4(input.worldPosition, pixelFlag);
 
     return output;
 }

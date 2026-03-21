@@ -29,6 +29,7 @@
 
 // GameObjectのインクルード
 #include "Sample/TestGameObject/ModelObject.h"
+#include "Sample/TestGameObject/WalkModelObject.h"
 
 using namespace Microsoft::WRL;
 

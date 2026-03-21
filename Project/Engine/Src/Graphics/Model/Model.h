@@ -69,9 +69,6 @@ namespace CoreEngine
         /// @param shadowMapRenderer ShadowMapRendererのポインタ
         static void SetShadowMapRenderer(class ShadowMapRenderer* shadowMapRenderer);
 
-        /// @brief 環境マップテクスチャがレンダラーに設定済みか確認
-        static bool IsEnvironmentMapAvailable();
-
         /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
         static bool IsIBLAvailable();
 

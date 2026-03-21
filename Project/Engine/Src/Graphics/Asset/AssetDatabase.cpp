@@ -1,4 +1,4 @@
-﻿#include "AssetDatabase.h"
+#include "AssetDatabase.h"
 #include "AssetMetadata.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
@@ -16,7 +16,7 @@ namespace CoreEngine
     {
         if (initialized_)
         {
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", 
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}",
                 "AssetDatabase is already initialized");
             return;
         }
@@ -27,7 +27,7 @@ namespace CoreEngine
         categoryPriority_["Application"] = 100;
         categoryPriority_["Engine"] = 50;
 
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
             "Initializing AssetDatabase at: " + projectRoot_.string());
 
         // アセットディレクトリをスキャン
@@ -46,7 +46,7 @@ namespace CoreEngine
 
         initialized_ = true;
 
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
             "AssetDatabase initialized. Total assets: " + std::to_string(assetsByGUID_.size()));
     }
 
@@ -57,7 +57,7 @@ namespace CoreEngine
         categoryPriority_.clear();
         initialized_ = false;
 
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
             "AssetDatabase finalized");
     }
 
@@ -71,8 +71,7 @@ namespace CoreEngine
             if (it->second.size() == 1)
             {
                 return assetsByGUID_[it->second[0]].relativePath.generic_string();
-            }
-            else
+            } else
             {
                 // 優先順位でソート
                 std::string bestGuid = it->second[0];
@@ -194,7 +193,9 @@ namespace CoreEngine
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
             "Refreshing AssetDatabase...");
 
-        // 一旦クリア
+        // initialized_ を先にリセットしてからクリアする
+        // (リセットしないと Initialize() の先頭ガードで即座返り、再スキャンが空模になる)
+        initialized_ = false;
         assetsByGUID_.clear();
         assetsByName_.clear();
 
@@ -207,7 +208,7 @@ namespace CoreEngine
         auto it = assetsByGUID_.find(guid);
         if (it == assetsByGUID_.end())
         {
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", 
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}",
                 "Asset not found for GUID: " + guid);
             return;
         }
@@ -219,7 +220,7 @@ namespace CoreEngine
         it->second.name = newPath.stem().string();
         it->second.lastModified = GetFileLastModified(newPath);
 
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
             "Updated asset path for GUID " + guid + ": " + newPath.string());
     }
 
@@ -256,9 +257,10 @@ namespace CoreEngine
         info.category = category;
         info.lastModified = GetFileLastModified(assetPath);
 
-        // 登録
+        // 登録（ステム名とファイル名の両方でインデックスする）
         assetsByGUID_[guid] = info;
-        assetsByName_[info.name].push_back(guid);
+        assetsByName_[info.name].push_back(guid);      // ステム名で検索 ("walk")
+        assetsByName_[info.fileName].push_back(guid);  // ファイル名で検索 ("walk.gltf")
     }
 
     void AssetDatabase::UnregisterAsset(const std::string& guid)
@@ -269,23 +271,27 @@ namespace CoreEngine
             return;
         }
 
-        // assetsByName から削除
-        const std::string& name = it->second.name;
-        auto nameIt = assetsByName_.find(name);
-        if (nameIt != assetsByName_.end())
-        {
-            auto& guids = nameIt->second;
-            guids.erase(std::remove(guids.begin(), guids.end(), guid), guids.end());
-            if (guids.empty())
-            {
-                assetsByName_.erase(nameIt);
+        // assetsByName から削除（ステム名とファイル名の両方）
+        const std::string& name     = it->second.name;
+        const std::string& fileName = it->second.fileName;
+
+        auto removeFromIndex = [&](const std::string& key) {
+            auto nameIt = assetsByName_.find(key);
+            if (nameIt != assetsByName_.end()) {
+                auto& guids = nameIt->second;
+                guids.erase(std::remove(guids.begin(), guids.end(), guid), guids.end());
+                if (guids.empty()) {
+                    assetsByName_.erase(nameIt);
+                }
             }
-        }
+        };
+        removeFromIndex(name);
+        removeFromIndex(fileName);
 
         // assetsByGUID から削除
         assetsByGUID_.erase(it);
 
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
             "Unregistered asset: " + guid);
     }
 
@@ -321,7 +327,7 @@ namespace CoreEngine
         }
         catch (const std::exception& e)
         {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", 
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}",
                 "Failed to scan directory: " + directory.string() + " (" + e.what() + ")");
         }
     }
@@ -329,7 +335,7 @@ namespace CoreEngine
     AssetType AssetDatabase::GetAssetType(const std::filesystem::path& path)
     {
         std::string ext = path.extension().string();
-        std::transform(ext.begin(), ext.end(), ext.begin(), 
+        std::transform(ext.begin(), ext.end(), ext.begin(),
             [](unsigned char c) { return static_cast<char>(::tolower(c)); });
 
         // テクスチャ
@@ -338,7 +344,7 @@ namespace CoreEngine
             return AssetType::Texture;
         }
 
-        // モデル
+        // モデル（.fbx を含む）
         if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb")
         {
             return AssetType::Model;
@@ -408,12 +414,12 @@ namespace CoreEngine
             try
             {
                 std::filesystem::create_directories(cachePath);
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
                     "Created TextureCache directory: " + cachePath.string());
             }
             catch (const std::exception& e)
             {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}", 
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}",
                     "Failed to create TextureCache directory: " + std::string(e.what()));
             }
         }

@@ -5,8 +5,22 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Material/MaterialConstants.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
+#include <cstring>
+
+namespace
+{
+    // gIBLParams 定数バッファのレイアウト（HLSL IBLSceneParams 構造体と一致）
+    struct IBLSceneParamsCPU {
+        float rotationX;
+        float rotationY;
+        float rotationZ;
+        float padding;
+    };
+    static_assert(sizeof(IBLSceneParamsCPU) == 16, "IBLSceneParams size mismatch");
+}
 
 namespace
 {
@@ -72,7 +86,8 @@ namespace CoreEngine
         // CBVサイズ検証（C++構造体とHLSL構造体のサイズ一致を確認）
         forwardReflectionData_->ValidateAllCBVSizes({
             {"gTransformationMatrix", sizeof(TransformationMatrix)},
-            {"gMaterial", sizeof(MaterialConstants)}
+            {"gMaterial", sizeof(MaterialConstants)},
+            {"gIBLParams", sizeof(IBLSceneParamsCPU)}
             });
 
         gBufferReflectionData_->ValidateAllCBVSizes({
@@ -90,6 +105,15 @@ namespace CoreEngine
         if (GetRootParamIndex("gTexture") < 0) {
             throw std::runtime_error("gTexture resource not found in Object3d.PS.hlsl");
         }
+
+        // IBL シーンパラメータ定数バッファの作成（environmentRotationY 専用）
+        iblParamsBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(IBLSceneParamsCPU));
+        iblParamsCBVAddress_ = iblParamsBuffer_->GetGPUVirtualAddress();
+        IBLSceneParamsCPU defaults{ 0.0f, 0.0f, 0.0f, 0.0f };
+        void* mapped = nullptr;
+        iblParamsBuffer_->Map(0, nullptr, &mapped);
+        std::memcpy(mapped, &defaults, sizeof(defaults));
+        iblParamsBuffer_->Unmap(0, nullptr);
 
         if (GetGBufferRootParamIndex("gMaterial") < 0) {
             throw std::runtime_error("gMaterial constant buffer not found in GBuffer.PS.hlsl");
@@ -194,6 +218,20 @@ namespace CoreEngine
         int brdfLUTIdx = GetRootParamIndex("gBRDFLUT");
         if (brdfLUTHandle_.ptr != 0 && brdfLUTIdx >= 0) {
             cmdList->SetGraphicsRootDescriptorTable(brdfLUTIdx, brdfLUTHandle_);
+        }
+
+        // IBL シーンパラメータ（environmentRotationY）を更新・バインド
+        if (iblParamsBuffer_) {
+            IBLSceneParamsCPU params{ iblRotation_.x, iblRotation_.y, iblRotation_.z, 0.0f };
+            void* mapped = nullptr;
+            iblParamsBuffer_->Map(0, nullptr, &mapped);
+            std::memcpy(mapped, &params, sizeof(params));
+            iblParamsBuffer_->Unmap(0, nullptr);
+
+            int iblParamsIdx = GetRootParamIndex("gIBLParams");
+            if (iblParamsIdx >= 0) {
+                cmdList->SetGraphicsRootConstantBufferView(iblParamsIdx, iblParamsCBVAddress_);
+            }
         }
     }
 

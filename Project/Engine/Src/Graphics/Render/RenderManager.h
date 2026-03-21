@@ -4,6 +4,7 @@
 #include "RenderPassType.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Matrix/Matrix4x4.h"
+#include "Math/Vector/Vector3.h"
 #include <d3d12.h>
 #include <unordered_map>
 #include <vector>
@@ -106,6 +107,12 @@ namespace CoreEngine
         /// @brief BRDF LUT の GPU SRV ハンドルを取得（DeferredLightingPass の IBL 接続用）
         D3D12_GPU_DESCRIPTOR_HANDLE GetBRDFLUTHandle() const { return brdfLUTHandle_; }
 
+        /// @brief シーン共通 IBL 環境回転角度を設定（ラジアン）— SkyBox 回転と連動
+        void SetIBLRotation(const Vector3& rotation);
+
+        /// @brief シーン共通 IBL 環境回転角度を取得
+        const Vector3& GetIBLRotation() const { return iblRotation_; }
+
     private:
         struct DrawCommand {
             CoreEngine::GameObject* object;
@@ -138,6 +145,7 @@ namespace CoreEngine
     D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle_ = {};
     D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_ = {};
     D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_ = {};
+    Vector3 iblRotation_ = {}; ///< シーン共通IBL環境回転（ラジアン）
 
         /// @brief 描画パスごとにソート
         void SortDrawQueue();
