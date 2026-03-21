@@ -12,6 +12,7 @@
 #include "Collider/AABBCollider.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #ifdef _DEBUG
@@ -72,6 +73,17 @@ namespace CoreEngine
         /// @brief 自動更新が有効か確認
         /// @return 自動更新フラグ
         bool IsAutoUpdate() const { return autoUpdate_; }
+
+        /// @brief 描画順序を設定（小さいほど先に描画、RenderPassType の優先度より優先される）
+        /// @param order 描画順序
+        void SetRenderOrder(int order) { renderOrder_ = order; }
+
+        /// @brief 描画順序を取得（未設定の場合は std::nullopt）
+        /// @return 描画順序（未設定の場合は std::nullopt）
+        std::optional<int> GetRenderOrder() const { return renderOrder_; }
+
+        /// @brief 描画順序のオーバーライドをリセット（RenderPassType の優先度に戻る）
+        void ResetRenderOrder() { renderOrder_ = std::nullopt; }
 
         /// @brief 描画パスタイプを取得（派生クラスでオーバーライド）
         /// @return 描画パスタイプ（デフォルトは3Dモデル）
@@ -221,6 +233,9 @@ namespace CoreEngine
 
         /// @brief 自動更新フラグ（true: GameObjectManagerが自動で更新、false: 手動更新）
         bool autoUpdate_ = true;
+
+        /// @brief 描画順序オーバーライド（未設定の場合は RenderPassType の優先度を使用）
+        std::optional<int> renderOrder_;
 
         /// @brief JSON シリアライズ対象フラグ（falseにするとシーンデータに保存されない）
         bool shouldSerialize_ = true;

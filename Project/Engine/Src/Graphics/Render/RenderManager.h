@@ -87,6 +87,19 @@ namespace CoreEngine
     /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
     void DrawGeometryPass();
 
+    /// @brief 描画パスタイプの描画順序優先度を設定（小さいほど先に描画）
+    /// @param type 描画パスタイプ
+    /// @param priority 優先度値
+    void SetPassTypePriority(RenderPassType type, int priority);
+
+    /// @brief 描画パスタイプの描画順序優先度を取得
+    /// @param type 描画パスタイプ
+    /// @return 現在の優先度値
+    int GetPassTypePriority(RenderPassType type) const;
+
+    /// @brief 全パスタイプの優先度をデフォルト値にリセット
+    void ResetPassTypePriorities();
+
     /// @brief フレーム終了時にキューをクリア
     void ClearQueue();
 
@@ -118,11 +131,13 @@ namespace CoreEngine
             CoreEngine::GameObject* object;
             RenderPassType passType;
             BlendMode blendMode;
+            int renderOrder;         ///< 描画順序（小さいほど先に描画）
             size_t registrationOrder;
         };
 
         std::vector<DrawCommand> drawQueue_;
         std::unordered_map<RenderPassType, std::unique_ptr<IRenderer>> renderers_;
+        std::unordered_map<RenderPassType, int> passTypePriorities_;  ///< 描画パスタイプごとの描画順序優先度
         size_t registrationCounter_ = 0;
         bool isQueueSorted_ = false;
 

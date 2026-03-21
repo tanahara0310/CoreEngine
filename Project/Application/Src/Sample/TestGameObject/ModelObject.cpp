@@ -24,6 +24,18 @@ void ModelObject::Initialize(const std::string& modelPath) {
     SetActive(true);
 }
 
+CoreEngine::BlendMode ModelObject::GetBlendMode() const {
+    if (model_) {
+        auto* mat = model_->GetMaterial();
+        // α < 1 かつディザリングOFF → アルファブレンドで段階的透明
+        // ディザリングON の場合は kBlendModeNone のままディザリングに任せる
+        if (mat && mat->GetColor().w < 1.0f && !mat->IsDitheringEnabled()) {
+            return CoreEngine::BlendMode::kBlendModeNormal;
+        }
+    }
+    return CoreEngine::BlendMode::kBlendModeNone;
+}
+
 void ModelObject::Update() {
     if (!IsActive() || !model_) {
         return;

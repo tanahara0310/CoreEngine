@@ -16,6 +16,10 @@ public:
     /// @param camera カメラ
     void Draw(const CoreEngine::ICamera* camera) override;
 
+    /// @brief ブレンドモードを取得
+    /// @details α<1 かつディザリングOFF の場合は自動でアルファブレンドに切り替える
+    CoreEngine::BlendMode GetBlendMode() const override;
+
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "Model"; }
 

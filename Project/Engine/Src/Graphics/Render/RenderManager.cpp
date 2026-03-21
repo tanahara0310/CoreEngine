@@ -19,7 +19,8 @@
 namespace CoreEngine
 {
     void RenderManager::Initialize(ID3D12Device* device) {
-        // 現時点では特に初期化処理なし
+        // 描画パスタイプのデフォルト優先度を設定
+        ResetPassTypePriorities();
         (void)device; // 未使用警告を回避
     }
 
@@ -131,6 +132,21 @@ namespace CoreEngine
         cmd.passType = obj->GetRenderPassType();
         cmd.blendMode = obj->GetBlendMode();
         cmd.registrationOrder = registrationCounter_++;
+
+        // オブジェクト側に明示的な描画順序が設定されていればそれを使用し、
+        // 未設定の場合はパスタイプの優先度を使用する
+        if (auto order = obj->GetRenderOrder()) {
+            cmd.renderOrder = *order;
+        } else {
+            cmd.renderOrder = GetPassTypePriority(cmd.passType);
+            // kBlendModeNone 以外（半透明）は大きなオフセットを加え、
+            // SkyBox を含む全不透明オブジェクトより後に描画する。
+            // これにより透明モデルがSkyBoxの前に描画されてクリアカラーと
+            // ブレンドされる問題を防ぐ。
+            if (cmd.blendMode != BlendMode::kBlendModeNone) {
+                cmd.renderOrder += 10000;
+            }
+        }
 
         drawQueue_.push_back(cmd);
         isQueueSorted_ = false;
@@ -433,6 +449,31 @@ namespace CoreEngine
         isQueueSorted_ = false;
     }
 
+    void RenderManager::SetPassTypePriority(RenderPassType type, int priority) {
+        passTypePriorities_[type] = priority;
+    }
+
+    int RenderManager::GetPassTypePriority(RenderPassType type) const {
+        auto it = passTypePriorities_.find(type);
+        if (it != passTypePriorities_.end()) {
+            return it->second;
+        }
+        // 未登録パスタイプはデフォルトとして enum 値 × 100 を返す
+        return static_cast<int>(type) * 100;
+    }
+
+    void RenderManager::ResetPassTypePriorities() {
+        // デフォルト優先度（間隔 100 でユーザーが中間値を挿入しやすくする）
+        passTypePriorities_[RenderPassType::ShadowMap] = 0;
+        passTypePriorities_[RenderPassType::Model] = 100;
+        passTypePriorities_[RenderPassType::SkinnedModel] = 200;
+        passTypePriorities_[RenderPassType::SkyBox] = 300;
+        passTypePriorities_[RenderPassType::ModelParticle] = 400;
+        passTypePriorities_[RenderPassType::Line] = 500;
+        passTypePriorities_[RenderPassType::Particle] = 600;
+        passTypePriorities_[RenderPassType::Sprite] = 700;
+    }
+
     void RenderManager::EnsureQueueSorted() {
         if (!isQueueSorted_) {
             SortDrawQueue();
@@ -441,21 +482,22 @@ namespace CoreEngine
     }
 
     void RenderManager::SortDrawQueue() {
-        // 描画コマンドを最適化してステート変更を最小化
-        // 優先順位: 1. パスタイプ > 2. ブレンドモード
+        // 優先順位:
+        //   1. renderOrder  : 動的に変更可能な描画順序（小さいほど先に描画）
+        //   2. passType     : 同一 renderOrder 内でレンダラー切り替えを最小化
+        //   3. blendMode    : 同一パス内でブレンドステート切り替えを最小化
+        //   4. registrationOrder : 同一条件内では登録順序を維持
         std::stable_sort(drawQueue_.begin(), drawQueue_.end(),
             [](const DrawCommand& a, const DrawCommand& b) {
-                // 1. パスタイプでソート（パイプライン切り替え最小化）
+                if (a.renderOrder != b.renderOrder) {
+                    return a.renderOrder < b.renderOrder;
+                }
                 if (a.passType != b.passType) {
                     return static_cast<int>(a.passType) < static_cast<int>(b.passType);
                 }
-
-                // 2. 同一パス内ではブレンドモードでソート（ブレンドステート切り替え最小化）
                 if (a.blendMode != b.blendMode) {
                     return static_cast<int>(a.blendMode) < static_cast<int>(b.blendMode);
                 }
-
-                // 3. 同一パス・ブレンドモード内では登録順序を維持
                 return a.registrationOrder < b.registrationOrder;
             });
     }
