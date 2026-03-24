@@ -26,4 +26,4 @@ jobs:
       # MSBuildをフルパス指定で実行
       - name: Build
         run: |
-          "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe" ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}}
+           & "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe" ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}}
