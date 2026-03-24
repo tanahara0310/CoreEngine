@@ -150,6 +150,14 @@ namespace CoreEngine
         /// SwitchAnimation() / SwitchAnimationWithBlend() を呼び出す場合は ModelManager が事前に設定する
         void SetAnimationControllerFactory(std::unique_ptr<IAnimationControllerFactory> factory);
 
+        /// @brief 描画システムが使用する WVP バッファスロットをグローバルに設定する
+        /// BaseScene::Draw() / DrawSceneView() が各パスの直前に呼び出し、
+        /// 明示的にスロットを指定しない全モデルの Draw() に反映される。
+        static void SetCurrentRenderSlot(TransformBufferSlot slot) { s_currentRenderSlot_ = slot; }
+
+        /// @brief 現在設定されているグローバルレンダースロットを取得する
+        static TransformBufferSlot GetCurrentRenderSlot() { return s_currentRenderSlot_; }
+
     private:
         // 描画に必要な固定依存（ModelManager から注入される）
         ModelRenderContext renderContext_;
@@ -161,6 +169,10 @@ namespace CoreEngine
         std::unique_ptr<MaterialInstance> materialInstance_;
 
         static constexpr size_t kTransformBufferCount = 3;
+
+        // 描画システムが制御するグローバルスロット（Game=通常/GBuffer, Scene=エディタSceneView）
+        // BaseScene::Draw() / DrawSceneView() によってパス開始前に設定される
+        inline static TransformBufferSlot s_currentRenderSlot_ = TransformBufferSlot::Game;
 
         // WVP行列用のリソース（ビュー/パスごとに分離）
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kTransformBufferCount> wvpResources_;
