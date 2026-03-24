@@ -3,6 +3,7 @@
 #include "IRenderer.h"
 #include "RenderPassType.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
+#include "Graphics/Model/ModelRenderContext.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
 #include <d3d12.h>
@@ -126,6 +127,12 @@ namespace CoreEngine
         /// @brief シーン共通 IBL 環境回転角度を取得
         const Vector3& GetIBLRotation() const { return iblRotation_; }
 
+        /// @brief アクティブなトランスフォームスロットを設定（Game=通常パス, Scene=エディタシーンビュー）
+        void SetActiveTransformSlot(TransformBufferSlot slot) { activeTransformSlot_ = slot; }
+
+        /// @brief 現在アクティブなトランスフォームスロットを取得
+        TransformBufferSlot GetActiveTransformSlot() const { return activeTransformSlot_; }
+
     private:
         struct DrawCommand {
             CoreEngine::GameObject* object;
@@ -154,6 +161,9 @@ namespace CoreEngine
     // true にすると RenderNormalPass で不透明 Model/SkinnedModel をスキップする
     // DeferredLightingPass が有効な場合に使用する
     bool skipOpaqueModelsInForward_ = false;
+
+    // アクティブなトランスフォームスロット
+    TransformBufferSlot activeTransformSlot_ = TransformBufferSlot::Game;
 
     // IBL / Environment関連
     D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle_ = {};

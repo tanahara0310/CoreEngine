@@ -3,7 +3,6 @@
 #include <cassert>
 
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Model/Model.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 
@@ -28,7 +27,6 @@ namespace CoreEngine
             context.dxCommon->GetSRVHeap(),
             true);
 
-        Model::SetTransformBufferSlot(Model::TransformBufferSlot::Game);
         context.renderManager->DrawGBufferPass();
         gBufferManager->EndGeometryPass(cmdList);
 

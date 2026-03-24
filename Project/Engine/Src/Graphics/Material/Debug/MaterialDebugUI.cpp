@@ -101,7 +101,7 @@ namespace CoreEngine {
         // ─────────────── IBL ───────────────
         ImGui::SeparatorText("IBL");
 
-        const bool iblAvailable = Model::IsIBLAvailable();
+        const bool iblAvailable = model->IsIBLAvailable();
         ImGui::BeginDisabled(!iblAvailable);
         bool enableIBL = mat->IsIBLEnabled();
         if (ImGui::Checkbox("Enable IBL", &enableIBL)) {

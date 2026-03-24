@@ -6,6 +6,7 @@
 
 #include "ModelResource.h"
 #include "Model.h"
+#include "ModelRenderContext.h"
 #include "Animation/Animation.h"
 
 namespace CoreEngine
@@ -30,6 +31,10 @@ public:
     /// @param dxCommon DirectXCommonのポインタ
     /// @param factory リソースファクトリのポインタ
     void Initialize(DirectXCommon* dxCommon, ResourceFactory* factory);
+
+    /// @brief 描画依存コンテキストを設定（全レンダラー登録後に一度呼び出す）
+    /// @param ctx レンダラー・デバイス等の固定依存コンテキスト
+    void SetRenderContext(const ModelRenderContext& ctx);
 
     /// @brief 静的モデルを作成（アニメーションなし）
     /// @param filePath ファイルパス（Assetsフォルダを省略可能）
@@ -82,9 +87,12 @@ public:
 private:
     // DirectXCommon
     DirectXCommon* dxCommon_ = nullptr;
-    
+
     // リソースファクトリ
     ResourceFactory* resourceFactory_ = nullptr;
+
+    // Model インスタンス生成時に注入する描画依存コンテキスト
+    ModelRenderContext renderContext_;
     
     // デフォルトのベースパス
     const std::string basePath_ = "Application/Assets/";

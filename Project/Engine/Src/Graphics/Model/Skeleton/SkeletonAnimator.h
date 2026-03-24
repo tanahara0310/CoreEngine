@@ -43,9 +43,9 @@ public:
     bool IsLooping() const { return isLooping_; }
     
     /// @brief スケルトンを取得
-    /// @return スケルトンの参照
-    Skeleton& GetSkeleton() { return skeleton_; }
-    const Skeleton& GetSkeleton() const { return skeleton_; }
+    /// @return スケルトンへのポインタ
+    Skeleton* GetSkeleton() override { return &skeleton_; }
+    const Skeleton* GetSkeleton() const override { return &skeleton_; }
 
 private:
     /// @brief スケルトンにアニメーションを適用して行列を更新

@@ -4,11 +4,9 @@
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
-#include "Graphics/Render/Model/ModelRenderer.h"
-#include "Graphics/Render/Model/SkinnedModelRenderer.h"
+#include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
-#include "Graphics/Model/Model.h"
 #include "Sample/TestGameObject/SkyBoxObject.h"
 #include "Camera/CameraManager.h"
 #include "Camera/ICamera.h"
@@ -27,35 +25,11 @@ namespace CoreEngine
     void RenderManager::RegisterRenderer(RenderPassType type, std::unique_ptr<IRenderer> renderer) {
         renderers_[type] = std::move(renderer);
 
-        // ModelRendererが登録された場合、Model クラスに設定
-        if (type == RenderPassType::Model) {
-            auto* modelRenderer = dynamic_cast<ModelRenderer*>(renderers_[type].get());
-            if (modelRenderer) {
-                Model::SetModelRenderer(modelRenderer);
-            }
-        }
-
-        // SkinnedModelRendererが登録された場合、Model クラスに設定
-        if (type == RenderPassType::SkinnedModel) {
-            auto* skinnedModelRenderer = dynamic_cast<SkinnedModelRenderer*>(renderers_[type].get());
-            if (skinnedModelRenderer) {
-                Model::SetSkinnedModelRenderer(skinnedModelRenderer);
-            }
-        }
-
         // SkyBoxRendererが登録された場合、SkyBoxObject クラスに設定
         if (type == RenderPassType::SkyBox) {
             auto* skyBoxRenderer = dynamic_cast<SkyBoxRenderer*>(renderers_[type].get());
             if (skyBoxRenderer) {
                 SkyBoxObject::SetSkyBoxRenderer(skyBoxRenderer);
-            }
-        }
-
-        // ShadowMapRendererが登録された場合、Model クラスに設定
-        if (type == RenderPassType::ShadowMap) {
-            auto* shadowMapRenderer = dynamic_cast<ShadowMapRenderer*>(renderers_[type].get());
-            if (shadowMapRenderer) {
-                Model::SetShadowMapRenderer(shadowMapRenderer);
             }
         }
 
@@ -87,11 +61,11 @@ namespace CoreEngine
 
     void RenderManager::SetIBLRotation(const Vector3& rotation) {
         iblRotation_ = rotation;
-        if (auto* r = dynamic_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model))) {
-            r->SetIBLRotation(rotation);
-        }
-        if (auto* r = dynamic_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel))) {
-            r->SetIBLRotation(rotation);
+        // Model / SkinnedModel の両レンダラーに IBL 回転角度を反映
+        for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
+            if (auto* r = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
+                r->SetIBLRotation(rotation);
+            }
         }
     }
 
@@ -184,12 +158,11 @@ namespace CoreEngine
             // DEPTH_WRITE -> PIXEL_SHADER_RESOURCE
             shadowMapManager_->TransitionToShaderResource(cmdList_);
 
-            // ModelRendererにシャドウマップを設定
-            if (auto* modelRenderer = static_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model))) {
-                modelRenderer->SetShadowMap(shadowMapManager_->GetSRVHandle());
-            }
-            if (auto* skinnedRenderer = static_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel))) {
-                skinnedRenderer->SetShadowMap(shadowMapManager_->GetSRVHandle());
+            // シャドウマップ载影を Model / SkinnedModel レンダラー両方に適用する
+            for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
+                if (auto* renderer = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
+                    renderer->SetShadowMap(shadowMapManager_->GetSRVHandle());
+                }
             }
         }
     }
@@ -201,8 +174,9 @@ namespace CoreEngine
 
         EnsureQueueSorted();
 
-        auto* modelRenderer = dynamic_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model));
-        auto* skinnedRenderer = dynamic_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel));
+        // BeginGBufferPass() は IRenderer インターフェースに定義されているため dynamic_cast 不要
+        IRenderer* modelRenderer   = GetRenderer(RenderPassType::Model);
+        IRenderer* skinnedRenderer = GetRenderer(RenderPassType::SkinnedModel);
         const ICamera* currentCamera = GetCameraForPass(RenderPassType::Model);
 
         if (modelRenderer) {
@@ -335,20 +309,15 @@ namespace CoreEngine
     }
 
     void RenderManager::ApplyEnvironmentLightingToRenderers() {
-        if (auto* renderer = dynamic_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model))) {
-            renderer->SetEnvironmentMap(environmentMapHandle_);
-            renderer->SetIrradianceMap(irradianceMapHandle_);
-            renderer->SetPrefilteredMap(prefilteredMapHandle_);
-            renderer->SetBRDFLUT(brdfLUTHandle_);
-            renderer->SetIBLRotation(iblRotation_);
-        }
-
-        if (auto* renderer = dynamic_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel))) {
-            renderer->SetEnvironmentMap(environmentMapHandle_);
-            renderer->SetIrradianceMap(irradianceMapHandle_);
-            renderer->SetPrefilteredMap(prefilteredMapHandle_);
-            renderer->SetBRDFLUT(brdfLUTHandle_);
-            renderer->SetIBLRotation(iblRotation_);
+        // Model / SkinnedModel の両レンダラーに全 IBL テクスチャと回転角度を一括適用
+        for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
+            if (auto* renderer = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
+                renderer->SetEnvironmentMap(environmentMapHandle_);
+                renderer->SetIrradianceMap(irradianceMapHandle_);
+                renderer->SetPrefilteredMap(prefilteredMapHandle_);
+                renderer->SetBRDFLUT(brdfLUTHandle_);
+                renderer->SetIBLRotation(iblRotation_);
+            }
         }
     }
 

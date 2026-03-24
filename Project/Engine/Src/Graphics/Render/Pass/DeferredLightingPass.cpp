@@ -9,7 +9,7 @@
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Graphics/Render/Model/ModelRenderer.h"
+#include "Graphics/Render/Model/BaseModelRenderer.h"
 
 namespace CoreEngine
 {
@@ -47,8 +47,8 @@ namespace CoreEngine
 
         // ===== カメラ CBV アドレス（GBufferPass で設定済み） =====
         if (context.renderManager) {
-            // ModelRenderer が GBufferPass 時点でカメラを保持している
-            if (auto* modelRenderer = dynamic_cast<ModelRenderer*>(
+            // GBufferPass 時点でカメラ CBV を保持する BaseModelRenderer からアドレスを取得
+            if (auto* modelRenderer = dynamic_cast<BaseModelRenderer*>(
                     context.renderManager->GetRenderer(RenderPassType::Model))) {
                 deferredLighting->SetCameraCBVAddress(modelRenderer->GetCameraCBVAddress());
             }

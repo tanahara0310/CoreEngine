@@ -26,6 +26,15 @@ namespace CoreEngine
         // ターゲット数の定数
         static constexpr uint32_t kTargetCount = static_cast<uint32_t>(Target::Count);
 
+        /// @brief GBuffer レンダーターゲットのフォーマット定義
+        /// PSO 作成時と GBufferManager 初期化時の唯一の定義場所
+        static constexpr DXGI_FORMAT kRenderTargetFormats[kTargetCount] = {
+            DXGI_FORMAT_R8G8B8A8_UNORM,       // AlbedoAO
+            DXGI_FORMAT_R16G16B16A16_FLOAT,   // NormalRoughness
+            DXGI_FORMAT_R8G8B8A8_UNORM,       // EmissiveMetallic
+            DXGI_FORMAT_R32G32B32A32_FLOAT    // WorldPosition
+        };
+
         /// @brief 初期化
         /// @param device D3D12デバイス 
         /// @param descriptorManager DescriptorManager（RTV/SRVの作成に使用）

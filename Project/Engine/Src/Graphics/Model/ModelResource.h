@@ -109,10 +109,16 @@ namespace CoreEngine
         };
         const PBRTextureHandles& GetMaterialTextures(uint32_t materialIndex) const;
 
-    private:
-        friend class Model;
-        friend class ModelParticleRenderer;
+        /// @brief 頂点バッファビューを取得
+        const D3D12_VERTEX_BUFFER_VIEW& GetVertexBufferView() const { return vertexBufferView_; }
 
+        /// @brief インデックスバッファビューを取得
+        const D3D12_INDEX_BUFFER_VIEW& GetIndexBufferView() const { return indexBufferView_; }
+
+        /// @brief 総インデックス数を取得
+        UINT GetIndexCount() const { return indexCount_; }
+
+    private:
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
         UINT vertexCount_ = 0;

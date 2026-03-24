@@ -8,11 +8,14 @@
 #include <optional>
 
 #include "ModelResource.h"
+#include "ModelRenderContext.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Model/Skeleton/SkinCluster.h"
+#include "Graphics/Render/Model/ModelDrawPacket.h"
 #include "Animation/IAnimationController.h"
+#include "Animation/IAnimationControllerFactory.h"
 #include "Skeleton/Skeleton.h"
 
 // 前方宣言
@@ -31,12 +34,6 @@ namespace CoreEngine
 {
     class Model {
     public:
-        enum class TransformBufferSlot : uint32_t {
-            Game = 0,
-            Scene = 1,
-            Shadow = 2
-        };
-
         /// @brief モデルの描画タイプ
         enum class RenderType {
             Normal,   // 通常モデル
@@ -49,31 +46,8 @@ namespace CoreEngine
         /// @brief デストラクタ
         ~Model() = default;
 
-        /// @brief 静的初期化（全Modelインスタンス共通のリソースを初期化）
-        /// @param dxCommon DirectXCommonのポインタ
-        static void Initialize(CoreEngine::DirectXCommon* dxCommon);
-
-        /// @brief ShadowMapManagerを設定（ライトVP行列の一元管理）
-        /// @param shadowMapManager ShadowMapManagerのポインタ
-        static void SetShadowMapManager(ShadowMapManager* shadowMapManager);
-
-        /// @brief ModelRendererを設定（ルートパラメータインデックス取得用）
-        /// @param modelRenderer ModelRendererのポインタ
-        static void SetModelRenderer(class ModelRenderer* modelRenderer);
-
-        /// @brief SkinnedModelRendererを設定（ルートパラメータインデックス取得用）
-        /// @param skinnedModelRenderer SkinnedModelRendererのポインタ
-        static void SetSkinnedModelRenderer(class SkinnedModelRenderer* skinnedModelRenderer);
-
-        /// @brief ShadowMapRendererを設定（ルートパラメータインデックス取得用）
-        /// @param shadowMapRenderer ShadowMapRendererのポインタ
-        static void SetShadowMapRenderer(class ShadowMapRenderer* shadowMapRenderer);
-
         /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
-        static bool IsIBLAvailable();
-
-        /// @brief 現在の描画スロットを設定
-        static void SetTransformBufferSlot(TransformBufferSlot slot);
+        bool IsIBLAvailable() const;
 
         /// @brief モデルリソースに法線マップテクスチャがあるか確認
         bool HasNormalMap() const;
@@ -86,19 +60,23 @@ namespace CoreEngine
 
         /// @brief 初期化（アニメーションコントローラーなし）
         /// @param resource 共有するModelResourceのポインタ
-        void Initialize(ModelResource* resource);
+        /// @param ctx 描画依存コンテキスト
+        void Initialize(ModelResource* resource, const ModelRenderContext& ctx);
 
         /// @brief 初期化（アニメーションコントローラーあり）
         /// @param resource 共有するModelResourceのポインタ
         /// @param controller アニメーションコントローラー
-        void Initialize(ModelResource* resource, std::unique_ptr<IAnimationController> controller);
+        /// @param ctx 描画依存コンテキスト
+        void Initialize(ModelResource* resource, std::unique_ptr<IAnimationController> controller, const ModelRenderContext& ctx);
 
         /// @brief モデルを描画（スキニングモデルか通常モデルかは内部で自動判別）
         /// @param transform ワールドトランスフォーム
         /// @param camera カメラ（ICamera インターフェース）
         /// @param textureHandle テクスチャハンドル（省略時はモデル組み込みテクスチャを使用）
+        /// @param slot 使用する WVP バッファスロット（Game=通常/GBuffer, Scene=エディタ）
         void Draw(const WorldTransform& transform, const CoreEngine::ICamera* camera,
-            D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
+            D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {},
+            TransformBufferSlot slot = TransformBufferSlot::Game);
 
         /// @brief シャドウマップ用の描画（深度のみ）
         /// @param transform ワールドトランスフォーム
@@ -168,7 +146,14 @@ namespace CoreEngine
 
         void SetModelResource(ModelResource* resource);
 
+        /// @brief アニメーションコントローラーファクトリーを設定（スケルトンモデルのみ必須）
+        /// SwitchAnimation() / SwitchAnimationWithBlend() を呼び出す場合は ModelManager が事前に設定する
+        void SetAnimationControllerFactory(std::unique_ptr<IAnimationControllerFactory> factory);
+
     private:
+        // 描画に必要な固定依存（ModelManager から注入される）
+        ModelRenderContext renderContext_;
+
         // 参照するModelResource
         ModelResource* resource_ = nullptr;
 
@@ -189,31 +174,34 @@ namespace CoreEngine
         // アニメーションコントローラー
         std::unique_ptr<IAnimationController> animationController_;
 
+        // スケルトンアニメーター等の生成ファクトリー（スケルトンモデルのみ設定される）
+        std::unique_ptr<IAnimationControllerFactory> animationFactory_;
+
         // 内部ヘルパーメソッド
-        /// @brief WVP行列データを更新
-        void UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera);
+        /// @brief WVP行列データを更新（slot で使用バッファを指定）
+        void UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera,
+            TransformBufferSlot slot);
 
         /// @brief SkinClusterを更新（スケルトンアニメーションの場合のみ）
         void UpdateSkinCluster();
 
-        /// @brief 現在の描画スロット用行列バッファを取得
-        ID3D12Resource* GetCurrentTransformBuffer() const;
-
         /// @brief 指定スロット用行列バッファを取得
         ID3D12Resource* GetTransformBuffer(TransformBufferSlot slot) const;
 
-        /// @brief 通常モデルの描画コマンドを設定
-        void SetupNormalDrawCommands(ID3D12GraphicsCommandList* cmdList,
+        /// @brief 通常モデル用の ModelDrawPacket を組み立てる
+        ModelDrawPacket BuildNormalDrawPacket(const SubMeshData& subMesh,
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
-            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture = {},
-            D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture = {},
-            D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture = {});
+            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
+            D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
+            D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
+            TransformBufferSlot slot) const;
 
-        /// @brief スキニングモデルの描画コマンドを設定
-        void SetupSkinningDrawCommands(ID3D12GraphicsCommandList* cmdList,
+        /// @brief スキニングモデル用の ModelDrawPacket を組み立てる
+        ModelDrawPacket BuildSkinningDrawPacket(const SubMeshData& subMesh,
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
-            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture = {},
-            D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture = {},
-            D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture = {});
+            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
+            D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
+            D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
+            TransformBufferSlot slot) const;
     };
 }

@@ -4,7 +4,7 @@
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/Animator.h"
-#include "Skeleton/SkeletonAnimator.h"
+#include "Animation/SkeletonAnimatorFactory.h"
 
 #include <cassert>
 #include <filesystem>
@@ -18,7 +18,12 @@ void ModelManager::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory)
     assert(dxCommon && factory);
     dxCommon_ = dxCommon;
     resourceFactory_ = factory;
-    Model::Initialize(dxCommon);
+}
+
+void ModelManager::SetRenderContext(const ModelRenderContext& ctx)
+{
+    assert(ctx.IsValid() && "ModelRenderContext must be fully initialized before setting on ModelManager");
+    renderContext_ = ctx;
 }
 
 std::unique_ptr<Model> ModelManager::CreateStaticModel(const std::string& filePath)
@@ -37,7 +42,7 @@ std::unique_ptr<Model> ModelManager::CreateStaticModel(const std::string& filePa
 
     // アニメーションコントローラーなしでインスタンスを作成
     auto instance = std::make_unique<Model>();
-    instance->Initialize(resource);
+    instance->Initialize(resource, renderContext_);
 
     return instance;
 }
@@ -73,7 +78,7 @@ std::unique_ptr<Model> ModelManager::CreateKeyframeModel(
     if (!animation) {
         // アニメーションが見つからない場合は静的モデルとして作成
         auto instance = std::make_unique<Model>();
-        instance->Initialize(resource);
+        instance->Initialize(resource, renderContext_);
         return instance;
     }
 
@@ -84,7 +89,7 @@ std::unique_ptr<Model> ModelManager::CreateKeyframeModel(
 
     // インスタンスを作成
     auto instance = std::make_unique<Model>();
-    instance->Initialize(resource, std::move(animator));
+    instance->Initialize(resource, std::move(animator), renderContext_);
 
     return instance;
 }
@@ -125,17 +130,18 @@ std::unique_ptr<Model> ModelManager::CreateSkeletonModel(
     if (!animation) {
         // アニメーションが見つからない場合は静的モデルとして作成
         auto instance = std::make_unique<Model>();
-        instance->Initialize(resource);
+        instance->Initialize(resource, renderContext_);
         return instance;
     }
 
-    // SkeletonAnimatorを作成（スケルトンをコピーして渡す）
-    auto skeletonAnimator = std::make_unique<SkeletonAnimator>(*resource->GetSkeleton(), *animation);
-    skeletonAnimator->SetLooping(loop);
+    // SkeletonAnimatorFactory を使って初期アニメーションを生成
+    auto factory = std::make_unique<SkeletonAnimatorFactory>();
+    auto skeletonAnimator = factory->CreateSkeletonAnimator(*resource->GetSkeleton(), *animation, loop);
 
-    // インスタンスを作成
+    // インスタンスを作成し、ファクトリーを注入（SwitchAnimation で使用）
     auto instance = std::make_unique<Model>();
-    instance->Initialize(resource, std::move(skeletonAnimator));
+    instance->Initialize(resource, std::move(skeletonAnimator), renderContext_);
+    instance->SetAnimationControllerFactory(std::make_unique<SkeletonAnimatorFactory>());
 
     return instance;
 }

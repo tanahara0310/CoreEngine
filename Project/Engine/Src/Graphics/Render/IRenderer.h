@@ -24,7 +24,11 @@ public:
     /// @param cmdList コマンドリスト
     /// @param blendMode ブレンドモード
     virtual void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode = BlendMode::kBlendModeNone) = 0;
-    
+
+    /// @brief GBuffer パスの開始（GBuffer 用 RootSignature・PSO をバインド）
+    /// @note GBuffer に対応しないレンダラーはデフォルト実装（何もしない）のままでよい
+    virtual void BeginGBufferPass(ID3D12GraphicsCommandList* cmdList) { (void)cmdList; }
+
     /// @brief 描画パスの終了
     virtual void EndPass() = 0;
     
