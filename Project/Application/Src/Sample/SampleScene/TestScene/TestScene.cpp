@@ -65,12 +65,61 @@ namespace CoreEngine
         skyBox->SetTexture(environmentMapTexture);  // HDRから生成されたキューブマップを設定
         skyBox->SetActive(true);  // SkyBoxを表示
 
-        //// ===== sponzaモデルのみ配置 =====
-        auto sponza = CreateObject<ModelObject>();
-        sponza->Initialize("Sponza.gltf");
-        sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-        sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        sponza->SetActive(false);
+        ////// ===== sponzaモデルのみ配置 =====
+        //auto sponza = CreateObject<ModelObject>();
+        //sponza->Initialize("Sponza.gltf");
+        //sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
+        //sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        //sponza->SetActive(false);
+
+        // ===== ウォーキングモデル（PBR グリッドと重ならない位置に配置） =====
+        auto walkModel = CreateObject<WalkModelObject>();
+        walkModel->Initialize();
+        walkModel->GetTransform().translate = { 25.0f, 0.0f, 0.0f };
+        walkModel->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        walkModel->SetActive(true);
+
+        // ===== PBR パラメータテスト用球体グリッド =====
+        // 列（X 軸）: Roughness  0.0（左=鏡面） → 1.0（右=粗面）
+        // 行（Y 軸）: Metallic   0.0（下=非金属） → 1.0（上=金属）
+        //
+        //  Metallic
+        //  1.0 ┌──────────────────────────────────┐
+        //      │  金属 × 各 Roughness              │
+        //  0.5 │  半金属 × 各 Roughness            │
+        //  0.0 └──────────────────────────────────┘
+        //      0.0   0.17  0.33  0.5  0.67  0.83  1.0  Roughness
+
+        constexpr int   kRoughnessSteps = 7;   // 列数（Roughness 軸）
+        constexpr int   kMetallicSteps  = 7;   // 行数（Metallic 軸）
+        constexpr float kSpacing        = 2.5f; // 球体間の間隔
+
+        // グリッド原点（中央が座標原点になるよう計算）
+        const float originX = -(kRoughnessSteps - 1) * kSpacing * 0.5f;
+        const float originY = -(kMetallicSteps  - 1) * kSpacing * 0.5f;
+
+        for (int row = 0; row < kMetallicSteps; ++row)
+        {
+            const float metallic = static_cast<float>(row) / static_cast<float>(kMetallicSteps - 1);
+
+            for (int col = 0; col < kRoughnessSteps; ++col)
+            {
+                const float roughness = static_cast<float>(col) / static_cast<float>(kRoughnessSteps - 1);
+
+                auto sphere = CreateObject<ModelObject>();
+                sphere->Initialize("sphere.obj");
+                sphere->GetTransform().translate = {
+                    originX + col * kSpacing,
+                    originY + row * kSpacing,
+                    0.0f
+                };
+                sphere->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+                sphere->SetPBRParameters(metallic, roughness, 1.0f);
+                sphere->SetIBLEnabled(true);
+                sphere->SetIBLIntensity(1.0f);
+                sphere->SetActive(true);
+            }
+        }
     }
 
     void TestScene::OnUpdate()

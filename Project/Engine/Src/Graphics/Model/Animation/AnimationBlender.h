@@ -41,12 +41,17 @@ public:
 
     /// @brief ブレンド中かどうかを取得
     /// @return ブレンド中ならtrue
-    bool IsBlending() const { return blendTimer_.IsActive(); }
+    bool IsBlending() const override { return blendTimer_.IsActive(); }
+
+    /// @brief ブレンド先ターゲットを追加（既にブレンド中の場合に呼び出す）
+    /// @param target ブレンド先コントローラー
+    /// @param blendDuration ブレンド時間（秒）
+    void AddBlendTarget(std::unique_ptr<IAnimationController> target, float blendDuration) override;
 
     /// @brief スケルトンを取得（SkeletonAnimator用）
-    /// @return スケルトンの参照
-    Skeleton& GetSkeleton();
-    const Skeleton& GetSkeleton() const;
+    /// @return スケルトンへのポインタ（非対応の場合はnullptr）
+    Skeleton* GetSkeleton() override;
+    const Skeleton* GetSkeleton() const override;
 
 private:
     /// @brief 2つのスケルトンをブレンド

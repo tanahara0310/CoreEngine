@@ -1,14 +1,12 @@
 #include "Model.h"
+#include "ModelRenderContext.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Camera/ICamera.h"
-#include "Graphics/Render/Model/ModelRenderer.h"
-#include "Graphics/Render/Model/SkinnedModelRenderer.h"
+#include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
-#include "Graphics/Model/Skeleton/SkeletonAnimator.h"
 #include "Graphics/Model/Skeleton/SkinClusterGenerator.h"
-#include "Graphics/Model/Animation/AnimationBlender.h"
 #include "Utility/Logger/Logger.h"
 #include "Math/MathCore.h"
 
@@ -17,88 +15,20 @@
 
 namespace CoreEngine
 {
-    namespace {
-        DirectXCommon* sDxCommon_ = nullptr;
-        ShadowMapManager* sShadowMapManager_ = nullptr;
-        ModelRenderer* sModelRenderer_ = nullptr;
-        SkinnedModelRenderer* sSkinnedModelRenderer_ = nullptr;
-        ShadowMapRenderer* sShadowMapRenderer_ = nullptr;
-        uint32_t sCurrentTransformBufferIndex_ = static_cast<uint32_t>(Model::TransformBufferSlot::Game);
 
-        /// @brief PBRテクスチャを描画コマンドにバインドする共通処理
-        /// @tparam TIndexGetter ルートパラメータインデックス取得関数
-        template<typename TIndexGetter>
-        void BindPBRTextures(
-            ID3D12GraphicsCommandList* cmdList,
-            TIndexGetter&& getIndex,
-            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
-            D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
-            D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture)
-        {
-            int normalMapIdx = getIndex("gNormalMap");
-            if (normalTexture.ptr != 0 && normalMapIdx >= 0) {
-                cmdList->SetGraphicsRootDescriptorTable(normalMapIdx, normalTexture);
-            }
-
-            if (metallicRoughnessTexture.ptr != 0) {
-                int metallicIdx = getIndex("gMetallicMap");
-                int roughnessIdx = getIndex("gRoughnessMap");
-                if (metallicIdx >= 0) {
-                    cmdList->SetGraphicsRootDescriptorTable(metallicIdx, metallicRoughnessTexture);
-                }
-                if (roughnessIdx >= 0) {
-                    cmdList->SetGraphicsRootDescriptorTable(roughnessIdx, metallicRoughnessTexture);
-                }
-            }
-
-            int aoIdx = getIndex("gAOMap");
-            if (occlusionTexture.ptr != 0 && aoIdx >= 0) {
-                cmdList->SetGraphicsRootDescriptorTable(aoIdx, occlusionTexture);
-            }
-        }
+    bool Model::IsIBLAvailable() const {
+        // 自身の renderContext_ 経由でレンダラーの IBL テクスチャ状態を確認
+        return renderContext_.modelRenderer != nullptr && renderContext_.modelRenderer->HasIBLMaps();
     }
 
-    void Model::Initialize(DirectXCommon* dxCommon) {
-        assert(dxCommon);
-        sDxCommon_ = dxCommon;
-    }
-
-    void Model::SetShadowMapManager(ShadowMapManager* shadowMapManager) {
-        sShadowMapManager_ = shadowMapManager;
-    }
-
-    void Model::SetModelRenderer(ModelRenderer* modelRenderer) {
-        sModelRenderer_ = modelRenderer;
-    }
-
-    void Model::SetSkinnedModelRenderer(SkinnedModelRenderer* skinnedModelRenderer) {
-        sSkinnedModelRenderer_ = skinnedModelRenderer;
-    }
-
-    void Model::SetShadowMapRenderer(ShadowMapRenderer* shadowMapRenderer) {
-        sShadowMapRenderer_ = shadowMapRenderer;
-    }
-
-    bool Model::IsEnvironmentMapAvailable() {
-        return sModelRenderer_ != nullptr && sModelRenderer_->HasEnvironmentMap();
-    }
-
-    bool Model::IsIBLAvailable() {
-        return sModelRenderer_ != nullptr && sModelRenderer_->HasIBLMaps();
-    }
-
-    void Model::SetTransformBufferSlot(TransformBufferSlot slot)
-    {
-        sCurrentTransformBufferIndex_ = static_cast<uint32_t>(slot);
-    }
-
-    void Model::Initialize(ModelResource* resource) {
+    void Model::Initialize(ModelResource* resource, const ModelRenderContext& ctx) {
         assert(resource && resource->IsLoaded());
         resource_ = resource;
+        renderContext_ = ctx;
 
         // MaterialInstanceを作成
         materialInstance_ = std::make_unique<MaterialInstance>();
-        materialInstance_->Initialize(sDxCommon_->GetDevice());
+        materialInstance_->Initialize(renderContext_.dxCommon->GetDevice());
 
         // モデルに埋め込まれた PBR テクスチャに基づきマテリアルフラグを自動設定
         const auto& subMeshes = resource_->GetSubMeshes();
@@ -119,13 +49,13 @@ namespace CoreEngine
                 hasPBRTextures = true;
             }
             if (hasPBRTextures) {
-                materialInstance_->SetPBREnabled(true);
+                // PBR は常に有効。テクスチャマップフラグは上で個別に設定済み。
             }
         }
 
         for (auto& wvpResource : wvpResources_) {
             wvpResource = ResourceFactory::CreateBufferResource(
-                sDxCommon_->GetDevice(),
+                renderContext_.dxCommon->GetDevice(),
                 sizeof(TransformationMatrix)
             );
         }
@@ -137,18 +67,18 @@ namespace CoreEngine
             const ModelData& modelData = resource_->GetModelData();
             if (!modelData.skinClusterData.empty()) {
                 skinCluster_ = SkinClusterGenerator::CreateSkinCluster(
-                    sDxCommon_->GetDevice(),
+                    renderContext_.dxCommon->GetDevice(),
                     *skeleton_,
                     modelData,
-                    sDxCommon_->GetDescriptorManager()
+                    renderContext_.dxCommon->GetDescriptorManager()
                 );
             }
         }
     }
 
-    void Model::Initialize(ModelResource* resource, std::unique_ptr<IAnimationController> controller) {
+    void Model::Initialize(ModelResource* resource, std::unique_ptr<IAnimationController> controller, const ModelRenderContext& ctx) {
         // 基本の初期化を実行
-        Initialize(resource);
+        Initialize(resource, ctx);
 
         // アニメーションコントローラーを設定
         animationController_ = std::move(controller);
@@ -162,8 +92,10 @@ namespace CoreEngine
     }
 
 
-    void Model::UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera) {
-        ID3D12Resource* transformBuffer = GetCurrentTransformBuffer();
+    void Model::UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera,
+        TransformBufferSlot slot)
+    {
+        ID3D12Resource* transformBuffer = GetTransformBuffer(slot);
         assert(transformBuffer);
 
         // 行列計算
@@ -176,8 +108,8 @@ namespace CoreEngine
         );
 
         // ShadowMapManagerからライトVP行列を取得
-        Matrix4x4 lightVP = sShadowMapManager_ ?
-            sShadowMapManager_->GetLightViewProjection() : MathCore::Matrix::Identity();
+        Matrix4x4 lightVP = renderContext_.shadowMapManager ?
+            renderContext_.shadowMapManager->GetLightViewProjection() : MathCore::Matrix::Identity();
 
         // GPUメモリに書き込み
         TransformationMatrix* mappedData = nullptr;
@@ -190,378 +122,342 @@ namespace CoreEngine
     }
 
     void Model::Draw(const WorldTransform& transform, const ICamera* camera,
-        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
+        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle, TransformBufferSlot slot) {
 
         assert(IsInitialized());
         assert(camera);
 
-        ID3D12GraphicsCommandList* cmdList = sDxCommon_->GetCommandList();
+        ID3D12GraphicsCommandList* cmdList = renderContext_.dxCommon->GetCommandList();
         assert(cmdList);
 
-        // WVP行列を更新（共通処理）
-        UpdateTransformationMatrix(transform, camera);
+        // WVP 行列を更新（slot で使用バッファを指定）
+        UpdateTransformationMatrix(transform, camera, slot);
 
-        // サブメッシュごとに描画
         const auto& subMeshes = resource_->GetSubMeshes();
         assert(!subMeshes.empty() && "Model must have at least one submesh");
 
+        const bool isSkinned = HasSkinCluster();
+        BaseModelRenderer* renderer = isSkinned
+            ? renderContext_.skinnedRenderer
+            : renderContext_.modelRenderer;
+        assert(renderer);
+
         for (const auto& subMesh : subMeshes) {
-            // マテリアルのテクスチャを取得
             const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
 
-            // textureHandleが指定されている場合はBaseColorをオーバーライド
+            // textureHandle が指定されている場合は BaseColor をオーバーライド
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
                 ? textureHandle : textures.baseColor;
 
-            // スキンクラスターの有無で描画方法を自動判別
-            if (HasSkinCluster()) {
-                SetupSkinningDrawCommands(cmdList, baseColorTex, textures.normal,
-                    textures.metallicRoughness, textures.occlusion);
-            } else {
-                SetupNormalDrawCommands(cmdList, baseColorTex, textures.normal,
-                    textures.metallicRoughness, textures.occlusion);
-            }
+            // モデル種別に応じたパケットを組み立て、レンダラーに渡す
+            const ModelDrawPacket packet = isSkinned
+                ? BuildSkinningDrawPacket(subMesh, baseColorTex, textures.normal,
+                    textures.metallicRoughness, textures.occlusion, slot)
+                : BuildNormalDrawPacket(subMesh, baseColorTex, textures.normal,
+                    textures.metallicRoughness, textures.occlusion, slot);
 
-            // このサブメッシュの範囲を描画
-            cmdList->DrawIndexedInstanced(subMesh.indexCount, 1, subMesh.startIndex, 0, 0);
+            renderer->BindModelDrawPacket(cmdList, packet);
         }
     }
 
     void Model::DrawShadow(const WorldTransform& transform, ID3D12GraphicsCommandList* cmdList) {
-        assert(IsInitialized());
-        assert(cmdList);
+    assert(IsInitialized());
+    assert(cmdList);
 
-        ID3D12Resource* transformBuffer = GetTransformBuffer(TransformBufferSlot::Shadow);
-        assert(transformBuffer);
+    ID3D12Resource* transformBuffer = GetTransformBuffer(TransformBufferSlot::Shadow);
+    assert(transformBuffer);
 
-        // ShadowMapManagerからライトVP行列を取得
-        Matrix4x4 lightVP = sShadowMapManager_ ?
-            sShadowMapManager_->GetLightViewProjection() : MathCore::Matrix::Identity();
+    // ShadowMapManagerからライトVP行列を取得
+    Matrix4x4 lightVP = renderContext_.shadowMapManager ?
+        renderContext_.shadowMapManager->GetLightViewProjection() : MathCore::Matrix::Identity();
 
-        // シャドウマップ用のWVP行列を計算（ライトVP行列を使用）
-        Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-        Matrix4x4 lightWVP = MathCore::Matrix::Multiply(worldMatrix, lightVP);
+    // シャドウマップ用のWVP行列を計算（ライトVP行列を使用）
+    Matrix4x4 worldMatrix = transform.GetWorldMatrix();
+    Matrix4x4 lightWVP = MathCore::Matrix::Multiply(worldMatrix, lightVP);
 
-        // GPUメモリに書き込み
-        TransformationMatrix* mappedData = nullptr;
-        transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-        mappedData->WVP = lightWVP;
-        mappedData->world = worldMatrix;
-        mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
-        mappedData->lightViewProjection = lightVP;
-        transformBuffer->Unmap(0, nullptr);
+    // GPUメモリに書き込み
+    TransformationMatrix* mappedData = nullptr;
+    transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
+    mappedData->WVP = lightWVP;
+    mappedData->world = worldMatrix;
+    mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
+    mappedData->lightViewProjection = lightVP;
+    transformBuffer->Unmap(0, nullptr);
 
-        // 頂点バッファを設定
-        cmdList->IASetVertexBuffers(0, 1, &resource_->vertexBufferView_);
+    // 頂点バッファを設定
+    cmdList->IASetVertexBuffers(0, 1, &resource_->GetVertexBufferView());
 
-        // インデックスバッファを設定
-        cmdList->IASetIndexBuffer(&resource_->indexBufferView_);
+    // インデックスバッファを設定
+    cmdList->IASetIndexBuffer(&resource_->GetIndexBufferView());
 
-        // WVP行列を設定（シェーダーリフレクションからインデックスを取得）
-        int lightTransformIdx = sShadowMapRenderer_ ? sShadowMapRenderer_->GetRootParamIndex("gLightTransform") : 0;
-        if (lightTransformIdx >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(lightTransformIdx, transformBuffer->GetGPUVirtualAddress());
+    // WVP行列を設定（シェーダーリフレクションからインデックスを取得）
+    int lightTransformIdx = renderContext_.shadowRenderer ? renderContext_.shadowRenderer->GetRootParamIndex("gLightTransform") : 0;
+    if (lightTransformIdx >= 0) {
+        cmdList->SetGraphicsRootConstantBufferView(lightTransformIdx, transformBuffer->GetGPUVirtualAddress());
+    }
+
+    // スキニングモデルの場合はMatrixPaletteも設定
+    if (HasSkinCluster()) {
+        // スキニング用の頂点バッファも設定（slot 1）
+        D3D12_VERTEX_BUFFER_VIEW skinningVBV = skinCluster_->influenceBufferView;
+        cmdList->IASetVertexBuffers(1, 1, &skinningVBV);
+
+        // MatrixPalette SRV（シェーダーリフレクションからインデックスを取得）
+        int matrixPaletteIdx = renderContext_.shadowRenderer ? renderContext_.shadowRenderer->GetRootParamIndex("gMatrixPalette") : 1;
+        if (matrixPaletteIdx >= 0 && skinCluster_->paletteSrvHandle.second.ptr != 0) {
+            cmdList->SetGraphicsRootDescriptorTable(matrixPaletteIdx, skinCluster_->paletteSrvHandle.second);
         }
-
-        // スキニングモデルの場合はMatrixPaletteも設定
-        if (HasSkinCluster()) {
-            // スキニング用の頂点バッファも設定（slot 1）
-            D3D12_VERTEX_BUFFER_VIEW skinningVBV = skinCluster_->influenceBufferView;
-            cmdList->IASetVertexBuffers(1, 1, &skinningVBV);
-
-            // MatrixPalette SRV（シェーダーリフレクションからインデックスを取得）
-            int matrixPaletteIdx = sShadowMapRenderer_ ? sShadowMapRenderer_->GetRootParamIndex("gMatrixPalette") : 1;
-            if (matrixPaletteIdx >= 0 && skinCluster_->paletteSrvHandle.second.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(matrixPaletteIdx, skinCluster_->paletteSrvHandle.second);
-            }
 #ifdef _DEBUG
-            else if (matrixPaletteIdx >= 0 && skinCluster_->paletteSrvHandle.second.ptr == 0) {
-                OutputDebugStringA("WARNING: Model::DrawShadow - MatrixPalette SRV is null for skinned model.\n");
-            }
+        else if (matrixPaletteIdx >= 0 && skinCluster_->paletteSrvHandle.second.ptr == 0) {
+            OutputDebugStringA("WARNING: Model::DrawShadow - MatrixPalette SRV is null for skinned model.\n");
+        }
 #endif
-        }
-
-        // 描画実行
-        cmdList->DrawIndexedInstanced(resource_->indexCount_, 1, 0, 0, 0);
     }
 
-    void Model::UpdateAnimation(float deltaTime) {
-        if (!animationController_) return;
+    // 描画実行
+    cmdList->DrawIndexedInstanced(resource_->GetIndexCount(), 1, 0, 0, 0);
+}
 
-        // アニメーションの時間を進める
-        animationController_->Update(deltaTime);
+void Model::UpdateAnimation(float deltaTime) {
+    if (!animationController_) return;
 
-        // SkeletonAnimatorの場合は、スケルトンとスキンクラスターを同期
-        if (auto* skeletonAnimator = dynamic_cast<SkeletonAnimator*>(animationController_.get())) {
-            skeleton_ = skeletonAnimator->GetSkeleton();
-            UpdateSkinCluster();
-        }
-        // AnimationBlenderの場合も、スケルトンとスキンクラスターを同期
-        else if (auto* blender = dynamic_cast<AnimationBlender*>(animationController_.get())) {
-            skeleton_ = blender->GetSkeleton();
-            UpdateSkinCluster();
-        }
+    // アニメーション時刻を進める
+    animationController_->Update(deltaTime);
+
+    // スケルトンが存在する場合はインスタンス変数に同期し、SkinCluster も更新する
+    if (const Skeleton* skel = animationController_->GetSkeleton()) {
+        skeleton_ = *skel;
+        UpdateSkinCluster();
     }
+}
 
-    void Model::ResetAnimation() {
-        if (animationController_) {
-            animationController_->Reset();
-        }
+void Model::ResetAnimation() {
+    if (animationController_) {
+        animationController_->Reset();
     }
+}
 
-    float Model::GetAnimationTime() const {
-        return animationController_ ? animationController_->GetAnimationTime() : 0.0f;
-    }
+float Model::GetAnimationTime() const {
+    return animationController_ ? animationController_->GetAnimationTime() : 0.0f;
+}
 
-    bool Model::IsAnimationFinished() const {
-        return animationController_ ? animationController_->IsFinished() : true;
-    }
+bool Model::IsAnimationFinished() const {
+    return animationController_ ? animationController_->IsFinished() : true;
+}
 
-    void Model::SetModelResource(ModelResource* resource)
-    {
-        resource_ = resource;
-    }
+void Model::SetModelResource(ModelResource* resource)
+{
+    resource_ = resource;
+}
 
-    bool Model::SwitchAnimation(const std::string& animationName, bool loop) {
+void Model::SetAnimationControllerFactory(std::unique_ptr<IAnimationControllerFactory> factory)
+{
+    animationFactory_ = std::move(factory);
+}
 
-        // リソースがない場合は失敗
-        if (!resource_) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: ModelResource is null");
-            return false;
-        }
+bool Model::SwitchAnimation(const std::string& animationName, bool loop) {
 
-        // アニメーションを取得
-        const Animation* newAnimation = resource_->GetAnimation(animationName);
-        if (!newAnimation) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Animation not found: " + animationName);
-            return false;
-        }
-
-        // SkeletonAnimatorの場合のみアニメーション切り替えが可能
-        auto* skeletonAnimator = dynamic_cast<SkeletonAnimator*>(animationController_.get());
-        if (!skeletonAnimator) {
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "Animation switching is only supported for SkeletonAnimator");
-            return false;
-        }
-
-        // 現在のスケルトン状態を保持したまま、新しいアニメーションコントローラーを作成
-        Skeleton currentSkeleton = skeletonAnimator->GetSkeleton();
-        animationController_ = std::make_unique<SkeletonAnimator>(currentSkeleton, *newAnimation, loop);
-
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Switched to animation: " + animationName);
-
-        return true;
-    }
-
-    bool Model::SwitchAnimationWithBlend(const std::string& animationName, float blendDuration, bool loop) {
-        // リソースがない場合は失敗
-        if (!resource_) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: ModelResource is null");
-            return false;
-        }
-
-        // アニメーションを取得
-        const Animation* newAnimation = resource_->GetAnimation(animationName);
-        if (!newAnimation) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Animation not found: " + animationName);
-            return false;
-        }
-
-        // AnimationBlenderとして動作している場合
-        auto* blender = dynamic_cast<AnimationBlender*>(animationController_.get());
-        if (blender) {
-            // 現在のスケルトンを取得して新しいアニメーターを作成
-            Skeleton currentSkeleton = blender->GetSkeleton();
-            auto newAnimator = std::make_unique<SkeletonAnimator>(currentSkeleton, *newAnimation, loop);
-            blender->StartBlend(std::move(newAnimator), blendDuration);
-
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Started blend to animation: " + animationName);
-            return true;
-        }
-
-        // SkeletonAnimatorの場合
-        auto* skeletonAnimator = dynamic_cast<SkeletonAnimator*>(animationController_.get());
-        if (skeletonAnimator) {
-            // 現在のアニメーターを保持
-            Skeleton currentSkeleton = skeletonAnimator->GetSkeleton();
-            auto currentAnimator = std::move(animationController_);
-
-            // 新しいアニメーターを作成
-            auto newAnimator = std::make_unique<SkeletonAnimator>(currentSkeleton, *newAnimation, loop);
-
-            // Blenderを作成してブレンド開始
-            auto blenderController = std::make_unique<AnimationBlender>(std::move(currentAnimator));
-            blenderController->StartBlend(std::move(newAnimator), blendDuration);
-            animationController_ = std::move(blenderController);
-
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Started blend to animation: " + animationName);
-            return true;
-        }
-
-        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "Animation blending is only supported for SkeletonAnimator");
+    // リソースがない場合は失敗
+    if (!resource_) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: ModelResource is null");
         return false;
     }
 
-    // ===== PBRテクスチャ対応のSetup描画コマンド =====
-
-    void Model::SetupNormalDrawCommands(ID3D12GraphicsCommandList* cmdList,
-        D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
-        D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
-        D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
-        D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture) {
-
-        ID3D12Resource* transformBuffer = GetCurrentTransformBuffer();
-        assert(transformBuffer);
-
-        // 頂点バッファを設定
-        cmdList->IASetVertexBuffers(0, 1, &resource_->vertexBufferView_);
-
-        // インデックスバッファを設定
-        cmdList->IASetIndexBuffer(&resource_->indexBufferView_);
-
-        if (!sModelRenderer_) {
-            throw std::runtime_error("ModelRenderer is not set. Call Model::SetModelRenderer first.");
-        }
-
-        const bool useGBufferBinding = sModelRenderer_->IsInGBufferPass();
-        auto getModelRootIndex = [&](const std::string& name) {
-            return useGBufferBinding
-                ? sModelRenderer_->GetGBufferRootParamIndex(name)
-                : sModelRenderer_->GetRootParamIndex(name);
-        };
-
-        const int materialIdx = getModelRootIndex("gMaterial");
-        const int transformIdx = getModelRootIndex("gTransformationMatrix");
-        const int textureIdx = getModelRootIndex("gTexture");
-
-        if (materialIdx >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(materialIdx, materialInstance_->GetGPUVirtualAddress());
-        }
-
-        if (transformIdx >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(transformIdx, transformBuffer->GetGPUVirtualAddress());
-        }
-
-        if (textureIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(textureIdx, baseColorTexture);
-        }
-
-        BindPBRTextures(cmdList, getModelRootIndex, normalTexture, metallicRoughnessTexture, occlusionTexture);
+    // アニメーションを取得
+    const Animation* newAnimation = resource_->GetAnimation(animationName);
+    if (!newAnimation) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Animation not found: " + animationName);
+        return false;
     }
 
-    void Model::SetupSkinningDrawCommands(ID3D12GraphicsCommandList* cmdList,
-        D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
-        D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
-        D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
-        D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture) {
-
-        ID3D12Resource* transformBuffer = GetCurrentTransformBuffer();
-        assert(transformBuffer);
-
-        assert(skinCluster_.has_value());
-        assert(sSkinnedModelRenderer_ != nullptr);
-
-        const bool useGBufferBinding = sSkinnedModelRenderer_->IsInGBufferPass();
-        auto getSkinnedRootIndex = [&](const std::string& name) {
-            return useGBufferBinding
-                ? sSkinnedModelRenderer_->GetGBufferRootParamIndex(name)
-                : sSkinnedModelRenderer_->GetRootParamIndex(name);
-        };
-
-        // 頂点バッファを2つ設定（通常の頂点データとInfluenceデータ）
-        D3D12_VERTEX_BUFFER_VIEW vbvs[2] = {
-            resource_->vertexBufferView_,      // Slot 0: VertexData
-            skinCluster_->influenceBufferView  // Slot 1: VertexInfluence
-        };
-        cmdList->IASetVertexBuffers(0, 2, vbvs);
-
-        // インデックスバッファを設定
-        cmdList->IASetIndexBuffer(&resource_->indexBufferView_);
-
-        // WVP行列を設定
-        const int transformIdx = getSkinnedRootIndex("gTransformationMatrix");
-        if (transformIdx >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(transformIdx, transformBuffer->GetGPUVirtualAddress());
-        }
-
-        // MatrixPaletteを設定
-        const int matrixPaletteIdx = getSkinnedRootIndex("gMatrixPalette");
-        if (matrixPaletteIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(matrixPaletteIdx, skinCluster_->paletteSrvHandle.second);
-        }
-
-        // マテリアルを設定
-        const int materialIdx = getSkinnedRootIndex("gMaterial");
-        if (materialIdx >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(materialIdx, materialInstance_->GetGPUVirtualAddress());
-        }
-
-        // BaseColorテクスチャを設定
-        const int textureIdx = getSkinnedRootIndex("gTexture");
-        if (textureIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(textureIdx, baseColorTexture);
-        }
-
-        BindPBRTextures(cmdList, getSkinnedRootIndex, normalTexture, metallicRoughnessTexture, occlusionTexture);
+    // アニメーションコントローラーがない場合は失敗
+    if (!animationController_) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: no animation controller");
+        return false;
     }
 
-    ID3D12Resource* Model::GetCurrentTransformBuffer() const
-    {
-        assert(sCurrentTransformBufferIndex_ < wvpResources_.size());
-        return wvpResources_[sCurrentTransformBufferIndex_].Get();
+    // ファクトリーが未設定の場合は失敗
+    if (!animationFactory_) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "AnimationControllerFactory is not set. Use ModelManager::CreateSkeletonModel()");
+        return false;
     }
 
-    ID3D12Resource* Model::GetTransformBuffer(TransformBufferSlot slot) const
-    {
-        const size_t index = static_cast<size_t>(slot);
-        assert(index < wvpResources_.size());
-        return wvpResources_[index].Get();
+    // スケルトンを持つコントローラーのみアニメーション切り替えが可能
+    const Skeleton* skel = animationController_->GetSkeleton();
+    if (!skel) {
+        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "Animation switching is only supported for SkeletonAnimator");
+        return false;
     }
 
-    // ===== クエリ =====
+    // ファクトリー経由で新しいコントローラーを生成
+    animationController_ = animationFactory_->CreateSkeletonAnimator(*skel, *newAnimation, loop);
 
-    bool Model::IsInitialized() const {
-        return resource_ != nullptr && materialInstance_ != nullptr;
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Switched to animation: " + animationName);
+    return true;
+}
+
+bool Model::SwitchAnimationWithBlend(const std::string& animationName, float blendDuration, bool loop) {
+    // リソースがない場合は失敗
+    if (!resource_) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: ModelResource is null");
+        return false;
     }
 
-    const std::optional<Skeleton>& Model::GetSkeleton() const {
-        return skeleton_;
+    // アニメーションを取得
+    const Animation* newAnimation = resource_->GetAnimation(animationName);
+    if (!newAnimation) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Animation not found: " + animationName);
+        return false;
     }
 
-    bool Model::HasSkinCluster() const {
-        return skinCluster_.has_value();
+    // アニメーションコントローラーがない場合は失敗
+    if (!animationController_) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: no animation controller");
+        return false;
     }
 
-    bool Model::HasAnimationController() const {
-        return animationController_ != nullptr;
+    // ファクトリーが未設定の場合は失敗
+    if (!animationFactory_) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "AnimationControllerFactory is not set. Use ModelManager::CreateSkeletonModel()");
+        return false;
     }
 
-    bool Model::HasNormalMap() const {
-        if (!resource_ || resource_->GetSubMeshes().empty()) return false;
-        return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasNormal;
+    // スケルトンを持つコントローラーのみブレンド可能
+    const Skeleton* skel = animationController_->GetSkeleton();
+    if (!skel) {
+        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "Animation blending is only supported for SkeletonAnimator");
+        return false;
+    }
+    Skeleton currentSkeleton = *skel;
+
+    // ファクトリー経由でブレンド先コントローラーを生成
+    auto newAnimator = animationFactory_->CreateSkeletonAnimator(currentSkeleton, *newAnimation, loop);
+
+    if (animationController_->IsBlending()) {
+        // 既に AnimationBlender として動作中 → ターゲットだけ切り替える（dynamic_cast 不要）
+        animationController_->AddBlendTarget(std::move(newAnimator), blendDuration);
+    } else {
+        // SkeletonAnimator からブレンダーへ置き換え
+        animationController_ = animationFactory_->CreateBlenderWithTarget(
+            std::move(animationController_), std::move(newAnimator), blendDuration);
     }
 
-    bool Model::HasMetallicRoughnessMap() const {
-        if (!resource_ || resource_->GetSubMeshes().empty()) return false;
-        return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasMetallicRoughness;
-    }
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Started blend to animation: " + animationName);
+    return true;
+}
 
-    bool Model::HasOcclusionMap() const {
-        if (!resource_ || resource_->GetSubMeshes().empty()) return false;
-        return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasOcclusion;
-    }
+// ===== ModelDrawPacket 組み立て =====
 
-    Model::RenderType Model::GetRenderType() const {
-        return HasSkinCluster() ? RenderType::Skinning : RenderType::Normal;
-    }
+ModelDrawPacket Model::BuildNormalDrawPacket(
+    const SubMeshData& subMesh,
+    D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
+    D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
+    D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
+    D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
+    TransformBufferSlot slot) const
+{
+    ID3D12Resource* transformBuffer = GetTransformBuffer(slot);
+    assert(transformBuffer);
+    assert(renderContext_.modelRenderer);
 
-    ModelResource* Model::GetModelResource() {
-        return resource_;
-    }
+    ModelDrawPacket packet;
+    packet.vertexBufferViews[0] = resource_->GetVertexBufferView();
+    packet.vertexBufferViewCount = 1;
+    packet.indexBufferView = resource_->GetIndexBufferView();
+    packet.indexCount = subMesh.indexCount;
+    packet.startIndex = subMesh.startIndex;
+    packet.transformCBV = transformBuffer->GetGPUVirtualAddress();
+    packet.materialCBV = materialInstance_->GetGPUVirtualAddress();
+    packet.baseColorSRV = baseColorTexture;
+    packet.normalMapSRV = normalTexture;
+    packet.metallicRoughnessSRV = metallicRoughnessTexture;
+    packet.occlusionSRV = occlusionTexture;
+    packet.isSkinned = false;
+    return packet;
+}
 
-    const ModelResource* Model::GetModelResource() const {
-        return resource_;
-    }
+ModelDrawPacket Model::BuildSkinningDrawPacket(
+    const SubMeshData& subMesh,
+    D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
+    D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
+    D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
+    D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
+    TransformBufferSlot slot) const
+{
+    ID3D12Resource* transformBuffer = GetTransformBuffer(slot);
+    assert(transformBuffer);
+    assert(skinCluster_.has_value());
+    assert(renderContext_.skinnedRenderer);
+
+    ModelDrawPacket packet;
+    packet.vertexBufferViews[0] = resource_->GetVertexBufferView();
+    packet.vertexBufferViews[1] = skinCluster_->influenceBufferView;
+    packet.vertexBufferViewCount = 2;
+    packet.indexBufferView = resource_->GetIndexBufferView();
+    packet.indexCount = subMesh.indexCount;
+    packet.startIndex = subMesh.startIndex;
+    packet.transformCBV = transformBuffer->GetGPUVirtualAddress();
+    packet.materialCBV = materialInstance_->GetGPUVirtualAddress();
+    packet.baseColorSRV = baseColorTexture;
+    packet.normalMapSRV = normalTexture;
+    packet.metallicRoughnessSRV = metallicRoughnessTexture;
+    packet.occlusionSRV = occlusionTexture;
+    packet.isSkinned = true;
+    packet.matrixPaletteSRV = skinCluster_->paletteSrvHandle.second;
+    return packet;
+}
+
+ID3D12Resource* Model::GetTransformBuffer(TransformBufferSlot slot) const
+{
+    const size_t index = static_cast<size_t>(slot);
+    assert(index < wvpResources_.size());
+    return wvpResources_[index].Get();
+}
+
+// ===== クエリ =====
+
+bool Model::IsInitialized() const {
+    return resource_ != nullptr && materialInstance_ != nullptr;
+}
+
+const std::optional<Skeleton>& Model::GetSkeleton() const {
+    return skeleton_;
+}
+
+bool Model::HasSkinCluster() const {
+    return skinCluster_.has_value();
+}
+
+bool Model::HasAnimationController() const {
+    return animationController_ != nullptr;
+}
+
+bool Model::HasNormalMap() const {
+    if (!resource_ || resource_->GetSubMeshes().empty()) return false;
+    return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasNormal;
+}
+
+bool Model::HasMetallicRoughnessMap() const {
+    if (!resource_ || resource_->GetSubMeshes().empty()) return false;
+    return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasMetallicRoughness;
+}
+
+bool Model::HasOcclusionMap() const {
+    if (!resource_ || resource_->GetSubMeshes().empty()) return false;
+    return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasOcclusion;
+}
+
+Model::RenderType Model::GetRenderType() const {
+    return HasSkinCluster() ? RenderType::Skinning : RenderType::Normal;
+}
+
+ModelResource* Model::GetModelResource() {
+    return resource_;
+}
+
+const ModelResource* Model::GetModelResource() const {
+    return resource_;
+}
 
 }
 

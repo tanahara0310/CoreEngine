@@ -442,6 +442,8 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1297,6 +1299,12 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Model\ModelRenderContext.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h" />
+    <ClInclude Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

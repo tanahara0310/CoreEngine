@@ -2,6 +2,7 @@
 
 #include "Graphics/PostEffect/PostEffectBase.h"
 #include "Math/Matrix/Matrix4x4.h"
+#include "Math/Vector/Vector3.h"
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -60,6 +61,15 @@ namespace CoreEngine
         /// @brief BRDF LUT SRV を設定（スペキュラ IBL 積分用）
         void SetBRDFLUTHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle)         { brdfLUTHandle_ = handle; }
 
+        /// @brief 環境マップ XYZ 回転角度を設定（ラジアン）
+        void SetEnvironmentRotation(const Vector3& rotation) { environmentRotation_ = rotation; }
+
+        /// @brief IBL 強度を設定
+        void SetIBLIntensity(float intensity) { iblIntensity_ = intensity; }
+
+        /// @brief IBL パラメータを GPU バッファに書き込む（毎フレーム呼び出し）
+        void UpdateIBLParams();
+
     protected:
         const std::wstring& GetPixelShaderPath() const override;
         std::string GetEffectName() const override { return "DeferredLighting"; }
@@ -86,6 +96,12 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_{};
+
+        // IBL パラメータ定数バッファ（environmentRotationY + iblIntensity）
+        Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;
+        D3D12_GPU_VIRTUAL_ADDRESS              iblParamsCBVAddress_ = 0;
+        Vector3 environmentRotation_ = {};
+        float iblIntensity_         = 1.0f;
     };
 }
 

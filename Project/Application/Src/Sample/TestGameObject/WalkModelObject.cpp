@@ -18,19 +18,18 @@ void WalkModelObject::Initialize() {
       return;
    }
 
-   // アニメーションを事前に読み込む
+   // アニメーションを事前に読み込む（ファイル名のみ指定、ディレクトリは AssetDatabase が解決）
    AnimationLoadInfo animInfo;
-   animInfo.directory = "SampleAssets/human";
-   animInfo.modelFilename = "walk.gltf";
+   animInfo.modelFile = "walk.gltf";
    animInfo.animationName = "walkAnimation";
-   animInfo.animationFilename = "walk.gltf";
+   animInfo.animationFile = "walk.gltf";
    modelManager->LoadAnimation(animInfo);
 
-   // スケルトンアニメーションモデルとして作成
+   // スケルトンアニメーションモデルとして作成（ファイル名のみ指定）
    model_ = modelManager->CreateSkeletonModel(
-      "SampleAssets/human/walk.gltf",
-      "walkAnimation",  // アニメーション名
-      true // ループ再生
+      "walk.gltf",
+      "walkAnimation",
+      true
    );
 
    // Transformの初期化

@@ -3,7 +3,9 @@
 #include "IRenderer.h"
 #include "RenderPassType.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
+#include "Graphics/Model/ModelRenderContext.h"
 #include "Math/Matrix/Matrix4x4.h"
+#include "Math/Vector/Vector3.h"
 #include <d3d12.h>
 #include <unordered_map>
 #include <vector>
@@ -86,6 +88,19 @@ namespace CoreEngine
     /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
     void DrawGeometryPass();
 
+    /// @brief 描画パスタイプの描画順序優先度を設定（小さいほど先に描画）
+    /// @param type 描画パスタイプ
+    /// @param priority 優先度値
+    void SetPassTypePriority(RenderPassType type, int priority);
+
+    /// @brief 描画パスタイプの描画順序優先度を取得
+    /// @param type 描画パスタイプ
+    /// @return 現在の優先度値
+    int GetPassTypePriority(RenderPassType type) const;
+
+    /// @brief 全パスタイプの優先度をデフォルト値にリセット
+    void ResetPassTypePriorities();
+
     /// @brief フレーム終了時にキューをクリア
     void ClearQueue();
 
@@ -106,16 +121,30 @@ namespace CoreEngine
         /// @brief BRDF LUT の GPU SRV ハンドルを取得（DeferredLightingPass の IBL 接続用）
         D3D12_GPU_DESCRIPTOR_HANDLE GetBRDFLUTHandle() const { return brdfLUTHandle_; }
 
+        /// @brief シーン共通 IBL 環境回転角度を設定（ラジアン）— SkyBox 回転と連動
+        void SetIBLRotation(const Vector3& rotation);
+
+        /// @brief シーン共通 IBL 環境回転角度を取得
+        const Vector3& GetIBLRotation() const { return iblRotation_; }
+
+        /// @brief アクティブなトランスフォームスロットを設定（Game=通常パス, Scene=エディタシーンビュー）
+        void SetActiveTransformSlot(TransformBufferSlot slot) { activeTransformSlot_ = slot; }
+
+        /// @brief 現在アクティブなトランスフォームスロットを取得
+        TransformBufferSlot GetActiveTransformSlot() const { return activeTransformSlot_; }
+
     private:
         struct DrawCommand {
             CoreEngine::GameObject* object;
             RenderPassType passType;
             BlendMode blendMode;
+            int renderOrder;         ///< 描画順序（小さいほど先に描画）
             size_t registrationOrder;
         };
 
         std::vector<DrawCommand> drawQueue_;
         std::unordered_map<RenderPassType, std::unique_ptr<IRenderer>> renderers_;
+        std::unordered_map<RenderPassType, int> passTypePriorities_;  ///< 描画パスタイプごとの描画順序優先度
         size_t registrationCounter_ = 0;
         bool isQueueSorted_ = false;
 
@@ -133,11 +162,15 @@ namespace CoreEngine
     // DeferredLightingPass が有効な場合に使用する
     bool skipOpaqueModelsInForward_ = false;
 
+    // アクティブなトランスフォームスロット
+    TransformBufferSlot activeTransformSlot_ = TransformBufferSlot::Game;
+
     // IBL / Environment関連
     D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle_ = {};
     D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle_ = {};
     D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_ = {};
     D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_ = {};
+    Vector3 iblRotation_ = {}; ///< シーン共通IBL環境回転（ラジアン）
 
         /// @brief 描画パスごとにソート
         void SortDrawQueue();
