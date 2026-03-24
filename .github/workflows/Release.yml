@@ -17,6 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+        - name: Install v145 BuildTools
+        run: |
+          choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.VC.v145.x86.x64 --includeRecommended --quiet --norestart"
+
       - name: Add MSBuild to Path
         uses: microsoft/setup-msbuild@v2
         with:
