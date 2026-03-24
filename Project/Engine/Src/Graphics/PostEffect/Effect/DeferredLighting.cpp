@@ -50,6 +50,18 @@ namespace CoreEngine
         lightVPBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
         std::memcpy(mapped, identity, sizeof(identity));
         lightVPBuffer_->Unmap(0, nullptr);
+
+        // IBL パラメータ定数バッファを作成（float x 4 = 16 バイト）
+        iblParamsBuffer_ = ResourceFactory::CreateBufferResource(
+            dxCommon->GetDevice(), sizeof(float) * 4);
+        iblParamsCBVAddress_ = iblParamsBuffer_->GetGPUVirtualAddress();
+
+        // デフォルト値で初期化 (rotationY=0, intensity=1, padding=0)
+        float iblDefaults[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
+        float* iblMapped = nullptr;
+        iblParamsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&iblMapped));
+        std::memcpy(iblMapped, iblDefaults, sizeof(iblDefaults));
+        iblParamsBuffer_->Unmap(0, nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -64,6 +76,21 @@ namespace CoreEngine
         lightVPBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
         std::memcpy(mapped, &mat, sizeof(Matrix4x4));
         lightVPBuffer_->Unmap(0, nullptr);
+    }
+
+    // -------------------------------------------------------------------------
+    // IBL パラメータを GPU バッファに書き込む（毎フレーム呼び出し）
+    // -------------------------------------------------------------------------
+    void DeferredLighting::UpdateIBLParams()
+    {
+        if (!iblParamsBuffer_) {
+            return;
+        }
+        float params[4] = { environmentRotation_.x, environmentRotation_.y, environmentRotation_.z, iblIntensity_ };
+        float* mapped = nullptr;
+        iblParamsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
+        std::memcpy(mapped, params, sizeof(params));
+        iblParamsBuffer_->Unmap(0, nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -163,6 +190,12 @@ namespace CoreEngine
         const int brdfLUTIdx = GetRootParamIndex("gBRDFLUT");
         if (brdfLUTIdx >= 0 && brdfLUTHandle_.ptr != 0) {
             commandList->SetGraphicsRootDescriptorTable(brdfLUTIdx, brdfLUTHandle_);
+        }
+
+        // ===== IBL パラメータ CBV =====
+        const int iblParamsIdx = GetRootParamIndex("gIBLParams");
+        if (iblParamsIdx >= 0 && iblParamsCBVAddress_ != 0) {
+            commandList->SetGraphicsRootConstantBufferView(iblParamsIdx, iblParamsCBVAddress_);
         }
 
         // フルスクリーントライアングルで描画（頂点バッファなし）

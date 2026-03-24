@@ -20,19 +20,18 @@ void AnimatedCubeObject::Initialize() {
         return;
     }
 
-    // アニメーションを事前に読み込む
+    // アニメーションを事前に読み込む（ファイル名のみ指定、ディレクトリは AssetDatabase が解決）
     AnimationLoadInfo animLoadInfo{
-        .directory = "SampleAssets/AnimatedCube",
-        .modelFilename = "AnimatedCube.gltf",
+        .modelFile = "AnimatedCube.gltf",
         .animationName = "default"
     };
     modelManager->LoadAnimation(animLoadInfo);
 
-    // キーフレームアニメーションモデルとして作成
+    // キーフレームアニメーションモデルとして作成（ファイル名のみ指定）
     model_ = modelManager->CreateKeyframeModel(
-        "SampleAssets/AnimatedCube/AnimatedCube.gltf",
-        "default",  // アニメーション名
-        true    // ループ再生
+        "AnimatedCube.gltf",
+        "default",
+        true
     );
 
     // トランスフォームの初期化

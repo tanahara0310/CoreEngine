@@ -6,6 +6,7 @@
 
 #include "ModelResource.h"
 #include "Model.h"
+#include "ModelRenderContext.h"
 #include "Animation/Animation.h"
 
 namespace CoreEngine
@@ -15,11 +16,11 @@ class DirectXCommon;
 class ResourceFactory;
 
 /// @brief アニメーション読み込み情報
+/// @note パスはファイル名のみ指定。ディレクトリは AssetDatabase が自動解決する。
 struct AnimationLoadInfo {
-    std::string directory;  // ディレクトリパス（モデルとアニメーション共通）
-    std::string modelFilename;  // モデルファイル名
-    std::string animationName;  // アニメーション名（識別用）
-    std::string animationFilename = "";  // アニメーションファイル名（空の場合はmodelFilenameと同じ）
+    std::string modelFile;          ///< モデルファイル名（例: "walk.gltf"）
+    std::string animationName;      ///< 識別用のアニメーション名（例: "walkAnimation"）
+    std::string animationFile = ""; ///< アニメーションファイル名（空 = modelFile と同じ）
 };
 
 /// @brief モデルリソースとインスタンスを管理するマネージャークラス
@@ -30,6 +31,10 @@ public:
     /// @param dxCommon DirectXCommonのポインタ
     /// @param factory リソースファクトリのポインタ
     void Initialize(DirectXCommon* dxCommon, ResourceFactory* factory);
+
+    /// @brief 描画依存コンテキストを設定（全レンダラー登録後に一度呼び出す）
+    /// @param ctx レンダラー・デバイス等の固定依存コンテキスト
+    void SetRenderContext(const ModelRenderContext& ctx);
 
     /// @brief 静的モデルを作成（アニメーションなし）
     /// @param filePath ファイルパス（Assetsフォルダを省略可能）
@@ -75,17 +80,19 @@ public:
     /// @return ModelResourceのポインタ（見つからない場合はnullptr）
     ModelResource* GetModelResource(const std::string& filePath);
 
-    /// @brief モデルリソースを事前読み込み（シーンで使用）
-    /// @param directoryPath ディレクトリパス（Assetsフォルダを省略可能）
-    /// @param filename ファイル名
-    void LoadModelResource(const std::string& directoryPath, const std::string& filename);
+    /// @brief モデルリソースを事前読み込み（シーン読み込み最適化用）
+    /// @param filePath ファイル名またはフルパス（AssetDatabase が解決）
+    void LoadModelResource(const std::string& filePath);
 
 private:
     // DirectXCommon
     DirectXCommon* dxCommon_ = nullptr;
-    
+
     // リソースファクトリ
     ResourceFactory* resourceFactory_ = nullptr;
+
+    // Model インスタンス生成時に注入する描画依存コンテキスト
+    ModelRenderContext renderContext_;
     
     // デフォルトのベースパス
     const std::string basePath_ = "Application/Assets/";

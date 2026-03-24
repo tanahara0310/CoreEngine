@@ -1,5 +1,4 @@
 #include "AnimationBlender.h"
-#include "Graphics/Model/Skeleton/SkeletonAnimator.h"
 #include "Math/MathCore.h"
 #include "Utility/Collision/CollisionUtils.h"
 #include <algorithm>
@@ -15,31 +14,28 @@ AnimationBlender::AnimationBlender(std::unique_ptr<IAnimationController> current
 void AnimationBlender::Update(float deltaTime) {
     if (!currentController_) return;
 
-    // 現在のアニメーションを更新
+    // 現在のアニメーションコントローラーを進める
     currentController_->Update(deltaTime);
 
-    // ブレンド中の処理
+    // ブレンドタイマーが有効なときのみブレンド処理を行う
     if (blendTimer_.IsActive() && targetController_) {
-        // タイマーを更新
         blendTimer_.Update(deltaTime);
 
-        // ターゲットアニメーションも更新
+        // ターゲット側アニメーションも同じ deltaTime で進める
         targetController_->Update(deltaTime);
 
-        // ブレンドの重み計算（0.0～1.0）
+        // タイマー進捗をブレンド重みとして使用（0.0 = current, 1.0 = target）
         float blendWeight = blendTimer_.GetProgress();
 
-        // スケルトンのブレンド
-        auto* currentSkeletonAnimator = dynamic_cast<SkeletonAnimator*>(currentController_.get());
-        auto* targetSkeletonAnimator = dynamic_cast<SkeletonAnimator*>(targetController_.get());
+        // 両コントローラーからスケルトンを取得して補間
+        const Skeleton* skeleton1 = currentController_->GetSkeleton();
+        const Skeleton* skeleton2 = targetController_->GetSkeleton();
 
-        if (currentSkeletonAnimator && targetSkeletonAnimator) {
-            const Skeleton& skeleton1 = currentSkeletonAnimator->GetSkeleton();
-            const Skeleton& skeleton2 = targetSkeletonAnimator->GetSkeleton();
-            blendedSkeleton_ = BlendSkeletons(skeleton1, skeleton2, blendWeight);
+        if (skeleton1 && skeleton2) {
+            blendedSkeleton_ = BlendSkeletons(*skeleton1, *skeleton2, blendWeight);
         }
 
-        // ブレンド完了チェック
+        // タイマーが完了したらターゲットに完全切り替え
         if (blendTimer_.IsFinished()) {
             OnBlendComplete();
         }
@@ -74,9 +70,13 @@ void AnimationBlender::StartBlend(std::unique_ptr<IAnimationController> targetCo
     if (!targetController) return;
 
     targetController_ = std::move(targetController);
-    
+
     // ブレンドタイマーを開始
     blendTimer_.Start(blendDuration, false);
+}
+
+void AnimationBlender::AddBlendTarget(std::unique_ptr<IAnimationController> target, float blendDuration) {
+    StartBlend(std::move(target), blendDuration);
 }
 
 void AnimationBlender::OnBlendComplete() {
@@ -86,38 +86,22 @@ void AnimationBlender::OnBlendComplete() {
     blendedSkeleton_.reset();
 }
 
-Skeleton& AnimationBlender::GetSkeleton() {
-    // ブレンド中はブレンドされたスケルトンを返す
+Skeleton* AnimationBlender::GetSkeleton() {
+    // ブレンド中は補間済みスケルトンを返す
     if (blendTimer_.IsActive() && blendedSkeleton_) {
-        return *blendedSkeleton_;
+        return &(*blendedSkeleton_);
     }
-
-    // ブレンド中でない場合は現在のアニメーションのスケルトンを返す
-    auto* skeletonAnimator = dynamic_cast<SkeletonAnimator*>(currentController_.get());
-    if (skeletonAnimator) {
-        return skeletonAnimator->GetSkeleton();
-    }
-
-    // フォールバック（空のスケルトンを作成）
-    static Skeleton emptySkeleton;
-    return emptySkeleton;
+    // ブレンド中でない場合は現在のコントローラーへ委譲
+    return currentController_ ? currentController_->GetSkeleton() : nullptr;
 }
 
-const Skeleton& AnimationBlender::GetSkeleton() const {
-    // ブレンド中はブレンドされたスケルトンを返す
+const Skeleton* AnimationBlender::GetSkeleton() const {
+    // ブレンド中は補間済みスケルトンを返す
     if (blendTimer_.IsActive() && blendedSkeleton_) {
-        return *blendedSkeleton_;
+        return &(*blendedSkeleton_);
     }
-
-    // ブレンド中でない場合は現在のアニメーションのスケルトンを返す
-    auto* skeletonAnimator = dynamic_cast<SkeletonAnimator*>(currentController_.get());
-    if (skeletonAnimator) {
-        return skeletonAnimator->GetSkeleton();
-    }
-
-    // フォールバック（空のスケルトンを作成）
-    static Skeleton emptySkeleton;
-    return emptySkeleton;
+    // ブレンド中でない場合は現在のコントローラーへ委譲
+    return currentController_ ? currentController_->GetSkeleton() : nullptr;
 }
 
 Skeleton AnimationBlender::BlendSkeletons(const Skeleton& skeleton1, const Skeleton& skeleton2, float weight) {

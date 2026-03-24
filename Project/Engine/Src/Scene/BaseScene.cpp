@@ -10,7 +10,6 @@
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Line/GridRenderer.h"
-#include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
 #include "ObjectCommon/SpriteObject.h"
@@ -81,7 +80,7 @@ namespace CoreEngine
         gameObjectManager_.UpdateAll();
 
         // コリジョン判定（毎フレーム: 収集 → 判定）
-        // ClearColliders()でコライダーリストのみリセット（previousCollisions_は保持してEnter/Stay/Exitを正しく検出）
+        // ClearColliders()でコライダーリストのみリセット
         collisionManager_.ClearColliders();
         gameObjectManager_.RegisterAllColliders(&collisionManager_);
         collisionManager_.CheckAllCollisions();
@@ -108,8 +107,8 @@ namespace CoreEngine
 
     void BaseScene::Draw()
     {
-        Model::SetTransformBufferSlot(Model::TransformBufferSlot::Game);
         if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
+            renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
             renderManager->SetDebugLineRenderingEnabled(false);
         }
         DrawWithCamera(ResolveGameViewCameraName(), true);
@@ -117,8 +116,8 @@ namespace CoreEngine
 
     void BaseScene::DrawSceneView()
     {
-        Model::SetTransformBufferSlot(Model::TransformBufferSlot::Scene);
         if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
+            renderManager->SetActiveTransformSlot(TransformBufferSlot::Scene);
             renderManager->SetDebugLineRenderingEnabled(true);
         }
 #ifdef _DEBUG
@@ -332,7 +331,7 @@ namespace CoreEngine
                 gameCamera->GetProjectionMatrix());
             Matrix4x4 invViewProj = MathCore::Matrix::Inverse(viewProj);
             return MathCore::CoordinateTransform::TransformCoord(Vector3{ ndcX, ndcY, ndcZ }, invViewProj);
-        };
+            };
 
         const Vector3 nearLT = Unproject(-1.0f, 1.0f, 0.0f);
         const Vector3 nearRT = Unproject(1.0f, 1.0f, 0.0f);

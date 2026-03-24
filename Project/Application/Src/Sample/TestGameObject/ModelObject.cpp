@@ -24,6 +24,18 @@ void ModelObject::Initialize(const std::string& modelPath) {
     SetActive(true);
 }
 
+CoreEngine::BlendMode ModelObject::GetBlendMode() const {
+    if (model_) {
+        auto* mat = model_->GetMaterial();
+        // α < 1 かつディザリングOFF → アルファブレンドで段階的透明
+        // ディザリングON の場合は kBlendModeNone のままディザリングに任せる
+        if (mat && mat->GetColor().w < 1.0f && !mat->IsDitheringEnabled()) {
+            return CoreEngine::BlendMode::kBlendModeNormal;
+        }
+    }
+    return CoreEngine::BlendMode::kBlendModeNone;
+}
+
 void ModelObject::Update() {
     if (!IsActive() || !model_) {
         return;
@@ -52,10 +64,6 @@ void ModelObject::SetPBRParameters(float metallic, float roughness, float ao) {
     }
 }
 
-void ModelObject::SetPBREnabled(bool enable) {
-    if (auto* mat = GetMaterial()) mat->SetPBREnabled(enable);
-}
-
 void ModelObject::SetPBRTextureMapsEnabled(bool useNormal, bool useMetallic,
     bool useRoughness, bool useAO) {
     if (auto* mat = GetMaterial()) {
@@ -64,14 +72,6 @@ void ModelObject::SetPBRTextureMapsEnabled(bool useNormal, bool useMetallic,
         mat->SetRoughnessMapEnabled(useRoughness);
         mat->SetAOMapEnabled(useAO);
     }
-}
-
-void ModelObject::SetEnvironmentMapEnabled(bool enable) {
-    if (auto* mat = GetMaterial()) mat->SetEnvironmentMapEnabled(enable);
-}
-
-void ModelObject::SetEnvironmentMapIntensity(float intensity) {
-    if (auto* mat = GetMaterial()) mat->SetEnvironmentMapIntensity(intensity);
 }
 
 void ModelObject::SetMaterialColor(const CoreEngine::Vector4& color) {
@@ -84,9 +84,5 @@ void ModelObject::SetIBLEnabled(bool enable) {
 
 void ModelObject::SetIBLIntensity(float intensity) {
     if (auto* mat = GetMaterial()) mat->SetIBLIntensity(intensity);
-}
-
-void ModelObject::SetEnvironmentRotationY(float rotationY) {
-    if (auto* mat = GetMaterial()) mat->SetEnvironmentRotationY(rotationY);
 }
 

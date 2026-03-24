@@ -16,12 +16,13 @@
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Model/ModelRenderer.h"
 #include "Graphics/Render/Model/SkinnedModelRenderer.h"
+#include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
-#include "Graphics/Model/Model.h"
+#include "Graphics/Model/ModelManager.h"
 
 // レンダーパス
 #include "Graphics/Render/Pass/ShadowMapPass.h"
@@ -440,8 +441,15 @@ namespace CoreEngine
         modelManager->Initialize(dxPtr, resourcePtr);
         RegisterComponent(std::move(modelManager));
 
-        // ModelクラスにShadowMapManagerを設定（ライトVP行列の一元管理）
-        Model::SetShadowMapManager(dxPtr->GetShadowMapManager());
+        // 全レンダラー登録完了後、ModelManager に描画依存コンテキストを設定
+        // （Model インスタンス生成時に各 Model へ注入される）
+        ModelRenderContext modelCtx;
+        modelCtx.dxCommon = dxPtr;
+        modelCtx.shadowMapManager = dxPtr->GetShadowMapManager();
+        modelCtx.modelRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::Model));
+        modelCtx.skinnedRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::SkinnedModel));
+        modelCtx.shadowRenderer = static_cast<ShadowMapRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::ShadowMap));
+        GetComponent<ModelManager>()->SetRenderContext(modelCtx);
 
         // IBLGeneratorの作成と初期化
         auto iblGenerator = std::make_unique<IBLGenerator>();
@@ -517,14 +525,11 @@ namespace CoreEngine
         // RenderManagerにLightManagerを設定
         auto* renderManager = GetComponent<RenderManager>();
         if (renderManager) {
-            auto* modelRenderer = dynamic_cast<ModelRenderer*>(renderManager->GetRenderer(RenderPassType::Model));
-            if (modelRenderer) {
-                modelRenderer->SetLightManager(lightManagerPtr);
-            }
-
-            auto* skinnedRenderer = dynamic_cast<SkinnedModelRenderer*>(renderManager->GetRenderer(RenderPassType::SkinnedModel));
-            if (skinnedRenderer) {
-                skinnedRenderer->SetLightManager(lightManagerPtr);
+            // Model / SkinnedModel の両レンダラーに LightManager を一括設定
+            for (auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
+                if (auto* r = dynamic_cast<BaseModelRenderer*>(renderManager->GetRenderer(passType))) {
+                    r->SetLightManager(lightManagerPtr);
+                }
             }
         }
     }

@@ -28,31 +28,31 @@ struct Material
     float4 color;
     int enableLighting;
     float4x4 uvTransform;
-    float shininess;
-    int shadingMode; // 0: None, 1: Lambert, 2: Half-Lambert, 3: Toon
-    float toonThreshold; // トゥーンシェーディングの閾値
-    float toonSmoothness; // トゥーンシェーディングの滑らかさ
-    int enableDithering; // ディザリング有効化フラグ
-    float ditheringScale; // ディザリングのスケール（パターンの大きさ調整）
-    int enableEnvironmentMap; // 環境マップ有効化フラグ
-    float environmentMapIntensity; // 環境マップの反射強度
-    
+
     // ===== PBR Parameters =====
-    float metallic; // 金属性 (0.0 = 非金属, 1.0 = 金属)
-    float roughness; // 粗さ (0.0 = 滑らか, 1.0 = 粗い)
-    float ao; // Ambient Occlusion (環境遮蔽: 0.0 = 完全遮蔽, 1.0 = 遮蔽なし)
-    int enablePBR; // PBR有効化フラグ (0: 無効(従来のライティング), 1: 有効)
-    
-    // ===== PBR Texture Map Flags =====
-    int useNormalMap; // 法線マップ使用フラグ (0: 使用しない, 1: 使用する)
-    int useMetallicMap; // メタリックマップ使用フラグ (0: 使用しない, 1: 使用する)
-    int useRoughnessMap; // ラフネスマップ使用フラグ (0: 使用しない, 1: 使用する)
-    int useAOMap; // AOマップ使用フラグ (0: 使用しない, 1: 使用する)
-    
-    // ===== IBL Parameters =====
-    int enableIBL; // IBL有効化フラグ (0: 無効, 1: 有効)
-    float iblIntensity; // IBL強度 (0.0-1.0, デフォルト: 1.0)
-    float environmentRotationY; // 環境マップY軸回転（ラジアン）
+    float metallic;
+    float roughness;
+    float ao;
+    int useNormalMap;
+    int useMetallicMap;
+    int useRoughnessMap;
+    int useAOMap;
+
+    // ===== Alpha =====
+    int enableDithering;
+    float ditheringScale;
+
+    // ===== IBL =====
+    int enableIBL;
+    float iblIntensity;
+    float padding2; ///< アライメント用
+};
+
+/// @brief シーン共通 IBL パラメータ（スカイボックス回転と連動）
+struct IBLSceneParams
+{
+    float3 environmentRotation; ///< XYZ 環境回転（ラジアン）
+    float padding;
 };
 
 //カメラ
@@ -65,6 +65,7 @@ struct Camera
 ConstantBuffer<Material> gMaterial : register(b0);
 ConstantBuffer<Camera> gCamera : register(b2);
 ConstantBuffer<LightCounts> gLightCounts : register(b1);
+ConstantBuffer<IBLSceneParams> gIBLParams : register(b3);
 
 // ===== Texture & Sampler =====
 Texture2D<float4> gTexture : register(t0);
@@ -75,9 +76,6 @@ StructuredBuffer<DirectionalLightData> gDirectionalLights : register(t1);
 StructuredBuffer<PointLightData> gPointLights : register(t2);
 StructuredBuffer<SpotLightData> gSpotLights : register(t3);
 StructuredBuffer<AreaLightData> gAreaLights : register(t4);
-
-// ===== Environment Map =====
-TextureCube<float4> gEnvironmentTexture : register(t5);
 
 // ===== Shadow Map =====
 Texture2D<float> gShadowMap : register(t6);
@@ -170,14 +168,7 @@ float3 GetNormalFromMap(VertexShaderOutput input, float2 uv)
 
 // ===== ライティング計算ヘルパー関数 =====
 
-/// @brief 全ライトのライティングを計算
-/// @param input 頂点シェーダー出力
-/// @param albedo アルベド（基本色）
-/// @param metallic 金属性
-/// @param roughness 粗さ
-/// @param ao 環境遮蔽
-/// @param toEye 視線方向
-/// @return 最終的なライティング色（diffuse + specular）
+/// @brief 全ライトの PBR ライティングを計算
 float3 CalculateAllLighting(
     VertexShaderOutput input,
     float3 albedo,
@@ -187,215 +178,111 @@ float3 CalculateAllLighting(
     float3 toEye,
     float4 textureColor)
 {
-    float3 totalDiffuse = float3(0.0f, 0.0f, 0.0f);
+    float3 totalDiffuse  = float3(0.0f, 0.0f, 0.0f);
     float3 totalSpecular = float3(0.0f, 0.0f, 0.0f);
-    
-    // ディレクショナルライト
+
+    // ディレクショナルライト（PBR）
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {
         if (gDirectionalLights[i].enabled != 0)
         {
-            LightingResult result;
-            
-            if (gMaterial.enablePBR != 0)
-            {
-                result = CalculateDirectionalLightPBR(
-                    input.normal,
-                    gDirectionalLights[i].direction,
-                    gDirectionalLights[i].color.rgb,
-                    gDirectionalLights[i].intensity,
-                    toEye,
-                    albedo,
-                    metallic,
-                    roughness,
-                    ao);
-            }
-            else
-            {
-                result = CalculateDirectionalLight(
-                    input.normal,
-                    gDirectionalLights[i].direction,
-                    gDirectionalLights[i].color.rgb,
-                    gDirectionalLights[i].intensity,
-                    toEye,
-                    gMaterial.color.rgb,
-                    textureColor,
-                    gMaterial.shininess,
-                    gMaterial.shadingMode,
-                    gMaterial.toonThreshold);
-            }
-            
-            // シャドウ適用
-            float shadowFactor = CalculateShadow(
-                input.lightSpacePos,
+            LightingResult result = CalculateDirectionalLightPBR(
                 input.normal,
                 gDirectionalLights[i].direction,
-                gShadowMap,
-                gShadowSampler);
-            
+                gDirectionalLights[i].color.rgb,
+                gDirectionalLights[i].intensity,
+                toEye, albedo, metallic, roughness, ao);
+
+            float shadowFactor = CalculateShadow(
+                input.lightSpacePos, input.normal,
+                gDirectionalLights[i].direction,
+                gShadowMap, gShadowSampler);
             shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
-            totalDiffuse += result.diffuse * shadowFactor;
+            totalDiffuse  += result.diffuse * shadowFactor;
             totalSpecular += result.specular;
         }
     }
-    
-    // ポイントライト
+
+    // ポイントライト（PBR）
     for (uint j = 0; j < gLightCounts.pointLightCount; ++j)
     {
         if (gPointLights[j].enabled != 0)
         {
-            LightingResult result;
-            
-            if (gMaterial.enablePBR != 0)
-            {
-                result = CalculatePointLightPBR(
-                    input.normal,
-                    gPointLights[j].position,
-                    input.worldPosition,
-                    gPointLights[j].color.rgb,
-                    gPointLights[j].intensity,
-                    gPointLights[j].radius,
-                    gPointLights[j].decay,
-                    toEye,
-                    albedo,
-                    metallic,
-                    roughness,
-                    ao);
-            }
-            else
-            {
-                result = CalculatePointLight(
-                    input.normal,
-                    gPointLights[j].position,
-                    input.worldPosition,
-                    gPointLights[j].color.rgb,
-                    gPointLights[j].intensity,
-                    gPointLights[j].radius,
-                    gPointLights[j].decay,
-                    toEye,
-                    gMaterial.color.rgb,
-                    textureColor,
-                    gMaterial.shininess,
-                    gMaterial.shadingMode,
-                    gMaterial.toonThreshold);
-            }
-            totalDiffuse += result.diffuse;
+            LightingResult result = CalculatePointLightPBR(
+                input.normal,
+                gPointLights[j].position, input.worldPosition,
+                gPointLights[j].color.rgb, gPointLights[j].intensity,
+                gPointLights[j].radius, gPointLights[j].decay,
+                toEye, albedo, metallic, roughness, ao);
+            totalDiffuse  += result.diffuse;
             totalSpecular += result.specular;
         }
     }
-    
-    // スポットライト
+
+    // スポットライト（PBR）
     for (uint k = 0; k < gLightCounts.spotLightCount; ++k)
     {
         if (gSpotLights[k].enabled != 0)
         {
-            LightingResult result;
-            
-            if (gMaterial.enablePBR != 0)
-            {
-                result = CalculateSpotLightPBR(
-                    input.normal,
-                    gSpotLights[k].position,
-                    gSpotLights[k].direction,
-                    input.worldPosition,
-                    gSpotLights[k].color.rgb,
-                    gSpotLights[k].intensity,
-                    gSpotLights[k].distance,
-                    gSpotLights[k].decay,
-                    gSpotLights[k].cosAngle,
-                    gSpotLights[k].cosFalloffStart,
-                    toEye,
-                    albedo,
-                    metallic,
-                    roughness,
-                    ao);
-            }
-            else
-            {
-                result = CalculateSpotLight(
-                    input.normal,
-                    gSpotLights[k].position,
-                    gSpotLights[k].direction,
-                    input.worldPosition,
-                    gSpotLights[k].color.rgb,
-                    gSpotLights[k].intensity,
-                    gSpotLights[k].distance,
-                    gSpotLights[k].decay,
-                    gSpotLights[k].cosAngle,
-                    gSpotLights[k].cosFalloffStart,
-                    toEye,
-                    gMaterial.color.rgb,
-                    textureColor,
-                    gMaterial.shininess,
-                    gMaterial.shadingMode,
-                    gMaterial.toonThreshold);
-            }
-            totalDiffuse += result.diffuse;
+            LightingResult result = CalculateSpotLightPBR(
+                input.normal,
+                gSpotLights[k].position, gSpotLights[k].direction, input.worldPosition,
+                gSpotLights[k].color.rgb, gSpotLights[k].intensity,
+                gSpotLights[k].distance, gSpotLights[k].decay,
+                gSpotLights[k].cosAngle, gSpotLights[k].cosFalloffStart,
+                toEye, albedo, metallic, roughness, ao);
+            totalDiffuse  += result.diffuse;
             totalSpecular += result.specular;
         }
     }
-    
-    // エリアライト
+
+    // エリアライト（PBR: 最近接点計算 + PBR BRDF）
     for (uint l = 0; l < gLightCounts.areaLightCount; ++l)
     {
         if (gAreaLights[l].enabled != 0)
         {
-            LightingResult result = CalculateAreaLight(
-                input.normal,
-                gAreaLights[l].position,
-                gAreaLights[l].normal,
-                gAreaLights[l].right,
-                gAreaLights[l].up,
-                gAreaLights[l].width,
-                gAreaLights[l].height,
-                input.worldPosition,
-                gAreaLights[l].color.rgb,
-                gAreaLights[l].intensity,
-                gAreaLights[l].range,
-                toEye,
-                gMaterial.color.rgb,
-                textureColor,
-                gMaterial.shininess,
-                gMaterial.shadingMode,
-                gMaterial.toonThreshold);
-            totalDiffuse += result.diffuse;
-            totalSpecular += result.specular;
+            float3 toLight    = gAreaLights[l].position - input.worldPosition;
+            float  distToPlane = dot(toLight, gAreaLights[l].normal);
+            float3 projPoint  = input.worldPosition + gAreaLights[l].normal * distToPlane;
+            float3 offset     = projPoint - gAreaLights[l].position;
+            float  u = dot(offset, gAreaLights[l].right);
+            float  v = dot(offset, gAreaLights[l].up);
+            float  halfW = gAreaLights[l].width  * 0.5f;
+            float  halfH = gAreaLights[l].height * 0.5f;
+
+            float3 closest = gAreaLights[l].position
+                           + gAreaLights[l].right * clamp(u, -halfW, halfW)
+                           + gAreaLights[l].up    * clamp(v, -halfH, halfH);
+
+            float3 toClosest = closest - input.worldPosition;
+            float  dist = length(toClosest);
+            if (dist >= gAreaLights[l].range) continue;
+            float3 L = toClosest / max(dist, 0.001f);
+
+            float distFactor  = 1.0f - saturate(dist / gAreaLights[l].range);
+            float distAtten   = distFactor * distFactor;
+            float outsideU    = max(0.0f, abs(u) - halfW);
+            float outsideV    = max(0.0f, abs(v) - halfH);
+            float outsideDist = sqrt(outsideU * outsideU + outsideV * outsideV);
+            float shapeFactor = 1.0f;
+            if (outsideDist > 0.001f)
+            {
+                float falloff = max(halfW, halfH);
+                shapeFactor   = 1.0f - saturate(outsideDist / falloff);
+                shapeFactor   = shapeFactor * shapeFactor * shapeFactor;
+            }
+            float facingFactor = max(0.0f, dot(gAreaLights[l].normal, -L));
+            float finalAtten   = distAtten * shapeFactor * facingFactor;
+
+            float3 contrib = CalculatePBRLighting(
+                normalize(input.normal), normalize(toEye), L,
+                gAreaLights[l].color.rgb, gAreaLights[l].intensity * finalAtten,
+                albedo, metallic, roughness, ao);
+            totalDiffuse += contrib;
         }
     }
-    
-    return totalDiffuse + totalSpecular;
-}
 
-/// @brief 環境マップ反射を適用
-/// @param input 頂点シェーダー出力
-/// @param metallic 金属性
-/// @param roughness 粗さ
-/// @return 環境マップ色
-float3 ApplyEnvironmentMap(VertexShaderOutput input, float metallic, float roughness)
-{
-    if (gMaterial.enableEnvironmentMap == 0)
-        return float3(0.0f, 0.0f, 0.0f);
-    
-    // 反射ベクトル計算
-    float3 cameraToPosition = normalize(input.worldPosition - gCamera.worldPosition);
-    float3 reflectedVector = reflect(cameraToPosition, normalize(input.normal));
-    
-    // 環境マップ回転を適用
-    reflectedVector = RotateVectorY(reflectedVector, gMaterial.environmentRotationY);
-    
-    // 環境マップサンプリング
-    float4 environmentColor = gEnvironmentTexture.Sample(gSampler, reflectedVector);
-    
-    // PBR考慮
-    if (gMaterial.enablePBR != 0)
-    {
-        float envFactor = gMaterial.environmentMapIntensity * metallic * (1.0f - roughness * 0.7f);
-        return environmentColor.rgb * envFactor;
-    }
-    else
-    {
-        return environmentColor.rgb * gMaterial.environmentMapIntensity;
-    }
+    return totalDiffuse + totalSpecular;
 }
 
 /// @brief IBL（Image-Based Lighting）を適用
@@ -414,26 +301,15 @@ float3 ApplyIBL(
     float ao,
     float3 toEye)
 {
-    if (gMaterial.enableIBL == 0 || gMaterial.enablePBR == 0)
+    if (gMaterial.enableIBL == 0)
         return float3(0.0f, 0.0f, 0.0f);
-    
-    float3 V = normalize(toEye);
-    float3 N = normalize(input.normal);
-    
-    // IBL計算
+
     float3 iblColor = CalculateFullIBL(
-        N,
-        V,
-        albedo,
-        metallic,
-        roughness,
-        ao,
-        gIrradianceMap,
-        gPrefilteredMap,
-        gBRDFLUT,
-        gSampler,
-        gMaterial.environmentRotationY);
-    
+        normalize(input.normal), normalize(toEye),
+        albedo, metallic, roughness, ao,
+        gIrradianceMap, gPrefilteredMap, gBRDFLUT,
+        gSampler, gIBLParams.environmentRotation);
+
     return iblColor * gMaterial.iblIntensity;
 }
 
@@ -445,113 +321,57 @@ struct PixelShaderOutput
 PixelShaderOutput main(VertexShaderOutput input)
 {
     PixelShaderOutput output;
-    
-    //テクスチャのUV座標を変換
+
     float4 transformedUV = mul(float4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
-    
-    //テクスチャをサンプリング
-    float4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
-    
-    // ===== ノーマルマップから法線を取得 =====
-    // ノーマルマップが有効な場合は、タンジェント空間の法線をワールド空間に変換
-    // 無効な場合は頂点法線をそのまま使用
+    float4 textureColor  = gTexture.Sample(gSampler, transformedUV.xy);
+
     float3 finalNormal = GetNormalFromMap(input, transformedUV.xy);
-    
-    // inputの法線をノーマルマップ適用後の法線で上書き
-    // （後続のライティング計算で使用される）
     input.normal = finalNormal;
-    
-    //カメラへの方向を算出
-    float3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
-    
-    // 最終的なアルファ値を計算
-    float finalAlpha = gMaterial.color.a * textureColor.a;
-    
-    // ディザリングによる疑似透明化
+
+    float3 toEye    = normalize(gCamera.worldPosition - input.worldPosition);
+    float  finalAlpha = gMaterial.color.a * textureColor.a;
+
+    // アルファカット（ディザリング or 通常テスト）
     if (gMaterial.enableDithering != 0)
     {
-        // スクリーン座標を取得（SV_POSITIONから）
         float2 screenPos = input.position.xy;
-        
-        // ディザリングのスケールを適用（パターンサイズ調整）
         if (gMaterial.ditheringScale > 0.0f)
-        {
             screenPos *= gMaterial.ditheringScale;
-        }
-        
-        // ディザリング閾値を取得（わずかなオフセットを加えてα=0で完全に消えるようにする）
-        float threshold = GetDitheringThreshold(screenPos) + 0.001f;
-        
-        // アルファ値が閾値以下の場合、ピクセルを破棄
-        if (finalAlpha <= threshold)
-        {
+        if (finalAlpha <= GetDitheringThreshold(screenPos) + 0.001f)
             discard;
-        }
-        
     }
-    else
+    else if (textureColor.a <= 0.5f)
     {
-        // ディザリング無効時は従来のアルファテスト
-        if (textureColor.a <= 0.5f)
-        {
-            discard;
-        }
+        discard;
     }
-   
-   
-    //Lightingする場合
-    if (gMaterial.enableLighting != 0)
-    {
-        // シェーディングモードがNoneの場合
-        if (gMaterial.shadingMode == 0)
-        {
-            // None（ライティングしない）→ 固有色×テクスチャだけ返す
-            output.color = gMaterial.color * textureColor;
-            return output;
-        }
-        
-        // ===== PBRパラメータの取得（1回のみ） =====
-        float metallic = 0.0f;
-        float roughness = 0.0f;
-        float ao = 1.0f;
-        
-        if (gMaterial.enablePBR != 0)
-        {
-            GetPBRParameters(transformedUV.xy, metallic, roughness, ao);
-            roughness = max(roughness, 0.01f);
-        }
-    
-        // アルベド（基本色）の計算
-        float3 albedo = gMaterial.color.rgb * textureColor.rgb;
-        
-        // ===== 全ライトのライティング計算 =====
-        output.color.rgb = CalculateAllLighting(input, albedo, metallic, roughness, ao, toEye, textureColor);
-        output.color.a = gMaterial.color.a * textureColor.a;
-        
-        // ===== 環境マップ反射の追加 =====
-        output.color.rgb += ApplyEnvironmentMap(input, metallic, roughness);
-        
-        // ===== IBL（Image-Based Lighting）の追加 =====
-        output.color.rgb += ApplyIBL(input, albedo, metallic, roughness, ao, toEye);
 
-    }
-    else // Lightingしない場合
+    // アンリット
+    if (gMaterial.enableLighting == 0)
     {
         output.color = gMaterial.color * textureColor;
+        return output;
     }
-    
-    // ===== トーンマッピング（HDR → LDR変換） =====
-    // PBR有効時のみトーンマッピングを適用（HDR範囲の色をLDR範囲に圧縮）
-    if (gMaterial.enableLighting != 0 && gMaterial.enablePBR != 0)
-    {
-        output.color.rgb = ACESFilm(output.color.rgb);
-    }
-    
-    // ディザリング使用時はアルファを1.0に固定（Zソート不要）
+
+    // PBR パラメータ取得
+    float metallic, roughness, ao;
+    GetPBRParameters(transformedUV.xy, metallic, roughness, ao);
+    roughness = max(roughness, 0.01f);
+
+    float3 albedo = gMaterial.color.rgb * textureColor.rgb;
+
+    // PBR ライティング
+    output.color.rgb = CalculateAllLighting(input, albedo, metallic, roughness, ao, toEye, textureColor);
+    output.color.a   = finalAlpha;
+
+    // IBL
+    output.color.rgb += ApplyIBL(input, albedo, metallic, roughness, ao, toEye);
+
+    // ACES トーンマッピング（常に適用）
+    output.color.rgb = ACESFilm(output.color.rgb);
+
+    // ディザリング時はアルファを 1.0 に固定
     if (gMaterial.enableDithering != 0)
-    {
         output.color.a = 1.0f;
-    }
-    
+
     return output;
 }

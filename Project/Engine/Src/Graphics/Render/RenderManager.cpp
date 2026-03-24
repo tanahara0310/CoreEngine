@@ -4,11 +4,9 @@
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
-#include "Graphics/Render/Model/ModelRenderer.h"
-#include "Graphics/Render/Model/SkinnedModelRenderer.h"
+#include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
-#include "Graphics/Model/Model.h"
 #include "Sample/TestGameObject/SkyBoxObject.h"
 #include "Camera/CameraManager.h"
 #include "Camera/ICamera.h"
@@ -19,42 +17,19 @@
 namespace CoreEngine
 {
     void RenderManager::Initialize(ID3D12Device* device) {
-        // 現時点では特に初期化処理なし
+        // 描画パスタイプのデフォルト優先度を設定
+        ResetPassTypePriorities();
         (void)device; // 未使用警告を回避
     }
 
     void RenderManager::RegisterRenderer(RenderPassType type, std::unique_ptr<IRenderer> renderer) {
         renderers_[type] = std::move(renderer);
 
-        // ModelRendererが登録された場合、Model クラスに設定
-        if (type == RenderPassType::Model) {
-            auto* modelRenderer = dynamic_cast<ModelRenderer*>(renderers_[type].get());
-            if (modelRenderer) {
-                Model::SetModelRenderer(modelRenderer);
-            }
-        }
-
-        // SkinnedModelRendererが登録された場合、Model クラスに設定
-        if (type == RenderPassType::SkinnedModel) {
-            auto* skinnedModelRenderer = dynamic_cast<SkinnedModelRenderer*>(renderers_[type].get());
-            if (skinnedModelRenderer) {
-                Model::SetSkinnedModelRenderer(skinnedModelRenderer);
-            }
-        }
-
         // SkyBoxRendererが登録された場合、SkyBoxObject クラスに設定
         if (type == RenderPassType::SkyBox) {
             auto* skyBoxRenderer = dynamic_cast<SkyBoxRenderer*>(renderers_[type].get());
             if (skyBoxRenderer) {
                 SkyBoxObject::SetSkyBoxRenderer(skyBoxRenderer);
-            }
-        }
-
-        // ShadowMapRendererが登録された場合、Model クラスに設定
-        if (type == RenderPassType::ShadowMap) {
-            auto* shadowMapRenderer = dynamic_cast<ShadowMapRenderer*>(renderers_[type].get());
-            if (shadowMapRenderer) {
-                Model::SetShadowMapRenderer(shadowMapRenderer);
             }
         }
 
@@ -81,6 +56,16 @@ namespace CoreEngine
         // 各レンダラーにもカメラを設定（互換性維持）
         for (auto& [type, renderer] : renderers_) {
             renderer->SetCamera(camera);
+        }
+    }
+
+    void RenderManager::SetIBLRotation(const Vector3& rotation) {
+        iblRotation_ = rotation;
+        // Model / SkinnedModel の両レンダラーに IBL 回転角度を反映
+        for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
+            if (auto* r = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
+                r->SetIBLRotation(rotation);
+            }
         }
     }
 
@@ -122,6 +107,21 @@ namespace CoreEngine
         cmd.blendMode = obj->GetBlendMode();
         cmd.registrationOrder = registrationCounter_++;
 
+        // オブジェクト側に明示的な描画順序が設定されていればそれを使用し、
+        // 未設定の場合はパスタイプの優先度を使用する
+        if (auto order = obj->GetRenderOrder()) {
+            cmd.renderOrder = *order;
+        } else {
+            cmd.renderOrder = GetPassTypePriority(cmd.passType);
+            // kBlendModeNone 以外（半透明）は大きなオフセットを加え、
+            // SkyBox を含む全不透明オブジェクトより後に描画する。
+            // これにより透明モデルがSkyBoxの前に描画されてクリアカラーと
+            // ブレンドされる問題を防ぐ。
+            if (cmd.blendMode != BlendMode::kBlendModeNone) {
+                cmd.renderOrder += 10000;
+            }
+        }
+
         drawQueue_.push_back(cmd);
         isQueueSorted_ = false;
     }
@@ -158,12 +158,11 @@ namespace CoreEngine
             // DEPTH_WRITE -> PIXEL_SHADER_RESOURCE
             shadowMapManager_->TransitionToShaderResource(cmdList_);
 
-            // ModelRendererにシャドウマップを設定
-            if (auto* modelRenderer = static_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model))) {
-                modelRenderer->SetShadowMap(shadowMapManager_->GetSRVHandle());
-            }
-            if (auto* skinnedRenderer = static_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel))) {
-                skinnedRenderer->SetShadowMap(shadowMapManager_->GetSRVHandle());
+            // シャドウマップ载影を Model / SkinnedModel レンダラー両方に適用する
+            for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
+                if (auto* renderer = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
+                    renderer->SetShadowMap(shadowMapManager_->GetSRVHandle());
+                }
             }
         }
     }
@@ -175,8 +174,9 @@ namespace CoreEngine
 
         EnsureQueueSorted();
 
-        auto* modelRenderer = dynamic_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model));
-        auto* skinnedRenderer = dynamic_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel));
+        // BeginGBufferPass() は IRenderer インターフェースに定義されているため dynamic_cast 不要
+        IRenderer* modelRenderer   = GetRenderer(RenderPassType::Model);
+        IRenderer* skinnedRenderer = GetRenderer(RenderPassType::SkinnedModel);
         const ICamera* currentCamera = GetCameraForPass(RenderPassType::Model);
 
         if (modelRenderer) {
@@ -309,18 +309,15 @@ namespace CoreEngine
     }
 
     void RenderManager::ApplyEnvironmentLightingToRenderers() {
-        if (auto* renderer = dynamic_cast<ModelRenderer*>(GetRenderer(RenderPassType::Model))) {
-            renderer->SetEnvironmentMap(environmentMapHandle_);
-            renderer->SetIrradianceMap(irradianceMapHandle_);
-            renderer->SetPrefilteredMap(prefilteredMapHandle_);
-            renderer->SetBRDFLUT(brdfLUTHandle_);
-        }
-
-        if (auto* renderer = dynamic_cast<SkinnedModelRenderer*>(GetRenderer(RenderPassType::SkinnedModel))) {
-            renderer->SetEnvironmentMap(environmentMapHandle_);
-            renderer->SetIrradianceMap(irradianceMapHandle_);
-            renderer->SetPrefilteredMap(prefilteredMapHandle_);
-            renderer->SetBRDFLUT(brdfLUTHandle_);
+        // Model / SkinnedModel の両レンダラーに全 IBL テクスチャと回転角度を一括適用
+        for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
+            if (auto* renderer = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
+                renderer->SetEnvironmentMap(environmentMapHandle_);
+                renderer->SetIrradianceMap(irradianceMapHandle_);
+                renderer->SetPrefilteredMap(prefilteredMapHandle_);
+                renderer->SetBRDFLUT(brdfLUTHandle_);
+                renderer->SetIBLRotation(iblRotation_);
+            }
         }
     }
 
@@ -421,6 +418,31 @@ namespace CoreEngine
         isQueueSorted_ = false;
     }
 
+    void RenderManager::SetPassTypePriority(RenderPassType type, int priority) {
+        passTypePriorities_[type] = priority;
+    }
+
+    int RenderManager::GetPassTypePriority(RenderPassType type) const {
+        auto it = passTypePriorities_.find(type);
+        if (it != passTypePriorities_.end()) {
+            return it->second;
+        }
+        // 未登録パスタイプはデフォルトとして enum 値 × 100 を返す
+        return static_cast<int>(type) * 100;
+    }
+
+    void RenderManager::ResetPassTypePriorities() {
+        // デフォルト優先度（間隔 100 でユーザーが中間値を挿入しやすくする）
+        passTypePriorities_[RenderPassType::ShadowMap] = 0;
+        passTypePriorities_[RenderPassType::Model] = 100;
+        passTypePriorities_[RenderPassType::SkinnedModel] = 200;
+        passTypePriorities_[RenderPassType::SkyBox] = 300;
+        passTypePriorities_[RenderPassType::ModelParticle] = 400;
+        passTypePriorities_[RenderPassType::Line] = 500;
+        passTypePriorities_[RenderPassType::Particle] = 600;
+        passTypePriorities_[RenderPassType::Sprite] = 700;
+    }
+
     void RenderManager::EnsureQueueSorted() {
         if (!isQueueSorted_) {
             SortDrawQueue();
@@ -429,21 +451,22 @@ namespace CoreEngine
     }
 
     void RenderManager::SortDrawQueue() {
-        // 描画コマンドを最適化してステート変更を最小化
-        // 優先順位: 1. パスタイプ > 2. ブレンドモード
+        // 優先順位:
+        //   1. renderOrder  : 動的に変更可能な描画順序（小さいほど先に描画）
+        //   2. passType     : 同一 renderOrder 内でレンダラー切り替えを最小化
+        //   3. blendMode    : 同一パス内でブレンドステート切り替えを最小化
+        //   4. registrationOrder : 同一条件内では登録順序を維持
         std::stable_sort(drawQueue_.begin(), drawQueue_.end(),
             [](const DrawCommand& a, const DrawCommand& b) {
-                // 1. パスタイプでソート（パイプライン切り替え最小化）
+                if (a.renderOrder != b.renderOrder) {
+                    return a.renderOrder < b.renderOrder;
+                }
                 if (a.passType != b.passType) {
                     return static_cast<int>(a.passType) < static_cast<int>(b.passType);
                 }
-
-                // 2. 同一パス内ではブレンドモードでソート（ブレンドステート切り替え最小化）
                 if (a.blendMode != b.blendMode) {
                     return static_cast<int>(a.blendMode) < static_cast<int>(b.blendMode);
                 }
-
-                // 3. 同一パス・ブレンドモード内では登録順序を維持
                 return a.registrationOrder < b.registrationOrder;
             });
     }

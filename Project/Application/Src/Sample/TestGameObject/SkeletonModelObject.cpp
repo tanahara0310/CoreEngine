@@ -19,19 +19,18 @@ void SkeletonModelObject::Initialize() {
         return;
     }
 
-    // アニメーションを事前に読み込む
+    // アニメーションを事前に読み込む（ファイル名のみ指定、ディレクトリは AssetDatabase が解決）
     AnimationLoadInfo animInfo;
-    animInfo.directory = "SampleAssets/simpleSkin";
-    animInfo.modelFilename = "simpleSkin.gltf";
+    animInfo.modelFile = "simpleSkin.gltf";
     animInfo.animationName = "simpleSkinAnimation";
-    animInfo.animationFilename = "simpleSkin.gltf";
+    animInfo.animationFile = "simpleSkin.gltf";
     modelManager->LoadAnimation(animInfo);
 
-    // スケルトンアニメーションモデルとして作成
+    // スケルトンアニメーションモデルとして作成（ファイル名のみ指定）
     model_ = modelManager->CreateSkeletonModel(
-        "SampleAssets/simpleSkin/simpleSkin.gltf",
-        "simpleSkinAnimation",  // アニメーション名
-        true   // ループ再生
+        "simpleSkin.gltf",
+        "simpleSkinAnimation",
+        true
     );
 
     // Transformの初期化

@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  SOLUTION_FILE_PATH: Project/CoreEngine.sln
+  SOLUTION_FILE_PATH: Project/CoreEngine.slnx
   CONFIGURATION: Development
 
 jobs:

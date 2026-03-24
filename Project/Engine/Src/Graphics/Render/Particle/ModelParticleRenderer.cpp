@@ -28,8 +28,8 @@ namespace CoreEngine
         uint32_t instanceCount = particle->GetInstanceCount();
 
         // モデルの頂点バッファとインデックスバッファを設定
-        cmdList_->IASetVertexBuffers(0, 1, &modelResource->vertexBufferView_);
-        cmdList_->IASetIndexBuffer(&modelResource->indexBufferView_);
+        cmdList_->IASetVertexBuffers(0, 1, &modelResource->GetVertexBufferView());
+        cmdList_->IASetIndexBuffer(&modelResource->GetIndexBufferView());
 
         // テクスチャハンドルを決定（パーティクル設定 > モデルデフォルト）
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = particle->GetTextureHandle();
@@ -45,7 +45,7 @@ namespace CoreEngine
         SetupCommonResources(particle, textureHandle);
 
         // インスタンシング描画（モデルのインデックス数 × インスタンス数）
-        cmdList_->DrawIndexedInstanced(modelResource->indexCount_, instanceCount, 0, 0, 0);
+        cmdList_->DrawIndexedInstanced(modelResource->GetIndexCount(), instanceCount, 0, 0, 0);
     }
 
     void ModelParticleRenderer::CreatePSO() {
