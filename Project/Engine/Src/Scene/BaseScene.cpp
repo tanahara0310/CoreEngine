@@ -10,6 +10,7 @@
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Line/GridRenderer.h"
+#include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
 #include "ObjectCommon/SpriteObject.h"
@@ -111,6 +112,7 @@ namespace CoreEngine
             renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
             renderManager->SetDebugLineRenderingEnabled(false);
         }
+        Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
         DrawWithCamera(ResolveGameViewCameraName(), true);
     }
 
@@ -120,10 +122,15 @@ namespace CoreEngine
             renderManager->SetActiveTransformSlot(TransformBufferSlot::Scene);
             renderManager->SetDebugLineRenderingEnabled(true);
         }
+        // SceneView 描画中は Scene スロットを使用し、GBufferPass(Game スロット)と
+        // 同一バッファへの書き込みを防ぐ
+        Model::SetCurrentRenderSlot(TransformBufferSlot::Scene);
 #ifdef _DEBUG
         DrawGameCameraFrustumDebug();
 #endif
         DrawWithCamera(ResolveSceneViewCameraName(), false);
+        // SceneView 終了後は Game スロットに戻す（続く GBufferPass が正しいバッファを使うため）
+        Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
     }
 
     ICamera* BaseScene::GetSceneViewCamera() const

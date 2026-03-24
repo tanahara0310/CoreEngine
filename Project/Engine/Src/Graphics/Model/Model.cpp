@@ -127,6 +127,14 @@ namespace CoreEngine
         assert(IsInitialized());
         assert(camera);
 
+        // 呼び出し側がスロットを明示しない場合（デフォルト Game）は
+        // BaseScene が SetCurrentRenderSlot() で設定したグローバルスロットを使用する。
+        // これにより SceneView(slot=Scene) と GameView/GBuffer(slot=Game) が
+        // 別々の WVP バッファに書き込まれ、相互上書きを防ぐ。
+        if (slot == TransformBufferSlot::Game) {
+            slot = s_currentRenderSlot_;
+        }
+
         ID3D12GraphicsCommandList* cmdList = renderContext_.dxCommon->GetCommandList();
         assert(cmdList);
 
