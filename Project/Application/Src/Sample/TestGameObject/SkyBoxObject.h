@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
+#include "ObjectCommon/Model/ModelGameObject.h"
 #include "Graphics/Material/SkyBoxMaterialInstance.h"
 #include <wrl/client.h>
 #include <d3d12.h>
@@ -11,7 +11,7 @@ namespace CoreEngine {
 }
 
 /// @brief SkyBoxオブジェクト
-class SkyBoxObject : public CoreEngine::GameObject {
+class SkyBoxObject : public CoreEngine::ModelGameObject {
 public:
     /// @brief コンストラクタ
     SkyBoxObject() = default;
@@ -22,13 +22,6 @@ public:
     /// @brief SkyBoxRendererを設定（ルートパラメータインデックス取得用）
     /// @param renderer SkyBoxRendererのポインタ
     static void SetSkyBoxRenderer(CoreEngine::SkyBoxRenderer* renderer);
-
-    /// @brief 初期化
-    /// @param engine エンジンシステム
-    void Initialize();
-
-    /// @brief 更新
-    void Update() override;
 
     /// @brief 描画
     /// @param camera カメラ
@@ -47,9 +40,6 @@ public:
     /// @return 描画パスタイプ（SkyBox）
     CoreEngine::RenderPassType GetRenderPassType() const override { return CoreEngine::RenderPassType::SkyBox; }
 
-    /// @brief トランスフォームを取得
-    CoreEngine::WorldTransform& GetTransform() { return transform_; }
-
     /// @brief テクスチャを設定
     /// @param texture 設定するテクスチャ
     void SetTexture(const CoreEngine::TextureManager::LoadedTexture& texture) { texture_ = texture; }
@@ -60,6 +50,15 @@ public:
 
     /// @brief マテリアルインスタンスを直接取得
     CoreEngine::IMaterial* GetMaterial() { return material_.get(); }
+
+protected:
+    /// @brief SkyBox固有の初期化処理
+    /// @note ModelGameObject::Initialize() から呼ばれ、頂点バッファ・マテリアル・定数バッファを構築する。
+    void OnInitialize() override;
+
+    /// @brief SkyBox固有の更新処理
+    /// @note ModelGameObject::Update() で TransferMatrix() 実行後に呼ばれ、IBL回転を RenderManager に伝播する。
+    void OnUpdate() override;
 
 private:
     /// @brief 箱の頂点データを生成

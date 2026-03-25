@@ -47,7 +47,7 @@
 
 // 前方宣言
 class ICamera;
-class ModelResource;
+namespace CoreEngine { class ModelResource; }
 
 // パーティクルのパラメータ
 

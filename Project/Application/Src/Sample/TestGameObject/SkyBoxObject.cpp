@@ -26,7 +26,7 @@ struct SkyBoxVertex {
     Vector4 position; // Vector3からVector4に変更
 };
 
-void SkyBoxObject::Initialize() {
+void SkyBoxObject::OnInitialize() {
 
     // トランスフォーム初期化
     transform_.scale = { 1.0f, 1.0f, 1.0f };
@@ -152,11 +152,7 @@ void SkyBoxObject::CreateBoxVertices() {
     indexBuffer_->Unmap(0, nullptr);
 }
 
-void SkyBoxObject::Update() {
-    // SkyBoxは基本的にカメラ位置に追従するため、ここでは何もしない
-    // 必要に応じて回転などのアニメーションを追加可能
-    transform_.TransferMatrix();
-
+void SkyBoxObject::OnUpdate() {
     // スカイボックスのXYZ回転をIBL回転としてシーン全体へ伝播
     auto engine = GetEngineSystem();
     if (auto* renderManager = engine->GetComponent<RenderManager>()) {

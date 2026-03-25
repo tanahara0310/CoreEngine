@@ -1,6 +1,7 @@
 #include "SceneSaveSystem.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
+#include "ObjectCommon/Model/ModelGameObject.h"
 #include "Scene/SceneSerializer.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -27,8 +28,8 @@ namespace CoreEngine
                 auto* spriteObj = dynamic_cast<SpriteObject*>(obj.get());
                 if (spriteObj) {
                     SceneSerializer::LoadSpriteObject(spriteObj, objects[name]);
-                } else {
-                    SceneSerializer::LoadObject(obj.get(), objects[name]);
+                } else if (auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get())) {
+                    SceneSerializer::LoadObject(modelObj, objects[name]);
                 }
             }
         }
@@ -52,8 +53,8 @@ namespace CoreEngine
             auto* spriteObj = dynamic_cast<SpriteObject*>(obj.get());
             if (spriteObj) {
                 SceneSerializer::SaveSpriteObject(spriteObj, j["objects"][name]);
-            } else {
-                SceneSerializer::SaveObject(obj.get(), j["objects"][name]);
+            } else if (auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get())) {
+                SceneSerializer::SaveObject(modelObj, j["objects"][name]);
             }
         }
 
@@ -84,8 +85,8 @@ namespace CoreEngine
         auto* spriteObj = dynamic_cast<SpriteObject*>(obj);
         if (spriteObj) {
             SceneSerializer::SaveSpriteObject(spriteObj, j["objects"][name]);
-        } else {
-            SceneSerializer::SaveObject(obj, j["objects"][name]);
+        } else if (auto* modelObj = dynamic_cast<ModelGameObject*>(obj)) {
+            SceneSerializer::SaveObject(modelObj, j["objects"][name]);
         }
 
         jsonManager.SaveJson(filePath, j);

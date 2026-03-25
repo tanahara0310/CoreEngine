@@ -1,9 +1,9 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
+#include "ObjectCommon/Model/ModelGameObject.h"
 
 /// @brief AnimatedCubeモデルオブジェクト
-class AnimatedCubeObject : public CoreEngine::GameObject {
+class AnimatedCubeObject : public CoreEngine::ModelGameObject {
 public:
     /// @brief 初期化処理
     /// @param engine エンジンシステムへのポインタ

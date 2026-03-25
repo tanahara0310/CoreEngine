@@ -13,7 +13,7 @@
 #include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
-#include "ObjectCommon/SpriteObject.h"
+#include "ObjectCommon/Sprite/SpriteObject.h"
 #include "WinApp/WinApp.h"
 #include <numbers>
 
