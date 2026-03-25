@@ -199,6 +199,7 @@ namespace CoreEngine
             &clearValue,
             IID_PPV_ARGS(&targetResource.resource));
         assert(SUCCEEDED(hr));
+        (void)hr;
 
         targetResource.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         CreateViews(targetResource, target, targetResource.rtvHandle.ptr == 0);

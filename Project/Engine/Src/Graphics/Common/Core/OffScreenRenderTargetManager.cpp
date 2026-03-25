@@ -1,4 +1,4 @@
-﻿#include "OffScreenRenderTargetManager.h"
+#include "OffScreenRenderTargetManager.h"
 #include "DescriptorManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/Render.h"
@@ -47,7 +47,7 @@ void OffScreenRenderTargetManager::EnsureTargetCount(uint32_t count)
     }
 }
 
-void OffScreenRenderTargetManager::CreateOrResizeTargetResource(OffScreenTarget& target, uint32_t index, std::int32_t width, std::int32_t height)
+void OffScreenRenderTargetManager::CreateOrResizeTargetResource(OffScreenTarget& target, [[maybe_unused]] uint32_t index, std::int32_t width, std::int32_t height)
 {
     D3D12_RESOURCE_DESC texDesc = {};
     texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -79,6 +79,7 @@ void OffScreenRenderTargetManager::CreateOrResizeTargetResource(OffScreenTarget&
         &clearValue,
         IID_PPV_ARGS(&target.resource));
     assert(SUCCEEDED(hr));
+    (void)hr;
 
 #ifdef _DEBUG
     Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
@@ -134,7 +135,7 @@ void OffScreenRenderTargetManager::UpdateTargetViews(const OffScreenTarget& targ
     device_->CreateShaderResourceView(target.resource.Get(), &srvDesc, target.srvCpuHandle);
 }
 
-void OffScreenRenderTargetManager::ValidateIndex(uint32_t index) const
+void OffScreenRenderTargetManager::ValidateIndex([[maybe_unused]] uint32_t index) const
 {
     assert(index < offScreenTargets_.size());
 }
