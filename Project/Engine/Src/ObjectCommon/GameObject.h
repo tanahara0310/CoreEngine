@@ -4,6 +4,7 @@
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Vector/Vector3.h"
 #include "Collider/Collider.h"
+#include "Utility/JsonManager/JsonManager.h"
 #include <functional>
 #include <d3d12.h>
 #include <memory>
@@ -34,7 +35,12 @@ namespace CoreEngine
         /// @param engine アプリケーション全体で共有するエンジンシステムへのポインタ
         /// @note アプリケーション起動時に一度だけ呼び出す。
         ///       以降は GetEngineSystem() で取得できる。
-        static void Initialize(EngineSystem* engine);
+        static void SetEngine(EngineSystem* engine);
+
+        /// @brief オブジェクト固有の初期化処理
+        /// @note GameObjectManager::AddObject() の内部で自動的に呼び出される。
+        ///       派生クラスでオーバーライドして固有の初期化処理を実装する。
+        virtual void Initialize() {}
 
         /// @brief 毎フレームの更新処理
         /// @note GameObjectManager::UpdateAll() から autoUpdate_ が true のとき自動的に呼ばれる。
@@ -198,6 +204,18 @@ namespace CoreEngine
         /// @param enable false にするとシーンデータへの保存・復元がスキップされる
         void SetSerializeEnabled(bool enable);
 
+        /// @brief オブジェクトデータを JSON に書き出す
+        /// @return シリアライズ結果。保存不要な場合は空の json を返す。
+        /// @note SceneSaveSystem から自動的に呼び出される。
+        ///       派生クラスでオーバーライドして自分の保存処理を実装する。
+        virtual json OnSerialize() const { return {}; }
+
+        /// @brief JSON からオブジェクトデータを復元する
+        /// @param j 読み込み元の JSON オブジェクト
+        /// @note SceneSaveSystem から自動的に呼び出される。
+        ///       派生クラスでオーバーライドして自分の復元処理を実装する。
+        virtual void OnDeserialize(const json& j) { (void)j; }
+
         // ===== スポーン =====
 
         /// @brief 同じシーンに新しいオブジェクトをスポーンする
@@ -213,7 +231,7 @@ namespace CoreEngine
                 "T must derive from GameObject");
             return static_cast<T*>(
                 spawner_->SpawnRaw(std::make_unique<T>(std::forward<Args>(args)...))
-            );
+                );
         }
 
 #ifdef _DEBUG
@@ -223,7 +241,7 @@ namespace CoreEngine
         /// @return 値の変更があった場合 true を返す
         /// @note Active / Visible / AutoUpdate の各チェックボックスと
         ///       DrawImGuiExtended() の呼び出しを行う。
-        ///       ModelGameObject はこれをオーバーライドして Transform / Material も表示する。
+        ///       Active 変更時は OnImGuiActiveChanged() が呼び出される。
         virtual bool DrawImGui();
 
         /// @brief 派生クラス固有の ImGui 拡張 UI を描画する
@@ -257,11 +275,11 @@ namespace CoreEngine
         std::unique_ptr<Collider> collider_;     ///< アタッチされたコライダー
         std::string               name_;          ///< オブジェクト識別名
 
-        bool isActive_         = true;   ///< アクティブ状態（false: 更新・描画ともにスキップ）
-        bool isVisible_        = true;   ///< 表示状態（false: 描画スキップ・更新継続）
+        bool isActive_ = true;   ///< アクティブ状態（false: 更新・描画ともにスキップ）
+        bool isVisible_ = true;   ///< 表示状態（false: 描画スキップ・更新継続）
         bool markedForDestroy_ = false;  ///< 削除マーク（true: フレーム末に破棄）
-        bool autoUpdate_       = true;   ///< 自動更新フラグ（false: 手動 Update 呼び出しが必要）
-        bool shouldSerialize_  = true;   ///< JSON シリアライズ対象フラグ
+        bool autoUpdate_ = true;   ///< 自動更新フラグ（false: 手動 Update 呼び出しが必要）
+        bool shouldSerialize_ = true;   ///< JSON シリアライズ対象フラグ
 
         std::optional<int> renderOrder_;  ///< 描画順序オーバーライド（nullopt: パス優先度に従う）
 
@@ -269,9 +287,14 @@ namespace CoreEngine
         EditCommitCallback  onEditCommitted_;   ///< Undo/Redo 記録用コールバック
         SaveRequestCallback onSaveRequested_;   ///< 個別保存ボタン用コールバック
 
+        /// @brief Active チェックボックス変更時に呼び出されるフック
+        /// @param prevActive 変更前のアクティブ状態
+        /// @note Undo/Redo を記録したい派生クラス（ModelGameObject / SpriteObject）でオーバーライドする。
+        virtual void OnImGuiActiveChanged(bool prevActive) { (void)prevActive; }
+
         /// @brief 「このオブジェクトのみ保存」ボタンを ImGui に描画する
         /// @note shouldSerialize_ が false または name_ が空の場合は何も描画しない。
-        ///       DrawImGui() / ModelGameObject::DrawImGui() の末尾から呼ばれる。
+        ///       DrawImGui() の末尾から呼ばれる。
         void DrawSaveButton();
 #endif
 

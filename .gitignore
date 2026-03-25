@@ -16,8 +16,6 @@
 # Mono auto generated files
 mono_crash.*
 
-generated/
-
 # C++ build intermediate / output files
 *.obj
 *.ilk
@@ -69,6 +67,8 @@ StyleCopReport.xml
 *.dds
 *Project/Library
 *Project/logs
+*Application/Assets/Scene
+generated/
 
 # Chutzpah Test files
 _Chutzpah*

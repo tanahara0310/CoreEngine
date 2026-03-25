@@ -42,17 +42,22 @@ public:
     void Draw2D(const ICamera* camera);
     
 #ifdef _DEBUG
-    /// @brief ImGuiデバッグUI描画（Sprite独自実装）
-    /// @return 変更があった場合 true
-    bool DrawImGui() override;
+    /// @brief Transform / Material / Sprite の ImGui UI を描画する（基底の DrawImGui から自動呼出し）
+    bool DrawImGuiExtended() override;
 #endif
 
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "Sprite"; }
-    
+
     /// @brief このオブジェクトの描画パスタイプを取得
     /// @return 描画パスタイプ（Sprite）
     RenderPassType GetRenderPassType() const override { return RenderPassType::Sprite; }
+
+    /// @brief Transform + active を JSON に書き出す
+    json OnSerialize() const override;
+
+    /// @brief JSON から Transform + active を復元する
+    void OnDeserialize(const json& j) override;
     
     /// @brief テクスチャハンドルを設定
     /// @param textureFilePath テクスチャファイルパス
@@ -170,6 +175,9 @@ private:
     CoreEngine::Vector3 imguiSnapRotate_    = { 0.0f, 0.0f, 0.0f };
     CoreEngine::Vector3 imguiSnapScale_     = { 1.0f, 1.0f, 1.0f };
     bool                imguiSnapActive_    = true;
+
+    /// @brief Active 変更時に Undo/Redo コールバックを発火する
+    void OnImGuiActiveChanged(bool prevActive) override;
 #endif
 };
 }

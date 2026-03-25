@@ -1,8 +1,5 @@
 #include "SceneSaveSystem.h"
 #include "ObjectCommon/GameObjectManager.h"
-#include "ObjectCommon/Sprite/SpriteObject.h"
-#include "ObjectCommon/Model/ModelGameObject.h"
-#include "Scene/SceneSerializer.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 namespace CoreEngine
@@ -25,12 +22,7 @@ namespace CoreEngine
             const std::string& name = obj->GetName();
             if (name.empty()) continue;
             if (objects.contains(name)) {
-                auto* spriteObj = dynamic_cast<SpriteObject*>(obj.get());
-                if (spriteObj) {
-                    SceneSerializer::LoadSpriteObject(spriteObj, objects[name]);
-                } else if (auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get())) {
-                    SceneSerializer::LoadObject(modelObj, objects[name]);
-                }
+                obj->OnDeserialize(objects[name]);
             }
         }
     }
@@ -50,11 +42,9 @@ namespace CoreEngine
             if (!obj || !obj->IsSerializeEnabled()) continue;
             const std::string& name = obj->GetName();
             if (name.empty()) continue;
-            auto* spriteObj = dynamic_cast<SpriteObject*>(obj.get());
-            if (spriteObj) {
-                SceneSerializer::SaveSpriteObject(spriteObj, j["objects"][name]);
-            } else if (auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get())) {
-                SceneSerializer::SaveObject(modelObj, j["objects"][name]);
+            json data = obj->OnSerialize();
+            if (!data.empty()) {
+                j["objects"][name] = data;
             }
         }
 
@@ -82,11 +72,9 @@ namespace CoreEngine
             j = jsonManager.LoadJson(filePath);
         }
 
-        auto* spriteObj = dynamic_cast<SpriteObject*>(obj);
-        if (spriteObj) {
-            SceneSerializer::SaveSpriteObject(spriteObj, j["objects"][name]);
-        } else if (auto* modelObj = dynamic_cast<ModelGameObject*>(obj)) {
-            SceneSerializer::SaveObject(modelObj, j["objects"][name]);
+        json data = obj->OnSerialize();
+        if (!data.empty()) {
+            j["objects"][name] = data;
         }
 
         jsonManager.SaveJson(filePath, j);

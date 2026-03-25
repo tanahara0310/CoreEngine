@@ -16,7 +16,6 @@ void CollisionTestScene::Initialize(EngineSystem* engine)
 
     // ===== 操作用の球体（WASD で移動） =====
     playerSphere_ = CreateObject<SphereObject>();
-    playerSphere_->Initialize();
     playerSphere_->GetTransform().translate = { 0.0f, 1.0f, 0.0f };
     playerSphere_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
     playerSphere_->SetMaterialColor(kPlayerColor);
@@ -32,7 +31,6 @@ void CollisionTestScene::Initialize(EngineSystem* engine)
 
     for (int i = 0; i < kStaticSphereCount; ++i) {
         staticSpheres_[i] = CreateObject<SphereObject>();
-        staticSpheres_[i]->Initialize();
         staticSpheres_[i]->GetTransform().translate = positions[i];
         staticSpheres_[i]->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
         staticSpheres_[i]->SetMaterialColor(kStaticColors[i]);

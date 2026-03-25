@@ -15,7 +15,7 @@ namespace CoreEngine
 
     // ===== ライフサイクル =====
 
-    void GameObject::Initialize(EngineSystem* engine) {
+    void GameObject::SetEngine(EngineSystem* engine) {
         if (sEngine == nullptr) {
             sEngine = engine;
         }
@@ -125,7 +125,11 @@ namespace CoreEngine
         if (ImGui::CollapsingHeader(headerLabel)) {
             ImGui::PushID(this);
 
-            if (ImGui::Checkbox("Active", &isActive_)) { changed = true; }
+            bool prevActive = isActive_;
+            if (ImGui::Checkbox("Active", &isActive_)) {
+                changed = true;
+                OnImGuiActiveChanged(prevActive);
+            }
             if (ImGui::Checkbox("Visible", &isVisible_)) { changed = true; }
             bool autoUpdate = autoUpdate_;
             if (ImGui::Checkbox("Auto Update", &autoUpdate)) {

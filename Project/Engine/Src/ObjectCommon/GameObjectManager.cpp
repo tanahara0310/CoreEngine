@@ -25,6 +25,9 @@ namespace CoreEngine
             ptr->SetName(baseName + "_" + std::to_string(idx));
         }
 
+        // オブジェクト固有の初期化を自動実行
+        ptr->Initialize();
+
         // Update中は pending に積む（deque への push_back は全イテレータを無効化するため）
         if (isUpdating_) {
             pendingAdd_.push_back(std::move(obj));

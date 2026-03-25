@@ -5,9 +5,9 @@
 /// @brief 汎用モデルオブジェクト（glTFなどのモデル読み込み用）
 class ModelObject : public CoreEngine::ModelGameObject {
 public:
-    /// @brief 初期化処理
-    /// @param modelPath モデルファイルのパス
-    void Initialize(const std::string& modelPath);
+    /// @brief コンストラクタ
+    /// @param modelPath ロードするモデルファイル名（AddObject 時に Initialize() が自動呼出しされる）
+    explicit ModelObject(const std::string& modelPath = "") : modelPath_(modelPath) {}
 
     /// @brief ブレンドモードを取得
     /// @details α<1 かつディザリングOFF の場合は自動でアルファブレンドに切り替える
