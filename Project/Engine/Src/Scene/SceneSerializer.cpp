@@ -1,6 +1,6 @@
 #include "SceneSerializer.h"
 #include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/SpriteObject.h"
+#include "ObjectCommon/Sprite/SpriteObject.h"
 #include "WorldTransform/WorldTransform.h"
 
 namespace CoreEngine

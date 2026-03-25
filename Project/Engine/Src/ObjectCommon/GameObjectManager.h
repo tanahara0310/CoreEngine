@@ -19,7 +19,7 @@ namespace CoreEngine {
 /// @note 更新、描画、削除を自動化し、使用者は登録とDestroyのみを意識する
 namespace CoreEngine
 {
-    class GameObjectManager {
+    class GameObjectManager : public IObjectSpawner {
     public:
         /// @brief オブジェクトを登録（所有権を移動）
         /// @tparam T GameObjectの派生クラス
@@ -28,16 +28,14 @@ namespace CoreEngine
         template<typename T>
         T* AddObject(std::unique_ptr<T> obj) {
             static_assert(std::is_base_of_v<GameObject, T>, "T must derive from GameObject");
-            T* ptr = obj.get();
-            // 名前未設定の場合は GetObjectName() + 連番番号で自動付与
-            if (ptr->GetName().empty()) {
-                std::string baseName = ptr->GetObjectName();
-                int idx = nameCounters_[baseName]++;
-                ptr->SetName(baseName + "_" + std::to_string(idx));
-            }
-            objects_.push_back(std::move(obj));
-            return ptr;
+            return static_cast<T*>(SpawnRaw(std::move(obj)));
         }
+
+        /// @brief IObjectSpawner実装: オブジェクトをスポーン（型消去後の共通経路）
+        /// @note 追加が Update 中はプィーンディングに積む、フレーム終了後に確定する
+        /// @param obj スポーンするオブジェクトの unique_ptr
+        /// @return 登録されたオブジェクトへの生ポインタ
+        GameObject* SpawnRaw(std::unique_ptr<GameObject> obj) override;
 
         /// @brief 全オブジェクトの更新処理
         /// @note autoUpdate_ が true のオブジェクトのみ更新されます
@@ -96,6 +94,12 @@ namespace CoreEngine
         /// @brief 削除待ちキュー（フレーム終了後に破棄）
         std::vector<std::unique_ptr<GameObject>> destroyQueue_;
 
+        /// @brief Update中のスポーン要求を蓄積するキュー（dequeイテレータ無効化を防ぐ）
+        std::vector<std::unique_ptr<GameObject>> pendingAdd_;
+
+        /// @brief UpdateAll()実行中フラグ（Spawn要求をpendingに誘導）
+        bool isUpdating_ = false;
+
         /// @brief オブジェクト名の連番番号管理（名前重複を防ぐ）
         std::map<std::string, int> nameCounters_;
 
@@ -104,6 +108,9 @@ namespace CoreEngine
 
         /// @brief 個別オブジェクト保存リクエスト時コールバック
         std::function<void(GameObject*)> onSaveRequestCallback_;
+
+        /// @brief pendingAdd_ を objects_ へ移動する
+        void FlushPendingAdds();
 
 #ifdef _DEBUG
         /// @brief ImGui 編集コミット時コールバック（Undo/Redo 用）

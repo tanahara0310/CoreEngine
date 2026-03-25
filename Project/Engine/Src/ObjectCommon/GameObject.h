@@ -15,6 +15,8 @@
 #include <optional>
 #include <string>
 
+#include "ObjectCommon/IObjectSpawner.h"
+
 #ifdef _DEBUG
 #include "Graphics/Material/Debug/MaterialDebugUI.h"
 #endif
@@ -179,6 +181,20 @@ namespace CoreEngine
         /// @brief JSON シリアライズ対象かどうかを設定
         void SetSerializeEnabled(bool enable) { shouldSerialize_ = enable; }
 
+        /// @brief 同じシーンに新しいオブジェクトをスポーン
+        /// @tparam T GameObject派生クラス
+        /// @param args コンストラクタ引数
+        /// @return 生成されたオブジェクトへのポインタ
+        /// @note GameObjectManager::AddObject() で登録済みのオブジェクトからのみ呼び出し可
+        template<typename T, typename... Args>
+        T* Spawn(Args&&... args) {
+            static_assert(std::is_base_of_v<GameObject, T>,
+                "T must derive from GameObject");
+            return static_cast<T*>(
+                spawner_->SpawnRaw(std::make_unique<T>(std::forward<Args>(args)...))
+            );
+        }
+
 #ifdef _DEBUG
         /// @brief ImGuiデバッグUI描画（基本パラメータ：Transform、Active）
         /// @return ImGuiで変更があった場合 true
@@ -240,7 +256,7 @@ namespace CoreEngine
         /// @brief JSON シリアライズ対象フラグ（falseにするとシーンデータに保存されない）
         bool shouldSerialize_ = true;
 
-#ifdef _DEBUG
+    #ifdef _DEBUG
         // ImGui 編集追跡用（操作前スナップショット）
         Vector3 imguiSnapTranslate_ = { 0.0f, 0.0f, 0.0f };
         Vector3 imguiSnapRotate_    = { 0.0f, 0.0f, 0.0f };
@@ -259,5 +275,12 @@ namespace CoreEngine
         /// @return 変更があった場合 true
         bool DrawMaterialImGui();
 #endif
+
+    private:
+        /// @brief このオブジェクトを管理するスポーナー（AddObject時にGameObjectManagerが設定）
+        IObjectSpawner* spawner_ = nullptr;
+
+        /// @brief GameObjectManager が spawner_ を設定できるようにする
+        friend class GameObjectManager;
     };
 }

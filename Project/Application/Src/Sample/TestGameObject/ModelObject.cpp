@@ -1,27 +1,9 @@
 #include "ModelObject.h"
-#include "EngineSystem/EngineSystem.h"
-#include "Camera/ICamera.h"
 
 
 void ModelObject::Initialize(const std::string& modelPath) {
-    // 必須コンポーネントの取得
-    auto engine = GetEngineSystem();
-
-    auto dxCommon = engine->GetComponent<CoreEngine::DirectXCommon>();
-    auto modelManager = engine->GetComponent<CoreEngine::ModelManager>();
-
-    if (!dxCommon || !modelManager) {
-        return;
-    }
-
-    // 静的モデルとして作成
-    model_ = modelManager->CreateStaticModel(modelPath);
-
-    // トランスフォームの初期化
-    transform_.Initialize(dxCommon->GetDevice());
-
-    // アクティブ状態に設定
-    SetActive(true);
+    modelPath_ = modelPath;
+    ModelGameObject::Initialize();
 }
 
 CoreEngine::BlendMode ModelObject::GetBlendMode() const {
@@ -34,22 +16,6 @@ CoreEngine::BlendMode ModelObject::GetBlendMode() const {
         }
     }
     return CoreEngine::BlendMode::kBlendModeNone;
-}
-
-void ModelObject::Update() {
-    if (!IsActive() || !model_) {
-        return;
-    }
-
-    // トランスフォームの更新
-    transform_.TransferMatrix();
-}
-
-void ModelObject::Draw(const CoreEngine::ICamera* camera) {
-    if (!camera || !model_) return;
-
-    // モデルの描画（テクスチャハンドルを省略してモデル組み込みテクスチャを使用）
-    model_->Draw(transform_, camera);
 }
 
 CoreEngine::MaterialInstance* ModelObject::GetMaterial() {

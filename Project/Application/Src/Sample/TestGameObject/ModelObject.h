@@ -1,20 +1,13 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
+#include "ObjectCommon/Model/ModelGameObject.h"
 
 /// @brief 汎用モデルオブジェクト（glTFなどのモデル読み込み用）
-class ModelObject : public CoreEngine::GameObject {
+class ModelObject : public CoreEngine::ModelGameObject {
 public:
     /// @brief 初期化処理
     /// @param modelPath モデルファイルのパス
     void Initialize(const std::string& modelPath);
-
-    /// @brief 更新処理
-    void Update() override;
-
-    /// @brief 描画処理
-    /// @param camera カメラ
-    void Draw(const CoreEngine::ICamera* camera) override;
 
     /// @brief ブレンドモードを取得
     /// @details α<1 かつディザリングOFF の場合は自動でアルファブレンドに切り替える
@@ -22,12 +15,6 @@ public:
 
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "Model"; }
-
-    /// @brief トランスフォームを取得
-    CoreEngine::WorldTransform& GetTransform() { return transform_; }
-
-    /// @brief モデルを取得
-    CoreEngine::Model* GetModel() { return model_.get(); }
 
     /// @brief マテリアルインスタンスを直接取得（パラメータ直接操作用）
     /// @return MaterialInstance へのポインタ（未初期化の場合 nullptr）
@@ -54,5 +41,9 @@ public:
     void SetIBLIntensity(float intensity);
 
 private:
+    std::string modelPath_;
+
+protected:
+    std::string GetModelPath() const override { return modelPath_; }
 };
 

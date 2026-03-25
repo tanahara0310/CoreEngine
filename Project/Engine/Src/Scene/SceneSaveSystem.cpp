@@ -1,6 +1,6 @@
 #include "SceneSaveSystem.h"
 #include "ObjectCommon/GameObjectManager.h"
-#include "ObjectCommon/SpriteObject.h"
+#include "ObjectCommon/Sprite/SpriteObject.h"
 #include "Scene/SceneSerializer.h"
 #include "Utility/JsonManager/JsonManager.h"
 
