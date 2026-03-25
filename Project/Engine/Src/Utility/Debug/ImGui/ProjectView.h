@@ -133,7 +133,6 @@ private:
     std::unordered_map<std::string, float> treeExpandAnimTime_;
     std::unordered_map<std::string, bool> treeExpandAnimOpening_;
     std::unordered_map<std::string, bool> treePendingClose_;
-    std::unordered_map<std::string, bool> treeCloseCommit_;
     float treeExpandAnimDuration_ = 0.16f;
     
     // PNGプレビューキャッシュ
