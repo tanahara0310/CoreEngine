@@ -418,7 +418,6 @@ namespace CoreEngine
                 treeExpandAnimOpening_.erase(key);
                 if (!opening) {
                     treePendingClose_.erase(key);
-                    treeCloseCommit_[key] = true;
                     return 0.0f;
                 }
                 return 1.0f;
@@ -455,16 +454,6 @@ namespace CoreEngine
             }
 
             std::string nodeKey = nodePath.generic_string();
-            auto closeCommitIt = treeCloseCommit_.find(nodeKey);
-            if (closeCommitIt != treeCloseCommit_.end() && closeCommitIt->second) {
-                ImGui::SetNextItemOpen(false, ImGuiCond_Always);
-                treeCloseCommit_.erase(closeCommitIt);
-            } else {
-                auto pendingIt = treePendingClose_.find(nodeKey);
-                if (pendingIt != treePendingClose_.end() && pendingIt->second) {
-                    ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-                }
-            }
 
             ImVec2 cursorBeforeNode = ImGui::GetCursorScreenPos();
             bool nodeOpenRaw = ImGui::TreeNodeEx(nodeLabel.c_str(), flags);
@@ -482,7 +471,6 @@ namespace CoreEngine
             if (ImGui::IsItemToggledOpen()) {
                 treeExpandAnimTime_[nodeKey] = 0.0f;
                 treeExpandAnimOpening_[nodeKey] = nodeOpenRaw;
-                treeCloseCommit_.erase(nodeKey);
                 if (!nodeOpenRaw && hasChildren) {
                     treePendingClose_[nodeKey] = true;
                 } else {
