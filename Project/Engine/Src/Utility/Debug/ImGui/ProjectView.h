@@ -77,7 +77,8 @@ struct PNGPreviewInfo {
 
     /// @brief フォルダツリーを再帰的に描画
     /// @param path 描画するフォルダのパス
-    void DrawFolderTree(const std::filesystem::path& path);
+    /// @param depth ツリー深さ
+    void DrawFolderTree(const std::filesystem::path& path, int depth = 0);
 
     /// @brief パンくずリスト（ブレッドクラム）を描画
     void DrawBreadcrumb();
@@ -87,9 +88,9 @@ struct PNGPreviewInfo {
     /// @return ルートからの相対パス
     std::string GetRelativePath(const std::filesystem::path& fullPath);
 
-    /// @brief ファイルを含むフォルダをエクスプローラーで開く
+    /// @brief ファイルを関連付けアプリで開く
     /// @param filePath 対象ファイルパス
-    void OpenInExplorer(const std::filesystem::path& filePath);
+    void OpenFile(const std::filesystem::path& filePath);
 
 private:
     DirectXCommon* dxCommon_ = nullptr;     // DirectX共通クラスへのポインタ

@@ -238,7 +238,7 @@ namespace CoreEngine
                     if (entry.isDirectory) {
                         NavigateToDirectory(entry.path);
                     } else {
-                        OpenInExplorer(entry.path);
+                        OpenFile(entry.path);
                     }
 
                     lastClickedIndex_ = -1;
@@ -389,8 +389,10 @@ namespace CoreEngine
         }
     }
 
-    void ProjectView::DrawFolderTree(const std::filesystem::path& path)
+    void ProjectView::DrawFolderTree(const std::filesystem::path& path, int depth)
     {
+        const ImU32 treeLineColor = ImGui::GetColorU32(ImVec4(0.40f, 0.40f, 0.40f, 1.0f));
+
         auto updateExpandAlpha = [this](const std::filesystem::path& nodePath) {
             std::string key = nodePath.generic_string();
 
@@ -464,7 +466,19 @@ namespace CoreEngine
                 }
             }
 
+            ImVec2 cursorBeforeNode = ImGui::GetCursorScreenPos();
             bool nodeOpenRaw = ImGui::TreeNodeEx(nodeLabel.c_str(), flags);
+
+            if (depth > 0) {
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                ImVec2 itemMin = ImGui::GetItemRectMin();
+                ImVec2 itemMax = ImGui::GetItemRectMax();
+                float centerY = (itemMin.y + itemMax.y) * 0.5f;
+                float indentSpacing = ImGui::GetStyle().IndentSpacing;
+                float branchX = cursorBeforeNode.x - indentSpacing * 0.5f;
+                float textStartX = itemMin.x - 4.0f;
+                drawList->AddLine(ImVec2(branchX, centerY), ImVec2(textStartX, centerY), treeLineColor, 1.0f);
+            }
             if (ImGui::IsItemToggledOpen()) {
                 treeExpandAnimTime_[nodeKey] = 0.0f;
                 treeExpandAnimOpening_[nodeKey] = nodeOpenRaw;
@@ -496,11 +510,11 @@ namespace CoreEngine
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() - (1.0f - childrenAlpha) * ImGui::GetTextLineHeightWithSpacing());
 
             if (nodeOpenRaw) {
-                DrawFolderTree(nodePath);
+                DrawFolderTree(nodePath, depth + 1);
                 ImGui::TreePop();
             } else {
                 ImGui::Indent();
-                DrawFolderTree(nodePath);
+                DrawFolderTree(nodePath, depth + 1);
                 ImGui::Unindent();
             }
 
@@ -529,8 +543,39 @@ namespace CoreEngine
                 return a.filename().string() < b.filename().string();
                 });
 
+            bool hasVerticalLineRange = false;
+            float verticalLineX = 0.0f;
+            float verticalLineMinY = 0.0f;
+            float verticalLineMaxY = 0.0f;
+            float indentSpacing = ImGui::GetStyle().IndentSpacing;
+
             for (const auto& dir : directories) {
+                ImVec2 nodePosBefore = ImGui::GetCursorScreenPos();
                 drawFolderNode(dir, dir.filename().string(), false);
+
+                if (depth > 0) {
+                    ImVec2 itemMin = ImGui::GetItemRectMin();
+                    ImVec2 itemMax = ImGui::GetItemRectMax();
+                    float branchX = nodePosBefore.x - indentSpacing * 0.5f;
+
+                    if (!hasVerticalLineRange) {
+                        hasVerticalLineRange = true;
+                        verticalLineX = branchX;
+                        verticalLineMinY = itemMin.y;
+                        verticalLineMaxY = itemMax.y;
+                    } else {
+                        verticalLineMinY = (std::min)(verticalLineMinY, itemMin.y);
+                        verticalLineMaxY = (std::max)(verticalLineMaxY, itemMax.y);
+                    }
+                }
+            }
+
+            if (hasVerticalLineRange) {
+                ImGui::GetWindowDrawList()->AddLine(
+                    ImVec2(verticalLineX, verticalLineMinY),
+                    ImVec2(verticalLineX, verticalLineMaxY),
+                    treeLineColor,
+                    1.0f);
             }
         }
         catch (const std::exception& e) {
@@ -580,16 +625,15 @@ namespace CoreEngine
         }
     }
 
-    void ProjectView::OpenInExplorer(const std::filesystem::path& filePath)
+    void ProjectView::OpenFile(const std::filesystem::path& filePath)
     {
         if (!std::filesystem::exists(filePath)) {
             return;
         }
 
-        std::wstring explorerArg = L"/select,\"" + filePath.wstring() + L"\"";
-        HINSTANCE result = ::ShellExecuteW(nullptr, L"open", L"explorer.exe", explorerArg.c_str(), nullptr, SW_SHOWNORMAL);
+        HINSTANCE result = ::ShellExecuteW(nullptr, L"open", filePath.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         if (reinterpret_cast<INT_PTR>(result) <= 32) {
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to open Explorer for: " + filePath.string());
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to open file: " + filePath.string());
         }
     }
 
