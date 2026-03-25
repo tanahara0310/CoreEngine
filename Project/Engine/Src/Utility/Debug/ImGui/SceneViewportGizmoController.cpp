@@ -7,14 +7,13 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/MathCore.h"
 
-#include <string>
 #include <numbers>
 
 namespace CoreEngine
 {
     void SceneViewportGizmoController::Initialize()
     {
-        // ギズモ描画に必要なアイコン群をまとめて読み込む。
+        // Sceneビューで使用するアイコンを読み込む。
         LoadGizmoIcons();
     }
 
@@ -24,8 +23,17 @@ namespace CoreEngine
             return;
         }
 
-        // 操作UI（ツールバー）を先に描画し、現在のギズモモードを確定する。
-        DrawGizmoToolbar(context);
+        if (context.isViewportHovered && !ImGuizmo::IsUsing()) {
+            if (ImGui::IsKeyPressed(ImGuiKey_W, false)) {
+                context.objectSelector->SetGizmoMode(Gizmo::Mode::Translate);
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_E, false)) {
+                context.objectSelector->SetGizmoMode(Gizmo::Mode::Rotate);
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
+                context.objectSelector->SetGizmoMode(Gizmo::Mode::Scale);
+            }
+        }
 
         // 次にGameカメラのアイコン描画と選択判定を行う。
         DrawGameCameraOverlay(context);
@@ -43,125 +51,6 @@ namespace CoreEngine
         }
     }
 
-    void SceneViewportGizmoController::DrawGizmoToolbar(const SceneViewportDrawContext& context)
-    {
-        if (!context.objectSelector || !iconsLoaded_) {
-            return;
-        }
-
-        struct ToolButton {
-            const char* tooltip;
-            Gizmo::Mode mode;
-            ImGuiKey shortcutKey;
-            D3D12_GPU_DESCRIPTOR_HANDLE iconHandle;
-        };
-
-        const ToolButton kButtons[] = {
-            { "移動  [W]", Gizmo::Mode::Translate, ImGuiKey_W, gizmoTranslateIcon_ },
-            { "回転  [E]", Gizmo::Mode::Rotate,    ImGuiKey_E, gizmoRotateIcon_ },
-            { "拡縮  [R]", Gizmo::Mode::Scale,     ImGuiKey_R, gizmoScaleIcon_ },
-        };
-        static const int kButtonCount = static_cast<int>(sizeof(kButtons) / sizeof(kButtons[0]));
-
-        // ビューポートホバー中かつギズモ非操作中のみキーボードショートカットを受け付ける。
-        if (context.isViewportHovered && !ImGuizmo::IsUsing()) {
-            for (const auto& btn : kButtons) {
-                if (ImGui::IsKeyPressed(btn.shortcutKey, false)) {
-                    context.objectSelector->SetGizmoMode(btn.mode);
-                }
-            }
-        }
-
-        constexpr float kIconSize = 25.0f;
-        constexpr float kPadding = 4.0f;
-        constexpr float kSpacing = 3.0f;
-        constexpr float kRounding = 6.0f;
-        constexpr float kMargin = 8.0f;
-        constexpr float kToggleHeight = 18.0f;
-
-        const float buttonSize = kIconSize + kPadding * 2.0f;
-
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-        const ImVec2 toolbarOrigin = ImVec2(context.viewportPos.x + kMargin, context.viewportPos.y + kMargin);
-
-        float bgWidth;
-        float bgHeight;
-
-        if (isToolbarCollapsed_) {
-            bgWidth = buttonSize;
-            bgHeight = kToggleHeight;
-        } else {
-            const float totalIconsHeight = buttonSize * kButtonCount + kSpacing * (kButtonCount - 1);
-            bgWidth = buttonSize;
-            bgHeight = kToggleHeight + kSpacing + totalIconsHeight;
-        }
-
-        drawList->AddRectFilled(
-            toolbarOrigin,
-            ImVec2(toolbarOrigin.x + bgWidth, toolbarOrigin.y + bgHeight),
-            IM_COL32(20, 20, 20, 185),
-            kRounding);
-
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kPadding, kPadding));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, kRounding);
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, kSpacing));
-
-        ImGui::SetCursorScreenPos(toolbarOrigin);
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.15f, 0.85f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.25f, 0.25f, 0.25f, 1.00f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.10f, 0.10f, 0.10f, 1.00f));
-
-        const ImVec2 uvMin = isToolbarCollapsed_ ? ImVec2(0.0f, 1.0f) : ImVec2(0.0f, 0.0f);
-        const ImVec2 uvMax = isToolbarCollapsed_ ? ImVec2(1.0f, 0.0f) : ImVec2(1.0f, 1.0f);
-        if (ImGui::ImageButton("##GizmoToggle", (ImTextureID)gizmoToggleIcon_.ptr,
-            ImVec2(kIconSize, kToggleHeight - kPadding * 2.0f), uvMin, uvMax)) {
-            isToolbarCollapsed_ = !isToolbarCollapsed_;
-        }
-
-        ImGui::PopStyleColor(3);
-
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-            ImGui::SetTooltip(isToolbarCollapsed_ ? "ツールバーを展開" : "ツールバーを折り畳む");
-        }
-
-        if (!isToolbarCollapsed_) {
-            const Gizmo::Mode currentMode = context.objectSelector->GetGizmoMode();
-
-            for (int i = 0; i < kButtonCount; i++) {
-                const auto& btn = kButtons[i];
-                const bool isActive = (currentMode == btn.mode);
-
-                ImGui::SetCursorScreenPos(ImVec2(
-                    toolbarOrigin.x,
-                    toolbarOrigin.y + kToggleHeight + kSpacing + i * (buttonSize + kSpacing)));
-
-                if (isActive) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
-                } else {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.18f, 0.18f, 0.85f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.32f, 0.32f, 0.32f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.12f, 0.12f, 1.00f));
-                }
-
-                ImGui::PushID(i);
-                if (ImGui::ImageButton(("##GizmoIcon" + std::to_string(i)).c_str(), (ImTextureID)btn.iconHandle.ptr, ImVec2(kIconSize, kIconSize))) {
-                    context.objectSelector->SetGizmoMode(btn.mode);
-                }
-                ImGui::PopID();
-
-                ImGui::PopStyleColor(3);
-
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                    ImGui::SetTooltip("%s", btn.tooltip);
-                }
-            }
-        }
-
-        ImGui::PopStyleVar(3);
-    }
-
     void SceneViewportGizmoController::LoadGizmoIcons()
     {
         auto& texManager = TextureManager::GetInstance();
@@ -171,23 +60,13 @@ namespace CoreEngine
         }
 
         try {
-            auto translateTex = texManager.Load("gizumoTransform.png");
-            auto rotateTex = texManager.Load("gizumoRotate.png");
-            auto scaleTex = texManager.Load("gizumoScale.png");
-            auto toggleTex = texManager.Load("bottomArrow.png");
             auto cameraTex = texManager.Load("Engine/Assets/Textures/Icon/camera.png");
 
-            gizmoTranslateIcon_ = translateTex.gpuHandle;
-            gizmoRotateIcon_ = rotateTex.gpuHandle;
-            gizmoScaleIcon_ = scaleTex.gpuHandle;
-            gizmoToggleIcon_ = toggleTex.gpuHandle;
             gameCameraIcon_ = cameraTex.gpuHandle;
 
-            iconsLoaded_ = true;
             gameCameraIconLoaded_ = (gameCameraIcon_.ptr != 0);
         }
         catch (...) {
-            iconsLoaded_ = false;
             gameCameraIconLoaded_ = false;
         }
     }

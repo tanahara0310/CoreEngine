@@ -1,6 +1,9 @@
-﻿#include "DockingUI.h"
+#include "DockingUI.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "EngineSystem/PlaybackState.h"
+#include "SceneViewport.h"
+#include "ObjectSelector.h"
+#include "Gizmo.h"
 #include "Utility/Logger/Logger.h"
 #include <format>
 
@@ -212,19 +215,27 @@ void DockingUI::LoadPlaybackIcons()
         auto playTex = texManager.Load("reproduction.png");
         auto pauseTex = texManager.Load("pause.png");
         auto gridTex = texManager.Load("grid.png");
+        auto gizmoTranslateTex = texManager.Load("gizumoTransform.png");
+        auto gizmoRotateTex = texManager.Load("gizumoRotate.png");
+        auto gizmoScaleTex = texManager.Load("gizumoScale.png");
 
         // GPUハンドルを保存
         playIcon_ = playTex.gpuHandle;
         pauseIcon_ = pauseTex.gpuHandle;
         gridIcon_ = gridTex.gpuHandle;
+        gizmoTranslateIcon_ = gizmoTranslateTex.gpuHandle;
+        gizmoRotateIcon_ = gizmoRotateTex.gpuHandle;
+        gizmoScaleIcon_ = gizmoScaleTex.gpuHandle;
 
         playbackIconsLoaded_ = true;
+        gizmoIconsLoaded_ = true;
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Playback icons loaded successfully (DockingUI)");
     }
     catch (const std::exception& e) {
         std::string errorMsg = std::format("Failed to load playback icons: {}", e.what());
         Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", errorMsg);
         playbackIconsLoaded_ = false;
+        gizmoIconsLoaded_ = false;
     }
 }
 
@@ -304,6 +315,7 @@ void DockingUI::DrawPlaybackToolbar()
         } else {
             // アイコンボタンを表示（再生/ポーズ + グリッド）
             PlaybackState currentState = playbackManager.GetState();
+            ObjectSelector* objectSelector = sceneViewport_ ? sceneViewport_->GetObjectSelector() : nullptr;
 
             constexpr float kIconSize = 18.0f;  // アイコンサイズを小さく
             constexpr float kPadding = 3.0f;
@@ -315,10 +327,46 @@ void DockingUI::DrawPlaybackToolbar()
             const float totalWidth = playbackGroupWidth + kGroupSpacing + gridButtonWidth;
             const float startX = (vp->Size.x - totalWidth) * 0.5f;
 
-            ImGui::SetCursorPosX(startX);
-
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kPadding, kPadding));
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+
+            // Sceneビュー用ギズモ切替（左詰め）
+            if (gizmoIconsLoaded_ && objectSelector) {
+                ImGui::SetCursorPosX(8.0f);
+
+                const auto drawGizmoButton = [&](const char* id, D3D12_GPU_DESCRIPTOR_HANDLE icon, Gizmo::Mode mode, const char* tooltip) {
+                    const bool isActive = (objectSelector->GetGizmoMode() == mode);
+
+                    if (isActive) {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
+                    }
+
+                    if (ImGui::ImageButton(id, (ImTextureID)icon.ptr, ImVec2(kIconSize, kIconSize))) {
+                        objectSelector->SetGizmoMode(mode);
+                    }
+                    ImGui::PopStyleColor(3);
+
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+                        ImGui::SetTooltip("%s", tooltip);
+                    }
+                };
+
+                drawGizmoButton("##GizmoTranslateToolbar", gizmoTranslateIcon_, Gizmo::Mode::Translate, "移動 [W]");
+                ImGui::SameLine(0, kSpacing);
+                drawGizmoButton("##GizmoRotateToolbar", gizmoRotateIcon_, Gizmo::Mode::Rotate, "回転 [E]");
+                ImGui::SameLine(0, kSpacing);
+                drawGizmoButton("##GizmoScaleToolbar", gizmoScaleIcon_, Gizmo::Mode::Scale, "拡縮 [R]");
+                // 同じ行のまま再生ボタン位置へ移動
+                ImGui::SameLine(startX);
+            } else {
+                ImGui::SetCursorPosX(startX);
+            }
 
             // 再生ボタン
             {

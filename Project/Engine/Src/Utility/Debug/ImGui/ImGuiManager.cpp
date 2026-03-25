@@ -69,6 +69,7 @@ void ImGuiManager::Initialize(HWND hwnd, DirectXCommon* dxCommon)
 
     // SceneViewportの初期化
     sceneViewport_->Initialize();
+    dockingUI_->SetSceneViewport(sceneViewport_.get());
 
     // ProjectViewの初期化
     projectView_->Initialize(dxCommon_);

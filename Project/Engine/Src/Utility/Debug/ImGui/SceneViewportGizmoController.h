@@ -22,7 +22,7 @@ namespace CoreEngine
     /// @brief SceneViewportのギズモ/オーバーレイ描画責務を分離するコントローラー
     class SceneViewportGizmoController {
     public:
-        /// @brief 初期化（アイコンテクスチャの読み込み）
+        /// @brief 初期化（Sceneビュー用アイコンの読み込み）
         void Initialize();
 
         /// @brief SceneViewport上のギズモ関連描画を実行
@@ -30,10 +30,7 @@ namespace CoreEngine
         void Draw(const SceneViewportDrawContext& context);
 
     private:
-        /// @brief ギズモ操作タイプ切替ツールバーを描画
-        void DrawGizmoToolbar(const SceneViewportDrawContext& context);
-
-        /// @brief ギズモアイコンテクスチャを読み込む
+        /// @brief Sceneビューで使用するアイコンテクスチャを読み込む
         void LoadGizmoIcons();
 
         /// @brief Sceneビュー上にGameカメラアイコンを重ね描画
@@ -43,17 +40,11 @@ namespace CoreEngine
         void DrawGameCameraGizmo(const SceneViewportDrawContext& context);
 
     private:
-        // ギズモアイコン用テクスチャハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoTranslateIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoRotateIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoScaleIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoToggleIcon_{};
+        // Sceneビューオーバーレイ用テクスチャハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE gameCameraIcon_{};
-        bool iconsLoaded_ = false;
         bool gameCameraIconLoaded_ = false;
 
         // UI状態
-        bool isToolbarCollapsed_ = false;
         bool isGameCameraSelected_ = false;
     };
 }

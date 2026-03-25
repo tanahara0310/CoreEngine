@@ -11,6 +11,8 @@
 
 namespace CoreEngine
 {
+class SceneViewport;
+
 enum class DockLayoutPreset {
     Standard,
     Unity2By3
@@ -68,6 +70,9 @@ public:
     /// @brief グリッド表示状態を設定
     void SetGridVisible(bool visible) { isGridVisible_ = visible; }
 
+    /// @brief SceneViewport参照を設定（ギズモ操作UI連携用）
+    void SetSceneViewport(SceneViewport* sceneViewport) { sceneViewport_ = sceneViewport; }
+
 private:
     /// @brief エリアごとのノードIDを取得
     ImGuiID GetNodeIdForArea(DockArea area) const;
@@ -94,12 +99,19 @@ private:
     D3D12_GPU_DESCRIPTOR_HANDLE playIcon_{};
     D3D12_GPU_DESCRIPTOR_HANDLE pauseIcon_{};
     D3D12_GPU_DESCRIPTOR_HANDLE gridIcon_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE gizmoTranslateIcon_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE gizmoRotateIcon_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE gizmoScaleIcon_{};
     bool playbackIconsLoaded_ = false;
+    bool gizmoIconsLoaded_ = false;
 
     // グリッド表示状態
     bool isGridVisible_ = true;
 
     // ツールバーの高さ
     static constexpr float toolbarHeight_ = 32.0f;
+
+    // Sceneビュー操作連携
+    SceneViewport* sceneViewport_ = nullptr;
 };
 }
