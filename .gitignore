@@ -66,6 +66,7 @@ StyleCopReport.xml
 # Files built by Visual Studio
 *.pdb
 *imgui.ini
+*.dds
 *Project/Library
 *Project/logs
 

@@ -1,7 +1,8 @@
 #include "ObjectSelector.h"
 #include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/SpriteObject.h"
+#include "ObjectCommon/Sprite/SpriteObject.h"
 #include "ObjectCommon/GameObjectManager.h"
+#include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
 #include "Camera/ICamera.h"
 #include "Camera/Camera2D.h"
 #include "Math/Matrix/Matrix4x4.h"
@@ -64,11 +65,11 @@ namespace CoreEngine
     void ObjectSelector::DrawGizmo(const ICamera* camera)
     {
         if (selectedObject_ && camera) {
-            // ギズモ非使用中は操作前スナップショットを連続更新する
-            if (!Gizmo::IsUsing()) {
-                beforeGizmoTranslate_ = selectedObject_->GetTransform().translate;
-                beforeGizmoRotate_ = selectedObject_->GetTransform().rotate;
-                beforeGizmoScale_ = selectedObject_->GetTransform().scale;
+            auto* modelObj = DebugAccess::AsModelObject(selectedObject_);
+            if (!Gizmo::IsUsing() && modelObj) {
+                beforeGizmoTranslate_ = modelObj->GetTransform().translate;
+                beforeGizmoRotate_ = modelObj->GetTransform().rotate;
+                beforeGizmoScale_ = modelObj->GetTransform().scale;
                 beforeGizmoActive_ = selectedObject_->IsActive();
             }
 
@@ -382,46 +383,39 @@ namespace CoreEngine
     bool ObjectSelector::RayIntersectsMesh(const Vector3& rayOrigin, const Vector3& rayDirection,
         GameObject* object, float& distance)
     {
-        // GameObjectからModelを取得
-        Model* model = object->GetModel();
+        auto* modelObj = DebugAccess::AsModelObject(object);
+
+        Model* model = modelObj ? modelObj->GetModel() : nullptr;
         if (!model || !model->IsInitialized()) {
-            // モデルがない場合はフォールバック（バウンディングスフィア）
-            const WorldTransform& transform = object->GetTransform();
-            float radius = (std::max)({ transform.scale.x, transform.scale.y, transform.scale.z });
-            radius = (std::max)(radius, 1.0f);
-            Vector3 objectPosition = object->GetWorldPosition();
-            return RayIntersectsSphere(rayOrigin, rayDirection, objectPosition, radius, distance);
+            if (modelObj) {
+                const WorldTransform& transform = modelObj->GetTransform();
+                float radius = (std::max)({ transform.scale.x, transform.scale.y, transform.scale.z });
+                radius = (std::max)(radius, 1.0f);
+                return RayIntersectsSphere(rayOrigin, rayDirection, object->GetWorldPosition(), radius, distance);
+            }
+            return RayIntersectsSphere(rayOrigin, rayDirection, object->GetWorldPosition(), 1.0f, distance);
         }
 
-        // ModelResourceを取得
         const ModelResource* modelResource = model->GetModelResource();
         if (!modelResource || !modelResource->IsLoaded()) {
-            // リソースがない場合はフォールバック
-            const WorldTransform& transform = object->GetTransform();
+            const WorldTransform& transform = modelObj->GetTransform();
             float radius = (std::max)({ transform.scale.x, transform.scale.y, transform.scale.z });
             radius = (std::max)(radius, 1.0f);
-            Vector3 objectPosition = object->GetWorldPosition();
-            return RayIntersectsSphere(rayOrigin, rayDirection, objectPosition, radius, distance);
+            return RayIntersectsSphere(rayOrigin, rayDirection, object->GetWorldPosition(), radius, distance);
         }
 
-        // ModelDataを取得
         const ModelData& modelData = modelResource->GetModelData();
-
-        // 頂点データとインデックスデータを取得
         const std::vector<VertexData>& vertices = modelData.vertices;
         const std::vector<int32_t>& indices = modelData.indices;
 
         if (vertices.empty() || indices.empty()) {
-            // メッシュデータがない場合はフォールバック
-            const WorldTransform& transform = object->GetTransform();
+            const WorldTransform& transform = modelObj->GetTransform();
             float radius = (std::max)({ transform.scale.x, transform.scale.y, transform.scale.z });
             radius = (std::max)(radius, 1.0f);
-            Vector3 objectPosition = object->GetWorldPosition();
-            return RayIntersectsSphere(rayOrigin, rayDirection, objectPosition, radius, distance);
+            return RayIntersectsSphere(rayOrigin, rayDirection, object->GetWorldPosition(), radius, distance);
         }
 
-        // オブジェクトのワールド変換行列を取得
-        const WorldTransform& transform = object->GetTransform();
+        const WorldTransform& transform = modelObj->GetTransform();
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 
         float closestDistance = (std::numeric_limits<float>::max)();

@@ -1,7 +1,15 @@
 #pragma once
 
 #include "ObjectCommon/GameObject.h"
+#include "WorldTransform/WorldTransform.h"
+#include "Graphics/Texture/TextureManager.h"
+#include "Graphics/Model/Model.h"
 #include <string>
+#include <memory>
+
+#ifdef _DEBUG
+#include "Graphics/Material/Debug/MaterialDebugUI.h"
+#endif
 
 namespace CoreEngine {
 
@@ -22,7 +30,6 @@ namespace CoreEngine {
     /// @endcode
     class ModelGameObject : public GameObject {
     public:
-
         /// @brief 初期化処理（モデル・テクスチャ・トランスフォームのロードを自動実行）
         virtual void Initialize();
 
@@ -32,9 +39,29 @@ namespace CoreEngine {
         /// @brief 描画処理（model_->Draw → OnDraw の順に実行）
         void Draw(const ICamera* camera) override;
 
+        /// @brief シャドウ描画処理
+        void DrawShadow(ID3D12GraphicsCommandList* cmdList) override;
+
+        /// @brief トランスフォームを取得
+        WorldTransform& GetTransform() { return transform_; }
+        /// @brief トランスフォームを取得（const版）
+        const WorldTransform& GetTransform() const { return transform_; }
+
+        /// @brief モデルを取得
+        Model* GetModel() { return model_.get(); }
+        /// @brief モデルを取得（const版）
+        const Model* GetModel() const { return model_.get(); }
+
+        /// @brief ワールド座標での位置を取得
+        Vector3 GetWorldPosition() const override { return transform_.GetWorldPosition(); }
+
+#ifdef _DEBUG
+        /// @brief ImGuiデバッグUI描画（Transform + Material + Active）
+        bool DrawImGui() override;
+#endif
+
     protected:
         // ========== テンプレートメソッドフック ==========
-        // 派生クラスはこれらをオーバーライドして固有処理を記述する
 
         /// @brief ロードするモデルのパスを返す（空文字列 = モデルなし）
         /// @note ファイル名のみ指定。ディレクトリは AssetDatabase が自動解決する。
@@ -44,16 +71,38 @@ namespace CoreEngine {
         virtual std::string GetTexturePath() const { return ""; }
 
         /// @brief Initialize() の最後に呼ばれる
-        /// @note 初期座標・スケール・コライダー設定などモデルロード後の初期化処理に使う
         virtual void OnInitialize() {}
 
         /// @brief Update() 内で TransferMatrix() の後に呼ばれる
-        /// @note 毎フレームの追加処理（アニメーション更新など）に使う
         virtual void OnUpdate() {}
 
         /// @brief Draw() 内で model_->Draw() の後に呼ばれる
-        /// @note 追加の描画処理が必要な場合にオーバーライドする
         virtual void OnDraw(const ICamera* camera) { (void)camera; }
+
+        // === 共通描画リソース ===
+
+        /// @brief 3Dモデル
+        std::unique_ptr<Model> model_;
+
+        /// @brief ワールドトランスフォーム
+        WorldTransform transform_;
+
+        /// @brief テクスチャハンドル（空の場合はモデル組み込みテクスチャを使用）
+        TextureManager::LoadedTexture texture_;
+
+#ifdef _DEBUG
+        // ImGui 編集追跡用（操作前スナップショット）
+        Vector3 imguiSnapTranslate_ = { 0.0f, 0.0f, 0.0f };
+        Vector3 imguiSnapRotate_ = { 0.0f, 0.0f, 0.0f };
+        Vector3 imguiSnapScale_ = { 1.0f, 1.0f, 1.0f };
+        bool    imguiSnapActive_ = true;
+
+        /// @brief マテリアルデバッグUI
+        std::unique_ptr<MaterialDebugUI> materialDebugUI_;
+
+        /// @brief マテリアルUIを描画するヘルパー
+        bool DrawMaterialImGui();
+#endif
     };
 
 }  // namespace CoreEngine

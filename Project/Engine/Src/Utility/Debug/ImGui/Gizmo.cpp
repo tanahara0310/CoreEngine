@@ -1,6 +1,7 @@
 #include "Gizmo.h"
 #include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/SpriteObject.h"
+#include "ObjectCommon/Sprite/SpriteObject.h"
+#include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
 #include "Camera/ICamera.h"
 #include "WorldTransform/WorldTransform.h"
 #include <numbers>
@@ -50,12 +51,15 @@ namespace CoreEngine
             break;
         }
 
-        // カメラのビュー行列とプロジェクション行列を取得
-        Matrix4x4 viewMatrix = camera->GetViewMatrix();
+        auto* modelObj = DebugAccess::AsModelObject(object);
+        if (!modelObj) return false;
+
+        Matrix4x4 viewMatrix       = camera->GetViewMatrix();
         Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
-        // オブジェクトのワールド行列を取得
-        WorldTransform& transform = object->GetTransform();
+        WorldTransform* transformPtr = modelObj ? &modelObj->GetTransform() : nullptr;
+        if (!transformPtr) return false;
+        WorldTransform& transform = *transformPtr;
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 
         // ImGuizmoで操作

@@ -5,7 +5,7 @@
 #include "Camera/CameraManager.h"
 #include "Camera/Debug/Editor/CameraDebugUI.h"
 #include "ObjectCommon/GameObjectManager.h"
-#include "ObjectCommon/SpriteObject.h"
+#include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Graphics/Line/LineManager.h"
 #include "Utility/Debug/ImGui/SceneViewport.h"
@@ -56,15 +56,11 @@ namespace CoreEngine
                             record.rotateBefore = rBefore;
                             record.scaleBefore = sBefore;
                             record.activeBefore = aBefore;
-                            auto* spriteObj = dynamic_cast<SpriteObject*>(obj);
-                            if (spriteObj) {
-                                record.translateAfter = spriteObj->GetSpriteTransform().translate;
-                                record.rotateAfter = spriteObj->GetSpriteTransform().rotate;
-                                record.scaleAfter = spriteObj->GetSpriteTransform().scale;
-                            } else {
-                                record.translateAfter = obj->GetTransform().translate;
-                                record.rotateAfter = obj->GetTransform().rotate;
-                                record.scaleAfter = obj->GetTransform().scale;
+                            DebugAccess::TransformAccess access;
+                            if (DebugAccess::TryGetTransformAccess(obj, access)) {
+                                record.translateAfter = *access.translate;
+                                record.rotateAfter = *access.rotate;
+                                record.scaleAfter = *access.scale;
                             }
                             record.activeAfter = obj->IsActive();
                             undoRedoHistory_.Push(record);
@@ -85,15 +81,11 @@ namespace CoreEngine
                 record.rotateBefore = rBefore;
                 record.scaleBefore = sBefore;
                 record.activeBefore = aBefore;
-                auto* spriteObj = dynamic_cast<SpriteObject*>(obj);
-                if (spriteObj) {
-                    record.translateAfter = spriteObj->GetSpriteTransform().translate;
-                    record.rotateAfter = spriteObj->GetSpriteTransform().rotate;
-                    record.scaleAfter = spriteObj->GetSpriteTransform().scale;
-                } else {
-                    record.translateAfter = obj->GetTransform().translate;
-                    record.rotateAfter = obj->GetTransform().rotate;
-                    record.scaleAfter = obj->GetTransform().scale;
+                DebugAccess::TransformAccess access;
+                if (DebugAccess::TryGetTransformAccess(obj, access)) {
+                    record.translateAfter = *access.translate;
+                    record.rotateAfter = *access.rotate;
+                    record.scaleAfter = *access.scale;
                 }
                 record.activeAfter = obj->IsActive();
                 undoRedoHistory_.Push(record);

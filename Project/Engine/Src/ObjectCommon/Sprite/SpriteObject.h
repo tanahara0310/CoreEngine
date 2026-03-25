@@ -160,8 +160,16 @@ private:
 
     /// @brief ブレンドモード（デフォルトはアルファブレンド）
     BlendMode blendMode_ = BlendMode::kBlendModeNormal;
-    
+
     /// @brief 頂点データ更新フラグ（Dirty Flag パターン）
     bool vertexDataDirty_ = false;
+
+#ifdef _DEBUG
+    // ImGui 編集追跡用（操作前スナップショット）
+    CoreEngine::Vector3 imguiSnapTranslate_ = { 0.0f, 0.0f, 0.0f };
+    CoreEngine::Vector3 imguiSnapRotate_    = { 0.0f, 0.0f, 0.0f };
+    CoreEngine::Vector3 imguiSnapScale_     = { 1.0f, 1.0f, 1.0f };
+    bool                imguiSnapActive_    = true;
+#endif
 };
 }

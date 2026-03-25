@@ -3,23 +3,14 @@
 #include "Graphics/Render/RenderPassType.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Vector/Vector3.h"
-#include "WorldTransform/WorldTransform.h"
-#include "Graphics/Texture/TextureManager.h"
-#include "Graphics/Model/Model.h"
 #include "Collider/Collider.h"
-#include "Collider/SphereCollider.h"
 #include <functional>
-#include "Collider/AABBCollider.h"
-
+#include <d3d12.h>
 #include <memory>
 #include <optional>
 #include <string>
 
 #include "ObjectCommon/IObjectSpawner.h"
-
-#ifdef _DEBUG
-#include "Graphics/Material/Debug/MaterialDebugUI.h"
-#endif
 
 // Forward declaration
 namespace CoreEngine {
@@ -27,7 +18,9 @@ namespace CoreEngine {
     class EngineSystem;
 }
 
-/// @brief すべてのゲームオブジェクトの共通基底クラス
+/// @brief ゲームワールドに存在するすべてのオブジェクトの共通基底クラス
+/// @note モデルを持つオブジェクトは ModelGameObject を経由して継承する。
+///       スプライトは SpriteObject を経由して継承する。
 
 namespace CoreEngine
 {
@@ -35,157 +28,185 @@ namespace CoreEngine
     public:
         virtual ~GameObject() = default;
 
-        /// @brief 初期化処理（エンジンシステムを設定）
-        /// @param engine エンジンシステムへのポインタ
+        // ===== ライフサイクル =====
+
+        /// @brief エンジンシステムへの静的参照を設定する
+        /// @param engine アプリケーション全体で共有するエンジンシステムへのポインタ
+        /// @note アプリケーション起動時に一度だけ呼び出す。
+        ///       以降は GetEngineSystem() で取得できる。
         static void Initialize(EngineSystem* engine);
 
-        /// @brief 更新処理（派生クラスでオーバーライド可能）
-        virtual void Update() {}
+        /// @brief 毎フレームの更新処理
+        /// @note GameObjectManager::UpdateAll() から autoUpdate_ が true のとき自動的に呼ばれる。
+        ///       派生クラスでオーバーライドして固有のロジックを実装する。
+        virtual void Update();
 
-        /// @brief 描画処理（派生クラスでオーバーライド可能）
-        /// @param camera カメラオブジェクト（2Dオブジェクトの場合は nullptr でも可）
-        virtual void Draw(const ICamera* camera) { (void)camera; }
+        /// @brief 毎フレームの描画処理
+        /// @param camera 描画に使用するカメラ（2Dオブジェクトは nullptr 可）
+        /// @note RenderManager 経由でレンダーパス順に自動的に呼ばれる。
+        ///       派生クラスでオーバーライドして描画コマンドを発行する。
+        virtual void Draw(const ICamera* camera);
 
-        /// @brief シャドウマップ用の描画処理（派生クラスでオーバーライド可能）
-        /// @param cmdList コマンドリスト
+        /// @brief シャドウマップへの描画処理
+        /// @param cmdList DirectX12 コマンドリスト
+        /// @note シャドウパスで自動的に呼ばれる。
+        ///       モデルを持つオブジェクトは ModelGameObject が実装を提供する。
+        ///       基底クラスの実装は何もしない。
         virtual void DrawShadow(ID3D12GraphicsCommandList* cmdList);
 
-        /// @brief アクティブ状態を設定
-        void SetActive(bool active) { isActive_ = active; }
+        // ===== アクティブ / 表示 =====
 
-        /// @brief アクティブ状態を取得
-        bool IsActive() const { return isActive_; }
+        /// @brief アクティブ状態を設定する
+        /// @param active true にするとオブジェクトの更新・描画が有効になる
+        void SetActive(bool active);
 
-        /// @brief 表示状態を設定（falseにすると描画のみスキップ、更新は継続）
-        void SetVisible(bool visible) { isVisible_ = visible; }
+        /// @brief アクティブ状態を取得する
+        /// @return true: アクティブ / false: 非アクティブ（更新・描画ともにスキップ）
+        bool IsActive() const;
 
-        /// @brief 表示状態を取得
-        bool IsVisible() const { return isVisible_; }
+        /// @brief 表示状態を設定する
+        /// @param visible false にすると描画のみスキップし、更新は継続する
+        void SetVisible(bool visible);
 
-        /// @brief オブジェクトを削除マーク（フレーム終了時に自動削除）
-        void Destroy() { markedForDestroy_ = true; }
+        /// @brief 表示状態を取得する
+        /// @return true: 描画される / false: 描画されない
+        bool IsVisible() const;
 
-        /// @brief 削除マークされているか確認
-        bool IsMarkedForDestroy() const { return markedForDestroy_; }
+        // ===== 破棄 =====
 
-        /// @brief 自動更新を設定（falseにすると手動更新が必要）
-        /// @param autoUpdate 自動更新フラグ（true: GameObjectManagerが自動更新、false: 手動更新）
-        void SetAutoUpdate(bool autoUpdate) { autoUpdate_ = autoUpdate; }
+        /// @brief オブジェクトに削除マークをつける
+        /// @note フレーム末の CleanupDestroyed() で実際にメモリから削除される。
+        ///       Update() 内部から安全に呼び出せる。
+        void Destroy();
 
-        /// @brief 自動更新が有効か確認
-        /// @return 自動更新フラグ
-        bool IsAutoUpdate() const { return autoUpdate_; }
+        /// @brief 削除マークが付いているか確認する
+        /// @return true: このフレーム末に削除される
+        bool IsMarkedForDestroy() const;
 
-        /// @brief 描画順序を設定（小さいほど先に描画、RenderPassType の優先度より優先される）
-        /// @param order 描画順序
-        void SetRenderOrder(int order) { renderOrder_ = order; }
+        // ===== 更新制御 =====
 
-        /// @brief 描画順序を取得（未設定の場合は std::nullopt）
-        /// @return 描画順序（未設定の場合は std::nullopt）
-        std::optional<int> GetRenderOrder() const { return renderOrder_; }
+        /// @brief 自動更新フラグを設定する
+        /// @param autoUpdate true: GameObjectManager が毎フレーム Update() を呼ぶ
+        ///                   false: 手動で Update() を呼ぶ必要がある
+        void SetAutoUpdate(bool autoUpdate);
 
-        /// @brief 描画順序のオーバーライドをリセット（RenderPassType の優先度に戻る）
-        void ResetRenderOrder() { renderOrder_ = std::nullopt; }
+        /// @brief 自動更新フラグを取得する
+        /// @return true: 自動更新有効 / false: 手動更新のみ
+        bool IsAutoUpdate() const;
 
-        /// @brief 描画パスタイプを取得（派生クラスでオーバーライド）
-        /// @return 描画パスタイプ（デフォルトは3Dモデル）
-        virtual RenderPassType GetRenderPassType() const { return RenderPassType::Model; }
+        // ===== 描画制御 =====
 
-        /// @brief ブレンドモードを取得（派生クラスでオーバーライド可能）
-        /// @return ブレンドモード（デフォルトは kBlendModeNone）
-        virtual BlendMode GetBlendMode() const { return BlendMode::kBlendModeNone; }
+        /// @brief 描画順序オーバーライドを設定する
+        /// @param order 小さいほど先に描画される。RenderPassType の優先度より優先される。
+        void SetRenderOrder(int order);
 
-        /// @brief ブレンドモードを設定（派生クラスでオーバーライド可能）
+        /// @brief 描画順序オーバーライドを取得する
+        /// @return オーバーライド値。未設定の場合は std::nullopt を返す。
+        std::optional<int> GetRenderOrder() const;
+
+        /// @brief 描画順序オーバーライドをリセットする
+        /// @note リセット後は RenderPassType の優先度で描画順が決まる。
+        void ResetRenderOrder();
+
+        /// @brief 所属する描画パスを返す
+        /// @return デフォルトは RenderPassType::Model。派生クラスでオーバーライドして変更する。
+        virtual RenderPassType GetRenderPassType() const;
+
+        /// @brief 使用するブレンドモードを返す
+        /// @return デフォルトは kBlendModeNone。α合成が必要な派生クラスでオーバーライドする。
+        virtual BlendMode GetBlendMode() const;
+
+        /// @brief ブレンドモードを設定する
         /// @param blendMode 設定するブレンドモード
-        virtual void SetBlendMode(BlendMode blendMode) { (void)blendMode; }
+        /// @note 派生クラスで保持・適用する。基底クラスの実装は何もしない。
+        virtual void SetBlendMode(BlendMode blendMode);
 
-        /// @brief エンジンシステムを取得
-        /// @return エンジンシステムへのポインタ
+        // ===== エンジン参照 =====
+
+        /// @brief エンジンシステムへのポインタを返す
+        /// @return Initialize() で設定されたエンジンシステム。未初期化なら nullptr。
         EngineSystem* GetEngineSystem() const;
 
-        /// @brief 衝突開始イベント（派生クラスでオーバーライド可能）
-        /// @param other 衝突相手のオブジェクト
-        virtual void OnCollisionEnter(GameObject* other) { (void)other; }
+        // ===== 衝突イベント =====
 
-        /// @brief 衝突中イベント（派生クラスでオーバーライド可能）
-        /// @param other 衝突相手のオブジェクト
-        virtual void OnCollisionStay(GameObject* other) { (void)other; }
+        /// @brief 衝突開始時に一度だけ呼ばれるイベント
+        /// @param other 衝突相手のゲームオブジェクト
+        virtual void OnCollisionEnter(GameObject* other);
 
-        /// @brief 衝突終了イベント（派生クラスでオーバーライド可能）
-        /// @param other 衝突相手のオブジェクト
-        virtual void OnCollisionExit(GameObject* other) { (void)other; }
+        /// @brief 衝突が継続している間、毎フレーム呼ばれるイベント
+        /// @param other 衝突相手のゲームオブジェクト
+        virtual void OnCollisionStay(GameObject* other);
 
-        /// @brief ワールド座標での位置を取得（Collider用）
-        virtual Vector3 GetWorldPosition() const { return transform_.GetWorldPosition(); }
+        /// @brief 衝突が終了したときに一度だけ呼ばれるイベント
+        /// @param other 衝突相手のゲームオブジェクト
+        virtual void OnCollisionExit(GameObject* other);
 
-        // === コライダー簡易設定API ===
+        /// @brief ワールド空間での位置を返す
+        /// @return コライダーシステムが参照する位置。
+        ///         ModelGameObject は transform_ の位置を返す。基底クラスは {} を返す。
+        virtual Vector3 GetWorldPosition() const;
 
-        /// @brief 球体コライダーを追加
-        /// @param radius 球の半径
-        /// @param layer コリジョンレイヤー（デフォルト: Default）
-        /// @return 追加されたコライダーへの参照（チェーン呼び出し用）
+        // ===== コライダー簡易設定 API =====
+
+        /// @brief 球体コライダーを生成してアタッチする
+        /// @param radius 球の半径（ワールド空間単位）
+        /// @param layer 衝突判定に使うレイヤー。デフォルトは CollisionLayer::Default。
+        /// @return アタッチされたコライダーへの参照（メソッドチェーン用）
         Collider& AddSphereCollider(float radius, CollisionLayer layer = CollisionLayer::Default);
 
-        /// @brief AABBコライダーを追加
-        /// @param size AABBのサイズ（幅, 高さ, 奥行き）
-        /// @param layer コリジョンレイヤー（デフォルト: Default）
-        /// @return 追加されたコライダーへの参照（チェーン呼び出し用）
+        /// @brief AABB コライダーを生成してアタッチする
+        /// @param size 各軸のサイズ（幅・高さ・奥行き）
+        /// @param layer 衝突判定に使うレイヤー。デフォルトは CollisionLayer::Default。
+        /// @return アタッチされたコライダーへの参照（メソッドチェーン用）
         Collider& AddAABBCollider(const Vector3& size, CollisionLayer layer = CollisionLayer::Default);
 
-        /// @brief コライダーを持っているか確認
-        /// @return コライダーを持っている場合 true
-        bool HasCollider() const { return collider_ != nullptr; }
+        /// @brief コライダーが設定されているか確認する
+        /// @return true: コライダーがアタッチ済み
+        bool HasCollider() const;
 
-        /// @brief コライダーを取得
-        /// @return コライダーへのポインタ（未設定の場合 nullptr）
-        Collider* GetCollider() { return collider_.get(); }
+        /// @brief アタッチされたコライダーへのポインタを返す
+        /// @return コライダーへのポインタ。未設定の場合は nullptr。
+        Collider* GetCollider();
 
-        /// @brief コライダーを取得（const版）
-        /// @return コライダーへのconstポインタ（未設定の場合 nullptr）
-        const Collider* GetCollider() const { return collider_.get(); }
+        /// @brief アタッチされたコライダーへの const ポインタを返す
+        /// @return コライダーへの const ポインタ。未設定の場合は nullptr。
+        const Collider* GetCollider() const;
 
-        /// @brief コライダーを削除
-        void RemoveCollider() { collider_.reset(); }
+        /// @brief コライダーを取り外して破棄する
+        void RemoveCollider();
 
-        /// @brief トランスフォームを取得
-        /// @return トランスフォームへの参照
-        WorldTransform& GetTransform() { return transform_; }
+        // ===== 名前 / シリアライズ =====
 
-        /// @brief トランスフォームを取得（const版）
-        /// @return トランスフォームへのconst参照
-        const WorldTransform& GetTransform() const { return transform_; }
+        /// @brief オブジェクト識別名を設定する
+        /// @param name ImGui 表示やシーン保存のキーとして使われる名前
+        void SetName(const std::string& name);
 
-        /// @brief モデルを取得
-        /// @return モデルへのポインタ（nullptrの場合はモデルを持たない）
-        Model* GetModel() { return model_.get(); }
+        /// @brief オブジェクト識別名を返す
+        /// @return SetName() で設定した名前。未設定なら空文字列。
+        const std::string& GetName() const;
 
-        /// @brief モデルを取得（const版）
-        /// @return モデルへのconstポインタ（nullptrの場合はモデルを持たない）
-        const Model* GetModel() const { return model_.get(); }
+        /// @brief オブジェクト種別名を返す
+        /// @return クラスを表す文字列リテラル。シリアライズキーや ImGui 表示に使う。
+        ///         派生クラスでオーバーライドして固有の名前を返すことを推奨する。
+        virtual const char* GetObjectName() const;
 
-        /// @brief オブジェクト名を設定
-        /// @param name 設定する名前
-        void SetName(const std::string& name) { name_ = name; }
+        /// @brief JSON シリアライズ対象かどうかを返す
+        /// @return true: シーン保存時にこのオブジェクトのデータが書き出される
+        bool IsSerializeEnabled() const;
 
-        /// @brief 設定されたオブジェクト名を取得
-        /// @return 設定された名前（空の場合はクラス名）
-        const std::string& GetName() const { return name_; }
+        /// @brief JSON シリアライズ対象かどうかを設定する
+        /// @param enable false にするとシーンデータへの保存・復元がスキップされる
+        void SetSerializeEnabled(bool enable);
 
-        /// @brief オブジェクト名を取得（派生クラスでオーバーライド推奨）
-        /// @return オブジェクト名（シリアライズキーとしても使用）
-        virtual const char* GetObjectName() const { return "GameObject"; }
+        // ===== スポーン =====
 
-        /// @brief JSON シリアライズ対象かどうかを取得
-        bool IsSerializeEnabled() const { return shouldSerialize_; }
-
-        /// @brief JSON シリアライズ対象かどうかを設定
-        void SetSerializeEnabled(bool enable) { shouldSerialize_ = enable; }
-
-        /// @brief 同じシーンに新しいオブジェクトをスポーン
-        /// @tparam T GameObject派生クラス
-        /// @param args コンストラクタ引数
-        /// @return 生成されたオブジェクトへのポインタ
-        /// @note GameObjectManager::AddObject() で登録済みのオブジェクトからのみ呼び出し可
+        /// @brief 同じシーンに新しいオブジェクトをスポーンする
+        /// @tparam T GameObject 派生クラス
+        /// @tparam Args T のコンストラクタ引数の型パック
+        /// @param args T のコンストラクタに転送する引数
+        /// @return 生成・登録されたオブジェクトへのポインタ（所有権は GameObjectManager が持つ）
+        /// @note GameObjectManager::AddObject() で登録済みのオブジェクトからのみ呼び出せる。
+        ///       Update() 中に呼んでも安全（pending キューに積まれ次フレームから有効になる）。
         template<typename T, typename... Args>
         T* Spawn(Args&&... args) {
             static_assert(std::is_base_of_v<GameObject, T>,
@@ -196,91 +217,68 @@ namespace CoreEngine
         }
 
 #ifdef _DEBUG
-        /// @brief ImGuiデバッグUI描画（基本パラメータ：Transform、Active）
-        /// @return ImGuiで変更があった場合 true
+        // ===== デバッグ UI =====
+
+        /// @brief ImGui デバッグ UI を描画する
+        /// @return 値の変更があった場合 true を返す
+        /// @note Active / Visible / AutoUpdate の各チェックボックスと
+        ///       DrawImGuiExtended() の呼び出しを行う。
+        ///       ModelGameObject はこれをオーバーライドして Transform / Material も表示する。
         virtual bool DrawImGui();
 
-        /// @brief ImGui拡張UI描画（派生クラスでオーバーライドして追加パラメータを表示）
-        /// @return ImGuiで変更があった場合 true
-        virtual bool DrawImGuiExtended() { return false; }
+        /// @brief 派生クラス固有の ImGui 拡張 UI を描画する
+        /// @return 値の変更があった場合 true を返す
+        /// @note DrawImGui() 内の末尾で自動的に呼ばれる。
+        ///       派生クラスでオーバーライドして固有のパラメータを追加表示する。
+        virtual bool DrawImGuiExtended();
 
-        /// @brief ImGui 編集コミット時コールバック型（Undo/Redo 用）
+        /// @brief ImGui 編集コミット時コールバックの型
+        /// @note 編集前のトランスフォームを引数として受け取り、Undo/Redo システムへ渡す。
         using EditCommitCallback = std::function<void(
-            GameObject*,
-            const Vector3& translateBefore, const Vector3& rotateBefore,
-            const Vector3& scaleBefore, bool activeBefore)>;
+            GameObject*            /* 対象オブジェクト */,
+            const Vector3&         /* 編集前の位置 */,
+            const Vector3&         /* 編集前の回転 */,
+            const Vector3&         /* 編集前のスケール */,
+            bool                   /* 編集前のアクティブ状態 */)>;
 
-        /// @brief ImGui 編集コミット時コールバックを設定（Undo/Redo 用）
-        void SetEditCommitCallback(EditCommitCallback cb) { onEditCommitted_ = std::move(cb); }
+        /// @brief 編集コミット時コールバックを設定する
+        /// @param cb SceneDebugEditor が設定する Undo/Redo 記録用コールバック
+        void SetEditCommitCallback(EditCommitCallback cb);
 
-        /// @brief 個別保存リクエストコールバック型
+        /// @brief 個別保存リクエストコールバックの型
         using SaveRequestCallback = std::function<void(GameObject*)>;
 
-        /// @brief 個別保存リクエストコールバックを設定
-        void SetSaveRequestCallback(SaveRequestCallback cb) { onSaveRequested_ = std::move(cb); }
+        /// @brief 個別保存リクエストコールバックを設定する
+        /// @param cb 「このオブジェクトのみ保存」ボタン押下時に呼ばれるコールバック
+        void SetSaveRequestCallback(SaveRequestCallback cb);
 #endif
 
     protected:
-        // === 共通描画リソース ===
+        std::unique_ptr<Collider> collider_;     ///< アタッチされたコライダー
+        std::string               name_;          ///< オブジェクト識別名
 
-        /// @brief 3Dモデル
-        std::unique_ptr<Model> model_;
+        bool isActive_         = true;   ///< アクティブ状態（false: 更新・描画ともにスキップ）
+        bool isVisible_        = true;   ///< 表示状態（false: 描画スキップ・更新継続）
+        bool markedForDestroy_ = false;  ///< 削除マーク（true: フレーム末に破棄）
+        bool autoUpdate_       = true;   ///< 自動更新フラグ（false: 手動 Update 呼び出しが必要）
+        bool shouldSerialize_  = true;   ///< JSON シリアライズ対象フラグ
 
-        /// @brief ワールドトランスフォーム（位置・回転・スケール）
-        WorldTransform transform_;
+        std::optional<int> renderOrder_;  ///< 描画順序オーバーライド（nullopt: パス優先度に従う）
 
-        /// @brief テクスチャハンドル
-        TextureManager::LoadedTexture texture_;
+#ifdef _DEBUG
+        EditCommitCallback  onEditCommitted_;   ///< Undo/Redo 記録用コールバック
+        SaveRequestCallback onSaveRequested_;   ///< 個別保存ボタン用コールバック
 
-        /// @brief コライダー（オブジェクトが所有）
-        std::unique_ptr<Collider> collider_;
-
-        /// @brief オブジェクト名（ImGui表示用）
-        std::string name_;
-
-        /// @brief アクティブ状態フラグ
-        bool isActive_ = true;
-
-        /// @brief 表示状態フラグ（falseにすると描画のみスキップ、Active=falseとは異なり更新は継続）
-        bool isVisible_ = true;
-
-        /// @brief 削除マークフラグ（フレーム終了時に自動削除される）
-        bool markedForDestroy_ = false;
-
-        /// @brief 自動更新フラグ（true: GameObjectManagerが自動で更新、false: 手動更新）
-        bool autoUpdate_ = true;
-
-        /// @brief 描画順序オーバーライド（未設定の場合は RenderPassType の優先度を使用）
-        std::optional<int> renderOrder_;
-
-        /// @brief JSON シリアライズ対象フラグ（falseにするとシーンデータに保存されない）
-        bool shouldSerialize_ = true;
-
-    #ifdef _DEBUG
-        // ImGui 編集追跡用（操作前スナップショット）
-        Vector3 imguiSnapTranslate_ = { 0.0f, 0.0f, 0.0f };
-        Vector3 imguiSnapRotate_    = { 0.0f, 0.0f, 0.0f };
-        Vector3 imguiSnapScale_     = { 1.0f, 1.0f, 1.0f };
-        bool    imguiSnapActive_    = true;
-        EditCommitCallback onEditCommitted_;
-        SaveRequestCallback onSaveRequested_;
-
-        /// @brief マテリアルデバッグUI（モデルを持つオブジェクト共通）
-        std::unique_ptr<MaterialDebugUI> materialDebugUI_;
-
-        /// @brief 個別保存ボタンを描画するヘルパー（DrawImGui 内で使用）
+        /// @brief 「このオブジェクトのみ保存」ボタンを ImGui に描画する
+        /// @note shouldSerialize_ が false または name_ が空の場合は何も描画しない。
+        ///       DrawImGui() / ModelGameObject::DrawImGui() の末尾から呼ばれる。
         void DrawSaveButton();
-
-        /// @brief マテリアルUIを描画するヘルパー（モデルがある場合のみ）
-        /// @return 変更があった場合 true
-        bool DrawMaterialImGui();
 #endif
 
     private:
-        /// @brief このオブジェクトを管理するスポーナー（AddObject時にGameObjectManagerが設定）
-        IObjectSpawner* spawner_ = nullptr;
+        IObjectSpawner* spawner_ = nullptr;  ///< AddObject 時に GameObjectManager が注入するスポーナー
 
-        /// @brief GameObjectManager が spawner_ を設定できるようにする
-        friend class GameObjectManager;
+        friend class GameObjectManager;  ///< spawner_ への書き込みを許可
     };
 }
+

@@ -1,11 +1,11 @@
 #include "SceneSerializer.h"
-#include "ObjectCommon/GameObject.h"
+#include "ObjectCommon/Model/ModelGameObject.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
 #include "WorldTransform/WorldTransform.h"
 
 namespace CoreEngine
 {
-    void SceneSerializer::SaveObject(const GameObject* obj, json& j)
+    void SceneSerializer::SaveObject(const ModelGameObject* obj, json& j)
     {
         if (!obj) return;
 
@@ -13,11 +13,11 @@ namespace CoreEngine
 
         const WorldTransform& t = obj->GetTransform();
         j["transform"]["translate"] = JsonManager::Vector3ToJson(t.translate);
-        j["transform"]["rotate"] = JsonManager::Vector3ToJson(t.rotate);
-        j["transform"]["scale"] = JsonManager::Vector3ToJson(t.scale);
+        j["transform"]["rotate"]    = JsonManager::Vector3ToJson(t.rotate);
+        j["transform"]["scale"]     = JsonManager::Vector3ToJson(t.scale);
     }
 
-    void SceneSerializer::LoadObject(GameObject* obj, const json& j)
+    void SceneSerializer::LoadObject(ModelGameObject* obj, const json& j)
     {
         if (!obj) return;
 
@@ -29,8 +29,8 @@ namespace CoreEngine
             const json& t = j["transform"];
             WorldTransform& transform = obj->GetTransform();
             transform.translate = JsonManager::SafeGetVector3(t, "translate", transform.translate);
-            transform.rotate = JsonManager::SafeGetVector3(t, "rotate", transform.rotate);
-            transform.scale = JsonManager::SafeGetVector3(t, "scale", transform.scale);
+            transform.rotate    = JsonManager::SafeGetVector3(t, "rotate",    transform.rotate);
+            transform.scale     = JsonManager::SafeGetVector3(t, "scale",     transform.scale);
         }
     }
 

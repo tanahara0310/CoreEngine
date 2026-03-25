@@ -3,7 +3,7 @@
 #include "UndoRedoHistory.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/Sprite/SpriteObject.h"
+#include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
 
 namespace CoreEngine
 {
@@ -75,16 +75,11 @@ namespace CoreEngine
 
         for (const auto& obj : manager->GetAllObjects()) {
             if (obj && obj->GetName() == name) {
-                // SpriteObject の場合は独自トランスフォームに適用
-                auto* spriteObj = dynamic_cast<SpriteObject*>(obj.get());
-                if (spriteObj) {
-                    spriteObj->GetSpriteTransform().translate = translate;
-                    spriteObj->GetSpriteTransform().rotate    = rotate;
-                    spriteObj->GetSpriteTransform().scale     = scale;
-                } else {
-                    obj->GetTransform().translate = translate;
-                    obj->GetTransform().rotate    = rotate;
-                    obj->GetTransform().scale     = scale;
+                DebugAccess::TransformAccess access;
+                if (DebugAccess::TryGetTransformAccess(obj.get(), access)) {
+                    *access.translate = translate;
+                    *access.rotate = rotate;
+                    *access.scale = scale;
                 }
                 obj->SetActive(active);
                 break;
