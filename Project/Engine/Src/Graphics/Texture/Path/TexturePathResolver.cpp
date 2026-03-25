@@ -1,4 +1,4 @@
-﻿#include "TexturePathResolver.h"
+#include "TexturePathResolver.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
 
@@ -14,8 +14,8 @@ namespace CoreEngine
         std::string assetPath = assetDB.FindAssetPath(filePath);
         if (!assetPath.empty()) {
             if (writeLog) {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
-                    std::format("AssetDatabase resolved '{}' to '{}'", filePath, assetPath));
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", 
+                    std::format("  Resolved: '{}' -> '{}'", filePath, assetPath));
             }
             return assetPath;
         }

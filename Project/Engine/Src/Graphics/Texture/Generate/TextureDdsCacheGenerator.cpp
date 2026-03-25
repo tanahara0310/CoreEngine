@@ -17,7 +17,7 @@ namespace CoreEngine
             HRESULT hr = TextureImageProcessor::LoadTextureImage(sourcePathW, sourceImage);
 
             if (FAILED(hr)) {
-                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "Failed to load source for DDS generation: {}", sourcePath);
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to load source for DDS generation: {}", sourcePath);
                 return false;
             }
 
@@ -25,7 +25,7 @@ namespace CoreEngine
             DirectX::ScratchImage mipChain;
             hr = TextureImageProcessor::BuildMipChain(sourceImage, mipChain);
             if (FAILED(hr)) {
-                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "Failed to generate mipmaps for DDS: {}", sourcePath);
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to generate mipmaps for DDS: {}", sourcePath);
                 mipChain = std::move(sourceImage);
             }
 
@@ -44,7 +44,7 @@ namespace CoreEngine
             if (SUCCEEDED(hr)) {
                 imageToSave = &compressedImage;
             } else {
-                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "Failed to compress texture, saving uncompressed DDS: {}", sourcePath);
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to compress texture, saving uncompressed DDS: {}", sourcePath);
             }
 
             // 最終的にDDSとして保存し、結果をログに出力する。
@@ -57,15 +57,15 @@ namespace CoreEngine
                 ddsPathW.c_str());
 
             if (SUCCEEDED(hr)) {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "DDS cache generated: {}", ddsPath);
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "  DDS cache generated: {}", ddsPath);
                 return true;
             }
 
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "Failed to save DDS cache: {}", ddsPath);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to save DDS cache: {}", ddsPath);
             return false;
         }
         catch (const std::exception& e) {
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "Exception during DDS generation: {}", e.what());
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Exception during DDS generation: {}", e.what());
             return false;
         }
     }

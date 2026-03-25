@@ -1,4 +1,4 @@
-﻿#include "TextureManager.h"
+#include "TextureManager.h"
 #include "Cache/TextureCacheStore.h"
 #include "Load/TextureLoadPlan.h"
 #include "Generate/TextureCubemapGenerator.h"
@@ -55,6 +55,7 @@ namespace CoreEngine
     // テクスチャの読み込み
     TextureManager::LoadedTexture TextureManager::Load(const std::string& filePath)
     {
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", "--------------------------------------------");
         // 入力パスを実体パスに解決し、キャッシュ検索キーとして扱う。
         std::string resolvedPath = texturePathResolver_.ResolveAssetPath(filePath, true);
         std::string cacheKey = resolvedPath;
@@ -62,14 +63,14 @@ namespace CoreEngine
         // キャッシュヒット時は即時返却し、重い処理を回避する。
         LoadedTexture cachedTexture{};
         if (cacheStore_->TryGetTexture(cacheKey, cachedTexture)) {
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Texture already loaded (cache hit): {}", cacheKey));
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("  Cache hit: {}", cacheKey));
             return cachedTexture;
         }
 
         // 同一キーの重複ロードを避けるため、ロード権を獲得できるまで待機する。
         while (true) {
             if (cacheStore_->TryGetTexture(cacheKey, cachedTexture)) {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Texture loaded by another thread: {}", cacheKey));
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("  Loaded by another thread: {}", cacheKey));
                 return cachedTexture;
             }
 
@@ -96,7 +97,7 @@ namespace CoreEngine
         assert(dxCommon != nullptr);
 
         // ロード開始ログ
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Loading texture: {}", resolvedPath));
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Loading texture: {}", resolvedPath));
 
         // 読み込み対象の実パスを事前に計画し、変換やキャッシュ判定を一箇所に集約する。
         TextureLoadPlan::PlanResult loadPlan = textureLoadPlan_.BuildPlan(
