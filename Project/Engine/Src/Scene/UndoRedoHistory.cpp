@@ -3,7 +3,7 @@
 #include "UndoRedoHistory.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/SpriteObject.h"
+#include "ObjectCommon/Sprite/SpriteObject.h"
 
 namespace CoreEngine
 {

@@ -1,29 +1,12 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
+#include "ObjectCommon/Model/ModelGameObject.h"
 
 /// @brief Sphereモデルオブジェクト
-    class SphereObject : public CoreEngine::GameObject {
+    class SphereObject : public CoreEngine::ModelGameObject {
     public:
-        /// @brief 初期化処理
-        /// @param engine エンジンシステムへのポインタ
-        void Initialize();
-
-        /// @brief 更新処理
-        void Update() override;
-
-        /// @brief 描画処理
-        /// @param camera カメラ
-        void Draw(const CoreEngine::ICamera* camera) override;
-
         /// @brief オブジェクト名を取得
         const char* GetObjectName() const override { return "Sphere"; }
-
-
-        CoreEngine::WorldTransform& GetTransform() { return transform_; }
-
-        /// @brief モデルを取得
-        CoreEngine::Model* GetModel() { return model_.get(); }
 
         /// @brief デフォルトカラーを設定（衝突終了時に復帰するカラー）
         /// @param color カラー（RGBA）
@@ -41,6 +24,10 @@
 
         /// @brief 衝突終了イベント
         void OnCollisionExit(GameObject* other) override;
+
+    protected:
+        std::string GetModelPath() const override { return "SampleAssets/Sphere/sphere.obj"; }
+        std::string GetTexturePath() const override { return "white1x1.png"; }
 
 
     private:

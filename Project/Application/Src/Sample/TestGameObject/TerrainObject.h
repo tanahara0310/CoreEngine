@@ -1,28 +1,16 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
+#include "ObjectCommon/Model/ModelGameObject.h"
 
 /// @brief Terrainモデルオブジェクト
-class TerrainObject : public CoreEngine::GameObject {
+class TerrainObject : public CoreEngine::ModelGameObject {
 public:
-    /// @brief 初期化処理
-    /// @param engine エンジンシステムへのポインタ
-    void Initialize();
-
-    /// @brief 更新処理
-    void Update() override;
-
-    /// @brief 描画処理
-    /// @param camera カメラ
-    void Draw(const CoreEngine::ICamera* camera) override;
-
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "Terrain"; }
 
-    /// @brief トランスフォームを取得
-    CoreEngine::WorldTransform& GetTransform() { return transform_; }
-
-    /// @brief モデルを取得
-    CoreEngine::Model* GetModel() { return model_.get(); }
+protected:
+    std::string GetModelPath() const override { return "SampleAssets/terrain/terrain.obj"; }
+    std::string GetTexturePath() const override { return "SampleAssets/terrain/grass.png"; }
+    void OnInitialize() override;
 };
 

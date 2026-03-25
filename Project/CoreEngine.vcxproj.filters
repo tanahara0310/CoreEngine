@@ -299,7 +299,7 @@
     <ClCompile Include="Engine\Src\Camera\Camera2D.cpp">
       <Filter>Engine\Camera</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\ObjectCommon\SpriteObject.cpp">
+    <ClCompile Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.cpp">
       <Filter>Engine\ObjectCommon</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.cpp">
@@ -444,6 +444,8 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
+    <ClCompile Include="Engine\Src\ObjectCommon\Model\ModelGameObject.cpp" />
+    <ClCompile Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1127,7 +1129,7 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.h">
       <Filter>Engine\Graphics\Render\Particle</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\ObjectCommon\SpriteObject.h">
+    <ClInclude Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.h">
       <Filter>Engine\ObjectCommon</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.h">
@@ -1305,6 +1307,9 @@
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h" />
+    <ClInclude Include="Engine\Src\ObjectCommon\IObjectSpawner.h" />
+    <ClInclude Include="Engine\Src\ObjectCommon\Model\ModelGameObject.h" />
+    <ClInclude Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

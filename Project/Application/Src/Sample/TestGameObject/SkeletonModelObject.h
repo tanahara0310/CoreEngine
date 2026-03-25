@@ -1,36 +1,19 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
-#include "Graphics/Model/Skeleton/SkeletonAnimator.h"
-#include <memory>
+#include "ObjectCommon/Model/AnimatedModelObject.h"
 
 /// @brief Skeletonモデルオブジェクト
-class SkeletonModelObject : public CoreEngine::GameObject {
+class SkeletonModelObject : public CoreEngine::AnimatedModelObject {
 public:
-    /// @brief 初期化処理
-    void Initialize();
-
-    /// @brief 更新処理
-    void Update() override;
-
-    /// @brief 描画処理
-    /// @param camera カメラ
-    void Draw(const CoreEngine::ICamera* camera) override;
-
-    /// @brief 描画パスタイプを取得（スキニングモデル用）
-    /// @return 描画パスタイプ
-    CoreEngine::RenderPassType GetRenderPassType() const override { return CoreEngine::RenderPassType::SkinnedModel; }
-
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "SkeletonModel"; }
 
-    /// @brief トランスフォームを取得
-    CoreEngine::WorldTransform& GetTransform() { return transform_; }
-
-    /// @brief モデルを取得
-    CoreEngine::Model* GetModel() { return model_.get(); }
+protected:
+    std::string GetModelPath() const override { return "simpleSkin.gltf"; }
+    std::string GetAnimationName() const override { return "simpleSkinAnimation"; }
+    std::string GetTexturePath() const override { return "uvChecker.png"; }
+    void OnInitialize() override;
 
 private:
-    CoreEngine::TextureManager::LoadedTexture uvCheckerTexture_;
 };
 
