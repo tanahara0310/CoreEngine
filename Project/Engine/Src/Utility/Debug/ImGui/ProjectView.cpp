@@ -1,10 +1,12 @@
-﻿#include "ProjectView.h"
+#include "ProjectView.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
 
 #include <imgui.h>
 #include <algorithm>
+#include <Windows.h>
+#include <shellapi.h>
 
 namespace CoreEngine
 {
@@ -20,6 +22,8 @@ namespace CoreEngine
 
         // デフォルトアイコンを読み込み
         LoadDefaultIcon();
+
+        currentEntries_ = GetCurrentDirectoryContents();
     }
 
     void ProjectView::Update()
@@ -49,11 +53,8 @@ namespace CoreEngine
             // 右側のグリッドビュー
             ImGui::BeginChild("RightPanel", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
             {
-                // 現在のディレクトリの内容を取得
-                auto entries = GetCurrentDirectoryContents();
-
-                // グリッドレイアウトで表示
-                DrawGridLayout(entries);
+                currentEntries_ = GetCurrentDirectoryContents();
+                DrawGridLayout(currentEntries_);
             }
             ImGui::EndChild();
         }
@@ -120,10 +121,13 @@ namespace CoreEngine
 
     void ProjectView::NavigateToDirectory(const std::filesystem::path& path)
     {
-        if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
-            currentPath_ = path;
-            selectedIndex_ = -1;
+        if (!std::filesystem::exists(path) || !std::filesystem::is_directory(path) || path == currentPath_) {
+            return;
         }
+
+        currentPath_ = path;
+        currentEntries_ = GetCurrentDirectoryContents();
+        selectedIndex_ = -1;
     }
 
     void ProjectView::NavigateUp()
@@ -132,14 +136,12 @@ namespace CoreEngine
 
         // 両アセットルートからは仮想ルートに戻る
         if (currentPath_ == appAssetsPath_ || currentPath_ == engineAssetsPath_) {
-            currentPath_ = rootPath_;
-            selectedIndex_ = -1;
+            NavigateToDirectory(rootPath_);
             return;
         }
 
         if (currentPath_.has_parent_path()) {
-            currentPath_ = currentPath_.parent_path();
-            selectedIndex_ = -1;
+            NavigateToDirectory(currentPath_.parent_path());
         }
     }
 
@@ -236,8 +238,7 @@ namespace CoreEngine
                     if (entry.isDirectory) {
                         NavigateToDirectory(entry.path);
                     } else {
-                        // ファイルの場合は将来的に開く処理を実装
-                        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", "File selected: " + entry.name);
+                        OpenFile(entry.path);
                     }
 
                     lastClickedIndex_ = -1;
@@ -388,40 +389,149 @@ namespace CoreEngine
         }
     }
 
-    void ProjectView::DrawFolderTree(const std::filesystem::path& path)
+    void ProjectView::DrawFolderTree(const std::filesystem::path& path, int depth)
     {
-        // 仮想ルート：Application と Engine の両ノードを表示
-        if (path == rootPath_) {
-            auto drawRootNode = [&](const std::filesystem::path& assetPath, const std::string& label) {
-                if (!std::filesystem::exists(assetPath)) return;
+        const ImU32 treeLineColor = ImGui::GetColorU32(ImVec4(0.40f, 0.40f, 0.40f, 1.0f));
 
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-                if (assetPath == currentPath_) {
-                    flags |= ImGuiTreeNodeFlags_Selected;
-                }
-                // 現在位置がこのツリー配下なら自動展開
-                auto rel = std::filesystem::relative(currentPath_, assetPath);
-                if (!rel.empty() && rel.native()[0] != '.') {
-                    flags |= ImGuiTreeNodeFlags_DefaultOpen;
-                }
+        auto updateExpandAlpha = [this](const std::filesystem::path& nodePath) {
+            std::string key = nodePath.generic_string();
 
-                bool nodeOpen = ImGui::TreeNodeEx(label.c_str(), flags);
-                if (ImGui::IsItemClicked()) {
-                    NavigateToDirectory(assetPath);
-                }
-                if (nodeOpen) {
-                    DrawFolderTree(assetPath);
-                    ImGui::TreePop();
-                }
-            };
+            auto it = treeExpandAnimTime_.find(key);
+            if (it == treeExpandAnimTime_.end()) {
+                return 1.0f;
+            }
 
-            drawRootNode(appAssetsPath_, "Application");
-            drawRootNode(engineAssetsPath_, "Engine");
-            return;
-        }
+            it->second += ImGui::GetIO().DeltaTime;
+            float duration = (treeExpandAnimDuration_ > 0.0f) ? treeExpandAnimDuration_ : 0.01f;
+            float t = std::clamp(it->second / duration, 0.0f, 1.0f);
+            float eased = t * t * (3.0f - 2.0f * t);
+
+            bool opening = true;
+            auto dirIt = treeExpandAnimOpening_.find(key);
+            if (dirIt != treeExpandAnimOpening_.end()) {
+                opening = dirIt->second;
+            }
+
+            float alpha = opening ? eased : (1.0f - eased);
+            if (t >= 1.0f) {
+                treeExpandAnimTime_.erase(it);
+                treeExpandAnimOpening_.erase(key);
+                if (!opening) {
+                    treePendingClose_.erase(key);
+                    treeCloseCommit_[key] = true;
+                    return 0.0f;
+                }
+                return 1.0f;
+            }
+
+            return alpha;
+        };
+
+        auto hasSubdirectories = [](const std::filesystem::path& dirPath) {
+            for (const auto& subEntry : std::filesystem::directory_iterator(dirPath)) {
+                if (subEntry.is_directory()) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        auto isUnderPath = [](const std::filesystem::path& child, const std::filesystem::path& parent) {
+            auto rel = std::filesystem::relative(child, parent);
+            return !rel.empty() && rel.native()[0] != '.';
+        };
+
+        auto drawFolderNode = [&](const std::filesystem::path& nodePath, const std::string& nodeLabel, bool defaultOpen) {
+            bool hasChildren = hasSubdirectories(nodePath);
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+            if (nodePath == currentPath_) {
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
+            if (defaultOpen) {
+                flags |= ImGuiTreeNodeFlags_DefaultOpen;
+            }
+            if (!hasChildren) {
+                flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+            }
+
+            std::string nodeKey = nodePath.generic_string();
+            auto closeCommitIt = treeCloseCommit_.find(nodeKey);
+            if (closeCommitIt != treeCloseCommit_.end() && closeCommitIt->second) {
+                ImGui::SetNextItemOpen(false, ImGuiCond_Always);
+                treeCloseCommit_.erase(closeCommitIt);
+            } else {
+                auto pendingIt = treePendingClose_.find(nodeKey);
+                if (pendingIt != treePendingClose_.end() && pendingIt->second) {
+                    ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+                }
+            }
+
+            ImVec2 cursorBeforeNode = ImGui::GetCursorScreenPos();
+            bool nodeOpenRaw = ImGui::TreeNodeEx(nodeLabel.c_str(), flags);
+
+            if (depth > 0) {
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                ImVec2 itemMin = ImGui::GetItemRectMin();
+                ImVec2 itemMax = ImGui::GetItemRectMax();
+                float centerY = (itemMin.y + itemMax.y) * 0.5f;
+                float indentSpacing = ImGui::GetStyle().IndentSpacing;
+                float branchX = cursorBeforeNode.x - indentSpacing * 0.5f;
+                float textStartX = itemMin.x - 4.0f;
+                drawList->AddLine(ImVec2(branchX, centerY), ImVec2(textStartX, centerY), treeLineColor, 1.0f);
+            }
+            if (ImGui::IsItemToggledOpen()) {
+                treeExpandAnimTime_[nodeKey] = 0.0f;
+                treeExpandAnimOpening_[nodeKey] = nodeOpenRaw;
+                treeCloseCommit_.erase(nodeKey);
+                if (!nodeOpenRaw && hasChildren) {
+                    treePendingClose_[nodeKey] = true;
+                } else {
+                    treePendingClose_.erase(nodeKey);
+                }
+            }
+
+            if (ImGui::IsItemClicked()) {
+                NavigateToDirectory(nodePath);
+            }
+
+            bool pendingClose = false;
+            auto pendingIt = treePendingClose_.find(nodeKey);
+            if (pendingIt != treePendingClose_.end()) {
+                pendingClose = pendingIt->second;
+            }
+
+            bool showChildren = hasChildren && (nodeOpenRaw || pendingClose);
+            if (!showChildren) {
+                return;
+            }
+
+            float childrenAlpha = updateExpandAlpha(nodePath);
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * childrenAlpha);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() - (1.0f - childrenAlpha) * ImGui::GetTextLineHeightWithSpacing());
+
+            if (nodeOpenRaw) {
+                DrawFolderTree(nodePath, depth + 1);
+                ImGui::TreePop();
+            } else {
+                ImGui::Indent();
+                DrawFolderTree(nodePath, depth + 1);
+                ImGui::Unindent();
+            }
+
+            ImGui::PopStyleVar();
+        };
 
         try {
-            // ディレクトリのみを取得してソート
+            if (path == rootPath_) {
+                if (std::filesystem::exists(appAssetsPath_)) {
+                    drawFolderNode(appAssetsPath_, "Application", isUnderPath(currentPath_, appAssetsPath_));
+                }
+                if (std::filesystem::exists(engineAssetsPath_)) {
+                    drawFolderNode(engineAssetsPath_, "Engine", isUnderPath(currentPath_, engineAssetsPath_));
+                }
+                return;
+            }
+
             std::vector<std::filesystem::path> directories;
             for (const auto& entry : std::filesystem::directory_iterator(path)) {
                 if (entry.is_directory()) {
@@ -433,45 +543,39 @@ namespace CoreEngine
                 return a.filename().string() < b.filename().string();
                 });
 
-            // 各ディレクトリをツリーノードとして表示
+            bool hasVerticalLineRange = false;
+            float verticalLineX = 0.0f;
+            float verticalLineMinY = 0.0f;
+            float verticalLineMaxY = 0.0f;
+            float indentSpacing = ImGui::GetStyle().IndentSpacing;
+
             for (const auto& dir : directories) {
-                std::string folderName = dir.filename().string();
+                ImVec2 nodePosBefore = ImGui::GetCursorScreenPos();
+                drawFolderNode(dir, dir.filename().string(), false);
 
-                // ツリーノードのフラグ
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+                if (depth > 0) {
+                    ImVec2 itemMin = ImGui::GetItemRectMin();
+                    ImVec2 itemMax = ImGui::GetItemRectMax();
+                    float branchX = nodePosBefore.x - indentSpacing * 0.5f;
 
-                // 現在のパスと一致する場合は選択状態にする
-                if (dir == currentPath_) {
-                    flags |= ImGuiTreeNodeFlags_Selected;
-                }
-
-                // サブディレクトリがあるかチェック
-                bool hasSubdirectories = false;
-                for (const auto& subEntry : std::filesystem::directory_iterator(dir)) {
-                    if (subEntry.is_directory()) {
-                        hasSubdirectories = true;
-                        break;
+                    if (!hasVerticalLineRange) {
+                        hasVerticalLineRange = true;
+                        verticalLineX = branchX;
+                        verticalLineMinY = itemMin.y;
+                        verticalLineMaxY = itemMax.y;
+                    } else {
+                        verticalLineMinY = (std::min)(verticalLineMinY, itemMin.y);
+                        verticalLineMaxY = (std::max)(verticalLineMaxY, itemMax.y);
                     }
                 }
+            }
 
-                // サブディレクトリがない場合はリーフノードとして表示
-                if (!hasSubdirectories) {
-                    flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                }
-
-                // ツリーノードを描画
-                bool nodeOpen = ImGui::TreeNodeEx(folderName.c_str(), flags);
-
-                // クリックされた場合、そのディレクトリに移動
-                if (ImGui::IsItemClicked()) {
-                    NavigateToDirectory(dir);
-                }
-
-                // ノードが開かれていて、サブディレクトリがある場合は再帰的に描画
-                if (nodeOpen && hasSubdirectories) {
-                    DrawFolderTree(dir);
-                    ImGui::TreePop();
-                }
+            if (hasVerticalLineRange) {
+                ImGui::GetWindowDrawList()->AddLine(
+                    ImVec2(verticalLineX, verticalLineMinY),
+                    ImVec2(verticalLineX, verticalLineMaxY),
+                    treeLineColor,
+                    1.0f);
             }
         }
         catch (const std::exception& e) {
@@ -518,6 +622,18 @@ namespace CoreEngine
             if (ImGui::Button(buttonLabel.c_str())) {
                 NavigateToDirectory(currentDir);
             }
+        }
+    }
+
+    void ProjectView::OpenFile(const std::filesystem::path& filePath)
+    {
+        if (!std::filesystem::exists(filePath)) {
+            return;
+        }
+
+        HINSTANCE result = ::ShellExecuteW(nullptr, L"open", filePath.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        if (reinterpret_cast<INT_PTR>(result) <= 32) {
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to open file: " + filePath.string());
         }
     }
 

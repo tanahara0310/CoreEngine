@@ -77,7 +77,8 @@ struct PNGPreviewInfo {
 
     /// @brief フォルダツリーを再帰的に描画
     /// @param path 描画するフォルダのパス
-    void DrawFolderTree(const std::filesystem::path& path);
+    /// @param depth ツリー深さ
+    void DrawFolderTree(const std::filesystem::path& path, int depth = 0);
 
     /// @brief パンくずリスト（ブレッドクラム）を描画
     void DrawBreadcrumb();
@@ -86,6 +87,10 @@ struct PNGPreviewInfo {
     /// @param fullPath フルパス
     /// @return ルートからの相対パス
     std::string GetRelativePath(const std::filesystem::path& fullPath);
+
+    /// @brief ファイルを関連付けアプリで開く
+    /// @param filePath 対象ファイルパス
+    void OpenFile(const std::filesystem::path& filePath);
 
 private:
     DirectXCommon* dxCommon_ = nullptr;     // DirectX共通クラスへのポインタ
@@ -120,6 +125,16 @@ private:
     int selectedIndex_ = -1;                // 選択中のインデックス
     double lastClickTime_ = 0.0;            // 最後のクリック時刻
     int lastClickedIndex_ = -1;             // 最後にクリックされたインデックス
+
+    // 右ペイン表示データ
+    std::vector<Entry> currentEntries_;
+
+    // 左ツリー展開アニメーション
+    std::unordered_map<std::string, float> treeExpandAnimTime_;
+    std::unordered_map<std::string, bool> treeExpandAnimOpening_;
+    std::unordered_map<std::string, bool> treePendingClose_;
+    std::unordered_map<std::string, bool> treeCloseCommit_;
+    float treeExpandAnimDuration_ = 0.16f;
     
     // PNGプレビューキャッシュ
     std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12Resource>> pngPreviewCache_;
