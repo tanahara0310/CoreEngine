@@ -768,6 +768,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Application\Assets\SampleAssets\PblTestModel\ABeautifulGame.bin" />
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
     <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
+    <None Include="Engine\Src\ObjectCommon\README.md" />
     <None Include="Script\convert-tabs-to-spaces.ps1" />
     <None Include="docs\BulletHitParticle_Implementation.md" />
     <None Include="docs\LineRenderer_Refactoring.md" />

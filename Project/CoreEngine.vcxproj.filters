@@ -1355,6 +1355,7 @@
     <None Include="Application\Assets\SampleAssets\PblTestModel\ABeautifulGame.bin" />
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
     <None Include=".github\copilot-instructions.md" />
+    <None Include="Engine\Src\ObjectCommon\README.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">
