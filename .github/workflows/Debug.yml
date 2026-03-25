@@ -17,13 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # C++ BuildTools（v145含む可能性あり）をインストール
-      - name: Install VS BuildTools
-        run: |
-          choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --quiet --norestart"
+      - name: Add MSBuild to Path
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
 
-
-      # MSBuildをフルパス指定で実行
       - name: Build
         run: |
-           & "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe" ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}}
+         msbuild ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}}
