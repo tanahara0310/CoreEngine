@@ -64,7 +64,8 @@ void AnimatedCubeObject::Draw(const CoreEngine::ICamera* camera) {
 
 #ifdef _DEBUG
 bool AnimatedCubeObject::DrawImGuiExtended() {
-    bool changed = false;
+    // Transform + Material は基底クラスが担当する
+    bool changed = ModelGameObject::DrawImGuiExtended();
 
     // アニメーション制御（拡張部分）
     if (model_ && model_->HasAnimationController()) {

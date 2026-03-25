@@ -55,9 +55,15 @@ namespace CoreEngine {
         /// @brief ワールド座標での位置を取得
         Vector3 GetWorldPosition() const override { return transform_.GetWorldPosition(); }
 
+        /// @brief Transform + active を JSON に書き出す
+        json OnSerialize() const override;
+
+        /// @brief JSON から Transform + active を復元する
+        void OnDeserialize(const json& j) override;
+
 #ifdef _DEBUG
-        /// @brief ImGuiデバッグUI描画（Transform + Material + Active）
-        bool DrawImGui() override;
+        /// @brief Transform + Material の ImGui UI を描画する（基底の DrawImGui から自動呼出し）
+        bool DrawImGuiExtended() override;
 #endif
 
     protected:
@@ -102,6 +108,9 @@ namespace CoreEngine {
 
         /// @brief マテリアルUIを描画するヘルパー
         bool DrawMaterialImGui();
+
+        /// @brief Active 変更時に Undo/Redo コールバックを発火する
+        void OnImGuiActiveChanged(bool prevActive) override;
 #endif
     };
 

@@ -106,7 +106,7 @@ namespace CoreEngine
         }
 #endif // _DEBUG
 
-        GameObject::Initialize(this);
+        GameObject::SetEngine(this);
 
         // デフォルトレンダーパイプラインの構築
         BuildDefaultRenderPipeline();

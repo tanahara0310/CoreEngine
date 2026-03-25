@@ -400,7 +400,6 @@
     <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.cpp" />
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp" />
-    <ClCompile Include="Engine\Src\Scene\SceneSerializer.cpp" />
     <ClCompile Include="Engine\Src\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneDebugEditor.cpp" />
@@ -1239,7 +1238,6 @@
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h" />
-    <ClInclude Include="Engine\Src\Scene\SceneSerializer.h" />
     <ClInclude Include="Engine\Src\Scene\UndoRedoHistory.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneDebugEditor.h" />

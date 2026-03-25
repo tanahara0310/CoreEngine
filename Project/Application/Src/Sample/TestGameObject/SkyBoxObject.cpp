@@ -6,7 +6,7 @@
 #include "Graphics/Material/SkyBoxMaterialInstance.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
-#include "Math/Vector/Vector4.h"
+#include "Math/MathCore.h"
 #include "externals/imgui/imgui.h"
 #include <cassert>
 #include "EngineSystem/EngineSystem.h"
@@ -26,11 +26,11 @@ struct SkyBoxVertex {
     Vector4 position; // Vector3からVector4に変更
 };
 
-void SkyBoxObject::OnInitialize() {
+void SkyBoxObject::Initialize() {
 
     // トランスフォーム初期化
-    transform_.scale = { 1.0f, 1.0f, 1.0f };
-    transform_.rotate = { 0.0f, 0.0f, 0.0f };
+    transform_.scale     = { 1.0f, 1.0f, 1.0f };
+    transform_.rotate    = { 0.0f, 0.0f, 0.0f };
     transform_.translate = { 0.0f, 0.0f, 0.0f };
 
     // 頂点データ生成
@@ -46,6 +46,8 @@ void SkyBoxObject::OnInitialize() {
     // トランスフォーム用定数バッファ生成
     CreateTransformBuffer();
 
+    // SkyBox はシーン JSON のシリアライズ対象外（テクスチャ・回転はコードで制御）
+    SetSerializeEnabled(false);
 }
 
 void SkyBoxObject::CreateBoxVertices() {
@@ -152,7 +154,8 @@ void SkyBoxObject::CreateBoxVertices() {
     indexBuffer_->Unmap(0, nullptr);
 }
 
-void SkyBoxObject::OnUpdate() {
+void SkyBoxObject::Update() {
+    if (!IsActive()) return;
     // スカイボックスのXYZ回転をIBL回転としてシーン全体へ伝播
     auto engine = GetEngineSystem();
     if (auto* renderManager = engine->GetComponent<RenderManager>()) {
@@ -238,9 +241,14 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
 bool SkyBoxObject::DrawImGuiExtended() {
     bool changed = false;
 
-    // SkyBox特有パラメータ（リセットボタンのみ、transformは基本側で表示される）
-    if (ImGui::Button("トランスフォームをリセット")) {
-        transform_.scale = { 1.0f, 1.0f, 1.0f };
+    if (ImGui::TreeNode("Transform")) {
+        changed |= ImGui::DragFloat3("Rotation", &transform_.rotate.x, 0.01f);
+        changed |= ImGui::DragFloat3("Scale",    &transform_.scale.x,  0.01f);
+        ImGui::TreePop();
+    }
+
+    if (ImGui::Button("回転・スケールをリセット")) {
+        transform_.scale  = { 1.0f, 1.0f, 1.0f };
         transform_.rotate = { 0.0f, 0.0f, 0.0f };
         changed = true;
     }

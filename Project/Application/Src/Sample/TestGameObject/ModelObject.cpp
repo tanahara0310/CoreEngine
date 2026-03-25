@@ -1,11 +1,6 @@
 #include "ModelObject.h"
 
 
-void ModelObject::Initialize(const std::string& modelPath) {
-    modelPath_ = modelPath;
-    ModelGameObject::Initialize();
-}
-
 CoreEngine::BlendMode ModelObject::GetBlendMode() const {
     if (model_) {
         auto* mat = model_->GetMaterial();

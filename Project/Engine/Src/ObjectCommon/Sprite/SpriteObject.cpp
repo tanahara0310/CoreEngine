@@ -6,6 +6,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Model/VertexData.h"
+#include "Utility/JsonManager/JsonManager.h"
 #include <cmath>
 #include <cstdio>
 #include <imgui.h>
@@ -269,42 +270,15 @@ void SpriteObject::ChangeAnchorKeepingPosition(const Vector2& newAnchor) {
 }
 
 #ifdef _DEBUG
-bool SpriteObject::DrawImGui() {
+void SpriteObject::OnImGuiActiveChanged(bool prevActive) {
+    if (onEditCommitted_) {
+        onEditCommitted_(this,
+            transform_.translate, transform_.rotate, transform_.scale, prevActive);
+    }
+}
+
+bool SpriteObject::DrawImGuiExtended() {
     bool changed = false;
-
-    const char* displayName = name_.empty() ? GetObjectName() : name_.c_str();
-    char headerLabel[256];
-    snprintf(headerLabel, sizeof(headerLabel), "%s##%p", displayName, (void*)this);
-
-    if (!ImGui::CollapsingHeader(headerLabel)) {
-        return false;
-    }
-
-    ImGui::PushID(this);
-
-    // ─────────────── フラグ ───────────────
-    bool prevActive = isActive_;
-    bool active = isActive_;
-    if (ImGui::Checkbox("Active", &active)) {
-        isActive_ = active;
-        changed = true;
-        if (onEditCommitted_) {
-            onEditCommitted_(this,
-                transform_.translate, transform_.rotate, transform_.scale, prevActive);
-        }
-    }
-
-    ImGui::SameLine();
-    if (ImGui::Checkbox("Visible", &isVisible_)) {
-        changed = true;
-    }
-
-    ImGui::SameLine();
-    if (ImGui::Checkbox("Auto Update", &autoUpdate_)) {
-        changed = true;
-    }
-
-    ImGui::Separator();
 
     // ─────────────── Transform ───────────────
     if (ImGui::TreeNode("Transform")) {
@@ -367,7 +341,6 @@ bool SpriteObject::DrawImGui() {
     // ─────────────── Sprite ───────────────
     ImGui::SeparatorText("Sprite");
 
-    // ブレンドモード
     {
         const char* blendModes[] = { "None", "Normal", "Add", "Subtract", "Multiply", "Screen" };
         int blendModeInt = static_cast<int>(blendMode_);
@@ -377,7 +350,6 @@ bool SpriteObject::DrawImGui() {
         }
     }
 
-    // アンカーポイント
     ImGui::Spacing();
     ImGui::Text("Anchor Point");
     Vector2 anchorTemp = anchorPoint_;
@@ -398,13 +370,30 @@ bool SpriteObject::DrawImGui() {
         changed = true;
     }
 
-    // 個別保存ボタン
-    DrawSaveButton();
-
-    ImGui::PopID();
     return changed;
 }
 #endif
+
+json SpriteObject::OnSerialize() const {
+    json j;
+    j["active"] = IsActive();
+    j["transform"]["translate"] = JsonManager::Vector3ToJson(transform_.translate);
+    j["transform"]["rotate"]    = JsonManager::Vector3ToJson(transform_.rotate);
+    j["transform"]["scale"]     = JsonManager::Vector3ToJson(transform_.scale);
+    return j;
+}
+
+void SpriteObject::OnDeserialize(const json& j) {
+    if (j.contains("active")) {
+        SetActive(j["active"].get<bool>());
+    }
+    if (j.contains("transform")) {
+        const json& t = j["transform"];
+        transform_.translate = JsonManager::SafeGetVector3(t, "translate", transform_.translate);
+        transform_.rotate    = JsonManager::SafeGetVector3(t, "rotate",    transform_.rotate);
+        transform_.scale     = JsonManager::SafeGetVector3(t, "scale",     transform_.scale);
+    }
+}
 
 void SpriteObject::Draw(const ICamera* camera) {
     Draw2D(camera);
