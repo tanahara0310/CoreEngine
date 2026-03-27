@@ -65,7 +65,7 @@ namespace CoreEngine
             image.GetImages(),
             image.GetImageCount(),
             image.GetMetadata(),
-            DirectX::TEX_FILTER_SRGB,
+            DirectX::TEX_FILTER_LINEAR | DirectX::TEX_FILTER_SRGB,
             0,
             mipImages
         );

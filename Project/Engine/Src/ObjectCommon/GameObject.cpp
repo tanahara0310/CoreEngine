@@ -35,23 +35,15 @@ namespace CoreEngine
         (void)cmdList;
     }
 
-    // ===== アクティブ / 表示 =====
+    // ===== アクティブ =====
 
     void GameObject::SetActive(bool active) { isActive_ = active; }
     bool GameObject::IsActive() const { return isActive_; }
-
-    void GameObject::SetVisible(bool visible) { isVisible_ = visible; }
-    bool GameObject::IsVisible() const { return isVisible_; }
 
     // ===== 破棄 =====
 
     void GameObject::Destroy() { markedForDestroy_ = true; }
     bool GameObject::IsMarkedForDestroy() const { return markedForDestroy_; }
-
-    // ===== 更新制御 =====
-
-    void GameObject::SetAutoUpdate(bool autoUpdate) { autoUpdate_ = autoUpdate; }
-    bool GameObject::IsAutoUpdate() const { return autoUpdate_; }
 
     // ===== 描画制御 =====
 
@@ -129,12 +121,6 @@ namespace CoreEngine
             if (ImGui::Checkbox("Active", &isActive_)) {
                 changed = true;
                 OnImGuiActiveChanged(prevActive);
-            }
-            if (ImGui::Checkbox("Visible", &isVisible_)) { changed = true; }
-            bool autoUpdate = autoUpdate_;
-            if (ImGui::Checkbox("Auto Update", &autoUpdate)) {
-                autoUpdate_ = autoUpdate;
-                changed = true;
             }
 
             ImGui::Separator();

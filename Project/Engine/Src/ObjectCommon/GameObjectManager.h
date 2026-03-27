@@ -66,8 +66,9 @@ namespace CoreEngine
         void RegisterAllColliders(CollisionManager* collisionManager);
 
 #ifdef _DEBUG
-        /// @brief 全オブジェクトのImGuiデバッグUI表示
-        void DrawAllImGui();
+        /// @brief 指定オブジェクトのImGuiデバッグUI表示（Inspector埋め込み用）
+        /// @param obj 描画対象のオブジェクト（nullptrの場合はプレースホルダーを表示）
+        void DrawSingleObjectImGui(GameObject* obj);
 #endif
 
         /// @brief オブジェクトの値が ImGui で変更されたときのコールバックを設定

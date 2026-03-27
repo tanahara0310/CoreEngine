@@ -283,8 +283,8 @@ namespace CoreEngine
                 c = static_cast<char>(::tolower(c));
             }
             
-            if (extension == ".png") {
-                // PNGファイルの場合は実際の画像をプレビュー
+            if (extension == ".png" || extension == ".jpg" || extension == ".jpeg") {
+                // PNG / JPG / JPEG ファイルの場合は実際の画像をプレビュー
                 auto preview = GetPNGPreview(entry.path);
                 if (preview.gpuHandle.ptr != 0) {
                     texID = (ImTextureID)preview.gpuHandle.ptr;

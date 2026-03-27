@@ -43,7 +43,7 @@ namespace CoreEngine
         // アクティブで削除マークされておらず、自動更新が有効なオブジェクトのみ更新
         // 削除はCleanupDestroyed()で行われるため、直接ループで問題ない
         for (auto& obj : objects_) {
-            if (obj && obj->IsActive() && !obj->IsMarkedForDestroy() && obj->IsAutoUpdate()) {
+            if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
                 obj->Update();
             }
         }
@@ -65,7 +65,7 @@ namespace CoreEngine
 
         // アクティブかつ表示状態で削除マークされていないオブジェクトのみ登録
         for (auto& obj : objects_) {
-            if (obj && obj->IsActive() && obj->IsVisible() && !obj->IsMarkedForDestroy()) {
+            if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
                 renderManager->AddDrawable(obj.get());
             }
         }
@@ -116,36 +116,32 @@ namespace CoreEngine
     }
 
 #ifdef _DEBUG
-    void GameObjectManager::DrawAllImGui() {
-        ImGui::Text("Total Objects: %zu", objects_.size());
-        ImGui::Text("Destroy Queue: %zu", destroyQueue_.size());
-        ImGui::Separator();
+    void GameObjectManager::DrawSingleObjectImGui(GameObject* obj)
+    {
+        if (!obj) {
+            ImGui::TextDisabled("オブジェクトを選択してください");
+            return;
+        }
 
-        for (auto& obj : objects_) {
-            if (obj) {
-                // Undo/Redo 用コールバックを毎フレーム設定
-                if (editCommitCallback_) {
-                    obj->SetEditCommitCallback(editCommitCallback_);
-                }
-                // 個別保存コールバックを毎フレーム設定
-                if (onSaveRequestCallback_) {
-                    obj->SetSaveRequestCallback(onSaveRequestCallback_);
-                }
+        if (editCommitCallback_) {
+            obj->SetEditCommitCallback(editCommitCallback_);
+        }
+        if (onSaveRequestCallback_) {
+            obj->SetSaveRequestCallback(onSaveRequestCallback_);
+        }
 
-                if (obj->IsMarkedForDestroy()) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
-                }
+        if (obj->IsMarkedForDestroy()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+        }
 
-                bool changed = obj->DrawImGui();
+        bool changed = obj->DrawImGui();
 
-                if (obj->IsMarkedForDestroy()) {
-                    ImGui::PopStyleColor();
-                }
+        if (obj->IsMarkedForDestroy()) {
+            ImGui::PopStyleColor();
+        }
 
-                if (changed && onChangedCallback_) {
-                    onChangedCallback_(obj.get());
-                }
-            }
+        if (changed && onChangedCallback_) {
+            onChangedCallback_(obj);
         }
     }
 #endif

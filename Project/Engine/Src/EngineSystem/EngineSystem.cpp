@@ -95,13 +95,10 @@ namespace CoreEngine
             // SceneViewportが作成するウィンドウを中央に配置
             dockingUI->RegisterWindow("Scene", DockArea::Center);
 
-            // オブジェクト制御ウィンドウを右側に配置（インスペクター的な役割）
-            dockingUI->RegisterWindow("オブジェクト制御", DockArea::Right);
-
             // ポストエフェクトウィンドウを右側に配置
             dockingUI->RegisterWindow("Post Effects", DockArea::Right);
 
-            // パーティクルシステムデバッグを下部に配置
+            // パーティクルシステムデバッグを右側に配置
             dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
         }
 #endif // _DEBUG

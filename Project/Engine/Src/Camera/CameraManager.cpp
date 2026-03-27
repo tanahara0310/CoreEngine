@@ -163,17 +163,32 @@ namespace CoreEngine
 
     void CameraManager::DrawImGui()
     {
-        // デバッグUIを遅延初期化
         if (!debugUI_) {
             debugUI_ = std::make_unique<CameraDebugUI>();
             debugUI_->Initialize(this);
         }
-
-        // デバッグUI側へ必要依存を同期する。
         debugUI_->SetGameObjectManager(debugGameObjectManager_);
-
-        // デバッグUIに描画を委譲
         debugUI_->Draw();
+    }
+
+    void CameraManager::UpdateDebugModules()
+    {
+        if (!debugUI_) {
+            debugUI_ = std::make_unique<CameraDebugUI>();
+            debugUI_->Initialize(this);
+        }
+        debugUI_->SetGameObjectManager(debugGameObjectManager_);
+        debugUI_->UpdateModules();
+    }
+
+    void CameraManager::DrawImGuiContent()
+    {
+        if (!debugUI_) {
+            debugUI_ = std::make_unique<CameraDebugUI>();
+            debugUI_->Initialize(this);
+        }
+        debugUI_->SetGameObjectManager(debugGameObjectManager_);
+        debugUI_->DrawContent();
     }
 #endif
 }

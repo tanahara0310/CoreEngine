@@ -3,11 +3,9 @@
 #include "SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/CameraManager.h"
-#include "Camera/Debug/Editor/CameraDebugUI.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
 #include "Scene/SceneSaveSystem.h"
-#include "Graphics/Line/LineManager.h"
 #include "Utility/Debug/ImGui/SceneViewport.h"
 #include "Utility/Debug/ImGui/ObjectSelector.h"
 #include <imgui.h>
@@ -90,6 +88,21 @@ namespace CoreEngine
                 record.activeAfter = obj->IsActive();
                 undoRedoHistory_.Push(record);
             });
+
+        // Hierarchy/Inspectorパネル用の描画コールバックをGameDebugUIに登録
+        if (auto* gameDebugUI = engine_->GetGameDebugUI()) {
+            gameDebugUI->SetHierarchyContentDrawer([this]() {
+                DrawHierarchyContent();
+            });
+            gameDebugUI->SetInspectorCameraDrawer([this]() {
+                if (cameraManager_) {
+                    cameraManager_->DrawImGuiContent();
+                }
+            });
+            gameDebugUI->SetInspectorObjectDrawer([this]() {
+                DrawInspectorContent();
+            });
+        }
     }
 
     void SceneDebugEditor::ClearHistory()
@@ -109,9 +122,9 @@ namespace CoreEngine
             }
         }
 
-        // カメラマネージャーのImGui
+        // カメラデバッグモジュールの状態更新（描画はInspectorパネルで行う）
         if (cameraManager_) {
-            cameraManager_->DrawImGui();
+            cameraManager_->UpdateDebugModules();
         }
 
         // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）
@@ -128,9 +141,6 @@ namespace CoreEngine
                 saveSystem_->Save(gameObjectManager_);
             }
         }
-
-        // ゲームオブジェクトのImGuiデバッグUI表示
-        DrawObjectControlWindow();
 
         // シーンビューポートでのオブジェクト選択とギズモ更新
         auto imGuiManager = engine_->GetImGuiManager();
@@ -152,36 +162,98 @@ namespace CoreEngine
         DrawSaveNotification();
     }
 
-    void SceneDebugEditor::DrawObjectControlWindow()
+    void SceneDebugEditor::DrawHierarchyContent()
     {
-        if (ImGui::Begin("オブジェクト制御")) {
-            ImGui::BeginDisabled(saveSystem_->GetSceneName().empty());
-            if (ImGui::Button("シーン全体保存 (Ctrl+S)")) {
-                saveSystem_->Save(gameObjectManager_);
-            }
-            ImGui::EndDisabled();
-            ImGui::Separator();
-
-            ImGui::BeginDisabled(!undoRedoHistory_.CanUndo());
-            if (ImGui::Button("Undo")) {
-                undoRedoHistory_.Undo(gameObjectManager_);
-            }
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-            ImGui::BeginDisabled(!undoRedoHistory_.CanRedo());
-            if (ImGui::Button("Redo")) {
-                undoRedoHistory_.Redo(gameObjectManager_);
-            }
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-            ImGui::Text("(%d / %d)",
-                undoRedoHistory_.GetUndoCount(),
-                undoRedoHistory_.GetUndoCount() + undoRedoHistory_.GetRedoCount());
-            ImGui::Separator();
-
-            gameObjectManager_->DrawAllImGui();
+        // ツールバー：保存 / Undo / Redo
+        ImGui::BeginDisabled(saveSystem_->GetSceneName().empty());
+        if (ImGui::Button("Save")) {
+            saveSystem_->Save(gameObjectManager_);
         }
-        ImGui::End();
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!undoRedoHistory_.CanUndo());
+        if (ImGui::Button("Undo")) {
+            undoRedoHistory_.Undo(gameObjectManager_);
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!undoRedoHistory_.CanRedo());
+        if (ImGui::Button("Redo")) {
+            undoRedoHistory_.Redo(gameObjectManager_);
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::TextDisabled("(%d/%d)",
+            undoRedoHistory_.GetUndoCount(),
+            undoRedoHistory_.GetUndoCount() + undoRedoHistory_.GetRedoCount());
+        ImGui::Separator();
+
+        // ObjectSelectorを取得（クリック選択用）
+        ObjectSelector* objectSelector = nullptr;
+        if (auto* imGuiManager = engine_->GetImGuiManager()) {
+            if (auto* sceneViewport = imGuiManager->GetSceneViewport()) {
+                objectSelector = sceneViewport->GetObjectSelector();
+            }
+        }
+
+        const auto& objects = gameObjectManager_->GetAllObjects();
+        ImGui::TextDisabled("Objects: %zu", objects.size());
+        ImGui::Separator();
+
+        if (ImGui::BeginChild("##HierarchyObjectList", ImVec2(0.0f, 0.0f), false)) {
+            for (const auto& obj : objects) {
+                if (!obj) continue;
+
+                const bool isSelected = objectSelector &&
+                    (objectSelector->GetSelectedObject() == obj.get());
+
+                // 状態に応じた文字色
+                int colorsPushed = 0;
+                if (obj->IsMarkedForDestroy()) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.4f, 0.4f, 1.0f));
+                    ++colorsPushed;
+                } else if (!obj->IsActive()) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.55f, 0.55f, 1.0f));
+                    ++colorsPushed;
+                }
+
+                const std::string& name = obj->GetName();
+                const char* displayName = name.empty() ? obj->GetObjectName() : name.c_str();
+
+                char itemId[256];
+                snprintf(itemId, sizeof(itemId), "%s##obj_%p", displayName, (void*)obj.get());
+
+                if (ImGui::Selectable(itemId, isSelected)) {
+                    if (objectSelector) {
+                        objectSelector->SelectObject(obj.get());
+                    }
+                }
+
+                if (colorsPushed > 0) {
+                    ImGui::PopStyleColor(colorsPushed);
+                }
+            }
+        }
+        ImGui::EndChild();
+    }
+
+    void SceneDebugEditor::DrawInspectorContent()
+    {
+        // ObjectSelectorから選択オブジェクトを取得
+        ObjectSelector* objectSelector = nullptr;
+        if (auto* imGuiManager = engine_->GetImGuiManager()) {
+            if (auto* sceneViewport = imGuiManager->GetSceneViewport()) {
+                objectSelector = sceneViewport->GetObjectSelector();
+            }
+        }
+
+        if (!objectSelector) {
+            ImGui::TextDisabled("初期化中...");
+            return;
+        }
+
+        GameObject* selected = objectSelector->GetSelectedObject();
+        gameObjectManager_->DrawSingleObjectImGui(selected);
     }
 
     void SceneDebugEditor::ShowSaveNotification(const std::string& message)

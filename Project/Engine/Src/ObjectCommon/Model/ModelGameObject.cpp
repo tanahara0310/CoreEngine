@@ -42,7 +42,7 @@ namespace CoreEngine
     }
 
     void ModelGameObject::Draw(const ICamera* camera) {
-        if (!IsVisible() || !model_ || !camera) return;
+        if (!model_ || !camera) return;
         model_->Draw(transform_, camera, texture_.gpuHandle);
         OnDraw(camera);
     }

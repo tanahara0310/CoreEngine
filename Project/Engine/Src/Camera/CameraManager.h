@@ -81,6 +81,12 @@ namespace CoreEngine
         /// @brief ImGuiデバッグウィンドウを描画
         void DrawImGui();
 
+        /// @brief モジュール状態のみ更新（描画なし）
+        void UpdateDebugModules();
+
+        /// @brief カメラUIの内容のみ描画（ImGui::Begin/Endなし、Inspectorパネル埋め込み用）
+        void DrawImGuiContent();
+
         /// @brief カメラエディターで参照するGameObjectManagerを設定
         /// @param gameObjectManager ゲームオブジェクトマネージャー
         void SetDebugGameObjectManager(GameObjectManager* gameObjectManager);
