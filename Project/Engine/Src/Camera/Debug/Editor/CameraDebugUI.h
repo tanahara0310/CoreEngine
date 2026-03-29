@@ -31,6 +31,12 @@ namespace CoreEngine {
         /// @brief ImGuiウィンドウを描画
         void Draw();
 
+        /// @brief モジュールの状態更新のみ実行（描画なし）
+        void UpdateModules();
+
+        /// @brief カメラUIの内容を描画（ImGui::Begin/Endなし、外部ウィンドウへの埋め込み用）
+        void DrawContent();
+
         /// @brief エディター機能モジュールを追加登録
         /// @param module 追加するモジュール
         void RegisterModule(std::unique_ptr<ICameraEditorModule> module);

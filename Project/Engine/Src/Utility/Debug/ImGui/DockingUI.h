@@ -15,7 +15,7 @@ class SceneViewport;
 
 enum class DockLayoutPreset {
     Standard,
-    Unity2By3
+    TwoByThree
 };
 
 enum class DockArea {
@@ -25,7 +25,8 @@ enum class DockArea {
     Right,          // 右側（インスペクター）
     BottomLeft,     // 下部左（ライティング）
     BottomRight,    // 下部右（オブジェクト制御）
-    Bottom          // 下部中央（プロジェクトビュー）
+    Bottom,         // 下部中央（プロジェクトビュー）
+    Hierarchy       // ヒエラルキー（シーン構造・オブジェクト一覧）
 };
 
 /// @brief ドッキングUI管理クラス（改良版）
@@ -73,6 +74,11 @@ public:
     /// @brief SceneViewport参照を設定（ギズモ操作UI連携用）
     void SetSceneViewport(SceneViewport* sceneViewport) { sceneViewport_ = sceneViewport; }
 
+    /// @brief 画面最下部のステータスバーを描画
+    /// @param fps 表示するFPS値
+    /// @param deltaTimeMs 表示するデルタタイム（ミリ秒）
+    void DrawStatusBar(float fps, float deltaTimeMs);
+
 private:
     /// @brief エリアごとのノードIDを取得
     ImGuiID GetNodeIdForArea(DockArea area) const;
@@ -87,17 +93,15 @@ private:
     std::unordered_map<std::string, DockArea> registeredWindows_; // 登録されたウィンドウとそのエリア
     bool layoutInitialized_ = false; // レイアウトが初期化されたかどうか
     bool layoutDirty_ = false; // レイアウト再構築が必要かどうか
-    DockLayoutPreset layoutPreset_ = DockLayoutPreset::Unity2By3;
+    DockLayoutPreset layoutPreset_ = DockLayoutPreset::TwoByThree;
 
     // エリアごとのノードID
-    ImGuiID nodeIds_[7] = {0}; // DockAreaの数だけ（Bottomを追加したため7に変更）
+    ImGuiID nodeIds_[8] = {0}; // DockAreaの数だけ（Hierarchyを追加したため8に変更）
     ImGuiID gameNodeId_ = 0;
     ImGuiID sceneNodeId_ = 0;
     ImGuiID toolNodeId_ = 0;
 
-    // 再生制御アイコン用テクスチャハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE playIcon_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE pauseIcon_{};
+    // ツールバーアイコン用テクスチャハンドル
     D3D12_GPU_DESCRIPTOR_HANDLE gridIcon_{};
     D3D12_GPU_DESCRIPTOR_HANDLE gizmoTranslateIcon_{};
     D3D12_GPU_DESCRIPTOR_HANDLE gizmoRotateIcon_{};
@@ -105,11 +109,20 @@ private:
     bool playbackIconsLoaded_ = false;
     bool gizmoIconsLoaded_ = false;
 
+    // ステータスバーアイコン
+    D3D12_GPU_DESCRIPTOR_HANDLE fpsIcon_{};
+    bool fpsIconLoaded_ = false;
+    D3D12_GPU_DESCRIPTOR_HANDLE deltaTimeIcon_{};
+    bool deltaTimeIconLoaded_ = false;
+
     // グリッド表示状態
     bool isGridVisible_ = true;
 
     // ツールバーの高さ
     static constexpr float toolbarHeight_ = 32.0f;
+
+    // ステータスバーの高さ
+    static constexpr float statusBarHeight_ = 28.0f;
 
     // Sceneビュー操作連携
     SceneViewport* sceneViewport_ = nullptr;

@@ -41,6 +41,12 @@ namespace CoreEngine
         debugEditor_ = std::make_unique<SceneDebugEditor>();
         debugEditor_->Initialize(engine_, &gameObjectManager_, cameraManager_.get(), sceneSaveSystem_.get());
 #endif
+
+        // 派生クラス固有の初期化（オブジェクト生成など）
+        OnInitialize();
+
+        // 全オブジェクト生成後にシーンデータを JSON から自動復元
+        LoadObjectsFromJson();
     }
 
     void BaseScene::Update()
@@ -351,33 +357,41 @@ namespace CoreEngine
         const Vector3 farRB = Unproject(1.0f, -1.0f, 1.0f);
 
         auto& lineManager = LineManager::GetInstance();
-        const Vector3 lineColor = { 0.0f, 0.0f, 0.0f };
+        const Vector3 lineColor = { 1.0f, 1.0f, 0.0f };
         constexpr float alpha = 0.95f;
 
+        // 太さシミュレーション：X・Y 方向に微小オフセットした 3 本束で描画
+        constexpr float kThickness = 0.025f;
+        auto DrawThickLine = [&](const Vector3& a, const Vector3& b, const Vector3& col, float al) {
+            lineManager.DrawLine(a, b, col, al);
+            lineManager.DrawLine({ a.x + kThickness, a.y, a.z }, { b.x + kThickness, b.y, b.z }, col, al);
+            lineManager.DrawLine({ a.x, a.y + kThickness, a.z }, { b.x, b.y + kThickness, b.z }, col, al);
+        };
+
         // Near面
-        lineManager.DrawLine(nearLT, nearRT, lineColor, alpha);
-        lineManager.DrawLine(nearRT, nearRB, lineColor, alpha);
-        lineManager.DrawLine(nearRB, nearLB, lineColor, alpha);
-        lineManager.DrawLine(nearLB, nearLT, lineColor, alpha);
+        DrawThickLine(nearLT, nearRT, lineColor, alpha);
+        DrawThickLine(nearRT, nearRB, lineColor, alpha);
+        DrawThickLine(nearRB, nearLB, lineColor, alpha);
+        DrawThickLine(nearLB, nearLT, lineColor, alpha);
 
         // Far面
-        lineManager.DrawLine(farLT, farRT, lineColor, alpha);
-        lineManager.DrawLine(farRT, farRB, lineColor, alpha);
-        lineManager.DrawLine(farRB, farLB, lineColor, alpha);
-        lineManager.DrawLine(farLB, farLT, lineColor, alpha);
+        DrawThickLine(farLT, farRT, lineColor, alpha);
+        DrawThickLine(farRT, farRB, lineColor, alpha);
+        DrawThickLine(farRB, farLB, lineColor, alpha);
+        DrawThickLine(farLB, farLT, lineColor, alpha);
 
         // Near-Far接続
-        lineManager.DrawLine(nearLT, farLT, lineColor, alpha);
-        lineManager.DrawLine(nearRT, farRT, lineColor, alpha);
-        lineManager.DrawLine(nearLB, farLB, lineColor, alpha);
-        lineManager.DrawLine(nearRB, farRB, lineColor, alpha);
+        DrawThickLine(nearLT, farLT, lineColor, alpha);
+        DrawThickLine(nearRT, farRT, lineColor, alpha);
+        DrawThickLine(nearLB, farLB, lineColor, alpha);
+        DrawThickLine(nearRB, farRB, lineColor, alpha);
 
         // カメラ位置からNear面への補助線
         const Vector3 cameraPos = gameCamera->GetPosition();
-        lineManager.DrawLine(cameraPos, nearLT, lineColor, 0.7f);
-        lineManager.DrawLine(cameraPos, nearRT, lineColor, 0.7f);
-        lineManager.DrawLine(cameraPos, nearLB, lineColor, 0.7f);
-        lineManager.DrawLine(cameraPos, nearRB, lineColor, 0.7f);
+        DrawThickLine(cameraPos, nearLT, lineColor, 0.7f);
+        DrawThickLine(cameraPos, nearRT, lineColor, 0.7f);
+        DrawThickLine(cameraPos, nearLB, lineColor, 0.7f);
+        DrawThickLine(cameraPos, nearRB, lineColor, 0.7f);
     }
 #endif
 

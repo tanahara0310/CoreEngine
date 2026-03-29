@@ -1,5 +1,4 @@
 #include "Framework.h"
-#include "EngineSystem/PlaybackState.h"
 
 
 namespace CoreEngine
@@ -39,8 +38,6 @@ void Framework::Run()
     // ゲームループ
     // ──────────────────────────────────────────────────────────
 
-    bool isFirstFrame = true;  // 初回フレームフラグ
-
     while (true) {
         // ウィンドウメッセージ処理
         if (winApp_->ProcessMessage()) {
@@ -50,18 +47,10 @@ void Framework::Run()
         // エンジンシステムのフレーム開始処理
         engineSystem_->BeginFrame();
 
-        // 再生状態を取得
-        auto& playbackManager = CoreEngine::PlaybackStateManager::GetInstance();
-
-        // 初回フレームまたは再生中のみゲーム更新処理を実行
-        if (isFirstFrame || playbackManager.IsPlaying()) {
-            // ゲーム固有の更新処理（派生クラスで実装）
-            Update();
-            isFirstFrame = false;  // 初回フレーム終了
-        }
+        // ゲーム固有の更新処理（派生クラスで実装）
+        Update();
 
         // ゲーム固有の描画処理（派生クラスで実装）
-        // 描画は停止中でも実行する（シーンの表示を維持）
         PrepareRender();
         engineSystem_->ExecuteRenderPipeline([this]() {
             Draw();

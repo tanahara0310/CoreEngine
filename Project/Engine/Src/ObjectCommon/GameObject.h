@@ -60,7 +60,7 @@ namespace CoreEngine
         ///       基底クラスの実装は何もしない。
         virtual void DrawShadow(ID3D12GraphicsCommandList* cmdList);
 
-        // ===== アクティブ / 表示 =====
+        // ===== アクティブ =====
 
         /// @brief アクティブ状態を設定する
         /// @param active true にするとオブジェクトの更新・描画が有効になる
@@ -69,14 +69,6 @@ namespace CoreEngine
         /// @brief アクティブ状態を取得する
         /// @return true: アクティブ / false: 非アクティブ（更新・描画ともにスキップ）
         bool IsActive() const;
-
-        /// @brief 表示状態を設定する
-        /// @param visible false にすると描画のみスキップし、更新は継続する
-        void SetVisible(bool visible);
-
-        /// @brief 表示状態を取得する
-        /// @return true: 描画される / false: 描画されない
-        bool IsVisible() const;
 
         // ===== 破棄 =====
 
@@ -88,17 +80,6 @@ namespace CoreEngine
         /// @brief 削除マークが付いているか確認する
         /// @return true: このフレーム末に削除される
         bool IsMarkedForDestroy() const;
-
-        // ===== 更新制御 =====
-
-        /// @brief 自動更新フラグを設定する
-        /// @param autoUpdate true: GameObjectManager が毎フレーム Update() を呼ぶ
-        ///                   false: 手動で Update() を呼ぶ必要がある
-        void SetAutoUpdate(bool autoUpdate);
-
-        /// @brief 自動更新フラグを取得する
-        /// @return true: 自動更新有効 / false: 手動更新のみ
-        bool IsAutoUpdate() const;
 
         // ===== 描画制御 =====
 
@@ -239,7 +220,7 @@ namespace CoreEngine
 
         /// @brief ImGui デバッグ UI を描画する
         /// @return 値の変更があった場合 true を返す
-        /// @note Active / Visible / AutoUpdate の各チェックボックスと
+        /// @note Active チェックボックスと
         ///       DrawImGuiExtended() の呼び出しを行う。
         ///       Active 変更時は OnImGuiActiveChanged() が呼び出される。
         virtual bool DrawImGui();
@@ -276,9 +257,7 @@ namespace CoreEngine
         std::string               name_;          ///< オブジェクト識別名
 
         bool isActive_ = true;   ///< アクティブ状態（false: 更新・描画ともにスキップ）
-        bool isVisible_ = true;   ///< 表示状態（false: 描画スキップ・更新継続）
         bool markedForDestroy_ = false;  ///< 削除マーク（true: フレーム末に破棄）
-        bool autoUpdate_ = true;   ///< 自動更新フラグ（false: 手動 Update 呼び出しが必要）
         bool shouldSerialize_ = true;   ///< JSON シリアライズ対象フラグ
 
         std::optional<int> renderOrder_;  ///< 描画順序オーバーライド（nullopt: パス優先度に従う）

@@ -25,8 +25,8 @@ namespace CoreEngine
         /// @param camera カメラ
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @param isViewportHovered ビューポートがホバー状態か
-        void Update(GameObjectManager* gameObjectManager, const ICamera* camera, 
-                    const Vector2& mousePos, bool isViewportHovered);
+        void Update(GameObjectManager* gameObjectManager, const ICamera* camera,
+            const Vector2& mousePos, bool isViewportHovered);
 
         /// @brief 2Dオブジェクト用の更新処理（スプライト選択）
         /// @param gameObjectManager ゲームオブジェクトマネージャー
@@ -34,7 +34,7 @@ namespace CoreEngine
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @param isViewportHovered ビューポートがホバー状態か
         void Update2D(GameObjectManager* gameObjectManager, const ICamera* camera,
-                      const Vector2& mousePos, bool isViewportHovered);
+            const Vector2& mousePos, bool isViewportHovered);
 
         /// @brief 選択されたオブジェクトにギズモを描画
         /// @param camera カメラ
@@ -79,7 +79,7 @@ namespace CoreEngine
         /// @brief ギズモ操作完了時のコールバックを設定（Undo/Redo 用）
         /// @note 操作前の translate / rotate / scale / active を受け取る
         void SetOnGizmoEditCommitted(
-                std::function<void(GameObject*, const Vector3&, const Vector3&, const Vector3&, bool)> cb) {
+            std::function<void(GameObject*, const Vector3&, const Vector3&, const Vector3&, bool)> cb) {
             onGizmoEditCommitted_ = std::move(cb);
         }
 
@@ -89,8 +89,8 @@ namespace CoreEngine
         /// @param camera カメラ
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @return 検出されたオブジェクト（nullptrの場合は検出失敗）
-        GameObject* RaycastObject(GameObjectManager* gameObjectManager, 
-                                  const ICamera* camera, const Vector2& mousePos);
+        GameObject* RaycastObject(GameObjectManager* gameObjectManager,
+            const ICamera* camera, const Vector2& mousePos);
 
         /// @brief マウス位置からスプライトを検出（2D用）
         /// @param gameObjectManager ゲームオブジェクトマネージャー
@@ -98,7 +98,7 @@ namespace CoreEngine
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @return 検出されたスプライト（nullptrの場合は検出失敗）
         SpriteObject* RaycastSprite(GameObjectManager* gameObjectManager,
-                                     const ICamera* camera, const Vector2& mousePos);
+            const ICamera* camera, const Vector2& mousePos);
 
         /// @brief スクリーン座標をワールド座標に変換（2D用）
         /// @param mousePos マウス座標（0.0〜1.0の正規化座標）
@@ -114,7 +114,7 @@ namespace CoreEngine
         /// @param distance 交差点までの距離（出力）
         /// @return 交差している場合true
         bool RayIntersectsSphere(const Vector3& rayOrigin, const Vector3& rayDirection,
-                                 const Vector3& sphereCenter, float sphereRadius, float& distance);
+            const Vector3& sphereCenter, float sphereRadius, float& distance);
 
         /// @brief スクリーン座標からワールド空間のレイを生成
         /// @param mousePos マウス座標（0.0〜1.0の正規化座標）
@@ -122,7 +122,7 @@ namespace CoreEngine
         /// @param rayOrigin レイの始点（出力）
         /// @param rayDirection レイの方向（出力、正規化済み）
         void ScreenToWorldRay(const Vector2& mousePos, const ICamera* camera,
-                              Vector3& rayOrigin, Vector3& rayDirection);
+            Vector3& rayOrigin, Vector3& rayDirection);
 
         /// @brief レイと三角形の交差判定（Möller–Trumbore アルゴリズム）
         /// @param rayOrigin レイの始点
@@ -133,8 +133,8 @@ namespace CoreEngine
         /// @param distance 交差点までの距離（出力）
         /// @return 交差している場合true
         bool RayIntersectsTriangle(const Vector3& rayOrigin, const Vector3& rayDirection,
-                                   const Vector3& v0, const Vector3& v1, const Vector3& v2,
-                                   float& distance);
+            const Vector3& v0, const Vector3& v1, const Vector3& v2,
+            float& distance);
 
         /// @brief レイとメッシュの交差判定
         /// @param rayOrigin レイの始点
@@ -143,7 +143,7 @@ namespace CoreEngine
         /// @param distance 交差点までの距離（出力）
         /// @return 交差している場合true
         bool RayIntersectsMesh(const Vector3& rayOrigin, const Vector3& rayDirection,
-                               GameObject* object, float& distance);
+            GameObject* object, float& distance);
 
         /// @brief 点を行列で変換
         /// @param point 変換する点
@@ -166,7 +166,7 @@ namespace CoreEngine
         Vector3 beforeGizmoTranslate_;
         Vector3 beforeGizmoRotate_;
         Vector3 beforeGizmoScale_;
-        bool    beforeGizmoActive_ = true;
+        bool beforeGizmoActive_ = true;
 
         /// @brief 前フレームのギズモ使用状態（操作完了検出用）
         bool wasGizmoUsing_ = false;

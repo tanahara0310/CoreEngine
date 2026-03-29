@@ -13,8 +13,8 @@
     /// @brief パーティクルシステムのテストシーン
 class ParticleTestScene : public CoreEngine::BaseScene {
 public:
-    /// @brief 初期化
-    void Initialize(CoreEngine::EngineSystem* engine) override;
+    /// @brief シーン固有の初期化
+    void OnInitialize() override;
 
     /// @brief 描画
     void Draw() override;

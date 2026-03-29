@@ -32,8 +32,9 @@ namespace CoreEngine
 
         virtual ~BaseScene() = default;
 
-        /// @brief 初期化（共通処理 + 派生クラスの初期化）
-        virtual void Initialize(CoreEngine::EngineSystem* engine) override;
+        /// @brief 初期化（共通処理 + OnInitialize() + LoadObjectsFromJson() を自動実行）
+        /// @note 派生クラスは Initialize() ではなく OnInitialize() をオーバーライドしてください
+        void Initialize(CoreEngine::EngineSystem* engine) override final;
 
         /// @brief 更新（共通処理 + 派生クラスの更新）
         /// @note このメソッドはfinalです。派生クラスはOnUpdate()をオーバーライドしてください
@@ -64,6 +65,11 @@ namespace CoreEngine
         GameObjectManager* GetGameObjectManager() override { return &gameObjectManager_; }
 
     protected:
+        /// @brief 派生クラスでオーバーライドするシーン固有の初期化処理
+        /// @note SetSceneName() と全 CreateObject() をここで行う。
+        ///       完了後に LoadObjectsFromJson() が自動的に呼ばれる。
+        virtual void OnInitialize() {}
+
         /// @brief 派生クラスでオーバーライドする更新処理（GameObjectの更新前）
         virtual void OnUpdate() {}
 
@@ -148,7 +154,7 @@ namespace CoreEngine
         void SetSceneName(const std::string& name) { sceneSaveSystem_->SetSceneName(name); }
 
         /// @brief シーンのオブジェクトデータを JSON から読み込んで登録済みオブジェクトに適用
-        /// @note 派生クラスの Initialize()内、全 CreateObject() の後に呼ぶ
+        /// @note Initialize() から自動的に呼ばれる。手動で再ロードが必要な場合にも使用可能。
         void LoadObjectsFromJson();
 
         /// @brief シーン名を取得

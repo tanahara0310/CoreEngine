@@ -8,10 +8,8 @@
 
 using namespace CoreEngine;
 
-void ParticleTestScene::Initialize(EngineSystem* engine)
+void ParticleTestScene::OnInitialize()
 {
-    // 基底クラスの初期化（カメラ、ライト、グリッドのセットアップ）
-    BaseScene::Initialize(engine);
     SetSceneName("ParticleTestScene");
 
     // コンポーネントを取得
@@ -35,9 +33,6 @@ void ParticleTestScene::Initialize(EngineSystem* engine)
 
     // パーティクルを再生開始
     particleSystem_->Play();
-
-    // JSON からオブジェクトのトランスフォームを復元（ファイルがなければコード値をそのまま使用）
-    LoadObjectsFromJson();
 }
 
 void ParticleTestScene::OnUpdate()

@@ -1,6 +1,5 @@
 #include "DockingUI.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "EngineSystem/PlaybackState.h"
 #include "SceneViewport.h"
 #include "ObjectSelector.h"
 #include "Gizmo.h"
@@ -10,446 +9,432 @@
 
 namespace CoreEngine
 {
-void DockingUI::RegisterWindow(const std::string& windowName, DockArea area)
-{
-    registeredWindows_[windowName] = area;
-    
-    // レイアウトが既に初期化されている場合、動的にドッキング
-    if (layoutInitialized_) {
-        ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
-        if (nodeId != 0) {
-            ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
-        }
-    }
-}
+    void DockingUI::RegisterWindow(const std::string& windowName, DockArea area)
+    {
+        registeredWindows_[windowName] = area;
 
-void DockingUI::UnregisterWindow(const std::string& windowName)
-{
-    registeredWindows_.erase(windowName);
-}
-
-void DockingUI::BeginDockSpaceHostWindow()
-{
-    // メインビューポートに合わせてホストウィンドウの位置・サイズを設定
-    ImGuiViewport* vp = ImGui::GetMainViewport();
-
-    // メニューバーの高さを取得
-    float menuBarHeight = ImGui::GetFrameHeight();
-
-    // 再生ツールバーを描画（メニューバーの直下）
-    DrawPlaybackToolbar();
-
-    // メニューバー + ツールバーの下にドッキングエリアを配置
-    float totalTopHeight = menuBarHeight + toolbarHeight_;
-    ImVec2 pos = vp->Pos;
-    pos.y += totalTopHeight;
-
-    ImVec2 size = vp->Size;
-    size.y -= totalTopHeight;
-
-    ImGui::SetNextWindowPos(pos);
-    ImGui::SetNextWindowSize(size);
-    ImGui::SetNextWindowViewport(vp->ID);
-
-    // タイトルバーや移動不可など、ドッキング用の特殊フラグを設定
-    ImGuiWindowFlags hostFlags = ImGuiWindowFlags_NoTitleBar
-        | ImGuiWindowFlags_NoCollapse
-        | ImGuiWindowFlags_NoResize
-        | ImGuiWindowFlags_NoMove
-        | ImGuiWindowFlags_NoDocking
-        | ImGuiWindowFlags_NoBringToFrontOnFocus
-        | ImGuiWindowFlags_NoNavFocus;
-
-    // 見た目調整（角丸・枠線・余白）を0にして全面ホストウィンドウ化
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::Begin("##DockSpaceHost", nullptr, hostFlags);
-    ImGui::PopStyleVar(3);
-
-    // ドッキングスペースを作成（中央透過）
-    ImGuiID dockId = ImGui::GetID("MyDockSpace");
-    ImGui::DockSpace(dockId, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
-}
-
-void DockingUI::SetupDockSpace()
-{
-    // 初回またはレイアウト変更時のみドッキングレイアウトを構築
-    if (layoutInitialized_ && !layoutDirty_)
-        return;
-
-    BuildDockLayout();
-    layoutInitialized_ = true;
-    layoutDirty_ = false;
-}
-
-void DockingUI::SetLayoutPreset(DockLayoutPreset preset)
-{
-    if (layoutPreset_ == preset) {
-        return;
-    }
-
-    layoutPreset_ = preset;
-    layoutDirty_ = true;
-}
-
-ImGuiID DockingUI::GetNodeIdForArea(DockArea area) const
-{
-    return nodeIds_[static_cast<int>(area)];
-}
-
-ImGuiID DockingUI::ResolveNodeIdForWindow(const std::string& windowName, DockArea area) const
-{
-    if (layoutPreset_ == DockLayoutPreset::Unity2By3) {
-        if (windowName == "Game") {
-            return gameNodeId_;
-        }
-
-        if (windowName == "Scene") {
-            return sceneNodeId_;
-        }
-
-        if ((area == DockArea::LeftTop || area == DockArea::LeftBottom || area == DockArea::Center) && toolNodeId_ != 0) {
-            return toolNodeId_;
+        // レイアウトが既に初期化されている場合、動的にドッキング
+        if (layoutInitialized_) {
+            ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
+            if (nodeId != 0) {
+                ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
+            }
         }
     }
 
-    return GetNodeIdForArea(area);
-}
-
-void DockingUI::BuildDockLayout()
-{
-    // ルートノード作成＆リセット
-    ImGuiViewport* vp = ImGui::GetMainViewport();
-
-    // メニューバー + ツールバーの高さを考慮したサイズを設定
-    float menuBarHeight = ImGui::GetFrameHeight();
-    float totalTopHeight = menuBarHeight + toolbarHeight_;
-    ImVec2 dockSpaceSize = ImVec2(vp->Size.x, vp->Size.y - totalTopHeight);
-
-    ImGuiID dockMain = ImGui::GetID("MyDockSpace");
-    ImGui::DockBuilderRemoveNode(dockMain);
-    ImGui::DockBuilderAddNode(dockMain, ImGuiDockNodeFlags_None);
-    ImGui::DockBuilderSetNodeSize(dockMain, dockSpaceSize);
-
-    for (ImGuiID& nodeId : nodeIds_) {
-        nodeId = 0;
-    }
-    gameNodeId_ = 0;
-    sceneNodeId_ = 0;
-    toolNodeId_ = 0;
-
-    if (layoutPreset_ == DockLayoutPreset::Unity2By3) {
-        ImGuiID idViewportColumn, idRightColumn;
-        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.50f, &idRightColumn, &idViewportColumn);
-
-        ImGuiID idGame, idScene;
-        ImGui::DockBuilderSplitNode(idViewportColumn, ImGuiDir_Down, 0.50f, &idGame, &idScene);
-
-        ImGuiID idProject, idRightTop;
-        ImGui::DockBuilderSplitNode(idRightColumn, ImGuiDir_Down, 0.34f, &idProject, &idRightTop);
-
-        ImGuiID idInspector, idToolColumn;
-        ImGui::DockBuilderSplitNode(idRightTop, ImGuiDir_Right, 0.52f, &idInspector, &idToolColumn);
-
-        gameNodeId_ = idGame;
-        sceneNodeId_ = idScene;
-        toolNodeId_ = idToolColumn;
-
-        nodeIds_[static_cast<int>(DockArea::LeftTop)] = idToolColumn;
-        nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idToolColumn;
-        nodeIds_[static_cast<int>(DockArea::Center)] = idToolColumn;
-        nodeIds_[static_cast<int>(DockArea::Right)] = idInspector;
-        nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
-        nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
-        nodeIds_[static_cast<int>(DockArea::Bottom)] = idProject;
-    } else {
-        // 1) 右側エリア（Inspector）を最初に分割（25%）
-        ImGuiID idMainArea, idRight;
-        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.25f, &idRight, &idMainArea);
-
-        // 2) 残りのエリアを上下に分割（下部30%）
-        ImGuiID idTop, idBottom;
-        ImGui::DockBuilderSplitNode(idMainArea, ImGuiDir_Down, 0.30f, &idBottom, &idTop);
-
-        // 3) 上部エリアを左側と中央に分割（左側25%）
-        ImGuiID idLeft, idCenter;
-        ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Left, 0.25f, &idLeft, &idCenter);
-
-        // 4) 左側をさらに上下に分割
-        ImGuiID idLeftTop, idLeftBottom;
-        ImGui::DockBuilderSplitNode(idLeft, ImGuiDir_Down, 0.5f, &idLeftBottom, &idLeftTop);
-
-        nodeIds_[static_cast<int>(DockArea::LeftTop)] = idLeftTop;
-        nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idLeftBottom;
-        nodeIds_[static_cast<int>(DockArea::Center)] = idCenter;
-        nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
-        nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
-        nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
-        nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
+    void DockingUI::UnregisterWindow(const std::string& windowName)
+    {
+        registeredWindows_.erase(windowName);
     }
 
-    // 登録されているウィンドウを各ノードにドッキング
-    for (const auto& [windowName, area] : registeredWindows_) {
-        ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
-        if (nodeId != 0) {
-            ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
+    void DockingUI::BeginDockSpaceHostWindow()
+    {
+        // メインビューポートに合わせてホストウィンドウの位置・サイズを設定
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+
+        // メニューバーの高さを取得
+        float menuBarHeight = ImGui::GetFrameHeight();
+
+        // 再生ツールバーを描画（メニューバーの直下）
+        DrawPlaybackToolbar();
+
+        // メニューバー + ツールバーの下にドッキングエリアを配置
+        float totalTopHeight = menuBarHeight + toolbarHeight_;
+        ImVec2 pos = vp->Pos;
+        pos.y += totalTopHeight;
+
+        ImVec2 size = vp->Size;
+        size.y -= totalTopHeight + statusBarHeight_;
+
+        ImGui::SetNextWindowPos(pos);
+        ImGui::SetNextWindowSize(size);
+        ImGui::SetNextWindowViewport(vp->ID);
+
+        // タイトルバーや移動不可など、ドッキング用の特殊フラグを設定
+        ImGuiWindowFlags hostFlags = ImGuiWindowFlags_NoTitleBar
+            | ImGuiWindowFlags_NoCollapse
+            | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoMove
+            | ImGuiWindowFlags_NoDocking
+            | ImGuiWindowFlags_NoBringToFrontOnFocus
+            | ImGuiWindowFlags_NoNavFocus;
+
+        // 見た目調整（角丸・枠線・余白）を0にして全面ホストウィンドウ化
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::Begin("##DockSpaceHost", nullptr, hostFlags);
+        ImGui::PopStyleVar(3);
+
+        // ドッキングスペースを作成（中央透過）
+        ImGuiID dockId = ImGui::GetID("MyDockSpace");
+        ImGui::DockSpace(dockId, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
+    }
+
+    void DockingUI::SetupDockSpace()
+    {
+        // 初回またはレイアウト変更時のみドッキングレイアウトを構築
+        if (layoutInitialized_ && !layoutDirty_)
+            return;
+
+        BuildDockLayout();
+        layoutInitialized_ = true;
+        layoutDirty_ = false;
+    }
+
+    void DockingUI::SetLayoutPreset(DockLayoutPreset preset)
+    {
+        if (layoutPreset_ == preset) {
+            return;
         }
+
+        layoutPreset_ = preset;
+        layoutDirty_ = true;
     }
 
-    // レイアウト構築完了
-    ImGui::DockBuilderFinish(dockMain);
-}
-
-void DockingUI::LoadPlaybackIcons()
-{
-    auto& texManager = TextureManager::GetInstance();
-
-    // テクスチャマネージャーが初期化されているか確認
-    if (!texManager.IsInitialized()) {
-        return;
+    ImGuiID DockingUI::GetNodeIdForArea(DockArea area) const
+    {
+        return nodeIds_[static_cast<int>(area)];
     }
 
-    try {
-        // 再生制御アイコンを読み込む
-        auto playTex = texManager.Load("reproduction.png");
-        auto pauseTex = texManager.Load("pause.png");
-        auto gridTex = texManager.Load("grid.png");
-        auto gizmoTranslateTex = texManager.Load("gizumoTransform.png");
-        auto gizmoRotateTex = texManager.Load("gizumoRotate.png");
-        auto gizmoScaleTex = texManager.Load("gizumoScale.png");
+    ImGuiID DockingUI::ResolveNodeIdForWindow(const std::string& windowName, DockArea area) const
+    {
+        if (layoutPreset_ == DockLayoutPreset::TwoByThree) {
+            if (windowName == "Game") {
+                return gameNodeId_;
+            }
 
-        // GPUハンドルを保存
-        playIcon_ = playTex.gpuHandle;
-        pauseIcon_ = pauseTex.gpuHandle;
-        gridIcon_ = gridTex.gpuHandle;
-        gizmoTranslateIcon_ = gizmoTranslateTex.gpuHandle;
-        gizmoRotateIcon_ = gizmoRotateTex.gpuHandle;
-        gizmoScaleIcon_ = gizmoScaleTex.gpuHandle;
+            if (windowName == "Scene") {
+                return sceneNodeId_;
+            }
 
-        playbackIconsLoaded_ = true;
-        gizmoIconsLoaded_ = true;
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Playback icons loaded successfully (DockingUI)");
-    }
-    catch (const std::exception& e) {
-        std::string errorMsg = std::format("Failed to load playback icons: {}", e.what());
-        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", errorMsg);
-        playbackIconsLoaded_ = false;
-        gizmoIconsLoaded_ = false;
-    }
-}
+            if ((area == DockArea::LeftTop || area == DockArea::LeftBottom || area == DockArea::Center) && toolNodeId_ != 0) {
+                return toolNodeId_;
+            }
+        }
 
-void DockingUI::DrawPlaybackToolbar()
-{
-    // アイコンがまだ読み込まれていない場合は読み込む
-    if (!playbackIconsLoaded_) {
-        LoadPlaybackIcons();
+        return GetNodeIdForArea(area);
     }
 
-    ImGuiViewport* vp = ImGui::GetMainViewport();
-    float menuBarHeight = ImGui::GetFrameHeight();
+    void DockingUI::BuildDockLayout()
+    {
+        // ルートノード作成＆リセット
+        ImGuiViewport* vp = ImGui::GetMainViewport();
 
-    // ツールバーの位置とサイズを設定
-    ImVec2 toolbarPos = ImVec2(vp->Pos.x, vp->Pos.y + menuBarHeight);
-    ImVec2 toolbarSize = ImVec2(vp->Size.x, toolbarHeight_);
+        // メニューバー + ツールバーの高さを考慮したサイズを設定
+        float menuBarHeight = ImGui::GetFrameHeight();
+        float totalTopHeight = menuBarHeight + toolbarHeight_;
+        ImVec2 dockSpaceSize = ImVec2(vp->Size.x, vp->Size.y - totalTopHeight - statusBarHeight_);
 
-    ImGui::SetNextWindowPos(toolbarPos);
-    ImGui::SetNextWindowSize(toolbarSize);
+        ImGuiID dockMain = ImGui::GetID("MyDockSpace");
+        ImGui::DockBuilderRemoveNode(dockMain);
+        ImGui::DockBuilderAddNode(dockMain, ImGuiDockNodeFlags_None);
+        ImGui::DockBuilderSetNodeSize(dockMain, dockSpaceSize);
 
-    ImGuiWindowFlags toolbarFlags = ImGuiWindowFlags_NoTitleBar
-        | ImGuiWindowFlags_NoResize
-        | ImGuiWindowFlags_NoMove
-        | ImGuiWindowFlags_NoScrollbar
-        | ImGuiWindowFlags_NoScrollWithMouse
-        | ImGuiWindowFlags_NoDocking
-        | ImGuiWindowFlags_NoSavedSettings;
+        for (ImGuiID& nodeId : nodeIds_) {
+            nodeId = 0;
+        }
+        gameNodeId_ = 0;
+        sceneNodeId_ = 0;
+        toolNodeId_ = 0;
 
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
+        if (layoutPreset_ == DockLayoutPreset::TwoByThree) {
+            ImGuiID idViewportColumn, idRightColumn;
+            ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.50f, &idRightColumn, &idViewportColumn);
 
-    // ポーズ中は背景色を少し暗くする
-    auto& playbackManager = PlaybackStateManager::GetInstance();
-    if (playbackManager.IsPaused()) {
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.12f, 0.12f, 0.12f, 1.0f));  // 少し暗め
-    } else {
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));  // 通常
-    }
+            ImGuiID idGame, idScene;
+            ImGui::DockBuilderSplitNode(idViewportColumn, ImGuiDir_Down, 0.50f, &idGame, &idScene);
 
-    if (ImGui::Begin("##PlaybackToolbar", nullptr, toolbarFlags)) {
+            ImGuiID idProject, idRightTop;
+            ImGui::DockBuilderSplitNode(idRightColumn, ImGuiDir_Down, 0.34f, &idProject, &idRightTop);
 
-        if (!playbackIconsLoaded_) {
-            // アイコンが読み込まれていない場合はテキストボタンを表示
-            PlaybackState currentState = playbackManager.GetState();
+            ImGuiID idInspector, idToolColumn;
+            ImGui::DockBuilderSplitNode(idRightTop, ImGuiDir_Right, 0.52f, &idInspector, &idToolColumn);
 
-            // 中央に配置（2ボタンのみ）
-            float buttonWidth = 50.0f;
-            float spacing = 8.0f;
-            float totalWidth = buttonWidth * 2 + spacing;
-            float startX = (vp->Size.x - totalWidth) * 0.5f;
+            gameNodeId_ = idGame;
+            sceneNodeId_ = idScene;
+            toolNodeId_ = idToolColumn;
 
-            ImGui::SetCursorPosX(startX);
-
-            if (currentState == PlaybackState::Playing) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-            }
-            if (ImGui::Button("Play", ImVec2(buttonWidth, 22.0f))) {
-                playbackManager.Play();
-            }
-            if (currentState == PlaybackState::Playing) {
-                ImGui::PopStyleColor();
-            }
-
-            ImGui::SameLine(0, spacing);
-
-            if (currentState == PlaybackState::Paused) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-            }
-            if (ImGui::Button("Pause", ImVec2(buttonWidth, 22.0f))) {
-                playbackManager.Pause();
-            }
-            if (currentState == PlaybackState::Paused) {
-                ImGui::PopStyleColor();
-            }
-
+            nodeIds_[static_cast<int>(DockArea::LeftTop)] = idToolColumn;
+            nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idToolColumn;
+            nodeIds_[static_cast<int>(DockArea::Center)] = idToolColumn;
+            nodeIds_[static_cast<int>(DockArea::Right)] = idInspector;
+            nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
+            nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
+            nodeIds_[static_cast<int>(DockArea::Bottom)] = idProject;
+            nodeIds_[static_cast<int>(DockArea::Hierarchy)] = idToolColumn;
         } else {
-            // アイコンボタンを表示（再生/ポーズ + グリッド）
-            PlaybackState currentState = playbackManager.GetState();
-            ObjectSelector* objectSelector = sceneViewport_ ? sceneViewport_->GetObjectSelector() : nullptr;
+            // 1) 右側エリア（Inspector）を最初に分割（25%）
+            ImGuiID idMainArea, idRight;
+            ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.25f, &idRight, &idMainArea);
 
-            constexpr float kIconSize = 18.0f;  // アイコンサイズを小さく
-            constexpr float kPadding = 3.0f;
-            constexpr float kSpacing = 6.0f;
-            constexpr float kGroupSpacing = 16.0f;  // グループ間のスペース（再生ボタンとグリッドの間）
-            const float buttonSize = kIconSize + kPadding * 2.0f;
-            const float playbackGroupWidth = buttonSize * 2 + kSpacing;  // 再生/ポーズボタン
-            const float gridButtonWidth = buttonSize;  // グリッドボタン
-            const float totalWidth = playbackGroupWidth + kGroupSpacing + gridButtonWidth;
-            const float startX = (vp->Size.x - totalWidth) * 0.5f;
+            // 2) 残りのエリアを上下に分割（下部30%）
+            ImGuiID idTop, idBottom;
+            ImGui::DockBuilderSplitNode(idMainArea, ImGuiDir_Down, 0.30f, &idBottom, &idTop);
 
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kPadding, kPadding));
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+            // 3) 上部エリアを左側と中央に分割（左側25%）
+            ImGuiID idLeft, idCenter;
+            ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Left, 0.25f, &idLeft, &idCenter);
 
-            // Sceneビュー用ギズモ切替（左詰め）
-            if (gizmoIconsLoaded_ && objectSelector) {
-                ImGui::SetCursorPosX(8.0f);
+            // 4) 左側をさらに上下に分割
+            ImGuiID idLeftTop, idLeftBottom;
+            ImGui::DockBuilderSplitNode(idLeft, ImGuiDir_Down, 0.5f, &idLeftBottom, &idLeftTop);
 
-                const auto drawGizmoButton = [&](const char* id, D3D12_GPU_DESCRIPTOR_HANDLE icon, Gizmo::Mode mode, const char* tooltip) {
-                    const bool isActive = (objectSelector->GetGizmoMode() == mode);
+            nodeIds_[static_cast<int>(DockArea::LeftTop)] = idLeftTop;
+            nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idLeftBottom;
+            nodeIds_[static_cast<int>(DockArea::Center)] = idCenter;
+            nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
+            nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
+            nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
+            nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
+            nodeIds_[static_cast<int>(DockArea::Hierarchy)] = idLeftTop;
+        }
 
+        // 登録されているウィンドウを各ノードにドッキング
+        for (const auto& [windowName, area] : registeredWindows_) {
+            ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
+            if (nodeId != 0) {
+                ImGui::DockBuilderDockWindow(windowName.c_str(), nodeId);
+            }
+        }
+
+        // レイアウト構築完了
+        ImGui::DockBuilderFinish(dockMain);
+    }
+
+    void DockingUI::LoadPlaybackIcons()
+    {
+        auto& texManager = TextureManager::GetInstance();
+
+        if (!texManager.IsInitialized()) {
+            return;
+        }
+
+        try {
+            // ツールバーアイコンを読み込む
+            auto gridTex = texManager.Load("grid.png");
+            auto gizmoTranslateTex = texManager.Load("translate.png");
+            auto gizmoRotateTex = texManager.Load("rotate.png");
+            auto gizmoScaleTex = texManager.Load("scale.png");
+
+            gridIcon_ = gridTex.gpuHandle;
+            gizmoTranslateIcon_ = gizmoTranslateTex.gpuHandle;
+            gizmoRotateIcon_ = gizmoRotateTex.gpuHandle;
+            gizmoScaleIcon_ = gizmoScaleTex.gpuHandle;
+
+            // ステータスバー用アイコン
+            auto fpsTex = texManager.Load("fps.png");
+            fpsIcon_ = fpsTex.gpuHandle;
+            fpsIconLoaded_ = true;
+
+            auto deltaTimeTex = texManager.Load("deltaTime.png");
+            deltaTimeIcon_ = deltaTimeTex.gpuHandle;
+            deltaTimeIconLoaded_ = true;
+
+            playbackIconsLoaded_ = true;
+            gizmoIconsLoaded_ = true;
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Toolbar icons loaded successfully (DockingUI)");
+        }
+        catch (const std::exception& e) {
+            std::string errorMsg = std::format("Failed to load toolbar icons: {}", e.what());
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", errorMsg);
+            playbackIconsLoaded_ = false;
+            gizmoIconsLoaded_ = false;
+        }
+    }
+
+    void DockingUI::DrawPlaybackToolbar()
+    {
+        // アイコンがまだ読み込まれていない場合は読み込む
+        if (!playbackIconsLoaded_) {
+            LoadPlaybackIcons();
+        }
+
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+        float menuBarHeight = ImGui::GetFrameHeight();
+
+        // ツールバーの位置とサイズを設定
+        ImVec2 toolbarPos = ImVec2(vp->Pos.x, vp->Pos.y + menuBarHeight);
+        ImVec2 toolbarSize = ImVec2(vp->Size.x, toolbarHeight_);
+
+        ImGui::SetNextWindowPos(toolbarPos);
+        ImGui::SetNextWindowSize(toolbarSize);
+
+        ImGuiWindowFlags toolbarFlags = ImGuiWindowFlags_NoTitleBar
+            | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoMove
+            | ImGuiWindowFlags_NoScrollbar
+            | ImGuiWindowFlags_NoScrollWithMouse
+            | ImGuiWindowFlags_NoDocking
+            | ImGuiWindowFlags_NoSavedSettings;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+
+        if (ImGui::Begin("##PlaybackToolbar", nullptr, toolbarFlags)) {
+            if (gizmoIconsLoaded_) {
+                ObjectSelector* objectSelector = sceneViewport_ ? sceneViewport_->GetObjectSelector() : nullptr;
+
+                constexpr float kIconSize = 18.0f;
+                constexpr float kPadding = 3.0f;
+                constexpr float kSpacing = 6.0f;
+                constexpr float kGroupSpacing = 16.0f;
+
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kPadding, kPadding));
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+
+                // Sceneビュー用ギズモ切替（左詰め）
+                if (objectSelector) {
+                    ImGui::SetCursorPosX(8.0f);
+
+                    const auto drawGizmoButton = [&](const char* id, D3D12_GPU_DESCRIPTOR_HANDLE icon, Gizmo::Mode mode, const char* tooltip) {
+                        const bool isActive = (objectSelector->GetGizmoMode() == mode);
+
+                        if (isActive) {
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.48f, 0.48f, 0.48f, 1.00f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.58f, 0.58f, 0.58f, 1.00f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.40f, 0.40f, 0.40f, 1.00f));
+                        } else {
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 0.55f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 0.85f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 0.90f));
+                        }
+
+                        if (ImGui::ImageButton(id, (ImTextureID)icon.ptr, ImVec2(kIconSize, kIconSize))) {
+                            objectSelector->SetGizmoMode(mode);
+                        }
+                        ImGui::PopStyleColor(3);
+
+                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+                            ImGui::SetTooltip("%s", tooltip);
+                        }
+                        };
+
+                    drawGizmoButton("##GizmoTranslateToolbar", gizmoTranslateIcon_, Gizmo::Mode::Translate, "移動 [W]");
+                    ImGui::SameLine(0, kSpacing);
+                    drawGizmoButton("##GizmoRotateToolbar", gizmoRotateIcon_, Gizmo::Mode::Rotate, "回転 [E]");
+                    ImGui::SameLine(0, kSpacing);
+                    drawGizmoButton("##GizmoScaleToolbar", gizmoScaleIcon_, Gizmo::Mode::Scale, "拡縮 [R]");
+
+                    ImGui::SameLine(0, kGroupSpacing);
+                } else {
+                    ImGui::SetCursorPosX(8.0f);
+                }
+
+                // グリッドボタン
+                {
+                    bool isActive = isGridVisible_;
                     if (isActive) {
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.48f, 0.48f, 0.48f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.58f, 0.58f, 0.58f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.40f, 0.40f, 0.40f, 1.00f));
                     } else {
-                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.00f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 1.00f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 0.55f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 0.85f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 0.90f));
                     }
 
-                    if (ImGui::ImageButton(id, (ImTextureID)icon.ptr, ImVec2(kIconSize, kIconSize))) {
-                        objectSelector->SetGizmoMode(mode);
+                    if (ImGui::ImageButton("##GridBtn", (ImTextureID)gridIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
+                        isGridVisible_ = !isGridVisible_;
                     }
                     ImGui::PopStyleColor(3);
 
                     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                        ImGui::SetTooltip("%s", tooltip);
+                        ImGui::SetTooltip(isGridVisible_ ? "グリッドを非表示 (Hide Grid)" : "グリッドを表示 (Show Grid)");
                     }
-                };
+                }
 
-                drawGizmoButton("##GizmoTranslateToolbar", gizmoTranslateIcon_, Gizmo::Mode::Translate, "移動 [W]");
-                ImGui::SameLine(0, kSpacing);
-                drawGizmoButton("##GizmoRotateToolbar", gizmoRotateIcon_, Gizmo::Mode::Rotate, "回転 [E]");
-                ImGui::SameLine(0, kSpacing);
-                drawGizmoButton("##GizmoScaleToolbar", gizmoScaleIcon_, Gizmo::Mode::Scale, "拡縮 [R]");
-                // 同じ行のまま再生ボタン位置へ移動
-                ImGui::SameLine(startX);
-            } else {
-                ImGui::SetCursorPosX(startX);
+                ImGui::PopStyleVar(2);
             }
-
-            // 再生ボタン
-            {
-                bool isActive = (currentState == PlaybackState::Playing);
-                if (isActive) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
-                } else {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
-                }
-
-                if (ImGui::ImageButton("##PlayBtn", (ImTextureID)playIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
-                    playbackManager.Play();
-                }
-                ImGui::PopStyleColor(3);
-
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                    ImGui::SetTooltip("再生 (Play)");
-                }
-            }
-
-            ImGui::SameLine(0, kSpacing);
-
-            // 一時停止ボタン
-            {
-                bool isActive = (currentState == PlaybackState::Paused);
-                if (isActive) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
-                } else {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
-                }
-
-                if (ImGui::ImageButton("##PauseBtn", (ImTextureID)pauseIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
-                    playbackManager.Pause();
-                }
-                ImGui::PopStyleColor(3);
-
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                    ImGui::SetTooltip("一時停止 (Pause)");
-                }
-            }
-
-            // グループ間のスペーシング
-            ImGui::SameLine(0, kGroupSpacing);
-
-            // グリッドボタン
-            {
-                bool isActive = isGridVisible_;
-                if (isActive) {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.26f, 0.59f, 0.98f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.36f, 0.69f, 1.00f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.16f, 0.49f, 0.88f, 1.00f));
-                } else {
-                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 1.00f));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 1.00f));
-                }
-
-                if (ImGui::ImageButton("##GridBtn", (ImTextureID)gridIcon_.ptr, ImVec2(kIconSize, kIconSize))) {
-                    isGridVisible_ = !isGridVisible_;
-                }
-                ImGui::PopStyleColor(3);
-
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                    ImGui::SetTooltip(isGridVisible_ ? "グリッドを非表示 (Hide Grid)" : "グリッドを表示 (Show Grid)");
-                }
-            }
-
-            ImGui::PopStyleVar(2);
         }
-    }
-    ImGui::End();
+        ImGui::End();
 
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar(3);
-}
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
+    }
+
+    void DockingUI::DrawStatusBar(float fps, float deltaTimeMs)
+    {
+        ImGuiViewport* vp = ImGui::GetMainViewport();
+        ImVec2 pos = ImVec2(vp->Pos.x, vp->Pos.y + vp->Size.y - statusBarHeight_);
+        ImVec2 size = ImVec2(vp->Size.x, statusBarHeight_);
+
+        ImGui::SetNextWindowPos(pos);
+        ImGui::SetNextWindowSize(size);
+        ImGui::SetNextWindowViewport(vp->ID);
+
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar
+            | ImGuiWindowFlags_NoResize
+            | ImGuiWindowFlags_NoMove
+            | ImGuiWindowFlags_NoScrollbar
+            | ImGuiWindowFlags_NoScrollWithMouse
+            | ImGuiWindowFlags_NoDocking
+            | ImGuiWindowFlags_NoSavedSettings
+            | ImGuiWindowFlags_NoFocusOnAppearing
+            | ImGuiWindowFlags_NoNav;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
+
+        // FPSに応じてステータスバー背景色を変化させる
+        constexpr float kTargetFPS = 60.0f;
+        ImVec4 barBgColor;
+        if (fps >= kTargetFPS * 0.90f) {
+            barBgColor = ImVec4(0.05f, 0.28f, 0.08f, 1.0f);  // 暗い緑
+        } else if (fps >= kTargetFPS * 0.80f) {
+            barBgColor = ImVec4(0.28f, 0.22f, 0.03f, 1.0f);  // 暗い黄
+        } else {
+            barBgColor = ImVec4(0.28f, 0.05f, 0.05f, 1.0f);  // 暗い赤
+        }
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, barBgColor);
+
+        if (ImGui::Begin("##StatusBar", nullptr, flags)) {
+            constexpr float kFpsIconSize = 16.0f;
+            constexpr float kDeltaTimeIconSize = 32.0f;
+            constexpr float kSeparatorSpacing = 16.0f;
+            const float windowHeight = ImGui::GetWindowHeight();
+            const float textCenterY = (windowHeight - ImGui::GetTextLineHeight()) * 0.5f;
+
+            // FPSアイコン
+            if (fpsIconLoaded_) {
+                ImGui::SetCursorPosY((windowHeight - kFpsIconSize) * 0.5f);
+                ImGui::Image((ImTextureID)fpsIcon_.ptr, ImVec2(kFpsIconSize, kFpsIconSize));
+                ImGui::SameLine(0, 6.0f);
+            }
+
+            // FPSテキスト（白固定）
+            ImGui::SetCursorPosY(textCenterY);
+            ImGui::Text("[frame per second]: %.1f fps", fps);
+
+            // セパレーター
+            ImGui::SameLine(0, kSeparatorSpacing);
+            ImGui::SetCursorPosY(textCenterY);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
+            ImGui::TextUnformatted("|");
+            ImGui::PopStyleColor();
+
+            // デルタタイムアイコン
+            ImGui::SameLine(0, kSeparatorSpacing);
+            if (deltaTimeIconLoaded_) {
+                ImGui::SetCursorPosY((windowHeight - kDeltaTimeIconSize) * 0.5f);
+                ImGui::Image((ImTextureID)deltaTimeIcon_.ptr, ImVec2(kDeltaTimeIconSize, kDeltaTimeIconSize));
+                ImGui::SameLine(0, 6.0f);
+            }
+
+            // デルタタイムテキスト
+            ImGui::SetCursorPosY(textCenterY);
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.85f, 1.0f, 1.0f));
+            ImGui::Text("[exec speed / frame]: %.4f sec", deltaTimeMs * 0.001f);
+            ImGui::PopStyleColor();
+        }
+        ImGui::End();
+
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(3);
+    }
 }
 
 

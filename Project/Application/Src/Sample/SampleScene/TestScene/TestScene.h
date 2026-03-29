@@ -39,8 +39,8 @@ namespace CoreEngine
 {
 class TestScene : public BaseScene {
 public:
-    /// @brief 初期化
-    void Initialize(EngineSystem* engine) override;
+    /// @brief シーン固有の初期化
+    void OnInitialize() override;
 
     /// @brief 描画処理
     void Draw() override;

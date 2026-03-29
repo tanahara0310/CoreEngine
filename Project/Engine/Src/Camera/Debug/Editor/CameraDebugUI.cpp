@@ -48,7 +48,20 @@ namespace CoreEngine {
         modules_.clear();
     }
 
-    void CameraDebugUI::Draw()
+    void CameraDebugUI::UpdateModules()
+    {
+        if (!cameraManager_) {
+            return;
+        }
+        CameraEditorContext context = BuildContext();
+        for (const auto& module : modules_) {
+            if (module) {
+                module->Update(context);
+            }
+        }
+    }
+
+    void CameraDebugUI::DrawContent()
     {
         if (!cameraManager_) {
             return;
@@ -56,64 +69,60 @@ namespace CoreEngine {
 
         CameraEditorContext context = BuildContext();
 
-        // タブ外でも必要な処理（再生更新など）を一括更新する。
-        for (const auto& module : modules_) {
-            if (module) {
-                module->Update(context);
-            }
+        ImGui::Text("登録カメラ数: %zu", cameraManager_->GetCameraCount());
+        ImGui::Text("アクティブ3D: %s", cameraManager_->GetActiveCameraName(CameraType::Camera3D).c_str());
+        ImGui::Separator();
+
+        bool expandAll = false;
+        bool collapseAll = false;
+        if (ImGui::Button("すべて展開")) {
+            expandAll = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("すべて折りたたみ")) {
+            collapseAll = true;
         }
 
-        // 専用のカメラウィンドウを作成
-        if (ImGui::Begin("Camera", nullptr, ImGuiWindowFlags_None)) {
-            ImGui::Text("登録カメラ数: %zu", cameraManager_->GetCameraCount());
-            ImGui::Text("アクティブ3D: %s", cameraManager_->GetActiveCameraName(CameraType::Camera3D).c_str());
-            ImGui::Separator();
+        ImGui::Separator();
 
-            // タブ遷移ではなく縦長レイアウトで表示し、機能全体の見通しを維持する。
-            bool expandAll = false;
-            bool collapseAll = false;
-            if (ImGui::Button("すべて展開")) {
-                expandAll = true;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("すべて折りたたみ")) {
-                collapseAll = true;
-            }
-
-            ImGui::Separator();
-
-            // モジュール描画領域をスクロール可能にし、項目追加時の視認性を確保する。
-            if (ImGui::BeginChild("CameraModuleVerticalLayout", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
-                for (size_t i = 0; i < modules_.size(); ++i) {
-                    const auto& module = modules_[i];
-                    if (!module) {
-                        continue;
-                    }
-
-                    ImGui::PushID(static_cast<int>(i));
-
-                    if (expandAll) {
-                        ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-                    } else if (collapseAll) {
-                        ImGui::SetNextItemOpen(false, ImGuiCond_Always);
-                    }
-
-                    if (ImGui::CollapsingHeader(module->GetTabName(), ImGuiTreeNodeFlags_DefaultOpen)) {
-                        module->Draw(context);
-                    }
-
-                    ImGui::Separator();
-                    ImGui::PopID();
+        if (ImGui::BeginChild("CameraModuleVerticalLayout", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
+            for (size_t i = 0; i < modules_.size(); ++i) {
+                const auto& module = modules_[i];
+                if (!module) {
+                    continue;
                 }
 
-                ImGui::EndChild();
-            }
+                ImGui::PushID(static_cast<int>(i));
 
-            // 基盤状態ではモジュールが未登録でもエディターが空白にならないように案内を表示する。
-            if (modules_.empty()) {
+                if (expandAll) {
+                    ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+                } else if (collapseAll) {
+                    ImGui::SetNextItemOpen(false, ImGuiCond_Always);
+                }
+
+                if (ImGui::TreeNodeEx(module->GetTabName(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                    module->Draw(context);
+                    ImGui::TreePop();
+                }
+
                 ImGui::Separator();
-                ImGui::TextDisabled("カメラエディターモジュールが登録されていません。");
+                ImGui::PopID();
             }
+        }
+        ImGui::EndChild();
+
+        if (modules_.empty()) {
+            ImGui::Separator();
+            ImGui::TextDisabled("カメラエディターモジュールが登録されていません。");
+        }
+    }
+
+    void CameraDebugUI::Draw()
+    {
+        UpdateModules();
+
+        if (ImGui::Begin("Camera", nullptr, ImGuiWindowFlags_None)) {
+            DrawContent();
         }
         ImGui::End();
     }

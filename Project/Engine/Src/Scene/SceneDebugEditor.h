@@ -22,8 +22,11 @@ namespace CoreEngine
         /// @brief デバッグ更新（カメラ・ショートカット・ ImGui ウィンドウ）
         void Update();
 
-        /// @brief "オブジェクト制御" ImGui ウィンドウを描画する
-        void DrawObjectControlWindow();
+        /// @brief Hierarchyパネル内容のみ描画（ImGui::Begin/Endなし、外部ウィンドウへの埋め込み用）
+        void DrawHierarchyContent();
+
+        /// @brief Inspectorパネル内容のみ描画（選択オブジェクトのプロパティ）
+        void DrawInspectorContent();
 
         /// @brief 履歴をすべてクリア（シーン切り替え時）
         void ClearHistory();

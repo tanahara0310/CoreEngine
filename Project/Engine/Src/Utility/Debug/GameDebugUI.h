@@ -2,6 +2,7 @@
 #include "Utility/Debug/ImGui/Gizmo.h"
 #include "Utility/Debug/ConsoleUI.h"
 #include "Utility/Debug/ImGui/SceneManagerTab.h"
+#include <functional>
 
 /// @brief デバッグ用のUIクラス
 /// エンジンシステムの低レベル情報の表示とデバッグ支援を行う
@@ -25,6 +26,20 @@ public:
     /// @param sceneManager SceneManagerへのポインタ
     void SetSceneManager(SceneManager* sceneManager);
 
+    /// @brief Hierarchyパネル用コンテンツドロワーを設定（SceneDebugEditorから登録）
+    void SetHierarchyContentDrawer(std::function<void()> callback) { hierarchyContentDrawer_ = std::move(callback); }
+
+    /// @brief Camera EditorをEngine Editorに登録（SceneDebugEditorから登録）
+    void SetInspectorCameraDrawer(std::function<void()> callback);
+
+    /// @brief Inspectorの選択オブジェクトドロワーを設定（SceneDebugEditorから登録）
+    void SetInspectorObjectDrawer(std::function<void()> callback) { inspectorObjectDrawer_ = std::move(callback); }
+
+    /// @brief アプリケーション固有のエディターをApp Editorに登録
+    /// @param label メニューに表示する名前
+    /// @param drawer Inspector内に描画するコンテンツドロワー
+    void RegisterAppEditor(const std::string& label, std::function<void()> drawer);
+
     /// @brief 更新
     void Update();
 
@@ -35,54 +50,36 @@ public:
     void UpdateDebugPanels();
 
     /// @brief コンソールUIへのアクセッサ
-    /// @return コンソールUIのポインタ
     ConsoleUI* GetConsole() { return console_.get(); }
 
     /// @brief シーンマネージャータブへのアクセッサ
-    /// @return シーンマネージャータブのポインタ
     SceneManagerTab* GetSceneManagerTab() { return sceneManagerTab_.get(); }
 
-private: // メンバ変数
-    EngineSystem* engine_ = nullptr; // エンジンシステムへのポインタ
-    DockingUI* dockingUI_ = nullptr; // ドッキングUIへのポインタ
+private:
+    EngineSystem* engine_    = nullptr;
+    DockingUI*    dockingUI_ = nullptr;
 
-    // ===== コンソール機能 =====
-    std::unique_ptr<ConsoleUI> console_ = std::make_unique<ConsoleUI>();
-
-    // ===== シーンマネージャータブ =====
+    std::unique_ptr<ConsoleUI>       console_         = std::make_unique<ConsoleUI>();
     std::unique_ptr<SceneManagerTab> sceneManagerTab_ = std::make_unique<SceneManagerTab>();
 
-    // ===== ウィンドウ表示フラグ（最小限） =====
-    bool showEngineInfo_ = true;
-    bool showConsole_ = true; // コンソールウィンドウの表示フラグ
-    bool showSceneManager_ = true; // シーンマネージャーウィンドウの表示フラグ
+    std::function<void()> hierarchyContentDrawer_;
+    std::function<void()> inspectorObjectDrawer_;
 
-    // ウィンドウ名定数（変更しやすくするため）
-    static constexpr const char* engineDebugWindow = "Engine Debug Info";
-    static constexpr const char* LightWindow = "Lighting";
-    static constexpr const char* consoleWindow = "Console"; // コンソールウィンドウ
-    static constexpr const char* sceneManagerWindow = "Scene Manager"; // シーンマネージャーウィンドウ
+    // エディターエントリーリスト（ラベル, ドロワー）
+    using EditorList = std::vector<std::pair<std::string, std::function<void()>>>;
+    EditorList engineEditors_;  ///< Engine Editor サブメニュー用
+    EditorList appEditors_;     ///< App Editor サブメニュー用
 
-private: // デバッグ用のUIを表示するためのメソッド
-    /// @brief エンジン情報UIを表示
-    void ShowEngineInfoUI();
+    std::string activeEditorId_;  ///< 現在Inspector表示中のエディターID（空 = Object表示）
 
-    /// @brief FPS情報タブを表示
-    void ShowFPSInfoTab(FrameRateController* frameRate);
+    bool showConsole_ = true;
 
-    /// @brief 詳細パフォーマンスタブを表示
-    void ShowDetailedPerformanceTab(FrameRateController* frameRate);
+    static constexpr const char* consoleWindow = "Console";
 
-    /// @brief ライティングデバッグUIを表示（独立ウィンドウ）
-    void ShowLightingDebugUI();
-
-    /// @brief コンソールウィンドウを表示
+private:
     void ShowConsoleUI();
-
-    /// @brief シーンマネージャーウィンドウを表示
-    void ShowSceneManagerUI();
-
-    /// @brief ドッキングシステムにウィンドウを登録
+    void DrawHierarchyPanel();
+    void DrawInspectorPanel();
     void RegisterWindowsForDocking();
 };
 }

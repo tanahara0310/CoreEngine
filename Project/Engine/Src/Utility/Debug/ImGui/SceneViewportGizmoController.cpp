@@ -60,7 +60,7 @@ namespace CoreEngine
         }
 
         try {
-            auto cameraTex = texManager.Load("Engine/Assets/Textures/Icon/camera.png");
+            auto cameraTex = texManager.Load("camera.png");
 
             gameCameraIcon_ = cameraTex.gpuHandle;
 

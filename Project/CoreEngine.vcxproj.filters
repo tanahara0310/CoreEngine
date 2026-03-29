@@ -1314,9 +1314,6 @@
     <None Include="Engine\Src\Particle\README.md">
       <Filter>Engine\Particle</Filter>
     </None>
-    <None Include="Engine\Src\Utility\Debug\ImGui\README.md">
-      <Filter>Engine\Utility\Debug\ImGui</Filter>
-    </None>
     <None Include="docs\Logger_Usage.md">
       <Filter>docs</Filter>
     </None>
