@@ -19,9 +19,8 @@ using namespace CoreEngine::MathCore;
 
 namespace CoreEngine
 {
-    void TestScene::Initialize(EngineSystem* engine)
+    void TestScene::OnInitialize()
     {
-        BaseScene::Initialize(engine);
         SetSceneName("TestScene");
 
         ///========================================================
@@ -116,6 +115,8 @@ namespace CoreEngine
                 sphere->SetActive(true);
             }
         }
+
+        // 全オブジェクト生成後にシーンデータを適用（BaseSceneが自動実行）
     }
 
     void TestScene::OnUpdate()

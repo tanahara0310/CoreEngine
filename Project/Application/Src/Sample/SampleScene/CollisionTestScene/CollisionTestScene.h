@@ -5,9 +5,8 @@
 
 class CollisionTestScene : public CoreEngine::BaseScene {
 public:
-    /// @brief 初期化
-    /// @param engine エンジンシステムへのポインタ 
-    void Initialize(CoreEngine::EngineSystem* engine) override;
+    /// @brief シーン固有の初期化
+    void OnInitialize() override;
 
     /// @brief 描画
     void Draw() override;

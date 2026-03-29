@@ -41,6 +41,12 @@ namespace CoreEngine
         debugEditor_ = std::make_unique<SceneDebugEditor>();
         debugEditor_->Initialize(engine_, &gameObjectManager_, cameraManager_.get(), sceneSaveSystem_.get());
 #endif
+
+        // 派生クラス固有の初期化（オブジェクト生成など）
+        OnInitialize();
+
+        // 全オブジェクト生成後にシーンデータを JSON から自動復元
+        LoadObjectsFromJson();
     }
 
     void BaseScene::Update()

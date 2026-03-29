@@ -108,9 +108,8 @@ namespace CoreEngine {
                 ImGui::Separator();
                 ImGui::PopID();
             }
-
-            ImGui::EndChild();
         }
+        ImGui::EndChild();
 
         if (modules_.empty()) {
             ImGui::Separator();
