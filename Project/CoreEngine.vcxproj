@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -63,6 +63,8 @@
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
+    <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem;$(SolutionDir)imgui</IncludePath>
@@ -87,11 +89,16 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\freetype\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MinimalRebuild>false</MinimalRebuild>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\freetype\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Application/Src;$(ProjectDir)Externals</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <CreateHotPatchableImage>Enabled</CreateHotPatchableImage>
+      <OptimizeReferences>false</OptimizeReferences>
+      <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalLibraryDirectories>$(SolutionDir)..\generated\imgui\outputs\$(Configuration)\;$(ProjectDir)externals\assimp\lib\Debug;$(ProjectDir)externals\freetype\lib\x64\Debug</AdditionalLibraryDirectories>
@@ -101,7 +108,8 @@
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dxil.dll"
 xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Command>
+xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
+xcopy "$(ProjectDir)Externals\LivePP\Agent\x64" "$(TargetDir)LivePP\Agent\x64\" /E /I /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -299,6 +307,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
     <ClCompile Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DepthStencilManager.cpp" />
@@ -575,6 +584,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\LivePPAgent.h" />
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h" />
     <ClInclude Include="Engine\Utility\Logger\ScopedTimer.h" />
     <ClInclude Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.h" />
