@@ -73,7 +73,7 @@ namespace CoreEngine
         auto walkModel = CreateObject<WalkModelObject>();
         walkModel->GetTransform().translate = { 25.0f, 0.0f, 0.0f };
         walkModel->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        walkModel->SetActive(true);
+        walkModel->SetActive(false);
 
         // ===== PBR パラメータテスト用球体グリッド =====
         // 列（X 軸）: Roughness  0.0（左=鏡面） → 1.0（右=粗面）
@@ -116,7 +116,6 @@ namespace CoreEngine
             }
         }
 
-        // 全オブジェクト生成後にシーンデータを適用（BaseSceneが自動実行）
     }
 
     void TestScene::OnUpdate()
