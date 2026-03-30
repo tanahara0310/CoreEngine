@@ -3,6 +3,11 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Live++ バイナリファイル（API ヘッダーは管理対象・バイナリのみ除外）
+Project/Externals/LivePP/Agent/x64/*.dll
+Project/Externals/LivePP/Agent/x64/*.exe
+Project/Externals/LivePP/Broker/
+
 # User-specific files
 *.rsuser
 *.suo
