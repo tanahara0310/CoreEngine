@@ -1,6 +1,6 @@
-﻿#include "ParticleSystemDebugUI.h"
+#include "ParticleSystemDebugUI.h"
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include "Particle/ParticleSystem.h"
 #include "Graphics/Model/ModelResource.h"
@@ -183,4 +183,4 @@ void ParticleSystemDebugUI::ShowStatistics(ParticleSystem* particleSystem) {
 
 }
 
-#endif // _DEBUG
+#endif // USE_IMGUI

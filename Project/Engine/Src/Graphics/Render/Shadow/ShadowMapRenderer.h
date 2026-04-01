@@ -50,7 +50,7 @@ namespace CoreEngine
         /// @return バイアス設定
         const ShadowBiasSettings& GetBiasSettings() const { return biasSettings_; }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         /// @brief ImGuiでバイアス設定を調整
         void DrawImGui();
 #endif

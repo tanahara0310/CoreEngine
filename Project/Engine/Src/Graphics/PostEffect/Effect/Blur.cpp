@@ -1,4 +1,4 @@
-﻿#include "Blur.h"
+#include "Blur.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -22,7 +22,7 @@ namespace CoreEngine
 
     void Blur::DrawImGui()
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         ImGui::PushID("BlurParams");
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -59,7 +59,7 @@ namespace CoreEngine
         }
 
         ImGui::PopID();
-#endif // _DEBUG
+#endif // USE_IMGUI
     }
 
     void Blur::SetParams(const BlurParams& params)

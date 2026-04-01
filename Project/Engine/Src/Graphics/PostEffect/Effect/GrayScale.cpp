@@ -1,4 +1,4 @@
-﻿#include "GrayScale.h"
+#include "GrayScale.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 
 
@@ -6,7 +6,7 @@ namespace CoreEngine
 {
 void GrayScale::DrawImGui()
 {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     ImGui::PushID("GrayScale");
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -18,6 +18,6 @@ void GrayScale::DrawImGui()
     }
     
     ImGui::PopID();
-#endif // _DEBUG
+#endif // USE_IMGUI
 }
 }

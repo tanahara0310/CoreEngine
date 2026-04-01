@@ -10,7 +10,7 @@
 
 #include "Scene/SceneSaveSystem.h"
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Scene/SceneDebugEditor.h"
 #endif
 
@@ -179,7 +179,7 @@ namespace CoreEngine
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         std::unique_ptr<SceneDebugEditor> debugEditor_;  // Undo/Redo・デバッグ編集機能
 #endif
 

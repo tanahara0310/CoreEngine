@@ -1,9 +1,9 @@
-﻿#include "GameObjectManager.h"
+#include "GameObjectManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Collider/CollisionManager.h"
 #include <algorithm>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
@@ -115,7 +115,7 @@ namespace CoreEngine
         }
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     void GameObjectManager::DrawSingleObjectImGui(GameObject* obj)
     {
         if (!obj) {
@@ -144,5 +144,5 @@ namespace CoreEngine
             onChangedCallback_(obj);
         }
     }
-#endif
+#endif // USE_IMGUI
 }

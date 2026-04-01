@@ -1,4 +1,4 @@
-﻿#include "Bloom.h"
+#include "Bloom.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -22,7 +22,7 @@ namespace CoreEngine
 
     void Bloom::DrawImGui()
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         ImGui::PushID("BloomParams");
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -87,7 +87,7 @@ namespace CoreEngine
         }
 
         ImGui::PopID();
-#endif // _DEBUG
+#endif // USE_IMGUI
     }
 
     void Bloom::SetParams(const BloomParams& params)

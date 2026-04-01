@@ -1,4 +1,4 @@
-﻿#include "Sepia.h"
+#include "Sepia.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -16,7 +16,7 @@ void Sepia::Initialize(DirectXCommon* dxCommon)
 
 void Sepia::DrawImGui()
 {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     ImGui::PushID("SepiaParams");
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -86,7 +86,7 @@ void Sepia::DrawImGui()
     UI::Separator();
     
     ImGui::PopID();
-#endif // _DEBUG
+#endif // USE_IMGUI
 }
 
 void Sepia::SetParams(const SepiaParams& params)

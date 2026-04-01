@@ -39,7 +39,7 @@ public:
     /// @param particle 対象のパーティクル
     void ApplyInitialVelocity(Particle& particle);
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
     bool ShowImGui() override;

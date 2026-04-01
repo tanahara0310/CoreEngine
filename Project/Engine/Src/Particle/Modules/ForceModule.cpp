@@ -51,7 +51,7 @@ namespace CoreEngine
         }
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     bool ForceModule::ShowImGui() {
         bool changed = false;
 

@@ -1,4 +1,4 @@
-﻿#include "ParticleSystem.h"
+#include "ParticleSystem.h"
 #include "Utility/Random/RandomGenerator.h"
 #include "Camera/ICamera.h"
 #include "Camera/CameraManager.h"
@@ -6,8 +6,10 @@
 #include "Graphics/Model/ModelResource.h"
 #include <iostream>
 #include <cstdio>
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
+#endif
+#ifdef _DEBUG
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Render/RenderManager.h"
 #endif
@@ -260,7 +262,7 @@ void ParticleSystem::SetModelResource(ModelResource* modelResource)
     }
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 bool ParticleSystem::DrawImGui()
 {
     bool changed = false;
@@ -291,5 +293,5 @@ bool ParticleSystem::DrawImGui()
     
     return changed;
 }
-#endif
+#endif // USE_IMGUI
 }

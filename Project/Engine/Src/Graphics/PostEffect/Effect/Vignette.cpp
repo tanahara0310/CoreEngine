@@ -1,4 +1,4 @@
-﻿#include "Vignette.h"
+#include "Vignette.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -16,7 +16,7 @@ void Vignette::Initialize(DirectXCommon* dxCommon)
 
 void Vignette::DrawImGui()
 {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     ImGui::PushID("VignetteParams");
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -60,7 +60,7 @@ void Vignette::DrawImGui()
     UI::Separator();
     
     ImGui::PopID();
-#endif // _DEBUG
+#endif // USE_IMGUI
 }
 
 void Vignette::SetParams(const VignetteParams& params)

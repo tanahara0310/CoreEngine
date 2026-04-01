@@ -41,7 +41,7 @@ public:
     /// @param camera 2D用カメラ
     void Draw2D(const ICamera* camera);
     
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief Transform / Material / Sprite の ImGui UI を描画する（基底の DrawImGui から自動呼出し）
     bool DrawImGuiExtended() override;
 #endif
@@ -169,7 +169,7 @@ private:
     /// @brief 頂点データ更新フラグ（Dirty Flag パターン）
     bool vertexDataDirty_ = false;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     // ImGui 編集追跡用（操作前スナップショット）
     CoreEngine::Vector3 imguiSnapTranslate_ = { 0.0f, 0.0f, 0.0f };
     CoreEngine::Vector3 imguiSnapRotate_    = { 0.0f, 0.0f, 0.0f };

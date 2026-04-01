@@ -1,4 +1,4 @@
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include "UndoRedoHistory.h"
 #include "ObjectCommon/GameObjectManager.h"
@@ -88,4 +88,4 @@ namespace CoreEngine
     }
 }
 
-#endif // _DEBUG
+#endif // USE_IMGUI

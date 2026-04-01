@@ -4,12 +4,12 @@
 #include <cstdint>
 #include <functional>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include <imgui_impl_win32.h>
 
 // ImGuiのウィンドウプロシージャ（グローバル名前空間）
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-#endif // _DEBUG
+#endif // USE_IMGUI
 
 namespace CoreEngine
 {

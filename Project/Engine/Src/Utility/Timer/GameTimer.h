@@ -195,7 +195,7 @@ public:
     void ResetIntervalCheckers();
 
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief ImGuiでタイマー状態を表示（デバッグビルドのみ）
     /// @param label タイマーのラベル
     void DrawImGui(const char* label = "Timer");

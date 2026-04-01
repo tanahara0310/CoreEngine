@@ -1,4 +1,4 @@
-﻿#include "Invert.h"
+#include "Invert.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 
 
@@ -6,7 +6,7 @@ namespace CoreEngine
 {
 void Invert::DrawImGui()
 {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     ImGui::PushID("Invert");
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -21,6 +21,6 @@ void Invert::DrawImGui()
     }
     
     ImGui::PopID();
-#endif // _DEBUG
+#endif // USE_IMGUI
 }
 }

@@ -6,7 +6,7 @@
 #include "Camera/ICamera.h"
 #include "Utility/JsonManager/JsonManager.h"
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
@@ -111,7 +111,7 @@ namespace CoreEngine
         }
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     void ModelGameObject::OnImGuiActiveChanged(bool prevActive) {
         if (onEditCommitted_) {
             onEditCommitted_(this,
@@ -171,6 +171,6 @@ namespace CoreEngine
         if (!materialDebugUI_) materialDebugUI_ = std::make_unique<MaterialDebugUI>();
         return materialDebugUI_->Draw(model_.get());
     }
-#endif
+#endif // USE_IMGUI
 
 }  // namespace CoreEngine

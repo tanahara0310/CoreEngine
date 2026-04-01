@@ -107,7 +107,7 @@ public:
     /// @return 色
     Vector4 GenerateStartColor() const;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
     bool ShowImGui() override;

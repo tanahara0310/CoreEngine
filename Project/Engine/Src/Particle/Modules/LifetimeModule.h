@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "ParticleModule.h"
 
@@ -36,7 +36,7 @@ public:
     /// @return パーティクルが生きている場合true、死んでいる場合false
     bool UpdateLifetime(Particle& particle, float deltaTime);
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
     bool ShowImGui() override;

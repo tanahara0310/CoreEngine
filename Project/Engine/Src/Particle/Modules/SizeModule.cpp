@@ -1,4 +1,4 @@
-﻿#include "SizeModule.h"
+#include "SizeModule.h"
 #include "../ParticleSystem.h"
 #include <algorithm>
 
@@ -50,7 +50,7 @@ void SizeModule::UpdateSize(Particle& particle)
     }
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 bool SizeModule::ShowImGui() {
     bool changed = false;
     

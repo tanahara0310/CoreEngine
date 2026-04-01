@@ -1,4 +1,4 @@
-﻿#include "NoiseModule.h"
+#include "NoiseModule.h"
 #include "../ParticleSystem.h" // Particle構造体のために必要
 #include <cmath>
 
@@ -57,7 +57,7 @@ void NoiseModule::ApplyNoise(Particle& particle, float deltaTime) {
     particle.transform.translate.z += noiseOffset.z * deltaTime;
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 bool NoiseModule::ShowImGui() {
     bool changed = false;
 

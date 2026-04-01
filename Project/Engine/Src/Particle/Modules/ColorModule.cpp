@@ -1,4 +1,4 @@
-﻿#include "ColorModule.h"
+#include "ColorModule.h"
 #include "../ParticleSystem.h" // Particle構造体のために必要
 #include <algorithm>
 
@@ -25,7 +25,7 @@ namespace CoreEngine
         particle.color = LerpColor(particle.initialColor, colorData_.endColor, t);
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     bool ColorModule::ShowImGui() {
         bool changed = false;
 

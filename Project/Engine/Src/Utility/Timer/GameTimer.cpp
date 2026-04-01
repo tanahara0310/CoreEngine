@@ -1,8 +1,8 @@
-﻿#include "GameTimer.h"
+#include "GameTimer.h"
 #include <algorithm>
 #include <cmath>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
@@ -293,8 +293,9 @@ void GameTimer::ResetIntervalCheckers() {
     }
 }
 
-#ifdef _DEBUG
-void GameTimer::DrawImGui(const char* label) {
+#ifdef USE_IMGUI
+void GameTimer::DrawImGui(const char* label)
+{
     ImGui::PushID(this);  // 複数のタイマーがある場合のID衝突を防ぐ
     
     if (ImGui::CollapsingHeader(label)) {

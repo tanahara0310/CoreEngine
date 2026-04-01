@@ -1,7 +1,7 @@
-﻿#include "EmissionModule.h"
+#include "EmissionModule.h"
 #include "../ParticleSystem.h" // Particle構造体のために必要
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #endif
 
@@ -67,7 +67,7 @@ void EmissionModule::Stop() {
     isPlaying_ = false;
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 bool EmissionModule::ShowImGui() {
     bool changed = false;
 

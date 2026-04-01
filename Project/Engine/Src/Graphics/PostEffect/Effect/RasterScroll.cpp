@@ -1,4 +1,4 @@
-﻿#include "RasterScroll.h"
+#include "RasterScroll.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -34,7 +34,7 @@ namespace CoreEngine
 
     void RasterScroll::DrawImGui()
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         ImGui::PushID("RasterScrollParams");
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -140,7 +140,7 @@ namespace CoreEngine
         }
 
         ImGui::PopID();
-#endif // _DEBUG
+#endif // USE_IMGUI
     }
 
     void RasterScroll::SetParams(const RasterScrollParams& params)

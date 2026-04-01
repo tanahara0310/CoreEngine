@@ -1,11 +1,11 @@
-﻿#include "ShadowMapRenderer.h"
+#include "ShadowMapRenderer.h"
 #include "Camera/ICamera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include <cassert>
 #include <DirectXMath.h>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
@@ -155,8 +155,9 @@ namespace CoreEngine
         currentPipelineState_ = normalModelPSO_->GetPipelineState(BlendMode::kBlendModeNone);
     }
 
-#ifdef _DEBUG
-    void ShadowMapRenderer::DrawImGui() {
+#ifdef USE_IMGUI
+    void ShadowMapRenderer::DrawImGui()
+    {
         if (ImGui::CollapsingHeader("Shadow Bias Settings")) {
             bool changed = false;
 
@@ -173,5 +174,5 @@ namespace CoreEngine
             }
         }
     }
-#endif
+#endif // USE_IMGUI
 }

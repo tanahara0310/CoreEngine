@@ -215,7 +215,7 @@ namespace CoreEngine
                 );
         }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // ===== デバッグ UI =====
 
         /// @brief ImGui デバッグ UI を描画する
@@ -262,8 +262,8 @@ namespace CoreEngine
 
         std::optional<int> renderOrder_;  ///< 描画順序オーバーライド（nullopt: パス優先度に従う）
 
-#ifdef _DEBUG
-        EditCommitCallback  onEditCommitted_;   ///< Undo/Redo 記録用コールバック
+#ifdef USE_IMGUI
+        EditCommitCallback  onEditCommitted_;   ///< 編集確定時コールバック
         SaveRequestCallback onSaveRequested_;   ///< 個別保存ボタン用コールバック
 
         /// @brief Active チェックボックス変更時に呼び出されるフック

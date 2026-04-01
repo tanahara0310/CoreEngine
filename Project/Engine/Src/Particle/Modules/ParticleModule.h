@@ -3,7 +3,7 @@
 #include "Math/MathCore.h"
 #include "Utility/Random/RandomGenerator.h"
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #endif
 
@@ -26,7 +26,7 @@ public:
     /// @return 有効な場合true
     bool IsEnabled() const { return enabled_; }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief ImGuiデバッグ表示（純粋仮想関数）
     /// @return UIに変更があった場合true
     virtual bool ShowImGui() = 0;

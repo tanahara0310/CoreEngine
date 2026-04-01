@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 // ── ラッパー群 ──────────────────────────────────────────────────────────
 #include "Wrappers/ImGuiScope.h"    // RAII スコープ（TreeScope, DisabledScope, ...）
@@ -19,4 +19,4 @@
 //   UI::Widgets::ToggleSwitch("Active", &flag);
 //
 
-#endif // _DEBUG
+#endif // USE_IMGUI

@@ -3,7 +3,7 @@
 #include "Collider/AABBCollider.h"
 #include <cstdio>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
@@ -94,7 +94,7 @@ namespace CoreEngine
     bool GameObject::IsSerializeEnabled() const { return shouldSerialize_; }
     void GameObject::SetSerializeEnabled(bool enable) { shouldSerialize_ = enable; }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     // ===== デバッグ UI =====
 
     bool GameObject::DrawImGuiExtended() { return false; }
@@ -144,7 +144,7 @@ namespace CoreEngine
         UI::SameLine();
         UI::Hint("このオブジェクトのみ");
     }
-#endif
+#endif // USE_IMGUI
 
 }
 

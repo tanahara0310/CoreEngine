@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include "Scene/UndoRedoHistory.h"
 #include <string>
@@ -17,7 +17,7 @@ namespace CoreEngine
     public:
         /// @brief Undo/Redo コールバックと保存コールバックをセットアップする
         void Initialize(EngineSystem* engine, GameObjectManager* mgr,
-                        CameraManager* camMgr, SceneSaveSystem* saveSystem);
+            CameraManager* camMgr, SceneSaveSystem* saveSystem);
 
         /// @brief デバッグ更新（カメラ・ショートカット・ ImGui ウィンドウ）
         void Update();
@@ -53,11 +53,11 @@ namespace CoreEngine
         static constexpr double kNotificationDuration = 2.5;
 
         // 非所有参照
-        EngineSystem*      engine_            = nullptr;
-        GameObjectManager* gameObjectManager_  = nullptr;
-        CameraManager*     cameraManager_     = nullptr;
-        SceneSaveSystem*   saveSystem_        = nullptr;
+        EngineSystem* engine_ = nullptr;
+        GameObjectManager* gameObjectManager_ = nullptr;
+        CameraManager* cameraManager_ = nullptr;
+        SceneSaveSystem* saveSystem_ = nullptr;
     };
 }
 
-#endif // _DEBUG
+#endif // USE_IMGUI
