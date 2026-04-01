@@ -1,7 +1,9 @@
-﻿#include "Shockwave.h"
+#include "Shockwave.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
+#endif
 #include <cassert>
 
 
@@ -50,6 +52,7 @@ namespace CoreEngine
 
     void Shockwave::DrawImGui()
     {
+#ifdef USE_IMGUI
         ImGui::PushID("ShockwaveParams");
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -99,6 +102,7 @@ namespace CoreEngine
         }
 
         ImGui::PopID();
+#endif // USE_IMGUI
     }
 
     void Shockwave::SetParams(const ShockwaveParams& params)

@@ -1,5 +1,6 @@
 #include "SceneViewportWindowRenderer.h"
 
+#ifdef USE_IMGUI
 #include "WinApp/WinApp.h"
 
 namespace CoreEngine
@@ -59,3 +60,4 @@ namespace CoreEngine
         return result;
     }
 }
+#endif // USE_IMGUI

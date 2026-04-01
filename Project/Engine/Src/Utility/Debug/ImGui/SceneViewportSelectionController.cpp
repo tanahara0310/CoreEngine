@@ -1,5 +1,6 @@
 #include "SceneViewportSelectionController.h"
 
+#ifdef USE_IMGUI
 #include "ObjectSelector.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "Camera/ICamera.h"
@@ -56,3 +57,4 @@ namespace CoreEngine
         objectSelector->Update2D(gameObjectManager, camera, normalizedMousePos, isViewportHovered);
     }
 }
+#endif // USE_IMGUI

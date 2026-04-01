@@ -1,6 +1,9 @@
-﻿#include "RadialBlur.h"
+#include "RadialBlur.h"
 #include "Graphics/Common/DirectXCommon.h"
+
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
+#endif
 #include <cassert>
 
 
@@ -20,6 +23,9 @@ namespace CoreEngine
 
     void RadialBlur::DrawImGui()
     {
+#ifdef USE_IMGUI
+
+
         ImGui::PushID(this);
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -70,6 +76,7 @@ namespace CoreEngine
         }
 
         ImGui::PopID();
+#endif // USE_IMGUI
     }
 
     void RadialBlur::SetParams(const RadialBlurParams& newParams)

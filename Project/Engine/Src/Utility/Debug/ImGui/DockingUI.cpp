@@ -1,6 +1,8 @@
 #include "DockingUI.h"
 #include "Graphics/Texture/TextureManager.h"
+#ifdef USE_IMGUI
 #include "SceneViewport.h"
+#endif
 #include "ObjectSelector.h"
 #include "Gizmo.h"
 #include "Utility/Logger/Logger.h"
@@ -274,8 +276,12 @@ namespace CoreEngine
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
 
         if (ImGui::Begin("##PlaybackToolbar", nullptr, toolbarFlags)) {
-            if (gizmoIconsLoaded_) {
-                ObjectSelector* objectSelector = sceneViewport_ ? sceneViewport_->GetObjectSelector() : nullptr;
+                    if (gizmoIconsLoaded_) {
+            #ifdef USE_IMGUI
+                        ObjectSelector* objectSelector = sceneViewport_ ? sceneViewport_->GetObjectSelector() : nullptr;
+            #else
+                        ObjectSelector* objectSelector = nullptr;
+            #endif
 
                 constexpr float kIconSize = 18.0f;
                 constexpr float kPadding = 3.0f;

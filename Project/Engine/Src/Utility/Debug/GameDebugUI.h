@@ -1,8 +1,13 @@
 #pragma once
 #include "Utility/Debug/ImGui/Gizmo.h"
+#ifdef USE_IMGUI
 #include "Utility/Debug/ConsoleUI.h"
+#endif
 #include "Utility/Debug/ImGui/SceneManagerTab.h"
 #include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 
 /// @brief デバッグ用のUIクラス
 /// エンジンシステムの低レベル情報の表示とデバッグ支援を行う
@@ -10,76 +15,80 @@
 namespace CoreEngine
 {
 
-class EngineSystem; // 前方宣言
-class DockingUI; // 前方宣言
-class FrameRateController; // 前方宣言
-class SceneManager; // 前方宣言
+    class EngineSystem; // 前方宣言
+    class DockingUI; // 前方宣言
+    class FrameRateController; // 前方宣言
+    class SceneManager; // 前方宣言
 
-class GameDebugUI {
-public:
-    /// @brief 初期化
-    /// @param engine エンジンシステム
-    /// @param dockingUI ドッキングUI（ウィンドウ登録用）
-    void Initialize(EngineSystem* engine, DockingUI* dockingUI = nullptr);
+    class GameDebugUI {
+    public:
+        /// @brief 初期化
+        /// @param engine エンジンシステム
+        /// @param dockingUI ドッキングUI（ウィンドウ登録用）
+        void Initialize(EngineSystem* engine, DockingUI* dockingUI = nullptr);
 
-    /// @brief シーンマネージャーの設定
-    /// @param sceneManager SceneManagerへのポインタ
-    void SetSceneManager(SceneManager* sceneManager);
+        /// @brief シーンマネージャーの設定
+        /// @param sceneManager SceneManagerへのポインタ
+        void SetSceneManager(SceneManager* sceneManager);
 
-    /// @brief Hierarchyパネル用コンテンツドロワーを設定（SceneDebugEditorから登録）
-    void SetHierarchyContentDrawer(std::function<void()> callback) { hierarchyContentDrawer_ = std::move(callback); }
+        /// @brief Hierarchyパネル用コンテンツドロワーを設定（SceneDebugEditorから登録）
+        void SetHierarchyContentDrawer(std::function<void()> callback) { hierarchyContentDrawer_ = std::move(callback); }
 
-    /// @brief Camera EditorをEngine Editorに登録（SceneDebugEditorから登録）
-    void SetInspectorCameraDrawer(std::function<void()> callback);
+        /// @brief Camera EditorをEngine Editorに登録（SceneDebugEditorから登録）
+        void SetInspectorCameraDrawer(std::function<void()> callback);
 
-    /// @brief Inspectorの選択オブジェクトドロワーを設定（SceneDebugEditorから登録）
-    void SetInspectorObjectDrawer(std::function<void()> callback) { inspectorObjectDrawer_ = std::move(callback); }
+        /// @brief Inspectorの選択オブジェクトドロワーを設定（SceneDebugEditorから登録）
+        void SetInspectorObjectDrawer(std::function<void()> callback) { inspectorObjectDrawer_ = std::move(callback); }
 
-    /// @brief アプリケーション固有のエディターをApp Editorに登録
-    /// @param label メニューに表示する名前
-    /// @param drawer Inspector内に描画するコンテンツドロワー
-    void RegisterAppEditor(const std::string& label, std::function<void()> drawer);
+        /// @brief アプリケーション固有のエディターをApp Editorに登録
+        /// @param label メニューに表示する名前
+        /// @param drawer Inspector内に描画するコンテンツドロワー
+        void RegisterAppEditor(const std::string& label, std::function<void()> drawer);
 
-    /// @brief 更新
-    void Update();
+        /// @brief 更新
+        void Update();
 
-    /// @brief メニューバーのみを表示（ドッキング前に呼び出す）
-    void ShowMainMenuBar();
+        /// @brief メニューバーのみを表示（ドッキング前に呼び出す）
+        void ShowMainMenuBar();
 
-    /// @brief メニューバー以外のデバッグパネルを表示
-    void UpdateDebugPanels();
+        /// @brief メニューバー以外のデバッグパネルを表示
+        void UpdateDebugPanels();
 
-    /// @brief コンソールUIへのアクセッサ
-    ConsoleUI* GetConsole() { return console_.get(); }
+#ifdef USE_IMGUI
+        /// @brief コンソールUIへのアクセッサ
+        ConsoleUI* GetConsole() { return console_.get(); }
+#endif
 
-    /// @brief シーンマネージャータブへのアクセッサ
-    SceneManagerTab* GetSceneManagerTab() { return sceneManagerTab_.get(); }
+        /// @brief シーンマネージャータブへのアクセッサ
+        SceneManagerTab* GetSceneManagerTab() { return sceneManagerTab_.get(); }
 
-private:
-    EngineSystem* engine_    = nullptr;
-    DockingUI*    dockingUI_ = nullptr;
+    private:
+        EngineSystem* engine_ = nullptr;
+        DockingUI* dockingUI_ = nullptr;
 
-    std::unique_ptr<ConsoleUI>       console_         = std::make_unique<ConsoleUI>();
-    std::unique_ptr<SceneManagerTab> sceneManagerTab_ = std::make_unique<SceneManagerTab>();
+#ifdef USE_IMGUI
+        std::unique_ptr<ConsoleUI>　console_ = std::make_unique<ConsoleUI>();
+#endif
+        std::unique_ptr<SceneManagerTab> sceneManagerTab_ = std::make_unique<SceneManagerTab>();
 
-    std::function<void()> hierarchyContentDrawer_;
-    std::function<void()> inspectorObjectDrawer_;
+        std::function<void()> hierarchyContentDrawer_;
+        std::function<void()> inspectorObjectDrawer_;
 
-    // エディターエントリーリスト（ラベル, ドロワー）
-    using EditorList = std::vector<std::pair<std::string, std::function<void()>>>;
-    EditorList engineEditors_;  ///< Engine Editor サブメニュー用
-    EditorList appEditors_;     ///< App Editor サブメニュー用
+        // エディターエントリーリスト（ラベル, ドロワー）
+        using EditorList = std::vector<std::pair<std::string, std::function<void()>>>;
+        EditorList engineEditors_;  ///< Engine Editor サブメニュー用
+        EditorList appEditors_;     ///< App Editor サブメニュー用
 
-    std::string activeEditorId_;  ///< 現在Inspector表示中のエディターID（空 = Object表示）
+        std::string activeEditorId_;  ///< 現在Inspector表示中のエディターID（空 = Object表示）
 
-    bool showConsole_ = true;
+        bool showConsole_ = true;
 
-    static constexpr const char* consoleWindow = "Console";
+        static constexpr const char* consoleWindow = "Console";
 
-private:
-    void ShowConsoleUI();
-    void DrawHierarchyPanel();
-    void DrawInspectorPanel();
-    void RegisterWindowsForDocking();
-};
+    private:
+        void ShowConsoleUI();
+        void DrawHierarchyPanel();
+        void DrawInspectorPanel();
+        void RegisterWindowsForDocking();
+    };
 }

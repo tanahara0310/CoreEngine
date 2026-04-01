@@ -11,8 +11,10 @@
 #include <imgui_internal.h>
 
 #include "DockingUI.h"
+#ifdef USE_IMGUI
 #include "SceneViewport.h"
 #include "ProjectView.h"
+#endif
 
 // 前方宣言
 namespace CoreEngine {
@@ -56,6 +58,7 @@ void Finalize();
 /// @return ドッキングUIへのポインタ
 DockingUI* GetDockingUI() const { return dockingUI_.get(); }
 
+#ifdef USE_IMGUI
 /// @brief シーンビューポートへのアクセッサ
 /// @return シーンビューポートへのポインタ
 SceneViewport* GetSceneViewport() const { return sceneViewport_.get(); }
@@ -63,6 +66,7 @@ SceneViewport* GetSceneViewport() const { return sceneViewport_.get(); }
 /// @brief プロジェクトビューへのアクセッサ
     /// @return プロジェクトビューへのポインタ
     ProjectView* GetProjectView() const { return projectView_.get(); }
+#endif
 
 private:
     HWND hwnd_ = nullptr; // ウィンドウハンドル
@@ -70,8 +74,10 @@ private:
 
     // サブモジュール
     std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();
+#ifdef USE_IMGUI
     std::unique_ptr<SceneViewport> sceneViewport_ = std::make_unique<SceneViewport>();
     std::unique_ptr<ProjectView> projectView_ = std::make_unique<ProjectView>();
+#endif
 
 private: // メンバ関数
     /// @brief レイアウトや見た目を変更

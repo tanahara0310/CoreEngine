@@ -1,13 +1,16 @@
-﻿#include "ProjectView.h"
+#include "ProjectView.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
 
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
+#endif
 #include <algorithm>
 #include <Windows.h>
 #include <shellapi.h>
 
+#ifdef USE_IMGUI
 namespace CoreEngine
 {
     void ProjectView::Initialize(DirectXCommon* dxCommon)
@@ -697,5 +700,6 @@ namespace CoreEngine
         return result;
     }
 }
+#endif // USE_IMGUI
 
 

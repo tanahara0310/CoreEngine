@@ -1,5 +1,6 @@
 #include "GameDebugUI.h"
 
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/DockingUI.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -199,3 +200,4 @@ namespace CoreEngine
         dockingUI_->RegisterWindow("Project",     DockArea::Bottom);
     }
 }
+#endif // USE_IMGUI

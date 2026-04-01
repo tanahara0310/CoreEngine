@@ -1,4 +1,5 @@
-﻿#pragma once
+#pragma once
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #include "ObjectSelector.h"
 #include "SceneViewportGizmoController.h"
@@ -88,3 +89,4 @@ namespace CoreEngine
         std::unique_ptr<SceneViewportGizmoController> gizmoController_;
     };
 }
+#endif // USE_IMGUI

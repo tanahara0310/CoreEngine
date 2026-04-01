@@ -1,5 +1,6 @@
-﻿#pragma once
+#pragma once
 
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 
 namespace CoreEngine
@@ -30,3 +31,4 @@ namespace CoreEngine
             bool isViewportHovered);
     };
 }
+#endif // USE_IMGUI

@@ -1,5 +1,7 @@
-﻿#include "FadeEffect.h"
+#include "FadeEffect.h"
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
+#endif
 #include <cassert>
 #include <algorithm> // std::clampのために追加
 
@@ -27,6 +29,7 @@ void FadeEffect::Update(float deltaTime)
 
 void FadeEffect::DrawImGui()
 {
+#ifdef USE_IMGUI
     ImGui::PushID("FadeEffectParams");
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -120,6 +123,7 @@ void FadeEffect::DrawImGui()
     }
     
     ImGui::PopID();
+#endif // USE_IMGUI
 }
 
 void FadeEffect::SetFadeAlpha(float alpha)
