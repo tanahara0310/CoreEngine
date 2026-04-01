@@ -2,7 +2,7 @@
 
 #ifdef _DEBUG
 
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 
 #include "Camera/CameraManager.h"
 
@@ -24,7 +24,7 @@ namespace CoreEngine
         const auto& allCameras = context.cameraManager->GetAllCameras();
 
         ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "3Dカメラ");
-        ImGui::Separator();
+        UI::Separator();
         for (const auto& [name, camera] : allCameras) {
             if (camera->GetCameraType() != CameraType::Camera3D) {
                 continue;
@@ -36,9 +36,9 @@ namespace CoreEngine
             }
         }
 
-        ImGui::Spacing();
+        UI::Spacing();
         ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "2Dカメラ");
-        ImGui::Separator();
+        UI::Separator();
         for (const auto& [name, camera] : allCameras) {
             if (camera->GetCameraType() != CameraType::Camera2D) {
                 continue;

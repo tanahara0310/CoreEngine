@@ -4,7 +4,7 @@
 #include <cmath>
 
 #ifdef _DEBUG
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 namespace CoreEngine
@@ -111,14 +111,11 @@ bool WorldTransform::DrawImGui(const std::string& label)
 {
     bool changed = false;
 
-    if (ImGui::CollapsingHeader((label + " Transform").c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-        // 回転モード選択
+    if (auto s = UI::Scope::CollapsingScope((label + " Transform").c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* rotationModes[] = { "オイラー角", "クォータニオン" };
         int currentMode = static_cast<int>(rotationMode_);
         if (ImGui::Combo((label + " 回転モード").c_str(), &currentMode, rotationModes, 2)) {
             RotationMode newMode = static_cast<RotationMode>(currentMode);
-            
-            // モード変更時に回転値を変換
             if (newMode != rotationMode_) {
                 if (newMode == RotationMode::Quaternion) {
                     EulerToQuaternion();
@@ -129,42 +126,34 @@ bool WorldTransform::DrawImGui(const std::string& label)
                 changed = true;
             }
         }
-        
-        // Scale
-        if (ImGui::DragFloat3((label + " スケール").c_str(), &scale.x, 0.01f, 0.001f, 10.0f)) {
+
+        if (UI::DragVec3((label + " スケール").c_str(), scale, 0.01f, 0.001f, 10.0f)) {
             changed = true;
         }
 
-        // Rotate（回転モードに応じて表示を切り替え）
         if (rotationMode_ == RotationMode::Euler) {
-            // オイラー角表示
-            if (ImGui::DragFloat3((label + " 回転").c_str(), &rotate.x, 0.01f, -6.28f, 6.28f)) {
+            if (UI::DragVec3((label + " 回転").c_str(), rotate, 0.01f, -6.28f, 6.28f)) {
                 changed = true;
             }
         } else {
-            // クォータニオン表示
             ImGui::Text("クォータニオン回転:");
             if (ImGui::DragFloat4((label + " Quaternion").c_str(), &quaternionRotate.x, 0.01f, -1.0f, 1.0f)) {
-                // 正規化
                 quaternionRotate = QuaternionMath::Normalize(quaternionRotate);
                 changed = true;
             }
-            
-            // 参考用にオイラー角も表示（読み取り専用）
-            ImGui::BeginDisabled();
-            Vector3 eulerDisplay = rotate;
-            QuaternionToEuler();
-            eulerDisplay = rotate;
-            ImGui::DragFloat3((label + " (オイラー角参考)").c_str(), &eulerDisplay.x, 0.01f);
-            ImGui::EndDisabled();
+            {
+                UI::Scope::DisabledScope ds;
+                Vector3 eulerDisplay = rotate;
+                QuaternionToEuler();
+                eulerDisplay = rotate;
+                UI::DragVec3((label + " (オイラー角参考)").c_str(), eulerDisplay, 0.01f);
+            }
         }
 
-        // Translate
-        if (ImGui::DragFloat3((label + " 位置").c_str(), &translate.x, 0.05f, -100.0f, 100.0f)) {
+        if (UI::DragVec3((label + " 位置").c_str(), translate, 0.05f, -100.0f, 100.0f)) {
             changed = true;
         }
 
-        // 親の情報
         if (parent_) {
             ImGui::Text("親: あり");
             Vector3 worldPos = GetWorldPosition();
@@ -173,7 +162,6 @@ bool WorldTransform::DrawImGui(const std::string& label)
             ImGui::Text("親: なし");
         }
 
-        // リセットボタン
         if (ImGui::Button((label + " リセット").c_str())) {
             scale = { 1.0f, 1.0f, 1.0f };
             rotate = { 0.0f, 0.0f, 0.0f };

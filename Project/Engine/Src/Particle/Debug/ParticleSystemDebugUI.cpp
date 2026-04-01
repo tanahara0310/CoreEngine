@@ -1,4 +1,4 @@
-#include "ParticleSystemDebugUI.h"
+﻿#include "ParticleSystemDebugUI.h"
 
 #ifdef _DEBUG
 
@@ -20,7 +20,7 @@ bool ParticleSystemDebugUI::ShowImGui(ParticleSystem* particleSystem) {
     // 制御ボタン
     ShowControlButtons(particleSystem);
 
-    ImGui::Separator();
+    UI::Separator();
 
     // プリセット管理
     ShowPresetManager(particleSystem);
@@ -51,7 +51,7 @@ void ParticleSystemDebugUI::ShowSystemStatus(ParticleSystem* particleSystem) {
         usageRatio * 100.0f);
 
     if (usageRatio > 0.8f) {
-        ImGui::SameLine();
+        UI::SameLine();
         if (usageRatio > 0.95f) {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "[危険]");
         } else {
@@ -62,9 +62,9 @@ void ParticleSystemDebugUI::ShowSystemStatus(ParticleSystem* particleSystem) {
 
 void ParticleSystemDebugUI::ShowControlButtons(ParticleSystem* particleSystem) {
     if (ImGui::Button("再生")) { particleSystem->Play(); }
-    ImGui::SameLine();
+    UI::SameLine();
     if (ImGui::Button("停止")) { particleSystem->Stop(); }
-    ImGui::SameLine();
+    UI::SameLine();
     if (ImGui::Button("クリア")) { particleSystem->Clear(); }
 }
 
@@ -118,12 +118,12 @@ void ParticleSystemDebugUI::ShowEmitterSettings(ParticleSystem* particleSystem) 
 
     // エミッタートランスフォームの取得・設定
     Vector3 emitterPos = particleSystem->GetEmitterPosition();
-    if (ImGui::DragFloat3("位置", &emitterPos.x, 0.01f)) {
+    if (UI::DragVec3("位置", emitterPos, 0.01f)) {
         particleSystem->SetEmitterPosition(emitterPos);
     }
 
     // 描画モード選択
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("描画モード:");
     int currentRenderMode = static_cast<int>(particleSystem->GetRenderMode());
     const char* renderModeNames[] = { "ビルボード", "3Dモデル" };
@@ -142,7 +142,7 @@ void ParticleSystemDebugUI::ShowEmitterSettings(ParticleSystem* particleSystem) 
         }
     }
 
-    ImGui::Separator();
+    UI::Separator();
 
     // ビルボードタイプ
     if (!particleSystem->IsModelParticle()) {

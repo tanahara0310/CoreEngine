@@ -1,4 +1,4 @@
-#include "ColorGrading.h"
+﻿#include "ColorGrading.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -20,37 +20,37 @@ void ColorGrading::DrawImGui()
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
     ImGui::Text("色のバランス、コントラスト、全体的なムードを調整します");
-    ImGui::Separator();
+    UI::Separator();
     
     bool paramsChanged = false;
     
     // 基本カラー調整
     if (ImGui::TreeNode("基本カラー調整")) {
-        paramsChanged |= ImGui::SliderFloat("色相", &params_.hue, -1.0f, 1.0f, "%.2f");
-        paramsChanged |= ImGui::SliderFloat("彩度", &params_.saturation, 0.0f, 3.0f, "%.2f");
-        paramsChanged |= ImGui::SliderFloat("明度", &params_.value, 0.0f, 3.0f, "%.2f");
-        paramsChanged |= ImGui::SliderFloat("コントラスト", &params_.contrast, 0.0f, 3.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("色相", params_.hue, -1.0f, 1.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("彩度", params_.saturation, 0.0f, 3.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("明度", params_.value, 0.0f, 3.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("コントラスト", params_.contrast, 0.0f, 3.0f, "%.2f");
         
         ImGui::TreePop();
     }
     
     // 露出とガンマ
     if (ImGui::TreeNode("露出とガンマ")) {
-        paramsChanged |= ImGui::SliderFloat("露出", &params_.exposure, -3.0f, 3.0f, "%.2f");
-        paramsChanged |= ImGui::SliderFloat("ガンマ", &params_.gamma, 0.1f, 3.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("露出", params_.exposure, -3.0f, 3.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("ガンマ", params_.gamma, 0.1f, 3.0f, "%.2f");
         
         ImGui::TreePop();
     }
     
     // 色温度調整
     if (ImGui::TreeNode("ホワイトバランス")) {
-        paramsChanged |= ImGui::SliderFloat("色温度", &params_.temperature, -1.0f, 1.0f, "%.2f");
-        ImGui::SameLine();
-        ImGui::TextDisabled("(-)寒色 - 暖色(+)");
+        paramsChanged |= UI::SliderFloat("色温度", params_.temperature, -1.0f, 1.0f, "%.2f");
+        UI::SameLine();
+        UI::Hint("(-)寒色 - 暖色(+)");
         
-        paramsChanged |= ImGui::SliderFloat("色合い", &params_.tint, -1.0f, 1.0f, "%.2f");
-        ImGui::SameLine();
-        ImGui::TextDisabled("(-)緑 - マゼンタ(+)");
+        paramsChanged |= UI::SliderFloat("色合い", params_.tint, -1.0f, 1.0f, "%.2f");
+        UI::SameLine();
+        UI::Hint("(-)緑 - マゼンタ(+)");
         
         ImGui::TreePop();
     }
@@ -75,12 +75,12 @@ void ColorGrading::DrawImGui()
             ApplyPreset(0);
             paramsChanged = true;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("暖色")) {
             ApplyPreset(1);
             paramsChanged = true;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("寒色")) {
             ApplyPreset(2);
             paramsChanged = true;
@@ -90,12 +90,12 @@ void ColorGrading::DrawImGui()
             ApplyPreset(3);
             paramsChanged = true;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("ハイコントラスト")) {
             ApplyPreset(4);
             paramsChanged = true;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("ヴィンテージ")) {
             ApplyPreset(5);
             paramsChanged = true;
@@ -109,7 +109,7 @@ void ColorGrading::DrawImGui()
         UpdateConstantBuffer();
     }
     
-    ImGui::Separator();
+    UI::Separator();
     
     if (ImGui::Button("デフォルトに戻す")) {
         ApplyPreset(0); // ニュートラルプリセット
@@ -120,7 +120,7 @@ void ColorGrading::DrawImGui()
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
     }
     
-    ImGui::Separator();
+    UI::Separator();
     
     ImGui::PopID();
 }

@@ -1,4 +1,4 @@
-#include "FadeEffect.h"
+﻿#include "FadeEffect.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 #include <algorithm> // std::clampのために追加
@@ -31,14 +31,14 @@ void FadeEffect::DrawImGui()
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
     ImGui::Text("様々なフェードエフェクトを提供します");
-    ImGui::Separator();
+    UI::Separator();
     
     bool paramsChanged = false;
     
     // 基本設定
     if (ImGui::TreeNode("基本設定")) {
         // フェード強度調整
-        if (ImGui::SliderFloat("フェード透明度", &params_.fadeAlpha, 0.0f, 1.0f, "%.3f")) {
+        if (UI::SliderFloat("フェード透明度", params_.fadeAlpha, 0.0f, 1.0f, "%.3f")) {
             paramsChanged = true;
         }
         
@@ -62,34 +62,34 @@ void FadeEffect::DrawImGui()
         if (ImGui::TreeNode("特殊パラメータ")) {
             // 渦巻きパラメータ
             if (currentType == 2) { // Spiral
-                if (ImGui::SliderFloat("渦巻きの強さ", &params_.spiralPower, 0.0f, 20.0f, "%.2f")) {
+                if (UI::SliderFloat("渦巻きの強さ", params_.spiralPower, 0.0f, 20.0f, "%.2f")) {
                     paramsChanged = true;
                 }
             }
             
             // 波紋パラメータ
             if (currentType == 3) { // Ripple
-                if (ImGui::SliderFloat("波紋の周波数", &params_.rippleFreq, 1.0f, 50.0f, "%.2f")) {
+                if (UI::SliderFloat("波紋の周波数", params_.rippleFreq, 1.0f, 50.0f, "%.2f")) {
                     paramsChanged = true;
                 }
             }
             
             // グリッチパラメータ
             if (currentType == 4) { // Glitch
-                if (ImGui::SliderFloat("グリッチ強度", &params_.glitchIntensity, 0.0f, 2.0f, "%.3f")) {
+                if (UI::SliderFloat("グリッチ強度", params_.glitchIntensity, 0.0f, 2.0f, "%.3f")) {
                     paramsChanged = true;
                 }
             }
             
             // ポータルパラメータ
             if (currentType == 5) { // Portal
-                if (ImGui::SliderFloat("ポータルサイズ", &params_.portalSize, 0.1f, 1.0f, "%.3f")) {
+                if (UI::SliderFloat("ポータルサイズ", params_.portalSize, 0.1f, 1.0f, "%.3f")) {
                     paramsChanged = true;
                 }
             }
             
             // 共通パラメータ（特殊フェード用）
-            if (ImGui::SliderFloat("色のシフト", &params_.colorShift, 0.0f, 6.28f, "%.3f")) {
+            if (UI::SliderFloat("色のシフト", params_.colorShift, 0.0f, 6.28f, "%.3f")) {
                 paramsChanged = true;
             }
             
@@ -102,7 +102,7 @@ void FadeEffect::DrawImGui()
         UpdateConstantBuffer();
     }
     
-    ImGui::Separator();
+    UI::Separator();
     
     if (ImGui::Button("デフォルトに戻す")) {
         params_.fadeAlpha = 0.0f;

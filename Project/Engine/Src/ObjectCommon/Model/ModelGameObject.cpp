@@ -7,7 +7,7 @@
 #include "Utility/JsonManager/JsonManager.h"
 
 #ifdef _DEBUG
-#include "externals/imgui/imgui.h"
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 namespace CoreEngine
@@ -123,12 +123,12 @@ namespace CoreEngine
     bool ModelGameObject::DrawImGuiExtended() {
         bool changed = false;
 
-        if (ImGui::TreeNode("Transform")) {
-            Vector3& pos = transform_.translate;
-            Vector3& rot = transform_.rotate;
+        if (auto transformTree = UI::Scope::TreeScope("Transform")) {
+            Vector3& pos   = transform_.translate;
+            Vector3& rot   = transform_.rotate;
             Vector3& scale = transform_.scale;
 
-            changed |= ImGui::DragFloat3("Position", &pos.x, 0.1f);
+            changed |= UI::DragVec3("Position", pos, 0.1f);
             if (ImGui::IsItemActivated()) {
                 imguiSnapTranslate_ = transform_.translate;
                 imguiSnapRotate_ = transform_.rotate;
@@ -139,7 +139,7 @@ namespace CoreEngine
                 onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
             }
 
-            changed |= ImGui::DragFloat3("Rotation", &rot.x, 0.01f);
+            changed |= UI::DragVec3("Rotation", rot, 0.01f);
             if (ImGui::IsItemActivated()) {
                 imguiSnapTranslate_ = transform_.translate;
                 imguiSnapRotate_ = transform_.rotate;
@@ -150,7 +150,7 @@ namespace CoreEngine
                 onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
             }
 
-            changed |= ImGui::DragFloat3("Scale", &scale.x, 0.01f);
+            changed |= UI::DragVec3("Scale", scale, 0.01f);
             if (ImGui::IsItemActivated()) {
                 imguiSnapTranslate_ = transform_.translate;
                 imguiSnapRotate_ = transform_.rotate;
@@ -160,8 +160,6 @@ namespace CoreEngine
             if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
                 onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
             }
-
-            ImGui::TreePop();
         }
 
         changed |= DrawMaterialImGui();

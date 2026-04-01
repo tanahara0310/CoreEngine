@@ -1,6 +1,6 @@
-#pragma once
+﻿#pragma once
 
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 
 namespace CoreEngine
 {

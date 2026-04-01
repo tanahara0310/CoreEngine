@@ -82,9 +82,9 @@ namespace CoreEngine
                     ImGui::EndMenu();
                 }
                 if (ImGui::BeginMenu("App Editor")) {
-                    if (appEditors_.empty()) {
-                        ImGui::TextDisabled("登録済みのエディターがありません");
-                    } else {
+                            if (appEditors_.empty()) {
+                                UI::Hint("登録済みのエディターがありません");
+                            } else {
                         for (auto& [label, _] : appEditors_) {
                             bool isActive = (activeEditorId_ == label);
                             if (ImGui::Checkbox(label.c_str(), &isActive)) {
@@ -137,46 +137,40 @@ namespace CoreEngine
 
     void GameDebugUI::DrawHierarchyPanel()
     {
-        if (ImGui::Begin("Hierarchy")) {
-            if (ImGui::BeginTabBar("##HierarchyTabs")) {
-                if (ImGui::BeginTabItem("Objects")) {
-                    if (hierarchyContentDrawer_) {
-                        hierarchyContentDrawer_();
-                    } else {
-                        ImGui::TextDisabled("シーンが読み込まれていません");
+        if (auto w = UI::Scope::WindowScope("Hierarchy")) {
+                if (auto tabBar = UI::Scope::TabBarScope("##HierarchyTabs")) {
+                    if (auto tab = UI::Scope::TabItemScope("Objects")) {
+                        if (hierarchyContentDrawer_) {
+                            hierarchyContentDrawer_();
+                        } else {
+                            UI::Hint("シーンが読み込まれていません");
+                        }
                     }
-                    ImGui::EndTabItem();
+                    if (auto tab = UI::Scope::TabItemScope("Scenes")) {
+                        sceneManagerTab_->DrawImGui();
+                    }
                 }
-                if (ImGui::BeginTabItem("Scenes")) {
-                    sceneManagerTab_->DrawImGui();
-                    ImGui::EndTabItem();
-                }
-                ImGui::EndTabBar();
             }
-        }
-        ImGui::End();
     }
 
     void GameDebugUI::DrawInspectorPanel()
     {
-        if (ImGui::Begin("Inspector")) {
-            // Objectセクション：常に選択オブジェクトのプロパティを表示
+        if (auto w = UI::Scope::WindowScope("Inspector")) {
             if (inspectorObjectDrawer_) {
                 inspectorObjectDrawer_();
             } else {
-                ImGui::TextDisabled("シーンが読み込まれていません");
+                UI::Hint("シーンが読み込まれていません");
             }
 
-            // Editorセクション：エディターがアクティブなときは下に追加表示
             if (!activeEditorId_.empty()) {
-                ImGui::Separator();
+                UI::Separator();
 
                 const auto drawActive = [this](const EditorList& list) -> bool {
                     for (const auto& [label, drawer] : list) {
                         if (label != activeEditorId_) continue;
                         std::string breadcrumb = "Inspector > ";
                         breadcrumb += label;
-                        ImGui::SeparatorText(breadcrumb.c_str());
+                        UI::SectionHeader(breadcrumb.c_str());
                         if (drawer) drawer();
                         return true;
                     }
@@ -187,7 +181,6 @@ namespace CoreEngine
                 }
             }
         }
-        ImGui::End();
     }
 
     void GameDebugUI::ShowConsoleUI()

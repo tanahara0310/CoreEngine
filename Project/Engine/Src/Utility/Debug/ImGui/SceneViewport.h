@@ -1,5 +1,5 @@
-#pragma once
-#include <imgui.h>
+﻿#pragma once
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #include "ObjectSelector.h"
 #include "SceneViewportGizmoController.h"
 #include "SceneViewportWindowRenderer.h"

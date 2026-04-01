@@ -116,7 +116,7 @@ bool RotationModule::ShowImGui() {
     bool changed = false;
     
     // 有効/無効の切り替え
-    if (ImGui::Checkbox("有効##回転", &enabled_)) {
+    if (UI::Widgets::ToggleSwitch("有効##回転", &enabled_)) {
         changed = true;
     }
 
@@ -125,12 +125,12 @@ bool RotationModule::ShowImGui() {
     }
 
     // 2D/3D回転切り替え
-    changed |= ImGui::Checkbox("2D回転使用", &rotationData_.use2DRotation);
+    changed |= UI::Widgets::ToggleSwitch("2D回転使用", &rotationData_.use2DRotation);
 
     if (rotationData_.use2DRotation) {
         // 2D回転設定
-        changed |= ImGui::DragFloat("回転速度", &rotationData_.rotation2DSpeed, 0.1f, -10.0f, 10.0f);
-        changed |= ImGui::DragFloat("速度ランダム性", &rotationData_.rotation2DSpeedRandomness, 0.01f, 0.0f, 1.0f);
+        changed |= UI::DragFloat("回転速度", rotationData_.rotation2DSpeed, 0.1f, -10.0f, 10.0f);
+        changed |= UI::DragFloat("速度ランダム性", rotationData_.rotation2DSpeedRandomness, 0.01f, 0.0f, 1.0f);
         
         // 回転方向設定
         static const char* directionNames[] = {
@@ -143,29 +143,29 @@ bool RotationModule::ShowImGui() {
         }
     } else {
         // 3D回転設定
-        ImGui::TextDisabled("注意: 初期回転はMainModuleで設定してください");
-        changed |= ImGui::DragFloat3("回転速度", &rotationData_.rotationSpeed.x, 0.1f, -10.0f, 10.0f);
-        changed |= ImGui::DragFloat3("速度ランダム性", &rotationData_.rotationSpeedRandomness.x, 0.01f, 0.0f, 1.0f);
+        UI::Hint("注意: 初期回転はMainModuleで設定してください");
+        changed |= UI::DragVec3("回転速度", rotationData_.rotationSpeed, 0.1f, -10.0f, 10.0f);
+        changed |= UI::DragVec3("速度ランダム性", rotationData_.rotationSpeedRandomness, 0.01f, 0.0f, 1.0f);
     }
 
     // 高度な設定
-    ImGui::Separator();
-    changed |= ImGui::Checkbox("寿命に応じた回転", &rotationData_.rotationOverLifetime);
+    UI::Separator();
+    changed |= UI::Widgets::ToggleSwitch("寿命に応じた回転", &rotationData_.rotationOverLifetime);
     if (rotationData_.rotationOverLifetime) {
-        changed |= ImGui::DragFloat("開始速度倍率", &rotationData_.startRotationSpeedMultiplier, 0.01f, 0.0f, 5.0f);
-        changed |= ImGui::DragFloat("終了速度倍率", &rotationData_.endRotationSpeedMultiplier, 0.01f, 0.0f, 5.0f);
+        changed |= UI::DragFloat("開始速度倍率", rotationData_.startRotationSpeedMultiplier, 0.01f, 0.0f, 5.0f);
+        changed |= UI::DragFloat("終了速度倍率", rotationData_.endRotationSpeedMultiplier, 0.01f, 0.0f, 5.0f);
     }
 
-    changed |= ImGui::Checkbox("速度に合わせて回転", &rotationData_.alignToVelocity);
+    changed |= UI::Widgets::ToggleSwitch("速度に合わせて回転", &rotationData_.alignToVelocity);
     if (rotationData_.alignToVelocity) {
-        changed |= ImGui::DragFloat("速度合わせ強度", &rotationData_.velocityAlignmentStrength, 0.01f, 0.0f, 2.0f);
+        changed |= UI::DragFloat("速度合わせ強度", rotationData_.velocityAlignmentStrength, 0.01f, 0.0f, 2.0f);
     }
 
     // 角度制限
-    changed |= ImGui::Checkbox("角度制限", &rotationData_.limitRotationRange);
+    changed |= UI::Widgets::ToggleSwitch("角度制限", &rotationData_.limitRotationRange);
     if (rotationData_.limitRotationRange) {
-        changed |= ImGui::DragFloat3("最小角度(度)", &rotationData_.minRotation.x, 1.0f, -360.0f, 360.0f);
-        changed |= ImGui::DragFloat3("最大角度(度)", &rotationData_.maxRotation.x, 1.0f, -360.0f, 360.0f);
+        changed |= UI::DragVec3("最小角度(度)", rotationData_.minRotation, 1.0f, -360.0f, 360.0f);
+        changed |= UI::DragVec3("最大角度(度)", rotationData_.maxRotation, 1.0f, -360.0f, 360.0f);
     }
 
     if (!enabled_) {

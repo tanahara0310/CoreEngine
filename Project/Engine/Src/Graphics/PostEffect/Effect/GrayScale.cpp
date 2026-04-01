@@ -1,4 +1,4 @@
-#include "GrayScale.h"
+﻿#include "GrayScale.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 
 
@@ -11,7 +11,7 @@ void GrayScale::DrawImGui()
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
     ImGui::Text("画像をグレースケールに変換します");
-    ImGui::Separator();
+    UI::Separator();
     
     if (!IsEnabled()) {
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効です");

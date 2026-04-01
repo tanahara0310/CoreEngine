@@ -9,7 +9,7 @@
 #include "Utility/JsonManager/JsonManager.h"
 #include <cmath>
 #include <cstdio>
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 
 namespace CoreEngine
 {
@@ -281,7 +281,7 @@ bool SpriteObject::DrawImGuiExtended() {
     bool changed = false;
 
     // ─────────────── Transform ───────────────
-    if (ImGui::TreeNode("Transform")) {
+    if (auto s = UI::Scope::TreeScope("Transform")) {
         auto snapAndCommit = [&](auto editFn) {
             editFn();
             if (ImGui::IsItemActivated()) {
@@ -295,34 +295,32 @@ bool SpriteObject::DrawImGuiExtended() {
             }
         };
 
-        snapAndCommit([&] { changed |= ImGui::DragFloat3("Position", &transform_.translate.x, 0.5f); });
-        snapAndCommit([&] { changed |= ImGui::DragFloat3("Rotation", &transform_.rotate.x, 0.01f); });
-        snapAndCommit([&] { changed |= ImGui::DragFloat3("Scale",    &transform_.scale.x,    0.01f, 0.0f, 100.0f); });
+        snapAndCommit([&] { changed |= UI::DragVec3("Position", transform_.translate, 0.5f); });
+        snapAndCommit([&] { changed |= UI::DragVec3("Rotation", transform_.rotate,    0.01f); });
+        snapAndCommit([&] { changed |= UI::DragVec3("Scale",    transform_.scale,     0.01f, 0.0f, 100.0f); });
 
-        ImGui::Spacing();
-        ImGui::TextDisabled("Texture: %.0f x %.0f px", textureSize_.x, textureSize_.y);
+        UI::Spacing();
+        ImGui::Text("Texture: %.0f x %.0f px", textureSize_.x, textureSize_.y);
         Vector2 actualSize = GetActualSize();
-        ImGui::TextDisabled("Rendered: %.0f x %.0f px", actualSize.x, actualSize.y);
-
-        ImGui::TreePop();
+        ImGui::Text("Rendered: %.0f x %.0f px", actualSize.x, actualSize.y);
     }
 
     // ─────────────── Material ───────────────
-    if (ImGui::TreeNode("Material")) {
-        ImGui::SeparatorText("Base");
+    if (auto s = UI::Scope::TreeScope("Material")) {
+        UI::SectionHeader("Base");
 
         Vector4 color = material_->GetColor();
-        if (ImGui::ColorEdit4("Color", &color.x)) {
+        if (UI::ColorEdit("Color", color)) {
             material_->SetColor(color);
             changed = true;
         }
 
-        ImGui::SeparatorText("UV Transform");
+        UI::SectionHeader("UV Transform");
 
         bool uvChanged = false;
         uvChanged |= ImGui::DragFloat2("Offset##UV", &uvTransform_.translate.x, 0.01f);
         uvChanged |= ImGui::DragFloat2("Scale##UV",  &uvTransform_.scale.x,     0.01f, 0.01f, 10.0f);
-        uvChanged |= ImGui::SliderFloat("Rotation##UV", &uvTransform_.rotate.z, -3.14159f, 3.14159f);
+        uvChanged |= UI::SliderFloat("Rotation##UV", uvTransform_.rotate.z, -3.14159f, 3.14159f);
 
         if (uvChanged) {
             UpdateUVTransformMatrix(uvTransform_);
@@ -334,12 +332,10 @@ bool SpriteObject::DrawImGuiExtended() {
             material_->SetUVTransform(Matrix::Identity());
             changed = true;
         }
-
-        ImGui::TreePop();
     }
 
     // ─────────────── Sprite ───────────────
-    ImGui::SeparatorText("Sprite");
+    UI::SectionHeader("Sprite");
 
     {
         const char* blendModes[] = { "None", "Normal", "Add", "Subtract", "Multiply", "Screen" };
@@ -350,21 +346,21 @@ bool SpriteObject::DrawImGuiExtended() {
         }
     }
 
-    ImGui::Spacing();
+    UI::Spacing();
     ImGui::Text("Anchor Point");
     Vector2 anchorTemp = anchorPoint_;
-    if (ImGui::DragFloat2("##anchor", &anchorTemp.x, 0.01f, 0.0f, 1.0f, "%.2f")) {
+    if (UI::DragVec2("##anchor", anchorTemp, 0.01f, 0.0f, 1.0f)) {
         ChangeAnchorKeepingPosition(anchorTemp);
         changed = true;
     }
-    if (ImGui::Button("TL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 0.0f }); changed = true; } ImGui::SameLine();
-    if (ImGui::Button("TC##anchor")) { ChangeAnchorKeepingPosition({ 0.5f, 0.0f }); changed = true; } ImGui::SameLine();
-    if (ImGui::Button("TR##anchor")) { ChangeAnchorKeepingPosition({ 1.0f, 0.0f }); changed = true; } ImGui::SameLine();
-    if (ImGui::Button("C##anchor"))  { ChangeAnchorKeepingPosition({ 0.5f, 0.5f }); changed = true; } ImGui::SameLine();
-    if (ImGui::Button("BL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 1.0f }); changed = true; } ImGui::SameLine();
+    if (ImGui::Button("TL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 0.0f }); changed = true; } UI::SameLine();
+    if (ImGui::Button("TC##anchor")) { ChangeAnchorKeepingPosition({ 0.5f, 0.0f }); changed = true; } UI::SameLine();
+    if (ImGui::Button("TR##anchor")) { ChangeAnchorKeepingPosition({ 1.0f, 0.0f }); changed = true; } UI::SameLine();
+    if (ImGui::Button("C##anchor"))  { ChangeAnchorKeepingPosition({ 0.5f, 0.5f }); changed = true; } UI::SameLine();
+    if (ImGui::Button("BL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 1.0f }); changed = true; } UI::SameLine();
     if (ImGui::Button("BR##anchor")) { ChangeAnchorKeepingPosition({ 1.0f, 1.0f }); changed = true; }
 
-    ImGui::Spacing();
+    UI::Spacing();
     if (ImGui::Button("Reset##sprite")) {
         Reset();
         changed = true;

@@ -1,7 +1,7 @@
-#include "SphereObject.h"
+﻿#include "SphereObject.h"
 
 #ifdef _DEBUG
-#include "externals/imgui/imgui.h"
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 using namespace CoreEngine;

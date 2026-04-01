@@ -56,7 +56,7 @@ bool VelocityModule::ShowImGui() {
     bool changed = false;
 
     // 有効/無効の切り替え
-    if (ImGui::Checkbox("有効##速度", &enabled_)) {
+    if (UI::Widgets::ToggleSwitch("有効##速度", &enabled_)) {
         changed = true;
     }
 
@@ -64,15 +64,15 @@ bool VelocityModule::ShowImGui() {
         ImGui::BeginDisabled();
     }
 
-    ImGui::TextDisabled("注意: 速度の大きさはMainModuleのstartSpeedで設定してください");
+    UI::Hint("注意: 速度の大きさはMainModuleのstartSpeedで設定してください");
     ImGui::Text("このモジュールは速度の方向のみを決定します。");
-    ImGui::Separator();
+    UI::Separator();
 
     // 速度方向の編集（-1.0 ～ 1.0 に制限）
-    if (ImGui::DragFloat3("速度方向", &velocityData_.startSpeed.x, 0.01f, -1.0f, 1.0f)) {
+    if (UI::DragVec3("速度方向", velocityData_.startSpeed, 0.01f, -1.0f, 1.0f)) {
         changed = true;
     }
-    ImGui::TextDisabled("（自動的に正規化されます）");
+    UI::Hint("（自動的に正規化されます）");
 
     // 正規化後の値を表示（読み取り専用）
     Vector3 normalized = Vector::Normalize(velocityData_.startSpeed);
@@ -82,20 +82,20 @@ bool VelocityModule::ShowImGui() {
     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), 
            "正規化後: (%.3f, %.3f, %.3f)", 
         normalized.x, normalized.y, normalized.z);
-    ImGui::TextDisabled("実際にパーティクルに適用される方向（大きさ1.0）");
+    UI::Hint("実際にパーティクルに適用される方向（大きさ1.0）");
 
     // 大きさを表示
     ImGui::Text("入力ベクトルの大きさ: %.3f", length);
-    ImGui::TextDisabled("正規化により1.0になります");
+    UI::Hint("正規化により1.0になります");
 
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("ランダム設定");
     
-    changed |= ImGui::DragFloat3("方向ランダム範囲", &velocityData_.randomSpeedRange.x, 0.1f, 0.0f, 5.0f);
-    ImGui::TextDisabled("方向に揺らぎを加えます（正規化後に適用）");
+    changed |= UI::DragVec3("方向ランダム範囲", velocityData_.randomSpeedRange, 0.1f, 0.0f, 5.0f);
+    UI::Hint("方向に揺らぎを加えます（正規化後に適用）");
     
-    changed |= ImGui::Checkbox("完全ランダム方向", &velocityData_.useRandomDirection);
-    ImGui::TextDisabled("ONにすると、設定した方向を無視してランダムな方向になります");
+    changed |= UI::Widgets::ToggleSwitch("完全ランダム方向", &velocityData_.useRandomDirection);
+    UI::Hint("ONにすると、設定した方向を無視してランダムな方向になります");
 
     if (!enabled_) {
         ImGui::EndDisabled();

@@ -1,4 +1,4 @@
-#include "Blur.h"
+﻿#include "Blur.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -26,17 +26,17 @@ namespace CoreEngine
         ImGui::PushID("BlurParams");
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        ImGui::Separator();
+        UI::Separator();
 
         bool paramsChanged = false;
 
         // パラメータ設定
         if (ImGui::TreeNode("パラメータ")) {
             // ブラー強度の調整
-            paramsChanged |= ImGui::SliderFloat("強度", &params_.intensity, 0.0f, 5.0f);
+            paramsChanged |= UI::SliderFloat("強度", params_.intensity, 0.0f, 5.0f);
 
             // カーネルサイズの調整
-            paramsChanged |= ImGui::SliderFloat("カーネルサイズ", &params_.kernelSize, 0.5f, 3.0f);
+            paramsChanged |= UI::SliderFloat("カーネルサイズ", params_.kernelSize, 0.5f, 3.0f);
 
             ImGui::TreePop();
         }
@@ -46,7 +46,7 @@ namespace CoreEngine
             UpdateConstantBuffer();
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         if (ImGui::Button("デフォルトに戻す")) {
             params_.intensity = 1.0f;

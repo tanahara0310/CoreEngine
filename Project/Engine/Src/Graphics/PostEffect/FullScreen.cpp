@@ -1,4 +1,4 @@
-#include "FullScreen.h"
+﻿#include "FullScreen.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 
 
@@ -18,7 +18,7 @@ void FullScreen::DrawImGui()
     ImGui::Text("FullScreen Effect");
     ImGui::Text("Used for final display to back buffer.");
     ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "This effect cannot be disabled.");
-    ImGui::Separator();
+    UI::Separator();
     
     ImGui::PopID();
 }

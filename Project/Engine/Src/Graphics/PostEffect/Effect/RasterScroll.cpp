@@ -1,4 +1,4 @@
-#include "RasterScroll.h"
+﻿#include "RasterScroll.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -39,29 +39,29 @@ namespace CoreEngine
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         ImGui::Text("波のような歪みエフェクトを作成します");
-        ImGui::Separator();
+        UI::Separator();
 
         bool paramsChanged = false;
 
         // パラメータ設定
         if (ImGui::TreeNode("パラメータ")) {
             // スクロール速度の調整
-            paramsChanged |= ImGui::SliderFloat("波の速度", &params_.scrollSpeed, 0.0f, 10.0f);
+            paramsChanged |= UI::SliderFloat("波の速度", params_.scrollSpeed, 0.0f, 10.0f);
 
             // ライン高さの調整
-            paramsChanged |= ImGui::SliderFloat("波の密度", &params_.lineHeight, 1.0f, 20.0f);
+            paramsChanged |= UI::SliderFloat("波の密度", params_.lineHeight, 1.0f, 20.0f);
 
             // 振幅の調整
-            paramsChanged |= ImGui::SliderFloat("波の振幅", &params_.amplitude, 0.0f, 0.2f);
+            paramsChanged |= UI::SliderFloat("波の振幅", params_.amplitude, 0.0f, 0.2f);
 
             // 周波数の調整
-            paramsChanged |= ImGui::SliderFloat("波の周波数", &params_.frequency, 0.1f, 5.0f);
+            paramsChanged |= UI::SliderFloat("波の周波数", params_.frequency, 0.1f, 5.0f);
 
             // ライン開始位置オフセットの調整
-            paramsChanged |= ImGui::SliderFloat("位相オフセット", &params_.lineOffset, 0.0f, 1.0f);
+            paramsChanged |= UI::SliderFloat("位相オフセット", params_.lineOffset, 0.0f, 1.0f);
 
             // 歪み強度の調整
-            paramsChanged |= ImGui::SliderFloat("歪みの強さ", &params_.distortionStrength, 0.0f, 3.0f);
+            paramsChanged |= UI::SliderFloat("歪みの強さ", params_.distortionStrength, 0.0f, 3.0f);
 
             ImGui::TreePop();
         }
@@ -71,7 +71,7 @@ namespace CoreEngine
             UpdateConstantBuffer();
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         // プリセットボタン
         if (ImGui::TreeNode("プリセット")) {
@@ -84,7 +84,7 @@ namespace CoreEngine
                 params_.distortionStrength = 0.8f;
                 UpdateConstantBuffer();
             }
-            ImGui::SameLine();
+            UI::SameLine();
 
             if (ImGui::Button("海の波")) {
                 params_.scrollSpeed = 1.5f;
@@ -105,7 +105,7 @@ namespace CoreEngine
                 params_.distortionStrength = 2.0f;
                 UpdateConstantBuffer();
             }
-            ImGui::SameLine();
+            UI::SameLine();
 
             if (ImGui::Button("熱の揺らぎ")) {
                 params_.scrollSpeed = 3.0f;
@@ -130,7 +130,7 @@ namespace CoreEngine
             ImGui::TreePop();
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         // 時間情報の表示
         ImGui::Text("アニメーション時間: %.2f", accumulatedTime_);

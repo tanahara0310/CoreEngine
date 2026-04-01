@@ -1,4 +1,4 @@
-#include "EmissionModule.h"
+﻿#include "EmissionModule.h"
 #include "../ParticleSystem.h" // Particle構造体のために必要
 
 #ifdef _DEBUG
@@ -72,7 +72,7 @@ bool EmissionModule::ShowImGui() {
     bool changed = false;
 
   // 有効/無効の切り替え
-    if (ImGui::Checkbox("有効##放出", &enabled_)) {
+    if (UI::Widgets::ToggleSwitch("有効##放出", &enabled_)) {
      changed = true;
     }
 
@@ -80,42 +80,42 @@ bool EmissionModule::ShowImGui() {
         ImGui::BeginDisabled();
     }
 
-    ImGui::TextDisabled("注意: 持続時間とループ設定はMainModuleで管理されます");
-    ImGui::Separator();
+    UI::Hint("注意: 持続時間とループ設定はMainModuleで管理されます");
+    UI::Separator();
     ImGui::Text("放出設定");
     
     // Rate over Time
     int rateOverTime = static_cast<int>(emissionData_.rateOverTime);
-    if (ImGui::DragInt("時間あたりの放出数", &rateOverTime, 1, 0, 100)) {
+    if (UI::DragInt("時間あたりの放出数", rateOverTime, 1, 0, 100)) {
         emissionData_.rateOverTime = static_cast<uint32_t>(rateOverTime);
         changed = true;
     }
-    ImGui::TextDisabled("毎秒放出されるパーティクル数");
+    UI::Hint("毎秒放出されるパーティクル数");
     
     // 実際の放出タイミングの説明
     if (emissionData_.rateOverTime > 0) {
         float interval = 1.0f / static_cast<float>(emissionData_.rateOverTime);
         ImGui::Text("放出間隔: 約%.3f秒ごとに1個", interval);
-        ImGui::TextDisabled("注意: フレームレートにより多少ばらつきます（Unity準拠）");
+        UI::Hint("注意: フレームレートにより多少ばらつきます（Unity準拠）");
     }
 
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("バースト設定");
 
     // Burst Count
     int burstCount = static_cast<int>(emissionData_.burstCount);
-    if (ImGui::DragInt("バースト放出数", &burstCount, 1, 0, 1000)) {
+    if (UI::DragInt("バースト放出数", burstCount, 1, 0, 1000)) {
         emissionData_.burstCount = static_cast<uint32_t>(burstCount);
   changed = true;
     }
-    ImGui::TextDisabled("一度に大量のパーティクルを放出");
+    UI::Hint("一度に大量のパーティクルを放出");
 
     // Burst Time
-    changed |= ImGui::DragFloat("バーストタイミング", &emissionData_.burstTime, 0.1f, 0.0f, 60.0f, "%.1f秒");
-    ImGui::TextDisabled("システム開始からこの時間後にバーストが発生");
+    changed |= UI::DragFloat("バーストタイミング", emissionData_.burstTime, 0.1f, 0.0f, 60.0f, "%.1f秒");
+    UI::Hint("システム開始からこの時間後にバーストが発生");
 
     // バーストの状態表示
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("バースト状態:");
     if (emissionData_.burstCount > 0) {
         ImGui::Text("  経過時間: %.2f秒 / バーストタイミング: %.2f秒", elapsedTime_, emissionData_.burstTime);
@@ -131,10 +131,10 @@ bool EmissionModule::ShowImGui() {
             }
         }
     } else {
-        ImGui::TextDisabled("  バースト放出数が0のため無効");
+        UI::Hint("  バースト放出数が0のため無効");
     }
 
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("現在の状態");
     ImGui::Text("再生中: %s", isPlaying_ ? "はい" : "いいえ");
     ImGui::Text("経過時間: %.2f秒", elapsedTime_);

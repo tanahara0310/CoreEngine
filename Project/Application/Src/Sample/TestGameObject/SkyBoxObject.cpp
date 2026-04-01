@@ -1,4 +1,4 @@
-#include "SkyBoxObject.h"
+﻿#include "SkyBoxObject.h"
 #include "Camera/ICamera.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -7,7 +7,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Math/MathCore.h"
-#include "externals/imgui/imgui.h"
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <cassert>
 #include "EngineSystem/EngineSystem.h"
 
@@ -242,8 +242,8 @@ bool SkyBoxObject::DrawImGuiExtended() {
     bool changed = false;
 
     if (ImGui::TreeNode("Transform")) {
-        changed |= ImGui::DragFloat3("Rotation", &transform_.rotate.x, 0.01f);
-        changed |= ImGui::DragFloat3("Scale",    &transform_.scale.x,  0.01f);
+        changed |= UI::DragVec3("Rotation", transform_.rotate, 0.01f);
+        changed |= UI::DragVec3("Scale", transform_.scale,  0.01f);
         ImGui::TreePop();
     }
 

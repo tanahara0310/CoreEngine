@@ -1,4 +1,4 @@
-#include "Bloom.h"
+﻿#include "Bloom.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -26,14 +26,14 @@ namespace CoreEngine
         ImGui::PushID("BloomParams");
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        ImGui::Separator();
+        UI::Separator();
 
         bool paramsChanged = false;
 
         // パラメータ設定
         if (ImGui::TreeNode("パラメータ")) {
             // 輝度閾値の調整
-            if (ImGui::SliderFloat("輝度しきい値", &params_.threshold, 0.0f, 2.0f)) {
+            if (UI::SliderFloat("輝度しきい値", params_.threshold, 0.0f, 2.0f)) {
                 paramsChanged = true;
             }
             if (ImGui::IsItemHovered()) {
@@ -41,7 +41,7 @@ namespace CoreEngine
             }
 
             // ブルーム強度の調整
-            if (ImGui::SliderFloat("強度", &params_.intensity, 0.0f, 3.0f)) {
+            if (UI::SliderFloat("強度", params_.intensity, 0.0f, 3.0f)) {
                 paramsChanged = true;
             }
             if (ImGui::IsItemHovered()) {
@@ -49,7 +49,7 @@ namespace CoreEngine
             }
 
             // ブラー半径の調整
-            if (ImGui::SliderFloat("ブラー半径", &params_.blurRadius, 0.5f, 5.0f)) {
+            if (UI::SliderFloat("ブラー半径", params_.blurRadius, 0.5f, 5.0f)) {
                 paramsChanged = true;
             }
             if (ImGui::IsItemHovered()) {
@@ -57,7 +57,7 @@ namespace CoreEngine
             }
 
             // ソフトニーの調整
-            if (ImGui::SliderFloat("ソフトニー", &params_.softKnee, 0.0f, 1.0f)) {
+            if (UI::SliderFloat("ソフトニー", params_.softKnee, 0.0f, 1.0f)) {
                 paramsChanged = true;
             }
             if (ImGui::IsItemHovered()) {
@@ -72,7 +72,7 @@ namespace CoreEngine
             UpdateConstantBuffer();
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         if (ImGui::Button("デフォルトに戻す")) {
             params_.threshold = 0.8f;

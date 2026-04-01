@@ -1,4 +1,4 @@
-#include "Sepia.h"
+﻿#include "Sepia.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -21,23 +21,23 @@ void Sepia::DrawImGui()
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
     ImGui::Text("ヴィンテージなセピアトーンエフェクトを作成します");
-    ImGui::Separator();
+    UI::Separator();
     
     bool paramsChanged = false;
     
     // パラメータ設定
     if (ImGui::TreeNode("パラメータ")) {
         // セピア効果の強度調整
-        paramsChanged |= ImGui::SliderFloat("強度", &params_.intensity, 0.0f, 2.0f);
+        paramsChanged |= UI::SliderFloat("強度", params_.intensity, 0.0f, 2.0f);
         
         ImGui::TreePop();
     }
     
     // 色調調整
     if (ImGui::TreeNode("色調調整")) {
-        paramsChanged |= ImGui::SliderFloat("赤の色調", &params_.toneRed, 0.5f, 1.5f);
-        paramsChanged |= ImGui::SliderFloat("緑の色調", &params_.toneGreen, 0.5f, 1.5f);
-        paramsChanged |= ImGui::SliderFloat("青の色調", &params_.toneBlue, 0.5f, 1.5f);
+        paramsChanged |= UI::SliderFloat("赤の色調", params_.toneRed, 0.5f, 1.5f);
+        paramsChanged |= UI::SliderFloat("緑の色調", params_.toneGreen, 0.5f, 1.5f);
+        paramsChanged |= UI::SliderFloat("青の色調", params_.toneBlue, 0.5f, 1.5f);
         
         ImGui::TreePop();
     }
@@ -47,7 +47,7 @@ void Sepia::DrawImGui()
         UpdateConstantBuffer();
     }
     
-    ImGui::Separator();
+    UI::Separator();
     
     // プリセット
     if (ImGui::TreeNode("プリセット")) {
@@ -67,7 +67,7 @@ void Sepia::DrawImGui()
             UpdateConstantBuffer();
         }
         
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("暖色セピア")) {
             params_.intensity = 0.8f;
             params_.toneRed = 1.3f;
@@ -83,7 +83,7 @@ void Sepia::DrawImGui()
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
     }
     
-    ImGui::Separator();
+    UI::Separator();
     
     ImGui::PopID();
 #endif // _DEBUG
