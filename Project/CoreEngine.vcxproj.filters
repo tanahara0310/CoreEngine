@@ -1311,6 +1311,12 @@
     <ClInclude Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\GameObjectDebugAccess.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\LivePPAgent.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiScope.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiInput.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiLayout.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Widgets\ImGuiWidgets.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiAll.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiWidgets.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

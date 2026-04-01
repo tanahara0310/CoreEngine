@@ -1,4 +1,4 @@
-#include "Vignette.h"
+﻿#include "Vignette.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -21,20 +21,20 @@ void Vignette::DrawImGui()
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
     ImGui::Text("画像の端を暗くする効果を作成します");
-    ImGui::Separator();
+    UI::Separator();
     
     bool paramsChanged = false;
     
     // パラメータ設定
     if (ImGui::TreeNode("パラメータ")) {
         // ヴィネット強度の調整
-        paramsChanged |= ImGui::SliderFloat("強度", &params_.intensity, 0.0f, 2.0f);
+        paramsChanged |= UI::SliderFloat("強度", params_.intensity, 0.0f, 2.0f);
         
         // 滑らかさの調整
-        paramsChanged |= ImGui::SliderFloat("滑らかさ", &params_.smoothness, 0.1f, 2.0f);
+        paramsChanged |= UI::SliderFloat("滑らかさ", params_.smoothness, 0.1f, 2.0f);
         
         // サイズの調整
-        paramsChanged |= ImGui::SliderFloat("サイズ", &params_.size, 1.0f, 50.0f);
+        paramsChanged |= UI::SliderFloat("サイズ", params_.size, 1.0f, 50.0f);
         
         ImGui::TreePop();
     }
@@ -44,7 +44,7 @@ void Vignette::DrawImGui()
         UpdateConstantBuffer();
     }
     
-    ImGui::Separator();
+    UI::Separator();
     
     if (ImGui::Button("デフォルトに戻す")) {
         params_.intensity = 0.8f;
@@ -57,7 +57,7 @@ void Vignette::DrawImGui()
         ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
     }
     
-    ImGui::Separator();
+    UI::Separator();
     
     ImGui::PopID();
 #endif // _DEBUG

@@ -4,7 +4,7 @@
 #include <cstdio>
 
 #ifdef _DEBUG
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 namespace CoreEngine
@@ -114,16 +114,16 @@ namespace CoreEngine
         char headerLabel[256];
         snprintf(headerLabel, sizeof(headerLabel), "%s##%p", displayName, (void*)this);
 
-        if (ImGui::CollapsingHeader(headerLabel)) {
+        if (auto s = UI::Scope::CollapsingScope(headerLabel)) {
             ImGui::PushID(this);
 
             bool prevActive = isActive_;
-            if (ImGui::Checkbox("Active", &isActive_)) {
+            if (UI::Widgets::ToggleSwitch("Active", &isActive_)) {
                 changed = true;
                 OnImGuiActiveChanged(prevActive);
             }
 
-            ImGui::Separator();
+            UI::Separator();
             changed |= DrawImGuiExtended();
             DrawSaveButton();
             ImGui::PopID();
@@ -135,14 +135,14 @@ namespace CoreEngine
     void GameObject::DrawSaveButton() {
         if (!shouldSerialize_ || name_.empty()) return;
 
-        ImGui::Separator();
+        UI::Separator();
         if (ImGui::Button("保存##save_single")) {
             if (onSaveRequested_) {
                 onSaveRequested_(this);
             }
         }
-        ImGui::SameLine();
-        ImGui::TextDisabled("このオブジェクトのみ");
+        UI::SameLine();
+        UI::Hint("このオブジェクトのみ");
     }
 #endif
 

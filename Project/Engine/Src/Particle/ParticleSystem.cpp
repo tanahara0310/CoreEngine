@@ -1,4 +1,4 @@
-#include "ParticleSystem.h"
+﻿#include "ParticleSystem.h"
 #include "Utility/Random/RandomGenerator.h"
 #include "Camera/ICamera.h"
 #include "Camera/CameraManager.h"
@@ -276,12 +276,12 @@ bool ParticleSystem::DrawImGui()
         
         // アクティブ状態
         bool active = isActive_;
-        if (ImGui::Checkbox("Active", &active)) {
+        if (UI::Widgets::ToggleSwitch("Active", &active)) {
             isActive_ = active;
             changed = true;
         }
         
-        ImGui::Separator();
+        UI::Separator();
         
         // ParticleSystem独自のUI
         changed |= ParticleSystemDebugUI::ShowImGui(this);

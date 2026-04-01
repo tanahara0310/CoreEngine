@@ -1,4 +1,4 @@
-#include "GridRenderer.h"
+﻿#include "GridRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Render/RenderManager.h"
 #include "EngineSystem/EngineSystem.h"
@@ -7,7 +7,7 @@
 #include <cmath>
 
 #ifdef _DEBUG
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 
@@ -171,54 +171,54 @@ bool GridRenderer::DrawImGui()
 
     if (ImGui::TreeNode("GridRenderer##GridSettings")) {
         // 表示/非表示
-        if (ImGui::Checkbox("表示", &visible_)) {
+        if (UI::Widgets::ToggleSwitch("表示", &visible_)) {
             changed = true;
         }
 
         // グリッドサイズ
-        if (ImGui::DragFloat("グリッドサイズ", &gridSize_, 1.0f, 10.0f, 500.0f)) {
+        if (UI::DragFloat("グリッドサイズ", gridSize_, 1.0f, 10.0f, 500.0f)) {
             changed = true;
         }
 
         // グリッド間隔
-        if (ImGui::DragFloat("間隔", &spacing_, 0.1f, 0.1f, 10.0f)) {
+        if (UI::DragFloat("間隔", spacing_, 0.1f, 0.1f, 10.0f)) {
             changed = true;
         }
 
         // 太いラインの間隔
-        if (ImGui::DragInt("太いライン間隔", &majorLineInterval_, 1, 2, 20)) {
+        if (UI::DragInt("太いライン間隔", majorLineInterval_, 1, 2, 20)) {
             changed = true;
         }
 
-        ImGui::Separator();
+        UI::Separator();
         ImGui::Text("フェード設定");
 
         // フェード開始距離
-        if (ImGui::DragFloat("フェード開始距離", &fadeStartDistance_, 1.0f, 0.0f, fadeEndDistance_)) {
+        if (UI::DragFloat("フェード開始距離", fadeStartDistance_, 1.0f, 0.0f, fadeEndDistance_)) {
             changed = true;
         }
 
         // フェード終了距離
-        if (ImGui::DragFloat("フェード終了距離", &fadeEndDistance_, 1.0f, fadeStartDistance_, gridSize_)) {
+        if (UI::DragFloat("フェード終了距離", fadeEndDistance_, 1.0f, fadeStartDistance_, gridSize_)) {
             changed = true;
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         // 軸の色設定
-        if (ImGui::ColorEdit3("X軸色（赤）", &xAxisColor_.x)) {
+        if (UI::ColorEdit3("X軸色（赤）", xAxisColor_)) {
             changed = true;
         }
 
-        if (ImGui::ColorEdit3("Y軸色（青）", &yAxisColor_.x)) {
+        if (UI::ColorEdit3("Y軸色（青）", yAxisColor_)) {
             changed = true;
         }
 
-        if (ImGui::ColorEdit3("Z軸色（緑）", &zAxisColor_.x)) {
+        if (UI::ColorEdit3("Z軸色（緑）", zAxisColor_)) {
             changed = true;
         }
 
-        if (ImGui::ColorEdit3("グリッド色", &normalColor_.x)) {
+        if (UI::ColorEdit3("グリッド色", normalColor_)) {
             changed = true;
         }
 

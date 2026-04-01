@@ -1,9 +1,9 @@
-#include "ProjectView.h"
+﻿#include "ProjectView.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
 
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <algorithm>
 #include <Windows.h>
 #include <shellapi.h>
@@ -38,7 +38,7 @@ namespace CoreEngine
             // パンくずリスト表示
             DrawBreadcrumb();
 
-            ImGui::Separator();
+            UI::Separator();
 
             // 2カラムレイアウト（左：フォルダツリー、右：グリッドビュー）
             ImGui::BeginChild("LeftPanel", ImVec2(treeViewWidth_, 0), true);
@@ -48,7 +48,7 @@ namespace CoreEngine
             }
             ImGui::EndChild();
 
-            ImGui::SameLine();
+            UI::SameLine();
 
             // 右側のグリッドビュー
             ImGui::BeginChild("RightPanel", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
@@ -148,7 +148,7 @@ namespace CoreEngine
     void ProjectView::DrawGridLayout(const std::vector<Entry>& entries)
     {
         if (entries.empty()) {
-            ImGui::TextDisabled("(Empty folder)");
+            UI::Hint("(Empty folder)");
             return;
         }
 
@@ -255,7 +255,7 @@ namespace CoreEngine
             float lastItemX = ImGui::GetItemRectMax().x;
             float nextItemX = lastItemX + style.ItemSpacing.x + itemWidth;
             if (i + 1 < entries.size() && nextItemX < windowVisibleX) {
-                ImGui::SameLine();
+                UI::SameLine();
             }
 
             ImGui::PopID();
@@ -593,7 +593,7 @@ namespace CoreEngine
             rootLabel = "Engine";
         }
 
-        ImGui::SameLine(); ImGui::Text(">"); ImGui::SameLine();
+        UI::SameLine(); ImGui::Text(">"); UI::SameLine();
         if (ImGui::Button(rootLabel.c_str())) {
             NavigateToDirectory(baseRoot);
         }
@@ -604,7 +604,7 @@ namespace CoreEngine
         auto relativePath = std::filesystem::relative(currentPath_, baseRoot);
         std::filesystem::path currentDir = baseRoot;
         for (const auto& part : relativePath) {
-            ImGui::SameLine(); ImGui::Text(">"); ImGui::SameLine();
+            UI::SameLine(); ImGui::Text(">"); UI::SameLine();
             currentDir /= part;
             std::string buttonLabel = part.string();
             if (ImGui::Button(buttonLabel.c_str())) {

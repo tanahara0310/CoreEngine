@@ -1,4 +1,4 @@
-#include "ShadowMapRenderer.h"
+﻿#include "ShadowMapRenderer.h"
 #include "Camera/ICamera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -6,7 +6,7 @@
 #include <DirectXMath.h>
 
 #ifdef _DEBUG
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 namespace CoreEngine
@@ -160,9 +160,9 @@ namespace CoreEngine
         if (ImGui::CollapsingHeader("Shadow Bias Settings")) {
             bool changed = false;
 
-            changed |= ImGui::DragInt("Depth Bias", &biasSettings_.depthBias, 100, 0, 100000);
-            changed |= ImGui::DragFloat("Slope Scaled Bias", &biasSettings_.slopeScaledDepthBias, 0.1f, 0.0f, 10.0f);
-            changed |= ImGui::DragFloat("Bias Clamp", &biasSettings_.depthBiasClamp, 0.001f, 0.0f, 1.0f);
+            changed |= UI::DragInt("Depth Bias", biasSettings_.depthBias, 100, 0, 100000);
+            changed |= UI::DragFloat("Slope Scaled Bias", biasSettings_.slopeScaledDepthBias, 0.1f, 0.0f, 10.0f);
+            changed |= UI::DragFloat("Bias Clamp", biasSettings_.depthBiasClamp, 0.001f, 0.0f, 1.0f);
 
             if (changed) {
                 SetBiasSettings(biasSettings_);

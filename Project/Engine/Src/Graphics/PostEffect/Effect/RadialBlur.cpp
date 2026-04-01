@@ -1,4 +1,4 @@
-#include "RadialBlur.h"
+﻿#include "RadialBlur.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
@@ -24,19 +24,19 @@ namespace CoreEngine
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         ImGui::Text("中心から外側に向かってブラーをかけます");
-        ImGui::Separator();
+        UI::Separator();
 
         bool paramsChanged = false;
 
         // パラメータ設定
         if (ImGui::TreeNode("パラメータ")) {
             // ブラー強度の調整
-            if (ImGui::SliderFloat("強度", &params_.intensity, 0.0f, 2.0f, "%.2f")) {
+            if (UI::SliderFloat("強度", params_.intensity, 0.0f, 2.0f, "%.2f")) {
                 paramsChanged = true;
             }
 
             // サンプル数の調整
-            if (ImGui::SliderFloat("サンプル数", &params_.sampleCount, 4.0f, 16.0f, "%.0f")) {
+            if (UI::SliderFloat("サンプル数", params_.sampleCount, 4.0f, 16.0f, "%.0f")) {
                 paramsChanged = true;
             }
 
@@ -46,11 +46,11 @@ namespace CoreEngine
         // 中心位置設定
         if (ImGui::TreeNode("中心位置")) {
             // ブラー中心の調整
-            if (ImGui::SliderFloat("中心X", &params_.centerX, 0.0f, 1.0f, "%.3f")) {
+            if (UI::SliderFloat("中心X", params_.centerX, 0.0f, 1.0f, "%.3f")) {
                 paramsChanged = true;
             }
 
-            if (ImGui::SliderFloat("中心Y", &params_.centerY, 0.0f, 1.0f, "%.3f")) {
+            if (UI::SliderFloat("中心Y", params_.centerY, 0.0f, 1.0f, "%.3f")) {
                 paramsChanged = true;
             }
 

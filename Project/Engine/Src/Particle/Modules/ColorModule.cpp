@@ -30,7 +30,7 @@ namespace CoreEngine
         bool changed = false;
 
         // 有効/無効の切り替え
-        if (ImGui::Checkbox("有効##色", &enabled_)) {
+        if (UI::Widgets::ToggleSwitch("有効##色", &enabled_)) {
             changed = true;
         }
 
@@ -38,11 +38,11 @@ namespace CoreEngine
             ImGui::BeginDisabled();
         }
 
-        ImGui::TextDisabled("注意: 初期色はMainModuleで設定してください");
-        ImGui::Separator();
+        UI::Hint("注意: 初期色はMainModuleで設定してください");
+        UI::Separator();
 
-        changed |= ImGui::ColorEdit4("終了色", &colorData_.endColor.x);
-        changed |= ImGui::Checkbox("グラデーション使用", &colorData_.useGradient);
+        changed |= UI::ColorEdit("終了色", colorData_.endColor);
+        changed |= UI::Widgets::ToggleSwitch("グラデーション使用", &colorData_.useGradient);
 
         if (!enabled_) {
             ImGui::EndDisabled();

@@ -1,4 +1,4 @@
-#include "ShapeModule.h"
+﻿#include "ShapeModule.h"
 #include "../ParticleSystem.h" // Particle構造体のために必要
 #include <cmath>
 #include <algorithm>
@@ -508,7 +508,7 @@ void ShapeModule::DrawEmitterShape(LineRendererPipeline* pipeline, const ICamera
 bool ShapeModule::ShowImGui() {
     bool changed = false;
 
-    if (ImGui::Checkbox("有効##形状", &enabled_)) {
+    if (UI::Widgets::ToggleSwitch("有効##形状", &enabled_)) {
         changed = true;
     }
 
@@ -516,7 +516,7 @@ bool ShapeModule::ShowImGui() {
         ImGui::BeginDisabled();
     }
 
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("形状設定");
 
     static const char* shapeTypeNames[] = {
@@ -531,25 +531,25 @@ bool ShapeModule::ShowImGui() {
     // 形状ごとのパラメータ表示
     switch (shapeData_.shapeType) {
     case ShapeType::Point:
-        ImGui::TextDisabled("点形状：単一の点から放出");
+        UI::Hint("点形状：単一の点から放出");
         break;
 
     case ShapeType::Box:
-        changed |= ImGui::DragFloat3("ボックスサイズ", &shapeData_.scale.x, 0.1f, 0.1f, 20.0f);
-        changed |= ImGui::Checkbox("表面のみから放出", &shapeData_.emitFromSurface);
+        changed |= UI::DragVec3("ボックスサイズ", shapeData_.scale, 0.1f, 0.1f, 20.0f);
+        changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &shapeData_.emitFromSurface);
         break;
 
     case ShapeType::Sphere:
     case ShapeType::Edge:
-        changed |= ImGui::DragFloat("半径", &shapeData_.radius, 0.1f, 0.1f, 20.0f);
+        changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
         if (shapeData_.shapeType == ShapeType::Sphere) {
-            changed |= ImGui::Checkbox("表面のみから放出", &shapeData_.emitFromSurface);
+            changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &shapeData_.emitFromSurface);
         }
         break;
 
     case ShapeType::Circle:
     case ShapeType::CircleHalf:
-        changed |= ImGui::DragFloat("半径", &shapeData_.radius, 0.1f, 0.1f, 20.0f);
+        changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
         {
             const char* planeNames[] = { "XZ (地面)", "XY (垂直 Z固定)", "YZ (垂直 X固定)" };
             int curPlane = static_cast<int>(shapeData_.circlePlane);
@@ -561,18 +561,18 @@ bool ShapeModule::ShowImGui() {
         break;
 
     case ShapeType::Cone:
-        changed |= ImGui::DragFloat("コーン角度", &shapeData_.angle, 1.0f, 0.0f, 90.0f, "%.1f度");
-        changed |= ImGui::DragFloat("高さ", &shapeData_.height, 0.1f, 0.1f, 20.0f);
+        changed |= UI::DragFloat("コーン角度", shapeData_.angle, 1.0f, 0.0f, 90.0f, "%.1f度");
+        changed |= UI::DragFloat("高さ", shapeData_.height, 0.1f, 0.1f, 20.0f);
         break;
 
     case ShapeType::Hemisphere:
-        changed |= ImGui::DragFloat("半径", &shapeData_.radius, 0.1f, 0.1f, 20.0f);
-        changed |= ImGui::Checkbox("表面のみから放出", &shapeData_.emitFromSurface);
+        changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
+        changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &shapeData_.emitFromSurface);
         break;
 
     case ShapeType::Ring:
-        changed |= ImGui::DragFloat("外径", &shapeData_.radius, 0.1f, 0.1f, 20.0f);
-        changed |= ImGui::DragFloat("内径", &shapeData_.innerRadius, 0.1f, 0.0f, shapeData_.radius);
+        changed |= UI::DragFloat("外径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
+        changed |= UI::DragFloat("内径", shapeData_.innerRadius, 0.1f, 0.0f, shapeData_.radius);
         {
             const char* planeNames[] = { "XZ (地面)", "XY (垂直 Z固定)", "YZ (垂直 X固定)" };
             int curPlane = static_cast<int>(shapeData_.circlePlane);
@@ -584,26 +584,26 @@ bool ShapeModule::ShowImGui() {
         break;
 
     case ShapeType::Line:
-        changed |= ImGui::DragFloat("長さ", &shapeData_.scale.x, 0.1f, 0.1f, 20.0f);
-        changed |= ImGui::DragFloat3("方向", &shapeData_.emissionDirection.x, 0.1f);
+        changed |= UI::DragFloat("長さ", shapeData_.scale.x, 0.1f, 0.1f, 20.0f);
+        changed |= UI::DragVec3("方向", shapeData_.emissionDirection, 0.1f);
         break;
 
     case ShapeType::Cylinder:
-        changed |= ImGui::DragFloat("半径", &shapeData_.radius, 0.1f, 0.1f, 20.0f);
-        changed |= ImGui::DragFloat("高さ", &shapeData_.height, 0.1f, 0.1f, 20.0f);
-        changed |= ImGui::Checkbox("表面のみから放出", &shapeData_.emitFromSurface);
+        changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
+        changed |= UI::DragFloat("高さ", shapeData_.height, 0.1f, 0.1f, 20.0f);
+        changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &shapeData_.emitFromSurface);
         break;
     }
 
     // 追加パラメータ
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("追加パラメータ");
-    changed |= ImGui::DragFloat("ランダム位置範囲", &shapeData_.randomPositionRange, 0.01f, 0.0f, 2.0f);
+    changed |= UI::DragFloat("ランダム位置範囲", shapeData_.randomPositionRange, 0.01f, 0.0f, 2.0f);
 
     // デバッグ描画
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("デバッグ表示");
-    if (ImGui::Checkbox("形状を表示", &debugDraw_)) {
+    if (UI::Widgets::ToggleSwitch("形状を表示", &debugDraw_)) {
         changed = true;
     }
 

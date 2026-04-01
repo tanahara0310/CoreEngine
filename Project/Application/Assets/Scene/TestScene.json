@@ -562,6 +562,26 @@
         },
         "Model_34": {
             "active": true,
+            "material": {
+                "ao": 1.0,
+                "aoMap": false,
+                "color": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "dithering": false,
+                "ditheringScale": 1.0,
+                "ibl": true,
+                "iblIntensity": 1.0,
+                "lighting": true,
+                "metallic": 0.6666666865348816,
+                "metallicMap": false,
+                "normalMap": false,
+                "roughness": 1.0,
+                "roughnessMap": false
+            },
             "transform": {
                 "rotate": [
                     0.0,

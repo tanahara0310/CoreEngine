@@ -62,7 +62,7 @@ bool NoiseModule::ShowImGui() {
     bool changed = false;
 
     // 有効/無効の切り替え
-    if (ImGui::Checkbox("有効##ノイズ", &enabled_)) {
+    if (UI::Widgets::ToggleSwitch("有効##ノイズ", &enabled_)) {
         changed = true;
     }
 
@@ -71,31 +71,31 @@ bool NoiseModule::ShowImGui() {
     }
 
     ImGui::Text("パーリンノイズによる位置の揺らぎを追加します");
-    ImGui::Separator();
+    UI::Separator();
 
     // 強度
-    changed |= ImGui::DragFloat("強度", &noiseData_.strength, 0.1f, 0.0f, 10.0f);
-    ImGui::TextDisabled("ノイズの影響の大きさ");
+    changed |= UI::DragFloat("強度", noiseData_.strength, 0.1f, 0.0f, 10.0f);
+    UI::Hint("ノイズの影響の大きさ");
 
     // 周波数
-    changed |= ImGui::DragFloat("周波数", &noiseData_.frequency, 0.01f, 0.01f, 5.0f);
-    ImGui::TextDisabled("ノイズの細かさ（高いほど細かい揺らぎ）");
+    changed |= UI::DragFloat("周波数", noiseData_.frequency, 0.01f, 0.01f, 5.0f);
+    UI::Hint("ノイズの細かさ（高いほど細かい揺らぎ）");
 
     // スクロール速度
-    changed |= ImGui::DragFloat("スクロール速度", &noiseData_.scrollSpeed, 0.1f, -10.0f, 10.0f);
-    ImGui::TextDisabled("ノイズパターンの移動速度");
+    changed |= UI::DragFloat("スクロール速度", noiseData_.scrollSpeed, 0.1f, -10.0f, 10.0f);
+    UI::Hint("ノイズパターンの移動速度");
 
-    ImGui::Separator();
+    UI::Separator();
 
     // 各軸の影響量
-    changed |= ImGui::DragFloat3("軸別影響量", &noiseData_.positionAmount.x, 0.1f, 0.0f, 5.0f);
-    ImGui::TextDisabled("X, Y, Z軸それぞれのノイズ影響量");
+    changed |= UI::DragVec3("軸別影響量", noiseData_.positionAmount, 0.1f, 0.0f, 5.0f);
+    UI::Hint("X, Y, Z軸それぞれのノイズ影響量");
 
-    ImGui::Separator();
+    UI::Separator();
 
     // 減衰設定
-    changed |= ImGui::Checkbox("ライフタイム減衰", &noiseData_.damping);
-    ImGui::TextDisabled("ONにすると、パーティクルの寿命に応じてノイズが減衰します");
+    changed |= UI::Widgets::ToggleSwitch("ライフタイム減衰", &noiseData_.damping);
+    UI::Hint("ONにすると、パーティクルの寿命に応じてノイズが減衰します");
 
     if (!enabled_) {
         ImGui::EndDisabled();

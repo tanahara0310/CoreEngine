@@ -3,7 +3,7 @@
 
 #ifdef _DEBUG
 
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -79,26 +79,25 @@ namespace CoreEngine
 
         ImGui::Text("アクティブ3D: %s", context.cameraManager->GetActiveCameraName(CameraType::Camera3D).c_str());
         ImGui::Text("読み込み中シーケンス: %s", loadedClipName_.empty() ? "なし" : loadedClipName_.c_str());
-        ImGui::TextDisabled("ここで読み込んだシーケンスがゲームカメラ再生データです。");
-        ImGui::Separator();
+        UI::Hint("ここで読み込んだシーケンスがゲームカメラ再生データです。");
+        UI::Separator();
 
         if (ImGui::Button("シーケンス一覧を更新")) {
             needRefreshClipFileList_ = true;
         }
 
         if (clipFileList_.empty()) {
-            ImGui::TextDisabled("保存済みシーケンスがありません。");
+            UI::Hint("保存済みシーケンスがありません。");
         } else {
             selectedClipFileIndex_ = std::clamp(selectedClipFileIndex_, -1, static_cast<int>(clipFileList_.size()) - 1);
 
-            if (ImGui::BeginListBox("保存済みシーケンス", ImVec2(-1.0f, 140.0f))) {
+            if (auto lb = UI::Scope::ListBoxScope("保存済みシーケンス", ImVec2(-1.0f, 140.0f))) {
                 for (int i = 0; i < static_cast<int>(clipFileList_.size()); ++i) {
                     const bool isSelected = (selectedClipFileIndex_ == i);
                     if (ImGui::Selectable(clipFileList_[i].c_str(), isSelected)) {
                         selectedClipFileIndex_ = i;
                     }
                 }
-                ImGui::EndListBox();
             }
 
             if (selectedClipFileIndex_ >= 0 && selectedClipFileIndex_ < static_cast<int>(clipFileList_.size())) {
@@ -111,28 +110,28 @@ namespace CoreEngine
             }
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         if (!statusMessage_.empty()) {
-            ImGui::TextDisabled("%s", statusMessage_.c_str());
+            UI::Hint(statusMessage_.c_str());
         }
 
         if (clipKeyframes_.empty()) {
-            ImGui::TextDisabled("再生可能なシーケンスが読み込まれていません。");
+            UI::Hint("再生可能なシーケンスが読み込まれていません。");
             return;
         }
 
         ImGui::Text("キーフレーム数: %d", static_cast<int>(clipKeyframes_.size()));
         ImGui::Text("ショット数: %d (%s)", static_cast<int>(clipShots_.size()), shotsEnabled_ ? "有効" : "無効");
-        ImGui::DragFloat("再生速度", &playbackSpeed_, 0.05f, 0.1f, 4.0f, "%.2fx");
-        ImGui::Checkbox("ループ再生", &loopPlayback_);
+        UI::DragFloat("再生速度", playbackSpeed_, 0.05f, 0.1f, 4.0f, "%.2fx");
+        UI::Widgets::ToggleSwitch("ループ再生", &loopPlayback_);
 
         const char* easingLabel = (easingTypeIndex_ >= 0 && easingTypeIndex_ < kEasingOptionCount)
             ? kEasingOptions[easingTypeIndex_].label
             : "不明";
         ImGui::Text("補間タイプ: %s", easingLabel);
 
-        bool playheadChanged = ImGui::SliderFloat("再生ヘッド", &playhead_, 0.0f, timelineLength_, "%.2f 秒");
+        bool playheadChanged = UI::SliderFloat("再生ヘッド", playhead_, 0.0f, timelineLength_, "%.2f 秒");
 
         if (isPlaying_) {
             if (ImGui::Button("停止")) {
@@ -144,7 +143,7 @@ namespace CoreEngine
             }
         }
 
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("先頭へ")) {
             playhead_ = 0.0f;
             playheadChanged = true;

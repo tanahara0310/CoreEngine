@@ -55,7 +55,7 @@ bool SizeModule::ShowImGui() {
     bool changed = false;
     
     // 有効/無効の切り替え
-    if (ImGui::Checkbox("有効##サイズ", &enabled_)) {
+    if (UI::Widgets::ToggleSwitch("有効##サイズ", &enabled_)) {
         changed = true;
     }
 
@@ -63,20 +63,20 @@ bool SizeModule::ShowImGui() {
         ImGui::BeginDisabled();
     }
 
-    ImGui::TextDisabled("注意: 初期サイズはMainModuleで設定してください");
-    ImGui::Separator();
+    UI::Hint("注意: 初期サイズはMainModuleで設定してください");
+    UI::Separator();
 
     // 3Dサイズ設定
-    changed |= ImGui::Checkbox("3Dサイズ使用", &sizeData_.use3DSize);
+    changed |= UI::Widgets::ToggleSwitch("3Dサイズ使用", &sizeData_.use3DSize);
     
     if (sizeData_.use3DSize) {
-     changed |= ImGui::DragFloat3("終了サイズ3D", &sizeData_.endSize3D.x, 0.01f, 0.0f, 10.0f);
-  changed |= ImGui::Checkbox("均等スケーリング", &sizeData_.uniformScaling);
+     changed |= UI::DragVec3("終了サイズ3D", sizeData_.endSize3D, 0.01f, 0.0f, 10.0f);
+  changed |= UI::Widgets::ToggleSwitch("均等スケーリング", &sizeData_.uniformScaling);
     } else {
-        changed |= ImGui::DragFloat("終了サイズ", &sizeData_.endSize, 0.01f, 0.0f, 10.0f);
+        changed |= UI::DragFloat("終了サイズ", sizeData_.endSize, 0.01f, 0.0f, 10.0f);
     }
     
-    changed |= ImGui::Checkbox("寿命に応じたサイズ変化", &sizeData_.sizeOverLifetime);
+    changed |= UI::Widgets::ToggleSwitch("寿命に応じたサイズ変化", &sizeData_.sizeOverLifetime);
 
   // サイズカーブ設定
     static const char* sizeCurveNames[] = {
@@ -89,8 +89,8 @@ bool SizeModule::ShowImGui() {
     }
 
     // サイズ制限
-    changed |= ImGui::DragFloat("最小サイズ", &sizeData_.minSize, 0.01f, 0.01f, 1.0f);
- changed |= ImGui::DragFloat("最大サイズ", &sizeData_.maxSize, 0.1f, 1.0f, 50.0f);
+    changed |= UI::DragFloat("最小サイズ", sizeData_.minSize, 0.01f, 0.01f, 1.0f);
+ changed |= UI::DragFloat("最大サイズ", sizeData_.maxSize, 0.1f, 1.0f, 50.0f);
 
     if (!enabled_) {
      ImGui::EndDisabled();

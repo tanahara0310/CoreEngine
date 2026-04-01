@@ -1,10 +1,10 @@
-#include "GameObjectManager.h"
+﻿#include "GameObjectManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Collider/CollisionManager.h"
 #include <algorithm>
 
 #ifdef _DEBUG
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 
@@ -119,7 +119,7 @@ namespace CoreEngine
     void GameObjectManager::DrawSingleObjectImGui(GameObject* obj)
     {
         if (!obj) {
-            ImGui::TextDisabled("オブジェクトを選択してください");
+            UI::Hint("オブジェクトを選択してください");
             return;
         }
 

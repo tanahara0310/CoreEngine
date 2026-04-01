@@ -1,11 +1,11 @@
-#include "LightDebugVisualizer.h"
+﻿#include "LightDebugVisualizer.h"
 
 #include "Math/MathCore.h"
 #include "Graphics/Line/LineManager.h"
 #include <cmath>
 
 #ifdef _DEBUG
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 namespace CoreEngine
@@ -28,8 +28,8 @@ namespace CoreEngine
 #ifdef _DEBUG
         if (ImGui::CollapsingHeader("ライトシステム", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            ImGui::Checkbox("ライトのデバッグ可視化", &enableVisualization_);
-            ImGui::Separator();
+            UI::Widgets::ToggleSwitch("ライトのデバッグ可視化", &enableVisualization_);
+            UI::Separator();
 
             ImGui::Text("ライト統計:");
             ImGui::Text("  ディレクショナルライト: %u / %u",
@@ -41,7 +41,7 @@ namespace CoreEngine
             ImGui::Text("  エリアライト: %u / %u",
                 static_cast<uint32_t>(areaLights.size()), maxAreaLights);
 
-            ImGui::Separator();
+            UI::Separator();
 
             if (ImGui::TreeNode("ディレクショナルライト"))
             {
@@ -53,10 +53,10 @@ namespace CoreEngine
                     {
                         auto& light = directionalLights[i];
 
-                        ImGui::Checkbox("有効", &light.enabled);
-                        ImGui::ColorEdit4("色", &light.color.x);
-                        ImGui::DragFloat3("方向", &light.direction.x, 0.01f, -1.0f, 1.0f);
-                        ImGui::DragFloat("強度", &light.intensity, 0.01f, 0.0f, 10.0f);
+                        UI::Widgets::ToggleSwitch("有効", &light.enabled);
+                        UI::ColorEdit("色", light.color);
+                        UI::DragVec3("方向", light.direction, 0.01f, -1.0f, 1.0f);
+                        UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
 
                         if (ImGui::Button("方向を正規化"))
                         {
@@ -93,12 +93,12 @@ namespace CoreEngine
                     {
                         auto& light = pointLights[i];
 
-                        ImGui::Checkbox("有効", &light.enabled);
-                        ImGui::ColorEdit4("色", &light.color.x);
-                        ImGui::DragFloat3("位置", &light.position.x, 0.1f, -50.0f, 50.0f);
-                        ImGui::DragFloat("強度", &light.intensity, 0.01f, 0.0f, 10.0f);
-                        ImGui::DragFloat("半径", &light.radius, 0.1f, 0.1f, 100.0f);
-                        ImGui::DragFloat("減衰率", &light.decay, 0.01f, 0.0f, 10.0f);
+                        UI::Widgets::ToggleSwitch("有効", &light.enabled);
+                        UI::ColorEdit("色", light.color);
+                        UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
+                        UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
+                        UI::DragFloat("半径", light.radius, 0.1f, 0.1f, 100.0f);
+                        UI::DragFloat("減衰率", light.decay, 0.01f, 0.0f, 10.0f);
 
                         ImGui::TreePop();
                     }
@@ -130,15 +130,15 @@ namespace CoreEngine
                     {
                         auto& light = spotLights[i];
 
-                        ImGui::Checkbox("有効", &light.enabled);
-                        ImGui::ColorEdit4("色", &light.color.x);
-                        ImGui::DragFloat3("位置", &light.position.x, 0.1f, -50.0f, 50.0f);
-                        ImGui::DragFloat3("方向", &light.direction.x, 0.01f, -1.0f, 1.0f);
-                        ImGui::DragFloat("強度", &light.intensity, 0.01f, 0.0f, 10.0f);
-                        ImGui::DragFloat("距離", &light.distance, 0.1f, 0.1f, 100.0f);
-                        ImGui::DragFloat("減衰率", &light.decay, 0.01f, 0.0f, 10.0f);
-                        ImGui::DragFloat("角度（cos）", &light.cosAngle, 0.01f, 0.0f, 1.0f);
-                        ImGui::DragFloat("フォールオフ開始", &light.cosFalloffStart, 0.01f, 0.0f, 1.0f);
+                        UI::Widgets::ToggleSwitch("有効", &light.enabled);
+                        UI::ColorEdit("色", light.color);
+                        UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
+                        UI::DragVec3("方向", light.direction, 0.01f, -1.0f, 1.0f);
+                        UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
+                        UI::DragFloat("距離", light.distance, 0.1f, 0.1f, 100.0f);
+                        UI::DragFloat("減衰率", light.decay, 0.01f, 0.0f, 10.0f);
+                        UI::DragFloat("角度（cos）", light.cosAngle, 0.01f, 0.0f, 1.0f);
+                        UI::DragFloat("フォールオフ開始", light.cosFalloffStart, 0.01f, 0.0f, 1.0f);
 
                         if (ImGui::Button("方向を正規化"))
                         {
@@ -175,16 +175,16 @@ namespace CoreEngine
                     {
                         auto& light = areaLights[i];
 
-                        ImGui::Checkbox("有効", &light.enabled);
-                        ImGui::ColorEdit4("色", &light.color.x);
-                        ImGui::DragFloat3("位置", &light.position.x, 0.1f, -50.0f, 50.0f);
-                        ImGui::DragFloat3("法線", &light.normal.x, 0.01f, -1.0f, 1.0f);
-                        ImGui::DragFloat("強度", &light.intensity, 0.01f, 0.0f, 10.0f);
-                        ImGui::DragFloat("幅", &light.width, 0.1f, 0.1f, 20.0f);
-                        ImGui::DragFloat("高さ", &light.height, 0.1f, 0.1f, 20.0f);
-                        ImGui::DragFloat("範囲", &light.range, 0.1f, 0.1f, 100.0f);
-                        ImGui::DragFloat3("右ベクトル", &light.right.x, 0.01f, -1.0f, 1.0f);
-                        ImGui::DragFloat3("上ベクトル", &light.up.x, 0.01f, -1.0f, 1.0f);
+                        UI::Widgets::ToggleSwitch("有効", &light.enabled);
+                        UI::ColorEdit("色", light.color);
+                        UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
+                        UI::DragVec3("法線", light.normal, 0.01f, -1.0f, 1.0f);
+                        UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
+                        UI::DragFloat("幅", light.width, 0.1f, 0.1f, 20.0f);
+                        UI::DragFloat("高さ", light.height, 0.1f, 0.1f, 20.0f);
+                        UI::DragFloat("範囲", light.range, 0.1f, 0.1f, 100.0f);
+                        UI::DragVec3("右ベクトル", light.right, 0.01f, -1.0f, 1.0f);
+                        UI::DragVec3("上ベクトル", light.up, 0.01f, -1.0f, 1.0f);
 
                         if (ImGui::Button("法線を正規化"))
                         {

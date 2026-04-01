@@ -1,4 +1,4 @@
-#include "ChromaticAberration.h"
+﻿#include "ChromaticAberration.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -21,31 +21,31 @@ void ChromaticAberration::DrawImGui()
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
     ImGui::Text("カメラレンズの色収差効果をシミュレートします");
-    ImGui::Separator();
+    UI::Separator();
     
     bool paramsChanged = false;
     
     // 基本パラメータ
     if (ImGui::TreeNode("基本パラメータ")) {
         ImGui::Text("強度: エフェクト全体の強さを制御");
-        paramsChanged |= ImGui::SliderFloat("強度", &params_.intensity, 0.0f, 20.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("強度", params_.intensity, 0.0f, 20.0f, "%.2f");
         
         ImGui::Text("放射係数: 距離ベースの乗数");
-        paramsChanged |= ImGui::SliderFloat("放射係数", &params_.radialFactor, 0.0f, 3.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("放射係数", params_.radialFactor, 0.0f, 3.0f, "%.2f");
  
         ImGui::Text("ゆがみスケール: 全体的な変位スケール");
-        paramsChanged |= ImGui::SliderFloat("歪みスケール", &params_.distortionScale, 0.0f, 5.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("歪みスケール", params_.distortionScale, 0.0f, 5.0f, "%.2f");
         
         ImGui::Text("エッジフォールオフ: エッジの強度を制御");
-        paramsChanged |= ImGui::SliderFloat("エッジフォールオフ", &params_.falloff, 0.1f, 5.0f, "%.2f");
+        paramsChanged |= UI::SliderFloat("エッジフォールオフ", params_.falloff, 0.1f, 5.0f, "%.2f");
         
         ImGui::TreePop();
     }
     
     // 中心位置調整
     if (ImGui::TreeNode("中心位置")) {
-        paramsChanged |= ImGui::SliderFloat("中心X", &params_.centerX, 0.0f, 1.0f, "%.3f");
-        paramsChanged |= ImGui::SliderFloat("中心Y", &params_.centerY, 0.0f, 1.0f, "%.3f");
+        paramsChanged |= UI::SliderFloat("中心X", params_.centerX, 0.0f, 1.0f, "%.3f");
+        paramsChanged |= UI::SliderFloat("中心Y", params_.centerY, 0.0f, 1.0f, "%.3f");
      
         if (ImGui::Button("中心をリセット")) {
             params_.centerX = 0.5f;
@@ -64,12 +64,12 @@ void ChromaticAberration::DrawImGui()
             ApplyPreset(0);
             paramsChanged = true;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("中程度")) {
             ApplyPreset(1);
             paramsChanged = true;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("強い")) {
             ApplyPreset(2);
             paramsChanged = true;
@@ -79,12 +79,12 @@ void ChromaticAberration::DrawImGui()
             ApplyPreset(3);
             paramsChanged = true;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("広角レンズ")) {
             ApplyPreset(4);
             paramsChanged = true;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("極端")) {
             ApplyPreset(5);
             paramsChanged = true;
@@ -98,7 +98,7 @@ void ChromaticAberration::DrawImGui()
         UpdateConstantBuffer();
     }
 
-    ImGui::Separator();
+    UI::Separator();
     
     if (ImGui::Button("デフォルトに戻す")) {
         ApplyPreset(1); // 中程度プリセット
@@ -113,7 +113,7 @@ void ChromaticAberration::DrawImGui()
             "エフェクトはアクティブ - 画面端で色のずれが見えます!");
     }
     
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("注意: RGBチャンネルが中心から放射状に分離されます");
     ImGui::Text("赤は外側に、青は内側に移動します");
     

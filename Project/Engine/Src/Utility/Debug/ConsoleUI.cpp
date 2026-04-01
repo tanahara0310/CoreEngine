@@ -22,59 +22,54 @@ void ConsoleUI::Draw()
 {
     if (!isVisible_) return;
 
-    if (ImGui::Begin("Console")) {
+    if (auto w = UI::Scope::WindowScope("Console")) {
         // === コンソールヘッダー ===
         ImGui::Text("Debug Console");
-        ImGui::SameLine();
-        
-        // クリアボタン
+        UI::SameLine();
+
         if (ImGui::Button("Clear")) {
             ClearLog();
         }
-        
-        ImGui::SameLine();
-        
-        // フィルター設定
+
+        UI::SameLine();
+
         if (ImGui::Button("Settings")) {
             ImGui::OpenPopup("ConsoleSettings");
         }
-        
-        // 設定ポップアップ
-        if (ImGui::BeginPopup("ConsoleSettings")) {
+
+        if (auto popup = UI::Scope::PopupScope("ConsoleSettings")) {
             ImGui::Text("Display Settings");
-            ImGui::Separator();
-            ImGui::Checkbox("Auto Scroll", &autoScroll_);
-            ImGui::Checkbox("Show Timestamp", &showTimestamp_);
-            
-            ImGui::Separator();
+            UI::Separator();
+            UI::Widgets::ToggleSwitch("Auto Scroll", &autoScroll_);
+            UI::Widgets::ToggleSwitch("Show Timestamp", &showTimestamp_);
+
+            UI::Separator();
             ImGui::Text("Log Level Filter");
-            ImGui::Checkbox("Info", &showInfo_);
-            ImGui::SameLine();
-            ImGui::Checkbox("Warning", &showWarning_);
-            ImGui::SameLine();
-            ImGui::Checkbox("Error", &showError_);
-            ImGui::SameLine();
-            ImGui::Checkbox("Debug", &showDebug_);
-            
-            ImGui::EndPopup();
+            UI::Widgets::ToggleSwitch("Info",    &showInfo_);
+            UI::SameLine();
+            UI::Widgets::ToggleSwitch("Warning", &showWarning_);
+            UI::SameLine();
+            UI::Widgets::ToggleSwitch("Error",   &showError_);
+            UI::SameLine();
+            UI::Widgets::ToggleSwitch("Debug",   &showDebug_);
         }
         
-        ImGui::Separator();
-        
-        // === テキストフィルター ===
+        UI::Separator();
+
         ImGui::Text("Filter:");
-        ImGui::SameLine();
+        UI::SameLine();
         filter_.Draw("##Filter", -100.0f);
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("X")) {
             filter_.Clear();
         }
-        
-        ImGui::Separator();
+
+        UI::Separator();
         
         // === メッセージ表示エリア ===
         const float footerHeight = ImGui::GetFrameHeightWithSpacing();
-        if (ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footerHeight), false, ImGuiWindowFlags_HorizontalScrollbar)) {
+        if (auto child = UI::Scope::ChildScope("ScrollingRegion",
+            ImVec2(0, -footerHeight), 0, ImGuiWindowFlags_HorizontalScrollbar)) {
             
             // メッセージ表示
             for (const auto& message : messages_) {
@@ -85,14 +80,13 @@ void ConsoleUI::Draw()
                 if (showTimestamp_) {
                     std::string timeStr = FormatTimestamp(message.timestamp);
                     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "[%s]", timeStr.c_str());
-                    ImGui::SameLine();
+                    UI::SameLine();
                 }
-                
-                // ログレベル表示
+
                 const char* levelStr = GetLevelString(message.level);
                 ImVec4 levelColor = GetMessageColor(message.level);
                 ImGui::TextColored(levelColor, "[%s]", levelStr);
-                ImGui::SameLine();
+                UI::SameLine();
                 
                 // メッセージ内容表示
                 ImGui::TextWrapped("%s", message.message.c_str());
@@ -103,13 +97,11 @@ void ConsoleUI::Draw()
                 ImGui::SetScrollHereY(1.0f);
             }
         }
-        ImGui::EndChild();
-        
-        ImGui::Separator();
-        
-        // === コマンド入力エリア ===
+
+        UI::Separator();
+
         ImGui::Text("Command:");
-        ImGui::SameLine();
+        UI::SameLine();
         
         // 入力フォーカス設定
         if (focusInput_) {
@@ -118,10 +110,10 @@ void ConsoleUI::Draw()
         }
         
         // コマンド入力
-        bool enterPressed = ImGui::InputText("##CommandInput", inputBuffer_, sizeof(inputBuffer_), 
+        bool enterPressed = UI::InputText("##CommandInput", inputBuffer_, sizeof(inputBuffer_),
                                            ImGuiInputTextFlags_EnterReturnsTrue);
-        
-        ImGui::SameLine();
+
+        UI::SameLine();
         if (ImGui::Button("Send") || enterPressed) {
             if (strlen(inputBuffer_) > 0) {
                 std::string command(inputBuffer_);
@@ -131,7 +123,6 @@ void ConsoleUI::Draw()
             }
         }
     }
-    ImGui::End();
 }
 
 void ConsoleUI::AddLog(const std::string& message, ConsoleLogLevel level)

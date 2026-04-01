@@ -1,4 +1,4 @@
-#include "MainModule.h"
+﻿#include "MainModule.h"
 #include <algorithm>
 #include <cmath>
 
@@ -131,7 +131,7 @@ bool MainModule::ShowImGui() {
     bool changed = false;
 
     // 有効/無効の切り替え
-    if (ImGui::Checkbox("有効##Main", &enabled_)) {
+    if (UI::Widgets::ToggleSwitch("有効##Main", &enabled_)) {
         changed = true;
     }
 
@@ -140,18 +140,18 @@ bool MainModule::ShowImGui() {
     }
 
     // システム設定
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("システム設定");
     
-    changed |= ImGui::DragFloat("持続時間", &mainData_.duration, 0.1f, 0.1f, 60.0f, "%.1f秒");
-    ImGui::TextDisabled("パーティクルシステム全体の動作時間");
-    ImGui::TextDisabled("注意: バーストタイミングがこの時間を超える場合、");
-    ImGui::TextDisabled("   持続時間到達時に強制的にバーストが発生します");
+    changed |= UI::DragFloat("持続時間", mainData_.duration, 0.1f, 0.1f, 60.0f, "%.1f秒");
+    UI::Hint("パーティクルシステム全体の動作時間");
+    UI::Hint("注意: バーストタイミングがこの時間を超える場合、");
+    UI::Hint("   持続時間到達時に強制的にバーストが発生します");
     
-    changed |= ImGui::Checkbox("ループ", &mainData_.looping);
-    ImGui::TextDisabled("持続時間後に自動的にリセットして再開");
+    changed |= UI::Widgets::ToggleSwitch("ループ", &mainData_.looping);
+    UI::Hint("持続時間後に自動的にリセットして再開");
     
-    changed |= ImGui::Checkbox("起動時に再生", &mainData_.playOnAwake);
+    changed |= UI::Widgets::ToggleSwitch("起動時に再生", &mainData_.playOnAwake);
     
     changed |= ImGui::DragInt("最大パーティクル数", reinterpret_cast<int*>(&mainData_.maxParticles), 10, 1, 10000);
 
@@ -163,47 +163,47 @@ bool MainModule::ShowImGui() {
             mainData_.simulationSpace = static_cast<SimulationSpace>(currentSpace);
             changed = true;
         }
-        ImGui::TextDisabled("ローカル: エミッターに追従 / ワールド: 独立");
+        UI::Hint("ローカル: エミッターに追従 / ワールド: 独立");
     }
 
     // 初期寿命
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("初期寿命");
-    changed |= ImGui::DragFloat("寿命", &mainData_.startLifetime, 0.1f, 0.01f, 10.0f, "%.2f秒");
-    ImGui::TextDisabled("各パーティクルが消えるまでの時間");
-    ImGui::TextDisabled("注意: 持続時間（duration）とは別の設定です");
+    changed |= UI::DragFloat("寿命", mainData_.startLifetime, 0.1f, 0.01f, 10.0f, "%.2f秒");
+    UI::Hint("各パーティクルが消えるまでの時間");
+    UI::Hint("注意: 持続時間（duration）とは別の設定です");
     
-    changed |= ImGui::SliderFloat("ランダム性##Lifetime", &mainData_.startLifetimeRandomness, 0.0f, 1.0f, "%.2f");
+    changed |= UI::SliderFloat("ランダム性##Lifetime", mainData_.startLifetimeRandomness, 0.0f, 1.0f, "%.2f");
 
     // 初期速度
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("初期速度");
-    changed |= ImGui::DragFloat("速度", &mainData_.startSpeed, 0.1f, 0.0f, 50.0f, "%.1f");
-    changed |= ImGui::SliderFloat("ランダム性##Speed", &mainData_.startSpeedRandomness, 0.0f, 1.0f, "%.2f");
+    changed |= UI::DragFloat("速度", mainData_.startSpeed, 0.1f, 0.0f, 50.0f, "%.1f");
+    changed |= UI::SliderFloat("ランダム性##Speed", mainData_.startSpeedRandomness, 0.0f, 1.0f, "%.2f");
 
     // 初期サイズ
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("初期サイズ");
-    changed |= ImGui::DragFloat3("サイズ", &mainData_.startSize.x, 0.1f, 0.1f, 10.0f);
-    changed |= ImGui::SliderFloat("ランダム性##Size", &mainData_.startSizeRandomness, 0.0f, 1.0f, "%.2f");
+    changed |= UI::DragVec3("サイズ", mainData_.startSize, 0.1f, 0.1f, 10.0f);
+    changed |= UI::SliderFloat("ランダム性##Size", mainData_.startSizeRandomness, 0.0f, 1.0f, "%.2f");
 
     // 初期回転
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("初期回転");
-    changed |= ImGui::DragFloat3("回転（度）", &mainData_.startRotation.x, 1.0f, -180.0f, 180.0f);
-    changed |= ImGui::SliderFloat("ランダム性##Rotation", &mainData_.startRotationRandomness, 0.0f, 1.0f, "%.2f");
+    changed |= UI::DragVec3("回転（度）", mainData_.startRotation, 1.0f, -180.0f, 180.0f);
+    changed |= UI::SliderFloat("ランダム性##Rotation", mainData_.startRotationRandomness, 0.0f, 1.0f, "%.2f");
 
     // 初期色
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("初期色");
-    changed |= ImGui::ColorEdit4("色", &mainData_.startColor.x);
-    changed |= ImGui::SliderFloat("ランダム性##Color", &mainData_.startColorRandomness, 0.0f, 1.0f, "%.2f");
+    changed |= UI::ColorEdit("色", mainData_.startColor);
+    changed |= UI::SliderFloat("ランダム性##Color", mainData_.startColorRandomness, 0.0f, 1.0f, "%.2f");
 
     // 重力
-    ImGui::Separator();
+    UI::Separator();
     ImGui::Text("物理設定");
-    changed |= ImGui::DragFloat("重力の影響", &mainData_.gravityModifier, 0.1f, -2.0f, 2.0f, "%.1f");
-    ImGui::TextDisabled("0.0=無効, 1.0=通常, 負の値=上昇");
+    changed |= UI::DragFloat("重力の影響", mainData_.gravityModifier, 0.1f, -2.0f, 2.0f, "%.1f");
+    UI::Hint("0.0=無効, 1.0=通常, 負の値=上昇");
 
     if (!enabled_) {
         ImGui::EndDisabled();

@@ -1,4 +1,4 @@
-#include "Shockwave.h"
+﻿#include "Shockwave.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
@@ -54,7 +54,7 @@ namespace CoreEngine
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         ImGui::Text("衝撃波エフェクトを生成します");
-        ImGui::Separator();
+        UI::Separator();
 
         // エフェクトが無効でもパラメータは表示・調整可能
         bool paramsChanged = false;
@@ -62,10 +62,10 @@ namespace CoreEngine
         // パラメータ設定
         if (ImGui::TreeNode("パラメータ")) {
             paramsChanged |= ImGui::SliderFloat2("中心位置", params_.center, 0.0f, 1.0f);
-            paramsChanged |= ImGui::SliderFloat("強度", &params_.strength, 0.0f, 1.0f);
-            paramsChanged |= ImGui::SliderFloat("厚さ", &params_.thickness, 0.01f, 0.5f);
-            paramsChanged |= ImGui::SliderFloat("速度", &params_.speed, 0.1f, 5.0f);
-            paramsChanged |= ImGui::SliderFloat("最大半径", &maxRadius_, 0.5f, 2.0f);
+            paramsChanged |= UI::SliderFloat("強度", params_.strength, 0.0f, 1.0f);
+            paramsChanged |= UI::SliderFloat("厚さ", params_.thickness, 0.01f, 0.5f);
+            paramsChanged |= UI::SliderFloat("速度", params_.speed, 0.1f, 5.0f);
+            paramsChanged |= UI::SliderFloat("最大半径", maxRadius_, 0.5f, 2.0f);
 
             ImGui::TreePop();
         }
@@ -75,13 +75,13 @@ namespace CoreEngine
             UpdateConstantBuffer();
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         if (ImGui::Button("衝撃波を発生")) {
             StartShockwave(params_.center[0], params_.center[1]);
         }
 
-        ImGui::SameLine();
+        UI::SameLine();
 
         if (ImGui::Button("リセット")) {
             params_.time = 0.0f;
@@ -89,7 +89,7 @@ namespace CoreEngine
             UpdateConstantBuffer();
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         ImGui::Text("アクティブ: %s", isActive_ ? "はい" : "いいえ");
         ImGui::Text("現在の時間: %.2f", params_.time);

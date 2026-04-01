@@ -38,7 +38,7 @@ bool LifetimeModule::ShowImGui() {
     bool changed = false;
     
     // 有効/無効の切り替え
-    if (ImGui::Checkbox("有効##寿命", &enabled_)) {
+    if (UI::Widgets::ToggleSwitch("有効##寿命", &enabled_)) {
         changed = true;
     }
 
@@ -46,8 +46,8 @@ bool LifetimeModule::ShowImGui() {
         ImGui::BeginDisabled();
     }
 
-    changed |= ImGui::DragFloat("初期寿命", &lifetimeData_.startLifetime, 0.1f, 0.1f, 60.0f);
-    changed |= ImGui::DragFloat("寿命ランダム性", &lifetimeData_.lifetimeRandomness, 0.01f, 0.0f, 1.0f);
+    changed |= UI::DragFloat("初期寿命", lifetimeData_.startLifetime, 0.1f, 0.1f, 60.0f);
+    changed |= UI::DragFloat("寿命ランダム性", lifetimeData_.lifetimeRandomness, 0.01f, 0.0f, 1.0f);
 
     if (!enabled_) {
         ImGui::EndDisabled();

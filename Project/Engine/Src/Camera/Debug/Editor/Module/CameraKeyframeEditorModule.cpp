@@ -3,7 +3,7 @@
 
 #ifdef _DEBUG
 
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -106,41 +106,41 @@ namespace CoreEngine
         if (ImGui::Button("Undo")) {
             Undo();
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("Redo")) {
             Redo();
         }
-        ImGui::SameLine();
-        ImGui::TextDisabled("ショートカット: Ctrl+Z / Ctrl+Y");
-        ImGui::Separator();
+        UI::SameLine();
+        UI::Hint("ショートカット: Ctrl+Z / Ctrl+Y");
+        UI::Separator();
 
-        ImGui::Checkbox("Auto Key", &autoKeyEnabled_);
-        ImGui::SameLine();
-        ImGui::TextDisabled("Transform/Parametersの変更時に自動でキーを作成・更新");
+        UI::Widgets::ToggleSwitch("Auto Key", &autoKeyEnabled_);
+        UI::SameLine();
+        UI::Hint("Transform/Parametersの変更時に自動でキーを作成・更新");
 
-        ImGui::SeparatorText("ビューポート可視化");
-        ImGui::Checkbox("可視化を有効", &viewportVisualizationEnabled_);
-        ImGui::Checkbox("カメラ軌跡", &viewportShowTrajectory_);
-        ImGui::Checkbox("キーフレーム位置", &viewportShowKeyMarkers_);
-        ImGui::Checkbox("DebugCamera注視点", &viewportShowDebugTarget_);
-        ImGui::DragInt("軌跡サンプル/区間", &viewportTrajectorySamplesPerSegment_, 1.0f, 2, 64);
-        ImGui::DragFloat("マーカーサイズ", &viewportMarkerSize_, 0.01f, 0.02f, 2.0f, "%.2f");
-        ImGui::SliderFloat("軌跡アルファ", &viewportTrajectoryAlpha_, 0.1f, 1.0f, "%.2f");
-        ImGui::ColorEdit3("軌跡色", &viewportTrajectoryColor_.x);
-        ImGui::ColorEdit3("キー色", &viewportKeyMarkerColor_.x);
-        ImGui::ColorEdit3("選択キー色", &viewportSelectedKeyColor_.x);
-        ImGui::ColorEdit3("注視点色", &viewportDebugTargetColor_.x);
+        UI::SectionHeader("ビューポート可視化");
+        UI::Widgets::ToggleSwitch("可視化を有効", &viewportVisualizationEnabled_);
+        UI::Widgets::ToggleSwitch("カメラ軌跡", &viewportShowTrajectory_);
+        UI::Widgets::ToggleSwitch("キーフレーム位置", &viewportShowKeyMarkers_);
+        UI::Widgets::ToggleSwitch("DebugCamera注視点", &viewportShowDebugTarget_);
+        UI::DragInt("軌跡サンプル/区間", viewportTrajectorySamplesPerSegment_, 1.0f, 2, 64);
+        UI::DragFloat("マーカーサイズ", viewportMarkerSize_, 0.01f, 0.02f, 2.0f, "%.2f");
+        UI::SliderFloat("軌跡アルファ", viewportTrajectoryAlpha_, 0.1f, 1.0f, "%.2f");
+        UI::ColorEdit3("軌跡色", viewportTrajectoryColor_);
+        UI::ColorEdit3("キー色", viewportKeyMarkerColor_);
+        UI::ColorEdit3("選択キー色", viewportSelectedKeyColor_);
+        UI::ColorEdit3("注視点色", viewportDebugTargetColor_);
 
         viewportTrajectorySamplesPerSegment_ = std::clamp(viewportTrajectorySamplesPerSegment_, 2, 64);
         viewportMarkerSize_ = std::clamp(viewportMarkerSize_, 0.02f, 2.0f);
 
         // タイムライン長と再生ヘッドを編集する。
-        ImGui::DragFloat("タイムライン長(秒)", &timelineLength_, 0.1f, 0.1f, 600.0f, "%.2f");
+        UI::DragFloat("タイムライン長(秒)", timelineLength_, 0.1f, 0.1f, 600.0f, "%.2f");
         if (timelineLength_ < 0.1f) {
             timelineLength_ = 0.1f;
         }
 
-        bool playheadChanged = ImGui::SliderFloat("再生ヘッド", &playhead_, 0.0f, timelineLength_, "%.2f 秒");
+        bool playheadChanged = UI::SliderFloat("再生ヘッド", playhead_, 0.0f, timelineLength_, "%.2f 秒");
 
         // タイムライン上のキーフレームを直接クリックして移動できるように可視化する。
         {
@@ -210,7 +210,7 @@ namespace CoreEngine
             }
         }
 
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("先頭へ")) {
             playhead_ = 0.0f;
             if (!keyframes_.empty()) {
@@ -221,10 +221,10 @@ namespace CoreEngine
             }
         }
 
-        ImGui::SameLine();
-        ImGui::Checkbox("ループ再生", &loopPlayback_);
+        UI::SameLine();
+        UI::Widgets::ToggleSwitch("ループ再生", &loopPlayback_);
 
-        ImGui::DragFloat("再生速度", &playbackSpeed_, 0.05f, 0.1f, 4.0f, "%.2fx");
+        UI::DragFloat("再生速度", playbackSpeed_, 0.05f, 0.1f, 4.0f, "%.2fx");
 
         if (easingTypeIndex_ < 0 || easingTypeIndex_ >= kEasingOptionCount) {
             easingTypeIndex_ = 0;
@@ -253,7 +253,7 @@ namespace CoreEngine
             }
         }
 
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("次のキーへ")) {
             const int next = FindNextKeyframeIndex(playhead_ + updateThreshold_);
             if (next >= 0) {
@@ -285,7 +285,7 @@ namespace CoreEngine
             }
         }
 
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("選択キーフレームを複製")) {
             if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
                 PushUndoState();
@@ -306,7 +306,7 @@ namespace CoreEngine
             }
         }
 
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("選択キーフレームを削除")) {
             if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
                 PushUndoState();
@@ -319,17 +319,17 @@ namespace CoreEngine
             }
         }
 
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("全キーフレームをクリア")) {
             PushUndoState();
             keyframes_.clear();
             selectedIndex_ = -1;
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         if (ImGui::CollapsingHeader("詳細: ショット遷移", ImGuiTreeNodeFlags_None)) {
-            ImGui::Checkbox("ショット遷移を有効", &shotsEnabled_);
+            UI::Widgets::ToggleSwitch("ショット遷移を有効", &shotsEnabled_);
 
             if (ImGui::Button("現在位置にショットを追加")) {
                 PushUndoState();
@@ -347,13 +347,13 @@ namespace CoreEngine
                 editingShotNameIndex_ = -1;
             }
 
-            ImGui::SameLine();
+            UI::SameLine();
             if (ImGui::Button("現在位置のショットを選択")) {
                 selectedShotIndex_ = FindShotIndexAt(playhead_);
                 editingShotNameIndex_ = -1;
             }
 
-            ImGui::SameLine();
+            UI::SameLine();
             if (ImGui::Button("選択ショットを削除")) {
                 if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(shots_.size())) {
                     PushUndoState();
@@ -368,11 +368,11 @@ namespace CoreEngine
             }
 
             if (shots_.empty()) {
-                ImGui::TextDisabled("ショットがありません。必要な場合のみ追加してください。");
+                UI::Hint("ショットがありません。必要な場合のみ追加してください。");
             } else {
                 selectedShotIndex_ = std::clamp(selectedShotIndex_, -1, static_cast<int>(shots_.size()) - 1);
 
-                if (ImGui::BeginListBox("ショット一覧", ImVec2(-1.0f, 100.0f))) {
+                if (auto lb = UI::Scope::ListBoxScope("ショット一覧", ImVec2(-1.0f, 100.0f))) {
                     for (int i = 0; i < static_cast<int>(shots_.size()); ++i) {
                         char label[256]{};
                         std::snprintf(label, sizeof(label), "%s [%.2f - %.2f]%s",
@@ -387,7 +387,6 @@ namespace CoreEngine
                             editingShotNameIndex_ = -1;
                         }
                     }
-                    ImGui::EndListBox();
                 }
             }
 
@@ -399,7 +398,7 @@ namespace CoreEngine
                     editingShotNameIndex_ = selectedShotIndex_;
                 }
 
-                if (ImGui::InputText("ショット名", shotNameBuffer_, sizeof(shotNameBuffer_))) {
+                if (UI::InputText("ショット名", shotNameBuffer_, sizeof(shotNameBuffer_))) {
                     PushUndoState();
                     shot.name = shotNameBuffer_;
                 }
@@ -407,9 +406,9 @@ namespace CoreEngine
                 Shot editedShot = shot;
                 bool shotChanged = false;
 
-                shotChanged |= ImGui::Checkbox("ショットを有効", &editedShot.enabled);
-                shotChanged |= ImGui::DragFloat("開始時刻", &editedShot.startTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
-                shotChanged |= ImGui::DragFloat("終了時刻", &editedShot.endTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
+                shotChanged |= UI::Widgets::ToggleSwitch("ショットを有効", &editedShot.enabled);
+                shotChanged |= UI::DragFloat("開始時刻", editedShot.startTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
+                shotChanged |= UI::DragFloat("終了時刻", editedShot.endTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
 
                 int transitionIndex = static_cast<int>(editedShot.transitionType);
                 if (transitionIndex < 0 || transitionIndex >= kShotTransitionLabelCount) {
@@ -432,7 +431,7 @@ namespace CoreEngine
                 editedShot.transitionType = static_cast<ShotTransitionType>(transitionIndex);
 
                 if (editedShot.transitionType == ShotTransitionType::Blend) {
-                    shotChanged |= ImGui::DragFloat("ブレンド時間", &editedShot.blendDuration, 0.01f, 0.0f, timelineLength_, "%.2f 秒");
+                    shotChanged |= UI::DragFloat("ブレンド時間", editedShot.blendDuration, 0.01f, 0.0f, timelineLength_, "%.2f 秒");
                 }
 
                 editedShot.startTime = std::clamp(editedShot.startTime, 0.0f, timelineLength_);
@@ -457,15 +456,15 @@ namespace CoreEngine
             }
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         if (keyframes_.empty()) {
-            ImGui::TextDisabled("キーフレームがありません。");
+            UI::Hint("キーフレームがありません。");
             return;
         }
 
         // キーフレーム一覧表示
-        if (ImGui::BeginListBox("キーフレーム一覧", ImVec2(-1.0f, 180.0f))) {
+        if (auto lb = UI::Scope::ListBoxScope("キーフレーム一覧", ImVec2(-1.0f, 180.0f))) {
             for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
                 const bool isSelected = (i == selectedIndex_);
                 const char* cameraTypeLabel = keyframes_[i].snapshot.isDebugCamera ? "デバッグ" : "リリース";
@@ -476,7 +475,6 @@ namespace CoreEngine
                     selectedIndex_ = i;
                 }
             }
-            ImGui::EndListBox();
         }
 
         // 選択したキーフレームを現在のアクティブカメラへ適用
@@ -485,7 +483,7 @@ namespace CoreEngine
                 ApplyToActiveCamera(context, keyframes_[selectedIndex_].snapshot);
             }
 
-            ImGui::SameLine();
+            UI::SameLine();
             if (ImGui::Button("再生ヘッドを選択位置へ移動")) {
                 playhead_ = keyframes_[selectedIndex_].time;
                 playheadChanged = true;
@@ -493,7 +491,7 @@ namespace CoreEngine
 
             // 選択キーの時刻を直接編集できるようにする。
             float selectedTime = keyframes_[selectedIndex_].time;
-            if (ImGui::DragFloat("選択キー時刻(秒)", &selectedTime, 0.05f, 0.0f, timelineLength_, "%.2f")) {
+            if (UI::DragFloat("選択キー時刻(秒)", selectedTime, 0.05f, 0.0f, timelineLength_, "%.2f")) {
                 PushUndoState();
                 keyframes_[selectedIndex_].time = std::clamp(selectedTime, 0.0f, timelineLength_);
                 std::sort(keyframes_.begin(), keyframes_.end(),
@@ -512,10 +510,10 @@ namespace CoreEngine
             }
         }
 
-        ImGui::Separator();
-        ImGui::SeparatorText("シーケンス資産");
-        ImGui::TextDisabled("実ゲームで使うデータは、このシーケンス(.json)です。ショットはシーケンス内の補助情報です。");
-        ImGui::InputText("シーケンス名", clipFileNameBuffer_, sizeof(clipFileNameBuffer_));
+        UI::Separator();
+        UI::SectionHeader("シーケンス資産");
+        UI::Hint("実ゲームで使うデータは、このシーケンス(.json)です。ショットはシーケンス内の補助情報です。");
+        UI::InputText("シーケンス名", clipFileNameBuffer_, sizeof(clipFileNameBuffer_));
 
         if (ImGui::Button("シーケンスを保存")) {
             std::string fileName = clipFileNameBuffer_;
@@ -532,24 +530,23 @@ namespace CoreEngine
             }
         }
 
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("一覧更新")) {
             needRefreshClipFileList_ = true;
         }
 
         if (clipFileList_.empty()) {
-            ImGui::TextDisabled("保存済みシーケンスがありません。");
+            UI::Hint("保存済みシーケンスがありません。");
         } else {
             selectedClipFileIndex_ = std::clamp(selectedClipFileIndex_, -1, static_cast<int>(clipFileList_.size()) - 1);
 
-            if (ImGui::BeginListBox("シーケンス一覧", ImVec2(-1.0f, 120.0f))) {
+            if (auto lb = UI::Scope::ListBoxScope("シーケンス一覧", ImVec2(-1.0f, 120.0f))) {
                 for (int i = 0; i < static_cast<int>(clipFileList_.size()); ++i) {
                     const bool isSelected = (selectedClipFileIndex_ == i);
                     if (ImGui::Selectable(clipFileList_[i].c_str(), isSelected)) {
                         selectedClipFileIndex_ = i;
                     }
                 }
-                ImGui::EndListBox();
             }
 
             if (selectedClipFileIndex_ >= 0 && selectedClipFileIndex_ < static_cast<int>(clipFileList_.size())) {

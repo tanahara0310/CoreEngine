@@ -69,7 +69,7 @@ namespace CoreEngine
         //sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
         //sponza->SetActive(false);
 
-        // ===== ウォーキングモデル（PBR グリッドと重ならない位置に配置） =====
+        //// ===== ウォーキングモデル（PBR グリッドと重ならない位置に配置） =====
         auto walkModel = CreateObject<WalkModelObject>();
         walkModel->GetTransform().translate = { 25.0f, 0.0f, 0.0f };
         walkModel->GetTransform().scale = { 1.0f, 1.0f, 1.0f };

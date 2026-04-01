@@ -409,7 +409,7 @@ void PostEffectPresetManager::ShowImGui(PostEffectManager* postEffectManager)
                 }
             }
             
-            ImGui::SameLine();
+            UI::SameLine();
             
             // プリセットをクリア
             if (ImGui::Button("プリセットをクリア", ImVec2(150, 0))) {
@@ -417,10 +417,10 @@ void PostEffectPresetManager::ShowImGui(PostEffectManager* postEffectManager)
                 currentPresetName_.clear();
             }
             
-            ImGui::Separator();
+            UI::Separator();
         } else {
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "現在のプリセット: なし");
-            ImGui::Separator();
+            UI::Separator();
         }
 
         // 上書き保存成功ポップアップ
@@ -443,15 +443,15 @@ void PostEffectPresetManager::ShowImGui(PostEffectManager* postEffectManager)
 
         // ディレクトリパス設定
         ImGui::Text("保存先ディレクトリ");
-        if (ImGui::InputText("##Directory", directoryPathBuffer_, sizeof(directoryPathBuffer_))) {
+        if (UI::InputText("##Directory", directoryPathBuffer_, sizeof(directoryPathBuffer_))) {
             needUpdateFileList_ = true;
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         // 保存セクション
         ImGui::Text("=== 保存 ===");
-        ImGui::InputText("ファイル名", saveFileNameBuffer_, sizeof(saveFileNameBuffer_));
+        UI::InputText("ファイル名", saveFileNameBuffer_, sizeof(saveFileNameBuffer_));
         
         if (ImGui::Button("プリセットを保存", ImVec2(200, 0))) {
             std::string fileName = std::string(saveFileNameBuffer_);
@@ -478,25 +478,17 @@ void PostEffectPresetManager::ShowImGui(PostEffectManager* postEffectManager)
             }
         }
 
-        // 保存成功ポップアップ
-        if (ImGui::BeginPopupModal("保存成功", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (auto m = UI::Scope::ModalScope("保存成功", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("プリセットを保存しました。");
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
+            if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
         }
 
-        // 保存失敗ポップアップ
-        if (ImGui::BeginPopupModal("保存失敗", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (auto m = UI::Scope::ModalScope("保存失敗", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("プリセットの保存に失敗しました。");
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
+            if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
         // 読み込みセクション
         ImGui::Text("=== 読み込み ===");
@@ -509,14 +501,14 @@ void PostEffectPresetManager::ShowImGui(PostEffectManager* postEffectManager)
 
         // プリセットファイルリスト表示
         if (!presetFileList_.empty()) {
-            ImGui::BeginChild("PresetList", ImVec2(0, 150), true);
-            for (size_t i = 0; i < presetFileList_.size(); ++i) {
-                bool isSelected = (selectedPresetIndex_ == static_cast<int>(i));
-                if (ImGui::Selectable(GetFileNameWithoutExtension(presetFileList_[i]).c_str(), isSelected)) {
-                    selectedPresetIndex_ = static_cast<int>(i);
+            if (auto child = UI::Scope::ChildScope("PresetList", ImVec2(0, 150), ImGuiChildFlags_Border)) {
+                for (size_t i = 0; i < presetFileList_.size(); ++i) {
+                    bool isSelected = (selectedPresetIndex_ == static_cast<int>(i));
+                    if (ImGui::Selectable(GetFileNameWithoutExtension(presetFileList_[i]).c_str(), isSelected)) {
+                        selectedPresetIndex_ = static_cast<int>(i);
+                    }
                 }
             }
-            ImGui::EndChild();
 
             // 選択中のファイルを表示
             if (selectedPresetIndex_ >= 0 && selectedPresetIndex_ < static_cast<int>(presetFileList_.size())) {

@@ -1,11 +1,11 @@
-#include "LineManager.h"
+﻿#include "LineManager.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Math/MathCore.h"
 #include <cassert>
 #include <numbers>
 
 #ifdef _DEBUG
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 namespace CoreEngine
@@ -554,74 +554,74 @@ void LineManager::UpdateDebugDrawing() {
 void LineManager::DrawImGui() {
     if (ImGui::Begin("ラインデバッグ")) {
         ImGui::Text("ライン描画パラメータ設定");
-        ImGui::Separator();
+        UI::Separator();
 
         // シンプルなライン
         if (ImGui::CollapsingHeader("シンプルなライン")) {
-            ImGui::Checkbox("有効##Line", &debugLine_.enabled);
+            UI::Widgets::ToggleSwitch("有効##Line", &debugLine_.enabled);
             ImGui::DragFloat3("始点##Line", (float*)&debugLine_.start, 0.1f);
             ImGui::DragFloat3("終点##Line", (float*)&debugLine_.end, 0.1f);
             ImGui::ColorEdit3("色##Line", (float*)&debugLine_.color);
-            ImGui::SliderFloat("透明度##Line", &debugLine_.alpha, 0.0f, 1.0f);
+            UI::SliderFloat("透明度##Line", debugLine_.alpha, 0.0f, 1.0f);
         }
 
         // グリッド
         if (ImGui::CollapsingHeader("グリッド", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::Checkbox("有効##Grid", &debugGrid_.enabled);
-            ImGui::DragFloat("サイズ##Grid", &debugGrid_.size, 0.1f, 1.0f, 100.0f);
-            ImGui::DragInt("分割数##Grid", &debugGrid_.divisions, 1, 1, 50);
+            UI::Widgets::ToggleSwitch("有効##Grid", &debugGrid_.enabled);
+            UI::DragFloat("サイズ##Grid", debugGrid_.size, 0.1f, 1.0f, 100.0f);
+            UI::DragInt("分割数##Grid", debugGrid_.divisions, 1, 1, 50);
             ImGui::DragFloat3("中心##Grid", (float*)&debugGrid_.center, 0.1f);
             ImGui::ColorEdit3("色##Grid", (float*)&debugGrid_.color);
-            ImGui::SliderFloat("透明度##Grid", &debugGrid_.alpha, 0.0f, 1.0f);
+            UI::SliderFloat("透明度##Grid", debugGrid_.alpha, 0.0f, 1.0f);
         }
 
         // ワイヤーボックス
         if (ImGui::CollapsingHeader("ワイヤーボックス")) {
-            ImGui::Checkbox("有効##WireBox", &debugWireBox_.enabled);
+            UI::Widgets::ToggleSwitch("有効##WireBox", &debugWireBox_.enabled);
             ImGui::DragFloat3("中心##WireBox", (float*)&debugWireBox_.center, 0.1f);
             ImGui::DragFloat3("サイズ##WireBox", (float*)&debugWireBox_.size, 0.1f, 0.1f, 50.0f);
             ImGui::ColorEdit3("色##WireBox", (float*)&debugWireBox_.color);
-            ImGui::SliderFloat("透明度##WireBox", &debugWireBox_.alpha, 0.0f, 1.0f);
+            UI::SliderFloat("透明度##WireBox", debugWireBox_.alpha, 0.0f, 1.0f);
         }
 
         // 座標軸
         if (ImGui::CollapsingHeader("座標軸")) {
-            ImGui::Checkbox("有効##Axis", &debugAxis_.enabled);
+            UI::Widgets::ToggleSwitch("有効##Axis", &debugAxis_.enabled);
             ImGui::DragFloat3("原点##Axis", (float*)&debugAxis_.origin, 0.1f);
-            ImGui::DragFloat("長さ##Axis", &debugAxis_.length, 0.1f, 0.1f, 50.0f);
-            ImGui::SliderFloat("透明度##Axis", &debugAxis_.alpha, 0.0f, 1.0f);
+            UI::DragFloat("長さ##Axis", debugAxis_.length, 0.1f, 0.1f, 50.0f);
+            UI::SliderFloat("透明度##Axis", debugAxis_.alpha, 0.0f, 1.0f);
         }
 
         // 円
         if (ImGui::CollapsingHeader("円")) {
-            ImGui::Checkbox("有効##Circle", &debugCircle_.enabled);
+            UI::Widgets::ToggleSwitch("有効##Circle", &debugCircle_.enabled);
             ImGui::DragFloat3("中心##Circle", (float*)&debugCircle_.center, 0.1f);
-            ImGui::DragFloat("半径##Circle", &debugCircle_.radius, 0.1f, 0.1f, 50.0f);
-            ImGui::DragInt("セグメント数##Circle", &debugCircle_.segments, 1, 3, 64);
+            UI::DragFloat("半径##Circle", debugCircle_.radius, 0.1f, 0.1f, 50.0f);
+            UI::DragInt("セグメント数##Circle", debugCircle_.segments, 1, 3, 64);
             ImGui::ColorEdit3("色##Circle", (float*)&debugCircle_.color);
-            ImGui::SliderFloat("透明度##Circle", &debugCircle_.alpha, 0.0f, 1.0f);
+            UI::SliderFloat("透明度##Circle", debugCircle_.alpha, 0.0f, 1.0f);
         }
 
         // ワイヤー球
         if (ImGui::CollapsingHeader("ワイヤー球")) {
-            ImGui::Checkbox("有効##WireSphere", &debugWireSphere_.enabled);
+            UI::Widgets::ToggleSwitch("有効##WireSphere", &debugWireSphere_.enabled);
             ImGui::DragFloat3("中心##WireSphere", (float*)&debugWireSphere_.center, 0.1f);
-            ImGui::DragFloat("半径##WireSphere", &debugWireSphere_.radius, 0.1f, 0.1f, 50.0f);
-            ImGui::DragInt("セグメント数##WireSphere", &debugWireSphere_.segments, 1, 3, 32);
+            UI::DragFloat("半径##WireSphere", debugWireSphere_.radius, 0.1f, 0.1f, 50.0f);
+            UI::DragInt("セグメント数##WireSphere", debugWireSphere_.segments, 1, 3, 32);
             ImGui::ColorEdit3("色##WireSphere", (float*)&debugWireSphere_.color);
-            ImGui::SliderFloat("透明度##WireSphere", &debugWireSphere_.alpha, 0.0f, 1.0f);
+            UI::SliderFloat("透明度##WireSphere", debugWireSphere_.alpha, 0.0f, 1.0f);
         }
 
         // クロスマーカー
         if (ImGui::CollapsingHeader("クロスマーカー")) {
-            ImGui::Checkbox("有効##Cross", &debugCross_.enabled);
+            UI::Widgets::ToggleSwitch("有効##Cross", &debugCross_.enabled);
             ImGui::DragFloat3("位置##Cross", (float*)&debugCross_.position, 0.1f);
-            ImGui::DragFloat("サイズ##Cross", &debugCross_.size, 0.01f, 0.01f, 10.0f);
+            UI::DragFloat("サイズ##Cross", debugCross_.size, 0.01f, 0.01f, 10.0f);
             ImGui::ColorEdit3("色##Cross", (float*)&debugCross_.color);
-            ImGui::SliderFloat("透明度##Cross", &debugCross_.alpha, 0.0f, 1.0f);
+            UI::SliderFloat("透明度##Cross", debugCross_.alpha, 0.0f, 1.0f);
         }
 
-        ImGui::Separator();
+        UI::Separator();
         if (ImGui::Button("すべて無効化")) {
             debugLine_.enabled = false;
             debugGrid_.enabled = false;
@@ -631,7 +631,7 @@ void LineManager::DrawImGui() {
             debugWireSphere_.enabled = false;
             debugCross_.enabled = false;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("すべて有効化")) {
             debugLine_.enabled = true;
             debugGrid_.enabled = true;

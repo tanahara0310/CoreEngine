@@ -8,7 +8,7 @@
 #include "Scene/SceneSaveSystem.h"
 #include "Utility/Debug/ImGui/SceneViewport.h"
 #include "Utility/Debug/ImGui/ObjectSelector.h"
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 
 namespace CoreEngine
 {
@@ -170,23 +170,24 @@ namespace CoreEngine
             saveSystem_->Save(gameObjectManager_);
         }
         ImGui::EndDisabled();
-        ImGui::SameLine();
+        UI::SameLine();
         ImGui::BeginDisabled(!undoRedoHistory_.CanUndo());
         if (ImGui::Button("Undo")) {
             undoRedoHistory_.Undo(gameObjectManager_);
         }
         ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!undoRedoHistory_.CanRedo());
-        if (ImGui::Button("Redo")) {
-            undoRedoHistory_.Redo(gameObjectManager_);
+        UI::SameLine();
+        {
+            UI::Scope::DisabledScope ds(!undoRedoHistory_.CanRedo());
+            if (ImGui::Button("Redo")) {
+                undoRedoHistory_.Redo(gameObjectManager_);
+            }
         }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::TextDisabled("(%d/%d)",
+        UI::SameLine();
+        UI::HintF("(%d/%d)",
             undoRedoHistory_.GetUndoCount(),
             undoRedoHistory_.GetUndoCount() + undoRedoHistory_.GetRedoCount());
-        ImGui::Separator();
+        UI::Separator();
 
         // ObjectSelectorを取得（クリック選択用）
         ObjectSelector* objectSelector = nullptr;
@@ -197,10 +198,10 @@ namespace CoreEngine
         }
 
         const auto& objects = gameObjectManager_->GetAllObjects();
-        ImGui::TextDisabled("Objects: %zu", objects.size());
-        ImGui::Separator();
+        UI::HintF("Objects: %zu", objects.size());
+        UI::Separator();
 
-        if (ImGui::BeginChild("##HierarchyObjectList", ImVec2(0.0f, 0.0f), false)) {
+        if (auto child = UI::Scope::ChildScope("##HierarchyObjectList")) {
             for (const auto& obj : objects) {
                 if (!obj) continue;
 
@@ -234,7 +235,6 @@ namespace CoreEngine
                 }
             }
         }
-        ImGui::EndChild();
     }
 
     void SceneDebugEditor::DrawInspectorContent()
@@ -248,7 +248,7 @@ namespace CoreEngine
         }
 
         if (!objectSelector) {
-            ImGui::TextDisabled("初期化中...");
+            UI::Hint("初期化中...");
             return;
         }
 

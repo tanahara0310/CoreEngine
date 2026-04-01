@@ -3,7 +3,7 @@
 #include <cmath>
 
 #ifdef _DEBUG
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 
@@ -302,7 +302,7 @@ void GameTimer::DrawImGui(const char* label) {
         ImGui::Text("Status: %s", isActive_ ? "ACTIVE" : (finished_ ? "FINISHED" : "STOPPED"));
         
         // 基本情報
-        ImGui::Separator();
+        UI::Separator();
         ImGui::Text("Time: %.3f / %.3f sec", currentTime_, duration_);
         ImGui::Text("Progress: %.1f%%", GetProgress() * 100.0f);
         ImGui::Text("Remaining: %.3f sec", GetRemainingTime());
@@ -312,24 +312,24 @@ void GameTimer::DrawImGui(const char* label) {
         
         // フレームモード情報
         if (useFrameMode_) {
-            ImGui::Separator();
+            UI::Separator();
             ImGui::Text("Frame Mode: %d / %d frames", GetCurrentFrame(), totalFrames_);
             ImGui::Text("Target FPS: %.1f", targetFPS_);
         }
         
         // タイムスケール
-        ImGui::Separator();
+        UI::Separator();
         ImGui::Text("Time Scale: %.2fx", timeScale_);
-        if (ImGui::SliderFloat("##TimeScale", &timeScale_, 0.0f, 3.0f, "%.2fx")) {
+        if (UI::SliderFloat("##TimeScale", timeScale_, 0.0f, 3.0f, "%.2fx")) {
             SetTimeScale(timeScale_);
         }
         
         // 制御ボタン
-        ImGui::Separator();
+        UI::Separator();
         if (ImGui::Button("Start")) { Start(duration_, loop_); }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("Stop")) { Stop(); }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("Reset")) { Reset(); }
         
         if (isActive_) {
@@ -339,9 +339,9 @@ void GameTimer::DrawImGui(const char* label) {
         }
         
         // ループ設定とループ状態表示
-        ImGui::Checkbox("Loop", &loop_);
+        UI::Widgets::ToggleSwitch("Loop", &loop_);
         if (loop_) {
-            ImGui::SameLine();
+            UI::SameLine();
             if (loopedThisFrame_) {
                 ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "[LOOPED THIS FRAME]");
             } else {
@@ -351,7 +351,7 @@ void GameTimer::DrawImGui(const char* label) {
         
         // コールバック情報
         if (!callbacks_.empty()) {
-            ImGui::Separator();
+            UI::Separator();
             ImGui::Text("Callbacks: %zu", callbacks_.size());
             for (size_t i = 0; i < callbacks_.size(); ++i) {
                 const auto& cb = callbacks_[i];
@@ -361,7 +361,7 @@ void GameTimer::DrawImGui(const char* label) {
         
         // 繰り返しコールバック情報
         if (!repeatingCallbacks_.empty()) {
-            ImGui::Separator();
+            UI::Separator();
             ImGui::Text("Repeating Callbacks: %zu", repeatingCallbacks_.size());
             for (size_t i = 0; i < repeatingCallbacks_.size(); ++i) {
                 const auto& rc = repeatingCallbacks_[i];
@@ -371,7 +371,7 @@ void GameTimer::DrawImGui(const char* label) {
         
         // 完了時コールバック情報
         if (onCompleteCallback_) {
-            ImGui::Separator();
+            UI::Separator();
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "OnComplete Callback: Set");
         }
         
@@ -381,7 +381,7 @@ void GameTimer::DrawImGui(const char* label) {
         
         // 間隔チェッカー情報
         if (!intervalCheckers_.empty()) {
-            ImGui::Separator();
+            UI::Separator();
             ImGui::Text("Interval Checkers: %zu", intervalCheckers_.size());
             for (size_t i = 0; i < intervalCheckers_.size(); ++i) {
                 const auto& checker = intervalCheckers_[i];

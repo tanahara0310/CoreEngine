@@ -8,7 +8,7 @@
 
 #ifdef _DEBUG
 
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #include "Camera/CameraManager.h"
 
 namespace CoreEngine {
@@ -71,21 +71,22 @@ namespace CoreEngine {
 
         ImGui::Text("登録カメラ数: %zu", cameraManager_->GetCameraCount());
         ImGui::Text("アクティブ3D: %s", cameraManager_->GetActiveCameraName(CameraType::Camera3D).c_str());
-        ImGui::Separator();
+        UI::Separator();
 
         bool expandAll = false;
         bool collapseAll = false;
         if (ImGui::Button("すべて展開")) {
             expandAll = true;
         }
-        ImGui::SameLine();
+        UI::SameLine();
         if (ImGui::Button("すべて折りたたみ")) {
             collapseAll = true;
         }
 
-        ImGui::Separator();
+        UI::Separator();
 
-        if (ImGui::BeginChild("CameraModuleVerticalLayout", ImVec2(0.0f, 0.0f), false, ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
+        if (auto child = UI::Scope::ChildScope("CameraModuleVerticalLayout",
+            ImVec2(0.0f, 0.0f), 0, ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
             for (size_t i = 0; i < modules_.size(); ++i) {
                 const auto& module = modules_[i];
                 if (!module) {
@@ -100,20 +101,18 @@ namespace CoreEngine {
                     ImGui::SetNextItemOpen(false, ImGuiCond_Always);
                 }
 
-                if (ImGui::TreeNodeEx(module->GetTabName(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (auto s = UI::Scope::TreeScope(module->GetTabName(), ImGuiTreeNodeFlags_DefaultOpen)) {
                     module->Draw(context);
-                    ImGui::TreePop();
                 }
 
-                ImGui::Separator();
+                UI::Separator();
                 ImGui::PopID();
             }
         }
-        ImGui::EndChild();
 
         if (modules_.empty()) {
-            ImGui::Separator();
-            ImGui::TextDisabled("カメラエディターモジュールが登録されていません。");
+            UI::Separator();
+            UI::Hint("カメラエディターモジュールが登録されていません。");
         }
     }
 

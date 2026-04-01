@@ -4,7 +4,7 @@
 #include "Camera/ICamera.h"
 
 #ifdef _DEBUG
-#include "externals/imgui/imgui.h"
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
 using namespace CoreEngine;
@@ -69,25 +69,18 @@ bool AnimatedCubeObject::DrawImGuiExtended() {
 
     // アニメーション制御（拡張部分）
     if (model_ && model_->HasAnimationController()) {
-        if (ImGui::TreeNode("アニメーション")) {
-            // 再生速度
+        if (auto s = UI::Scope::TreeScope("アニメーション")) {
             float animSpeed = GetAnimationSpeed();
-            if (ImGui::SliderFloat("速度", &animSpeed, 0.0f, 3.0f)) {
+            if (UI::SliderFloat("速度", animSpeed, 0.0f, 3.0f)) {
                 SetAnimationSpeed(animSpeed);
                 changed = true;
             }
-
-            // アニメーション時間表示
             float animTime = GetAnimationTime();
             ImGui::Text("時間: %.2f 秒", animTime);
-
-            // リセットボタン
             if (ImGui::Button("アニメーションをリセット")) {
                 ResetAnimation();
                 changed = true;
             }
-
-            ImGui::TreePop();
         }
     }
 

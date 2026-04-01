@@ -1,4 +1,4 @@
-#include "PostEffectManager.h"
+﻿#include "PostEffectManager.h"
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/Render.h"
@@ -276,7 +276,7 @@ void PostEffectManager::DrawImGui()
         // プリセット管理タブ
         presetManager_->ShowImGui(this);
 
-        ImGui::Separator();
+        UI::Separator();
 
         // エフェクトチェーン状態の表示
         if (ImGui::CollapsingHeader("エフェクトチェーン状態", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -303,7 +303,7 @@ void PostEffectManager::DrawImGui()
                     "エフェクトが無効 - 元の画像を描画中");
             }
 
-            ImGui::Separator();
+            UI::Separator();
         }
 
         // 各エフェクトのパラメータ調整
@@ -314,10 +314,10 @@ void PostEffectManager::DrawImGui()
                 // FullScreenエフェクト以外はenable/disableチェックボックスを表示
                 if (name != PostEffectNames::FullScreen) {
                     bool enabled = effect->IsEnabled();
-                    if (ImGui::Checkbox("有効", &enabled)) {
+                    if (UI::Widgets::ToggleSwitch("有効", &enabled)) {
                         effect->SetEnabled(enabled);
                     }
-                    ImGui::Separator();
+                    UI::Separator();
                 }
 
                 // エフェクトのパラメータ調整

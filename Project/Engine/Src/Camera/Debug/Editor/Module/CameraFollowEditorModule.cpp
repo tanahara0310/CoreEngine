@@ -2,7 +2,7 @@
 
 #ifdef _DEBUG
 
-#include <imgui.h>
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <algorithm>
 
 #include "Camera/CameraManager.h"
@@ -43,22 +43,22 @@ namespace CoreEngine
             return;
         }
 
-        ImGui::Checkbox("追従/注視を有効", &enabled_);
-        ImGui::Checkbox("位置を追従", &followEnabled_);
-        ImGui::SameLine();
-        ImGui::Checkbox("対象を注視", &lookAtEnabled_);
+        UI::Widgets::ToggleSwitch("追従/注視を有効", &enabled_);
+        UI::Widgets::ToggleSwitch("位置を追従", &followEnabled_);
+        UI::SameLine();
+        UI::Widgets::ToggleSwitch("対象を注視", &lookAtEnabled_);
 
-        ImGui::Separator();
+        UI::Separator();
 
         if (!context.gameObjectManager) {
-            ImGui::TextDisabled("GameObjectManagerが未設定のため追従対象を選択できません。");
+            UI::Hint("GameObjectManagerが未設定のため追従対象を選択できません。");
             return;
         }
 
         // 対象候補リストを毎フレーム構築し、最新のシーン状態を反映する。
         const auto& objects = context.gameObjectManager->GetAllObjects();
         if (objects.empty()) {
-            ImGui::TextDisabled("シーン内に追従対象オブジェクトがありません。");
+            UI::Hint("シーン内に追従対象オブジェクトがありません。");
             return;
         }
 
@@ -81,9 +81,9 @@ namespace CoreEngine
             ImGui::EndCombo();
         }
 
-        ImGui::DragFloat3("追従オフセット", &followOffset_.x, 0.05f);
-        ImGui::DragFloat3("注視オフセット", &lookAtOffset_.x, 0.05f);
-        ImGui::SliderFloat("追従スムージング", &followSmoothing_, 0.01f, 1.0f, "%.2f");
+        UI::DragVec3("追従オフセット", followOffset_, 0.05f);
+        UI::DragVec3("注視オフセット", lookAtOffset_, 0.05f);
+        UI::SliderFloat("追従スムージング", followSmoothing_, 0.01f, 1.0f, "%.2f");
 
         if (followSmoothing_ < 0.01f) {
             followSmoothing_ = 0.01f;
@@ -91,16 +91,16 @@ namespace CoreEngine
 
         ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
         if (dynamic_cast<Camera*>(active3D)) {
-            ImGui::TextDisabled("現在の3Dカメラ: ReleaseCamera (追従+注視対応)");
+            UI::Hint("現在の3Dカメラ: ReleaseCamera (追従+注視対応)");
         } else if (dynamic_cast<DebugCamera*>(active3D)) {
-            ImGui::TextDisabled("現在の3Dカメラ: DebugCamera (注視点追従)");
+            UI::Hint("現在の3Dカメラ: DebugCamera (注視点追従)");
         } else {
-            ImGui::TextDisabled("現在の3Dカメラは追従モジュール未対応です。");
+            UI::Hint("現在の3Dカメラは追従モジュール未対応です。");
         }
 
         if (!statusMessage_.empty()) {
-            ImGui::Separator();
-            ImGui::TextDisabled("%s", statusMessage_.c_str());
+            UI::Separator();
+            UI::Hint(statusMessage_.c_str());
         }
     }
 
