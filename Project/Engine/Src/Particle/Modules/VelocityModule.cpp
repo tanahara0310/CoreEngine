@@ -1,4 +1,4 @@
-﻿#include "VelocityModule.h"
+#include "VelocityModule.h"
 #include "../ParticleSystem.h" // Particle構造体のために必要
 
 namespace CoreEngine
@@ -51,7 +51,7 @@ void VelocityModule::ApplyInitialVelocity(Particle& particle) {
     particle.velocity = direction;
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 bool VelocityModule::ShowImGui() {
     bool changed = false;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include <imgui.h>
 
@@ -15,7 +15,8 @@ namespace CoreEngine {
             struct TreeScope {
                 const bool open;
                 explicit TreeScope(const char* label, ImGuiTreeNodeFlags flags = 0)
-                    : open(ImGui::TreeNodeEx(label, flags)) {}
+                    : open(ImGui::TreeNodeEx(label, flags)) {
+                }
                 ~TreeScope() { if (open) ImGui::TreePop(); }
                 explicit operator bool() const { return open; }
             };
@@ -91,7 +92,8 @@ namespace CoreEngine {
                     ImVec2 size = ImVec2(0, 0),
                     ImGuiChildFlags child_flags = 0,
                     ImGuiWindowFlags window_flags = 0)
-                    : open(ImGui::BeginChild(str_id, size, child_flags, window_flags)) {}
+                    : open(ImGui::BeginChild(str_id, size, child_flags, window_flags)) {
+                }
                 ~ChildScope() { ImGui::EndChild(); }
                 explicit operator bool() const { return open; }
             };
@@ -101,7 +103,8 @@ namespace CoreEngine {
             struct ListBoxScope {
                 const bool open;
                 explicit ListBoxScope(const char* label, ImVec2 size = ImVec2(0, 0))
-                    : open(ImGui::BeginListBox(label, size)) {}
+                    : open(ImGui::BeginListBox(label, size)) {
+                }
                 ~ListBoxScope() { if (open) ImGui::EndListBox(); }
                 explicit operator bool() const { return open; }
             };
@@ -114,7 +117,8 @@ namespace CoreEngine {
                 explicit ModalScope(const char* name,
                     bool* p_open = nullptr,
                     ImGuiWindowFlags flags = 0)
-                    : open(ImGui::BeginPopupModal(name, p_open, flags)) {}
+                    : open(ImGui::BeginPopupModal(name, p_open, flags)) {
+                }
                 ~ModalScope() { if (open) ImGui::EndPopup(); }
                 explicit operator bool() const { return open; }
             };
@@ -131,4 +135,4 @@ namespace CoreEngine {
     } // namespace UI
 } // namespace CoreEngine
 
-#endif // _DEBUG
+#endif // USE_IMGUI

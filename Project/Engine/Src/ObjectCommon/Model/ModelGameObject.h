@@ -7,7 +7,7 @@
 #include <string>
 #include <memory>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Graphics/Material/Debug/MaterialDebugUI.h"
 #endif
 
@@ -61,7 +61,7 @@ namespace CoreEngine {
         /// @brief JSON から Transform + active を復元する
         void OnDeserialize(const json& j) override;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         /// @brief Transform + Material の ImGui UI を描画する（基底の DrawImGui から自動呼出し）
         bool DrawImGuiExtended() override;
 #endif
@@ -96,7 +96,7 @@ namespace CoreEngine {
         /// @brief テクスチャハンドル（空の場合はモデル組み込みテクスチャを使用）
         TextureManager::LoadedTexture texture_;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // ImGui 編集追跡用（操作前スナップショット）
         Vector3 imguiSnapTranslate_ = { 0.0f, 0.0f, 0.0f };
         Vector3 imguiSnapRotate_ = { 0.0f, 0.0f, 0.0f };

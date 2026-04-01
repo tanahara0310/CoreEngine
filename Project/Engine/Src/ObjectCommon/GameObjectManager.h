@@ -65,7 +65,7 @@ namespace CoreEngine
         /// @param collisionManager 登録先の CollisionManager
         void RegisterAllColliders(CollisionManager* collisionManager);
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         /// @brief 指定オブジェクトのImGuiデバッグUI表示（Inspector埋め込み用）
         /// @param obj 描画対象のオブジェクト（nullptrの場合はプレースホルダーを表示）
         void DrawSingleObjectImGui(GameObject* obj);
@@ -81,7 +81,7 @@ namespace CoreEngine
             onSaveRequestCallback_ = std::move(callback);
         }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         /// @brief ImGui 編集コミット時コールバックを設定（Undo/Redo 用）
         void SetEditCommitCallback(GameObject::EditCommitCallback cb) {
             editCommitCallback_ = std::move(cb);
@@ -113,7 +113,7 @@ namespace CoreEngine
         /// @brief pendingAdd_ を objects_ へ移動する
         void FlushPendingAdds();
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         /// @brief ImGui 編集コミット時コールバック（Undo/Redo 用）
         GameObject::EditCommitCallback editCommitCallback_;
 #endif

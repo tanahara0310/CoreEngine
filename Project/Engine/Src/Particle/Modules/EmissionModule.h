@@ -51,7 +51,7 @@ public:
     /// @return 再生中の場合true
     bool IsPlaying() const { return isPlaying_; }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief ImGuiデバッグ表示
     /// @return UIに変更があった場合true
     bool ShowImGui() override;

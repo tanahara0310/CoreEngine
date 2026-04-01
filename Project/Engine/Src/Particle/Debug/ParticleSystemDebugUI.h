@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include <cstdint>
 
@@ -43,4 +43,4 @@ namespace CoreEngine
 
 } // namespace CoreEngine
 
-#endif // _DEBUG
+#endif // USE_IMGUI

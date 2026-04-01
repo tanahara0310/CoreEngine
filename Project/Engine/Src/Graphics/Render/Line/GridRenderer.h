@@ -35,7 +35,7 @@ public:
     /// @brief ブレンドモードを取得
     BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief ImGuiデバッグUI
     bool DrawImGui() override;
 #endif

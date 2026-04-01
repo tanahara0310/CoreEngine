@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -75,4 +75,4 @@ namespace CoreEngine {
     } // namespace UI
 } // namespace CoreEngine
 
-#endif // _DEBUG
+#endif // USE_IMGUI

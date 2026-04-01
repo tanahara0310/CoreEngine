@@ -74,13 +74,13 @@ void WinApp::CreateAppWindow(const wchar_t* title)
 LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     // ImGuiの処理を優先する
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
         return true;
     }
 
-#endif // _DEBUG
+#endif // USE_IMGUI
 
     // メッセージに応じて固有の処理を行う
     switch (msg) {

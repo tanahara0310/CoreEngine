@@ -1,4 +1,4 @@
-﻿#include "LifetimeModule.h"
+#include "LifetimeModule.h"
 #include "../ParticleSystem.h" // Particle構造体のために必要
 #include <algorithm>
 
@@ -33,7 +33,7 @@ bool LifetimeModule::UpdateLifetime(Particle& particle, float deltaTime) {
     return particle.currentTime < particle.lifeTime;
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 bool LifetimeModule::ShowImGui() {
     bool changed = false;
     

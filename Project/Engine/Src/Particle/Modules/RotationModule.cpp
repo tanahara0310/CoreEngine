@@ -1,4 +1,4 @@
-﻿#include "RotationModule.h"
+#include "RotationModule.h"
 #include "../ParticleSystem.h"
 #include <numbers>
 #include <algorithm>
@@ -111,7 +111,7 @@ void RotationModule::UpdateRotation(Particle& particle, float deltaTime)
     }
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 bool RotationModule::ShowImGui() {
     bool changed = false;
     

@@ -1,4 +1,4 @@
-﻿#include "Dissolve.h"
+#include "Dissolve.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
@@ -102,7 +102,7 @@ namespace CoreEngine
 
     void Dissolve::DrawImGui()
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         ImGui::PushID("DissolveParams");
 
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -154,7 +154,7 @@ namespace CoreEngine
         UI::Separator();
 
         ImGui::PopID();
-#endif // _DEBUG
+#endif // USE_IMGUI
     }
 
     void Dissolve::SetParams(const DissolveParams& params)

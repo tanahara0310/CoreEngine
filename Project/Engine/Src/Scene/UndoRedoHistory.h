@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include "Math/Vector/Vector3.h"
 #include <vector>
@@ -61,4 +61,4 @@ namespace CoreEngine
     };
 }
 
-#endif // _DEBUG
+#endif // USE_IMGUI

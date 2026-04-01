@@ -8,7 +8,7 @@
 #include <list>
 #include <string>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include "Debug/ParticleSystemDebugUI.h"
 #endif
@@ -96,7 +96,7 @@ public:
         return renderMode_ == ParticleRenderMode::Model ? RenderPassType::ModelParticle : RenderPassType::Particle;
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "ParticleSystem"; }
 
@@ -331,7 +331,7 @@ private:
 
     ParticleForGPU* instancingData_ = nullptr; // resourceManager_から取得したポインタ
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     // ──────────────────────────────────────────────────────────
     // デバッグUI（friend宣言）
     // ──────────────────────────────────────────────────────────

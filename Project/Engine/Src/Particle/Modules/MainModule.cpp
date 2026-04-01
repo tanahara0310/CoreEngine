@@ -1,8 +1,8 @@
-﻿#include "MainModule.h"
+#include "MainModule.h"
 #include <algorithm>
 #include <cmath>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #endif
 
@@ -126,7 +126,7 @@ float MainModule::ApplyRandomness(float base, float randomness) const {
     return (result < 0.0f) ? 0.0f : result;  // 負の値を防ぐ
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 bool MainModule::ShowImGui() {
     bool changed = false;
 

@@ -1,4 +1,4 @@
-﻿#include "ChromaticAberration.h"
+#include "ChromaticAberration.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
 
@@ -16,7 +16,7 @@ void ChromaticAberration::Initialize(DirectXCommon* dxCommon)
 
 void ChromaticAberration::DrawImGui()
 {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     ImGui::PushID("ChromaticAberrationParams");
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -118,7 +118,7 @@ void ChromaticAberration::DrawImGui()
     ImGui::Text("赤は外側に、青は内側に移動します");
     
     ImGui::PopID();
-#endif // _DEBUG
+#endif // USE_IMGUI
 }
 
 void ChromaticAberration::SetParams(const ChromaticAberrationParams& newParams)

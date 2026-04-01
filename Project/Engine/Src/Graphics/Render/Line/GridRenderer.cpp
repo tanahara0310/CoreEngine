@@ -1,4 +1,4 @@
-﻿#include "GridRenderer.h"
+#include "GridRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Render/RenderManager.h"
 #include "EngineSystem/EngineSystem.h"
@@ -6,7 +6,7 @@
 #include "Math/MathCore.h"
 #include <cmath>
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #endif
 
@@ -164,7 +164,7 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
     return lines;
 }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 bool GridRenderer::DrawImGui()
 {
     bool changed = false;
@@ -227,5 +227,5 @@ bool GridRenderer::DrawImGui()
 
     return changed;
 }
-#endif
+#endif // USE_IMGUI
 }

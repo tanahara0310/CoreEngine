@@ -36,7 +36,9 @@ namespace CoreEngine
 #ifdef _DEBUG
         //グリッド（デバッグビルドのみ）
         SetupGrid();
+#endif
 
+#ifdef USE_IMGUI
         // デバッグエディター初期化
         debugEditor_ = std::make_unique<SceneDebugEditor>();
         debugEditor_->Initialize(engine_, &gameObjectManager_, cameraManager_.get(), sceneSaveSystem_.get());
@@ -65,7 +67,7 @@ namespace CoreEngine
             UpdateLightViewProjection();
         }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         debugEditor_->Update();
 
         // グリッド表示状態を更新
@@ -218,7 +220,7 @@ namespace CoreEngine
         // ゲームオブジェクトをクリア（新システム）
         gameObjectManager_.Clear();
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // デバッグ編集履歴をクリア
         debugEditor_->ClearHistory();
 #endif

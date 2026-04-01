@@ -1,4 +1,4 @@
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include "SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
@@ -305,4 +305,4 @@ namespace CoreEngine
     }
 }
 
-#endif // _DEBUG
+#endif // USE_IMGUI
