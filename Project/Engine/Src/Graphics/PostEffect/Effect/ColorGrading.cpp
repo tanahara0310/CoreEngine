@@ -1,5 +1,7 @@
-﻿#include "ColorGrading.h"
+#include "ColorGrading.h"
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
+#endif
 #include <cassert>
 
 
@@ -16,6 +18,7 @@ void ColorGrading::Initialize(DirectXCommon* dxCommon)
 
 void ColorGrading::DrawImGui()
 {
+#ifdef USE_IMGUI
     ImGui::PushID("ColorGradingParams");
     
     ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
@@ -123,6 +126,7 @@ void ColorGrading::DrawImGui()
     UI::Separator();
     
     ImGui::PopID();
+#endif // USE_IMGUI
 }
 
 void ColorGrading::ApplyPreset(int presetIndex)

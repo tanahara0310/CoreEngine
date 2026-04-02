@@ -1,5 +1,7 @@
-﻿#include "FullScreen.h"
+#include "FullScreen.h"
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"
+#endif
 
 
 namespace CoreEngine
@@ -12,6 +14,7 @@ const std::wstring& FullScreen::GetPixelShaderPath() const
 
 void FullScreen::DrawImGui()
 {
+#ifdef USE_IMGUI
     ImGui::PushID("FullScreenParams");
     
     ImGui::Text("Status: Always Enabled (Display Effect)");
@@ -21,5 +24,6 @@ void FullScreen::DrawImGui()
     UI::Separator();
     
     ImGui::PopID();
+#endif // USE_IMGUI
 }
 }

@@ -1,6 +1,8 @@
 #include "SceneManagerTab.h"
 #include "Scene/SceneManager.h"
 
+#ifdef USE_IMGUI
+
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <algorithm>
 
@@ -222,3 +224,5 @@ namespace CoreEngine
         }
     }
 }
+
+#endif

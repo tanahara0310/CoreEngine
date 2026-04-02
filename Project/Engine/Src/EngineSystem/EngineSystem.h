@@ -7,14 +7,14 @@
 
 #include "ComponentManager.h"
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiManager.h"
 #include "Utility/Debug/GameDebugUI.h"
 #endif
 
 class WinApp;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 class DockingUI; // 前方宣言（デバッグビルドのみ）
 class ConsoleUI; // 前方宣言（デバッグビルドのみ）
 #endif
@@ -118,7 +118,7 @@ public:
         return componentManager_.Has<T>();
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     // ──────────────────────────────────────────────────────────
     // デバッグ機能アクセッサ（デバッグビルドのみ）
     // ──────────────────────────────────────────────────────────
@@ -183,11 +183,11 @@ private:
     // レンダーパイプライン
     std::unique_ptr<RenderPipeline> renderPipeline_;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     // デバッグ機能（デバッグビルドのみ）
     std::unique_ptr<ImGuiManager> imGui_ = std::make_unique<ImGuiManager>(); // ImGuiマネージャークラスのインスタンス
     std::unique_ptr<GameDebugUI> gameDebugUI_ = std::make_unique<GameDebugUI>(); // ゲームデバッグUIのインスタンス
-#endif // _DEBUG
+#endif // USE_IMGUI
 
     SceneManager* sceneManager_ = nullptr;
 };

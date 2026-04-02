@@ -1,4 +1,4 @@
-﻿#include "PostEffectManager.h"
+#include "PostEffectManager.h"
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/Render.h"
@@ -272,6 +272,7 @@ void PostEffectManager::Update(float deltaTime)
 
 void PostEffectManager::DrawImGui()
 {
+#ifdef USE_IMGUI
     if (ImGui::Begin("Post Effects")) {
         // プリセット管理タブ
         presetManager_->ShowImGui(this);
@@ -328,6 +329,7 @@ void PostEffectManager::DrawImGui()
         }
     }
     ImGui::End();
+#endif // USE_IMGUI
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE PostEffectManager::GetFinalDisplayTextureHandle() const

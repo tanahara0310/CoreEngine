@@ -1,5 +1,6 @@
-﻿#pragma once
+#pragma once
 
+#ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <d3d12.h>
 
@@ -48,3 +49,4 @@ namespace CoreEngine
         bool isGameCameraSelected_ = false;
     };
 }
+#endif // USE_IMGUI

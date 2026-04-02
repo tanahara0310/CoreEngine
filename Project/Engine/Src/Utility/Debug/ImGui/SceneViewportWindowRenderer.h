@@ -1,8 +1,10 @@
-﻿#pragma once
+#pragma once
 
-#include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <d3d12.h>
 #include <functional>
+
+#ifdef USE_IMGUI
+#include "Utility/Debug/ImGui/ImGuiAll.h"
 
 namespace CoreEngine
 {
@@ -30,3 +32,4 @@ namespace CoreEngine
             const std::function<void(const SceneViewportWindowResult&)>& postImageDraw = nullptr);
     };
 }
+#endif // USE_IMGUI

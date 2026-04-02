@@ -1,5 +1,6 @@
 #include "SceneViewportGizmoController.h"
 
+#ifdef USE_IMGUI
 #include "ObjectSelector.h"
 #include "Gizmo.h"
 #include "Camera/ICamera.h"
@@ -187,3 +188,4 @@ namespace CoreEngine
         gameCamera->Update();
     }
 }
+#endif // USE_IMGUI

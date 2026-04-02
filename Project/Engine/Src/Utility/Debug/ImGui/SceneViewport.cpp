@@ -1,5 +1,6 @@
 #include "SceneViewport.h"
 
+#ifdef USE_IMGUI
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
@@ -130,3 +131,4 @@ namespace CoreEngine
     }
 
 }
+#endif // USE_IMGUI

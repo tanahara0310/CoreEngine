@@ -1,6 +1,6 @@
 #include "CameraManager.h"
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 #include "Camera/Debug/Editor/CameraDebugUI.h"
 #include "ObjectCommon/GameObjectManager.h"
 #endif
@@ -152,7 +152,7 @@ namespace CoreEngine
         }
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     void CameraManager::SetDebugGameObjectManager(GameObjectManager* gameObjectManager)
     {
         debugGameObjectManager_ = gameObjectManager;

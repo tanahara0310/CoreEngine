@@ -1,4 +1,6 @@
 #include "ConsoleUI.h"
+
+#ifdef USE_IMGUI
 #include "EngineSystem/EngineSystem.h"
 
 // コンポーネントのインクルード
@@ -354,3 +356,4 @@ void ConsoleUI::ShowSystemStatus()
     AddLog("エンジンシステム: 正常稼働中", ConsoleLogLevel::Info);
 }
 }
+#endif // USE_IMGUI

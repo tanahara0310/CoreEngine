@@ -191,7 +191,7 @@ private:
         MouseState mouseState_;       // マウス状態管理
 
     private:
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         /// @brief マウス操作を処理（エンジンのMouseInputクラス使用）
         void HandleMouseInput();
 

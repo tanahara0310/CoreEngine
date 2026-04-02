@@ -103,10 +103,10 @@ namespace CoreEngine {
         Vector3 imguiSnapScale_ = { 1.0f, 1.0f, 1.0f };
         bool    imguiSnapActive_ = true;
 
-        /// @brief マテリアルデバッグUI
+        /// マテリアルデバッグUI
         std::unique_ptr<MaterialDebugUI> materialDebugUI_;
 
-        /// @brief マテリアルUIを描画するヘルパー
+        /// マテリアルUIを描画するヘルパー
         bool DrawMaterialImGui();
 
         /// @brief Active 変更時に Undo/Redo コールバックを発火する
