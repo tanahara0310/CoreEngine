@@ -1,6 +1,6 @@
 #include "CameraFollowEditorModule.h"
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <algorithm>

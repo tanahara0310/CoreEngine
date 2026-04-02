@@ -10,7 +10,7 @@
 namespace CoreEngine
 {
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     // 前方宣言
     class CameraDebugUI;
     class GameObjectManager;
@@ -77,7 +77,7 @@ namespace CoreEngine
         /// @return カメラのコンテナへの参照
         const std::unordered_map<std::string, std::unique_ptr<ICamera>>& GetAllCameras() const { return cameras_; }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         /// @brief ImGuiデバッグウィンドウを描画
         void DrawImGui();
 
@@ -104,7 +104,7 @@ namespace CoreEngine
         ICamera* activeCamera3D_ = nullptr;
         ICamera* activeCamera2D_ = nullptr;
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         /// @brief デバッグUI（遅延初期化）
         std::unique_ptr<CameraDebugUI> debugUI_;
 

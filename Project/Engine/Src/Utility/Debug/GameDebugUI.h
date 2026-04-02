@@ -67,7 +67,7 @@ namespace CoreEngine
         DockingUI* dockingUI_ = nullptr;
 
 #ifdef USE_IMGUI
-        std::unique_ptr<ConsoleUI>　console_ = std::make_unique<ConsoleUI>();
+        std::unique_ptr<ConsoleUI> console_ = std::make_unique<ConsoleUI>();
 #endif
         std::unique_ptr<SceneManagerTab> sceneManagerTab_ = std::make_unique<SceneManagerTab>();
 

@@ -79,7 +79,7 @@ namespace CoreEngine
         // 統一乱数生成器の初期化
         RandomGenerator::GetInstance().Initialize();
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // ImGuiマネージャークラスの初期化
         imGui_->Initialize(winApp_->GetHwnd(), GetComponent<DirectXCommon>());
 
@@ -101,7 +101,7 @@ namespace CoreEngine
             // パーティクルシステムデバッグを右側に配置
             dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
         }
-#endif // _DEBUG
+#endif // USE_IMGUI
 
         GameObject::SetEngine(this);
 
@@ -111,10 +111,10 @@ namespace CoreEngine
 
     void EngineSystem::Finalize()
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // ImGuiの終了処理
         imGui_->Finalize();
-#endif // _DEBUG
+#endif // USE_IMGUI
 
         // TextureManagerのキャッシュをクリア
         TextureManager::GetInstance().Clear();
@@ -164,7 +164,7 @@ namespace CoreEngine
             }
         }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         if (sceneManager_) {
             if (auto* sceneViewport = imGui_->GetSceneViewport()) {
                 sceneViewport->SetCamera(sceneManager_->GetSceneViewCamera());
@@ -201,14 +201,14 @@ namespace CoreEngine
                 }
             }
         }
-#endif // _DEBUG
+#endif // USE_IMGUI
     }
 
     void EngineSystem::EndFrame()
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         imGui_->End();
-#endif // _DEBUG
+#endif // USE_IMGUI
 
         // VSync有効時はフレームレート制御の終了処理は不要
         // Present(1, 0)が自動的に60Hzに同期してくれる
@@ -281,7 +281,7 @@ namespace CoreEngine
 
         executePass(renderPipeline_->GetPass<ShadowMapPass>());
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // SceneView を GBufferPass より前に描画する。
         // SceneView::Begin() は共有 DSV をクリアするため、後に実行すると
         // GBufferPass が書いたゲーム用深度値を破壊し、GeometryPass での
@@ -302,7 +302,7 @@ namespace CoreEngine
                 }
             }
         }
-#endif // _DEBUG
+#endif // USE_IMGUI
 
         executePass(renderPipeline_->GetPass<GBufferPass>());
         executePass(renderPipeline_->GetPass<DeferredLightingPass>());
@@ -310,12 +310,12 @@ namespace CoreEngine
         executePass(renderPipeline_->GetPass<PostEffectPass>());
         executePass(renderPipeline_->GetPass<BackBufferPass>());
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // ImGuiの描画コマンドを積む
         if (imGui_) {
             imGui_->Draw();
         }
-#endif // _DEBUG
+#endif // USE_IMGUI
 
         // フレームの最終処理（バックバッファ終了、コマンド実行、Present）
         if (render) {

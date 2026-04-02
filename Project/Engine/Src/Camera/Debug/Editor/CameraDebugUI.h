@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include <string>
 #include <vector>

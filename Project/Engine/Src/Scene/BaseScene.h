@@ -96,7 +96,7 @@ namespace CoreEngine
         /// @brief シャドウマップ用のライトView-Projection行列を更新
         void UpdateLightViewProjection();
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         /// @brief グリッドのセットアップ（デバッグビルドのみ）
         void SetupGrid();
 
@@ -123,7 +123,7 @@ namespace CoreEngine
         CollisionConfig collisionConfig_;
         CollisionManager collisionManager_{ &collisionConfig_ };
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         // グリッドレンダラー（デバッグビルドのみ）
         GridRenderer* gridRenderer_ = nullptr;
 #endif

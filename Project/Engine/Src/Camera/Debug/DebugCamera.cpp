@@ -216,7 +216,7 @@ namespace CoreEngine
 
     void DebugCamera::Update()
     {
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         HandleMouseInput();
 
         if (settings_.smoothMovement) {
@@ -231,7 +231,7 @@ namespace CoreEngine
 #endif
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     void DebugCamera::HandleMouseInput()
     {
         // エンジンシステムが無効な場合は処理しない

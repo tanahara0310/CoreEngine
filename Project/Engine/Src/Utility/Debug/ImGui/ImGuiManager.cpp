@@ -71,15 +71,13 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         sceneViewport_->Initialize();
         dockingUI_->SetSceneViewport(sceneViewport_.get());
-#endif
 
         // ProjectViewの初期化
-#ifdef USE_IMGUI
         projectView_->Initialize(dxCommon_);
 #endif
     }
 
-    void ImGuiManager::Begin([[maybe_unused]]PostEffectManager* postEffectManager, [[maybe_unused]]Render* render, [[maybe_unused]]GameDebugUI* gameDebugUI)
+    void ImGuiManager::Begin([[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] Render* render, [[maybe_unused]] GameDebugUI* gameDebugUI)
     {
 
         // フレームの開始

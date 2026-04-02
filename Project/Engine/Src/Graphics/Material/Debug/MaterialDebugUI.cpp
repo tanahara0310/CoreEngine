@@ -1,6 +1,6 @@
 #include "MaterialDebugUI.h"
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include "Graphics/Model/Model.h"
 #include "Graphics/Material/MaterialConstants.h"

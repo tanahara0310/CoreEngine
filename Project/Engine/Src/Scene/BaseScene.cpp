@@ -33,7 +33,7 @@ namespace CoreEngine
         //ライト
         SetupLight();
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         //グリッド（デバッグビルドのみ）
         SetupGrid();
 #endif
@@ -133,7 +133,7 @@ namespace CoreEngine
         // SceneView 描画中は Scene スロットを使用し、GBufferPass(Game スロット)と
         // 同一バッファへの書き込みを防ぐ
         Model::SetCurrentRenderSlot(TransformBufferSlot::Scene);
-#ifdef _DEBUG
+#ifdef USE_IMGUI
         DrawGameCameraFrustumDebug();
 #endif
         DrawWithCamera(ResolveSceneViewCameraName(), false);
@@ -309,7 +309,7 @@ namespace CoreEngine
         }
     }
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     void BaseScene::SetupGrid()
     {
         // GridRendererを作成

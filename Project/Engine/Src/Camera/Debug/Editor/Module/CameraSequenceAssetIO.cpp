@@ -1,6 +1,6 @@
 #include "CameraSequenceAssetIO.h"
 
-#ifdef _DEBUG
+#ifdef USE_IMGUI
 
 #include "Utility/JsonManager/JsonManager.h"
 #include <algorithm>
