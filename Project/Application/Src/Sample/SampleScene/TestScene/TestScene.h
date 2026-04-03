@@ -37,23 +37,23 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
-class TestScene : public BaseScene {
-public:
-    /// @brief シーン固有の初期化
-    void OnInitialize() override;
+    class TestScene : public BaseScene {
+    public:
+        /// @brief シーン固有の初期化
+        void OnInitialize() override;
 
-    /// @brief 描画処理
-    void Draw() override;
+        /// @brief 描画処理
+        void Draw() override;
 
-    /// @brief 解放
-    void Finalize() override;
+        /// @brief 解放
+        void Finalize() override;
 
-protected:
-    /// @brief 更新処理（BaseSceneのOnUpdate()をオーバーライド）
-    void OnUpdate() override;
+    protected:
+        /// @brief 更新処理（BaseSceneのOnUpdate()をオーバーライド）
+        void OnUpdate() override;
 
-private: // メンバ変数
+    private: // メンバ変数
 
-    Logger& logger = Logger::GetInstance();
-};
+        Logger& logger = Logger::GetInstance();
+    };
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <Math/MathCore.h>
+#include <Math/Frustum.h>
 #include <d3d12.h>
 
 /// @brief カメラのタイプ
@@ -54,6 +55,15 @@ namespace CoreEngine
 
         /// @brief カメラパラメータを設定（デフォルト実装）
         virtual void SetParameters(const CameraParameters& params);
+
+        /// @brief カメラの視錐台（Frustum）を取得
+        /// @return VP行列から抽出した視錐台
+        virtual Frustum GetFrustum() const {
+            Frustum frustum;
+            Matrix4x4 vp = GetViewMatrix() * GetProjectionMatrix();
+            frustum.ExtractFromMatrix(vp);
+            return frustum;
+        }
 
     protected:
 

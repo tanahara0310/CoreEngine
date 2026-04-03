@@ -47,6 +47,14 @@ namespace CoreEngine
 
     void GameDebugUI::SetInspectorCameraDrawer(std::function<void()> callback)
     {
+        // 既存の "Camera Editor" エントリがあればコールバックを更新するだけにする
+        // （シーン切り替え時に重複登録されないようにする）
+        for (auto& [label, drawer] : engineEditors_) {
+            if (label == "Camera Editor") {
+                drawer = std::move(callback);
+                return;
+            }
+        }
         // Camera Editorは先頭に挿入（Lightingの前に表示）
         engineEditors_.insert(engineEditors_.begin(),
             std::make_pair(std::string("Camera Editor"), std::move(callback)));

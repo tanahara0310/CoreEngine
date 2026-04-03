@@ -393,16 +393,17 @@ namespace CoreEngine
 
     bool DebugCamera::IsMouseInSceneWindow() const
     {
-        // Scene ウィンドウのホバー判定
-        ImGuiWindow* sceneWin = ImGui::FindWindowByName("Scene");
-        if (!sceneWin) {
+        // useGameView が有効な場合は "Game" ウィンドウ、無効な場合は "Scene" ウィンドウを判定する
+        const char* targetWindowName = settings_.useGameView ? "Game" : "Scene";
+        ImGuiWindow* targetWin = ImGui::FindWindowByName(targetWindowName);
+        if (!targetWin) {
             return false;
         }
 
         ImGuiIO& io = ImGui::GetIO();
         ImVec2 mousePos = io.MousePos;
-        ImVec2 pos = sceneWin->Pos;
-        ImVec2 size = sceneWin->Size;
+        ImVec2 pos = targetWin->Pos;
+        ImVec2 size = targetWin->Size;
 
         return mousePos.x >= pos.x && mousePos.x <= pos.x + size.x &&
             mousePos.y >= pos.y && mousePos.y <= pos.y + size.y;

@@ -185,6 +185,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\CameraDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraGameViewControlModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.cpp" />
@@ -352,46 +353,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
-    <ClCompile Include="Externals\imgui\imgui.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Externals\imgui\ImGuizmo.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Externals\imgui\imgui_demo.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Externals\imgui\imgui_draw.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Externals\imgui\imgui_impl_dx12.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Externals\imgui\imgui_impl_win32.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Externals\imgui\imgui_tables.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
@@ -417,11 +378,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Camera\CameraPresetManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraShake.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraClipPlayerEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\CameraDebugUI.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraEditorContext.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraGameViewControlModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.h" />
@@ -520,7 +481,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionData.h" />
-    <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionUsageExample.h" />
     <ClInclude Include="Engine\Src\Graphics\Shadow\ShadowMapManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Runtime\TextureLoadedResource.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.h" />
@@ -533,6 +493,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
     <ClInclude Include="Engine\Src\Math\EulerTransform.h" />
+    <ClInclude Include="Engine\Src\Math\Frustum.h" />
     <ClInclude Include="Engine\Src\Math\QuaternionTransform.h" />
     <ClInclude Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.h" />
     <ClInclude Include="Engine\Src\ObjectCommon\GameObject.h" />
@@ -562,7 +523,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Sample\TestGameObject\SneakWalkModelObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\SphereObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\TerrainObject.h" />
-    <ClInclude Include="Engine\Graphics\Light\LightBuffers.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Model.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelResource.h" />
@@ -592,7 +552,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiScope.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\LivePPAgent.h" />
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h" />
-    <ClInclude Include="Engine\Utility\Logger\ScopedTimer.h" />
     <ClInclude Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.h" />
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
@@ -656,119 +615,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\async.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\async_logger-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\async_logger.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\cfg\argv.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\cfg\env.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\cfg\helpers-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\cfg\helpers.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\common-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\common.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\backtracer-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\backtracer.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\circular_q.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\console_globals.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\file_helper-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\file_helper.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\fmt_helper.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\log_msg-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\log_msg.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\log_msg_buffer-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\log_msg_buffer.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\mpmc_blocking_q.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\null_mutex.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\os-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\os.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\periodic_worker-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\periodic_worker.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\registry-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\registry.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\synchronous_factory.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\tcp_client-windows.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\tcp_client.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\thread_pool-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\thread_pool.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\udp_client-windows.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\udp_client.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\details\windows_include.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bin_to_hex.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\args.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\base.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\chrono.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\color.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\compile.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\core.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\format-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\format.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\os.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\ostream.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\printf.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\ranges.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\std.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\bundled\xchar.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\chrono.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\compile.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\fmt.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\ostr.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\ranges.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\std.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fmt\xchar.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\formatter.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\fwd.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\logger-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\logger.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\mdc.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\pattern_formatter-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\pattern_formatter.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\android_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\ansicolor_sink-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\ansicolor_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\base_sink-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\base_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\basic_file_sink-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\basic_file_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\callback_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\daily_file_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\dist_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\dup_filter_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\hourly_file_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\kafka_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\mongo_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\msvc_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\null_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\ostream_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\qt_sinks.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\ringbuffer_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\rotating_file_sink-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\rotating_file_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\sink-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\stdout_color_sinks-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\stdout_color_sinks.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\stdout_sinks-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\stdout_sinks.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\syslog_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\systemd_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\tcp_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\udp_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\wincolor_sink-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\wincolor_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\sinks\win_eventlog_sink.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\spdlog-inl.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\spdlog.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\stopwatch.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\tweakme.h" />
-    <ClInclude Include="Externals\spdlog\include\spdlog\version.h" />
-    <ClInclude Include="Externals\imgui\imconfig.h" />
-    <ClInclude Include="Externals\imgui\imgui.h" />
-    <ClInclude Include="Externals\imgui\ImGuizmo.h" />
-    <ClInclude Include="Externals\imgui\imgui_impl_dx12.h" />
-    <ClInclude Include="Externals\imgui\imgui_impl_win32.h" />
-    <ClInclude Include="Externals\imgui\imgui_internal.h" />
-    <ClInclude Include="Externals\imgui\imstb_rectpack.h" />
-    <ClInclude Include="Externals\imgui\imstb_textedit.h" />
-    <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h" />
   </ItemGroup>
   <ItemGroup>
@@ -777,32 +623,17 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include=".github\copilot-instructions.md" />
-    <None Include="Application\Assets\SampleAssets\AnimatedCube\AnimatedCube.bin" />
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin" />
     <None Include="Application\Assets\SampleAssets\human\walk.bin" />
-    <None Include="Application\Assets\SampleAssets\PblTestModel\ABeautifulGame.bin" />
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
-    <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
     <None Include="Engine\Src\ObjectCommon\README.md" />
-    <None Include="Script\convert-tabs-to-spaces.ps1" />
-    <None Include="docs\BulletHitParticle_Implementation.md" />
-    <None Include="docs\LineRenderer_Refactoring.md" />
-    <None Include="docs\Logger_Usage.md" />
-    <None Include="docs\ParticleMemoryLeak_Fix.md" />
-    <None Include="docs\ParticlePreset_Usage.md" />
-    <None Include="docs\ParticleSystem_Refactoring_Final.md" />
-    <None Include="docs\ParticleSystem_Refactoring_Progress.md" />
-    <None Include="docs\ParticleSystem_Refactoring_Summary.md" />
-    <None Include="Docs\ShadowSystemImplementation.md" />
-    <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
-    <None Include="Engine\Graphics\RootSignature\RootSignatureManager.h.new" />
+    <None Include="Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
-    <None Include="Project\Assets\Shaders\Common\LightStructures.hlsli" />
-    <None Include="Scripts\ConvertToCRLF.ps1" />
-    <None Include="Scripts\ConvertToTabs.ps1" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <Target Name="SyncVCXProjFilters" BeforeTargets="Build">
+    <Exec Command="powershell -ExecutionPolicy Bypass -NoProfile -File &quot;$(ProjectDir)Scripts\SyncFilters.ps1&quot; -ProjectFile &quot;$(MSBuildProjectFullPath)&quot;" />
+  </Target>
 </Project>
