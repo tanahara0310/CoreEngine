@@ -4,6 +4,7 @@
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/Model.h"
+#include "Math/BoundingBox.h"
 #include <string>
 #include <memory>
 
@@ -54,6 +55,10 @@ namespace CoreEngine {
 
         /// @brief ワールド座標での位置を取得
         Vector3 GetWorldPosition() const override { return transform_.GetWorldPosition(); }
+
+        /// @brief ワールド空間のAABBを取得（視錐台カリング用）
+        /// @return ワールド変換後のバウンディングボックス
+        BoundingBox GetWorldBoundingBox() const;
 
         /// @brief Transform + active を JSON に書き出す
         json OnSerialize() const override;

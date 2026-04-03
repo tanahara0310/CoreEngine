@@ -73,6 +73,17 @@ void ModelResource::LoadFromFile(const std::string& directoryPath, const std::st
     memcpy(mappedIndex, modelData_.indices.data(), sizeof(uint32_t) * modelData_.indices.size());
     indexBuffer_->Unmap(0, nullptr);
     
+    // ===== ローカル空間AABBを頂点データから算出 =====
+    localBoundingBox_ = BoundingBox(); // 無効値で初期化
+    for (const auto& vertex : modelData_.vertices) {
+        if (vertex.position.x < localBoundingBox_.min.x) localBoundingBox_.min.x = vertex.position.x;
+        if (vertex.position.y < localBoundingBox_.min.y) localBoundingBox_.min.y = vertex.position.y;
+        if (vertex.position.z < localBoundingBox_.min.z) localBoundingBox_.min.z = vertex.position.z;
+        if (vertex.position.x > localBoundingBox_.max.x) localBoundingBox_.max.x = vertex.position.x;
+        if (vertex.position.y > localBoundingBox_.max.y) localBoundingBox_.max.y = vertex.position.y;
+        if (vertex.position.z > localBoundingBox_.max.z) localBoundingBox_.max.z = vertex.position.z;
+    }
+
     // ===== マテリアルのPBRテクスチャを読み込み =====
     materialTextureHandles_.resize(modelData_.materials.size());
     

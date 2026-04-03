@@ -11,6 +11,7 @@
 #include "Graphics/Model/Node.h"
 #include "Animation/Animation.h"
 #include "Skeleton/Skeleton.h"
+#include "Math/BoundingBox.h"
 
 namespace CoreEngine
 {
@@ -83,6 +84,10 @@ namespace CoreEngine
         /// @param animation アニメーションデータ
         void AddAnimation(const std::string& name, const Animation& animation);
 
+        /// @brief ローカル空間のバウンディングボックスを取得
+        /// @return ローカル空間AABB
+        const BoundingBox& GetLocalBoundingBox() const { return localBoundingBox_; }
+
         /// @brief サブメッシュ情報を取得
         /// @return サブメッシュデータのベクター
         const std::vector<SubMeshData>& GetSubMeshes() const { return modelData_.subMeshes; }
@@ -137,6 +142,9 @@ namespace CoreEngine
 
         std::string filePath_;
         bool isLoaded_ = false;
+
+        // ローカル空間のバウンディングボックス（頂点データから算出）
+        BoundingBox localBoundingBox_;
 
         std::map<std::string, Animation> animations_;
 

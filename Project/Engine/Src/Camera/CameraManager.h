@@ -77,6 +77,14 @@ namespace CoreEngine
         /// @return カメラのコンテナへの参照
         const std::unordered_map<std::string, std::unique_ptr<ICamera>>& GetAllCameras() const { return cameras_; }
 
+        /// @brief Gameビューに使用するカメラ名を上書き設定（空文字でリセット）
+        /// @param name 上書きするカメラ名（空文字 = 上書きなし）
+        void SetGameViewCameraOverride(const std::string& name) { gameViewCameraOverride_ = name; }
+
+        /// @brief Gameビューカメラ上書き名を取得
+        /// @return 上書きカメラ名（空文字 = 上書きなし）
+        const std::string& GetGameViewCameraOverride() const { return gameViewCameraOverride_; }
+
 #ifdef USE_IMGUI
         /// @brief ImGuiデバッグウィンドウを描画
         void DrawImGui();
@@ -99,6 +107,9 @@ namespace CoreEngine
         /// @brief アクティブなカメラの名前（タイプ別）
         std::string activeCamera3DName_;
         std::string activeCamera2DName_;
+
+        /// @brief Gameビューカメラのオーバーライド名（空文字 = 上書きなし）
+        std::string gameViewCameraOverride_;
 
         /// @brief アクティブなカメラのポインタ（キャッシュ、タイプ別）
         ICamera* activeCamera3D_ = nullptr;

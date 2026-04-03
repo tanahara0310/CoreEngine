@@ -25,6 +25,7 @@ namespace CoreEngine
             bool invertY = false;     // Y軸反転
             bool smoothMovement = true;    // スムーズ移動
             float smoothingFactor = 0.2f;           // スムージング係数
+            bool useGameView = false;               // Gameビューでのカメラ操作を有効化
         };
 
         /// @brief カメラプリセット

@@ -40,21 +40,20 @@ namespace CoreEngine
 
         // HDRファイルを読み込み（自動的にキューブマップDDSに変換される）
         TextureManager::LoadedTexture environmentMapTexture;
-        environmentMapTexture = textureManager.Load("rogland_clear_night_4k.hdr");
+        environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
 
         // ===== IBLシステムの初期化 =====
         IBLSystem::SetupParams iblParams;
         iblParams.environmentMap = environmentMapTexture.texture.Get();
         iblParams.environmentMapSRV = environmentMapTexture.gpuHandle;
-        iblParams.environmentKey = "rogland_clear_night_4k.hdr";
+        iblParams.environmentKey = "kloppenheim_06_puresky_4k.hdr";
         iblParams.irradianceSize = 128;
         iblParams.prefilteredSize = 256;
         iblParams.brdfLUTSize = 512;
 
         if (iblSystem->Setup(iblParams)) {
             Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "IBL system initialized successfully");
-        }
-        else {
+        } else {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBL system");
         }
 
@@ -64,10 +63,10 @@ namespace CoreEngine
         skyBox->SetActive(true);  // SkyBoxを表示
 
         ////// ===== sponzaモデルのみ配置 =====
-        //auto sponza = CreateObject<ModelObject>("Sponza.gltf");
-        //sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-        //sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        //sponza->SetActive(false);
+        auto sponza = CreateObject<ModelObject>("Sponza.gltf");
+        sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
+        sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        sponza->SetActive(false);
 
         //// ===== ウォーキングモデル（PBR グリッドと重ならない位置に配置） =====
         auto walkModel = CreateObject<WalkModelObject>();
@@ -86,35 +85,35 @@ namespace CoreEngine
         //  0.0 └──────────────────────────────────┘
         //      0.0   0.17  0.33  0.5  0.67  0.83  1.0  Roughness
 
-        constexpr int   kRoughnessSteps = 7;   // 列数（Roughness 軸）
-        constexpr int   kMetallicSteps  = 7;   // 行数（Metallic 軸）
-        constexpr float kSpacing        = 2.5f; // 球体間の間隔
+        //constexpr int   kRoughnessSteps = 7;   // 列数（Roughness 軸）
+        //constexpr int   kMetallicSteps = 7;   // 行数（Metallic 軸）
+        //constexpr float kSpacing = 2.5f; // 球体間の間隔
 
-        // グリッド原点（中央が座標原点になるよう計算）
-        const float originX = -(kRoughnessSteps - 1) * kSpacing * 0.5f;
-        const float originY = -(kMetallicSteps  - 1) * kSpacing * 0.5f;
+        //// グリッド原点（中央が座標原点になるよう計算）
+        //const float originX = -(kRoughnessSteps - 1) * kSpacing * 0.5f;
+        //const float originY = -(kMetallicSteps - 1) * kSpacing * 0.5f;
 
-        for (int row = 0; row < kMetallicSteps; ++row)
-        {
-            const float metallic = static_cast<float>(row) / static_cast<float>(kMetallicSteps - 1);
+        //for (int row = 0; row < kMetallicSteps; ++row)
+        //{
+        //    const float metallic = static_cast<float>(row) / static_cast<float>(kMetallicSteps - 1);
 
-            for (int col = 0; col < kRoughnessSteps; ++col)
-            {
-                const float roughness = static_cast<float>(col) / static_cast<float>(kRoughnessSteps - 1);
+        //    for (int col = 0; col < kRoughnessSteps; ++col)
+        //    {
+        //        const float roughness = static_cast<float>(col) / static_cast<float>(kRoughnessSteps - 1);
 
-                auto sphere = CreateObject<ModelObject>("sphere.obj");
-                sphere->GetTransform().translate = {
-                    originX + col * kSpacing,
-                    originY + row * kSpacing,
-                    0.0f
-                };
-                sphere->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-                sphere->SetPBRParameters(metallic, roughness, 1.0f);
-                sphere->SetIBLEnabled(true);
-                sphere->SetIBLIntensity(1.0f);
-                sphere->SetActive(true);
-            }
-        }
+        //        auto sphere = CreateObject<ModelObject>("sphere.obj");
+        //        sphere->GetTransform().translate = {
+        //            originX + col * kSpacing,
+        //            originY + row * kSpacing,
+        //            0.0f
+        //        };
+        //        sphere->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+        //        sphere->SetPBRParameters(metallic, roughness, 1.0f);
+        //        sphere->SetIBLEnabled(true);
+        //        sphere->SetIBLIntensity(1.0f);
+        //        sphere->SetActive(true);
+        //    }
+        //}
 
     }
 
