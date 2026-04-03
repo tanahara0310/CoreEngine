@@ -1319,6 +1319,7 @@
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiAll.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiWidgets.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraGameViewControlModule.h" />
+    <ClInclude Include="Engine\Src\Math\Frustum.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">
