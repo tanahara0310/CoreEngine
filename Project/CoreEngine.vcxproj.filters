@@ -1361,6 +1361,24 @@
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
     <None Include=".github\copilot-instructions.md" />
     <None Include="Engine\Src\ObjectCommon\README.md" />
+    <None Include="Docs\README.md" />
+    <None Include="Docs\Core\Framework.md" />
+    <None Include="Docs\Core\EngineSystem.md" />
+    <None Include="Docs\Scene\SceneManager.md" />
+    <None Include="Docs\GameObject\GameObject.md" />
+    <None Include="Docs\GameObject\ModelGameObject.md" />
+    <None Include="Docs\GameObject\SpriteObject.md" />
+    <None Include="Docs\GameObject\WorldTransform.md" />
+    <None Include="Docs\Graphics\TextureManager.md" />
+    <None Include="Docs\Graphics\ModelManager.md" />
+    <None Include="Docs\Graphics\Lighting.md" />
+    <None Include="Docs\Input\Input.md" />
+    <None Include="Docs\Audio\SoundManager.md" />
+    <None Include="Docs\Camera\CameraManager.md" />
+    <None Include="Docs\Collision\Collision.md" />
+    <None Include="Docs\Particle\ParticleSystem.md" />
+    <None Include="Docs\Math\MathCore.md" />
+    <None Include="Docs\Utility\Utility.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">
