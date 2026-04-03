@@ -241,8 +241,8 @@ namespace CoreEngine
         // リリースカメラを作成して登録（斜め上から俯瞰する視点）
         auto releaseCamera = std::make_unique<Camera>();
         releaseCamera->Initialize(dxCommon->GetDevice());
-        releaseCamera->SetTranslate({ 0.0f, 24.0f, -24.0f });
-        releaseCamera->SetRotate({ 0.8f, 0.0f, 0.0f });
+        releaseCamera->SetTranslate({ 0.0f, 0.0f, -30.0f });
+        releaseCamera->SetRotate({ 0.0f, 0.0f, 0.0f });
 
         cameraManager_->RegisterCamera("Release", std::move(releaseCamera));
 
@@ -272,6 +272,12 @@ namespace CoreEngine
     {
         if (!cameraManager_) {
             return {};
+        }
+
+        // CameraManager 側のオーバーライドが有効であれば最優先で使用する
+        const std::string& overrideName = cameraManager_->GetGameViewCameraOverride();
+        if (!overrideName.empty() && cameraManager_->GetCamera(overrideName)) {
+            return overrideName;
         }
 
         if (!gameViewCameraName_.empty() && cameraManager_->GetCamera(gameViewCameraName_)) {

@@ -446,6 +446,7 @@
     <ClCompile Include="Engine\Src\ObjectCommon\Model\ModelGameObject.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraGameViewControlModule.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Src\WinApp\WinApp.h">
@@ -1317,6 +1318,7 @@
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Widgets\ImGuiWidgets.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiAll.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiWidgets.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraGameViewControlModule.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Engine\Src\Particle\README.md">

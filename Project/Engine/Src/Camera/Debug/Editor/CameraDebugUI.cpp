@@ -5,6 +5,7 @@
 #include "Module/CameraListEditorModule.h"
 #include "Module/CameraParametersEditorModule.h"
 #include "Module/CameraTransformEditorModule.h"
+#include "Module/CameraGameViewControlModule.h"
 
 #ifdef USE_IMGUI
 
@@ -30,6 +31,7 @@ namespace CoreEngine {
             RegisterModule(std::make_unique<CameraTransformEditorModule>());
             RegisterModule(std::make_unique<CameraFollowEditorModule>());
             RegisterModule(std::make_unique<CameraParametersEditorModule>());
+            RegisterModule(std::make_unique<CameraGameViewControlModule>());
             RegisterModule(std::make_unique<CameraKeyframeEditorModule>());
             RegisterModule(std::make_unique<CameraClipPlayerModule>());
         }
