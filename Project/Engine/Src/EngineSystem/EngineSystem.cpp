@@ -83,6 +83,9 @@ namespace CoreEngine
         // ImGuiマネージャークラスの初期化
         imGui_->Initialize(winApp_->GetHwnd(), GetComponent<DirectXCommon>());
 
+        // GPU タイムスタンププロファイラーの初期化
+        gpuProfiler_.Initialize(GetComponent<DirectXCommon>()->GetDevice());
+
         // ゲームデバッグUIの初期化（DockingUIを渡す）
         gameDebugUI_->Initialize(this, imGui_->GetDockingUI());
 
@@ -112,6 +115,9 @@ namespace CoreEngine
     void EngineSystem::Finalize()
     {
 #ifdef USE_IMGUI
+        // プロファイラーの終了処理（ImGui より先に解放）
+        gpuProfiler_.Finalize();
+
         // ImGuiの終了処理
         imGui_->Finalize();
 #endif // USE_IMGUI
@@ -279,7 +285,24 @@ namespace CoreEngine
             previousOutput = pass->GetOutput();
             };
 
-        executePass(renderPipeline_->GetPass<ShadowMapPass>());
+#ifdef USE_IMGUI
+        // フレームインデックスを取得してプロファイラーをリセット
+        const UINT currentFrameIndex = dx ? dx->GetSwapChain()->GetCurrentBackBufferIndex() : 0;
+        ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
+        gpuProfiler_.NewFrame(currentFrameIndex);
+
+        // フレーム全体の GPU / CPU 計測開始
+        gpuProfiler_.BeginCpuTimestamp(GpuTimestampSlot::Total);
+        gpuProfiler_.BeginGpuTimestamp(GpuTimestampSlot::Total, cmdList);
+#endif
+
+        // Shadow Pass
+        {
+#ifdef USE_IMGUI
+            GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::ShadowPass, cmdList);
+#endif
+            executePass(renderPipeline_->GetPass<ShadowMapPass>());
+        }
 
 #ifdef USE_IMGUI
         // SceneView を GBufferPass より前に描画する。
@@ -290,6 +313,7 @@ namespace CoreEngine
         // skipOpaqueModelsInForward_ を一時的に無効化して不透明モデルも表示させる。
         if (sceneManager_ && render) {
             if (auto* sceneViewTarget = render->GetRenderTarget("SceneView")) {
+                GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::SceneView, cmdList);
                 if (renderManager) renderManager->SetSkipOpaqueMeshInForwardPass(false);
                 sceneViewTarget->Begin(dx->GetCommandList());
                 sceneManager_->DrawSceneView();
@@ -304,23 +328,71 @@ namespace CoreEngine
         }
 #endif // USE_IMGUI
 
-        executePass(renderPipeline_->GetPass<GBufferPass>());
-        executePass(renderPipeline_->GetPass<DeferredLightingPass>());
-        executePass(renderPipeline_->GetPass<GeometryPass>());
-        executePass(renderPipeline_->GetPass<PostEffectPass>());
-        executePass(renderPipeline_->GetPass<BackBufferPass>());
+        {
+#ifdef USE_IMGUI
+            GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::GBufferPass, cmdList);
+#endif
+            executePass(renderPipeline_->GetPass<GBufferPass>());
+        }
+
+        {
+#ifdef USE_IMGUI
+            GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::DeferredLighting, cmdList);
+#endif
+            executePass(renderPipeline_->GetPass<DeferredLightingPass>());
+        }
+
+        {
+#ifdef USE_IMGUI
+            GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::GeometryPass, cmdList);
+#endif
+            executePass(renderPipeline_->GetPass<GeometryPass>());
+        }
+
+        {
+#ifdef USE_IMGUI
+            GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::PostEffect, cmdList);
+#endif
+            executePass(renderPipeline_->GetPass<PostEffectPass>());
+        }
+        {
+#ifdef USE_IMGUI
+            GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::BackBufferPass, cmdList);
+#endif
+            executePass(renderPipeline_->GetPass<BackBufferPass>());
+        }
 
 #ifdef USE_IMGUI
         // ImGuiの描画コマンドを積む
-        if (imGui_) {
-            imGui_->Draw();
+        {
+            GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::ImGuiDraw, cmdList);
+            if (imGui_) {
+                imGui_->Draw();
+            }
         }
+
+        // フレーム全体の GPU / CPU 計測終了 → コマンドリストを Close する前に解決
+        gpuProfiler_.EndCpuTimestamp(GpuTimestampSlot::Total);
+        gpuProfiler_.EndGpuTimestamp(GpuTimestampSlot::Total, cmdList);
+        gpuProfiler_.ResolveAll(cmdList, currentFrameIndex);
 #endif // USE_IMGUI
 
         // フレームの最終処理（バックバッファ終了、コマンド実行、Present）
         if (render) {
             render->FinalizeFrame();
         }
+
+#ifdef USE_IMGUI
+        // FinalizeFrame() 完了後 (WaitForFrame 済み) に前フレームの結果を読み取る
+        if (dx) {
+            const UINT nextFrameIndex = dx->GetSwapChain()->GetCurrentBackBufferIndex();
+            gpuProfiler_.ReadResults(dx->GetCommandQueue(), nextFrameIndex);
+
+            if (auto* dockingUI = GetDockingUI()) {
+                dockingUI->SetTimingData(gpuProfiler_.GetResults());
+            }
+        }
+#endif // USE_IMGUI
     }
 
     // ──────────────────────────────────────────────────────────

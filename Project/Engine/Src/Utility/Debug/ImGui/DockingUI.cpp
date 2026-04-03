@@ -275,13 +275,13 @@ namespace CoreEngine
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
 
-        if (ImGui::Begin("##PlaybackToolbar", nullptr, toolbarFlags)) {
-                    if (gizmoIconsLoaded_) {
-            #ifdef USE_IMGUI
-                        ObjectSelector* objectSelector = sceneViewport_ ? sceneViewport_->GetObjectSelector() : nullptr;
-            #else
-                        ObjectSelector* objectSelector = nullptr;
-            #endif
+        if (auto toolbar = UI::Scope::WindowScope("##PlaybackToolbar", nullptr, toolbarFlags)) {
+            if (gizmoIconsLoaded_) {
+#ifdef USE_IMGUI
+                ObjectSelector* objectSelector = sceneViewport_ ? sceneViewport_->GetObjectSelector() : nullptr;
+#else
+                ObjectSelector* objectSelector = nullptr;
+#endif
 
                 constexpr float kIconSize = 18.0f;
                 constexpr float kPadding = 3.0f;
@@ -313,18 +313,16 @@ namespace CoreEngine
                         }
                         ImGui::PopStyleColor(3);
 
-                        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                            ImGui::SetTooltip("%s", tooltip);
-                        }
+                        UI::Tooltip(tooltip);
                         };
 
                     drawGizmoButton("##GizmoTranslateToolbar", gizmoTranslateIcon_, Gizmo::Mode::Translate, "移動 [W]");
-                    ImGui::SameLine(0, kSpacing);
+                    UI::SameLine(0.0f, kSpacing);
                     drawGizmoButton("##GizmoRotateToolbar", gizmoRotateIcon_, Gizmo::Mode::Rotate, "回転 [E]");
-                    ImGui::SameLine(0, kSpacing);
+                    UI::SameLine(0.0f, kSpacing);
                     drawGizmoButton("##GizmoScaleToolbar", gizmoScaleIcon_, Gizmo::Mode::Scale, "拡縮 [R]");
 
-                    ImGui::SameLine(0, kGroupSpacing);
+                    UI::SameLine(0.0f, kGroupSpacing);
                 } else {
                     ImGui::SetCursorPosX(8.0f);
                 }
@@ -347,15 +345,12 @@ namespace CoreEngine
                     }
                     ImGui::PopStyleColor(3);
 
-                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
-                        ImGui::SetTooltip(isGridVisible_ ? "グリッドを非表示 (Hide Grid)" : "グリッドを表示 (Show Grid)");
-                    }
+                    UI::Tooltip(isGridVisible_ ? "グリッドを非表示 (Hide Grid)" : "グリッドを表示 (Show Grid)");
                 }
 
                 ImGui::PopStyleVar(2);
             }
         }
-        ImGui::End();
 
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(3);
@@ -397,37 +392,37 @@ namespace CoreEngine
         }
         ImGui::PushStyleColor(ImGuiCol_WindowBg, barBgColor);
 
-        if (ImGui::Begin("##StatusBar", nullptr, flags)) {
+        if (auto statusBar = UI::Scope::WindowScope("##StatusBar", nullptr, flags)) {
             constexpr float kFpsIconSize = 16.0f;
             constexpr float kDeltaTimeIconSize = 32.0f;
             constexpr float kSeparatorSpacing = 16.0f;
             const float windowHeight = ImGui::GetWindowHeight();
             const float textCenterY = (windowHeight - ImGui::GetTextLineHeight()) * 0.5f;
 
-            // FPSアイコン
+            // FPS アイコン
             if (fpsIconLoaded_) {
                 ImGui::SetCursorPosY((windowHeight - kFpsIconSize) * 0.5f);
                 ImGui::Image((ImTextureID)fpsIcon_.ptr, ImVec2(kFpsIconSize, kFpsIconSize));
-                ImGui::SameLine(0, 6.0f);
+                UI::SameLine(0.0f, 6.0f);
             }
 
-            // FPSテキスト（白固定）
+            // FPS テキスト
             ImGui::SetCursorPosY(textCenterY);
             ImGui::Text("[frame per second]: %.1f fps", fps);
 
             // セパレーター
-            ImGui::SameLine(0, kSeparatorSpacing);
+            UI::SameLine(0.0f, kSeparatorSpacing);
             ImGui::SetCursorPosY(textCenterY);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
-            ImGui::TextUnformatted("|");
+            UI::Label("|");
             ImGui::PopStyleColor();
 
             // デルタタイムアイコン
-            ImGui::SameLine(0, kSeparatorSpacing);
+            UI::SameLine(0.0f, kSeparatorSpacing);
             if (deltaTimeIconLoaded_) {
                 ImGui::SetCursorPosY((windowHeight - kDeltaTimeIconSize) * 0.5f);
                 ImGui::Image((ImTextureID)deltaTimeIcon_.ptr, ImVec2(kDeltaTimeIconSize, kDeltaTimeIconSize));
-                ImGui::SameLine(0, 6.0f);
+                UI::SameLine(0.0f, 6.0f);
             }
 
             // デルタタイムテキスト
@@ -435,8 +430,109 @@ namespace CoreEngine
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.85f, 1.0f, 1.0f));
             ImGui::Text("[exec speed / frame]: %.4f sec", deltaTimeMs * 0.001f);
             ImGui::PopStyleColor();
+
+            // ── ホバー時に CPU / GPU タイムスタンプを表示 ─────────
+            if (ImGui::IsWindowHovered() && !timingData_.empty())
+            {
+                if (auto tooltip = UI::Scope::TooltipScope())
+                {
+                    ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Frame Timing");
+                    UI::SameLine();
+                    UI::Hint("(1-frame delay)");
+                    UI::Separator();
+                    UI::Spacing();
+
+                    // 1フレームバジェット（60fps = 16.67ms）を基準にバーを描画
+                    constexpr float kFrameBudgetMs = 1000.0f / 60.0f;
+
+                    constexpr ImGuiTableFlags tableFlags =
+                        ImGuiTableFlags_BordersInnerV
+                        | ImGuiTableFlags_BordersOuter
+                        | ImGuiTableFlags_RowBg;
+
+                    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(8.0f, 4.0f));
+                    if (auto table = UI::Scope::TableScope("##timing_table", 4, tableFlags))
+                    {
+                        ImGui::TableSetupColumn("Pass", ImGuiTableColumnFlags_WidthStretch);
+                        ImGui::TableSetupColumn("CPU (ms)", ImGuiTableColumnFlags_WidthFixed, 68.0f);
+                        ImGui::TableSetupColumn("GPU (ms)", ImGuiTableColumnFlags_WidthFixed, 68.0f);
+                        ImGui::TableSetupColumn("Budget", ImGuiTableColumnFlags_WidthFixed, 100.0f);
+                        ImGui::TableHeadersRow();
+
+                        for (size_t i = 0; i < timingData_.size(); ++i)
+                        {
+                            const auto& slot = timingData_[i];
+                            const bool  isTotal = (i + 1 == timingData_.size());
+
+                            ImGui::TableNextRow();
+
+                            // ── Total 行は背景色で強調 ─────────────────
+                            if (isTotal)
+                            {
+                                constexpr ImU32 kTotalBg = IM_COL32(40, 40, 48, 255);
+                                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, kTotalBg);
+                                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, kTotalBg);
+                            }
+
+                            // ── GPU 時間に基づく色 ──────────────────────
+                            const ImVec4 gpuColor =
+                                (slot.gpuMs > 8.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)   // >8ms  → 赤
+                                : (slot.gpuMs > 4.0f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)   // >4ms  → 黄
+                                : ImVec4(0.45f, 0.90f, 0.45f, 1.0f);  // ≤4ms  → 緑
+
+                            // ── Pass 名（左端にカラードット）──────────────
+                            ImGui::TableSetColumnIndex(0);
+                            {
+                                const ImVec2 dotPos = {
+                                    ImGui::GetCursorScreenPos().x + 4.0f,
+                                    ImGui::GetCursorScreenPos().y + ImGui::GetTextLineHeight() * 0.5f
+                                };
+                                ImGui::GetWindowDrawList()->AddCircleFilled(
+                                    dotPos, 4.0f,
+                                    ImGui::ColorConvertFloat4ToU32(gpuColor));
+                                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 14.0f);
+                            }
+                            if (isTotal)
+                                ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%s", slot.name);
+                            else
+                                UI::Label(slot.name);
+
+                            // ── CPU (ms)（閾値色付き）────────────────────
+                            ImGui::TableSetColumnIndex(1);
+                            {
+                                const ImVec4 cpuColor =
+                                    (slot.cpuMs > 2.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)   // >2ms → 赤
+                                    : (slot.cpuMs > 0.5f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)   // >0.5ms → 黄
+                                    : ImVec4(0.75f, 0.75f, 0.75f, 1.0f);  // ≤0.5ms → 白系
+                                ImGui::TextColored(cpuColor, "%.3f", slot.cpuMs);
+                            }
+
+                            // ── GPU (ms) ──────────────────────────────────
+                            ImGui::TableSetColumnIndex(2);
+                            ImGui::TextColored(gpuColor, "%.3f", slot.gpuMs);
+
+                            // ── Budget バー（16.67ms 基準の絶対値）─────────
+                            ImGui::TableSetColumnIndex(3);
+                            {
+                                const float ratio =
+                                    slot.gpuMs / kFrameBudgetMs < 1.0f
+                                    ? slot.gpuMs / kFrameBudgetMs : 1.0f;
+                                const ImVec4 barColor =
+                                    (slot.gpuMs > 8.0f) ? ImVec4(0.9f, 0.25f, 0.25f, 1.0f)
+                                    : (slot.gpuMs > 4.0f) ? ImVec4(0.9f, 0.70f, 0.10f, 1.0f)
+                                    : ImVec4(0.20f, 0.75f, 0.30f, 1.0f);
+                                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, barColor);
+                                const auto overlay = std::format("{:.1f}%", ratio * 100.0f);
+                                UI::ProgressBar(ratio,
+                                    ImVec2(-FLT_MIN, ImGui::GetTextLineHeight()), overlay.c_str());
+                                ImGui::PopStyleColor();
+                            }
+                        }
+                    }
+                    ImGui::PopStyleVar();
+                }
+            }
         }
-        ImGui::End();
 
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(3);
