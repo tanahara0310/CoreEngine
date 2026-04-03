@@ -40,13 +40,13 @@ namespace CoreEngine
 
         // HDRファイルを読み込み（自動的にキューブマップDDSに変換される）
         TextureManager::LoadedTexture environmentMapTexture;
-        environmentMapTexture = textureManager.Load("citrus_orchard_road_puresky_4k.hdr");
+        environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
 
         // ===== IBLシステムの初期化 =====
         IBLSystem::SetupParams iblParams;
         iblParams.environmentMap = environmentMapTexture.texture.Get();
         iblParams.environmentMapSRV = environmentMapTexture.gpuHandle;
-        iblParams.environmentKey = "citrus_orchard_road_puresky_4k.hdr";
+        iblParams.environmentKey = "kloppenheim_06_puresky_4k.hdr";
         iblParams.irradianceSize = 128;
         iblParams.prefilteredSize = 256;
         iblParams.brdfLUTSize = 512;
