@@ -40,9 +40,10 @@ namespace CoreEngine {
 
         /// @brief 次のウィジェットを同じ行に配置する（SameLine ラッパー）
         /// @param offsetFromStartX  行頭からのオフセット（0.0f = 直前の項目の直後）
-        inline void SameLine(float offsetFromStartX = 0.0f)
+        /// @param spacing           アイテム間隔（-1.0f = スタイルのデフォルト値を使用）
+        inline void SameLine(float offsetFromStartX = 0.0f, float spacing = -1.0f)
         {
-            ImGui::SameLine(offsetFromStartX);
+            ImGui::SameLine(offsetFromStartX, spacing);
         }
 
         /// @brief 垂直方向の余白を追加する（Spacing ラッパー）

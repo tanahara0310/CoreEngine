@@ -10,6 +10,7 @@
 #ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiManager.h"
 #include "Utility/Debug/GameDebugUI.h"
+#include "Graphics/Common/GpuTimestampProfiler.h"
 #endif
 
 class WinApp;
@@ -187,6 +188,7 @@ private:
     // デバッグ機能（デバッグビルドのみ）
     std::unique_ptr<ImGuiManager> imGui_ = std::make_unique<ImGuiManager>(); // ImGuiマネージャークラスのインスタンス
     std::unique_ptr<GameDebugUI> gameDebugUI_ = std::make_unique<GameDebugUI>(); // ゲームデバッグUIのインスタンス
+    GpuTimestampProfiler gpuProfiler_; // GPU / CPU タイムスタンププロファイラー
 #endif // USE_IMGUI
 
     SceneManager* sceneManager_ = nullptr;

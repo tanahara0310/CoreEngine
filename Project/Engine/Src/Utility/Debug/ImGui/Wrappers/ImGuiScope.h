@@ -131,6 +131,30 @@ namespace CoreEngine {
                 ~GroupScope() { ImGui::EndGroup(); }
             };
 
+            /// @brief BeginTable/EndTable を RAII で管理する
+            /// @note if (auto t = TableScope("id", 3)) { ImGui::TableSetupColumn(...); ... }
+            struct TableScope {
+                const bool open;
+                explicit TableScope(const char* str_id,
+                    int column,
+                    ImGuiTableFlags flags  = 0,
+                    ImVec2 outer_size      = ImVec2(0.0f, 0.0f),
+                    float  inner_width     = 0.0f)
+                    : open(ImGui::BeginTable(str_id, column, flags, outer_size, inner_width)) {
+                }
+                ~TableScope() { if (open) ImGui::EndTable(); }
+                explicit operator bool() const { return open; }
+            };
+
+            /// @brief BeginTooltip/EndTooltip を RAII で管理する
+            /// @note if (auto tt = TooltipScope()) { ... }
+            struct TooltipScope {
+                const bool open;
+                explicit TooltipScope() : open(ImGui::BeginTooltip()) {}
+                ~TooltipScope() { if (open) ImGui::EndTooltip(); }
+                explicit operator bool() const { return open; }
+            };
+
         } // namespace Scope
     } // namespace UI
 } // namespace CoreEngine
