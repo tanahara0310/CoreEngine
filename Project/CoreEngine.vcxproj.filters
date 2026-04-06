@@ -73,6 +73,9 @@
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.cpp">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp">
       <Filter>Engine\Src\Graphics\Material\Debug</Filter>
     </ClCompile>
@@ -569,82 +572,6 @@
     <ClCompile Include="Application\Src\Sample\TestGameObject\Plane.cpp">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom.cpp">
-      <Filter>Engine\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\Debug\Editor\CameraDebugUI.cpp" />
-    <ClCompile Include="Engine\Src\Camera\ICamera.cpp" />
-    <ClCompile Include="Engine\Src\Camera\CameraPresetManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\TextureManager.cpp" />
-    <ClCompile Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Line\LineManager.cpp" />
-    <ClCompile Include="Engine\Src\Particle\Modules\ShapeModule.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Light\LightBufferManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Light\LightDebugVisualizer.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Light\LightManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Shadow\ShadowMapManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\Plane.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\IBL\IBLGenerator.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\IBL\IBLManager.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\ModelObject.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionData.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.cpp" />
-    <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
-    <ClCompile Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp" />
-    <ClCompile Include="Engine\Src\Scene\UndoRedoHistory.cpp" />
-    <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
-    <ClCompile Include="Engine\Src\Scene\SceneDebugEditor.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\GeometryPass.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureLoadExecutor.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraTransformEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
-    <ClCompile Include="Engine\Src\ObjectCommon\Model\ModelGameObject.cpp" />
-    <ClCompile Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h">
@@ -739,6 +666,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h">
       <Filter>Engine\Src\Graphics\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h">
+      <Filter>Engine\Src\Graphics\Common</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h">
       <Filter>Engine\Src\Graphics\IBL</Filter>
@@ -1379,114 +1309,6 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom.h">
-      <Filter>Engine\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\CameraDebugUI.h" />
-    <ClInclude Include="Engine\Src\Camera\ICamera.h" />
-    <ClInclude Include="Engine\Src\Camera\CameraPresetManager.h" />
-    <ClInclude Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.h" />
-    <ClInclude Include="Engine\Src\Graphics\Line\LineManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve.h" />
-    <ClInclude Include="Engine\Src\Graphics\Light\LightBufferManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\Light\LightDebugVisualizer.h" />
-    <ClInclude Include="Engine\Src\Graphics\Shadow\ShadowMapManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h" />
-    <ClInclude Include="Engine\Src\Graphics\IBL\IBLGenerator.h" />
-    <ClInclude Include="Engine\Src\Graphics\IBL\IBLManager.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\ModelObject.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Gizmo.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.h" />
-    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionData.h" />
-    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.h" />
-    <ClInclude Include="Engine\Graphics\Shader\ShaderReflectionUsageExample.h" />
-    <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h" />
-    <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.h" />
-    <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />
-    <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
-    <ClInclude Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h" />
-    <ClInclude Include="Engine\Src\Scene\UndoRedoHistory.h" />
-    <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
-    <ClInclude Include="Engine\Src\Scene\SceneDebugEditor.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\MaterialInstance.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\IMaterial.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\MaterialAsset.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\MaterialConstants.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\ModelData.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Node.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinCluster.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteMaterial.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
-    <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
-    <ClInclude Include="Engine\Src\Graphics\Asset\AssetInfo.h" />
-    <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
-    <ClInclude Include="Engine\Src\Graphics\Asset\AssetDatabase.h" />
-    <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPass.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\GeometryPass.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetDescriptor.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureImageProcessor.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Gpu\TextureGpuUploader.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadExecutor.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureDdsCacheGenerator.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
-    <ClInclude Include="Engine\Src\Graphics\Texture\Runtime\TextureLoadedResource.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraEditorContext.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\ICameraEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraListEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraTransformEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraParametersEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraKeyframeEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\CameraClipPlayerEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraClipPlayerModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraFollowEditorModule.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\Editor\Module\CameraSequenceAssetIO.h" />
-    <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\ModelRenderContext.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h" />
-    <ClInclude Include="Engine\Src\ObjectCommon\IObjectSpawner.h" />
-    <ClInclude Include="Engine\Src\ObjectCommon\Model\ModelGameObject.h" />
-    <ClInclude Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\GameObjectDebugAccess.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\LivePPAgent.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiScope.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiInput.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiLayout.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Widgets\ImGuiWidgets.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiAll.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiWidgets.h" />
-    <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin">
@@ -1498,6 +1320,60 @@
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin">
       <Filter>Application\Assets\SampleAssets\simpleSkin</Filter>
     </None>
+    <None Include="Docs\Audio\SoundManager.md">
+      <Filter>Docs\Audio</Filter>
+    </None>
+    <None Include="Docs\Camera\CameraManager.md">
+      <Filter>Docs\Camera</Filter>
+    </None>
+    <None Include="Docs\Collision\Collision.md">
+      <Filter>Docs\Collision</Filter>
+    </None>
+    <None Include="Docs\Core\EngineSystem.md">
+      <Filter>Docs\Core</Filter>
+    </None>
+    <None Include="Docs\Core\Framework.md">
+      <Filter>Docs\Core</Filter>
+    </None>
+    <None Include="Docs\GameObject\GameObject.md">
+      <Filter>Docs\GameObject</Filter>
+    </None>
+    <None Include="Docs\GameObject\ModelGameObject.md">
+      <Filter>Docs\GameObject</Filter>
+    </None>
+    <None Include="Docs\GameObject\SpriteObject.md">
+      <Filter>Docs\GameObject</Filter>
+    </None>
+    <None Include="Docs\GameObject\WorldTransform.md">
+      <Filter>Docs\GameObject</Filter>
+    </None>
+    <None Include="Docs\Graphics\Lighting.md">
+      <Filter>Docs\Graphics</Filter>
+    </None>
+    <None Include="Docs\Graphics\ModelManager.md">
+      <Filter>Docs\Graphics</Filter>
+    </None>
+    <None Include="Docs\Graphics\TextureManager.md">
+      <Filter>Docs\Graphics</Filter>
+    </None>
+    <None Include="Docs\Input\Input.md">
+      <Filter>Docs\Input</Filter>
+    </None>
+    <None Include="Docs\Math\MathCore.md">
+      <Filter>Docs\Math</Filter>
+    </None>
+    <None Include="Docs\Particle\ParticleSystem.md">
+      <Filter>Docs\Particle</Filter>
+    </None>
+    <None Include="Docs\README.md">
+      <Filter>Docs</Filter>
+    </None>
+    <None Include="Docs\Scene\SceneManager.md">
+      <Filter>Docs\Scene</Filter>
+    </None>
+    <None Include="Docs\Utility\Utility.md">
+      <Filter>Docs\Utility</Filter>
+    </None>
     <None Include="Engine\Src\ObjectCommon\README.md">
       <Filter>Engine\Src\ObjectCommon</Filter>
     </None>
@@ -1507,39 +1383,6 @@
     <None Include="Engine\Src\Particle\README.md">
       <Filter>Engine\Src\Particle</Filter>
     </None>
-    <None Include="Scripts\ConvertToTabs.ps1" />
-    <None Include="Scripts\ConvertToCRLF.ps1" />
-    <None Include="Project\Assets\Shaders\Common\LightStructures.hlsli" />
-    <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
-    <None Include="Docs\ShadowSystemImplementation.md" />
-    <None Include="Engine\Graphics\Material\README_MaterialSystem.md" />
-    <None Include="Script\convert-tabs-to-spaces.ps1" />
-    <None Include="Engine\Graphics\RootSignature\RootSignatureManager.h.new" />
-    <None Include="Application\Assets\SampleAssets\AnimatedCube\AnimatedCube.bin" />
-    <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin" />
-    <None Include="Application\Assets\SampleAssets\human\walk.bin" />
-    <None Include="Application\Assets\SampleAssets\PblTestModel\ABeautifulGame.bin" />
-    <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
-    <None Include=".github\copilot-instructions.md" />
-    <None Include="Engine\Src\ObjectCommon\README.md" />
-    <None Include="Docs\README.md" />
-    <None Include="Docs\Core\Framework.md" />
-    <None Include="Docs\Core\EngineSystem.md" />
-    <None Include="Docs\Scene\SceneManager.md" />
-    <None Include="Docs\GameObject\GameObject.md" />
-    <None Include="Docs\GameObject\ModelGameObject.md" />
-    <None Include="Docs\GameObject\SpriteObject.md" />
-    <None Include="Docs\GameObject\WorldTransform.md" />
-    <None Include="Docs\Graphics\TextureManager.md" />
-    <None Include="Docs\Graphics\ModelManager.md" />
-    <None Include="Docs\Graphics\Lighting.md" />
-    <None Include="Docs\Input\Input.md" />
-    <None Include="Docs\Audio\SoundManager.md" />
-    <None Include="Docs\Camera\CameraManager.md" />
-    <None Include="Docs\Collision\Collision.md" />
-    <None Include="Docs\Particle\ParticleSystem.md" />
-    <None Include="Docs\Math\MathCore.md" />
-    <None Include="Docs\Utility\Utility.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Application">
@@ -1577,6 +1420,42 @@
     </Filter>
     <Filter Include="Application\Src\Sample\TestGameObject">
       <UniqueIdentifier>{554C1F16-770E-445F-8F03-2D6704FDBBAE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs">
+      <UniqueIdentifier>{43DD00BA-76AE-43FF-95E2-E05262653932}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Audio">
+      <UniqueIdentifier>{52E6D764-C198-42E1-B926-27D680C3ACB9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Camera">
+      <UniqueIdentifier>{1A88CAEA-4C40-423A-A69D-4929EE3E25A5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Collision">
+      <UniqueIdentifier>{78C3DADE-00EF-49A3-99F1-A9185B772A63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Core">
+      <UniqueIdentifier>{07E3363A-FFA5-407C-9082-852D2D8F825B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\GameObject">
+      <UniqueIdentifier>{281743B5-2832-4009-931D-22748855F802}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Graphics">
+      <UniqueIdentifier>{B7465F11-9027-4E42-9346-17BEEB87E2A0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Input">
+      <UniqueIdentifier>{9688059E-C1C8-415A-A5E3-D4B9C60FC16D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Math">
+      <UniqueIdentifier>{31A3E4D3-D800-40EA-BC6D-F68D4F0D55A9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Particle">
+      <UniqueIdentifier>{1D064B4B-E9E2-4831-913D-BC4D622DBB11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Scene">
+      <UniqueIdentifier>{1B654D51-C7D5-4AB0-876E-9BBEE00F463B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Utility">
+      <UniqueIdentifier>{634B9633-BFDF-4537-BC09-2CC3AB116EAD}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine">
       <UniqueIdentifier>{f6f7eb83-ae86-4048-be21-0fc749f83aa2}</UniqueIdentifier>

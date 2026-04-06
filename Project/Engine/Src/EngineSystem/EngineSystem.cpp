@@ -1,4 +1,5 @@
 #include "EngineSystem.h"
+#include <cstring>
 
 
 // ユーティリティ
@@ -305,13 +306,28 @@ namespace CoreEngine
         }
 
 #ifdef USE_IMGUI
-        // SceneView を GBufferPass より前に描画する。
-        // SceneView::Begin() は共有 DSV をクリアするため、後に実行すると
-        // GBufferPass が書いたゲーム用深度値を破壊し、GeometryPass での
-        // 深度テストが正しく行われなくなる（デバッグラインが Game view に透過する原因）。
-        // SceneView は全オブジェクトを Forward で描画するため、
-        // skipOpaqueModelsInForward_ を一時的に無効化して不透明モデルも表示させる。
-        if (sceneManager_ && render) {
+        // SceneView 再描画判定:
+        // - Scene カメラが動いた → 即時再描画（インタラクティブな操作をフレーム遅延なく反映）
+        // - カメラ静止中 → kSceneViewMaxSkipFrames フレームに 1 回再描画（アニメーション対応）
+        // 静止中は前フレームの SceneView RT をそのまま表示継続し、GPU 再描画をスキップする。
+        // SceneView は GBufferPass より前に実行（共有 DSV のクリア競合回避）。
+        bool sceneViewDirty = false;
+        if (imGui_->IsSceneViewVisible() && sceneManager_) {
+            if (const ICamera* sceneCamera = sceneManager_->GetSceneViewCamera()) {
+                const Matrix4x4& currentMat = sceneCamera->GetViewMatrix();
+                if (std::memcmp(&currentMat, &prevSceneCameraViewMatrix_, sizeof(Matrix4x4)) != 0) {
+                    prevSceneCameraViewMatrix_ = currentMat;
+                    sceneViewSkipCounter_ = 0;
+                    sceneViewDirty = true;
+                }
+            }
+            if (!sceneViewDirty && ++sceneViewSkipCounter_ >= kSceneViewMaxSkipFrames) {
+                sceneViewSkipCounter_ = 0;
+                sceneViewDirty = true;
+            }
+        }
+
+        if (sceneManager_ && render && sceneViewDirty) {
             if (auto* sceneViewTarget = render->GetRenderTarget("SceneView")) {
                 GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::SceneView, cmdList);
                 if (renderManager) renderManager->SetSkipOpaqueMeshInForwardPass(false);

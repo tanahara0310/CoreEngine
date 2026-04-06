@@ -1,4 +1,4 @@
-﻿#include "TextureLoadExecutor.h"
+#include "TextureLoadExecutor.h"
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"

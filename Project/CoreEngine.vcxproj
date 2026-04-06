@@ -628,7 +628,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin" />
     <None Include="Application\Assets\SampleAssets\human\walk.bin" />
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />
-    <None Include="Assets\Shaders\Common\ShadowQualitySettings.md" />
     <None Include="Docs\Audio\SoundManager.md" />
     <None Include="Docs\Camera\CameraManager.md" />
     <None Include="Docs\Collision\Collision.md" />
