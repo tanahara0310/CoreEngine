@@ -4,6 +4,7 @@
 #include <externals/DirectXTex/DirectXTex.h>
 #include <wrl.h>
 #include <string>
+#include <mutex>
 
 namespace CoreEngine
 {
@@ -31,5 +32,9 @@ namespace CoreEngine
             CoreEngine::DirectXCommon* dxCommon,
             const DirectX::ScratchImage& mipImages,
             const std::string& resolvedPath);
+
+    private:
+        // コマンドリスト・ディスクリプタヒープへの同時アクセスを防ぐ排他ロック
+        static std::mutex gpuUploadMutex_;
     };
 }

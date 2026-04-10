@@ -61,6 +61,7 @@ namespace CoreEngine
     void GpuTimestampProfiler::NewFrame(uint32_t frameIndex)
     {
         currentFrameIndex_ = frameIndex % kFrameCount;
+        activatedSlots_[currentFrameIndex_] = 0;
         for (uint32_t i = 0; i < kSlotCount; ++i)
         {
             cpuTimesMs_[currentFrameIndex_][i] = 0.0f;
@@ -70,6 +71,7 @@ namespace CoreEngine
     void GpuTimestampProfiler::BeginGpuTimestamp(GpuTimestampSlot slot, ID3D12GraphicsCommandList* cmdList)
     {
         if (!initialized_ || !cmdList) return;
+        activatedSlots_[currentFrameIndex_] |= (1u << static_cast<uint32_t>(slot));
         const uint32_t base = currentFrameIndex_ * kQueriesPerFrame;
         const uint32_t index = static_cast<uint32_t>(slot) * kQueriesPerSlot;
         cmdList->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, base + index);
@@ -86,12 +88,23 @@ namespace CoreEngine
     void GpuTimestampProfiler::ResolveAll(ID3D12GraphicsCommandList* cmdList, uint32_t frameIndex)
     {
         if (!initialized_ || !cmdList) return;
-        const uint32_t firstQuery = (frameIndex % kFrameCount) * kQueriesPerFrame;
-        cmdList->ResolveQueryData(
-            queryHeap_.Get(),
-            D3D12_QUERY_TYPE_TIMESTAMP,
-            firstQuery, kQueriesPerFrame,
-            readbackBuffers_[frameIndex % kFrameCount].Get(), 0);
+        const uint32_t bufIdx = frameIndex % kFrameCount;
+        const uint32_t base = bufIdx * kQueriesPerFrame;
+
+        // 実際に BeginGpuTimestamp されたスロットのみ resolve し、
+        // 未使用クエリの RESOLVE_QUERY_INVALID_QUERY_STATE を防ぐ。
+        for (uint32_t i = 0; i < kSlotCount; ++i)
+        {
+            if (!(activatedSlots_[bufIdx] & (1u << i))) continue;
+
+            const uint32_t firstQuery = base + i * kQueriesPerSlot;
+            const UINT64 destOffset = static_cast<UINT64>(i * kQueriesPerSlot) * sizeof(uint64_t);
+            cmdList->ResolveQueryData(
+                queryHeap_.Get(),
+                D3D12_QUERY_TYPE_TIMESTAMP,
+                firstQuery, kQueriesPerSlot,
+                readbackBuffers_[bufIdx].Get(), destOffset);
+        }
     }
 
     void GpuTimestampProfiler::ReadResults(ID3D12CommandQueue* commandQueue, uint32_t readFrameIndex)
@@ -114,11 +127,16 @@ namespace CoreEngine
         const uint64_t* ts = static_cast<const uint64_t*>(pData);
         for (uint32_t i = 0; i < kSlotCount; ++i)
         {
-            const uint64_t t0 = ts[i * kQueriesPerSlot];
-            const uint64_t t1 = ts[i * kQueriesPerSlot + 1];
             lastResults_[i].name = GetSlotName(static_cast<GpuTimestampSlot>(i));
-            lastResults_[i].gpuMs = (t1 >= t0) ? static_cast<float>((t1 - t0) * msPerTick) : 0.0f;
             lastResults_[i].cpuMs = cpuTimesMs_[bufIdx][i];
+
+            if (activatedSlots_[bufIdx] & (1u << i)) {
+                const uint64_t t0 = ts[i * kQueriesPerSlot];
+                const uint64_t t1 = ts[i * kQueriesPerSlot + 1];
+                lastResults_[i].gpuMs = (t1 >= t0) ? static_cast<float>((t1 - t0) * msPerTick) : 0.0f;
+            } else {
+                lastResults_[i].gpuMs = 0.0f;
+            }
         }
 
         const D3D12_RANGE writeRange = { 0, 0 };

@@ -370,6 +370,9 @@
     <ClCompile Include="Engine\Src\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp">
+      <Filter>Engine\Src\Threading</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Collision\CollisionUtils.cpp">
       <Filter>Engine\Src\Utility\Collision</Filter>
     </ClCompile>
@@ -1063,6 +1066,9 @@
     <ClInclude Include="Engine\Src\Scene\UndoRedoHistory.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Threading\ThreadPool.h">
+      <Filter>Engine\Src\Threading</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Collision\CollisionUtils.h">
       <Filter>Engine\Src\Utility\Collision</Filter>
     </ClInclude>
@@ -1636,6 +1642,9 @@
     </Filter>
     <Filter Include="Engine\Src\Scene">
       <UniqueIdentifier>{863EA1EF-7BCF-42DB-9258-C0D9FAE56DED}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Threading">
+      <UniqueIdentifier>{BA947100-DF5F-4273-BD5F-45D5B7B58B7B}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility">
       <UniqueIdentifier>{46B344B6-CF7F-4BA4-AD45-446450F55874}</UniqueIdentifier>

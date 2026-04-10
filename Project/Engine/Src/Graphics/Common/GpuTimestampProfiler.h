@@ -133,6 +133,9 @@ namespace CoreEngine
 
         uint32_t currentFrameIndex_ = 0;
 
+        // フレーム内で実際に BeginGpuTimestamp されたスロットを追跡するビットマスク
+        uint32_t activatedSlots_[kFrameCount] = {};
+
         // CPU タイム (ダブルバッファ: [frameIndex][slotIndex])
         std::chrono::high_resolution_clock::time_point cpuBegin_[kFrameCount][kSlotCount] = {};
         float cpuTimesMs_[kFrameCount][kSlotCount] = {};

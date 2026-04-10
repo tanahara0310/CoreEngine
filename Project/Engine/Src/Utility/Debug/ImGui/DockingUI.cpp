@@ -213,7 +213,14 @@ namespace CoreEngine
         }
 
         try {
-            // ツールバーアイコンを読み込む
+            // 全アイコンを並列ロードに投入する。
+            std::vector<std::string> iconPaths = {
+                "grid.png", "translate.png", "rotate.png", "scale.png",
+                "fps.png", "deltaTime.png"
+            };
+            texManager.Load(iconPaths);
+
+            // キャッシュ済みの結果を割り当てる。
             auto gridTex = texManager.Load("grid.png");
             auto gizmoTranslateTex = texManager.Load("translate.png");
             auto gizmoRotateTex = texManager.Load("rotate.png");

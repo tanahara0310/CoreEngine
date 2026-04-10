@@ -346,7 +346,13 @@ namespace CoreEngine
     {
         auto& textureManager = TextureManager::GetInstance();
 
-        // ディレクトリアイコンを読み込み
+        // 3つのアイコンを並列ロードに投入する。
+        std::vector<std::string> iconPaths = {
+            "directoryIcon.png", "pngIcon.png", "fileIcon.png"
+        };
+        textureManager.Load(iconPaths);
+
+        // ディレクトリアイコンを割り当て
         try {
             auto texture = textureManager.Load("directoryIcon.png");
             if (texture.texture) {
@@ -361,7 +367,7 @@ namespace CoreEngine
             directoryIconLoaded_ = false;
         }
 
-        // PNGアイコンを読み込み
+        // PNGアイコンを割り当て
         try {
             auto texture = textureManager.Load("pngIcon.png");
             if (texture.texture) {
@@ -376,7 +382,7 @@ namespace CoreEngine
             pngIconLoaded_ = false;
         }
 
-        // ファイルアイコンを読み込み（ファイル名のみ - AssetDatabaseが自動解決）
+        // ファイルアイコンを割り当て
         try {
             auto texture = textureManager.Load("fileIcon.png");
             if (texture.texture) {

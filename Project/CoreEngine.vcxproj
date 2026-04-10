@@ -300,6 +300,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Sample\SampleScene\TestScene\TestScene.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\WalkModelObject.cpp" />
     <ClCompile Include="Engine\Src\Scene\UndoRedoHistory.cpp" />
+    <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
     <ClCompile Include="Engine\Src\Utility\Collision\CollisionUtils.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp" />
@@ -536,6 +537,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Math\Quaternion\Quaternion.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\WalkModelObject.h" />
     <ClInclude Include="Engine\Src\Scene\UndoRedoHistory.h" />
+    <ClInclude Include="Engine\Src\Threading\ThreadPool.h" />
     <ClInclude Include="Engine\Src\Utility\Collision\CollisionUtils.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\GameObjectDebugAccess.h" />

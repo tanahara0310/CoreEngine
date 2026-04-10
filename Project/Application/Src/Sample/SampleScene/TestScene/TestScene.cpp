@@ -39,8 +39,7 @@ namespace CoreEngine
         auto& textureManager = TextureManager::GetInstance();
 
         // HDRファイルを読み込み（自動的にキューブマップDDSに変換される）
-        TextureManager::LoadedTexture environmentMapTexture;
-        environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
+        auto environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
 
         // ===== IBLシステムの初期化 =====
         IBLSystem::SetupParams iblParams;
@@ -59,14 +58,8 @@ namespace CoreEngine
 
         // SkyBoxの初期化
         auto skyBox = CreateObject<SkyBoxObject>();
-        skyBox->SetTexture(environmentMapTexture);  // HDRから生成されたキューブマップを設定
-        skyBox->SetActive(true);  // SkyBoxを表示
-
-        //////// ===== sponzaモデルのみ配置 =====
-        //auto sponza = CreateObject<ModelObject>("Sponza.gltf");
-        //sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-        //sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        //sponza->SetActive(false);
+        skyBox->SetTexture(environmentMapTexture);
+        skyBox->SetActive(true);
 
         //// ===== ウォーキングモデル（PBR グリッドと重ならない位置に配置） =====
         auto walkModel = CreateObject<WalkModelObject>();

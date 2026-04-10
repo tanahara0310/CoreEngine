@@ -1,8 +1,10 @@
 #include "AssetDatabase.h"
 #include "AssetMetadata.h"
+#include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 #include <chrono>
+#include <optional>
 
 namespace CoreEngine
 {
@@ -30,19 +32,90 @@ namespace CoreEngine
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
             "Initializing AssetDatabase at: " + projectRoot_.string());
 
-        // アセットディレクトリをスキャン
+        // スキャン対象ディレクトリを収集する。
+        struct ScanTarget {
+            std::filesystem::path path;
+            std::string category;
+        };
+        std::vector<ScanTarget> targets;
+
         std::filesystem::path appAssetsPath = projectRoot_ / "Application" / "Assets";
         std::filesystem::path engineAssetsPath = projectRoot_ / "Engine" / "Assets";
 
-        if (std::filesystem::exists(appAssetsPath))
-        {
-            ScanDirectory(appAssetsPath, "Application");
+        if (std::filesystem::exists(appAssetsPath)) {
+            targets.push_back({ appAssetsPath, "Application" });
+        }
+        if (std::filesystem::exists(engineAssetsPath)) {
+            targets.push_back({ engineAssetsPath, "Engine" });
         }
 
-        if (std::filesystem::exists(engineAssetsPath))
-        {
-            ScanDirectory(engineAssetsPath, "Engine");
+        if (targets.empty()) {
+            initialized_ = true;
+            return;
         }
+
+        threadPool_ = std::make_unique<ThreadPool>(
+            static_cast<uint32_t>((std::max)(1u, std::thread::hardware_concurrency() / 2)));
+
+        // フェーズ1: 全ディレクトリのファイル列挙を並列に実行する。
+        struct FileEntry {
+            std::filesystem::path filePath;
+            std::string category;
+        };
+
+        std::vector<std::future<std::vector<FileEntry>>> scanFutures;
+        scanFutures.reserve(targets.size());
+
+        for (const auto& target : targets) {
+            scanFutures.push_back(threadPool_->Submit(
+                [target]() -> std::vector<FileEntry> {
+                    std::vector<FileEntry> files;
+                    try {
+                        for (const auto& entry : std::filesystem::recursive_directory_iterator(target.path)) {
+                            if (entry.is_regular_file()) {
+                                files.push_back({ entry.path(), target.category });
+                            }
+                        }
+                    } catch (const std::exception& e) {
+                        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}",
+                            "Failed to scan directory: " + target.path.string() + " (" + e.what() + ")");
+                    }
+                    return files;
+                }
+            ));
+        }
+
+        // 全ディレクトリの結果を統合する。
+        std::vector<FileEntry> allFiles;
+        for (auto& future : scanFutures) {
+            auto files = future.get();
+            allFiles.insert(allFiles.end(),
+                std::make_move_iterator(files.begin()),
+                std::make_move_iterator(files.end()));
+        }
+
+        // フェーズ2: 全ファイルの AssetInfo 構築を一括で並列実行する。
+        std::vector<std::future<std::optional<AssetInfo>>> buildFutures;
+        buildFutures.reserve(allFiles.size());
+
+        for (const auto& file : allFiles) {
+            buildFutures.push_back(threadPool_->Submit(
+                [this, file]() -> std::optional<AssetInfo> {
+                    return BuildAssetInfo(file.filePath, file.category);
+                }
+            ));
+        }
+
+        // フェーズ3: 全結果をメインスレッドでインデックスに登録する。
+        for (auto& future : buildFutures) {
+            auto result = future.get();
+            if (result.has_value()) {
+                MergeAssetInfo(std::move(result.value()));
+            }
+        }
+
+        threadPool_->Shutdown();
+        threadPool_.reset();
 
         initialized_ = true;
 
@@ -110,66 +183,6 @@ namespace CoreEngine
         return "";
     }
 
-    std::string AssetDatabase::FindAssetPath(const std::string& name, const std::string& category)
-    {
-        auto it = assetsByName_.find(name);
-        if (it == assetsByName_.end())
-        {
-            return "";
-        }
-
-        // 指定されたカテゴリのアセットを探す
-        for (const auto& guid : it->second)
-        {
-            const auto& assetInfo = assetsByGUID_[guid];
-            if (assetInfo.category == category)
-            {
-                return assetInfo.relativePath.generic_string();
-            }
-        }
-
-        return "";
-    }
-
-    std::string AssetDatabase::FindAssetPathByGUID(const std::string& guid)
-    {
-        auto it = assetsByGUID_.find(guid);
-        if (it != assetsByGUID_.end())
-        {
-            return it->second.relativePath.generic_string();
-        }
-        return "";
-    }
-
-    const AssetInfo* AssetDatabase::GetAssetInfo(const std::string& nameOrGuid)
-    {
-        // まずGUIDとして検索
-        auto it = assetsByGUID_.find(nameOrGuid);
-        if (it != assetsByGUID_.end())
-        {
-            return &it->second;
-        }
-
-        // 名前として検索
-        auto nameIt = assetsByName_.find(nameOrGuid);
-        if (nameIt != assetsByName_.end() && !nameIt->second.empty())
-        {
-            return &assetsByGUID_[nameIt->second[0]];
-        }
-
-        return nullptr;
-    }
-
-    const AssetInfo* AssetDatabase::GetAssetInfoByGUID(const std::string& guid)
-    {
-        auto it = assetsByGUID_.find(guid);
-        if (it != assetsByGUID_.end())
-        {
-            return &it->second;
-        }
-        return nullptr;
-    }
-
     std::string AssetDatabase::GetGUID(const std::filesystem::path& assetPath)
     {
         // パスからGUIDを逆引き
@@ -183,70 +196,42 @@ namespace CoreEngine
         return "";
     }
 
-    const std::unordered_map<std::string, AssetInfo>& AssetDatabase::GetAllAssets() const
-    {
-        return assetsByGUID_;
-    }
-
     void AssetDatabase::Refresh()
     {
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
             "Refreshing AssetDatabase...");
 
-        // initialized_ を先にリセットしてからクリアする
-        // (リセットしないと Initialize() の先頭ガードで即座返り、再スキャンが空模になる)
         initialized_ = false;
         assetsByGUID_.clear();
         assetsByName_.clear();
 
-        // 再スキャン
         Initialize(projectRoot_);
     }
 
-    void AssetDatabase::UpdateAssetPath(const std::string& guid, const std::filesystem::path& newPath)
-    {
-        auto it = assetsByGUID_.find(guid);
-        if (it == assetsByGUID_.end())
-        {
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}",
-                "Asset not found for GUID: " + guid);
-            return;
-        }
-
-        // パス情報を更新
-        it->second.fullPath = newPath;
-        it->second.relativePath = std::filesystem::relative(newPath, projectRoot_);
-        it->second.fileName = newPath.filename().string();
-        it->second.name = newPath.stem().string();
-        it->second.lastModified = GetFileLastModified(newPath);
-
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
-            "Updated asset path for GUID " + guid + ": " + newPath.string());
-    }
-
-    void AssetDatabase::RegisterAsset(const std::filesystem::path& assetPath, const std::string& category)
+    std::optional<AssetInfo> AssetDatabase::BuildAssetInfo(
+        const std::filesystem::path& assetPath,
+        const std::string& category) const
     {
         if (!std::filesystem::exists(assetPath) || std::filesystem::is_directory(assetPath))
         {
-            return;
+            return std::nullopt;
         }
 
         // メタファイルの拡張子は除外
         if (assetPath.extension() == ".meta")
         {
-            return;
+            return std::nullopt;
         }
 
         AssetType type = GetAssetType(assetPath);
         if (type == AssetType::Unknown)
         {
-            return;
+            return std::nullopt;
         }
 
-        // メタファイルからGUIDを取得または生成
+        // メタファイルからGUIDを取得または生成（ファイルI/O）
         std::string guid = AssetMetadata::LoadOrCreateMetaFile(assetPath, type);
 
-        // AssetInfo を作成
         AssetInfo info;
         info.guid = guid;
         info.name = assetPath.stem().string();
@@ -257,79 +242,18 @@ namespace CoreEngine
         info.category = category;
         info.lastModified = GetFileLastModified(assetPath);
 
-        // 登録（ステム名とファイル名の両方でインデックスする）
-        assetsByGUID_[guid] = info;
-        assetsByName_[info.name].push_back(guid);      // ステム名で検索 ("walk")
-        assetsByName_[info.fileName].push_back(guid);  // ファイル名で検索 ("walk.gltf")
+        return info;
     }
 
-    void AssetDatabase::UnregisterAsset(const std::string& guid)
+    void AssetDatabase::MergeAssetInfo(AssetInfo&& info)
     {
-        auto it = assetsByGUID_.find(guid);
-        if (it == assetsByGUID_.end())
-        {
-            return;
-        }
+        const std::string guid = info.guid;
+        const std::string name = info.name;
+        const std::string fileName = info.fileName;
 
-        // assetsByName から削除（ステム名とファイル名の両方）
-        const std::string& name     = it->second.name;
-        const std::string& fileName = it->second.fileName;
-
-        auto removeFromIndex = [&](const std::string& key) {
-            auto nameIt = assetsByName_.find(key);
-            if (nameIt != assetsByName_.end()) {
-                auto& guids = nameIt->second;
-                guids.erase(std::remove(guids.begin(), guids.end(), guid), guids.end());
-                if (guids.empty()) {
-                    assetsByName_.erase(nameIt);
-                }
-            }
-        };
-        removeFromIndex(name);
-        removeFromIndex(fileName);
-
-        // assetsByGUID から削除
-        assetsByGUID_.erase(it);
-
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
-            "Unregistered asset: " + guid);
-    }
-
-    size_t AssetDatabase::GetAssetCountByType(AssetType type) const
-    {
-        size_t count = 0;
-        for (const auto& pair : assetsByGUID_)
-        {
-            if (pair.second.type == type)
-            {
-                ++count;
-            }
-        }
-        return count;
-    }
-
-    void AssetDatabase::ScanDirectory(const std::filesystem::path& directory, const std::string& category)
-    {
-        if (!std::filesystem::exists(directory))
-        {
-            return;
-        }
-
-        try
-        {
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(directory))
-            {
-                if (entry.is_regular_file())
-                {
-                    RegisterAsset(entry.path(), category);
-                }
-            }
-        }
-        catch (const std::exception& e)
-        {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}",
-                "Failed to scan directory: " + directory.string() + " (" + e.what() + ")");
-        }
+        assetsByGUID_[guid] = std::move(info);
+        assetsByName_[name].push_back(guid);
+        assetsByName_[fileName].push_back(guid);
     }
 
     AssetType AssetDatabase::GetAssetType(const std::filesystem::path& path)
