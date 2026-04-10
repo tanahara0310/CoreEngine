@@ -76,6 +76,9 @@
     <ClCompile Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.cpp">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp">
+      <Filter>Engine\Src\Graphics\IBL</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp">
       <Filter>Engine\Src\Graphics\Material\Debug</Filter>
     </ClCompile>

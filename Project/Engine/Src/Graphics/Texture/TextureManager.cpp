@@ -37,6 +37,11 @@ namespace CoreEngine
 
         dxCommon_ = dxCommon;
         isInitialized_ = true;
+
+        // キューブマップDDSのフェイスサイズをパス解決器と生成器の両方に適用する。
+        // フェイスサイズがパスに組み込まれるため、設定変更時は旧キャッシュが自動的に無視される。
+        texturePathResolver_.SetCubemapFaceSize(cubemapFaceSize_);
+        cubemapGenerator_.SetOutputFaceSize(cubemapFaceSize_);
     }
 
     TextureManager::LoadContext TextureManager::AcquireLoadContext() const
@@ -111,16 +116,12 @@ namespace CoreEngine
         );
 
         resolvedPath = loadPlan.resolvedPath;
-        bool isDDS = loadPlan.isDDS;
-        bool isHDR = loadPlan.isHDR;
         const std::string& ddsPath = loadPlan.ddsPathToGenerate;
 
         // ロード実行の本体処理は専用クラスに委譲し、Managerはオーケストレーションに集中する。
         TextureLoadExecutor::ExecutionResult executionResult = TextureLoadExecutor::Execute(
             dxCommon,
             resolvedPath,
-            isDDS,
-            isHDR,
             ddsGenerationEnabled,
             ddsPath,
             [this](const std::string& sourcePath, const std::string& outputDdsPath) {

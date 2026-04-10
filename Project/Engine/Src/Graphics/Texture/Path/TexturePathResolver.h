@@ -23,6 +23,10 @@ namespace CoreEngine
         /// @return キューブマップDDSファイルのパス。Assetsフォルダを省略した場合は自動的に追加される。
         std::string GetCubemapDDSPath(const std::string& originalPath) const;
 
+        /// @brief キューブマップDDSのフェイスサイズを設定する。変更するとキャッシュパスが変わり、旧キャッシュを自動的に無効化する。
+        /// @param faceSize 各面のピクセル数（0の場合は従来のパスを使用）
+        void SetCubemapFaceSize(uint32_t faceSize) { cubemapFaceSize_ = faceSize; }
+
     private:
 
         /// @brief ファイルパスを解決する。Assetsフォルダを省略したパスも受け付ける。
@@ -31,5 +35,6 @@ namespace CoreEngine
         std::string ResolveFilePath(const std::string& filePath) const;
 
         const std::string basePath_ = "Application/Assets/";
+        uint32_t cubemapFaceSize_ = 0;  ///< キューブマップDDSキャッシュパスに埋め込むフェイスサイズ（0=サフィックスなし）
     };
 }

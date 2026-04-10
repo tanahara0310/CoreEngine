@@ -78,6 +78,10 @@ namespace CoreEngine {
         /// @param threadCount スレッド数（0 でハードウェア並列数を自動設定）
         void SetWorkerThreadCount(uint32_t threadCount) { workerThreadCount_ = threadCount; }
 
+        /// @brief HDR→キューブマップDDS変換時のフェイスサイズを設定する（Initialize 前に呼ぶ）
+        /// @param faceSize 各面のピクセル数（512推奨。変更するとキャッシュパスが変わり旧DDSは自動的に無視される）
+        void SetCubemapFaceSize(uint32_t faceSize) { cubemapFaceSize_ = faceSize; }
+
     private:
         /// @brief 読み込み時に必要な実行設定をまとめた構造体
         struct LoadContext
@@ -101,6 +105,7 @@ namespace CoreEngine {
         std::unique_ptr<TextureCacheStore> cacheStore_;
         bool isInitialized_ = false;
         bool ddsGenerationEnabled_ = true; // DDS自動生成を有効化（デフォルト有効）
+        uint32_t cubemapFaceSize_ = 512;   // キューブマップDDSフェイスサイズ（512px推奨）
 
         // 初期化状態・設定値・デバイスポインタ保護用ミューテックス
         mutable std::mutex cacheMutex_;

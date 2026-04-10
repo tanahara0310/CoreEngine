@@ -202,6 +202,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />

@@ -14,8 +14,6 @@ namespace CoreEngine
     TextureLoadExecutor::ExecutionResult TextureLoadExecutor::Execute(
         CoreEngine::DirectXCommon* dxCommon,
         const std::string& resolvedPath,
-        bool isDDS,
-        bool isHDR,
         bool ddsGenerationEnabled,
         const std::string& ddsPath,
         const std::function<bool(const std::string&, const std::string&)>& ddsCacheGenerator)
@@ -27,10 +25,10 @@ namespace CoreEngine
         DirectX::ScratchImage image;
         HRESULT hr = TextureImageProcessor::LoadTextureImage(filePathW, image);
 
-        if (!isDDS && !isHDR) {
-            if (SUCCEEDED(hr) && ddsGenerationEnabled && !ddsPath.empty()) {
-                ddsCacheGenerator(resolvedPath, ddsPath);
-            }
+        // ddsPathToGenerate はBuildPlan内でWICファイルのみ設定される。
+        // DDS/HDRの場合は空文字列になるため isDDS/isHDR の重複チェックは不要。
+        if (ddsGenerationEnabled && !ddsPath.empty() && SUCCEEDED(hr)) {
+            ddsCacheGenerator(resolvedPath, ddsPath);
         }
 
         if (FAILED(hr)) {

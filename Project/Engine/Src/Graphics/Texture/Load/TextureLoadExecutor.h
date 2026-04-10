@@ -33,8 +33,6 @@ namespace CoreEngine
         static ExecutionResult Execute(
             CoreEngine::DirectXCommon* dxCommon,
             const std::string& resolvedPath,
-            bool isDDS,
-            bool isHDR,
             bool ddsGenerationEnabled,
             const std::string& ddsPath,
             const std::function<bool(const std::string&, const std::string&)>& ddsCacheGenerator);
