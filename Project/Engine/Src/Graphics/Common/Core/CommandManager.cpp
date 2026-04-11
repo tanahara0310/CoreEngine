@@ -50,8 +50,6 @@ void CommandManager::WaitForFrame(UINT frameIndex)
         (void)hr; // 警告回避：Releaseビルドでassertが消える場合
         WaitForSingleObject(fenceEvent_, INFINITE);
     }
-
-    UpdateFixFPS();
 }
 
 void CommandManager::SignalFrame(UINT frameIndex)
