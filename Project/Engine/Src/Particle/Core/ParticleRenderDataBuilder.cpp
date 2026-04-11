@@ -86,10 +86,21 @@ Matrix4x4 ParticleRenderDataBuilder::CalculateWorldMatrix(
 }
 
 Matrix4x4 ParticleRenderDataBuilder::CreateBillboardMatrix(const Matrix4x4& viewMatrix, BillboardType type) {
+    // 逆行列は全ケースで共通のため、必要な場合のみ1回だけ計算する
+    Matrix4x4 invView;
+    bool invViewComputed = false;
+    auto getInvView = [&]() -> const Matrix4x4& {
+        if (!invViewComputed) {
+            invView = Matrix::Inverse(viewMatrix);
+            invViewComputed = true;
+        }
+        return invView;
+    };
+
     switch (type) {
     case BillboardType::ViewFacing:
     {
-        Matrix4x4 billboardMatrix = Matrix::Inverse(viewMatrix);
+        Matrix4x4 billboardMatrix = getInvView();
         billboardMatrix.m[3][0] = 0.0f;
         billboardMatrix.m[3][1] = 0.0f;
         billboardMatrix.m[3][2] = 0.0f;
@@ -99,8 +110,8 @@ Matrix4x4 ParticleRenderDataBuilder::CreateBillboardMatrix(const Matrix4x4& view
     case BillboardType::YAxisOnly:
     {
         Matrix4x4 billboardMatrix = Matrix::Identity();
-        Matrix4x4 invView = Matrix::Inverse(viewMatrix);
-        Vector3 cameraPos = { invView.m[3][0], invView.m[3][1], invView.m[3][2] };
+        const Matrix4x4& inv = getInvView();
+        Vector3 cameraPos = { inv.m[3][0], inv.m[3][1], inv.m[3][2] };
         Vector3 horizontalDirection = { cameraPos.x, 0.0f, cameraPos.z };
         float horizontalLength = std::sqrt(
             horizontalDirection.x * horizontalDirection.x +
@@ -137,10 +148,10 @@ horizontalDirection.z / horizontalLength
     case BillboardType::ScreenAligned:
     {
         Matrix4x4 billboardMatrix = Matrix::Identity();
-        Matrix4x4 invView = Matrix::Inverse(viewMatrix);
-        Vector3 right = { invView.m[0][0], invView.m[0][1], invView.m[0][2] };
-        Vector3 up = { invView.m[1][0], invView.m[1][1], invView.m[1][2] };
-        Vector3 forward = { invView.m[2][0], invView.m[2][1], invView.m[2][2] };
+        const Matrix4x4& inv = getInvView();
+        Vector3 right = { inv.m[0][0], inv.m[0][1], inv.m[0][2] };
+        Vector3 up = { inv.m[1][0], inv.m[1][1], inv.m[1][2] };
+        Vector3 forward = { inv.m[2][0], inv.m[2][1], inv.m[2][2] };
 
         billboardMatrix.m[0][0] = right.x;
         billboardMatrix.m[0][1] = right.y;

@@ -346,11 +346,13 @@ namespace CoreEngine
             return;
         }
 
+        // 逆行列はフレーム中不変なのでラムダ外で1回だけ計算する
+        const Matrix4x4 viewProj = MathCore::Matrix::Multiply(
+            gameCamera->GetViewMatrix(),
+            gameCamera->GetProjectionMatrix());
+        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(viewProj);
+
         auto Unproject = [&](float ndcX, float ndcY, float ndcZ) -> Vector3 {
-            Matrix4x4 viewProj = MathCore::Matrix::Multiply(
-                gameCamera->GetViewMatrix(),
-                gameCamera->GetProjectionMatrix());
-            Matrix4x4 invViewProj = MathCore::Matrix::Inverse(viewProj);
             return MathCore::CoordinateTransform::TransformCoord(Vector3{ ndcX, ndcY, ndcZ }, invViewProj);
             };
 
