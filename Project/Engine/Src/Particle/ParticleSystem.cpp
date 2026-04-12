@@ -49,6 +49,9 @@ void ParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* resour
     resourceManager_ = std::make_unique<ParticleResourceManager>();
     resourceManager_->Initialize(dxCommon, resourceFactory, kNumMaxInstance);
 
+    // 最大パーティクル数分のメモリをあらかじめ確保（realloc回避）
+    particles_.reserve(kNumMaxInstance);
+
     // インスタンシングデータのポインタを取得
     instancingData_ = resourceManager_->GetInstancingData();
 

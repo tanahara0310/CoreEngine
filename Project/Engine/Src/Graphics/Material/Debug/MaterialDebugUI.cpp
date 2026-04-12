@@ -16,9 +16,6 @@ namespace CoreEngine {
 
         bool changed = false;
 
-        UI::Scope::TreeScope matTree("Material");
-        if (!matTree) return false;
-
         // ─────────────── Base ───────────────
         UI::SectionHeader("Base");
 

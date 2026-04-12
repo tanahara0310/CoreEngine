@@ -1,13 +1,19 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
+#include <set>
+#include <condition_variable>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "ModelResource.h"
 #include "Model.h"
 #include "ModelRenderContext.h"
 #include "Animation/Animation.h"
+
+namespace CoreEngine { class ThreadPool; }
 
 namespace CoreEngine
 {
@@ -80,9 +86,12 @@ public:
     /// @return ModelResourceのポインタ（見つからない場合はnullptr）
     ModelResource* GetModelResource(const std::string& filePath);
 
-    /// @brief モデルリソースを事前読み込み（シーン読み込み最適化用）
-    /// @param filePath ファイル名またはフルパス（AssetDatabase が解決）
-    void LoadModelResource(const std::string& filePath);
+    /// @brief 複数モデルを並列プリロード（全完了まで待機）
+    /// @param filePaths プリロードするファイルパスのリスト
+    void PreloadModels(const std::vector<std::string>& filePaths);
+
+    /// @brief スレッドプールを取得（デバッグ用）
+    ThreadPool* GetThreadPool() const { return threadPool_.get(); }
 
 private:
     // DirectXCommon
@@ -99,6 +108,17 @@ private:
     
     // ファイルパスをキーとしたリソースキャッシュ
     std::unordered_map<std::string, std::unique_ptr<ModelResource>> resourceCache_;
+
+    // キャッシュのスレッドセーフなアクセス用
+    mutable std::mutex cacheMutex_;
+    std::set<std::string>       loadingPaths_;  // 現在ロード中のパスセット
+    std::condition_variable     cacheCondVar_;  // ロード完了通知用
+
+    // 並列プリロード用スレッドプール
+    std::unique_ptr<ThreadPool> threadPool_;
+
+    /// @brief スレッドプールの遅延初期化
+    void EnsureThreadPool();
 
     /// @brief フルパスを解決（Assetsフォルダを自動的に追加）
     /// @param filePath 入力パス

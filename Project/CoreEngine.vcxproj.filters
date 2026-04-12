@@ -403,6 +403,9 @@
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.cpp">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
@@ -1108,6 +1111,9 @@
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.h">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Widgets\ImGuiWidgets.h">
       <Filter>Engine\Src\Utility\Debug\ImGui\Widgets</Filter>
     </ClInclude>
@@ -1320,6 +1326,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <None Include=".github\copilot-instructions.md">
+      <Filter>.github</Filter>
+    </None>
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin">
       <Filter>Application\Assets\SampleAssets\human</Filter>
     </None>
@@ -1394,6 +1403,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Filter Include=".github">
+      <UniqueIdentifier>{0B38F8F0-EDB2-4A29-8F38-053A0F52BE38}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application">
       <UniqueIdentifier>{a6d9c513-d1e3-44be-a485-2950bd8c02a7}</UniqueIdentifier>
     </Filter>

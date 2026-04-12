@@ -5,7 +5,6 @@
 #include <dxgi1_6.h>
 #include <memory>
 #include <vector>
-#include <list>
 #include <string>
 
 #ifdef USE_IMGUI
@@ -278,7 +277,7 @@ private:
     ResourceFactory* resourceFactory_ = nullptr;
 
     // パーティクルデータ
-    std::list<Particle> particles_;
+    std::vector<Particle> particles_;
     uint32_t instanceCount_ = 0;
 
     // エミッター設定

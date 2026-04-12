@@ -9,7 +9,7 @@ namespace CoreEngine
 using namespace CoreEngine::MathCore;
 
 uint32_t ParticleRenderDataBuilder::BuildRenderData(
-    const std::list<Particle>& particles,
+    const std::vector<Particle>& particles,
     const ICamera* camera,
     BillboardType billboardType,
     ParticleRenderMode renderMode,

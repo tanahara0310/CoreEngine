@@ -1,6 +1,6 @@
 #pragma once
 
-#include <list>
+#include <vector>
 #include <cstdint>
 #include "Math/MathCore.h"
 
@@ -46,7 +46,7 @@ public:
         uint32_t count,
         const EulerTransform& emitterTransform,
         uint32_t maxParticles,
-        std::list<Particle>& outParticles
+        std::vector<Particle>& outParticles
     );
 
 private:

@@ -74,6 +74,9 @@ namespace CoreEngine {
         /// @return 有効ならtrue
         bool IsDDSCacheEnabled() const { return ddsGenerationEnabled_; }
 
+        /// @brief 非同期ロード用スレッドプールを取得（デバッグ用）
+        ThreadPool* GetThreadPool() const { return threadPool_.get(); }
+
         /// @brief 非同期ロード用スレッドプールのスレッド数を設定する（Initialize 前に呼ぶ）
         /// @param threadCount スレッド数（0 でハードウェア並列数を自動設定）
         void SetWorkerThreadCount(uint32_t threadCount) { workerThreadCount_ = threadCount; }

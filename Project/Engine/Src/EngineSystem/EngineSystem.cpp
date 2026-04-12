@@ -8,6 +8,7 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Threading/ThreadPool.h"
 
 // レンダリング関連
 #include "Graphics/Render/Render.h"
@@ -89,6 +90,18 @@ namespace CoreEngine
 
         // ゲームデバッグUIの初期化（DockingUIを渡す）
         gameDebugUI_->Initialize(this, imGui_->GetDockingUI());
+
+        // スレッドプールプロファイラーの初期化
+        threadProfilerUI_ = std::make_unique<ThreadProfilerUI>();
+        threadProfilerUI_->RegisterPool("TextureLoader",
+            []() { return TextureManager::GetInstance().GetThreadPool(); });
+        threadProfilerUI_->RegisterPool("ModelLoader", [this]() -> ThreadPool* {
+            if (auto* mm = GetComponent<ModelManager>()) { return mm->GetThreadPool(); }
+            return nullptr;
+        });
+        gameDebugUI_->RegisterEnginePanel("Thread Profiler", [this]() {
+            threadProfilerUI_->Draw();
+        });
 
         // その他の固定ウィンドウをドッキングシステムに登録
         DockingUI* dockingUI = imGui_->GetDockingUI();

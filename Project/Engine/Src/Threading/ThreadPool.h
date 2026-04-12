@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <future>
@@ -45,18 +46,35 @@ namespace CoreEngine
         /// @return スレッド数
         uint32_t GetThreadCount() const { return static_cast<uint32_t>(workers_.size()); }
 
-        /// @brief キュー内の未処理タスク数を取得
-        /// @return 未処理タスク数
-        size_t GetPendingTaskCount() const;
+        /// @brief スレッドプールの統計情報
+        struct Stats
+        {
+            uint32_t workerCount = 0; ///< 総ワーカースレッド数
+            uint32_t activeTasks = 0; ///< 現在タスクを実行中のワーカー数
+            size_t   pendingTasks = 0; ///< キュー内の未処理タスク数
+            uint64_t totalSubmitted = 0; ///< フレーム開始以降の総投入タスク数
+            uint64_t totalCompleted = 0; ///< フレーム開始以降の総完了タスク数
+            std::vector<bool> workerBusy;  ///< ワーカーごとのビジー状態
+        };
+
+        /// @brief 現在の統計情報を取得（スナップショット）
+        Stats GetStats() const;
 
     private:
-        void WorkerLoop();
+        void WorkerLoop(uint32_t workerIndex);
 
         std::vector<std::thread> workers_;
         std::queue<std::function<void()>> tasks_;
         mutable std::mutex queueMutex_;
         std::condition_variable condition_;
         bool stopping_ = false;
+
+        // 統計カウンタ（アトミック操作）
+        static constexpr uint32_t kMaxWorkers = 32;
+        std::atomic<uint32_t> activeTasks_{ 0 };
+        std::atomic<uint64_t> totalSubmitted_{ 0 };
+        std::atomic<uint64_t> totalCompleted_{ 0 };
+        std::atomic<bool> workerBusy_[kMaxWorkers];
     };
 
     // ─────────────────────────────────────────────────────────────
@@ -80,6 +98,7 @@ namespace CoreEngine
                 throw std::runtime_error("ThreadPool: cannot submit task after shutdown");
             }
             tasks_.emplace([task]() { (*task)(); });
+            totalSubmitted_.fetch_add(1, std::memory_order_relaxed);
         }
 
         condition_.notify_one();

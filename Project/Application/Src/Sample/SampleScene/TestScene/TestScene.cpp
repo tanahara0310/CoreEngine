@@ -35,6 +35,11 @@ namespace CoreEngine
             return; // 必須コンポーネントがない場合は終了
         }
 
+        // ===== モデルリソースを並列プリロード =====
+        // 全モデルを事前にバックグラウンドスレッドで並列読み込みし、
+        // 後続の CreateObject 時にはキャッシュヒットで即座に返る
+        modelManager->PreloadModels({ "sphere.obj", "walk.gltf" });
+
         // ===== 環境マップテクスチャの読み込みと設定 =====
         auto& textureManager = TextureManager::GetInstance();
 

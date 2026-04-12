@@ -2,7 +2,7 @@
 
 #include "Math/MathCore.h"
 #include "ParticleResourceManager.h"  // ParticleForGPU定義のため
-#include <list>
+#include <vector>
 #include <cstdint>
 
 namespace CoreEngine
@@ -42,7 +42,7 @@ public:
     /// @param maxInstances 最大インスタンス数
     /// @return 準備したインスタンス数
     uint32_t BuildRenderData(
-        const std::list<Particle>& particles,
+        const std::vector<Particle>& particles,
         const ICamera* camera,
         BillboardType billboardType,
         ParticleRenderMode renderMode,

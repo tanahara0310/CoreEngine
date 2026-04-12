@@ -11,6 +11,7 @@
 #include "Utility/Debug/ImGui/ImGuiManager.h"
 #include "Utility/Debug/GameDebugUI.h"
 #include "Graphics/Common/GpuTimestampProfiler.h"
+#include "Utility/Debug/ImGui/ThreadProfilerUI.h"
 #endif
 
 class WinApp;
@@ -189,6 +190,7 @@ private:
     std::unique_ptr<ImGuiManager> imGui_ = std::make_unique<ImGuiManager>(); // ImGuiマネージャークラスのインスタンス
     std::unique_ptr<GameDebugUI> gameDebugUI_ = std::make_unique<GameDebugUI>(); // ゲームデバッグUIのインスタンス
     GpuTimestampProfiler gpuProfiler_; // GPU / CPU タイムスタンププロファイラー
+    std::unique_ptr<ThreadProfilerUI> threadProfilerUI_; // スレッドプールプロファイラー
 
     // SceneView 再描画判定用（カメラ静止時のスキップ制御）
     Matrix4x4 prevSceneCameraViewMatrix_ = {};    // ゼロ初期化（初回は必ず dirty 判定）

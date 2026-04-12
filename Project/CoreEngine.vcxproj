@@ -311,6 +311,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
     <ClCompile Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
@@ -551,6 +552,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Widgets\ImGuiWidgets.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiInput.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiLayout.h" />
@@ -628,6 +630,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include=".github\copilot-instructions.md" />
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin" />
     <None Include="Application\Assets\SampleAssets\human\walk.bin" />
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />

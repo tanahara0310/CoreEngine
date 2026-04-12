@@ -45,6 +45,11 @@ namespace CoreEngine
         /// @param drawer Inspector内に描画するコンテンツドロワー
         void RegisterAppEditor(const std::string& label, std::function<void()> drawer);
 
+        /// @brief エンジン専用デバッグパネルを登録（Engineメニュー → 独立ウィンドウ）
+        /// @param label メニュー / ウィンドウタイトルに表示する名前
+        /// @param drawer ウィンドウ内に描画するコンテンツドロワー
+        void RegisterEnginePanel(const std::string& label, std::function<void()> drawer);
+
         /// @brief 更新
         void Update();
 
@@ -76,10 +81,18 @@ namespace CoreEngine
 
         // エディターエントリーリスト（ラベル, ドロワー）
         using EditorList = std::vector<std::pair<std::string, std::function<void()>>>;
-        EditorList engineEditors_;  ///< Engine Editor サブメニュー用
+        EditorList engineEditors_;  ///< Inspector内表示エディター（Camera Editor等）
         EditorList appEditors_;     ///< App Editor サブメニュー用
 
         std::string activeEditorId_;  ///< 現在Inspector表示中のエディターID（空 = Object表示）
+
+        /// @brief エンジン専用デバッグパネル（独立ウィンドウで描画）
+        struct EnginePanelEntry {
+            std::string label;
+            std::function<void()> drawer;
+            bool visible = false;
+        };
+        std::vector<EnginePanelEntry> enginePanels_;
 
         bool showConsole_ = true;
 
@@ -89,6 +102,7 @@ namespace CoreEngine
         void ShowConsoleUI();
         void DrawHierarchyPanel();
         void DrawInspectorPanel();
+        void DrawEnginePanels();
         void RegisterWindowsForDocking();
     };
 }
