@@ -28,7 +28,7 @@ uint32_t ParticleEmitter::EmitParticles(
     uint32_t count,
     const EulerTransform& emitterTransform,
     uint32_t maxParticles,
-    std::list<Particle>& outParticles
+    std::vector<Particle>& outParticles
 ) {
     uint32_t emittedCount = 0;
 

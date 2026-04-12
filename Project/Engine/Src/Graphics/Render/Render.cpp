@@ -80,9 +80,13 @@ namespace CoreEngine
         // 次のフレームの準備
         UINT nextFrameIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
 
-        // 次のフレームのGPU処理が完了するまで待機
+        // 現在のフレームの GPU 処理が完了するまで待機する。
+        // カメラ・トランスフォーム等の定数バッファは単一リソースを毎フレーム上書きするため、
+        // 直前フレームの GPU 読み取りが終わる前に CPU が書き換えると描画がチラつく。
+        // backBufferIndex のフェンスを待つことで、提出済みコマンドの完了を保証する。
+        // フレームペーシングは Present(1,0) の VSync が担うため性能への影響は軽微。
         if (commandManager) {
-            commandManager->WaitForFrame(nextFrameIndex);
+            commandManager->WaitForFrame(backBufferIndex);
         }
 
         // 次のフレーム用のコマンドアロケータをリセット

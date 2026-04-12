@@ -21,8 +21,8 @@ namespace CoreEngine
         console_->Initialize();
         console_->SetEngineSystem(engine);
 
-        // LightingをEngine Editorに登録（常時利用可能）
-        engineEditors_.emplace_back("Lighting", [this]() {
+        // Lightingをエンジン専用パネルとして登録（独立ウィンドウ）
+        RegisterEnginePanel("Lighting", [this]() {
             auto lightManager = engine_->GetComponent<LightManager>();
             if (lightManager) {
                 lightManager->DrawAllImGui();
@@ -65,6 +65,19 @@ namespace CoreEngine
         appEditors_.emplace_back(label, std::move(drawer));
     }
 
+    void GameDebugUI::RegisterEnginePanel(const std::string& label, std::function<void()> drawer)
+    {
+        for (auto& p : enginePanels_) {
+            if (p.label == label) { p.drawer = std::move(drawer); return; }
+        }
+        enginePanels_.push_back({ label, std::move(drawer), false });
+
+        // ドッキングシステムにウィンドウを登録
+        if (dockingUI_) {
+            dockingUI_->RegisterWindow(label, DockArea::Right);
+        }
+    }
+
     void GameDebugUI::Update()
     {
         // メニューバーと他のパネルをまとめて呼び出す
@@ -80,20 +93,35 @@ namespace CoreEngine
                 ImGui::EndMenu();
             }
 
-            if (ImGui::BeginMenu("Editor")) {
-                if (ImGui::BeginMenu("Engine Editor")) {
-                    for (auto& [label, _] : engineEditors_) {
-                        bool isActive = (activeEditorId_ == label);
-                        if (ImGui::Checkbox(label.c_str(), &isActive)) {
-                            activeEditorId_ = isActive ? label : "";
-                        }
+            // エンジン専用デバッグパネル（独立ウィンドウ）
+            if (ImGui::BeginMenu("Engine")) {
+                if (enginePanels_.empty()) {
+                    UI::Hint("登録済みのパネルがありません");
+                } else {
+                    for (auto& panel : enginePanels_) {
+                        ImGui::Checkbox(panel.label.c_str(), &panel.visible);
                     }
-                    ImGui::EndMenu();
                 }
+                ImGui::EndMenu();
+            }
+
+            // Inspector内エディター（Camera Editor + App Editor）
+            if (ImGui::BeginMenu("Editor")) {
+                // Camera Editor 等（エンジンエディター）
+                for (auto& [label, _] : engineEditors_) {
+                    bool isActive = (activeEditorId_ == label);
+                    if (ImGui::Checkbox(label.c_str(), &isActive)) {
+                        activeEditorId_ = isActive ? label : "";
+                    }
+                }
+                if (!engineEditors_.empty() && !appEditors_.empty()) {
+                    ImGui::Separator();
+                }
+                // App Editor
                 if (ImGui::BeginMenu("App Editor")) {
-                            if (appEditors_.empty()) {
-                                UI::Hint("登録済みのエディターがありません");
-                            } else {
+                    if (appEditors_.empty()) {
+                        UI::Hint("登録済みのエディターがありません");
+                    } else {
                         for (auto& [label, _] : appEditors_) {
                             bool isActive = (activeEditorId_ == label);
                             if (ImGui::Checkbox(label.c_str(), &isActive)) {
@@ -130,6 +158,7 @@ namespace CoreEngine
     {
         DrawHierarchyPanel();
         DrawInspectorPanel();
+        DrawEnginePanels();
 
         if (showConsole_) ShowConsoleUI();
 
@@ -198,6 +227,17 @@ namespace CoreEngine
         console_->Draw();
     }
 
+    void GameDebugUI::DrawEnginePanels()
+    {
+        for (auto& panel : enginePanels_) {
+            if (!panel.visible) continue;
+            if (ImGui::Begin(panel.label.c_str(), &panel.visible)) {
+                if (panel.drawer) panel.drawer();
+            }
+            ImGui::End();
+        }
+    }
+
     void GameDebugUI::RegisterWindowsForDocking()
     {
         if (!dockingUI_) return;
@@ -206,6 +246,11 @@ namespace CoreEngine
         dockingUI_->RegisterWindow("Inspector", DockArea::Right);
         dockingUI_->RegisterWindow(consoleWindow, DockArea::Bottom);
         dockingUI_->RegisterWindow("Project",     DockArea::Bottom);
+
+        // Initialize時に登録済みのエンジンパネルをドッキングに追加
+        for (const auto& panel : enginePanels_) {
+            dockingUI_->RegisterWindow(panel.label, DockArea::Right);
+        }
     }
 }
 #endif // USE_IMGUI

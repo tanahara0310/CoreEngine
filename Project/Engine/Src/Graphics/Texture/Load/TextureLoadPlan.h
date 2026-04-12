@@ -16,8 +16,7 @@ namespace CoreEngine
         {
             std::string resolvedPath;      // 実際に読み込む最終パス
             bool isDDS = false;            // DDSとして読み込むか
-            bool isHDR = false;            // HDRとして読み込むか
-            std::string ddsPathToGenerate; // WIC読み込み後に生成するDDSパス
+            std::string ddsPathToGenerate; // WIC読み込み後に生成するDDSパス（WIC以外は空）
         };
 
         /// @brief ファイル形式とキャッシュ状態から読み込み計画を構築する

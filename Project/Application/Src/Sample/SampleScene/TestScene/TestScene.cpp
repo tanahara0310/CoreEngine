@@ -35,12 +35,16 @@ namespace CoreEngine
             return; // 必須コンポーネントがない場合は終了
         }
 
+        // ===== モデルリソースを並列プリロード =====
+        // 全モデルを事前にバックグラウンドスレッドで並列読み込みし、
+        // 後続の CreateObject 時にはキャッシュヒットで即座に返る
+        modelManager->PreloadModels({ "sphere.obj", "walk.gltf" });
+
         // ===== 環境マップテクスチャの読み込みと設定 =====
         auto& textureManager = TextureManager::GetInstance();
 
         // HDRファイルを読み込み（自動的にキューブマップDDSに変換される）
-        TextureManager::LoadedTexture environmentMapTexture;
-        environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
+        auto environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
 
         // ===== IBLシステムの初期化 =====
         IBLSystem::SetupParams iblParams;
@@ -59,14 +63,8 @@ namespace CoreEngine
 
         // SkyBoxの初期化
         auto skyBox = CreateObject<SkyBoxObject>();
-        skyBox->SetTexture(environmentMapTexture);  // HDRから生成されたキューブマップを設定
-        skyBox->SetActive(true);  // SkyBoxを表示
-
-        ////// ===== sponzaモデルのみ配置 =====
-        auto sponza = CreateObject<ModelObject>("Sponza.gltf");
-        sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-        sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        sponza->SetActive(false);
+        skyBox->SetTexture(environmentMapTexture);
+        skyBox->SetActive(true);
 
         //// ===== ウォーキングモデル（PBR グリッドと重ならない位置に配置） =====
         auto walkModel = CreateObject<WalkModelObject>();
@@ -85,35 +83,35 @@ namespace CoreEngine
         //  0.0 └──────────────────────────────────┘
         //      0.0   0.17  0.33  0.5  0.67  0.83  1.0  Roughness
 
-        //constexpr int   kRoughnessSteps = 7;   // 列数（Roughness 軸）
-        //constexpr int   kMetallicSteps = 7;   // 行数（Metallic 軸）
-        //constexpr float kSpacing = 2.5f; // 球体間の間隔
+        constexpr int   kRoughnessSteps = 7;   // 列数（Roughness 軸）
+        constexpr int   kMetallicSteps = 7;   // 行数（Metallic 軸）
+        constexpr float kSpacing = 2.5f; // 球体間の間隔
 
-        //// グリッド原点（中央が座標原点になるよう計算）
-        //const float originX = -(kRoughnessSteps - 1) * kSpacing * 0.5f;
-        //const float originY = -(kMetallicSteps - 1) * kSpacing * 0.5f;
+        // グリッド原点（中央が座標原点になるよう計算）
+        const float originX = -(kRoughnessSteps - 1) * kSpacing * 0.5f;
+        const float originY = -(kMetallicSteps - 1) * kSpacing * 0.5f;
 
-        //for (int row = 0; row < kMetallicSteps; ++row)
-        //{
-        //    const float metallic = static_cast<float>(row) / static_cast<float>(kMetallicSteps - 1);
+        for (int row = 0; row < kMetallicSteps; ++row)
+        {
+            const float metallic = static_cast<float>(row) / static_cast<float>(kMetallicSteps - 1);
 
-        //    for (int col = 0; col < kRoughnessSteps; ++col)
-        //    {
-        //        const float roughness = static_cast<float>(col) / static_cast<float>(kRoughnessSteps - 1);
+            for (int col = 0; col < kRoughnessSteps; ++col)
+            {
+                const float roughness = static_cast<float>(col) / static_cast<float>(kRoughnessSteps - 1);
 
-        //        auto sphere = CreateObject<ModelObject>("sphere.obj");
-        //        sphere->GetTransform().translate = {
-        //            originX + col * kSpacing,
-        //            originY + row * kSpacing,
-        //            0.0f
-        //        };
-        //        sphere->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        //        sphere->SetPBRParameters(metallic, roughness, 1.0f);
-        //        sphere->SetIBLEnabled(true);
-        //        sphere->SetIBLIntensity(1.0f);
-        //        sphere->SetActive(true);
-        //    }
-        //}
+                auto sphere = CreateObject<ModelObject>("sphere.obj");
+                sphere->GetTransform().translate = {
+                    originX + col * kSpacing,
+                    originY + row * kSpacing,
+                    0.0f
+                };
+                sphere->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+                sphere->SetPBRParameters(metallic, roughness, 1.0f);
+                sphere->SetIBLEnabled(true);
+                sphere->SetIBLIntensity(1.0f);
+                sphere->SetActive(true);
+            }
+        }
 
     }
 
@@ -153,6 +151,7 @@ namespace CoreEngine
 
     void TestScene::Finalize()
     {
+        BaseScene::Finalize();
     }
 }
 

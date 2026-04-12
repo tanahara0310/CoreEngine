@@ -5,10 +5,12 @@
 #include "Animation/AnimationLoader.h"
 #include "Animation/Animator.h"
 #include "Animation/SkeletonAnimatorFactory.h"
+#include "Threading/ThreadPool.h"
 
 #include <cassert>
 #include <filesystem>
 #include <algorithm>
+#include <thread>
 
 
 namespace CoreEngine
@@ -148,77 +150,120 @@ std::unique_ptr<Model> ModelManager::CreateSkeletonModel(
 
 bool ModelManager::LoadAnimation(const AnimationLoadInfo& loadInfo)
 {
-    // modelFile をファイル名として直接 ResolveFilePath に渡す。
-    // AssetDatabase がファイル名からディレクトリを含むフルパスを解決する。
     std::string resolvedModelPath = ResolveFilePath(loadInfo.modelFile);
 
     std::string resolvedDirectory, resolvedFilename;
     SplitPath(resolvedModelPath, resolvedDirectory, resolvedFilename);
 
     // モデルリソースを取得（キャッシュになければ読み込む）
-    std::string normalizedModelPath = MakeNormalizedPath(resolvedDirectory, resolvedFilename);
-
-    auto it = resourceCache_.find(normalizedModelPath);
-    if (it == resourceCache_.end()) {
-        LoadModelResourceInternal(resolvedDirectory, resolvedFilename);
-        it = resourceCache_.find(normalizedModelPath);
-        if (it == resourceCache_.end()) {
-            return false;
-        }
+    ModelResource* resource = LoadModelResourceInternal(resolvedDirectory, resolvedFilename);
+    if (!resource) {
+        return false;
     }
 
-    ModelResource* resource = it->second.get();
-
-    // animationFile が未指定の場合はモデルファイルと同じ
     const std::string& animFile = loadInfo.animationFile.empty()
         ? resolvedFilename
         : loadInfo.animationFile;
 
-    // アニメーションを読み込み（解決済みのディレクトリを使用）
     Animation animation = AnimationLoader::LoadAnimationFile(resolvedDirectory, animFile);
-
     resource->AddAnimation(loadInfo.animationName, animation);
     return true;
 }
 
 void ModelManager::ClearCache()
 {
+    std::lock_guard<std::mutex> lock(cacheMutex_);
     resourceCache_.clear();
-}
-
-void ModelManager::LoadModelResource(const std::string& filePath)
-{
-    std::string resolvedPath = ResolveFilePath(filePath);
-    std::string resolvedDirectory, resolvedFilename;
-    SplitPath(resolvedPath, resolvedDirectory, resolvedFilename);
-    LoadModelResourceInternal(resolvedDirectory, resolvedFilename);
 }
 
 ModelResource* ModelManager::LoadModelResourceInternal(const std::string& directoryPath, const std::string& filename)
 {
     assert(IsInitialized());
 
-    // 正規化されたパスをキャッシュキーとする
-    std::string normalizedPath = MakeNormalizedPath(directoryPath, filename);
+    const std::string normalizedPath = MakeNormalizedPath(directoryPath, filename);
 
-    // キャッシュに存在するか確認
-    auto it = resourceCache_.find(normalizedPath);
-    if (it != resourceCache_.end()) {
-        return it->second.get();
+    // Phase 1: キャッシュ確認 + ロード権の確保
+    while (true) {
+        std::unique_lock<std::mutex> lock(cacheMutex_);
+
+        // キャッシュヒット
+        auto it = resourceCache_.find(normalizedPath);
+        if (it != resourceCache_.end()) {
+            return it->second.get();
+        }
+
+        // 別スレッドが同じリソースをロード中なら完了まで待機
+        if (loadingPaths_.count(normalizedPath) > 0) {
+            cacheCondVar_.wait(lock, [&]() {
+                return resourceCache_.count(normalizedPath) > 0 ||
+                       loadingPaths_.count(normalizedPath) == 0;
+            });
+            continue; // 再チェック
+        }
+
+        // ロード権を確保して抜ける
+        loadingPaths_.insert(normalizedPath);
+        break;
     }
 
-    // キャッシュミス - 新規読み込み
-    auto resource = std::make_unique<ModelResource>();
+    // Phase 2: ミューテックスを持たずにロード（重い処理）
+    std::unique_ptr<ModelResource> resource;
+    try {
+        resource = std::make_unique<ModelResource>();
+        auto& textureManager = TextureManager::GetInstance();
+        resource->Initialize(dxCommon_, resourceFactory_, &textureManager);
+        resource->LoadFromFile(directoryPath, filename);
+    } catch (...) {
+        {
+            std::lock_guard<std::mutex> lock(cacheMutex_);
+            loadingPaths_.erase(normalizedPath);
+        }
+        cacheCondVar_.notify_all();
+        throw;
+    }
 
-    auto& textureManager = TextureManager::GetInstance();
-    resource->Initialize(dxCommon_, resourceFactory_, &textureManager);
-    resource->LoadFromFile(directoryPath, filename);
-
-    // キャッシュに登録
-    ModelResource* resourcePtr = resource.get();
-    resourceCache_[normalizedPath] = std::move(resource);
+    // Phase 3: キャッシュ登録 + ロード権の解放
+    ModelResource* resourcePtr = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(cacheMutex_);
+        loadingPaths_.erase(normalizedPath);
+        auto [it, inserted] = resourceCache_.emplace(normalizedPath, std::move(resource));
+        resourcePtr = it->second.get();
+    }
+    cacheCondVar_.notify_all();
 
     return resourcePtr;
+}
+
+void ModelManager::PreloadModels(const std::vector<std::string>& filePaths)
+{
+    if (filePaths.empty()) return;
+
+    EnsureThreadPool();
+
+    std::vector<std::future<void>> futures;
+    futures.reserve(filePaths.size());
+
+    for (const auto& path : filePaths) {
+        futures.push_back(threadPool_->Submit([this, path]() {
+            std::string resolved = ResolveFilePath(path);
+            std::string dir, file;
+            SplitPath(resolved, dir, file);
+            LoadModelResourceInternal(dir, file);
+        }));
+    }
+
+    for (auto& f : futures) {
+        f.get();
+    }
+}
+
+void ModelManager::EnsureThreadPool()
+{
+    if (!threadPool_) {
+        const uint32_t count = (std::max)(1u, std::thread::hardware_concurrency() / 2);
+        threadPool_ = std::make_unique<ThreadPool>(count);
+    }
 }
 
 std::string ModelManager::MakeNormalizedPath(const std::string& directoryPath, const std::string& filename) const
@@ -249,19 +294,19 @@ void ModelManager::SplitPath(const std::string& filePath, std::string& outDirect
 
 ModelResource* ModelManager::GetModelResource(const std::string& filePath)
 {
-    // パスを解決
     std::string resolvedPath = ResolveFilePath(filePath);
 
     std::string directoryPath, filename;
     SplitPath(resolvedPath, directoryPath, filename);
-    
+
     std::string normalizedPath = MakeNormalizedPath(directoryPath, filename);
-    
+
+    std::lock_guard<std::mutex> lock(cacheMutex_);
     auto it = resourceCache_.find(normalizedPath);
     if (it != resourceCache_.end()) {
         return it->second.get();
     }
-    
+
     return nullptr;
 }
 

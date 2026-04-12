@@ -1,4 +1,4 @@
-﻿#include "DeviceManager.h"
+#include "DeviceManager.h"
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
 
@@ -28,7 +28,8 @@ void DeviceManager::InitializeDXGIDevice()
     if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf())))) {
         // デバッグレイヤーを有効にする
         debugController->EnableDebugLayer();
-        // さらにGPUでチェックを行うようにする
+        // GPU-Based Validation は非常に重い（10〜100倍の速度低下）ため
+        // 通常のデバッグでは無効にし、GPU側の問題を調査する場合のみ有効にする
         debugController->SetEnableGPUBasedValidation(TRUE);
 
         // デバッグレイヤー有効化のログを出力

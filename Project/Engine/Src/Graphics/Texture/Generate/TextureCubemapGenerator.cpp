@@ -1,4 +1,4 @@
-﻿#include "TextureCubemapGenerator.h"
+#include "TextureCubemapGenerator.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/ProcessExecutor/ProcessExecutor.h"
 
@@ -34,10 +34,11 @@ namespace CoreEngine
             Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Output base: {}", outputBaseStr));
 
             std::string command = std::format(
-                "\"{}\" --input \"{}\" --output0 \"{}\" --output0params dds,rgba16f,cubemap",
+                "\"{}\" --input \"{}\" --output0 \"{}\" --output0params dds,rgba16f,cubemap --srcFaceSize {}",
                 cmftPathStr,
                 hdrPathStr,
-                outputBaseStr);
+                outputBaseStr,
+                outputFaceSize_);
 
             Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", std::format("Executing: {}", command));
 

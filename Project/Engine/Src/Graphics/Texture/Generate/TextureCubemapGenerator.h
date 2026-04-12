@@ -15,6 +15,10 @@ namespace CoreEngine
         /// @return 生成と検証に成功したらtrue
         bool GenerateFromHDR(const std::string& hdrPath, const std::string& cubemapDDSPath) const;
 
+        /// @brief キューブマップ出力フェイスサイズを設定する（デフォルト512px）
+        /// @param faceSize 各面のピクセル数（512推奨。小さいほど高速、大きいほど高品質）
+        void SetOutputFaceSize(uint32_t faceSize) { outputFaceSize_ = faceSize; }
+
     private:
         /// @brief cmft実行ファイルの存在を確認してパスを返す
         /// @return cmft実行ファイルパス。未検出なら空パス
@@ -32,5 +36,6 @@ namespace CoreEngine
 
         static constexpr int processWaitTimeOutMs_ = 100;  ///< プロセス実行後の待機時間（ms）
         static constexpr const char* cmtfRelativePath_ = "Externals/cmft/cmftRelease.exe";  ///< cmft実行ファイル相対パス
+        uint32_t outputFaceSize_ = 512;  ///< キューブマップ出力フェイスサイズ（px）
     };
 }

@@ -63,6 +63,10 @@ DockingUI* GetDockingUI() const { return dockingUI_.get(); }
 /// @return シーンビューポートへのポインタ
 SceneViewport* GetSceneViewport() const { return sceneViewport_.get(); }
 
+/// @brief SceneViewウィンドウが前フレームで表示されていたか
+/// @return 表示中ならtrue
+bool IsSceneViewVisible() const { return sceneViewport_ && sceneViewport_->IsSceneViewVisible(); }
+
 /// @brief プロジェクトビューへのアクセッサ
     /// @return プロジェクトビューへのポインタ
     ProjectView* GetProjectView() const { return projectView_.get(); }

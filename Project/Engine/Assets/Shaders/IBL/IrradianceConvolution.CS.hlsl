@@ -90,9 +90,11 @@ float3 ComputeIrradiance(float3 N)
     float3 irradiance = float3(0, 0, 0);
     float totalWeight = 0.0;
     
-    // サンプリングパラメータ（超高品質）
-    const uint phiSamples = 1024;   // 方位角サンプル数
-    const uint thetaSamples = 256;  // 極角サンプル数
+    // サンプリングパラメータ
+    // Irradianceは極低周波信号のため64x32で十分な品質が得られる
+    // 旧設定(1024x256=262144spp)は超高品質だが生成に2.5秒かかっていた
+    const uint phiSamples = 64;    // 方位角サンプル数
+    const uint thetaSamples = 32;  // 極角サンプル数
     
     float deltaPhi = TWO_PI / float(phiSamples);
     float deltaTheta = HALF_PI / float(thetaSamples);

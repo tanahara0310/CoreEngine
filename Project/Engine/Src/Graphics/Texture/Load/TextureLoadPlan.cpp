@@ -1,4 +1,4 @@
-﻿#include "TextureLoadPlan.h"
+#include "TextureLoadPlan.h"
 
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Logger/Logger.h"
@@ -21,7 +21,7 @@ namespace CoreEngine
         std::wstring currentPathW = Logger::GetInstance().ConvertString(plan.resolvedPath);
         auto fileType = TextureImageProcessor::DetectFileType(currentPathW);
         plan.isDDS = (fileType == TextureImageProcessor::FileType::DDS);
-        plan.isHDR = (fileType == TextureImageProcessor::FileType::HDR);
+        const bool isHDR = (fileType == TextureImageProcessor::FileType::HDR);
 
         // DDS生成無効時は変換や再生成を行わず、そのまま返す。
         if (!ddsGenerationEnabled) {
@@ -29,7 +29,7 @@ namespace CoreEngine
         }
 
         // HDR入力の場合はCubemapDDSキャッシュ利用を優先する。
-        if (plan.isHDR) {
+        if (isHDR) {
             const std::string cubemapDDSPath = pathResolver.GetCubemapDDSPath(plan.resolvedPath);
             const std::wstring cubemapDDSPathW = Logger::GetInstance().ConvertString(cubemapDDSPath);
 
@@ -55,7 +55,6 @@ namespace CoreEngine
                 if (cubemapGenerator(plan.resolvedPath, cubemapDDSPath)) {
                     plan.resolvedPath = cubemapDDSPath;
                     plan.isDDS = true;
-                    plan.isHDR = false;
                 } else {
                     Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", 
                         std::format("Failed to generate cubemap, loading HDR as 2D texture: {}", plan.resolvedPath));
@@ -66,14 +65,13 @@ namespace CoreEngine
 
                 plan.resolvedPath = cubemapDDSPath;
                 plan.isDDS = true;
-                plan.isHDR = false;
             }
 
             return plan;
         }
 
         // 非DDS/非HDR入力の場合は通常DDSキャッシュを確認する。
-        if (!plan.isDDS && !plan.isHDR) {
+        if (!plan.isDDS && !isHDR) {
             plan.ddsPathToGenerate = pathResolver.GetDDSCachePath(plan.resolvedPath);
             const std::wstring ddsPathW = Logger::GetInstance().ConvertString(plan.ddsPathToGenerate);
 

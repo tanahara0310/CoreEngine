@@ -1,4 +1,4 @@
-﻿#include "TextureGpuUploader.h"
+#include "TextureGpuUploader.h"
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -12,11 +12,16 @@
 
 namespace CoreEngine
 {
+    std::mutex TextureGpuUploader::gpuUploadMutex_;
+
     TextureGpuUploader::UploadResult TextureGpuUploader::UploadAndCreateSrv(
         CoreEngine::DirectXCommon* dxCommon,
         const DirectX::ScratchImage& mipImages,
         const std::string& resolvedPath)
     {
+        // コマンドリストとディスクリプタ確保はスレッドセーフでないため直列化する。
+        std::lock_guard<std::mutex> lock(gpuUploadMutex_);
+
         // 生成済みミップチェーンからGPUリソース記述子を構築する。
         const DirectX::TexMetadata& texMetadata = mipImages.GetMetadata();
 

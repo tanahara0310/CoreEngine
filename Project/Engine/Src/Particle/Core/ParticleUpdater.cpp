@@ -6,6 +6,9 @@
 #include "Particle/Modules/RotationModule.h"
 #include "Particle/Modules/NoiseModule.h"
 
+#include <algorithm>
+#include <execution>
+
 
 namespace CoreEngine
 {
@@ -24,27 +27,29 @@ void ParticleUpdater::Initialize(
 }
 
 uint32_t ParticleUpdater::UpdateParticles(
-    std::list<Particle>& particles,
+    std::vector<Particle>& particles,
     float deltaTime,
     float gravityModifier
 ) {
-    uint32_t destroyedCount = 0;
+    // Phase 1: 並列更新
+    // 各パーティクルは独立しているため par_unseq で安全に並列実行できる
+    std::for_each(std::execution::par_unseq,
+        particles.begin(), particles.end(),
+        [this, deltaTime, gravityModifier](Particle& p) {
+            p.currentTime += deltaTime;
+            if (p.currentTime < p.lifeTime) {
+                UpdateSingleParticle(p, deltaTime, gravityModifier);
+            }
+        });
 
-    for (auto particleIterator = particles.begin(); particleIterator != particles.end();) {
-        // ライフタイムチェック
-        particleIterator->currentTime += deltaTime;
-        if (particleIterator->currentTime >= particleIterator->lifeTime) {
-            particleIterator = particles.erase(particleIterator);
-            ++destroyedCount;
-            continue;
-        }
+    // Phase 2: 寿命切れパーティクルをまとめて削除（シングルスレッド）
+    const auto newEnd = std::remove_if(particles.begin(), particles.end(),
+        [](const Particle& p) { return p.currentTime >= p.lifeTime; });
 
-        // 単一パーティクルの更新
-        UpdateSingleParticle(*particleIterator, deltaTime, gravityModifier);
+    const uint32_t destroyedCount =
+        static_cast<uint32_t>(std::distance(newEnd, particles.end()));
 
-        ++particleIterator;
-    }
-
+    particles.erase(newEnd, particles.end());
     return destroyedCount;
 }
 

@@ -51,12 +51,18 @@ namespace CoreEngine
 
     std::string TexturePathResolver::GetCubemapDDSPath(const std::string& originalPath) const
     {
+        // フェイスサイズが設定されている場合はサフィックスに含める（例: _cubemap_512.dds）。
+        // サイズが変わるとパスが変わり、旧キャッシュを自動的に無効化できる。
+        const std::string suffix = (cubemapFaceSize_ > 0)
+            ? "_cubemap_" + std::to_string(cubemapFaceSize_) + ".dds"
+            : "_cubemap.dds";
+
         auto& assetDB = AssetDatabase::GetInstance();
         std::filesystem::path absPath = std::filesystem::absolute(originalPath);
         std::string guid = assetDB.GetGUID(absPath);
 
         if (!guid.empty()) {
-            std::filesystem::path cachePath = assetDB.GetCachedTexturePath(guid, "_cubemap.dds");
+            std::filesystem::path cachePath = assetDB.GetCachedTexturePath(guid, suffix);
             return cachePath.string();
         }
 
@@ -65,10 +71,10 @@ namespace CoreEngine
         std::string fileName = path.stem().string();
 
         if (parentPath.empty()) {
-            return fileName + "_cubemap.dds";
+            return fileName + suffix;
         }
 
-        return (parentPath / (fileName + "_cubemap.dds")).string();
+        return (parentPath / (fileName + suffix)).string();
     }
 
     std::string TexturePathResolver::ResolveFilePath(const std::string& filePath) const

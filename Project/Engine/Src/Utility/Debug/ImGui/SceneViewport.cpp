@@ -52,7 +52,7 @@ namespace CoreEngine
         }
 
         // SceneViewportは各責務クラスを調停する管理役に徹する。
-        windowRenderer_->DrawWindow("Scene", textureHandle,
+        auto windowResult = windowRenderer_->DrawWindow("Scene", textureHandle,
             [this](const SceneViewportWindowResult& result) {
                 if (!result.hasImage) {
                     return;
@@ -80,6 +80,7 @@ namespace CoreEngine
                 context.objectSelector = objectSelector_.get();
                 gizmoController_->Draw(context);
             });
+        isSceneViewVisible_ = windowResult.isWindowOpen;
     }
 
     void SceneViewport::DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)

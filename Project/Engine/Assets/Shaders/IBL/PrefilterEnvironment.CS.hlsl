@@ -4,7 +4,7 @@
 
 // ===== 定数 =====
 static const float PI = 3.14159265359f;
-static const uint SAMPLE_COUNT = 2048u; // サンプル数（超高品質）
+static const uint SAMPLE_COUNT = 512u; // サンプル数（Hammersley低不一致列で512sppは十分な品質）
 
 // ===== SRV & UAV =====
 TextureCube<float4> gEnvironmentMap : register(t0); // 入力環境マップ

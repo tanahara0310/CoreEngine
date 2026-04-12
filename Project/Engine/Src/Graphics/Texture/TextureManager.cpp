@@ -5,6 +5,7 @@
 #include "Load/TextureLoadExecutor.h"
 #include "Load/TextureMetadataLoader.h"
 #include "Utility/Logger/Logger.h"
+#include "Threading/ThreadPool.h"
 
 #include <cassert>
 #include <format>
@@ -36,6 +37,11 @@ namespace CoreEngine
 
         dxCommon_ = dxCommon;
         isInitialized_ = true;
+
+        // キューブマップDDSのフェイスサイズをパス解決器と生成器の両方に適用する。
+        // フェイスサイズがパスに組み込まれるため、設定変更時は旧キャッシュが自動的に無視される。
+        texturePathResolver_.SetCubemapFaceSize(cubemapFaceSize_);
+        cubemapGenerator_.SetOutputFaceSize(cubemapFaceSize_);
     }
 
     TextureManager::LoadContext TextureManager::AcquireLoadContext() const
@@ -110,16 +116,12 @@ namespace CoreEngine
         );
 
         resolvedPath = loadPlan.resolvedPath;
-        bool isDDS = loadPlan.isDDS;
-        bool isHDR = loadPlan.isHDR;
         const std::string& ddsPath = loadPlan.ddsPathToGenerate;
 
         // ロード実行の本体処理は専用クラスに委譲し、Managerはオーケストレーションに集中する。
         TextureLoadExecutor::ExecutionResult executionResult = TextureLoadExecutor::Execute(
             dxCommon,
             resolvedPath,
-            isDDS,
-            isHDR,
             ddsGenerationEnabled,
             ddsPath,
             [this](const std::string& sourcePath, const std::string& outputDdsPath) {
@@ -166,7 +168,14 @@ namespace CoreEngine
 
     void TextureManager::Clear()
     {
-        // キャッシュの破棄は専用ストアへ委譲し、管理責務を集約する。
+        // 未完了の非同期ロードを待ってからキャッシュを破棄する。
+        WaitForAllPendingLoads();
+
+        if (threadPool_) {
+            threadPool_->Shutdown();
+            threadPool_.reset();
+        }
+
         cacheStore_->Clear();
     }
 
@@ -174,6 +183,76 @@ namespace CoreEngine
     {
         // デバッグ参照時のデータ競合を避けるため、スナップショットを返す。
         return cacheStore_->GetTextureCache();
+    }
+
+    void TextureManager::EnsureThreadPool()
+    {
+        // 初回の非同期リクエスト時にスレッドプールを生成する。
+        if (!threadPool_) {
+            uint32_t count = workerThreadCount_;
+            if (count == 0) {
+                count = (std::max)(1u, std::thread::hardware_concurrency() / 2);
+            }
+            threadPool_ = std::make_unique<ThreadPool>(count);
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
+                std::format("TextureManager: thread pool created with {} workers", count));
+        }
+    }
+
+    std::shared_future<TextureManager::LoadedTexture> TextureManager::SubmitAsync(const std::string& filePath)
+    {
+        // キャッシュヒット時は即座に完了済み future を返す。
+        std::string resolvedPath = texturePathResolver_.ResolveAssetPath(filePath, false);
+        LoadedTexture cachedTexture{};
+        if (cacheStore_->TryGetTexture(resolvedPath, cachedTexture)) {
+            std::promise<LoadedTexture> p;
+            p.set_value(cachedTexture);
+            return p.get_future().share();
+        }
+
+        EnsureThreadPool();
+
+        // ワーカースレッドで Load を実行し、結果を future で返す。
+        std::string pathCopy = filePath;
+        auto future = threadPool_->Submit([this, pathCopy]() -> LoadedTexture {
+            return Load(pathCopy);
+        });
+
+        auto sharedFuture = future.share();
+
+        {
+            std::lock_guard<std::mutex> lock(pendingMutex_);
+            pendingFutures_.push_back(sharedFuture);
+        }
+
+        return sharedFuture;
+    }
+
+    void TextureManager::Load(const std::vector<std::string>& filePaths)
+    {
+        if (filePaths.empty()) return;
+
+        for (const auto& path : filePaths) {
+            SubmitAsync(path);
+        }
+        WaitForAllPendingLoads();
+    }
+
+    void TextureManager::WaitForAllPendingLoads()
+    {
+        std::vector<std::shared_future<LoadedTexture>> futures;
+
+        {
+            std::lock_guard<std::mutex> lock(pendingMutex_);
+            futures = std::move(pendingFutures_);
+            pendingFutures_.clear();
+        }
+
+        for (auto& f : futures) {
+            if (f.valid()) {
+                f.wait();
+            }
+        }
     }
 
 }

@@ -101,6 +101,14 @@ namespace CoreEngine {
         /// @brief テクスチャハンドル（空の場合はモデル組み込みテクスチャを使用）
         TextureManager::LoadedTexture texture_;
 
+        /// @brief ブレンドモード（Render Properties タブで変更可能）
+        BlendMode blendMode_ = BlendMode::kBlendModeNone;
+
+    public:
+        BlendMode GetBlendMode() const override { return blendMode_; }
+        void SetBlendMode(BlendMode blendMode) override { blendMode_ = blendMode; }
+
+    protected:
 #ifdef USE_IMGUI
         // ImGui 編集追跡用（操作前スナップショット）
         Vector3 imguiSnapTranslate_ = { 0.0f, 0.0f, 0.0f };
@@ -114,8 +122,17 @@ namespace CoreEngine {
         /// マテリアルUIを描画するヘルパー
         bool DrawMaterialImGui();
 
+        /// @brief Transform セクション（Object Properties タブ）を描画するヘルパー
+        bool DrawTransformSection();
+
+        /// @brief Render Properties タブを描画するヘルパー
+        bool DrawRenderSection();
+
         /// @brief Active 変更時に Undo/Redo コールバックを発火する
         void OnImGuiActiveChanged(bool prevActive) override;
+
+        /// @brief 現在選択中のプロパティタブインデックス（0=Object, 1=Material, 2=Render）
+        int inspectorTab_ = 0;
 #endif
     };
 

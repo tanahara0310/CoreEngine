@@ -1,6 +1,6 @@
-﻿#pragma once
+#pragma once
 
-#include <list>
+#include <vector>
 #include <cstdint>
 
 namespace CoreEngine
@@ -40,7 +40,7 @@ public:
     /// @param gravityModifier 重力倍率（MainModuleから取得）
     /// @return 削除されたパーティクル数
     uint32_t UpdateParticles(
-        std::list<Particle>& particles,
+        std::vector<Particle>& particles,
         float deltaTime,
         float gravityModifier
     );
