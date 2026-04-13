@@ -238,16 +238,24 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
 }
 
 #ifdef _DEBUG
-bool SkyBoxObject::DrawImGuiExtended() {
+int SkyBoxObject::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
+    if (maxTabs < 1) return 0;
+    outTabs[0] = { "object_data.png", "トランスフォーム", {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
+    return 1;
+}
+
+bool SkyBoxObject::DrawInspectorTabContent(int tabIndex) {
+    if (tabIndex != 0) return false;
     bool changed = false;
 
-    if (ImGui::TreeNode("Transform")) {
-        changed |= UI::DragVec3("Rotation", transform_.rotate, 0.01f);
-        changed |= UI::DragVec3("Scale", transform_.scale,  0.01f);
-        ImGui::TreePop();
-    }
+    UI::SectionHeader("回転");
+    changed |= UI::DragVec3("回転", transform_.rotate, 0.01f);
 
-    if (ImGui::Button("回転・スケールをリセット")) {
+    UI::SectionHeader("スケール");
+    changed |= UI::DragVec3("スケール", transform_.scale, 0.01f);
+
+    UI::Spacing();
+    if (ImGui::Button("リセット##skybox")) {
         transform_.scale  = { 1.0f, 1.0f, 1.0f };
         transform_.rotate = { 0.0f, 0.0f, 0.0f };
         changed = true;

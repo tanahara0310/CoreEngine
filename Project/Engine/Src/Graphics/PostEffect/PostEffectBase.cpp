@@ -15,7 +15,7 @@ namespace CoreEngine
         shaderCompiler.Initialize();
 
         fullscreenVertexShaderBlob_ = shaderCompiler.CompileShader(
-            L"Engine/Assets/Shaders/PostProcess/FullScreen.VS.hlsl", L"vs_6_0");
+            L"FullScreen.VS.hlsl", L"vs_6_0");
         pixelShaderBlob_ = shaderCompiler.CompileShader(
             GetPixelShaderPath(), L"ps_6_0");
 

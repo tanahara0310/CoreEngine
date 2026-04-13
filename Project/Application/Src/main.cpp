@@ -1,4 +1,4 @@
-#include "Application/Src/MyGame.h"
+#include "MyGame.h"
 
 // Windowsアプリでのエントリーポイント(main関数)
 

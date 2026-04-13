@@ -32,8 +32,11 @@ public:
     void Draw(const CoreEngine::ICamera* camera) override;
 
 #ifdef _DEBUG
-    /// @brief 拡張ImGuiデバッグUI描画（Transform + SkyBox固有パラメータ）
-    bool DrawImGuiExtended() override;
+    /// @brief インスペクタータブ定義を返す
+    int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+
+    /// @brief 指定タブのコンテンツを描画する
+    bool DrawInspectorTabContent(int tabIndex) override;
 #endif
 
     const char* GetObjectName() const override { return "SkyBox"; }

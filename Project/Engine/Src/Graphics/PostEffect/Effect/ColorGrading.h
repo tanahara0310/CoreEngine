@@ -52,7 +52,7 @@ public:
 protected:
     const std::wstring& GetPixelShaderPath() const override
     {
-        static const std::wstring pixelShaderPath = L"Engine/Assets/Shaders/PostProcess/ColorGrading.PS.hlsl";
+        static const std::wstring pixelShaderPath = L"ColorGrading.PS.hlsl";
         return pixelShaderPath;
     }
 

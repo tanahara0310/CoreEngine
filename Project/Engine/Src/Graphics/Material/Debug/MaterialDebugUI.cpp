@@ -16,30 +16,30 @@ namespace CoreEngine {
 
         bool changed = false;
 
-        // ─────────────── Base ───────────────
-        UI::SectionHeader("Base");
+        // ─────────────── 基本設定 ───────────────
+        UI::SectionHeader("基本設定");
 
         Vector4 color = mat->GetColor();
-        if (UI::ColorEdit("Color", color)) {
+        if (UI::ColorEdit("カラー", color)) {
             mat->SetColor(color);
             changed = true;
         }
 
-        // ─────────────── Lighting ───────────────
-        UI::SectionHeader("Lighting");
+        // ─────────────── ライティング ───────────────
+        UI::SectionHeader("ライティング");
 
         bool enableLighting = mat->IsLightingEnabled();
-        if (UI::Widgets::ToggleSwitch("Enable Lighting (PBR)", &enableLighting)) {
+        if (UI::Widgets::ToggleSwitch("ライティング有効 (PBR)", &enableLighting)) {
             mat->SetLightingEnabled(enableLighting);
             changed = true;
         }
         UI::SameLine();
         UI::Hint(enableLighting ? "PBR" : "Unlit");
 
-        // ─────────────── PBR Parameters ───────────────
-        UI::SectionHeader("PBR Parameters");
+        // ─────────────── PBR パラメータ ───────────────
+        UI::SectionHeader("PBR パラメータ");
 
-        if (auto mapsTree = UI::Scope::TreeScope("Texture Maps##PBR")) {
+        if (auto mapsTree = UI::Scope::TreeScope("テクスチャマップ##PBR")) {
             const bool hasNormal    = model->HasNormalMap();
             const bool hasMetallic  = model->HasMetallicRoughnessMap();
             const bool hasOcclusion = model->HasOcclusionMap();
@@ -67,7 +67,7 @@ namespace CoreEngine {
             drawMapToggle("AO Map",        hasOcclusion, &MaterialInstance::IsAOMapEnabled,        &MaterialInstance::SetAOMapEnabled);
         }
 
-        UI::Hint("Parameters (maps disabled 時に有効)");
+        UI::Hint("マップ無効時にスライダー値が適用されます");
 
         {
             UI::Scope::DisabledScope ds(mat->IsMetallicMapEnabled() && model->HasMetallicRoughnessMap());
@@ -101,7 +101,7 @@ namespace CoreEngine {
         bool enableIBL = mat->IsIBLEnabled();
         {
             UI::Scope::DisabledScope ds(!iblAvailable);
-            if (UI::Widgets::ToggleSwitch("Enable IBL", &enableIBL)) {
+            if (UI::Widgets::ToggleSwitch("IBL 有効", &enableIBL)) {
                 mat->SetIBLEnabled(enableIBL);
                 changed = true;
             }
@@ -116,25 +116,24 @@ namespace CoreEngine {
         if (enableIBL && iblAvailable) {
             UI::Scope::IndentScope is;
             float iblIntensity = mat->GetIBLIntensity();
-            if (UI::SliderFloat("IBL Intensity", iblIntensity, 0.0f, 2.0f)) {
+            if (UI::SliderFloat("IBL 強度", iblIntensity, 0.0f, 2.0f)) {
                 mat->SetIBLIntensity(iblIntensity);
                 changed = true;
             }
-            UI::Hint("Env Rotation Y: scene-level (SkyBox)");
         }
 
-        // ─────────────── Effects ───────────────
-        UI::SectionHeader("Effects");
+        // ─────────────── エフェクト ───────────────
+        UI::SectionHeader("エフェクト");
 
         bool enableDithering = mat->IsDitheringEnabled();
-        if (UI::Widgets::ToggleSwitch("Enable Dithering", &enableDithering)) {
+        if (UI::Widgets::ToggleSwitch("ディザリング有効", &enableDithering)) {
             mat->SetDitheringEnabled(enableDithering);
             changed = true;
         }
         if (enableDithering) {
             UI::Scope::IndentScope is;
             float ditheringScale = mat->GetDitheringScale();
-            if (UI::SliderFloat("Scale##Dithering", ditheringScale, 0.1f, 5.0f)) {
+            if (UI::SliderFloat("スケール##Dithering", ditheringScale, 0.1f, 5.0f)) {
                 mat->SetDitheringScale(ditheringScale);
                 changed = true;
             }

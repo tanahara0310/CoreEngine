@@ -42,8 +42,11 @@ public:
     void Draw2D(const ICamera* camera);
     
 #ifdef USE_IMGUI
-    /// @brief Transform / Material / Sprite の ImGui UI を描画する（基底の DrawImGui から自動呼出し）
-    bool DrawImGuiExtended() override;
+    /// @brief インスペクタータブ定義を返す
+    int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+
+    /// @brief 指定タブのコンテンツを描画する
+    bool DrawInspectorTabContent(int tabIndex) override;
 #endif
 
     /// @brief オブジェクト名を取得

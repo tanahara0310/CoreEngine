@@ -41,7 +41,7 @@ public:
 protected:
     const std::wstring& GetPixelShaderPath() const override
     {
-        static const std::wstring pixelShaderPath = L"Engine/Assets/Shaders/PostProcess/Vignet.PS.hlsl";
+        static const std::wstring pixelShaderPath = L"Vignette.PS.hlsl";
         return pixelShaderPath;
     }
 

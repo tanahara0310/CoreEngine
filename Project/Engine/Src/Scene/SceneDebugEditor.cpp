@@ -9,6 +9,7 @@
 #include "Utility/Debug/ImGui/SceneViewport.h"
 #include "Utility/Debug/ImGui/ObjectSelector.h"
 #include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Graphics/Texture/TextureManager.h"
 
 namespace CoreEngine
 {
@@ -32,7 +33,7 @@ namespace CoreEngine
 
         // 個別オブジェクト保存コールバック
         mgr->SetOnSaveRequestCallback([this](GameObject* obj) {
-            saveSystem_->SaveSingle(obj);
+            saveSystem_->SaveObject(obj);
             });
 
         // ギズモ変更時コールバックを設定
@@ -138,7 +139,7 @@ namespace CoreEngine
         // Ctrl+S でシーン全体保存
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) {
             if (!saveSystem_->GetSceneName().empty()) {
-                saveSystem_->Save(gameObjectManager_);
+                saveSystem_->SaveScene(gameObjectManager_);
             }
         }
 
@@ -166,8 +167,8 @@ namespace CoreEngine
     {
         // ツールバー：保存 / Undo / Redo
         ImGui::BeginDisabled(saveSystem_->GetSceneName().empty());
-        if (ImGui::Button("Save")) {
-            saveSystem_->Save(gameObjectManager_);
+        if (ImGui::Button("Save Scene")) {
+            saveSystem_->SaveScene(gameObjectManager_);
         }
         ImGui::EndDisabled();
         UI::SameLine();
@@ -202,6 +203,14 @@ namespace CoreEngine
         UI::Separator();
 
         if (auto child = UI::Scope::ChildScope("##HierarchyObjectList")) {
+            // ── オブジェクトアイコンの初回ロード ──
+            static D3D12_GPU_DESCRIPTOR_HANDLE sObjIconHandle{};
+            static bool sObjIconLoaded = false;
+            if (!sObjIconLoaded && TextureManager::GetInstance().IsInitialized()) {
+                sObjIconHandle = TextureManager::GetInstance().Load("obj.png").gpuHandle;
+                sObjIconLoaded = true;
+            }
+
             for (const auto& obj : objects) {
                 if (!obj) continue;
 
@@ -218,8 +227,16 @@ namespace CoreEngine
                     ++colorsPushed;
                 }
 
-                const std::string& name = obj->GetName();
-                const char* displayName = name.empty() ? obj->GetObjectName() : name.c_str();
+                // アイコンを表示
+                if (sObjIconLoaded) {
+                    ImGui::ImageWithBg((ImTextureID)sObjIconHandle.ptr, ImVec2(14, 14),
+                        ImVec2(0, 0), ImVec2(1, 1),
+                        ImVec4(0, 0, 0, 0),
+                        ImVec4(0.96f, 0.65f, 0.14f, 1.0f));
+                    ImGui::SameLine(0.0f, 4.0f);
+                }
+
+                const char* displayName = obj->GetDisplayName();
 
                 char itemId[256];
                 snprintf(itemId, sizeof(itemId), "%s##obj_%p", displayName, (void*)obj.get());

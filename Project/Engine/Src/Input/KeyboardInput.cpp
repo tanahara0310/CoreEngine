@@ -1,4 +1,4 @@
-﻿#include "KeyboardInput.h"
+#include "KeyboardInput.h"
 
 #include <algorithm> // std::copy を使用するために追加
 #include <cassert>
@@ -79,15 +79,6 @@ void KeyboardInput::Update()
 
     // キーボードの状態を取得
     keyboard_->GetDeviceState(sizeof(key_), key_);
-
-    // どのキーが押されたかを確認(デバッグ用)d
-    for (const auto& keyInfo : kKeyNameTable) {
-        if (IsKeyTriggered(keyInfo.code)) {
-            wchar_t buffer[64];
-            swprintf_s(buffer, L"%hs が押されました\n", keyInfo.name); // %hs で char* を wide に
-            OutputDebugStringW(buffer);
-        }
-    }
 }
 
 bool KeyboardInput::IsKeyPressed(uint8_t keyNumber) const

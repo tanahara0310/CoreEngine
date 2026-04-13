@@ -541,7 +541,9 @@
     <ClCompile Include="Application\Src\MyGame.cpp">
       <Filter>Application\Src</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Application\Src\main.cpp">
+      <Filter>Application\Src</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\WinApp\WinApp.cpp">
       <Filter>Engine\Src\WinApp</Filter>
     </ClCompile>

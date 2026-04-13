@@ -277,123 +277,137 @@ namespace CoreEngine
             onEditCommitted_(this,
                 transform_.translate, transform_.rotate, transform_.scale, prevActive);
         }
-}
+    }
 
-bool SpriteObject::DrawImGuiExtended() {
-    bool changed = false;
+    int SpriteObject::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
+        if (maxTabs < 3) return 0;
+        outTabs[0] = { "object_data.png", "トランスフォーム", {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
+        outTabs[1] = { "material.png",    "マテリアル",   {0.90f,0.30f,0.40f,1.0f}, {0.90f,0.30f,0.40f,0.25f} };
+        outTabs[2] = { "imagePlane.png",  "スプライト",   {0.60f,0.40f,0.80f,1.0f}, {0.60f,0.40f,0.80f,0.25f} };
+        return 3;
+    }
 
-    // ─────────────── Transform ───────────────
-    if (auto s = UI::Scope::TreeScope("Transform")) {
-        auto snapAndCommit = [&](auto editFn) {
-            editFn();
-            if (ImGui::IsItemActivated()) {
-                imguiSnapTranslate_ = transform_.translate;
-                imguiSnapRotate_ = transform_.rotate;
-                imguiSnapScale_ = transform_.scale;
-                imguiSnapActive_ = isActive_;
+    bool SpriteObject::DrawInspectorTabContent(int tabIndex) {
+        bool changed = false;
+
+        switch (tabIndex) {
+        case 0: { // ── トランスフォーム ───────────────
+            auto snapAndCommit = [&](auto editFn) {
+                editFn();
+                if (ImGui::IsItemActivated()) {
+                    imguiSnapTranslate_ = transform_.translate;
+                    imguiSnapRotate_ = transform_.rotate;
+                    imguiSnapScale_ = transform_.scale;
+                    imguiSnapActive_ = isActive_;
+                }
+                if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+                    onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+                }
+                };
+
+            UI::SectionHeader("位置");
+            snapAndCommit([&] { changed |= UI::DragVec3("位置", transform_.translate, 0.5f); });
+
+            UI::SectionHeader("回転");
+            snapAndCommit([&] { changed |= UI::DragVec3("回転", transform_.rotate, 0.01f); });
+
+            UI::SectionHeader("スケール");
+            snapAndCommit([&] { changed |= UI::DragVec3("スケール", transform_.scale, 0.01f, 0.0f, 100.0f); });
+
+            UI::Spacing();
+            ImGui::Text("テクスチャ: %.0f x %.0f px", textureSize_.x, textureSize_.y);
+            Vector2 actualSize = GetActualSize();
+            ImGui::Text("描画サイズ: %.0f x %.0f px", actualSize.x, actualSize.y);
+            break;
+        }
+        case 1: { // ── マテリアル ───────────────
+            UI::SectionHeader("基本設定");
+
+            Vector4 color = material_->GetColor();
+            if (UI::ColorEdit("カラー", color)) {
+                material_->SetColor(color);
+                changed = true;
             }
-            if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
-                onEditCommitted_(this, imguiSnapTranslate_, imguiSnapRotate_, imguiSnapScale_, imguiSnapActive_);
+
+            UI::SectionHeader("UV 変換");
+
+            bool uvChanged = false;
+            uvChanged |= ImGui::DragFloat2("オフセット##UV", &uvTransform_.translate.x, 0.01f);
+            uvChanged |= ImGui::DragFloat2("スケール##UV", &uvTransform_.scale.x, 0.01f, 0.01f, 10.0f);
+            uvChanged |= UI::SliderFloat("回転##UV", uvTransform_.rotate.z, -3.14159f, 3.14159f);
+
+            if (uvChanged) {
+                UpdateUVTransformMatrix(uvTransform_);
+                changed = true;
             }
-            };
 
-        snapAndCommit([&] { changed |= UI::DragVec3("Position", transform_.translate, 0.5f); });
-        snapAndCommit([&] { changed |= UI::DragVec3("Rotation", transform_.rotate, 0.01f); });
-        snapAndCommit([&] { changed |= UI::DragVec3("Scale", transform_.scale, 0.01f, 0.0f, 100.0f); });
+            if (ImGui::Button("UV リセット")) {
+                uvTransform_ = { { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
+                material_->SetUVTransform(Matrix::Identity());
+                changed = true;
+            }
+            break;
+        }
+        case 2: { // ── スプライト ───────────────
+            UI::SectionHeader("ブレンドモード");
+            {
+                const char* blendModes[] = { "なし", "通常", "加算", "減算", "乗算", "スクリーン" };
+                int blendModeInt = static_cast<int>(blendMode_);
+                if (ImGui::Combo("##blendMode", &blendModeInt, blendModes, 6)) {
+                    blendMode_ = static_cast<BlendMode>(blendModeInt);
+                    changed = true;
+                }
+            }
 
-        UI::Spacing();
-        ImGui::Text("Texture: %.0f x %.0f px", textureSize_.x, textureSize_.y);
-        Vector2 actualSize = GetActualSize();
-        ImGui::Text("Rendered: %.0f x %.0f px", actualSize.x, actualSize.y);
-    }
+            UI::SectionHeader("アンカーポイント");
+            Vector2 anchorTemp = anchorPoint_;
+            if (UI::DragVec2("##anchor", anchorTemp, 0.01f, 0.0f, 1.0f)) {
+                ChangeAnchorKeepingPosition(anchorTemp);
+                changed = true;
+            }
+            if (ImGui::Button("TL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 0.0f }); changed = true; } UI::SameLine();
+            if (ImGui::Button("TC##anchor")) { ChangeAnchorKeepingPosition({ 0.5f, 0.0f }); changed = true; } UI::SameLine();
+            if (ImGui::Button("TR##anchor")) { ChangeAnchorKeepingPosition({ 1.0f, 0.0f }); changed = true; } UI::SameLine();
+            if (ImGui::Button("C##anchor")) { ChangeAnchorKeepingPosition({ 0.5f, 0.5f }); changed = true; } UI::SameLine();
+            if (ImGui::Button("BL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 1.0f }); changed = true; } UI::SameLine();
+            if (ImGui::Button("BR##anchor")) { ChangeAnchorKeepingPosition({ 1.0f, 1.0f }); changed = true; }
 
-    // ─────────────── Material ───────────────
-    if (auto s = UI::Scope::TreeScope("Material")) {
-        UI::SectionHeader("Base");
-
-        Vector4 color = material_->GetColor();
-        if (UI::ColorEdit("Color", color)) {
-            material_->SetColor(color);
-            changed = true;
+            UI::Spacing();
+            if (ImGui::Button("リセット##sprite")) {
+                Reset();
+                changed = true;
+            }
+            break;
+        }
+        default: break;
         }
 
-        UI::SectionHeader("UV Transform");
-
-        bool uvChanged = false;
-        uvChanged |= ImGui::DragFloat2("Offset##UV", &uvTransform_.translate.x, 0.01f);
-        uvChanged |= ImGui::DragFloat2("Scale##UV", &uvTransform_.scale.x, 0.01f, 0.01f, 10.0f);
-        uvChanged |= UI::SliderFloat("Rotation##UV", uvTransform_.rotate.z, -3.14159f, 3.14159f);
-
-        if (uvChanged) {
-            UpdateUVTransformMatrix(uvTransform_);
-            changed = true;
-        }
-
-        if (ImGui::Button("Reset UV")) {
-            uvTransform_ = { { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
-            material_->SetUVTransform(Matrix::Identity());
-            changed = true;
-        }
+        return changed;
     }
-
-    // ─────────────── Sprite ───────────────
-    UI::SectionHeader("Sprite");
-
-    {
-        const char* blendModes[] = { "None", "Normal", "Add", "Subtract", "Multiply", "Screen" };
-        int blendModeInt = static_cast<int>(blendMode_);
-        if (ImGui::Combo("Blend Mode", &blendModeInt, blendModes, 6)) {
-            blendMode_ = static_cast<BlendMode>(blendModeInt);
-            changed = true;
-        }
-    }
-
-    UI::Spacing();
-    ImGui::Text("Anchor Point");
-    Vector2 anchorTemp = anchorPoint_;
-    if (UI::DragVec2("##anchor", anchorTemp, 0.01f, 0.0f, 1.0f)) {
-        ChangeAnchorKeepingPosition(anchorTemp);
-        changed = true;
-    }
-    if (ImGui::Button("TL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 0.0f }); changed = true; } UI::SameLine();
-    if (ImGui::Button("TC##anchor")) { ChangeAnchorKeepingPosition({ 0.5f, 0.0f }); changed = true; } UI::SameLine();
-    if (ImGui::Button("TR##anchor")) { ChangeAnchorKeepingPosition({ 1.0f, 0.0f }); changed = true; } UI::SameLine();
-    if (ImGui::Button("C##anchor")) { ChangeAnchorKeepingPosition({ 0.5f, 0.5f }); changed = true; } UI::SameLine();
-    if (ImGui::Button("BL##anchor")) { ChangeAnchorKeepingPosition({ 0.0f, 1.0f }); changed = true; } UI::SameLine();
-    if (ImGui::Button("BR##anchor")) { ChangeAnchorKeepingPosition({ 1.0f, 1.0f }); changed = true; }
-
-    UI::Spacing();
-    if (ImGui::Button("Reset##sprite")) {
-        Reset();
-        changed = true;
-    }
-
-    return changed;
-}
 #endif // USE_IMGUI
 
-json SpriteObject::OnSerialize() const {
-    json j;
-    j["active"] = IsActive();
-    j["transform"]["translate"] = JsonManager::Vector3ToJson(transform_.translate);
-    j["transform"]["rotate"] = JsonManager::Vector3ToJson(transform_.rotate);
-    j["transform"]["scale"] = JsonManager::Vector3ToJson(transform_.scale);
-    return j;
-}
-
-void SpriteObject::OnDeserialize(const json& j) {
-    if (j.contains("active")) {
-        SetActive(j["active"].get<bool>());
+    json SpriteObject::OnSerialize() const {
+        json j;
+        j["active"] = IsActive();
+        j["transform"]["translate"] = JsonManager::Vector3ToJson(transform_.translate);
+        j["transform"]["rotate"] = JsonManager::Vector3ToJson(transform_.rotate);
+        j["transform"]["scale"] = JsonManager::Vector3ToJson(transform_.scale);
+        return j;
     }
-    if (j.contains("transform")) {
-        const json& t = j["transform"];
-        transform_.translate = JsonManager::SafeGetVector3(t, "translate", transform_.translate);
-        transform_.rotate = JsonManager::SafeGetVector3(t, "rotate", transform_.rotate);
-        transform_.scale = JsonManager::SafeGetVector3(t, "scale", transform_.scale);
-    }
-}
 
-void SpriteObject::Draw(const ICamera* camera) {
-    Draw2D(camera);
-}
+    void SpriteObject::OnDeserialize(const json& j) {
+        if (j.contains("active")) {
+            SetActive(j["active"].get<bool>());
+        }
+        if (j.contains("transform")) {
+            const json& t = j["transform"];
+            transform_.translate = JsonManager::SafeGetVector3(t, "translate", transform_.translate);
+            transform_.rotate = JsonManager::SafeGetVector3(t, "rotate", transform_.rotate);
+            transform_.scale = JsonManager::SafeGetVector3(t, "scale", transform_.scale);
+        }
+    }
+
+    void SpriteObject::Draw(const ICamera* camera) {
+        Draw2D(camera);
+    }
 }

@@ -4,83 +4,119 @@
 
 namespace CoreEngine
 {
+    // ===== パスヘルパー =====
+
+    std::string SceneSaveSystem::GetSceneDir() const {
+        return "Application/Assets/Scene/" + sceneName_;
+    }
+
+    std::string SceneSaveSystem::GetManifestPath() const {
+        return GetSceneDir() + "/_scene.json";
+    }
+
+    std::string SceneSaveSystem::GetObjectPath(const std::string& key) const {
+        return GetSceneDir() + "/" + key + ".json";
+    }
+
+    // ===== Load =====
+
     void SceneSaveSystem::Load(GameObjectManager* mgr)
     {
         if (sceneName_.empty() || !mgr) return;
 
-        std::string filePath = "Application/Assets/Scene/" + sceneName_ + ".json";
-        auto& jsonManager = JsonManager::GetInstance();
+        auto& jm = JsonManager::GetInstance();
 
-        if (!jsonManager.FileExists(filePath)) return;
-
-        json j = jsonManager.LoadJson(filePath);
-        if (!j.contains("objects")) return;
-
-        const json& objects = j["objects"];
+        // オブジェクトごとに個別ファイルからデシリアライズ
         for (const auto& obj : mgr->GetAllObjects()) {
             if (!obj || !obj->IsSerializeEnabled()) continue;
-            const std::string& name = obj->GetName();
-            if (name.empty()) continue;
-            if (objects.contains(name)) {
-                obj->OnDeserialize(objects[name]);
+            const std::string& key = obj->GetSerializeKey();
+            if (key.empty()) continue;
+
+            std::string objPath = GetObjectPath(key);
+            if (!jm.FileExists(objPath)) continue;
+
+            json data = jm.LoadJson(objPath);
+            if (!data.is_null()) {
+                obj->OnDeserialize(data);
             }
         }
     }
 
-    void SceneSaveSystem::Save(GameObjectManager* mgr)
+    // ===== SaveScene =====
+
+    void SceneSaveSystem::SaveScene(GameObjectManager* mgr)
     {
         if (sceneName_.empty() || !mgr) return;
 
-        std::string dirPath = "Application/Assets/Scene";
-        std::string filePath = dirPath + "/" + sceneName_ + ".json";
-        auto& jsonManager = JsonManager::GetInstance();
+        auto& jm = JsonManager::GetInstance();
+        jm.CreateJsonDirectory(GetSceneDir());
 
-        jsonManager.CreateJsonDirectory(dirPath);
+        // マニフェスト（オブジェクトキー一覧）
+        json manifest;
+        manifest["objects"] = json::array();
 
-        json j;
+        // 各オブジェクトを個別ファイルに保存
         for (const auto& obj : mgr->GetAllObjects()) {
             if (!obj || !obj->IsSerializeEnabled()) continue;
-            const std::string& name = obj->GetName();
-            if (name.empty()) continue;
+            const std::string& key = obj->GetSerializeKey();
+            if (key.empty()) continue;
+
             json data = obj->OnSerialize();
             if (!data.empty()) {
-                j["objects"][name] = data;
+                jm.SaveJson(GetObjectPath(key), data);
+                manifest["objects"].push_back(key);
             }
         }
 
-        jsonManager.SaveJson(filePath, j);
+        // マニフェストを保存
+        jm.SaveJson(GetManifestPath(), manifest);
 
         if (onSaveNotification_) {
-            onSaveNotification_("シーン全体を保存しました: " + sceneName_ + ".json");
+            onSaveNotification_("シーンを保存しました: " + sceneName_);
         }
     }
 
-    void SceneSaveSystem::SaveSingle(GameObject* obj)
+    // ===== SaveObject =====
+
+    void SceneSaveSystem::SaveObject(GameObject* obj)
     {
         if (sceneName_.empty() || !obj || !obj->IsSerializeEnabled()) return;
-        const std::string& name = obj->GetName();
-        if (name.empty()) return;
+        const std::string& key = obj->GetSerializeKey();
+        if (key.empty()) return;
 
-        std::string dirPath = "Application/Assets/Scene";
-        std::string filePath = dirPath + "/" + sceneName_ + ".json";
-        auto& jsonManager = JsonManager::GetInstance();
+        auto& jm = JsonManager::GetInstance();
+        jm.CreateJsonDirectory(GetSceneDir());
 
-        jsonManager.CreateJsonDirectory(dirPath);
-
-        json j;
-        if (jsonManager.FileExists(filePath)) {
-            j = jsonManager.LoadJson(filePath);
-        }
-
+        // オブジェクトデータを個別ファイルに保存
         json data = obj->OnSerialize();
         if (!data.empty()) {
-            j["objects"][name] = data;
+            jm.SaveJson(GetObjectPath(key), data);
         }
 
-        jsonManager.SaveJson(filePath, j);
+        // マニフェストにキーが含まれていなければ追加
+        std::string manifestPath = GetManifestPath();
+        json manifest;
+        if (jm.FileExists(manifestPath)) {
+            manifest = jm.LoadJson(manifestPath);
+        }
+        if (!manifest.contains("objects") || !manifest["objects"].is_array()) {
+            manifest["objects"] = json::array();
+        }
+
+        bool found = false;
+        for (const auto& k : manifest["objects"]) {
+            if (k.is_string() && k.get<std::string>() == key) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            manifest["objects"].push_back(key);
+            jm.SaveJson(manifestPath, manifest);
+        }
 
         if (onSaveNotification_) {
-            onSaveNotification_("\"" + name + "\" を保存しました");
+            onSaveNotification_("\"" + obj->GetName() + "\" を保存しました");
         }
     }
 }

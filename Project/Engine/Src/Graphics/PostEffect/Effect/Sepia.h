@@ -41,7 +41,7 @@ public:
 protected:
     const std::wstring& GetPixelShaderPath() const override
     {
-        static const std::wstring pixelShaderPath = L"Engine/Assets/Shaders/PostProcess/Sepia.PS.hlsl";
+        static const std::wstring pixelShaderPath = L"Sepia.PS.hlsl";
         return pixelShaderPath;
     }
 

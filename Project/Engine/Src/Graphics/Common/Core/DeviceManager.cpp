@@ -30,7 +30,7 @@ void DeviceManager::InitializeDXGIDevice()
         debugController->EnableDebugLayer();
         // GPU-Based Validation は非常に重い（10〜100倍の速度低下）ため
         // 通常のデバッグでは無効にし、GPU側の問題を調査する場合のみ有効にする
-        debugController->SetEnableGPUBasedValidation(TRUE);
+        debugController->SetEnableGPUBasedValidation(FALSE);
 
         // デバッグレイヤー有効化のログを出力
         OutputDebugString(L"Direct3D 12 デバッグレイヤーが有効化されました。\n");

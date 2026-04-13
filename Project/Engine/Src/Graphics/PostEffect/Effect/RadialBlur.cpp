@@ -17,7 +17,7 @@ namespace CoreEngine
 
     const std::wstring& RadialBlur::GetPixelShaderPath() const
     {
-        static const std::wstring pixelShaderPath = L"Engine/Assets/Shaders/PostProcess/RadialBlur.PS.hlsl";
+        static const std::wstring pixelShaderPath = L"RadialBlur.PS.hlsl";
         return pixelShaderPath;
     }
 

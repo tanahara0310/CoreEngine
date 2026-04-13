@@ -10,6 +10,95 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 
 //========================================
+// コールバックSink - ConsoleUI転送用
+//========================================
+
+namespace
+{
+    /// @brief バッファリングされたログメッセージ
+    struct BufferedLogEntry {
+        CoreEngine::LogLevel level;
+        std::string category;
+        std::string message;
+    };
+
+    /// @brief コールバック関数でログを転送するspdlogカスタムSink
+    /// コールバック未接続時はメッセージをバッファリングし、接続時に一括転送する
+    class callback_sink_mt : public spdlog::sinks::base_sink<std::mutex> {
+    public:
+        using CallbackFn = std::function<void(CoreEngine::LogLevel, const std::string&, const std::string&)>;
+
+        void set_callback(CallbackFn fn)
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+            callback_ = std::move(fn);
+
+            // バッファに溜まったメッセージを一括転送
+            if (callback_) {
+                for (const auto& entry : buffer_) {
+                    callback_(entry.level, entry.category, entry.message);
+                }
+                buffer_.clear();
+            }
+        }
+
+        void clear_callback()
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+            callback_ = nullptr;
+        }
+
+    protected:
+        void sink_it_(const spdlog::details::log_msg& msg) override
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+
+            // spdlogレベルをエンジンLogLevelに変換
+            CoreEngine::LogLevel level = CoreEngine::LogLevel::Info;
+            switch (msg.level) {
+            case spdlog::level::trace:
+            case spdlog::level::debug:
+                level = CoreEngine::LogLevel::Debug;
+                break;
+            case spdlog::level::info:
+                level = CoreEngine::LogLevel::Info;
+                break;
+            case spdlog::level::warn:
+                level = CoreEngine::LogLevel::Warn;
+                break;
+            case spdlog::level::err:
+            case spdlog::level::critical:
+                level = CoreEngine::LogLevel::Error;
+                break;
+            default:
+                break;
+            }
+
+            // カテゴリとメッセージを個別に転送
+            std::string category(msg.logger_name.begin(), msg.logger_name.end());
+            std::string payload(msg.payload.begin(), msg.payload.end());
+
+            if (callback_) {
+                callback_(level, category, payload);
+            } else {
+                // コールバック未接続時はバッファに蓄積
+                if (buffer_.size() < kMaxBufferSize) {
+                    buffer_.push_back({ level, std::move(category), std::move(payload) });
+                }
+            }
+        }
+
+        void flush_() override {}
+
+    private:
+        static constexpr size_t kMaxBufferSize = 2048;
+        CallbackFn callback_;
+        std::vector<BufferedLogEntry> buffer_;
+        std::mutex callback_mutex_;
+    };
+}
+
+//========================================
 // Logger 実装
 //========================================
 
@@ -112,6 +201,11 @@ namespace CoreEngine
         // ビルドタイムスタンプを作成
         std::string buildTimestamp = std::format("{:%Y%m%d_%H%M%S}", localTime);
 
+        // コンソールUI転送用Sinkを先行作成（コールバック未接続でもバッファリングする）
+        if (!consoleSink_) {
+            consoleSink_ = std::make_shared<callback_sink_mt>();
+        }
+
         // 各カテゴリのロガーを作成（ビルドタイムスタンプ付き）
         loggers_[LogCategory::General] = CreateLogger(LogCategory::General, buildTimestamp);
         loggers_[LogCategory::Graphics] = CreateLogger(LogCategory::Graphics, buildTimestamp);
@@ -211,9 +305,9 @@ namespace CoreEngine
 
         std::string logFilePath = logDir + "/" + categoryName + "_" + buildTimestamp + ".log";
 
-        // シンクの作成（ローテーションファイル + Visual Studio出力）
+        // シンクの作成（ローテーションファイル + Visual Studio出力 + コンソールUI転送）
         std::vector<spdlog::sink_ptr> sinks;
-        sinks.reserve(2);
+        sinks.reserve(3);
 
         // ファイルサイズが上限を超えたらローテーションする。
         auto rotatingFileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
@@ -222,9 +316,17 @@ namespace CoreEngine
             kMaxLogFiles);
         sinks.push_back(rotatingFileSink);
 
-        // デバッグ時の追跡性向上のため、Visual StudioのOutputウィンドウにも出力する。
-        auto msvcSink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
-        sinks.push_back(msvcSink);
+        // リソースカテゴリ以外はVisual StudioのOutputウィンドウにも出力する
+        // （リソース読み込みログが大量になりVS出力の可読性が低下するため）
+        if (category != LogCategory::Resource) {
+            auto msvcSink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
+            sinks.push_back(msvcSink);
+        }
+
+        // コンソールUI転送Sinkが存在すれば追加
+        if (consoleSink_) {
+            sinks.push_back(consoleSink_);
+        }
 
         // ロガーを非同期モードで作成する（高頻度ログでメイン処理を止めにくくする）。
         auto logger = std::make_shared<spdlog::async_logger>(
@@ -240,6 +342,42 @@ namespace CoreEngine
         logger->flush_on(spdlog::level::err);  // エラー時は即座にフラッシュ
 
         return logger;
+    }
+
+    void Logger::SetConsoleCallback(std::function<void(LogLevel, const std::string&, const std::string&)> callback)
+    {
+        std::lock_guard<std::mutex> lock(loggerMutex_);
+
+        // 初回作成
+        if (!consoleSink_) {
+            consoleSink_ = std::make_shared<callback_sink_mt>();
+        }
+
+        // コールバックを設定
+        auto* sink = static_cast<callback_sink_mt*>(consoleSink_.get());
+        sink->set_callback(std::move(callback));
+
+        // 既存の全ロガーにSinkを追加（まだ追加されていない場合）
+        for (auto& [category, logger] : loggers_) {
+            if (!logger) continue;
+            auto& sinks = logger->sinks();
+            bool found = false;
+            for (const auto& s : sinks) {
+                if (s == consoleSink_) { found = true; break; }
+            }
+            if (!found) {
+                sinks.push_back(consoleSink_);
+            }
+        }
+    }
+
+    void Logger::ClearConsoleCallback()
+    {
+        std::lock_guard<std::mutex> lock(loggerMutex_);
+        if (consoleSink_) {
+            auto* sink = static_cast<callback_sink_mt*>(consoleSink_.get());
+            sink->clear_callback();
+        }
     }
 
     void Logger::CleanupOldLogFiles()

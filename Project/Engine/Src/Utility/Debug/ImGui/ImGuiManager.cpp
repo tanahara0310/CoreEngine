@@ -34,8 +34,29 @@ namespace CoreEngine
         ImGui::StyleColorsDark();
         ApplyCustomTheme();
 
+        // DPIスケールを取得してフォントサイズに反映
+        float dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
+        float baseFontSize = 12.0f;
+
         ImFontConfig config = {};
-        config.SizePixels = 12.0f;
+        config.SizePixels = baseFontSize * dpiScale;
+
+        // 日本語グリフ範囲に加え、罫線文字・記号を追加
+        static const ImWchar kExtraRanges[] = {
+            0x2022, 0x2022, // Bullet •
+            0x2500, 0x257F, // Box Drawing  ┌─┐│├┤└┘
+            0x2580, 0x259F, // Block Elements
+            0x25A0, 0x25FF, // Geometric Shapes
+            0x2713, 0x2713, // Check mark ✓
+            0,
+        };
+
+        ImFontGlyphRangesBuilder rangesBuilder;
+        rangesBuilder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+        rangesBuilder.AddRanges(kExtraRanges);
+        static ImVector<ImWchar> fontRanges;
+        fontRanges.clear();
+        rangesBuilder.BuildRanges(&fontRanges);
 
         const char* fontPath = "C:/Windows/Fonts/YuGothB.ttc";
 
@@ -44,7 +65,7 @@ namespace CoreEngine
                 fontPath,
                 config.SizePixels,
                 &config,
-                io.Fonts->GetGlyphRangesJapanese());
+                fontRanges.Data);
 
             if (font) {
                 io.FontDefault = font;

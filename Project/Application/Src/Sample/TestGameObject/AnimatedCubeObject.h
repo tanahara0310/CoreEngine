@@ -17,9 +17,11 @@ public:
     void Draw(const CoreEngine::ICamera* camera) override;
 
 #ifdef _DEBUG
-    /// @brief ImGui拡張UI描画（アニメーション制御を追加）
-    /// @return ImGuiで変更があった場合 true
-    bool DrawImGuiExtended() override;
+    /// @brief インスペクタータブ定義を返す（親のタブ + アニメーション）
+    int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+
+    /// @brief 指定タブのコンテンツを描画する
+    bool DrawInspectorTabContent(int tabIndex) override;
 #endif
 
     /// @brief オブジェクト名を取得
