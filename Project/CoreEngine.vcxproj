@@ -357,7 +357,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="Application\Src\main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>

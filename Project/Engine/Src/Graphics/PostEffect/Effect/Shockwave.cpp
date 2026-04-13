@@ -113,7 +113,7 @@ namespace CoreEngine
 
     const std::wstring& Shockwave::GetPixelShaderPath() const
     {
-        static const std::wstring path = L"Engine/Assets/Shaders/PostProcess/Shockwave.PS.hlsl";
+        static const std::wstring path = L"Shockwave.PS.hlsl";
         return path;
     }
 

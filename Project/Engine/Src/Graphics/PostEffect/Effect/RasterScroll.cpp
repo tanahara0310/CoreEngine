@@ -28,7 +28,7 @@ namespace CoreEngine
 
     const std::wstring& RasterScroll::GetPixelShaderPath() const
     {
-        static const std::wstring path = L"Engine/Assets/Shaders/PostProcess/RasterScroll.PS.hlsl";
+        static const std::wstring path = L"RasterScroll.PS.hlsl";
         return path;
     }
 

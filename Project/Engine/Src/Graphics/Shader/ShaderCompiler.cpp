@@ -1,8 +1,10 @@
 #include "ShaderCompiler.h"
 
 #include <cassert>
+#include <filesystem>
 
 #include "Utility/Logger/Logger.h"
+#include "Graphics/Asset/AssetDatabase.h"
 
 
 namespace CoreEngine
@@ -27,16 +29,26 @@ namespace CoreEngine
 
     IDxcBlob* ShaderCompiler::CompileShader(const std::wstring& filePath, const wchar_t* profile)
     {
+        // AssetDatabaseでパス解決を試みる
+        std::wstring resolvedPath = filePath;
+        if (!std::filesystem::exists(filePath)) {
+            std::filesystem::path fsPath(filePath);
+            std::string narrowPath = fsPath.string();
+            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(narrowPath);
+            if (!assetPath.empty()) {
+                resolvedPath = std::filesystem::path(assetPath).wstring();
+            }
+        }
 
         // これからシェーダーをコンパイルする旨をログ出力
         Logger::GetInstance().Log(
-            std::format(L"Begin CompileShader, path:{}, profile:{}", filePath, profile),
+            std::format(L"Begin CompileShader, path:{}, profile:{}", resolvedPath, profile),
             LogLevel::INFO,
             LogCategory::Shader);
 
         // hlslファイルを読み込む
         IDxcBlobEncoding* shaderSource = nullptr;
-        HRESULT hr = dxcUtils->LoadFile(filePath.c_str(), nullptr, &shaderSource);
+        HRESULT hr = dxcUtils->LoadFile(resolvedPath.c_str(), nullptr, &shaderSource);
         // 読めなかったら落とす
         assert(SUCCEEDED(hr));
         // 読み込んだファイルの内容を設定する
@@ -49,7 +61,7 @@ namespace CoreEngine
         // コンパイルする
         LPCWSTR arguments[] = {
 
-            filePath.c_str(), // コンパイル対象のhlslファイル
+            resolvedPath.c_str(), // コンパイル対象のhlslファイル
             L"-E",
             L"main", // エントリーポイント
             L"-T",
@@ -90,7 +102,7 @@ namespace CoreEngine
 
         // コンパイル成功ログ
         Logger::GetInstance().Log(
-            std::format(L"Compile Succeeded, path:{}, profile:{}", filePath, profile),
+            std::format(L"Compile Succeeded, path:{}, profile:{}", resolvedPath, profile),
             LogLevel::INFO,
             LogCategory::Shader);
 

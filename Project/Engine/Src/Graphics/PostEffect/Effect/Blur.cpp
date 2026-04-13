@@ -16,7 +16,7 @@ namespace CoreEngine
 
     const std::wstring& Blur::GetPixelShaderPath() const
     {
-        static const std::wstring path = L"Engine/Assets/Shaders/PostProcess/Blur.PS.hlsl";
+        static const std::wstring path = L"Blur.PS.hlsl";
         return path;
     }
 

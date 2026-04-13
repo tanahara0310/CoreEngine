@@ -13,7 +13,7 @@ public:
 protected:
     const std::wstring& GetPixelShaderPath() const override
     {
-        static const std::wstring pixelShaderPath = L"Engine/Assets/Shaders/PostProcess/GrayScale.PS.hlsl";
+        static const std::wstring pixelShaderPath = L"GrayScale.PS.hlsl";
         return pixelShaderPath;
     }
 };

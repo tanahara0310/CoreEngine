@@ -12,7 +12,7 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     const std::wstring& DeferredLighting::GetPixelShaderPath() const
     {
-        static const std::wstring path = L"Engine/Assets/Shaders/PostProcess/DeferredLighting.PS.hlsl";
+        static const std::wstring path = L"DeferredLighting.PS.hlsl";
         return path;
     }
 

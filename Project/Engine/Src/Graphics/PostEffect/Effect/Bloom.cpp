@@ -16,7 +16,7 @@ namespace CoreEngine
 
     const std::wstring& Bloom::GetPixelShaderPath() const
     {
-        static const std::wstring path = L"Engine/Assets/Shaders/PostProcess/Bloom.PS.hlsl";
+        static const std::wstring path = L"Bloom.PS.hlsl";
         return path;
     }
 

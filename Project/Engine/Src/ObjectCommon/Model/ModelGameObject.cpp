@@ -106,6 +106,9 @@ namespace CoreEngine
     json ModelGameObject::OnSerialize() const {
         json j;
         j["active"] = IsActive();
+        if (!name_.empty()) {
+            j["name"] = name_;
+        }
         j["transform"]["translate"] = JsonManager::Vector3ToJson(transform_.translate);
         j["transform"]["rotate"] = JsonManager::Vector3ToJson(transform_.rotate);
         j["transform"]["scale"] = JsonManager::Vector3ToJson(transform_.scale);
@@ -132,6 +135,9 @@ namespace CoreEngine
     }
 
     void ModelGameObject::OnDeserialize(const json& j) {
+        if (j.contains("name")) {
+            SetName(j["name"].get<std::string>());
+        }
         if (j.contains("active")) {
             SetActive(j["active"].get<bool>());
         }
@@ -192,6 +198,10 @@ namespace CoreEngine
         };
 
         const TabInfo kTabs[] = {
+            { (ImTextureID)sIconSceneHandle.ptr,
+              "Render Properties",
+              ImVec4(0.34f, 0.67f, 0.88f, 1.0f),   // Blender 風ブルー
+              ImVec4(0.34f, 0.67f, 0.88f, 0.25f) },
             { (ImTextureID)sIconWorldHandle.ptr,
               "Object Properties",
               ImVec4(0.96f, 0.65f, 0.14f, 1.0f),   // Blender 風オレンジ
@@ -200,10 +210,6 @@ namespace CoreEngine
               "Material Properties",
               ImVec4(0.90f, 0.30f, 0.40f, 1.0f),   // Blender 風レッド/ピンク
               ImVec4(0.90f, 0.30f, 0.40f, 0.25f) },
-            { (ImTextureID)sIconSceneHandle.ptr,
-              "Render Properties",
-              ImVec4(0.34f, 0.67f, 0.88f, 1.0f),   // Blender 風ブルー
-              ImVec4(0.34f, 0.67f, 0.88f, 0.25f) },
         };
         constexpr int   kTabCount = 3;
         constexpr float kStripW = 28.0f;  // タブストリップ幅
@@ -264,9 +270,9 @@ namespace CoreEngine
         {
             UI::Scope::ChildScope content("##PropContent", ImVec2(0.0f, 0.0f));
             switch (inspectorTab_) {
-            case 0: changed |= DrawTransformSection(); break;
-            case 1: changed |= DrawMaterialImGui();    break;
-            case 2: changed |= DrawRenderSection();    break;
+            case 0: changed |= DrawRenderSection();    break;
+            case 1: changed |= DrawTransformSection(); break;
+            case 2: changed |= DrawMaterialImGui();    break;
             default: break;
             }
         }
@@ -385,21 +391,6 @@ namespace CoreEngine
             ImGui::TextUnformatted(passName);
         }
 
-        // ── Blend Mode ─────────────────────────────────────────
-        UI::SectionHeader("Blend Mode");
-        {
-            static const char* kBlendNames[] = {
-                "None", "Normal", "Add", "Subtract", "Multiply", "Screen"
-            };
-            int blendIdx = static_cast<int>(blendMode_);
-            label("Mode");
-            ImGui::SetNextItemWidth(-FLT_MIN);
-            if (ImGui::Combo("##blendMode", &blendIdx, kBlendNames, 6)) {
-                blendMode_ = static_cast<BlendMode>(blendIdx);
-                changed = true;
-            }
-        }
-
         // ── Render Order ──────────────────────────────────────
         UI::SectionHeader("Render Order");
         {
@@ -431,9 +422,74 @@ namespace CoreEngine
     }
 
     bool ModelGameObject::DrawMaterialImGui() {
-        if (!model_ || !model_->GetMaterial()) return false;
-        if (!materialDebugUI_) materialDebugUI_ = std::make_unique<MaterialDebugUI>();
-        return materialDebugUI_->Draw(model_.get());
+        bool changed = false;
+
+        // ── Blend Mode（マテリアルの描画設定として管理） ──────────────
+        {
+            constexpr float kLabelCol = 82.0f;
+
+            ImGui::PushStyleColor(ImGuiCol_FrameBg,        ImVec4(0.14f, 0.14f, 0.20f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.20f, 0.20f, 0.28f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  ImVec4(0.26f, 0.26f, 0.36f, 1.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,  ImVec2(6.0f, 4.0f));
+
+            UI::SectionHeader("Blend Mode");
+            static const char* kBlendNames[] = {
+                "None", "Normal", "Add", "Subtract", "Multiply", "Screen"
+            };
+            int blendIdx = static_cast<int>(blendMode_);
+            const float tw = ImGui::CalcTextSize("Mode").x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (kLabelCol - tw));
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted("Mode");
+            ImGui::SameLine(0.0f, 6.0f);
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            if (ImGui::Combo("##blendMode", &blendIdx, kBlendNames, 6)) {
+                blendMode_ = static_cast<BlendMode>(blendIdx);
+                changed = true;
+            }
+
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(3);
+        }
+
+        // ── Material Properties ─────────────────────────────────
+        if (model_ && model_->GetMaterial()) {
+            if (!materialDebugUI_) materialDebugUI_ = std::make_unique<MaterialDebugUI>();
+            changed |= materialDebugUI_->Draw(model_.get());
+        }
+
+        return changed;
+    }
+
+    bool ModelGameObject::DrawImGui() {
+        bool changed = false;
+        ImGui::PushID(this);
+
+        // ── オブジェクト名編集フィールド ─────────────────────────
+        {
+            char nameBuf[128];
+            const char* currentName = name_.empty() ? GetObjectName() : name_.c_str();
+            snprintf(nameBuf, sizeof(nameBuf), "%s", currentName);
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            if (ImGui::InputText("##objName", nameBuf, sizeof(nameBuf))) {
+                SetName(nameBuf);
+                changed = true;
+            }
+        }
+
+        bool prevActive = isActive_;
+        if (UI::Widgets::ToggleSwitch("Active", &isActive_)) {
+            changed = true;
+            OnImGuiActiveChanged(prevActive);
+        }
+
+        UI::Separator();
+        changed |= DrawImGuiExtended();
+        DrawSaveButton();
+        ImGui::PopID();
+        return changed;
     }
 #endif // USE_IMGUI
 

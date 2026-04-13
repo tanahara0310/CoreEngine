@@ -8,7 +8,7 @@ namespace CoreEngine
 {
 const std::wstring& FullScreen::GetPixelShaderPath() const
 {
-    static const std::wstring path = L"Engine/Assets/Shaders/PostProcess/FullScreen.PS.hlsl";
+    static const std::wstring path = L"FullScreen.PS.hlsl";
     return path;
 }
 

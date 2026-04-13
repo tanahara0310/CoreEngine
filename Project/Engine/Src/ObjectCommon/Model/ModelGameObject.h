@@ -67,7 +67,10 @@ namespace CoreEngine {
         void OnDeserialize(const json& j) override;
 
 #ifdef USE_IMGUI
-        /// @brief Transform + Material の ImGui UI を描画する（基底の DrawImGui から自動呼出し）
+        /// @brief CollapsingScope なしで直接プロパティを表示する
+        bool DrawImGui() override;
+
+        /// @brief タブ付きプロパティコンテンツを描画する
         bool DrawImGuiExtended() override;
 #endif
 

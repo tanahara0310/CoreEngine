@@ -254,6 +254,7 @@ namespace CoreEngine
 
     void DockingUI::DrawPlaybackToolbar()
     {
+#ifdef USE_IMGUI
         // アイコンがまだ読み込まれていない場合は読み込む
         if (!playbackIconsLoaded_) {
             LoadPlaybackIcons();
@@ -361,10 +362,12 @@ namespace CoreEngine
 
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(3);
+#endif
     }
 
-    void DockingUI::DrawStatusBar(float fps, float deltaTimeMs)
+    void DockingUI::DrawStatusBar([[maybe_unused]] float fps, [[maybe_unused]] float deltaTimeMs)
     {
+#ifdef USE_IMGUI
         ImGuiViewport* vp = ImGui::GetMainViewport();
         ImVec2 pos = ImVec2(vp->Pos.x, vp->Pos.y + vp->Size.y - statusBarHeight_);
         ImVec2 size = ImVec2(vp->Size.x, statusBarHeight_);
@@ -543,6 +546,7 @@ namespace CoreEngine
 
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(3);
+#endif
     }
 }
 
