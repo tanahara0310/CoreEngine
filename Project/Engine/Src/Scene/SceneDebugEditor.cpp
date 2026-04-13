@@ -33,7 +33,7 @@ namespace CoreEngine
 
         // 個別オブジェクト保存コールバック
         mgr->SetOnSaveRequestCallback([this](GameObject* obj) {
-            saveSystem_->SaveSingle(obj);
+            saveSystem_->SaveObject(obj);
             });
 
         // ギズモ変更時コールバックを設定
@@ -139,7 +139,7 @@ namespace CoreEngine
         // Ctrl+S でシーン全体保存
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) {
             if (!saveSystem_->GetSceneName().empty()) {
-                saveSystem_->Save(gameObjectManager_);
+                saveSystem_->SaveScene(gameObjectManager_);
             }
         }
 
@@ -167,8 +167,8 @@ namespace CoreEngine
     {
         // ツールバー：保存 / Undo / Redo
         ImGui::BeginDisabled(saveSystem_->GetSceneName().empty());
-        if (ImGui::Button("Save")) {
-            saveSystem_->Save(gameObjectManager_);
+        if (ImGui::Button("Save Scene")) {
+            saveSystem_->SaveScene(gameObjectManager_);
         }
         ImGui::EndDisabled();
         UI::SameLine();

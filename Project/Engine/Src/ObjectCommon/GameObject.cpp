@@ -243,13 +243,13 @@ namespace CoreEngine
         if (!shouldSerialize_ || serializeKey_.empty()) return;
 
         UI::Separator();
-        if (ImGui::Button("保存##save_single")) {
+        if (ImGui::Button("Save Object##save_single")) {
             if (onSaveRequested_) {
                 onSaveRequested_(this);
             }
         }
         UI::SameLine();
-        UI::Hint("このオブジェクトのみ");
+        UI::Hint("このオブジェクトのみ保存");
     }
 #endif // USE_IMGUI
 

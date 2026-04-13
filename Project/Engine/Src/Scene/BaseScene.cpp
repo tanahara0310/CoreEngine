@@ -464,12 +464,12 @@ namespace CoreEngine
 
     void BaseScene::SaveObjectsToJson()
     {
-        sceneSaveSystem_->Save(&gameObjectManager_);
+        sceneSaveSystem_->SaveScene(&gameObjectManager_);
     }
 
     void BaseScene::SaveSingleObjectToJson(GameObject* obj)
     {
-        sceneSaveSystem_->SaveSingle(obj);
+        sceneSaveSystem_->SaveObject(obj);
     }
 }
 
