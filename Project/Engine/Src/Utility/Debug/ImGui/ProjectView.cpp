@@ -254,6 +254,20 @@ namespace CoreEngine
                 }
             }
 
+            // ドラッグ＆ドロップソース（画像ファイルのみ）
+            if (!entry.isDirectory) {
+                std::string ext = entry.path.extension().string();
+                for (auto& c : ext) c = static_cast<char>(::tolower(c));
+                if (ext == ".png" || ext == ".jpg" || ext == ".jpeg") {
+                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                        std::string filename = entry.path.filename().string();
+                        ImGui::SetDragDropPayload("TEXTURE_FILE", filename.c_str(), filename.size() + 1);
+                        ImGui::Text("%s", filename.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                }
+            }
+
             // 次の項目を同じ行に配置（ウィンドウ幅を超える場合は改行）
             float lastItemX = ImGui::GetItemRectMax().x;
             float nextItemX = lastItemX + style.ItemSpacing.x + itemWidth;

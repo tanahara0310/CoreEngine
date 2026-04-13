@@ -36,8 +36,11 @@ public:
     BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
 
 #ifdef USE_IMGUI
-    /// @brief ImGuiデバッグUI
-    bool DrawImGui() override;
+    /// @brief インスペクタータブ定義を返す
+    int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+
+    /// @brief 指定タブのコンテンツを描画する
+    bool DrawInspectorTabContent(int tabIndex) override;
 #endif
 
     /// @brief オブジェクト名を取得

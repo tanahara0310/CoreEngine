@@ -99,8 +99,11 @@ public:
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "ParticleSystem"; }
 
-    /// @brief ImGuiデバッグUI描画（ParticleSystem独自実装）
-    bool DrawImGui() override;
+    /// @brief インスペクタータブ定義を返す
+    int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+
+    /// @brief 指定タブのコンテンツを描画する
+    bool DrawInspectorTabContent(int tabIndex) override;
 #endif
 
     /// @brief ブレンドモードを設定

@@ -63,27 +63,44 @@ void AnimatedCubeObject::Draw(const CoreEngine::ICamera* camera) {
 }
 
 #ifdef _DEBUG
-bool AnimatedCubeObject::DrawImGuiExtended() {
-    // Transform + Material は基底クラスが担当する
-    bool changed = ModelGameObject::DrawImGuiExtended();
+int AnimatedCubeObject::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
+    // 親クラス（ModelGameObject）のタブを取得
+    int count = ModelGameObject::GetInspectorTabs(outTabs, maxTabs);
 
-    // アニメーション制御（拡張部分）
-    if (model_ && model_->HasAnimationController()) {
-        if (auto s = UI::Scope::TreeScope("アニメーション")) {
-            float animSpeed = GetAnimationSpeed();
-            if (UI::SliderFloat("速度", animSpeed, 0.0f, 3.0f)) {
-                SetAnimationSpeed(animSpeed);
-                changed = true;
-            }
-            float animTime = GetAnimationTime();
-            ImGui::Text("時間: %.2f 秒", animTime);
-            if (ImGui::Button("アニメーションをリセット")) {
-                ResetAnimation();
-                changed = true;
-            }
-        }
+    // アニメーションタブを追加
+    if (count < maxTabs && model_ && model_->HasAnimationController()) {
+        outTabs[count] = { "obj.png", "アニメーション", {0.40f,0.80f,0.40f,1.0f}, {0.40f,0.80f,0.40f,0.25f} };
+        ++count;
+    }
+    return count;
+}
+
+bool AnimatedCubeObject::DrawInspectorTabContent(int tabIndex) {
+    // 親クラスのタブ数を取得（0〜3 は ModelGameObject のタブ）
+    constexpr int kParentTabCount = 4;
+    if (tabIndex < kParentTabCount) {
+        return ModelGameObject::DrawInspectorTabContent(tabIndex);
     }
 
+    // ── アニメーション ───────────────────────────────────
+    bool changed = false;
+    if (model_ && model_->HasAnimationController()) {
+        UI::SectionHeader("再生制御");
+
+        float animSpeed = GetAnimationSpeed();
+        if (UI::SliderFloat("速度", animSpeed, 0.0f, 3.0f)) {
+            SetAnimationSpeed(animSpeed);
+            changed = true;
+        }
+
+        float animTime = GetAnimationTime();
+        ImGui::Text("時間: %.2f 秒", animTime);
+
+        if (ImGui::Button("リセット##anim")) {
+            ResetAnimation();
+            changed = true;
+        }
+    }
     return changed;
 }
 #endif

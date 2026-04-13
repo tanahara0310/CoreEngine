@@ -165,64 +165,53 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
 }
 
 #ifdef USE_IMGUI
-bool GridRenderer::DrawImGui()
+int GridRenderer::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
+    if (maxTabs < 1) return 0;
+    outTabs[0] = { "obj.png", "グリッド設定", {0.40f,0.80f,0.40f,1.0f}, {0.40f,0.80f,0.40f,0.25f} };
+    return 1;
+}
+
+bool GridRenderer::DrawInspectorTabContent(int tabIndex)
 {
+    if (tabIndex != 0) return false;
     bool changed = false;
 
-    if (ImGui::TreeNode("GridRenderer##GridSettings")) {
-        // 表示/非表示
-        if (UI::Widgets::ToggleSwitch("表示", &visible_)) {
-            changed = true;
-        }
+    UI::SectionHeader("表示");
+    if (UI::Widgets::ToggleSwitch("表示", &visible_)) {
+        changed = true;
+    }
 
-        // グリッドサイズ
-        if (UI::DragFloat("グリッドサイズ", gridSize_, 1.0f, 10.0f, 500.0f)) {
-            changed = true;
-        }
+    UI::SectionHeader("グリッド");
+    if (UI::DragFloat("グリッドサイズ", gridSize_, 1.0f, 10.0f, 500.0f)) {
+        changed = true;
+    }
+    if (UI::DragFloat("間隔", spacing_, 0.1f, 0.1f, 10.0f)) {
+        changed = true;
+    }
+    if (UI::DragInt("太いライン間隔", majorLineInterval_, 1, 2, 20)) {
+        changed = true;
+    }
 
-        // グリッド間隔
-        if (UI::DragFloat("間隔", spacing_, 0.1f, 0.1f, 10.0f)) {
-            changed = true;
-        }
+    UI::SectionHeader("フェード");
+    if (UI::DragFloat("フェード開始距離", fadeStartDistance_, 1.0f, 0.0f, fadeEndDistance_)) {
+        changed = true;
+    }
+    if (UI::DragFloat("フェード終了距離", fadeEndDistance_, 1.0f, fadeStartDistance_, gridSize_)) {
+        changed = true;
+    }
 
-        // 太いラインの間隔
-        if (UI::DragInt("太いライン間隔", majorLineInterval_, 1, 2, 20)) {
-            changed = true;
-        }
-
-        UI::Separator();
-        ImGui::Text("フェード設定");
-
-        // フェード開始距離
-        if (UI::DragFloat("フェード開始距離", fadeStartDistance_, 1.0f, 0.0f, fadeEndDistance_)) {
-            changed = true;
-        }
-
-        // フェード終了距離
-        if (UI::DragFloat("フェード終了距離", fadeEndDistance_, 1.0f, fadeStartDistance_, gridSize_)) {
-            changed = true;
-        }
-
-        UI::Separator();
-
-        // 軸の色設定
-        if (UI::ColorEdit3("X軸色（赤）", xAxisColor_)) {
-            changed = true;
-        }
-
-        if (UI::ColorEdit3("Y軸色（青）", yAxisColor_)) {
-            changed = true;
-        }
-
-        if (UI::ColorEdit3("Z軸色（緑）", zAxisColor_)) {
-            changed = true;
-        }
-
-        if (UI::ColorEdit3("グリッド色", normalColor_)) {
-            changed = true;
-        }
-
-        ImGui::TreePop();
+    UI::SectionHeader("カラー");
+    if (UI::ColorEdit3("X 軸色", xAxisColor_)) {
+        changed = true;
+    }
+    if (UI::ColorEdit3("Y 軸色", yAxisColor_)) {
+        changed = true;
+    }
+    if (UI::ColorEdit3("Z 軸色", zAxisColor_)) {
+        changed = true;
+    }
+    if (UI::ColorEdit3("グリッド色", normalColor_)) {
+        changed = true;
     }
 
     return changed;

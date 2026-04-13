@@ -273,6 +273,14 @@ bool PipelineStateBuilder::Build(
     for (BlendMode mode : targetModes) {
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = CreatePipelineStateDesc(vs, ps, rootSignature, mode);
 
+        // 半透明ブレンドモードでは深度書き込みを無効にする。
+        // 深度テストは有効のまま（不透明オブジェクトの背後に描画されない）だが、
+        // 深度バッファへの書き込みを行わないことで後続の描画（グリッド線等）を
+        // 遮蔽しないようにする。
+        if (mode != BlendMode::kBlendModeNone && depthWriteEnabled_) {
+            desc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+        }
+
         ComPtr<ID3D12PipelineState> pipelineState;
         HRESULT result = device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipelineState));
 

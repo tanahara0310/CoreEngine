@@ -70,8 +70,11 @@ namespace CoreEngine {
         /// @brief CollapsingScope なしで直接プロパティを表示する
         bool DrawImGui() override;
 
-        /// @brief タブ付きプロパティコンテンツを描画する
-        bool DrawImGuiExtended() override;
+        /// @brief インスペクタータブ定義を返す
+        int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+
+        /// @brief 指定タブのコンテンツを描画する
+        bool DrawInspectorTabContent(int tabIndex) override;
 #endif
 
     protected:
@@ -104,6 +107,9 @@ namespace CoreEngine {
         /// @brief テクスチャハンドル（空の場合はモデル組み込みテクスチャを使用）
         TextureManager::LoadedTexture texture_;
 
+        /// @brief 現在適用中のテクスチャファイル名（表示・シリアライズ用）
+        std::string textureName_;
+
         /// @brief ブレンドモード（Render Properties タブで変更可能）
         BlendMode blendMode_ = BlendMode::kBlendModeNone;
 
@@ -131,11 +137,11 @@ namespace CoreEngine {
         /// @brief Render Properties タブを描画するヘルパー
         bool DrawRenderSection();
 
+        /// @brief Texture Properties タブを描画するヘルパー
+        bool DrawTextureSection();
+
         /// @brief Active 変更時に Undo/Redo コールバックを発火する
         void OnImGuiActiveChanged(bool prevActive) override;
-
-        /// @brief 現在選択中のプロパティタブインデックス（0=Object, 1=Material, 2=Render）
-        int inspectorTab_ = 0;
 #endif
     };
 

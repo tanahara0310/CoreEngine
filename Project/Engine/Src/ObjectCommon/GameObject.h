@@ -166,11 +166,21 @@ namespace CoreEngine
 
         /// @brief オブジェクト識別名を設定する
         /// @param name ImGui 表示やシーン保存のキーとして使われる名前
+        /// @note 初回呼び出し時にシリアライズキーも同時に設定される。
+        ///       以降の呼び出しでは表示名のみ変更される。
         void SetName(const std::string& name);
 
         /// @brief オブジェクト識別名を返す
         /// @return SetName() で設定した名前。未設定なら空文字列。
         const std::string& GetName() const;
+
+        /// @brief シリアライズ用の安定キーを返す
+        /// @return 初回 SetName() で設定された名前。ユーザーがリネームしても変わらない。
+        const std::string& GetSerializeKey() const;
+
+        /// @brief 表示用の名前を返す（フォールバック付き）
+        /// @return name_ → serializeKey_ → GetObjectName() の優先度で返す。
+        const char* GetDisplayName() const;
 
         /// @brief オブジェクト種別名を返す
         /// @return クラスを表す文字列リテラル。シリアライズキーや ImGui 表示に使う。
@@ -216,20 +226,41 @@ namespace CoreEngine
         }
 
 #ifdef USE_IMGUI
-        // ===== デバッグ UI =====
+        // ===== プロパティインスペクター =====
 
-        /// @brief ImGui デバッグ UI を描画する
+        /// @brief インスペクタータブの定義情報
+        struct InspectorTabDef {
+            const char* iconPath;    ///< アイコンテクスチャのファイル名
+            const char* tooltip;     ///< ツールチップテキスト
+            float tint[4];           ///< アイコン色 {R, G, B, A}
+            float selectedBg[4];     ///< 選択時背景色 {R, G, B, A}
+        };
+
+        /// @brief ImGui インスペクター UI を描画する（共通フレームワーク）
         /// @return 値の変更があった場合 true を返す
-        /// @note Active チェックボックスと
-        ///       DrawImGuiExtended() の呼び出しを行う。
-        ///       Active 変更時は OnImGuiActiveChanged() が呼び出される。
+        /// @note 名前フィールド、Active トグル、タブストリップ、保存ボタンを自動描画する。
+        ///       タブの内容は GetInspectorTabs / DrawInspectorTabContent で制御する。
         virtual bool DrawImGui();
 
-        /// @brief 派生クラス固有の ImGui 拡張 UI を描画する
+        /// @brief タブ未対応オブジェクト用のフォールバック描画
         /// @return 値の変更があった場合 true を返す
-        /// @note DrawImGui() 内の末尾で自動的に呼ばれる。
-        ///       派生クラスでオーバーライドして固有のパラメータを追加表示する。
+        /// @note GetInspectorTabs が 0 を返す場合にのみ呼び出される。
         virtual bool DrawImGuiExtended();
+
+        /// @brief インスペクタータブの定義を取得する
+        /// @param outTabs 出力先配列
+        /// @param maxTabs 配列の最大要素数
+        /// @return タブ数（0 の場合はタブなしで DrawImGuiExtended にフォールバック）
+        virtual int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
+            (void)outTabs; (void)maxTabs; return 0;
+        }
+
+        /// @brief 指定タブのコンテンツを描画する
+        /// @param tabIndex タブインデックス
+        /// @return 値が変更された場合 true
+        virtual bool DrawInspectorTabContent(int tabIndex) {
+            (void)tabIndex; return false;
+        }
 
         /// @brief ImGui 編集コミット時コールバックの型
         /// @note 編集前のトランスフォームを引数として受け取り、Undo/Redo システムへ渡す。
@@ -254,7 +285,8 @@ namespace CoreEngine
 
     protected:
         std::unique_ptr<Collider> collider_;     ///< アタッチされたコライダー
-        std::string               name_;          ///< オブジェクト識別名
+        std::string               name_;          ///< オブジェクト表示名（ユーザー編集可能）
+        std::string               serializeKey_;  ///< シリアライズ用安定キー（初回 SetName で固定）
 
         bool isActive_ = true;   ///< アクティブ状態（false: 更新・描画ともにスキップ）
         bool markedForDestroy_ = false;  ///< 削除マーク（true: フレーム末に破棄）
@@ -265,6 +297,8 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         EditCommitCallback  onEditCommitted_;   ///< 編集確定時コールバック
         SaveRequestCallback onSaveRequested_;   ///< 個別保存ボタン用コールバック
+
+        int inspectorTab_ = 0;  ///< 現在選択中のインスペクタータブインデックス
 
         /// @brief Active チェックボックス変更時に呼び出されるフック
         /// @param prevActive 変更前のアクティブ状態
@@ -283,4 +317,3 @@ namespace CoreEngine
         friend class GameObjectManager;  ///< spawner_ への書き込みを許可
     };
 }
-

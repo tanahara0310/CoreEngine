@@ -19,10 +19,10 @@ namespace CoreEngine
         const json& objects = j["objects"];
         for (const auto& obj : mgr->GetAllObjects()) {
             if (!obj || !obj->IsSerializeEnabled()) continue;
-            const std::string& name = obj->GetName();
-            if (name.empty()) continue;
-            if (objects.contains(name)) {
-                obj->OnDeserialize(objects[name]);
+            const std::string& key = obj->GetSerializeKey();
+            if (key.empty()) continue;
+            if (objects.contains(key)) {
+                obj->OnDeserialize(objects[key]);
             }
         }
     }
@@ -40,11 +40,11 @@ namespace CoreEngine
         json j;
         for (const auto& obj : mgr->GetAllObjects()) {
             if (!obj || !obj->IsSerializeEnabled()) continue;
-            const std::string& name = obj->GetName();
-            if (name.empty()) continue;
+            const std::string& key = obj->GetSerializeKey();
+            if (key.empty()) continue;
             json data = obj->OnSerialize();
             if (!data.empty()) {
-                j["objects"][name] = data;
+                j["objects"][key] = data;
             }
         }
 
@@ -58,8 +58,8 @@ namespace CoreEngine
     void SceneSaveSystem::SaveSingle(GameObject* obj)
     {
         if (sceneName_.empty() || !obj || !obj->IsSerializeEnabled()) return;
-        const std::string& name = obj->GetName();
-        if (name.empty()) return;
+        const std::string& key = obj->GetSerializeKey();
+        if (key.empty()) return;
 
         std::string dirPath = "Application/Assets/Scene";
         std::string filePath = dirPath + "/" + sceneName_ + ".json";
@@ -74,13 +74,13 @@ namespace CoreEngine
 
         json data = obj->OnSerialize();
         if (!data.empty()) {
-            j["objects"][name] = data;
+            j["objects"][key] = data;
         }
 
         jsonManager.SaveJson(filePath, j);
 
         if (onSaveNotification_) {
-            onSaveNotification_("\"" + name + "\" を保存しました");
+            onSaveNotification_("\"" + obj->GetName() + "\" を保存しました");
         }
     }
 }

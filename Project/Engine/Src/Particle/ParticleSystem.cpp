@@ -266,35 +266,15 @@ void ParticleSystem::SetModelResource(ModelResource* modelResource)
 }
 
 #ifdef USE_IMGUI
-bool ParticleSystem::DrawImGui()
-{
-    bool changed = false;
-    
-    // 一意のヘッダーラベル
-    // 設定された名前がある場合はそれを使用、なければクラス名を使用
-    const char* displayName = name_.empty() ? GetObjectName() : name_.c_str();
-    char headerLabel[256];
-    snprintf(headerLabel, sizeof(headerLabel), "%s##%p", displayName, (void*)this);
-    
-    if (ImGui::CollapsingHeader(headerLabel)) {
-        ImGui::PushID(this);
-        
-        // アクティブ状態
-        bool active = isActive_;
-        if (UI::Widgets::ToggleSwitch("Active", &active)) {
-            isActive_ = active;
-            changed = true;
-        }
-        
-        UI::Separator();
-        
-        // ParticleSystem独自のUI
-        changed |= ParticleSystemDebugUI::ShowImGui(this);
-        
-        ImGui::PopID();
-    }
-    
-    return changed;
+int ParticleSystem::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
+    if (maxTabs < 1) return 0;
+    outTabs[0] = { "obj.png", "パーティクル設定", {0.40f,0.70f,0.90f,1.0f}, {0.40f,0.70f,0.90f,0.25f} };
+    return 1;
+}
+
+bool ParticleSystem::DrawInspectorTabContent(int tabIndex) {
+    if (tabIndex != 0) return false;
+    return ParticleSystemDebugUI::ShowImGui(this);
 }
 #endif // USE_IMGUI
 }
