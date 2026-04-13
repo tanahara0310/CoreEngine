@@ -81,7 +81,7 @@ void PipelineStateBuilder::InitializeDefaults()
     for (int i = 0; i < 8; ++i) {
         rtvFormats_[i] = DXGI_FORMAT_UNKNOWN;
     }
-    rtvFormats_[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    rtvFormats_[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
     // 深度ステンシルフォーマット
     dsvFormat_ = DXGI_FORMAT_D24_UNORM_S8_UINT;

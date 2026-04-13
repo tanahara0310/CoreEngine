@@ -19,6 +19,7 @@
 #include "Effect/Bloom.h"
 #include "Effect/Dissolve.h"
 #include "Effect/DeferredLighting.h"
+#include "Effect/ToneMapping.h"
 #include "PostEffectPresetManager.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <cassert>
@@ -156,6 +157,9 @@ void PostEffectManager::RegisterAllEffects()
     RegisterEffect<RasterScroll>(PostEffectNames::RasterScroll, false);
     RegisterEffect<Bloom>(PostEffectNames::Bloom, false);
     RegisterEffect<Dissolve>(PostEffectNames::Dissolve, false);
+
+    // トーンマッピングは常に有効（HDR→LDR変換）
+    RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping, true);
 }
 
 void PostEffectManager::RegisterEffectInternal(const std::string& name, std::unique_ptr<PostEffectBase> effect)
@@ -232,6 +236,14 @@ void PostEffectManager::ExecuteEffect(const std::string& name, D3D12_GPU_DESCRIP
     auto* effect = GetEffectInternal(name);
     if (effect) {
         effect->Draw(inputSrvHandle);
+    }
+}
+
+void PostEffectManager::ExecuteEffectToBackBuffer(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
+{
+    auto* effect = GetEffectInternal(name);
+    if (effect) {
+        effect->DrawToBackBuffer(inputSrvHandle);
     }
 }
 
@@ -312,8 +324,10 @@ void PostEffectManager::DrawImGui()
             ImGui::PushID(name.c_str());
 
             if (ImGui::CollapsingHeader(name.c_str())) {
-                // FullScreenエフェクト以外はenable/disableチェックボックスを表示
-                if (name != PostEffectNames::FullScreen) {
+                // FullScreen / DeferredLighting / ToneMapping は常時有効のためトグル非表示
+                if (name != PostEffectNames::FullScreen
+                    && name != PostEffectNames::DeferredLighting
+                    && name != PostEffectNames::ToneMapping) {
                     bool enabled = effect->IsEnabled();
                     if (UI::Widgets::ToggleSwitch("有効", &enabled)) {
                         effect->SetEnabled(enabled);

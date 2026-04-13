@@ -160,6 +160,8 @@ void SkyBoxObject::Update() {
     auto engine = GetEngineSystem();
     if (auto* renderManager = engine->GetComponent<RenderManager>()) {
         renderManager->SetIBLRotation(transform_.rotate);
+        // SkyBox 輝度スケールを IBL に伝播（環境マップの映り込みも連動）
+        renderManager->SetEnvironmentIntensity(material_->GetIntensity());
     }
 }
 
@@ -253,6 +255,14 @@ bool SkyBoxObject::DrawInspectorTabContent(int tabIndex) {
 
     UI::SectionHeader("スケール");
     changed |= UI::DragVec3("スケール", transform_.scale, 0.01f);
+
+    UI::SectionHeader("HDR設定");
+    float intensity = material_->GetIntensity();
+    if (ImGui::SliderFloat("輝度スケール", &intensity, 0.01f, 5.0f, "%.2f")) {
+        material_->SetIntensity(intensity);
+        changed = true;
+    }
+    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "HDR環境マップの明るさを調整します");
 
     UI::Spacing();
     if (ImGui::Button("リセット##skybox")) {

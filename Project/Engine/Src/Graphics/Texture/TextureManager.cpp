@@ -61,9 +61,8 @@ namespace CoreEngine
     // テクスチャの読み込み
     TextureManager::LoadedTexture TextureManager::Load(const std::string& filePath)
     {
-        Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}", "--------------------------------------------");
         // 入力パスを実体パスに解決し、キャッシュ検索キーとして扱う。
-        std::string resolvedPath = texturePathResolver_.ResolveAssetPath(filePath, true);
+        std::string resolvedPath = texturePathResolver_.ResolveAssetPath(filePath, false);
         std::string cacheKey = resolvedPath;
 
         // キャッシュヒット時は即時返却し、重い処理を回避する。

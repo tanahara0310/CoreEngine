@@ -53,8 +53,8 @@ namespace CoreEngine
         // バックバッファへのレンダリング開始（自動でRTV/DSV/ビューポート/シザー設定）
         targetToUse->Begin(cmdList);
 
-        // 最終結果をバックバッファに描画
-        context.postEffectManager->ExecuteEffect("FullScreen", inputHandle_);
+        // 最終結果をバックバッファに描画（_SRGB用PSOを使用）
+        context.postEffectManager->ExecuteEffectToBackBuffer("FullScreen", inputHandle_);
 
         // NOTE: End()はここでは呼ばない
         // ImGuiの描画が終わった後、Render::FinalizeFrame()で呼ばれる

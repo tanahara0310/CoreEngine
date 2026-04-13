@@ -29,11 +29,11 @@ namespace CoreEngine
         /// @brief GBuffer レンダーターゲットのフォーマット定義
         /// PSO 作成時と GBufferManager 初期化時の唯一の定義場所
         static constexpr DXGI_FORMAT kRenderTargetFormats[kTargetCount] = {
-            DXGI_FORMAT_R8G8B8A8_UNORM,       // AlbedoAO
-            DXGI_FORMAT_R16G16B16A16_FLOAT,   // NormalRoughness
-            DXGI_FORMAT_R8G8B8A8_UNORM,       // EmissiveMetallic
-            DXGI_FORMAT_R32G32B32A32_FLOAT    // WorldPosition
-        };
+                DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,  // AlbedoAO (sRGB量子化で暗部精度を確保)
+                DXGI_FORMAT_R16G16B16A16_FLOAT,   // NormalRoughness
+                DXGI_FORMAT_R8G8B8A8_UNORM,       // EmissiveMetallic
+                DXGI_FORMAT_R32G32B32A32_FLOAT    // WorldPosition
+            };
 
         /// @brief 初期化
         /// @param device D3D12デバイス 

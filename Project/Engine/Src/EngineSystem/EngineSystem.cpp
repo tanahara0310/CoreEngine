@@ -375,6 +375,16 @@ namespace CoreEngine
                 sceneViewTarget->Begin(dx->GetCommandList());
                 sceneManager_->DrawSceneView();
                 sceneViewTarget->End(dx->GetCommandList());
+
+                // SceneViewにポストエフェクトチェーンを適用し、結果をSceneView RTに書き戻す
+                if (auto* postEffect = GetComponent<PostEffectManager>()) {
+                    auto resultHandle = postEffect->ExecuteEffectChain(sceneViewTarget->GetSRVHandle());
+                    // ポストエフェクト結果をSceneView RTにコピーバック
+                    sceneViewTarget->Begin(dx->GetCommandList());
+                    postEffect->ExecuteEffect("FullScreen", resultHandle);
+                    sceneViewTarget->End(dx->GetCommandList());
+                }
+
                 // ゲームビュー用に復元
                 if (renderManager) {
                     const bool deferredEnabled = renderPipeline_->GetPass<DeferredLightingPass>()
