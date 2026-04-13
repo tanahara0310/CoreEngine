@@ -8,22 +8,22 @@ namespace CoreEngine
 {
     namespace MathCore {
 
-    //================================================
-    // ベクトル演算の実装（Vector3.hに移動済み）
-    //================================================
-    // Vector::Add, Subtract, Multiply は演算子オーバーロードで実装
-    // Vector::Dot, Length, Normalize, Cross は Vector3.h のグローバル関数として実装
+        //================================================
+        // ベクトル演算の実装（Vector3.hに移動済み）
+        //================================================
+        // Vector::Add, Subtract, Multiply は演算子オーバーロードで実装
+        // Vector::Dot, Length, Normalize, Cross は Vector3.h のグローバル関数として実装
 
-    // Project関数のみこちらに残す（特殊な用途のため）
-    namespace Vector {
-        Vector3 Project(const Vector3& v, const Vector3& n) {
-            float dotProduct = CoreEngine::Dot(v, n);
-            float nLengthSq = CoreEngine::Dot(n, n);
-            assert(nLengthSq != 0.0f);
-            float scalar = dotProduct / nLengthSq;
-            return scalar * n;
+        // Project関数のみこちらに残す（特殊な用途のため）
+        namespace Vector {
+            Vector3 Project(const Vector3& v, const Vector3& n) {
+                float dotProduct = CoreEngine::Dot(v, n);
+                float nLengthSq = CoreEngine::Dot(n, n);
+                assert(nLengthSq != 0.0f);
+                float scalar = dotProduct / nLengthSq;
+                return scalar * n;
+            }
         }
-    }
 
         //================================================
         // 行列演算の実装
@@ -182,54 +182,63 @@ namespace CoreEngine
             }
 
             Matrix4x4 MakeAffine(const Vector3& scale, const Quaternion& rotate, const Vector3& translate) {
-                Matrix4x4 scaleMatrix = Scale(scale);
-                Matrix4x4 rotateMatrix = QuaternionMath::MakeRotateMatrix(rotate);
-                Matrix4x4 translateMatrix = Translation(translate);
+                static_assert(sizeof(Matrix4x4) == sizeof(DirectX::XMFLOAT4X4),
+                    "Matrix4x4 and XMFLOAT4X4 must have the same size");
 
-                return Multiply(Multiply(scaleMatrix, rotateMatrix), translateMatrix);
+                DirectX::XMVECTOR vScale = DirectX::XMVectorSet(scale.x, scale.y, scale.z, 0.0f);
+                DirectX::XMVECTOR vRotate = DirectX::XMVectorSet(rotate.x, rotate.y, rotate.z, rotate.w);
+                DirectX::XMVECTOR vTranslate = DirectX::XMVectorSet(translate.x, translate.y, translate.z, 0.0f);
+
+                DirectX::XMMATRIX mat = DirectX::XMMatrixAffineTransformation(
+                    vScale, DirectX::XMVectorZero(), vRotate, vTranslate);
+
+                Matrix4x4 result;
+                DirectX::XMStoreFloat4x4(
+                    reinterpret_cast<DirectX::XMFLOAT4X4*>(&result), mat);
+                return result;
             }
 
-        Matrix4x4 LookAt(const Vector3& eye, const Vector3& target, const Vector3& up) {
-            Vector3 zAxis = Normalize(target - eye);
-            Vector3 xAxis = Normalize(Cross(up, zAxis));
-            Vector3 yAxis = Cross(zAxis, xAxis);
+            Matrix4x4 LookAt(const Vector3& eye, const Vector3& target, const Vector3& up) {
+                Vector3 zAxis = Normalize(target - eye);
+                Vector3 xAxis = Normalize(Cross(up, zAxis));
+                Vector3 yAxis = Cross(zAxis, xAxis);
 
-            return {
-                xAxis.x, yAxis.x, zAxis.x, 0.0f,
-                xAxis.y, yAxis.y, zAxis.y, 0.0f,
-                xAxis.z, yAxis.z, zAxis.z, 0.0f,
-                -Dot(xAxis, eye), -Dot(yAxis, eye), -Dot(zAxis, eye), 1.0f
-            };
+                return {
+                    xAxis.x, yAxis.x, zAxis.x, 0.0f,
+                    xAxis.y, yAxis.y, zAxis.y, 0.0f,
+                    xAxis.z, yAxis.z, zAxis.z, 0.0f,
+                    -Dot(xAxis, eye), -Dot(yAxis, eye), -Dot(zAxis, eye), 1.0f
+                };
             }
 
-        Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float radian) {
-            // 0軸は単位行列
-            if (Length(axis) == 0.0f) {
-                return Identity();
-            }
+            Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float radian) {
+                // 0軸は単位行列
+                if (Length(axis) == 0.0f) {
+                    return Identity();
+                }
 
-            const Vector3 n = Normalize(axis);
+                const Vector3 n = Normalize(axis);
 
-            // ---- ex を回す ----
-            const Vector3 rx0 = { 1.0f, 0.0f, 0.0f };
-            const Vector3 p0 = Vector::Project(rx0, n);
-            const Vector3 a0 = rx0 - p0;
-            const Vector3 b0 = Cross(n, a0);
-            const Vector3 exp = p0 + (std::cosf(radian) * a0) + (std::sinf(radian) * b0);
+                // ---- ex を回す ----
+                const Vector3 rx0 = { 1.0f, 0.0f, 0.0f };
+                const Vector3 p0 = Vector::Project(rx0, n);
+                const Vector3 a0 = rx0 - p0;
+                const Vector3 b0 = Cross(n, a0);
+                const Vector3 exp = p0 + (std::cosf(radian) * a0) + (std::sinf(radian) * b0);
 
-            // ---- ey を回す ----
-            const Vector3 ry0 = { 0.0f, 1.0f, 0.0f };
-            const Vector3 p1 = Vector::Project(ry0, n);
-            const Vector3 a1 = ry0 - p1;
-            const Vector3 b1 = Cross(n, a1);
-            const Vector3 eyp = p1 + (std::cosf(radian) * a1) + (std::sinf(radian) * b1);
+                // ---- ey を回す ----
+                const Vector3 ry0 = { 0.0f, 1.0f, 0.0f };
+                const Vector3 p1 = Vector::Project(ry0, n);
+                const Vector3 a1 = ry0 - p1;
+                const Vector3 b1 = Cross(n, a1);
+                const Vector3 eyp = p1 + (std::cosf(radian) * a1) + (std::sinf(radian) * b1);
 
-            // ---- ez を回す ----
-            const Vector3 rz0 = { 0.0f, 0.0f, 1.0f };
-            const Vector3 p2 = Vector::Project(rz0, n);
-            const Vector3 a2 = rz0 - p2;
-            const Vector3 b2 = Cross(n, a2);
-            const Vector3 ezp = p2 + (std::cosf(radian) * a2) + (std::sinf(radian) * b2);
+                // ---- ez を回す ----
+                const Vector3 rz0 = { 0.0f, 0.0f, 1.0f };
+                const Vector3 p2 = Vector::Project(rz0, n);
+                const Vector3 a2 = rz0 - p2;
+                const Vector3 b2 = Cross(n, a2);
+                const Vector3 ezp = p2 + (std::cosf(radian) * a2) + (std::sinf(radian) * b2);
 
                 Matrix4x4 R{};
                 R.m[0][0] = exp.x;
@@ -255,13 +264,13 @@ namespace CoreEngine
                 return R;
             }
 
-        Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to) {
-            // 入力ベクトルを正規化
-            Vector3 normalizedFrom = Normalize(from);
-            Vector3 normalizedTo = Normalize(to);
+            Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to) {
+                // 入力ベクトルを正規化
+                Vector3 normalizedFrom = Normalize(from);
+                Vector3 normalizedTo = Normalize(to);
 
-            // 同じ方向の場合は単位行列
-            float dot = Dot(normalizedFrom, normalizedTo);
+                // 同じ方向の場合は単位行列
+                float dot = Dot(normalizedFrom, normalizedTo);
 
                 // 浮動小数点の誤差を考慮して判定
                 const float epsilon = 1e-6f;
@@ -276,25 +285,25 @@ namespace CoreEngine
                     // 垂直なベクトルを見つけて180度回転
                     Vector3 perpendicular;
 
-                // fromのx成分が0に近くない場合
-                if (std::abs(normalizedFrom.x) > epsilon) {
-                    perpendicular = Normalize(Vector3{ -normalizedFrom.y, normalizedFrom.x, 0.0f });
-                }
-                // fromのy成分が0に近くない場合
-                else if (std::abs(normalizedFrom.y) > epsilon) {
-                    perpendicular = Normalize(Vector3{ 0.0f, -normalizedFrom.z, normalizedFrom.y });
-                }
-                // fromのz成分が0に近くない場合
-                else {
-                    perpendicular = Normalize(Vector3{ normalizedFrom.z, 0.0f, -normalizedFrom.x });
-                }
+                    // fromのx成分が0に近くない場合
+                    if (std::abs(normalizedFrom.x) > epsilon) {
+                        perpendicular = Normalize(Vector3{ -normalizedFrom.y, normalizedFrom.x, 0.0f });
+                    }
+                    // fromのy成分が0に近くない場合
+                    else if (std::abs(normalizedFrom.y) > epsilon) {
+                        perpendicular = Normalize(Vector3{ 0.0f, -normalizedFrom.z, normalizedFrom.y });
+                    }
+                    // fromのz成分が0に近くない場合
+                    else {
+                        perpendicular = Normalize(Vector3{ normalizedFrom.z, 0.0f, -normalizedFrom.x });
+                    }
 
                     // 180度回転（π rad）
                     return MakeRotateAxisAngle(perpendicular, std::numbers::pi_v<float>);
                 }
 
-            // 回転軸を外積で求める
-            Vector3 axis = Cross(normalizedFrom, normalizedTo);
+                // 回転軸を外積で求める
+                Vector3 axis = Cross(normalizedFrom, normalizedTo);
 
                 // 回転角度を内積から求める
                 float angle = std::acosf(std::clamp(dot, -1.0f, 1.0f));
@@ -303,12 +312,12 @@ namespace CoreEngine
                 return MakeRotateAxisAngle(axis, angle);
             }
 
-        void DecomposeToSRT(const Matrix4x4& matrix, Vector3& scale, Vector3& rotate, Vector3& translate) {
-            translate = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
+            void DecomposeToSRT(const Matrix4x4& matrix, Vector3& scale, Vector3& rotate, Vector3& translate) {
+                translate = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
 
-            scale.x = Length({ matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] });
-            scale.y = Length({ matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] });
-            scale.z = Length({ matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] });
+                scale.x = Length({ matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] });
+                scale.y = Length({ matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] });
+                scale.z = Length({ matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] });
 
                 rotate.y = std::atan2(matrix.m[0][2], matrix.m[2][2]);
                 rotate.x = std::atan2(-matrix.m[1][2], std::sqrt(matrix.m[1][0] * matrix.m[1][0] + matrix.m[1][1] * matrix.m[1][1]));
@@ -389,14 +398,14 @@ namespace CoreEngine
                         conjugate.z / normSquared, conjugate.w / normSquared };
             }
 
-        Quaternion MakeRotateAxisAngle(const Vector3& axis, float radian) {
-            // ゼロ軸の場合は単位クォータニオンを返す
-            if (Length(axis) == 0.0f) {
-                return Identity();
-            }
+            Quaternion MakeRotateAxisAngle(const Vector3& axis, float radian) {
+                // ゼロ軸の場合は単位クォータニオンを返す
+                if (Length(axis) == 0.0f) {
+                    return Identity();
+                }
 
-            // 軸を正規化
-            Vector3 normalizedAxis = Normalize(axis);
+                // 軸を正規化
+                Vector3 normalizedAxis = Normalize(axis);
 
                 // 半角の計算
                 float halfAngle = radian * 0.5f;

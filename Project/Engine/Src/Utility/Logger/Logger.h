@@ -12,6 +12,8 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/msvc_sink.h>
+#include <spdlog/details/null_mutex.h>
+#include <spdlog/sinks/base_sink.h>
 
 /// @brief ログカテゴリ
 
@@ -122,6 +124,13 @@ public:
     /// @brief wstringからstringへ変換
     std::string ConvertString(const std::wstring& str);
 
+    /// @brief コンソールUI転送用コールバックを設定
+    /// @param callback ログレベルとメッセージを受け取るコールバック
+    void SetConsoleCallback(std::function<void(LogLevel, const std::string&, const std::string&)> callback);
+
+    /// @brief コンソールUI転送用コールバックを解除
+    void ClearConsoleCallback();
+
 private:
     static const size_t kMaxLogFiles = 10; // 最大ログファイル数
     static const size_t kMaxLogFileSizeBytes = 10 * 1024 * 1024; // 1ファイルあたりの最大サイズ（10MB）
@@ -134,6 +143,9 @@ private:
     mutable std::mutex loggerMutex_;
     bool isInitialized_ = false;
     bool isShuttingDown_ = false;
+
+    // コンソールUI転送用コールバックSink
+    spdlog::sink_ptr consoleSink_;
 
     // フレーム時間管理
     mutable std::mutex frameTimeMutex_;

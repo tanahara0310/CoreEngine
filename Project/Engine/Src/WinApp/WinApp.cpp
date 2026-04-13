@@ -12,6 +12,10 @@ int32_t WinApp::currentClientHeightStatic_ = WinApp::kClientHeight;
 
 void WinApp::Initialize(int32_t width, int32_t height, const wchar_t* title)
 {
+    // DPIアウェアネスを設定（ウィンドウ作成前に必要）
+    // これにより、Windowsのビットマップスケーリングを回避し、物理ピクセルで正確に描画される
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
     timeBeginPeriod(1); // タイマー精度を1msに設定
     hwnd_ = nullptr;
     instance_ = this; // インスタンスポインタを設定

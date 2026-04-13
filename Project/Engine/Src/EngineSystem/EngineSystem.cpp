@@ -91,6 +91,31 @@ namespace CoreEngine
         // ゲームデバッグUIの初期化（DockingUIを渡す）
         gameDebugUI_->Initialize(this, imGui_->GetDockingUI());
 
+        // LoggerからConsoleUIへのログ転送を接続
+        if (auto* console = GetConsole()) {
+            Logger::GetInstance().SetConsoleCallback(
+                [console](LogLevel level, const std::string& category, const std::string& message) {
+                    ConsoleLogLevel consoleLevel = ConsoleLogLevel::Info;
+                    switch (level) {
+                    case LogLevel::Debug:
+                    case LogLevel::Trace:
+                        consoleLevel = ConsoleLogLevel::Debug;
+                        break;
+                    case LogLevel::Info:
+                        consoleLevel = ConsoleLogLevel::Info;
+                        break;
+                    case LogLevel::Warn:
+                        consoleLevel = ConsoleLogLevel::Warning;
+                        break;
+                    case LogLevel::Error:
+                    case LogLevel::Critical:
+                        consoleLevel = ConsoleLogLevel::Error;
+                        break;
+                    }
+                    console->AddLog(message, consoleLevel, category);
+                });
+        }
+
         // スレッドプールプロファイラーの初期化
         threadProfilerUI_ = std::make_unique<ThreadProfilerUI>();
         threadProfilerUI_->RegisterPool("TextureLoader",
@@ -129,6 +154,9 @@ namespace CoreEngine
     void EngineSystem::Finalize()
     {
 #ifdef USE_IMGUI
+        // コンソールUIへのログ転送を解除（ImGui解放前に行う）
+        Logger::GetInstance().ClearConsoleCallback();
+
         // プロファイラーの終了処理（ImGui より先に解放）
         gpuProfiler_.Finalize();
 

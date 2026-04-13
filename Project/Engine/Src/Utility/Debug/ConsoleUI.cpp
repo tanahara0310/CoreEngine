@@ -24,15 +24,14 @@ void ConsoleUI::Draw()
 {
     if (!isVisible_) return;
 
-    if (auto w = UI::Scope::WindowScope("Console")) {
-        // === コンソールヘッダー ===
-        ImGui::Text("Debug Console");
-        UI::SameLine();
+    // 保留中のメッセージをメインキューに転送
+    FlushPendingMessages();
 
+    if (auto w = UI::Scope::WindowScope("Console")) {
+        // === ヘッダー ===
         if (ImGui::Button("Clear")) {
             ClearLog();
         }
-
         UI::SameLine();
 
         if (ImGui::Button("Settings")) {
@@ -55,9 +54,8 @@ void ConsoleUI::Draw()
             UI::SameLine();
             UI::Widgets::ToggleSwitch("Debug",   &showDebug_);
         }
-        
-        UI::Separator();
 
+        UI::SameLine();
         ImGui::Text("Filter:");
         UI::SameLine();
         filter_.Draw("##Filter", -100.0f);
@@ -67,33 +65,96 @@ void ConsoleUI::Draw()
         }
 
         UI::Separator();
-        
+
+        // === カテゴリタブ ===
+        static const char* kTabNames[] = {
+            "All", "System", "Graphics", "Resource", "Shader", "Audio", "Game", "General", "Console"
+        };
+        static const char* kTabCategories[] = {
+            nullptr, "System", "Graphics", "Resource", "Shader", "Audio", "Game", "General", "Console"
+        };
+        static const char* kTabIds[] = {
+            "###TabAll", "###TabSystem", "###TabGraphics", "###TabResource",
+            "###TabShader", "###TabAudio", "###TabGame", "###TabGeneral", "###TabConsole"
+        };
+        static constexpr int kTabCount = 9;
+
+        if (ImGui::BeginTabBar("##ConsoleTabs", ImGuiTabBarFlags_FittingPolicyScroll)) {
+            for (int i = 0; i < kTabCount; i++) {
+                size_t count = CountMessages(kTabCategories[i]);
+                size_t errorCount = CountErrorMessages(kTabCategories[i]);
+
+                // タブラベル生成（IDは固定、表示名だけ変化）
+                char label[128];
+                if (errorCount > 0) {
+                    snprintf(label, sizeof(label), "%s (%zu) !%s", kTabNames[i], count, kTabIds[i]);
+                } else if (count > 0) {
+                    snprintf(label, sizeof(label), "%s (%zu)%s", kTabNames[i], count, kTabIds[i]);
+                } else {
+                    snprintf(label, sizeof(label), "%s%s", kTabNames[i], kTabIds[i]);
+                }
+
+                // エラーがある非アクティブタブは色を変える
+                bool hasErrors = (errorCount > 0 && i != activeTab_);
+                if (hasErrors) {
+                    ImGui::PushStyleColor(ImGuiCol_Tab, ImVec4(0.5f, 0.1f, 0.1f, 1.0f));
+                }
+
+                if (ImGui::BeginTabItem(label)) {
+                    activeTab_ = i;
+                    ImGui::EndTabItem();
+                }
+
+                if (hasErrors) {
+                    ImGui::PopStyleColor();
+                }
+            }
+            ImGui::EndTabBar();
+        }
+
         // === メッセージ表示エリア ===
         const float footerHeight = ImGui::GetFrameHeightWithSpacing();
         if (auto child = UI::Scope::ChildScope("ScrollingRegion",
             ImVec2(0, -footerHeight), 0, ImGuiWindowFlags_HorizontalScrollbar)) {
-            
-            // メッセージ表示
+
+            const char* categoryFilter = kTabCategories[activeTab_];
+            bool showCategoryBadge = (activeTab_ == 0); // Allタブのみカテゴリ表示
+
             for (const auto& message : messages_) {
+                // カテゴリフィルター
+                if (categoryFilter && message.category != categoryFilter) continue;
+                // レベルフィルター
                 if (!ShouldShowMessage(message)) continue;
-                if (!filter_.PassFilter(message.message.c_str())) continue;
-                
-                // タイムスタンプ表示
+                // テキストフィルター（メッセージとカテゴリ名の両方で検索）
+                if (filter_.IsActive()) {
+                    if (!filter_.PassFilter(message.message.c_str()) &&
+                        !filter_.PassFilter(message.category.c_str())) continue;
+                }
+
+                // タイムスタンプ
                 if (showTimestamp_) {
                     std::string timeStr = FormatTimestamp(message.timestamp);
                     ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "[%s]", timeStr.c_str());
                     UI::SameLine();
                 }
 
+                // ログレベルバッジ
                 const char* levelStr = GetLevelString(message.level);
                 ImVec4 levelColor = GetMessageColor(message.level);
                 ImGui::TextColored(levelColor, "[%s]", levelStr);
                 UI::SameLine();
-                
-                // メッセージ内容表示
+
+                // カテゴリバッジ（Allタブのみ表示）
+                if (showCategoryBadge && !message.category.empty()) {
+                    ImVec4 catColor = GetCategoryColor(message.category);
+                    ImGui::TextColored(catColor, "[%s]", message.category.c_str());
+                    UI::SameLine();
+                }
+
+                // メッセージ内容
                 ImGui::TextWrapped("%s", message.message.c_str());
             }
-            
+
             // 自動スクロール
             if (autoScroll_ && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
                 ImGui::SetScrollHereY(1.0f);
@@ -102,16 +163,15 @@ void ConsoleUI::Draw()
 
         UI::Separator();
 
+        // === コマンド入力 ===
         ImGui::Text("Command:");
         UI::SameLine();
-        
-        // 入力フォーカス設定
+
         if (focusInput_) {
             ImGui::SetKeyboardFocusHere();
             focusInput_ = false;
         }
-        
-        // コマンド入力
+
         bool enterPressed = UI::InputText("##CommandInput", inputBuffer_, sizeof(inputBuffer_),
                                            ImGuiInputTextFlags_EnterReturnsTrue);
 
@@ -120,8 +180,8 @@ void ConsoleUI::Draw()
             if (strlen(inputBuffer_) > 0) {
                 std::string command(inputBuffer_);
                 ProcessCommand(command);
-                inputBuffer_[0] = '\0'; // バッファをクリア
-                focusInput_ = true; // 次フレームで入力にフォーカス
+                inputBuffer_[0] = '\0';
+                focusInput_ = true;
             }
         }
     }
@@ -129,17 +189,21 @@ void ConsoleUI::Draw()
 
 void ConsoleUI::AddLog(const std::string& message, ConsoleLogLevel level)
 {
-    // メッセージを追加
-    messages_.emplace_back(message, level);
-    
-    // 最大数を超えたら古いメッセージを削除
-    if (messages_.size() > maxMessages_) {
-        messages_.pop_front();
-    }
+    AddLog(message, level, "Console");
+}
+
+void ConsoleUI::AddLog(const std::string& message, ConsoleLogLevel level, const std::string& category)
+{
+    std::lock_guard<std::mutex> lock(pendingMutex_);
+    pendingMessages_.emplace_back(message, level, category);
 }
 
 void ConsoleUI::ClearLog()
 {
+    {
+        std::lock_guard<std::mutex> lock(pendingMutex_);
+        pendingMessages_.clear();
+    }
     messages_.clear();
     AddLog("コンソールログをクリアしました", ConsoleLogLevel::Info);
 }
@@ -330,30 +394,77 @@ void ConsoleUI::ShowSystemStatus()
     }
 
     AddLog("=== システム状態 ===", ConsoleLogLevel::Info);
-    
+
     // 【Phase 4】コンポーネントの状態チェック
     auto directXCommon = engine_->GetComponent<DirectXCommon>();
     auto inputManager = engine_->GetComponent<InputManager>();
     auto soundManager = engine_->GetComponent<SoundManager>();
     auto lightManager = engine_->GetComponent<LightManager>();
     auto particleSystem = engine_->GetComponent<ParticleSystem>();
-    
+
     AddLog("グラフィックスシステム: " + std::string(directXCommon ? "初期化済み" : "未初期化"), 
            directXCommon ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
-    
+
     AddLog("入力システム: " + std::string(inputManager ? "初期化済み" : "未初期化"), 
            inputManager ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
-    
+
     AddLog("オーディオシステム: " + std::string(soundManager ? "初期化済み" : "未初期化"), 
            soundManager ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
-    
+
     AddLog("ライティングシステム: " + std::string(lightManager ? "初期化済み" : "未初期化"), 
            lightManager ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
-    
+
     AddLog("パーティクルシステム: " + std::string(particleSystem ? "初期化済み" : "未初期化"), 
            particleSystem ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);
-    
+
     AddLog("エンジンシステム: 正常稼働中", ConsoleLogLevel::Info);
+}
+
+void ConsoleUI::FlushPendingMessages()
+{
+    std::lock_guard<std::mutex> lock(pendingMutex_);
+    for (auto& msg : pendingMessages_) {
+        messages_.push_back(std::move(msg));
+    }
+    pendingMessages_.clear();
+
+    while (messages_.size() > maxMessages_) {
+        messages_.pop_front();
+    }
+}
+
+size_t ConsoleUI::CountMessages(const char* categoryFilter) const
+{
+    size_t count = 0;
+    for (const auto& msg : messages_) {
+        if (categoryFilter && msg.category != categoryFilter) continue;
+        if (!ShouldShowMessage(msg)) continue;
+        count++;
+    }
+    return count;
+}
+
+size_t ConsoleUI::CountErrorMessages(const char* categoryFilter) const
+{
+    size_t count = 0;
+    for (const auto& msg : messages_) {
+        if (categoryFilter && msg.category != categoryFilter) continue;
+        if (msg.level == ConsoleLogLevel::Error) count++;
+    }
+    return count;
+}
+
+ImVec4 ConsoleUI::GetCategoryColor(const std::string& category) const
+{
+    if (category == "System")    return ImVec4(0.6f, 0.8f, 1.0f, 1.0f);  // 水色
+    if (category == "Graphics")  return ImVec4(0.8f, 0.6f, 1.0f, 1.0f);  // 紫
+    if (category == "Resource")  return ImVec4(0.6f, 1.0f, 0.8f, 1.0f);  // 青緑
+    if (category == "Shader")    return ImVec4(1.0f, 1.0f, 0.6f, 1.0f);  // 黄
+    if (category == "Audio")     return ImVec4(1.0f, 0.8f, 0.6f, 1.0f);  // オレンジ
+    if (category == "Game")      return ImVec4(0.6f, 1.0f, 0.6f, 1.0f);  // 緑
+    if (category == "General")   return ImVec4(0.9f, 0.9f, 0.9f, 1.0f);  // 白
+    if (category == "Console")   return ImVec4(0.7f, 0.7f, 0.7f, 1.0f);  // グレー
+    return ImVec4(0.8f, 0.8f, 0.8f, 1.0f);
 }
 }
 #endif // USE_IMGUI

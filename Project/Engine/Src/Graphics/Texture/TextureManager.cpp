@@ -61,7 +61,7 @@ namespace CoreEngine
     // テクスチャの読み込み
     TextureManager::LoadedTexture TextureManager::Load(const std::string& filePath)
     {
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", "--------------------------------------------");
+        Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}", "--------------------------------------------");
         // 入力パスを実体パスに解決し、キャッシュ検索キーとして扱う。
         std::string resolvedPath = texturePathResolver_.ResolveAssetPath(filePath, true);
         std::string cacheKey = resolvedPath;
@@ -69,14 +69,14 @@ namespace CoreEngine
         // キャッシュヒット時は即時返却し、重い処理を回避する。
         LoadedTexture cachedTexture{};
         if (cacheStore_->TryGetTexture(cacheKey, cachedTexture)) {
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("  Cache hit: {}", cacheKey));
+            Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}", std::format("  Cache hit: {}", cacheKey));
             return cachedTexture;
         }
 
         // 同一キーの重複ロードを避けるため、ロード権を獲得できるまで待機する。
         while (true) {
             if (cacheStore_->TryGetTexture(cacheKey, cachedTexture)) {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("  Loaded by another thread: {}", cacheKey));
+                Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}", std::format("  Loaded by another thread: {}", cacheKey));
                 return cachedTexture;
             }
 

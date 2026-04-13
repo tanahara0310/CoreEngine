@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <mutex>
 #include <chrono>
 
 /// @brief コンソールメッセージのログレベル
@@ -25,11 +26,12 @@ namespace CoreEngine
     /// @brief コンソールメッセージ構造体
     struct ConsoleMessage {
         std::string message;                                    // メッセージ内容
+        std::string category;                                   // カテゴリ名
         ConsoleLogLevel level;                                  // ログレベル
         std::chrono::system_clock::time_point timestamp;       // タイムスタンプ
 
-        ConsoleMessage(const std::string& msg, ConsoleLogLevel lvl)
-            : message(msg), level(lvl), timestamp(std::chrono::system_clock::now()) {
+        ConsoleMessage(const std::string& msg, ConsoleLogLevel lvl, const std::string& cat = "Console")
+            : message(msg), category(cat), level(lvl), timestamp(std::chrono::system_clock::now()) {
         }
     };
 
@@ -50,6 +52,12 @@ namespace CoreEngine
         /// @param message メッセージ内容
         /// @param level ログレベル
         void AddLog(const std::string& message, ConsoleLogLevel level = ConsoleLogLevel::Info);
+
+        /// @brief カテゴリ付きメッセージをログに追加
+        /// @param message メッセージ内容
+        /// @param level ログレベル
+        /// @param category カテゴリ名
+        void AddLog(const std::string& message, ConsoleLogLevel level, const std::string& category);
 
         /// @brief ログをクリア
         void ClearLog();
@@ -103,6 +111,13 @@ namespace CoreEngine
         // UI用の一時変数
         ImGuiTextFilter filter_;                                // テキストフィルター
 
+        // スレッドセーフなメッセージキュー（非同期ログ用）
+        std::mutex pendingMutex_;
+        std::vector<ConsoleMessage> pendingMessages_;
+
+        // カテゴリタブ
+        int activeTab_ = 0;                                     // 現在のアクティブタブ
+
     private:
         /// @brief メッセージの色を取得
         /// @param level ログレベル
@@ -133,6 +148,18 @@ namespace CoreEngine
 
         /// @brief システム状態を表示
         void ShowSystemStatus();
+
+        /// @brief 保留中のメッセージをメインキューに転送
+        void FlushPendingMessages();
+
+        /// @brief カテゴリ別のメッセージ数をカウント
+        size_t CountMessages(const char* categoryFilter) const;
+
+        /// @brief カテゴリ別のエラーメッセージ数をカウント
+        size_t CountErrorMessages(const char* categoryFilter) const;
+
+        /// @brief カテゴリの表示色を取得
+        ImVec4 GetCategoryColor(const std::string& category) const;
     };
 }
 #endif // USE_IMGUI
