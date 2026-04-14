@@ -54,6 +54,9 @@ namespace CoreEngine
         /// @brief シーン共通 IBL 環境回転角度を設定（ラジアン）
         void SetIBLRotation(const Vector3& rotation) { iblRotation_ = rotation; }
 
+        /// @brief 環境輝度スケールを設定（SkyBox intensity と連動）
+        void SetEnvironmentIntensity(float intensity) { environmentIntensity_ = intensity; }
+
         /// @brief 環境マップテクスチャが設定済みか確認
         bool HasEnvironmentMap() const { return environmentMapHandle_.ptr != 0; }
 
@@ -102,8 +105,9 @@ namespace CoreEngine
 
         // IBL シーンパラメータ定数バッファ（environmentRotation）
         Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;
-        D3D12_GPU_VIRTUAL_ADDRESS              iblParamsCBVAddress_ = 0;
+        D3D12_GPU_VIRTUAL_ADDRESS iblParamsCBVAddress_ = 0;
         Vector3 iblRotation_ = {};
+        float environmentIntensity_ = 1.0f; ///< 環境輝度スケール（SkyBox intensity と連動
 
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> forwardReflectionData_;

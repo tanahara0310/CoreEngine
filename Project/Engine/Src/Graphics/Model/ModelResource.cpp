@@ -159,6 +159,73 @@ namespace CoreEngine
         isLoaded_ = true;
     }
 
+    void ModelResource::LoadFromModelData(ModelData&& data, const std::string& name)
+    {
+        assert(dxCommon_ && resourceFactory_ && textureManager_);
+
+        modelData_ = std::move(data);
+
+        // RootNodeを保存
+        rootNode_ = modelData_.rootNode;
+
+        // 頂点数・インデックス数を設定
+        vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
+        indexCount_ = static_cast<UINT>(modelData_.indices.size());
+
+        // 頂点バッファの作成
+        vertexBuffer_ = ResourceFactory::CreateBufferResource(
+            dxCommon_->GetDevice(),
+            sizeof(VertexData) * modelData_.vertices.size());
+
+        vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
+        vertexBufferView_.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * modelData_.vertices.size());
+        vertexBufferView_.StrideInBytes = sizeof(VertexData);
+
+        void* mapped = nullptr;
+        vertexBuffer_->Map(0, nullptr, &mapped);
+        memcpy(mapped, modelData_.vertices.data(), sizeof(VertexData) * modelData_.vertices.size());
+        vertexBuffer_->Unmap(0, nullptr);
+
+        // インデックスバッファの作成
+        indexBuffer_ = ResourceFactory::CreateBufferResource(
+            dxCommon_->GetDevice(),
+            sizeof(uint32_t) * modelData_.indices.size());
+
+        indexBufferView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
+        indexBufferView_.SizeInBytes = static_cast<UINT>(sizeof(uint32_t) * modelData_.indices.size());
+        indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
+
+        void* mappedIndex = nullptr;
+        indexBuffer_->Map(0, nullptr, &mappedIndex);
+        memcpy(mappedIndex, modelData_.indices.data(), sizeof(uint32_t) * modelData_.indices.size());
+        indexBuffer_->Unmap(0, nullptr);
+
+        // ローカル空間AABBを頂点データから算出
+        localBoundingBox_ = BoundingBox();
+        for (const auto& vertex : modelData_.vertices) {
+            if (vertex.position.x < localBoundingBox_.min.x) localBoundingBox_.min.x = vertex.position.x;
+            if (vertex.position.y < localBoundingBox_.min.y) localBoundingBox_.min.y = vertex.position.y;
+            if (vertex.position.z < localBoundingBox_.min.z) localBoundingBox_.min.z = vertex.position.z;
+            if (vertex.position.x > localBoundingBox_.max.x) localBoundingBox_.max.x = vertex.position.x;
+            if (vertex.position.y > localBoundingBox_.max.y) localBoundingBox_.max.y = vertex.position.y;
+            if (vertex.position.z > localBoundingBox_.max.z) localBoundingBox_.max.z = vertex.position.z;
+        }
+
+        // マテリアルテクスチャハンドルの設定（デフォルト白テクスチャ）
+        D3D12_GPU_DESCRIPTOR_HANDLE defaultWhiteTexture = textureManager_->Load("white1x1.png").gpuHandle;
+        materialTextureHandles_.resize(std::max<size_t>(modelData_.materials.size(), 1));
+        for (auto& handles : materialTextureHandles_) {
+            handles.baseColor = defaultWhiteTexture;
+            handles.metallicRoughness = defaultWhiteTexture;
+            handles.normal = defaultWhiteTexture;
+            handles.occlusion = defaultWhiteTexture;
+            handles.emissive = defaultWhiteTexture;
+        }
+
+        filePath_ = name.empty() ? "<procedural>" : name;
+        isLoaded_ = true;
+    }
+
     const Animation* ModelResource::GetAnimation(const std::string& name) const {
         if (animations_.empty()) {
             return nullptr;

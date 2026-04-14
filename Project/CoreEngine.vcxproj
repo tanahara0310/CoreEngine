@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -177,6 +177,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera2D.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraPresetManager.cpp" />
@@ -208,6 +209,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\GridRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLGenerator.cpp" />
@@ -270,6 +275,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\ObjectCommon\GameObject.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\GameObjectManager.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\Model\ModelGameObject.cpp" />
+    <ClCompile Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleEmitter.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.cpp" />
@@ -285,14 +291,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\SceneDebugEditor.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\AnimatedCubeObject.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\FenceObject.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\ModelObject.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\SkeletonModelObject.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\SkyBoxObject.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\SneakWalkModelObject.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\SphereObject.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\TerrainObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Model.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
@@ -379,6 +380,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Sample\TestGameObject\Plane.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\CubeObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\PlaneObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\PrimitiveSphereObject.h" />
     <ClInclude Include="Engine\Src\Camera\Camera2D.h" />
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraPresetManager.h" />
@@ -428,6 +433,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.h" />
+    <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLGenerator.h" />
@@ -511,6 +521,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\ObjectCommon\GameObjectManager.h" />
     <ClInclude Include="Engine\Src\ObjectCommon\IObjectSpawner.h" />
     <ClInclude Include="Engine\Src\ObjectCommon\Model\ModelGameObject.h" />
+    <ClInclude Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.h" />
     <ClInclude Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleEmitter.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.h" />
@@ -526,14 +537,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\SceneDebugEditor.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneTransition.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedCubeObject.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\FenceObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\ModelObject.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\SkeletonModelObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBoxObject.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\SneakWalkModelObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\SphereObject.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\TerrainObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Model.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelResource.h" />
@@ -662,6 +668,54 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Engine\Src\ObjectCommon\README.md" />
     <None Include="Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
+    <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->
+    <None Include="Engine\Assets\Shaders\Common\Lighting.hlsli" />
+    <None Include="Engine\Assets\Shaders\Common\LightStructures.hlsli" />
+    <None Include="Engine\Assets\Shaders\Common\PBR.hlsli" />
+    <None Include="Engine\Assets\Shaders\Common\ShadowCalculation.hlsli" />
+    <None Include="Engine\Assets\Shaders\IBL\BRDFLUT.CS.hlsl" />
+    <None Include="Engine\Assets\Shaders\IBL\IrradianceConvolution.CS.hlsl" />
+    <None Include="Engine\Assets\Shaders\IBL\PrefilterEnvironment.CS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Line\Line.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Line\Line.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Object\GBuffer.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Object\GBuffer.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Object\Object3d.hlsli" />
+    <None Include="Engine\Assets\Shaders\Object\Object3d.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Object\Object3d.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Particle\ModelParticle.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Particle\Particle.hlsli" />
+    <None Include="Engine\Assets\Shaders\Particle\Particle.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Particle\Particle.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\Bloom.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\Blur.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\ChromaticAberration.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\ColorGrading.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\DeferredLighting.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\Dissolve.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\FadeEffect.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\FullScreen.hlsli" />
+    <None Include="Engine\Assets\Shaders\PostProcess\FullScreen.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\FullScreen.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\GrayScale.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\Invert.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\RadialBlur.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\RasterScroll.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\Sepia.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\Shockwave.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\ToneMapping.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\PostProcess\Vignette.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Shadow\ShadowMap.hlsli" />
+    <None Include="Engine\Assets\Shaders\Shadow\ShadowMap.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Shadow\ShadowMapSkinning.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Skinning\GBufferSkinning.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Skinning\SkinningObject3d.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Skybox\Skybox.hlsli" />
+    <None Include="Engine\Assets\Shaders\Skybox\Skybox.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Skybox\Skybox.VS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Sprite\Sprite.hlsli" />
+    <None Include="Engine\Assets\Shaders\Sprite\Sprite.PS.hlsl" />
+    <None Include="Engine\Assets\Shaders\Sprite\Sprite.VS.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

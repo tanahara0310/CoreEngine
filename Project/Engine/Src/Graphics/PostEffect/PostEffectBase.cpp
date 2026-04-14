@@ -39,7 +39,7 @@ namespace CoreEngine
             throw std::runtime_error("Failed to create PostEffect Root Signature: " + buildResult.errorMessage);
         }
 
-        // ビルダーパターンでPSOを構築
+        // ビルダーパターンでPSOを構築（オフスクリーンRT用: R16G16B16A16_FLOAT）
         bool result = pipelineStateManager_.CreateBuilder()
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false) // ポストエフェクトは深度不要
@@ -49,6 +49,19 @@ namespace CoreEngine
 
         if (!result) {
             throw std::runtime_error("Failed to create PSO in PostEffectBase");
+        }
+
+        // バックバッファ用PSO（_SRGB フォーマット）を別途構築
+        bool bbResult = backBufferPipelineStateManager_.CreateBuilder()
+            .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
+            .SetDepthStencil(false, false)
+            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
+            .SetRenderTargetFormat(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
+            .Build(dxCommon->GetDevice(), fullscreenVertexShaderBlob_.Get(), pixelShaderBlob_.Get(),
+                rootSignatureManager_->GetRootSignature());
+
+        if (!bbResult) {
+            throw std::runtime_error("Failed to create BackBuffer PSO in PostEffectBase");
         }
     }
 
@@ -75,6 +88,26 @@ namespace CoreEngine
         }
 
         // オプション定数バッファをバインド
+        BindOptionalCBVs(commandList);
+
+        commandList->DrawInstanced(3, 1, 0, 0);
+    }
+
+    void PostEffectBase::DrawToBackBuffer(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
+    {
+        auto* commandList = directXCommon_->GetCommandList();
+
+        commandList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
+        commandList->SetPipelineState(
+            backBufferPipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
+
+        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        int textureIdx = GetRootParamIndex("gTexture");
+        if (textureIdx >= 0) {
+            commandList->SetGraphicsRootDescriptorTable(textureIdx, inputSrvHandle);
+        }
+
         BindOptionalCBVs(commandList);
 
         commandList->DrawInstanced(3, 1, 0, 0);

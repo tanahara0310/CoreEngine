@@ -14,6 +14,7 @@
 #include "Animation/Animation.h"
 
 namespace CoreEngine { class ThreadPool; }
+namespace CoreEngine { class IPrimitiveMeshGenerator; }
 
 namespace CoreEngine
 {
@@ -89,6 +90,12 @@ public:
     /// @brief 複数モデルを並列プリロード（全完了まで待機）
     /// @param filePaths プリロードするファイルパスのリスト
     void PreloadModels(const std::vector<std::string>& filePaths);
+
+    /// @brief プリミティブメッシュジェネレーターからモデルを作成する
+    /// @param key キャッシュキー（例: "Primitive::Plane_10x10"）
+    /// @param generator メッシュ生成インターフェース
+    /// @return 作成されたModelのユニークポインタ
+    std::unique_ptr<Model> CreatePrimitiveModel(const std::string& key, const IPrimitiveMeshGenerator& generator);
 
     /// @brief スレッドプールを取得（デバッグ用）
     ThreadPool* GetThreadPool() const { return threadPool_.get(); }

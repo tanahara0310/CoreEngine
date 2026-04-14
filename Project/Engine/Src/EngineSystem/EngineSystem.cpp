@@ -144,9 +144,6 @@ namespace CoreEngine
             // SceneViewportが作成するウィンドウを中央に配置
             dockingUI->RegisterWindow("Scene", DockArea::Center);
 
-            // ポストエフェクトウィンドウを右側に配置
-            dockingUI->RegisterWindow("Post Effects", DockArea::Right);
-
             // パーティクルシステムデバッグを右側に配置
             dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
         }
@@ -236,11 +233,6 @@ namespace CoreEngine
 
         // その他のデバッグUIの更新（メニューバー以外）
         gameDebugUI_->UpdateDebugPanels();
-
-        // ポストエフェクトのImGui描画
-        if (auto* postEffect = GetComponent<PostEffectManager>()) {
-            postEffect->DrawImGui();
-        }
 
         if (sceneManager_) {
             if (auto* sceneViewport = imGui_->GetSceneViewport()) {
@@ -380,6 +372,16 @@ namespace CoreEngine
                 sceneViewTarget->Begin(dx->GetCommandList());
                 sceneManager_->DrawSceneView();
                 sceneViewTarget->End(dx->GetCommandList());
+
+                // SceneViewにポストエフェクトチェーンを適用し、結果をSceneView RTに書き戻す
+                if (auto* postEffect = GetComponent<PostEffectManager>()) {
+                    auto resultHandle = postEffect->ExecuteEffectChain(sceneViewTarget->GetSRVHandle());
+                    // ポストエフェクト結果をSceneView RTにコピーバック
+                    sceneViewTarget->Begin(dx->GetCommandList());
+                    postEffect->ExecuteEffect("FullScreen", resultHandle);
+                    sceneViewTarget->End(dx->GetCommandList());
+                }
+
                 // ゲームビュー用に復元
                 if (renderManager) {
                     const bool deferredEnabled = renderPipeline_->GetPass<DeferredLightingPass>()

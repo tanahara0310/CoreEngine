@@ -44,10 +44,10 @@ namespace CoreEngine
         // 日本語グリフ範囲に加え、罫線文字・記号を追加
         static const ImWchar kExtraRanges[] = {
             0x2022, 0x2022, // Bullet •
-            0x2500, 0x257F, // Box Drawing  ┌─┐│├┤└┘
+            0x2500, 0x257F, // Box Drawing 
             0x2580, 0x259F, // Block Elements
             0x25A0, 0x25FF, // Geometric Shapes
-            0x2713, 0x2713, // Check mark ✓
+            0x2713, 0x2713, // Check mark 
             0,
         };
 

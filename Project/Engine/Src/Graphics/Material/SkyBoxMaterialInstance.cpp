@@ -6,6 +6,7 @@ namespace CoreEngine
     {
         InitializeBuffer(device);
         materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        materialData_->intensity = 1.0f;
     }
 
     void SkyBoxMaterialInstance::SetColor(const Vector4& color)

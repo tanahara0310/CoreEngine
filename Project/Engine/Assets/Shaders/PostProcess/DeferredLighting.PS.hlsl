@@ -273,8 +273,8 @@ PixelShaderOutput main(PixelShaderInput input)
         ambient = CalculateDeferredIBL(N, V, albedo, metallic, roughness, F0, ao);
     }
 
-    // PBR: ACES トーンマッピング
-    float3 color = ACESFilm(Lo + ambient + emissive);
+    // HDR値をそのまま出力（トーンマッピングはポストエフェクトチェーンで適用）
+    float3 color = Lo + ambient + emissive;
     output.color = float4(color, 1.0f);
     return output;
 }

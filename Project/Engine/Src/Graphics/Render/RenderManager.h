@@ -127,6 +127,12 @@ namespace CoreEngine
         /// @brief シーン共通 IBL 環境回転角度を取得
         const Vector3& GetIBLRotation() const { return iblRotation_; }
 
+        /// @brief 環境輝度スケールを設定（SkyBox intensity と連動）
+        void SetEnvironmentIntensity(float intensity);
+
+        /// @brief 環境輝度スケールを取得
+        float GetEnvironmentIntensity() const { return environmentIntensity_; }
+
         /// @brief アクティブなトランスフォームスロットを設定（Game=通常パス, Scene=エディタシーンビュー）
         void SetActiveTransformSlot(TransformBufferSlot slot) { activeTransformSlot_ = slot; }
 
@@ -171,6 +177,7 @@ namespace CoreEngine
     D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_ = {};
     D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_ = {};
     Vector3 iblRotation_ = {}; ///< シーン共通IBL環境回転（ラジアン）
+    float environmentIntensity_ = 1.0f; ///< 環境輝度スケール（SkyBox intensity と連動）
 
         /// @brief 描画パスごとにソート
         void SortDrawQueue();
