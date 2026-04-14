@@ -19,6 +19,7 @@ namespace CoreEngine
     class GameObjectManager;
     class ICamera;
     class Render;
+    class InputQuery;
 
     class SceneViewport {
     public: // メンバ関数
@@ -74,6 +75,9 @@ namespace CoreEngine
         /// @return オブジェクトセレクターへのポインタ
         ObjectSelector* GetObjectSelector() { return objectSelector_.get(); }
 
+        /// @brief ギズモ操作用のInputQueryを設定
+        void SetInputQuery(InputQuery* query) { inputQuery_ = query; }
+
     private: // メンバ変数
         ImVec2 viewportPos_{};
         ImVec2 viewportSize_{};
@@ -83,6 +87,7 @@ namespace CoreEngine
         const ICamera* currentCamera_ = nullptr;    // 現在の3Dカメラ
         const ICamera* currentCamera2D_ = nullptr;  // 現在の2Dカメラ
         ICamera* currentGameCamera3D_ = nullptr; // Gameビュー用3Dカメラ
+        InputQuery* inputQuery_ = nullptr; // ギズモ操作用入力クエリ
 
         // Scene/Gameウィンドウの描画責務を分離するレンダラー
         std::unique_ptr<SceneViewportWindowRenderer> windowRenderer_;

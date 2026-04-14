@@ -258,22 +258,22 @@ namespace CoreEngine
             return;
         }
 
-        // 新方式でコンポーネントを直接取得
-        auto mouse = engineSystem_->GetComponent<MouseInput>();
-        auto keyboard = engineSystem_->GetComponent<KeyboardInput>();
-        if (!mouse || !keyboard) {
+        // InputQueryを取得
+        auto inputManager = engineSystem_->GetComponent<InputManager>();
+        if (!inputManager) {
             return;
         }
+        auto& input = inputManager->GetQuery();
 
         // シーンウィンドウ内での操作かを判定
         bool isInSceneWindow = IsMouseInSceneWindow();
 
         // Shiftキーの状態を取得
-        bool isShiftPressed = keyboard->IsKeyPressed(DIK_LSHIFT) || keyboard->IsKeyPressed(DIK_RSHIFT);
+        bool isShiftPressed = input.IsKeyPressed(DIK_LSHIFT) || input.IsKeyPressed(DIK_RSHIFT);
 
         // === 中ボタンによる操作 ===
-        bool middlePressed = mouse->IsButtonPressed(MouseButton::Middle);
-        bool middleTriggered = mouse->IsButtonTriggered(MouseButton::Middle);
+        bool middlePressed = input.IsMouseButtonPressed(MouseButton::Middle);
+        bool middleTriggered = input.IsMouseButtonTriggered(MouseButton::Middle);
 
         if (middleTriggered && isInSceneWindow) {
             if (isShiftPressed) {
@@ -283,7 +283,7 @@ namespace CoreEngine
                 draggingLeft_ = true;   // 中ボタンのみ = 回転操作
                 draggingMiddle_ = false;
             }
-            POINT pos = mouse->GetCursorPosition();
+            POINT pos = input.GetCursorPosition();
             mouseState_.lastX = static_cast<float>(pos.x);
             mouseState_.lastY = static_cast<float>(pos.y);
         }
@@ -295,7 +295,7 @@ namespace CoreEngine
 
         // === 回転操作（中ボタンドラッグ） ===
         if (draggingLeft_) {
-            POINT currentPos = mouse->GetCursorPosition();
+            POINT currentPos = input.GetCursorPosition();
             float currentX = static_cast<float>(currentPos.x);
             float currentY = static_cast<float>(currentPos.y);
 
@@ -327,7 +327,7 @@ namespace CoreEngine
 
         // === パン操作（Shift + 中ボタンドラッグ） ===
         if (draggingMiddle_) {
-            POINT currentPos = mouse->GetCursorPosition();
+            POINT currentPos = input.GetCursorPosition();
             float currentX = static_cast<float>(currentPos.x);
             float currentY = static_cast<float>(currentPos.y);
 
@@ -354,7 +354,7 @@ namespace CoreEngine
         }
 
         // === ホイールによるズーム ===
-        int wheelDelta = mouse->GetWheelDelta();
+        int wheelDelta = input.GetWheelDelta();
         if (!isInSceneWindow) {
             // シーン外で溜まった値を持ち越さない
             mouseState_.accumulatedWheelDelta = 0;

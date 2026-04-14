@@ -274,6 +274,15 @@
     <ClCompile Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.cpp">
       <Filter>Engine\Src\Graphics\Texture\Path</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Input\InputBinding.cpp">
+      <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Input\InputConfig.cpp">
+      <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Input\InputQuery.cpp">
+      <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.cpp">
       <Filter>Engine\Src\ObjectCommon\Model</Filter>
     </ClCompile>
@@ -380,6 +389,9 @@
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\KeyConfigUI.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp">
@@ -970,6 +982,18 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h">
       <Filter>Engine\Src\Graphics\Texture\Path</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Input\InputAction.h">
+      <Filter>Engine\Src\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Input\InputBinding.h">
+      <Filter>Engine\Src\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Input\InputConfig.h">
+      <Filter>Engine\Src\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Input\InputQuery.h">
+      <Filter>Engine\Src\Input</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Math\EulerTransform.h">
       <Filter>Engine\Src\Math</Filter>
     </ClInclude>
@@ -1100,6 +1124,9 @@
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiWidgets.h">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\KeyConfigUI.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.h">

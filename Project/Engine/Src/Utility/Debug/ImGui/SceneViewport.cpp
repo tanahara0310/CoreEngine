@@ -78,6 +78,7 @@ namespace CoreEngine
                 context.currentCamera2D = currentCamera2D_;
                 context.currentGameCamera3D = currentGameCamera3D_;
                 context.objectSelector = objectSelector_.get();
+                context.inputQuery = inputQuery_;
                 gizmoController_->Draw(context);
             });
         isSceneViewVisible_ = windowResult.isWindowOpen;
