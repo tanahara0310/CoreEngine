@@ -78,8 +78,11 @@ public:
     /// @param deltaTime フレーム時間
     void Update(float deltaTime);
 
-    /// @brief ImGuiでポストエフェクトのパラメータを調整
+    /// @brief ImGuiでポストエフェクトのパラメータを調整（独自ウィンドウ付き）
     void DrawImGui();
+
+    /// @brief ImGuiのコンテンツのみ描画（外部ウィンドウから呼び出し用）
+    void DrawImGuiContent();
 
     /// @brief プリセットマネージャーを取得
     /// @return プリセットマネージャーの参照
@@ -160,6 +163,9 @@ private:
     Render* render_ = nullptr;
 
     std::unordered_map<std::string, std::unique_ptr<PostEffectBase>> effects_;
+
+    char imguiSearchBuf_[128] = {};
+    std::string imguiSelectedEffect_;
     
     std::vector<std::string> effectChain_ = { 
         PostEffectNames::Bloom,

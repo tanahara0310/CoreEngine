@@ -137,9 +137,6 @@ namespace CoreEngine
             // SceneViewportが作成するウィンドウを中央に配置
             dockingUI->RegisterWindow("Scene", DockArea::Center);
 
-            // ポストエフェクトウィンドウを右側に配置
-            dockingUI->RegisterWindow("Post Effects", DockArea::Right);
-
             // パーティクルシステムデバッグを右側に配置
             dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
         }
@@ -231,11 +228,6 @@ namespace CoreEngine
 
         // その他のデバッグUIの更新（メニューバー以外）
         gameDebugUI_->UpdateDebugPanels();
-
-        // ポストエフェクトのImGui描画
-        if (auto* postEffect = GetComponent<PostEffectManager>()) {
-            postEffect->DrawImGui();
-        }
 
         if (sceneManager_) {
             if (auto* sceneViewport = imGui_->GetSceneViewport()) {

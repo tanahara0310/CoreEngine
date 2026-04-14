@@ -22,6 +22,7 @@
 #include "Effect/ToneMapping.h"
 #include "PostEffectPresetManager.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
+#include <algorithm>
 #include <cassert>
 
 // =============================================================================
@@ -286,63 +287,130 @@ void PostEffectManager::DrawImGui()
 {
 #ifdef USE_IMGUI
     if (ImGui::Begin("Post Effects")) {
-        // プリセット管理タブ
-        presetManager_->ShowImGui(this);
+        DrawImGuiContent();
+    }
+    ImGui::End();
+#endif // USE_IMGUI
+}
 
-        UI::Separator();
+void PostEffectManager::DrawImGuiContent()
+{
+#ifdef USE_IMGUI
+    // プリセット管理
+    presetManager_->ShowImGui(this);
+    UI::Separator();
 
-        // エフェクトチェーン状態の表示
-        if (ImGui::CollapsingHeader("エフェクトチェーン状態", ImGuiTreeNodeFlags_DefaultOpen)) {
-            auto enabledNames = CollectEnabledEffectNames(effectChain_);
+    // 検索ボックス
+    UI::SectionHeader("エフェクト一覧");
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    ImGui::InputTextWithHint("##effectsearch", "検索...", imguiSearchBuf_, sizeof(imguiSearchBuf_));
 
-            ImGui::Text("エフェクトチェーン: %s",
-                enabledNames.empty() ? "非アクティブ (パススルー)" : "アクティブ");
+    std::string searchStr = imguiSearchBuf_;
+    std::transform(searchStr.begin(), searchStr.end(), searchStr.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-            ImGui::Text("登録済みエフェクト数: %zu", effects_.size());
-            ImGui::Text("有効なエフェクト数: %zu", enabledNames.size());
-            ImGui::Text("エフェクトチェーン:");
+    UI::Spacing();
 
-            for (const auto& name : effectChain_) {
-                auto* effect = GetEffectInternal(name);
-                if (effect && effect->IsEnabled()) {
-                    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "  - %s", name.c_str());
-                } else {
-                    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "  - %s (無効)", name.c_str());
-                }
-            }
-
-            if (enabledNames.empty()) {
-                ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
-                    "エフェクトが無効 - 元の画像を描画中");
-            }
-
-            UI::Separator();
+    // 全エフェクト表示リストを構築（effectChain_ 順 + チェーン外エフェクト）
+    std::vector<std::string> displayList;
+    displayList.reserve(effectChain_.size() + 4);
+    for (const auto& name : effectChain_) {
+        displayList.push_back(name);
+    }
+    for (const auto& [name, effect] : effects_) {
+        if (std::find(effectChain_.begin(), effectChain_.end(), name) == effectChain_.end()) {
+            displayList.push_back(name);
         }
+    }
 
-        // 各エフェクトのパラメータ調整
-        for (auto& [name, effect] : effects_) {
+    // 検索フィルタリング
+    std::vector<std::string> filteredList;
+    filteredList.reserve(displayList.size());
+    for (const auto& name : displayList) {
+        if (searchStr.empty()) {
+            filteredList.push_back(name);
+        } else {
+            std::string lower = name;
+            std::transform(lower.begin(), lower.end(), lower.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            if (lower.find(searchStr) != std::string::npos) {
+                filteredList.push_back(name);
+            }
+        }
+    }
+
+    // フィルタ後に選択中エフェクトが消えた場合はクリア
+    if (!imguiSelectedEffect_.empty()) {
+        if (std::find(filteredList.begin(), filteredList.end(), imguiSelectedEffect_) == filteredList.end()) {
+            imguiSelectedEffect_.clear();
+        }
+    }
+
+    const float panelHeight = ImGui::GetContentRegionAvail().y;
+    const float listWidth = 200.0f;
+
+    // ─── 左パネル: エフェクト一覧 ───
+    if (auto listPanel = UI::Scope::ChildScope("##effectlist", ImVec2(listWidth, panelHeight), ImGuiChildFlags_Border)) {
+        for (const auto& name : filteredList) {
+            auto* effect = GetEffectInternal(name);
+            if (!effect) continue;
+
             ImGui::PushID(name.c_str());
 
-            if (ImGui::CollapsingHeader(name.c_str())) {
-                // FullScreen / DeferredLighting / ToneMapping は常時有効のためトグル非表示
-                if (name != PostEffectNames::FullScreen
-                    && name != PostEffectNames::DeferredLighting
-                    && name != PostEffectNames::ToneMapping) {
-                    bool enabled = effect->IsEnabled();
-                    if (UI::Widgets::ToggleSwitch("有効", &enabled)) {
-                        effect->SetEnabled(enabled);
-                    }
-                    UI::Separator();
-                }
+            const bool isEnabled = effect->IsEnabled();
+            const bool isSelected = (imguiSelectedEffect_ == name);
 
-                // エフェクトのパラメータ調整
-                effect->DrawImGui();
+            if (isEnabled) {
+                ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.4f, 1.0f), "●");
+            } else {
+                ImGui::TextColored(ImVec4(0.45f, 0.45f, 0.45f, 1.0f), "●");
+            }
+            ImGui::SameLine();
+
+            if (ImGui::Selectable(name.c_str(), isSelected)) {
+                imguiSelectedEffect_ = name;
             }
 
             ImGui::PopID();
         }
+
+        if (filteredList.empty()) {
+            ImGui::TextDisabled("該当なし");
+        }
     }
-    ImGui::End();
+
+    ImGui::SameLine();
+
+    // ─── 右パネル: 選択エフェクトの詳細 ───
+    if (auto detailPanel = UI::Scope::ChildScope("##effectdetail", ImVec2(0.0f, panelHeight), ImGuiChildFlags_Border)) {
+        if (imguiSelectedEffect_.empty()) {
+            ImGui::TextDisabled("エフェクトを選択してください");
+        } else {
+            auto* effect = GetEffectInternal(imguiSelectedEffect_);
+            if (!effect) {
+                ImGui::TextDisabled("エフェクトが見つかりません");
+            } else {
+                UI::SectionHeader(imguiSelectedEffect_.c_str());
+
+                const bool isAlwaysOn = (imguiSelectedEffect_ == PostEffectNames::FullScreen
+                    || imguiSelectedEffect_ == PostEffectNames::DeferredLighting
+                    || imguiSelectedEffect_ == PostEffectNames::ToneMapping);
+
+                if (isAlwaysOn) {
+                    ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "常時有効");
+                } else {
+                    bool enabled = effect->IsEnabled();
+                    if (UI::Widgets::ToggleSwitch("有効", &enabled)) {
+                        effect->SetEnabled(enabled);
+                    }
+                }
+
+                UI::Separator();
+
+                effect->DrawImGui();
+            }
+        }
+    }
 #endif // USE_IMGUI
 }
 

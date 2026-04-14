@@ -5,6 +5,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Scene/SceneManager.h"
+#include "Graphics/PostEffect/PostEffectManager.h"
 
 #include <Psapi.h>
 #include <algorithm>
@@ -28,6 +29,17 @@ namespace CoreEngine
                 lightManager->DrawAllImGui();
             }
         });
+
+        // Post Effectsをエンジン専用パネルとして登録（デフォルト表示）
+        RegisterEnginePanel("Post Effects", [this]() {
+            if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
+                postEffect->DrawImGuiContent();
+            }
+        });
+        // Post Effectsはデフォルトで表示する
+        for (auto& p : enginePanels_) {
+            if (p.label == "Post Effects") { p.visible = true; break; }
+        }
 
         if (dockingUI_) {
             RegisterWindowsForDocking();
@@ -93,43 +105,40 @@ namespace CoreEngine
                 ImGui::EndMenu();
             }
 
-            // エンジン専用デバッグパネル（独立ウィンドウ）
-            if (ImGui::BeginMenu("Engine")) {
-                if (enginePanels_.empty()) {
-                    UI::Hint("登録済みのパネルがありません");
-                } else {
+            // 統合ウィンドウメニュー（Engine + Editor パネルを一覧表示）
+            if (ImGui::BeginMenu("Window")) {
+                // ── エンジンパネル（独立ウィンドウ） ──
+                if (!enginePanels_.empty()) {
+                    UI::Hint("Engine");
                     for (auto& panel : enginePanels_) {
                         ImGui::Checkbox(panel.label.c_str(), &panel.visible);
                     }
                 }
-                ImGui::EndMenu();
-            }
 
-            // Inspector内エディター（Camera Editor + App Editor）
-            if (ImGui::BeginMenu("Editor")) {
-                // Camera Editor 等（エンジンエディター）
-                for (auto& [label, _] : engineEditors_) {
-                    bool isActive = (activeEditorId_ == label);
-                    if (ImGui::Checkbox(label.c_str(), &isActive)) {
-                        activeEditorId_ = isActive ? label : "";
+                // ── Inspector 内エディター ──
+                if (!engineEditors_.empty()) {
+                    ImGui::Separator();
+                    UI::Hint("Editor");
+                    for (auto& [label, _] : engineEditors_) {
+                        bool isActive = (activeEditorId_ == label);
+                        if (ImGui::Checkbox(label.c_str(), &isActive)) {
+                            activeEditorId_ = isActive ? label : "";
+                        }
                     }
                 }
-                if (!engineEditors_.empty() && !appEditors_.empty()) {
+
+                // ── App Editor（アプリケーション固有） ──
+                if (!appEditors_.empty()) {
                     ImGui::Separator();
-                }
-                // App Editor
-                if (ImGui::BeginMenu("App Editor")) {
-                    if (appEditors_.empty()) {
-                        UI::Hint("登録済みのエディターがありません");
-                    } else {
+                    if (ImGui::BeginMenu("App Editor")) {
                         for (auto& [label, _] : appEditors_) {
                             bool isActive = (activeEditorId_ == label);
                             if (ImGui::Checkbox(label.c_str(), &isActive)) {
                                 activeEditorId_ = isActive ? label : "";
                             }
                         }
+                        ImGui::EndMenu();
                     }
-                    ImGui::EndMenu();
                 }
                 ImGui::EndMenu();
             }
