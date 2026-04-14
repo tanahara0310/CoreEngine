@@ -21,5 +21,6 @@ namespace PostEffectNames {
     constexpr const char* RasterScroll = "RasterScroll";
     constexpr const char* Bloom = "Bloom";
     constexpr const char* Dissolve = "Dissolve";
+    constexpr const char* ToneMapping = "ToneMapping";
 }
 }

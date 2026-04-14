@@ -52,7 +52,7 @@ struct Material
 struct IBLSceneParams
 {
     float3 environmentRotation; ///< XYZ 環境回転（ラジアン）
-    float padding;
+    float environmentIntensity; ///< 環境輝度スケール（SkyBox intensity と連動）
 };
 
 //カメラ
@@ -310,7 +310,7 @@ float3 ApplyIBL(
         gIrradianceMap, gPrefilteredMap, gBRDFLUT,
         gSampler, gIBLParams.environmentRotation);
 
-    return iblColor * gMaterial.iblIntensity;
+    return iblColor * gMaterial.iblIntensity * gIBLParams.environmentIntensity;
 }
 
 struct PixelShaderOutput
@@ -366,8 +366,7 @@ PixelShaderOutput main(VertexShaderOutput input)
     // IBL
     output.color.rgb += ApplyIBL(input, albedo, metallic, roughness, ao, toEye);
 
-    // ACES トーンマッピング（常に適用）
-    output.color.rgb = ACESFilm(output.color.rgb);
+    // HDR値をそのまま出力（トーンマッピングはポストエフェクトチェーンで適用）
 
     // ディザリング時はアルファを 1.0 に固定
     if (gMaterial.enableDithering != 0)

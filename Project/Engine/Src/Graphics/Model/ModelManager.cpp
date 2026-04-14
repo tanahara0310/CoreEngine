@@ -2,6 +2,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/Animator.h"
 #include "Animation/SkeletonAnimatorFactory.h"
@@ -174,6 +175,41 @@ void ModelManager::ClearCache()
 {
     std::lock_guard<std::mutex> lock(cacheMutex_);
     resourceCache_.clear();
+}
+
+std::unique_ptr<Model> ModelManager::CreatePrimitiveModel(const std::string& key, const IPrimitiveMeshGenerator& generator)
+{
+    assert(IsInitialized());
+
+    // キャッシュ確認
+    {
+        std::lock_guard<std::mutex> lock(cacheMutex_);
+        auto it = resourceCache_.find(key);
+        if (it != resourceCache_.end()) {
+            auto instance = std::make_unique<Model>();
+            instance->Initialize(it->second.get(), renderContext_);
+            return instance;
+        }
+    }
+
+    // メッシュデータを生成してリソースを作成
+    ModelData modelData = generator.Generate();
+
+    auto resource = std::make_unique<ModelResource>();
+    auto& textureManager = TextureManager::GetInstance();
+    resource->Initialize(dxCommon_, resourceFactory_, &textureManager);
+    resource->LoadFromModelData(std::move(modelData), key);
+
+    ModelResource* resourcePtr = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(cacheMutex_);
+        auto [it, inserted] = resourceCache_.emplace(key, std::move(resource));
+        resourcePtr = it->second.get();
+    }
+
+    auto instance = std::make_unique<Model>();
+    instance->Initialize(resourcePtr, renderContext_);
+    return instance;
 }
 
 ModelResource* ModelManager::LoadModelResourceInternal(const std::string& directoryPath, const std::string& filename)

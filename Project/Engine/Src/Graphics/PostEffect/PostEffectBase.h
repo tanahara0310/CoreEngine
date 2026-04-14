@@ -22,6 +22,10 @@ public:
     virtual void Initialize(DirectXCommon* dxCommon);
     virtual void Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
 
+    /// @brief バックバッファ(_SRGB)への最終描画用
+    /// @param inputSrvHandle 入力テクスチャのSRVハンドル
+    virtual void DrawToBackBuffer(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
+
     /// @brief ImGuiでパラメータを調整する関数
     virtual void DrawImGui() {}
 
@@ -31,7 +35,7 @@ public:
 
     /// @brief エフェクトの有効/無効を設定
     /// @param enabled 有効にするかどうか
-    void SetEnabled(bool enabled) { enabled_ = enabled; }
+    virtual void SetEnabled(bool enabled) { enabled_ = enabled; }
 
     /// @brief エフェクトが有効かどうかを取得
     /// @return 有効ならtrue
@@ -58,6 +62,7 @@ protected:
 
     std::unique_ptr<RootSignatureManager> rootSignatureManager_;
     PipelineStateManager pipelineStateManager_;
+    PipelineStateManager backBufferPipelineStateManager_; ///< バックバッファ(_SRGB)用PSO
 
     // シェーダーリフレクションデータ
     std::unique_ptr<ShaderReflectionData> reflectionData_;

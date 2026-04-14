@@ -162,7 +162,7 @@ namespace CoreEngine
 
         // IBL 回転パラメータをバッファに書き込んでバインド
         if (iblParamsBuffer_) {
-            IBLSceneParamsCPU params{ iblRotation_.x, iblRotation_.y, iblRotation_.z, 0.0f };
+            IBLSceneParamsCPU params{ iblRotation_.x, iblRotation_.y, iblRotation_.z, environmentIntensity_ };
             void* mapped = nullptr;
             iblParamsBuffer_->Map(0, nullptr, &mapped);
             std::memcpy(mapped, &params, sizeof(params));

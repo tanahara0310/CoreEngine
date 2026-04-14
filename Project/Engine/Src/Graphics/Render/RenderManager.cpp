@@ -69,6 +69,16 @@ namespace CoreEngine
         }
     }
 
+    void RenderManager::SetEnvironmentIntensity(float intensity) {
+        environmentIntensity_ = intensity;
+        // Model / SkinnedModel の両レンダラーに環境輝度スケールを反映
+        for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
+            if (auto* r = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
+                r->SetEnvironmentIntensity(intensity);
+            }
+        }
+    }
+
     void RenderManager::SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle) {
         environmentMapHandle_ = environmentMapHandle;
         ApplyEnvironmentLightingToRenderers();
@@ -317,6 +327,7 @@ namespace CoreEngine
                 renderer->SetPrefilteredMap(prefilteredMapHandle_);
                 renderer->SetBRDFLUT(brdfLUTHandle_);
                 renderer->SetIBLRotation(iblRotation_);
+                renderer->SetEnvironmentIntensity(environmentIntensity_);
             }
         }
     }

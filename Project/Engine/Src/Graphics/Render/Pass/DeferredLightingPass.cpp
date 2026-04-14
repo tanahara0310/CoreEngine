@@ -60,6 +60,9 @@ namespace CoreEngine
 
             // シーン共通 IBL 回転を転送（スカイボックス回転と連動）
             deferredLighting->SetEnvironmentRotation(context.renderManager->GetIBLRotation());
+
+            // 環境輝度スケールを転送（SkyBox intensity と連動）
+            deferredLighting->SetIBLIntensity(context.renderManager->GetEnvironmentIntensity());
         }
 
         // ===== LightManager を渡す（4種ライトバインド） =====

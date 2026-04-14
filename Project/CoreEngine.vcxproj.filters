@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp">
-      <Filter>Application\Src\Sample\SampleScene\CollisionTestScene</Filter>
+    <ClCompile Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.cpp">
+      <Filter>Application\Src\Sample\SampleScene\PrimitiveTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera2D.cpp">
       <Filter>Engine\Src\Camera</Filter>
@@ -96,6 +96,18 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp">
       <Filter>Engine\Src\Graphics\Render\GBuffer</Filter>
@@ -319,28 +331,13 @@
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\AnimatedCubeObject.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\FenceObject.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Sample\TestGameObject\ModelObject.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\SkeletonModelObject.cpp">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Sample\TestGameObject\SkyBoxObject.cpp">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\SneakWalkModelObject.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Sample\TestGameObject\SphereObject.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\TerrainObject.cpp">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Model.cpp">
@@ -583,10 +580,20 @@
     <ClCompile Include="Application\Src\Sample\TestGameObject\Plane.cpp">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h">
-      <Filter>Application\Src\Sample\SampleScene\CollisionTestScene</Filter>
+    <ClInclude Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.h">
+      <Filter>Application\Src\Sample\SampleScene\PrimitiveTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\CubeObject.h">
+      <Filter>Application\Src\Sample\TestGameObject</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\PlaneObject.h">
+      <Filter>Application\Src\Sample\TestGameObject</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\PrimitiveSphereObject.h">
+      <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Camera2D.h">
       <Filter>Engine\Src\Camera</Filter>
@@ -734,6 +741,21 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h">
       <Filter>Engine\Src\Graphics\Render\GBuffer</Filter>
@@ -1017,28 +1039,13 @@
     <ClInclude Include="Engine\Src\Scene\SceneTransition.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedCubeObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\FenceObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\ModelObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\SkeletonModelObject.h">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBoxObject.h">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\SneakWalkModelObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\SphereObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\TerrainObject.h">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Model.h">
@@ -1326,6 +1333,7 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".github\copilot-instructions.md">
@@ -1403,6 +1411,147 @@
     <None Include="Engine\Src\Particle\README.md">
       <Filter>Engine\Src\Particle</Filter>
     </None>
+    <None Include="Engine\Assets\Shaders\Common\Lighting.hlsli">
+      <Filter>Engine\Assets\Shaders\Common</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Common\LightStructures.hlsli">
+      <Filter>Engine\Assets\Shaders\Common</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Common\PBR.hlsli">
+      <Filter>Engine\Assets\Shaders\Common</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Common\ShadowCalculation.hlsli">
+      <Filter>Engine\Assets\Shaders\Common</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\IBL\BRDFLUT.CS.hlsl">
+      <Filter>Engine\Assets\Shaders\IBL</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\IBL\IrradianceConvolution.CS.hlsl">
+      <Filter>Engine\Assets\Shaders\IBL</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\IBL\PrefilterEnvironment.CS.hlsl">
+      <Filter>Engine\Assets\Shaders\IBL</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Line\Line.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\Line</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Line\Line.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Line</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Object\GBuffer.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\Object</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Object\GBuffer.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Object</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Object\Object3d.hlsli">
+      <Filter>Engine\Assets\Shaders\Object</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Object\Object3d.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\Object</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Object\Object3d.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Object</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Particle\ModelParticle.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Particle</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Particle\Particle.hlsli">
+      <Filter>Engine\Assets\Shaders\Particle</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Particle\Particle.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\Particle</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Particle\Particle.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Particle</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\Bloom.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\Blur.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\ChromaticAberration.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\ColorGrading.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\DeferredLighting.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\Dissolve.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\FadeEffect.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\FullScreen.hlsli">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\FullScreen.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\FullScreen.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\GrayScale.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\Invert.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\RadialBlur.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\RasterScroll.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\Sepia.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\Shockwave.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\ToneMapping.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\PostProcess\Vignette.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\PostProcess</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Shadow\ShadowMap.hlsli">
+      <Filter>Engine\Assets\Shaders\Shadow</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Shadow\ShadowMap.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Shadow</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Shadow\ShadowMapSkinning.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Shadow</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Skinning\GBufferSkinning.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Skinning</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Skinning\SkinningObject3d.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Skinning</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Skybox\Skybox.hlsli">
+      <Filter>Engine\Assets\Shaders\Skybox</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Skybox\Skybox.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\Skybox</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Skybox\Skybox.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Skybox</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Sprite\Sprite.hlsli">
+      <Filter>Engine\Assets\Shaders\Sprite</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Sprite\Sprite.PS.hlsl">
+      <Filter>Engine\Assets\Shaders\Sprite</Filter>
+    </None>
+    <None Include="Engine\Assets\Shaders\Sprite\Sprite.VS.hlsl">
+      <Filter>Engine\Assets\Shaders\Sprite</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include=".github">
@@ -1432,11 +1581,11 @@
     <Filter Include="Application\Src\Sample\SampleScene">
       <UniqueIdentifier>{E4376BC7-4CEE-404A-A441-4F72CA1B9924}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src\Sample\SampleScene\CollisionTestScene">
-      <UniqueIdentifier>{C53E1C86-B2C2-4DA0-9D48-4875285B3BBF}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application\Src\Sample\SampleScene\ParticleTestScene">
       <UniqueIdentifier>{09DAE995-E03C-4482-8D04-890611F87BF9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Sample\SampleScene\PrimitiveTestScene">
+      <UniqueIdentifier>{5F7A8B62-8EEE-4EBB-9E27-77743A7C136E}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Sample\SampleScene\TestScene">
       <UniqueIdentifier>{867A4A49-D98E-4B2D-A4ED-CFD4CD58767A}</UniqueIdentifier>
@@ -1482,6 +1631,42 @@
     </Filter>
     <Filter Include="Engine">
       <UniqueIdentifier>{f6f7eb83-ae86-4048-be21-0fc749f83aa2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets">
+      <UniqueIdentifier>{393D5A84-60DD-47EB-B220-1605E1368A7A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders">
+      <UniqueIdentifier>{538F2518-5DDE-42C5-9F6F-21C82BB36172}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\Common">
+      <UniqueIdentifier>{181EF985-D4B9-4752-A7EB-253781A8E6DA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\IBL">
+      <UniqueIdentifier>{6FE93CAF-BD15-48EE-BBB7-AFBABCFD8179}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\Line">
+      <UniqueIdentifier>{5327EA8B-AB24-4762-82C9-F075169AE892}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\Object">
+      <UniqueIdentifier>{9B64993B-4C31-49C5-9B70-735F4F65A56B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\Particle">
+      <UniqueIdentifier>{2B09F58A-9C92-4EC3-AD3B-EFF0E4F87246}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\PostProcess">
+      <UniqueIdentifier>{164E4BC0-7073-4DAA-B010-13911C9F4227}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\Shadow">
+      <UniqueIdentifier>{CC420A5F-B5EF-4B7C-809F-DE3172011510}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\Skinning">
+      <UniqueIdentifier>{CD516431-FB8E-44DB-8348-CC5E60BC1700}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\Skybox">
+      <UniqueIdentifier>{BE2DCBB6-E31C-4B16-977E-EADB7CCC84DD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Assets\Shaders\Sprite">
+      <UniqueIdentifier>{B0B26753-09CC-402B-BB4A-E4D9FDBFB393}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src">
       <UniqueIdentifier>{3FE649B1-465E-485F-A9B2-66CE26308A0E}</UniqueIdentifier>
@@ -1557,6 +1742,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect">
       <UniqueIdentifier>{2F5FFAF7-303E-4F02-BE05-05B6F79EA7A9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Primitive">
+      <UniqueIdentifier>{CF5EB9C5-8E42-47AF-9F51-CF4CA4F532E4}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render">
       <UniqueIdentifier>{914A25D2-E4AB-4015-82E8-D55EC9CA375E}</UniqueIdentifier>

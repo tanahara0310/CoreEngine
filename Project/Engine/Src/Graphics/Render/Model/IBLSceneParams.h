@@ -8,7 +8,7 @@ namespace CoreEngine
         float rotationX;
         float rotationY;
         float rotationZ;
-        float padding;
+        float environmentIntensity; ///< 環境輝度スケール（SkyBox intensity と連動）
     };
     static_assert(sizeof(IBLSceneParamsCPU) == 16, "IBLSceneParamsCPU size mismatch");
 }
