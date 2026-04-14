@@ -3,6 +3,7 @@
 #include "WinApp/WinApp.h"
 #include "Sample/SampleScene/TestScene/TestScene.h"
 #include "Sample/SampleScene/ParticleTestScene/ParticleTestScene.h"
+#include "Sample/SampleScene/PrimitiveTestScene/PrimitiveTestScene.h"
 
 using namespace CoreEngine;
 
@@ -21,6 +22,7 @@ void MyGame::Initialize()
     // 全シーンを登録（アプリ層で実装）
     sceneManager_->RegisterScene<TestScene>("TestScene");
     sceneManager_->RegisterScene<ParticleTestScene>("ParticleTestScene");
+    sceneManager_->RegisterScene<PrimitiveTestScene>("PrimitiveTestScene");
 
     // 初期シーンを設定（トランジション無し）
     sceneManager_->SetInitialScene("TestScene");

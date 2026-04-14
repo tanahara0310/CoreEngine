@@ -42,6 +42,11 @@ namespace CoreEngine
         /// @param filename ファイル名
         void LoadFromFile(const std::string& directoryPath, const std::string& filename);
 
+        /// @brief プログラム生成されたモデルデータからGPUリソースを作成する
+        /// @param data 頂点・インデックス・サブメッシュを含むモデルデータ
+        /// @param name デバッグ用の識別名
+        void LoadFromModelData(ModelData&& data, const std::string& name = "");
+
         /// @brief GPUリソースが作成されているか確認
         /// @return リソースが有効ならtrue
         bool IsLoaded() const { return isLoaded_; }
