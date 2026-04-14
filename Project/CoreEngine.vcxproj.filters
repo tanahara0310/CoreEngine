@@ -295,6 +295,9 @@
     <ClCompile Include="Engine\Src\ObjectCommon\Model\ModelGameObject.cpp">
       <Filter>Engine\Src\ObjectCommon\Model</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.cpp">
+      <Filter>Engine\Src\ObjectCommon\Primitive</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.cpp">
       <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
     </ClCompile>
@@ -592,7 +595,6 @@
     <ClCompile Include="Application\Src\Sample\TestGameObject\Plane.cpp">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.h">
@@ -1018,6 +1020,9 @@
     <ClInclude Include="Engine\Src\ObjectCommon\Model\ModelGameObject.h">
       <Filter>Engine\Src\ObjectCommon\Model</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.h">
+      <Filter>Engine\Src\ObjectCommon\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.h">
       <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
     </ClInclude>
@@ -1360,7 +1365,6 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".github\copilot-instructions.md">
@@ -1856,6 +1860,9 @@
     </Filter>
     <Filter Include="Engine\Src\ObjectCommon\Model">
       <UniqueIdentifier>{B78164A5-8F78-4685-B186-C0A1636DA6D0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\ObjectCommon\Primitive">
+      <UniqueIdentifier>{8C6CB623-91C5-4644-8375-FCF767AD0614}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\ObjectCommon\Sprite">
       <UniqueIdentifier>{F5F15F82-DE69-42BA-AA92-63B7A632109F}</UniqueIdentifier>
