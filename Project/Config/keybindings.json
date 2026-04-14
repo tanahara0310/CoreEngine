@@ -1,0 +1,58 @@
+{
+    "bindings": {
+        "Attack": [
+            "Mouse:Left",
+            "Gamepad:X"
+        ],
+        "EditorGizmoRotate": [
+            "Key:E"
+        ],
+        "EditorGizmoScale": [
+            "Key:R"
+        ],
+        "EditorGizmoTranslate": [
+            "Key:J"
+        ],
+        "Interact": [
+            "Key:E",
+            "Gamepad:B"
+        ],
+        "Jump": [
+            "Key:Space",
+            "Gamepad:A"
+        ],
+        "MoveBack": [
+            "Key:S",
+            "Key:Down",
+            "Axis:LeftStickY-",
+            "Gamepad:DPadDown"
+        ],
+        "MoveForward": [
+            "Key:W",
+            "Key:Up",
+            "Axis:LeftStickY+",
+            "Gamepad:DPadUp",
+            "Mouse:Left"
+        ],
+        "MoveLeft": [
+            "Key:A",
+            "Key:Left",
+            "Axis:LeftStickX-",
+            "Gamepad:DPadLeft"
+        ],
+        "MoveRight": [
+            "Key:D",
+            "Key:Right",
+            "Axis:LeftStickX+",
+            "Gamepad:DPadRight"
+        ],
+        "UICancel": [
+            "Key:Escape",
+            "Gamepad:B"
+        ],
+        "UIConfirm": [
+            "Key:Enter",
+            "Gamepad:A"
+        ]
+    }
+}

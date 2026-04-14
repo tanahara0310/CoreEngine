@@ -12,6 +12,7 @@
 #include "Utility/Debug/GameDebugUI.h"
 #include "Graphics/Common/GpuTimestampProfiler.h"
 #include "Utility/Debug/ImGui/ThreadProfilerUI.h"
+#include "Utility/Debug/ImGui/KeyConfigUI.h"
 #endif
 
 class WinApp;
@@ -36,9 +37,6 @@ class ConsoleUI; // 前方宣言（デバッグビルドのみ）
 
 // 入力関連
 #include "Input/InputManager.h"
-#include "Input/KeyboardInput.h"
-#include "Input/MouseInput.h"
-#include "Input/GamePadInput.h"
 
 // オーディオ関連
 #include "Audio/SoundManager.h"
@@ -102,8 +100,8 @@ public:
     /// 
     /// - ModelManager: 3Dモデル管理
     /// 
-    /// - Input 系: Keyboard / Mouse / Gamepad
-    /// 
+    /// - InputManager: 入力管理（InputQuery経由でアクセス）
+    ///
     /// - Audio / Light / FrameRate など
     /// 
     /// @return コンポーネントへのポインタ（登録されていない場合nullptr）
@@ -191,6 +189,7 @@ private:
     std::unique_ptr<GameDebugUI> gameDebugUI_ = std::make_unique<GameDebugUI>(); // ゲームデバッグUIのインスタンス
     GpuTimestampProfiler gpuProfiler_; // GPU / CPU タイムスタンププロファイラー
     std::unique_ptr<ThreadProfilerUI> threadProfilerUI_; // スレッドプールプロファイラー
+    KeyConfigUI keyConfigUI_; // キーコンフィグUI
 
     // SceneView 再描画判定用（カメラ静止時のスキップ制御）
     Matrix4x4 prevSceneCameraViewMatrix_ = {};    // ゼロ初期化（初回は必ず dirty 判定）

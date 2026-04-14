@@ -1,4 +1,4 @@
-﻿#include "InputManager.h"
+#include "InputManager.h"
 #include <cassert>
 
 #include "GamepadInput.h"
@@ -11,9 +11,11 @@
 
 namespace CoreEngine
 {
+InputManager::InputManager() = default;
+InputManager::~InputManager() = default;
+
 void InputManager::Initialize(HINSTANCE hInstance, HWND hwnd)
 {
-
     HRESULT result;
     // DirectInputの初期化
     result = DirectInput8Create(
@@ -25,46 +27,24 @@ void InputManager::Initialize(HINSTANCE hInstance, HWND hwnd)
 
     assert(SUCCEEDED(result));
 
-    // キーボードを生成して登録
-    auto keyboard = std::make_unique<KeyboardInput>();
-    keyboard->Initialize(directInput_, hwnd);
-    devices_.push_back(std::move(keyboard)); // リストにキーボードを登録
+    // 各デバイスの生成と初期化
+    keyboard_ = std::make_unique<KeyboardInput>();
+    keyboard_->Initialize(directInput_, hwnd);
 
-    // マウスを生成して登録
-    auto mouse = std::make_unique<MouseInput>();
-    mouse->Initialize(directInput_, hwnd);
-    devices_.push_back(std::move(mouse)); // リストにマウスを登録
+    mouse_ = std::make_unique<MouseInput>();
+    mouse_->Initialize(directInput_, hwnd);
 
-    // ゲームパッドを生成して登録
-    auto gamepad = std::make_unique<GamepadInput>();
-    gamepad->Initialize(directInput_, hwnd);
-    devices_.push_back(std::move(gamepad)); // リストにゲームパッドを登録
+    gamepad_ = std::make_unique<GamepadInput>();
+    gamepad_->Initialize(directInput_, hwnd);
+
+    // アクションベース入力クエリを初期化（デフォルトバインディングを適用）
+    query_.Initialize(keyboard_.get(), mouse_.get(), gamepad_.get());
 }
 
 void InputManager::Update()
 {
-
-    // 各種デバイスの更新処理
-    for (auto& device : devices_) {
-        device->Update();
-    }
-}
-
-KeyboardInput* InputManager::GetKeyboard()
-{
-    // リストの0番目がキーボード入力であることが前提
-    return dynamic_cast<KeyboardInput*>(devices_[0].get());
-}
-
-MouseInput* InputManager::GetMouse()
-{
-    // リストの1番目がマウス入力であることが前提
-    return dynamic_cast<MouseInput*>(devices_[1].get());
-}
-
-GamepadInput* InputManager::GetGamepad()
-{
-    // リストの2番目がゲームパッド入力であることが前提
-    return dynamic_cast<GamepadInput*>(devices_[2].get());
+    if (keyboard_) keyboard_->Update();
+    if (mouse_)    mouse_->Update();
+    if (gamepad_)  gamepad_->Update();
 }
 }

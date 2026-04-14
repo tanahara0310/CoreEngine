@@ -114,11 +114,11 @@ namespace CoreEngine
     void SceneDebugEditor::Update()
     {
         // デバッグカメラへの切り替え
-        auto keyboard = engine_->GetComponent<KeyboardInput>();
-        if (keyboard) {
-            if (keyboard->IsKeyTriggered(DIK_F1)) {
+        if (auto* inputManager = engine_->GetComponent<InputManager>()) {
+            auto& input = inputManager->GetQuery();
+            if (input.IsKeyTriggered(DIK_F1)) {
                 cameraManager_->SetActiveCamera("Debug", CameraType::Camera3D);
-            } else if (keyboard->IsKeyTriggered(DIK_F2)) {
+            } else if (input.IsKeyTriggered(DIK_F2)) {
                 cameraManager_->SetActiveCamera("Release", CameraType::Camera3D);
             }
         }

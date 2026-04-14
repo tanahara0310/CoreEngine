@@ -1,9 +1,9 @@
-﻿#pragma once
+#pragma once
 #include "IInputDevice.h"
+#include "InputQuery.h"
 
 #include <dinput.h>
 #include <memory>
-#include <vector>
 
 // 前方宣言
 namespace CoreEngine {
@@ -17,40 +17,30 @@ namespace CoreEngine {
 namespace CoreEngine
 {
 class InputManager {
-public: // メンバ関数
-    /// <summary>
-    /// 初期化
-    /// </summary>
+public:
+    InputManager();
+    ~InputManager();
+
+    /// @brief 初期化
     void Initialize(HINSTANCE hInstance, HWND hwnd);
 
-    /// <summary>
-    /// 更新処理
-    /// </summary>
+    /// @brief 更新処理
     void Update();
 
-    /// @brief キーボード入力を取得する関数
-    /// @return キーボード入力オブジェクトへのポインタ
-    CoreEngine::KeyboardInput* GetKeyboard();
-
-    /// @brief マウス入力を取得する関数
-    /// @return マウス入力オブジェクトへのポインタ
-    CoreEngine::MouseInput* GetMouse();
-
-    /// @brief ゲームパッド入力を取得する関数
-    /// @return ゲームパッド入力オブジェクトへのポインタ
-    CoreEngine::GamepadInput* GetGamepad();
-
-
-
-    /// @brief DirectInputオブジェクトを取得する関数
-    /// @return DirectInputオブジェクトへのポインタ
-    IDirectInput8* GetDirectInput() { return directInput_; }
+    /// @brief アクションベース入力問い合わせへのアクセッサ
+    /// @return InputQuery への参照
+    InputQuery& GetQuery() { return query_; }
+    const InputQuery& GetQuery() const { return query_; }
 
 private:
     // DirectInputオブジェクト
     IDirectInput8* directInput_ = nullptr;
 
-    // デバイス関連
-    std::vector<std::unique_ptr<IInputDevice>> devices_;
+    // デバイス（型付きメンバ）
+    std::unique_ptr<KeyboardInput> keyboard_;
+    std::unique_ptr<MouseInput>    mouse_;
+    std::unique_ptr<GamepadInput>  gamepad_;
+
+    InputQuery query_;
 };
 }

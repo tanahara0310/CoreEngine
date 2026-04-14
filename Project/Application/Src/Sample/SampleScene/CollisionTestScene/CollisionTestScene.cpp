@@ -1,6 +1,6 @@
 #include "CollisionTestScene.h"
 #include "EngineSystem/EngineSystem.h"
-#include "Input/KeyboardInput.h"
+#include "Input/InputAction.h"
 #include "Utility/FrameRate/FrameRateController.h"
 
 using namespace CoreEngine;
@@ -38,20 +38,20 @@ void CollisionTestScene::OnInitialize()
 
 void CollisionTestScene::OnUpdate()
 {
-    // キーボード入力で操作用球体を移動
-    auto keyboard  = engine_->GetComponent<KeyboardInput>();
-    auto frameRate = engine_->GetComponent<FrameRateController>();
-    if (!keyboard || !playerSphere_ || !frameRate) {
+    auto inputManager = engine_->GetComponent<InputManager>();
+    auto frameRate    = engine_->GetComponent<FrameRateController>();
+    if (!inputManager || !playerSphere_ || !frameRate) {
         return;
     }
 
+    auto& input = inputManager->GetQuery();
     const float speed = 5.0f * frameRate->GetDeltaTime();
     Vector3 move = { 0.0f, 0.0f, 0.0f };
 
-    if (keyboard->IsKeyPressed(DIK_W)) { move.z += speed; }
-    if (keyboard->IsKeyPressed(DIK_S)) { move.z -= speed; }
-    if (keyboard->IsKeyPressed(DIK_A)) { move.x -= speed; }
-    if (keyboard->IsKeyPressed(DIK_D)) { move.x += speed; }
+    if (input.IsActionPressed(InputAction::MoveForward)) { move.z += speed; }
+    if (input.IsActionPressed(InputAction::MoveBack))    { move.z -= speed; }
+    if (input.IsActionPressed(InputAction::MoveLeft))    { move.x -= speed; }
+    if (input.IsActionPressed(InputAction::MoveRight))   { move.x += speed; }
 
     playerSphere_->GetTransform().translate = playerSphere_->GetTransform().translate + move;
 }

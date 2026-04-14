@@ -128,6 +128,13 @@ namespace CoreEngine
             threadProfilerUI_->Draw();
         });
 
+        // キーコンフィグUIの登録
+        gameDebugUI_->RegisterEnginePanel("Key Config", [this]() {
+            if (auto* inputManager = GetComponent<InputManager>()) {
+                keyConfigUI_.Draw(inputManager->GetQuery());
+            }
+        });
+
         // その他の固定ウィンドウをドッキングシステムに登録
         DockingUI* dockingUI = imGui_->GetDockingUI();
         if (dockingUI) {
@@ -195,15 +202,6 @@ namespace CoreEngine
         if (auto* inputManager = GetComponent<InputManager>()) {
             inputManager->Update();
         }
-        if (auto* keyboard = GetComponent<KeyboardInput>()) {
-            keyboard->Update();
-        }
-        if (auto* mouse = GetComponent<MouseInput>()) {
-            mouse->Update();
-        }
-        if (auto* gamepad = GetComponent<GamepadInput>()) {
-            gamepad->Update();
-        }
 
         // ポストエフェクトの更新（フレームレートコントローラーからデルタタイムを取得）
         if (auto* postEffect = GetComponent<PostEffectManager>()) {
@@ -218,6 +216,13 @@ namespace CoreEngine
                 sceneViewport->SetCamera(sceneManager_->GetSceneViewCamera());
                 sceneViewport->SetGameCamera3D(sceneManager_->GetGameViewCamera3D());
                 sceneViewport->SetCamera2D(sceneManager_->GetGameViewCamera2D());
+            }
+        }
+
+        // SceneViewportにInputQueryを渡す（ギズモ操作のキーコンフィグ対応）
+        if (auto* sceneViewport = imGui_->GetSceneViewport()) {
+            if (auto* inputManager = GetComponent<InputManager>()) {
+                sceneViewport->SetInputQuery(&inputManager->GetQuery());
             }
         }
 
@@ -595,31 +600,9 @@ namespace CoreEngine
 
     void EngineSystem::CreateInputComponents()
     {
-        // InputManagerの作成と初期化
         auto inputManager = std::make_unique<InputManager>();
         inputManager->Initialize(winApp_->GetInstance(), winApp_->GetHwnd());
-
-        // InputManagerからIDirectInput8を取得
-        IDirectInput8* directInput = inputManager->GetDirectInput();
-        HWND hwnd = winApp_->GetHwnd();
-
-        // InputManager自身を登録
         RegisterComponent(std::move(inputManager));
-
-        // KeyboardInputの作成と初期化
-        auto keyboard = std::make_unique<KeyboardInput>();
-        keyboard->Initialize(directInput, hwnd);
-        RegisterComponent(std::move(keyboard));
-
-        // MouseInputの作成と初期化
-        auto mouse = std::make_unique<MouseInput>();
-        mouse->Initialize(directInput, hwnd);
-        RegisterComponent(std::move(mouse));
-
-        // GamepadInputの作成と初期化
-        auto gamepad = std::make_unique<GamepadInput>();
-        gamepad->Initialize(directInput, hwnd);
-        RegisterComponent(std::move(gamepad));
     }
 
     void EngineSystem::CreateAudioComponents()

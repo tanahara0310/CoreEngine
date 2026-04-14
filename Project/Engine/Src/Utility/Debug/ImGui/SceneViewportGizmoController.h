@@ -8,6 +8,7 @@ namespace CoreEngine
 {
     class ICamera;
     class ObjectSelector;
+    class InputQuery;
 
     /// @brief SceneViewport上のギズモ関連描画に必要な入力データ
     struct SceneViewportDrawContext {
@@ -18,6 +19,7 @@ namespace CoreEngine
         const ICamera* currentCamera2D = nullptr;
         ICamera* currentGameCamera3D = nullptr;
         ObjectSelector* objectSelector = nullptr;
+        InputQuery* inputQuery = nullptr;
     };
 
     /// @brief SceneViewportのギズモ/オーバーレイ描画責務を分離するコントローラー

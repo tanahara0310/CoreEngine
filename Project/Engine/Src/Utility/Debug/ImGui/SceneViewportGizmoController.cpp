@@ -6,6 +6,7 @@
 #include "Camera/ICamera.h"
 #include "Camera/Release/Camera.h"
 #include "Graphics/Texture/TextureManager.h"
+#include "Input/InputQuery.h"
 #include "Math/MathCore.h"
 
 #include <numbers>
@@ -24,14 +25,14 @@ namespace CoreEngine
             return;
         }
 
-        if (context.isViewportHovered && !ImGuizmo::IsUsing()) {
-            if (ImGui::IsKeyPressed(ImGuiKey_W, false)) {
+        if (context.isViewportHovered && !ImGuizmo::IsUsing() && context.inputQuery) {
+            if (context.inputQuery->IsActionTriggered(InputAction::EditorGizmoTranslate)) {
                 context.objectSelector->SetGizmoMode(Gizmo::Mode::Translate);
             }
-            if (ImGui::IsKeyPressed(ImGuiKey_E, false)) {
+            if (context.inputQuery->IsActionTriggered(InputAction::EditorGizmoRotate)) {
                 context.objectSelector->SetGizmoMode(Gizmo::Mode::Rotate);
             }
-            if (ImGui::IsKeyPressed(ImGuiKey_R, false)) {
+            if (context.inputQuery->IsActionTriggered(InputAction::EditorGizmoScale)) {
                 context.objectSelector->SetGizmoMode(Gizmo::Mode::Scale);
             }
         }

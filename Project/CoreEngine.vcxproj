@@ -44,8 +44,10 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings"></ImportGroup>
-  <ImportGroup Label="Shared"></ImportGroup>
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -262,6 +264,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Texture\TextureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.cpp" />
+    <ClCompile Include="Engine\Src\Input\InputBinding.cpp" />
+    <ClCompile Include="Engine\Src\Input\InputConfig.cpp" />
+    <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\GameObject.cpp" />
     <ClCompile Include="Engine\Src\ObjectCommon\GameObjectManager.cpp" />
@@ -303,6 +308,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Collision\CollisionUtils.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\KeyConfigUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp" />
@@ -495,6 +501,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
+    <ClInclude Include="Engine\Src\Input\InputAction.h" />
+    <ClInclude Include="Engine\Src\Input\InputBinding.h" />
+    <ClInclude Include="Engine\Src\Input\InputConfig.h" />
+    <ClInclude Include="Engine\Src\Input\InputQuery.h" />
     <ClInclude Include="Engine\Src\Math\EulerTransform.h" />
     <ClInclude Include="Engine\Src\Math\Frustum.h" />
     <ClInclude Include="Engine\Src\Math\QuaternionTransform.h" />
@@ -544,6 +554,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Gizmo.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiAll.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiWidgets.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\KeyConfigUI.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h" />
@@ -655,7 +666,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Engine\Src\Particle\README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets"></ImportGroup>
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
   <Target Name="SyncVCXProjFilters" BeforeTargets="Build">
     <Exec Command="powershell -ExecutionPolicy Bypass -NoProfile -File &quot;$(ProjectDir)Scripts\SyncFilters.ps1&quot; -ProjectFile &quot;$(MSBuildProjectFullPath)&quot;" />
   </Target>

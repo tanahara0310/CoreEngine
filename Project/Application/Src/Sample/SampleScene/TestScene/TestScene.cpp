@@ -117,14 +117,14 @@ namespace CoreEngine
 
     void TestScene::OnUpdate()
     {
-        // KeyboardInput を直接取得
-        auto keyboard = engine_->GetComponent<KeyboardInput>();
-        if (!keyboard) {
+        auto inputManager = engine_->GetComponent<InputManager>();
+        if (!inputManager) {
             return;
         }
 
         // Tabキーでテストシーンをリスタート
-        if (keyboard->IsKeyTriggered(DIK_TAB)) {
+        auto& input = inputManager->GetQuery();
+        if (input.IsKeyTriggered(DIK_TAB)) {
             if (sceneManager_) {
                 sceneManager_->ChangeScene("TestScene");
             }
