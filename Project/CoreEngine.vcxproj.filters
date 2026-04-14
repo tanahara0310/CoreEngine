@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp">
-      <Filter>Application\Src\Sample\SampleScene\CollisionTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera2D.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -597,9 +594,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h">
-      <Filter>Application\Src\Sample\SampleScene\CollisionTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Camera2D.h">
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
