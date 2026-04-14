@@ -79,12 +79,15 @@ namespace CoreEngine
         std::function<void()> hierarchyContentDrawer_;
         std::function<void()> inspectorObjectDrawer_;
 
-        // エディターエントリーリスト（ラベル, ドロワー）
-        using EditorList = std::vector<std::pair<std::string, std::function<void()>>>;
-        EditorList engineEditors_;  ///< Inspector内表示エディター（Camera Editor等）
-        EditorList appEditors_;     ///< App Editor サブメニュー用
-
-        std::string activeEditorId_;  ///< 現在Inspector表示中のエディターID（空 = Object表示）
+        /// @brief エディターエントリー（Inspectorタブとして表示）
+        struct EditorEntry {
+            std::string label;
+            std::function<void()> drawer;
+            bool visible = false;  ///< Inspectorのタブバーに表示するか
+        };
+        using EditorList = std::vector<EditorEntry>;
+        EditorList engineEditors_;  ///< エンジンエディター（Camera Editor等）
+        EditorList appEditors_;     ///< アプリエディター
 
         /// @brief エンジン専用デバッグパネル（独立ウィンドウで描画）
         struct EnginePanelEntry {
@@ -95,6 +98,7 @@ namespace CoreEngine
         std::vector<EnginePanelEntry> enginePanels_;
 
         bool showConsole_ = true;
+        bool showEditorSwitcher_ = false;  ///< Window Managerパネルの表示状態
 
         static constexpr const char* consoleWindow = "Console";
 
@@ -103,6 +107,7 @@ namespace CoreEngine
         void DrawHierarchyPanel();
         void DrawInspectorPanel();
         void DrawEnginePanels();
+        void DrawEditorSwitcherPanel();
         void RegisterWindowsForDocking();
     };
 }

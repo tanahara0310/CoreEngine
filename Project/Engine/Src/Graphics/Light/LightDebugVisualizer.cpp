@@ -1,4 +1,4 @@
-﻿#include "LightDebugVisualizer.h"
+#include "LightDebugVisualizer.h"
 
 #include "Math/MathCore.h"
 #include "Graphics/Line/LineManager.h"
@@ -26,192 +26,274 @@ namespace CoreEngine
     )
     {
 #ifdef _DEBUG
-        if (ImGui::CollapsingHeader("ライトシステム", ImGuiTreeNodeFlags_DefaultOpen))
+        constexpr float kPi = 3.14159265f;
+
+        // ── 概要 ──
         {
-            UI::Widgets::ToggleSwitch("ライトのデバッグ可視化", &enableVisualization_);
-            UI::Separator();
+            uint32_t total = static_cast<uint32_t>(
+                directionalLights.size() + pointLights.size() +
+                spotLights.size() + areaLights.size());
+            uint32_t totalMax = maxDirectionalLights + maxPointLights +
+                maxSpotLights + maxAreaLights;
 
-            ImGui::Text("ライト統計:");
-            ImGui::Text("  ディレクショナルライト: %u / %u",
-                static_cast<uint32_t>(directionalLights.size()), maxDirectionalLights);
-            ImGui::Text("  ポイントライト: %u / %u",
-                static_cast<uint32_t>(pointLights.size()), maxPointLights);
-            ImGui::Text("  スポットライト: %u / %u",
-                static_cast<uint32_t>(spotLights.size()), maxSpotLights);
-            ImGui::Text("  エリアライト: %u / %u",
-                static_cast<uint32_t>(areaLights.size()), maxAreaLights);
+            float fraction = (totalMax > 0) ? static_cast<float>(total) / totalMax : 0.0f;
+            char overlay[32];
+            snprintf(overlay, sizeof(overlay), "%u / %u", total, totalMax);
+            ImGui::ProgressBar(fraction, ImVec2(-1, 0), overlay);
 
-            UI::Separator();
+            UI::Widgets::ToggleSwitch("デバッグ可視化", &enableVisualization_);
 
-            if (ImGui::TreeNode("ディレクショナルライト"))
-            {
-                for (size_t i = 0; i < directionalLights.size(); ++i)
-                {
-                    ImGui::PushID(static_cast<int>(i));
-
-                    if (ImGui::TreeNode(("ライト #" + std::to_string(i)).c_str()))
-                    {
-                        auto& light = directionalLights[i];
-
-                        UI::Widgets::ToggleSwitch("有効", &light.enabled);
-                        UI::ColorEdit("色", light.color);
-                        UI::DragVec3("方向", light.direction, 0.01f, -1.0f, 1.0f);
-                        UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
-
-                        if (ImGui::Button("方向を正規化"))
-                        {
-                            light.direction = MathCore::Vector::Normalize(light.direction);
-                        }
-
-                        ImGui::TreePop();
-                    }
-
-                    ImGui::PopID();
-                }
-
-                if (directionalLights.size() < maxDirectionalLights)
-                {
-                    if (ImGui::Button("ディレクショナルライトを追加"))
-                    {
-                        if (onAddDirectionalLight) onAddDirectionalLight();
-                    }
-                } else
-                {
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "最大数に達しました");
-                }
-
-                ImGui::TreePop();
-            }
-
-            if (ImGui::TreeNode("ポイントライト"))
-            {
-                for (size_t i = 0; i < pointLights.size(); ++i)
-                {
-                    ImGui::PushID(static_cast<int>(i + 1000));
-
-                    if (ImGui::TreeNode(("ライト #" + std::to_string(i)).c_str()))
-                    {
-                        auto& light = pointLights[i];
-
-                        UI::Widgets::ToggleSwitch("有効", &light.enabled);
-                        UI::ColorEdit("色", light.color);
-                        UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
-                        UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
-                        UI::DragFloat("半径", light.radius, 0.1f, 0.1f, 100.0f);
-                        UI::DragFloat("減衰率", light.decay, 0.01f, 0.0f, 10.0f);
-
-                        ImGui::TreePop();
-                    }
-
-                    ImGui::PopID();
-                }
-
-                if (pointLights.size() < maxPointLights)
-                {
-                    if (ImGui::Button("ポイントライトを追加"))
-                    {
-                        if (onAddPointLight) onAddPointLight();
-                    }
-                } else
-                {
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "最大数に達しました");
-                }
-
-                ImGui::TreePop();
-            }
-
-            if (ImGui::TreeNode("スポットライト"))
-            {
-                for (size_t i = 0; i < spotLights.size(); ++i)
-                {
-                    ImGui::PushID(static_cast<int>(i + 2000));
-
-                    if (ImGui::TreeNode(("ライト #" + std::to_string(i)).c_str()))
-                    {
-                        auto& light = spotLights[i];
-
-                        UI::Widgets::ToggleSwitch("有効", &light.enabled);
-                        UI::ColorEdit("色", light.color);
-                        UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
-                        UI::DragVec3("方向", light.direction, 0.01f, -1.0f, 1.0f);
-                        UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
-                        UI::DragFloat("距離", light.distance, 0.1f, 0.1f, 100.0f);
-                        UI::DragFloat("減衰率", light.decay, 0.01f, 0.0f, 10.0f);
-                        UI::DragFloat("角度（cos）", light.cosAngle, 0.01f, 0.0f, 1.0f);
-                        UI::DragFloat("フォールオフ開始", light.cosFalloffStart, 0.01f, 0.0f, 1.0f);
-
-                        if (ImGui::Button("方向を正規化"))
-                        {
-                            light.direction = MathCore::Vector::Normalize(light.direction);
-                        }
-
-                        ImGui::TreePop();
-                    }
-
-                    ImGui::PopID();
-                }
-
-                if (spotLights.size() < maxSpotLights)
-                {
-                    if (ImGui::Button("スポットライトを追加"))
-                    {
-                        if (onAddSpotLight) onAddSpotLight();
-                    }
-                } else
-                {
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "最大数に達しました");
-                }
-
-                ImGui::TreePop();
-            }
-
-            if (ImGui::TreeNode("エリアライト"))
-            {
-                for (size_t i = 0; i < areaLights.size(); ++i)
-                {
-                    ImGui::PushID(static_cast<int>(i + 3000));
-
-                    if (ImGui::TreeNode(("ライト #" + std::to_string(i)).c_str()))
-                    {
-                        auto& light = areaLights[i];
-
-                        UI::Widgets::ToggleSwitch("有効", &light.enabled);
-                        UI::ColorEdit("色", light.color);
-                        UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
-                        UI::DragVec3("法線", light.normal, 0.01f, -1.0f, 1.0f);
-                        UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
-                        UI::DragFloat("幅", light.width, 0.1f, 0.1f, 20.0f);
-                        UI::DragFloat("高さ", light.height, 0.1f, 0.1f, 20.0f);
-                        UI::DragFloat("範囲", light.range, 0.1f, 0.1f, 100.0f);
-                        UI::DragVec3("右ベクトル", light.right, 0.01f, -1.0f, 1.0f);
-                        UI::DragVec3("上ベクトル", light.up, 0.01f, -1.0f, 1.0f);
-
-                        if (ImGui::Button("法線を正規化"))
-                        {
-                            light.normal = MathCore::Vector::Normalize(light.normal);
-                        }
-
-                        ImGui::TreePop();
-                    }
-
-                    ImGui::PopID();
-                }
-
-                if (areaLights.size() < maxAreaLights)
-                {
-                    if (ImGui::Button("エリアライトを追加"))
-                    {
-                        if (onAddAreaLight) onAddAreaLight();
-                    }
-                } else
-                {
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "最大数に達しました");
-                }
-
-                ImGui::TreePop();
-            }
+            auto setAllEnabled = [&](bool enabled) {
+                for (auto& l : directionalLights) l.enabled = enabled;
+                for (auto& l : pointLights)       l.enabled = enabled;
+                for (auto& l : spotLights)        l.enabled = enabled;
+                for (auto& l : areaLights)        l.enabled = enabled;
+            };
+            if (ImGui::SmallButton("全て有効")) setAllEnabled(true);
+            UI::SameLine();
+            if (ImGui::SmallButton("全て無効")) setAllEnabled(false);
         }
-#else
+
+        UI::Spacing();
+
+        // ── 操作ボタンヘルパー ──
+        auto drawLightActions = [](int index, int& deleteIdx, int& dupIdx) {
+            UI::Spacing();
+            UI::Separator();
+            if (ImGui::SmallButton("複製")) dupIdx = index;
+            UI::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.15f, 0.15f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+            if (ImGui::SmallButton("削除")) deleteIdx = index;
+            ImGui::PopStyleColor(2);
+        };
+
+                    // ═══ Directional Light ═══
+                    {
+                        UI::SectionHeader("Directional Light");
+                        UI::HintF("  %u / %u", static_cast<uint32_t>(directionalLights.size()), maxDirectionalLights);
+
+                        int deleteIdx = -1, dupIdx = -1;
+
+                        for (size_t i = 0; i < directionalLights.size(); ++i) {
+                            auto& light = directionalLights[i];
+                            ImGui::PushID(static_cast<int>(i));
+
+                            ImGui::ColorButton("##clr", ImVec4(light.color.x, light.color.y, light.color.z, 1.0f),
+                                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker, ImVec2(14, 14));
+                            UI::SameLine();
+                            UI::Widgets::ToggleSwitch("##en", &light.enabled);
+                            UI::SameLine();
+
+                            char label[64];
+                            snprintf(label, sizeof(label), "Directional #%d", static_cast<int>(i));
+                            if (ImGui::TreeNode(label)) {
+                                UI::ColorEdit("色", light.color);
+                                UI::DragVec3("方向", light.direction, 0.01f, -1.0f, 1.0f);
+                                UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
+
+                                if (ImGui::SmallButton("方向を正規化")) {
+                                    light.direction = MathCore::Vector::Normalize(light.direction);
+                                }
+                                drawLightActions(static_cast<int>(i), deleteIdx, dupIdx);
+                                ImGui::TreePop();
+                            }
+
+                            ImGui::PopID();
+                        }
+
+                        if (deleteIdx >= 0) {
+                            directionalLights.erase(directionalLights.begin() + deleteIdx);
+                        } else if (dupIdx >= 0 && directionalLights.size() < maxDirectionalLights) {
+                            directionalLights.push_back(directionalLights[dupIdx]);
+                        }
+
+                        UI::Spacing();
+                        if (directionalLights.size() < maxDirectionalLights) {
+                            if (ImGui::Button("+ Directional Light")) {
+                                if (onAddDirectionalLight) onAddDirectionalLight();
+                            }
+                        } else {
+                            UI::Hint("最大数に達しています");
+                        }
+                    }
+
+                    UI::Spacing();
+
+                    // ═══ Point Light ═══
+                    {
+                        UI::SectionHeader("Point Light");
+                        UI::HintF("  %u / %u", static_cast<uint32_t>(pointLights.size()), maxPointLights);
+
+                        int deleteIdx = -1, dupIdx = -1;
+
+                        for (size_t i = 0; i < pointLights.size(); ++i) {
+                            auto& light = pointLights[i];
+                            ImGui::PushID(static_cast<int>(i + 1000));
+
+                            ImGui::ColorButton("##clr", ImVec4(light.color.x, light.color.y, light.color.z, 1.0f),
+                                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker, ImVec2(14, 14));
+                            UI::SameLine();
+                            UI::Widgets::ToggleSwitch("##en", &light.enabled);
+                            UI::SameLine();
+
+                            char label[64];
+                            snprintf(label, sizeof(label), "Point #%d", static_cast<int>(i));
+                            if (ImGui::TreeNode(label)) {
+                                UI::ColorEdit("色", light.color);
+                                UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
+                                UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
+                                UI::DragFloat("半径", light.radius, 0.1f, 0.1f, 100.0f);
+                                UI::DragFloat("減衰率", light.decay, 0.01f, 0.0f, 10.0f);
+
+                                drawLightActions(static_cast<int>(i), deleteIdx, dupIdx);
+                                ImGui::TreePop();
+                            }
+
+                            ImGui::PopID();
+                        }
+
+                        if (deleteIdx >= 0) {
+                            pointLights.erase(pointLights.begin() + deleteIdx);
+                        } else if (dupIdx >= 0 && pointLights.size() < maxPointLights) {
+                            pointLights.push_back(pointLights[dupIdx]);
+                        }
+
+                        UI::Spacing();
+                        if (pointLights.size() < maxPointLights) {
+                            if (ImGui::Button("+ Point Light")) {
+                                if (onAddPointLight) onAddPointLight();
+                            }
+                        } else {
+                            UI::Hint("最大数に達しています");
+                        }
+                    }
+
+                    UI::Spacing();
+
+                    // ═══ Spot Light ═══
+                    {
+                        UI::SectionHeader("Spot Light");
+                        UI::HintF("  %u / %u", static_cast<uint32_t>(spotLights.size()), maxSpotLights);
+
+                        int deleteIdx = -1, dupIdx = -1;
+
+                        for (size_t i = 0; i < spotLights.size(); ++i) {
+                            auto& light = spotLights[i];
+                            ImGui::PushID(static_cast<int>(i + 2000));
+
+                            ImGui::ColorButton("##clr", ImVec4(light.color.x, light.color.y, light.color.z, 1.0f),
+                                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker, ImVec2(14, 14));
+                            UI::SameLine();
+                            UI::Widgets::ToggleSwitch("##en", &light.enabled);
+                            UI::SameLine();
+
+                            char label[64];
+                            snprintf(label, sizeof(label), "Spot #%d", static_cast<int>(i));
+                            if (ImGui::TreeNode(label)) {
+                                UI::ColorEdit("色", light.color);
+                                UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
+                                UI::DragVec3("方向", light.direction, 0.01f, -1.0f, 1.0f);
+                                UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
+                                UI::DragFloat("距離", light.distance, 0.1f, 0.1f, 100.0f);
+                                UI::DragFloat("減衰率", light.decay, 0.01f, 0.0f, 10.0f);
+
+                                float cosAngleClamped = std::max(-1.0f, std::min(1.0f, light.cosAngle));
+                                float angleDeg = std::acos(cosAngleClamped) * (180.0f / kPi);
+                                if (UI::SliderFloat("角度 (°)", angleDeg, 0.0f, 90.0f)) {
+                                    light.cosAngle = std::cos(angleDeg * (kPi / 180.0f));
+                                }
+
+                                float cosFalloffClamped = std::max(-1.0f, std::min(1.0f, light.cosFalloffStart));
+                                float falloffDeg = std::acos(cosFalloffClamped) * (180.0f / kPi);
+                                if (UI::SliderFloat("フォールオフ開始 (°)", falloffDeg, 0.0f, 90.0f)) {
+                                    light.cosFalloffStart = std::cos(falloffDeg * (kPi / 180.0f));
+                                }
+
+                                if (ImGui::SmallButton("方向を正規化")) {
+                                    light.direction = MathCore::Vector::Normalize(light.direction);
+                                }
+                                drawLightActions(static_cast<int>(i), deleteIdx, dupIdx);
+                                ImGui::TreePop();
+                            }
+
+                            ImGui::PopID();
+                        }
+
+                        if (deleteIdx >= 0) {
+                            spotLights.erase(spotLights.begin() + deleteIdx);
+                        } else if (dupIdx >= 0 && spotLights.size() < maxSpotLights) {
+                            spotLights.push_back(spotLights[dupIdx]);
+                        }
+
+                        UI::Spacing();
+                        if (spotLights.size() < maxSpotLights) {
+                            if (ImGui::Button("+ Spot Light")) {
+                                if (onAddSpotLight) onAddSpotLight();
+                            }
+                        } else {
+                            UI::Hint("最大数に達しています");
+                        }
+                    }
+
+                    UI::Spacing();
+
+                    // ═══ Area Light ═══
+                    {
+                        UI::SectionHeader("Area Light");
+                        UI::HintF("  %u / %u", static_cast<uint32_t>(areaLights.size()), maxAreaLights);
+
+                        int deleteIdx = -1, dupIdx = -1;
+
+                        for (size_t i = 0; i < areaLights.size(); ++i) {
+                            auto& light = areaLights[i];
+                            ImGui::PushID(static_cast<int>(i + 3000));
+
+                            ImGui::ColorButton("##clr", ImVec4(light.color.x, light.color.y, light.color.z, 1.0f),
+                                ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoPicker, ImVec2(14, 14));
+                            UI::SameLine();
+                            UI::Widgets::ToggleSwitch("##en", &light.enabled);
+                            UI::SameLine();
+
+                            char label[64];
+                            snprintf(label, sizeof(label), "Area #%d", static_cast<int>(i));
+                            if (ImGui::TreeNode(label)) {
+                                UI::ColorEdit("色", light.color);
+                                UI::DragVec3("位置", light.position, 0.1f, -50.0f, 50.0f);
+                                UI::DragVec3("法線", light.normal, 0.01f, -1.0f, 1.0f);
+                                UI::DragFloat("強度", light.intensity, 0.01f, 0.0f, 10.0f);
+                                UI::DragFloat("幅", light.width, 0.1f, 0.1f, 20.0f);
+                                UI::DragFloat("高さ", light.height, 0.1f, 0.1f, 20.0f);
+                                UI::DragFloat("範囲", light.range, 0.1f, 0.1f, 100.0f);
+                                UI::DragVec3("右ベクトル", light.right, 0.01f, -1.0f, 1.0f);
+                                UI::DragVec3("上ベクトル", light.up, 0.01f, -1.0f, 1.0f);
+
+                                if (ImGui::SmallButton("法線を正規化")) {
+                                    light.normal = MathCore::Vector::Normalize(light.normal);
+                                }
+                                drawLightActions(static_cast<int>(i), deleteIdx, dupIdx);
+                                ImGui::TreePop();
+                            }
+
+                            ImGui::PopID();
+                        }
+
+                        if (deleteIdx >= 0) {
+                            areaLights.erase(areaLights.begin() + deleteIdx);
+                        } else if (dupIdx >= 0 && areaLights.size() < maxAreaLights) {
+                            areaLights.push_back(areaLights[dupIdx]);
+                        }
+
+                        UI::Spacing();
+                        if (areaLights.size() < maxAreaLights) {
+                            if (ImGui::Button("+ Area Light")) {
+                                if (onAddAreaLight) onAddAreaLight();
+                            }
+                        } else {
+                            UI::Hint("最大数に達しています");
+                        }
+                    }
+            #else
         // Release builds - avoid unused parameter warnings
         (void)directionalLights;
         (void)pointLights;

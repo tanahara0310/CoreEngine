@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.cpp">
-      <Filter>Application\Src\Sample\SampleScene\CollisionTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera2D.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -588,9 +585,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Sample\SampleScene\CollisionTestScene\CollisionTestScene.h">
-      <Filter>Application\Src\Sample\SampleScene\CollisionTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Camera2D.h">
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
@@ -1578,9 +1572,6 @@
     </Filter>
     <Filter Include="Application\Src\Sample\SampleScene">
       <UniqueIdentifier>{E4376BC7-4CEE-404A-A441-4F72CA1B9924}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Sample\SampleScene\CollisionTestScene">
-      <UniqueIdentifier>{C53E1C86-B2C2-4DA0-9D48-4875285B3BBF}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Sample\SampleScene\ParticleTestScene">
       <UniqueIdentifier>{09DAE995-E03C-4482-8D04-890611F87BF9}</UniqueIdentifier>

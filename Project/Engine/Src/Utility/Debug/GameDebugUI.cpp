@@ -59,22 +59,24 @@ namespace CoreEngine
 
     void GameDebugUI::SetInspectorCameraDrawer(std::function<void()> callback)
     {
-        // 既存の "Camera Editor" エントリがあればコールバックを更新するだけにする
+        // 既存の "Camera Editor" パネルがあればコールバックを更新するだけにする
         // （シーン切り替え時に重複登録されないようにする）
-        for (auto& [label, drawer] : engineEditors_) {
-            if (label == "Camera Editor") {
-                drawer = std::move(callback);
+        for (auto& p : enginePanels_) {
+            if (p.label == "Camera Editor") {
+                p.drawer = std::move(callback);
                 return;
             }
         }
-        // Camera Editorは先頭に挿入（Lightingの前に表示）
-        engineEditors_.insert(engineEditors_.begin(),
-            std::make_pair(std::string("Camera Editor"), std::move(callback)));
+        // Camera Editorをエンジンパネルとして登録（独立ウィンドウ、他パネルと統一）
+        RegisterEnginePanel("Camera Editor", std::move(callback));
     }
 
     void GameDebugUI::RegisterAppEditor(const std::string& label, std::function<void()> drawer)
     {
-        appEditors_.emplace_back(label, std::move(drawer));
+        for (auto& entry : appEditors_) {
+            if (entry.label == label) { entry.drawer = std::move(drawer); return; }
+        }
+        appEditors_.push_back({ label, std::move(drawer), false });
     }
 
     void GameDebugUI::RegisterEnginePanel(const std::string& label, std::function<void()> drawer)
@@ -105,43 +107,8 @@ namespace CoreEngine
                 ImGui::EndMenu();
             }
 
-            // 統合ウィンドウメニュー（Engine + Editor パネルを一覧表示）
-            if (ImGui::BeginMenu("Window")) {
-                // ── エンジンパネル（独立ウィンドウ） ──
-                if (!enginePanels_.empty()) {
-                    UI::Hint("Engine");
-                    for (auto& panel : enginePanels_) {
-                        ImGui::Checkbox(panel.label.c_str(), &panel.visible);
-                    }
-                }
-
-                // ── Inspector 内エディター ──
-                if (!engineEditors_.empty()) {
-                    ImGui::Separator();
-                    UI::Hint("Editor");
-                    for (auto& [label, _] : engineEditors_) {
-                        bool isActive = (activeEditorId_ == label);
-                        if (ImGui::Checkbox(label.c_str(), &isActive)) {
-                            activeEditorId_ = isActive ? label : "";
-                        }
-                    }
-                }
-
-                // ── App Editor（アプリケーション固有） ──
-                if (!appEditors_.empty()) {
-                    ImGui::Separator();
-                    if (ImGui::BeginMenu("App Editor")) {
-                        for (auto& [label, _] : appEditors_) {
-                            bool isActive = (activeEditorId_ == label);
-                            if (ImGui::Checkbox(label.c_str(), &isActive)) {
-                                activeEditorId_ = isActive ? label : "";
-                            }
-                        }
-                        ImGui::EndMenu();
-                    }
-                }
-                ImGui::EndMenu();
-            }
+            // Window Manager パネルの開閉トグル
+            ImGui::MenuItem("Window", nullptr, &showEditorSwitcher_);
 
             if (dockingUI_ && ImGui::BeginMenu("Layout")) {
                 const DockLayoutPreset currentLayout = dockingUI_->GetLayoutPreset();
@@ -168,6 +135,7 @@ namespace CoreEngine
         DrawHierarchyPanel();
         DrawInspectorPanel();
         DrawEnginePanels();
+        DrawEditorSwitcherPanel();
 
         if (showConsole_) ShowConsoleUI();
 
@@ -203,28 +171,30 @@ namespace CoreEngine
     void GameDebugUI::DrawInspectorPanel()
     {
         if (auto w = UI::Scope::WindowScope("Inspector")) {
-            if (inspectorObjectDrawer_) {
-                inspectorObjectDrawer_();
-            } else {
-                UI::Hint("シーンが読み込まれていません");
-            }
-
-            if (!activeEditorId_.empty()) {
-                UI::Separator();
-
-                const auto drawActive = [this](const EditorList& list) -> bool {
-                    for (const auto& [label, drawer] : list) {
-                        if (label != activeEditorId_) continue;
-                        std::string breadcrumb = "Inspector > ";
-                        breadcrumb += label;
-                        UI::SectionHeader(breadcrumb.c_str());
-                        if (drawer) drawer();
-                        return true;
+            if (auto tabBar = UI::Scope::TabBarScope("##InspectorTabs", ImGuiTabBarFlags_AutoSelectNewTabs)) {
+                // Object タブ（常時表示、閉じるボタンなし）
+                if (auto tab = UI::Scope::TabItemScope("Object")) {
+                    if (inspectorObjectDrawer_) {
+                        inspectorObjectDrawer_();
+                    } else {
+                        UI::Hint("シーンが読み込まれていません");
                     }
-                    return false;
-                };
-                if (!drawActive(engineEditors_)) {
-                    drawActive(appEditors_);
+                }
+
+                // エンジンエディタータブ（×ボタンでタブを閉じられる）
+                for (auto& entry : engineEditors_) {
+                    if (!entry.visible) continue;
+                    if (auto tab = UI::Scope::TabItemScope(entry.label.c_str(), &entry.visible)) {
+                        if (entry.drawer) entry.drawer();
+                    }
+                }
+
+                // アプリエディタータブ（×ボタンでタブを閉じられる）
+                for (auto& entry : appEditors_) {
+                    if (!entry.visible) continue;
+                    if (auto tab = UI::Scope::TabItemScope(entry.label.c_str(), &entry.visible)) {
+                        if (entry.drawer) entry.drawer();
+                    }
                 }
             }
         }
@@ -245,6 +215,80 @@ namespace CoreEngine
             }
             ImGui::End();
         }
+    }
+
+    void GameDebugUI::DrawEditorSwitcherPanel()
+    {
+        if (!showEditorSwitcher_) return;
+
+        ImGui::SetNextWindowSizeConstraints(ImVec2(280, 0), ImVec2(400, 800));
+        if (!ImGui::Begin("Window Manager", &showEditorSwitcher_, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::End();
+            return;
+        }
+
+        const ImVec4 kEngineColor = ImVec4(0.35f, 0.65f, 1.0f, 1.0f);
+        const ImVec4 kAppColor    = ImVec4(0.45f, 0.85f, 0.45f, 1.0f);
+        const ImVec4 kPanelColor  = ImVec4(0.85f, 0.65f, 0.25f, 1.0f);
+
+        float toggleW = ImGui::GetFrameHeight() * 1.8f;
+
+        auto drawEditorTable = [toggleW](const char* tableId, auto& entries, const ImVec4& dotColor) {
+            if (auto table = UI::Scope::TableScope(tableId, 2)) {
+                ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Switch", ImGuiTableColumnFlags_WidthFixed, toggleW);
+
+                for (auto& entry : entries) {
+                    ImGui::PushID(entry.label.c_str());
+                    ImGui::TableNextRow();
+
+                    // ラベル列（色付きドット + 名前）
+                    ImGui::TableNextColumn();
+                    {
+                        ImDrawList* dl = ImGui::GetWindowDrawList();
+                        ImVec2 pos = ImGui::GetCursorScreenPos();
+                        float cy = pos.y + ImGui::GetFrameHeight() * 0.5f;
+                        dl->AddCircleFilled(ImVec2(pos.x + 4.0f, cy), 3.5f,
+                            ImGui::GetColorU32(dotColor));
+                        ImGui::Indent(14.0f);
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::Text("%s", entry.label.c_str());
+                        ImGui::Unindent(14.0f);
+                    }
+
+                    // トグルスイッチ列
+                    ImGui::TableNextColumn();
+                    UI::Widgets::ToggleSwitch("##sw", &entry.visible);
+
+                    ImGui::PopID();
+                }
+            }
+        };
+
+        // ── 独立パネル（Lighting, Post Effects 等） ──
+        if (!enginePanels_.empty()) {
+            UI::SectionHeader("Panels");
+            drawEditorTable("##PanelTable", enginePanels_, kPanelColor);
+            UI::Spacing();
+        }
+
+        // ── Inspector タブ（エンジン + アプリエディター） ──
+        if (!engineEditors_.empty() || !appEditors_.empty()) {
+            UI::SectionHeader("Inspector");
+
+            if (!engineEditors_.empty()) {
+                UI::Hint("Engine");
+                drawEditorTable("##EngineTable", engineEditors_, kEngineColor);
+            }
+
+            if (!appEditors_.empty()) {
+                if (!engineEditors_.empty()) { UI::Spacing(); }
+                UI::Hint("Application");
+                drawEditorTable("##AppTable", appEditors_, kAppColor);
+            }
+        }
+
+        ImGui::End();
     }
 
     void GameDebugUI::RegisterWindowsForDocking()
