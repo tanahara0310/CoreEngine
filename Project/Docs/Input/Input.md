@@ -165,11 +165,11 @@ config.ResetToDefault();
 ### JSON 保存・読み込み
 
 ```cpp
-// 保存（Config/ フォルダに keybindings.json を出力）
-config.SaveToFile("Config/keybindings.json");
+// 保存（Application/Assets/Config/ フォルダに keybindings.json を出力）
+config.SaveToFile("Application/Assets/Config/keybindings.json");
 
 // 読み込み（ファイルが存在しない場合は何もしない）
-config.LoadFromFile("Config/keybindings.json");
+config.LoadFromFile("Application/Assets/Config/keybindings.json");
 ```
 
 保存される JSON の形式:
@@ -255,7 +255,7 @@ void MyScene::OnInitialize() {
     auto& config = inputManager->GetQuery().GetConfig();
 
     // ファイルがなければデフォルト設定のまま
-    config.LoadFromFile("Config/keybindings.json");
+    config.LoadFromFile("Application/Assets/Config/keybindings.json");
 }
 ```
 

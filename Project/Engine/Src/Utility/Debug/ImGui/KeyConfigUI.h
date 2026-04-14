@@ -19,7 +19,7 @@ namespace CoreEngine {
         bool isListening_ = false;
         InputAction listeningAction_ = InputAction::Count;
         int listeningIndex_ = -1;
-        std::string configFilePath_ = "Config/keybindings.json";
+        std::string configFilePath_ = "Application/Assets/Config/keybindings.json";
     };
 
 }
