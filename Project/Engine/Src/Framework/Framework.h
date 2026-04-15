@@ -5,6 +5,7 @@
 #include "Utility/Debug/LeakChecker.h"
 #include "Utility/Debug/CrashDump.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/EngineConfig.h"
 
 /// @brief フレームワーク基底クラス - エンジン層の汎用機能を提供
 /// ゲーム固有のクラスはこのクラスを継承して実装する

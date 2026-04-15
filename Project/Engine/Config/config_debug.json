@@ -1,0 +1,17 @@
+{
+    "debug": {
+        "enableDebugLayer": true,
+        "enableGPUBasedValidation": false,
+        "enablePixRuntime": true
+    },
+    "descriptors": {
+        "maxDSVDescriptors": 10,
+        "maxRTVDescriptors": 256,
+        "maxSRVDescriptors": 65536
+    },
+    "window": {
+        "height": 720,
+        "title": "CoreEngine_Ver2.0",
+        "width": 1280
+    }
+}

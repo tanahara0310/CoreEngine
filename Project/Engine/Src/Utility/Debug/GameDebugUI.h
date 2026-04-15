@@ -2,6 +2,8 @@
 #include "Utility/Debug/ImGui/Gizmo.h"
 #ifdef USE_IMGUI
 #include "Utility/Debug/ConsoleUI.h"
+#include "Utility/Debug/ImGui/ScreenCapture.h"
+#include "Utility/Debug/ImGui/PixCapture.h"
 #endif
 #include "Utility/Debug/ImGui/SceneManagerTab.h"
 #include <functional>
@@ -99,6 +101,11 @@ namespace CoreEngine
 
         bool showConsole_ = true;
         bool showEditorSwitcher_ = false;  ///< Window Managerパネルの表示状態
+
+#ifdef USE_IMGUI
+        ScreenCapture screenCapture_;  ///< スクリーンキャプチャ機能
+        PixCapture pixCapture_;  ///< PIX GPU キャプチャ機能
+#endif
 
         static constexpr const char* consoleWindow = "Console";
 

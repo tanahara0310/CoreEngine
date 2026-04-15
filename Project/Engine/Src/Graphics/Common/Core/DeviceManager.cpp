@@ -12,9 +12,11 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
-void DeviceManager::Initialize(WinApp* winApp)
+void DeviceManager::Initialize(WinApp* winApp, bool enableDebugLayer, bool enableGPUBasedValidation)
 {
     winApp_ = winApp;
+    enableDebugLayer_ = enableDebugLayer;
+    enableGPUBasedValidation_ = enableGPUBasedValidation;
     InitializeDXGIDevice();
 }
 
@@ -22,22 +24,28 @@ void DeviceManager::InitializeDXGIDevice()
 {
     Logger& logger = Logger::GetInstance();
 
-    // デバッグレイヤーの有効化
+    // デバッグレイヤーの有効化（コンフィグの設定値に従う）
 #ifdef _DEBUG
-    ComPtr<ID3D12Debug1> debugController;
-    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf())))) {
-        // デバッグレイヤーを有効にする
-        debugController->EnableDebugLayer();
-        // GPU-Based Validation は非常に重い（10〜100倍の速度低下）ため
-        // 通常のデバッグでは無効にし、GPU側の問題を調査する場合のみ有効にする
-        debugController->SetEnableGPUBasedValidation(FALSE);
+    if (enableDebugLayer_) {
+        ComPtr<ID3D12Debug1> debugController;
+        if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf())))) {
+            // デバッグレイヤーを有効にする
+            debugController->EnableDebugLayer();
+            // GPU-Based Validation（コンフィグで有効にした場合のみ）
+            // 非常に重い（10〜100倍の速度低下）ため、必要な場合のみ有効化する
+            debugController->SetEnableGPUBasedValidation(enableGPUBasedValidation_ ? TRUE : FALSE);
 
-        // デバッグレイヤー有効化のログを出力
-        OutputDebugString(L"Direct3D 12 デバッグレイヤーが有効化されました。\n");
-        std::cout << "Direct3D 12 デバッグレイヤーが有効化されました。" << std::endl;
-    } else {
-        OutputDebugString(L"Direct3D 12 デバッグインターフェースの取得に失敗しました。\n");
-        std::cerr << "Direct3D 12 デバッグインターフェースの取得に失敗しました。" << std::endl;
+            // デバッグレイヤー有効化のログを出力
+            OutputDebugString(L"Direct3D 12 デバッグレイヤーが有効化されました。\n");
+            std::cout << "Direct3D 12 デバッグレイヤーが有効化されました。" << std::endl;
+            if (enableGPUBasedValidation_) {
+                OutputDebugString(L"GPU-Based Validation が有効化されました。\n");
+                std::cout << "GPU-Based Validation が有効化されました。" << std::endl;
+            }
+        } else {
+            OutputDebugString(L"Direct3D 12 デバッグインターフェースの取得に失敗しました。\n");
+            std::cerr << "Direct3D 12 デバッグインターフェースの取得に失敗しました。" << std::endl;
+        }
     }
 #endif
 

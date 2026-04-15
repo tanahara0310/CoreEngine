@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -82,7 +82,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>MINMAX;_DEBUG;_WINDOWS;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>MINMAX;_DEBUG;_WINDOWS;USE_IMGUI;USE_PIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -149,7 +149,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>MINMAX;_WINDOWS;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;USE_IMGUI;USE_PIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -197,6 +197,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Collider\CollisionConfig.cpp" />
     <ClCompile Include="Engine\Src\Collider\CollisionManager.cpp" />
     <ClCompile Include="Engine\Src\Collider\SphereCollider.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Src\Framework\Framework.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
@@ -310,11 +311,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\KeyConfigUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\PixCapture.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
     <ClCompile Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.cpp" />
@@ -408,6 +411,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Collider\CollisionManager.h" />
     <ClInclude Include="Engine\Src\Collider\SphereCollider.h" />
     <ClInclude Include="Engine\Src\EngineSystem\ComponentManager.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h" />
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h" />
     <ClInclude Include="Engine\Src\Framework\Framework.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetDatabase.h" />
@@ -560,11 +564,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiWidgets.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\KeyConfigUI.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\PixCapture.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Widgets\ImGuiWidgets.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Wrappers\ImGuiInput.h" />
@@ -666,6 +672,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\Scene\SceneManager.md" />
     <None Include="Docs\Utility\Utility.md" />
     <None Include="Engine\Src\ObjectCommon\README.md" />
+    <None Include="Project\packages.config" />
     <None Include="Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->
@@ -719,8 +726,15 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets" Condition="Exists('packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" />
   </ImportGroup>
   <Target Name="SyncVCXProjFilters" BeforeTargets="Build">
     <Exec Command="powershell -ExecutionPolicy Bypass -NoProfile -File &quot;$(ProjectDir)Scripts\SyncFilters.ps1&quot; -ProjectFile &quot;$(MSBuildProjectFullPath)&quot;" />
+  </Target>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>���̃v���W�F�N�g�́A���̃R���s���[�^�[��ɂȂ� NuGet �p�b�P�[�W��Q�Ƃ��Ă��܂��B�����̃p�b�P�[�W��_�E�����[�h����ɂ́A[NuGet �p�b�P�[�W�̕���] ��g�p���܂��B�ڍׂɂ��ẮAhttp://go.microsoft.com/fwlink/?LinkID=322105 ��Q�Ƃ��Ă��������B������Ȃ��t�@�C���� {0} �ł��B</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets'))" />
   </Target>
 </Project>

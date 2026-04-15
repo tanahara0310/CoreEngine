@@ -34,6 +34,7 @@ namespace CoreEngine
         const std::string texPath = GetTexturePath();
         if (!texPath.empty()) {
             texture_ = TextureManager::GetInstance().Load(texPath);
+            textureName_ = texPath;
         }
 
         // 派生クラスの追加初期化（座標・コライダー設定など）

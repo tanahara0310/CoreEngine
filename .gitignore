@@ -74,6 +74,7 @@ StyleCopReport.xml
 *Project/logs
 *Application/Assets/Scene
 generated/
+Captures/
 
 # Chutzpah Test files
 _Chutzpah*

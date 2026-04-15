@@ -52,7 +52,7 @@ void WinApp::CreateAppWindow(const wchar_t* title)
     // 1280x720を基準サイズにした通常ウィンドウ（起動時に最大化表示）
     UINT style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 
-    RECT windowRect = { 0, 0, kClientWidth, kClientHeight };
+    RECT windowRect = { 0, 0, currentClientWidth_, currentClientHeight_ };
     AdjustWindowRect(&windowRect, style, FALSE);
 
     // ウィンドウの生成

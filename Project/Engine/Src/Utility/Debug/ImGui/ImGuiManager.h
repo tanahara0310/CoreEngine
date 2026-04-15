@@ -72,6 +72,10 @@ bool IsSceneViewVisible() const { return sceneViewport_ && sceneViewport_->IsSce
     ProjectView* GetProjectView() const { return projectView_.get(); }
 #endif
 
+/// @brief ウィンドウハンドルの取得
+/// @return HWND
+HWND GetHwnd() const { return hwnd_; }
+
 private:
     HWND hwnd_ = nullptr; // ウィンドウハンドル
     DirectXCommon* dxCommon_ = nullptr; // DirectX共通クラスへのポインタ

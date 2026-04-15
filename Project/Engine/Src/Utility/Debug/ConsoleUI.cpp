@@ -13,6 +13,20 @@
 
 namespace CoreEngine
 {
+
+// タブ定義（Draw・RebuildTabCounts・RebuildFilteredView で共有）
+static const char* const kTabNames[] = {
+    "All", "System", "Graphics", "Resource", "Shader", "Audio", "Game", "General", "Console"
+};
+static const char* const kTabCategories[] = {
+    nullptr, "System", "Graphics", "Resource", "Shader", "Audio", "Game", "General", "Console"
+};
+static const char* const kTabIds[] = {
+    "###TabAll", "###TabSystem", "###TabGraphics", "###TabResource",
+    "###TabShader", "###TabAudio", "###TabGame", "###TabGeneral", "###TabConsole"
+};
+static constexpr int kTabCount = 9;
+
 void ConsoleUI::Initialize()
 {
     // 初期メッセージを追加
@@ -67,22 +81,31 @@ void ConsoleUI::Draw()
         UI::Separator();
 
         // === カテゴリタブ ===
-        static const char* kTabNames[] = {
-            "All", "System", "Graphics", "Resource", "Shader", "Audio", "Game", "General", "Console"
-        };
-        static const char* kTabCategories[] = {
-            nullptr, "System", "Graphics", "Resource", "Shader", "Audio", "Game", "General", "Console"
-        };
-        static const char* kTabIds[] = {
-            "###TabAll", "###TabSystem", "###TabGraphics", "###TabResource",
-            "###TabShader", "###TabAudio", "###TabGame", "###TabGeneral", "###TabConsole"
-        };
-        static constexpr int kTabCount = 9;
+        // フィルター状態変化を検出 → dirty フラグを立てる
+        if (prevShowInfo_ != showInfo_ || prevShowWarning_ != showWarning_ ||
+            prevShowError_ != showError_ || prevShowDebug_ != showDebug_) {
+            prevShowInfo_    = showInfo_;
+            prevShowWarning_ = showWarning_;
+            prevShowError_   = showError_;
+            prevShowDebug_   = showDebug_;
+            tabCountsDirty_    = true;
+            filteredViewDirty_ = true;
+        }
+        if (strcmp(prevFilterBuf_, filter_.InputBuf) != 0) {
+            snprintf(prevFilterBuf_, sizeof(prevFilterBuf_), "%s", filter_.InputBuf);
+            filteredViewDirty_ = true;
+        }
+
+        // タブカウントを必要なときだけ再計算（毎フレーム18回全走査を排除）
+        if (tabCountsDirty_) {
+            RebuildTabCounts();
+            tabCountsDirty_ = false;
+        }
 
         if (ImGui::BeginTabBar("##ConsoleTabs", ImGuiTabBarFlags_FittingPolicyScroll)) {
             for (int i = 0; i < kTabCount; i++) {
-                size_t count = CountMessages(kTabCategories[i]);
-                size_t errorCount = CountErrorMessages(kTabCategories[i]);
+                const size_t count      = cachedTabCounts_[i];
+                const size_t errorCount = cachedTabErrorCounts_[i];
 
                 // タブラベル生成（IDは固定、表示名だけ変化）
                 char label[128];
@@ -112,48 +135,48 @@ void ConsoleUI::Draw()
             ImGui::EndTabBar();
         }
 
+        // アクティブタブ変化またはビューが dirty なら再構築
+        if (filteredViewDirty_ || cachedFilterActiveTab_ != activeTab_) {
+            cachedFilterActiveTab_ = activeTab_;
+            RebuildFilteredView(kTabCategories[activeTab_]);
+            filteredViewDirty_ = false;
+        }
+
         // === メッセージ表示エリア ===
         const float footerHeight = ImGui::GetFrameHeightWithSpacing();
         if (auto child = UI::Scope::ChildScope("ScrollingRegion",
             ImVec2(0, -footerHeight), 0, ImGuiWindowFlags_HorizontalScrollbar)) {
 
-            const char* categoryFilter = kTabCategories[activeTab_];
-            bool showCategoryBadge = (activeTab_ == 0); // Allタブのみカテゴリ表示
+            const bool showCategoryBadge = (activeTab_ == 0); // Allタブのみカテゴリ表示
 
-            for (const auto& message : messages_) {
-                // カテゴリフィルター
-                if (categoryFilter && message.category != categoryFilter) continue;
-                // レベルフィルター
-                if (!ShouldShowMessage(message)) continue;
-                // テキストフィルター（メッセージとカテゴリ名の両方で検索）
-                if (filter_.IsActive()) {
-                    if (!filter_.PassFilter(message.message.c_str()) &&
-                        !filter_.PassFilter(message.category.c_str())) continue;
-                }
+            // ImGuiListClipper で画面外メッセージの ImGui 呼び出しをスキップ
+            ImGuiListClipper clipper;
+            clipper.Begin(static_cast<int>(filteredIndices_.size()));
+            while (clipper.Step()) {
+                for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                    const auto& message = messages_[filteredIndices_[static_cast<size_t>(i)]];
 
-                // タイムスタンプ
-                if (showTimestamp_) {
-                    std::string timeStr = FormatTimestamp(message.timestamp);
-                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "[%s]", timeStr.c_str());
+                    // タイムスタンプ（事前計算済み文字列を直接使用）
+                    if (showTimestamp_) {
+                        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "[%s]", message.formattedTimestamp.c_str());
+                        UI::SameLine();
+                    }
+
+                    // ログレベルバッジ
+                    ImGui::TextColored(GetMessageColor(message.level), "[%s]", GetLevelString(message.level));
                     UI::SameLine();
+
+                    // カテゴリバッジ（Allタブのみ表示）
+                    if (showCategoryBadge && !message.category.empty()) {
+                        ImGui::TextColored(GetCategoryColor(message.category), "[%s]", message.category.c_str());
+                        UI::SameLine();
+                    }
+
+                    // メッセージ内容
+                    ImGui::TextUnformatted(message.message.c_str());
                 }
-
-                // ログレベルバッジ
-                const char* levelStr = GetLevelString(message.level);
-                ImVec4 levelColor = GetMessageColor(message.level);
-                ImGui::TextColored(levelColor, "[%s]", levelStr);
-                UI::SameLine();
-
-                // カテゴリバッジ（Allタブのみ表示）
-                if (showCategoryBadge && !message.category.empty()) {
-                    ImVec4 catColor = GetCategoryColor(message.category);
-                    ImGui::TextColored(catColor, "[%s]", message.category.c_str());
-                    UI::SameLine();
-                }
-
-                // メッセージ内容
-                ImGui::TextWrapped("%s", message.message.c_str());
             }
+            clipper.End();
 
             // 自動スクロール
             if (autoScroll_ && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
@@ -194,8 +217,11 @@ void ConsoleUI::AddLog(const std::string& message, ConsoleLogLevel level)
 
 void ConsoleUI::AddLog(const std::string& message, ConsoleLogLevel level, const std::string& category)
 {
+    // メッセージをロック外で構築（タイムスタンプ計算を含む）
+    // → spdlog 非同期スレッドで並列に実行される
+    ConsoleMessage msg(message, level, category);
     std::lock_guard<std::mutex> lock(pendingMutex_);
-    pendingMessages_.emplace_back(message, level, category);
+    pendingMessages_.push_back(std::move(msg));
 }
 
 void ConsoleUI::ClearLog()
@@ -205,6 +231,8 @@ void ConsoleUI::ClearLog()
         pendingMessages_.clear();
     }
     messages_.clear();
+    tabCountsDirty_    = true;
+    filteredViewDirty_ = true;
     AddLog("コンソールログをクリアしました", ConsoleLogLevel::Info);
 }
 
@@ -422,15 +450,27 @@ void ConsoleUI::ShowSystemStatus()
 
 void ConsoleUI::FlushPendingMessages()
 {
-    std::lock_guard<std::mutex> lock(pendingMutex_);
-    for (auto& msg : pendingMessages_) {
+    // ロック時間を最小限に抑えるため swap で一括取り出し
+    std::vector<ConsoleMessage> localMessages;
+    {
+        std::lock_guard<std::mutex> lock(pendingMutex_);
+        if (pendingMessages_.empty()) return;
+        localMessages.swap(pendingMessages_);
+    }
+
+    // ロック外で処理（タイムスタンプはコンストラクタで計算済み）
+    for (auto& msg : localMessages) {
         messages_.push_back(std::move(msg));
     }
-    pendingMessages_.clear();
 
+    bool trimmed = false;
     while (messages_.size() > maxMessages_) {
         messages_.pop_front();
+        trimmed = true;
     }
+
+    tabCountsDirty_    = true;
+    filteredViewDirty_ = true;
 }
 
 size_t ConsoleUI::CountMessages(const char* categoryFilter) const
@@ -466,5 +506,54 @@ ImVec4 ConsoleUI::GetCategoryColor(const std::string& category) const
     if (category == "Console")   return ImVec4(0.7f, 0.7f, 0.7f, 1.0f);  // グレー
     return ImVec4(0.8f, 0.8f, 0.8f, 1.0f);
 }
+
+void ConsoleUI::RebuildTabCounts()
+{
+    // 全タブのカウントをリセット
+    for (int i = 0; i < kTabCount; ++i) {
+        cachedTabCounts_[i]      = 0;
+        cachedTabErrorCounts_[i] = 0;
+    }
+
+    // カテゴリ名 → タブインデックスのマップ（初回のみ構築）
+    static std::unordered_map<std::string, int> categoryToIndex;
+    if (categoryToIndex.empty()) {
+        for (int i = 1; i < kTabCount; ++i) {
+            categoryToIndex[kTabCategories[i]] = i;
+        }
+    }
+
+    // シングルパスで全タブのカウントを同時に集計（旧: 9回走査）
+    for (const auto& msg : messages_) {
+        const bool visible = ShouldShowMessage(msg);
+        const bool isError = (msg.level == ConsoleLogLevel::Error);
+
+        // All タブ (index 0)
+        if (visible) cachedTabCounts_[0]++;
+        if (isError) cachedTabErrorCounts_[0]++;
+
+        // カテゴリ別タブ
+        auto it = categoryToIndex.find(msg.category);
+        if (it != categoryToIndex.end()) {
+            if (visible) cachedTabCounts_[it->second]++;
+            if (isError) cachedTabErrorCounts_[it->second]++;
+        }
+    }
 }
+
+void ConsoleUI::RebuildFilteredView(const char* categoryFilter)
+{
+    filteredIndices_.clear();
+    filteredIndices_.reserve(messages_.size());
+    for (size_t i = 0; i < messages_.size(); ++i) {
+        const auto& msg = messages_[i];
+        if (categoryFilter && msg.category != categoryFilter) continue;
+        if (!ShouldShowMessage(msg)) continue;
+        if (filter_.IsActive() &&
+            !filter_.PassFilter(msg.message.c_str()) &&
+            !filter_.PassFilter(msg.category.c_str())) continue;
+        filteredIndices_.push_back(i);
+    }
+}
+} // namespace CoreEngine
 #endif // USE_IMGUI

@@ -64,7 +64,8 @@ class EngineSystem {
 public:
     /// @brief エンジンシステムの初期化
     /// @param winApp ウィンドウアプリケーション
-    void Initialize(WinApp* winApp);
+    /// @param config エンジン設定
+    void Initialize(WinApp* winApp, const EngineConfig& config);
 
     /// @brief エンジンシステムの終了処理
     void Finalize();
@@ -159,7 +160,7 @@ private:
     // ──────────────────────────────────────────────────────────
     // コンポーネント作成ヘルパーメソッド
     // ──────────────────────────────────────────────────────────
-    void CreateGraphicsComponents();
+    void CreateGraphicsComponents(const EngineConfig& config);
     void CreateInputComponents();
     void CreateAudioComponents();
     void CreateLightComponents();
