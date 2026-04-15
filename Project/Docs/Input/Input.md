@@ -1,47 +1,90 @@
 # 入力システム
 
-CoreEngine の入力システムはキーボード、マウス、ゲームパッドに対応しています。
+CoreEngine の入力システムはキーボード・マウス・ゲームパッドに対応しています。  
+すべての入力は `InputManager` が一元管理し、`InputQuery` を通じてアクセスします。
 
-## ヘッダ
+---
+
+## アーキテクチャ概要
+
+```
+InputManager  ←  GetComponent<InputManager>() で取得
+  └── InputQuery  ←  GetQuery() でアクセス
+        ├── アクションベース API   IsActionPressed / Triggered / Released / GetAxisValue
+        ├── 低レベル直接アクセス   IsKeyPressed / IsMouseButtonPressed / GetWheelDelta ...
+        └── キーコンフィグ         GetConfig() / DetectAnyInput()
+```
+
+デバイスの詳細（`KeyboardInput` / `MouseInput` / `GamepadInput`）は `InputManager` が内部で管理します。  
+ゲームロジックから直接デバイスクラスを取得する必要はありません。
+
+---
+
+## 基本的な取得方法
 
 ```cpp
-#include "Input/KeyboardInput.h"
-#include "Input/MouseInput.h"
-#include "Input/GamePadInput.h"
+#include "Input/InputManager.h"
+#include "Input/InputAction.h"
+
+auto* inputManager = engine_->GetComponent<CoreEngine::InputManager>();
+auto& input = inputManager->GetQuery();
 ```
 
 ---
 
-## KeyboardInput
+## アクションベース API（推奨）
 
-DirectInput を使用したキーボード入力クラスです。
-
-### 取得方法
-
-```cpp
-auto keyboard = engine_->GetComponent<CoreEngine::KeyboardInput>();
-```
+ゲームロジックはアクション名で入力を問い合わせます。  
+どのキーが割り当てられているかはキーコンフィグで変更できます。
 
 ### 入力チェック
 
 ```cpp
-// キーが押され続けているか
-if (keyboard->IsKeyPressed(DIK_W)) {
-    // W キーが押されている間、毎フレーム true
-}
+// アクションに対応するいずれかの入力が押されている間 true
+if (input.IsActionPressed(InputAction::MoveForward)) { /* ... */ }
 
-// キーが押された瞬間（トリガー）
-if (keyboard->IsKeyTriggered(DIK_SPACE)) {
-    // SPACE キーが押された最初のフレームだけ true
-}
+// 押した瞬間だけ true
+if (input.IsActionTriggered(InputAction::Jump)) { /* ... */ }
 
-// キーが離された瞬間
-if (keyboard->IsKeyReleased(DIK_ESCAPE)) {
-    // ESCAPE キーが離されたフレームだけ true
-}
+// 離した瞬間だけ true
+if (input.IsActionReleased(InputAction::Attack)) { /* ... */ }
+
+// アナログ値（0.0 〜 1.0）
+float speed = input.GetAxisValue(InputAction::MoveForward);
 ```
 
-### よく使うキー定数
+### InputAction 一覧
+
+| アクション | デフォルトバインディング | 用途 |
+|-----------|------------------------|------|
+| `MoveForward` | W / ↑ / 左スティックY+ / 十字上 | 前進 |
+| `MoveBack` | S / ↓ / 左スティックY- / 十字下 | 後退 |
+| `MoveLeft` | A / ← / 左スティックX- / 十字左 | 左移動 |
+| `MoveRight` | D / → / 左スティックX+ / 十字右 | 右移動 |
+| `Jump` | Space / ゲームパッドA | ジャンプ |
+| `Attack` | マウス左 / ゲームパッドX | 攻撃 |
+| `Interact` | E / ゲームパッドB | インタラクト |
+| `UIConfirm` | Enter / ゲームパッドA | UI決定 |
+| `UICancel` | Escape / ゲームパッドB | UIキャンセル |
+| `EditorGizmoTranslate` | W | エディタ：移動ギズモ |
+| `EditorGizmoRotate` | E | エディタ：回転ギズモ |
+| `EditorGizmoScale` | R | エディタ：拡縮ギズモ |
+
+---
+
+## 低レベル直接アクセス
+
+エディタカメラ操作など、アクションに抽象化しにくい処理に使います。
+
+### キーボード
+
+```cpp
+if (input.IsKeyPressed(DIK_LSHIFT))   { /* Shift 押し続け */ }
+if (input.IsKeyTriggered(DIK_F1))     { /* F1 押した瞬間 */ }
+if (input.IsKeyReleased(DIK_ESCAPE))  { /* Escape 離した瞬間 */ }
+```
+
+#### よく使うキー定数
 
 | 定数 | キー | | 定数 | キー |
 |------|-----|-|------|------|
@@ -51,59 +94,29 @@ if (keyboard->IsKeyReleased(DIK_ESCAPE)) {
 | `DIK_D` | D | | `DIK_LSHIFT` | 左Shift |
 | `DIK_UP` | ↑ | | `DIK_LCONTROL` | 左Ctrl |
 | `DIK_DOWN` | ↓ | | `DIK_TAB` | Tab |
-| `DIK_LEFT` | ← | | `DIK_1` ～ `DIK_0` | 数字キー |
-| `DIK_RIGHT` | → | | `DIK_F1` ～ `DIK_F12` | ファンクションキー |
+| `DIK_LEFT` | ← | | `DIK_F1` 〜 `DIK_F12` | Fキー |
+| `DIK_RIGHT` | → | | `DIK_1` 〜 `DIK_0` | 数字キー |
 
-### メソッド一覧
-
-| メソッド | 説明 |
-|---------|------|
-| `IsKeyPressed(keyNumber)` | キーが押されているか |
-| `IsKeyTriggered(keyNumber)` | キーが押された瞬間か |
-| `IsKeyReleased(keyNumber)` | キーが離された瞬間か |
-
----
-
-## MouseInput
-
-DirectInput を使用したマウス入力クラスです。
-
-### 取得方法
-
-```cpp
-auto mouse = engine_->GetComponent<CoreEngine::MouseInput>();
-```
-
-### ボタン入力
+### マウス
 
 ```cpp
 using CoreEngine::MouseButton;
 
-// ボタンが押されている
-if (mouse->IsButtonPressed(MouseButton::Left)) { /* ... */ }
+// ボタン入力
+if (input.IsMouseButtonPressed(MouseButton::Middle))   { /* 中ボタン押し続け */ }
+if (input.IsMouseButtonTriggered(MouseButton::Left))   { /* 左ボタン押した瞬間 */ }
+if (input.IsMouseButtonReleased(MouseButton::Right))   { /* 右ボタン離した瞬間 */ }
 
-// ボタンが押された瞬間
-if (mouse->IsButtonTriggered(MouseButton::Right)) { /* ... */ }
+// 移動量・ホイール
+int dx    = input.GetMouseDragX();    // 前フレームからの X 移動量
+int dy    = input.GetMouseDragY();    // 前フレームからの Y 移動量
+int wheel = input.GetWheelDelta();    // ホイール回転量
 
-// ボタンが離された瞬間
-if (mouse->IsButtonReleased(MouseButton::Middle)) { /* ... */ }
+// カーソル位置（クライアント座標）
+POINT pos = input.GetCursorPosition();
 ```
 
-### マウスの移動とホイール
-
-```cpp
-// マウスの移動量（ドラッグ量）
-int dx = mouse->GetDragX();
-int dy = mouse->GetDragY();
-
-// ホイール回転量
-int wheel = mouse->GetWheelDelta();
-
-// カーソル位置（スクリーン座標）
-POINT pos = mouse->GetCursorPosition();
-```
-
-### MouseButton 列挙型
+#### MouseButton 列挙型
 
 | 値 | 説明 |
 |-----|------|
@@ -113,35 +126,136 @@ POINT pos = mouse->GetCursorPosition();
 | `MouseButton::XButton1` | X ボタン 1 |
 | `MouseButton::XButton2` | X ボタン 2 |
 
-### メソッド一覧
+### ゲームパッド
 
-| メソッド | 説明 |
-|---------|------|
-| `IsButtonPressed(button)` | ボタンが押されているか |
-| `IsButtonTriggered(button)` | ボタンが押された瞬間か |
-| `IsButtonReleased(button)` | ボタンが離された瞬間か |
-| `GetWheelDelta()` | ホイール回転量 |
-| `GetDragX()` | X 方向のドラッグ量 |
-| `GetDragY()` | Y 方向のドラッグ量 |
-| `GetCursorPosition()` | カーソルのスクリーン座標 |
+```cpp
+if (input.IsGamepadConnected()) {
+    CoreEngine::Stick ls = input.GetLeftStick();   // x, y : -1.0 〜 1.0
+    CoreEngine::Stick rs = input.GetRightStick();
+    float lt = input.GetLeftTrigger();             // 0.0 〜 1.0
+    float rt = input.GetRightTrigger();
+}
+```
 
 ---
 
-## 使用例：キャラクター移動
+## キーコンフィグ
+
+### ランタイム変更
 
 ```cpp
-void PlayerObject::OnUpdate() {
-    auto keyboard = GetEngineSystem()->GetComponent<CoreEngine::KeyboardInput>();
-    if (!keyboard) return;
+auto& config = input.GetConfig();
 
-    float speed = 5.0f;
-    CoreEngine::Vector3 move = { 0.0f, 0.0f, 0.0f };
+// バインディングを一括で上書き
+config.SetBindings(InputAction::Jump, {
+    InputBinding::FromKey(DIK_LSHIFT),
+    InputBinding::FromGamepadButton(GamepadButton::A),
+});
 
-    if (keyboard->IsKeyPressed(DIK_W)) move.z += speed;
-    if (keyboard->IsKeyPressed(DIK_S)) move.z -= speed;
-    if (keyboard->IsKeyPressed(DIK_A)) move.x -= speed;
-    if (keyboard->IsKeyPressed(DIK_D)) move.x += speed;
+// 1件追加
+config.AddBinding(InputAction::Jump, InputBinding::FromMouseButton(MouseButton::Right));
 
-    transform_.translate = transform_.translate + move * deltaTime;
+// 特定アクションのバインディングをすべて削除
+config.ClearBindings(InputAction::Jump);
+
+// デフォルトに戻す
+config.ResetToDefault();
+```
+
+### JSON 保存・読み込み
+
+```cpp
+// 保存（Application/Assets/Config/ フォルダに keybindings.json を出力）
+config.SaveToFile("Application/Assets/Config/keybindings.json");
+
+// 読み込み（ファイルが存在しない場合は何もしない）
+config.LoadFromFile("Application/Assets/Config/keybindings.json");
+```
+
+保存される JSON の形式:
+
+```json
+{
+    "bindings": {
+        "MoveForward": ["Key:W", "Key:Up", "Axis:LeftStickY+", "Gamepad:DPadUp"],
+        "Jump":        ["Key:Space", "Gamepad:A"],
+        "Attack":      ["Mouse:Left", "Gamepad:X"]
+    }
 }
 ```
+
+### InputBinding ファクトリ関数
+
+| 関数 | 説明 | 例 |
+|------|------|----|
+| `InputBinding::FromKey(dikCode)` | DIK_* キー | `FromKey(DIK_W)` |
+| `InputBinding::FromMouseButton(button)` | マウスボタン | `FromMouseButton(MouseButton::Left)` |
+| `InputBinding::FromGamepadButton(button)` | パッドボタン | `FromGamepadButton(GamepadButton::A)` |
+| `InputBinding::FromGamepadAxis(axis, positive)` | アナログ軸 | `FromGamepadAxis(GamepadAxis::LeftStickY, true)` |
+
+#### GamepadAxis 列挙型
+
+| 値 | 説明 |
+|----|------|
+| `GamepadAxis::LeftStickX` | 左スティック X 軸 |
+| `GamepadAxis::LeftStickY` | 左スティック Y 軸 |
+| `GamepadAxis::RightStickX` | 右スティック X 軸 |
+| `GamepadAxis::RightStickY` | 右スティック Y 軸 |
+| `GamepadAxis::LeftTrigger` | 左トリガー |
+| `GamepadAxis::RightTrigger` | 右トリガー |
+
+### エディタ上でのキーコンフィグ
+
+デバッグビルド（`USE_IMGUI` 有効時）では  
+**Engine メニュー → Key Config** からキーコンフィグウィンドウを開けます。
+
+- バインディングボタンをクリック → 入力待ち状態になる → 任意のキー / ボタンで再バインド
+- `+` ボタン：バインディング追加 / `-` ボタン：末尾のバインディング削除
+- `Save` / `Load` ：設定ファイルの保存・読み込み
+- `Reset to Default` ：デフォルトバインディングに戻す
+
+---
+
+## 使用例
+
+### キャラクター移動
+
+```cpp
+#include "Input/InputManager.h"
+#include "Input/InputAction.h"
+
+void PlayerObject::OnUpdate() {
+    auto* inputManager = engine_->GetComponent<CoreEngine::InputManager>();
+    if (!inputManager) return;
+
+    auto& input = inputManager->GetQuery();
+    const float speed = 5.0f * deltaTime;
+    CoreEngine::Vector3 move = { 0.0f, 0.0f, 0.0f };
+
+    move.z += input.GetAxisValue(InputAction::MoveForward) * speed;
+    move.z -= input.GetAxisValue(InputAction::MoveBack)    * speed;
+    move.x -= input.GetAxisValue(InputAction::MoveLeft)    * speed;
+    move.x += input.GetAxisValue(InputAction::MoveRight)   * speed;
+
+    transform_.translate = transform_.translate + move;
+
+    if (input.IsActionTriggered(InputAction::Jump)) {
+        Jump();
+    }
+}
+```
+
+### 起動時にキーコンフィグを読み込む
+
+```cpp
+void MyScene::OnInitialize() {
+    auto* inputManager = engine_->GetComponent<CoreEngine::InputManager>();
+    if (!inputManager) return;
+
+    auto& config = inputManager->GetQuery().GetConfig();
+
+    // ファイルがなければデフォルト設定のまま
+    config.LoadFromFile("Application/Assets/Config/keybindings.json");
+}
+```
+
