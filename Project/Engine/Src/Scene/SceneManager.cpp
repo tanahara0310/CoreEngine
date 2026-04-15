@@ -162,6 +162,18 @@ void SceneManager::DoChangeScene(const std::string& name) {
         }
         currentScene_->Finalize();
     }
+
+#ifdef USE_IMGUI
+    // シーン切り替え時にオブジェクト選択をクリア（ダングリングポインタ防止）
+    if (auto* imGui = engine_->GetImGuiManager()) {
+        if (auto* viewport = imGui->GetSceneViewport()) {
+            if (auto* selector = viewport->GetObjectSelector()) {
+                selector->ClearSelection();
+            }
+        }
+    }
+#endif
+
     currentScene_.reset();
     
     // シーン切り替え時にライトをクリア

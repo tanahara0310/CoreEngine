@@ -1,6 +1,7 @@
 #include "DirectXCommon.h"
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
+#include "EngineSystem/EngineConfig.h"
 #include <iostream>
 
 #pragma comment(lib, "d3d12.lib")
@@ -10,15 +11,16 @@
 
 namespace CoreEngine
 {
-    void DirectXCommon::Initialize(WinApp* winApp)
+    void DirectXCommon::Initialize(WinApp* winApp, const EngineConfig& config)
     {
         // ウィンドウズアプリケーション管理
         winApp_ = winApp;
 
         // 初期化順序を守って各管理クラスを初期化
-        deviceManager_->Initialize(winApp);
+        deviceManager_->Initialize(winApp, config.enableDebugLayer, config.enableGPUBasedValidation);
         commandManager_->Initialize(deviceManager_->GetDevice());
-        descriptorManager_->Initialize(deviceManager_->GetDevice());
+        descriptorManager_->Initialize(deviceManager_->GetDevice(),
+            config.maxSRVDescriptors, config.maxRTVDescriptors, config.maxDSVDescriptors);
 
         // スワップチェーンの初期化（バックバッファ取得とRTV作成まで含む）
         swapChainManager_->Initialize(

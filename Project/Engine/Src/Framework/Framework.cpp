@@ -32,16 +32,21 @@ namespace CoreEngine
 #endif
 
         // ──────────────────────────────────────────────────────────
+        // エンジンコンフィグの読み込み
+        // ──────────────────────────────────────────────────────────
+        EngineConfig config = EngineConfig::Load();
+
+        // ──────────────────────────────────────────────────────────
         // 初期化フェーズ
         // ──────────────────────────────────────────────────────────
 
         // ウィンドウアプリケーションの生成・初期化
         winApp_ = std::make_unique<WinApp>();
-        winApp_->Initialize(WinApp::kClientWidth, WinApp::kClientHeight, L"CoreEngine_Ver2.0");
+        winApp_->Initialize(config.windowWidth, config.windowHeight, config.GetWindowTitleWide().c_str());
 
         // エンジンシステムの生成・初期化
         engineSystem_ = std::make_unique<EngineSystem>();
-        engineSystem_->Initialize(winApp_.get());
+        engineSystem_->Initialize(winApp_.get(), config);
 
         // ゲーム固有の初期化（派生クラスで実装）
         Initialize();

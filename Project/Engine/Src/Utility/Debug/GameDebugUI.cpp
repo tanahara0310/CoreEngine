@@ -3,6 +3,7 @@
 #ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/DockingUI.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/EngineConfig.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Scene/SceneManager.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
@@ -21,6 +22,11 @@ namespace CoreEngine
 
         console_->Initialize();
         console_->SetEngineSystem(engine);
+
+        // スクリーンキャプチャにHWNDを設定
+        if (auto* imguiMgr = engine->GetImGuiManager()) {
+            screenCapture_.SetHwnd(imguiMgr->GetHwnd());
+        }
 
         // Lightingをエンジン専用パネルとして登録（独立ウィンドウ）
         RegisterEnginePanel("Lighting", [this]() {
@@ -101,6 +107,10 @@ namespace CoreEngine
 
     void GameDebugUI::ShowMainMenuBar()
     {
+        // 前フレームでリクエストされたキャプチャを処理
+        screenCapture_.ProcessPendingCapture();
+        pixCapture_.ProcessPendingCapture();
+
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("Debug")) {
                 ImGui::Checkbox("Console", &showConsole_);
@@ -121,6 +131,38 @@ namespace CoreEngine
 
                 if (ImGui::MenuItem("Unity 2 by 3", nullptr, isUnity2By3)) {
                     dockingUI_->SetLayoutPreset(DockLayoutPreset::TwoByThree);
+                }
+
+                ImGui::EndMenu();
+            }
+
+            // Capture メニュー（右端に配置）
+            float captureMenuWidth = ImGui::CalcTextSize("Capture").x + ImGui::GetStyle().ItemSpacing.x * 4.0f;
+            ImGui::SameLine(ImGui::GetWindowWidth() - captureMenuWidth);
+            if (ImGui::BeginMenu("Capture")) {
+                if (ImGui::MenuItem("Screenshot")) {
+                    screenCapture_.RequestCapture();
+                }
+
+                ImGui::Separator();
+
+                if (PixCapture::IsPixAvailable()) {
+                    if (ImGui::MenuItem("PIX GPU Capture")) {
+                        pixCapture_.RequestCapture();
+                    }
+                    if (ImGui::MenuItem("PIX を無効化して再起動")) {
+                        EngineConfig::SetPixRuntimeAndRestart(false);
+                    }
+                } else {
+                    ImGui::BeginDisabled();
+                    ImGui::MenuItem("PIX GPU Capture");
+                    ImGui::EndDisabled();
+                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                        ImGui::SetTooltip("PIX は現在無効です");
+                    }
+                    if (ImGui::MenuItem("PIX を有効化して再起動")) {
+                        EngineConfig::SetPixRuntimeAndRestart(true);
+                    }
                 }
 
                 ImGui::EndMenu();

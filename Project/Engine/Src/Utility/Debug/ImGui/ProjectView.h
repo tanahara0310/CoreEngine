@@ -107,13 +107,13 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE directoryIconGpuHandle_ = {};
         bool directoryIconLoaded_ = false;
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> pngIconTexture_;
-        D3D12_GPU_DESCRIPTOR_HANDLE pngIconGpuHandle_ = {};
-        bool pngIconLoaded_ = false;
-
         Microsoft::WRL::ComPtr<ID3D12Resource> fileIconTexture_;
         D3D12_GPU_DESCRIPTOR_HANDLE fileIconGpuHandle_ = {};
         bool fileIconLoaded_ = false;
+
+        Microsoft::WRL::ComPtr<ID3D12Resource> shaderIconTexture_;
+        D3D12_GPU_DESCRIPTOR_HANDLE shaderIconGpuHandle_ = {};
+        bool shaderIconLoaded_ = false;
 
         // UI設定
         float iconSize_ = 64.0f;                // アイコンのサイズ
@@ -138,5 +138,9 @@ namespace CoreEngine
         // PNGプレビューキャッシュ
         std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12Resource>> pngPreviewCache_;
         std::unordered_map<std::string, PNGPreviewInfo> pngPreviewInfoCache_;
+
+        // フォルダツリーキャッシュ（毎フレームのファイルシステムスキャンを抑止）
+        std::unordered_map<std::string, bool> hasSubdirCache_;
+        std::unordered_map<std::string, std::vector<std::filesystem::path>> treeDirCache_;
     };
 }

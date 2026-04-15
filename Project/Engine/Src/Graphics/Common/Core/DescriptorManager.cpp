@@ -11,15 +11,18 @@ namespace {
     Logger& logger = Logger::GetInstance();
 }
 
-void DescriptorManager::Initialize(ID3D12Device* device)
+void DescriptorManager::Initialize(ID3D12Device* device, UINT maxSRV, UINT maxRTV, UINT maxDSV)
 {
     assert(device != nullptr && "Device must not be null");
-    device_ = device;             
+    device_ = device;
+    maxSRVDescriptors_ = maxSRV;
+    maxRTVDescriptors_ = maxRTV;
+    maxDSVDescriptors_ = maxDSV;
     CreateDescriptorHeaps();
 
     logger.Log(
         std::format("DescriptorManager初期化完了: SRV最大数={}, RTV最大数={}, DSV最大数={}\n",
-            kMaxSRVDescriptors, kMaxRTVDescriptors, kMaxDSVDescriptors),
+            maxSRVDescriptors_, maxRTVDescriptors_, maxDSVDescriptors_),
         LogLevel::INFO, LogCategory::Graphics);
 
 #ifdef _DEBUG
@@ -42,7 +45,7 @@ void DescriptorManager::CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_R
     assert(resource != nullptr && "Resource must not be null");
 
     // 境界チェック
-    CheckDescriptorBounds(nextSRVDescriptorIndex_, kMaxSRVDescriptors, "SRV");
+    CheckDescriptorBounds(nextSRVDescriptorIndex_, maxSRVDescriptors_, "SRV");
 
     // ハンドル計算
     CalculateSRVHandles(nextSRVDescriptorIndex_, outCpuDesc, outGpuDesc);
@@ -65,7 +68,7 @@ void DescriptorManager::CreateUAV(ID3D12Resource* resource, const D3D12_UNORDERE
     assert(resource != nullptr && "Resource must not be null");
 
     // 境界チェック
-    CheckDescriptorBounds(nextSRVDescriptorIndex_, kMaxSRVDescriptors, "SRV/UAV");
+    CheckDescriptorBounds(nextSRVDescriptorIndex_, maxSRVDescriptors_, "SRV/UAV");
 
     // ハンドル計算
     CalculateSRVHandles(nextSRVDescriptorIndex_, outCpuDesc, outGpuDesc);
@@ -86,7 +89,7 @@ void DescriptorManager::CreateCBV(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc,
     const std::string& debugName)
 {
     // 境界チェック
-    CheckDescriptorBounds(nextSRVDescriptorIndex_, kMaxSRVDescriptors, "CBV");
+    CheckDescriptorBounds(nextSRVDescriptorIndex_, maxSRVDescriptors_, "CBV");
 
     // ハンドル計算
     CalculateSRVHandles(nextSRVDescriptorIndex_, outCpuDesc, outGpuDesc);
@@ -107,7 +110,7 @@ void DescriptorManager::CreateRTV(ID3D12Resource* resource, const D3D12_RENDER_T
     assert(resource != nullptr && "Resource must not be null");
 
     // 境界チェック
-    CheckDescriptorBounds(nextRTVDescriptorIndex_, kMaxRTVDescriptors, "RTV");
+    CheckDescriptorBounds(nextRTVDescriptorIndex_, maxRTVDescriptors_, "RTV");
 
     // ハンドル計算
     outRtvHandle = CalculateRTVHandle(nextRTVDescriptorIndex_);
@@ -116,7 +119,7 @@ void DescriptorManager::CreateRTV(ID3D12Resource* resource, const D3D12_RENDER_T
     device_->CreateRenderTargetView(resource, &rtvDesc, outRtvHandle);
 
     // ログ出力
-    LogViewCreationWithCount(nextRTVDescriptorIndex_, "RTV", debugName, kMaxRTVDescriptors);
+    LogViewCreationWithCount(nextRTVDescriptorIndex_, "RTV", debugName, maxRTVDescriptors_);
 
     // インデックス更新
     ++nextRTVDescriptorIndex_;
@@ -128,7 +131,7 @@ void DescriptorManager::CreateDSV(ID3D12Resource* resource, const D3D12_DEPTH_ST
     assert(resource != nullptr && "Resource must not be null");
 
     // 境界チェック
-    CheckDescriptorBounds(nextDSVDescriptorIndex_, kMaxDSVDescriptors, "DSV");
+    CheckDescriptorBounds(nextDSVDescriptorIndex_, maxDSVDescriptors_, "DSV");
 
     // ハンドル計算
     outDsvHandle = CalculateDSVHandle(nextDSVDescriptorIndex_);
@@ -137,7 +140,7 @@ void DescriptorManager::CreateDSV(ID3D12Resource* resource, const D3D12_DEPTH_ST
     device_->CreateDepthStencilView(resource, &dsvDesc, outDsvHandle);
 
     // ログ出力
-    LogViewCreationWithCount(nextDSVDescriptorIndex_, "DSV", debugName, kMaxDSVDescriptors);
+    LogViewCreationWithCount(nextDSVDescriptorIndex_, "DSV", debugName, maxDSVDescriptors_);
 
     // インデックス更新
     ++nextDSVDescriptorIndex_;
@@ -146,11 +149,11 @@ void DescriptorManager::CreateDSV(ID3D12Resource* resource, const D3D12_DEPTH_ST
 void DescriptorManager::CreateDescriptorHeaps()
 {
     // RTV用のディスクリプタヒープの生成
-    rtvHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, kMaxRTVDescriptors, false);
+    rtvHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, maxRTVDescriptors_, false);
     // SRV用のディスクリプタヒープの生成
-    srvHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kMaxSRVDescriptors, true);
+    srvHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, maxSRVDescriptors_, true);
     // DSV用のディスクリプタヒープの生成
-    dsvHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, kMaxDSVDescriptors, false);
+    dsvHeap_ = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, maxDSVDescriptors_, false);
 }
 
 ComPtr<ID3D12DescriptorHeap> DescriptorManager::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType,

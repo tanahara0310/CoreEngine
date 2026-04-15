@@ -25,11 +25,15 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
+
+struct EngineConfig;
+
 class DirectXCommon {
 public:
     /// @brief 初期化
     /// @param winApp ウィンドウアプリケーション
-    void Initialize(WinApp* winApp);
+    /// @param config エンジン設定
+    void Initialize(WinApp* winApp, const EngineConfig& config);
 
     /// @brief ウィンドウリサイズ時の処理
     /// @param width 新しい幅

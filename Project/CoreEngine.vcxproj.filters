@@ -61,6 +61,9 @@
     <ClCompile Include="Engine\Src\Collider\SphereCollider.cpp">
       <Filter>Engine\Src\Collider</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp">
+      <Filter>Engine\Src\EngineSystem</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
@@ -286,6 +289,9 @@
     <ClCompile Include="Engine\Src\ObjectCommon\Model\ModelGameObject.cpp">
       <Filter>Engine\Src\ObjectCommon\Model</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.cpp">
+      <Filter>Engine\Src\ObjectCommon\Primitive</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.cpp">
       <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
     </ClCompile>
@@ -385,6 +391,9 @@
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\PixCapture.cpp">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
@@ -398,6 +407,9 @@
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.cpp">
@@ -580,7 +592,6 @@
     <ClCompile Include="Application\Src\Sample\TestGameObject\Plane.cpp">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.h">
@@ -665,6 +676,9 @@
       <Filter>Engine\Src\Collider</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\ComponentManager.h">
+      <Filter>Engine\Src\EngineSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h">
@@ -994,6 +1008,9 @@
     <ClInclude Include="Engine\Src\ObjectCommon\Model\ModelGameObject.h">
       <Filter>Engine\Src\ObjectCommon\Model</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.h">
+      <Filter>Engine\Src\ObjectCommon\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.h">
       <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
     </ClInclude>
@@ -1105,6 +1122,9 @@
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\PixCapture.h">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
@@ -1118,6 +1138,9 @@
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.h">
@@ -1333,7 +1356,6 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".github\copilot-instructions.md">
@@ -1404,6 +1426,9 @@
     </None>
     <None Include="Engine\Src\ObjectCommon\README.md">
       <Filter>Engine\Src\ObjectCommon</Filter>
+    </None>
+    <None Include="Project\packages.config">
+      <Filter>Project</Filter>
     </None>
     <None Include="Scripts\SyncFilters.ps1">
       <Filter>Scripts</Filter>
@@ -1830,6 +1855,9 @@
     <Filter Include="Engine\Src\ObjectCommon\Model">
       <UniqueIdentifier>{B78164A5-8F78-4685-B186-C0A1636DA6D0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\ObjectCommon\Primitive">
+      <UniqueIdentifier>{A08FB0B7-59A3-4DA4-8E46-980488B674D0}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\ObjectCommon\Sprite">
       <UniqueIdentifier>{F5F15F82-DE69-42BA-AA92-63B7A632109F}</UniqueIdentifier>
     </Filter>
@@ -1895,6 +1923,9 @@
     </Filter>
     <Filter Include="Engine\Src\WorldTransform">
       <UniqueIdentifier>{BC60000F-B135-4771-977F-D0BA3FC81CF9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Project">
+      <UniqueIdentifier>{E5F26558-544C-4B86-9115-4DB629BA251B}</UniqueIdentifier>
     </Filter>
     <Filter Include="Scripts">
       <UniqueIdentifier>{4D849175-511B-4C46-A198-0FC0013EE165}</UniqueIdentifier>

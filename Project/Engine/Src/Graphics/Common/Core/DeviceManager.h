@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -14,7 +14,9 @@ namespace CoreEngine
     public:
         /// @brief 初期化
         /// @param winApp ウィンドウアプリケーション
-        void Initialize(WinApp* winApp);
+        /// @param enableDebugLayer デバッグレイヤーを有効にするか
+        /// @param enableGPUBasedValidation GPU-Based Validationを有効にするか
+        void Initialize(WinApp* winApp, bool enableDebugLayer, bool enableGPUBasedValidation);
 
         // アクセッサ
         ID3D12Device* GetDevice() const { return device_.Get(); }
@@ -30,6 +32,10 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Device> device_;
 
         WinApp* winApp_ = nullptr;
+
+        // デバッグ設定（コンフィグから取得）
+        bool enableDebugLayer_ = false;
+        bool enableGPUBasedValidation_ = false;
     };
 }
 

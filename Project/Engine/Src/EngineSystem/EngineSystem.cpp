@@ -10,6 +10,10 @@
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Threading/ThreadPool.h"
 
+#if defined(USE_IMGUI) && defined(USE_PIX)
+#include "Utility/Debug/ImGui/PixCapture.h"
+#endif
+
 // レンダリング関連
 #include "Graphics/Render/Render.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -42,11 +46,12 @@
 
 #include "ObjectCommon/GameObject.h"
 #include "Scene/SceneManager.h"
+#include "EngineSystem/EngineConfig.h"
 
 
 namespace CoreEngine
 {
-    void EngineSystem::Initialize(WinApp* winApp)
+    void EngineSystem::Initialize(WinApp* winApp, const EngineConfig& config)
     {
 
         // COMの初期化
@@ -66,8 +71,17 @@ namespace CoreEngine
         // フレームレート制御（最初に初期化）
         CreateFrameRateController();
 
+#if defined(USE_IMGUI) && defined(USE_PIX)
+        // PIX GPU キャプチャ DLL をロード（D3D12 デバイス作成より前に必要）
+        // DLL がロードされると全 D3D12 API がフックされ ~33% のオーバーヘッドが発生するため、
+        // コンフィグで明示的に有効化された場合のみロードする
+        if (config.enablePixRuntime) {
+            PixCapture::LoadPixRuntime();
+        }
+#endif
+
         // グラフィックス関連
-        CreateGraphicsComponents();
+        CreateGraphicsComponents(config);
 
         // 入力関連
         CreateInputComponents();
@@ -470,11 +484,11 @@ namespace CoreEngine
         RegisterComponent(std::move(frameRate));
     }
 
-    void EngineSystem::CreateGraphicsComponents()
+    void EngineSystem::CreateGraphicsComponents(const EngineConfig& config)
     {
         // DirectXCommonの作成と初期化
         auto directXCommon = std::make_unique<DirectXCommon>();
-        directXCommon->Initialize(winApp_);
+        directXCommon->Initialize(winApp_, config);
         DirectXCommon* dxPtr = directXCommon.get();
         RegisterComponent(std::move(directXCommon));
 
@@ -569,7 +583,7 @@ namespace CoreEngine
         modelManager->Initialize(dxPtr, resourcePtr);
         RegisterComponent(std::move(modelManager));
 
-        // 全レンダラー登録完了後、ModelManager に描画依存コンテキストを設定
+        // 全レンダラー登録完了後、ModelManager に 描画依存コンテキストを設定
         // （Model インスタンス生成時に各 Model へ注入される）
         ModelRenderContext modelCtx;
         modelCtx.dxCommon = dxPtr;

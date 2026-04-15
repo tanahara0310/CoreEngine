@@ -14,10 +14,10 @@ namespace CoreEngine
 {
 class DescriptorManager {
 public:
-    // ディスクリプタヒープの最大サイズ
-    static constexpr UINT kMaxRTVDescriptors = 256;   // スワップチェーン + 任意数オフスクリーン用
-    static constexpr UINT kMaxSRVDescriptors = 65536; // テクスチャやバッファ用（SRV/CBV/UAV共有）
-    static constexpr UINT kMaxDSVDescriptors = 10;   // デプスステンシル用
+    // ディスクリプタヒープのデフォルト最大サイズ
+    static constexpr UINT kDefaultMaxRTVDescriptors = 256;
+    static constexpr UINT kDefaultMaxSRVDescriptors = 65536;
+    static constexpr UINT kDefaultMaxDSVDescriptors = 10;
 
     // 予約済みインデックス（スワップチェーン用）
     static constexpr UINT kReservedSRVStart = 0;
@@ -29,7 +29,13 @@ public:
 
     /// @brief 初期化
     /// @param device D3D12デバイス
-    void Initialize(ID3D12Device* device);
+    /// @param maxSRV SRVディスクリプタ最大数
+    /// @param maxRTV RTVディスクリプタ最大数
+    /// @param maxDSV DSVディスクリプタ最大数
+    void Initialize(ID3D12Device* device,
+        UINT maxSRV = kDefaultMaxSRVDescriptors,
+        UINT maxRTV = kDefaultMaxRTVDescriptors,
+        UINT maxDSV = kDefaultMaxDSVDescriptors);
 
     /// @brief SRVの作成
     /// @param resource リソース
@@ -88,8 +94,11 @@ public:
     UINT GetUsedSRVCount() const { return nextSRVDescriptorIndex_; }
     UINT GetUsedRTVCount() const { return nextRTVDescriptorIndex_; }
     UINT GetUsedDSVCount() const { return nextDSVDescriptorIndex_; }
-    float GetSRVUsageRate() const { return static_cast<float>(nextSRVDescriptorIndex_) / kMaxSRVDescriptors; }
-    float GetDSVUsageRate() const { return static_cast<float>(nextDSVDescriptorIndex_) / kMaxDSVDescriptors; }
+    UINT GetMaxSRVDescriptors() const { return maxSRVDescriptors_; }
+    UINT GetMaxRTVDescriptors() const { return maxRTVDescriptors_; }
+    UINT GetMaxDSVDescriptors() const { return maxDSVDescriptors_; }
+    float GetSRVUsageRate() const { return static_cast<float>(nextSRVDescriptorIndex_) / maxSRVDescriptors_; }
+    float GetDSVUsageRate() const { return static_cast<float>(nextDSVDescriptorIndex_) / maxDSVDescriptors_; }
 
 private:
     /// @brief ディスクリプタヒープの生成
@@ -146,6 +155,11 @@ private:
     ComPtr<ID3D12DescriptorHeap> rtvHeap_;
     ComPtr<ID3D12DescriptorHeap> srvHeap_;
     ComPtr<ID3D12DescriptorHeap> dsvHeap_;
+
+    // ディスクリプタヒープの最大サイズ（コンフィグから取得）
+    UINT maxSRVDescriptors_ = kDefaultMaxSRVDescriptors;
+    UINT maxRTVDescriptors_ = kDefaultMaxRTVDescriptors;
+    UINT maxDSVDescriptors_ = kDefaultMaxDSVDescriptors;
 
     // 次に割り当てるディスクリプタのインデックス
     uint32_t nextSRVDescriptorIndex_ = kUserSRVStart;

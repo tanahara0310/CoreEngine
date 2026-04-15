@@ -56,7 +56,6 @@ namespace CoreEngine
             // 右側のグリッドビュー
             ImGui::BeginChild("RightPanel", ImVec2(0, 0), true, ImGuiWindowFlags_HorizontalScrollbar);
             {
-                currentEntries_ = GetCurrentDirectoryContents();
                 DrawGridLayout(currentEntries_);
             }
             ImGui::EndChild();
@@ -67,8 +66,8 @@ namespace CoreEngine
     void ProjectView::Finalize()
     {
         directoryIconTexture_.Reset();
-        pngIconTexture_.Reset();
         fileIconTexture_.Reset();
+        shaderIconTexture_.Reset();
         pngPreviewCache_.clear();
         pngPreviewInfoCache_.clear();
     }
@@ -131,6 +130,8 @@ namespace CoreEngine
         currentPath_ = path;
         currentEntries_ = GetCurrentDirectoryContents();
         selectedIndex_ = -1;
+        hasSubdirCache_.clear();
+        treeDirCache_.clear();
     }
 
     void ProjectView::NavigateUp()
@@ -308,19 +309,25 @@ namespace CoreEngine
                     displaySize = ImVec2(preview.width, preview.height);
                     hasValidTexture = true;
                 }
-                else if (pngIconLoaded_ && pngIconTexture_) {
-                    // プレビューが取得できない場合はPNGアイコン
-                    texID = (ImTextureID)pngIconGpuHandle_.ptr;
-                    hasValidTexture = true;
-                }
             }
-            else {
-                // その他のファイルアイコン
-                if (fileIconLoaded_ && fileIconTexture_) {
-                    texID = (ImTextureID)fileIconGpuHandle_.ptr;
-                    hasValidTexture = true;
+            else if (extension == ".hlsl" || extension == ".glsl" || extension == ".cso") {
+                    // シェーダーファイルアイコン
+                    if (shaderIconLoaded_ && shaderIconTexture_) {
+                        texID = (ImTextureID)shaderIconGpuHandle_.ptr;
+                        hasValidTexture = true;
+                    }
+                    else if (fileIconLoaded_ && fileIconTexture_) {
+                        texID = (ImTextureID)fileIconGpuHandle_.ptr;
+                        hasValidTexture = true;
+                    }
                 }
-            }
+                else {
+                    // その他のファイルアイコン
+                    if (fileIconLoaded_ && fileIconTexture_) {
+                        texID = (ImTextureID)fileIconGpuHandle_.ptr;
+                        hasValidTexture = true;
+                    }
+                }
         }
         
         if (hasValidTexture && texID) {
@@ -362,7 +369,7 @@ namespace CoreEngine
 
         // 3つのアイコンを並列ロードに投入する。
         std::vector<std::string> iconPaths = {
-            "directoryIcon.png", "pngIcon.png", "fileIcon.png"
+            "directoryIcon.png", "fileIcon.png", "shader.png"
         };
         textureManager.Load(iconPaths);
 
@@ -381,21 +388,6 @@ namespace CoreEngine
             directoryIconLoaded_ = false;
         }
 
-        // PNGアイコンを割り当て
-        try {
-            auto texture = textureManager.Load("pngIcon.png");
-            if (texture.texture) {
-                pngIconTexture_ = texture.texture;
-                pngIconGpuHandle_ = texture.gpuHandle;
-                pngIconLoaded_ = true;
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", "Loaded PNG icon for ProjectView");
-            }
-        }
-        catch (const std::exception& e) {
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to load PNG icon: " + std::string(e.what()));
-            pngIconLoaded_ = false;
-        }
-
         // ファイルアイコンを割り当て
         try {
             auto texture = textureManager.Load("fileIcon.png");
@@ -409,6 +401,21 @@ namespace CoreEngine
         catch (const std::exception& e) {
             Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to load file icon: " + std::string(e.what()));
             fileIconLoaded_ = false;
+        }
+
+        // シェーダーアイコンを割り当て
+        try {
+            auto texture = textureManager.Load("shader.png");
+            if (texture.texture) {
+                shaderIconTexture_ = texture.texture;
+                shaderIconGpuHandle_ = texture.gpuHandle;
+                shaderIconLoaded_ = true;
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", "Loaded shader icon for ProjectView");
+            }
+        }
+        catch (const std::exception& e) {
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::System, "{}", "Failed to load shader icon: " + std::string(e.what()));
+            shaderIconLoaded_ = false;
         }
     }
 
@@ -449,13 +456,23 @@ namespace CoreEngine
             return alpha;
         };
 
-        auto hasSubdirectories = [](const std::filesystem::path& dirPath) {
-            for (const auto& subEntry : std::filesystem::directory_iterator(dirPath)) {
-                if (subEntry.is_directory()) {
-                    return true;
-                }
+        auto hasSubdirectories = [this](const std::filesystem::path& dirPath) {
+            std::string key = dirPath.generic_string();
+            auto it = hasSubdirCache_.find(key);
+            if (it != hasSubdirCache_.end()) {
+                return it->second;
             }
-            return false;
+            bool result = false;
+            try {
+                for (const auto& subEntry : std::filesystem::directory_iterator(dirPath)) {
+                    if (subEntry.is_directory()) {
+                        result = true;
+                        break;
+                    }
+                }
+            } catch (...) {}
+            hasSubdirCache_[key] = result;
+            return result;
         };
 
         auto isUnderPath = [](const std::filesystem::path& child, const std::filesystem::path& parent) {
@@ -543,16 +560,22 @@ namespace CoreEngine
                 return;
             }
 
-            std::vector<std::filesystem::path> directories;
-            for (const auto& entry : std::filesystem::directory_iterator(path)) {
-                if (entry.is_directory()) {
-                    directories.push_back(entry.path());
+            std::string cacheKey = path.generic_string();
+            auto cacheIt = treeDirCache_.find(cacheKey);
+            if (cacheIt == treeDirCache_.end()) {
+                std::vector<std::filesystem::path> dirs;
+                for (const auto& entry : std::filesystem::directory_iterator(path)) {
+                    if (entry.is_directory()) {
+                        dirs.push_back(entry.path());
+                    }
                 }
-            }
-
-            std::sort(directories.begin(), directories.end(), [](const auto& a, const auto& b) {
-                return a.filename().string() < b.filename().string();
+                std::sort(dirs.begin(), dirs.end(), [](const auto& a, const auto& b) {
+                    return a.filename().string() < b.filename().string();
                 });
+                treeDirCache_[cacheKey] = std::move(dirs);
+                cacheIt = treeDirCache_.find(cacheKey);
+            }
+            const std::vector<std::filesystem::path>& directories = cacheIt->second;
 
             bool hasVerticalLineRange = false;
             float verticalLineX = 0.0f;
