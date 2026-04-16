@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -663,8 +663,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\Scene\SceneManager.md" />
     <None Include="Docs\Utility\Utility.md" />
     <None Include="Engine\Src\ObjectCommon\README.md" />
-    <None Include="Project\packages.config" />
-    <None Include="Scripts\SyncFilters.ps1" />
+    <None Include="Build\Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->
     <None Include="Engine\Assets\Shaders\Common\Lighting.hlsli" />
@@ -720,11 +719,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <Import Project="packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets" Condition="Exists('packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" />
   </ImportGroup>
   <Target Name="SyncVCXProjFilters" BeforeTargets="Build">
-    <Exec Command="powershell -ExecutionPolicy Bypass -NoProfile -File &quot;$(ProjectDir)Scripts\SyncFilters.ps1&quot; -ProjectFile &quot;$(MSBuildProjectFullPath)&quot;" />
+    <Exec Command="powershell -ExecutionPolicy Bypass -NoProfile -File &quot;$(ProjectDir)Build\Scripts\SyncFilters.ps1&quot; -ProjectFile &quot;$(MSBuildProjectFullPath)&quot;" />
   </Target>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
-      <ErrorText>���̃v���W�F�N�g�́A���̃R���s���[�^�[��ɂȂ� NuGet �p�b�P�[�W��Q�Ƃ��Ă��܂��B�����̃p�b�P�[�W��_�E�����[�h����ɂ́A[NuGet �p�b�P�[�W�̕���] ��g�p���܂��B�ڍׂɂ��ẮAhttp://go.microsoft.com/fwlink/?LinkID=322105 ��Q�Ƃ��Ă��������B������Ȃ��t�@�C���� {0} �ł��B</ErrorText>
+      <ErrorText>NuGet package restore required. Missing file: {0}. Use [Restore NuGet Packages] or see https://go.microsoft.com/fwlink/?LinkID=322105</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\WinPixEventRuntime.1.0.240308001\build\WinPixEventRuntime.targets'))" />
   </Target>

@@ -158,7 +158,7 @@ namespace CoreEngine
     Logger::Logger()
     {
         // ログのディレクトリを用意
-        std::filesystem::create_directory("logs");
+        std::filesystem::create_directories("Cache/logs");
 
         // 古いログファイルを削除
         CleanupOldLogFiles();
@@ -300,7 +300,7 @@ namespace CoreEngine
         std::string categoryName = CategoryToString(category);
 
         // ビルドタイムスタンプを含むログファイル名を作成
-        std::string logDir = "logs/" + categoryName;
+        std::string logDir = "Cache/logs/" + categoryName;
         std::filesystem::create_directories(logDir);
 
         std::string logFilePath = logDir + "/" + categoryName + "_" + buildTimestamp + ".log";
@@ -382,7 +382,7 @@ namespace CoreEngine
 
     void Logger::CleanupOldLogFiles()
     {
-        if (!std::filesystem::exists("logs")) {
+        if (!std::filesystem::exists("Cache/logs")) {
             return;
         }
 
@@ -392,7 +392,7 @@ namespace CoreEngine
         };
 
         for (const auto& category : categories) {
-            std::string logDir = "logs/" + category;
+            std::string logDir = "Cache/logs/" + category;
             if (!std::filesystem::exists(logDir)) {
                 continue;
             }

@@ -325,7 +325,7 @@ namespace CoreEngine
 
     std::filesystem::path AssetDatabase::GetLibraryPath() const
     {
-        return projectRoot_ / "Library";
+        return projectRoot_ / "Cache";
     }
 
     std::filesystem::path AssetDatabase::GetTextureCachePath() const

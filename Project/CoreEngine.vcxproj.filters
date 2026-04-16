@@ -1427,11 +1427,8 @@
     <None Include="Engine\Src\ObjectCommon\README.md">
       <Filter>Engine\Src\ObjectCommon</Filter>
     </None>
-    <None Include="Project\packages.config">
-      <Filter>Project</Filter>
-    </None>
-    <None Include="Scripts\SyncFilters.ps1">
-      <Filter>Scripts</Filter>
+    <None Include="Build\Scripts\SyncFilters.ps1">
+      <Filter>Build\Scripts</Filter>
     </None>
     <None Include="Engine\Src\Particle\README.md">
       <Filter>Engine\Src\Particle</Filter>
@@ -1617,6 +1614,12 @@
     </Filter>
     <Filter Include="Application\Src\Sample\TestGameObject">
       <UniqueIdentifier>{554C1F16-770E-445F-8F03-2D6704FDBBAE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Build">
+      <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Build\Scripts">
+      <UniqueIdentifier>{4EB8E661-AD4D-4FDB-AE80-36E0F81C78A8}</UniqueIdentifier>
     </Filter>
     <Filter Include="Docs">
       <UniqueIdentifier>{43DD00BA-76AE-43FF-95E2-E05262653932}</UniqueIdentifier>
@@ -1923,12 +1926,6 @@
     </Filter>
     <Filter Include="Engine\Src\WorldTransform">
       <UniqueIdentifier>{BC60000F-B135-4771-977F-D0BA3FC81CF9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Project">
-      <UniqueIdentifier>{E5F26558-544C-4B86-9115-4DB629BA251B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Scripts">
-      <UniqueIdentifier>{4D849175-511B-4C46-A198-0FC0013EE165}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
