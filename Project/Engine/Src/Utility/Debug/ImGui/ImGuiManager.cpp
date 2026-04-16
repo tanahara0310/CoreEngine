@@ -31,6 +31,11 @@ namespace CoreEngine
 
         io.ConfigWindowsMoveFromTitleBarOnly = true; // タイトルバーからのみウィンドウを移動可能にする
 
+        // imgui.ini の保存先を Cache フォルダに変更
+        std::filesystem::create_directories("Cache");
+        static const std::string kIniPath = "Cache/imgui.ini";
+        io.IniFilename = kIniPath.c_str();
+
         ImGui::StyleColorsDark();
         ApplyCustomTheme();
 
