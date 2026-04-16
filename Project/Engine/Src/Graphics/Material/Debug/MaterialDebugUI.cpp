@@ -94,31 +94,36 @@ namespace CoreEngine {
             }
         }
 
-        // ─────────────── IBL ───────────────
-        UI::SectionHeader("IBL");
+        // ─────────────── シェーディングモード ───────────────
+        UI::SectionHeader("シェーディングモード");
 
-        const bool iblAvailable = model->IsIBLAvailable();
-        bool enableIBL = mat->IsIBLEnabled();
-        {
-            UI::Scope::DisabledScope ds(!iblAvailable);
-            if (UI::Widgets::ToggleSwitch("IBL 有効", &enableIBL)) {
-                mat->SetIBLEnabled(enableIBL);
-                changed = true;
-            }
+        static const char* kModeItems[] = {
+            "PBR  (IBL なし)",
+            "PBR + IBL",
+            "Lambert  (従来)",
+            "Half-Lambert  (従来)"
+        };
+
+        int currentMode = static_cast<int>(mat->GetShadingMode());
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::Combo("##ShadingMode", &currentMode, kModeItems, 4)) {
+            mat->SetShadingMode(static_cast<ShadingMode>(currentMode));
+            changed = true;
         }
-        if (!iblAvailable) {
-            UI::SameLine();
-            UI::Hint("(Irradiance/Prefiltered/BRDF LUT 未設定)");
-            if (mat->IsIBLEnabled()) {
-                mat->SetIBLEnabled(false);
-            }
-        }
-        if (enableIBL && iblAvailable) {
-            UI::Scope::IndentScope is;
-            float iblIntensity = mat->GetIBLIntensity();
-            if (UI::SliderFloat("IBL 強度", iblIntensity, 0.0f, 2.0f)) {
-                mat->SetIBLIntensity(iblIntensity);
-                changed = true;
+
+        // IBL 強度スライダーは PBR+IBL 時のみ表示
+        if (static_cast<ShadingMode>(currentMode) == ShadingMode::PBR_IBL) {
+            const bool iblAvailable = model->IsIBLAvailable();
+            if (!iblAvailable) {
+                UI::SameLine();
+                UI::Hint("(Irradiance/Prefiltered/BRDF LUT 未設定)");
+            } else {
+                UI::Scope::IndentScope is;
+                float iblIntensity = mat->GetIBLIntensity();
+                if (UI::SliderFloat("IBL 強度", iblIntensity, 0.0f, 2.0f)) {
+                    mat->SetIBLIntensity(iblIntensity);
+                    changed = true;
+                }
             }
         }
 

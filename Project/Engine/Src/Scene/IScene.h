@@ -23,6 +23,9 @@ public:
     virtual void PrepareRender() {}
     virtual void Draw() = 0;
     virtual void DrawSceneView() { Draw(); }
+    virtual void SetupSceneViewCamera() {}
+    virtual void DrawSceneViewGeometry() {}
+    virtual void RestoreGameViewCamera() {}
     virtual void Finalize() = 0;
 
     virtual ICamera* GetSceneViewCamera() const { return nullptr; }

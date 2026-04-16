@@ -53,6 +53,15 @@ public:
     /// @brief Sceneビュー用描画
     void DrawSceneView();
 
+    /// @brief SceneView 用カメラ・レンダリング状態をセットアップ（GBufferPass 実行前に呼ぶ）
+    void SetupSceneViewCamera();
+
+    /// @brief SceneView 用ジオメトリ（スカイボックス・グリッド・透過）を描画
+    void DrawSceneViewGeometry();
+
+    /// @brief Gameビュー用カメラ・レンダリング状態を復元
+    void RestoreGameViewCamera();
+
     /// @brief 描画前準備（描画キュー構築など）
     void PrepareRender();
 

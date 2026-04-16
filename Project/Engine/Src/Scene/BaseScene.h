@@ -64,6 +64,15 @@ namespace CoreEngine
         /// @brief 現在のゲームオブジェクトマネージャーを取得
         GameObjectManager* GetGameObjectManager() override { return &gameObjectManager_; }
 
+        /// @brief SceneView 用カメラ・レンダリング状態をセットアップ（GBufferPass 実行前に呼ぶ）
+        void SetupSceneViewCamera();
+
+        /// @brief SceneView 用ジオメトリ（スカイボックス・グリッド・透過）を描画
+        void DrawSceneViewGeometry();
+
+        /// @brief Gameビュー用カメラ・レンダリング状態を復元
+        void RestoreGameViewCamera();
+
     protected:
         /// @brief 派生クラスでオーバーライドするシーン固有の初期化処理
         /// @note SetSceneName() と全 CreateObject() をここで行う。
@@ -185,5 +194,6 @@ namespace CoreEngine
 
         std::string gameViewCameraName_ = "Release";
         std::string sceneViewCameraName_ = "Debug";
+        std::string sceneViewSavedCameraName_;
     };
 }

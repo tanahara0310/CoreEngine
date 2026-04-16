@@ -48,9 +48,18 @@ namespace CoreEngine
         void SetDitheringScale(float scale)   { materialData_->ditheringScale = scale; }
         float GetDitheringScale() const       { return materialData_->ditheringScale; }
 
-        // ===== IBL =====
-        void SetIBLEnabled(bool enable)    { materialData_->enableIBL = static_cast<int32_t>(enable); }
-        bool IsIBLEnabled() const          { return materialData_->enableIBL != 0; }
+        // ===== IBL / Shading Mode =====
+        /// @brief シェーディングモードを設定
+        void SetShadingMode(ShadingMode mode) { materialData_->shadingMode = static_cast<int32_t>(mode); }
+        ShadingMode GetShadingMode() const     { return static_cast<ShadingMode>(materialData_->shadingMode); }
+
+        /// @brief IBL 有効/無効（後方互換ラッパー）
+        /// @details true → ShadingMode::PBR_IBL, false → ShadingMode::PBR
+        void SetIBLEnabled(bool enable) {
+            SetShadingMode(enable ? ShadingMode::PBR_IBL : ShadingMode::PBR);
+        }
+        bool IsIBLEnabled() const { return GetShadingMode() == ShadingMode::PBR_IBL; }
+
         void SetIBLIntensity(float intensity) { materialData_->iblIntensity = intensity; }
         float GetIBLIntensity() const      { return materialData_->iblIntensity; }
     };

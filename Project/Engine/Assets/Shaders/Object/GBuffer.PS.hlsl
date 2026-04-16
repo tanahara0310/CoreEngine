@@ -18,9 +18,9 @@ struct Material
     int useAOMap;
     int enableDithering;
     float ditheringScale;
-    int enableIBL;
+    int shadingMode;   ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
     float iblIntensity;
-    float padding2; ///< アライメント用
+    float padding2;
 };
 
 ConstantBuffer<Material> gMaterial : register(b0);
@@ -146,12 +146,17 @@ GBufferOutput main(VertexShaderOutput input)
     roughness = saturate(max(roughness, 0.01f));
     ao        = saturate(ao);
 
-    // worldPosition.a ピクセルフラグ:
+    // worldPosition.a pixelFlag:
     // 0 = 背景（クリア値）
-    // 1 = アンリット（normalRoughness.a=0 のセンチネルで識別）
-    // 2 = PBR + IBL 無効
-    // 3 = PBR + IBL 有効
-    float pixelFlag = (gMaterial.enableIBL != 0) ? 3.0f : 2.0f;
+    // 2 = PBR（IBL 無効）
+    // 3 = PBR + IBL
+    // 4 = Lambert
+    // 5 = Half-Lambert
+    float pixelFlag;
+    if      (gMaterial.shadingMode == 1) pixelFlag = 3.0f; // PBR_IBL
+    else if (gMaterial.shadingMode == 2) pixelFlag = 4.0f; // Lambert
+    else if (gMaterial.shadingMode == 3) pixelFlag = 5.0f; // HalfLambert
+    else                                 pixelFlag = 2.0f; // PBR (default)
 
     output.albedoAO        = float4(albedo, ao);
     output.normalRoughness = float4(encodedNormal, roughness);

@@ -72,6 +72,24 @@ namespace CoreEngine
         }
     }
 
+    void SceneManager::SetupSceneViewCamera() {
+        if (currentScene_) {
+            currentScene_->SetupSceneViewCamera();
+        }
+    }
+
+    void SceneManager::DrawSceneViewGeometry() {
+        if (currentScene_) {
+            currentScene_->DrawSceneViewGeometry();
+        }
+    }
+
+    void SceneManager::RestoreGameViewCamera() {
+        if (currentScene_) {
+            currentScene_->RestoreGameViewCamera();
+        }
+    }
+
     void SceneManager::PrepareRender() {
         if (currentScene_) {
             currentScene_->PrepareRender();

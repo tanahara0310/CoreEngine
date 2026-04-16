@@ -21,6 +21,7 @@
         "roughnessMap": false
     },
     "name": "WalkModel_0",
+    "texture": "white.png",
     "transform": {
         "rotate": [
             0.0,

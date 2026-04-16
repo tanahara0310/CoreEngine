@@ -7,6 +7,10 @@
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Scene/SceneManager.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
+#include "ObjectCommon/Model/ModelGameObject.h"
+#include "ObjectCommon/GameObjectManager.h"
+#include "Graphics/Material/MaterialConstants.h"
+#include <imgui.h>
 
 #include <Psapi.h>
 #include <algorithm>
@@ -33,6 +37,69 @@ namespace CoreEngine
             auto lightManager = engine_->GetComponent<LightManager>();
             if (lightManager) {
                 lightManager->DrawAllImGui();
+            }
+        });
+
+        // Shadingをエンジン専用パネルとして登録
+        RegisterEnginePanel("Shading", [this]() {
+            auto* sceneManager = engine_->GetSceneManager();
+            auto* objManager   = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
+
+            // ─────────────── シーン全体 ───────────────
+            ImGui::SeparatorText("シーン全体に適用");
+
+            static const char* kModeItems[] = {
+                "PBR  (IBL なし)",
+                "PBR + IBL",
+                "Lambert  (従来)",
+                "Half-Lambert  (従来)"
+            };
+            static int sceneWideShadingMode = 0;
+            ImGui::SetNextItemWidth(220.0f);
+            ImGui::Combo("モード##SceneWide", &sceneWideShadingMode, kModeItems, 4);
+
+            ImGui::BeginDisabled(objManager == nullptr);
+            if (ImGui::Button("シーン全体に適用", ImVec2(-1.0f, 0.0f))) {
+                const auto mode = static_cast<ShadingMode>(sceneWideShadingMode);
+                for (auto& obj : objManager->GetAllObjects()) {
+                    auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
+                    if (!modelObj) continue;
+                    auto* model = modelObj->GetModel();
+                    if (!model) continue;
+                    auto* mat = model->GetMaterial();
+                    if (mat) mat->SetShadingMode(mode);
+                }
+            }
+            ImGui::EndDisabled();
+            if (objManager == nullptr) {
+                ImGui::TextDisabled("(シーンが存在しません)");
+            }
+
+            // ─────────────── 現在のモデル一覧 ───────────────
+            ImGui::Spacing();
+            ImGui::SeparatorText("モデル別シェーディングモード");
+
+            if (objManager) {
+                int modelIndex = 0;
+                for (auto& obj : objManager->GetAllObjects()) {
+                    auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
+                    if (!modelObj) continue;
+                    auto* model = modelObj->GetModel();
+                    if (!model) continue;
+                    auto* mat = model->GetMaterial();
+                    if (!mat) continue;
+
+                    ImGui::PushID(modelIndex++);
+                    const char* name = modelObj->GetObjectName();
+                    ImGui::SetNextItemWidth(170.0f);
+                    int mode = static_cast<int>(mat->GetShadingMode());
+                    if (ImGui::Combo(name, &mode, kModeItems, 4)) {
+                        mat->SetShadingMode(static_cast<ShadingMode>(mode));
+                    }
+                    ImGui::PopID();
+                }
+            } else {
+                ImGui::TextDisabled("(シーンが存在しません)");
             }
         });
 

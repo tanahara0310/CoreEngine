@@ -42,8 +42,8 @@ struct Material
     int enableDithering;
     float ditheringScale;
 
-    // ===== IBL =====
-    int enableIBL;
+    // ===== Shading Mode =====
+    int shadingMode;    ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
     float iblIntensity;
     float padding2; ///< アライメント用
 };
@@ -178,35 +178,60 @@ float3 CalculateAllLighting(
     float3 toEye,
     float4 textureColor)
 {
+    const bool useLambert     = (gMaterial.shadingMode == 2);
+    const bool useHalfLambert = (gMaterial.shadingMode == 3);
+    const bool useTraditional = useLambert || useHalfLambert;
+
     float3 totalDiffuse  = float3(0.0f, 0.0f, 0.0f);
     float3 totalSpecular = float3(0.0f, 0.0f, 0.0f);
 
-    // ディレクショナルライト（PBR）
+    // ディレクショナルライト
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {
-        if (gDirectionalLights[i].enabled != 0)
+        if (gDirectionalLights[i].enabled == 0) continue;
+        float3 L = normalize(-gDirectionalLights[i].direction);
+        float shadowFactor = CalculateShadow(
+            input.lightSpacePos, input.normal,
+            gDirectionalLights[i].direction,
+            gShadowMap, gShadowSampler);
+        shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
+
+        if (useTraditional)
+        {
+            float3 diff = useLambert
+                ? CalculateLambertDiffuse(input.normal, L, gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity, albedo, ao)
+                : CalculateHalfLambertDiffuse(input.normal, L, gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity, albedo, ao);
+            totalDiffuse += diff * shadowFactor;
+        }
+        else
         {
             LightingResult result = CalculateDirectionalLightPBR(
-                input.normal,
-                gDirectionalLights[i].direction,
-                gDirectionalLights[i].color.rgb,
-                gDirectionalLights[i].intensity,
+                input.normal, gDirectionalLights[i].direction,
+                gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity,
                 toEye, albedo, metallic, roughness, ao);
-
-            float shadowFactor = CalculateShadow(
-                input.lightSpacePos, input.normal,
-                gDirectionalLights[i].direction,
-                gShadowMap, gShadowSampler);
-            shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
-            totalDiffuse  += result.diffuse * shadowFactor;
+            totalDiffuse  += result.diffuse  * shadowFactor;
             totalSpecular += result.specular;
         }
     }
 
-    // ポイントライト（PBR）
+    // ポイントライト
     for (uint j = 0; j < gLightCounts.pointLightCount; ++j)
     {
-        if (gPointLights[j].enabled != 0)
+        if (gPointLights[j].enabled == 0) continue;
+        if (useTraditional)
+        {
+            float3 tv = gPointLights[j].position - input.worldPosition;
+            float  d  = length(tv);
+            if (d >= gPointLights[j].radius) continue;
+            float3 L = normalize(tv);
+            float atten = 1.0f / (1.0f + gPointLights[j].decay * d * d);
+            atten *= saturate(1.0f - d / gPointLights[j].radius);
+            float3 diff = useLambert
+                ? CalculateLambertDiffuse(input.normal, L, gPointLights[j].color.rgb, gPointLights[j].intensity * atten, albedo, ao)
+                : CalculateHalfLambertDiffuse(input.normal, L, gPointLights[j].color.rgb, gPointLights[j].intensity * atten, albedo, ao);
+            totalDiffuse += diff;
+        }
+        else
         {
             LightingResult result = CalculatePointLightPBR(
                 input.normal,
@@ -219,10 +244,27 @@ float3 CalculateAllLighting(
         }
     }
 
-    // スポットライト（PBR）
+    // スポットライト
     for (uint k = 0; k < gLightCounts.spotLightCount; ++k)
     {
-        if (gSpotLights[k].enabled != 0)
+        if (gSpotLights[k].enabled == 0) continue;
+        if (useTraditional)
+        {
+            float3 tv = gSpotLights[k].position - input.worldPosition;
+            float  d  = length(tv);
+            if (d >= gSpotLights[k].distance) continue;
+            float3 L = normalize(tv);
+            float atten = 1.0f / (1.0f + gSpotLights[k].decay * d * d);
+            atten *= saturate(1.0f - d / gSpotLights[k].distance);
+            float cosTheta = dot(-L, normalize(gSpotLights[k].direction));
+            if (cosTheta < gSpotLights[k].cosAngle) continue;
+            atten *= saturate((cosTheta - gSpotLights[k].cosAngle) / (gSpotLights[k].cosFalloffStart - gSpotLights[k].cosAngle));
+            float3 diff = useLambert
+                ? CalculateLambertDiffuse(input.normal, L, gSpotLights[k].color.rgb, gSpotLights[k].intensity * atten, albedo, ao)
+                : CalculateHalfLambertDiffuse(input.normal, L, gSpotLights[k].color.rgb, gSpotLights[k].intensity * atten, albedo, ao);
+            totalDiffuse += diff;
+        }
+        else
         {
             LightingResult result = CalculateSpotLightPBR(
                 input.normal,
@@ -239,41 +281,49 @@ float3 CalculateAllLighting(
     // エリアライト（PBR: 最近接点計算 + PBR BRDF）
     for (uint l = 0; l < gLightCounts.areaLightCount; ++l)
     {
-        if (gAreaLights[l].enabled != 0)
+        if (gAreaLights[l].enabled == 0) continue;
+        float3 toLight    = gAreaLights[l].position - input.worldPosition;
+        float  distToPlane = dot(toLight, gAreaLights[l].normal);
+        float3 projPoint  = input.worldPosition + gAreaLights[l].normal * distToPlane;
+        float3 offset     = projPoint - gAreaLights[l].position;
+        float  u = dot(offset, gAreaLights[l].right);
+        float  v = dot(offset, gAreaLights[l].up);
+        float  halfW = gAreaLights[l].width  * 0.5f;
+        float  halfH = gAreaLights[l].height * 0.5f;
+
+        float3 closest = gAreaLights[l].position
+                       + gAreaLights[l].right * clamp(u, -halfW, halfW)
+                       + gAreaLights[l].up    * clamp(v, -halfH, halfH);
+
+        float3 toClosest = closest - input.worldPosition;
+        float  dist = length(toClosest);
+        if (dist >= gAreaLights[l].range) continue;
+        float3 L = toClosest / max(dist, 0.001f);
+
+        float distFactor  = 1.0f - saturate(dist / gAreaLights[l].range);
+        float distAtten   = distFactor * distFactor;
+        float outsideU    = max(0.0f, abs(u) - halfW);
+        float outsideV    = max(0.0f, abs(v) - halfH);
+        float outsideDist = sqrt(outsideU * outsideU + outsideV * outsideV);
+        float shapeFactor = 1.0f;
+        if (outsideDist > 0.001f)
         {
-            float3 toLight    = gAreaLights[l].position - input.worldPosition;
-            float  distToPlane = dot(toLight, gAreaLights[l].normal);
-            float3 projPoint  = input.worldPosition + gAreaLights[l].normal * distToPlane;
-            float3 offset     = projPoint - gAreaLights[l].position;
-            float  u = dot(offset, gAreaLights[l].right);
-            float  v = dot(offset, gAreaLights[l].up);
-            float  halfW = gAreaLights[l].width  * 0.5f;
-            float  halfH = gAreaLights[l].height * 0.5f;
+            float falloff = max(halfW, halfH);
+            shapeFactor   = 1.0f - saturate(outsideDist / falloff);
+            shapeFactor   = shapeFactor * shapeFactor * shapeFactor;
+        }
+        float facingFactor = max(0.0f, dot(gAreaLights[l].normal, -L));
+        float finalAtten   = distAtten * shapeFactor * facingFactor;
 
-            float3 closest = gAreaLights[l].position
-                           + gAreaLights[l].right * clamp(u, -halfW, halfW)
-                           + gAreaLights[l].up    * clamp(v, -halfH, halfH);
-
-            float3 toClosest = closest - input.worldPosition;
-            float  dist = length(toClosest);
-            if (dist >= gAreaLights[l].range) continue;
-            float3 L = toClosest / max(dist, 0.001f);
-
-            float distFactor  = 1.0f - saturate(dist / gAreaLights[l].range);
-            float distAtten   = distFactor * distFactor;
-            float outsideU    = max(0.0f, abs(u) - halfW);
-            float outsideV    = max(0.0f, abs(v) - halfH);
-            float outsideDist = sqrt(outsideU * outsideU + outsideV * outsideV);
-            float shapeFactor = 1.0f;
-            if (outsideDist > 0.001f)
-            {
-                float falloff = max(halfW, halfH);
-                shapeFactor   = 1.0f - saturate(outsideDist / falloff);
-                shapeFactor   = shapeFactor * shapeFactor * shapeFactor;
-            }
-            float facingFactor = max(0.0f, dot(gAreaLights[l].normal, -L));
-            float finalAtten   = distAtten * shapeFactor * facingFactor;
-
+        if (useTraditional)
+        {
+            float3 diff = useLambert
+                ? CalculateLambertDiffuse(input.normal, L, gAreaLights[l].color.rgb, gAreaLights[l].intensity * finalAtten, albedo, ao)
+                : CalculateHalfLambertDiffuse(input.normal, L, gAreaLights[l].color.rgb, gAreaLights[l].intensity * finalAtten, albedo, ao);
+            totalDiffuse += diff;
+        }
+        else
+        {
             float3 contrib = CalculatePBRLighting(
                 normalize(input.normal), normalize(toEye), L,
                 gAreaLights[l].color.rgb, gAreaLights[l].intensity * finalAtten,
@@ -301,7 +351,7 @@ float3 ApplyIBL(
     float ao,
     float3 toEye)
 {
-    if (gMaterial.enableIBL == 0)
+    if (gMaterial.shadingMode != 1)
         return float3(0.0f, 0.0f, 0.0f);
 
     float3 iblColor = CalculateFullIBL(

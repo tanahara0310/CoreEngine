@@ -21,7 +21,7 @@ namespace CoreEngine
         materialData_->useAOMap = 0;
         materialData_->enableDithering = 1;
         materialData_->ditheringScale = 1.0f;
-        materialData_->enableIBL = 0;
+        materialData_->shadingMode = static_cast<int32_t>(ShadingMode::PBR);
         materialData_->iblIntensity = 1.0f;
         materialData_->padding2 = 0.0f;
     }

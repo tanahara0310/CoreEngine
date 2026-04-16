@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ObjectCommon/Model/ModelGameObject.h"
+#include "Graphics/Material/MaterialConstants.h"
 
 /// @brief 汎用モデルオブジェクト（glTFなどのモデル読み込み用）
 class ModelObject : public CoreEngine::ModelGameObject {
@@ -36,6 +37,9 @@ public:
 
     /// @brief IBLを有効/無効にする
     void SetIBLEnabled(bool enable);
+
+    /// @brief シェーディングモードを設定
+    void SetShadingMode(CoreEngine::ShadingMode mode);
 
     /// @brief IBL強度を設定
     void SetIBLIntensity(float intensity);

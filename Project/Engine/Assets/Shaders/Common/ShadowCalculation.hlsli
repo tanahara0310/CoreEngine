@@ -38,8 +38,12 @@ float CalculateShadow(float4 lightSpacePos, float3 normal, float3 lightDir, Text
         return 1.0f;
     }
     
-    // バイアスはRasterizerStateで設定されるため、手動計算は不要
-    float currentDepth = projCoords.z;
+    // NdotL ベースのレシーバーバイアス（曲面のシャドウアクネ防止）
+    // ライトが表面に対して浅い角度で当たるほど（cosTheta → 0）バイアスを大きくする。
+    // 球体の真上から光が当たる場合でも白い模様が出ないよう調整済み。
+    float cosTheta = saturate(dot(normalize(normal), normalize(-lightDir)));
+    float bias = max(0.003f * (1.0f - cosTheta), 0.0001f);
+    float currentDepth = projCoords.z - bias;
     
     // PCF (Percentage Closer Filtering)
     float shadow = 0.0f;
