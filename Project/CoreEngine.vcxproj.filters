@@ -430,9 +430,6 @@
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.cpp">
-      <Filter>Engine\Src\Utility\ProcessExecutor</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp">
       <Filter>Engine\Src\Utility\Random</Filter>
     </ClCompile>
@@ -1191,9 +1188,6 @@
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h">
       <Filter>Engine\Src\Utility\FileErrorDialog</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\ProcessExecutor\ProcessExecutor.h">
-      <Filter>Engine\Src\Utility\ProcessExecutor</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h">
       <Filter>Engine\Src\Utility\Random</Filter>
     </ClInclude>
@@ -1938,9 +1932,6 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Utility\ProcessExecutor">
-      <UniqueIdentifier>{6D53D896-A1E0-449E-8CF9-C10E91EB82DD}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Random">
       <UniqueIdentifier>{CE13D7F5-57F4-4CDF-BDA2-D844D244356B}</UniqueIdentifier>

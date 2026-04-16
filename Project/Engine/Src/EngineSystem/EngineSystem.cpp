@@ -382,26 +382,42 @@ namespace CoreEngine
         if (sceneManager_ && render && sceneViewDirty) {
             if (auto* sceneViewTarget = render->GetRenderTarget("SceneView")) {
                 GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::SceneView, cmdList);
-                if (renderManager) renderManager->SetSkipOpaqueMeshInForwardPass(false);
-                sceneViewTarget->Begin(dx->GetCommandList());
-                sceneManager_->DrawSceneView();
-                sceneViewTarget->End(dx->GetCommandList());
 
-                // SceneViewにポストエフェクトチェーンを適用し、結果をSceneView RTに書き戻す
+                // ゲームパスのために previousOutput を保存（SceneView パス後に復元）
+                PassOutput savedOutput = previousOutput;
+
+                // SceneView カメラ・レンダリング状態をセットアップ
+                sceneManager_->SetupSceneViewCamera();
+
+                // 1. GBufferPass: 不透明オブジェクトを G-Buffer に書き込む（Scene カメラ使用）
+                executePass(renderPipeline_->GetPass<GBufferPass>());
+
+                // 2. DeferredLightingPass: G-Buffer を読み取り PBR+IBL ライティングを計算
+                executePass(renderPipeline_->GetPass<DeferredLightingPass>());
+
+                // 3. GeometryPass: スカイボックス・グリッド・透過オブジェクトを重ねて描画
+                if (auto* geometryPass = renderPipeline_->GetPass<GeometryPass>()) {
+                    geometryPass->SetRenderCallback([this]() { sceneManager_->DrawSceneViewGeometry(); });
+                }
+                executePass(renderPipeline_->GetPass<GeometryPass>());
+                // ゲームビュー用コールバックに戻す
+                if (auto* geometryPass = renderPipeline_->GetPass<GeometryPass>()) {
+                    geometryPass->SetRenderCallback(renderCallback);
+                }
+
+                // 4. ポストエフェクトチェーンを適用し、結果を SceneView RT にコピー
                 if (auto* postEffect = GetComponent<PostEffectManager>()) {
-                    auto resultHandle = postEffect->ExecuteEffectChain(sceneViewTarget->GetSRVHandle());
-                    // ポストエフェクト結果をSceneView RTにコピーバック
-                    sceneViewTarget->Begin(dx->GetCommandList());
+                    auto resultHandle = postEffect->ExecuteEffectChain(previousOutput.srvHandle);
+                    sceneViewTarget->Begin(cmdList);
                     postEffect->ExecuteEffect("FullScreen", resultHandle);
-                    sceneViewTarget->End(dx->GetCommandList());
+                    sceneViewTarget->End(cmdList);
                 }
 
-                // ゲームビュー用に復元
-                if (renderManager) {
-                    const bool deferredEnabled = renderPipeline_->GetPass<DeferredLightingPass>()
-                        && renderPipeline_->GetPass<DeferredLightingPass>()->IsEnabled();
-                    renderManager->SetSkipOpaqueMeshInForwardPass(deferredEnabled);
-                }
+                // SceneView カメラ・レンダリング状態を復元
+                sceneManager_->RestoreGameViewCamera();
+
+                // ゲームパス用に previousOutput を復元
+                previousOutput = savedOutput;
             }
         }
 #endif // USE_IMGUI

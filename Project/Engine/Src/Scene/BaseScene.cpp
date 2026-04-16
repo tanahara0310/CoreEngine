@@ -126,19 +126,52 @@ namespace CoreEngine
 
     void BaseScene::DrawSceneView()
     {
+        SetupSceneViewCamera();
+        DrawSceneViewGeometry();
+        RestoreGameViewCamera();
+    }
+
+    void BaseScene::SetupSceneViewCamera()
+    {
         if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
             renderManager->SetActiveTransformSlot(TransformBufferSlot::Scene);
             renderManager->SetDebugLineRenderingEnabled(true);
         }
-        // SceneView 描画中は Scene スロットを使用し、GBufferPass(Game スロット)と
-        // 同一バッファへの書き込みを防ぐ
         Model::SetCurrentRenderSlot(TransformBufferSlot::Scene);
+
+        if (cameraManager_) {
+            sceneViewSavedCameraName_ = cameraManager_->GetActiveCameraName(CameraType::Camera3D);
+            const std::string sceneViewCam = ResolveSceneViewCameraName();
+            if (!sceneViewCam.empty() && sceneViewCam != sceneViewSavedCameraName_) {
+                cameraManager_->SetActiveCamera(sceneViewCam, CameraType::Camera3D);
+            }
+        }
+    }
+
+    void BaseScene::DrawSceneViewGeometry()
+    {
+        auto* renderManager = engine_->GetComponent<RenderManager>();
+        if (!renderManager) {
+            return;
+        }
 #ifdef USE_IMGUI
         DrawGameCameraFrustumDebug();
 #endif
-        DrawWithCamera(ResolveSceneViewCameraName(), false);
-        // SceneView 終了後は Game スロットに戻す（続く GBufferPass が正しいバッファを使うため）
+        renderManager->DrawGeometryPass();
+    }
+
+    void BaseScene::RestoreGameViewCamera()
+    {
+        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
+            renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
+            renderManager->SetDebugLineRenderingEnabled(false);
+        }
         Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
+
+        if (cameraManager_ && !sceneViewSavedCameraName_.empty()) {
+            cameraManager_->SetActiveCamera(sceneViewSavedCameraName_, CameraType::Camera3D);
+            sceneViewSavedCameraName_ = {};
+        }
     }
 
     ICamera* BaseScene::GetSceneViewCamera() const

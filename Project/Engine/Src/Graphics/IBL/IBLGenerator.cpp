@@ -196,7 +196,7 @@ namespace CoreEngine
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
+        HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
             &heapProps,
             D3D12_HEAP_FLAG_NONE,
             &desc,
@@ -204,7 +204,12 @@ namespace CoreEngine
             nullptr,
             IID_PPV_ARGS(&resource));
 
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("CreateUAVCubemap failed: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
         return resource;
     }
 
@@ -227,7 +232,7 @@ namespace CoreEngine
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
+        HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
             &heapProps,
             D3D12_HEAP_FLAG_NONE,
             &desc,
@@ -235,7 +240,12 @@ namespace CoreEngine
             nullptr,
             IID_PPV_ARGS(&resource));
 
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("CreateUAVTexture failed: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
         return resource;
     }
 
@@ -249,8 +259,13 @@ namespace CoreEngine
         desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> heap;
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
-        assert(SUCCEEDED(hr));
+        HRESULT hr = dxCommon_->GetDevice()->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("CreateDescriptorHeap failed: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
         return heap;
     }
 
@@ -261,9 +276,19 @@ namespace CoreEngine
 
         // UAVテクスチャ作成（RG16F）
         auto brdfLUT = CreateUAVTexture(size, size, DXGI_FORMAT_R16G16_FLOAT);
+        if (!brdfLUT)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "GenerateBRDFLUT: Failed to create UAV texture (device may be lost)");
+            return nullptr;
+        }
 
         // ディスクリプタヒープ作成
         auto uavHeap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1);
+        if (!uavHeap)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "GenerateBRDFLUT: Failed to create descriptor heap (device may be lost)");
+            return nullptr;
+        }
 
         // UAVビュー作成
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
@@ -304,7 +329,12 @@ namespace CoreEngine
 
         // コマンドリストをClose
         HRESULT hr = commandList->Close();
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GenerateBRDFLUT: Failed to close command list: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
 
         // コマンドを実行
         ID3D12CommandList* commandLists[] = { commandList };
@@ -313,11 +343,30 @@ namespace CoreEngine
         // GPU完了を待機
         dxCommon_->WaitForPreviousFrame();
 
+        // デバイス削除チェック（GPU実行中にTDR等で削除された場合を検出）
+        HRESULT removedReason = dxCommon_->GetDevice()->GetDeviceRemovedReason();
+        if (removedReason != S_OK)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GenerateBRDFLUT: Device removed after GPU execution. Reason: 0x{:08X}", static_cast<unsigned int>(removedReason)));
+            return nullptr;
+        }
+
         // コマンドリストをリセット（他のシステムが使用できるように）
         hr = dxCommon_->GetCommandAllocator()->Reset();
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GenerateBRDFLUT: Failed to reset command allocator: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
         hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GenerateBRDFLUT: Failed to reset command list: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
 
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "BRDF LUT generated successfully");
 
@@ -509,14 +558,35 @@ namespace CoreEngine
             return nullptr;
         }
 
+        // 環境マップがキューブマップ（6面）であることを検証
+        D3D12_RESOURCE_DESC envDesc = environmentMap->GetDesc();
+        if (envDesc.DepthOrArraySize < 6)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GenerateIrradianceMap: Environment map is not a cubemap (DepthOrArraySize={}, expected 6). "
+                    "HDR textures must be converted to cubemap DDS before IBL generation.",
+                    envDesc.DepthOrArraySize));
+            return nullptr;
+        }
+
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
             std::format("Generating Irradiance Map ({}x{})...", size, size));
 
         // UAVキューブマップ作成（RGBA16F）
         auto irradianceMap = CreateUAVCubemap(size, DXGI_FORMAT_R16G16B16A16_FLOAT);
+        if (!irradianceMap)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "GenerateIrradianceMap: Failed to create UAV cubemap (device may be lost)");
+            return nullptr;
+        }
 
         // ディスクリプタヒープ作成（SRV + UAV）
         auto heap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 2);
+        if (!heap)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "GenerateIrradianceMap: Failed to create descriptor heap (device may be lost)");
+            return nullptr;
+        }
 
         auto device = dxCommon_->GetDevice();
         uint32_t descriptorSize = device->GetDescriptorHandleIncrementSize(
@@ -583,7 +653,12 @@ namespace CoreEngine
 
         // コマンドリストをClose
         HRESULT hr = commandList->Close();
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GenerateIrradianceMap: Failed to close command list: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
 
         // コマンドを実行
         ID3D12CommandList* commandLists[] = { commandList };
@@ -592,11 +667,30 @@ namespace CoreEngine
         // GPU完了を待機
         dxCommon_->WaitForPreviousFrame();
 
+        // デバイス削除チェック（GPU実行中にTDR等で削除された場合を検出）
+        HRESULT removedReason = dxCommon_->GetDevice()->GetDeviceRemovedReason();
+        if (removedReason != S_OK)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GenerateIrradianceMap: Device removed after GPU execution. Reason: 0x{:08X}", static_cast<unsigned int>(removedReason)));
+            return nullptr;
+        }
+
         // コマンドリストをリセット（他のシステムが使用できるように）
         hr = dxCommon_->GetCommandAllocator()->Reset();
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GenerateIrradianceMap: Failed to reset command allocator: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
         hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GenerateIrradianceMap: Failed to reset command list: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
 
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Irradiance Map generated successfully");
 
@@ -707,7 +801,7 @@ namespace CoreEngine
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
+        HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
             &heapProps,
             D3D12_HEAP_FLAG_NONE,
             &desc,
@@ -715,7 +809,12 @@ namespace CoreEngine
             nullptr,
             IID_PPV_ARGS(&resource));
 
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("CreateUAVCubemapWithMips failed: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
         return resource;
     }
 
@@ -726,6 +825,17 @@ namespace CoreEngine
         if (!environmentMap)
         {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Invalid environment map");
+            return nullptr;
+        }
+
+        // 環境マップがキューブマップ（6面）であることを検証
+        D3D12_RESOURCE_DESC envDesc = environmentMap->GetDesc();
+        if (envDesc.DepthOrArraySize < 6)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GeneratePrefilteredEnvironmentMap: Environment map is not a cubemap (DepthOrArraySize={}, expected 6). "
+                    "HDR textures must be converted to cubemap DDS before IBL generation.",
+                    envDesc.DepthOrArraySize));
             return nullptr;
         }
 
@@ -740,12 +850,22 @@ namespace CoreEngine
         // mip4: 8x8     (roughness=1.0)
         const uint32_t mipLevels = 5;
         auto prefilteredMap = CreateUAVCubemapWithMips(size, mipLevels, DXGI_FORMAT_R16G16B16A16_FLOAT);
+        if (!prefilteredMap)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "GeneratePrefilteredEnvironmentMap: Failed to create UAV cubemap (device may be lost)");
+            return nullptr;
+        }
 
         auto device = dxCommon_->GetDevice();
         auto commandList = dxCommon_->GetCommandList();
 
         // ディスクリプタヒープ作成（SRV + UAV x 5ミップレベル）
         auto heap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 6);
+        if (!heap)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "GeneratePrefilteredEnvironmentMap: Failed to create descriptor heap (device may be lost)");
+            return nullptr;
+        }
 
         uint32_t descriptorSize = device->GetDescriptorHandleIncrementSize(
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -830,7 +950,12 @@ namespace CoreEngine
 
         // コマンドリストをClose
         HRESULT hr = commandList->Close();
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GeneratePrefilteredEnvironmentMap: Failed to close command list: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
 
         // コマンドを実行
         ID3D12CommandList* commandLists[] = { commandList };
@@ -839,11 +964,30 @@ namespace CoreEngine
         // GPU完了を待機
         dxCommon_->WaitForPreviousFrame();
 
+        // デバイス削除チェック（GPU実行中にTDR等で削除された場合を検出）
+        HRESULT removedReason = dxCommon_->GetDevice()->GetDeviceRemovedReason();
+        if (removedReason != S_OK)
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GeneratePrefilteredEnvironmentMap: Device removed after GPU execution. Reason: 0x{:08X}", static_cast<unsigned int>(removedReason)));
+            return nullptr;
+        }
+
         // コマンドリストをリセット
         hr = dxCommon_->GetCommandAllocator()->Reset();
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GeneratePrefilteredEnvironmentMap: Failed to reset command allocator: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
         hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
-        assert(SUCCEEDED(hr));
+        if (FAILED(hr))
+        {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("GeneratePrefilteredEnvironmentMap: Failed to reset command list: 0x{:08X}", static_cast<unsigned int>(hr)));
+            return nullptr;
+        }
 
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Prefiltered Environment Map generated successfully");
 

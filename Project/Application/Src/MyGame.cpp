@@ -28,17 +28,19 @@ void MyGame::Initialize()
     sceneManager_->SetInitialScene("TestScene");
 
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
+#ifdef USE_IMGUI
+    // GameDebugUIにSceneManagerを設定
+    auto gameDebugUI = GetEngineSystem()->GetGameDebugUI();
+    if (gameDebugUI) {
+        gameDebugUI->SetSceneManager(sceneManager_.get());
+    }
+#endif
+
 #ifdef _DEBUG
     auto console = GetEngineSystem()->GetConsole();
     if (console) {
         console->LogInfo("MyGame: ゲーム初期化が完了しました");
         console->LogInfo("MyGame: 初期シーン 'AssignmentScene' を読み込みました");
-    }
-
-    // GameDebugUIにSceneManagerを設定
-    auto gameDebugUI = GetEngineSystem()->GetGameDebugUI();
-    if (gameDebugUI) {
-        gameDebugUI->SetSceneManager(sceneManager_.get());
     }
 #endif
 }
@@ -68,7 +70,7 @@ void MyGame::Update()
     // ──────────────────────────────────────────────────────────
     // デバッグUIからのシーン切り替えリクエストを処理
     // ──────────────────────────────────────────────────────────
-#ifdef _DEBUG
+#ifdef USE_IMGUI
     auto gameDebugUI = GetEngineSystem()->GetGameDebugUI();
     if (gameDebugUI) {
         auto sceneManagerTab = gameDebugUI->GetSceneManagerTab();
@@ -77,10 +79,12 @@ void MyGame::Update()
             if (sceneManager_ && sceneManager_->HasScene(requestedScene)) {
                 sceneManager_->ChangeScene(requestedScene);
 
+#ifdef _DEBUG
                 auto console = GetEngineSystem()->GetConsole();
                 if (console) {
                     console->LogInfo("シーン切り替え: " + requestedScene);
                 }
+#endif
             }
             sceneManagerTab->ResetChangeRequest();
         }

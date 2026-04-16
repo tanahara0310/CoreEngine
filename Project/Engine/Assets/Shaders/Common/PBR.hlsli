@@ -596,4 +596,75 @@ float3 CalculateFullIBL(
     return (diffuseIBL + specularIBL) * ao;
 }
 
+// ===================================================================
+// ハーフランバートアンビエント計算（IBL非使用時のフォールバック）
+// ===================================================================
+/// @brief ハーフランバートによるアンビエントライティングを計算
+/// @details IBL が使用できない環境で、ディレクショナルライトを利用した
+///          ソフトな環境光を提供する。NdotL を [0,1] ではなく [0.5,1] に
+///          マッピングすることで裏面にも最低限の明るさを与える。
+/// @param N 法線ベクトル（正規化済み）
+/// @param L ライトへ向かう方向ベクトル（normalize(-lightDirection)）
+/// @param lightColor ライトの色
+/// @param lightIntensity ライトの強度
+/// @param albedo アルベド（基本色）
+/// @param metallic 金属性 (0.0-1.0)
+/// @param ao 環境遮蔽 (0.0-1.0)
+/// @return ハーフランバートアンビエント色
+float3 CalculateHalfLambertAmbient(
+    float3 N,
+    float3 L,
+    float3 lightColor,
+    float lightIntensity,
+    float3 albedo,
+    float metallic,
+    float ao)
+{
+    // ハーフランバート: NdotL を [−1,1] → [0.5,1] にリマップ
+    float halfLambert = dot(N, L) * 0.5f + 0.5f;
+    // 金属は拡散反射しない
+    float3 diffuse = albedo * (1.0f - metallic);
+    return diffuse * lightColor * lightIntensity * halfLambert * ao;
+}
+
+// ===================================================================
+// 従来シェーディング: ランバート直接光
+// ===================================================================
+/// @brief 従来のランバート拡散反射（スペキュラなし）
+/// @param N 法線ベクトル（正規化済み）
+/// @param L ライトへ向かう方向（normalize(-lightDirection)）
+/// @param lightColor ライトの色
+/// @param lightIntensity ライトの強度
+/// @param albedo アルベド
+/// @param ao 環境遮蔽
+/// @return ランバート拡散反射色
+float3 CalculateLambertDiffuse(
+    float3 N, float3 L,
+    float3 lightColor, float lightIntensity,
+    float3 albedo, float ao)
+{
+    float lambert = max(dot(N, L), 0.0f);
+    return albedo * lightColor * lightIntensity * lambert * ao;
+}
+
+// ===================================================================
+// 従来シェーディング: ハーフランバート直接光
+// ===================================================================
+/// @brief 従来のハーフランバート拡散反射（スペキュラなし）
+/// @param N 法線ベクトル（正規化済み）
+/// @param L ライトへ向かう方向（normalize(-lightDirection)）
+/// @param lightColor ライトの色
+/// @param lightIntensity ライトの強度
+/// @param albedo アルベド
+/// @param ao 環境遮蔽
+/// @return ハーフランバート拡散反射色
+float3 CalculateHalfLambertDiffuse(
+    float3 N, float3 L,
+    float3 lightColor, float lightIntensity,
+    float3 albedo, float ao)
+{
+    float halfLambert = dot(N, L) * 0.5f + 0.5f;
+    return albedo * lightColor * lightIntensity * halfLambert * ao;
+}
+
 #endif // PBR_HLSLI

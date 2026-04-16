@@ -43,6 +43,10 @@ void ModelObject::SetIBLEnabled(bool enable) {
     if (auto* mat = GetMaterial()) mat->SetIBLEnabled(enable);
 }
 
+void ModelObject::SetShadingMode(CoreEngine::ShadingMode mode) {
+    if (auto* mat = GetMaterial()) mat->SetShadingMode(mode);
+}
+
 void ModelObject::SetIBLIntensity(float intensity) {
     if (auto* mat = GetMaterial()) mat->SetIBLIntensity(intensity);
 }

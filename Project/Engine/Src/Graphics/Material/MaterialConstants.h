@@ -7,6 +7,15 @@
 
 namespace CoreEngine
 {
+    /// @brief マテリアルのシェーディングモード
+    enum class ShadingMode : int32_t
+    {
+        PBR = 0,  ///< PBR ライティング（IBL なし、ハーフランバートアンビエント代替）
+        PBR_IBL = 1,  ///< PBR + IBL ライティング
+        Lambert = 2,  ///< 従来のランバートシェーディング（拡散反射のみ、スペキュラなし）
+        HalfLambert = 3,  ///< 従来のハーフランバートシェーディング（拡散反射のみ、スペキュラなし）
+    };
+
     /// @brief GPU定数バッファに送信するマテリアルパラメータ（PBR専用）
     /// @note シェーダーとのメモリレイアウトを一致させる必要があります
     struct MaterialConstants {
@@ -25,11 +34,11 @@ namespace CoreEngine
         int32_t useRoughnessMap;    ///< ラフネスマップ使用フラグ
         int32_t useAOMap;           ///< AOマップ使用フラグ
         int32_t enableDithering;    ///< ディザリング有効フラグ (透明・葉など)
-        
-        // ===== IBL Parameters =====
+
+        // ===== Shading Mode =====
         float ditheringScale;       ///< ディザリングスケール
-        int32_t enableIBL;          ///< IBL有効フラグ
-        float iblIntensity;         ///< IBL強度 (デフォルト: 1.0)
+        int32_t shadingMode;        ///< シェーディングモード（ShadingMode 列挙型）
+        float iblIntensity;         ///< IBL強度 (ShadingMode::PBR_IBL 時に使用, デフォルト: 1.0)
         float padding2;             ///< 16バイトアライメント用
     };
 
