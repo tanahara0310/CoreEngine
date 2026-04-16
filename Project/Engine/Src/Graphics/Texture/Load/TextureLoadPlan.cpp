@@ -30,6 +30,22 @@ namespace CoreEngine
 
         // HDR入力の場合はCubemapDDSキャッシュ利用を優先する。
         if (isHDR) {
+            // 優先度1:HDRファイルと同じディレクトリにある事前生成済みDDSを確認
+            // （排出ビルドでデプロイする場合に対応）
+            const std::string suffix = pathResolver.GetCubemapSuffix();
+            std::filesystem::path hdrFsPath(plan.resolvedPath);
+            std::string adjacentDDSPath = (hdrFsPath.parent_path() / (hdrFsPath.stem().string() + suffix)).string();
+            const std::wstring adjacentDDSPathW = Logger::GetInstance().ConvertString(adjacentDDSPath);
+
+            if (std::filesystem::exists(adjacentDDSPathW)) {
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
+                    std::format("Loading from pre-generated cubemap DDS (adjacent to HDR): {}", adjacentDDSPath));
+                plan.resolvedPath = adjacentDDSPath;
+                plan.isDDS = true;
+                return plan;
+            }
+
+            // 優先度2: GUIDベースのキャッシュを確認
             const std::string cubemapDDSPath = pathResolver.GetCubemapDDSPath(plan.resolvedPath);
             const std::wstring cubemapDDSPathW = Logger::GetInstance().ConvertString(cubemapDDSPath);
 

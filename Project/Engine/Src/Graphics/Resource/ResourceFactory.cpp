@@ -1,6 +1,10 @@
-﻿#include "ResourceFactory.h"
+#include "ResourceFactory.h"
 #include <cassert>
+#include <format>
 #include <stdexcept>
+#include <dxgi.h>
+
+#include "Utility/Logger/Logger.h"
 
 
 namespace CoreEngine
@@ -38,7 +42,17 @@ Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateBufferResource(Mic
         IID_PPV_ARGS(&bufferResource));
 
     if (FAILED(hr)) {
-        throw std::runtime_error("Failed to create BufferResource");
+        std::string errorMsg = std::format(
+            "Failed to create BufferResource (size={}, HRESULT=0x{:08X})",
+            sizeInBytes, static_cast<unsigned int>(hr));
+
+        if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET) {
+            HRESULT removedReason = device->GetDeviceRemovedReason();
+            errorMsg += std::format(" DeviceRemovedReason=0x{:08X}", static_cast<unsigned int>(removedReason));
+        }
+
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
+        throw std::runtime_error(errorMsg);
     }
 
     return bufferResource;
