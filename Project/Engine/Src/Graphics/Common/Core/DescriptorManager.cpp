@@ -42,7 +42,10 @@ void DescriptorManager::CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_R
     D3D12_GPU_DESCRIPTOR_HANDLE& outGpuDesc,
     const std::string& debugName)
 {
-    assert(resource != nullptr && "Resource must not be null");
+    // resource == nullptr は TLAS SRV (RAYTRACING_ACCELERATION_STRUCTURE) で正当
+    assert((resource != nullptr
+        || desc.ViewDimension == D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE)
+        && "Resource must not be null (except for Raytracing Acceleration Structure SRV)");
 
     // 境界チェック
     CheckDescriptorBounds(nextSRVDescriptorIndex_, maxSRVDescriptors_, "SRV");

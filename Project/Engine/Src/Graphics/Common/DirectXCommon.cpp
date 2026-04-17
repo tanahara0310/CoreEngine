@@ -56,6 +56,17 @@ namespace CoreEngine
             deviceManager_->GetDevice(),
             descriptorManager_.get());
 
+        // 加速構造マネージャーの初期化（DXR 非対応の場合は内部でスキップ）
+        accelerationStructureManager_->Initialize(
+            deviceManager_->GetDevice(),
+            descriptorManager_.get());
+
+        // レイトレーシングシャドウマネージャーの初期化
+        if (accelerationStructureManager_->IsSupported()) {
+            rtShadowManager_->Initialize(this, descriptorManager_.get(),
+                accelerationStructureManager_.get());
+        }
+
         // ウィンドウリサイズ時のコールバックを設定
         winApp_->SetResizeCallback([this](int32_t width, int32_t height) {
             OnWindowResize(width, height);

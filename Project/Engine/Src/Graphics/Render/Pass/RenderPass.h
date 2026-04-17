@@ -11,16 +11,21 @@ namespace CoreEngine
     class RenderTargetManager;
     class GBufferManager;
     class ShadowMapManager;
+    class AccelerationStructureManager;
+    class RayTracingShadowManager;
 
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
-        DirectXCommon*      dxCommon            = nullptr;
-        RenderManager*      renderManager       = nullptr;
-        PostEffectManager*  postEffectManager   = nullptr;
-        LightManager*       lightManager        = nullptr;
-        ShadowMapManager*   shadowMapManager    = nullptr;  ///< シャドウマップ管理（LVP記列・ SRV 取得用）
+        DirectXCommon* dxCommon = nullptr;
+        RenderManager* renderManager = nullptr;
+        PostEffectManager* postEffectManager = nullptr;
+        LightManager* lightManager = nullptr;
+        ShadowMapManager* shadowMapManager = nullptr;  ///< シャドウマップ管理（LVP記列・ SRV 取得用）
         RenderTargetManager* renderTargetManager = nullptr;
-        GBufferManager*     gBufferManager      = nullptr;  ///< G-Buffer管理（Deferred/Hybrid移行基盤）
+        GBufferManager* gBufferManager = nullptr;  ///< G-Buffer管理（Deferred）
+        AccelerationStructureManager* accelerationStructureManager = nullptr; ///< DXR 加速構造管理
+        RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
+        uint32_t currentRTShadowViewId = 1; ///< 現在の RT シャドウビュー (0=SceneView, 1=GameView)
     };
 
     /// @brief パス間のデータ受け渡し用構造体
