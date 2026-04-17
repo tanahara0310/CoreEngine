@@ -10,6 +10,7 @@
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #include <cassert>
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/IBL/IBLSystem.h"
 
 using namespace CoreEngine;
 
@@ -191,6 +192,9 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
     auto* skyBoxRenderer = renderManager->GetRenderer(RenderPassType::SkyBox);
     if (!skyBoxRenderer) return;
 
+    // テクスチャが未設定の場合は描画しない
+    if (texture_.gpuHandle.ptr == 0) return;
+
     // 頂点バッファの設定
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
     commandList->IASetIndexBuffer(&indexBufferView_);
@@ -241,13 +245,21 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
 
 #ifdef _DEBUG
 int SkyBoxObject::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
-    if (maxTabs < 1) return 0;
+    if (maxTabs < 2) return 0;
     outTabs[0] = { "object_data.png", "トランスフォーム", {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
-    return 1;
+    outTabs[1] = { "imagePlane.png",  "テクスチャ",       {0.60f,0.40f,0.80f,1.0f}, {0.60f,0.40f,0.80f,0.25f} };
+    return 2;
 }
 
 bool SkyBoxObject::DrawInspectorTabContent(int tabIndex) {
-    if (tabIndex != 0) return false;
+    switch (tabIndex) {
+    case 0: return DrawTransformSection();
+    case 1: return DrawTextureSection();
+    default: return false;
+    }
+}
+
+bool SkyBoxObject::DrawTransformSection() {
     bool changed = false;
 
     UI::SectionHeader("回転");
@@ -269,6 +281,88 @@ bool SkyBoxObject::DrawInspectorTabContent(int tabIndex) {
         transform_.scale  = { 1.0f, 1.0f, 1.0f };
         transform_.rotate = { 0.0f, 0.0f, 0.0f };
         changed = true;
+    }
+
+    return changed;
+}
+
+bool SkyBoxObject::DrawTextureSection() {
+    bool changed = false;
+
+    UI::SectionHeader("HDRテクスチャ");
+    const bool hasTexture = texture_.gpuHandle.ptr != 0;
+
+    // ドロップターゲットエリア
+    {
+        const bool isDragHovering = ImGui::IsMouseDragging(ImGuiMouseButton_Left);
+        ImVec4 borderCol = isDragHovering
+            ? ImVec4(0.60f, 0.40f, 0.80f, 0.8f)
+            : ImVec4(0.30f, 0.30f, 0.30f, 1.0f);
+
+        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.12f, 0.12f, 0.16f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.18f, 0.24f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Border,        borderCol);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,   4.0f);
+
+        const float areaW = ImGui::GetContentRegionAvail().x;
+        constexpr float kAreaH = 40.0f;
+        const char* btnLabel = (hasTexture && !textureName_.empty()) ? textureName_.c_str() : ".hdr ファイルをドロップ";
+        ImGui::Button(btnLabel, ImVec2(areaW, kAreaH));
+
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(3);
+
+        // ドロップターゲット: HDRファイルのみ受け付ける
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE")) {
+                const char* droppedFilename = static_cast<const char*>(payload->Data);
+                std::string filename = droppedFilename;
+                std::string ext = filename.size() >= 4 ? filename.substr(filename.size() - 4) : "";
+                for (auto& c : ext) c = static_cast<char>(::tolower(c));
+
+                if (ext == ".hdr") {
+                    texture_ = CoreEngine::TextureManager::GetInstance().Load(filename);
+                    textureName_ = filename;
+                    dropWarning_.clear();
+                    changed = true;
+
+                    // IBLシステムを新しい環境マップで再セットアップし、シーン内モデルに反映
+                    auto engine = GetEngineSystem();
+                    if (auto* iblSystem = engine->GetComponent<CoreEngine::IBLSystem>()) {
+                        CoreEngine::IBLSystem::SetupParams iblParams;
+                        iblParams.environmentMap = texture_.texture.Get();
+                        iblParams.environmentMapSRV = texture_.gpuHandle;
+                        iblParams.environmentKey = filename;
+                        iblParams.irradianceSize = 128;
+                        iblParams.prefilteredSize = 256;
+                        iblParams.brdfLUTSize = 512;
+                        iblParams.forceRegenerate = true;
+                        iblSystem->Setup(iblParams);
+                    }
+                } else {
+                    dropWarning_ = "HDRファイル (.hdr) のみ使用できます: " + filename;
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+    }
+
+    // 非HDRファイルがドロップされた場合の警告表示
+    if (!dropWarning_.empty()) {
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", dropWarning_.c_str());
+    }
+
+    // テクスチャ解除ボタン
+    if (hasTexture) {
+        ImGui::Spacing();
+        if (ImGui::Button("テクスチャ解除##skybox", ImVec2(-FLT_MIN, 0.0f))) {
+            texture_ = {};
+            textureName_.clear();
+            dropWarning_.clear();
+            changed = true;
+        }
     }
 
     return changed;
