@@ -259,7 +259,7 @@ namespace CoreEngine
             if (!entry.isDirectory) {
                 std::string ext = entry.path.extension().string();
                 for (auto& c : ext) c = static_cast<char>(::tolower(c));
-                if (ext == ".png" || ext == ".jpg" || ext == ".jpeg") {
+                if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".hdr") {
                     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
                         std::string filename = entry.path.filename().string();
                         ImGui::SetDragDropPayload("TEXTURE_FILE", filename.c_str(), filename.size() + 1);

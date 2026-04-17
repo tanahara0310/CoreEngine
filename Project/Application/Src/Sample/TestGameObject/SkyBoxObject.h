@@ -7,6 +7,7 @@
 #include <wrl/client.h>
 #include <d3d12.h>
 #include <memory>
+#include <string>
 
 namespace CoreEngine {
     class SkyBoxRenderer;
@@ -37,6 +38,12 @@ public:
 
     /// @brief 指定タブのコンテンツを描画する
     bool DrawInspectorTabContent(int tabIndex) override;
+
+    /// @brief トランスフォームタブ描画
+    bool DrawTransformSection();
+
+    /// @brief テクスチャタブ描画
+    bool DrawTextureSection();
 #endif
 
     const char* GetObjectName() const override { return "SkyBox"; }
@@ -79,5 +86,13 @@ private:
 
     static constexpr UINT kVertexCount = 24;
     static constexpr UINT kIndexCount  = 36;
+
+    /// @brief テクスチャ名（インスペクター表示用）
+    std::string textureName_;
+
+#ifdef _DEBUG
+    /// @brief 非HDRファイルドロップ時の警告メッセージ
+    std::string dropWarning_;
+#endif
 };
 

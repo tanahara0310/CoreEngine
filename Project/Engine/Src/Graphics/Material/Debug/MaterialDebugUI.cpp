@@ -40,31 +40,31 @@ namespace CoreEngine {
         UI::SectionHeader("PBR パラメータ");
 
         if (auto mapsTree = UI::Scope::TreeScope("テクスチャマップ##PBR")) {
-            const bool hasNormal    = model->HasNormalMap();
-            const bool hasMetallic  = model->HasMetallicRoughnessMap();
+            const bool hasNormal = model->HasNormalMap();
+            const bool hasMetallic = model->HasMetallicRoughnessMap();
             const bool hasOcclusion = model->HasOcclusionMap();
 
             auto drawMapToggle = [&](const char* label, bool hasTexture,
-                bool (MaterialInstance::*getter)() const,
-                void (MaterialInstance::*setter)(bool)) {
-                {
-                    UI::Scope::DisabledScope ds(!hasTexture);
-                    bool val = (mat->*getter)();
-                    if (UI::Widgets::ToggleSwitch(label, &val)) {
-                        (mat->*setter)(val);
-                        changed = true;
+                bool (MaterialInstance::* getter)() const,
+                void (MaterialInstance::* setter)(bool)) {
+                    {
+                        UI::Scope::DisabledScope ds(!hasTexture);
+                        bool val = (mat->*getter)();
+                        if (UI::Widgets::ToggleSwitch(label, &val)) {
+                            (mat->*setter)(val);
+                            changed = true;
+                        }
                     }
-                }
-                if (!hasTexture) {
-                    UI::SameLine();
-                    UI::Hint("(なし)");
-                }
-            };
+                    if (!hasTexture) {
+                        UI::SameLine();
+                        UI::Hint("(なし)");
+                    }
+                };
 
-            drawMapToggle("Normal Map",    hasNormal,    &MaterialInstance::IsNormalMapEnabled,    &MaterialInstance::SetNormalMapEnabled);
-            drawMapToggle("Metallic Map",  hasMetallic,  &MaterialInstance::IsMetallicMapEnabled,  &MaterialInstance::SetMetallicMapEnabled);
-            drawMapToggle("Roughness Map", hasMetallic,  &MaterialInstance::IsRoughnessMapEnabled, &MaterialInstance::SetRoughnessMapEnabled);
-            drawMapToggle("AO Map",        hasOcclusion, &MaterialInstance::IsAOMapEnabled,        &MaterialInstance::SetAOMapEnabled);
+            drawMapToggle("Normal Map", hasNormal, &MaterialInstance::IsNormalMapEnabled, &MaterialInstance::SetNormalMapEnabled);
+            drawMapToggle("Metallic Map", hasMetallic, &MaterialInstance::IsMetallicMapEnabled, &MaterialInstance::SetMetallicMapEnabled);
+            drawMapToggle("Roughness Map", hasMetallic, &MaterialInstance::IsRoughnessMapEnabled, &MaterialInstance::SetRoughnessMapEnabled);
+            drawMapToggle("AO Map", hasOcclusion, &MaterialInstance::IsAOMapEnabled, &MaterialInstance::SetAOMapEnabled);
         }
 
         UI::Hint("マップ無効時にスライダー値が適用されます");
