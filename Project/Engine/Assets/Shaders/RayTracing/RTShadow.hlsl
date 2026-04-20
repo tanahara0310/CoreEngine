@@ -99,8 +99,8 @@ void RTShadowMiss(inout ShadowPayload payload)
 
 // ============================================================
 // Closest Hit シェーダー（遮蔽物あり → 影）
-// RAY_FLAG_SKIP_CLOSEST_HIT_SHADER を使うため通常は呼ばれないが、
-// State Object の完全性のために定義
+// RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH により最初のヒットで即終了するため
+// 通常は呼ばれないが、State Object の完全性のために定義
 // ============================================================
 [shader("closesthit")]
 void RTShadowClosestHit(inout ShadowPayload payload, in BuiltInTriangleIntersectionAttributes attr)

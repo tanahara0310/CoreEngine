@@ -1,9 +1,13 @@
 #pragma once
 
 #include <d3d12.h>
+#include <dxcapi.h>
 #include <wrl.h>
 #include <cstdint>
 #include "Math/Vector/Vector3.h"
+#include "GlobalRootSignatureManager.h"
+#include "RayTracingPipelineBuilder.h"
+#include "ShaderTableBuilder.h"
 
 namespace CoreEngine
 {
@@ -14,6 +18,12 @@ namespace CoreEngine
     /// @brief DXR レイトレーシングシャドウを管理するクラス
     /// @details State Object / Shader Table / UAV テクスチャの作成と DispatchRays を担当
     ///          SceneView / GameView で独立した結果を保持するため、2枚のシャドウテクスチャを持つ
+    /// @brief DXRシャドウのパラメータ設定
+    struct RayTracingShadowSettings {
+        float shadowBias = 0.05f;    ///< セルフシャドウ防止バイアス
+        float maxRayDistance = 1000.0f;  ///< シャドウレイの最大射程距離
+    };
+
     class RayTracingShadowManager {
     public:
         /// @brief ビュー識別子
@@ -50,43 +60,39 @@ namespace CoreEngine
         /// @brief フレーム開始時に全ビューの状態をリセット
         void ResetFrameState();
 
-        /// @brief シャドウバイアスを設定
-        void SetShadowBias(float bias) { shadowBias_ = bias; }
+        /// @brief 出力テクスチャを指定サイズで確保する（Dispatch の前に呼び出す）
+        /// @param width    テクスチャ幅
+        /// @param height   テクスチャ高さ
+        /// @param viewId   対象ビュー
+        void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView);
 
-        /// @brief レイの最大距離を設定
-        void SetMaxRayDistance(float dist) { maxRayDistance_ = dist; }
+        /// @brief シャドウパラメータを設定する
+        void SetSettings(const RayTracingShadowSettings& settings) { settings_ = settings; }
+
+        /// @brief 現在のシャドウパラメータを取得する
+        const RayTracingShadowSettings& GetSettings() const { return settings_; }
 
     private:
-        bool CompileShader();
-        bool CreateRootSignature();
-        bool CreateStateObject();
-        bool CreateShaderTable();
-        bool CreateOutputTexture(UINT width, UINT height, uint32_t viewIndex);
+        bool EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex);
 
         DirectXCommon* dxCommon_ = nullptr;
         DescriptorManager* descriptorManager_ = nullptr;
         AccelerationStructureManager* asMgr_ = nullptr;
 
-        // シェーダーバイトコード（ID3DBlob として保持、dxcapi.h のヘッダ依存を避ける）
-        Microsoft::WRL::ComPtr<ID3DBlob> shaderBlob_;
+        // シェーダーバイトコード
+        Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob_;
 
-        // ルートシグネチャ（グローバル）
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> globalRootSignature_;
+        // グローバルルートシグネチャ
+        GlobalRootSignatureManager globalRootSigMgr_;
 
         // State Object
         Microsoft::WRL::ComPtr<ID3D12StateObject> stateObject_;
         Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> stateObjectProperties_;
 
         // Shader Table
-        Microsoft::WRL::ComPtr<ID3D12Resource> shaderTable_;
-        UINT64 shaderTableRecordSize_ = 0;
-        UINT64 shaderTableSize_ = 0;
-        UINT64 rayGenOffset_ = 0;
-        UINT64 missOffset_ = 0;
-        UINT64 hitGroupOffset_ = 0;
-        UINT64 sectionSize_ = 0;
+        ShaderTableBuilder shaderTableBuilder_;
 
-        // ビューごとのシャドウ出力テクスチャ（ダブルバッファ）
+        // ビューごとのシャドウ出力テクスチャ
         struct ShadowView {
             Microsoft::WRL::ComPtr<ID3D12Resource> texture;
             D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
@@ -95,18 +101,19 @@ namespace CoreEngine
             D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
             UINT width = 0;
             UINT height = 0;
-            bool needsTransitionToUAV = false;
+            D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
             bool dispatchedThisFrame = false;
         };
         ShadowView views_[kViewCount]{};
 
-        // 定数バッファ
+        // 定数バッファ（永続マッピング）
         Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
+        void* mappedConstantBuffer_ = nullptr;
 
         // パラメータ
-        float shadowBias_ = 0.05f;
-        float maxRayDistance_ = 1000.0f;
+        RayTracingShadowSettings settings_;
 
+        uint32_t dispatchLogCount_ = 0;
         bool isInitialized_ = false;
     };
 }

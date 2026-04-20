@@ -1,0 +1,85 @@
+#pragma once
+
+#include <d3d12.h>
+#include <wrl.h>
+#include <string>
+#include <vector>
+#include <map>
+
+namespace CoreEngine
+{
+    /// @brief DXRグローバルルートシグネチャのエントリ種別
+    enum class DXRRootEntryType {
+        UAVTable,  ///< UAV デスクリプタテーブル（RWTexture 等）
+        SRVTable,  ///< SRV デスクリプタテーブル（TLAS, テクスチャ等）
+        CBV,       ///< CBV Root Descriptor（定数バッファ）
+    };
+
+    /// @brief DXRグローバルルートシグネチャ管理クラス
+    /// @details エントリを宣言的に追加し Build() でルートシグネチャを生成する。
+    ///          全エントリは D3D12_SHADER_VISIBILITY_ALL で登録される（DXR要件）。
+    ///          追加順がそのままルートパラメータインデックスになる。
+    ///
+    /// @code
+    ///   GlobalRootSignatureManager mgr;
+    ///   mgr.AddUAVTable("gShadowOutput",    0)
+    ///      .AddSRVTable("gScene",            0)
+    ///      .AddSRVTable("gWorldPosition",    1)
+    ///      .AddSRVTable("gNormalRoughness",  2)
+    ///      .AddCBV    ("ShadowRayConstants", 0);
+    ///   mgr.Build(device);
+    /// @endcode
+    class GlobalRootSignatureManager {
+    public:
+        /// @brief UAV デスクリプタテーブルエントリを追加
+        /// @param name        バインド名（GetRootParameterIndex の検索キー）
+        /// @param shaderRegister  HLSL の u レジスタ番号
+        /// @param registerSpace   レジスタスペース（省略時 0）
+        GlobalRootSignatureManager& AddUAVTable(
+            const std::string& name, UINT shaderRegister, UINT registerSpace = 0);
+
+        /// @brief SRV デスクリプタテーブルエントリを追加
+        /// @param name        バインド名（GetRootParameterIndex の検索キー）
+        /// @param shaderRegister  HLSL の t レジスタ番号
+        /// @param registerSpace   レジスタスペース（省略時 0）
+        GlobalRootSignatureManager& AddSRVTable(
+            const std::string& name, UINT shaderRegister, UINT registerSpace = 0);
+
+        /// @brief CBV Root Descriptor エントリを追加
+        /// @param name        バインド名（GetRootParameterIndex の検索キー）
+        /// @param shaderRegister  HLSL の b レジスタ番号
+        /// @param registerSpace   レジスタスペース（省略時 0）
+        GlobalRootSignatureManager& AddCBV(
+            const std::string& name, UINT shaderRegister, UINT registerSpace = 0);
+
+        /// @brief 登録済みエントリからグローバルルートシグネチャを構築する
+        /// @param device  D3D12 デバイス
+        /// @return 成功した場合 true
+        bool Build(ID3D12Device* device);
+
+        /// @brief 構築済みルートシグネチャを取得
+        ID3D12RootSignature* GetRootSignature() const { return rootSignature_.Get(); }
+
+        /// @brief バインド名からルートパラメータインデックスを取得
+        /// @return インデックス（未登録の場合 -1）
+        int GetRootParameterIndex(const std::string& name) const;
+
+        /// @brief 構築済みか
+        bool IsBuilt() const { return rootSignature_ != nullptr; }
+
+        /// @brief 登録エントリと構築結果をリセットする
+        void Clear();
+
+    private:
+        struct Entry {
+            std::string name;
+            DXRRootEntryType type;
+            UINT shaderRegister;
+            UINT registerSpace;
+        };
+
+        std::vector<Entry> entries_;
+        std::map<std::string, UINT>  nameToIndex_;
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
+    };
+}
