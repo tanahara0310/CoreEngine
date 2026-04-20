@@ -101,6 +101,9 @@ void DeviceManager::InitializeDXGIDevice()
     // 初期化完了のログ出力
     logger.Log("Complete create D3D12Device!!!", LogLevel::INFO, LogCategory::System);
 
+    // DXRサポートの確認
+    CheckDXRSupport();
+
 #ifdef _DEBUG
     ComPtr<ID3D12InfoQueue> infoQueue;
     if (SUCCEEDED(device_->QueryInterface(IID_PPV_ARGS(&infoQueue)))) {
@@ -116,7 +119,10 @@ void DeviceManager::InitializeDXGIDevice()
         D3D12_MESSAGE_ID denyIds[] = {
             // Windows11でのDXGIデバッグレイヤーとのDX12デバッグレイヤーの相互作用バグによるエラーメッセージ
             // https://stackoverflow.com/questions/69805245/directx-12-application-is-crashing-in-windows-11
-            D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE
+            D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE,
+            // DXR 加速構造バッファ作成時の InitialState 警告を抑制
+            // バッファは内部的に COMMON で作成されるが、ドライバが暗黙的に正しいステートへ昇格する
+            D3D12_MESSAGE_ID_CREATERESOURCE_STATE_IGNORED
         };
 
         // 抑制するレベル
@@ -130,5 +136,33 @@ void DeviceManager::InitializeDXGIDevice()
         infoQueue->PushStorageFilter(&filter);
     }
 #endif
+}
+
+void DeviceManager::CheckDXRSupport()
+{
+    Logger& logger = Logger::GetInstance();
+
+    D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5{};
+    HRESULT hr = device_->CheckFeatureSupport(
+        D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+
+    if (SUCCEEDED(hr) && options5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED) {
+        isDXRSupported_ = true;
+        dxrTier_ = options5.RaytracingTier;
+
+        const char* tierStr = "Unknown";
+        switch (dxrTier_) {
+        case D3D12_RAYTRACING_TIER_1_0: tierStr = "1.0"; break;
+        case D3D12_RAYTRACING_TIER_1_1: tierStr = "1.1"; break;
+        default: break;
+        }
+        logger.Logf(LogLevel::Info, LogCategory::Graphics,
+            "DXR Raytracing supported (Tier {})", tierStr);
+    } else {
+        isDXRSupported_ = false;
+        dxrTier_ = D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
+        logger.Log("DXR Raytracing not supported on this device",
+            LogLevel::Warn, LogCategory::Graphics);
+    }
 }
 }

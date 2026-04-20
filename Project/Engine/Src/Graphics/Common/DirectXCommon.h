@@ -18,6 +18,8 @@
 #include "Graphics/Common/Core/DepthStencilManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
+#include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/RayTracingShadowManager.h"
 
 using namespace Microsoft::WRL;
 
@@ -69,6 +71,12 @@ public:
     DescriptorManager* GetDescriptorManager() { return descriptorManager_.get(); }
     DepthStencilManager* GetDepthStencilManager() { return depthStencilManager_.get(); }
     
+    // DXR関連のアクセッサ
+    bool IsDXRSupported() const { return deviceManager_->IsDXRSupported(); }
+    D3D12_RAYTRACING_TIER GetDXRTier() const { return deviceManager_->GetDXRTier(); }
+    AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
+    RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
+
     // シャドウマップ関連のアクセッサ
     ShadowMapManager* GetShadowMapManager() { return shadowMapManager_.get(); }
     ID3D12Resource* GetShadowMapResource() { return shadowMapManager_->GetShadowMapResource(); }
@@ -108,6 +116,8 @@ private:
     std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
     std::unique_ptr<GBufferManager> gBufferManager_ = std::make_unique<GBufferManager>();
     std::unique_ptr<ShadowMapManager> shadowMapManager_ = std::make_unique<ShadowMapManager>();
+    std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_ = std::make_unique<AccelerationStructureManager>();
+    std::unique_ptr<RayTracingShadowManager> rtShadowManager_ = std::make_unique<RayTracingShadowManager>();
 
 };
 }

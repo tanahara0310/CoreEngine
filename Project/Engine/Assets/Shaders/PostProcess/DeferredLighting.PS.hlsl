@@ -49,12 +49,17 @@ TextureCube<float4> gPrefilteredMap : register(t10);
 Texture2D<float2> gBRDFLUT : register(t11);
 
 // ============================================================
+// RT シャドウマスク（DXR レイトレーシング結果、無効時は 1.0 でフォールバック）
+// ============================================================
+Texture2D<float> gRTShadowMask : register(t12);
+
+// ============================================================
 // IBL パラメータ（シーン共通）
 // ============================================================
 struct IBLParams
 {
     float3 environmentRotation; // 環境マップ XYZ 回転（ラジアン）
-    float iblIntensity;         // IBL 強度 (0.0-∞, デフォルト 1.0)
+    float iblIntensity; // IBL 強度 (0.0-∞, デフォルト 1.0)
 };
 ConstantBuffer<IBLParams> gIBLParams : register(b4);
 
@@ -145,24 +150,104 @@ PixelShaderOutput main(PixelShaderInput input)
     }
 
     // 共通パラメータ展開
-    float3 albedo   = albedoAO.rgb;
-    float3 N        = normalize(normalRoughness.rgb * 2.0f - 1.0f);
+    float3 albedo = albedoAO.rgb;
+    float3 N = normalize(normalRoughness.rgb * 2.0f - 1.0f);
     float3 worldPos = worldPosSample.xyz;
-    float3 V        = normalize(gCamera.worldPosition - worldPos);
+    float3 V = normalize(gCamera.worldPosition - worldPos);
 
     // ===== ライト空間座標（シャドウ計算用） =====
     float4 lightSpacePos = mul(float4(worldPos, 1.0f), gLightViewProjection.mat);
+
+    // ===== シャドウファクターの計算 =====
+    // RT シャドウマスクが有効な場合はそちらを使用、無効時は PCF シャドウにフォールバック
+    float rtShadowWidth, rtShadowHeight;
+    gRTShadowMask.GetDimensions(rtShadowWidth, rtShadowHeight);
+    bool useRTShadow = (rtShadowWidth > 1.0f && rtShadowHeight > 1.0f);
+
+    float baseShadow;
+    if (useRTShadow)
+    {
+        // RT シャドウをポアソンディスク + バイラテラルフィルタでソフト化
+        // 16 サンプル、半径 6px でジャギーを自然にぼかす
+        static const float2 kPoissonDisk[16] =
+        {
+            float2(-0.94201624f, -0.39906216f),
+            float2(0.94558609f, -0.76890725f),
+            float2(-0.09418410f, -0.92938870f),
+            float2(0.34495938f, 0.29387760f),
+            float2(-0.91588581f, 0.45771432f),
+            float2(-0.81544232f, -0.87912464f),
+            float2(-0.38277543f, 0.27676845f),
+            float2(0.97484398f, 0.75648379f),
+            float2(0.44323325f, -0.97511554f),
+            float2(0.53742981f, -0.47373420f),
+            float2(-0.26496911f, -0.41893023f),
+            float2(0.79197514f, 0.19090188f),
+            float2(-0.24188840f, 0.99706507f),
+            float2(-0.81409955f, 0.91437590f),
+            float2(0.19984126f, 0.78641367f),
+            float2(0.14383161f, -0.14100790f)
+        };
+        static const float kFilterRadius = 6.0f;
+        static const float kDepthThreshold = 0.5f;
+
+        float3 centerWorldPos = worldPosSample.xyz;
+        float shadowSum = 0.0f;
+        float weightSum = 0.0f;
+
+        for (int i = 0; i < 16; ++i)
+        {
+            int2 offset = int2(kPoissonDisk[i] * kFilterRadius);
+            int3 sampleCoord = int3(loadCoord.xy + offset, 0);
+            sampleCoord.x = clamp(sampleCoord.x, 0, (int) rtShadowWidth - 1);
+            sampleCoord.y = clamp(sampleCoord.y, 0, (int) rtShadowHeight - 1);
+
+            // ワールド座標距離によるエッジ保持（オブジェクト境界でにじまない）
+            float3 sampleWorldPos = gWorldPosition.Load(sampleCoord).xyz;
+            float posDiff = length(centerWorldPos - sampleWorldPos);
+            if (posDiff > kDepthThreshold)
+                continue;
+
+            // ガウシアン重み（距離ベース）
+            float dist = length(kPoissonDisk[i]);
+            float w = exp(-dist * dist * 2.0f);
+            shadowSum += gRTShadowMask.Load(sampleCoord).r * w;
+            weightSum += w;
+        }
+        baseShadow = (weightSum > 0.0f) ? (shadowSum / weightSum) : gRTShadowMask.Load(loadCoord).r;
+    }
+    else
+    {
+        baseShadow = CalculateShadow(lightSpacePos, N, float3(0, -1, 0), gShadowMap, gShadowSampler);
+    }
+
+    // ===== RT シャドウ デバッグ表示 =====
+    // 赤=影(0), 緑=光(1), 青=RT未使用
+    // 問題が解決したらこのブロックを削除すること
+#if 0  // 1 でデバッグ表示ON、0 で通常描画
+    if (useRTShadow)
+    {
+        // 赤(影) → 緑(光) のグラデーション
+        output.color = float4(1.0f - baseShadow, baseShadow, 0.0f, 1.0f);
+    }
+    else
+    {
+        // 青 = RT シャドウ未使用（PCF フォールバック）
+        output.color = float4(0.0f, 0.0f, 1.0f, 1.0f);
+    }
+    return output;
+#endif
 
     // ============================================================
     // PBR ライティングパス（常にここに到達）
     // ============================================================
     // pixelType: 2=PBR, 3=PBR+IBL, 4=Lambert, 5=HalfLambert
-    const bool enableIBL      = (pixelType == 3);
-    const bool useLambert     = (pixelType == 4);
+    const bool enableIBL = (pixelType == 3);
+    const bool useLambert = (pixelType == 4);
     const bool useHalfLambert = (pixelType == 5);
     const bool useTraditional = useLambert || useHalfLambert;
 
-    float ao       = saturate(albedoAO.a);
+    float ao = saturate(albedoAO.a);
     float roughness = saturate(normalRoughness.a);
     float metallic = saturate(emissiveMetallic.a);
     float3 emissive = emissiveMetallic.rgb;
@@ -180,9 +265,13 @@ PixelShaderOutput main(PixelShaderInput input)
         for (uint di = 0; di < gLightCounts.directionalLightCount; ++di)
         {
             DirectionalLightData dL = gDirectionalLights[di];
-            if (!dL.enabled) continue;
+            if (!dL.enabled)
+                continue;
             float3 L = normalize(-dL.direction);
-            float shadowFactor = CalculateShadow(lightSpacePos, N, dL.direction, gShadowMap, gShadowSampler);
+            // RT シャドウはメインライト(index 0)のみ、他は PCF
+            float shadowFactor = (di == 0)
+                ? baseShadow
+                : CalculateShadow(lightSpacePos, N, dL.direction, gShadowMap, gShadowSampler);
             shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
             float3 diff = useLambert
                 ? CalculateLambertDiffuse(N, L, dL.color.rgb, dL.intensity, albedo, ao)
@@ -194,10 +283,12 @@ PixelShaderOutput main(PixelShaderInput input)
         for (uint pi = 0; pi < gLightCounts.pointLightCount; ++pi)
         {
             PointLightData pL = gPointLights[pi];
-            if (!pL.enabled) continue;
+            if (!pL.enabled)
+                continue;
             float3 tv = pL.position - worldPos;
             float d = length(tv);
-            if (d >= pL.radius) continue;
+            if (d >= pL.radius)
+                continue;
             float3 L = normalize(tv);
             float atten = 1.0f / (1.0f + pL.decay * d * d);
             atten *= saturate(1.0f - d / pL.radius);
@@ -211,15 +302,18 @@ PixelShaderOutput main(PixelShaderInput input)
         for (uint si = 0; si < gLightCounts.spotLightCount; ++si)
         {
             SpotLightData sL = gSpotLights[si];
-            if (!sL.enabled) continue;
+            if (!sL.enabled)
+                continue;
             float3 tv = sL.position - worldPos;
             float d = length(tv);
-            if (d >= sL.distance) continue;
+            if (d >= sL.distance)
+                continue;
             float3 L = normalize(tv);
             float atten = 1.0f / (1.0f + sL.decay * d * d);
             atten *= saturate(1.0f - d / sL.distance);
             float cosTheta = dot(-L, normalize(sL.direction));
-            if (cosTheta < sL.cosAngle) continue;
+            if (cosTheta < sL.cosAngle)
+                continue;
             atten *= saturate((cosTheta - sL.cosAngle) / (sL.cosFalloffStart - sL.cosAngle));
             float3 diff = useLambert
                 ? CalculateLambertDiffuse(N, L, sL.color.rgb, sL.intensity * atten, albedo, ao)
@@ -231,7 +325,8 @@ PixelShaderOutput main(PixelShaderInput input)
         for (uint ai = 0; ai < gLightCounts.areaLightCount; ++ai)
         {
             AreaLightData aL = gAreaLights[ai];
-            if (!aL.enabled) continue;
+            if (!aL.enabled)
+                continue;
             float3 toLight = aL.position - worldPos;
             float distToPlane = dot(toLight, aL.normal);
             float3 projectedPoint = worldPos + aL.normal * distToPlane;
@@ -243,7 +338,8 @@ PixelShaderOutput main(PixelShaderInput input)
             float3 closestPoint = aL.position + aL.right * clamp(u, -halfW, halfW) + aL.up * clamp(v, -halfH, halfH);
             float3 toClosest = closestPoint - worldPos;
             float dist = length(toClosest);
-            if (dist >= aL.range) continue;
+            if (dist >= aL.range)
+                continue;
             float3 L = toClosest / max(dist, 0.001f);
             float distFactor = 1.0f - saturate(dist / aL.range);
             float distAtten = distFactor * distFactor;
@@ -279,7 +375,10 @@ PixelShaderOutput main(PixelShaderInput input)
                 continue;
             float3 L = normalize(-dL.direction);
 
-            float shadowFactor = CalculateShadow(lightSpacePos, N, dL.direction, gShadowMap, gShadowSampler);
+            // RT シャドウはメインライト(index 0)のみ、他は PCF
+            float shadowFactor = (di == 0)
+                ? baseShadow
+                : CalculateShadow(lightSpacePos, N, dL.direction, gShadowMap, gShadowSampler);
             shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
 
             Lo += CalculatePBRLighting(N, V, L, dL.color.rgb, dL.intensity, albedo, metallic, roughness, ao)

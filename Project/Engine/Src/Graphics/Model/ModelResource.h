@@ -128,6 +128,23 @@ namespace CoreEngine
         /// @brief 総インデックス数を取得
         UINT GetIndexCount() const { return indexCount_; }
 
+        // ===== DXR 加速構造 =====
+
+        /// @brief 頂点バッファリソースを取得（BLAS 構築用）
+        ID3D12Resource* GetVertexBuffer() const { return vertexBuffer_.Get(); }
+
+        /// @brief インデックスバッファリソースを取得（BLAS 構築用）
+        ID3D12Resource* GetIndexBuffer() const { return indexBuffer_.Get(); }
+
+        /// @brief BLAS インデックスを設定
+        void SetBLASIndex(UINT index) { blasIndex_ = index; }
+
+        /// @brief BLAS インデックスを取得（UINT_MAX = 未構築）
+        UINT GetBLASIndex() const { return blasIndex_; }
+
+        /// @brief BLAS が構築済みか
+        bool HasBLAS() const { return blasIndex_ != UINT_MAX; }
+
     private:
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
@@ -147,6 +164,9 @@ namespace CoreEngine
 
         std::string filePath_;
         bool isLoaded_ = false;
+
+        // DXR BLAS インデックス（UINT_MAX = 未構築）
+        UINT blasIndex_ = UINT_MAX;
 
         // ローカル空間のバウンディングボックス（頂点データから算出）
         BoundingBox localBoundingBox_;

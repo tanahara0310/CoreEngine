@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -203,6 +203,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
@@ -214,6 +215,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\GridRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLGenerator.cpp" />
@@ -418,6 +424,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h" />
+    <ClInclude Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\IMaterial.h" />
@@ -441,6 +448,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLGenerator.h" />
@@ -673,53 +685,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Build\Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->
-    <None Include="Engine\Assets\Shaders\Common\Lighting.hlsli" />
-    <None Include="Engine\Assets\Shaders\Common\LightStructures.hlsli" />
-    <None Include="Engine\Assets\Shaders\Common\PBR.hlsli" />
-    <None Include="Engine\Assets\Shaders\Common\ShadowCalculation.hlsli" />
-    <None Include="Engine\Assets\Shaders\IBL\BRDFLUT.CS.hlsl" />
-    <None Include="Engine\Assets\Shaders\IBL\IrradianceConvolution.CS.hlsl" />
-    <None Include="Engine\Assets\Shaders\IBL\PrefilterEnvironment.CS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Line\Line.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Line\Line.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Object\GBuffer.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Object\GBuffer.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Object\Object3d.hlsli" />
-    <None Include="Engine\Assets\Shaders\Object\Object3d.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Object\Object3d.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Particle\ModelParticle.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Particle\Particle.hlsli" />
-    <None Include="Engine\Assets\Shaders\Particle\Particle.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Particle\Particle.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\Bloom.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\Blur.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\ChromaticAberration.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\ColorGrading.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\DeferredLighting.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\Dissolve.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\FadeEffect.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\FullScreen.hlsli" />
-    <None Include="Engine\Assets\Shaders\PostProcess\FullScreen.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\FullScreen.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\GrayScale.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\Invert.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\RadialBlur.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\RasterScroll.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\Sepia.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\Shockwave.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\ToneMapping.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\PostProcess\Vignette.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Shadow\ShadowMap.hlsli" />
-    <None Include="Engine\Assets\Shaders\Shadow\ShadowMap.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Shadow\ShadowMapSkinning.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Skinning\GBufferSkinning.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Skinning\SkinningObject3d.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Skybox\Skybox.hlsli" />
-    <None Include="Engine\Assets\Shaders\Skybox\Skybox.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Skybox\Skybox.VS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Sprite\Sprite.hlsli" />
-    <None Include="Engine\Assets\Shaders\Sprite\Sprite.PS.hlsl" />
-    <None Include="Engine\Assets\Shaders\Sprite\Sprite.VS.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

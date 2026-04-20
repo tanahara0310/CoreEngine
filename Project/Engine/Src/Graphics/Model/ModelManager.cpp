@@ -177,6 +177,16 @@ void ModelManager::ClearCache()
     resourceCache_.clear();
 }
 
+void ModelManager::ForEachResource(const std::function<void(ModelResource*)>& callback)
+{
+    std::lock_guard<std::mutex> lock(cacheMutex_);
+    for (auto& [key, resource] : resourceCache_) {
+        if (resource && resource->IsLoaded()) {
+            callback(resource.get());
+        }
+    }
+}
+
 std::unique_ptr<Model> ModelManager::CreatePrimitiveModel(const std::string& key, const IPrimitiveMeshGenerator& generator)
 {
     assert(IsInitialized());

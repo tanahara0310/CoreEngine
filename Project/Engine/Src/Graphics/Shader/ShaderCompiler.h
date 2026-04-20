@@ -14,25 +14,24 @@ namespace CoreEngine
 {
     class ShaderCompiler {
     public:
-        /// <summary>
-        /// 初期化
-        /// </summary>
+        /// @brief 初期化
         void Initialize();
 
-        /// <summary>
-        /// シェーダーコンパイル
-        /// </summary>
-        /// <param name="filePath">Compileするシェーダのファイルパス</param>
-        /// <param name="profile">compileに使用するprofile</param>
-        /// <returns></returns>
+        /// @brief シェーダーコンパイル
+        /// @param filePath コンパイルするHLSLファイルパス
+        /// @param profile コンパイルプロファイル（例: L"vs_6_0", L"ps_6_0", L"lib_6_6"など）   
+        /// @return コンパイル済みバイナリ（失敗時nullptr）
         IDxcBlob* CompileShader(
             const std::wstring& filePath,
             const wchar_t* profile);
 
-        /// <summary>
-        /// DXCユーティリティを取得（リフレクション用）
-        /// </summary>
-        /// <returns>IDxcUtilsポインタ</returns>
+        /// @brief シェーダーライブラリのコンパイル（エントリーポイントなし、lib_6_6でコンパイル）
+        /// @param filePath コンパイルするHLSLファイルパス
+        /// @return コンパイル済みバイナリ（失敗時nullptr）
+        IDxcBlob* CompileShaderLibrary(const std::wstring& filePath);
+
+        /// @brief DXCユーティリティを取得（リフレクション用）
+        /// @return IDxcUtilsポインタ
         IDxcUtils* GetDxcUtils() const { return dxcUtils.Get(); }
 
     private:

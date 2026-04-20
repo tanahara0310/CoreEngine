@@ -4,6 +4,7 @@
 #include <mutex>
 #include <set>
 #include <condition_variable>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -99,6 +100,10 @@ public:
 
     /// @brief スレッドプールを取得（デバッグ用）
     ThreadPool* GetThreadPool() const { return threadPool_.get(); }
+
+    /// @brief 全キャッシュ済みリソースに対してコールバックを実行する
+    /// @param callback 各 ModelResource* に対して呼ばれるコールバック
+    void ForEachResource(const std::function<void(ModelResource*)>& callback);
 
 private:
     // DirectXCommon

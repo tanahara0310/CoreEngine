@@ -21,6 +21,7 @@ namespace CoreEngine
         AssetInfo()
             : type(AssetType::Unknown)
             , lastModified(0)
-        {}
+        {
+        }
     };
 }

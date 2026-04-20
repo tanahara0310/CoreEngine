@@ -3,6 +3,7 @@
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Utility/Logger/Logger.h"
 #include <cstring>
 
 namespace CoreEngine
@@ -196,6 +197,20 @@ namespace CoreEngine
         const int iblParamsIdx = GetRootParamIndex("gIBLParams");
         if (iblParamsIdx >= 0 && iblParamsCBVAddress_ != 0) {
             commandList->SetGraphicsRootConstantBufferView(iblParamsIdx, iblParamsCBVAddress_);
+        }
+
+        // ===== RT シャドウマスク SRV =====
+        const int rtShadowIdx = GetRootParamIndex("gRTShadowMask");
+        static uint32_t drawLogCount = 0;
+        if (drawLogCount < 20) {
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
+                "DeferredLighting::Draw rtShadowIdx={} rtShadowHandle=0x{:X} bound={}",
+                rtShadowIdx, rtShadowHandle_.ptr,
+                (rtShadowIdx >= 0 && rtShadowHandle_.ptr != 0) ? "YES" : "NO");
+            ++drawLogCount;
+        }
+        if (rtShadowIdx >= 0 && rtShadowHandle_.ptr != 0) {
+            commandList->SetGraphicsRootDescriptorTable(rtShadowIdx, rtShadowHandle_);
         }
 
         // フルスクリーントライアングルで描画（頂点バッファなし）

@@ -27,13 +27,13 @@ namespace CoreEngine
         // ===== G-Buffer SRV セッター =====
 
         /// @brief NormalRoughness G-Buffer SRV を設定（t1）
-        void SetNormalRoughnessHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle)   { normalRoughnessHandle_ = handle; }
+        void SetNormalRoughnessHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { normalRoughnessHandle_ = handle; }
 
         /// @brief EmissiveMetallic G-Buffer SRV を設定（t2）
-        void SetEmissiveMetallicHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle)  { emissiveMetallicHandle_ = handle; }
+        void SetEmissiveMetallicHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { emissiveMetallicHandle_ = handle; }
 
         /// @brief WorldPosition G-Buffer SRV を設定（t3）
-        void SetWorldPositionHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle)     { worldPositionHandle_ = handle; }
+        void SetWorldPositionHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { worldPositionHandle_ = handle; }
 
         // ===== ライティングリソース セッター =====
 
@@ -53,13 +53,16 @@ namespace CoreEngine
         // ===== IBL セッター =====
 
         /// @brief Irradiance Map SRV を設定（拡散 IBL）
-        void SetIrradianceMapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle)   { irradianceMapHandle_ = handle; }
+        void SetIrradianceMapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { irradianceMapHandle_ = handle; }
 
         /// @brief Prefiltered Map SRV を設定（スペキュラ IBL）
-        void SetPrefilteredMapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle)  { prefilteredMapHandle_ = handle; }
+        void SetPrefilteredMapHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { prefilteredMapHandle_ = handle; }
 
         /// @brief BRDF LUT SRV を設定（スペキュラ IBL 積分用）
-        void SetBRDFLUTHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle)         { brdfLUTHandle_ = handle; }
+        void SetBRDFLUTHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { brdfLUTHandle_ = handle; }
+
+        /// @brief RT シャドウマスク SRV を設定（DXR レイトレーシングシャドウ結果）
+        void SetRTShadowHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { rtShadowHandle_ = handle; }
 
         /// @brief 環境マップ XYZ 回転角度を設定（ラジアン）
         void SetEnvironmentRotation(const Vector3& rotation) { environmentRotation_ = rotation; }
@@ -84,9 +87,9 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE worldPositionHandle_{};
 
         // ===== ライティングリソース =====
-        D3D12_GPU_VIRTUAL_ADDRESS   cameraCBVAddress_   = 0;
+        D3D12_GPU_VIRTUAL_ADDRESS   cameraCBVAddress_ = 0;
         D3D12_GPU_DESCRIPTOR_HANDLE shadowMapHandle_{};
-        LightManager*               lightManager_       = nullptr;
+        LightManager* lightManager_ = nullptr;
 
         // ライトビュープロジェクション行列専用定数バッファ（毎フレーム更新）
         Microsoft::WRL::ComPtr<ID3D12Resource> lightVPBuffer_;
@@ -97,11 +100,14 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_{};
 
+        // ===== RT Shadow =====
+        D3D12_GPU_DESCRIPTOR_HANDLE rtShadowHandle_{};
+
         // IBL パラメータ定数バッファ（environmentRotationY + iblIntensity）
         Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;
         D3D12_GPU_VIRTUAL_ADDRESS              iblParamsCBVAddress_ = 0;
         Vector3 environmentRotation_ = {};
-        float iblIntensity_         = 1.0f;
+        float iblIntensity_ = 1.0f;
     };
 }
 
