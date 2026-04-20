@@ -1,5 +1,6 @@
 #include "ShadowMapManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Utility/Logger/Logger.h"
 #include "Math/MathCore.h"
 
@@ -60,17 +61,9 @@ void ShadowMapManager::TransitionToDepthWrite(ID3D12GraphicsCommandList* cmdList
     assert(cmdList != nullptr && "CommandList must not be null");
     assert(shadowMapResource_.Get() != nullptr && "ShadowMap resource must not be null");
 
-    if (currentState_ != D3D12_RESOURCE_STATE_DEPTH_WRITE) {
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = shadowMapResource_.Get();
-        barrier.Transition.StateBefore = currentState_;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-        cmdList->ResourceBarrier(1, &barrier);
-        currentState_ = D3D12_RESOURCE_STATE_DEPTH_WRITE;
-    }
+    ResourceBarrierHelper::Transition(
+        cmdList, shadowMapResource_.Get(),
+        currentState_, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 }
 
 void ShadowMapManager::TransitionToShaderResource(ID3D12GraphicsCommandList* cmdList)
@@ -78,17 +71,9 @@ void ShadowMapManager::TransitionToShaderResource(ID3D12GraphicsCommandList* cmd
     assert(cmdList != nullptr && "CommandList must not be null");
     assert(shadowMapResource_.Get() != nullptr && "ShadowMap resource must not be null");
 
-    if (currentState_ != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) {
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = shadowMapResource_.Get();
-        barrier.Transition.StateBefore = currentState_;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-        cmdList->ResourceBarrier(1, &barrier);
-        currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-    }
+    ResourceBarrierHelper::Transition(
+        cmdList, shadowMapResource_.Get(),
+        currentState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 }
 
 void ShadowMapManager::CreateShadowMapResource()

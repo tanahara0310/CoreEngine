@@ -15,13 +15,16 @@ namespace CoreEngine
 {
     // =========================================================================
     // HLSL 側の cbuffer ShadowRayConstants とレイアウトを共有する構造体
-    // HLSL: float3 gLightDirection, float gShadowBias, float gMaxRayDistance, float3 gPadding
+    // HLSL: float3 gLightDirection, float gShadowBias,
+    //       float gMaxRayDistance, float gLightRadius, int gSoftShadowSamples, uint gFrameIndex
     // =========================================================================
     struct alignas(16) ShadowRayConstants {
-        float lightDir[3];
-        float shadowBias;
-        float maxRayDistance;
-        float padding[3];
+        float    lightDir[3];
+        float    shadowBias;
+        float    maxRayDistance;
+        float    lightRadius;
+        int      softShadowSamples;
+        uint32_t frameIndex;
     };
     static_assert(sizeof(ShadowRayConstants) == 32, "ShadowRayConstants size mismatch with HLSL cbuffer");
     // =========================================================================
@@ -225,11 +228,14 @@ namespace CoreEngine
 
         // 定数バッファ更新（永続マッピング済みポインタに直接書き込み）
         ShadowRayConstants constants{};
-        constants.lightDir[0]    = lightDirection.x;
-        constants.lightDir[1]    = lightDirection.y;
-        constants.lightDir[2]    = lightDirection.z;
-        constants.shadowBias     = settings_.shadowBias;
+        constants.lightDir[0] = lightDirection.x;
+        constants.lightDir[1] = lightDirection.y;
+        constants.lightDir[2] = lightDirection.z;
+        constants.shadowBias = settings_.shadowBias;
         constants.maxRayDistance = settings_.maxRayDistance;
+        constants.lightRadius = settings_.lightRadius;
+        constants.softShadowSamples = settings_.softShadowSamples;
+        constants.frameIndex = frameIndex_++;
         std::memcpy(mappedConstantBuffer_, &constants, sizeof(constants));
 
         // CommandList4 を取得

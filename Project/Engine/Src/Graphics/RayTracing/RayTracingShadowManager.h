@@ -22,6 +22,8 @@ namespace CoreEngine
     struct RayTracingShadowSettings {
         float shadowBias = 0.05f;    ///< セルフシャドウ防止バイアス
         float maxRayDistance = 1000.0f;  ///< シャドウレイの最大射程距離
+        float lightRadius = 0.0f;    ///< ソフトシャドウの光源角半径（ラジアン）。0でハードシャドウ
+        int softShadowSamples = 1;       ///< ソフトシャドウのサンプル数（1=ハード、4〜8推奨）
     };
 
     class RayTracingShadowManager {
@@ -113,6 +115,7 @@ namespace CoreEngine
         // パラメータ
         RayTracingShadowSettings settings_;
 
+        uint32_t frameIndex_ = 0;
         uint32_t dispatchLogCount_ = 0;
         bool isInitialized_ = false;
     };

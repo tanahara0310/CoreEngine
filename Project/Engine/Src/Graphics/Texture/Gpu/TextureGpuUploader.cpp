@@ -1,6 +1,7 @@
 #include "TextureGpuUploader.h"
 
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FileErrorDialog/FileErrorDialog.h"
@@ -62,13 +63,10 @@ namespace CoreEngine
 
         UpdateSubresources(dxCommon->GetCommandList(), result.texture.Get(), result.intermediate.Get(), 0, 0, UINT(subResources.size()), subResources.data());
 
-        D3D12_RESOURCE_BARRIER barrier{};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = result.texture.Get();
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
-        dxCommon->GetCommandList()->ResourceBarrier(1, &barrier);
+        D3D12_RESOURCE_STATES texState = D3D12_RESOURCE_STATE_COPY_DEST;
+        ResourceBarrierHelper::Transition(
+            dxCommon->GetCommandList(), result.texture.Get(),
+            texState, D3D12_RESOURCE_STATE_GENERIC_READ);
 
         // 作成したテクスチャに対してビューを構築し、描画で利用できる状態にする。
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};

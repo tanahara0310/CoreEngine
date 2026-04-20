@@ -17,6 +17,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore NuGet
+        run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+
       - name: Add MSBuild to Path
         uses: microsoft/setup-msbuild@v2
         with:
@@ -24,4 +30,4 @@ jobs:
 
       - name: Build
         run: |
-         msbuild ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}}
+          msbuild ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}}
