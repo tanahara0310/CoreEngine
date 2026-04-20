@@ -22,6 +22,10 @@ jobs:
         with:
           msbuild-architecture: x64
 
+      - name: Restore NuGet
+        run: |
+          msbuild ${{env.SOLUTION_FILE_PATH}} /t:Restore
+
       - name: Build
         run: |
-         msbuild ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}}
+          msbuild ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}}
