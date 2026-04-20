@@ -5,6 +5,7 @@
 #include <format>
 
 #include "Graphics/Common/Core/DescriptorManager.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Utility/Logger/Logger.h"
 
 namespace
@@ -257,20 +258,9 @@ namespace CoreEngine
         TargetResource& targetResource,
         D3D12_RESOURCE_STATES newState)
     {
-        if (targetResource.currentState == newState) {
-            return;
-        }
-
-        D3D12_RESOURCE_BARRIER barrier{};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-        barrier.Transition.pResource = targetResource.resource.Get();
-        barrier.Transition.StateBefore = targetResource.currentState;
-        barrier.Transition.StateAfter = newState;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-        cmdList->ResourceBarrier(1, &barrier);
-        targetResource.currentState = newState;
+        ResourceBarrierHelper::Transition(
+            cmdList, targetResource.resource.Get(),
+            targetResource.currentState, newState);
     }
 
     void GBufferManager::ValidateState() const

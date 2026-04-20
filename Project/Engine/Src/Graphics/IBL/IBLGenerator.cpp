@@ -1,5 +1,6 @@
 #include "IBLGenerator.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 #include "externals/DirectXTex/d3dx12.h"
@@ -319,13 +320,9 @@ namespace CoreEngine
         commandList->Dispatch(dispatchX, dispatchY, 1);
 
         // UAV→SRVバリア（全サブリソース）
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = brdfLUT.Get();
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        commandList->ResourceBarrier(1, &barrier);
+        D3D12_RESOURCE_STATES brdfState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        ResourceBarrierHelper::Transition(commandList, brdfLUT.Get(), brdfState,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         // コマンドリストをClose
         HRESULT hr = commandList->Close();
@@ -418,12 +415,9 @@ namespace CoreEngine
         // コピーコマンド
         auto commandList = dxCommon_->GetCommandList();
 
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = brdfLUT;
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-        commandList->ResourceBarrier(1, &barrier);
+        D3D12_RESOURCE_STATES copyState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        ResourceBarrierHelper::Transition(commandList, brdfLUT, copyState,
+            D3D12_RESOURCE_STATE_COPY_SOURCE);
 
         D3D12_TEXTURE_COPY_LOCATION src = {};
         src.pResource = brdfLUT;
@@ -437,9 +431,8 @@ namespace CoreEngine
 
         commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        commandList->ResourceBarrier(1, &barrier);
+        ResourceBarrierHelper::Transition(commandList, brdfLUT, copyState,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         // コマンドリストをClose
         hr = commandList->Close();
@@ -643,13 +636,9 @@ namespace CoreEngine
         commandList->Dispatch(dispatchX, dispatchY, dispatchZ);
 
         // UAV→SRVバリア（全サブリソース = 6面すべて）
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = irradianceMap.Get();
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        commandList->ResourceBarrier(1, &barrier);
+        D3D12_RESOURCE_STATES irradState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        ResourceBarrierHelper::Transition(commandList, irradianceMap.Get(), irradState,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         // コマンドリストをClose
         HRESULT hr = commandList->Close();
@@ -933,20 +922,13 @@ namespace CoreEngine
             commandList->Dispatch(dispatchX, dispatchY, dispatchZ);
 
             // UAVバリア（次のミップレベルの前に同期）
-            D3D12_RESOURCE_BARRIER uavBarrier = {};
-            uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            uavBarrier.UAV.pResource = prefilteredMap.Get();
-            commandList->ResourceBarrier(1, &uavBarrier);
+            ResourceBarrierHelper::UAV(commandList, prefilteredMap.Get());
         }
 
         // UAV→SRVバリア（全サブリソース）
-        D3D12_RESOURCE_BARRIER barrier = {};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = prefilteredMap.Get();
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        commandList->ResourceBarrier(1, &barrier);
+        D3D12_RESOURCE_STATES prefState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        ResourceBarrierHelper::Transition(commandList, prefilteredMap.Get(), prefState,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         // コマンドリストをClose
         HRESULT hr = commandList->Close();

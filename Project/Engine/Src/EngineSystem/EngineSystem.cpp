@@ -5,6 +5,7 @@
 // ユーティリティ
 #include "Utility/Random/RandomGenerator.h"
 #include "Utility/Logger/Logger.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Asset/AssetDatabase.h"
@@ -424,18 +425,13 @@ namespace CoreEngine
                 GBufferManager::Target::WorldPosition);
             auto* normalResource = context.gBufferManager->GetResource(
                 GBufferManager::Target::NormalRoughness);
-            D3D12_RESOURCE_BARRIER preBarriers[2] = {};
-            preBarriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            preBarriers[0].Transition.pResource = worldPosResource;
-            preBarriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            preBarriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-            preBarriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            preBarriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            preBarriers[1].Transition.pResource = normalResource;
-            preBarriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            preBarriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-            preBarriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            cmdList->ResourceBarrier(2, preBarriers);
+
+            D3D12_RESOURCE_STATES worldPosState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            D3D12_RESOURCE_STATES normalState   = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            ResourceBarrierHelper::Transition(cmdList, worldPosResource, worldPosState,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            ResourceBarrierHelper::Transition(cmdList, normalResource,   normalState,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
             auto worldPosSRV = context.gBufferManager->GetSRVHandle(
                 GBufferManager::Target::WorldPosition);
@@ -450,18 +446,10 @@ namespace CoreEngine
                 static_cast<UINT>(dx->GetClientHeight()),
                 viewId);
 
-            D3D12_RESOURCE_BARRIER postBarriers[2] = {};
-            postBarriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            postBarriers[0].Transition.pResource = worldPosResource;
-            postBarriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-            postBarriers[0].Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            postBarriers[0].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            postBarriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            postBarriers[1].Transition.pResource = normalResource;
-            postBarriers[1].Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-            postBarriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            postBarriers[1].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            cmdList->ResourceBarrier(2, postBarriers);
+            ResourceBarrierHelper::Transition(cmdList, worldPosResource, worldPosState,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            ResourceBarrierHelper::Transition(cmdList, normalResource,   normalState,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         };
 
         // SceneView 再描画判定:

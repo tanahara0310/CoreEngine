@@ -167,54 +167,9 @@ PixelShaderOutput main(PixelShaderInput input)
     float baseShadow;
     if (useRTShadow)
     {
-        // RT シャドウをポアソンディスク + バイラテラルフィルタでソフト化
-        // 16 サンプル、半径 6px でジャギーを自然にぼかす
-        static const float2 kPoissonDisk[16] =
-        {
-            float2(-0.94201624f, -0.39906216f),
-            float2(0.94558609f, -0.76890725f),
-            float2(-0.09418410f, -0.92938870f),
-            float2(0.34495938f, 0.29387760f),
-            float2(-0.91588581f, 0.45771432f),
-            float2(-0.81544232f, -0.87912464f),
-            float2(-0.38277543f, 0.27676845f),
-            float2(0.97484398f, 0.75648379f),
-            float2(0.44323325f, -0.97511554f),
-            float2(0.53742981f, -0.47373420f),
-            float2(-0.26496911f, -0.41893023f),
-            float2(0.79197514f, 0.19090188f),
-            float2(-0.24188840f, 0.99706507f),
-            float2(-0.81409955f, 0.91437590f),
-            float2(0.19984126f, 0.78641367f),
-            float2(0.14383161f, -0.14100790f)
-        };
-        static const float kFilterRadius = 6.0f;
-        static const float kDepthThreshold = 0.5f;
-
-        float3 centerWorldPos = worldPosSample.xyz;
-        float shadowSum = 0.0f;
-        float weightSum = 0.0f;
-
-        for (int i = 0; i < 16; ++i)
-        {
-            int2 offset = int2(kPoissonDisk[i] * kFilterRadius);
-            int3 sampleCoord = int3(loadCoord.xy + offset, 0);
-            sampleCoord.x = clamp(sampleCoord.x, 0, (int) rtShadowWidth - 1);
-            sampleCoord.y = clamp(sampleCoord.y, 0, (int) rtShadowHeight - 1);
-
-            // ワールド座標距離によるエッジ保持（オブジェクト境界でにじまない）
-            float3 sampleWorldPos = gWorldPosition.Load(sampleCoord).xyz;
-            float posDiff = length(centerWorldPos - sampleWorldPos);
-            if (posDiff > kDepthThreshold)
-                continue;
-
-            // ガウシアン重み（距離ベース）
-            float dist = length(kPoissonDisk[i]);
-            float w = exp(-dist * dist * 2.0f);
-            shadowSum += gRTShadowMask.Load(sampleCoord).r * w;
-            weightSum += w;
-        }
-        baseShadow = (weightSum > 0.0f) ? (shadowSum / weightSum) : gRTShadowMask.Load(loadCoord).r;
+        // RTシャドウはシェーダー側でコーンサンプリングによるソフト化済みのため
+        // 空間フィルタは不要。直接ロードして使用する。
+        baseShadow = gRTShadowMask.Load(loadCoord).r;
     }
     else
     {
@@ -223,11 +178,13 @@ PixelShaderOutput main(PixelShaderInput input)
 
     // ===== RT シャドウ デバッグ表示 =====
     // 赤=影(0), 緑=光(1), 青=RT未使用
-    // 問題が解決したらこのブロックを削除すること
-#if 0  // 1 でデバッグ表示ON、0 で通常描画
+    // ソフトシャドウが機能していれば影の境界にグラデーション（黄〜緑）が見える
+    // 問題が解決したら #if 0 に戻すこと
+#if 1  // 1 でデバッグ表示ON、0 で通常描画
     if (useRTShadow)
     {
-        // 赤(影) → 緑(光) のグラデーション
+        // 赤(影=0) → 緑(光=1) のグラデーション
+        // ソフトシャドウが効いていれば影の境界に黄色〜のグラデーションが表示される
         output.color = float4(1.0f - baseShadow, baseShadow, 0.0f, 1.0f);
     }
     else
@@ -272,11 +229,39 @@ PixelShaderOutput main(PixelShaderInput input)
             float shadowFactor = (di == 0)
                 ? baseShadow
                 : CalculateShadow(lightSpacePos, N, dL.direction, gShadowMap, gShadowSampler);
-            shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
-            float3 diff = useLambert
-                ? CalculateLambertDiffuse(N, L, dL.color.rgb, dL.intensity, albedo, ao)
-                : CalculateHalfLambertDiffuse(N, L, dL.color.rgb, dL.intensity, albedo, ao);
-            Lo += diff * shadowFactor;
+
+            float3 diff;
+            if (useLambert)
+            {
+                // Lambert: shadowFactor を結果に乗算（従来通り）
+                diff = CalculateLambertDiffuse(N, L, dL.color.rgb, dL.intensity, albedo, ao)
+                       * lerp(0.3f, 1.0f, shadowFactor);
+            }
+            else
+            {
+                // HalfLambert + RTシャドウ の共存方法：ライティングを分離する。
+                //
+                // HalfLambert（NdotL*0.5+0.5）はアンビエント的な光の回り込みを表す近似であり、
+                // 影の中でも最低 0.5 の明るさを保つ設計のため、物理的なシャドウと直接掛け合わせると
+                // 投影影が消えてしまう（shadow=0 でも halfLambert≈0.5 で明るいため）。
+                //
+                // そのため:
+                //   直接光（Direct）  = Lambert で計算 × shadowFactor  → 影に入る
+                //   間接補完（Wrap）  = HalfLambert の wrap 項のみ     → 影に入らない（光の回り込み）
+                // として加算する。これにより投影影がきちんと落ちつつ、暗部も wrap で潰れない。
+                float NdotL = dot(N, L);
+                float3 lightRadiance = dL.color.rgb * dL.intensity * albedo * ao;
+
+                // 直接光: Lambert × shadow
+                float directTerm = max(NdotL, 0.0f) * lerp(0.3f, 1.0f, shadowFactor);
+
+                // 光の回り込み: HalfLambert の「上乗せ」部分のみ（wrap 量を定数で調整可）
+                static const float kWrapStrength = 0.5f; // 0=回り込みなし, 1=通常HalfLambert相当
+                float wrapTerm = saturate(NdotL * 0.5f + 0.5f) * kWrapStrength;
+
+                diff = lightRadiance * (directTerm + wrapTerm);
+            }
+            Lo += diff;
         }
 
         // ポイントライト
