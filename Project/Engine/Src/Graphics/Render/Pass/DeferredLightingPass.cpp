@@ -83,29 +83,25 @@ namespace CoreEngine
                 context.shadowMapManager->GetLightViewProjection());
         }
 
-        // ===== RT シャドウマスクの設定 =====
-        // RT シャドウが今フレームでディスパッチ済みの場合のみバインド
-        // （SceneView / GameView ごとに独立したテクスチャを使用）
+        // ===== RT シャドウマスクの設定（ライトごとに独立） =====
         if (context.rtShadowManager && context.rtShadowManager->IsInitialized()) {
             auto viewId = static_cast<RayTracingShadowManager::ViewID>(context.currentRTShadowViewId);
-            bool dispatched = context.rtShadowManager->IsDispatchedThisFrame(viewId);
-            auto srvHandle = context.rtShadowManager->GetShadowSRVHandle(viewId);
-            static uint32_t logCount = 0;
-            if (logCount < 10) {
-                Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-                    "DeferredLightingPass: viewId={} dispatched={} srvHandle=0x{:X} target={}",
-                    static_cast<uint32_t>(viewId), dispatched, srvHandle.ptr, targetName_);
-                ++logCount;
+            // 全ライト分のハンドルをリセットしてから有効なものをセット
+            for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
+                deferredLighting->SetRTShadowHandle({}, li);
             }
-            if (dispatched && srvHandle.ptr != 0) {
-                deferredLighting->SetRTShadowHandle(srvHandle);
-            } else {
-                deferredLighting->SetRTShadowHandle({});
+            for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
+                if (context.rtShadowManager->IsDispatchedThisFrame(viewId, li)) {
+                    auto srvHandle = context.rtShadowManager->GetShadowSRVHandle(viewId, li);
+                    if (srvHandle.ptr != 0) {
+                        deferredLighting->SetRTShadowHandle(srvHandle, li);
+                    }
+                }
             }
         } else {
-            Logger::GetInstance().Log("DeferredLightingPass: RT shadow not initialized, fallback to PCF",
-                LogLevel::Info, LogCategory::Graphics);
-            deferredLighting->SetRTShadowHandle({});
+            for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
+                deferredLighting->SetRTShadowHandle({}, li);
+            }
         }
 
         // ===== ライティングパスを実行 =====

@@ -62,7 +62,15 @@ namespace CoreEngine
         void SetBRDFLUTHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { brdfLUTHandle_ = handle; }
 
         /// @brief RT シャドウマスク SRV を設定（DXR レイトレーシングシャドウ結果）
-        void SetRTShadowHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { rtShadowHandle_ = handle; }
+        /// @param handle  SRV ハンドル（無効時は {} を渡す）
+        /// @param lightIndex  ディレクショナルライトのインデックス（0〜3）
+        void SetRTShadowHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle, uint32_t lightIndex = 0) {
+            if (lightIndex < kMaxRTShadowLights) {
+                rtShadowHandles_[lightIndex] = handle;
+            }
+        }
+
+        static constexpr uint32_t kMaxRTShadowLights = 4;
 
         /// @brief 環境マップ XYZ 回転角度を設定（ラジアン）
         void SetEnvironmentRotation(const Vector3& rotation) { environmentRotation_ = rotation; }
@@ -101,7 +109,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_{};
 
         // ===== RT Shadow =====
-        D3D12_GPU_DESCRIPTOR_HANDLE rtShadowHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE rtShadowHandles_[kMaxRTShadowLights]{};
 
         // IBL パラメータ定数バッファ（environmentRotationY + iblIntensity）
         Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;

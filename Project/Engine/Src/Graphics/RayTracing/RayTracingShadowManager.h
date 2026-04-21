@@ -22,8 +22,8 @@ namespace CoreEngine
     struct RayTracingShadowSettings {
         float shadowBias = 0.05f;    ///< セルフシャドウ防止バイアス
         float maxRayDistance = 1000.0f;  ///< シャドウレイの最大射程距離
-        float lightRadius = 0.0f;    ///< ソフトシャドウの光源角半径（ラジアン）。0でハードシャドウ
-        int softShadowSamples = 1;       ///< ソフトシャドウのサンプル数（1=ハード、4〜8推奨）
+        float lightRadius = 0.15f;    ///< ソフトシャドウの光源角半径（ラジアン）。0でハードシャドウ
+        int   softShadowSamples = 8;        ///< ソフトシャドウのサンプル数（1=ハード、4〜8推奨）
     };
 
     class RayTracingShadowManager {
@@ -35,7 +35,8 @@ namespace CoreEngine
             Count
         };
 
-        static constexpr uint32_t kViewCount = static_cast<uint32_t>(ViewID::Count);
+        static constexpr uint32_t kViewCount          = static_cast<uint32_t>(ViewID::Count);
+        static constexpr uint32_t kMaxDirectionalLights = 4; ///< LightManager::MAX_DIRECTIONAL_LIGHTS と合わせる
 
         /// @brief 初期化（State Object / Shader Table / UAV テクスチャの構築）
         /// @return 成功した場合 true
@@ -43,30 +44,32 @@ namespace CoreEngine
             AccelerationStructureManager* asMgr);
 
         /// @brief シャドウレイをディスパッチする
+        /// @param lightIndex ディレクショナルライトのインデックス（0〜kMaxDirectionalLights-1）
         void Dispatch(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
             const Vector3& lightDirection,
             UINT width, UINT height,
-            ViewID viewId = ViewID::GameView);
+            ViewID viewId = ViewID::GameView,
+            uint32_t lightIndex = 0);
 
-        /// @brief 指定ビューのシャドウ結果テクスチャの SRV を取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetShadowSRVHandle(ViewID viewId = ViewID::GameView) const;
+        /// @brief 指定ビュー・ライトのシャドウ結果テクスチャの SRV を取得
+        D3D12_GPU_DESCRIPTOR_HANDLE GetShadowSRVHandle(ViewID viewId = ViewID::GameView,
+            uint32_t lightIndex = 0) const;
 
         /// @brief 初期化済みか
         bool IsInitialized() const { return isInitialized_; }
 
-        /// @brief 指定ビューで今フレームにディスパッチ済みか
-        bool IsDispatchedThisFrame(ViewID viewId = ViewID::GameView) const;
+        /// @brief 指定ビュー・ライトで今フレームにディスパッチ済みか
+        bool IsDispatchedThisFrame(ViewID viewId = ViewID::GameView,
+            uint32_t lightIndex = 0) const;
 
-        /// @brief フレーム開始時に全ビューの状態をリセット
+        /// @brief フレーム開始時に全ビュー・全ライトの状態をリセット
         void ResetFrameState();
 
-        /// @brief 出力テクスチャを指定サイズで確保する（Dispatch の前に呼び出す）
-        /// @param width    テクスチャ幅
-        /// @param height   テクスチャ高さ
-        /// @param viewId   対象ビュー
-        void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView);
+        /// @brief 出力テクスチャを指定サイズで確保する
+        void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView,
+            uint32_t lightIndex = 0);
 
         /// @brief シャドウパラメータを設定する
         void SetSettings(const RayTracingShadowSettings& settings) { settings_ = settings; }
@@ -75,7 +78,7 @@ namespace CoreEngine
         const RayTracingShadowSettings& GetSettings() const { return settings_; }
 
     private:
-        bool EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex);
+        bool EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex, uint32_t lightIndex);
 
         DirectXCommon* dxCommon_ = nullptr;
         DescriptorManager* descriptorManager_ = nullptr;
@@ -94,7 +97,7 @@ namespace CoreEngine
         // Shader Table
         ShaderTableBuilder shaderTableBuilder_;
 
-        // ビューごとのシャドウ出力テクスチャ
+        // ビュー × ライトごとのシャドウ出力テクスチャ [viewIndex][lightIndex]
         struct ShadowView {
             Microsoft::WRL::ComPtr<ID3D12Resource> texture;
             D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
@@ -106,17 +109,13 @@ namespace CoreEngine
             D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
             bool dispatchedThisFrame = false;
         };
-        ShadowView views_[kViewCount]{};
-
-        // 定数バッファ（永続マッピング）
-        Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-        void* mappedConstantBuffer_ = nullptr;
+        ShadowView views_[kViewCount][kMaxDirectionalLights]{};
 
         // パラメータ
         RayTracingShadowSettings settings_;
 
-        uint32_t frameIndex_ = 0;
-        uint32_t dispatchLogCount_ = 0;
-        bool isInitialized_ = false;
+        uint32_t frameIndex_        = 0;
+        uint32_t dispatchLogCount_  = 0;
+        bool isInitialized_         = false;
     };
 }

@@ -26,7 +26,14 @@ namespace CoreEngine
     GlobalRootSignatureManager& GlobalRootSignatureManager::AddCBV(
         const std::string& name, UINT shaderRegister, UINT registerSpace)
     {
-        entries_.push_back({ name, DXRRootEntryType::CBV, shaderRegister, registerSpace });
+        entries_.push_back({ name, DXRRootEntryType::CBV, shaderRegister, registerSpace, 0 });
+        return *this;
+    }
+
+    GlobalRootSignatureManager& GlobalRootSignatureManager::AddRootConstants(
+        const std::string& name, UINT shaderRegister, UINT num32BitValues, UINT registerSpace)
+    {
+        entries_.push_back({ name, DXRRootEntryType::RootConstants, shaderRegister, registerSpace, num32BitValues });
         return *this;
     }
 
@@ -89,6 +96,12 @@ namespace CoreEngine
                 param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
                 param.Descriptor.ShaderRegister = entry.shaderRegister;
                 param.Descriptor.RegisterSpace = entry.registerSpace;
+                break;
+            case DXRRootEntryType::RootConstants:
+                param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+                param.Constants.ShaderRegister = entry.shaderRegister;
+                param.Constants.RegisterSpace = entry.registerSpace;
+                param.Constants.Num32BitValues = entry.num32BitValues;
                 break;
             }
 

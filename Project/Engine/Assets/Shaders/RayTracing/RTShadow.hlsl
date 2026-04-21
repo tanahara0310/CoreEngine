@@ -116,11 +116,7 @@ void RTShadowRayGen()
     // 最大ループ回数を定義し、実行時に early break する。
     // ============================================================
     static const int kMaxSamples = 16; // コンパイル時定数（上限）
-    // === デバッグ: cbuffer を無視してハードコードで強制テスト ===
-    // 問題解決後に削除し、cbuffer 値を使用すること
-    int   numSamples = 8;    // 強制 8 サンプル
-    float testRadius = 0.15f; // 強制: 大きめの角半径
-    // ==========================================================
+    int   numSamples = clamp(gSoftShadowSamples, 1, kMaxSamples);
     float shadowSum  = 0.0f;
 
     // ピクセル固有のランダムシード（フレームインデックスで毎フレーム変化）
@@ -138,8 +134,10 @@ void RTShadowRayGen()
         float r1 = float(seed1) * (1.0f / 4294967296.0f);
         float r2 = float(seed2) * (1.0f / 4294967296.0f);
 
-        // デバッグ: testRadius でコーン内ジッターを強制
-        float3 jitteredDir = SampleConeDirection(rayDir, testRadius, r1, r2);
+        // gLightRadius > 0 ならコーン内でジッター、そうでなければそのまま
+        float3 jitteredDir = (gLightRadius > 0.0f)
+            ? SampleConeDirection(rayDir, gLightRadius, r1, r2)
+            : rayDir;
 
         RayDesc ray;
         ray.Origin    = origin;

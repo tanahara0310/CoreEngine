@@ -412,14 +412,11 @@ namespace CoreEngine
         }
 
 #ifdef USE_IMGUI
-        // DXR レイトレーシングシャドウのディスパッチ（GBuffer → RT Shadow → DeferredLighting の順で使用）
+        // DXR レイトレーシングシャドウのディスパッチ（全ディレクショナルライト分）
         auto dispatchRTShadow = [&](RayTracingShadowManager::ViewID viewId) {
             auto* rtShadow = context.rtShadowManager;
             if (!rtShadow || !rtShadow->IsInitialized()) return;
             if (!context.gBufferManager || !context.lightManager) return;
-
-            auto* dirLight = context.lightManager->GetDirectionalLight(0);
-            if (!dirLight || !dirLight->enabled) return;
 
             auto* worldPosResource = context.gBufferManager->GetResource(
                 GBufferManager::Target::WorldPosition);
@@ -437,14 +434,23 @@ namespace CoreEngine
                 GBufferManager::Target::WorldPosition);
             auto normalSRV = context.gBufferManager->GetSRVHandle(
                 GBufferManager::Target::NormalRoughness);
-            rtShadow->Dispatch(
-                dx->GetCommandList(),
-                worldPosSRV,
-                normalSRV,
-                dirLight->direction,
-                static_cast<UINT>(dx->GetClientWidth()),
-                static_cast<UINT>(dx->GetClientHeight()),
-                viewId);
+
+            // 全有効ディレクショナルライト分をそれぞれ独立してDispatch
+            const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
+            for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
+                auto* dirLight = context.lightManager->GetDirectionalLight(li);
+                if (!dirLight || !dirLight->enabled) continue;
+
+                rtShadow->Dispatch(
+                    dx->GetCommandList(),
+                    worldPosSRV,
+                    normalSRV,
+                    dirLight->direction,
+                    static_cast<UINT>(dx->GetClientWidth()),
+                    static_cast<UINT>(dx->GetClientHeight()),
+                    viewId,
+                    li);
+            }
 
             ResourceBarrierHelper::Transition(cmdList, worldPosResource, worldPosState,
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);

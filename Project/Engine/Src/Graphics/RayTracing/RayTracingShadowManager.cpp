@@ -65,7 +65,8 @@ namespace CoreEngine
             .AddSRVTable("gScene", 0)  // t0: TLAS
             .AddSRVTable("gWorldPosition", 1)  // t1: G-Buffer ワールド座標
             .AddSRVTable("gNormalRoughness", 2)  // t2: G-Buffer 法線
-            .AddCBV("ShadowRayConstants", 0); // b0: 定数バッファ
+            .AddRootConstants("ShadowRayConstants", 0,
+                sizeof(ShadowRayConstants) / sizeof(uint32_t)); // b0: Root Constants
         if (!globalRootSigMgr_.Build(dxCommon_->GetDevice())) {
             log.Log("RayTracingShadowManager: Global root signature build failed",
                 LogLevel::Error, LogCategory::Graphics);
@@ -103,11 +104,6 @@ namespace CoreEngine
         log.Log("RayTracingShadowManager: Shader table created",
             LogLevel::Info, LogCategory::Graphics);
 
-        // 定数バッファの作成（永続マッピング）
-        constantBuffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon_->GetDevice(), sizeof(ShadowRayConstants));
-        constantBuffer_->Map(0, nullptr, &mappedConstantBuffer_);
-
         isInitialized_ = true;
         shaderBlob_.Reset();  // State Object構築後は不要
         log.Log("RayTracingShadowManager: Initialized successfully",
@@ -118,9 +114,9 @@ namespace CoreEngine
     // =========================================================================
     // 出力テクスチャの確保（リサイズ対応、ビューごと）
     // =========================================================================
-    bool RayTracingShadowManager::EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex)
+    bool RayTracingShadowManager::EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex, uint32_t lightIndex)
     {
-        auto& view = views_[viewIndex];
+        auto& view = views_[viewIndex][lightIndex];
         if (width == view.width && height == view.height && view.texture) {
             return true;  // サイズ変更なし
         }
@@ -154,7 +150,7 @@ namespace CoreEngine
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
-        std::string uavName = "RTShadow_UAV_" + std::to_string(viewIndex);
+        std::string uavName = "RTShadow_UAV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
         descriptorManager_->CreateUAV(view.texture.Get(), uavDesc,
             view.uavCpuHandle, view.uavHandle, uavName);
 
@@ -164,12 +160,13 @@ namespace CoreEngine
         srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.Texture2D.MipLevels = 1;
-        std::string srvName = "RTShadow_SRV_" + std::to_string(viewIndex);
+        std::string srvName = "RTShadow_SRV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
         descriptorManager_->CreateSRV(view.texture.Get(), srvDesc,
             view.srvCpuHandle, view.srvHandle, srvName);
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-            "RayTracingShadowManager: Output texture[{}] created ({}x{})", viewIndex, width, height);
+            "RayTracingShadowManager: Output texture[view={} light={}] created ({}x{})",
+            viewIndex, lightIndex, width, height);
 
         return true;
     }
@@ -177,25 +174,32 @@ namespace CoreEngine
     // =========================================================================
     // アクセサ
     // =========================================================================
-    void RayTracingShadowManager::Resize(UINT width, UINT height, ViewID viewId)
+    void RayTracingShadowManager::Resize(UINT width, UINT height, ViewID viewId, uint32_t lightIndex)
     {
-        EnsureOutputTexture(width, height, static_cast<uint32_t>(viewId));
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        EnsureOutputTexture(width, height, static_cast<uint32_t>(viewId), lightIndex);
     }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetShadowSRVHandle(ViewID viewId) const
+    D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetShadowSRVHandle(
+        ViewID viewId, uint32_t lightIndex) const
     {
-        return views_[static_cast<uint32_t>(viewId)].srvHandle;
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        return views_[static_cast<uint32_t>(viewId)][lightIndex].srvHandle;
     }
 
-    bool RayTracingShadowManager::IsDispatchedThisFrame(ViewID viewId) const
+    bool RayTracingShadowManager::IsDispatchedThisFrame(
+        ViewID viewId, uint32_t lightIndex) const
     {
-        return views_[static_cast<uint32_t>(viewId)].dispatchedThisFrame;
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        return views_[static_cast<uint32_t>(viewId)][lightIndex].dispatchedThisFrame;
     }
 
     void RayTracingShadowManager::ResetFrameState()
     {
-        for (auto& v : views_) {
-            v.dispatchedThisFrame = false;
+        for (auto& viewRow : views_) {
+            for (auto& v : viewRow) {
+                v.dispatchedThisFrame = false;
+            }
         }
     }
 
@@ -208,35 +212,35 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
         const Vector3& lightDirection,
         UINT width, UINT height,
-        ViewID viewId)
+        ViewID viewId,
+        uint32_t lightIndex)
     {
         if (!isInitialized_ || !asMgr_->IsSupported()) return;
         if (asMgr_->GetBLASCount() == 0) return;
 
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
         uint32_t vi = static_cast<uint32_t>(viewId);
-        auto& view = views_[vi];
+        auto& view = views_[vi][lightIndex];
 
         if (dispatchLogCount_ < 10) {
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-                "RTShadow::Dispatch START viewId={} size={}x{} BLAS={} state={}",
-                vi, width, height, asMgr_->GetBLASCount(),
-                static_cast<UINT>(view.currentState));
+                "RTShadow::Dispatch START viewId={} lightIndex={} size={}x{} BLAS={}",
+                vi, lightIndex, width, height, asMgr_->GetBLASCount());
         }
 
         // 出力テクスチャの確保（リサイズ対応）
-        EnsureOutputTexture(width, height, vi);
+        EnsureOutputTexture(width, height, vi, lightIndex);
 
-        // 定数バッファ更新（永続マッピング済みポインタに直接書き込み）
+        // 定数データを構築（Root Constants でコマンドストリームに直接埋め込む）
         ShadowRayConstants constants{};
-        constants.lightDir[0] = lightDirection.x;
-        constants.lightDir[1] = lightDirection.y;
-        constants.lightDir[2] = lightDirection.z;
-        constants.shadowBias = settings_.shadowBias;
-        constants.maxRayDistance = settings_.maxRayDistance;
-        constants.lightRadius = settings_.lightRadius;
+        constants.lightDir[0]       = lightDirection.x;
+        constants.lightDir[1]       = lightDirection.y;
+        constants.lightDir[2]       = lightDirection.z;
+        constants.shadowBias        = settings_.shadowBias;
+        constants.maxRayDistance    = settings_.maxRayDistance;
+        constants.lightRadius       = settings_.lightRadius;
         constants.softShadowSamples = settings_.softShadowSamples;
-        constants.frameIndex = frameIndex_++;
-        std::memcpy(mappedConstantBuffer_, &constants, sizeof(constants));
+        constants.frameIndex        = frameIndex_++;
 
         // CommandList4 を取得
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
@@ -265,9 +269,12 @@ namespace CoreEngine
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness")),
             normalRoughnessSRV);
-        cmdList->SetComputeRootConstantBufferView(
+        // Root Constants: 定数をコマンドストリームに直接埋め込む（バッファ同期問題を回避）
+        cmdList->SetComputeRoot32BitConstants(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("ShadowRayConstants")),
-            constantBuffer_->GetGPUVirtualAddress());
+            sizeof(ShadowRayConstants) / sizeof(uint32_t),
+            &constants,
+            0);
 
         // DispatchRays
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
@@ -286,8 +293,8 @@ namespace CoreEngine
 
         if (dispatchLogCount_ < 10) {
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-                "RTShadow::Dispatch complete viewId={} srvHandle=0x{:X} uavHandle=0x{:X}",
-                vi, view.srvHandle.ptr, view.uavHandle.ptr);
+                "RTShadow::Dispatch complete viewId={} lightIndex={} srvHandle=0x{:X}",
+                vi, lightIndex, view.srvHandle.ptr);
             ++dispatchLogCount_;
         }
     }
