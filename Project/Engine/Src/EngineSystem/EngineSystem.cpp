@@ -143,17 +143,17 @@ namespace CoreEngine
         threadProfilerUI_->RegisterPool("ModelLoader", [this]() -> ThreadPool* {
             if (auto* mm = GetComponent<ModelManager>()) { return mm->GetThreadPool(); }
             return nullptr;
-        });
+            });
         gameDebugUI_->RegisterEnginePanel("Thread Profiler", [this]() {
             threadProfilerUI_->Draw();
-        });
+            });
 
         // キーコンフィグUIの登録
         gameDebugUI_->RegisterEnginePanel("Key Config", [this]() {
             if (auto* inputManager = GetComponent<InputManager>()) {
                 keyConfigUI_.Draw(inputManager->GetQuery());
             }
-        });
+            });
 
         // その他の固定ウィンドウをドッキングシステムに登録
         DockingUI* dockingUI = imGui_->GetDockingUI();
@@ -368,7 +368,7 @@ namespace CoreEngine
                     auto* cmdListForBLAS = dx->GetCommandList();
                     modelManager->ForEachResource([&](ModelResource* resource) {
                         asMgr->BuildBLASFromModelResource(cmdListForBLAS, resource);
-                    });
+                        });
                 }
 
                 // DXR TLAS 構築（シーン内の全 ModelGameObject からインスタンスを収集）
@@ -418,25 +418,26 @@ namespace CoreEngine
             if (!rtShadow || !rtShadow->IsInitialized()) return;
             if (!context.gBufferManager || !context.lightManager) return;
 
-            auto* worldPosResource = context.gBufferManager->GetResource(
-                GBufferManager::Target::WorldPosition);
-            auto* normalResource = context.gBufferManager->GetResource(
-                GBufferManager::Target::NormalRoughness);
+            auto* worldPosResource = context.gBufferManager->GetResource(GBufferManager::Target::WorldPosition);
+            auto* normalResource = context.gBufferManager->GetResource(GBufferManager::Target::NormalRoughness);
+            auto* motionVecResource = context.gBufferManager->GetResource(GBufferManager::Target::MotionVector);
 
-            D3D12_RESOURCE_STATES worldPosState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            D3D12_RESOURCE_STATES normalState   = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            ResourceBarrierHelper::Transition(cmdList, worldPosResource, worldPosState,
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            ResourceBarrierHelper::Transition(cmdList, normalResource,   normalState,
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            // GBufferManager が管理するステートを直接参照して冗長バリアを防ぐ
+            auto& worldPosState = context.gBufferManager->GetCurrentState(GBufferManager::Target::WorldPosition);
+            auto& normalState = context.gBufferManager->GetCurrentState(GBufferManager::Target::NormalRoughness);
+            auto& motionVecState = context.gBufferManager->GetCurrentState(GBufferManager::Target::MotionVector);
 
-            auto worldPosSRV = context.gBufferManager->GetSRVHandle(
-                GBufferManager::Target::WorldPosition);
-            auto normalSRV = context.gBufferManager->GetSRVHandle(
-                GBufferManager::Target::NormalRoughness);
+            ResourceBarrierHelper::Transition(cmdList, worldPosResource, worldPosState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            ResourceBarrierHelper::Transition(cmdList, normalResource, normalState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            ResourceBarrierHelper::Transition(cmdList, motionVecResource, motionVecState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-            // 全有効ディレクショナルライト分をそれぞれ独立してDispatch
+            auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+            auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
+            auto motionVecSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
+
             const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
+
+            // 全ライト分 DispatchRays を先に実行（GPU パイプラインを詰めるため）
             for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
                 auto* dirLight = context.lightManager->GetDirectionalLight(li);
                 if (!dirLight || !dirLight->enabled) continue;
@@ -445,6 +446,7 @@ namespace CoreEngine
                     dx->GetCommandList(),
                     worldPosSRV,
                     normalSRV,
+                    motionVecSRV,
                     dirLight->direction,
                     static_cast<UINT>(dx->GetClientWidth()),
                     static_cast<UINT>(dx->GetClientHeight()),
@@ -452,11 +454,26 @@ namespace CoreEngine
                     li);
             }
 
-            ResourceBarrierHelper::Transition(cmdList, worldPosResource, worldPosState,
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            ResourceBarrierHelper::Transition(cmdList, normalResource,   normalState,
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        };
+            // 全ライト分 A-Trous デノイズをまとめて実行
+            for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
+                auto* dirLight = context.lightManager->GetDirectionalLight(li);
+                if (!dirLight || !dirLight->enabled) continue;
+
+                rtShadow->Denoise(
+                    dx->GetCommandList(),
+                    normalSRV,
+                    worldPosSRV,
+                    static_cast<UINT>(dx->GetClientWidth()),
+                    static_cast<UINT>(dx->GetClientHeight()),
+                    viewId,
+                    li);
+            }
+
+            // DeferredLightingPass が PIXEL_SHADER_RESOURCE として読み取るために戻す
+            ResourceBarrierHelper::Transition(cmdList, worldPosResource, worldPosState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            ResourceBarrierHelper::Transition(cmdList, normalResource, normalState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            ResourceBarrierHelper::Transition(cmdList, motionVecResource, motionVecState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            };
 
         // SceneView 再描画判定:
         // - Scene カメラが動いた → 即時再描画（インタラクティブな操作をフレーム遅延なく反映）
@@ -492,16 +509,9 @@ namespace CoreEngine
                 // 1. GBufferPass: 不透明オブジェクトを G-Buffer に書き込む（Scene カメラ使用）
                 executePass(renderPipeline_->GetPass<GBufferPass>());
 
-                // 1.5. RT シャドウ: SceneView カメラの GBuffer から RT シャドウを計算
-                dispatchRTShadow(RayTracingShadowManager::ViewID::SceneView);
-                {
-                    static uint32_t svLogCount = 0;
-                    if (svLogCount < 5) {
-                        Logger::GetInstance().Log("EngineSystem: SceneView RT shadow dispatched",
-                            LogLevel::Info, LogCategory::Graphics);
-                        ++svLogCount;
-                    }
-                }
+                // SceneView は RTシャドウを使わない（重いためエディタビューでは省略）
+                // 代わりに ShadowMap ベースのシャドウのみ使用
+                context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::SceneView);
 
                 // 2. DeferredLightingPass: G-Buffer を読み取り PBR+IBL ライティングを計算
                 context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::SceneView);
@@ -543,14 +553,6 @@ namespace CoreEngine
 
         // Game ビュー用 RT シャドウディスパッチ
         dispatchRTShadow(RayTracingShadowManager::ViewID::GameView);
-        {
-            static uint32_t gvLogCount = 0;
-            if (gvLogCount < 5) {
-                Logger::GetInstance().Log("EngineSystem: GameView RT shadow dispatched",
-                    LogLevel::Info, LogCategory::Graphics);
-                ++gvLogCount;
-            }
-        }
 
         {
 #ifdef USE_IMGUI

@@ -15,15 +15,26 @@ Texture2D<float4> gWorldPosition : register(t1);
 // G-Buffer: 法線（セルフシャドウバイアス用）
 Texture2D<float4> gNormalRoughness : register(t2);
 
-// ライト方向 + ソフトシャドウパラメータ
+// テンポラル蓄積用: 前フレームのシャドウ蓄積結果
+Texture2D<float> gHistoryShadow : register(t3);
+
+// モーションベクター（GBuffer で書き込まれた NDC 差分）
+Texture2D<float2> gMotionVector : register(t4);
+
+// ライト方向 + ソフトシャドウ + テンポラル蓄積パラメータ
+// C++ 側 ShadowRayConstants 構造体と厳密にレイアウトを合わせること
 cbuffer ShadowRayConstants : register(b0)
 {
-    float3 gLightDirection;    // 正規化済みライト方向（光源→シーン）
-    float  gShadowBias;        // シャドウバイアス
-    float  gMaxRayDistance;    // レイの最大距離
-    float  gLightRadius;       // 光源の角半径（ラジアン）：ペナンブラ幅を制御
-    int    gSoftShadowSamples; // ソフトシャドウのサンプル数（1=ハードシャドウ）
-    uint   gFrameIndex;        // フレームカウンタ（ノイズのテンポラル変化用）
+    float3 gLightDirection; // 正規化済みライト方向（光源→シーン）
+    float gShadowBias; // シャドウバイアス
+    float gMaxRayDistance; // レイの最大距離
+    float gLightRadius; // 光源の角半径（ラジアン）：ペナンブラ幅を制御
+    int gSoftShadowSamples; // ソフトシャドウのサンプル数（1=ハードシャドウ）
+    uint gFrameIndex; // フレームカウンタ（ノイズのテンポラル変化用）
+    float gHistoryAlpha; // テンポラル蓄積ブレンド係数（初回フレームは 1.0）
+    float gScreenWidth; // スクリーン幅（ピクセル）
+    float gScreenHeight; // スクリーン高さ（ピクセル）
+    float gPadding_[1]; // 16バイトアライメント用パディング
 };
 
 // ============================================================
@@ -111,15 +122,12 @@ void RTShadowRayGen()
     float3 origin = worldPos + N * gShadowBias + rayDir * gShadowBias * 0.5f;
 
     // ============================================================
-    // ソフトシャドウ: コーン内でジッターした複数レイの平均をとる
-    // DXR コンパイラが動的ループ上限を扱えるよう、コンパイル時定数で
-    // 最大ループ回数を定義し、実行時に early break する。
+    // ソフトシャドウ: コーン内でジッターした複数レイの平均
     // ============================================================
-    static const int kMaxSamples = 16; // コンパイル時定数（上限）
+    static const int kMaxSamples = 16;
     int   numSamples = clamp(gSoftShadowSamples, 1, kMaxSamples);
     float shadowSum  = 0.0f;
 
-    // ピクセル固有のランダムシード（フレームインデックスで毎フレーム変化）
     uint baseSeed = launchIndex.x * 1973u + launchIndex.y * 9277u + gFrameIndex * 26699u;
 
     [loop]
@@ -128,13 +136,11 @@ void RTShadowRayGen()
         if (s >= numSamples)
             break;
 
-        // サンプルごとに独立した乱数を生成
         uint seed1 = PcgHash(baseSeed + uint(s) * 6571u);
         uint seed2 = PcgHash(seed1);
         float r1 = float(seed1) * (1.0f / 4294967296.0f);
         float r2 = float(seed2) * (1.0f / 4294967296.0f);
 
-        // gLightRadius > 0 ならコーン内でジッター、そうでなければそのまま
         float3 jitteredDir = (gLightRadius > 0.0f)
             ? SampleConeDirection(rayDir, gLightRadius, r1, r2)
             : rayDir;
@@ -162,8 +168,86 @@ void RTShadowRayGen()
         shadowSum += payload.shadowFactor;
     }
 
-    // サンプル平均で [0,1] の連続値を出力（ペナンブラが自然なグラデーションになる）
-    gShadowOutput[launchIndex] = shadowSum / float(numSamples);
+    // ============================================================
+    // 現フレームのサンプル平均を計算
+    // ============================================================
+    float currentMean = shadowSum / float(numSamples);
+
+    // ============================================================
+    // テンポラル蓄積
+    // ============================================================
+    // 【影の遅れ問題と解決策】
+    //
+    //   問題: モーションベクターは「受影サーフェス（床等）の動き」を記録するが、
+    //         キャスター（移動キャラ等）が動いた場合、床のMV≈0なので
+    //         前フレームの正確な位置に移動しても「古い影」を参照してしまう。
+    //         結果: 影がキャスターの動きに1フレーム以上遅れてついてくる。
+    //
+    //   解決: 「影の値差（Luminance Disocclusion）」で棄却判定を行う。
+    //         | currentMean - historyShadow | が大きい
+    //         → 影の状態が変わった（キャスターが動いた）
+    //         → blendAlpha を 1.0 に近づけて現フレームを優先
+    //         → 遅延なくシャドウを更新
+    //
+    //   副作用: キャスター移動時はノイズが一時的に増えるが、
+    //           A-Trous空間フィルタ（Denoise）が直後に適用されるので
+    //           1フレームのノイズスパイクは見えない。
+
+    int2 pixelCoord = int2(launchIndex);
+
+    // モーションベクターを読み取り（NDC差分: 現-前、クリップ空間 Y+1=上）
+    float2 mv = gMotionVector.Load(int3(pixelCoord, 0));
+
+    // NDC差分をスクリーンピクセル差分に変換してリプロジェクション
+    // NDC X: +1=右  → スクリーン X と同方向 → 符号そのまま
+    // NDC Y: +1=上  → スクリーン Y は下方向 → 符号反転
+    float2 prevPixelF;
+    prevPixelF.x = float(pixelCoord.x) - mv.x * gScreenWidth  * 0.5f;
+    prevPixelF.y = float(pixelCoord.y) + mv.y * gScreenHeight * 0.5f;
+    int2 prevPixel = int2(round(prevPixelF));
+
+    bool inBounds = prevPixel.x >= 0 && prevPixel.y >= 0
+                 && prevPixel.x < int(gScreenWidth) && prevPixel.y < int(gScreenHeight);
+
+    float blendAlpha;
+    float historyShadow;
+    if (inBounds && gHistoryAlpha < 1.0f)
+    {
+        historyShadow = gHistoryShadow.Load(int3(prevPixel, 0));
+
+        // ── Luminance Disocclusion ──────────────────────────────
+        // 現フレームと履歴の影の値の差を検出する。
+        // 影はバイナリ（0=影、1=光）に近い値なので差が大きい = キャスターが動いた。
+        //
+        // 例:
+        //   前フレーム: histShadow=1.0 (光) / 今フレーム: currentMean=0.0 (影出現)
+        //   → diff=1.0 → blendAlpha≒1.0 → 現フレームを即採用（遅延なし）
+        //
+        //   前フレーム: histShadow=0.2 / 今フレーム: currentMean=0.18
+        //   → diff=0.02 → blendAlpha=historyAlpha → 高蓄積でノイズ削減
+        // ────────────────────────────────────────────────────────
+        float shadowDiff = abs(currentMean - historyShadow);
+
+        // diff が kShadowChangeThreshold を超えた割合だけ alpha を 1.0 に引き上げる
+        // kShadowChangeThreshold = 0.15f: ソフトシャドウのペナンブラ変動より大きい値に設定
+        static const float kShadowChangeThreshold = 0.15f;
+        float disocclusionWeight = saturate(shadowDiff / kShadowChangeThreshold);
+
+        // さらにカメラ/オブジェクト移動量も考慮（既存のMVベース補正）
+        float mvPixelLen = length(mv) * max(gScreenWidth, gScreenHeight);
+        float motionWeight = saturate(mvPixelLen / 10.0f);
+
+        // 両方の要因で大きい方を採用
+        float rejectionWeight = max(disocclusionWeight, motionWeight);
+        blendAlpha = lerp(gHistoryAlpha, 1.0f, rejectionWeight);
+    }
+    else
+    {
+        historyShadow = currentMean;
+        blendAlpha = 1.0f;
+    }
+
+    gShadowOutput[launchIndex] = lerp(historyShadow, currentMean, blendAlpha);
 }
 
 // ============================================================

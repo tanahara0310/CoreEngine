@@ -13,17 +13,19 @@ namespace
     using CoreEngine::GBufferManager;
 
     constexpr std::array<DXGI_FORMAT, GBufferManager::kTargetCount> kGBufferFormats = {
-        DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,    // AlbedoAO (sRGB量子化で暗部精度を確保)
+        DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,    // AlbedoAO
         DXGI_FORMAT_R16G16B16A16_FLOAT,      // NormalRoughness
         DXGI_FORMAT_R8G8B8A8_UNORM,          // EmissiveMetallic
-        DXGI_FORMAT_R32G32B32A32_FLOAT       // WorldPosition (フル精度ワールド座標)
+        DXGI_FORMAT_R32G32B32A32_FLOAT,      // WorldPosition
+        DXGI_FORMAT_R16G16_FLOAT,            // MotionVector
     };
 
     constexpr std::array<std::array<float, 4>, GBufferManager::kTargetCount> kGBufferClearColors = {
         std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f },  // AlbedoAO
-        std::array<float, 4>{ 0.0f, 0.0f, 1.0f, 1.0f },  // NormalRoughness (クリア後 roughness=1.0fのパッチが出るため a=1.0f)
+        std::array<float, 4>{ 0.0f, 0.0f, 1.0f, 1.0f },  // NormalRoughness
         std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },  // EmissiveMetallic
-        std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f }   // WorldPosition
+        std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },  // WorldPosition
+        std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },  // MotionVector
     };
 
     const char* ToDebugName(GBufferManager::Target target)
@@ -33,6 +35,7 @@ namespace
         case GBufferManager::Target::NormalRoughness:  return "GBuffer_NormalRoughness";
         case GBufferManager::Target::EmissiveMetallic: return "GBuffer_EmissiveMetallic";
         case GBufferManager::Target::WorldPosition:    return "GBuffer_WorldPosition";
+        case GBufferManager::Target::MotionVector:      return "GBuffer_MotionVector";
         default:
             return "GBuffer_Unknown";
         }
@@ -163,6 +166,12 @@ namespace CoreEngine
     const DXGI_FORMAT* GBufferManager::GetFormats() const
     {
         return kGBufferFormats.data();
+    }
+
+    D3D12_RESOURCE_STATES& GBufferManager::GetCurrentState(Target target)
+    {
+        ValidateState();
+        return targets_[ToIndex(target)].currentState;
     }
 
     void GBufferManager::CreateOrResizeTarget(Target target)

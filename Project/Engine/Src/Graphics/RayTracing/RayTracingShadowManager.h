@@ -20,10 +20,16 @@ namespace CoreEngine
     ///          SceneView / GameView で独立した結果を保持するため、2枚のシャドウテクスチャを持つ
     /// @brief DXRシャドウのパラメータ設定
     struct RayTracingShadowSettings {
-        float shadowBias = 0.05f;    ///< セルフシャドウ防止バイアス
-        float maxRayDistance = 1000.0f;  ///< シャドウレイの最大射程距離
-        float lightRadius = 0.15f;    ///< ソフトシャドウの光源角半径（ラジアン）。0でハードシャドウ
-        int   softShadowSamples = 8;        ///< ソフトシャドウのサンプル数（1=ハード、4〜8推奨）
+        float shadowBias = 0.05f;          ///< セルフシャドウ防止バイアス
+        float maxRayDistance = 1000.0f;    ///< シャドウレイの最大射程距離
+        float lightRadius = 0.02f;         ///< 光源の角半径（ラジアン）
+        ///< 実際の太陽: ~0.0046 rad
+        ///< 0.02 = わずかにソフトな影（ペナンブラが狭くVariance Clampingが効く）
+        ///< 0.15 はペナンブラが広すぎてゴーストが発生するため禁止
+        int   softShadowSamples = 16;      ///< ソフトシャドウのサンプル数（最大16）
+        ///< サンプル数が多いほどノイズが少なくVariance Clampingの精度が上がる
+        float historyAlpha = 0.15f;        ///< テンポラル蓄積ブレンド係数
+        ///< Variance Clampingと組み合わせて使用する固定値
     };
 
     class RayTracingShadowManager {
@@ -35,7 +41,7 @@ namespace CoreEngine
             Count
         };
 
-        static constexpr uint32_t kViewCount          = static_cast<uint32_t>(ViewID::Count);
+        static constexpr uint32_t kViewCount = static_cast<uint32_t>(ViewID::Count);
         static constexpr uint32_t kMaxDirectionalLights = 4; ///< LightManager::MAX_DIRECTIONAL_LIGHTS と合わせる
 
         /// @brief 初期化（State Object / Shader Table / UAV テクスチャの構築）
@@ -48,7 +54,16 @@ namespace CoreEngine
         void Dispatch(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
             const Vector3& lightDirection,
+            UINT width, UINT height,
+            ViewID viewId = ViewID::GameView,
+            uint32_t lightIndex = 0);
+
+        /// @brief A-Trous デノイズパスを実行する（Dispatch の直後に呼ぶ）
+        void Denoise(ID3D12GraphicsCommandList* cmdList,
+            D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
             UINT width, UINT height,
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
@@ -108,14 +123,34 @@ namespace CoreEngine
             UINT height = 0;
             D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
             bool dispatchedThisFrame = false;
+
+            // テンポラル蓄積用履歴テクスチャ（前フレームの蓄積結果を保持）
+            Microsoft::WRL::ComPtr<ID3D12Resource> historyTexture;
+            D3D12_GPU_DESCRIPTOR_HANDLE historySrvHandle{};
+            D3D12_CPU_DESCRIPTOR_HANDLE historySrvCpuHandle{};
+            D3D12_RESOURCE_STATES historyCurrentState = D3D12_RESOURCE_STATE_COMMON;
+            bool isHistoryValid = false; ///< 履歴テクスチャが初回フレーム書き込み済みか
+
+            // A-Trous デノイズ用中間バッファ（ping-pong）
+            Microsoft::WRL::ComPtr<ID3D12Resource> denoiseTemp;
+            D3D12_GPU_DESCRIPTOR_HANDLE denoiseTempUavHandle{};
+            D3D12_CPU_DESCRIPTOR_HANDLE denoiseTempUavCpuHandle{};
+            D3D12_GPU_DESCRIPTOR_HANDLE denoiseTempSrvHandle{};
+            D3D12_CPU_DESCRIPTOR_HANDLE denoiseTempSrvCpuHandle{};
+            D3D12_RESOURCE_STATES denoiseTempState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         };
         ShadowView views_[kViewCount][kMaxDirectionalLights]{};
 
         // パラメータ
         RayTracingShadowSettings settings_;
 
-        uint32_t frameIndex_        = 0;
-        uint32_t dispatchLogCount_  = 0;
-        bool isInitialized_         = false;
+        uint32_t frameIndex_ = 0;
+        uint32_t dispatchLogCount_ = 0;
+        bool isInitialized_ = false;
+
+        // A-Trous デノイズ用コンピュートパイプライン
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> denoiseRootSignature_;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> denoisePipelineState_;
+        bool denoiseInitialized_ = false;
     };
 }

@@ -111,14 +111,22 @@ namespace CoreEngine
         Matrix4x4 lightVP = renderContext_.shadowMapManager ?
             renderContext_.shadowMapManager->GetLightViewProjection() : MathCore::Matrix::Identity();
 
+        size_t slotIdx = static_cast<size_t>(slot);
+
         // GPUメモリに書き込み
         TransformationMatrix* mappedData = nullptr;
         transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
         mappedData->world = worldMatrix;
+        // 初回フレームは prevWVP = currentWVP にしてモーションベクター=0を保証する
+        mappedData->prevWVP = prevWVPInitialized_[slotIdx] ? prevWVP_[slotIdx] : worldViewProjectionMatrix;
         mappedData->WVP = worldViewProjectionMatrix;
         mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mappedData->lightViewProjection = lightVP;
         transformBuffer->Unmap(0, nullptr);
+
+        // 今フレームのWVPを次フレームの prevWVP として保存
+        prevWVP_[slotIdx] = worldViewProjectionMatrix;
+        prevWVPInitialized_[slotIdx] = true;
     }
 
     void Model::Draw(const WorldTransform& transform, const ICamera* camera,

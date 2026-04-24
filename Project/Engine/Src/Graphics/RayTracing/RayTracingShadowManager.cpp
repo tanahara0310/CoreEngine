@@ -16,17 +16,22 @@ namespace CoreEngine
     // =========================================================================
     // HLSL 側の cbuffer ShadowRayConstants とレイアウトを共有する構造体
     // HLSL: float3 gLightDirection, float gShadowBias,
-    //       float gMaxRayDistance, float gLightRadius, int gSoftShadowSamples, uint gFrameIndex
+    //       float gMaxRayDistance, float gLightRadius, int gSoftShadowSamples,
+    //       uint gFrameIndex, float gHistoryAlpha, float3 gPadding_
     // =========================================================================
     struct alignas(16) ShadowRayConstants {
-        float    lightDir[3];
-        float    shadowBias;
-        float    maxRayDistance;
-        float    lightRadius;
-        int      softShadowSamples;
-        uint32_t frameIndex;
+        float    lightDir[3];        // offset  0
+        float    shadowBias;         // offset 12  → row1 終了(16)
+        float    maxRayDistance;     // offset 16
+        float    lightRadius;        // offset 20
+        int      softShadowSamples;  // offset 24
+        uint32_t frameIndex;         // offset 28  → row2 終了(32)
+        float    historyAlpha;       // offset 32
+        float    screenWidth;        // offset 36
+        float    screenHeight;       // offset 40
+        float    padding;            // offset 44  → row3 終了(48)
     };
-    static_assert(sizeof(ShadowRayConstants) == 32, "ShadowRayConstants size mismatch with HLSL cbuffer");
+    static_assert(sizeof(ShadowRayConstants) == 48, "ShadowRayConstants size mismatch with HLSL cbuffer");
     // =========================================================================
     // Initialize
     // =========================================================================
@@ -61,10 +66,12 @@ namespace CoreEngine
 
         // グローバルルートシグネチャを構築
         globalRootSigMgr_
-            .AddUAVTable("gShadowOutput", 0)  // u0: シェード出力
-            .AddSRVTable("gScene", 0)  // t0: TLAS
-            .AddSRVTable("gWorldPosition", 1)  // t1: G-Buffer ワールド座標
-            .AddSRVTable("gNormalRoughness", 2)  // t2: G-Buffer 法線
+            .AddUAVTable("gShadowOutput", 0)      // u0: シャドウ出力
+            .AddSRVTable("gScene", 0)              // t0: TLAS
+            .AddSRVTable("gWorldPosition", 1)      // t1: G-Buffer ワールド座標
+            .AddSRVTable("gNormalRoughness", 2)    // t2: G-Buffer 法線
+            .AddSRVTable("gHistoryShadow", 3)      // t3: テンポラル蓄積履歴
+            .AddSRVTable("gMotionVector", 4)       // t4: モーションベクター
             .AddRootConstants("ShadowRayConstants", 0,
                 sizeof(ShadowRayConstants) / sizeof(uint32_t)); // b0: Root Constants
         if (!globalRootSigMgr_.Build(dxCommon_->GetDevice())) {
@@ -106,6 +113,94 @@ namespace CoreEngine
 
         isInitialized_ = true;
         shaderBlob_.Reset();  // State Object構築後は不要
+
+        // =========================================================
+        // A-Trous デノイズ用コンピュートパイプライン構築
+        // =========================================================
+        {
+            // ルートシグネチャ: t0=InputShadow, t1=Normal, t2=WorldPos, u0=Output, b0=Constants
+            D3D12_DESCRIPTOR_RANGE srvRanges[3]{};
+            srvRanges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+            srvRanges[0].NumDescriptors = 1;
+            srvRanges[0].BaseShaderRegister = 0; // t0
+            srvRanges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+            srvRanges[1].NumDescriptors = 1;
+            srvRanges[1].BaseShaderRegister = 1; // t1
+            srvRanges[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+            srvRanges[2].NumDescriptors = 1;
+            srvRanges[2].BaseShaderRegister = 2; // t2
+
+            D3D12_DESCRIPTOR_RANGE uavRange{};
+            uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+            uavRange.NumDescriptors = 1;
+            uavRange.BaseShaderRegister = 0; // u0
+
+            D3D12_ROOT_PARAMETER rootParams[5]{};
+            rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
+            rootParams[0].DescriptorTable.pDescriptorRanges = &srvRanges[0];
+            rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+            rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
+            rootParams[1].DescriptorTable.pDescriptorRanges = &srvRanges[1];
+            rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+            rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
+            rootParams[2].DescriptorTable.pDescriptorRanges = &srvRanges[2];
+            rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+            rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            rootParams[3].DescriptorTable.NumDescriptorRanges = 1;
+            rootParams[3].DescriptorTable.pDescriptorRanges = &uavRange;
+            rootParams[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+            rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+            rootParams[4].Constants.ShaderRegister = 0;
+            rootParams[4].Constants.RegisterSpace = 0;
+            rootParams[4].Constants.Num32BitValues = 8; // DenoiseConstants
+            rootParams[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+            D3D12_ROOT_SIGNATURE_DESC rsDesc{};
+            rsDesc.NumParameters = 5;
+            rsDesc.pParameters = rootParams;
+            rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+            Microsoft::WRL::ComPtr<ID3DBlob> rsBlob, rsError;
+            D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &rsError);
+            dxCommon_->GetDevice()->CreateRootSignature(0, rsBlob->GetBufferPointer(),
+                rsBlob->GetBufferSize(), IID_PPV_ARGS(&denoiseRootSignature_));
+
+            // コンピュートシェーダーをコンパイル
+            ShaderCompiler denoiseCompiler;
+            denoiseCompiler.Initialize();
+            Microsoft::WRL::ComPtr<IDxcBlob> csBlob;
+            csBlob.Attach(denoiseCompiler.CompileShader(L"RTShadowDenoise.hlsl", L"cs_6_6"));
+
+            if (csBlob && csBlob->GetBufferSize() > 0)
+            {
+                D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+                psoDesc.pRootSignature = denoiseRootSignature_.Get();
+                psoDesc.CS.pShaderBytecode = csBlob->GetBufferPointer();
+                psoDesc.CS.BytecodeLength  = csBlob->GetBufferSize();
+                HRESULT psoHr = dxCommon_->GetDevice()->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&denoisePipelineState_));
+                if (SUCCEEDED(psoHr)) {
+                    denoiseInitialized_ = true;
+                    log.Log("RayTracingShadowManager: A-Trous denoise pipeline created",
+                        LogLevel::Info, LogCategory::Graphics);
+                } else {
+                    log.Log("RayTracingShadowManager: A-Trous denoise PSO creation failed",
+                        LogLevel::Error, LogCategory::Graphics);
+                }
+            }
+            else
+            {
+                log.Log("RayTracingShadowManager: A-Trous denoise shader compile failed, denoising disabled",
+                    LogLevel::Warn, LogCategory::Graphics);
+            }
+        }
+
         log.Log("RayTracingShadowManager: Initialized successfully",
             LogLevel::Info, LogCategory::Graphics);
         return true;
@@ -123,8 +218,10 @@ namespace CoreEngine
 
         view.width = width;
         view.height = height;
+        // サイズ変更時は履歴を無効化（古いサイズの履歴を引き継がない）
+        view.isHistoryValid = false;
 
-        // R32_FLOAT UAV テクスチャ
+        // R32_FLOAT UAV テクスチャ（シャドウ出力）
         D3D12_HEAP_PROPERTIES heapProps{};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
@@ -163,6 +260,46 @@ namespace CoreEngine
         std::string srvName = "RTShadow_SRV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
         descriptorManager_->CreateSRV(view.texture.Get(), srvDesc,
             view.srvCpuHandle, view.srvHandle, srvName);
+
+        // -------------------------------------------------------
+        // テンポラル蓄積用 履歴テクスチャ（UAV なし、COPY_DEST + SRV のみ）
+        // -------------------------------------------------------
+        D3D12_RESOURCE_DESC histDesc = texDesc;
+        histDesc.Flags = D3D12_RESOURCE_FLAG_NONE; // UAV 不要
+
+        hr = dxCommon_->GetDevice()->CreateCommittedResource(
+            &heapProps, D3D12_HEAP_FLAG_NONE, &histDesc,
+            D3D12_RESOURCE_STATE_COMMON,
+            nullptr, IID_PPV_ARGS(&view.historyTexture));
+        if (FAILED(hr)) return false;
+
+        view.historyCurrentState = D3D12_RESOURCE_STATE_COMMON;
+
+        // 履歴テクスチャの SRV（RTShadow.hlsl の gHistoryShadow に対応）
+        std::string histSrvName = "RTShadow_Hist_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
+        descriptorManager_->CreateSRV(view.historyTexture.Get(), srvDesc,
+            view.historySrvCpuHandle, view.historySrvHandle, histSrvName);
+
+        // -------------------------------------------------------
+        // A-Trous デノイズ用中間バッファ（ping-pong のもう片面）
+        // UAV + SRV 両方必要
+        // -------------------------------------------------------
+        D3D12_RESOURCE_DESC denoiseDesc = texDesc; // R32_FLOAT UAV フラグ付き
+        hr = dxCommon_->GetDevice()->CreateCommittedResource(
+            &heapProps, D3D12_HEAP_FLAG_NONE, &denoiseDesc,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            nullptr, IID_PPV_ARGS(&view.denoiseTemp));
+        if (FAILED(hr)) return false;
+
+        view.denoiseTempState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+        std::string denoiseTempUavName = "RTShadow_DenoiseTemp_UAV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
+        descriptorManager_->CreateUAV(view.denoiseTemp.Get(), uavDesc,
+            view.denoiseTempUavCpuHandle, view.denoiseTempUavHandle, denoiseTempUavName);
+
+        std::string denoiseTempSrvName = "RTShadow_DenoiseTemp_SRV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
+        descriptorManager_->CreateSRV(view.denoiseTemp.Get(), srvDesc,
+            view.denoiseTempSrvCpuHandle, view.denoiseTempSrvHandle, denoiseTempSrvName);
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
             "RayTracingShadowManager: Output texture[view={} light={}] created ({}x{})",
@@ -210,6 +347,7 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
         const Vector3& lightDirection,
         UINT width, UINT height,
         ViewID viewId,
@@ -233,14 +371,17 @@ namespace CoreEngine
 
         // 定数データを構築（Root Constants でコマンドストリームに直接埋め込む）
         ShadowRayConstants constants{};
-        constants.lightDir[0]       = lightDirection.x;
-        constants.lightDir[1]       = lightDirection.y;
-        constants.lightDir[2]       = lightDirection.z;
-        constants.shadowBias        = settings_.shadowBias;
-        constants.maxRayDistance    = settings_.maxRayDistance;
-        constants.lightRadius       = settings_.lightRadius;
+        constants.lightDir[0] = lightDirection.x;
+        constants.lightDir[1] = lightDirection.y;
+        constants.lightDir[2] = lightDirection.z;
+        constants.shadowBias = settings_.shadowBias;
+        constants.maxRayDistance = settings_.maxRayDistance;
+        constants.lightRadius = settings_.lightRadius;
         constants.softShadowSamples = settings_.softShadowSamples;
-        constants.frameIndex        = frameIndex_++;
+        constants.frameIndex = frameIndex_++;
+        constants.historyAlpha = view.isHistoryValid ? settings_.historyAlpha : 1.0f;
+        constants.screenWidth  = static_cast<float>(width);
+        constants.screenHeight = static_cast<float>(height);
 
         // CommandList4 を取得
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
@@ -250,13 +391,20 @@ namespace CoreEngine
         cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         cmdList4->SetPipelineState1(stateObject_.Get());
 
-        // PSR → UAV 遷移（履歴が同じ場合は自動スキップ）
+        // 出力テクスチャ: 現在の状態 → UNORDERED_ACCESS
         ResourceBarrierHelper::Transition(
             cmdList, view.texture.Get(),
             view.currentState,
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        // ルートパラメータのバインド（インデックスはGlobalRootSignatureManagerから取得）
+        // 履歴テクスチャ: COPY_DEST 等の可能性あり → NON_PIXEL_SHADER_RESOURCE（RTシェーダー用SRV）
+        ResourceBarrierHelper::Transition(
+            cmdList, view.historyTexture.Get(),
+            view.historyCurrentState,
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        view.historyCurrentState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+        // ルートパラメータのバインド
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gShadowOutput")),
             view.uavHandle);
@@ -269,6 +417,12 @@ namespace CoreEngine
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness")),
             normalRoughnessSRV);
+        cmdList->SetComputeRootDescriptorTable(
+            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gHistoryShadow")),
+            view.historySrvHandle);
+        cmdList->SetComputeRootDescriptorTable(
+            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gMotionVector")),
+            motionVectorSRV);
         // Root Constants: 定数をコマンドストリームに直接埋め込む（バッファ同期問題を回避）
         cmdList->SetComputeRoot32BitConstants(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("ShadowRayConstants")),
@@ -276,19 +430,20 @@ namespace CoreEngine
             &constants,
             0);
 
-        // DispatchRays
+        // DispatchRays（履歴を読み取りながら現フレームとブレンドして出力に書き込む）
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
         cmdList4->DispatchRays(&dispatchDesc);
 
         // UAV バリア（DispatchRays 完了を保証）
         ResourceBarrierHelper::UAV(cmdList, view.texture.Get());
 
-        // UAV → PIXEL_SHADER_RESOURCE 遷移（DeferredLighting で SRV として読み取るため）
+        // 出力テクスチャ: PIXEL_SHADER_RESOURCE へ（Denoise が SRV として読む）
         ResourceBarrierHelper::Transition(
             cmdList, view.texture.Get(),
             view.currentState,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
+        view.isHistoryValid = true;
         view.dispatchedThisFrame = true;
 
         if (dispatchLogCount_ < 10) {
@@ -297,5 +452,125 @@ namespace CoreEngine
                 vi, lightIndex, view.srvHandle.ptr);
             ++dispatchLogCount_;
         }
+    }
+
+    // =========================================================================
+    // A-Trous デノイズ（Dispatch の直後に呼ぶ）
+    // =========================================================================
+    void RayTracingShadowManager::Denoise(
+        ID3D12GraphicsCommandList* cmdList,
+        D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+        UINT width, UINT height,
+        ViewID viewId,
+        uint32_t lightIndex)
+    {
+        if (!isInitialized_ || !denoiseInitialized_) return;
+
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        const uint32_t vi = static_cast<uint32_t>(viewId);
+        auto& view = views_[vi][lightIndex];
+
+        if (!view.texture || !view.denoiseTemp) return;
+
+        // DenoiseConstants（8 x 32bit = 32byte）
+        struct DenoiseConstants {
+            int   stepSize;
+            float phiShadow;
+            float phiNormal;
+            float phiDepth;
+            int   screenWidth;
+            int   screenHeight;
+            float padding[2];
+        };
+
+        // À-Trous 3パス: ステップ幅 1 → 2 → 4
+        // ping=view.texture / pong=view.denoiseTemp で交互に入出力
+        // 最終出力を常に view.texture にするためパス数は奇数にする
+        static const int   kSteps[]     = { 1,    2,    4    };
+        static const float kPhiNormal[] = { 4.0f, 16.0f, 32.0f };
+        static const float kPhiShadow[] = { 0.5f, 0.3f,  0.2f  };
+        static_assert((sizeof(kSteps) / sizeof(kSteps[0])) % 2 == 1,
+            "kNumPasses must be odd so the final result lands in view.texture");
+        static const int kNumPasses = sizeof(kSteps) / sizeof(kSteps[0]);
+
+        // view.texture は Dispatch 直後に PIXEL_SHADER_RESOURCE 状態になっているので
+        // 最初のパスで SRV として読む前にそのまま使える（NON_PIXEL_SHADER_RESOURCE に遷移）
+        ResourceBarrierHelper::Transition(cmdList, view.texture.Get(),
+            view.currentState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        cmdList->SetComputeRootSignature(denoiseRootSignature_.Get());
+        cmdList->SetPipelineState(denoisePipelineState_.Get());
+
+        const UINT groupX = (width  + 7) / 8;
+        const UINT groupY = (height + 7) / 8;
+
+        for (int pass = 0; pass < kNumPasses; ++pass)
+        {
+            // pass が偶数: texture → denoiseTemp / 奇数: denoiseTemp → texture
+            bool pingToTemp = (pass % 2 == 0);
+
+            ID3D12Resource* inputRes  = pingToTemp ? view.texture.Get()    : view.denoiseTemp.Get();
+            ID3D12Resource* outputRes = pingToTemp ? view.denoiseTemp.Get() : view.texture.Get();
+            D3D12_RESOURCE_STATES& inputState  = pingToTemp ? view.currentState      : view.denoiseTempState;
+            D3D12_RESOURCE_STATES& outputState = pingToTemp ? view.denoiseTempState   : view.currentState;
+            D3D12_GPU_DESCRIPTOR_HANDLE inputSrv  = pingToTemp ? view.srvHandle          : view.denoiseTempSrvHandle;
+            D3D12_GPU_DESCRIPTOR_HANDLE outputUav = pingToTemp ? view.denoiseTempUavHandle : view.uavHandle;
+
+            // 入力: SRV へ
+            ResourceBarrierHelper::Transition(cmdList, inputRes, inputState,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            // 出力: UAV へ
+            ResourceBarrierHelper::Transition(cmdList, outputRes, outputState,
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+            // バインド
+            cmdList->SetComputeRootDescriptorTable(0, inputSrv);          // t0: InputShadow
+            cmdList->SetComputeRootDescriptorTable(1, normalRoughnessSRV); // t1: Normal
+            cmdList->SetComputeRootDescriptorTable(2, worldPositionSRV);   // t2: WorldPos
+            cmdList->SetComputeRootDescriptorTable(3, outputUav);          // u0: Output
+
+            DenoiseConstants dc{};
+            dc.stepSize     = kSteps[pass];
+            dc.phiShadow    = kPhiShadow[pass];
+            dc.phiNormal    = kPhiNormal[pass];
+            dc.phiDepth     = 1.0f;
+            dc.screenWidth  = static_cast<int>(width);
+            dc.screenHeight = static_cast<int>(height);
+            cmdList->SetComputeRoot32BitConstants(4, 8, &dc, 0);
+
+            cmdList->Dispatch(groupX, groupY, 1);
+
+            // UAV バリア（次パスの読み取りを保証）
+            ResourceBarrierHelper::UAV(cmdList, outputRes);
+        }
+
+        // 最終結果は view.texture（kNumPasses が奇数のため）
+        // PIXEL_SHADER_RESOURCE に戻す（DeferredLightingPassが読み取る）
+        ResourceBarrierHelper::Transition(cmdList, view.texture.Get(),
+            view.currentState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+        // denoiseTemp も一貫した状態に戻す
+        ResourceBarrierHelper::Transition(cmdList, view.denoiseTemp.Get(),
+            view.denoiseTempState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        // -------------------------------------------------------
+        // テンポラル蓄積: デノイズ後の結果を履歴テクスチャにコピー
+        // ノイズありではなくデノイズ済みを次フレームの参照として使うことで
+        // テンポラル蓄積の品質を維持する
+        // -------------------------------------------------------
+        ResourceBarrierHelper::Transition(cmdList, view.texture.Get(),
+            view.currentState, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        ResourceBarrierHelper::Transition(cmdList, view.historyTexture.Get(),
+            view.historyCurrentState, D3D12_RESOURCE_STATE_COPY_DEST);
+
+        cmdList->CopyResource(view.historyTexture.Get(), view.texture.Get());
+
+        ResourceBarrierHelper::Transition(cmdList, view.historyTexture.Get(),
+            view.historyCurrentState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        // 出力テクスチャを最終状態（PIXEL_SHADER_RESOURCE）に戻す
+        ResourceBarrierHelper::Transition(cmdList, view.texture.Get(),
+            view.currentState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 }

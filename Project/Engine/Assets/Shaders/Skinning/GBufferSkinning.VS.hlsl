@@ -37,16 +37,16 @@ Skinned Skinning(VertexShaderInput input)
     skinned.position += mul(input.position, gMatrixPalette[input.index.w].skeletonSpaceMatrix) * input.weight.w;
     skinned.position.w = 1.0f;
 
-    skinned.normal = mul(input.normal, (float3x3)gMatrixPalette[input.index.x].skeletonSpaceInverseTransposeMatrix) * input.weight.x;
-    skinned.normal += mul(input.normal, (float3x3)gMatrixPalette[input.index.y].skeletonSpaceInverseTransposeMatrix) * input.weight.y;
-    skinned.normal += mul(input.normal, (float3x3)gMatrixPalette[input.index.z].skeletonSpaceInverseTransposeMatrix) * input.weight.z;
-    skinned.normal += mul(input.normal, (float3x3)gMatrixPalette[input.index.w].skeletonSpaceInverseTransposeMatrix) * input.weight.w;
+    skinned.normal = mul(input.normal, (float3x3) gMatrixPalette[input.index.x].skeletonSpaceInverseTransposeMatrix) * input.weight.x;
+    skinned.normal += mul(input.normal, (float3x3) gMatrixPalette[input.index.y].skeletonSpaceInverseTransposeMatrix) * input.weight.y;
+    skinned.normal += mul(input.normal, (float3x3) gMatrixPalette[input.index.z].skeletonSpaceInverseTransposeMatrix) * input.weight.z;
+    skinned.normal += mul(input.normal, (float3x3) gMatrixPalette[input.index.w].skeletonSpaceInverseTransposeMatrix) * input.weight.w;
     skinned.normal = normalize(skinned.normal);
 
-    skinned.tangent = mul(input.tangent, (float3x3)gMatrixPalette[input.index.x].skeletonSpaceMatrix) * input.weight.x;
-    skinned.tangent += mul(input.tangent, (float3x3)gMatrixPalette[input.index.y].skeletonSpaceMatrix) * input.weight.y;
-    skinned.tangent += mul(input.tangent, (float3x3)gMatrixPalette[input.index.z].skeletonSpaceMatrix) * input.weight.z;
-    skinned.tangent += mul(input.tangent, (float3x3)gMatrixPalette[input.index.w].skeletonSpaceMatrix) * input.weight.w;
+    skinned.tangent = mul(input.tangent, (float3x3) gMatrixPalette[input.index.x].skeletonSpaceMatrix) * input.weight.x;
+    skinned.tangent += mul(input.tangent, (float3x3) gMatrixPalette[input.index.y].skeletonSpaceMatrix) * input.weight.y;
+    skinned.tangent += mul(input.tangent, (float3x3) gMatrixPalette[input.index.z].skeletonSpaceMatrix) * input.weight.z;
+    skinned.tangent += mul(input.tangent, (float3x3) gMatrixPalette[input.index.w].skeletonSpaceMatrix) * input.weight.w;
     skinned.tangent = normalize(skinned.tangent);
 
     return skinned;
@@ -59,13 +59,17 @@ VertexShaderOutput main(VertexShaderInput input)
 
     output.texcoord = input.texcoord;
     output.position = mul(skinned.position, gTransformationMatrix.WVP);
-    output.normal = normalize(mul(skinned.normal, (float3x3)gTransformationMatrix.WorldInversTranspose));
-    output.tangent = normalize(mul(skinned.tangent, (float3x3)gTransformationMatrix.World));
+    output.normal = normalize(mul(skinned.normal, (float3x3) gTransformationMatrix.WorldInversTranspose));
+    output.tangent = normalize(mul(skinned.tangent, (float3x3) gTransformationMatrix.World));
     output.bitangent = normalize(cross(output.normal, output.tangent));
 
     float4 worldPos = mul(skinned.position, gTransformationMatrix.World);
     output.worldPosition = worldPos.xyz;
     output.lightSpacePos = mul(worldPos, gTransformationMatrix.LightViewProjection);
+
+    // モーションベクター用: 現フレーム・前フレームのクリップ座標
+    output.clipPosCurrent = mul(skinned.position, gTransformationMatrix.WVP);
+    output.clipPosPrev = mul(skinned.position, gTransformationMatrix.PrevWVP);
 
     return output;
 }

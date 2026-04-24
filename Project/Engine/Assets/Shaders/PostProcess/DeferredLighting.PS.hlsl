@@ -472,9 +472,31 @@ PixelShaderOutput main(PixelShaderInput input)
     float3 ambient = float3(0.0f, 0.0f, 0.0f);
     if (!useTraditional)
     {
+        // -------------------------------------------------------
+        // アンビエントのシャドウ方針:
+        //   RTシャドウ有効時: ボックスフィルタで平滑化したRTシャドウを使用する。
+        //     → 直接光と同じ影境界を保ちつつノイズを抑制。
+        //     → PCFとRTは影境界の位置・幅が異なるため、RT有効時にPCFを使うと
+        //        ペナンブラ領域で両者がずれてエッジノイズが発生する。
+        //        PCFが広いほどずれ幅が拡大し、ノイズが悪化する。
+        //   RTシャドウ無効時: PCFシャドウ（5x5 平滑化済み）を使用する。
+        // -------------------------------------------------------
         if (enableIBL)
         {
-            ambient = CalculateDeferredIBL(N, V, albedo, metallic, roughness, F0, ao);
+            // IBLアンビエントにもシャドウを適用する（近似）。
+            // 物理的には間接光に影は落ちないが、適用しないと直接光のシャドウが
+            // IBLアンビエントに打ち消されて影が見えなくなるため近似的に適用する。
+            float iblShadow = 1.0f;
+            if (gLightCounts.directionalLightCount > 0 && gDirectionalLights[0].enabled)
+            {
+                if (useRTShadow)
+                    // テンポラル蓄積済みのRTシャドウは既に十分滑らかなので、追加ブラーは不要
+                    iblShadow = gRTShadowMask0.Load(loadCoord).r;
+                else
+                    iblShadow = CalculateShadow(lightSpacePos, N, gDirectionalLights[0].direction, gShadowMap, gShadowSampler);
+                iblShadow = lerp(0.3f, 1.0f, iblShadow);
+            }
+            ambient = CalculateDeferredIBL(N, V, albedo, metallic, roughness, F0, ao) * iblShadow;
         }
         else
         {
@@ -484,7 +506,25 @@ PixelShaderOutput main(PixelShaderInput input)
                 if (!hL.enabled)
                     continue;
                 float3 L = normalize(-hL.direction);
-                ambient += CalculateHalfLambertAmbient(N, L, hL.color.rgb, hL.intensity, albedo, metallic, ao);
+
+                // アンビエントにもシャドウを適用する。
+                // 適用しないとアンビエントが直接光のシャドウを打ち消して影が見えなくなる。
+                float ambientShadow;
+                if (useRTShadow)
+                {
+                    // テンポラル蓄積済みのRTシャドウは既に十分滑らかなので、追加ブラーは不要
+                    if      (hli == 0) ambientShadow = gRTShadowMask0.Load(loadCoord).r;
+                    else if (hli == 1) ambientShadow = gRTShadowMask1.Load(loadCoord).r;
+                    else if (hli == 2) ambientShadow = gRTShadowMask2.Load(loadCoord).r;
+                    else               ambientShadow = gRTShadowMask3.Load(loadCoord).r;
+                }
+                else
+                {
+                    ambientShadow = CalculateShadow(lightSpacePos, N, hL.direction, gShadowMap, gShadowSampler);
+                }
+                ambientShadow = lerp(0.3f, 1.0f, ambientShadow);
+
+                ambient += CalculateHalfLambertAmbient(N, L, hL.color.rgb, hL.intensity, albedo, metallic, ao) * ambientShadow;
             }
         }
     }

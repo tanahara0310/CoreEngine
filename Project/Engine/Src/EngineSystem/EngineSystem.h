@@ -195,7 +195,7 @@ private:
     // SceneView 再描画判定用（カメラ静止時のスキップ制御）
     Matrix4x4 prevSceneCameraViewMatrix_ = {};    // ゼロ初期化（初回は必ず dirty 判定）
     int sceneViewSkipCounter_ = 0;
-    static constexpr int kSceneViewMaxSkipFrames = 2; // 静止時は 2 フレームに 1 回再描画
+    static constexpr int kSceneViewMaxSkipFrames = 30;
 #endif // USE_IMGUI
 
     SceneManager* sceneManager_ = nullptr;
