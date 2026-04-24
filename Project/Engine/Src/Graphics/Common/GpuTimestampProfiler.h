@@ -13,6 +13,7 @@ namespace CoreEngine
     {
         ShadowPass = 0,
         GBufferPass,
+        RTShadow,
         DeferredLighting,
         GeometryPass,
         PostEffect,
@@ -97,6 +98,7 @@ namespace CoreEngine
             case GpuTimestampSlot::GeometryPass:     return "Geometry Pass";
             case GpuTimestampSlot::PostEffect:       return "Post Effect";
             case GpuTimestampSlot::SceneView:        return "Scene View";
+            case GpuTimestampSlot::RTShadow:         return "RT Shadow";
             case GpuTimestampSlot::BackBufferPass:   return "BackBuffer Pass";
             case GpuTimestampSlot::ImGuiDraw:        return "ImGui Draw";
             case GpuTimestampSlot::Total:            return "Frame Total";

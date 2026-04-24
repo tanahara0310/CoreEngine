@@ -24,6 +24,12 @@ namespace CoreEngine
         bool enablePixRuntime = false;  // PIX GPU キャプチャ DLL を起動時にロードするか（D3D12 全コマンドが計装されフレーム時間に影響）
 
         // ──────────────────────────────────────────────────────────
+        // SceneView設定
+        // ──────────────────────────────────────────────────────────
+        float sceneViewResolutionScale = 0.5f;  // SceneView RTの解像度スケール（0.5=半分=負荷1/4）
+        bool sceneViewEnablePostEffect = false;  // SceneViewでポストエフェクトを適用するか
+
+        // ──────────────────────────────────────────────────────────
         // ディスクリプタ設定
         // ──────────────────────────────────────────────────────────
         uint32_t maxSRVDescriptors = 65536;

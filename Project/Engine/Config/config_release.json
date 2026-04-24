@@ -1,6 +1,6 @@
 {
     "window": {
-        "title": "CoreEngine_Ver2.0",
+        "title": "CoreEngine",
         "width": 1280,
         "height": 720
     },
@@ -9,7 +9,7 @@
         "enableGPUBasedValidation": false
     },
     "descriptors": {
-        "maxSRVDescriptors": 65536,
+        "maxSRVDescriptors": 256,
         "maxRTVDescriptors": 256,
         "maxDSVDescriptors": 10
     }

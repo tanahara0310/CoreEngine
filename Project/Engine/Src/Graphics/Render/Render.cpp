@@ -16,7 +16,7 @@ namespace CoreEngine
         renderTargetManager_ = std::make_unique<RenderTargetManager>();
         renderTargetManager_->Initialize(dxCommon, dsvHeap);
 
-        // デフォルトのレンダーターゲットを作成（名前ベース）
+        // デフォルトのレンダーターゲットを作成
         RenderTargetDescriptor offscreen0Desc("Offscreen0");
         offscreen0Desc.clearColor[0] = kClearColor[0];
         offscreen0Desc.clearColor[1] = kClearColor[1];

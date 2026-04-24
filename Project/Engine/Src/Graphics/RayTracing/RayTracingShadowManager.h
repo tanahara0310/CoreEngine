@@ -26,8 +26,9 @@ namespace CoreEngine
         ///< 実際の太陽: ~0.0046 rad
         ///< 0.02 = わずかにソフトな影（ペナンブラが狭くVariance Clampingが効く）
         ///< 0.15 はペナンブラが広すぎてゴーストが発生するため禁止
-        int   softShadowSamples = 16;      ///< ソフトシャドウのサンプル数（最大16）
-        ///< サンプル数が多いほどノイズが少なくVariance Clampingの精度が上がる
+        int   softShadowSamples = 1;       ///< ソフトシャドウのサンプル数（A-Trousデノイザーで補完するため1で十分）
+        ///< A-Trous 3パスデノイザー適用済みのため 1 で十分な品質が得られる
+        ///< 高品質なソフトシャドウが必要な場合は 2〜4 程度まで増やす（GPUコストはサンプル数に比例）
         float historyAlpha = 0.15f;        ///< テンポラル蓄積ブレンド係数
         ///< Variance Clampingと組み合わせて使用する固定値
     };
@@ -64,6 +65,15 @@ namespace CoreEngine
         void Denoise(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+            UINT width, UINT height,
+            ViewID viewId = ViewID::GameView,
+            uint32_t lightIndex = 0);
+
+        /// @brief 空間前処理＋テンポラル蓄積パスを実行する（Dispatch と Denoise の間に呼ぶ）
+        void ApplyTemporal(ID3D12GraphicsCommandList* cmdList,
+            D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
             UINT width, UINT height,
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
@@ -152,5 +162,10 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12RootSignature> denoiseRootSignature_;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> denoisePipelineState_;
         bool denoiseInitialized_ = false;
+
+        // テンポラル蓄積用コンピュートパイプライン
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> temporalRootSignature_;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> temporalPipelineState_;
+        bool temporalInitialized_ = false;
     };
 }

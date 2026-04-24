@@ -69,6 +69,13 @@ namespace CoreEngine
             if (desc.contains("maxDSVDescriptors")) config.maxDSVDescriptors = desc["maxDSVDescriptors"].get<uint32_t>();
         }
 
+        // SceneView設定
+        if (j.contains("sceneView")) {
+            auto& sv = j["sceneView"];
+            if (sv.contains("resolutionScale"))   config.sceneViewResolutionScale = sv["resolutionScale"].get<float>();
+            if (sv.contains("enablePostEffect"))   config.sceneViewEnablePostEffect = sv["enablePostEffect"].get<bool>();
+        }
+
         return config;
     }
 

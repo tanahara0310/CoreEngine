@@ -50,7 +50,7 @@ struct ShadowPayload
 // ============================================================
 static const float kPi = 3.14159265358979f;
 
-// PCG ハッシュ（高品質な疑似乱数）
+// PCG ハッシュ
 uint PcgHash(uint seed)
 {
     uint state = seed * 747796405u + 2891336453u;
@@ -58,13 +58,6 @@ uint PcgHash(uint seed)
     return (word >> 22u) ^ word;
 }
 
-// [0, 1) の一様乱数
-float RandomFloat(uint seed)
-{
-    return float(PcgHash(seed)) * (1.0f / 4294967296.0f);
-}
-
-/// @brief dir を中心軸としたコーン内でランダム方向をサンプリング
 /// @brief dir を中心軸としたコーン内でランダム方向をサンプリング
 /// @param dir       コーンの中心軸（正規化済み）
 /// @param coneAngle コーンの半頂角（ラジアン）
@@ -91,13 +84,13 @@ float3 SampleConeDirection(float3 dir, float coneAngle, float r1, float r2)
 }
 
 // ============================================================
-// Ray Generation シェーダー
+// Ray Generation シェーダー：生シャドウ値を出力するのみ。
+// テンポラル蓄積は RTShadowTemporal.CS.hlsl で行う。
 // ============================================================
 [shader("raygeneration")]
 void RTShadowRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
-    uint2 launchDim = DispatchRaysDimensions().xy;
 
     // G-Buffer からワールド座標を読み取り
     float4 worldPosSample = gWorldPosition.Load(int3(launchIndex, 0));
@@ -121,21 +114,16 @@ void RTShadowRayGen()
     // 法線方向 + ライト方向のバイアスでセルフシャドウを防止
     float3 origin = worldPos + N * gShadowBias + rayDir * gShadowBias * 0.5f;
 
-    // ============================================================
-    // ソフトシャドウ: コーン内でジッターした複数レイの平均
-    // ============================================================
+    // ソフトシャドウ：コーン内ジッターレイの平均（N=1 はバイナリ）
     static const int kMaxSamples = 16;
     int   numSamples = clamp(gSoftShadowSamples, 1, kMaxSamples);
-    float shadowSum  = 0.0f;
+    float shadowSum = 0.0f;
 
     uint baseSeed = launchIndex.x * 1973u + launchIndex.y * 9277u + gFrameIndex * 26699u;
 
     [loop]
-    for (int s = 0; s < kMaxSamples; ++s)
+    for (int s = 0; s < numSamples; ++s)
     {
-        if (s >= numSamples)
-            break;
-
         uint seed1 = PcgHash(baseSeed + uint(s) * 6571u);
         uint seed2 = PcgHash(seed1);
         float r1 = float(seed1) * (1.0f / 4294967296.0f);
@@ -146,10 +134,10 @@ void RTShadowRayGen()
             : rayDir;
 
         RayDesc ray;
-        ray.Origin    = origin;
+        ray.Origin = origin;
         ray.Direction = jitteredDir;
-        ray.TMin      = 0.001f;
-        ray.TMax      = gMaxRayDistance;
+        ray.TMin = 0.001f;
+        ray.TMax = gMaxRayDistance;
 
         ShadowPayload payload;
         payload.shadowFactor = 0.0f;
@@ -168,86 +156,8 @@ void RTShadowRayGen()
         shadowSum += payload.shadowFactor;
     }
 
-    // ============================================================
-    // 現フレームのサンプル平均を計算
-    // ============================================================
-    float currentMean = shadowSum / float(numSamples);
-
-    // ============================================================
-    // テンポラル蓄積
-    // ============================================================
-    // 【影の遅れ問題と解決策】
-    //
-    //   問題: モーションベクターは「受影サーフェス（床等）の動き」を記録するが、
-    //         キャスター（移動キャラ等）が動いた場合、床のMV≈0なので
-    //         前フレームの正確な位置に移動しても「古い影」を参照してしまう。
-    //         結果: 影がキャスターの動きに1フレーム以上遅れてついてくる。
-    //
-    //   解決: 「影の値差（Luminance Disocclusion）」で棄却判定を行う。
-    //         | currentMean - historyShadow | が大きい
-    //         → 影の状態が変わった（キャスターが動いた）
-    //         → blendAlpha を 1.0 に近づけて現フレームを優先
-    //         → 遅延なくシャドウを更新
-    //
-    //   副作用: キャスター移動時はノイズが一時的に増えるが、
-    //           A-Trous空間フィルタ（Denoise）が直後に適用されるので
-    //           1フレームのノイズスパイクは見えない。
-
-    int2 pixelCoord = int2(launchIndex);
-
-    // モーションベクターを読み取り（NDC差分: 現-前、クリップ空間 Y+1=上）
-    float2 mv = gMotionVector.Load(int3(pixelCoord, 0));
-
-    // NDC差分をスクリーンピクセル差分に変換してリプロジェクション
-    // NDC X: +1=右  → スクリーン X と同方向 → 符号そのまま
-    // NDC Y: +1=上  → スクリーン Y は下方向 → 符号反転
-    float2 prevPixelF;
-    prevPixelF.x = float(pixelCoord.x) - mv.x * gScreenWidth  * 0.5f;
-    prevPixelF.y = float(pixelCoord.y) + mv.y * gScreenHeight * 0.5f;
-    int2 prevPixel = int2(round(prevPixelF));
-
-    bool inBounds = prevPixel.x >= 0 && prevPixel.y >= 0
-                 && prevPixel.x < int(gScreenWidth) && prevPixel.y < int(gScreenHeight);
-
-    float blendAlpha;
-    float historyShadow;
-    if (inBounds && gHistoryAlpha < 1.0f)
-    {
-        historyShadow = gHistoryShadow.Load(int3(prevPixel, 0));
-
-        // ── Luminance Disocclusion ──────────────────────────────
-        // 現フレームと履歴の影の値の差を検出する。
-        // 影はバイナリ（0=影、1=光）に近い値なので差が大きい = キャスターが動いた。
-        //
-        // 例:
-        //   前フレーム: histShadow=1.0 (光) / 今フレーム: currentMean=0.0 (影出現)
-        //   → diff=1.0 → blendAlpha≒1.0 → 現フレームを即採用（遅延なし）
-        //
-        //   前フレーム: histShadow=0.2 / 今フレーム: currentMean=0.18
-        //   → diff=0.02 → blendAlpha=historyAlpha → 高蓄積でノイズ削減
-        // ────────────────────────────────────────────────────────
-        float shadowDiff = abs(currentMean - historyShadow);
-
-        // diff が kShadowChangeThreshold を超えた割合だけ alpha を 1.0 に引き上げる
-        // kShadowChangeThreshold = 0.15f: ソフトシャドウのペナンブラ変動より大きい値に設定
-        static const float kShadowChangeThreshold = 0.15f;
-        float disocclusionWeight = saturate(shadowDiff / kShadowChangeThreshold);
-
-        // さらにカメラ/オブジェクト移動量も考慮（既存のMVベース補正）
-        float mvPixelLen = length(mv) * max(gScreenWidth, gScreenHeight);
-        float motionWeight = saturate(mvPixelLen / 10.0f);
-
-        // 両方の要因で大きい方を採用
-        float rejectionWeight = max(disocclusionWeight, motionWeight);
-        blendAlpha = lerp(gHistoryAlpha, 1.0f, rejectionWeight);
-    }
-    else
-    {
-        historyShadow = currentMean;
-        blendAlpha = 1.0f;
-    }
-
-    gShadowOutput[launchIndex] = lerp(historyShadow, currentMean, blendAlpha);
+    // 生値をそのまま出力（履歴参照は Temporal パスで行う）
+    gShadowOutput[launchIndex] = shadowSum / float(numSamples);
 }
 
 // ============================================================

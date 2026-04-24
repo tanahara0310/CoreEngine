@@ -171,6 +171,11 @@ namespace CoreEngine
 
         GameObject::SetEngine(this);
 
+#ifdef USE_IMGUI
+        // SceneView 設定をコンフィグから読み込み
+        sceneViewEnablePostEffect_ = config.sceneViewEnablePostEffect;
+#endif // USE_IMGUI
+
         // デフォルトレンダーパイプラインの構築
         BuildDefaultRenderPipeline();
     }
@@ -454,6 +459,22 @@ namespace CoreEngine
                     li);
             }
 
+            // 全ライト分 テンポラル蓄積パス（空間前処理+再投影+Variance Clamping）
+            for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
+                auto* dirLight = context.lightManager->GetDirectionalLight(li);
+                if (!dirLight || !dirLight->enabled) continue;
+
+                rtShadow->ApplyTemporal(
+                    dx->GetCommandList(),
+                    normalSRV,
+                    worldPosSRV,
+                    motionVecSRV,
+                    static_cast<UINT>(dx->GetClientWidth()),
+                    static_cast<UINT>(dx->GetClientHeight()),
+                    viewId,
+                    li);
+            }
+
             // 全ライト分 A-Trous デノイズをまとめて実行
             for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
                 auto* dirLight = context.lightManager->GetDirectionalLight(li);
@@ -475,28 +496,9 @@ namespace CoreEngine
             ResourceBarrierHelper::Transition(cmdList, motionVecResource, motionVecState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
             };
 
-        // SceneView 再描画判定:
-        // - Scene カメラが動いた → 即時再描画（インタラクティブな操作をフレーム遅延なく反映）
-        // - カメラ静止中 → kSceneViewMaxSkipFrames フレームに 1 回再描画（アニメーション対応）
-        // 静止中は前フレームの SceneView RT をそのまま表示継続し、GPU 再描画をスキップする。
+        // SceneView 描画（毎フレーム実行）
         // SceneView は GBufferPass より前に実行（共有 DSV のクリア競合回避）。
-        bool sceneViewDirty = false;
-        if (imGui_->IsSceneViewVisible() && sceneManager_) {
-            if (const ICamera* sceneCamera = sceneManager_->GetSceneViewCamera()) {
-                const Matrix4x4& currentMat = sceneCamera->GetViewMatrix();
-                if (std::memcmp(&currentMat, &prevSceneCameraViewMatrix_, sizeof(Matrix4x4)) != 0) {
-                    prevSceneCameraViewMatrix_ = currentMat;
-                    sceneViewSkipCounter_ = 0;
-                    sceneViewDirty = true;
-                }
-            }
-            if (!sceneViewDirty && ++sceneViewSkipCounter_ >= kSceneViewMaxSkipFrames) {
-                sceneViewSkipCounter_ = 0;
-                sceneViewDirty = true;
-            }
-        }
-
-        if (sceneManager_ && render && sceneViewDirty) {
+        if (imGui_->IsSceneViewVisible() && sceneManager_ && render) {
             if (auto* sceneViewTarget = render->GetRenderTarget("SceneView")) {
                 GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::SceneView, cmdList);
 
@@ -514,7 +516,6 @@ namespace CoreEngine
                 context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::SceneView);
 
                 // 2. DeferredLightingPass: G-Buffer を読み取り PBR+IBL ライティングを計算
-                context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::SceneView);
                 executePass(renderPipeline_->GetPass<DeferredLightingPass>());
 
                 // 3. GeometryPass: スカイボックス・グリッド・透過オブジェクトを重ねて描画
@@ -527,11 +528,15 @@ namespace CoreEngine
                     geometryPass->SetRenderCallback(renderCallback);
                 }
 
-                // 4. ポストエフェクトチェーンを適用し、結果を SceneView RT にコピー
+                // 4. SceneView RT にコピー
+                // sceneViewEnablePostEffect_=true: ポストエフェクトチェーン適用（高品質・高負荷）
+                // sceneViewEnablePostEffect_=false: FullScreen blit のみ（軽量）
                 if (auto* postEffect = GetComponent<PostEffectManager>()) {
-                    auto resultHandle = postEffect->ExecuteEffectChain(previousOutput.srvHandle);
+                    D3D12_GPU_DESCRIPTOR_HANDLE srcHandle = sceneViewEnablePostEffect_
+                        ? postEffect->ExecuteEffectChain(previousOutput.srvHandle)
+                        : previousOutput.srvHandle;
                     sceneViewTarget->Begin(cmdList);
-                    postEffect->ExecuteEffect("FullScreen", resultHandle);
+                    postEffect->ExecuteEffect("FullScreen", srcHandle);
                     sceneViewTarget->End(cmdList);
                 }
 
@@ -551,8 +556,13 @@ namespace CoreEngine
             executePass(renderPipeline_->GetPass<GBufferPass>());
         }
 
+#ifdef USE_IMGUI
         // Game ビュー用 RT シャドウディスパッチ
-        dispatchRTShadow(RayTracingShadowManager::ViewID::GameView);
+        {
+            GpuTimestampProfiler::ProfileScope scope(gpuProfiler_, GpuTimestampSlot::RTShadow, cmdList);
+            dispatchRTShadow(RayTracingShadowManager::ViewID::GameView);
+        }
+#endif
 
         {
 #ifdef USE_IMGUI
