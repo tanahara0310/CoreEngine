@@ -16,10 +16,11 @@ namespace CoreEngine
     public:
         /// @brief G-Bufferのターゲットタイプ
         enum class Target : uint32_t {
-            AlbedoAO = 0,       ///< PBR: rgb=アルベド,a=AO / 非PBR: rgb=アルベド,a=toonThreshold
-            NormalRoughness,    ///< PBR: rgb=ワールド法線(encoded),a=ラフネス / 非PBR: a=shininess
-            EmissiveMetallic,   ///< PBR: rgb=エミッシブ,a=メタリック / 非PBR: a=shadingMode*0.25
-            WorldPosition,      ///< rgb=ワールド座標, a=ピクセルフラグ (0=背景, 1=非PBR, 2=PBR, 3=PBR+IBL)
+            AlbedoAO = 0,       ///< PBR: rgb=アルベド,a=AO
+            NormalRoughness,    ///< PBR: rgb=ワールド法線(encoded),a=ラフネス
+            EmissiveMetallic,   ///< PBR: rgb=エミッシブ,a=メタリック
+            WorldPosition,      ///< rgb=ワールド座標, a=ピクセルフラグ
+            MotionVector,       ///< rg=NDC空間モーションベクター（現フレーム-前フレーム）
             Count
         };
 
@@ -29,10 +30,11 @@ namespace CoreEngine
         /// @brief GBuffer レンダーターゲットのフォーマット定義
         /// PSO 作成時と GBufferManager 初期化時の唯一の定義場所
         static constexpr DXGI_FORMAT kRenderTargetFormats[kTargetCount] = {
-                DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,  // AlbedoAO (sRGB量子化で暗部精度を確保)
+                DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,  // AlbedoAO
                 DXGI_FORMAT_R16G16B16A16_FLOAT,   // NormalRoughness
                 DXGI_FORMAT_R8G8B8A8_UNORM,       // EmissiveMetallic
-                DXGI_FORMAT_R32G32B32A32_FLOAT    // WorldPosition
+                DXGI_FORMAT_R32G32B32A32_FLOAT,   // WorldPosition
+                DXGI_FORMAT_R16G16_FLOAT,          // MotionVector
             };
 
         /// @brief 初期化
@@ -56,6 +58,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle(Target target) const;
         DXGI_FORMAT GetFormat(Target target) const;
         const DXGI_FORMAT* GetFormats() const;
+        D3D12_RESOURCE_STATES& GetCurrentState(Target target);
 
         uint32_t GetTargetCount() const { return kTargetCount; }
         int32_t GetWidth() const { return currentWidth_; }

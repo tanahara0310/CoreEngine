@@ -15,15 +15,26 @@ Texture2D<float4> gWorldPosition : register(t1);
 // G-Buffer: 法線（セルフシャドウバイアス用）
 Texture2D<float4> gNormalRoughness : register(t2);
 
-// ライト方向 + ソフトシャドウパラメータ
+// テンポラル蓄積用: 前フレームのシャドウ蓄積結果
+Texture2D<float> gHistoryShadow : register(t3);
+
+// モーションベクター（GBuffer で書き込まれた NDC 差分）
+Texture2D<float2> gMotionVector : register(t4);
+
+// ライト方向 + ソフトシャドウ + テンポラル蓄積パラメータ
+// C++ 側 ShadowRayConstants 構造体と厳密にレイアウトを合わせること
 cbuffer ShadowRayConstants : register(b0)
 {
-    float3 gLightDirection;    // 正規化済みライト方向（光源→シーン）
-    float  gShadowBias;        // シャドウバイアス
-    float  gMaxRayDistance;    // レイの最大距離
-    float  gLightRadius;       // 光源の角半径（ラジアン）：ペナンブラ幅を制御
-    int    gSoftShadowSamples; // ソフトシャドウのサンプル数（1=ハードシャドウ）
-    uint   gFrameIndex;        // フレームカウンタ（ノイズのテンポラル変化用）
+    float3 gLightDirection; // 正規化済みライト方向（光源→シーン）
+    float gShadowBias; // シャドウバイアス
+    float gMaxRayDistance; // レイの最大距離
+    float gLightRadius; // 光源の角半径（ラジアン）：ペナンブラ幅を制御
+    int gSoftShadowSamples; // ソフトシャドウのサンプル数（1=ハードシャドウ）
+    uint gFrameIndex; // フレームカウンタ（ノイズのテンポラル変化用）
+    float gHistoryAlpha; // テンポラル蓄積ブレンド係数（初回フレームは 1.0）
+    float gScreenWidth; // スクリーン幅（ピクセル）
+    float gScreenHeight; // スクリーン高さ（ピクセル）
+    float gPadding_[1]; // 16バイトアライメント用パディング
 };
 
 // ============================================================
@@ -39,7 +50,7 @@ struct ShadowPayload
 // ============================================================
 static const float kPi = 3.14159265358979f;
 
-// PCG ハッシュ（高品質な疑似乱数）
+// PCG ハッシュ
 uint PcgHash(uint seed)
 {
     uint state = seed * 747796405u + 2891336453u;
@@ -47,13 +58,6 @@ uint PcgHash(uint seed)
     return (word >> 22u) ^ word;
 }
 
-// [0, 1) の一様乱数
-float RandomFloat(uint seed)
-{
-    return float(PcgHash(seed)) * (1.0f / 4294967296.0f);
-}
-
-/// @brief dir を中心軸としたコーン内でランダム方向をサンプリング
 /// @brief dir を中心軸としたコーン内でランダム方向をサンプリング
 /// @param dir       コーンの中心軸（正規化済み）
 /// @param coneAngle コーンの半頂角（ラジアン）
@@ -80,13 +84,13 @@ float3 SampleConeDirection(float3 dir, float coneAngle, float r1, float r2)
 }
 
 // ============================================================
-// Ray Generation シェーダー
+// Ray Generation シェーダー：生シャドウ値を出力するのみ。
+// テンポラル蓄積は RTShadowTemporal.CS.hlsl で行う。
 // ============================================================
 [shader("raygeneration")]
 void RTShadowRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
-    uint2 launchDim = DispatchRaysDimensions().xy;
 
     // G-Buffer からワールド座標を読み取り
     float4 worldPosSample = gWorldPosition.Load(int3(launchIndex, 0));
@@ -110,42 +114,30 @@ void RTShadowRayGen()
     // 法線方向 + ライト方向のバイアスでセルフシャドウを防止
     float3 origin = worldPos + N * gShadowBias + rayDir * gShadowBias * 0.5f;
 
-    // ============================================================
-    // ソフトシャドウ: コーン内でジッターした複数レイの平均をとる
-    // DXR コンパイラが動的ループ上限を扱えるよう、コンパイル時定数で
-    // 最大ループ回数を定義し、実行時に early break する。
-    // ============================================================
-    static const int kMaxSamples = 16; // コンパイル時定数（上限）
-    // === デバッグ: cbuffer を無視してハードコードで強制テスト ===
-    // 問題解決後に削除し、cbuffer 値を使用すること
-    int   numSamples = 8;    // 強制 8 サンプル
-    float testRadius = 0.15f; // 強制: 大きめの角半径
-    // ==========================================================
-    float shadowSum  = 0.0f;
+    // ソフトシャドウ：コーン内ジッターレイの平均（N=1 はバイナリ）
+    static const int kMaxSamples = 16;
+    int   numSamples = clamp(gSoftShadowSamples, 1, kMaxSamples);
+    float shadowSum = 0.0f;
 
-    // ピクセル固有のランダムシード（フレームインデックスで毎フレーム変化）
     uint baseSeed = launchIndex.x * 1973u + launchIndex.y * 9277u + gFrameIndex * 26699u;
 
     [loop]
-    for (int s = 0; s < kMaxSamples; ++s)
+    for (int s = 0; s < numSamples; ++s)
     {
-        if (s >= numSamples)
-            break;
-
-        // サンプルごとに独立した乱数を生成
         uint seed1 = PcgHash(baseSeed + uint(s) * 6571u);
         uint seed2 = PcgHash(seed1);
         float r1 = float(seed1) * (1.0f / 4294967296.0f);
         float r2 = float(seed2) * (1.0f / 4294967296.0f);
 
-        // デバッグ: testRadius でコーン内ジッターを強制
-        float3 jitteredDir = SampleConeDirection(rayDir, testRadius, r1, r2);
+        float3 jitteredDir = (gLightRadius > 0.0f)
+            ? SampleConeDirection(rayDir, gLightRadius, r1, r2)
+            : rayDir;
 
         RayDesc ray;
-        ray.Origin    = origin;
+        ray.Origin = origin;
         ray.Direction = jitteredDir;
-        ray.TMin      = 0.001f;
-        ray.TMax      = gMaxRayDistance;
+        ray.TMin = 0.001f;
+        ray.TMax = gMaxRayDistance;
 
         ShadowPayload payload;
         payload.shadowFactor = 0.0f;
@@ -164,7 +156,7 @@ void RTShadowRayGen()
         shadowSum += payload.shadowFactor;
     }
 
-    // サンプル平均で [0,1] の連続値を出力（ペナンブラが自然なグラデーションになる）
+    // 生値をそのまま出力（履歴参照は Temporal パスで行う）
     gShadowOutput[launchIndex] = shadowSum / float(numSamples);
 }
 

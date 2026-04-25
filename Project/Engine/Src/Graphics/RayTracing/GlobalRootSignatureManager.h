@@ -10,9 +10,10 @@ namespace CoreEngine
 {
     /// @brief DXRグローバルルートシグネチャのエントリ種別
     enum class DXRRootEntryType {
-        UAVTable,  ///< UAV デスクリプタテーブル（RWTexture 等）
-        SRVTable,  ///< SRV デスクリプタテーブル（TLAS, テクスチャ等）
-        CBV,       ///< CBV Root Descriptor（定数バッファ）
+        UAVTable,       ///< UAV デスクリプタテーブル（RWTexture 等）
+        SRVTable,       ///< SRV デスクリプタテーブル（TLAS, テクスチャ等）
+        CBV,            ///< CBV Root Descriptor（定数バッファ）
+        RootConstants,  ///< Root Constants（32bit 値をコマンドストリームに直接埋め込み）
     };
 
     /// @brief DXRグローバルルートシグネチャ管理クラス
@@ -52,6 +53,14 @@ namespace CoreEngine
         GlobalRootSignatureManager& AddCBV(
             const std::string& name, UINT shaderRegister, UINT registerSpace = 0);
 
+        /// @brief Root Constants エントリを追加（小さい定数データをコマンドストリームに直接埋め込む）
+        /// @param name             バインド名（GetRootParameterIndex の検索キー）
+        /// @param shaderRegister   HLSL の b レジスタ番号
+        /// @param num32BitValues   32bit 値の個数
+        /// @param registerSpace    レジスタスペース（省略時 0）
+        GlobalRootSignatureManager& AddRootConstants(
+            const std::string& name, UINT shaderRegister, UINT num32BitValues, UINT registerSpace = 0);
+
         /// @brief 登録済みエントリからグローバルルートシグネチャを構築する
         /// @param device  D3D12 デバイス
         /// @return 成功した場合 true
@@ -76,6 +85,7 @@ namespace CoreEngine
             DXRRootEntryType type;
             UINT shaderRegister;
             UINT registerSpace;
+            UINT num32BitValues = 0;  ///< RootConstants 用: 32bit 値の個数
         };
 
         std::vector<Entry> entries_;

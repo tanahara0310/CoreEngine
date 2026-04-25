@@ -177,6 +177,11 @@ namespace CoreEngine
         // WVP行列用のリソース（ビュー/パスごとに分離）
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kTransformBufferCount> wvpResources_;
 
+        // 前フレームのWVP行列（モーションベクター計算用）
+        // false = 未初期化（初回フレームはprevWVP=currentWVPとして扱い、MV=0にする）
+        std::array<Matrix4x4, kTransformBufferCount> prevWVP_{};
+        std::array<bool, kTransformBufferCount> prevWVPInitialized_{};
+
         // Skeleton（スケルトンアニメーターから同期される）
         std::optional<Skeleton> skeleton_;
 

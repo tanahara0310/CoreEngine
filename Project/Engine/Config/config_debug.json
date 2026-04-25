@@ -7,11 +7,15 @@
     "descriptors": {
         "maxDSVDescriptors": 10,
         "maxRTVDescriptors": 256,
-        "maxSRVDescriptors": 65536
+        "maxSRVDescriptors": 256
+    },
+    "sceneView": {
+        "enablePostEffect": true,
+        "resolutionScale": 0.5
     },
     "window": {
         "height": 720,
-        "title": "CoreEngine_Ver2.0",
+        "title": "CoreEngine",
         "width": 1280
     }
 }

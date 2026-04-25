@@ -18,7 +18,7 @@ struct Material
     int useAOMap;
     int enableDithering;
     float ditheringScale;
-    int shadingMode;   ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
+    int shadingMode; ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
     float iblIntensity;
     float padding2;
 };
@@ -37,7 +37,8 @@ struct GBufferOutput
     float4 albedoAO : SV_TARGET0; ///< rgb=アルベド, a=AO
     float4 normalRoughness : SV_TARGET1; ///< rgb=ワールド法線(エンコード済み), a=ラフネス
     float4 emissiveMetallic : SV_TARGET2; ///< rgb=エミッシブ, a=メタリック
-    float4 worldPosition : SV_TARGET3; ///< rgb=ワールド座標, a=1.0f
+    float4 worldPosition : SV_TARGET3; ///< rgb=ワールド座標, a=ピクセルフラグ
+    float2 motionVector : SV_TARGET4; ///< モーションベクター（NDC空間の2Dオフセット）
 };
 
 float GetDitheringThreshold(float2 screenPos)
@@ -126,25 +127,26 @@ GBufferOutput main(VertexShaderOutput input)
     // emissiveMetallic.rgb にアンリットカラーを格納し、DeferredLighting 側で検出して PBR をスキップする。
     if (gMaterial.enableLighting == 0)
     {
-        output.albedoAO        = float4(0.0f, 0.0f, 0.0f, 1.0f);
+        output.albedoAO = float4(0.0f, 0.0f, 0.0f, 1.0f);
         output.normalRoughness = float4(0.5f, 0.5f, 1.0f, 0.0f); // roughness=0 = アンリットセンチネル
-        output.emissiveMetallic = float4(albedo, 0.0f);            // rgb にアンリットカラーを格納
-        output.worldPosition   = float4(input.worldPosition, 1.0f);
+        output.emissiveMetallic = float4(albedo, 0.0f); // rgb にアンリットカラーを格納
+        output.worldPosition = float4(input.worldPosition, 1.0f);
+        output.motionVector = float2(0.0f, 0.0f);
         return output;
     }
 
     // ===== PBR パス（常にここに到達） =====
-    float3 worldNormal   = GetNormalFromMap(input, uv);
+    float3 worldNormal = GetNormalFromMap(input, uv);
     float3 encodedNormal = worldNormal * 0.5f + 0.5f;
 
-    float metallic  = 0.0f;
+    float metallic = 0.0f;
     float roughness = 1.0f;
-    float ao        = 1.0f;
+    float ao = 1.0f;
     GetPBRParameters(uv, metallic, roughness, ao);
 
-    metallic  = saturate(metallic);
+    metallic = saturate(metallic);
     roughness = saturate(max(roughness, 0.01f));
-    ao        = saturate(ao);
+    ao = saturate(ao);
 
     // worldPosition.a pixelFlag:
     // 0 = 背景（クリア値）
@@ -153,15 +155,26 @@ GBufferOutput main(VertexShaderOutput input)
     // 4 = Lambert
     // 5 = Half-Lambert
     float pixelFlag;
-    if      (gMaterial.shadingMode == 1) pixelFlag = 3.0f; // PBR_IBL
-    else if (gMaterial.shadingMode == 2) pixelFlag = 4.0f; // Lambert
-    else if (gMaterial.shadingMode == 3) pixelFlag = 5.0f; // HalfLambert
-    else                                 pixelFlag = 2.0f; // PBR (default)
+    if (gMaterial.shadingMode == 1)
+        pixelFlag = 3.0f; // PBR_IBL
+    else if (gMaterial.shadingMode == 2)
+        pixelFlag = 4.0f; // Lambert
+    else if (gMaterial.shadingMode == 3)
+        pixelFlag = 5.0f; // HalfLambert
+    else
+        pixelFlag = 2.0f; // PBR (default)
 
-    output.albedoAO        = float4(albedo, ao);
+    output.albedoAO = float4(albedo, ao);
     output.normalRoughness = float4(encodedNormal, roughness);
     output.emissiveMetallic = float4(0.0f, 0.0f, 0.0f, metallic);
-    output.worldPosition   = float4(input.worldPosition, pixelFlag);
+    output.worldPosition = float4(input.worldPosition, pixelFlag);
+
+    // ===== モーションベクター計算 =====
+    // NDC空間（-1〜1）での現フレームと前フレームの位置差分を格納する。
+    // RTShadow.hlsl がこの値を使って前フレームのピクセル座標を逆算し正確にリプロジェクションする。
+    float2 ndcCurrent = input.clipPosCurrent.xy / input.clipPosCurrent.w;
+    float2 ndcPrev = input.clipPosPrev.xy / input.clipPosPrev.w;
+    output.motionVector = ndcCurrent - ndcPrev;
 
     return output;
 }

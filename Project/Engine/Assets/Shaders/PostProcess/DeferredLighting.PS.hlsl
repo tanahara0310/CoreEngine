@@ -49,9 +49,12 @@ TextureCube<float4> gPrefilteredMap : register(t10);
 Texture2D<float2> gBRDFLUT : register(t11);
 
 // ============================================================
-// RT シャドウマスク（DXR レイトレーシング結果、無効時は 1.0 でフォールバック）
+// RT シャドウマスク（ライトごとに独立したテクスチャ）
 // ============================================================
-Texture2D<float> gRTShadowMask : register(t12);
+Texture2D<float> gRTShadowMask0 : register(t12);
+Texture2D<float> gRTShadowMask1 : register(t13);
+Texture2D<float> gRTShadowMask2 : register(t14);
+Texture2D<float> gRTShadowMask3 : register(t15);
 
 // ============================================================
 // IBL パラメータ（シーン共通）
@@ -155,32 +158,17 @@ PixelShaderOutput main(PixelShaderInput input)
     float3 worldPos = worldPosSample.xyz;
     float3 V = normalize(gCamera.worldPosition - worldPos);
 
-    // ===== ライト空間座標（シャドウ計算用） =====
+    // ===== ライト空間座標（PCFシャドウフォールバック用） =====
     float4 lightSpacePos = mul(float4(worldPos, 1.0f), gLightViewProjection.mat);
 
-    // ===== シャドウファクターの計算 =====
-    // RT シャドウマスクが有効な場合はそちらを使用、無効時は PCF シャドウにフォールバック
-    float rtShadowWidth, rtShadowHeight;
-    gRTShadowMask.GetDimensions(rtShadowWidth, rtShadowHeight);
-    bool useRTShadow = (rtShadowWidth > 1.0f && rtShadowHeight > 1.0f);
-
-    float baseShadow;
-    if (useRTShadow)
-    {
-        // RTシャドウはシェーダー側でコーンサンプリングによるソフト化済みのため
-        // 空間フィルタは不要。直接ロードして使用する。
-        baseShadow = gRTShadowMask.Load(loadCoord).r;
-    }
-    else
-    {
-        baseShadow = CalculateShadow(lightSpacePos, N, float3(0, -1, 0), gShadowMap, gShadowSampler);
-    }
+    // ===== RT シャドウマスク配列（ライトごとに独立） =====
+    // 幅1以下のテクスチャは未使用（未ディスパッチ）
+    float rtW0, rtH0;
+    gRTShadowMask0.GetDimensions(rtW0, rtH0);
+    bool useRTShadow = (rtW0 > 1.0f && rtH0 > 1.0f);
 
     // ===== RT シャドウ デバッグ表示 =====
-    // 赤=影(0), 緑=光(1), 青=RT未使用
-    // ソフトシャドウが機能していれば影の境界にグラデーション（黄〜緑）が見える
-    // 問題が解決したら #if 0 に戻すこと
-#if 1  // 1 でデバッグ表示ON、0 で通常描画
+#if 0  // 1 でデバッグ表示ON、0 で通常描画
     if (useRTShadow)
     {
         // 赤(影=0) → 緑(光=1) のグラデーション
@@ -225,10 +213,21 @@ PixelShaderOutput main(PixelShaderInput input)
             if (!dL.enabled)
                 continue;
             float3 L = normalize(-dL.direction);
-            // RT シャドウはメインライト(index 0)のみ、他は PCF
-            float shadowFactor = (di == 0)
-                ? baseShadow
-                : CalculateShadow(lightSpacePos, N, dL.direction, gShadowMap, gShadowSampler);
+            // ライトインデックスに対応する RT シャドウマスクを選択
+            float shadowFactor;
+            if (useRTShadow)
+            {
+                float rtVal;
+                if      (di == 0) rtVal = gRTShadowMask0.Load(loadCoord).r;
+                else if (di == 1) rtVal = gRTShadowMask1.Load(loadCoord).r;
+                else if (di == 2) rtVal = gRTShadowMask2.Load(loadCoord).r;
+                else              rtVal = gRTShadowMask3.Load(loadCoord).r;
+                shadowFactor = rtVal;
+            }
+            else
+            {
+                shadowFactor = CalculateShadow(lightSpacePos, N, dL.direction, gShadowMap, gShadowSampler);
+            }
 
             float3 diff;
             if (useLambert)
@@ -360,10 +359,21 @@ PixelShaderOutput main(PixelShaderInput input)
                 continue;
             float3 L = normalize(-dL.direction);
 
-            // RT シャドウはメインライト(index 0)のみ、他は PCF
-            float shadowFactor = (di == 0)
-                ? baseShadow
-                : CalculateShadow(lightSpacePos, N, dL.direction, gShadowMap, gShadowSampler);
+            // ライトインデックスに対応する RT シャドウマスクを選択
+            float shadowFactor;
+            if (useRTShadow)
+            {
+                float rtVal;
+                if      (di == 0) rtVal = gRTShadowMask0.Load(loadCoord).r;
+                else if (di == 1) rtVal = gRTShadowMask1.Load(loadCoord).r;
+                else if (di == 2) rtVal = gRTShadowMask2.Load(loadCoord).r;
+                else              rtVal = gRTShadowMask3.Load(loadCoord).r;
+                shadowFactor = rtVal;
+            }
+            else
+            {
+                shadowFactor = CalculateShadow(lightSpacePos, N, dL.direction, gShadowMap, gShadowSampler);
+            }
             shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
 
             Lo += CalculatePBRLighting(N, V, L, dL.color.rgb, dL.intensity, albedo, metallic, roughness, ao)
@@ -462,9 +472,31 @@ PixelShaderOutput main(PixelShaderInput input)
     float3 ambient = float3(0.0f, 0.0f, 0.0f);
     if (!useTraditional)
     {
+        // -------------------------------------------------------
+        // アンビエントのシャドウ方針:
+        //   RTシャドウ有効時: ボックスフィルタで平滑化したRTシャドウを使用する。
+        //     → 直接光と同じ影境界を保ちつつノイズを抑制。
+        //     → PCFとRTは影境界の位置・幅が異なるため、RT有効時にPCFを使うと
+        //        ペナンブラ領域で両者がずれてエッジノイズが発生する。
+        //        PCFが広いほどずれ幅が拡大し、ノイズが悪化する。
+        //   RTシャドウ無効時: PCFシャドウ（5x5 平滑化済み）を使用する。
+        // -------------------------------------------------------
         if (enableIBL)
         {
-            ambient = CalculateDeferredIBL(N, V, albedo, metallic, roughness, F0, ao);
+            // IBLアンビエントにもシャドウを適用する（近似）。
+            // 物理的には間接光に影は落ちないが、適用しないと直接光のシャドウが
+            // IBLアンビエントに打ち消されて影が見えなくなるため近似的に適用する。
+            float iblShadow = 1.0f;
+            if (gLightCounts.directionalLightCount > 0 && gDirectionalLights[0].enabled)
+            {
+                if (useRTShadow)
+                    // テンポラル蓄積済みのRTシャドウは既に十分滑らかなので、追加ブラーは不要
+                    iblShadow = gRTShadowMask0.Load(loadCoord).r;
+                else
+                    iblShadow = CalculateShadow(lightSpacePos, N, gDirectionalLights[0].direction, gShadowMap, gShadowSampler);
+                iblShadow = lerp(0.3f, 1.0f, iblShadow);
+            }
+            ambient = CalculateDeferredIBL(N, V, albedo, metallic, roughness, F0, ao) * iblShadow;
         }
         else
         {
@@ -474,7 +506,25 @@ PixelShaderOutput main(PixelShaderInput input)
                 if (!hL.enabled)
                     continue;
                 float3 L = normalize(-hL.direction);
-                ambient += CalculateHalfLambertAmbient(N, L, hL.color.rgb, hL.intensity, albedo, metallic, ao);
+
+                // アンビエントにもシャドウを適用する。
+                // 適用しないとアンビエントが直接光のシャドウを打ち消して影が見えなくなる。
+                float ambientShadow;
+                if (useRTShadow)
+                {
+                    // テンポラル蓄積済みのRTシャドウは既に十分滑らかなので、追加ブラーは不要
+                    if      (hli == 0) ambientShadow = gRTShadowMask0.Load(loadCoord).r;
+                    else if (hli == 1) ambientShadow = gRTShadowMask1.Load(loadCoord).r;
+                    else if (hli == 2) ambientShadow = gRTShadowMask2.Load(loadCoord).r;
+                    else               ambientShadow = gRTShadowMask3.Load(loadCoord).r;
+                }
+                else
+                {
+                    ambientShadow = CalculateShadow(lightSpacePos, N, hL.direction, gShadowMap, gShadowSampler);
+                }
+                ambientShadow = lerp(0.3f, 1.0f, ambientShadow);
+
+                ambient += CalculateHalfLambertAmbient(N, L, hL.color.rgb, hL.intensity, albedo, metallic, ao) * ambientShadow;
             }
         }
     }

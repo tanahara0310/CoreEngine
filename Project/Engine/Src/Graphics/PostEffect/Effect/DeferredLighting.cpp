@@ -199,18 +199,16 @@ namespace CoreEngine
             commandList->SetGraphicsRootConstantBufferView(iblParamsIdx, iblParamsCBVAddress_);
         }
 
-        // ===== RT シャドウマスク SRV =====
-        const int rtShadowIdx = GetRootParamIndex("gRTShadowMask");
-        static uint32_t drawLogCount = 0;
-        if (drawLogCount < 20) {
-            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-                "DeferredLighting::Draw rtShadowIdx={} rtShadowHandle=0x{:X} bound={}",
-                rtShadowIdx, rtShadowHandle_.ptr,
-                (rtShadowIdx >= 0 && rtShadowHandle_.ptr != 0) ? "YES" : "NO");
-            ++drawLogCount;
-        }
-        if (rtShadowIdx >= 0 && rtShadowHandle_.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(rtShadowIdx, rtShadowHandle_);
+        // ===== RT シャドウマスク SRV（ライトごとに個別バインド） =====
+        // gRTShadowMask0〜3 に対応、未ディスパッチのライトはバインドしない
+        static const char* rtShadowNames[4] = {
+            "gRTShadowMask0", "gRTShadowMask1", "gRTShadowMask2", "gRTShadowMask3"
+        };
+        for (uint32_t li = 0; li < kMaxRTShadowLights; ++li) {
+            const int idx = GetRootParamIndex(rtShadowNames[li]);
+            if (idx >= 0 && rtShadowHandles_[li].ptr != 0) {
+                commandList->SetGraphicsRootDescriptorTable(idx, rtShadowHandles_[li]);
+            }
         }
 
         // フルスクリーントライアングルで描画（頂点バッファなし）
