@@ -1,4 +1,4 @@
-﻿#include "ObjectSelector.h"
+#include "ObjectSelector.h"
 #include "ObjectCommon/GameObject.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
 #include "ObjectCommon/GameObjectManager.h"
@@ -190,6 +190,7 @@ namespace CoreEngine
 
         const auto& objects = gameObjectManager->GetAllObjects();
         SpriteObject* closestSprite = nullptr;
+        int highestOrder = INT_MIN;
 
         // スプライトオブジェクトのみをチェック
         for (const auto& obj : objects) {
@@ -225,9 +226,12 @@ namespace CoreEngine
             // 矩形内にマウスがあるかチェック
             if (worldMousePos.x >= left && worldMousePos.x <= right &&
                 worldMousePos.y >= bottom && worldMousePos.y <= top) {
-                closestSprite = sprite;
-                // 最初に見つかったスプライトを選択（レイヤー順序を考慮する場合は要改善）
-                break;
+                // 最前面（renderOrder が最大）のスプライトを優先選択
+                int order = sprite->GetSortingLayer() * 1000 + sprite->GetOrderInLayer();
+                if (order > highestOrder) {
+                    highestOrder = order;
+                    closestSprite = sprite;
+                }
             }
         }
 

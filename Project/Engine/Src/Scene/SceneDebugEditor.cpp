@@ -10,6 +10,7 @@
 #include "Utility/Debug/ImGui/ObjectSelector.h"
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #include "Graphics/Texture/TextureManager.h"
+#include "ObjectCommon/Sprite/SpriteObject.h"
 
 namespace CoreEngine
 {
@@ -269,7 +270,13 @@ namespace CoreEngine
         }
 
         GameObject* selected = objectSelector->GetSelectedObject();
-        gameObjectManager_->DrawSingleObjectImGui(selected);
+        SpriteObject* selectedSprite = objectSelector->GetSelectedSprite();
+
+        if (selectedSprite) {
+            gameObjectManager_->DrawSingleObjectImGui(selectedSprite);
+        } else {
+            gameObjectManager_->DrawSingleObjectImGui(selected);
+        }
     }
 
     void SceneDebugEditor::ShowSaveNotification(const std::string& message)

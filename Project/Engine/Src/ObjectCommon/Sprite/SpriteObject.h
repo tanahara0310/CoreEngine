@@ -6,6 +6,7 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Material/SpriteMaterialInstance.h"
 #include "Math/EulerTransform.h"
+#include "ObjectCommon/Sprite/SpriteAnimator.h"
 #include <memory>
 #include <string>
 #include <d3d12.h>
@@ -108,14 +109,38 @@ public:
     
     /// @brief ブレンドモードを取得
     BlendMode GetBlendMode() const override { return blendMode_; }
-    
+
     /// @brief ブレンドモードを設定
     void SetBlendMode(BlendMode blendMode) override { blendMode_ = blendMode; }
+
+    /// @brief ソートレイヤーを設定（大きいほど前面に描画）
+    void SetSortingLayer(int layer);
+    int GetSortingLayer() const { return sortingLayer_; }
+
+    /// @brief レイヤー内での描画順を設定（大きいほど前面に描画）
+    void SetOrderInLayer(int order);
+    int GetOrderInLayer() const { return orderInLayer_; }
+
+    /// @brief X軸方向のフリップを設定
+    void SetFlipX(bool flip);
+    bool GetFlipX() const { return flipX_; }
+
+    /// @brief Y軸方向のフリップを設定
+    void SetFlipY(bool flip);
+    bool GetFlipY() const { return flipY_; }
     
     /// @brief スプライト用トランスフォームを取得
     /// @note SpriteObject は EulerTransform を使用
     EulerTransform& GetSpriteTransform() { return transform_; }
     const EulerTransform& GetSpriteTransform() const { return transform_; }
+
+    // ===== アニメーション =====
+
+    /// @brief アニメーターを取得（遅延初期化）
+    SpriteAnimator& GetAnimator();
+
+    /// @brief アニメーターが存在するか確認
+    bool HasAnimator() const { return animator_ != nullptr; }
     
 private:
     /// @brief テクスチャサイズを自動設定
@@ -169,8 +194,23 @@ private:
     /// @brief ブレンドモード（デフォルトはアルファブレンド）
     BlendMode blendMode_ = BlendMode::kBlendModeNormal;
 
+    /// @brief ソートレイヤー（大きいほど前面。異なるレイヤー間の順序制御）
+    int sortingLayer_ = 0;
+
+    /// @brief レイヤー内描画順（大きいほど前面。同一レイヤー内の細かい順序制御）
+    int orderInLayer_ = 0;
+
+    /// @brief X軸フリップフラグ（trueで左右反転）
+    bool flipX_ = false;
+
+    /// @brief Y軸フリップフラグ（trueで上下反転）
+    bool flipY_ = false;
+
     /// @brief 頂点データ更新フラグ（Dirty Flag パターン）
     bool vertexDataDirty_ = false;
+
+    /// @brief スプライトアニメーター（使用時に遅延生成）
+    std::unique_ptr<SpriteAnimator> animator_;
 
 #ifdef USE_IMGUI
     // ImGui 編集追跡用（操作前スナップショット）

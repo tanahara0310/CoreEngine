@@ -4,6 +4,9 @@
     <ClCompile Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\PrimitiveTestScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.cpp">
+      <Filter>Application\Src\Sample\SampleScene\SpriteTestScene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera2D.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -334,6 +337,12 @@
     <ClCompile Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.cpp">
       <Filter>Engine\Src\ObjectCommon\Primitive</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\ObjectCommon\Sprite\SpriteAnimationClip.cpp">
+      <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\ObjectCommon\Sprite\SpriteAnimator.cpp">
+      <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.cpp">
       <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
     </ClCompile>
@@ -420,6 +429,12 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp">
       <Filter>Engine\Src\Threading</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\TileMap\TileCollider.cpp">
+      <Filter>Engine\Src\TileMap</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\TileMap\TileMap.cpp">
+      <Filter>Engine\Src\TileMap</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Collision\CollisionUtils.cpp">
       <Filter>Engine\Src\Utility\Collision</Filter>
@@ -638,6 +653,9 @@
   <ItemGroup>
     <ClInclude Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.h">
       <Filter>Application\Src\Sample\SampleScene\PrimitiveTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h">
+      <Filter>Application\Src\Sample\SampleScene\SpriteTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\CubeObject.h">
       <Filter>Application\Src\Sample\TestGameObject</Filter>
@@ -1101,6 +1119,12 @@
     <ClInclude Include="Engine\Src\ObjectCommon\Primitive\PrimitiveGameObject.h">
       <Filter>Engine\Src\ObjectCommon\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\ObjectCommon\Sprite\SpriteAnimationClip.h">
+      <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\ObjectCommon\Sprite\SpriteAnimator.h">
+      <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\ObjectCommon\Sprite\SpriteObject.h">
       <Filter>Engine\Src\ObjectCommon\Sprite</Filter>
     </ClInclude>
@@ -1190,6 +1214,15 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Threading\ThreadPool.h">
       <Filter>Engine\Src\Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\TileMap\TileAttribute.h">
+      <Filter>Engine\Src\TileMap</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\TileMap\TileCollider.h">
+      <Filter>Engine\Src\TileMap</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\TileMap\TileMap.h">
+      <Filter>Engine\Src\TileMap</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Collision\CollisionUtils.h">
       <Filter>Engine\Src\Utility\Collision</Filter>
@@ -1558,6 +1591,9 @@
     <Filter Include="Application\Src\Sample\SampleScene\PrimitiveTestScene">
       <UniqueIdentifier>{5F7A8B62-8EEE-4EBB-9E27-77743A7C136E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Sample\SampleScene\SpriteTestScene">
+      <UniqueIdentifier>{9A549D14-B690-4FBF-819D-550E203ED1FA}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Sample\SampleScene\TestScene">
       <UniqueIdentifier>{867A4A49-D98E-4B2D-A4ED-CFD4CD58767A}</UniqueIdentifier>
     </Filter>
@@ -1803,6 +1839,9 @@
     </Filter>
     <Filter Include="Engine\Src\Threading">
       <UniqueIdentifier>{BA947100-DF5F-4273-BD5F-45D5B7B58B7B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\TileMap">
+      <UniqueIdentifier>{006CEB16-4690-47CB-A5CC-CDD573EC9F87}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility">
       <UniqueIdentifier>{46B344B6-CF7F-4BA4-AD45-446450F55874}</UniqueIdentifier>
