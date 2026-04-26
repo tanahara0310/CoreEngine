@@ -1,57 +1,32 @@
 #pragma once
-#include <wrl.h>
 #include <functional>
 #include <memory>
 #include <vector>
-#include <string>
+#include <typeindex>
 
 #include "ComponentManager.h"
+#include "EngineConfig.h"
+#include "Subsystem/IEngineSubsystem.h"
 
 #ifdef USE_IMGUI
-#include "Utility/Debug/ImGui/ImGuiManager.h"
-#include "Utility/Debug/GameDebugUI.h"
-#include "Graphics/Common/GpuTimestampProfiler.h"
-#include "Utility/Debug/ImGui/ThreadProfilerUI.h"
-#include "Utility/Debug/ImGui/KeyConfigUI.h"
+#include "Subsystem/DebugSubsystem.h"
 #endif
 
 class WinApp;
 
-#ifdef USE_IMGUI
-class DockingUI; // 前方宣言（デバッグビルドのみ）
-class ConsoleUI; // 前方宣言（デバッグビルドのみ）
-#endif
-
-
-
-// グラフィックス関連
+// ──────────────────────────────────────────────────────────
+// コンポーネントアクセス利便インクルード
+// GetComponent<T>()呼び出し元のこトを考慮し、
+// 主要コンポーネント型の完全型を提供するためのインクルードです。
+// 废止: 各呼び出し元ファイルで必要な型を直接インクルードすることを推奨。
+// ──────────────────────────────────────────────────────────
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Model/ModelManager.h"
-#include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "Graphics/IBL/IBLGenerator.h"
-#include "Graphics/IBL/IBLSystem.h"
-#include "Particle/ParticleSystem.h"
-
-// 入力関連
 #include "Input/InputManager.h"
-
-// オーディオ関連
 #include "Audio/SoundManager.h"
-
-// カメラ関連
-#include "Camera/Release/Camera.h"
-
-// 数学ライブラリ
-#include "Math/MathCore.h"
-
-// ユーティリティ
-#include "Utility/Collision/CollisionUtils.h"
-
-// レンダーパイプライン
-#include "Graphics/Render/Pass/RenderPipeline.h"
+#include "Utility/FrameRate/FrameRateController.h"
 
 
 /// @brief エンジンシステム中核システム管理クラス
@@ -59,9 +34,14 @@ class ConsoleUI; // 前方宣言（デバッグビルドのみ）
 namespace CoreEngine
 {
 class SceneManager;
+class GraphicsComponentFactory;
+class CoreComponentFactory;
+class RayTracingSubsystem;
+class RenderPipeline;
 
 class EngineSystem {
 public:
+    ~EngineSystem();
     /// @brief エンジンシステムの初期化
     /// @param winApp ウィンドウアプリケーション
     /// @param config エンジン設定
@@ -81,10 +61,13 @@ public:
     void ExecuteRenderPipeline(std::function<void()> renderCallback);
 
     /// @brief SceneManagerを設定
-    void SetSceneManager(SceneManager* sceneManager) { sceneManager_ = sceneManager; }
+    void SetSceneManager(SceneManager* sceneManager);
 
     /// @brief SceneManagerを取得
-    SceneManager* GetSceneManager() const { return sceneManager_; }
+    SceneManager* GetSceneManager() const;
+
+    /// @brief WinAppを取得
+    WinApp* GetWinApp() const { return winApp_; }
 
     // ──────────────────────────────────────────────────────────
     // コンポーネントアクセッサ
@@ -124,25 +107,41 @@ public:
     // デバッグ機能アクセッサ（デバッグビルドのみ）
     // ──────────────────────────────────────────────────────────
 
-    /// @brief ImGuiマネージャーへのアクセッサ
-    ImGuiManager* GetImGuiManager() { return imGui_.get(); }
-
-    /// @brief ゲームデバッグUIへのアクセッサ
-    GameDebugUI* GetGameDebugUI() { return gameDebugUI_.get(); }
-
-    /// @brief ドッキングUIへのアクセッサ
-    /// @return ドッキングUIへのポインタ
-    DockingUI* GetDockingUI() { return imGui_ ? imGui_->GetDockingUI() : nullptr; }
-
-    /// @brief コンソールUIへのアクセッサ
-    /// @return コンソールUIへのポインタ
-    ConsoleUI* GetConsole() { return gameDebugUI_ ? gameDebugUI_->GetConsole() : nullptr; }
+    /// @brief デバッグサブシステムへのアクセッサ
+    DebugSubsystem* GetDebugSubsystem() { return GetSubsystem<DebugSubsystem>(); }
 #endif
 
+    /// @brief 型指定でサブシステムを取得する
+    /// @tparam T IEngineSubsystemを継承するサブシステムの型
+    /// @return 該当サブシステムへのポインタ（未登録の場合nullptr）
+    template<typename T>
+    T* GetSubsystem() {
+        for (auto& sys : subsystems_) {
+            if (auto* p = dynamic_cast<T*>(sys.get())) {
+                return p;
+            }
+        }
+        return nullptr;
+    }
+
 private:
+    friend class GraphicsComponentFactory; // RegisterComponent への限定アクセス許可
+    friend class CoreComponentFactory;     // RegisterComponent への限定アクセス許可
+
     // ──────────────────────────────────────────────────────────
     // コンポーネント登録ヘルパー
     // ──────────────────────────────────────────────────────────
+
+    /// @brief 型消去コンポーネント所有構造の基底クラス
+    struct IComponentHolder {
+        virtual ~IComponentHolder() = default;
+    };
+    /// @brief 型安全なコンポーネント所有構造
+    template<typename T>
+    struct ComponentHolder final : IComponentHolder {
+        std::unique_ptr<T> ptr;
+        explicit ComponentHolder(std::unique_ptr<T> p) : ptr(std::move(p)) {}
+    };
 
     /// @brief コンポーネントを登録
     /// @tparam T コンポーネントの型
@@ -150,10 +149,7 @@ private:
     template<typename T>
     void RegisterComponent(std::unique_ptr<T> component) {
         T* ptr = component.get();
-        componentOwners_.emplace_back(
-            component.release(),
-            [](void* p) { delete static_cast<T*>(p); }
-        );
+        componentOwners_.push_back(std::make_unique<ComponentHolder<T>>(std::move(component)));
         componentManager_.Register(ptr);
     }
 
@@ -178,24 +174,18 @@ private:
     // コンポーネント管理
     ComponentManager componentManager_;
 
-    // コンポーネントの所有権管理（型消去されたポインタのコンテナ）
-    std::vector<std::unique_ptr<void, void(*)(void*)>> componentOwners_;
+    // コンポーネントの所有権管理（型安全なホルダーコンテナ）
+    std::vector<std::unique_ptr<IComponentHolder>> componentOwners_;
 
     // レンダーパイプライン
     std::unique_ptr<RenderPipeline> renderPipeline_;
 
-#ifdef USE_IMGUI
-    // デバッグ機能（デバッグビルドのみ）
-    std::unique_ptr<ImGuiManager> imGui_ = std::make_unique<ImGuiManager>(); // ImGuiマネージャークラスのインスタンス
-    std::unique_ptr<GameDebugUI> gameDebugUI_ = std::make_unique<GameDebugUI>(); // ゲームデバッグUIのインスタンス
-    GpuTimestampProfiler gpuProfiler_; // GPU / CPU タイムスタンププロファイラー
-    std::unique_ptr<ThreadProfilerUI> threadProfilerUI_; // スレッドプールプロファイラー
-    KeyConfigUI keyConfigUI_; // キーコンフィグUI
+    // ──────────────────────────────────────────────────────────
+    // サブシステム管理
+    // ──────────────────────────────────────────────────────────
+    // 全サブシステム（ライフサイクルを一括ループするためのコンテナ）
+    // 型指定アクセスはGetSubsystem<T>()を使用する
+    std::vector<std::unique_ptr<IEngineSubsystem>> subsystems_;
 
-    // SceneView 設定（configから読み込み）
-    bool sceneViewEnablePostEffect_ = false;
-#endif // USE_IMGUI
-
-    SceneManager* sceneManager_ = nullptr;
-};
+    };
 }

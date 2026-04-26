@@ -199,6 +199,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Collider\SphereCollider.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Subsystem\RayTracingSubsystem.cpp" />
     <ClCompile Include="Engine\Src\Framework\Framework.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
@@ -417,7 +422,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Collider\SphereCollider.h" />
     <ClInclude Include="Engine\Src\EngineSystem\ComponentManager.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Subsystem\IEngineSubsystem.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Subsystem\RayTracingSubsystem.h" />
     <ClInclude Include="Engine\Src\Framework\Framework.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetDatabase.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetInfo.h" />

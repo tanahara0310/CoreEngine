@@ -25,11 +25,10 @@ auto engine = GetEngineSystem();
 auto engine = engine_;
 
 // 型安全なコンポーネント取得
-auto* keyboard   = engine->GetComponent<CoreEngine::KeyboardInput>();
-auto* mouse      = engine->GetComponent<CoreEngine::MouseInput>();
+auto* inputMgr   = engine->GetComponent<CoreEngine::InputManager>();
 auto* modelMgr   = engine->GetComponent<CoreEngine::ModelManager>();
-auto* iblSystem  = engine->GetComponent<CoreEngine::IBLSystem>();
 auto* soundMgr   = engine->GetComponent<CoreEngine::SoundManager>();
+auto* lightMgr   = engine->GetComponent<CoreEngine::LightManager>();
 ```
 
 ## 取得可能な主要コンポーネント
@@ -39,13 +38,25 @@ auto* soundMgr   = engine->GetComponent<CoreEngine::SoundManager>();
 | `DirectXCommon` | DirectX12 の基本機能 |
 | `TextureManager` | テクスチャ管理（※シングルトン経由も可） |
 | `ModelManager` | 3D モデル管理 |
-| `KeyboardInput` | キーボード入力 |
-| `MouseInput` | マウス入力 |
-| `GamePadInput` | ゲームパッド入力 |
+| `InputManager` | 入力管理（`InputQuery` 経由でキーボード・マウス・ゲームパッドにアクセス） |
 | `SoundManager` | サウンド管理 |
 | `LightManager` | ライト管理 |
 | `RenderManager` | レンダリング管理 |
-| `IBLSystem` | IBL（環境マップ）システム |
+| `PostEffectManager` | ポストエフェクト管理 |
+| `FrameRateController` | フレームレート制御 |
+
+## サブシステム取得
+
+エンジン内部のサブシステムは `GetSubsystem<T>()` で取得できます。
+
+```cpp
+#ifdef USE_IMGUI
+// DebugSubsystem（デバッグ機能）
+auto* debugSys = engine->GetSubsystem<CoreEngine::DebugSubsystem>();
+// GetDebugSubsystem() は GetSubsystem<DebugSubsystem>() のショートカット
+auto* debugSys = engine->GetDebugSubsystem();
+#endif
+```
 
 ## コンポーネント存在確認
 
@@ -56,19 +67,25 @@ if (engine->HasComponent<CoreEngine::ModelManager>()) {
 }
 ```
 
-## デバッグ機能（`_DEBUG` ビルドのみ）
+## デバッグ機能（`USE_IMGUI` ビルドのみ）
 
 ```cpp
-#ifdef _DEBUG
+#ifdef USE_IMGUI
+// DebugSubsystem 経由でデバッグ機能にアクセス
+auto* debugSys = engine->GetDebugSubsystem();
+
 // ImGui マネージャー
-auto* imGui = engine->GetImGuiManager();
+auto* imGui = debugSys->GetImGuiManager();
 
 // コンソール UI
-auto* console = engine->GetConsole();
+auto* console = debugSys->GetConsole();
 console->LogInfo("メッセージ");
 
 // ゲームデバッグ UI
-auto* debugUI = engine->GetGameDebugUI();
+auto* debugUI = debugSys->GetGameDebugUI();
+
+// ドッキング UI
+auto* dockingUI = debugSys->GetDockingUI();
 #endif
 ```
 

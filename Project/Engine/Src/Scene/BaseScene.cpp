@@ -72,10 +72,8 @@ namespace CoreEngine
 
         // グリッド表示状態を更新
         if (gridRenderer_) {
-            auto imguiManager = engine_->GetImGuiManager();
-            if (imguiManager) {
-                auto dockingUI = imguiManager->GetDockingUI();
-                if (dockingUI) {
+            if (auto* debug = engine_->GetDebugSubsystem()) {
+                if (auto* dockingUI = debug->GetDockingUI()) {
                     gridRenderer_->SetVisible(dockingUI->IsGridVisible());
                 }
             }

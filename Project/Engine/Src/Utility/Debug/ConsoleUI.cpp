@@ -2,6 +2,7 @@
 
 #ifdef USE_IMGUI
 #include "EngineSystem/EngineSystem.h"
+#include "Particle/ParticleSystem.h"
 
 // コンポーネントのインクルード
 #include "Utility/FrameRate/FrameRateController.h"

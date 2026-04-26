@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <unordered_map>
 #include <typeindex>
 #include <memory>
@@ -24,7 +24,7 @@ public:
     /// @tparam T コンポーネントの型
     /// @return コンポーネントへのポインタ（登録されていない場合nullptr）
     template<typename T>
-    T* Get() {
+    T* Get() const {
         std::type_index typeIdx(typeid(T));
         auto it = components_.find(typeIdx);
         if (it != components_.end()) {

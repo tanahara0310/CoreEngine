@@ -1,4 +1,6 @@
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/IBL/IBLSystem.h"
+#include "Graphics/Model/ModelManager.h"
 
 #ifdef _DEBUG
 #include "Camera/Debug/Editor/CameraDebugUI.h"
