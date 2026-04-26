@@ -37,7 +37,7 @@ namespace CoreEngine
             });
 
         // ギズモ変更時コールバックを設定
-        auto imGuiManager = engine->GetImGuiManager();
+        auto imGuiManager = engine->GetDebugSubsystem()->GetImGuiManager();
         if (imGuiManager) {
             auto* sceneViewport = imGuiManager->GetSceneViewport();
             if (sceneViewport) {
@@ -91,7 +91,7 @@ namespace CoreEngine
             });
 
         // Hierarchy/Inspectorパネル用の描画コールバックをGameDebugUIに登録
-        if (auto* gameDebugUI = engine_->GetGameDebugUI()) {
+        if (auto* gameDebugUI = engine_->GetDebugSubsystem()->GetGameDebugUI()) {
             gameDebugUI->SetHierarchyContentDrawer([this]() {
                 DrawHierarchyContent();
             });
@@ -144,7 +144,7 @@ namespace CoreEngine
         }
 
         // シーンビューポートでのオブジェクト選択とギズモ更新
-        auto imGuiManager = engine_->GetImGuiManager();
+        auto imGuiManager = engine_->GetDebugSubsystem()->GetImGuiManager();
         ICamera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
         ICamera* activeCamera2D = cameraManager_->GetActiveCamera(CameraType::Camera2D);
         if (imGuiManager) {
@@ -192,14 +192,13 @@ namespace CoreEngine
 
         // ObjectSelectorを取得（クリック選択用）
         ObjectSelector* objectSelector = nullptr;
-        if (auto* imGuiManager = engine_->GetImGuiManager()) {
-            if (auto* sceneViewport = imGuiManager->GetSceneViewport()) {
+        if (auto* debug = engine_->GetDebugSubsystem()) {
+            if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
                 objectSelector = sceneViewport->GetObjectSelector();
             }
         }
 
         const auto& objects = gameObjectManager_->GetAllObjects();
-        UI::HintF("Objects: %zu", objects.size());
         UI::Separator();
 
         if (auto child = UI::Scope::ChildScope("##HierarchyObjectList")) {
@@ -258,8 +257,8 @@ namespace CoreEngine
     {
         // ObjectSelectorから選択オブジェクトを取得
         ObjectSelector* objectSelector = nullptr;
-        if (auto* imGuiManager = engine_->GetImGuiManager()) {
-            if (auto* sceneViewport = imGuiManager->GetSceneViewport()) {
+        if (auto* debug = engine_->GetDebugSubsystem()) {
+            if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
                 objectSelector = sceneViewport->GetObjectSelector();
             }
         }

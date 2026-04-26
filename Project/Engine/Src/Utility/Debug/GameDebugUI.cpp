@@ -28,8 +28,8 @@ namespace CoreEngine
         console_->SetEngineSystem(engine);
 
         // スクリーンキャプチャにHWNDを設定
-        if (auto* imguiMgr = engine->GetImGuiManager()) {
-            screenCapture_.SetHwnd(imguiMgr->GetHwnd());
+        if (auto* debug = engine->GetDebugSubsystem()) {
+            screenCapture_.SetHwnd(debug->GetImGuiManager()->GetHwnd());
         }
 
         // Lightingをエンジン専用パネルとして登録（独立ウィンドウ）
