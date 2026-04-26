@@ -7,6 +7,7 @@
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Model/VertexData.h"
 #include "Utility/JsonManager/JsonManager.h"
+#include "Utility/FrameRate/FrameRateController.h"
 #include <cmath>
 #include <cstdio>
 #ifdef USE_IMGUI
@@ -105,30 +106,35 @@ namespace CoreEngine
         vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
 
         // アンカーポイントを考慮したローカル座標
-         // anchorPoint_ : (0,0)=左上, (1,1)=右下
         float left = -anchorPoint_.x;
         float right = 1.0f - anchorPoint_.x;
-        float top = anchorPoint_.y;        // 上は +Y（カメラ2Dに合わせる）
-        float bottom = anchorPoint_.y - 1.0f; // 下は -Y
+        float top = anchorPoint_.y;
+        float bottom = anchorPoint_.y - 1.0f;
+
+        // フリップを考慮した UV 範囲を計算
+        float uMin = flipX_ ? uvMax_.x : uvMin_.x;
+        float uMax = flipX_ ? uvMin_.x : uvMax_.x;
+        float vMin = flipY_ ? uvMax_.y : uvMin_.y;
+        float vMax = flipY_ ? uvMin_.y : uvMax_.y;
 
         // 左下
         vertexData[0].position = { left,  bottom, 0.0f, 1.0f };
-        vertexData[0].texcoord = { uvMin_.x, uvMax_.y };  // (0,1) テクスチャ下側
+        vertexData[0].texcoord = { uMin, vMax };
         vertexData[0].normal = { 0.0f, 0.0f, -1.0f };
 
         // 左上
         vertexData[1].position = { left,  top,    0.0f, 1.0f };
-        vertexData[1].texcoord = { uvMin_.x, uvMin_.y };  // (0,0) テクスチャ上側
+        vertexData[1].texcoord = { uMin, vMin };
         vertexData[1].normal = { 0.0f, 0.0f, -1.0f };
 
         // 右下
         vertexData[2].position = { right, bottom, 0.0f, 1.0f };
-        vertexData[2].texcoord = { uvMax_.x, uvMax_.y };  // (1,1)
+        vertexData[2].texcoord = { uMax, vMax };
         vertexData[2].normal = { 0.0f, 0.0f, -1.0f };
 
         // 右上
         vertexData[3].position = { right, top,    0.0f, 1.0f };
-        vertexData[3].texcoord = { uvMax_.x, uvMin_.y };  // (1,0)
+        vertexData[3].texcoord = { uMax, vMin };
         vertexData[3].normal = { 0.0f, 0.0f, -1.0f };
 
         vertexResource_->Unmap(0, nullptr);
@@ -137,11 +143,27 @@ namespace CoreEngine
     void SpriteObject::Update() {
         if (!isActive_) return;
 
+        // アニメーターの更新
+        if (animator_ && animator_->IsPlaying()) {
+            float deltaTime = 0.0f;
+            if (auto* fr = GetEngineSystem()->GetComponent<FrameRateController>()) {
+                deltaTime = fr->GetDeltaTime();
+            }
+            animator_->Update(deltaTime, this);
+        }
+
         // 頂点データが変更されている場合のみ更新
         if (vertexDataDirty_) {
             UpdateVertexData();
             vertexDataDirty_ = false;
         }
+    }
+
+    SpriteAnimator& SpriteObject::GetAnimator() {
+        if (!animator_) {
+            animator_ = std::make_unique<SpriteAnimator>();
+        }
+        return *animator_;
     }
 
     void SpriteObject::Draw2D(const ICamera* camera) {
@@ -200,6 +222,8 @@ namespace CoreEngine
         anchorPoint_ = { 0.5f, 0.5f };
         uvMin_ = { 0.0f, 0.0f };
         uvMax_ = { 1.0f, 1.0f };
+        flipX_ = false;
+        flipY_ = false;
 
         vertexDataDirty_ = true;
     }
@@ -242,19 +266,47 @@ namespace CoreEngine
     }
 
     void SpriteObject::SetUVOffset(float offsetX, float offsetY) {
-        material_->SetUVTransform(Matrix::Translation({ offsetX, offsetY, 0.0f }));
+        uvTransform_.translate = { offsetX, offsetY, 0.0f };
+        UpdateUVTransformMatrix(uvTransform_);
     }
 
     void SpriteObject::SetUVScale(float scaleX, float scaleY) {
-        material_->SetUVTransform(Matrix::Scale({ scaleX, scaleY, 1.0f }));
+        uvTransform_.scale = { scaleX, scaleY, 1.0f };
+        UpdateUVTransformMatrix(uvTransform_);
     }
 
     void SpriteObject::SetUVRotation(float rotation) {
-        material_->SetUVTransform(Matrix::RotationZ(rotation));
+        uvTransform_.rotate.z = rotation;
+        UpdateUVTransformMatrix(uvTransform_);
     }
 
     void SpriteObject::ResetUVTransform() {
+        uvTransform_ = { { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
         material_->SetUVTransform(Matrix::Identity());
+    }
+
+    void SpriteObject::SetSortingLayer(int layer) {
+        sortingLayer_ = layer;
+        SetRenderOrder(sortingLayer_ * 1000 + orderInLayer_);
+    }
+
+    void SpriteObject::SetOrderInLayer(int order) {
+        orderInLayer_ = order;
+        SetRenderOrder(sortingLayer_ * 1000 + orderInLayer_);
+    }
+
+    void SpriteObject::SetFlipX(bool flip) {
+        if (flipX_ != flip) {
+            flipX_ = flip;
+            vertexDataDirty_ = true;
+        }
+    }
+
+    void SpriteObject::SetFlipY(bool flip) {
+        if (flipY_ != flip) {
+            flipY_ = flip;
+            vertexDataDirty_ = true;
+        }
     }
 
     void SpriteObject::UpdateUVTransformMatrix(const EulerTransform& uvTransform) {
@@ -359,6 +411,29 @@ namespace CoreEngine
                 }
             }
 
+            UI::SectionHeader("描画順序");
+            {
+                int layerTemp = sortingLayer_;
+                if (ImGui::DragInt("Sorting Layer##sort", &layerTemp, 1.0f, -100, 100)) {
+                    SetSortingLayer(layerTemp);
+                    changed = true;
+                }
+                int orderTemp = orderInLayer_;
+                if (ImGui::DragInt("Order In Layer##sort", &orderTemp, 1.0f, -9999, 9999)) {
+                    SetOrderInLayer(orderTemp);
+                    changed = true;
+                }
+            }
+
+            UI::SectionHeader("フリップ");
+            {
+                bool fx = flipX_;
+                bool fy = flipY_;
+                if (ImGui::Checkbox("Flip X##flip", &fx)) { SetFlipX(fx); changed = true; }
+                ImGui::SameLine();
+                if (ImGui::Checkbox("Flip Y##flip", &fy)) { SetFlipY(fy); changed = true; }
+            }
+
             UI::SectionHeader("アンカーポイント");
             Vector2 anchorTemp = anchorPoint_;
             if (UI::DragVec2("##anchor", anchorTemp, 0.01f, 0.0f, 1.0f)) {
@@ -392,6 +467,8 @@ namespace CoreEngine
         j["transform"]["translate"] = JsonManager::Vector3ToJson(transform_.translate);
         j["transform"]["rotate"] = JsonManager::Vector3ToJson(transform_.rotate);
         j["transform"]["scale"] = JsonManager::Vector3ToJson(transform_.scale);
+        j["flipX"] = flipX_;
+        j["flipY"] = flipY_;
         return j;
     }
 
@@ -405,6 +482,8 @@ namespace CoreEngine
             transform_.rotate = JsonManager::SafeGetVector3(t, "rotate", transform_.rotate);
             transform_.scale = JsonManager::SafeGetVector3(t, "scale", transform_.scale);
         }
+        if (j.contains("flipX")) { SetFlipX(j["flipX"].get<bool>()); }
+        if (j.contains("flipY")) { SetFlipY(j["flipY"].get<bool>()); }
     }
 
     void SpriteObject::Draw(const ICamera* camera) {
