@@ -13,6 +13,7 @@ namespace CoreEngine
         ModelParticle,       // モデルパーティクル（3D）
         Line,                // ライン描画（デバッグ用）
         Particle,            // パーティクル（ビルボード）
-        Sprite,              // スプライト（最前面）
+        Sprite,              // スプライト（ゲームワールド）
+        UI,                  // UI（最前面・スクリーン固定座標）
     };
 }

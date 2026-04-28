@@ -110,6 +110,11 @@ namespace CoreEngine
                 return sceneNodeId_;
             }
 
+            // Canvas プレビューは Game と同じノードにドッキングしてタブ化する
+            if (windowName == "Canvas") {
+                return gameNodeId_;
+            }
+
             if ((area == DockArea::LeftTop || area == DockArea::LeftBottom || area == DockArea::Center) && toolNodeId_ != 0) {
                 return toolNodeId_;
             }

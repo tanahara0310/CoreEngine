@@ -15,6 +15,7 @@
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
+#include "Graphics/Render/UI/UIRenderer.h"
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
@@ -84,6 +85,11 @@ namespace CoreEngine
         auto spriteRenderer = std::make_unique<SpriteRenderer>();
         spriteRenderer->Initialize(dxPtr, resourcePtr);
         renderManager->RegisterRenderer(RenderPassType::Sprite, std::move(spriteRenderer));
+
+        // UIRendererの作成と登録（UIパスは最前面・スクリーン固定座標）
+        auto uiRenderer = std::make_unique<UIRenderer>();
+        uiRenderer->Initialize(dxPtr, resourcePtr);
+        renderManager->RegisterRenderer(RenderPassType::UI, std::move(uiRenderer));
 
         // ParticleRendererの作成と登録
         auto particleRenderer = std::make_unique<ParticleRenderer>();
