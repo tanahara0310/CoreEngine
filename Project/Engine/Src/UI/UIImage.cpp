@@ -1,0 +1,292 @@
+#include "UIImage.h"
+#include "Graphics/Render/UI/UIRenderer.h"
+#include "Graphics/Render/RenderManager.h"
+#include "Graphics/Model/VertexData.h"
+#include "EngineSystem/EngineSystem.h"
+
+#ifdef USE_IMGUI
+#include "Utility/Debug/ImGui/Wrappers/ImGuiInput.h"
+#include "Utility/Debug/ImGui/Wrappers/ImGuiLayout.h"
+#include <imgui.h>
+#include <numbers>
+#endif
+
+namespace CoreEngine
+{
+    using namespace CoreEngine::MathCore;
+
+    void UIImage::Initialize(const std::string& textureFilePath, const std::string& name)
+    {
+        if (!name.empty()) {
+            SetName(name);
+        }
+
+        auto* engine = GetEngineSystem();
+        auto* renderManager = engine->GetComponent<RenderManager>();
+        renderer_ = dynamic_cast<UIRenderer*>(renderManager->GetRenderer(RenderPassType::UI));
+
+        textureHandle_ = TextureManager::GetInstance().Load(textureFilePath);
+        DirectX::TexMetadata metadata = TextureManager::GetInstance().GetMetadata(textureFilePath);
+        textureSize_.x = static_cast<float>(metadata.width);
+        textureSize_.y = static_cast<float>(metadata.height);
+        layout_.size = textureSize_;
+
+        CreateVertexBuffer();
+
+        material_ = std::make_unique<UIMaterialInstance>();
+        material_->Initialize(renderer_->GetDirectXCommon()->GetDevice());
+    }
+
+    void UIImage::SetTexture(const std::string& textureFilePath)
+    {
+        textureHandle_ = TextureManager::GetInstance().Load(textureFilePath);
+        DirectX::TexMetadata metadata = TextureManager::GetInstance().GetMetadata(textureFilePath);
+        textureSize_.x = static_cast<float>(metadata.width);
+        textureSize_.y = static_cast<float>(metadata.height);
+    }
+
+    void UIImage::ChangeAnchorKeepingPosition(UIAnchor newAnchor, const Vector2& canvasSize)
+    {
+        // 現在のアンカー基準点
+        Vector2 oldAnchorPt = GetAnchorPoint(layout_.anchor, canvasSize);
+        // 新しいアンカー基準点
+        Vector2 newAnchorPt = GetAnchorPoint(newAnchor, canvasSize);
+
+        // スクリーン上の絶対座標 = 旧アンカー + anchoredPos
+        // 新しい anchoredPos = 絶対座標 - 新アンカー
+        layout_.anchoredPos.x += oldAnchorPt.x - newAnchorPt.x;
+        layout_.anchoredPos.y += oldAnchorPt.y - newAnchorPt.y;
+        layout_.anchor = newAnchor;
+    }
+
+    void UIImage::SetColor(const Vector4& color)
+    {
+        if (material_) { material_->SetColor(color); }
+    }
+
+    Vector4 UIImage::GetColor() const
+    {
+        return material_ ? material_->GetColor() : Vector4{ 1, 1, 1, 1 };
+    }
+
+    void UIImage::CreateVertexBuffer()
+    {
+        if (!renderer_) { return; }
+
+        DirectXCommon* dxCommon = renderer_->GetDirectXCommon();
+        ResourceFactory* factory = renderer_->GetResourceFactory();
+        if (!dxCommon || !factory) { return; }
+
+        vertexResource_ = factory->CreateBufferResource(dxCommon->GetDevice(), sizeof(VertexData) * 4);
+        vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
+        vertexBufferView_.SizeInBytes = sizeof(VertexData) * 4;
+        vertexBufferView_.StrideInBytes = sizeof(VertexData);
+
+        indexResource_ = factory->CreateBufferResource(dxCommon->GetDevice(), sizeof(uint32_t) * 6);
+        uint32_t* indexData = nullptr;
+        indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
+        indexData[0] = 0; indexData[1] = 1; indexData[2] = 2;
+        indexData[3] = 1; indexData[4] = 3; indexData[5] = 2;
+        indexResource_->Unmap(0, nullptr);
+
+        indexBufferView_.BufferLocation = indexResource_->GetGPUVirtualAddress();
+        indexBufferView_.SizeInBytes = sizeof(uint32_t) * 6;
+        indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
+
+        UpdateVertexData();
+    }
+
+    void UIImage::UpdateVertexData()
+    {
+        if (!vertexResource_) { return; }
+
+        VertexData* vertexData = nullptr;
+        vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+
+        float left = -layout_.pivot.x;
+        float right = 1.0f - layout_.pivot.x;
+        float top = -layout_.pivot.y;
+        float bottom = 1.0f - layout_.pivot.y;
+
+        vertexData[0].position = { left,  bottom, 0.0f, 1.0f }; vertexData[0].texcoord = { 0.0f, 1.0f }; vertexData[0].normal = { 0.0f, 0.0f, -1.0f };
+        vertexData[1].position = { left,  top,    0.0f, 1.0f }; vertexData[1].texcoord = { 0.0f, 0.0f }; vertexData[1].normal = { 0.0f, 0.0f, -1.0f };
+        vertexData[2].position = { right, bottom, 0.0f, 1.0f }; vertexData[2].texcoord = { 1.0f, 1.0f }; vertexData[2].normal = { 0.0f, 0.0f, -1.0f };
+        vertexData[3].position = { right, top,    0.0f, 1.0f }; vertexData[3].texcoord = { 1.0f, 0.0f }; vertexData[3].normal = { 0.0f, 0.0f, -1.0f };
+
+        vertexResource_->Unmap(0, nullptr);
+        lastPivot_ = layout_.pivot;
+        rebuildVertex_ = false;
+    }
+
+    void UIImage::Draw(const ICamera* /*camera*/)
+    {
+        if (!IsActive() || !renderer_ || !material_) { return; }
+
+        if (rebuildVertex_) { UpdateVertexData(); }
+
+        Vector2 screenPos = layout_.CalculateScreenPosition(renderer_->GetScreenSize());
+
+        auto* commandList = renderer_->GetDirectXCommon()->GetCommandList();
+        size_t bufferIndex = renderer_->GetAvailableConstantBuffer();
+
+        Vector3 position = { screenPos.x, screenPos.y, 0.0f };
+        Vector3 scale = { layout_.size.x, layout_.size.y, 1.0f };
+        Vector3 rotation = { 0.0f, 0.0f, layout_.rotation };
+
+        auto& transformData = renderer_->GetTransformDataPool()[bufferIndex];
+        transformData->WVP = renderer_->CalculateWVPMatrix(position, scale, rotation);
+        transformData->world = Matrix::MakeAffine(scale, rotation, position);
+
+        commandList->SetGraphicsRootConstantBufferView(
+            renderer_->GetRootParamIndex("gMaterial"),
+            material_->GetGPUVirtualAddress());
+        commandList->SetGraphicsRootConstantBufferView(
+            renderer_->GetRootParamIndex("TransformationMatrix"),
+            renderer_->GetTransformResource(bufferIndex)->GetGPUVirtualAddress());
+        commandList->SetGraphicsRootDescriptorTable(
+            renderer_->GetRootParamIndex("gTexture"),
+            textureHandle_.gpuHandle);
+
+        commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
+        commandList->IASetIndexBuffer(&indexBufferView_);
+        commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+    }
+
+#ifdef USE_IMGUI
+    int UIImage::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const
+    {
+        if (maxTabs < 3) { return 0; }
+        outTabs[0] = { "object_data.png", "レイアウト",   {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
+        outTabs[1] = { "material.png",    "マテリアル",   {0.90f,0.30f,0.40f,1.0f}, {0.90f,0.30f,0.40f,0.25f} };
+        outTabs[2] = { "imagePlane.png",  "テクスチャ",   {0.60f,0.40f,0.80f,1.0f}, {0.60f,0.40f,0.80f,0.25f} };
+        return 3;
+    }
+
+    bool UIImage::DrawInspectorTabContent(int tabIndex)
+    {
+        bool changed = false;
+
+        switch (tabIndex)
+        {
+            // ── 0: レイアウト ──────────────────────────────────────────
+        case 0:
+        {
+            // アンカー
+            UI::SectionHeader("アンカー");
+            {
+                static const char* kAnchorNames[] = {
+                    "TopLeft",    "TopCenter",    "TopRight",
+                    "MiddleLeft", "Center",       "MiddleRight",
+                    "BottomLeft", "BottomCenter", "BottomRight",
+                };
+                int anchorIdx = static_cast<int>(layout_.anchor);
+                if (ImGui::Combo("##anchor", &anchorIdx, kAnchorNames, 9)) {
+                    // 見た目の位置を保ったままアンカーを変更
+                    Vector2 canvasSize = renderer_
+                        ? renderer_->GetScreenSize()
+                        : Vector2{ 1280.0f, 720.0f };
+                    ChangeAnchorKeepingPosition(static_cast<UIAnchor>(anchorIdx), canvasSize);
+                    changed = true;
+                }
+            }
+
+            // AnchoredPosition
+            UI::SectionHeader("AnchoredPosition");
+            if (UI::DragVec2("##anchoredPos", layout_.anchoredPos, 1.0f)) {
+                changed = true;
+            }
+
+            // Pivot
+            UI::SectionHeader("Pivot");
+            {
+                Vector2 pivotTmp = layout_.pivot;
+                if (UI::DragVec2("##pivot", pivotTmp, 0.01f, 0.0f, 1.0f)) {
+                    SetPivot(pivotTmp);
+                    changed = true;
+                }
+                // プリセットボタン
+                if (ImGui::Button("TL##pv")) { SetPivot({ 0.0f,0.0f }); changed = true; } ImGui::SameLine();
+                if (ImGui::Button("TC##pv")) { SetPivot({ 0.5f,0.0f }); changed = true; } ImGui::SameLine();
+                if (ImGui::Button("TR##pv")) { SetPivot({ 1.0f,0.0f }); changed = true; } ImGui::SameLine();
+                if (ImGui::Button("C##pv")) { SetPivot({ 0.5f,0.5f }); changed = true; } ImGui::SameLine();
+                if (ImGui::Button("BL##pv")) { SetPivot({ 0.0f,1.0f }); changed = true; } ImGui::SameLine();
+                if (ImGui::Button("BR##pv")) { SetPivot({ 1.0f,1.0f }); changed = true; }
+            }
+
+            // サイズ
+            UI::SectionHeader("サイズ");
+            if (UI::DragVec2("##size", layout_.size, 1.0f, 0.0f, 9999.0f)) {
+                changed = true;
+            }
+
+            // 回転
+            UI::SectionHeader("回転");
+            {
+                float rotDeg = layout_.rotation * (180.0f / static_cast<float>(std::numbers::pi));
+                if (UI::DragFloat("度##rot", rotDeg, 0.5f, -360.0f, 360.0f)) {
+                    layout_.rotation = rotDeg * (static_cast<float>(std::numbers::pi) / 180.0f);
+                    changed = true;
+                }
+                if (ImGui::Button("リセット##rot")) {
+                    layout_.rotation = 0.0f;
+                    changed = true;
+                }
+            }
+
+            // 描画順
+            UI::SectionHeader("描画順序");
+            {
+                int sortTmp = layout_.sortOrder;
+                if (ImGui::DragInt("Sort Order##so", &sortTmp, 1, -9999, 9999)) {
+                    SetSortOrder(sortTmp);
+                    changed = true;
+                }
+            }
+            break;
+        }
+
+        // ── 1: マテリアル ──────────────────────────────────────────
+        case 1:
+        {
+            UI::SectionHeader("カラー");
+            if (material_) {
+                Vector4 color = material_->GetColor();
+                if (UI::ColorEdit("##color", color)) {
+                    material_->SetColor(color);
+                    changed = true;
+                }
+            }
+            break;
+        }
+
+        // ── 2: テクスチャ ──────────────────────────────────────────
+        case 2:
+        {
+            UI::SectionHeader("テクスチャ情報");
+            ImGui::Text("サイズ: %.0f x %.0f px", textureSize_.x, textureSize_.y);
+            ImGui::Text("表示サイズ: %.0f x %.0f px", layout_.size.x, layout_.size.y);
+
+            // テクスチャプレビュー
+            if (textureHandle_.gpuHandle.ptr != 0) {
+                UI::SectionHeader("プレビュー");
+                constexpr float kPreviewSize = 128.0f;
+                float aspect = (textureSize_.y > 0.0f) ? textureSize_.x / textureSize_.y : 1.0f;
+                ImVec2 previewSz = (aspect >= 1.0f)
+                    ? ImVec2(kPreviewSize, kPreviewSize / aspect)
+                    : ImVec2(kPreviewSize * aspect, kPreviewSize);
+                ImGui::Image(
+                    static_cast<ImTextureID>(textureHandle_.gpuHandle.ptr),
+                    previewSz);
+            }
+            break;
+        }
+
+        default: break;
+        }
+
+        return changed;
+    }
+#endif // USE_IMGUI
+
+} // namespace CoreEngine
+

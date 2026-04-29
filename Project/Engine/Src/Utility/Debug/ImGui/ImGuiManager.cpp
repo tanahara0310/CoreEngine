@@ -118,6 +118,9 @@ namespace CoreEngine
         sceneViewport_->DrawGameViewport(dxCommon_, postEffectManager);
         sceneViewport_->DrawSceneViewport(dxCommon_, render, postEffectManager);
 
+        // Canvas プレビューウィンドウ（UI のみを表示）
+        canvasViewport_->DrawCanvasViewport();
+
 
         // プロジェクトビューの更新
 

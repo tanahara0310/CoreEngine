@@ -13,6 +13,7 @@
 #include "DockingUI.h"
 #ifdef USE_IMGUI
 #include "SceneViewport.h"
+#include "CanvasViewport.h"
 #include "ProjectView.h"
 #endif
 
@@ -63,6 +64,10 @@ DockingUI* GetDockingUI() const { return dockingUI_.get(); }
 /// @return シーンビューポートへのポインタ
 SceneViewport* GetSceneViewport() const { return sceneViewport_.get(); }
 
+/// @brief Canvasプレビュービューポートへのアクセッサ
+/// @return CanvasViewportへのポインタ
+CanvasViewport* GetCanvasViewport() const { return canvasViewport_.get(); }
+
 /// @brief SceneViewウィンドウが前フレームで表示されていたか
 /// @return 表示中ならtrue
 bool IsSceneViewVisible() const { return sceneViewport_ && sceneViewport_->IsSceneViewVisible(); }
@@ -84,6 +89,7 @@ private:
     std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();
 #ifdef USE_IMGUI
     std::unique_ptr<SceneViewport> sceneViewport_ = std::make_unique<SceneViewport>();
+    std::unique_ptr<CanvasViewport> canvasViewport_ = std::make_unique<CanvasViewport>();
     std::unique_ptr<ProjectView> projectView_ = std::make_unique<ProjectView>();
 #endif
 

@@ -6,47 +6,52 @@
 #include "ObjectCommon/Sprite/SpriteAnimationClip.h"
 #include "TileMap/TileMap.h"
 #include "TileMap/TileCollider.h"
+#include "UI/UICanvas.h"
+#include "UI/UIImage.h"
 #include <memory>
 #include <vector>
 
 /// @brief スプライト機能テスト用シーン
 class SpriteTestScene : public CoreEngine::BaseScene {
 public:
-    /// @brief シーン固有の初期化
     void OnInitialize() override;
-
-    /// @brief 解放
     void Finalize() override;
+    void Draw() override;
 
 protected:
-    /// @brief 更新
     void OnUpdate() override;
 
 private:
-    /// @brief タイルマップを構築（10x10）してスプライトを配置
     void BuildTileMap();
-
-    /// @brief プレイヤーの初期化
     void InitializePlayer();
+    void InitializeCanvas();
 
 private:
-    // ── 既存のテスト用スプライト（現在は非表示） ──────────────────
-    CoreEngine::SpriteObject* spriteCenter_ = nullptr;
+    CoreEngine::SpriteObject* spriteCenter_  = nullptr;
     CoreEngine::SpriteObject* spriteTopLeft_ = nullptr;
-    CoreEngine::SpriteObject* spriteTinted_ = nullptr;
-    CoreEngine::SpriteObject* spriteScaled_ = nullptr;
-    CoreEngine::SpriteObject* spriteAnim_ = nullptr;
+    CoreEngine::SpriteObject* spriteTinted_  = nullptr;
+    CoreEngine::SpriteObject* spriteScaled_  = nullptr;
+    CoreEngine::SpriteObject* spriteAnim_    = nullptr;
 
-    // ── タイルマップ関連 ──────────────────────────────────────
     CoreEngine::TileMap tileMap_;
     CoreEngine::TileCollider tileCollider_;
-    std::vector<CoreEngine::SpriteObject*> tileSprites_; ///< 描画用スプライト群
+    std::vector<CoreEngine::SpriteObject*> tileSprites_;
 
-    // ── プレイヤー ──────────────────────────────────────────
-    CoreEngine::SpriteObject* player_ = nullptr;
-    CoreEngine::Vector2 playerPos_ = { 0.0f, 0.0f };
-    CoreEngine::Vector2 playerVelocity_ = { 0.0f, 0.0f };
-    float playerSpeed_ = 4.0f;   ///< 速度（px/frame）
-    float playerHalfW_ = 14.0f;  ///< AABB 横半サイズ
-    float playerHalfH_ = 14.0f;  ///< AABB 縦半サイズ
+    CoreEngine::SpriteObject* player_       = nullptr;
+    CoreEngine::Vector2 playerPos_          = { 0.0f, 0.0f };
+    CoreEngine::Vector2 playerVelocity_     = { 0.0f, 0.0f };
+    float playerSpeed_  = 4.0f;
+    float playerHalfW_  = 14.0f;
+    float playerHalfH_  = 14.0f;
+
+    // ── UI ──────────────────────────────────────────────────────
+    CoreEngine::UICanvas canvas_;
+    CoreEngine::UIImage* uiHpBarBG_    = nullptr;
+    CoreEngine::UIImage* uiHpBarFill_  = nullptr;
+    CoreEngine::UIImage* uiCornerTL_   = nullptr;
+    CoreEngine::UIImage* uiCornerTR_   = nullptr;
+    CoreEngine::UIImage* uiCornerBL_   = nullptr;
+    CoreEngine::UIImage* uiCornerBR_   = nullptr;
+    CoreEngine::UIImage* uiCenterMark_ = nullptr;
+    float hpRatio_ = 1.0f;
 };

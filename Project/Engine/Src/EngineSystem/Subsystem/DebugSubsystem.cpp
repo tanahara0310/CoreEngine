@@ -43,6 +43,11 @@ namespace CoreEngine
         // ImGuiマネージャークラスの初期化
         imGui_->Initialize(engine_->GetWinApp()->GetHwnd(), dx);
 
+        // Canvas プレビュー ビューポートの初期化（背景テクスチャ読み込み）
+        if (auto* canvasViewport = imGui_->GetCanvasViewport()) {
+            canvasViewport->Initialize(engine_);
+        }
+
         // GPU タイムスタンププロファイラーの初期化
         gpuProfiler_.Initialize(dx->GetDevice());
 
@@ -101,6 +106,9 @@ namespace CoreEngine
 
             // SceneViewportが作成するウィンドウを中央に配置
             dockingUI->RegisterWindow("Scene", DockArea::Center);
+
+            // Canvasプレビューウィンドウを Game と同じ位置にタブとして配置
+            dockingUI->RegisterWindow("Canvas", DockArea::Center);
 
             // パーティクルシステムデバッグを右側に配置
             dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);

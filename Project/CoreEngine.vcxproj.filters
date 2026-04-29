@@ -271,6 +271,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\Sprite</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\UI\UIRenderer.cpp">
+      <Filter>Engine\Src\Graphics\Render\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.cpp">
       <Filter>Engine\Src\Graphics\RootSignature</Filter>
     </ClCompile>
@@ -436,11 +439,20 @@
     <ClCompile Include="Engine\Src\TileMap\TileMap.cpp">
       <Filter>Engine\Src\TileMap</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UICanvas.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIImage.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Collision\CollisionUtils.cpp">
       <Filter>Engine\Src\Utility\Collision</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.cpp">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
@@ -807,6 +819,9 @@
     <ClInclude Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClInclude>
@@ -1035,6 +1050,12 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Sprite</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\UI\UIMaterial.h">
+      <Filter>Engine\Src\Graphics\Render\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\UI\UIRenderer.h">
+      <Filter>Engine\Src\Graphics\Render\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.h">
       <Filter>Engine\Src\Graphics\RootSignature</Filter>
     </ClInclude>
@@ -1224,11 +1245,26 @@
     <ClInclude Include="Engine\Src\TileMap\TileMap.h">
       <Filter>Engine\Src\TileMap</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIAnchor.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UICanvas.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIElement.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIImage.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Collision\CollisionUtils.h">
       <Filter>Engine\Src\Utility\Collision</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h">
       <Filter>Engine\Src\Utility\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.h">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\GameObjectDebugAccess.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
@@ -1762,6 +1798,9 @@
     <Filter Include="Engine\Src\Graphics\Render\Sprite">
       <UniqueIdentifier>{1145DEDA-718E-4CE9-9430-3641660152E5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\UI">
+      <UniqueIdentifier>{6BBD7C58-19C1-4E92-B472-03D0ECC8A919}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Graphics\Resource">
       <UniqueIdentifier>{46EB0AD2-056F-4170-82B0-2521E79F7F38}</UniqueIdentifier>
     </Filter>
@@ -1842,6 +1881,9 @@
     </Filter>
     <Filter Include="Engine\Src\TileMap">
       <UniqueIdentifier>{006CEB16-4690-47CB-A5CC-CDD573EC9F87}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\UI">
+      <UniqueIdentifier>{6516A180-C27B-40D5-913A-17E4771C1275}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility">
       <UniqueIdentifier>{46B344B6-CF7F-4BA4-AD45-446450F55874}</UniqueIdentifier>

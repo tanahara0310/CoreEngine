@@ -267,6 +267,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\UI\UIRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionData.cpp" />
@@ -322,8 +323,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
     <ClCompile Include="Engine\Src\TileMap\TileCollider.cpp" />
     <ClCompile Include="Engine\Src\TileMap\TileMap.cpp" />
+    <ClCompile Include="Engine\Src\UI\UICanvas.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIImage.cpp" />
     <ClCompile Include="Engine\Src\Utility\Collision\CollisionUtils.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\KeyConfigUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp" />
@@ -450,6 +454,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.h" />
+    <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\MaterialAsset.h" />
@@ -526,6 +531,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteMaterial.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\UI\UIMaterial.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\UI\UIRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.h" />
@@ -589,8 +596,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\TileMap\TileAttribute.h" />
     <ClInclude Include="Engine\Src\TileMap\TileCollider.h" />
     <ClInclude Include="Engine\Src\TileMap\TileMap.h" />
+    <ClInclude Include="Engine\Src\UI\UIAnchor.h" />
+    <ClInclude Include="Engine\Src\UI\UICanvas.h" />
+    <ClInclude Include="Engine\Src\UI\UIElement.h" />
+    <ClInclude Include="Engine\Src\UI\UIImage.h" />
     <ClInclude Include="Engine\Src\Utility\Collision\CollisionUtils.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\GameObjectDebugAccess.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Gizmo.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiAll.h" />

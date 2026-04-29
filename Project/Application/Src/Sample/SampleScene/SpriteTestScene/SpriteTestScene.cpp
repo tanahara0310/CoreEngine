@@ -69,6 +69,7 @@ void SpriteTestScene::OnInitialize()
     // ────────────────────────────────────────────────────────────────
     BuildTileMap();
     InitializePlayer();
+    InitializeCanvas();
 
     Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::General,
         "{}", "SpriteTestScene: 初期化完了（タイルマップテストモード）");
@@ -174,6 +175,70 @@ void SpriteTestScene::OnUpdate()
 
     // スプライトに反映
     player_->GetSpriteTransform().translate = { playerPos_.x, playerPos_.y, 0.0f };
+
+    // Q/E キーで HP バーを増減（UI 動作確認）
+    if (q.IsKeyPressed(DIK_Q)) { hpRatio_ = hpRatio_ - 0.01f < 0.0f ? 0.0f : hpRatio_ - 0.01f; }
+    if (q.IsKeyPressed(DIK_E)) { hpRatio_ = hpRatio_ + 0.01f > 1.0f ? 1.0f : hpRatio_ + 0.01f; }
+    if (uiHpBarFill_) {
+        // 200px 幅の HP バーを残量に応じて伸縮
+        uiHpBarFill_->SetSize({ 200.0f * hpRatio_, 20.0f });
+    }
+}
+
+void SpriteTestScene::InitializeCanvas()
+{
+    canvas_.Initialize(engine_, { 0.0f, 0.0f });
+
+    auto make = [&](UIImage*& img, const char* name) -> UIImage* {
+        img = CreateObject<UIImage>();
+        img->Initialize("white1x1.png", name);
+        return img;
+    };
+
+    // HP バー（左上）
+    make(uiHpBarBG_, "HPBar_BG");
+    uiHpBarBG_->SetAnchor(UIAnchor::TopLeft);
+    uiHpBarBG_->SetPivot({ 0.0f, 0.0f });
+    uiHpBarBG_->SetAnchoredPosition({ 20.0f, 20.0f });
+    uiHpBarBG_->SetSize({ 204.0f, 24.0f });
+    uiHpBarBG_->SetColor({ 0.1f, 0.1f, 0.1f, 0.8f });
+    uiHpBarBG_->SetSortOrder(0);
+
+    make(uiHpBarFill_, "HPBar_Fill");
+    uiHpBarFill_->SetAnchor(UIAnchor::TopLeft);
+    uiHpBarFill_->SetPivot({ 0.0f, 0.0f });
+    uiHpBarFill_->SetAnchoredPosition({ 22.0f, 22.0f });
+    uiHpBarFill_->SetSize({ 200.0f, 20.0f });
+    uiHpBarFill_->SetColor({ 0.9f, 0.2f, 0.2f, 1.0f });
+    uiHpBarFill_->SetSortOrder(1);
+
+    // 四隅マーカー
+    auto corner = [&](UIImage*& img, UIAnchor anchor, Vector2 pos, Vector2 pivot, Vector4 col, const char* name) {
+        make(img, name);
+        img->SetAnchor(anchor);
+        img->SetPivot(pivot);
+        img->SetAnchoredPosition(pos);
+        img->SetSize({ 30.0f, 30.0f });
+        img->SetColor(col);
+    };
+    corner(uiCornerTL_, UIAnchor::TopLeft,     {  10.0f,  60.0f }, { 0.0f, 0.0f }, { 1,1,0,1 }, "Corner_TL");
+    corner(uiCornerTR_, UIAnchor::TopRight,    { -10.0f,  10.0f }, { 1.0f, 0.0f }, { 0,1,1,1 }, "Corner_TR");
+    corner(uiCornerBL_, UIAnchor::BottomLeft,  {  10.0f, -10.0f }, { 0.0f, 1.0f }, { 1,0,1,1 }, "Corner_BL");
+    corner(uiCornerBR_, UIAnchor::BottomRight, { -10.0f, -10.0f }, { 1.0f, 1.0f }, { 0,1,0,1 }, "Corner_BR");
+
+    // 中央マーカー
+    make(uiCenterMark_, "CenterMark");
+    uiCenterMark_->SetAnchor(UIAnchor::Center);
+    uiCenterMark_->SetPivot({ 0.5f, 0.5f });
+    uiCenterMark_->SetAnchoredPosition({ 0.0f, 0.0f });
+    uiCenterMark_->SetSize({ 8.0f, 8.0f });
+    uiCenterMark_->SetColor({ 1.0f, 1.0f, 1.0f, 0.8f });
+}
+
+void SpriteTestScene::Draw()
+{
+
+    BaseScene::Draw();
 }
 
 void SpriteTestScene::Finalize()

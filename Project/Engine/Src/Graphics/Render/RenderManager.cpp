@@ -143,6 +143,10 @@ namespace CoreEngine
             if (passType == RenderPassType::Sprite) {
                 return cameraManager_->GetActiveCamera(CameraType::Camera2D);
             }
+            // UI パスはカメラ非依存（スクリーン固定座標）
+            if (passType == RenderPassType::UI) {
+                return nullptr;
+            }
             // その他は3Dカメラを使用
             else {
                 return cameraManager_->GetActiveCamera(CameraType::Camera3D);
@@ -452,6 +456,7 @@ namespace CoreEngine
         passTypePriorities_[RenderPassType::Line] = 500;
         passTypePriorities_[RenderPassType::Particle] = 600;
         passTypePriorities_[RenderPassType::Sprite] = 700;
+        passTypePriorities_[RenderPassType::UI] = 800;       // UI は常に最後（最前面）
     }
 
     void RenderManager::EnsureQueueSorted() {
