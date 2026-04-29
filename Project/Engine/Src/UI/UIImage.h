@@ -31,12 +31,18 @@ namespace CoreEngine
 
         // ===== GameObject インターフェース =====
         RenderPassType GetRenderPassType() const override { return RenderPassType::UI; }
+        BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
         const char* GetObjectName() const override { return "UIImage"; }
         void Draw(const ICamera* camera) override;
 
         // ===== UILayout アクセサ =====
         void SetAnchor(UIAnchor anchor) { layout_.anchor = anchor; }
         UIAnchor GetAnchor() const { return layout_.anchor; }
+
+        /// @brief アンカーを変更しつつ、スクリーン上の見た目の位置を維持する
+        /// @param newAnchor    新しいアンカー
+        /// @param canvasSize   基準解像度サイズ（UIRenderer::GetScreenSize() の値）
+        void ChangeAnchorKeepingPosition(UIAnchor newAnchor, const Vector2& canvasSize);
 
         void SetAnchoredPosition(const Vector2& pos) { layout_.anchoredPos = pos; }
         Vector2 GetAnchoredPosition() const { return layout_.anchoredPos; }
@@ -65,6 +71,11 @@ namespace CoreEngine
 
         /// @brief レイアウト情報を取得（ImGui プレビュー用）
         const UILayout& GetLayout() const { return layout_; }
+
+#ifdef USE_IMGUI
+        int  GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+        bool DrawInspectorTabContent(int tabIndex) override;
+#endif
 
         // ===== インタラクション =====
 
