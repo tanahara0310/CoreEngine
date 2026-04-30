@@ -882,8 +882,14 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h">
       <Filter>Engine\Src\Graphics\Render\GBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\IGBufferRenderer.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
@@ -970,6 +976,9 @@
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h">
+      <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h">

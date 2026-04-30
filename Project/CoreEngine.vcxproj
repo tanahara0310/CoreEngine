@@ -475,7 +475,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\IGBufferRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLManager.h" />
@@ -505,6 +507,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\IRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelRenderer.h" />

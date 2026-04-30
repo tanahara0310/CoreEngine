@@ -7,6 +7,10 @@
 
 namespace CoreEngine
 {
+    void BaseModelRenderer::SetIBLParameters(const IBLParameters& params) {
+        iblParams_ = params;
+    }
+
     int BaseModelRenderer::GetRootParamIndex(const std::string& resourceName) const {
         // リフレクションデータが未構築の場合は無効値を返す
         if (!forwardReflectionData_) {
@@ -126,8 +130,8 @@ namespace CoreEngine
 
         // 環境マップ（Cube テクスチャ）をバインド
         int envMapIdx = GetRootParamIndex("gEnvironmentTexture");
-        if (environmentMapHandle_.ptr != 0 && envMapIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(envMapIdx, environmentMapHandle_);
+        if (iblParams_.environmentMap.ptr != 0 && envMapIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(envMapIdx, iblParams_.environmentMap);
         }
 
         // ライトビュープロジェクション行列（シャドウ計算用）をバインド
@@ -144,25 +148,25 @@ namespace CoreEngine
 
         // IBL: Irradiance Map をバインド
         int irradianceIdx = GetRootParamIndex("gIrradianceMap");
-        if (irradianceMapHandle_.ptr != 0 && irradianceIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(irradianceIdx, irradianceMapHandle_);
+        if (iblParams_.irradianceMap.ptr != 0 && irradianceIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(irradianceIdx, iblParams_.irradianceMap);
         }
 
         // IBL: Prefiltered Environment Map をバインド
         int prefilteredIdx = GetRootParamIndex("gPrefilteredMap");
-        if (prefilteredMapHandle_.ptr != 0 && prefilteredIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(prefilteredIdx, prefilteredMapHandle_);
+        if (iblParams_.prefilteredMap.ptr != 0 && prefilteredIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(prefilteredIdx, iblParams_.prefilteredMap);
         }
 
         // IBL: BRDF LUT をバインド
         int brdfLUTIdx = GetRootParamIndex("gBRDFLUT");
-        if (brdfLUTHandle_.ptr != 0 && brdfLUTIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(brdfLUTIdx, brdfLUTHandle_);
+        if (iblParams_.brdfLUT.ptr != 0 && brdfLUTIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(brdfLUTIdx, iblParams_.brdfLUT);
         }
 
         // IBL 回転パラメータをバッファに書き込んでバインド
         if (iblParamsBuffer_) {
-            IBLSceneParamsCPU params{ iblRotation_.x, iblRotation_.y, iblRotation_.z, environmentIntensity_ };
+            IBLSceneParamsCPU params{ iblParams_.rotation.x, iblParams_.rotation.y, iblParams_.rotation.z, iblParams_.intensity };
             void* mapped = nullptr;
             iblParamsBuffer_->Map(0, nullptr, &mapped);
             std::memcpy(mapped, &params, sizeof(params));

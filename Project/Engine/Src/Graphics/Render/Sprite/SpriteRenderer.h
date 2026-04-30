@@ -1,9 +1,5 @@
 #pragma once
-#include "Graphics/Render/IRenderer.h"
-#include "Graphics/Pipeline/PipelineStateManager.h"
-#include "Graphics/RootSignature/RootSignatureManager.h"
-#include "Graphics/Shader/ShaderCompiler.h"
-#include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Graphics/Render/BaseRenderer.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -21,7 +17,7 @@ namespace CoreEngine
     struct SpriteMaterial;
 
     /// @brief スプライト描画用レンダラー
-    class SpriteRenderer : public IRenderer {
+    class SpriteRenderer : public BaseRenderer {
     public:
         /// @brief トランスフォーム行列
         struct TransformationMatrix {
@@ -36,7 +32,6 @@ namespace CoreEngine
         static constexpr UINT kFrameCount = 2;
 
         // IRendererインターフェースの実装
-        void Initialize(ID3D12Device* device) override;
         void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) override;
         void EndPass() override;
         RenderPassType GetRenderPassType() const override { return RenderPassType::Sprite; }
@@ -91,13 +86,7 @@ namespace CoreEngine
         int GetRootParamIndex(const std::string& resourceName) const;
 
     private:
-        std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
-        std::unique_ptr<PipelineStateManager> psoMg_ = std::make_unique<PipelineStateManager>();
-        std::unique_ptr<ShaderCompiler> shaderCompiler_ = std::make_unique<ShaderCompiler>();
-        std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
-
-        ID3D12PipelineState* pipelineState_ = nullptr;
-        BlendMode currentBlendMode_ = BlendMode::kBlendModeAdd;
+        // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
         // DirectXCommonとResourceFactory
         DirectXCommon* dxCommon_ = nullptr;
@@ -115,5 +104,11 @@ namespace CoreEngine
 
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> reflectionData_;
+
+        /// @brief パイプラインのみを初期化（Initialize(DirectXCommon*, ResourceFactory*) から呼び出す）
+        void InitializePipeline(ID3D12Device* device);
+
+        /// @brief IRenderer::Initialize(ID3D12Device*) のオーバーライド（直接呼び出し禁止）
+        void Initialize(ID3D12Device* device) override;
     };
 }
