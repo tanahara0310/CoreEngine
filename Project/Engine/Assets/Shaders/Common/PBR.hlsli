@@ -121,7 +121,10 @@ float GeometrySmith(float NdotV, float NdotL, float roughness)
 /// @return Fresnel反射率
 float3 FresnelSchlick(float cosTheta, float3 F0)
 {
-	return F0 + (1.0f - F0) * pow(1.0f - cosTheta, 5.0f);
+	// pow(x,5) より乗算展開の方が精度・速度ともに優れる
+	float f = saturate(1.0f - cosTheta);
+	float f2 = f * f;
+	return F0 + (1.0f - F0) * f2 * f2 * f;
 }
 
 /// @brief Fresnel反射（粗さ考慮版）- IBL用
@@ -131,8 +134,10 @@ float3 FresnelSchlick(float cosTheta, float3 F0)
 /// @return Fresnel反射率
 float3 FresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
 {
+	float f = saturate(1.0f - cosTheta);
+	float f2 = f * f;
 	return F0 + (max(float3(1.0f - roughness, 1.0f - roughness, 1.0f - roughness), F0) - F0)
-        * pow(1.0f - cosTheta, 5.0f);
+		* f2 * f2 * f;
 }
 
 // ===================================================================
@@ -237,16 +242,14 @@ float3 CalculatePBRLighting(
     // Lambertian 拡散反射
 	float3 diffuse = DiffuseLambertPBR(albedo, metallic, F);
     
-    // N・L（ランバートコサイン則）
+	// N・L（ランバートコサイン則）
 	float NdotL = max(dot(N, L), 0.0f);
-    
-    // 最終的な放射輝度
+
+	// 最終的な放射輝度
+	// AO（環境遮蔽）は間接光（IBL）にのみ適用すべきであり、直接光には乗算しない
 	float3 radiance = lightColor * lightIntensity;
 	float3 Lo = (diffuse + specular) * radiance * NdotL;
-    
-    // 環境遮蔽を適用
-	Lo *= ao;
-    
+
 	return Lo;
 }
 
@@ -353,12 +356,13 @@ LightingResult CalculatePointLightPBR(
 	float3 V = normalize(toEye);
 	float3 N = normalize(normal);
     
-    // 距離減衰計算（物理ベース: 逆二乗則）
+	// 距離減衰計算（物理ベース: 逆二乗則）
 	float attenuation = 1.0f / (1.0f + decay * distance * distance);
-    
-    // 半径外は影響なし
-	float rangeFactor = saturate(1.0f - (distance / radius));
-	attenuation *= rangeFactor;
+
+	// 半径外カットオフ: UE4/Filament 方式 (1-(d/r)^4)^2 で滑らかに消失
+	float distRatio = distance / radius;
+	float rangeFactor = saturate(1.0f - distRatio * distRatio * distRatio * distRatio);
+	attenuation *= rangeFactor * rangeFactor;
     
     // PBRライティング計算
 	float3 lighting = CalculatePBRLighting(
@@ -423,12 +427,14 @@ LightingResult CalculateSpotLightPBR(
 	float3 V = normalize(toEye);
 	float3 N = normalize(normal);
     
-    // 距離減衰
+	// 距離減衰
 	float attenuation = 1.0f / (1.0f + decay * dist * dist);
-	float rangeFactor = saturate(1.0f - (dist / distance));
-	attenuation *= rangeFactor;
-    
-    // スポットライトのコーン減衰
+	// UE4/Filament 方式 (1-(d/r)^4)^2 で滑らかに消失
+	float distRatio = dist / distance;
+	float rangeFactor = saturate(1.0f - distRatio * distRatio * distRatio * distRatio);
+	attenuation *= rangeFactor * rangeFactor;
+
+	// スポットライトのコーン減衰
 	float3 lightDirNorm = normalize(lightDirection);
 	float cosTheta = dot(-L, lightDirNorm);
 	float spotFactor = saturate((cosTheta - cosAngle) / (cosFalloffStart - cosAngle));
@@ -588,7 +594,7 @@ float3 CalculateFullIBL(
 
     float3 R = normalize(reflect(-V, normalizedN));
     float3 rotatedR = RotateVector(R, environmentRotation);
-    float mipLevel = roughness * 4.0f;
+    float mipLevel = roughness * MIP_LEVEL_PER_ROUGHNESS; // MAX_PREFILTERED_MIP_LEVELS 定数に統一
     float3 prefilteredColor = prefilteredMap.SampleLevel(samp, rotatedR, mipLevel).rgb;
     float2 envBRDF = brdfLUT.Sample(samp, float2(NdotV, roughness)).rg;
     float3 specularIBL = prefilteredColor * (F * envBRDF.x + envBRDF.y);

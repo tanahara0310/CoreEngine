@@ -72,14 +72,12 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    void PostEffectBase::Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
+    void PostEffectBase::DrawInternal(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle, PipelineStateManager& psm)
     {
         auto* commandList = directXCommon_->GetCommandList();
 
         commandList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
-        commandList->SetPipelineState(
-            pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
-
+        commandList->SetPipelineState(psm.GetPipelineState(BlendMode::kBlendModeNone));
         commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         int textureIdx = GetRootParamIndex("gTexture");
@@ -87,29 +85,18 @@ namespace CoreEngine
             commandList->SetGraphicsRootDescriptorTable(textureIdx, inputSrvHandle);
         }
 
-        // オプション定数バッファをバインド
         BindOptionalCBVs(commandList);
 
         commandList->DrawInstanced(3, 1, 0, 0);
     }
 
+    void PostEffectBase::Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
+    {
+        DrawInternal(inputSrvHandle, pipelineStateManager_);
+    }
+
     void PostEffectBase::DrawToBackBuffer(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
     {
-        auto* commandList = directXCommon_->GetCommandList();
-
-        commandList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
-        commandList->SetPipelineState(
-            backBufferPipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
-
-        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-        int textureIdx = GetRootParamIndex("gTexture");
-        if (textureIdx >= 0) {
-            commandList->SetGraphicsRootDescriptorTable(textureIdx, inputSrvHandle);
-        }
-
-        BindOptionalCBVs(commandList);
-
-        commandList->DrawInstanced(3, 1, 0, 0);
+        DrawInternal(inputSrvHandle, backBufferPipelineStateManager_);
     }
 }

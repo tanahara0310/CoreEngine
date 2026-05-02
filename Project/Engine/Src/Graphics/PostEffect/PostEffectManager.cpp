@@ -54,6 +54,9 @@ bool PostEffectManager::PingPongBuffer::ApplyEffect(PostEffectBase* effect)
 
     auto* cmdList = dxCommon_->GetCommandList();
     auto* renderTarget = GetRenderTarget(currentOutputIndex_);
+    if (!renderTarget) {
+        return false;
+    }
 
     // エフェクトを現在の出力バッファに描画
     renderTarget->Begin(cmdList);
@@ -86,6 +89,9 @@ void PostEffectManager::PingPongBuffer::EnsureOutputInBuffer1(PostEffectBase* fu
 
     auto* cmdList = dxCommon_->GetCommandList();
     auto* renderTarget = GetRenderTarget(1);
+    if (!renderTarget) {
+        return;
+    }
 
     // バッファ0にある場合、バッファ1にコピー
     renderTarget->Begin(cmdList);
@@ -106,12 +112,6 @@ RenderTarget* PostEffectManager::PingPongBuffer::GetRenderTarget(int index) cons
         return render_->GetRenderTarget("Offscreen1");
     }
     return nullptr;
-}
-
-D3D12_GPU_DESCRIPTOR_HANDLE PostEffectManager::PingPongBuffer::GetSrvHandle(int index) const
-{
-    auto* renderTarget = GetRenderTarget(index);
-    return renderTarget ? renderTarget->GetSRVHandle() : D3D12_GPU_DESCRIPTOR_HANDLE{};
 }
 
 // =============================================================================
@@ -277,9 +277,11 @@ const std::vector<std::string>& PostEffectManager::GetEffectChain() const
 
 void PostEffectManager::Update(float deltaTime)
 {
-    // 全エフェクトに対してUpdate呼び出し
+    // 有効なエフェクトのみ Update を呼び出し
     for (auto& [name, effect] : effects_) {
-        effect->Update(deltaTime);
+        if (effect->IsEnabled()) {
+            effect->Update(deltaTime);
+        }
     }
 }
 
@@ -392,11 +394,7 @@ void PostEffectManager::DrawImGuiContent()
             } else {
                 UI::SectionHeader(imguiSelectedEffect_.c_str());
 
-                const bool isAlwaysOn = (imguiSelectedEffect_ == PostEffectNames::FullScreen
-                    || imguiSelectedEffect_ == PostEffectNames::DeferredLighting
-                    || imguiSelectedEffect_ == PostEffectNames::ToneMapping);
-
-                if (isAlwaysOn) {
+                if (effect->IsAlwaysEnabled()) {
                     ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "常時有効");
                 } else {
                     bool enabled = effect->IsEnabled();

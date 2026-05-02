@@ -183,11 +183,6 @@ namespace CoreEngine
         UpdateConstantBuffer();
     }
 
-    void Dissolve::ForceUpdateConstantBuffer()
-    {
-        UpdateConstantBuffer();
-    }
-
     void Dissolve::BindOptionalCBVs(ID3D12GraphicsCommandList* /*commandList*/)
     {
         // この関数はDissolveでは使用しない（Drawで直接バインドしているため）

@@ -96,11 +96,6 @@ namespace CoreEngine
         UpdateConstantBuffer();
     }
 
-    void Bloom::ForceUpdateConstantBuffer()
-    {
-        UpdateConstantBuffer();
-    }
-
     void Bloom::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
     {
         // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）

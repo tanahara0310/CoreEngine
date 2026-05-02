@@ -711,6 +711,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\GameObject\WorldTransform.md" />
     <None Include="Docs\Graphics\Lighting.md" />
     <None Include="Docs\Graphics\ModelManager.md" />
+    <None Include="Docs\Graphics\README.md" />
+    <None Include="Docs\Graphics\Rendering\PBR_RoadMap.md" />
     <None Include="Docs\Graphics\TextureManager.md" />
     <None Include="Docs\Input\Input.md" />
     <None Include="Docs\Math\MathCore.md" />

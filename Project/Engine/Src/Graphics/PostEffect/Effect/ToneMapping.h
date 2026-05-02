@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../PostEffectBase.h"
+#include <cassert>
 
 
 namespace CoreEngine
@@ -13,7 +14,10 @@ public:
     void DrawImGui() override;
 
     /// @brief トーンマッピングは常時有効。無効化を拒否する。
-    void SetEnabled(bool) override { /* 常に有効 */ }
+    void SetEnabled(bool enabled) override { assert(enabled && "ToneMapping cannot be disabled"); }
+
+    /// @brief 常時有効なエフェクト
+    bool IsAlwaysEnabled() const override { return true; }
 
 protected:
     const std::wstring& GetPixelShaderPath() const override

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../PostEffectBase.h"
 #include <wrl.h>
 #include <d3d12.h>
@@ -33,8 +33,8 @@ public:
     /// @param params 新しいパラメータ
     void SetParams(const BlurParams& params);
 
-    /// @brief 定数バッファを強制的に更新
-    void ForceUpdateConstantBuffer();
+    /// @brief 定数バッファを更新
+    void UpdateConstantBuffer();
 
 protected:
     const std::wstring& GetPixelShaderPath() const override;
@@ -43,9 +43,6 @@ protected:
 private:
     /// @brief 定数バッファの作成
     void CreateConstantBuffer();
-    
-    /// @brief 定数バッファの更新
-    void UpdateConstantBuffer();
 
 private:
     BlurParams params_;

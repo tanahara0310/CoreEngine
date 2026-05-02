@@ -98,47 +98,50 @@ float3 ComputeIrradiance(float3 N)
     
     float deltaPhi = TWO_PI / float(phiSamples);
     float deltaTheta = HALF_PI / float(thetaSamples);
-    
+
     // 適切なミップレベルを計算（半球全体からサンプリングするため）
     float mipLevel = 1.0; // わずかにぼかしたレベルを使用
-    
+
     // 半球上でサンプリング
+    // Irradiance = (1/π) ∫∫ L(ω) cos(θ) sin(θ) dθ dφ
+    // リーマン和: Σ L(ω) * cos(θ) * sin(θ) * Δθ * Δφ
     for (uint phiIndex = 0; phiIndex < phiSamples; ++phiIndex)
     {
         float phi = (float(phiIndex) + 0.5) * deltaPhi; // テクセル中心サンプリング
-        
+
         for (uint thetaIndex = 0; thetaIndex < thetaSamples; ++thetaIndex)
         {
             float theta = (float(thetaIndex) + 0.5) * deltaTheta; // テクセル中心サンプリング
-            
+
             // 球面座標からカルテシアン座標へ変換
             float sinTheta = sin(theta);
             float cosTheta = cos(theta);
-            
+
             float3 tangentSample = float3(
                 sinTheta * cos(phi),
                 sinTheta * sin(phi),
                 cosTheta
             );
-            
+
             // タンジェント空間からワールド空間へ変換
             float3 sampleVec = normalize(tangentSample.x * right + 
                                          tangentSample.y * up + 
                                          tangentSample.z * N);
-            
+
             // 環境マップをサンプリング（適切なミップレベル使用）
             float3 envColor = gInputEnvironment.SampleLevel(gSampler, sampleVec, mipLevel).rgb;
-            
-            // Lambertian拡散反射の積分
-            // ∫∫ L(ω) * cos(θ) * sin(θ) dω
-            float weight = cosTheta * sinTheta;
+
+            // リーマン和の重み: cos(θ) * sin(θ) * Δθ * Δφ
+            // sin(θ) は球面座標のヤコビアン, cos(θ) は Lambert コサイン項
+            float weight = cosTheta * sinTheta * deltaTheta * deltaPhi;
             irradiance += envColor * weight;
             totalWeight += weight;
         }
     }
-    
-    // π倍して正規化
-    irradiance = PI * irradiance / max(totalWeight, 0.0001);
+
+    // 半球積分の正規化係数 π を除算（Lambertian BRDF = albedo/π なので、
+    // 最終的に albedo * irradiance の形で使う際に π がキャンセルされる）
+    irradiance = irradiance / max(totalWeight, 0.0001) * PI;
     
     return irradiance;
 }

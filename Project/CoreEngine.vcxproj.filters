@@ -1571,6 +1571,12 @@
     <None Include="Docs\Graphics\ModelManager.md">
       <Filter>Docs\Graphics</Filter>
     </None>
+    <None Include="Docs\Graphics\README.md">
+      <Filter>Docs\Graphics</Filter>
+    </None>
+    <None Include="Docs\Graphics\Rendering\PBR_RoadMap.md">
+      <Filter>Docs\Graphics\Rendering</Filter>
+    </None>
     <None Include="Docs\Graphics\TextureManager.md">
       <Filter>Docs\Graphics</Filter>
     </None>
@@ -1671,6 +1677,9 @@
     </Filter>
     <Filter Include="Docs\Graphics">
       <UniqueIdentifier>{B7465F11-9027-4E42-9346-17BEEB87E2A0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Graphics\Rendering">
+      <UniqueIdentifier>{0E9A6516-5B53-4946-AFF8-0CCF7D53F5A0}</UniqueIdentifier>
     </Filter>
     <Filter Include="Docs\Input">
       <UniqueIdentifier>{9688059E-C1C8-415A-A5E3-D4B9C60FC16D}</UniqueIdentifier>

@@ -7,21 +7,6 @@
 // 不透明モデル（ブレンドあり）および SceneView の全オブジェクト描画に使用する。
 // 不透明モデルは GBuffer.PS.hlsl → DeferredLighting.PS.hlsl 経由でライティング済み。
 
-// ===== トーンマッピング関数 =====
-
-/// @brief ACESトーンマッピング（映画業界標準）
-/// @param color HDR色（リニア色空間）
-/// @return LDR色（0-1範囲、リニア色空間）
-float3 ACESFilm(float3 x)
-{
-    float a = 2.51f;
-    float b = 0.03f;
-    float c = 2.43f;
-    float d = 0.59f;
-    float e = 0.14f;
-    return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
-}
-
 //マテリアル
 struct Material
 {
@@ -43,7 +28,7 @@ struct Material
     float ditheringScale;
 
     // ===== Shading Mode =====
-    int shadingMode;    ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
+    int shadingMode; ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
     float iblIntensity;
     float padding2; ///< アライメント用
 };
@@ -168,27 +153,17 @@ float3 GetNormalFromMap(VertexShaderOutput input, float2 uv)
 
 // ===== ライティング計算ヘルパー関数 =====
 
-/// @brief 全ライトの PBR ライティングを計算
-float3 CalculateAllLighting(
+/// @brief ディレクショナルライトのライティングを計算
+void CalculateDirectionalLights(
     VertexShaderOutput input,
-    float3 albedo,
-    float metallic,
-    float roughness,
-    float ao,
-    float3 toEye,
-    float4 textureColor)
+    float3 albedo, float metallic, float roughness, float ao, float3 toEye,
+    bool useLambert, bool useTraditional,
+    inout float3 totalDiffuse, inout float3 totalSpecular)
 {
-    const bool useLambert     = (gMaterial.shadingMode == 2);
-    const bool useHalfLambert = (gMaterial.shadingMode == 3);
-    const bool useTraditional = useLambert || useHalfLambert;
-
-    float3 totalDiffuse  = float3(0.0f, 0.0f, 0.0f);
-    float3 totalSpecular = float3(0.0f, 0.0f, 0.0f);
-
-    // ディレクショナルライト
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {
-        if (gDirectionalLights[i].enabled == 0) continue;
+        if (gDirectionalLights[i].enabled == 0)
+            continue;
         float3 L = normalize(-gDirectionalLights[i].direction);
         float shadowFactor = CalculateShadow(
             input.lightSpacePos, input.normal,
@@ -209,23 +184,34 @@ float3 CalculateAllLighting(
                 input.normal, gDirectionalLights[i].direction,
                 gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity,
                 toEye, albedo, metallic, roughness, ao);
-            totalDiffuse  += result.diffuse  * shadowFactor;
+            totalDiffuse += result.diffuse * shadowFactor;
             totalSpecular += result.specular;
         }
     }
+}
 
-    // ポイントライト
+/// @brief ポイントライトのライティングを計算
+void CalculatePointLights(
+    VertexShaderOutput input,
+    float3 albedo, float metallic, float roughness, float ao, float3 toEye,
+    bool useLambert, bool useTraditional,
+    inout float3 totalDiffuse, inout float3 totalSpecular)
+{
     for (uint j = 0; j < gLightCounts.pointLightCount; ++j)
     {
-        if (gPointLights[j].enabled == 0) continue;
+        if (gPointLights[j].enabled == 0)
+            continue;
         if (useTraditional)
         {
             float3 tv = gPointLights[j].position - input.worldPosition;
-            float  d  = length(tv);
-            if (d >= gPointLights[j].radius) continue;
+            float d = length(tv);
+            if (d >= gPointLights[j].radius)
+                continue;
             float3 L = normalize(tv);
             float atten = 1.0f / (1.0f + gPointLights[j].decay * d * d);
-            atten *= saturate(1.0f - d / gPointLights[j].radius);
+            float pRatio = d / gPointLights[j].radius;
+            float pRange = saturate(1.0f - pRatio * pRatio * pRatio * pRatio);
+            atten *= pRange * pRange;
             float3 diff = useLambert
                 ? CalculateLambertDiffuse(input.normal, L, gPointLights[j].color.rgb, gPointLights[j].intensity * atten, albedo, ao)
                 : CalculateHalfLambertDiffuse(input.normal, L, gPointLights[j].color.rgb, gPointLights[j].intensity * atten, albedo, ao);
@@ -239,25 +225,37 @@ float3 CalculateAllLighting(
                 gPointLights[j].color.rgb, gPointLights[j].intensity,
                 gPointLights[j].radius, gPointLights[j].decay,
                 toEye, albedo, metallic, roughness, ao);
-            totalDiffuse  += result.diffuse;
+            totalDiffuse += result.diffuse;
             totalSpecular += result.specular;
         }
     }
+}
 
-    // スポットライト
+/// @brief スポットライトのライティングを計算
+void CalculateSpotLights(
+    VertexShaderOutput input,
+    float3 albedo, float metallic, float roughness, float ao, float3 toEye,
+    bool useLambert, bool useTraditional,
+    inout float3 totalDiffuse, inout float3 totalSpecular)
+{
     for (uint k = 0; k < gLightCounts.spotLightCount; ++k)
     {
-        if (gSpotLights[k].enabled == 0) continue;
+        if (gSpotLights[k].enabled == 0)
+            continue;
         if (useTraditional)
         {
             float3 tv = gSpotLights[k].position - input.worldPosition;
-            float  d  = length(tv);
-            if (d >= gSpotLights[k].distance) continue;
+            float d = length(tv);
+            if (d >= gSpotLights[k].distance)
+                continue;
             float3 L = normalize(tv);
             float atten = 1.0f / (1.0f + gSpotLights[k].decay * d * d);
-            atten *= saturate(1.0f - d / gSpotLights[k].distance);
+            float sRatio = d / gSpotLights[k].distance;
+            float sRange = saturate(1.0f - sRatio * sRatio * sRatio * sRatio);
+            atten *= sRange * sRange;
             float cosTheta = dot(-L, normalize(gSpotLights[k].direction));
-            if (cosTheta < gSpotLights[k].cosAngle) continue;
+            if (cosTheta < gSpotLights[k].cosAngle)
+                continue;
             atten *= saturate((cosTheta - gSpotLights[k].cosAngle) / (gSpotLights[k].cosFalloffStart - gSpotLights[k].cosAngle));
             float3 diff = useLambert
                 ? CalculateLambertDiffuse(input.normal, L, gSpotLights[k].color.rgb, gSpotLights[k].intensity * atten, albedo, ao)
@@ -273,47 +271,56 @@ float3 CalculateAllLighting(
                 gSpotLights[k].distance, gSpotLights[k].decay,
                 gSpotLights[k].cosAngle, gSpotLights[k].cosFalloffStart,
                 toEye, albedo, metallic, roughness, ao);
-            totalDiffuse  += result.diffuse;
+            totalDiffuse += result.diffuse;
             totalSpecular += result.specular;
         }
     }
+}
 
-    // エリアライト（PBR: 最近接点計算 + PBR BRDF）
+/// @brief エリアライトのライティングを計算（最近接点計算 + PBR BRDF）
+void CalculateAreaLights(
+    VertexShaderOutput input,
+    float3 albedo, float metallic, float roughness, float ao, float3 toEye,
+    bool useLambert, bool useTraditional,
+    inout float3 totalDiffuse)
+{
     for (uint l = 0; l < gLightCounts.areaLightCount; ++l)
     {
-        if (gAreaLights[l].enabled == 0) continue;
-        float3 toLight    = gAreaLights[l].position - input.worldPosition;
-        float  distToPlane = dot(toLight, gAreaLights[l].normal);
-        float3 projPoint  = input.worldPosition + gAreaLights[l].normal * distToPlane;
-        float3 offset     = projPoint - gAreaLights[l].position;
-        float  u = dot(offset, gAreaLights[l].right);
-        float  v = dot(offset, gAreaLights[l].up);
-        float  halfW = gAreaLights[l].width  * 0.5f;
-        float  halfH = gAreaLights[l].height * 0.5f;
+        if (gAreaLights[l].enabled == 0)
+            continue;
+        float3 toLight = gAreaLights[l].position - input.worldPosition;
+        float distToPlane = dot(toLight, gAreaLights[l].normal);
+        float3 projPoint = input.worldPosition + gAreaLights[l].normal * distToPlane;
+        float3 offset = projPoint - gAreaLights[l].position;
+        float u = dot(offset, gAreaLights[l].right);
+        float v = dot(offset, gAreaLights[l].up);
+        float halfW = gAreaLights[l].width * 0.5f;
+        float halfH = gAreaLights[l].height * 0.5f;
 
         float3 closest = gAreaLights[l].position
                        + gAreaLights[l].right * clamp(u, -halfW, halfW)
-                       + gAreaLights[l].up    * clamp(v, -halfH, halfH);
+                       + gAreaLights[l].up * clamp(v, -halfH, halfH);
 
         float3 toClosest = closest - input.worldPosition;
-        float  dist = length(toClosest);
-        if (dist >= gAreaLights[l].range) continue;
+        float dist = length(toClosest);
+        if (dist >= gAreaLights[l].range)
+            continue;
         float3 L = toClosest / max(dist, 0.001f);
 
-        float distFactor  = 1.0f - saturate(dist / gAreaLights[l].range);
-        float distAtten   = distFactor * distFactor;
-        float outsideU    = max(0.0f, abs(u) - halfW);
-        float outsideV    = max(0.0f, abs(v) - halfH);
+        float distFactor = 1.0f - saturate(dist / gAreaLights[l].range);
+        float distAtten = distFactor * distFactor;
+        float outsideU = max(0.0f, abs(u) - halfW);
+        float outsideV = max(0.0f, abs(v) - halfH);
         float outsideDist = sqrt(outsideU * outsideU + outsideV * outsideV);
         float shapeFactor = 1.0f;
         if (outsideDist > 0.001f)
         {
             float falloff = max(halfW, halfH);
-            shapeFactor   = 1.0f - saturate(outsideDist / falloff);
-            shapeFactor   = shapeFactor * shapeFactor * shapeFactor;
+            shapeFactor = 1.0f - saturate(outsideDist / falloff);
+            shapeFactor = shapeFactor * shapeFactor * shapeFactor;
         }
         float facingFactor = max(0.0f, dot(gAreaLights[l].normal, -L));
-        float finalAtten   = distAtten * shapeFactor * facingFactor;
+        float finalAtten = distAtten * shapeFactor * facingFactor;
 
         if (useTraditional)
         {
@@ -331,6 +338,29 @@ float3 CalculateAllLighting(
             totalDiffuse += contrib;
         }
     }
+}
+
+/// @brief 全ライトの PBR ライティングを計算
+float3 CalculateAllLighting(
+    VertexShaderOutput input,
+    float3 albedo,
+    float metallic,
+    float roughness,
+    float ao,
+    float3 toEye,
+    float4 textureColor)
+{
+    const bool useLambert = (gMaterial.shadingMode == 2);
+    const bool useHalfLambert = (gMaterial.shadingMode == 3);
+    const bool useTraditional = useLambert || useHalfLambert;
+
+    float3 totalDiffuse = float3(0.0f, 0.0f, 0.0f);
+    float3 totalSpecular = float3(0.0f, 0.0f, 0.0f);
+
+    CalculateDirectionalLights(input, albedo, metallic, roughness, ao, toEye, useLambert, useTraditional, totalDiffuse, totalSpecular);
+    CalculatePointLights(input, albedo, metallic, roughness, ao, toEye, useLambert, useTraditional, totalDiffuse, totalSpecular);
+    CalculateSpotLights(input, albedo, metallic, roughness, ao, toEye, useLambert, useTraditional, totalDiffuse, totalSpecular);
+    CalculateAreaLights(input, albedo, metallic, roughness, ao, toEye, useLambert, useTraditional, totalDiffuse);
 
     return totalDiffuse + totalSpecular;
 }
@@ -373,13 +403,13 @@ PixelShaderOutput main(VertexShaderOutput input)
     PixelShaderOutput output;
 
     float4 transformedUV = mul(float4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
-    float4 textureColor  = gTexture.Sample(gSampler, transformedUV.xy);
+    float4 textureColor = gTexture.Sample(gSampler, transformedUV.xy);
 
     float3 finalNormal = GetNormalFromMap(input, transformedUV.xy);
     input.normal = finalNormal;
 
-    float3 toEye    = normalize(gCamera.worldPosition - input.worldPosition);
-    float  finalAlpha = gMaterial.color.a * textureColor.a;
+    float3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
+    float finalAlpha = gMaterial.color.a * textureColor.a;
 
     // アルファカット（ディザリング or 通常テスト）
     if (gMaterial.enableDithering != 0)
@@ -390,7 +420,7 @@ PixelShaderOutput main(VertexShaderOutput input)
         if (finalAlpha <= GetDitheringThreshold(screenPos) + 0.001f)
             discard;
     }
-    else if (textureColor.a <= 0.5f)
+    else if (finalAlpha <= 0.5f)
     {
         discard;
     }
@@ -411,7 +441,7 @@ PixelShaderOutput main(VertexShaderOutput input)
 
     // PBR ライティング
     output.color.rgb = CalculateAllLighting(input, albedo, metallic, roughness, ao, toEye, textureColor);
-    output.color.a   = finalAlpha;
+    output.color.a = finalAlpha;
 
     // IBL
     output.color.rgb += ApplyIBL(input, albedo, metallic, roughness, ao, toEye);

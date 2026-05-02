@@ -133,7 +133,6 @@ private:
         int currentOutputIndex_;
 
         RenderTarget* GetRenderTarget(int index) const;
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandle(int index) const;
     };
 
     /// @brief 全エフェクトを登録

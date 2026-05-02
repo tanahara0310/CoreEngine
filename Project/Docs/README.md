@@ -10,7 +10,7 @@ CoreEngine のアプリケーション層向けドキュメントです。
 | [Core](./Core/) | フレームワーク基盤・エンジンシステム |
 | [Scene](./Scene/) | シーン管理・シーン遷移 |
 | [GameObject](./GameObject/) | ゲームオブジェクト（3Dモデル・スプライト） |
-| [Graphics](./Graphics/) | テクスチャ・モデル・ライト・IBL |
+| [Graphics](./Graphics/) | テクスチャ・モデル・ライト・IBL・レンダリング |
 | [Input](./Input/) | キーボード・マウス入力 |
 | [Audio](./Audio/) | サウンド再生・音量制御 |
 | [Camera](./Camera/) | カメラ管理 |
