@@ -8,6 +8,7 @@
 
 #include "Graphics/PostEffect/PostEffectBase.h"
 #include "Graphics/PostEffect/PostEffectNames.h"
+#include "Graphics/PostEffect/PingPongBuffer.h"
 #include "PostEffectPresetManager.h"
 
 namespace CoreEngine
@@ -46,12 +47,14 @@ public:
     template<typename T>
     const T* GetEffect(const std::string& name) const;
 
-    /// @brief 特定のポストエフェクトを実行（有効/無効チェックなし）
+    /// @brief 特定のポストエフェクトを実行
+    /// @note 有効/無効チェックなし。必要な場合はIsEffectEnabled()で事前に確認すること
     /// @param name エフェクト名
     /// @param inputSrvHandle 入力テクスチャのSRVハンドル
     void ExecuteEffect(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
 
     /// @brief バックバッファ(_SRGB)への最終描画用にエフェクトを実行
+    /// @note 有効/無効チェックなし。必要な場合はIsEffectEnabled()で事前に確認すること
     /// @param name エフェクト名
     /// @param inputSrvHandle 入力テクスチャのSRVハンドル
     void ExecuteEffectToBackBuffer(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
@@ -84,10 +87,6 @@ public:
     /// @brief ImGuiのコンテンツのみ描画（外部ウィンドウから呼び出し用）
     void DrawImGuiContent();
 
-    /// @brief プリセットマネージャーを取得
-    /// @return プリセットマネージャーの参照
-    PostEffectPresetManager& GetPresetManager() { return *presetManager_; }
-
     /// @brief 現在表示すべき最終テクスチャハンドルを取得
     /// @return 表示すべきテクスチャのSRVハンドル
     D3D12_GPU_DESCRIPTOR_HANDLE GetFinalDisplayTextureHandle() const;
@@ -97,44 +96,7 @@ public:
     /// @return 最終出力のSRVハンドル
     D3D12_GPU_DESCRIPTOR_HANDLE ExecuteEffectChain(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
 
-    /// @brief Bloomエフェクトをマスク付きで実行（テスト用）
-    /// @param inputSrvHandle 入力テクスチャのSRVハンドル
-    /// @param maskSrvHandle マスクテクスチャのSRVハンドル
-    /// @return 最終出力のSRVハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE ExecuteBloomWithMask(
-        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE maskSrvHandle);
-
-private:
-    /// @brief Ping-Pongバッファ管理用ヘルパークラス
-    class PingPongBuffer {
-    public:
-        PingPongBuffer(DirectXCommon* dxCommon, Render* render);
-
-        /// @brief エフェクトを適用し、バッファを切り替える
-        /// @param effect 適用するエフェクト
-        /// @return 適用されたかどうか
-        bool ApplyEffect(PostEffectBase* effect);
-
-        /// @brief 現在の出力SRVハンドルを取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetCurrentOutput() const;
-
-        /// @brief 最終結果をオフスクリーン#1に保証する
-        /// @param fullScreenEffect FullScreenエフェクト（コピー用）
-        void EnsureOutputInBuffer1(PostEffectBase* fullScreenEffect);
-
-        /// @brief 入力をリセット
-        void Reset(D3D12_GPU_DESCRIPTOR_HANDLE input);
-
     private:
-        DirectXCommon* dxCommon_;
-        Render* render_;
-        D3D12_GPU_DESCRIPTOR_HANDLE currentInput_;
-        int currentOutputIndex_;
-
-        RenderTarget* GetRenderTarget(int index) const;
-    };
-
     /// @brief 全エフェクトを登録
     void RegisterAllEffects();
 
@@ -153,39 +115,30 @@ private:
     /// @return ポストエフェクトのポインタ（見つからない場合はnullptr）
     const PostEffectBase* GetEffectInternal(const std::string& name) const;
 
-    /// @brief 有効なエフェクトの名前リストを収集
-    /// @param effectNames エフェクト名のリスト
-    /// @return 有効なエフェクト名のリスト
-    std::vector<std::string> CollectEnabledEffectNames(const std::vector<std::string>& effectNames) const;
+    /// @brief 有効エフェクトのポインタキャッシュを再構築
+    /// @details effectChain_の変更またはSetEffectEnabled呼び出し時に実行する
+    void RebuildEffectPtrCache();
+
+    static constexpr int kImGuiSearchBufSize = 128;
+    static constexpr float kEffectListPanelWidth = 200.0f;
 
     DirectXCommon* directXCommon_ = nullptr;
     Render* render_ = nullptr;
 
     std::unordered_map<std::string, std::unique_ptr<PostEffectBase>> effects_;
 
-    char imguiSearchBuf_[128] = {};
+    char imguiSearchBuf_[kImGuiSearchBufSize] = {};
     std::string imguiSelectedEffect_;
-    
-    std::vector<std::string> effectChain_ = { 
-        PostEffectNames::Bloom,
-        PostEffectNames::ToneMapping,
-        PostEffectNames::FadeEffect, 
-        PostEffectNames::Shockwave, 
-        PostEffectNames::Blur, 
-        PostEffectNames::RadialBlur, 
-        PostEffectNames::RasterScroll, 
-        PostEffectNames::ColorGrading, 
-        PostEffectNames::ChromaticAberration, 
-        PostEffectNames::Sepia, 
-        PostEffectNames::Invert, 
-        PostEffectNames::GrayScale, 
-        PostEffectNames::Vignette,
-        PostEffectNames::Dissolve
-    };
-    
+
+    std::vector<std::string> effectChain_;
+
+    /// @brief effectChain_中の有効エフェクトのポインタキャッシュ
+    /// @details 毎フレームの unordered_map ルックアップを排除するため使用
+    std::vector<PostEffectBase*> effectPtrCache_;
+
     std::unique_ptr<PostEffectPresetManager> presetManager_;
-    
-    D3D12_GPU_DESCRIPTOR_HANDLE finalDisplayHandle_;
+
+    D3D12_GPU_DESCRIPTOR_HANDLE finalDisplayHandle_ = {};
 };
 
 // =============================================================================

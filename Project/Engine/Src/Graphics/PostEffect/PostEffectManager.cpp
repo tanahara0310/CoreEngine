@@ -2,7 +2,6 @@
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/Render.h"
-#include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/PostEffect/PostEffectNames.h"
 #include "Effect/GrayScale.h"
 #include "FullScreen.h"
@@ -24,100 +23,14 @@
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <algorithm>
 #include <cassert>
-
-// =============================================================================
-// PingPongBuffer実装
-// =============================================================================
-
-
-namespace CoreEngine
-{
-PostEffectManager::PingPongBuffer::PingPongBuffer(DirectXCommon* dxCommon, Render* render)
-    : dxCommon_(dxCommon)
-    , render_(render)
-    , currentInput_()
-    , currentOutputIndex_(1)
-{
-}
-
-void PostEffectManager::PingPongBuffer::Reset(D3D12_GPU_DESCRIPTOR_HANDLE input)
-{
-    currentInput_ = input;
-    currentOutputIndex_ = 1;
-}
-
-bool PostEffectManager::PingPongBuffer::ApplyEffect(PostEffectBase* effect)
-{
-    if (!effect || !effect->IsEnabled()) {
-        return false;
-    }
-
-    auto* cmdList = dxCommon_->GetCommandList();
-    auto* renderTarget = GetRenderTarget(currentOutputIndex_);
-    if (!renderTarget) {
-        return false;
-    }
-
-    // エフェクトを現在の出力バッファに描画
-    renderTarget->Begin(cmdList);
-    effect->Draw(currentInput_);
-    renderTarget->End(cmdList);
-
-    // 今書き込んだバッファが次の入力になる
-    currentInput_ = renderTarget->GetSRVHandle();
-
-    // 次回の出力先を切り替え（ping-pong）
-    currentOutputIndex_ = (currentOutputIndex_ == 0) ? 1 : 0;
-
-    return true;
-}
-
-D3D12_GPU_DESCRIPTOR_HANDLE PostEffectManager::PingPongBuffer::GetCurrentOutput() const
-{
-    return currentInput_;
-}
-
-void PostEffectManager::PingPongBuffer::EnsureOutputInBuffer1(PostEffectBase* fullScreenEffect)
-{
-    // 最後に書き込まれたバッファを特定（currentOutputIndexは次回の出力先なので、その反対が最後の書き込み先）
-    int lastWrittenIndex = (currentOutputIndex_ == 0) ? 1 : 0;
-
-    // 既にバッファ1にある場合は何もしない
-    if (lastWrittenIndex == 1) {
-        return;
-    }
-
-    auto* cmdList = dxCommon_->GetCommandList();
-    auto* renderTarget = GetRenderTarget(1);
-    if (!renderTarget) {
-        return;
-    }
-
-    // バッファ0にある場合、バッファ1にコピー
-    renderTarget->Begin(cmdList);
-    fullScreenEffect->Draw(currentInput_);
-    renderTarget->End(cmdList);
-
-    // 出力を更新
-    currentInput_ = renderTarget->GetSRVHandle();
-    currentOutputIndex_ = 0; // 次回は0に書き込む
-}
-
-RenderTarget* PostEffectManager::PingPongBuffer::GetRenderTarget(int index) const
-{
-    // 名前ベースでレンダーターゲットを取得
-    if (index == 0) {
-        return render_->GetRenderTarget("Offscreen0");
-    } else if (index == 1) {
-        return render_->GetRenderTarget("Offscreen1");
-    }
-    return nullptr;
-}
+#include <unordered_set>
 
 // =============================================================================
 // PostEffectManager実装
 // =============================================================================
 
+namespace CoreEngine
+{
 void PostEffectManager::Initialize(DirectXCommon* dxCommon, Render* render)
 {
     assert(dxCommon);
@@ -161,6 +74,37 @@ void PostEffectManager::RegisterAllEffects()
 
     // トーンマッピングは常に有効（HDR→LDR変換）
     RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping, true);
+
+    // エフェクトチェーンの順序を登録と同じ場所で定義（二重管理を防ぐ）
+    effectChain_ = {
+        PostEffectNames::Bloom,
+        PostEffectNames::ToneMapping,
+        PostEffectNames::FadeEffect,
+        PostEffectNames::Shockwave,
+        PostEffectNames::Blur,
+        PostEffectNames::RadialBlur,
+        PostEffectNames::RasterScroll,
+        PostEffectNames::ColorGrading,
+        PostEffectNames::ChromaticAberration,
+        PostEffectNames::Sepia,
+        PostEffectNames::Invert,
+        PostEffectNames::GrayScale,
+        PostEffectNames::Vignette,
+        PostEffectNames::Dissolve,
+    };
+
+    RebuildEffectPtrCache();
+}
+
+void PostEffectManager::RebuildEffectPtrCache()
+{
+    effectPtrCache_.clear();
+    effectPtrCache_.reserve(effectChain_.size());
+    for (const auto& name : effectChain_) {
+        if (auto* effect = GetEffectInternal(name); effect && effect->IsEnabled()) {
+            effectPtrCache_.push_back(effect);
+        }
+    }
 }
 
 void PostEffectManager::RegisterEffectInternal(const std::string& name, std::unique_ptr<PostEffectBase> effect)
@@ -186,48 +130,24 @@ const PostEffectBase* PostEffectManager::GetEffectInternal(const std::string& na
     return nullptr;
 }
 
-std::vector<std::string> PostEffectManager::CollectEnabledEffectNames(
-    const std::vector<std::string>& effectNames) const
-{
-    std::vector<std::string> enabledNames;
-    enabledNames.reserve(effectNames.size());
-
-    for (const auto& name : effectNames) {
-        if (auto* effect = GetEffectInternal(name); effect && effect->IsEnabled()) {
-            enabledNames.push_back(name);
-        }
-    }
-
-    return enabledNames;
-}
-
 D3D12_GPU_DESCRIPTOR_HANDLE PostEffectManager::ExecuteEffectChain(
     D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
 {
-    // 有効なエフェクト名を収集
-    auto enabledNames = CollectEnabledEffectNames(effectChain_);
-
-    // 有効なエフェクトがない場合は入力をそのまま返す
-    if (enabledNames.empty()) {
+    // 有効エフェクトがない場合は入力をそのまま返す
+    if (effectPtrCache_.empty()) {
         finalDisplayHandle_ = inputSrvHandle;
         return inputSrvHandle;
     }
 
-    // Ping-Pongバッファで順次エフェクトを適用
+    // Ping-Pongバッファで順次エフェクトを適用（キャッシュ済みポインタを直接使用しmapルックアップを排除）
     PingPongBuffer pingPong(directXCommon_, render_);
     pingPong.Reset(inputSrvHandle);
 
-    for (const auto& name : enabledNames) {
-        if (auto* effect = GetEffectInternal(name)) {
-            pingPong.ApplyEffect(effect);
-        }
+    for (auto* effect : effectPtrCache_) {
+        pingPong.ApplyEffect(effect);
     }
 
-    auto* fullScreenEffect = GetEffect<FullScreen>(PostEffectNames::FullScreen);
-    assert(fullScreenEffect);
-    pingPong.EnsureOutputInBuffer1(fullScreenEffect);
-
-    // 最終結果を保存して返す
+    // 最終結果を保存して返す（どちらのバッファにあってもそのまま返す）
     finalDisplayHandle_ = pingPong.GetCurrentOutput();
     return finalDisplayHandle_;
 }
@@ -253,6 +173,7 @@ void PostEffectManager::SetEffectEnabled(const std::string& effectName, bool ena
     auto* effect = GetEffectInternal(effectName);
     if (effect) {
         effect->SetEnabled(enabled);
+        RebuildEffectPtrCache();
     }
 }
 
@@ -267,7 +188,13 @@ bool PostEffectManager::IsEffectEnabled(const std::string& effectName) const
 
 void PostEffectManager::SetEffectChain(const std::vector<std::string>& effectNames)
 {
+#ifdef _DEBUG
+    for (const auto& name : effectNames) {
+        assert(effects_.contains(name) && "SetEffectChain: 未登録のエフェクト名が含まれています");
+    }
+#endif
     effectChain_ = effectNames;
+    RebuildEffectPtrCache();
 }
 
 const std::vector<std::string>& PostEffectManager::GetEffectChain() const
@@ -277,10 +204,23 @@ const std::vector<std::string>& PostEffectManager::GetEffectChain() const
 
 void PostEffectManager::Update(float deltaTime)
 {
-    // 有効なエフェクトのみ Update を呼び出し
+    // effectChain_順に有効エフェクトを更新（実行順と一致させ、毎回同じ順序を保証）
+    for (const auto& name : effectChain_) {
+        auto* effect = GetEffectInternal(name);
+        if (effect && effect->IsEnabled()) {
+            effect->Update(deltaTime);
+        }
+    }
+    // チェーン外に登録されたエフェクト（DeferredLighting、FullScreen等）も更新
     for (auto& [name, effect] : effects_) {
         if (effect->IsEnabled()) {
-            effect->Update(deltaTime);
+            bool inChain = false;
+            for (const auto& chainName : effectChain_) {
+                if (chainName == name) { inChain = true; break; }
+            }
+            if (!inChain) {
+                effect->Update(deltaTime);
+            }
         }
     }
 }
@@ -314,13 +254,14 @@ void PostEffectManager::DrawImGuiContent()
     UI::Spacing();
 
     // 全エフェクト表示リストを構築（effectChain_ 順 + チェーン外エフェクト）
+    std::unordered_set<std::string> chainSet(effectChain_.begin(), effectChain_.end());
     std::vector<std::string> displayList;
     displayList.reserve(effectChain_.size() + 4);
     for (const auto& name : effectChain_) {
         displayList.push_back(name);
     }
     for (const auto& [name, effect] : effects_) {
-        if (std::find(effectChain_.begin(), effectChain_.end(), name) == effectChain_.end()) {
+        if (!chainSet.contains(name)) {
             displayList.push_back(name);
         }
     }
@@ -349,10 +290,9 @@ void PostEffectManager::DrawImGuiContent()
     }
 
     const float panelHeight = ImGui::GetContentRegionAvail().y;
-    const float listWidth = 200.0f;
 
     // ─── 左パネル: エフェクト一覧 ───
-    if (auto listPanel = UI::Scope::ChildScope("##effectlist", ImVec2(listWidth, panelHeight), ImGuiChildFlags_Border)) {
+    if (auto listPanel = UI::Scope::ChildScope("##effectlist", ImVec2(kEffectListPanelWidth, panelHeight), ImGuiChildFlags_Border)) {
         for (const auto& name : filteredList) {
             auto* effect = GetEffectInternal(name);
             if (!effect) continue;
@@ -399,7 +339,7 @@ void PostEffectManager::DrawImGuiContent()
                 } else {
                     bool enabled = effect->IsEnabled();
                     if (UI::Widgets::ToggleSwitch("有効", &enabled)) {
-                        effect->SetEnabled(enabled);
+                        SetEffectEnabled(imguiSelectedEffect_, enabled);
                     }
                 }
 
