@@ -1,9 +1,5 @@
 #pragma once
-#include "Graphics/Render/IRenderer.h"
-#include "Graphics/Pipeline/PipelineStateManager.h"
-#include "Graphics/RootSignature/RootSignatureManager.h"
-#include "Graphics/Shader/ShaderCompiler.h"
-#include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Graphics/Render/BaseRenderer.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include <d3d12.h>
@@ -24,7 +20,7 @@ namespace CoreEngine
 
     /// @brief シャドウマップ生成用レンダラー
     /// @note 通常モデルとスキニングモデルの両方に対応
-    class ShadowMapRenderer : public IRenderer {
+    class ShadowMapRenderer : public BaseRenderer {
     public:
         void Initialize(ID3D12Device* device) override;
         void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) override;
@@ -65,11 +61,11 @@ namespace CoreEngine
         void CreatePipelineStates();
 
     private:
-        std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
+        // BaseRenderer から rootSignatureMg_, shaderCompiler_, reflectionBuilder_, reflectionData_ を継承
+
+        // シャドウマップは通常モデル用とスキニングモデル用の2つの PSO を持つため、psoMg_ は使わず個別管理
         std::unique_ptr<PipelineStateManager> normalModelPSO_ = std::make_unique<PipelineStateManager>();
         std::unique_ptr<PipelineStateManager> skinnedModelPSO_ = std::make_unique<PipelineStateManager>();
-        std::unique_ptr<ShaderCompiler> shaderCompiler_ = std::make_unique<ShaderCompiler>();
-        std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
 
         ID3D12Device* device_ = nullptr;
         ID3D12PipelineState* currentPipelineState_ = nullptr;
@@ -80,8 +76,5 @@ namespace CoreEngine
 
         // ライトビュープロジェクション行列（CPU側で保持）
         Matrix4x4 lightViewProjection_;
-
-        // シェーダーリフレクションデータ
-        std::unique_ptr<ShaderReflectionData> reflectionData_;
     };
 }

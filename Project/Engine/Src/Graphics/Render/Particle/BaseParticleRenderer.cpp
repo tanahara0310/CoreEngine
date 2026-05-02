@@ -15,11 +15,7 @@ namespace CoreEngine
         // リソースファクトリが設定されているか確認
         assert(resourceFactory_ != nullptr && "ResourceFactory must be set before initialization");
 
-        // パイプラインとシェーダーマネージャーの初期化
-        pipelineMg_ = std::make_unique<PipelineStateManager>();
-        rootSignatureMg_ = std::make_unique<RootSignatureManager>();
-        shaderCompiler_ = std::make_unique<ShaderCompiler>();
-        reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
+        // BaseRenderer から継承したサブシステムはすでに初期化済み
 
         // シェーダーコンパイラの初期化
         shaderCompiler_->Initialize();
@@ -36,7 +32,7 @@ namespace CoreEngine
 
         // ルートシグネチャとパイプラインステートを設定
         cmdList_->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
-        cmdList_->SetPipelineState(pipelineMg_->GetPipelineState(blendMode));
+        cmdList_->SetPipelineState(psoMg_->GetPipelineState(blendMode));
 
         // プリミティブトポロジを設定
         cmdList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

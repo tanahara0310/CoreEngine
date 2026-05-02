@@ -1,6 +1,8 @@
 #pragma once
 #include "Graphics/Render/IRenderer.h"
+#include "Graphics/Render/IGBufferRenderer.h"
 #include "Graphics/Render/Model/IBLSceneParams.h"
+#include "Graphics/Render/Model/IBLParameters.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
@@ -20,12 +22,12 @@ namespace CoreEngine {
 namespace CoreEngine
 {
     /// @brief ModelRenderer / SkinnedModelRenderer 共通基底クラス
-    class BaseModelRenderer : public IRenderer {
+    class BaseModelRenderer : public IRenderer, public IGBufferRenderer {
     public:
         /// @brief フォワードパスを開始（RootSignature・PSO・シーン定数をバインド）
         void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) override;
         /// @brief GBuffer パスを開始（GBuffer 用 RootSignature・PSO をバインド）
-        void BeginGBufferPass(ID3D12GraphicsCommandList* cmdList) override;
+        void BeginGBufferPass(ID3D12GraphicsCommandList* cmdList) override; // IGBufferRenderer
         /// @brief パスを終了（GBuffer フラグをリセット）
         void EndPass() override;
         /// @brief カメラの GPU 仮想アドレスを取得して保持
@@ -38,34 +40,21 @@ namespace CoreEngine
 
         /// @brief ライトマネージャーを設定
         void SetLightManager(LightManager* lightManager) { lightManager_ = lightManager; }
-        /// @brief 環境マップ SRV ハンドルを設定
-        void SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE handle) { environmentMapHandle_ = handle; }
+
+        /// @brief IBL関連パラメータを一括設定
+        /// @param params IBLパラメータ構造体
+        void SetIBLParameters(const IBLParameters& params);
+
         /// @brief シャドウマップ SRV ハンドルを設定
         void SetShadowMap(D3D12_GPU_DESCRIPTOR_HANDLE handle) { shadowMapHandle_ = handle; }
         /// @brief ライトビュープロジェクション CBV アドレスを設定
         void SetLightViewProjection(D3D12_GPU_VIRTUAL_ADDRESS addr) { lightViewProjectionCBV_ = addr; }
-        /// @brief Irradiance Map SRV ハンドルを設定
-        void SetIrradianceMap(D3D12_GPU_DESCRIPTOR_HANDLE handle) { irradianceMapHandle_ = handle; }
-        /// @brief Prefiltered Map SRV ハンドルを設定
-        void SetPrefilteredMap(D3D12_GPU_DESCRIPTOR_HANDLE handle) { prefilteredMapHandle_ = handle; }
-        /// @brief BRDF LUT SRV ハンドルを設定
-        void SetBRDFLUT(D3D12_GPU_DESCRIPTOR_HANDLE handle) { brdfLUTHandle_ = handle; }
-
-        /// @brief シーン共通 IBL 環境回転角度を設定（ラジアン）
-        void SetIBLRotation(const Vector3& rotation) { iblRotation_ = rotation; }
-
-        /// @brief 環境輝度スケールを設定（SkyBox intensity と連動）
-        void SetEnvironmentIntensity(float intensity) { environmentIntensity_ = intensity; }
 
         /// @brief 環境マップテクスチャが設定済みか確認
-        bool HasEnvironmentMap() const { return environmentMapHandle_.ptr != 0; }
+        bool HasEnvironmentMap() const { return iblParams_.HasEnvironmentMap(); }
 
         /// @brief IBLに必要なテクスチャ（Irradiance / Prefiltered / BRDF LUT）が全て設定済みか確認
-        bool HasIBLMaps() const {
-            return irradianceMapHandle_.ptr != 0
-                && prefilteredMapHandle_.ptr != 0
-                && brdfLUTHandle_.ptr != 0;
-        }
+        bool HasIBLMaps() const { return iblParams_.IsFullyConfigured(); }
 
         /// @brief フォワードパスのリソース名からルートパラメータインデックスを取得（-1: 未登録）
         int GetRootParamIndex(const std::string& resourceName) const;
@@ -96,18 +85,16 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS cameraCBV_ = 0;
 
         LightManager* lightManager_ = nullptr;
-        D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle_ = {};
+        
+        // IBL関連を構造体に集約
+        IBLParameters iblParams_;
+        
         D3D12_GPU_DESCRIPTOR_HANDLE shadowMapHandle_ = {};
         D3D12_GPU_VIRTUAL_ADDRESS   lightViewProjectionCBV_ = 0;
-        D3D12_GPU_DESCRIPTOR_HANDLE irradianceMapHandle_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE prefilteredMapHandle_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle_ = {};
 
         // IBL シーンパラメータ定数バッファ（environmentRotation）
         Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;
         D3D12_GPU_VIRTUAL_ADDRESS iblParamsCBVAddress_ = 0;
-        Vector3 iblRotation_ = {};
-        float environmentIntensity_ = 1.0f; ///< 環境輝度スケール（SkyBox intensity と連動
 
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> forwardReflectionData_;

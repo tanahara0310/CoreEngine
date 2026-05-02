@@ -1,10 +1,6 @@
 #pragma once
 
-#include "../IRenderer.h"
-#include "Graphics/Pipeline/PipelineStateManager.h"
-#include "Graphics/RootSignature/RootSignatureManager.h"
-#include "Graphics/Shader/ShaderCompiler.h"
-#include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "../BaseRenderer.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include <d3d12.h>
 #include <wrl.h>
@@ -23,7 +19,7 @@ namespace CoreEngine {
 
 namespace CoreEngine
 {
-class BaseParticleRenderer : public IRenderer {
+class BaseParticleRenderer : public BaseRenderer {
 public:
     BaseParticleRenderer() = default;
     ~BaseParticleRenderer() override = default;
@@ -65,14 +61,7 @@ protected:
     ID3D12GraphicsCommandList* cmdList_ = nullptr;
     const CoreEngine::ICamera* camera_ = nullptr;
 
-    // パイプラインとシェーダー
-    std::unique_ptr<PipelineStateManager> pipelineMg_;
-    std::unique_ptr<RootSignatureManager> rootSignatureMg_;
-    std::unique_ptr<ShaderCompiler> shaderCompiler_;
-    std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_;
-
-    // シェーダーリフレクションデータ
-    std::unique_ptr<ShaderReflectionData> reflectionData_;
+    // BaseRenderer から継承したサブシステムを使用（pipelineMg_, rootSignatureMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
     // ──────────────────────────────────────────────────────────
     // 共通処理メソッド

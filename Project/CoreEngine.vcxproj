@@ -218,6 +218,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp" />
@@ -466,6 +467,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h" />
@@ -475,7 +477,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\IGBufferRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLManager.h" />
@@ -505,6 +509,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\IRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelRenderer.h" />
@@ -527,6 +532,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetDescriptor.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetNames.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteMaterial.h" />
@@ -708,6 +714,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\GameObject\WorldTransform.md" />
     <None Include="Docs\Graphics\Lighting.md" />
     <None Include="Docs\Graphics\ModelManager.md" />
+    <None Include="Docs\Graphics\README.md" />
+    <None Include="Docs\Graphics\Rendering\PBR_RoadMap.md" />
     <None Include="Docs\Graphics\TextureManager.md" />
     <None Include="Docs\Input\Input.md" />
     <None Include="Docs\Math\MathCore.md" />

@@ -9,7 +9,7 @@
 
 namespace CoreEngine
 {
-    void SpriteRenderer::Initialize(ID3D12Device* device) {
+    void SpriteRenderer::InitializePipeline(ID3D12Device* device) {
         shaderCompiler_->Initialize();
 
         auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Sprite/Sprite.VS.hlsl", L"vs_6_0");
@@ -48,6 +48,10 @@ namespace CoreEngine
         pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNormal);
     }
 
+    void SpriteRenderer::Initialize(ID3D12Device* /*device*/) {
+        assert(false && "SpriteRenderer: Use Initialize(DirectXCommon*, ResourceFactory*) instead of Initialize(ID3D12Device*).");
+    }
+
     int SpriteRenderer::GetRootParamIndex(const std::string& resourceName) const {
         if (!reflectionData_) {
             return -1;
@@ -59,8 +63,8 @@ namespace CoreEngine
         dxCommon_ = dxCommon;
         resourceFactory_ = resourceFactory;
 
-        // デバイスを使って基本初期化
-        Initialize(dxCommon->GetDevice());
+        // パイプラインをデバイスで初期化
+        InitializePipeline(dxCommon->GetDevice());
 
         // フレームごとに定数バッファプールを作成（ダブルバッファリング対応）
         for (UINT frameIndex = 0; frameIndex < kFrameCount; ++frameIndex) {

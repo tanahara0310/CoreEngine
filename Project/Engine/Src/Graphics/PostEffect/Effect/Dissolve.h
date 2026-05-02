@@ -53,8 +53,8 @@ namespace CoreEngine
         /// @param b 青成分
         void SetEdgeColor(float r, float g, float b);
 
-        /// @brief 定数バッファを強制的に更新
-        void ForceUpdateConstantBuffer();
+        /// @brief 定数バッファを更新
+        void UpdateConstantBuffer();
 
     protected:
         const std::wstring& GetPixelShaderPath() const override
@@ -71,9 +71,6 @@ namespace CoreEngine
 
         /// @brief 定数バッファの作成
         void CreateConstantBuffer();
-
-        /// @brief 定数バッファの更新
-        void UpdateConstantBuffer();
 
         /// @brief ノイズテクスチャの読み込み
         void LoadNoiseTexture();

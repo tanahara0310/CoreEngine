@@ -1,10 +1,6 @@
 #pragma once
-#include "Graphics/Render/IRenderer.h"
+#include "Graphics/Render/BaseRenderer.h"
 #include "Graphics/Render/UI/UIMaterial.h"
-#include "Graphics/Pipeline/PipelineStateManager.h"
-#include "Graphics/RootSignature/RootSignatureManager.h"
-#include "Graphics/Shader/ShaderCompiler.h"
-#include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -22,7 +18,7 @@ namespace CoreEngine
     ///  - UI パスは描画パイプラインの最後に呼び出され、常に最前面となる
     ///  - 内部実装は SpriteRenderer と類似しているが、PSO/RootSignature/定数バッファプールを
     ///    完全に独立させている
-    class UIRenderer : public IRenderer {
+    class UIRenderer : public BaseRenderer {
     public:
         /// @brief トランスフォーム行列（HLSL 側 cbuffer と一致）
         struct TransformationMatrix {
@@ -87,14 +83,9 @@ namespace CoreEngine
         int GetRootParamIndex(const std::string& resourceName) const;
 
     private:
-        std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
-        std::unique_ptr<PipelineStateManager> psoMg_ = std::make_unique<PipelineStateManager>();
-        std::unique_ptr<ShaderCompiler> shaderCompiler_ = std::make_unique<ShaderCompiler>();
-        std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
+        // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
-        ID3D12PipelineState* pipelineState_ = nullptr;
-        BlendMode currentBlendMode_ = BlendMode::kBlendModeNormal;
-
+        // DirectXCommonとResourceFactory
         DirectXCommon* dxCommon_ = nullptr;
         ResourceFactory* resourceFactory_ = nullptr;
 

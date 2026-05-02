@@ -198,6 +198,10 @@ namespace CoreEngine
     {
         EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, cmdList);
         if (imGui_) {
+            // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
+            auto* dx = engine_->GetComponent<DirectXCommon>();
+            auto* postEffect = engine_->GetComponent<PostEffectManager>();
+            imGui_->DrawGameViewport(dx, postEffect);
             imGui_->Draw();
         }
     }

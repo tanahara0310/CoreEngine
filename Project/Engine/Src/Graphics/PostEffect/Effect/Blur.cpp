@@ -68,11 +68,6 @@ namespace CoreEngine
         UpdateConstantBuffer();
     }
 
-    void Blur::ForceUpdateConstantBuffer()
-    {
-        UpdateConstantBuffer();
-    }
-
     void Blur::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
     {
         // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）

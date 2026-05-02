@@ -275,7 +275,9 @@ PixelShaderOutput main(PixelShaderInput input)
                 continue;
             float3 L = normalize(tv);
             float atten = 1.0f / (1.0f + pL.decay * d * d);
-            atten *= saturate(1.0f - d / pL.radius);
+            float pDistRatio = d / pL.radius;
+            float pRangeFactor = saturate(1.0f - pDistRatio * pDistRatio * pDistRatio * pDistRatio);
+            atten *= pRangeFactor * pRangeFactor;
             float3 diff = useLambert
                 ? CalculateLambertDiffuse(N, L, pL.color.rgb, pL.intensity * atten, albedo, ao)
                 : CalculateHalfLambertDiffuse(N, L, pL.color.rgb, pL.intensity * atten, albedo, ao);
@@ -294,7 +296,9 @@ PixelShaderOutput main(PixelShaderInput input)
                 continue;
             float3 L = normalize(tv);
             float atten = 1.0f / (1.0f + sL.decay * d * d);
-            atten *= saturate(1.0f - d / sL.distance);
+            float sRatio = d / sL.distance;
+            float sRange = saturate(1.0f - sRatio * sRatio * sRatio * sRatio);
+            atten *= sRange * sRange;
             float cosTheta = dot(-L, normalize(sL.direction));
             if (cosTheta < sL.cosAngle)
                 continue;
@@ -392,8 +396,9 @@ PixelShaderOutput main(PixelShaderInput input)
                 continue;
             float3 L = normalize(tv);
             float attenuation = 1.0f / (1.0f + pL.decay * d * d);
-            float rangeFactor = saturate(1.0f - d / pL.radius);
-            attenuation *= rangeFactor;
+            float distRatio = d / pL.radius;
+            float rangeFactor = saturate(1.0f - distRatio * distRatio * distRatio * distRatio);
+            attenuation *= rangeFactor * rangeFactor;
             Lo += CalculatePBRLighting(N, V, L, pL.color.rgb, pL.intensity * attenuation, albedo, metallic, roughness, ao);
         }
 
@@ -409,8 +414,9 @@ PixelShaderOutput main(PixelShaderInput input)
                 continue;
             float3 L = normalize(tv);
             float attenuation = 1.0f / (1.0f + sL.decay * d * d);
-            float rangeFactor = saturate(1.0f - d / sL.distance);
-            attenuation *= rangeFactor;
+            float sDistRatio = d / sL.distance;
+            float sRangeFactor = saturate(1.0f - sDistRatio * sDistRatio * sDistRatio * sDistRatio);
+            attenuation *= sRangeFactor * sRangeFactor;
             float cosTheta = dot(-L, normalize(sL.direction));
             if (cosTheta < sL.cosAngle)
                 continue;

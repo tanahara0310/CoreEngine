@@ -69,11 +69,6 @@ void Vignette::SetParams(const VignetteParams& params)
     UpdateConstantBuffer();
 }
 
-void Vignette::ForceUpdateConstantBuffer()
-{
-    UpdateConstantBuffer();
-}
-
 void Vignette::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
 {
     // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）

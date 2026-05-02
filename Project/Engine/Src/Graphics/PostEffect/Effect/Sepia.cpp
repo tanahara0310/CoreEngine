@@ -95,11 +95,6 @@ void Sepia::SetParams(const SepiaParams& params)
     UpdateConstantBuffer();
 }
 
-void Sepia::ForceUpdateConstantBuffer()
-{
-    UpdateConstantBuffer();
-}
-
 void Sepia::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
 {
     // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）

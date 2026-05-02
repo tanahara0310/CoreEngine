@@ -35,8 +35,8 @@ public:
     /// @param params 新しいパラメータ
     void SetParams(const SepiaParams& params);
 
-    /// @brief 定数バッファを強制的に更新
-    void ForceUpdateConstantBuffer();
+    /// @brief 定数バッファを更新
+    void UpdateConstantBuffer();
 
 protected:
     const std::wstring& GetPixelShaderPath() const override
@@ -50,9 +50,6 @@ protected:
 private:
     /// @brief 定数バッファの作成
     void CreateConstantBuffer();
-    
-    /// @brief 定数バッファの更新
-    void UpdateConstantBuffer();
 
 private:
     SepiaParams params_;

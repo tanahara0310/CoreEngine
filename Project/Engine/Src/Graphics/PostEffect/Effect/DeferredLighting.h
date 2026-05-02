@@ -85,6 +85,9 @@ namespace CoreEngine
         const std::wstring& GetPixelShaderPath() const override;
         std::string GetEffectName() const override { return "DeferredLighting"; }
 
+        /// @brief 常時有効なエフェクト
+        bool IsAlwaysEnabled() const override { return true; }
+
         /// @brief シャドウ比較サンプラーをルートシグネチャ設定に追加
         void OnConfigureRootSignature(RootSignatureConfig& config) override;
 

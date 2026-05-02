@@ -43,6 +43,29 @@ namespace CoreEngine
     };
 
     /// @brief レンダリングパスの基底クラス
+    ///
+    /// @details
+    ///  ## 役割
+    ///  RenderPass は「フレーム内の 1 ステージ」を表現する高レベル
+    ///  パイプラインノード。RenderTarget の切り替え、リソースバリア、
+    ///  必要な IRenderer の呼び分けを担当する。
+    ///
+    ///  ## IRenderer との違い
+    ///  - RenderPass : 「いつ・どこに描くか」（フレーム構成の単位）
+    ///  - IRenderer  : 「何を描くか」（PSO/DrawCall 発行の単位）
+    ///
+    ///  RenderPass は内部で 0 個以上の IRenderer を利用してパスを構成する。
+    ///  両者は疎結合であり、RenderPass を増やしても IRenderer の実装変更を
+    ///  必要としない。
+    ///
+    ///  ## ライフサイクル
+    ///   1. Setup(context)   - 一度だけリソース準備（任意）
+    ///   2. Execute(context) - 毎フレーム実行
+    ///   3. Cleanup(context) - 終了時にリソース解放（任意）
+    ///
+    ///  ## パス間連携
+    ///  SetInput / GetOutput を介して前段パスの出力テクスチャ等を
+    ///  次段に受け渡す（例: GeometryPass → PostEffectPass）。
     class RenderPass {
     public:
         virtual ~RenderPass() = default;

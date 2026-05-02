@@ -115,7 +115,9 @@ namespace CoreEngine
 
         // ゲーム / シーンビューポートの開始（PostEffectManagerを渡す）
 #ifdef USE_IMGUI
-        sceneViewport_->DrawGameViewport(dxCommon_, postEffectManager);
+        // NOTE: DrawGameViewport はここでは呼ばない。
+        // PostEffectPass完了後に最新の finalDisplayHandle_ を使うため、
+        // DrawImGuiWithProfiling() → ImGuiManager::DrawGameViewport() で呼ぶ。
         sceneViewport_->DrawSceneViewport(dxCommon_, render, postEffectManager);
 
         // Canvas プレビューウィンドウ（UI のみを表示）
@@ -128,6 +130,15 @@ namespace CoreEngine
 #endif
 
         ImGui::End();
+    }
+
+    void ImGuiManager::DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
+    {
+#ifdef USE_IMGUI
+        if (sceneViewport_) {
+            sceneViewport_->DrawGameViewport(dxCommon, postEffectManager);
+        }
+#endif
     }
 
     void ImGuiManager::End()

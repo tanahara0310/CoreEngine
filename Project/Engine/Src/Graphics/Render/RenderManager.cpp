@@ -1,10 +1,12 @@
 #include "RenderManager.h"
+#include "IGBufferRenderer.h"
 #include "ObjectCommon/GameObject.h"
 #include "Particle/ParticleSystem.h"
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
+#include "Graphics/Render/Model/IBLParameters.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Sample/TestGameObject/SkyBoxObject.h"
@@ -61,22 +63,12 @@ namespace CoreEngine
 
     void RenderManager::SetIBLRotation(const Vector3& rotation) {
         iblRotation_ = rotation;
-        // Model / SkinnedModel の両レンダラーに IBL 回転角度を反映
-        for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
-            if (auto* r = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
-                r->SetIBLRotation(rotation);
-            }
-        }
+        ApplyEnvironmentLightingToRenderers();
     }
 
     void RenderManager::SetEnvironmentIntensity(float intensity) {
         environmentIntensity_ = intensity;
-        // Model / SkinnedModel の両レンダラーに環境輝度スケールを反映
-        for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
-            if (auto* r = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
-                r->SetEnvironmentIntensity(intensity);
-            }
-        }
+        ApplyEnvironmentLightingToRenderers();
     }
 
     void RenderManager::SetEnvironmentMap(D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle) {
@@ -188,9 +180,11 @@ namespace CoreEngine
 
         EnsureQueueSorted();
 
-        // BeginGBufferPass() は IRenderer インターフェースに定義されているため dynamic_cast 不要
+        // BeginGBufferPass() は IGBufferRenderer を実装するレンダラーのみが対応する
         IRenderer* modelRenderer   = GetRenderer(RenderPassType::Model);
         IRenderer* skinnedRenderer = GetRenderer(RenderPassType::SkinnedModel);
+        auto* modelGBuffer   = dynamic_cast<IGBufferRenderer*>(modelRenderer);
+        auto* skinnedGBuffer = dynamic_cast<IGBufferRenderer*>(skinnedRenderer);
         const ICamera* currentCamera = GetCameraForPass(RenderPassType::Model);
 
         if (modelRenderer) {
@@ -224,11 +218,11 @@ namespace CoreEngine
                 activePass = cmd.passType;
                 activeRenderer = nullptr;
 
-                if (cmd.passType == RenderPassType::Model && modelRenderer) {
-                    modelRenderer->BeginGBufferPass(cmdList_);
+                if (cmd.passType == RenderPassType::Model && modelGBuffer) {
+                    modelGBuffer->BeginGBufferPass(cmdList_);
                     activeRenderer = modelRenderer;
-                } else if (cmd.passType == RenderPassType::SkinnedModel && skinnedRenderer) {
-                    skinnedRenderer->BeginGBufferPass(cmdList_);
+                } else if (cmd.passType == RenderPassType::SkinnedModel && skinnedGBuffer) {
+                    skinnedGBuffer->BeginGBufferPass(cmdList_);
                     activeRenderer = skinnedRenderer;
                 }
             }
@@ -323,15 +317,19 @@ namespace CoreEngine
     }
 
     void RenderManager::ApplyEnvironmentLightingToRenderers() {
-        // Model / SkinnedModel の両レンダラーに全 IBL テクスチャと回転角度を一括適用
+        // IBL パラメータを構造体にまとめて一括適用
+        IBLParameters params;
+        params.environmentMap = environmentMapHandle_;
+        params.irradianceMap = irradianceMapHandle_;
+        params.prefilteredMap = prefilteredMapHandle_;
+        params.brdfLUT = brdfLUTHandle_;
+        params.rotation = iblRotation_;
+        params.intensity = environmentIntensity_;
+
+        // Model / SkinnedModel の両レンダラーに適用
         for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
             if (auto* renderer = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
-                renderer->SetEnvironmentMap(environmentMapHandle_);
-                renderer->SetIrradianceMap(irradianceMapHandle_);
-                renderer->SetPrefilteredMap(prefilteredMapHandle_);
-                renderer->SetBRDFLUT(brdfLUTHandle_);
-                renderer->SetIBLRotation(iblRotation_);
-                renderer->SetEnvironmentIntensity(environmentIntensity_);
+                renderer->SetIBLParameters(params);
             }
         }
     }

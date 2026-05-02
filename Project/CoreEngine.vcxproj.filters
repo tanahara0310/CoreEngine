@@ -124,6 +124,9 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
@@ -855,6 +858,9 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.h">
+      <Filter>Engine\Src\Graphics\PostEffect</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
@@ -882,8 +888,14 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h">
       <Filter>Engine\Src\Graphics\Render\GBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\IGBufferRenderer.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
@@ -972,6 +984,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h">
+      <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClInclude>
@@ -1036,6 +1051,9 @@
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.h">
+      <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetNames.h">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.h">
@@ -1562,6 +1580,12 @@
     <None Include="Docs\Graphics\ModelManager.md">
       <Filter>Docs\Graphics</Filter>
     </None>
+    <None Include="Docs\Graphics\README.md">
+      <Filter>Docs\Graphics</Filter>
+    </None>
+    <None Include="Docs\Graphics\Rendering\PBR_RoadMap.md">
+      <Filter>Docs\Graphics\Rendering</Filter>
+    </None>
     <None Include="Docs\Graphics\TextureManager.md">
       <Filter>Docs\Graphics</Filter>
     </None>
@@ -1662,6 +1686,9 @@
     </Filter>
     <Filter Include="Docs\Graphics">
       <UniqueIdentifier>{B7465F11-9027-4E42-9346-17BEEB87E2A0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Graphics\Rendering">
+      <UniqueIdentifier>{0E9A6516-5B53-4946-AFF8-0CCF7D53F5A0}</UniqueIdentifier>
     </Filter>
     <Filter Include="Docs\Input">
       <UniqueIdentifier>{9688059E-C1C8-415A-A5E3-D4B9C60FC16D}</UniqueIdentifier>

@@ -41,6 +41,10 @@ public:
     /// @return 有効ならtrue
     bool IsEnabled() const { return enabled_; }
 
+    /// @brief 常時有効なエフェクトかどうかを取得（無効化不可）
+    /// @return 常時有効ならtrue
+    virtual bool IsAlwaysEnabled() const { return false; }
+
     /// @brief シェーダーリソース名からルートパラメータインデックスを取得
     int GetRootParamIndex(const std::string& resourceName) const;
 
@@ -53,6 +57,11 @@ protected:
     /// @details サブクラスでオーバーライドすることで追加サンプラーなどを設定できる
     /// @param config 構築中のルートシグネチャ設定
     virtual void OnConfigureRootSignature(RootSignatureConfig& /*config*/) {}
+
+    /// @brief Draw/DrawToBackBuffer の共通処理
+    /// @param inputSrvHandle 入力テクスチャのSRVハンドル
+    /// @param psm 使用するパイプラインステートマネージャー
+    void DrawInternal(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle, PipelineStateManager& psm);
 
 protected:
     DirectXCommon* directXCommon_ = nullptr;
