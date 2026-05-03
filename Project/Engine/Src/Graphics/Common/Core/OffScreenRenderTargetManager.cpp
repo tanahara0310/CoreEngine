@@ -1,5 +1,6 @@
 #include "OffScreenRenderTargetManager.h"
 #include "DescriptorManager.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/Render.h"
 
@@ -68,18 +69,11 @@ void OffScreenRenderTargetManager::CreateOrResizeTargetResource(OffScreenTarget&
     clearValue.Color[2] = Render::kClearColor[2];
     clearValue.Color[3] = Render::kClearColor[3];
 
-    D3D12_HEAP_PROPERTIES heapProps = {};
-    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-    HRESULT hr = device_->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &texDesc,
+    target.resource = ResourceFactory::CreateTextureResource(
+        device_,
+        texDesc,
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-        &clearValue,
-        IID_PPV_ARGS(&target.resource));
-    assert(SUCCEEDED(hr));
-    (void)hr;
+        &clearValue);
 
 #ifdef _DEBUG
     Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 

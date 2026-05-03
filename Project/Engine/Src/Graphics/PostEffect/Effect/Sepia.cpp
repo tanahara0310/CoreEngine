@@ -1,5 +1,6 @@
 #include "Sepia.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include <cassert>
 
 
@@ -118,38 +119,12 @@ void Sepia::CreateConstantBuffer()
     
     // 定数バッファのサイズを256バイトアライメントに調整
     UINT bufferSize = (sizeof(SepiaParams) + 255) & ~255;
-    
-    // ヒーププロパティ
-    D3D12_HEAP_PROPERTIES heapProps = {};
-    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-    
-    // リソースデスク
-    D3D12_RESOURCE_DESC resourceDesc = {};
-    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resourceDesc.Width = bufferSize;
-    resourceDesc.Height = 1;
-    resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.MipLevels = 1;
-    resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-    resourceDesc.SampleDesc.Count = 1;
-    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-    
-    // リソースの作成
-    HRESULT hr = directXCommon_->GetDevice()->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resourceDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&constantBuffer_)
-    );
-    assert(SUCCEEDED(hr));
-    
+
+    // 定数バッファリソースを生成
+    constantBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), bufferSize);
+
     // マッピング
-    hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
+    HRESULT hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
     assert(SUCCEEDED(hr));
     
     // 初期値で更新

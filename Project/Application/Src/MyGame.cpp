@@ -28,7 +28,7 @@ void MyGame::Initialize()
     sceneManager_->RegisterScene<SpriteTestScene>("SpriteTestScene");
 
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene("SpriteTestScene");
+    sceneManager_->SetInitialScene("TestScene");
 
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
 #ifdef USE_IMGUI

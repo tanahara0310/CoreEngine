@@ -6,6 +6,7 @@
 
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 
 namespace
@@ -198,18 +199,11 @@ namespace CoreEngine
             clearValue.Color[i] = kGBufferClearColors[index][i];
         }
 
-        D3D12_HEAP_PROPERTIES heapProps{};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-        HRESULT hr = device_->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &texDesc,
+        targetResource.resource = ResourceFactory::CreateTextureResource(
+            device_,
+            texDesc,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            &clearValue,
-            IID_PPV_ARGS(&targetResource.resource));
-        assert(SUCCEEDED(hr));
-        (void)hr;
+            &clearValue);
 
         targetResource.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         CreateViews(targetResource, target, targetResource.rtvHandle.ptr == 0);

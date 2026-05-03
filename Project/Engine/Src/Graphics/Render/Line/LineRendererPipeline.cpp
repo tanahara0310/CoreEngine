@@ -2,6 +2,7 @@
 #include "Camera/ICamera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include <cassert>
 
 
@@ -40,27 +41,8 @@ namespace CoreEngine
 
         uint32_t bufferSize = sizeof(LineVertex) * kMaxVertexCount;
 
-        D3D12_HEAP_PROPERTIES heapProp = { D3D12_HEAP_TYPE_UPLOAD };
-        D3D12_RESOURCE_DESC resDesc = {};
-        resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resDesc.Width = bufferSize;
-        resDesc.Height = 1;
-        resDesc.DepthOrArraySize = 1;
-        resDesc.MipLevels = 1;
-        resDesc.SampleDesc.Count = 1;
-        resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-        HRESULT hr = device->CreateCommittedResource(
-            &heapProp,
-            D3D12_HEAP_FLAG_NONE,
-            &resDesc,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&vertexBuffer_));
-
-        if (FAILED(hr)) {
-            throw std::runtime_error("Failed to create vertex buffer for LineRendererPipeline.");
-        }
+        // 頂点バッファリソースを生成
+        vertexBuffer_ = ResourceFactory::CreateBufferResource(device, bufferSize);
 
         vbView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
         vbView_.SizeInBytes = bufferSize;
