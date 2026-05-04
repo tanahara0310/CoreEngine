@@ -214,6 +214,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.cpp">
+      <Filter>Engine\Src\Graphics\Render\Model\Instancing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Model\ModelRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClCompile>
@@ -989,6 +992,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatch.h">
+      <Filter>Engine\Src\Graphics\Render\Model\Instancing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.h">
+      <Filter>Engine\Src\Graphics\Render\Model\Instancing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
@@ -1806,6 +1815,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\Model">
       <UniqueIdentifier>{29C90331-7F23-47F7-AF78-2AF2088C17E9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\Model\Instancing">
+      <UniqueIdentifier>{1939F963-60B0-4596-97E4-24E73156CB85}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\Particle">
       <UniqueIdentifier>{BE0CED7A-38D5-4709-8A9B-7EDB5DF5DB03}</UniqueIdentifier>

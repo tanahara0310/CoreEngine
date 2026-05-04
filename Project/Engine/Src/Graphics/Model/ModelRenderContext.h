@@ -6,6 +6,7 @@ namespace CoreEngine {
     class ShadowMapManager;
     class BaseModelRenderer;
     class ShadowMapRenderer;
+    class InstanceBatchManager;
 }
 
 namespace CoreEngine
@@ -25,8 +26,10 @@ namespace CoreEngine
         BaseModelRenderer* modelRenderer = nullptr; ///< 通常モデル描画用レンダラー
         BaseModelRenderer* skinnedRenderer = nullptr; ///< スキニングモデル描画用レンダラー
         ShadowMapRenderer* shadowRenderer = nullptr; ///< シャドウマップ描画用レンダラー
+        InstanceBatchManager* instanceBatchManager = nullptr; ///< 通常モデルのインスタンシング集約（ModelManager 内で自動設定）
 
         /// @brief ポインタ依存が全て設定済みか確認
+        /// @note instanceBatchManager は ModelManager が内部生成するため検証対象外
         bool IsValid() const {
             return dxCommon != nullptr
                 && shadowMapManager != nullptr

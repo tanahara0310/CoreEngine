@@ -1,6 +1,7 @@
 #include "Object3d.hlsli"
 
-ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
+// インスタンシング描画: 1 つの DrawIndexedInstanced で複数インスタンスを描画する
+StructuredBuffer<TransformationMatrix> gInstanceData : register(t0, space1);
 
 struct VertexShaderInput
 {
@@ -10,23 +11,25 @@ struct VertexShaderInput
     float3 tangent : TANGENT0;
 };
 
-VertexShaderOutput main(VertexShaderInput input)
+VertexShaderOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
 {
+    TransformationMatrix mtx = gInstanceData[instanceID];
+
     VertexShaderOutput output;
     output.texcoord = input.texcoord;
-    output.position = mul(input.position, gTransformationMatrix.WVP);
+    output.position = mul(input.position, mtx.WVP);
 
-    output.normal = normalize(mul(input.normal, (float3x3) gTransformationMatrix.WorldInversTranspose));
-    output.tangent = normalize(mul(input.tangent, (float3x3) gTransformationMatrix.World));
+    output.normal = normalize(mul(input.normal, (float3x3) mtx.WorldInversTranspose));
+    output.tangent = normalize(mul(input.tangent, (float3x3) mtx.World));
     output.bitangent = normalize(cross(output.normal, output.tangent));
 
-    float4 worldPos = mul(input.position, gTransformationMatrix.World);
+    float4 worldPos = mul(input.position, mtx.World);
     output.worldPosition = worldPos.xyz;
-    output.lightSpacePos = mul(worldPos, gTransformationMatrix.LightViewProjection);
+    output.lightSpacePos = mul(worldPos, mtx.LightViewProjection);
 
     // モーションベクター用: 現フレーム・前フレームのクリップ座標
-    output.clipPosCurrent = mul(input.position, gTransformationMatrix.WVP);
-    output.clipPosPrev = mul(input.position, gTransformationMatrix.PrevWVP);
+    output.clipPosCurrent = mul(input.position, mtx.WVP);
+    output.clipPosPrev = mul(input.position, mtx.PrevWVP);
 
     return output;
 }

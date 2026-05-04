@@ -17,6 +17,7 @@
 namespace CoreEngine {
     class LightManager;
     class ShaderReflectionData;
+    class InstanceBatchManager;
 }
 
 namespace CoreEngine
@@ -71,6 +72,9 @@ namespace CoreEngine
         /// @brief カメラ CBV の GPU 仮想アドレスを取得（DeferredLightingPass 連携用）
         D3D12_GPU_VIRTUAL_ADDRESS GetCameraCBVAddress() const { return cameraCBV_; }
 
+        /// @brief インスタンシングバッチマネージャーを設定（ModelManager から注入）
+        void SetInstanceBatchManager(InstanceBatchManager* manager) { instanceBatchManager_ = manager; }
+
     protected:
         std::unique_ptr<RootSignatureManager> forwardRootSignatureMg_ = std::make_unique<RootSignatureManager>();
         std::unique_ptr<RootSignatureManager> gBufferRootSignatureMg_ = std::make_unique<RootSignatureManager>();
@@ -85,10 +89,10 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS cameraCBV_ = 0;
 
         LightManager* lightManager_ = nullptr;
-        
+
         // IBL関連を構造体に集約
         IBLParameters iblParams_;
-        
+
         D3D12_GPU_DESCRIPTOR_HANDLE shadowMapHandle_ = {};
         D3D12_GPU_VIRTUAL_ADDRESS   lightViewProjectionCBV_ = 0;
 
@@ -100,5 +104,41 @@ namespace CoreEngine
         std::unique_ptr<ShaderReflectionData> forwardReflectionData_;
         std::unique_ptr<ShaderReflectionData> gBufferReflectionData_;
         bool isInGBufferPass_ = false;
+
+        // キャッシュ済みルートパラメータインデックス（Initialize後に一度だけ解決）
+        struct CachedIndices {
+            // BeginPass (Forward/GBuffer 共通名) 用
+            int camera = -1;
+            int lightCounts = -1;
+            int directionalLights = -1;
+            int pointLights = -1;
+            int spotLights = -1;
+            int areaLights = -1;
+            int envTexture = -1;
+            int lightVP = -1;
+            int shadowMap = -1;
+            int irradianceMap = -1;
+            int prefilteredMap = -1;
+            int brdfLUT = -1;
+            int iblParams = -1;
+            // BindModelDrawPacket 用
+            int transform = -1;        ///< gTransformationMatrix (CBV) — スキニングモデル用
+            int instanceData = -1;     ///< gInstanceData (Root SRV) — 通常モデル用インスタンシング
+            int material = -1;
+            int texture = -1;
+            int normalMap = -1;
+            int metallicMap = -1;
+            int roughnessMap = -1;
+            int aoMap = -1;
+            int matrixPalette = -1;
+        };
+        CachedIndices forwardCache_;
+        CachedIndices gBufferCache_;
+
+        InstanceBatchManager* instanceBatchManager_ = nullptr;
+        ID3D12GraphicsCommandList* currentCommandList_ = nullptr;
+
+        /// @brief Initialize 完了後に一度だけ呼び、全 Root Param インデックスをキャッシュする
+        void CacheRootParamIndices();
     };
 }

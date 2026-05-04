@@ -248,6 +248,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\PostEffectPresetManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\ModelRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\SkinnedModelRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.cpp" />
@@ -511,6 +512,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatch.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\SkinnedModelRenderer.h" />
