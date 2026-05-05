@@ -5,6 +5,7 @@
 #include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
+#include "Graphics/Debug/EngineStats.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/Animator.h"
 #include "Animation/SkeletonAnimatorFactory.h"
@@ -253,6 +254,7 @@ namespace CoreEngine
             // キャッシュヒット
             auto it = resourceCache_.find(normalizedPath);
             if (it != resourceCache_.end()) {
+                EngineStats::GetInstance().RecordCacheHit();
                 return it->second.get();
             }
 
@@ -265,7 +267,8 @@ namespace CoreEngine
                 continue; // 再チェック
             }
 
-            // ロード権を確保して抜ける
+            // ロード権を確保して抜ける（キャッシュミス確定）
+            EngineStats::GetInstance().RecordCacheMiss();
             loadingPaths_.insert(normalizedPath);
             break;
         }
@@ -412,5 +415,13 @@ namespace CoreEngine
 
         // それ以外の場合はbasePath_を前に追加
         return basePath_ + normalized;
+    }
+
+    void ModelManager::UpdateResourceCacheStats()
+    {
+        auto& cacheStats = EngineStats::GetInstance().GetResourceCacheStats();
+        std::lock_guard<std::mutex> lock(cacheMutex_);
+        cacheStats.loadedModelCount = static_cast<uint32_t>(resourceCache_.size());
+        cacheStats.loadingResourceCount = static_cast<uint32_t>(loadingPaths_.size());
     }
 }

@@ -47,10 +47,20 @@ namespace CoreEngine
         /// @param drawer Inspector内に描画するコンテンツドロワー
         void RegisterAppEditor(const std::string& label, std::function<void()> drawer);
 
+        /// @brief エンジンデバッグ情報をInspectorタブとして登録（EngineDebugメニューからトグル）
+        /// @param label メニュー / タブ名
+        /// @param drawer タブ内に描画するコンテンツドロワー
+        void RegisterEngineEditor(const std::string& label, std::function<void()> drawer);
+
         /// @brief エンジン専用デバッグパネルを登録（Engineメニュー → 独立ウィンドウ）
         /// @param label メニュー / ウィンドウタイトルに表示する名前
         /// @param drawer ウィンドウ内に描画するコンテンツドロワー
         void RegisterEnginePanel(const std::string& label, std::function<void()> drawer);
+
+        /// @brief EngineDebug メニュー専用パネルを登録（デバッグ情報カテゴリ用）
+        /// @param label メニュー / ウィンドウタイトルに表示する名前
+        /// @param drawer ウィンドウ内に描画するコンテンツドロワー
+        void RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer);
 
         /// @brief 更新
         void Update();
@@ -99,8 +109,12 @@ namespace CoreEngine
         };
         std::vector<EnginePanelEntry> enginePanels_;
 
+        /// @brief EngineDebug メニュー専用パネル（デバッグ情報カテゴリ、Window Manager には出ない）
+        std::vector<EnginePanelEntry> engineDebugPanels_;
+
         bool showConsole_ = true;
         bool showEditorSwitcher_ = false;  ///< Window Managerパネルの表示状態
+        bool showEngineDebugMenu_ = false; ///< EngineDebug メニューの展開状態（未使用・予約）
 
 #ifdef USE_IMGUI
         ScreenCapture screenCapture_;  ///< スクリーンキャプチャ機能
@@ -114,6 +128,7 @@ namespace CoreEngine
         void DrawHierarchyPanel();
         void DrawInspectorPanel();
         void DrawEnginePanels();
+        void DrawEngineDebugPanels();
         void DrawEditorSwitcherPanel();
         void RegisterWindowsForDocking();
     };

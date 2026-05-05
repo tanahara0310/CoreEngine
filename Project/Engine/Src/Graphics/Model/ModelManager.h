@@ -109,6 +109,9 @@ public:
     /// @param callback 各 ModelResource* に対して呼ばれるコールバック
     void ForEachResource(const std::function<void(ModelResource*)>& callback);
 
+    /// @brief リソースキャッシュ統計（loadedModelCount / loadingResourceCount）を更新する
+    void UpdateResourceCacheStats();
+
 private:
     // DirectXCommon
     DirectXCommon* dxCommon_ = nullptr;

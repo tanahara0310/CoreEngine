@@ -20,6 +20,7 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/Debug/EngineStats.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
 #include "ObjectCommon/GameObjectManager.h"
@@ -98,6 +99,30 @@ namespace CoreEngine
             }
             });
 
+        // エンジン統計ウィンドウ（EngineDebug メニュー：カテゴリ別個別ウィンドウ）
+        engineStatsWindow_ = std::make_unique<EngineStatsWindow>();
+        engineStatsWindow_->SetEngineSystem(engine_);
+        if (auto* mm = engine_->GetComponent<ModelManager>()) {
+            engineStatsWindow_->SetModelManager(mm);
+        }
+
+        // Collect() はフレームごとに1回だけ呼ぶ（描画後に DrawImGuiWithProfiling 直前で実行）
+        gameDebugUI_->RegisterEngineEditor("パフォーマンス", [this]() {
+            engineStatsWindow_->DrawPerformanceTab();
+            });
+        gameDebugUI_->RegisterEngineEditor("レンダリング", [this]() {
+            engineStatsWindow_->DrawRenderingTab();
+            });
+        gameDebugUI_->RegisterEngineEditor("シーン", [this]() {
+            engineStatsWindow_->DrawSceneTab();
+            });
+        gameDebugUI_->RegisterEngineEditor("リソース", [this]() {
+            engineStatsWindow_->DrawResourceTab();
+            });
+        gameDebugUI_->RegisterEngineEditor("メモリ", [this]() {
+            engineStatsWindow_->DrawMemoryTab();
+            });
+
         // その他の固定ウィンドウをドッキングシステムに登録
         DockingUI* dockingUI = imGui_->GetDockingUI();
         if (dockingUI) {
@@ -137,6 +162,9 @@ namespace CoreEngine
         if (!engine_) {
             return;
         }
+
+        // フレーム開始時にレンダリング統計をリセット
+        EngineStats::GetInstance().BeginFrame();
 
         auto* sceneManager = engine_->GetSceneManager();
 
@@ -196,6 +224,11 @@ namespace CoreEngine
 
     void DebugSubsystem::DrawImGuiWithProfiling(ID3D12GraphicsCommandList* cmdList)
     {
+        // 全描画完了後に統計を収集（ドローコール数等が確定した後）
+        if (engineStatsWindow_) {
+            engineStatsWindow_->Collect();
+        }
+
         EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, cmdList);
         if (imGui_) {
             // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画

@@ -3,6 +3,7 @@
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
+#include "Graphics/Debug/EngineStats.h"
 #include "Utility/Logger/Logger.h"
 #include <cstring>
 
@@ -106,6 +107,11 @@ namespace CoreEngine
             cmdList->SetGraphicsRootDescriptorTable(c.matrixPalette, packet.matrixPaletteSRV);
         }
         cmdList->DrawIndexedInstanced(packet.indexCount, packet.instanceCount, packet.startIndex, 0, 0);
+
+        // 統計情報を記録（インスタンシング判定 + 三角形数集計）
+        const bool isInstanced = packet.instanceCount > 1;
+        EngineStats::GetInstance().RecordDrawCall(
+            isInstanced, packet.instanceCount, packet.indexCount, /*vertexCountPerInstance=*/0);
     }
 
     void BaseModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {

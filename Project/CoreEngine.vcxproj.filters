@@ -460,6 +460,9 @@
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\EngineStatsWindow.cpp">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
@@ -800,6 +803,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.h">
       <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Debug\EngineStats.h">
+      <Filter>Engine\Src\Graphics\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h">
       <Filter>Engine\Src\Graphics\IBL</Filter>
@@ -1293,6 +1299,9 @@
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\EngineStatsWindow.h">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\GameObjectDebugAccess.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
@@ -1764,6 +1773,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Common\Core">
       <UniqueIdentifier>{5D7282C7-EAB3-41AC-A9C4-A9A06AFC715E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Debug">
+      <UniqueIdentifier>{923BC417-D35C-4165-9C8E-258EBBD71442}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\IBL">
       <UniqueIdentifier>{CB5C00A8-4E31-4B66-9096-A0DB805289CB}</UniqueIdentifier>

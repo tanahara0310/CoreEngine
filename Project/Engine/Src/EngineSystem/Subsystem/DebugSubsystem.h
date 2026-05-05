@@ -11,6 +11,7 @@
 #include "Graphics/Common/GpuTimestampProfiler.h"
 #include "Utility/Debug/ImGui/ThreadProfilerUI.h"
 #include "Utility/Debug/ImGui/KeyConfigUI.h"
+#include "Utility/Debug/ImGui/EngineStatsWindow.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 
@@ -102,6 +103,7 @@ namespace CoreEngine
         std::unique_ptr<GameDebugUI> gameDebugUI_;
         GpuTimestampProfiler gpuProfiler_;
         std::unique_ptr<ThreadProfilerUI> threadProfilerUI_;
+        std::unique_ptr<EngineStatsWindow> engineStatsWindow_;
         KeyConfigUI keyConfigUI_;
 
         // SceneView 設定（configから読み込み）

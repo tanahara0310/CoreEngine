@@ -152,6 +152,14 @@ namespace CoreEngine
         appEditors_.push_back({ label, std::move(drawer), false });
     }
 
+    void GameDebugUI::RegisterEngineEditor(const std::string& label, std::function<void()> drawer)
+    {
+        for (auto& entry : engineEditors_) {
+            if (entry.label == label) { entry.drawer = std::move(drawer); return; }
+        }
+        engineEditors_.push_back({ label, std::move(drawer), false });
+    }
+
     void GameDebugUI::RegisterEnginePanel(const std::string& label, std::function<void()> drawer)
     {
         for (auto& p : enginePanels_) {
@@ -163,6 +171,14 @@ namespace CoreEngine
         if (dockingUI_) {
             dockingUI_->RegisterWindow(label, DockArea::Right);
         }
+    }
+
+    void GameDebugUI::RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer)
+    {
+        for (auto& p : engineDebugPanels_) {
+            if (p.label == label) { p.drawer = std::move(drawer); return; }
+        }
+        engineDebugPanels_.push_back({ label, std::move(drawer), false });
     }
 
     void GameDebugUI::Update()
@@ -181,6 +197,14 @@ namespace CoreEngine
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("Debug")) {
                 ImGui::Checkbox("Console", &showConsole_);
+                ImGui::EndMenu();
+            }
+
+            // EngineDebug 専用メニュー（Inspectorタブとしてトグル）
+            if (ImGui::BeginMenu("EngineDebug")) {
+                for (auto& entry : engineEditors_) {
+                    ImGui::MenuItem(entry.label.c_str(), nullptr, &entry.visible);
+                }
                 ImGui::EndMenu();
             }
 
@@ -244,6 +268,7 @@ namespace CoreEngine
         DrawHierarchyPanel();
         DrawInspectorPanel();
         DrawEnginePanels();
+        DrawEngineDebugPanels();
         DrawEditorSwitcherPanel();
 
         if (showConsole_) ShowConsoleUI();
@@ -319,6 +344,18 @@ namespace CoreEngine
     {
         for (auto& panel : enginePanels_) {
             if (!panel.visible) continue;
+            if (ImGui::Begin(panel.label.c_str(), &panel.visible)) {
+                if (panel.drawer) panel.drawer();
+            }
+            ImGui::End();
+        }
+    }
+
+    void GameDebugUI::DrawEngineDebugPanels()
+    {
+        for (auto& panel : engineDebugPanels_) {
+            if (!panel.visible) continue;
+            ImGui::SetNextWindowSize(ImVec2(420.0f, 480.0f), ImGuiCond_FirstUseEver);
             if (ImGui::Begin(panel.label.c_str(), &panel.visible)) {
                 if (panel.drawer) panel.drawer();
             }

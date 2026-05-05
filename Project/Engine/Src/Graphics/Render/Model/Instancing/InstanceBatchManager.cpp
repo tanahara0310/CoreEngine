@@ -9,6 +9,7 @@
 #include "Graphics/Render/Model/ModelDrawPacket.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/TransformationMatrix.h"
+#include "Graphics/Debug/EngineStats.h"
 
 namespace CoreEngine
 {
@@ -83,6 +84,8 @@ namespace CoreEngine
                 continue;
             }
             DrawBatch(cmdList, renderer, batch);
+            // バッチ数を統計に記録（DrawBatch 内の DrawIndexedInstanced で個々のインスタンスは集計済み）
+            EngineStats::GetInstance().RecordBatch();
         }
 
         // パス内で消費したバッチは再描画されないよう削除
