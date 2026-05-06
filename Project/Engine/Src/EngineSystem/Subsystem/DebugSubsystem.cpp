@@ -21,9 +21,13 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
 #include "Graphics/Debug/EngineStats.h"
+#include "Graphics/Light/LightManager.h"
+#include "Graphics/Material/MaterialConstants.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
 #include "ObjectCommon/GameObjectManager.h"
+#include "ObjectCommon/Model/ModelGameObject.h"
+#include <imgui.h>
 
 namespace CoreEngine
 {
@@ -102,6 +106,7 @@ namespace CoreEngine
         // エンジン統計ウィンドウ（EngineDebug メニュー：カテゴリ別個別ウィンドウ）
         engineStatsWindow_ = std::make_unique<EngineStatsWindow>();
         engineStatsWindow_->SetEngineSystem(engine_);
+        engineStatsWindow_->SetGpuProfiler(&gpuProfiler_);
         if (auto* mm = engine_->GetComponent<ModelManager>()) {
             engineStatsWindow_->SetModelManager(mm);
         }
@@ -122,6 +127,84 @@ namespace CoreEngine
         gameDebugUI_->RegisterEngineEditor("メモリ", [this]() {
             engineStatsWindow_->DrawMemoryTab();
             });
+
+        // ── ドメイン固有パネルの登録 ──
+
+        // Lighting パネル
+        gameDebugUI_->RegisterEnginePanel("Lighting", [this]() {
+            if (auto* lightManager = engine_->GetComponent<LightManager>()) {
+                lightManager->DrawAllImGui();
+            }
+        });
+
+        // Shading パネル
+        gameDebugUI_->RegisterEnginePanel("Shading", [this]() {
+            auto* sceneManager = engine_->GetSceneManager();
+            auto* objManager   = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
+
+            ImGui::SeparatorText("シーン全体に適用");
+
+            static const char* kModeItems[] = {
+                "PBR  (IBL なし)",
+                "PBR + IBL",
+                "Lambert  (従来)",
+                "Half-Lambert  (従来)"
+            };
+            static int sceneWideShadingMode = 0;
+            ImGui::SetNextItemWidth(220.0f);
+            ImGui::Combo("モード##SceneWide", &sceneWideShadingMode, kModeItems, 4);
+
+            ImGui::BeginDisabled(objManager == nullptr);
+            if (ImGui::Button("シーン全体に適用", ImVec2(-1.0f, 0.0f))) {
+                const auto mode = static_cast<ShadingMode>(sceneWideShadingMode);
+                for (auto& obj : objManager->GetAllObjects()) {
+                    auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
+                    if (!modelObj) continue;
+                    auto* model = modelObj->GetModel();
+                    if (!model) continue;
+                    auto* mat = model->GetMaterial();
+                    if (mat) mat->SetShadingMode(mode);
+                }
+            }
+            ImGui::EndDisabled();
+            if (objManager == nullptr) {
+                ImGui::TextDisabled("(シーンが存在しません)");
+            }
+
+            ImGui::Spacing();
+            ImGui::SeparatorText("モデル別シェーディングモード");
+
+            if (objManager) {
+                int modelIndex = 0;
+                for (auto& obj : objManager->GetAllObjects()) {
+                    auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
+                    if (!modelObj) continue;
+                    auto* model = modelObj->GetModel();
+                    if (!model) continue;
+                    auto* mat = model->GetMaterial();
+                    if (!mat) continue;
+
+                    ImGui::PushID(modelIndex++);
+                    const char* name = modelObj->GetObjectName();
+                    ImGui::SetNextItemWidth(170.0f);
+                    int mode = static_cast<int>(mat->GetShadingMode());
+                    if (ImGui::Combo(name, &mode, kModeItems, 4)) {
+                        mat->SetShadingMode(static_cast<ShadingMode>(mode));
+                    }
+                    ImGui::PopID();
+                }
+            } else {
+                ImGui::TextDisabled("(シーンが存在しません)");
+            }
+        });
+
+        // Post Effects パネル（デフォルト表示）
+        gameDebugUI_->RegisterEnginePanel("Post Effects", [this]() {
+            if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
+                postEffect->DrawImGuiContent();
+            }
+        });
+        gameDebugUI_->SetPanelVisible("Post Effects", true);
 
         // その他の固定ウィンドウをドッキングシステムに登録
         DockingUI* dockingUI = imGui_->GetDockingUI();

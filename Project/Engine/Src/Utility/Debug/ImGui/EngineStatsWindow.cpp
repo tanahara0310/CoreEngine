@@ -27,17 +27,58 @@ namespace CoreEngine
             return ImVec4(1.0f, 0.4f, 0.4f, 1.0f); // 赤
         }
 
+        // Unity風カラー定数
+        static constexpr ImVec4 kLabelColor  = ImVec4(0.90f, 0.90f, 0.90f, 1.0f); // 明るいグレー（ラベル）
+        static constexpr ImVec4 kValueColor  = ImVec4(1.00f, 1.00f, 1.00f, 1.0f); // 白（値）
+        static constexpr ImVec4 kSubLabel    = ImVec4(0.78f, 0.78f, 0.78f, 1.0f); // サブ項目ラベル
+        static constexpr ImVec4 kHeaderColor = ImVec4(1.0f,  0.65f, 0.0f,  1.0f); // Unityオレンジ（ヘッダ）
+
+        // 通常行：ラベル左、値右寄せ
         void DrawKeyValue(const char* key, const char* fmt, ...)
         {
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted(key);
-            ImGui::TableSetColumnIndex(1);
+            char buf[128];
             va_list args;
             va_start(args, fmt);
-            ImGui::TextV(fmt, args);
+            vsnprintf(buf, sizeof(buf), fmt, args);
             va_end(args);
+
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(kLabelColor, "%s", key);
+            ImGui::TableSetColumnIndex(1);
+            float valueWidth = ImGui::CalcTextSize(buf).x;
+            float colWidth   = ImGui::GetColumnWidth();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (std::max)(0.0f, colWidth - valueWidth - 4.0f));
+            ImGui::TextColored(kValueColor, "%s", buf);
         }
+
+        // サブ項目行
+        void DrawSubKeyValue(const char* key, const char* fmt, ...)
+        {
+            char buf[128];
+            va_list args;
+            va_start(args, fmt);
+            vsnprintf(buf, sizeof(buf), fmt, args);
+            va_end(args);
+
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Indent(12.0f);
+            ImGui::TextColored(kSubLabel, "%s", key);
+            ImGui::Unindent(12.0f);
+            ImGui::TableSetColumnIndex(1);
+            float valueWidth = ImGui::CalcTextSize(buf).x;
+            float colWidth   = ImGui::GetColumnWidth();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (std::max)(0.0f, colWidth - valueWidth - 4.0f));
+            ImGui::TextColored(kSubLabel, "%s", buf);
+        }
+
+        // テーブルフラグ
+        static constexpr ImGuiTableFlags kTableFlags =
+            ImGuiTableFlags_SizingStretchProp |
+            ImGuiTableFlags_RowBg             |
+            ImGuiTableFlags_BordersInnerH     |
+            ImGuiTableFlags_PadOuterX;
 
         const char* FormatBytes(uint64_t bytes, char* buf, size_t bufSize)
         {
@@ -92,6 +133,16 @@ namespace CoreEngine
         snapshotScene_    = EngineStats::GetInstance().GetSceneStats();
         snapshotResource_ = EngineStats::GetInstance().GetResourceCacheStats();
         snapshotMemory_   = EngineStats::GetInstance().GetMemoryStats();
+
+        // GPU タイミングスナップショット
+        if (gpuProfiler_ && gpuProfiler_->IsInitialized())
+        {
+            snapshotGpu_ = gpuProfiler_->GetResults();
+            // フレーム合計の履歴を記録
+            const uint32_t totalSlot = static_cast<uint32_t>(GpuTimestampSlot::Total);
+            gpuTotalHistory_[gpuHistoryIndex_] = snapshotGpu_[totalSlot].gpuMs;
+            gpuHistoryIndex_ = (gpuHistoryIndex_ + 1) % kGpuHistorySize;
+        }
     }
 
     void EngineStatsWindow::DrawPerformanceTab()
@@ -100,11 +151,21 @@ namespace CoreEngine
         const float deltaTimeMs = snapshotDeltaTimeMs_;
         const float targetFPS   = snapshotTargetFps_;
 
-        ImGui::TextColored(GetFpsColor(currentFPS), "FPS: %.1f / %.0f", currentFPS, targetFPS);
+        // FPS ヘッダー表示（Unity風：大きな数字）
+        ImGui::PushStyleColor(ImGuiCol_Text, GetFpsColor(currentFPS));
+        ImGui::SetWindowFontScale(1.4f);
+        ImGui::Text("%.1f FPS", currentFPS);
+        ImGui::SetWindowFontScale(1.0f);
+        ImGui::PopStyleColor();
         ImGui::SameLine();
-        ImGui::Text("   フレーム時間: %.3f ms", deltaTimeMs);
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.0f);
+        ImGui::TextColored(kLabelColor, "/ %.0f  |  %.3f ms", targetFPS, deltaTimeMs);
+
+        ImGui::Spacing();
 
         // FPSグラフ（直近120フレーム）
+        ImGui::PushStyleColor(ImGuiCol_PlotLines, GetFpsColor(currentFPS));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.10f, 0.10f, 0.10f, 1.0f));
         ImGui::PlotLines(
             "##fps_graph",
             fpsHistory_,
@@ -113,70 +174,286 @@ namespace CoreEngine
             nullptr,
             0.0f,
             targetFPS * 1.2f,
-            ImVec2(-1.0f, 80.0f));
+            ImVec2(-1.0f, 72.0f));
+        ImGui::PopStyleColor(2);
 
+        ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  フレーム統計");
         ImGui::Separator();
+        ImGui::Spacing();
 
-        if (ImGui::BeginTable("perf_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+        // テーブル行背景色をUnity風に設定
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg,    ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        if (ImGui::BeginTable("perf_table", 2, kTableFlags))
         {
-            DrawKeyValue("目標FPS", "%.0f", targetFPS);
-            DrawKeyValue("現在のFPS", "%.2f", currentFPS);
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("値",   ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            DrawKeyValue("目標FPS",    "%.0f",    targetFPS);
+            DrawKeyValue("現在のFPS",  "%.2f",    currentFPS);
             DrawKeyValue("フレーム時間", "%.3f ms", deltaTimeMs);
             ImGui::EndTable();
         }
+        ImGui::PopStyleColor(2);
+
+        // GPU フレーム内訳セクション
+        DrawGpuTimingsSection();
     }
 
     void EngineStatsWindow::DrawRenderingTab()
     {
         const auto& rs = snapshotRender_;
 
-        if (ImGui::BeginTable("render_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+        ImGui::TextColored(kHeaderColor, "  ドローコール");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg,    ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        if (ImGui::BeginTable("render_table", 2, kTableFlags))
         {
-            DrawKeyValue("総ドローコール数", "%u", rs.GetTotalDrawCalls());
-            DrawKeyValue("  通常ドローコール", "%u", rs.drawCallCount);
-            DrawKeyValue("  インスタンシングドローコール", "%u", rs.instancedDrawCallCount);
-            DrawKeyValue("バッチ数", "%u", rs.batchCount);
-            DrawKeyValue("総インスタンス数", "%u", rs.totalInstanceCount);
-            DrawKeyValue("平均インスタンス数/バッチ", "%.2f", rs.GetAverageInstancesPerBatch());
-            DrawKeyValue("描画三角形数", "%u", rs.totalTriangles);
-            DrawKeyValue("描画頂点数", "%u", rs.totalVertices);
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("値",   ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            DrawKeyValue("総ドローコール数",          "%u", rs.GetTotalDrawCalls());
+            DrawSubKeyValue("通常ドローコール",        "%u", rs.drawCallCount);
+            DrawSubKeyValue("インスタンシング",        "%u", rs.instancedDrawCallCount);
             ImGui::EndTable();
         }
+        ImGui::PopStyleColor(2);
 
         ImGui::Spacing();
-        ImGui::TextDisabled("※ 統計はフレームごとにリセットされます");
+        ImGui::TextColored(kHeaderColor, "  バッチ / インスタンス");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg,    ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        if (ImGui::BeginTable("render_table2", 2, kTableFlags))
+        {
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("値",   ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            DrawKeyValue("バッチ数",               "%u",   rs.batchCount);
+            DrawKeyValue("総インスタンス数",         "%u",   rs.totalInstanceCount);
+            DrawKeyValue("平均インスタンス数/バッチ", "%.2f", rs.GetAverageInstancesPerBatch());
+            ImGui::EndTable();
+        }
+        ImGui::PopStyleColor(2);
+
+        ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  ジオメトリ");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg,    ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        if (ImGui::BeginTable("render_table3", 2, kTableFlags))
+        {
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("値",   ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            DrawKeyValue("描画三角形数", "%u", rs.totalTriangles);
+            DrawKeyValue("描画頂点数",   "%u", rs.totalVertices);
+            ImGui::EndTable();
+        }
+        ImGui::PopStyleColor(2);
+
+        ImGui::Spacing();
+        ImGui::TextColored(kSubLabel, "※ 統計はフレームごとにリセットされます");
+
+        // パス別 GPU/CPU コスト
+        DrawPassTimingsSection();
+    }
+
+    void EngineStatsWindow::DrawGpuTimingsSection()
+    {
+        if (!gpuProfiler_ || !gpuProfiler_->IsInitialized()) return;
+
+        ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  GPU フレーム内訳");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        const uint32_t totalSlot = static_cast<uint32_t>(GpuTimestampSlot::Total);
+        const float gpuTotalMs = snapshotGpu_[totalSlot].gpuMs;
+
+        // GPU フレーム合計グラフ
+        ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.3f, 0.8f, 1.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.10f, 0.10f, 0.10f, 1.0f));
+        char gpuOverlay[32];
+        snprintf(gpuOverlay, sizeof(gpuOverlay), "%.2f ms", gpuTotalMs);
+        ImGui::PlotLines("##gpu_graph",
+            gpuTotalHistory_, kGpuHistorySize, gpuHistoryIndex_,
+            gpuOverlay, 0.0f, 33.3f, ImVec2(-1.0f, 48.0f));
+        ImGui::PopStyleColor(2);
+
+        ImGui::Spacing();
+
+        // パス別横棒グラフ（合計に対する割合でビジュアル化）
+        const float barMaxMs = (std::max)(gpuTotalMs, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg,    ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        if (ImGui::BeginTable("gpu_timing_table", 3,
+            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_PadOuterX))
+        {
+            ImGui::TableSetupColumn("パス",   ImGuiTableColumnFlags_WidthFixed,   100.0f);
+            ImGui::TableSetupColumn("ms",    ImGuiTableColumnFlags_WidthFixed,    52.0f);
+            ImGui::TableSetupColumn("比率",  ImGuiTableColumnFlags_WidthStretch);
+
+            // Total 以外のスロットを表示
+            static constexpr GpuTimestampSlot kDisplaySlots[] = {
+                GpuTimestampSlot::GBufferPass,
+                GpuTimestampSlot::DeferredLighting,
+                GpuTimestampSlot::GeometryPass,
+                GpuTimestampSlot::ShadowPass,
+                GpuTimestampSlot::RTShadow,
+                GpuTimestampSlot::PostEffect,
+                GpuTimestampSlot::ImGuiDraw,
+            };
+            for (auto slot : kDisplaySlots)
+            {
+                const auto& r = snapshotGpu_[static_cast<uint32_t>(slot)];
+                if (r.gpuMs < 0.001f) continue; // 未使用スロットはスキップ
+
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextColored(kLabelColor, "%s", GpuTimestampProfiler::GetSlotName(slot));
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextColored(kValueColor, "%.3f", r.gpuMs);
+                ImGui::TableSetColumnIndex(2);
+                float ratio = r.gpuMs / barMaxMs;
+                // コストに応じて色変化（低=緑、中=黄、高=赤）
+                ImVec4 barColor = ratio < 0.3f  ? ImVec4(0.25f, 0.75f, 0.35f, 0.85f) :
+                                  ratio < 0.6f  ? ImVec4(0.85f, 0.70f, 0.15f, 0.85f) :
+                                                  ImVec4(0.90f, 0.30f, 0.25f, 0.85f);
+                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, barColor);
+                char barId[32];
+                snprintf(barId, sizeof(barId), "##bar_%u", static_cast<uint32_t>(slot));
+                ImGui::ProgressBar(ratio, ImVec2(-1.0f, 0.0f), "");
+                ImGui::PopStyleColor();
+            }
+
+            // Total 行
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(kHeaderColor, "合計");
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextColored(kHeaderColor, "%.3f", gpuTotalMs);
+
+            ImGui::EndTable();
+        }
+        ImGui::PopStyleColor(2);
+    }
+
+    void EngineStatsWindow::DrawPassTimingsSection()
+    {
+        if (!gpuProfiler_ || !gpuProfiler_->IsInitialized()) return;
+
+        ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  パス別 GPU / CPU コスト");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg,    ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        if (ImGui::BeginTable("pass_timing_table", 3,
+            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg |
+            ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersOuter))
+        {
+            ImGui::TableSetupColumn("パス",    ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("GPU ms", ImGuiTableColumnFlags_WidthFixed, 62.0f);
+            ImGui::TableSetupColumn("CPU ms", ImGuiTableColumnFlags_WidthFixed, 62.0f);
+            ImGui::TableSetupScrollFreeze(0, 1);
+            ImGui::TableHeadersRow();
+
+            for (uint32_t i = 0; i < GpuTimestampProfiler::kSlotCount; ++i)
+            {
+                const auto& r = snapshotGpu_[i];
+                if (r.gpuMs < 0.001f && r.cpuMs < 0.001f) continue;
+
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextColored(kLabelColor, "%s", r.name[0] ? r.name : GpuTimestampProfiler::GetSlotName(static_cast<GpuTimestampSlot>(i)));
+
+                // GPU コスト（高いほど赤）
+                ImGui::TableSetColumnIndex(1);
+                ImVec4 gpuColor = r.gpuMs > 5.0f ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) :
+                                  r.gpuMs > 2.0f ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) :
+                                                   kValueColor;
+                ImGui::TextColored(gpuColor, "%.3f", r.gpuMs);
+
+                // CPU コスト
+                ImGui::TableSetColumnIndex(2);
+                ImVec4 cpuColor = r.cpuMs > 3.0f ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) :
+                                  r.cpuMs > 1.0f ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) :
+                                                   kSubLabel;
+                ImGui::TextColored(cpuColor, "%.3f", r.cpuMs);
+            }
+            ImGui::EndTable();
+        }
+        ImGui::PopStyleColor(2);
+
+        ImGui::Spacing();
+        ImGui::TextColored(kSubLabel, "※ GPU 値は 1 フレーム遅延あり");
     }
 
     void EngineStatsWindow::DrawSceneTab()
     {
         const auto& ss = snapshotScene_;
 
-        if (ImGui::BeginTable("scene_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+        ImGui::TextColored(kHeaderColor, "  シーン統計");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg,    ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        if (ImGui::BeginTable("scene_table", 2, kTableFlags))
         {
-            DrawKeyValue("GameObject総数", "%u", ss.totalGameObjectCount);
-            DrawKeyValue("モデルインスタンス数", "%u", ss.modelInstanceCount);
-            DrawKeyValue("  静的モデル", "%u", ss.staticModelCount);
-            DrawKeyValue("  キーフレームモデル", "%u", ss.keyframeModelCount);
-            DrawKeyValue("  スケルトンモデル", "%u", ss.skeletonModelCount);
-            DrawKeyValue("ライト数", "%u", ss.lightCount);
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("値",   ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            DrawKeyValue("GameObject総数",      "%u", ss.totalGameObjectCount);
+            DrawKeyValue("モデルインスタンス数",   "%u", ss.modelInstanceCount);
+            DrawSubKeyValue("静的モデル",         "%u", ss.staticModelCount);
+            DrawSubKeyValue("キーフレームモデル",  "%u", ss.keyframeModelCount);
+            DrawSubKeyValue("スケルトンモデル",    "%u", ss.skeletonModelCount);
+            DrawKeyValue("ライト数",              "%u", ss.lightCount);
             DrawKeyValue("再生中アニメーション数", "%u", ss.playingAnimationCount);
             ImGui::EndTable();
         }
+        ImGui::PopStyleColor(2);
     }
 
     void EngineStatsWindow::DrawResourceTab()
     {
         const auto& cs = snapshotResource_;
 
-        if (ImGui::BeginTable("res_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+        ImGui::TextColored(kHeaderColor, "  リソースキャッシュ");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg,    ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        if (ImGui::BeginTable("res_table", 2, kTableFlags))
         {
-            DrawKeyValue("ロード済みモデル数", "%u", cs.loadedModelCount);
-            DrawKeyValue("ロード中リソース数", "%u", cs.loadingResourceCount);
-            DrawKeyValue("キャッシュヒット数", "%u", cs.cacheHitCount);
-            DrawKeyValue("キャッシュミス数", "%u", cs.cacheMissCount);
-            DrawKeyValue("キャッシュヒット率", "%.1f %%", cs.GetCacheHitRate());
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("値",   ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            DrawKeyValue("ロード済みモデル数",   "%u",    cs.loadedModelCount);
+            DrawKeyValue("ロード中リソース数",   "%u",    cs.loadingResourceCount);
+            DrawKeyValue("キャッシュヒット数",   "%u",    cs.cacheHitCount);
+            DrawKeyValue("キャッシュミス数",     "%u",    cs.cacheMissCount);
+            DrawKeyValue("キャッシュヒット率",   "%.1f%%", cs.GetCacheHitRate());
             ImGui::EndTable();
         }
+        ImGui::PopStyleColor(2);
+
+        ImGui::Spacing();
+        // ヒット率プログレスバー
+        float hitRate = cs.GetCacheHitRate() / 100.0f;
+        ImGui::TextColored(kLabelColor, "ヒット率");
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram,
+            hitRate >= 0.8f ? ImVec4(0.2f, 0.85f, 0.3f, 1.0f) :
+            hitRate >= 0.5f ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f)  :
+                              ImVec4(1.0f, 0.3f, 0.3f, 1.0f));
+        ImGui::ProgressBar(hitRate, ImVec2(-1.0f, 0.0f));
+        ImGui::PopStyleColor();
     }
 
     void EngineStatsWindow::DrawMemoryTab()
@@ -184,39 +461,58 @@ namespace CoreEngine
         const auto& ms = snapshotMemory_;
         char buf[64];
 
-        ImGui::SeparatorText("GPU メモリ");
-        if (ImGui::BeginTable("mem_gpu_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg,    ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+
+        ImGui::TextColored(kHeaderColor, "  GPU メモリ");
+        ImGui::Separator();
+        ImGui::Spacing();
+        if (ImGui::BeginTable("mem_gpu_table", 2, kTableFlags))
         {
-            DrawKeyValue("GPU 使用量", "%s", FormatBytes(ms.gpuMemoryUsageBytes, buf, sizeof(buf)));
-            DrawKeyValue("GPU 予算", "%s", FormatBytes(ms.gpuMemoryBudgetBytes, buf, sizeof(buf)));
-            float ratio = ms.gpuMemoryBudgetBytes > 0
-                ? static_cast<float>(ms.gpuMemoryUsageBytes) / static_cast<float>(ms.gpuMemoryBudgetBytes)
-                : 0.0f;
-            ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted("使用率");
-            ImGui::TableSetColumnIndex(1);
-            ImGui::ProgressBar(ratio, ImVec2(-1.0f, 0.0f));
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("値",   ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            DrawKeyValue("使用量", "%s", FormatBytes(ms.gpuMemoryUsageBytes, buf, sizeof(buf)));
+            DrawKeyValue("予算",   "%s", FormatBytes(ms.gpuMemoryBudgetBytes, buf, sizeof(buf)));
+            ImGui::EndTable();
+        }
+        // GPU 使用率バー
+        float gpuRatio = ms.gpuMemoryBudgetBytes > 0
+            ? static_cast<float>(ms.gpuMemoryUsageBytes) / static_cast<float>(ms.gpuMemoryBudgetBytes)
+            : 0.0f;
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram,
+            gpuRatio >= 0.85f ? ImVec4(1.0f, 0.3f, 0.3f, 1.0f) :
+            gpuRatio >= 0.60f ? ImVec4(1.0f, 0.8f, 0.0f, 1.0f) :
+                                ImVec4(0.2f, 0.85f, 0.3f, 1.0f));
+        ImGui::ProgressBar(gpuRatio, ImVec2(-1.0f, 0.0f));
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  CPU メモリ");
+        ImGui::Separator();
+        ImGui::Spacing();
+        if (ImGui::BeginTable("mem_cpu_table", 2, kTableFlags))
+        {
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("値",   ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            DrawKeyValue("ワーキングセット",    "%s", FormatBytes(ms.cpuWorkingSetBytes,  buf, sizeof(buf)));
+            DrawKeyValue("プライベートメモリ",  "%s", FormatBytes(ms.cpuPrivateBytes,      buf, sizeof(buf)));
             ImGui::EndTable();
         }
 
         ImGui::Spacing();
-        ImGui::SeparatorText("CPU メモリ");
-        if (ImGui::BeginTable("mem_cpu_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
-        {
-            DrawKeyValue("ワーキングセット", "%s", FormatBytes(ms.cpuWorkingSetBytes, buf, sizeof(buf)));
-            DrawKeyValue("プライベートメモリ", "%s", FormatBytes(ms.cpuPrivateBytes, buf, sizeof(buf)));
-            ImGui::EndTable();
-        }
-
+        ImGui::TextColored(kHeaderColor, "  モデルバッファ（推定）");
+        ImGui::Separator();
         ImGui::Spacing();
-        ImGui::SeparatorText("モデルバッファ（推定）");
-        if (ImGui::BeginTable("mem_model_table", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH))
+        if (ImGui::BeginTable("mem_model_table", 2, kTableFlags))
         {
-            DrawKeyValue("頂点バッファ合計", "%s", FormatBytes(ms.modelVertexBufferBytes, buf, sizeof(buf)));
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("値",   ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            DrawKeyValue("頂点バッファ合計",     "%s", FormatBytes(ms.modelVertexBufferBytes, buf, sizeof(buf)));
             DrawKeyValue("インデックスバッファ合計", "%s", FormatBytes(ms.modelIndexBufferBytes, buf, sizeof(buf)));
             ImGui::EndTable();
         }
+
+        ImGui::PopStyleColor(2);
     }
 
     void EngineStatsWindow::CollectSceneStats()

@@ -19,6 +19,7 @@ namespace CoreEngine
         uint64_t normalMapSRV = 0;
         uint64_t metallicRoughnessSRV = 0;
         uint64_t occlusionSRV = 0;
+        uint64_t materialCBV = 0;                 ///< マテリアル定数バッファ
         bool isGBufferPass = false;               ///< Forward / GBuffer の区別
 
         bool operator==(const InstanceBatchKey& other) const {
@@ -28,6 +29,7 @@ namespace CoreEngine
                 && normalMapSRV == other.normalMapSRV
                 && metallicRoughnessSRV == other.metallicRoughnessSRV
                 && occlusionSRV == other.occlusionSRV
+                && materialCBV == other.materialCBV
                 && isGBufferPass == other.isGBufferPass;
         }
     };
@@ -44,6 +46,7 @@ namespace CoreEngine
             h = mix(h, std::hash<uint64_t>{}(k.normalMapSRV));
             h = mix(h, std::hash<uint64_t>{}(k.metallicRoughnessSRV));
             h = mix(h, std::hash<uint64_t>{}(k.occlusionSRV));
+            h = mix(h, std::hash<uint64_t>{}(k.materialCBV));
             h = mix(h, std::hash<bool>{}(k.isGBufferPass));
             return h;
         }

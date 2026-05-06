@@ -19,7 +19,6 @@ namespace CoreEngine
 
     class EngineSystem; // 前方宣言
     class DockingUI; // 前方宣言
-    class FrameRateController; // 前方宣言
     class SceneManager; // 前方宣言
 
     class GameDebugUI {
@@ -61,6 +60,11 @@ namespace CoreEngine
         /// @param label メニュー / ウィンドウタイトルに表示する名前
         /// @param drawer ウィンドウ内に描画するコンテンツドロワー
         void RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer);
+
+        /// @brief 指定ラベルのエンジンパネルの表示状態を設定する
+        /// @param label パネルのラベル
+        /// @param visible 表示するならtrue
+        void SetPanelVisible(const std::string& label, bool visible);
 
         /// @brief 更新
         void Update();

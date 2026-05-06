@@ -215,6 +215,7 @@ namespace CoreEngine
             key.normalMapSRV = textures.normal.ptr;
             key.metallicRoughnessSRV = textures.metallicRoughness.ptr;
             key.occlusionSRV = textures.occlusion.ptr;
+            key.materialCBV = static_cast<uint64_t>(materialCBV);
             key.isGBufferPass = isGBufferPass;
 
             batch->Submit(key, mtx, materialCBV);
