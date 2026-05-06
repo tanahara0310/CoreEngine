@@ -14,9 +14,14 @@ namespace CoreEngine
         D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
         UINT indexCount = 0;
         UINT startIndex = 0;
+        UINT instanceCount = 1; ///< インスタンシング描画のインスタンス数（通常モデル: バッチサイズ / スキニング: 1）
+
+        // インスタンスデータ (Root SRV: StructuredBuffer<TransformationMatrix>)
+        // 通常モデル: バッチ集約された行列配列の先頭アドレス
+        // スキニング: 単一インスタンスの行列バッファ先頭アドレス
+        D3D12_GPU_VIRTUAL_ADDRESS instanceDataSRV = 0;
 
         // 定数バッファ (CBV)
-        D3D12_GPU_VIRTUAL_ADDRESS transformCBV = 0;
         D3D12_GPU_VIRTUAL_ADDRESS materialCBV = 0;
 
         // テクスチャ (SRV) — ptr == 0 のものはバインドをスキップ

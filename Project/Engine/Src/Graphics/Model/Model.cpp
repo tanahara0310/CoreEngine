@@ -5,6 +5,7 @@
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Camera/ICamera.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
+#include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Model/Skeleton/SkinClusterGenerator.h"
 #include "Utility/Logger/Logger.h"
@@ -137,8 +138,6 @@ namespace CoreEngine
 
         // 呼び出し側がスロットを明示しない場合（デフォルト Game）は
         // BaseScene が SetCurrentRenderSlot() で設定したグローバルスロットを使用する。
-        // これにより SceneView(slot=Scene) と GameView/GBuffer(slot=Game) が
-        // 別々の WVP バッファに書き込まれ、相互上書きを防ぐ。
         if (slot == TransformBufferSlot::Game) {
             slot = s_currentRenderSlot_;
         }
@@ -146,33 +145,80 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList = renderContext_.dxCommon->GetCommandList();
         assert(cmdList);
 
-        // WVP 行列を更新（slot で使用バッファを指定）
-        UpdateTransformationMatrix(transform, camera, slot);
-
         const auto& subMeshes = resource_->GetSubMeshes();
         assert(!subMeshes.empty() && "Model must have at least one submesh");
 
         const bool isSkinned = HasSkinCluster();
-        BaseModelRenderer* renderer = isSkinned
-            ? renderContext_.skinnedRenderer
-            : renderContext_.modelRenderer;
-        assert(renderer);
 
-        for (const auto& subMesh : subMeshes) {
+        if (isSkinned) {
+            // スキニングモデルは従来通り CBV 経由で即時描画する
+            UpdateTransformationMatrix(transform, camera, slot);
+
+            BaseModelRenderer* renderer = renderContext_.skinnedRenderer;
+            assert(renderer);
+
+            for (const auto& subMesh : subMeshes) {
+                const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
+                D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
+                    ? textureHandle : textures.baseColor;
+
+                ModelDrawPacket packet = BuildSkinningDrawPacket(
+                    subMesh, baseColorTex, textures.normal,
+                    textures.metallicRoughness, textures.occlusion, slot);
+
+                renderer->BindModelDrawPacket(cmdList, packet);
+            }
+            return;
+        }
+
+        // 通常モデル: インスタンシングバッチに行列を Submit する（即時描画はしない）
+        InstanceBatchManager* batch = renderContext_.instanceBatchManager;
+        assert(batch);
+
+        // 行列計算
+        Matrix4x4 worldMatrix = transform.GetWorldMatrix();
+        Matrix4x4 viewMatrix = camera->GetViewMatrix();
+        Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
+        Matrix4x4 wvp = MathCore::Matrix::Multiply(
+            worldMatrix,
+            MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
+        Matrix4x4 lightVP = renderContext_.shadowMapManager
+            ? renderContext_.shadowMapManager->GetLightViewProjection()
+            : MathCore::Matrix::Identity();
+
+        const size_t slotIdx = static_cast<size_t>(slot);
+        TransformationMatrix mtx{};
+        mtx.world = worldMatrix;
+        mtx.WVP = wvp;
+        mtx.prevWVP = prevWVPInitialized_[slotIdx] ? prevWVP_[slotIdx] : wvp;
+        mtx.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
+        mtx.lightViewProjection = lightVP;
+        prevWVP_[slotIdx] = wvp;
+        prevWVPInitialized_[slotIdx] = true;
+
+        // パスの種別はレンダラーのフレームコンテキストから判定する
+        const bool isGBufferPass = renderContext_.modelRenderer->IsInGBufferPass();
+
+        // マテリアルCBVは全サブメッシュで共通
+        const D3D12_GPU_VIRTUAL_ADDRESS materialCBV = materialInstance_->GetGPUVirtualAddress();
+
+        for (uint32_t i = 0; i < subMeshes.size(); ++i) {
+            const auto& subMesh = subMeshes[i];
             const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
-
-            // textureHandle が指定されている場合は BaseColor をオーバーライド
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
                 ? textureHandle : textures.baseColor;
 
-            // モデル種別に応じたパケットを組み立て、レンダラーに渡す
-            const ModelDrawPacket packet = isSkinned
-                ? BuildSkinningDrawPacket(subMesh, baseColorTex, textures.normal,
-                    textures.metallicRoughness, textures.occlusion, slot)
-                : BuildNormalDrawPacket(subMesh, baseColorTex, textures.normal,
-                    textures.metallicRoughness, textures.occlusion, slot);
+            InstanceBatchKey key{};
+            key.resource = resource_;
+            key.subMeshIndex = i;
+            key.baseColorSRV = baseColorTex.ptr;
+            key.normalMapSRV = textures.normal.ptr;
+            key.metallicRoughnessSRV = textures.metallicRoughness.ptr;
+            key.occlusionSRV = textures.occlusion.ptr;
+            key.materialCBV = static_cast<uint64_t>(materialCBV);
+            key.isGBufferPass = isGBufferPass;
 
-            renderer->BindModelDrawPacket(cmdList, packet);
+            batch->Submit(key, mtx, materialCBV);
         }
     }
 
@@ -382,7 +428,8 @@ ModelDrawPacket Model::BuildNormalDrawPacket(
     packet.indexBufferView = resource_->GetIndexBufferView();
     packet.indexCount = subMesh.indexCount;
     packet.startIndex = subMesh.startIndex;
-    packet.transformCBV = transformBuffer->GetGPUVirtualAddress();
+    packet.instanceDataSRV = transformBuffer->GetGPUVirtualAddress();
+    packet.instanceCount = 1;
     packet.materialCBV = materialInstance_->GetGPUVirtualAddress();
     packet.baseColorSRV = baseColorTexture;
     packet.normalMapSRV = normalTexture;
@@ -412,7 +459,8 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.indexBufferView = resource_->GetIndexBufferView();
     packet.indexCount = subMesh.indexCount;
     packet.startIndex = subMesh.startIndex;
-    packet.transformCBV = transformBuffer->GetGPUVirtualAddress();
+    packet.instanceDataSRV = transformBuffer->GetGPUVirtualAddress();
+    packet.instanceCount = 1;
     packet.materialCBV = materialInstance_->GetGPUVirtualAddress();
     packet.baseColorSRV = baseColorTexture;
     packet.normalMapSRV = normalTexture;

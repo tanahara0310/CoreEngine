@@ -1,6 +1,7 @@
 #include "ShadowMapManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 #include "Math/MathCore.h"
 
@@ -91,10 +92,6 @@ void ShadowMapManager::CreateShadowMapResource()
         resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
-        // ヒープの設定
-        D3D12_HEAP_PROPERTIES heapProperties{};
-        heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
-
         // クリア値の設定
         D3D12_CLEAR_VALUE clearValue{};
         clearValue.Format = shadowMapFormat_;
@@ -102,20 +99,11 @@ void ShadowMapManager::CreateShadowMapResource()
         clearValue.DepthStencil.Stencil = 0;
 
         // リソースを作成（初期ステートはSHADER_RESOURCE）
-        HRESULT hr = device_->CreateCommittedResource(
-            &heapProperties,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
+        shadowMapResource_ = ResourceFactory::CreateTextureResource(
+            device_,
+            resourceDesc,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            &clearValue,
-            IID_PPV_ARGS(&shadowMapResource_));
-
-        if (FAILED(hr)) {
-            logger.Log(
-                std::format("エラー: シャドウマップリソースの作成に失敗しました! サイズ={}\n", shadowMapSize_),
-                LogLevel::Error, LogCategory::Graphics);
-            throw std::runtime_error("Failed to create ShadowMap Resource");
-        }
+            &clearValue);
 
         // デバッグ名を設定
         shadowMapResource_->SetName(L"ShadowMapResource");

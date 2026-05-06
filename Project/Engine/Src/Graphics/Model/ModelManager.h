@@ -16,6 +16,7 @@
 
 namespace CoreEngine { class ThreadPool; }
 namespace CoreEngine { class IPrimitiveMeshGenerator; }
+namespace CoreEngine { class InstanceBatchManager; }
 
 namespace CoreEngine
 {
@@ -35,6 +36,9 @@ struct AnimationLoadInfo {
 /// リソースのキャッシュとインスタンスの生成を担当
 class ModelManager {
 public:
+    ModelManager();
+    ~ModelManager();
+
     /// @brief 初期化
     /// @param dxCommon DirectXCommonのポインタ
     /// @param factory リソースファクトリのポインタ
@@ -105,6 +109,9 @@ public:
     /// @param callback 各 ModelResource* に対して呼ばれるコールバック
     void ForEachResource(const std::function<void(ModelResource*)>& callback);
 
+    /// @brief リソースキャッシュ統計（loadedModelCount / loadingResourceCount）を更新する
+    void UpdateResourceCacheStats();
+
 private:
     // DirectXCommon
     DirectXCommon* dxCommon_ = nullptr;
@@ -114,7 +121,10 @@ private:
 
     // Model インスタンス生成時に注入する描画依存コンテキスト
     ModelRenderContext renderContext_;
-    
+
+    // インスタンシングバッチマネージャー（通常モデル用）
+    std::unique_ptr<InstanceBatchManager> instanceBatchManager_;
+
     // デフォルトのベースパス
     const std::string basePath_ = "Application/Assets/";
     

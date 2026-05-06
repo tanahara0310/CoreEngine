@@ -34,9 +34,11 @@ namespace CoreEngine
         gBufferReflectionData_ = reflectionBuilder_->BuildFromShaders(gBufferVertexShaderBlob, gBufferPixelShaderBlob, "ModelRenderer_GBuffer");
 
         // RootSignature 構成: CBV は高速な Root Descriptor、SRV は Descriptor Table
+        // ただし gInstanceData のみ Root Descriptor（インスタンシング用バッファは頻繁に変わるため）
         RootSignatureConfig config = RootSignatureConfig::PerformanceOptimized();
         config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
         config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
+        config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor); // インスタンスデータは Root SRV
         config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
         config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
 
@@ -54,13 +56,11 @@ namespace CoreEngine
 
         // CBV サイズ検証: C++ 構造体と HLSL 構造体のレイアウトが一致しているか確認
         forwardReflectionData_->ValidateAllCBVSizes({
-            {"gTransformationMatrix", sizeof(TransformationMatrix)},
             {"gMaterial", sizeof(MaterialConstants)},
             {"gIBLParams", sizeof(IBLSceneParamsCPU)}
             });
 
         gBufferReflectionData_->ValidateAllCBVSizes({
-            {"gTransformationMatrix", sizeof(TransformationMatrix)},
             {"gMaterial", sizeof(MaterialConstants)}
             });
 
@@ -68,8 +68,8 @@ namespace CoreEngine
         if (GetRootParamIndex("gMaterial") < 0) {
             throw std::runtime_error("gMaterial constant buffer not found in Object3d.PS.hlsl");
         }
-        if (GetRootParamIndex("gTransformationMatrix") < 0) {
-            throw std::runtime_error("gTransformationMatrix constant buffer not found in Object3d.VS.hlsl");
+        if (GetRootParamIndex("gInstanceData") < 0) {
+            throw std::runtime_error("gInstanceData structured buffer not found in Object3d.VS.hlsl");
         }
         if (GetRootParamIndex("gTexture") < 0) {
             throw std::runtime_error("gTexture resource not found in Object3d.PS.hlsl");
@@ -88,8 +88,8 @@ namespace CoreEngine
         if (GetGBufferRootParamIndex("gMaterial") < 0) {
             throw std::runtime_error("gMaterial constant buffer not found in GBuffer.PS.hlsl");
         }
-        if (GetGBufferRootParamIndex("gTransformationMatrix") < 0) {
-            throw std::runtime_error("gTransformationMatrix constant buffer not found in GBuffer.VS.hlsl");
+        if (GetGBufferRootParamIndex("gInstanceData") < 0) {
+            throw std::runtime_error("gInstanceData structured buffer not found in GBuffer.VS.hlsl");
         }
         if (GetGBufferRootParamIndex("gTexture") < 0) {
             throw std::runtime_error("gTexture resource not found in GBuffer.PS.hlsl");
@@ -119,5 +119,7 @@ namespace CoreEngine
         // 初期状態として BlendModeNone の PSO を保持
         forwardPipelineState_ = forwardPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
         gBufferPipelineState_ = gBufferPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
+
+        CacheRootParamIndices();
     }
 }

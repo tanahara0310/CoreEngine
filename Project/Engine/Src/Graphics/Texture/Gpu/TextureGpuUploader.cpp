@@ -35,24 +35,11 @@ namespace CoreEngine
         resourceDesc.SampleDesc.Count = 1;
         resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION(texMetadata.dimension);
 
-        D3D12_HEAP_PROPERTIES heapProperties{};
-        heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
-
         UploadResult result{};
-        HRESULT hr = dxCommon->GetDevice()->CreateCommittedResource(
-            &heapProperties,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&result.texture));
-
-        if (FAILED(hr)) {
-            std::string errorMsg = "Failed to create texture resource: " + resolvedPath;
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
-            FileErrorDialog::ShowTextureError("Failed to create texture resource", resolvedPath, hr);
-            throw std::runtime_error(errorMsg);
-        }
+        result.texture = ResourceFactory::CreateTextureResource(
+            dxCommon->GetDevice(),
+            resourceDesc,
+            D3D12_RESOURCE_STATE_COPY_DEST);
 
         // CPUメモリ上の画像データをアップロードバッファ経由でGPUへ転送する。
         std::vector<D3D12_SUBRESOURCE_DATA> subResources;

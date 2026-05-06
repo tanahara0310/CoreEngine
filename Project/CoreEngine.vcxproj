@@ -248,6 +248,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\PostEffectPresetManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\ModelRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\SkinnedModelRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.cpp" />
@@ -329,6 +330,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Collision\CollisionUtils.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\EngineStatsWindow.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\KeyConfigUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp" />
@@ -447,6 +449,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.h" />
+    <ClInclude Include="Engine\Src\Graphics\Debug\EngineStats.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\IMaterial.h" />
@@ -511,6 +514,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLParameters.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatch.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\SkinnedModelRenderer.h" />
@@ -609,6 +614,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Collision\CollisionUtils.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\EngineStatsWindow.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\GameObjectDebugAccess.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Gizmo.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ImGuiAll.h" />

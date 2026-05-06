@@ -1,5 +1,6 @@
-﻿#include "DepthStencilManager.h"
+#include "DepthStencilManager.h"
 #include "DescriptorManager.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
 
@@ -70,31 +71,17 @@ namespace CoreEngine
         resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
         resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
-        // ヒープの設定
-        D3D12_HEAP_PROPERTIES heapProperties{};
-        heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
-
         // クリア値の設定
         D3D12_CLEAR_VALUE clearValue{};
         clearValue.DepthStencil.Depth = 1.0f;
         clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
         // リソースを作成
-        HRESULT hr = device_->CreateCommittedResource(
-            &heapProperties,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDesc,
+        depthStencilResource_ = ResourceFactory::CreateTextureResource(
+            device_,
+            resourceDesc,
             D3D12_RESOURCE_STATE_DEPTH_WRITE,
-            &clearValue,
-            IID_PPV_ARGS(&depthStencilResource_));
-
-        if (FAILED(hr)) {
-            logger.Log(
-                std::format("エラー: 深度ステンシルリソースの作成に失敗しました! 幅={}, 高さ={}\n",
-                    width_, height_),
-                LogLevel::Error, LogCategory::Graphics);
-            throw std::runtime_error("Failed to create DepthStencilResource");
-        }
+            &clearValue);
 
 #ifdef _DEBUG
         logger.Log(

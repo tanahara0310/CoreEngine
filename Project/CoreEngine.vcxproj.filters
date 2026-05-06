@@ -214,6 +214,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.cpp">
+      <Filter>Engine\Src\Graphics\Render\Model\Instancing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Model\ModelRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
     </ClCompile>
@@ -455,6 +458,9 @@
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.cpp">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\EngineStatsWindow.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\Gizmo.cpp">
@@ -798,6 +804,9 @@
     <ClInclude Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.h">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Debug\EngineStats.h">
+      <Filter>Engine\Src\Graphics\Debug</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h">
       <Filter>Engine\Src\Graphics\IBL</Filter>
     </ClInclude>
@@ -989,6 +998,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\IBLSceneParams.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatch.h">
+      <Filter>Engine\Src\Graphics\Render\Model\Instancing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.h">
+      <Filter>Engine\Src\Graphics\Render\Model\Instancing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelDrawPacket.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>
@@ -1282,6 +1297,9 @@
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\CanvasViewport.h">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\EngineStatsWindow.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\GameObjectDebugAccess.h">
@@ -1756,6 +1774,9 @@
     <Filter Include="Engine\Src\Graphics\Common\Core">
       <UniqueIdentifier>{5D7282C7-EAB3-41AC-A9C4-A9A06AFC715E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Graphics\Debug">
+      <UniqueIdentifier>{923BC417-D35C-4165-9C8E-258EBBD71442}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Graphics\IBL">
       <UniqueIdentifier>{CB5C00A8-4E31-4B66-9096-A0DB805289CB}</UniqueIdentifier>
     </Filter>
@@ -1806,6 +1827,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\Model">
       <UniqueIdentifier>{29C90331-7F23-47F7-AF78-2AF2088C17E9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\Model\Instancing">
+      <UniqueIdentifier>{1939F963-60B0-4596-97E4-24E73156CB85}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\Particle">
       <UniqueIdentifier>{BE0CED7A-38D5-4709-8A9B-7EDB5DF5DB03}</UniqueIdentifier>

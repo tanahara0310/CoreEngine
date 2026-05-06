@@ -1,6 +1,7 @@
 #include "IBLGenerator.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 #include "externals/DirectXTex/d3dx12.h"
@@ -193,22 +194,16 @@ namespace CoreEngine
         desc.SampleDesc.Count = 1;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &desc,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            nullptr,
-            IID_PPV_ARGS(&resource));
+        resource = ResourceFactory::CreateTextureResource(
+            dxCommon_->GetDevice(),
+            desc,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        if (FAILED(hr))
+        if (!resource)
         {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("CreateUAVCubemap failed: 0x{:08X}", static_cast<unsigned int>(hr)));
+                std::format("CreateUAVCubemap failed: resource is null"));
             return nullptr;
         }
         return resource;
@@ -229,22 +224,16 @@ namespace CoreEngine
         desc.SampleDesc.Count = 1;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &desc,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            nullptr,
-            IID_PPV_ARGS(&resource));
+        resource = ResourceFactory::CreateTextureResource(
+            dxCommon_->GetDevice(),
+            desc,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        if (FAILED(hr))
+        if (!resource)
         {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("CreateUAVTexture failed: 0x{:08X}", static_cast<unsigned int>(hr)));
+                std::format("CreateUAVTexture failed: resource is null"));
             return nullptr;
         }
         return resource;
@@ -387,33 +376,18 @@ namespace CoreEngine
         UINT64 totalBytes;
         dxCommon_->GetDevice()->GetCopyableFootprints(&desc, 0, 1, 0, &layout, &numRows, &rowSizeInBytes, &totalBytes);
 
-        D3D12_HEAP_PROPERTIES readbackHeapProps = {};
-        readbackHeapProps.Type = D3D12_HEAP_TYPE_READBACK;
+        Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffer =
+            ResourceFactory::CreateBufferResource(
+                dxCommon_->GetDevice(),
+                totalBytes,
+                D3D12_HEAP_TYPE_READBACK);
 
-        D3D12_RESOURCE_DESC readbackDesc = {};
-        readbackDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        readbackDesc.Width = totalBytes;
-        readbackDesc.Height = 1;
-        readbackDesc.DepthOrArraySize = 1;
-        readbackDesc.MipLevels = 1;
-        readbackDesc.Format = DXGI_FORMAT_UNKNOWN;
-        readbackDesc.SampleDesc.Count = 1;
-        readbackDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffer;
-        HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-            &readbackHeapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &readbackDesc,
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&readbackBuffer));
-
-        if (FAILED(hr))
+        if (!readbackBuffer)
             return false;
 
         // コピーコマンド
         auto commandList = dxCommon_->GetCommandList();
+        HRESULT hr = S_OK;
 
         D3D12_RESOURCE_STATES copyState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         ResourceBarrierHelper::Transition(commandList, brdfLUT, copyState,
@@ -519,19 +493,13 @@ namespace CoreEngine
         desc.Format = metadata.format;
         desc.SampleDesc.Count = 1;
 
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+        Microsoft::WRL::ComPtr<ID3D12Resource> texture =
+            ResourceFactory::CreateTextureResource(
+                dxCommon_->GetDevice(),
+                desc,
+                D3D12_RESOURCE_STATE_COPY_DEST);
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> texture;
-        hr = dxCommon_->GetDevice()->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &desc,
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&texture));
-
-        if (FAILED(hr))
+        if (!texture)
             return nullptr;
 
         // アップロード処理（省略: TextureManagerと同様の処理）
@@ -786,22 +754,16 @@ namespace CoreEngine
         desc.SampleDesc.Count = 1;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &desc,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            nullptr,
-            IID_PPV_ARGS(&resource));
+        resource = ResourceFactory::CreateTextureResource(
+            dxCommon_->GetDevice(),
+            desc,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        if (FAILED(hr))
+        if (!resource)
         {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("CreateUAVCubemapWithMips failed: 0x{:08X}", static_cast<unsigned int>(hr)));
+                std::format("CreateUAVCubemapWithMips failed: resource is null"));
             return nullptr;
         }
         return resource;

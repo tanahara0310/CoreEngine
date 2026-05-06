@@ -1,4 +1,4 @@
-#include "SkinnedModelRenderer.h"
+﻿#include "SkinnedModelRenderer.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Model/TransformationMatrix.h"
@@ -97,5 +97,7 @@ namespace CoreEngine
         iblParamsBuffer_->Map(0, nullptr, &mapped);
         std::memcpy(mapped, &defaults, sizeof(defaults));
         iblParamsBuffer_->Unmap(0, nullptr);
+
+        CacheRootParamIndices();
     }
 }

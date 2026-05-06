@@ -1,4 +1,5 @@
 #include "GpuTimestampProfiler.h"
+#include "Graphics/Resource/ResourceFactory.h"
 
 #include <cassert>
 
@@ -19,27 +20,10 @@ namespace CoreEngine
         // ── フレームごとの readback バッファ作成 ────────────────
         const UINT64 bufferSize = static_cast<UINT64>(kQueriesPerFrame) * sizeof(uint64_t);
 
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_READBACK;
-
-        D3D12_RESOURCE_DESC resDesc = {};
-        resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resDesc.Width = bufferSize;
-        resDesc.Height = 1;
-        resDesc.DepthOrArraySize = 1;
-        resDesc.MipLevels = 1;
-        resDesc.Format = DXGI_FORMAT_UNKNOWN;
-        resDesc.SampleDesc.Count = 1;
-        resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        resDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
         for (uint32_t i = 0; i < kFrameCount; ++i)
         {
-            hr = device->CreateCommittedResource(
-                &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
-                D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
-                IID_PPV_ARGS(&readbackBuffers_[i]));
-            assert(SUCCEEDED(hr));
+            readbackBuffers_[i] = ResourceFactory::CreateBufferResource(
+                device, bufferSize, D3D12_HEAP_TYPE_READBACK);
         }
 
         // スロット名を初期設定

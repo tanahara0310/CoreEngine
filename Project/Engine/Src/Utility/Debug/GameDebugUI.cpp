@@ -5,14 +5,8 @@
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
 #include "Utility/FrameRate/FrameRateController.h"
-#include "Scene/SceneManager.h"
-#include "Graphics/PostEffect/PostEffectManager.h"
-#include "ObjectCommon/Model/ModelGameObject.h"
-#include "ObjectCommon/GameObjectManager.h"
-#include "Graphics/Material/MaterialConstants.h"
 #include <imgui.h>
 
-#include <Psapi.h>
 #include <algorithm>
 
 
@@ -30,88 +24,6 @@ namespace CoreEngine
         // スクリーンキャプチャにHWNDを設定
         if (auto* debug = engine->GetDebugSubsystem()) {
             screenCapture_.SetHwnd(debug->GetImGuiManager()->GetHwnd());
-        }
-
-        // Lightingをエンジン専用パネルとして登録（独立ウィンドウ）
-        RegisterEnginePanel("Lighting", [this]() {
-            auto lightManager = engine_->GetComponent<LightManager>();
-            if (lightManager) {
-                lightManager->DrawAllImGui();
-            }
-        });
-
-        // Shadingをエンジン専用パネルとして登録
-        RegisterEnginePanel("Shading", [this]() {
-            auto* sceneManager = engine_->GetSceneManager();
-            auto* objManager   = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
-
-            // ─────────────── シーン全体 ───────────────
-            ImGui::SeparatorText("シーン全体に適用");
-
-            static const char* kModeItems[] = {
-                "PBR  (IBL なし)",
-                "PBR + IBL",
-                "Lambert  (従来)",
-                "Half-Lambert  (従来)"
-            };
-            static int sceneWideShadingMode = 0;
-            ImGui::SetNextItemWidth(220.0f);
-            ImGui::Combo("モード##SceneWide", &sceneWideShadingMode, kModeItems, 4);
-
-            ImGui::BeginDisabled(objManager == nullptr);
-            if (ImGui::Button("シーン全体に適用", ImVec2(-1.0f, 0.0f))) {
-                const auto mode = static_cast<ShadingMode>(sceneWideShadingMode);
-                for (auto& obj : objManager->GetAllObjects()) {
-                    auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
-                    if (!modelObj) continue;
-                    auto* model = modelObj->GetModel();
-                    if (!model) continue;
-                    auto* mat = model->GetMaterial();
-                    if (mat) mat->SetShadingMode(mode);
-                }
-            }
-            ImGui::EndDisabled();
-            if (objManager == nullptr) {
-                ImGui::TextDisabled("(シーンが存在しません)");
-            }
-
-            // ─────────────── 現在のモデル一覧 ───────────────
-            ImGui::Spacing();
-            ImGui::SeparatorText("モデル別シェーディングモード");
-
-            if (objManager) {
-                int modelIndex = 0;
-                for (auto& obj : objManager->GetAllObjects()) {
-                    auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
-                    if (!modelObj) continue;
-                    auto* model = modelObj->GetModel();
-                    if (!model) continue;
-                    auto* mat = model->GetMaterial();
-                    if (!mat) continue;
-
-                    ImGui::PushID(modelIndex++);
-                    const char* name = modelObj->GetObjectName();
-                    ImGui::SetNextItemWidth(170.0f);
-                    int mode = static_cast<int>(mat->GetShadingMode());
-                    if (ImGui::Combo(name, &mode, kModeItems, 4)) {
-                        mat->SetShadingMode(static_cast<ShadingMode>(mode));
-                    }
-                    ImGui::PopID();
-                }
-            } else {
-                ImGui::TextDisabled("(シーンが存在しません)");
-            }
-        });
-
-        // Post Effectsをエンジン専用パネルとして登録（デフォルト表示）
-        RegisterEnginePanel("Post Effects", [this]() {
-            if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
-                postEffect->DrawImGuiContent();
-            }
-        });
-        // Post Effectsはデフォルトで表示する
-        for (auto& p : enginePanels_) {
-            if (p.label == "Post Effects") { p.visible = true; break; }
         }
 
         if (dockingUI_) {
@@ -152,6 +64,14 @@ namespace CoreEngine
         appEditors_.push_back({ label, std::move(drawer), false });
     }
 
+    void GameDebugUI::RegisterEngineEditor(const std::string& label, std::function<void()> drawer)
+    {
+        for (auto& entry : engineEditors_) {
+            if (entry.label == label) { entry.drawer = std::move(drawer); return; }
+        }
+        engineEditors_.push_back({ label, std::move(drawer), false });
+    }
+
     void GameDebugUI::RegisterEnginePanel(const std::string& label, std::function<void()> drawer)
     {
         for (auto& p : enginePanels_) {
@@ -162,6 +82,21 @@ namespace CoreEngine
         // ドッキングシステムにウィンドウを登録
         if (dockingUI_) {
             dockingUI_->RegisterWindow(label, DockArea::Right);
+        }
+    }
+
+    void GameDebugUI::RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer)
+    {
+        for (auto& p : engineDebugPanels_) {
+            if (p.label == label) { p.drawer = std::move(drawer); return; }
+        }
+        engineDebugPanels_.push_back({ label, std::move(drawer), false });
+    }
+
+    void GameDebugUI::SetPanelVisible(const std::string& label, bool visible)
+    {
+        for (auto& p : enginePanels_) {
+            if (p.label == label) { p.visible = visible; return; }
         }
     }
 
@@ -181,6 +116,52 @@ namespace CoreEngine
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("Debug")) {
                 ImGui::Checkbox("Console", &showConsole_);
+                ImGui::EndMenu();
+            }
+
+            // EngineDebug 専用メニュー（Inspectorタブとしてトグル・複数選択対応）
+            if (ImGui::BeginMenu("EngineDebug")) {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.60f, 0.60f, 0.60f, 1.0f));
+                ImGui::TextUnformatted("  デバッグ情報");
+                ImGui::PopStyleColor();
+                ImGui::Separator();
+                for (auto& entry : engineEditors_) {
+                    // カテゴリ別アイコン
+                    const char* icon = "  ";
+                    if (entry.label == "パフォーマンス")   icon = " \xE2\x96\xB6  ";
+                    else if (entry.label == "レンダリング") icon = " \xE2\x97\x86  ";
+                    else if (entry.label == "シーン")       icon = " \xE2\x97\x89  ";
+                    else if (entry.label == "リソース")     icon = " \xE2\x96\xA0  ";
+                    else if (entry.label == "メモリ")       icon = " \xE2\x96\xA3  ";
+                    std::string itemLabel = std::string(icon) + entry.label;
+
+                    // DontClosePopups でクリックしてもメニューを閉じない
+                    if (ImGui::Selectable(itemLabel.c_str(), entry.visible,
+                            ImGuiSelectableFlags_DontClosePopups,
+                            ImVec2(0.0f, 0.0f)))
+                    {
+                        entry.visible = !entry.visible;
+                    }
+                    // チェックマークを右端に描画
+                    if (entry.visible) {
+                        ImGui::SameLine();
+                        float checkX = ImGui::GetWindowWidth()
+                            - ImGui::GetStyle().WindowPadding.x
+                            - ImGui::CalcTextSize("\xE2\x9C\x93").x;
+                        ImGui::SetCursorPosX(checkX);
+                        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "\xE2\x9C\x93");
+                    }
+                }
+                ImGui::Separator();
+                // 全て表示 / 全て非表示（こちらも閉じない）
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.65f, 0.0f, 1.0f));
+                if (ImGui::Selectable("  すべて表示", false, ImGuiSelectableFlags_DontClosePopups)) {
+                    for (auto& e : engineEditors_) e.visible = true;
+                }
+                if (ImGui::Selectable("  すべて非表示", false, ImGuiSelectableFlags_DontClosePopups)) {
+                    for (auto& e : engineEditors_) e.visible = false;
+                }
+                ImGui::PopStyleColor();
                 ImGui::EndMenu();
             }
 
@@ -244,6 +225,7 @@ namespace CoreEngine
         DrawHierarchyPanel();
         DrawInspectorPanel();
         DrawEnginePanels();
+        DrawEngineDebugPanels();
         DrawEditorSwitcherPanel();
 
         if (showConsole_) ShowConsoleUI();
@@ -319,6 +301,18 @@ namespace CoreEngine
     {
         for (auto& panel : enginePanels_) {
             if (!panel.visible) continue;
+            if (ImGui::Begin(panel.label.c_str(), &panel.visible)) {
+                if (panel.drawer) panel.drawer();
+            }
+            ImGui::End();
+        }
+    }
+
+    void GameDebugUI::DrawEngineDebugPanels()
+    {
+        for (auto& panel : engineDebugPanels_) {
+            if (!panel.visible) continue;
+            ImGui::SetNextWindowSize(ImVec2(420.0f, 480.0f), ImGuiCond_FirstUseEver);
             if (ImGui::Begin(panel.label.c_str(), &panel.visible)) {
                 if (panel.drawer) panel.drawer();
             }
