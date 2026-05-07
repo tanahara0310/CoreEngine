@@ -168,6 +168,7 @@ namespace CoreEngine
             debugUI_->Initialize(this);
         }
         debugUI_->SetGameObjectManager(debugGameObjectManager_);
+        debugUI_->SetEngineSystem(engineSystem_);
         debugUI_->Draw();
     }
 
@@ -178,6 +179,7 @@ namespace CoreEngine
             debugUI_->Initialize(this);
         }
         debugUI_->SetGameObjectManager(debugGameObjectManager_);
+        debugUI_->SetEngineSystem(engineSystem_);
         debugUI_->UpdateModules();
     }
 
@@ -188,6 +190,7 @@ namespace CoreEngine
             debugUI_->Initialize(this);
         }
         debugUI_->SetGameObjectManager(debugGameObjectManager_);
+        debugUI_->SetEngineSystem(engineSystem_);
         debugUI_->DrawContent();
     }
 #endif

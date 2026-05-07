@@ -5,106 +5,179 @@
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 
 #include "Camera/CameraManager.h"
-#include "Camera/Debug/DebugCamera.h"
+#include "Camera/Release/Camera.h"
+#include "EngineSystem/EngineSystem.h"
+#include "Input/InputManager.h"
+#include "Input/InputQuery.h"
+#include "Input/MouseInput.h"
+#include "Utility/FrameRate/FrameRateController.h"
+
+#include <dinput.h>
+#include <cmath>
+#include <numbers>
 
 namespace CoreEngine
 {
-    void CameraGameViewControlModule::Update(const CameraEditorContext& context)
+    // -----------------------------------------------------------------------
+    // ヘルパー：GameビューImGuiウィンドウ内にマウスカーソルがあるか
+    // -----------------------------------------------------------------------
+    static bool IsMouseInGameWindow()
     {
-        (void)context;
+        ImGuiWindow* win = ImGui::FindWindowByName("Game");
+        if (!win) { return false; }
+        ImGuiIO& io = ImGui::GetIO();
+        ImVec2 mp = io.MousePos;
+        return mp.x >= win->Pos.x && mp.x <= win->Pos.x + win->Size.x &&
+               mp.y >= win->Pos.y && mp.y <= win->Pos.y + win->Size.y;
     }
 
-    void CameraGameViewControlModule::Draw(const CameraEditorContext& context)
+    // -----------------------------------------------------------------------
+    // Update：キー入力でリリースカメラを移動・回転
+    // -----------------------------------------------------------------------
+    void CameraGameViewControlModule::Update(const CameraEditorContext& context)
     {
-        if (!context.cameraManager) {
-            return;
+        if (!flightEnabled_) { return; }
+        if (!context.cameraManager || !context.engineSystem) { return; }
+
+        // リリースカメラ（Camera）を取得
+        Camera* releaseCamera = nullptr;
+        for (const auto& [name, cam] : context.cameraManager->GetAllCameras()) {
+            if (auto* rc = dynamic_cast<Camera*>(cam.get())) {
+                releaseCamera = rc;
+                break;
+            }
+        }
+        if (!releaseCamera) { return; }
+
+        // 入力・デルタタイム取得
+        auto* inputManager = context.engineSystem->GetComponent<InputManager>();
+        auto* frameRate    = context.engineSystem->GetComponent<FrameRateController>();
+        if (!inputManager || !frameRate) { return; }
+
+        auto& input = inputManager->GetQuery();
+        float dt    = frameRate->GetDeltaTime();
+
+        // ===== 右ドラッグによる視点回転 =====
+        // Triggered に頼らず「押されている かつ Gameウィンドウ内で開始」で管理する
+        bool rightPressed = input.IsMouseButtonPressed(MouseButton::Right);
+
+        if (rightPressed && !draggingRight_ && IsMouseInGameWindow()) {
+            draggingRight_ = true;
+        }
+        if (!rightPressed) {
+            draggingRight_ = false;
         }
 
-        // アクティブカメラに依存せず、登録済みカメラから DebugCamera を探す
-        DebugCamera* debugCamera = nullptr;
-        std::string debugCameraName;
-        for (const auto& [name, camera] : context.cameraManager->GetAllCameras()) {
-            if (auto* dc = dynamic_cast<DebugCamera*>(camera.get())) {
-                debugCamera = dc;
-                debugCameraName = name;
+        if (draggingRight_) {
+            // GetMouseDragX/Y はフレーム間の相対移動量を直接返す
+            float dx = static_cast<float>(input.GetMouseDragX());
+            float dy = static_cast<float>(input.GetMouseDragY());
+
+            Vector3 rot = releaseCamera->GetRotate();
+            rot.y += dx * lookSensitivity_;                               // ヨー
+            rot.x += dy * lookSensitivity_ * (invertY_ ? -1.0f : 1.0f);  // ピッチ
+
+            // ピッチ制限
+            const float maxPitch = std::numbers::pi_v<float> * 0.49f;
+            rot.x = std::clamp(rot.x, -maxPitch, maxPitch);
+
+            releaseCamera->SetRotate(rot);
+        }
+
+        // ===== WASD / Q・E による移動 =====
+        // GetForward() は -Z 方向を返すため、W で +Z（前進）になるよう符号を反転する
+        Vector3 forward = releaseCamera->GetForward();
+        Vector3 right   = releaseCamera->GetRight();
+
+        Vector3 move = { 0.0f, 0.0f, 0.0f };
+
+        // W: +Z方向（-forward）、S: -Z方向（+forward）
+        if (input.IsKeyPressed(DIK_W)) { move.x -= forward.x; move.y -= forward.y; move.z -= forward.z; }
+        if (input.IsKeyPressed(DIK_S)) { move.x += forward.x; move.y += forward.y; move.z += forward.z; }
+        if (input.IsKeyPressed(DIK_D)) { move.x += right.x;   move.y += right.y;   move.z += right.z;   }
+        if (input.IsKeyPressed(DIK_A)) { move.x -= right.x;   move.y -= right.y;   move.z -= right.z;   }
+        if (input.IsKeyPressed(DIK_E)) { move.y += 1.0f; }   // ワールドY軸上昇
+        if (input.IsKeyPressed(DIK_Q)) { move.y -= 1.0f; }   // ワールドY軸下降
+
+        // 正規化（ゼロベクトルは無視）
+        float len = std::sqrtf(move.x * move.x + move.y * move.y + move.z * move.z);
+        if (len > 0.0001f) {
+            float spd = moveSpeed_ * dt;
+            Vector3 pos = releaseCamera->GetTranslate();
+            pos.x += (move.x / len) * spd;
+            pos.y += (move.y / len) * spd;
+            pos.z += (move.z / len) * spd;
+            releaseCamera->SetTranslate(pos);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Draw：エディターUI
+    // -----------------------------------------------------------------------
+    void CameraGameViewControlModule::Draw(const CameraEditorContext& context)
+    {
+        if (!context.cameraManager) { return; }
+
+        // リリースカメラを取得
+        Camera* releaseCamera = nullptr;
+        std::string releaseCameraName;
+        for (const auto& [name, cam] : context.cameraManager->GetAllCameras()) {
+            if (auto* rc = dynamic_cast<Camera*>(cam.get())) {
+                releaseCamera = rc;
+                releaseCameraName = name;
                 break;
             }
         }
 
-        if (!debugCamera) {
-            UI::Hint("DebugCamera が登録されていません。");
+        if (!releaseCamera) {
+            UI::Hint("リリースカメラ（Camera）が登録されていません。");
             return;
         }
 
-        ImGui::Text("対象カメラ: %s", debugCameraName.c_str());
+        ImGui::Text("対象カメラ: %s", releaseCameraName.c_str());
         UI::Separator();
 
-        DebugCamera::CameraSettings settings = debugCamera->GetSettings();
-        bool changed = false;
+        // ===== フライトモード トグル =====
+        UI::SectionHeader("Gameビュー自由操作");
 
-        // ===== 操作対象ビューの切り替え =====
-        UI::SectionHeader("操作対象ビュー");
-
-        bool useGameView = settings.useGameView;
-        if (UI::Widgets::ToggleSwitch("Gameビューで操作する", &useGameView)) {
-            settings.useGameView = useGameView;
-            changed = true;
-
-            // Gameビュー操作が有効になったらオーバーライドを設定し、
-            // DebugCamera の視点が Game ビューにも反映されるようにする
-            if (useGameView) {
-                context.cameraManager->SetGameViewCameraOverride(debugCameraName);
-            } else {
-                context.cameraManager->SetGameViewCameraOverride("");
+        if (UI::Widgets::ToggleSwitch("フライトモード", &flightEnabled_)) {
+            // 無効化時はドラッグ状態をリセット
+            if (!flightEnabled_) {
+                draggingRight_ = false;
             }
         }
 
-        if (settings.useGameView) {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "[ Gameビューで操作中 ]");
+        if (flightEnabled_) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "[ フライトモード ON ]");
         } else {
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "[ Sceneビューで操作中 ]");
-        }
-        UI::Hint("中ボタンドラッグ = 回転  /  Shift+中ボタン = パン  /  ホイール = ズーム");
-
-        // ===== 操作感度 =====
-        UI::SectionHeader("操作感度");
-        changed |= UI::DragFloat("回転感度", settings.rotationSensitivity, 0.0001f, 0.0001f, 0.05f, "%.4f");
-        changed |= UI::DragFloat("パン感度",  settings.panSensitivity,      0.00001f, 0.00001f, 0.01f, "%.5f");
-        changed |= UI::DragFloat("ズーム感度", settings.zoomSensitivity,     0.1f,    0.1f,    10.0f, "%.2f");
-
-        // ===== 移動設定 =====
-        UI::SectionHeader("移動設定");
-
-        bool invertY = settings.invertY;
-        if (UI::Widgets::ToggleSwitch("Y軸反転", &invertY)) {
-            settings.invertY = invertY;
-            changed = true;
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "[ フライトモード OFF ]");
         }
 
-        bool smoothMovement = settings.smoothMovement;
-        if (UI::Widgets::ToggleSwitch("スムーズ移動", &smoothMovement)) {
-            settings.smoothMovement = smoothMovement;
-            changed = true;
-        }
-        if (settings.smoothMovement) {
-            changed |= UI::SliderFloat("スムージング係数", settings.smoothingFactor, 0.01f, 1.0f, "%.2f");
+        UI::Hint("W/S = 前後  A/D = 左右  Q/E = 下上\n右ドラッグ = 視点回転");
+
+        if (!flightEnabled_) { return; }
+
+        // ===== 操作設定 =====
+        UI::SectionHeader("操作設定");
+        UI::DragFloat("移動速度", moveSpeed_, 0.5f, 0.1f, 500.0f, "%.1f");
+        UI::DragFloat("回転感度", lookSensitivity_, 0.0001f, 0.0001f, 0.05f, "%.4f");
+
+        bool inv = invertY_;
+        if (UI::Widgets::ToggleSwitch("Y軸反転", &inv)) {
+            invertY_ = inv;
         }
 
-        // ===== 距離制限 =====
-        UI::SectionHeader("距離制限");
-        changed |= UI::DragFloat("最小距離", settings.minDistance, 0.01f,  0.01f,    100.0f,    "%.2f");
-        changed |= UI::DragFloat("最大距離", settings.maxDistance, 10.0f,  1.0f,  100000.0f,   "%.1f");
-
-        if (changed) {
-            debugCamera->SetSettings(settings);
-        }
+        // ===== 現在のカメラ状態 =====
+        UI::SectionHeader("カメラ情報");
+        Vector3 pos = releaseCamera->GetTranslate();
+        Vector3 rot = releaseCamera->GetRotate();
+        ImGui::Text("Position: %.2f, %.2f, %.2f", pos.x, pos.y, pos.z);
+        ImGui::Text("Rotation: %.2f, %.2f, %.2f", rot.x, rot.y, rot.z);
 
         UI::Separator();
-        if (ImGui::Button("設定をリセット")) {
-            DebugCamera::CameraSettings defaultSettings{};
-            debugCamera->SetSettings(defaultSettings);
-            // リセット時は Gameビュー操作も無効化する
-            context.cameraManager->SetGameViewCameraOverride("");
+        if (ImGui::Button("カメラをリセット")) {
+            releaseCamera->Reset();
+            draggingRight_ = false;
         }
     }
 }

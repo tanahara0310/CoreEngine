@@ -13,6 +13,7 @@ namespace CoreEngine {
     // 前方宣言
     class CameraManager;
     class GameObjectManager;
+    class EngineSystem;
     /// @brief カメラデバッグUI - ImGuiを使用したカメラ制御インターフェース
     class CameraDebugUI {
     public:
@@ -27,6 +28,10 @@ namespace CoreEngine {
         /// @brief 追従対象探索に使うオブジェクトマネージャーを設定
         /// @param gameObjectManager ゲームオブジェクトマネージャー
         void SetGameObjectManager(GameObjectManager* gameObjectManager) { gameObjectManager_ = gameObjectManager; }
+
+        /// @brief 入力・デルタタイム参照用のEngineSystemを設定
+        /// @param engine エンジンシステム
+        void SetEngineSystem(EngineSystem* engine) { engineSystem_ = engine; }
 
         /// @brief ImGuiウィンドウを描画
         void Draw();
@@ -51,6 +56,7 @@ namespace CoreEngine {
     private:
         CameraManager* cameraManager_ = nullptr;
         GameObjectManager* gameObjectManager_ = nullptr;
+        EngineSystem* engineSystem_ = nullptr;
 
         // 機能追加しやすいよう、エディター機能はモジュール列として管理する。
         std::vector<std::unique_ptr<ICameraEditorModule>> modules_;

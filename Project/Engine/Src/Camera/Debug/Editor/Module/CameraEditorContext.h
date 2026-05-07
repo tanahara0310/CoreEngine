@@ -6,12 +6,14 @@ namespace CoreEngine
 {
     class CameraManager;
     class GameObjectManager;
+    class EngineSystem;
 
     /// @brief カメラエディター各モジュールへ渡す共通コンテキスト
     struct CameraEditorContext {
 
-        CameraManager* cameraManager = nullptr;
-        GameObjectManager* gameObjectManager = nullptr;
+        CameraManager*     cameraManager     = nullptr;
+        GameObjectManager* gameObjectManager  = nullptr;
+        EngineSystem*      engineSystem       = nullptr;
     };
 }
 
