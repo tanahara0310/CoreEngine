@@ -25,6 +25,7 @@ namespace CoreEngine
         // カメラエディター側で追従対象を参照できるよう、オブジェクトマネージャーを注入する。
         if (cameraManager_) {
             cameraManager_->SetDebugGameObjectManager(gameObjectManager_);
+            cameraManager_->SetEngineSystem(engine_);
         }
 
         // 保存通知コールバックを設定

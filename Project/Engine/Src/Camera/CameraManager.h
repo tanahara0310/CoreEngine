@@ -14,6 +14,7 @@ namespace CoreEngine
     // 前方宣言
     class CameraDebugUI;
     class GameObjectManager;
+    class EngineSystem;
 #endif
 
     class CameraManager {
@@ -98,6 +99,10 @@ namespace CoreEngine
         /// @brief カメラエディターで参照するGameObjectManagerを設定
         /// @param gameObjectManager ゲームオブジェクトマネージャー
         void SetDebugGameObjectManager(GameObjectManager* gameObjectManager);
+
+        /// @brief 入力・デルタタイム参照用のEngineSystemを設定
+        /// @param engine エンジンシステム
+        void SetEngineSystem(EngineSystem* engine) { engineSystem_ = engine; }
 #endif
 
     private:
@@ -121,6 +126,9 @@ namespace CoreEngine
 
         /// @brief デバッグUIへ渡すゲームオブジェクトマネージャー（非所有）
         GameObjectManager* debugGameObjectManager_ = nullptr;
+
+        /// @brief モジュールへ渡すエンジンシステム（非所有）
+        EngineSystem* engineSystem_ = nullptr;
 #endif
     };
 }

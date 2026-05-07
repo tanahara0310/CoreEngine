@@ -133,6 +133,7 @@ namespace CoreEngine {
         CameraEditorContext context{};
         context.cameraManager = cameraManager_;
         context.gameObjectManager = gameObjectManager_;
+        context.engineSystem = engineSystem_;
         return context;
     }
 
