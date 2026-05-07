@@ -16,7 +16,11 @@ namespace CoreEngine
 
         void SetRenderTargetName(const std::string& name) { targetName_ = name; }
 
+        /// @brief 前のパス（SSAOPass 等）の出力を受け取る
+        void SetInput(const PassOutput& input) override { input_ = input; }
+
     private:
         std::string targetName_ = "Offscreen0";
+        PassOutput  input_{};   ///< SSAOPass の出力（SSAO SRV）
     };
 }

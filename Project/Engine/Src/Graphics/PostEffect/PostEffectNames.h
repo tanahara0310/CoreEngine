@@ -22,5 +22,7 @@ namespace PostEffectNames {
     constexpr const char* Bloom = "Bloom";
     constexpr const char* Dissolve = "Dissolve";
     constexpr const char* ToneMapping = "ToneMapping";
+    constexpr const char* SSAO = "SSAO";
+    constexpr const char* SSAOBlur = "SSAOBlur";
 }
 }

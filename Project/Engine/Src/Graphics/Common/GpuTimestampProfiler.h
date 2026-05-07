@@ -14,6 +14,7 @@ namespace CoreEngine
         ShadowPass = 0,
         GBufferPass,
         RTShadow,
+        SSAOPass,
         DeferredLighting,
         GeometryPass,
         PostEffect,

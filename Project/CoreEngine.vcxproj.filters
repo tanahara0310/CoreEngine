@@ -121,6 +121,12 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\SSAO.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\SSAOBlur.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
@@ -251,6 +257,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\SSAOPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderManager.cpp">
@@ -476,6 +485,9 @@
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\RenderPassDebugPanel.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp">
@@ -864,6 +876,12 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\SSAO.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\SSAOBlur.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
@@ -1045,6 +1063,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderManager.h">
@@ -1324,6 +1345,9 @@
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h">
+      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\RenderPassDebugPanel.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h">

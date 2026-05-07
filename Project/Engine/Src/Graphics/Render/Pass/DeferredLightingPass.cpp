@@ -106,6 +106,14 @@ namespace CoreEngine
 
         // ===== ライティングパスを実行 =====
         auto* cmdList = context.dxCommon->GetCommandList();
+
+        // ===== SSAO SRV を渡す（SSAOPass の出力が入力として届いている場合） =====
+        if (input_.isValid && input_.srvHandle.ptr != 0) {
+            deferredLighting->SetSSAOHandle(input_.srvHandle);
+        } else {
+            deferredLighting->SetSSAOHandle({});
+        }
+
         target->Begin(cmdList);
         deferredLighting->Draw(context.gBufferManager->GetSRVHandle(GBufferManager::Target::AlbedoAO));
         target->End(cmdList);

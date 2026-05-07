@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include <cstdint>
 #include <vector>
+#include "Graphics/Render/Render.h"
 
 namespace CoreEngine
 {
@@ -34,12 +35,16 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreenRtvHandle(uint32_t index = 0) const;
     D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle(uint32_t index = 0) const;
 
+    /// @brief 指定ターゲットのクリアカラーを設定（リソース再作成が必要な場合は Resize/Ensure 後に呼ぶこと）
+    void SetTargetClearColor(uint32_t index, const float color[4]);
+
 private:
     struct OffScreenTarget {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
         D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
         D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
+        float clearColor[4] = { Render::kClearColor[0], Render::kClearColor[1], Render::kClearColor[2], Render::kClearColor[3] };
     };
 
     /// @brief 単一ターゲットのリソースを作成または再作成

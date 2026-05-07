@@ -94,6 +94,7 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreenRtvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenRtvHandle(index); }
     D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenSrvHandle(index); }
     void EnsureOffScreenTargetCount(uint32_t count) { offScreenManager_->EnsureTargetCount(count); }
+    void SetOffScreenTargetClearColor(uint32_t index, const float color[4]) { offScreenManager_->SetTargetClearColor(index, color); }
 
     // フェンスを待機
     void WaitForPreviousFrame() { commandManager_->WaitForPreviousFrame(); }

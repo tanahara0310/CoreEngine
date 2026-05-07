@@ -12,6 +12,7 @@
 #include "Utility/Debug/ImGui/ThreadProfilerUI.h"
 #include "Utility/Debug/ImGui/KeyConfigUI.h"
 #include "Utility/Debug/ImGui/EngineStatsWindow.h"
+#include "Utility/Debug/ImGui/RenderPassDebugPanel.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 
@@ -105,6 +106,7 @@ namespace CoreEngine
         std::unique_ptr<ThreadProfilerUI> threadProfilerUI_;
         std::unique_ptr<EngineStatsWindow> engineStatsWindow_;
         KeyConfigUI keyConfigUI_;
+        RenderPassDebugPanel renderPassDebugPanel_;
 
         // SceneView 設定（configから読み込み）
         bool sceneViewEnablePostEffect_ = false;

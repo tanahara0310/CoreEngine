@@ -44,6 +44,11 @@ namespace CoreEngine
         /// @brief オフスクリーンインデックスを取得
         int GetIndex() const { return index_; }
 
+        /// @brief 深度バッファを使用するか設定（falseにするとDSVのバインドとクリアをスキップ）
+        /// @note SSAO等のポストプロセスパスではfalseにして共有DSVを破壊しないようにする
+        void SetUseDepthBuffer(bool use) { useDepthBuffer_ = use; }
+        bool GetUseDepthBuffer() const { return useDepthBuffer_; }
+
     private:
         void SyncCurrentState() const;
 
@@ -55,5 +60,6 @@ namespace CoreEngine
         mutable int32_t width_ = 0;
         mutable int32_t height_ = 0;
         int index_ = 0;
+        bool useDepthBuffer_ = true;
     };
 }

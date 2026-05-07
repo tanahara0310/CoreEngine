@@ -57,6 +57,11 @@ Texture2D<float> gRTShadowMask2 : register(t14);
 Texture2D<float> gRTShadowMask3 : register(t15);
 
 // ============================================================
+// SSAO テクスチャ（スクリーンスペース AO）
+// ============================================================
+Texture2D<float4> gSSAO : register(t16);
+
+// ============================================================
 // IBL パラメータ（シーン共通）
 // ============================================================
 struct IBLParams
@@ -193,6 +198,18 @@ PixelShaderOutput main(PixelShaderInput input)
     const bool useTraditional = useLambert || useHalfLambert;
 
     float ao = saturate(albedoAO.a);
+
+    // SSAO テクスチャが有効な場合（幅 > 1）は AO 値に乗算する
+    {
+        float ssaoW, ssaoH;
+        gSSAO.GetDimensions(ssaoW, ssaoH);
+        if (ssaoW > 1.0f && ssaoH > 1.0f)
+        {
+            float ssaoVal = gSSAO.Load(loadCoord).r;
+            ao *= ssaoVal;
+        }
+    }
+
     float roughness = saturate(normalRoughness.a);
     float metallic = saturate(emissiveMetallic.a);
     float3 emissive = emissiveMetallic.rgb;

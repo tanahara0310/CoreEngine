@@ -25,6 +25,7 @@
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Graphics/Render/Pass/ShadowMapPass.h"
 #include "Graphics/Render/Pass/GBufferPass.h"
+#include "Graphics/Render/Pass/SSAOPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
@@ -292,6 +293,11 @@ namespace CoreEngine
             executePass(renderPipeline_->GetPass<GBufferPass>());
         }
 
+        {
+            EngineProfileScope scope(this, GpuTimestampSlot::SSAOPass, cmdList);
+            executePass(renderPipeline_->GetPass<SSAOPass>());
+        }
+
 #ifdef USE_IMGUI
         // Game ビュー用 RT シャドウディスパッチ
         if (rayTracing) {
@@ -380,15 +386,20 @@ namespace CoreEngine
         auto shadowMapPass = std::make_unique<ShadowMapPass>();
         renderPipeline_->AddPass(std::move(shadowMapPass));
 
-        // 2. G-Bufferパス（不透明 Model / SkinnedModel の蓄積）
+        // 2. G-Bufferパス（不透明 Model / SkinnedModel の描画）
         auto gBufferPass = std::make_unique<GBufferPass>();
         renderPipeline_->AddPass(std::move(gBufferPass));
 
+        // 2.5. SSAOパス（GBufferからワールド位置と法線を使用してAOを生成）
+        auto ssaoPass = std::make_unique<SSAOPass>();
+        ssaoPass->SetSSAOTargetName(RenderTargetNames::SSAOBuffer);
+        ssaoPass->SetSSAOBlurTargetName(RenderTargetNames::SSAOBlurBuffer);
+        renderPipeline_->AddPass(std::move(ssaoPass));
+
         // 3. DeferredLightingパス
         // G-Buffer (AlbedoAO / NormalRoughness / EmissiveMetallic) を読み取り、
-        // 簡易ライティングを計算して Offscreen0 に書き込む
+        // 遅延ライティングを計算して Offscreen0 に書き込む
         auto deferredLightingPass = std::make_unique<DeferredLightingPass>();
-        deferredLightingPass->SetRenderTargetName(RenderTargetNames::Offscreen0);
         renderPipeline_->AddPass(std::move(deferredLightingPass));
 
         // 4. ジオメトリパス（透過オブジェクト / SkyBox / UI / パーティクル 等の Forward 描画）

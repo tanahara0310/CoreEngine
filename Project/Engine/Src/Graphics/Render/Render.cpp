@@ -1,6 +1,7 @@
 #include "Render.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
+#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 
 using namespace Microsoft::WRL;
 
@@ -37,6 +38,39 @@ namespace CoreEngine
         sceneViewDesc.clearColor[2] = kClearColor[2];
         sceneViewDesc.clearColor[3] = kClearColor[3];
         renderTargetManager_->CreateRenderTarget(sceneViewDesc);
+
+        // SSAO用バッファ
+        // フルスクリーンポストプロセスのためDSVは不要（深度バッファを破壊しないようにする）
+        // クリア色は白（AO無し = 1.0）。リソース作成時と ClearRenderTargetView 時を一致させる
+        static constexpr float kSSAOClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        RenderTargetDescriptor ssaoDesc("SSAOBuffer");
+        ssaoDesc.clearColor[0] = kSSAOClearColor[0];
+        ssaoDesc.clearColor[1] = kSSAOClearColor[1];
+        ssaoDesc.clearColor[2] = kSSAOClearColor[2];
+        ssaoDesc.clearColor[3] = kSSAOClearColor[3];
+        ssaoDesc.needsDepthStencil = false;
+        if (auto* ssaoTarget = renderTargetManager_->CreateRenderTarget(ssaoDesc)) {
+            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(ssaoTarget)) {
+                offscreen->SetUseDepthBuffer(false);
+                // リソース作成時のクリア色を白に設定して不一致を解消
+                auto* dx = renderTargetManager_->GetDirectXCommon();
+                dx->SetOffScreenTargetClearColor(static_cast<uint32_t>(offscreen->GetIndex()), kSSAOClearColor);
+            }
+        }
+
+        RenderTargetDescriptor ssaoBlurDesc("SSAOBlurBuffer");
+        ssaoBlurDesc.clearColor[0] = kSSAOClearColor[0];
+        ssaoBlurDesc.clearColor[1] = kSSAOClearColor[1];
+        ssaoBlurDesc.clearColor[2] = kSSAOClearColor[2];
+        ssaoBlurDesc.clearColor[3] = kSSAOClearColor[3];
+        ssaoBlurDesc.needsDepthStencil = false;
+        if (auto* ssaoBlurTarget = renderTargetManager_->CreateRenderTarget(ssaoBlurDesc)) {
+            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(ssaoBlurTarget)) {
+                offscreen->SetUseDepthBuffer(false);
+                auto* dx = renderTargetManager_->GetDirectXCommon();
+                dx->SetOffScreenTargetClearColor(static_cast<uint32_t>(offscreen->GetIndex()), kSSAOClearColor);
+            }
+        }
 
         // バックバッファターゲットを作成
         renderTargetManager_->CreateBackBufferTarget("BackBuffer");
