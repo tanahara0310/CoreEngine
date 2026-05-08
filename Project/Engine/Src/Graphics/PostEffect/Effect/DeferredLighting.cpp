@@ -211,6 +211,12 @@ namespace CoreEngine
             }
         }
 
+        // ===== SSAO SRV =====
+        const int ssaoIdx = GetRootParamIndex("gSSAO");
+        if (ssaoIdx >= 0 && ssaoHandle_.ptr != 0) {
+            commandList->SetGraphicsRootDescriptorTable(ssaoIdx, ssaoHandle_);
+        }
+
         // フルスクリーントライアングルで描画（頂点バッファなし）
         commandList->DrawInstanced(3, 1, 0, 0);
     }

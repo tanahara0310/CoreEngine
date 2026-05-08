@@ -81,6 +81,9 @@ namespace CoreEngine
         /// @brief IBL パラメータを GPU バッファに書き込む（毎フレーム呼び出し）
         void UpdateIBLParams();
 
+        /// @brief SSAO テクスチャ SRV を設定（t16）
+        void SetSSAOHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { ssaoHandle_ = handle; }
+
     protected:
         const std::wstring& GetPixelShaderPath() const override;
         std::string GetEffectName() const override { return "DeferredLighting"; }
@@ -113,6 +116,9 @@ namespace CoreEngine
 
         // ===== RT Shadow =====
         D3D12_GPU_DESCRIPTOR_HANDLE rtShadowHandles_[kMaxRTShadowLights]{};
+
+        // ===== SSAO =====
+        D3D12_GPU_DESCRIPTOR_HANDLE ssaoHandle_{};
 
         // IBL パラメータ定数バッファ（environmentRotationY + iblIntensity）
         Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;

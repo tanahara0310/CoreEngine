@@ -63,11 +63,10 @@ void OffScreenRenderTargetManager::CreateOrResizeTargetResource(OffScreenTarget&
 
     D3D12_CLEAR_VALUE clearValue = {};
     clearValue.Format = texDesc.Format;
-    // 統一されたクリアカラーを使用
-    clearValue.Color[0] = Render::kClearColor[0];
-    clearValue.Color[1] = Render::kClearColor[1];
-    clearValue.Color[2] = Render::kClearColor[2];
-    clearValue.Color[3] = Render::kClearColor[3];
+    clearValue.Color[0] = target.clearColor[0];
+    clearValue.Color[1] = target.clearColor[1];
+    clearValue.Color[2] = target.clearColor[2];
+    clearValue.Color[3] = target.clearColor[3];
 
     target.resource = ResourceFactory::CreateTextureResource(
         device_,
@@ -150,6 +149,19 @@ D3D12_GPU_DESCRIPTOR_HANDLE OffScreenRenderTargetManager::GetOffScreenSrvHandle(
 {
     ValidateIndex(index);
     return offScreenTargets_[index].srvHandle;
+}
+
+void OffScreenRenderTargetManager::SetTargetClearColor(uint32_t index, const float color[4])
+{
+    ValidateIndex(index);
+    auto& target = offScreenTargets_[index];
+    target.clearColor[0] = color[0];
+    target.clearColor[1] = color[1];
+    target.clearColor[2] = color[2];
+    target.clearColor[3] = color[3];
+    // リソースを再作成してクリア色を反映
+    CreateOrResizeTargetResource(target, index, currentWidth_, currentHeight_);
+    UpdateTargetViews(target);
 }
 }
 

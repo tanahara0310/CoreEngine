@@ -217,6 +217,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\SSAO.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\SSAOBlur.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp" />
@@ -261,6 +263,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\SSAOPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
@@ -336,6 +339,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\PixCapture.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\RenderPassDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
@@ -469,6 +473,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\SSAO.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\SSAOBlur.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h" />
@@ -530,6 +536,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderPassType.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.h" />
@@ -623,6 +630,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ObjectSelector.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\PixCapture.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\RenderPassDebugPanel.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />

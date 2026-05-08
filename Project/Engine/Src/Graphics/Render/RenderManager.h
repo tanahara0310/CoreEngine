@@ -44,6 +44,11 @@ namespace CoreEngine
         /// @param cameraManager カメラマネージャー
         void SetCameraManager(CoreEngine::CameraManager* cameraManager);
 
+        /// @brief アクティブな Camera3D のビュー行列を取得
+        const Matrix4x4& GetViewMatrix() const;
+
+        /// @brief アクティブな Camera3D のプロジェクション行列を取得
+        const Matrix4x4& GetProjectionMatrix() const;
 
 
         /// @brief カメラを設定（従来の互換性維持版）

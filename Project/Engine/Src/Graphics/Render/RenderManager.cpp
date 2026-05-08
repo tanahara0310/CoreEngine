@@ -52,6 +52,26 @@ namespace CoreEngine
         cameraManager_ = cameraManager;
     }
 
+    const Matrix4x4& RenderManager::GetViewMatrix() const {
+        if (cameraManager_) {
+            if (auto* cam = cameraManager_->GetActiveCamera(CameraType::Camera3D)) {
+                return cam->GetViewMatrix();
+            }
+        }
+        static const Matrix4x4 identity = MathCore::Matrix::Identity();
+        return identity;
+    }
+
+    const Matrix4x4& RenderManager::GetProjectionMatrix() const {
+        if (cameraManager_) {
+            if (auto* cam = cameraManager_->GetActiveCamera(CameraType::Camera3D)) {
+                return cam->GetProjectionMatrix();
+            }
+        }
+        static const Matrix4x4 identity = MathCore::Matrix::Identity();
+        return identity;
+    }
+
     void RenderManager::SetCamera(const ICamera* camera) {
         camera_ = camera;
 

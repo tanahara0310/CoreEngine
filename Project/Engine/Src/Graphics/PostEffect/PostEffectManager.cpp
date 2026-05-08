@@ -19,6 +19,8 @@
 #include "Effect/Dissolve.h"
 #include "Effect/DeferredLighting.h"
 #include "Effect/ToneMapping.h"
+#include "Effect/SSAO.h"
+#include "Effect/SSAOBlur.h"
 #include "PostEffectPresetManager.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <algorithm>
@@ -54,6 +56,10 @@ void PostEffectManager::RegisterAllEffects()
 
     // DeferredLightingはRenderPass側から明示実行する（チェーンには含めない）
     RegisterEffect<DeferredLighting>(PostEffectNames::DeferredLighting, true);
+
+    // SSAO / SSAOBlur は SSAOPass 側から明示実行する（デフォルト有効）
+    RegisterEffect<SSAO>(PostEffectNames::SSAO, true);
+    RegisterEffect<SSAOBlur>(PostEffectNames::SSAOBlur, true);
 
     // FadeEffectはデフォルトで有効
     RegisterEffect<FadeEffect>(PostEffectNames::FadeEffect, true);

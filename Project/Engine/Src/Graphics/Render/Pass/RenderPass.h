@@ -13,6 +13,7 @@ namespace CoreEngine
     class ShadowMapManager;
     class AccelerationStructureManager;
     class RayTracingShadowManager;
+    class CameraManager;
 
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
@@ -25,6 +26,7 @@ namespace CoreEngine
         GBufferManager* gBufferManager = nullptr;  ///< G-Buffer管理（Deferred）
         AccelerationStructureManager* accelerationStructureManager = nullptr; ///< DXR 加速構造管理
         RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
+        CameraManager* cameraManager = nullptr; ///< カメラ管理（SSAO等でビュー/プロジェクション行列取得用）
         uint32_t currentRTShadowViewId = 1; ///< 現在の RT シャドウビュー (0=SceneView, 1=GameView)
     };
 

@@ -42,13 +42,21 @@ namespace CoreEngine
             D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         // RTV & DSV設定
-        cmdList->OMSetRenderTargets(1, &rtvHandle_, false, &dsvHandle_);
+        // useDepthBuffer_=false の場合（SSAOなどポストプロセス専用パス）は
+        // 共有DSVをバインドしない。これによりGBufferPassが書き込んだ深度値を保護する。
+        if (useDepthBuffer_) {
+            cmdList->OMSetRenderTargets(1, &rtvHandle_, false, &dsvHandle_);
+        } else {
+            cmdList->OMSetRenderTargets(1, &rtvHandle_, false, nullptr);
+        }
 
         // クリア（clearEnabled_ が false の場合はスキップ）
         // DeferredLightingPass など直前のパスで描き込んだ内容を保持したい場合に使用する
         if (clearEnabled_) {
             cmdList->ClearRenderTargetView(rtvHandle_, clearColor_, 0, nullptr);
-            cmdList->ClearDepthStencilView(dsvHandle_, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+            if (useDepthBuffer_) {
+                cmdList->ClearDepthStencilView(dsvHandle_, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+            }
         }
 
         // ビューポート設定
