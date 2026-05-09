@@ -1,17 +1,25 @@
-#include "DeferredLighting.h"
-
+#include "DeferredLightingTechnique.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Light/LightManager.h"
+#include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/RenderTarget/RenderTargetManager.h"
+#include "Graphics/Render/RenderTarget/RenderTarget.h"
+#include "Graphics/Render/Pass/RenderPass.h"
+#include "Graphics/Shadow/ShadowMapManager.h"
+#include "Graphics/Render/Model/BaseModelRenderer.h"
+#include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Utility/Logger/Logger.h"
 #include <cstring>
+#include <cassert>
 
 namespace CoreEngine
 {
     // -------------------------------------------------------------------------
-    // パスのシェーダーパスを返す
+    // ピクセルシェーダーパスを返す
     // -------------------------------------------------------------------------
-    const std::wstring& DeferredLighting::GetPixelShaderPath() const
+    const std::wstring& DeferredLightingTechnique::GetPixelShaderPath() const
     {
         static const std::wstring path = L"DeferredLighting.PS.hlsl";
         return path;
@@ -20,24 +28,31 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     // ルートシグネチャ設定フック: シャドウ比較サンプラーを追加
     // -------------------------------------------------------------------------
-    void DeferredLighting::OnConfigureRootSignature(RootSignatureConfig& config)
+    void DeferredLightingTechnique::OnConfigureRootSignature(RootSignatureConfig& config)
     {
         // PCF シャドウサンプリングに必要な比較サンプラーを s1 に追加
         config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
     }
 
     // -------------------------------------------------------------------------
-    // 初期化: 基底クラス初期化後にライト VP 用 CBV を作成する
+    // 初期化
     // -------------------------------------------------------------------------
-    void DeferredLighting::Initialize(DirectXCommon* dxCommon)
+    void DeferredLightingTechnique::Initialize(DirectXCommon* dxCommon)
     {
-        // PostEffectBase の初期化（シェーダーコンパイル・ルートシグネチャ・PSO 構築）
-        PostEffectBase::Initialize(dxCommon);
+        RenderingTechniqueBase::Initialize(dxCommon);
+        CreateConstantBuffers();
+    }
+
+    // -------------------------------------------------------------------------
+    // 定数バッファの作成
+    // -------------------------------------------------------------------------
+    void DeferredLightingTechnique::CreateConstantBuffers()
+    {
+        assert(directXCommon_);
 
         // ライトビュープロジェクション行列専用の定数バッファを作成（64 バイト = float4x4）
-        // CBV は 256 バイトアライメントが必要なので ResourceFactory 経由で確保する
         lightVPBuffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon->GetDevice(), sizeof(float) * 16);
+            directXCommon_->GetDevice(), sizeof(float) * 16);
         lightVPCBVAddress_ = lightVPBuffer_->GetGPUVirtualAddress();
 
         // 単位行列で初期化
@@ -54,11 +69,11 @@ namespace CoreEngine
 
         // IBL パラメータ定数バッファを作成（float x 4 = 16 バイト）
         iblParamsBuffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon->GetDevice(), sizeof(float) * 4);
+            directXCommon_->GetDevice(), sizeof(float) * 4);
         iblParamsCBVAddress_ = iblParamsBuffer_->GetGPUVirtualAddress();
 
-        // デフォルト値で初期化 (rotationY=0, intensity=1, padding=0)
-        float iblDefaults[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
+        // デフォルト値で初期化 (rotation=0, intensity=1)
+        float iblDefaults[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
         float* iblMapped = nullptr;
         iblParamsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&iblMapped));
         std::memcpy(iblMapped, iblDefaults, sizeof(iblDefaults));
@@ -68,7 +83,7 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     // ライト VP 行列を GPU バッファに書き込む（毎フレーム呼び出し）
     // -------------------------------------------------------------------------
-    void DeferredLighting::UpdateLightViewProjection(const Matrix4x4& mat)
+    void DeferredLightingTechnique::UpdateLightViewProjection(const Matrix4x4& mat)
     {
         if (!lightVPBuffer_) {
             return;
@@ -82,12 +97,17 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     // IBL パラメータを GPU バッファに書き込む（毎フレーム呼び出し）
     // -------------------------------------------------------------------------
-    void DeferredLighting::UpdateIBLParams()
+    void DeferredLightingTechnique::UpdateIBLParams()
     {
         if (!iblParamsBuffer_) {
             return;
         }
-        float params[4] = { environmentRotation_.x, environmentRotation_.y, environmentRotation_.z, iblIntensity_ };
+        float params[4] = { 
+            environmentRotation_.x, 
+            environmentRotation_.y, 
+            environmentRotation_.z, 
+            iblIntensity_ 
+        };
         float* mapped = nullptr;
         iblParamsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
         std::memcpy(mapped, params, sizeof(params));
@@ -96,53 +116,71 @@ namespace CoreEngine
 
     // -------------------------------------------------------------------------
     // ライティングパスの実行
-    // inputSrvHandle = AlbedoAO G-Buffer SRV (t0)
     // -------------------------------------------------------------------------
-    void DeferredLighting::Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
+    void DeferredLightingTechnique::Execute(const RenderContext& context, 
+                                            D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
     {
-        auto* commandList = directXCommon_->GetCommandList();
+        if (!IsEnabled() || !context.renderTargetManager || !context.gBufferManager 
+            || !context.dxCommon) {
+            outputSrvHandle = {};
+            return;
+        }
 
-        commandList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
-        commandList->SetPipelineState(
-            pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
-        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        auto* renderTargetManager = context.renderTargetManager;
+        auto* gBufferManager = context.gBufferManager;
+        auto* cmdList = context.dxCommon->GetCommandList();
+
+        // 出力先 RenderTarget を名前で取得
+        auto* target = renderTargetManager->GetRenderTarget(targetName_);
+        if (!target) {
+            outputSrvHandle = {};
+            return;
+        }
+
+        // レンダリング開始
+        target->Begin(cmdList);
+
+        cmdList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
+        cmdList->SetPipelineState(pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
         // ===== G-Buffer SRV のバインド =====
 
         // t0: AlbedoAO
         const int albedoIdx = GetRootParamIndex("gAlbedoAO");
-        if (albedoIdx >= 0 && inputSrvHandle.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(albedoIdx, inputSrvHandle);
+        if (albedoIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(albedoIdx,
+                gBufferManager->GetSRVHandle(GBufferManager::Target::AlbedoAO));
         }
 
         // t1: NormalRoughness
         const int normalIdx = GetRootParamIndex("gNormalRoughness");
-        if (normalIdx >= 0 && normalRoughnessHandle_.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(normalIdx, normalRoughnessHandle_);
+        if (normalIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(normalIdx,
+                gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
         }
 
         // t2: EmissiveMetallic
         const int emissiveIdx = GetRootParamIndex("gEmissiveMetallic");
-        if (emissiveIdx >= 0 && emissiveMetallicHandle_.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(emissiveIdx, emissiveMetallicHandle_);
+        if (emissiveIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(emissiveIdx,
+                gBufferManager->GetSRVHandle(GBufferManager::Target::EmissiveMetallic));
         }
 
         // t3: WorldPosition
         const int worldPosIdx = GetRootParamIndex("gWorldPosition");
-        if (worldPosIdx >= 0 && worldPositionHandle_.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(worldPosIdx, worldPositionHandle_);
+        if (worldPosIdx >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(worldPosIdx,
+                gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition));
         }
 
         // ===== カメラ CBV =====
         const int cameraIdx = GetRootParamIndex("gCamera");
         if (cameraIdx >= 0 && cameraCBVAddress_ != 0) {
-            commandList->SetGraphicsRootConstantBufferView(cameraIdx, cameraCBVAddress_);
+            cmdList->SetGraphicsRootConstantBufferView(cameraIdx, cameraCBVAddress_);
         }
 
         // ===== ライトバインド（LightManager 経由） =====
-        // SetLightsToCommandList は UINT 引数を取るため -1 が渡るとクラッシュする。
-        // 各インデックスが有効（≥0）であることを確認してから呼び出す。
-        if (lightManager_) {
+        if (context.lightManager) {
             const int lcIdx = GetRootParamIndex("gLightCounts");
             const int dlIdx = GetRootParamIndex("gDirectionalLights");
             const int plIdx = GetRootParamIndex("gPointLights");
@@ -150,8 +188,8 @@ namespace CoreEngine
             const int alIdx = GetRootParamIndex("gAreaLights");
 
             if (lcIdx >= 0 && dlIdx >= 0 && plIdx >= 0 && slIdx >= 0 && alIdx >= 0) {
-                lightManager_->SetLightsToCommandList(
-                    commandList,
+                context.lightManager->SetLightsToCommandList(
+                    cmdList,
                     static_cast<UINT>(lcIdx),
                     static_cast<UINT>(dlIdx),
                     static_cast<UINT>(plIdx),
@@ -162,63 +200,79 @@ namespace CoreEngine
         }
 
         // ===== シャドウマップ SRV =====
-        const int shadowIdx = GetRootParamIndex("gShadowMap");
-        if (shadowIdx >= 0 && shadowMapHandle_.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(shadowIdx, shadowMapHandle_);
+        if (context.shadowMapManager) {
+            const int shadowIdx = GetRootParamIndex("gShadowMap");
+            if (shadowIdx >= 0) {
+                cmdList->SetGraphicsRootDescriptorTable(shadowIdx,
+                    context.shadowMapManager->GetSRVHandle());
+            }
         }
 
         // ===== ライト VP 行列 CBV =====
         const int lightVPIdx = GetRootParamIndex("gLightViewProjection");
         if (lightVPIdx >= 0 && lightVPCBVAddress_ != 0) {
-            commandList->SetGraphicsRootConstantBufferView(lightVPIdx, lightVPCBVAddress_);
+            cmdList->SetGraphicsRootConstantBufferView(lightVPIdx, lightVPCBVAddress_);
         }
 
         // ===== IBL SRV =====
+        if (context.renderManager) {
+            // Irradiance Map（拡散 IBL）
+            const int irradianceIdx = GetRootParamIndex("gIrradianceMap");
+            if (irradianceIdx >= 0) {
+                auto handle = context.renderManager->GetIrradianceMapHandle();
+                if (handle.ptr != 0) {
+                    cmdList->SetGraphicsRootDescriptorTable(irradianceIdx, handle);
+                }
+            }
 
-        // Irradiance Map（拡散 IBL）
-        const int irradianceIdx = GetRootParamIndex("gIrradianceMap");
-        if (irradianceIdx >= 0 && irradianceMapHandle_.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(irradianceIdx, irradianceMapHandle_);
-        }
+            // Prefiltered Map（スペキュラ IBL）
+            const int prefilteredIdx = GetRootParamIndex("gPrefilteredMap");
+            if (prefilteredIdx >= 0) {
+                auto handle = context.renderManager->GetPrefilteredMapHandle();
+                if (handle.ptr != 0) {
+                    cmdList->SetGraphicsRootDescriptorTable(prefilteredIdx, handle);
+                }
+            }
 
-        // Prefiltered Map（スペキュラ IBL）
-        const int prefilteredIdx = GetRootParamIndex("gPrefilteredMap");
-        if (prefilteredIdx >= 0 && prefilteredMapHandle_.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(prefilteredIdx, prefilteredMapHandle_);
-        }
-
-        // BRDF LUT（スペキュラ IBL 積分）
-        const int brdfLUTIdx = GetRootParamIndex("gBRDFLUT");
-        if (brdfLUTIdx >= 0 && brdfLUTHandle_.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(brdfLUTIdx, brdfLUTHandle_);
+            // BRDF LUT（スペキュラ IBL 積分）
+            const int brdfLUTIdx = GetRootParamIndex("gBRDFLUT");
+            if (brdfLUTIdx >= 0) {
+                auto handle = context.renderManager->GetBRDFLUTHandle();
+                if (handle.ptr != 0) {
+                    cmdList->SetGraphicsRootDescriptorTable(brdfLUTIdx, handle);
+                }
+            }
         }
 
         // ===== IBL パラメータ CBV =====
         const int iblParamsIdx = GetRootParamIndex("gIBLParams");
         if (iblParamsIdx >= 0 && iblParamsCBVAddress_ != 0) {
-            commandList->SetGraphicsRootConstantBufferView(iblParamsIdx, iblParamsCBVAddress_);
+            cmdList->SetGraphicsRootConstantBufferView(iblParamsIdx, iblParamsCBVAddress_);
         }
 
         // ===== RT シャドウマスク SRV（ライトごとに個別バインド） =====
-        // gRTShadowMask0〜3 に対応、未ディスパッチのライトはバインドしない
         static const char* rtShadowNames[4] = {
             "gRTShadowMask0", "gRTShadowMask1", "gRTShadowMask2", "gRTShadowMask3"
         };
         for (uint32_t li = 0; li < kMaxRTShadowLights; ++li) {
             const int idx = GetRootParamIndex(rtShadowNames[li]);
             if (idx >= 0 && rtShadowHandles_[li].ptr != 0) {
-                commandList->SetGraphicsRootDescriptorTable(idx, rtShadowHandles_[li]);
+                cmdList->SetGraphicsRootDescriptorTable(idx, rtShadowHandles_[li]);
             }
         }
 
         // ===== SSAO SRV =====
         const int ssaoIdx = GetRootParamIndex("gSSAO");
         if (ssaoIdx >= 0 && ssaoHandle_.ptr != 0) {
-            commandList->SetGraphicsRootDescriptorTable(ssaoIdx, ssaoHandle_);
+            cmdList->SetGraphicsRootDescriptorTable(ssaoIdx, ssaoHandle_);
         }
 
-        // フルスクリーントライアングルで描画（頂点バッファなし）
-        commandList->DrawInstanced(3, 1, 0, 0);
+        // フルスクリーンクアッドで描画
+        DrawFullscreenQuad(cmdList);
+
+        target->End(cmdList);
+
+        // 出力SRVハンドルを設定
+        outputSrvHandle = target->GetSRVHandle();
     }
 }
-

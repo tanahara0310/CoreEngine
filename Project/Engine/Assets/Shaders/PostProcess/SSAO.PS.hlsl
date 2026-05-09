@@ -6,7 +6,7 @@
 
 #include "FullScreen.hlsli"
 
-Texture2D<float4> gTexture         : register(t0); // NormalRoughness（PostEffectBase 規約：t0=gTexture）
+Texture2D<float4> gNormalRoughness : register(t0); // NormalRoughness
 Texture2D<float4> gWorldPosition   : register(t1);
 
 SamplerState gSampler : register(s0);
@@ -84,7 +84,7 @@ PixelShaderOutput main(PixelShaderInput input)
     PixelShaderOutput output;
 
     int3 loadCoord = int3(input.position.xy, 0);
-    float4 normalRoughness = gTexture.Load(loadCoord);
+    float4 normalRoughness = gNormalRoughness.Load(loadCoord);
     float4 worldPosSample  = gWorldPosition.Load(loadCoord);
 
     if (worldPosSample.a < 0.5f || normalRoughness.a <= 0.0f)
@@ -115,7 +115,8 @@ PixelShaderOutput main(PixelShaderInput input)
 
         float3 sampleWorld = worldPos + BuildTBN(N, randRot, tangentSample);
 
-        float4 clip = mul(float4(sampleWorld, 1.0f), mul(gView, gProjection));
+        float4 sampleView = mul(float4(sampleWorld, 1.0f), gView);
+        float4 clip = mul(sampleView, gProjection);
         if (clip.w <= 0.0f) continue;
         float3 ndc = clip.xyz / clip.w;
         float2 uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
@@ -125,7 +126,7 @@ PixelShaderOutput main(PixelShaderInput input)
         float4 sampleWorldPos = gWorldPosition.Load(int3(sampleCoord, 0));
         if (sampleWorldPos.a < 0.5f) continue;
 
-        float sampleViewZ = mul(float4(sampleWorld,        1.0f), gView).z;
+        float sampleViewZ = sampleView.z;
         float realViewZ   = mul(float4(sampleWorldPos.xyz, 1.0f), gView).z;
 
         float rangeCheck = smoothstep(0.0f, 1.0f, gRadius / max(abs(sampleViewZ - realViewZ), 0.0001f));

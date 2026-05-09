@@ -21,6 +21,7 @@
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelRenderContext.h"
 #include "Graphics/IBL/IBLGenerator.h"
@@ -119,6 +120,11 @@ namespace CoreEngine
         auto postEffectManager = std::make_unique<PostEffectManager>();
         postEffectManager->Initialize(dxPtr, renderPtr);
         engine.RegisterComponent(std::move(postEffectManager));
+
+        // RenderingTechniqueManagerの作成と初期化
+        auto renderingTechniqueManager = std::make_unique<RenderingTechniqueManager>();
+        renderingTechniqueManager->Initialize(dxPtr);
+        engine.RegisterComponent(std::move(renderingTechniqueManager));
 
         // ModelManagerの作成と初期化
         auto modelManager = std::make_unique<ModelManager>();

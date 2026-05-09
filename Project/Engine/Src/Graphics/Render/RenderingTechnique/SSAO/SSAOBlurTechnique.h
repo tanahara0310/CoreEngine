@@ -1,11 +1,13 @@
 #pragma once
-#include "../PostEffectBase.h"
+#include "../RenderingTechniqueBase.h"
 #include <wrl.h>
 #include <d3d12.h>
 
 namespace CoreEngine
 {
-class SSAOBlur : public PostEffectBase {
+/// @brief SSAOブラー レンダリング技術
+/// @details SSAOの出力にバイラテラルブラーをかけてノイズを除去
+class SSAOBlurTechnique : public RenderingTechniqueBase {
 public:
     struct SSAOBlurParams {
         float screenWidth   = 1280.0f;
@@ -15,23 +17,20 @@ public:
     };
 
 public:
-    SSAOBlur() = default;
-    ~SSAOBlur() = default;
+    SSAOBlurTechnique() = default;
+    ~SSAOBlurTechnique() = default;
 
-    void Initialize(DirectXCommon* dxCommon);
-
-    void SetWorldPositionHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { worldPositionHandle_ = handle; }
-    void SetScreenSize(float w, float h);
+    void Initialize(DirectXCommon* dxCommon) override;
+    void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
+    void OnResize(uint32_t width, uint32_t height) override;
 
     const SSAOBlurParams& GetParams() const { return params_; }
     void SetParams(const SSAOBlurParams& params);
     void UpdateConstantBuffer();
 
-    bool IsAlwaysEnabled() const override { return false; }
-
 protected:
+    std::string GetTechniqueName() const override { return "SSAOBlur"; }
     const std::wstring& GetPixelShaderPath() const override;
-    void BindOptionalCBVs(ID3D12GraphicsCommandList* commandList) override;
 
 private:
     void CreateConstantBuffer();
@@ -39,7 +38,5 @@ private:
     SSAOBlurParams params_;
     Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
     SSAOBlurParams* mappedData_ = nullptr;
-
-    D3D12_GPU_DESCRIPTOR_HANDLE worldPositionHandle_{};
 };
 }
