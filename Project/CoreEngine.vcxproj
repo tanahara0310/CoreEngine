@@ -216,9 +216,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\SSAO.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\SSAOBlur.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp" />
@@ -264,6 +261,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SSAOPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
@@ -472,9 +474,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinCluster.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\SSAO.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\SSAOBlur.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h" />
@@ -537,6 +536,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueNames.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderPassType.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.h" />

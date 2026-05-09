@@ -7,6 +7,7 @@ namespace CoreEngine
     class DirectXCommon;
     class RenderManager;
     class PostEffectManager;
+    class RenderingTechniqueManager;
     class LightManager;
     class RenderTargetManager;
     class GBufferManager;
@@ -20,6 +21,7 @@ namespace CoreEngine
         DirectXCommon* dxCommon = nullptr;
         RenderManager* renderManager = nullptr;
         PostEffectManager* postEffectManager = nullptr;
+        RenderingTechniqueManager* renderingTechniqueManager = nullptr; ///< レンダリング技術管理（SSAO・TAA等）
         LightManager* lightManager = nullptr;
         ShadowMapManager* shadowMapManager = nullptr;  ///< シャドウマップ管理（LVP記列・ SRV 取得用）
         RenderTargetManager* renderTargetManager = nullptr;

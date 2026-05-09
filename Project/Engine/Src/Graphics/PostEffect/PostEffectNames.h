@@ -7,7 +7,6 @@ namespace CoreEngine
 {
 namespace PostEffectNames {
     constexpr const char* FullScreen = "FullScreen";
-    constexpr const char* DeferredLighting = "DeferredLighting";
     constexpr const char* FadeEffect = "FadeEffect";
     constexpr const char* GrayScale = "GrayScale";
     constexpr const char* Blur = "Blur";
@@ -22,7 +21,5 @@ namespace PostEffectNames {
     constexpr const char* Bloom = "Bloom";
     constexpr const char* Dissolve = "Dissolve";
     constexpr const char* ToneMapping = "ToneMapping";
-    constexpr const char* SSAO = "SSAO";
-    constexpr const char* SSAOBlur = "SSAOBlur";
 }
 }

@@ -38,6 +38,7 @@ class GraphicsComponentFactory;
 class CoreComponentFactory;
 class RayTracingSubsystem;
 class RenderPipeline;
+class RenderingTechniqueManager;
 
 class EngineSystem {
 public:

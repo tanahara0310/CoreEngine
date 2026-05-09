@@ -118,15 +118,6 @@
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\SSAO.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\SSAOBlur.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
@@ -261,6 +252,21 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SSAOPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderManager.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
@@ -873,15 +879,6 @@
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DeferredLighting.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\SSAO.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\SSAOBlur.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
@@ -1067,6 +1064,24 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueNames.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderManager.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
@@ -1860,6 +1875,15 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\Pass">
       <UniqueIdentifier>{CBAABB6F-F15F-4A4B-ABEA-24E4DA559399}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique">
+      <UniqueIdentifier>{29E5101D-EA93-4F8B-AA86-B028D945C9F5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting">
+      <UniqueIdentifier>{F294A755-C4D0-415D-8D91-772247DCA32B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO">
+      <UniqueIdentifier>{2D8C0B18-8520-4DC7-9437-61CFBAFFD299}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\RenderTarget">
       <UniqueIdentifier>{5446C3E1-4C5F-4C98-9DD5-B757A27FEA12}</UniqueIdentifier>

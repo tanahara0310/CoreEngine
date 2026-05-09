@@ -11,6 +11,7 @@
 #include "Threading/ThreadPool.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/Pass/GBufferPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
@@ -206,6 +207,13 @@ namespace CoreEngine
             }
         });
         gameDebugUI_->SetPanelVisible("Post Effects", true);
+
+        // Rendering Techniques パネル（SSAO, TAA等のレンダリング技術）
+        gameDebugUI_->RegisterEnginePanel("Rendering Techniques", [this]() {
+            if (auto* renderingTechniqueManager = engine_->GetComponent<RenderingTechniqueManager>()) {
+                renderingTechniqueManager->DrawImGui();
+            }
+        });
 
         // Render Pass デバッグパネル（各パスの中間バッファを可視化）
         {

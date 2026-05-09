@@ -13,6 +13,7 @@
 // EngineSystem が直接使う型
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Input/InputManager.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -210,6 +211,7 @@ namespace CoreEngine
         context.dxCommon = dx;
         context.renderManager = renderManager;
         context.postEffectManager = GetComponent<PostEffectManager>();
+        context.renderingTechniqueManager = GetComponent<RenderingTechniqueManager>();
         context.lightManager = GetComponent<LightManager>();
         context.gBufferManager = dx ? dx->GetGBufferManager() : nullptr;
         context.shadowMapManager = dx ? dx->GetShadowMapManager() : nullptr;  // DeferredLighting でシャドウ/LVP に使用
