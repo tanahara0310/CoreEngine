@@ -1,7 +1,7 @@
 #include "SceneTransition.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/PostEffect/PostEffectManager.h"
-#include "Graphics/PostEffect/Effect/FadeEffect.h"
+#include "Graphics/PostEffect/Effect/FadeEffect/FadeEffect.h"
 #include "Graphics/PostEffect/PostEffectNames.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Audio/SoundManager.h"

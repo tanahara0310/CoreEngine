@@ -143,7 +143,7 @@ namespace CoreEngine
             // 複数ある場合は優先順位の高いものを返す
             if (it->second.size() == 1)
             {
-                return assetsByGUID_[it->second[0]].relativePath.generic_string();
+                return assetsByGUID_[it->second[0]].fullPath.generic_string();
             } else
             {
                 // 優先順位でソート
@@ -161,7 +161,7 @@ namespace CoreEngine
                     }
                 }
 
-                return assetsByGUID_[bestGuid].relativePath.generic_string();
+                return assetsByGUID_[bestGuid].fullPath.generic_string();
             }
         }
 
@@ -176,7 +176,7 @@ namespace CoreEngine
         it = assetsByName_.find(nameWithoutExt);
         if (it != assetsByName_.end() && !it->second.empty())
         {
-            return assetsByGUID_[it->second[0]].relativePath.generic_string();
+            return assetsByGUID_[it->second[0]].fullPath.generic_string();
         }
 
         // 見つからない場合は空文字列を返す
@@ -275,7 +275,7 @@ namespace CoreEngine
         }
 
         // シェーダー
-        if (ext == ".hlsl" || ext == ".vs" || ext == ".ps" || ext == ".gs" || ext == ".cs")
+        if (ext == ".hlsl" || ext == ".hlsli" || ext == ".vs" || ext == ".ps" || ext == ".gs" || ext == ".cs")
         {
             return AssetType::Shader;
         }
@@ -326,6 +326,24 @@ namespace CoreEngine
     std::filesystem::path AssetDatabase::GetLibraryPath() const
     {
         return projectRoot_ / "Cache";
+    }
+
+    std::vector<std::filesystem::path> AssetDatabase::GetShaderIncludeDirectories() const
+    {
+        std::vector<std::filesystem::path> dirs;
+        for (const auto& [guid, info] : assetsByGUID_)
+        {
+            if (info.type != AssetType::Shader)
+            {
+                continue;
+            }
+            auto dir = info.fullPath.parent_path();
+            if (std::find(dirs.begin(), dirs.end(), dir) == dirs.end())
+            {
+                dirs.push_back(dir);
+            }
+        }
+        return dirs;
     }
 
     std::filesystem::path AssetDatabase::GetTextureCachePath() const

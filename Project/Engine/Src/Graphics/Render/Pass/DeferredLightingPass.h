@@ -4,8 +4,8 @@
 
 namespace CoreEngine
 {
-    /// @brief G-Buffer から一時的なディファードライティングを生成するパス
-    /// @note 現段階では移行用の簡易ライティング。最終版では LightManager / Shadow / IBL を統合予定。
+    /// @brief G-Buffer から一時的なチE��ファードライチE��ングを生成するパス
+    /// @note 現段階では移行用の簡易ライチE��ング。最終版では LightManager / Shadow / IBL を統合予定、E
     class DeferredLightingPass : public RenderPass {
     public:
         DeferredLightingPass() = default;
@@ -13,14 +13,15 @@ namespace CoreEngine
 
         const char* GetName() const override { return "DeferredLighting"; }
         void Execute(const RenderContext& context) override;
+        void Setup(const RenderContext& context) override;
 
         void SetRenderTargetName(const std::string& name) { targetName_ = name; }
 
-        /// @brief 前のパス（SSAOPass 等）の出力を受け取る
+        /// @brief 前�Eパス�E�ESAOPass 等）�E出力を受け取る
         void SetInput(const PassOutput& input) override { input_ = input; }
 
     private:
         std::string targetName_ = "Offscreen0";
-        PassOutput  input_{};   ///< SSAOPass の出力（SSAO SRV）
+        PassOutput  input_{};   ///< SSAOPass の出力！ESAO SRV�E�E
     };
 }
