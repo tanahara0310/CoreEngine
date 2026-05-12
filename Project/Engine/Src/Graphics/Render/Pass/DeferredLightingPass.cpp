@@ -15,20 +15,15 @@
 
 namespace CoreEngine
 {
-    void DeferredLightingPass::Execute(const RenderContext& context)
+    void DeferredLightingPass::Setup(const RenderContext& context)
     {
-        // 必須コンポーネントの確認
-        if (!context.renderingTechniqueManager || !context.renderTargetManager
-            || !context.gBufferManager || !context.dxCommon) {
-            output_.Reset();
+        if (!context.renderingTechniqueManager) {
             return;
         }
 
-        // DeferredLighting 技術を取得
         auto* deferredLighting = context.renderingTechniqueManager->GetTechnique<DeferredLightingTechnique>(
             RenderingTechniqueNames::DeferredLighting);
         if (!deferredLighting) {
-            output_.Reset();
             return;
         }
 
@@ -86,6 +81,23 @@ namespace CoreEngine
             deferredLighting->SetSSAOHandle(input_.srvHandle);
         } else {
             deferredLighting->SetSSAOHandle({});
+        }
+    }
+
+    void DeferredLightingPass::Execute(const RenderContext& context)
+    {
+        // 必須コンポーネントの確認
+        if (!context.renderingTechniqueManager || !context.renderTargetManager
+            || !context.gBufferManager || !context.dxCommon) {
+            output_.Reset();
+            return;
+        }
+
+        auto* deferredLighting = context.renderingTechniqueManager->GetTechnique<DeferredLightingTechnique>(
+            RenderingTechniqueNames::DeferredLighting);
+        if (!deferredLighting) {
+            output_.Reset();
+            return;
         }
 
         // ===== ライティングパスを実行 =====

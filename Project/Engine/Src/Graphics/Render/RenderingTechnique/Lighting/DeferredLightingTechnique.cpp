@@ -5,6 +5,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
+#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
@@ -136,6 +137,21 @@ namespace CoreEngine
             outputSrvHandle = {};
             return;
         }
+
+        // DeferredLightingPass はフルスクリーンクアッドを描画するため深度テスト/書き込みは不要。
+        // useDepthBuffer_=false にすることで DSV をバインドせず、GBufferPass が書き込んだ
+        // 深度情報（後続の GeometryPass/SkyBox で使用）を保護する。
+        // また clearEnabled_ が前フレームの GeometryPass によって false に設定されていても
+        // ここで true に戻すことで毎フレーム確実に RTV をクリアし、チラつきを防ぐ。
+        // DeferredLightingPass はフルスクリーンクアッドを描画するため深度テスト/書き込みは不要。
+        // useDepthBuffer_=false にすることで DSV をバインドせず、GBufferPass が書き込んだ
+        // 深度情報（後続の GeometryPass/SkyBox で使用）を保護する。
+        // また clearEnabled_ が前フレームの GeometryPass によって false に設定されていても
+        // ここで true に戻すことで毎フレーム確実に RTV をクリアし、チラつきを防ぐ。
+        if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
+            offscreen->SetUseDepthBuffer(false);
+        }
+        target->SetClearEnabled(true);
 
         // レンダリング開始
         target->Begin(cmdList);
@@ -271,6 +287,11 @@ namespace CoreEngine
         DrawFullscreenQuad(cmdList);
 
         target->End(cmdList);
+
+        // 深度バッファ使用フラグを元に戻す（後続の GeometryPass が DSV を使用するため）
+        if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
+            offscreen->SetUseDepthBuffer(true);
+        }
 
         // 出力SRVハンドルを設定
         outputSrvHandle = target->GetSRVHandle();

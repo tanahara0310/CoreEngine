@@ -45,13 +45,18 @@ namespace CoreEngine
     {
         // AssetDatabaseでパス解決を試みる
         std::wstring resolvedPath = filePath;
-        if (!std::filesystem::exists(filePath)) {
-            std::filesystem::path fsPath(filePath);
-            std::string narrowPath = fsPath.string();
-            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(narrowPath);
+        std::filesystem::path fsPath(filePath);
+        if (fsPath.is_relative()) {
+            fsPath = std::filesystem::absolute(fsPath);
+        }
+        if (!std::filesystem::exists(fsPath)) {
+            std::string fileName = std::filesystem::path(filePath).filename().string();
+            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
             if (!assetPath.empty()) {
                 resolvedPath = std::filesystem::path(assetPath).wstring();
             }
+        } else {
+            resolvedPath = fsPath.wstring();
         }
 
         // これからシェーダーをコンパイルする旨をログ出力
@@ -134,13 +139,18 @@ namespace CoreEngine
     {
         // AssetDatabaseでパス解決を試みる
         std::wstring resolvedPath = filePath;
-        if (!std::filesystem::exists(filePath)) {
-            std::filesystem::path fsPath(filePath);
-            std::string narrowPath = fsPath.string();
-            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(narrowPath);
+        std::filesystem::path fsPath(filePath);
+        if (fsPath.is_relative()) {
+            fsPath = std::filesystem::absolute(fsPath);
+        }
+        if (!std::filesystem::exists(fsPath)) {
+            std::string fileName = std::filesystem::path(filePath).filename().string();
+            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
             if (!assetPath.empty()) {
                 resolvedPath = std::filesystem::path(assetPath).wstring();
             }
+        } else {
+            resolvedPath = fsPath.wstring();
         }
 
         // これからシェーダーをコンパイルする旨をログ出力

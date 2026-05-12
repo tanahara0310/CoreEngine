@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../PostEffectBase.h"
+#include "../PostEffectBase.h"
 
 
 namespace CoreEngine

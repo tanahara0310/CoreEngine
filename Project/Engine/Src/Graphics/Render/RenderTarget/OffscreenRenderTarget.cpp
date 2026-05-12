@@ -36,10 +36,13 @@ namespace CoreEngine
         SyncCurrentState();
         assert(resource_);
 
-        // リソースバリア: PIXEL_SHADER_RESOURCE -> RENDER_TARGET
-        TransitionBarrier(cmdList, resource_,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            D3D12_RESOURCE_STATE_RENDER_TARGET);
+        // 実際のリソース状態から RENDER_TARGET へ遷移（状態不一致によるチラつきを防ぐ）
+        if (currentState_ != D3D12_RESOURCE_STATE_RENDER_TARGET) {
+            TransitionBarrier(cmdList, resource_,
+                currentState_,
+                D3D12_RESOURCE_STATE_RENDER_TARGET);
+            currentState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        }
 
         // RTV & DSV設定
         // useDepthBuffer_=false の場合（SSAOなどポストプロセス専用パス）は
@@ -50,8 +53,9 @@ namespace CoreEngine
             cmdList->OMSetRenderTargets(1, &rtvHandle_, false, nullptr);
         }
 
-        // クリア（clearEnabled_ が false の場合はスキップ）
-        // DeferredLightingPass など直前のパスで描き込んだ内容を保持したい場合に使用する
+        // clearEnabled_=true のときのみRTVと深度をクリアする。
+        // clearEnabled_=false は DeferredLightingPass が書き込んだ結果を
+        // GeometryPass が上書きする際など、直前パスの内容を保持したい場合に使用する。
         if (clearEnabled_) {
             cmdList->ClearRenderTargetView(rtvHandle_, clearColor_, 0, nullptr);
             if (useDepthBuffer_) {
@@ -88,10 +92,13 @@ namespace CoreEngine
         SyncCurrentState();
         assert(resource_);
 
-        // リソースバリア: RENDER_TARGET -> PIXEL_SHADER_RESOURCE
-        TransitionBarrier(cmdList, resource_,
-            D3D12_RESOURCE_STATE_RENDER_TARGET,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        // 実際のリソース状態から PIXEL_SHADER_RESOURCE へ遷移
+        if (currentState_ != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) {
+            TransitionBarrier(cmdList, resource_,
+                currentState_,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        }
     }
 
     void OffscreenRenderTarget::GetSize(int32_t& width, int32_t& height) const

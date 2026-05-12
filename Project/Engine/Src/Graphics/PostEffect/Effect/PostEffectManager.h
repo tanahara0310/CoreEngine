@@ -6,9 +6,9 @@
 #include <d3d12.h>
 #include <cassert>
 
-#include "Graphics/PostEffect/PostEffectBase.h"
-#include "Graphics/PostEffect/PostEffectNames.h"
-#include "Graphics/PostEffect/PingPongBuffer.h"
+#include "Graphics/PostEffect/Effect/PostEffectBase.h"
+#include "Graphics/PostEffect/Effect/PostEffectNames.h"
+#include "Graphics/PostEffect/Effect/PingPongBuffer.h"
 #include "PostEffectPresetManager.h"
 
 namespace CoreEngine

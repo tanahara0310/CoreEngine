@@ -20,7 +20,7 @@
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Line/LineManager.h"
-#include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelRenderContext.h"

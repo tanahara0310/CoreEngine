@@ -10,7 +10,7 @@
 #include "Utility/Logger/Logger.h"
 #include "Threading/ThreadPool.h"
 #include "Graphics/Render/Render.h"
-#include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/Pass/GBufferPass.h"
@@ -20,7 +20,7 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Render.h"
-#include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Debug/EngineStats.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Material/MaterialConstants.h"
@@ -410,13 +410,17 @@ namespace CoreEngine
         executePass(renderPipeline->GetPass<DeferredLightingPass>());
 
         // 3. GeometryPass: スカイボックス・グリッド・透過オブジェクトを重ねて描画
+        // clearEnabled_ を保存してSceneView後にゲームビュー用の設定を汚染しないよう復元する
+        bool savedClearEnabled = true;
         if (auto* geometryPass = renderPipeline->GetPass<GeometryPass>()) {
+            savedClearEnabled = geometryPass->IsClearEnabled();
             geometryPass->SetRenderCallback([sceneManager]() { sceneManager->DrawSceneViewGeometry(); });
         }
         executePass(renderPipeline->GetPass<GeometryPass>());
-        // ゲームビュー用コールバックに戻す
+        // ゲームビュー用コールバックとclearEnabled_を復元
         if (auto* geometryPass = renderPipeline->GetPass<GeometryPass>()) {
             geometryPass->SetRenderCallback(gameRenderCallback);
+            geometryPass->SetClearEnabled(savedClearEnabled);
         }
 
         // 4. SceneView RT にコピー

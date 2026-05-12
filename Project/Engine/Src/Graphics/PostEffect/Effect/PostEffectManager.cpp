@@ -2,7 +2,7 @@
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/Render.h"
-#include "Graphics/PostEffect/PostEffectNames.h"
+#include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "GrayScale/GrayScale.h"
 #include "../FullScreen.h"
 #include "Blur/Blur.h"

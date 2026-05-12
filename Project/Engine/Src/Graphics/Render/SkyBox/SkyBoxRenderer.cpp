@@ -32,12 +32,13 @@ namespace CoreEngine
             throw std::runtime_error("Failed to create SkyBox Root Signature: " + buildResult.errorMessage);
         }
 
-        // SkyBoxは裏面を描画するため、カリングモードをFRONTに設定
-        // また、深度テストはLESS_EQUALを使用して最遠方に描画
+        // SkyBox は背景として最初に描画し、共有 DSV の内容に依存させない。
+        // SceneView/GameView が同一フレームで共有 DSV を使い回すため、深度テストありだと
+        // 前後のパスの深度値によって背景だけが不安定に落ちる場合がある。
         bool result = psoMg_->CreateBuilder()
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
-            .SetDepthStencil(true, false, D3D12_COMPARISON_FUNC_LESS_EQUAL) // 深度書き込み無効、LESS_EQUAL比較
+            .SetDepthStencil(true, false, D3D12_COMPARISON_FUNC_LESS_EQUAL)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
             .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
 

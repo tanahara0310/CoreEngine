@@ -6,6 +6,7 @@
 #include "Graphics/Material/SkyBoxMaterialInstance.h"
 #include <wrl/client.h>
 #include <d3d12.h>
+#include <array>
 #include <memory>
 #include <string>
 
@@ -77,12 +78,14 @@ private:
 
     std::unique_ptr<CoreEngine::SkyBoxMaterialInstance> material_;
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> transformBuffer_;
-
     struct TransformationMatrix {
         CoreEngine::Matrix4x4 WVP;
     };
-    TransformationMatrix* transformData_ = nullptr;
+
+    static constexpr UINT kTransformBufferCount = 4;
+    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kTransformBufferCount> transformBuffers_{};
+    std::array<TransformationMatrix*, kTransformBufferCount> transformData_{};
+    UINT transformBufferIndex_ = 0;
 
     static constexpr UINT kVertexCount = 24;
     static constexpr UINT kIndexCount  = 36;

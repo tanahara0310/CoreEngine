@@ -1,5 +1,5 @@
-﻿#pragma once
-#include "../../PostEffectBase.h"
+#pragma once
+#include "../PostEffectBase.h"
 #include <wrl.h>
 #include <d3d12.h>
 

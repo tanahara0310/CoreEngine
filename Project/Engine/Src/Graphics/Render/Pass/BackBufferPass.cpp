@@ -1,7 +1,7 @@
 #include "BackBufferPass.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include <cassert>
