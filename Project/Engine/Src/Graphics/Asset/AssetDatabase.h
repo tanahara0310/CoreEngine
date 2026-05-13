@@ -11,7 +11,7 @@ namespace CoreEngine
 {
     class ThreadPool;
 
-    // アセットデータベース（シングルトン）
+    // アセットデータベース
     class AssetDatabase
     {
     public:
@@ -37,6 +37,9 @@ namespace CoreEngine
 
         /// @brief GUID からキャッシュファイルパスを生成
         std::filesystem::path GetCachedTexturePath(const std::string& guid, const std::string& extension = ".dds") const;
+
+        /// @brief シェーダーファイルが存在するディレクトリ一覧を重複なしで返す
+        std::vector<std::filesystem::path> GetShaderIncludeDirectories() const;
 
     private:
         AssetDatabase() = default;

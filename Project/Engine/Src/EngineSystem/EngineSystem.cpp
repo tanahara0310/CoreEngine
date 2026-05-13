@@ -12,7 +12,7 @@
 
 // EngineSystem が直接使う型
 #include "Graphics/Render/Render.h"
-#include "Graphics/PostEffect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Input/InputManager.h"

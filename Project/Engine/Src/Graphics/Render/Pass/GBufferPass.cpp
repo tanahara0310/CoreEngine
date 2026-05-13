@@ -30,8 +30,8 @@ namespace CoreEngine
         context.renderManager->DrawGBufferPass();
         gBufferManager->EndGeometryPass(cmdList);
 
-        output_.srvHandle = gBufferManager->GetSRVHandle(GBufferManager::Target::AlbedoAO);
-        output_.resource = gBufferManager->GetResource(GBufferManager::Target::AlbedoAO);
-        output_.isValid = true;
+        // GBuffer の各バッファは context.gBufferManager 経由で後続パスが直接取得する。
+        // PassOutput チェーンではなく gBufferManager に統一するため output_ は設定しない。
+        output_.Reset();
     }
 }

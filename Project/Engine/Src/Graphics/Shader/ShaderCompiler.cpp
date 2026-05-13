@@ -7,6 +7,9 @@
 #include "Graphics/Asset/AssetDatabase.h"
 
 
+#pragma comment(lib, "dxcompiler.lib")
+
+
 namespace CoreEngine
 {
     void ShaderCompiler::Initialize()
@@ -27,17 +30,33 @@ namespace CoreEngine
         assert(SUCCEEDED(hr));
     }
 
+    std::vector<std::wstring> ShaderCompiler::BuildIncludeArgs() const
+    {
+        std::vector<std::wstring> includeArgs;
+        for (const auto& dir : AssetDatabase::GetInstance().GetShaderIncludeDirectories())
+        {
+            includeArgs.push_back(L"-I");
+            includeArgs.push_back(dir.wstring());
+        }
+        return includeArgs;
+    }
+
     IDxcBlob* ShaderCompiler::CompileShader(const std::wstring& filePath, const wchar_t* profile)
     {
         // AssetDatabaseでパス解決を試みる
         std::wstring resolvedPath = filePath;
-        if (!std::filesystem::exists(filePath)) {
-            std::filesystem::path fsPath(filePath);
-            std::string narrowPath = fsPath.string();
-            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(narrowPath);
+        std::filesystem::path fsPath(filePath);
+        if (fsPath.is_relative()) {
+            fsPath = std::filesystem::absolute(fsPath);
+        }
+        if (!std::filesystem::exists(fsPath)) {
+            std::string fileName = std::filesystem::path(filePath).filename().string();
+            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
             if (!assetPath.empty()) {
                 resolvedPath = std::filesystem::path(assetPath).wstring();
             }
+        } else {
+            resolvedPath = fsPath.wstring();
         }
 
         // これからシェーダーをコンパイルする旨をログ出力
@@ -59,25 +78,27 @@ namespace CoreEngine
         shaderSourceBuffer.Encoding = DXC_CP_UTF8;
 
         // コンパイルする
-        LPCWSTR arguments[] = {
-
+        std::vector<std::wstring> includeArgs = BuildIncludeArgs();
+        std::vector<LPCWSTR> arguments = {
             resolvedPath.c_str(), // コンパイル対象のhlslファイル
             L"-E",
             L"main", // エントリーポイント
             L"-T",
             profile, // ShaderProfileの設定
-            L"-Zi", // デバッグ情報を埋め込む
-            L"-Od", // 最適化を外す
+            L"-Zi",  // デバッグ情報を埋め込む
+            L"-Od",  // 最適化を外す
             L"-Zpr", // メモリレイアウトは行優先
-            L"-I", L"Application/Assets/Shader", // インクルードディレクトリを追加
-            L"-I", L"Engine/Assets/Shaders", // インクルードディレクトリを追加
         };
+        for (const auto& arg : includeArgs)
+        {
+            arguments.push_back(arg.c_str());
+        }
 
         // 実際にshaderをcompileする
         IDxcResult* shaderResult = nullptr;
         hr = dxcCompiler->Compile(&shaderSourceBuffer, // 読み込んだファイル
-            arguments, // コンパイルオプション
-            _countof(arguments), // コンパイルオプションの数
+            arguments.data(),                  // コンパイルオプション
+            static_cast<UINT32>(arguments.size()), // コンパイルオプションの数
             includeHandler.Get(), // includeの設定
             IID_PPV_ARGS(&shaderResult) // 結果
         );
@@ -118,13 +139,18 @@ namespace CoreEngine
     {
         // AssetDatabaseでパス解決を試みる
         std::wstring resolvedPath = filePath;
-        if (!std::filesystem::exists(filePath)) {
-            std::filesystem::path fsPath(filePath);
-            std::string narrowPath = fsPath.string();
-            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(narrowPath);
+        std::filesystem::path fsPath(filePath);
+        if (fsPath.is_relative()) {
+            fsPath = std::filesystem::absolute(fsPath);
+        }
+        if (!std::filesystem::exists(fsPath)) {
+            std::string fileName = std::filesystem::path(filePath).filename().string();
+            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
             if (!assetPath.empty()) {
                 resolvedPath = std::filesystem::path(assetPath).wstring();
             }
+        } else {
+            resolvedPath = fsPath.wstring();
         }
 
         // これからシェーダーをコンパイルする旨をログ出力
@@ -146,23 +172,26 @@ namespace CoreEngine
         shaderSourceBuffer.Encoding = DXC_CP_UTF8;
 
         // DXRライブラリはlib_6_6でコンパイル（-Eによるエントリーポイント指定なし）
-        LPCWSTR arguments[] = {
+        std::vector<std::wstring> includeArgs = BuildIncludeArgs();
+        std::vector<LPCWSTR> arguments = {
             resolvedPath.c_str(), // コンパイル対象のhlslファイル
             L"-T", L"lib_6_6",   // DXRライブラリプロファイル
             L"-Zi",              // デバッグ情報を埋め込む
             L"-Od",              // 最適化を外す
             L"-Zpr",             // メモリレイアウトは行優先
-            L"-I", L"Application/Assets/Shader", // インクルードディレクトリを追加
-            L"-I", L"Engine/Assets/Shaders",     // インクルードディレクトリを追加
         };
+        for (const auto& arg : includeArgs)
+        {
+            arguments.push_back(arg.c_str());
+        }
 
         // 実際にshaderをcompileする
         IDxcResult* shaderResult = nullptr;
         hr = dxcCompiler->Compile(&shaderSourceBuffer, // 読み込んだファイル
-            arguments,           // コンパイルオプション
-            _countof(arguments), // コンパイルオプションの数
-            includeHandler.Get(),// includeの設定
-            IID_PPV_ARGS(&shaderResult) // 結果
+            arguments.data(),                      // コンパイルオプション
+            static_cast<UINT32>(arguments.size()), // コンパイルオプションの数
+            includeHandler.Get(),                  // includeの設定
+            IID_PPV_ARGS(&shaderResult)            // 結果
         );
 
         // コンパイルが上手く行かなかったら落とす

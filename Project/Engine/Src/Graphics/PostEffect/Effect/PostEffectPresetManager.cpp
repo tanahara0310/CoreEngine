@@ -1,14 +1,14 @@
 #include "PostEffectPresetManager.h"
 #include "PostEffectManager.h"
-#include "Effect/Blur.h"
-#include "Effect/RadialBlur.h"
-#include "Effect/Vignette.h"
-#include "Effect/ColorGrading.h"
-#include "Effect/ChromaticAberration.h"
-#include "Effect/Shockwave.h"
-#include "Effect/RasterScroll.h"
-#include "Effect/FadeEffect.h"
-#include "Effect/Bloom.h"
+#include "Blur/Blur.h"
+#include "RadialBlur/RadialBlur.h"
+#include "Vignette/Vignette.h"
+#include "ColorGrading/ColorGrading.h"
+#include "ChromaticAberration/ChromaticAberration.h"
+#include "Shockwave/Shockwave.h"
+#include "RasterScroll/RasterScroll.h"
+#include "FadeEffect/FadeEffect.h"
+#include "Bloom/Bloom.h"
 #include <filesystem>
 #include <iostream>
 

@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <iterator>
 
 
 namespace CoreEngine
@@ -116,52 +117,6 @@ namespace CoreEngine
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("Debug")) {
                 ImGui::Checkbox("Console", &showConsole_);
-                ImGui::EndMenu();
-            }
-
-            // EngineDebug 専用メニュー（Inspectorタブとしてトグル・複数選択対応）
-            if (ImGui::BeginMenu("EngineDebug")) {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.60f, 0.60f, 0.60f, 1.0f));
-                ImGui::TextUnformatted("  デバッグ情報");
-                ImGui::PopStyleColor();
-                ImGui::Separator();
-                for (auto& entry : engineEditors_) {
-                    // カテゴリ別アイコン
-                    const char* icon = "  ";
-                    if (entry.label == "パフォーマンス")   icon = " \xE2\x96\xB6  ";
-                    else if (entry.label == "レンダリング") icon = " \xE2\x97\x86  ";
-                    else if (entry.label == "シーン")       icon = " \xE2\x97\x89  ";
-                    else if (entry.label == "リソース")     icon = " \xE2\x96\xA0  ";
-                    else if (entry.label == "メモリ")       icon = " \xE2\x96\xA3  ";
-                    std::string itemLabel = std::string(icon) + entry.label;
-
-                    // DontClosePopups でクリックしてもメニューを閉じない
-                    if (ImGui::Selectable(itemLabel.c_str(), entry.visible,
-                            ImGuiSelectableFlags_DontClosePopups,
-                            ImVec2(0.0f, 0.0f)))
-                    {
-                        entry.visible = !entry.visible;
-                    }
-                    // チェックマークを右端に描画
-                    if (entry.visible) {
-                        ImGui::SameLine();
-                        float checkX = ImGui::GetWindowWidth()
-                            - ImGui::GetStyle().WindowPadding.x
-                            - ImGui::CalcTextSize("\xE2\x9C\x93").x;
-                        ImGui::SetCursorPosX(checkX);
-                        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "\xE2\x9C\x93");
-                    }
-                }
-                ImGui::Separator();
-                // 全て表示 / 全て非表示（こちらも閉じない）
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.65f, 0.0f, 1.0f));
-                if (ImGui::Selectable("  すべて表示", false, ImGuiSelectableFlags_DontClosePopups)) {
-                    for (auto& e : engineEditors_) e.visible = true;
-                }
-                if (ImGui::Selectable("  すべて非表示", false, ImGuiSelectableFlags_DontClosePopups)) {
-                    for (auto& e : engineEditors_) e.visible = false;
-                }
-                ImGui::PopStyleColor();
                 ImGui::EndMenu();
             }
 
@@ -324,72 +279,150 @@ namespace CoreEngine
     {
         if (!showEditorSwitcher_) return;
 
-        ImGui::SetNextWindowSizeConstraints(ImVec2(280, 0), ImVec2(400, 800));
-        if (!ImGui::Begin("Window Manager", &showEditorSwitcher_, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::SetNextWindowSize(ImVec2(520.0f, 360.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(360.0f, 200.0f), ImVec2(900.0f, 900.0f));
+        if (!ImGui::Begin("Window Manager", &showEditorSwitcher_)) {
             ImGui::End();
             return;
         }
 
-        const ImVec4 kEngineColor = ImVec4(0.35f, 0.65f, 1.0f, 1.0f);
+        // ── カテゴリ定義 ──────────────────────────────────────────
+        struct Category {
+            const char* label;
+            const char* icon;
+        };
+        static constexpr Category kCategories[] = {
+            { "Panels",    "[ ]" },
+            { "Inspector", "[ ]" },
+        };
+        static constexpr int kCategoryCount = static_cast<int>(std::size(kCategories));
+
+        const ImVec4 kEngineColor = ImVec4(0.35f, 0.65f, 1.0f,  1.0f);
         const ImVec4 kAppColor    = ImVec4(0.45f, 0.85f, 0.45f, 1.0f);
         const ImVec4 kPanelColor  = ImVec4(0.85f, 0.65f, 0.25f, 1.0f);
+        const ImVec4 kSelBg       = ImVec4(0.22f, 0.22f, 0.27f, 1.0f);
+        const ImVec4 kHoverBg     = ImVec4(0.18f, 0.18f, 0.22f, 1.0f);
+        const ImVec4 kHeaderCol   = ImVec4(1.0f,  0.65f, 0.0f,  1.0f);
 
-        float toggleW = ImGui::GetFrameHeight() * 1.8f;
+        const float leftPaneW  = 110.0f;
+        const float totalH     = ImGui::GetContentRegionAvail().y;
 
-        auto drawEditorTable = [toggleW](const char* tableId, auto& entries, const ImVec4& dotColor) {
-            if (auto table = UI::Scope::TableScope(tableId, 2)) {
-                ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Switch", ImGuiTableColumnFlags_WidthFixed, toggleW);
+        // ── 左ペイン：カテゴリリスト ──────────────────────────────
+        ImGui::BeginChild("##wm_left", ImVec2(leftPaneW, totalH), false,
+            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  ImVec2(0.0f, 2.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 
-                for (auto& entry : entries) {
-                    ImGui::PushID(entry.label.c_str());
-                    ImGui::TableNextRow();
+            for (int i = 0; i < kCategoryCount; ++i)
+            {
+                const bool selected = (selectedCategory_ == i);
+                if (selected)
+                    ImGui::PushStyleColor(ImGuiCol_Button,        kSelBg);
+                else
+                    ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
 
-                    // ラベル列（色付きドット + 名前）
-                    ImGui::TableNextColumn();
-                    {
-                        ImDrawList* dl = ImGui::GetWindowDrawList();
-                        ImVec2 pos = ImGui::GetCursorScreenPos();
-                        float cy = pos.y + ImGui::GetFrameHeight() * 0.5f;
-                        dl->AddCircleFilled(ImVec2(pos.x + 4.0f, cy), 3.5f,
-                            ImGui::GetColorU32(dotColor));
-                        ImGui::Indent(14.0f);
-                        ImGui::AlignTextToFramePadding();
-                        ImGui::Text("%s", entry.label.c_str());
-                        ImGui::Unindent(14.0f);
-                    }
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, kHoverBg);
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  kSelBg);
 
-                    // トグルスイッチ列
-                    ImGui::TableNextColumn();
-                    UI::Widgets::ToggleSwitch("##sw", &entry.visible);
+                char lbl[64];
+                snprintf(lbl, sizeof(lbl), "%s##cat%d", kCategories[i].label, i);
+                if (ImGui::Button(lbl, ImVec2(leftPaneW - 4.0f, 0.0f)))
+                    selectedCategory_ = i;
 
-                    ImGui::PopID();
+                ImGui::PopStyleColor(3);
+            }
+            ImGui::PopStyleVar(3);
+        }
+        ImGui::EndChild();
+
+        ImGui::SameLine();
+
+        // セパレータ
+        {
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            ImVec2 p = ImGui::GetCursorScreenPos();
+            dl->AddLine(ImVec2(p.x, p.y), ImVec2(p.x, p.y + totalH),
+                ImGui::GetColorU32(ImVec4(0.35f, 0.35f, 0.35f, 1.0f)));
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 4.0f);
+        }
+
+        // ── 右ペイン：選択カテゴリのコンテンツ ────────────────────
+        ImGui::BeginChild("##wm_right", ImVec2(0.0f, totalH), false);
+        {
+            const float toggleW = ImGui::GetFrameHeight() * 1.8f;
+
+            auto drawToggleTable = [&](const char* tableId, auto& entries, const ImVec4& dotColor) {
+                if (entries.empty()) {
+                    ImGui::TextDisabled("（登録なし）");
+                    return;
                 }
-            }
-        };
+                ImGuiTableFlags tableFlags =
+                    ImGuiTableFlags_SizingStretchProp |
+                    ImGuiTableFlags_RowBg |
+                    ImGuiTableFlags_BordersInnerH |
+                    ImGuiTableFlags_PadOuterX;
+                if (ImGui::BeginTable(tableId, 2, tableFlags))
+                {
+                    ImGui::TableSetupColumn("Label",  ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Switch", ImGuiTableColumnFlags_WidthFixed, toggleW);
 
-        // ── 独立パネル（Lighting, Post Effects 等） ──
-        if (!enginePanels_.empty()) {
-            UI::SectionHeader("Panels");
-            drawEditorTable("##PanelTable", enginePanels_, kPanelColor);
-            UI::Spacing();
+                    for (auto& entry : entries)
+                    {
+                        ImGui::PushID(entry.label.c_str());
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        {
+                            ImDrawList* dl = ImGui::GetWindowDrawList();
+                            ImVec2 pos = ImGui::GetCursorScreenPos();
+                            float cy = pos.y + ImGui::GetFrameHeight() * 0.5f;
+                            dl->AddCircleFilled(ImVec2(pos.x + 4.0f, cy), 3.5f,
+                                ImGui::GetColorU32(dotColor));
+                            ImGui::Indent(14.0f);
+                            ImGui::AlignTextToFramePadding();
+                            ImGui::Text("%s", entry.label.c_str());
+                            ImGui::Unindent(14.0f);
+                        }
+                        ImGui::TableNextColumn();
+                        UI::Widgets::ToggleSwitch("##sw", &entry.visible);
+                        ImGui::PopID();
+                    }
+                    ImGui::EndTable();
+                }
+            };
+
+            if (selectedCategory_ == 0)
+            {
+                // ── Panels ──
+                ImGui::TextColored(kHeaderCol, "Panels");
+                ImGui::Separator();
+                ImGui::Spacing();
+                drawToggleTable("##PanelTable", enginePanels_, kPanelColor);
+            }
+            else if (selectedCategory_ == 1)
+            {
+                // ── Inspector ──
+                ImGui::TextColored(kHeaderCol, "Inspector");
+                ImGui::Separator();
+                ImGui::Spacing();
+
+                if (!engineEditors_.empty())
+                {
+                    UI::Hint("Engine");
+                    drawToggleTable("##EngineTable", engineEditors_, kEngineColor);
+                    ImGui::Spacing();
+                }
+                if (!appEditors_.empty())
+                {
+                    UI::Hint("Application");
+                    drawToggleTable("##AppTable", appEditors_, kAppColor);
+                }
+                if (engineEditors_.empty() && appEditors_.empty())
+                    ImGui::TextDisabled("（登録なし）");
+            }
         }
-
-        // ── Inspector タブ（エンジン + アプリエディター） ──
-        if (!engineEditors_.empty() || !appEditors_.empty()) {
-            UI::SectionHeader("Inspector");
-
-            if (!engineEditors_.empty()) {
-                UI::Hint("Engine");
-                drawEditorTable("##EngineTable", engineEditors_, kEngineColor);
-            }
-
-            if (!appEditors_.empty()) {
-                if (!engineEditors_.empty()) { UI::Spacing(); }
-                UI::Hint("Application");
-                drawEditorTable("##AppTable", appEditors_, kAppColor);
-            }
-        }
+        ImGui::EndChild();
 
         ImGui::End();
     }

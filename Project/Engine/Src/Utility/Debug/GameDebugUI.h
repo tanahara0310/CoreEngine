@@ -119,6 +119,7 @@ namespace CoreEngine
         bool showConsole_ = true;
         bool showEditorSwitcher_ = false;  ///< Window Managerパネルの表示状態
         bool showEngineDebugMenu_ = false; ///< EngineDebug メニューの展開状態（未使用・予約）
+        int  selectedCategory_ = 0;        ///< Window Manager 2ペインで選択中のカテゴリインデックス
 
 #ifdef USE_IMGUI
         ScreenCapture screenCapture_;  ///< スクリーンキャプチャ機能

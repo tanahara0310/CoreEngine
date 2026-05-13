@@ -171,11 +171,13 @@ void SkyBoxObject::CreateTransformBuffer() {
     auto* dxCommon = engine->GetComponent<DirectXCommon>();
     assert(dxCommon != nullptr);
 
-    // トランスフォーム用定数バッファの作成
-    transformBuffer_ = ResourceFactory::CreateBufferResource(dxCommon->GetDevice(), sizeof(TransformationMatrix));
-
-    // トランスフォームデータをマップ
-    transformBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&transformData_));
+    // SceneView と GameView が同一フレーム内で SkyBox を描画するため、
+    // 1本のCBVを上書きすると記録済みコマンドのWVPまで変わってしまう。
+    // 複数スロットを巡回して、各Drawが独立したCBVを参照するようにする。
+    for (UINT i = 0; i < kTransformBufferCount; ++i) {
+        transformBuffers_[i] = ResourceFactory::CreateBufferResource(dxCommon->GetDevice(), sizeof(TransformationMatrix));
+        transformBuffers_[i]->Map(0, nullptr, reinterpret_cast<void**>(&transformData_[i]));
+    }
 }
 
 void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
@@ -217,14 +219,15 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
         camera->GetProjectionMatrix()
     );
 
-    transformData_->WVP = MathCore::Matrix::Multiply(worldMatrix, viewProjectionMatrix);
+    transformBufferIndex_ = (transformBufferIndex_ + 1) % kTransformBufferCount;
+    transformData_[transformBufferIndex_]->WVP = MathCore::Matrix::Multiply(worldMatrix, viewProjectionMatrix);
 
     assert(sSkyBoxRenderer_ != nullptr);
 
     // トランスフォーム行列CBV
     commandList->SetGraphicsRootConstantBufferView(
         sSkyBoxRenderer_->GetRootParamIndex("gTransformationMatrix"),
-        transformBuffer_->GetGPUVirtualAddress()
+        transformBuffers_[transformBufferIndex_]->GetGPUVirtualAddress()
     );
 
     // マテリアルCBV

@@ -49,6 +49,11 @@ namespace CoreEngine
         void SetUseDepthBuffer(bool use) { useDepthBuffer_ = use; }
         bool GetUseDepthBuffer() const { return useDepthBuffer_; }
 
+        /// @brief 現在のリソース状態を外部から強制設定する
+        /// @note SceneView ping-pong 後など、実際の状態が外部で変更された場合に使用
+        void SetCurrentState(D3D12_RESOURCE_STATES state) { currentState_ = state; }
+        D3D12_RESOURCE_STATES GetCurrentState() const { return currentState_; }
+
     private:
         void SyncCurrentState() const;
 
@@ -61,5 +66,6 @@ namespace CoreEngine
         mutable int32_t height_ = 0;
         int index_ = 0;
         bool useDepthBuffer_ = true;
+        D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     };
 }

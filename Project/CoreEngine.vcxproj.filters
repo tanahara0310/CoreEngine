@@ -118,11 +118,50 @@
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect</Filter>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Blur</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration\ChromaticAberration.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading\ColorGrading.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ColorGrading</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Dissolve</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\FadeEffect</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Invert</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\RadialBlur</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll\RasterScroll.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\RasterScroll</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Sepia\Sepia.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Sepia</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave\Shockwave.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Shockwave</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
@@ -196,14 +235,8 @@
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinClusterGenerator.cpp">
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom.cpp">
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\PostEffectPresetManager.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.cpp">
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
@@ -430,18 +463,6 @@
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Invert.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Sepia.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Sample\SampleScene\TestScene\TestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\TestScene</Filter>
     </ClCompile>
@@ -541,34 +562,13 @@
     <ClCompile Include="Engine\Src\Graphics\Model\ModelLoader.cpp">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Blur.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\FullScreen.cpp">
       <Filter>Engine\Src\Graphics\PostEffect</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale.cpp">
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectBase.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\PostEffectBase.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\PostEffectManager.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette.cpp">
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Math\MathCore.cpp">
@@ -879,11 +879,50 @@
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\PingPongBuffer.h">
-      <Filter>Engine\Src\Graphics\PostEffect</Filter>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Blur</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration\ChromaticAberration.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading\ColorGrading.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ColorGrading</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Dissolve</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\FadeEffect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Invert</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\RadialBlur</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll\RasterScroll.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\RasterScroll</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Sepia\Sepia.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Sepia</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave\Shockwave.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Shockwave</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
@@ -987,17 +1026,11 @@
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinClusterGenerator.h">
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom.h">
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectNames.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve.h">
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\PostEffectNames.h">
-      <Filter>Engine\Src\Graphics\PostEffect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\PostEffectPresetManager.h">
-      <Filter>Engine\Src\Graphics\PostEffect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\IRenderer.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
@@ -1278,18 +1311,6 @@
     <ClInclude Include="Engine\Src\Graphics\Model\ModelResource.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Sepia.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Math\BoundingBox.h">
       <Filter>Engine\Src\Math</Filter>
     </ClInclude>
@@ -1428,34 +1449,13 @@
     <ClInclude Include="Engine\Src\Graphics\Model\ModelLoader.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Blur.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\FullScreen.h">
       <Filter>Engine\Src\Graphics\PostEffect</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale.h">
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectBase.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\PostEffectBase.h">
-      <Filter>Engine\Src\Graphics\PostEffect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\PostEffectManager.h">
-      <Filter>Engine\Src\Graphics\PostEffect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette.h">
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\MathCore.h">
@@ -1848,6 +1848,48 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect">
       <UniqueIdentifier>{2F5FFAF7-303E-4F02-BE05-05B6F79EA7A9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Bloom">
+      <UniqueIdentifier>{5BA920F8-B810-440F-8341-B3E2DE6CEDB1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Blur">
+      <UniqueIdentifier>{8804A9D4-C949-4F15-832E-578756300F3A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration">
+      <UniqueIdentifier>{6EE8F9DE-B5A6-4843-9ABE-1449EF8DE29A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading">
+      <UniqueIdentifier>{AF9F41C2-D6A0-4D98-9847-92F63CB3A308}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve">
+      <UniqueIdentifier>{CC9C05D6-09E7-41C2-AEB7-52615AA10655}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect">
+      <UniqueIdentifier>{BF331545-0D4D-411C-ACE0-9E362E7629FC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale">
+      <UniqueIdentifier>{7C43970B-DF69-4A63-9299-3B3D883B7DA6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Invert">
+      <UniqueIdentifier>{F3BCCEAF-E176-4040-A69C-4BB01FED0398}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur">
+      <UniqueIdentifier>{0B3B563C-9E34-40DA-82A3-967C07498B70}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll">
+      <UniqueIdentifier>{071F9629-56D0-42D8-BE9B-9FD54830110B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Sepia">
+      <UniqueIdentifier>{1DAA90E5-D571-45D6-AF1D-FCCF0DFE8C1D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave">
+      <UniqueIdentifier>{06D28870-87F0-4D5E-A9B7-A490A76D726A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping">
+      <UniqueIdentifier>{A92CDA78-6D07-45C2-9567-763B0BD66C3D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Vignette">
+      <UniqueIdentifier>{43286C64-BEC4-499A-B7AC-FF2EFBA50B15}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Primitive">
       <UniqueIdentifier>{CF5EB9C5-8E42-47AF-9F51-CF4CA4F532E4}</UniqueIdentifier>

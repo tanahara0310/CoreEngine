@@ -4,7 +4,7 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
-#include "Graphics/PostEffect/PostEffectBase.h"
+#include "Graphics/PostEffect/Effect/PostEffectBase.h"
 
 namespace CoreEngine
 {

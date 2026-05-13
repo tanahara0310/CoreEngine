@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
+#include <vector>
 #include <wrl.h>
 
 #include <dxcapi.h>
-#pragma comment(lib, "dxcompiler.lib")
 
 // 前方宣言
 namespace CoreEngine {
@@ -35,6 +35,9 @@ namespace CoreEngine
         IDxcUtils* GetDxcUtils() const { return dxcUtils.Get(); }
 
     private:
+        /// @brief AssetDatabaseからシェーダーインクルードディレクトリを収集し引数リストを構築する
+        std::vector<std::wstring> BuildIncludeArgs() const;
+
         Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils = nullptr;
         Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler = nullptr;
         Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler = nullptr;
