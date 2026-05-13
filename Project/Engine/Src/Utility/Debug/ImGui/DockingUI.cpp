@@ -474,28 +474,114 @@ namespace CoreEngine
                         ImGui::TableSetupColumn("Budget", ImGuiTableColumnFlags_WidthFixed, 100.0f);
                         ImGui::TableHeadersRow();
 
-                        for (size_t i = 0; i < timingData_.size(); ++i)
+                        // カテゴリ定義（GpuTimestampSlot のインデックスに対応）
+                        struct SlotGroup {
+                            const char* category;
+                            uint32_t slots[4];
+                            int count;
+                        };
+                        static constexpr SlotGroup kGroups[] = {
+                            { "Shadow",   { 0 /*ShadowPass*/, 2 /*RTShadow*/ },                                          2 },
+                            { "G-Buffer", { 1 /*GBufferPass*/ },                                                          1 },
+                            { "SSAO",     { 3 /*SSAOPass*/ },                                                             1 },
+                            { "Lighting", { 4 /*DeferredLighting*/ },                                                     1 },
+                            { "Geometry", { 5 /*GeometryPass*/ },                                                         1 },
+                            { "PostFX",   { 6 /*PostEffect*/ },                                                           1 },
+                            { "Editor",   { 7 /*SceneView*/, 8 /*BackBufferPass*/, 9 /*ImGuiDraw*/ },                     3 },
+                        };
+
+                        // Total スロットのインデックス
+                        const uint32_t totalIdx = static_cast<uint32_t>(timingData_.size()) - 1;
+
+                        for (const auto& group : kGroups)
                         {
-                            const auto& slot = timingData_[i];
-                            const bool  isTotal = (i + 1 == timingData_.size());
-
-                            ImGui::TableNextRow();
-
-                            // ── Total 行は背景色で強調 ─────────────────
-                            if (isTotal)
+                            bool hasAny = false;
+                            for (int gi = 0; gi < group.count; ++gi)
                             {
-                                constexpr ImU32 kTotalBg = IM_COL32(40, 40, 48, 255);
-                                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, kTotalBg);
-                                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, kTotalBg);
+                                if (group.slots[gi] < timingData_.size())
+                                {
+                                    const auto& r = timingData_[group.slots[gi]];
+                                    if (r.gpuMs >= 0.001f || r.cpuMs >= 0.001f) { hasAny = true; break; }
+                                }
                             }
+                            if (!hasAny) continue;
 
-                            // ── GPU 時間に基づく色 ──────────────────────
+                            // カテゴリヘッダー行
+                            ImGui::TableNextRow();
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%s", group.category);
+
+                            for (int gi = 0; gi < group.count; ++gi)
+                            {
+                                const uint32_t idx = group.slots[gi];
+                                if (idx >= timingData_.size()) continue;
+                                const auto& slot = timingData_[idx];
+                                if (slot.gpuMs < 0.001f && slot.cpuMs < 0.001f) continue;
+
+                                ImGui::TableNextRow();
+
+                                const ImVec4 gpuColor =
+                                    (slot.gpuMs > 8.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
+                                    : (slot.gpuMs > 4.0f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)
+                                    : ImVec4(0.45f, 0.90f, 0.45f, 1.0f);
+
+                                ImGui::TableSetColumnIndex(0);
+                                {
+                                    const ImVec2 dotPos = {
+                                        ImGui::GetCursorScreenPos().x + 4.0f,
+                                        ImGui::GetCursorScreenPos().y + ImGui::GetTextLineHeight() * 0.5f
+                                    };
+                                    ImGui::GetWindowDrawList()->AddCircleFilled(
+                                        dotPos, 4.0f,
+                                        ImGui::ColorConvertFloat4ToU32(gpuColor));
+                                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 14.0f);
+                                }
+                                UI::Label(slot.name);
+
+                                ImGui::TableSetColumnIndex(1);
+                                {
+                                    const ImVec4 cpuColor =
+                                        (slot.cpuMs > 2.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
+                                        : (slot.cpuMs > 0.5f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)
+                                        : ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
+                                    ImGui::TextColored(cpuColor, "%.3f", slot.cpuMs);
+                                }
+
+                                ImGui::TableSetColumnIndex(2);
+                                ImGui::TextColored(gpuColor, "%.3f", slot.gpuMs);
+
+                                ImGui::TableSetColumnIndex(3);
+                                {
+                                    const float ratio =
+                                        slot.gpuMs / kFrameBudgetMs < 1.0f
+                                        ? slot.gpuMs / kFrameBudgetMs : 1.0f;
+                                    const ImVec4 barColor =
+                                        (slot.gpuMs > 8.0f) ? ImVec4(0.9f, 0.25f, 0.25f, 1.0f)
+                                        : (slot.gpuMs > 4.0f) ? ImVec4(0.9f, 0.70f, 0.10f, 1.0f)
+                                        : ImVec4(0.20f, 0.75f, 0.30f, 1.0f);
+                                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, barColor);
+                                    const auto overlay = std::format("{:.1f}%", ratio * 100.0f);
+                                    UI::ProgressBar(ratio,
+                                        ImVec2(-FLT_MIN, ImGui::GetTextLineHeight()), overlay.c_str());
+                                    ImGui::PopStyleColor();
+                                }
+                            }
+                        }
+
+                        // Frame Total 行
+                        if (totalIdx < timingData_.size())
+                        {
+                            const auto& slot = timingData_[totalIdx];
+                            ImGui::TableNextRow();
+                            constexpr ImU32 kTotalBg = IM_COL32(40, 40, 48, 255);
+                            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, kTotalBg);
+                            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1, kTotalBg);
+
                             const ImVec4 gpuColor =
-                                (slot.gpuMs > 8.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)   // >8ms  → 赤
-                                : (slot.gpuMs > 4.0f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)   // >4ms  → 黄
-                                : ImVec4(0.45f, 0.90f, 0.45f, 1.0f);  // ≤4ms  → 緑
+                                (slot.gpuMs > 8.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
+                                : (slot.gpuMs > 4.0f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)
+                                : ImVec4(0.45f, 0.90f, 0.45f, 1.0f);
 
-                            // ── Pass 名（左端にカラードット）──────────────
                             ImGui::TableSetColumnIndex(0);
                             {
                                 const ImVec2 dotPos = {
@@ -507,36 +593,20 @@ namespace CoreEngine
                                     ImGui::ColorConvertFloat4ToU32(gpuColor));
                                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 14.0f);
                             }
-                            if (isTotal)
-                                ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%s", slot.name);
-                            else
-                                UI::Label(slot.name);
+                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%s", slot.name);
 
-                            // ── CPU (ms)（閾値色付き）────────────────────
                             ImGui::TableSetColumnIndex(1);
-                            {
-                                const ImVec4 cpuColor =
-                                    (slot.cpuMs > 2.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)   // >2ms → 赤
-                                    : (slot.cpuMs > 0.5f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)   // >0.5ms → 黄
-                                    : ImVec4(0.75f, 0.75f, 0.75f, 1.0f);  // ≤0.5ms → 白系
-                                ImGui::TextColored(cpuColor, "%.3f", slot.cpuMs);
-                            }
+                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%.3f", slot.cpuMs);
 
-                            // ── GPU (ms) ──────────────────────────────────
                             ImGui::TableSetColumnIndex(2);
-                            ImGui::TextColored(gpuColor, "%.3f", slot.gpuMs);
+                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%.3f", slot.gpuMs);
 
-                            // ── Budget バー（16.67ms 基準の絶対値）─────────
                             ImGui::TableSetColumnIndex(3);
                             {
                                 const float ratio =
                                     slot.gpuMs / kFrameBudgetMs < 1.0f
                                     ? slot.gpuMs / kFrameBudgetMs : 1.0f;
-                                const ImVec4 barColor =
-                                    (slot.gpuMs > 8.0f) ? ImVec4(0.9f, 0.25f, 0.25f, 1.0f)
-                                    : (slot.gpuMs > 4.0f) ? ImVec4(0.9f, 0.70f, 0.10f, 1.0f)
-                                    : ImVec4(0.20f, 0.75f, 0.30f, 1.0f);
-                                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, barColor);
+                                ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.9f, 0.70f, 0.10f, 1.0f));
                                 const auto overlay = std::format("{:.1f}%", ratio * 100.0f);
                                 UI::ProgressBar(ratio,
                                     ImVec2(-FLT_MIN, ImGui::GetTextLineHeight()), overlay.c_str());

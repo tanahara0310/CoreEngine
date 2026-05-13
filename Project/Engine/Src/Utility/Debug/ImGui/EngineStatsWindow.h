@@ -60,5 +60,10 @@ namespace CoreEngine
         float snapshotFps_ = 0.0f;
         float snapshotDeltaTimeMs_ = 0.0f;
         float snapshotTargetFps_ = 60.0f;
+
+        // パス別タイミング表示の更新インターバル制御
+        static constexpr float kTimingUpdateInterval = 0.5f; // 秒
+        float timingAccumTime_ = 0.0f;
+        std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount> frozenGpu_ = {};
     };
 }

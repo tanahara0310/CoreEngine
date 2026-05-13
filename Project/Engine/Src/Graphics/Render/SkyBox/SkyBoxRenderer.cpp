@@ -13,10 +13,10 @@ namespace CoreEngine
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
 
         // シェーダーのコンパイル
-        auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skybox/Skybox.VS.hlsl", L"vs_6_0");
+        auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Skybox.VS.hlsl", L"vs_6_0");
         assert(vertexShaderBlob != nullptr);
 
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skybox/Skybox.PS.hlsl", L"ps_6_0");
+        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Skybox.PS.hlsl", L"ps_6_0");
         assert(pixelShaderBlob != nullptr);
 
         // リフレクション
