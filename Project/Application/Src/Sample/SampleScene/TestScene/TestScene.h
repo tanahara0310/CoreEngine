@@ -28,8 +28,8 @@
 #include "EngineSystem/EngineSystem.h"
 
 // GameObjectのインクルード
-#include "Sample/TestGameObject/ModelObject.h"
-#include "Sample/TestGameObject/WalkModelObject.h"
+#include "Sample/TestGameObject/Model/ModelObject.h"
+#include "Sample/TestGameObject/AnimatedModel/WalkModelObject.h"
 
 using namespace Microsoft::WRL;
 

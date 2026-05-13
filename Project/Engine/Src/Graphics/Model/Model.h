@@ -78,6 +78,11 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {},
             TransformBufferSlot slot = TransformBufferSlot::Game);
 
+        /// @brief 法線マップテクスチャをオーバーライドする
+        /// @details モデルリソースに内蔵された法線マップの代わりに外部テクスチャを使用する。
+        ///          ptr == 0 を渡すとリソース内蔵テクスチャに戻る。
+        void SetNormalMapOverride(D3D12_GPU_DESCRIPTOR_HANDLE handle) { normalMapOverride_ = handle; }
+
         /// @brief シャドウマップ用の描画（深度のみ）
         /// @param transform ワールドトランスフォーム
         /// @param cmdList コマンドリスト
@@ -193,6 +198,9 @@ namespace CoreEngine
 
         // スケルトンアニメーター等の生成ファクトリー（スケルトンモデルのみ設定される）
         std::unique_ptr<IAnimationControllerFactory> animationFactory_;
+
+        // 法線マップのオーバーライドハンドル（ptr==0 のときはリソース内蔵テクスチャを使用）
+        D3D12_GPU_DESCRIPTOR_HANDLE normalMapOverride_ = {};
 
         // 内部ヘルパーメソッド
         /// @brief WVP行列データを更新（slot で使用バッファを指定）

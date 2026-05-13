@@ -10,7 +10,7 @@
 #include "WinApp/WinApp.h"
 #include "Scene/SceneManager.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Sample/TestGameObject/SkyBoxObject.h"
+#include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
 #include "Graphics/Texture/TextureManager.h"
 
 #include <iostream>

@@ -11,9 +11,6 @@
 #include <string>
 #include <vector>
 
-/// @brief デバッグ用のUIクラス
-/// エンジンシステムの低レベル情報の表示とデバッグ支援を行う
-
 namespace CoreEngine
 {
 
@@ -21,6 +18,7 @@ namespace CoreEngine
     class DockingUI; // 前方宣言
     class SceneManager; // 前方宣言
 
+    /// @brief ゲームデバッグUIクラス
     class GameDebugUI {
     public:
         /// @brief 初期化
