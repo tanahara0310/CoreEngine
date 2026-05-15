@@ -220,6 +220,9 @@ namespace CoreEngine
             key.materialCBV = static_cast<uint64_t>(materialCBV);
             key.isGBufferPass = isGBufferPass;
             key.customForwardPSO = isGBufferPass ? nullptr : customForwardPSO_;
+            key.customRootSignature = isGBufferPass ? nullptr : customRootSignature_;
+            key.customProvider = isGBufferPass ? nullptr : customProvider_;
+            key.customPipeline = isGBufferPass ? nullptr : customPipeline_;
 
             batch->Submit(key, mtx, materialCBV);
         }

@@ -18,6 +18,7 @@ namespace CoreEngine {
     class LightManager;
     class ShaderReflectionData;
     class InstanceBatchManager;
+    class CustomShaderPipeline;
 }
 
 namespace CoreEngine
@@ -67,11 +68,20 @@ namespace CoreEngine
         /// @brief モデル描画パケットをバインドして描画コマンドを発行する
         /// Model が組み立てた ModelDrawPacket を受け取り、現在のパス（Forward/GBuffer）に
         /// 応じたルートパラメータへのバインドと DrawIndexedInstanced の呼び出しを行う。
-        void BindModelDrawPacket(ID3D12GraphicsCommandList* cmdList, const ModelDrawPacket& packet);
+        /// @param customPipeline カスタムシェーダーパイプライン（nullptr の場合は標準インデックスを使用）
+        void BindModelDrawPacket(ID3D12GraphicsCommandList* cmdList, const ModelDrawPacket& packet,
+            const CustomShaderPipeline* customPipeline = nullptr);
 
         /// @brief カスタム PSO 適用後に既定 PSO をコマンドリストへ再設定する
         /// InstanceBatchManager::DrawBatch() がカスタム PSO を使用した後に呼び出す。
         void RestoreDefaultPSO(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief カスタム RootSignature 切り替え後にシーンレベルのリソースを再バインドする
+        /// D3D12 は SetGraphicsRootSignature を呼ぶと全バインドが無効になるため、
+        /// カスタム RS のインデックスでカメラ・ライト・IBL 等を再設定する。
+        void BindSceneResourcesWithCustomPipeline(
+            ID3D12GraphicsCommandList* cmdList,
+            const CustomShaderPipeline* customPipeline);
 
         /// @brief カメラ CBV の GPU 仮想アドレスを取得（DeferredLightingPass 連携用）
         D3D12_GPU_VIRTUAL_ADDRESS GetCameraCBVAddress() const { return cameraCBV_; }

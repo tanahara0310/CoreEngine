@@ -42,6 +42,10 @@ void WaterTestScene::OnInitialize() {
     waterPlane_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
     waterPlane_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
 
+    // GBuffer パスをバイパスし、水面専用 VS（Gerstner Wave）が適用される
+    // Forward パスで描画させるためアルファブレンドに設定する
+    waterPlane_->SetBlendMode(BlendMode::kBlendModeNormal);
+
     if (auto* mat = waterPlane_->GetModel()->GetMaterial()) {
         // Step 2: UV スクロールで水面の流れを表現
         mat->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });

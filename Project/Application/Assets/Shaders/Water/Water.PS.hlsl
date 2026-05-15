@@ -1,7 +1,4 @@
-// WaterPlaneObject \u5c02\u7528 Forward \u30d1\u30b9\u30b7\u30a7\u30fc\u30c0\u30fc\u3002
-// \u5171\u901a\u30ed\u30b8\u30c3\u30af\u306f Object3dForward.hlsli \u3092\u4f7f\u7528\u3057 Object3d.PS.hlsl \u3068\u540c\u4e00\u306e\u6319\u52d5\u306b\u306a\u308b\u3002
-// \u6c34\u9762\u5c02\u7528\u306e\u51e6\u7406\u3092\u8ffd\u52a0\u3059\u308b\u5834\u5408\u306f\u3053\u306e\u30d5\u30a1\u30a4\u30eb\u306e main \u3092\u66f8\u304d\u63db\u3048\u308b\u3002
-#include "Object3dForward.hlsli"
+#include "../../../../Engine/Assets/Shaders/Include/Object/Object3dForward.hlsli"
 
 PixelShaderOutput main(VertexShaderOutput input)
 {

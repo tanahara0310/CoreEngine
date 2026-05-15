@@ -5,7 +5,6 @@
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
-#include <stdexcept>
 #include <filesystem>
 
 namespace CoreEngine
@@ -18,7 +17,6 @@ namespace CoreEngine
             if (fileName.empty()) {
                 return {};
             }
-            // filesystem::path 経由で安全に string 変換する
             const std::string nameStr = std::filesystem::path(fileName).string();
             const std::string resolved = AssetDatabase::GetInstance().FindAssetPath(nameStr);
             if (resolved.empty()) {
@@ -26,66 +24,101 @@ namespace CoreEngine
             }
             return std::filesystem::path(resolved).wstring();
         }
+
+        /// @brief カスタムシェーダー向けの RootSignatureConfig を生成する
+        /// CBV は RootDescriptor、テクスチャ SRV / サンプラーは DescriptorTable とする。
+        RootSignatureConfig MakeForwardConfig()
+        {
+            RootSignatureConfig config = RootSignatureConfig::PerformanceOptimized();
+            config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
+            config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
+            config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
+            // gInstanceData は SetGraphicsRootShaderResourceView で渡すため RootDescriptor に設定する
+            config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor);
+            return config;
+        }
     }
 
     bool CustomShaderPipeline::Build(
         ID3D12Device* device,
         ShaderCompiler& compiler,
         ShaderReflectionBuilder& reflectionBuilder,
-        const ICustomShaderProvider& provider,
-        ID3D12RootSignature* existingRootSignature)
+        const ICustomShaderProvider& provider)
     {
         assert(device);
-        assert(existingRootSignature);
 
         const std::wstring vsPath = ResolveShaderPath(provider.GetVertexShaderPath());
         const std::wstring psPath = ResolveShaderPath(provider.GetPixelShaderPath());
 
-        // VS・PS の少なくとも一方が指定されている場合のみフォワード PSO を構築する
         if (!vsPath.empty() && !psPath.empty()) {
-            IDxcBlob* vsBlob = compiler.CompileShader(vsPath, L"vs_6_0");
-            if (!vsBlob) {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
-                    "CustomShaderPipeline: Failed to compile vertex shader: {}",
-                    std::filesystem::path(vsPath).string());
+            if (!BuildForwardPipeline(device, compiler, reflectionBuilder, vsPath, psPath)) {
                 return false;
             }
-
-            IDxcBlob* psBlob = compiler.CompileShader(psPath, L"ps_6_0");
-            if (!psBlob) {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
-                    "CustomShaderPipeline: Failed to compile pixel shader: {}",
-                    std::filesystem::path(psPath).string());
-                return false;
-            }
-
-            // リフレクションから入力レイアウトを取得して PSO を構築する
-            // RootSignature は既定のフォワードパスのものを再利用する
-            auto reflectionData = reflectionBuilder.BuildFromShaders(vsBlob, psBlob, "CustomShader");
-
-            const bool result = forwardPsoMg_.CreateBuilder()
-                .SetInputLayoutFromReflection(*reflectionData)
-                .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
-                .SetDepthStencil(true, true)
-                .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-                .BuildAllBlendModes(device, vsBlob, psBlob, existingRootSignature);
-
-            if (!result) {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
-                    "CustomShaderPipeline: Failed to build forward PSO.");
-                return false;
-            }
-
-            hasForwardPSO_ = true;
         }
 
-        // CS が指定されている場合はコンピュートパイプラインを構築する
         const std::wstring csPath = ResolveShaderPath(provider.GetComputeShaderPath());
         if (!csPath.empty()) {
             BuildComputePipeline(device, compiler, reflectionBuilder, csPath);
         }
 
         return hasForwardPSO_ || hasComputePSO_;
+    }
+
+    bool CustomShaderPipeline::BuildForwardPipeline(
+        ID3D12Device* device,
+        ShaderCompiler& compiler,
+        ShaderReflectionBuilder& reflectionBuilder,
+        const std::wstring& vsPath,
+        const std::wstring& psPath)
+    {
+        IDxcBlob* vsBlob = compiler.CompileShader(vsPath, L"vs_6_0");
+        if (!vsBlob) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
+                "CustomShaderPipeline: Failed to compile vertex shader: {}",
+                std::filesystem::path(vsPath).string());
+            return false;
+        }
+
+        IDxcBlob* psBlob = compiler.CompileShader(psPath, L"ps_6_0");
+        if (!psBlob) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
+                "CustomShaderPipeline: Failed to compile pixel shader: {}",
+                std::filesystem::path(psPath).string());
+            return false;
+        }
+
+        // シェーダーリフレクションから入力レイアウトとリソースバインディングを取得する
+        auto reflectionData = reflectionBuilder.BuildFromShaders(vsBlob, psBlob, "CustomShader");
+
+        // リフレクション結果から独自 RootSignature を構築する
+        forwardRootSignatureMg_ = std::make_unique<RootSignatureManager>();
+        const RootSignatureConfig config = MakeForwardConfig();
+        const auto buildResult = forwardRootSignatureMg_->Build(device, *reflectionData, config);
+        if (!buildResult.success) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
+                "CustomShaderPipeline: Failed to build forward root signature: {}",
+                buildResult.errorMessage);
+            forwardRootSignatureMg_.reset();
+            return false;
+        }
+
+        // 独自 RootSignature で PSO を構築する
+        const bool psoResult = forwardPsoMg_.CreateBuilder()
+            .SetInputLayoutFromReflection(*reflectionData)
+            .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
+            .SetDepthStencil(true, true)
+            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
+            .BuildAllBlendModes(device, vsBlob, psBlob, forwardRootSignatureMg_->GetRootSignature());
+
+        if (!psoResult) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
+                "CustomShaderPipeline: Failed to build forward PSO.");
+            forwardRootSignatureMg_.reset();
+            return false;
+        }
+
+        hasForwardPSO_ = true;
+        return true;
     }
 
     void CustomShaderPipeline::BuildComputePipeline(
@@ -147,6 +180,22 @@ namespace CoreEngine
     ID3D12PipelineState* CustomShaderPipeline::GetComputePSO() const
     {
         return computePSO_.Get();
+    }
+
+    ID3D12RootSignature* CustomShaderPipeline::GetForwardRootSignature() const
+    {
+        if (!forwardRootSignatureMg_) {
+            return nullptr;
+        }
+        return const_cast<RootSignatureManager*>(forwardRootSignatureMg_.get())->GetRootSignature();
+    }
+
+    int CustomShaderPipeline::GetRootParamIndex(const std::string& resourceName) const
+    {
+        if (!forwardRootSignatureMg_) {
+            return -1;
+        }
+        return forwardRootSignatureMg_->GetRootParameterIndex(resourceName);
     }
 
     bool CustomShaderPipeline::HasForwardPSO() const

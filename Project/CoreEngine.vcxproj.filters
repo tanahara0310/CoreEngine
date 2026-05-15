@@ -726,6 +726,9 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PrimitiveSphereObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterPlaneObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
@@ -1694,6 +1697,9 @@
     <None Include="Engine\Src\Particle\README.md">
       <Filter>Engine\Src\Particle</Filter>
     </None>
+    <None Include="JobHuntingWorksDoc\JobHuntingWorksDoc.md">
+      <Filter>JobHuntingWorksDoc</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include=".github">
@@ -2103,6 +2109,9 @@
     </Filter>
     <Filter Include="Engine\Src\WorldTransform">
       <UniqueIdentifier>{BC60000F-B135-4771-977F-D0BA3FC81CF9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JobHuntingWorksDoc">
+      <UniqueIdentifier>{A7E4EFA5-396C-4E77-93DA-69031B43224E}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

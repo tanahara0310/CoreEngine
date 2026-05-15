@@ -8,7 +8,9 @@
 
 namespace CoreEngine
 {
+    class CustomShaderPipeline;
     class ModelResource;
+    class ICustomShaderProvider;
 
     /// @brief インスタンシング描画のバッチを識別するキー
     /// 同一キーの描画リクエストは 1 度の DrawIndexedInstanced にまとめられる。
@@ -22,6 +24,9 @@ namespace CoreEngine
         uint64_t materialCBV = 0;                 ///< マテリアル定数バッファ
         bool isGBufferPass = false;               ///< Forward / GBuffer の区別
         ID3D12PipelineState* customForwardPSO = nullptr; ///< カスタムシェーダー PSO（nullptr = 既定）
+        ID3D12RootSignature* customRootSignature = nullptr; ///< カスタムシェーダー RootSignature（nullptr = 既定）
+        const ICustomShaderProvider* customProvider = nullptr; ///< カスタムリソースバインドコールバック（nullptr = なし）
+        const CustomShaderPipeline* customPipeline = nullptr; ///< BindCustomResources に渡すパイプライン情報
 
         bool operator==(const InstanceBatchKey& other) const {
             return resource == other.resource
@@ -32,7 +37,10 @@ namespace CoreEngine
                 && occlusionSRV == other.occlusionSRV
                 && materialCBV == other.materialCBV
                 && isGBufferPass == other.isGBufferPass
-                && customForwardPSO == other.customForwardPSO;
+                && customForwardPSO == other.customForwardPSO
+                && customRootSignature == other.customRootSignature
+                && customProvider == other.customProvider
+                && customPipeline == other.customPipeline;
         }
     };
 
@@ -51,6 +59,9 @@ namespace CoreEngine
             h = mix(h, std::hash<uint64_t>{}(k.materialCBV));
             h = mix(h, std::hash<bool>{}(k.isGBufferPass));
             h = mix(h, std::hash<const void*>{}(k.customForwardPSO));
+            h = mix(h, std::hash<const void*>{}(k.customRootSignature));
+            h = mix(h, std::hash<const void*>{}(k.customProvider));
+            h = mix(h, std::hash<const void*>{}(k.customPipeline));
             return h;
         }
     };

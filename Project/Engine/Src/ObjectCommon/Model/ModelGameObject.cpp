@@ -57,12 +57,15 @@ namespace CoreEngine
             device,
             *renderer->GetShaderCompiler(),
             *renderer->GetReflectionBuilder(),
-            *customShaderProvider_,
-            renderer->GetRootSignature());
+            *customShaderProvider_);
 
         if (built && customShaderPipeline_->HasForwardPSO()) {
             model_->SetCustomForwardPSO(
                 customShaderPipeline_->GetForwardPSO(blendMode_));
+            model_->SetCustomRootSignature(
+                customShaderPipeline_->GetForwardRootSignature());
+            model_->SetCustomPipeline(customShaderPipeline_.get());
+            model_->SetCustomShaderProvider(customShaderProvider_);
         }
     }
 

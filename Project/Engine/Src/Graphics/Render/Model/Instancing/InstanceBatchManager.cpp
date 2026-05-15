@@ -10,6 +10,7 @@
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Debug/EngineStats.h"
+#include "Graphics/Shader/ICustomShaderProvider.h"
 
 namespace CoreEngine
 {
@@ -148,14 +149,28 @@ namespace CoreEngine
         packet.occlusionSRV.ptr = batch.key.occlusionSRV;
         packet.isSkinned = false;
 
-        // カスタム PSO が指定されているバッチは一時的に差し替えて描画する
+        // カスタム PSO が指定されているバッチは RS と PSO を差し替えて描画する
         if (batch.key.customForwardPSO) {
+            if (batch.key.customRootSignature) {
+                cmdList->SetGraphicsRootSignature(batch.key.customRootSignature);
+            }
             cmdList->SetPipelineState(batch.key.customForwardPSO);
+
+            // SetGraphicsRootSignature で全バインドがリセットされるため、
+            // カスタム RS のインデックスでシーンリソースを再バインドする
+            renderer->BindSceneResourcesWithCustomPipeline(cmdList, batch.key.customPipeline);
         }
 
-        renderer->BindModelDrawPacket(cmdList, packet);
+        // カスタムリソース（WaterConstants など）を DrawCall より前にバインドする
+        if (batch.key.customProvider) {
+            batch.key.customProvider->BindCustomResources(cmdList, batch.key.customPipeline);
+        }
 
-        // カスタム PSO を元に戻す（次バッチが既定 PSO を使えるようにリストア）
+        // customPipeline を渡してカスタム RootSignature のインデックスで正しくバインドする
+        renderer->BindModelDrawPacket(cmdList, packet,
+            batch.key.customForwardPSO ? batch.key.customPipeline : nullptr);
+
+        // カスタム PSO を使った場合は既定 RS と PSO に戻す（次バッチのため）
         if (batch.key.customForwardPSO) {
             renderer->RestoreDefaultPSO(cmdList);
         }

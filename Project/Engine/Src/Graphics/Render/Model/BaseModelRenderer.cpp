@@ -2,6 +2,7 @@
 #include "Camera/ICamera.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
+#include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Debug/EngineStats.h"
 #include "Utility/Logger/Logger.h"
@@ -65,46 +66,78 @@ namespace CoreEngine
     }
 
     void BaseModelRenderer::BindModelDrawPacket(
-        ID3D12GraphicsCommandList* cmdList, const ModelDrawPacket& packet)
+        ID3D12GraphicsCommandList* cmdList, const ModelDrawPacket& packet,
+        const CustomShaderPipeline* customPipeline)
     {
         cmdList->IASetVertexBuffers(0, packet.vertexBufferViewCount, packet.vertexBufferViews.data());
         cmdList->IASetIndexBuffer(&packet.indexBufferView);
+
+        // カスタム RootSignature 使用時はそのリフレクションからインデックスを解決するヘルパーラムダ
+        auto resolveIdx = [&](const std::string& name, int defaultIdx) -> int {
+            if (customPipeline) {
+                return customPipeline->GetRootParamIndex(name);
+            }
+            return defaultIdx;
+        };
 
         const CachedIndices& c = isInGBufferPass_ ? gBufferCache_ : forwardCache_;
 
         // インスタンシング: 通常モデルは Root SRV、スキニングモデルは従来 CBV を使用
         if (!packet.isSkinned) {
-            if (c.instanceData >= 0 && packet.instanceDataSRV != 0) {
-                cmdList->SetGraphicsRootShaderResourceView(c.instanceData, packet.instanceDataSRV);
+            int idx = resolveIdx("gInstanceData", c.instanceData);
+            if (idx >= 0 && packet.instanceDataSRV != 0) {
+                cmdList->SetGraphicsRootShaderResourceView(idx, packet.instanceDataSRV);
             }
         }
         else {
-            if (c.transform >= 0 && packet.instanceDataSRV != 0) {
-                cmdList->SetGraphicsRootConstantBufferView(c.transform, packet.instanceDataSRV);
+            int idx = resolveIdx("gTransformationMatrix", c.transform);
+            if (idx >= 0 && packet.instanceDataSRV != 0) {
+                cmdList->SetGraphicsRootConstantBufferView(idx, packet.instanceDataSRV);
             }
         }
-        if (c.material >= 0 && packet.materialCBV != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(c.material, packet.materialCBV);
+        {
+            int idx = resolveIdx("gMaterial", c.material);
+            if (idx >= 0 && packet.materialCBV != 0) {
+                cmdList->SetGraphicsRootConstantBufferView(idx, packet.materialCBV);
+            }
         }
-        if (c.texture >= 0 && packet.baseColorSRV.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(c.texture, packet.baseColorSRV);
+        {
+            int idx = resolveIdx("gTexture", c.texture);
+            if (idx >= 0 && packet.baseColorSRV.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(idx, packet.baseColorSRV);
+            }
         }
-        if (c.normalMap >= 0 && packet.normalMapSRV.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(c.normalMap, packet.normalMapSRV);
+        {
+            int idx = resolveIdx("gNormalMap", c.normalMap);
+            if (idx >= 0 && packet.normalMapSRV.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(idx, packet.normalMapSRV);
+            }
         }
         if (packet.metallicRoughnessSRV.ptr != 0) {
-            if (c.metallicMap >= 0) {
-                cmdList->SetGraphicsRootDescriptorTable(c.metallicMap, packet.metallicRoughnessSRV);
+            {
+                int idx = resolveIdx("gMetallicMap", c.metallicMap);
+                if (idx >= 0) {
+                    cmdList->SetGraphicsRootDescriptorTable(idx, packet.metallicRoughnessSRV);
+                }
             }
-            if (c.roughnessMap >= 0) {
-                cmdList->SetGraphicsRootDescriptorTable(c.roughnessMap, packet.metallicRoughnessSRV);
+            {
+                int idx = resolveIdx("gRoughnessMap", c.roughnessMap);
+                if (idx >= 0) {
+                    cmdList->SetGraphicsRootDescriptorTable(idx, packet.metallicRoughnessSRV);
+                }
             }
         }
-        if (c.aoMap >= 0 && packet.occlusionSRV.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(c.aoMap, packet.occlusionSRV);
+        {
+            int idx = resolveIdx("gAOMap", c.aoMap);
+            if (idx >= 0 && packet.occlusionSRV.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(idx, packet.occlusionSRV);
+            }
         }
-        if (packet.isSkinned && c.matrixPalette >= 0 && packet.matrixPaletteSRV.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(c.matrixPalette, packet.matrixPaletteSRV);
+        if (packet.isSkinned) {
+            int idx = resolveIdx("gMatrixPalette", c.matrixPalette);
+            if (idx >= 0 && packet.matrixPaletteSRV.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(idx, packet.matrixPaletteSRV);
+            }
         }
         cmdList->DrawIndexedInstanced(packet.indexCount, packet.instanceCount, packet.startIndex, 0, 0);
 
@@ -116,7 +149,105 @@ namespace CoreEngine
 
     void BaseModelRenderer::RestoreDefaultPSO(ID3D12GraphicsCommandList* cmdList)
     {
+        // カスタムシェーダーが独自 RootSignature を使用した場合に備えて RS も既定に戻す
+        cmdList->SetGraphicsRootSignature(forwardRootSignatureMg_->GetRootSignature());
         cmdList->SetPipelineState(forwardPipelineState_);
+
+        // 標準 RS に戻したので、BeginPass で設定したシーンリソースを再バインドする
+        // （SetGraphicsRootSignature を呼ぶと全バインドがリセットされるため）
+        if (cameraCBV_ != 0 && forwardCache_.camera >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(forwardCache_.camera, cameraCBV_);
+        }
+        if (lightManager_) {
+            lightManager_->SetLightsToCommandList(
+                cmdList,
+                forwardCache_.lightCounts,
+                forwardCache_.directionalLights,
+                forwardCache_.pointLights,
+                forwardCache_.spotLights,
+                forwardCache_.areaLights
+            );
+        }
+        if (lightViewProjectionCBV_ != 0 && forwardCache_.lightVP >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(forwardCache_.lightVP, lightViewProjectionCBV_);
+        }
+        if (shadowMapHandle_.ptr != 0 && forwardCache_.shadowMap >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.shadowMap, shadowMapHandle_);
+        }
+        if (iblParams_.irradianceMap.ptr != 0 && forwardCache_.irradianceMap >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.irradianceMap, iblParams_.irradianceMap);
+        }
+        if (iblParams_.prefilteredMap.ptr != 0 && forwardCache_.prefilteredMap >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.prefilteredMap, iblParams_.prefilteredMap);
+        }
+        if (iblParams_.brdfLUT.ptr != 0 && forwardCache_.brdfLUT >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.brdfLUT, iblParams_.brdfLUT);
+        }
+        if (iblParamsCBVAddress_ != 0 && forwardCache_.iblParams >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(forwardCache_.iblParams, iblParamsCBVAddress_);
+        }
+    }
+
+    void BaseModelRenderer::BindSceneResourcesWithCustomPipeline(
+        ID3D12GraphicsCommandList* cmdList,
+        const CustomShaderPipeline* customPipeline)
+    {
+        if (!customPipeline) {
+            return;
+        }
+
+        // カスタム RS のインデックスでシーンレベルのリソースを再バインドする
+        auto bind = [&](const std::string& name, auto bindFn) {
+            int idx = customPipeline->GetRootParamIndex(name);
+            if (idx >= 0) {
+                bindFn(idx);
+            }
+        };
+
+        bind("gCamera", [&](int i) {
+            if (cameraCBV_ != 0) {
+                cmdList->SetGraphicsRootConstantBufferView(i, cameraCBV_);
+            }
+        });
+        if (lightManager_) {
+            int lightCounts    = customPipeline->GetRootParamIndex("gLightCounts");
+            int dirLights      = customPipeline->GetRootParamIndex("gDirectionalLights");
+            int pointLights    = customPipeline->GetRootParamIndex("gPointLights");
+            int spotLights     = customPipeline->GetRootParamIndex("gSpotLights");
+            int areaLights     = customPipeline->GetRootParamIndex("gAreaLights");
+            lightManager_->SetLightsToCommandList(
+                cmdList, lightCounts, dirLights, pointLights, spotLights, areaLights);
+        }
+        bind("gLightViewProjection", [&](int i) {
+            if (lightViewProjectionCBV_ != 0) {
+                cmdList->SetGraphicsRootConstantBufferView(i, lightViewProjectionCBV_);
+            }
+        });
+        bind("gShadowMap", [&](int i) {
+            if (shadowMapHandle_.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(i, shadowMapHandle_);
+            }
+        });
+        bind("gIrradianceMap", [&](int i) {
+            if (iblParams_.irradianceMap.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(i, iblParams_.irradianceMap);
+            }
+        });
+        bind("gPrefilteredMap", [&](int i) {
+            if (iblParams_.prefilteredMap.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(i, iblParams_.prefilteredMap);
+            }
+        });
+        bind("gBRDFLUT", [&](int i) {
+            if (iblParams_.brdfLUT.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(i, iblParams_.brdfLUT);
+            }
+        });
+        bind("gIBLParams", [&](int i) {
+            if (iblParamsCBVAddress_ != 0) {
+                cmdList->SetGraphicsRootConstantBufferView(i, iblParamsCBVAddress_);
+            }
+        });
     }
 
     void BaseModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
