@@ -219,6 +219,7 @@ namespace CoreEngine
             key.occlusionSRV = textures.occlusion.ptr;
             key.materialCBV = static_cast<uint64_t>(materialCBV);
             key.isGBufferPass = isGBufferPass;
+            key.customForwardPSO = isGBufferPass ? nullptr : customForwardPSO_;
 
             batch->Submit(key, mtx, materialCBV);
         }

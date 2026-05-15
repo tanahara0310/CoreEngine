@@ -21,6 +21,7 @@ namespace CoreEngine
         uint64_t occlusionSRV = 0;
         uint64_t materialCBV = 0;                 ///< マテリアル定数バッファ
         bool isGBufferPass = false;               ///< Forward / GBuffer の区別
+        ID3D12PipelineState* customForwardPSO = nullptr; ///< カスタムシェーダー PSO（nullptr = 既定）
 
         bool operator==(const InstanceBatchKey& other) const {
             return resource == other.resource
@@ -30,7 +31,8 @@ namespace CoreEngine
                 && metallicRoughnessSRV == other.metallicRoughnessSRV
                 && occlusionSRV == other.occlusionSRV
                 && materialCBV == other.materialCBV
-                && isGBufferPass == other.isGBufferPass;
+                && isGBufferPass == other.isGBufferPass
+                && customForwardPSO == other.customForwardPSO;
         }
     };
 
@@ -48,6 +50,7 @@ namespace CoreEngine
             h = mix(h, std::hash<uint64_t>{}(k.occlusionSRV));
             h = mix(h, std::hash<uint64_t>{}(k.materialCBV));
             h = mix(h, std::hash<bool>{}(k.isGBufferPass));
+            h = mix(h, std::hash<const void*>{}(k.customForwardPSO));
             return h;
         }
     };

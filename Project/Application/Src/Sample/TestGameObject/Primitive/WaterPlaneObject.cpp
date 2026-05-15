@@ -16,6 +16,11 @@ WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution,
     , uvOffset_({ 0.0f, 0.0f }) {
 }
 
+void WaterPlaneObject::OnInitialize() {
+    // 独自シェーダーを使用するよう登録する
+    SetCustomShaderProvider(this);
+}
+
 void WaterPlaneObject::SetNormalMapTextureName(const std::string& fileName) {
     auto loaded = CoreEngine::TextureManager::GetInstance().Load(fileName);
     if (GetModel() && loaded.gpuHandle.ptr != 0) {

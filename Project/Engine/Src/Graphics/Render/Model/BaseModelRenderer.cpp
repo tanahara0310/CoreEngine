@@ -114,6 +114,11 @@ namespace CoreEngine
             isInstanced, packet.instanceCount, packet.indexCount, /*vertexCountPerInstance=*/0);
     }
 
+    void BaseModelRenderer::RestoreDefaultPSO(ID3D12GraphicsCommandList* cmdList)
+    {
+        cmdList->SetPipelineState(forwardPipelineState_);
+    }
+
     void BaseModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
         currentCommandList_ = cmdList;
         isInGBufferPass_ = false;

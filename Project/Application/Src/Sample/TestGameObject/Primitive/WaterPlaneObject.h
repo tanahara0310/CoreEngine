@@ -2,25 +2,26 @@
 
 #include "ObjectCommon/Primitive/PrimitiveGameObject.h"
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
+#include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Math/Vector/Vector2.h"
 
 /// @brief 水面表現用のグリッドメッシュオブジェクト
-///
 /// PlaneMeshGenerator を使用して N×N 分割の平面メッシュを生成する。
 /// resolution（分割数）が高いほど後のステップで波の表現が細かくなる。
-///
-/// Step 2: UV スクロールによる水面の流れ表現
-/// - scrollSpeed で UV オフセットを毎フレーム加算し、水面が動いて見える
-/// - uvTiling で UV 繰り返し回数を制御し、テクスチャの細かさを調整する
-class WaterPlaneObject : public CoreEngine::PrimitiveGameObject {
+class WaterPlaneObject : public CoreEngine::PrimitiveGameObject
+                       , public CoreEngine::ICustomShaderProvider {
 public:
-    /// @param size              水面の一辺のサイズ（XZ 方向共通）
-    /// @param resolution        XZ 方向の分割数
+    /// @param size 水面の一辺のサイズ（XZ 方向共通）
+    /// @param resolution XZ 方向の分割数
     /// @param albedoTextureName アルベドテクスチャのファイル名（空文字列の場合は単色）
     WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64,
         const std::string& albedoTextureName = {});
 
     const char* GetObjectName() const override { return "WaterPlane"; }
+
+    // ===== ICustomShaderProvider =====
+    std::wstring GetVertexShaderPath() const override { return L"Water.VS.hlsl"; }
+    std::wstring GetPixelShaderPath()  const override { return L"Water.PS.hlsl"; }
 
     /// @brief ノーマルマップテクスチャのファイル名を設定する（Initialize 後に呼ぶこと）
     void SetNormalMapTextureName(const std::string& fileName);
@@ -39,6 +40,9 @@ protected:
     std::string GetTexturePath() const override { return albedoTextureName_; }
 
     std::unique_ptr<CoreEngine::IPrimitiveMeshGenerator> CreateMeshGenerator() const override;
+
+    /// @brief Initialize 完了後に独自シェーダー PSO を登録する
+    void OnInitialize() override;
 
 private:
     /// @brief UV タイリングとオフセットをマテリアルの uvTransform 行列に反映する

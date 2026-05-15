@@ -222,6 +222,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration\ChromaticAberration.cpp" />
@@ -482,6 +483,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinCluster.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration\ChromaticAberration.h" />
@@ -577,6 +579,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\UI\UIRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h" />
+    <ClInclude Include="Engine\Src\Graphics\Shader\ICustomShaderProvider.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionData.h" />
     <ClInclude Include="Engine\Src\Graphics\Shadow\ShadowMapManager.h" />

@@ -163,6 +163,10 @@ namespace CoreEngine
         /// @brief 現在設定されているグローバルレンダースロットを取得する
         static TransformBufferSlot GetCurrentRenderSlot() { return s_currentRenderSlot_; }
 
+        /// @brief カスタムシェーダー用フォワード PSO を設定する（nullptr = 既定シェーダーを使用）
+        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        void SetCustomForwardPSO(ID3D12PipelineState* pso) { customForwardPSO_ = pso; }
+
     private:
         // 描画に必要な固定依存（ModelManager から注入される）
         ModelRenderContext renderContext_;
@@ -201,6 +205,9 @@ namespace CoreEngine
 
         // 法線マップのオーバーライドハンドル（ptr==0 のときはリソース内蔵テクスチャを使用）
         D3D12_GPU_DESCRIPTOR_HANDLE normalMapOverride_ = {};
+
+        // カスタムシェーダー用フォワード PSO（nullptr = 既定 ModelRenderer の PSO を使用）
+        ID3D12PipelineState* customForwardPSO_ = nullptr;
 
         // 内部ヘルパーメソッド
         /// @brief WVP行列データを更新（slot で使用バッファを指定）

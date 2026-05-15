@@ -136,6 +136,9 @@
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
     </ClCompile>
@@ -903,6 +906,9 @@
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.h">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
     </ClInclude>
@@ -1187,6 +1193,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h">
       <Filter>Engine\Src\Graphics\RootSignature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\ICustomShaderProvider.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>

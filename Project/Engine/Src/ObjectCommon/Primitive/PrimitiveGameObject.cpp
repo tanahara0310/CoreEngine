@@ -28,6 +28,10 @@ namespace CoreEngine
         }
 
         OnInitialize();
+
+        // OnInitialize() で SetCustomShaderProvider() が呼ばれた場合、カスタム PSO を構築する
+        BuildCustomShaderPipelineIfNeeded(dxCommon ? dxCommon->GetDevice() : nullptr, modelMgr);
+
         SetActive(true);
     }
 

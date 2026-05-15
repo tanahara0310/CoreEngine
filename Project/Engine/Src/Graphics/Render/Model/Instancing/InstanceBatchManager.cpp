@@ -148,6 +148,16 @@ namespace CoreEngine
         packet.occlusionSRV.ptr = batch.key.occlusionSRV;
         packet.isSkinned = false;
 
+        // カスタム PSO が指定されているバッチは一時的に差し替えて描画する
+        if (batch.key.customForwardPSO) {
+            cmdList->SetPipelineState(batch.key.customForwardPSO);
+        }
+
         renderer->BindModelDrawPacket(cmdList, packet);
+
+        // カスタム PSO を元に戻す（次バッチが既定 PSO を使えるようにリストア）
+        if (batch.key.customForwardPSO) {
+            renderer->RestoreDefaultPSO(cmdList);
+        }
     }
 }

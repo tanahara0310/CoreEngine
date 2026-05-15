@@ -48,6 +48,9 @@ public:
     /// @param ctx レンダラー・デバイス等の固定依存コンテキスト
     void SetRenderContext(const ModelRenderContext& ctx);
 
+    /// @brief 描画依存コンテキストを取得する（カスタムシェーダー構築に使用）
+    const ModelRenderContext& GetRenderContext() const { return renderContext_; }
+
     /// @brief 静的モデルを作成（アニメーションなし）
     /// @param filePath ファイルパス（Assetsフォルダを省略可能）
     /// @return 作成されたModelのユニークポインタ
