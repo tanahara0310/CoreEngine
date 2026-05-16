@@ -7,6 +7,9 @@
     <ClCompile Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\SpriteTestScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.cpp">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.cpp">
       <Filter>Application\Src\Sample\TestGameObject\AnimatedModel</Filter>
     </ClCompile>
@@ -704,6 +707,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h">
       <Filter>Application\Src\Sample\SampleScene\SpriteTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.h">
       <Filter>Application\Src\Sample\TestGameObject\AnimatedModel</Filter>

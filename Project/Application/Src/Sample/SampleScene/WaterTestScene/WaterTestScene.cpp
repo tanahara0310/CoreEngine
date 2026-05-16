@@ -2,10 +2,15 @@
 
 #include "Graphics/IBL/IBLSystem.h"
 #include "Graphics/Texture/TextureManager.h"
+#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Render/RenderManager.h"
+#include "Camera/CameraManager.h"
 #include "Scene/SceneManager.h"
 #include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
 #include "Sample/TestGameObject/Primitive/WaterPlaneObject.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include <cmath>
+#include <cstdio>
 
 using namespace CoreEngine;
 
@@ -38,6 +43,9 @@ void WaterTestScene::OnInitialize() {
     // ===== 水面グリッドメッシュ =====
     // サイズ 100 × 100、64×64 分割
     // 分割数が多いほど後のステップ（Gerstner Wave）で波の表現が細かくなる
+    // アルベドテクスチャ名だけ登録しておく（初期状態は非表示 = テクスチャなし）
+    // ImGui の「テクスチャモード」から「アルベド + ノーマルマップ」を選ぶと有効化される
+    // 空文字を渡すと white1x1.png がフォールバックされ、ベースカラーのみで描画される
     waterPlane_ = CreateObject<WaterPlaneObject>(100.0f, 64, "waterAlbedo.jpg");
     waterPlane_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
     waterPlane_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
@@ -47,15 +55,16 @@ void WaterTestScene::OnInitialize() {
     waterPlane_->SetBlendMode(BlendMode::kBlendModeNormal);
 
     if (auto* mat = waterPlane_->GetModel()->GetMaterial()) {
-        // Step 2: UV スクロールで水面の流れを表現
-        mat->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        // 湖らしい深い青緑をベースカラーとして設定する
+        // テクスチャが無くてもアルベドカラーで水の色感を出す
+        mat->SetColor({ 0.04f, 0.18f, 0.28f, 1.0f }); // 深い青緑
         mat->SetMetallic(0.0f);
-        mat->SetRoughness(0.05f);
+        mat->SetRoughness(0.04f);  // 鏡面に近い（0.0 に近いほど鏡面反射が強くなる）
         mat->SetLightingEnabled(true);
         mat->SetIBLEnabled(true);
     }
 
-    // ノーマルマップを設定（Initialize後に呼ぶ）
+    // ノーマルマップを設定（ImGui の "NormalMap Enable" で有効/無効を切り替え可能）
     waterPlane_->SetNormalMapTextureName("waterNormal.jpg");
 
     // UV スクロール速度とタイリングを設定
@@ -63,6 +72,20 @@ void WaterTestScene::OnInitialize() {
     waterPlane_->SetScrollSpeed({ 0.03f, 0.01f });
     waterPlane_->SetUVTiling({ 4.0f, 4.0f });
     waterPlane_->SetActive(true);
+
+    // ===== Step 4: 反射パス初期化 =====
+    auto* dxCommon = engine_->GetComponent<DirectXCommon>();
+    if (dxCommon) {
+        reflectionPass_.Initialize(dxCommon, 2);
+    }
+
+#ifdef USE_IMGUI
+    // 初期テクスチャモードを反映する（デフォルト: ノーマルマップのみ）
+    // アルベドテクスチャは PrimitiveGameObject::Initialize() でロードされるが
+    // ここで texture_.gpuHandle をクリアしてモード 1（ノーマルマップのみ）にそろえる
+    waterPlane_->SetAlbedoTextureEnabled(imguiTextureMode_ == 2);
+    waterPlane_->SetNormalMapEnabled(imguiTextureMode_ >= 1);
+#endif
 }
 
 void WaterTestScene::OnUpdate() {
@@ -71,12 +94,133 @@ void WaterTestScene::OnUpdate() {
     if (waterPlane_ && frameRate) {
         waterPlane_->UpdateUVScroll(frameRate->GetDeltaTime());
     }
+
+#ifdef USE_IMGUI
+    DrawWaterImGui();
+#endif
 }
 
 void WaterTestScene::Draw() {
+    // ---- Step 4: 反射パスを先に実行する ----
+    // PrepareRender() は BaseScene::Draw() の前に呼ばれるため描画キューは既に積まれている
+    if (waterPlane_) {
+        auto* dxCommon = engine_->GetComponent<DirectXCommon>();
+        auto* renderManager = engine_->GetComponent<RenderManager>();
+        auto* cameraManager = engine_->GetComponent<CameraManager>();
+
+        if (dxCommon && renderManager && cameraManager) {
+            auto* cmdList = dxCommon->GetCommandList();
+            auto* mainCamera = cameraManager->GetActiveCamera(CameraType::Camera3D);
+            constexpr float kWaterHeight = 0.0f; // 水面の Y 座標
+
+            // クリップ平面を水面オブジェクトに伝える（反射パス中は水面自身をクリップ）
+            waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), false);
+            waterPlane_->UpdateFrameConstants();
+
+            // 反射シーンをオフスクリーン RTT に描画する
+            reflectionPass_.Render(cmdList, renderManager, mainCamera, kWaterHeight);
+
+            // 反射テクスチャを水面オブジェクトに渡す
+            waterPlane_->SetReflectionTexture(reflectionPass_.GetReflectionSRV());
+        }
+    }
+
+    // ---- 通常描画 ----
     BaseScene::Draw();
 }
 
 void WaterTestScene::Finalize() {
     BaseScene::Finalize();
 }
+
+#ifdef USE_IMGUI
+void WaterTestScene::DrawWaterImGui() {
+    if (!waterPlane_) { return; }
+
+    ImGui::SetNextWindowSize(ImVec2(440, 620), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Water Parameters")) {
+        ImGui::End();
+        return;
+    }
+
+    // ===== テクスチャモード =====
+    if (ImGui::CollapsingHeader("テクスチャモード", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextDisabled("水面のテクスチャ使用方法を切り替えます");
+        ImGui::Spacing();
+
+        const int prevMode = imguiTextureMode_;
+        ImGui::RadioButton("テクスチャなし（ベースカラーのみ）", &imguiTextureMode_, 0);
+        ImGui::RadioButton("ノーマルマップのみ", &imguiTextureMode_, 1);
+        ImGui::RadioButton("アルベド + ノーマルマップ", &imguiTextureMode_, 2);
+
+        if (imguiTextureMode_ != prevMode) {
+            // アルベドテクスチャ: モード 2 のときのみ有効
+            // （WaterPlaneObject の albedoTextureName_ が設定されていれば読み込む）
+            waterPlane_->SetAlbedoTextureEnabled(imguiTextureMode_ == 2);
+            // ノーマルマップ: モード 1 / 2 のときに有効
+            waterPlane_->SetNormalMapEnabled(imguiTextureMode_ >= 1);
+        }
+    }
+
+    // ===== マテリアル =====
+    if (ImGui::CollapsingHeader("マテリアル", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::ColorEdit4("ベースカラー", imguiColor_)) {
+            waterPlane_->SetBaseColor({ imguiColor_[0], imguiColor_[1], imguiColor_[2], imguiColor_[3] });
+        }
+        if (ImGui::SliderFloat("粗さ (Roughness)", &imguiRoughness_, 0.0f, 1.0f)) {
+            waterPlane_->SetRoughness(imguiRoughness_);
+        }
+        if (ImGui::SliderFloat("金属度 (Metallic)", &imguiMetallic_, 0.0f, 1.0f)) {
+            waterPlane_->SetMetallic(imguiMetallic_);
+        }
+        if (ImGui::Checkbox("IBL 有効", &imguiIBLEnabled_)) {
+            waterPlane_->SetIBLEnabled(imguiIBLEnabled_);
+        }
+    }
+
+    // ===== UV =====
+    if (ImGui::CollapsingHeader("UV スクロール / タイリング", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (ImGui::DragFloat2("スクロール速度 (U, V)", imguiScrollSpeed_, 0.001f, -1.0f, 1.0f, "%.4f")) {
+            waterPlane_->GetScrollSpeed() = { imguiScrollSpeed_[0], imguiScrollSpeed_[1] };
+        }
+        if (ImGui::DragFloat2("タイリング (U, V)", imguiUVTiling_, 0.1f, 0.1f, 32.0f, "%.2f")) {
+            waterPlane_->GetUVTiling() = { imguiUVTiling_[0], imguiUVTiling_[1] };
+        }
+    }
+
+    // ===== Gerstner 波 =====
+    if (ImGui::CollapsingHeader("Gerstner 波パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
+        WaveParams* waves = waterPlane_->GetWaves();
+        for (int i = 0; i < 4; ++i) {
+            char label[32];
+            std::snprintf(label, sizeof(label), "波 %d", i);
+            if (ImGui::TreeNode(label)) {
+                float dir[2] = { waves[i].direction.x, waves[i].direction.y };
+                if (ImGui::DragFloat2("進行方向 (XZ)", dir, 0.01f, -1.0f, 1.0f)) {
+                    float len = std::sqrtf(dir[0] * dir[0] + dir[1] * dir[1]);
+                    if (len > 1e-4f) { dir[0] /= len; dir[1] /= len; }
+                    waves[i].direction = { dir[0], dir[1] };
+                }
+                ImGui::DragFloat("振幅 (Amplitude)",    &waves[i].amplitude,  0.01f, 0.0f, 5.0f);
+                ImGui::DragFloat("波長 (Wavelength)",   &waves[i].wavelength, 0.1f,  0.1f, 50.0f);
+                ImGui::DragFloat("位相速度 (Speed)",    &waves[i].speed,      0.05f, 0.0f, 10.0f);
+                ImGui::DragFloat("急峻度 (Steepness)",  &waves[i].steepness,  0.01f, 0.0f, 1.0f);
+                ImGui::TreePop();
+            }
+        }
+    }
+
+    // ===== 反射 =====
+    if (ImGui::CollapsingHeader("反射 / IBL")) {
+        // reflectionEnabled は SetReflectionTexture() が自動制御するため読み取り専用表示
+        const bool reflEnabled = (waterPlane_->GetFrameConstants().reflectionEnabled != 0);
+        ImGui::BeginDisabled();
+        bool tmp = reflEnabled;
+        ImGui::Checkbox("反射テクスチャ 有効（自動制御）", &tmp);
+        ImGui::EndDisabled();
+        ImGui::TextDisabled("WaterReflectionPass から自動で設定されます");
+    }
+
+    ImGui::End();
+}
+#endif

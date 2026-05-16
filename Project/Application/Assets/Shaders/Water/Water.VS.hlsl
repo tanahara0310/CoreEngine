@@ -19,6 +19,31 @@ cbuffer WaterConstants : register(b4)
     float3 gPadding;
 };
 
+// ===== フレーム定数バッファ（クリップ平面）=====
+// WaterPlaneObject::BindCustomResources() が b5 にバインドする
+cbuffer WaterFrameConstants : register(b5)
+{
+    float4 gClipPlane;        // クリップ平面 (A, B, C, D): dot(worldPos, plane) > 0 で描画
+    int    gClipEnabled;      // 1 = 有効，0 = 無効
+    int    gReflectionEnabled; // 1 = 反射テクスチャ有効，0 = IBL フォールバック
+    float2 gFramePadding;
+};
+
+// ===== 水面専用出力構造体（SV_ClipDistance0 を追加）=====
+struct WaterVSOutput
+{
+    float4 position         : SV_POSITION;
+    float2 texcoord         : TEXCOORD0;
+    float3 normal           : NORMAL0;
+    float3 worldPosition    : POSITION0;
+    float4 lightSpacePos    : POSITION1;
+    float3 tangent          : TANGENT0;
+    float3 bitangent        : BINORMAL0;
+    float4 clipPosCurrent   : POSITION2;
+    float4 clipPosPrev      : POSITION3;
+    float  clipDist         : SV_ClipDistance0; // 水面クリップ（反射パス用）
+};
+
 /// @brief Gerstner Wave 1 本分の頂点変位を計算する
 /// @param worldPos 変位前のワールド座標（XZ を参照、Y を更新）
 /// @param wave     波パラメータ
@@ -46,7 +71,7 @@ float3 CalcGerstnerOffset(float3 worldPos, WaveParams wave)
     return offset;
 }
 
-VertexShaderOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
+WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
 {
     TransformationMatrix mtx = gInstanceData[instanceID];
 
@@ -90,11 +115,9 @@ VertexShaderOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID
     tangent = normalize(tangent);
 
     // ---- 4. 出力組み立て ----
-    VertexShaderOutput output;
+    WaterVSOutput output;
     output.texcoord = input.texcoord;
 
-    // 変位ベクトルをローカル空間に逆変換してから WVP を通すことで
-    // クリップ座標を正確に求める（World がスケール均一な場合に正確）
     float4 baseClip = mul(input.position, mtx.WVP);
     float3x3 invWorld3 = transpose((float3x3) mtx.World);
     float3 offsetLS = mul(totalOffset, invWorld3);
@@ -109,6 +132,12 @@ VertexShaderOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID
     output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);
     output.clipPosCurrent = output.position;
     output.clipPosPrev = mul(input.position, mtx.PrevWVP);
+
+    // ---- 5. クリップ平面（反射パス中に水面自体を除外する） ----
+    // gClipEnabled == 0 のときは常に正（全頂点描画）
+    output.clipDist = gClipEnabled
+        ? dot(float4(worldPos, 1.0f), gClipPlane)
+        : 1.0f;
 
     return output;
 }
