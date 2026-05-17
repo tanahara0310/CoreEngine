@@ -1703,9 +1703,6 @@
     <None Include="Engine\Src\Particle\README.md">
       <Filter>Engine\Src\Particle</Filter>
     </None>
-    <None Include="JobHuntingWorksDoc\JobHuntingWorksDoc.md">
-      <Filter>JobHuntingWorksDoc</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include=".github">

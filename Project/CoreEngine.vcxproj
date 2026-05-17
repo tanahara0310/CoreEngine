@@ -756,10 +756,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Build\Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->
-    <None Include="JobHuntingWorksDoc\JobHuntingWorksDoc.md">
-      <SubType>
-      </SubType>
-    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
