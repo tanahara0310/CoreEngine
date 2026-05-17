@@ -4,6 +4,8 @@
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/Model.h"
+#include "Graphics/Shader/ICustomShaderProvider.h"
+#include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Math/BoundingBox.h"
 #include <string>
 #include <memory>
@@ -13,6 +15,8 @@
 #endif
 
 namespace CoreEngine {
+
+    class ModelManager;
 
     /// @brief 3Dモデルを持つゲームオブジェクトの中間基底クラス
     ///
@@ -96,6 +100,11 @@ namespace CoreEngine {
         /// @brief Draw() 内で model_->Draw() の後に呼ばれる
         virtual void OnDraw(const ICamera* camera) { (void)camera; }
 
+        /// @brief カスタムシェーダープロバイダーを登録する
+        /// OnInitialize() 内で this を渡すことで Initialize() 完了後にカスタム PSO が構築される。
+        /// @param provider ICustomShaderProvider を実装したオブジェクト（所有権は移さない）
+        void SetCustomShaderProvider(ICustomShaderProvider* provider) { customShaderProvider_ = provider; }
+
         // === 共通描画リソース ===
 
         /// @brief 3Dモデル
@@ -118,6 +127,13 @@ namespace CoreEngine {
         void SetBlendMode(BlendMode blendMode) override { blendMode_ = blendMode; }
 
     protected:
+
+        /// @brief カスタムシェーダープロバイダーが設定されている場合に PSO を構築する
+        /// ModelGameObject::Initialize() および PrimitiveGameObject::Initialize() の
+        /// OnInitialize() 呼び出し直後に実行される共通処理。
+        void BuildCustomShaderPipelineIfNeeded(ID3D12Device* device, ModelManager* modelMgr);
+
+
 #ifdef USE_IMGUI
         // ImGui 編集追跡用（操作前スナップショット）
         Vector3 imguiSnapTranslate_ = { 0.0f, 0.0f, 0.0f };
@@ -143,6 +159,15 @@ namespace CoreEngine {
         /// @brief Active 変更時に Undo/Redo コールバックを発火する
         void OnImGuiActiveChanged(bool prevActive) override;
 #endif
+
+    private:
+
+        /// @brief カスタムシェーダープロバイダー（nullptr = 既定シェーダーを使用）
+        ICustomShaderProvider* customShaderProvider_ = nullptr;
+
+        /// @brief カスタムシェーダー用 PSO を管理するコンポーネント
+        std::unique_ptr<CustomShaderPipeline> customShaderPipeline_;
+
     };
 
 }  // namespace CoreEngine

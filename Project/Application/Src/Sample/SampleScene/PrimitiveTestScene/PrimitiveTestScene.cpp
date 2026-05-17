@@ -11,10 +11,10 @@
 #include "Scene/SceneManager.h"
 #include "Utility/Logger/Logger.h"
 
-#include "Sample/TestGameObject/SkyBoxObject.h"
-#include "Sample/TestGameObject/PlaneObject.h"
-#include "Sample/TestGameObject/PrimitiveSphereObject.h"
-#include "Sample/TestGameObject/CubeObject.h"
+#include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
+#include "Sample/TestGameObject/Primitive/PlaneObject.h"
+#include "Sample/TestGameObject/Primitive/PrimitiveSphereObject.h"
+#include "Sample/TestGameObject/Primitive/CubeObject.h"
 
 using namespace CoreEngine;
 

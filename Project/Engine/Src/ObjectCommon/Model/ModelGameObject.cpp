@@ -4,6 +4,7 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelResource.h"
+#include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Camera/ICamera.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -34,7 +35,38 @@ namespace CoreEngine
         }
 
         OnInitialize();
+
+        // OnInitialize() で SetCustomShaderProvider() が呼ばれた場合、カスタム PSO を構築する
+        BuildCustomShaderPipelineIfNeeded(dxCommon ? dxCommon->GetDevice() : nullptr, modelMgr);
+
         SetActive(true);
+    }
+
+    void ModelGameObject::BuildCustomShaderPipelineIfNeeded(ID3D12Device* device, ModelManager* modelMgr)
+    {
+        if (!customShaderProvider_ || !model_ || !modelMgr || !device) {
+            return;
+        }
+        const ModelRenderContext& ctx = modelMgr->GetRenderContext();
+        if (!ctx.IsValid()) {
+            return;
+        }
+        customShaderPipeline_ = std::make_unique<CustomShaderPipeline>();
+        BaseModelRenderer* renderer = ctx.modelRenderer;
+        const bool built = customShaderPipeline_->Build(
+            device,
+            *renderer->GetShaderCompiler(),
+            *renderer->GetReflectionBuilder(),
+            *customShaderProvider_);
+
+        if (built && customShaderPipeline_->HasForwardPSO()) {
+            model_->SetCustomForwardPSO(
+                customShaderPipeline_->GetForwardPSO(blendMode_));
+            model_->SetCustomRootSignature(
+                customShaderPipeline_->GetForwardRootSignature());
+            model_->SetCustomPipeline(customShaderPipeline_.get());
+            model_->SetCustomShaderProvider(customShaderProvider_);
+        }
     }
 
     void ModelGameObject::Update() {

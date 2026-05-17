@@ -9,7 +9,7 @@
 #include "Graphics/Render/Model/IBLParameters.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
-#include "Sample/TestGameObject/SkyBoxObject.h"
+#include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
 #include "Camera/CameraManager.h"
 #include "Camera/ICamera.h"
 #include "Math/MathCore.h"

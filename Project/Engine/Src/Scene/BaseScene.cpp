@@ -407,7 +407,7 @@ namespace CoreEngine
             lineManager.DrawLine(a, b, col, al);
             lineManager.DrawLine({ a.x + kThickness, a.y, a.z }, { b.x + kThickness, b.y, b.z }, col, al);
             lineManager.DrawLine({ a.x, a.y + kThickness, a.z }, { b.x, b.y + kThickness, b.z }, col, al);
-        };
+            };
 
         // Near面
         DrawThickLine(nearLT, nearRT, lineColor, alpha);

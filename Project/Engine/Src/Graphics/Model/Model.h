@@ -25,6 +25,8 @@ namespace CoreEngine {
     class ResourceFactory;
     class LightBase;
     class ShadowMapManager;
+    class ICustomShaderProvider;
+    class CustomShaderPipeline;
 }
 
 /// @brief 配置された3Dモデルのインスタンスクラス
@@ -77,6 +79,11 @@ namespace CoreEngine
         void Draw(const WorldTransform& transform, const CoreEngine::ICamera* camera,
             D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {},
             TransformBufferSlot slot = TransformBufferSlot::Game);
+
+        /// @brief 法線マップテクスチャをオーバーライドする
+        /// @details モデルリソースに内蔵された法線マップの代わりに外部テクスチャを使用する。
+        ///          ptr == 0 を渡すとリソース内蔵テクスチャに戻る。
+        void SetNormalMapOverride(D3D12_GPU_DESCRIPTOR_HANDLE handle) { normalMapOverride_ = handle; }
 
         /// @brief シャドウマップ用の描画（深度のみ）
         /// @param transform ワールドトランスフォーム
@@ -158,6 +165,22 @@ namespace CoreEngine
         /// @brief 現在設定されているグローバルレンダースロットを取得する
         static TransformBufferSlot GetCurrentRenderSlot() { return s_currentRenderSlot_; }
 
+        /// @brief カスタムシェーダー用フォワード PSO を設定する（nullptr = 既定シェーダーを使用）
+        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        void SetCustomForwardPSO(ID3D12PipelineState* pso) { customForwardPSO_ = pso; }
+
+        /// @brief カスタムシェーダー用 RootSignature を設定する（nullptr = 既定 RS を使用）
+        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        void SetCustomRootSignature(ID3D12RootSignature* rs) { customRootSignature_ = rs; }
+
+        /// @brief カスタムパイプラインオブジェクトを設定する（BindCustomResources に渡される）
+        /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
+        void SetCustomPipeline(const CustomShaderPipeline* pipeline) { customPipeline_ = pipeline; }
+
+        /// @brief カスタムリソースバインドプロバイダを設定する（nullptr = なし）
+        /// @note SetCustomForwardPSO() と合わせて ModelGameObject::Initialize() 内部から呼び出される。
+        void SetCustomShaderProvider(const ICustomShaderProvider* provider) { customProvider_ = provider; }
+
     private:
         // 描画に必要な固定依存（ModelManager から注入される）
         ModelRenderContext renderContext_;
@@ -193,6 +216,21 @@ namespace CoreEngine
 
         // スケルトンアニメーター等の生成ファクトリー（スケルトンモデルのみ設定される）
         std::unique_ptr<IAnimationControllerFactory> animationFactory_;
+
+        // 法線マップのオーバーライドハンドル（ptr==0 のときはリソース内蔵テクスチャを使用）
+        D3D12_GPU_DESCRIPTOR_HANDLE normalMapOverride_ = {};
+
+        // カスタムシェーダー用フォワード PSO（nullptr = 既定 ModelRenderer の PSO を使用）
+        ID3D12PipelineState* customForwardPSO_ = nullptr;
+
+        // カスタムシェーダー用 RootSignature（nullptr = 既定 ModelRenderer の RS を使用）
+        ID3D12RootSignature* customRootSignature_ = nullptr;
+
+        // カスタムパイプラインオブジェクト（BindCustomResources に渡される）
+        const CustomShaderPipeline* customPipeline_ = nullptr;
+
+        // カスタムリソースバインドプロバイダ（nullptr = 追加バインドなし）
+        const ICustomShaderProvider* customProvider_ = nullptr;
 
         // 内部ヘルパーメソッド
         /// @brief WVP行列データを更新（slot で使用バッファを指定）

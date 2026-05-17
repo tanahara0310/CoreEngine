@@ -7,6 +7,27 @@
     <ClCompile Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\SpriteTestScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.cpp">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\AnimatedModel</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Model\ModelObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Model\Plane.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Model\SphereObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterPlaneObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\SkyBox\SkyBoxObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\SkyBox</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera2D.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -117,6 +138,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
@@ -445,15 +469,6 @@
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\ModelObject.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\SkyBoxObject.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\SphereObject.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Model.cpp">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClCompile>
@@ -465,9 +480,6 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Sample\SampleScene\TestScene\TestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\TestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\WalkModelObject.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Scene</Filter>
@@ -685,8 +697,8 @@
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\Plane.cpp">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -696,14 +708,38 @@
     <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h">
       <Filter>Application\Src\Sample\SampleScene\SpriteTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\CubeObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\PlaneObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\AnimatedModel</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\PrimitiveSphereObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Model\ModelObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Model\Plane.h">
+      <Filter>Application\Src\Sample\TestGameObject\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Model\SphereObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PrimitiveSphereObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterPlaneObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBox\SkyBoxObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\SkyBox</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Camera2D.h">
       <Filter>Engine\Src\Camera</Filter>
@@ -878,6 +914,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.h">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
@@ -1164,6 +1203,9 @@
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h">
       <Filter>Engine\Src\Graphics\RootSignature</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\ICustomShaderProvider.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
@@ -1293,15 +1335,6 @@
     <ClInclude Include="Engine\Src\Scene\SceneTransition.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\ModelObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBoxObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\SphereObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Model.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
@@ -1316,9 +1349,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Quaternion\Quaternion.h">
       <Filter>Engine\Src\Math\Quaternion</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\WalkModelObject.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\UndoRedoHistory.h">
       <Filter>Engine\Src\Scene</Filter>
@@ -1587,8 +1617,8 @@
     <ClInclude Include="Application\Src\MyGame.h">
       <Filter>Application\Src</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h">
-      <Filter>Application\Src\Sample\TestGameObject</Filter>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.h">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1714,8 +1744,23 @@
     <Filter Include="Application\Src\Sample\SampleScene\TestScene">
       <UniqueIdentifier>{867A4A49-D98E-4B2D-A4ED-CFD4CD58767A}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Sample\SampleScene\WaterTestScene">
+      <UniqueIdentifier>{7A2A7A72-9064-4808-88B4-1B308EC90298}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Sample\TestGameObject">
       <UniqueIdentifier>{554C1F16-770E-445F-8F03-2D6704FDBBAE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Sample\TestGameObject\AnimatedModel">
+      <UniqueIdentifier>{527BECE0-62C5-4B7C-B4BE-9180628CD645}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Sample\TestGameObject\Model">
+      <UniqueIdentifier>{BF4478FF-10FE-444C-84A7-012D6C0818E6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Sample\TestGameObject\Primitive">
+      <UniqueIdentifier>{0183DD6F-503B-41A7-8298-42316D653A50}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Sample\TestGameObject\SkyBox">
+      <UniqueIdentifier>{450D4B3F-5253-441F-9D38-938FA46CB8D4}</UniqueIdentifier>
     </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>
@@ -2067,6 +2112,9 @@
     </Filter>
     <Filter Include="Engine\Src\WorldTransform">
       <UniqueIdentifier>{BC60000F-B135-4771-977F-D0BA3FC81CF9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="JobHuntingWorksDoc">
+      <UniqueIdentifier>{A7E4EFA5-396C-4E77-93DA-69031B43224E}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

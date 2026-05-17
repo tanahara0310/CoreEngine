@@ -207,16 +207,22 @@ namespace CoreEngine
             const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
                 ? textureHandle : textures.baseColor;
+            D3D12_GPU_DESCRIPTOR_HANDLE normalTex = (normalMapOverride_.ptr != 0)
+                ? normalMapOverride_ : textures.normal;
 
             InstanceBatchKey key{};
             key.resource = resource_;
             key.subMeshIndex = i;
             key.baseColorSRV = baseColorTex.ptr;
-            key.normalMapSRV = textures.normal.ptr;
+            key.normalMapSRV = normalTex.ptr;
             key.metallicRoughnessSRV = textures.metallicRoughness.ptr;
             key.occlusionSRV = textures.occlusion.ptr;
             key.materialCBV = static_cast<uint64_t>(materialCBV);
             key.isGBufferPass = isGBufferPass;
+            key.customForwardPSO = isGBufferPass ? nullptr : customForwardPSO_;
+            key.customRootSignature = isGBufferPass ? nullptr : customRootSignature_;
+            key.customProvider = isGBufferPass ? nullptr : customProvider_;
+            key.customPipeline = isGBufferPass ? nullptr : customPipeline_;
 
             batch->Submit(key, mtx, materialCBV);
         }

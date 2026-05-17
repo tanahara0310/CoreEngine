@@ -1,7 +1,7 @@
 #include "FullScreen.hlsli"
-#include "../Common/LightStructures.hlsli"
-#include "../Common/ShadowCalculation.hlsli"
-#include "../Common/PBR.hlsli"
+#include "../Include/Lighting/LightStructures.hlsli"
+#include "../Include/Shadow/ShadowCalculation.hlsli"
+#include "../Include/PBR/PBR.hlsli"
 
 // ============================================================
 // G-Buffer テクスチャ

@@ -179,6 +179,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   <ItemGroup>
     <ClCompile Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.cpp" />
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Model\ModelObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Model\Plane.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Model\SphereObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterPlaneObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\SkyBox\SkyBoxObject.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera2D.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraPresetManager.cpp" />
@@ -216,6 +223,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration\ChromaticAberration.cpp" />
@@ -325,14 +333,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\SceneDebugEditor.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\ModelObject.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\SkyBoxObject.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\SphereObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Model.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\TestScene\TestScene.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\WalkModelObject.cpp" />
     <ClCompile Include="Engine\Src\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
     <ClCompile Include="Engine\Src\TileMap\TileCollider.cpp" />
@@ -408,14 +412,22 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\Plane.cpp" />
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\CubeObject.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\PlaneObject.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\PrimitiveSphereObject.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Model\ModelObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Model\Plane.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Model\SphereObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PrimitiveSphereObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterPlaneObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBox\SkyBoxObject.h" />
     <ClInclude Include="Engine\Src\Camera\Camera2D.h" />
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraPresetManager.h" />
@@ -474,6 +486,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinCluster.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration\ChromaticAberration.h" />
@@ -569,6 +582,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\UI\UIRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h" />
+    <ClInclude Include="Engine\Src\Graphics\Shader\ICustomShaderProvider.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionData.h" />
     <ClInclude Include="Engine\Src\Graphics\Shadow\ShadowMapManager.h" />
@@ -612,15 +626,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\SceneDebugEditor.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneTransition.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\ModelObject.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBoxObject.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\SphereObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Model.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelResource.h" />
     <ClInclude Include="Engine\Src\Math\BoundingBox.h" />
     <ClInclude Include="Engine\Src\Math\Quaternion\Quaternion.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\WalkModelObject.h" />
     <ClInclude Include="Engine\Src\Scene\UndoRedoHistory.h" />
     <ClInclude Include="Engine\Src\Threading\ThreadPool.h" />
     <ClInclude Include="Engine\Src\TileMap\TileAttribute.h" />
@@ -710,7 +720,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\Plane.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
