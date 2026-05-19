@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Application\Src\Sample\SampleScene\HomeworkScene\HomeworkScene.cpp">
+      <Filter>Application\Src\Sample\SampleScene\HomeworkScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\PrimitiveTestScene</Filter>
     </ClCompile>
@@ -702,6 +705,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application\Src\Sample\SampleScene\HomeworkScene\HomeworkScene.h">
+      <Filter>Application\Src\Sample\SampleScene\HomeworkScene</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.h">
       <Filter>Application\Src\Sample\SampleScene\PrimitiveTestScene</Filter>
     </ClInclude>
@@ -1732,6 +1738,9 @@
     <Filter Include="Application\Src\Sample\SampleScene">
       <UniqueIdentifier>{E4376BC7-4CEE-404A-A441-4F72CA1B9924}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Sample\SampleScene\HomeworkScene">
+      <UniqueIdentifier>{53E1BDA6-38DA-4577-8049-D877564B3166}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Sample\SampleScene\ParticleTestScene">
       <UniqueIdentifier>{09DAE995-E03C-4482-8D04-890611F87BF9}</UniqueIdentifier>
     </Filter>
@@ -2112,9 +2121,6 @@
     </Filter>
     <Filter Include="Engine\Src\WorldTransform">
       <UniqueIdentifier>{BC60000F-B135-4771-977F-D0BA3FC81CF9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="JobHuntingWorksDoc">
-      <UniqueIdentifier>{A7E4EFA5-396C-4E77-93DA-69031B43224E}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
