@@ -31,7 +31,7 @@ void MyGame::Initialize()
     sceneManager_->RegisterScene<HomeworkScene>("HomeworkScene");
 
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene("HomeworkScene");
+    sceneManager_->SetInitialScene("WaterTestScene");
 
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
 #ifdef USE_IMGUI
