@@ -7,13 +7,6 @@
 
 namespace CoreEngine
 {
-    void Sepia::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void Sepia::OnCreateConstantBuffers()
     {
         // SepiaParams 定数バッファ

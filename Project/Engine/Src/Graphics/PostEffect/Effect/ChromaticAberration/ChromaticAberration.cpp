@@ -7,13 +7,6 @@
 
 namespace CoreEngine
 {
-    void ChromaticAberration::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void ChromaticAberration::OnCreateConstantBuffers()
     {
         UINT caSize = (sizeof(ChromaticAberrationParams) + 255) & ~255;

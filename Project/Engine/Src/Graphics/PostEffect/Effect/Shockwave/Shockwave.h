@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../PostEffectBase.h"
+#include "../PostEffectComputeBase.h"
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -8,7 +8,7 @@
 namespace CoreEngine
 {
 /// @brief ショックウェーブエフェクト（CS方式）
-class Shockwave : public PostEffectBase {
+class Shockwave : public PostEffectComputeBase {
 public:
     /// @brief ショックウェーブパラメータ構造体
     struct ShockwaveParams {
@@ -31,19 +31,12 @@ public:
     Shockwave() = default;
     ~Shockwave() = default;
 
-    /// @brief 初期化（CS用リソース構築）
-    void Initialize(DirectXCommon* dxCommon);
-
     /// @brief CSエフェクト実行
     void Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
         uint32_t width,
         uint32_t height) override;
-
-    PostEffectExecutionType GetExecutionType() const override {
-        return PostEffectExecutionType::Compute;
-    }
 
     /// @brief ショックウェーブを開始
     void StartShockwave(float centerX, float centerY);

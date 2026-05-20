@@ -8,13 +8,6 @@
 
 namespace CoreEngine
 {
-    void FadeEffect::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void FadeEffect::OnCreateConstantBuffers()
     {
         UINT fadeSize = (sizeof(FadeParams) + 255) & ~255;

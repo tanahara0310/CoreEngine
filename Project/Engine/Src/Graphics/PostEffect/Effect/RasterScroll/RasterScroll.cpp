@@ -7,13 +7,6 @@
 
 namespace CoreEngine
 {
-    void RasterScroll::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void RasterScroll::OnCreateConstantBuffers()
     {
         UINT rsSize = (sizeof(RasterScrollParams) + 255) & ~255;

@@ -7,13 +7,6 @@
 
 namespace CoreEngine
 {
-    void Shockwave::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void Shockwave::OnCreateConstantBuffers()
     {
         UINT swSize = (sizeof(ShockwaveParams) + 255) & ~255;

@@ -8,14 +8,6 @@
 
 namespace CoreEngine
 {
-    void GrayScale::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        // コンパイル・リフレクション・RootSignature・PSO・定数バッファ生成を基底に委譲
-        InitializeComputeCore();
-    }
-
     void GrayScale::OnCreateConstantBuffers()
     {
         UINT size = (sizeof(ScreenParams) + 255) & ~255;

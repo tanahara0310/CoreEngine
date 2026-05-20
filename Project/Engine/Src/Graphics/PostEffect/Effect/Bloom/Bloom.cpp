@@ -7,13 +7,6 @@
 
 namespace CoreEngine
 {
-    void Bloom::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void Bloom::OnCreateConstantBuffers()
     {
         UINT bloomSize = (sizeof(BloomParams) + 255) & ~255;

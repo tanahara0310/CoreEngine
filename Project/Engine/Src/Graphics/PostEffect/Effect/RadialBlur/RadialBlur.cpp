@@ -7,13 +7,6 @@
 
 namespace CoreEngine
 {
-    void RadialBlur::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void RadialBlur::OnCreateConstantBuffers()
     {
         UINT rbSize = (sizeof(RadialBlurParams) + 255) & ~255;

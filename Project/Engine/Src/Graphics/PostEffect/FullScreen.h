@@ -1,10 +1,10 @@
 #pragma once
-#include "PostEffectBase.h"
+#include "Effect/PostEffectGraphicsBase.h"
 
 
 namespace CoreEngine
 {
-class FullScreen : public PostEffectBase {
+class FullScreen : public PostEffectGraphicsBase {
 public:
     FullScreen() = default;
     ~FullScreen() = default;

@@ -7,13 +7,6 @@
 
 namespace CoreEngine
 {
-    void Vignette::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void Vignette::OnCreateConstantBuffers()
     {
         UINT vignetteSize = (sizeof(VignetteParams) + 255) & ~255;

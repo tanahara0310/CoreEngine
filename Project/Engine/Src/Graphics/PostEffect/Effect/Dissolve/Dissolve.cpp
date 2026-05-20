@@ -8,13 +8,6 @@
 
 namespace CoreEngine
 {
-    void Dissolve::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void Dissolve::OnCreateConstantBuffers()
     {
         UINT dissolveSize = (sizeof(DissolveParams) + 255) & ~255;

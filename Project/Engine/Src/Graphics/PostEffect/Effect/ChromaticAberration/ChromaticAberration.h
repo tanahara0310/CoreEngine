@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../PostEffectBase.h"
+#include "../PostEffectComputeBase.h"
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -8,7 +8,7 @@
 namespace CoreEngine
 {
 /// @brief 色収差エフェクト（CS方式）
-class ChromaticAberration : public PostEffectBase {
+class ChromaticAberration : public PostEffectComputeBase {
 public:
     /// @brief 色収差パラメータ構造体
     struct ChromaticAberrationParams {
@@ -34,19 +34,12 @@ public:
     ChromaticAberration() = default;
     ~ChromaticAberration() = default;
 
-    /// @brief 初期化（CS用リソース構築）
-    void Initialize(DirectXCommon* dxCommon);
-
     /// @brief CSエフェクト実行
     void Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
         uint32_t width,
         uint32_t height) override;
-
-    PostEffectExecutionType GetExecutionType() const override {
-        return PostEffectExecutionType::Compute;
-    }
 
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;

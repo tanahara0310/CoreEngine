@@ -1,5 +1,5 @@
 #pragma once
-#include "../PostEffectBase.h"
+#include "../PostEffectComputeBase.h"
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -7,7 +7,7 @@
 namespace CoreEngine
 {
     /// @brief ガウシアンブラー
-    class Blur : public PostEffectBase {
+    class Blur : public PostEffectComputeBase {
     public:
         /// @brief ブラーパラメータ構造体
         struct BlurParams {
@@ -27,19 +27,12 @@ namespace CoreEngine
         Blur() = default;
         ~Blur() = default;
 
-        /// @brief 初期化（CS用リソース構築）
-        void Initialize(class DirectXCommon* dxCommon) override;
-
         /// @brief CSエフェクト実行
         void Dispatch(
             D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
             uint32_t width,
             uint32_t height) override;
-
-        PostEffectExecutionType GetExecutionType() const override {
-            return PostEffectExecutionType::Compute;
-        }
 
         /// @brief ImGuiでパラメータを調整
         void DrawImGui() override;

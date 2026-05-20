@@ -7,13 +7,6 @@
 
 namespace CoreEngine
 {
-    void ColorGrading::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void ColorGrading::OnCreateConstantBuffers()
     {
         UINT cgSize = (sizeof(ColorGradingParams) + 255) & ~255;

@@ -7,13 +7,6 @@
 
 namespace CoreEngine
 {
-    void Blur::Initialize(DirectXCommon* dxCommon)
-    {
-        assert(dxCommon);
-        directXCommon_ = dxCommon;
-        InitializeComputeCore();
-    }
-
     void Blur::OnCreateConstantBuffers()
     {
         UINT blurSize = (sizeof(BlurParams) + 255) & ~255;
