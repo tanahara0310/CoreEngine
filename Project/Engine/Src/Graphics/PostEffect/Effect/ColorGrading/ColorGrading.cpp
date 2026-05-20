@@ -1,13 +1,8 @@
 #include "ColorGrading.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Shader/ShaderCompiler.h"
-#include "Graphics/Shader/ShaderReflectionBuilder.h"
-#include "Graphics/RootSignature/RootSignatureManager.h"
-#include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include <cassert>
-#include <stdexcept>
 
 
 namespace CoreEngine
@@ -16,42 +11,10 @@ namespace CoreEngine
     {
         assert(dxCommon);
         directXCommon_ = dxCommon;
-
-        ShaderCompiler compiler;
-        compiler.Initialize();
-        computeShaderBlob_ = compiler.CompileShader(L"ColorGrading.CS.hlsl", L"cs_6_0");
-
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(compiler.GetDxcUtils());
-        reflectionData_ = reflectionBuilder.BuildFromComputeShader(
-            computeShaderBlob_.Get(), GetEffectName());
-
-        RootSignatureConfig config;
-        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
-
-        rootSignatureManager_ = std::make_unique<RootSignatureManager>();
-        auto buildResult = rootSignatureManager_->Build(dxCommon->GetDevice(), *reflectionData_, config);
-        if (!buildResult.success) {
-            throw std::runtime_error("ColorGrading: Failed to create RootSignature: " + buildResult.errorMessage);
-        }
-
-        CreateComputePipeline();
-        CreateConstantBuffers();
+        InitializeComputeCore();
     }
 
-    void ColorGrading::CreateComputePipeline()
-    {
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {};
-        desc.pRootSignature = rootSignatureManager_->GetRootSignature();
-        desc.CS = { computeShaderBlob_->GetBufferPointer(), computeShaderBlob_->GetBufferSize() };
-
-        HRESULT hr = directXCommon_->GetDevice()->CreateComputePipelineState(&desc, IID_PPV_ARGS(&computePso_));
-        if (FAILED(hr)) {
-            throw std::runtime_error("ColorGrading: Failed to create Compute PSO");
-        }
-    }
-
-    void ColorGrading::CreateConstantBuffers()
+    void ColorGrading::OnCreateConstantBuffers()
     {
         UINT cgSize = (sizeof(ColorGradingParams) + 255) & ~255;
         colorGradingParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), cgSize);

@@ -56,18 +56,15 @@ public:
     void UpdateConstantBuffer();
 
 protected:
-    std::string GetEffectName() const override { return "Sepia"; }
+    std::string  GetEffectName()        const override { return "Sepia"; }
+    std::wstring GetComputeShaderPath() const override { return L"Sepia.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffers();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     SepiaParams params_;
-
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> sepiaParamsCB_;
     SepiaParams* mappedSepiaParams_ = nullptr;

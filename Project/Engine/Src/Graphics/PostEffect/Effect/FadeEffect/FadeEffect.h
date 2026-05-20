@@ -77,19 +77,16 @@ namespace CoreEngine
         const FadeParams& GetParams() const { return params_; }
 
     protected:
-        std::string GetEffectName() const override { return "FadeEffect"; }
+        std::string  GetEffectName()        const override { return "FadeEffect"; }
+        std::wstring GetComputeShaderPath() const override { return L"FadeEffect.CS.hlsl"; }
+        void OnCreateConstantBuffers() override;
 
     private:
-        void CreateComputePipeline();
-        void CreateConstantBuffers();
         void UpdateConstantBuffer();
         void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
     private:
         FadeParams params_;
-
-        Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> fadeParamsCB_;
         FadeParams* mappedFadeParams_ = nullptr;

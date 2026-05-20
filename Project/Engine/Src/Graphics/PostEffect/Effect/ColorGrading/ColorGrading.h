@@ -62,19 +62,16 @@ public:
     void ApplyPreset(int presetIndex);
 
 protected:
-    std::string GetEffectName() const override { return "ColorGrading"; }
+    std::string  GetEffectName()        const override { return "ColorGrading"; }
+    std::wstring GetComputeShaderPath() const override { return L"ColorGrading.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffers();
     void UpdateConstantBuffer();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     ColorGradingParams params_;
-
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> colorGradingParamsCB_;
     ColorGradingParams* mappedColorGradingParams_ = nullptr;

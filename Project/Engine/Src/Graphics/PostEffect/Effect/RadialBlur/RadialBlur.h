@@ -50,19 +50,16 @@ public:
     void SetParams(const RadialBlurParams& newParams);
 
 protected:
-    std::string GetEffectName() const override { return "RadialBlur"; }
+    std::string  GetEffectName()        const override { return "RadialBlur"; }
+    std::wstring GetComputeShaderPath() const override { return L"RadialBlur.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffers();
     void UpdateConstantBuffer();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     RadialBlurParams params_;
-
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> radialBlurParamsCB_;
     RadialBlurParams* mappedRadialBlurParams_ = nullptr;

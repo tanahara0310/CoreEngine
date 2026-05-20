@@ -2,10 +2,9 @@
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "Graphics/RootSignature/RootSignatureManager.h"
-#include "Graphics/Shader/ShaderReflectionData.h"
-#include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Common/DirectXCommon.h"
 #include <cassert>
+
 
 namespace CoreEngine
 {
@@ -13,149 +12,39 @@ namespace CoreEngine
     {
         assert(dxCommon);
         directXCommon_ = dxCommon;
-
-        // シェーダーのコンパイル
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-
-        fullscreenVertexShaderBlob_ = shaderCompiler.CompileShader(
-            L"FullScreen.VS.hlsl", L"vs_6_0");
-        pixelShaderBlob_ = shaderCompiler.CompileShader(
-            GetPixelShaderPath(), L"ps_6_0");
-
-        // カスタムルートシグネチャの作成
-        CreateCustomRootSignature();
-
-        // パイプラインステートの作成
-        bool result = pipelineStateManager_.CreateBuilder()
-            .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
-            .SetDepthStencil(false, false)
-            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .Build(dxCommon->GetDevice(), fullscreenVertexShaderBlob_.Get(), pixelShaderBlob_.Get(),
-                rootSignatureManager_->GetRootSignature());
-
-        if (!result) {
-            throw std::runtime_error("Failed to create PSO in Dissolve");
-        }
-
-        // 定数バッファの作成
-        CreateConstantBuffer();
-
-        // ノイズテクスチャの読み込み
-        LoadNoiseTexture();
+        InitializeComputeCore();
     }
 
-    void Dissolve::CreateCustomRootSignature()
+    void Dissolve::OnCreateConstantBuffers()
     {
-        // シェーダーコンパイラを初期化してDxcUtilsを取得
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
+        UINT dissolveSize = (sizeof(DissolveParams) + 255) & ~255;
+        dissolveParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), dissolveSize);
+        HRESULT hr = dissolveParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedDissolveParams_));
+        assert(SUCCEEDED(hr));
+        UpdateConstantBuffer();
 
-        // リフレクション
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
+        UINT screenSize = (sizeof(ScreenParams) + 255) & ~255;
+        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), screenSize);
+        hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
+        assert(SUCCEEDED(hr));
 
-        reflectionData_ = reflectionBuilder.BuildFromShaders(
-            fullscreenVertexShaderBlob_.Get(), pixelShaderBlob_.Get(), "Dissolve");
-
-        // シンプルな設定でRootSignatureを構築
-        RootSignatureConfig config = RootSignatureConfig::Simple();
-        config.ConfigureSampler("gSampler", SamplerConfig::Linear());
-
-        rootSignatureManager_ = std::make_unique<RootSignatureManager>();
-        auto buildResult = rootSignatureManager_->Build(directXCommon_->GetDevice(), *reflectionData_, config);
-
-        if (!buildResult.success) {
-            throw std::runtime_error("Failed to create Dissolve Root Signature: " + buildResult.errorMessage);
-        }
+        // ノイズテクスチャ読み込み
+        auto& textureManager = TextureManager::GetInstance();
+        auto texture = textureManager.Load("noise0.png");
+        noiseTextureHandle_ = texture.gpuHandle;
     }
 
-    void Dissolve::Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
+    void Dissolve::UpdateConstantBuffer()
     {
-        auto* commandList = directXCommon_->GetCommandList();
-
-        commandList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
-        commandList->SetPipelineState(
-            pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
-
-        commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-        // 入力テクスチャ
-        int inputTextureIdx = GetRootParamIndex("inputTexture");
-        if (inputTextureIdx >= 0) {
-            commandList->SetGraphicsRootDescriptorTable(inputTextureIdx, inputSrvHandle);
-        }
-
-        // 定数バッファ
-        int paramsIdx = GetRootParamIndex("DissolveParams");
-        if (constantBuffer_ && paramsIdx >= 0) {
-            commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
-        }
-
-        // ノイズテクスチャ
-        int noiseTextureIdx = GetRootParamIndex("noiseTexture");
-        if (noiseTextureIdx >= 0) {
-            commandList->SetGraphicsRootDescriptorTable(noiseTextureIdx, noiseTextureHandle_);
-        }
-
-        commandList->DrawInstanced(3, 1, 0, 0);
+        if (mappedDissolveParams_) { *mappedDissolveParams_ = params_; }
     }
 
-    void Dissolve::DrawImGui()
+    void Dissolve::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
     {
-#ifdef USE_IMGUI
-        ImGui::PushID("DissolveParams");
-
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        ImGui::Text("ノイズテクスチャを使用してディゾルブ効果を作成します");
-        UI::Separator();
-
-        bool paramsChanged = false;
-
-        // パラメータ設定
-        if (ImGui::TreeNode("パラメータ")) {
-            // ディゾルブ閾値の調整
-            paramsChanged |= UI::SliderFloat("閾値", params_.threshold, 0.0f, 1.0f);
-
-            // エッジ幅の調整
-            paramsChanged |= UI::SliderFloat("エッジ幅", params_.edgeWidth, 0.0f, 0.5f);
-
-            // エッジカラーの調整
-            float edgeColor[3] = { params_.edgeColorR, params_.edgeColorG, params_.edgeColorB };
-            if (ImGui::ColorEdit3("エッジカラー", edgeColor)) {
-                params_.edgeColorR = edgeColor[0];
-                params_.edgeColorG = edgeColor[1];
-                params_.edgeColorB = edgeColor[2];
-                paramsChanged = true;
-            }
-
-            ImGui::TreePop();
+        if (mappedScreenParams_) {
+            mappedScreenParams_->screenWidth  = width;
+            mappedScreenParams_->screenHeight = height;
         }
-
-        // パラメータが変更された場合、即座に定数バッファを更新
-        if (paramsChanged) {
-            UpdateConstantBuffer();
-        }
-
-        UI::Separator();
-
-        if (ImGui::Button("デフォルトに戻す")) {
-            params_.threshold = 0.0f;
-            params_.edgeWidth = 0.1f;
-            params_.edgeColorR = 1.0f;
-            params_.edgeColorG = 0.5f;
-            params_.edgeColorB = 0.0f;
-            UpdateConstantBuffer();
-        }
-
-        if (!IsEnabled()) {
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
-        }
-
-        UI::Separator();
-
-        ImGui::PopID();
-#endif // USE_IMGUI
     }
 
     void Dissolve::SetParams(const DissolveParams& params)
@@ -184,43 +73,68 @@ namespace CoreEngine
         UpdateConstantBuffer();
     }
 
-    void Dissolve::BindOptionalCBVs(ID3D12GraphicsCommandList* /*commandList*/)
+    void Dissolve::Dispatch(
+        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+        uint32_t width,
+        uint32_t height)
     {
-        // この関数はDissolveでは使用しない（Drawで直接バインドしているため）
+        UpdateScreenConstantBuffer(width, height);
+
+        auto* cmdList = directXCommon_->GetCommandList();
+        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
+        cmdList->SetPipelineState(computePso_.Get());
+
+        int inputTextureIdx  = GetRootParamIndex("inputTexture");
+        int noiseTextureIdx  = GetRootParamIndex("noiseTexture");
+        int outputIdx        = GetRootParamIndex("gOutput");
+        int dissolveParamsIdx= GetRootParamIndex("DissolveParams");
+        int screenParamsIdx  = GetRootParamIndex("ScreenParams");
+
+        if (inputTextureIdx >= 0)   cmdList->SetComputeRootDescriptorTable(inputTextureIdx, inputSrvHandle);
+        if (noiseTextureIdx >= 0)   cmdList->SetComputeRootDescriptorTable(noiseTextureIdx, noiseTextureHandle_);
+        if (outputIdx >= 0)         cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
+        if (dissolveParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(dissolveParamsIdx, dissolveParamsCB_->GetGPUVirtualAddress());
+        if (screenParamsIdx >= 0)   cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParamsCB_->GetGPUVirtualAddress());
+
+        uint32_t groupX = (width  + 7) / 8;
+        uint32_t groupY = (height + 7) / 8;
+        cmdList->Dispatch(groupX, groupY, 1);
     }
 
-    void Dissolve::UpdateConstantBuffer()
+    void Dissolve::DrawImGui()
     {
-        // 定数バッファにデータをコピー
-        if (mappedData_) {
-            *mappedData_ = params_;
+#ifdef USE_IMGUI
+        ImGui::PushID("DissolveParams");
+        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        ImGui::Text("ノイズテクスチャを使用してディゾルブ効果を作成します");
+        UI::Separator();
+
+        bool changed = false;
+        if (ImGui::TreeNode("パラメータ")) {
+            changed |= UI::SliderFloat("閾値", params_.threshold, 0.0f, 1.0f);
+            changed |= UI::SliderFloat("エッジ幅", params_.edgeWidth, 0.0f, 0.5f);
+
+            float edgeColor[3] = { params_.edgeColorR, params_.edgeColorG, params_.edgeColorB };
+            if (ImGui::ColorEdit3("エッジカラー", edgeColor)) {
+                params_.edgeColorR = edgeColor[0];
+                params_.edgeColorG = edgeColor[1];
+                params_.edgeColorB = edgeColor[2];
+                changed = true;
+            }
+            ImGui::TreePop();
         }
-    }
+        if (changed) { UpdateConstantBuffer(); }
 
-    void Dissolve::CreateConstantBuffer()
-    {
-        assert(directXCommon_);
-
-        // 定数バッファのサイズを256バイトアライメントに調整
-        UINT bufferSize = (sizeof(DissolveParams) + 255) & ~255;
-
-        // 定数バッファリソースを生成
-        constantBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), bufferSize);
-
-        // マッピング
-        HRESULT hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
-        assert(SUCCEEDED(hr));
-
-        // 初期値で更新
-        UpdateConstantBuffer();
-    }
-
-    void Dissolve::LoadNoiseTexture()
-    {
-        // ノイズテクスチャを読み込み
-        auto& textureManager = TextureManager::GetInstance();
-        auto texture = textureManager.Load("noise0.png");
-        noiseTextureHandle_ = texture.gpuHandle;
+        UI::Separator();
+        if (ImGui::Button("デフォルトに戻す")) {
+            params_ = DissolveParams{};
+            UpdateConstantBuffer();
+        }
+        if (!IsEnabled()) {
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
+        }
+        ImGui::PopID();
+#endif // USE_IMGUI
     }
 }
-

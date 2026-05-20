@@ -51,11 +51,11 @@ namespace CoreEngine
         void SetParams(const BlurParams& params);
 
     protected:
-        std::string GetEffectName() const override { return "Blur"; }
+        std::string  GetEffectName()        const override { return "Blur"; }
+        std::wstring GetComputeShaderPath() const override { return L"Blur.CS.hlsl"; }
+        void OnCreateConstantBuffers() override;
 
     private:
-        void CreateComputePipeline();
-        void CreateConstantBuffers();
         void UpdateBlurConstantBuffer();
         void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
@@ -63,10 +63,6 @@ namespace CoreEngine
         BlurParams params_;
         ScreenParams screenParams_;
 
-        Microsoft::WRL::ComPtr<IDxcBlob>           computeShaderBlob_;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
-
-        // 定数バッファ
         Microsoft::WRL::ComPtr<ID3D12Resource> blurParamsCB_;
         BlurParams* mappedBlurParams_ = nullptr;
 

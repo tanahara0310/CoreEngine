@@ -51,18 +51,15 @@ public:
     void UpdateConstantBuffer();
 
 protected:
-    std::string GetEffectName() const override { return "Vignette"; }
+    std::string  GetEffectName()        const override { return "Vignette"; }
+    std::wstring GetComputeShaderPath() const override { return L"Vignette.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffers();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     VignetteParams params_;
-
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> vignetteParamsCB_;
     VignetteParams* mappedVignetteParams_ = nullptr;

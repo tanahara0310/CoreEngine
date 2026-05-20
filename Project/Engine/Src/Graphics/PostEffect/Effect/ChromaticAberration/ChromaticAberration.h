@@ -56,19 +56,16 @@ public:
     void ApplyPreset(int presetIndex);
 
 protected:
-    std::string GetEffectName() const override { return "ChromaticAberration"; }
+    std::string  GetEffectName()        const override { return "ChromaticAberration"; }
+    std::wstring GetComputeShaderPath() const override { return L"ChromaticAberration.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffers();
     void UpdateConstantBuffer();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     ChromaticAberrationParams params_;
-
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> caParamsCB_;
     ChromaticAberrationParams* mappedCAParams_ = nullptr;

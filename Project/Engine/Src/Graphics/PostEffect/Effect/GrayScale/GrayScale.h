@@ -39,17 +39,16 @@ public:
     void DrawImGui() override;
 
 protected:
-    std::string GetEffectName() const override { return "GrayScale"; }
+    std::string  GetEffectName()        const override { return "GrayScale"; }
+    std::wstring GetComputeShaderPath() const override { return L"GrayScale.CS.hlsl"; }
+
+    /// @brief 定数バッファ生成（基底の InitializeComputeCore から呼ばれる）
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffer();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
-
     Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
     ScreenParams* mappedScreenParams_ = nullptr;
 };

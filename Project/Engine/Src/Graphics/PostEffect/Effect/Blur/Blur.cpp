@@ -1,13 +1,8 @@
 #include "Blur.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Shader/ShaderCompiler.h"
-#include "Graphics/Shader/ShaderReflectionBuilder.h"
-#include "Graphics/RootSignature/RootSignatureManager.h"
-#include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include <cassert>
-#include <stdexcept>
 
 
 namespace CoreEngine
@@ -16,57 +11,17 @@ namespace CoreEngine
     {
         assert(dxCommon);
         directXCommon_ = dxCommon;
-
-        // CSのみコンパイル（VS/PSは不要）
-        ShaderCompiler compiler;
-        compiler.Initialize();
-        computeShaderBlob_ = compiler.CompileShader(L"Blur.CS.hlsl", L"cs_6_0");
-
-        // シェーダーリフレクションからルートシグネチャを構築
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(compiler.GetDxcUtils());
-        reflectionData_ = reflectionBuilder.BuildFromComputeShader(
-            computeShaderBlob_.Get(), GetEffectName());
-
-        RootSignatureConfig config;
-        // コンピュートシェーダーはIA不要
-        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
-
-        rootSignatureManager_ = std::make_unique<RootSignatureManager>();
-        auto buildResult = rootSignatureManager_->Build(dxCommon->GetDevice(), *reflectionData_, config);
-        if (!buildResult.success) {
-            throw std::runtime_error("Blur: Failed to create RootSignature: " + buildResult.errorMessage);
-        }
-
-        // Compute PSO を構築
-        CreateComputePipeline();
-
-        // 定数バッファを作成
-        CreateConstantBuffers();
+        InitializeComputeCore();
     }
 
-    void Blur::CreateComputePipeline()
+    void Blur::OnCreateConstantBuffers()
     {
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {};
-        desc.pRootSignature = rootSignatureManager_->GetRootSignature();
-        desc.CS = { computeShaderBlob_->GetBufferPointer(), computeShaderBlob_->GetBufferSize() };
-
-        HRESULT hr = directXCommon_->GetDevice()->CreateComputePipelineState(&desc, IID_PPV_ARGS(&computePso_));
-        if (FAILED(hr)) {
-            throw std::runtime_error("Blur: Failed to create Compute PSO");
-        }
-    }
-
-    void Blur::CreateConstantBuffers()
-    {
-        // BlurParams 定数バッファ
         UINT blurSize = (sizeof(BlurParams) + 255) & ~255;
         blurParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), blurSize);
         HRESULT hr = blurParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedBlurParams_));
         assert(SUCCEEDED(hr));
         UpdateBlurConstantBuffer();
 
-        // ScreenParams 定数バッファ
         UINT screenSize = (sizeof(ScreenParams) + 255) & ~255;
         screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), screenSize);
         hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));

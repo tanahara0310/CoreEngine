@@ -59,19 +59,16 @@ public:
     void SetParams(const ShockwaveParams& params);
 
 protected:
-    std::string GetEffectName() const override { return "Shockwave"; }
+    std::string  GetEffectName()        const override { return "Shockwave"; }
+    std::wstring GetComputeShaderPath() const override { return L"Shockwave.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffers();
     void UpdateConstantBuffer();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     ShockwaveParams params_;
-
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> shockwaveParamsCB_;
     ShockwaveParams* mappedShockwaveParams_ = nullptr;

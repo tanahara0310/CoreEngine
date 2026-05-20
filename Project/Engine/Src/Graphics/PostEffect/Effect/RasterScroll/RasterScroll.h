@@ -58,19 +58,16 @@ public:
     void SetParams(const RasterScrollParams& params);
 
 protected:
-    std::string GetEffectName() const override { return "RasterScroll"; }
+    std::string  GetEffectName()        const override { return "RasterScroll"; }
+    std::wstring GetComputeShaderPath() const override { return L"RasterScroll.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffers();
     void UpdateConstantBuffer();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     RasterScrollParams params_;
-
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> rasterScrollParamsCB_;
     RasterScrollParams* mappedRasterScrollParams_ = nullptr;

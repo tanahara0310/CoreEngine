@@ -75,9 +75,17 @@ namespace CoreEngine {
         virtual void BindOptionalCBVs(ID3D12GraphicsCommandList*/* commandList*/) {}
 
         /// @brief ルートシグネチャ構築前に呼ばれる設定フック
-        /// @details サブクラスでオーバーライドすることで追加サンプラーなどを設定できる
-        /// @param config 構築中のルートシグネチャ設定
         virtual void OnConfigureRootSignature(RootSignatureConfig& /*config*/) {}
+
+        /// @brief CS シェーダーのファイル名を返す（CS 派生クラスで必ずオーバーライドする）
+        virtual std::wstring GetComputeShaderPath() const { return L""; }
+
+        /// @brief CS 共通初期化：コンパイル・リフレクション・RootSignature・PSO を一括構築する
+        /// @details Compute 派生クラスの Initialize() から呼び出す
+        void InitializeComputeCore();
+
+        /// @brief 定数バッファ生成フック（InitializeComputeCore の後に呼ばれる）
+        virtual void OnCreateConstantBuffers() {}
 
         /// @brief Draw/DrawToBackBuffer の共通処理
         /// @param inputSrvHandle 入力テクスチャのSRVハンドル
@@ -89,6 +97,8 @@ namespace CoreEngine {
 
         Microsoft::WRL::ComPtr<IDxcBlob> fullscreenVertexShaderBlob_;
         Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob_;
+        Microsoft::WRL::ComPtr<IDxcBlob> computeShaderBlob_;       ///< CS用シェーダーブロブ
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;   ///< CS用PSO
 
         std::unique_ptr<RootSignatureManager> rootSignatureManager_;
         PipelineStateManager pipelineStateManager_;

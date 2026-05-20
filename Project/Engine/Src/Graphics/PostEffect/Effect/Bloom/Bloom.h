@@ -51,18 +51,15 @@ public:
     void UpdateConstantBuffer();
 
 protected:
-    std::string GetEffectName() const override { return "Bloom"; }
+    std::string  GetEffectName()        const override { return "Bloom"; }
+    std::wstring GetComputeShaderPath() const override { return L"Bloom.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffers();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     BloomParams params_;
-
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> bloomParamsCB_;
     BloomParams* mappedBloomParams_ = nullptr;

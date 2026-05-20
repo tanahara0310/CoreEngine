@@ -47,17 +47,14 @@ public:
     bool IsAlwaysEnabled() const override { return true; }
 
 protected:
-    std::string GetEffectName() const override { return "ToneMapping"; }
+    std::string  GetEffectName() const override { return "ToneMapping"; }
+    std::wstring GetComputeShaderPath() const override { return L"ToneMapping.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    void CreateComputePipeline();
-    void CreateConstantBuffer();
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
-    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
-
     Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
     ScreenParams* mappedScreenParams_ = nullptr;
 };
