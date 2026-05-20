@@ -1,71 +1,85 @@
 #pragma once
+
 #include "../PostEffectBase.h"
 #include <wrl.h>
 #include <d3d12.h>
 
-/// @brief ショックウェーブポストエフェクトクラス
 
 namespace CoreEngine
 {
+/// @brief ショックウェーブエフェクト（CS方式）
 class Shockwave : public PostEffectBase {
 public:
     /// @brief ショックウェーブパラメータ構造体
     struct ShockwaveParams {
         float center[2] = { 0.5f, 0.5f }; // 中心座標 (0-1)
-        float time = 0.0f; // 時間経過
-        float strength = 0.1f; // 強度
-        float thickness = 0.1f; // 波の厚さ
-        float speed = 1.0f; // 波の速度
-        float padding[2] = { 0.0f, 0.0f }; // パディング
+        float time      = 0.0f;            // 時間経過
+        float strength  = 0.1f;            // 強度
+        float thickness = 0.1f;            // 波の厚さ
+        float speed     = 1.0f;            // 波の速度
+        float padding[2]= { 0.0f, 0.0f };
+    };
+
+    /// @brief 画面サイズ定数バッファ構造体
+    struct ScreenParams {
+        uint32_t screenWidth  = 1280;
+        uint32_t screenHeight = 720;
+        float    pad[2]       = { 0.0f, 0.0f };
     };
 
 public:
     Shockwave() = default;
     ~Shockwave() = default;
 
-    /// @brief 初期化
-    void Initialize(class DirectXCommon* dxCommon);
+    /// @brief 初期化（CS用リソース構築）
+    void Initialize(DirectXCommon* dxCommon);
+
+    /// @brief CSエフェクト実行
+    void Dispatch(
+        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+        uint32_t width,
+        uint32_t height) override;
+
+    PostEffectExecutionType GetExecutionType() const override {
+        return PostEffectExecutionType::Compute;
+    }
 
     /// @brief ショックウェーブを開始
-    /// @param centerX 中心X座標 (0-1)
-    /// @param centerY 中心Y座標 (0-1)
     void StartShockwave(float centerX, float centerY);
 
     /// @brief 更新処理
-    /// @param deltaTime フレーム時間
     void Update(float deltaTime);
 
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    /// @brief アクティブかどうか
-    /// @return アクティブならtrue
     bool IsActive() const { return isActive_; }
-
-    /// @brief パラメータを取得
-    /// @return パラメータ構造体の参照
     const ShockwaveParams& GetParams() const { return params_; }
-
-    /// @brief パラメータを設定して定数バッファを更新
-    /// @param params 新しいパラメータ
     void SetParams(const ShockwaveParams& params);
 
 protected:
-    const std::wstring& GetPixelShaderPath() const override;
-    void BindOptionalCBVs(ID3D12GraphicsCommandList* commandList) override;
+    std::string GetEffectName() const override { return "Shockwave"; }
 
 private:
-    /// @brief 定数バッファの作成
-    void CreateConstantBuffer();
-    
-    /// @brief 定数バッファの更新
+    void CreateComputePipeline();
+    void CreateConstantBuffers();
     void UpdateConstantBuffer();
+    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     ShockwaveParams params_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-    ShockwaveParams* mappedData_ = nullptr;
-    bool isActive_ = false;
-    float maxRadius_ = 1.0f; // 最大半径
+
+    Microsoft::WRL::ComPtr<IDxcBlob>            computeShaderBlob_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> shockwaveParamsCB_;
+    ShockwaveParams* mappedShockwaveParams_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
+    ScreenParams* mappedScreenParams_ = nullptr;
+
+    bool  isActive_  = false;
+    float maxRadius_ = 1.0f;
 };
 }

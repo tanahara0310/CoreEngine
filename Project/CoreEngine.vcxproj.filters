@@ -184,11 +184,11 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
@@ -963,11 +963,11 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>

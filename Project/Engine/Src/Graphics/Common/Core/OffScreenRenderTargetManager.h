@@ -38,13 +38,25 @@ public:
     /// @brief 指定ターゲットのクリアカラーを設定（リソース再作成が必要な場合は Resize/Ensure 後に呼ぶこと）
     void SetTargetClearColor(uint32_t index, const float color[4]);
 
+    /// @brief 指定インデックスのUAVハンドルを取得
+    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenUavHandle(uint32_t index = 0) const;
+
+    /// @brief 指定ターゲットの現在のリソース状態を取得
+    D3D12_RESOURCE_STATES GetOffScreenState(uint32_t index = 0) const;
+
+    /// @brief 指定ターゲットの現在のリソース状態を設定
+    void SetOffScreenState(uint32_t index, D3D12_RESOURCE_STATES state);
+
 private:
     struct OffScreenTarget {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
         D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
         D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
+        D3D12_CPU_DESCRIPTOR_HANDLE uavCpuHandle{};
+        D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
         float clearColor[4] = { Render::kClearColor[0], Render::kClearColor[1], Render::kClearColor[2], Render::kClearColor[3] };
+        D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     };
 
     /// @brief 単一ターゲットのリソースを作成または再作成

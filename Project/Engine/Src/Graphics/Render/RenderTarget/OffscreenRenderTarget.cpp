@@ -25,6 +25,7 @@ namespace CoreEngine
         resource_ = dxCommon_->GetOffScreenResource(static_cast<uint32_t>(index_));
         rtvHandle_ = dxCommon_->GetOffScreenRtvHandle(static_cast<uint32_t>(index_));
         srvHandle_ = dxCommon_->GetOffScreenSrvHandle(static_cast<uint32_t>(index_));
+        uavHandle_ = dxCommon_->GetOffScreenUavHandle(static_cast<uint32_t>(index_));
         dsvHandle_ = dxCommon_->GetDSVHandle();
         width_ = dxCommon_->GetClientWidth();
         height_ = dxCommon_->GetClientHeight();
@@ -98,6 +99,46 @@ namespace CoreEngine
                 currentState_,
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
             currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        }
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::GetUAVHandle() const
+    {
+        SyncCurrentState();
+        return uavHandle_;
+    }
+
+    void OffscreenRenderTarget::BeginCS(ID3D12GraphicsCommandList* cmdList)
+    {
+        assert(cmdList);
+        SyncCurrentState();
+        assert(resource_);
+
+        if (currentState_ != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
+            TransitionBarrier(cmdList, resource_,
+                currentState_,
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            currentState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            dxCommon_->SetOffScreenState(static_cast<uint32_t>(index_), currentState_);
+        }
+
+        // SRVヒープ設定（CS用バインドに必要）
+        ID3D12DescriptorHeap* heaps[] = { dxCommon_->GetSRVHeap() };
+        cmdList->SetDescriptorHeaps(1, heaps);
+    }
+
+    void OffscreenRenderTarget::EndCS(ID3D12GraphicsCommandList* cmdList)
+    {
+        assert(cmdList);
+        SyncCurrentState();
+        assert(resource_);
+
+        if (currentState_ != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) {
+            TransitionBarrier(cmdList, resource_,
+                currentState_,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            currentState_ = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+            dxCommon_->SetOffScreenState(static_cast<uint32_t>(index_), currentState_);
         }
     }
 

@@ -1,224 +1,159 @@
 #include "ChromaticAberration.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/Shader/ShaderCompiler.h"
+#include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Graphics/RootSignature/RootSignatureManager.h"
+#include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Common/DirectXCommon.h"
 #include <cassert>
+#include <stdexcept>
 
 
 namespace CoreEngine
 {
-void ChromaticAberration::Initialize(DirectXCommon* dxCommon)
-{
-    // 基底クラスの初期化
-    PostEffectBase::Initialize(dxCommon);
-    
-    // 定数バッファの作成
-    CreateConstantBuffer();
-}
+    void ChromaticAberration::Initialize(DirectXCommon* dxCommon)
+    {
+        assert(dxCommon);
+        directXCommon_ = dxCommon;
 
-void ChromaticAberration::DrawImGui()
-{
+        ShaderCompiler compiler;
+        compiler.Initialize();
+        computeShaderBlob_ = compiler.CompileShader(L"ChromaticAberration.CS.hlsl", L"cs_6_0");
+
+        ShaderReflectionBuilder reflectionBuilder;
+        reflectionBuilder.Initialize(compiler.GetDxcUtils());
+        reflectionData_ = reflectionBuilder.BuildFromComputeShader(
+            computeShaderBlob_.Get(), GetEffectName());
+
+        RootSignatureConfig config;
+        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
+
+        rootSignatureManager_ = std::make_unique<RootSignatureManager>();
+        auto buildResult = rootSignatureManager_->Build(dxCommon->GetDevice(), *reflectionData_, config);
+        if (!buildResult.success) {
+            throw std::runtime_error("ChromaticAberration: Failed to create RootSignature: " + buildResult.errorMessage);
+        }
+
+        CreateComputePipeline();
+        CreateConstantBuffers();
+    }
+
+    void ChromaticAberration::CreateComputePipeline()
+    {
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {};
+        desc.pRootSignature = rootSignatureManager_->GetRootSignature();
+        desc.CS = { computeShaderBlob_->GetBufferPointer(), computeShaderBlob_->GetBufferSize() };
+
+        HRESULT hr = directXCommon_->GetDevice()->CreateComputePipelineState(&desc, IID_PPV_ARGS(&computePso_));
+        if (FAILED(hr)) {
+            throw std::runtime_error("ChromaticAberration: Failed to create Compute PSO");
+        }
+    }
+
+    void ChromaticAberration::CreateConstantBuffers()
+    {
+        UINT caSize = (sizeof(ChromaticAberrationParams) + 255) & ~255;
+        caParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), caSize);
+        HRESULT hr = caParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedCAParams_));
+        assert(SUCCEEDED(hr));
+        UpdateConstantBuffer();
+
+        UINT screenSize = (sizeof(ScreenParams) + 255) & ~255;
+        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), screenSize);
+        hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
+        assert(SUCCEEDED(hr));
+    }
+
+    void ChromaticAberration::UpdateConstantBuffer()
+    {
+        if (mappedCAParams_) { *mappedCAParams_ = params_; }
+    }
+
+    void ChromaticAberration::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
+    {
+        if (mappedScreenParams_) {
+            mappedScreenParams_->screenWidth  = width;
+            mappedScreenParams_->screenHeight = height;
+        }
+    }
+
+    void ChromaticAberration::SetParams(const ChromaticAberrationParams& newParams)
+    {
+        params_ = newParams;
+        UpdateConstantBuffer();
+    }
+
+    void ChromaticAberration::ApplyPreset(int presetIndex)
+    {
+        ChromaticAberrationParams preset;
+        switch (presetIndex) {
+        case 1: // 強め
+            preset.intensity = 8.0f;
+            preset.radialFactor = 1.5f;
+            break;
+        case 2: // 弱め
+            preset.intensity = 1.5f;
+            preset.radialFactor = 0.5f;
+            break;
+        default:
+            break;
+        }
+        SetParams(preset);
+    }
+
+    void ChromaticAberration::Dispatch(
+        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+        uint32_t width,
+        uint32_t height)
+    {
+        UpdateScreenConstantBuffer(width, height);
+
+        auto* cmdList = directXCommon_->GetCommandList();
+        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
+        cmdList->SetPipelineState(computePso_.Get());
+
+        int textureIdx = GetRootParamIndex("gTexture");
+        int outputIdx  = GetRootParamIndex("gOutput");
+        int caIdx      = GetRootParamIndex("ChromaticAberrationParams");
+        int screenIdx  = GetRootParamIndex("ScreenParams");
+
+        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
+        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
+        if (caIdx >= 0)      cmdList->SetComputeRootConstantBufferView(caIdx, caParamsCB_->GetGPUVirtualAddress());
+        if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, screenParamsCB_->GetGPUVirtualAddress());
+
+        uint32_t groupX = (width  + 7) / 8;
+        uint32_t groupY = (height + 7) / 8;
+        cmdList->Dispatch(groupX, groupY, 1);
+    }
+
+    void ChromaticAberration::DrawImGui()
+    {
 #ifdef USE_IMGUI
-    ImGui::PushID("ChromaticAberrationParams");
-    
-    ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-    ImGui::Text("カメラレンズの色収差効果をシミュレートします");
-    UI::Separator();
-    
-    bool paramsChanged = false;
-    
-    // 基本パラメータ
-    if (ImGui::TreeNode("基本パラメータ")) {
-        ImGui::Text("強度: エフェクト全体の強さを制御");
-        paramsChanged |= UI::SliderFloat("強度", params_.intensity, 0.0f, 20.0f, "%.2f");
-        
-        ImGui::Text("放射係数: 距離ベースの乗数");
-        paramsChanged |= UI::SliderFloat("放射係数", params_.radialFactor, 0.0f, 3.0f, "%.2f");
- 
-        ImGui::Text("ゆがみスケール: 全体的な変位スケール");
-        paramsChanged |= UI::SliderFloat("歪みスケール", params_.distortionScale, 0.0f, 5.0f, "%.2f");
-        
-        ImGui::Text("エッジフォールオフ: エッジの強度を制御");
-        paramsChanged |= UI::SliderFloat("エッジフォールオフ", params_.falloff, 0.1f, 5.0f, "%.2f");
-        
-        ImGui::TreePop();
-    }
-    
-    // 中心位置調整
-    if (ImGui::TreeNode("中心位置")) {
-        paramsChanged |= UI::SliderFloat("中心X", params_.centerX, 0.0f, 1.0f, "%.3f");
-        paramsChanged |= UI::SliderFloat("中心Y", params_.centerY, 0.0f, 1.0f, "%.3f");
-     
-        if (ImGui::Button("中心をリセット")) {
-            params_.centerX = 0.5f;
-            params_.centerY = 0.5f;
-            paramsChanged = true;
-        }
-        
-        ImGui::TreePop();
-    }
-    
-    // プリセット
-    if (ImGui::TreeNode("プリセット")) {
-        ImGui::Text("よく使用されるケースのクイックプリセット:");
-        
-        if (ImGui::Button("微妙")) {
-            ApplyPreset(0);
-            paramsChanged = true;
-        }
-        UI::SameLine();
-        if (ImGui::Button("中程度")) {
-            ApplyPreset(1);
-            paramsChanged = true;
-        }
-        UI::SameLine();
-        if (ImGui::Button("強い")) {
-            ApplyPreset(2);
-            paramsChanged = true;
-        }
-        
-        if (ImGui::Button("ヴィンテージレンズ")) {
-            ApplyPreset(3);
-            paramsChanged = true;
-        }
-        UI::SameLine();
-        if (ImGui::Button("広角レンズ")) {
-            ApplyPreset(4);
-            paramsChanged = true;
-        }
-        UI::SameLine();
-        if (ImGui::Button("極端")) {
-            ApplyPreset(5);
-            paramsChanged = true;
-        }
-        
-        ImGui::TreePop();
-    }
-    
-    // パラメータが変更された場合、即座に定数バッファを更新
-    if (paramsChanged) {
-        UpdateConstantBuffer();
-    }
+        ImGui::PushID("ChromaticAberration");
+        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        UI::Separator();
 
-    UI::Separator();
-    
-    if (ImGui::Button("デフォルトに戻す")) {
-        ApplyPreset(1); // 中程度プリセット
-        UpdateConstantBuffer();
-    }
-    
-    if (!IsEnabled()) {
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), 
-            "エフェクトは無効です。色収差を確認するには有効にしてください");
-    } else {
-        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), 
-            "エフェクトはアクティブ - 画面端で色のずれが見えます!");
-    }
-    
-    UI::Separator();
-    ImGui::Text("注意: RGBチャンネルが中心から放射状に分離されます");
-    ImGui::Text("赤は外側に、青は内側に移動します");
-    
-    ImGui::PopID();
+        bool changed = false;
+        if (ImGui::TreeNode("パラメータ")) {
+            changed |= UI::SliderFloat("強度", params_.intensity, 0.0f, 20.0f);
+            changed |= UI::SliderFloat("放射状強度", params_.radialFactor, 0.0f, 3.0f);
+            changed |= UI::SliderFloat("中心X", params_.centerX, 0.0f, 1.0f);
+            changed |= UI::SliderFloat("中心Y", params_.centerY, 0.0f, 1.0f);
+            changed |= UI::SliderFloat("歪みスケール", params_.distortionScale, 0.0f, 5.0f);
+            changed |= UI::SliderFloat("フォールオフ", params_.falloff, 0.1f, 5.0f);
+            ImGui::TreePop();
+        }
+        if (changed) { UpdateConstantBuffer(); }
+
+        UI::Separator();
+        if (ImGui::Button("デフォルトに戻す")) {
+            params_ = ChromaticAberrationParams{};
+            UpdateConstantBuffer();
+        }
+        ImGui::PopID();
 #endif // USE_IMGUI
-}
-
-void ChromaticAberration::SetParams(const ChromaticAberrationParams& newParams)
-{
-    params_ = newParams;
-    UpdateConstantBuffer();
-}
-
-void ChromaticAberration::ApplyPreset(int presetIndex)
-{
-    switch (presetIndex) {
-    case 0: // Subtle - 控えめな効果
-        params_.intensity = 1.5f;
-        params_.radialFactor = 0.8f;
-        params_.centerX = 0.5f;
-   params_.centerY = 0.5f;
- params_.distortionScale = 1.0f;
-   params_.falloff = 2.0f;
-  break;
-        
-    case 1: // Medium - 標準的な効果
-        params_.intensity = 3.0f;
- params_.radialFactor = 1.0f;
-      params_.centerX = 0.5f;
-      params_.centerY = 0.5f;
-        params_.distortionScale = 1.5f;
-  params_.falloff = 1.5f;
-        break;
-        
-    case 2: // Strong - 強い効果
- params_.intensity = 5.0f;
-params_.radialFactor = 1.5f;
-        params_.centerX = 0.5f;
-        params_.centerY = 0.5f;
-        params_.distortionScale = 2.0f;
-      params_.falloff = 1.2f;
- break;
-        
-    case 3: // Vintage Lens - ヴィンテージレンズ風
- params_.intensity = 4.0f;
-    params_.radialFactor = 2.0f;
-        params_.centerX = 0.5f;
-        params_.centerY = 0.5f;
-        params_.distortionScale = 1.8f;
- params_.falloff = 0.8f;
-        break;
-
-    case 4: // Wide Angle - 広角レンズ風
-        params_.intensity = 6.0f;
-        params_.radialFactor = 1.2f;
-        params_.centerX = 0.5f;
-   params_.centerY = 0.5f;
-        params_.distortionScale = 2.5f;
-        params_.falloff = 1.0f;
-     break;
-        
- case 5: // Extreme - 極端な効果
-     params_.intensity = 10.0f;
-        params_.radialFactor = 2.0f;
-        params_.centerX = 0.5f;
-        params_.centerY = 0.5f;
-        params_.distortionScale = 3.0f;
-params_.falloff = 0.5f;
-        break;
     }
-}
-
-void ChromaticAberration::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
-{
-    // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）
-    int paramsIdx = GetRootParamIndex("ChromaticAberrationParams");
-    if (constantBuffer_ && paramsIdx >= 0) {
-        commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
-    }
-}
-
-void ChromaticAberration::UpdateConstantBuffer()
-{
-    // 定数バッファにデータをコピー
-    if (mappedData_) {
-        *mappedData_ = params_;
-    }
-}
-
-void ChromaticAberration::CreateConstantBuffer()
-{
-    assert(directXCommon_);
-    
-    // 定数バッファのサイズを256バイトアライメントに調整
-    UINT bufferSize = (sizeof(ChromaticAberrationParams) + 255) & ~255;
-    
-    // 定数バッファリソースを生成
-    constantBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), bufferSize);
-
-    // マッピング
-    HRESULT hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
-    assert(SUCCEEDED(hr));
-    
-    // 初期値で更新
-    UpdateConstantBuffer();
-}
 }

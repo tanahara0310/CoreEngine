@@ -11,6 +11,11 @@ namespace CoreEngine
         assert(dxCommon);
         directXCommon_ = dxCommon;
 
+        // Compute方式のサブクラスはInitializeComputeで初期化するためここでは何もしない
+        if (GetExecutionType() == PostEffectExecutionType::Compute) {
+            return;
+        }
+
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();
 
