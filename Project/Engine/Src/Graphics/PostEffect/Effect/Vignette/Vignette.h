@@ -1,59 +1,63 @@
 #pragma once
 
-#include "../PostEffectBase.h"
+#include "../PostEffectComputeBase.h"
 #include <wrl.h>
 #include <d3d12.h>
 
 
 namespace CoreEngine
 {
-class Vignette : public PostEffectBase {
+/// @brief ヴィネットエフェクト（CS方式）
+class Vignette : public PostEffectComputeBase {
 public:
     /// @brief ヴィネットパラメータ構造体
     struct VignetteParams {
-        float intensity = 0.8f; // ヴィネット強度 (0.0-2.0)
-        float smoothness = 0.8f; // ヴィネットの滑らかさ (0.1-2.0)
-        float size = 16.0f; // ヴィネットサイズ (1.0-50.0)
-        float padding = 0.0f; // パディング
+        float intensity  = 0.8f;  // ヴィネット強度 (0.0-2.0)
+        float smoothness = 0.8f;  // ヴィネットの滑らかさ (0.1-2.0)
+        float size       = 16.0f; // ヴィネットサイズ (1.0-50.0)
+        float padding    = 0.0f;
+    };
+
+    /// @brief 画面サイズ定数バッファ構造体
+    struct ScreenParams {
+        uint32_t screenWidth  = 1280;
+        uint32_t screenHeight = 720;
+        float    pad[2]       = { 0.0f, 0.0f };
     };
 
 public:
     Vignette() = default;
     ~Vignette() = default;
 
-    /// @brief 初期化
-    void Initialize(class DirectXCommon* dxCommon);
+    /// @brief CSエフェクト実行
+    void Dispatch(
+        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+        uint32_t width,
+        uint32_t height) override;
 
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    /// @brief パラメータを取得
-    /// @return パラメータ構造体の参照
     const VignetteParams& GetParams() const { return params_; }
-
-    /// @brief パラメータを設定して定数バッファを更新
-    /// @param params 新しいパラメータ
     void SetParams(const VignetteParams& params);
-
-    /// @brief 定数バッファを更新
     void UpdateConstantBuffer();
 
 protected:
-    const std::wstring& GetPixelShaderPath() const override
-    {
-        static const std::wstring pixelShaderPath = L"Vignette.PS.hlsl";
-        return pixelShaderPath;
-    }
-
-    void BindOptionalCBVs(ID3D12GraphicsCommandList* commandList) override;
+    std::string  GetEffectName()        const override { return "Vignette"; }
+    std::wstring GetComputeShaderPath() const override { return L"Vignette.CS.hlsl"; }
+    void OnCreateConstantBuffers() override;
 
 private:
-    /// @brief 定数バッファの作成
-    void CreateConstantBuffer();
+    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     VignetteParams params_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-    VignetteParams* mappedData_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> vignetteParamsCB_;
+    VignetteParams* mappedVignetteParams_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
+    ScreenParams* mappedScreenParams_ = nullptr;
 };
 }

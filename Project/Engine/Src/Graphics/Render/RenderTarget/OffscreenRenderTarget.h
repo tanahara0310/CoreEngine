@@ -44,6 +44,15 @@ namespace CoreEngine
         /// @brief オフスクリーンインデックスを取得
         int GetIndex() const { return index_; }
 
+        /// @brief UAVハンドルを取得（CSポストエフェクト用）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetUAVHandle() const;
+
+        /// @brief CSエフェクト用: UAV状態に遷移して書き込み準備をする
+        void BeginCS(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief CSエフェクト用: NON_PIXEL_SHADER_RESOURCE状態に遷移してSRVとして使えるようにする
+        void EndCS(ID3D12GraphicsCommandList* cmdList);
+
         /// @brief 深度バッファを使用するか設定（falseにするとDSVのバインドとクリアをスキップ）
         /// @note SSAO等のポストプロセスパスではfalseにして共有DSVを破壊しないようにする
         void SetUseDepthBuffer(bool use) { useDepthBuffer_ = use; }
@@ -61,6 +70,7 @@ namespace CoreEngine
         mutable ID3D12Resource* resource_ = nullptr;
         mutable D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle_{};
         mutable D3D12_GPU_DESCRIPTOR_HANDLE srvHandle_{};
+        mutable D3D12_GPU_DESCRIPTOR_HANDLE uavHandle_{};
         mutable D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle_{};
         mutable int32_t width_ = 0;
         mutable int32_t height_ = 0;

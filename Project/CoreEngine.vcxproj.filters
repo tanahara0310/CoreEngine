@@ -169,6 +169,12 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Invert</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectGraphicsBase.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\RadialBlur</Filter>
     </ClCompile>
@@ -184,11 +190,11 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
@@ -948,6 +954,12 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Invert</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectGraphicsBase.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\RadialBlur</Filter>
     </ClInclude>
@@ -963,11 +975,11 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>

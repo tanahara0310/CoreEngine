@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -233,13 +233,15 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectGraphicsBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll\RasterScroll.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Sepia\Sepia.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave\Shockwave.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp" />
@@ -497,13 +499,15 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectGraphicsBase.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll\RasterScroll.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Sepia\Sepia.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave\Shockwave.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h" />

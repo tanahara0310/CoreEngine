@@ -4,6 +4,7 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/PostEffect/Effect/PostEffectBase.h"
 
 namespace CoreEngine
@@ -34,13 +35,27 @@ bool PingPongBuffer::ApplyEffect(PostEffectBase* effect)
         return false;
     }
 
-    // エフェクトを現在の出力バッファに描画
-    renderTarget->Begin(cmdList);
-    effect->Draw(currentInput_);
-    renderTarget->End(cmdList);
+    if (effect->GetExecutionType() == PostEffectExecutionType::Compute) {
+        // CS方式: UAVに直接書き込み
+        auto* offscreen = static_cast<OffscreenRenderTarget*>(renderTarget);
+        offscreen->BeginCS(cmdList);
+        effect->Dispatch(
+            currentInput_,
+            offscreen->GetUAVHandle(),
+            static_cast<uint32_t>(offscreen->GetWidth()),
+            static_cast<uint32_t>(offscreen->GetHeight()));
+        offscreen->EndCS(cmdList);
 
-    // 今書き込んだバッファが次の入力になる
-    currentInput_ = renderTarget->GetSRVHandle();
+        // EndCS後はNON_PIXEL_SHADER_RESOURCEなのでSRVとして使える
+        currentInput_ = renderTarget->GetSRVHandle();
+    } else {
+        // Graphics方式: RTVへ描画
+        renderTarget->Begin(cmdList);
+        effect->Draw(currentInput_);
+        renderTarget->End(cmdList);
+
+        currentInput_ = renderTarget->GetSRVHandle();
+    }
 
     // 次回の出力先を切り替え（ping-pong）
     currentOutputIndex_ = (currentOutputIndex_ == 0) ? 1 : 0;

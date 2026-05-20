@@ -59,7 +59,7 @@ void OffScreenRenderTargetManager::CreateOrResizeTargetResource(OffScreenTarget&
     texDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     texDesc.SampleDesc.Count = 1;
     texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-    texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
     D3D12_CLEAR_VALUE clearValue = {};
     clearValue.Format = texDesc.Format;
@@ -108,6 +108,18 @@ void OffScreenRenderTargetManager::CreateTargetViews(OffScreenTarget& target, ui
         target.srvHandle,
         std::format("OffScreenRenderTarget{}", index)
     );
+
+    D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+    uavDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+    uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+    descriptorManager_->CreateUAV(
+        target.resource.Get(),
+        uavDesc,
+        target.uavCpuHandle,
+        target.uavHandle,
+        std::format("OffScreenRenderTarget{}UAV", index)
+    );
 }
 
 void OffScreenRenderTargetManager::UpdateTargetViews(const OffScreenTarget& target)
@@ -149,6 +161,24 @@ D3D12_GPU_DESCRIPTOR_HANDLE OffScreenRenderTargetManager::GetOffScreenSrvHandle(
 {
     ValidateIndex(index);
     return offScreenTargets_[index].srvHandle;
+}
+
+D3D12_GPU_DESCRIPTOR_HANDLE OffScreenRenderTargetManager::GetOffScreenUavHandle(uint32_t index) const
+{
+    ValidateIndex(index);
+    return offScreenTargets_[index].uavHandle;
+}
+
+D3D12_RESOURCE_STATES OffScreenRenderTargetManager::GetOffScreenState(uint32_t index) const
+{
+    ValidateIndex(index);
+    return offScreenTargets_[index].currentState;
+}
+
+void OffScreenRenderTargetManager::SetOffScreenState(uint32_t index, D3D12_RESOURCE_STATES state)
+{
+    ValidateIndex(index);
+    offScreenTargets_[index].currentState = state;
 }
 
 void OffScreenRenderTargetManager::SetTargetClearColor(uint32_t index, const float color[4])

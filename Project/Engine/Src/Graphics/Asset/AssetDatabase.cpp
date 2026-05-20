@@ -76,7 +76,8 @@ namespace CoreEngine
                                 files.push_back({ entry.path(), target.category });
                             }
                         }
-                    } catch (const std::exception& e) {
+                    }
+                    catch (const std::exception& e) {
                         Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "{}",
                             "Failed to scan directory: " + target.path.string() + " (" + e.what() + ")");
                     }
@@ -198,7 +199,7 @@ namespace CoreEngine
 
     void AssetDatabase::Refresh()
     {
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}", 
+        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::System, "{}",
             "Refreshing AssetDatabase...");
 
         initialized_ = false;
@@ -234,7 +235,15 @@ namespace CoreEngine
 
         AssetInfo info;
         info.guid = guid;
-        info.name = assetPath.stem().string();
+        // 複合拡張子（例: GrayScale.CS.hlsl）に対してもベース名（GrayScale）で検索できるよう
+        // stem を繰り返し適用して最初のドットより前の名前を取得する。
+        {
+            std::filesystem::path stem = assetPath.stem();
+            while (stem.has_extension()) {
+                stem = stem.stem();
+            }
+            info.name = stem.string();
+        }
         info.fileName = assetPath.filename().string();
         info.fullPath = assetPath;
         info.relativePath = std::filesystem::relative(assetPath, projectRoot_);
@@ -252,8 +261,19 @@ namespace CoreEngine
         const std::string fileName = info.fileName;
 
         assetsByGUID_[guid] = std::move(info);
+
+        // ベース名（例: GrayScale）で登録
         assetsByName_[name].push_back(guid);
+
+        // ファイル名フル（例: GrayScale.CS.hlsl）で登録
         assetsByName_[fileName].push_back(guid);
+
+        // 中間 stem（例: GrayScale.CS）でも検索できるよう全 stem を登録
+        std::filesystem::path stem = std::filesystem::path(fileName).stem();
+        while (stem.has_extension()) {
+            assetsByName_[stem.string()].push_back(guid);
+            stem = stem.stem();
+        }
     }
 
     AssetType AssetDatabase::GetAssetType(const std::filesystem::path& path)
@@ -274,8 +294,8 @@ namespace CoreEngine
             return AssetType::Model;
         }
 
-        // シェーダー
-        if (ext == ".hlsl" || ext == ".hlsli" || ext == ".vs" || ext == ".ps" || ext == ".gs" || ext == ".cs")
+        // シェーダー（.cs は C# ファイルと重複するため除外）
+        if (ext == ".hlsl" || ext == ".hlsli" || ext == ".vs" || ext == ".ps" || ext == ".gs")
         {
             return AssetType::Shader;
         }

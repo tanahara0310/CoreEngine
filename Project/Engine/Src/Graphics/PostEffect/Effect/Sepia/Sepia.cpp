@@ -1,133 +1,102 @@
 #include "Sepia.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/Common/DirectXCommon.h"
 #include <cassert>
 
 
 namespace CoreEngine
 {
-void Sepia::Initialize(DirectXCommon* dxCommon)
-{
-    // 基底クラスの初期化
-    PostEffectBase::Initialize(dxCommon);
-    
-    // 定数バッファの作成
-    CreateConstantBuffer();
-}
+    void Sepia::OnCreateConstantBuffers()
+    {
+        // SepiaParams 定数バッファ
+        UINT sepiaSize = (sizeof(SepiaParams) + 255) & ~255;
+        sepiaParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), sepiaSize);
+        HRESULT hr = sepiaParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedSepiaParams_));
+        assert(SUCCEEDED(hr));
+        UpdateConstantBuffer();
 
-void Sepia::DrawImGui()
-{
-#ifdef USE_IMGUI
-    ImGui::PushID("SepiaParams");
-    
-    ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-    ImGui::Text("ヴィンテージなセピアトーンエフェクトを作成します");
-    UI::Separator();
-    
-    bool paramsChanged = false;
-    
-    // パラメータ設定
-    if (ImGui::TreeNode("パラメータ")) {
-        // セピア効果の強度調整
-        paramsChanged |= UI::SliderFloat("強度", params_.intensity, 0.0f, 2.0f);
-        
-        ImGui::TreePop();
+        // ScreenParams 定数バッファ
+        UINT screenSize = (sizeof(ScreenParams) + 255) & ~255;
+        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), screenSize);
+        hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
+        assert(SUCCEEDED(hr));
     }
-    
-    // 色調調整
-    if (ImGui::TreeNode("色調調整")) {
-        paramsChanged |= UI::SliderFloat("赤の色調", params_.toneRed, 0.5f, 1.5f);
-        paramsChanged |= UI::SliderFloat("緑の色調", params_.toneGreen, 0.5f, 1.5f);
-        paramsChanged |= UI::SliderFloat("青の色調", params_.toneBlue, 0.5f, 1.5f);
-        
-        ImGui::TreePop();
+
+    void Sepia::UpdateConstantBuffer()
+    {
+        if (mappedSepiaParams_) {
+            *mappedSepiaParams_ = params_;
+        }
     }
-    
-    // パラメータが変更された場合、即座に定数バッファを更新
-    if (paramsChanged) {
+
+    void Sepia::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
+    {
+        if (mappedScreenParams_) {
+            mappedScreenParams_->screenWidth  = width;
+            mappedScreenParams_->screenHeight = height;
+        }
+    }
+
+    void Sepia::SetParams(const SepiaParams& params)
+    {
+        params_ = params;
         UpdateConstantBuffer();
     }
-    
-    UI::Separator();
-    
-    // プリセット
-    if (ImGui::TreeNode("プリセット")) {
-        if (ImGui::Button("デフォルト")) {
-            params_.intensity = 1.0f;
-            params_.toneRed = 1.0f;
-            params_.toneGreen = 0.8f;
-            params_.toneBlue = 0.6f;
-            UpdateConstantBuffer();
-        }
-        
-        if (ImGui::Button("クラシックセピア")) {
-            params_.intensity = 1.2f;
-            params_.toneRed = 1.1f;
-            params_.toneGreen = 0.85f;
-            params_.toneBlue = 0.65f;
-            UpdateConstantBuffer();
-        }
-        
-        UI::SameLine();
-        if (ImGui::Button("暖色セピア")) {
-            params_.intensity = 0.8f;
-            params_.toneRed = 1.3f;
-            params_.toneGreen = 0.9f;
-            params_.toneBlue = 0.5f;
-            UpdateConstantBuffer();
-        }
-        
-        ImGui::TreePop();
+
+    void Sepia::Dispatch(
+        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+        uint32_t width,
+        uint32_t height)
+    {
+        UpdateScreenConstantBuffer(width, height);
+
+        auto* cmdList = directXCommon_->GetCommandList();
+        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
+        cmdList->SetPipelineState(computePso_.Get());
+
+        int textureIdx      = GetRootParamIndex("gTexture");
+        int outputIdx       = GetRootParamIndex("gOutput");
+        int sepiaParamsIdx  = GetRootParamIndex("SepiaParams");
+        int screenParamsIdx = GetRootParamIndex("ScreenParams");
+
+        if (textureIdx >= 0)      cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
+        if (outputIdx >= 0)       cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
+        if (sepiaParamsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(sepiaParamsIdx, sepiaParamsCB_->GetGPUVirtualAddress());
+        if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParamsCB_->GetGPUVirtualAddress());
+
+        uint32_t groupX = (width  + 7) / 8;
+        uint32_t groupY = (height + 7) / 8;
+        cmdList->Dispatch(groupX, groupY, 1);
     }
-    
-    if (!IsEnabled()) {
-        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
-    }
-    
-    UI::Separator();
-    
-    ImGui::PopID();
+
+    void Sepia::DrawImGui()
+    {
+#ifdef USE_IMGUI
+        ImGui::PushID("SepiaParams");
+        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        UI::Separator();
+
+        bool changed = false;
+        if (ImGui::TreeNode("パラメータ")) {
+            changed |= UI::SliderFloat("強度", params_.intensity, 0.0f, 2.0f);
+            changed |= UI::SliderFloat("赤色調整", params_.toneRed, 0.5f, 1.5f);
+            changed |= UI::SliderFloat("緑色調整", params_.toneGreen, 0.5f, 1.5f);
+            changed |= UI::SliderFloat("青色調整", params_.toneBlue, 0.5f, 1.5f);
+            ImGui::TreePop();
+        }
+        if (changed) { UpdateConstantBuffer(); }
+
+        UI::Separator();
+        if (ImGui::Button("デフォルトに戻す")) {
+            params_ = SepiaParams{};
+            UpdateConstantBuffer();
+        }
+        if (!IsEnabled()) {
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
+        }
+        ImGui::PopID();
 #endif // USE_IMGUI
-}
-
-void Sepia::SetParams(const SepiaParams& params)
-{
-    params_ = params;
-    UpdateConstantBuffer();
-}
-
-void Sepia::BindOptionalCBVs(ID3D12GraphicsCommandList* commandList)
-{
-    // 定数バッファをピクセルシェーダーにバインド（シェーダーリフレクションからインデックスを取得）
-    int paramsIdx = GetRootParamIndex("SepiaParams");
-    if (constantBuffer_ && paramsIdx >= 0) {
-        commandList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
     }
-}
-
-void Sepia::UpdateConstantBuffer()
-{
-    // 定数バッファにデータをコピー
-    if (mappedData_) {
-        *mappedData_ = params_;
-    }
-}
-
-void Sepia::CreateConstantBuffer()
-{
-    assert(directXCommon_);
-    
-    // 定数バッファのサイズを256バイトアライメントに調整
-    UINT bufferSize = (sizeof(SepiaParams) + 255) & ~255;
-
-    // 定数バッファリソースを生成
-    constantBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), bufferSize);
-
-    // マッピング
-    HRESULT hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
-    assert(SUCCEEDED(hr));
-    
-    // 初期値で更新
-    UpdateConstantBuffer();
-}
 }
