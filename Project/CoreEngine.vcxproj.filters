@@ -16,6 +16,9 @@
     <ClCompile Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.cpp">
       <Filter>Application\Src\Sample\TestGameObject\AnimatedModel</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Effect\HitEffect.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Effect</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Sample\TestGameObject\Model\ModelObject.cpp">
       <Filter>Application\Src\Sample\TestGameObject\Model</Filter>
     </ClCompile>
@@ -725,6 +728,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.h">
       <Filter>Application\Src\Sample\TestGameObject\AnimatedModel</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Effect\HitEffect.h">
+      <Filter>Application\Src\Sample\TestGameObject\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\ModelObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Model</Filter>
@@ -1773,6 +1779,9 @@
     </Filter>
     <Filter Include="Application\Src\Sample\TestGameObject\AnimatedModel">
       <UniqueIdentifier>{527BECE0-62C5-4B7C-B4BE-9180628CD645}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Sample\TestGameObject\Effect">
+      <UniqueIdentifier>{96B9CEF6-1D6D-4E24-99B7-FBDD2A42BBD3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Sample\TestGameObject\Model">
       <UniqueIdentifier>{BF4478FF-10FE-444C-84A7-012D6C0818E6}</UniqueIdentifier>
