@@ -37,5 +37,34 @@ struct WaterFrameConstants {
     /// @brief 1 = 反射テクスチャ（gReflectionTexture）が有効、0 = IBL フォールバック
     int   reflectionEnabled = 0;
 
+    /// @brief Fresnel が 0（真上から見た時）のときの alpha 値（浅い角度 = 透明）
+    float fresnelMinAlpha = 0.05f;
+
+    /// @brief Fresnel が 1（斜めから見た時）のときの alpha 値（浅い角度 = 不透明）
+    float fresnelMaxAlpha = 1.0f;
+
+    // ---- Depth Fade（Beer-Lambert 則）----
+
+    /// @brief 光吸収係数（大きいほど短距離で不透明になる）
+    float absorptionCoeff = 0.3f;
+
+    /// @brief 1 = 深度テクスチャによる Depth Fade を有効にする、0 = 無効
+    int   depthFadeEnabled = 1;
+
+    /// @brief アライメント用パディング
     float padding[2] = {};
+
+    // ---- 浅瀬 / 深場の水色 ----
+
+    /// @brief 浅瀬（d ≈ 0）のときの水色（RGB）
+    float shallowColor[3] = { 0.1f, 0.6f, 0.6f };
+
+    /// @brief shallowColor アライメント用
+    float shallowColorPad = 0.0f;
+
+    /// @brief 深場（d 大）のときの水色（RGB）
+    float deepColor[3] = { 0.02f, 0.1f, 0.2f };
+
+    /// @brief deepColor アライメント用
+    float deepColorPad = 0.0f;
 };

@@ -8,6 +8,7 @@
 #include "Scene/SceneManager.h"
 #include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
 #include "Sample/TestGameObject/Primitive/WaterPlaneObject.h"
+#include "Sample/TestGameObject/Model/ModelObject.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include <cmath>
 #include <cstdio>
@@ -73,6 +74,15 @@ void WaterTestScene::OnInitialize() {
     waterPlane_->SetUVTiling({ 4.0f, 4.0f });
     waterPlane_->SetActive(true);
 
+    // ===== 地面モデル =====
+    groundObject_ = CreateObject<ModelObject>("ground.gltf");
+    groundObject_->GetTransform().translate = { 0.0f, -0.1f, 0.0f };
+    groundObject_->GetTransform().scale = { 1.0f,  1.0f, 1.0f };
+    // PBRテクスチャマップを有効化（gltfに埋め込まれたテクスチャを使用）
+    groundObject_->SetPBRTextureMapsEnabled(true, true, true, true);
+    groundObject_->SetIBLEnabled(true);
+    groundObject_->SetActive(true);
+
     // ===== Step 4: 反射パス初期化 =====
     auto* dxCommon = engine_->GetComponent<DirectXCommon>();
     if (dxCommon) {
@@ -95,9 +105,29 @@ void WaterTestScene::OnUpdate() {
         waterPlane_->UpdateUVScroll(frameRate->GetDeltaTime());
     }
 
+    // ===== 水面をカメラ XZ に追従させて「無限遠」に見せる =====
+    // メッシュ自体をカメラと同じ XZ 座標に移動するだけで
+    // 常にカメラの真下に広大な水面が広がっているように見える
+    auto* cameraManager = engine_->GetComponent<CameraManager>();
+    if (waterPlane_ && cameraManager) {
+        auto* cam = cameraManager->GetActiveCamera(CameraType::Camera3D);
+        if (cam) {
+            auto camPos = cam->GetPosition();
+            auto& t = waterPlane_->GetTransform();
+            t.translate.x = camPos.x;
+            t.translate.z = camPos.z;
+            // Y は水面高さのまま維持する
+        }
+    }
+
 #ifdef USE_IMGUI
     DrawWaterImGui();
 #endif
+
+    // ImGui 等で変更されたフレーム定数を GPU バッファに書き込む
+    if (waterPlane_) {
+        waterPlane_->UpdateFrameConstants();
+    }
 }
 
 void WaterTestScene::Draw() {
@@ -122,6 +152,14 @@ void WaterTestScene::Draw() {
 
             // 反射テクスチャを水面オブジェクトに渡す
             waterPlane_->SetReflectionTexture(reflectionPass_.GetReflectionSRV());
+
+            // シーン深度 SRV を水面オブジェクトに渡す（Depth Fade 用）
+            // GBuffer パス完了後の深度ステンシルバッファの SRV を使用する
+            waterPlane_->SetSceneDepthSRV(dxCommon->GetDepthStencilSRV());
+
+            // reflectionEnabled と depthFadeEnabled を含む最終状態を GPU バッファに反映する
+            // （SetReflectionTexture が reflectionEnabled を更新するため、ここで再書き込みが必要）
+            waterPlane_->UpdateFrameConstants();
         }
     }
 
@@ -201,12 +239,45 @@ void WaterTestScene::DrawWaterImGui() {
                     if (len > 1e-4f) { dir[0] /= len; dir[1] /= len; }
                     waves[i].direction = { dir[0], dir[1] };
                 }
-                ImGui::DragFloat("振幅 (Amplitude)",    &waves[i].amplitude,  0.01f, 0.0f, 5.0f);
-                ImGui::DragFloat("波長 (Wavelength)",   &waves[i].wavelength, 0.1f,  0.1f, 50.0f);
-                ImGui::DragFloat("位相速度 (Speed)",    &waves[i].speed,      0.05f, 0.0f, 10.0f);
-                ImGui::DragFloat("急峻度 (Steepness)",  &waves[i].steepness,  0.01f, 0.0f, 1.0f);
+                ImGui::DragFloat("振幅 (Amplitude)", &waves[i].amplitude, 0.01f, 0.0f, 5.0f);
+                ImGui::DragFloat("波長 (Wavelength)", &waves[i].wavelength, 0.1f, 0.1f, 50.0f);
+                ImGui::DragFloat("位相速度 (Speed)", &waves[i].speed, 0.05f, 0.0f, 10.0f);
+                ImGui::DragFloat("急峻度 (Steepness)", &waves[i].steepness, 0.01f, 0.0f, 1.0f);
                 ImGui::TreePop();
             }
+        }
+    }
+
+    // ===== Depth Fade =====
+    if (ImGui::CollapsingHeader("Depth Fade（水深透過）", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextDisabled("水面より深い場所ほど光が吸収され不透明な水色になります");
+        ImGui::Spacing();
+        bool dfChanged = false;
+        dfChanged |= ImGui::Checkbox("Depth Fade 有効", &imguiDepthFadeEnabled_);
+        dfChanged |= ImGui::SliderFloat("吸収係数", &imguiAbsorptionCoeff_, 0.0f, 5.0f, "%.3f");
+        if (dfChanged) {
+            waterPlane_->SetDepthFade(imguiAbsorptionCoeff_, imguiDepthFadeEnabled_);
+        }
+        ImGui::Spacing();
+        bool colorChanged = false;
+        colorChanged |= ImGui::ColorEdit3("浅瀬の色", imguiShallowColor_);
+        colorChanged |= ImGui::ColorEdit3("深場の色", imguiDeepColor_);
+        if (colorChanged) {
+            waterPlane_->SetWaterColors(
+                { imguiShallowColor_[0], imguiShallowColor_[1], imguiShallowColor_[2] },
+                { imguiDeepColor_[0],    imguiDeepColor_[1],    imguiDeepColor_[2] });
+        }
+    }
+
+    // ===== Fresnel =====
+    if (ImGui::CollapsingHeader("Fresnel 透過設定", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextDisabled("視線が水面に対して垂直(真上)ほど透明に、斜めほど不透明になります");
+        ImGui::Spacing();
+        bool changed = false;
+        changed |= ImGui::SliderFloat("最小 Alpha（真上から）", &imguiFresnelMinAlpha_, 0.0f, 1.0f, "%.3f");
+        changed |= ImGui::SliderFloat("最大 Alpha（斜めから）", &imguiFresnelMaxAlpha_, 0.0f, 1.0f, "%.3f");
+        if (changed) {
+            waterPlane_->SetFresnelAlpha(imguiFresnelMinAlpha_, imguiFresnelMaxAlpha_);
         }
     }
 

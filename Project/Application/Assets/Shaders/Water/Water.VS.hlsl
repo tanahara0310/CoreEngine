@@ -23,10 +23,22 @@ cbuffer WaterConstants : register(b4)
 // WaterPlaneObject::BindCustomResources() が b5 にバインドする
 cbuffer WaterFrameConstants : register(b5)
 {
-    float4 gClipPlane;        // クリップ平面 (A, B, C, D): dot(worldPos, plane) > 0 で描画
-    int    gClipEnabled;      // 1 = 有効，0 = 無効
+    float4 gClipPlane;         // クリップ平面 (A, B, C, D): dot(worldPos, plane) > 0 で描画
+    int    gClipEnabled;       // 1 = 有効，0 = 無効
     int    gReflectionEnabled; // 1 = 反射テクスチャ有効，0 = IBL フォールバック
-    float2 gFramePadding;
+    float  gFresnelMinAlpha;   // PS と共有（VS では未使用、レイアウト一致のため保持）
+    float  gFresnelMaxAlpha;   // PS と共有（VS では未使用、レイアウト一致のため保持）
+
+    // ---- Depth Fade（VS では未使用、レイアウト一致のため保持）----
+    float  gAbsorptionCoeff;
+    int    gDepthFadeEnabled;
+    float2 gFramePad;
+
+    // ---- 水色（VS では未使用）----
+    float3 gShallowColor;
+    float  gShallowColorPad;
+    float3 gDeepColor;
+    float  gDeepColorPad;
 };
 
 // ===== 水面専用出力構造体（SV_ClipDistance0 を追加）=====
@@ -78,6 +90,8 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // ---- 1. ワールド変換 ----
     float4 worldPos4 = mul(input.position, mtx.World);
     float3 worldPos = worldPos4.xyz;
+    // 法線・接線の解析偏微分は変位前の静止位置（restPos）で評価する
+    float3 restPos = worldPos;
 
     // ---- 2. Gerstner Wave 頂点変位（ワールド空間） ----
     float3 totalOffset = float3(0.0f, 0.0f, 0.0f);
@@ -89,6 +103,7 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     worldPos += totalOffset;
 
     // ---- 3. 変位後の法線・接線を解析的に再計算（Gerstner の偏微分） ----
+    // 位相計算には変位前の静止座標（restPos.xz）を使う
     float3 normal = float3(0.0f, 1.0f, 0.0f);
     float3 tangent = float3(1.0f, 0.0f, 0.0f);
     [unroll]
@@ -96,7 +111,7 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     {
         float k = 2.0f * 3.14159265f / gWaves[j].wavelength;
         float omega = gWaves[j].speed * k;
-        float phase = k * dot(gWaves[j].direction, worldPos.xz) + omega * gTime;
+        float phase = k * dot(gWaves[j].direction, restPos.xz) + omega * gTime;
         float WA = k * gWaves[j].amplitude;
         float sinP = sin(phase);
         float cosP = cos(phase);
@@ -111,6 +126,8 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
         tangent.y += gWaves[j].direction.x * WA * cosP;
         tangent.z -= gWaves[j].steepness * gWaves[j].direction.x * gWaves[j].direction.y * WA * sinP;
     }
+    // normal.y が 0 以下になると法線が裏返るため最小値でクランプする
+    normal.y = max(0.001f, normal.y);
     normal = normalize(normal);
     tangent = normalize(tangent);
 

@@ -60,13 +60,13 @@ namespace CoreEngine
 
     void DepthStencilManager::CreateDepthStencilResource()
     {
-        // リソース設定
+        // Typeless フォーマットで作成することで DSV（D24_UNORM_S8）と SRV（R24_UNORM_X8）の両方を作成できる
         D3D12_RESOURCE_DESC resourceDesc{};
         resourceDesc.Width = width_;
         resourceDesc.Height = height_;
         resourceDesc.MipLevels = 1;
         resourceDesc.DepthOrArraySize = 1;
-        resourceDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        resourceDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
         resourceDesc.SampleDesc.Count = 1;
         resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
         resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
@@ -92,7 +92,6 @@ namespace CoreEngine
 
     void DepthStencilManager::CreateDepthStencilView()
     {
-        // DSVの設定
         D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
         dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
@@ -104,11 +103,13 @@ namespace CoreEngine
             dsvHandle_,
             "MainDepthStencil"
         );
+
+        // 深度リソースの SRV を作成（初回のみ）
+        CreateDepthShaderResourceView();
     }
 
     void DepthStencilManager::UpdateDepthStencilView()
     {
-        // DSVの設定
         D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
         dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
@@ -119,10 +120,38 @@ namespace CoreEngine
             &dsvDesc,
             dsvHandle_);
 
+        // SRV も既存の CPU ハンドルに更新
+        if (depthSRVCpuHandle_.ptr != 0) {
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.Format                    = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+            srvDesc.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Texture2D.MipLevels       = 1;
+            device_->CreateShaderResourceView(depthStencilResource_.Get(), &srvDesc, depthSRVCpuHandle_);
+        }
+
 #ifdef _DEBUG
         logger.Log(
             std::format("DSVを更新しました (既存ハンドルを再利用)\n"),
             LogLevel::INFO, LogCategory::Graphics);
 #endif
+    }
+
+    void DepthStencilManager::CreateDepthShaderResourceView()
+    {
+        // R24G8_TYPELESS リソースから R24_UNORM_X8_TYPELESS として深度値を読み取る SRV
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format                    = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+        srvDesc.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Texture2D.MipLevels       = 1;
+
+        descriptorManager_->CreateSRV(
+            depthStencilResource_.Get(),
+            srvDesc,
+            depthSRVCpuHandle_,
+            depthSRVGpuHandle_,
+            "MainDepthStencilSRV"
+        );
     }
 }

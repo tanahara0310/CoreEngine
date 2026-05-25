@@ -5,6 +5,7 @@
 #include "EngineSystem/EngineSystem.h"
 
 #include "Sample/TestGameObject/Primitive/WaterPlaneObject.h"
+#include "Sample/TestGameObject/Model/ModelObject.h"
 #include "WaterReflectionPass.h"
 
 #ifdef USE_IMGUI
@@ -35,6 +36,9 @@ private:
     /// @brief 水面グリッドメッシュオブジェクト
     WaterPlaneObject* waterPlane_ = nullptr;
 
+    /// @brief 地面モデルオブジェクト
+    ModelObject* groundObject_ = nullptr;
+
     /// @brief 水面平面反射パス（Step 4）
     WaterReflectionPass reflectionPass_;
 
@@ -47,6 +51,14 @@ private:
     float imguiScrollSpeed_[2] = { 0.03f, 0.01f }; ///< UV スクロール速度
     float imguiUVTiling_[2] = { 4.0f, 4.0f };      ///< UV タイリング
     bool  imguiReflectionEnabled_ = false;          ///< 反射テクスチャ有効フラグ（表示用）
+    float imguiFresnelMinAlpha_ = 0.05f;            ///< Fresnel=0（真上から）のときの alpha
+    float imguiFresnelMaxAlpha_ = 1.0f;             ///< Fresnel=1（斜めから）のときの alpha
+
+    // ---- Depth Fade ----
+    bool  imguiDepthFadeEnabled_ = true;            ///< Depth Fade 有効フラグ
+    float imguiAbsorptionCoeff_  = 0.3f;            ///< 光吸収係数
+    float imguiShallowColor_[3]  = { 0.1f, 0.6f, 0.6f };  ///< 浅瀬の水色
+    float imguiDeepColor_[3]     = { 0.02f, 0.1f, 0.2f }; ///< 深場の水色
 
     /// @brief テクスチャ使用モード
     /// 0 = テクスチャなし（ベースカラーのみ）

@@ -24,6 +24,7 @@
 
 // レンダーパス
 #include "Graphics/Render/Pass/RenderPipeline.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Render/Pass/ShadowMapPass.h"
 #include "Graphics/Render/Pass/GBufferPass.h"
 #include "Graphics/Render/Pass/SSAOPass.h"
@@ -316,7 +317,29 @@ namespace CoreEngine
 
         {
             EngineProfileScope scope(this, GpuTimestampSlot::GeometryPass, cmdList);
+
+            // 水面の Depth Fade で深度バッファを SRV として読むため
+            // DEPTH_WRITE → (DEPTH_READ | PIXEL_SHADER_RESOURCE) に遷移する。
+            // この組み合わせにより、読み取り専用 DSV と SRV の同時利用が可能になる。
+            auto* depthManager = dx ? dx->GetDepthStencilManager() : nullptr;
+            if (depthManager && cmdList) {
+                ResourceBarrierHelper::Transition(
+                    cmdList,
+                    depthManager->GetDepthStencilResource(),
+                    depthManager->GetCurrentState(),
+                    D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            }
+
             executePass(renderPipeline_->GetPass<GeometryPass>());
+
+            // GeometryPass 完了後に DEPTH_WRITE へ戻す（次フレームの DSV 書き込みに備える）
+            if (depthManager && cmdList) {
+                ResourceBarrierHelper::Transition(
+                    cmdList,
+                    depthManager->GetDepthStencilResource(),
+                    depthManager->GetCurrentState(),
+                    D3D12_RESOURCE_STATE_DEPTH_WRITE);
+            }
         }
 
         {
@@ -334,13 +357,18 @@ namespace CoreEngine
 #endif // USE_IMGUI
 
         // フレームの最終処理（バックバッファ終了、コマンド実行、Present）
+        // FinalizeFrame 内で SignalFrame されるフレームインデックスを事前に取得する
+        const UINT currentFrameIndexForFlush =
+            (dx && dx->GetSwapChain()) ? dx->GetSwapChain()->GetCurrentBackBufferIndex() : 0;
+
         if (render) {
             render->FinalizeFrame();
         }
 
-        // GPU 実行完了後に DXR 退避リソースを解放
+        // GPU 実行完了を確認してから DXR 退避リソースを解放
         if (auto* asMgr = context.accelerationStructureManager) {
-            asMgr->FlushRetiredResources();
+            auto* commandManager = dx ? dx->GetCommandManager() : nullptr;
+            asMgr->FlushRetiredResources(commandManager, currentFrameIndexForFlush);
         }
 
 #ifdef USE_IMGUI

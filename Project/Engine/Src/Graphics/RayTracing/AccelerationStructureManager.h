@@ -10,6 +10,7 @@ namespace CoreEngine
 {
     class DescriptorManager;
     class ModelResource;
+    class CommandManager;
 
     /// @brief BLAS/TLAS を管理するクラス（DXR レイトレーシング用）
     /// @note ID3D12Device5 が必須。非対応 GPU では Initialize() が false を返す
@@ -68,8 +69,13 @@ namespace CoreEngine
         /// @brief DXR がサポートされているか
         bool IsSupported() const { return isSupported_; }
 
-        /// @brief フレーム終了後に退避リソースを解放する（GPU 実行完了後に呼ぶ）
-        void FlushRetiredResources() { retiredResources_.clear(); }
+        /// @brief フレーム終了後に退避リソースを解放する
+        /// @param commandManager 現在フレームのGPU完了を待機するために使用する
+        /// @param frameIndex SignalFrame で記録したフレームインデックス
+        void FlushRetiredResources(CommandManager* commandManager, UINT frameIndex);
+
+        /// @brief 退避リソースがあるか
+        bool HasRetiredResources() const { return !retiredResources_.empty(); }
 
         /// @brief 登録済み BLAS 数を取得
         UINT GetBLASCount() const { return static_cast<UINT>(blasList_.size()); }

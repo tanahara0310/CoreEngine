@@ -182,6 +182,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Effect\HitEffect.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Model\ModelObject.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Model\Plane.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Model\SphereObject.cpp" />
@@ -423,6 +424,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Effect\HitEffect.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\ModelObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\Plane.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\SphereObject.h" />
