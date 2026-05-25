@@ -4,6 +4,7 @@
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Math/Vector/Vector2.h"
+#include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
 #include "WaterConstantBuffer.h"
 
@@ -98,6 +99,23 @@ public:
     /// @brief フレーム定数への参照を返す（ImGui から reflectionEnabled 等を参照する用）
     const WaterFrameConstants& GetFrameConstants() const { return frameCB_; }
 
+    /// @brief Fresnel alpha の最小値（真上から見たとき）と最大値（斜めから見たとき）を設定する
+    /// @param minAlpha Fresnel=0 のときの alpha（小さいほど透明 → 水中が見えやすい）
+    /// @param maxAlpha Fresnel=1 のときの alpha（大きいほど不透明 → 斜め角度で不透明）
+    void SetFresnelAlpha(float minAlpha, float maxAlpha);
+
+    /// @brief シーン深度テクスチャ SRV を設定する（Depth Fade 用）
+    /// @param srvHandle GBuffer / DepthStencil の深度 SRV GPU ハンドル
+    void SetSceneDepthSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
+
+    /// @brief Depth Fade パラメータを設定する
+    /// @param absorptionCoeff 光吸収係数（大きいほど短距離で不透明になる）
+    /// @param enabled true のとき Depth Fade を有効にする
+    void SetDepthFade(float absorptionCoeff, bool enabled);
+
+    /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
+    void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);
+
 protected:
     std::string GetTexturePath() const override { return albedoTextureName_; }
 
@@ -137,4 +155,7 @@ private:
 
     // ---- 反射テクスチャ SRV（t14 にバインド） ----
     D3D12_GPU_DESCRIPTOR_HANDLE reflectionSRV_ = { 0 };              ///< 反射 RTT の SRV
+
+    // ---- シーン深度テクスチャ SRV（t15 にバインド）: Depth Fade 用 ----
+    D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV_ = { 0 };              ///< 深度 SRV
 };

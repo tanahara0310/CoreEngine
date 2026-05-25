@@ -38,6 +38,9 @@ void WaterPlaneObject::OnInitialize() {
     // 独自シェーダーを使用するよう登録する
     SetCustomShaderProvider(this);
 
+    // 水面は半透明オブジェクトとして描画する
+    SetBlendMode(CoreEngine::BlendMode::kBlendModeNormal);
+
     // 定数バッファを作成する
     auto* engine = GetEngineSystem();
     auto* dxCommon = engine ? engine->GetComponent<CoreEngine::DirectXCommon>() : nullptr;
@@ -123,6 +126,15 @@ void WaterPlaneObject::BindCustomResources(
                 static_cast<UINT>(reflSlot), reflectionSRV_);
         }
     }
+
+    // シーン深度 SRV をバインドする（Depth Fade 用）
+    if (sceneDepthSRV_.ptr != 0) {
+        int depthSlot = pipeline->GetRootParamIndex("gSceneDepth");
+        if (depthSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(depthSlot), sceneDepthSRV_);
+        }
+    }
 }
 
 void WaterPlaneObject::SetNormalMapTextureName(const std::string& fileName) {
@@ -165,6 +177,29 @@ void WaterPlaneObject::UpdateFrameConstants() {
     if (frameCBMapped_) {
         std::memcpy(frameCBMapped_, &frameCB_, sizeof(WaterFrameConstants));
     }
+}
+
+void WaterPlaneObject::SetFresnelAlpha(float minAlpha, float maxAlpha) {
+    frameCB_.fresnelMinAlpha = minAlpha;
+    frameCB_.fresnelMaxAlpha = maxAlpha;
+}
+
+void WaterPlaneObject::SetSceneDepthSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
+    sceneDepthSRV_ = srvHandle;
+}
+
+void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {
+    frameCB_.absorptionCoeff  = absorptionCoeff;
+    frameCB_.depthFadeEnabled = enabled ? 1 : 0;
+}
+
+void WaterPlaneObject::SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor) {
+    frameCB_.shallowColor[0] = shallowColor.x;
+    frameCB_.shallowColor[1] = shallowColor.y;
+    frameCB_.shallowColor[2] = shallowColor.z;
+    frameCB_.deepColor[0]    = deepColor.x;
+    frameCB_.deepColor[1]    = deepColor.y;
+    frameCB_.deepColor[2]    = deepColor.z;
 }
 
 void WaterPlaneObject::SetBaseColor(const CoreEngine::Vector4& color) {

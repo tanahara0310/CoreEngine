@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
@@ -28,6 +28,10 @@ public:
     // アクセッサ
     ID3D12Resource* GetDepthStencilResource() const { return depthStencilResource_.Get(); }
     D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const { return dsvHandle_; }
+    /// @brief 深度テクスチャの SRV GPU ハンドルを返す（シェーダーからサンプリングするために使用）
+    D3D12_GPU_DESCRIPTOR_HANDLE GetDepthSRVHandle() const { return depthSRVGpuHandle_; }
+    /// @brief 現在のリソースステートへの参照を返す（ResourceBarrierHelper で使用）
+    D3D12_RESOURCE_STATES& GetCurrentState() { return currentState_; }
 
 private:
     /// @brief 深度ステンシルリソースの作成
@@ -39,12 +43,22 @@ private:
     /// @brief 深度ステンシルビューの更新（既存のハンドルを使用）
     void UpdateDepthStencilView();
 
+    /// @brief 深度リソースの SRV を作成する（シェーダーからのサンプリング用）
+    void CreateDepthShaderResourceView();
+
 private:
     // 深度ステンシルリソース
     Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_;
 
     // DSVハンドル
     D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle_{};
+
+    // 深度 SRV ハンドル（Water Depth Fade 等でシェーダーからサンプリングするために使用）
+    D3D12_CPU_DESCRIPTOR_HANDLE depthSRVCpuHandle_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE depthSRVGpuHandle_{};
+
+    // リソースステート追跟（ResourceBarrierHelper で利用）
+    D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
     // 初期化パラメータ
     ID3D12Device* device_ = nullptr;

@@ -1,5 +1,6 @@
 #include "AccelerationStructureManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
+#include "Graphics/Common/Core/CommandManager.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/VertexData.h"
@@ -328,5 +329,20 @@ namespace CoreEngine
             &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
             D3D12_RESOURCE_STATE_COMMON,
             nullptr, IID_PPV_ARGS(&blasScratch_));
+    }
+
+    void AccelerationStructureManager::FlushRetiredResources(
+        CommandManager* commandManager, UINT frameIndex)
+    {
+        if (retiredResources_.empty()) {
+            return;
+        }
+
+        // 退避リソースを参照しているGPUフレームの完了を待ってから解放する
+        if (commandManager) {
+            commandManager->WaitForFrame(frameIndex);
+        }
+
+        retiredResources_.clear();
     }
 }

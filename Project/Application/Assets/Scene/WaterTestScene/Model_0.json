@@ -1,0 +1,40 @@
+{
+    "active": true,
+    "material": {
+        "ao": 1.0,
+        "aoMap": true,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "dithering": false,
+        "ditheringScale": 1.0,
+        "ibl": true,
+        "iblIntensity": 1.1419999599456787,
+        "lighting": true,
+        "metallic": 1.0,
+        "metallicMap": false,
+        "normalMap": false,
+        "roughness": 1.0,
+        "roughnessMap": false
+    },
+    "transform": {
+        "rotate": [
+            0.0,
+            -0.0,
+            0.0
+        ],
+        "scale": [
+            11.194499015808105,
+            11.194499015808105,
+            11.194499015808105
+        ],
+        "translate": [
+            0.0,
+            -6.808568477630615,
+            0.0
+        ]
+    }
+}

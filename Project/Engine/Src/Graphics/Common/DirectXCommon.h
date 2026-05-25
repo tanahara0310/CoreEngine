@@ -66,6 +66,8 @@ public:
     // 深度ステンシル関連のアクセッサ
     ID3D12Resource* GetDepthStencilResource() { return depthStencilManager_->GetDepthStencilResource(); }
     D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() { return depthStencilManager_->GetDSVHandle(); }
+    /// @brief 深度テクスチャの SRV GPU ハンドルを返す（水面 Depth Fade 等で使用）
+    D3D12_GPU_DESCRIPTOR_HANDLE GetDepthStencilSRV() { return depthStencilManager_->GetDepthSRVHandle(); }
 
     // マネージャーへの直接アクセス（必要に応じて）
     DescriptorManager* GetDescriptorManager() { return descriptorManager_.get(); }
