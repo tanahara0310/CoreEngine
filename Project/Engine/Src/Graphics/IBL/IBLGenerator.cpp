@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "IBLGenerator.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"

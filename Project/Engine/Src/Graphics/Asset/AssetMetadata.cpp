@@ -1,4 +1,5 @@
-﻿#include "AssetMetadata.h"
+#include "pch.h"
+#include "AssetMetadata.h"
 #include "Utility/Logger/Logger.h"
 #include <fstream>
 #include <sstream>

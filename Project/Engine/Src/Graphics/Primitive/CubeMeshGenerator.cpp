@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "CubeMeshGenerator.h"
 #include "Math/MathCore.h"
 #include <cstdio>

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "DeferredLightingTechnique.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Light/LightManager.h"

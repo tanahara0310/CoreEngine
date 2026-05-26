@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "CameraKeyframeEditorModule.h"
 #include "CameraSequenceAssetIO.h"
 

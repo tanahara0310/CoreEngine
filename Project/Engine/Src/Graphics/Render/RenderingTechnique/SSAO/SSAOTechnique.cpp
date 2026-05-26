@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SSAOTechnique.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"

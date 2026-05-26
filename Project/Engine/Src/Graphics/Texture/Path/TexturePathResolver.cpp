@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "TexturePathResolver.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"

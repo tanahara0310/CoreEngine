@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "OffscreenRenderTarget.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include <cassert>

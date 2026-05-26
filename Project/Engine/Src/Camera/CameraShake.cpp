@@ -1,4 +1,5 @@
-﻿#include "CameraShake.h"
+#include "pch.h"
+#include "CameraShake.h"
 #include <cmath>
 
 

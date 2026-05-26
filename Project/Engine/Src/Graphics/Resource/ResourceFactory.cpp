@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "ResourceFactory.h"
 #include <cassert>
 #include <format>

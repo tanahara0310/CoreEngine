@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SpriteAnimator.h"
 #include "SpriteObject.h"
 #include "Math/Vector/Vector2.h"

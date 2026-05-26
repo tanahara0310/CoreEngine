@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SkyBoxObject.h"
 #include "Camera/ICamera.h"
 #include "Graphics/Common/DirectXCommon.h"

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "WaterPlaneObject.h"
 
 #include "Graphics/Primitive/PlaneMeshGenerator.h"

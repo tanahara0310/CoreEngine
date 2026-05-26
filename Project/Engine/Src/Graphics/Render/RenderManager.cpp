@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "RenderManager.h"
 #include "IGBufferRenderer.h"
 #include "ObjectCommon/GameObject.h"

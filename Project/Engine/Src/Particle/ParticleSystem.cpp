@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "ParticleSystem.h"
 #include "Utility/Random/RandomGenerator.h"
 #include "Camera/ICamera.h"

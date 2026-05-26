@@ -1,4 +1,5 @@
-﻿#include "SphereObject.h"
+#include "pch.h"
+#include "SphereObject.h"
 
 #ifdef _DEBUG
 #include "Utility/Debug/ImGui/ImGuiAll.h"

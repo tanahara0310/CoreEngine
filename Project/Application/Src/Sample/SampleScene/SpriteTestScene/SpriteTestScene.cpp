@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SpriteTestScene.h"
 
 #include "Input/KeyboardInput.h"

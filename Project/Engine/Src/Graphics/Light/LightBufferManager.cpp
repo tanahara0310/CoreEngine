@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "LightBufferManager.h"
 
 #include "Graphics/Resource/ResourceFactory.h"

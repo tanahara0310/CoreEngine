@@ -1,4 +1,5 @@
-﻿#include "FrameRateController.h"
+#include "pch.h"
+#include "FrameRateController.h"
 #include <algorithm>
 
 

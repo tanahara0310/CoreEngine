@@ -1,4 +1,5 @@
-﻿#include "GamepadInput.h"
+#include "pch.h"
+#include "GamepadInput.h"
 #include <algorithm> // clamp を使うなら必要
 #include <cassert>
 #include <corecrt_math.h>

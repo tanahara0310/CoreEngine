@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "DepthStencilManager.h"
 #include "DescriptorManager.h"
 #include "Graphics/Resource/ResourceFactory.h"

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "Render.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"

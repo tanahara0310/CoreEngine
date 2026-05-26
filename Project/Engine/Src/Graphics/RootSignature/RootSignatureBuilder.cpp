@@ -1,4 +1,5 @@
-﻿#include "RootSignatureBuilder.h"
+#include "pch.h"
+#include "RootSignatureBuilder.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 #include <algorithm>

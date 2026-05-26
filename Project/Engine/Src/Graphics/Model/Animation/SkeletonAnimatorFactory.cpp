@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SkeletonAnimatorFactory.h"
 #include "Graphics/Model/Skeleton/SkeletonAnimator.h"
 #include "AnimationBlender.h"

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "ShadowMapManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"

@@ -1,4 +1,5 @@
-﻿#include "ShaderReflectionBuilder.h"
+#include "pch.h"
+#include "ShaderReflectionBuilder.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 

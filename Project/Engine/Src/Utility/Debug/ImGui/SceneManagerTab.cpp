@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SceneManagerTab.h"
 #include "Scene/SceneManager.h"
 

@@ -1,4 +1,5 @@
-﻿#include "SoundManager.h"
+#include "pch.h"
+#include "SoundManager.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>

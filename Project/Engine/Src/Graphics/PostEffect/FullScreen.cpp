@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "FullScreen.h"
 #ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImguiManager.h"

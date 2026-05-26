@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "RayTracingPipelineBuilder.h"
 #include "Utility/Logger/Logger.h"
 

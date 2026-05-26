@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "EngineSystem.h"
 #include "Subsystem/EngineProfileScope.h"
 #include "Subsystem/RayTracingSubsystem.h"

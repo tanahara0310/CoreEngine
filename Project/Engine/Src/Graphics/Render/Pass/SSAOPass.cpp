@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SSAOPass.h"
 
 #include "Graphics/Common/DirectXCommon.h"

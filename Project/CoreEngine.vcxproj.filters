@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Engine\Src\pch.cpp">
+      <Filter>Engine\Src</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Sample\SampleScene\HomeworkScene\HomeworkScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\HomeworkScene</Filter>
     </ClCompile>
@@ -1643,6 +1646,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.h">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\pch.h">
+      <Filter>Engine\Src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

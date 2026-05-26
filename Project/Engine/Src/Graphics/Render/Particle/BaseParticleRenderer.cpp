@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "BaseParticleRenderer.h"
 #include "Particle/ParticleSystem.h"
 #include "Graphics/Resource/ResourceFactory.h"

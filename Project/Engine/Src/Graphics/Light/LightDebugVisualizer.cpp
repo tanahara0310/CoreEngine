@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "LightDebugVisualizer.h"
 
 #include "Math/MathCore.h"

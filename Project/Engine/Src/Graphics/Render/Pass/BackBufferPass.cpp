@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "BackBufferPass.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Common/DirectXCommon.h"

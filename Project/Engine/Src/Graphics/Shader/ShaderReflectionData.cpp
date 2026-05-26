@@ -1,4 +1,5 @@
-﻿#include "ShaderReflectionData.h"
+#include "pch.h"
+#include "ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 #include <cctype>

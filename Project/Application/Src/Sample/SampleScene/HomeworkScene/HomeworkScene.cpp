@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "HomeworkScene.h"
 
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"

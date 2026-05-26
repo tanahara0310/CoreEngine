@@ -1,4 +1,5 @@
-﻿#include "PlaneMeshGenerator.h"
+#include "pch.h"
+#include "PlaneMeshGenerator.h"
 #include "Math/MathCore.h"
 #include <cstdio>
 

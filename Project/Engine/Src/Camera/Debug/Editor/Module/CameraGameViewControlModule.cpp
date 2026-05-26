@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "CameraGameViewControlModule.h"
 
 #ifdef USE_IMGUI

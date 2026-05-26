@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SkeletonLoader.h"
 #include "Math/MathCore.h"
 

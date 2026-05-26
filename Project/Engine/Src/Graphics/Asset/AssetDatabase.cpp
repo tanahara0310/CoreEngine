@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "AssetDatabase.h"
 #include "AssetMetadata.h"
 #include "Threading/ThreadPool.h"

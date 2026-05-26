@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "DirectXCommon.h"
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"

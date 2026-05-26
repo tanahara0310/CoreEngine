@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "CameraFollowEditorModule.h"
 
 #ifdef USE_IMGUI

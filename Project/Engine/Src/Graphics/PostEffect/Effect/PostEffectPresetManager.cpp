@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "PostEffectPresetManager.h"
 #include "PostEffectManager.h"
 #include "Blur/Blur.h"

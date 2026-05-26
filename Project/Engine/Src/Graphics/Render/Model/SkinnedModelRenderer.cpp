@@ -1,4 +1,5 @@
-﻿#include "SkinnedModelRenderer.h"
+#include "pch.h"
+#include "SkinnedModelRenderer.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Model/TransformationMatrix.h"

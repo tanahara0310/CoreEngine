@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "GpuTimestampProfiler.h"
 #include "Graphics/Resource/ResourceFactory.h"
 

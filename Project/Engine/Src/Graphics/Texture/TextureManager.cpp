@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "TextureManager.h"
 #include "Cache/TextureCacheStore.h"
 #include "Load/TextureLoadPlan.h"

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "CommandManager.h"
 #include "Utility/Logger/Logger.h"
 

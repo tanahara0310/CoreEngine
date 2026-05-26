@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "TextureCubemapGenerator.h"
 #include "Utility/Logger/Logger.h"
 #include "externals/DirectXTex/DirectXTex.h"

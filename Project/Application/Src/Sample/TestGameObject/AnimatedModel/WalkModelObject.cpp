@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "WalkModelObject.h"
 
 void WalkModelObject::OnInitialize() {

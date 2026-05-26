@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "ScreenCapture.h"
 #include "Utility/Logger/Logger.h"
 

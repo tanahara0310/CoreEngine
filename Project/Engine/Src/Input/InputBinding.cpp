@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "InputBinding.h"
 #include <charconv>
 #include <format>

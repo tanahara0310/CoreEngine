@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "BackBufferRenderTarget.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include <cassert>
