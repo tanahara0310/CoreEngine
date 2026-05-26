@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "PrimitiveTestScene.h"
 
 #ifdef _DEBUG

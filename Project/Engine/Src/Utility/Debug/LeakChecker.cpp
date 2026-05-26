@@ -1,4 +1,5 @@
-﻿#include "LeakChecker.h"
+#include "pch.h"
+#include "LeakChecker.h"
 
 #include <d3d12.h>
 #include <dxgi1_6.h>

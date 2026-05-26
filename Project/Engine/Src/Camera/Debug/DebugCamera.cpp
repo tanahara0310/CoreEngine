@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "DebugCamera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Resource/ResourceFactory.h"

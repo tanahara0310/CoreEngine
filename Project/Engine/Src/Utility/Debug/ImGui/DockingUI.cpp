@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "DockingUI.h"
 #include "Graphics/Texture/TextureManager.h"
 #ifdef USE_IMGUI

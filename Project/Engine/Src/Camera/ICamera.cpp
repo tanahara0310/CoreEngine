@@ -1,4 +1,5 @@
-﻿#include "ICamera.h"
+#include "pch.h"
+#include "ICamera.h"
 #include "CameraStructs.h"
 
 namespace CoreEngine

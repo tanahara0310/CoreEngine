@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "PrimitiveGameObject.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"

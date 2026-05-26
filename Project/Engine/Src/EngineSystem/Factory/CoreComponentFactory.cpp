@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "CoreComponentFactory.h"
 #include "../EngineSystem.h"
 #include "WinApp/WinApp.h"

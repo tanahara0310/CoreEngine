@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "Camera2D.h"
 #include "Math/MathCore.h"
 #include "WinApp/WinApp.h"

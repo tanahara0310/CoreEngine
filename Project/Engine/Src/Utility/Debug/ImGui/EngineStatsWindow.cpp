@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "EngineStatsWindow.h"
 
 #include "Graphics/Debug/EngineStats.h"

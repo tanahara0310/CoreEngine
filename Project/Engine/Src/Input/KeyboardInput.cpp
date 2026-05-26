@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "KeyboardInput.h"
 
 #include <algorithm> // std::copy を使用するために追加

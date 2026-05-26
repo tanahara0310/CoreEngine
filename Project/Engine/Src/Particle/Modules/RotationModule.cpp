@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "RotationModule.h"
 #include "../ParticleSystem.h"
 #include <numbers>

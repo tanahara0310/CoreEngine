@@ -1,4 +1,5 @@
-﻿#include "CrashDump.h"
+#include "pch.h"
+#include "CrashDump.h"
 
 
 namespace CoreEngine

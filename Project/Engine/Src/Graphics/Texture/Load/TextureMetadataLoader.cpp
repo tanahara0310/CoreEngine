@@ -1,4 +1,5 @@
-﻿#include "TextureMetadataLoader.h"
+#include "pch.h"
+#include "TextureMetadataLoader.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FileErrorDialog/FileErrorDialog.h"

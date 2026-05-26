@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "DirectXCommon.h"
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
@@ -11,6 +12,33 @@
 
 namespace CoreEngine
 {
+    void DirectXCommon::Shutdown() {
+        if (!commandManager_) {
+            return;
+        }
+        // 全GPUコマンドの完了を待ってからリソースを解放する
+        commandManager_->WaitForPreviousFrame();
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "DirectXCommon::Shutdown: GPU同期完了。全マネージャーを解放します\n");
+
+        // unique_ptr を明示的にリセットして破棄順序を制御する
+        // （デストラクタ任せにすると宣言逆順になるため意図を明示）
+        rtShadowManager_.reset();
+        accelerationStructureManager_.reset();
+        shadowMapManager_.reset();
+        gBufferManager_.reset();
+        offScreenManager_.reset();
+        depthStencilManager_.reset();
+        swapChainManager_.reset();
+        descriptorManager_.reset();
+        commandManager_.reset();
+        deviceManager_.reset();
+    }
+
+    DirectXCommon::~DirectXCommon() {
+        Shutdown();
+    }
+
     void DirectXCommon::Initialize(WinApp* winApp, const EngineConfig& config)
     {
         // ウィンドウズアプリケーション管理
@@ -27,7 +55,7 @@ namespace CoreEngine
             deviceManager_->GetDevice(),
             deviceManager_->GetDXGIFactory(),
             commandManager_->GetCommandQueue(),
-            descriptorManager_->GetRTVHeap(),
+            descriptorManager_.get(),
             winApp);
 
         // オフスクリーンレンダリングターゲットの作成

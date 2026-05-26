@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SpriteRenderer.h"
 #include "Camera/ICamera.h"
 #include "SpriteMaterial.h"

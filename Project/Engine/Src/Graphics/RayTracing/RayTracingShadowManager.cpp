@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "RayTracingShadowManager.h"
 #include "AccelerationStructureManager.h"
 #include "Graphics/Common/DirectXCommon.h"

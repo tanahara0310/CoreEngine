@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SceneViewportGizmoController.h"
 
 #ifdef USE_IMGUI

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "HitEffect.h"
 
 #include "Graphics/Common/DirectXCommon.h"

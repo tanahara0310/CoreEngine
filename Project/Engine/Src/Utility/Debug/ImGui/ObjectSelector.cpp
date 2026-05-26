@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "ObjectSelector.h"
 #include "ObjectCommon/GameObject.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"

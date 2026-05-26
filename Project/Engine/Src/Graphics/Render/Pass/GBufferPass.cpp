@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "GBufferPass.h"
 
 #include <cassert>

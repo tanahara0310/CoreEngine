@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "PostEffectBase.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 

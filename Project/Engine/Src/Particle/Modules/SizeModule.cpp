@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SizeModule.h"
 #include "../ParticleSystem.h"
 #include <algorithm>

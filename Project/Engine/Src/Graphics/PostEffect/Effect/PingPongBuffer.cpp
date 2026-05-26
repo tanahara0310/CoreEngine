@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "PingPongBuffer.h"
 
 #include "Graphics/Common/DirectXCommon.h"

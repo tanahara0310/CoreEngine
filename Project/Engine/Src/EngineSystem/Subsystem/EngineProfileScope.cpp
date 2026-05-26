@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "EngineProfileScope.h"
 
 #ifdef USE_IMGUI

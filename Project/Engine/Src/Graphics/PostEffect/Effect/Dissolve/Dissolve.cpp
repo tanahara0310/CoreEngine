@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "Dissolve.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"

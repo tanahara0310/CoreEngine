@@ -37,6 +37,12 @@ public:
     /// @param config エンジン設定
     void Initialize(WinApp* winApp, const EngineConfig& config);
 
+    /// @brief シャットダウン処理（GPU完了待ちの後、全マネージャーを解放）
+    void Shutdown();
+
+    /// @brief デストラクタ（Shutdownが未呼び出しの場合も安全にGPU待ちする）
+    ~DirectXCommon();
+
     /// @brief ウィンドウリサイズ時の処理
     /// @param width 新しい幅
     /// @param height 新しい高さ

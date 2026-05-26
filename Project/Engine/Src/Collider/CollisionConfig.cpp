@@ -1,4 +1,5 @@
-﻿#include "CollisionConfig.h"
+#include "pch.h"
+#include "CollisionConfig.h"
 
 
 namespace CoreEngine

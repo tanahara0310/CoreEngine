@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "CameraSequenceAssetIO.h"
 
 #ifdef USE_IMGUI

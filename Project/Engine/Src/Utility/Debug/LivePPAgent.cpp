@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "LivePPAgent.h"
 
 #ifdef _DEBUG

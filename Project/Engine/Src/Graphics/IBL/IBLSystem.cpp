@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "IBLSystem.h"
 #include "IBLManager.h"
 #include "Graphics/Render/RenderManager.h"

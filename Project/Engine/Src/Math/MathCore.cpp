@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "Math/MathCore.h"
 #include <algorithm>
 #include <cassert>

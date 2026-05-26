@@ -5,8 +5,7 @@
 #include <string>
 #include <cstdint>
 #include <stdexcept>
-
-using namespace Microsoft::WRL;
+#include <vector>
 
 /// @brief ディスクリプタヒープ管理クラス
 
@@ -100,6 +99,30 @@ public:
     float GetSRVUsageRate() const { return static_cast<float>(nextSRVDescriptorIndex_) / maxSRVDescriptors_; }
     float GetDSVUsageRate() const { return static_cast<float>(nextDSVDescriptorIndex_) / maxDSVDescriptors_; }
 
+    /// @brief CBV/SRV/UAVスロットを解放してフリーリストに返す
+    /// @note GPUがそのスロットを参照し終わった後（フェンス完了後）に呼ぶこと
+    /// @param index 解放するスロットインデックス
+    void FreeSRVIndex(UINT index);
+
+    /// @brief RTVスロットを解放してフリーリストに返す
+    /// @note GPUがそのスロットを参照し終わった後（フェンス完了後）に呼ぶこと
+    /// @param index 解放するスロットインデックス
+    void FreeRTVIndex(UINT index);
+
+    /// @brief DSVスロットを解放してフリーリストに返す
+    /// @note GPUがそのスロットを参照し終わった後（フェンス完了後）に呼ぶこと
+    /// @param index 解放するスロットインデックス
+    void FreeDSVIndex(UINT index);
+
+    /// @brief CBV/SRV/UAV CPUハンドルからスロットインデックスを逆算する
+    UINT GetSRVIndexFromCpuHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const;
+
+    /// @brief RTV CPUハンドルからスロットインデックスを逆算する
+    UINT GetRTVIndexFromCpuHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const;
+
+    /// @brief DSV CPUハンドルからスロットインデックスを逆算する
+    UINT GetDSVIndexFromCpuHandle(D3D12_CPU_DESCRIPTOR_HANDLE handle) const;
+
 private:
     /// @brief ディスクリプタヒープの生成
     void CreateDescriptorHeaps();
@@ -109,7 +132,7 @@ private:
     /// @param numDescriptors ディスクリプタ数
     /// @param shaderVisible シェーダーから見えるか
     /// @return 作成されたディスクリプタヒープ
-    ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType,
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType,
         UINT numDescriptors, bool shaderVisible);
 
     /// @brief ディスクリプタの境界チェック
@@ -151,10 +174,20 @@ private:
         const std::string& debugName, UINT maxCount);
 
 private:
-    // ディスクプリタヒープ
-    ComPtr<ID3D12DescriptorHeap> rtvHeap_;
-    ComPtr<ID3D12DescriptorHeap> srvHeap_;
-    ComPtr<ID3D12DescriptorHeap> dsvHeap_;
+    // ディスクリプタヒープ
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap_;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvHeap_;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap_;
+
+    // フリーリスト（解放済みスロットの再利用）
+    std::vector<UINT> freeSRVIndices_;
+    std::vector<UINT> freeRTVIndices_;
+    std::vector<UINT> freeDSVIndices_;
+
+    // DescriptorHandleIncrementSize キャッシュ（毎フレーム呼び出しを避けるため）
+    UINT srvDescriptorSize_ = 0;
+    UINT rtvDescriptorSize_ = 0;
+    UINT dsvDescriptorSize_ = 0;
 
     // ディスクリプタヒープの最大サイズ（コンフィグから取得）
     UINT maxSRVDescriptors_ = kDefaultMaxSRVDescriptors;
@@ -167,5 +200,14 @@ private:
     uint32_t nextDSVDescriptorIndex_ = kUserDSVStart;
 
     ID3D12Device* device_ = nullptr;
+
+    /// @brief CBV/SRV/UAV ヒープのスロットを確保して返す（フリーリスト優先）
+    UINT AllocateSRVIndex();
+
+    /// @brief RTV ヒープのスロットを確保して返す（フリーリスト優先）
+    UINT AllocateRTVIndex();
+
+    /// @brief DSV ヒープのスロットを確保して返す（フリーリスト優先）
+    UINT AllocateDSVIndex();
 };
 }

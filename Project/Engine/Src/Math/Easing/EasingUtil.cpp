@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "EasingUtil.h"
 #include "Math/MathCore.h"  // ★★★ MyMathの代わりにMathCoreを使用 ★★★
 #include <numbers>

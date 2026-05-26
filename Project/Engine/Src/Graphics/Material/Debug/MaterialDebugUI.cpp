@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "MaterialDebugUI.h"
 
 #ifdef USE_IMGUI

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "ParticleTestScene.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"

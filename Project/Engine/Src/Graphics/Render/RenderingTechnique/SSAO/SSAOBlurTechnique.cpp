@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SSAOBlurTechnique.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"

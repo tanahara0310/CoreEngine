@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "RenderingTechniqueBase.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"

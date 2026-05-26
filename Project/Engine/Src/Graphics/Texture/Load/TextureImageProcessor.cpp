@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "TextureImageProcessor.h"
 
 #include <filesystem>

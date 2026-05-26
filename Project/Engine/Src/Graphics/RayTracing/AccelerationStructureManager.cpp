@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "AccelerationStructureManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/Core/CommandManager.h"

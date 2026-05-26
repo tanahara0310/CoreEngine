@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "PostEffectManager.h"
 
 #include "Graphics/Common/DirectXCommon.h"

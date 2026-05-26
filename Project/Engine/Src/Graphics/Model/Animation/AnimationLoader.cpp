@@ -1,4 +1,5 @@
-﻿#include "AnimationLoader.h"
+#include "pch.h"
+#include "AnimationLoader.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SphereMeshGenerator.h"
 #include "Math/MathCore.h"
 #include <cmath>

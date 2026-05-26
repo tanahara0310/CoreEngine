@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "LifetimeModule.h"
 #include "../ParticleSystem.h" // Particle構造体のために必要
 #include <algorithm>

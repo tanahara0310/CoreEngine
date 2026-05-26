@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "CameraParametersEditorModule.h"
 
 #ifdef USE_IMGUI

@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "RenderingTechniqueManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "RenderingTechniqueNames.h"

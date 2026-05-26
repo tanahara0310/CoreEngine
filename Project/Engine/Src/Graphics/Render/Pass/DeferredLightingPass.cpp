@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "DeferredLightingPass.h"
 
 #include "Graphics/Common/DirectXCommon.h"

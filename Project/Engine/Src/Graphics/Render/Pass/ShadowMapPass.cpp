@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "ShadowMapPass.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/Render.h"

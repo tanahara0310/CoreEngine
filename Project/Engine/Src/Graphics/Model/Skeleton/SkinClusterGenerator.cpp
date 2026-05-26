@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SkinClusterGenerator.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/Core/DescriptorManager.h"

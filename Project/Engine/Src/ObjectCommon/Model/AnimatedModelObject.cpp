@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "AnimatedModelObject.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"

@@ -14,6 +14,9 @@ class DescriptorManager;
 /// @brief オフスクリーンレンダリングターゲット管理クラス
 class OffScreenRenderTargetManager {
 public:
+    /// @brief デストラクタ（確保したディスクリプタスロットを解放）
+    ~OffScreenRenderTargetManager();
+
     /// @brief 初期化
     /// @param device D3D12デバイス
     /// @param descriptorManager ディスクリプタマネージャー
@@ -57,6 +60,11 @@ private:
         D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
         float clearColor[4] = { Render::kClearColor[0], Render::kClearColor[1], Render::kClearColor[2], Render::kClearColor[3] };
         D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+        // フリーリスト解放用スロットインデックス（UINT_MAX = 未割り当て）
+        UINT rtvSlotIndex = UINT_MAX;
+        UINT srvSlotIndex = UINT_MAX;
+        UINT uavSlotIndex = UINT_MAX;
     };
 
     /// @brief 単一ターゲットのリソースを作成または再作成

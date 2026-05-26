@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SkeletonAnimator.h"
 #include "Graphics/Model/Animation/AnimationUtils.h"
 #include "Math/MathCore.h"

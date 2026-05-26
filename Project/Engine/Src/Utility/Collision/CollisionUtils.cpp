@@ -1,4 +1,5 @@
-﻿#include "CollisionUtils.h"
+#include "pch.h"
+#include "CollisionUtils.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>

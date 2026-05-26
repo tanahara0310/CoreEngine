@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "ShadowMapRenderer.h"
 #include "Camera/ICamera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"

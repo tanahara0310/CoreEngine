@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "BaseModelRenderer.h"
 #include "Camera/ICamera.h"
 #include "Graphics/Light/LightManager.h"

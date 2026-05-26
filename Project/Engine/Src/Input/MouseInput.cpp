@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "MouseInput.h"
 #include <cassert>
 #include <corecrt_wstdio.h>

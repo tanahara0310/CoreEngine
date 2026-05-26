@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "SceneTransition.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"

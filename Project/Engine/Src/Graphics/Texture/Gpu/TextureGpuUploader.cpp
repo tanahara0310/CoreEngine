@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "TextureGpuUploader.h"
 
 #include "Graphics/Common/DirectXCommon.h"

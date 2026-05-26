@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "InputQuery.h"
 #include "KeyboardInput.h"
 #include "MouseInput.h"

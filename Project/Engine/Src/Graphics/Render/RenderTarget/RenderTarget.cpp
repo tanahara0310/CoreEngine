@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "RenderTarget.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
 

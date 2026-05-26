@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "CustomShaderPipeline.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"

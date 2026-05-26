@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "TextureCacheStore.h"
 
 #include <chrono>

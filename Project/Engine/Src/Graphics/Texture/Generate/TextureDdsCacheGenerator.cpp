@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "TextureDdsCacheGenerator.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Logger/Logger.h"

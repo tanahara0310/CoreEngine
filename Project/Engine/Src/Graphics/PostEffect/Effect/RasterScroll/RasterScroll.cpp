@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "RasterScroll.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"

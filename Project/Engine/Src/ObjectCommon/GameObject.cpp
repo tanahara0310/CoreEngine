@@ -1,3 +1,4 @@
+#include "pch.h"
 #include "GameObject.h"
 #include "Collider/SphereCollider.h"
 #include "Collider/AABBCollider.h"

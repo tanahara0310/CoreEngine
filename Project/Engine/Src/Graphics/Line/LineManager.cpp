@@ -1,4 +1,5 @@
-﻿#include "LineManager.h"
+#include "pch.h"
+#include "LineManager.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Math/MathCore.h"
 #include <cassert>

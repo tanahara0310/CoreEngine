@@ -1,4 +1,5 @@
-﻿#include "RandomGenerator.h"
+#include "pch.h"
+#include "RandomGenerator.h"
 #include <chrono>
 
 

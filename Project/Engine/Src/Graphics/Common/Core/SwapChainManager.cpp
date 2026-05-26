@@ -1,9 +1,10 @@
+#include "pch.h"
 #include "SwapChainManager.h"
+#include "DescriptorManager.h"
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
-#include <format>
 
 using namespace Microsoft::WRL;
 
@@ -14,25 +15,36 @@ namespace{
 }
 
 void SwapChainManager::Initialize(ID3D12Device* device, IDXGIFactory7* dxgiFactory,
-    ID3D12CommandQueue* commandQueue, ID3D12DescriptorHeap* rtvHeap, CoreEngine::WinApp* winApp)
+    ID3D12CommandQueue* commandQueue, DescriptorManager* descriptorManager, CoreEngine::WinApp* winApp)
 {
     device_ = device;
     dxgiFactory_ = dxgiFactory;
     commandQueue_ = commandQueue;
-    rtvHeap_ = rtvHeap;
+    descriptorManager_ = descriptorManager;
     winApp_ = winApp;
+
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain, "SwapChainManager: 初期化開始\n");
 
     CreateSwapChain();
     RetrieveBackBuffers();
     CreateRTVs();
-    
+
     isInitialized_ = true;
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain, "SwapChainManager: 初期化完了\n");
 }
 
 void SwapChainManager::RetrieveBackBuffers()
 {
     for (UINT i = 0; i < 2; ++i) {
-        swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
+        HRESULT hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
+        if (FAILED(hr)) {
+            logger.Errorf(LogCategory::Graphics, LogSubCategory::SwapChain,
+                "エラー: スワップチェーンバックバッファ[{}]の取得に失敗しました\n", i);
+            throw std::runtime_error("Failed to get swap chain back buffer");
+        }
+        logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+            "スワップチェーンバックバッファ[{}]取得完了: ptr={:#x}\n",
+            i, reinterpret_cast<uintptr_t>(swapChainResources_[i].Get()));
     }
 }
 
@@ -40,96 +52,96 @@ void SwapChainManager::CreateRTVs()
 {
     // RTVの設定
     rtvDesc_ = {};
-    rtvDesc_.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // 出力結果をSRGBに変換して書き込む
-    rtvDesc_.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D; // 2Dテクスチャ
-    // ディスクプリタヒープの先頭を取得
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvStartHandle = rtvHeap_->GetCPUDescriptorHandleForHeapStart();
+    rtvDesc_.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    rtvDesc_.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
-    // 1つ目を生成。1つ目は最初の所に作る。作る場所をこちらで指定する
-    rtvHandles_[0] = rtvStartHandle;
+    // DescriptorManager 経由でRTVヒープを取得し、予約スロット[0],[1]に直接書き込む
+    // kReservedRTVStart(=0) から2スロットをスワップチェーン用として使用する
+    ID3D12DescriptorHeap* rtvHeap = descriptorManager_->GetRTVHeap();
+    const UINT rtvSize = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvStart = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+
+    rtvHandles_[0].ptr = rtvStart.ptr + DescriptorManager::kReservedRTVStart * rtvSize;
+    rtvHandles_[1].ptr = rtvStart.ptr + (DescriptorManager::kReservedRTVStart + 1) * rtvSize;
+
     device_->CreateRenderTargetView(swapChainResources_[0].Get(), &rtvDesc_, rtvHandles_[0]);
-
-    // 2つ目のディスクプリタハンドルを作る。(自力で)
-    rtvHandles_[1].ptr = rtvHandles_[0].ptr + device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     device_->CreateRenderTargetView(swapChainResources_[1].Get(), &rtvDesc_, rtvHandles_[1]);
 
-#ifdef _DEBUG
-    // 初回のみログ出力
-    if (!isInitialized_) {
-        logger.Log(
-            std::format("RTV[0]を作成しました (スワップチェーン バックバッファ0用)\n"),
-            LogLevel::INFO, LogCategory::Graphics);
-        logger.Log(
-            std::format("RTV[1]を作成しました (スワップチェーン バックバッファ1用)\n"),
-            LogLevel::INFO, LogCategory::Graphics);
-    }
-#endif
+    logger.Log(
+        std::format("スワップチェーンRTV作成完了:\n"
+                    "  RTV[{}] = バックバッファ0 (handle={:#x})\n"
+                    "  RTV[{}] = バックバッファ1 (handle={:#x})\n"
+                    "  フォーマット: DXGI_FORMAT_R8G8B8A8_UNORM_SRGB\n",
+            DescriptorManager::kReservedRTVStart, rtvHandles_[0].ptr,
+            DescriptorManager::kReservedRTVStart + 1, rtvHandles_[1].ptr),
+        LogLevel::INFO, LogCategory::Graphics);
 }
 
 void SwapChainManager::Resize(std::int32_t width, std::int32_t height)
 {
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+        "SwapChainManager: リサイズ開始 ({}x{})\n", width, height);
 
     // バックバッファのリソースを解放
     for (UINT i = 0; i < 2; ++i) {
         swapChainResources_[i].Reset();
+        logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+            "  バックバッファ[{}]解放完了\n", i);
     }
 
     // スワップチェーンのバッファをリサイズ
     HRESULT hr = swapChain_->ResizeBuffers(
-        2,  // バッファ数
-        static_cast<UINT>(width),   // 新しい幅
-        static_cast<UINT>(height),      // 新しい高さ
-        DXGI_FORMAT_R8G8B8A8_UNORM,    // フォーマット
-        0  // フラグ
+        2,
+        static_cast<UINT>(width),
+        static_cast<UINT>(height),
+        DXGI_FORMAT_R8G8B8A8_UNORM,
+        0
     );
 
     if (FAILED(hr)) {
-        logger.Log(
-            std::format("エラー: スワップチェーンのリサイズに失敗しました! 幅={}, 高さ={}\n",
-                width, height),
-            LogLevel::Error, LogCategory::Graphics);
+        logger.Errorf(LogCategory::Graphics, LogSubCategory::SwapChain,
+            "エラー: スワップチェーンのリサイズに失敗しました! 幅={}, 高さ={}, HRESULT={:#010x}\n",
+            width, height, static_cast<unsigned>(hr));
         throw std::runtime_error("Failed to resize swap chain buffers!");
-
     }
 
     // バックバッファを再取得
     RetrieveBackBuffers();
 
-    // RTVを再作成（既存のハンドルRTV[0], RTV[1]を再利用）
+    // RTVを再作成（予約スロット[0],[1]に上書き）
     CreateRTVs();
 
-#ifdef _DEBUG
-    logger.Log(
-        std::format("スワップチェーンRTVを更新しました ({}x{}) - ハンドルは再利用\n", width, height),
-        LogLevel::INFO, LogCategory::Graphics);
-#endif
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+        "SwapChainManager: リサイズ完了 ({}x{})\n", width, height);
 }
 
 void SwapChainManager::CreateSwapChain()
 {
-    HRESULT result = S_FALSE;
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+        "スワップチェーン作成開始: 解像度={}x{}, フォーマット=DXGI_FORMAT_R8G8B8A8_UNORM, バッファ数=2\n",
+        winApp_->GetClientWidth(), winApp_->GetClientHeight());
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc_{};
     swapChainDesc_ = {};
     swapChainDesc_.Width = static_cast<UINT>(winApp_->GetClientWidth());
     swapChainDesc_.Height = static_cast<UINT>(winApp_->GetClientHeight());
-    swapChainDesc_.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // 色の形式
-    swapChainDesc_.SampleDesc.Count = 1; // マルチサンプルしない
-    swapChainDesc_.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // 描画のターゲットして利用する
-    swapChainDesc_.BufferCount = 2; // ダブルバッファ
-    swapChainDesc_.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // モニタに映したら破棄
-    // コマンドキュー、ウィンドウハンドル、設定を渡して生成
+    swapChainDesc_.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc_.SampleDesc.Count = 1;
+    swapChainDesc_.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDesc_.BufferCount = 2;
+    swapChainDesc_.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
     ComPtr<IDXGISwapChain1> swapChain1;
-    result = dxgiFactory_->CreateSwapChainForHwnd(commandQueue_,
+    HRESULT result = dxgiFactory_->CreateSwapChainForHwnd(commandQueue_,
         winApp_->GetHwnd(),
         &swapChainDesc_,
         nullptr, nullptr,
         &swapChain1);
-    // スワップチェーンの生成が上手く行かなかったので起動できない
-    assert(SUCCEEDED(result));
+    assert(SUCCEEDED(result) && "スワップチェーンの作成に失敗しました");
 
-    // swapChain1をswapChainにキャストし変換(これをやらないと例外エラー)
     result = swapChain1.As(&swapChain_);
-    assert(SUCCEEDED(result));
+    assert(SUCCEEDED(result) && "IDXGISwapChain4へのキャストに失敗しました");
+
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain, "スワップチェーン作成完了\n");
 }
 }

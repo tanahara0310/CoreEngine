@@ -1,4 +1,5 @@
-﻿#include "Animator.h"
+#include "pch.h"
+#include "Animator.h"
 #include "AnimationUtils.h"
 #include <Math/MathCore.h>
 #include <algorithm>
