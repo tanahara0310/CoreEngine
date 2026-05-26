@@ -27,7 +27,7 @@ namespace CoreEngine
             deviceManager_->GetDevice(),
             deviceManager_->GetDXGIFactory(),
             commandManager_->GetCommandQueue(),
-            descriptorManager_->GetRTVHeap(),
+            descriptorManager_.get(),
             winApp);
 
         // オフスクリーンレンダリングターゲットの作成

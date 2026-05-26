@@ -15,6 +15,19 @@ namespace CoreEngine
         Logger& logger = Logger::GetInstance();
     }
 
+    DepthStencilManager::~DepthStencilManager()
+    {
+        if (!descriptorManager_) {
+            return;
+        }
+        if (dsvSlotIndex_ != UINT_MAX) {
+            descriptorManager_->FreeDSVIndex(dsvSlotIndex_);
+        }
+        if (depthSRVSlotIndex_ != UINT_MAX) {
+            descriptorManager_->FreeSRVIndex(depthSRVSlotIndex_);
+        }
+    }
+
     void DepthStencilManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager,
         std::int32_t width, std::int32_t height)
     {
@@ -103,6 +116,7 @@ namespace CoreEngine
             dsvHandle_,
             "MainDepthStencil"
         );
+        dsvSlotIndex_ = descriptorManager_->GetDSVIndexFromCpuHandle(dsvHandle_);
 
         // 深度リソースの SRV を作成（初回のみ）
         CreateDepthShaderResourceView();
@@ -153,5 +167,6 @@ namespace CoreEngine
             depthSRVGpuHandle_,
             "MainDepthStencilSRV"
         );
+        depthSRVSlotIndex_ = descriptorManager_->GetSRVIndexFromCpuHandle(depthSRVCpuHandle_);
     }
 }

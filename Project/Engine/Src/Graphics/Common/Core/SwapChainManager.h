@@ -8,6 +8,7 @@
 // 前方宣言
 namespace CoreEngine {
     class WinApp;
+    class DescriptorManager;
 }
 
 namespace CoreEngine
@@ -19,10 +20,10 @@ public:
     /// @param device D3D12デバイス
     /// @param dxgiFactory DXGIファクトリ
     /// @param commandQueue コマンドキュー
-    /// @param rtvHeap RTVディスクリプタヒープ
+    /// @param descriptorManager ディスクリプタマネージャー（RTVスロット確保に使用）
     /// @param winApp ウィンドウアプリケーション
     void Initialize(ID3D12Device* device, IDXGIFactory7* dxgiFactory, ID3D12CommandQueue* commandQueue,
-        ID3D12DescriptorHeap* rtvHeap, CoreEngine::WinApp* winApp);
+        DescriptorManager* descriptorManager, CoreEngine::WinApp* winApp);
 
     /// @brief スワップチェーンのリサイズ
     /// @param width 新しい幅
@@ -59,8 +60,8 @@ private:
     ID3D12CommandQueue* commandQueue_ = nullptr;
     CoreEngine::WinApp* winApp_ = nullptr;
 
-    // RTVヒープの参照（リサイズ時のRTV再作成用）
-    ID3D12DescriptorHeap* rtvHeap_ = nullptr;
+    // DescriptorManager の参照（RTVスロット管理・ダングリングポインタ防止）
+    DescriptorManager* descriptorManager_ = nullptr;
     ID3D12Device* device_ = nullptr;
 
     // 初回初期化フラグ

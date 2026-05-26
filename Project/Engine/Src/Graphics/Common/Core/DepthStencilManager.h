@@ -12,6 +12,9 @@ class DescriptorManager;
 /// @brief 深度ステンシル管理クラス（リソース管理のみ）
 class DepthStencilManager {
 public:
+    /// @brief デストラクタ（確保したディスクリプタスロットを解放）
+    ~DepthStencilManager();
+
     /// @brief 初期化
     /// @param device D3D12デバイス
     /// @param descriptorManager ディスクリプタマネージャー
@@ -65,6 +68,10 @@ private:
     DescriptorManager* descriptorManager_ = nullptr;
     std::int32_t width_ = 0;
     std::int32_t height_ = 0;
+
+    // フリーリスト解放用スロットインデックス（UINT_MAX = 未割り当て）
+    UINT dsvSlotIndex_ = UINT_MAX;
+    UINT depthSRVSlotIndex_ = UINT_MAX;
 
     // 初回初期化フラグ
     bool isInitialized_ = false;
