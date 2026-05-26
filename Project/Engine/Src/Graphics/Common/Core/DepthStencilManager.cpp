@@ -5,7 +5,6 @@
 #include "WinApp/WinApp.h"
 
 #include <cassert>
-#include <format>
 
 using namespace Microsoft::WRL;
 
@@ -65,9 +64,8 @@ namespace CoreEngine
         UpdateDepthStencilView();
 
 #ifdef _DEBUG
-        logger.Log(
-            std::format("深度ステンシルリソースをリサイズしました ({}x{}) - DSVは再利用\n", width, height),
-            LogLevel::INFO, LogCategory::Graphics);
+        logger.Infof(LogCategory::Graphics, LogSubCategory::RenderTarget,
+            "深度ステンシルリソースをリサイズしました ({}x{}) - DSVは再利用\n", width, height);
 #endif
     }
 
@@ -97,9 +95,8 @@ namespace CoreEngine
             &clearValue);
 
 #ifdef _DEBUG
-        logger.Log(
-            std::format("深度ステンシルリソースを作成しました ({}x{})\n", width_, height_),
-            LogLevel::INFO, LogCategory::Graphics);
+        logger.Infof(LogCategory::Graphics, LogSubCategory::RenderTarget,
+            "深度ステンシルリソースを作成しました ({}x{})\n", width_, height_);
 #endif
     }
 
@@ -145,9 +142,8 @@ namespace CoreEngine
         }
 
 #ifdef _DEBUG
-        logger.Log(
-            std::format("DSVを更新しました (既存ハンドルを再利用)\n"),
-            LogLevel::INFO, LogCategory::Graphics);
+        logger.Infof(LogCategory::Graphics, LogSubCategory::RenderTarget,
+            "DSVを更新しました (既存ハンドルを再利用)\n");
 #endif
     }
 

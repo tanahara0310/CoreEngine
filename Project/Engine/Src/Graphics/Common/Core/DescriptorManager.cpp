@@ -2,7 +2,6 @@
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
-#include <format>
 
 using namespace Microsoft::WRL;
 
@@ -27,23 +26,19 @@ void DescriptorManager::Initialize(ID3D12Device* device, UINT maxSRV, UINT maxRT
     rtvDescriptorSize_ = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
     dsvDescriptorSize_ = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
-    logger.Log(
-        std::format("DescriptorManager初期化完了: SRV最大数={}, RTV最大数={}, DSV最大数={}\n",
-            maxSRVDescriptors_, maxRTVDescriptors_, maxDSVDescriptors_),
-        LogLevel::INFO, LogCategory::Graphics);
-    logger.Log(
-        std::format("DescriptorIncrementSize: SRV/CBV/UAV={}, RTV={}, DSV={}\n",
-            srvDescriptorSize_, rtvDescriptorSize_, dsvDescriptorSize_),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+        "DescriptorManager初期化完了: SRV最大数={}, RTV最大数={}, DSV最大数={}\n",
+        maxSRVDescriptors_, maxRTVDescriptors_, maxDSVDescriptors_);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+        "DescriptorIncrementSize: SRV/CBV/UAV={}, RTV={}, DSV={}\n",
+        srvDescriptorSize_, rtvDescriptorSize_, dsvDescriptorSize_);
 
 #ifdef _DEBUG
-    logger.Log(
-        std::format("予約済みディスクリプタ: RTV[0-1]=スワップチェーン, SRV[0]=ImGui用, DSV[なし]\n"),
-        LogLevel::INFO, LogCategory::Graphics);
-    logger.Log(
-        std::format("ユーザーリソース開始位置: RTV[{}], SRV[{}], DSV[{}]\n",
-            kUserRTVStart, kUserSRVStart, kUserDSVStart),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+        "予約済みディスクリプタ: RTV[0-1]=スワップチェーン, SRV[0]=ImGui用, DSV[なし]\n");
+    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+        "ユーザーリソース開始位置: RTV[{}], SRV[{}], DSV[{}]\n",
+        kUserRTVStart, kUserSRVStart, kUserDSVStart);
 #endif
 }
 
@@ -163,10 +158,9 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DescriptorManager::CreateDescriptor
 
     // エラーチェック
     if (FAILED(hr)) {
-        logger.Log(
-            std::format("エラー: ディスクリプタヒープの作成に失敗しました! タイプ={}, 個数={}\n",
-                static_cast<int>(heapType), numDescriptors),
-            LogLevel::Error, LogCategory::Graphics);
+        logger.Errorf(LogCategory::Graphics, LogSubCategory::Heap,
+            "エラー: ディスクリプタヒープの作成に失敗しました! タイプ={}, 個数={}\n",
+            static_cast<int>(heapType), numDescriptors);
         throw std::runtime_error("Failed to create descriptor heap");
     }
 
@@ -177,10 +171,9 @@ void DescriptorManager::CheckDescriptorBounds(UINT currentIndex, UINT maxCount, 
 {
     // 境界チェック
     if (currentIndex >= maxCount) {
-        logger.Log(
-            std::format("エラー: {}ヒープが満杯です! 最大数={}, 要求インデックス={}\n",
-                heapName, maxCount, currentIndex),
-            LogLevel::Error, LogCategory::Graphics);
+        logger.Errorf(LogCategory::Graphics, LogSubCategory::Heap,
+            "エラー: {}ヒープが満杯です! 最大数={}, 要求インデックス={}\n",
+            heapName, maxCount, currentIndex);
         throw std::runtime_error(heapName + " descriptor heap is full!");
     }
 }
@@ -218,16 +211,14 @@ void DescriptorManager::LogViewCreation(UINT index, const std::string& viewType,
 {
 #ifdef _DEBUG
     float usageRate = GetSRVUsageRate() * 100.0f;
-    logger.Log(
-        std::format("{}[{}]に\"{}\"を登録しました (使用率: {:.1f}%)\n",
-            viewType, index, debugName, usageRate),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+        "{}[{}]に\"{}\"を登録しました (使用率: {:.1f}%)\n",
+        viewType, index, debugName, usageRate);
 
     // 警告閾値チェック
     if (usageRate > 80.0f) {
-        logger.Log(
-            std::format("警告: {}ヒープの使用率が高くなっています! ({:.1f}%)\n", viewType, usageRate),
-            LogLevel::WARNING, LogCategory::Graphics);
+        logger.Warnf(LogCategory::Graphics, LogSubCategory::Heap,
+            "警告: {}ヒープの使用率が高くなっています! ({:.1f}%)\n", viewType, usageRate);
     }
 #else
     // リリースビルドでは未使用警告を抑制
@@ -241,10 +232,9 @@ void DescriptorManager::LogViewCreationWithCount(UINT index, const std::string& 
     const std::string& debugName, UINT maxCount)
 {
 #ifdef _DEBUG
-    logger.Log(
-        std::format("{}[{}]を作成しました: \"{}\" (使用数: {}/{})\n",
-            viewType, index, debugName, index + 1, maxCount),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+        "{}[{}]を作成しました: \"{}\" (使用数: {}/{})\n",
+        viewType, index, debugName, index + 1, maxCount);
 #else
     // リリースビルドでは未使用警告を抑制
     (void)index;
@@ -263,10 +253,9 @@ UINT DescriptorManager::AllocateSRVIndex()
     if (!freeSRVIndices_.empty()) {
         UINT index = freeSRVIndices_.back();
         freeSRVIndices_.pop_back();
-        logger.Log(
-            std::format("SRV/CBV/UAVスロット再利用: index={} (フリーリスト残り={})\n",
-                index, freeSRVIndices_.size()),
-            LogLevel::INFO, LogCategory::Graphics);
+        logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+            "SRV/CBV/UAVスロット再利用: index={} (フリーリスト残り={})\n",
+            index, freeSRVIndices_.size());
         return index;
     }
     CheckDescriptorBounds(nextSRVDescriptorIndex_, maxSRVDescriptors_, "SRV/CBV/UAV");
@@ -278,10 +267,9 @@ UINT DescriptorManager::AllocateRTVIndex()
     if (!freeRTVIndices_.empty()) {
         UINT index = freeRTVIndices_.back();
         freeRTVIndices_.pop_back();
-        logger.Log(
-            std::format("RTVスロット再利用: index={} (フリーリスト残り={})\n",
-                index, freeRTVIndices_.size()),
-            LogLevel::INFO, LogCategory::Graphics);
+        logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+            "RTVスロット再利用: index={} (フリーリスト残り={})\n",
+            index, freeRTVIndices_.size());
         return index;
     }
     CheckDescriptorBounds(nextRTVDescriptorIndex_, maxRTVDescriptors_, "RTV");
@@ -293,10 +281,9 @@ UINT DescriptorManager::AllocateDSVIndex()
     if (!freeDSVIndices_.empty()) {
         UINT index = freeDSVIndices_.back();
         freeDSVIndices_.pop_back();
-        logger.Log(
-            std::format("DSVスロット再利用: index={} (フリーリスト残り={})\n",
-                index, freeDSVIndices_.size()),
-            LogLevel::INFO, LogCategory::Graphics);
+        logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+            "DSVスロット再利用: index={} (フリーリスト残り={})\n",
+            index, freeDSVIndices_.size());
         return index;
     }
     CheckDescriptorBounds(nextDSVDescriptorIndex_, maxDSVDescriptors_, "DSV");
@@ -307,33 +294,30 @@ void DescriptorManager::FreeSRVIndex(UINT index)
 {
     assert(index < nextSRVDescriptorIndex_ && "解放するSRVインデックスが範囲外です");
     freeSRVIndices_.push_back(index);
-    logger.Log(
-        std::format("SRV/CBV/UAVスロット解放: index={} (フリーリスト数={})\n"
-                    "  ※ GPU同期後に呼ばれていることを確認してください\n",
-            index, freeSRVIndices_.size()),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+        "SRV/CBV/UAVスロット解放: index={} (フリーリスト数={})\n"
+        "  ※ GPU同期後に呼ばれていることを確認してください\n",
+        index, freeSRVIndices_.size());
 }
 
 void DescriptorManager::FreeRTVIndex(UINT index)
 {
     assert(index < nextRTVDescriptorIndex_ && "解放するRTVインデックスが範囲外です");
     freeRTVIndices_.push_back(index);
-    logger.Log(
-        std::format("RTVスロット解放: index={} (フリーリスト数={})\n"
-                    "  ※ GPU同期後に呼ばれていることを確認してください\n",
-            index, freeRTVIndices_.size()),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+        "RTVスロット解放: index={} (フリーリスト数={})\n"
+        "  ※ GPU同期後に呼ばれていることを確認してください\n",
+        index, freeRTVIndices_.size());
 }
 
 void DescriptorManager::FreeDSVIndex(UINT index)
 {
     assert(index < nextDSVDescriptorIndex_ && "解放するDSVインデックスが範囲外です");
     freeDSVIndices_.push_back(index);
-    logger.Log(
-        std::format("DSVスロット解放: index={} (フリーリスト数={})\n"
-                    "  ※ GPU同期後に呼ばれていることを確認してください\n",
-            index, freeDSVIndices_.size()),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
+        "DSVスロット解放: index={} (フリーリスト数={})\n"
+        "GPU同期後に呼ばれていることを確認してください\n",
+        index, freeDSVIndices_.size());
 }
 
 // ---------------------------------------------------------------

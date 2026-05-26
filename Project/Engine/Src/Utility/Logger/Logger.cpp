@@ -108,25 +108,6 @@ namespace CoreEngine
     namespace
     {
         constexpr const char* kLogPattern = "[%Y-%m-%d %H:%M:%S.%e] [tid:%t] [%n] [%^%l%$] %v";
-
-        /// @brief カテゴリ別の既定ログレベルを返す。
-        spdlog::level::level_enum GetDefaultCategoryLevel(LogCategory category)
-        {
-            switch (category) {
-            case LogCategory::System:
-                return spdlog::level::debug;
-            case LogCategory::Graphics:
-            case LogCategory::Resource:
-            case LogCategory::Shader:
-                return spdlog::level::debug;
-            case LogCategory::General:
-            case LogCategory::Game:
-            case LogCategory::Audio:
-            case LogCategory::Input:
-            default:
-                return spdlog::level::info;
-            }
-        }
     }
 
     spdlog::level::level_enum Logger::ToSpdLevel(LogLevel level)
@@ -182,6 +163,12 @@ namespace CoreEngine
 
         isShuttingDown_ = false;
 
+        // カレントディレクトリを確認（ログフォルダが想定外の場所に作成されるトラブルを防ぐ）
+        {
+            std::string cwd = std::filesystem::current_path().string();
+            OutputDebugStringA(("[Logger] current working directory: " + cwd + "\n").c_str());
+        }
+
         // 非同期ロギング用のグローバルスレッドプールを初期化する。
         if (!spdlog::thread_pool()) {
             spdlog::init_thread_pool(kAsyncQueueSize, kAsyncThreadCount);
@@ -193,35 +180,23 @@ namespace CoreEngine
         // 通常時は定期フラッシュ、重大ログはflush_on(err)で即時フラッシュする。
         spdlog::flush_every(std::chrono::seconds(2));
 
-        // 現在の時間を取得してビルドタイムスタンプを作成
+        // ビルドタイムスタンプを確定（遅延生成ロガーでも同じ値を使う）
         auto now = std::chrono::system_clock::now();
         auto nowSeconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
         std::chrono::zoned_time localTime{ std::chrono::current_zone(), nowSeconds };
-
-        // ビルドタイムスタンプを作成
-        std::string buildTimestamp = std::format("{:%Y%m%d_%H%M%S}", localTime);
+        buildTimestamp_ = std::format("{:%Y%m%d_%H%M%S}", localTime);
 
         // コンソールUI転送用Sinkを先行作成（コールバック未接続でもバッファリングする）
         if (!consoleSink_) {
             consoleSink_ = std::make_shared<callback_sink_mt>();
         }
 
-        // 各カテゴリのロガーを作成（ビルドタイムスタンプ付き）
-        loggers_[LogCategory::General] = CreateLogger(LogCategory::General, buildTimestamp);
-        loggers_[LogCategory::Graphics] = CreateLogger(LogCategory::Graphics, buildTimestamp);
-        loggers_[LogCategory::Audio] = CreateLogger(LogCategory::Audio, buildTimestamp);
-        loggers_[LogCategory::Input] = CreateLogger(LogCategory::Input, buildTimestamp);
-        loggers_[LogCategory::System] = CreateLogger(LogCategory::System, buildTimestamp);
-        loggers_[LogCategory::Game] = CreateLogger(LogCategory::Game, buildTimestamp);
-        loggers_[LogCategory::Resource] = CreateLogger(LogCategory::Resource, buildTimestamp);
-        loggers_[LogCategory::Shader] = CreateLogger(LogCategory::Shader, buildTimestamp);
-
         isInitialized_ = true;
     }
 
     void Logger::Shutdown()
     {
-        std::unordered_map<LogCategory, std::shared_ptr<spdlog::logger>> localLoggers;
+        std::unordered_map<std::string, std::shared_ptr<spdlog::logger>> localLoggers;
 
         {
             std::lock_guard<std::mutex> lock(loggerMutex_);
@@ -235,7 +210,7 @@ namespace CoreEngine
             loggers_.clear();
         }
 
-        for (auto& [category, logger] : localLoggers) {
+        for (auto& [key, logger] : localLoggers) {
             if (logger) {
                 logger->flush();
             }
@@ -246,14 +221,14 @@ namespace CoreEngine
         spdlog::shutdown();
     }
 
-    void Logger::Log(const std::wstring& message, LogLevel level, LogCategory category)
+    void Logger::Log(const std::wstring& message, LogLevel level, LogCategory category, SubCategory subCategory)
     {
-        Log(ConvertString(message), level, category);
+        Log(ConvertString(message), level, category, subCategory);
     }
 
-    void Logger::Log(const std::string& message, LogLevel level, LogCategory category)
+    void Logger::Log(const std::string& message, LogLevel level, LogCategory category, SubCategory subCategory)
     {
-        auto logger = GetLogger(category);
+        auto logger = GetLogger(category, subCategory);
         if (!logger) {
             return;
         }
@@ -262,7 +237,7 @@ namespace CoreEngine
         logger->log(ToSpdLevel(level), message);
     }
 
-    std::shared_ptr<spdlog::logger> Logger::GetLogger(LogCategory category)
+    std::shared_ptr<spdlog::logger> Logger::GetLogger(LogCategory category, SubCategory subCategory)
     {
         std::lock_guard<std::mutex> lock(loggerMutex_);
 
@@ -270,17 +245,44 @@ namespace CoreEngine
             return nullptr;
         }
 
-        auto it = loggers_.find(category);
+        std::string key = BuildLoggerKey(category, subCategory);
+
+        auto it = loggers_.find(key);
         if (it != loggers_.end()) {
             return it->second;
         }
 
-        // カテゴリが見つからない場合はnullptrを返す
-        return nullptr;
+        // 未生成のロガーは遅延生成する
+        std::string categoryName = CategoryToString(category);
+        const bool hasSub = (subCategory.value != nullptr && subCategory.value[0] != '\0');
+        std::string loggerName   = hasSub ? (categoryName + "/" + subCategory.value) : categoryName;
+
+        // ログファイルのディレクトリ・パスを構築
+        std::string logDir = "Cache/logs/" + categoryName;
+        if (hasSub) {
+            logDir += "/";
+            logDir += subCategory.value;
+        }
+
+        std::error_code ec;
+        std::filesystem::create_directories(logDir, ec);
+        if (ec) {
+            // フォルダ作成失敗時は OutputDebugString で通知（ロガー未生成なので直接出力）
+            std::string msg = "[Logger] create_directories failed: " + logDir + " -> " + ec.message() + "\n";
+            OutputDebugStringA(msg.c_str());
+            return nullptr;
+        }
+
+        std::string fileName = (hasSub ? std::string(subCategory.value) : categoryName) + "_" + buildTimestamp_ + ".log";
+        std::string logFilePath = logDir + "/" + fileName;
+
+        auto logger = CreateLogger(loggerName, logFilePath, GetDefaultCategoryLevel(category));
+        loggers_[key] = logger;
+        return logger;
     }
 
 
-    std::string Logger::CategoryToString(LogCategory category)
+    std::string Logger::CategoryToString(LogCategory category) const
     {
         switch (category) {
         case LogCategory::General:   return "General";
@@ -288,23 +290,28 @@ namespace CoreEngine
         case LogCategory::Audio:     return "Audio";
         case LogCategory::Input:     return "Input";
         case LogCategory::System:    return "System";
-        case LogCategory::Game:  return "Game";
+        case LogCategory::Game:      return "Game";
         case LogCategory::Resource:  return "Resource";
         case LogCategory::Shader:    return "Shader";
-        default:        return "Unknown";
+        default:                     return "Unknown";
         }
     }
 
-    std::shared_ptr<spdlog::logger> Logger::CreateLogger(LogCategory category, const std::string& buildTimestamp)
+    std::string Logger::BuildLoggerKey(LogCategory category, SubCategory subCategory) const
     {
-        std::string categoryName = CategoryToString(category);
+        std::string key = CategoryToString(category);
+        if (subCategory.value != nullptr && subCategory.value[0] != '\0') {
+            key += "/";
+            key += subCategory.value;
+        }
+        return key;
+    }
 
-        // ビルドタイムスタンプを含むログファイル名を作成
-        std::string logDir = "Cache/logs/" + categoryName;
-        std::filesystem::create_directories(logDir);
-
-        std::string logFilePath = logDir + "/" + categoryName + "_" + buildTimestamp + ".log";
-
+    std::shared_ptr<spdlog::logger> Logger::CreateLogger(
+        const std::string& loggerName,
+        const std::string& logFilePath,
+        spdlog::level::level_enum defaultLevel)
+    {
         // シンクの作成（ローテーションファイル + Visual Studio出力 + コンソールUI転送）
         std::vector<spdlog::sink_ptr> sinks;
         sinks.reserve(3);
@@ -316,12 +323,7 @@ namespace CoreEngine
             kMaxLogFiles);
         sinks.push_back(rotatingFileSink);
 
-        // リソースカテゴリ以外はVisual StudioのOutputウィンドウにも出力する
-        // （リソース読み込みログが大量になりVS出力の可読性が低下するため）
-        if (category != LogCategory::Resource) {
-            auto msvcSink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
-            sinks.push_back(msvcSink);
-        }
+        // VS の Output ウィンドウへの出力は行わない（ログはファイルへのみ出力する）
 
         // コンソールUI転送Sinkが存在すれば追加
         if (consoleSink_) {
@@ -330,18 +332,34 @@ namespace CoreEngine
 
         // ロガーを非同期モードで作成する（高頻度ログでメイン処理を止めにくくする）。
         auto logger = std::make_shared<spdlog::async_logger>(
-            categoryName,
+            loggerName,
             sinks.begin(),
             sinks.end(),
             spdlog::thread_pool(),
             spdlog::async_overflow_policy::overrun_oldest);
 
-        // カテゴリごとの既定ログレベルを適用する。
-        logger->set_level(GetDefaultCategoryLevel(category));
+        logger->set_level(defaultLevel);
         logger->set_pattern(kLogPattern);
         logger->flush_on(spdlog::level::err);  // エラー時は即座にフラッシュ
 
         return logger;
+    }
+
+    spdlog::level::level_enum Logger::GetDefaultCategoryLevel(LogCategory category)
+    {
+        switch (category) {
+        case LogCategory::System:
+        case LogCategory::Graphics:
+        case LogCategory::Resource:
+        case LogCategory::Shader:
+            return spdlog::level::debug;
+        case LogCategory::General:
+        case LogCategory::Game:
+        case LogCategory::Audio:
+        case LogCategory::Input:
+        default:
+            return spdlog::level::info;
+        }
     }
 
     void Logger::SetConsoleCallback(std::function<void(LogLevel, const std::string&, const std::string&)> callback)
@@ -358,7 +376,7 @@ namespace CoreEngine
         sink->set_callback(std::move(callback));
 
         // 既存の全ロガーにSinkを追加（まだ追加されていない場合）
-        for (auto& [category, logger] : loggers_) {
+        for (auto& [key, logger] : loggers_) {
             if (!logger) continue;
             auto& sinks = logger->sinks();
             bool found = false;
@@ -386,21 +404,17 @@ namespace CoreEngine
             return;
         }
 
-        // 各カテゴリディレクトリごとにクリーンアップ
-        std::vector<std::string> categories = {
-            "General", "Graphics", "Audio", "Input", "System", "Game", "Resource", "Shader",
-        };
-
-        for (const auto& category : categories) {
-            std::string logDir = "Cache/logs/" + category;
-            if (!std::filesystem::exists(logDir)) {
+        // Cache/logs 以下を再帰的にスキャンし、ディレクトリごとに古いログを削除する。
+        // サブカテゴリ対応で "Graphics/Device" のような階層も自動的に処理される。
+        for (const auto& dirEntry : std::filesystem::recursive_directory_iterator("Cache/logs")) {
+            if (!dirEntry.is_directory()) {
                 continue;
             }
 
             std::vector<std::filesystem::directory_entry> logFiles;
 
-            // カテゴリディレクトリ内の .log ファイルを取得
-            for (const auto& entry : std::filesystem::directory_iterator(logDir)) {
+            // ディレクトリ直下の .log ファイルのみ収集（再帰はしない）
+            for (const auto& entry : std::filesystem::directory_iterator(dirEntry)) {
                 if (entry.is_regular_file() && entry.path().extension() == ".log") {
                     logFiles.push_back(entry);
                 }
@@ -411,13 +425,12 @@ namespace CoreEngine
                 continue;
             }
 
-            // 更新日時が新しい順にソート
+            // 更新日時が新しい順にソートして古いものを削除
             std::sort(logFiles.begin(), logFiles.end(),
                 [](const auto& a, const auto& b) {
                     return std::filesystem::last_write_time(a) > std::filesystem::last_write_time(b);
                 });
 
-            // 新しいファイルから上限個数を残して古いものを削除
             for (size_t i = kMaxLogFiles; i < logFiles.size(); ++i) {
                 std::filesystem::remove(logFiles[i]);
             }

@@ -5,7 +5,6 @@
 #include "Graphics/Render/Render.h"
 
 #include <cassert>
-#include <format>
 
 using namespace Microsoft::WRL;
 
@@ -96,8 +95,8 @@ namespace CoreEngine
             &clearValue);
 
 #ifdef _DEBUG
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
-            std::format("オフスクリーンレンダーターゲット{}を作成中...\n", index));
+        Logger::GetInstance().Infof(LogCategory::Graphics, LogSubCategory::RenderTarget,
+            "オフスクリーンレンダーターゲット{}を作成中...\n", index);
 #endif
     }
 

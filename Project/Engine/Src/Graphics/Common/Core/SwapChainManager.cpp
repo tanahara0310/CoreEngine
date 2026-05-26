@@ -4,7 +4,6 @@
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
-#include <format>
 
 using namespace Microsoft::WRL;
 
@@ -23,14 +22,14 @@ void SwapChainManager::Initialize(ID3D12Device* device, IDXGIFactory7* dxgiFacto
     descriptorManager_ = descriptorManager;
     winApp_ = winApp;
 
-    logger.Log("SwapChainManager: 初期化開始\n", LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain, "SwapChainManager: 初期化開始\n");
 
     CreateSwapChain();
     RetrieveBackBuffers();
     CreateRTVs();
 
     isInitialized_ = true;
-    logger.Log("SwapChainManager: 初期化完了\n", LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain, "SwapChainManager: 初期化完了\n");
 }
 
 void SwapChainManager::RetrieveBackBuffers()
@@ -38,15 +37,13 @@ void SwapChainManager::RetrieveBackBuffers()
     for (UINT i = 0; i < 2; ++i) {
         HRESULT hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
         if (FAILED(hr)) {
-            logger.Log(
-                std::format("エラー: スワップチェーンバックバッファ[{}]の取得に失敗しました\n", i),
-                LogLevel::Error, LogCategory::Graphics);
+            logger.Errorf(LogCategory::Graphics, LogSubCategory::SwapChain,
+                "エラー: スワップチェーンバックバッファ[{}]の取得に失敗しました\n", i);
             throw std::runtime_error("Failed to get swap chain back buffer");
         }
-        logger.Log(
-            std::format("スワップチェーンバックバッファ[{}]取得完了: ptr={:#x}\n",
-                i, reinterpret_cast<uintptr_t>(swapChainResources_[i].Get())),
-            LogLevel::INFO, LogCategory::Graphics);
+        logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+            "スワップチェーンバックバッファ[{}]取得完了: ptr={:#x}\n",
+            i, reinterpret_cast<uintptr_t>(swapChainResources_[i].Get()));
     }
 }
 
@@ -81,16 +78,14 @@ void SwapChainManager::CreateRTVs()
 
 void SwapChainManager::Resize(std::int32_t width, std::int32_t height)
 {
-    logger.Log(
-        std::format("SwapChainManager: リサイズ開始 ({}x{})\n", width, height),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+        "SwapChainManager: リサイズ開始 ({}x{})\n", width, height);
 
     // バックバッファのリソースを解放
     for (UINT i = 0; i < 2; ++i) {
         swapChainResources_[i].Reset();
-        logger.Log(
-            std::format("  バックバッファ[{}]解放完了\n", i),
-            LogLevel::INFO, LogCategory::Graphics);
+        logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+            "  バックバッファ[{}]解放完了\n", i);
     }
 
     // スワップチェーンのバッファをリサイズ
@@ -103,10 +98,9 @@ void SwapChainManager::Resize(std::int32_t width, std::int32_t height)
     );
 
     if (FAILED(hr)) {
-        logger.Log(
-            std::format("エラー: スワップチェーンのリサイズに失敗しました! 幅={}, 高さ={}, HRESULT={:#010x}\n",
-                width, height, static_cast<unsigned>(hr)),
-            LogLevel::Error, LogCategory::Graphics);
+        logger.Errorf(LogCategory::Graphics, LogSubCategory::SwapChain,
+            "エラー: スワップチェーンのリサイズに失敗しました! 幅={}, 高さ={}, HRESULT={:#010x}\n",
+            width, height, static_cast<unsigned>(hr));
         throw std::runtime_error("Failed to resize swap chain buffers!");
     }
 
@@ -116,17 +110,15 @@ void SwapChainManager::Resize(std::int32_t width, std::int32_t height)
     // RTVを再作成（予約スロット[0],[1]に上書き）
     CreateRTVs();
 
-    logger.Log(
-        std::format("SwapChainManager: リサイズ完了 ({}x{})\n", width, height),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+        "SwapChainManager: リサイズ完了 ({}x{})\n", width, height);
 }
 
 void SwapChainManager::CreateSwapChain()
 {
-    logger.Log(
-        std::format("スワップチェーン作成開始: 解像度={}x{}, フォーマット=DXGI_FORMAT_R8G8B8A8_UNORM, バッファ数=2\n",
-            winApp_->GetClientWidth(), winApp_->GetClientHeight()),
-        LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
+        "スワップチェーン作成開始: 解像度={}x{}, フォーマット=DXGI_FORMAT_R8G8B8A8_UNORM, バッファ数=2\n",
+        winApp_->GetClientWidth(), winApp_->GetClientHeight());
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc_{};
     swapChainDesc_ = {};
@@ -149,6 +141,6 @@ void SwapChainManager::CreateSwapChain()
     result = swapChain1.As(&swapChain_);
     assert(SUCCEEDED(result) && "IDXGISwapChain4へのキャストに失敗しました");
 
-    logger.Log("スワップチェーン作成完了\n", LogLevel::INFO, LogCategory::Graphics);
+    logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain, "スワップチェーン作成完了\n");
 }
 }
