@@ -614,6 +614,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
+    <ClInclude Include="Engine\Src\Input\IDirectInputDevice.h" />
     <ClInclude Include="Engine\Src\Input\InputAction.h" />
     <ClInclude Include="Engine\Src\Input\InputBinding.h" />
     <ClInclude Include="Engine\Src\Input\InputConfig.h" />

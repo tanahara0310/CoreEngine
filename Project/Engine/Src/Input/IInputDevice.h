@@ -1,17 +1,13 @@
 #pragma once
-#ifndef DIRECTINPUT_VERSION
-#define DIRECTINPUT_VERSION 0x0800
-#endif
-#include <dinput.h>
 
-/// @brief デバイス基底クラス
+/// @brief 入力デバイス基底インターフェース
+/// Update() のみを共通契約とする。初期化方法はデバイス種別によって異なるため派生インターフェースで定義する
 
 namespace CoreEngine
 {
 class IInputDevice {
 public:
     virtual ~IInputDevice() = default;
-    virtual void Initialize(IDirectInput8* directInput, HWND hwnd) = 0;
     virtual void Update() = 0;
 };
 }

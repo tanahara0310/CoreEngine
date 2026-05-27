@@ -29,13 +29,9 @@ static float NormalizeStickValue(SHORT value, float deadZone)
     return normalized;
 }
 
-void GamepadInput::Initialize(IDirectInput8* directInput, HWND hwnd)
+void GamepadInput::Initialize(DWORD playerIndex)
 {
-    // DirectInputは使用しないので、引数は無視
-    (void)directInput;
-    (void)hwnd;
-
-    // Xinputは初期化不要
+    padIndex_ = playerIndex;
     ZeroMemory(&state_, sizeof(XINPUT_STATE));
     ZeroMemory(&prevState_, sizeof(XINPUT_STATE));
 }

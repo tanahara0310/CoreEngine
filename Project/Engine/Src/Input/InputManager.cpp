@@ -18,34 +18,38 @@ InputManager::~InputManager() = default;
 void InputManager::Initialize(HINSTANCE hInstance, HWND hwnd)
 {
     HRESULT result;
-    // DirectInputの初期化
     result = DirectInput8Create(
         hInstance,
         DIRECTINPUT_VERSION,
         IID_IDirectInput8,
-        (void**)&directInput_,
+        reinterpret_cast<void**>(directInput_.GetAddressOf()),
         nullptr);
-
     assert(SUCCEEDED(result));
 
-    // 各デバイスの生成と初期化
+    // 各デバイスを生成・初期化
     keyboard_ = std::make_unique<KeyboardInput>();
-    keyboard_->Initialize(directInput_, hwnd);
+    keyboard_->Initialize(directInput_.Get(), hwnd);
 
     mouse_ = std::make_unique<MouseInput>();
-    mouse_->Initialize(directInput_, hwnd);
+    mouse_->Initialize(directInput_.Get(), hwnd);
 
     gamepad_ = std::make_unique<GamepadInput>();
-    gamepad_->Initialize(directInput_, hwnd);
+    gamepad_->Initialize(0); // プレイヤー0番
 
-    // アクションベース入力クエリを初期化（デフォルトバインディングを適用）
+    // 更新ループ用リストに登録（追加順で Update が呼ばれる）
+    devices_.clear();
+    devices_.push_back(keyboard_.get());
+    devices_.push_back(mouse_.get());
+    devices_.push_back(gamepad_.get());
+
+    // アクションベース入力クエリを初期化
     query_.Initialize(keyboard_.get(), mouse_.get(), gamepad_.get());
 }
 
 void InputManager::Update()
 {
-    if (keyboard_) keyboard_->Update();
-    if (mouse_)    mouse_->Update();
-    if (gamepad_)  gamepad_->Update();
+    for (IInputDevice* device : devices_) {
+        device->Update();
+    }
 }
 }

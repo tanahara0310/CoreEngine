@@ -17,7 +17,7 @@ namespace CoreEngine
         hwnd_ = hwnd;
 
         // マウスデバイスの初期化
-        result = directInput->CreateDevice(GUID_SysMouse, &mouse_, NULL);
+        result = directInput->CreateDevice(GUID_SysMouse, mouse_.GetAddressOf(), NULL);
         assert(SUCCEEDED(result));
 
         // マウスデバイスの設定
