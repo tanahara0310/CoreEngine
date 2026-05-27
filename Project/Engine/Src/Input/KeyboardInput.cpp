@@ -58,7 +58,7 @@ void KeyboardInput::Initialize(IDirectInput8* directInput, HWND hwnd)
     HRESULT result;
 
     // キーボードデバイスの生成
-    result = directInput->CreateDevice(GUID_SysKeyboard, &keyboard_, NULL);
+    result = directInput->CreateDevice(GUID_SysKeyboard, keyboard_.GetAddressOf(), NULL);
     assert(SUCCEEDED(result));
 
     // 入力データ形式のセット

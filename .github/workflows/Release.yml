@@ -30,4 +30,4 @@ jobs:
 
       - name: Build
         run: |
-          msbuild ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}}
+          msbuild ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}},PlatformToolset=v143

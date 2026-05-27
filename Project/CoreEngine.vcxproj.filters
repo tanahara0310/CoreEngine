@@ -1272,6 +1272,9 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h">
       <Filter>Engine\Src\Graphics\Texture\Path</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Input\IDirectInputDevice.h">
+      <Filter>Engine\Src\Input</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Input\InputAction.h">
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
