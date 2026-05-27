@@ -34,7 +34,7 @@ namespace CoreEngine
         void DrawImGui() override;
 
         /// @brief トーンマッピングは常時有効。無効化を拒否する。
-        void SetEnabled(bool enabled) override { assert(enabled && "ToneMapping cannot be disabled"); }
+        void SetEnabled([[maybe_unused]] bool enabled) override { assert(enabled && "ToneMapping cannot be disabled"); }
 
         /// @brief 常時有効なエフェクト
         bool IsAlwaysEnabled() const override { return true; }

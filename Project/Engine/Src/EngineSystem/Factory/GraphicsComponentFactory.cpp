@@ -6,6 +6,11 @@
 
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Common/DirectXCommon.h"
+// DirectXCommon.h からドメイン固有ヘッダが除外されたため明示的にインクルード
+#include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Shadow/ShadowMapManager.h"
+#include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/Render.h"

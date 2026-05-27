@@ -133,7 +133,7 @@ namespace CoreEngine
         ImGui::End();
     }
 
-    void ImGuiManager::DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
+    void ImGuiManager::DrawGameViewport([[maybe_unused]] DirectXCommon* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager)
     {
 #ifdef USE_IMGUI
         if (sceneViewport_) {

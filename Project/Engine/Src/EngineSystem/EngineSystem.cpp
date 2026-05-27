@@ -37,6 +37,9 @@
 
 // レイトレーシング
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Shadow/ShadowMapManager.h"
 
 #include "ObjectCommon/GameObject.h"
 #include "Scene/SceneManager.h"

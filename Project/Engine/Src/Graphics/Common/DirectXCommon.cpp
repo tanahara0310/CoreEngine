@@ -3,6 +3,10 @@
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
 #include "EngineSystem/EngineConfig.h"
+#include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Shadow/ShadowMapManager.h"
+#include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include <iostream>
 
 #pragma comment(lib, "d3d12.lib")
@@ -41,6 +45,12 @@ namespace CoreEngine
     {
         // ウィンドウズアプリケーション管理
         winApp_ = winApp;
+
+        // ドメイン固有マネージャーの生成（完全型が見えるこのタイミングで行う）
+        gBufferManager_ = std::make_unique<GBufferManager>();
+        shadowMapManager_ = std::make_unique<ShadowMapManager>();
+        accelerationStructureManager_ = std::make_unique<AccelerationStructureManager>();
+        rtShadowManager_ = std::make_unique<RayTracingShadowManager>();
 
         // 初期化順序を守って各管理クラスを初期化
         deviceManager_->Initialize(winApp, config.enableDebugLayer, config.enableGPUBasedValidation);
@@ -122,6 +132,21 @@ namespace CoreEngine
             L"Window Resized: " + std::to_wstring(width) + L"x" + std::to_wstring(height),
             LogLevel::INFO,
             LogCategory::Graphics);
+    }
+
+    ID3D12Resource* DirectXCommon::GetShadowMapResource()
+    {
+        return shadowMapManager_->GetShadowMapResource();
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetShadowMapDSVHandle()
+    {
+        return shadowMapManager_->GetDSVHandle();
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE DirectXCommon::GetShadowMapSRVHandle()
+    {
+        return shadowMapManager_->GetSRVHandle();
     }
 }
 

@@ -16,10 +16,15 @@
 #include "Graphics/Common/Core/SwapChainManager.h"
 #include "Graphics/Common/Core/OffScreenRenderTargetManager.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
-#include "Graphics/Render/GBuffer/GBufferManager.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
-#include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/RayTracing/RayTracingShadowManager.h"
+
+// ドメイン固有マネージャーは前方宣言のみ（インクルードは DirectXCommon.cpp 側に限定）
+namespace CoreEngine
+{
+    class GBufferManager;
+    class ShadowMapManager;
+    class AccelerationStructureManager;
+    class RayTracingShadowManager;
+}
 
 using namespace Microsoft::WRL;
 
@@ -87,9 +92,9 @@ public:
 
     // シャドウマップ関連のアクセッサ
     ShadowMapManager* GetShadowMapManager() { return shadowMapManager_.get(); }
-    ID3D12Resource* GetShadowMapResource() { return shadowMapManager_->GetShadowMapResource(); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetShadowMapDSVHandle() { return shadowMapManager_->GetDSVHandle(); }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetShadowMapSRVHandle() { return shadowMapManager_->GetSRVHandle(); }
+    ID3D12Resource* GetShadowMapResource();
+    D3D12_CPU_DESCRIPTOR_HANDLE GetShadowMapDSVHandle();
+    D3D12_GPU_DESCRIPTOR_HANDLE GetShadowMapSRVHandle();
 
     // G-Buffer関連のアクセッサ
     GBufferManager* GetGBufferManager() { return gBufferManager_.get(); }
@@ -126,10 +131,11 @@ private:
     std::unique_ptr<SwapChainManager> swapChainManager_ = std::make_unique<SwapChainManager>();
     std::unique_ptr<OffScreenRenderTargetManager> offScreenManager_ = std::make_unique<OffScreenRenderTargetManager>();
     std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
-    std::unique_ptr<GBufferManager> gBufferManager_ = std::make_unique<GBufferManager>();
-    std::unique_ptr<ShadowMapManager> shadowMapManager_ = std::make_unique<ShadowMapManager>();
-    std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_ = std::make_unique<AccelerationStructureManager>();
-    std::unique_ptr<RayTracingShadowManager> rtShadowManager_ = std::make_unique<RayTracingShadowManager>();
+    // ドメイン固有管理クラス（前方宣言のみのためインライン初期化不可）
+    std::unique_ptr<GBufferManager> gBufferManager_;
+    std::unique_ptr<ShadowMapManager> shadowMapManager_;
+    std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
+    std::unique_ptr<RayTracingShadowManager> rtShadowManager_;
 
 };
 }
