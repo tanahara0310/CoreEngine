@@ -36,10 +36,8 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 
 // レイトレーシング
-#include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/Render/GBuffer/GBufferManager.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
 
 #include "ObjectCommon/GameObject.h"
 #include "Scene/SceneManager.h"
@@ -140,6 +138,12 @@ namespace CoreEngine
         // AssetDatabaseの終了処理
         AssetDatabase::GetInstance().Finalize();
 
+        // RenderDomainContext を先にシャットダウンしてから DirectXCommon を解放する
+        if (renderDomainContext_) {
+            renderDomainContext_->Shutdown();
+            renderDomainContext_.reset();
+        }
+
         componentOwners_.clear();
 
         // COMの解放
@@ -218,10 +222,10 @@ namespace CoreEngine
         context.postEffectManager = GetComponent<PostEffectManager>();
         context.renderingTechniqueManager = GetComponent<RenderingTechniqueManager>();
         context.lightManager = GetComponent<LightManager>();
-        context.gBufferManager = dx ? dx->GetGBufferManager() : nullptr;
-        context.shadowMapManager = dx ? dx->GetShadowMapManager() : nullptr;  // DeferredLighting でシャドウ/LVP に使用
-        context.accelerationStructureManager = dx ? dx->GetAccelerationStructureManager() : nullptr;
-        context.rtShadowManager = dx ? dx->GetRayTracingShadowManager() : nullptr;
+        context.gBufferManager = renderDomainContext_ ? renderDomainContext_->GetGBufferManager() : nullptr;
+        context.shadowMapManager = renderDomainContext_ ? renderDomainContext_->GetShadowMapManager() : nullptr;
+        context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
+        context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
 
         // RenderTargetManagerを設定
         if (render) {

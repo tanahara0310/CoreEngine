@@ -6,11 +6,8 @@
 
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Common/DirectXCommon.h"
-// DirectXCommon.h からドメイン固有ヘッダが除外されたため明示的にインクルード
-#include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
-#include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/Render.h"
@@ -44,6 +41,13 @@ namespace CoreEngine
         DirectXCommon* dxPtr = directXCommon.get();
         engine.RegisterComponent(std::move(directXCommon));
 
+        // RenderDomainContextの作成と初期化（GBuffer / シャドウ / レイトレーシング）
+        engine.renderDomainContext_ = std::make_unique<RenderDomainContext>();
+        engine.renderDomainContext_->Initialize(
+            dxPtr,
+            engine.GetWinApp()->GetClientWidth(),
+            engine.GetWinApp()->GetClientHeight());
+
         // TextureManagerの初期化（シングルトン）
         TextureManager::GetInstance().Initialize(dxPtr);
 
@@ -64,7 +68,7 @@ namespace CoreEngine
         RenderManager* renderManagerPtr = renderManager.get();
 
         // ShadowMapManagerを設定
-        renderManager->SetShadowMapManager(dxPtr->GetShadowMapManager());
+        renderManager->SetShadowMapManager(engine.renderDomainContext_->GetShadowMapManager());
 
         // ShadowMapRendererの作成と登録（最優先）
         auto shadowMapRenderer = std::make_unique<ShadowMapRenderer>();
@@ -74,13 +78,13 @@ namespace CoreEngine
         // ModelRendererの作成と登録
         auto modelRenderer = std::make_unique<ModelRenderer>();
         modelRenderer->Initialize(dxPtr->GetDevice());
-        modelRenderer->SetShadowMap(dxPtr->GetShadowMapSRVHandle());
+        modelRenderer->SetShadowMap(engine.renderDomainContext_->GetShadowMapManager()->GetSRVHandle());
         renderManager->RegisterRenderer(RenderPassType::Model, std::move(modelRenderer));
 
         // SkinnedModelRendererの作成と登録
         auto skinnedRenderer = std::make_unique<SkinnedModelRenderer>();
         skinnedRenderer->Initialize(dxPtr->GetDevice());
-        skinnedRenderer->SetShadowMap(dxPtr->GetShadowMapSRVHandle());
+        skinnedRenderer->SetShadowMap(engine.renderDomainContext_->GetShadowMapManager()->GetSRVHandle());
         renderManager->RegisterRenderer(RenderPassType::SkinnedModel, std::move(skinnedRenderer));
 
         // SkyBoxRendererの作成と登録
@@ -141,7 +145,7 @@ namespace CoreEngine
         // （Model インスタンス生成時に各 Model へ注入される）
         ModelRenderContext modelCtx;
         modelCtx.dxCommon = dxPtr;
-        modelCtx.shadowMapManager = dxPtr->GetShadowMapManager();
+        modelCtx.shadowMapManager = engine.renderDomainContext_->GetShadowMapManager();
         modelCtx.modelRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::Model));
         modelCtx.skinnedRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::SkinnedModel));
         modelCtx.shadowRenderer = static_cast<ShadowMapRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::ShadowMap));

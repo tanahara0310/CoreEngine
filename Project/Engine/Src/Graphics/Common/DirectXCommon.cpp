@@ -3,10 +3,6 @@
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
 #include "EngineSystem/EngineConfig.h"
-#include "Graphics/Render/GBuffer/GBufferManager.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
-#include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include <iostream>
 
 #pragma comment(lib, "d3d12.lib")
@@ -25,10 +21,6 @@ namespace CoreEngine
 
         // unique_ptr を明示的にリセットして破棄順序を制御する
         // （デストラクタ任せにすると宣言逆順になるため意図を明示）
-        rtShadowManager_.reset();
-        accelerationStructureManager_.reset();
-        shadowMapManager_.reset();
-        gBufferManager_.reset();
         offScreenManager_.reset();
         depthStencilManager_.reset();
         swapChainManager_.reset();
@@ -46,15 +38,9 @@ namespace CoreEngine
         // ウィンドウズアプリケーション管理
         winApp_ = winApp;
 
-        // ドメイン固有マネージャーの生成（完全型が見えるこのタイミングで行う）
-        gBufferManager_ = std::make_unique<GBufferManager>();
-        shadowMapManager_ = std::make_unique<ShadowMapManager>();
-        accelerationStructureManager_ = std::make_unique<AccelerationStructureManager>();
-        rtShadowManager_ = std::make_unique<RayTracingShadowManager>();
-
         // 初期化順序を守って各管理クラスを初期化
         deviceManager_->Initialize(winApp, config.enableDebugLayer, config.enableGPUBasedValidation);
-        commandManager_->Initialize(deviceManager_->GetDevice());
+        commandManager_->Initialize(deviceManager_->GetDevice(), config.frameCount);
         descriptorManager_->Initialize(deviceManager_->GetDevice(),
             config.maxSRVDescriptors, config.maxRTVDescriptors, config.maxDSVDescriptors);
 
@@ -80,34 +66,14 @@ namespace CoreEngine
             winApp_->GetClientWidth(),
             winApp_->GetClientHeight());
 
-        // G-Bufferの初期化
-        gBufferManager_->Initialize(
-            deviceManager_->GetDevice(),
-            descriptorManager_.get(),
-            winApp_->GetClientWidth(),
-            winApp_->GetClientHeight());
-
-        // シャドウマップの初期化
-        shadowMapManager_->Initialize(
-            deviceManager_->GetDevice(),
-            descriptorManager_.get());
-
-        // 加速構造マネージャーの初期化（DXR 非対応の場合は内部でスキップ）
-        accelerationStructureManager_->Initialize(
-            deviceManager_->GetDevice(),
-            descriptorManager_.get());
-
-        // レイトレーシングシャドウマネージャーの初期化
-        if (accelerationStructureManager_->IsSupported()) {
-            rtShadowManager_->Initialize(this, descriptorManager_.get(),
-                accelerationStructureManager_.get());
-        }
-
         // ウィンドウリサイズ時のコールバックを設定
         winApp_->SetResizeCallback([this](int32_t width, int32_t height) {
             OnWindowResize(width, height);
             });
     }
+
+
+
 
     // ウィンドウリサイズ時の処理
     void DirectXCommon::OnWindowResize(int32_t width, int32_t height)
@@ -125,28 +91,10 @@ namespace CoreEngine
         // オフスクリーンレンダリングターゲットのリサイズ
         offScreenManager_->Resize(width, height);
 
-        // G-Bufferのリサイズ
-        gBufferManager_->Resize(width, height);
-
         Logger::GetInstance().Log(
             L"Window Resized: " + std::to_wstring(width) + L"x" + std::to_wstring(height),
             LogLevel::INFO,
             LogCategory::Graphics);
-    }
-
-    ID3D12Resource* DirectXCommon::GetShadowMapResource()
-    {
-        return shadowMapManager_->GetShadowMapResource();
-    }
-
-    D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetShadowMapDSVHandle()
-    {
-        return shadowMapManager_->GetDSVHandle();
-    }
-
-    D3D12_GPU_DESCRIPTOR_HANDLE DirectXCommon::GetShadowMapSRVHandle()
-    {
-        return shadowMapManager_->GetSRVHandle();
     }
 }
 

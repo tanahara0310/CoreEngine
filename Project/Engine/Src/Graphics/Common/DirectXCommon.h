@@ -17,15 +17,6 @@
 #include "Graphics/Common/Core/OffScreenRenderTargetManager.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
 
-// ドメイン固有マネージャーは前方宣言のみ（インクルードは DirectXCommon.cpp 側に限定）
-namespace CoreEngine
-{
-    class GBufferManager;
-    class ShadowMapManager;
-    class AccelerationStructureManager;
-    class RayTracingShadowManager;
-}
-
 using namespace Microsoft::WRL;
 
 /// @brief DirectX12の初期化・管理を行うメインクラス
@@ -84,23 +75,9 @@ public:
     DescriptorManager* GetDescriptorManager() { return descriptorManager_.get(); }
     DepthStencilManager* GetDepthStencilManager() { return depthStencilManager_.get(); }
     
-    // DXR関連のアクセッサ
+    // DXR対応状況のアクセッサ
     bool IsDXRSupported() const { return deviceManager_->IsDXRSupported(); }
     D3D12_RAYTRACING_TIER GetDXRTier() const { return deviceManager_->GetDXRTier(); }
-    AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
-    RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
-
-    // シャドウマップ関連のアクセッサ
-    ShadowMapManager* GetShadowMapManager() { return shadowMapManager_.get(); }
-    ID3D12Resource* GetShadowMapResource();
-    D3D12_CPU_DESCRIPTOR_HANDLE GetShadowMapDSVHandle();
-    D3D12_GPU_DESCRIPTOR_HANDLE GetShadowMapSRVHandle();
-
-    // G-Buffer関連のアクセッサ
-    GBufferManager* GetGBufferManager() { return gBufferManager_.get(); }
-    const GBufferManager* GetGBufferManager() const { return gBufferManager_.get(); }
-
-    // オフスクリーン用のアクセッサ（任意インデックス）
     // @note G-Buffer移行中の互換経路。
     //       不透明ジオメトリの新規描画パスでは GBufferManager の利用を優先する。
     ID3D12Resource* GetOffScreenResource(uint32_t index = 0) { return offScreenManager_->GetOffScreenResource(index); }
@@ -131,11 +108,5 @@ private:
     std::unique_ptr<SwapChainManager> swapChainManager_ = std::make_unique<SwapChainManager>();
     std::unique_ptr<OffScreenRenderTargetManager> offScreenManager_ = std::make_unique<OffScreenRenderTargetManager>();
     std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
-    // ドメイン固有管理クラス（前方宣言のみのためインライン初期化不可）
-    std::unique_ptr<GBufferManager> gBufferManager_;
-    std::unique_ptr<ShadowMapManager> shadowMapManager_;
-    std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
-    std::unique_ptr<RayTracingShadowManager> rtShadowManager_;
-
 };
 }

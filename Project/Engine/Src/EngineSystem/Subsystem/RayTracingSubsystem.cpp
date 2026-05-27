@@ -95,9 +95,13 @@ namespace CoreEngine
         auto& normalState = context.gBufferManager->GetCurrentState(GBufferManager::Target::NormalRoughness);
         auto& motionVecState = context.gBufferManager->GetCurrentState(GBufferManager::Target::MotionVector);
 
-        ResourceBarrierHelper::Transition(cmdList, worldPosResource, worldPosState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, normalResource, normalState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, motionVecResource, motionVecState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // 3リソースを一括バリア遷移（バッチ発行でコマンド数を削減）
+        {
+            ResourceBarrierBatch batch(cmdList);
+            batch.Add(worldPosResource, worldPosState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Add(normalResource, normalState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Add(motionVecResource, motionVecState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
 
         auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
         auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
@@ -155,9 +159,12 @@ namespace CoreEngine
                 li);
         }
 
-        // DeferredLightingPass が PIXEL_SHADER_RESOURCE として読み取るために戻す
-        ResourceBarrierHelper::Transition(cmdList, worldPosResource, worldPosState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, normalResource, normalState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, motionVecResource, motionVecState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        // DeferredLightingPass が PIXEL_SHADER_RESOURCE として読み取るために一括復帰
+        {
+            ResourceBarrierBatch batch(cmdList);
+            batch.Add(worldPosResource, worldPosState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            batch.Add(normalResource, normalState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            batch.Add(motionVecResource, motionVecState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
     }
 }

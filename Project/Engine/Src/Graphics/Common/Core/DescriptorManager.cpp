@@ -3,6 +3,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
+#include <algorithm>
 
 using namespace Microsoft::WRL;
 
@@ -35,6 +36,13 @@ void DescriptorManager::Initialize(ID3D12Device* device, UINT maxSRV, UINT maxRT
         srvDescriptorSize_, rtvDescriptorSize_, dsvDescriptorSize_);
 
 #ifdef _DEBUG
+    // 二重解放検出用ビットテーブルを初期化
+    allocatedSRVSlots_.assign(maxSRVDescriptors_, false);
+    allocatedRTVSlots_.assign(maxRTVDescriptors_, false);
+    allocatedDSVSlots_.assign(maxDSVDescriptors_, false);
+#endif
+
+#ifdef _DEBUG
     logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
         "予約済みディスクリプタ: RTV[0-1]=スワップチェーン, SRV[0]=ImGui用, DSV[なし]\n");
     logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
@@ -53,16 +61,12 @@ void DescriptorManager::CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_R
         || desc.ViewDimension == D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE)
         && "Resource must not be null (except for Raytracing Acceleration Structure SRV)");
 
-    const UINT index = AllocateSRVIndex();
-
-    // ハンドル計算
-    CalculateSRVHandles(index, outCpuDesc, outGpuDesc);
+    DescriptorHandle handle = AllocateSRVHandle(debugName);
+    outCpuDesc = handle.cpuHandle;
+    outGpuDesc = handle.gpuHandle;
 
     // SRV作成
     device_->CreateShaderResourceView(resource, &desc, outCpuDesc);
-
-    // ログ出力
-    LogViewCreation(index, "SRV", debugName);
 }
 
 void DescriptorManager::CreateUAV(ID3D12Resource* resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc,
@@ -72,16 +76,12 @@ void DescriptorManager::CreateUAV(ID3D12Resource* resource, const D3D12_UNORDERE
 {
     assert(resource != nullptr && "Resource must not be null");
 
-    const UINT index = AllocateSRVIndex();
-
-    // ハンドル計算
-    CalculateSRVHandles(index, outCpuDesc, outGpuDesc);
+    DescriptorHandle handle = AllocateSRVHandle(debugName);
+    outCpuDesc = handle.cpuHandle;
+    outGpuDesc = handle.gpuHandle;
 
     // UAV作成
     device_->CreateUnorderedAccessView(resource, nullptr, &desc, outCpuDesc);
-
-    // ログ出力
-    LogViewCreation(index, "UAV", debugName);
 }
 
 void DescriptorManager::CreateCBV(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc,
@@ -89,16 +89,12 @@ void DescriptorManager::CreateCBV(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc,
     D3D12_GPU_DESCRIPTOR_HANDLE& outGpuDesc,
     const std::string& debugName)
 {
-    const UINT index = AllocateSRVIndex();
-
-    // ハンドル計算
-    CalculateSRVHandles(index, outCpuDesc, outGpuDesc);
+    DescriptorHandle handle = AllocateSRVHandle(debugName);
+    outCpuDesc = handle.cpuHandle;
+    outGpuDesc = handle.gpuHandle;
 
     // CBV作成
     device_->CreateConstantBufferView(&desc, outCpuDesc);
-
-    // ログ出力
-    LogViewCreation(index, "CBV", debugName);
 }
 
 void DescriptorManager::CreateRTV(ID3D12Resource* resource, const D3D12_RENDER_TARGET_VIEW_DESC& rtvDesc,
@@ -106,16 +102,11 @@ void DescriptorManager::CreateRTV(ID3D12Resource* resource, const D3D12_RENDER_T
 {
     assert(resource != nullptr && "Resource must not be null");
 
-    const UINT index = AllocateRTVIndex();
-
-    // ハンドル計算
-    outRtvHandle = CalculateRTVHandle(index);
+    DescriptorHandle handle = AllocateRTVHandle(debugName);
+    outRtvHandle = handle.cpuHandle;
 
     // RTV作成
     device_->CreateRenderTargetView(resource, &rtvDesc, outRtvHandle);
-
-    // ログ出力
-    LogViewCreationWithCount(index, "RTV", debugName, maxRTVDescriptors_);
 }
 
 void DescriptorManager::CreateDSV(ID3D12Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& dsvDesc,
@@ -123,16 +114,11 @@ void DescriptorManager::CreateDSV(ID3D12Resource* resource, const D3D12_DEPTH_ST
 {
     assert(resource != nullptr && "Resource must not be null");
 
-    const UINT index = AllocateDSVIndex();
-
-    // ハンドル計算
-    outDsvHandle = CalculateDSVHandle(index);
+    DescriptorHandle handle = AllocateDSVHandle(debugName);
+    outDsvHandle = handle.cpuHandle;
 
     // DSV作成
     device_->CreateDepthStencilView(resource, &dsvDesc, outDsvHandle);
-
-    // ログ出力
-    LogViewCreationWithCount(index, "DSV", debugName, maxDSVDescriptors_);
 }
 
 void DescriptorManager::CreateDescriptorHeaps()
@@ -251,74 +237,228 @@ void DescriptorManager::LogViewCreationWithCount(UINT index, const std::string& 
 
 UINT DescriptorManager::AllocateSRVIndex()
 {
+    std::lock_guard<std::mutex> lock(srvMutex_);
     if (!freeSRVIndices_.empty()) {
         UINT index = freeSRVIndices_.back();
         freeSRVIndices_.pop_back();
         logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
             "SRV/CBV/UAVスロット再利用: index={} (フリーリスト残り={})\n",
             index, freeSRVIndices_.size());
+#ifdef _DEBUG
+        allocatedSRVSlots_[index] = true;
+#endif
         return index;
     }
     CheckDescriptorBounds(nextSRVDescriptorIndex_, maxSRVDescriptors_, "SRV/CBV/UAV");
-    return nextSRVDescriptorIndex_++;
+    UINT index = nextSRVDescriptorIndex_++;
+#ifdef _DEBUG
+    allocatedSRVSlots_[index] = true;
+#endif
+    return index;
 }
 
 UINT DescriptorManager::AllocateRTVIndex()
 {
+    std::lock_guard<std::mutex> lock(rtvMutex_);
     if (!freeRTVIndices_.empty()) {
         UINT index = freeRTVIndices_.back();
         freeRTVIndices_.pop_back();
         logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
             "RTVスロット再利用: index={} (フリーリスト残り={})\n",
             index, freeRTVIndices_.size());
+#ifdef _DEBUG
+        allocatedRTVSlots_[index] = true;
+#endif
         return index;
     }
     CheckDescriptorBounds(nextRTVDescriptorIndex_, maxRTVDescriptors_, "RTV");
-    return nextRTVDescriptorIndex_++;
+    UINT index = nextRTVDescriptorIndex_++;
+#ifdef _DEBUG
+    allocatedRTVSlots_[index] = true;
+#endif
+    return index;
 }
 
 UINT DescriptorManager::AllocateDSVIndex()
 {
+    std::lock_guard<std::mutex> lock(dsvMutex_);
     if (!freeDSVIndices_.empty()) {
         UINT index = freeDSVIndices_.back();
         freeDSVIndices_.pop_back();
         logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
             "DSVスロット再利用: index={} (フリーリスト残り={})\n",
             index, freeDSVIndices_.size());
+#ifdef _DEBUG
+        allocatedDSVSlots_[index] = true;
+#endif
         return index;
     }
     CheckDescriptorBounds(nextDSVDescriptorIndex_, maxDSVDescriptors_, "DSV");
-    return nextDSVDescriptorIndex_++;
+    UINT index = nextDSVDescriptorIndex_++;
+#ifdef _DEBUG
+    allocatedDSVSlots_[index] = true;
+#endif
+    return index;
+}
+
+// ---------------------------------------------------------------
+// DescriptorHandle ベースの安全な Allocate / Free
+// ---------------------------------------------------------------
+
+DescriptorHandle DescriptorManager::AllocateSRVHandle(const std::string& debugName)
+{
+    const UINT index = AllocateSRVIndex();
+
+    DescriptorHandle handle;
+    handle.index    = index;
+    handle.heapType = DescriptorHeapType::SRV_CBV_UAV;
+    CalculateSRVHandles(index, handle.cpuHandle, handle.gpuHandle);
+
+    LogViewCreation(index, "SRV/CBV/UAV", debugName);
+    return handle;
+}
+
+DescriptorHandle DescriptorManager::AllocateRTVHandle(const std::string& debugName)
+{
+    const UINT index = AllocateRTVIndex();
+
+    DescriptorHandle handle;
+    handle.index     = index;
+    handle.heapType  = DescriptorHeapType::RTV;
+    handle.cpuHandle = CalculateRTVHandle(index);
+    handle.gpuHandle = { 0 }; // RTV はシェーダー不可視
+
+    LogViewCreationWithCount(index, "RTV", debugName, maxRTVDescriptors_);
+    return handle;
+}
+
+DescriptorHandle DescriptorManager::AllocateDSVHandle(const std::string& debugName)
+{
+    const UINT index = AllocateDSVIndex();
+
+    DescriptorHandle handle;
+    handle.index     = index;
+    handle.heapType  = DescriptorHeapType::DSV;
+    handle.cpuHandle = CalculateDSVHandle(index);
+    handle.gpuHandle = { 0 }; // DSV はシェーダー不可視
+
+    LogViewCreationWithCount(index, "DSV", debugName, maxDSVDescriptors_);
+    return handle;
+}
+
+void DescriptorManager::Free(DescriptorHandle& handle)
+{
+    if (!handle.IsValid()) {
+        logger.Warnf(LogCategory::Graphics, LogSubCategory::Heap,
+            "Free: 無効なハンドルを解放しようとしました（すでに解放済みか未確保）\n");
+        return;
+    }
+
+    const UINT index = handle.index;
+
+    switch (handle.heapType) {
+    case DescriptorHeapType::SRV_CBV_UAV:
+    {
+        std::lock_guard<std::mutex> lock(srvMutex_);
+#ifdef _DEBUG
+        assert(index < maxSRVDescriptors_ && "解放するSRVインデックスが範囲外です");
+        assert(allocatedSRVSlots_[index] && "二重解放を検出しました: SRV/CBV/UAV スロット");
+        allocatedSRVSlots_[index] = false;
+#endif
+        freeSRVIndices_.push_back(index);
+#ifdef _DEBUG
+        logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Heap,
+            "SRV/CBV/UAVスロット解放: index={} (フリーリスト数={}) — GPUフェンス完了後に呼ぶこと\n",
+            index, freeSRVIndices_.size());
+#endif
+        break;
+    }
+    case DescriptorHeapType::RTV:
+    {
+        std::lock_guard<std::mutex> lock(rtvMutex_);
+#ifdef _DEBUG
+        assert(index < maxRTVDescriptors_ && "解放するRTVインデックスが範囲外です");
+        assert(allocatedRTVSlots_[index] && "二重解放を検出しました: RTV スロット");
+        allocatedRTVSlots_[index] = false;
+#endif
+        freeRTVIndices_.push_back(index);
+#ifdef _DEBUG
+        logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Heap,
+            "RTVスロット解放: index={} (フリーリスト数={}) — GPUフェンス完了後に呼ぶこと\n",
+            index, freeRTVIndices_.size());
+#endif
+        break;
+    }
+    case DescriptorHeapType::DSV:
+    {
+        std::lock_guard<std::mutex> lock(dsvMutex_);
+#ifdef _DEBUG
+        assert(index < maxDSVDescriptors_ && "解放するDSVインデックスが範囲外です");
+        assert(allocatedDSVSlots_[index] && "二重解放を検出しました: DSV スロット");
+        allocatedDSVSlots_[index] = false;
+#endif
+        freeDSVIndices_.push_back(index);
+#ifdef _DEBUG
+        logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Heap,
+            "DSVスロット解放: index={} (フリーリスト数={}) — GPUフェンス完了後に呼ぶこと\n",
+            index, freeDSVIndices_.size());
+#endif
+        break;
+    }
+    default:
+        assert(false && "Free: 未知のヒープ種別です");
+        break;
+    }
+
+    handle.Invalidate();
 }
 
 void DescriptorManager::FreeSRVIndex(UINT index)
 {
-    assert(index < nextSRVDescriptorIndex_ && "解放するSRVインデックスが範囲外です");
+    std::lock_guard<std::mutex> lock(srvMutex_);
+    assert(index < nextSRVDescriptorIndex_.load() && "解放するSRVインデックスが範囲外です");
+#ifdef _DEBUG
+    assert(allocatedSRVSlots_[index] && "二重解放を検出しました: SRV/CBV/UAV スロット (FreeSRVIndex)");
+    allocatedSRVSlots_[index] = false;
+#endif
     freeSRVIndices_.push_back(index);
-    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
-        "SRV/CBV/UAVスロット解放: index={} (フリーリスト数={})\n"
-        "  ※ GPU同期後に呼ばれていることを確認してください\n",
+#ifdef _DEBUG
+    logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Heap,
+        "SRV/CBV/UAVスロット解放: index={} (フリーリスト数={}) — GPUフェンス完了後に呼ぶこと\n",
         index, freeSRVIndices_.size());
+#endif
 }
 
 void DescriptorManager::FreeRTVIndex(UINT index)
 {
-    assert(index < nextRTVDescriptorIndex_ && "解放するRTVインデックスが範囲外です");
+    std::lock_guard<std::mutex> lock(rtvMutex_);
+    assert(index < nextRTVDescriptorIndex_.load() && "解放するRTVインデックスが範囲外です");
+#ifdef _DEBUG
+    assert(allocatedRTVSlots_[index] && "二重解放を検出しました: RTV スロット (FreeRTVIndex)");
+    allocatedRTVSlots_[index] = false;
+#endif
     freeRTVIndices_.push_back(index);
-    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
-        "RTVスロット解放: index={} (フリーリスト数={})\n"
-        "  ※ GPU同期後に呼ばれていることを確認してください\n",
+#ifdef _DEBUG
+    logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Heap,
+        "RTVスロット解放: index={} (フリーリスト数={}) — GPUフェンス完了後に呼ぶこと\n",
         index, freeRTVIndices_.size());
+#endif
 }
 
 void DescriptorManager::FreeDSVIndex(UINT index)
 {
-    assert(index < nextDSVDescriptorIndex_ && "解放するDSVインデックスが範囲外です");
+    std::lock_guard<std::mutex> lock(dsvMutex_);
+    assert(index < nextDSVDescriptorIndex_.load() && "解放するDSVインデックスが範囲外です");
+#ifdef _DEBUG
+    assert(allocatedDSVSlots_[index] && "二重解放を検出しました: DSV スロット (FreeDSVIndex)");
+    allocatedDSVSlots_[index] = false;
+#endif
     freeDSVIndices_.push_back(index);
-    logger.Infof(LogCategory::Graphics, LogSubCategory::Heap,
-        "DSVスロット解放: index={} (フリーリスト数={})\n"
-        "GPU同期後に呼ばれていることを確認してください\n",
+#ifdef _DEBUG
+    logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Heap,
+        "DSVスロット解放: index={} (フリーリスト数={}) — GPUフェンス完了後に呼ぶこと\n",
         index, freeDSVIndices_.size());
+#endif
 }
 
 // ---------------------------------------------------------------

@@ -12,6 +12,7 @@ namespace CoreEngine
     class DirectXCommon;
     class GBufferManager;
     class RenderTargetManager;
+    class RenderDomainContext;
 
     /// @brief レンダーパスデバッグパネル
     /// @details GBuffer 各ターゲット・SSAO・ライティング結果など
@@ -28,6 +29,9 @@ namespace CoreEngine
 
         /// @brief RenderTargetManager を設定（SSAO / Offscreen ターゲット取得用）
         void SetRenderTargetManager(RenderTargetManager* rtm) { renderTargetManager_ = rtm; }
+
+        /// @brief RenderDomainContext を設定（GBufferManager 取得用）
+        void SetRenderDomainContext(RenderDomainContext* rdc) { renderDomainContext_ = rdc; }
 
         /// @brief ImGui コンテンツを描画（RegisterEnginePanel ラムダから呼ぶ）
         void Draw();
@@ -55,6 +59,7 @@ namespace CoreEngine
 
         // ---- 状態 ----
         DirectXCommon* dxCommon_ = nullptr;
+        RenderDomainContext* renderDomainContext_ = nullptr;
         RenderTargetManager* renderTargetManager_ = nullptr;
         std::string enlargedTitle_;                        ///< 拡大ポップアップのウィンドウタイトル
         D3D12_GPU_DESCRIPTOR_HANDLE enlargedSrv_ = {};     ///< 拡大表示中の SRV

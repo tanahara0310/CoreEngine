@@ -4,6 +4,7 @@
 #ifdef USE_IMGUI
 
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
@@ -24,12 +25,12 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     void RenderPassDebugPanel::Draw()
     {
-        if (!dxCommon_) {
-            ImGui::TextDisabled("DirectXCommon が未設定です");
+        if (!dxCommon_ && !renderDomainContext_) {
+            ImGui::TextDisabled("DirectXCommon / RenderDomainContext が未設定です");
             return;
         }
 
-        auto* gbuf = dxCommon_->GetGBufferManager();
+        auto* gbuf = renderDomainContext_ ? renderDomainContext_->GetGBufferManager() : nullptr;
 
         // ---- バッファエントリーを収集 ----
 

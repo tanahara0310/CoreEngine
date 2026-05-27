@@ -586,12 +586,12 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE inputSrv = pingToTemp ? view.srvHandle : view.denoiseTempSrvHandle;
             D3D12_GPU_DESCRIPTOR_HANDLE outputUav = pingToTemp ? view.denoiseTempUavHandle : view.uavHandle;
 
-            // 入力: SRV へ
-            ResourceBarrierHelper::Transition(cmdList, inputRes, inputState,
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            // 出力: UAV へ
-            ResourceBarrierHelper::Transition(cmdList, outputRes, outputState,
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            // 入力: SRV へ、出力: UAV へ（2リソースを一括バリア）
+            {
+                ResourceBarrierBatch batch(cmdList);
+                batch.Add(inputRes, inputState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                batch.Add(outputRes, outputState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            }
 
             // バインド
             cmdList->SetComputeRootDescriptorTable(0, inputSrv);          // t0: InputShadow
@@ -615,11 +615,11 @@ namespace CoreEngine
         }
 
         // 最終結果は view.texture（kNumPasses が偶数のため）
-        ResourceBarrierHelper::Transition(cmdList, view.texture.Get(),
-            view.currentState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-        ResourceBarrierHelper::Transition(cmdList, view.denoiseTemp.Get(),
-            view.denoiseTempState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        {
+            ResourceBarrierBatch batch(cmdList);
+            batch.Add(view.texture.Get(), view.currentState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            batch.Add(view.denoiseTemp.Get(), view.denoiseTempState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
 
         // 履歴へのコピーは ApplyTemporal で行う（A-Trous 出力は履歴に書かない）
     }
@@ -644,13 +644,13 @@ namespace CoreEngine
 
         if (!view.texture || !view.denoiseTemp || !view.historyTexture) return;
 
-        // 入出力の状態遷移
-        ResourceBarrierHelper::Transition(cmdList, view.denoiseTemp.Get(),
-            view.denoiseTempState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, view.texture.Get(),
-            view.currentState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, view.historyTexture.Get(),
-            view.historyCurrentState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // 入出力の状態遷移（3リソースを一括バリア）
+        {
+            ResourceBarrierBatch batch(cmdList);
+            batch.Add(view.denoiseTemp.Get(), view.denoiseTempState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Add(view.texture.Get(), view.currentState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            batch.Add(view.historyTexture.Get(), view.historyCurrentState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
 
         cmdList->SetComputeRootSignature(temporalRootSignature_.Get());
         cmdList->SetPipelineState(temporalPipelineState_.Get());
@@ -685,18 +685,20 @@ namespace CoreEngine
         ResourceBarrierHelper::UAV(cmdList, view.texture.Get());
 
         // テンポラル結果を履歴にコピー（次フレームの参照用）
-        ResourceBarrierHelper::Transition(cmdList, view.texture.Get(),
-            view.currentState, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        ResourceBarrierHelper::Transition(cmdList, view.historyTexture.Get(),
-            view.historyCurrentState, D3D12_RESOURCE_STATE_COPY_DEST);
+        {
+            ResourceBarrierBatch batch(cmdList);
+            batch.Add(view.texture.Get(), view.currentState, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            batch.Add(view.historyTexture.Get(), view.historyCurrentState, D3D12_RESOURCE_STATE_COPY_DEST);
+        }
 
         cmdList->CopyResource(view.historyTexture.Get(), view.texture.Get());
 
         // 状態を後段（A-Trous）向けに整える
-        ResourceBarrierHelper::Transition(cmdList, view.historyTexture.Get(),
-            view.historyCurrentState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, view.texture.Get(),
-            view.currentState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        {
+            ResourceBarrierBatch batch(cmdList);
+            batch.Add(view.historyTexture.Get(), view.historyCurrentState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Add(view.texture.Get(), view.currentState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
 
         view.isHistoryValid = true;
     }
