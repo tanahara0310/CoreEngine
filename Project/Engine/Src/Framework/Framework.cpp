@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Framework.h"
+#include "Graphics/Render/Pass/RenderPipeline.h"
 #ifdef _DEBUG
 #include "Utility/Debug/LivePPAgent.h"
 #endif

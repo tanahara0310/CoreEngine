@@ -183,6 +183,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp" />
+    <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -441,6 +444,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PrimitiveSphereObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterPlaneObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBox\SkyBoxObject.h" />
@@ -481,6 +485,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
+    <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorHandle.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Debug\EngineStats.h" />
@@ -523,6 +528,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h" />
@@ -578,6 +584,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderDomainContext.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.h" />
@@ -621,7 +628,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Input\InputQuery.h" />
     <ClInclude Include="Engine\Src\Math\EulerTransform.h" />
     <ClInclude Include="Engine\Src\Math\Frustum.h" />
+    <ClInclude Include="Engine\Src\Math\Matrix\Matrix3x3.h" />
+    <ClInclude Include="Engine\Src\Math\Matrix\Matrix4x4.h" />
     <ClInclude Include="Engine\Src\Math\QuaternionTransform.h" />
+    <ClInclude Include="Engine\Src\Math\Vector\Vector2.h" />
+    <ClInclude Include="Engine\Src\Math\Vector\Vector3.h" />
+    <ClInclude Include="Engine\Src\Math\Vector\Vector4.h" />
     <ClInclude Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.h" />
     <ClInclude Include="Engine\Src\ObjectCommon\GameObject.h" />
     <ClInclude Include="Engine\Src\ObjectCommon\GameObjectManager.h" />
@@ -636,6 +648,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Core\ParticleResourceManager.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleUpdater.h" />
     <ClInclude Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.h" />
+    <ClInclude Include="Engine\Src\Particle\Modules\LifetimeModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\MainModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\NoiseModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\ShapeModule.h" />

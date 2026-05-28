@@ -7,12 +7,18 @@
 
 namespace CoreEngine
 {
-void CommandManager::Initialize(ID3D12Device* device)
+void CommandManager::Initialize(ID3D12Device* device, UINT frameCount)
 {
+    assert(device != nullptr && "Device must not be null");
+    assert(frameCount >= 2 && "frameCount は2以上を指定してください");
     device_ = device;
+    frameCount_ = frameCount;
     InitializeCommand();
     CreateFenceToEvent();
     InitializeFixFPS();
+
+    Logger::GetInstance().Infof(LogCategory::Graphics, LogSubCategory::Command,
+        "CommandManager初期化完了: frameCount={}\n", frameCount_);
 }
 
 CommandManager::~CommandManager()
@@ -43,6 +49,8 @@ void CommandManager::WaitForPreviousFrame()
 
 void CommandManager::WaitForFrame(UINT frameIndex)
 {
+    assert(frameIndex < frameCount_ && "frameIndex がフレーム数を超えています");
+
     // 指定されたフレームのGPU処理が完了するまで待機
     const UINT64 fenceValue = fenceValues_[frameIndex];
     if (fence_->GetCompletedValue() < fenceValue) {
@@ -55,6 +63,8 @@ void CommandManager::WaitForFrame(UINT frameIndex)
 
 void CommandManager::SignalFrame(UINT frameIndex)
 {
+    assert(frameIndex < frameCount_ && "frameIndex がフレーム数を超えています");
+
     // 現在のフレームの処理が完了したことをシグナル
     fenceVal_++;
     fenceValues_[frameIndex] = fenceVal_;
@@ -102,7 +112,8 @@ void CommandManager::InitializeCommand()
     assert(SUCCEEDED(result));
 
     // フレームごとのコマンドアロケータの生成
-    for (UINT i = 0; i < kFrameCount; ++i) {
+    commandAllocators_.resize(frameCount_);
+    for (UINT i = 0; i < frameCount_; ++i) {
         result = device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(commandAllocators_[i].GetAddressOf()));
         assert(SUCCEEDED(result));
     }
@@ -126,8 +137,6 @@ void CommandManager::CreateFenceToEvent()
     assert(fenceEvent_ != nullptr);
 
     // フレームごとのフェンス値を初期化
-    for (UINT i = 0; i < kFrameCount; ++i) {
-        fenceValues_[i] = 0;
-    }
+    fenceValues_.assign(frameCount_, 0);
 }
 }

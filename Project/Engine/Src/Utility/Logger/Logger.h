@@ -52,6 +52,7 @@ namespace CoreEngine
         inline constexpr SubCategory Texture       { "Texture" };
         inline constexpr SubCategory Buffer        { "Buffer" };
         inline constexpr SubCategory Shader        { "Shader" };
+        inline constexpr SubCategory Barrier       { "Barrier" };
 
         // System
         inline constexpr SubCategory Window        { "Window" };

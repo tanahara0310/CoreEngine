@@ -16,10 +16,6 @@
 #include "Graphics/Common/Core/SwapChainManager.h"
 #include "Graphics/Common/Core/OffScreenRenderTargetManager.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
-#include "Graphics/Render/GBuffer/GBufferManager.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
-#include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/RayTracing/RayTracingShadowManager.h"
 
 using namespace Microsoft::WRL;
 
@@ -79,23 +75,9 @@ public:
     DescriptorManager* GetDescriptorManager() { return descriptorManager_.get(); }
     DepthStencilManager* GetDepthStencilManager() { return depthStencilManager_.get(); }
     
-    // DXR関連のアクセッサ
+    // DXR対応状況のアクセッサ
     bool IsDXRSupported() const { return deviceManager_->IsDXRSupported(); }
     D3D12_RAYTRACING_TIER GetDXRTier() const { return deviceManager_->GetDXRTier(); }
-    AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
-    RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
-
-    // シャドウマップ関連のアクセッサ
-    ShadowMapManager* GetShadowMapManager() { return shadowMapManager_.get(); }
-    ID3D12Resource* GetShadowMapResource() { return shadowMapManager_->GetShadowMapResource(); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetShadowMapDSVHandle() { return shadowMapManager_->GetDSVHandle(); }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetShadowMapSRVHandle() { return shadowMapManager_->GetSRVHandle(); }
-
-    // G-Buffer関連のアクセッサ
-    GBufferManager* GetGBufferManager() { return gBufferManager_.get(); }
-    const GBufferManager* GetGBufferManager() const { return gBufferManager_.get(); }
-
-    // オフスクリーン用のアクセッサ（任意インデックス）
     // @note G-Buffer移行中の互換経路。
     //       不透明ジオメトリの新規描画パスでは GBufferManager の利用を優先する。
     ID3D12Resource* GetOffScreenResource(uint32_t index = 0) { return offScreenManager_->GetOffScreenResource(index); }
@@ -126,10 +108,5 @@ private:
     std::unique_ptr<SwapChainManager> swapChainManager_ = std::make_unique<SwapChainManager>();
     std::unique_ptr<OffScreenRenderTargetManager> offScreenManager_ = std::make_unique<OffScreenRenderTargetManager>();
     std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
-    std::unique_ptr<GBufferManager> gBufferManager_ = std::make_unique<GBufferManager>();
-    std::unique_ptr<ShadowMapManager> shadowMapManager_ = std::make_unique<ShadowMapManager>();
-    std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_ = std::make_unique<AccelerationStructureManager>();
-    std::unique_ptr<RayTracingShadowManager> rtShadowManager_ = std::make_unique<RayTracingShadowManager>();
-
 };
 }

@@ -138,12 +138,12 @@ namespace CoreEngine
             if (auto* lightManager = engine_->GetComponent<LightManager>()) {
                 lightManager->DrawAllImGui();
             }
-        });
+            });
 
         // Shading パネル
         gameDebugUI_->RegisterEnginePanel("Shading", [this]() {
             auto* sceneManager = engine_->GetSceneManager();
-            auto* objManager   = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
+            auto* objManager = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
 
             ImGui::SeparatorText("シーン全体に適用");
 
@@ -199,14 +199,14 @@ namespace CoreEngine
             } else {
                 ImGui::TextDisabled("(シーンが存在しません)");
             }
-        });
+            });
 
         // Post Effects パネル（デフォルト表示）
         gameDebugUI_->RegisterEnginePanel("Post Effects", [this]() {
             if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
                 postEffect->DrawImGuiContent();
             }
-        });
+            });
         gameDebugUI_->SetPanelVisible("Post Effects", true);
 
         // Rendering Techniques パネル（SSAO, TAA等のレンダリング技術）
@@ -214,19 +214,20 @@ namespace CoreEngine
             if (auto* renderingTechniqueManager = engine_->GetComponent<RenderingTechniqueManager>()) {
                 renderingTechniqueManager->DrawImGui();
             }
-        });
+            });
 
         // Render Pass デバッグパネル（各パスの中間バッファを可視化）
         {
             auto* renderDx = engine_->GetComponent<DirectXCommon>();
             auto* renderComp = engine_->GetComponent<Render>();
             renderPassDebugPanel_.Initialize(renderDx);
+            renderPassDebugPanel_.SetRenderDomainContext(engine_->GetRenderDomainContext());
             if (renderComp) {
                 renderPassDebugPanel_.SetRenderTargetManager(renderComp->GetRenderTargetManager());
             }
             gameDebugUI_->RegisterEnginePanel("Render Pass", [this]() {
                 renderPassDebugPanel_.Draw();
-            });
+                });
         }
 
         // その他の固定ウィンドウをドッキングシステムに登録

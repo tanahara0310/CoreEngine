@@ -6,6 +6,9 @@
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
+#include <mutex>
+#include <atomic>
+#include "DescriptorHandle.h"
 
 /// @brief ディスクリプタヒープ管理クラス
 
@@ -84,20 +87,40 @@ public:
     void CreateDSV(ID3D12Resource* resource, const D3D12_DEPTH_STENCIL_VIEW_DESC& dsvDesc,
         D3D12_CPU_DESCRIPTOR_HANDLE& outDsvHandle, const std::string& debugName = "Unknown");
 
+    // ===== DescriptorHandle ベースの安全な Allocate/Free API =====
+
+    /// @brief SRV/CBV/UAV スロットを確保して DescriptorHandle を返す
+    /// @param debugName デバッグ用名前
+    DescriptorHandle AllocateSRVHandle(const std::string& debugName = "Unknown");
+
+    /// @brief RTV スロットを確保して DescriptorHandle を返す
+    /// @param debugName デバッグ用名前
+    DescriptorHandle AllocateRTVHandle(const std::string& debugName = "Unknown");
+
+    /// @brief DSV スロットを確保して DescriptorHandle を返す
+    /// @param debugName デバッグ用名前
+    DescriptorHandle AllocateDSVHandle(const std::string& debugName = "Unknown");
+
+    /// @brief DescriptorHandle を解放してフリーリストへ返す
+    /// @details ヒープ種別・二重解放・範囲外を自動検証する
+    /// @note GPUがそのスロットを参照し終えた後（フェンス完了後）に呼ぶこと
+    /// @param handle 解放するハンドル（呼び出し後は Invalidate される）
+    void Free(DescriptorHandle& handle);
+
     // アクセッサ
     ID3D12DescriptorHeap* GetRTVHeap() const { return rtvHeap_.Get(); }
     ID3D12DescriptorHeap* GetSRVHeap() const { return srvHeap_.Get(); }
     ID3D12DescriptorHeap* GetDSVHeap() const { return dsvHeap_.Get(); }
 
     // 使用状況の取得
-    UINT GetUsedSRVCount() const { return nextSRVDescriptorIndex_; }
-    UINT GetUsedRTVCount() const { return nextRTVDescriptorIndex_; }
-    UINT GetUsedDSVCount() const { return nextDSVDescriptorIndex_; }
+    UINT GetUsedSRVCount() const { return nextSRVDescriptorIndex_.load(); }
+    UINT GetUsedRTVCount() const { return nextRTVDescriptorIndex_.load(); }
+    UINT GetUsedDSVCount() const { return nextDSVDescriptorIndex_.load(); }
     UINT GetMaxSRVDescriptors() const { return maxSRVDescriptors_; }
     UINT GetMaxRTVDescriptors() const { return maxRTVDescriptors_; }
     UINT GetMaxDSVDescriptors() const { return maxDSVDescriptors_; }
-    float GetSRVUsageRate() const { return static_cast<float>(nextSRVDescriptorIndex_) / maxSRVDescriptors_; }
-    float GetDSVUsageRate() const { return static_cast<float>(nextDSVDescriptorIndex_) / maxDSVDescriptors_; }
+    float GetSRVUsageRate() const { return static_cast<float>(nextSRVDescriptorIndex_.load()) / maxSRVDescriptors_; }
+    float GetDSVUsageRate() const { return static_cast<float>(nextDSVDescriptorIndex_.load()) / maxDSVDescriptors_; }
 
     /// @brief CBV/SRV/UAVスロットを解放してフリーリストに返す
     /// @note GPUがそのスロットを参照し終わった後（フェンス完了後）に呼ぶこと
@@ -194,12 +217,24 @@ private:
     UINT maxRTVDescriptors_ = kDefaultMaxRTVDescriptors;
     UINT maxDSVDescriptors_ = kDefaultMaxDSVDescriptors;
 
-    // 次に割り当てるディスクリプタのインデックス
-    uint32_t nextSRVDescriptorIndex_ = kUserSRVStart;
-    uint32_t nextRTVDescriptorIndex_ = kUserRTVStart;
-    uint32_t nextDSVDescriptorIndex_ = kUserDSVStart;
+    // 次に割り当てるディスクリプタのインデックス（複数スレッドから読まれるため atomic）
+    std::atomic<uint32_t> nextSRVDescriptorIndex_{ kUserSRVStart };
+    std::atomic<uint32_t> nextRTVDescriptorIndex_{ kUserRTVStart };
+    std::atomic<uint32_t> nextDSVDescriptorIndex_{ kUserDSVStart };
 
     ID3D12Device* device_ = nullptr;
+
+    // ヒープ別ミューテックス（Allocate/Free の排他制御）
+    mutable std::mutex srvMutex_;
+    mutable std::mutex rtvMutex_;
+    mutable std::mutex dsvMutex_;
+
+#ifdef _DEBUG
+    // 二重解放検出用（_DEBUG ビルドのみ有効）
+    std::vector<bool> allocatedSRVSlots_;
+    std::vector<bool> allocatedRTVSlots_;
+    std::vector<bool> allocatedDSVSlots_;
+#endif
 
     /// @brief CBV/SRV/UAV ヒープのスロットを確保して返す（フリーリスト優先）
     UINT AllocateSRVIndex();

@@ -22,6 +22,7 @@ class WinApp;
 // ──────────────────────────────────────────────────────────
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Input/InputManager.h"
@@ -39,6 +40,7 @@ class CoreComponentFactory;
 class RayTracingSubsystem;
 class RenderPipeline;
 class RenderingTechniqueManager;
+class RenderDomainContext;
 
 class EngineSystem {
 public:
@@ -69,6 +71,9 @@ public:
 
     /// @brief WinAppを取得
     WinApp* GetWinApp() const { return winApp_; }
+
+    /// @brief RenderDomainContextを取得
+    RenderDomainContext* GetRenderDomainContext() { return renderDomainContext_.get(); }
 
     // ──────────────────────────────────────────────────────────
     // コンポーネントアクセッサ
@@ -180,6 +185,9 @@ private:
 
     // レンダーパイプライン
     std::unique_ptr<RenderPipeline> renderPipeline_;
+
+    // ドメイン管理コンテキスト（GBuffer / シャドウ / レイトレーシング）
+    std::unique_ptr<RenderDomainContext> renderDomainContext_;
 
     // ──────────────────────────────────────────────────────────
     // サブシステム管理

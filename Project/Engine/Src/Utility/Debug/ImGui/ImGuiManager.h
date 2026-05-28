@@ -55,6 +55,11 @@ void Draw();
 /// @brief 終了処理
 void Finalize();
 
+/// @brief Gameビューポートを描画（PostEffectPass完了後、ImGui::Render前に呼ぶこと）
+/// @param dxCommon DirectXCommonへのポインタ
+/// @param postEffectManager PostEffectManagerへのポインタ
+void DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager);
+
 /// @brief ドッキングUIへのアクセッサ
 /// @return ドッキングUIへのポインタ
 DockingUI* GetDockingUI() const { return dockingUI_.get(); }
@@ -72,14 +77,9 @@ CanvasViewport* GetCanvasViewport() const { return canvasViewport_.get(); }
 /// @return 表示中ならtrue
 bool IsSceneViewVisible() const { return sceneViewport_ && sceneViewport_->IsSceneViewVisible(); }
 
-/// @brief Gameビューポートを描画（PostEffectPass完了後、ImGui::Render前に呼ぶこと）
-/// @param dxCommon DirectXCommonへのポインタ
-/// @param postEffectManager PostEffectManagerへのポインタ
-void DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager);
-
 /// @brief プロジェクトビューへのアクセッサ
-    /// @return プロジェクトビューへのポインタ
-    ProjectView* GetProjectView() const { return projectView_.get(); }
+/// @return プロジェクトビューへのポインタ
+ProjectView* GetProjectView() const { return projectView_.get(); }
 #endif
 
 /// @brief ウィンドウハンドルの取得

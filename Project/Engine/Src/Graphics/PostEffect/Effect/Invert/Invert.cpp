@@ -12,7 +12,7 @@ namespace CoreEngine
     {
         UINT size = (sizeof(ScreenParams) + 255) & ~255;
         screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), size);
-        HRESULT hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
+        [[maybe_unused]] HRESULT hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
         assert(SUCCEEDED(hr));
     }
 

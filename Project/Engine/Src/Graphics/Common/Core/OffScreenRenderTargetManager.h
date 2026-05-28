@@ -4,7 +4,6 @@
 #include <wrl.h>
 #include <cstdint>
 #include <vector>
-#include "Graphics/Render/Render.h"
 
 namespace CoreEngine
 {
@@ -58,7 +57,8 @@ private:
         D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
         D3D12_CPU_DESCRIPTOR_HANDLE uavCpuHandle{};
         D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
-        float clearColor[4] = { Render::kClearColor[0], Render::kClearColor[1], Render::kClearColor[2], Render::kClearColor[3] };
+        // デフォルトクリアカラー（Render::kClearColor と同じ値 {0.1f, 0.25f, 0.5f, 1.0f}）
+        float clearColor[4] = { 0.1f, 0.25f, 0.5f, 1.0f };
         D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
         // フリーリスト解放用スロットインデックス（UINT_MAX = 未割り当て）

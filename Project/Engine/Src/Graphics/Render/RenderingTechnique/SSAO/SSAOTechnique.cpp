@@ -153,7 +153,7 @@ namespace CoreEngine
         assert(directXCommon_);
         const UINT bufferSize = (sizeof(SSAOParams) + 255) & ~255;
         constantBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), bufferSize);
-        HRESULT hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
+        [[maybe_unused]] HRESULT hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
     }

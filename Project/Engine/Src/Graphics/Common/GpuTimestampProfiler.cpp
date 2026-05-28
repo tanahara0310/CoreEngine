@@ -15,7 +15,7 @@ namespace CoreEngine
         heapDesc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
         heapDesc.Count = kQueriesPerFrame * kFrameCount;
         heapDesc.NodeMask = 0;
-        HRESULT hr = device->CreateQueryHeap(&heapDesc, IID_PPV_ARGS(&queryHeap_));
+        [[maybe_unused]] HRESULT hr = device->CreateQueryHeap(&heapDesc, IID_PPV_ARGS(&queryHeap_));
         assert(SUCCEEDED(hr));
 
         // ── フレームごとの readback バッファ作成 ────────────────

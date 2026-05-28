@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
+      <Filter>Engine\Src\Particle\Modules</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\pch.cpp">
       <Filter>Engine\Src</Filter>
     </ClCompile>
@@ -753,6 +762,9 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PrimitiveSphereObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
@@ -872,6 +884,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h">
       <Filter>Engine\Src\Graphics\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorHandle.h">
+      <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h">
       <Filter>Engine\Src\Graphics\Common</Filter>
@@ -997,6 +1012,9 @@
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h">
@@ -1164,6 +1182,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderDomainContext.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
     </ClInclude>
@@ -1293,8 +1314,23 @@
     <ClInclude Include="Engine\Src\Math\Frustum.h">
       <Filter>Engine\Src\Math</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Matrix\Matrix3x3.h">
+      <Filter>Engine\Src\Math\Matrix</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Matrix\Matrix4x4.h">
+      <Filter>Engine\Src\Math\Matrix</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Math\QuaternionTransform.h">
       <Filter>Engine\Src\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Vector\Vector2.h">
+      <Filter>Engine\Src\Math\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Vector\Vector3.h">
+      <Filter>Engine\Src\Math\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Vector\Vector4.h">
+      <Filter>Engine\Src\Math\Vector</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\ObjectCommon\Model\AnimatedModelObject.h">
       <Filter>Engine\Src\ObjectCommon\Model</Filter>
@@ -1337,6 +1373,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Debug\ParticleSystemDebugUI.h">
       <Filter>Engine\Src\Particle\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\Modules\LifetimeModule.h">
+      <Filter>Engine\Src\Particle\Modules</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Modules\MainModule.h">
       <Filter>Engine\Src\Particle\Modules</Filter>
@@ -2068,11 +2107,17 @@
     <Filter Include="Engine\Src\Math\Easing">
       <UniqueIdentifier>{A2BDB9FB-5057-4612-9EB0-B98B55503128}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Math\Matrix">
+      <UniqueIdentifier>{7E9FDCBB-E068-4AAC-9C82-55B03FBAE9ED}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Math\Quaternion">
       <UniqueIdentifier>{FE7F08CD-D82C-4602-8317-F2D81D2288F5}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Math\Spline">
       <UniqueIdentifier>{FDCA58EE-0B46-4826-B109-DF10EE350A99}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Math\Vector">
+      <UniqueIdentifier>{9D991F86-2716-4975-A9C4-317E0510FC82}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\ObjectCommon">
       <UniqueIdentifier>{EE6036A2-14A8-4045-BAF8-B8F0597C8D10}</UniqueIdentifier>
