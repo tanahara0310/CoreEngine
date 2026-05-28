@@ -16,6 +16,7 @@
 #include "Sample/TestGameObject/Primitive/PlaneObject.h"
 #include "Sample/TestGameObject/Primitive/PrimitiveSphereObject.h"
 #include "Sample/TestGameObject/Primitive/CubeObject.h"
+#include "Sample/TestGameObject/Primitive/RingObject.h"
 
 using namespace CoreEngine;
 
@@ -45,6 +46,19 @@ void PrimitiveTestScene::OnInitialize()
     auto skyBox = CreateObject<SkyBoxObject>();
     skyBox->SetTexture(environmentMapTexture);
     skyBox->SetActive(true);
+
+    // ===== リング（Ring） =====
+    auto ring = CreateObject<RingObject>(1.5f, 0.5f, 64u, "gradationLine.png");
+    ring->GetTransform().translate = { 0.0f, 1.0f, 0.0f };
+    ring->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+    ring->SetBlendMode(BlendMode::kBlendModeNormal);
+    if (auto* mat = ring->GetModel()->GetMaterial()) {
+        mat->SetMetallic(0.0f);
+        mat->SetRoughness(0.5f);
+        mat->SetLightingEnabled(true);
+        mat->SetIBLEnabled(true);
+    }
+    ring->SetActive(true);
 
     // ===== 地面（Plane） =====
     // 幅20・奥行20、10×10分割

@@ -183,6 +183,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
@@ -443,6 +444,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PrimitiveSphereObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterPlaneObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBox\SkyBoxObject.h" />
@@ -526,6 +528,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h" />

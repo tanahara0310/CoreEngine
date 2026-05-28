@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClCompile>
@@ -759,6 +762,9 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PrimitiveSphereObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
@@ -1006,6 +1012,9 @@
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h">
