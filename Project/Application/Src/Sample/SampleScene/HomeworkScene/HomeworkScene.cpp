@@ -23,8 +23,8 @@ void HomeworkScene::OnInitialize()
 
     // ===== 球体を複数配置 =====
     // 3×3 のグリッド状に 9 個配置する
-    constexpr int   kCols    = 3;
-    constexpr int   kRows    = 3;
+    constexpr int   kCols = 3;
+    constexpr int   kRows = 3;
     constexpr float kSpacing = 3.0f;
     const float kOriginX = -(kCols - 1) * kSpacing * 0.5f;
     const float kOriginZ = -(kRows - 1) * kSpacing * 0.5f;
@@ -42,10 +42,10 @@ void HomeworkScene::OnInitialize()
     }
 
     // ===== ヒットエフェクトの初期化 =====
-    auto* dxCommon        = engine_->GetComponent<DirectXCommon>();
+    auto* dxCommon = engine_->GetComponent<DirectXCommon>();
     auto* resourceFactory = engine_->GetComponent<ResourceFactory>();
 
-    auto* ps  = CreateObject<ParticleSystem>();
+    auto* ps = CreateObject<ParticleSystem>();
     hitEffect_ = std::make_unique<HitEffect>();
     hitEffect_->Initialize(ps, dxCommon, resourceFactory);
 }
@@ -70,13 +70,5 @@ void HomeworkScene::Draw()
 
 void HomeworkScene::Finalize()
 {
-    hitEffect_.reset();
-
-    // ===== グレースケールを無効化して他シーンに影響を与えない =====
-    auto* postEffectManager = engine_->GetComponent<PostEffectManager>();
-    if (postEffectManager) {
-        postEffectManager->SetEffectEnabled(PostEffectNames::GrayScale, false);
-    }
-
     BaseScene::Finalize();
 }
