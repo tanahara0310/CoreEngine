@@ -62,11 +62,20 @@ namespace CoreEngine
             return S_OK;
         }
 
+        // sRGBフォーマットのみガンマ補正フィルタを適用する。
+        // HDR / float テクスチャ（R16F, R32F 等）はリニア空間なので
+        // TEX_FILTER_SRGB を適用するとミップ生成時に pow(x,2.2) が掛かり、
+        // HDR の輝度値（>1.0）が爆発的に増大して白飛びの原因になる。
+        DirectX::TEX_FILTER_FLAGS filterFlags = DirectX::TEX_FILTER_LINEAR;
+        if (DirectX::IsSRGB(metadata.format)) {
+            filterFlags = static_cast<DirectX::TEX_FILTER_FLAGS>(filterFlags | DirectX::TEX_FILTER_SRGB);
+        }
+
         return DirectX::GenerateMipMaps(
             image.GetImages(),
             image.GetImageCount(),
             image.GetMetadata(),
-            DirectX::TEX_FILTER_LINEAR | DirectX::TEX_FILTER_SRGB,
+            filterFlags,
             0,
             mipImages
         );

@@ -36,8 +36,9 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     // HDR → LDR 変換
     color.rgb = ACESFilm(color.rgb);
 
-    // ガンマ補正（リニア → sRGB）
-    color.rgb = pow(saturate(color.rgb), 1.0f / 2.2f);
+    // NOTE: ガンマ補正（リニア→sRGB）はここで行わない。
+    // バックバッファのRTVフォーマットが DXGI_FORMAT_R8G8B8A8_UNORM_SRGB のため、
+    // GPUがハードウェアで自動的に変換を行う。ここで行うと二重補正になる。
 
     gOutput[dispatchId.xy] = color;
 }
