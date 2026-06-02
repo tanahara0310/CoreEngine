@@ -19,6 +19,7 @@
 #include "Bloom/Bloom.h"
 #include "Dissolve/Dissolve.h"
 #include "ToneMapping/ToneMapping.h"
+#include "Outline/Outline.h"
 #include "PostEffectPresetManager.h"
 #include "Utility/Debug/ImGui/ImguiManager.h"
 #include <algorithm>
@@ -69,6 +70,9 @@ void PostEffectManager::RegisterAllEffects()
     RegisterEffect<Bloom>(PostEffectNames::Bloom, false);
     RegisterEffect<Dissolve>(PostEffectNames::Dissolve, false);
 
+    // アウトラインはデフォルトで無効
+    RegisterEffect<Outline>(PostEffectNames::Outline, false);
+
     // トーンマッピングは常に有効（HDR→LDR変換）
     RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping, true);
 
@@ -87,6 +91,7 @@ void PostEffectManager::RegisterAllEffects()
         PostEffectNames::Invert,
         PostEffectNames::GrayScale,
         PostEffectNames::Vignette,
+        PostEffectNames::Outline,
         PostEffectNames::Dissolve,
     };
 
