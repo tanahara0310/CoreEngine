@@ -183,6 +183,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp" />
@@ -516,6 +517,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectGraphicsBase.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.h" />

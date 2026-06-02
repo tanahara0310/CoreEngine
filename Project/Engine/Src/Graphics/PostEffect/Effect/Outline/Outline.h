@@ -1,0 +1,76 @@
+#pragma once
+
+#include "../PostEffectComputeBase.h"
+#include <wrl.h>
+#include <d3d12.h>
+
+
+namespace CoreEngine
+{
+/// @brief Depth Based Outline エフェクト（CS方式）
+/// @details 深度バッファのSobelフィルタによりエッジを検出し、アウトラインを描画する
+class Outline : public PostEffectComputeBase {
+public:
+	/// @brief アウトラインパラメータ構造体
+	struct OutlineParams {
+		float outlineColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f }; ///< アウトライン色 (RGBA)
+		float depthThreshold  = 0.5f;   ///< 深度エッジ検出閾値（線形深度差、単位：m）
+		float depthStrength   = 1.0f;   ///< エッジ強度乗数 (1.0 ~ 20.0)
+		float outlineWidth    = 1.0f;   ///< アウトライン太さ (1.0 ~ 4.0)
+		float nearPlane       = 0.1f;   ///< カメラのニアクリップ距離
+		float farPlane        = 1000.0f; ///< カメラのファークリップ距離
+		float pad[3]          = {};
+	};
+
+	/// @brief 画面サイズ定数バッファ構造体
+	struct ScreenParams {
+		uint32_t screenWidth  = 1280;
+		uint32_t screenHeight = 720;
+		float    pad[2]       = { 0.0f, 0.0f };
+	};
+
+public:
+	Outline() = default;
+	~Outline() = default;
+
+	/// @brief CSエフェクト実行
+	/// @param inputSrvHandle カラーテクスチャのSRVハンドル
+	/// @param outputUavHandle 出力テクスチャのUAVハンドル
+	/// @param width 出力幅
+	/// @param height 出力高さ
+	void Dispatch(
+		D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+		D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+		uint32_t width,
+		uint32_t height) override;
+
+	/// @brief ImGuiでパラメータを調整
+	void DrawImGui() override;
+
+	const OutlineParams& GetParams() const { return params_; }
+	void SetParams(const OutlineParams& params);
+	void UpdateConstantBuffer();
+
+	/// @brief カメラのクリップ距離を毎フレーム更新する（線形深度変換に使用）
+	/// @param nearPlane ニアクリップ距離
+	/// @param farPlane ファークリップ距離
+	void SetCameraClipPlanes(float nearPlane, float farPlane);
+
+protected:
+	std::string  GetEffectName()        const override { return "Outline"; }
+	std::wstring GetComputeShaderPath() const override { return L"Outline.CS.hlsl"; }
+	void OnCreateConstantBuffers() override;
+
+private:
+	void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
+
+private:
+	OutlineParams params_;
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> outlineParamsCB_;
+	OutlineParams* mappedOutlineParams_ = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
+	ScreenParams* mappedScreenParams_ = nullptr;
+};
+}

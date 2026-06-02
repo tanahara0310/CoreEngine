@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Outline</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
@@ -977,6 +980,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Invert</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Outline</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
@@ -1995,6 +2001,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Invert">
       <UniqueIdentifier>{F3BCCEAF-E176-4040-A69C-4BB01FED0398}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Outline">
+      <UniqueIdentifier>{368C55FA-8D75-45DF-AF6B-A64755A00EAC}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur">
       <UniqueIdentifier>{0B3B563C-9E34-40DA-82A3-967C07498B70}</UniqueIdentifier>
