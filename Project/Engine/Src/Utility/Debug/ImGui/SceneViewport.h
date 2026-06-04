@@ -5,7 +5,9 @@
 #include "SceneViewportGizmoController.h"
 #include "SceneViewportWindowRenderer.h"
 #include "SceneViewportSelectionController.h"
+#include <functional>
 #include <memory>
+#include <string>
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -78,6 +80,12 @@ namespace CoreEngine
         /// @brief ギズモ操作用のInputQueryを設定
         void SetInputQuery(InputQuery* query) { inputQuery_ = query; }
 
+        /// @brief モデルファイルドロップ時のコールバックを設定
+        /// @param callback ドロップされたモデルファイル名を受け取るコールバック
+        void SetModelDropCallback(std::function<void(const std::string&)> callback) {
+            onModelDropped_ = std::move(callback);
+        }
+
     private: // メンバ変数
         ImVec2 viewportPos_{};
         ImVec2 viewportSize_{};
@@ -88,6 +96,9 @@ namespace CoreEngine
         const ICamera* currentCamera2D_ = nullptr;  // 現在の2Dカメラ
         ICamera* currentGameCamera3D_ = nullptr; // Gameビュー用3Dカメラ
         InputQuery* inputQuery_ = nullptr; // ギズモ操作用入力クエリ
+
+        // モデルファイルドロップ時のコールバック
+        std::function<void(const std::string&)> onModelDropped_;
 
         // Scene/Gameウィンドウの描画責務を分離するレンダラー
         std::unique_ptr<SceneViewportWindowRenderer> windowRenderer_;

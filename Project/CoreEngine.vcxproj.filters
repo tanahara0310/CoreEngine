@@ -1350,6 +1350,9 @@
     <ClInclude Include="Engine\Src\ObjectCommon\IObjectSpawner.h">
       <Filter>Engine\Src\ObjectCommon</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\ObjectCommon\Model\DynamicModelObject.h">
+      <Filter>Engine\Src\ObjectCommon\Model</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\ObjectCommon\Model\ModelGameObject.h">
       <Filter>Engine\Src\ObjectCommon\Model</Filter>
     </ClInclude>

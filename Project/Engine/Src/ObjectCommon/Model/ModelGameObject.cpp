@@ -147,6 +147,12 @@ namespace CoreEngine
         j["transform"]["rotate"] = JsonManager::Vector3ToJson(transform_.rotate);
         j["transform"]["scale"] = JsonManager::Vector3ToJson(transform_.scale);
 
+        // コピー・Undo Redo 用にモデルパスを保存する
+        const std::string modelPath = GetModelPath();
+        if (!modelPath.empty()) {
+            j["modelPath"] = modelPath;
+        }
+
         if (!textureName_.empty()) {
             j["texture"] = textureName_;
         }

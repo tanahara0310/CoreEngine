@@ -116,6 +116,17 @@ namespace CoreEngine
         }
     }
 
+    bool GameObjectManager::DestroyByName(const std::string& name)
+    {
+        for (auto& obj : objects_) {
+            if (obj && obj->GetName() == name && !obj->IsMarkedForDestroy()) {
+                obj->Destroy();
+                return true;
+            }
+        }
+        return false;
+    }
+
 #ifdef USE_IMGUI
     void GameObjectManager::DrawSingleObjectImGui(GameObject* obj)
     {

@@ -53,6 +53,13 @@ namespace CoreEngine
         /// @brief 全オブジェクトをクリア（シーン終了時など）
         void Clear();
 
+#ifdef USE_IMGUI
+        /// @brief 名前が一致する最初のオブジェクトに削除マークをつける（Undo 用）
+        /// @param name 削除対象のオブジェクト名
+        /// @return 見つかった場合 true
+        bool DestroyByName(const std::string& name);
+#endif
+
         /// @brief 登録されているオブジェクト数を取得
         /// @return オブジェクト数
         size_t GetObjectCount() const { return objects_.size(); }

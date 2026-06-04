@@ -256,15 +256,25 @@ namespace CoreEngine
                 }
             }
 
-            // ドラッグ＆ドロップソース（画像ファイルのみ）
+            // ドラッグ＆ドロップソース（画像ファイルおよびモデルファイル）
             if (!entry.isDirectory) {
                 std::string ext = entry.path.extension().string();
                 for (auto& c : ext) c = static_cast<char>(::tolower(c));
+
                 if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".hdr") {
+                    // テクスチャファイルのD&Dソース（ファイル名のみ渡す）
                     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
                         std::string filename = entry.path.filename().string();
                         ImGui::SetDragDropPayload("TEXTURE_FILE", filename.c_str(), filename.size() + 1);
                         ImGui::Text("%s", filename.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                } else if (ext == ".obj" || ext == ".fbx" || ext == ".gltf" || ext == ".glb") {
+                    // モデルファイルのD&Dソース（ファイル名のみ渡す）
+                    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                        std::string filename = entry.path.filename().string();
+                        ImGui::SetDragDropPayload("MODEL_FILE", filename.c_str(), filename.size() + 1);
+                        ImGui::Text("Model: %s", filename.c_str());
                         ImGui::EndDragDropSource();
                     }
                 }
