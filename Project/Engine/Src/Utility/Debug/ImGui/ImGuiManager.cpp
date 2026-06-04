@@ -30,7 +30,7 @@ namespace CoreEngine
         // ドッキング
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // ドッキングを有効化
 
-        io.ConfigWindowsMoveFromTitleBarOnly = true; // タイトルバーからのみウィンドウを移動可能にする
+        io.ConfigWindowsMoveFromTitleBarOnly = false; // ウィンドウ全体からドラッグ移動を可能にする
 
         // imgui.ini の保存先を Cache フォルダに変更
         std::filesystem::create_directories("Cache");

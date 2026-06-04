@@ -90,6 +90,7 @@ namespace CoreEngine
     // ===== 名前 / シリアライズ =====
 
     void GameObject::SetName(const std::string& name) {
+        name_ = name;
         if (serializeKey_.empty()) {
             serializeKey_ = name;
         }

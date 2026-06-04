@@ -270,10 +270,26 @@ namespace CoreEngine
         const std::string& directoryPath)
     {
         aiString texPath;
-        if (material->GetTexture(type, index, &texPath) == AI_SUCCESS) {
-            return directoryPath + "/" + texPath.C_Str();
+        if (material->GetTexture(type, index, &texPath) != AI_SUCCESS) {
+            return "";
         }
-        return "";
+
+        std::string rawPath = texPath.C_Str();
+
+        // バックスラッシュをスラッシュに統一
+        std::replace(rawPath.begin(), rawPath.end(), '\\', '/');
+
+        // 絶対パスの場合はそのまま返す
+        if (rawPath.length() >= 2 && rawPath[1] == ':') {
+            return rawPath;
+        }
+
+        // directoryPath と結合し、".." などを含む場合に lexically_normal() で正規化する
+        std::filesystem::path combined = std::filesystem::path(directoryPath) / rawPath;
+        std::string normalized = combined.lexically_normal().string();
+        std::replace(normalized.begin(), normalized.end(), '\\', '/');
+
+        return normalized;
     }
 
     Matrix4x4 ModelLoader::CalculateBindPoseMatrix(const aiMatrix4x4& offsetMatrix)

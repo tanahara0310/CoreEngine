@@ -81,6 +81,17 @@ namespace CoreEngine
                 context.objectSelector = objectSelector_.get();
                 context.inputQuery = inputQuery_;
                 gizmoController_->Draw(context);
+
+                // モデルファイルのD&Dターゲット（SceneViewport全体を受け口にする）
+                if (onModelDropped_) {
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE")) {
+                            const char* modelFileName = static_cast<const char*>(payload->Data);
+                            onModelDropped_(std::string(modelFileName));
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+                }
             });
         isSceneViewVisible_ = windowResult.isWindowOpen;
     }

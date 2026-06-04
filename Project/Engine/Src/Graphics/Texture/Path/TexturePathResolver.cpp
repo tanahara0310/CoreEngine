@@ -12,6 +12,8 @@ namespace CoreEngine
     std::string TexturePathResolver::ResolveAssetPath(const std::string& filePath, bool writeLog) const
     {
         auto& assetDB = AssetDatabase::GetInstance();
+
+        // まずフルパス文字列でそのまま検索する
         std::string assetPath = assetDB.FindAssetPath(filePath);
         if (!assetPath.empty()) {
             if (writeLog) {
@@ -20,6 +22,25 @@ namespace CoreEngine
             }
             return assetPath;
         }
+
+        // フルパス検索が失敗した場合、ファイル名部分だけで再検索する。
+        // MTLなどの相対テクスチャ参照 (例: "uvChecker.png") がモデルディレクトリに
+        // 結合されたパスとして渡されるケースに対応するためのフォールバック。
+        std::filesystem::path fsPath(filePath);
+        std::string fileName = fsPath.filename().string();
+        if (!fileName.empty() && fileName != filePath) {
+            assetPath = assetDB.FindAssetPath(fileName);
+            if (!assetPath.empty()) {
+                if (writeLog) {
+                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", 
+                        std::format("  Resolved by filename fallback: '{}' -> '{}'", filePath, assetPath));
+                }
+                return assetPath;
+            }
+        }
+
+        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "{}", 
+            std::format("  Asset not found in database, using path as-is: '{}'", filePath));
 
         return ResolveFilePath(filePath);
     }

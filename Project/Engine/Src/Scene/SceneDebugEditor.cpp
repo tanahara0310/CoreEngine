@@ -12,6 +12,9 @@
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
+#include "ObjectCommon/Model/DynamicModelObject.h"
+#include "Utility/Logger/Logger.h"
+#include <filesystem>
 
 namespace CoreEngine
 {
@@ -93,6 +96,31 @@ namespace CoreEngine
                 undoRedoHistory_.Push(record);
             });
 
+        // モデルD&DコールバックをSceneViewportに登録
+        if (imGuiManager) {
+            auto* sceneViewport = imGuiManager->GetSceneViewport();
+            if (sceneViewport) {
+                sceneViewport->SetModelDropCallback([this](const std::string& modelFileName) {
+                    SpawnModelFromFile(modelFileName);
+                });
+            }
+        }
+
+        // Undo でオブジェクトが削除される直前に ObjectSelector の選択を解除する。
+        // 解除しないと削除済みオブジェクトへのダングリングポインタでクラッシュする。
+        undoRedoHistory_.SetOnBeforeDestroyCallback([this](const std::string& objectName) {
+            if (auto* debug = engine_->GetDebugSubsystem()) {
+                if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
+                    if (auto* selector = sceneViewport->GetObjectSelector()) {
+                        if (selector->GetSelectedObject() &&
+                            selector->GetSelectedObject()->GetName() == objectName) {
+                            selector->SelectObject(nullptr);
+                        }
+                    }
+                }
+            }
+        });
+
         // Hierarchy/Inspectorパネル用の描画コールバックをGameDebugUIに登録
         if (auto* gameDebugUI = engine_->GetDebugSubsystem()->GetGameDebugUI()) {
             gameDebugUI->SetHierarchyContentDrawer([this]() {
@@ -144,6 +172,11 @@ namespace CoreEngine
             if (!saveSystem_->GetSceneName().empty()) {
                 saveSystem_->SaveScene(gameObjectManager_);
             }
+        }
+
+        // Ctrl+C で選択中オブジェクトをコピー（複製）
+        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_C)) {
+            CopySelectedObject();
         }
 
         // シーンビューポートでのオブジェクト選択とギズモ更新
@@ -327,6 +360,131 @@ namespace CoreEngine
 
         ImGui::PopStyleColor();
         ImGui::PopStyleVar(2);
+    }
+
+    bool SceneDebugEditor::CopySelectedObject()
+    {
+        // 選択中のオブジェクトを取得
+        ObjectSelector* objectSelector = nullptr;
+        if (auto* debug = engine_->GetDebugSubsystem()) {
+            if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
+                objectSelector = sceneViewport->GetObjectSelector();
+            }
+        }
+
+        if (!objectSelector) {
+            return false;
+        }
+
+        GameObject* selected = objectSelector->GetSelectedObject();
+        if (!selected) {
+            Logger::GetInstance().Log("コピー対象のオブジェクトが選択されていません", LogLevel::Warn, LogCategory::System);
+            return false;
+        }
+
+        // ModelGameObject 派生かどうか確認する（DynamicModel 以外の既存モデルも対象）
+        auto* modelObj = dynamic_cast<ModelGameObject*>(selected);
+        if (!modelObj) {
+            Logger::GetInstance().Log("選択オブジェクトはModelGameObjectではないためコピーできません", LogLevel::Warn, LogCategory::System);
+            return false;
+        }
+
+        // シリアライズデータからモデルパスを取得する
+        json serializedData = selected->OnSerialize();
+        std::string modelPath;
+        if (serializedData.contains("modelPath")) {
+            modelPath = serializedData["modelPath"].get<std::string>();
+        }
+
+        if (modelPath.empty()) {
+            Logger::GetInstance().Log("モデルパスが取得できないためコピーできません", LogLevel::Warn, LogCategory::System);
+            return false;
+        }
+
+        // DynamicModelObject として複製を生成
+        auto newObj = std::make_unique<DynamicModelObject>();
+        newObj->SetModelPath(modelPath);
+
+        // 名前を設定（"_Copy" を付加）
+        std::string copyName = std::string(selected->GetDisplayName()) + "_Copy";
+        newObj->SetName(copyName);
+
+        // 登録して Initialize
+        DynamicModelObject* raw = gameObjectManager_->AddObject(std::move(newObj));
+        if (!raw) {
+            Logger::GetInstance().Log("オブジェクトのコピーに失敗しました", LogLevel::Error, LogCategory::System);
+            return false;
+        }
+
+        // シリアライズデータを復元（トランスフォームを引き継ぐ）
+        if (!serializedData.empty()) {
+            raw->OnDeserialize(serializedData);
+        }
+
+        // 少しオフセットを加えて重ならないようにする
+        DebugAccess::TransformAccess access;
+        if (DebugAccess::TryGetTransformAccess(raw, access)) {
+            if (access.translate) {
+                access.translate->x += 1.0f;
+            }
+        }
+
+        // コピー操作を Undo 履歴に記録する
+        ObjectSpawnRecord spawnRecord;
+        spawnRecord.objectName = raw->GetName(); // GameObjectManager で確定した名前を使う
+        spawnRecord.modelPath  = modelPath;
+        if (DebugAccess::TryGetTransformAccess(raw, access)) {
+            spawnRecord.translate = *access.translate;
+            spawnRecord.rotate    = *access.rotate;
+            spawnRecord.scale     = *access.scale;
+        }
+        undoRedoHistory_.Push(spawnRecord);
+
+        // コピーしたオブジェクトを選択状態にする
+        objectSelector->SelectObject(raw);
+
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "オブジェクトをコピーしました: {}", raw->GetName());
+        return true;
+    }
+
+    void SceneDebugEditor::SpawnModelFromFile(const std::string& modelFileName)
+    {
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "モデルをスポーン: {}", modelFileName);
+
+        auto obj = std::make_unique<DynamicModelObject>();
+        obj->SetModelPath(modelFileName);
+
+        // ファイル名から拡張子を除いたものを名前にする
+        std::filesystem::path p(modelFileName);
+        std::string name = p.stem().string();
+        obj->SetName(name);
+
+        DynamicModelObject* raw = gameObjectManager_->AddObject(std::move(obj));
+        if (!raw) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System, "モデルのスポーンに失敗しました: {}", modelFileName);
+            return;
+        }
+
+        // スポーンしたオブジェクトを選択状態にする
+        if (auto* debug = engine_->GetDebugSubsystem()) {
+            if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
+                if (auto* selector = sceneViewport->GetObjectSelector()) {
+                    selector->SelectObject(raw);
+                }
+            }
+        }
+
+        // スポーン操作を Undo 履歴に記録する
+        ObjectSpawnRecord spawnRecord;
+        spawnRecord.objectName = raw->GetName();
+        spawnRecord.modelPath  = modelFileName;
+        DebugAccess::TransformAccess access;
+        if (DebugAccess::TryGetTransformAccess(raw, access)) {
+            spawnRecord.translate = *access.translate;
+            spawnRecord.rotate    = *access.rotate;
+            spawnRecord.scale     = *access.scale;
+        }
+        undoRedoHistory_.Push(spawnRecord);
     }
 }
 

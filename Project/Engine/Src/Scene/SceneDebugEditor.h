@@ -44,6 +44,14 @@ namespace CoreEngine
         /// @brief 保存通知オーバーレイを描画する
         void DrawSaveNotification();
 
+        /// @brief 選択中オブジェクトをコピーしてシーンに追加する
+        /// @return コピーに成功した場合 true
+        bool CopySelectedObject();
+
+        /// @brief モデルファイルをシーンにスポーンする
+        /// @param modelFileName モデルファイル名（例: "cube.obj"）
+        void SpawnModelFromFile(const std::string& modelFileName);
+
     private:
         UndoRedoHistory undoRedoHistory_;
 
