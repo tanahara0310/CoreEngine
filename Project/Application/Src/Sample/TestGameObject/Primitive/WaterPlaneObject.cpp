@@ -3,7 +3,6 @@
 
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Material/MaterialInstance.h"
-#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
@@ -151,14 +150,6 @@ void WaterPlaneObject::BindCustomResources(
     }
 }
 
-void WaterPlaneObject::SetNormalMapTextureName(const std::string& fileName) {
-    auto loaded = CoreEngine::TextureManager::GetInstance().Load(fileName);
-    if (GetModel() && loaded.gpuHandle.ptr != 0) {
-        GetModel()->SetNormalMapOverride(loaded.gpuHandle);
-        GetModel()->GetMaterial()->SetNormalMapEnabled(true);
-    }
-}
-
 void WaterPlaneObject::SetScrollSpeed(const CoreEngine::Vector2& speed) {
     scrollSpeed_ = speed;
 }
@@ -243,11 +234,6 @@ void WaterPlaneObject::SetMetallic(float metallic) {
 void WaterPlaneObject::SetIBLEnabled(bool enable) {
     auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
     if (mat) { mat->SetIBLEnabled(enable); }
-}
-
-void WaterPlaneObject::SetNormalMapEnabled(bool enable) {
-    auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
-    if (mat) { mat->SetNormalMapEnabled(enable); }
 }
 
 void WaterPlaneObject::SetAlbedoTextureEnabled(bool enable) {

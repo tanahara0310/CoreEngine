@@ -15,7 +15,7 @@
 /// PlaneMeshGenerator を使用して N×N 分割の平面メッシュを生成する。
 /// resolution（分割数）が高いほど後のステップで波の表現が細かくなる。
 class WaterPlaneObject : public CoreEngine::PrimitiveGameObject
-                       , public CoreEngine::ICustomShaderProvider {
+    , public CoreEngine::ICustomShaderProvider {
 public:
     /// @param size 水面の一辺のサイズ（XZ 方向共通）
     /// @param resolution XZ 方向の分割数
@@ -33,9 +33,6 @@ public:
     void BindCustomResources(
         ID3D12GraphicsCommandList* cmdList,
         const CoreEngine::CustomShaderPipeline* pipeline) const override;
-
-    /// @brief ノーマルマップテクスチャのファイル名を設定する（Initialize 後に呼ぶこと）
-    void SetNormalMapTextureName(const std::string& fileName);
 
     /// @brief UV スクロール速度を設定する（単位: UV/秒）
     void SetScrollSpeed(const CoreEngine::Vector2& speed);
@@ -80,9 +77,6 @@ public:
 
     /// @brief IBL を有効/無効にする
     void SetIBLEnabled(bool enable);
-
-    /// @brief ノーマルマップを有効/無効にする（既にテクスチャが設定済みの場合のみ有効）
-    void SetNormalMapEnabled(bool enable);
 
     /// @brief アルベドテクスチャの表示を有効/無効にする
     /// @param enable true のとき albedoTextureName_ のテクスチャをバインドする

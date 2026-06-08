@@ -139,7 +139,7 @@ void WaterTestScene::OnInitialize() {
     // サイズ 100 × 100、64×64 分割
     // 分割数が多いほど後のステップ（Gerstner Wave）で波の表現が細かくなる
     // アルベドテクスチャ名だけ登録しておく（初期状態は非表示 = テクスチャなし）
-    // ImGui の「テクスチャモード」から「アルベド + ノーマルマップ」を選ぶと有効化される
+    // ImGui の「テクスチャモード」から「アルベドテクスチャあり」を選ぶと有効化される
     // 空文字を渡すと white1x1.png がフォールバックされ、ベースカラーのみで描画される
     waterPlane_ = CreateObject<WaterPlaneObject>(100.0f, 64, "waterAlbedo.jpg");
     waterPlane_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
@@ -158,9 +158,6 @@ void WaterTestScene::OnInitialize() {
         mat->SetLightingEnabled(true);
         mat->SetIBLEnabled(true);
     }
-
-    // ノーマルマップを設定（ImGui の "NormalMap Enable" で有効/無効を切り替え可能）
-    waterPlane_->SetNormalMapTextureName("waterNormal.jpg");
 
     // UV スクロール速度とタイリングを設定
     // scrollSpeed: U方向に 0.03 UV/秒、V方向に 0.01 UV/秒 でゆっくり流れる
@@ -186,11 +183,10 @@ void WaterTestScene::OnInitialize() {
 #ifdef USE_IMGUI
     ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
 
-    // 初期テクスチャモードを反映する（デフォルト: ノーマルマップのみ）
+    // 初期テクスチャモードを反映する（0 = テクスチャなし、1 = アルベドテクスチャあり）
     // アルベドテクスチャは PrimitiveGameObject::Initialize() でロードされるが
-    // ここで texture_.gpuHandle をクリアしてモード 1（ノーマルマップのみ）にそろえる
-    waterPlane_->SetAlbedoTextureEnabled(imguiTextureMode_ == 2);
-    waterPlane_->SetNormalMapEnabled(imguiTextureMode_ >= 1);
+    // ここで表示有無だけをモードにそろえる
+    waterPlane_->SetAlbedoTextureEnabled(imguiTextureMode_ != 0);
 #endif
 }
 
@@ -371,20 +367,17 @@ void WaterTestScene::DrawWaterImGui() {
 
     // ===== テクスチャモード =====
     if (ImGui::CollapsingHeader("テクスチャモード", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextDisabled("水面のテクスチャ使用方法を切り替えます");
+        ImGui::TextDisabled("水面のアルベドテクスチャ使用方法を切り替えます");
         ImGui::Spacing();
 
         const int prevMode = imguiTextureMode_;
         ImGui::RadioButton("テクスチャなし（ベースカラーのみ）", &imguiTextureMode_, 0);
-        ImGui::RadioButton("ノーマルマップのみ", &imguiTextureMode_, 1);
-        ImGui::RadioButton("アルベド + ノーマルマップ", &imguiTextureMode_, 2);
+        ImGui::RadioButton("アルベドテクスチャあり", &imguiTextureMode_, 1);
 
         if (imguiTextureMode_ != prevMode) {
-            // アルベドテクスチャ: モード 2 のときのみ有効
+            // アルベドテクスチャ: モード 1 のときのみ有効
             // （WaterPlaneObject の albedoTextureName_ が設定されていれば読み込む）
-            waterPlane_->SetAlbedoTextureEnabled(imguiTextureMode_ == 2);
-            // ノーマルマップ: モード 1 / 2 のときに有効
-            waterPlane_->SetNormalMapEnabled(imguiTextureMode_ >= 1);
+            waterPlane_->SetAlbedoTextureEnabled(imguiTextureMode_ == 1);
         }
     }
 
