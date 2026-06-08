@@ -48,9 +48,12 @@ public:
     void UpdateUVScroll(float deltaTime);
 
     /// @brief 波パラメータを設定する
-    /// @param index 波インデックス（0〜3）
+    /// @param index 波インデックス（0〜15）
     /// @param wave 波パラメータ
     void SetWave(uint32_t index, const WaveParams& wave);
+
+    /// @brief 有効な Gerstner Wave 本数を設定する
+    void SetActiveWaveCount(uint32_t count);
 
     /// @brief 反射テクスチャの SRV を設定する（毎フレーム WaterReflectionPass から渡す）
     /// @param srvHandle 反射テクスチャの GPU ディスクリプタハンドル
@@ -90,6 +93,9 @@ public:
     /// @brief 波パラメータ配列への参照を返す（ImGui 直接編集用）
     WaveParams* GetWaves() { return waterCB_.waves; }
 
+    /// @brief 現在有効な Gerstner Wave 本数を返す
+    uint32_t GetActiveWaveCount() const { return waterCB_.activeWaveCount; }
+
     /// @brief UV スクロール速度への参照を返す（ImGui 直接編集用）
     CoreEngine::Vector2& GetScrollSpeed() { return scrollSpeed_; }
 
@@ -112,6 +118,11 @@ public:
     /// @param absorptionCoeff 光吸収係数（大きいほど短距離で不透明になる）
     /// @param enabled true のとき Depth Fade を有効にする
     void SetDepthFade(float absorptionCoeff, bool enabled);
+
+    /// @brief Depth Fade のデバッグ表示を設定する
+    /// @param enabled true のときデバッグ表示を有効にする
+    /// @param debugScale 表示倍率
+    void SetDepthFadeDebug(bool enabled, float debugScale = 1.5f);
 
     /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
     void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);

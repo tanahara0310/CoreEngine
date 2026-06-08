@@ -10,11 +10,104 @@
 #include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
 #include "Sample/TestGameObject/Primitive/WaterPlaneObject.h"
 #include "Sample/TestGameObject/Model/ModelObject.h"
+#include "Utility/Random/RandomGenerator.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <numbers>
 
 using namespace CoreEngine;
+
+namespace {
+constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
+
+Vector2 NormalizeDirection(const Vector2& direction) {
+    const float length = std::sqrtf(direction.x * direction.x + direction.y * direction.y);
+    if (length <= 1.0e-5f) {
+        return { 1.0f, 0.0f };
+    }
+    return { direction.x / length, direction.y / length };
+}
+
+Vector2 RotateDirection(const Vector2& direction, float radians) {
+    const float c = std::cosf(radians);
+    const float s = std::sinf(radians);
+    return NormalizeDirection({
+        direction.x * c - direction.y * s,
+        direction.x * s + direction.y * c,
+    });
+}
+
+uint32_t ClampWaveCountToRange(int count) {
+    return static_cast<uint32_t>(std::clamp(count, 1, static_cast<int>(kMaxWaterWaveCount)));
+}
+}
+
+#ifdef USE_IMGUI
+void WaterTestScene::RestoreRecommendedWaveCount(WaterPresetType preset) {
+    const WaterPresetData& p = GetWaterPresetData(preset);
+    imguiActiveWaveCount_ = static_cast<int>(p.recommendedWaveCount);
+    waterPlane_->SetActiveWaveCount(p.recommendedWaveCount);
+}
+
+void WaterTestScene::RegenerateLayeredWaves(WaterPresetType preset, uint32_t activeWaveCount) {
+    if (!waterPlane_) {
+        return;
+    }
+
+    const WaterPresetData& p = GetWaterPresetData(preset);
+    auto& rng = RandomGenerator::GetInstance();
+
+    uint32_t layerCounts[kWaterWaveLayerCount] = {};
+    uint32_t assignedCount = 0;
+    for (uint32_t layerIndex = 0; layerIndex < kWaterWaveLayerCount; ++layerIndex) {
+        layerCounts[layerIndex] = std::min(p.layers[layerIndex].count, activeWaveCount - assignedCount);
+        assignedCount += layerCounts[layerIndex];
+        if (assignedCount >= activeWaveCount) {
+            break;
+        }
+    }
+
+    uint32_t fillLayer = 0;
+    while (assignedCount < activeWaveCount) {
+        ++layerCounts[fillLayer % kWaterWaveLayerCount];
+        ++assignedCount;
+        ++fillLayer;
+    }
+
+    const Vector2 dominantDirection = NormalizeDirection(p.dominantDirection);
+    uint32_t waveIndex = 0;
+    for (uint32_t layerIndex = 0; layerIndex < kWaterWaveLayerCount && waveIndex < activeWaveCount; ++layerIndex) {
+        const WaterWaveLayerConfig& layer = p.layers[layerIndex];
+        const uint32_t countInLayer = layerCounts[layerIndex];
+        for (uint32_t layerWaveIndex = 0; layerWaveIndex < countInLayer && waveIndex < activeWaveCount; ++layerWaveIndex, ++waveIndex) {
+            const float baseAngle = (countInLayer > 1)
+                ? (-0.5f + static_cast<float>(layerWaveIndex) / static_cast<float>(countInLayer - 1)) * layer.directionSpreadRadians
+                : 0.0f;
+            const float jitter = rng.GetFloat(-p.directionJitterRadians, p.directionJitterRadians);
+            const Vector2 direction = RotateDirection(dominantDirection, baseAngle + jitter);
+
+            WaveParams wave{};
+            wave.direction = direction;
+            wave.amplitude = rng.GetFloat(layer.amplitudeMin, layer.amplitudeMax);
+            wave.wavelength = rng.GetFloat(layer.wavelengthMin, layer.wavelengthMax);
+            wave.speed = rng.GetFloat(layer.speedMin, layer.speedMax);
+            wave.steepness = rng.GetFloat(layer.steepnessMin, layer.steepnessMax);
+            wave.phaseOffset = rng.GetFloat(0.0f, kTwoPi);
+            waterPlane_->SetWave(waveIndex, wave);
+        }
+    }
+
+    for (; waveIndex < kMaxWaterWaveCount; ++waveIndex) {
+        WaveParams wave{};
+        wave.direction = dominantDirection;
+        waterPlane_->SetWave(waveIndex, wave);
+    }
+
+    waterPlane_->SetActiveWaveCount(activeWaveCount);
+}
+#endif
 
 void WaterTestScene::OnInitialize() {
     SetSceneName("WaterTestScene");
@@ -91,6 +184,8 @@ void WaterTestScene::OnInitialize() {
     }
 
 #ifdef USE_IMGUI
+    ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
+
     // 初期テクスチャモードを反映する（デフォルト: ノーマルマップのみ）
     // アルベドテクスチャは PrimitiveGameObject::Initialize() でロードされるが
     // ここで texture_.gpuHandle をクリアしてモード 1（ノーマルマップのみ）にそろえる
@@ -173,13 +268,105 @@ void WaterTestScene::Finalize() {
 }
 
 #ifdef USE_IMGUI
+void WaterTestScene::ApplyWaterPreset(WaterPresetType preset) {
+    if (!waterPlane_) { return; }
+
+    const WaterPresetData& p = GetWaterPresetData(preset);
+
+    // ---- マテリアル ----
+    imguiColor_[0] = p.baseColor.x;
+    imguiColor_[1] = p.baseColor.y;
+    imguiColor_[2] = p.baseColor.z;
+    imguiColor_[3] = p.baseColor.w;
+    imguiRoughness_ = p.roughness;
+    imguiMetallic_  = p.metallic;
+    waterPlane_->SetBaseColor(p.baseColor);
+    waterPlane_->SetRoughness(p.roughness);
+    waterPlane_->SetMetallic(p.metallic);
+
+    // ---- Depth Fade / 水色 ----
+    imguiAbsorptionCoeff_ = p.absorptionCoeff;
+    imguiShallowColor_[0] = p.shallowColor.x;
+    imguiShallowColor_[1] = p.shallowColor.y;
+    imguiShallowColor_[2] = p.shallowColor.z;
+    imguiDeepColor_[0]    = p.deepColor.x;
+    imguiDeepColor_[1]    = p.deepColor.y;
+    imguiDeepColor_[2]    = p.deepColor.z;
+    waterPlane_->SetDepthFade(p.absorptionCoeff, imguiDepthFadeEnabled_);
+    waterPlane_->SetWaterColors(p.shallowColor, p.deepColor);
+
+    // ---- Fresnel ----
+    imguiFresnelMinAlpha_ = p.fresnelMinAlpha;
+    imguiFresnelMaxAlpha_ = p.fresnelMaxAlpha;
+    waterPlane_->SetFresnelAlpha(p.fresnelMinAlpha, p.fresnelMaxAlpha);
+
+    // ---- Gerstner Wave ----
+    if (imguiAutoRestoreRecommendedWaveCount_ || imguiLockRecommendedWaveCount_) {
+        RestoreRecommendedWaveCount(preset);
+    }
+    if (imguiLockRecommendedWaveCount_) {
+        RestoreRecommendedWaveCount(preset);
+    }
+    RegenerateLayeredWaves(preset, ClampWaveCountToRange(imguiActiveWaveCount_));
+
+    // ---- UV ----
+    imguiScrollSpeed_[0] = p.scrollSpeed.x;
+    imguiScrollSpeed_[1] = p.scrollSpeed.y;
+    imguiUVTiling_[0]    = p.uvTiling.x;
+    imguiUVTiling_[1]    = p.uvTiling.y;
+    waterPlane_->GetScrollSpeed() = p.scrollSpeed;
+    waterPlane_->GetUVTiling()    = p.uvTiling;
+}
+
 void WaterTestScene::DrawWaterImGui() {
     if (!waterPlane_) { return; }
 
-    ImGui::SetNextWindowSize(ImVec2(440, 620), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(440, 720), ImGuiCond_FirstUseEver);
     if (!ImGui::Begin("Water Parameters")) {
         ImGui::End();
         return;
+    }
+
+    // ===== PBR プリセット =====
+    if (ImGui::CollapsingHeader("PBR プリセット", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextDisabled("プリセットを選択するとPBR・波・UVパラメータが一括適用されます");
+        ImGui::Spacing();
+
+        static const char* kPresetNames[] = {
+            "湖（静かな水）",
+            "海（波が立つ水）",
+            "池・プール",
+            "雨水・水たまり",
+        };
+
+        int prevPreset = imguiPreset_;
+        for (int i = 0; i < 4; ++i) {
+            if (ImGui::RadioButton(kPresetNames[i], &imguiPreset_, i)) {
+                // ラジオボタンが押された直後にプリセット適用
+            }
+            if (i < 3) { ImGui::SameLine(); }
+        }
+
+        if (imguiPreset_ != prevPreset) {
+            ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
+        }
+
+        ImGui::Spacing();
+        if (ImGui::Button("このプリセットを再適用")) {
+            ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
+        }
+
+        if (ImGui::Checkbox("推奨波本数へ固定", &imguiLockRecommendedWaveCount_)) {
+            if (imguiLockRecommendedWaveCount_) {
+                RestoreRecommendedWaveCount(static_cast<WaterPresetType>(imguiPreset_));
+                RegenerateLayeredWaves(static_cast<WaterPresetType>(imguiPreset_), ClampWaveCountToRange(imguiActiveWaveCount_));
+            }
+        }
+        ImGui::Checkbox("プリセット切替時に推奨本数へ戻す", &imguiAutoRestoreRecommendedWaveCount_);
+        ImGui::Checkbox("波本数増加時に自動再生成", &imguiAutoGenerateOnWaveCountIncrease_);
+        if (ImGui::Button("レイヤー波を再生成")) {
+            RegenerateLayeredWaves(static_cast<WaterPresetType>(imguiPreset_), ClampWaveCountToRange(imguiActiveWaveCount_));
+        }
     }
 
     // ===== テクスチャモード =====
@@ -229,10 +416,36 @@ void WaterTestScene::DrawWaterImGui() {
 
     // ===== Gerstner 波 =====
     if (ImGui::CollapsingHeader("Gerstner 波パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
+        const int prevActiveWaveCount = imguiActiveWaveCount_;
+        if (ImGui::SliderInt("有効波本数", &imguiActiveWaveCount_, 1, static_cast<int>(kMaxWaterWaveCount))) {
+            if (imguiLockRecommendedWaveCount_) {
+                RestoreRecommendedWaveCount(static_cast<WaterPresetType>(imguiPreset_));
+            } else {
+                waterPlane_->SetActiveWaveCount(static_cast<uint32_t>(imguiActiveWaveCount_));
+                if (imguiAutoGenerateOnWaveCountIncrease_ && imguiActiveWaveCount_ > prevActiveWaveCount) {
+                    RegenerateLayeredWaves(static_cast<WaterPresetType>(imguiPreset_), ClampWaveCountToRange(imguiActiveWaveCount_));
+                }
+            }
+        }
+
+        const WaterPresetData& preset = GetWaterPresetData(static_cast<WaterPresetType>(imguiPreset_));
+        ImGui::TextDisabled("推奨本数: %u", preset.recommendedWaveCount);
+        const char* layerNames[kWaterWaveLayerCount] = { "大波", "中波", "小波" };
+        for (uint32_t layerIndex = 0; layerIndex < kWaterWaveLayerCount; ++layerIndex) {
+            const WaterWaveLayerConfig& layer = preset.layers[layerIndex];
+            ImGui::BulletText("%s: %u本 / 振幅 %.3f-%.3f / 波長 %.1f-%.1f",
+                layerNames[layerIndex],
+                layer.count,
+                layer.amplitudeMin,
+                layer.amplitudeMax,
+                layer.wavelengthMin,
+                layer.wavelengthMax);
+        }
+
         WaveParams* waves = waterPlane_->GetWaves();
-        for (int i = 0; i < 4; ++i) {
+        for (uint32_t i = 0; i < kMaxWaterWaveCount; ++i) {
             char label[32];
-            std::snprintf(label, sizeof(label), "波 %d", i);
+            std::snprintf(label, sizeof(label), "波 %u", i);
             if (ImGui::TreeNode(label)) {
                 float dir[2] = { waves[i].direction.x, waves[i].direction.y };
                 if (ImGui::DragFloat2("進行方向 (XZ)", dir, 0.01f, -1.0f, 1.0f)) {
@@ -244,6 +457,7 @@ void WaterTestScene::DrawWaterImGui() {
                 ImGui::DragFloat("波長 (Wavelength)", &waves[i].wavelength, 0.1f, 0.1f, 50.0f);
                 ImGui::DragFloat("位相速度 (Speed)", &waves[i].speed, 0.05f, 0.0f, 10.0f);
                 ImGui::DragFloat("急峻度 (Steepness)", &waves[i].steepness, 0.01f, 0.0f, 1.0f);
+                ImGui::DragFloat("位相オフセット (Phase)", &waves[i].phaseOffset, 0.05f, -12.56f, 12.56f);
                 ImGui::TreePop();
             }
         }
@@ -255,9 +469,15 @@ void WaterTestScene::DrawWaterImGui() {
         ImGui::Spacing();
         bool dfChanged = false;
         dfChanged |= ImGui::Checkbox("Depth Fade 有効", &imguiDepthFadeEnabled_);
-        dfChanged |= ImGui::SliderFloat("吸収係数", &imguiAbsorptionCoeff_, 0.0f, 5.0f, "%.3f");
+        dfChanged |= ImGui::SliderFloat("吸収係数", &imguiAbsorptionCoeff_, 0.0f, 8.0f, "%.3f");
         if (dfChanged) {
             waterPlane_->SetDepthFade(imguiAbsorptionCoeff_, imguiDepthFadeEnabled_);
+        }
+        bool debugChanged = false;
+        debugChanged |= ImGui::Checkbox("Depth Fade デバッグ表示", &imguiDepthFadeDebugEnabled_);
+        debugChanged |= ImGui::SliderFloat("デバッグ表示倍率", &imguiDepthFadeDebugScale_, 0.1f, 8.0f, "%.2f");
+        if (debugChanged) {
+            waterPlane_->SetDepthFadeDebug(imguiDepthFadeDebugEnabled_, imguiDepthFadeDebugScale_);
         }
         ImGui::Spacing();
         bool colorChanged = false;

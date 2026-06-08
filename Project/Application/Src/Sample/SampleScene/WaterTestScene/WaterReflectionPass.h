@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
+#include "Graphics/Common/Core/DescriptorHandle.h"
 #include "Math/Vector/Vector4.h"
 #include "Math/MathCore.h"
 
@@ -59,6 +60,8 @@ private:
 
     CoreEngine::DirectXCommon* dxCommon_ = nullptr;
     std::unique_ptr<CoreEngine::OffscreenRenderTarget> reflectionRT_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> reflectionDepthResource_;
+    CoreEngine::DescriptorHandle reflectionDepthDsvHandle_;
 
     /// @brief クリップ平面パラメータ（HLSL 側 SV_ClipDistance0 に渡す: dot(worldPos, clipPlane) > 0 なら描画）
     CoreEngine::Vector4 clipPlane_ = { 0.0f, 1.0f, 0.0f, 0.0f };
