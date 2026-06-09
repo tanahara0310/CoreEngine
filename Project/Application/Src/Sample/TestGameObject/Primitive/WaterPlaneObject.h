@@ -99,14 +99,18 @@ public:
     /// @brief フレーム定数への参照を返す（ImGui から reflectionEnabled 等を参照する用）
     const WaterFrameConstants& GetFrameConstants() const { return frameCB_; }
 
-    /// @brief Fresnel alpha の最小値（真上から見たとき）と最大値（斜めから見たとき）を設定する
-    /// @param minAlpha Fresnel=0 のときの alpha（小さいほど透明 → 水中が見えやすい）
-    /// @param maxAlpha Fresnel=1 のときの alpha（大きいほど不透明 → 斜め角度で不透明）
-    void SetFresnelAlpha(float minAlpha, float maxAlpha);
+    /// @brief Fresnel の反射率パラメータを設定する
+    /// @param reflectanceScale 反射ブレンドの強さ
+    /// @param baseReflectance 正面入射時の反射率 F0
+    void SetFresnelParameters(float reflectanceScale, float baseReflectance);
 
     /// @brief シーン深度テクスチャ SRV を設定する（Depth Fade 用）
     /// @param srvHandle GBuffer / DepthStencil の深度 SRV GPU ハンドル
     void SetSceneDepthSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
+
+    /// @brief シーンカラー SRV を設定する（水面越しの透過光取得用）
+    /// @param srvHandle オフスクリーンカラーの GPU ハンドル
+    void SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 
     /// @brief Depth Fade パラメータを設定する
     /// @param absorptionCoeff 光吸収係数（大きいほど短距離で不透明になる）
@@ -163,4 +167,7 @@ private:
 
     // ---- シーン深度テクスチャ SRV（t15 にバインド）: Depth Fade 用 ----
     D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV_ = { 0 };              ///< 深度 SRV
+
+    // ---- シーンカラー SRV（t16 にバインド）: 水越しの背景色用 ----
+    D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV_ = { 0 };              ///< シーンカラー SRV
 };

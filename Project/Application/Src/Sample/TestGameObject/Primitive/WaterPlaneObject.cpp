@@ -148,6 +148,15 @@ void WaterPlaneObject::BindCustomResources(
                 static_cast<UINT>(depthSlot), sceneDepthSRV_);
         }
     }
+
+    // シーンカラー SRV をバインドする（水越しの背景色用）
+    if (sceneColorSRV_.ptr != 0) {
+        int sceneColorSlot = pipeline->GetRootParamIndex("gSceneColor");
+        if (sceneColorSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(sceneColorSlot), sceneColorSRV_);
+        }
+    }
 }
 
 void WaterPlaneObject::SetScrollSpeed(const CoreEngine::Vector2& speed) {
@@ -188,13 +197,17 @@ void WaterPlaneObject::UpdateFrameConstants() {
     }
 }
 
-void WaterPlaneObject::SetFresnelAlpha(float minAlpha, float maxAlpha) {
-    frameCB_.fresnelMinAlpha = minAlpha;
-    frameCB_.fresnelMaxAlpha = maxAlpha;
+void WaterPlaneObject::SetFresnelParameters(float reflectanceScale, float baseReflectance) {
+    frameCB_.fresnelReflectanceScale = reflectanceScale;
+    frameCB_.fresnelBaseReflectance = baseReflectance;
 }
 
 void WaterPlaneObject::SetSceneDepthSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
     sceneDepthSRV_ = srvHandle;
+}
+
+void WaterPlaneObject::SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
+    sceneColorSRV_ = srvHandle;
 }
 
 void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {

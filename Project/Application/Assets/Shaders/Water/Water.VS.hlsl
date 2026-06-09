@@ -35,8 +35,8 @@ cbuffer WaterFrameConstants : register(b5)
     float4 gClipPlane;         // クリップ平面 (A, B, C, D): dot(worldPos, plane) > 0 で描画
     int    gClipEnabled;       // 1 = 有効，0 = 無効
     int    gReflectionEnabled; // 1 = 反射テクスチャ有効，0 = IBL フォールバック
-    float  gFresnelMinAlpha;   // PS と共有（VS では未使用、レイアウト一致のため保持）
-    float  gFresnelMaxAlpha;   // PS と共有（VS では未使用、レイアウト一致のため保持）
+    float  gFresnelReflectanceScale; // PS と共有（VS では未使用、レイアウト一致のため保持）
+    float  gFresnelBaseReflectance;  // PS と共有（VS では未使用、レイアウト一致のため保持）
 
     // ---- Depth Fade（VS では未使用、レイアウト一致のため保持）----
     float  gAbsorptionCoeff;

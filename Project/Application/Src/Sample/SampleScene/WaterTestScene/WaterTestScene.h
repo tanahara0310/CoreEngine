@@ -64,9 +64,8 @@ private:
     bool  imguiLockRecommendedWaveCount_ = false;  ///< 推奨波本数へ固定する
     bool  imguiAutoRestoreRecommendedWaveCount_ = true; ///< プリセット切り替え時に推奨本数へ戻す
     bool  imguiAutoGenerateOnWaveCountIncrease_ = true; ///< 波本数を増やした際に自動再生成する
-    bool  imguiReflectionEnabled_ = false;          ///< 反射テクスチャ有効フラグ（表示用）
-    float imguiFresnelMinAlpha_ = 0.05f;            ///< Fresnel=0（真上から）のときの alpha
-    float imguiFresnelMaxAlpha_ = 1.0f;             ///< Fresnel=1（斜めから）のときの alpha
+    float imguiFresnelReflectanceScale_ = 1.0f;     ///< Fresnel 反射ブレンドの強さ
+    float imguiFresnelBaseReflectance_ = 0.02f;     ///< 正面入射時の反射率 F0
 
     // ---- Depth Fade ----
     bool  imguiDepthFadeEnabled_ = true;            ///< Depth Fade 有効フラグ
@@ -78,8 +77,7 @@ private:
 
     /// @brief テクスチャ使用モード
     /// 0 = テクスチャなし（ベースカラーのみ）
-    /// 1 = ノーマルマップのみ
-    /// 2 = アルベド + ノーマルマップ
+    /// 1 = アルベドテクスチャあり
     int imguiTextureMode_ = 1;
 #endif
 };

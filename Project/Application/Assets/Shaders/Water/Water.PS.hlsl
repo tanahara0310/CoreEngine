@@ -9,14 +9,19 @@ SamplerState      gLinearClamp       : register(s2);
 // Depth Fade（Beer-Lambert）で水柱の厚さを計算するために使用する
 Texture2D<float>  gSceneDepth        : register(t15);
 
+// ===== シーンカラーテクスチャ（OffScreen Color SRV）=====
+// WaterPlaneObject::BindCustomResources() が t16 にバインドする
+// 水面越しに見える背景色の取得に使用する
+Texture2D<float4> gSceneColor        : register(t16);
+
 // ===== フレーム定数バッファ（VS と共有）=====
 cbuffer WaterFrameConstants : register(b5)
 {
     float4 gClipPlane;
     int    gClipEnabled;
     int    gReflectionEnabled;  // 1 = 反射テクスチャ有効，0 = IBL フォールバック
-    float  gFresnelMinAlpha;    // Fresnel=0（真上）のときの alpha（透明側）
-    float  gFresnelMaxAlpha;    // Fresnel=1（斜め）のときの alpha（不透明側）
+    float  gFresnelReflectanceScale; // Fresnel 反射率スケール
+    float  gFresnelBaseReflectance;  // 正面入射時の反射率（F0）
 
     // ---- Depth Fade ----
     float  gAbsorptionCoeff;    // 光吸収係数（大きいほど短距離で不透明）
@@ -59,9 +64,8 @@ PixelShaderOutput WaterForwardMain(VertexShaderOutput input)
     float4 transformedUV = mul(float4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
     float4 textureColor  = gTexture.Sample(gSampler, transformedUV.xy);
 
-    // 法線マップ適用
-    float3 finalNormal = GetNormalFromMap(input, transformedUV.xy);
-    input.normal = finalNormal;
+    // 頂点シェーダーで再構築した Gerstner Wave 由来法線をそのまま使用する
+    input.normal = normalize(input.normal);
 
     // 視線方向と alpha
     float3 toEye     = normalize(gCamera.worldPosition - input.worldPosition);
@@ -105,10 +109,12 @@ PixelShaderOutput main(VertexShaderOutput input)
     screenUV = screenUV * float2(0.5f, -0.5f) + float2(0.5f, 0.5f);
     screenUV = saturate(screenUV);
 
-    // ---- 3. Depth Fade（Beer-Lambert 則）----
+    // ---- 3. Beer-Lambert による透過率と吸収量の計算 ----
     // GBuffer 深度テクスチャから背後のオブジェクトの深度を取得し、
-    // 水面との深度差（水柱の厚さ）を使って吸収率を計算する
-    float depthFade = 0.0f;
+    // 水面との深度差（水柱の厚さ）から透過率 transmittance を求める
+    float transmittance = 1.0f;
+    float absorption = 0.0f;
+    float3 waterTint = gShallowColor;
     if (gDepthFadeEnabled)
     {
         // near/far クリップ（カメラデフォルト値）
@@ -127,33 +133,40 @@ PixelShaderOutput main(VertexShaderOutput input)
         // 正値のみ使用（水面より前のオブジェクトは無視）
         float waterColumn = max(0.0f, sceneDepthView - waterDepthView);
 
-        // Beer-Lambert 則: 深いほど光が吸収される
-        depthFade = 1.0f - exp(-waterColumn * gAbsorptionCoeff);
+        // Beer-Lambert 則: transmittance が透過した光量、absorption が吸収された量
+        transmittance = exp(-waterColumn * gAbsorptionCoeff);
+        absorption = 1.0f - transmittance;
 
-        // 浅瀬 → 深場の水色をブレンドする
-        // depthFade が 0 に近い浅瀬でも色が視認できるよう、最低ブレンド量を持たせる
-        float3 waterColor = lerp(gShallowColor, gDeepColor, saturate(depthFade));
-        float colorBlend  = lerp(0.25f, 0.85f, saturate(depthFade));
-        output.color.rgb  = lerp(output.color.rgb, waterColor, colorBlend);
+        // 吸収量に応じて浅瀬色 → 深場色へ移行する
+        waterTint = lerp(gShallowColor, gDeepColor, saturate(absorption));
     }
+
+    // 水中を通ってきた背景光は透過率で減衰させ、吸収された分だけ水の色を乗せる
+    float3 sceneColor = gSceneColor.Sample(gLinearClamp, screenUV).rgb;
+    float3 transmittedColor = sceneColor * transmittance;
+    output.color.rgb = transmittedColor + waterTint * absorption;
 
     // ---- 4. 視線方向と Fresnel 係数を計算する ----
     float3 viewDir    = normalize(gCamera.worldPosition - input.worldPosition);
-    float3 geomNormal = normalize(float3(0.0f, 1.0f, 0.0f));
+    float3 geomNormal = normalize(input.normal);
     float  cosTheta   = saturate(dot(geomNormal, viewDir));
-    float  fresnel    = FresnelSchlick(cosTheta, 0.02f);
+    float  fresnel    = FresnelSchlick(cosTheta, saturate(gFresnelBaseReflectance));
+    float  reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
 
-    // ---- 5. Fresnel で alpha を制御する ----
-    // 真上から見るほど透明（水中が見える）、斜めから見るほど不透明（反射が強い）
-    // Depth Fade が大きい（深い）ときは浅い視線角でも不透明にする
-    float fresnelAlpha = lerp(gFresnelMinAlpha, gFresnelMaxAlpha, fresnel);
-    output.color.a     = max(fresnelAlpha, depthFade * gFresnelMaxAlpha);
+    // ---- 5. alpha は水面材質のベース値を維持しつつ、吸収量と Fresnel で不透明さを調整する ----
+    // 以前の max(baseAlpha, absorption) は baseAlpha=1 のとき常に 1 になりやすく、
+    // どの角度から見ても水中が見えない原因になっていた。
+    // ここではベースアルファを上限にし、浅瀬・正面視ではより透け、
+    // 深場・斜め視では不透明寄りになるようにする。
+    float opacityFromMedium = saturate(max(absorption, reflectanceWeight));
+    float minimumSurfaceAlpha = output.color.a * 0.35f;
+    output.color.a = saturate(lerp(minimumSurfaceAlpha, output.color.a, opacityFromMedium));
 
     // ---- 6. 反射色をブレンドする ----
     if (gReflectionEnabled)
     {
         float3 reflectColor = gReflectionTexture.Sample(gLinearClamp, screenUV).rgb;
-        output.color.rgb = lerp(output.color.rgb, reflectColor, fresnel * 0.7f);
+        output.color.rgb = lerp(output.color.rgb, reflectColor, reflectanceWeight);
     }
 
     return output;

@@ -139,11 +139,11 @@ namespace CoreEngine
 
     void LightManager::SetLightsToCommandList(
         ID3D12GraphicsCommandList* commandList,
-        UINT lightCountsRootParameterIndex,
-        UINT directionalLightsRootParameterIndex,
-        UINT pointLightsRootParameterIndex,
-        UINT spotLightsRootParameterIndex,
-        UINT areaLightsRootParameterIndex
+        int lightCountsRootParameterIndex,
+        int directionalLightsRootParameterIndex,
+        int pointLightsRootParameterIndex,
+        int spotLightsRootParameterIndex,
+        int areaLightsRootParameterIndex
     )
     {
         bufferManager_.SetToCommandList(

@@ -62,11 +62,11 @@ struct WaterFrameConstants {
     /// @brief 1 = 反射テクスチャ（gReflectionTexture）が有効、0 = IBL フォールバック
     int   reflectionEnabled = 0;
 
-    /// @brief Fresnel が 0（真上から見た時）のときの alpha 値（浅い角度 = 透明）
-    float fresnelMinAlpha = 0.05f;
+    /// @brief Fresnel 反射率のスケール値（反射ブレンドの強さ）
+    float fresnelReflectanceScale = 1.0f;
 
-    /// @brief Fresnel が 1（斜めから見た時）のときの alpha 値（浅い角度 = 不透明）
-    float fresnelMaxAlpha = 1.0f;
+    /// @brief 正面入射時の Fresnel 反射率 F0（水面の既定値は約 0.02）
+    float fresnelBaseReflectance = 0.02f;
 
     // ---- Depth Fade（Beer-Lambert 則）----
 
@@ -125,8 +125,8 @@ struct WaterPresetData {
     CoreEngine::Vector3 deepColor;    ///< 深場の水色
 
     // ---- Fresnel ----
-    float fresnelMinAlpha;          ///< Fresnel=0（真上）のときの alpha
-    float fresnelMaxAlpha;          ///< Fresnel=1（斜め）のときの alpha
+    float fresnelReflectanceScale;  ///< Fresnel 反射率スケール
+    float fresnelBaseReflectance;   ///< 正面入射時の反射率 F0
 
     // ---- レイヤー分け Gerstner Wave 生成設定 ----
     CoreEngine::Vector2 dominantDirection; ///< 主波向
@@ -146,13 +146,13 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
     static const WaterPresetData kLake = {
         "湖（静かな水）",
         16,
-        { 0.04f, 0.18f, 0.28f, 1.0f }, // baseColor
+        { 0.04f, 0.18f, 0.28f, 0.85f }, // baseColor
         0.03f,  // roughness
         0.0f,   // metallic
         0.8f,   // absorptionCoeff
         { 0.08f, 0.70f, 0.55f }, // shallowColor
         { 0.01f, 0.06f, 0.30f }, // deepColor
-        0.04f, 1.0f, // fresnelMinAlpha, fresnelMaxAlpha
+        1.0f, 0.02f, // fresnelReflectanceScale, fresnelBaseReflectance
         { 1.0f, 0.0f },
         1.4f,
         {
@@ -168,13 +168,13 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
     static const WaterPresetData kOcean = {
         "海（波が立つ水）",
         16,
-        { 0.03f, 0.12f, 0.22f, 1.0f },
+        { 0.03f, 0.12f, 0.22f, 0.88f },
         0.10f,
         0.0f,
         1.5f,
         { 0.05f, 0.55f, 0.60f },
         { 0.01f, 0.05f, 0.40f },
-        0.05f, 1.0f,
+        1.0f, 0.02f,
         { 0.95f, 0.25f },
         1.9f,
         {
@@ -190,13 +190,13 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
     static const WaterPresetData kPool = {
         "池・プール",
         16,
-        { 0.02f, 0.22f, 0.35f, 0.9f },
+        { 0.02f, 0.22f, 0.35f, 0.78f },
         0.01f,
         0.0f,
         2.0f,
         { 0.12f, 0.90f, 0.80f },
         { 0.02f, 0.10f, 0.50f },
-        0.02f, 1.0f,
+        1.0f, 0.02f,
         { 1.0f, 0.1f },
         1.0f,
         {
@@ -212,13 +212,13 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
     static const WaterPresetData kRain = {
         "雨水・水たまり",
         16,
-        { 0.06f, 0.10f, 0.15f, 0.85f },
+        { 0.06f, 0.10f, 0.15f, 0.72f },
         0.06f,
         0.0f,
         1.0f,
         { 0.15f, 0.35f, 0.40f },
         { 0.04f, 0.08f, 0.18f },
-        0.05f, 0.95f,
+        1.0f, 0.02f,
         { 0.8f, 0.2f },
         2.2f,
         {

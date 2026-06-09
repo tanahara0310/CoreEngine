@@ -152,7 +152,7 @@ void WaterTestScene::OnInitialize() {
     if (auto* mat = waterPlane_->GetModel()->GetMaterial()) {
         // 湖らしい深い青緑をベースカラーとして設定する
         // テクスチャが無くてもアルベドカラーで水の色感を出す
-        mat->SetColor({ 0.04f, 0.18f, 0.28f, 1.0f }); // 深い青緑
+        mat->SetColor({ 0.04f, 0.18f, 0.28f, 0.85f }); // 深い青緑
         mat->SetMetallic(0.0f);
         mat->SetRoughness(0.04f);  // 鏡面に近い（0.0 に近いほど鏡面反射が強くなる）
         mat->SetLightingEnabled(true);
@@ -249,6 +249,9 @@ void WaterTestScene::Draw() {
             // GBuffer パス完了後の深度ステンシルバッファの SRV を使用する
             waterPlane_->SetSceneDepthSRV(dxCommon->GetDepthStencilSRV());
 
+            // シーンカラー SRV を水面オブジェクトに渡す（水越しの背景色用）
+            waterPlane_->SetSceneColorSRV(dxCommon->GetOffScreenSrvHandle(0));
+
             // reflectionEnabled と depthFadeEnabled を含む最終状態を GPU バッファに反映する
             // （SetReflectionTexture が reflectionEnabled を更新するため、ここで再書き込みが必要）
             waterPlane_->UpdateFrameConstants();
@@ -292,9 +295,9 @@ void WaterTestScene::ApplyWaterPreset(WaterPresetType preset) {
     waterPlane_->SetWaterColors(p.shallowColor, p.deepColor);
 
     // ---- Fresnel ----
-    imguiFresnelMinAlpha_ = p.fresnelMinAlpha;
-    imguiFresnelMaxAlpha_ = p.fresnelMaxAlpha;
-    waterPlane_->SetFresnelAlpha(p.fresnelMinAlpha, p.fresnelMaxAlpha);
+    imguiFresnelReflectanceScale_ = p.fresnelReflectanceScale;
+    imguiFresnelBaseReflectance_ = p.fresnelBaseReflectance;
+    waterPlane_->SetFresnelParameters(p.fresnelReflectanceScale, p.fresnelBaseReflectance);
 
     // ---- Gerstner Wave ----
     if (imguiAutoRestoreRecommendedWaveCount_ || imguiLockRecommendedWaveCount_) {
@@ -323,9 +326,12 @@ void WaterTestScene::DrawWaterImGui() {
         return;
     }
 
-    // ===== PBR プリセット =====
-    if (ImGui::CollapsingHeader("PBR プリセット", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextDisabled("プリセットを選択するとPBR・波・UVパラメータが一括適用されます");
+    const WaterPresetType currentPreset = static_cast<WaterPresetType>(imguiPreset_);
+    const WaterPresetData& preset = GetWaterPresetData(currentPreset);
+    const bool reflectionEnabled = (waterPlane_->GetFrameConstants().reflectionEnabled != 0);
+
+    if (ImGui::CollapsingHeader("プリセット / クイック操作", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextDisabled("現在の水面実装で有効な設定だけをまとめています");
         ImGui::Spacing();
 
         static const char* kPresetNames[] = {
@@ -344,45 +350,45 @@ void WaterTestScene::DrawWaterImGui() {
         }
 
         if (imguiPreset_ != prevPreset) {
-            ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
+            ApplyWaterPreset(currentPreset);
         }
 
         ImGui::Spacing();
-        if (ImGui::Button("このプリセットを再適用")) {
-            ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
+        if (ImGui::Button("プリセットを再適用", ImVec2(-1.0f, 0.0f))) {
+            ApplyWaterPreset(currentPreset);
         }
 
-        if (ImGui::Checkbox("推奨波本数へ固定", &imguiLockRecommendedWaveCount_)) {
+        if (ImGui::Checkbox("推奨波本数に固定", &imguiLockRecommendedWaveCount_)) {
             if (imguiLockRecommendedWaveCount_) {
-                RestoreRecommendedWaveCount(static_cast<WaterPresetType>(imguiPreset_));
-                RegenerateLayeredWaves(static_cast<WaterPresetType>(imguiPreset_), ClampWaveCountToRange(imguiActiveWaveCount_));
+                RestoreRecommendedWaveCount(currentPreset);
+                RegenerateLayeredWaves(currentPreset, ClampWaveCountToRange(imguiActiveWaveCount_));
             }
         }
         ImGui::Checkbox("プリセット切替時に推奨本数へ戻す", &imguiAutoRestoreRecommendedWaveCount_);
         ImGui::Checkbox("波本数増加時に自動再生成", &imguiAutoGenerateOnWaveCountIncrease_);
-        if (ImGui::Button("レイヤー波を再生成")) {
-            RegenerateLayeredWaves(static_cast<WaterPresetType>(imguiPreset_), ClampWaveCountToRange(imguiActiveWaveCount_));
+        if (ImGui::Button("レイヤー波を再生成", ImVec2(-1.0f, 0.0f))) {
+            RegenerateLayeredWaves(currentPreset, ClampWaveCountToRange(imguiActiveWaveCount_));
         }
-    }
 
-    // ===== テクスチャモード =====
-    if (ImGui::CollapsingHeader("テクスチャモード", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextDisabled("水面のアルベドテクスチャ使用方法を切り替えます");
         ImGui::Spacing();
+        ImGui::SeparatorText("現在の状態");
+        ImGui::Text("プリセット推奨波本数: %u", preset.recommendedWaveCount);
+        ImGui::Text("反射 RTT: %s", reflectionEnabled ? "有効" : "未接続");
+        ImGui::Text("透過ソース: SceneColor");
+        ImGui::Text("波本数: %d / %u", imguiActiveWaveCount_, kMaxWaterWaveCount);
 
         const int prevMode = imguiTextureMode_;
-        ImGui::RadioButton("テクスチャなし（ベースカラーのみ）", &imguiTextureMode_, 0);
-        ImGui::RadioButton("アルベドテクスチャあり", &imguiTextureMode_, 1);
-
+        ImGui::SeparatorText("アルベド入力");
+        ImGui::RadioButton("ベースカラーのみ", &imguiTextureMode_, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton("アルベドテクスチャ使用", &imguiTextureMode_, 1);
         if (imguiTextureMode_ != prevMode) {
-            // アルベドテクスチャ: モード 1 のときのみ有効
-            // （WaterPlaneObject の albedoTextureName_ が設定されていれば読み込む）
             waterPlane_->SetAlbedoTextureEnabled(imguiTextureMode_ == 1);
         }
     }
 
-    // ===== マテリアル =====
-    if (ImGui::CollapsingHeader("マテリアル", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("見た目", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SeparatorText("サーフェス");
         if (ImGui::ColorEdit4("ベースカラー", imguiColor_)) {
             waterPlane_->SetBaseColor({ imguiColor_[0], imguiColor_[1], imguiColor_[2], imguiColor_[3] });
         }
@@ -395,33 +401,70 @@ void WaterTestScene::DrawWaterImGui() {
         if (ImGui::Checkbox("IBL 有効", &imguiIBLEnabled_)) {
             waterPlane_->SetIBLEnabled(imguiIBLEnabled_);
         }
+
+        ImGui::Spacing();
+        ImGui::SeparatorText("反射 / 透過");
+        ImGui::TextDisabled("透過は SceneColor、反射は planar reflection RTT を使用します");
+        bool fresnelChanged = false;
+        fresnelChanged |= ImGui::SliderFloat("反射率スケール", &imguiFresnelReflectanceScale_, 0.0f, 2.0f, "%.3f");
+        fresnelChanged |= ImGui::SliderFloat("F0（正面反射率）", &imguiFresnelBaseReflectance_, 0.0f, 0.10f, "%.4f");
+        if (fresnelChanged) {
+            waterPlane_->SetFresnelParameters(imguiFresnelReflectanceScale_, imguiFresnelBaseReflectance_);
+        }
+
+        ImGui::Spacing();
+        ImGui::SeparatorText("水の色と吸収");
+        ImGui::TextDisabled("浅瀬は背景が見えやすく、深場は吸収で水色が強くなります");
+        bool depthChanged = false;
+        depthChanged |= ImGui::Checkbox("Depth Fade 有効", &imguiDepthFadeEnabled_);
+        depthChanged |= ImGui::SliderFloat("吸収係数", &imguiAbsorptionCoeff_, 0.0f, 8.0f, "%.3f");
+        if (depthChanged) {
+            waterPlane_->SetDepthFade(imguiAbsorptionCoeff_, imguiDepthFadeEnabled_);
+        }
+
+        bool colorChanged = false;
+        colorChanged |= ImGui::ColorEdit3("浅瀬の色", imguiShallowColor_);
+        colorChanged |= ImGui::ColorEdit3("深場の色", imguiDeepColor_);
+        if (colorChanged) {
+            waterPlane_->SetWaterColors(
+                { imguiShallowColor_[0], imguiShallowColor_[1], imguiShallowColor_[2] },
+                { imguiDeepColor_[0],    imguiDeepColor_[1],    imguiDeepColor_[2] });
+        }
+
+        if (ImGui::TreeNode("Depth Fade デバッグ")) {
+            bool debugChanged = false;
+            debugChanged |= ImGui::Checkbox("デバッグ表示", &imguiDepthFadeDebugEnabled_);
+            debugChanged |= ImGui::SliderFloat("表示倍率", &imguiDepthFadeDebugScale_, 0.1f, 8.0f, "%.2f");
+            if (debugChanged) {
+                waterPlane_->SetDepthFadeDebug(imguiDepthFadeDebugEnabled_, imguiDepthFadeDebugScale_);
+            }
+            ImGui::TreePop();
+        }
     }
 
-    // ===== UV =====
-    if (ImGui::CollapsingHeader("UV スクロール / タイリング", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::CollapsingHeader("波とアニメーション", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SeparatorText("UV");
         if (ImGui::DragFloat2("スクロール速度 (U, V)", imguiScrollSpeed_, 0.001f, -1.0f, 1.0f, "%.4f")) {
             waterPlane_->GetScrollSpeed() = { imguiScrollSpeed_[0], imguiScrollSpeed_[1] };
         }
         if (ImGui::DragFloat2("タイリング (U, V)", imguiUVTiling_, 0.1f, 0.1f, 32.0f, "%.2f")) {
             waterPlane_->GetUVTiling() = { imguiUVTiling_[0], imguiUVTiling_[1] };
         }
-    }
 
-    // ===== Gerstner 波 =====
-    if (ImGui::CollapsingHeader("Gerstner 波パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Spacing();
+        ImGui::SeparatorText("Gerstner 波");
         const int prevActiveWaveCount = imguiActiveWaveCount_;
         if (ImGui::SliderInt("有効波本数", &imguiActiveWaveCount_, 1, static_cast<int>(kMaxWaterWaveCount))) {
             if (imguiLockRecommendedWaveCount_) {
-                RestoreRecommendedWaveCount(static_cast<WaterPresetType>(imguiPreset_));
+                RestoreRecommendedWaveCount(currentPreset);
             } else {
                 waterPlane_->SetActiveWaveCount(static_cast<uint32_t>(imguiActiveWaveCount_));
                 if (imguiAutoGenerateOnWaveCountIncrease_ && imguiActiveWaveCount_ > prevActiveWaveCount) {
-                    RegenerateLayeredWaves(static_cast<WaterPresetType>(imguiPreset_), ClampWaveCountToRange(imguiActiveWaveCount_));
+                    RegenerateLayeredWaves(currentPreset, ClampWaveCountToRange(imguiActiveWaveCount_));
                 }
             }
         }
 
-        const WaterPresetData& preset = GetWaterPresetData(static_cast<WaterPresetType>(imguiPreset_));
         ImGui::TextDisabled("推奨本数: %u", preset.recommendedWaveCount);
         const char* layerNames[kWaterWaveLayerCount] = { "大波", "中波", "小波" };
         for (uint32_t layerIndex = 0; layerIndex < kWaterWaveLayerCount; ++layerIndex) {
@@ -435,75 +478,28 @@ void WaterTestScene::DrawWaterImGui() {
                 layer.wavelengthMax);
         }
 
-        WaveParams* waves = waterPlane_->GetWaves();
-        for (uint32_t i = 0; i < kMaxWaterWaveCount; ++i) {
-            char label[32];
-            std::snprintf(label, sizeof(label), "波 %u", i);
-            if (ImGui::TreeNode(label)) {
-                float dir[2] = { waves[i].direction.x, waves[i].direction.y };
-                if (ImGui::DragFloat2("進行方向 (XZ)", dir, 0.01f, -1.0f, 1.0f)) {
-                    float len = std::sqrtf(dir[0] * dir[0] + dir[1] * dir[1]);
-                    if (len > 1e-4f) { dir[0] /= len; dir[1] /= len; }
-                    waves[i].direction = { dir[0], dir[1] };
+        if (ImGui::TreeNode("個別波の詳細編集")) {
+            WaveParams* waves = waterPlane_->GetWaves();
+            for (uint32_t i = 0; i < kMaxWaterWaveCount; ++i) {
+                char label[32];
+                std::snprintf(label, sizeof(label), "波 %u", i);
+                if (ImGui::TreeNode(label)) {
+                    float dir[2] = { waves[i].direction.x, waves[i].direction.y };
+                    if (ImGui::DragFloat2("進行方向 (XZ)", dir, 0.01f, -1.0f, 1.0f)) {
+                        float len = std::sqrtf(dir[0] * dir[0] + dir[1] * dir[1]);
+                        if (len > 1e-4f) { dir[0] /= len; dir[1] /= len; }
+                        waves[i].direction = { dir[0], dir[1] };
+                    }
+                    ImGui::DragFloat("振幅 (Amplitude)", &waves[i].amplitude, 0.01f, 0.0f, 5.0f);
+                    ImGui::DragFloat("波長 (Wavelength)", &waves[i].wavelength, 0.1f, 0.1f, 50.0f);
+                    ImGui::DragFloat("位相速度 (Speed)", &waves[i].speed, 0.05f, 0.0f, 10.0f);
+                    ImGui::DragFloat("急峻度 (Steepness)", &waves[i].steepness, 0.01f, 0.0f, 1.0f);
+                    ImGui::DragFloat("位相オフセット (Phase)", &waves[i].phaseOffset, 0.05f, -12.56f, 12.56f);
+                    ImGui::TreePop();
                 }
-                ImGui::DragFloat("振幅 (Amplitude)", &waves[i].amplitude, 0.01f, 0.0f, 5.0f);
-                ImGui::DragFloat("波長 (Wavelength)", &waves[i].wavelength, 0.1f, 0.1f, 50.0f);
-                ImGui::DragFloat("位相速度 (Speed)", &waves[i].speed, 0.05f, 0.0f, 10.0f);
-                ImGui::DragFloat("急峻度 (Steepness)", &waves[i].steepness, 0.01f, 0.0f, 1.0f);
-                ImGui::DragFloat("位相オフセット (Phase)", &waves[i].phaseOffset, 0.05f, -12.56f, 12.56f);
-                ImGui::TreePop();
             }
+            ImGui::TreePop();
         }
-    }
-
-    // ===== Depth Fade =====
-    if (ImGui::CollapsingHeader("Depth Fade（水深透過）", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextDisabled("水面より深い場所ほど光が吸収され不透明な水色になります");
-        ImGui::Spacing();
-        bool dfChanged = false;
-        dfChanged |= ImGui::Checkbox("Depth Fade 有効", &imguiDepthFadeEnabled_);
-        dfChanged |= ImGui::SliderFloat("吸収係数", &imguiAbsorptionCoeff_, 0.0f, 8.0f, "%.3f");
-        if (dfChanged) {
-            waterPlane_->SetDepthFade(imguiAbsorptionCoeff_, imguiDepthFadeEnabled_);
-        }
-        bool debugChanged = false;
-        debugChanged |= ImGui::Checkbox("Depth Fade デバッグ表示", &imguiDepthFadeDebugEnabled_);
-        debugChanged |= ImGui::SliderFloat("デバッグ表示倍率", &imguiDepthFadeDebugScale_, 0.1f, 8.0f, "%.2f");
-        if (debugChanged) {
-            waterPlane_->SetDepthFadeDebug(imguiDepthFadeDebugEnabled_, imguiDepthFadeDebugScale_);
-        }
-        ImGui::Spacing();
-        bool colorChanged = false;
-        colorChanged |= ImGui::ColorEdit3("浅瀬の色", imguiShallowColor_);
-        colorChanged |= ImGui::ColorEdit3("深場の色", imguiDeepColor_);
-        if (colorChanged) {
-            waterPlane_->SetWaterColors(
-                { imguiShallowColor_[0], imguiShallowColor_[1], imguiShallowColor_[2] },
-                { imguiDeepColor_[0],    imguiDeepColor_[1],    imguiDeepColor_[2] });
-        }
-    }
-
-    // ===== Fresnel =====
-    if (ImGui::CollapsingHeader("Fresnel 透過設定", ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::TextDisabled("視線が水面に対して垂直(真上)ほど透明に、斜めほど不透明になります");
-        ImGui::Spacing();
-        bool changed = false;
-        changed |= ImGui::SliderFloat("最小 Alpha（真上から）", &imguiFresnelMinAlpha_, 0.0f, 1.0f, "%.3f");
-        changed |= ImGui::SliderFloat("最大 Alpha（斜めから）", &imguiFresnelMaxAlpha_, 0.0f, 1.0f, "%.3f");
-        if (changed) {
-            waterPlane_->SetFresnelAlpha(imguiFresnelMinAlpha_, imguiFresnelMaxAlpha_);
-        }
-    }
-
-    // ===== 反射 =====
-    if (ImGui::CollapsingHeader("反射 / IBL")) {
-        // reflectionEnabled は SetReflectionTexture() が自動制御するため読み取り専用表示
-        const bool reflEnabled = (waterPlane_->GetFrameConstants().reflectionEnabled != 0);
-        ImGui::BeginDisabled();
-        bool tmp = reflEnabled;
-        ImGui::Checkbox("反射テクスチャ 有効（自動制御）", &tmp);
-        ImGui::EndDisabled();
-        ImGui::TextDisabled("WaterReflectionPass から自動で設定されます");
     }
 
     ImGui::End();
