@@ -75,10 +75,6 @@ private:
     bool  imguiDepthFadeDebugEnabled_ = false;      ///< Depth Fade デバッグ表示
     float imguiDepthFadeDebugScale_ = 1.5f;         ///< Depth Fade デバッグ表示倍率
 
-    /// @brief テクスチャ使用モード
-    /// 0 = テクスチャなし（ベースカラーのみ）
-    /// 1 = アルベドテクスチャあり
-    int imguiTextureMode_ = 1;
 #endif
 };
 

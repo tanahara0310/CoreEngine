@@ -19,9 +19,7 @@ class WaterPlaneObject : public CoreEngine::PrimitiveGameObject
 public:
     /// @param size 水面の一辺のサイズ（XZ 方向共通）
     /// @param resolution XZ 方向の分割数
-    /// @param albedoTextureName アルベドテクスチャのファイル名（空文字列の場合は単色）
-    WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64,
-        const std::string& albedoTextureName = {});
+    WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64);
 
     const char* GetObjectName() const override { return "WaterPlane"; }
 
@@ -78,10 +76,6 @@ public:
     /// @brief IBL を有効/無効にする
     void SetIBLEnabled(bool enable);
 
-    /// @brief アルベドテクスチャの表示を有効/無効にする
-    /// @param enable true のとき albedoTextureName_ のテクスチャをバインドする
-    void SetAlbedoTextureEnabled(bool enable);
-
     // ===== ゲッター =====
 
     /// @brief 波パラメータ配列への参照を返す（ImGui 直接編集用）
@@ -126,7 +120,7 @@ public:
     void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);
 
 protected:
-    std::string GetTexturePath() const override { return albedoTextureName_; }
+    std::string GetTexturePath() const override { return {}; }
 
     std::unique_ptr<CoreEngine::IPrimitiveMeshGenerator> CreateMeshGenerator() const override;
 
@@ -142,8 +136,6 @@ private:
 
     float    size_;
     uint32_t resolution_;
-
-    std::string albedoTextureName_;   ///< アルベドテクスチャのファイル名
 
     CoreEngine::Vector2 scrollSpeed_; ///< UV スクロール速度（U方向, V方向）
     CoreEngine::Vector2 uvTiling_;    ///< UV タイリング回数

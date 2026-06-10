@@ -138,10 +138,7 @@ void WaterTestScene::OnInitialize() {
     // ===== 水面グリッドメッシュ =====
     // サイズ 100 × 100、64×64 分割
     // 分割数が多いほど後のステップ（Gerstner Wave）で波の表現が細かくなる
-    // アルベドテクスチャ名だけ登録しておく（初期状態は非表示 = テクスチャなし）
-    // ImGui の「テクスチャモード」から「アルベドテクスチャあり」を選ぶと有効化される
-    // 空文字を渡すと white1x1.png がフォールバックされ、ベースカラーのみで描画される
-    waterPlane_ = CreateObject<WaterPlaneObject>(100.0f, 64, "waterAlbedo.jpg");
+    waterPlane_ = CreateObject<WaterPlaneObject>(100.0f, 64);
     waterPlane_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
     waterPlane_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
 
@@ -157,6 +154,10 @@ void WaterTestScene::OnInitialize() {
         mat->SetRoughness(0.04f);  // 鏡面に近い（0.0 に近いほど鏡面反射が強くなる）
         mat->SetLightingEnabled(true);
         mat->SetIBLEnabled(true);
+        mat->SetNormalMapEnabled(false);
+        mat->SetMetallicMapEnabled(false);
+        mat->SetRoughnessMapEnabled(false);
+        mat->SetAOMapEnabled(false);
     }
 
     // UV スクロール速度とタイリングを設定
@@ -183,10 +184,6 @@ void WaterTestScene::OnInitialize() {
 #ifdef USE_IMGUI
     ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
 
-    // 初期テクスチャモードを反映する（0 = テクスチャなし、1 = アルベドテクスチャあり）
-    // アルベドテクスチャは PrimitiveGameObject::Initialize() でロードされるが
-    // ここで表示有無だけをモードにそろえる
-    waterPlane_->SetAlbedoTextureEnabled(imguiTextureMode_ != 0);
 #endif
 }
 
@@ -377,14 +374,8 @@ void WaterTestScene::DrawWaterImGui() {
         ImGui::Text("透過ソース: SceneColor");
         ImGui::Text("波本数: %d / %u", imguiActiveWaveCount_, kMaxWaterWaveCount);
 
-        const int prevMode = imguiTextureMode_;
-        ImGui::SeparatorText("アルベド入力");
-        ImGui::RadioButton("ベースカラーのみ", &imguiTextureMode_, 0);
-        ImGui::SameLine();
-        ImGui::RadioButton("アルベドテクスチャ使用", &imguiTextureMode_, 1);
-        if (imguiTextureMode_ != prevMode) {
-            waterPlane_->SetAlbedoTextureEnabled(imguiTextureMode_ == 1);
-        }
+        ImGui::SeparatorText("サーフェス入力");
+        ImGui::TextDisabled("水面はテクスチャを使わず、手続き波面とマテリアル値のみで生成します");
     }
 
     if (ImGui::CollapsingHeader("見た目", ImGuiTreeNodeFlags_DefaultOpen)) {

@@ -18,11 +18,9 @@ static constexpr UINT kWaterCBSize =
 static constexpr UINT kFrameCBSize =
 (sizeof(WaterFrameConstants) + 255) & ~255u;
 
-WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution,
-    const std::string& albedoTextureName)
+WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution)
     : size_(size)
     , resolution_(resolution)
-    , albedoTextureName_(albedoTextureName)
     , scrollSpeed_({ 0.03f, 0.01f })
     , uvTiling_({ 4.0f, 4.0f })
     , uvOffset_({ 0.0f, 0.0f }) {
@@ -247,18 +245,6 @@ void WaterPlaneObject::SetMetallic(float metallic) {
 void WaterPlaneObject::SetIBLEnabled(bool enable) {
     auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
     if (mat) { mat->SetIBLEnabled(enable); }
-}
-
-void WaterPlaneObject::SetAlbedoTextureEnabled(bool enable) {
-    if (enable && !albedoTextureName_.empty()) {
-        // アルベドテクスチャをロードして texture_ に設定する
-        texture_ = CoreEngine::TextureManager::GetInstance().Load(albedoTextureName_);
-    } else {
-        // ptr を 0 にすることで white1x1.png フォールバックになり、
-        // albedo = color.rgb * (1,1,1) = color.rgb（ベースカラーのみ）となる
-        texture_.gpuHandle = { 0 };
-        texture_.texture.Reset();
-    }
 }
 
 void WaterPlaneObject::UpdateUVScroll(float deltaTime) {

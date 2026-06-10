@@ -1,117 +1,149 @@
-# リアルな水面表現 — 実装ロードマップ
+# 物理ベース水面表現ロードマップ
 
 > **対象環境:** C++ / DirectX 12  
-> **方針:** 動くだけの最小実装から始め、段階的に水面品質を高める  
-> **目標:** 海の大規模表現ではなく、近景で破綻しにくい水面品質を段階的に仕上げる
+> **主目標:** リアルタイムで破綻しにくい物理ベース水面を段階的に構築する  
+> **最終到達点:** ラスタライズ中心の水面表現を、最終的にレイトレーシングを含むハイブリッド水面へ発展させる
+
+---
+
+## このロードマップの考え方
+
+このドキュメント群は、単に「見た目がそれっぽい水」を作るためのものではない。  
+**反射・透過・吸収・散乱・屈折・泡・水中光**を、リアルタイム表現として段階的に整合させていくための実装計画である。
+
+ここで言う「物理的に正しい」は、オフラインレンダラの厳密解をそのまま再現する意味ではない。  
+本プロジェクトでは以下の 3 段階で整理する。
+
+1. **物理に反しない近似**  
+   Fresnel、Beer-Lambert、深度差、反射/透過のエネルギー配分を崩さない
+2. **リアルタイム向けの高忠実度近似**  
+   SSR、簡易屈折、泡、コースティクス、FFT Ocean を統合する
+3. **最終段の高忠実度実装**  
+   レイトレーシングを用いた反射・屈折・水中減衰・水中影を統合する
 
 ---
 
 ## 全体フロー
 
-| Step | タイトル | 状態 | 詳細ドキュメント |
-|------|----------|:----:|----------------|
-| 1 | グリッドメッシュの生成と表示 | ✅ 完了 | [Step1_GridMesh.md](Step1_GridMesh.md) |
-| 2 | UV スクロール（流れるだけの水） | ✅ 完了 | [Step2_UVScroll.md](Step2_UVScroll.md) |
-| 3 | Gerstner Wave（頂点変位による波） | ✅ 完了 | [Step3_GerstnerWave.md](Step3_GerstnerWave.md) |
-| 4 | Planar Reflection + Fresnel（反射） | ✅ 完了 | [Step4_PlanarReflection.md](Step4_PlanarReflection.md) |
-| 5 | Normal Map + PBR ライティング | 🔄 進行中 | [Step5_NormalMap_PBR.md](Step5_NormalMap_PBR.md) |
-| 6 | 法線再整合 + Fresnel + Depth Fade + 浅瀬色 | ⬜ 未着手 | [Step6_SurfaceShading.md](Step6_SurfaceShading.md) |
-| 7 | Foam（岸際の泡） | ⬜ 未着手 | [Step7_Foam.md](Step7_Foam.md) |
-| 8 | Caustics（浅瀬の揺れる光） | ⬜ 未着手 | [Step8_Caustics.md](Step8_Caustics.md) |
-| 9 | SSR（補助反射） | ⬜ 未着手 | [Step9_SSR.md](Step9_SSR.md) |
-| 10 | 調整 UI / デバッグ / プリセット整理 | ⬜ 未着手 | [Step10_Tuning_Debug.md](Step10_Tuning_Debug.md) |
+| Step | タイトル | 役割 | 詳細ドキュメント |
+|------|----------|------|------------------|
+| 1 | 水面メッシュと空間基準の整備 | 水面表現の幾何基盤 | [Step1_GridMesh.md](Step1_GridMesh.md) |
+| 2 | 時間変化と位相管理 | 波・屈折・泡に共通する時間基盤 | [Step2_UVScroll.md](Step2_UVScroll.md) |
+| 3 | Gerstner Wave と解析法線 | 近景水面の手続き波面 | [Step3_GerstnerWave.md](Step3_GerstnerWave.md) |
+| 4 | 反射基盤（Planar Reflection / IBL） | 反射経路の土台 | [Step4_PlanarReflection.md](Step4_PlanarReflection.md) |
+| 5 | 表面 BRDF/BTDF と材質校正 | 水面を PBR 的に扱うための基礎 | [Step5_NormalMap_PBR.md](Step5_NormalMap_PBR.md) |
+| 6 | 透過・吸収・屈折の主線 | 物理ベース水面の中心 | [Step6_SurfaceShading.md](Step6_SurfaceShading.md) |
+| 6B | FFT Ocean 分岐 | 大規模海面向けの発展経路 | [Step6_FFTOcean.md](Step6_FFTOcean.md) |
+| 7 | Foam | 波の崩れ・岸際・交差部のエネルギー散逸表現 | [Step7_Foam.md](Step7_Foam.md) |
+| 8 | Caustics / Underwater Lighting | 水中への光伝播表現 | [Step8_Caustics.md](Step8_Caustics.md) |
+| 9 | SSR と反射統合 | 反射品質の補完とハイブリッド化 | [Step9_SSR.md](Step9_SSR.md) |
+| 10 | デバッグ / 検証 / RT 最終段 | 品質保証とレイトレ到達点の整理 | [Step10_Tuning_Debug.md](Step10_Tuning_Debug.md) |
 
 ---
 
-## 現在地と次にやるべきこと
+## 目指す見え方
 
-### 完了済み
-- 平面メッシュ（64×64 分割）の生成・表示
-- UV スクロール + タイリング
-- Gerstner Wave による頂点変位（多波重ね合わせ）
-- Planar Reflection（平面反射 RTT）+ Schlick Fresnel ブレンド
-- Water 専用シェーダー（`Water.VS.hlsl` / `Water.PS.hlsl`）
-- IBL フォールバック（反射 RTT 未設定時は `gPrefilteredMap` を使用）
-- ImGui からの全パラメータ動的変更（ベースカラー / Roughness / Metallic / IBL / UV / 波 / テクスチャモード）
-- テクスチャなし / ノーマルマップのみ / アルベド+ノーマル の3モード切り替え
-- Depth Fade / 吸収係数 / 浅瀬色 / 深場色の基礎実装
+### 必須要件
+- 真上視点では水中が見えやすい
+- 斜め視点では反射が強くなる
+- 浅瀬では明るく、深場では吸収が強くなる
+- 水面の色が背景を二重に暗くしない
+- 岸際・障害物との接点に説得力がある
+- 空と近景オブジェクトの反射が分離して考えられる
 
-### Step 5 で行うこと（次のステップ）
-Step 4 までで「動いて反射する水」は完成した。  
-Step 5 では **近景の水面品質** に踏み込む。具体的には以下を整備する：
-
-1. **ノーマルマップの二重スクロール** — 方向・速度の異なる 2 枚のノーマルマップを重ね合わせ、表面の細かい揺らぎをより自然に見せる
-2. **PBR パラメータの微調整** — Roughness / Metallic / IBL 強度を用途別に整理し、水らしい反射バランスを作る
-3. **ノーマル強度と波表面の密度感調整** — 近景でプラスチック状に見えないように整える
-4. **品質確認観点の整理** — 水面品質の確認ポイントを Step ごとに残せる状態にする
-
-詳細 → [Step5_NormalMap_PBR.md](Step5_NormalMap_PBR.md)
-
-### Step 6 以降の方針
-
-- **Step 6** で法線再整合・Fresnel の見直し・Depth Fade・浅瀬/深場色をまとめて整備する
-- **Step 7** で岸際フォームを追加し、水際の切れ目感を減らす
-- **Step 8** で浅瀬限定の Caustics を追加する
-- **Step 9** で SSR を補助反射として追加する
-- **Step 10** で ImGui / デバッグ表示 / プリセット整理を行う
-
-### 非目標
-
-今回の主目標には以下を含めない。
-
-- FFT Ocean のような海専用の大規模波シミュレーション
-- 外洋の遠景スケール表現
-- 荒天時の高波や砕波主体の海演出
+### 最終要件
+- 平面反射、SSR、環境反射、必要に応じて RT 反射を統合できる
+- 水面下オブジェクトが屈折・減衰・散乱の影響を受けて見える
+- 波の崩れや泡、浅瀬のコースティクスまで一貫して説明できる
+- 画面上の水面が「色を貼った透明板」ではなく、光学的な境界面として扱われる
 
 ---
 
-## アーキテクチャ概要
+## 実装方針
 
-```
-WaterTestScene
-  ├─ WaterPlaneObject          // GameObject: 水面メッシュ + 波CB + フレームCB
-  │    ├─ Water.VS.hlsl        // 頂点シェーダー: Gerstner Wave 変位 + SV_ClipDistance
-  │    └─ Water.PS.hlsl        // ピクセルシェーダー: PBR + Fresnel + 反射/IBL
-  └─ WaterReflectionPass       // 反射パス: 鏡像カメラ → オフスクリーン RTT
-```
+### 1. 幾何は手続き生成を主軸にする
+- 近景水面は **Gerstner Wave** を主線とする
+- 海面スケールが必要な場合のみ **FFT Ocean** 分岐へ進む
+- 水面専用ノーマルマップには依存しない
 
-| クラス / ファイル | 役割 |
-|-----------------|------|
-| `WaterPlaneObject` | 水面専用 GameObject。波・UV・反射・マテリアルを統合管理 |
-| `WaterConstantBuffer.h` | `WaveParams` / `WaterConstants` / `WaterFrameConstants` の HLSL 対応 C++ 定義 |
-| `WaterReflectionPass` | 平面反射用オフスクリーン RTT の生成・描画を管理 |
-| `Water.VS.hlsl` | Gerstner Wave 頂点変位、SV_ClipDistance0 によるクリップ制御 |
-| `Water.PS.hlsl` | PBR フォワード + Schlick Fresnel + Planar Reflection / IBL フォールバック |
+### 2. 表面と体積を分けて考える
+- **表面:** Fresnel、roughness、反射、屈折方向
+- **体積:** Beer-Lambert 吸収、散乱、浅瀬/深場の色変化
 
----
+### 3. 反射経路は段階的に統合する
+- 最初は Planar Reflection + IBL
+- 次に SSR を追加して画面内反射を補う
+- 最終的に RT 反射 / RT 屈折を到達点とする
 
-## 実装スケジュール目安
-
-```
-Week 1    : Step 1（メッシュ生成）+ Step 2（UV スクロール）  ✅
-Week 2    : Step 3（Gerstner Wave）                         ✅
-Week 3    : Step 4（Planar Reflection + Fresnel）            ✅
-Week 4    : Step 5（Normal Map + PBR 品質向上）              🔄
-Week 5    : Step 6（法線再整合 + Depth Fade + 浅瀬色）
-Week 6    : Step 7（Foam）
-Week 7    : Step 8（Caustics）
-Week 8    : Step 9（SSR）
-Week 9    : Step 10（UI / デバッグ / プリセット整理）
-```
+### 4. 色は線形空間で扱う前提を崩さない
+- Fresnel は反射率として扱う
+- alpha は UI 都合ではなく、最終ブレンドとの整合で決める
+- 背景 SceneColor を使う場合も、二重減衰を起こさない構成を優先する
 
 ---
 
-## 参考リソース
+## 現時点の優先順位
 
-| リソース | 内容 |
+### 第1段階: リアルタイムで破綻しない物理ベース基礎
+- 手続き波面
+- 解析法線
+- Planar Reflection
+- Fresnel
+- Beer-Lambert 吸収
+- SceneColor を使った透過整合
+
+### 第2段階: 高忠実度化
+- 簡易屈折
+- RGB 吸収
+- Foam
+- Caustics
+- SSR
+- FFT Ocean 分岐
+
+### 第3段階: 最終到達点
+- RT Reflection
+- RT Refraction
+- 水中シャドウ / 水中減衰
+- 波面と RT 経路の整合
+- ハイブリッド反射の品質最適化
+
+---
+
+## 非目標
+
+以下は主線より後ろに置く。
+
+- 物理整合を無視した演出優先の色付け
+- 水面専用ノーマルマップ前提の表現設計
+- 近景品質を犠牲にしたまま大規模海面だけを先行すること
+
+---
+
+## 参考理論
+
+| リソース | 用途 |
 |---------|------|
-| Simulating Ocean Water (Tessendorf 2001) | FFT Ocean の数式・理論の出典となる学術文書 |
-| GPU Gems 2 - Chapter 18: Water Flow | NVIDIA GPU Gems 2 の水面実装解説 |
-| DirectX 12 公式ドキュメント | https://learn.microsoft.com/ja-jp/windows/win32/direct3d12/directx-12-programming-guide |
-| DirectX 12 サンプル (Microsoft) | https://github.com/microsoft/DirectX-Graphics-Samples |
-| Real-Time Rendering 4th Edition | PBR・SSR・水面の理論的基盤 |
-| Book of Shaders | シェーダー数学の基礎: https://thebookofshaders.com |
+| Real-Time Rendering 4th Edition | BRDF / BTDF / Fresnel / SSR / volume の整理 |
+| Physically Based Rendering: From Theory to Implementation | 表面反射・透過・体積の基礎 |
+| Tessendorf 2001 | FFT Ocean と海洋スペクトル理論 |
+| GPU Gems / GPU Pro 系記事 | リアルタイム水面の実装近似 |
+| DirectX 12 公式ドキュメント | 実装基盤 |
 
 ---
 
-*最終更新: 2026年5月*
+## 最終到達点
+
+このロードマップの最高地点は、
+
+- **ラスタライズで構築した水面基盤**
+- **SSR / Planar / IBL のハイブリッド反射**
+- **レイトレーシングによる反射・屈折・水中減衰**
+
+を統合した **ハイブリッド物理ベース水面** である。
+
+レイトレーシングは単なる追加機能ではなく、
+**画面外反射・正しい屈折経路・水中シャドウ・複雑な反射経路** を扱うための最終段として位置付ける。
+
+---
+
+*最終更新: 2026年6月*

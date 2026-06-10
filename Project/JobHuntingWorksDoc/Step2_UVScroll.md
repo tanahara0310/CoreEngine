@@ -1,87 +1,77 @@
-# Step 2 : UV スクロール（流れるだけの水）
+# Step 2 : ���ԕω��ƈʑ��Ǘ�
 
-> **状態:** ✅ 完了  
-> **目的:** テクスチャの UV 座標を時間でオフセットし、水が流れているように見せる  
-> **位置付け:** メッシュ形状には変化なし。視覚的な「動き」を最小コストで加える最初のステップ
-
----
-
-## 目標
-
-- CPU から GPU へ `time`（経過時間）を Constant Buffer で毎フレーム送る
-- Pixel Shader 上で `uv += time * speed` を計算してスクロールを実現する
-- 2 方向・2 速度の UV スクロールを重ね合わせて単調さを取り除く
-- テクスチャは `D3D12_TEXTURE_ADDRESS_MODE_WRAP` でタイリング設定する
+> **���:** �݌v�X�V�ς�  
+> **�ړI:** �g�A�A�A�R�[�X�e�B�N�X�A���܂�炬�ɋ��ʂ��鎞�Ԋ�Ղ𐮂���  
+> **�ʒu�t��:** �P�Ȃ� UV �X�N���[���ł͂Ȃ��A���ʓ��̎��ϗv�f����т��ĊǗ����邽�߂̊�b�X�e�b�v
 
 ---
 
-## アルゴリズム
+## ���̃X�e�b�v�̖���
 
-### UV スクロール計算
+�]���̐��ʎ����ł� UV �X�N���[���́u����Č����邽�߂̊ȈՉ��o�v�ŏI���₷���B  
+�����������x�[�X���ʂł́A���Ԃ͈ȉ��𓯊��������ՂɂȂ�B
 
-```
-毎フレーム:
-  uvOffset += scrollSpeed * deltaTime
-  uvOffset = fmod(uvOffset, 1.0f)   // 0〜1 に折り返す（精度劣化防止）
-
-Pixel Shader:
-  float2 uv = input.texcoord * tiling + uvOffset
-  float4 color = texture.Sample(sampler, uv)
-```
-
-### 2 枚重ね合わせの効果
-
-方向・速度が異なる UV スクロールを 2 回サンプリングして合成すると、  
-規則的な繰り返しが崩れ、より自然な「水面の揺らぎ感」が生まれる。
-
-```
-uv1 = texcoord * tiling + float2(time * speed1.x, time * speed1.y)
-uv2 = texcoord * tiling + float2(time * speed2.x, time * speed2.y)
-color = lerp(sample(uv1), sample(uv2), 0.5)
-```
+- Gerstner Wave �̈ʑ��i�s
+- �\�ʂ̔��ׂ�炬
+- �A�̎����ƈړ�
+- �R�[�X�e�B�N�X�̃A�j���[�V����
+- ���܂�炬�̎��ԕω�
 
 ---
 
-## 使用技術
+## �ڕW
 
-| 技術名 | 役割 |
-|--------|------|
-| **UV スクロール** | `uv += time * speed` で毎フレームテクスチャ座標をずらす最もシンプルな水の動き |
-| **Tiling（テクスチャタイリング）** | `uv * tiling` で 1 枚のテクスチャを大きな水面に対応させる |
-| **Constant Buffer（cbuffer）** | CPU → GPU へ毎フレーム値（時間・その他）を渡す定数バッファ。D3D12 では **256 バイトアライメント**が必要 |
-| **Sampler State（サンプラーステート）** | テクスチャのフィルタリング方法・ラッピング方法を設定するオブジェクト。タイリングには `D3D12_TEXTURE_ADDRESS_MODE_WRAP` を使用 |
+- `time` �� GPU �ɖ��t���[����������
+- �ʑ��i�s�ƌ����ڗp�X�N���[���𕪗����ĊǗ�����
+- UV �ω����u�ގ��̗���v�ł͂Ȃ��u�⏕�I�Ȏ��ϐM���v�Ƃ��Ĉ���
+- �����I�ȋ��܁E�A�E�R�[�X�e�B�N�X�ł����ꎞ�Ԍn���Q�Ƃł���悤�ɂ���
 
 ---
 
-## D3D12 実装上の注意点
+## �����x�[�X���_�ł̐���
 
-### Constant Buffer の 256 バイトアライメント
+### 1. �g�̎�^���� UV �ł͂Ȃ��􉽕ψʂŕ\������
+- ��ǓI�Ȕg�ʉ^���� Step 3 �̔g�ʕψʂ��S��
+- Step 2 �̖����́A��^����⏕����ʑ��E��炬�Ǘ�
 
-D3D12 では Constant Buffer のサイズを **256 バイト境界に揃える** 必要がある。  
-`CreateCommittedResource` で Upload ヒープを確保し、データの更新は `Map / Unmap` で行う。  
-D3D11 の `UpdateSubresource` に直接対応する API は存在しないため注意。
+### 2. UV �X�N���[���́u���̂��̂��́v�ł͂Ȃ�
+- �e�N�X�`��������邱�ƂƁA���򂪈ړ����邱�Ƃ͓��`�ł͂Ȃ�
+- ���̂��߁AUV �X�N���[���͕⏕�M���ƈʒu�t����
 
-```
-// アライメント計算式
-UINT alignedSize = (sizeof(MyConstantBuffer) + 255) & ~255u;
-```
-
-### サンプラーのアドレスモード
-
-テクスチャをタイリングするには以下の設定が必要：
-
-```
-D3D12_TEXTURE_ADDRESS_MODE_WRAP  // UV が 0〜1 を超えると折り返す
-```
+### 3. ���Ԃ̈�ѐ����d�v
+- �g�����i�݁A�A��R�[�X�e�B�N�X�����~�܂��Ԃ͔�����
+- ���ׂĂ̎��ϗv�f�𓯂�����Ԃ���h��������
 
 ---
 
-## 確認ポイント
+## �����v�f
 
-- [x] テクスチャが流れるように動いている
-- [x] `tiling` 値を変えるとテクスチャの繰り返し回数が変わる
-- [x] 複数方向にスクロールすると複雑さが増す
+| �v�f | ���e |
+|------|------|
+| Frame time | ���t���[���̌o�ߎ��� |
+| Global phase | �g����܂̈ʑ��Ǘ� |
+| UV transform | �⏕�I�ȗ����m�C�Y�A�j���[�V���� |
+| Wrap / repeat | �����Ԏ��s���̐��x�ێ� |
+| Shared time source | �A�E�R�[�X�e�B�N�X�E���܂Ƃ̓��� |
 
 ---
 
-*[← Step 1 グリッドメッシュ](Step1_GridMesh.md) | [次: Step 3 Gerstner Wave →](Step3_GerstnerWave.md)*
+## �������j
+
+- `elapsedTime` �� `deltaTime` �𕪂��Ĉ���
+- UV �I�t�Z�b�g�͓�����ԂƂ��Ď����A�����I�ɐ܂�Ԃ�
+- �g�̈ʑ��i�s�͔g���E���x����v�Z���A�P�Ȃ�X�N���[�����x�ɒu�������Ȃ�
+- ���Ԉˑ��̃m�C�Y�͔g�ƓƗ��Ɏ����A�������Ԍn���瓱�o����
+
+---
+
+## ��������
+
+- [ ] GPU �Ɏ��Ԃ����t���[���n��
+- [ ] UV �I�t�Z�b�g�Ɣg�̈ʑ�����������Ă���
+- [ ] �����ԓ���ł��l���j�]���Ȃ�
+- [ ] �㑱�̖A�E�R�[�X�e�B�N�X�E���܂��������Ԍn���Q�Ƃł���
+
+---
+
+*[(�� Step 1 ���ʃ��b�V���Ƌ�Ԋ)](Step1_GridMesh.md) | [��: Step 3 Gerstner Wave �Ɖ�͖@�� ��](Step3_GerstnerWave.md)*

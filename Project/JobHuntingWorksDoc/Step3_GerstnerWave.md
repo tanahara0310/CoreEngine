@@ -1,116 +1,95 @@
-# Step 3 : Gerstner Wave（頂点変位による波）
+# Step 3 : Gerstner Wave �Ɖ�͖@��
 
-> **状態:** ✅ 完了  
-> **目的:** 物理ベースの波形「Gerstner Wave」により頂点を変位させ、立体的な波を作る  
-> **位置付け:** メッシュ形状そのものが変化する最初のステップ。波の「動き」が生まれる
-
----
-
-## 目標
-
-- Vertex Shader 上で Gerstner Wave の数式を計算し、各頂点を XYZ 方向に変位させる
-- 最大 4 本の波を重ね合わせ、複雑な波面を表現する
-- 法線・接線を変位後の座標から再計算し、ライティングを正確にする
-- 波のパラメータ（振幅・波長・速度・急峻度・方向）を Constant Buffer で GPU に渡す
+> **���:** �݌v�X�V�ς�  
+> **�ړI:** �葱���I�Ȕg�ʌ`��ƁA���̔g�ʂɐ��������͖@�����\�z����  
+> **�ʒu�t��:** �ߌi���ʂ̎���B�ȍ~�̔��ˁE���߁E���ܕi�������߂�d�v�X�e�b�v
 
 ---
 
-## アルゴリズム
+## ���̃X�e�b�v�̖���
 
-### Gerstner Wave の変位計算
+�����x�[�X���ʂōŏ��ɐ���������ׂ��Ȃ̂́A
+**���˂�F�t���ł͂Ȃ��A�������g�ʌ`��Ɩ@��** �ł���B
 
-Gerstner Wave は海洋学的に正確な波形で、横方向の変位（Steepness）を含む点が正弦波と異なる。
+���ʂ̌������͍ŏI�I�Ɉȉ��֔g�y����B
 
-```
-各波のパラメータ:
-  D   = 進行方向（XZ平面の単位ベクトル）
-  A   = 振幅（波の高さ）
-  L   = 波長（山から山の距離）
-  S   = 位相速度（波が進む速さ）
-  Q   = 急峻度（0 = 正弦波、1 = 完全 Gerstner）
-
-導出される値:
-  k   = 2π / L          （波数）
-  ω   = S * k            （角周波数）
-  φ   = k * dot(D, xz) - ω * time  （位相）
-
-変位:
-  ΔX = Q * A * D.x * cos(φ)
-  ΔZ = Q * A * D.z * cos(φ)
-  ΔY = A * sin(φ)
-```
-
-### 法線・接線の再計算
-
-頂点変位後は法線を再計算しないとライティングがおかしくなる。  
-各波の偏微分を合算して法線・接線を更新する。
-
-```
-接線方向（X 軸）の偏微分:
-  ΔTx.x += Q * A * D.x * D.x * (-sin(φ)) * k
-  ΔTx.y += A * D.x * cos(φ) * k
-  ΔTx.z += Q * A * D.x * D.z * (-sin(φ)) * k
-
-法線:
-  normal = normalize(cross(tangent, bitangent))
-```
+- Fresnel �̊p�x�ˑ�
+- Planar Reflection �̌�����
+- IBL �̔��˕���
+- ���ܕ����̂�炬
+- �A��Ӕg�̔�������
 
 ---
 
-## 使用技術
+## �ڕW
 
-| 技術名 | 役割 |
-|--------|------|
-| **Gerstner Wave** | 海洋学的に正確な波形モデル。正弦波と異なり横方向の変位（Steepness）を含み、尖った波頭と丸い波谷を表現できる |
-| **Vertex Displacement（頂点変位）** | Vertex Shader 上で頂点座標を動的に変更する手法。GPU 上で計算するため CPU 負荷はほぼゼロ |
-| **Wave Superposition（波の重ね合わせ）** | 複数の異なるパラメータの波を加算することで複雑な波面を生成する |
-| **Normal Recalculation（法線再計算）** | 変位後の頂点座標から偏微分を使って法線・接線を再計算する。ライティングの正確さに直結する |
-| **Custom Shader Pipeline** | 水面専用の VS / PS を独立した PSO として構築し、標準シェーダーとは分離する |
+- Gerstner Wave �ɂ�� XYZ �ψʂ���������
+- �����g���d�ˍ��킹�ĒP���Ȑ����g�������炷
+- �Δ��������͖@�����č\������
+- �g�����A�g���A�U���A���x�A�}�s�x���\�������ĊǗ�����
+- �葱���g�ʂ�����̕����x�[�X�\���̖@���\�[�X�ɂ���
 
 ---
 
-## 波パラメータの設計（WaveParams 構造体）
+## �Ȃ���͖@�����K�v��
 
-```cpp
-struct WaveParams {
-    Vector2 direction;  // 進行方向（XZ, 正規化済み）
-    float   amplitude;  // 振幅（波の高さ）
-    float   wavelength; // 波長（山から山の距離）
-    float   speed;      // 位相速度（波が進む速さ）
-    float   steepness;  // 横揺れ係数 Q（0=正弦波, 1=完全Gerstner）
-    float   padding[2]; // 16 バイトアライメント用
-};
-// sizeof(WaveParams) == 32 であることを static_assert で保証する
-```
+���ʂł͖@�������̑S�ĂɌ����B
 
-HLSL 側の `WaveParams` 構造体とメモリレイアウトを一致させる必要がある。  
-パディングの有無・順序に注意すること。
+- BRDF �̋��ʔ���
+- Fresnel �̌�����
+- SSR / RT ���˕���
+- ���܃I�t�Z�b�g
+- �R�[�X�e�B�N�X��A�̔����⏕
+
+���̂��߁A���ʖ@���̂܂܂ł́u���炵�����ˁv�Ɍ������A
+�m�[�}���}�b�v�����ɗ���Ɗ􉽂Ƃ̕s�������N���₷���B
 
 ---
 
-## D3D12 実装上の注意点
+## �����x�[�X�ϓ_�̃|�C���g
 
-- **GBuffer パスではカスタムシェーダーが実行されない**  
-  Gerstner Wave が動作するには Forward パスで描画する必要がある。  
-  `BlendMode::kBlendModeNormal` を設定して GBuffer をバイパスすること。
+### 1. �g�ʂƖ@���͓������f�����瓱�o����
+- �ψʂ� Gerstner�A�@���͕ʃm�[�}���}�b�v�A�Ƃ��������͔�����
+- ���ꐔ������Δ��������A�@�����č\������
 
-- **gInstanceData の RootDescriptor 化**  
-  カスタム RootSignature では `gInstanceData` を `RootDescriptor`（SRV）として扱う必要がある。  
-  `DescriptorTable` のままでは `SetGraphicsRootShaderResourceView` と不整合になりクラッシュする。
+### 2. �g�̊K�w�\��������
+- ��g: �V���G�b�g�Ƒ�Ǖό`
+- ���g: ���˂̕ω���
+- ���g: �\�ʏ���
 
-- **カスタム RS 切り替え後のシーンリソース再バインド**  
-  `SetGraphicsRootSignature` を呼ぶと以前のすべての root バインドが無効になる。  
-  カメラ・ライト・IBL など共通リソースの再バインド処理が必要。
-
----
-
-## 確認ポイント
-
-- [x] 水面の頂点が上下・横方向に動いている
-- [x] 複数波の重ね合わせで複雑な波面になっている
-- [x] 法線再計算によりライティングが波形に追従している
-- [x] ImGui から振幅・波長・速度・急峻度・方向をリアルタイム変更できる
+### 3. �ߌi�d���̒�����D�悷��
+- �g���𑝂₷���Ǝ��̂��ړI�ł͂Ȃ�
+- �ߌi�Ŕ��ˁE���߂��j�]���Ȃ����Ƃ�D�悷��
 
 ---
 
-*[← Step 2 UV スクロール](Step2_UVScroll.md) | [次: Step 4 Planar Reflection →](Step4_PlanarReflection.md)*
+## �����v�f
+
+| �v�f | ���e |
+|------|------|
+| Gerstner displacement | XYZ �̔g�ʕψ� |
+| Wave superposition | ���g�d�ˍ��킹 |
+| Analytic derivatives | �Δ����ɂ��ڐ�/�]�@���̓��o |
+| Reconstructed normal | cross �ɂ���͖@�� |
+| Structured wave parameters | �g���E�U���E���x�E�����E�}�s�x�̊Ǘ� |
+
+---
+
+## FFT Ocean �Ƃ̊֌W
+
+���� Step �͋ߌi���ʂ̎���ł���AFFT Ocean ��ے肷����̂ł͂Ȃ��B  
+**Step 6B (FFT Ocean)** �͑�K�͊C�ʗp�̔��W����Ƃ��Ĉ����A�ߌi�i���̎���͂܂� Gerstner Wave �Ōł߂�B
+
+---
+
+## ��������
+
+- [ ] ���ʌ`�󂪎葱���I�ɕψʂ��Ă���
+- [ ] ���˂ƃ��C�e�B���O���g�`�ɒǏ]���Ă���
+- [ ] �@�������ʌŒ�ł͂Ȃ���͓I�ɍč\������Ă���
+- [ ] �g�p�����[�^��p�r�ʂɐ���ł���
+- [ ] �㑱�� Fresnel / ���� / �A�����̖@���𗘗p�ł���
+
+---
+
+*[(�� Step 2 ���ԕω��ƈʑ��Ǘ�)](Step2_UVScroll.md) | [��: Step 4 ���ˊ�� ��](Step4_PlanarReflection.md)*
