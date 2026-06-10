@@ -25,7 +25,6 @@
 
 // レンダーパス
 #include "Graphics/Render/Pass/RenderPipeline.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Render/Pass/ShadowMapPass.h"
 #include "Graphics/Render/Pass/GBufferPass.h"
 #include "Graphics/Render/Pass/SSAOPass.h"
@@ -226,6 +225,7 @@ namespace CoreEngine
         context.shadowMapManager = renderDomainContext_ ? renderDomainContext_->GetShadowMapManager() : nullptr;
         context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
+        context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
 
         // RenderTargetManagerを設定
         if (render) {
@@ -325,29 +325,7 @@ namespace CoreEngine
 
         {
             EngineProfileScope scope(this, GpuTimestampSlot::GeometryPass, cmdList);
-
-            // 水面の Depth Fade で深度バッファを SRV として読むため
-            // DEPTH_WRITE → (DEPTH_READ | PIXEL_SHADER_RESOURCE) に遷移する。
-            // この組み合わせにより、読み取り専用 DSV と SRV の同時利用が可能になる。
-            auto* depthManager = dx ? dx->GetDepthStencilManager() : nullptr;
-            if (depthManager && cmdList) {
-                ResourceBarrierHelper::Transition(
-                    cmdList,
-                    depthManager->GetDepthStencilResource(),
-                    depthManager->GetCurrentState(),
-                    D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            }
-
             executePass(renderPipeline_->GetPass<GeometryPass>());
-
-            // GeometryPass 完了後に DEPTH_WRITE へ戻す（次フレームの DSV 書き込みに備える）
-            if (depthManager && cmdList) {
-                ResourceBarrierHelper::Transition(
-                    cmdList,
-                    depthManager->GetDepthStencilResource(),
-                    depthManager->GetCurrentState(),
-                    D3D12_RESOURCE_STATE_DEPTH_WRITE);
-            }
         }
 
         {

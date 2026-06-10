@@ -2,9 +2,11 @@
 #include "GeometryPass.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/Core/DepthStencilManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include <cassert>
+#include <memory>
 
 namespace CoreEngine
 {
@@ -42,22 +44,25 @@ namespace CoreEngine
 
         auto* cmdList = context.dxCommon->GetCommandList();
 
-        // clearEnabled_ フラグを RenderTarget に伝播する
-        // DeferredLightingPass が先に Offscreen0 に書き込んでいる場合はクリアしない
+        // DeferredLightingPass が先に書き込んでいる場合はクリアしない
         targetToUse->SetClearEnabled(clearEnabled_);
 
-        // レンダーターゲット開始（自動でRTV/DSV/ビューポート/シザー設定）
-        targetToUse->Begin(cmdList);
+        // フォワード描画区間では深度値をシェーダーから参照できるよう
+        // DEPTH_WRITE → DEPTH_READ|PIXEL_SHADER_RESOURCE に遷移する。
+        // ScopedDepthReadSRV がスコープ終了時に DEPTH_WRITE へ自動復元する。
+        // depthStencilManager が未設定の場合はバリアなしで描画する（後方互換）。
+        std::unique_ptr<DepthStencilManager::ScopedDepthReadSRV> depthScope;
+        if (context.depthStencilManager) {
+            depthScope = std::make_unique<DepthStencilManager::ScopedDepthReadSRV>(
+                context.depthStencilManager, cmdList);
+        }
 
-        // シーン固有の描画処理を実行（透過・Skybox・UI など）
+        targetToUse->Begin(cmdList);
         if (renderCallback_) {
             renderCallback_();
         }
-
-        // レンダーターゲット終了（自動でリソースバリア）
         targetToUse->End(cmdList);
 
-        // 出力を設定（次のパスに渡す）
         output_.srvHandle = targetToUse->GetSRVHandle();
         output_.resource = targetToUse->GetResource();
         output_.isValid = true;
