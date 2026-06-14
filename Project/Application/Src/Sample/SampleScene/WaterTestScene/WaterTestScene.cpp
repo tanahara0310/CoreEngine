@@ -167,7 +167,7 @@ void WaterTestScene::OnInitialize() {
     waterPlane_->SetActive(true);
 
     // ===== 地面モデル =====
-    groundObject_ = CreateObject<ModelObject>("ground.gltf");
+    groundObject_ = CreateObject<ModelObject>("pool.gltf");
     groundObject_->GetTransform().translate = { 0.0f, -0.1f, 0.0f };
     groundObject_->GetTransform().scale = { 1.0f,  1.0f, 1.0f };
     // PBRテクスチャマップを有効化（gltfに埋め込まれたテクスチャを使用）

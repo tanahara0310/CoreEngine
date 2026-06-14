@@ -738,6 +738,9 @@
     <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h">
       <Filter>Application\Src\Sample\SampleScene\SpriteTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene.h">
+      <Filter>Application\Src\Sample\SampleScene</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClInclude>

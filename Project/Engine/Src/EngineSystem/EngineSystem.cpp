@@ -258,9 +258,7 @@ namespace CoreEngine
                 return;
             }
 
-            if (previousOutput.isValid) {
-                pass->SetInput(previousOutput);
-            }
+            pass->SetInput(previousOutput);
 
             pass->Setup(context);
             pass->Execute(context);

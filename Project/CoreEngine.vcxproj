@@ -436,6 +436,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Sample\SampleScene\HomeworkScene\HomeworkScene.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Effect\HitEffect.h" />
