@@ -738,6 +738,9 @@
     <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h">
       <Filter>Application\Src\Sample\SampleScene\SpriteTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene.h">
+      <Filter>Application\Src\Sample\SampleScene</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClInclude>
@@ -1715,65 +1718,68 @@
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin">
       <Filter>Application\Assets\SampleAssets\simpleSkin</Filter>
     </None>
-    <None Include="Docs\Audio\SoundManager.md">
-      <Filter>Docs\Audio</Filter>
+    <None Include="Docs\Engine\Audio\SoundManager.md">
+      <Filter>Docs\Engine\Audio</Filter>
     </None>
-    <None Include="Docs\Camera\CameraManager.md">
-      <Filter>Docs\Camera</Filter>
+    <None Include="Docs\Engine\Camera\CameraManager.md">
+      <Filter>Docs\Engine\Camera</Filter>
     </None>
-    <None Include="Docs\Collision\Collision.md">
-      <Filter>Docs\Collision</Filter>
+    <None Include="Docs\Engine\Collision\Collision.md">
+      <Filter>Docs\Engine\Collision</Filter>
     </None>
-    <None Include="Docs\Core\EngineSystem.md">
-      <Filter>Docs\Core</Filter>
+    <None Include="Docs\Engine\Core\EngineSystem.md">
+      <Filter>Docs\Engine\Core</Filter>
     </None>
-    <None Include="Docs\Core\Framework.md">
-      <Filter>Docs\Core</Filter>
+    <None Include="Docs\Engine\Core\Framework.md">
+      <Filter>Docs\Engine\Core</Filter>
     </None>
-    <None Include="Docs\GameObject\GameObject.md">
-      <Filter>Docs\GameObject</Filter>
+    <None Include="Docs\Engine\GameObject\GameObject.md">
+      <Filter>Docs\Engine\GameObject</Filter>
     </None>
-    <None Include="Docs\GameObject\ModelGameObject.md">
-      <Filter>Docs\GameObject</Filter>
+    <None Include="Docs\Engine\GameObject\ModelGameObject.md">
+      <Filter>Docs\Engine\GameObject</Filter>
     </None>
-    <None Include="Docs\GameObject\SpriteObject.md">
-      <Filter>Docs\GameObject</Filter>
+    <None Include="Docs\Engine\GameObject\SpriteObject.md">
+      <Filter>Docs\Engine\GameObject</Filter>
     </None>
-    <None Include="Docs\GameObject\WorldTransform.md">
-      <Filter>Docs\GameObject</Filter>
+    <None Include="Docs\Engine\GameObject\WorldTransform.md">
+      <Filter>Docs\Engine\GameObject</Filter>
     </None>
-    <None Include="Docs\Graphics\Lighting.md">
-      <Filter>Docs\Graphics</Filter>
+    <None Include="Docs\Engine\Graphics\Lighting.md">
+      <Filter>Docs\Engine\Graphics</Filter>
     </None>
-    <None Include="Docs\Graphics\ModelManager.md">
-      <Filter>Docs\Graphics</Filter>
+    <None Include="Docs\Engine\Graphics\ModelManager.md">
+      <Filter>Docs\Engine\Graphics</Filter>
     </None>
-    <None Include="Docs\Graphics\README.md">
-      <Filter>Docs\Graphics</Filter>
+    <None Include="Docs\Engine\Graphics\README.md">
+      <Filter>Docs\Engine\Graphics</Filter>
     </None>
-    <None Include="Docs\Graphics\Rendering\PBR_RoadMap.md">
-      <Filter>Docs\Graphics\Rendering</Filter>
+    <None Include="Docs\Engine\Graphics\Rendering\PBR_RoadMap.md">
+      <Filter>Docs\Engine\Graphics\Rendering</Filter>
     </None>
-    <None Include="Docs\Graphics\TextureManager.md">
-      <Filter>Docs\Graphics</Filter>
+    <None Include="Docs\Refactoring\README.md">
+      <Filter>Docs\Refactoring</Filter>
     </None>
-    <None Include="Docs\Input\Input.md">
-      <Filter>Docs\Input</Filter>
+    <None Include="Docs\Engine\Graphics\TextureManager.md">
+      <Filter>Docs\Engine\Graphics</Filter>
     </None>
-    <None Include="Docs\Math\MathCore.md">
-      <Filter>Docs\Math</Filter>
+    <None Include="Docs\Engine\Input\Input.md">
+      <Filter>Docs\Engine\Input</Filter>
     </None>
-    <None Include="Docs\Particle\ParticleSystem.md">
-      <Filter>Docs\Particle</Filter>
+    <None Include="Docs\Engine\Math\MathCore.md">
+      <Filter>Docs\Engine\Math</Filter>
     </None>
-    <None Include="Docs\README.md">
-      <Filter>Docs</Filter>
+    <None Include="Docs\Engine\Particle\ParticleSystem.md">
+      <Filter>Docs\Engine\Particle</Filter>
     </None>
-    <None Include="Docs\Scene\SceneManager.md">
-      <Filter>Docs\Scene</Filter>
+    <None Include="Docs\Engine\README.md">
+      <Filter>Docs\Engine</Filter>
     </None>
-    <None Include="Docs\Utility\Utility.md">
-      <Filter>Docs\Utility</Filter>
+    <None Include="Docs\Engine\Scene\SceneManager.md">
+      <Filter>Docs\Engine\Scene</Filter>
+    </None>
+    <None Include="Docs\Engine\Utility\Utility.md">
+      <Filter>Docs\Engine\Utility</Filter>
     </None>
     <None Include="Engine\Src\ObjectCommon\README.md">
       <Filter>Engine\Src\ObjectCommon</Filter>
@@ -1858,41 +1864,47 @@
     <Filter Include="Docs">
       <UniqueIdentifier>{43DD00BA-76AE-43FF-95E2-E05262653932}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Audio">
-      <UniqueIdentifier>{52E6D764-C198-42E1-B926-27D680C3ACB9}</UniqueIdentifier>
+    <Filter Include="Docs\Engine">
+      <UniqueIdentifier>{4A657136-8EB1-4078-B6F2-F15DF6040D2C}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Camera">
-      <UniqueIdentifier>{1A88CAEA-4C40-423A-A69D-4929EE3E25A5}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Audio">
+      <UniqueIdentifier>{1158C336-3743-478D-94A5-642D55E56242}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Collision">
-      <UniqueIdentifier>{78C3DADE-00EF-49A3-99F1-A9185B772A63}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Camera">
+      <UniqueIdentifier>{4E925CDE-247A-47BE-B29B-7A50F07F1B1A}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Core">
-      <UniqueIdentifier>{07E3363A-FFA5-407C-9082-852D2D8F825B}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Collision">
+      <UniqueIdentifier>{5841777E-71E4-4FE6-961B-CFDCECE3AEEF}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\GameObject">
-      <UniqueIdentifier>{281743B5-2832-4009-931D-22748855F802}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Core">
+      <UniqueIdentifier>{63D4A1CA-E6CF-4816-9B2C-A3718F45EE2E}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Graphics">
-      <UniqueIdentifier>{B7465F11-9027-4E42-9346-17BEEB87E2A0}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\GameObject">
+      <UniqueIdentifier>{8D1E7EE2-862C-46C0-BD87-4AAA6B385BA6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Graphics\Rendering">
-      <UniqueIdentifier>{0E9A6516-5B53-4946-AFF8-0CCF7D53F5A0}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Graphics">
+      <UniqueIdentifier>{1586DD78-EB9C-481B-876D-D8ED4A3D13EE}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Input">
-      <UniqueIdentifier>{9688059E-C1C8-415A-A5E3-D4B9C60FC16D}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Graphics\Rendering">
+      <UniqueIdentifier>{87DFF4B0-CBEC-48F9-A479-C6FF3A8DE3A1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Math">
-      <UniqueIdentifier>{31A3E4D3-D800-40EA-BC6D-F68D4F0D55A9}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Input">
+      <UniqueIdentifier>{3B66814D-569A-4C35-92EB-9AAAAA048B2B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Particle">
-      <UniqueIdentifier>{1D064B4B-E9E2-4831-913D-BC4D622DBB11}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Math">
+      <UniqueIdentifier>{D5518375-9EA2-435A-B773-4A8439F30056}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Scene">
-      <UniqueIdentifier>{1B654D51-C7D5-4AB0-876E-9BBEE00F463B}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Particle">
+      <UniqueIdentifier>{4D90B60B-54E1-4217-A746-3979F28DCDCA}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Utility">
-      <UniqueIdentifier>{634B9633-BFDF-4537-BC09-2CC3AB116EAD}</UniqueIdentifier>
+    <Filter Include="Docs\Engine\Scene">
+      <UniqueIdentifier>{34E788E0-5B25-43E0-8212-E71C182B35F7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Engine\Utility">
+      <UniqueIdentifier>{0FA29CFD-660E-4053-9501-B303826B2E13}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Docs\Refactoring">
+      <UniqueIdentifier>{6F074EBB-8840-4753-AEAC-EDF53A07FA36}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine">
       <UniqueIdentifier>{f6f7eb83-ae86-4048-be21-0fc749f83aa2}</UniqueIdentifier>

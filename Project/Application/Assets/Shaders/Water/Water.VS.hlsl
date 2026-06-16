@@ -9,14 +9,23 @@ struct WaveParams
     float wavelength; // 波長
     float speed; // 位相速度
     float steepness; // 横揺れ係数 Q（0=正弦波, 1=完全Gerstner）
-    float2 padding;
+    float phaseOffset; // 位相オフセット
+    float padding;
+};
+
+struct WaveDerivatives
+{
+    float3 offset;
+    float3 dPdX;
+    float3 dPdZ;
 };
 
 cbuffer WaterConstants : register(b4)
 {
-    WaveParams gWaves[4]; // 重ね合わせる波（最大 4 本）
+    WaveParams gWaves[16]; // 重ね合わせる波（最大 16 本）
+    uint gActiveWaveCount; // 実際に評価する波本数
     float gTime; // 経過時間（秒）
-    float3 gPadding;
+    float2 gPadding;
 };
 
 // ===== フレーム定数バッファ（クリップ平面）=====
@@ -26,8 +35,8 @@ cbuffer WaterFrameConstants : register(b5)
     float4 gClipPlane;         // クリップ平面 (A, B, C, D): dot(worldPos, plane) > 0 で描画
     int    gClipEnabled;       // 1 = 有効，0 = 無効
     int    gReflectionEnabled; // 1 = 反射テクスチャ有効，0 = IBL フォールバック
-    float  gFresnelMinAlpha;   // PS と共有（VS では未使用、レイアウト一致のため保持）
-    float  gFresnelMaxAlpha;   // PS と共有（VS では未使用、レイアウト一致のため保持）
+    float  gFresnelReflectanceScale; // PS と共有（VS では未使用、レイアウト一致のため保持）
+    float  gFresnelBaseReflectance;  // PS と共有（VS では未使用、レイアウト一致のため保持）
 
     // ---- Depth Fade（VS では未使用、レイアウト一致のため保持）----
     float  gAbsorptionCoeff;
@@ -60,7 +69,7 @@ struct WaterVSOutput
 /// @param worldPos 変位前のワールド座標（XZ を参照、Y を更新）
 /// @param wave     波パラメータ
 /// @return 変位量（XYZ）
-float3 CalcGerstnerOffset(float3 worldPos, WaveParams wave)
+WaveDerivatives CalcGerstnerWave(float3 worldPos, WaveParams wave)
 {
     // 波数 k = 2π / λ
     float k = 2.0f * 3.14159265f / wave.wavelength;
@@ -68,19 +77,36 @@ float3 CalcGerstnerOffset(float3 worldPos, WaveParams wave)
     // 角周波数 ω ≒ speed * k（簡易近似、本来は √(g*k)）
     float omega = wave.speed * k;
 
+    // 極端な尖りと自己交差を避けるため kA に応じて有効 steepness を抑える
+    float kA = max(k * wave.amplitude, 1.0e-4f);
+    float safeSteepness = min(wave.steepness, 0.95f / kA);
+
     // 位相 φ = k*(D・P) + ω*t
-    float phase = k * dot(wave.direction, worldPos.xz) + omega * gTime;
+    float phase = k * dot(wave.direction, worldPos.xz) + omega * gTime + wave.phaseOffset;
 
     float sinP = sin(phase);
     float cosP = cos(phase);
 
     // Gerstner Wave 変位式
-    float3 offset;
-    offset.x = wave.steepness * wave.amplitude * wave.direction.x * cosP;
-    offset.y = wave.amplitude * sinP;
-    offset.z = wave.steepness * wave.amplitude * wave.direction.y * cosP;
+    WaveDerivatives result;
+    result.offset.x = safeSteepness * wave.amplitude * wave.direction.x * cosP;
+    result.offset.y = wave.amplitude * sinP;
+    result.offset.z = safeSteepness * wave.amplitude * wave.direction.y * cosP;
 
-    return offset;
+    float common = safeSteepness * wave.amplitude * k * sinP;
+    float heightSlope = wave.amplitude * k * cosP;
+
+    result.dPdX = float3(
+        1.0f - common * wave.direction.x * wave.direction.x,
+        heightSlope * wave.direction.x,
+       -common * wave.direction.x * wave.direction.y);
+
+    result.dPdZ = float3(
+       -common * wave.direction.x * wave.direction.y,
+        heightSlope * wave.direction.y,
+        1.0f - common * wave.direction.y * wave.direction.y);
+
+    return result;
 }
 
 WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
@@ -95,55 +121,48 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
 
     // ---- 2. Gerstner Wave 頂点変位（ワールド空間） ----
     float3 totalOffset = float3(0.0f, 0.0f, 0.0f);
+    float3 dPdX = float3(1.0f, 0.0f, 0.0f);
+    float3 dPdZ = float3(0.0f, 0.0f, 1.0f);
     [unroll]
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 16; ++i)
     {
-        totalOffset += CalcGerstnerOffset(worldPos, gWaves[i]);
+        if (i >= gActiveWaveCount)
+        {
+            break;
+        }
+
+        WaveDerivatives wave = CalcGerstnerWave(restPos, gWaves[i]);
+        totalOffset += wave.offset;
+        dPdX += wave.dPdX - float3(1.0f, 0.0f, 0.0f);
+        dPdZ += wave.dPdZ - float3(0.0f, 0.0f, 1.0f);
     }
     worldPos += totalOffset;
 
-    // ---- 3. 変位後の法線・接線を解析的に再計算（Gerstner の偏微分） ----
-    // 位相計算には変位前の静止座標（restPos.xz）を使う
-    float3 normal = float3(0.0f, 1.0f, 0.0f);
-    float3 tangent = float3(1.0f, 0.0f, 0.0f);
-    [unroll]
-    for (int j = 0; j < 4; ++j)
+    // ---- 3. 解析偏微分から接線空間を再構築する ----
+    float3 tangent = normalize(dPdX);
+    float3 binormal = normalize(dPdZ);
+    float3 normal = normalize(cross(binormal, tangent));
+
+    if (normal.y < 0.0f)
     {
-        float k = 2.0f * 3.14159265f / gWaves[j].wavelength;
-        float omega = gWaves[j].speed * k;
-        float phase = k * dot(gWaves[j].direction, restPos.xz) + omega * gTime;
-        float WA = k * gWaves[j].amplitude;
-        float sinP = sin(phase);
-        float cosP = cos(phase);
-
-        // 法線偏微分
-        normal.x -= gWaves[j].direction.x * WA * cosP;
-        normal.y -= gWaves[j].steepness * WA * sinP;
-        normal.z -= gWaves[j].direction.y * WA * cosP;
-
-        // X 方向接線偏微分
-        tangent.x -= gWaves[j].steepness * gWaves[j].direction.x * gWaves[j].direction.x * WA * sinP;
-        tangent.y += gWaves[j].direction.x * WA * cosP;
-        tangent.z -= gWaves[j].steepness * gWaves[j].direction.x * gWaves[j].direction.y * WA * sinP;
+        normal = -normal;
     }
-    // normal.y が 0 以下になると法線が裏返るため最小値でクランプする
-    normal.y = max(0.001f, normal.y);
-    normal = normalize(normal);
-    tangent = normalize(tangent);
 
     // ---- 4. 出力組み立て ----
     WaterVSOutput output;
     output.texcoord = input.texcoord;
 
     float4 baseClip = mul(input.position, mtx.WVP);
-    float3x3 invWorld3 = transpose((float3x3) mtx.World);
+    // WorldInversTranspose = (World^-1)^T なので transpose すると World^-1 になる
+    // スケールが変わっても変位量が増幅されないように正しい逆行列を使用する
+    float3x3 invWorld3 = transpose((float3x3) mtx.WorldInversTranspose);
     float3 offsetLS = mul(totalOffset, invWorld3);
     float4 offsetClip = mul(float4(offsetLS, 0.0f), mtx.WVP);
     output.position = baseClip + offsetClip;
 
     output.normal = normalize(mul(normal, (float3x3) mtx.WorldInversTranspose));
     output.tangent = normalize(mul(tangent, (float3x3) mtx.World));
-    output.bitangent = normalize(cross(output.normal, output.tangent));
+    output.bitangent = normalize(mul(binormal, (float3x3) mtx.World));
 
     output.worldPosition = worldPos;
     output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);

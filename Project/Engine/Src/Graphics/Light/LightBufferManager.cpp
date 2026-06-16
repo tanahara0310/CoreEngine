@@ -75,37 +75,57 @@ namespace CoreEngine
 
     void LightBufferManager::SetToCommandList(
         ID3D12GraphicsCommandList* commandList,
-        UINT lightCountsRootParameterIndex,
-        UINT directionalLightsRootParameterIndex,
-        UINT pointLightsRootParameterIndex,
-        UINT spotLightsRootParameterIndex,
-        UINT areaLightsRootParameterIndex
+        int lightCountsRootParameterIndex,
+        int directionalLightsRootParameterIndex,
+        int pointLightsRootParameterIndex,
+        int spotLightsRootParameterIndex,
+        int areaLightsRootParameterIndex
     )
     {
-        commandList->SetGraphicsRootConstantBufferView(
-            lightCountsRootParameterIndex,
-            lightCountsBuffer_->GetGPUVirtualAddress()
-        );
+        if (!commandList)
+        {
+            return;
+        }
 
-        commandList->SetGraphicsRootDescriptorTable(
-            directionalLightsRootParameterIndex,
-            directionalLightsSRVHandle_
-        );
+        if (lightCountsRootParameterIndex >= 0 && lightCountsBuffer_)
+        {
+            commandList->SetGraphicsRootConstantBufferView(
+                static_cast<UINT>(lightCountsRootParameterIndex),
+                lightCountsBuffer_->GetGPUVirtualAddress()
+            );
+        }
 
-        commandList->SetGraphicsRootDescriptorTable(
-            pointLightsRootParameterIndex,
-            pointLightsSRVHandle_
-        );
+        if (directionalLightsRootParameterIndex >= 0 && directionalLightsSRVHandle_.ptr != 0)
+        {
+            commandList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(directionalLightsRootParameterIndex),
+                directionalLightsSRVHandle_
+            );
+        }
 
-        commandList->SetGraphicsRootDescriptorTable(
-            spotLightsRootParameterIndex,
-            spotLightsSRVHandle_
-        );
+        if (pointLightsRootParameterIndex >= 0 && pointLightsSRVHandle_.ptr != 0)
+        {
+            commandList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(pointLightsRootParameterIndex),
+                pointLightsSRVHandle_
+            );
+        }
 
-        commandList->SetGraphicsRootDescriptorTable(
-            areaLightsRootParameterIndex,
-            areaLightsSRVHandle_
-        );
+        if (spotLightsRootParameterIndex >= 0 && spotLightsSRVHandle_.ptr != 0)
+        {
+            commandList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(spotLightsRootParameterIndex),
+                spotLightsSRVHandle_
+            );
+        }
+
+        if (areaLightsRootParameterIndex >= 0 && areaLightsSRVHandle_.ptr != 0)
+        {
+            commandList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(areaLightsRootParameterIndex),
+                areaLightsSRVHandle_
+            );
+        }
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS LightBufferManager::GetLightCountsGPUAddress() const

@@ -8,6 +8,7 @@
 namespace CoreEngine
 {
     class DescriptorManager;
+    class DepthStencilManager;
 
     /// @brief G-Buffer管理クラス
     /// @note Deferred/Hybrid Rendering への移行基盤。
@@ -45,9 +46,14 @@ namespace CoreEngine
         void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, int32_t width, int32_t height);
         void Resize(int32_t width, int32_t height);
 
+        /// @brief ジオメトリパスを開始する
+        /// @param cmdList コマンドリスト
+        /// @param depthStencilManager 深度ステンシル管理（内部で BeginDepthWrite を呼ぶ）
+        /// @param srvHeap SRVデスクリプタヒープ
+        /// @param clearDepth true: 深度をクリアする（デフォルト）
         void BeginGeometryPass(
             ID3D12GraphicsCommandList* cmdList,
-            D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle,
+            DepthStencilManager* depthStencilManager,
             ID3D12DescriptorHeap* srvHeap,
             bool clearDepth = true);
 

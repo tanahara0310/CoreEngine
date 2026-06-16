@@ -5,6 +5,7 @@
 #include <cassert>
 #include <format>
 
+#include "Graphics/Common/Core/DepthStencilManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -88,11 +89,12 @@ namespace CoreEngine
 
     void GBufferManager::BeginGeometryPass(
         ID3D12GraphicsCommandList* cmdList,
-        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle,
+        DepthStencilManager* depthStencilManager,
         ID3D12DescriptorHeap* srvHeap,
         bool clearDepth)
     {
         assert(cmdList);
+        assert(depthStencilManager);
         ValidateState();
 
         std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kTargetCount> rtvHandles{};
@@ -104,11 +106,21 @@ namespace CoreEngine
             cmdList->ClearRenderTargetView(target.rtvHandle, kGBufferClearColors[i].data(), 0, nullptr);
         }
 
-        cmdList->OMSetRenderTargets(kTargetCount, rtvHandles.data(), FALSE, &dsvHandle);
-
+        // 深度ステンシルを DEPTH_WRITE 状態にしてクリアする
+        // clearDepth=true の場合は BeginDepthWrite がクリアも行う
+        // clearDepth=false の場合は遷移のみ行い、クリアはスキップする
         if (clearDepth) {
-            cmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+            depthStencilManager->BeginDepthWrite(cmdList);
+        } else {
+            ResourceBarrierHelper::Transition(
+                cmdList,
+                depthStencilManager->GetDepthStencilResource(),
+                depthStencilManager->GetCurrentState(),
+                D3D12_RESOURCE_STATE_DEPTH_WRITE);
         }
+
+        const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = depthStencilManager->GetDSVHandle();
+        cmdList->OMSetRenderTargets(kTargetCount, rtvHandles.data(), FALSE, &dsvHandle);
 
         D3D12_VIEWPORT viewport{};
         viewport.Width = static_cast<float>(currentWidth_);

@@ -2,7 +2,9 @@
 #include "WaterReflectionPass.h"
 
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include "Camera/ICamera.h"
 #include "Camera/Release/Camera.h"
 #include "Math/MathCore.h"
@@ -21,6 +23,43 @@ void WaterReflectionPass::Initialize(DirectXCommon* dxCommon, int offscreenIndex
     reflectionRT_ = std::make_unique<OffscreenRenderTarget>();
     reflectionRT_->Initialize(dxCommon, offscreenIndex);
     reflectionRT_->SetUseDepthBuffer(true);
+
+    auto* device = dxCommon ? dxCommon->GetDevice() : nullptr;
+    auto* descriptorManager = dxCommon ? dxCommon->GetDescriptorManager() : nullptr;
+    if (device && descriptorManager) {
+        D3D12_RESOURCE_DESC depthDesc{};
+        depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        depthDesc.Width = static_cast<UINT64>(dxCommon->GetClientWidth());
+        depthDesc.Height = static_cast<UINT>(dxCommon->GetClientHeight());
+        depthDesc.DepthOrArraySize = 1;
+        depthDesc.MipLevels = 1;
+        depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        depthDesc.SampleDesc.Count = 1;
+        depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+        D3D12_CLEAR_VALUE clearValue{};
+        clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        clearValue.DepthStencil.Depth = 1.0f;
+        clearValue.DepthStencil.Stencil = 0;
+
+        reflectionDepthResource_ = ResourceFactory::CreateTextureResource(
+            Microsoft::WRL::ComPtr<ID3D12Device>(device),
+            depthDesc,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &clearValue);
+
+        reflectionDepthDsvHandle_ = descriptorManager->AllocateDSVHandle("WaterReflectionDepthDSV");
+
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+        dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        device->CreateDepthStencilView(
+            reflectionDepthResource_.Get(),
+            &dsvDesc,
+            reflectionDepthDsvHandle_.cpuHandle);
+
+    }
 
     // 反射パスではクリアを有効にする
     const float clearColor[4] = { 0.1f, 0.25f, 0.5f, 1.0f };

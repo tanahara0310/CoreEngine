@@ -15,6 +15,7 @@ namespace CoreEngine
     class AccelerationStructureManager;
     class RayTracingShadowManager;
     class CameraManager;
+    class DepthStencilManager;
 
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
@@ -29,6 +30,7 @@ namespace CoreEngine
         AccelerationStructureManager* accelerationStructureManager = nullptr; ///< DXR 加速構造管理
         RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
         CameraManager* cameraManager = nullptr; ///< カメラ管理（SSAO等でビュー/プロジェクション行列取得用）
+        DepthStencilManager* depthStencilManager = nullptr; ///< 深度ステンシル管理（バリア遷移・クリアを一元管理）
         uint32_t currentRTShadowViewId = 1; ///< 現在の RT シャドウビュー (0=SceneView, 1=GameView)
     };
 

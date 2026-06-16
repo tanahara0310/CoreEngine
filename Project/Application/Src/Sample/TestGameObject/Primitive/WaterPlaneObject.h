@@ -15,13 +15,11 @@
 /// PlaneMeshGenerator を使用して N×N 分割の平面メッシュを生成する。
 /// resolution（分割数）が高いほど後のステップで波の表現が細かくなる。
 class WaterPlaneObject : public CoreEngine::PrimitiveGameObject
-                       , public CoreEngine::ICustomShaderProvider {
+    , public CoreEngine::ICustomShaderProvider {
 public:
     /// @param size 水面の一辺のサイズ（XZ 方向共通）
     /// @param resolution XZ 方向の分割数
-    /// @param albedoTextureName アルベドテクスチャのファイル名（空文字列の場合は単色）
-    WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64,
-        const std::string& albedoTextureName = {});
+    WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64);
 
     const char* GetObjectName() const override { return "WaterPlane"; }
 
@@ -34,9 +32,6 @@ public:
         ID3D12GraphicsCommandList* cmdList,
         const CoreEngine::CustomShaderPipeline* pipeline) const override;
 
-    /// @brief ノーマルマップテクスチャのファイル名を設定する（Initialize 後に呼ぶこと）
-    void SetNormalMapTextureName(const std::string& fileName);
-
     /// @brief UV スクロール速度を設定する（単位: UV/秒）
     void SetScrollSpeed(const CoreEngine::Vector2& speed);
 
@@ -48,9 +43,12 @@ public:
     void UpdateUVScroll(float deltaTime);
 
     /// @brief 波パラメータを設定する
-    /// @param index 波インデックス（0〜3）
+    /// @param index 波インデックス（0〜15）
     /// @param wave 波パラメータ
     void SetWave(uint32_t index, const WaveParams& wave);
+
+    /// @brief 有効な Gerstner Wave 本数を設定する
+    void SetActiveWaveCount(uint32_t count);
 
     /// @brief 反射テクスチャの SRV を設定する（毎フレーム WaterReflectionPass から渡す）
     /// @param srvHandle 反射テクスチャの GPU ディスクリプタハンドル
@@ -78,17 +76,13 @@ public:
     /// @brief IBL を有効/無効にする
     void SetIBLEnabled(bool enable);
 
-    /// @brief ノーマルマップを有効/無効にする（既にテクスチャが設定済みの場合のみ有効）
-    void SetNormalMapEnabled(bool enable);
-
-    /// @brief アルベドテクスチャの表示を有効/無効にする
-    /// @param enable true のとき albedoTextureName_ のテクスチャをバインドする
-    void SetAlbedoTextureEnabled(bool enable);
-
     // ===== ゲッター =====
 
     /// @brief 波パラメータ配列への参照を返す（ImGui 直接編集用）
     WaveParams* GetWaves() { return waterCB_.waves; }
+
+    /// @brief 現在有効な Gerstner Wave 本数を返す
+    uint32_t GetActiveWaveCount() const { return waterCB_.activeWaveCount; }
 
     /// @brief UV スクロール速度への参照を返す（ImGui 直接編集用）
     CoreEngine::Vector2& GetScrollSpeed() { return scrollSpeed_; }
@@ -99,25 +93,34 @@ public:
     /// @brief フレーム定数への参照を返す（ImGui から reflectionEnabled 等を参照する用）
     const WaterFrameConstants& GetFrameConstants() const { return frameCB_; }
 
-    /// @brief Fresnel alpha の最小値（真上から見たとき）と最大値（斜めから見たとき）を設定する
-    /// @param minAlpha Fresnel=0 のときの alpha（小さいほど透明 → 水中が見えやすい）
-    /// @param maxAlpha Fresnel=1 のときの alpha（大きいほど不透明 → 斜め角度で不透明）
-    void SetFresnelAlpha(float minAlpha, float maxAlpha);
+    /// @brief Fresnel の反射率パラメータを設定する
+    /// @param reflectanceScale 反射ブレンドの強さ
+    /// @param baseReflectance 正面入射時の反射率 F0
+    void SetFresnelParameters(float reflectanceScale, float baseReflectance);
 
     /// @brief シーン深度テクスチャ SRV を設定する（Depth Fade 用）
     /// @param srvHandle GBuffer / DepthStencil の深度 SRV GPU ハンドル
     void SetSceneDepthSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
+
+    /// @brief シーンカラー SRV を設定する（水面越しの透過光取得用）
+    /// @param srvHandle オフスクリーンカラーの GPU ハンドル
+    void SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 
     /// @brief Depth Fade パラメータを設定する
     /// @param absorptionCoeff 光吸収係数（大きいほど短距離で不透明になる）
     /// @param enabled true のとき Depth Fade を有効にする
     void SetDepthFade(float absorptionCoeff, bool enabled);
 
+    /// @brief Depth Fade のデバッグ表示を設定する
+    /// @param enabled true のときデバッグ表示を有効にする
+    /// @param debugScale 表示倍率
+    void SetDepthFadeDebug(bool enabled, float debugScale = 1.5f);
+
     /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
     void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);
 
 protected:
-    std::string GetTexturePath() const override { return albedoTextureName_; }
+    std::string GetTexturePath() const override { return {}; }
 
     std::unique_ptr<CoreEngine::IPrimitiveMeshGenerator> CreateMeshGenerator() const override;
 
@@ -133,8 +136,6 @@ private:
 
     float    size_;
     uint32_t resolution_;
-
-    std::string albedoTextureName_;   ///< アルベドテクスチャのファイル名
 
     CoreEngine::Vector2 scrollSpeed_; ///< UV スクロール速度（U方向, V方向）
     CoreEngine::Vector2 uvTiling_;    ///< UV タイリング回数
@@ -158,4 +159,7 @@ private:
 
     // ---- シーン深度テクスチャ SRV（t15 にバインド）: Depth Fade 用 ----
     D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV_ = { 0 };              ///< 深度 SRV
+
+    // ---- シーンカラー SRV（t16 にバインド）: 水越しの背景色用 ----
+    D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV_ = { 0 };              ///< シーンカラー SRV
 };

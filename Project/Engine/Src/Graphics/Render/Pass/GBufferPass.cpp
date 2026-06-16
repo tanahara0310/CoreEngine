@@ -4,6 +4,7 @@
 #include <cassert>
 
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/Core/DepthStencilManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 
@@ -24,7 +25,7 @@ namespace CoreEngine
 
         gBufferManager->BeginGeometryPass(
             cmdList,
-            context.dxCommon->GetDSVHandle(),
+            context.depthStencilManager,
             context.dxCommon->GetSRVHeap(),
             true);
 

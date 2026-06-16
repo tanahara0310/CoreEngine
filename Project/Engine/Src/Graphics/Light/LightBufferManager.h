@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <d3d12.h>
 #include <wrl.h>
@@ -55,11 +55,11 @@ namespace CoreEngine
         /// @param areaLightsRootParameterIndex エリアライト用のルートパラメータインデックス
         void SetToCommandList(
             ID3D12GraphicsCommandList* commandList,
-            UINT lightCountsRootParameterIndex,
-            UINT directionalLightsRootParameterIndex,
-            UINT pointLightsRootParameterIndex,
-            UINT spotLightsRootParameterIndex,
-            UINT areaLightsRootParameterIndex
+            int lightCountsRootParameterIndex,
+            int directionalLightsRootParameterIndex,
+            int pointLightsRootParameterIndex,
+            int spotLightsRootParameterIndex,
+            int areaLightsRootParameterIndex
         );
 
         /// @brief ライトカウントバッファのGPU仮想アドレスを取得

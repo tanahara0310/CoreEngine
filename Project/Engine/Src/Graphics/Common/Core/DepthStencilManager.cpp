@@ -2,6 +2,7 @@
 #include "DepthStencilManager.h"
 #include "DescriptorManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
 
@@ -14,6 +15,28 @@ namespace CoreEngine
     namespace {
         Logger& logger = Logger::GetInstance();
     }
+
+    // ---------------------------------------------------------------
+    // ScopedDepthReadSRV
+    // ---------------------------------------------------------------
+
+    DepthStencilManager::ScopedDepthReadSRV::ScopedDepthReadSRV(
+        DepthStencilManager* manager, ID3D12GraphicsCommandList* cmdList)
+        : manager_(manager), cmdList_(cmdList)
+    {
+        assert(manager_);
+        assert(cmdList_);
+        manager_->BeginDepthReadSRV(cmdList_);
+    }
+
+    DepthStencilManager::ScopedDepthReadSRV::~ScopedDepthReadSRV()
+    {
+        manager_->EndDepthReadSRV(cmdList_);
+    }
+
+    // ---------------------------------------------------------------
+    // DepthStencilManager
+    // ---------------------------------------------------------------
 
     DepthStencilManager::~DepthStencilManager()
     {
@@ -67,6 +90,64 @@ namespace CoreEngine
 #ifdef _DEBUG
         logger.Infof(LogCategory::Graphics, LogSubCategory::RenderTarget,
             "深度ステンシルリソースをリサイズしました ({}x{}) - DSVは再利用\n", width, height);
+#endif
+    }
+
+    void DepthStencilManager::BeginDepthWrite(ID3D12GraphicsCommandList* cmdList)
+    {
+        assert(cmdList);
+        assert(isInitialized_ && "DepthStencilManager must be initialized before use");
+
+        // DEPTH_WRITE 状態へ遷移（既に DEPTH_WRITE なら冗長バリアをスキップ）
+        ResourceBarrierHelper::Transition(
+            cmdList,
+            depthStencilResource_.Get(),
+            currentState_,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+        // 深度バッファをクリア
+        cmdList->ClearDepthStencilView(dsvHandle_, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+#ifdef _DEBUG
+        logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
+            "[Depth] BeginDepthWrite: クリア完了");
+#endif
+    }
+
+    void DepthStencilManager::BeginDepthReadSRV(ID3D12GraphicsCommandList* cmdList)
+    {
+        assert(cmdList);
+        assert(isInitialized_ && "DepthStencilManager must be initialized before use");
+
+        // DEPTH_WRITE → DEPTH_READ|PIXEL_SHADER_RESOURCE へ遷移
+        // この組み合わせにより読み取り専用 DSV と SRV の同時利用が可能になる
+        ResourceBarrierHelper::Transition(
+            cmdList,
+            depthStencilResource_.Get(),
+            currentState_,
+            D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+#ifdef _DEBUG
+        logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
+            "[Depth] BeginDepthReadSRV: DEPTH_READ|PIXEL_SHADER_RESOURCE に遷移");
+#endif
+    }
+
+    void DepthStencilManager::EndDepthReadSRV(ID3D12GraphicsCommandList* cmdList)
+    {
+        assert(cmdList);
+        assert(isInitialized_ && "DepthStencilManager must be initialized before use");
+
+        // DEPTH_READ|PIXEL_SHADER_RESOURCE → DEPTH_WRITE へ戻す
+        ResourceBarrierHelper::Transition(
+            cmdList,
+            depthStencilResource_.Get(),
+            currentState_,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+#ifdef _DEBUG
+        logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
+            "[Depth] EndDepthReadSRV: DEPTH_WRITE に復元");
 #endif
     }
 

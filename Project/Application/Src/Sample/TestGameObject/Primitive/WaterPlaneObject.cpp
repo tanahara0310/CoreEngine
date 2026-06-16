@@ -3,7 +3,6 @@
 
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Material/MaterialInstance.h"
-#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
@@ -19,20 +18,31 @@ static constexpr UINT kWaterCBSize =
 static constexpr UINT kFrameCBSize =
 (sizeof(WaterFrameConstants) + 255) & ~255u;
 
-WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution,
-    const std::string& albedoTextureName)
+WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution)
     : size_(size)
     , resolution_(resolution)
-    , albedoTextureName_(albedoTextureName)
     , scrollSpeed_({ 0.03f, 0.01f })
     , uvTiling_({ 4.0f, 4.0f })
     , uvOffset_({ 0.0f, 0.0f }) {
+    waterCB_.activeWaveCount = kMaxWaterWaveCount;
 
-    // デフォルトの波パラメータを設定（4 本の Gerstner Wave を重ね合わせる）
-    waterCB_.waves[0] = { {  1.0f,  0.0f }, 0.5f, 12.0f, 1.8f, 0.5f };
-    waterCB_.waves[1] = { {  0.7f,  0.7f }, 0.3f,  8.0f, 2.2f, 0.4f };
-    waterCB_.waves[2] = { { -0.5f,  0.8f }, 0.2f,  6.0f, 2.6f, 0.3f };
-    waterCB_.waves[3] = { {  0.2f, -0.9f }, 0.1f,  4.0f, 3.0f, 0.2f };
+    // デフォルトの波パラメータを設定（16 本の Gerstner Wave を重ね合わせる）
+    waterCB_.waves[0]  = { {  1.0f,  0.0f }, 0.18f, 14.0f, 1.6f, 0.24f, 0.0f };
+    waterCB_.waves[1]  = { {  0.7f,  0.7f }, 0.10f, 10.0f, 2.0f, 0.16f, 1.4f };
+    waterCB_.waves[2]  = { { -0.5f,  0.8f }, 0.06f,  7.0f, 2.3f, 0.10f, 2.7f };
+    waterCB_.waves[3]  = { {  0.2f, -0.9f }, 0.03f,  5.0f, 2.7f, 0.06f, 4.1f };
+    waterCB_.waves[4]  = { {  0.9f,  0.3f }, 0.028f, 16.0f, 1.3f, 0.05f, 0.7f };
+    waterCB_.waves[5]  = { {  0.3f,  0.9f }, 0.024f, 12.0f, 1.5f, 0.05f, 1.6f };
+    waterCB_.waves[6]  = { { -0.8f,  0.2f }, 0.021f, 10.0f, 1.8f, 0.04f, 2.5f };
+    waterCB_.waves[7]  = { { -0.6f, -0.5f }, 0.018f,  8.5f, 2.0f, 0.04f, 3.4f };
+    waterCB_.waves[8]  = { {  0.4f, -0.9f }, 0.016f,  7.5f, 2.2f, 0.03f, 4.2f };
+    waterCB_.waves[9]  = { {  1.0f, -0.1f }, 0.014f, 15.0f, 1.2f, 0.03f, 0.9f };
+    waterCB_.waves[10] = { {  0.1f,  1.0f }, 0.013f, 13.0f, 1.4f, 0.03f, 1.9f };
+    waterCB_.waves[11] = { { -0.9f,  0.4f }, 0.012f, 11.0f, 1.7f, 0.02f, 2.8f };
+    waterCB_.waves[12] = { { -0.2f, -1.0f }, 0.011f,  9.0f, 2.0f, 0.02f, 3.7f };
+    waterCB_.waves[13] = { {  0.8f, -0.6f }, 0.010f,  7.0f, 2.2f, 0.02f, 4.6f };
+    waterCB_.waves[14] = { {  0.6f,  0.8f }, 0.009f,  6.0f, 2.4f, 0.02f, 5.3f };
+    waterCB_.waves[15] = { { -0.7f,  0.6f }, 0.008f,  5.5f, 2.6f, 0.01f, 6.0f };
 }
 
 void WaterPlaneObject::OnInitialize() {
@@ -136,13 +146,14 @@ void WaterPlaneObject::BindCustomResources(
                 static_cast<UINT>(depthSlot), sceneDepthSRV_);
         }
     }
-}
 
-void WaterPlaneObject::SetNormalMapTextureName(const std::string& fileName) {
-    auto loaded = CoreEngine::TextureManager::GetInstance().Load(fileName);
-    if (GetModel() && loaded.gpuHandle.ptr != 0) {
-        GetModel()->SetNormalMapOverride(loaded.gpuHandle);
-        GetModel()->GetMaterial()->SetNormalMapEnabled(true);
+    // シーンカラー SRV をバインドする（水越しの背景色用）
+    if (sceneColorSRV_.ptr != 0) {
+        int sceneColorSlot = pipeline->GetRootParamIndex("gSceneColor");
+        if (sceneColorSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(sceneColorSlot), sceneColorSRV_);
+        }
     }
 }
 
@@ -155,9 +166,13 @@ void WaterPlaneObject::SetUVTiling(const CoreEngine::Vector2& tiling) {
 }
 
 void WaterPlaneObject::SetWave(uint32_t index, const WaveParams& wave) {
-    if (index < 4) {
+    if (index < kMaxWaterWaveCount) {
         waterCB_.waves[index] = wave;
     }
+}
+
+void WaterPlaneObject::SetActiveWaveCount(uint32_t count) {
+    waterCB_.activeWaveCount = (count > kMaxWaterWaveCount) ? kMaxWaterWaveCount : count;
 }
 
 void WaterPlaneObject::SetReflectionTexture(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
@@ -180,18 +195,27 @@ void WaterPlaneObject::UpdateFrameConstants() {
     }
 }
 
-void WaterPlaneObject::SetFresnelAlpha(float minAlpha, float maxAlpha) {
-    frameCB_.fresnelMinAlpha = minAlpha;
-    frameCB_.fresnelMaxAlpha = maxAlpha;
+void WaterPlaneObject::SetFresnelParameters(float reflectanceScale, float baseReflectance) {
+    frameCB_.fresnelReflectanceScale = reflectanceScale;
+    frameCB_.fresnelBaseReflectance = baseReflectance;
 }
 
 void WaterPlaneObject::SetSceneDepthSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
     sceneDepthSRV_ = srvHandle;
 }
 
+void WaterPlaneObject::SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
+    sceneColorSRV_ = srvHandle;
+}
+
 void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {
     frameCB_.absorptionCoeff  = absorptionCoeff;
     frameCB_.depthFadeEnabled = enabled ? 1 : 0;
+}
+
+void WaterPlaneObject::SetDepthFadeDebug(bool enabled, float debugScale) {
+    frameCB_.depthFadeDebugEnabled = enabled ? 1 : 0;
+    frameCB_.depthFadeDebugScale = debugScale;
 }
 
 void WaterPlaneObject::SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor) {
@@ -221,23 +245,6 @@ void WaterPlaneObject::SetMetallic(float metallic) {
 void WaterPlaneObject::SetIBLEnabled(bool enable) {
     auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
     if (mat) { mat->SetIBLEnabled(enable); }
-}
-
-void WaterPlaneObject::SetNormalMapEnabled(bool enable) {
-    auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
-    if (mat) { mat->SetNormalMapEnabled(enable); }
-}
-
-void WaterPlaneObject::SetAlbedoTextureEnabled(bool enable) {
-    if (enable && !albedoTextureName_.empty()) {
-        // アルベドテクスチャをロードして texture_ に設定する
-        texture_ = CoreEngine::TextureManager::GetInstance().Load(albedoTextureName_);
-    } else {
-        // ptr を 0 にすることで white1x1.png フォールバックになり、
-        // albedo = color.rgb * (1,1,1) = color.rgb（ベースカラーのみ）となる
-        texture_.gpuHandle = { 0 };
-        texture_.texture.Reset();
-    }
 }
 
 void WaterPlaneObject::UpdateUVScroll(float deltaTime) {
