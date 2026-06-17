@@ -58,6 +58,9 @@ namespace CoreEngine
             auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
             if (!modelObj) continue;
 
+            // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
+            if (modelObj->GetBlendMode() != BlendMode::kBlendModeNone) continue;
+
             auto* model = modelObj->GetModel();
             if (!model) continue;
 

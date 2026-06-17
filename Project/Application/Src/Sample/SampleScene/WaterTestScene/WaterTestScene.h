@@ -74,6 +74,7 @@ private:
     float imguiDeepColor_[3]     = { 0.02f, 0.08f, 0.45f }; ///< 深場の水色
     bool  imguiDepthFadeDebugEnabled_ = false;      ///< Depth Fade デバッグ表示
     float imguiDepthFadeDebugScale_ = 1.5f;         ///< Depth Fade デバッグ表示倍率
+    int   imguiDepthDebugViewMode_ = static_cast<int>(WaterDebugViewMode::RawDepth); ///< 水面デバッグ可視化モード
 
 #endif
 };

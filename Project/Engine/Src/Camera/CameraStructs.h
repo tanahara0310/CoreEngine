@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <Math/MathCore.h>
 #include <string>
 

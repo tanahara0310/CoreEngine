@@ -1,7 +1,30 @@
 # レンダリングパイプライン設計メモ
 
 > **対象:** `Engine/Src/Graphics/Render/`、`Engine/Src/EngineSystem/EngineSystem.cpp`、`Engine/Src/EngineSystem/Subsystem/RayTracingSubsystem.cpp`  
-> **目的:** 現在のレンダリングパイプライン構造を整理し、Deferred Rendering を基盤にしつつ、最終的に RenderGraph 化するための移行方針をまとめる。
+> **目的:** 現在のレンダリングパイプライン構造を整理し、Deferred Rendering を基盤にしつつ、最終的に RenderGraph 化するための移行方針をまとめる。  
+> **このファイルの役割:** 各ステップ詳細ドキュメントを束ねるまとめファイル。全体方針、共通原則、進捗確認、着手順の索引として扱う。
+
+---
+
+## 0. ドキュメント構成
+
+このディレクトリのドキュメントは、全体まとめとステップ別詳細に分けて管理する。
+
+### 0-1. まとめファイル
+- `README.md` : 全体方針、共通ルール、進捗サマリー、各ステップへの入口
+
+### 0-2. ステップ別詳細ファイル
+- [Step01_RenderPipelineExecution.md](./Step01_RenderPipelineExecution.md) - `EngineSystem` から `RenderPipeline` へ実行責務を移す段階
+- [Step02_RTShadowAndComposite.md](./Step02_RTShadowAndComposite.md) - RT Shadow の Pass 化と Composite 系責務整理
+- [Step03_FrameBlackboard.md](./Step03_FrameBlackboard.md) - 論理リソース名ベースのフレーム共有層導入
+- [Step04_RenderGraphMinimum.md](./Step04_RenderGraphMinimum.md) - 最小 RenderGraph の導入
+- [Step05_AutoBarrier.md](./Step05_AutoBarrier.md) - 主要リソースの自動バリア導入
+- [Step06_MultiViewIntegration.md](./Step06_MultiViewIntegration.md) - Shadow / RT / 複数 View 統合
+
+### 0-3. 読み方
+- 最初にこの `README.md` で全体像を確認する
+- 実装時は対象ステップの詳細ファイルを主に参照する
+- 進捗更新は、まずステップ別詳細の状態を更新し、その後この README のサマリーに反映する
 
 ---
 
@@ -100,6 +123,30 @@ DeferredLighting 後の Forward Composite を担当している。
 ### 2-7. View 概念が弱い
 GameView / SceneView / 将来の ReflectionView などを統一的に扱う構造になっていない。
 
+### 2-8. アプリ層とエンジン層の責務境界が曖昧
+WaterTestScene のように、アプリケーション層が一時的に以下を直接扱えてしまう余地がある。
+
+- RenderPass の実行タイミング制御
+- RenderTarget の切り替え・復元
+- SceneColor / SceneDepth / ReflectionRT の注入
+- CommandList 操作
+- ResourceBarrier / ResourceState の整合管理
+
+この状態では、機能追加のたびにアプリ側へエンジン責務が漏れやすく、
+一時対応のつもりで入れた処理が恒久化しやすい。
+
+### 2-9. 新規 RenderPass の差し込みコストが高い
+新しい描画機能を追加する際に、RenderPipeline へ Pass を追加するだけでは済まず、
+EngineSystem・Scene・RenderManager・個別オブジェクト側へ特例処理が広がりやすい。
+
+特に以下のような機能は本来 Pass / View / Resource 契約だけで差し込めるべきである。
+
+- Water Reflection
+- SSR / RT Reflection
+- CaptureView
+- Volumetric / Fog
+- 将来の TAA / MotionVector 利用パス
+
 ---
 
 ## 3. 目指すべき設計方針
@@ -111,6 +158,57 @@ GameView / SceneView / 将来の ReflectionView などを統一的に扱う構�
 - **Screen Space 技術** は GBuffer 後に差し込む
 - **RT 技術** は専用パスとして差し込む
 - **ポストエフェクト** は Lighting/Composite 後に集約する
+
+### 3-1. 責務境界の明文化
+
+アプリケーション層とエンジン層の責務を以下で固定する。
+
+#### アプリケーション層が行ってよいこと
+- 描画機能の利用要求
+- Material / Feature フラグ設定
+- オブジェクト単位の描画属性設定
+- 必要な View の利用要求
+- Scene 固有のゲームロジック更新
+
+#### エンジン層が専属で行うこと
+- RenderPass の実行順制御
+- RenderTarget / DepthStencil の切り替え
+- CommandList 操作
+- ResourceBarrier / ResourceState 管理
+- SceneColor / SceneDepth / Reflection / Shadow などのフレーム内リソース配線
+- パス間の入力接続
+
+#### 明示的な禁止事項
+- アプリケーション層は RenderTarget を直接 bind / restore しない
+- アプリケーション層は CommandList を直接操作しない
+- アプリケーション層は ResourceBarrier を直接発行しない
+- アプリケーション層は SceneColor / SceneDepth を個別オブジェクトへ直接注入しない
+- GameObject / Scene は RenderPass の実行順を制御しない
+
+必要な描画機能は **Pass / View / Feature 登録を通じて要求する** 形に寄せる。
+
+### 3-2. View 抽象の方針
+
+将来的に複数の描画視点を同じ仕組みで扱うため、View を正式概念として持つ。
+
+- `GameView` : 通常ゲーム描画
+- `SceneView` : エディタ / デバッグ描画
+- `ReflectionView` : 水面反射や鏡面反射用の補助ビュー
+- `CaptureView` : 将来のプレビュー / キューブマップ生成 / オフラインキャプチャ用
+
+重要なのは、**Reflection は Scene が一時的に反射パスを実行して作るものではなく、ReflectionView をエンジンが処理した結果として得る** 形にすること。
+
+### 3-3. パス追加時の基本原則
+
+新規 RenderPass は、少なくとも以下を宣言できる状態を目標にする。
+
+- どの View で動作するか
+- どの論理リソースを Read するか
+- どの論理リソースを Write するか
+- 前提となる描画フェーズは何か
+- どの Feature を有効条件にするか
+
+これにより、新規パス追加時の変更点を Scene や GameObject に広げず、RenderPipeline / FrameBlackboard / RenderGraph 側へ閉じ込めやすくする。
 
 ### 理想フロー
 
@@ -140,11 +238,31 @@ GameView / SceneView / 将来の ReflectionView などを統一的に扱う構�
    - ColorGrading
 9. UI / Debug / Present
 
+### 3-4. Forward Composite の順序指針
+
+少なくとも標準順序の基準を持つ。
+
+1. Sky
+2. Water
+3. Transparent
+4. Particle
+5. UI
+6. Debug / Gizmo
+
+実際の描画順は機能要件に応じて再調整してよいが、個別機能ごとに Scene 側から暫定順序を差し込まないことを優先する。
+
 ---
 
 ## 4. どこから直していくか
 
 RenderGraph をいきなり入れるのではなく、**RenderGraph に載せ替え可能な構造へ先に分解する**。
+
+### 着手前の前提ルール
+
+- 新機能追加のために Scene 側から RenderPass を直接実行しない
+- 新機能追加のために Scene 側から RenderTarget を直接切り替えない
+- 一時的な SRV / RTV / DSV の配線は Engine 側のフレーム共有リソース管理へ寄せる
+- 「まずアプリ側で無理やり動かす」は原則避け、必要なら薄い暫定 Pass をエンジン側へ追加する
 
 ### Phase 1. `EngineSystem` から実行責務を剥がす
 **対象:** `EngineSystem.cpp`、`RenderPipeline.h/.cpp`
@@ -197,6 +315,8 @@ RenderGraph をいきなり入れるのではなく、**RenderGraph に載せ替
 例:
 - `SceneColor`
 - `SceneDepth`
+- `ReflectionColor`
+- `ReflectionDepth`
 - `GBufferA`
 - `GBufferB`
 - `GBufferC`
@@ -207,6 +327,9 @@ RenderGraph をいきなり入れるのではなく、**RenderGraph に載せ替
 
 **到達目標:**
 - パスごとの入出力を明示しやすくする
+
+この段階で、Water / Reflection / Screen Space 系の機能が
+`SceneColor` や `SceneDepth` を Scene 側から直接受け渡ししなくても利用できる構造を目指す。
 
 ---
 
@@ -235,6 +358,15 @@ RenderGraph をいきなり入れるのではなく、**RenderGraph に載せ替
 - `Write(SSAO)`
 - `Write(SceneColor)`
 
+必要に応じて以下も扱えるようにする。
+
+- `Read(SceneColor)`
+- `Read(ReflectionColor)`
+- `Write(ReflectionColor)`
+- `Preserve(SceneColor)`
+
+`Preserve` の概念を持てると、Forward Composite のように既存カラーへ上乗せするパスを明示しやすい。
+
 ### 先に Graph 化しやすいパス
 1. `GBufferPass`
 2. `SSAOPass`
@@ -257,6 +389,9 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 - `UNORDERED_ACCESS`
 - `PRESENT`
 
+加えて、Depth を SRV 参照するパスでは **read-only DSV と SRV の併用を標準経路として扱う** 方針を持つ。
+これにより、水面や Screen Space 系のように深度を参照しつつ深度テストも行うパスを特例ではなく通常機能として扱いやすくする。
+
 ### 最初の対象リソース
 - `SceneColor`
 - `GBuffer*`
@@ -273,28 +408,36 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 
 ## 7. 推奨マイルストーン
 
+各マイルストーンの詳細は、対応するステップ別ドキュメントを参照する。
+
 ### マイルストーン 1
 - `EngineSystem` からパイプライン実行責務を分離
 - `RenderPipeline` を実行器として成立させる
+- 詳細: [Step01_RenderPipelineExecution.md](./Step01_RenderPipelineExecution.md)
 
 ### マイルストーン 2
 - RT Shadow を RenderPass 化
 - `GeometryPass` を Composite 系パスへ分割
+- 詳細: [Step02_RTShadowAndComposite.md](./Step02_RTShadowAndComposite.md)
 
 ### マイルストーン 3
 - `FrameBlackboard` 導入
 - パス入出力の論理名管理を開始
+- 詳細: [Step03_FrameBlackboard.md](./Step03_FrameBlackboard.md)
 
 ### マイルストーン 4
 - 最小 RenderGraph 導入
 - `GBuffer → SSAO → DeferredLighting → PostEffect → Present` を Graph 化
+- 詳細: [Step04_RenderGraphMinimum.md](./Step04_RenderGraphMinimum.md)
 
 ### マイルストーン 5
 - 自動バリア導入
 - `SceneColor / GBuffer / BackBuffer` を自動管理
+- 詳細: [Step05_AutoBarrier.md](./Step05_AutoBarrier.md)
 
 ### マイルストーン 6
 - Shadow / RT / 複数 View を段階的に統合
+- 詳細: [Step06_MultiViewIntegration.md](./Step06_MultiViewIntegration.md)
 
 ---
 
@@ -314,7 +457,20 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 | 5 | 自動バリア導入 | ☐ 未着手 |
 | 6 | Shadow / RT / 複数 View 統合 | ☐ 未着手 |
 
+### 8-1-1. ステップ別ファイル対応表
+
+| ステップ | 詳細ファイル | 主な作業範囲 |
+|---|---|---|
+| 1 | `Step01_RenderPipelineExecution.md` | `EngineSystem` / `RenderPipeline` |
+| 2 | `Step02_RTShadowAndComposite.md` | `RayTracingSubsystem` / `GeometryPass` / Composite 整理 |
+| 3 | `Step03_FrameBlackboard.md` | `FrameBlackboard` / 論理リソース整理 |
+| 4 | `Step04_RenderGraphMinimum.md` | 最小 RenderGraph / 主要5パス |
+| 5 | `Step05_AutoBarrier.md` | 自動状態遷移 / read-only DSV |
+| 6 | `Step06_MultiViewIntegration.md` | Shadow / RT / GameView / SceneView / ReflectionView |
+
 ### 8-2. マイルストーン別チェックリスト
+
+この節は全体進捗の俯瞰用とし、各項目の詳細な作業メモ・完了条件・依存関係はステップ別ファイル側で管理する。
 
 #### マイルストーン 1: `EngineSystem` から実行責務を分離
 - [ ] `EngineSystem::ExecuteRenderPipeline()` の責務を棚卸しする
@@ -401,6 +557,18 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 - **設計完了**: 対象クラスの責務と依存が文書化されている
 - **実装完了**: コード上で対象責務の移設が終わっている
 - **検証完了**: 既存描画結果が大きく崩れていない
+
+### 8-5. 新規 Pass 追加時の確認項目
+
+新しい描画機能を入れる際は、少なくとも以下を確認する。
+
+- [ ] Scene / GameObject 側から CommandList を触っていないか
+- [ ] Scene / GameObject 側から RenderTarget を切り替えていないか
+- [ ] Read / Write する論理リソースが文書化されているか
+- [ ] 対象 View が明確か
+- [ ] 既存 Pass への依存順が明確か
+- [ ] Barrier / State 遷移の責務が Engine 側へ閉じているか
+- [ ] Debug Layer / GPU-Based Validation で検証できる状態か
 
 ---
 

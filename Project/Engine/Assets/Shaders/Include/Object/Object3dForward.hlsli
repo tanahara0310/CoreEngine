@@ -1,8 +1,8 @@
 // Object3dForward.hlsli
 #include "Object3d.hlsli"
-#include "../Include/Lighting/LightStructures.hlsli"
-#include "../Include/Shadow/ShadowCalculation.hlsli"
-#include "../Include/PBR/PBR.hlsli"
+#include "../Lighting/LightStructures.hlsli"
+#include "../Shadow/ShadowCalculation.hlsli"
+#include "../PBR/PBR.hlsli"
 
 // ===== マテリアル =====
 struct Material

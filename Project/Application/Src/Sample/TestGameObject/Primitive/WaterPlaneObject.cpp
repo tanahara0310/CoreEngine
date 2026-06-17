@@ -7,6 +7,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Math/MathCore.h"
+#include "Utility/Logger/Logger.h"
 #include <cmath>
 #include <cstring>
 #include <cassert>
@@ -43,6 +44,10 @@ WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution)
     waterCB_.waves[13] = { {  0.8f, -0.6f }, 0.010f,  7.0f, 2.2f, 0.02f, 4.6f };
     waterCB_.waves[14] = { {  0.6f,  0.8f }, 0.009f,  6.0f, 2.4f, 0.02f, 5.3f };
     waterCB_.waves[15] = { { -0.7f,  0.6f }, 0.008f,  5.5f, 2.6f, 0.01f, 6.0f };
+}
+
+void WaterPlaneObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {
+    (void)cmdList;
 }
 
 void WaterPlaneObject::OnInitialize() {
@@ -115,6 +120,22 @@ void WaterPlaneObject::BindCustomResources(
         return;
     }
 
+    if (frameCB_.depthFadeDebugEnabled != 0) {
+        CoreEngine::Logger::GetInstance().Infof(
+            CoreEngine::LogCategory::Graphics,
+            CoreEngine::LogSubCategory::Pipeline,
+            "WaterPlane BindCustomResources: b4={} b5={} reflSRV=0x{:X} depthSRV=0x{:X} sceneColorSRV=0x{:X} clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={}",
+            waterCBGpuAddress_,
+            frameCBGpuAddress_,
+            reflectionSRV_.ptr,
+            sceneDepthSRV_.ptr,
+            sceneColorSRV_.ptr,
+            frameCB_.clipEnabled,
+            frameCB_.reflectionEnabled,
+            frameCB_.depthFadeEnabled,
+            frameCB_.depthDebugViewMode);
+    }
+
     // WaterConstants を b4 にバインドする
     int slot = pipeline->GetRootParamIndex("WaterConstants");
     if (slot >= 0) {
@@ -179,6 +200,15 @@ void WaterPlaneObject::SetReflectionTexture(D3D12_GPU_DESCRIPTOR_HANDLE srvHandl
     reflectionSRV_ = srvHandle;
     // ハンドルが有効なときだけ反射テクスチャを有効にする
     frameCB_.reflectionEnabled = (srvHandle.ptr != 0) ? 1 : 0;
+
+    if (frameCB_.depthFadeDebugEnabled != 0) {
+        CoreEngine::Logger::GetInstance().Infof(
+            CoreEngine::LogCategory::Graphics,
+            CoreEngine::LogSubCategory::RenderTarget,
+            "WaterPlane SetReflectionTexture: srv=0x{:X} reflectionEnabled={}",
+            reflectionSRV_.ptr,
+            frameCB_.reflectionEnabled);
+    }
 }
 
 void WaterPlaneObject::SetClipPlane(const CoreEngine::Vector4& clipPlane, bool enable) {
@@ -202,10 +232,26 @@ void WaterPlaneObject::SetFresnelParameters(float reflectanceScale, float baseRe
 
 void WaterPlaneObject::SetSceneDepthSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
     sceneDepthSRV_ = srvHandle;
+
+    if (frameCB_.depthFadeDebugEnabled != 0) {
+        CoreEngine::Logger::GetInstance().Infof(
+            CoreEngine::LogCategory::Graphics,
+            CoreEngine::LogSubCategory::RenderTarget,
+            "WaterPlane SetSceneDepthSRV: srv=0x{:X}",
+            sceneDepthSRV_.ptr);
+    }
 }
 
 void WaterPlaneObject::SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
     sceneColorSRV_ = srvHandle;
+
+    if (frameCB_.depthFadeDebugEnabled != 0) {
+        CoreEngine::Logger::GetInstance().Infof(
+            CoreEngine::LogCategory::Graphics,
+            CoreEngine::LogSubCategory::RenderTarget,
+            "WaterPlane SetSceneColorSRV: srv=0x{:X}",
+            sceneColorSRV_.ptr);
+    }
 }
 
 void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {
@@ -216,6 +262,17 @@ void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {
 void WaterPlaneObject::SetDepthFadeDebug(bool enabled, float debugScale) {
     frameCB_.depthFadeDebugEnabled = enabled ? 1 : 0;
     frameCB_.depthFadeDebugScale = debugScale;
+}
+
+void WaterPlaneObject::SetDepthDebugViewMode(WaterDebugViewMode mode) {
+    frameCB_.depthDebugViewMode = static_cast<uint32_t>(mode);
+    CoreEngine::Logger::GetInstance().Infof(
+        CoreEngine::LogCategory::Graphics,
+        CoreEngine::LogSubCategory::Pipeline,
+        "WaterPlane debug view mode changed: mode={} debugEnabled={} debugScale={:.3f}",
+        frameCB_.depthDebugViewMode,
+        frameCB_.depthFadeDebugEnabled,
+        frameCB_.depthFadeDebugScale);
 }
 
 void WaterPlaneObject::SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor) {

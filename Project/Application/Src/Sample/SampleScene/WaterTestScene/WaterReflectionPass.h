@@ -16,8 +16,6 @@ namespace CoreEngine
     class RenderManager;
 }
 
-/// @brief 平面反射パスの管理クラス（Step 4: Planar Reflection）
-///
 /// 水面を鏡面として、水面より上のシーンを専用の RTT に描画する。
 /// 生成した反射テクスチャは Water.PS.hlsl で Fresnel ブレンドに使用する。
 class WaterReflectionPass

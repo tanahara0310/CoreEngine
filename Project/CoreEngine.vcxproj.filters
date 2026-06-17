@@ -1790,6 +1790,12 @@
     <None Include="Engine\Src\Particle\README.md">
       <Filter>Engine\Src\Particle</Filter>
     </None>
+    <None Include="Docs\Refactoring\Step02_RTShadowAndComposite.md" />
+    <None Include="Docs\Refactoring\Step03_FrameBlackboard.md" />
+    <None Include="Docs\Refactoring\Step01_RenderPipelineExecution.md" />
+    <None Include="Docs\Refactoring\Step04_RenderGraphMinimum.md" />
+    <None Include="Docs\Refactoring\Step06_MultiViewIntegration.md" />
+    <None Include="Docs\Refactoring\Step05_AutoBarrier.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include=".github">

@@ -789,6 +789,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\Engine\README.md" />
     <None Include="Docs\Engine\Scene\SceneManager.md" />
     <None Include="Docs\Engine\Utility\Utility.md" />
+    <None Include="Docs\Refactoring\Step01_RenderPipelineExecution.md" />
+    <None Include="Docs\Refactoring\Step02_RTShadowAndComposite.md" />
+    <None Include="Docs\Refactoring\Step03_FrameBlackboard.md" />
+    <None Include="Docs\Refactoring\Step04_RenderGraphMinimum.md" />
+    <None Include="Docs\Refactoring\Step05_AutoBarrier.md" />
+    <None Include="Docs\Refactoring\Step06_MultiViewIntegration.md" />
     <None Include="Engine\Src\ObjectCommon\README.md" />
     <ClInclude Include="Engine\Src\pch.h" />
     <None Include="Build\Scripts\SyncFilters.ps1" />

@@ -21,6 +21,9 @@ public:
     /// @param resolution XZ 方向の分割数
     WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64);
 
+    /// @brief 水面はシャドウキャスターから除外する
+    void DrawShadow(ID3D12GraphicsCommandList* cmdList) override;
+
     const char* GetObjectName() const override { return "WaterPlane"; }
 
     // ===== ICustomShaderProvider =====
@@ -115,6 +118,10 @@ public:
     /// @param enabled true のときデバッグ表示を有効にする
     /// @param debugScale 表示倍率
     void SetDepthFadeDebug(bool enabled, float debugScale = 1.5f);
+
+    /// @brief 水面デバッグ可視化モードを設定する
+    /// @param mode デバッグ可視化モード
+    void SetDepthDebugViewMode(WaterDebugViewMode mode);
 
     /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
     void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);

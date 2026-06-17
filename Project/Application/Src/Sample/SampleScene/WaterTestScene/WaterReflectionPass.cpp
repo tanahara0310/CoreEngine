@@ -8,6 +8,7 @@
 #include "Camera/ICamera.h"
 #include "Camera/Release/Camera.h"
 #include "Math/MathCore.h"
+#include "Utility/Logger/Logger.h"
 
 #include <DirectXMath.h>
 #include <cmath>
@@ -18,6 +19,14 @@ using namespace DirectX;
 void WaterReflectionPass::Initialize(DirectXCommon* dxCommon, int offscreenIndex)
 {
     dxCommon_ = dxCommon;
+
+    Logger::GetInstance().Infof(
+        CoreEngine::LogCategory::Graphics,
+        CoreEngine::LogSubCategory::RenderTarget,
+        "WaterReflectionPass Initialize: offscreenIndex={} size={}x{}",
+        offscreenIndex,
+        dxCommon ? dxCommon->GetClientWidth() : 0,
+        dxCommon ? dxCommon->GetClientHeight() : 0);
 
     // 反射専用のオフスクリーン RTT を確保する
     reflectionRT_ = std::make_unique<OffscreenRenderTarget>();
@@ -59,6 +68,8 @@ void WaterReflectionPass::Initialize(DirectXCommon* dxCommon, int offscreenIndex
             &dsvDesc,
             reflectionDepthDsvHandle_.cpuHandle);
 
+        reflectionRT_->SetDepthStencilHandle(reflectionDepthDsvHandle_.cpuHandle);
+
     }
 
     // 反射パスではクリアを有効にする
@@ -80,6 +91,19 @@ void WaterReflectionPass::Render(
     // dot(worldPos, clipPlane) > 0 のフラグメントのみ通過させる
     clipPlane_ = { 0.0f, 1.0f, 0.0f, -waterHeight };
     clipEnabled_ = true;
+
+    Logger::GetInstance().Infof(
+        CoreEngine::LogCategory::Graphics,
+        CoreEngine::LogSubCategory::RenderTarget,
+        "WaterReflectionPass Render: waterHeight={:.3f} cameraPos=({:.3f}, {:.3f}, {:.3f}) clipPlane=({:.3f}, {:.3f}, {:.3f}, {:.3f})",
+        waterHeight,
+        mainCamera->GetPosition().x,
+        mainCamera->GetPosition().y,
+        mainCamera->GetPosition().z,
+        clipPlane_.x,
+        clipPlane_.y,
+        clipPlane_.z,
+        clipPlane_.w);
 
     // ---- 2. 鏡像ビュー行列を計算する ----
     Matrix4x4 reflectedView = CalcReflectedViewMatrix(mainCamera, waterHeight);

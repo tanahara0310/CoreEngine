@@ -1,4 +1,4 @@
-#include "../../../../Engine/Assets/Shaders/Include/Object/Object3dVertex.hlsli"
+#include "Object3dVertex.hlsli"
 
 // ===== Gerstner Wave 定数バッファ =====
 // WaterPlaneObject::BindCustomResources() が b4 にバインドする
@@ -41,13 +41,18 @@ cbuffer WaterFrameConstants : register(b5)
     // ---- Depth Fade（VS では未使用、レイアウト一致のため保持）----
     float  gAbsorptionCoeff;
     int    gDepthFadeEnabled;
-    float2 gFramePad;
+    int    gDepthFadeDebugEnabled;
+    float  gDepthFadeDebugScale;
 
     // ---- 水色（VS では未使用）----
     float3 gShallowColor;
     float  gShallowColorPad;
     float3 gDeepColor;
     float  gDeepColorPad;
+
+    // ---- デバッグ表示（VS では未使用）----
+    uint   gDepthDebugViewMode;
+    float3 gDebugPadding;
 };
 
 // ===== 水面専用出力構造体（SV_ClipDistance0 を追加）=====

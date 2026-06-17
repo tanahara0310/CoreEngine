@@ -1,4 +1,4 @@
-#include "../../../../Engine/Assets/Shaders/Include/Object/Object3dForward.hlsli"
+#include "Object3dForward.hlsli"
 
 // ===== 反射テクスチャ（Planar Reflection RTT）=====
 Texture2D<float4> gReflectionTexture : register(t14);
@@ -14,6 +14,19 @@ Texture2D<float> gSceneDepth : register(t15);
 // 水面越しに見える背景色の取得に使用する
 Texture2D<float4> gSceneColor : register(t16);
 
+struct WaterPSInput
+{
+    float4 position : SV_POSITION;
+    float2 texcoord : TEXCOORD0;
+    float3 normal : NORMAL0;
+    float3 worldPosition : POSITION0;
+    float4 lightSpacePos : POSITION1;
+    float3 tangent : TANGENT0;
+    float3 bitangent : BINORMAL0;
+    float4 clipPosCurrent : POSITION2;
+    float4 clipPosPrev : POSITION3;
+};
+
 // ===== フレーム定数バッファ（VS と共有）=====
 cbuffer WaterFrameConstants : register(b5)
 {
@@ -26,13 +39,18 @@ cbuffer WaterFrameConstants : register(b5)
     // ---- Depth Fade ----
     float gAbsorptionCoeff; // 光吸収係数（大きいほど短距離で不透明）
     int gDepthFadeEnabled; // 1 = Depth Fade 有効
-    float2 gFramePad;
+    int gDepthFadeDebugEnabled; // 1 = 水深デバッグ表示
+    float gDepthFadeDebugScale; // 水深デバッグ表示倍率
 
     // ---- 水色 ----
     float3 gShallowColor; // 浅瀬の水色
     float gShallowColorPad;
     float3 gDeepColor; // 深場の水色
     float gDeepColorPad;
+
+    // ---- デバッグ表示 ----
+    uint gDepthDebugViewMode;
+    float3 gDebugPadding;
 };
 
 /// @brief NDC 深度値をビュー空間線形深度（メートル単位）に変換する
@@ -46,6 +64,18 @@ float LinearizeDepth(float ndcDepth, float nearZ, float farZ)
     return (nearZ * farZ) / (farZ - ndcDepth * (farZ - nearZ));
 }
 
+/// @brief ビュー空間Z差をスクリーンレイ上の実際の光路長へ変換する
+/// @param viewDepthDelta 背景と水面のビュー空間Z差
+/// @param waterDepthView 水面のビュー空間Z深度
+/// @param worldPos 水面ピクセルのワールド座標
+/// @return Beer-Lambert に使う水中光路長
+float ComputeWaterOpticalPathLength(float viewDepthDelta, float waterDepthView, float3 worldPos)
+{
+    float rayDistanceToWater = length(gCamera.worldPosition - worldPos);
+    float viewToRayScale = rayDistanceToWater / max(waterDepthView, 1.0e-4f);
+    return max(0.0f, viewDepthDelta * viewToRayScale);
+}
+
 /// @brief Schlick 近似による Fresnel 係数を計算する
 /// @param cosTheta  視線と法線のなす角の余弦（saturate 済み推奨）
 /// @param f0        法線入射時の反射率（水面 ≈ 0.02）
@@ -54,17 +84,38 @@ float FresnelSchlick(float cosTheta, float f0)
     return f0 + (1.0f - f0) * pow(saturate(1.0f - cosTheta), 5.0f);
 }
 
+float3 VisualizeDepthValue(float value)
+{
+    return float3(value, value, value);
+}
+
 /// @brief 水面専用フォワードパス処理（ForwardMain の discard 処理を削除したバージョン）
 /// 水面は常に描画され、alpha 値で透明度を制御する
-PixelShaderOutput WaterForwardMain(VertexShaderOutput input)
+VertexShaderOutput ToVertexShaderOutput(WaterPSInput input)
 {
+    VertexShaderOutput output;
+    output.position = input.position;
+    output.texcoord = input.texcoord;
+    output.normal = input.normal;
+    output.worldPosition = input.worldPosition;
+    output.lightSpacePos = input.lightSpacePos;
+    output.tangent = input.tangent;
+    output.bitangent = input.bitangent;
+    output.clipPosCurrent = input.clipPosCurrent;
+    output.clipPosPrev = input.clipPosPrev;
+    return output;
+}
+
+PixelShaderOutput WaterForwardMain(WaterPSInput input)
+{
+    VertexShaderOutput forwardInput = ToVertexShaderOutput(input);
     PixelShaderOutput output;
 
     // 頂点シェーダーで再構築した Gerstner Wave 由来法線をそのまま使用する
-    input.normal = normalize(input.normal);
+    forwardInput.normal = normalize(forwardInput.normal);
 
     // 視線方向と alpha
-    float3 toEye = normalize(gCamera.worldPosition - input.worldPosition);
+    float3 toEye = normalize(gCamera.worldPosition - forwardInput.worldPosition);
     float finalAlpha = gMaterial.color.a;
     
     // アンリット
@@ -82,33 +133,39 @@ PixelShaderOutput WaterForwardMain(VertexShaderOutput input)
     float3 albedo = gMaterial.color.rgb;
 
     // PBR ライティング
-    output.color.rgb = CalculateAllLighting(input, albedo, metallic, roughness, ao, toEye, float4(1.0f, 1.0f, 1.0f, 1.0f));
+    output.color.rgb = CalculateAllLighting(forwardInput, albedo, metallic, roughness, ao, toEye, float4(1.0f, 1.0f, 1.0f, 1.0f));
     output.color.a = finalAlpha;
 
     // IBL
-    output.color.rgb += ApplyIBL(input, albedo, metallic, roughness, ao, toEye);
+    output.color.rgb += ApplyIBL(forwardInput, albedo, metallic, roughness, ao, toEye);
 
     return output;
 }
 
-PixelShaderOutput main(VertexShaderOutput input)
+PixelShaderOutput main(WaterPSInput input)
 {
     // ---- 1. 水面専用 PBR フォワード出力をベースにする（discard なし）----
     PixelShaderOutput output = WaterForwardMain(input);
     float baseCoverage = saturate(output.color.a);
 
     // ---- 2. スクリーン UV を計算する ----
-    float2 screenUV = input.clipPosCurrent.xy / input.clipPosCurrent.w;
-    screenUV = screenUV * float2(0.5f, -0.5f) + float2(0.5f, 0.5f);
+    uint sceneDepthWidth = 1;
+    uint sceneDepthHeight = 1;
+    gSceneDepth.GetDimensions(sceneDepthWidth, sceneDepthHeight);
+    float2 screenUV = input.position.xy / float2(sceneDepthWidth, sceneDepthHeight);
     screenUV = saturate(screenUV);
 
     // ---- 3. Beer-Lambert による透過率と吸収量の計算 ----
-    // GBuffer 深度テクスチャから背後のオブジェクトの深度を取得し、
-    // 水面との深度差（水柱の厚さ）から透過率 transmittance を求める
+    // 必要なのは「水中を通った光路長」なので、視線上の線形深度差を使う
     float transmittance = 1.0f;
     float absorption = 0.0f;
     float tintBlend = 0.0f;
     float3 waterTint = gShallowColor;
+    float sceneDepthNDC = 1.0f;
+    float waterDepthNDC = saturate(input.position.z);
+    float sceneDepthView = 0.0f;
+    float waterDepthView = 0.0f;
+    float waterColumn = 0.0f;
     if (gDepthFadeEnabled)
     {
         // near/far クリップ（カメラデフォルト値）
@@ -116,29 +173,93 @@ PixelShaderOutput main(VertexShaderOutput input)
         const float kFar = 1000.0f;
 
         // シーン深度を NDC → ビュー空間線形深度（m）に変換する
-        float sceneDepthNDC = gSceneDepth.Sample(gLinearClamp, screenUV).r;
+        sceneDepthNDC = gSceneDepth.Sample(gLinearClamp, screenUV).r;
+
         if (sceneDepthNDC < 0.99999f)
         {
-            float sceneDepthView = LinearizeDepth(sceneDepthNDC, kNear, kFar);
+            sceneDepthView = LinearizeDepth(sceneDepthNDC, kNear, kFar);
 
-            // 水面の NDC 深度 → ビュー空間線形深度（m）に変換する
-            float waterDepthNDC = saturate(input.clipPosCurrent.z / input.clipPosCurrent.w);
-            float waterDepthView = LinearizeDepth(waterDepthNDC, kNear, kFar);
-
-            // 水柱の厚さ（m）= 背後オブジェクトの深度 - 水面の深度
-            // 正値のみ使用（水面より前のオブジェクトは無視）
-            float waterColumn = max(0.0f, sceneDepthView - waterDepthView);
+            // 水面自身の線形深度を求め、背景との深度差を水中の光路長として扱う
+            waterDepthView = LinearizeDepth(waterDepthNDC, kNear, kFar);
+            waterColumn = ComputeWaterOpticalPathLength(
+                sceneDepthView - waterDepthView,
+                waterDepthView,
+                input.worldPosition);
             float extinction = waterColumn * max(gAbsorptionCoeff, 1.0e-4f);
 
             // Beer-Lambert 則: transmittance が透過した光量、absorption が吸収された量
             transmittance = exp(-extinction);
             absorption = 1.0f - transmittance;
 
-            // 深さによる色遷移は消光量そのものではなく、より緩やかな深度係数で制御する。
-            // 消光量をそのまま使うと浅瀬でもすぐ深場色へ寄り、暗さが飽和しやすい。
-            tintBlend = 1.0f - exp(-extinction * 0.35f);
+            // Beer-Lambert の吸収量そのものを色遷移に使う
+            // 浅い場所では吸収が少なく、深い場所では吸収が増えるため
+            // そのまま shallow/deep の補間係数として扱う
+            tintBlend = absorption;
             waterTint = lerp(gShallowColor, gDeepColor, saturate(tintBlend));
+
         }
+    }
+
+    if (gDepthFadeDebugEnabled != 0)
+    {
+        output.color.a = 1.0f;
+
+        if (gDepthDebugViewMode == 1)
+        {
+            float rawDelta = saturate((sceneDepthNDC - waterDepthNDC) * max(gDepthFadeDebugScale, 1.0f));
+            output.color.rgb = float3(sceneDepthNDC, waterDepthNDC, rawDelta);
+            if (sceneDepthNDC <= waterDepthNDC + 1.0e-5f)
+            {
+                output.color.rgb = float3(1.0f, 0.0f, 0.0f);
+            }
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 2)
+        {
+            float sceneLinear = saturate(sceneDepthView / max(gDepthFadeDebugScale, 1.0e-4f));
+            float waterLinear = saturate(waterDepthView / max(gDepthFadeDebugScale, 1.0e-4f));
+            output.color.rgb = float3(sceneLinear, waterLinear, saturate((sceneDepthView - waterDepthView) / max(gDepthFadeDebugScale, 1.0e-4f)));
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 3)
+        {
+            float debugValue = 1.0f - exp(-waterColumn * max(gDepthFadeDebugScale, 1.0e-4f));
+            output.color.rgb = VisualizeDepthValue(debugValue);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 4)
+        {
+            output.color.rgb = float3(screenUV, 0.0f);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 5)
+        {
+            output.color.rgb = gSceneColor.Sample(gLinearClamp, screenUV).rgb;
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 6)
+        {
+            output.color.rgb = gReflectionEnabled ? gReflectionTexture.Sample(gLinearClamp, screenUV).rgb : float3(1.0f, 0.0f, 1.0f);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 7)
+        {
+            float3 debugViewDir = normalize(gCamera.worldPosition - input.worldPosition);
+            float3 debugGeomNormal = normalize(input.normal);
+            float debugCosTheta = saturate(dot(debugGeomNormal, debugViewDir));
+            float debugFresnel = FresnelSchlick(debugCosTheta, saturate(gFresnelBaseReflectance));
+            output.color.rgb = VisualizeDepthValue(debugFresnel);
+            return output;
+        }
+
+        output.color.rgb = float3(1.0f, 1.0f, 0.0f);
+        return output;
     }
 
     // ---- 4. 視線方向と Fresnel 係数を計算する ----
@@ -153,9 +274,8 @@ PixelShaderOutput main(VertexShaderOutput input)
     // そのため、ピクセルシェーダーでは「背景から奪う割合」と「水面が足す成分」を分けて計算する。
     float transmissionWeight = transmittance * (1.0f - reflectanceWeight);
 
-    // 吸収で失われた光をそのまま水色として再注入すると、散乱を持たない近似としては暗くなりすぎる。
-    // そこで媒質寄与は一部だけを近似的に戻し、高さ差による透過変化を見えやすくする。
-    float mediumWeight = absorption * 0.35f * (1.0f - reflectanceWeight);
+    // 吸収量をそのまま媒質寄与へ反映し、深いほど暗く色付きが強くなるようにする
+    float mediumWeight = absorption * (1.0f - reflectanceWeight);
 
     float3 reflectColor = output.color.rgb;
     if (gReflectionEnabled)

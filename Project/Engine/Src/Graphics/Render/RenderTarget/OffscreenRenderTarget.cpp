@@ -27,9 +27,10 @@ namespace CoreEngine
         rtvHandle_ = dxCommon_->GetOffScreenRtvHandle(static_cast<uint32_t>(index_));
         srvHandle_ = dxCommon_->GetOffScreenSrvHandle(static_cast<uint32_t>(index_));
         uavHandle_ = dxCommon_->GetOffScreenUavHandle(static_cast<uint32_t>(index_));
-        dsvHandle_ = dxCommon_->GetDSVHandle();
+        dsvHandle_ = useCustomDsvHandle_ ? customDsvHandle_ : dxCommon_->GetDSVHandle();
         width_ = dxCommon_->GetClientWidth();
         height_ = dxCommon_->GetClientHeight();
+        currentState_ = dxCommon_->GetOffScreenState(static_cast<uint32_t>(index_));
     }
 
     void OffscreenRenderTarget::Begin(ID3D12GraphicsCommandList* cmdList)
@@ -44,6 +45,7 @@ namespace CoreEngine
                 currentState_,
                 D3D12_RESOURCE_STATE_RENDER_TARGET);
             currentState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
+            dxCommon_->SetOffScreenState(static_cast<uint32_t>(index_), currentState_);
         }
 
         // RTV & DSV設定
@@ -100,6 +102,7 @@ namespace CoreEngine
                 currentState_,
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
             currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            dxCommon_->SetOffScreenState(static_cast<uint32_t>(index_), currentState_);
         }
     }
 
