@@ -1,7 +1,7 @@
 # Step 4: 最小 RenderGraph 導入
 
 ## ステータス
-- 状態: 未着手
+- 状態: 完了
 - 優先度: 中〜高
 - 依存ステップ: Step 1, Step 2, Step 3
 - 完了後に着手しやすい次ステップ: Step 5
@@ -24,14 +24,41 @@
 - Blackboard と Graph の橋渡し
 
 ## 作業項目
-- [ ] `RenderGraph` の最小責務を定義する
-- [ ] `RenderGraphPass` / `RenderGraphResource` / `RenderGraphBuilder` を設計する
-- [ ] `GBufferPass` を Graph 登録対象にする
-- [ ] `SSAOPass` を Graph 登録対象にする
-- [ ] `DeferredLightingPass` を Graph 登録対象にする
-- [ ] `PostEffectPass` を Graph 登録対象にする
-- [ ] `BackBufferPass` を Graph 登録対象にする
-- [ ] `GBuffer → SSAO → DeferredLighting → PostEffect → Present` が Graph 上で通ることを確認する
+- [x] `RenderGraph` の最小責務を定義する
+- [x] `RenderGraphPass` / `RenderGraphResource` / `RenderGraphBuilder` を設計する
+- [x] `GBufferPass` を Graph 登録対象にする
+- [x] `SSAOPass` を Graph 登録対象にする
+- [x] `DeferredLightingPass` を Graph 登録対象にする
+- [x] `PostEffectPass` を Graph 登録対象にする
+- [x] `BackBufferPass` を Graph 登録対象にする
+- [x] `GBuffer → SSAO → DeferredLighting → PostEffect → Present` が Graph 上で通ることを確認する
+
+## 実施結果
+- `RenderGraph` / `RenderGraphPass` / `RenderGraphResource` / `RenderGraphBuilder` / `RenderGraphContext` を新規追加した
+- `Read / Write` 宣言から依存関係を記録し、最小のトポロジカルソートで実行順を決定する初版を実装した
+- `RenderPipeline` に `BuildRenderGraph()` と `ExecuteRenderGraph()` を追加し、フレーム準備時に Graph を構築するようにした
+- `GBufferPass` / `SSAOPass` / `RTShadowPass` / `DeferredLightingPass` / `GeometryPass` / `PostEffectPass` / `BackBufferPass` を Graph ノードとして登録するようにした
+- GameView のメイン描画経路は `ShadowMapPass` 実行後、`RenderGraph` 経由で主要パス群を実行する形へ切り替えた
+- `SceneView` のデバッグ描画経路はこの段階では既存 `ExecutePass()` ベースを維持し、完全移行は後続ステップへ送った
+- ワークスペース全体のビルド成功を確認した
+
+## この段階の Graph ノード構成
+
+| Pass | Read | Write |
+|---|---|---|
+| `GBufferPass` | `SceneDepth` | `GBufferAlbedoAO`, `GBufferNormalRoughness`, `GBufferEmissiveMetallic`, `GBufferWorldPosition`, `GBufferMotionVector` |
+| `SSAOPass` | `SceneDepth`, `GBufferAlbedoAO`, `GBufferNormalRoughness`, `GBufferWorldPosition` | `SSAO` |
+| `RTShadowPass` | `GBufferWorldPosition`, `GBufferNormalRoughness`, `GBufferMotionVector` | `RTShadowMask` |
+| `DeferredLightingPass` | `SceneDepth`, `GBufferAlbedoAO`, `GBufferNormalRoughness`, `GBufferEmissiveMetallic`, `GBufferWorldPosition`, `SSAO`, `RTShadowMask` | `SceneColor` |
+| `GeometryPass` | `SceneColor`, `SceneDepth` | `SceneColor` |
+| `PostEffectPass` | `SceneColor` | `SceneColor` |
+| `BackBufferPass` | `SceneColor` | `BackBuffer` |
+
+## この段階で残すもの
+- `ShadowMapPass` はまだ Graph 外の前段処理として残している
+- `SceneView` は既存パス直実行経路を使っている
+- `PassOutput` と Graph 実行経路は一時的に併存している
+- 旧手動実行経路の完全削除は次の専用ステップで扱う
 
 ## 実装時の観点
 - 最初から全パスを Graph 化しない
@@ -51,3 +78,4 @@
 
 ## 引き継ぎメモ
 - Step 5 では Graph の Read / Write 宣言を使って自動バリアを導入するため、ここで状態追跡に必要な情報を保持できる形にしておく
+- 旧 `ExecutePass()` ベースの個別実行ロジックはまだ補助経路として残っているため、RenderGraph 完全移行と旧処理削除は別ステップで明示的に進める

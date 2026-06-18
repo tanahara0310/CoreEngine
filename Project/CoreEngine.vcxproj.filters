@@ -7,7 +7,16 @@
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderGraph.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
@@ -1047,6 +1056,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\FrameBlackboard.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h">
       <Filter>Engine\Src\Graphics\Render\GBuffer</Filter>
     </ClInclude>
@@ -1185,6 +1197,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -1192,6 +1207,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderDomainContext.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderGraph.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h">
@@ -1781,6 +1799,27 @@
     <None Include="Docs\Engine\Utility\Utility.md">
       <Filter>Docs\Engine\Utility</Filter>
     </None>
+    <None Include="Docs\Refactoring\Step01_RenderPipelineExecution.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step02_RTShadowAndComposite.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step03_FrameBlackboard.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step04_RenderGraphMinimum.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step05_AutoBarrier.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step06_MultiViewIntegration.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step07_LegacyPipelineRemoval.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
     <None Include="Engine\Src\ObjectCommon\README.md">
       <Filter>Engine\Src\ObjectCommon</Filter>
     </None>
@@ -1790,12 +1829,6 @@
     <None Include="Engine\Src\Particle\README.md">
       <Filter>Engine\Src\Particle</Filter>
     </None>
-    <None Include="Docs\Refactoring\Step02_RTShadowAndComposite.md" />
-    <None Include="Docs\Refactoring\Step03_FrameBlackboard.md" />
-    <None Include="Docs\Refactoring\Step01_RenderPipelineExecution.md" />
-    <None Include="Docs\Refactoring\Step04_RenderGraphMinimum.md" />
-    <None Include="Docs\Refactoring\Step06_MultiViewIntegration.md" />
-    <None Include="Docs\Refactoring\Step05_AutoBarrier.md" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include=".github">

@@ -76,7 +76,7 @@ namespace CoreEngine
         void TransitionBarrier(
             ID3D12GraphicsCommandList* cmdList,
             ID3D12Resource* resource,
-            D3D12_RESOURCE_STATES stateBefore,
+            D3D12_RESOURCE_STATES& stateBefore,
             D3D12_RESOURCE_STATES stateAfter);
 
         /// @brief RTVのクリア色（RGBA）

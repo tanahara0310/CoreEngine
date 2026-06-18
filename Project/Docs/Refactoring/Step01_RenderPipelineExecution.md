@@ -1,7 +1,7 @@
 # Step 1: RenderPipeline 実行責務の分離
 
 ## ステータス
-- 状態: 未着手
+- 状態: 完了
 - 優先度: 最優先
 - 依存ステップ: なし
 - 完了後に着手しやすい次ステップ: Step 2
@@ -22,12 +22,20 @@
 - 実行前準備 / 実行本体 / 実行後処理の整理
 
 ## 作業項目
-- [ ] `EngineSystem::ExecuteRenderPipeline()` の責務を棚卸しする
-- [ ] 前準備・パス実行・後処理の境界を整理する
-- [ ] `executePass` 相当の責務を `RenderPipeline` へ移す
-- [ ] `RenderPipeline` が複数 Pass を一貫実行できる形へ整える
-- [ ] `EngineSystem` からパス順序の知識を減らす
-- [ ] 現行描画結果を崩していないか確認する
+- [x] `EngineSystem::ExecuteRenderPipeline()` の責務を棚卸しする
+- [x] 前準備・パス実行・後処理の境界を整理する
+- [x] `executePass` 相当の責務を `RenderPipeline` へ移す
+- [x] `RenderPipeline` が複数 Pass を一貫実行できる形へ整える
+- [x] `EngineSystem` からパス順序の知識を減らす
+- [x] 現行描画結果を崩していないか確認する
+
+## 実施結果
+- `RenderPipeline` に `PrepareFrame`、`ExecutePass`、`ResetExecutionState`、`GetPreviousOutput`、`SetPreviousOutput` を追加した
+- `GeometryPass` のフレーム準備処理を `EngineSystem` から `RenderPipeline` 側へ移した
+- `EngineSystem` の共通パス実行責務を `RenderPipeline` 経由へ移した
+- `DebugSubsystem` の `SceneView` 描画も `RenderPipeline::ExecutePass()` を使う形へ揃えた
+- SceneView で古い SSAO 入力が残留しないよう、前段出力が無効でも各 Pass に空入力を渡すよう修正した
+- ビルド成功を確認した
 
 ## 実装時の観点
 - この段階では RenderGraph を導入しない
@@ -44,6 +52,10 @@
 - `EngineSystem` が各 Pass の呼び出し順を直接列挙しない、または列挙量が大幅に縮小している
 - `RenderPipeline` が実質的なパイプライン実行器として成立している
 - 既存フレーム描画が維持されている
+
+## 補足
+- 実行順の完全移譲は未完で、RT Shadow 特例や SceneView 特例は Step 2 以降で継続整理する
+- ただし Step 1 の目的だった「共通実行責務の移設」と「実行器としての RenderPipeline 整備」は達成済み
 
 ## 引き継ぎメモ
 - Step 2 では RTShadow の特例処理を Pass 化するため、この時点で `RenderPipeline` へ Pass を追加しやすい構造になっていることが重要

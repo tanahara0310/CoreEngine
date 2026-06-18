@@ -9,6 +9,7 @@ namespace RenderTargetNames {
     constexpr const char* BackBuffer  = "BackBuffer";
     constexpr const char* Offscreen0  = "Offscreen0";
     constexpr const char* Offscreen1  = "Offscreen1";
+    constexpr const char* ReflectionView = "ReflectionView";
     constexpr const char* SSAOBuffer  = "SSAOBuffer";
     constexpr const char* SSAOBlurBuffer = "SSAOBlurBuffer";
 }

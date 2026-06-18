@@ -1,7 +1,7 @@
 # Step 3: FrameBlackboard 導入
 
 ## ステータス
-- 状態: 未着手
+- 状態: 完了
 - 優先度: 高
 - 依存ステップ: Step 1, Step 2
 - 完了後に着手しやすい次ステップ: Step 4
@@ -35,12 +35,34 @@
 - `RTShadowMask`
 
 ## 作業項目
-- [ ] フレーム内で共有したい論理リソース名を一覧化する
-- [ ] `SceneColor` / `SceneDepth` / `GBuffer*` / `SSAO` / `RTShadowMask` などを定義する
-- [ ] 各 Pass がどのリソースを読むか書くか整理する
-- [ ] Manager 直参照を Blackboard 経由参照へ段階的に置き換える
-- [ ] Water / Reflection / Screen Space 系が Scene 直配線なしで利用できる方向へ整理する
-- [ ] 既存描画結果が維持されることを確認する
+- [x] フレーム内で共有したい論理リソース名を一覧化する
+- [x] `SceneColor` / `SceneDepth` / `GBuffer*` / `SSAO` / `RTShadowMask` などを定義する
+- [x] 各 Pass がどのリソースを読むか書くか整理する
+- [x] Manager 直参照を Blackboard 経由参照へ段階的に置き換える
+- [x] Water / Reflection / Screen Space 系が Scene 直配線なしで利用できる方向へ整理する
+- [x] 既存描画結果が維持されることを確認する
+
+## 実施結果
+- `FrameBlackboard` を新規追加し、`SceneColor` / `SceneDepth` / `SSAO` / `RTShadowMask` / `GBuffer*` の論理リソース名を定義した
+- `RenderContext` に `frameBlackboard` を追加し、`EngineSystem::ExecuteRenderPipeline()` でフレームごとに Blackboard を構築するようにした
+- `SceneDepth` は `DirectXCommon` から初期登録し、深度参照系の正式な入口を用意した
+- `GBufferPass` が `GBufferAlbedoAO` / `GBufferNormalRoughness` / `GBufferEmissiveMetallic` / `GBufferWorldPosition` / `GBufferMotionVector` を Blackboard に登録するようにした
+- `SSAOPass` が `SSAO` を Blackboard に登録するようにし、`DeferredLightingPass` は Blackboard 優先で AO 入力を解決するようにした
+- `RTShadowPass` が `RTShadowMask` を Blackboard に登録するようにし、RT 系結果の論理名経由参照の足場を作った
+- `DeferredLightingPass` / `GeometryPass` / `PostEffectPass` が `SceneColor` を更新し、`PostEffectPass` / `BackBufferPass` は Blackboard 優先で最終入力を解決するようにした
+- ワークスペース全体のビルド成功を確認した
+
+## この段階での Read / Write 整理
+
+| Pass | Read | Write |
+|---|---|---|
+| `GBufferPass` | `SceneDepth` | `GBufferAlbedoAO`, `GBufferNormalRoughness`, `GBufferEmissiveMetallic`, `GBufferWorldPosition`, `GBufferMotionVector` |
+| `SSAOPass` | `GBuffer*`, `SceneDepth` | `SSAO` |
+| `RTShadowPass` | `GBufferWorldPosition`, `GBufferNormalRoughness`, `GBufferMotionVector` | `RTShadowMask` |
+| `DeferredLightingPass` | `GBuffer*`, `SSAO`, `RTShadowMask`, `SceneDepth` | `SceneColor` |
+| `GeometryPass` | `SceneColor`, `SceneDepth` | `SceneColor` |
+| `PostEffectPass` | `SceneColor` | `SceneColor` |
+| `BackBufferPass` | `SceneColor` | `BackBuffer` |
 
 ## 実装時の観点
 - 最初から完全抽象化を目指さず、既存 Manager を内部実装として利用してよい
@@ -59,3 +81,4 @@
 
 ## 引き継ぎメモ
 - Step 4 ではこの Blackboard を前提に RenderGraph 最小構成へ繋げるため、リソース名と所有権はこの段階で安定させる
+- この段階では既存 Manager 直参照を完全には除去しておらず、Blackboard は橋渡し層として導入している。Step 4 では `Read / Write` 宣言と実行順解決を RenderGraph 側へ寄せる

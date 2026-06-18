@@ -178,12 +178,6 @@ void WaterTestScene::OnInitialize() {
     groundObject_->SetIBLEnabled(true);
     groundObject_->SetActive(true);
 
-    // ===== Step 4: 反射パス初期化 =====
-    auto* dxCommon = engine_->GetComponent<DirectXCommon>();
-    if (dxCommon) {
-        reflectionPass_.Initialize(dxCommon, 5);
-    }
-
 #ifdef USE_IMGUI
     ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
 
@@ -208,71 +202,45 @@ void WaterTestScene::OnUpdate() {
 }
 
 void WaterTestScene::Draw() {
-    // ---- Step 4: 反射パスを先に実行する ----
-    // PrepareRender() は BaseScene::Draw() の前に呼ばれるため描画キューは既に積まれている
+    // ReflectionView の実行は Engine 側 RenderGraph に委譲し、ここでは通常描画だけを行う。
+    BaseScene::Draw();
+}
+
+ReflectionViewRequest WaterTestScene::GetReflectionViewRequest() const
+{
+    ReflectionViewRequest request{};
+    request.isEnabled = (waterPlane_ != nullptr);
+    request.planeHeight = waterPlane_ ? waterPlane_->GetTransform().translate.y : 0.0f;
+    return request;
+}
+
+void WaterTestScene::SetupReflectionView(ICamera* mainCamera, float planeHeight)
+{
+    reflectionPass_.SetupReflectionCamera(mainCamera, planeHeight);
     if (waterPlane_) {
-        auto* dxCommon = engine_->GetComponent<DirectXCommon>();
-        auto* render = engine_->GetComponent<Render>();
-        auto* renderManager = engine_->GetComponent<RenderManager>();
-        auto* cameraManager = cameraManager_.get();
+        waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), true);
+        waterPlane_->UpdateFrameConstants();
+    }
+}
 
-        if (dxCommon && render && renderManager && cameraManager) {
-            auto* cmdList = dxCommon->GetCommandList();
-            auto* mainCamera = cameraManager->GetActiveCamera(CameraType::Camera3D);
-            constexpr float kWaterHeight = 0.0f; // 水面の Y 座標
+void WaterTestScene::RestoreReflectionView(ICamera* mainCamera)
+{
+    reflectionPass_.RestoreMainCamera(mainCamera);
+}
 
-            Logger::GetInstance().Infof(
-                LogCategory::Graphics,
-                LogSubCategory::RenderTarget,
-                "WaterTestScene::Draw before reflection: depthSRV=0x{:X} sceneColorSRV=0x{:X} reflectionSRV(next)=0x{:X}",
-                dxCommon->GetDepthStencilSRV().ptr,
-                dxCommon->GetOffScreenSrvHandle(0).ptr,
-                reflectionPass_.GetReflectionSRV().ptr);
-
-            // クリップ平面を水面オブジェクトに伝える（反射パス中は水面自身をクリップ）
-            waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), true);
-            waterPlane_->UpdateFrameConstants();
-
-            // 反射シーンをオフスクリーン RTT に描画する
-            reflectionPass_.Render(cmdList, renderManager, mainCamera, kWaterHeight);
-
-            // 反射パスは別RT/DSVをバインドするため、GeometryPass本来の描画先をクリアなしで復元する
-            if (auto* geometryTarget = render->GetRenderTarget(RenderTargetNames::Offscreen0)) {
-                const bool previousClearEnabled = geometryTarget->IsClearEnabled();
-                geometryTarget->SetClearEnabled(false);
-                geometryTarget->Begin(cmdList);
-                geometryTarget->SetClearEnabled(previousClearEnabled);
-            }
-
-            // 反射テクスチャを水面オブジェクトに渡す
-            waterPlane_->SetReflectionTexture(reflectionPass_.GetReflectionSRV());
-
-            // シーン深度 SRV を水面オブジェクトに渡す（Depth Fade 用）
-            // GBuffer パス完了後の深度ステンシルバッファの SRV を使用する
-            waterPlane_->SetSceneDepthSRV(dxCommon->GetDepthStencilSRV());
-
-            // シーンカラー SRV を水面オブジェクトに渡す（水越しの背景色用）
-            waterPlane_->SetSceneColorSRV(dxCommon->GetOffScreenSrvHandle(0));
-
-            // 通常描画ではクリップを無効に戻す
-            waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), false);
-
-            // reflectionEnabled と depthFadeEnabled を含む最終状態を GPU バッファに反映する
-            // （SetReflectionTexture が reflectionEnabled を更新するため、ここで再書き込みが必要）
-            waterPlane_->UpdateFrameConstants();
-
-            Logger::GetInstance().Infof(
-                LogCategory::Graphics,
-                LogSubCategory::RenderTarget,
-                "WaterTestScene::Draw after setters: depthSRV=0x{:X} sceneColorSRV=0x{:X} reflectionSRV=0x{:X}",
-                dxCommon->GetDepthStencilSRV().ptr,
-                dxCommon->GetOffScreenSrvHandle(0).ptr,
-                reflectionPass_.GetReflectionSRV().ptr);
-        }
+void WaterTestScene::ApplyReflectionViewResult(const ReflectionViewResult& result)
+{
+    if (!waterPlane_) {
+        return;
     }
 
-    // ---- 通常描画 ----
-    BaseScene::Draw();
+    // Engine 側で生成した ReflectionColor と共有 Scene 入力を、水面描画用の結果へ変換する。
+    const ReflectionViewResult reflectionResult = reflectionPass_.BuildResult(
+        result.reflectionSrv,
+        result.sceneDepthSrv,
+        result.sceneColorSrv);
+    waterPlane_->ApplyWaterReflectionResult(reflectionResult);
+    waterPlane_->UpdateFrameConstants();
 }
 
 void WaterTestScene::Finalize() {

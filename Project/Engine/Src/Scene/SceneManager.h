@@ -53,6 +53,9 @@ public:
     /// @brief Sceneビュー用描画
     void DrawSceneView();
 
+    /// @brief ReflectionView 用描画
+    void DrawReflectionView();
+
     /// @brief SceneView 用カメラ・レンダリング状態をセットアップ（GBufferPass 実行前に呼ぶ）
     void SetupSceneViewCamera();
 
@@ -61,6 +64,15 @@ public:
 
     /// @brief Gameビュー用カメラ・レンダリング状態を復元
     void RestoreGameViewCamera();
+
+    /// @brief ReflectionView 用カメラ状態をセットアップする
+    /// @param mainCamera 基準となるゲームビューカメラ
+    /// @param planeHeight 反射平面の高さ
+    void SetupReflectionView(ICamera* mainCamera, float planeHeight);
+
+    /// @brief ReflectionView 実行後にゲームビューカメラ状態を復元する
+    /// @param mainCamera 復元対象のゲームビューカメラ
+    void RestoreReflectionView(ICamera* mainCamera);
 
     /// @brief 描画前準備（描画キュー構築など）
     void PrepareRender();
@@ -103,6 +115,14 @@ public:
 
     /// @brief 現在シーンのオブジェクトマネージャーを取得
     GameObjectManager* GetCurrentGameObjectManager() const;
+
+    /// @brief 現在シーンの ReflectionView 実行要求を取得
+    /// @return ReflectionView 要求。不要な場合は isEnabled=false
+    ReflectionViewRequest GetReflectionViewRequest() const;
+
+    /// @brief Engine 側で生成した ReflectionView 結果を現在シーンへ適用する
+    /// @param result ReflectionView の出力一式
+    void ApplyReflectionViewResult(const ReflectionViewResult& result);
 
 private:
     std::unordered_map<std::string, std::function<std::unique_ptr<IScene>()>> sceneFactories_;

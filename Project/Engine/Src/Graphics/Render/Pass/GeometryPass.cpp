@@ -3,6 +3,7 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include <cassert>
@@ -66,5 +67,17 @@ namespace CoreEngine
         output_.srvHandle = targetToUse->GetSRVHandle();
         output_.resource = targetToUse->GetResource();
         output_.isValid = true;
+
+        if (context.frameBlackboard) {
+            D3D12_RESOURCE_STATES* stateRef = nullptr;
+            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(targetToUse)) {
+                stateRef = &offscreen->GetCurrentState();
+            }
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::SceneColor,
+                output_.srvHandle,
+                output_.resource,
+                stateRef);
+        }
     }
 }

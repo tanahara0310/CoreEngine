@@ -1,7 +1,7 @@
 # Step 2: RT Shadow Pass 化と Composite 系整理
 
 ## ステータス
-- 状態: 未着手
+- 状態: 完了
 - 優先度: 高
 - 依存ステップ: Step 1
 - 完了後に着手しやすい次ステップ: Step 3
@@ -23,12 +23,29 @@ RT Shadow を特例呼び出しから通常の RenderPass に寄せ、併せて 
 - Composite 系パス分割方針の明文化
 
 ## 作業項目
-- [ ] `DispatchRTShadow()` の入力依存を洗い出す
-- [ ] `RTShadowPass` を新規作成する
-- [ ] `GBufferPass` の後、`DeferredLightingPass` の前に `RTShadowPass` を入れる
-- [ ] `EngineSystem` から RT Shadow の特例呼び出しを削除する
-- [ ] `GeometryPass` の責務を整理する
-- [ ] `TransparentPass` / `SkyPass` / `ParticlePass` / `UIPass` 分割方針を確定する
+- [x] `DispatchRTShadow()` の入力依存を洗い出す
+- [x] `RTShadowPass` を新規作成する
+- [x] `GBufferPass` の後、`DeferredLightingPass` の前に `RTShadowPass` を入れる
+- [x] `EngineSystem` から RT Shadow の特例呼び出しを削除する
+- [x] `GeometryPass` の責務を整理する
+- [x] `TransparentPass` / `SkyPass` / `ParticlePass` / `UIPass` 分割方針を確定する
+
+## 実施結果
+- `RenderContext` に `RayTracingSubsystem` 参照を追加した
+- `RTShadowPass` を新規追加し、既存 `RayTracingSubsystem::DispatchRTShadow()` を通常 Pass としてラップした
+- `RTShadowPass` を `GBufferPass` / `SSAOPass` の後、`DeferredLightingPass` の前に組み込んだ
+- `EngineSystem` から GameView 用 RT シャドウ特例呼び出しを削除した
+- `GeometryPass` が Forward Composite の暫定集約パスであることをコードコメントで明示した
+- ビルド成功を確認した
+
+## Composite 系分割方針
+- `GeometryPass` は現段階では暫定の大箱パスとして維持する
+- 今後は以下の責務へ分離する前提で扱う
+  - `TransparentPass`
+  - `SkyPass`
+  - `ParticlePass`
+  - `UIPass`
+- 分離後は各パスが `SceneColor` への上乗せ責務を個別に持ち、`GeometryPass` という総称は縮小または廃止する方向で整理する
 
 ## 実装時の観点
 - 最初の `RTShadowPass` は薄いラッパーでもよい
@@ -47,3 +64,4 @@ RT Shadow を特例呼び出しから通常の RenderPass に寄せ、併せて 
 
 ## 引き継ぎメモ
 - Step 3 では論理リソース名で入出力を整理するため、ここで `SceneColor` / `ShadowMask` / `RTShadowMask` の受け渡し地点を把握しておく
+- `RTShadowPass` 自体はまだ薄いラッパーであり、将来的な View 共通化や Blackboard 経由の入出力整理は Step 3 以降へ持ち越す

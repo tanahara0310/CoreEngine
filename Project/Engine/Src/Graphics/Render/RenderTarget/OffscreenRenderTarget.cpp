@@ -39,14 +39,15 @@ namespace CoreEngine
         SyncCurrentState();
         assert(resource_);
 
+        D3D12_RESOURCE_STATES& sharedState = dxCommon_->GetOffScreenStateRef(static_cast<uint32_t>(index_));
+
         // 実際のリソース状態から RENDER_TARGET へ遷移（状態不一致によるチラつきを防ぐ）
-        if (currentState_ != D3D12_RESOURCE_STATE_RENDER_TARGET) {
+        if (sharedState != D3D12_RESOURCE_STATE_RENDER_TARGET) {
             TransitionBarrier(cmdList, resource_,
-                currentState_,
+                sharedState,
                 D3D12_RESOURCE_STATE_RENDER_TARGET);
-            currentState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
-            dxCommon_->SetOffScreenState(static_cast<uint32_t>(index_), currentState_);
         }
+        currentState_ = sharedState;
 
         // RTV & DSV設定
         // useDepthBuffer_=false の場合（SSAOなどポストプロセス専用パス）は
@@ -96,14 +97,15 @@ namespace CoreEngine
         SyncCurrentState();
         assert(resource_);
 
+        D3D12_RESOURCE_STATES& sharedState = dxCommon_->GetOffScreenStateRef(static_cast<uint32_t>(index_));
+
         // 実際のリソース状態から PIXEL_SHADER_RESOURCE へ遷移
-        if (currentState_ != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) {
+        if (sharedState != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) {
             TransitionBarrier(cmdList, resource_,
-                currentState_,
+                sharedState,
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-            dxCommon_->SetOffScreenState(static_cast<uint32_t>(index_), currentState_);
         }
+        currentState_ = sharedState;
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::GetUAVHandle() const
@@ -118,13 +120,14 @@ namespace CoreEngine
         SyncCurrentState();
         assert(resource_);
 
-        if (currentState_ != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
+        D3D12_RESOURCE_STATES& sharedState = dxCommon_->GetOffScreenStateRef(static_cast<uint32_t>(index_));
+
+        if (sharedState != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
             TransitionBarrier(cmdList, resource_,
-                currentState_,
+                sharedState,
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            currentState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            dxCommon_->SetOffScreenState(static_cast<uint32_t>(index_), currentState_);
         }
+        currentState_ = sharedState;
 
         // SRVヒープ設定（CS用バインドに必要）
         ID3D12DescriptorHeap* heaps[] = { dxCommon_->GetSRVHeap() };
@@ -137,13 +140,14 @@ namespace CoreEngine
         SyncCurrentState();
         assert(resource_);
 
-        if (currentState_ != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) {
+        D3D12_RESOURCE_STATES& sharedState = dxCommon_->GetOffScreenStateRef(static_cast<uint32_t>(index_));
+
+        if (sharedState != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) {
             TransitionBarrier(cmdList, resource_,
-                currentState_,
+                sharedState,
                 D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            currentState_ = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-            dxCommon_->SetOffScreenState(static_cast<uint32_t>(index_), currentState_);
         }
+        currentState_ = sharedState;
     }
 
     void OffscreenRenderTarget::GetSize(int32_t& width, int32_t& height) const
@@ -181,5 +185,26 @@ namespace CoreEngine
     {
         SyncCurrentState();
         return height_;
+    }
+
+    void OffscreenRenderTarget::SetCurrentState(D3D12_RESOURCE_STATES state)
+    {
+        currentState_ = state;
+        if (dxCommon_) {
+            dxCommon_->SetOffScreenState(static_cast<uint32_t>(index_), state);
+        }
+    }
+
+    D3D12_RESOURCE_STATES& OffscreenRenderTarget::GetCurrentState()
+    {
+        assert(dxCommon_);
+        currentState_ = dxCommon_->GetOffScreenState(static_cast<uint32_t>(index_));
+        return dxCommon_->GetOffScreenStateRef(static_cast<uint32_t>(index_));
+    }
+
+    D3D12_RESOURCE_STATES OffscreenRenderTarget::GetCurrentState() const
+    {
+        SyncCurrentState();
+        return currentState_;
     }
 }

@@ -24,6 +24,23 @@ public:
     /// @brief 描画処理
     void Draw() override;
 
+    /// @brief ReflectionView の実行要求を返す
+    /// @return 水面反射を要求する設定
+    CoreEngine::ReflectionViewRequest GetReflectionViewRequest() const override;
+
+    /// @brief ReflectionView 実行前に反射カメラ状態をセットアップする
+    /// @param mainCamera 通常描画の基準カメラ
+    /// @param planeHeight 反射平面の高さ
+    void SetupReflectionView(CoreEngine::ICamera* mainCamera, float planeHeight) override;
+
+    /// @brief ReflectionView 実行後に反射カメラ状態を元へ戻す
+    /// @param mainCamera 復元対象の通常描画カメラ
+    void RestoreReflectionView(CoreEngine::ICamera* mainCamera) override;
+
+    /// @brief Engine 側で生成した ReflectionView 結果を水面へ適用する
+    /// @param result ReflectionColor / SceneDepth / SceneColor / clip plane を含む結果
+    void ApplyReflectionViewResult(const CoreEngine::ReflectionViewResult& result) override;
+
     /// @brief 解放
     void Finalize() override;
 

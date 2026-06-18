@@ -40,6 +40,13 @@ namespace CoreEngine
         sceneViewDesc.clearColor[3] = kClearColor[3];
         renderTargetManager_->CreateRenderTarget(sceneViewDesc);
 
+        RenderTargetDescriptor reflectionViewDesc("ReflectionView");
+        reflectionViewDesc.clearColor[0] = kClearColor[0];
+        reflectionViewDesc.clearColor[1] = kClearColor[1];
+        reflectionViewDesc.clearColor[2] = kClearColor[2];
+        reflectionViewDesc.clearColor[3] = kClearColor[3];
+        renderTargetManager_->CreateRenderTarget(reflectionViewDesc);
+
         // SSAO用バッファ
         // フルスクリーンポストプロセスのためDSVは不要（深度バッファを破壊しないようにする）
         // クリア色は白（AO無し = 1.0）。リソース作成時と ClearRenderTargetView 時を一致させる

@@ -7,7 +7,11 @@ namespace CoreEngine
 {
     class RenderTarget;
 
-    /// @brief ジオメトリ描画パス（オフスクリーンレンダリング）
+    /// @brief DeferredLighting 後の Forward Composite を担う描画パス
+    /// @details
+    ///  現段階では透過オブジェクト、SkyBox、Particle、UI、Debug などを
+    ///  単一のパスに集約して Offscreen0 へ重ね描きする暫定の大箱パス。
+    ///  Step 2 以降で Transparent / Sky / Particle / UI などへの責務分離を進める。
     class GeometryPass : public RenderPass {
     public:
         GeometryPass() = default;

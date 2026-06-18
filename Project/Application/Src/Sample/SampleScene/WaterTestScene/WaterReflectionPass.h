@@ -2,43 +2,40 @@
 
 #include <d3d12.h>
 #include <wrl.h>
-#include <memory>
 
-#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
-#include "Graphics/Common/Core/DescriptorHandle.h"
+#include "Scene/IScene.h"
 #include "Math/Vector/Vector4.h"
 #include "Math/MathCore.h"
 
 namespace CoreEngine
 {
-    class DirectXCommon;
     class ICamera;
-    class RenderManager;
 }
 
-/// 水面を鏡面として、水面より上のシーンを専用の RTT に描画する。
-/// 生成した反射テクスチャは Water.PS.hlsl で Fresnel ブレンドに使用する。
+/// 水面反射用の補助クラス。
+/// ReflectionView 実行前後のカメラ状態切り替えと、
+/// 水面へ渡す clip plane / reflection 結果の組み立てを担当する。
 class WaterReflectionPass
 {
 public:
-    /// @brief 初期化
-    /// @param dxCommon  DirectXCommon（オフスクリーン RTT 確保に使用）
-    /// @param offscreenIndex オフスクリーン管理配列のインデックス（他のパスと衝突しない値を指定）
-    void Initialize(CoreEngine::DirectXCommon* dxCommon, int offscreenIndex = 2);
-
-    /// @brief 毎フレーム反射パスを描画する
-    /// @param cmdList     コマンドリスト
-    /// @param renderManager  描画キューが積まれている RenderManager
-    /// @param mainCamera  通常描画で使用しているカメラ（これを水面に対して反転する）
+    /// @brief ReflectionView 実行前に反射カメラ状態を適用する
+    /// @param mainCamera 通常描画で使用しているカメラ
     /// @param waterHeight 水面の Y 座標（ワールド空間）
-    void Render(
-        ID3D12GraphicsCommandList* cmdList,
-        CoreEngine::RenderManager* renderManager,
-        CoreEngine::ICamera* mainCamera,
-        float waterHeight);
+    void SetupReflectionCamera(CoreEngine::ICamera* mainCamera, float waterHeight);
 
-    /// @brief 反射テクスチャの SRV ハンドルを取得する
-    D3D12_GPU_DESCRIPTOR_HANDLE GetReflectionSRV() const;
+    /// @brief ReflectionView 実行後に元のカメラ状態へ戻す
+    /// @param mainCamera 復元対象の通常描画カメラ
+    void RestoreMainCamera(CoreEngine::ICamera* mainCamera);
+
+    /// @brief 直近の Reflection 実行結果をまとめて取得する
+    /// @param reflectionSrv 反射カラー SRV
+    /// @param sceneDepthSrv シーン深度 SRV
+    /// @param sceneColorSrv シーンカラー SRV
+    /// @return 水面描画へ渡す Reflection の出力一式
+    CoreEngine::ReflectionViewResult BuildResult(
+        D3D12_GPU_DESCRIPTOR_HANDLE reflectionSrv,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSrv,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrv) const;
 
     /// @brief クリップ平面を取得する（現在の水面高さに対応した値）
     const CoreEngine::Vector4& GetClipPlane() const { return clipPlane_; }
@@ -56,12 +53,10 @@ private:
         CoreEngine::ICamera* mainCamera,
         float waterHeight) const;
 
-    CoreEngine::DirectXCommon* dxCommon_ = nullptr;
-    std::unique_ptr<CoreEngine::OffscreenRenderTarget> reflectionRT_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> reflectionDepthResource_;
-    CoreEngine::DescriptorHandle reflectionDepthDsvHandle_;
-
     /// @brief クリップ平面パラメータ（HLSL 側 SV_ClipDistance0 に渡す: dot(worldPos, clipPlane) > 0 なら描画）
     CoreEngine::Vector4 clipPlane_ = { 0.0f, 1.0f, 0.0f, 0.0f };
     bool clipEnabled_ = false;
+    bool hasSavedCameraState_ = false;
+    CoreEngine::Matrix4x4 savedView_{};
+    CoreEngine::Vector3 savedPosition_{};
 };

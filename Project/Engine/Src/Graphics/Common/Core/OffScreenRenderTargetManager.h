@@ -46,6 +46,11 @@ public:
     /// @brief 指定ターゲットの現在のリソース状態を取得
     D3D12_RESOURCE_STATES GetOffScreenState(uint32_t index = 0) const;
 
+    /// @brief 指定ターゲットの現在のリソース状態参照を取得
+    /// @param index 対象ターゲットのインデックス
+    /// @return 自動遷移と RenderTarget が共有する状態変数への参照
+    D3D12_RESOURCE_STATES& GetOffScreenStateRef(uint32_t index = 0);
+
     /// @brief 指定ターゲットの現在のリソース状態を設定
     void SetOffScreenState(uint32_t index, D3D12_RESOURCE_STATES state);
 

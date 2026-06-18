@@ -6,6 +6,7 @@
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
@@ -78,7 +79,15 @@ namespace CoreEngine
         }
 
         // ===== SSAO SRV を渡す（SSAOPass の出力が入力として届いている場合） =====
-        if (input_.isValid && input_.srvHandle.ptr != 0) {
+        D3D12_GPU_DESCRIPTOR_HANDLE ssaoHandle{};
+        bool hasBlackboardSSAO = false;
+        if (context.frameBlackboard) {
+            hasBlackboardSSAO = context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SSAO, ssaoHandle);
+        }
+
+        if (hasBlackboardSSAO) {
+            deferredLighting->SetSSAOHandle(ssaoHandle);
+        } else if (input_.isValid && input_.srvHandle.ptr != 0) {
             deferredLighting->SetSSAOHandle(input_.srvHandle);
         } else {
             deferredLighting->SetSSAOHandle({});
@@ -101,7 +110,7 @@ namespace CoreEngine
             return;
         }
 
-        // ===== ライティングパスを実行 =====
+        // GBuffer / SSAO / Shadow の情報からシーンカラーを生成する。
         D3D12_GPU_DESCRIPTOR_HANDLE outputHandle{};
         deferredLighting->Execute(context, outputHandle);
 
@@ -111,6 +120,18 @@ namespace CoreEngine
             output_.srvHandle = outputHandle;
             output_.resource  = target ? target->GetResource() : nullptr;
             output_.isValid   = true;
+
+            if (context.frameBlackboard) {
+                D3D12_RESOURCE_STATES* stateRef = nullptr;
+                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
+                    stateRef = &offscreen->GetCurrentState();
+                }
+                context.frameBlackboard->SetResource(
+                    FrameBlackboard::SceneColor,
+                    output_.srvHandle,
+                    output_.resource,
+                    stateRef);
+            }
         } else {
             output_.Reset();
         }

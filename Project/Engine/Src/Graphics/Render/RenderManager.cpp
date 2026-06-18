@@ -181,10 +181,6 @@ namespace CoreEngine
         if (shadowMapManager_) {
             RenderShadowMapPass();
 
-            // シャドウマップパスの後、リソースバリアを実行
-            // DEPTH_WRITE -> PIXEL_SHADER_RESOURCE
-            shadowMapManager_->TransitionToShaderResource(cmdList_);
-
             // シャドウマップ载影を Model / SkinnedModel レンダラー両方に適用する
             for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
                 if (auto* renderer = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {

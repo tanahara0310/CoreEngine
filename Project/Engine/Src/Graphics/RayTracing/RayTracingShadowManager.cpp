@@ -396,6 +396,24 @@ namespace CoreEngine
         return views_[static_cast<uint32_t>(viewId)][lightIndex].srvHandle;
     }
 
+    ID3D12Resource* RayTracingShadowManager::GetShadowResource(
+        ViewID viewId,
+        uint32_t lightIndex) const
+    {
+        // 指定ビュー・ライトの現在のシャドウ出力テクスチャを返す。
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        return views_[static_cast<uint32_t>(viewId)][lightIndex].texture.Get();
+    }
+
+    D3D12_RESOURCE_STATES& RayTracingShadowManager::GetShadowCurrentState(
+        ViewID viewId,
+        uint32_t lightIndex)
+    {
+        // 自動遷移処理が共有するシャドウ出力の現在状態参照を返す。
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        return views_[static_cast<uint32_t>(viewId)][lightIndex].currentState;
+    }
+
     bool RayTracingShadowManager::IsDispatchedThisFrame(
         ViewID viewId, uint32_t lightIndex) const
     {

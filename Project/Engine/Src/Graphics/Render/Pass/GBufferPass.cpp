@@ -23,14 +23,53 @@ namespace CoreEngine
         auto* cmdList = context.dxCommon->GetCommandList();
         auto* gBufferManager = context.gBufferManager;
 
+        // GBuffer の各 MRT と深度へ書き込むジオメトリパスを開始する。
         gBufferManager->BeginGeometryPass(
             cmdList,
             context.depthStencilManager,
             context.dxCommon->GetSRVHeap(),
             true);
 
+        // 不透明オブジェクトを GBuffer へ描画する。
         context.renderManager->DrawGBufferPass();
         gBufferManager->EndGeometryPass(cmdList);
+
+        if (context.frameBlackboard) {
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::GBufferAlbedoAO,
+                gBufferManager->GetSRVHandle(GBufferManager::Target::AlbedoAO),
+                gBufferManager->GetResource(GBufferManager::Target::AlbedoAO),
+                &gBufferManager->GetCurrentState(GBufferManager::Target::AlbedoAO));
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::GBufferNormalRoughness,
+                gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness),
+                gBufferManager->GetResource(GBufferManager::Target::NormalRoughness),
+                &gBufferManager->GetCurrentState(GBufferManager::Target::NormalRoughness));
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::GBufferEmissiveMetallic,
+                gBufferManager->GetSRVHandle(GBufferManager::Target::EmissiveMetallic),
+                gBufferManager->GetResource(GBufferManager::Target::EmissiveMetallic),
+                &gBufferManager->GetCurrentState(GBufferManager::Target::EmissiveMetallic));
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::GBufferWorldPosition,
+                gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition),
+                gBufferManager->GetResource(GBufferManager::Target::WorldPosition),
+                &gBufferManager->GetCurrentState(GBufferManager::Target::WorldPosition));
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::GBufferMotionVector,
+                gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector),
+                gBufferManager->GetResource(GBufferManager::Target::MotionVector),
+                &gBufferManager->GetCurrentState(GBufferManager::Target::MotionVector));
+
+            // 深度も Blackboard に登録し、後続 Screen Space 系が論理名で参照できるようにする。
+            if (context.depthStencilManager) {
+                context.frameBlackboard->SetResource(
+                    FrameBlackboard::SceneDepth,
+                    context.depthStencilManager->GetDepthSRVHandle(),
+                    context.depthStencilManager->GetDepthStencilResource(),
+                    &context.depthStencilManager->GetCurrentState());
+            }
+        }
 
         // GBuffer の各バッファは context.gBufferManager 経由で後続パスが直接取得する。
         // PassOutput チェーンではなく gBufferManager に統一するため output_ は設定しない。

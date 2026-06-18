@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "WaterPlaneObject.h"
+#include "Scene/IScene.h"
 
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Material/MaterialInstance.h"
@@ -252,6 +253,15 @@ void WaterPlaneObject::SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
             "WaterPlane SetSceneColorSRV: srv=0x{:X}",
             sceneColorSRV_.ptr);
     }
+}
+
+void WaterPlaneObject::ApplyWaterReflectionResult(const CoreEngine::ReflectionViewResult& result)
+{
+    // ReflectionView 相当の出力をまとめて受け取り、水面が必要な SRV 群へ反映する。
+    SetReflectionTexture(result.reflectionSrv);
+    SetSceneDepthSRV(result.sceneDepthSrv);
+    SetSceneColorSRV(result.sceneColorSrv);
+    SetClipPlane(result.clipPlane, false);
 }
 
 void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {

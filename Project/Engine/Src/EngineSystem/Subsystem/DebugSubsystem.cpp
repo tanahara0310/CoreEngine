@@ -372,7 +372,6 @@ namespace CoreEngine
         Render* render,
         ID3D12GraphicsCommandList* cmdList,
         PassOutput& inOutPreviousOutput,
-        const std::function<void(RenderPass*)>& executePass,
         const std::function<void()>& gameRenderCallback)
     {
         if (!imGui_ || !renderPipeline || !render) {
@@ -397,51 +396,50 @@ namespace CoreEngine
 
         // ゲームパスのために previousOutput を保存（SceneView パス後に復元）
         PassOutput savedOutput = inOutPreviousOutput;
+        renderPipeline->SetPreviousOutput(inOutPreviousOutput);
 
         // SceneView カメラ・レンダリング状態をセットアップ
         sceneManager->SetupSceneViewCamera();
 
-        // 1. GBufferPass: 不透明オブジェクトを G-Buffer に書き込む（Scene カメラ使用）
-        executePass(renderPipeline->GetPass<GBufferPass>());
+        // SceneView 用コンテキストへ切り替え、軽量な Graph 構成で描画する。
+        RenderContext sceneViewContext = context;
+        sceneViewContext.viewSettings.viewType = RenderViewType::SceneView;
+        sceneViewContext.viewSettings.enableSSAO = false;
+        sceneViewContext.viewSettings.enableRTShadow = false;
+        sceneViewContext.viewSettings.enablePostEffect = false;
+        sceneViewContext.viewSettings.enableBackBuffer = false;
+        sceneViewContext.viewSettings.sceneColorTargetName = "SceneView";
+        sceneViewContext.currentRTShadowViewId = static_cast<uint32_t>(RenderViewType::SceneView);
 
-        // SceneView は RTシャドウを使わない（重いためエディタビューでは省略）
-        // 代わりに ShadowMap ベースのシャドウのみ使用
-        context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::SceneView);
+        // SceneView 固有の Geometry 描画コールバックを使って Graph を再構築・実行する。
+        renderPipeline->PrepareFrame(
+            sceneViewContext,
+            [sceneManager]() { sceneManager->DrawSceneViewGeometry(); });
+        renderPipeline->ExecuteRenderGraph(sceneViewContext);
 
-        // 2. DeferredLightingPass: G-Buffer を読み取り PBR+IBL ライティングを計算
-        executePass(renderPipeline->GetPass<DeferredLightingPass>());
+        inOutPreviousOutput = renderPipeline->GetPreviousOutput();
 
-        // 3. GeometryPass: スカイボックス・グリッド・透過オブジェクトを重ねて描画
-        // clearEnabled_ を保存してSceneView後にゲームビュー用の設定を汚染しないよう復元する
-        bool savedClearEnabled = true;
-        if (auto* geometryPass = renderPipeline->GetPass<GeometryPass>()) {
-            savedClearEnabled = geometryPass->IsClearEnabled();
-            geometryPass->SetRenderCallback([sceneManager]() { sceneManager->DrawSceneViewGeometry(); });
-        }
-        executePass(renderPipeline->GetPass<GeometryPass>());
-        // ゲームビュー用コールバックとclearEnabled_を復元
-        if (auto* geometryPass = renderPipeline->GetPass<GeometryPass>()) {
-            geometryPass->SetRenderCallback(gameRenderCallback);
-            geometryPass->SetClearEnabled(savedClearEnabled);
-        }
-
-        // 4. SceneView RT にコピー
-        // sceneViewEnablePostEffect_=true: ポストエフェクトチェーン適用（高品質・高負荷）
-        // sceneViewEnablePostEffect_=false: FullScreen blit のみ（軽量）
-        if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
+        // 必要なら SceneView 表示用にポストエフェクトを適用してから RT へ戻す。
+        if (sceneViewEnablePostEffect_) {
+            if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
             D3D12_GPU_DESCRIPTOR_HANDLE srcHandle = sceneViewEnablePostEffect_
                 ? postEffect->ExecuteEffectChain(inOutPreviousOutput.srvHandle)
                 : inOutPreviousOutput.srvHandle;
             sceneViewTarget->Begin(cmdList);
             postEffect->ExecuteEffect("FullScreen", srcHandle);
             sceneViewTarget->End(cmdList);
+            }
         }
 
         // SceneView カメラ・レンダリング状態を復元
         sceneManager->RestoreGameViewCamera();
 
+        // ゲームビュー用の Graph 構成へ戻し、後続の本描画を汚染しないようにする。
+        renderPipeline->PrepareFrame(context, gameRenderCallback);
+
         // ゲームパス用に previousOutput を復元
         inOutPreviousOutput = savedOutput;
+        renderPipeline->SetPreviousOutput(savedOutput);
     }
 }
 

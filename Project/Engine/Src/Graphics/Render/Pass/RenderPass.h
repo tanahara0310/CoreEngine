@@ -2,10 +2,31 @@
 #include <string>
 #include <d3d12.h>
 
+#include "Graphics/Render/FrameBlackboard.h"
+
 namespace CoreEngine
 {
+    /// @brief RenderGraph が扱う描画ビュー種別
+    enum class RenderViewType : uint32_t {
+        SceneView = 0,
+        GameView = 1,
+        ReflectionView = 2,
+        CaptureView = 3,
+    };
+
+    /// @brief View ごとの Graph 実行設定
+    struct RenderViewSettings {
+        RenderViewType viewType = RenderViewType::GameView;
+        bool enableSSAO = true;
+        bool enableRTShadow = true;
+        bool enablePostEffect = true;
+        bool enableBackBuffer = true;
+        std::string sceneColorTargetName = "Offscreen0";
+    };
+
     class DirectXCommon;
     class RenderManager;
+    class RayTracingSubsystem;
     class PostEffectManager;
     class RenderingTechniqueManager;
     class LightManager;
@@ -21,6 +42,7 @@ namespace CoreEngine
     struct RenderContext {
         DirectXCommon* dxCommon = nullptr;
         RenderManager* renderManager = nullptr;
+        RayTracingSubsystem* rayTracingSubsystem = nullptr;
         PostEffectManager* postEffectManager = nullptr;
         RenderingTechniqueManager* renderingTechniqueManager = nullptr; ///< レンダリング技術管理（SSAO・TAA等）
         LightManager* lightManager = nullptr;
@@ -31,7 +53,9 @@ namespace CoreEngine
         RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
         CameraManager* cameraManager = nullptr; ///< カメラ管理（SSAO等でビュー/プロジェクション行列取得用）
         DepthStencilManager* depthStencilManager = nullptr; ///< 深度ステンシル管理（バリア遷移・クリアを一元管理）
-        uint32_t currentRTShadowViewId = 1; ///< 現在の RT シャドウビュー (0=SceneView, 1=GameView)
+        FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理
+        RenderViewSettings viewSettings{}; ///< 現在の View 種別と有効化するパス群設定
+        uint32_t currentRTShadowViewId = static_cast<uint32_t>(RenderViewType::GameView); ///< 現在の RT シャドウビュー
     };
 
     /// @brief パス間のデータ受け渡し用構造体

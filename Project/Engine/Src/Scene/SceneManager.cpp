@@ -73,6 +73,12 @@ namespace CoreEngine
         }
     }
 
+    void SceneManager::DrawReflectionView() {
+        if (currentScene_) {
+            currentScene_->DrawReflectionView();
+        }
+    }
+
     void SceneManager::SetupSceneViewCamera() {
         if (currentScene_) {
             currentScene_->SetupSceneViewCamera();
@@ -88,6 +94,18 @@ namespace CoreEngine
     void SceneManager::RestoreGameViewCamera() {
         if (currentScene_) {
             currentScene_->RestoreGameViewCamera();
+        }
+    }
+
+    void SceneManager::SetupReflectionView(ICamera* mainCamera, float planeHeight) {
+        if (currentScene_) {
+            currentScene_->SetupReflectionView(mainCamera, planeHeight);
+        }
+    }
+
+    void SceneManager::RestoreReflectionView(ICamera* mainCamera) {
+        if (currentScene_) {
+            currentScene_->RestoreReflectionView(mainCamera);
         }
     }
 
@@ -159,6 +177,18 @@ namespace CoreEngine
 
     GameObjectManager* SceneManager::GetCurrentGameObjectManager() const {
         return currentScene_ ? currentScene_->GetGameObjectManager() : nullptr;
+    }
+
+    ReflectionViewRequest SceneManager::GetReflectionViewRequest() const
+    {
+        return currentScene_ ? currentScene_->GetReflectionViewRequest() : ReflectionViewRequest{};
+    }
+
+    void SceneManager::ApplyReflectionViewResult(const ReflectionViewResult& result)
+    {
+        if (currentScene_) {
+            currentScene_->ApplyReflectionViewResult(result);
+        }
     }
 
     void SceneManager::DoChangeScene(const std::string& name) {

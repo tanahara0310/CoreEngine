@@ -29,10 +29,13 @@
 #include "Graphics/Render/Pass/GBufferPass.h"
 #include "Graphics/Render/Pass/SSAOPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
+#include "Graphics/Render/Pass/RTShadowPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
 #include "Graphics/Render/Pass/BackBufferPass.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
+#include "Scene/IScene.h"
 
 // レイトレーシング
 #include "Graphics/Render/RenderDomainContext.h"
@@ -208,6 +211,7 @@ namespace CoreEngine
         auto* dx = GetComponent<DirectXCommon>();
         auto* renderManager = GetComponent<RenderManager>();
         auto* render = GetComponent<Render>();
+        auto* sceneManager = GetComponent<SceneManager>();
 
         // コマンドリストを設定
         if (renderManager && dx) {
@@ -215,9 +219,11 @@ namespace CoreEngine
         }
 
         // レンダリングコンテキストの構築
+        FrameBlackboard frameBlackboard;
         RenderContext context;
         context.dxCommon = dx;
         context.renderManager = renderManager;
+        context.rayTracingSubsystem = rayTracing;
         context.postEffectManager = GetComponent<PostEffectManager>();
         context.renderingTechniqueManager = GetComponent<RenderingTechniqueManager>();
         context.lightManager = GetComponent<LightManager>();
@@ -226,45 +232,23 @@ namespace CoreEngine
         context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
+        context.frameBlackboard = &frameBlackboard;
+
+        if (dx) {
+            frameBlackboard.SetResource(
+                FrameBlackboard::SceneDepth,
+                dx->GetDepthStencilSRV(),
+                dx->GetDepthStencilResource(),
+                context.depthStencilManager ? &context.depthStencilManager->GetCurrentState() : nullptr);
+        }
 
         // RenderTargetManagerを設定
         if (render) {
             context.renderTargetManager = render->GetRenderTargetManager();
         }
 
-        // ジオメトリパスに描画コールバックを設定する
-        // GBufferPass + DeferredLightingPass が有効なため、不透明 Model/SkinnedModel は GeometryPass でクリアしない
-        if (auto* geometryPass = renderPipeline_->GetPass<GeometryPass>()) {
-            geometryPass->SetRenderCallback(renderCallback);
-
-            // DeferredLightingPass が Offscreen0 に書き込んだ結果を保持するためクリアを無効にする
-            // GeometryPass はその上に透過オブジェクト / SkyBox / UI 等を重ねて描画する
-            const bool deferredEnabled = renderPipeline_->GetPass<DeferredLightingPass>()
-                && renderPipeline_->GetPass<DeferredLightingPass>()->IsEnabled();
-            geometryPass->SetClearEnabled(!deferredEnabled);
-        }
-
-        // DeferredLightingPass が有効な場合は、RenderManager の Forward パスで
-        // 不透明 Model/SkinnedModel を二重描画しないようスキップフラグを立てる
-        if (renderManager) {
-            const bool deferredEnabled = renderPipeline_->GetPass<DeferredLightingPass>()
-                && renderPipeline_->GetPass<DeferredLightingPass>()->IsEnabled();
-            renderManager->SetSkipOpaqueMeshInForwardPass(deferredEnabled);
-        }
-
-        PassOutput previousOutput{};
-        auto executePass = [&](RenderPass* pass) {
-            if (!pass || !pass->IsEnabled()) {
-                return;
-            }
-
-            pass->SetInput(previousOutput);
-
-            pass->Setup(context);
-            pass->Execute(context);
-            pass->Cleanup(context);
-            previousOutput = pass->GetOutput();
-            };
+        // RenderPipeline 側へフレームごとのパス設定を寄せる
+        renderPipeline_->PrepareFrame(context, renderCallback);
 
         // コマンドリストは EngineProfileScope に渡すため USE_IMGUI 外で宣言する
         // （リリースビルドでは EngineProfileScope は no-op）
@@ -281,58 +265,71 @@ namespace CoreEngine
                 context, dx, GetComponent<ModelManager>(), GetComponent<SceneManager>());
         }
 
-        // Shadow Pass
-        {
-            EngineProfileScope scope(this, GpuTimestampSlot::ShadowPass, cmdList);
-            executePass(renderPipeline_->GetPass<ShadowMapPass>());
+        // Water Reflection などの補助 View は、Scene 特例ではなく ReflectionView の Graph 実行で処理する。
+        if (sceneManager && render) {
+            const ReflectionViewRequest reflectionRequest = sceneManager->GetReflectionViewRequest();
+            if (reflectionRequest.isEnabled) {
+                RenderContext reflectionContext = context;
+                reflectionContext.viewSettings.viewType = RenderViewType::ReflectionView;
+                reflectionContext.viewSettings.enableSSAO = false;
+                reflectionContext.viewSettings.enableRTShadow = false;
+                reflectionContext.viewSettings.enablePostEffect = false;
+                reflectionContext.viewSettings.enableBackBuffer = false;
+                reflectionContext.viewSettings.sceneColorTargetName = RenderTargetNames::ReflectionView;
+
+                renderPipeline_->PrepareFrame(reflectionContext, [sceneManager]() {
+                    sceneManager->DrawReflectionView();
+                });
+
+                ICamera* reflectionBaseCamera = sceneManager->GetGameViewCamera3D();
+                sceneManager->SetupReflectionView(reflectionBaseCamera, reflectionRequest.planeHeight);
+                renderPipeline_->ExecuteRenderGraph(reflectionContext);
+                sceneManager->RestoreReflectionView(reflectionBaseCamera);
+
+                if (RenderTarget* reflectionTarget = render->GetRenderTarget(RenderTargetNames::ReflectionView)) {
+                    D3D12_RESOURCE_STATES* stateRef = nullptr;
+                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(reflectionTarget)) {
+                        stateRef = &offscreen->GetCurrentState();
+                    }
+
+                    frameBlackboard.SetResource(
+                        FrameBlackboard::ReflectionColor,
+                        reflectionTarget->GetSRVHandle(),
+                        reflectionTarget->GetResource(),
+                        stateRef);
+
+                    ReflectionViewResult reflectionResult{};
+                    reflectionResult.reflectionSrv = reflectionTarget->GetSRVHandle();
+                    reflectionResult.sceneDepthSrv = dx ? dx->GetDepthStencilSRV() : D3D12_GPU_DESCRIPTOR_HANDLE{};
+                    if (RenderTarget* sceneColorTarget = render->GetRenderTarget(RenderTargetNames::Offscreen0)) {
+                        reflectionResult.sceneColorSrv = sceneColorTarget->GetSRVHandle();
+                    }
+                    reflectionResult.isValid = reflectionResult.reflectionSrv.ptr != 0;
+                    sceneManager->ApplyReflectionViewResult(reflectionResult);
+                }
+
+                // ReflectionView 用に切り替えた Graph 構成を、後続の GameView 実行向けへ戻す。
+                renderPipeline_->PrepareFrame(context, renderCallback);
+            }
         }
 
 #ifdef USE_IMGUI
         // SceneView 描画（毎フレーム実行）
         // SceneView は GBufferPass より前に実行（共有 DSV のクリア競合回避）。
+        PassOutput previousOutput = renderPipeline_->GetPreviousOutput();
         if (debug) {
             debug->RenderSceneView(
                 context, renderPipeline_.get(), render, cmdList,
-                previousOutput, executePass, renderCallback);
+                previousOutput, renderCallback);
         }
 #endif // USE_IMGUI
 
+        context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
+
         {
+            // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
             EngineProfileScope scope(this, GpuTimestampSlot::GBufferPass, cmdList);
-            executePass(renderPipeline_->GetPass<GBufferPass>());
-        }
-
-        {
-            EngineProfileScope scope(this, GpuTimestampSlot::SSAOPass, cmdList);
-            executePass(renderPipeline_->GetPass<SSAOPass>());
-        }
-
-#ifdef USE_IMGUI
-        // Game ビュー用 RT シャドウディスパッチ
-        if (rayTracing) {
-            EngineProfileScope scope(this, GpuTimestampSlot::RTShadow, cmdList);
-            rayTracing->DispatchRTShadow(context, dx, cmdList, RayTracingShadowManager::ViewID::GameView);
-        }
-#endif
-
-        {
-            EngineProfileScope scope(this, GpuTimestampSlot::DeferredLighting, cmdList);
-            context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
-            executePass(renderPipeline_->GetPass<DeferredLightingPass>());
-        }
-
-        {
-            EngineProfileScope scope(this, GpuTimestampSlot::GeometryPass, cmdList);
-            executePass(renderPipeline_->GetPass<GeometryPass>());
-        }
-
-        {
-            EngineProfileScope scope(this, GpuTimestampSlot::PostEffect, cmdList);
-            executePass(renderPipeline_->GetPass<PostEffectPass>());
-        }
-        {
-            EngineProfileScope scope(this, GpuTimestampSlot::BackBufferPass, cmdList);
-            executePass(renderPipeline_->GetPass<BackBufferPass>());
+            renderPipeline_->ExecuteRenderGraph(context);
         }
 
 #ifdef USE_IMGUI
@@ -409,6 +406,12 @@ namespace CoreEngine
         ssaoPass->SetSSAOTargetName(RenderTargetNames::SSAOBuffer);
         ssaoPass->SetSSAOBlurTargetName(RenderTargetNames::SSAOBlurBuffer);
         renderPipeline_->AddPass(std::move(ssaoPass));
+
+        // 2.75. RT シャドウパス（GameView のみ）
+        // Step 2 段階では既存 RayTracingSubsystem のディスパッチ処理を薄くラップし、
+        // GBuffer/SSAO 後、DeferredLighting 前に差し込む。
+        auto rtShadowPass = std::make_unique<RTShadowPass>();
+        renderPipeline_->AddPass(std::move(rtShadowPass));
 
         // 3. DeferredLightingパス
         // G-Buffer (AlbedoAO / NormalRoughness / EmissiveMetallic) を読み取り、

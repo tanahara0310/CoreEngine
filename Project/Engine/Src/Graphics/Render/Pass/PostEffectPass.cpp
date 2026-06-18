@@ -18,6 +18,10 @@ namespace CoreEngine
 
         // 入力ハンドルが設定されていない場合はデフォルトを使用
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrv = inputHandle_;
+        if (inputSrv.ptr == 0 && context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, inputSrv);
+        }
+
         if (inputSrv.ptr == 0 && context.dxCommon) {
 #ifdef _DEBUG
             OutputDebugStringA("[PostEffectPass] WARNING: inputHandle_.ptr == 0, falling back to GetOffScreenSrvHandle(0). "
@@ -39,11 +43,17 @@ namespace CoreEngine
             }
         }
 
+        // SceneColor に対してポストエフェクトチェーンを適用する。
         D3D12_GPU_DESCRIPTOR_HANDLE result = 
             context.postEffectManager->ExecuteEffectChain(inputSrv);
 
         // 出力を設定（次のパスに渡す）
         output_.srvHandle = result;
         output_.isValid = true;
+
+        if (context.frameBlackboard) {
+            D3D12_RESOURCE_STATES* stateRef = context.frameBlackboard->GetCurrentStateRef(FrameBlackboard::SceneColor);
+            context.frameBlackboard->SetResource(FrameBlackboard::SceneColor, result, nullptr, stateRef);
+        }
     }
 }

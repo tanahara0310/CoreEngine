@@ -11,6 +11,10 @@
 #include <d3d12.h>
 #include <wrl.h>
 
+namespace CoreEngine {
+    struct ReflectionViewResult;
+}
+
 /// @brief 水面表現用のグリッドメッシュオブジェクト
 /// PlaneMeshGenerator を使用して N×N 分割の平面メッシュを生成する。
 /// resolution（分割数）が高いほど後のステップで波の表現が細かくなる。
@@ -108,6 +112,10 @@ public:
     /// @brief シーンカラー SRV を設定する（水面越しの透過光取得用）
     /// @param srvHandle オフスクリーンカラーの GPU ハンドル
     void SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
+
+    /// @brief Water Reflection の出力を水面描画へ適用する
+    /// @param result ReflectionView 相当の出力一式
+    void ApplyWaterReflectionResult(const CoreEngine::ReflectionViewResult& result);
 
     /// @brief Depth Fade パラメータを設定する
     /// @param absorptionCoeff 光吸収係数（大きいほど短距離で不透明になる）

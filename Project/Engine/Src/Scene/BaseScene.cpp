@@ -130,6 +130,16 @@ namespace CoreEngine
         RestoreGameViewCamera();
     }
 
+    void BaseScene::DrawReflectionView()
+    {
+        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
+            renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
+            renderManager->SetDebugLineRenderingEnabled(false);
+        }
+        Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
+        DrawWithCamera(ResolveGameViewCameraName(), false);
+    }
+
     void BaseScene::SetupSceneViewCamera()
     {
         if (auto* renderManager = engine_->GetComponent<RenderManager>()) {

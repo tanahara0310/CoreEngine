@@ -67,13 +67,12 @@ namespace CoreEngine
         /// @param dx DirectXCommon（コマンドキュー・フレームインデックス取得用）
         void PostFinalizeFrame(DirectXCommon* dx);
 
-        /// @brief SceneView の描画（GBufferPass → DeferredLighting → GeometryPass → RT コピー）
+        /// @brief SceneView の描画を SceneView 用 RenderGraph 構成で実行する
         /// @param context          レンダリングコンテキスト（currentRTShadowViewId を書き換えるため非 const ref）
         /// @param renderPipeline   現在のレンダーパイプライン
         /// @param render           Render コンポーネント（RenderTarget 取得用）
         /// @param cmdList          コマンドリスト（SceneView RT への blit 用）
         /// @param inOutPreviousOutput パスチェーンの出力（呼び出し前後で保存・復元される）
-        /// @param executePass      パス実行ラムダ（EngineSystem::ExecuteRenderPipeline のローカルラムダ）
         /// @param gameRenderCallback ゲームビュー用の GeometryPass コールバック（SceneView 後に復元）
         void RenderSceneView(
             RenderContext& context,
@@ -81,7 +80,6 @@ namespace CoreEngine
             Render* render,
             ID3D12GraphicsCommandList* cmdList,
             PassOutput& inOutPreviousOutput,
-            const std::function<void(RenderPass*)>& executePass,
             const std::function<void()>& gameRenderCallback);
 
         // ──────────────────────────────────────────────────────────

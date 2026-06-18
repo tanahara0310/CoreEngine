@@ -82,6 +82,22 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE GetShadowSRVHandle(ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0) const;
 
+        /// @brief 指定ビュー・ライトのシャドウ結果テクスチャを取得する
+        /// @param viewId 参照するビュー ID
+        /// @param lightIndex 参照するディレクショナルライト番号
+        /// @return シャドウ結果テクスチャ。未確保なら nullptr
+        ID3D12Resource* GetShadowResource(
+            ViewID viewId = ViewID::GameView,
+            uint32_t lightIndex = 0) const;
+
+        /// @brief 指定ビュー・ライトのシャドウ結果リソース状態参照を取得する
+        /// @param viewId 参照するビュー ID
+        /// @param lightIndex 参照するディレクショナルライト番号
+        /// @return 自動遷移処理が共有する状態変数への参照
+        D3D12_RESOURCE_STATES& GetShadowCurrentState(
+            ViewID viewId = ViewID::GameView,
+            uint32_t lightIndex = 0);
+
         /// @brief 初期化済みか
         bool IsInitialized() const { return isInitialized_; }
 

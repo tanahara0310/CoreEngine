@@ -199,6 +199,12 @@ namespace CoreEngine
         return offScreenTargets_[index].currentState;
     }
 
+    D3D12_RESOURCE_STATES& OffScreenRenderTargetManager::GetOffScreenStateRef(uint32_t index)
+    {
+        ValidateIndex(index);
+        return offScreenTargets_[index].currentState;
+    }
+
     void OffScreenRenderTargetManager::SetOffScreenState(uint32_t index, D3D12_RESOURCE_STATES state)
     {
         ValidateIndex(index);
