@@ -144,13 +144,15 @@ namespace CoreEngine
 
     void SceneDebugEditor::Update()
     {
-        // デバッグカメラへの切り替え
+        // デバッグ / リリースカメラの切り替え
         if (auto* inputManager = engine_->GetComponent<InputManager>()) {
             auto& input = inputManager->GetQuery();
-            if (input.IsKeyTriggered(DIK_F1)) {
+            if (input.IsKeyTriggered(DIK_1)) {
                 cameraManager_->SetActiveCamera("Debug", CameraType::Camera3D);
-            } else if (input.IsKeyTriggered(DIK_F2)) {
+                cameraManager_->SetGameViewCameraOverride("Debug");
+            } else if (input.IsKeyTriggered(DIK_2)) {
                 cameraManager_->SetActiveCamera("Release", CameraType::Camera3D);
+                cameraManager_->SetGameViewCameraOverride("Release");
             }
         }
 

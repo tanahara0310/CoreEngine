@@ -22,7 +22,6 @@ namespace CoreEngine {
     class DirectXCommon;
     class PostEffectManager;
     class GameDebugUI;
-    class Render;
     class ICamera;
 }
 
@@ -41,9 +40,8 @@ void Initialize(HWND hwnd, CoreEngine::DirectXCommon* dxCommon);
 
 /// @brief ImGuiの開始処理
 /// @param postEffectManager PostEffectManagerへのポインタ（オプション）
-    /// @param render Renderへのポインタ（オプション）
 /// @param gameDebugUI GameDebugUIへのポインタ（オプション）
-    void Begin(CoreEngine::PostEffectManager* postEffectManager = nullptr, CoreEngine::Render* render = nullptr, CoreEngine::GameDebugUI* gameDebugUI = nullptr);
+    void Begin(CoreEngine::PostEffectManager* postEffectManager = nullptr, CoreEngine::GameDebugUI* gameDebugUI = nullptr);
 
 /// @brief ImGuiの終了処理
 void End();
@@ -72,10 +70,6 @@ SceneViewport* GetSceneViewport() const { return sceneViewport_.get(); }
 /// @brief Canvasプレビュービューポートへのアクセッサ
 /// @return CanvasViewportへのポインタ
 CanvasViewport* GetCanvasViewport() const { return canvasViewport_.get(); }
-
-/// @brief SceneViewウィンドウが前フレームで表示されていたか
-/// @return 表示中ならtrue
-bool IsSceneViewVisible() const { return sceneViewport_ && sceneViewport_->IsSceneViewVisible(); }
 
 /// @brief プロジェクトビューへのアクセッサ
 /// @return プロジェクトビューへのポインタ

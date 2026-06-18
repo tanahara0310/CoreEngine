@@ -42,7 +42,7 @@ namespace CoreEngine
 
     DebugSubsystem::~DebugSubsystem() = default;
 
-    void DebugSubsystem::Initialize(EngineSystem* engine, const EngineConfig& config)
+    void DebugSubsystem::Initialize(EngineSystem* engine, [[maybe_unused]] const EngineConfig& config)
     {
         engine_ = engine;
 
@@ -246,8 +246,6 @@ namespace CoreEngine
             dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
         }
 
-        // SceneView 設定をコンフィグから読み込み
-        sceneViewEnablePostEffect_ = config.sceneViewEnablePostEffect;
     }
 
     void DebugSubsystem::Finalize()
@@ -277,8 +275,8 @@ namespace CoreEngine
 
         if (sceneManager) {
             if (auto* sceneViewport = imGui_->GetSceneViewport()) {
-                sceneViewport->SetCamera(sceneManager->GetSceneViewCamera());
-                sceneViewport->SetGameCamera3D(sceneManager->GetGameViewCamera3D());
+                sceneViewport->SetCamera(sceneManager->GetGameViewCamera3D());
+                sceneViewport->SetGameCamera3D(sceneManager->GetDefaultGameViewCamera3D());
                 sceneViewport->SetCamera2D(sceneManager->GetGameViewCamera2D());
             }
         }
@@ -292,7 +290,7 @@ namespace CoreEngine
 
         // ImGuiの開始（PostEffectManagerとGameDebugUIを渡す）
         if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
-            imGui_->Begin(postEffect, engine_->GetComponent<Render>(), gameDebugUI_.get());
+            imGui_->Begin(postEffect, gameDebugUI_.get());
         }
 
         //メニューバーを最初に描画（ドッキングスペースより前）
@@ -304,8 +302,8 @@ namespace CoreEngine
         if (sceneManager) {
             if (auto* sceneViewport = imGui_->GetSceneViewport()) {
                 if (auto* gameObjectManager = sceneManager->GetCurrentGameObjectManager()) {
-                    if (auto* sceneCamera = sceneManager->GetSceneViewCamera()) {
-                        sceneViewport->UpdateObjectSelection(gameObjectManager, sceneCamera);
+                    if (auto* gameCamera3D = sceneManager->GetGameViewCamera3D()) {
+                        sceneViewport->UpdateObjectSelection(gameObjectManager, gameCamera3D);
                     }
                     if (auto* camera2D = sceneManager->GetGameViewCamera2D()) {
                         sceneViewport->UpdateSpriteSelection(gameObjectManager, camera2D);
@@ -366,81 +364,6 @@ namespace CoreEngine
         }
     }
 
-    void DebugSubsystem::RenderSceneView(
-        RenderContext& context,
-        RenderPipeline* renderPipeline,
-        Render* render,
-        ID3D12GraphicsCommandList* cmdList,
-        PassOutput& inOutPreviousOutput,
-        const std::function<void()>& gameRenderCallback)
-    {
-        if (!imGui_ || !renderPipeline || !render) {
-            return;
-        }
-
-        if (!imGui_->IsSceneViewVisible()) {
-            return;
-        }
-
-        auto* sceneManager = engine_->GetSceneManager();
-        if (!sceneManager) {
-            return;
-        }
-
-        auto* sceneViewTarget = render->GetRenderTarget("SceneView");
-        if (!sceneViewTarget) {
-            return;
-        }
-
-        EngineProfileScope scope(engine_, GpuTimestampSlot::SceneView, cmdList);
-
-        // ゲームパスのために previousOutput を保存（SceneView パス後に復元）
-        PassOutput savedOutput = inOutPreviousOutput;
-        renderPipeline->SetPreviousOutput(inOutPreviousOutput);
-
-        // SceneView カメラ・レンダリング状態をセットアップ
-        sceneManager->SetupSceneViewCamera();
-
-        // SceneView 用コンテキストへ切り替え、軽量な Graph 構成で描画する。
-        RenderContext sceneViewContext = context;
-        sceneViewContext.viewSettings.viewType = RenderViewType::SceneView;
-        sceneViewContext.viewSettings.enableSSAO = false;
-        sceneViewContext.viewSettings.enableRTShadow = false;
-        sceneViewContext.viewSettings.enablePostEffect = false;
-        sceneViewContext.viewSettings.enableBackBuffer = false;
-        sceneViewContext.viewSettings.sceneColorTargetName = "SceneView";
-        sceneViewContext.currentRTShadowViewId = static_cast<uint32_t>(RenderViewType::SceneView);
-
-        // SceneView 固有の Geometry 描画コールバックを使って Graph を再構築・実行する。
-        renderPipeline->PrepareFrame(
-            sceneViewContext,
-            [sceneManager]() { sceneManager->DrawSceneViewGeometry(); });
-        renderPipeline->ExecuteRenderGraph(sceneViewContext);
-
-        inOutPreviousOutput = renderPipeline->GetPreviousOutput();
-
-        // 必要なら SceneView 表示用にポストエフェクトを適用してから RT へ戻す。
-        if (sceneViewEnablePostEffect_) {
-            if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
-            D3D12_GPU_DESCRIPTOR_HANDLE srcHandle = sceneViewEnablePostEffect_
-                ? postEffect->ExecuteEffectChain(inOutPreviousOutput.srvHandle)
-                : inOutPreviousOutput.srvHandle;
-            sceneViewTarget->Begin(cmdList);
-            postEffect->ExecuteEffect("FullScreen", srcHandle);
-            sceneViewTarget->End(cmdList);
-            }
-        }
-
-        // SceneView カメラ・レンダリング状態を復元
-        sceneManager->RestoreGameViewCamera();
-
-        // ゲームビュー用の Graph 構成へ戻し、後続の本描画を汚染しないようにする。
-        renderPipeline->PrepareFrame(context, gameRenderCallback);
-
-        // ゲームパス用に previousOutput を復元
-        inOutPreviousOutput = savedOutput;
-        renderPipeline->SetPreviousOutput(savedOutput);
-    }
 }
 
 #endif // USE_IMGUI

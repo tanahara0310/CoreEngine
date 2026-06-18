@@ -4,8 +4,6 @@
 #ifdef USE_IMGUI
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
-#include "Graphics/Render/Render.h"
-#include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Gizmo.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "Camera/ICamera.h"
@@ -30,72 +28,6 @@ namespace CoreEngine
         gizmoController_->Initialize();
     }
 
-    void SceneViewport::DrawSceneViewport(DirectXCommon* dxCommon, Render* render, PostEffectManager* postEffectManager)
-    {
-        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
-
-        if (render) {
-            if (auto* sceneViewTarget = render->GetRenderTarget("SceneView")) {
-                textureHandle = sceneViewTarget->GetSRVHandle();
-            }
-        }
-
-        if (textureHandle.ptr == 0) {
-            if (postEffectManager) {
-                textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
-            } else {
-                textureHandle = dxCommon->GetOffScreenSrvHandle();
-            }
-        }
-
-        if (!windowRenderer_) {
-            return;
-        }
-
-        // SceneViewportは各責務クラスを調停する管理役に徹する。
-        auto windowResult = windowRenderer_->DrawWindow("Scene", textureHandle,
-            [this](const SceneViewportWindowResult& result) {
-                if (!result.hasImage) {
-                    return;
-                }
-
-                viewportPos_ = result.imageMin;
-                viewportSize_ = result.imageSize;
-                isViewportHovered_ = result.isImageHovered;
-
-                // ギズモ準備（Image描画後に設定）
-                Gizmo::Prepare(viewportPos_, viewportSize_);
-                ImGuizmo::SetDrawlist();
-
-                if (!gizmoController_) {
-                    return;
-                }
-
-                SceneViewportDrawContext context{};
-                context.viewportPos = viewportPos_;
-                context.viewportSize = viewportSize_;
-                context.isViewportHovered = isViewportHovered_;
-                context.currentCamera = currentCamera_;
-                context.currentCamera2D = currentCamera2D_;
-                context.currentGameCamera3D = currentGameCamera3D_;
-                context.objectSelector = objectSelector_.get();
-                context.inputQuery = inputQuery_;
-                gizmoController_->Draw(context);
-
-                // モデルファイルのD&Dターゲット（SceneViewport全体を受け口にする）
-                if (onModelDropped_) {
-                    if (ImGui::BeginDragDropTarget()) {
-                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE")) {
-                            const char* modelFileName = static_cast<const char*>(payload->Data);
-                            onModelDropped_(std::string(modelFileName));
-                        }
-                        ImGui::EndDragDropTarget();
-                    }
-                }
-            });
-        isSceneViewVisible_ = windowResult.isWindowOpen;
-    }
-
     void SceneViewport::DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager)
     {
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
@@ -110,8 +42,42 @@ namespace CoreEngine
             return;
         }
 
-        // Gameビューはレイアウト描画のみを担当し、操作要素は持たない。
-        windowRenderer_->DrawWindow("Game", textureHandle);
+        windowRenderer_->DrawWindow("Game", textureHandle,
+            [this](const SceneViewportWindowResult& result) {
+                if (!result.hasImage) {
+                    return;
+                }
+
+                viewportPos_ = result.imageMin;
+                viewportSize_ = result.imageSize;
+                isViewportHovered_ = result.isImageHovered;
+
+#if defined(_DEBUG)
+                Gizmo::Prepare(viewportPos_, viewportSize_);
+                ImGuizmo::SetDrawlist();
+
+                if (gizmoController_) {
+                    SceneViewportDrawContext context{};
+                    context.viewportPos = viewportPos_;
+                    context.viewportSize = viewportSize_;
+                    context.isViewportHovered = isViewportHovered_;
+                    context.currentCamera = currentCamera_;
+                    context.currentCamera2D = currentCamera2D_;
+                    context.currentGameCamera3D = currentGameCamera3D_;
+                    context.objectSelector = objectSelector_.get();
+                    context.inputQuery = inputQuery_;
+                    gizmoController_->Draw(context);
+                }
+
+                if (onModelDropped_ && ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE")) {
+                        const char* modelFileName = static_cast<const char*>(payload->Data);
+                        onModelDropped_(std::string(modelFileName));
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+#endif
+            });
     }
 
     void SceneViewport::UpdateObjectSelection(GameObjectManager* gameObjectManager, const ICamera* camera)

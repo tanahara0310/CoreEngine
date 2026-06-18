@@ -102,23 +102,8 @@ namespace CoreEngine
 
     ImGuiID DockingUI::ResolveNodeIdForWindow(const std::string& windowName, DockArea area) const
     {
-        if (layoutPreset_ == DockLayoutPreset::TwoByThree) {
-            if (windowName == "Game") {
-                return gameNodeId_;
-            }
-
-            if (windowName == "Scene") {
-                return sceneNodeId_;
-            }
-
-            // Canvas プレビューは Game と同じノードにドッキングしてタブ化する
-            if (windowName == "Canvas") {
-                return gameNodeId_;
-            }
-
-            if ((area == DockArea::LeftTop || area == DockArea::LeftBottom || area == DockArea::Center) && toolNodeId_ != 0) {
-                return toolNodeId_;
-            }
+        if (windowName == "Game" || windowName == "Canvas") {
+            return gameNodeId_;
         }
 
         return GetNodeIdForArea(area);
@@ -143,60 +128,33 @@ namespace CoreEngine
             nodeId = 0;
         }
         gameNodeId_ = 0;
-        sceneNodeId_ = 0;
-        toolNodeId_ = 0;
 
-        if (layoutPreset_ == DockLayoutPreset::TwoByThree) {
-            ImGuiID idViewportColumn, idRightColumn;
-            ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.50f, &idRightColumn, &idViewportColumn);
+        // 1) 右側エリア（Inspector）を最初に分割（25%）
+        ImGuiID idMainArea, idRight;
+        ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.25f, &idRight, &idMainArea);
 
-            ImGuiID idGame, idScene;
-            ImGui::DockBuilderSplitNode(idViewportColumn, ImGuiDir_Down, 0.50f, &idGame, &idScene);
+        // 2) 残りのエリアを上下に分割（下部30%）
+        ImGuiID idTop, idBottom;
+        ImGui::DockBuilderSplitNode(idMainArea, ImGuiDir_Down, 0.30f, &idBottom, &idTop);
 
-            ImGuiID idProject, idRightTop;
-            ImGui::DockBuilderSplitNode(idRightColumn, ImGuiDir_Down, 0.34f, &idProject, &idRightTop);
+        // 3) 上部エリアを左側と中央に分割（左側25%）
+        ImGuiID idLeft, idCenter;
+        ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Left, 0.25f, &idLeft, &idCenter);
 
-            ImGuiID idInspector, idToolColumn;
-            ImGui::DockBuilderSplitNode(idRightTop, ImGuiDir_Right, 0.52f, &idInspector, &idToolColumn);
+        // 4) 左側をさらに上下に分割
+        ImGuiID idLeftTop, idLeftBottom;
+        ImGui::DockBuilderSplitNode(idLeft, ImGuiDir_Down, 0.5f, &idLeftBottom, &idLeftTop);
 
-            gameNodeId_ = idGame;
-            sceneNodeId_ = idScene;
-            toolNodeId_ = idToolColumn;
+        gameNodeId_ = idCenter;
 
-            nodeIds_[static_cast<int>(DockArea::LeftTop)] = idToolColumn;
-            nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idToolColumn;
-            nodeIds_[static_cast<int>(DockArea::Center)] = idToolColumn;
-            nodeIds_[static_cast<int>(DockArea::Right)] = idInspector;
-            nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
-            nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
-            nodeIds_[static_cast<int>(DockArea::Bottom)] = idProject;
-            nodeIds_[static_cast<int>(DockArea::Hierarchy)] = idToolColumn;
-        } else {
-            // 1) 右側エリア（Inspector）を最初に分割（25%）
-            ImGuiID idMainArea, idRight;
-            ImGui::DockBuilderSplitNode(dockMain, ImGuiDir_Right, 0.25f, &idRight, &idMainArea);
-
-            // 2) 残りのエリアを上下に分割（下部30%）
-            ImGuiID idTop, idBottom;
-            ImGui::DockBuilderSplitNode(idMainArea, ImGuiDir_Down, 0.30f, &idBottom, &idTop);
-
-            // 3) 上部エリアを左側と中央に分割（左側25%）
-            ImGuiID idLeft, idCenter;
-            ImGui::DockBuilderSplitNode(idTop, ImGuiDir_Left, 0.25f, &idLeft, &idCenter);
-
-            // 4) 左側をさらに上下に分割
-            ImGuiID idLeftTop, idLeftBottom;
-            ImGui::DockBuilderSplitNode(idLeft, ImGuiDir_Down, 0.5f, &idLeftBottom, &idLeftTop);
-
-            nodeIds_[static_cast<int>(DockArea::LeftTop)] = idLeftTop;
-            nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idLeftBottom;
-            nodeIds_[static_cast<int>(DockArea::Center)] = idCenter;
-            nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
-            nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
-            nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
-            nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
-            nodeIds_[static_cast<int>(DockArea::Hierarchy)] = idLeftTop;
-        }
+        nodeIds_[static_cast<int>(DockArea::LeftTop)] = idLeftTop;
+        nodeIds_[static_cast<int>(DockArea::LeftBottom)] = idLeftBottom;
+        nodeIds_[static_cast<int>(DockArea::Center)] = idCenter;
+        nodeIds_[static_cast<int>(DockArea::Right)] = idRight;
+        nodeIds_[static_cast<int>(DockArea::BottomLeft)] = 0;
+        nodeIds_[static_cast<int>(DockArea::BottomRight)] = 0;
+        nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
+        nodeIds_[static_cast<int>(DockArea::Hierarchy)] = idLeftTop;
 
         // 登録されているウィンドウを各ノードにドッキング
         for (const auto& [windowName, area] : registeredWindows_) {

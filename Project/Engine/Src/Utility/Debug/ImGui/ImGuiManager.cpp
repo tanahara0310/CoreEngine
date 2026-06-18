@@ -104,7 +104,7 @@ namespace CoreEngine
 #endif
     }
 
-    void ImGuiManager::Begin([[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] Render* render, [[maybe_unused]] GameDebugUI* gameDebugUI)
+    void ImGuiManager::Begin([[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)
     {
 
         // フレームの開始
@@ -114,13 +114,8 @@ namespace CoreEngine
         dockingUI_->BeginDockSpaceHostWindow();
         dockingUI_->SetupDockSpace();
 
-        // ゲーム / シーンビューポートの開始（PostEffectManagerを渡す）
+        // Game ビューポートは PostEffectPass 完了後に別経路で描画する。
 #ifdef USE_IMGUI
-        // NOTE: DrawGameViewport はここでは呼ばない。
-        // PostEffectPass完了後に最新の finalDisplayHandle_ を使うため、
-        // DrawImGuiWithProfiling() → ImGuiManager::DrawGameViewport() で呼ぶ。
-        sceneViewport_->DrawSceneViewport(dxCommon_, render, postEffectManager);
-
         // Canvas プレビューウィンドウ（UI のみを表示）
         canvasViewport_->DrawCanvasViewport();
 

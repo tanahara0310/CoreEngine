@@ -28,12 +28,6 @@ namespace CoreEngine
         /// @brief 初期化
         void Initialize();
 
-        /// @brief シーンビューポートの描画
-        /// @param dxCommon DirectXCommonへのポインタ
-        /// @param render Renderへのポインタ
-        /// @param postEffectManager PostEffectManagerへのポインタ（オプション）
-        void DrawSceneViewport(DirectXCommon* dxCommon, Render* render, PostEffectManager* postEffectManager = nullptr);
-
         /// @brief ゲームビューポートの描画
         /// @param dxCommon DirectXCommonへのポインタ
         /// @param postEffectManager PostEffectManagerへのポインタ（オプション）
@@ -69,10 +63,6 @@ namespace CoreEngine
         /// @return ビューポートがアクティブならtrue
         bool IsViewportHovered() const { return isViewportHovered_; }
 
-        /// @brief SceneViewウィンドウが前フレームで表示されていたか
-        /// @return 表示中（ImGui::Begin が true を返した）ならtrue
-        bool IsSceneViewVisible() const { return isSceneViewVisible_; }
-
         /// @brief オブジェクトセレクターを取得
         /// @return オブジェクトセレクターへのポインタ
         ObjectSelector* GetObjectSelector() { return objectSelector_.get(); }
@@ -90,7 +80,6 @@ namespace CoreEngine
         ImVec2 viewportPos_{};
         ImVec2 viewportSize_{};
         bool isViewportHovered_ = false;
-        bool isSceneViewVisible_ = false;
         std::unique_ptr<ObjectSelector> objectSelector_;
         const ICamera* currentCamera_ = nullptr;    // 現在の3Dカメラ
         const ICamera* currentCamera2D_ = nullptr;  // 現在の2Dカメラ

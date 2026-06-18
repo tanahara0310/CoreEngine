@@ -10,7 +10,7 @@
 
 #include "Scene/SceneSaveSystem.h"
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
 #include "Scene/SceneDebugEditor.h"
 #endif
 
@@ -61,6 +61,9 @@ namespace CoreEngine
         /// @brief Gameビュー用3Dカメラを取得
         ICamera* GetGameViewCamera3D() const override;
 
+        /// @brief 既定の Gameビュー用3Dカメラを取得
+        ICamera* GetDefaultGameViewCamera3D() const override;
+
         /// @brief Gameビュー用2Dカメラを取得
         ICamera* GetGameViewCamera2D() const override;
 
@@ -108,7 +111,7 @@ namespace CoreEngine
         /// @brief シャドウマップ用のライトView-Projection行列を更新
         void UpdateLightViewProjection();
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         /// @brief グリッドのセットアップ（デバッグビルドのみ）
         void SetupGrid();
 
@@ -135,7 +138,7 @@ namespace CoreEngine
         CollisionConfig collisionConfig_;
         CollisionManager collisionManager_{ &collisionConfig_ };
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         // グリッドレンダラー（デバッグビルドのみ）
         GridRenderer* gridRenderer_ = nullptr;
 #endif
@@ -191,7 +194,7 @@ namespace CoreEngine
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         std::unique_ptr<SceneDebugEditor> debugEditor_;  // Undo/Redo・デバッグ編集機能
 #endif
 

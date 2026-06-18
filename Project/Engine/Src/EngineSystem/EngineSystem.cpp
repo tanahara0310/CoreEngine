@@ -313,17 +313,6 @@ namespace CoreEngine
             }
         }
 
-#ifdef USE_IMGUI
-        // SceneView 描画（毎フレーム実行）
-        // SceneView は GBufferPass より前に実行（共有 DSV のクリア競合回避）。
-        PassOutput previousOutput = renderPipeline_->GetPreviousOutput();
-        if (debug) {
-            debug->RenderSceneView(
-                context, renderPipeline_.get(), render, cmdList,
-                previousOutput, renderCallback);
-        }
-#endif // USE_IMGUI
-
         context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
 
         {

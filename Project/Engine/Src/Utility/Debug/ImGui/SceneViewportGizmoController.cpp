@@ -81,6 +81,37 @@ namespace CoreEngine
             return;
         }
 
+        if (context.currentCamera == context.currentGameCamera3D) {
+            const ImVec2 center(
+                context.viewportPos.x + context.viewportSize.x - 40.0f,
+                context.viewportPos.y + 40.0f);
+            const float iconSize = 24.0f;
+            const ImVec2 minPos(center.x - iconSize * 0.5f, center.y - iconSize * 0.5f);
+            const ImVec2 maxPos(center.x + iconSize * 0.5f, center.y + iconSize * 0.5f);
+            const bool iconHovered = ImGui::IsMouseHoveringRect(minPos, maxPos, false);
+
+            if (context.isViewportHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                if (iconHovered) {
+                    isGameCameraSelected_ = true;
+                    if (context.objectSelector) {
+                        context.objectSelector->ClearSelection();
+                    }
+                } else if (!ImGuizmo::IsUsing() && !Gizmo::IsOver()) {
+                    isGameCameraSelected_ = false;
+                }
+            }
+
+            const ImU32 tintColor = isGameCameraSelected_ ? IM_COL32(255, 220, 128, 255) : IM_COL32(255, 255, 255, 255);
+            ImGui::GetWindowDrawList()->AddImage(
+                (ImTextureID)gameCameraIcon_.ptr,
+                minPos,
+                maxPos,
+                ImVec2(0.0f, 0.0f),
+                ImVec2(1.0f, 1.0f),
+                tintColor);
+            return;
+        }
+
         Matrix4x4 viewProj = MathCore::Matrix::Multiply(
             context.currentCamera->GetViewMatrix(),
             context.currentCamera->GetProjectionMatrix());

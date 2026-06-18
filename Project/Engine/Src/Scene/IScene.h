@@ -49,6 +49,7 @@ public:
 
     virtual ICamera* GetSceneViewCamera() const { return nullptr; }
     virtual ICamera* GetGameViewCamera3D() const { return nullptr; }
+    virtual ICamera* GetDefaultGameViewCamera3D() const { return GetGameViewCamera3D(); }
     virtual ICamera* GetGameViewCamera2D() const { return nullptr; }
     virtual GameObjectManager* GetGameObjectManager() { return nullptr; }
 

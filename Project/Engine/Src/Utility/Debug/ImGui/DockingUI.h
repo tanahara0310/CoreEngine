@@ -17,8 +17,7 @@ namespace CoreEngine
     class SceneViewport;
 
     enum class DockLayoutPreset {
-        Standard,
-        TwoByThree
+        Standard
     };
 
     enum class DockArea {
@@ -99,13 +98,11 @@ namespace CoreEngine
         std::unordered_map<std::string, DockArea> registeredWindows_; // 登録されたウィンドウとそのエリア
         bool layoutInitialized_ = false; // レイアウトが初期化されたかどうか
         bool layoutDirty_ = false; // レイアウト再構築が必要かどうか
-        DockLayoutPreset layoutPreset_ = DockLayoutPreset::TwoByThree;
+        DockLayoutPreset layoutPreset_ = DockLayoutPreset::Standard;
 
         // エリアごとのノードID
         ImGuiID nodeIds_[8] = { 0 }; // DockAreaの数だけ（Hierarchyを追加したため8に変更）
         ImGuiID gameNodeId_ = 0;
-        ImGuiID sceneNodeId_ = 0;
-        ImGuiID toolNodeId_ = 0;
 
         // ツールバーアイコン用テクスチャハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE gridIcon_{};

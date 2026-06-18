@@ -124,22 +124,6 @@ namespace CoreEngine
             // Window Manager パネルの開閉トグル
             ImGui::MenuItem("Window", nullptr, &showEditorSwitcher_);
 
-            if (dockingUI_ && ImGui::BeginMenu("Layout")) {
-                const DockLayoutPreset currentLayout = dockingUI_->GetLayoutPreset();
-                const bool isStandard = (currentLayout == DockLayoutPreset::Standard);
-                const bool isUnity2By3 = (currentLayout == DockLayoutPreset::TwoByThree);
-
-                if (ImGui::MenuItem("Standard", nullptr, isStandard)) {
-                    dockingUI_->SetLayoutPreset(DockLayoutPreset::Standard);
-                }
-
-                if (ImGui::MenuItem("Unity 2 by 3", nullptr, isUnity2By3)) {
-                    dockingUI_->SetLayoutPreset(DockLayoutPreset::TwoByThree);
-                }
-
-                ImGui::EndMenu();
-            }
-
             // Capture メニュー（右端に配置）
             float captureMenuWidth = ImGui::CalcTextSize("Capture").x + ImGui::GetStyle().ItemSpacing.x * 4.0f;
             ImGui::SameLine(ImGui::GetWindowWidth() - captureMenuWidth);

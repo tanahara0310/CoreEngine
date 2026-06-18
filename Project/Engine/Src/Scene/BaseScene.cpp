@@ -34,12 +34,12 @@ namespace CoreEngine
         //ライト
         SetupLight();
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         //グリッド（デバッグビルドのみ）
         SetupGrid();
 #endif
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         // デバッグエディター初期化
         debugEditor_ = std::make_unique<SceneDebugEditor>();
         debugEditor_->Initialize(engine_, &gameObjectManager_, cameraManager_.get(), sceneSaveSystem_.get());
@@ -68,7 +68,7 @@ namespace CoreEngine
             UpdateLightViewProjection();
         }
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         debugEditor_->Update();
 
         // グリッド表示状態を更新
@@ -163,7 +163,7 @@ namespace CoreEngine
         if (!renderManager) {
             return;
         }
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         DrawGameCameraFrustumDebug();
 #endif
         renderManager->DrawGeometryPass();
@@ -194,6 +194,23 @@ namespace CoreEngine
         }
 
         return cameraManager_->GetActiveCamera(CameraType::Camera3D);
+    }
+
+    ICamera* BaseScene::GetDefaultGameViewCamera3D() const
+    {
+        if (!cameraManager_) {
+            return nullptr;
+        }
+
+        if (!gameViewCameraName_.empty()) {
+            if (ICamera* gameCamera = cameraManager_->GetCamera(gameViewCameraName_)) {
+                return gameCamera;
+            }
+        }
+
+        return cameraManager_->GetGameViewCameraOverride().empty()
+            ? cameraManager_->GetActiveCamera(CameraType::Camera3D)
+            : cameraManager_->GetCamera(gameViewCameraName_);
     }
 
     ICamera* BaseScene::GetGameViewCamera3D() const
@@ -291,6 +308,11 @@ namespace CoreEngine
         // デバッグカメラを作成して登録
         auto debugCamera = std::make_unique<DebugCamera>();
         debugCamera->Initialize(engine_, dxCommon->GetDevice());
+        {
+            auto settings = debugCamera->GetSettings();
+            settings.useGameView = true;
+            debugCamera->SetSettings(settings);
+        }
         cameraManager_->RegisterCamera("Debug", std::move(debugCamera));
 
         // デフォルトでリリースカメラをアクティブに設定
