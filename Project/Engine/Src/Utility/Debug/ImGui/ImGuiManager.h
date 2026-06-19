@@ -12,7 +12,6 @@
 
 #include "DockingUI.h"
 #ifdef USE_IMGUI
-#include "SceneViewport.h"
 #include "CanvasViewport.h"
 #include "ProjectView.h"
 #endif
@@ -22,7 +21,6 @@ namespace CoreEngine {
     class DirectXCommon;
     class PostEffectManager;
     class GameDebugUI;
-    class ICamera;
 }
 
 /// @brief ImGui管理クラス
@@ -56,17 +54,13 @@ void Finalize();
 /// @brief Gameビューポートを描画（PostEffectPass完了後、ImGui::Render前に呼ぶこと）
 /// @param dxCommon DirectXCommonへのポインタ
 /// @param postEffectManager PostEffectManagerへのポインタ
-void DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager);
+void DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager, GameDebugUI* gameDebugUI = nullptr);
 
 /// @brief ドッキングUIへのアクセッサ
 /// @return ドッキングUIへのポインタ
 DockingUI* GetDockingUI() const { return dockingUI_.get(); }
 
 #ifdef USE_IMGUI
-/// @brief シーンビューポートへのアクセッサ
-/// @return シーンビューポートへのポインタ
-SceneViewport* GetSceneViewport() const { return sceneViewport_.get(); }
-
 /// @brief Canvasプレビュービューポートへのアクセッサ
 /// @return CanvasViewportへのポインタ
 CanvasViewport* GetCanvasViewport() const { return canvasViewport_.get(); }
@@ -87,7 +81,6 @@ private:
     // サブモジュール
     std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();
 #ifdef USE_IMGUI
-    std::unique_ptr<SceneViewport> sceneViewport_ = std::make_unique<SceneViewport>();
     std::unique_ptr<CanvasViewport> canvasViewport_ = std::make_unique<CanvasViewport>();
     std::unique_ptr<ProjectView> projectView_ = std::make_unique<ProjectView>();
 #endif

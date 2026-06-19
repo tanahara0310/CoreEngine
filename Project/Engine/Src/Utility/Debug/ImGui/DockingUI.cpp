@@ -1,11 +1,7 @@
 #include "pch.h"
 #include "DockingUI.h"
+#include "Scene/SceneDebugEditor.h"
 #include "Graphics/Texture/TextureManager.h"
-#ifdef USE_IMGUI
-#include "SceneViewport.h"
-#endif
-#include "ObjectSelector.h"
-#include "Gizmo.h"
 #include "Utility/Logger/Logger.h"
 #include <format>
 
@@ -186,14 +182,14 @@ namespace CoreEngine
 
             // キャッシュ済みの結果を割り当てる。
             auto gridTex = texManager.Load("grid.png");
-            auto gizmoTranslateTex = texManager.Load("translate.png");
-            auto gizmoRotateTex = texManager.Load("rotate.png");
-            auto gizmoScaleTex = texManager.Load("scale.png");
+            auto translateTex = texManager.Load("translate.png");
+            auto rotateTex = texManager.Load("rotate.png");
+            auto scaleTex = texManager.Load("scale.png");
 
             gridIcon_ = gridTex.gpuHandle;
-            gizmoTranslateIcon_ = gizmoTranslateTex.gpuHandle;
-            gizmoRotateIcon_ = gizmoRotateTex.gpuHandle;
-            gizmoScaleIcon_ = gizmoScaleTex.gpuHandle;
+            translateIcon_ = translateTex.gpuHandle;
+            rotateIcon_ = rotateTex.gpuHandle;
+            scaleIcon_ = scaleTex.gpuHandle;
 
             // ステータスバー用アイコン
             auto fpsTex = texManager.Load("fps.png");
@@ -205,14 +201,12 @@ namespace CoreEngine
             deltaTimeIconLoaded_ = true;
 
             playbackIconsLoaded_ = true;
-            gizmoIconsLoaded_ = true;
             Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Toolbar icons loaded successfully (DockingUI)");
         }
         catch (const std::exception& e) {
             std::string errorMsg = std::format("Failed to load toolbar icons: {}", e.what());
             Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", errorMsg);
             playbackIconsLoaded_ = false;
-            gizmoIconsLoaded_ = false;
         }
     }
 
@@ -248,28 +242,17 @@ namespace CoreEngine
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
 
         if (auto toolbar = UI::Scope::WindowScope("##PlaybackToolbar", nullptr, toolbarFlags)) {
-            if (gizmoIconsLoaded_) {
-#ifdef USE_IMGUI
-                ObjectSelector* objectSelector = sceneViewport_ ? sceneViewport_->GetObjectSelector() : nullptr;
-#else
-                ObjectSelector* objectSelector = nullptr;
-#endif
-
+            if (playbackIconsLoaded_) {
                 constexpr float kIconSize = 18.0f;
                 constexpr float kPadding = 3.0f;
-                constexpr float kSpacing = 6.0f;
-                constexpr float kGroupSpacing = 16.0f;
 
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(kPadding, kPadding));
                 ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+                ImGui::SetCursorPosX(8.0f);
 
-                // Sceneビュー用ギズモ切替（左詰め）
-                if (objectSelector) {
-                    ImGui::SetCursorPosX(8.0f);
-
+                if (sceneDebugEditor_) {
                     const auto drawGizmoButton = [&](const char* id, D3D12_GPU_DESCRIPTOR_HANDLE icon, Gizmo::Mode mode, const char* tooltip) {
-                        const bool isActive = (objectSelector->GetGizmoMode() == mode);
-
+                        const bool isActive = (sceneDebugEditor_->GetGizmoMode() == mode);
                         if (isActive) {
                             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.48f, 0.48f, 0.48f, 1.00f));
                             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.58f, 0.58f, 0.58f, 1.00f));
@@ -281,22 +264,18 @@ namespace CoreEngine
                         }
 
                         if (ImGui::ImageButton(id, (ImTextureID)icon.ptr, ImVec2(kIconSize, kIconSize))) {
-                            objectSelector->SetGizmoMode(mode);
+                            sceneDebugEditor_->SetGizmoMode(mode);
                         }
                         ImGui::PopStyleColor(3);
-
                         UI::Tooltip(tooltip);
                         };
 
-                    drawGizmoButton("##GizmoTranslateToolbar", gizmoTranslateIcon_, Gizmo::Mode::Translate, "移動 [W]");
-                    UI::SameLine(0.0f, kSpacing);
-                    drawGizmoButton("##GizmoRotateToolbar", gizmoRotateIcon_, Gizmo::Mode::Rotate, "回転 [E]");
-                    UI::SameLine(0.0f, kSpacing);
-                    drawGizmoButton("##GizmoScaleToolbar", gizmoScaleIcon_, Gizmo::Mode::Scale, "拡縮 [R]");
-
-                    UI::SameLine(0.0f, kGroupSpacing);
-                } else {
-                    ImGui::SetCursorPosX(8.0f);
+                    drawGizmoButton("##GizmoTranslateToolbar", translateIcon_, Gizmo::Mode::Translate, "移動 [W]");
+                    UI::SameLine(0.0f, 6.0f);
+                    drawGizmoButton("##GizmoRotateToolbar", rotateIcon_, Gizmo::Mode::Rotate, "回転 [E]");
+                    UI::SameLine(0.0f, 6.0f);
+                    drawGizmoButton("##GizmoScaleToolbar", scaleIcon_, Gizmo::Mode::Scale, "拡縮 [R]");
+                    UI::SameLine(0.0f, 16.0f);
                 }
 
                 // グリッドボタン

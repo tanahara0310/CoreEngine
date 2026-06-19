@@ -67,33 +67,9 @@ namespace CoreEngine
         }
     }
 
-    void SceneManager::DrawSceneView() {
-        if (currentScene_) {
-            currentScene_->DrawSceneView();
-        }
-    }
-
     void SceneManager::DrawReflectionView() {
         if (currentScene_) {
             currentScene_->DrawReflectionView();
-        }
-    }
-
-    void SceneManager::SetupSceneViewCamera() {
-        if (currentScene_) {
-            currentScene_->SetupSceneViewCamera();
-        }
-    }
-
-    void SceneManager::DrawSceneViewGeometry() {
-        if (currentScene_) {
-            currentScene_->DrawSceneViewGeometry();
-        }
-    }
-
-    void SceneManager::RestoreGameViewCamera() {
-        if (currentScene_) {
-            currentScene_->RestoreGameViewCamera();
         }
     }
 
@@ -163,10 +139,6 @@ namespace CoreEngine
         }
     }
 
-    ICamera* SceneManager::GetSceneViewCamera() const {
-        return currentScene_ ? currentScene_->GetSceneViewCamera() : nullptr;
-    }
-
     ICamera* SceneManager::GetGameViewCamera3D() const {
         return currentScene_ ? currentScene_->GetGameViewCamera3D() : nullptr;
     }
@@ -215,17 +187,6 @@ namespace CoreEngine
             }
             currentScene_->Finalize();
         }
-
-#ifdef USE_IMGUI
-        // シーン切り替え時にオブジェクト選択をクリア（ダングリングポインタ防止）
-        if (auto* debug = engine_->GetDebugSubsystem()) {
-            if (auto* viewport = debug->GetImGuiManager()->GetSceneViewport()) {
-                if (auto* selector = viewport->GetObjectSelector()) {
-                    selector->ClearSelection();
-                }
-            }
-        }
-#endif
 
         currentScene_.reset();
 

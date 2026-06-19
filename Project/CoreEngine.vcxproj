@@ -44,8 +44,10 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings"></ImportGroup>
-  <ImportGroup Label="Shared"></ImportGroup>
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -373,9 +375,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\RenderPassDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
@@ -430,7 +429,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -694,9 +692,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\RenderPassDebugPanel.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Widgets\ImGuiWidgets.h" />
@@ -758,7 +753,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Resource\ResourceFactory.h" />
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.h" />
   </ItemGroup>

@@ -54,8 +54,8 @@
    - 主方向ライトの Light View Projection を計算
    - モデル / スキニングモデルのシャドウマップ生成
 
-4. **SceneView 描画（デバッグ系）**
-   - 通常パイプラインとは別経路で実行
+4. **ReflectionView 描画（必要時のみ）**
+   - 水面反射などの補助ビューを Engine 側で実行
 
 5. **GBufferPass**
    - 不透明 `Model / SkinnedModel` を GBuffer に出力
@@ -91,7 +91,7 @@
 - パス入力の接続
 - Forward/Deferred の切り替え制御
 - RT Shadow の特例実行
-- SceneView の特例実行
+- 補助 View の実行調停
 
 `RenderPipeline` より `EngineSystem` が実質的なパイプライン実行器になっている。
 
@@ -122,7 +122,7 @@ DeferredLighting 後の Forward Composite を担当している。
 将来 RT Reflection や RT GI を追加すると整理が難しくなる。
 
 ### 2-7. View 概念が弱い
-GameView / SceneView / 将来の ReflectionView などを統一的に扱う構造になっていない。
+GameView / ReflectionView / 将来の CaptureView などを統一的に扱う構造になっていない。
 
 ### 2-8. アプリ層とエンジン層の責務境界が曖昧
 WaterTestScene のように、アプリケーション層が一時的に以下を直接扱えてしまう余地がある。
@@ -193,9 +193,10 @@ EngineSystem・Scene・RenderManager・個別オブジェクト側へ特例処�
 将来的に複数の描画視点を同じ仕組みで扱うため、View を正式概念として持つ。
 
 - `GameView` : 通常ゲーム描画
-- `SceneView` : エディタ / デバッグ描画
 - `ReflectionView` : 水面反射や鏡面反射用の補助ビュー
 - `CaptureView` : 将来のプレビュー / キューブマップ生成 / オフラインキャプチャ用
+
+SceneView は移行途中の検証経路として扱っていたが、現行方針では廃止済みとする。
 
 重要なのは、**Reflection は Scene が一時的に反射パスを実行して作るものではなく、ReflectionView をエンジンが処理した結果として得る** 形にすること。
 
@@ -306,7 +307,7 @@ RenderGraph をいきなり入れるのではなく、**RenderGraph に載せ替
 - Opaque / Transparent / ShadowCaster / UI などのリスト化
 
 **到達目標:**
-- SceneView と GameView を同じ仕組みで扱いやすくする
+- GameView と補助 View を同じ仕組みで扱いやすくする
 
 ### Phase 5. `FrameBlackboard` を導入する
 **対象:** 新規フレーム共有リソース管理層
@@ -420,7 +421,7 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 - RT Shadow を RenderPass 化
 
 ### マイルストーン 6
-- GameView / SceneView / ReflectionView を RenderGraph ベースの実行モデルへ統合
+- GameView / ReflectionView / 将来の CaptureView を RenderGraph ベースの実行モデルへ統合
 - Water Reflection の Scene 特例 RTT 実行を除去し、Engine 側 ReflectionView 結果として扱う
 - `ReflectionColor` を Blackboard 論理リソースとして正式接続
 - Step07 は旧互換経路と手動バリア削除へ集中できる状態になった
@@ -482,7 +483,7 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 | 3 | `Step03_FrameBlackboard.md` | `FrameBlackboard` / 論理リソース整理 |
 | 4 | `Step04_RenderGraphMinimum.md` | 最小 RenderGraph / 主要5パス |
 | 5 | `Step05_AutoBarrier.md` | 自動状態遷移 / read-only DSV |
-| 6 | `Step06_MultiViewIntegration.md` | Shadow / RT / GameView / SceneView / ReflectionView |
+| 6 | `Step06_MultiViewIntegration.md` | Shadow / RT / GameView / ReflectionView / CaptureView |
 | 7 | `Step07_LegacyPipelineRemoval.md` | 旧経路削除 / RenderGraph 完全移行 |
 
 ### 8-2. マイルストーン別チェックリスト
@@ -553,7 +554,7 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 #### マイルストーン 6: Shadow / RT / 複数 View 統合
 - [x] ShadowMap 系を RenderGraph / Blackboard に統合する
 - [x] RT 系パスを Graph 上の正式パスへ寄せる
-- [x] GameView / SceneView の扱いを共通化する
+- [x] GameView と補助 View の扱いを共通化する
 - [x] 将来の ReflectionView / CaptureView を想定した View 抽象化を行う
 - [ ] 複数 View で同じ流れを再利用できるか確認する
 - [ ] `ReflectionColor` / `ReflectionDepth` の Blackboard 統合を行う
@@ -561,26 +562,25 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 - [ ] 特殊経路でも自動バリアと状態追跡を共通化する
 
 **着手しやすい最初の作業**
-- まず GameView を基準に整え、SceneView の特例処理を後から寄せる
+- まず GameView を基準に整え、補助 View の差分を Graph 側へ寄せる
 
 **進行メモ**
 - `RenderContext::viewSettings` と `RenderViewType` を導入し、View ごとの有効パスと出力先を切り替えられるようにした
-- `DebugSubsystem::RenderSceneView()` は旧 `ExecutePass()` 直列経路から外し、SceneView 用 RenderGraph 実行へ移行した
-- `OffscreenRenderTarget` と `OffScreenRenderTargetManager` の状態参照を共有化し、SceneView 導入後の `SceneColor` バリア衝突を抑える修正を入れた
-- 次の Step6 実装対象は `ReflectionView` の実動化、`ReflectionColor/Depth` の Blackboard 統合、`WaterReflectionPass` の Scene 特例縮小
+- `OffscreenRenderTarget` と `OffScreenRenderTargetManager` の状態参照を共有化し、補助 View 導入後の `SceneColor` バリア衝突を抑える修正を入れた
+- `ReflectionView` の実動化、`ReflectionColor/Depth` の Blackboard 統合、`WaterReflectionPass` の Scene 特例縮小まで完了した
 - ReflectionView / CaptureView の実動構成と Water Reflection の統合は継続中
 
 #### マイルストーン 7: 旧実行経路削除と RenderGraph 完全移行
 - [ ] `EngineSystem` に残る旧手動パス実行ロジックを除去する
 - [ ] `RenderPipeline::ExecutePass()` への直接依存箇所を洗い出す
-- [ ] `SceneView` の描画経路を Graph ベースへ統一する
+- [ ] 補助 View の残存旧経路を廃止する
 - [ ] `PassOutput` の必要性を再評価し、不要な受け渡しを削除する
 - [ ] Graph 外の暫定 Blackboard / Manager 直参照を縮小する
 - [ ] RenderGraph を唯一の正式実行経路として成立させる
 - [ ] 残存する手動バリアと重複状態追跡コードを削除する
 
 **着手しやすい最初の作業**
-- まず GameView と SceneView の実行経路差分を一覧化し、残っている旧互換コードを棚卸しする
+- まず GameView と補助 View の実行経路差分を一覧化し、残っている旧互換コードを棚卸しする
 
 ### 8-3. 直近の着手順
 

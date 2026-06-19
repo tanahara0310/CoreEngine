@@ -38,16 +38,11 @@ public:
     virtual void Update() = 0;
     virtual void PrepareRender() {}
     virtual void Draw() = 0;
-    virtual void DrawSceneView() { Draw(); }
     virtual void DrawReflectionView() { Draw(); }
-    virtual void SetupSceneViewCamera() {}
-    virtual void DrawSceneViewGeometry() {}
-    virtual void RestoreGameViewCamera() {}
     virtual void SetupReflectionView(ICamera* mainCamera, float planeHeight) { (void)mainCamera; (void)planeHeight; }
     virtual void RestoreReflectionView(ICamera* mainCamera) { (void)mainCamera; }
     virtual void Finalize() = 0;
 
-    virtual ICamera* GetSceneViewCamera() const { return nullptr; }
     virtual ICamera* GetGameViewCamera3D() const { return nullptr; }
     virtual ICamera* GetDefaultGameViewCamera3D() const { return GetGameViewCamera3D(); }
     virtual ICamera* GetGameViewCamera2D() const { return nullptr; }

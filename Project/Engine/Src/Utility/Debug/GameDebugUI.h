@@ -17,6 +17,7 @@ namespace CoreEngine
     class EngineSystem; // 前方宣言
     class DockingUI; // 前方宣言
     class SceneManager; // 前方宣言
+    class SceneDebugEditor;
 
     /// @brief ゲームデバッグUIクラス
     class GameDebugUI {
@@ -81,6 +82,12 @@ namespace CoreEngine
         /// @brief シーンマネージャータブへのアクセッサ
         SceneManagerTab* GetSceneManagerTab() { return sceneManagerTab_.get(); }
 
+        /// @brief Gameビュー用のSceneDebugEditorを設定
+        void SetSceneDebugEditor(SceneDebugEditor* sceneDebugEditor) { sceneDebugEditor_ = sceneDebugEditor; }
+
+        /// @brief Gameビュー用のSceneDebugEditorを取得
+        SceneDebugEditor* GetSceneDebugEditor() const { return sceneDebugEditor_; }
+
     private:
         EngineSystem* engine_ = nullptr;
         DockingUI* dockingUI_ = nullptr;
@@ -92,6 +99,7 @@ namespace CoreEngine
 
         std::function<void()> hierarchyContentDrawer_;
         std::function<void()> inspectorObjectDrawer_;
+        SceneDebugEditor* sceneDebugEditor_ = nullptr;
 
         /// @brief エディターエントリー（Inspectorタブとして表示）
         struct EditorEntry {

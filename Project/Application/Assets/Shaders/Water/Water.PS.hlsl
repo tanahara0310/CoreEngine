@@ -166,6 +166,7 @@ PixelShaderOutput main(WaterPSInput input)
     float sceneDepthView = 0.0f;
     float waterDepthView = 0.0f;
     float waterColumn = 0.0f;
+    bool hasValidDepthFade = false;
     if (gDepthFadeEnabled)
     {
         // near/far クリップ（カメラデフォルト値）
@@ -174,29 +175,43 @@ PixelShaderOutput main(WaterPSInput input)
 
         // シーン深度を NDC → ビュー空間線形深度（m）に変換する
         sceneDepthNDC = gSceneDepth.Sample(gLinearClamp, screenUV).r;
+        waterDepthView = LinearizeDepth(waterDepthNDC, kNear, kFar);
 
         if (sceneDepthNDC < 0.99999f)
         {
             sceneDepthView = LinearizeDepth(sceneDepthNDC, kNear, kFar);
 
-            // 水面自身の線形深度を求め、背景との深度差を水中の光路長として扱う
-            waterDepthView = LinearizeDepth(waterDepthNDC, kNear, kFar);
-            waterColumn = ComputeWaterOpticalPathLength(
-                sceneDepthView - waterDepthView,
-                waterDepthView,
-                input.worldPosition);
-            float extinction = waterColumn * max(gAbsorptionCoeff, 1.0e-4f);
+            if (sceneDepthView > waterDepthView + 1.0e-4f)
+            {
+                hasValidDepthFade = true;
 
-            // Beer-Lambert 則: transmittance が透過した光量、absorption が吸収された量
-            transmittance = exp(-extinction);
-            absorption = 1.0f - transmittance;
+                // 水面自身の線形深度を求め、背景との深度差を水中の光路長として扱う
+                waterColumn = ComputeWaterOpticalPathLength(
+                    sceneDepthView - waterDepthView,
+                    waterDepthView,
+                    input.worldPosition);
+                float extinction = waterColumn * max(gAbsorptionCoeff, 1.0e-4f);
 
-            // Beer-Lambert の吸収量そのものを色遷移に使う
-            // 浅い場所では吸収が少なく、深い場所では吸収が増えるため
-            // そのまま shallow/deep の補間係数として扱う
+                // Beer-Lambert 則: transmittance が透過した光量、absorption が吸収された量
+                transmittance = exp(-extinction);
+                absorption = 1.0f - transmittance;
+
+                // Beer-Lambert の吸収量そのものを色遷移に使う
+                // 浅い場所では吸収が少なく、深い場所では吸収が増えるため
+                // そのまま shallow/deep の補間係数として扱う
+                tintBlend = absorption;
+                waterTint = lerp(gShallowColor, gDeepColor, saturate(tintBlend));
+            }
+        }
+
+        if (!hasValidDepthFade)
+        {
+            // 深度が取得できない、または水面より奥の背景深度が存在しない場合でも
+            // 水面の被覆率が極端に失われないよう、安定した浅瀬寄りの見た目へフォールバックする。
+            absorption = saturate(baseCoverage * 0.65f);
+            transmittance = 1.0f - absorption;
             tintBlend = absorption;
             waterTint = lerp(gShallowColor, gDeepColor, saturate(tintBlend));
-
         }
     }
 

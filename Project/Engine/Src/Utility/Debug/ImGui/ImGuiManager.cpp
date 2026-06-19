@@ -1,8 +1,11 @@
 #include "pch.h"
 #include "ImGuiManager.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
+#include "Scene/SceneDebugEditor.h"
 #include "Utility/Debug/GameDebugUI.h"
+#include "WinApp/WinApp.h"
 #include <ImGuizmo.h>
 #include <filesystem>
 
@@ -94,11 +97,7 @@ namespace CoreEngine
         ImGui::GetIO().Fonts->GetTexDataAsRGBA32(nullptr, nullptr, nullptr);
         ImGui_ImplDX12_CreateDeviceObjects(); // これがないとアクセス違反が起きる
 
-        // SceneViewportの初期化
 #ifdef USE_IMGUI
-        sceneViewport_->Initialize();
-        dockingUI_->SetSceneViewport(sceneViewport_.get());
-
         // ProjectViewの初期化
         projectView_->Initialize(dxCommon_);
 #endif
@@ -128,12 +127,58 @@ namespace CoreEngine
         ImGui::End();
     }
 
-    void ImGuiManager::DrawGameViewport([[maybe_unused]] DirectXCommon* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager)
+    void ImGuiManager::DrawGameViewport([[maybe_unused]] DirectXCommon* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)
     {
 #ifdef USE_IMGUI
-        if (sceneViewport_) {
-            sceneViewport_->DrawGameViewport(dxCommon, postEffectManager);
+        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
+        if (postEffectManager) {
+            textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
+        } else if (dxCommon) {
+            textureHandle = dxCommon->GetOffScreenSrvHandle();
         }
+
+        if (!ImGui::Begin("Game", nullptr,
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoScrollbar |
+            ImGuiWindowFlags_NoScrollWithMouse |
+            ImGuiWindowFlags_NoBackground)) {
+            ImGui::End();
+            return;
+        }
+
+        ImVec2 contentRegionSize = ImGui::GetContentRegionAvail();
+        const float aspect = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
+            static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+
+        float drawW = contentRegionSize.x;
+        float drawH = drawW / aspect;
+        if (drawH > contentRegionSize.y) {
+            drawH = contentRegionSize.y;
+            drawW = drawH * aspect;
+        }
+
+        ImVec2 contentPos = ImGui::GetCursorScreenPos();
+        float offsetX = (contentRegionSize.x - drawW) * 0.5f;
+        float offsetY = (contentRegionSize.y - drawH) * 0.5f;
+        ImGui::SetCursorScreenPos(ImVec2(contentPos.x + offsetX, contentPos.y + offsetY));
+        ImGui::Image((ImTextureID)textureHandle.ptr, ImVec2(drawW, drawH));
+
+#if defined(_DEBUG)
+        SceneDebugEditor* sceneDebugEditor = gameDebugUI ? gameDebugUI->GetSceneDebugEditor() : nullptr;
+
+        if (sceneDebugEditor) {
+            const ImVec2 imageMin = ImGui::GetItemRectMin();
+            const ImVec2 imageMax = ImGui::GetItemRectMax();
+            const ImVec2 imageSize(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
+            const bool isImageHovered = ImGui::IsItemHovered();
+            sceneDebugEditor->UpdateGameViewportInteraction(
+                imageMin,
+                imageSize,
+                isImageHovered);
+        }
+#endif
+
+        ImGui::End();
 #endif
     }
 

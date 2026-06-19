@@ -67,7 +67,8 @@ void WaterReflectionPass::RestoreMainCamera(ICamera* mainCamera)
     if (castableCamera) {
         castableCamera->SetViewMatrix(savedView_);
         castableCamera->SetTranslate(savedPosition_);
-        castableCamera->TransferMatrix();
+        castableCamera->ClearExternalViewMatrix();
+        castableCamera->UpdateMatrix();
     }
     hasSavedCameraState_ = false;
 }

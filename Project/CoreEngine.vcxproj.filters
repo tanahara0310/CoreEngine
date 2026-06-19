@@ -568,15 +568,6 @@
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
@@ -729,9 +720,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp">
       <Filter>Engine\Src\Input</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.cpp">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
@@ -1518,15 +1506,6 @@
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
@@ -1709,9 +1688,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\SceneManager.h">
       <Filter>Engine\Src\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.h">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\MyGame.h">
       <Filter>Application\Src</Filter>

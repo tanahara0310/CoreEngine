@@ -271,23 +271,6 @@ namespace CoreEngine
         // フレーム開始時にレンダリング統計をリセット
         EngineStats::GetInstance().BeginFrame();
 
-        auto* sceneManager = engine_->GetSceneManager();
-
-        if (sceneManager) {
-            if (auto* sceneViewport = imGui_->GetSceneViewport()) {
-                sceneViewport->SetCamera(sceneManager->GetGameViewCamera3D());
-                sceneViewport->SetGameCamera3D(sceneManager->GetDefaultGameViewCamera3D());
-                sceneViewport->SetCamera2D(sceneManager->GetGameViewCamera2D());
-            }
-        }
-
-        // SceneViewportにInputQueryを渡す（ギズモ操作のキーコンフィグ対応）
-        if (auto* sceneViewport = imGui_->GetSceneViewport()) {
-            if (auto* inputManager = engine_->GetComponent<InputManager>()) {
-                sceneViewport->SetInputQuery(&inputManager->GetQuery());
-            }
-        }
-
         // ImGuiの開始（PostEffectManagerとGameDebugUIを渡す）
         if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
             imGui_->Begin(postEffect, gameDebugUI_.get());
@@ -299,18 +282,6 @@ namespace CoreEngine
         // その他のデバッグUIの更新（メニューバー以外）
         gameDebugUI_->UpdateDebugPanels();
 
-        if (sceneManager) {
-            if (auto* sceneViewport = imGui_->GetSceneViewport()) {
-                if (auto* gameObjectManager = sceneManager->GetCurrentGameObjectManager()) {
-                    if (auto* gameCamera3D = sceneManager->GetGameViewCamera3D()) {
-                        sceneViewport->UpdateObjectSelection(gameObjectManager, gameCamera3D);
-                    }
-                    if (auto* camera2D = sceneManager->GetGameViewCamera2D()) {
-                        sceneViewport->UpdateSpriteSelection(gameObjectManager, camera2D);
-                    }
-                }
-            }
-        }
     }
 
     void DebugSubsystem::EndFrame()
@@ -339,7 +310,7 @@ namespace CoreEngine
             // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
             auto* dx = engine_->GetComponent<DirectXCommon>();
             auto* postEffect = engine_->GetComponent<PostEffectManager>();
-            imGui_->DrawGameViewport(dx, postEffect);
+            imGui_->DrawGameViewport(dx, postEffect, gameDebugUI_.get());
             imGui_->Draw();
         }
     }

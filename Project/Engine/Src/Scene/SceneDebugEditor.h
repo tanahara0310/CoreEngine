@@ -3,6 +3,8 @@
 #ifdef USE_IMGUI
 
 #include "Scene/UndoRedoHistory.h"
+#include "Utility/Debug/ImGui/Gizmo.h"
+#include "Utility/Debug/ImGui/ObjectSelector.h"
 #include <string>
 
 namespace CoreEngine
@@ -52,8 +54,24 @@ namespace CoreEngine
         /// @param modelFileName モデルファイル名（例: "cube.obj"）
         void SpawnModelFromFile(const std::string& modelFileName);
 
+        /// @brief Gameビュー上の選択とギズモ描画を更新する
+        /// @param viewportPos Gameビュー画像の左上座標
+        /// @param viewportSize Gameビュー画像サイズ
+        /// @param isViewportHovered Gameビュー画像がホバーされているか
+        void UpdateGameViewportInteraction(
+            const ImVec2& viewportPos,
+            const ImVec2& viewportSize,
+            bool isViewportHovered);
+
+        /// @brief 現在のギズモモードを取得する
+        Gizmo::Mode GetGizmoMode() const;
+
+        /// @brief ギズモモードを設定する
+        void SetGizmoMode(Gizmo::Mode mode);
+
     private:
         UndoRedoHistory undoRedoHistory_;
+        ObjectSelector objectSelector_;
 
         // 保存通知用
         std::string saveNotificationMessage_;

@@ -50,20 +50,8 @@ public:
     /// @brief 描画処理
     void Draw();
 
-    /// @brief Sceneビュー用描画
-    void DrawSceneView();
-
     /// @brief ReflectionView 用描画
     void DrawReflectionView();
-
-    /// @brief SceneView 用カメラ・レンダリング状態をセットアップ（GBufferPass 実行前に呼ぶ）
-    void SetupSceneViewCamera();
-
-    /// @brief SceneView 用ジオメトリ（スカイボックス・グリッド・透過）を描画
-    void DrawSceneViewGeometry();
-
-    /// @brief Gameビュー用カメラ・レンダリング状態を復元
-    void RestoreGameViewCamera();
 
     /// @brief ReflectionView 用カメラ状態をセットアップする
     /// @param mainCamera 基準となるゲームビューカメラ
@@ -103,9 +91,6 @@ public:
     /// @brief 現在のシーンのBGM音量コールバックを登録
     /// @param callback 音量倍率(0.0～1.0)を受け取るコールバック関数
     void RegisterSceneBGMCallback(std::function<void(float)> callback);
-
-    /// @brief Sceneビュー用カメラを取得
-    ICamera* GetSceneViewCamera() const;
 
     /// @brief Gameビュー用3Dカメラを取得
     ICamera* GetGameViewCamera3D() const;

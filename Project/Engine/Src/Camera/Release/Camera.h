@@ -77,6 +77,12 @@ namespace CoreEngine {
             useExternalViewMatrix_ = true;
         }
 
+        /// @brief 外部から設定されたビュー行列の固定状態を解除する
+        void ClearExternalViewMatrix()
+        {
+            useExternalViewMatrix_ = false;
+        }
+
         /// @brief 指定した位置を注視するようにカメラを回転
         /// @param target 注視点
         void LookAt(const Vector3& target);

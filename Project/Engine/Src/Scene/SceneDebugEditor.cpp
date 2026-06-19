@@ -7,9 +7,9 @@
 #include "ObjectCommon/GameObjectManager.h"
 #include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
 #include "Scene/SceneSaveSystem.h"
-#include "Utility/Debug/ImGui/SceneViewport.h"
 #include "Utility/Debug/ImGui/ObjectSelector.h"
 #include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Utility/Debug/ImGui/Gizmo.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
 #include "ObjectCommon/Model/DynamicModelObject.h"
@@ -32,6 +32,8 @@ namespace CoreEngine
             cameraManager_->SetEngineSystem(engine_);
         }
 
+        objectSelector_.Initialize();
+
         // 保存通知コールバックを設定
         saveSystem_->SetSaveNotificationCallback([this](const std::string& msg) {
             ShowSaveNotification(msg);
@@ -43,36 +45,26 @@ namespace CoreEngine
             });
 
         // ギズモ変更時コールバックを設定
-        auto imGuiManager = engine->GetDebugSubsystem()->GetImGuiManager();
-        if (imGuiManager) {
-            auto* sceneViewport = imGuiManager->GetSceneViewport();
-            if (sceneViewport) {
-                auto* objectSelector = sceneViewport->GetObjectSelector();
-                if (objectSelector) {
-                    // Undo/Redo 記録（ギズモ操作完了時）
-                    objectSelector->SetOnGizmoEditCommitted([this](
-                        GameObject* obj,
-                        const Vector3& tBefore, const Vector3& rBefore,
-                        const Vector3& sBefore, bool aBefore) {
-                            if (!obj) return;
-                            TransformRecord record;
-                            record.objectName = obj->GetName();
-                            record.translateBefore = tBefore;
-                            record.rotateBefore = rBefore;
-                            record.scaleBefore = sBefore;
-                            record.activeBefore = aBefore;
-                            DebugAccess::TransformAccess access;
-                            if (DebugAccess::TryGetTransformAccess(obj, access)) {
-                                record.translateAfter = *access.translate;
-                                record.rotateAfter = *access.rotate;
-                                record.scaleAfter = *access.scale;
-                            }
-                            record.activeAfter = obj->IsActive();
-                            undoRedoHistory_.Push(record);
-                        });
+        objectSelector_.SetOnGizmoEditCommitted([this](
+            GameObject* obj,
+            const Vector3& tBefore, const Vector3& rBefore,
+            const Vector3& sBefore, bool aBefore) {
+                if (!obj) return;
+                TransformRecord record;
+                record.objectName = obj->GetName();
+                record.translateBefore = tBefore;
+                record.rotateBefore = rBefore;
+                record.scaleBefore = sBefore;
+                record.activeBefore = aBefore;
+                DebugAccess::TransformAccess access;
+                if (DebugAccess::TryGetTransformAccess(obj, access)) {
+                    record.translateAfter = *access.translate;
+                    record.rotateAfter = *access.rotate;
+                    record.scaleAfter = *access.scale;
                 }
-            }
-        }
+                record.activeAfter = obj->IsActive();
+                undoRedoHistory_.Push(record);
+            });
 
         // Undo/Redo 記録（ImGui 操作完了時）
         mgr->SetEditCommitCallback([this](
@@ -96,33 +88,21 @@ namespace CoreEngine
                 undoRedoHistory_.Push(record);
             });
 
-        // モデルD&DコールバックをSceneViewportに登録
-        if (imGuiManager) {
-            auto* sceneViewport = imGuiManager->GetSceneViewport();
-            if (sceneViewport) {
-                sceneViewport->SetModelDropCallback([this](const std::string& modelFileName) {
-                    SpawnModelFromFile(modelFileName);
-                });
-            }
-        }
-
         // Undo でオブジェクトが削除される直前に ObjectSelector の選択を解除する。
         // 解除しないと削除済みオブジェクトへのダングリングポインタでクラッシュする。
         undoRedoHistory_.SetOnBeforeDestroyCallback([this](const std::string& objectName) {
-            if (auto* debug = engine_->GetDebugSubsystem()) {
-                if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
-                    if (auto* selector = sceneViewport->GetObjectSelector()) {
-                        if (selector->GetSelectedObject() &&
-                            selector->GetSelectedObject()->GetName() == objectName) {
-                            selector->SelectObject(nullptr);
-                        }
-                    }
-                }
+            if (objectSelector_.GetSelectedObject() &&
+                objectSelector_.GetSelectedObject()->GetName() == objectName) {
+                objectSelector_.SelectObject(nullptr);
             }
         });
 
         // Hierarchy/Inspectorパネル用の描画コールバックをGameDebugUIに登録
         if (auto* gameDebugUI = engine_->GetDebugSubsystem()->GetGameDebugUI()) {
+            gameDebugUI->SetSceneDebugEditor(this);
+            if (auto* dockingUI = engine_->GetDebugSubsystem()->GetDockingUI()) {
+                dockingUI->SetSceneDebugEditor(this);
+            }
             gameDebugUI->SetHierarchyContentDrawer([this]() {
                 DrawHierarchyContent();
             });
@@ -181,24 +161,53 @@ namespace CoreEngine
             CopySelectedObject();
         }
 
-        // シーンビューポートでのオブジェクト選択とギズモ更新
-        auto imGuiManager = engine_->GetDebugSubsystem()->GetImGuiManager();
-        ICamera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
-        ICamera* activeCamera2D = cameraManager_->GetActiveCamera(CameraType::Camera2D);
-        if (imGuiManager) {
-            auto sceneViewport = imGuiManager->GetSceneViewport();
-            if (sceneViewport) {
-                if (activeCamera3D) {
-                    sceneViewport->SetCamera(activeCamera3D);
-                }
-                if (activeCamera2D) {
-                    sceneViewport->SetCamera2D(activeCamera2D);
-                }
-            }
-        }
-
         // 保存通知オーバーレイの描画
         DrawSaveNotification();
+    }
+
+    void SceneDebugEditor::UpdateGameViewportInteraction(
+        const ImVec2& viewportPos,
+        const ImVec2& viewportSize,
+        bool isViewportHovered)
+    {
+        if (!gameObjectManager_) {
+            return;
+        }
+
+        if (viewportSize.x <= 0.0f || viewportSize.y <= 0.0f) {
+            return;
+        }
+
+        Gizmo::Prepare(viewportPos, viewportSize);
+        ImGuizmo::SetDrawlist();
+
+        const ImVec2 mousePos = ImGui::GetMousePos();
+        const Vector2 normalizedMousePos(
+            (mousePos.x - viewportPos.x) / viewportSize.x,
+            (mousePos.y - viewportPos.y) / viewportSize.y);
+
+        const ICamera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
+        const ICamera* camera2D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
+
+        if (camera3D) {
+            objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered);
+            objectSelector_.DrawGizmo(camera3D);
+        }
+
+        if (camera2D) {
+            objectSelector_.Update2D(gameObjectManager_, camera2D, normalizedMousePos, isViewportHovered);
+            objectSelector_.DrawGizmo2D(camera2D);
+        }
+    }
+
+    Gizmo::Mode SceneDebugEditor::GetGizmoMode() const
+    {
+        return objectSelector_.GetGizmoMode();
+    }
+
+    void SceneDebugEditor::SetGizmoMode(Gizmo::Mode mode)
+    {
+        objectSelector_.SetGizmoMode(mode);
     }
 
     void SceneDebugEditor::DrawHierarchyContent()
@@ -228,14 +237,6 @@ namespace CoreEngine
             undoRedoHistory_.GetUndoCount() + undoRedoHistory_.GetRedoCount());
         UI::Separator();
 
-        // ObjectSelectorを取得（クリック選択用）
-        ObjectSelector* objectSelector = nullptr;
-        if (auto* debug = engine_->GetDebugSubsystem()) {
-            if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
-                objectSelector = sceneViewport->GetObjectSelector();
-            }
-        }
-
         const auto& objects = gameObjectManager_->GetAllObjects();
         UI::Separator();
 
@@ -251,8 +252,7 @@ namespace CoreEngine
             for (const auto& obj : objects) {
                 if (!obj) continue;
 
-                const bool isSelected = objectSelector &&
-                    (objectSelector->GetSelectedObject() == obj.get());
+                const bool isSelected = (objectSelector_.GetSelectedObject() == obj.get());
 
                 // 状態に応じた文字色
                 int colorsPushed = 0;
@@ -279,9 +279,7 @@ namespace CoreEngine
                 snprintf(itemId, sizeof(itemId), "%s##obj_%p", displayName, (void*)obj.get());
 
                 if (ImGui::Selectable(itemId, isSelected)) {
-                    if (objectSelector) {
-                        objectSelector->SelectObject(obj.get());
-                    }
+                    objectSelector_.SelectObject(obj.get());
                 }
 
                 if (colorsPushed > 0) {
@@ -293,21 +291,8 @@ namespace CoreEngine
 
     void SceneDebugEditor::DrawInspectorContent()
     {
-        // ObjectSelectorから選択オブジェクトを取得
-        ObjectSelector* objectSelector = nullptr;
-        if (auto* debug = engine_->GetDebugSubsystem()) {
-            if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
-                objectSelector = sceneViewport->GetObjectSelector();
-            }
-        }
-
-        if (!objectSelector) {
-            UI::Hint("初期化中...");
-            return;
-        }
-
-        GameObject* selected = objectSelector->GetSelectedObject();
-        SpriteObject* selectedSprite = objectSelector->GetSelectedSprite();
+        GameObject* selected = objectSelector_.GetSelectedObject();
+        SpriteObject* selectedSprite = objectSelector_.GetSelectedSprite();
 
         if (selectedSprite) {
             gameObjectManager_->DrawSingleObjectImGui(selectedSprite);
@@ -367,18 +352,7 @@ namespace CoreEngine
     bool SceneDebugEditor::CopySelectedObject()
     {
         // 選択中のオブジェクトを取得
-        ObjectSelector* objectSelector = nullptr;
-        if (auto* debug = engine_->GetDebugSubsystem()) {
-            if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
-                objectSelector = sceneViewport->GetObjectSelector();
-            }
-        }
-
-        if (!objectSelector) {
-            return false;
-        }
-
-        GameObject* selected = objectSelector->GetSelectedObject();
+        GameObject* selected = objectSelector_.GetSelectedObject();
         if (!selected) {
             Logger::GetInstance().Log("コピー対象のオブジェクトが選択されていません", LogLevel::Warn, LogCategory::System);
             return false;
@@ -443,7 +417,7 @@ namespace CoreEngine
         undoRedoHistory_.Push(spawnRecord);
 
         // コピーしたオブジェクトを選択状態にする
-        objectSelector->SelectObject(raw);
+        objectSelector_.SelectObject(raw);
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "オブジェクトをコピーしました: {}", raw->GetName());
         return true;
@@ -468,13 +442,7 @@ namespace CoreEngine
         }
 
         // スポーンしたオブジェクトを選択状態にする
-        if (auto* debug = engine_->GetDebugSubsystem()) {
-            if (auto* sceneViewport = debug->GetImGuiManager()->GetSceneViewport()) {
-                if (auto* selector = sceneViewport->GetObjectSelector()) {
-                    selector->SelectObject(raw);
-                }
-            }
-        }
+        objectSelector_.SelectObject(raw);
 
         // スポーン操作を Undo 履歴に記録する
         ObjectSpawnRecord spawnRecord;
