@@ -87,8 +87,6 @@ namespace CoreEngine
 
         if (hasBlackboardSSAO) {
             deferredLighting->SetSSAOHandle(ssaoHandle);
-        } else if (input_.isValid && input_.srvHandle.ptr != 0) {
-            deferredLighting->SetSSAOHandle(input_.srvHandle);
         } else {
             deferredLighting->SetSSAOHandle({});
         }
@@ -99,14 +97,12 @@ namespace CoreEngine
         // 必須コンポーネントの確認
         if (!context.renderingTechniqueManager || !context.renderTargetManager
             || !context.gBufferManager || !context.dxCommon) {
-            output_.Reset();
             return;
         }
 
         auto* deferredLighting = context.renderingTechniqueManager->GetTechnique<DeferredLightingTechnique>(
             RenderingTechniqueNames::DeferredLighting);
         if (!deferredLighting) {
-            output_.Reset();
             return;
         }
 
@@ -114,12 +110,10 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE outputHandle{};
         deferredLighting->Execute(context, outputHandle);
 
-        // 結果を次のパスに渡す
+        // 結果を Blackboard に公開する。
         if (outputHandle.ptr != 0) {
             auto* target = context.renderTargetManager->GetRenderTarget(targetName_);
-            output_.srvHandle = outputHandle;
-            output_.resource  = target ? target->GetResource() : nullptr;
-            output_.isValid   = true;
+            ID3D12Resource* outputResource = target ? target->GetResource() : nullptr;
 
             if (context.frameBlackboard) {
                 D3D12_RESOURCE_STATES* stateRef = nullptr;
@@ -128,12 +122,10 @@ namespace CoreEngine
                 }
                 context.frameBlackboard->SetResource(
                     FrameBlackboard::SceneColor,
-                    output_.srvHandle,
-                    output_.resource,
+                    outputHandle,
+                    outputResource,
                     stateRef);
             }
-        } else {
-            output_.Reset();
         }
     }
 }

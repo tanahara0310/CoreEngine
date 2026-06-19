@@ -140,11 +140,11 @@ namespace CoreEngine
         SectionHeader("Lighting / 最終合成");
 
         if (renderTargetManager_) {
-            const char* outputTargets[] = { "Offscreen0", "Offscreen1", "SceneView" };
+            const char* outputTargets[] = { "Offscreen0", "Offscreen1", "ReflectionView" };
             const char* outputTooltips[] = {
                 "DeferredLighting + PostEffect の出力先",
                 "PostEffect ピンポンバッファ",
-                "SceneView 専用 RT（エディタービュー用）"
+                "ReflectionView 用 RT（補助ビュー用）"
             };
 
             const float availW = ImGui::GetContentRegionAvail().x;

@@ -17,7 +17,7 @@ namespace CoreEngine
 
     /// @brief DXR レイトレーシングシャドウを管理するクラス
     /// @details State Object / Shader Table / UAV テクスチャの作成と DispatchRays を担当
-    ///          SceneView / GameView で独立した結果を保持するため、2枚のシャドウテクスチャを持つ
+    ///          GameView / ReflectionView など View ごとに独立した結果を保持できるようにする
     /// @brief DXRシャドウのパラメータ設定
     struct RayTracingShadowSettings {
         float shadowBias = 0.05f;          ///< セルフシャドウ防止バイアス
@@ -37,8 +37,8 @@ namespace CoreEngine
     public:
         /// @brief ビュー識別子
         enum class ViewID : uint32_t {
-            SceneView = 0,
-            GameView = 1,
+            GameView = 0,
+            ReflectionView = 1,
             Count
         };
 

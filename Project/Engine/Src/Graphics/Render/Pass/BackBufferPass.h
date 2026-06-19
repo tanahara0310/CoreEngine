@@ -17,11 +17,6 @@ namespace CoreEngine
 
         void Execute(const RenderContext& context) override;
 
-        /// @brief 前のパスからの入力を設定
-        void SetInput(const PassOutput& input) override {
-            inputHandle_ = input.srvHandle;
-        }
-
         /// @brief レンダーターゲット名を設定
         /// @param name ターゲット名
         void SetRenderTargetName(const std::string& name) {
@@ -35,7 +30,6 @@ namespace CoreEngine
         }
 
     private:
-        D3D12_GPU_DESCRIPTOR_HANDLE inputHandle_{};
         std::string targetName_ = "BackBuffer";  ///< デフォルトターゲット名
     };
 }

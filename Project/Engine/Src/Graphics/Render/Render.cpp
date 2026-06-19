@@ -33,13 +33,6 @@ namespace CoreEngine
         offscreen1Desc.clearColor[3] = kClearColor[3];
         renderTargetManager_->CreateRenderTarget(offscreen1Desc);
 
-        RenderTargetDescriptor sceneViewDesc("SceneView");
-        sceneViewDesc.clearColor[0] = kClearColor[0];
-        sceneViewDesc.clearColor[1] = kClearColor[1];
-        sceneViewDesc.clearColor[2] = kClearColor[2];
-        sceneViewDesc.clearColor[3] = kClearColor[3];
-        renderTargetManager_->CreateRenderTarget(sceneViewDesc);
-
         RenderTargetDescriptor reflectionViewDesc("ReflectionView");
         reflectionViewDesc.clearColor[0] = kClearColor[0];
         reflectionViewDesc.clearColor[1] = kClearColor[1];

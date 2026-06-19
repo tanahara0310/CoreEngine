@@ -10,25 +10,22 @@ namespace CoreEngine
     void RTShadowPass::Execute(const RenderContext& context)
     {
         if (!context.rayTracingSubsystem || !context.dxCommon || !context.rtShadowManager) {
-            output_.Reset();
             return;
         }
 
         if (!context.rtShadowManager->IsInitialized()) {
-            output_.Reset();
             return;
         }
 
         ID3D12GraphicsCommandList* cmdList = context.dxCommon->GetCommandList();
         if (!cmdList) {
-            output_.Reset();
             return;
         }
 
         // 現在の描画対象ビューに合わせて RT シャドウ出力先を切り替える。
         const RayTracingShadowManager::ViewID viewId =
-            (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::SceneView))
-            ? RayTracingShadowManager::ViewID::SceneView
+            (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView))
+            ? RayTracingShadowManager::ViewID::ReflectionView
             : RayTracingShadowManager::ViewID::GameView;
 
         // GBuffer を入力に RT シャドウをディスパッチする。
@@ -49,7 +46,5 @@ namespace CoreEngine
                 shadowResource,
                 &currentState);
         }
-
-        output_.Reset();
     }
 }

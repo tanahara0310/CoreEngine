@@ -370,9 +370,6 @@
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.cpp">
-      <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>

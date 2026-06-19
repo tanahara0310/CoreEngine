@@ -11,6 +11,7 @@ namespace CoreEngine
     const char* const FrameBlackboard::ShadowMap = "ShadowMap";
     const char* const FrameBlackboard::ShadowMask = "ShadowMask";
     const char* const FrameBlackboard::RTShadowMask = "RTShadowMask";
+    const char* const FrameBlackboard::BackBuffer = "BackBuffer";
     const char* const FrameBlackboard::GBufferAlbedoAO = "GBufferAlbedoAO";
     const char* const FrameBlackboard::GBufferNormalRoughness = "GBufferNormalRoughness";
     const char* const FrameBlackboard::GBufferEmissiveMetallic = "GBufferEmissiveMetallic";
@@ -83,5 +84,20 @@ namespace CoreEngine
     {
         const FrameBlackboardResource* entry = GetResource(name);
         return entry && entry->isValid;
+    }
+
+    bool FrameBlackboard::TryResolveResource(
+        const std::string& name,
+        ID3D12Resource*& outResource,
+        D3D12_RESOURCE_STATES*& outCurrentState) const
+    {
+        const FrameBlackboardResource* entry = GetResource(name);
+        if (!entry || !entry->isValid || !entry->resource || !entry->currentState) {
+            return false;
+        }
+
+        outResource = entry->resource;
+        outCurrentState = entry->currentState;
+        return true;
     }
 }

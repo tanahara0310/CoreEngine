@@ -12,7 +12,6 @@
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
-#include "Pass/RenderPipeline.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -22,8 +21,6 @@ namespace CoreEngine
         const char* RenderViewTypeToString(RenderViewType viewType)
         {
             switch (viewType) {
-            case RenderViewType::SceneView:
-                return "SceneView";
             case RenderViewType::GameView:
                 return "GameView";
             case RenderViewType::ReflectionView:
@@ -151,7 +148,7 @@ namespace CoreEngine
 
     void RenderGraph::Execute(const RenderGraphContext& context)
     {
-        if (!context.renderContext || !context.renderPipeline) {
+        if (!context.renderContext) {
             return;
         }
 
@@ -167,102 +164,32 @@ namespace CoreEngine
             }
 
             ApplyTransitionsForPass(passes_[passIndex], *context.renderContext);
-            context.renderPipeline->ExecutePass(renderPass, *context.renderContext);
+            renderPass->Setup(*context.renderContext);
+            renderPass->Execute(*context.renderContext);
+            renderPass->Cleanup(*context.renderContext);
         }
     }
 
     void RenderGraph::ResolveResources(const RenderContext& context)
     {
-        // Blackboard 登録済みリソースから実体と状態参照を取り込み、
-        // 未登録の主要リソースは既存 Manager から補完する。
+        // Blackboard を正本として優先し、未登録分だけ最小限に補完する。
         for (auto& [resourceName, resource] : resources_) {
             resource.resource = nullptr;
             resource.currentState = nullptr;
 
-            if (resourceName == FrameBlackboard::SceneDepth && context.depthStencilManager) {
-                resource.resource = context.depthStencilManager->GetDepthStencilResource();
-                resource.currentState = &context.depthStencilManager->GetCurrentState();
+            if (context.frameBlackboard &&
+                context.frameBlackboard->TryResolveResource(resourceName, resource.resource, resource.currentState)) {
                 continue;
             }
 
-            if (resourceName == FrameBlackboard::SceneColor && context.renderTargetManager) {
-                if (RenderTarget* target = context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName)) {
-                    resource.resource = target->GetResource();
-                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
-                        resource.currentState = &offscreen->GetCurrentState();
-                    }
-                }
-                continue;
-            }
-
-            if (resourceName == FrameBlackboard::ReflectionColor && context.renderTargetManager) {
-                if (RenderTarget* target = context.renderTargetManager->GetRenderTarget(RenderTargetNames::ReflectionView)) {
-                    resource.resource = target->GetResource();
-                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
-                        resource.currentState = &offscreen->GetCurrentState();
-                    }
-                }
-                continue;
-            }
-
-            if ((resourceName == FrameBlackboard::SSAO || resourceName == "BackBuffer") && context.renderTargetManager) {
-                const char* targetName = (resourceName == FrameBlackboard::SSAO)
-                    ? RenderTargetNames::SSAOBlurBuffer
-                    : RenderTargetNames::BackBuffer;
-                if (RenderTarget* target = context.renderTargetManager->GetRenderTarget(targetName)) {
-                    resource.resource = target->GetResource();
-                    if (resourceName == FrameBlackboard::SSAO) {
-                        if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
-                            resource.currentState = &offscreen->GetCurrentState();
-                        }
-                    }
-                }
-                continue;
-            }
-
-            if (resourceName == FrameBlackboard::ShadowMap && context.shadowMapManager) {
-                resource.resource = context.shadowMapManager->GetShadowMapResource();
-                resource.currentState = &context.shadowMapManager->GetCurrentState();
-                continue;
-            }
-
+            // RTShadowMask は View 依存で実行後に更新されるため、この段階では最小限の fallback を残す。
             if (resourceName == FrameBlackboard::RTShadowMask && context.rtShadowManager) {
                 const RayTracingShadowManager::ViewID viewId =
-                    (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::SceneView))
-                    ? RayTracingShadowManager::ViewID::SceneView
+                    (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView))
+                    ? RayTracingShadowManager::ViewID::ReflectionView
                     : RayTracingShadowManager::ViewID::GameView;
                 resource.resource = context.rtShadowManager->GetShadowResource(viewId, 0);
                 resource.currentState = &context.rtShadowManager->GetShadowCurrentState(viewId, 0);
-                continue;
-            }
-
-            if (context.gBufferManager) {
-                auto resolveGBuffer = [&](const char* logicalName, GBufferManager::Target target) {
-                    if (resourceName == logicalName) {
-                        resource.resource = context.gBufferManager->GetResource(target);
-                        resource.currentState = &context.gBufferManager->GetCurrentState(target);
-                        return true;
-                    }
-                    return false;
-                };
-
-                if (resolveGBuffer(FrameBlackboard::GBufferAlbedoAO, GBufferManager::Target::AlbedoAO)
-                    || resolveGBuffer(FrameBlackboard::GBufferNormalRoughness, GBufferManager::Target::NormalRoughness)
-                    || resolveGBuffer(FrameBlackboard::GBufferEmissiveMetallic, GBufferManager::Target::EmissiveMetallic)
-                    || resolveGBuffer(FrameBlackboard::GBufferWorldPosition, GBufferManager::Target::WorldPosition)
-                    || resolveGBuffer(FrameBlackboard::GBufferMotionVector, GBufferManager::Target::MotionVector)) {
-                    continue;
-                }
-            }
-
-            if (context.frameBlackboard) {
-                if (const FrameBlackboardResource* blackboardResource = context.frameBlackboard->GetResource(resourceName)) {
-                    resource.resource = blackboardResource->resource;
-                    resource.currentState = blackboardResource->currentState;
-                }
-            }
-
-            if (resource.resource && resource.currentState) {
                 continue;
             }
         }

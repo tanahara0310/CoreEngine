@@ -7,7 +7,6 @@
 
 #include "Graphics/Common/Core/DepthStencilManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 
@@ -90,8 +89,7 @@ namespace CoreEngine
     void GBufferManager::BeginGeometryPass(
         ID3D12GraphicsCommandList* cmdList,
         DepthStencilManager* depthStencilManager,
-        ID3D12DescriptorHeap* srvHeap,
-        bool clearDepth)
+        ID3D12DescriptorHeap* srvHeap)
     {
         assert(cmdList);
         assert(depthStencilManager);
@@ -101,22 +99,8 @@ namespace CoreEngine
 
         for (uint32_t i = 0; i < kTargetCount; ++i) {
             auto& target = targets_[i];
-            TransitionTarget(cmdList, target, D3D12_RESOURCE_STATE_RENDER_TARGET);
             rtvHandles[i] = target.rtvHandle;
             cmdList->ClearRenderTargetView(target.rtvHandle, kGBufferClearColors[i].data(), 0, nullptr);
-        }
-
-        // 深度ステンシルを DEPTH_WRITE 状態にしてクリアする
-        // clearDepth=true の場合は BeginDepthWrite がクリアも行う
-        // clearDepth=false の場合は遷移のみ行い、クリアはスキップする
-        if (clearDepth) {
-            depthStencilManager->BeginDepthWrite(cmdList);
-        } else {
-            ResourceBarrierHelper::Transition(
-                cmdList,
-                depthStencilManager->GetDepthStencilResource(),
-                depthStencilManager->GetCurrentState(),
-                D3D12_RESOURCE_STATE_DEPTH_WRITE);
         }
 
         const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = depthStencilManager->GetDSVHandle();
@@ -141,16 +125,6 @@ namespace CoreEngine
         if (srvHeap) {
             ID3D12DescriptorHeap* heaps[] = { srvHeap };
             cmdList->SetDescriptorHeaps(1, heaps);
-        }
-    }
-
-    void GBufferManager::EndGeometryPass(ID3D12GraphicsCommandList* cmdList)
-    {
-        assert(cmdList);
-        ValidateState();
-
-        for (auto& target : targets_) {
-            TransitionTarget(cmdList, target, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
     }
 
@@ -267,16 +241,6 @@ namespace CoreEngine
 
         device_->CreateRenderTargetView(targetResource.resource.Get(), &rtvDesc, targetResource.rtvHandle);
         device_->CreateShaderResourceView(targetResource.resource.Get(), &srvDesc, targetResource.srvCpuHandle);
-    }
-
-    void GBufferManager::TransitionTarget(
-        ID3D12GraphicsCommandList* cmdList,
-        TargetResource& targetResource,
-        D3D12_RESOURCE_STATES newState)
-    {
-        ResourceBarrierHelper::Transition(
-            cmdList, targetResource.resource.Get(),
-            targetResource.currentState, newState);
     }
 
     void GBufferManager::ValidateState() const

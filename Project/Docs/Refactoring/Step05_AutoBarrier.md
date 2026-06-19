@@ -66,11 +66,11 @@ RenderGraph と論理リソース管理を前提に、最終的には全パス�
 - Graph 側は主要リソースの『要求状態への遷移』を担当する
 - 各 RenderTarget / GBuffer / Depth / Shadow / RTShadow 管理クラスは実リソースと現在状態の保持を担当する
 - 一部の Begin / End 内部遷移はまだ残るが、`currentState` 追跡を共有することで二重発行を抑える
-- SceneView / ReflectionView など複数 View を跨ぐ完全な状態追跡は Step 6 以降へ持ち越す
+- ReflectionView / CaptureView など複数 View を跨ぐ完全な状態追跡は Step 6 以降へ持ち越す
 
 ## 全パス自動遷移へ向けた引き継ぎ
 - 以後の方針は『今だけの対策を足す』ではなく、『全パスのバリア処理とリソースステート遷移を最終的に自動化する』ことを優先する
-- Step 6 では Shadow / RT / SceneView / ReflectionView など特殊経路を自動遷移対象へ広げる
+- Step 6 では Shadow / RT / ReflectionView など特殊経路を自動遷移対象へ広げる
 - Step 7 では全パスが RenderGraph 管理下に入った前提で、残存する手動バリアと旧状態管理コードを削除する
 
 ## 実装時の観点
@@ -90,5 +90,5 @@ RenderGraph と論理リソース管理を前提に、最終的には全パス�
 
 ## 引き継ぎメモ
 - Step 6 では複数 View と Shadow / RT の統合へ進むため、ここで View ごとのリソース状態を追跡しやすい構造が望ましい
-- Step 6 では GameView / SceneView / 将来の ReflectionView で状態追跡対象をどう分離するか、RT 系出力の状態参照をどう正式化するかを重点確認する
+- Step 6 では GameView / ReflectionView / 将来の CaptureView で状態追跡対象をどう分離するか、RT 系出力の状態参照をどう正式化するかを重点確認する
 - 全パスの自動遷移を最終目標とし、Step 6 で特殊経路を統合、Step 7 で旧手動バリアを廃止する順序を維持する

@@ -10,8 +10,6 @@
 
 namespace CoreEngine
 {
-    class RenderPipeline;
-
     struct RenderGraphResource {
         std::string name;
         uint32_t lastWriterIndex = 0;
@@ -64,7 +62,6 @@ namespace CoreEngine
 
     struct RenderGraphContext {
         const RenderContext* renderContext = nullptr;
-        RenderPipeline* renderPipeline = nullptr;
     };
 
     class RenderGraph {
@@ -87,7 +84,7 @@ namespace CoreEngine
         void Compile(const RenderContext& context);
 
         /// @brief 確定済みの Graph を実行する
-        /// @param context RenderPipeline と RenderContext を束ねた実行情報
+        /// @param context RenderContext を束ねた実行情報
         void Execute(const RenderGraphContext& context);
 
         const std::vector<RenderGraphPass>& GetPasses() const { return passes_; }

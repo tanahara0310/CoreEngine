@@ -425,7 +425,7 @@ namespace CoreEngine
                             { "Lighting", { 4 /*DeferredLighting*/ },                                                     1 },
                             { "Geometry", { 5 /*GeometryPass*/ },                                                         1 },
                             { "PostFX",   { 6 /*PostEffect*/ },                                                           1 },
-                            { "Editor",   { 7 /*SceneView*/, 8 /*BackBufferPass*/, 9 /*ImGuiDraw*/ },                     3 },
+                            { "Editor",   { 7 /*BackBufferPass*/, 8 /*ImGuiDraw*/ },                                      2 },
                         };
 
                         // Total スロットのインデックス

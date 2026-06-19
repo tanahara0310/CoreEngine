@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "BackBufferRenderTarget.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include <cassert>
 
 namespace CoreEngine
@@ -24,20 +25,18 @@ namespace CoreEngine
 
         // 現在状態を基準にして RENDER_TARGET へ遷移する。
         if (currentState_ != D3D12_RESOURCE_STATE_RENDER_TARGET) {
-            TransitionBarrier(cmdList, backBuffer,
+            ResourceBarrierHelper::Transition(cmdList, backBuffer,
                 currentState_,
                 D3D12_RESOURCE_STATE_RENDER_TARGET);
             currentState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
         }
 
-        // RTV & DSV設定
+        // 最終合成はフルスクリーン描画のみで深度を使用しないため RTV のみ設定する。
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = dxCommon_->GetRTVHandle(backBufferIndex);
-        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dxCommon_->GetDSVHandle();
-        cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+        cmdList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 
-        // クリア
+        // バックバッファのみクリアする。
         cmdList->ClearRenderTargetView(rtvHandle, clearColor_, 0, nullptr);
-        cmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
         // ビューポート設定
         D3D12_VIEWPORT viewport{};
@@ -72,7 +71,7 @@ namespace CoreEngine
 
         // 描画完了後に Present 可能状態へ戻す。
         if (currentState_ != D3D12_RESOURCE_STATE_PRESENT) {
-            TransitionBarrier(cmdList, backBuffer,
+            ResourceBarrierHelper::Transition(cmdList, backBuffer,
                 currentState_,
                 D3D12_RESOURCE_STATE_PRESENT);
             currentState_ = D3D12_RESOURCE_STATE_PRESENT;

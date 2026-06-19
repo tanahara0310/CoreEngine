@@ -39,7 +39,7 @@
 - `RenderPipeline` に `BuildRenderGraph()` と `ExecuteRenderGraph()` を追加し、フレーム準備時に Graph を構築するようにした
 - `GBufferPass` / `SSAOPass` / `RTShadowPass` / `DeferredLightingPass` / `GeometryPass` / `PostEffectPass` / `BackBufferPass` を Graph ノードとして登録するようにした
 - GameView のメイン描画経路は `ShadowMapPass` 実行後、`RenderGraph` 経由で主要パス群を実行する形へ切り替えた
-- `SceneView` のデバッグ描画経路はこの段階では既存 `ExecutePass()` ベースを維持し、完全移行は後続ステップへ送った
+- 旧デバッグビュー描画経路はこの段階では既存 `ExecutePass()` ベースを維持し、完全移行は後続ステップへ送った
 - ワークスペース全体のビルド成功を確認した
 
 ## この段階の Graph ノード構成
@@ -56,7 +56,7 @@
 
 ## この段階で残すもの
 - `ShadowMapPass` はまだ Graph 外の前段処理として残している
-- `SceneView` は既存パス直実行経路を使っている
+- 旧デバッグビューは既存パス直実行経路を使っている
 - `PassOutput` と Graph 実行経路は一時的に併存している
 - 旧手動実行経路の完全削除は次の専用ステップで扱う
 

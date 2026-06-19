@@ -38,9 +38,9 @@ Shadow / RT / 複数 View を同じ基盤へ段階的に統合し、GameView / R
 
 ## 実施結果
 - `RenderContext` に `RenderViewType` / `RenderViewSettings` を追加し、View ごとに有効パスと出力先ターゲットを切り替えられるようにした
-- `RenderPipeline` に View 設定ベースのパス構成切り替えを追加し、GameView と補助 View で有効パスと出力先を切り替えられるようにした
+- `RenderPipeline` に View 設定ベースのパス構成切り替えを追加し、GameView / ReflectionView と将来の CaptureView で有効パスと出力先を切り替えられるようにした
 - `DeferredLightingPass` / `GeometryPass` の出力先を `viewSettings.sceneColorTargetName` で切り替えられるようにし、補助ターゲットへ同じパス群を流せるようにした
-- 旧 SceneView 向けに分岐していた RenderGraph 実行経路は廃止方針に合わせて互換扱いとし、現行では GameView / ReflectionView 前提の整理対象にした
+- 旧 SceneView 向けに分岐していた RenderGraph 実行経路は廃止方針に合わせて整理対象とし、現行では GameView / ReflectionView 前提の実行モデルへ寄せた
 - `ReflectionView` を Engine 側の `PrepareFrame() -> BuildRenderGraph() -> ExecuteRenderGraph()` へ統合し、`WaterTestScene` が反射 RTT を直接実行しない構成へ移行した
 - `ReflectionColor` を Blackboard の正式論理リソースとして登録し、Water は Scene 注入ではなく ReflectionView 実行結果として参照するようにした
 - `WaterReflectionPass` は RenderTarget 制御を持つ Scene 特例から、反射カメラ切り替えと clip plane 組み立てを担う helper へ責務を縮小した

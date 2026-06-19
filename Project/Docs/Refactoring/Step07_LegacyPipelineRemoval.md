@@ -1,7 +1,7 @@
 # Step 7: 旧実行経路削除と RenderGraph 完全移行
 
 ## ステータス
-- 状態: 未着手
+- 状態: 完了
 - 優先度: 中〜高
 - 依存ステップ: Step 4, Step 5, Step 6
 - 完了後に着手しやすい次ステップ: なし
@@ -26,18 +26,33 @@
 ## このステップで扱う責務
 - RenderGraph を唯一の実行器にする
 - 旧経路の削除順序管理
-- View ごとの Graph 実行モデル統一と廃止済み SceneView 残骸の除去
+- View ごとの Graph 実行モデル統一と廃止済み旧 View 残骸の除去
 - 互換コードの廃止判断
 - 手動バリア廃止と状態正本の一本化
 
 ## 作業項目
-- [ ] `EngineSystem::ExecuteRenderPipeline()` に残る旧手動実行ロジックを除去する
-- [ ] `RenderPipeline::ExecutePass()` への直接依存箇所を洗い出す
-- [ ] 廃止済み `SceneView` の残存コードを削除する
-- [ ] `PassOutput` の必要性を再評価し、不要な受け渡しを削除する
-- [ ] Graph 外での論理リソース解決や Manager 直参照を縮小する
-- [ ] RenderGraph が GameView / ReflectionView の正式実行経路として成立することを確認する
-- [ ] 全パスが自動遷移へ移行済みであることを確認し、残存する手動バリアを削除する
+- [x] `EngineSystem::ExecuteRenderPipeline()` に残る旧手動実行ロジックを除去する
+- [x] `RenderPipeline::ExecutePass()` への直接依存箇所を洗い出す
+- [x] 廃止済み旧 View 系の残存コードを削除する
+- [x] `PassOutput` の必要性を再評価し、不要な受け渡しを削除する
+- [x] Graph 外での論理リソース解決や Manager 直参照を縮小する
+- [x] RenderGraph が GameView / ReflectionView の正式実行経路として成立することを確認する
+- [x] 全パスが自動遷移へ移行済みであることを確認し、残存する手動バリアを削除する
+
+## 進捗メモ
+- `PassOutput` と `ExecutePass()` ベースの旧チェーン実行は削除済みで、RenderGraph は RenderPass を直接 `Setup / Execute / Cleanup` する構成へ移行した
+- `SceneView` 由来の旧 View 残骸は RenderViewType / RTShadow ViewID / 不要 RenderTarget / デバッグ表示から整理済み
+- `RenderPipeline` に `ExecuteView()` を追加し、GameView / ReflectionView の `PrepareFrame() -> ExecuteRenderGraph()` を View 単位 API へ集約した
+- `RenderPipeline` に `ExecuteReflectionView()` を追加し、ReflectionColor の Blackboard 公開と `ReflectionViewResult` 組み立てを `EngineSystem` から移譲した
+- `EngineSystem` に残っていた GameView 向けの事前 `PrepareFrame()` 呼び出しを削除し、GameView も `ExecuteView()` を唯一の正式入口とする構成へ揃えた
+- `RenderPipeline::PrepareFrame()` で `SceneDepth / SceneColor / BackBuffer / ShadowMap / GBuffer*` を Blackboard へ事前登録するようにし、主要リソースの正本を Blackboard 側へ寄せ始めた
+- `RenderGraph::ResolveResources()` は Blackboard 正本優先に切り替え、Manager 直参照 fallback は View 依存の `RTShadowMask` のみに縮小した
+- `EngineSystem::ExecuteRenderPipeline()` に残っていた ReflectionView の結果組み立てと Blackboard 注入は削減済みで、現状は実行要求取得と `SceneManager::ApplyReflectionViewResult()` 呼び出しが主な責務になった
+- `DepthStencilManager::ScopedDepthReadSRV` と `BeginDepthReadSRV / EndDepthReadSRV` を削除し、GeometryPass の深度 read 互換経路を RenderGraph 前提へ揃えた
+- `GBufferManager::BeginGeometryPass/EndGeometryPass` に残っていた GBuffer / SceneDepth の手動遷移を削除し、描画セットアップ責務だけを残した
+- `RenderTarget::TransitionBarrier` と対応 `.cpp` を削除し、`OffscreenRenderTarget` / `BackBufferRenderTarget` は `ResourceBarrierHelper` を直接使う構成へ整理した
+- `ResourceBarrierHelper` 自体は RenderGraph の自動遷移実装に加え、`OffscreenRenderTarget::BeginCS/EndCS`、`BackBufferRenderTarget` の Present 境界、`RayTracingShadowManager` の compute / copy 系遷移でも引き続き必要であり、現段階では削除対象ではない
+- 上記整理後、`BackBufferRenderTarget::Begin()` に残っていた DSV バインドと `ClearDepthStencilView` が `SceneDepth` の `DEPTH_READ | PIXEL_SHADER_RESOURCE` 状態と衝突してクラッシュしたため、最終合成では深度を使わない前提に合わせて BackBuffer の深度依存を削除した
 
 ## 実装時の観点
 - 一気に全削除せず、View 単位・Pass 群単位で移行する
@@ -55,6 +70,7 @@
 - GameView / ReflectionView の主要描画が RenderGraph 経由で統一されている
 - 旧個別パス実行コードが削除または明確に限定されている
 - `PassOutput` と旧互換配線の整理方針がコード上で反映されている
+- RenderGraph と重複する互換バリア補助が削除され、残存する `ResourceBarrierHelper` 利用箇所の役割が明確化されている
 
 ## 引き継ぎメモ
-- Step 4〜6 で作った Graph / Blackboard / バリア基盤を前提に、最終的な責務の一本化を行う
+- Step 4〜6 で作った Graph / Blackboard / バリア基盤を前提に、Graph 外の compute / copy / Present 境界だけを `ResourceBarrierHelper` が担う構成として維持する

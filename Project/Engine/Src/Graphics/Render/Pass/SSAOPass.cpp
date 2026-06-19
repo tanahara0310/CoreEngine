@@ -18,7 +18,6 @@ namespace CoreEngine
     {
         if (!context.renderingTechniqueManager || !context.renderTargetManager
             || !context.gBufferManager || !context.dxCommon) {
-            output_.Reset();
             return;
         }
 
@@ -26,7 +25,6 @@ namespace CoreEngine
         auto* ssaoBlur = context.renderingTechniqueManager->GetTechnique<SSAOBlurTechnique>(RenderingTechniqueNames::SSAOBlur);
 
         if (!ssao || !ssao->IsEnabled()) {
-            output_.Reset();
             return;
         }
 
@@ -38,17 +36,12 @@ namespace CoreEngine
         if (ssaoBlur && ssaoBlur->IsEnabled() && ssaoOutput.ptr != 0) {
             D3D12_GPU_DESCRIPTOR_HANDLE blurOutput{};
             ssaoBlur->Execute(context, blurOutput);
-
-            output_.srvHandle = blurOutput;
-            output_.isValid = (blurOutput.ptr != 0);
-        } else {
-            output_.srvHandle = ssaoOutput;
-            output_.isValid = (ssaoOutput.ptr != 0);
+            ssaoOutput = blurOutput;
         }
 
         if (context.frameBlackboard) {
             ID3D12Resource* ssaoResource = nullptr;
-            if (output_.isValid) {
+            if (ssaoOutput.ptr != 0) {
                 const std::string& targetName = (ssaoBlur && ssaoBlur->IsEnabled() && ssaoOutput.ptr != 0)
                     ? ssaoBlurTargetName_
                     : ssaoTargetName_;
@@ -57,7 +50,7 @@ namespace CoreEngine
                     if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
                         context.frameBlackboard->SetResource(
                             FrameBlackboard::SSAO,
-                            output_.srvHandle,
+                            ssaoOutput,
                             ssaoResource,
                             &offscreen->GetCurrentState());
                         return;
@@ -67,7 +60,7 @@ namespace CoreEngine
 
             context.frameBlackboard->SetResource(
                 FrameBlackboard::SSAO,
-                output_.srvHandle,
+                ssaoOutput,
                 ssaoResource);
         }
     }

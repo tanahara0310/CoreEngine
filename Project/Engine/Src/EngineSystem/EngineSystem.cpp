@@ -247,9 +247,6 @@ namespace CoreEngine
             context.renderTargetManager = render->GetRenderTargetManager();
         }
 
-        // RenderPipeline 側へフレームごとのパス設定を寄せる
-        renderPipeline_->PrepareFrame(context, renderCallback);
-
         // コマンドリストは EngineProfileScope に渡すため USE_IMGUI 外で宣言する
         // （リリースビルドでは EngineProfileScope は no-op）
         ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
@@ -277,39 +274,22 @@ namespace CoreEngine
                 reflectionContext.viewSettings.enableBackBuffer = false;
                 reflectionContext.viewSettings.sceneColorTargetName = RenderTargetNames::ReflectionView;
 
-                renderPipeline_->PrepareFrame(reflectionContext, [sceneManager]() {
-                    sceneManager->DrawReflectionView();
-                });
-
                 ICamera* reflectionBaseCamera = sceneManager->GetGameViewCamera3D();
-                sceneManager->SetupReflectionView(reflectionBaseCamera, reflectionRequest.planeHeight);
-                renderPipeline_->ExecuteRenderGraph(reflectionContext);
-                sceneManager->RestoreReflectionView(reflectionBaseCamera);
+                const ReflectionViewResult reflectionResult = renderPipeline_->ExecuteReflectionView(
+                    reflectionContext,
+                    [sceneManager]() {
+                        sceneManager->DrawReflectionView();
+                    },
+                    [sceneManager, reflectionBaseCamera, reflectionRequest]() {
+                        sceneManager->SetupReflectionView(reflectionBaseCamera, reflectionRequest.planeHeight);
+                    },
+                    [sceneManager, reflectionBaseCamera]() {
+                        sceneManager->RestoreReflectionView(reflectionBaseCamera);
+                    });
 
-                if (RenderTarget* reflectionTarget = render->GetRenderTarget(RenderTargetNames::ReflectionView)) {
-                    D3D12_RESOURCE_STATES* stateRef = nullptr;
-                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(reflectionTarget)) {
-                        stateRef = &offscreen->GetCurrentState();
-                    }
-
-                    frameBlackboard.SetResource(
-                        FrameBlackboard::ReflectionColor,
-                        reflectionTarget->GetSRVHandle(),
-                        reflectionTarget->GetResource(),
-                        stateRef);
-
-                    ReflectionViewResult reflectionResult{};
-                    reflectionResult.reflectionSrv = reflectionTarget->GetSRVHandle();
-                    reflectionResult.sceneDepthSrv = dx ? dx->GetDepthStencilSRV() : D3D12_GPU_DESCRIPTOR_HANDLE{};
-                    if (RenderTarget* sceneColorTarget = render->GetRenderTarget(RenderTargetNames::Offscreen0)) {
-                        reflectionResult.sceneColorSrv = sceneColorTarget->GetSRVHandle();
-                    }
-                    reflectionResult.isValid = reflectionResult.reflectionSrv.ptr != 0;
+                if (reflectionResult.isValid) {
                     sceneManager->ApplyReflectionViewResult(reflectionResult);
                 }
-
-                // ReflectionView 用に切り替えた Graph 構成を、後続の GameView 実行向けへ戻す。
-                renderPipeline_->PrepareFrame(context, renderCallback);
             }
         }
 
@@ -318,7 +298,7 @@ namespace CoreEngine
         {
             // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
             EngineProfileScope scope(this, GpuTimestampSlot::GBufferPass, cmdList);
-            renderPipeline_->ExecuteRenderGraph(context);
+            renderPipeline_->ExecuteView(context, renderCallback);
         }
 
 #ifdef USE_IMGUI

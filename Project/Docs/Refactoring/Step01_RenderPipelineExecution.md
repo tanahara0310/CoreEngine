@@ -33,14 +33,14 @@
 - `RenderPipeline` に `PrepareFrame`、`ExecutePass`、`ResetExecutionState`、`GetPreviousOutput`、`SetPreviousOutput` を追加した
 - `GeometryPass` のフレーム準備処理を `EngineSystem` から `RenderPipeline` 側へ移した
 - `EngineSystem` の共通パス実行責務を `RenderPipeline` 経由へ移した
-- `DebugSubsystem` の `SceneView` 描画も `RenderPipeline::ExecutePass()` を使う形へ揃えた
-- SceneView で古い SSAO 入力が残留しないよう、前段出力が無効でも各 Pass に空入力を渡すよう修正した
+- 当時残っていた旧デバッグビュー描画も `RenderPipeline::ExecutePass()` を使う形へ揃えた
+- 旧ビュー経路で古い SSAO 入力が残留しないよう、前段出力が無効でも各 Pass に空入力を渡すよう修正した
 - ビルド成功を確認した
 
 ## 実装時の観点
 - この段階では RenderGraph を導入しない
 - 既存パスの実装責務は大きく変えず、まず実行器の責務だけを整理する
-- SceneView や RT などの特例処理は、無理にこの段階で完全解消しなくてよい
+- 旧ビュー互換や RT などの特例処理は、無理にこの段階で完全解消しなくてよい
 - ただし `EngineSystem` 側に新しい特例分岐を増やさない
 
 ## 期待する到達状態
@@ -54,7 +54,7 @@
 - 既存フレーム描画が維持されている
 
 ## 補足
-- 実行順の完全移譲は未完で、RT Shadow 特例や SceneView 特例は Step 2 以降で継続整理する
+- 実行順の完全移譲は未完で、RT Shadow 特例や旧ビュー互換は Step 2 以降で継続整理する
 - ただし Step 1 の目的だった「共通実行責務の移設」と「実行器としての RenderPipeline 整備」は達成済み
 
 ## 引き継ぎメモ

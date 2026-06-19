@@ -21,9 +21,6 @@ namespace CoreEngine
 
         void Execute(const RenderContext& context) override;
 
-        /// @brief このパスの出力を取得
-        PassOutput GetOutput() const override { return output_; }
-
         /// @brief シーン固有の描画コールバックを設定
         /// @param callback 描画コールバック関数
         void SetRenderCallback(std::function<void()> callback) {

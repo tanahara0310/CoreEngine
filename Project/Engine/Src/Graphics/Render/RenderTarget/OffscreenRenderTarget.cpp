@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "OffscreenRenderTarget.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include <cassert>
 
 namespace CoreEngine
@@ -43,7 +44,7 @@ namespace CoreEngine
 
         // 実際のリソース状態から RENDER_TARGET へ遷移（状態不一致によるチラつきを防ぐ）
         if (sharedState != D3D12_RESOURCE_STATE_RENDER_TARGET) {
-            TransitionBarrier(cmdList, resource_,
+            ResourceBarrierHelper::Transition(cmdList, resource_,
                 sharedState,
                 D3D12_RESOURCE_STATE_RENDER_TARGET);
         }
@@ -101,7 +102,7 @@ namespace CoreEngine
 
         // 実際のリソース状態から PIXEL_SHADER_RESOURCE へ遷移
         if (sharedState != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) {
-            TransitionBarrier(cmdList, resource_,
+            ResourceBarrierHelper::Transition(cmdList, resource_,
                 sharedState,
                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
@@ -123,7 +124,7 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES& sharedState = dxCommon_->GetOffScreenStateRef(static_cast<uint32_t>(index_));
 
         if (sharedState != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
-            TransitionBarrier(cmdList, resource_,
+            ResourceBarrierHelper::Transition(cmdList, resource_,
                 sharedState,
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
@@ -143,7 +144,7 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES& sharedState = dxCommon_->GetOffScreenStateRef(static_cast<uint32_t>(index_));
 
         if (sharedState != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) {
-            TransitionBarrier(cmdList, resource_,
+            ResourceBarrierHelper::Transition(cmdList, resource_,
                 sharedState,
                 D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         }

@@ -46,18 +46,14 @@ namespace CoreEngine
         void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, int32_t width, int32_t height);
         void Resize(int32_t width, int32_t height);
 
-        /// @brief ジオメトリパスを開始する
+        /// @brief ジオメトリパスの描画セットアップを行う
         /// @param cmdList コマンドリスト
-        /// @param depthStencilManager 深度ステンシル管理（内部で BeginDepthWrite を呼ぶ）
+        /// @param depthStencilManager 深度ステンシル管理
         /// @param srvHeap SRVデスクリプタヒープ
-        /// @param clearDepth true: 深度をクリアする（デフォルト）
         void BeginGeometryPass(
             ID3D12GraphicsCommandList* cmdList,
             DepthStencilManager* depthStencilManager,
-            ID3D12DescriptorHeap* srvHeap,
-            bool clearDepth = true);
-
-        void EndGeometryPass(ID3D12GraphicsCommandList* cmdList);
+            ID3D12DescriptorHeap* srvHeap);
 
         ID3D12Resource* GetResource(Target target) const;
         D3D12_CPU_DESCRIPTOR_HANDLE GetRTVHandle(Target target) const;
@@ -82,10 +78,6 @@ namespace CoreEngine
 
         void CreateOrResizeTarget(Target target);
         void CreateViews(TargetResource& targetResource, Target target, bool createNewDescriptors);
-        void TransitionTarget(
-            ID3D12GraphicsCommandList* cmdList,
-            TargetResource& targetResource,
-            D3D12_RESOURCE_STATES newState);
         void ValidateState() const;
         uint32_t ToIndex(Target target) const;
 

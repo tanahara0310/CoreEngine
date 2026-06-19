@@ -18,7 +18,6 @@ namespace CoreEngine
         DeferredLighting,
         GeometryPass,
         PostEffect,
-        SceneView,
         BackBufferPass,
         ImGuiDraw,
         Total,
@@ -100,7 +99,6 @@ namespace CoreEngine
             case GpuTimestampSlot::DeferredLighting: return "Deferred Lighting";
             case GpuTimestampSlot::GeometryPass:     return "Geometry Pass";
             case GpuTimestampSlot::PostEffect:       return "Post Effect";
-            case GpuTimestampSlot::SceneView:        return "Scene View";
             case GpuTimestampSlot::BackBufferPass:   return "BackBuffer Pass";
             case GpuTimestampSlot::ImGuiDraw:        return "ImGui Draw";
             case GpuTimestampSlot::Total:            return "Frame Total";

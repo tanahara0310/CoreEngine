@@ -32,6 +32,7 @@ namespace CoreEngine
         static const char* const ShadowMap;
         static const char* const ShadowMask;
         static const char* const RTShadowMask;
+        static const char* const BackBuffer;
         static const char* const GBufferAlbedoAO;
         static const char* const GBufferNormalRoughness;
         static const char* const GBufferEmissiveMetallic;
@@ -76,6 +77,16 @@ namespace CoreEngine
         /// @param name 確認対象の論理リソース名
         /// @return 有効なリソースが登録済みなら true
         bool HasResource(const std::string& name) const;
+
+        /// @brief Blackboard 登録情報を RenderGraph リソースへ反映する
+        /// @param name 論理リソース名
+        /// @param outResource 実リソースの出力先
+        /// @param outCurrentState 現在状態参照の出力先
+        /// @return 有効な登録がある場合 true
+        bool TryResolveResource(
+            const std::string& name,
+            ID3D12Resource*& outResource,
+            D3D12_RESOURCE_STATES*& outCurrentState) const;
 
     private:
         std::unordered_map<std::string, FrameBlackboardResource> resources_;

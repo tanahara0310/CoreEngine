@@ -317,7 +317,7 @@ namespace CoreEngine
                 { "Lighting", { GpuTimestampSlot::DeferredLighting },                                                     1 },
                 { "Geometry", { GpuTimestampSlot::GeometryPass },                                                         1 },
                 { "PostFX",   { GpuTimestampSlot::PostEffect },                                                           1 },
-                { "Editor",   { GpuTimestampSlot::SceneView, GpuTimestampSlot::BackBufferPass, GpuTimestampSlot::ImGuiDraw }, 3 },
+                { "Editor",   { GpuTimestampSlot::BackBufferPass, GpuTimestampSlot::ImGuiDraw }, 2 },
             };
 
             for (const auto& group : kGroups)
@@ -394,7 +394,7 @@ namespace CoreEngine
             { "Lighting", { GpuTimestampSlot::DeferredLighting },                                                          1 },
             { "Geometry", { GpuTimestampSlot::GeometryPass },                                                              1 },
             { "PostFX",   { GpuTimestampSlot::PostEffect },                                                                1 },
-            { "Editor",   { GpuTimestampSlot::SceneView, GpuTimestampSlot::BackBufferPass, GpuTimestampSlot::ImGuiDraw },  3 },
+            { "Editor",   { GpuTimestampSlot::BackBufferPass, GpuTimestampSlot::ImGuiDraw },  2 },
         };
 
         ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.13f, 0.13f, 0.13f, 1.0f));

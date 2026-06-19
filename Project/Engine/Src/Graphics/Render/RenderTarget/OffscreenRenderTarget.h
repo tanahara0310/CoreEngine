@@ -70,7 +70,7 @@ namespace CoreEngine
         void ResetDepthStencilHandle() { useCustomDsvHandle_ = false; }
 
         /// @brief 現在のリソース状態を外部から強制設定する
-        /// @note SceneView ping-pong 後など、実際の状態が外部で変更された場合に使用
+        /// @note 複数 View 実行後など、実際の状態が外部で変更された場合に使用
         void SetCurrentState(D3D12_RESOURCE_STATES state);
         /// @brief 現在のリソース状態参照を取得する
         /// @return 外部の自動バリア処理が更新する状態変数への参照

@@ -236,9 +236,6 @@ namespace CoreEngine
             // GameViewportが作成するウィンドウを中央に配置
             dockingUI->RegisterWindow("Game", DockArea::Center);
 
-            // SceneViewportが作成するウィンドウを中央に配置
-            dockingUI->RegisterWindow("Scene", DockArea::Center);
-
             // Canvasプレビューウィンドウを Game と同じ位置にタブとして配置
             dockingUI->RegisterWindow("Canvas", DockArea::Center);
 

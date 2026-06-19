@@ -16,23 +16,24 @@ namespace CoreEngine
 #ifdef _DEBUG
             OutputDebugStringA("WARNING: GBufferPass skipped because required context is missing.\n");
 #endif
-            output_.Reset();
             return;
         }
 
         auto* cmdList = context.dxCommon->GetCommandList();
         auto* gBufferManager = context.gBufferManager;
 
+        if (context.depthStencilManager) {
+            context.depthStencilManager->BeginDepthWrite(cmdList);
+        }
+
         // GBuffer の各 MRT と深度へ書き込むジオメトリパスを開始する。
         gBufferManager->BeginGeometryPass(
             cmdList,
             context.depthStencilManager,
-            context.dxCommon->GetSRVHeap(),
-            true);
+            context.dxCommon->GetSRVHeap());
 
         // 不透明オブジェクトを GBuffer へ描画する。
         context.renderManager->DrawGBufferPass();
-        gBufferManager->EndGeometryPass(cmdList);
 
         if (context.frameBlackboard) {
             context.frameBlackboard->SetResource(
@@ -72,7 +73,5 @@ namespace CoreEngine
         }
 
         // GBuffer の各バッファは context.gBufferManager 経由で後続パスが直接取得する。
-        // PassOutput チェーンではなく gBufferManager に統一するため output_ は設定しない。
-        output_.Reset();
     }
 }

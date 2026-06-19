@@ -11,8 +11,8 @@ namespace CoreEngine
 {
     void BackBufferPass::Execute(const RenderContext& context)
     {
-        D3D12_GPU_DESCRIPTOR_HANDLE finalInput = inputHandle_;
-        if (finalInput.ptr == 0 && context.frameBlackboard) {
+        D3D12_GPU_DESCRIPTOR_HANDLE finalInput{};
+        if (context.frameBlackboard) {
             context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, finalInput);
         }
 

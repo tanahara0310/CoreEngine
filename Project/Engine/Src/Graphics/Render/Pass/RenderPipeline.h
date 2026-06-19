@@ -8,6 +8,8 @@
 
 namespace CoreEngine
 {
+    struct ReflectionViewResult;
+
     /// @brief レンダリングパイプラインを管理するクラス
     class RenderPipeline {
     public:
@@ -36,10 +38,6 @@ namespace CoreEngine
             return nullptr;
         }
 
-        /// @brief パイプラインを実行
-        /// @param context レンダリングコンテキスト
-        void Execute(const RenderContext& context);
-
         /// @brief フレーム実行前のパス設定を行う
         /// @param context レンダリングコンテキスト
         /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
@@ -53,21 +51,28 @@ namespace CoreEngine
         /// @param context レンダリングコンテキスト
         void ExecuteRenderGraph(const RenderContext& context);
 
-        /// @brief 単一パスを実行し、前段出力を更新する
-        /// @param pass 実行対象のパス
+        /// @brief View 単位でフレーム準備から Graph 実行までを行う
         /// @param context レンダリングコンテキスト
-        void ExecutePass(RenderPass* pass, const RenderContext& context);
+        /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
+        /// @param beforeExecute Graph 実行直前に呼ぶコールバック
+        /// @param afterExecute Graph 実行直後に呼ぶコールバック
+        void ExecuteView(
+            const RenderContext& context,
+            const std::function<void()>& geometryRenderCallback,
+            const std::function<void()>& beforeExecute = {},
+            const std::function<void()>& afterExecute = {});
 
-        /// @brief パスチェーンの前段出力状態をリセットする
-        void ResetExecutionState();
-
-        /// @brief 現在保持している前段出力を取得する
-        /// @return 直前に実行されたパスの出力
-        const PassOutput& GetPreviousOutput() const { return previousOutput_; }
-
-        /// @brief 前段出力を外部から復元する
-        /// @param output 復元する出力状態
-        void SetPreviousOutput(const PassOutput& output) { previousOutput_ = output; }
+        /// @brief ReflectionView を実行し、シーン側へ返す共有結果を収集する
+        /// @param context ReflectionView 用に構成済みのレンダリングコンテキスト
+        /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
+        /// @param beforeExecute Graph 実行直前に呼ぶコールバック
+        /// @param afterExecute Graph 実行直後に呼ぶコールバック
+        /// @return ReflectionColor / SceneDepth / SceneColor をまとめた結果
+        ReflectionViewResult ExecuteReflectionView(
+            const RenderContext& context,
+            const std::function<void()>& geometryRenderCallback,
+            const std::function<void()>& beforeExecute = {},
+            const std::function<void()>& afterExecute = {});
 
         /// @brief すべてのパスをクリア
         void Clear();
@@ -77,12 +82,20 @@ namespace CoreEngine
         size_t GetPassCount() const { return passes_.size(); }
 
     private:
+        /// @brief RenderGraph 構築前に主要リソースを Blackboard へ登録する
+        /// @param context レンダリングコンテキスト
+        void RegisterFrameResources(const RenderContext& context);
+
         /// @brief View 設定に応じて各パスの有効状態と出力先を切り替える
         /// @param context レンダリングコンテキスト
         void ConfigurePassesForView(const RenderContext& context);
 
+        /// @brief ReflectionView 実行後の共有結果を収集する
+        /// @param context ReflectionView 実行に使用したレンダリングコンテキスト
+        /// @return ReflectionView の共有結果
+        ReflectionViewResult BuildReflectionViewResult(const RenderContext& context) const;
+
         std::vector<std::unique_ptr<RenderPass>> passes_;
         RenderGraph renderGraph_{};
-        PassOutput previousOutput_{};
     };
 }
