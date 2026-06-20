@@ -185,7 +185,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   <ItemGroup>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderGraph.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -255,7 +258,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Sepia\Sepia.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave\Shockwave.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp" />
@@ -306,7 +308,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\RenderManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.cpp" />
@@ -372,9 +373,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\RenderPassDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
@@ -383,7 +381,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Common\Core\CommandManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DescriptorManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DeviceManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\OffScreenRenderTargetManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\SwapChainManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelLoader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\FullScreen.cpp" />
@@ -429,7 +426,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -526,7 +522,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Sepia\Sepia.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave\Shockwave.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h" />
@@ -539,6 +534,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\FrameBlackboard.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\IGBufferRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h" />
@@ -585,9 +581,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderDomainContext.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderGraph.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.h" />
@@ -690,9 +688,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\RenderPassDebugPanel.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ThreadProfilerUI.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\Widgets\ImGuiWidgets.h" />
@@ -707,7 +702,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Common\Core\CommandManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DeviceManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\OffScreenRenderTargetManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\SwapChainManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\FullScreen.h" />
@@ -754,7 +748,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Resource\ResourceFactory.h" />
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.h" />
   </ItemGroup>
@@ -789,6 +782,14 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\Engine\README.md" />
     <None Include="Docs\Engine\Scene\SceneManager.md" />
     <None Include="Docs\Engine\Utility\Utility.md" />
+    <None Include="Docs\Refactoring\Step01_RenderPipelineExecution.md" />
+    <None Include="Docs\Refactoring\Step02_RTShadowAndComposite.md" />
+    <None Include="Docs\Refactoring\Step03_FrameBlackboard.md" />
+    <None Include="Docs\Refactoring\Step04_RenderGraphMinimum.md" />
+    <None Include="Docs\Refactoring\Step05_AutoBarrier.md" />
+    <None Include="Docs\Refactoring\Step06_MultiViewIntegration.md" />
+    <None Include="Docs\Refactoring\Step07_LegacyPipelineRemoval.md" />
+    <None Include="Docs\Refactoring\Step08_FullPassGraphMigration.md" />
     <None Include="Engine\Src\ObjectCommon\README.md" />
     <ClInclude Include="Engine\Src\pch.h" />
     <None Include="Build\Scripts\SyncFilters.ps1" />

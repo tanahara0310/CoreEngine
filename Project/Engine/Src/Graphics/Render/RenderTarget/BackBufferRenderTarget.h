@@ -43,9 +43,18 @@ namespace CoreEngine
         /// @brief 現在のバックバッファインデックスを取得
         UINT GetCurrentBackBufferIndex() const;
 
+        /// @brief 現在のバックバッファリソース状態参照を取得
+        /// @return 自動バリア処理が更新する状態変数への参照
+        D3D12_RESOURCE_STATES& GetCurrentState() { return currentState_; }
+
+        /// @brief 現在のバックバッファリソース状態を取得
+        /// @return 追跡中のバックバッファ状態
+        D3D12_RESOURCE_STATES GetCurrentState() const { return currentState_; }
+
     private:
         DirectXCommon* dxCommon_ = nullptr;
         int32_t width_ = 0;
         int32_t height_ = 0;
+        D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_PRESENT;
     };
 }

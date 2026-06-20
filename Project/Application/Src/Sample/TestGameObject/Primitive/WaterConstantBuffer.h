@@ -14,6 +14,18 @@ enum class WaterWaveLayerType : uint32_t {
     Small = 2,
 };
 
+/// @brief 水面デバッグ可視化モード
+enum class WaterDebugViewMode : uint32_t {
+    None = 0,
+    RawDepth = 1,
+    LinearDepth = 2,
+    DepthDelta = 3,
+    ScreenUV = 4,
+    SceneColor = 5,
+    Reflection = 6,
+    Fresnel = 7,
+};
+
 struct WaterWaveLayerConfig {
     uint32_t count = 0;
     float amplitudeMin = 0.0f;
@@ -95,6 +107,12 @@ struct WaterFrameConstants {
 
     /// @brief deepColor アライメント用
     float deepColorPad = 0.0f;
+
+    /// @brief 水面デバッグ可視化モード
+    uint32_t depthDebugViewMode = static_cast<uint32_t>(WaterDebugViewMode::None);
+
+    /// @brief cbuffer 16 バイトアライメント用
+    float debugPadding[3] = {};
 };
 
 // ===========================================================================

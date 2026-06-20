@@ -36,6 +36,10 @@ namespace CoreEngine
         /// @param cmdList コマンドリスト
         void TransitionToShaderResource(ID3D12GraphicsCommandList* cmdList);
 
+        /// @brief 現在のシャドウマップリソース状態参照を取得する
+        /// @return 自動遷移処理が共有する状態変数への参照
+        D3D12_RESOURCE_STATES& GetCurrentState() { return currentState_; }
+
         // アクセッサ
         ID3D12Resource* GetShadowMapResource() const { return shadowMapResource_.Get(); }
         D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const { return dsvHandle_; }

@@ -58,6 +58,9 @@ namespace CoreEngine
             auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
             if (!modelObj) continue;
 
+            // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
+            if (modelObj->GetBlendMode() != BlendMode::kBlendModeNone) continue;
+
             auto* model = modelObj->GetModel();
             if (!model) continue;
 
@@ -85,23 +88,6 @@ namespace CoreEngine
         if (!rtShadow || !rtShadow->IsInitialized()) return;
         if (!context.gBufferManager || !context.lightManager) return;
         if (!dx || !cmdList) return;
-
-        auto* worldPosResource = context.gBufferManager->GetResource(GBufferManager::Target::WorldPosition);
-        auto* normalResource = context.gBufferManager->GetResource(GBufferManager::Target::NormalRoughness);
-        auto* motionVecResource = context.gBufferManager->GetResource(GBufferManager::Target::MotionVector);
-
-        // GBufferManager が管理するステートを直接参照して冗長バリアを防ぐ
-        auto& worldPosState = context.gBufferManager->GetCurrentState(GBufferManager::Target::WorldPosition);
-        auto& normalState = context.gBufferManager->GetCurrentState(GBufferManager::Target::NormalRoughness);
-        auto& motionVecState = context.gBufferManager->GetCurrentState(GBufferManager::Target::MotionVector);
-
-        // 3リソースを一括バリア遷移（バッチ発行でコマンド数を削減）
-        {
-            ResourceBarrierBatch batch(cmdList);
-            batch.Add(worldPosResource, worldPosState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(normalResource, normalState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(motionVecResource, motionVecState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        }
 
         auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
         auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
@@ -159,12 +145,6 @@ namespace CoreEngine
                 li);
         }
 
-        // DeferredLightingPass が PIXEL_SHADER_RESOURCE として読み取るために一括復帰
-        {
-            ResourceBarrierBatch batch(cmdList);
-            batch.Add(worldPosResource, worldPosState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            batch.Add(normalResource, normalState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            batch.Add(motionVecResource, motionVecState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        }
+        // GBuffer 入力の前後状態遷移は RenderGraph 側の自動遷移へ委譲する。
     }
 }

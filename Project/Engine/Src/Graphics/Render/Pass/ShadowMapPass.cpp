@@ -4,12 +4,13 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Light/LightManager.h"
+#include "Graphics/Shadow/ShadowMapManager.h"
 
 namespace CoreEngine
 {
     void ShadowMapPass::Execute(const RenderContext& context)
     {
-        if (!context.renderManager || !context.lightManager) {
+        if (!context.renderManager || !context.lightManager || !context.shadowMapManager) {
             return;
         }
 
@@ -29,5 +30,15 @@ namespace CoreEngine
 
         // シャドウマップパスの実行
         context.renderManager->DrawShadowPass();
+
+        if (context.frameBlackboard) {
+            // Blackboard にシャドウマップ出力の実リソースと現在状態参照を公開する。
+            D3D12_RESOURCE_STATES& currentState = context.shadowMapManager->GetCurrentState();
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::ShadowMap,
+                context.shadowMapManager->GetSRVHandle(),
+                context.shadowMapManager->GetShadowMapResource(),
+                &currentState);
+        }
     }
 }

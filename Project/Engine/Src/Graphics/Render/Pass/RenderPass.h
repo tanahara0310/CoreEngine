@@ -2,10 +2,31 @@
 #include <string>
 #include <d3d12.h>
 
+#include "Graphics/Render/FrameBlackboard.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+
 namespace CoreEngine
 {
+    /// @brief RenderGraph が扱う描画ビュー種別
+    enum class RenderViewType : uint32_t {
+        GameView = 0,
+        ReflectionView = 1,
+        CaptureView = 2,
+    };
+
+    /// @brief View ごとの Graph 実行設定
+    struct RenderViewSettings {
+        RenderViewType viewType = RenderViewType::GameView;
+        bool enableSSAO = true;
+        bool enableRTShadow = true;
+        bool enablePostEffect = true;
+        bool enableBackBuffer = true;
+        std::string sceneColorTargetName = RenderTargetNames::SceneColor;
+    };
+
     class DirectXCommon;
     class RenderManager;
+    class RayTracingSubsystem;
     class PostEffectManager;
     class RenderingTechniqueManager;
     class LightManager;
@@ -21,6 +42,7 @@ namespace CoreEngine
     struct RenderContext {
         DirectXCommon* dxCommon = nullptr;
         RenderManager* renderManager = nullptr;
+        RayTracingSubsystem* rayTracingSubsystem = nullptr;
         PostEffectManager* postEffectManager = nullptr;
         RenderingTechniqueManager* renderingTechniqueManager = nullptr; ///< レンダリング技術管理（SSAO・TAA等）
         LightManager* lightManager = nullptr;
@@ -31,47 +53,12 @@ namespace CoreEngine
         RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
         CameraManager* cameraManager = nullptr; ///< カメラ管理（SSAO等でビュー/プロジェクション行列取得用）
         DepthStencilManager* depthStencilManager = nullptr; ///< 深度ステンシル管理（バリア遷移・クリアを一元管理）
-        uint32_t currentRTShadowViewId = 1; ///< 現在の RT シャドウビュー (0=SceneView, 1=GameView)
-    };
-
-    /// @brief パス間のデータ受け渡し用構造体
-    struct PassOutput {
-        D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};  ///< 出力テクスチャのSRVハンドル
-        ID3D12Resource* resource = nullptr;        ///< 出力リソース（オプション）
-        bool isValid = false;                      ///< 有効なデータかどうか
-
-        /// @brief 出力をリセット
-        void Reset() {
-            srvHandle = {};
-            resource = nullptr;
-            isValid = false;
-        }
+        FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理
+        RenderViewSettings viewSettings{}; ///< 現在の View 種別と有効化するパス群設定
+        uint32_t currentRTShadowViewId = static_cast<uint32_t>(RenderViewType::GameView); ///< 現在の RT シャドウビュー
     };
 
     /// @brief レンダリングパスの基底クラス
-    ///
-    /// @details
-    ///  ## 役割
-    ///  RenderPass は「フレーム内の 1 ステージ」を表現する高レベル
-    ///  パイプラインノード。RenderTarget の切り替え、リソースバリア、
-    ///  必要な IRenderer の呼び分けを担当する。
-    ///
-    ///  ## IRenderer との違い
-    ///  - RenderPass : 「いつ・どこに描くか」（フレーム構成の単位）
-    ///  - IRenderer  : 「何を描くか」（PSO/DrawCall 発行の単位）
-    ///
-    ///  RenderPass は内部で 0 個以上の IRenderer を利用してパスを構成する。
-    ///  両者は疎結合であり、RenderPass を増やしても IRenderer の実装変更を
-    ///  必要としない。
-    ///
-    ///  ## ライフサイクル
-    ///   1. Setup(context)   - 一度だけリソース準備（任意）
-    ///   2. Execute(context) - 毎フレーム実行
-    ///   3. Cleanup(context) - 終了時にリソース解放（任意）
-    ///
-    ///  ## パス間連携
-    ///  SetInput / GetOutput を介して前段パスの出力テクスチャ等を
-    ///  次段に受け渡す（例: GeometryPass → PostEffectPass）。
     class RenderPass {
     public:
         virtual ~RenderPass() = default;
@@ -92,14 +79,6 @@ namespace CoreEngine
         /// @param context レンダリングコンテキスト
         virtual void Cleanup([[maybe_unused]] const RenderContext& context) {}
 
-        /// @brief 前のパスからの入力を設定
-        /// @param input 前のパスの出力
-        virtual void SetInput([[maybe_unused]] const PassOutput& input) {}
-
-        /// @brief このパスの出力を取得
-        /// @return パスの出力
-        virtual PassOutput GetOutput() const { return output_; }
-
         /// @brief パスが有効かどうか
         /// @return 有効な場合true
         virtual bool IsEnabled() const { return enabled_; }
@@ -110,6 +89,5 @@ namespace CoreEngine
 
     protected:
         bool enabled_ = true;
-        PassOutput output_;  ///< このパスの出力
     };
 }

@@ -3,6 +3,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 
 using namespace Microsoft::WRL;
 
@@ -18,33 +19,28 @@ namespace CoreEngine
         renderTargetManager_ = std::make_unique<RenderTargetManager>();
         renderTargetManager_->Initialize(dxCommon, dsvHeap);
 
-        // デフォルトのレンダーターゲットを作成
-        RenderTargetDescriptor offscreen0Desc("Offscreen0");
-        offscreen0Desc.clearColor[0] = kClearColor[0];
-        offscreen0Desc.clearColor[1] = kClearColor[1];
-        offscreen0Desc.clearColor[2] = kClearColor[2];
-        offscreen0Desc.clearColor[3] = kClearColor[3];
-        renderTargetManager_->CreateRenderTarget(offscreen0Desc);
+        // 現在の SceneColor 既定ターゲットを作成
+        RenderTargetDescriptor sceneColorDesc(RenderTargetNames::SceneColor);
+        sceneColorDesc.clearColor[0] = kClearColor[0];
+        sceneColorDesc.clearColor[1] = kClearColor[1];
+        sceneColorDesc.clearColor[2] = kClearColor[2];
+        sceneColorDesc.clearColor[3] = kClearColor[3];
+        renderTargetManager_->CreateRenderTarget(sceneColorDesc);
 
-        RenderTargetDescriptor offscreen1Desc("Offscreen1");
-        offscreen1Desc.clearColor[0] = kClearColor[0];
-        offscreen1Desc.clearColor[1] = kClearColor[1];
-        offscreen1Desc.clearColor[2] = kClearColor[2];
-        offscreen1Desc.clearColor[3] = kClearColor[3];
-        renderTargetManager_->CreateRenderTarget(offscreen1Desc);
+        RenderTargetDescriptor reflectionViewDesc(RenderTargetNames::ReflectionView);
+        reflectionViewDesc.clearColor[0] = kClearColor[0];
+        reflectionViewDesc.clearColor[1] = kClearColor[1];
+        reflectionViewDesc.clearColor[2] = kClearColor[2];
+        reflectionViewDesc.clearColor[3] = kClearColor[3];
+        renderTargetManager_->CreateRenderTarget(reflectionViewDesc);
 
-        RenderTargetDescriptor sceneViewDesc("SceneView");
-        sceneViewDesc.clearColor[0] = kClearColor[0];
-        sceneViewDesc.clearColor[1] = kClearColor[1];
-        sceneViewDesc.clearColor[2] = kClearColor[2];
-        sceneViewDesc.clearColor[3] = kClearColor[3];
-        renderTargetManager_->CreateRenderTarget(sceneViewDesc);
+        renderTargetManager_->EnsurePostEffectFinalTarget();
 
         // SSAO用バッファ
         // フルスクリーンポストプロセスのためDSVは不要（深度バッファを破壊しないようにする）
         // クリア色は白（AO無し = 1.0）。リソース作成時と ClearRenderTargetView 時を一致させる
         static constexpr float kSSAOClearColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-        RenderTargetDescriptor ssaoDesc("SSAOBuffer");
+        RenderTargetDescriptor ssaoDesc(RenderTargetNames::SSAOBuffer);
         ssaoDesc.clearColor[0] = kSSAOClearColor[0];
         ssaoDesc.clearColor[1] = kSSAOClearColor[1];
         ssaoDesc.clearColor[2] = kSSAOClearColor[2];
@@ -53,13 +49,10 @@ namespace CoreEngine
         if (auto* ssaoTarget = renderTargetManager_->CreateRenderTarget(ssaoDesc)) {
             if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(ssaoTarget)) {
                 offscreen->SetUseDepthBuffer(false);
-                // リソース作成時のクリア色を白に設定して不一致を解消
-                auto* dx = renderTargetManager_->GetDirectXCommon();
-                dx->SetOffScreenTargetClearColor(static_cast<uint32_t>(offscreen->GetIndex()), kSSAOClearColor);
             }
         }
 
-        RenderTargetDescriptor ssaoBlurDesc("SSAOBlurBuffer");
+        RenderTargetDescriptor ssaoBlurDesc(RenderTargetNames::SSAOBlurBuffer);
         ssaoBlurDesc.clearColor[0] = kSSAOClearColor[0];
         ssaoBlurDesc.clearColor[1] = kSSAOClearColor[1];
         ssaoBlurDesc.clearColor[2] = kSSAOClearColor[2];
@@ -68,13 +61,11 @@ namespace CoreEngine
         if (auto* ssaoBlurTarget = renderTargetManager_->CreateRenderTarget(ssaoBlurDesc)) {
             if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(ssaoBlurTarget)) {
                 offscreen->SetUseDepthBuffer(false);
-                auto* dx = renderTargetManager_->GetDirectXCommon();
-                dx->SetOffScreenTargetClearColor(static_cast<uint32_t>(offscreen->GetIndex()), kSSAOClearColor);
             }
         }
 
         // バックバッファターゲットを作成
-        renderTargetManager_->CreateBackBufferTarget("BackBuffer");
+        renderTargetManager_->CreateBackBufferTarget(RenderTargetNames::BackBuffer);
     }
 
     RenderTarget* Render::GetRenderTarget(const std::string& name)
@@ -88,7 +79,7 @@ namespace CoreEngine
         UINT backBufferIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
 
         // バックバッファの終了処理
-        auto* backBuffer = renderTargetManager_->GetRenderTarget("BackBuffer");
+        auto* backBuffer = renderTargetManager_->GetRenderTarget(RenderTargetNames::BackBuffer);
         if (backBuffer) {
             backBuffer->End(cmdList);
         }

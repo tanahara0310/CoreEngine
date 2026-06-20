@@ -17,24 +17,6 @@ namespace CoreEngine
     }
 
     // ---------------------------------------------------------------
-    // ScopedDepthReadSRV
-    // ---------------------------------------------------------------
-
-    DepthStencilManager::ScopedDepthReadSRV::ScopedDepthReadSRV(
-        DepthStencilManager* manager, ID3D12GraphicsCommandList* cmdList)
-        : manager_(manager), cmdList_(cmdList)
-    {
-        assert(manager_);
-        assert(cmdList_);
-        manager_->BeginDepthReadSRV(cmdList_);
-    }
-
-    DepthStencilManager::ScopedDepthReadSRV::~ScopedDepthReadSRV()
-    {
-        manager_->EndDepthReadSRV(cmdList_);
-    }
-
-    // ---------------------------------------------------------------
     // DepthStencilManager
     // ---------------------------------------------------------------
 
@@ -111,43 +93,6 @@ namespace CoreEngine
 #ifdef _DEBUG
         logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
             "[Depth] BeginDepthWrite: クリア完了");
-#endif
-    }
-
-    void DepthStencilManager::BeginDepthReadSRV(ID3D12GraphicsCommandList* cmdList)
-    {
-        assert(cmdList);
-        assert(isInitialized_ && "DepthStencilManager must be initialized before use");
-
-        // DEPTH_WRITE → DEPTH_READ|PIXEL_SHADER_RESOURCE へ遷移
-        // この組み合わせにより読み取り専用 DSV と SRV の同時利用が可能になる
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            depthStencilResource_.Get(),
-            currentState_,
-            D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-#ifdef _DEBUG
-        logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
-            "[Depth] BeginDepthReadSRV: DEPTH_READ|PIXEL_SHADER_RESOURCE に遷移");
-#endif
-    }
-
-    void DepthStencilManager::EndDepthReadSRV(ID3D12GraphicsCommandList* cmdList)
-    {
-        assert(cmdList);
-        assert(isInitialized_ && "DepthStencilManager must be initialized before use");
-
-        // DEPTH_READ|PIXEL_SHADER_RESOURCE → DEPTH_WRITE へ戻す
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            depthStencilResource_.Get(),
-            currentState_,
-            D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-#ifdef _DEBUG
-        logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
-            "[Depth] EndDepthReadSRV: DEPTH_WRITE に復元");
 #endif
     }
 

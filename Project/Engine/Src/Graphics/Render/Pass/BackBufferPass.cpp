@@ -11,6 +11,11 @@ namespace CoreEngine
 {
     void BackBufferPass::Execute(const RenderContext& context)
     {
+        D3D12_GPU_DESCRIPTOR_HANDLE finalInput{};
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(inputResourceName_, finalInput);
+        }
+
         // RenderTargetManagerが必要
         if (!context.renderTargetManager) {
 #ifdef _DEBUG
@@ -55,7 +60,7 @@ namespace CoreEngine
         targetToUse->Begin(cmdList);
 
         // 最終結果をバックバッファに描画（_SRGB用PSOを使用）
-        context.postEffectManager->ExecuteEffectToBackBuffer("FullScreen", inputHandle_);
+        context.postEffectManager->ExecuteEffectToBackBuffer("FullScreen", finalInput);
 
         // NOTE: End()はここでは呼ばない
         // ImGuiの描画が終わった後、Render::FinalizeFrame()で呼ばれる

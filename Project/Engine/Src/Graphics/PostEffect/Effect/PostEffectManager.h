@@ -8,7 +8,6 @@
 
 #include "Graphics/PostEffect/Effect/PostEffectBase.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
-#include "Graphics/PostEffect/Effect/PingPongBuffer.h"
 #include "PostEffectPresetManager.h"
 
 namespace CoreEngine
@@ -73,10 +72,6 @@ public:
     /// @param effectNames エフェクト名のリスト
     void SetEffectChain(const std::vector<std::string>& effectNames);
 
-    /// @brief 現在のエフェクトチェーンを取得
-    /// @return エフェクト名のリスト
-    const std::vector<std::string>& GetEffectChain() const;
-
     /// @brief 更新処理
     /// @param deltaTime フレーム時間
     void Update(float deltaTime);
@@ -91,10 +86,13 @@ public:
     /// @return 表示すべきテクスチャのSRVハンドル
     D3D12_GPU_DESCRIPTOR_HANDLE GetFinalDisplayTextureHandle() const;
 
-    /// @brief エフェクトチェーンを実行し、結果のテクスチャハンドルを取得
-    /// @param inputSrvHandle 入力テクスチャのSRVハンドル
-    /// @return 最終出力のSRVハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE ExecuteEffectChain(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
+    /// @brief 現在表示すべき最終テクスチャハンドルを設定
+    /// @param handle 表示対象のSRVハンドル
+    void SetFinalDisplayTextureHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle);
+
+    /// @brief 現在有効なポストエフェクト列を取得する
+    /// @return 有効エフェクトの実行順リスト
+    const std::vector<PostEffectBase*>& GetEnabledEffects() const { return effectPtrCache_; }
 
     private:
     /// @brief 全エフェクトを登録

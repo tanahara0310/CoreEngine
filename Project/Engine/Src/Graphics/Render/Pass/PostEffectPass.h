@@ -1,9 +1,12 @@
 #pragma once
 #include "RenderPass.h"
 #include <d3d12.h>
+#include <string>
 
 namespace CoreEngine
 {
+    class PostEffectBase;
+
     /// @brief ポストエフェクト適用パス
     class PostEffectPass : public RenderPass {
     public:
@@ -12,23 +15,18 @@ namespace CoreEngine
 
         const char* GetName() const override { return "PostEffect"; }
 
+        void SetEffect(PostEffectBase* effect, const std::string& effectName);
+        void SetInputResourceName(const std::string& resourceName);
+        void SetOutputResourceName(const std::string& resourceName);
+        const std::string& GetInputResourceName() const { return inputResourceName_; }
+        const std::string& GetOutputResourceName() const { return outputResourceName_; }
+
         void Execute(const RenderContext& context) override;
 
-        /// @brief 前のパスからの入力を設定
-        void SetInput(const PassOutput& input) override {
-            inputHandle_ = input.srvHandle;
-        }
-
-        /// @brief このパスの出力を取得
-        PassOutput GetOutput() const override { return output_; }
-
-        /// @brief 出力されたSRVハンドルを取得（後方互換性のため残す）
-        /// @return ポストエフェクト適用後のSRVハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE GetOutputHandle() const {
-            return output_.srvHandle;
-        }
-
     private:
-        D3D12_GPU_DESCRIPTOR_HANDLE inputHandle_{};
+        PostEffectBase* effect_ = nullptr;
+        std::string effectName_;
+        std::string inputResourceName_ = FrameBlackboard::SceneColor;
+        std::string outputResourceName_ = FrameBlackboard::SceneColor;
     };
 }

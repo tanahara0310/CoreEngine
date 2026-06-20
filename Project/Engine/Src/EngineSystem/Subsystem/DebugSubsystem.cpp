@@ -42,7 +42,7 @@ namespace CoreEngine
 
     DebugSubsystem::~DebugSubsystem() = default;
 
-    void DebugSubsystem::Initialize(EngineSystem* engine, const EngineConfig& config)
+    void DebugSubsystem::Initialize(EngineSystem* engine, [[maybe_unused]] const EngineConfig& config)
     {
         engine_ = engine;
 
@@ -236,9 +236,6 @@ namespace CoreEngine
             // GameViewportが作成するウィンドウを中央に配置
             dockingUI->RegisterWindow("Game", DockArea::Center);
 
-            // SceneViewportが作成するウィンドウを中央に配置
-            dockingUI->RegisterWindow("Scene", DockArea::Center);
-
             // Canvasプレビューウィンドウを Game と同じ位置にタブとして配置
             dockingUI->RegisterWindow("Canvas", DockArea::Center);
 
@@ -246,8 +243,6 @@ namespace CoreEngine
             dockingUI->RegisterWindow("Particle System Debug", DockArea::Right);
         }
 
-        // SceneView 設定をコンフィグから読み込み
-        sceneViewEnablePostEffect_ = config.sceneViewEnablePostEffect;
     }
 
     void DebugSubsystem::Finalize()
@@ -273,26 +268,9 @@ namespace CoreEngine
         // フレーム開始時にレンダリング統計をリセット
         EngineStats::GetInstance().BeginFrame();
 
-        auto* sceneManager = engine_->GetSceneManager();
-
-        if (sceneManager) {
-            if (auto* sceneViewport = imGui_->GetSceneViewport()) {
-                sceneViewport->SetCamera(sceneManager->GetSceneViewCamera());
-                sceneViewport->SetGameCamera3D(sceneManager->GetGameViewCamera3D());
-                sceneViewport->SetCamera2D(sceneManager->GetGameViewCamera2D());
-            }
-        }
-
-        // SceneViewportにInputQueryを渡す（ギズモ操作のキーコンフィグ対応）
-        if (auto* sceneViewport = imGui_->GetSceneViewport()) {
-            if (auto* inputManager = engine_->GetComponent<InputManager>()) {
-                sceneViewport->SetInputQuery(&inputManager->GetQuery());
-            }
-        }
-
         // ImGuiの開始（PostEffectManagerとGameDebugUIを渡す）
         if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
-            imGui_->Begin(postEffect, engine_->GetComponent<Render>(), gameDebugUI_.get());
+            imGui_->Begin(postEffect, gameDebugUI_.get());
         }
 
         //メニューバーを最初に描画（ドッキングスペースより前）
@@ -301,18 +279,6 @@ namespace CoreEngine
         // その他のデバッグUIの更新（メニューバー以外）
         gameDebugUI_->UpdateDebugPanels();
 
-        if (sceneManager) {
-            if (auto* sceneViewport = imGui_->GetSceneViewport()) {
-                if (auto* gameObjectManager = sceneManager->GetCurrentGameObjectManager()) {
-                    if (auto* sceneCamera = sceneManager->GetSceneViewCamera()) {
-                        sceneViewport->UpdateObjectSelection(gameObjectManager, sceneCamera);
-                    }
-                    if (auto* camera2D = sceneManager->GetGameViewCamera2D()) {
-                        sceneViewport->UpdateSpriteSelection(gameObjectManager, camera2D);
-                    }
-                }
-            }
-        }
     }
 
     void DebugSubsystem::EndFrame()
@@ -341,7 +307,7 @@ namespace CoreEngine
             // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
             auto* dx = engine_->GetComponent<DirectXCommon>();
             auto* postEffect = engine_->GetComponent<PostEffectManager>();
-            imGui_->DrawGameViewport(dx, postEffect);
+            imGui_->DrawGameViewport(dx, postEffect, gameDebugUI_.get());
             imGui_->Draw();
         }
     }
@@ -366,83 +332,6 @@ namespace CoreEngine
         }
     }
 
-    void DebugSubsystem::RenderSceneView(
-        RenderContext& context,
-        RenderPipeline* renderPipeline,
-        Render* render,
-        ID3D12GraphicsCommandList* cmdList,
-        PassOutput& inOutPreviousOutput,
-        const std::function<void(RenderPass*)>& executePass,
-        const std::function<void()>& gameRenderCallback)
-    {
-        if (!imGui_ || !renderPipeline || !render) {
-            return;
-        }
-
-        if (!imGui_->IsSceneViewVisible()) {
-            return;
-        }
-
-        auto* sceneManager = engine_->GetSceneManager();
-        if (!sceneManager) {
-            return;
-        }
-
-        auto* sceneViewTarget = render->GetRenderTarget("SceneView");
-        if (!sceneViewTarget) {
-            return;
-        }
-
-        EngineProfileScope scope(engine_, GpuTimestampSlot::SceneView, cmdList);
-
-        // ゲームパスのために previousOutput を保存（SceneView パス後に復元）
-        PassOutput savedOutput = inOutPreviousOutput;
-
-        // SceneView カメラ・レンダリング状態をセットアップ
-        sceneManager->SetupSceneViewCamera();
-
-        // 1. GBufferPass: 不透明オブジェクトを G-Buffer に書き込む（Scene カメラ使用）
-        executePass(renderPipeline->GetPass<GBufferPass>());
-
-        // SceneView は RTシャドウを使わない（重いためエディタビューでは省略）
-        // 代わりに ShadowMap ベースのシャドウのみ使用
-        context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::SceneView);
-
-        // 2. DeferredLightingPass: G-Buffer を読み取り PBR+IBL ライティングを計算
-        executePass(renderPipeline->GetPass<DeferredLightingPass>());
-
-        // 3. GeometryPass: スカイボックス・グリッド・透過オブジェクトを重ねて描画
-        // clearEnabled_ を保存してSceneView後にゲームビュー用の設定を汚染しないよう復元する
-        bool savedClearEnabled = true;
-        if (auto* geometryPass = renderPipeline->GetPass<GeometryPass>()) {
-            savedClearEnabled = geometryPass->IsClearEnabled();
-            geometryPass->SetRenderCallback([sceneManager]() { sceneManager->DrawSceneViewGeometry(); });
-        }
-        executePass(renderPipeline->GetPass<GeometryPass>());
-        // ゲームビュー用コールバックとclearEnabled_を復元
-        if (auto* geometryPass = renderPipeline->GetPass<GeometryPass>()) {
-            geometryPass->SetRenderCallback(gameRenderCallback);
-            geometryPass->SetClearEnabled(savedClearEnabled);
-        }
-
-        // 4. SceneView RT にコピー
-        // sceneViewEnablePostEffect_=true: ポストエフェクトチェーン適用（高品質・高負荷）
-        // sceneViewEnablePostEffect_=false: FullScreen blit のみ（軽量）
-        if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
-            D3D12_GPU_DESCRIPTOR_HANDLE srcHandle = sceneViewEnablePostEffect_
-                ? postEffect->ExecuteEffectChain(inOutPreviousOutput.srvHandle)
-                : inOutPreviousOutput.srvHandle;
-            sceneViewTarget->Begin(cmdList);
-            postEffect->ExecuteEffect("FullScreen", srcHandle);
-            sceneViewTarget->End(cmdList);
-        }
-
-        // SceneView カメラ・レンダリング状態を復元
-        sceneManager->RestoreGameViewCamera();
-
-        // ゲームパス用に previousOutput を復元
-        inOutPreviousOutput = savedOutput;
-    }
 }
 
 #endif // USE_IMGUI

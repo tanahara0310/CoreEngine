@@ -34,7 +34,7 @@ namespace CoreEngine
         }
 
         // SkyBox は背景として最初に描画し、共有 DSV の内容に依存させない。
-        // SceneView/GameView が同一フレームで共有 DSV を使い回すため、深度テストありだと
+        // 複数 View が同一フレームで共有 DSV を使い回すため、深度テストありだと
         // 前後のパスの深度値によって背景だけが不安定に落ちる場合がある。
         bool result = psoMg_->CreateBuilder()
             .SetInputLayoutFromReflection(*reflectionData_)

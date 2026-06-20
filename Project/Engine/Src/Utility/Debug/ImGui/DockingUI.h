@@ -14,11 +14,10 @@
 
 namespace CoreEngine
 {
-    class SceneViewport;
+    class SceneDebugEditor;
 
     enum class DockLayoutPreset {
-        Standard,
-        TwoByThree
+        Standard
     };
 
     enum class DockArea {
@@ -74,9 +73,6 @@ namespace CoreEngine
         /// @brief グリッド表示状態を設定
         void SetGridVisible(bool visible) { isGridVisible_ = visible; }
 
-        /// @brief SceneViewport参照を設定（ギズモ操作UI連携用）
-        void SetSceneViewport(SceneViewport* sceneViewport) { sceneViewport_ = sceneViewport; }
-
         /// @brief 画面最下部のステータスバーを描画
         /// @param fps 表示するFPS値
         /// @param deltaTimeMs 表示するデルタタイム（ミリ秒）
@@ -84,6 +80,9 @@ namespace CoreEngine
 
         /// @brief GPU/CPU タイミングデータを設定（ステータスバーホバー時に表示）
         void SetTimingData(std::span<const GpuTimingResult> slots) { timingData_.assign(slots.begin(), slots.end()); }
+
+        /// @brief Gameビュー編集用のSceneDebugEditorを設定する
+        void SetSceneDebugEditor(SceneDebugEditor* sceneDebugEditor) { sceneDebugEditor_ = sceneDebugEditor; }
 
     private:
         /// @brief エリアごとのノードIDを取得
@@ -99,21 +98,18 @@ namespace CoreEngine
         std::unordered_map<std::string, DockArea> registeredWindows_; // 登録されたウィンドウとそのエリア
         bool layoutInitialized_ = false; // レイアウトが初期化されたかどうか
         bool layoutDirty_ = false; // レイアウト再構築が必要かどうか
-        DockLayoutPreset layoutPreset_ = DockLayoutPreset::TwoByThree;
+        DockLayoutPreset layoutPreset_ = DockLayoutPreset::Standard;
 
         // エリアごとのノードID
         ImGuiID nodeIds_[8] = { 0 }; // DockAreaの数だけ（Hierarchyを追加したため8に変更）
         ImGuiID gameNodeId_ = 0;
-        ImGuiID sceneNodeId_ = 0;
-        ImGuiID toolNodeId_ = 0;
 
         // ツールバーアイコン用テクスチャハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE gridIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoTranslateIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoRotateIcon_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gizmoScaleIcon_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE translateIcon_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE rotateIcon_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE scaleIcon_{};
         bool playbackIconsLoaded_ = false;
-        bool gizmoIconsLoaded_ = false;
 
         // ステータスバーアイコン
         D3D12_GPU_DESCRIPTOR_HANDLE fpsIcon_{};
@@ -127,13 +123,13 @@ namespace CoreEngine
         // GPU/CPU タイミングデータ（ステータスバーホバー時に表示）
         std::vector<GpuTimingResult> timingData_;
 
+        // Gameビュー編集状態参照
+        SceneDebugEditor* sceneDebugEditor_ = nullptr;
+
         // ツールバーの高さ
         static constexpr float toolbarHeight_ = 32.0f;
 
         // ステータスバーの高さ
         static constexpr float statusBarHeight_ = 28.0f;
-
-        // Sceneビュー操作連携
-        SceneViewport* sceneViewport_ = nullptr;
     };
 }

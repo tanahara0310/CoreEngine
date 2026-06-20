@@ -13,26 +13,6 @@ class DescriptorManager;
 /// リソース管理・バリア遷移・クリア・SRVアクセスをすべて一か所で担う
 class DepthStencilManager {
 public:
-    // ---------------------------------------------------------------
-    // RAII: スコープ内だけ DEPTH_READ|SRV に遷移し、抜けたら DEPTH_WRITE に戻す
-    // ---------------------------------------------------------------
-    /// @brief 深度バッファを読み取り専用 SRV として使う区間を管理する RAII ガード
-    /// @note フォワード描画（透過オブジェクト・スカイボックス等）で深度値を
-    ///       シェーダーからサンプリングしたい区間に使用する
-    class ScopedDepthReadSRV {
-    public:
-        ScopedDepthReadSRV(DepthStencilManager* manager, ID3D12GraphicsCommandList* cmdList);
-        ~ScopedDepthReadSRV();
-
-        // コピー・ムーブ禁止
-        ScopedDepthReadSRV(const ScopedDepthReadSRV&) = delete;
-        ScopedDepthReadSRV& operator=(const ScopedDepthReadSRV&) = delete;
-
-    private:
-        DepthStencilManager* manager_;
-        ID3D12GraphicsCommandList* cmdList_;
-    };
-
     /// @brief デストラクタ（確保したディスクリプタスロットを解放）
     ~DepthStencilManager();
 
@@ -57,17 +37,6 @@ public:
     /// @param cmdList コマンドリスト
     /// @note フレーム先頭や GBuffer パス開始前に呼ぶ
     void BeginDepthWrite(ID3D12GraphicsCommandList* cmdList);
-
-    /// @brief DEPTH_WRITE → DEPTH_READ|PIXEL_SHADER_RESOURCE に遷移する
-    /// @param cmdList コマンドリスト
-    /// @note 深度値をシェーダーからサンプリングしたい区間の開始時に呼ぶ
-    /// @note 終了時は必ず EndDepthReadSRV を呼ぶこと（ScopedDepthReadSRV の使用を推奨）
-    void BeginDepthReadSRV(ID3D12GraphicsCommandList* cmdList);
-
-    /// @brief DEPTH_READ|PIXEL_SHADER_RESOURCE → DEPTH_WRITE に遷移する
-    /// @param cmdList コマンドリスト
-    /// @note BeginDepthReadSRV とペアで呼ぶこと（ScopedDepthReadSRV の使用を推奨）
-    void EndDepthReadSRV(ID3D12GraphicsCommandList* cmdList);
 
     // ---------------------------------------------------------------
     // アクセッサ

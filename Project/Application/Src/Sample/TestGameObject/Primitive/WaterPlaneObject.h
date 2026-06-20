@@ -11,6 +11,10 @@
 #include <d3d12.h>
 #include <wrl.h>
 
+namespace CoreEngine {
+    struct ReflectionViewResult;
+}
+
 /// @brief 水面表現用のグリッドメッシュオブジェクト
 /// PlaneMeshGenerator を使用して N×N 分割の平面メッシュを生成する。
 /// resolution（分割数）が高いほど後のステップで波の表現が細かくなる。
@@ -20,6 +24,9 @@ public:
     /// @param size 水面の一辺のサイズ（XZ 方向共通）
     /// @param resolution XZ 方向の分割数
     WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64);
+
+    /// @brief 水面はシャドウキャスターから除外する
+    void DrawShadow(ID3D12GraphicsCommandList* cmdList) override;
 
     const char* GetObjectName() const override { return "WaterPlane"; }
 
@@ -106,6 +113,10 @@ public:
     /// @param srvHandle オフスクリーンカラーの GPU ハンドル
     void SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 
+    /// @brief Water Reflection の出力を水面描画へ適用する
+    /// @param result ReflectionView 相当の出力一式
+    void ApplyWaterReflectionResult(const CoreEngine::ReflectionViewResult& result);
+
     /// @brief Depth Fade パラメータを設定する
     /// @param absorptionCoeff 光吸収係数（大きいほど短距離で不透明になる）
     /// @param enabled true のとき Depth Fade を有効にする
@@ -115,6 +126,10 @@ public:
     /// @param enabled true のときデバッグ表示を有効にする
     /// @param debugScale 表示倍率
     void SetDepthFadeDebug(bool enabled, float debugScale = 1.5f);
+
+    /// @brief 水面デバッグ可視化モードを設定する
+    /// @param mode デバッグ可視化モード
+    void SetDepthDebugViewMode(WaterDebugViewMode mode);
 
     /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
     void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);

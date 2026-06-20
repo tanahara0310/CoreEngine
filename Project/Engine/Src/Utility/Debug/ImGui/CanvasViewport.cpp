@@ -12,8 +12,6 @@
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #include "Utility/Debug/ImGui/ImGuiManager.h"
-#include "Utility/Debug/ImGui/SceneViewport.h"
-#include "Utility/Debug/ImGui/ObjectSelector.h"
 #include "WinApp/WinApp.h"
 #include "UI/UIImage.h"
 #include "UI/UIAnchor.h"
@@ -40,19 +38,6 @@ namespace CoreEngine
             ImVec2 tl, tr, bl, br;
             ImVec2 center;
         };
-
-        /// @brief EngineSystem 経由で ObjectSelector を取得する（取れなければ nullptr）
-        ObjectSelector* AcquireObjectSelector(EngineSystem* engine)
-        {
-            if (!engine) { return nullptr; }
-            auto* debug = engine->GetDebugSubsystem();
-            if (!debug) { return nullptr; }
-            auto* imgui = debug->GetImGuiManager();
-            if (!imgui) { return nullptr; }
-            auto* sceneViewport = imgui->GetSceneViewport();
-            if (!sceneViewport) { return nullptr; }
-            return sceneViewport->GetObjectSelector();
-        }
 
         /// @brief 基準解像度上の UI 矩形（回転なし AABB）を計算
         UIRect ComputeImageRect(const UILayout& layout,
@@ -303,10 +288,6 @@ namespace CoreEngine
                     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                         drawList->AddRect(rect.min, rect.max, IM_COL32(255, 220, 0, 200), 0.0f, 0, 2.0f);
                         img->InvokeOnClick();
-
-                        if (auto* selector = AcquireObjectSelector(engine_)) {
-                            selector->SelectObject(img);
-                        }
                     }
                     break;
                 }
@@ -318,13 +299,7 @@ namespace CoreEngine
                         UIQuad quad = ComputeImageQuad(img->GetLayout(), canvasMin, referenceSize, scale);
                         if (PointInQuad(mousePos, quad)) { clickedOnAny = true; break; }
                     }
-                    if (!clickedOnAny) {
-                        if (auto* selector = AcquireObjectSelector(engine_)) {
-                            if (auto* cur = selector->GetSelectedObject()) {
-                                if (dynamic_cast<UIImage*>(cur)) { selector->ClearSelection(); }
-                            }
-                        }
-                    }
+                    (void)clickedOnAny;
                 }
             }
         }
@@ -513,16 +488,8 @@ namespace CoreEngine
                     dragStartAnchoredPos_ = layout.anchoredPos;
                     dragStartSize_        = layout.size;
                     dragStartRotation_    = layout.rotation;
-                    if (auto* selector = AcquireObjectSelector(engine_)) {
-                        selector->SelectObject(picked);
-                    }
                 } else {
                     selectedImage_ = nullptr;
-                    if (auto* selector = AcquireObjectSelector(engine_)) {
-                        if (auto* cur = selector->GetSelectedObject()) {
-                            if (dynamic_cast<UIImage*>(cur)) { selector->ClearSelection(); }
-                        }
-                    }
                 }
             }
             done_click:;

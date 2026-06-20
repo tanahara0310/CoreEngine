@@ -68,17 +68,6 @@ namespace CoreEngine
         bool IsClearEnabled() const { return clearEnabled_; }
 
     protected:
-        /// @brief リソースバリアを設定するヘルパー関数
-        /// @param cmdList コマンドリスト
-        /// @param resource 遷移対象のリソース
-        /// @param stateBefore 現在のステート
-        /// @param stateAfter 遷移先のステート
-        void TransitionBarrier(
-            ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* resource,
-            D3D12_RESOURCE_STATES stateBefore,
-            D3D12_RESOURCE_STATES stateAfter);
-
         /// @brief RTVのクリア色（RGBA）
         float clearColor_[4] = {0.1f, 0.25f, 0.5f, 1.0f};
 

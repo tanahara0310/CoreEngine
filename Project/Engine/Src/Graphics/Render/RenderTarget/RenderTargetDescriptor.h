@@ -18,7 +18,8 @@ namespace CoreEngine
         uint32_t height = 0;
 
         /// @brief カラーフォーマット
-        DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        /// @details RenderGraph の SceneColor / PostEffect / DeferredLighting 系は HDR 前提のため既定は R16G16B16A16_FLOAT とする
+        DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
         /// @brief 深度ステンシルバッファが必要か
         bool needsDepthStencil = true;

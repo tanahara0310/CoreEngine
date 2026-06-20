@@ -3,6 +3,7 @@
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/Render.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "GrayScale/GrayScale.h"
 #include "../FullScreen.h"
@@ -45,7 +46,9 @@ void PostEffectManager::Initialize(DirectXCommon* dxCommon, Render* render)
     RegisterAllEffects();
 
     // 最終テクスチャハンドルの初期化
-    finalDisplayHandle_ = directXCommon_->GetOffScreenSrvHandle();
+    if (RenderTarget* sceneColorTarget = render_->GetRenderTarget(RenderTargetNames::SceneColor)) {
+        finalDisplayHandle_ = sceneColorTarget->GetSRVHandle();
+    }
 }
 
 void PostEffectManager::RegisterAllEffects()
@@ -132,28 +135,6 @@ const PostEffectBase* PostEffectManager::GetEffectInternal(const std::string& na
     return nullptr;
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE PostEffectManager::ExecuteEffectChain(
-    D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
-{
-    // 有効エフェクトがない場合は入力をそのまま返す
-    if (effectPtrCache_.empty()) {
-        finalDisplayHandle_ = inputSrvHandle;
-        return inputSrvHandle;
-    }
-
-    // Ping-Pongバッファで順次エフェクトを適用（キャッシュ済みポインタを直接使用しmapルックアップを排除）
-    PingPongBuffer pingPong(directXCommon_, render_);
-    pingPong.Reset(inputSrvHandle);
-
-    for (auto* effect : effectPtrCache_) {
-        pingPong.ApplyEffect(effect);
-    }
-
-    // 最終結果を保存して返す（どちらのバッファにあってもそのまま返す）
-    finalDisplayHandle_ = pingPong.GetCurrentOutput();
-    return finalDisplayHandle_;
-}
-
 void PostEffectManager::ExecuteEffect(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
 {
     auto* effect = GetEffectInternal(name);
@@ -197,11 +178,6 @@ void PostEffectManager::SetEffectChain(const std::vector<std::string>& effectNam
 #endif
     effectChain_ = effectNames;
     RebuildEffectPtrCache();
-}
-
-const std::vector<std::string>& PostEffectManager::GetEffectChain() const
-{
-    return effectChain_;
 }
 
 void PostEffectManager::Update(float deltaTime)
@@ -357,5 +333,10 @@ void PostEffectManager::DrawImGuiContent()
 D3D12_GPU_DESCRIPTOR_HANDLE PostEffectManager::GetFinalDisplayTextureHandle() const
 {
     return finalDisplayHandle_;
+}
+
+void PostEffectManager::SetFinalDisplayTextureHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle)
+{
+    finalDisplayHandle_ = handle;
 }
 }

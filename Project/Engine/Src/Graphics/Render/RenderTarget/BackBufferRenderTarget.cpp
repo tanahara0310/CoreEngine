@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "BackBufferRenderTarget.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/ResourceBarrierHelper.h"
 #include <cassert>
 
 namespace CoreEngine
@@ -11,6 +12,7 @@ namespace CoreEngine
         dxCommon_ = dx;
         width_ = dx->GetClientWidth();
         height_ = dx->GetClientHeight();
+        currentState_ = D3D12_RESOURCE_STATE_PRESENT;
     }
 
     void BackBufferRenderTarget::Begin(ID3D12GraphicsCommandList* cmdList)
@@ -21,19 +23,20 @@ namespace CoreEngine
         UINT backBufferIndex = GetCurrentBackBufferIndex();
         ID3D12Resource* backBuffer = dxCommon_->GetSwapChainBackBuffer(backBufferIndex);
 
-        // リソースバリア: PRESENT -> RENDER_TARGET
-        TransitionBarrier(cmdList, backBuffer,
-            D3D12_RESOURCE_STATE_PRESENT,
-            D3D12_RESOURCE_STATE_RENDER_TARGET);
+        // 現在状態を基準にして RENDER_TARGET へ遷移する。
+        if (currentState_ != D3D12_RESOURCE_STATE_RENDER_TARGET) {
+            ResourceBarrierHelper::Transition(cmdList, backBuffer,
+                currentState_,
+                D3D12_RESOURCE_STATE_RENDER_TARGET);
+            currentState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
+        }
 
-        // RTV & DSV設定
+        // 最終合成はフルスクリーン描画のみで深度を使用しないため RTV のみ設定する。
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = dxCommon_->GetRTVHandle(backBufferIndex);
-        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dxCommon_->GetDSVHandle();
-        cmdList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+        cmdList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 
-        // クリア
+        // バックバッファのみクリアする。
         cmdList->ClearRenderTargetView(rtvHandle, clearColor_, 0, nullptr);
-        cmdList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
         // ビューポート設定
         D3D12_VIEWPORT viewport{};
@@ -66,10 +69,13 @@ namespace CoreEngine
         UINT backBufferIndex = GetCurrentBackBufferIndex();
         ID3D12Resource* backBuffer = dxCommon_->GetSwapChainBackBuffer(backBufferIndex);
 
-        // リソースバリア: RENDER_TARGET -> PRESENT
-        TransitionBarrier(cmdList, backBuffer,
-            D3D12_RESOURCE_STATE_RENDER_TARGET,
-            D3D12_RESOURCE_STATE_PRESENT);
+        // 描画完了後に Present 可能状態へ戻す。
+        if (currentState_ != D3D12_RESOURCE_STATE_PRESENT) {
+            ResourceBarrierHelper::Transition(cmdList, backBuffer,
+                currentState_,
+                D3D12_RESOURCE_STATE_PRESENT);
+            currentState_ = D3D12_RESOURCE_STATE_PRESENT;
+        }
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE BackBufferRenderTarget::GetRTVHandle() const

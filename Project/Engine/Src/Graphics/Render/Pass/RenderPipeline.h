@@ -1,11 +1,16 @@
 #pragma once
 #include "RenderPass.h"
+#include "PostEffectPass.h"
+#include "Graphics/Render/RenderGraph.h"
 #include <vector>
 #include <memory>
 #include <string>
+#include <functional>
 
 namespace CoreEngine
 {
+    struct ReflectionViewResult;
+
     /// @brief レンダリングパイプラインを管理するクラス
     class RenderPipeline {
     public:
@@ -34,9 +39,41 @@ namespace CoreEngine
             return nullptr;
         }
 
-        /// @brief パイプラインを実行
+        /// @brief フレーム実行前のパス設定を行う
         /// @param context レンダリングコンテキスト
-        void Execute(const RenderContext& context);
+        /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
+        void PrepareFrame(const RenderContext& context, const std::function<void()>& geometryRenderCallback);
+
+        /// @brief 最小 RenderGraph を構築する
+        /// @param context レンダリングコンテキスト
+        void BuildRenderGraph(const RenderContext& context);
+
+        /// @brief 構築済み RenderGraph を実行する
+        /// @param context レンダリングコンテキスト
+        void ExecuteRenderGraph(const RenderContext& context);
+
+        /// @brief View 単位でフレーム準備から Graph 実行までを行う
+        /// @param context レンダリングコンテキスト
+        /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
+        /// @param beforeExecute Graph 実行直前に呼ぶコールバック
+        /// @param afterExecute Graph 実行直後に呼ぶコールバック
+        void ExecuteView(
+            const RenderContext& context,
+            const std::function<void()>& geometryRenderCallback,
+            const std::function<void()>& beforeExecute = {},
+            const std::function<void()>& afterExecute = {});
+
+        /// @brief ReflectionView を実行し、シーン側へ返す共有結果を収集する
+        /// @param context ReflectionView 用に構成済みのレンダリングコンテキスト
+        /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
+        /// @param beforeExecute Graph 実行直前に呼ぶコールバック
+        /// @param afterExecute Graph 実行直後に呼ぶコールバック
+        /// @return ReflectionColor / SceneDepth / SceneColor をまとめた結果
+        ReflectionViewResult ExecuteReflectionView(
+            const RenderContext& context,
+            const std::function<void()>& geometryRenderCallback,
+            const std::function<void()>& beforeExecute = {},
+            const std::function<void()>& afterExecute = {});
 
         /// @brief すべてのパスをクリア
         void Clear();
@@ -46,6 +83,35 @@ namespace CoreEngine
         size_t GetPassCount() const { return passes_.size(); }
 
     private:
+        /// @brief RenderGraph 構築前に主要リソースを Blackboard へ登録する
+        /// @param context レンダリングコンテキスト
+        void RegisterFrameResources(const RenderContext& context);
+
+        /// @brief View 設定に応じて各パスの有効状態と出力先を切り替える
+        /// @param context レンダリングコンテキスト
+        void ConfigurePassesForView(const RenderContext& context);
+
+        /// @brief PostEffect の有効エフェクト列を Graph ノードへ分解して追加する
+        /// @param context レンダリングコンテキスト
+        void AppendPostEffectPasses(const RenderContext& context);
+
+        /// @brief BackBuffer パスへ最終入力論理リソースを設定する
+        /// @param finalPostEffectResource PostEffect 後の最終論理リソース名
+        void ConfigureBackBufferInput(const std::string& finalPostEffectResource);
+
+        /// @brief Graph 実行後に最終表示テクスチャハンドルを同期する
+        /// @param context レンダリングコンテキスト
+        void SyncFinalDisplayHandle(const RenderContext& context);
+
+        /// @brief ReflectionView 実行後の共有結果を収集する
+        /// @param context ReflectionView 実行に使用したレンダリングコンテキスト
+        /// @return ReflectionView の共有結果
+        ReflectionViewResult BuildReflectionViewResult(const RenderContext& context) const;
+
+        std::vector<std::unique_ptr<PostEffectPass>> postEffectSubpasses_;
+        std::string finalDisplayResourceName_ = FrameBlackboard::SceneColor;
+
         std::vector<std::unique_ptr<RenderPass>> passes_;
+        RenderGraph renderGraph_{};
     };
 }

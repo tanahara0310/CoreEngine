@@ -36,6 +36,9 @@ namespace CoreEngine
             config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
             // gInstanceData は SetGraphicsRootShaderResourceView で渡すため RootDescriptor に設定する
             config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor);
+            config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
+            config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
+            config.ConfigureSampler("gLinearClamp", SamplerConfig::LinearClamp());
             return config;
         }
     }

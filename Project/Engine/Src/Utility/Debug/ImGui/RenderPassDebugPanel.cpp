@@ -6,12 +6,15 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -25,8 +28,8 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     void RenderPassDebugPanel::Draw()
     {
-        if (!dxCommon_ && !renderDomainContext_) {
-            ImGui::TextDisabled("DirectXCommon / RenderDomainContext が未設定です");
+        if (!renderTargetManager_ && !renderDomainContext_) {
+            ImGui::TextDisabled("RenderTargetManager / RenderDomainContext が未設定です");
             return;
         }
 
@@ -79,28 +82,18 @@ namespace CoreEngine
         // ================================================================
         SectionHeader("SSAO");
 
-        // RenderTargetManager 経由で SSAO バッファを取得
-        // RenderTargetManager は EngineSystem から直接取れないため
-        // DirectXCommon 経由で RenderTargetManager を取得する方法がない場合は
-        // dxCommon_->GetOffScreenSrvHandle() で代替インデックスを試みる
-        // → DebugSubsystem 側で SetRenderTargetManager() を呼んでいる場合はそちらを使う
         if (renderTargetManager_) {
             BufferEntry ssaoEntries[2] = {};
 
-            auto FetchOffscreenSrv = [&](const char* name) -> D3D12_GPU_DESCRIPTOR_HANDLE {
+            auto FetchTargetSrv = [&](const char* name) -> D3D12_GPU_DESCRIPTOR_HANDLE {
                 if (auto* rt = renderTargetManager_->GetRenderTarget(name)) {
-                    // OffscreenRenderTarget 経由で index を取り、DirectXCommon から直接 SRV を取得
-                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(rt)) {
-                        return dxCommon_->GetOffScreenSrvHandle(
-                            static_cast<uint32_t>(offscreen->GetIndex()));
-                    }
                     return rt->GetSRVHandle();
                 }
                 return {};
             };
 
-            D3D12_GPU_DESCRIPTOR_HANDLE ssaoSrv     = FetchOffscreenSrv("SSAOBuffer");
-            D3D12_GPU_DESCRIPTOR_HANDLE ssaoBlurSrv = FetchOffscreenSrv("SSAOBlurBuffer");
+            D3D12_GPU_DESCRIPTOR_HANDLE ssaoSrv     = FetchTargetSrv(RenderTargetNames::SSAOBuffer);
+            D3D12_GPU_DESCRIPTOR_HANDLE ssaoBlurSrv = FetchTargetSrv(RenderTargetNames::SSAOBlurBuffer);
 
             if (ssaoSrv.ptr != 0) {
                 ssaoEntries[0] = { "SSAO (Raw)",  "SSAO 生成結果（ブラー前）",    ssaoSrv,     true };
@@ -140,31 +133,45 @@ namespace CoreEngine
         SectionHeader("Lighting / 最終合成");
 
         if (renderTargetManager_) {
-            const char* outputTargets[] = { "Offscreen0", "Offscreen1", "SceneView" };
-            const char* outputTooltips[] = {
-                "DeferredLighting + PostEffect の出力先",
-                "PostEffect ピンポンバッファ",
-                "SceneView 専用 RT（エディタービュー用）"
-            };
-
             const float availW = ImGui::GetContentRegionAvail().x;
             const int   columns = (availW >= kThumbW * 2 + 16.0f) ? 2 : 1;
             const float thumbW = (availW - ImGui::GetStyle().ItemSpacing.x * (columns - 1)) / columns;
             const float thumbH = thumbW * (9.0f / 16.0f);
 
-            int col = 0;
-            for (int i = 0; i < 3; ++i) {
-                auto* rt = renderTargetManager_->GetRenderTarget(outputTargets[i]);
-                if (!rt) continue;
-                D3D12_GPU_DESCRIPTOR_HANDLE srv{};
-                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(rt)) {
-                    srv = dxCommon_->GetOffScreenSrvHandle(
-                        static_cast<uint32_t>(offscreen->GetIndex()));
-                } else {
-                    srv = rt->GetSRVHandle();
+            std::vector<std::string> outputLabels;
+            std::vector<BufferEntry> outputEntries;
+            auto AppendTargetEntry = [&](const std::string& targetName, const char* label, const char* tooltip) {
+                auto* rt = renderTargetManager_->GetRenderTarget(targetName);
+                if (!rt) {
+                    return;
                 }
-                if (srv.ptr == 0) continue;
-                BufferEntry entry{ outputTargets[i], outputTooltips[i], srv, true };
+
+                D3D12_GPU_DESCRIPTOR_HANDLE srv = rt->GetSRVHandle();
+
+                if (srv.ptr == 0) {
+                    return;
+                }
+
+                outputLabels.push_back(label);
+                outputEntries.push_back({ outputLabels.back().c_str(), tooltip, srv, true });
+                };
+
+            AppendTargetEntry(RenderTargetNames::PostEffectFinal, "PostEffectFinal", "PostEffect 最終結果");
+
+            for (size_t index = 0;; ++index) {
+                const std::string targetName = RenderTargetManager::MakePostEffectIntermediateTargetName(index);
+                if (!renderTargetManager_->HasRenderTarget(targetName)) {
+                    break;
+                }
+
+                const std::string label = FrameBlackboard::MakePostEffectIntermediateName(index);
+                AppendTargetEntry(targetName, label.c_str(), "PostEffect 中間ターゲット");
+            }
+
+            AppendTargetEntry(RenderTargetNames::ReflectionView, "ReflectionView", "ReflectionView 用 RT（補助ビュー用）");
+
+            int col = 0;
+            for (const auto& entry : outputEntries) {
                 if (col > 0) ImGui::SameLine();
                 DrawThumbnail(entry, thumbW, thumbH);
                 col = (col + 1) % columns;

@@ -4,7 +4,9 @@
 #include "Graphics/IBL/IBLSystem.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Camera/CameraManager.h"
 #include "Scene/SceneManager.h"
 #include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
@@ -12,6 +14,7 @@
 #include "Sample/TestGameObject/Model/ModelObject.h"
 #include "Utility/Random/RandomGenerator.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/Logger/Logger.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -175,12 +178,6 @@ void WaterTestScene::OnInitialize() {
     groundObject_->SetIBLEnabled(true);
     groundObject_->SetActive(true);
 
-    // ===== Step 4: 反射パス初期化 =====
-    auto* dxCommon = engine_->GetComponent<DirectXCommon>();
-    if (dxCommon) {
-        reflectionPass_.Initialize(dxCommon, 2);
-    }
-
 #ifdef USE_IMGUI
     ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
 
@@ -194,21 +191,6 @@ void WaterTestScene::OnUpdate() {
         waterPlane_->UpdateUVScroll(frameRate->GetDeltaTime());
     }
 
-    // ===== 水面をカメラ XZ に追従させて「無限遠」に見せる =====
-    // メッシュ自体をカメラと同じ XZ 座標に移動するだけで
-    // 常にカメラの真下に広大な水面が広がっているように見える
-    auto* cameraManager = engine_->GetComponent<CameraManager>();
-    if (waterPlane_ && cameraManager) {
-        auto* cam = cameraManager->GetActiveCamera(CameraType::Camera3D);
-        if (cam) {
-            auto camPos = cam->GetPosition();
-            auto& t = waterPlane_->GetTransform();
-            t.translate.x = camPos.x;
-            t.translate.z = camPos.z;
-            // Y は水面高さのまま維持する
-        }
-    }
-
 #ifdef USE_IMGUI
     DrawWaterImGui();
 #endif
@@ -220,43 +202,45 @@ void WaterTestScene::OnUpdate() {
 }
 
 void WaterTestScene::Draw() {
-    // ---- Step 4: 反射パスを先に実行する ----
-    // PrepareRender() は BaseScene::Draw() の前に呼ばれるため描画キューは既に積まれている
+    // ReflectionView の実行は Engine 側 RenderGraph に委譲し、ここでは通常描画だけを行う。
+    BaseScene::Draw();
+}
+
+ReflectionViewRequest WaterTestScene::GetReflectionViewRequest() const
+{
+    ReflectionViewRequest request{};
+    request.isEnabled = (waterPlane_ != nullptr);
+    request.planeHeight = waterPlane_ ? waterPlane_->GetTransform().translate.y : 0.0f;
+    return request;
+}
+
+void WaterTestScene::SetupReflectionView(ICamera* mainCamera, float planeHeight)
+{
+    reflectionPass_.SetupReflectionCamera(mainCamera, planeHeight);
     if (waterPlane_) {
-        auto* dxCommon = engine_->GetComponent<DirectXCommon>();
-        auto* renderManager = engine_->GetComponent<RenderManager>();
-        auto* cameraManager = engine_->GetComponent<CameraManager>();
+        waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), true);
+        waterPlane_->UpdateFrameConstants();
+    }
+}
 
-        if (dxCommon && renderManager && cameraManager) {
-            auto* cmdList = dxCommon->GetCommandList();
-            auto* mainCamera = cameraManager->GetActiveCamera(CameraType::Camera3D);
-            constexpr float kWaterHeight = 0.0f; // 水面の Y 座標
+void WaterTestScene::RestoreReflectionView(ICamera* mainCamera)
+{
+    reflectionPass_.RestoreMainCamera(mainCamera);
+}
 
-            // クリップ平面を水面オブジェクトに伝える（反射パス中は水面自身をクリップ）
-            waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), false);
-            waterPlane_->UpdateFrameConstants();
-
-            // 反射シーンをオフスクリーン RTT に描画する
-            reflectionPass_.Render(cmdList, renderManager, mainCamera, kWaterHeight);
-
-            // 反射テクスチャを水面オブジェクトに渡す
-            waterPlane_->SetReflectionTexture(reflectionPass_.GetReflectionSRV());
-
-            // シーン深度 SRV を水面オブジェクトに渡す（Depth Fade 用）
-            // GBuffer パス完了後の深度ステンシルバッファの SRV を使用する
-            waterPlane_->SetSceneDepthSRV(dxCommon->GetDepthStencilSRV());
-
-            // シーンカラー SRV を水面オブジェクトに渡す（水越しの背景色用）
-            waterPlane_->SetSceneColorSRV(dxCommon->GetOffScreenSrvHandle(0));
-
-            // reflectionEnabled と depthFadeEnabled を含む最終状態を GPU バッファに反映する
-            // （SetReflectionTexture が reflectionEnabled を更新するため、ここで再書き込みが必要）
-            waterPlane_->UpdateFrameConstants();
-        }
+void WaterTestScene::ApplyReflectionViewResult(const ReflectionViewResult& result)
+{
+    if (!waterPlane_) {
+        return;
     }
 
-    // ---- 通常描画 ----
-    BaseScene::Draw();
+    // Engine 側で生成した ReflectionColor と共有 Scene 入力を、水面描画用の結果へ変換する。
+    const ReflectionViewResult reflectionResult = reflectionPass_.BuildResult(
+        result.reflectionSrv,
+        result.sceneDepthSrv,
+        result.sceneColorSrv);
+    waterPlane_->ApplyWaterReflectionResult(reflectionResult);
+    waterPlane_->UpdateFrameConstants();
 }
 
 void WaterTestScene::Finalize() {
@@ -426,8 +410,20 @@ void WaterTestScene::DrawWaterImGui() {
             bool debugChanged = false;
             debugChanged |= ImGui::Checkbox("デバッグ表示", &imguiDepthFadeDebugEnabled_);
             debugChanged |= ImGui::SliderFloat("表示倍率", &imguiDepthFadeDebugScale_, 0.1f, 8.0f, "%.2f");
+            static const char* kDebugViewNames[] = {
+                "なし",
+                "Raw Depth",
+                "Linear Depth",
+                "Depth Delta",
+                "Screen UV",
+                "Scene Color",
+                "Reflection",
+                "Fresnel",
+            };
+            debugChanged |= ImGui::Combo("可視化モード", &imguiDepthDebugViewMode_, kDebugViewNames, IM_ARRAYSIZE(kDebugViewNames));
             if (debugChanged) {
                 waterPlane_->SetDepthFadeDebug(imguiDepthFadeDebugEnabled_, imguiDepthFadeDebugScale_);
+                waterPlane_->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(imguiDepthDebugViewMode_));
             }
             ImGui::TreePop();
         }

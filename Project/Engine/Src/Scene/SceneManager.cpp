@@ -67,27 +67,21 @@ namespace CoreEngine
         }
     }
 
-    void SceneManager::DrawSceneView() {
+    void SceneManager::DrawReflectionView() {
         if (currentScene_) {
-            currentScene_->DrawSceneView();
+            currentScene_->DrawReflectionView();
         }
     }
 
-    void SceneManager::SetupSceneViewCamera() {
+    void SceneManager::SetupReflectionView(ICamera* mainCamera, float planeHeight) {
         if (currentScene_) {
-            currentScene_->SetupSceneViewCamera();
+            currentScene_->SetupReflectionView(mainCamera, planeHeight);
         }
     }
 
-    void SceneManager::DrawSceneViewGeometry() {
+    void SceneManager::RestoreReflectionView(ICamera* mainCamera) {
         if (currentScene_) {
-            currentScene_->DrawSceneViewGeometry();
-        }
-    }
-
-    void SceneManager::RestoreGameViewCamera() {
-        if (currentScene_) {
-            currentScene_->RestoreGameViewCamera();
+            currentScene_->RestoreReflectionView(mainCamera);
         }
     }
 
@@ -145,12 +139,12 @@ namespace CoreEngine
         }
     }
 
-    ICamera* SceneManager::GetSceneViewCamera() const {
-        return currentScene_ ? currentScene_->GetSceneViewCamera() : nullptr;
-    }
-
     ICamera* SceneManager::GetGameViewCamera3D() const {
         return currentScene_ ? currentScene_->GetGameViewCamera3D() : nullptr;
+    }
+
+    ICamera* SceneManager::GetDefaultGameViewCamera3D() const {
+        return currentScene_ ? currentScene_->GetDefaultGameViewCamera3D() : nullptr;
     }
 
     ICamera* SceneManager::GetGameViewCamera2D() const {
@@ -159,6 +153,18 @@ namespace CoreEngine
 
     GameObjectManager* SceneManager::GetCurrentGameObjectManager() const {
         return currentScene_ ? currentScene_->GetGameObjectManager() : nullptr;
+    }
+
+    ReflectionViewRequest SceneManager::GetReflectionViewRequest() const
+    {
+        return currentScene_ ? currentScene_->GetReflectionViewRequest() : ReflectionViewRequest{};
+    }
+
+    void SceneManager::ApplyReflectionViewResult(const ReflectionViewResult& result)
+    {
+        if (currentScene_) {
+            currentScene_->ApplyReflectionViewResult(result);
+        }
     }
 
     void SceneManager::DoChangeScene(const std::string& name) {
@@ -181,17 +187,6 @@ namespace CoreEngine
             }
             currentScene_->Finalize();
         }
-
-#ifdef USE_IMGUI
-        // シーン切り替え時にオブジェクト選択をクリア（ダングリングポインタ防止）
-        if (auto* debug = engine_->GetDebugSubsystem()) {
-            if (auto* viewport = debug->GetImGuiManager()->GetSceneViewport()) {
-                if (auto* selector = viewport->GetObjectSelector()) {
-                    selector->ClearSelection();
-                }
-            }
-        }
-#endif
 
         currentScene_.reset();
 

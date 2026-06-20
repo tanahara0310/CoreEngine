@@ -7,7 +7,16 @@
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderGraph.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
@@ -208,9 +217,6 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
     </ClCompile>
@@ -359,9 +365,6 @@
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp">
-      <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp">
@@ -559,15 +562,6 @@
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.cpp">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.cpp">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.cpp">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.cpp">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
@@ -590,9 +584,6 @@
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DeviceManager.cpp">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\OffScreenRenderTargetManager.cpp">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\Core\SwapChainManager.cpp">
@@ -720,9 +711,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp">
       <Filter>Engine\Src\Input</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.cpp">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
@@ -1008,9 +996,6 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
     </ClInclude>
@@ -1045,6 +1030,9 @@
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\FrameBlackboard.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h">
@@ -1185,6 +1173,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -1192,6 +1183,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderDomainContext.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderGraph.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h">
@@ -1500,15 +1494,6 @@
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneManagerTab.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportGizmoController.h">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportSelectionController.h">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewportWindowRenderer.h">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ImGui\ScreenCapture.h">
       <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
     </ClInclude>
@@ -1549,9 +1534,6 @@
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DeviceManager.h">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\OffScreenRenderTargetManager.h">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\Core\SwapChainManager.h">
@@ -1692,9 +1674,6 @@
     <ClInclude Include="Engine\Src\Scene\SceneManager.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Debug\ImGui\SceneViewport.h">
-      <Filter>Engine\Src\Utility\Debug\ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\MyGame.h">
       <Filter>Application\Src</Filter>
     </ClInclude>
@@ -1780,6 +1759,30 @@
     </None>
     <None Include="Docs\Engine\Utility\Utility.md">
       <Filter>Docs\Engine\Utility</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step01_RenderPipelineExecution.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step02_RTShadowAndComposite.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step03_FrameBlackboard.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step04_RenderGraphMinimum.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step05_AutoBarrier.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step06_MultiViewIntegration.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step07_LegacyPipelineRemoval.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step08_FullPassGraphMigration.md">
+      <Filter>Docs\Refactoring</Filter>
     </None>
     <None Include="Engine\Src\ObjectCommon\README.md">
       <Filter>Engine\Src\ObjectCommon</Filter>

@@ -67,23 +67,6 @@ namespace CoreEngine
         /// @param dx DirectXCommon（コマンドキュー・フレームインデックス取得用）
         void PostFinalizeFrame(DirectXCommon* dx);
 
-        /// @brief SceneView の描画（GBufferPass → DeferredLighting → GeometryPass → RT コピー）
-        /// @param context          レンダリングコンテキスト（currentRTShadowViewId を書き換えるため非 const ref）
-        /// @param renderPipeline   現在のレンダーパイプライン
-        /// @param render           Render コンポーネント（RenderTarget 取得用）
-        /// @param cmdList          コマンドリスト（SceneView RT への blit 用）
-        /// @param inOutPreviousOutput パスチェーンの出力（呼び出し前後で保存・復元される）
-        /// @param executePass      パス実行ラムダ（EngineSystem::ExecuteRenderPipeline のローカルラムダ）
-        /// @param gameRenderCallback ゲームビュー用の GeometryPass コールバック（SceneView 後に復元）
-        void RenderSceneView(
-            RenderContext& context,
-            RenderPipeline* renderPipeline,
-            Render* render,
-            ID3D12GraphicsCommandList* cmdList,
-            PassOutput& inOutPreviousOutput,
-            const std::function<void(RenderPass*)>& executePass,
-            const std::function<void()>& gameRenderCallback);
-
         // ──────────────────────────────────────────────────────────
         // アクセサ
         // ──────────────────────────────────────────────────────────
@@ -94,8 +77,6 @@ namespace CoreEngine
         ConsoleUI* GetConsole() { return gameDebugUI_ ? gameDebugUI_->GetConsole() : nullptr; }
 
         GpuTimestampProfiler& GetGpuProfiler() { return gpuProfiler_; }
-
-        bool IsSceneViewPostEffectEnabled() const { return sceneViewEnablePostEffect_; }
 
     private:
         EngineSystem* engine_ = nullptr;
@@ -108,8 +89,6 @@ namespace CoreEngine
         KeyConfigUI keyConfigUI_;
         RenderPassDebugPanel renderPassDebugPanel_;
 
-        // SceneView 設定（configから読み込み）
-        bool sceneViewEnablePostEffect_ = false;
     };
 }
 

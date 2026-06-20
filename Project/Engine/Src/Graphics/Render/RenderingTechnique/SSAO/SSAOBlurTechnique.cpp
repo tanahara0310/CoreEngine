@@ -4,6 +4,7 @@
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include <cassert>
 
@@ -34,8 +35,8 @@ namespace CoreEngine
         UpdateConstantBuffer();
 
         // SSAO と SSAOBlur のレンダーターゲットを取得
-        auto* ssaoTarget = renderTargetManager->GetRenderTarget("SSAOBuffer");
-        auto* ssaoBlurTarget = renderTargetManager->GetRenderTarget("SSAOBlurBuffer");
+        auto* ssaoTarget = renderTargetManager->GetRenderTarget(RenderTargetNames::SSAOBuffer);
+        auto* ssaoBlurTarget = renderTargetManager->GetRenderTarget(RenderTargetNames::SSAOBlurBuffer);
 
         if (!ssaoTarget || !ssaoBlurTarget) {
             outputSrvHandle = {};

@@ -48,6 +48,12 @@ namespace CoreEngine
             engine.GetWinApp()->GetClientWidth(),
             engine.GetWinApp()->GetClientHeight());
 
+        dxPtr->AddResizeCallback([&engine](int32_t width, int32_t height) {
+            if (engine.renderDomainContext_) {
+                engine.renderDomainContext_->OnWindowResize(width, height);
+            }
+        });
+
         // TextureManagerの初期化（シングルトン）
         TextureManager::GetInstance().Initialize(dxPtr);
 
@@ -61,6 +67,12 @@ namespace CoreEngine
         render->Initialize(dxPtr, dxPtr->GetDSVHeap());
         Render* renderPtr = render.get();
         engine.RegisterComponent(std::move(render));
+
+        dxPtr->AddResizeCallback([renderPtr](int32_t width, int32_t height) {
+            if (RenderTargetManager* renderTargetManager = renderPtr->GetRenderTargetManager()) {
+                renderTargetManager->ResizeAutoTargets(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+            }
+        });
 
         // RenderManagerの作成と初期化
         auto renderManager = std::make_unique<RenderManager>();

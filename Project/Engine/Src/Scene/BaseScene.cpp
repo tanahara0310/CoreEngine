@@ -8,15 +8,11 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Graphics/Render/Line/LineRendererPipeline.h"
-#include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Line/GridRenderer.h"
 #include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
-#include "WinApp/WinApp.h"
-#include <numbers>
 
 
 namespace CoreEngine
@@ -34,12 +30,12 @@ namespace CoreEngine
         //ライト
         SetupLight();
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         //グリッド（デバッグビルドのみ）
         SetupGrid();
 #endif
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         // デバッグエディター初期化
         debugEditor_ = std::make_unique<SceneDebugEditor>();
         debugEditor_->Initialize(engine_, &gameObjectManager_, cameraManager_.get(), sceneSaveSystem_.get());
@@ -68,7 +64,7 @@ namespace CoreEngine
             UpdateLightViewProjection();
         }
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         debugEditor_->Update();
 
         // グリッド表示状態を更新
@@ -123,67 +119,31 @@ namespace CoreEngine
         DrawWithCamera(ResolveGameViewCameraName(), true);
     }
 
-    void BaseScene::DrawSceneView()
-    {
-        SetupSceneViewCamera();
-        DrawSceneViewGeometry();
-        RestoreGameViewCamera();
-    }
-
-    void BaseScene::SetupSceneViewCamera()
-    {
-        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
-            renderManager->SetActiveTransformSlot(TransformBufferSlot::Scene);
-            renderManager->SetDebugLineRenderingEnabled(true);
-        }
-        Model::SetCurrentRenderSlot(TransformBufferSlot::Scene);
-
-        if (cameraManager_) {
-            sceneViewSavedCameraName_ = cameraManager_->GetActiveCameraName(CameraType::Camera3D);
-            const std::string sceneViewCam = ResolveSceneViewCameraName();
-            if (!sceneViewCam.empty() && sceneViewCam != sceneViewSavedCameraName_) {
-                cameraManager_->SetActiveCamera(sceneViewCam, CameraType::Camera3D);
-            }
-        }
-    }
-
-    void BaseScene::DrawSceneViewGeometry()
-    {
-        auto* renderManager = engine_->GetComponent<RenderManager>();
-        if (!renderManager) {
-            return;
-        }
-#ifdef USE_IMGUI
-        DrawGameCameraFrustumDebug();
-#endif
-        renderManager->DrawGeometryPass();
-    }
-
-    void BaseScene::RestoreGameViewCamera()
+    void BaseScene::DrawReflectionView()
     {
         if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
             renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
             renderManager->SetDebugLineRenderingEnabled(false);
         }
         Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
-
-        if (cameraManager_ && !sceneViewSavedCameraName_.empty()) {
-            cameraManager_->SetActiveCamera(sceneViewSavedCameraName_, CameraType::Camera3D);
-            sceneViewSavedCameraName_ = {};
-        }
+        DrawWithCamera(ResolveGameViewCameraName(), false);
     }
 
-    ICamera* BaseScene::GetSceneViewCamera() const
+    ICamera* BaseScene::GetDefaultGameViewCamera3D() const
     {
         if (!cameraManager_) {
             return nullptr;
         }
 
-        if (ICamera* sceneCamera = cameraManager_->GetCamera(ResolveSceneViewCameraName())) {
-            return sceneCamera;
+        if (!gameViewCameraName_.empty()) {
+            if (ICamera* gameCamera = cameraManager_->GetCamera(gameViewCameraName_)) {
+                return gameCamera;
+            }
         }
 
-        return cameraManager_->GetActiveCamera(CameraType::Camera3D);
+        return cameraManager_->GetGameViewCameraOverride().empty()
+            ? cameraManager_->GetActiveCamera(CameraType::Camera3D)
+            : cameraManager_->GetCamera(gameViewCameraName_);
     }
 
     ICamera* BaseScene::GetGameViewCamera3D() const
@@ -281,6 +241,11 @@ namespace CoreEngine
         // デバッグカメラを作成して登録
         auto debugCamera = std::make_unique<DebugCamera>();
         debugCamera->Initialize(engine_, dxCommon->GetDevice());
+        {
+            auto settings = debugCamera->GetSettings();
+            settings.useGameView = true;
+            debugCamera->SetSettings(settings);
+        }
         cameraManager_->RegisterCamera("Debug", std::move(debugCamera));
 
         // デフォルトでリリースカメラをアクティブに設定
@@ -319,19 +284,6 @@ namespace CoreEngine
         return cameraManager_->GetActiveCameraName(CameraType::Camera3D);
     }
 
-    std::string BaseScene::ResolveSceneViewCameraName() const
-    {
-        if (!cameraManager_) {
-            return {};
-        }
-
-        if (!sceneViewCameraName_.empty() && cameraManager_->GetCamera(sceneViewCameraName_)) {
-            return sceneViewCameraName_;
-        }
-
-        return cameraManager_->GetActiveCameraName(CameraType::Camera3D);
-    }
-
     void BaseScene::SetupLight()
     {
         // デフォルトのディレクショナルライトを設定
@@ -363,78 +315,6 @@ namespace CoreEngine
         gridRenderer_->SetSerializeEnabled(false);
     }
 
-    void BaseScene::DrawGameCameraFrustumDebug()
-    {
-        ICamera* gameCamera = GetGameViewCamera3D();
-        if (!gameCamera) {
-            return;
-        }
-
-        const CameraParameters params = gameCamera->GetParameters();
-        const float nearClip = params.nearClip;
-        const float farClip = params.farClip;
-
-        if (nearClip <= 0.0f || farClip <= nearClip) {
-            return;
-        }
-
-        // 逆行列はフレーム中不変なのでラムダ外で1回だけ計算する
-        const Matrix4x4 viewProj = MathCore::Matrix::Multiply(
-            gameCamera->GetViewMatrix(),
-            gameCamera->GetProjectionMatrix());
-        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(viewProj);
-
-        auto Unproject = [&](float ndcX, float ndcY, float ndcZ) -> Vector3 {
-            return MathCore::CoordinateTransform::TransformCoord(Vector3{ ndcX, ndcY, ndcZ }, invViewProj);
-            };
-
-        const Vector3 nearLT = Unproject(-1.0f, 1.0f, 0.0f);
-        const Vector3 nearRT = Unproject(1.0f, 1.0f, 0.0f);
-        const Vector3 nearLB = Unproject(-1.0f, -1.0f, 0.0f);
-        const Vector3 nearRB = Unproject(1.0f, -1.0f, 0.0f);
-
-        const Vector3 farLT = Unproject(-1.0f, 1.0f, 1.0f);
-        const Vector3 farRT = Unproject(1.0f, 1.0f, 1.0f);
-        const Vector3 farLB = Unproject(-1.0f, -1.0f, 1.0f);
-        const Vector3 farRB = Unproject(1.0f, -1.0f, 1.0f);
-
-        auto& lineManager = LineManager::GetInstance();
-        const Vector3 lineColor = { 1.0f, 1.0f, 0.0f };
-        constexpr float alpha = 0.95f;
-
-        // 太さシミュレーション：X・Y 方向に微小オフセットした 3 本束で描画
-        constexpr float kThickness = 0.025f;
-        auto DrawThickLine = [&](const Vector3& a, const Vector3& b, const Vector3& col, float al) {
-            lineManager.DrawLine(a, b, col, al);
-            lineManager.DrawLine({ a.x + kThickness, a.y, a.z }, { b.x + kThickness, b.y, b.z }, col, al);
-            lineManager.DrawLine({ a.x, a.y + kThickness, a.z }, { b.x, b.y + kThickness, b.z }, col, al);
-            };
-
-        // Near面
-        DrawThickLine(nearLT, nearRT, lineColor, alpha);
-        DrawThickLine(nearRT, nearRB, lineColor, alpha);
-        DrawThickLine(nearRB, nearLB, lineColor, alpha);
-        DrawThickLine(nearLB, nearLT, lineColor, alpha);
-
-        // Far面
-        DrawThickLine(farLT, farRT, lineColor, alpha);
-        DrawThickLine(farRT, farRB, lineColor, alpha);
-        DrawThickLine(farRB, farLB, lineColor, alpha);
-        DrawThickLine(farLB, farLT, lineColor, alpha);
-
-        // Near-Far接続
-        DrawThickLine(nearLT, farLT, lineColor, alpha);
-        DrawThickLine(nearRT, farRT, lineColor, alpha);
-        DrawThickLine(nearLB, farLB, lineColor, alpha);
-        DrawThickLine(nearRB, farRB, lineColor, alpha);
-
-        // カメラ位置からNear面への補助線
-        const Vector3 cameraPos = gameCamera->GetPosition();
-        DrawThickLine(cameraPos, nearLT, lineColor, 0.7f);
-        DrawThickLine(cameraPos, nearRT, lineColor, 0.7f);
-        DrawThickLine(cameraPos, nearLB, lineColor, 0.7f);
-        DrawThickLine(cameraPos, nearRB, lineColor, 0.7f);
-    }
 #endif
 
     void BaseScene::UpdateLightViewProjection()

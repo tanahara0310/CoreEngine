@@ -21,7 +21,6 @@ namespace CoreEngine
 
         // unique_ptr を明示的にリセットして破棄順序を制御する
         // （デストラクタ任せにすると宣言逆順になるため意図を明示）
-        offScreenManager_.reset();
         depthStencilManager_.reset();
         swapChainManager_.reset();
         descriptorManager_.reset();
@@ -52,13 +51,6 @@ namespace CoreEngine
             descriptorManager_.get(),
             winApp);
 
-        // オフスクリーンレンダリングターゲットの作成
-        offScreenManager_->Initialize(
-            deviceManager_->GetDevice(),
-            descriptorManager_.get(),
-            winApp_->GetClientWidth(),
-            winApp_->GetClientHeight());
-
         // 深度ステンシルの初期化（DescriptorManagerを渡す）
         depthStencilManager_->Initialize(
             deviceManager_->GetDevice(),
@@ -88,8 +80,11 @@ namespace CoreEngine
         // 深度ステンシルのリサイズ（DSVハンドルは再利用）
         depthStencilManager_->ResizeResource(width, height);
 
-        // オフスクリーンレンダリングターゲットのリサイズ
-        offScreenManager_->Resize(width, height);
+        for (const auto& callback : resizeCallbacks_) {
+            if (callback) {
+                callback(width, height);
+            }
+        }
 
         Logger::GetInstance().Log(
             L"Window Resized: " + std::to_wstring(width) + L"x" + std::to_wstring(height),

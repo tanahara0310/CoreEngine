@@ -158,7 +158,7 @@ namespace CoreEngine
         void SetAnimationControllerFactory(std::unique_ptr<IAnimationControllerFactory> factory);
 
         /// @brief 描画システムが使用する WVP バッファスロットをグローバルに設定する
-        /// BaseScene::Draw() / DrawSceneView() が各パスの直前に呼び出し、
+        /// BaseScene::Draw() が各パスの直前に呼び出し、
         /// 明示的にスロットを指定しない全モデルの Draw() に反映される。
         static void SetCurrentRenderSlot(TransformBufferSlot slot) { s_currentRenderSlot_ = slot; }
 
@@ -193,8 +193,8 @@ namespace CoreEngine
 
         static constexpr size_t kTransformBufferCount = 3;
 
-        // 描画システムが制御するグローバルスロット（Game=通常/GBuffer, Scene=エディタSceneView）
-        // BaseScene::Draw() / DrawSceneView() によってパス開始前に設定される
+        // 描画システムが制御するグローバルスロット
+        // BaseScene::Draw() によってパス開始前に設定される
         inline static TransformBufferSlot s_currentRenderSlot_ = TransformBufferSlot::Game;
 
         // WVP行列用のリソース（ビュー/パスごとに分離）

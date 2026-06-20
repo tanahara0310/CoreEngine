@@ -17,11 +17,6 @@ namespace CoreEngine
 
         void Execute(const RenderContext& context) override;
 
-        /// @brief 前のパスからの入力を設定
-        void SetInput(const PassOutput& input) override {
-            inputHandle_ = input.srvHandle;
-        }
-
         /// @brief レンダーターゲット名を設定
         /// @param name ターゲット名
         void SetRenderTargetName(const std::string& name) {
@@ -34,8 +29,20 @@ namespace CoreEngine
             return targetName_;
         }
 
+        /// @brief バックバッファへ合成する入力論理リソース名を設定
+        /// @param name Blackboard 上の論理リソース名
+        void SetInputResourceName(const std::string& name) {
+            inputResourceName_ = name;
+        }
+
+        /// @brief バックバッファへ合成する入力論理リソース名を取得
+        /// @return Blackboard 上の論理リソース名
+        const std::string& GetInputResourceName() const {
+            return inputResourceName_;
+        }
+
     private:
-        D3D12_GPU_DESCRIPTOR_HANDLE inputHandle_{};
-        std::string targetName_ = "BackBuffer";  ///< デフォルトターゲット名
+        std::string inputResourceName_ = FrameBlackboard::SceneColor;
+        std::string targetName_ = RenderTargetNames::BackBuffer;  ///< デフォルトターゲット名
     };
 }

@@ -10,7 +10,7 @@
 
 #include "Scene/SceneSaveSystem.h"
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
 #include "Scene/SceneDebugEditor.h"
 #endif
 
@@ -46,32 +46,23 @@ namespace CoreEngine
         /// @brief 描画処理（共通処理 + 派生クラスの描画）
         virtual void Draw() override;
 
-        /// @brief Sceneビュー用描画
-        virtual void DrawSceneView() override;
+        /// @brief ReflectionView 用描画
+        virtual void DrawReflectionView() override;
 
         /// @brief 解放（共通処理 + 派生クラスの解放）
         virtual void Finalize() override;
 
-        /// @brief Sceneビュー用カメラを取得
-        ICamera* GetSceneViewCamera() const override;
-
         /// @brief Gameビュー用3Dカメラを取得
         ICamera* GetGameViewCamera3D() const override;
+
+        /// @brief 既定の Gameビュー用3Dカメラを取得
+        ICamera* GetDefaultGameViewCamera3D() const override;
 
         /// @brief Gameビュー用2Dカメラを取得
         ICamera* GetGameViewCamera2D() const override;
 
         /// @brief 現在のゲームオブジェクトマネージャーを取得
         GameObjectManager* GetGameObjectManager() override { return &gameObjectManager_; }
-
-        /// @brief SceneView 用カメラ・レンダリング状態をセットアップ（GBufferPass 実行前に呼ぶ）
-        void SetupSceneViewCamera();
-
-        /// @brief SceneView 用ジオメトリ（スカイボックス・グリッド・透過）を描画
-        void DrawSceneViewGeometry();
-
-        /// @brief Gameビュー用カメラ・レンダリング状態を復元
-        void RestoreGameViewCamera();
 
     protected:
         /// @brief 派生クラスでオーバーライドするシーン固有の初期化処理
@@ -96,21 +87,15 @@ namespace CoreEngine
         /// @brief Gameビューに使用する3Dカメラ名を解決
         std::string ResolveGameViewCameraName() const;
 
-        /// @brief Sceneビューに使用する3Dカメラ名を解決
-        std::string ResolveSceneViewCameraName() const;
-
         /// @brief ライトのセットアップ
         void SetupLight();
 
         /// @brief シャドウマップ用のライトView-Projection行列を更新
         void UpdateLightViewProjection();
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         /// @brief グリッドのセットアップ（デバッグビルドのみ）
         void SetupGrid();
-
-        /// @brief Sceneビュー上にGameカメラの視錐台デバッグラインを描画
-        void DrawGameCameraFrustumDebug();
 #endif
 
     protected:
@@ -132,7 +117,7 @@ namespace CoreEngine
         CollisionConfig collisionConfig_;
         CollisionManager collisionManager_{ &collisionConfig_ };
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         // グリッドレンダラー（デバッグビルドのみ）
         GridRenderer* gridRenderer_ = nullptr;
 #endif
@@ -188,12 +173,10 @@ namespace CoreEngine
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
 
-#ifdef USE_IMGUI
+#if defined(USE_IMGUI) && defined(_DEBUG)
         std::unique_ptr<SceneDebugEditor> debugEditor_;  // Undo/Redo・デバッグ編集機能
 #endif
 
         std::string gameViewCameraName_ = "Release";
-        std::string sceneViewCameraName_ = "Debug";
-        std::string sceneViewSavedCameraName_;
     };
 }

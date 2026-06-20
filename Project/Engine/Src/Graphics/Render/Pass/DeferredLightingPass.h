@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderPass.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 
 namespace CoreEngine{
 
@@ -27,12 +28,7 @@ namespace CoreEngine{
         /// @param name レンダーターゲット名（RenderTargetManager に登録されている名前を指定）
         void SetRenderTargetName(const std::string& name) { targetName_ = name; }
 
-        /// @brief 前のパスからの入力を設定（GBufferPass からの出力は使用しない
-        /// @param input 前のパスの出力
-        void SetInput(const PassOutput& input) override { input_ = input; }
-
     private:
-        std::string targetName_ = "Offscreen0";
-        PassOutput  input_{};
+        std::string targetName_ = RenderTargetNames::SceneColor;
     };
 }
