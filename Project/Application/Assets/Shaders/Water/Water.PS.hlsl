@@ -295,7 +295,8 @@ PixelShaderOutput main(WaterPSInput input)
     float3 reflectColor = output.color.rgb;
     if (gReflectionEnabled)
     {
-        reflectColor = gReflectionTexture.Sample(gLinearClamp, screenUV).rgb;
+        float3 planarReflection = gReflectionTexture.Sample(gLinearClamp, screenUV).rgb;
+        reflectColor += planarReflection;
     }
 
     float3 mediumContribution = waterTint * mediumWeight;

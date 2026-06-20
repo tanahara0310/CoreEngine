@@ -71,11 +71,11 @@
 
 8. **DeferredLightingPass**
    - GBuffer、SSAO、ShadowMap、RT Shadow、IBL を使ってライティング
-   - `Offscreen0` にシーンカラー出力
+   - `SceneColor` にシーンカラー出力
 
 9. **GeometryPass**
    - 実態は Forward Composite
-   - 透過オブジェクト、SkyBox、Particle、UI、Debug などを `Offscreen0` に上乗せ
+   - 透過オブジェクト、SkyBox、Particle、UI、Debug などを `SceneColor` に上乗せ
 
 10. **PostEffectPass**
 	- ポストエフェクトチェーンを適用
@@ -370,6 +370,28 @@ RenderGraph をいきなり入れるのではなく、**RenderGraph に載せ替
 
 `Preserve` の概念を持てると、Forward Composite のように既存カラーへ上乗せするパスを明示しやすい。
 
+### 現在のコードベースにおける役割分担
+
+#### `FrameBlackboard` の役割
+- フレーム内で共有する論理リソースの正本
+- `SceneColor`、`SceneDepth`、`ShadowMap`、`SSAO`、`GBuffer*`、`PostEffectFinal`、`BackBuffer` などを論理名で保持する
+- 保持するのは「名前」だけではなく、`SRV`、`ID3D12Resource*`、`currentState` 参照まで含む
+- `RenderPipeline::RegisterFrameResources()` が各 Manager / RenderTarget から毎フレーム登録する
+- 各 Pass は Blackboard 経由で最終入力や共有結果を解決でき、Scene 側の直配線を不要にする
+
+#### `RenderGraph` の役割
+- 各 Pass の `Read / Write` 宣言を受け取って依存関係を構築する
+- 依存から実行順を決め、`RenderGraph::Execute()` で正式順序に従って各 Pass を呼ぶ
+- `FrameBlackboard` に登録された実リソースと状態参照を `ResolveResources()` で解決する
+- `ApplyTransitionsForPass()` で必要な `D3D12_RESOURCE_STATES` へ自動遷移させる
+- つまり RenderGraph は「何をいつ実行するか」と「実行前にどの状態へ遷移させるか」を担う
+
+#### `RenderPipeline` の役割
+- Blackboard と Graph を接続するフレーム実行器
+- View ごとの有効パス切り替え、論理出力名決定、PostEffect ノード列生成を担う
+- `FrameBlackboard` へ実体を登録し、`RenderGraph` へ各 Pass の宣言を積む
+- 現在のコードベースでは、RenderGraph 単体ではなく `RenderPipeline` が Blackboard 正本登録と Graph 構築の橋渡しを行う
+
 ### 先に Graph 化しやすいパス
 1. `GBufferPass`
 2. `SSAOPass`
@@ -472,8 +494,9 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 | 3 | `FrameBlackboard` 導入 | ☑ 完了 |
 | 4 | 最小 RenderGraph 導入 | ☑ 完了 |
 | 5 | 自動バリア導入 | ☑ 完了 |
-| 6 | Shadow / RT / 複数 View 統合 | ◐ 進行中 |
-| 7 | 旧実行経路削除と RenderGraph 完全移行 | ☐ 未着手 |
+| 6 | Shadow / RT / 複数 View 統合 | ☑ 完了 |
+| 7 | 旧実行経路削除と RenderGraph 完全移行 | ☑ 完了 |
+| 8 | 全パス RenderGraph 化と Graph 外 GPU 経路整理 | ☑ 完了 |
 
 ### 8-1-1. ステップ別ファイル対応表
 
@@ -486,6 +509,7 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 | 5 | `Step05_AutoBarrier.md` | 自動状態遷移 / read-only DSV |
 | 6 | `Step06_MultiViewIntegration.md` | Shadow / RT / GameView / ReflectionView / CaptureView |
 | 7 | `Step07_LegacyPipelineRemoval.md` | 旧経路削除 / RenderGraph 完全移行 |
+| 8 | `Step08_FullPassGraphMigration.md` | Graph 外 GPU 経路整理 / 中間リソース命名 / offscreen 旧基盤撤去 |
 
 ### 8-2. マイルストーン別チェックリスト
 
@@ -557,28 +581,27 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 - [x] RT 系パスを Graph 上の正式パスへ寄せる
 - [x] GameView と補助 View の扱いを共通化する
 - [x] 将来の ReflectionView / CaptureView を想定した View 抽象化を行う
-- [ ] 複数 View で同じ流れを再利用できるか確認する
-- [ ] `ReflectionColor` / `ReflectionDepth` の Blackboard 統合を行う
-- [ ] WaterReflectionPass の Scene 特例を View 実行要求へ寄せる
-- [ ] 特殊経路でも自動バリアと状態追跡を共通化する
+- [x] 複数 View で同じ流れを再利用できるか確認する
+- [x] `ReflectionColor` / `ReflectionDepth` の Blackboard 統合を行う
+- [x] WaterReflectionPass の Scene 特例を View 実行要求へ寄せる
+- [x] 特殊経路でも自動バリアと状態追跡を共通化する
 
 **着手しやすい最初の作業**
 - まず GameView を基準に整え、補助 View の差分を Graph 側へ寄せる
 
 **進行メモ**
 - `RenderContext::viewSettings` と `RenderViewType` を導入し、View ごとの有効パスと出力先を切り替えられるようにした
-- `OffscreenRenderTarget` と `OffScreenRenderTargetManager` の状態参照を共有化し、補助 View 導入後の `SceneColor` バリア衝突を抑える修正を入れた
 - `ReflectionView` の実動化、`ReflectionColor/Depth` の Blackboard 統合、`WaterReflectionPass` の Scene 特例縮小まで完了した
-- ReflectionView / CaptureView の実動構成と Water Reflection の統合は継続中
+- 補助 View も `RenderPipeline::ExecuteView()` / `ExecuteReflectionView()` を通す形へ統一した
 
 #### マイルストーン 7: 旧実行経路削除と RenderGraph 完全移行
-- [ ] `EngineSystem` に残る旧手動パス実行ロジックを除去する
-- [ ] `RenderPipeline::ExecutePass()` への直接依存箇所を洗い出す
-- [ ] 補助 View の残存旧経路を廃止する
-- [ ] `PassOutput` の必要性を再評価し、不要な受け渡しを削除する
-- [ ] Graph 外の暫定 Blackboard / Manager 直参照を縮小する
-- [ ] RenderGraph を唯一の正式実行経路として成立させる
-- [ ] 残存する手動バリアと重複状態追跡コードを削除する
+- [x] `EngineSystem` に残る旧手動パス実行ロジックを除去する
+- [x] `RenderPipeline::ExecutePass()` への直接依存箇所を洗い出す
+- [x] 補助 View の残存旧経路を廃止する
+- [x] `PassOutput` の必要性を再評価し、不要な受け渡しを削除する
+- [x] Graph 外の暫定 Blackboard / Manager 直参照を縮小する
+- [x] RenderGraph を唯一の正式実行経路として成立させる
+- [x] 残存する手動バリアと重複状態追跡コードを削除する
 
 **着手しやすい最初の作業**
 - まず GameView と補助 View の実行経路差分を一覧化し、残っている旧互換コードを棚卸しする
@@ -587,15 +610,15 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 
 迷ったら次の順で進める。
 
-1. [ ] `EngineSystem::ExecuteRenderPipeline()` の責務を書き出す
-2. [ ] `RenderPipeline` にパス実行責務を移す
-3. [ ] `RTShadowPass` を追加する
-4. [ ] `GeometryPass` の責務を文書化する
+1. [x] `EngineSystem::ExecuteRenderPipeline()` の責務を書き出す
+2. [x] `RenderPipeline` にパス実行責務を移す
+3. [x] `RTShadowPass` を追加する
+4. [x] `GeometryPass` の責務を文書化する
 5. [x] `FrameBlackboard` の論理リソース名を決める
 6. [x] 最小 RenderGraph のクラス責務を定義する
 7. [x] 主要リソースの自動バリアを導入する
-8. [~] Shadow / RT / 複数 View の自動遷移を統合する
-9. [ ] 旧手動実行経路と手動バリアを削除する
+8. [x] Shadow / RT / 複数 View の自動遷移を統合する
+9. [x] 旧手動実行経路と手動バリアを削除する
 
 ### 8-4. 完了判定の目安
 
@@ -621,16 +644,17 @@ RenderGraph 化で最初に自動化したいのは、D3D12 の全ケースで�
 
 ## 9. 結論
 
-現状は **Deferred 化の入口には入っているが、拡張型レンダリング基盤としてはまだ固定手続き寄り** である。
+現状のコードベースでは、**RenderGraph と FrameBlackboard を軸にしたフレーム実行モデルへの移行は完了**している。
 
-そのため、今後の方針は以下で進めるのがよい。
+- `FrameBlackboard` はフレーム内論理リソースの正本
+- `RenderGraph` は Read / Write 宣言に基づく依存解決・実行順決定・自動バリア適用の本体
+- `RenderPipeline` は Blackboard 登録と Graph 構築を担う実行器
 
-1. `EngineSystem` から実行責務を剥がす
-2. RT / Forward Composite をパスとして整理する
-3. パス間リソースを `FrameBlackboard` で明示化する
-4. 最小 RenderGraph を導入する
-5. 最低限のバリア自動化を入れる
-6. 最後に旧処理を削除して RenderGraph を唯一の正式経路にする
+これにより、主要描画パス、PostEffect 経路、GameView / ReflectionView、BackBuffer 入力は、
+論理リソース名と Graph の観点で説明できる状態になった。
 
-この順で進めることで、Deferred Rendering を基盤にしつつ、
-後から SSR、TAA、Water、Volumetric、RT Reflection、SSGI などを差し込みやすい構造に育てやすくなる。
+今後の主対象は旧設計撤去ではなく、
+- RT Shadow 内部サブステップのさらなる分解
+- 可視化・最適化
+- 将来の `CaptureView` 統合
+のような Step 9 相当の改善フェーズである。
