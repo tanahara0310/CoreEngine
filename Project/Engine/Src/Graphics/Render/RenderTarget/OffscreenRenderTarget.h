@@ -1,21 +1,33 @@
 #pragma once
 #include "RenderTarget.h"
+#include "Graphics/Common/Core/DescriptorHandle.h"
+#include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
+
+#include <wrl.h>
 
 namespace CoreEngine
 {
     class DirectXCommon;
+    class DescriptorManager;
 
     /// @brief オフスクリーンレンダーターゲット
     /// ポストエフェクトやマルチパスレンダリングで使用
     class OffscreenRenderTarget : public RenderTarget {
     public:
         OffscreenRenderTarget() = default;
-        ~OffscreenRenderTarget() override = default;
+        ~OffscreenRenderTarget() override;
 
         /// @brief 初期化
         /// @param dx DirectXCommon
-        /// @param index オフスクリーンのインデックス
-        void Initialize(DirectXCommon* dx, int index);
+        /// @param descriptorManager ディスクリプタマネージャー
+        /// @param desc レンダーターゲット記述子
+        /// @param index 内部識別用インデックス
+        void Initialize(DirectXCommon* dx, DescriptorManager* descriptorManager, const RenderTargetDescriptor& desc, int index);
+
+        /// @brief リサイズ
+        /// @param width 新しい幅
+        /// @param height 新しい高さ
+        void Resize(uint32_t width, uint32_t height);
 
         /// @brief レンダリング開始
         void Begin(ID3D12GraphicsCommandList* cmdList) override;
@@ -78,20 +90,26 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES GetCurrentState() const;
 
     private:
-        void SyncCurrentState() const;
+        void CreateOrResizeResource(uint32_t width, uint32_t height);
+        void CreateViews();
+        void UpdateViews() const;
+        void ReleaseDescriptorHandles();
 
         DirectXCommon* dxCommon_ = nullptr;
-        mutable ID3D12Resource* resource_ = nullptr;
-        mutable D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle_{};
-        mutable D3D12_GPU_DESCRIPTOR_HANDLE srvHandle_{};
-        mutable D3D12_GPU_DESCRIPTOR_HANDLE uavHandle_{};
+        DescriptorManager* descriptorManager_ = nullptr;
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+        DescriptorHandle rtvDescriptor_{};
+        DescriptorHandle srvDescriptor_{};
+        DescriptorHandle uavDescriptor_{};
         mutable D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle_{};
-        mutable int32_t width_ = 0;
-        mutable int32_t height_ = 0;
+        int32_t width_ = 0;
+        int32_t height_ = 0;
+        DXGI_FORMAT format_ = DXGI_FORMAT_R8G8B8A8_UNORM;
         int index_ = 0;
         bool useDepthBuffer_ = true;
+        bool autoResize_ = true;
         bool useCustomDsvHandle_ = false;
         D3D12_CPU_DESCRIPTOR_HANDLE customDsvHandle_{};
-        mutable D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     };
 }

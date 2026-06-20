@@ -5,6 +5,8 @@
 #include <dxgi1_6.h>
 #include <wrl.h>
 #include <memory>
+#include <functional>
+#include <vector>
 
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
@@ -14,7 +16,6 @@
 #include "Graphics/Common/Core/CommandManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/Core/SwapChainManager.h"
-#include "Graphics/Common/Core/OffScreenRenderTargetManager.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
 
 using namespace Microsoft::WRL;
@@ -43,6 +44,10 @@ public:
     /// @param width 新しい幅
     /// @param height 新しい高さ
     void OnWindowResize(int32_t width, int32_t height);
+
+    /// @brief ウィンドウリサイズ時の追加コールバックを登録
+    /// @param callback リサイズ通知コールバック
+    void AddResizeCallback(std::function<void(int32_t, int32_t)> callback) { resizeCallbacks_.push_back(std::move(callback)); }
 
     // デバイス関連のアクセッサ
     ID3D12Device* GetDevice() { return deviceManager_->GetDevice(); }
@@ -78,18 +83,6 @@ public:
     // DXR対応状況のアクセッサ
     bool IsDXRSupported() const { return deviceManager_->IsDXRSupported(); }
     D3D12_RAYTRACING_TIER GetDXRTier() const { return deviceManager_->GetDXRTier(); }
-    // @note G-Buffer移行中の互換経路。
-    //       不透明ジオメトリの新規描画パスでは GBufferManager の利用を優先する。
-    ID3D12Resource* GetOffScreenResource(uint32_t index = 0) { return offScreenManager_->GetOffScreenResource(index); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetOffScreenRtvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenRtvHandle(index); }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenSrvHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenSrvHandle(index); }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetOffScreenUavHandle(uint32_t index = 0) { return offScreenManager_->GetOffScreenUavHandle(index); }
-    D3D12_RESOURCE_STATES GetOffScreenState(uint32_t index = 0) { return offScreenManager_->GetOffScreenState(index); }
-    D3D12_RESOURCE_STATES& GetOffScreenStateRef(uint32_t index = 0) { return offScreenManager_->GetOffScreenStateRef(index); }
-    void SetOffScreenState(uint32_t index, D3D12_RESOURCE_STATES state) { offScreenManager_->SetOffScreenState(index, state); }
-    void EnsureOffScreenTargetCount(uint32_t count) { offScreenManager_->EnsureTargetCount(count); }
-    void SetOffScreenTargetClearColor(uint32_t index, const float color[4]) { offScreenManager_->SetTargetClearColor(index, color); }
-
     // フェンスを待機
     void WaitForPreviousFrame() { commandManager_->WaitForPreviousFrame(); }
 
@@ -107,7 +100,8 @@ private:
     std::unique_ptr<CommandManager> commandManager_ = std::make_unique<CommandManager>();
     std::unique_ptr<DescriptorManager> descriptorManager_ = std::make_unique<DescriptorManager>();
     std::unique_ptr<SwapChainManager> swapChainManager_ = std::make_unique<SwapChainManager>();
-    std::unique_ptr<OffScreenRenderTargetManager> offScreenManager_ = std::make_unique<OffScreenRenderTargetManager>();
     std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
+
+    std::vector<std::function<void(int32_t, int32_t)>> resizeCallbacks_;
 };
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "RenderPass.h"
+#include "PostEffectPass.h"
 #include "Graphics/Render/RenderGraph.h"
 #include <vector>
 #include <memory>
@@ -90,10 +91,25 @@ namespace CoreEngine
         /// @param context レンダリングコンテキスト
         void ConfigurePassesForView(const RenderContext& context);
 
+        /// @brief PostEffect の有効エフェクト列を Graph ノードへ分解して追加する
+        /// @param context レンダリングコンテキスト
+        void AppendPostEffectPasses(const RenderContext& context);
+
+        /// @brief BackBuffer パスへ最終入力論理リソースを設定する
+        /// @param finalPostEffectResource PostEffect 後の最終論理リソース名
+        void ConfigureBackBufferInput(const std::string& finalPostEffectResource);
+
+        /// @brief Graph 実行後に最終表示テクスチャハンドルを同期する
+        /// @param context レンダリングコンテキスト
+        void SyncFinalDisplayHandle(const RenderContext& context);
+
         /// @brief ReflectionView 実行後の共有結果を収集する
         /// @param context ReflectionView 実行に使用したレンダリングコンテキスト
         /// @return ReflectionView の共有結果
         ReflectionViewResult BuildReflectionViewResult(const RenderContext& context) const;
+
+        std::vector<std::unique_ptr<PostEffectPass>> postEffectSubpasses_;
+        std::string finalDisplayResourceName_ = FrameBlackboard::SceneColor;
 
         std::vector<std::unique_ptr<RenderPass>> passes_;
         RenderGraph renderGraph_{};

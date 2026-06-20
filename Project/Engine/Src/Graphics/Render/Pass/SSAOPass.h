@@ -1,5 +1,6 @@
 #pragma once
 #include "RenderPass.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include <string>
 
 namespace CoreEngine
@@ -20,7 +21,7 @@ namespace CoreEngine
         void SetSSAOBlurTargetName(const std::string& name) { ssaoBlurTargetName_ = name; }
 
     private:
-        std::string ssaoTargetName_     = "SSAOBuffer";
-        std::string ssaoBlurTargetName_ = "SSAOBlurBuffer";
+        std::string ssaoTargetName_     = RenderTargetNames::SSAOBuffer;
+        std::string ssaoBlurTargetName_ = RenderTargetNames::SSAOBlurBuffer;
     };
 }

@@ -21,6 +21,7 @@
 - [Step05_AutoBarrier.md](./Step05_AutoBarrier.md) - 主要リソースの自動バリア導入
 - [Step06_MultiViewIntegration.md](./Step06_MultiViewIntegration.md) - Shadow / RT / 複数 View 統合
 - [Step07_LegacyPipelineRemoval.md](./Step07_LegacyPipelineRemoval.md) - 旧実行経路削除と RenderGraph 完全移行
+- [Step08_FullPassGraphMigration.md](./Step08_FullPassGraphMigration.md) - Graph 外 GPU 経路整理と全パス RenderGraph 化方針
 
 ### 0-3. 読み方
 - 最初にこの `README.md` で全体像を確認する

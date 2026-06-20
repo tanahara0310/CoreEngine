@@ -258,7 +258,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Sepia\Sepia.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave\Shockwave.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp" />
@@ -382,7 +381,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Common\Core\CommandManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DescriptorManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DeviceManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\OffScreenRenderTargetManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\SwapChainManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelLoader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\FullScreen.cpp" />
@@ -524,7 +522,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Sepia\Sepia.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave\Shockwave.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h" />
@@ -705,7 +702,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Common\Core\CommandManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DeviceManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\OffScreenRenderTargetManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\SwapChainManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\FullScreen.h" />
@@ -793,6 +789,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\Refactoring\Step05_AutoBarrier.md" />
     <None Include="Docs\Refactoring\Step06_MultiViewIntegration.md" />
     <None Include="Docs\Refactoring\Step07_LegacyPipelineRemoval.md" />
+    <None Include="Docs\Refactoring\Step08_FullPassGraphMigration.md" />
     <None Include="Engine\Src\ObjectCommon\README.md" />
     <ClInclude Include="Engine\Src\pch.h" />
     <None Include="Build\Scripts\SyncFilters.ps1" />

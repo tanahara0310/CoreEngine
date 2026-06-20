@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderPass.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 
 namespace CoreEngine{
 
@@ -28,6 +29,6 @@ namespace CoreEngine{
         void SetRenderTargetName(const std::string& name) { targetName_ = name; }
 
     private:
-        std::string targetName_ = "Offscreen0";
+        std::string targetName_ = RenderTargetNames::SceneColor;
     };
 }

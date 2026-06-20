@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include <cstddef>
 #include <string>
 #include <unordered_map>
 
@@ -20,7 +21,6 @@ namespace CoreEngine
     };
 
     /// @brief フレーム内共有リソースを論理名で管理するブラックボード
-    /// @details Step 3 段階では既存 Manager 群の橋渡し層として使い、
     ///          Pass 間の Read / Write を論理名ベースで整理する。
     class FrameBlackboard {
     public:
@@ -33,11 +33,17 @@ namespace CoreEngine
         static const char* const ShadowMask;
         static const char* const RTShadowMask;
         static const char* const BackBuffer;
+        static const char* const PostEffectFinal;
         static const char* const GBufferAlbedoAO;
         static const char* const GBufferNormalRoughness;
         static const char* const GBufferEmissiveMetallic;
         static const char* const GBufferWorldPosition;
         static const char* const GBufferMotionVector;
+
+        /// @brief PostEffect の中間論理リソース名を生成する
+        /// @param index 中間段インデックス
+        /// @return PostEffectIntermediateN 形式の論理名
+        static std::string MakePostEffectIntermediateName(size_t index);
 
         /// @brief Blackboard に登録された全論理リソースをクリアする
         void Reset();

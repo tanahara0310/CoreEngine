@@ -1,4 +1,5 @@
 #pragma once
+#include "RenderTargetNames.h"
 #include "RenderTargetDescriptor.h"
 #include "RenderTarget.h"
 #include "OffscreenRenderTarget.h"
@@ -20,7 +21,7 @@ namespace CoreEngine
     class RenderTargetManager {
     public:
         RenderTargetManager() = default;
-        ~RenderTargetManager() = default;
+        ~RenderTargetManager();
 
         /// @brief 初期化
         /// @param dxCommon DirectXCommon
@@ -37,7 +38,7 @@ namespace CoreEngine
         /// @brief バックバッファターゲットを作成
         /// @param name ターゲット名
         /// @return 作成されたバックバッファターゲット
-        RenderTarget* CreateBackBufferTarget(const std::string& name = "BackBuffer");
+        RenderTarget* CreateBackBufferTarget(const std::string& name);
 
         // ===== レンダーターゲットの取得 =====
 
@@ -86,6 +87,27 @@ namespace CoreEngine
         /// @return DirectXCommon
         DirectXCommon* GetDirectXCommon() const { return dxCommon_; }
 
+        /// @brief PostEffect intermediate 用ターゲット名を取得する
+        /// @param index intermediate インデックス
+        /// @return 物理ターゲット名
+        static std::string MakePostEffectIntermediateTargetName(size_t index);
+
+        /// @brief PostEffect intermediate 用ターゲットを必要数ぶん確保する
+        /// @param count 必要な intermediate 数
+        void EnsurePostEffectIntermediateTargets(size_t count);
+
+        /// @brief PostEffect intermediate 用ターゲットを取得する
+        /// @param index intermediate インデックス
+        /// @return 対応するレンダーターゲット。無い場合は nullptr
+        RenderTarget* GetPostEffectIntermediateTarget(size_t index);
+
+        /// @brief PostEffect final 用ターゲットを確保する
+        void EnsurePostEffectFinalTarget();
+
+        /// @brief PostEffect final 用ターゲットを取得する
+        /// @return 対応するレンダーターゲット。無い場合は nullptr
+        RenderTarget* GetPostEffectFinalTarget();
+
     private:
         // DirectXCommonへの参照
         DirectXCommon* dxCommon_ = nullptr;
@@ -99,7 +121,7 @@ namespace CoreEngine
         // レンダーターゲットの記述子マップ（リサイズ時に再利用）
         std::unordered_map<std::string, RenderTargetDescriptor> descriptors_;
 
-        // 次に使用するオフスクリーンインデックス（内部管理用）
+        // 次に使用するオフスクリーンインデックス（内部識別用）
         int nextOffscreenIndex_ = 0;
 
         // 再利用可能なオフスクリーンインデックス

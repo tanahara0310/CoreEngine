@@ -1,5 +1,6 @@
 #pragma once
 #include "../RenderingTechniqueBase.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
 #include <wrl.h>
@@ -70,7 +71,7 @@ namespace CoreEngine
         void CreateConstantBuffers();
 
         // ===== 出力設定 =====
-        std::string targetName_ = "Offscreen0";
+        std::string targetName_ = RenderTargetNames::SceneColor;
 
         // ===== ライティングリソース =====
         D3D12_GPU_VIRTUAL_ADDRESS cameraCBVAddress_ = 0;

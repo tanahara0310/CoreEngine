@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "RenderTargetManager.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "RenderTargetNames.h"
 #include <cassert>
 
 #ifdef _DEBUG
@@ -9,6 +10,16 @@
 
 namespace CoreEngine
 {
+    RenderTargetManager::~RenderTargetManager()
+    {
+        Clear();
+    }
+
+    std::string RenderTargetManager::MakePostEffectIntermediateTargetName(size_t index)
+    {
+        return std::string(RenderTargetNames::PostEffectIntermediatePrefix) + std::to_string(index);
+    }
+
     void RenderTargetManager::Initialize(DirectXCommon* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap)
     {
         assert(dxCommon != nullptr && "DirectXCommon must not be null");
@@ -53,10 +64,7 @@ namespace CoreEngine
         }
         
         // 初期化
-        offscreenTarget->Initialize(dxCommon_, targetIndex);
-
-        // クリアカラーを設定
-        offscreenTarget->SetClearColor(desc.clearColor);
+        offscreenTarget->Initialize(dxCommon_, dxCommon_->GetDescriptorManager(), desc, targetIndex);
 
         // ターゲットをマップに登録
         RenderTarget* targetPtr = offscreenTarget.get();
@@ -72,6 +80,39 @@ namespace CoreEngine
 #endif
 
         return targetPtr;
+    }
+
+    void RenderTargetManager::EnsurePostEffectIntermediateTargets(size_t count)
+    {
+        for (size_t index = 0; index < count; ++index) {
+            const std::string name = MakePostEffectIntermediateTargetName(index);
+            if (HasRenderTarget(name)) {
+                continue;
+            }
+
+            RenderTargetDescriptor desc(name);
+            CreateRenderTarget(desc);
+        }
+    }
+
+    RenderTarget* RenderTargetManager::GetPostEffectIntermediateTarget(size_t index)
+    {
+        return GetRenderTarget(MakePostEffectIntermediateTargetName(index));
+    }
+
+    void RenderTargetManager::EnsurePostEffectFinalTarget()
+    {
+        if (HasRenderTarget(RenderTargetNames::PostEffectFinal)) {
+            return;
+        }
+
+        RenderTargetDescriptor desc(RenderTargetNames::PostEffectFinal);
+        CreateRenderTarget(desc);
+    }
+
+    RenderTarget* RenderTargetManager::GetPostEffectFinalTarget()
+    {
+        return GetRenderTarget(RenderTargetNames::PostEffectFinal);
     }
 
     RenderTarget* RenderTargetManager::CreateBackBufferTarget(const std::string& name)
@@ -183,22 +224,21 @@ namespace CoreEngine
 
     void RenderTargetManager::ResizeAutoTargets(uint32_t newWidth, uint32_t newHeight)
     {
-        // 自動リサイズ対象のターゲットをリサイズ
-        // 注意: 現在のOffscreenRenderTargetの実装では動的リサイズは未対応のため、
-        // 将来の拡張のためのAPIとして定義のみ
-        
-        (void)newWidth;
-        (void)newHeight;
+        for (const auto& [name, desc] : descriptors_) {
+            if (!desc.autoResize) {
+                continue;
+            }
 
-#ifdef _DEBUG
-        std::string msg = "[RenderTargetManager] ResizeAutoTargets called (width: " + 
-                         std::to_string(newWidth) + ", height: " + std::to_string(newHeight) + ")\n";
-        OutputDebugStringA(msg.c_str());
-        OutputDebugStringA("[RenderTargetManager] NOTE: Auto-resize is not yet implemented for OffscreenRenderTarget.\n");
-#endif
+            auto it = targets_.find(name);
+            if (it == targets_.end()) {
+                continue;
+            }
 
-        // TODO: 将来の実装
-        // - 各ターゲットの記述子を確認
-        // - autoResize == true のものを再作成
+            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(it->second.get())) {
+                const uint32_t targetWidth = (desc.width > 0) ? desc.width : newWidth;
+                const uint32_t targetHeight = (desc.height > 0) ? desc.height : newHeight;
+                offscreen->Resize(targetWidth, targetHeight);
+            }
+        }
     }
 }

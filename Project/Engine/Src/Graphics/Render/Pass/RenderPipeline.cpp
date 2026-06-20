@@ -18,10 +18,38 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectBase.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Scene/IScene.h"
 
 namespace CoreEngine
 {
+    namespace {
+        D3D12_GPU_DESCRIPTOR_HANDLE ResolveSceneColorHandle(const RenderContext& context, const std::string& resourceName)
+        {
+            if (resourceName.empty()) {
+                return {};
+            }
+
+            if (const FrameBlackboardResource* resource = context.frameBlackboard
+                ? context.frameBlackboard->GetResource(resourceName)
+                : nullptr;
+                resource && resource->srvHandle.ptr != 0) {
+                return resource->srvHandle;
+            }
+
+            if (!context.renderTargetManager) {
+                return {};
+            }
+
+            if (RenderTarget* target = context.renderTargetManager->GetRenderTarget(resourceName)) {
+                return target->GetSRVHandle();
+            }
+
+            return {};
+        }
+    }
+
     void RenderPipeline::AddPass(std::unique_ptr<RenderPass> pass)
     {
         if (pass) {
@@ -80,6 +108,16 @@ namespace CoreEngine
         }
 
         if (context.renderTargetManager) {
+            const std::vector<PostEffectBase*>* enabledEffects = context.postEffectManager
+                ? &context.postEffectManager->GetEnabledEffects()
+                : nullptr;
+            const size_t intermediateCount = (enabledEffects && enabledEffects->size() > 1)
+                ? (enabledEffects->size() - 1)
+                : 0;
+
+            context.renderTargetManager->EnsurePostEffectIntermediateTargets(intermediateCount);
+            context.renderTargetManager->EnsurePostEffectFinalTarget();
+
             if (RenderTarget* sceneColorTarget = context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName)) {
                 D3D12_RESOURCE_STATES* sceneColorState = nullptr;
                 if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(sceneColorTarget)) {
@@ -93,7 +131,35 @@ namespace CoreEngine
                     sceneColorState);
             }
 
-            if (RenderTarget* backBufferTarget = context.renderTargetManager->GetRenderTarget("BackBuffer")) {
+            for (size_t index = 0; index < intermediateCount; ++index) {
+                if (RenderTarget* postEffectIntermediateTarget = context.renderTargetManager->GetPostEffectIntermediateTarget(index)) {
+                    D3D12_RESOURCE_STATES* stateRef = nullptr;
+                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(postEffectIntermediateTarget)) {
+                        stateRef = &offscreen->GetCurrentState();
+                    }
+
+                    context.frameBlackboard->SetResource(
+                        FrameBlackboard::MakePostEffectIntermediateName(index),
+                        postEffectIntermediateTarget->GetSRVHandle(),
+                        postEffectIntermediateTarget->GetResource(),
+                        stateRef);
+                }
+            }
+
+            if (RenderTarget* postEffectFinalTarget = context.renderTargetManager->GetPostEffectFinalTarget()) {
+                D3D12_RESOURCE_STATES* finalState = nullptr;
+                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(postEffectFinalTarget)) {
+                    finalState = &offscreen->GetCurrentState();
+                }
+
+                context.frameBlackboard->SetResource(
+                    FrameBlackboard::PostEffectFinal,
+                    postEffectFinalTarget->GetSRVHandle(),
+                    postEffectFinalTarget->GetResource(),
+                    finalState);
+            }
+
+            if (RenderTarget* backBufferTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::BackBuffer)) {
                 D3D12_RESOURCE_STATES* backBufferState = nullptr;
                 if (auto* backBuffer = dynamic_cast<BackBufferRenderTarget*>(backBufferTarget)) {
                     backBufferState = &backBuffer->GetCurrentState();
@@ -168,6 +234,9 @@ namespace CoreEngine
     void RenderPipeline::BuildRenderGraph([[maybe_unused]] const RenderContext& context)
     {
         renderGraph_.Reset();
+        postEffectSubpasses_.clear();
+        finalDisplayResourceName_ = FrameBlackboard::SceneColor;
+        ConfigureBackBufferInput(FrameBlackboard::SceneColor);
         const RenderViewSettings& viewSettings = context.viewSettings;
 
         // ShadowMap は主方向ライトの深度を書き出す先行パスとして登録する。
@@ -242,27 +311,98 @@ namespace CoreEngine
                 });
         }
 
-        // PostEffect は SceneColor を読み取り、後段用の SceneColor を再生成する。
+        // PostEffect は有効エフェクトごとのノード列として分解する。
         if (viewSettings.enablePostEffect) {
-            if (auto* pass = GetPass<PostEffectPass>()) {
-                renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                    builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    });
-            }
+            AppendPostEffectPasses(context);
         }
 
         // BackBuffer は最終入力を読み、Present 前のレンダーターゲットとして書き込む。
         if (viewSettings.enableBackBuffer) {
             if (auto* pass = GetPass<BackBufferPass>()) {
-                renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                    builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    builder.Write("BackBuffer", D3D12_RESOURCE_STATE_RENDER_TARGET);
+                const std::string inputResourceName = pass->GetInputResourceName();
+                renderGraph_.AddPass(pass->GetName(), pass, [inputResourceName](RenderGraphBuilder& builder) {
+                    builder.Read(inputResourceName, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    builder.Write(FrameBlackboard::BackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
                     });
             }
         }
 
         renderGraph_.Compile(context);
+    }
+
+    void RenderPipeline::AppendPostEffectPasses(const RenderContext& context)
+    {
+        if (!context.postEffectManager) {
+            return;
+        }
+
+        const std::vector<PostEffectBase*>& enabledEffects = context.postEffectManager->GetEnabledEffects();
+        if (enabledEffects.empty()) {
+            return;
+        }
+
+        std::string currentInput = FrameBlackboard::SceneColor;
+        size_t effectIndex = 0;
+
+        for (PostEffectBase* effect : enabledEffects) {
+            if (!effect) {
+                continue;
+            }
+
+            const bool isLastEffect = (effectIndex + 1 >= enabledEffects.size());
+            const std::string outputResource = isLastEffect
+                ? std::string(FrameBlackboard::PostEffectFinal)
+                : FrameBlackboard::MakePostEffectIntermediateName(effectIndex);
+
+            const std::string effectName = std::string("PostEffect_") + std::to_string(effectIndex);
+
+            auto postEffectPass = std::make_unique<PostEffectPass>();
+            postEffectPass->SetEffect(effect, effectName);
+            postEffectPass->SetInputResourceName(currentInput);
+            postEffectPass->SetOutputResourceName(outputResource);
+            PostEffectPass* passPtr = postEffectPass.get();
+            postEffectSubpasses_.push_back(std::move(postEffectPass));
+
+            renderGraph_.AddPass(passPtr->GetName(), passPtr, [currentInput, outputResource, effect](RenderGraphBuilder& builder) {
+                const D3D12_RESOURCE_STATES inputState =
+                    (effect->GetExecutionType() == PostEffectExecutionType::Compute)
+                    ? D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+                    : D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                const D3D12_RESOURCE_STATES outputState =
+                    (effect->GetExecutionType() == PostEffectExecutionType::Compute)
+                    ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS
+                    : D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+                builder.Read(currentInput, inputState);
+                builder.Write(outputResource, outputState);
+                });
+
+            currentInput = outputResource;
+            ++effectIndex;
+        }
+
+        ConfigureBackBufferInput(currentInput);
+    }
+
+    void RenderPipeline::ConfigureBackBufferInput(const std::string& finalPostEffectResource)
+    {
+        finalDisplayResourceName_ = finalPostEffectResource;
+
+        if (auto* backBufferPass = GetPass<BackBufferPass>()) {
+            backBufferPass->SetInputResourceName(finalPostEffectResource);
+        }
+    }
+
+    void RenderPipeline::SyncFinalDisplayHandle(const RenderContext& context)
+    {
+        if (!context.postEffectManager || !context.frameBlackboard) {
+            return;
+        }
+
+        D3D12_GPU_DESCRIPTOR_HANDLE finalHandle{};
+        if (context.frameBlackboard->TryGetSrvHandle(finalDisplayResourceName_, finalHandle)) {
+            context.postEffectManager->SetFinalDisplayTextureHandle(finalHandle);
+        }
     }
 
     void RenderPipeline::ExecuteRenderGraph(const RenderContext& context)
@@ -271,6 +411,7 @@ namespace CoreEngine
         graphContext.renderContext = &context;
 
         renderGraph_.Execute(graphContext);
+        SyncFinalDisplayHandle(context);
     }
 
     void RenderPipeline::ExecuteView(
@@ -334,8 +475,9 @@ namespace CoreEngine
             result.sceneDepthSrv = context.depthStencilManager->GetDepthSRVHandle();
         }
 
-        if (RenderTarget* sceneColorTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::Offscreen0)) {
-            result.sceneColorSrv = sceneColorTarget->GetSRVHandle();
+        result.sceneColorSrv = ResolveSceneColorHandle(context, finalDisplayResourceName_);
+        if (result.sceneColorSrv.ptr == 0) {
+            result.sceneColorSrv = ResolveSceneColorHandle(context, context.viewSettings.sceneColorTargetName);
         }
 
         result.isValid = result.reflectionSrv.ptr != 0;

@@ -217,9 +217,6 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
     </ClCompile>
@@ -587,9 +584,6 @@
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DeviceManager.cpp">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Common\Core\OffScreenRenderTargetManager.cpp">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\Core\SwapChainManager.cpp">
@@ -1001,9 +995,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping\ToneMapping.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\ToneMapping</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PingPongBuffer.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Vignette\Vignette.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
@@ -1545,9 +1536,6 @@
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DeviceManager.h">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Common\Core\OffScreenRenderTargetManager.h">
-      <Filter>Engine\Src\Graphics\Common\Core</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\Core\SwapChainManager.h">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
@@ -1791,6 +1779,9 @@
       <Filter>Docs\Refactoring</Filter>
     </None>
     <None Include="Docs\Refactoring\Step07_LegacyPipelineRemoval.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
+    <None Include="Docs\Refactoring\Step08_FullPassGraphMigration.md">
       <Filter>Docs\Refactoring</Filter>
     </None>
     <None Include="Engine\Src\ObjectCommon\README.md">

@@ -133,8 +133,6 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
         if (postEffectManager) {
             textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
-        } else if (dxCommon) {
-            textureHandle = dxCommon->GetOffScreenSrvHandle();
         }
 
         if (!ImGui::Begin("Game", nullptr,

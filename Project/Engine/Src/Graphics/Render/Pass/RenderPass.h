@@ -3,6 +3,7 @@
 #include <d3d12.h>
 
 #include "Graphics/Render/FrameBlackboard.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 
 namespace CoreEngine
 {
@@ -20,7 +21,7 @@ namespace CoreEngine
         bool enableRTShadow = true;
         bool enablePostEffect = true;
         bool enableBackBuffer = true;
-        std::string sceneColorTargetName = "Offscreen0";
+        std::string sceneColorTargetName = RenderTargetNames::SceneColor;
     };
 
     class DirectXCommon;

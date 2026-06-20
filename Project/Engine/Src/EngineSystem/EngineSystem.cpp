@@ -384,15 +384,14 @@ namespace CoreEngine
 
         // 3. DeferredLightingパス
         // G-Buffer (AlbedoAO / NormalRoughness / EmissiveMetallic) を読み取り、
-        // 遅延ライティングを計算して Offscreen0 に書き込む
+        // 遅延ライティングを計算して現在の SceneColor ターゲットへ書き込む
         auto deferredLightingPass = std::make_unique<DeferredLightingPass>();
         renderPipeline_->AddPass(std::move(deferredLightingPass));
 
         // 4. ジオメトリパス（透過オブジェクト / SkyBox / UI / パーティクル 等の Forward 描画）
-        // DeferredLightingPass が Offscreen0 に書き込んだ結果の上に重ね描きする
+        // DeferredLightingPass が SceneColor ターゲットへ書き込んだ結果の上に重ね描きする
         // 不透明 Model/SkinnedModel は GBufferPass + DeferredLightingPass で処理済みなので描画しない
         auto geometryPass = std::make_unique<GeometryPass>();
-        geometryPass->SetRenderTargetName(RenderTargetNames::Offscreen0);  // 名前ベースで指定
         renderPipeline_->AddPass(std::move(geometryPass));
 
         // 5. ポストエフェクトパス

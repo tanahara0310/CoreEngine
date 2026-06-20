@@ -13,7 +13,7 @@ namespace CoreEngine
     {
         D3D12_GPU_DESCRIPTOR_HANDLE finalInput{};
         if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, finalInput);
+            context.frameBlackboard->TryGetSrvHandle(inputResourceName_, finalInput);
         }
 
         // RenderTargetManagerが必要
