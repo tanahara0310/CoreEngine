@@ -7,6 +7,7 @@ CoreEngine のグラフィクスシステムに関するドキュメントです
 | ドキュメント | 内容 |
 |---|---|
 | [Lighting.md](./Lighting.md) | ライトの種類・API・IBL のセットアップ |
+| [LightningEffect.md](./LightningEffect.md) | 雷演出の構成、主要パラメータ、枝分かれ調整の目安 |
 | [ModelManager.md](./ModelManager.md) | モデルの読み込み・管理 |
 | [TextureManager.md](./TextureManager.md) | テクスチャの読み込み・管理 |
  | [Rendering/README.md](./Rendering/README.md) | 現行レンダリングパイプラインの整理と Deferred / RenderGraph 化方針 |

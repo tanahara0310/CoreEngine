@@ -1,9 +1,6 @@
 #include "pch.h"
 #include "Framework.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
-#ifdef _DEBUG
-#include "Utility/Debug/LivePPAgent.h"
-#endif
 
 
 namespace CoreEngine
@@ -22,15 +19,6 @@ namespace CoreEngine
         // メモリリークチェッカーの生成（デバッグビルドのみ）
 #ifdef _DEBUG
         leakChecker_ = std::make_unique<LeakChecker>();
-#endif
-
-        // ──────────────────────────────────────────────────────────
-        // Live++ エージェントの初期化（デバッグビルドのみ）
-        // ※ できる限り早く起動し、エンジン初期化と並行して PDB をロードさせる
-        // ──────────────────────────────────────────────────────────
-#ifdef _DEBUG
-        LivePPAgent livepp;
-        livepp.Initialize();
 #endif
 
         // ──────────────────────────────────────────────────────────
@@ -63,11 +51,6 @@ namespace CoreEngine
                 break; // WM_QUIT メッセージが来たら終了
             }
 
-#ifdef _DEBUG
-            // Live++ ホットリロード / ホットリスタートの処理（フレーム先頭で実行）
-            livepp.Update();
-#endif
-
             // エンジンシステムのフレーム開始処理
             engineSystem_->BeginFrame();
 
@@ -96,5 +79,13 @@ namespace CoreEngine
 
         // ウィンドウアプリケーションの終了処理
         winApp_->CloseAppWindow();
+
+        // Run 終了前に明示破棄し、終了順を安定させる
+        engineSystem_.reset();
+        winApp_.reset();
+
+#ifdef _DEBUG
+        leakChecker_.reset();
+#endif
     }
 }

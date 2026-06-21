@@ -146,7 +146,13 @@ namespace CoreEngine
             renderDomainContext_.reset();
         }
 
-        componentOwners_.clear();
+        renderPipeline_.reset();
+
+        while (!componentOwners_.empty()) {
+            componentOwners_.back().reset();
+            componentOwners_.pop_back();
+        }
+        componentManager_.Clear();
 
         // COMの解放
         CoUninitialize();

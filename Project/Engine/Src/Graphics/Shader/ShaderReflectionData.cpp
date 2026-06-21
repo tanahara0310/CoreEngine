@@ -7,29 +7,52 @@
 
 namespace CoreEngine
 {
-    void ShaderReflectionData::AddCBV(const ShaderResourceBinding& binding) {
-        // 重複チェック（bindPoint、space、visibilityで判定）
-        if (!HasBinding(cbvBindings_, binding.bindPoint, binding.space, binding.visibility)) {
-            cbvBindings_.push_back(binding);
+    namespace {
+        ShaderResourceBinding* FindMergeableBinding(
+            std::vector<ShaderResourceBinding>& bindings,
+            const ShaderResourceBinding& incoming)
+        {
+            auto it = std::find_if(bindings.begin(), bindings.end(),
+                [&incoming](const ShaderResourceBinding& binding) {
+                    return binding.type == incoming.type
+                        && binding.bindPoint == incoming.bindPoint
+                        && binding.space == incoming.space
+                        && binding.name == incoming.name;
+                });
+            return it != bindings.end() ? &(*it) : nullptr;
         }
+
+        void AddOrMergeBinding(
+            std::vector<ShaderResourceBinding>& bindings,
+            const ShaderResourceBinding& incoming)
+        {
+            if (ShaderResourceBinding* existing = FindMergeableBinding(bindings, incoming)) {
+                existing->bindCount = std::max(existing->bindCount, incoming.bindCount);
+                existing->size = std::max(existing->size, incoming.size);
+                if (existing->visibility != incoming.visibility) {
+                    existing->visibility = D3D12_SHADER_VISIBILITY_ALL;
+                }
+                return;
+            }
+
+            bindings.push_back(incoming);
+        }
+    }
+
+    void ShaderReflectionData::AddCBV(const ShaderResourceBinding& binding) {
+        AddOrMergeBinding(cbvBindings_, binding);
     }
 
     void ShaderReflectionData::AddSRV(const ShaderResourceBinding& binding) {
-        if (!HasBinding(srvBindings_, binding.bindPoint, binding.space, binding.visibility)) {
-            srvBindings_.push_back(binding);
-        }
+        AddOrMergeBinding(srvBindings_, binding);
     }
 
     void ShaderReflectionData::AddUAV(const ShaderResourceBinding& binding) {
-        if (!HasBinding(uavBindings_, binding.bindPoint, binding.space, binding.visibility)) {
-            uavBindings_.push_back(binding);
-        }
+        AddOrMergeBinding(uavBindings_, binding);
     }
 
     void ShaderReflectionData::AddSampler(const ShaderResourceBinding& binding) {
-        if (!HasBinding(samplerBindings_, binding.bindPoint, binding.space, binding.visibility)) {
-            samplerBindings_.push_back(binding);
-        }
+        AddOrMergeBinding(samplerBindings_, binding);
     }
 
     std::vector<ShaderResourceBinding> ShaderReflectionData::GetAllBindingsSorted() const {
@@ -185,32 +208,24 @@ namespace CoreEngine
     }
 
     void ShaderReflectionData::Merge(const ShaderReflectionData& other) {
-        // CBVをマージ（重複チェック）
+        // CBVをマージ（同一リソースが複数ステージで使われる場合は visibility を ALL に統合する）
         for (const auto& cbv : other.cbvBindings_) {
-            if (!HasBinding(cbvBindings_, cbv.bindPoint, cbv.space, cbv.visibility)) {
-                cbvBindings_.push_back(cbv);
-            }
+            AddOrMergeBinding(cbvBindings_, cbv);
         }
 
         // SRVをマージ
         for (const auto& srv : other.srvBindings_) {
-            if (!HasBinding(srvBindings_, srv.bindPoint, srv.space, srv.visibility)) {
-                srvBindings_.push_back(srv);
-            }
+            AddOrMergeBinding(srvBindings_, srv);
         }
 
         // UAVをマージ
         for (const auto& uav : other.uavBindings_) {
-            if (!HasBinding(uavBindings_, uav.bindPoint, uav.space, uav.visibility)) {
-                uavBindings_.push_back(uav);
-            }
+            AddOrMergeBinding(uavBindings_, uav);
         }
 
         // Samplerをマージ
         for (const auto& sampler : other.samplerBindings_) {
-            if (!HasBinding(samplerBindings_, sampler.bindPoint, sampler.space, sampler.visibility)) {
-                samplerBindings_.push_back(sampler);
-            }
+            AddOrMergeBinding(samplerBindings_, sampler);
         }
 
         // Input Layoutは頂点シェーダーからのみ取得するので、既存を優先

@@ -134,6 +134,27 @@ public:
     /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
     void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);
 
+    /// @brief 雷の水面着弾演出パラメータを設定する
+    void ClearLightningImpacts();
+
+    /// @brief 指定インデックスの雷着弾演出パラメータを設定する
+    /// @param impactCenter 水面上の着弾中心座標（XZ を使用）
+    /// @param impactRadius 拡散リング半径
+    /// @param impactIntensity 着弾リングと中心発光の強さ
+    /// @param chargeRadius 帯電の広がり半径
+    /// @param chargeIntensity 帯電の強さ
+    /// @param impactTime 着弾後経過時間
+    /// @param screenFlash 画面フラッシュ強度
+    void SetLightningImpactAt(
+        uint32_t index,
+        const CoreEngine::Vector3& impactCenter,
+        float impactRadius,
+        float impactIntensity,
+        float chargeRadius,
+        float chargeIntensity,
+        float impactTime,
+        float screenFlash);
+
 protected:
     std::string GetTexturePath() const override { return {}; }
 
@@ -165,9 +186,12 @@ private:
 
     // ---- フレーム定数バッファ（b5 にバインド）: クリップ平面 ----
     WaterFrameConstants frameCB_;                                    ///< CPU 側バッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> frameCBResource_;         ///< GPU リソース
-    D3D12_GPU_VIRTUAL_ADDRESS frameCBGpuAddress_ = 0;                ///< GPU 仮想アドレス
-    uint8_t* frameCBMapped_ = nullptr;                               ///< マップ済みポインタ
+    Microsoft::WRL::ComPtr<ID3D12Resource> frameCBResource_;         ///< 通常描画用 GPU リソース
+    D3D12_GPU_VIRTUAL_ADDRESS frameCBGpuAddress_ = 0;                ///< 通常描画用 GPU 仮想アドレス
+    uint8_t* frameCBMapped_ = nullptr;                               ///< 通常描画用マップ済みポインタ
+    Microsoft::WRL::ComPtr<ID3D12Resource> reflectionFrameCBResource_; ///< 反射パス用 GPU リソース
+    D3D12_GPU_VIRTUAL_ADDRESS reflectionFrameCBGpuAddress_ = 0;        ///< 反射パス用 GPU 仮想アドレス
+    uint8_t* reflectionFrameCBMapped_ = nullptr;                       ///< 反射パス用マップ済みポインタ
 
     // ---- 反射テクスチャ SRV（t14 にバインド） ----
     D3D12_GPU_DESCRIPTOR_HANDLE reflectionSRV_ = { 0 };              ///< 反射 RTT の SRV

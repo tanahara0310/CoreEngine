@@ -6,7 +6,10 @@
 
 #include "Sample/TestGameObject/Primitive/WaterPlaneObject.h"
 #include "Sample/TestGameObject/Model/ModelObject.h"
+#include "Sample/TestGameObject/Effect/LightningStrikeObject.h"
 #include "WaterReflectionPass.h"
+
+#include <array>
 
 #ifdef USE_IMGUI
 #include "Utility/Debug/ImGui/ImGuiAll.h"
@@ -45,9 +48,21 @@ public:
     void Finalize() override;
 
 private:
+    struct ActiveLightningImpact {
+        CoreEngine::Vector3 position = { 0.0f, 0.0f, 0.0f };
+        float elapsed = 0.0f;
+        float ringRadius = 0.0f;
+        float chargeRadius = 0.6f;
+        float visualIntensity = 1.0f;
+        bool active = false;
+    };
+
 #ifdef USE_IMGUI
     /// @brief 水面パラメータ ImGui パネルを描画する
     void DrawWaterImGui();
+
+    /// @brief 雷エフェクト ImGui セクションを描画する
+    void DrawLightningImGui();
 
     /// @brief 指定したプリセットを WaterPlaneObject と ImGui キャッシュに適用する
     void ApplyWaterPreset(WaterPresetType preset);
@@ -59,14 +74,51 @@ private:
     void RestoreRecommendedWaveCount(WaterPresetType preset);
 #endif
 
+    /// @brief ランダムな着弾位置で雷を発生させる
+    void TriggerRandomLightningStrike();
+
+    /// @brief 複数本の雷をランダム地点へ連続着弾させるバーストを開始する
+    void StartLightningBurst();
+
+    /// @brief バースト内の次の雷をランダム地点へ着弾させる
+    void TriggerBurstStrike();
+
+    /// @brief 指定位置へ雷を発生させる
+    void TriggerLightningStrikeAt(const CoreEngine::Vector3& impactPosition);
+
+    /// @brief 自動雷演出のタイマーを更新する
+    void UpdateLightningSequence(float deltaTime);
+
+    /// @brief 雷着弾後の水面演出状態を更新する
+    void UpdateLightningImpactEffect(float deltaTime);
+
     /// @brief 水面グリッドメッシュオブジェクト
     WaterPlaneObject* waterPlane_ = nullptr;
 
     /// @brief 地面モデルオブジェクト
     ModelObject* groundObject_ = nullptr;
 
+    /// @brief 雷エフェクトオブジェクト
+    LightningStrikeObject* lightningStrike_ = nullptr;
+
     /// @brief 水面平面反射パス（Step 4）
     WaterReflectionPass reflectionPass_;
+
+    bool  lightningEffectEnabled_ = true;
+    bool  lightningAutoLoop_ = true;
+    float lightningIntervalMin_ = 0.0f;
+    float lightningIntervalMax_ = 0.06f;
+    float lightningStrikeDuration_ = 0.55f;
+    float lightningStrikeIntensity_ = 2.10f;
+    float lightningTimer_ = 0.0f;
+    int   lightningBurstRemaining_ = 0;
+    float lightningBurstCooldown_ = 0.0f;
+    float lightningStartHeightMin_ = 26.0f;
+    float lightningStartHeightMax_ = 40.0f;
+    float lightningStrikeRadius_ = 28.0f;
+    float lightningImpactDuration_ = 1.6f;
+    std::array<ActiveLightningImpact, kMaxWaterLightningImpactCount> lightningImpacts_{};
+    uint32_t nextLightningImpactSlot_ = 0;
 
 #ifdef USE_IMGUI
     // ---- ImGui 用キャッシュ（Material 側は Set/Get 経由で同期する） ----
@@ -92,6 +144,13 @@ private:
     bool  imguiDepthFadeDebugEnabled_ = false;      ///< Depth Fade デバッグ表示
     float imguiDepthFadeDebugScale_ = 1.5f;         ///< Depth Fade デバッグ表示倍率
     int   imguiDepthDebugViewMode_ = static_cast<int>(WaterDebugViewMode::RawDepth); ///< 水面デバッグ可視化モード
+
+    bool  imguiLightningAutoLoop_ = true;
+    bool  imguiLightningEffectEnabled_ = true;
+    float imguiLightningStrikeDuration_ = 0.55f;
+    float imguiLightningStrikeIntensity_ = 2.10f;
+    float imguiLightningIntervalMin_ = 0.0f;
+    float imguiLightningIntervalMax_ = 0.06f;
 
 #endif
 };

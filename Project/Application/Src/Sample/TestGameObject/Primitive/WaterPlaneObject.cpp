@@ -97,7 +97,7 @@ void WaterPlaneObject::CreateWaterConstantBuffer(ID3D12Device* device) {
     D3D12_RANGE readRange = { 0, 0 };
     waterCBResource_->Map(0, &readRange, reinterpret_cast<void**>(&waterCBMapped_));
 
-    // ---- フレーム定数バッファ（クリップ平面） ----
+    // ---- フレーム定数バッファ（通常描画用 / 反射パス用） ----
     desc.Width = kFrameCBSize;
     hr = device->CreateCommittedResource(
         &heapProps,
@@ -109,8 +109,19 @@ void WaterPlaneObject::CreateWaterConstantBuffer(ID3D12Device* device) {
     assert(SUCCEEDED(hr));
     frameCBGpuAddress_ = frameCBResource_->GetGPUVirtualAddress();
     frameCBResource_->Map(0, &readRange, reinterpret_cast<void**>(&frameCBMapped_));
-    // 初期値を書き込む
     std::memcpy(frameCBMapped_, &frameCB_, sizeof(WaterFrameConstants));
+
+    hr = device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &desc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&reflectionFrameCBResource_));
+    assert(SUCCEEDED(hr));
+    reflectionFrameCBGpuAddress_ = reflectionFrameCBResource_->GetGPUVirtualAddress();
+    reflectionFrameCBResource_->Map(0, &readRange, reinterpret_cast<void**>(&reflectionFrameCBMapped_));
+    std::memcpy(reflectionFrameCBMapped_, &frameCB_, sizeof(WaterFrameConstants));
 }
 
 void WaterPlaneObject::BindCustomResources(
@@ -122,12 +133,15 @@ void WaterPlaneObject::BindCustomResources(
     }
 
     if (frameCB_.depthFadeDebugEnabled != 0) {
+        const D3D12_GPU_VIRTUAL_ADDRESS selectedFrameCBGpuAddress = frameCB_.clipEnabled
+            ? reflectionFrameCBGpuAddress_
+            : frameCBGpuAddress_;
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::Pipeline,
             "WaterPlane BindCustomResources: b4={} b5={} reflSRV=0x{:X} depthSRV=0x{:X} sceneColorSRV=0x{:X} clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={}",
             waterCBGpuAddress_,
-            frameCBGpuAddress_,
+            selectedFrameCBGpuAddress,
             reflectionSRV_.ptr,
             sceneDepthSRV_.ptr,
             sceneColorSRV_.ptr,
@@ -146,9 +160,12 @@ void WaterPlaneObject::BindCustomResources(
 
     // WaterFrameConstants を b5 にバインドする（クリップ平面）
     int frameSlot = pipeline->GetRootParamIndex("WaterFrameConstants");
-    if (frameSlot >= 0 && frameCBGpuAddress_ != 0) {
+    const D3D12_GPU_VIRTUAL_ADDRESS selectedFrameCBGpuAddress = frameCB_.clipEnabled
+        ? reflectionFrameCBGpuAddress_
+        : frameCBGpuAddress_;
+    if (frameSlot >= 0 && selectedFrameCBGpuAddress != 0) {
         cmdList->SetGraphicsRootConstantBufferView(
-            static_cast<UINT>(frameSlot), frameCBGpuAddress_);
+            static_cast<UINT>(frameSlot), selectedFrameCBGpuAddress);
     }
 
     // 反射テクスチャ SRV をバインドする（ハンドルが有効なときのみ）
@@ -221,8 +238,9 @@ void WaterPlaneObject::SetClipPlane(const CoreEngine::Vector4& clipPlane, bool e
 }
 
 void WaterPlaneObject::UpdateFrameConstants() {
-    if (frameCBMapped_) {
-        std::memcpy(frameCBMapped_, &frameCB_, sizeof(WaterFrameConstants));
+    uint8_t* targetMapped = frameCB_.clipEnabled ? reflectionFrameCBMapped_ : frameCBMapped_;
+    if (targetMapped) {
+        std::memcpy(targetMapped, &frameCB_, sizeof(WaterFrameConstants));
     }
 }
 
@@ -292,6 +310,38 @@ void WaterPlaneObject::SetWaterColors(const CoreEngine::Vector3& shallowColor, c
     frameCB_.deepColor[0]    = deepColor.x;
     frameCB_.deepColor[1]    = deepColor.y;
     frameCB_.deepColor[2]    = deepColor.z;
+}
+
+void WaterPlaneObject::ClearLightningImpacts() {
+    frameCB_.lightningImpactCount = 0;
+    for (auto& impact : frameCB_.lightningImpacts) {
+        impact = {};
+    }
+}
+
+void WaterPlaneObject::SetLightningImpactAt(
+    uint32_t index,
+    const CoreEngine::Vector3& impactCenter,
+    float impactRadius,
+    float impactIntensity,
+    float chargeRadius,
+    float chargeIntensity,
+    float impactTime,
+    float screenFlash) {
+    if (index >= kMaxWaterLightningImpactCount) {
+        return;
+    }
+
+    auto& impact = frameCB_.lightningImpacts[index];
+    impact.center[0] = impactCenter.x;
+    impact.center[1] = impactCenter.z;
+    impact.radius = std::max(impactRadius, 0.0f);
+    impact.intensity = std::clamp(impactIntensity, 0.0f, 1.0f);
+    impact.chargeRadius = std::max(chargeRadius, 0.0f);
+    impact.chargeIntensity = std::clamp(chargeIntensity, 0.0f, 1.0f);
+    impact.impactTime = std::max(impactTime, 0.0f);
+    impact.screenFlash = std::clamp(screenFlash, 0.0f, 1.0f);
+    frameCB_.lightningImpactCount = std::max(frameCB_.lightningImpactCount, index + 1u);
 }
 
 void WaterPlaneObject::SetBaseColor(const CoreEngine::Vector4& color) {
