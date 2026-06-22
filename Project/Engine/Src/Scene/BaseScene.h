@@ -46,8 +46,8 @@ namespace CoreEngine
         /// @brief 描画処理（共通処理 + 派生クラスの描画）
         virtual void Draw() override;
 
-        /// @brief ReflectionView 用描画
-        virtual void DrawReflectionView() override;
+        /// @brief 補助 RenderView 用描画
+        virtual void DrawRenderView() override;
 
         /// @brief 解放（共通処理 + 派生クラスの解放）
         virtual void Finalize() override;

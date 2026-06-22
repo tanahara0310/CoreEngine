@@ -146,7 +146,13 @@ namespace CoreEngine
             renderDomainContext_.reset();
         }
 
-        componentOwners_.clear();
+        renderPipeline_.reset();
+
+        while (!componentOwners_.empty()) {
+            componentOwners_.back().reset();
+            componentOwners_.pop_back();
+        }
+        componentManager_.Clear();
 
         // COMの解放
         CoUninitialize();
@@ -262,33 +268,39 @@ namespace CoreEngine
                 context, dx, GetComponent<ModelManager>(), GetComponent<SceneManager>());
         }
 
-        // Water Reflection などの補助 View は、Scene 特例ではなく ReflectionView の Graph 実行で処理する。
+        // 補助 RenderView は Scene からの要求リストとして受け取り、RenderGraph 単位で順に実行する。
         if (sceneManager && render) {
-            const ReflectionViewRequest reflectionRequest = sceneManager->GetReflectionViewRequest();
-            if (reflectionRequest.isEnabled) {
-                RenderContext reflectionContext = context;
-                reflectionContext.viewSettings.viewType = RenderViewType::ReflectionView;
-                reflectionContext.viewSettings.enableSSAO = false;
-                reflectionContext.viewSettings.enableRTShadow = false;
-                reflectionContext.viewSettings.enablePostEffect = false;
-                reflectionContext.viewSettings.enableBackBuffer = false;
-                reflectionContext.viewSettings.sceneColorTargetName = RenderTargetNames::ReflectionView;
+            std::vector<RenderViewRequest> renderViewRequests = sceneManager->BuildRenderViewRequests();
+            for (RenderViewRequest& renderViewRequest : renderViewRequests) {
+                if (!renderViewRequest.isEnabled) {
+                    continue;
+                }
 
-                ICamera* reflectionBaseCamera = sceneManager->GetGameViewCamera3D();
-                const ReflectionViewResult reflectionResult = renderPipeline_->ExecuteReflectionView(
-                    reflectionContext,
-                    [sceneManager]() {
-                        sceneManager->DrawReflectionView();
-                    },
-                    [sceneManager, reflectionBaseCamera, reflectionRequest]() {
-                        sceneManager->SetupReflectionView(reflectionBaseCamera, reflectionRequest.planeHeight);
-                    },
-                    [sceneManager, reflectionBaseCamera]() {
-                        sceneManager->RestoreReflectionView(reflectionBaseCamera);
-                    });
+                RenderContext renderViewContext = context;
+                renderViewContext.viewSettings = renderViewRequest.viewSettings;
+                if (renderViewContext.viewSettings.sceneColorTargetName.empty()) {
+                    renderViewContext.viewSettings.sceneColorTargetName = RenderTargetNames::SceneColor;
+                }
 
-                if (reflectionResult.isValid) {
-                    sceneManager->ApplyReflectionViewResult(reflectionResult);
+                renderViewContext.currentRTShadowViewId =
+                    (renderViewContext.viewSettings.viewType == RenderViewType::ReflectionView)
+                    ? static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView)
+                    : static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
+
+                const std::function<void()> drawRenderView = renderViewRequest.drawCallback
+                    ? renderViewRequest.drawCallback
+                    : [sceneManager]() {
+                        sceneManager->DrawRenderView();
+                    };
+
+                const RenderViewResult renderViewResult = renderPipeline_->ExecuteRenderView(
+                    renderViewContext,
+                    drawRenderView,
+                    renderViewRequest.beforeExecute,
+                    renderViewRequest.afterExecute);
+
+                if (renderViewResult.isValid && renderViewRequest.completionCallback) {
+                    renderViewRequest.completionCallback(renderViewResult);
                 }
             }
         }

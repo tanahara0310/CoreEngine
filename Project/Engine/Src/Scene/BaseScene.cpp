@@ -119,7 +119,7 @@ namespace CoreEngine
         DrawWithCamera(ResolveGameViewCameraName(), true);
     }
 
-    void BaseScene::DrawReflectionView()
+    void BaseScene::DrawRenderView()
     {
         if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
             renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);

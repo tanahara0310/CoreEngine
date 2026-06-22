@@ -7,6 +7,7 @@
 
 static constexpr uint32_t kMaxWaterWaveCount = 16;
 static constexpr uint32_t kWaterWaveLayerCount = 3;
+static constexpr uint32_t kMaxWaterLightningImpactCount = 6;
 
 enum class WaterWaveLayerType : uint32_t {
     Large = 0,
@@ -62,6 +63,18 @@ struct WaterConstants {
     static_assert(sizeof(WaveParams) == 32, "WaveParams must be 32 bytes");
 };
 
+struct WaterLightningImpactData {
+    float center[2] = { 0.0f, 0.0f };
+    float radius = 0.0f;
+    float intensity = 0.0f;
+    float chargeRadius = 0.0f;
+    float chargeIntensity = 0.0f;
+    float impactTime = 0.0f;
+    float screenFlash = 0.0f;
+};
+
+static_assert(sizeof(WaterLightningImpactData) == 32, "WaterLightningImpactData must be 32 bytes");
+
 /// @brief 毎フレーム更新する水面用フレーム定数バッファ
 /// クリップ平面（反射パス用）を格納する。HLSL 側の WaterFrameConstants と一致させること
 struct WaterFrameConstants {
@@ -108,11 +121,31 @@ struct WaterFrameConstants {
     /// @brief deepColor アライメント用
     float deepColorPad = 0.0f;
 
+    // ---- Refraction ----
+
+    /// @brief 1 = screen-space 屈折を有効にする、0 = 無効
+    int   refractionEnabled = 1;
+
+    /// @brief 屈折によるスクリーン UV 歪みの基本強度
+    float refractionDistortionScale = 0.02f;
+
+    /// @brief 水柱長に応じて屈折量を増減させるスケール
+    float refractionDepthScale = 0.10f;
+
+    /// @brief screen-space 屈折オフセットの最大 UV 量
+    float refractionMaxOffset = 0.03f;
+
     /// @brief 水面デバッグ可視化モード
     uint32_t depthDebugViewMode = static_cast<uint32_t>(WaterDebugViewMode::None);
 
+    /// @brief 有効な雷着弾波紋数
+    uint32_t lightningImpactCount = 0;
+
     /// @brief cbuffer 16 バイトアライメント用
-    float debugPadding[3] = {};
+    float debugPadding[2] = {};
+
+    /// @brief 同時保持する雷着弾波紋群
+    WaterLightningImpactData lightningImpacts[kMaxWaterLightningImpactCount] = {};
 };
 
 // ===========================================================================

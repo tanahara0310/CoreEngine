@@ -1,7 +1,7 @@
 # Step 8: 全パス RenderGraph 化と Graph 外 GPU 経路整理
 
 ## ステータス
-- 状態: 進行中
+- 状態: 完了
 - 優先度: 中〜高
 - 依存ステップ: Step 7
 - 完了後に着手しやすい次ステップ: Step 9 相当の最適化・可視化フェーズ
@@ -18,11 +18,11 @@ Step 8 では、まだ Graph 外に残っている GPU 作業・一時リソー�
 をコードとドキュメントの両方で明示できる状態を目指す。
 
 ## このステップの作業範囲
-- PostEffect ping-pong 経路の Graph 化方針整理
-- RT Shadow の Dispatch / Temporal / Denoise / Copy 系の Graph 化方針整理
+- PostEffect ping-pong 経路の Graph 化と旧実行経路の削除
 - Graph 外に残る compute / copy / present 境界の明文化
-- 中間リソースの論理名整理と Blackboard / Graph 収容方針整理
-- 将来の CaptureView を含む View 拡張方針整理
+- 中間リソースの論理名整理と Blackboard / Graph 収容
+- View ごとの最終表示入力と ReflectionView 結果共有の整理
+- 旧 offscreen 命名・旧 offscreen 配列基盤の撤去
 
 ## このステップで扱う責務
 - RenderGraph 外周に残る GPU 作業の洗い出し
@@ -54,25 +54,20 @@ Step 8 の主対象は、その周囲に残っている「Graph ノードとし�
 - `Engine/Src/Graphics/Render/Pass/RenderPipeline.cpp`
 
 現状:
-- `PostEffectPass` 自体は Graph パス化済み
-- `FrameBlackboard` に `PostEffectPing` / `PostEffectPong` を追加し、`Offscreen0/1` を論理リソースとして参照できるようにした
 - `PostEffectManager` から有効エフェクト列を取得し、`RenderPipeline` が effect ごとの Graph ノードを動的追加する構成へ移行済み
-- `PostEffectPass` は effect 単位実行に拡張済みで、graphics / compute の両方を Blackboard 論理名経由で扱えるようになった
-- `BackBufferPass` は固定 `SceneColor` 読み込みではなく、PostEffect 最終出力の論理名を `RenderPipeline` から受け取る構成へ移行した
+- `PostEffectPass` は effect 単位実行に拡張済みで、graphics / compute の両方を Blackboard 論理名経由で扱える
+- `BackBufferPass` は固定 `SceneColor` 読み込みではなく、`RenderPipeline` が決めた最終論理入力を読む
 - 旧 `PingPongBuffer` と `PostEffectManager::ExecuteEffectChain()` は削除済み
-- `PostEffectPing` / `PostEffectPong` は `PostEffectIntermediateN` と `PostEffectFinal` へ置き換え、`RenderPipeline` と `PostEffectPass` から固定 `Offscreen0/1` 分岐を除去した
-
-残タスク:
-- 既存 `Offscreen0/1` 自体は互換実体としてまだ残っているため、Reflection など他経路との責務分離を進める余地がある
-- エフェクト名付きの専用ノード表現や可視化改善は今後の整理対象
+- `PostEffectPing` / `PostEffectPong` は `PostEffectIntermediateN` と `PostEffectFinal` へ置き換え済み
+- `Offscreen0/1` 依存も撤去され、`SceneColor` / `PostEffectIntermediateN` / `PostEffectFinal` の論理名ベースへ統一済み
 
 RenderGraph 化の到達点:
 - 各ポストエフェクトは 1 ノード単位で Graph へ登録される
 - BackBuffer は最終論理入力を Read する形で接続される
-- 残る論点は固定ターゲット名依存の一般化であり、命令型 ping-pong 実行そのものは撤去済み
+- 命令型 ping-pong 実行そのものは撤去済み
 
 優先度:
-- 完了（追加改善候補あり）
+- 完了
 
 ---
 
@@ -104,9 +99,13 @@ RenderGraph 化する対象:
 - History Copy
 - ライト別 / View 別の論理リソース命名規則
 
+Step 8 完了時点の整理結果:
+- `RTShadowPass` は RenderGraph 上の正式パスとして統合済み
+- その内部の dispatch / temporal / denoise / copy は「RenderGraph 外に残す manager 内部 GPU サブステップ」として責務を明文化した
+- 将来さらに細分化する場合は Step 9 以降の改善対象とする
+
 優先度:
-- 高
-- 理由: RenderGraph 外のバリアが最も濃く残っている領域で、全 GPU パスの可視化を阻害しているため
+- 完了（内部サブステップ分解は将来改善候補）
 
 ---
 
@@ -130,8 +129,8 @@ RenderGraph 化ではなく整理すべき点:
 - `ResourceBarrierHelper` がここで必要なことを明示する
 
 優先度:
-- 中
-- 理由: ここは「Graph 化する」より「Graph 外責務として固定化する」領域
+- 完了
+- 理由: Present / queue submit / allocator reset は RenderGraph 外 executor 責務として位置付けを確定した
 
 ---
 
@@ -141,13 +140,13 @@ RenderGraph 化ではなく整理すべき点:
 - `Engine/Src/Graphics/Render/RenderTarget/OffscreenRenderTarget.h`
 
 現状:
-- `Begin()` / `End()` / `BeginCS()` / `EndCS()` が残っている
-- Step 7 で薄い `TransitionBarrier` ラッパーは除去したが、命令型 resource transition と描画セットアップ API 自体は残っている
-- PostEffect / Compute 系ではまだ中核的に使われている
+- `Begin()` / `End()` / `BeginCS()` / `EndCS()` は残っている
+- ただし実体は旧 `DirectXCommon` の offscreen 配列 API ではなく、`OffscreenRenderTarget` 自身がリソース・RTV/SRV/UAV・状態を保持する構造へ移行済み
+- 旧 `OffScreenRenderTargetManager` と `DirectXCommon::GetOffScreen*` 群は撤去済み
 
 未 Graph 化の理由:
 - RenderTarget 自体が「実行ヘルパー」として使われており、Graph ノードの実体ではない
-- 一時リソース利用が論理リソースではなく固定ターゲット依存になっている
+- ただし一時リソース利用は `SceneColor` / `PostEffectIntermediateN` / `PostEffectFinal` の論理名へ整理済みで、固定ターゲット依存は解消済み
 
 RenderGraph 化する対象:
 - graphics 用一時レンダーターゲット
@@ -156,8 +155,8 @@ RenderGraph 化する対象:
 - 実リソースクラスは保持しつつ、実行の主導権は Graph 側へ移す
 
 優先度:
-- 中〜高
-- 理由: PostEffect / 一時パス整理の基盤になるため
+- 完了
+- 理由: 旧 offscreen 配列依存を撤去し、RenderTarget 基盤を現行 Graph 構成に合う形へ整理できたため
 
 ---
 
@@ -205,12 +204,21 @@ Step 7 時点で、`ResourceBarrierHelper` は削除対象ではない。
 - その上で、Graph 外にあるべきでない用途だけを減らしていく
 
 ## 作業項目
-- [~] PostEffect ping-pong 経路を Graph ノードまたはサブグラフへ分解する方針を決める
-- [ ] RT Shadow の Dispatch / Temporal / Denoise / Copy を Graph から見える単位へ分割する方針を決める
-- [ ] View 別 / ライト別の中間リソース命名規則を整理する
-- [ ] Graph 外に残す GPU 境界（Present / Upload / 生成系）を明文化する
-- [ ] `ResourceBarrierHelper` の最終責務をドキュメント化する
-- [ ] 将来の `CaptureView` が最初から同じ実行モデルに乗るか確認する
+- [x] PostEffect ping-pong 経路を Graph ノード列へ分解し、旧実行経路を削除する
+- [x] View 別 / 中間リソース命名を `SceneColor` / `ReflectionColor` / `PostEffectIntermediateN` / `PostEffectFinal` ベースへ整理する
+- [x] Graph 外に残す GPU 境界（Present / Upload / 生成系）を明文化する
+- [x] `ResourceBarrierHelper` の最終責務をドキュメント化する
+- [x] 旧 offscreen 配列基盤と固定 `Offscreen0/1` 命名依存を撤去する
+- [ ] RT Shadow の内部サブステップを Graph から直接見える単位へ分解する（将来改善）
+- [ ] 将来の `CaptureView` を現行 View モデルへ乗せる（将来改善）
+
+## Step 8 完了時点の最終整理
+- `RenderPipeline` がフレーム開始時に `FrameBlackboard` へ `SceneDepth` / `SceneColor` / `ShadowMap` / `GBuffer*` / `SSAO` / `PostEffectFinal` / `BackBuffer` などの実体を登録する
+- `RenderGraph` は各パスの Read / Write 宣言から依存と実行順を決定し、`ResourceBarrierHelper` を通じて自動状態遷移を適用する
+- `FrameBlackboard` は「論理名 → 実リソース / SRV / 現在状態参照」の正本として振る舞い、RenderGraph の実体解決元になる
+- `GameView` / `ReflectionView` の主要描画は同一の RenderGraph 実行モデルへ統一済み
+- `SceneColor` / `PostEffectIntermediateN` / `PostEffectFinal` の論理名で最終表示経路を追跡できる
+- Graph 外に残る責務は、Present 境界、アップロード/生成系 GPU 補助処理、RT Shadow manager 内部サブステップのような executor / utility 領域へ限定された
 
 ## 実装時の観点
 - いきなりすべてを 1 ノード 1 エフェクトへ分解しない
@@ -227,9 +235,11 @@ Step 7 時点で、`ResourceBarrierHelper` は削除対象ではない。
 ## 完了条件
 - Graph 外に残る GPU 作業の一覧と分類ができている
 - RenderGraph 化すべき経路と、Graph 外責務として残す経路が分離されている
-- Step 9 以降で実装可能な単位まで分解方針が固まっている
+- 主要描画パス、PostEffect 経路、View 切り替え、BackBuffer 入力が RenderGraph / FrameBlackboard を軸に説明できる
+- 旧 offscreen 命名・旧 offscreen 配列基盤・命令型 ping-pong 実行が撤去されている
 
 ## 引き継ぎメモ
-- Step 8 の本命は `PostEffect` と `RayTracingShadowManager` の分解
-- `Present`、アップロード、アセット生成は「Graph 化しない理由」を明文化する方が先
-- 将来 `CaptureView` を追加する際は、このステップの View / 中間リソース整理を前提に設計する
+- Step 8 は完了。次に着手するなら Step 9 相当の最適化・可視化フェーズとする
+- `RayTracingShadowManager` の内部サブステップ分解は将来の改善候補
+- `Present`、アップロード、アセット生成は RenderGraph 外 executor / utility 責務として扱う
+- 将来 `CaptureView` を追加する際は、このステップで整理した View / 中間リソースモデルを前提に設計する

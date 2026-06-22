@@ -67,21 +67,9 @@ namespace CoreEngine
         }
     }
 
-    void SceneManager::DrawReflectionView() {
+    void SceneManager::DrawRenderView() {
         if (currentScene_) {
-            currentScene_->DrawReflectionView();
-        }
-    }
-
-    void SceneManager::SetupReflectionView(ICamera* mainCamera, float planeHeight) {
-        if (currentScene_) {
-            currentScene_->SetupReflectionView(mainCamera, planeHeight);
-        }
-    }
-
-    void SceneManager::RestoreReflectionView(ICamera* mainCamera) {
-        if (currentScene_) {
-            currentScene_->RestoreReflectionView(mainCamera);
+            currentScene_->DrawRenderView();
         }
     }
 
@@ -155,16 +143,9 @@ namespace CoreEngine
         return currentScene_ ? currentScene_->GetGameObjectManager() : nullptr;
     }
 
-    ReflectionViewRequest SceneManager::GetReflectionViewRequest() const
+    std::vector<RenderViewRequest> SceneManager::BuildRenderViewRequests()
     {
-        return currentScene_ ? currentScene_->GetReflectionViewRequest() : ReflectionViewRequest{};
-    }
-
-    void SceneManager::ApplyReflectionViewResult(const ReflectionViewResult& result)
-    {
-        if (currentScene_) {
-            currentScene_->ApplyReflectionViewResult(result);
-        }
+        return currentScene_ ? currentScene_->BuildRenderViewRequests() : std::vector<RenderViewRequest>{};
     }
 
     void SceneManager::DoChangeScene(const std::string& name) {

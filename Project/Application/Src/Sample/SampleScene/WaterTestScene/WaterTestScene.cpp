@@ -45,6 +45,10 @@ Vector2 RotateDirection(const Vector2& direction, float radians) {
 uint32_t ClampWaveCountToRange(int count) {
     return static_cast<uint32_t>(std::clamp(count, 1, static_cast<int>(kMaxWaterWaveCount)));
 }
+
+float RandomRange(float minValue, float maxValue) {
+    return RandomGenerator::GetInstance().GetFloat(minValue, maxValue);
+}
 }
 
 #ifdef USE_IMGUI
@@ -139,9 +143,10 @@ void WaterTestScene::OnInitialize() {
     skyBox->SetActive(true);
 
     // ===== 水面グリッドメッシュ =====
-    // サイズ 100 × 100、64×64 分割
+    // サイズ 100 × 100、128×128 分割
     // 分割数が多いほど後のステップ（Gerstner Wave）で波の表現が細かくなる
-    waterPlane_ = CreateObject<WaterPlaneObject>(100.0f, 64);
+    // 雷着弾の局所的な頂点変位も見えるように、十分な頂点密度を確保する
+    waterPlane_ = CreateObject<WaterPlaneObject>(100.0f, 128);
     waterPlane_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
     waterPlane_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
 
@@ -167,6 +172,11 @@ void WaterTestScene::OnInitialize() {
     // scrollSpeed: U方向に 0.03 UV/秒、V方向に 0.01 UV/秒 でゆっくり流れる
     waterPlane_->SetScrollSpeed({ 0.03f, 0.01f });
     waterPlane_->SetUVTiling({ 4.0f, 4.0f });
+    waterPlane_->SetRefractionParameters(
+        imguiRefractionDistortionScale_,
+        imguiRefractionDepthScale_,
+        imguiRefractionMaxOffset_,
+        imguiRefractionEnabled_);
     waterPlane_->SetActive(true);
 
     // ===== 地面モデル =====
@@ -178,8 +188,23 @@ void WaterTestScene::OnInitialize() {
     groundObject_->SetIBLEnabled(true);
     groundObject_->SetActive(true);
 
+    // ===== 雷エフェクト =====
+    lightningStrike_ = CreateObject<LightningStrikeObject>();
+    lightningStrike_->SetActive(true);
+    lightningStrike_->SetNoiseParameters(20.0f, 4.5f);
+    lightningStrike_->SetGlowShape(8.5f, 1.4f, 1.4f);
+    lightningStrike_->SetWidthScale(1.80f);
+    lightningStrike_->Stop();
+    TriggerRandomLightningStrike();
+
 #ifdef USE_IMGUI
     ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
+    imguiLightningEffectEnabled_ = lightningEffectEnabled_;
+    imguiLightningAutoLoop_ = lightningAutoLoop_;
+    imguiLightningStrikeDuration_ = lightningStrikeDuration_;
+    imguiLightningStrikeIntensity_ = lightningStrikeIntensity_;
+    imguiLightningIntervalMin_ = lightningIntervalMin_;
+    imguiLightningIntervalMax_ = lightningIntervalMax_;
 
 #endif
 }
@@ -187,9 +212,13 @@ void WaterTestScene::OnInitialize() {
 void WaterTestScene::OnUpdate() {
     // フレーム時間を取得して UV スクロールを更新
     auto* frameRate = engine_->GetComponent<FrameRateController>();
+    const float deltaTime = frameRate ? frameRate->GetDeltaTime() : (1.0f / 60.0f);
     if (waterPlane_ && frameRate) {
-        waterPlane_->UpdateUVScroll(frameRate->GetDeltaTime());
+        waterPlane_->UpdateUVScroll(deltaTime);
     }
+
+    UpdateLightningSequence(deltaTime);
+    UpdateLightningImpactEffect(deltaTime);
 
 #ifdef USE_IMGUI
     DrawWaterImGui();
@@ -206,15 +235,43 @@ void WaterTestScene::Draw() {
     BaseScene::Draw();
 }
 
-ReflectionViewRequest WaterTestScene::GetReflectionViewRequest() const
+std::vector<RenderViewRequest> WaterTestScene::BuildRenderViewRequests()
 {
-    ReflectionViewRequest request{};
-    request.isEnabled = (waterPlane_ != nullptr);
-    request.planeHeight = waterPlane_ ? waterPlane_->GetTransform().translate.y : 0.0f;
-    return request;
+    std::vector<RenderViewRequest> requests;
+    if (!waterPlane_) {
+        return requests;
+    }
+
+    ICamera* mainCamera = GetGameViewCamera3D();
+    const float planeHeight = waterPlane_->GetTransform().translate.y;
+
+    RenderViewRequest request{};
+    request.isEnabled = true;
+    request.name = "WaterReflection";
+    request.viewSettings.viewType = RenderViewType::ReflectionView;
+    request.viewSettings.enableSSAO = false;
+    request.viewSettings.enableRTShadow = false;
+    request.viewSettings.enablePostEffect = false;
+    request.viewSettings.enableBackBuffer = false;
+    request.viewSettings.sceneColorTargetName = RenderTargetNames::ReflectionView;
+    request.drawCallback = [this]() {
+        DrawRenderView();
+    };
+    request.beforeExecute = [this, mainCamera, planeHeight]() {
+        SetupWaterReflectionView(mainCamera, planeHeight);
+    };
+    request.afterExecute = [this, mainCamera]() {
+        RestoreWaterReflectionView(mainCamera);
+    };
+    request.completionCallback = [this](const RenderViewResult& result) {
+        ApplyWaterRenderViewResult(result);
+    };
+
+    requests.push_back(std::move(request));
+    return requests;
 }
 
-void WaterTestScene::SetupReflectionView(ICamera* mainCamera, float planeHeight)
+void WaterTestScene::SetupWaterReflectionView(ICamera* mainCamera, float planeHeight)
 {
     reflectionPass_.SetupReflectionCamera(mainCamera, planeHeight);
     if (waterPlane_) {
@@ -223,28 +280,186 @@ void WaterTestScene::SetupReflectionView(ICamera* mainCamera, float planeHeight)
     }
 }
 
-void WaterTestScene::RestoreReflectionView(ICamera* mainCamera)
+void WaterTestScene::RestoreWaterReflectionView(ICamera* mainCamera)
 {
     reflectionPass_.RestoreMainCamera(mainCamera);
 }
 
-void WaterTestScene::ApplyReflectionViewResult(const ReflectionViewResult& result)
+void WaterTestScene::ApplyWaterRenderViewResult(const RenderViewResult& result)
 {
     if (!waterPlane_) {
         return;
     }
 
-    // Engine 側で生成した ReflectionColor と共有 Scene 入力を、水面描画用の結果へ変換する。
-    const ReflectionViewResult reflectionResult = reflectionPass_.BuildResult(
-        result.reflectionSrv,
-        result.sceneDepthSrv,
-        result.sceneColorSrv);
-    waterPlane_->ApplyWaterReflectionResult(reflectionResult);
+    waterPlane_->ApplyWaterReflectionResult(result);
+    waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), false);
     waterPlane_->UpdateFrameConstants();
 }
 
 void WaterTestScene::Finalize() {
     BaseScene::Finalize();
+}
+
+void WaterTestScene::TriggerRandomLightningStrike()
+{
+    if (!lightningEffectEnabled_) {
+        return;
+    }
+    StartLightningBurst();
+}
+
+void WaterTestScene::StartLightningBurst()
+{
+    if (!lightningEffectEnabled_ || !lightningStrike_) {
+        return;
+    }
+
+    lightningBurstRemaining_ = RandomGenerator::GetInstance().GetInt(1, 2);
+    lightningBurstCooldown_ = 0.0f;
+    TriggerBurstStrike();
+    lightningTimer_ = 0.0f;
+}
+
+void WaterTestScene::TriggerBurstStrike()
+{
+    if (!lightningEffectEnabled_ || !lightningStrike_ || lightningBurstRemaining_ <= 0) {
+        return;
+    }
+
+    const float radius = std::max(lightningStrikeRadius_, 1.0f);
+    const Vector3 impactPosition = {
+        RandomRange(-radius, radius),
+        waterPlane_ ? waterPlane_->GetTransform().translate.y : 0.0f,
+        RandomRange(-radius, radius),
+    };
+
+    TriggerLightningStrikeAt(impactPosition);
+    --lightningBurstRemaining_;
+    if (lightningBurstRemaining_ > 0) {
+        lightningBurstCooldown_ = RandomRange(0.02f, 0.07f);
+    }
+}
+
+void WaterTestScene::TriggerLightningStrikeAt(const Vector3& impactPosition)
+{
+    if (!lightningEffectEnabled_ || !lightningStrike_) {
+        return;
+    }
+
+    const Vector3 startPosition = {
+        impactPosition.x + RandomRange(-6.5f, 6.5f),
+        RandomRange(lightningStartHeightMin_, std::max(lightningStartHeightMin_, lightningStartHeightMax_)),
+        impactPosition.z + RandomRange(-6.5f, 6.5f),
+    };
+
+    lightningStrike_->SetStrikeEndpoints(startPosition, impactPosition);
+    lightningStrike_->Trigger(lightningStrikeDuration_, lightningStrikeIntensity_);
+
+    ActiveLightningImpact& impact = lightningImpacts_[nextLightningImpactSlot_];
+    impact.position = impactPosition;
+    impact.elapsed = 0.0f;
+    impact.ringRadius = 0.0f;
+    impact.chargeRadius = 0.6f;
+    impact.visualIntensity = 1.0f;
+    impact.active = true;
+    nextLightningImpactSlot_ = (nextLightningImpactSlot_ + 1) % static_cast<uint32_t>(lightningImpacts_.size());
+
+    if (waterPlane_) {
+        waterPlane_->ClearLightningImpacts();
+        uint32_t activeImpactIndex = 0;
+        for (const ActiveLightningImpact& activeImpact : lightningImpacts_) {
+            if (!activeImpact.active) {
+                continue;
+            }
+
+            waterPlane_->SetLightningImpactAt(
+                activeImpactIndex++,
+                activeImpact.position,
+                activeImpact.ringRadius,
+                activeImpact.visualIntensity,
+                activeImpact.chargeRadius,
+                activeImpact.visualIntensity,
+                activeImpact.elapsed,
+                0.0f);
+        }
+        waterPlane_->UpdateFrameConstants();
+    }
+}
+
+void WaterTestScene::UpdateLightningSequence(float deltaTime)
+{
+    if (!lightningEffectEnabled_ || !lightningStrike_ || !lightningAutoLoop_) {
+        return;
+    }
+
+    if (lightningStrike_->IsPlaying()) {
+        return;
+    }
+
+    if (lightningBurstRemaining_ > 0) {
+        lightningBurstCooldown_ -= deltaTime;
+        if (lightningBurstCooldown_ <= 0.0f) {
+            TriggerBurstStrike();
+        }
+        return;
+    }
+
+    lightningTimer_ -= deltaTime;
+    if (lightningTimer_ <= 0.0f) {
+        StartLightningBurst();
+    }
+}
+
+void WaterTestScene::UpdateLightningImpactEffect(float deltaTime)
+{
+    if (!waterPlane_) {
+        return;
+    }
+
+    if (!lightningEffectEnabled_) {
+        waterPlane_->ClearLightningImpacts();
+        waterPlane_->UpdateFrameConstants();
+        return;
+    }
+
+    const float effectDuration = std::max(lightningImpactDuration_, 1.0e-3f);
+    waterPlane_->ClearLightningImpacts();
+
+    uint32_t activeImpactIndex = 0;
+    for (ActiveLightningImpact& impact : lightningImpacts_) {
+        if (!impact.active) {
+            continue;
+        }
+
+        impact.elapsed += deltaTime;
+
+        const float t = std::clamp(impact.elapsed / effectDuration, 0.0f, 1.0f);
+        const float travel = std::pow(t, 0.72f);
+        const float fade = 1.0f - t;
+        const float impactIntensity = std::min(1.0f, fade * fade * 1.35f);
+        const float chargeIntensity = std::min(1.0f, std::pow(fade, 0.82f) * 1.2f);
+
+        impact.ringRadius = travel * 18.0f;
+        impact.chargeRadius = 0.6f + travel * 17.0f;
+        impact.visualIntensity = impactIntensity;
+
+        if (t >= 1.0f || impactIntensity <= 1.0e-3f) {
+            impact = {};
+            continue;
+        }
+
+        waterPlane_->SetLightningImpactAt(
+            activeImpactIndex++,
+            impact.position,
+            impact.ringRadius,
+            impactIntensity,
+            impact.chargeRadius,
+            chargeIntensity,
+            impact.elapsed,
+            0.0f);
+    }
+
+    waterPlane_->UpdateFrameConstants();
 }
 
 #ifdef USE_IMGUI
@@ -406,6 +621,22 @@ void WaterTestScene::DrawWaterImGui() {
                 { imguiDeepColor_[0],    imguiDeepColor_[1],    imguiDeepColor_[2] });
         }
 
+        ImGui::Spacing();
+        ImGui::SeparatorText("屈折");
+        ImGui::TextDisabled("法線と水柱長に基づいて SceneColor の参照 UV をずらします");
+        bool refractionChanged = false;
+        refractionChanged |= ImGui::Checkbox("Refraction 有効", &imguiRefractionEnabled_);
+        refractionChanged |= ImGui::SliderFloat("歪み強度", &imguiRefractionDistortionScale_, 0.0f, 0.10f, "%.4f");
+        refractionChanged |= ImGui::SliderFloat("深度スケール", &imguiRefractionDepthScale_, 0.0f, 1.0f, "%.3f");
+        refractionChanged |= ImGui::SliderFloat("最大オフセット", &imguiRefractionMaxOffset_, 0.0f, 0.10f, "%.4f");
+        if (refractionChanged) {
+            waterPlane_->SetRefractionParameters(
+                imguiRefractionDistortionScale_,
+                imguiRefractionDepthScale_,
+                imguiRefractionMaxOffset_,
+                imguiRefractionEnabled_);
+        }
+
         if (ImGui::TreeNode("Depth Fade デバッグ")) {
             bool debugChanged = false;
             debugChanged |= ImGui::Checkbox("デバッグ表示", &imguiDepthFadeDebugEnabled_);
@@ -489,6 +720,73 @@ void WaterTestScene::DrawWaterImGui() {
         }
     }
 
+    DrawLightningImGui();
+
     ImGui::End();
 }
+
+void WaterTestScene::DrawLightningImGui() {
+    if (!lightningStrike_) {
+        return;
+    }
+
+    if (!ImGui::CollapsingHeader("雷エフェクト", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+
+    ImGui::TextDisabled("CPU 生成リボン + 専用シェーダーで発光と揺らぎを付与しています");
+    if (ImGui::Checkbox("雷エフェクト有効", &imguiLightningEffectEnabled_)) {
+        lightningEffectEnabled_ = imguiLightningEffectEnabled_;
+        lightningStrike_->SetActive(lightningEffectEnabled_);
+
+        if (!lightningEffectEnabled_) {
+            lightningStrike_->Stop();
+            lightningBurstRemaining_ = 0;
+            lightningBurstCooldown_ = 0.0f;
+            lightningTimer_ = 0.0f;
+            for (ActiveLightningImpact& impact : lightningImpacts_) {
+                impact = {};
+            }
+            if (waterPlane_) {
+                waterPlane_->ClearLightningImpacts();
+                waterPlane_->UpdateFrameConstants();
+            }
+        } else if (lightningAutoLoop_) {
+            lightningTimer_ = std::min(lightningTimer_, 0.25f);
+        }
+    }
+
+    ImGui::BeginDisabled(!lightningEffectEnabled_);
+    if (ImGui::Button("雷を発生", ImVec2(-1.0f, 0.0f))) {
+        TriggerRandomLightningStrike();
+    }
+
+    if (ImGui::Checkbox("自動発生", &imguiLightningAutoLoop_)) {
+        lightningAutoLoop_ = imguiLightningAutoLoop_;
+        if (lightningAutoLoop_) {
+            lightningTimer_ = std::min(lightningTimer_, 0.25f);
+        }
+    }
+
+    bool timingChanged = false;
+    timingChanged |= ImGui::SliderFloat("発光時間", &imguiLightningStrikeDuration_, 0.05f, 0.50f, "%.3f s");
+    timingChanged |= ImGui::SliderFloat("発光強度", &imguiLightningStrikeIntensity_, 0.5f, 4.0f, "%.2f");
+    timingChanged |= ImGui::SliderFloat("自動発生最短", &imguiLightningIntervalMin_, 0.0f, 1.0f, "%.2f s");
+    timingChanged |= ImGui::SliderFloat("自動発生最長", &imguiLightningIntervalMax_, 0.0f, 1.5f, "%.2f s");
+    if (timingChanged) {
+        lightningStrikeDuration_ = imguiLightningStrikeDuration_;
+        lightningStrikeIntensity_ = imguiLightningStrikeIntensity_;
+        lightningIntervalMin_ = std::min(imguiLightningIntervalMin_, imguiLightningIntervalMax_);
+        lightningIntervalMax_ = std::max(imguiLightningIntervalMin_, imguiLightningIntervalMax_);
+    }
+
+    ImGui::Text("再生中: %s", lightningStrike_->IsPlaying() ? "はい" : "いいえ");
+    ImGui::Text("経過率: %.2f", lightningStrike_->GetNormalizedAge());
+    const Vector3& strikeStart = lightningStrike_->GetStrikeStart();
+    const Vector3& strikeEnd = lightningStrike_->GetStrikeEnd();
+    ImGui::Text("始点: (%.2f, %.2f, %.2f)", strikeStart.x, strikeStart.y, strikeStart.z);
+    ImGui::Text("終点: (%.2f, %.2f, %.2f)", strikeEnd.x, strikeEnd.y, strikeEnd.z);
+    ImGui::EndDisabled();
+}
+
 #endif
