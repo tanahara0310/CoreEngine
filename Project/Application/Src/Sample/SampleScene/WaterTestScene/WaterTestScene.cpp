@@ -172,6 +172,11 @@ void WaterTestScene::OnInitialize() {
     // scrollSpeed: U方向に 0.03 UV/秒、V方向に 0.01 UV/秒 でゆっくり流れる
     waterPlane_->SetScrollSpeed({ 0.03f, 0.01f });
     waterPlane_->SetUVTiling({ 4.0f, 4.0f });
+    waterPlane_->SetRefractionParameters(
+        imguiRefractionDistortionScale_,
+        imguiRefractionDepthScale_,
+        imguiRefractionMaxOffset_,
+        imguiRefractionEnabled_);
     waterPlane_->SetActive(true);
 
     // ===== 地面モデル =====
@@ -230,15 +235,43 @@ void WaterTestScene::Draw() {
     BaseScene::Draw();
 }
 
-ReflectionViewRequest WaterTestScene::GetReflectionViewRequest() const
+std::vector<RenderViewRequest> WaterTestScene::BuildRenderViewRequests()
 {
-    ReflectionViewRequest request{};
-    request.isEnabled = (waterPlane_ != nullptr);
-    request.planeHeight = waterPlane_ ? waterPlane_->GetTransform().translate.y : 0.0f;
-    return request;
+    std::vector<RenderViewRequest> requests;
+    if (!waterPlane_) {
+        return requests;
+    }
+
+    ICamera* mainCamera = GetGameViewCamera3D();
+    const float planeHeight = waterPlane_->GetTransform().translate.y;
+
+    RenderViewRequest request{};
+    request.isEnabled = true;
+    request.name = "WaterReflection";
+    request.viewSettings.viewType = RenderViewType::ReflectionView;
+    request.viewSettings.enableSSAO = false;
+    request.viewSettings.enableRTShadow = false;
+    request.viewSettings.enablePostEffect = false;
+    request.viewSettings.enableBackBuffer = false;
+    request.viewSettings.sceneColorTargetName = RenderTargetNames::ReflectionView;
+    request.drawCallback = [this]() {
+        DrawRenderView();
+    };
+    request.beforeExecute = [this, mainCamera, planeHeight]() {
+        SetupWaterReflectionView(mainCamera, planeHeight);
+    };
+    request.afterExecute = [this, mainCamera]() {
+        RestoreWaterReflectionView(mainCamera);
+    };
+    request.completionCallback = [this](const RenderViewResult& result) {
+        ApplyWaterRenderViewResult(result);
+    };
+
+    requests.push_back(std::move(request));
+    return requests;
 }
 
-void WaterTestScene::SetupReflectionView(ICamera* mainCamera, float planeHeight)
+void WaterTestScene::SetupWaterReflectionView(ICamera* mainCamera, float planeHeight)
 {
     reflectionPass_.SetupReflectionCamera(mainCamera, planeHeight);
     if (waterPlane_) {
@@ -247,23 +280,19 @@ void WaterTestScene::SetupReflectionView(ICamera* mainCamera, float planeHeight)
     }
 }
 
-void WaterTestScene::RestoreReflectionView(ICamera* mainCamera)
+void WaterTestScene::RestoreWaterReflectionView(ICamera* mainCamera)
 {
     reflectionPass_.RestoreMainCamera(mainCamera);
 }
 
-void WaterTestScene::ApplyReflectionViewResult(const ReflectionViewResult& result)
+void WaterTestScene::ApplyWaterRenderViewResult(const RenderViewResult& result)
 {
     if (!waterPlane_) {
         return;
     }
 
-    // Engine 側で生成した ReflectionColor と共有 Scene 入力を、水面描画用の結果へ変換する。
-    const ReflectionViewResult reflectionResult = reflectionPass_.BuildResult(
-        result.reflectionSrv,
-        result.sceneDepthSrv,
-        result.sceneColorSrv);
-    waterPlane_->ApplyWaterReflectionResult(reflectionResult);
+    waterPlane_->ApplyWaterReflectionResult(result);
+    waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), false);
     waterPlane_->UpdateFrameConstants();
 }
 
@@ -590,6 +619,22 @@ void WaterTestScene::DrawWaterImGui() {
             waterPlane_->SetWaterColors(
                 { imguiShallowColor_[0], imguiShallowColor_[1], imguiShallowColor_[2] },
                 { imguiDeepColor_[0],    imguiDeepColor_[1],    imguiDeepColor_[2] });
+        }
+
+        ImGui::Spacing();
+        ImGui::SeparatorText("屈折");
+        ImGui::TextDisabled("法線と水柱長に基づいて SceneColor の参照 UV をずらします");
+        bool refractionChanged = false;
+        refractionChanged |= ImGui::Checkbox("Refraction 有効", &imguiRefractionEnabled_);
+        refractionChanged |= ImGui::SliderFloat("歪み強度", &imguiRefractionDistortionScale_, 0.0f, 0.10f, "%.4f");
+        refractionChanged |= ImGui::SliderFloat("深度スケール", &imguiRefractionDepthScale_, 0.0f, 1.0f, "%.3f");
+        refractionChanged |= ImGui::SliderFloat("最大オフセット", &imguiRefractionMaxOffset_, 0.0f, 0.10f, "%.4f");
+        if (refractionChanged) {
+            waterPlane_->SetRefractionParameters(
+                imguiRefractionDistortionScale_,
+                imguiRefractionDepthScale_,
+                imguiRefractionMaxOffset_,
+                imguiRefractionEnabled_);
         }
 
         if (ImGui::TreeNode("Depth Fade デバッグ")) {

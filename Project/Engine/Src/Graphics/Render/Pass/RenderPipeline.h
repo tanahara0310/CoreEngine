@@ -9,7 +9,7 @@
 
 namespace CoreEngine
 {
-    struct ReflectionViewResult;
+    struct RenderViewResult;
 
     /// @brief レンダリングパイプラインを管理するクラス
     class RenderPipeline {
@@ -63,13 +63,13 @@ namespace CoreEngine
             const std::function<void()>& beforeExecute = {},
             const std::function<void()>& afterExecute = {});
 
-        /// @brief ReflectionView を実行し、シーン側へ返す共有結果を収集する
-        /// @param context ReflectionView 用に構成済みのレンダリングコンテキスト
+        /// @brief 補助 RenderView を実行し、呼び出し側へ共有結果を収集する
+        /// @param context 補助 View 用に構成済みのレンダリングコンテキスト
         /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
         /// @param beforeExecute Graph 実行直前に呼ぶコールバック
         /// @param afterExecute Graph 実行直後に呼ぶコールバック
-        /// @return ReflectionColor / SceneDepth / SceneColor をまとめた結果
-        ReflectionViewResult ExecuteReflectionView(
+        /// @return View 出力 / SceneDepth / SceneColor をまとめた結果
+        RenderViewResult ExecuteRenderView(
             const RenderContext& context,
             const std::function<void()>& geometryRenderCallback,
             const std::function<void()>& beforeExecute = {},
@@ -103,10 +103,10 @@ namespace CoreEngine
         /// @param context レンダリングコンテキスト
         void SyncFinalDisplayHandle(const RenderContext& context);
 
-        /// @brief ReflectionView 実行後の共有結果を収集する
-        /// @param context ReflectionView 実行に使用したレンダリングコンテキスト
-        /// @return ReflectionView の共有結果
-        ReflectionViewResult BuildReflectionViewResult(const RenderContext& context) const;
+        /// @brief 補助 RenderView 実行後の共有結果を収集する
+        /// @param context 補助 View 実行に使用したレンダリングコンテキスト
+        /// @return 補助 View の共有結果
+        RenderViewResult BuildRenderViewResult(const RenderContext& context) const;
 
         std::vector<std::unique_ptr<PostEffectPass>> postEffectSubpasses_;
         std::string finalDisplayResourceName_ = FrameBlackboard::SceneColor;

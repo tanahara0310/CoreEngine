@@ -27,27 +27,17 @@ public:
     /// @brief 描画処理
     void Draw() override;
 
-    /// @brief ReflectionView の実行要求を返す
-    /// @return 水面反射を要求する設定
-    CoreEngine::ReflectionViewRequest GetReflectionViewRequest() const override;
-
-    /// @brief ReflectionView 実行前に反射カメラ状態をセットアップする
-    /// @param mainCamera 通常描画の基準カメラ
-    /// @param planeHeight 反射平面の高さ
-    void SetupReflectionView(CoreEngine::ICamera* mainCamera, float planeHeight) override;
-
-    /// @brief ReflectionView 実行後に反射カメラ状態を元へ戻す
-    /// @param mainCamera 復元対象の通常描画カメラ
-    void RestoreReflectionView(CoreEngine::ICamera* mainCamera) override;
-
-    /// @brief Engine 側で生成した ReflectionView 結果を水面へ適用する
-    /// @param result ReflectionColor / SceneDepth / SceneColor / clip plane を含む結果
-    void ApplyReflectionViewResult(const CoreEngine::ReflectionViewResult& result) override;
+    /// @brief 水面反射用の補助 RenderView 要求を構築する
+    std::vector<CoreEngine::RenderViewRequest> BuildRenderViewRequests() override;
 
     /// @brief 解放
     void Finalize() override;
 
 private:
+    void SetupWaterReflectionView(CoreEngine::ICamera* mainCamera, float planeHeight);
+    void RestoreWaterReflectionView(CoreEngine::ICamera* mainCamera);
+    void ApplyWaterRenderViewResult(const CoreEngine::RenderViewResult& result);
+
     struct ActiveLightningImpact {
         CoreEngine::Vector3 position = { 0.0f, 0.0f, 0.0f };
         float elapsed = 0.0f;
@@ -141,6 +131,10 @@ private:
     float imguiAbsorptionCoeff_  = 1.2f;            ///< 光吸収係数
     float imguiShallowColor_[3]  = { 0.10f, 0.85f, 0.65f };  ///< 浅瀬の水色
     float imguiDeepColor_[3]     = { 0.02f, 0.08f, 0.45f }; ///< 深場の水色
+    bool  imguiRefractionEnabled_ = true;           ///< screen-space 屈折有効フラグ
+    float imguiRefractionDistortionScale_ = 0.02f;  ///< 基本屈折歪み量
+    float imguiRefractionDepthScale_ = 0.10f;       ///< 水柱長による屈折増幅量
+    float imguiRefractionMaxOffset_ = 0.03f;        ///< UV オフセット上限
     bool  imguiDepthFadeDebugEnabled_ = false;      ///< Depth Fade デバッグ表示
     float imguiDepthFadeDebugScale_ = 1.5f;         ///< Depth Fade デバッグ表示倍率
     int   imguiDepthDebugViewMode_ = static_cast<int>(WaterDebugViewMode::RawDepth); ///< 水面デバッグ可視化モード

@@ -2,8 +2,10 @@
 #include <d3d12.h>
 #include <string>
 #include <functional>
+#include <vector>
 
 #include "Math/Vector/Vector4.h"
+#include "Graphics/Render/Pass/RenderPass.h"
 
 // 前方宣言
 namespace CoreEngine {
@@ -17,17 +19,23 @@ namespace CoreEngine {
 
 namespace CoreEngine
 {
-struct ReflectionViewRequest {
-    bool isEnabled = false;
-    float planeHeight = 0.0f;
-};
-
-struct ReflectionViewResult {
-    D3D12_GPU_DESCRIPTOR_HANDLE reflectionSrv{};
+struct RenderViewResult {
+    std::string name;
+    std::string outputTargetName;
+    D3D12_GPU_DESCRIPTOR_HANDLE viewSrv{};
     D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSrv{};
     D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrv{};
-    Vector4 clipPlane{};
     bool isValid = false;
+};
+
+struct RenderViewRequest {
+    bool isEnabled = false;
+    std::string name;
+    RenderViewSettings viewSettings{};
+    std::function<void()> drawCallback;
+    std::function<void()> beforeExecute;
+    std::function<void()> afterExecute;
+    std::function<void(const RenderViewResult&)> completionCallback;
 };
 
 class IScene {
@@ -38,9 +46,7 @@ public:
     virtual void Update() = 0;
     virtual void PrepareRender() {}
     virtual void Draw() = 0;
-    virtual void DrawReflectionView() { Draw(); }
-    virtual void SetupReflectionView(ICamera* mainCamera, float planeHeight) { (void)mainCamera; (void)planeHeight; }
-    virtual void RestoreReflectionView(ICamera* mainCamera) { (void)mainCamera; }
+    virtual void DrawRenderView() { Draw(); }
     virtual void Finalize() = 0;
 
     virtual ICamera* GetGameViewCamera3D() const { return nullptr; }
@@ -48,13 +54,9 @@ public:
     virtual ICamera* GetGameViewCamera2D() const { return nullptr; }
     virtual GameObjectManager* GetGameObjectManager() { return nullptr; }
 
-    /// @brief ReflectionView の実行要求を取得する
-    /// @return ReflectionView を必要とする場合の設定
-    virtual ReflectionViewRequest GetReflectionViewRequest() const { return {}; }
-
-    /// @brief Engine 側で生成した ReflectionView の結果をシーンへ適用する
-    /// @param result ReflectionColor / SceneDepth / SceneColor と clip plane をまとめた結果
-    virtual void ApplyReflectionViewResult(const ReflectionViewResult& result) { (void)result; }
+    /// @brief Scene が要求する補助 RenderView 一覧を構築する
+    /// @return Engine 側 RenderGraph で実行する補助 View 要求群
+    virtual std::vector<RenderViewRequest> BuildRenderViewRequests() { return {}; }
 
     /// @brief SceneManager への参照を設定（自動呼び出し）
     virtual void SetSceneManager(CoreEngine::SceneManager* sceneManager) {

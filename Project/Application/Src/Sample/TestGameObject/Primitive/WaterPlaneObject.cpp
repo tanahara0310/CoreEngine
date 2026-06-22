@@ -273,13 +273,12 @@ void WaterPlaneObject::SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
     }
 }
 
-void WaterPlaneObject::ApplyWaterReflectionResult(const CoreEngine::ReflectionViewResult& result)
+void WaterPlaneObject::ApplyWaterReflectionResult(const CoreEngine::RenderViewResult& result)
 {
-    // ReflectionView 相当の出力をまとめて受け取り、水面が必要な SRV 群へ反映する。
-    SetReflectionTexture(result.reflectionSrv);
+    // RenderView 出力を受け取り、水面が必要な SRV 群へ反映する。
+    SetReflectionTexture(result.viewSrv);
     SetSceneDepthSRV(result.sceneDepthSrv);
     SetSceneColorSRV(result.sceneColorSrv);
-    SetClipPlane(result.clipPlane, false);
 }
 
 void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {
@@ -310,6 +309,13 @@ void WaterPlaneObject::SetWaterColors(const CoreEngine::Vector3& shallowColor, c
     frameCB_.deepColor[0]    = deepColor.x;
     frameCB_.deepColor[1]    = deepColor.y;
     frameCB_.deepColor[2]    = deepColor.z;
+}
+
+void WaterPlaneObject::SetRefractionParameters(float distortionScale, float depthScale, float maxOffset, bool enabled) {
+    frameCB_.refractionEnabled = enabled ? 1 : 0;
+    frameCB_.refractionDistortionScale = std::max(distortionScale, 0.0f);
+    frameCB_.refractionDepthScale = std::max(depthScale, 0.0f);
+    frameCB_.refractionMaxOffset = std::max(maxOffset, 0.0f);
 }
 
 void WaterPlaneObject::ClearLightningImpacts() {

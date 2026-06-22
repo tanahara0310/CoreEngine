@@ -48,6 +48,20 @@ namespace CoreEngine
 
             return {};
         }
+
+        void EnsureSceneColorTarget(const RenderContext& context)
+        {
+            if (!context.renderTargetManager || context.viewSettings.sceneColorTargetName.empty()) {
+                return;
+            }
+
+            if (context.renderTargetManager->HasRenderTarget(context.viewSettings.sceneColorTargetName)) {
+                return;
+            }
+
+            RenderTargetDescriptor desc(context.viewSettings.sceneColorTargetName);
+            context.renderTargetManager->CreateRenderTarget(desc);
+        }
     }
 
     void RenderPipeline::AddPass(std::unique_ptr<RenderPass> pass)
@@ -98,6 +112,8 @@ namespace CoreEngine
         if (!context.frameBlackboard) {
             return;
         }
+
+        EnsureSceneColorTarget(context);
 
         if (context.depthStencilManager) {
             context.frameBlackboard->SetResource(
@@ -433,43 +449,33 @@ namespace CoreEngine
         }
     }
 
-    ReflectionViewResult RenderPipeline::ExecuteReflectionView(
+    RenderViewResult RenderPipeline::ExecuteRenderView(
         const RenderContext& context,
         const std::function<void()>& geometryRenderCallback,
         const std::function<void()>& beforeExecute,
         const std::function<void()>& afterExecute)
     {
         ExecuteView(context, geometryRenderCallback, beforeExecute, afterExecute);
-        return BuildReflectionViewResult(context);
+        return BuildRenderViewResult(context);
     }
 
-    ReflectionViewResult RenderPipeline::BuildReflectionViewResult(const RenderContext& context) const
+    RenderViewResult RenderPipeline::BuildRenderViewResult(const RenderContext& context) const
     {
-        ReflectionViewResult result{};
+        RenderViewResult result{};
+        result.name = RenderTargetNames::SceneColor;
+        result.outputTargetName = context.viewSettings.sceneColorTargetName;
 
         if (!context.renderTargetManager) {
             return result;
         }
 
-        RenderTarget* reflectionTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::ReflectionView);
-        if (!reflectionTarget) {
+        RenderTarget* viewTarget = context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName);
+        if (!viewTarget) {
             return result;
         }
 
-        D3D12_RESOURCE_STATES* reflectionState = nullptr;
-        if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(reflectionTarget)) {
-            reflectionState = &offscreen->GetCurrentState();
-        }
-
-        if (context.frameBlackboard) {
-            context.frameBlackboard->SetResource(
-                FrameBlackboard::ReflectionColor,
-                reflectionTarget->GetSRVHandle(),
-                reflectionTarget->GetResource(),
-                reflectionState);
-        }
-
-        result.reflectionSrv = reflectionTarget->GetSRVHandle();
+        result.name = context.viewSettings.sceneColorTargetName;
+        result.viewSrv = viewTarget->GetSRVHandle();
 
         if (context.depthStencilManager) {
             result.sceneDepthSrv = context.depthStencilManager->GetDepthSRVHandle();
@@ -480,7 +486,7 @@ namespace CoreEngine
             result.sceneColorSrv = ResolveSceneColorHandle(context, context.viewSettings.sceneColorTargetName);
         }
 
-        result.isValid = result.reflectionSrv.ptr != 0;
+        result.isValid = result.viewSrv.ptr != 0;
         return result;
     }
 

@@ -121,6 +121,20 @@ struct WaterFrameConstants {
     /// @brief deepColor アライメント用
     float deepColorPad = 0.0f;
 
+    // ---- Refraction ----
+
+    /// @brief 1 = screen-space 屈折を有効にする、0 = 無効
+    int   refractionEnabled = 1;
+
+    /// @brief 屈折によるスクリーン UV 歪みの基本強度
+    float refractionDistortionScale = 0.02f;
+
+    /// @brief 水柱長に応じて屈折量を増減させるスケール
+    float refractionDepthScale = 0.10f;
+
+    /// @brief screen-space 屈折オフセットの最大 UV 量
+    float refractionMaxOffset = 0.03f;
+
     /// @brief 水面デバッグ可視化モード
     uint32_t depthDebugViewMode = static_cast<uint32_t>(WaterDebugViewMode::None);
 

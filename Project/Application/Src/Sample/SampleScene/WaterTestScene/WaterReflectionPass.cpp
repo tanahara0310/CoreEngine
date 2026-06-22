@@ -73,21 +73,6 @@ void WaterReflectionPass::RestoreMainCamera(ICamera* mainCamera)
     hasSavedCameraState_ = false;
 }
 
-ReflectionViewResult WaterReflectionPass::BuildResult(
-    D3D12_GPU_DESCRIPTOR_HANDLE reflectionSrv,
-    D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSrv,
-    D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrv) const
-{
-    // Engine 側で生成済みの ReflectionView 出力を、水面描画向けの結果へ束ねる。
-    ReflectionViewResult result{};
-    result.reflectionSrv = reflectionSrv;
-    result.sceneDepthSrv = sceneDepthSrv;
-    result.sceneColorSrv = sceneColorSrv;
-    result.clipPlane = clipPlane_;
-    result.isValid = result.reflectionSrv.ptr != 0;
-    return result;
-}
-
 Matrix4x4 WaterReflectionPass::CalcReflectedViewMatrix(
     ICamera* mainCamera,
     float waterHeight) const

@@ -27,16 +27,6 @@ public:
     /// @param mainCamera 復元対象の通常描画カメラ
     void RestoreMainCamera(CoreEngine::ICamera* mainCamera);
 
-    /// @brief 直近の Reflection 実行結果をまとめて取得する
-    /// @param reflectionSrv 反射カラー SRV
-    /// @param sceneDepthSrv シーン深度 SRV
-    /// @param sceneColorSrv シーンカラー SRV
-    /// @return 水面描画へ渡す Reflection の出力一式
-    CoreEngine::ReflectionViewResult BuildResult(
-        D3D12_GPU_DESCRIPTOR_HANDLE reflectionSrv,
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSrv,
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrv) const;
-
     /// @brief クリップ平面を取得する（現在の水面高さに対応した値）
     const CoreEngine::Vector4& GetClipPlane() const { return clipPlane_; }
 

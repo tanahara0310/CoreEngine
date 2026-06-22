@@ -48,6 +48,12 @@ cbuffer WaterFrameConstants : register(b5)
     float3 gDeepColor; // 深場の水色
     float gDeepColorPad;
 
+    // ---- 屈折 ----
+    int gRefractionEnabled; // 1 = 屈折有効
+    float gRefractionDistortionScale; // 法線由来の基本歪み量
+    float gRefractionDepthScale; // 水柱長に応じた歪み増幅量
+    float gRefractionMaxOffset; // 最大 UV オフセット量
+
     // ---- デバッグ表示 ----
     uint gDepthDebugViewMode;
     uint gLightningImpactCount;
@@ -96,6 +102,38 @@ float ComputeWaterOpticalPathLength(float viewDepthDelta, float waterDepthView, 
 float FresnelSchlick(float cosTheta, float f0)
 {
     return f0 + (1.0f - f0) * pow(saturate(1.0f - cosTheta), 5.0f);
+}
+
+float2 ComputeRefractionUVOffset(
+    float3 viewDir,
+    float3 geomNormal,
+    float waterColumn,
+    float transmissionWeight)
+{
+    if (gRefractionEnabled == 0 || transmissionWeight <= 1.0e-4f)
+    {
+        return float2(0.0f, 0.0f);
+    }
+
+    float depthFactor = 1.0f - exp(-waterColumn * max(gRefractionDepthScale, 1.0e-4f));
+    float slopeY = max(abs(geomNormal.y), 0.20f);
+    float2 surfaceSlope = geomNormal.xz / slopeY;
+    float slopeFactor = saturate(length(surfaceSlope));
+    float viewFactor = lerp(0.35f, 1.0f, saturate(length(viewDir.xz) * 1.8f));
+    float distortion = gRefractionDistortionScale
+        * lerp(0.30f, 1.0f, depthFactor)
+        * lerp(0.20f, 1.0f, slopeFactor)
+        * viewFactor
+        * transmissionWeight;
+
+    float2 uvOffset = surfaceSlope * distortion;
+    float offsetLength = length(uvOffset);
+    if (offsetLength > gRefractionMaxOffset && offsetLength > 1.0e-6f)
+    {
+        uvOffset *= gRefractionMaxOffset / offsetLength;
+    }
+
+    return uvOffset;
 }
 
 float3 VisualizeDepthValue(float value)
@@ -298,6 +336,8 @@ PixelShaderOutput main(WaterPSInput input)
     float fresnel = FresnelSchlick(cosTheta, saturate(gFresnelBaseReflectance));
     float reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
 
+    float3 sceneColorAtScreenUV = gSceneColor.Sample(gLinearClamp, screenUV).rgb;
+
     // ---- 5. 標準 alpha ブレンドで背景光と整合するように、水面自身が追加する成分だけを組み立てる ----
     // 背景光は既にレンダーターゲット側に存在するため、ここで SceneColor を再度混ぜると二重減衰になる。
     // そのため、ピクセルシェーダーでは「背景から奪う割合」と「水面が足す成分」を分けて計算する。
@@ -305,6 +345,18 @@ PixelShaderOutput main(WaterPSInput input)
 
     // 吸収量をそのまま媒質寄与へ反映し、深いほど暗く色付きが強くなるようにする
     float mediumWeight = absorption * (1.0f - reflectanceWeight);
+
+    float2 refractedUV = screenUV;
+    float3 refractedSceneColor = sceneColorAtScreenUV;
+    if (hasValidDepthFade && transmissionWeight > 1.0e-4f)
+    {
+        float2 refractionOffset = ComputeRefractionUVOffset(viewDir, geomNormal, waterColumn, transmissionWeight);
+        float2 candidateUV = saturate(screenUV + refractionOffset);
+        float refractedDepthNDC = gSceneDepth.Sample(gLinearClamp, candidateUV).r;
+        bool hasBackgroundAtCandidate = refractedDepthNDC > waterDepthNDC + 1.0e-4f;
+        refractedUV = hasBackgroundAtCandidate ? candidateUV : screenUV;
+        refractedSceneColor = gSceneColor.Sample(gLinearClamp, refractedUV).rgb;
+    }
 
     float3 reflectColor = output.color.rgb;
     if (gReflectionEnabled)
@@ -315,7 +367,8 @@ PixelShaderOutput main(WaterPSInput input)
 
     float3 mediumContribution = waterTint * mediumWeight;
     float3 reflectionContribution = reflectColor * reflectanceWeight;
-    float3 waterContribution = baseCoverage * (mediumContribution + reflectionContribution);
+    float3 refractionContributionDelta = transmissionWeight * (refractedSceneColor - sceneColorAtScreenUV);
+    float3 waterContribution = baseCoverage * (mediumContribution + reflectionContribution + refractionContributionDelta);
 
     output.color.a = saturate(baseCoverage * (1.0f - transmissionWeight));
     if (output.color.a > 1.0e-4f)
