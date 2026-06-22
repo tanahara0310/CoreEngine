@@ -27,8 +27,6 @@
 
 ---
 
----
-
 # Build Environment
 
 | Item | Version |
@@ -39,7 +37,3 @@
 | Platform | Windows |
 
 ---
-
-# License
-
-ライセンス内容をここへ記述
