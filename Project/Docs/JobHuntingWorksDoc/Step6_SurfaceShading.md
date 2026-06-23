@@ -4,7 +4,7 @@
 - 状態: 実装中
 - 優先度: 最優先
 - 依存ステップ: Step 4, Step 5
-- 現在位置: SceneColor 透過、Beer-Lambert、浅瀬 / 深場色、Fresnel 配分、screen-space 屈折オフセットまで実装済み。高忠実度屈折は未完
+- 現在位置: SceneColor 透過、Beer-Lambert、浅瀬 / 深場色、Fresnel 配分、screen-space 屈折オフセットまでは実装済み。高忠実度屈折は未完
 - 完了後に着手しやすい次ステップ: Step 7, Step 8, Step 9
 
 ## 目的
@@ -51,14 +51,12 @@ Step 6 では、**水中がどう見えるか** を決める。
 - Fresnel は Schlick 近似で実装され、反射寄与と透過寄与の配分に利用されている
 - 標準 alpha ブレンドで背景の二重減衰を避ける合成が組まれている
 - Depth Fade のデバッグ表示と可視化モードが ImGui から切り替え可能になっている
-- `Water.PS.hlsl` に法線・視線・水柱長を使った screen-space refraction offset を追加し、`SceneColor` の参照 UV を屈折方向へずらせるようにした
-- 屈折は `SceneColor(screenUV)` に対する差分寄与として合成し、既存の二重減衰回避構造を壊さないようにした
-- `WaterFrameConstants` と `WaterTestScene` ImGui に屈折の有効フラグ、歪み強度、深度スケール、最大オフセットの調整項目を追加した
+- `WaterFrameConstants` に屈折用パラメータを追加し、`Water.PS.hlsl` で法線と深度差に基づく screen-space 屈折 UV を計算するようになった
+- `WaterTestScene` の ImGui から、屈折の有効 / 無効、屈折強度、深度増幅率を調整できるようになった
 
 ## 残タスク整理
-- Snell ベースの屈折方向そのものや、法線・IOR を使った高忠実度な背景追跡は未実装
-- 現在の屈折は screen-space 近似であり、画面外情報や複雑な交差先は扱えない
-- RGB 吸収や RT 屈折依存の背景取得は今後の拡張ポイント
+- Snell ベースの屈折方向や法線・IOR に基づく厳密な屈折経路は未実装
+- RGB 吸収や屈折依存の背景取得は今後の拡張ポイント
 
 ## 物理ベース観点
 ### 1. 水面は透明板ではなく媒質境界
@@ -89,7 +87,7 @@ Fresnel は本来、反射率と透過率の配分に効く。
 | Beer-Lambert absorption | 水柱長による光減衰 |
 | Shallow / deep water tint | 深さ依存の色遷移 |
 | Fresnel energy split | 反射 / 透過配分 |
-| Refraction offset | screen-space 屈折オフセットと将来拡張の入口 |
+| Refraction offset | 簡易屈折または将来拡張の入口 |
 | Blend consistency | 最終ブレンドとの整合 |
 
 ## この段階で避けるべき破綻
@@ -106,14 +104,14 @@ Fresnel は本来、反射率と透過率の配分に効く。
 ## 期待する到達状態
 - 真上では水中が見えやすく、斜めでは反射が強くなる
 - 深場ほど透過が弱くなり、浅瀬では底や地形が読みやすい
-- 背景が法線に応じてわずかに屈折して見え、将来的な RGB 吸収や RT 屈折へ無理なく発展できる
+- 将来的な RGB 吸収や RT 屈折へ無理なく発展できる
 
 ## 完了条件
 - [x] 真上視点では水中が見えやすい
 - [x] 斜め視点では反射が優勢になる
 - [x] 深場ほど透過が弱くなる
 - [x] 背景が二重減衰しない
-- [x] screen-space 屈折オフセットで背景のずれを表現できる
+- [x] 簡易 screen-space 屈折を導入できている
 - [ ] 将来的な RGB 吸収 / RT 屈折へ接続できる
 
 ## 引き継ぎメモ

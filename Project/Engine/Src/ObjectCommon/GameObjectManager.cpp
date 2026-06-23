@@ -118,7 +118,8 @@ namespace CoreEngine
 
     bool GameObjectManager::DestroyByName(const std::string& name)
     {
-        for (auto& obj : objects_) {
+        for (auto it = objects_.rbegin(); it != objects_.rend(); ++it) {
+            auto& obj = *it;
             if (obj && obj->GetName() == name && !obj->IsMarkedForDestroy()) {
                 obj->Destroy();
                 return true;

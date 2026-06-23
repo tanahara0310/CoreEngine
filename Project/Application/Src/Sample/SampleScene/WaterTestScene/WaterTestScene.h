@@ -125,16 +125,15 @@ private:
     bool  imguiAutoGenerateOnWaveCountIncrease_ = true; ///< 波本数を増やした際に自動再生成する
     float imguiFresnelReflectanceScale_ = 1.0f;     ///< Fresnel 反射ブレンドの強さ
     float imguiFresnelBaseReflectance_ = 0.02f;     ///< 正面入射時の反射率 F0
+    bool  imguiRefractionEnabled_ = true;           ///< screen-space 屈折の有効フラグ
+    float imguiRefractionStrength_ = 0.35f;         ///< 屈折オフセット強度
+    float imguiRefractionDepthScale_ = 0.20f;       ///< 深度差に応じた屈折増幅率
 
     // ---- Depth Fade ----
     bool  imguiDepthFadeEnabled_ = true;            ///< Depth Fade 有効フラグ
     float imguiAbsorptionCoeff_  = 1.2f;            ///< 光吸収係数
     float imguiShallowColor_[3]  = { 0.10f, 0.85f, 0.65f };  ///< 浅瀬の水色
     float imguiDeepColor_[3]     = { 0.02f, 0.08f, 0.45f }; ///< 深場の水色
-    bool  imguiRefractionEnabled_ = true;           ///< screen-space 屈折有効フラグ
-    float imguiRefractionDistortionScale_ = 0.02f;  ///< 基本屈折歪み量
-    float imguiRefractionDepthScale_ = 0.10f;       ///< 水柱長による屈折増幅量
-    float imguiRefractionMaxOffset_ = 0.03f;        ///< UV オフセット上限
     bool  imguiDepthFadeDebugEnabled_ = false;      ///< Depth Fade デバッグ表示
     float imguiDepthFadeDebugScale_ = 1.5f;         ///< Depth Fade デバッグ表示倍率
     int   imguiDepthDebugViewMode_ = static_cast<int>(WaterDebugViewMode::RawDepth); ///< 水面デバッグ可視化モード

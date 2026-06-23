@@ -1,6 +1,12 @@
 {
     "objects": [
+        "WaterPlane_0",
         "Model_0",
-        "WaterPlane_0"
+        "LightningStrike_0",
+        "ground",
+        "ground (1)",
+        "ground (2)",
+        "ground (3)",
+        "ground (4)"
     ]
 }

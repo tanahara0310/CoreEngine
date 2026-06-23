@@ -54,7 +54,7 @@
 ## 2. 全体進捗サマリー
 
 ### 2-1. 現在の実装状況
-- `WaterPlaneObject` と `WaterTestScene` を中心に、水面専用メッシュ、Gerstner Wave、Planar Reflection、PBR 材質調整、Depth Fade、デバッグ UI の基盤は実装済み
+- `WaterPlaneObject` と `WaterTestScene` を中心に、水面専用メッシュ、Gerstner Wave、Planar Reflection、PBR 材質調整、Depth Fade、screen-space 屈折、デバッグ UI の基盤は実装済み
 - 水面の主線は `Water.VS.hlsl` / `Water.PS.hlsl` に集約され、ReflectionView / SceneColor / SceneDepth を使った描画経路まで接続済み
 - 一方で、FFT Ocean、Foam、Caustics、SSR、RT 最終統合は未着手または設計段階に留まる
 - Step ごとの状態は、設計メモではなく **現行コード確認ベース** で更新する
@@ -68,7 +68,7 @@
 | 3 | Gerstner Wave と解析法線 | 実装完了（検証継続） | Step 1, Step 2 | 近景水面の手続き波面 | [Step3_GerstnerWave.md](Step3_GerstnerWave.md) |
 | 4 | 反射基盤（Planar Reflection / IBL） | 実装完了（検証継続） | Step 1, Step 3 | 反射経路の土台 | [Step4_PlanarReflection.md](Step4_PlanarReflection.md) |
 | 5 | 表面 BRDF/BTDF と材質校正 | 実装完了（検証継続） | Step 3, Step 4 | 水面を PBR 的に扱う基礎 | [Step5_NormalMap_PBR.md](Step5_NormalMap_PBR.md) |
-| 6 | 透過・吸収・屈折の主線 | 実装中 | Step 4, Step 5 | 物理ベース水面の中心 | [Step6_SurfaceShading.md](Step6_SurfaceShading.md) |
+| 6 | 透過・吸収・屈折の主線 | 実装中 | Step 4, Step 5 | 物理ベース水面の中心（簡易屈折まで実装） | [Step6_SurfaceShading.md](Step6_SurfaceShading.md) |
 | 6B | FFT Ocean 分岐 | 未着手 | Step 3, Step 6 | 大規模海面向け発展経路 | [Step6_FFTOcean.md](Step6_FFTOcean.md) |
 | 7 | Foam | 未着手 | Step 3, Step 6, Step 6B | 散逸と接触の補強 | [Step7_Foam.md](Step7_Foam.md) |
 | 8 | Caustics / Underwater Lighting | 未着手 | Step 6 | 水中への光伝播表現 | [Step8_Caustics.md](Step8_Caustics.md) |
@@ -76,7 +76,7 @@
 | 10 | デバッグ / 検証 / RT 最終段 | 実装中 | Step 1 ～ Step 9 | 品質保証と最終到達点整理 | [Step10_Tuning_Debug.md](Step10_Tuning_Debug.md) |
 
 ### 2-3. 推奨着手順
-1. **Step 6** の残タスクである屈折経路と透過品質の仕上げを進める
+1. **Step 6** の残タスクである高忠実度屈折経路と透過品質の仕上げを進める
 2. **Step 10** の debug 可視化と検証項目を拡充し、現行実装の観察性を上げる
 3. **Step 7 ～ Step 9** で泡・水中光・SSR を追加して説得力を上げる
 4. 海面スケールが必要な場合のみ **Step 6B** を並行検討する

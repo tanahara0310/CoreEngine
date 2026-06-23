@@ -172,11 +172,6 @@ void WaterTestScene::OnInitialize() {
     // scrollSpeed: U方向に 0.03 UV/秒、V方向に 0.01 UV/秒 でゆっくり流れる
     waterPlane_->SetScrollSpeed({ 0.03f, 0.01f });
     waterPlane_->SetUVTiling({ 4.0f, 4.0f });
-    waterPlane_->SetRefractionParameters(
-        imguiRefractionDistortionScale_,
-        imguiRefractionDepthScale_,
-        imguiRefractionMaxOffset_,
-        imguiRefractionEnabled_);
     waterPlane_->SetActive(true);
 
     // ===== 地面モデル =====
@@ -292,6 +287,17 @@ void WaterTestScene::ApplyWaterRenderViewResult(const RenderViewResult& result)
     }
 
     waterPlane_->ApplyWaterReflectionResult(result);
+
+    if (auto* dx = engine_ ? engine_->GetComponent<CoreEngine::DirectXCommon>() : nullptr) {
+        waterPlane_->SetSceneDepthSRV(dx->GetDepthStencilSRV());
+    }
+
+    if (auto* render = engine_ ? engine_->GetComponent<CoreEngine::Render>() : nullptr) {
+        if (auto* sceneColorTarget = render->GetRenderTarget(CoreEngine::RenderTargetNames::SceneColor)) {
+            waterPlane_->SetSceneColorSRV(sceneColorTarget->GetSRVHandle());
+        }
+    }
+
     waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), false);
     waterPlane_->UpdateFrameConstants();
 }
@@ -494,6 +500,7 @@ void WaterTestScene::ApplyWaterPreset(WaterPresetType preset) {
     imguiFresnelReflectanceScale_ = p.fresnelReflectanceScale;
     imguiFresnelBaseReflectance_ = p.fresnelBaseReflectance;
     waterPlane_->SetFresnelParameters(p.fresnelReflectanceScale, p.fresnelBaseReflectance);
+    waterPlane_->SetRefractionParameters(imguiRefractionStrength_, imguiRefractionDepthScale_, imguiRefractionEnabled_);
 
     // ---- Gerstner Wave ----
     if (imguiAutoRestoreRecommendedWaveCount_ || imguiLockRecommendedWaveCount_) {
@@ -602,6 +609,15 @@ void WaterTestScene::DrawWaterImGui() {
             waterPlane_->SetFresnelParameters(imguiFresnelReflectanceScale_, imguiFresnelBaseReflectance_);
         }
 
+        bool refractionChanged = false;
+        refractionChanged |= ImGui::Checkbox("屈折 有効", &imguiRefractionEnabled_);
+        refractionChanged |= ImGui::SliderFloat("屈折強度", &imguiRefractionStrength_, 0.0f, 4.0f, "%.3f");
+        refractionChanged |= ImGui::SliderFloat("屈折 深度増幅", &imguiRefractionDepthScale_, 0.0f, 1.0f, "%.3f");
+        if (refractionChanged) {
+            waterPlane_->SetRefractionParameters(imguiRefractionStrength_, imguiRefractionDepthScale_, imguiRefractionEnabled_);
+        }
+        ImGui::TextDisabled("Refraction Offset: UV のずれ量 / Refraction Delta: 屈折前後の背景差分");
+
         ImGui::Spacing();
         ImGui::SeparatorText("水の色と吸収");
         ImGui::TextDisabled("浅瀬は背景が見えやすく、深場は吸収で水色が強くなります");
@@ -621,22 +637,6 @@ void WaterTestScene::DrawWaterImGui() {
                 { imguiDeepColor_[0],    imguiDeepColor_[1],    imguiDeepColor_[2] });
         }
 
-        ImGui::Spacing();
-        ImGui::SeparatorText("屈折");
-        ImGui::TextDisabled("法線と水柱長に基づいて SceneColor の参照 UV をずらします");
-        bool refractionChanged = false;
-        refractionChanged |= ImGui::Checkbox("Refraction 有効", &imguiRefractionEnabled_);
-        refractionChanged |= ImGui::SliderFloat("歪み強度", &imguiRefractionDistortionScale_, 0.0f, 0.10f, "%.4f");
-        refractionChanged |= ImGui::SliderFloat("深度スケール", &imguiRefractionDepthScale_, 0.0f, 1.0f, "%.3f");
-        refractionChanged |= ImGui::SliderFloat("最大オフセット", &imguiRefractionMaxOffset_, 0.0f, 0.10f, "%.4f");
-        if (refractionChanged) {
-            waterPlane_->SetRefractionParameters(
-                imguiRefractionDistortionScale_,
-                imguiRefractionDepthScale_,
-                imguiRefractionMaxOffset_,
-                imguiRefractionEnabled_);
-        }
-
         if (ImGui::TreeNode("Depth Fade デバッグ")) {
             bool debugChanged = false;
             debugChanged |= ImGui::Checkbox("デバッグ表示", &imguiDepthFadeDebugEnabled_);
@@ -650,6 +650,8 @@ void WaterTestScene::DrawWaterImGui() {
                 "Scene Color",
                 "Reflection",
                 "Fresnel",
+                "Refraction Offset",
+                "Refraction Delta",
             };
             debugChanged |= ImGui::Combo("可視化モード", &imguiDepthDebugViewMode_, kDebugViewNames, IM_ARRAYSIZE(kDebugViewNames));
             if (debugChanged) {

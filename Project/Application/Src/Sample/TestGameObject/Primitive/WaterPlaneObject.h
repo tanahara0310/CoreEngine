@@ -114,7 +114,7 @@ public:
     void SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 
     /// @brief Water Reflection の出力を水面描画へ適用する
-    /// @param result RenderView 出力一式
+    /// @param result RenderView 出力一式（反射RTTのみを使用）
     void ApplyWaterReflectionResult(const CoreEngine::RenderViewResult& result);
 
     /// @brief Depth Fade パラメータを設定する
@@ -131,15 +131,14 @@ public:
     /// @param mode デバッグ可視化モード
     void SetDepthDebugViewMode(WaterDebugViewMode mode);
 
+    /// @brief screen-space 屈折パラメータを設定する
+    /// @param strength 屈折オフセット強度
+    /// @param depthScale 深度差に応じた屈折オフセット増幅率
+    /// @param enabled true のとき屈折を有効にする
+    void SetRefractionParameters(float strength, float depthScale, bool enabled);
+
     /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
     void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);
-
-    /// @brief screen-space 屈折パラメータを設定する
-    /// @param distortionScale 法線由来の基本歪み量
-    /// @param depthScale 水柱長に応じた歪み増幅量
-    /// @param maxOffset UV オフセットの上限
-    /// @param enabled true のとき屈折を有効にする
-    void SetRefractionParameters(float distortionScale, float depthScale, float maxOffset, bool enabled);
 
     /// @brief 雷の水面着弾演出パラメータを設定する
     void ClearLightningImpacts();

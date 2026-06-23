@@ -52,7 +52,7 @@ namespace CoreEngine
 
         /// @brief モデルファイルをシーンにスポーンする
         /// @param modelFileName モデルファイル名（例: "cube.obj"）
-        void SpawnModelFromFile(const std::string& modelFileName);
+        void SpawnModelFromFile(const std::string& modelFileName, const Vector2* normalizedDropPos = nullptr);
 
         /// @brief Gameビュー上の選択とギズモ描画を更新する
         /// @param viewportPos Gameビュー画像の左上座標
@@ -62,6 +62,10 @@ namespace CoreEngine
             const ImVec2& viewportPos,
             const ImVec2& viewportSize,
             bool isViewportHovered);
+
+        /// @brief Gameビューへのモデルドロップを処理する
+        /// @return モデルドロップを受理した場合 true
+        bool AcceptGameViewportModelDrop(const ImVec2& viewportPos, const ImVec2& viewportSize);
 
         /// @brief 現在のギズモモードを取得する
         Gizmo::Mode GetGizmoMode() const;

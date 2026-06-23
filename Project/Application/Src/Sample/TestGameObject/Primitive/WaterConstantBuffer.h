@@ -25,6 +25,8 @@ enum class WaterDebugViewMode : uint32_t {
     SceneColor = 5,
     Reflection = 6,
     Fresnel = 7,
+    RefractionOffset = 8,
+    RefractionDelta = 9,
 };
 
 struct WaterWaveLayerConfig {
@@ -93,6 +95,20 @@ struct WaterFrameConstants {
     /// @brief 正面入射時の Fresnel 反射率 F0（水面の既定値は約 0.02）
     float fresnelBaseReflectance = 0.02f;
 
+    // ---- Refraction（screen-space 屈折）----
+
+    /// @brief 屈折オフセット強度
+    float refractionStrength = 0.35f;
+
+    /// @brief 深度差に応じた屈折オフセット増幅率
+    float refractionDepthScale = 0.20f;
+
+    /// @brief 1 = screen-space 屈折を有効にする、0 = 無効
+    int   refractionEnabled = 1;
+
+    /// @brief cbuffer 16 バイトアライメント用
+    float refractionPadding = 0.0f;
+
     // ---- Depth Fade（Beer-Lambert 則）----
 
     /// @brief 光吸収係数（大きいほど短距離で不透明になる）
@@ -120,20 +136,6 @@ struct WaterFrameConstants {
 
     /// @brief deepColor アライメント用
     float deepColorPad = 0.0f;
-
-    // ---- Refraction ----
-
-    /// @brief 1 = screen-space 屈折を有効にする、0 = 無効
-    int   refractionEnabled = 1;
-
-    /// @brief 屈折によるスクリーン UV 歪みの基本強度
-    float refractionDistortionScale = 0.02f;
-
-    /// @brief 水柱長に応じて屈折量を増減させるスケール
-    float refractionDepthScale = 0.10f;
-
-    /// @brief screen-space 屈折オフセットの最大 UV 量
-    float refractionMaxOffset = 0.03f;
 
     /// @brief 水面デバッグ可視化モード
     uint32_t depthDebugViewMode = static_cast<uint32_t>(WaterDebugViewMode::None);

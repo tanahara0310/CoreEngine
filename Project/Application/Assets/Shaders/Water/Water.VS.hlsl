@@ -38,6 +38,12 @@ cbuffer WaterFrameConstants : register(b5)
     float  gFresnelReflectanceScale; // PS と共有（VS では未使用、レイアウト一致のため保持）
     float  gFresnelBaseReflectance;  // PS と共有（VS では未使用、レイアウト一致のため保持）
 
+    // ---- Refraction（VS では未使用、レイアウト一致のため保持）----
+    float  gRefractionStrength;
+    float  gRefractionDepthScale;
+    int    gRefractionEnabled;
+    float  gRefractionPadding;
+
     // ---- Depth Fade（VS では未使用、レイアウト一致のため保持）----
     float  gAbsorptionCoeff;
     int    gDepthFadeEnabled;
@@ -49,12 +55,6 @@ cbuffer WaterFrameConstants : register(b5)
     float  gShallowColorPad;
     float3 gDeepColor;
     float  gDeepColorPad;
-
-    // ---- 屈折（VS では未使用、レイアウト一致のため保持）----
-    int    gRefractionEnabled;
-    float  gRefractionDistortionScale;
-    float  gRefractionDepthScale;
-    float  gRefractionMaxOffset;
 
     // ---- デバッグ表示（VS では未使用）----
     uint   gDepthDebugViewMode;
