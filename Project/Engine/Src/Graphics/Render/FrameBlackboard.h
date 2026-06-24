@@ -32,6 +32,7 @@ namespace CoreEngine
         static const char* const ShadowMap;
         static const char* const ShadowMask;
         static const char* const RTShadowMask;
+        static const char* const RTWaterRefractionColor;
         static const char* const BackBuffer;
         static const char* const PostEffectFinal;
         static const char* const GBufferAlbedoAO;

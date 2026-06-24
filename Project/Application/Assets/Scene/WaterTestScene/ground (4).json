@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "material": {
+        "ao": 1.0,
+        "aoMap": false,
+        "color": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "dithering": true,
+        "ditheringScale": 1.0,
+        "ibl": true,
+        "iblIntensity": 1.0,
+        "lighting": true,
+        "metallic": 0.0,
+        "metallicMap": true,
+        "normalMap": false,
+        "roughness": 0.5,
+        "roughnessMap": true
+    },
+    "modelPath": "ground.gltf",
+    "name": "ground (4)",
+    "transform": {
+        "rotate": [
+            0.09806831181049347,
+            -0.0,
+            0.0
+        ],
+        "scale": [
+            2.9982001781463623,
+            2.9982004165649414,
+            2.9982004165649414
+        ],
+        "translate": [
+            17.017047882080078,
+            -1.7000975608825684,
+            1.4480857849121094
+        ]
+    }
+}

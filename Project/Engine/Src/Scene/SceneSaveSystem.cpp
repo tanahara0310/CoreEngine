@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "SceneSaveSystem.h"
 #include "ObjectCommon/GameObjectManager.h"
+#include "ObjectCommon/Model/DynamicModelObject.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 namespace CoreEngine
@@ -26,6 +27,47 @@ namespace CoreEngine
         if (sceneName_.empty() || !mgr) return;
 
         auto& jm = JsonManager::GetInstance();
+
+        auto findObjectBySerializeKey = [mgr](const std::string& key) -> GameObject* {
+            for (const auto& obj : mgr->GetAllObjects()) {
+                if (obj && obj->GetSerializeKey() == key) {
+                    return obj.get();
+                }
+            }
+            return nullptr;
+        };
+
+        const std::string manifestPath = GetManifestPath();
+        if (jm.FileExists(manifestPath)) {
+            json manifest = jm.LoadJson(manifestPath);
+            if (manifest.contains("objects") && manifest["objects"].is_array()) {
+                for (const auto& entry : manifest["objects"]) {
+                    if (!entry.is_string()) continue;
+
+                    const std::string key = entry.get<std::string>();
+                    if (key.empty() || findObjectBySerializeKey(key)) {
+                        continue;
+                    }
+
+                    const std::string objPath = GetObjectPath(key);
+                    if (!jm.FileExists(objPath)) {
+                        continue;
+                    }
+
+                    json data = jm.LoadJson(objPath);
+                    if (data.is_null()) {
+                        continue;
+                    }
+
+                    if (data.contains("modelPath") && data["modelPath"].is_string()) {
+                        auto obj = std::make_unique<DynamicModelObject>();
+                        obj->SetModelPath(data["modelPath"].get<std::string>());
+                        obj->SetName(key);
+                        mgr->AddObject(std::move(obj));
+                    }
+                }
+            }
+        }
 
         // オブジェクトごとに個別ファイルからデシリアライズ
         for (const auto& obj : mgr->GetAllObjects()) {

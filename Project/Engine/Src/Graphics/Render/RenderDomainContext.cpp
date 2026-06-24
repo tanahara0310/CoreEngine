@@ -5,6 +5,7 @@
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -46,6 +47,14 @@ namespace CoreEngine
                 "RenderDomainContext: RayTracingShadowManager 初期化完了\n");
         }
 
+        rtWaterRefractionManager_ = std::make_unique<WaterRefractionRayTracingManager>();
+        if (accelerationStructureManager_->IsSupported()) {
+            rtWaterRefractionManager_->Initialize(dxCommon, descriptorManager,
+                accelerationStructureManager_.get());
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterRefractionRayTracingManager 初期化完了\n");
+        }
+
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext::Initialize: 全ドメインマネージャーの初期化完了\n");
     }
@@ -56,6 +65,7 @@ namespace CoreEngine
             "RenderDomainContext::Shutdown: ドメインマネージャーを解放します\n");
 
         // 依存関係を考慮した逆順解放
+        rtWaterRefractionManager_.reset();
         rtShadowManager_.reset();
         accelerationStructureManager_.reset();
         shadowMapManager_.reset();

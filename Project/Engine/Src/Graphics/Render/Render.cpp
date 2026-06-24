@@ -27,6 +27,18 @@ namespace CoreEngine
         sceneColorDesc.clearColor[3] = kClearColor[3];
         renderTargetManager_->CreateRenderTarget(sceneColorDesc);
 
+        RenderTargetDescriptor sceneColorSnapshotDesc(RenderTargetNames::SceneColorSnapshot);
+        sceneColorSnapshotDesc.clearColor[0] = kClearColor[0];
+        sceneColorSnapshotDesc.clearColor[1] = kClearColor[1];
+        sceneColorSnapshotDesc.clearColor[2] = kClearColor[2];
+        sceneColorSnapshotDesc.clearColor[3] = kClearColor[3];
+        sceneColorSnapshotDesc.needsDepthStencil = false;
+        if (auto* sceneColorSnapshot = renderTargetManager_->CreateRenderTarget(sceneColorSnapshotDesc)) {
+            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(sceneColorSnapshot)) {
+                offscreen->SetUseDepthBuffer(false);
+            }
+        }
+
         RenderTargetDescriptor reflectionViewDesc(RenderTargetNames::ReflectionView);
         reflectionViewDesc.clearColor[0] = kClearColor[0];
         reflectionViewDesc.clearColor[1] = kClearColor[1];

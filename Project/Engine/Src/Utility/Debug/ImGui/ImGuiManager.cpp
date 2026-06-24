@@ -168,6 +168,7 @@ namespace CoreEngine
             const ImVec2 imageMin = ImGui::GetItemRectMin();
             const ImVec2 imageMax = ImGui::GetItemRectMax();
             const ImVec2 imageSize(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
+            sceneDebugEditor->AcceptGameViewportModelDrop(imageMin, imageSize);
             const bool isImageHovered = ImGui::IsItemHovered();
             sceneDebugEditor->UpdateGameViewportInteraction(
                 imageMin,

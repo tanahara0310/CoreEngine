@@ -91,6 +91,9 @@ public:
     /// @brief 現在有効な Gerstner Wave 本数を返す
     uint32_t GetActiveWaveCount() const { return waterCB_.activeWaveCount; }
 
+    /// @brief DXR 屈折用に現在の WaterConstants を取得する
+    const WaterConstants& GetWaterConstants() const { return waterCB_; }
+
     /// @brief UV スクロール速度への参照を返す（ImGui 直接編集用）
     CoreEngine::Vector2& GetScrollSpeed() { return scrollSpeed_; }
 
@@ -113,6 +116,10 @@ public:
     /// @param srvHandle オフスクリーンカラーの GPU ハンドル
     void SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 
+    /// @brief DXR 水面屈折カラー SRV を設定する
+    /// @param srvHandle DXR 屈折結果テクスチャの GPU ハンドル
+    void SetRefractionColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
+
     /// @brief Water Reflection の出力を水面描画へ適用する
     /// @param result RenderView 出力一式
     void ApplyWaterReflectionResult(const CoreEngine::RenderViewResult& result);
@@ -133,13 +140,6 @@ public:
 
     /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
     void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);
-
-    /// @brief screen-space 屈折パラメータを設定する
-    /// @param distortionScale 法線由来の基本歪み量
-    /// @param depthScale 水柱長に応じた歪み増幅量
-    /// @param maxOffset UV オフセットの上限
-    /// @param enabled true のとき屈折を有効にする
-    void SetRefractionParameters(float distortionScale, float depthScale, float maxOffset, bool enabled);
 
     /// @brief 雷の水面着弾演出パラメータを設定する
     void ClearLightningImpacts();
@@ -208,4 +208,7 @@ private:
 
     // ---- シーンカラー SRV（t16 にバインド）: 水越しの背景色用 ----
     D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV_ = { 0 };              ///< シーンカラー SRV
+
+    // ---- DXR 屈折カラー SRV（t17 にバインド） ----
+    D3D12_GPU_DESCRIPTOR_HANDLE refractionColorSRV_ = { 0 };         ///< DXR 屈折カラー SRV
 };

@@ -13,8 +13,85 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
 #include "ObjectCommon/Model/DynamicModelObject.h"
+#include "Utility/Collision/CollisionUtils.h"
 #include "Utility/Logger/Logger.h"
+#include <cctype>
 #include <filesystem>
+
+namespace
+{
+    bool EndsWithUnityCopySuffix(const std::string& name, std::string* outBaseName)
+    {
+        if (name.size() < 4 || name.back() != ')') {
+            return false;
+        }
+
+        const size_t openParen = name.rfind(" (");
+        if (openParen == std::string::npos || openParen + 3 >= name.size()) {
+            return false;
+        }
+
+        for (size_t i = openParen + 2; i + 1 < name.size(); ++i) {
+            if (!std::isdigit(static_cast<unsigned char>(name[i]))) {
+                return false;
+            }
+        }
+
+        if (outBaseName) {
+            *outBaseName = name.substr(0, openParen);
+        }
+        return true;
+    }
+
+    bool HasObjectName(const CoreEngine::GameObjectManager* manager, const std::string& name)
+    {
+        if (!manager) {
+            return false;
+        }
+
+        for (const auto& obj : manager->GetAllObjects()) {
+            if (obj && obj->GetName() == name) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    std::string GenerateUnityStyleCopyName(const CoreEngine::GameObjectManager* manager, const std::string& sourceName)
+    {
+        std::string baseName = sourceName;
+        EndsWithUnityCopySuffix(sourceName, &baseName);
+
+        for (int copyIndex = 1;; ++copyIndex) {
+            const std::string candidate = baseName + " (" + std::to_string(copyIndex) + ")";
+            if (!HasObjectName(manager, candidate)) {
+                return candidate;
+            }
+        }
+    }
+
+    void ApplyDynamicModelMaterialOverrides(CoreEngine::Model* model)
+    {
+        if (!model) {
+            return;
+        }
+
+        if (CoreEngine::MaterialInstance* material = model->GetMaterial()) {
+            material->SetLightingEnabled(true);
+            material->SetIBLEnabled(true);
+            material->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            material->SetMetallic(0.0f);
+            material->SetRoughness(0.5f);
+            material->SetAO(1.0f);
+            material->SetNormalMapEnabled(false);
+            const bool hasMetallicRoughnessMap = model->HasMetallicRoughnessMap();
+            material->SetMetallicMapEnabled(hasMetallicRoughnessMap);
+            material->SetRoughnessMapEnabled(hasMetallicRoughnessMap);
+            material->SetAOMapEnabled(model->HasOcclusionMap());
+        }
+    }
+}
 
 namespace CoreEngine
 {
@@ -200,6 +277,37 @@ namespace CoreEngine
         }
     }
 
+    bool SceneDebugEditor::AcceptGameViewportModelDrop(const ImVec2& viewportPos, const ImVec2& viewportSize)
+    {
+        if (!gameObjectManager_) {
+            return false;
+        }
+
+        if (viewportSize.x <= 0.0f || viewportSize.y <= 0.0f) {
+            return false;
+        }
+
+        if (!ImGui::BeginDragDropTarget()) {
+            return false;
+        }
+
+        bool accepted = false;
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE")) {
+            const char* droppedFilename = static_cast<const char*>(payload->Data);
+            if (droppedFilename && droppedFilename[0] != '\0') {
+                const ImVec2 mousePos = ImGui::GetMousePos();
+                const Vector2 normalizedDropPos(
+                    std::clamp((mousePos.x - viewportPos.x) / viewportSize.x, 0.0f, 1.0f),
+                    std::clamp((mousePos.y - viewportPos.y) / viewportSize.y, 0.0f, 1.0f));
+                SpawnModelFromFile(droppedFilename, &normalizedDropPos);
+                accepted = true;
+            }
+        }
+
+        ImGui::EndDragDropTarget();
+        return accepted;
+    }
+
     Gizmo::Mode SceneDebugEditor::GetGizmoMode() const
     {
         return objectSelector_.GetGizmoMode();
@@ -381,8 +489,8 @@ namespace CoreEngine
         auto newObj = std::make_unique<DynamicModelObject>();
         newObj->SetModelPath(modelPath);
 
-        // 名前を設定（"_Copy" を付加）
-        std::string copyName = std::string(selected->GetDisplayName()) + "_Copy";
+        // 名前を設定（Unity 風の "Name (1)" 形式で一意化）
+        std::string copyName = GenerateUnityStyleCopyName(gameObjectManager_, selected->GetName());
         newObj->SetName(copyName);
 
         // 登録して Initialize
@@ -396,6 +504,9 @@ namespace CoreEngine
         if (!serializedData.empty()) {
             raw->OnDeserialize(serializedData);
         }
+
+        raw->SetName(copyName);
+        ApplyDynamicModelMaterialOverrides(raw->GetModel());
 
         // 少しオフセットを加えて重ならないようにする
         DebugAccess::TransformAccess access;
@@ -423,7 +534,7 @@ namespace CoreEngine
         return true;
     }
 
-    void SceneDebugEditor::SpawnModelFromFile(const std::string& modelFileName)
+    void SceneDebugEditor::SpawnModelFromFile(const std::string& modelFileName, const Vector2* normalizedDropPos)
     {
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "モデルをスポーン: {}", modelFileName);
 
@@ -441,6 +552,50 @@ namespace CoreEngine
             return;
         }
 
+        // 動的スポーン時は PBR テクスチャを活かしつつ、問題のある法線マップのみ無効化する
+        ApplyDynamicModelMaterialOverrides(raw->GetModel());
+
+        DebugAccess::TransformAccess access;
+        if (DebugAccess::TryGetTransformAccess(raw, access) && access.translate) {
+            Vector3 spawnPosition = { 0.0f, 1.0f, 0.0f };
+
+            if (const ICamera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr) {
+                const Vector2 dropPos = normalizedDropPos ? *normalizedDropPos : Vector2{ 0.5f, 0.5f };
+                const Vector2 ndcPos(
+                    dropPos.x * 2.0f - 1.0f,
+                    1.0f - dropPos.y * 2.0f);
+
+                const Vector3 nearPoint = MathCore::Coordinate::NormalizedScreenToWorld(
+                    ndcPos,
+                    0.0f,
+                    camera3D->GetViewMatrix(),
+                    camera3D->GetProjectionMatrix(),
+                    1.0f,
+                    1.0f);
+                const Vector3 farPoint = MathCore::Coordinate::NormalizedScreenToWorld(
+                    ndcPos,
+                    1.0f,
+                    camera3D->GetViewMatrix(),
+                    camera3D->GetProjectionMatrix(),
+                    1.0f,
+                    1.0f);
+                const Vector3 forward = MathCore::Vector::Normalize(farPoint - nearPoint);
+
+                const CollisionUtils::Ray ray{ camera3D->GetPosition(), forward };
+                const CollisionUtils::Plane groundPlane{ { 0.0f, 1.0f, 0.0f }, 0.0f };
+                if (const auto hit = CollisionUtils::RayIntersectPlane(ray, groundPlane)) {
+                    spawnPosition = *hit;
+                } else {
+                    spawnPosition = camera3D->GetPosition() + forward * 5.0f;
+                    if (spawnPosition.y < 0.5f) {
+                        spawnPosition.y = 0.5f;
+                    }
+                }
+            }
+
+            *access.translate = spawnPosition;
+        }
+
         // スポーンしたオブジェクトを選択状態にする
         objectSelector_.SelectObject(raw);
 
@@ -448,7 +603,6 @@ namespace CoreEngine
         ObjectSpawnRecord spawnRecord;
         spawnRecord.objectName = raw->GetName();
         spawnRecord.modelPath  = modelFileName;
-        DebugAccess::TransformAccess access;
         if (DebugAccess::TryGetTransformAccess(raw, access)) {
             spawnRecord.translate = *access.translate;
             spawnRecord.rotate    = *access.rotate;

@@ -152,6 +152,10 @@ namespace CoreEngine
         if (!tlasInstanceDescBuffer_ ||
             tlasInstanceDescBuffer_->GetDesc().Width < instanceBufferSize)
         {
+            if (tlasInstanceDescBuffer_) {
+                retiredResources_.push_back(std::move(tlasInstanceDescBuffer_));
+            }
+
             D3D12_HEAP_PROPERTIES heapProps{};
             heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
 
@@ -164,10 +168,11 @@ namespace CoreEngine
             resDesc.SampleDesc.Count = 1;
             resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-            device5_->CreateCommittedResource(
+            HRESULT hr = device5_->CreateCommittedResource(
                 &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
                 D3D12_RESOURCE_STATE_GENERIC_READ,
                 nullptr, IID_PPV_ARGS(&tlasInstanceDescBuffer_));
+            assert(SUCCEEDED(hr));
         }
 
         // インスタンスデータの書き込み

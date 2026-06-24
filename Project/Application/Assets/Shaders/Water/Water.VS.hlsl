@@ -50,12 +50,6 @@ cbuffer WaterFrameConstants : register(b5)
     float3 gDeepColor;
     float  gDeepColorPad;
 
-    // ---- 屈折（VS では未使用、レイアウト一致のため保持）----
-    int    gRefractionEnabled;
-    float  gRefractionDistortionScale;
-    float  gRefractionDepthScale;
-    float  gRefractionMaxOffset;
-
     // ---- デバッグ表示（VS では未使用）----
     uint   gDepthDebugViewMode;
     uint   gLightningImpactCount;

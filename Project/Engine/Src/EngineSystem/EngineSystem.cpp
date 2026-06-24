@@ -30,6 +30,7 @@
 #include "Graphics/Render/Pass/SSAOPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/RTShadowPass.h"
+#include "Graphics/Render/Pass/RTWaterRefractionPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
 #include "Graphics/Render/Pass/BackBufferPass.h"
@@ -230,6 +231,7 @@ namespace CoreEngine
         context.dxCommon = dx;
         context.renderManager = renderManager;
         context.rayTracingSubsystem = rayTracing;
+        context.sceneManager = sceneManager;
         context.postEffectManager = GetComponent<PostEffectManager>();
         context.renderingTechniqueManager = GetComponent<RenderingTechniqueManager>();
         context.lightManager = GetComponent<LightManager>();
@@ -237,8 +239,10 @@ namespace CoreEngine
         context.shadowMapManager = renderDomainContext_ ? renderDomainContext_->GetShadowMapManager() : nullptr;
         context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
+        context.rtWaterRefractionManager = renderDomainContext_ ? renderDomainContext_->GetWaterRefractionRayTracingManager() : nullptr;
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
+        context.waterRefractionSurfaceData = sceneManager ? sceneManager->GetWaterRefractionSurfaceData() : nullptr;
 
         if (dx) {
             frameBlackboard.SetResource(
@@ -393,6 +397,9 @@ namespace CoreEngine
         // GBuffer/SSAO 後、DeferredLighting 前に差し込む。
         auto rtShadowPass = std::make_unique<RTShadowPass>();
         renderPipeline_->AddPass(std::move(rtShadowPass));
+
+        auto rtWaterRefractionPass = std::make_unique<RTWaterRefractionPass>();
+        renderPipeline_->AddPass(std::move(rtWaterRefractionPass));
 
         // 3. DeferredLightingパス
         // G-Buffer (AlbedoAO / NormalRoughness / EmissiveMetallic) を読み取り、

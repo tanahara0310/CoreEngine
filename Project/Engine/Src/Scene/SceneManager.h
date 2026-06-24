@@ -95,6 +95,9 @@ public:
     /// @brief 現在シーンのオブジェクトマネージャーを取得
     GameObjectManager* GetCurrentGameObjectManager() const;
 
+    /// @brief 現在シーンの DXR 水面屈折用波面データを取得
+    const WaterRefractionSurfaceData* GetWaterRefractionSurfaceData() const;
+
     /// @brief 現在シーンが要求する補助 RenderView 一覧を構築する
     /// @return 実行要求一覧
     std::vector<RenderViewRequest> BuildRenderViewRequests();

@@ -27,6 +27,7 @@ namespace CoreEngine
     class DirectXCommon;
     class RenderManager;
     class RayTracingSubsystem;
+    class SceneManager;
     class PostEffectManager;
     class RenderingTechniqueManager;
     class LightManager;
@@ -35,14 +36,17 @@ namespace CoreEngine
     class ShadowMapManager;
     class AccelerationStructureManager;
     class RayTracingShadowManager;
+    class WaterRefractionRayTracingManager;
     class CameraManager;
     class DepthStencilManager;
+    struct WaterRefractionSurfaceData;
 
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
         DirectXCommon* dxCommon = nullptr;
         RenderManager* renderManager = nullptr;
         RayTracingSubsystem* rayTracingSubsystem = nullptr;
+        SceneManager* sceneManager = nullptr;
         PostEffectManager* postEffectManager = nullptr;
         RenderingTechniqueManager* renderingTechniqueManager = nullptr; ///< レンダリング技術管理（SSAO・TAA等）
         LightManager* lightManager = nullptr;
@@ -51,9 +55,11 @@ namespace CoreEngine
         GBufferManager* gBufferManager = nullptr;  ///< G-Buffer管理（Deferred）
         AccelerationStructureManager* accelerationStructureManager = nullptr; ///< DXR 加速構造管理
         RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
+        WaterRefractionRayTracingManager* rtWaterRefractionManager = nullptr; ///< DXR 水面屈折
         CameraManager* cameraManager = nullptr; ///< カメラ管理（SSAO等でビュー/プロジェクション行列取得用）
         DepthStencilManager* depthStencilManager = nullptr; ///< 深度ステンシル管理（バリア遷移・クリアを一元管理）
         FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理
+        const WaterRefractionSurfaceData* waterRefractionSurfaceData = nullptr; ///< DXR 水面屈折用の波面データ
         RenderViewSettings viewSettings{}; ///< 現在の View 種別と有効化するパス群設定
         uint32_t currentRTShadowViewId = static_cast<uint32_t>(RenderViewType::GameView); ///< 現在の RT シャドウビュー
     };

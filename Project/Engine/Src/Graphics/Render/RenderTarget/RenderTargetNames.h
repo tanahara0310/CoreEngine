@@ -7,6 +7,7 @@ namespace CoreEngine
 {
 namespace RenderTargetNames {
     constexpr const char* SceneColor = "SceneColor";
+    constexpr const char* SceneColorSnapshot = "SceneColorSnapshot";
     constexpr const char* PostEffectIntermediatePrefix = "PostEffectIntermediate";
     constexpr const char* PostEffectFinal = "PostEffectFinal";
     constexpr const char* BackBuffer  = "BackBuffer";

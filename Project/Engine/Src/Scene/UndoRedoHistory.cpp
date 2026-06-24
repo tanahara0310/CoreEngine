@@ -5,6 +5,8 @@
 #include "ObjectCommon/GameObjectManager.h"
 #include "ObjectCommon/GameObject.h"
 #include "ObjectCommon/Model/DynamicModelObject.h"
+#include "Graphics/Model/Model.h"
+#include "Graphics/Material/MaterialInstance.h"
 #include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
 #include "Utility/Logger/Logger.h"
 
@@ -108,6 +110,13 @@ namespace CoreEngine
                 newObj->SetName(e.objectName);
                 DynamicModelObject* raw = manager->AddObject(std::move(newObj));
                 if (raw) {
+                    if (Model* model = raw->GetModel()) {
+                        if (MaterialInstance* material = model->GetMaterial()) {
+                            material->SetLightingEnabled(true);
+                            material->SetIBLEnabled(true);
+                            material->SetNormalMapEnabled(false);
+                        }
+                    }
                     DebugAccess::TransformAccess access;
                     if (DebugAccess::TryGetTransformAccess(raw, access)) {
                         *access.translate = e.translate;

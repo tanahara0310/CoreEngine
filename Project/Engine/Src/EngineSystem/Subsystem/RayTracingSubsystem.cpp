@@ -5,13 +5,17 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "ObjectCommon/Model/ModelGameObject.h"
 #include "ObjectCommon/GameObjectManager.h"
+#include "Camera/ICamera.h"
 #include "Scene/SceneManager.h"
+#include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
@@ -146,5 +150,108 @@ namespace CoreEngine
         }
 
         // GBuffer 入力の前後状態遷移は RenderGraph 側の自動遷移へ委譲する。
+    }
+
+    void RayTracingSubsystem::DispatchWaterRefraction(
+        const RenderContext& context,
+        DirectXCommon* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        WaterRefractionRayTracingManager::ViewID viewId,
+        const WaterRefractionSurfaceData& surfaceData)
+    {
+        auto* rtWaterRefraction = context.rtWaterRefractionManager;
+        if (!rtWaterRefraction) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "RayTracingSubsystem: water refraction dispatch skipped. manager is null.");
+            return;
+        }
+        if (!rtWaterRefraction->IsInitialized()) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "RayTracingSubsystem: water refraction dispatch skipped. manager is not initialized.");
+            return;
+        }
+        if (!context.gBufferManager || !context.sceneManager) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "RayTracingSubsystem: water refraction dispatch skipped. gBufferManager={} sceneManager={}",
+                context.gBufferManager != nullptr,
+                context.sceneManager != nullptr);
+            return;
+        }
+        if (!dx || !cmdList) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Command,
+                "RayTracingSubsystem: water refraction dispatch skipped. dx={} cmdList={}",
+                dx != nullptr,
+                cmdList != nullptr);
+            return;
+        }
+
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV{};
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, sceneColorSRV);
+        }
+        if (sceneColorSRV.ptr == 0) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::RenderTarget,
+                "RayTracingSubsystem: water refraction dispatch skipped. SceneColor SRV is invalid.");
+            return;
+        }
+
+        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
+        if (!camera) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "RayTracingSubsystem: water refraction dispatch skipped. camera is null.");
+            return;
+        }
+
+        auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+        const Matrix4x4 viewProjection = camera->GetViewMatrix() * camera->GetProjectionMatrix();
+        const Vector3 cameraPosition = camera->GetPosition();
+        const UINT width = static_cast<UINT>(dx->GetClientWidth());
+        const UINT height = static_cast<UINT>(dx->GetClientHeight());
+
+        Logger::GetInstance().Infof(
+            LogCategory::Graphics,
+            LogSubCategory::Pipeline,
+            "RayTracingSubsystem: water refraction dispatch request. viewId={} waterHeight={:.3f} activeWaveCount={} waveTime={:.3f} width={} height={} worldPosSRV=0x{:X} sceneColorSRV=0x{:X} cameraPos=({:.3f}, {:.3f}, {:.3f}) firstWave(dir=({:.3f}, {:.3f}) amp={:.4f} len={:.3f} speed={:.3f} steep={:.3f} phase={:.3f})",
+            static_cast<uint32_t>(viewId),
+            surfaceData.waterHeight,
+            surfaceData.activeWaveCount,
+            surfaceData.time,
+            width,
+            height,
+            worldPosSRV.ptr,
+            sceneColorSRV.ptr,
+            cameraPosition.x,
+            cameraPosition.y,
+            cameraPosition.z,
+            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].direction[0] : 0.0f,
+            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].direction[1] : 0.0f,
+            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].amplitude : 0.0f,
+            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].wavelength : 0.0f,
+            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].speed : 0.0f,
+            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].steepness : 0.0f,
+            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].phaseOffset : 0.0f);
+
+        rtWaterRefraction->Dispatch(
+            cmdList,
+            worldPosSRV,
+            sceneColorSRV,
+            viewProjection,
+            cameraPosition,
+            surfaceData,
+            width,
+            height,
+            viewId);
     }
 }

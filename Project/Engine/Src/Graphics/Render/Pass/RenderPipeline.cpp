@@ -7,6 +7,7 @@
 #include "GBufferPass.h"
 #include "PostEffectPass.h"
 #include "RTShadowPass.h"
+#include "RTWaterRefractionPass.h"
 #include "SSAOPass.h"
 #include "ShadowMapPass.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
@@ -315,6 +316,14 @@ namespace CoreEngine
                     builder.Read(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 }
                 builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
+                });
+        }
+
+        if (auto* pass = GetPass<RTWaterRefractionPass>()) {
+            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
+                builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                builder.Write(FrameBlackboard::RTWaterRefractionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 });
         }
 

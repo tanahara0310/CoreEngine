@@ -25,6 +25,14 @@ enum class WaterDebugViewMode : uint32_t {
     SceneColor = 5,
     Reflection = 6,
     Fresnel = 7,
+    RTRefraction = 8,
+    RTRefractionReason = 9,
+    RTRefractionVsScene = 10,
+    Transmission = 11,
+    Absorption = 12,
+    Reflectance = 13,
+    WaterComposite = 14,
+    RTRefractionSuccessMask = 15,
 };
 
 struct WaterWaveLayerConfig {
@@ -120,20 +128,6 @@ struct WaterFrameConstants {
 
     /// @brief deepColor アライメント用
     float deepColorPad = 0.0f;
-
-    // ---- Refraction ----
-
-    /// @brief 1 = screen-space 屈折を有効にする、0 = 無効
-    int   refractionEnabled = 1;
-
-    /// @brief 屈折によるスクリーン UV 歪みの基本強度
-    float refractionDistortionScale = 0.02f;
-
-    /// @brief 水柱長に応じて屈折量を増減させるスケール
-    float refractionDepthScale = 0.10f;
-
-    /// @brief screen-space 屈折オフセットの最大 UV 量
-    float refractionMaxOffset = 0.03f;
 
     /// @brief 水面デバッグ可視化モード
     uint32_t depthDebugViewMode = static_cast<uint32_t>(WaterDebugViewMode::None);
