@@ -30,6 +30,9 @@ public:
     /// @brief 水面反射用の補助 RenderView 要求を構築する
     std::vector<CoreEngine::RenderViewRequest> BuildRenderViewRequests() override;
 
+    /// @brief 現在の DXR 水面屈折用波面データを返す
+    const CoreEngine::WaterRefractionSurfaceData* GetWaterRefractionSurfaceData() const override;
+
     /// @brief 解放
     void Finalize() override;
 
@@ -37,6 +40,8 @@ private:
     void SetupWaterReflectionView(CoreEngine::ICamera* mainCamera, float planeHeight);
     void RestoreWaterReflectionView(CoreEngine::ICamera* mainCamera);
     void ApplyWaterRenderViewResult(const CoreEngine::RenderViewResult& result);
+    const WaterConstants* GetCurrentWaterConstants() const;
+    float GetCurrentWaterHeight() const;
 
     struct ActiveLightningImpact {
         CoreEngine::Vector3 position = { 0.0f, 0.0f, 0.0f };
@@ -82,6 +87,8 @@ private:
     /// @brief 雷着弾後の水面演出状態を更新する
     void UpdateLightningImpactEffect(float deltaTime);
 
+    void UpdateWaterRefractionSurfaceData();
+
     /// @brief 水面グリッドメッシュオブジェクト
     WaterPlaneObject* waterPlane_ = nullptr;
 
@@ -93,6 +100,8 @@ private:
 
     /// @brief 水面平面反射パス（Step 4）
     WaterReflectionPass reflectionPass_;
+
+    CoreEngine::WaterRefractionSurfaceData waterRefractionSurfaceData_{};
 
     bool  lightningEffectEnabled_ = true;
     bool  lightningAutoLoop_ = true;
@@ -125,9 +134,7 @@ private:
     bool  imguiAutoGenerateOnWaveCountIncrease_ = true; ///< 波本数を増やした際に自動再生成する
     float imguiFresnelReflectanceScale_ = 1.0f;     ///< Fresnel 反射ブレンドの強さ
     float imguiFresnelBaseReflectance_ = 0.02f;     ///< 正面入射時の反射率 F0
-    bool  imguiRefractionEnabled_ = true;           ///< screen-space 屈折の有効フラグ
-    float imguiRefractionStrength_ = 0.35f;         ///< 屈折オフセット強度
-    float imguiRefractionDepthScale_ = 0.20f;       ///< 深度差に応じた屈折増幅率
+    float imguiRTRefractionOffsetPixels_ = 3.0f;    ///< DXR 屈折の最大スクリーンずれ量（px）
 
     // ---- Depth Fade ----
     bool  imguiDepthFadeEnabled_ = true;            ///< Depth Fade 有効フラグ

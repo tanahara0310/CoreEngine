@@ -11,6 +11,7 @@ namespace CoreEngine
     const char* const FrameBlackboard::ShadowMap = "ShadowMap";
     const char* const FrameBlackboard::ShadowMask = "ShadowMask";
     const char* const FrameBlackboard::RTShadowMask = "RTShadowMask";
+    const char* const FrameBlackboard::RTWaterRefractionColor = "RTWaterRefractionColor";
     const char* const FrameBlackboard::BackBuffer = "BackBuffer";
     const char* const FrameBlackboard::PostEffectFinal = "PostEffectFinal";
     const char* const FrameBlackboard::GBufferAlbedoAO = "GBufferAlbedoAO";

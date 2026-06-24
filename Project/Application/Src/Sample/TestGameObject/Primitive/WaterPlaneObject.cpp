@@ -139,12 +139,13 @@ void WaterPlaneObject::BindCustomResources(
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::Pipeline,
-            "WaterPlane BindCustomResources: b4={} b5={} reflSRV=0x{:X} depthSRV=0x{:X} sceneColorSRV=0x{:X} clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={}",
+            "WaterPlane BindCustomResources: b4={} b5={} reflSRV=0x{:X} depthSRV=0x{:X} sceneColorSRV=0x{:X} refractionColorSRV=0x{:X} clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={}",
             waterCBGpuAddress_,
             selectedFrameCBGpuAddress,
             reflectionSRV_.ptr,
             sceneDepthSRV_.ptr,
             sceneColorSRV_.ptr,
+            refractionColorSRV_.ptr,
             frameCB_.clipEnabled,
             frameCB_.reflectionEnabled,
             frameCB_.depthFadeEnabled,
@@ -194,6 +195,15 @@ void WaterPlaneObject::BindCustomResources(
                 static_cast<UINT>(sceneColorSlot), sceneColorSRV_);
         }
     }
+
+    // DXR 屈折カラー SRV をバインドする
+    if (refractionColorSRV_.ptr != 0) {
+        int refractionColorSlot = pipeline->GetRootParamIndex("gRTWaterRefractionColor");
+        if (refractionColorSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(refractionColorSlot), refractionColorSRV_);
+        }
+    }
 }
 
 void WaterPlaneObject::SetScrollSpeed(const CoreEngine::Vector2& speed) {
@@ -207,6 +217,18 @@ void WaterPlaneObject::SetUVTiling(const CoreEngine::Vector2& tiling) {
 void WaterPlaneObject::SetWave(uint32_t index, const WaveParams& wave) {
     if (index < kMaxWaterWaveCount) {
         waterCB_.waves[index] = wave;
+    }
+}
+
+void WaterPlaneObject::SetRefractionColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
+    refractionColorSRV_ = srvHandle;
+
+    if (frameCB_.depthFadeDebugEnabled != 0) {
+        CoreEngine::Logger::GetInstance().Infof(
+            CoreEngine::LogCategory::Graphics,
+            CoreEngine::LogSubCategory::RenderTarget,
+            "WaterPlane SetRefractionColorSRV: srv=0x{:X}",
+            refractionColorSRV_.ptr);
     }
 }
 
@@ -241,6 +263,26 @@ void WaterPlaneObject::UpdateFrameConstants() {
     uint8_t* targetMapped = frameCB_.clipEnabled ? reflectionFrameCBMapped_ : frameCBMapped_;
     if (targetMapped) {
         std::memcpy(targetMapped, &frameCB_, sizeof(WaterFrameConstants));
+
+        if (frameCB_.depthFadeDebugEnabled != 0) {
+            CoreEngine::Logger::GetInstance().Infof(
+                CoreEngine::LogCategory::Graphics,
+                CoreEngine::LogSubCategory::Pipeline,
+                "WaterPlane UpdateFrameConstants: clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={} absorptionCoeff={:.3f} fresnelScale={:.3f} fresnelF0={:.4f} shallow=({:.3f}, {:.3f}, {:.3f}) deep=({:.3f}, {:.3f}, {:.3f})",
+                frameCB_.clipEnabled,
+                frameCB_.reflectionEnabled,
+                frameCB_.depthFadeEnabled,
+                frameCB_.depthDebugViewMode,
+                frameCB_.absorptionCoeff,
+                frameCB_.fresnelReflectanceScale,
+                frameCB_.fresnelBaseReflectance,
+                frameCB_.shallowColor[0],
+                frameCB_.shallowColor[1],
+                frameCB_.shallowColor[2],
+                frameCB_.deepColor[0],
+                frameCB_.deepColor[1],
+                frameCB_.deepColor[2]);
+        }
     }
 }
 
@@ -275,9 +317,19 @@ void WaterPlaneObject::SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
 
 void WaterPlaneObject::ApplyWaterReflectionResult(const CoreEngine::RenderViewResult& result)
 {
-    // ReflectionView 出力は planar reflection RTT のみを反映する。
-    // 屈折に使う scene color / depth は main scene 側の SRV を別経路で設定する。
+    // ReflectionView 出力は反射テクスチャとしてのみ使用する。
+    // SceneDepth / SceneColor は GameView 側の SRV を別経路で設定する。
     SetReflectionTexture(result.viewSrv);
+
+    if (frameCB_.depthFadeDebugEnabled != 0) {
+        CoreEngine::Logger::GetInstance().Infof(
+            CoreEngine::LogCategory::Graphics,
+            CoreEngine::LogSubCategory::RenderTarget,
+            "WaterPlane ApplyWaterReflectionResult: reflectionSRV=0x{:X} sceneDepthSRV(ignored)=0x{:X} sceneColorSRV(ignored)=0x{:X}",
+            result.viewSrv.ptr,
+            result.sceneDepthSrv.ptr,
+            result.sceneColorSrv.ptr);
+    }
 }
 
 void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {
@@ -288,6 +340,12 @@ void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {
 void WaterPlaneObject::SetDepthFadeDebug(bool enabled, float debugScale) {
     frameCB_.depthFadeDebugEnabled = enabled ? 1 : 0;
     frameCB_.depthFadeDebugScale = debugScale;
+    CoreEngine::Logger::GetInstance().Infof(
+        CoreEngine::LogCategory::Graphics,
+        CoreEngine::LogSubCategory::Pipeline,
+        "WaterPlane depth fade debug changed: enabled={} debugScale={:.3f}",
+        frameCB_.depthFadeDebugEnabled,
+        frameCB_.depthFadeDebugScale);
 }
 
 void WaterPlaneObject::SetDepthDebugViewMode(WaterDebugViewMode mode) {
@@ -299,20 +357,6 @@ void WaterPlaneObject::SetDepthDebugViewMode(WaterDebugViewMode mode) {
         frameCB_.depthDebugViewMode,
         frameCB_.depthFadeDebugEnabled,
         frameCB_.depthFadeDebugScale);
-}
-
-void WaterPlaneObject::SetRefractionParameters(float strength, float depthScale, bool enabled) {
-    frameCB_.refractionStrength = std::max(strength, 0.0f);
-    frameCB_.refractionDepthScale = std::max(depthScale, 0.0f);
-    frameCB_.refractionEnabled = enabled ? 1 : 0;
-
-    CoreEngine::Logger::GetInstance().Infof(
-        CoreEngine::LogCategory::Graphics,
-        CoreEngine::LogSubCategory::Pipeline,
-        "WaterPlane refraction params: enabled={} strength={:.4f} depthScale={:.4f}",
-        frameCB_.refractionEnabled,
-        frameCB_.refractionStrength,
-        frameCB_.refractionDepthScale);
 }
 
 void WaterPlaneObject::SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor) {

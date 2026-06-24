@@ -14,6 +14,10 @@ Texture2D<float> gSceneDepth : register(t15);
 // 水面越しに見える背景色の取得に使用する
 Texture2D<float4> gSceneColor : register(t16);
 
+// ===== DXR 水面屈折カラー（RTWaterRefractionPass 出力）=====
+// WaterPlaneObject::BindCustomResources() が t17 にバインドする
+Texture2D<float4> gRTWaterRefractionColor : register(t17);
+
 struct WaterPSInput
 {
     float4 position : SV_POSITION;
@@ -35,12 +39,6 @@ cbuffer WaterFrameConstants : register(b5)
     int gReflectionEnabled; // 1 = 反射テクスチャ有効，0 = IBL フォールバック
     float gFresnelReflectanceScale; // Fresnel 反射率スケール
     float gFresnelBaseReflectance; // 正面入射時の反射率（F0）
-
-    // ---- Refraction ----
-    float gRefractionStrength; // 屈折オフセット強度
-    float gRefractionDepthScale; // 深度差に応じた屈折増幅率
-    int gRefractionEnabled; // 1 = screen-space 屈折有効
-    float gRefractionPadding;
 
     // ---- Depth Fade ----
     float gAbsorptionCoeff; // 光吸収係数（大きいほど短距離で不透明）
@@ -109,6 +107,48 @@ float3 VisualizeDepthValue(float value)
     return float3(value, value, value);
 }
 
+float3 ApplyWaterTransmissionFilter(float3 refractionColor, float3 waterTint, float absorption)
+{
+    float3 tintFilter = lerp(float3(1.0f, 1.0f, 1.0f), saturate(waterTint), saturate(absorption));
+    return refractionColor * tintFilter;
+}
+
+float IsRTRefractionSuccess(float reasonCode)
+{
+    return abs(reasonCode - (8.0f / 255.0f)) < (0.5f / 255.0f) ? 1.0f : 0.0f;
+}
+
+float3 ResolveWaterTransmissionColor(uint2 pixelCoord, float2 screenUV)
+{
+    float4 rtRefraction = gRTWaterRefractionColor.Load(int3(pixelCoord, 0));
+    if (IsRTRefractionSuccess(rtRefraction.a) > 0.5f) {
+        return rtRefraction.rgb;
+    }
+
+    return gSceneColor.Sample(gLinearClamp, screenUV).rgb;
+}
+
+float4 SampleRTWaterRefraction(uint2 pixelCoord)
+{
+    return gRTWaterRefractionColor.Load(int3(pixelCoord, 0));
+}
+
+float3 VisualizeRTRefractionReason(float reasonCode)
+{
+    const float reasonIndex = floor(reasonCode * 255.0f + 0.5f);
+
+    if (reasonIndex == 1.0f) return float3(1.0f, 0.0f, 0.0f);
+    if (reasonIndex == 2.0f) return float3(1.0f, 0.5f, 0.0f);
+    if (reasonIndex == 3.0f) return float3(1.0f, 1.0f, 0.0f);
+    if (reasonIndex == 4.0f) return float3(0.8f, 0.0f, 1.0f);
+    if (reasonIndex == 5.0f) return float3(0.0f, 1.0f, 1.0f);
+    if (reasonIndex == 6.0f) return float3(0.0f, 0.0f, 1.0f);
+    if (reasonIndex == 7.0f) return float3(1.0f, 0.0f, 1.0f);
+    if (reasonIndex == 8.0f) return float3(0.0f, 1.0f, 0.0f);
+
+    return float3(0.15f, 0.15f, 0.15f);
+}
+
 /// @brief 水面専用フォワードパス処理（ForwardMain の discard 処理を削除したバージョン）
 /// 水面は常に描画され、alpha 値で透明度を制御する
 VertexShaderOutput ToVertexShaderOutput(WaterPSInput input)
@@ -168,17 +208,13 @@ PixelShaderOutput main(WaterPSInput input)
     PixelShaderOutput output = WaterForwardMain(input);
     float baseCoverage = saturate(output.color.a);
 
-    float3 viewDir = normalize(gCamera.worldPosition - input.worldPosition);
-    float3 geomNormal = normalize(input.normal);
-    float cosTheta = saturate(dot(geomNormal, viewDir));
-
     // ---- 2. スクリーン UV を計算する ----
     uint sceneDepthWidth = 1;
     uint sceneDepthHeight = 1;
     gSceneDepth.GetDimensions(sceneDepthWidth, sceneDepthHeight);
     float2 screenUV = input.position.xy / float2(sceneDepthWidth, sceneDepthHeight);
     screenUV = saturate(screenUV);
-    float2 texelSize = 1.0f / float2(sceneDepthWidth, sceneDepthHeight);
+    uint2 pixelCoord = min(uint2(input.position.xy), uint2(sceneDepthWidth - 1, sceneDepthHeight - 1));
 
     // ---- 3. Beer-Lambert による透過率と吸収量の計算 ----
     // 必要なのは「水中を通った光路長」なので、視線上の線形深度差を使う
@@ -233,36 +269,37 @@ PixelShaderOutput main(WaterPSInput input)
         {
             // 深度が取得できない、または水面より奥の背景深度が存在しない場合でも
             // 水面の被覆率が極端に失われないよう、安定した浅瀬寄りの見た目へフォールバックする。
-            absorption = saturate(baseCoverage * 0.65f);
+            absorption = saturate(baseCoverage * 0.25f);
             transmittance = 1.0f - absorption;
             tintBlend = absorption;
             waterTint = lerp(gShallowColor, gDeepColor, saturate(tintBlend));
         }
     }
 
+    // ---- 4. 視線方向と Fresnel 係数を計算する ----
+    float3 viewDir = normalize(gCamera.worldPosition - input.worldPosition);
+    float3 geomNormal = normalize(input.normal);
+    float cosTheta = saturate(dot(geomNormal, viewDir));
     float fresnel = FresnelSchlick(cosTheta, saturate(gFresnelBaseReflectance));
     float reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
 
-    float2 refractedUV = screenUV;
-    if (gRefractionEnabled != 0)
-    {
-        float depthFactor = hasValidDepthFade
-            ? saturate(waterColumn * gRefractionDepthScale)
-            : 0.0f;
-        float normalStrength = saturate(length(geomNormal.xz));
-        float viewAngleFactor = 0.35f + (1.0f - cosTheta) * 1.65f;
-        float refractionPixelOffset = gRefractionStrength * (6.0f + depthFactor * 72.0f) * normalStrength * viewAngleFactor;
-        float2 refractionDirection = normalize(float2(-geomNormal.x, geomNormal.z) + 1.0e-6f);
-        float2 refractionOffset = refractionDirection * refractionPixelOffset * texelSize;
-        refractedUV = saturate(screenUV + refractionOffset);
+    float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);
+    float3 backgroundColor = gSceneColor.Sample(gLinearClamp, screenUV).rgb;
+    float3 transmissionColor = ApplyWaterTransmissionFilter(
+        refractionColor,
+        waterTint,
+        absorption);
 
-        float2 clampMin = texelSize * 0.5f;
-        float2 clampMax = 1.0f - clampMin;
-        refractedUV = clamp(refractedUV, clampMin, clampMax);
+    float3 reflectColor = output.color.rgb;
+    if (gReflectionEnabled)
+    {
+        float3 planarReflection = gReflectionTexture.Sample(gLinearClamp, screenUV).rgb;
+        reflectColor += planarReflection;
     }
 
-    float3 originalSceneColor = gSceneColor.Sample(gLinearClamp, screenUV).rgb;
-    float3 transmittedSceneColor = gSceneColor.Sample(gLinearClamp, refractedUV).rgb;
+    float3 desiredWaterView = lerp(transmissionColor, reflectColor, reflectanceWeight);
+    float surfaceCoverage = saturate(baseCoverage);
+    float3 finalWaterComposite = lerp(backgroundColor, desiredWaterView, surfaceCoverage);
 
     if (gDepthFadeDebugEnabled != 0)
     {
@@ -302,7 +339,7 @@ PixelShaderOutput main(WaterPSInput input)
 
         if (gDepthDebugViewMode == 5)
         {
-            output.color.rgb = gSceneColor.Sample(gLinearClamp, screenUV).rgb;
+            output.color.rgb = ResolveWaterTransmissionColor(pixelCoord, screenUV);
             return output;
         }
 
@@ -324,18 +361,55 @@ PixelShaderOutput main(WaterPSInput input)
 
         if (gDepthDebugViewMode == 8)
         {
-            float2 uvDelta = (refractedUV - screenUV) * float2(sceneDepthWidth, sceneDepthHeight);
-            output.color.rgb = float3(
-                saturate(0.5f + uvDelta.x * 0.05f),
-                saturate(0.5f + uvDelta.y * 0.05f),
-                saturate(length(uvDelta) * 0.05f));
+            output.color.rgb = SampleRTWaterRefraction(pixelCoord).rgb;
             return output;
         }
 
         if (gDepthDebugViewMode == 9)
         {
-            float3 delta = abs(transmittedSceneColor - originalSceneColor) * 8.0f;
-            output.color.rgb = saturate(delta);
+            output.color.rgb = VisualizeRTRefractionReason(SampleRTWaterRefraction(pixelCoord).a);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 10)
+        {
+            float4 rtRefraction = SampleRTWaterRefraction(pixelCoord);
+            float3 sceneColor = gSceneColor.Sample(gLinearClamp, screenUV).rgb;
+            float rtSuccess = IsRTRefractionSuccess(rtRefraction.a);
+            output.color.rgb = rtSuccess > 0.5f
+                ? abs(rtRefraction.rgb - sceneColor) * 4.0f
+                : VisualizeRTRefractionReason(rtRefraction.a);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 11)
+        {
+            output.color.rgb = transmissionColor;
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 12)
+        {
+            output.color.rgb = float3(saturate(absorption), saturate(transmittance), hasValidDepthFade ? 1.0f : 0.0f);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 13)
+        {
+            output.color.rgb = VisualizeDepthValue(reflectanceWeight);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 14)
+        {
+            output.color.rgb = finalWaterComposite;
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 15)
+        {
+            float rtSuccess = IsRTRefractionSuccess(SampleRTWaterRefraction(pixelCoord).a);
+            output.color.rgb = lerp(float3(1.0f, 0.0f, 0.0f), float3(0.0f, 1.0f, 0.0f), rtSuccess);
             return output;
         }
 
@@ -343,35 +417,8 @@ PixelShaderOutput main(WaterPSInput input)
         return output;
     }
 
-    // ---- 5. 標準 alpha ブレンドで背景光と整合するように、水面自身が追加する成分だけを組み立てる ----
-    // 背景光は既にレンダーターゲット側に存在するため、ここで SceneColor を再度混ぜると二重減衰になる。
-    // そのため、ピクセルシェーダーでは「背景から奪う割合」と「水面が足す成分」を分けて計算する。
-    float transmissionWeight = transmittance * (1.0f - reflectanceWeight);
-
-    // 吸収量をそのまま媒質寄与へ反映し、深いほど暗く色付きが強くなるようにする
-    float mediumWeight = absorption * (1.0f - reflectanceWeight);
-
-    float3 reflectColor = output.color.rgb;
-    if (gReflectionEnabled)
-    {
-        float3 planarReflection = gReflectionTexture.Sample(gLinearClamp, screenUV).rgb;
-        reflectColor += planarReflection;
-    }
-
-    float3 mediumContribution = waterTint * mediumWeight;
-    float3 reflectionContribution = reflectColor * reflectanceWeight;
-    float3 transmissionDeltaContribution = (transmittedSceneColor - originalSceneColor) * transmissionWeight;
-    float3 waterContribution = baseCoverage * (mediumContribution + reflectionContribution + transmissionDeltaContribution);
-
-    output.color.a = saturate(baseCoverage * (1.0f - transmissionWeight));
-    if (output.color.a > 1.0e-4f)
-    {
-        output.color.rgb = waterContribution / output.color.a;
-    }
-    else
-    {
-        output.color.rgb = 0.0f;
-    }
+    output.color.rgb = finalWaterComposite;
+    output.color.a = 1.0f;
 
     return output;
 }

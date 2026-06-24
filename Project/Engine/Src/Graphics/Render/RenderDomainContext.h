@@ -11,6 +11,7 @@ namespace CoreEngine
     class ShadowMapManager;
     class AccelerationStructureManager;
     class RayTracingShadowManager;
+    class WaterRefractionRayTracingManager;
 
     /// @brief 描画ドメイン固有マネージャーの所有・初期化クラス
     /// @note GBuffer / シャドウマップ / レイトレーシング等、
@@ -40,12 +41,14 @@ namespace CoreEngine
         ShadowMapManager* GetShadowMapManager() { return shadowMapManager_.get(); }
         AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
         RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
+        WaterRefractionRayTracingManager* GetWaterRefractionRayTracingManager() { return rtWaterRefractionManager_.get(); }
 
     private:
         std::unique_ptr<GBufferManager>               gBufferManager_;
         std::unique_ptr<ShadowMapManager>             shadowMapManager_;
         std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
         std::unique_ptr<RayTracingShadowManager>      rtShadowManager_;
+        std::unique_ptr<WaterRefractionRayTracingManager> rtWaterRefractionManager_;
     };
 
 } // namespace CoreEngine

@@ -25,8 +25,14 @@ enum class WaterDebugViewMode : uint32_t {
     SceneColor = 5,
     Reflection = 6,
     Fresnel = 7,
-    RefractionOffset = 8,
-    RefractionDelta = 9,
+    RTRefraction = 8,
+    RTRefractionReason = 9,
+    RTRefractionVsScene = 10,
+    Transmission = 11,
+    Absorption = 12,
+    Reflectance = 13,
+    WaterComposite = 14,
+    RTRefractionSuccessMask = 15,
 };
 
 struct WaterWaveLayerConfig {
@@ -94,20 +100,6 @@ struct WaterFrameConstants {
 
     /// @brief 正面入射時の Fresnel 反射率 F0（水面の既定値は約 0.02）
     float fresnelBaseReflectance = 0.02f;
-
-    // ---- Refraction（screen-space 屈折）----
-
-    /// @brief 屈折オフセット強度
-    float refractionStrength = 0.35f;
-
-    /// @brief 深度差に応じた屈折オフセット増幅率
-    float refractionDepthScale = 0.20f;
-
-    /// @brief 1 = screen-space 屈折を有効にする、0 = 無効
-    int   refractionEnabled = 1;
-
-    /// @brief cbuffer 16 バイトアライメント用
-    float refractionPadding = 0.0f;
 
     // ---- Depth Fade（Beer-Lambert 則）----
 

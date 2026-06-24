@@ -5,8 +5,10 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/Render.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+#include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Camera/CameraManager.h"
 #include "Scene/SceneManager.h"
 #include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
@@ -116,6 +118,22 @@ void WaterTestScene::RegenerateLayeredWaves(WaterPresetType preset, uint32_t act
 }
 #endif
 
+namespace {
+WaterRefractionWaveParam ConvertToWaterRefractionWaveParam(const WaveParams& wave)
+{
+    WaterRefractionWaveParam result{};
+    result.direction[0] = wave.direction.x;
+    result.direction[1] = wave.direction.y;
+    result.amplitude = wave.amplitude;
+    result.wavelength = wave.wavelength;
+    result.speed = wave.speed;
+    result.steepness = wave.steepness;
+    result.phaseOffset = wave.phaseOffset;
+    result.padding = wave.padding;
+    return result;
+}
+}
+
 void WaterTestScene::OnInitialize() {
     SetSceneName("WaterTestScene");
 
@@ -192,6 +210,12 @@ void WaterTestScene::OnInitialize() {
     lightningStrike_->Stop();
     TriggerRandomLightningStrike();
 
+    if (auto* renderDomainContext = engine_->GetRenderDomainContext()) {
+        if (auto* waterRefractionManager = renderDomainContext->GetWaterRefractionRayTracingManager()) {
+            imguiRTRefractionOffsetPixels_ = waterRefractionManager->GetSettings().maxRefractionOffsetPixels;
+        }
+    }
+
 #ifdef USE_IMGUI
     ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
     imguiLightningEffectEnabled_ = lightningEffectEnabled_;
@@ -202,6 +226,8 @@ void WaterTestScene::OnInitialize() {
     imguiLightningIntervalMax_ = lightningIntervalMax_;
 
 #endif
+
+    UpdateWaterRefractionSurfaceData();
 }
 
 void WaterTestScene::OnUpdate() {
@@ -221,6 +247,54 @@ void WaterTestScene::OnUpdate() {
 
     // ImGui 等で変更されたフレーム定数を GPU バッファに書き込む
     if (waterPlane_) {
+        UpdateWaterRefractionSurfaceData();
+
+#ifdef USE_IMGUI
+        if (imguiDepthFadeDebugEnabled_) {
+            Logger::GetInstance().Infof(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "WaterTestScene: water surface data prepared. waterHeight={:.3f} activeWaveCount={} waveTime={:.3f} debugEnabled={} debugMode={} firstWave(dir=({:.3f}, {:.3f}) amp={:.4f} len={:.3f} speed={:.3f} steep={:.3f} phase={:.3f})",
+                waterRefractionSurfaceData_.waterHeight,
+                waterRefractionSurfaceData_.activeWaveCount,
+                waterRefractionSurfaceData_.time,
+                imguiDepthFadeDebugEnabled_,
+                imguiDepthDebugViewMode_,
+                waterRefractionSurfaceData_.activeWaveCount > 0 ? waterRefractionSurfaceData_.waves[0].direction[0] : 0.0f,
+                waterRefractionSurfaceData_.activeWaveCount > 0 ? waterRefractionSurfaceData_.waves[0].direction[1] : 0.0f,
+                waterRefractionSurfaceData_.activeWaveCount > 0 ? waterRefractionSurfaceData_.waves[0].amplitude : 0.0f,
+                waterRefractionSurfaceData_.activeWaveCount > 0 ? waterRefractionSurfaceData_.waves[0].wavelength : 0.0f,
+                waterRefractionSurfaceData_.activeWaveCount > 0 ? waterRefractionSurfaceData_.waves[0].speed : 0.0f,
+                waterRefractionSurfaceData_.activeWaveCount > 0 ? waterRefractionSurfaceData_.waves[0].steepness : 0.0f,
+                waterRefractionSurfaceData_.activeWaveCount > 0 ? waterRefractionSurfaceData_.waves[0].phaseOffset : 0.0f);
+        }
+#endif
+
+        if (auto* render = engine_->GetComponent<Render>()) {
+            if (auto* renderTargetManager = render->GetRenderTargetManager()) {
+                RenderTarget* sceneColorTarget = renderTargetManager->GetRenderTarget(RenderTargetNames::SceneColorSnapshot);
+                if (!sceneColorTarget) {
+                    sceneColorTarget = renderTargetManager->GetRenderTarget(RenderTargetNames::SceneColor);
+                }
+
+                if (sceneColorTarget) {
+                    waterPlane_->SetSceneColorSRV(sceneColorTarget->GetSRVHandle());
+                }
+            }
+        }
+
+        if (auto* dxCommon = engine_->GetComponent<DirectXCommon>()) {
+            waterPlane_->SetSceneDepthSRV(dxCommon->GetDepthStencilSRV());
+        }
+
+        if (auto* renderDomainContext = engine_->GetRenderDomainContext()) {
+            if (auto* waterRefractionManager = renderDomainContext->GetWaterRefractionRayTracingManager()) {
+                waterPlane_->SetRefractionColorSRV(
+                    waterRefractionManager->GetRefractionSRVHandle(
+                        WaterRefractionRayTracingManager::ViewID::GameView));
+            }
+        }
+
         waterPlane_->UpdateFrameConstants();
     }
 }
@@ -287,19 +361,50 @@ void WaterTestScene::ApplyWaterRenderViewResult(const RenderViewResult& result)
     }
 
     waterPlane_->ApplyWaterReflectionResult(result);
-
-    if (auto* dx = engine_ ? engine_->GetComponent<CoreEngine::DirectXCommon>() : nullptr) {
-        waterPlane_->SetSceneDepthSRV(dx->GetDepthStencilSRV());
-    }
-
-    if (auto* render = engine_ ? engine_->GetComponent<CoreEngine::Render>() : nullptr) {
-        if (auto* sceneColorTarget = render->GetRenderTarget(CoreEngine::RenderTargetNames::SceneColor)) {
-            waterPlane_->SetSceneColorSRV(sceneColorTarget->GetSRVHandle());
-        }
-    }
-
     waterPlane_->SetClipPlane(reflectionPass_.GetClipPlane(), false);
     waterPlane_->UpdateFrameConstants();
+}
+
+const WaterConstants* WaterTestScene::GetCurrentWaterConstants() const
+{
+    return waterPlane_ ? &waterPlane_->GetWaterConstants() : nullptr;
+}
+
+float WaterTestScene::GetCurrentWaterHeight() const
+{
+    return waterPlane_ ? waterPlane_->GetTransform().translate.y : 0.0f;
+}
+
+const WaterRefractionSurfaceData* WaterTestScene::GetWaterRefractionSurfaceData() const
+{
+    return waterPlane_ ? &waterRefractionSurfaceData_ : nullptr;
+}
+
+void WaterTestScene::UpdateWaterRefractionSurfaceData()
+{
+    waterRefractionSurfaceData_ = {};
+    if (!waterPlane_) {
+        return;
+    }
+
+    const WaterConstants& waterConstants = waterPlane_->GetWaterConstants();
+    waterRefractionSurfaceData_.waterHeight = waterPlane_->GetTransform().translate.y;
+    waterRefractionSurfaceData_.activeWaveCount =
+        (std::min)(waterConstants.activeWaveCount, kMaxWaterRefractionWaveCount);
+    waterRefractionSurfaceData_.time = waterConstants.time;
+
+    for (uint32_t waveIndex = 0; waveIndex < waterRefractionSurfaceData_.activeWaveCount; ++waveIndex) {
+        waterRefractionSurfaceData_.waves[waveIndex] =
+            ConvertToWaterRefractionWaveParam(waterConstants.waves[waveIndex]);
+    }
+
+    Logger::GetInstance().Infof(
+        LogCategory::Graphics,
+        LogSubCategory::Pipeline,
+        "WaterTestScene: UpdateWaterRefractionSurfaceData done. waterHeight={:.3f} activeWaveCount={} waveTime={:.3f}",
+        waterRefractionSurfaceData_.waterHeight,
+        waterRefractionSurfaceData_.activeWaveCount,
+        waterRefractionSurfaceData_.time);
 }
 
 void WaterTestScene::Finalize() {
@@ -500,7 +605,6 @@ void WaterTestScene::ApplyWaterPreset(WaterPresetType preset) {
     imguiFresnelReflectanceScale_ = p.fresnelReflectanceScale;
     imguiFresnelBaseReflectance_ = p.fresnelBaseReflectance;
     waterPlane_->SetFresnelParameters(p.fresnelReflectanceScale, p.fresnelBaseReflectance);
-    waterPlane_->SetRefractionParameters(imguiRefractionStrength_, imguiRefractionDepthScale_, imguiRefractionEnabled_);
 
     // ---- Gerstner Wave ----
     if (imguiAutoRestoreRecommendedWaveCount_ || imguiLockRecommendedWaveCount_) {
@@ -609,14 +713,15 @@ void WaterTestScene::DrawWaterImGui() {
             waterPlane_->SetFresnelParameters(imguiFresnelReflectanceScale_, imguiFresnelBaseReflectance_);
         }
 
-        bool refractionChanged = false;
-        refractionChanged |= ImGui::Checkbox("屈折 有効", &imguiRefractionEnabled_);
-        refractionChanged |= ImGui::SliderFloat("屈折強度", &imguiRefractionStrength_, 0.0f, 4.0f, "%.3f");
-        refractionChanged |= ImGui::SliderFloat("屈折 深度増幅", &imguiRefractionDepthScale_, 0.0f, 1.0f, "%.3f");
-        if (refractionChanged) {
-            waterPlane_->SetRefractionParameters(imguiRefractionStrength_, imguiRefractionDepthScale_, imguiRefractionEnabled_);
+        if (ImGui::SliderFloat("DXR 屈折量 (px)", &imguiRTRefractionOffsetPixels_, 0.0f, 12.0f, "%.2f")) {
+            if (auto* renderDomainContext = engine_->GetRenderDomainContext()) {
+                if (auto* waterRefractionManager = renderDomainContext->GetWaterRefractionRayTracingManager()) {
+                    WaterRefractionRayTracingSettings settings = waterRefractionManager->GetSettings();
+                    settings.maxRefractionOffsetPixels = imguiRTRefractionOffsetPixels_;
+                    waterRefractionManager->SetSettings(settings);
+                }
+            }
         }
-        ImGui::TextDisabled("Refraction Offset: UV のずれ量 / Refraction Delta: 屈折前後の背景差分");
 
         ImGui::Spacing();
         ImGui::SeparatorText("水の色と吸収");
@@ -650,8 +755,14 @@ void WaterTestScene::DrawWaterImGui() {
                 "Scene Color",
                 "Reflection",
                 "Fresnel",
-                "Refraction Offset",
-                "Refraction Delta",
+                "RT Refraction",
+                "RT Refraction Reason",
+                "RT Refraction vs Scene",
+                "Transmission",
+                "Absorption",
+                "Reflectance",
+                "Water Composite",
+                "RT Refraction Success Mask",
             };
             debugChanged |= ImGui::Combo("可視化モード", &imguiDepthDebugViewMode_, kDebugViewNames, IM_ARRAYSIZE(kDebugViewNames));
             if (debugChanged) {
