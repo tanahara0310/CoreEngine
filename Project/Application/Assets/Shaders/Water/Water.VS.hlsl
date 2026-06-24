@@ -52,11 +52,7 @@ cbuffer WaterFrameConstants : register(b5)
 
     // ---- デバッグ表示（VS では未使用）----
     uint   gDepthDebugViewMode;
-    uint   gLightningImpactCount;
     float3 gDebugPadding;
-
-    float4 gLightningImpactCenterRadius[6];
-    float4 gLightningImpactParams0[6];
 };
 
 // ===== 水面専用出力構造体（SV_ClipDistance0 を追加）=====
@@ -73,41 +69,6 @@ struct WaterVSOutput
     float4 clipPosPrev      : POSITION3;
     float  clipDist         : SV_ClipDistance0; // 水面クリップ（反射パス用）
 };
-
-float SampleLightningImpactHeight(float2 worldXZ)
-{
-    float totalHeight = 0.0f;
-
-    [unroll]
-    for (int impactIndex = 0; impactIndex < 6; ++impactIndex)
-    {
-        if (impactIndex >= gLightningImpactCount)
-        {
-            break;
-        }
-
-        float4 impactCenterRadius = gLightningImpactCenterRadius[impactIndex];
-        float4 impactParams0 = gLightningImpactParams0[impactIndex];
-        float2 delta = worldXZ - impactCenterRadius.xy;
-        float dist = length(delta);
-
-        float impactFade = impactParams0.x * exp(-impactParams0.z * 0.82f);
-        float waveFrontRadius = max(impactCenterRadius.z, 0.0f);
-
-        // 複数の着弾波紋を保持し、既存波紋が消えずに重なるようにする。
-        float frontDelta = dist - waveFrontRadius;
-        float waveBandWidth = 3.4f;
-        float envelope = exp(-abs(frontDelta) / waveBandWidth);
-
-        float primaryRipple = sin(frontDelta * 1.75f) * envelope;
-        float trailingSwell = sin(frontDelta * 0.92f - 0.55f) * exp(-abs(frontDelta) / 5.8f);
-        float centerLift = exp(-dist / 3.8f) * exp(-impactParams0.z * 1.65f);
-
-        totalHeight += (primaryRipple * 0.135f + trailingSwell * 0.048f + centerLift * 0.030f) * impactFade;
-    }
-
-    return totalHeight;
-}
 
 /// @brief Gerstner Wave 1 本分の頂点変位を計算する
 /// @param worldPos 変位前のワールド座標（XZ を参照、Y を更新）
@@ -180,15 +141,6 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
         dPdX += wave.dPdX - float3(1.0f, 0.0f, 0.0f);
         dPdZ += wave.dPdZ - float3(0.0f, 0.0f, 1.0f);
     }
-
-    float impactHeight = SampleLightningImpactHeight(restPos.xz);
-    float impactSampleStep = 0.42f;
-    float impactHeightX = SampleLightningImpactHeight(restPos.xz + float2(impactSampleStep, 0.0f));
-    float impactHeightZ = SampleLightningImpactHeight(restPos.xz + float2(0.0f, impactSampleStep));
-
-    totalOffset.y += impactHeight;
-    dPdX.y += (impactHeightX - impactHeight) / impactSampleStep;
-    dPdZ.y += (impactHeightZ - impactHeight) / impactSampleStep;
 
     worldPos += totalOffset;
 

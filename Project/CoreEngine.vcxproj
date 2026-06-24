@@ -183,8 +183,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Application\Src\Sample\TestGameObject\Effect\LightningBoltMeshGenerator.cpp" />
-    <ClCompile Include="Application\Src\Sample\TestGameObject\Effect\LightningStrikeObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.cpp" />
@@ -440,8 +438,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Effect\HitEffect.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\Effect\LightningBoltMeshGenerator.h" />
-    <ClInclude Include="Application\Src\Sample\TestGameObject\Effect\LightningStrikeObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\ModelObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\Plane.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\SphereObject.h" />

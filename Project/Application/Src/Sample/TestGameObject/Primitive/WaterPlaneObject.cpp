@@ -368,38 +368,6 @@ void WaterPlaneObject::SetWaterColors(const CoreEngine::Vector3& shallowColor, c
     frameCB_.deepColor[2]    = deepColor.z;
 }
 
-void WaterPlaneObject::ClearLightningImpacts() {
-    frameCB_.lightningImpactCount = 0;
-    for (auto& impact : frameCB_.lightningImpacts) {
-        impact = {};
-    }
-}
-
-void WaterPlaneObject::SetLightningImpactAt(
-    uint32_t index,
-    const CoreEngine::Vector3& impactCenter,
-    float impactRadius,
-    float impactIntensity,
-    float chargeRadius,
-    float chargeIntensity,
-    float impactTime,
-    float screenFlash) {
-    if (index >= kMaxWaterLightningImpactCount) {
-        return;
-    }
-
-    auto& impact = frameCB_.lightningImpacts[index];
-    impact.center[0] = impactCenter.x;
-    impact.center[1] = impactCenter.z;
-    impact.radius = std::max(impactRadius, 0.0f);
-    impact.intensity = std::clamp(impactIntensity, 0.0f, 1.0f);
-    impact.chargeRadius = std::max(chargeRadius, 0.0f);
-    impact.chargeIntensity = std::clamp(chargeIntensity, 0.0f, 1.0f);
-    impact.impactTime = std::max(impactTime, 0.0f);
-    impact.screenFlash = std::clamp(screenFlash, 0.0f, 1.0f);
-    frameCB_.lightningImpactCount = std::max(frameCB_.lightningImpactCount, index + 1u);
-}
-
 void WaterPlaneObject::SetBaseColor(const CoreEngine::Vector4& color) {
     auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
     if (mat) { mat->SetColor(color); }

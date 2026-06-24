@@ -10,6 +10,7 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Camera/CameraManager.h"
+#include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
 #include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
 #include "Sample/TestGameObject/Primitive/WaterPlaneObject.h"
@@ -28,29 +29,27 @@ namespace {
 constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
 
 Vector2 NormalizeDirection(const Vector2& direction) {
-    const float length = std::sqrtf(direction.x * direction.x + direction.y * direction.y);
-    if (length <= 1.0e-5f) {
+    const Vector3 direction3 = { direction.x, direction.y, 0.0f };
+    if (MathCore::Vector::Length(direction3) <= 1.0e-5f) {
         return { 1.0f, 0.0f };
     }
-    return { direction.x / length, direction.y / length };
+
+    const Vector3 normalizedDirection = MathCore::Vector::Normalize(direction3);
+    return { normalizedDirection.x, normalizedDirection.y };
 }
 
 Vector2 RotateDirection(const Vector2& direction, float radians) {
-    const float c = std::cosf(radians);
-    const float s = std::sinf(radians);
-    return NormalizeDirection({
-        direction.x * c - direction.y * s,
-        direction.x * s + direction.y * c,
-    });
+    const Matrix4x4 rotationMatrix = MathCore::Matrix::RotationZ(radians);
+    const Vector3 rotatedDirection = MathCore::CoordinateTransform::TransformNormal(
+        { direction.x, direction.y, 0.0f },
+        rotationMatrix);
+    return NormalizeDirection({ rotatedDirection.x, rotatedDirection.y });
 }
 
 uint32_t ClampWaveCountToRange(int count) {
     return static_cast<uint32_t>(std::clamp(count, 1, static_cast<int>(kMaxWaterWaveCount)));
 }
 
-float RandomRange(float minValue, float maxValue) {
-    return RandomGenerator::GetInstance().GetFloat(minValue, maxValue);
-}
 }
 
 #ifdef USE_IMGUI
@@ -163,7 +162,6 @@ void WaterTestScene::OnInitialize() {
     // ===== 水面グリッドメッシュ =====
     // サイズ 100 × 100、128×128 分割
     // 分割数が多いほど後のステップ（Gerstner Wave）で波の表現が細かくなる
-    // 雷着弾の局所的な頂点変位も見えるように、十分な頂点密度を確保する
     waterPlane_ = CreateObject<WaterPlaneObject>(100.0f, 128);
     waterPlane_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
     waterPlane_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
@@ -201,15 +199,6 @@ void WaterTestScene::OnInitialize() {
     groundObject_->SetIBLEnabled(true);
     groundObject_->SetActive(true);
 
-    // ===== 雷エフェクト =====
-    lightningStrike_ = CreateObject<LightningStrikeObject>();
-    lightningStrike_->SetActive(true);
-    lightningStrike_->SetNoiseParameters(20.0f, 4.5f);
-    lightningStrike_->SetGlowShape(8.5f, 1.4f, 1.4f);
-    lightningStrike_->SetWidthScale(1.80f);
-    lightningStrike_->Stop();
-    TriggerRandomLightningStrike();
-
     if (auto* renderDomainContext = engine_->GetRenderDomainContext()) {
         if (auto* waterRefractionManager = renderDomainContext->GetWaterRefractionRayTracingManager()) {
             imguiRTRefractionOffsetPixels_ = waterRefractionManager->GetSettings().maxRefractionOffsetPixels;
@@ -218,13 +207,6 @@ void WaterTestScene::OnInitialize() {
 
 #ifdef USE_IMGUI
     ApplyWaterPreset(static_cast<WaterPresetType>(imguiPreset_));
-    imguiLightningEffectEnabled_ = lightningEffectEnabled_;
-    imguiLightningAutoLoop_ = lightningAutoLoop_;
-    imguiLightningStrikeDuration_ = lightningStrikeDuration_;
-    imguiLightningStrikeIntensity_ = lightningStrikeIntensity_;
-    imguiLightningIntervalMin_ = lightningIntervalMin_;
-    imguiLightningIntervalMax_ = lightningIntervalMax_;
-
 #endif
 
     UpdateWaterRefractionSurfaceData();
@@ -237,9 +219,6 @@ void WaterTestScene::OnUpdate() {
     if (waterPlane_ && frameRate) {
         waterPlane_->UpdateUVScroll(deltaTime);
     }
-
-    UpdateLightningSequence(deltaTime);
-    UpdateLightningImpactEffect(deltaTime);
 
 #ifdef USE_IMGUI
     DrawWaterImGui();
@@ -409,168 +388,6 @@ void WaterTestScene::UpdateWaterRefractionSurfaceData()
 
 void WaterTestScene::Finalize() {
     BaseScene::Finalize();
-}
-
-void WaterTestScene::TriggerRandomLightningStrike()
-{
-    if (!lightningEffectEnabled_) {
-        return;
-    }
-    StartLightningBurst();
-}
-
-void WaterTestScene::StartLightningBurst()
-{
-    if (!lightningEffectEnabled_ || !lightningStrike_) {
-        return;
-    }
-
-    lightningBurstRemaining_ = RandomGenerator::GetInstance().GetInt(1, 2);
-    lightningBurstCooldown_ = 0.0f;
-    TriggerBurstStrike();
-    lightningTimer_ = 0.0f;
-}
-
-void WaterTestScene::TriggerBurstStrike()
-{
-    if (!lightningEffectEnabled_ || !lightningStrike_ || lightningBurstRemaining_ <= 0) {
-        return;
-    }
-
-    const float radius = std::max(lightningStrikeRadius_, 1.0f);
-    const Vector3 impactPosition = {
-        RandomRange(-radius, radius),
-        waterPlane_ ? waterPlane_->GetTransform().translate.y : 0.0f,
-        RandomRange(-radius, radius),
-    };
-
-    TriggerLightningStrikeAt(impactPosition);
-    --lightningBurstRemaining_;
-    if (lightningBurstRemaining_ > 0) {
-        lightningBurstCooldown_ = RandomRange(0.02f, 0.07f);
-    }
-}
-
-void WaterTestScene::TriggerLightningStrikeAt(const Vector3& impactPosition)
-{
-    if (!lightningEffectEnabled_ || !lightningStrike_) {
-        return;
-    }
-
-    const Vector3 startPosition = {
-        impactPosition.x + RandomRange(-6.5f, 6.5f),
-        RandomRange(lightningStartHeightMin_, std::max(lightningStartHeightMin_, lightningStartHeightMax_)),
-        impactPosition.z + RandomRange(-6.5f, 6.5f),
-    };
-
-    lightningStrike_->SetStrikeEndpoints(startPosition, impactPosition);
-    lightningStrike_->Trigger(lightningStrikeDuration_, lightningStrikeIntensity_);
-
-    ActiveLightningImpact& impact = lightningImpacts_[nextLightningImpactSlot_];
-    impact.position = impactPosition;
-    impact.elapsed = 0.0f;
-    impact.ringRadius = 0.0f;
-    impact.chargeRadius = 0.6f;
-    impact.visualIntensity = 1.0f;
-    impact.active = true;
-    nextLightningImpactSlot_ = (nextLightningImpactSlot_ + 1) % static_cast<uint32_t>(lightningImpacts_.size());
-
-    if (waterPlane_) {
-        waterPlane_->ClearLightningImpacts();
-        uint32_t activeImpactIndex = 0;
-        for (const ActiveLightningImpact& activeImpact : lightningImpacts_) {
-            if (!activeImpact.active) {
-                continue;
-            }
-
-            waterPlane_->SetLightningImpactAt(
-                activeImpactIndex++,
-                activeImpact.position,
-                activeImpact.ringRadius,
-                activeImpact.visualIntensity,
-                activeImpact.chargeRadius,
-                activeImpact.visualIntensity,
-                activeImpact.elapsed,
-                0.0f);
-        }
-        waterPlane_->UpdateFrameConstants();
-    }
-}
-
-void WaterTestScene::UpdateLightningSequence(float deltaTime)
-{
-    if (!lightningEffectEnabled_ || !lightningStrike_ || !lightningAutoLoop_) {
-        return;
-    }
-
-    if (lightningStrike_->IsPlaying()) {
-        return;
-    }
-
-    if (lightningBurstRemaining_ > 0) {
-        lightningBurstCooldown_ -= deltaTime;
-        if (lightningBurstCooldown_ <= 0.0f) {
-            TriggerBurstStrike();
-        }
-        return;
-    }
-
-    lightningTimer_ -= deltaTime;
-    if (lightningTimer_ <= 0.0f) {
-        StartLightningBurst();
-    }
-}
-
-void WaterTestScene::UpdateLightningImpactEffect(float deltaTime)
-{
-    if (!waterPlane_) {
-        return;
-    }
-
-    if (!lightningEffectEnabled_) {
-        waterPlane_->ClearLightningImpacts();
-        waterPlane_->UpdateFrameConstants();
-        return;
-    }
-
-    const float effectDuration = std::max(lightningImpactDuration_, 1.0e-3f);
-    waterPlane_->ClearLightningImpacts();
-
-    uint32_t activeImpactIndex = 0;
-    for (ActiveLightningImpact& impact : lightningImpacts_) {
-        if (!impact.active) {
-            continue;
-        }
-
-        impact.elapsed += deltaTime;
-
-        const float t = std::clamp(impact.elapsed / effectDuration, 0.0f, 1.0f);
-        const float travel = std::pow(t, 0.72f);
-        const float fade = 1.0f - t;
-        const float impactIntensity = std::min(1.0f, fade * fade * 1.35f);
-        const float chargeIntensity = std::min(1.0f, std::pow(fade, 0.82f) * 1.2f);
-
-        impact.ringRadius = travel * 18.0f;
-        impact.chargeRadius = 0.6f + travel * 17.0f;
-        impact.visualIntensity = impactIntensity;
-
-        if (t >= 1.0f || impactIntensity <= 1.0e-3f) {
-            impact = {};
-            continue;
-        }
-
-        waterPlane_->SetLightningImpactAt(
-            activeImpactIndex++,
-            impact.position,
-            impact.ringRadius,
-            impactIntensity,
-            impact.chargeRadius,
-            chargeIntensity,
-            impact.elapsed,
-            0.0f);
-    }
-
-    waterPlane_->UpdateFrameConstants();
 }
 
 #ifdef USE_IMGUI
@@ -833,73 +650,7 @@ void WaterTestScene::DrawWaterImGui() {
         }
     }
 
-    DrawLightningImGui();
-
     ImGui::End();
-}
-
-void WaterTestScene::DrawLightningImGui() {
-    if (!lightningStrike_) {
-        return;
-    }
-
-    if (!ImGui::CollapsingHeader("雷エフェクト", ImGuiTreeNodeFlags_DefaultOpen)) {
-        return;
-    }
-
-    ImGui::TextDisabled("CPU 生成リボン + 専用シェーダーで発光と揺らぎを付与しています");
-    if (ImGui::Checkbox("雷エフェクト有効", &imguiLightningEffectEnabled_)) {
-        lightningEffectEnabled_ = imguiLightningEffectEnabled_;
-        lightningStrike_->SetActive(lightningEffectEnabled_);
-
-        if (!lightningEffectEnabled_) {
-            lightningStrike_->Stop();
-            lightningBurstRemaining_ = 0;
-            lightningBurstCooldown_ = 0.0f;
-            lightningTimer_ = 0.0f;
-            for (ActiveLightningImpact& impact : lightningImpacts_) {
-                impact = {};
-            }
-            if (waterPlane_) {
-                waterPlane_->ClearLightningImpacts();
-                waterPlane_->UpdateFrameConstants();
-            }
-        } else if (lightningAutoLoop_) {
-            lightningTimer_ = std::min(lightningTimer_, 0.25f);
-        }
-    }
-
-    ImGui::BeginDisabled(!lightningEffectEnabled_);
-    if (ImGui::Button("雷を発生", ImVec2(-1.0f, 0.0f))) {
-        TriggerRandomLightningStrike();
-    }
-
-    if (ImGui::Checkbox("自動発生", &imguiLightningAutoLoop_)) {
-        lightningAutoLoop_ = imguiLightningAutoLoop_;
-        if (lightningAutoLoop_) {
-            lightningTimer_ = std::min(lightningTimer_, 0.25f);
-        }
-    }
-
-    bool timingChanged = false;
-    timingChanged |= ImGui::SliderFloat("発光時間", &imguiLightningStrikeDuration_, 0.05f, 0.50f, "%.3f s");
-    timingChanged |= ImGui::SliderFloat("発光強度", &imguiLightningStrikeIntensity_, 0.5f, 4.0f, "%.2f");
-    timingChanged |= ImGui::SliderFloat("自動発生最短", &imguiLightningIntervalMin_, 0.0f, 1.0f, "%.2f s");
-    timingChanged |= ImGui::SliderFloat("自動発生最長", &imguiLightningIntervalMax_, 0.0f, 1.5f, "%.2f s");
-    if (timingChanged) {
-        lightningStrikeDuration_ = imguiLightningStrikeDuration_;
-        lightningStrikeIntensity_ = imguiLightningStrikeIntensity_;
-        lightningIntervalMin_ = std::min(imguiLightningIntervalMin_, imguiLightningIntervalMax_);
-        lightningIntervalMax_ = std::max(imguiLightningIntervalMin_, imguiLightningIntervalMax_);
-    }
-
-    ImGui::Text("再生中: %s", lightningStrike_->IsPlaying() ? "はい" : "いいえ");
-    ImGui::Text("経過率: %.2f", lightningStrike_->GetNormalizedAge());
-    const Vector3& strikeStart = lightningStrike_->GetStrikeStart();
-    const Vector3& strikeEnd = lightningStrike_->GetStrikeEnd();
-    ImGui::Text("始点: (%.2f, %.2f, %.2f)", strikeStart.x, strikeStart.y, strikeStart.z);
-    ImGui::Text("終点: (%.2f, %.2f, %.2f)", strikeEnd.x, strikeEnd.y, strikeEnd.z);
-    ImGui::EndDisabled();
 }
 
 #endif

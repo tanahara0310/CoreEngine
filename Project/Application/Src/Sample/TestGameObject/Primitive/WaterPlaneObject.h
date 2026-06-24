@@ -141,27 +141,6 @@ public:
     /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
     void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);
 
-    /// @brief 雷の水面着弾演出パラメータを設定する
-    void ClearLightningImpacts();
-
-    /// @brief 指定インデックスの雷着弾演出パラメータを設定する
-    /// @param impactCenter 水面上の着弾中心座標（XZ を使用）
-    /// @param impactRadius 拡散リング半径
-    /// @param impactIntensity 着弾リングと中心発光の強さ
-    /// @param chargeRadius 帯電の広がり半径
-    /// @param chargeIntensity 帯電の強さ
-    /// @param impactTime 着弾後経過時間
-    /// @param screenFlash 画面フラッシュ強度
-    void SetLightningImpactAt(
-        uint32_t index,
-        const CoreEngine::Vector3& impactCenter,
-        float impactRadius,
-        float impactIntensity,
-        float chargeRadius,
-        float chargeIntensity,
-        float impactTime,
-        float screenFlash);
-
 protected:
     std::string GetTexturePath() const override { return {}; }
 
