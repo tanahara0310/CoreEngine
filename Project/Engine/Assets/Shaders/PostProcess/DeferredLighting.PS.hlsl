@@ -62,6 +62,19 @@ Texture2D<float> gRTShadowMask3 : register(t15);
 Texture2D<float4> gSSAO : register(t16);
 
 // ============================================================
+// Water Caustics テクスチャ
+// ============================================================
+Texture2D<float4> gWaterCaustics : register(t17);
+
+struct WaterCausticsDebug
+{
+    uint debugViewMode;
+    float debugDisplayScale;
+    float2 padding;
+};
+ConstantBuffer<WaterCausticsDebug> gWaterCausticsDebug : register(b5);
+
+// ============================================================
 // IBL パラメータ（シーン共通）
 // ============================================================
 struct IBLParams
@@ -140,6 +153,27 @@ PixelShaderOutput main(PixelShaderInput input)
     if (worldPosSample.a < 0.5f)
     {
         output.color = float4(0.1f, 0.25f, 0.5f, 1.0f);
+        return output;
+    }
+
+    if (gWaterCausticsDebug.debugViewMode != 0)
+    {
+        float3 rawCaustics = 0.0f.xxx;
+        float causticsW, causticsH;
+        gWaterCaustics.GetDimensions(causticsW, causticsH);
+        if (causticsW > 1.0f && causticsH > 1.0f)
+        {
+            rawCaustics = gWaterCaustics.Load(loadCoord).rgb * gWaterCausticsDebug.debugDisplayScale;
+        }
+
+        if (gWaterCausticsDebug.debugViewMode == 1)
+        {
+            output.color = float4(rawCaustics, 1.0f);
+            return output;
+        }
+
+        float luminance = dot(rawCaustics, float3(0.2126f, 0.7152f, 0.0722f));
+        output.color = float4(luminance.xxx, 1.0f);
         return output;
     }
 
@@ -553,7 +587,22 @@ PixelShaderOutput main(PixelShaderInput input)
     }
 
     // HDR値をそのまま出力（トーンマッピングはポストエフェクトチェーンで適用）
-    float3 color = Lo + ambient + emissive;
+    float3 waterCaustics = 0.0f.xxx;
+    {
+        float causticsW, causticsH;
+        gWaterCaustics.GetDimensions(causticsW, causticsH);
+        if (causticsW > 1.0f && causticsH > 1.0f)
+        {
+            waterCaustics = gWaterCaustics.Load(loadCoord).rgb;
+            float3 causticsAlbedoScale = lerp(0.35f.xxx, albedo, 0.65f);
+            float causticsAOScale = lerp(0.45f, 1.0f, ao);
+            float causticsMetallicScale = lerp(1.0f, 0.25f, metallic);
+            static const float kWaterCausticsCompositeScale = 2.5f;
+            waterCaustics *= causticsAlbedoScale * causticsAOScale * causticsMetallicScale * kWaterCausticsCompositeScale;
+        }
+    }
+
+    float3 color = Lo + ambient + emissive + waterCaustics;
     output.color = float4(color, 1.0f);
     return output;
 }

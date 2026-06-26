@@ -143,7 +143,7 @@ namespace CoreEngine
         return currentScene_ ? currentScene_->GetGameObjectManager() : nullptr;
     }
 
-    const WaterRefractionSurfaceData* SceneManager::GetWaterRefractionSurfaceData() const
+    const WaterSurfaceData* SceneManager::GetWaterRefractionSurfaceData() const
     {
         return currentScene_ ? currentScene_->GetWaterRefractionSurfaceData() : nullptr;
     }

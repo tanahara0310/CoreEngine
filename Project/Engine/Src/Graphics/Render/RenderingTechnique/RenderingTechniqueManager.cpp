@@ -5,6 +5,7 @@
 #include "SSAO/SSAOTechnique.h"
 #include "SSAO/SSAOBlurTechnique.h"
 #include "Lighting/DeferredLightingTechnique.h"
+#include "Lighting/WaterCausticsTechnique.h"
 #include <cassert>
 
 #ifdef USE_IMGUI
@@ -25,6 +26,7 @@ namespace CoreEngine
     {
         // Deferred Lightingの登録（常時有効）
         RegisterTechnique<DeferredLightingTechnique>(RenderingTechniqueNames::DeferredLighting, true);
+        RegisterTechnique<WaterCausticsTechnique>(RenderingTechniqueNames::WaterCaustics, true);
 
         // SSAO系の登録
         RegisterTechnique<SSAOTechnique>(RenderingTechniqueNames::SSAO, true);

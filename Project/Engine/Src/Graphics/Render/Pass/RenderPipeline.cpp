@@ -7,9 +7,11 @@
 #include "GBufferPass.h"
 #include "PostEffectPass.h"
 #include "RTShadowPass.h"
+#include "RTWaterCausticsPass.h"
 #include "RTWaterRefractionPass.h"
 #include "SSAOPass.h"
 #include "ShadowMapPass.h"
+#include "WaterCausticsPass.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
@@ -61,6 +63,25 @@ namespace CoreEngine
             }
 
             RenderTargetDescriptor desc(context.viewSettings.sceneColorTargetName);
+            context.renderTargetManager->CreateRenderTarget(desc);
+        }
+
+        void EnsureWaterCausticsTarget(const RenderContext& context)
+        {
+            if (!context.renderTargetManager) {
+                return;
+            }
+
+            if (context.renderTargetManager->HasRenderTarget(RenderTargetNames::WaterCausticsBuffer)) {
+                return;
+            }
+
+            RenderTargetDescriptor desc(RenderTargetNames::WaterCausticsBuffer);
+            desc.needsDepthStencil = false;
+            desc.clearColor[0] = 0.0f;
+            desc.clearColor[1] = 0.0f;
+            desc.clearColor[2] = 0.0f;
+            desc.clearColor[3] = 1.0f;
             context.renderTargetManager->CreateRenderTarget(desc);
         }
     }
@@ -115,6 +136,7 @@ namespace CoreEngine
         }
 
         EnsureSceneColorTarget(context);
+        EnsureWaterCausticsTarget(context);
 
         if (context.depthStencilManager) {
             context.frameBlackboard->SetResource(
@@ -187,6 +209,19 @@ namespace CoreEngine
                     backBufferTarget->GetSRVHandle(),
                     backBufferTarget->GetResource(),
                     backBufferState);
+            }
+
+            if (RenderTarget* waterCausticsTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::WaterCausticsBuffer)) {
+                D3D12_RESOURCE_STATES* waterCausticsState = nullptr;
+                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(waterCausticsTarget)) {
+                    waterCausticsState = &offscreen->GetCurrentState();
+                }
+
+                context.frameBlackboard->SetResource(
+                    FrameBlackboard::WaterCaustics,
+                    waterCausticsTarget->GetSRVHandle(),
+                    waterCausticsTarget->GetResource(),
+                    waterCausticsState);
             }
         }
 
@@ -300,6 +335,21 @@ namespace CoreEngine
             }
         }
 
+        if (auto* pass = GetPass<RTWaterCausticsPass>()) {
+            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
+                builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                builder.Write(FrameBlackboard::RTWaterCaustics, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                });
+        }
+
+        if (auto* pass = GetPass<WaterCausticsPass>()) {
+            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
+                builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                builder.Write(FrameBlackboard::WaterCaustics, D3D12_RESOURCE_STATE_RENDER_TARGET);
+                });
+        }
+
         // Deferred Lighting は GBuffer / SSAO / ShadowMap / RTShadow / SceneDepth を読み、SceneColor を生成する。
         if (auto* pass = GetPass<DeferredLightingPass>()) {
             renderGraph_.AddPass(pass->GetName(), pass, [viewSettings](RenderGraphBuilder& builder) {
@@ -311,6 +361,8 @@ namespace CoreEngine
                 if (viewSettings.enableSSAO) {
                     builder.Read(FrameBlackboard::SSAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 }
+                builder.Read(FrameBlackboard::WaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                builder.Read(FrameBlackboard::RTWaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 builder.Read(FrameBlackboard::ShadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 if (viewSettings.enableRTShadow) {
                     builder.Read(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

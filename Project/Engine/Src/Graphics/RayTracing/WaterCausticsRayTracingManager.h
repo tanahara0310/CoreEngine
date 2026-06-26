@@ -6,7 +6,6 @@
 #include <cstdint>
 
 #include "Graphics/Water/WaterSurfaceData.h"
-#include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
 #include "GlobalRootSignatureManager.h"
 #include "RayTracingPipelineBuilder.h"
@@ -18,15 +17,14 @@ namespace CoreEngine
     class DescriptorManager;
     class AccelerationStructureManager;
 
-    struct WaterRefractionRayTracingSettings {
-        float maxRayDistance = 500.0f;
-        float waterRefractiveIndex = 1.333f;
+    struct WaterCausticsRayTracingSettings {
+        float maxTraceDistance = 500.0f;
         float surfaceBias = 0.02f;
-        float absorptionCoeff = 0.3f;
-        float maxRefractionOffsetPixels = 3.0f;
+        float intensityScale = 1.0f;
+        float padding = 0.0f;
     };
 
-    class WaterRefractionRayTracingManager {
+    class WaterCausticsRayTracingManager {
     public:
         enum class ViewID : uint32_t {
             GameView = 0,
@@ -48,11 +46,11 @@ namespace CoreEngine
             DispatchStatus status = DispatchStatus::None;
             ViewID viewId = ViewID::GameView;
             float waterHeight = 0.0f;
+            uint32_t activeWaveCount = 0;
             UINT width = 0;
             UINT height = 0;
             UINT blasCount = 0;
             UINT64 worldPositionSrv = 0;
-            UINT64 sceneColorSrv = 0;
             UINT64 outputSrv = 0;
         };
 
@@ -66,9 +64,8 @@ namespace CoreEngine
         void Dispatch(
             ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV,
-            const Matrix4x4& viewProjection,
-            const Vector3& cameraPosition,
+            D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+            const Vector3& lightDirection,
             const WaterSurfaceData& surfaceData,
             UINT width,
             UINT height,
@@ -76,18 +73,18 @@ namespace CoreEngine
 
         void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView);
 
-        D3D12_GPU_DESCRIPTOR_HANDLE GetRefractionSRVHandle(ViewID viewId = ViewID::GameView) const;
-        ID3D12Resource* GetRefractionResource(ViewID viewId = ViewID::GameView) const;
-        D3D12_RESOURCE_STATES& GetRefractionCurrentState(ViewID viewId = ViewID::GameView);
+        D3D12_GPU_DESCRIPTOR_HANDLE GetCausticsSRVHandle(ViewID viewId = ViewID::GameView) const;
+        ID3D12Resource* GetCausticsResource(ViewID viewId = ViewID::GameView) const;
+        D3D12_RESOURCE_STATES& GetCausticsCurrentState(ViewID viewId = ViewID::GameView);
 
         bool IsInitialized() const { return isInitialized_; }
 
-        void SetSettings(const WaterRefractionRayTracingSettings& settings) { settings_ = settings; }
-        const WaterRefractionRayTracingSettings& GetSettings() const { return settings_; }
+        void SetSettings(const WaterCausticsRayTracingSettings& settings) { settings_ = settings; }
+        const WaterCausticsRayTracingSettings& GetSettings() const { return settings_; }
         const DispatchDiagnostics& GetLastDiagnostics() const { return lastDiagnostics_; }
 
     private:
-        struct RefractionView {
+        struct CausticsView {
             Microsoft::WRL::ComPtr<ID3D12Resource> texture;
             D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
             D3D12_CPU_DESCRIPTOR_HANDLE uavCpuHandle{};
@@ -113,8 +110,8 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> stateObjectProperties_;
         ShaderTableBuilder shaderTableBuilder_;
 
-        RefractionView views_[kViewCount]{};
-        WaterRefractionRayTracingSettings settings_{};
+        CausticsView views_[kViewCount]{};
+        WaterCausticsRayTracingSettings settings_{};
         DispatchDiagnostics lastDiagnostics_{};
         bool isInitialized_ = false;
     };

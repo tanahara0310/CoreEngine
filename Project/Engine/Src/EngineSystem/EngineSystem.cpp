@@ -30,7 +30,9 @@
 #include "Graphics/Render/Pass/SSAOPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/RTShadowPass.h"
+#include "Graphics/Render/Pass/RTWaterCausticsPass.h"
 #include "Graphics/Render/Pass/RTWaterRefractionPass.h"
+#include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
 #include "Graphics/Render/Pass/BackBufferPass.h"
@@ -239,6 +241,7 @@ namespace CoreEngine
         context.shadowMapManager = renderDomainContext_ ? renderDomainContext_->GetShadowMapManager() : nullptr;
         context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
+        context.rtWaterCausticsManager = renderDomainContext_ ? renderDomainContext_->GetWaterCausticsRayTracingManager() : nullptr;
         context.rtWaterRefractionManager = renderDomainContext_ ? renderDomainContext_->GetWaterRefractionRayTracingManager() : nullptr;
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
@@ -398,8 +401,14 @@ namespace CoreEngine
         auto rtShadowPass = std::make_unique<RTShadowPass>();
         renderPipeline_->AddPass(std::move(rtShadowPass));
 
+        auto rtWaterCausticsPass = std::make_unique<RTWaterCausticsPass>();
+        renderPipeline_->AddPass(std::move(rtWaterCausticsPass));
+
         auto rtWaterRefractionPass = std::make_unique<RTWaterRefractionPass>();
         renderPipeline_->AddPass(std::move(rtWaterRefractionPass));
+
+        auto waterCausticsPass = std::make_unique<WaterCausticsPass>();
+        renderPipeline_->AddPass(std::move(waterCausticsPass));
 
         // 3. DeferredLightingパス
         // G-Buffer (AlbedoAO / NormalRoughness / EmissiveMetallic) を読み取り、

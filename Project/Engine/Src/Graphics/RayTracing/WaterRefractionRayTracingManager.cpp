@@ -33,7 +33,7 @@ namespace CoreEngine
             uint32_t activeWaveCount;
             float time;
             float padding;
-            WaterRefractionWaveParam waves[kMaxWaterRefractionWaveCount];
+            WaterWaveParam waves[kMaxWaterSurfaceWaveCount];
         };
 
         constexpr UINT kWaterSurfaceCBSize =
@@ -56,8 +56,8 @@ namespace CoreEngine
 
     static_assert(sizeof(WaterRefractionConstants) == 112,
         "WaterRefractionConstants size mismatch with HLSL cbuffer");
-    static_assert(sizeof(WaterRefractionWaveParam) == 32,
-        "WaterRefractionWaveParam size mismatch with HLSL wave struct");
+    static_assert(sizeof(WaterWaveParam) == 32,
+        "WaterWaveParam size mismatch with HLSL wave struct");
 
     bool WaterRefractionRayTracingManager::Initialize(
         DirectXCommon* dxCommon,
@@ -287,7 +287,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV,
         const Matrix4x4& viewProjection,
         const Vector3& cameraPosition,
-        const WaterRefractionSurfaceData& surfaceData,
+        const WaterSurfaceData& surfaceData,
         UINT width,
         UINT height,
         ViewID viewId)
@@ -390,7 +390,7 @@ namespace CoreEngine
 
         WaterRefractionSurfaceConstants surfaceConstants{};
         surfaceConstants.waterHeight = surfaceData.waterHeight;
-        surfaceConstants.activeWaveCount = (std::min)(surfaceData.activeWaveCount, kMaxWaterRefractionWaveCount);
+        surfaceConstants.activeWaveCount = (std::min)(surfaceData.activeWaveCount, kMaxWaterSurfaceWaveCount);
         surfaceConstants.time = surfaceData.time;
         for (uint32_t waveIndex = 0; waveIndex < surfaceConstants.activeWaveCount; ++waveIndex) {
             surfaceConstants.waves[waveIndex] = surfaceData.waves[waveIndex];
@@ -398,7 +398,7 @@ namespace CoreEngine
         std::memcpy(constantBufferMapped_, &surfaceConstants, sizeof(surfaceConstants));
 
         if (surfaceConstants.activeWaveCount > 0) {
-            const WaterRefractionWaveParam& firstWave = surfaceConstants.waves[0];
+            const WaterWaveParam& firstWave = surfaceConstants.waves[0];
             Logger::GetInstance().Infof(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
