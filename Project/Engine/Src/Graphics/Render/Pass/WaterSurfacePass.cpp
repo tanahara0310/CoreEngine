@@ -1,9 +1,9 @@
 #include "pch.h"
-#include "GeometryPass.h"
-#include "Graphics/Render/Render.h"
+#include "WaterSurfacePass.h"
+
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DepthStencilManager.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Scene/SceneManager.h"
@@ -11,46 +11,39 @@
 
 namespace CoreEngine
 {
-    void GeometryPass::Execute(const RenderContext& context)
+    void WaterSurfacePass::Execute(const RenderContext& context)
     {
-        // RenderTargetManagerが必要
         if (!context.renderTargetManager) {
 #ifdef _DEBUG
-            OutputDebugStringA("ERROR: GeometryPass: RenderTargetManager is null in RenderContext!\n");
+            OutputDebugStringA("ERROR: WaterSurfacePass: RenderTargetManager is null in RenderContext!\n");
 #endif
-            assert(false && "GeometryPass requires RenderTargetManager in RenderContext");
+            assert(false && "WaterSurfacePass requires RenderTargetManager in RenderContext");
             return;
         }
 
-        // 名前ベースでターゲットを取得
         RenderTarget* targetToUse = context.renderTargetManager->GetRenderTarget(targetName_);
-
         if (!targetToUse) {
 #ifdef _DEBUG
-            std::string msg = "ERROR: GeometryPass: RenderTarget '" + targetName_ + "' not found in RenderTargetManager!\n";
+            std::string msg = "ERROR: WaterSurfacePass: RenderTarget '" + targetName_ + "' not found in RenderTargetManager!\n";
             OutputDebugStringA(msg.c_str());
 #endif
-            assert(false && "GeometryPass requires a valid RenderTarget.");
+            assert(false && "WaterSurfacePass requires a valid RenderTarget.");
             return;
         }
 
-        // DirectXCommonが必要
         if (!context.dxCommon) {
 #ifdef _DEBUG
-            OutputDebugStringA("ERROR: GeometryPass: DirectXCommon is null in RenderContext!\n");
+            OutputDebugStringA("ERROR: WaterSurfacePass: DirectXCommon is null in RenderContext!\n");
 #endif
-            assert(false && "GeometryPass requires DirectXCommon in RenderContext");
+            assert(false && "WaterSurfacePass requires DirectXCommon in RenderContext");
             return;
         }
 
         auto* cmdList = context.dxCommon->GetCommandList();
-
-        // DeferredLightingPass が先に書き込んでいる場合はクリアしない
-        targetToUse->SetClearEnabled(clearEnabled_);
-
+        targetToUse->SetClearEnabled(false);
         targetToUse->Begin(cmdList);
         if (context.renderManager) {
-            context.renderManager->SetForwardDrawFilter(RenderManager::ForwardDrawFilter::ExcludeWater);
+            context.renderManager->SetForwardDrawFilter(RenderManager::ForwardDrawFilter::WaterOnly);
         }
 
         if (context.sceneManager) {
@@ -60,7 +53,6 @@ namespace CoreEngine
         if (context.renderManager) {
             context.renderManager->SetForwardDrawFilter(RenderManager::ForwardDrawFilter::All);
         }
-
         targetToUse->End(cmdList);
 
         if (context.frameBlackboard) {

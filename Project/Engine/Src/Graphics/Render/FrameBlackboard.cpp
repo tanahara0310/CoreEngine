@@ -4,6 +4,7 @@
 namespace CoreEngine
 {
     const char* const FrameBlackboard::SceneColor = "SceneColor";
+    const char* const FrameBlackboard::SceneColorSnapshot = "SceneColorSnapshot";
     const char* const FrameBlackboard::SceneDepth = "SceneDepth";
     const char* const FrameBlackboard::ReflectionColor = "ReflectionColor";
     const char* const FrameBlackboard::ReflectionDepth = "ReflectionDepth";

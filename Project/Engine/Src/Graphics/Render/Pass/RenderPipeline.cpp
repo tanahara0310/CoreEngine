@@ -7,11 +7,13 @@
 #include "FFTOceanPass.h"
 #include "GBufferPass.h"
 #include "PostEffectPass.h"
+#include "SceneColorCopyPass.h"
 #include "RTShadowPass.h"
 #include "RTWaterCausticsPass.h"
 #include "RTWaterRefractionPass.h"
 #include "SSAOPass.h"
 #include "ShadowMapPass.h"
+#include "WaterSurfacePass.h"
 #include "WaterCausticsPass.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
@@ -104,10 +106,7 @@ namespace CoreEngine
         return nullptr;
     }
 
-    void RenderPipeline::PrepareFrame(
-        const RenderContext& context,
-        const std::function<void()>& geometryRenderCallback,
-        const std::function<void()>& waterRenderCallback)
+    void RenderPipeline::PrepareFrame(const RenderContext& context)
     {
         RegisterFrameResources(context);
 
@@ -115,12 +114,21 @@ namespace CoreEngine
         ConfigurePassesForView(context);
 
         if (auto* geometryPass = GetPass<GeometryPass>()) {
-            geometryPass->SetRenderCallback(geometryRenderCallback);
-            geometryPass->SetWaterRenderCallback(waterRenderCallback);
-
             const bool deferredEnabled = GetPass<DeferredLightingPass>()
                 && GetPass<DeferredLightingPass>()->IsEnabled();
             geometryPass->SetClearEnabled(!deferredEnabled);
+        }
+
+        if (auto* waterSurfacePass = GetPass<WaterSurfacePass>()) {
+            waterSurfacePass->SetRenderTargetName(context.viewSettings.sceneColorTargetName);
+        }
+
+        if (auto* sceneColorCopyPass = GetPass<SceneColorCopyPass>()) {
+            sceneColorCopyPass->SetSourceTargetName(context.viewSettings.sceneColorTargetName);
+            sceneColorCopyPass->SetDestinationTargetName(RenderTargetNames::SceneColorSnapshot);
+            sceneColorCopyPass->SetEnabled(
+                context.viewSettings.viewType == RenderViewType::GameView
+                && context.viewSettings.sceneColorTargetName == RenderTargetNames::SceneColor);
         }
 
         if (context.renderManager) {
@@ -171,6 +179,19 @@ namespace CoreEngine
                     sceneColorTarget->GetSRVHandle(),
                     sceneColorTarget->GetResource(),
                     sceneColorState);
+            }
+
+            if (RenderTarget* sceneColorSnapshotTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::SceneColorSnapshot)) {
+                D3D12_RESOURCE_STATES* sceneColorSnapshotState = nullptr;
+                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(sceneColorSnapshotTarget)) {
+                    sceneColorSnapshotState = &offscreen->GetCurrentState();
+                }
+
+                context.frameBlackboard->SetResource(
+                    FrameBlackboard::SceneColorSnapshot,
+                    sceneColorSnapshotTarget->GetSRVHandle(),
+                    sceneColorSnapshotTarget->GetResource(),
+                    sceneColorSnapshotState);
             }
 
             for (size_t index = 0; index < intermediateCount; ++index) {
@@ -374,14 +395,6 @@ namespace CoreEngine
                 });
         }
 
-        if (auto* pass = GetPass<RTWaterRefractionPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                builder.Write(FrameBlackboard::RTWaterRefractionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                });
-        }
-
         if (auto* pass = GetPass<FFTOceanPass>()) {
             renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
                 (void)builder;
@@ -393,6 +406,32 @@ namespace CoreEngine
             renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
                 builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
+                });
+        }
+
+        // 水面が参照する背景は、forward 側の SkyBox/透明物を含む完成済み SceneColor を使用する。
+        if (auto* pass = GetPass<SceneColorCopyPass>()) {
+            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
+                builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_COPY_SOURCE);
+                builder.Write(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_COPY_DEST);
+                });
+        }
+
+        if (auto* pass = GetPass<RTWaterRefractionPass>()) {
+            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
+                builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                builder.Read(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                builder.Write(FrameBlackboard::RTWaterRefractionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                });
+        }
+
+        if (auto* pass = GetPass<WaterSurfacePass>()) {
+            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
+                builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                builder.Read(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                builder.Read(FrameBlackboard::RTWaterRefractionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
                 });
         }
@@ -502,12 +541,10 @@ namespace CoreEngine
 
     void RenderPipeline::ExecuteView(
         const RenderContext& context,
-        const std::function<void()>& geometryRenderCallback,
-        const std::function<void()>& waterRenderCallback,
         const std::function<void()>& beforeExecute,
         const std::function<void()>& afterExecute)
     {
-        PrepareFrame(context, geometryRenderCallback, waterRenderCallback);
+        PrepareFrame(context);
 
         if (beforeExecute) {
             beforeExecute();
@@ -522,12 +559,10 @@ namespace CoreEngine
 
     RenderViewResult RenderPipeline::ExecuteRenderView(
         const RenderContext& context,
-        const std::function<void()>& geometryRenderCallback,
-        const std::function<void()>& waterRenderCallback,
         const std::function<void()>& beforeExecute,
         const std::function<void()>& afterExecute)
     {
-        ExecuteView(context, geometryRenderCallback, waterRenderCallback, beforeExecute, afterExecute);
+        ExecuteView(context, beforeExecute, afterExecute);
         return BuildRenderViewResult(context);
     }
 

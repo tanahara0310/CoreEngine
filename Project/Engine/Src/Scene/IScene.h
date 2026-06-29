@@ -48,10 +48,6 @@ public:
     virtual void PrepareRender() {}
     virtual void Draw() = 0;
     virtual void DrawRenderView() { Draw(); }
-    virtual void DrawExcludingWater() { Draw(); }
-    virtual void DrawWaterSurface() { Draw(); }
-    virtual void DrawRenderViewExcludingWater() { DrawRenderView(); }
-    virtual void DrawRenderViewWaterSurface() { DrawRenderView(); }
     virtual void Finalize() = 0;
 
     virtual ICamera* GetGameViewCamera3D() const { return nullptr; }

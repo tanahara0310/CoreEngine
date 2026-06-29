@@ -53,20 +53,11 @@ public:
     /// @brief 補助 RenderView 用描画
     void DrawRenderView();
 
-    /// @brief 水面を除いた描画
-    void DrawExcludingWater();
-
-    /// @brief 水面のみ描画
-    void DrawWaterSurface();
-
-    /// @brief 補助 RenderView 用の水面除外描画
-    void DrawRenderViewExcludingWater();
-
-    /// @brief 補助 RenderView 用の水面専用描画
-    void DrawRenderViewWaterSurface();
-
     /// @brief 描画前準備（描画キュー構築など）
     void PrepareRender();
+
+    /// @brief フレーム描画終了時の後処理（描画キュー破棄・削除オブジェクト cleanup）
+    void FinalizeRenderFrame();
 
     /// @brief シーンの終了処理
     void Finalize();

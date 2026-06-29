@@ -59,9 +59,7 @@ namespace CoreEngine
 
             // ゲーム固有の描画処理（派生クラスで実装）
             PrepareRender();
-            engineSystem_->ExecuteRenderPipeline([this]() {
-                Draw();
-                });
+            engineSystem_->ExecuteRenderPipeline();
 
             // エンジンシステムのフレーム終了処理
             engineSystem_->EndFrame();

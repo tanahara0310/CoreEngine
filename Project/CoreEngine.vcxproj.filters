@@ -31,7 +31,13 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterCausticsPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterSurfacePass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp">
@@ -1215,6 +1221,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -1222,6 +1231,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterCausticsPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterSurfacePass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderDomainContext.h">

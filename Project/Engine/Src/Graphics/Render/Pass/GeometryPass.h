@@ -1,6 +1,5 @@
 #pragma once
 #include "RenderPass.h"
-#include <functional>
 #include <string>
 
 namespace CoreEngine
@@ -20,18 +19,6 @@ namespace CoreEngine
         const char* GetName() const override { return "Geometry"; }
 
         void Execute(const RenderContext& context) override;
-
-        /// @brief 水面以外の forward 描画コールバックを設定
-        /// @param callback 描画コールバック関数
-        void SetRenderCallback(std::function<void()> callback) {
-            renderCallback_ = callback;
-        }
-
-        /// @brief 水面専用描画コールバックを設定
-        /// @param callback 描画コールバック関数
-        void SetWaterRenderCallback(std::function<void()> callback) {
-            waterRenderCallback_ = callback;
-        }
 
         /// @brief レンダーターゲット名を設定
         /// @param name ターゲット名
@@ -54,8 +41,6 @@ namespace CoreEngine
         bool IsClearEnabled() const { return clearEnabled_; }
 
     private:
-        std::function<void()> renderCallback_;
-        std::function<void()> waterRenderCallback_;
         std::string targetName_ = RenderTargetNames::SceneColor;  ///< デフォルトターゲット名
 
         /// @brief レンダーターゲットをクリアするかどうか

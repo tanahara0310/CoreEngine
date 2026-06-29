@@ -49,18 +49,6 @@ namespace CoreEngine
         /// @brief 補助 RenderView 用描画
         virtual void DrawRenderView() override;
 
-        /// @brief 水面を除いた描画
-        virtual void DrawExcludingWater() override;
-
-        /// @brief 水面のみ描画
-        virtual void DrawWaterSurface() override;
-
-        /// @brief 補助 RenderView 用の水面除外描画
-        virtual void DrawRenderViewExcludingWater() override;
-
-        /// @brief 補助 RenderView 用の水面専用描画
-        virtual void DrawRenderViewWaterSurface() override;
-
         /// @brief 解放（共通処理 + 派生クラスの解放）
         virtual void Finalize() override;
 
@@ -94,10 +82,7 @@ namespace CoreEngine
         void SetupCamera();
 
         /// @brief 指定カメラでジオメトリ描画
-        void DrawWithCamera(
-            const std::string& cameraName,
-            bool finalizeFrame,
-            const std::function<void(RenderManager*)>& drawCallback);
+        void DrawWithCamera(const std::string& cameraName);
 
         /// @brief Gameビューに使用する3Dカメラ名を解決
         std::string ResolveGameViewCameraName() const;

@@ -3,7 +3,9 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Light/LightManager.h"
+#include "Graphics/Render/RenderManager.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "ObjectCommon/GameObjectManager.h"
 
 
 namespace CoreEngine
@@ -73,33 +75,23 @@ namespace CoreEngine
         }
     }
 
-    void SceneManager::DrawExcludingWater() {
-        if (currentScene_) {
-            currentScene_->DrawExcludingWater();
-        }
-    }
-
-    void SceneManager::DrawWaterSurface() {
-        if (currentScene_) {
-            currentScene_->DrawWaterSurface();
-        }
-    }
-
-    void SceneManager::DrawRenderViewExcludingWater() {
-        if (currentScene_) {
-            currentScene_->DrawRenderViewExcludingWater();
-        }
-    }
-
-    void SceneManager::DrawRenderViewWaterSurface() {
-        if (currentScene_) {
-            currentScene_->DrawRenderViewWaterSurface();
-        }
-    }
-
     void SceneManager::PrepareRender() {
         if (currentScene_) {
             currentScene_->PrepareRender();
+        }
+    }
+
+    void SceneManager::FinalizeRenderFrame() {
+        if (!currentScene_) {
+            return;
+        }
+
+        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
+            renderManager->ClearQueue();
+        }
+
+        if (auto* objMgr = currentScene_->GetGameObjectManager()) {
+            objMgr->CleanupDestroyed();
         }
     }
 

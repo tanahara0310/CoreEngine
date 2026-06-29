@@ -25,6 +25,7 @@ namespace CoreEngine
     class FrameBlackboard {
     public:
         static const char* const SceneColor;
+        static const char* const SceneColorSnapshot;
         static const char* const SceneDepth;
         static const char* const ReflectionColor;
         static const char* const ReflectionDepth;

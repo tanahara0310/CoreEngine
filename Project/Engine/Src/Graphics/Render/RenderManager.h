@@ -27,6 +27,12 @@ namespace CoreEngine
 {
     class RenderManager {
     public:
+        enum class ForwardDrawFilter {
+            All,
+            ExcludeWater,
+            WaterOnly,
+        };
+
         /// @brief 初期化
         /// @param device D3D12デバイス
         void Initialize(ID3D12Device* device);
@@ -94,11 +100,11 @@ namespace CoreEngine
     /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
     void DrawGeometryPass();
 
-    /// @brief 水面以外の通常ジオメトリを描画する（描画キュー必須）
-    void DrawGeometryPassExcludingWater();
+    /// @brief forward 描画フィルタを設定する
+    void SetForwardDrawFilter(ForwardDrawFilter filter) { forwardDrawFilter_ = filter; }
 
-    /// @brief 水面のみを描画する（描画キュー必須）
-    void DrawWaterSurfacePass();
+    /// @brief 現在の forward 描画フィルタを取得する
+    ForwardDrawFilter GetForwardDrawFilter() const { return forwardDrawFilter_; }
 
     /// @brief 描画パスタイプの描画順序優先度を設定（小さいほど先に描画）
     /// @param type 描画パスタイプ
@@ -179,6 +185,8 @@ namespace CoreEngine
     // true にすると RenderNormalPass で不透明 Model/SkinnedModel をスキップする
     // DeferredLightingPass が有効な場合に使用する
     bool skipOpaqueModelsInForward_ = false;
+
+    ForwardDrawFilter forwardDrawFilter_ = ForwardDrawFilter::All;
 
     // アクティブなトランスフォームスロット
     TransformBufferSlot activeTransformSlot_ = TransformBufferSlot::Game;

@@ -35,6 +35,8 @@
 #include "Graphics/Render/Pass/FFTOceanPass.h"
 #include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
+#include "Graphics/Render/Pass/SceneColorCopyPass.h"
+#include "Graphics/Render/Pass/WaterSurfacePass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
 #include "Graphics/Render/Pass/BackBufferPass.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
@@ -206,10 +208,8 @@ namespace CoreEngine
         // Present(1, 0)が自動的に60Hzに同期してくれる
     }
 
-    void EngineSystem::ExecuteRenderPipeline(std::function<void()> renderCallback)
+    void EngineSystem::ExecuteRenderPipeline()
     {
-        (void)renderCallback;
-
         if (!renderPipeline_) {
             return;
         }
@@ -298,22 +298,8 @@ namespace CoreEngine
                     ? static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView)
                     : static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
 
-                const std::function<void()> drawRenderViewWithoutWater = [sceneManager]() {
-                    if (sceneManager) {
-                        sceneManager->DrawRenderViewExcludingWater();
-                    }
-                };
-
-                const std::function<void()> drawWaterSurfaceView = [sceneManager]() {
-                    if (sceneManager) {
-                        sceneManager->DrawRenderViewWaterSurface();
-                    }
-                };
-
                 const RenderViewResult renderViewResult = renderPipeline_->ExecuteRenderView(
                     renderViewContext,
-                    drawRenderViewWithoutWater,
-                    drawWaterSurfaceView,
                     renderViewRequest.beforeExecute,
                     renderViewRequest.afterExecute);
 
@@ -328,19 +314,11 @@ namespace CoreEngine
         {
             // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
             EngineProfileScope scope(this, GpuTimestampSlot::GBufferPass, cmdList);
-            const std::function<void()> drawGeometryWithoutWater = [sceneManager]() {
-                if (sceneManager) {
-                    sceneManager->DrawExcludingWater();
-                }
-            };
+            renderPipeline_->ExecuteView(context);
+        }
 
-            const std::function<void()> drawWaterSurface = [sceneManager]() {
-                if (sceneManager) {
-                    sceneManager->DrawWaterSurface();
-                }
-            };
-
-            renderPipeline_->ExecuteView(context, drawGeometryWithoutWater, drawWaterSurface);
+        if (sceneManager) {
+            sceneManager->FinalizeRenderFrame();
         }
 
 #ifdef USE_IMGUI
@@ -447,6 +425,12 @@ namespace CoreEngine
         // 不透明 Model/SkinnedModel は GBufferPass + DeferredLightingPass で処理済みなので描画しない
         auto geometryPass = std::make_unique<GeometryPass>();
         renderPipeline_->AddPass(std::move(geometryPass));
+
+        auto sceneColorCopyPass = std::make_unique<SceneColorCopyPass>();
+        renderPipeline_->AddPass(std::move(sceneColorCopyPass));
+
+        auto waterSurfacePass = std::make_unique<WaterSurfacePass>();
+        renderPipeline_->AddPass(std::move(waterSurfacePass));
 
         // 5. ポストエフェクトパス
         auto postEffectPass = std::make_unique<PostEffectPass>();

@@ -196,16 +196,31 @@ namespace CoreEngine
         }
 
         D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV{};
+        bool hasSceneColorSnapshot = false;
         if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, sceneColorSRV);
+            hasSceneColorSnapshot = context.frameBlackboard->TryGetSrvHandle(
+                FrameBlackboard::SceneColorSnapshot,
+                sceneColorSRV);
+
+            if (!hasSceneColorSnapshot) {
+                context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, sceneColorSRV);
+            }
         }
         if (sceneColorSRV.ptr == 0) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::RenderTarget,
-                "RayTracingSubsystem: water refraction dispatch skipped. SceneColor SRV is invalid.");
+                "RayTracingSubsystem: water refraction dispatch skipped. SceneColorSnapshot/SceneColor SRV is invalid.");
             return;
         }
+
+        Logger::GetInstance().Infof(
+            LogCategory::Graphics,
+            LogSubCategory::RenderTarget,
+            "RayTracingSubsystem: water refraction input selected. viewId={} usesSceneColorSnapshot={} srv=0x{:X}",
+            static_cast<uint32_t>(viewId),
+            hasSceneColorSnapshot,
+            sceneColorSRV.ptr);
 
         ICamera* camera = context.sceneManager->GetGameViewCamera3D();
         if (!camera) {

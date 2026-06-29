@@ -261,30 +261,22 @@ namespace CoreEngine
 
         EnsureQueueSorted();
 
-        // === Phase 2: 通常描画パス ===
-        RenderNormalPass();
-    }
-
-    void RenderManager::DrawGeometryPassExcludingWater() {
-        if (drawQueue_.empty() || !cmdList_) {
-            return;
+        switch (forwardDrawFilter_) {
+        case ForwardDrawFilter::ExcludeWater:
+            RenderNormalPassFiltered([](const DrawCommand& cmd) {
+                return cmd.passType != RenderPassType::WaterSurface;
+                });
+            break;
+        case ForwardDrawFilter::WaterOnly:
+            RenderNormalPassFiltered([](const DrawCommand& cmd) {
+                return cmd.passType == RenderPassType::WaterSurface;
+                });
+            break;
+        case ForwardDrawFilter::All:
+        default:
+            RenderNormalPass();
+            break;
         }
-
-        EnsureQueueSorted();
-        RenderNormalPassFiltered([](const DrawCommand& cmd) {
-            return cmd.passType != RenderPassType::WaterSurface;
-            });
-    }
-
-    void RenderManager::DrawWaterSurfacePass() {
-        if (drawQueue_.empty() || !cmdList_) {
-            return;
-        }
-
-        EnsureQueueSorted();
-        RenderNormalPassFiltered([](const DrawCommand& cmd) {
-            return cmd.passType == RenderPassType::WaterSurface;
-            });
     }
 
     void RenderManager::RenderShadowMapPass() {
