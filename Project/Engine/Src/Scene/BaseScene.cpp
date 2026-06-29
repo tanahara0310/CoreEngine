@@ -119,16 +119,6 @@ namespace CoreEngine
         DrawWithCamera(ResolveGameViewCameraName());
     }
 
-    void BaseScene::DrawRenderView()
-    {
-        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
-            renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
-            renderManager->SetDebugLineRenderingEnabled(false);
-        }
-        Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
-        DrawWithCamera(ResolveGameViewCameraName());
-    }
-
     ICamera* BaseScene::GetDefaultGameViewCamera3D() const
     {
         if (!cameraManager_) {

@@ -33,6 +33,8 @@ public:
         return CoreEngine::RenderPassType::WaterSurface;
     }
 
+    CoreEngine::RenderItem BuildRenderItem() const override;
+
     const char* GetObjectName() const override { return "WaterPlane"; }
 
     // ===== ICustomShaderProvider =====

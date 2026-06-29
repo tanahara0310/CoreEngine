@@ -3,6 +3,7 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/Model/Model.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -49,16 +50,17 @@ namespace CoreEngine
         targetToUse->SetClearEnabled(clearEnabled_);
 
         targetToUse->Begin(cmdList);
-        if (context.renderManager) {
-            context.renderManager->SetForwardDrawFilter(RenderManager::ForwardDrawFilter::ExcludeWater);
-        }
-
-        if (context.sceneManager) {
-            context.sceneManager->DrawRenderView();
-        }
 
         if (context.renderManager) {
-            context.renderManager->SetForwardDrawFilter(RenderManager::ForwardDrawFilter::All);
+            context.renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
+            context.renderManager->SetDebugLineRenderingEnabled(false);
+            if (context.sceneManager) {
+                context.renderManager->SetCamera(context.sceneManager->GetGameViewCamera3D());
+            }
+            Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
+            context.renderManager->DrawMainQueuePass();
+            context.renderManager->DrawSkyQueuePass();
+            context.renderManager->DrawTransparentQueuePass();
         }
 
         targetToUse->End(cmdList);

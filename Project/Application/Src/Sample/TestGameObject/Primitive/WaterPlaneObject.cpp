@@ -54,6 +54,13 @@ void WaterPlaneObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {
     (void)cmdList;
 }
 
+CoreEngine::RenderItem WaterPlaneObject::BuildRenderItem() const {
+    CoreEngine::RenderItem item = CoreEngine::PrimitiveGameObject::BuildRenderItem();
+    item.kind = CoreEngine::RenderItemKind::WaterSurface;
+    item.passType = CoreEngine::RenderPassType::WaterSurface;
+    return item;
+}
+
 std::wstring WaterPlaneObject::GetVertexShaderPath() const {
     return useFFTOcean_
         ? L"FFTWater.VS.hlsl"

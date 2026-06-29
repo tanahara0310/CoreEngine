@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IRenderer.h"
+#include "RenderItem.h"
 #include "RenderPassType.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/Model/ModelRenderContext.h"
@@ -14,8 +15,6 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class IDrawable;
-    class GameObject;
     class ICamera;
     class CameraManager;
     class ShadowMapManager;
@@ -27,12 +26,6 @@ namespace CoreEngine
 {
     class RenderManager {
     public:
-        enum class ForwardDrawFilter {
-            All,
-            ExcludeWater,
-            WaterOnly,
-        };
-
         /// @brief 初期化
         /// @param device D3D12デバイス
         void Initialize(ID3D12Device* device);
@@ -87,9 +80,9 @@ namespace CoreEngine
     /// @param lightViewProjection ライトから見たビュープロジェクション行列
     void SetLightViewProjection(const Matrix4x4& lightViewProjection);
 
-        /// @brief 描画対象オブジェクトをキューに追加
-        /// @param obj 描画するGameObject
-        void AddDrawable(CoreEngine::GameObject* obj);
+        /// @brief 描画項目をキューに追加
+        /// @param item 描画する RenderItem
+        void AddRenderItem(RenderItem item);
 
     /// @brief シャドウパスのみ描画（描画キュー必須）
     void DrawShadowPass();
@@ -100,11 +93,17 @@ namespace CoreEngine
     /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
     void DrawGeometryPass();
 
-    /// @brief forward 描画フィルタを設定する
-    void SetForwardDrawFilter(ForwardDrawFilter filter) { forwardDrawFilter_ = filter; }
+    /// @brief 通常 RenderItem キューのみ描画する
+    void DrawMainQueuePass();
 
-    /// @brief 現在の forward 描画フィルタを取得する
-    ForwardDrawFilter GetForwardDrawFilter() const { return forwardDrawFilter_; }
+    /// @brief 水面 RenderItem キューのみ描画する
+    void DrawWaterQueuePass();
+
+    /// @brief Sky RenderItem キューのみ描画する
+    void DrawSkyQueuePass();
+
+    /// @brief Transparent RenderItem キューのみ描画する
+    void DrawTransparentQueuePass();
 
     /// @brief 描画パスタイプの描画順序優先度を設定（小さいほど先に描画）
     /// @param type 描画パスタイプ
@@ -158,15 +157,10 @@ namespace CoreEngine
         TransformBufferSlot GetActiveTransformSlot() const { return activeTransformSlot_; }
 
     private:
-        struct DrawCommand {
-            CoreEngine::GameObject* object;
-            RenderPassType passType;
-            BlendMode blendMode;
-            int renderOrder;         ///< 描画順序（小さいほど先に描画）
-            size_t registrationOrder;
-        };
-
-        std::vector<DrawCommand> drawQueue_;
+        std::vector<RenderItem> drawQueue_;
+        std::vector<RenderItem> skyDrawQueue_;
+        std::vector<RenderItem> transparentDrawQueue_;
+        std::vector<RenderItem> waterDrawQueue_;
         std::unordered_map<RenderPassType, std::unique_ptr<IRenderer>> renderers_;
         std::unordered_map<RenderPassType, int> passTypePriorities_;  ///< 描画パスタイプごとの描画順序優先度
         size_t registrationCounter_ = 0;
@@ -184,9 +178,7 @@ namespace CoreEngine
     // GBuffer 移行制御
     // true にすると RenderNormalPass で不透明 Model/SkinnedModel をスキップする
     // DeferredLightingPass が有効な場合に使用する
-    bool skipOpaqueModelsInForward_ = false;
-
-    ForwardDrawFilter forwardDrawFilter_ = ForwardDrawFilter::All;
+        bool skipOpaqueModelsInForward_ = false;
 
     // アクティブなトランスフォームスロット
     TransformBufferSlot activeTransformSlot_ = TransformBufferSlot::Game;
@@ -213,8 +205,20 @@ namespace CoreEngine
     /// @brief 通常描画パス
     void RenderNormalPass();
 
+    /// @brief 指定キューに対する通常描画パス
+    void RenderNormalPassQueue(const std::vector<RenderItem>& queue);
+
     /// @brief フィルタ条件付き通常描画パス
-    void RenderNormalPassFiltered(const std::function<bool(const DrawCommand&)>& filter);
+    void RenderNormalPassFiltered(const std::function<bool(const RenderItem&)>& filter);
+
+    /// @brief 指定キューに対するフィルタ条件付き通常描画パス
+    void RenderNormalPassFilteredQueue(const std::vector<RenderItem>& queue, const std::function<bool(const RenderItem&)>& filter);
+
+    /// @brief 指定キューを sortKey 順にソートする
+    void SortRenderQueue(std::vector<RenderItem>& queue);
+
+    /// @brief RenderItem の実効描画順を解決する
+    int ResolveRenderOrder(const RenderItem& item) const;
 
     /// @brief 指定パスに対応するレンダラーを解決する
     IRenderer* ResolveRendererForPass(RenderPassType passType);

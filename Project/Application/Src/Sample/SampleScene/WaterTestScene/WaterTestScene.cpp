@@ -47,9 +47,6 @@ std::vector<RenderViewRequest> WaterTestScene::BuildRenderViewRequests()
     request.viewSettings.enablePostEffect = false;
     request.viewSettings.enableBackBuffer = false;
     request.viewSettings.sceneColorTargetName = RenderTargetNames::ReflectionView;
-    request.drawCallback = [this]() {
-        DrawRenderView();
-    };
     request.beforeExecute = [this, mainCamera, planeHeight]() {
         SetupWaterReflectionView(mainCamera, planeHeight);
     };

@@ -50,9 +50,6 @@ public:
     /// @brief 描画処理
     void Draw();
 
-    /// @brief 補助 RenderView 用描画
-    void DrawRenderView();
-
     /// @brief 描画前準備（描画キュー構築など）
     void PrepareRender();
 

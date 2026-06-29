@@ -33,7 +33,6 @@ struct RenderViewRequest {
     bool isEnabled = false;
     std::string name;
     RenderViewSettings viewSettings{};
-    std::function<void()> drawCallback;
     std::function<void()> beforeExecute;
     std::function<void()> afterExecute;
     std::function<void(const RenderViewResult&)> completionCallback;
@@ -47,7 +46,6 @@ public:
     virtual void Update() = 0;
     virtual void PrepareRender() {}
     virtual void Draw() = 0;
-    virtual void DrawRenderView() { Draw(); }
     virtual void Finalize() = 0;
 
     virtual ICamera* GetGameViewCamera3D() const { return nullptr; }
