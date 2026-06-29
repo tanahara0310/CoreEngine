@@ -7,6 +7,9 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Outline</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Random</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
@@ -1013,6 +1016,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\RadialBlur</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\Random</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll\RasterScroll.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\RasterScroll</Filter>
@@ -2091,6 +2097,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur">
       <UniqueIdentifier>{0B3B563C-9E34-40DA-82A3-967C07498B70}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Random">
+      <UniqueIdentifier>{E1B5F69D-E97B-4291-9B2B-7603AE6413C7}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll">
       <UniqueIdentifier>{071F9629-56D0-42D8-BE9B-9FD54830110B}</UniqueIdentifier>

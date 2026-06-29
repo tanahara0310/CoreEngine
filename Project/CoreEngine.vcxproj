@@ -185,6 +185,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   <ItemGroup>
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterCausticsRayTracingManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.cpp" />
@@ -528,6 +529,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectGraphicsBase.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RadialBlur\RadialBlur.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\RasterScroll\RasterScroll.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Sepia\Sepia.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Shockwave\Shockwave.h" />

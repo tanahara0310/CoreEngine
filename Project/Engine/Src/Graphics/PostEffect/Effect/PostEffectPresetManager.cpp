@@ -7,6 +7,7 @@
 #include "ColorGrading/ColorGrading.h"
 #include "ChromaticAberration/ChromaticAberration.h"
 #include "Shockwave/Shockwave.h"
+#include "Random/Random.h"
 #include "RasterScroll/RasterScroll.h"
 #include "FadeEffect/FadeEffect.h"
 #include "Bloom/Bloom.h"
@@ -35,6 +36,7 @@ bool PostEffectPresetManager::SavePreset(const PostEffectManager* postEffectMana
     enabledStates["ChromaticAberration"] = postEffectManager->IsEffectEnabled("ChromaticAberration");
     enabledStates["Sepia"] = postEffectManager->IsEffectEnabled("Sepia");
     enabledStates["Invert"] = postEffectManager->IsEffectEnabled("Invert");
+    enabledStates["Random"] = postEffectManager->IsEffectEnabled("Random");
     enabledStates["RasterScroll"] = postEffectManager->IsEffectEnabled("RasterScroll");
     enabledStates["FadeEffect"] = postEffectManager->IsEffectEnabled("FadeEffect");
     enabledStates["Bloom"] = postEffectManager->IsEffectEnabled("Bloom");
@@ -111,6 +113,19 @@ bool PostEffectPresetManager::SavePreset(const PostEffectManager* postEffectMana
         shockwaveJson["thickness"] = params.thickness;
         shockwaveJson["speed"] = params.speed;
         presetData["shockwave"] = shockwaveJson;
+    }
+
+    // Randomのパラメータ保存
+    if (auto* random = const_cast<PostEffectManager*>(postEffectManager)->GetEffect<Random>("Random")) {
+        auto params = random->GetParams();
+        json randomJson;
+        randomJson["intensity"] = params.intensity;
+        randomJson["blend"] = params.blend;
+        randomJson["speed"] = params.speed;
+        randomJson["grainScale"] = params.grainScale;
+        randomJson["luminanceInfluence"] = params.luminanceInfluence;
+        randomJson["chromaAmount"] = params.chromaAmount;
+        presetData["random"] = randomJson;
     }
 
     // RasterScrollのパラメータ保存
@@ -192,6 +207,7 @@ bool PostEffectPresetManager::LoadPreset(PostEffectManager* postEffectManager, c
         postEffectManager->SetEffectEnabled("ChromaticAberration", JsonManager::SafeGet(enabledStates, "ChromaticAberration", false));
         postEffectManager->SetEffectEnabled("Sepia", JsonManager::SafeGet(enabledStates, "Sepia", false));
         postEffectManager->SetEffectEnabled("Invert", JsonManager::SafeGet(enabledStates, "Invert", false));
+        postEffectManager->SetEffectEnabled("Random", JsonManager::SafeGet(enabledStates, "Random", false));
         postEffectManager->SetEffectEnabled("RasterScroll", JsonManager::SafeGet(enabledStates, "RasterScroll", false));
         postEffectManager->SetEffectEnabled("FadeEffect", JsonManager::SafeGet(enabledStates, "FadeEffect", true));
         postEffectManager->SetEffectEnabled("Bloom", JsonManager::SafeGet(enabledStates, "Bloom", false));
@@ -305,6 +321,22 @@ bool PostEffectPresetManager::LoadPreset(PostEffectManager* postEffectManager, c
             params.speed = JsonManager::SafeGet(shockwaveJson, "speed", 1.0f);
             params.time = 0.0f;
             shockwave->SetParams(params);
+        }
+    }
+
+    // Randomのパラメータ読み込み
+    if (presetData.contains("random")) {
+        auto randomJson = presetData["random"];
+        if (auto* random = postEffectManager->GetEffect<Random>("Random")) {
+            Random::RandomParams params;
+            params.intensity = JsonManager::SafeGet(randomJson, "intensity", 0.15f);
+            params.blend = JsonManager::SafeGet(randomJson, "blend", 0.35f);
+            params.speed = JsonManager::SafeGet(randomJson, "speed", 1.0f);
+            params.grainScale = JsonManager::SafeGet(randomJson, "grainScale", 1.0f);
+            params.luminanceInfluence = JsonManager::SafeGet(randomJson, "luminanceInfluence", 0.25f);
+            params.chromaAmount = JsonManager::SafeGet(randomJson, "chromaAmount", 0.15f);
+            params.time = 0.0f;
+            random->SetParams(params);
         }
     }
 
