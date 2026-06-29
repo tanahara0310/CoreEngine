@@ -3,7 +3,9 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Light/LightManager.h"
+#include "Graphics/Render/RenderManager.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "ObjectCommon/GameObjectManager.h"
 
 
 namespace CoreEngine
@@ -67,15 +69,23 @@ namespace CoreEngine
         }
     }
 
-    void SceneManager::DrawRenderView() {
-        if (currentScene_) {
-            currentScene_->DrawRenderView();
-        }
-    }
-
     void SceneManager::PrepareRender() {
         if (currentScene_) {
             currentScene_->PrepareRender();
+        }
+    }
+
+    void SceneManager::FinalizeRenderFrame() {
+        if (!currentScene_) {
+            return;
+        }
+
+        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
+            renderManager->ClearQueue();
+        }
+
+        if (auto* objMgr = currentScene_->GetGameObjectManager()) {
+            objMgr->CleanupDestroyed();
         }
     }
 
@@ -143,7 +153,7 @@ namespace CoreEngine
         return currentScene_ ? currentScene_->GetGameObjectManager() : nullptr;
     }
 
-    const WaterRefractionSurfaceData* SceneManager::GetWaterRefractionSurfaceData() const
+    const WaterSurfaceData* SceneManager::GetWaterRefractionSurfaceData() const
     {
         return currentScene_ ? currentScene_->GetWaterRefractionSurfaceData() : nullptr;
     }

@@ -116,17 +116,7 @@ namespace CoreEngine
             renderManager->SetDebugLineRenderingEnabled(false);
         }
         Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
-        DrawWithCamera(ResolveGameViewCameraName(), true);
-    }
-
-    void BaseScene::DrawRenderView()
-    {
-        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
-            renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
-            renderManager->SetDebugLineRenderingEnabled(false);
-        }
-        Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
-        DrawWithCamera(ResolveGameViewCameraName(), false);
+        DrawWithCamera(ResolveGameViewCameraName());
     }
 
     ICamera* BaseScene::GetDefaultGameViewCamera3D() const
@@ -164,7 +154,7 @@ namespace CoreEngine
         return cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
     }
 
-    void BaseScene::DrawWithCamera(const std::string& cameraName, bool finalizeFrame)
+    void BaseScene::DrawWithCamera(const std::string& cameraName)
     {
         auto renderManager = engine_->GetComponent<RenderManager>();
         auto dxCommon = engine_->GetComponent<DirectXCommon>();
@@ -191,20 +181,13 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList = dxCommon->GetCommandList();
         renderManager->SetCommandList(cmdList);
 
-        // Geometryパスのみ描画（ShadowはRenderPipeline側で実行）
         renderManager->DrawGeometryPass();
 
         if (shouldSwitchCamera && !previousCameraName.empty()) {
             cameraManager_->SetActiveCamera(previousCameraName, CameraType::Camera3D);
         }
 
-        if (finalizeFrame) {
-            // フレーム終了時にキューをクリア
-            renderManager->ClearQueue();
 
-            // 描画完了後に削除マークされたオブジェクトをクリーンアップ
-            gameObjectManager_.CleanupDestroyed();
-        }
     }
 
     void BaseScene::Finalize()

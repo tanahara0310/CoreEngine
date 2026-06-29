@@ -46,9 +46,6 @@ namespace CoreEngine
         /// @brief 描画処理（共通処理 + 派生クラスの描画）
         virtual void Draw() override;
 
-        /// @brief 補助 RenderView 用描画
-        virtual void DrawRenderView() override;
-
         /// @brief 解放（共通処理 + 派生クラスの解放）
         virtual void Finalize() override;
 
@@ -82,7 +79,7 @@ namespace CoreEngine
         void SetupCamera();
 
         /// @brief 指定カメラでジオメトリ描画
-        void DrawWithCamera(const std::string& cameraName, bool finalizeFrame);
+        void DrawWithCamera(const std::string& cameraName);
 
         /// @brief Gameビューに使用する3Dカメラ名を解決
         std::string ResolveGameViewCameraName() const;

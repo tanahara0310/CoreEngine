@@ -60,8 +60,7 @@ public:
     void EndFrame();
 
     /// @brief 共通描画パイプライン - オフスクリーンレンダリングとポストエフェクトを自動処理
-    /// @param renderCallback シーン固有の描画処理を記述するコールバック
-    void ExecuteRenderPipeline(std::function<void()> renderCallback);
+    void ExecuteRenderPipeline();
 
     /// @brief SceneManagerを設定
     void SetSceneManager(SceneManager* sceneManager);

@@ -15,6 +15,7 @@
 #include "ChromaticAberration/ChromaticAberration.h"
 #include "Sepia/Sepia.h"
 #include "Invert/Invert.h"
+#include "Random/Random.h"
 #include "RasterScroll/RasterScroll.h"
 #include "FadeEffect/FadeEffect.h"
 #include "Bloom/Bloom.h"
@@ -61,6 +62,7 @@ void PostEffectManager::RegisterAllEffects()
 
     // その他のエフェクトはデフォルトで無効
     RegisterEffect<GrayScale>(PostEffectNames::GrayScale, false);
+    RegisterEffect<Random>(PostEffectNames::Random, false);
     RegisterEffect<Blur>(PostEffectNames::Blur, false);
     RegisterEffect<RadialBlur>(PostEffectNames::RadialBlur, false);
     RegisterEffect<Shockwave>(PostEffectNames::Shockwave, false);
@@ -86,6 +88,7 @@ void PostEffectManager::RegisterAllEffects()
         PostEffectNames::FadeEffect,
         PostEffectNames::Shockwave,
         PostEffectNames::Blur,
+        PostEffectNames::Random,
         PostEffectNames::RadialBlur,
         PostEffectNames::RasterScroll,
         PostEffectNames::ColorGrading,

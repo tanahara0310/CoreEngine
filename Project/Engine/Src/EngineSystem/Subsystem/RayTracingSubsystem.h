@@ -2,7 +2,9 @@
 
 #include "IEngineSubsystem.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/WaterSurfaceData.h"
 
 struct ID3D12GraphicsCommandList;
 
@@ -51,6 +53,14 @@ namespace CoreEngine
             DirectXCommon* dx,
             ID3D12GraphicsCommandList* cmdList,
             WaterRefractionRayTracingManager::ViewID viewId,
-            const WaterRefractionSurfaceData& surfaceData);
+            const WaterSurfaceData& surfaceData);
+
+        /// @brief DXR 水面コースティクスのディスパッチ
+        void DispatchWaterCaustics(
+            const RenderContext& context,
+            DirectXCommon* dx,
+            ID3D12GraphicsCommandList* cmdList,
+            WaterCausticsRayTracingManager::ViewID viewId,
+            const WaterSurfaceData& surfaceData);
     };
 }

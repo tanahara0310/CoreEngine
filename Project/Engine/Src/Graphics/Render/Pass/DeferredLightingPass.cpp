@@ -13,6 +13,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -89,6 +90,47 @@ namespace CoreEngine
             deferredLighting->SetSSAOHandle(ssaoHandle);
         } else {
             deferredLighting->SetSSAOHandle({});
+        }
+
+        D3D12_GPU_DESCRIPTOR_HANDLE waterCausticsHandle{};
+        D3D12_GPU_DESCRIPTOR_HANDLE rtWaterCausticsHandle{};
+        bool hasWaterCaustics = false;
+        bool hasRTWaterCaustics = false;
+        if (context.frameBlackboard) {
+            hasWaterCaustics = context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::WaterCaustics, waterCausticsHandle);
+            hasRTWaterCaustics = context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::RTWaterCaustics, rtWaterCausticsHandle);
+        }
+
+        if (hasRTWaterCaustics) {
+            deferredLighting->SetWaterCausticsHandle(rtWaterCausticsHandle);
+        } else if (hasWaterCaustics) {
+            deferredLighting->SetWaterCausticsHandle(waterCausticsHandle);
+        } else {
+            deferredLighting->SetWaterCausticsHandle({});
+        }
+
+        if (auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(RenderingTechniqueNames::WaterCaustics)) {
+            DeferredLightingTechnique::WaterCausticsDebugSettings debugSettings{};
+            debugSettings.debugViewMode = caustics->GetParams().debugViewMode;
+            debugSettings.debugDisplayScale = caustics->GetParams().debugDisplayScale;
+            deferredLighting->SetWaterCausticsDebugSettings(debugSettings);
+        } else {
+            deferredLighting->SetWaterCausticsDebugSettings({});
+        }
+
+        if (auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(RenderingTechniqueNames::WaterCaustics);
+            caustics && caustics->GetParams().debugLogEnabled != 0) {
+            Logger::GetInstance().Infof(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "DeferredLightingPass: WaterCaustics input approx=0x{:X} hasApprox={} rt=0x{:X} hasRT={} usingRT={} debugViewMode={} debugScale={:.2f}",
+                waterCausticsHandle.ptr,
+                hasWaterCaustics,
+                rtWaterCausticsHandle.ptr,
+                hasRTWaterCaustics,
+                hasRTWaterCaustics,
+                caustics->GetParams().debugViewMode,
+                caustics->GetParams().debugDisplayScale);
         }
     }
 

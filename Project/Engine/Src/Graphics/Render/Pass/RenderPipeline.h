@@ -41,8 +41,7 @@ namespace CoreEngine
 
         /// @brief フレーム実行前のパス設定を行う
         /// @param context レンダリングコンテキスト
-        /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
-        void PrepareFrame(const RenderContext& context, const std::function<void()>& geometryRenderCallback);
+        void PrepareFrame(const RenderContext& context);
 
         /// @brief 最小 RenderGraph を構築する
         /// @param context レンダリングコンテキスト
@@ -54,24 +53,20 @@ namespace CoreEngine
 
         /// @brief View 単位でフレーム準備から Graph 実行までを行う
         /// @param context レンダリングコンテキスト
-        /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
         /// @param beforeExecute Graph 実行直前に呼ぶコールバック
         /// @param afterExecute Graph 実行直後に呼ぶコールバック
         void ExecuteView(
             const RenderContext& context,
-            const std::function<void()>& geometryRenderCallback,
             const std::function<void()>& beforeExecute = {},
             const std::function<void()>& afterExecute = {});
 
         /// @brief 補助 RenderView を実行し、呼び出し側へ共有結果を収集する
         /// @param context 補助 View 用に構成済みのレンダリングコンテキスト
-        /// @param geometryRenderCallback GeometryPass に設定する描画コールバック
         /// @param beforeExecute Graph 実行直前に呼ぶコールバック
         /// @param afterExecute Graph 実行直後に呼ぶコールバック
         /// @return View 出力 / SceneDepth / SceneColor をまとめた結果
         RenderViewResult ExecuteRenderView(
             const RenderContext& context,
-            const std::function<void()>& geometryRenderCallback,
             const std::function<void()>& beforeExecute = {},
             const std::function<void()>& afterExecute = {});
 

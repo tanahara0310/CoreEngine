@@ -17,6 +17,12 @@ namespace CoreEngine
     public:
         static constexpr uint32_t kMaxRTShadowLights = 4;
 
+        struct WaterCausticsDebugSettings {
+            uint32_t debugViewMode = 0;
+            float debugDisplayScale = 1.0f;
+            float padding[2] = {};
+        };
+
         DeferredLightingTechnique() = default;
         ~DeferredLightingTechnique() override = default;
 
@@ -47,6 +53,12 @@ namespace CoreEngine
         /// @brief SSAO テクスチャ SRV を設定
         void SetSSAOHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { ssaoHandle_ = handle; }
 
+        /// @brief Water Caustics テクスチャ SRV を設定
+        void SetWaterCausticsHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { waterCausticsHandle_ = handle; }
+
+        /// @brief Water Caustics デバッグ表示設定を設定
+        void SetWaterCausticsDebugSettings(const WaterCausticsDebugSettings& settings);
+
         /// @brief RT シャドウマスク SRV を設定（DXR レイトレーシングシャドウ結果）
         /// @param handle  SRV ハンドル（無効時は {} を渡す）
         /// @param lightIndex  ディレクショナルライトのインデックス（0〜3）
@@ -69,6 +81,7 @@ namespace CoreEngine
 
     private:
         void CreateConstantBuffers();
+        void UpdateWaterCausticsDebugBuffer();
 
         // ===== 出力設定 =====
         std::string targetName_ = RenderTargetNames::SceneColor;
@@ -91,5 +104,11 @@ namespace CoreEngine
 
         // ===== SSAO =====
         D3D12_GPU_DESCRIPTOR_HANDLE ssaoHandle_{};
+
+        // ===== Water Caustics =====
+        D3D12_GPU_DESCRIPTOR_HANDLE waterCausticsHandle_{};
+        Microsoft::WRL::ComPtr<ID3D12Resource> waterCausticsDebugBuffer_;
+        D3D12_GPU_VIRTUAL_ADDRESS waterCausticsDebugCBVAddress_ = 0;
+        WaterCausticsDebugSettings waterCausticsDebugSettings_{};
     };
 }

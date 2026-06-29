@@ -5,6 +5,7 @@
 #include <wrl.h>
 #include <cstdint>
 
+#include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
 #include "GlobalRootSignatureManager.h"
@@ -16,26 +17,6 @@ namespace CoreEngine
     class DirectXCommon;
     class DescriptorManager;
     class AccelerationStructureManager;
-
-    static constexpr uint32_t kMaxWaterRefractionWaveCount = 16;
-
-    struct WaterRefractionWaveParam {
-        float direction[2] = { 1.0f, 0.0f };
-        float amplitude = 0.0f;
-        float wavelength = 1.0f;
-        float speed = 0.0f;
-        float steepness = 0.0f;
-        float phaseOffset = 0.0f;
-        float padding = 0.0f;
-    };
-
-    struct WaterRefractionSurfaceData {
-        float waterHeight = 0.0f;
-        uint32_t activeWaveCount = 0;
-        float time = 0.0f;
-        float padding = 0.0f;
-        WaterRefractionWaveParam waves[kMaxWaterRefractionWaveCount]{};
-    };
 
     struct WaterRefractionRayTracingSettings {
         float maxRayDistance = 500.0f;
@@ -88,7 +69,7 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV,
             const Matrix4x4& viewProjection,
             const Vector3& cameraPosition,
-            const WaterRefractionSurfaceData& surfaceData,
+            const WaterSurfaceData& surfaceData,
             UINT width,
             UINT height,
             ViewID viewId = ViewID::GameView);

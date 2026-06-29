@@ -5,7 +5,9 @@
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/FFTOceanManager.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -55,6 +57,20 @@ namespace CoreEngine
                 "RenderDomainContext: WaterRefractionRayTracingManager 初期化完了\n");
         }
 
+        rtWaterCausticsManager_ = std::make_unique<WaterCausticsRayTracingManager>();
+        if (accelerationStructureManager_->IsSupported()) {
+            rtWaterCausticsManager_->Initialize(dxCommon, descriptorManager,
+                accelerationStructureManager_.get());
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterCausticsRayTracingManager 初期化完了\n");
+        }
+
+        fftOceanManager_ = std::make_unique<FFTOceanManager>();
+        if (fftOceanManager_->Initialize(dxCommon, descriptorManager)) {
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: FFTOceanManager 初期化完了\n");
+        }
+
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext::Initialize: 全ドメインマネージャーの初期化完了\n");
     }
@@ -65,8 +81,10 @@ namespace CoreEngine
             "RenderDomainContext::Shutdown: ドメインマネージャーを解放します\n");
 
         // 依存関係を考慮した逆順解放
+        rtWaterCausticsManager_.reset();
         rtWaterRefractionManager_.reset();
         rtShadowManager_.reset();
+        fftOceanManager_.reset();
         accelerationStructureManager_.reset();
         shadowMapManager_.reset();
         gBufferManager_.reset();

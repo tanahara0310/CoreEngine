@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Render/RenderPassType.h"
+#include "Graphics/Render/RenderItem.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Vector/Vector3.h"
 #include "Collider/Collider.h"
@@ -107,6 +108,10 @@ namespace CoreEngine
         /// @param blendMode 設定するブレンドモード
         /// @note 派生クラスで保持・適用する。基底クラスの実装は何もしない。
         virtual void SetBlendMode(BlendMode blendMode);
+
+        /// @brief 現在の描画状態から RenderItem を構築する
+        /// @return RenderManager に登録する描画項目
+        virtual RenderItem BuildRenderItem() const;
 
         // ===== エンジン参照 =====
 

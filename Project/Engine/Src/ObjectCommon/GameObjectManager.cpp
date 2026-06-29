@@ -67,7 +67,7 @@ namespace CoreEngine
         // アクティブかつ表示状態で削除マークされていないオブジェクトのみ登録
         for (auto& obj : objects_) {
             if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
-                renderManager->AddDrawable(obj.get());
+                renderManager->AddRenderItem(obj->BuildRenderItem());
             }
         }
     }

@@ -20,6 +20,7 @@ namespace CoreEngine
         ShadowMap = 0,       ///< シャドウマップ生成（最優先）
         Model,               ///< 通常モデル
         SkinnedModel,        ///< スキニングモデル
+        WaterSurface,        ///< 水面専用 forward パス
         SkyBox,              ///< SkyBox
         ModelParticle,       ///< モデルパーティクル（3D）
         Line,                ///< ライン描画（デバッグ用）
@@ -56,6 +57,7 @@ namespace CoreEngine
         case RenderPassType::ShadowMap:     return "ShadowMap";
         case RenderPassType::Model:         return "Model";
         case RenderPassType::SkinnedModel:  return "SkinnedModel";
+        case RenderPassType::WaterSurface:  return "WaterSurface";
         case RenderPassType::SkyBox:        return "SkyBox";
         case RenderPassType::ModelParticle: return "ModelParticle";
         case RenderPassType::Line:          return "Line";

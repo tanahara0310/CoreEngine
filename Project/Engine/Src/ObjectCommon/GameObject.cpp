@@ -60,6 +60,24 @@ namespace CoreEngine
         (void)blendMode;
     }
 
+    RenderItem GameObject::BuildRenderItem() const {
+        RenderItem item;
+        item.object = const_cast<GameObject*>(this);
+        item.passType = GetRenderPassType();
+        item.blendMode = GetBlendMode();
+        item.renderOrderOverride = GetRenderOrder();
+
+        if (item.passType == RenderPassType::SkyBox) {
+            item.kind = RenderItemKind::SkyBox;
+        } else if (item.passType == RenderPassType::WaterSurface) {
+            item.kind = RenderItemKind::WaterSurface;
+        } else if (item.blendMode != BlendMode::kBlendModeNone) {
+            item.kind = RenderItemKind::Transparent;
+        }
+
+        return item;
+    }
+
     // ===== 衝突イベント =====
 
     void GameObject::OnCollisionEnter(GameObject* other) { (void)other; }

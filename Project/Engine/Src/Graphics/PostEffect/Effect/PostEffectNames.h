@@ -9,6 +9,7 @@ namespace PostEffectNames {
     constexpr const char* FullScreen = "FullScreen";
     constexpr const char* FadeEffect = "FadeEffect";
     constexpr const char* GrayScale = "GrayScale";
+    constexpr const char* Random = "Random";
     constexpr const char* Blur = "Blur";
     constexpr const char* RadialBlur = "RadialBlur";
     constexpr const char* Shockwave = "Shockwave";

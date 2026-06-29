@@ -9,11 +9,13 @@
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "ObjectCommon/Model/ModelGameObject.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "Camera/ICamera.h"
+#include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -157,7 +159,7 @@ namespace CoreEngine
         DirectXCommon* dx,
         ID3D12GraphicsCommandList* cmdList,
         WaterRefractionRayTracingManager::ViewID viewId,
-        const WaterRefractionSurfaceData& surfaceData)
+        const WaterSurfaceData& surfaceData)
     {
         auto* rtWaterRefraction = context.rtWaterRefractionManager;
         if (!rtWaterRefraction) {
@@ -194,16 +196,31 @@ namespace CoreEngine
         }
 
         D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV{};
+        bool hasSceneColorSnapshot = false;
         if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, sceneColorSRV);
+            hasSceneColorSnapshot = context.frameBlackboard->TryGetSrvHandle(
+                FrameBlackboard::SceneColorSnapshot,
+                sceneColorSRV);
+
+            if (!hasSceneColorSnapshot) {
+                context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, sceneColorSRV);
+            }
         }
         if (sceneColorSRV.ptr == 0) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::RenderTarget,
-                "RayTracingSubsystem: water refraction dispatch skipped. SceneColor SRV is invalid.");
+                "RayTracingSubsystem: water refraction dispatch skipped. SceneColorSnapshot/SceneColor SRV is invalid.");
             return;
         }
+
+        Logger::GetInstance().Infof(
+            LogCategory::Graphics,
+            LogSubCategory::RenderTarget,
+            "RayTracingSubsystem: water refraction input selected. viewId={} usesSceneColorSnapshot={} srv=0x{:X}",
+            static_cast<uint32_t>(viewId),
+            hasSceneColorSnapshot,
+            sceneColorSRV.ptr);
 
         ICamera* camera = context.sceneManager->GetGameViewCamera3D();
         if (!camera) {
@@ -249,6 +266,47 @@ namespace CoreEngine
             sceneColorSRV,
             viewProjection,
             cameraPosition,
+            surfaceData,
+            width,
+            height,
+            viewId);
+    }
+
+    void RayTracingSubsystem::DispatchWaterCaustics(
+        const RenderContext& context,
+        DirectXCommon* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        WaterCausticsRayTracingManager::ViewID viewId,
+        const WaterSurfaceData& surfaceData)
+    {
+        auto* rtWaterCaustics = context.rtWaterCausticsManager;
+        if (!rtWaterCaustics || !rtWaterCaustics->IsInitialized()) {
+            return;
+        }
+        if (!context.gBufferManager) {
+            return;
+        }
+        if (!dx || !cmdList) {
+            return;
+        }
+
+        auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+        auto normalRoughnessSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
+        const UINT width = static_cast<UINT>(dx->GetClientWidth());
+        const UINT height = static_cast<UINT>(dx->GetClientHeight());
+        Vector3 lightDirection = { 0.0f, -1.0f, 0.0f };
+        if (context.lightManager) {
+            if (DirectionalLightData* mainLight = context.lightManager->GetDirectionalLight(0);
+                mainLight && mainLight->enabled) {
+                lightDirection = MathCore::Vector::Normalize(mainLight->direction);
+            }
+        }
+
+        rtWaterCaustics->Dispatch(
+            cmdList,
+            worldPosSRV,
+            normalRoughnessSRV,
+            lightDirection,
             surfaceData,
             width,
             height,

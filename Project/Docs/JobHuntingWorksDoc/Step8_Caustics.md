@@ -1,10 +1,10 @@
 # Step 8 : Caustics / Underwater Lighting
 
 ## ステータス
-- 状態: 未着手
+- 状態: 実装中
 - 優先度: 中
-- 依存ステップ: Step 6, Step 7
-- 現在位置: 設計のみ。現行コードにコースティクス投影や水中光量計算は未実装
+- 依存ステップ: Step 6
+- 現在位置: `RTWaterCausticsPass` / `RTWaterCaustics.hlsl` による RT コースティクスの最小経路が接続済み。現在は簡易集光量の検証、調整、Underwater Lighting 方向への拡張が主な残課題
 - 完了後に着手しやすい次ステップ: Step 9, Step 10
 
 ## 目的
@@ -33,15 +33,18 @@
 - 将来的な RT 水中ライティングへの橋渡し
 
 ## 作業項目
-- [ ] 浅瀬限定でコースティクスを出す
-- [ ] 水深と入射光条件で強度を制御する
-- [ ] 水底への投影として扱う
-- [ ] 水面そのものより目立ちすぎないようにする
-- [ ] 水中光量を可視化できる debug 表示を用意する
+- [x] 浅瀬限定でコースティクスを出す
+- [x] 水深と入射光条件で強度を制御する
+- [x] 水底への投影として扱う
+- [x] 水面そのものより目立ちすぎないようにする
+- [x] 水中光量を可視化できる最小限の debug 表示を用意する
 
 ## 現状メモ
-- `Water.PS.hlsl` に水中光条や水底投影を扱うロジックは存在しない
-- Step 6 で作成済みの depth / absorption 情報は、将来のコースティクス強度計算へ流用できる
+- `RTWaterCaustics.hlsl` は GBuffer の `WorldPosition` / `NormalRoughness` と水面波情報を入力に、受光点ごとの簡易集光量を RT 出力へ書き出す
+- `RTWaterCausticsPass` は `FrameBlackboard::RTWaterCaustics` を更新し、`DeferredLightingPass` 側は RT 出力があれば近似パスより優先して使用する
+- `DeferredLighting.PS.hlsl` は `gWaterCaustics` を最終ライティングへ加算し、debug mode では Raw RGB / グレースケール表示へ切り替えられる
+- `WaterSurfaceDebugPanel` と `WaterCausticsTechnique` から強度、深度減衰、曲率、屈折率、表示倍率、表示モードなどを調整できる
+- Step 6 で整備された水面高さ・波データ・吸収設計は、今後の水中光拡張へ流用できる
 
 ## 物理ベース観点
 ### 1. コースティクスは浅瀬中心
@@ -68,20 +71,34 @@
 - Step 6 の吸収と深度差計算を前提にする
 - Step 7 の泡と競合して白飛びしないよう強度上限を持たせる
 
+## 実施結果
+- `WaterCausticsRayTracingManager` が `RTWaterCaustics.hlsl` を用いた DXR パイプラインを構築し、view ごとの UAV / SRV を確保している
+- RayGen では受光点から水面位置と解析法線を再構成し、主光源方向を `refract` した方向へレイを飛ばして受光点との一致度を評価している
+- 強度計算は浅瀬フェード、受光法線、入射方向、受光点との ray match、指数減衰を組み合わせた簡易モデルになっている
+- `DeferredLightingPass` は `RTWaterCaustics` が利用可能ならそれを優先し、無ければ `WaterCausticsTechnique` 側の出力を受ける構成になっている
+- `DeferredLighting.PS.hlsl` では albedo / AO / metallic に応じてコースティクス寄与を抑制し、シーン全体に過剰な白飛びが出にくい合成を行っている
+- debug view は deferred lighting 側で Raw RGB とグレースケール表示に対応し、ImGui 側では関連パラメータの調整と診断情報表示が可能になっている
+
+## 残タスク整理
+- 現状の RT 出力は受光点ごとの単一強度が中心で、屈折集光の時間的安定化や高周波パターン生成は未着手
+- Underwater Lighting 全体として見ると、水中散乱、体積減衰、光路の複数回屈折、影との統合は未対応
+- コースティクス用の定量的な成功率・カバレッジ計測は不足しており、debug view も 2 モード中心の最小構成に留まる
+- Foam、SSR、将来の水中影と同時に有効化した際の視覚競合は今後の検証対象
+
 ## 期待する到達状態
 - 浅瀬でのみ光の揺らぎが成立する
 - 深場では自然に弱まり、うるさくならない
 - 将来的な RT 水中光の簡略近似として説明できる
 
 ## 完了条件
-- [ ] 浅瀬でのみ光の揺らぎが成立する
-- [ ] 深場では自然に弱まる
-- [ ] 地面オブジェクトへの投影として扱える
+- [x] 浅瀬でのみ光の揺らぎが成立する
+- [x] 深場では自然に弱まる
+- [x] 地面オブジェクトへの投影として扱える
 - [ ] 将来的な RT 水中照明へ接続できる
 
 ## 引き継ぎメモ
 - Step 9 では SSR と組み合わせた際に表面反射側と視覚競合しないかを見る
-- Step 10 では depth attenuation や投影マスクを可視化できると調整しやすい
+- Step 10 では depth attenuation、投影マスク、RT/近似ソースの使い分け、時系列安定性を可視化できると調整しやすい
 
 ---
 

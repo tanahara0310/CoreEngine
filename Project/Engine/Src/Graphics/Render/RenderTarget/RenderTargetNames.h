@@ -14,5 +14,6 @@ namespace RenderTargetNames {
     constexpr const char* ReflectionView = "ReflectionView";
     constexpr const char* SSAOBuffer  = "SSAOBuffer";
     constexpr const char* SSAOBlurBuffer = "SSAOBlurBuffer";
+    constexpr const char* WaterCausticsBuffer = "WaterCausticsBuffer";
 }
 }

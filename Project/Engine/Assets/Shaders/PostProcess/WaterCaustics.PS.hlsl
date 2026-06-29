@@ -1,0 +1,228 @@
+#include "FullScreen.hlsli"
+#include "../Include/Lighting/LightStructures.hlsli"
+
+Texture2D<float4> gWorldPosition : register(t0);
+Texture2D<float4> gNormalRoughness : register(t1);
+
+cbuffer gMainLight : register(b1)
+{
+    float3 gMainLightColor;
+    float gMainLightIntensity;
+    float3 gMainLightDirection;
+    uint gMainLightEnabled;
+};
+
+struct WaterWaveParam
+{
+    float2 direction;
+    float amplitude;
+    float wavelength;
+    float speed;
+    float steepness;
+    float phaseOffset;
+    float padding;
+};
+
+cbuffer gWaterSurfaceData : register(b2)
+{
+    float gSurfaceWaterHeight;
+    uint gSurfaceActiveWaveCount;
+    float gSurfaceTime;
+    float gSurfacePadding;
+    WaterWaveParam gSurfaceWaves[16];
+};
+
+cbuffer WaterCausticsParams : register(b3)
+{
+    float gIntensity;
+    float gDepthAttenuation;
+    float gCurvatureScale;
+    float gSurfaceSampleRadius;
+    float gRefractiveIndex;
+    float gReceiverNormalStrength;
+    float gAlignmentPower;
+    float gPadding0;
+};
+
+struct PixelShaderInput
+{
+    float4 position : SV_POSITION;
+    float2 texcoord : TEXCOORD0;
+};
+
+struct PixelShaderOutput
+{
+    float4 color : SV_Target;
+};
+
+float3 EvaluateWaterOffset(float2 worldXZ)
+{
+    float3 totalOffset = 0.0f.xxx;
+
+    [unroll]
+    for (uint waveIndex = 0; waveIndex < 16; ++waveIndex)
+    {
+        if (waveIndex >= gSurfaceActiveWaveCount)
+        {
+            break;
+        }
+
+        WaterWaveParam wave = gSurfaceWaves[waveIndex];
+        float k = 2.0f * 3.14159265f / max(wave.wavelength, 1.0e-4f);
+        float omega = wave.speed * k;
+        float kA = max(k * wave.amplitude, 1.0e-4f);
+        float safeSteepness = min(wave.steepness, 0.95f / kA);
+        float phase = k * dot(wave.direction, worldXZ) + omega * gSurfaceTime + wave.phaseOffset;
+        float sinP = sin(phase);
+        float cosP = cos(phase);
+
+        totalOffset.x += safeSteepness * wave.amplitude * wave.direction.x * cosP;
+        totalOffset.y += wave.amplitude * sinP;
+        totalOffset.z += safeSteepness * wave.amplitude * wave.direction.y * cosP;
+    }
+
+    return totalOffset;
+}
+
+float3 EvaluateWaterNormal(float2 worldXZ)
+{
+    float3 dPdX = float3(1.0f, 0.0f, 0.0f);
+    float3 dPdZ = float3(0.0f, 0.0f, 1.0f);
+
+    [unroll]
+    for (uint waveIndex = 0; waveIndex < 16; ++waveIndex)
+    {
+        if (waveIndex >= gSurfaceActiveWaveCount)
+        {
+            break;
+        }
+
+        WaterWaveParam wave = gSurfaceWaves[waveIndex];
+        float k = 2.0f * 3.14159265f / max(wave.wavelength, 1.0e-4f);
+        float omega = wave.speed * k;
+        float kA = max(k * wave.amplitude, 1.0e-4f);
+        float safeSteepness = min(wave.steepness, 0.95f / kA);
+        float phase = k * dot(wave.direction, worldXZ) + omega * gSurfaceTime + wave.phaseOffset;
+        float sinP = sin(phase);
+        float cosP = cos(phase);
+        float common = safeSteepness * wave.amplitude * k * sinP;
+        float heightSlope = wave.amplitude * k * cosP;
+
+        dPdX += float3(
+            -common * wave.direction.x * wave.direction.x,
+             heightSlope * wave.direction.x,
+            -common * wave.direction.x * wave.direction.y);
+
+        dPdZ += float3(
+            -common * wave.direction.x * wave.direction.y,
+             heightSlope * wave.direction.y,
+            -common * wave.direction.y * wave.direction.y);
+    }
+
+    float3 normal = normalize(cross(dPdZ, dPdX));
+    return normal.y < 0.0f ? -normal : normal;
+}
+
+float EvaluateCurvature(float2 worldXZ)
+{
+    float radius = max(gSurfaceSampleRadius, 0.05f);
+    float3 nxp = EvaluateWaterNormal(worldXZ + float2(radius, 0.0f));
+    float3 nxm = EvaluateWaterNormal(worldXZ + float2(-radius, 0.0f));
+    float3 nzp = EvaluateWaterNormal(worldXZ + float2(0.0f, radius));
+    float3 nzm = EvaluateWaterNormal(worldXZ + float2(0.0f, -radius));
+    return length(nxp - nxm) + length(nzp - nzm);
+}
+
+float2 TraceRefractedHitXZ(float2 surfaceXZ, float receiverY, out bool valid)
+{
+    float3 surfaceOffset = EvaluateWaterOffset(surfaceXZ);
+    float3 waterNormal = EvaluateWaterNormal(surfaceXZ);
+    float3 incidentDir = normalize(gMainLightDirection);
+    float eta = 1.0f / max(gRefractiveIndex, 1.001f);
+    float3 refractedDir = refract(incidentDir, waterNormal, eta);
+
+    valid = false;
+    if (dot(refractedDir, refractedDir) <= 1.0e-6f) {
+        return 0.0f.xx;
+    }
+
+    refractedDir = normalize(refractedDir);
+    if (refractedDir.y >= -1.0e-4f) {
+        return 0.0f.xx;
+    }
+
+    float surfaceY = gSurfaceWaterHeight + surfaceOffset.y;
+    float travelT = (receiverY - surfaceY) / refractedDir.y;
+    if (travelT <= 0.0f) {
+        return 0.0f.xx;
+    }
+
+    valid = true;
+    return surfaceXZ + surfaceOffset.xz + refractedDir.xz * travelT;
+}
+
+PixelShaderOutput main(PixelShaderInput input)
+{
+    PixelShaderOutput output;
+    output.color = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+    int3 loadCoord = int3(input.position.xy, 0);
+    float4 worldPosSample = gWorldPosition.Load(loadCoord);
+    if (worldPosSample.a < 0.5f || gSurfaceActiveWaveCount == 0 || gMainLightEnabled == 0)
+    {
+        return output;
+    }
+
+    float3 worldPos = worldPosSample.xyz;
+    float3 surfaceOffset = EvaluateWaterOffset(worldPos.xz);
+    float surfaceY = gSurfaceWaterHeight + surfaceOffset.y;
+    float waterDepth = surfaceY - worldPos.y;
+    if (waterDepth <= 0.0f)
+    {
+        return output;
+    }
+
+    float3 receiverNormal = normalize(gNormalRoughness.Load(loadCoord).rgb * 2.0f - 1.0f);
+    float3 waterNormal = EvaluateWaterNormal(worldPos.xz);
+
+    bool validCenter = false;
+    bool validXp = false;
+    bool validXm = false;
+    bool validZp = false;
+    bool validZm = false;
+    float sampleStep = max(gSurfaceSampleRadius, 0.05f);
+    float2 hitCenter = TraceRefractedHitXZ(worldPos.xz, worldPos.y, validCenter);
+    float2 hitXp = TraceRefractedHitXZ(worldPos.xz + float2(sampleStep, 0.0f), worldPos.y, validXp);
+    float2 hitXm = TraceRefractedHitXZ(worldPos.xz + float2(-sampleStep, 0.0f), worldPos.y, validXm);
+    float2 hitZp = TraceRefractedHitXZ(worldPos.xz + float2(0.0f, sampleStep), worldPos.y, validZp);
+    float2 hitZm = TraceRefractedHitXZ(worldPos.xz + float2(0.0f, -sampleStep), worldPos.y, validZm);
+    if (!(validCenter && validXp && validXm && validZp && validZm))
+    {
+        return output;
+    }
+
+    float2 dx = (hitXp - hitXm) / max(2.0f * sampleStep, 1.0e-4f);
+    float2 dz = (hitZp - hitZm) / max(2.0f * sampleStep, 1.0e-4f);
+    float jacobian = abs(dx.x * dz.y - dx.y * dz.x);
+    if (jacobian <= 1.0e-5f) {
+        return output;
+    }
+
+    float2 focusDelta = hitCenter - worldPos.xz;
+    float focusRadius = max(gSurfaceSampleRadius * max(gAlignmentPower, 1.0f), 0.25f);
+    float proximity = saturate(1.0f - length(focusDelta) / focusRadius);
+    proximity *= proximity;
+
+    float3 incidentDir = normalize(gMainLightDirection);
+    float eta = 1.0f / max(gRefractiveIndex, 1.001f);
+    float3 refractedDir = normalize(refract(incidentDir, waterNormal, eta));
+    float receiverFacing = saturate(dot(receiverNormal, -refractedDir) * max(gReceiverNormalStrength, 0.0f));
+    float curvature = 1.0f + saturate(EvaluateCurvature(worldPos.xz) * gCurvatureScale);
+    float attenuation = exp(-waterDepth * max(gDepthAttenuation, 0.01f));
+    float concentration = rcp(max(jacobian, 0.05f));
+
+    float strength = gIntensity * gMainLightIntensity * proximity * concentration * curvature * receiverFacing * attenuation;
+    strength = strength / (1.0f + strength);
+    output.color = float4(gMainLightColor * strength, 1.0f);
+    return output;
+}

@@ -54,21 +54,7 @@ cbuffer WaterFrameConstants : register(b5)
 
     // ---- デバッグ表示 ----
     uint gDepthDebugViewMode;
-    uint gLightningImpactCount;
-    float2 gDebugPadding;
-
-    struct WaterLightningImpactData
-    {
-        float2 center;
-        float radius;
-        float intensity;
-        float chargeRadius;
-        float chargeIntensity;
-        float impactTime;
-        float screenFlash;
-    };
-
-    WaterLightningImpactData gLightningImpacts[6];
+    float3 gDebugPadding;
 };
 
 /// @brief NDC 深度値をビュー空間線形深度（メートル単位）に変換する

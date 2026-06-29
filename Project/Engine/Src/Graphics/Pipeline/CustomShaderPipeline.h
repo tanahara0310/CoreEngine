@@ -44,10 +44,19 @@ namespace CoreEngine
         /// @return 構築済みなら RootSignature ポインタ、未構築なら nullptr
         ID3D12RootSignature* GetForwardRootSignature() const;
 
+        /// @brief コンピュートパス用カスタム RootSignature を取得
+        /// @return 構築済みなら RootSignature ポインタ、未構築なら nullptr
+        ID3D12RootSignature* GetComputeRootSignature() const;
+
         /// @brief リソース名からフォワードパス用ルートパラメータインデックスを取得
         /// @param resourceName シェーダー内のリソース名（例: "gWave", "gFoamTexture"）
         /// @return インデックス（未登録の場合は -1）
         int GetRootParamIndex(const std::string& resourceName) const;
+
+        /// @brief リソース名からコンピュートパス用ルートパラメータインデックスを取得
+        /// @param resourceName シェーダー内のリソース名
+        /// @return インデックス（未登録の場合は -1）
+        int GetComputeRootParamIndex(const std::string& resourceName) const;
 
         /// @brief フォワードパス PSO が有効かどうか
         bool HasForwardPSO() const;

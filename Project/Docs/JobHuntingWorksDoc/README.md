@@ -56,8 +56,9 @@
 ### 2-1. 現在の実装状況
 - `WaterPlaneObject` と `WaterTestScene` を中心に、水面専用メッシュ、Gerstner Wave、Planar Reflection、PBR 材質調整、Depth Fade、デバッグ UI の基盤は実装済み
 - 水面の主線は `Water.VS.hlsl` / `Water.PS.hlsl` に集約され、ReflectionView / SceneColor / SceneDepth を使った描画経路まで接続済み
-- 屈折は現状未実装であり、今後は SSR や単純な screen-space offset ではなく、DXR で画面外情報を含めて交差を取る方式を主線として整理する
-- 一方で、FFT Ocean、Foam、Caustics、SSR、RT 最終統合は未着手または設計段階に留まる
+- 屈折は `RTWaterRefractionPass` / `RTWaterRefraction.hlsl` による DXR ベースの最小経路が実装され、`Water.PS.hlsl` 側で RT 成功時は屈折色を採用し、失敗時は `SceneColor` へフォールバックする構成になっている
+- コースティクスは `RTWaterCausticsPass` / `RTWaterCaustics.hlsl` と deferred lighting への入力経路が接続済みで、浅瀬・受光法線・入射方向に基づく簡易強度出力まで実装されている
+- 一方で、FFT Ocean、Foam、SSR、RGB 吸収、水中散乱、水中影を含む RT 最終統合は未着手または検証継続段階に留まる
 - Step ごとの状態は、設計メモではなく **現行コード確認ベース** で更新する
 
 ### 2-2. ステップ進捗一覧
@@ -72,14 +73,14 @@
 | 6 | 透過・吸収・屈折の主線 | 実装中 | Step 4, Step 5 | 物理ベース水面の中心 | [Step6_SurfaceShading.md](Step6_SurfaceShading.md) |
 | 6B | FFT Ocean 分岐 | 未着手 | Step 3, Step 6 | 大規模海面向け発展経路 | [Step6_FFTOcean.md](Step6_FFTOcean.md) |
 | 7 | Foam | 未着手 | Step 3, Step 6, Step 6B | 散逸と接触の補強 | [Step7_Foam.md](Step7_Foam.md) |
-| 8 | Caustics / Underwater Lighting | 未着手 | Step 6 | 水中への光伝播表現 | [Step8_Caustics.md](Step8_Caustics.md) |
+| 8 | Caustics / Underwater Lighting | 実装中 | Step 6 | 水中への光伝播表現 | [Step8_Caustics.md](Step8_Caustics.md) |
 | 9 | SSR と反射統合 | 未着手 | Step 4, Step 6 | 反射品質の補完と統合 | [Step9_SSR.md](Step9_SSR.md) |
 | 10 | デバッグ / 検証 / RT 最終段 | 実装中 | Step 1 ～ Step 9 | 品質保証と最終到達点整理 | [Step10_Tuning_Debug.md](Step10_Tuning_Debug.md) |
 
 ### 2-3. 推奨着手順
-1. **Step 6** の残タスクである DXR 屈折経路と透過品質の仕上げを進める
-2. **Step 10** の debug 可視化と検証項目を拡充し、DXR 屈折の観察性を上げる
-3. **Step 7 ～ Step 9** で泡・水中光・SSR 反射補完を追加して説得力を上げる
+1. **Step 6** の残タスクである DXR 屈折の検証強化、吸収拡張、透過品質の仕上げを進める
+2. **Step 8 / Step 10** で RT コースティクスの可視化・調整・deferred lighting 側の検証項目を拡充する
+3. **Step 7 ～ Step 9** で泡・SSR 反射補完・反射統合を追加して説得力を上げる
 4. 海面スケールが必要な場合のみ **Step 6B** を並行検討する
 5. 最後に RT 系到達点を反射・水中散乱側へ段階的に拡張する
 

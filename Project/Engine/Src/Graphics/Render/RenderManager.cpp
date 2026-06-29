@@ -122,52 +122,44 @@ namespace CoreEngine
         }
     }
 
-    void RenderManager::AddDrawable(GameObject* obj) {
-        // GameObjectManagerで事前フィルタリング済み（null/Active/MarkedForDestroyチェック済み）
-        DrawCommand cmd;
-        cmd.object = obj;
-        cmd.passType = obj->GetRenderPassType();
-        cmd.blendMode = obj->GetBlendMode();
-        cmd.registrationOrder = registrationCounter_++;
+    void RenderManager::AddRenderItem(RenderItem item) {
+        item.registrationOrder = registrationCounter_++;
+        item.sortKey = ResolveRenderOrder(item);
 
-        // オブジェクト側に明示的な描画順序が設定されていればそれを使用し、
-        // 未設定の場合はパスタイプの優先度を使用する
-        if (auto order = obj->GetRenderOrder()) {
-            cmd.renderOrder = *order;
+        if (item.kind == RenderItemKind::WaterSurface) {
+            waterDrawQueue_.push_back(std::move(item));
+        } else if (item.kind == RenderItemKind::SkyBox) {
+            skyDrawQueue_.push_back(std::move(item));
+        } else if (item.kind == RenderItemKind::Transparent) {
+            transparentDrawQueue_.push_back(std::move(item));
         } else {
-            cmd.renderOrder = GetPassTypePriority(cmd.passType);
-            // kBlendModeNone 以外（半透明）は大きなオフセットを加え、
-            // SkyBox を含む全不透明オブジェクトより後に描画する。
-            // これにより透明モデルがSkyBoxの前に描画されてクリアカラーと
-            // ブレンドされる問題を防ぐ。
-            if (cmd.blendMode != BlendMode::kBlendModeNone) {
-                cmd.renderOrder += 10000;
-            }
+            drawQueue_.push_back(std::move(item));
         }
 
-        drawQueue_.push_back(cmd);
         isQueueSorted_ = false;
     }
 
     const ICamera* RenderManager::GetCameraForPass(RenderPassType passType) {
-        // カメラマネージャーがある場合はタイプ別のカメラを取得
-        if (cameraManager_) {
-            // 2D描画パス（Sprite、Text）は2Dカメラを使用
-            if (passType == RenderPassType::Sprite) {
-                return cameraManager_->GetActiveCamera(CameraType::Camera2D);
-            }
-            // UI パスはカメラ非依存（スクリーン固定座標）
-            if (passType == RenderPassType::UI) {
-                return nullptr;
-            }
-            // その他は3Dカメラを使用
-            else {
-                return cameraManager_->GetActiveCamera(CameraType::Camera3D);
-            }
+        if (passType == RenderPassType::UI) {
+            return nullptr;
         }
 
-        // カメラマネージャーがない場合は従来のカメラを使用
-        return camera_;
+        if (passType == RenderPassType::Sprite) {
+            if (cameraManager_) {
+                return cameraManager_->GetActiveCamera(CameraType::Camera2D);
+            }
+            return camera_;
+        }
+
+        if (camera_) {
+            return camera_;
+        }
+
+        if (cameraManager_) {
+            return cameraManager_->GetActiveCamera(CameraType::Camera3D);
+        }
+
+        return nullptr;
     }
 
     void RenderManager::DrawShadowPass() {
@@ -255,14 +247,52 @@ namespace CoreEngine
     }
 
     void RenderManager::DrawGeometryPass() {
-        if (drawQueue_.empty() || !cmdList_) {
+        if ((drawQueue_.empty() && skyDrawQueue_.empty() && transparentDrawQueue_.empty() && waterDrawQueue_.empty()) || !cmdList_) {
             return;
         }
 
         EnsureQueueSorted();
 
-        // === Phase 2: 通常描画パス ===
-        RenderNormalPass();
+        DrawMainQueuePass();
+        DrawSkyQueuePass();
+        DrawTransparentQueuePass();
+        DrawWaterQueuePass();
+    }
+
+    void RenderManager::DrawMainQueuePass() {
+        if (drawQueue_.empty() || !cmdList_) {
+            return;
+        }
+
+        EnsureQueueSorted();
+        RenderNormalPassQueue(drawQueue_);
+    }
+
+    void RenderManager::DrawWaterQueuePass() {
+        if (waterDrawQueue_.empty() || !cmdList_) {
+            return;
+        }
+
+        EnsureQueueSorted();
+        RenderNormalPassQueue(waterDrawQueue_);
+    }
+
+    void RenderManager::DrawSkyQueuePass() {
+        if (skyDrawQueue_.empty() || !cmdList_) {
+            return;
+        }
+
+        EnsureQueueSorted();
+        RenderNormalPassQueue(skyDrawQueue_);
+    }
+
+    void RenderManager::DrawTransparentQueuePass() {
+        if (transparentDrawQueue_.empty() || !cmdList_) {
+            return;
+        }
+
+        EnsureQueueSorted();
+        RenderNormalPassQueue(transparentDrawQueue_);
     }
 
     void RenderManager::RenderShadowMapPass() {
@@ -352,13 +382,25 @@ namespace CoreEngine
     }
 
 
-    void RenderManager::RenderNormalPass() {
+    IRenderer* RenderManager::ResolveRendererForPass(RenderPassType passType) {
+        if (IRenderer* renderer = GetRenderer(passType)) {
+            return renderer;
+        }
+
+        if (passType == RenderPassType::WaterSurface) {
+            return GetRenderer(RenderPassType::Model);
+        }
+
+        return nullptr;
+    }
+
+    void RenderManager::RenderNormalPassFilteredQueue(const std::vector<RenderItem>& queue, const std::function<bool(const RenderItem&)>& filter) {
         RenderPassType currentPass = RenderPassType::Invalid;
         BlendMode currentBlendMode = BlendMode::kBlendModeNone;
         IRenderer* currentRenderer = nullptr;
         const ICamera* currentCamera = nullptr;
 
-        for (const auto& cmd : drawQueue_) {
+        for (const auto& cmd : queue) {
             // GameObjectManagerで事前フィルタリング済み
             // 削除マークのみチェック（更新中に削除マークされた可能性があるため）
             if (!cmd.object || cmd.object->IsMarkedForDestroy()) {
@@ -366,6 +408,10 @@ namespace CoreEngine
             }
 
             if (!renderDebugLines_ && cmd.passType == RenderPassType::Line) {
+                continue;
+            }
+
+            if (filter && !filter(cmd)) {
                 continue;
             }
 
@@ -393,9 +439,8 @@ namespace CoreEngine
                 // 新しいパスを開始
                 currentPass = cmd.passType;
                 currentBlendMode = cmd.blendMode;
-                auto it = renderers_.find(currentPass);
-                if (it != renderers_.end()) {
-                    currentRenderer = it->second.get();
+                currentRenderer = ResolveRendererForPass(currentPass);
+                if (currentRenderer) {
 
                     // パスに応じたカメラを取得
                     currentCamera = GetCameraForPass(currentPass);
@@ -442,8 +487,23 @@ namespace CoreEngine
         }
     }
 
+    void RenderManager::RenderNormalPassFiltered(const std::function<bool(const RenderItem&)>& filter) {
+        RenderNormalPassFilteredQueue(drawQueue_, filter);
+    }
+
+    void RenderManager::RenderNormalPassQueue(const std::vector<RenderItem>& queue) {
+        RenderNormalPassFilteredQueue(queue, {});
+    }
+
+    void RenderManager::RenderNormalPass() {
+        RenderNormalPassQueue(drawQueue_);
+    }
+
     void RenderManager::ClearQueue() {
         drawQueue_.clear();
+        skyDrawQueue_.clear();
+        transparentDrawQueue_.clear();
+        waterDrawQueue_.clear();
         registrationCounter_ = 0;
         isQueueSorted_ = false;
     }
@@ -467,6 +527,7 @@ namespace CoreEngine
         passTypePriorities_[RenderPassType::Model] = 100;
         passTypePriorities_[RenderPassType::SkinnedModel] = 200;
         passTypePriorities_[RenderPassType::SkyBox] = 300;
+        passTypePriorities_[RenderPassType::WaterSurface] = 350;
         passTypePriorities_[RenderPassType::ModelParticle] = 400;
         passTypePriorities_[RenderPassType::Line] = 500;
         passTypePriorities_[RenderPassType::Particle] = 600;
@@ -482,15 +543,22 @@ namespace CoreEngine
     }
 
     void RenderManager::SortDrawQueue() {
+        SortRenderQueue(drawQueue_);
+        SortRenderQueue(skyDrawQueue_);
+        SortRenderQueue(transparentDrawQueue_);
+        SortRenderQueue(waterDrawQueue_);
+    }
+
+    void RenderManager::SortRenderQueue(std::vector<RenderItem>& queue) {
         // 優先順位:
-        //   1. renderOrder  : 動的に変更可能な描画順序（小さいほど先に描画）
-        //   2. passType     : 同一 renderOrder 内でレンダラー切り替えを最小化
+        //   1. sortKey      : RenderItem に確定済みの描画順キー（小さいほど先に描画）
+        //   2. passType     : 同一 sortKey 内でレンダラー切り替えを最小化
         //   3. blendMode    : 同一パス内でブレンドステート切り替えを最小化
         //   4. registrationOrder : 同一条件内では登録順序を維持
-        std::stable_sort(drawQueue_.begin(), drawQueue_.end(),
-            [](const DrawCommand& a, const DrawCommand& b) {
-                if (a.renderOrder != b.renderOrder) {
-                    return a.renderOrder < b.renderOrder;
+        std::stable_sort(queue.begin(), queue.end(),
+            [](const RenderItem& a, const RenderItem& b) {
+                if (a.sortKey != b.sortKey) {
+                    return a.sortKey < b.sortKey;
                 }
                 if (a.passType != b.passType) {
                     return static_cast<int>(a.passType) < static_cast<int>(b.passType);
@@ -500,5 +568,18 @@ namespace CoreEngine
                 }
                 return a.registrationOrder < b.registrationOrder;
             });
+    }
+
+    int RenderManager::ResolveRenderOrder(const RenderItem& item) const {
+        if (item.renderOrderOverride) {
+            return *item.renderOrderOverride;
+        }
+
+        int renderOrder = GetPassTypePriority(item.passType);
+        if (item.blendMode != BlendMode::kBlendModeNone) {
+            renderOrder += 10000;
+        }
+
+        return renderOrder;
     }
 }

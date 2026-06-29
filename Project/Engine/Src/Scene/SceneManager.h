@@ -50,11 +50,11 @@ public:
     /// @brief 描画処理
     void Draw();
 
-    /// @brief 補助 RenderView 用描画
-    void DrawRenderView();
-
     /// @brief 描画前準備（描画キュー構築など）
     void PrepareRender();
+
+    /// @brief フレーム描画終了時の後処理（描画キュー破棄・削除オブジェクト cleanup）
+    void FinalizeRenderFrame();
 
     /// @brief シーンの終了処理
     void Finalize();
@@ -96,7 +96,7 @@ public:
     GameObjectManager* GetCurrentGameObjectManager() const;
 
     /// @brief 現在シーンの DXR 水面屈折用波面データを取得
-    const WaterRefractionSurfaceData* GetWaterRefractionSurfaceData() const;
+    const WaterSurfaceData* GetWaterRefractionSurfaceData() const;
 
     /// @brief 現在シーンが要求する補助 RenderView 一覧を構築する
     /// @return 実行要求一覧

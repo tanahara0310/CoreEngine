@@ -8,6 +8,7 @@ namespace CoreEngine
 {
 namespace RenderingTechniqueNames {
     constexpr const char* DeferredLighting = "DeferredLighting";
+    constexpr const char* WaterCaustics = "WaterCaustics";
     constexpr const char* SSAO      = "SSAO";
     constexpr const char* SSAOBlur  = "SSAOBlur";
     constexpr const char* TAA       = "TAA";

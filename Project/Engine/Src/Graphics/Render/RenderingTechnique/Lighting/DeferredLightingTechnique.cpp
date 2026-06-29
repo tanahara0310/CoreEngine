@@ -80,6 +80,11 @@ namespace CoreEngine
         iblParamsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&iblMapped));
         std::memcpy(iblMapped, iblDefaults, sizeof(iblDefaults));
         iblParamsBuffer_->Unmap(0, nullptr);
+
+        waterCausticsDebugBuffer_ = ResourceFactory::CreateBufferResource(
+            directXCommon_->GetDevice(), sizeof(float) * 4);
+        waterCausticsDebugCBVAddress_ = waterCausticsDebugBuffer_->GetGPUVirtualAddress();
+        UpdateWaterCausticsDebugBuffer();
     }
 
     // -------------------------------------------------------------------------
@@ -114,6 +119,24 @@ namespace CoreEngine
         iblParamsBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
         std::memcpy(mapped, params, sizeof(params));
         iblParamsBuffer_->Unmap(0, nullptr);
+    }
+
+    void DeferredLightingTechnique::SetWaterCausticsDebugSettings(const WaterCausticsDebugSettings& settings)
+    {
+        waterCausticsDebugSettings_ = settings;
+        UpdateWaterCausticsDebugBuffer();
+    }
+
+    void DeferredLightingTechnique::UpdateWaterCausticsDebugBuffer()
+    {
+        if (!waterCausticsDebugBuffer_) {
+            return;
+        }
+
+        float* mapped = nullptr;
+        waterCausticsDebugBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
+        std::memcpy(mapped, &waterCausticsDebugSettings_, sizeof(WaterCausticsDebugSettings));
+        waterCausticsDebugBuffer_->Unmap(0, nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -282,6 +305,16 @@ namespace CoreEngine
         const int ssaoIdx = GetRootParamIndex("gSSAO");
         if (ssaoIdx >= 0 && ssaoHandle_.ptr != 0) {
             cmdList->SetGraphicsRootDescriptorTable(ssaoIdx, ssaoHandle_);
+        }
+
+        const int waterCausticsIdx = GetRootParamIndex("gWaterCaustics");
+        if (waterCausticsIdx >= 0 && waterCausticsHandle_.ptr != 0) {
+            cmdList->SetGraphicsRootDescriptorTable(waterCausticsIdx, waterCausticsHandle_);
+        }
+
+        const int waterCausticsDebugIdx = GetRootParamIndex("gWaterCausticsDebug");
+        if (waterCausticsDebugIdx >= 0 && waterCausticsDebugCBVAddress_ != 0) {
+            cmdList->SetGraphicsRootConstantBufferView(waterCausticsDebugIdx, waterCausticsDebugCBVAddress_);
         }
 
         // フルスクリーンクアッドで描画

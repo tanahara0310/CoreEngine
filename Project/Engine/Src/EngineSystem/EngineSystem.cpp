@@ -30,8 +30,13 @@
 #include "Graphics/Render/Pass/SSAOPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/RTShadowPass.h"
+#include "Graphics/Render/Pass/RTWaterCausticsPass.h"
 #include "Graphics/Render/Pass/RTWaterRefractionPass.h"
+#include "Graphics/Render/Pass/FFTOceanPass.h"
+#include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
+#include "Graphics/Render/Pass/SceneColorCopyPass.h"
+#include "Graphics/Render/Pass/WaterSurfacePass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
 #include "Graphics/Render/Pass/BackBufferPass.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
@@ -203,7 +208,7 @@ namespace CoreEngine
         // Present(1, 0)が自動的に60Hzに同期してくれる
     }
 
-    void EngineSystem::ExecuteRenderPipeline(std::function<void()> renderCallback)
+    void EngineSystem::ExecuteRenderPipeline()
     {
         if (!renderPipeline_) {
             return;
@@ -239,7 +244,9 @@ namespace CoreEngine
         context.shadowMapManager = renderDomainContext_ ? renderDomainContext_->GetShadowMapManager() : nullptr;
         context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
+        context.rtWaterCausticsManager = renderDomainContext_ ? renderDomainContext_->GetWaterCausticsRayTracingManager() : nullptr;
         context.rtWaterRefractionManager = renderDomainContext_ ? renderDomainContext_->GetWaterRefractionRayTracingManager() : nullptr;
+        context.fftOceanManager = renderDomainContext_ ? renderDomainContext_->GetFFTOceanManager() : nullptr;
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
         context.waterRefractionSurfaceData = sceneManager ? sceneManager->GetWaterRefractionSurfaceData() : nullptr;
@@ -291,15 +298,8 @@ namespace CoreEngine
                     ? static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView)
                     : static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
 
-                const std::function<void()> drawRenderView = renderViewRequest.drawCallback
-                    ? renderViewRequest.drawCallback
-                    : [sceneManager]() {
-                        sceneManager->DrawRenderView();
-                    };
-
                 const RenderViewResult renderViewResult = renderPipeline_->ExecuteRenderView(
                     renderViewContext,
-                    drawRenderView,
                     renderViewRequest.beforeExecute,
                     renderViewRequest.afterExecute);
 
@@ -314,7 +314,11 @@ namespace CoreEngine
         {
             // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
             EngineProfileScope scope(this, GpuTimestampSlot::GBufferPass, cmdList);
-            renderPipeline_->ExecuteView(context, renderCallback);
+            renderPipeline_->ExecuteView(context);
+        }
+
+        if (sceneManager) {
+            sceneManager->FinalizeRenderFrame();
         }
 
 #ifdef USE_IMGUI
@@ -398,8 +402,17 @@ namespace CoreEngine
         auto rtShadowPass = std::make_unique<RTShadowPass>();
         renderPipeline_->AddPass(std::move(rtShadowPass));
 
+        auto rtWaterCausticsPass = std::make_unique<RTWaterCausticsPass>();
+        renderPipeline_->AddPass(std::move(rtWaterCausticsPass));
+
         auto rtWaterRefractionPass = std::make_unique<RTWaterRefractionPass>();
         renderPipeline_->AddPass(std::move(rtWaterRefractionPass));
+
+        auto fftOceanPass = std::make_unique<FFTOceanPass>();
+        renderPipeline_->AddPass(std::move(fftOceanPass));
+
+        auto waterCausticsPass = std::make_unique<WaterCausticsPass>();
+        renderPipeline_->AddPass(std::move(waterCausticsPass));
 
         // 3. DeferredLightingパス
         // G-Buffer (AlbedoAO / NormalRoughness / EmissiveMetallic) を読み取り、
@@ -412,6 +425,12 @@ namespace CoreEngine
         // 不透明 Model/SkinnedModel は GBufferPass + DeferredLightingPass で処理済みなので描画しない
         auto geometryPass = std::make_unique<GeometryPass>();
         renderPipeline_->AddPass(std::move(geometryPass));
+
+        auto sceneColorCopyPass = std::make_unique<SceneColorCopyPass>();
+        renderPipeline_->AddPass(std::move(sceneColorCopyPass));
+
+        auto waterSurfacePass = std::make_unique<WaterSurfacePass>();
+        renderPipeline_->AddPass(std::move(waterSurfacePass));
 
         // 5. ポストエフェクトパス
         auto postEffectPass = std::make_unique<PostEffectPass>();

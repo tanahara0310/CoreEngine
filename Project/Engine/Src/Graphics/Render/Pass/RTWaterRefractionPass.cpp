@@ -43,8 +43,8 @@ namespace CoreEngine
             ? WaterRefractionRayTracingManager::ViewID::ReflectionView
             : WaterRefractionRayTracingManager::ViewID::GameView;
 
-        WaterRefractionSurfaceData defaultSurfaceData{};
-        const WaterRefractionSurfaceData& dispatchSurfaceData = context.waterRefractionSurfaceData
+        WaterSurfaceData defaultSurfaceData{};
+        const WaterSurfaceData& dispatchSurfaceData = context.waterRefractionSurfaceData
             ? *context.waterRefractionSurfaceData
             : defaultSurfaceData;
         Logger::GetInstance().Infof(

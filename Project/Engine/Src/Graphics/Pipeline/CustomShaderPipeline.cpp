@@ -194,12 +194,28 @@ namespace CoreEngine
         return const_cast<RootSignatureManager*>(forwardRootSignatureMg_.get())->GetRootSignature();
     }
 
+    ID3D12RootSignature* CustomShaderPipeline::GetComputeRootSignature() const
+    {
+        if (!computeRootSignatureMg_) {
+            return nullptr;
+        }
+        return const_cast<RootSignatureManager*>(computeRootSignatureMg_.get())->GetRootSignature();
+    }
+
     int CustomShaderPipeline::GetRootParamIndex(const std::string& resourceName) const
     {
         if (!forwardRootSignatureMg_) {
             return -1;
         }
         return forwardRootSignatureMg_->GetRootParameterIndex(resourceName);
+    }
+
+    int CustomShaderPipeline::GetComputeRootParamIndex(const std::string& resourceName) const
+    {
+        if (!computeRootSignatureMg_) {
+            return -1;
+        }
+        return computeRootSignatureMg_->GetRootParameterIndex(resourceName);
     }
 
     bool CustomShaderPipeline::HasForwardPSO() const
