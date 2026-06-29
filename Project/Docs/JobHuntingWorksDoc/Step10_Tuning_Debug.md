@@ -4,7 +4,7 @@
 - 状態: 実装中
 - 優先度: 高
 - 依存ステップ: Step 1 ～ Step 9
-- 現在位置: ImGui による水面調整と一部 debug view は実装済み。今後はレイベース屈折の検証表示追加が必要
+- 現在位置: ImGui による水面調整、Depth Fade 可視化、RT 屈折 debug view、コースティクス debug view は実装済み。今後は品質計測と RT 最終段の整理強化が必要
 - 完了後に着手しやすい次ステップ: 継続改善フェーズ
 
 ## 目的
@@ -39,15 +39,18 @@
 
 ## 実施結果
 - `WaterTestScene::DrawWaterImGui()` でプリセット、PBR、Fresnel、Depth Fade、水色、波、雷演出の調整 UI が整備された
-- `Water.PS.hlsl` には Raw Depth / Linear Depth / Depth Delta / Screen UV / Scene Color / Reflection / Fresnel の debug view が実装されている
+- `Water.PS.hlsl` には Raw Depth / Linear Depth / Depth Delta / Screen UV / Scene Color / Reflection / Fresnel に加え、RT 屈折、RT 屈折理由、RT 屈折と SceneColor の比較、透過光、吸収、反射率、最終合成、RT 屈折成功マスクの debug view が実装されている
 - Reflection RTT 接続状態、推奨波本数、現在波本数などの実行時確認項目が ImGui から見える
 - 個別波パラメータの直接編集やプリセット再生成も可能になっている
+- `WaterSurfaceDebugPanel` から `Water.PS.hlsl` の可視化モードを直接切り替えられ、Depth Fade デバッグ倍率も変更できる
+- `WaterCausticsTechnique` / `DeferredLighting.PS.hlsl` 側ではコースティクスの Raw RGB / グレースケール debug view と、強度・深度減衰・曲率・表示倍率などの調整 UI が利用可能になっている
 
 ## 残タスク整理
-- Foam、Caustics、SSR は未実装のため、それぞれ専用 debug view も未整備
-- 屈折はレイベース方式を前提とするため、屈折レイ方向、ヒット位置、フォールバック理由の可視化が必要
-- 透過率そのもの、吸収量そのもの、反射 / 透過内訳の可視化はまだ不足している
-- RT 反射、RT 屈折、水中影は未着手
+- Foam、SSR は未実装のため、それぞれ専用 debug view も未整備
+- 屈折はレイベース方式の最小可視化までは整ったが、屈折レイ方向、ヒット位置、距離、成功率の定量表示はまだ不足している
+- 透過光、吸収、反射率の可視化は追加済みだが、反射 / 透過 / フォールバック内訳の定量確認はまだ不足している
+- コースティクスは debug view と UI 調整がある一方、投影マスク、RT/近似ソース切り替え、時系列安定性の可視化は未整備
+- RT 反射と水中影は未着手で、RT 屈折は最小実装はあるが最終段の整理と検証は未完了
 - 正式な品質確認チェックリストはまだ文書化されていない
 
 ## デバッグで見るべきもの
@@ -68,6 +71,7 @@
 ### 効果系
 - foam mask
 - caustics intensity
+- caustics raw RGB / grayscale
 - SSR hit mask
 - reflection fallback mask
 

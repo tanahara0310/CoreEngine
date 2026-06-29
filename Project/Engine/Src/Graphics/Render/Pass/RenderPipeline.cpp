@@ -4,6 +4,7 @@
 #include "BackBufferPass.h"
 #include "DeferredLightingPass.h"
 #include "GeometryPass.h"
+#include "FFTOceanPass.h"
 #include "GBufferPass.h"
 #include "PostEffectPass.h"
 #include "RTShadowPass.h"
@@ -105,7 +106,8 @@ namespace CoreEngine
 
     void RenderPipeline::PrepareFrame(
         const RenderContext& context,
-        const std::function<void()>& geometryRenderCallback)
+        const std::function<void()>& geometryRenderCallback,
+        const std::function<void()>& waterRenderCallback)
     {
         RegisterFrameResources(context);
 
@@ -114,6 +116,7 @@ namespace CoreEngine
 
         if (auto* geometryPass = GetPass<GeometryPass>()) {
             geometryPass->SetRenderCallback(geometryRenderCallback);
+            geometryPass->SetWaterRenderCallback(waterRenderCallback);
 
             const bool deferredEnabled = GetPass<DeferredLightingPass>()
                 && GetPass<DeferredLightingPass>()->IsEnabled();
@@ -379,6 +382,12 @@ namespace CoreEngine
                 });
         }
 
+        if (auto* pass = GetPass<FFTOceanPass>()) {
+            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
+                (void)builder;
+                });
+        }
+
         // Geometry は SceneColor に上乗せしつつ SceneDepth を read-only DSV/SRV として参照する。
         if (auto* pass = GetPass<GeometryPass>()) {
             renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
@@ -494,10 +503,11 @@ namespace CoreEngine
     void RenderPipeline::ExecuteView(
         const RenderContext& context,
         const std::function<void()>& geometryRenderCallback,
+        const std::function<void()>& waterRenderCallback,
         const std::function<void()>& beforeExecute,
         const std::function<void()>& afterExecute)
     {
-        PrepareFrame(context, geometryRenderCallback);
+        PrepareFrame(context, geometryRenderCallback, waterRenderCallback);
 
         if (beforeExecute) {
             beforeExecute();
@@ -513,10 +523,11 @@ namespace CoreEngine
     RenderViewResult RenderPipeline::ExecuteRenderView(
         const RenderContext& context,
         const std::function<void()>& geometryRenderCallback,
+        const std::function<void()>& waterRenderCallback,
         const std::function<void()>& beforeExecute,
         const std::function<void()>& afterExecute)
     {
-        ExecuteView(context, geometryRenderCallback, beforeExecute, afterExecute);
+        ExecuteView(context, geometryRenderCallback, waterRenderCallback, beforeExecute, afterExecute);
         return BuildRenderViewResult(context);
     }
 

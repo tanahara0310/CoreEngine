@@ -32,6 +32,8 @@ private:
 	void ApplyRayTracingSettings(CoreEngine::EngineSystem& engine) const;
 	/// @brief 見た目・反射・透過に関する通常パラメータ UI を描画する
 	void DrawRuntimeParameterSection(WaterSurfaceRuntimeController& runtimeController, CoreEngine::EngineSystem& engine);
+	/// @brief FFT Ocean に関する描画経路切替とパラメータ UI を描画する
+	void DrawFFTOceanSection(WaterSurfaceRuntimeController& runtimeController, CoreEngine::EngineSystem& engine);
 	/// @brief UV と波生成に関する UI を描画する
 	void DrawWaveToolSection(WaterSurfaceRuntimeController& runtimeController);
 	/// @brief 個別波編集 UI を描画する
@@ -65,6 +67,19 @@ private:
 		bool autoRestoreRecommendedWaveCount = true;
 		bool autoGenerateOnWaveCountIncrease = true;
 	} waveToolState_{};
+
+	/// @brief FFT Ocean 調整 UI のキャッシュ
+	struct FFTOceanParameters {
+		bool enabled = true;
+		float patchLength = 96.0f;
+		float amplitudeScale = 1.0f;
+		float windDirection[2] = { 0.92f, 0.38f };
+		float windSpeed = 24.0f;
+		float choppiness = 1.35f;
+		int activeComponentCount = 32;
+		float gravity = 9.81f;
+		int resolution = 256;
+	} fftOceanParameters_{};
 
 	/// @brief DXR 屈折の最大スクリーンずれ量（px）
 	float rtRefractionOffsetPixels_ = 3.0f;

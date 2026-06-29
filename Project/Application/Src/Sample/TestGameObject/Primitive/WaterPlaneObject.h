@@ -23,16 +23,21 @@ class WaterPlaneObject : public CoreEngine::PrimitiveGameObject
 public:
     /// @param size 水面の一辺のサイズ（XZ 方向共通）
     /// @param resolution XZ 方向の分割数
-    WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64);
+    /// @param useFFTOcean true のとき新規 FFT Ocean 描画経路を使用する
+    WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64, bool useFFTOcean = false);
 
     /// @brief 水面はシャドウキャスターから除外する
     void DrawShadow(ID3D12GraphicsCommandList* cmdList) override;
 
+    CoreEngine::RenderPassType GetRenderPassType() const override {
+        return CoreEngine::RenderPassType::WaterSurface;
+    }
+
     const char* GetObjectName() const override { return "WaterPlane"; }
 
     // ===== ICustomShaderProvider =====
-    std::wstring GetVertexShaderPath() const override { return L"Water.VS.hlsl"; }
-    std::wstring GetPixelShaderPath()  const override { return L"Water.PS.hlsl"; }
+    std::wstring GetVertexShaderPath() const override;
+    std::wstring GetPixelShaderPath()  const override;
 
     /// @brief カスタムリソース（WaterConstants CBV）をバインドする
     void BindCustomResources(
@@ -120,6 +125,22 @@ public:
     /// @param srvHandle DXR 屈折結果テクスチャの GPU ハンドル
     void SetRefractionColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 
+    /// @brief FFT Ocean の変位/法線テクスチャ SRV を設定する
+    void SetFFTOceanTextureSRVs(
+        D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle);
+
+    /// @brief FFT Ocean 描画経路を切り替える
+    void SetUseFFTOcean(bool useFFTOcean);
+
+    /// @brief FFT Ocean 描画経路を使用中か返す
+    bool IsUsingFFTOcean() const { return useFFTOcean_; }
+
+    /// @brief FFT Ocean 用 SRV が有効か返す
+    bool HasFFTOceanTextureSRVs() const {
+        return fftDisplacementSRV_.ptr != 0 && fftNormalSRV_.ptr != 0;
+    }
+
     /// @brief Water Reflection の出力を水面描画へ適用する
     /// @param result RenderView 出力一式
     void ApplyWaterReflectionResult(const CoreEngine::RenderViewResult& result);
@@ -153,11 +174,15 @@ private:
     /// @brief 定数バッファリソースを作成する（OnInitialize 内から呼ぶ）
     void CreateWaterConstantBuffer(ID3D12Device* device);
 
+    /// @brief 現在の useFFTOcean 状態に合わせてカスタム PSO を再構築する
+    void RebuildWaterShaderPipeline();
+
     /// @brief UV タイリングとオフセットをマテリアルの uvTransform 行列に反映する
     void ApplyUVTransform();
 
     float    size_;
     uint32_t resolution_;
+    bool useFFTOcean_ = false;
 
     CoreEngine::Vector2 scrollSpeed_; ///< UV スクロール速度（U方向, V方向）
     CoreEngine::Vector2 uvTiling_;    ///< UV タイリング回数
@@ -190,4 +215,8 @@ private:
 
     // ---- DXR 屈折カラー SRV（t17 にバインド） ----
     D3D12_GPU_DESCRIPTOR_HANDLE refractionColorSRV_ = { 0 };         ///< DXR 屈折カラー SRV
+
+    // ---- FFT Ocean の変位/法線 SRV（t18/t19 にバインド） ----
+    D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV_ = { 0 };
+    D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV_ = { 0 };
 };

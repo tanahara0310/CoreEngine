@@ -4,6 +4,7 @@
 
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Material/MaterialInstance.h"
+#include "Graphics/Model/ModelManager.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
@@ -12,6 +13,7 @@
 #include <cmath>
 #include <cstring>
 #include <cassert>
+#include <filesystem>
 
 // ---- 定数バッファのサイズは 256 バイトアライメント ----
 static constexpr UINT kWaterCBSize =
@@ -20,9 +22,10 @@ static constexpr UINT kWaterCBSize =
 static constexpr UINT kFrameCBSize =
 (sizeof(WaterFrameConstants) + 255) & ~255u;
 
-WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution)
+WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution, bool useFFTOcean)
     : size_(size)
     , resolution_(resolution)
+    , useFFTOcean_(useFFTOcean)
     , scrollSpeed_({ 0.03f, 0.01f })
     , uvTiling_({ 4.0f, 4.0f })
     , uvOffset_({ 0.0f, 0.0f }) {
@@ -51,6 +54,16 @@ void WaterPlaneObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {
     (void)cmdList;
 }
 
+std::wstring WaterPlaneObject::GetVertexShaderPath() const {
+    return useFFTOcean_
+        ? L"FFTWater.VS.hlsl"
+        : L"Water.VS.hlsl";
+}
+
+std::wstring WaterPlaneObject::GetPixelShaderPath() const {
+    return L"Water.PS.hlsl";
+}
+
 void WaterPlaneObject::OnInitialize() {
     // 独自シェーダーを使用するよう登録する
     SetCustomShaderProvider(this);
@@ -64,6 +77,18 @@ void WaterPlaneObject::OnInitialize() {
     if (dxCommon) {
         CreateWaterConstantBuffer(dxCommon->GetDevice());
     }
+}
+
+void WaterPlaneObject::RebuildWaterShaderPipeline() {
+    auto* engine = GetEngineSystem();
+    auto* dxCommon = engine ? engine->GetComponent<CoreEngine::DirectXCommon>() : nullptr;
+    auto* modelManager = engine ? engine->GetComponent<CoreEngine::ModelManager>() : nullptr;
+    if (!dxCommon || !modelManager) {
+        return;
+    }
+
+    SetCustomShaderProvider(this);
+    BuildCustomShaderPipelineIfNeeded(dxCommon->GetDevice(), modelManager);
 }
 
 void WaterPlaneObject::CreateWaterConstantBuffer(ID3D12Device* device) {
@@ -204,6 +229,52 @@ void WaterPlaneObject::BindCustomResources(
                 static_cast<UINT>(refractionColorSlot), refractionColorSRV_);
         }
     }
+
+    if (fftDisplacementSRV_.ptr != 0) {
+        int fftDisplacementSlot = pipeline->GetRootParamIndex("gFFTOceanDisplacement");
+        if (fftDisplacementSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(fftDisplacementSlot), fftDisplacementSRV_);
+        }
+
+        static uint32_t sFftBindLogCounter = 0u;
+        if ((sFftBindLogCounter++ % 240u) == 0u) {
+            CoreEngine::Logger::GetInstance().Infof(
+                CoreEngine::LogCategory::Graphics,
+                CoreEngine::LogSubCategory::Pipeline,
+                "WaterPlane: FFT displacement bound. slot={} srv=0x{:X} useFFTOcean={} hasFFTSRVs={}",
+                fftDisplacementSlot,
+                fftDisplacementSRV_.ptr,
+                useFFTOcean_,
+                HasFFTOceanTextureSRVs());
+        }
+    }
+
+    if (fftNormalSRV_.ptr != 0) {
+        int fftNormalSlot = pipeline->GetRootParamIndex("gFFTOceanNormal");
+        if (fftNormalSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(fftNormalSlot), fftNormalSRV_);
+        }
+    }
+}
+
+void WaterPlaneObject::SetUseFFTOcean(bool useFFTOcean) {
+    if (useFFTOcean_ == useFFTOcean) {
+        return;
+    }
+
+    useFFTOcean_ = useFFTOcean;
+    RebuildWaterShaderPipeline();
+
+    CoreEngine::Logger::GetInstance().Infof(
+        CoreEngine::LogCategory::Graphics,
+        CoreEngine::LogSubCategory::Pipeline,
+        "WaterPlane: switched water shader path. useFFTOcean={} hasFFTSRVs={} vertexShader={} pixelShader={}",
+        useFFTOcean_,
+        HasFFTOceanTextureSRVs(),
+        std::filesystem::path(GetVertexShaderPath()).string(),
+        std::filesystem::path(GetPixelShaderPath()).string());
 }
 
 void WaterPlaneObject::SetScrollSpeed(const CoreEngine::Vector2& speed) {
@@ -217,6 +288,23 @@ void WaterPlaneObject::SetUVTiling(const CoreEngine::Vector2& tiling) {
 void WaterPlaneObject::SetWave(uint32_t index, const WaveParams& wave) {
     if (index < kMaxWaterWaveCount) {
         waterCB_.waves[index] = wave;
+    }
+}
+
+void WaterPlaneObject::SetFFTOceanTextureSRVs(
+    D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle,
+    D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle) {
+    fftDisplacementSRV_ = displacementSrvHandle;
+    fftNormalSRV_ = normalSrvHandle;
+
+    if (frameCB_.depthFadeDebugEnabled != 0) {
+        CoreEngine::Logger::GetInstance().Infof(
+            CoreEngine::LogCategory::Graphics,
+            CoreEngine::LogSubCategory::RenderTarget,
+            "WaterPlane SetFFTOceanTextureSRVs: displacementSRV=0x{:X} normalSRV=0x{:X} useFFTOcean={}",
+            fftDisplacementSRV_.ptr,
+            fftNormalSRV_.ptr,
+            useFFTOcean_);
     }
 }
 

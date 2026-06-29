@@ -19,6 +19,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -39,6 +42,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
       <Filter>Engine\Src\Particle\Modules</Filter>
@@ -1182,6 +1188,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -1331,6 +1340,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h">
       <Filter>Engine\Src\Graphics\Texture\Path</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\WaterSurfaceData.h">
       <Filter>Engine\Src\Graphics\Water</Filter>

@@ -18,6 +18,9 @@ public:
 	void Draw(WaterSurfaceRuntimeController& runtimeController, CoreEngine::EngineSystem& engine);
 
 private:
+	/// @brief FFT Ocean の診断 UI を描画する
+	void DrawFFTOceanDebugSection(WaterSurfaceRuntimeController& runtimeController, CoreEngine::EngineSystem& engine);
+
 	/// @brief コースティクスのデバッグ UI を描画する
 	void DrawCausticsDebugSection(CoreEngine::EngineSystem& engine);
 

@@ -13,6 +13,7 @@ namespace CoreEngine
     class RayTracingShadowManager;
     class WaterRefractionRayTracingManager;
     class WaterCausticsRayTracingManager;
+    class FFTOceanManager;
 
     /// @brief 描画ドメイン固有マネージャーの所有・初期化クラス
     /// @note GBuffer / シャドウマップ / レイトレーシング等、
@@ -44,6 +45,7 @@ namespace CoreEngine
         RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
         WaterRefractionRayTracingManager* GetWaterRefractionRayTracingManager() { return rtWaterRefractionManager_.get(); }
         WaterCausticsRayTracingManager* GetWaterCausticsRayTracingManager() { return rtWaterCausticsManager_.get(); }
+        FFTOceanManager* GetFFTOceanManager() { return fftOceanManager_.get(); }
 
     private:
         std::unique_ptr<GBufferManager>               gBufferManager_;
@@ -52,6 +54,7 @@ namespace CoreEngine
         std::unique_ptr<RayTracingShadowManager>      rtShadowManager_;
         std::unique_ptr<WaterRefractionRayTracingManager> rtWaterRefractionManager_;
         std::unique_ptr<WaterCausticsRayTracingManager> rtWaterCausticsManager_;
+        std::unique_ptr<FFTOceanManager> fftOceanManager_;
     };
 
 } // namespace CoreEngine

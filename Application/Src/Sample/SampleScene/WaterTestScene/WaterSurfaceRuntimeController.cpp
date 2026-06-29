@@ -10,7 +10,9 @@
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Texture/TextureManager.h"
+#include "Graphics/Water/FFTOceanManager.h"
 #include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
+#include "Utility/Logger/Logger.h"
 
 using namespace CoreEngine;
 
@@ -85,6 +87,12 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 				waterRefractionManager->GetRefractionSRVHandle(
 					WaterRefractionRayTracingManager::ViewID::GameView));
 		}
+
+		if (auto* fftOceanManager = renderDomainContext->GetFFTOceanManager()) {
+			waterPlane_->SetFFTOceanTextureSRVs(
+				fftOceanManager->GetDisplacementSRVHandle(),
+				fftOceanManager->GetNormalSRVHandle());
+		}
 	}
 }
 
@@ -100,6 +108,18 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 	waterRefractionSurfaceData_.waterHeight = waterPlane_->GetTransform().translate.y;
 	waterRefractionSurfaceData_.activeWaveCount = (std::min)(waterConstants.activeWaveCount, kMaxWaterSurfaceWaveCount);
 	waterRefractionSurfaceData_.time = waterConstants.time;
+
+	static uint32_t sSurfaceDataLogCounter = 0u;
+	if ((sSurfaceDataLogCounter++ % 120u) == 0u) {
+		Logger::GetInstance().Infof(
+			LogCategory::Graphics,
+			LogSubCategory::Pipeline,
+			"WaterSurfaceRuntimeController: surfaceData time={:.3f} waterCB.time={:.3f} activeWaveCount={} height={:.3f}",
+			waterRefractionSurfaceData_.time,
+			waterConstants.time,
+			waterRefractionSurfaceData_.activeWaveCount,
+			waterRefractionSurfaceData_.waterHeight);
+	}
 
 	// アクティブな波のみを DXR 用の配列へ詰め直す
 	for (uint32_t waveIndex = 0; waveIndex < waterRefractionSurfaceData_.activeWaveCount; ++waveIndex) {
@@ -147,7 +167,7 @@ void WaterSurfaceRuntimeController::CreateSceneObjects(WaterTestScene& scene, En
 	skyBox->SetActive(true);
 
 	// 水面グリッドを生成し、水面描画用の基本状態を設定する
-	waterPlane_ = scene.CreateWaterSceneObject<WaterPlaneObject>(100.0f, 128);
+	waterPlane_ = scene.CreateWaterSceneObject<WaterPlaneObject>(100.0f, 128, true);
 	waterPlane_->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
 	waterPlane_->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
 	waterPlane_->SetBlendMode(BlendMode::kBlendModeNormal);

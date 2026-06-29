@@ -8,6 +8,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Water/FFTOceanManager.h"
 #include "Math/MathCore.h"
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 #include "Utility/Random/RandomGenerator.h"
@@ -56,6 +57,25 @@ const char* const kPresetNames[] = {
 }
 
 void WaterSurfaceParameterPanel::Initialize(WaterSurfaceRuntimeController& runtimeController, EngineSystem& engine) {
+	if (WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane()) {
+		fftOceanParameters_.enabled = waterPlane->IsUsingFFTOcean();
+	}
+
+	if (auto* renderDomainContext = engine.GetRenderDomainContext()) {
+		if (auto* fftOceanManager = renderDomainContext->GetFFTOceanManager()) {
+			const FFTOceanManager::Settings& settings = fftOceanManager->GetSettings();
+			fftOceanParameters_.patchLength = settings.patchLength;
+			fftOceanParameters_.amplitudeScale = settings.amplitudeScale;
+			fftOceanParameters_.windDirection[0] = settings.windDirection[0];
+			fftOceanParameters_.windDirection[1] = settings.windDirection[1];
+			fftOceanParameters_.windSpeed = settings.windSpeed;
+			fftOceanParameters_.choppiness = settings.choppiness;
+			fftOceanParameters_.activeComponentCount = static_cast<int>(settings.activeComponentCount);
+			fftOceanParameters_.gravity = settings.gravity;
+			fftOceanParameters_.resolution = static_cast<int>(settings.resolution);
+		}
+	}
+
 	// 現在の DXR 屈折設定を UI の初期値へ反映する
 	if (auto* renderDomainContext = engine.GetRenderDomainContext()) {
 		if (auto* waterRefractionManager = renderDomainContext->GetWaterRefractionRayTracingManager()) {
@@ -71,10 +91,90 @@ void WaterSurfaceParameterPanel::Draw(WaterSurfaceRuntimeController& runtimeCont
 	// 通常パラメータと波編集ツールを用途別に分けて表示する
 	if (ImGui::CollapsingHeader("パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
 		DrawRuntimeParameterSection(runtimeController, engine);
+		DrawFFTOceanSection(runtimeController, engine);
 	}
 
 	if (ImGui::CollapsingHeader("波生成 / 編集", ImGuiTreeNodeFlags_DefaultOpen)) {
 		DrawWaveToolSection(runtimeController);
+	}
+	}
+
+void WaterSurfaceParameterPanel::DrawFFTOceanSection(
+	WaterSurfaceRuntimeController& runtimeController,
+	EngineSystem& engine) {
+	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	if (!waterPlane) {
+		return;
+	}
+
+	auto* renderDomainContext = engine.GetRenderDomainContext();
+	auto* fftOceanManager = renderDomainContext ? renderDomainContext->GetFFTOceanManager() : nullptr;
+
+	ImGui::Spacing();
+	ImGui::SeparatorText("FFT Ocean");
+	if (ImGui::Checkbox("FFT Ocean 描画を使用する", &fftOceanParameters_.enabled)) {
+		waterPlane->SetUseFFTOcean(fftOceanParameters_.enabled);
+	}
+
+	if (!fftOceanManager) {
+		ImGui::TextDisabled("FFTOceanManager を取得できません。");
+		return;
+	}
+
+	ImGui::Text("解像度: %d (再生成が必要なため表示のみ)", fftOceanParameters_.resolution);
+	bool fftChanged = false;
+	bool fftEditCommitted = false;
+	auto trackFFTEdit = [&](bool changed) {
+		fftChanged |= changed;
+		fftEditCommitted |= ImGui::IsItemDeactivatedAfterEdit();
+	};
+
+	trackFFTEdit(ImGui::SliderFloat("パッチ長", &fftOceanParameters_.patchLength, 8.0f, 512.0f, "%.2f"));
+	trackFFTEdit(ImGui::SliderFloat("振幅スケール", &fftOceanParameters_.amplitudeScale, 0.0f, 4.0f, "%.3f"));
+	trackFFTEdit(ImGui::DragFloat2("風向", fftOceanParameters_.windDirection, 0.01f, -1.0f, 1.0f, "%.3f"));
+	trackFFTEdit(ImGui::SliderFloat("風速", &fftOceanParameters_.windSpeed, 0.0f, 64.0f, "%.2f"));
+	trackFFTEdit(ImGui::SliderFloat("Choppiness", &fftOceanParameters_.choppiness, 0.0f, 4.0f, "%.3f"));
+	trackFFTEdit(ImGui::SliderInt("スペクトル成分数", &fftOceanParameters_.activeComponentCount, 1, 64));
+	trackFFTEdit(ImGui::SliderFloat("重力", &fftOceanParameters_.gravity, 0.1f, 20.0f, "%.3f"));
+
+	fftEditCommitted = fftEditCommitted || (!ImGui::IsAnyItemActive() && fftChanged);
+	if (fftEditCommitted) {
+		FFTOceanManager::Settings settings = fftOceanManager->GetSettings();
+		settings.patchLength = fftOceanParameters_.patchLength;
+		settings.amplitudeScale = fftOceanParameters_.amplitudeScale;
+		settings.windDirection[0] = fftOceanParameters_.windDirection[0];
+		settings.windDirection[1] = fftOceanParameters_.windDirection[1];
+		settings.windSpeed = fftOceanParameters_.windSpeed;
+		settings.choppiness = fftOceanParameters_.choppiness;
+		settings.activeComponentCount = static_cast<uint32_t>(fftOceanParameters_.activeComponentCount);
+		settings.gravity = fftOceanParameters_.gravity;
+		fftOceanManager->SetSettings(settings);
+
+		const FFTOceanManager::Settings& appliedSettings = fftOceanManager->GetSettings();
+		fftOceanParameters_.patchLength = appliedSettings.patchLength;
+		fftOceanParameters_.amplitudeScale = appliedSettings.amplitudeScale;
+		fftOceanParameters_.windDirection[0] = appliedSettings.windDirection[0];
+		fftOceanParameters_.windDirection[1] = appliedSettings.windDirection[1];
+		fftOceanParameters_.windSpeed = appliedSettings.windSpeed;
+		fftOceanParameters_.choppiness = appliedSettings.choppiness;
+		fftOceanParameters_.activeComponentCount = static_cast<int>(appliedSettings.activeComponentCount);
+		fftOceanParameters_.gravity = appliedSettings.gravity;
+	}
+
+	if (ImGui::Button("FFT Ocean 設定を既定値へ戻す", ImVec2(-1.0f, 0.0f))) {
+		FFTOceanManager::Settings defaultSettings{};
+		fftOceanManager->SetSettings(defaultSettings);
+		const FFTOceanManager::Settings& appliedSettings = fftOceanManager->GetSettings();
+		fftOceanParameters_.enabled = waterPlane->IsUsingFFTOcean();
+		fftOceanParameters_.patchLength = appliedSettings.patchLength;
+		fftOceanParameters_.amplitudeScale = appliedSettings.amplitudeScale;
+		fftOceanParameters_.windDirection[0] = appliedSettings.windDirection[0];
+		fftOceanParameters_.windDirection[1] = appliedSettings.windDirection[1];
+		fftOceanParameters_.windSpeed = appliedSettings.windSpeed;
+		fftOceanParameters_.choppiness = appliedSettings.choppiness;
+		fftOceanParameters_.activeComponentCount = static_cast<int>(appliedSettings.activeComponentCount);
+		fftOceanParameters_.gravity = appliedSettings.gravity;
+		fftOceanParameters_.resolution = static_cast<int>(appliedSettings.resolution);
 	}
 }
 

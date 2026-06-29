@@ -46,7 +46,19 @@ namespace CoreEngine
 
         auto* cmdList = context.dxCommon->GetCommandList();
 
-        if (targetName_ == RenderTargetNames::SceneColor) {
+        // DeferredLightingPass が先に書き込んでいる場合はクリアしない
+        targetToUse->SetClearEnabled(clearEnabled_);
+
+        targetToUse->Begin(cmdList);
+        if (renderCallback_) {
+            renderCallback_();
+        }
+
+        const bool shouldUpdateSceneColorSnapshot =
+            context.viewSettings.viewType == RenderViewType::GameView
+            && targetName_ == RenderTargetNames::SceneColor;
+
+        if (shouldUpdateSceneColorSnapshot) {
             auto* sourceTarget = dynamic_cast<OffscreenRenderTarget*>(targetToUse);
             auto* snapshotTarget = dynamic_cast<OffscreenRenderTarget*>(
                 context.renderTargetManager->GetRenderTarget(RenderTargetNames::SceneColorSnapshot));
@@ -77,16 +89,12 @@ namespace CoreEngine
                     cmdList,
                     sourceTarget->GetResource(),
                     sourceState,
-                    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    D3D12_RESOURCE_STATE_RENDER_TARGET);
             }
         }
 
-        // DeferredLightingPass が先に書き込んでいる場合はクリアしない
-        targetToUse->SetClearEnabled(clearEnabled_);
-
-        targetToUse->Begin(cmdList);
-        if (renderCallback_) {
-            renderCallback_();
+        if (waterRenderCallback_) {
+            waterRenderCallback_();
         }
         targetToUse->End(cmdList);
 

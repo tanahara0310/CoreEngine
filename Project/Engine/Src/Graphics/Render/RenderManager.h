@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <functional>
 
 // 前方宣言
 namespace CoreEngine {
@@ -92,6 +93,12 @@ namespace CoreEngine
 
     /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
     void DrawGeometryPass();
+
+    /// @brief 水面以外の通常ジオメトリを描画する（描画キュー必須）
+    void DrawGeometryPassExcludingWater();
+
+    /// @brief 水面のみを描画する（描画キュー必須）
+    void DrawWaterSurfacePass();
 
     /// @brief 描画パスタイプの描画順序優先度を設定（小さいほど先に描画）
     /// @param type 描画パスタイプ
@@ -197,6 +204,12 @@ namespace CoreEngine
 
     /// @brief 通常描画パス
     void RenderNormalPass();
+
+    /// @brief フィルタ条件付き通常描画パス
+    void RenderNormalPassFiltered(const std::function<bool(const DrawCommand&)>& filter);
+
+    /// @brief 指定パスに対応するレンダラーを解決する
+    IRenderer* ResolveRendererForPass(RenderPassType passType);
 
     /// @brief シャドウマップ描画の内部実行
     void RenderShadowMapPass();

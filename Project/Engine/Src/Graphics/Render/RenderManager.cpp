@@ -265,6 +265,28 @@ namespace CoreEngine
         RenderNormalPass();
     }
 
+    void RenderManager::DrawGeometryPassExcludingWater() {
+        if (drawQueue_.empty() || !cmdList_) {
+            return;
+        }
+
+        EnsureQueueSorted();
+        RenderNormalPassFiltered([](const DrawCommand& cmd) {
+            return cmd.passType != RenderPassType::WaterSurface;
+            });
+    }
+
+    void RenderManager::DrawWaterSurfacePass() {
+        if (drawQueue_.empty() || !cmdList_) {
+            return;
+        }
+
+        EnsureQueueSorted();
+        RenderNormalPassFiltered([](const DrawCommand& cmd) {
+            return cmd.passType == RenderPassType::WaterSurface;
+            });
+    }
+
     void RenderManager::RenderShadowMapPass() {
         // シャドウマップ用のレンダラーを取得
         IRenderer* renderer = GetRenderer(RenderPassType::ShadowMap);
@@ -352,7 +374,19 @@ namespace CoreEngine
     }
 
 
-    void RenderManager::RenderNormalPass() {
+    IRenderer* RenderManager::ResolveRendererForPass(RenderPassType passType) {
+        if (IRenderer* renderer = GetRenderer(passType)) {
+            return renderer;
+        }
+
+        if (passType == RenderPassType::WaterSurface) {
+            return GetRenderer(RenderPassType::Model);
+        }
+
+        return nullptr;
+    }
+
+    void RenderManager::RenderNormalPassFiltered(const std::function<bool(const DrawCommand&)>& filter) {
         RenderPassType currentPass = RenderPassType::Invalid;
         BlendMode currentBlendMode = BlendMode::kBlendModeNone;
         IRenderer* currentRenderer = nullptr;
@@ -366,6 +400,10 @@ namespace CoreEngine
             }
 
             if (!renderDebugLines_ && cmd.passType == RenderPassType::Line) {
+                continue;
+            }
+
+            if (filter && !filter(cmd)) {
                 continue;
             }
 
@@ -393,9 +431,8 @@ namespace CoreEngine
                 // 新しいパスを開始
                 currentPass = cmd.passType;
                 currentBlendMode = cmd.blendMode;
-                auto it = renderers_.find(currentPass);
-                if (it != renderers_.end()) {
-                    currentRenderer = it->second.get();
+                currentRenderer = ResolveRendererForPass(currentPass);
+                if (currentRenderer) {
 
                     // パスに応じたカメラを取得
                     currentCamera = GetCameraForPass(currentPass);
@@ -442,6 +479,10 @@ namespace CoreEngine
         }
     }
 
+    void RenderManager::RenderNormalPass() {
+        RenderNormalPassFiltered({});
+    }
+
     void RenderManager::ClearQueue() {
         drawQueue_.clear();
         registrationCounter_ = 0;
@@ -467,6 +508,7 @@ namespace CoreEngine
         passTypePriorities_[RenderPassType::Model] = 100;
         passTypePriorities_[RenderPassType::SkinnedModel] = 200;
         passTypePriorities_[RenderPassType::SkyBox] = 300;
+        passTypePriorities_[RenderPassType::WaterSurface] = 350;
         passTypePriorities_[RenderPassType::ModelParticle] = 400;
         passTypePriorities_[RenderPassType::Line] = 500;
         passTypePriorities_[RenderPassType::Particle] = 600;

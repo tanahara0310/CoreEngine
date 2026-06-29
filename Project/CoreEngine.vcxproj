@@ -189,6 +189,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterCausticsRayTracingManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp" />
@@ -196,6 +197,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderGraph.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -584,6 +586,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GeometryPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.h" />
@@ -634,6 +637,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterSurfaceData.h" />
     <ClInclude Include="Engine\Src\Input\IDirectInputDevice.h" />
     <ClInclude Include="Engine\Src\Input\InputAction.h" />

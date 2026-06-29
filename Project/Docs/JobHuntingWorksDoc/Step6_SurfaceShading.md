@@ -4,7 +4,7 @@
 - 状態: 実装中
 - 優先度: 最優先
 - 依存ステップ: Step 4, Step 5
-- 現在位置: SceneColor 透過、Beer-Lambert、浅瀬 / 深場色、Fresnel 配分までは実装済み。屈折は SSR ではなく DXR ベース経路を主線として整理する
+- 現在位置: SceneColor 透過、Beer-Lambert、浅瀬 / 深場色、Fresnel 配分に加え、`RTWaterRefractionPass` / `RTWaterRefraction.hlsl` による DXR 屈折の最小経路が接続済み。現在は RT 出力の検証強化と吸収・再投影品質の拡張が主な残課題
 - 完了後に着手しやすい次ステップ: Step 7, Step 8, Step 9
 
 ## 目的
@@ -44,23 +44,27 @@ Step 6 では、**水中がどう見えるか** を決める。
 - [x] Beer-Lambert 則で透過光の減衰を扱う
 - [x] 水深差から浅瀬 / 深場の色遷移を決める
 - [x] 背景を二重減衰させない透過合成にする
-- [ ] Snell の法則に基づく屈折レイ生成を定義する
-- [ ] DXR の RayGen / ClosestHit / Miss で屈折経路を設計する
-- [ ] TLAS 交差結果から水中背景取得と吸収評価を行う
-- [ ] 既存 Water.PS.hlsl と RT 屈折結果の合成責務を分離する
+- [x] Snell の法則に基づく屈折レイ生成を定義する
+- [x] DXR の RayGen / ClosestHit / Miss で屈折経路を設計する
+- [x] TLAS 交差結果から水中背景取得の最小経路を行う
+- [x] 既存 `Water.PS.hlsl` と RT 屈折結果の合成責務を分離する
 
 ## 実施結果
 - `Water.PS.hlsl` が `gSceneColor` と `gSceneDepth` を参照し、水面越しの透過と深度差を扱う構成になった
 - Beer-Lambert に基づく `transmittance` / `absorption` を計算し、浅瀬 / 深場の色補間へ接続している
 - Fresnel は Schlick 近似で実装され、反射寄与と透過寄与の配分に利用されている
 - 標準 alpha ブレンドで背景の二重減衰を避ける合成が組まれている
-- Depth Fade のデバッグ表示と可視化モードが ImGui から切り替え可能になっている
+- `RTWaterRefractionPass` と `WaterRefractionRayTracingManager` がフレーム実行系へ組み込まれ、DXR 出力は `FrameBlackboard::RTWaterRefractionColor` 経由で水面描画へ供給される
+- `RTWaterRefraction.hlsl` では波面オフセットと解析法線を再評価し、`refract(primaryDir, waterNormal, gRefractionEta)` で屈折方向を求めて TLAS へ `TraceRay` している
+- RT ヒット結果は再投影して `SceneColor` をサンプリングする最小構成で実装され、成功時は `Water.PS.hlsl` の透過色として採用される
+- RT 失敗時は理由コード付きで `SceneColor` フォールバックへ戻す構成になっており、`Water.PS.hlsl` と ImGui から理由別の可視化が可能になっている
+- Depth Fade と RT 屈折のデバッグ表示は ImGui から切り替え可能で、RT 屈折色、理由、比較、透過光、吸収、反射率、成功マスクまで確認できる
 
 ## 残タスク整理
-- Snell の法則に基づいて入射視線と法線から屈折方向を求める処理は未実装
-- 屈折は単純な `screenUV` オフセットや SSR ではなく、DXR で画面外を含めた交差先を求める方式を主線とする
-- 既存 DXR 基盤は RT シャドウ中心のため、水面屈折用の専用マネージャと出力テクスチャ群を追加する必要がある
-- RGB 吸収、水中散乱、複数媒質通過は今後の拡張ポイント
+- 屈折出力は現状 `float4(color, reasonCode)` の最小構成であり、hit distance、透過率、水柱長などの補助情報は別出力化されていない
+- RT ヒット後の背景取得は `SceneColor` 再投影ベースで、ヒット材質そのものの評価や多段媒質通過は未対応
+- 吸収は現状スカラー係数であり、RGB 吸収、水中散乱、複数媒質通過は今後の拡張ポイント
+- DXR miss / clip fail / 平面交差失敗の理由別フォールバックはあるが、統計的な成功率や品質計測はまだ不足している
 
 ## DXR 屈折の方針
 ### 1. 水面シェーディングと交差探索を分離する
@@ -104,9 +108,9 @@ Step 6 では、**水中がどう見えるか** を決める。
 - 必要に応じて透明オブジェクトは初期段階では対象外にする
 
 ### 4. ヒット後評価
-- `hitDistance` から水柱長を取り、`transmittance = exp(-absorptionCoeff * distance)` を計算する
-- 第一段階では `hitWorldPos` をスクリーン再投影し、既存カラー資産を読むハイブリッドでもよい
-- 余力があればヒット材質から直接放射輝度を評価する
+- 現行実装では `hitWorldPos` をスクリーン再投影し、`SceneColor` を読むハイブリッド構成を採用している
+- `gMaxRefractionOffsetPixels` でスクリーン上の UV オフセット量を制限し、極端な跳びを抑えている
+- 将来的な拡張として、`hitDistance` 由来の水柱長やヒット材質そのものの評価を追加する余地を残している
 
 ### 5. 水面最終合成
 - `F = FresnelSchlick(...)`
@@ -115,7 +119,7 @@ Step 6 では、**水中がどう見えるか** を決める。
 
 ## エンジンへの組み込み手順
 ### 1. 専用 DXR マネージャを追加する
-- `RayTracingShadowManager` とは分離して `WaterRefractionRayTracingManager` 相当を追加する
+- 現行コードでは `WaterRefractionRayTracingManager` と `RTWaterRefractionPass` が追加済みで、シャドウ経路とは分離して管理されている
 - 理由は、入力も出力もシャドウと責務が異なり、将来的なデノイズや履歴管理も別設計になるため
 
 ### 2. DXR パイプラインを構築する
@@ -123,13 +127,13 @@ Step 6 では、**水中がどう見えるか** を決める。
 - 既存 `GlobalRootSignatureManager` の拡張、または水面屈折専用 root signature を用意する
 
 ### 3. 入出力リソースを定義する
-- 入力: TLAS、GBuffer の world position / normal、water normal、SceneColor または背景評価用テクスチャ
-- 出力: `RefractionColor`、`RefractionInfo`、`RefractionValidity`
-- `RefractionInfo` には hit distance、透過率、ヒット有無などを格納する
+- 現行入力は TLAS、GBuffer の world position、`SceneColor`、水面波データ、カメラ位置、view-projection 行列で構成している
+- 現行出力は `RTWaterRefractionColor` 1 枚で、RGB に屈折色、A に理由コードを格納する
+- 将来的には `RefractionInfo` を追加し、hit distance、透過率、ヒット有無などを分離して保持できる構成へ拡張する
 
 ### 4. フレーム実行順を決める
-- GBuffer 構築後、Water forward 描画前に DXR 屈折パスを実行する
-- その後 `Water.PS.hlsl` で RT 出力を参照し、既存反射経路と合成する
+- 現行コードでは DXR 屈折パスの出力を `FrameBlackboard::RTWaterRefractionColor` へ格納し、後段の `Water.PS.hlsl` が参照する
+- その後 `Water.PS.hlsl` で RT 出力を既存の反射・透過経路と合成する
 
 ### 5. デバッグ可視化を追加する
 - hit / miss mask
@@ -203,14 +207,14 @@ Fresnel は本来、反射率と透過率の配分に効く。
 - [x] 斜め視点では反射が優勢になる
 - [x] 深場ほど透過が弱くなる
 - [x] 背景が二重減衰しない
-- [ ] DXR で屈折交差先を取得できる
+- [x] DXR で屈折交差先を取得できる
 - [ ] 将来的な RGB 吸収 / 水中散乱へ接続できる
 
 ## 引き継ぎメモ
 - Step 7 ではこの透過・反射基盤を壊さずに泡を重ねる必要がある
 - Step 8 ではここで整えた吸収と水深差を水中光へ接続する
 - Step 9 では反射経路側を補完して反射品質を高める
-- 実装順としては、まず DXR 屈折の最小経路を通し、その後 hit 後 shading・吸収・デバッグ可視化を拡張する
+- DXR 屈折は最小経路まで接続済みのため、次段では hit 後情報の増量、品質計測、吸収拡張、debug view の定量化を進める
 
 ---
 

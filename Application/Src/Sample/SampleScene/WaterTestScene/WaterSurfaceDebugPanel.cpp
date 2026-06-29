@@ -9,6 +9,7 @@
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
+#include "Graphics/Water/FFTOceanManager.h"
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 
 using namespace CoreEngine;
@@ -72,7 +73,44 @@ void WaterSurfaceDebugPanel::Draw(WaterSurfaceRuntimeController& runtimeControll
 		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(depthDebugViewMode_));
 	}
 
+	DrawFFTOceanDebugSection(runtimeController, engine);
 	DrawCausticsDebugSection(engine);
+}
+
+void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
+	WaterSurfaceRuntimeController& runtimeController,
+	EngineSystem& engine) {
+	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	if (!waterPlane || !ImGui::TreeNode("FFT Ocean デバッグ")) {
+		return;
+	}
+
+	auto* renderDomainContext = engine.GetRenderDomainContext();
+	auto* fftOceanManager = renderDomainContext ? renderDomainContext->GetFFTOceanManager() : nullptr;
+
+	ImGui::Text("描画経路: %s", waterPlane->IsUsingFFTOcean() ? "FFT Ocean" : "Gerstner Wave");
+	ImGui::Text("FFT SRV 接続: %s", waterPlane->HasFFTOceanTextureSRVs() ? "有効" : "無効");
+
+	if (!fftOceanManager) {
+		ImGui::TextDisabled("FFTOceanManager を取得できません。");
+		ImGui::TreePop();
+		return;
+	}
+
+	const FFTOceanManager::Settings& settings = fftOceanManager->GetSettings();
+	ImGui::Text("初期化状態: %s", fftOceanManager->IsInitialized() ? "完了" : "未初期化");
+	ImGui::Text("解像度: %u", settings.resolution);
+	ImGui::Text("パッチ長: %.2f", settings.patchLength);
+	ImGui::Text("振幅スケール: %.3f", settings.amplitudeScale);
+	ImGui::Text("風向: (%.3f, %.3f)", settings.windDirection[0], settings.windDirection[1]);
+	ImGui::Text("風速: %.3f", settings.windSpeed);
+	ImGui::Text("Choppiness: %.3f", settings.choppiness);
+	ImGui::Text("成分数: %u", settings.activeComponentCount);
+	ImGui::Text("重力: %.3f", settings.gravity);
+	ImGui::Separator();
+	ImGui::TextDisabled("注: DXR 屈折データは現在 Gerstner 系 WaterConstants を参照しており、FFT 表示と完全一致しない場合があります。");
+
+	ImGui::TreePop();
 }
 
 void WaterSurfaceDebugPanel::DrawCausticsDebugSection(EngineSystem& engine) {

@@ -32,6 +32,7 @@
 #include "Graphics/Render/Pass/RTShadowPass.h"
 #include "Graphics/Render/Pass/RTWaterCausticsPass.h"
 #include "Graphics/Render/Pass/RTWaterRefractionPass.h"
+#include "Graphics/Render/Pass/FFTOceanPass.h"
 #include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
@@ -207,6 +208,8 @@ namespace CoreEngine
 
     void EngineSystem::ExecuteRenderPipeline(std::function<void()> renderCallback)
     {
+        (void)renderCallback;
+
         if (!renderPipeline_) {
             return;
         }
@@ -243,6 +246,7 @@ namespace CoreEngine
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
         context.rtWaterCausticsManager = renderDomainContext_ ? renderDomainContext_->GetWaterCausticsRayTracingManager() : nullptr;
         context.rtWaterRefractionManager = renderDomainContext_ ? renderDomainContext_->GetWaterRefractionRayTracingManager() : nullptr;
+        context.fftOceanManager = renderDomainContext_ ? renderDomainContext_->GetFFTOceanManager() : nullptr;
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
         context.waterRefractionSurfaceData = sceneManager ? sceneManager->GetWaterRefractionSurfaceData() : nullptr;
@@ -294,15 +298,22 @@ namespace CoreEngine
                     ? static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView)
                     : static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
 
-                const std::function<void()> drawRenderView = renderViewRequest.drawCallback
-                    ? renderViewRequest.drawCallback
-                    : [sceneManager]() {
-                        sceneManager->DrawRenderView();
-                    };
+                const std::function<void()> drawRenderViewWithoutWater = [sceneManager]() {
+                    if (sceneManager) {
+                        sceneManager->DrawRenderViewExcludingWater();
+                    }
+                };
+
+                const std::function<void()> drawWaterSurfaceView = [sceneManager]() {
+                    if (sceneManager) {
+                        sceneManager->DrawRenderViewWaterSurface();
+                    }
+                };
 
                 const RenderViewResult renderViewResult = renderPipeline_->ExecuteRenderView(
                     renderViewContext,
-                    drawRenderView,
+                    drawRenderViewWithoutWater,
+                    drawWaterSurfaceView,
                     renderViewRequest.beforeExecute,
                     renderViewRequest.afterExecute);
 
@@ -317,7 +328,19 @@ namespace CoreEngine
         {
             // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
             EngineProfileScope scope(this, GpuTimestampSlot::GBufferPass, cmdList);
-            renderPipeline_->ExecuteView(context, renderCallback);
+            const std::function<void()> drawGeometryWithoutWater = [sceneManager]() {
+                if (sceneManager) {
+                    sceneManager->DrawExcludingWater();
+                }
+            };
+
+            const std::function<void()> drawWaterSurface = [sceneManager]() {
+                if (sceneManager) {
+                    sceneManager->DrawWaterSurface();
+                }
+            };
+
+            renderPipeline_->ExecuteView(context, drawGeometryWithoutWater, drawWaterSurface);
         }
 
 #ifdef USE_IMGUI
@@ -406,6 +429,9 @@ namespace CoreEngine
 
         auto rtWaterRefractionPass = std::make_unique<RTWaterRefractionPass>();
         renderPipeline_->AddPass(std::move(rtWaterRefractionPass));
+
+        auto fftOceanPass = std::make_unique<FFTOceanPass>();
+        renderPipeline_->AddPass(std::move(fftOceanPass));
 
         auto waterCausticsPass = std::make_unique<WaterCausticsPass>();
         renderPipeline_->AddPass(std::move(waterCausticsPass));

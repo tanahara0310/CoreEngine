@@ -73,6 +73,30 @@ namespace CoreEngine
         }
     }
 
+    void SceneManager::DrawExcludingWater() {
+        if (currentScene_) {
+            currentScene_->DrawExcludingWater();
+        }
+    }
+
+    void SceneManager::DrawWaterSurface() {
+        if (currentScene_) {
+            currentScene_->DrawWaterSurface();
+        }
+    }
+
+    void SceneManager::DrawRenderViewExcludingWater() {
+        if (currentScene_) {
+            currentScene_->DrawRenderViewExcludingWater();
+        }
+    }
+
+    void SceneManager::DrawRenderViewWaterSurface() {
+        if (currentScene_) {
+            currentScene_->DrawRenderViewWaterSurface();
+        }
+    }
+
     void SceneManager::PrepareRender() {
         if (currentScene_) {
             currentScene_->PrepareRender();
