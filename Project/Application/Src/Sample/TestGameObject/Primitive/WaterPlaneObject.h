@@ -6,10 +6,11 @@
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
-#include "WaterConstantBuffer.h"
+#include "WaterConstantBufferSet.h"
+#include "WaterRenderResources.h"
+#include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 
 #include <d3d12.h>
-#include <wrl.h>
 
 namespace CoreEngine {
     struct RenderViewResult;
@@ -55,6 +56,14 @@ public:
     /// @brief UV スクロールと波パラメータ定数バッファを毎フレーム更新する
     /// @param deltaTime 前フレームからの経過時間（秒）
     void UpdateUVScroll(float deltaTime);
+
+    /// @brief UV スクロールのみを更新する
+    /// @param deltaTime 前フレームからの経過時間（秒）
+    void UpdateUVAnimation(float deltaTime);
+
+    /// @brief simulation 層で計算した時間を WaterConstants へ反映する
+    /// @param timeSeconds 現在の simulation 時間
+    void SetSimulationTime(float timeSeconds);
 
     /// @brief 波パラメータを設定する
     /// @param index 波インデックス（0〜15）
@@ -141,7 +150,7 @@ public:
 
     /// @brief FFT Ocean 用 SRV が有効か返す
     bool HasFFTOceanTextureSRVs() const {
-        return fftDisplacementSRV_.ptr != 0 && fftNormalSRV_.ptr != 0;
+        return renderResources_.HasFFTOceanTextureSRVs();
     }
 
     /// @brief Water Reflection の出力を水面描画へ適用する
@@ -174,9 +183,6 @@ protected:
     void OnInitialize() override;
 
 private:
-    /// @brief 定数バッファリソースを作成する（OnInitialize 内から呼ぶ）
-    void CreateWaterConstantBuffer(ID3D12Device* device);
-
     /// @brief 現在の useFFTOcean 状態に合わせてカスタム PSO を再構築する
     void RebuildWaterShaderPipeline();
 
@@ -190,37 +196,14 @@ private:
     CoreEngine::Vector2 scrollSpeed_; ///< UV スクロール速度（U方向, V方向）
     CoreEngine::Vector2 uvTiling_;    ///< UV タイリング回数
     CoreEngine::Vector2 uvOffset_;    ///< 現在の UV オフセット（内部状態）
+    WaterConstantBufferSet constantBuffers_; ///< Water 描画用 GPU 定数バッファ群
 
-    // ---- 波パラメータ定数バッファ（b4 にバインド） ----
-    WaterConstants waterCB_;                                   ///< CPU 側バッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> waterCBResource_;  ///< GPU リソース
-    D3D12_GPU_VIRTUAL_ADDRESS waterCBGpuAddress_ = 0;         ///< GPU 仮想アドレス
-    uint8_t* waterCBMapped_ = nullptr;                        ///< マップ済みポインタ
-    float elapsedTime_ = 0.0f;                                ///< 経過時間（波位相用）
+    // ---- CPU 側の Water パラメータ保持 ----
+    WaterConstants waterCB_{};         ///< 波パラメータと時間の CPU 側コピー
+    float elapsedTime_ = 0.0f;         ///< 経過時間（波位相用）
 
-    // ---- フレーム定数バッファ（b5 にバインド）: クリップ平面 ----
-    WaterFrameConstants frameCB_;                                    ///< CPU 側バッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> frameCBResource_;         ///< 通常描画用 GPU リソース
-    D3D12_GPU_VIRTUAL_ADDRESS frameCBGpuAddress_ = 0;                ///< 通常描画用 GPU 仮想アドレス
-    uint8_t* frameCBMapped_ = nullptr;                               ///< 通常描画用マップ済みポインタ
-    Microsoft::WRL::ComPtr<ID3D12Resource> reflectionFrameCBResource_; ///< 反射パス用 GPU リソース
-    D3D12_GPU_VIRTUAL_ADDRESS reflectionFrameCBGpuAddress_ = 0;        ///< 反射パス用 GPU 仮想アドレス
-    uint8_t* reflectionFrameCBMapped_ = nullptr;                       ///< 反射パス用マップ済みポインタ
+    // ---- CPU 側のフレーム定数保持 ----
+    WaterFrameConstants frameCB_{}; ///< クリップ平面や反射有効状態の CPU 側コピー
 
-    // ---- 反射テクスチャ SRV（t14 にバインド） ----
-    D3D12_GPU_DESCRIPTOR_HANDLE reflectionSRV_ = { 0 };              ///< 反射 RTT の SRV
-
-    // ---- シーン深度テクスチャ SRV（t15 にバインド）: Depth Fade 用 ----
-    D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV_ = { 0 };              ///< 深度 SRV
-
-    // ---- シーンカラー SRV（t16 にバインド）: 水越しの背景色用 ----
-    D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV_ = { 0 };              ///< シーンカラー SRV
-
-    // ---- DXR 屈折カラー SRV（t17 にバインド） ----
-    D3D12_GPU_DESCRIPTOR_HANDLE refractionColorSRV_ = { 0 };         ///< DXR 屈折カラー SRV
-
-    // ---- FFT Ocean の変位/法線/Jacobian SRV（t18/t19/t20 にバインド） ----
-    D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV_ = { 0 };
-    D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV_ = { 0 };
-    D3D12_GPU_DESCRIPTOR_HANDLE fftJacobianSRV_ = { 0 };
+    WaterRenderResources renderResources_{};
 };

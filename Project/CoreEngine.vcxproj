@@ -183,7 +183,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterEditorFacade.cpp" />
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSceneController.cpp" />
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSceneSetup.cpp" />
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceDebugPanel.cpp" />
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceRuntimeController.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBufferSet.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterRenderResources.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterShaderResourceBinder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
@@ -201,6 +210,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\RenderGraph.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -443,8 +454,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Sample\SampleScene\HomeworkScene\HomeworkScene.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\PrimitiveTestScene\PrimitiveTestScene.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h" />
-    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterEditorFacade.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSceneController.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSceneSetup.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceDebugPanel.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceParameterPanel.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceRuntimeController.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Effect\HitEffect.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\ModelObject.h" />
@@ -455,7 +471,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PrimitiveSphereObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBufferSet.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterPlaneObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterRenderResources.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterShaderResourceBinder.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBox\SkyBoxObject.h" />
     <ClInclude Include="Engine\Src\Camera\Camera2D.h" />
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
@@ -645,6 +664,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceSimulator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterDebugViewMode.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceTypes.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterSurfaceData.h" />
     <ClInclude Include="Engine\Src\Input\IDirectInputDevice.h" />
     <ClInclude Include="Engine\Src\Input\InputAction.h" />
@@ -814,6 +838,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\Refactoring\Step06_MultiViewIntegration.md" />
     <None Include="Docs\Refactoring\Step07_LegacyPipelineRemoval.md" />
     <None Include="Docs\Refactoring\Step08_FullPassGraphMigration.md" />
+    <None Include="Docs\Refactoring\WaterRefactoringPlan.md" />
     <None Include="Engine\Src\ObjectCommon\README.md" />
     <ClInclude Include="Engine\Src\pch.h" />
     <None Include="Build\Scripts\SyncFilters.ps1" />

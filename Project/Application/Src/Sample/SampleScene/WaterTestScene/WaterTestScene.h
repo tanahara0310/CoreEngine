@@ -7,7 +7,7 @@
 #include "EngineSystem/EngineSystem.h"
 
 #include "WaterReflectionPass.h"
-#include "../../../../../../Application/Src/Sample/SampleScene/WaterTestScene/WaterSceneController.h"
+#include "WaterSceneController.h"
 
 #include <utility>
 

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <cstdint>
+#include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 
 namespace CoreEngine
 {
-    static constexpr uint32_t kMaxWaterSurfaceWaveCount = 16;
+    static constexpr uint32_t kMaxWaterSurfaceWaveCount = kMaxWaterWaveCount;
 
     struct WaterWaveParam {
         float direction[2] = { 1.0f, 0.0f };
@@ -14,6 +14,14 @@ namespace CoreEngine
         float steepness = 0.0f;
         float phaseOffset = 0.0f;
         float padding = 0.0f;
+    };
+
+    struct WaterSurfaceSnapshot {
+        float waterHeight = 0.0f;
+        uint32_t activeWaveCount = 0;
+        float time = 0.0f;
+        float padding = 0.0f;
+        WaveParams waves[kMaxWaterSurfaceWaveCount]{};
     };
 
     struct WaterSurfaceData {

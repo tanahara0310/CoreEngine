@@ -4,11 +4,6 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Utility/FrameRate/FrameRateController.h"
 
-#include "../../../../../../Application/Src/Sample/SampleScene/WaterTestScene/WaterSurfaceRuntimeController.cpp"
-#include "../../../../../../Application/Src/Sample/SampleScene/WaterTestScene/WaterSurfaceParameterPanel.cpp"
-#include "../../../../../../Application/Src/Sample/SampleScene/WaterTestScene/WaterSurfaceDebugPanel.cpp"
-#include "../../../../../../Application/Src/Sample/SampleScene/WaterTestScene/WaterSceneController.cpp"
-
 using namespace CoreEngine;
 
 void WaterTestScene::OnInitialize() {

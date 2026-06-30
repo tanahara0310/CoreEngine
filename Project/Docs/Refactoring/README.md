@@ -23,9 +23,13 @@
 - [Step07_LegacyPipelineRemoval.md](./Step07_LegacyPipelineRemoval.md) - 旧実行経路削除と RenderGraph 完全移行
 - [Step08_FullPassGraphMigration.md](./Step08_FullPassGraphMigration.md) - Graph 外 GPU 経路整理と全パス RenderGraph 化方針
 
-### 0-3. 読み方
+### 0-3. 個別機能の独立計画書
+- [WaterRefactoringPlan.md](./WaterRefactoringPlan.md) - Water 関連機能の責務分離、配置整理、段階的移行方針
+
+### 0-4. 読み方
 - 最初にこの `README.md` で全体像を確認する
 - 実装時は対象ステップの詳細ファイルを主に参照する
+- Water のように個別ドメインで独立性が高いものは、専用計画書もあわせて参照する
 - 進捗更新は、まずステップ別詳細の状態を更新し、その後この README のサマリーに反映する
 
 ---

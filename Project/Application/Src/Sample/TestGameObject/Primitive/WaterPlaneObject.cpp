@@ -6,21 +6,13 @@
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "WaterShaderResourceBinder.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 #include <cmath>
-#include <cstring>
-#include <cassert>
 #include <filesystem>
-
-// ---- 定数バッファのサイズは 256 バイトアライメント ----
-static constexpr UINT kWaterCBSize =
-(sizeof(WaterConstants) + 255) & ~255u;
-
-static constexpr UINT kFrameCBSize =
-(sizeof(WaterFrameConstants) + 255) & ~255u;
 
 WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution, bool useFFTOcean)
     : size_(size)
@@ -82,7 +74,10 @@ void WaterPlaneObject::OnInitialize() {
     auto* engine = GetEngineSystem();
     auto* dxCommon = engine ? engine->GetComponent<CoreEngine::DirectXCommon>() : nullptr;
     if (dxCommon) {
-        CreateWaterConstantBuffer(dxCommon->GetDevice());
+        constantBuffers_.Initialize(dxCommon->GetDevice());
+        constantBuffers_.UpdateWaterConstants(waterCB_);
+        constantBuffers_.UpdateFrameConstants(frameCB_, false);
+        constantBuffers_.UpdateFrameConstants(frameCB_, true);
     }
 }
 
@@ -98,178 +93,56 @@ void WaterPlaneObject::RebuildWaterShaderPipeline() {
     BuildCustomShaderPipelineIfNeeded(dxCommon->GetDevice(), modelManager);
 }
 
-void WaterPlaneObject::CreateWaterConstantBuffer(ID3D12Device* device) {
-    assert(device);
-
-    D3D12_HEAP_PROPERTIES heapProps = {};
-    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-    D3D12_RESOURCE_DESC desc = {};
-    desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    desc.Width = kWaterCBSize;
-    desc.Height = 1;
-    desc.DepthOrArraySize = 1;
-    desc.MipLevels = 1;
-    desc.SampleDesc.Count = 1;
-    desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-    HRESULT hr = device->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &desc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&waterCBResource_));
-
-    assert(SUCCEEDED(hr));
-
-    waterCBGpuAddress_ = waterCBResource_->GetGPUVirtualAddress();
-
-    // UPLOAD ヒープなのでアプリ終了まで Unmap しない
-    D3D12_RANGE readRange = { 0, 0 };
-    waterCBResource_->Map(0, &readRange, reinterpret_cast<void**>(&waterCBMapped_));
-
-    // ---- フレーム定数バッファ（通常描画用 / 反射パス用） ----
-    desc.Width = kFrameCBSize;
-    hr = device->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &desc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&frameCBResource_));
-    assert(SUCCEEDED(hr));
-    frameCBGpuAddress_ = frameCBResource_->GetGPUVirtualAddress();
-    frameCBResource_->Map(0, &readRange, reinterpret_cast<void**>(&frameCBMapped_));
-    std::memcpy(frameCBMapped_, &frameCB_, sizeof(WaterFrameConstants));
-
-    hr = device->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &desc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&reflectionFrameCBResource_));
-    assert(SUCCEEDED(hr));
-    reflectionFrameCBGpuAddress_ = reflectionFrameCBResource_->GetGPUVirtualAddress();
-    reflectionFrameCBResource_->Map(0, &readRange, reinterpret_cast<void**>(&reflectionFrameCBMapped_));
-    std::memcpy(reflectionFrameCBMapped_, &frameCB_, sizeof(WaterFrameConstants));
-}
-
 void WaterPlaneObject::BindCustomResources(
     ID3D12GraphicsCommandList* cmdList,
     const CoreEngine::CustomShaderPipeline* pipeline) const {
 
-    if (!cmdList || !pipeline || waterCBGpuAddress_ == 0) {
+    const D3D12_GPU_VIRTUAL_ADDRESS waterCBGpuAddress = constantBuffers_.GetWaterCBGpuAddress();
+    if (!cmdList || !pipeline || waterCBGpuAddress == 0) {
         return;
     }
 
     if (frameCB_.depthFadeDebugEnabled != 0) {
-        const D3D12_GPU_VIRTUAL_ADDRESS selectedFrameCBGpuAddress = frameCB_.clipEnabled
-            ? reflectionFrameCBGpuAddress_
-            : frameCBGpuAddress_;
+        const D3D12_GPU_VIRTUAL_ADDRESS selectedFrameCBGpuAddress =
+            constantBuffers_.GetFrameCBGpuAddress(frameCB_.clipEnabled != 0);
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::Pipeline,
             "WaterPlane BindCustomResources: b4={} b5={} reflSRV=0x{:X} depthSRV=0x{:X} sceneColorSRV=0x{:X} refractionColorSRV=0x{:X} clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={}",
-            waterCBGpuAddress_,
+            waterCBGpuAddress,
             selectedFrameCBGpuAddress,
-            reflectionSRV_.ptr,
-            sceneDepthSRV_.ptr,
-            sceneColorSRV_.ptr,
-            refractionColorSRV_.ptr,
+            renderResources_.reflectionSRV.ptr,
+            renderResources_.sceneDepthSRV.ptr,
+            renderResources_.sceneColorSRV.ptr,
+            renderResources_.refractionColorSRV.ptr,
             frameCB_.clipEnabled,
             frameCB_.reflectionEnabled,
             frameCB_.depthFadeEnabled,
             frameCB_.depthDebugViewMode);
     }
 
-    // WaterConstants を b4 にバインドする
-    int slot = pipeline->GetRootParamIndex("WaterConstants");
-    if (slot >= 0) {
-        cmdList->SetGraphicsRootConstantBufferView(
-            static_cast<UINT>(slot), waterCBGpuAddress_);
-    }
+    const D3D12_GPU_VIRTUAL_ADDRESS selectedFrameCBGpuAddress =
+        constantBuffers_.GetFrameCBGpuAddress(frameCB_.clipEnabled != 0);
+    // Water 専用のバインダへ委譲して CBV / SRV の接続を行う
+    WaterShaderResourceBinder::Bind(
+        cmdList,
+        pipeline,
+        waterCBGpuAddress,
+        selectedFrameCBGpuAddress,
+        renderResources_);
 
-    // WaterFrameConstants を b5 にバインドする（クリップ平面）
-    int frameSlot = pipeline->GetRootParamIndex("WaterFrameConstants");
-    const D3D12_GPU_VIRTUAL_ADDRESS selectedFrameCBGpuAddress = frameCB_.clipEnabled
-        ? reflectionFrameCBGpuAddress_
-        : frameCBGpuAddress_;
-    if (frameSlot >= 0 && selectedFrameCBGpuAddress != 0) {
-        cmdList->SetGraphicsRootConstantBufferView(
-            static_cast<UINT>(frameSlot), selectedFrameCBGpuAddress);
-    }
-
-    // 反射テクスチャ SRV をバインドする（ハンドルが有効なときのみ）
-    if (reflectionSRV_.ptr != 0) {
-        int reflSlot = pipeline->GetRootParamIndex("gReflectionTexture");
-        if (reflSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(reflSlot), reflectionSRV_);
-        }
-    }
-
-    // シーン深度 SRV をバインドする（Depth Fade 用）
-    if (sceneDepthSRV_.ptr != 0) {
-        int depthSlot = pipeline->GetRootParamIndex("gSceneDepth");
-        if (depthSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(depthSlot), sceneDepthSRV_);
-        }
-    }
-
-    // シーンカラー SRV をバインドする（水越しの背景色用）
-    if (sceneColorSRV_.ptr != 0) {
-        int sceneColorSlot = pipeline->GetRootParamIndex("gSceneColor");
-        if (sceneColorSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(sceneColorSlot), sceneColorSRV_);
-        }
-    }
-
-    // DXR 屈折カラー SRV をバインドする
-    if (refractionColorSRV_.ptr != 0) {
-        int refractionColorSlot = pipeline->GetRootParamIndex("gRTWaterRefractionColor");
-        if (refractionColorSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(refractionColorSlot), refractionColorSRV_);
-        }
-    }
-
-    if (fftDisplacementSRV_.ptr != 0) {
-        int fftDisplacementSlot = pipeline->GetRootParamIndex("gFFTOceanDisplacement");
-        if (fftDisplacementSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(fftDisplacementSlot), fftDisplacementSRV_);
-        }
-
+    if (renderResources_.fftDisplacementSRV.ptr != 0) {
         static uint32_t sFftBindLogCounter = 0u;
         if ((sFftBindLogCounter++ % 240u) == 0u) {
+            const int fftDisplacementSlot = pipeline->GetRootParamIndex("gFFTOceanDisplacement");
             CoreEngine::Logger::GetInstance().Infof(
                 CoreEngine::LogCategory::Graphics,
                 CoreEngine::LogSubCategory::Pipeline,
                 "WaterPlane: FFT displacement bound. slot={} srv=0x{:X} useFFTOcean={} hasFFTSRVs={}",
                 fftDisplacementSlot,
-                fftDisplacementSRV_.ptr,
+                renderResources_.fftDisplacementSRV.ptr,
                 useFFTOcean_,
                 HasFFTOceanTextureSRVs());
-        }
-    }
-
-    if (fftNormalSRV_.ptr != 0) {
-        int fftNormalSlot = pipeline->GetRootParamIndex("gFFTOceanNormal");
-        if (fftNormalSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(fftNormalSlot), fftNormalSRV_);
-        }
-    }
-
-    if (fftJacobianSRV_.ptr != 0) {
-        int fftJacobianSlot = pipeline->GetRootParamIndex("gFFTOceanJacobian");
-        if (fftJacobianSlot >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(fftJacobianSlot), fftJacobianSRV_);
         }
     }
 }
@@ -310,31 +183,32 @@ void WaterPlaneObject::SetFFTOceanTextureSRVs(
     D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle,
     D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle,
     D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle) {
-    fftDisplacementSRV_ = displacementSrvHandle;
-    fftNormalSRV_ = normalSrvHandle;
-    fftJacobianSRV_ = jacobianSrvHandle;
+    renderResources_.SetFFTOceanTextureSRVs(
+        displacementSrvHandle,
+        normalSrvHandle,
+        jacobianSrvHandle);
 
     if (frameCB_.depthFadeDebugEnabled != 0) {
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::RenderTarget,
             "WaterPlane SetFFTOceanTextureSRVs: displacementSRV=0x{:X} normalSRV=0x{:X} jacobianSRV=0x{:X} useFFTOcean={}",
-            fftDisplacementSRV_.ptr,
-            fftNormalSRV_.ptr,
-            fftJacobianSRV_.ptr,
+            renderResources_.fftDisplacementSRV.ptr,
+            renderResources_.fftNormalSRV.ptr,
+            renderResources_.fftJacobianSRV.ptr,
             useFFTOcean_);
     }
 }
 
 void WaterPlaneObject::SetRefractionColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
-    refractionColorSRV_ = srvHandle;
+    renderResources_.refractionColorSRV = srvHandle;
 
     if (frameCB_.depthFadeDebugEnabled != 0) {
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::RenderTarget,
             "WaterPlane SetRefractionColorSRV: srv=0x{:X}",
-            refractionColorSRV_.ptr);
+            renderResources_.refractionColorSRV.ptr);
     }
 }
 
@@ -343,7 +217,7 @@ void WaterPlaneObject::SetActiveWaveCount(uint32_t count) {
 }
 
 void WaterPlaneObject::SetReflectionTexture(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
-    reflectionSRV_ = srvHandle;
+    renderResources_.reflectionSRV = srvHandle;
     // ハンドルが有効なときだけ反射テクスチャを有効にする
     frameCB_.reflectionEnabled = (srvHandle.ptr != 0) ? 1 : 0;
 
@@ -352,7 +226,7 @@ void WaterPlaneObject::SetReflectionTexture(D3D12_GPU_DESCRIPTOR_HANDLE srvHandl
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::RenderTarget,
             "WaterPlane SetReflectionTexture: srv=0x{:X} reflectionEnabled={}",
-            reflectionSRV_.ptr,
+            renderResources_.reflectionSRV.ptr,
             frameCB_.reflectionEnabled);
     }
 }
@@ -366,29 +240,26 @@ void WaterPlaneObject::SetClipPlane(const CoreEngine::Vector4& clipPlane, bool e
 }
 
 void WaterPlaneObject::UpdateFrameConstants() {
-    uint8_t* targetMapped = frameCB_.clipEnabled ? reflectionFrameCBMapped_ : frameCBMapped_;
-    if (targetMapped) {
-        std::memcpy(targetMapped, &frameCB_, sizeof(WaterFrameConstants));
+    constantBuffers_.UpdateFrameConstants(frameCB_, frameCB_.clipEnabled != 0);
 
-        if (frameCB_.depthFadeDebugEnabled != 0) {
-            CoreEngine::Logger::GetInstance().Infof(
-                CoreEngine::LogCategory::Graphics,
-                CoreEngine::LogSubCategory::Pipeline,
-                "WaterPlane UpdateFrameConstants: clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={} absorptionCoeff={:.3f} fresnelScale={:.3f} fresnelF0={:.4f} shallow=({:.3f}, {:.3f}, {:.3f}) deep=({:.3f}, {:.3f}, {:.3f})",
-                frameCB_.clipEnabled,
-                frameCB_.reflectionEnabled,
-                frameCB_.depthFadeEnabled,
-                frameCB_.depthDebugViewMode,
-                frameCB_.absorptionCoeff,
-                frameCB_.fresnelReflectanceScale,
-                frameCB_.fresnelBaseReflectance,
-                frameCB_.shallowColor[0],
-                frameCB_.shallowColor[1],
-                frameCB_.shallowColor[2],
-                frameCB_.deepColor[0],
-                frameCB_.deepColor[1],
-                frameCB_.deepColor[2]);
-        }
+    if (frameCB_.depthFadeDebugEnabled != 0) {
+        CoreEngine::Logger::GetInstance().Infof(
+            CoreEngine::LogCategory::Graphics,
+            CoreEngine::LogSubCategory::Pipeline,
+            "WaterPlane UpdateFrameConstants: clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={} absorptionCoeff={:.3f} fresnelScale={:.3f} fresnelF0={:.4f} shallow=({:.3f}, {:.3f}, {:.3f}) deep=({:.3f}, {:.3f}, {:.3f})",
+            frameCB_.clipEnabled,
+            frameCB_.reflectionEnabled,
+            frameCB_.depthFadeEnabled,
+            frameCB_.depthDebugViewMode,
+            frameCB_.absorptionCoeff,
+            frameCB_.fresnelReflectanceScale,
+            frameCB_.fresnelBaseReflectance,
+            frameCB_.shallowColor[0],
+            frameCB_.shallowColor[1],
+            frameCB_.shallowColor[2],
+            frameCB_.deepColor[0],
+            frameCB_.deepColor[1],
+            frameCB_.deepColor[2]);
     }
 }
 
@@ -398,26 +269,26 @@ void WaterPlaneObject::SetFresnelParameters(float reflectanceScale, float baseRe
 }
 
 void WaterPlaneObject::SetSceneDepthSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
-    sceneDepthSRV_ = srvHandle;
+    renderResources_.sceneDepthSRV = srvHandle;
 
     if (frameCB_.depthFadeDebugEnabled != 0) {
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::RenderTarget,
             "WaterPlane SetSceneDepthSRV: srv=0x{:X}",
-            sceneDepthSRV_.ptr);
+            renderResources_.sceneDepthSRV.ptr);
     }
 }
 
 void WaterPlaneObject::SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
-    sceneColorSRV_ = srvHandle;
+    renderResources_.sceneColorSRV = srvHandle;
 
     if (frameCB_.depthFadeDebugEnabled != 0) {
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::RenderTarget,
             "WaterPlane SetSceneColorSRV: srv=0x{:X}",
-            sceneColorSRV_.ptr);
+            renderResources_.sceneColorSRV.ptr);
     }
 }
 
@@ -495,9 +366,16 @@ void WaterPlaneObject::SetIBLEnabled(bool enable) {
 }
 
 void WaterPlaneObject::UpdateUVScroll(float deltaTime) {
+    // 旧呼び出し経路との互換のため、UV 更新と simulation 時間更新をまとめて行う
+    UpdateUVAnimation(deltaTime);
+
     // 経過時間を加算（波の位相計算に使用）
     elapsedTime_ += deltaTime;
+    SetSimulationTime(elapsedTime_);
+}
 
+void WaterPlaneObject::UpdateUVAnimation(float deltaTime) {
+    // 経過時間を加算（波の位相計算に使用）
     // UV オフセットを速度 × 時間で加算
     uvOffset_.x += scrollSpeed_.x * deltaTime;
     uvOffset_.y += scrollSpeed_.y * deltaTime;
@@ -507,12 +385,13 @@ void WaterPlaneObject::UpdateUVScroll(float deltaTime) {
     uvOffset_.y = std::fmod(uvOffset_.y, 1.0f);
 
     ApplyUVTransform();
+}
 
-    // 定数バッファに時間と波パラメータを書き込む
-    if (waterCBMapped_) {
-        waterCB_.time = elapsedTime_;
-        std::memcpy(waterCBMapped_, &waterCB_, sizeof(WaterConstants));
-    }
+void WaterPlaneObject::SetSimulationTime(float timeSeconds) {
+    // simulation 層が決定した時間を CPU / GPU の WaterConstants へ反映する
+    elapsedTime_ = timeSeconds;
+    waterCB_.time = timeSeconds;
+    constantBuffers_.UpdateWaterConstants(waterCB_);
 }
 
 std::unique_ptr<CoreEngine::IPrimitiveMeshGenerator> WaterPlaneObject::CreateMeshGenerator() const {
