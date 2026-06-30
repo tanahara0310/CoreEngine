@@ -324,6 +324,7 @@ namespace CoreEngine
 
         ResourceBarrierHelper::Transition(cmdList, displacementTexture_.Get(), displacementState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         ResourceBarrierHelper::Transition(cmdList, normalTexture_.Get(), normalState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(cmdList, jacobianTexture_.Get(), jacobianState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         ID3D12DescriptorHeap* descriptorHeaps[] = { descriptorManager_->GetSRVHeap() };
         cmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
@@ -381,8 +382,10 @@ namespace CoreEngine
 
         ResourceBarrierHelper::UAV(cmdList, displacementTexture_.Get());
         ResourceBarrierHelper::UAV(cmdList, normalTexture_.Get());
+        ResourceBarrierHelper::UAV(cmdList, jacobianTexture_.Get());
         ResourceBarrierHelper::Transition(cmdList, displacementTexture_.Get(), displacementState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         ResourceBarrierHelper::Transition(cmdList, normalTexture_.Get(), normalState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, jacobianTexture_.Get(), jacobianState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         static uint32_t sDebugReadbackCounter = 0u;
         if ((sDebugReadbackCounter++ % 120u) == 0u) {
@@ -462,6 +465,20 @@ namespace CoreEngine
             &textureDesc,
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
             nullptr,
+            IID_PPV_ARGS(&jacobianTexture_));
+        if (FAILED(hr)) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::RenderTarget,
+                "FFTOceanManager: jacobian texture creation failed. hr={:#x}",
+                static_cast<uint32_t>(hr));
+            return false;
+        }
+
+        hr = dxCommon_->GetDevice()->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &textureDesc,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            nullptr,
             IID_PPV_ARGS(&normalTexture_));
         if (FAILED(hr)) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::RenderTarget,
@@ -488,6 +505,12 @@ namespace CoreEngine
             normalSrvCpuHandle_,
             normalSrvHandle_,
             "FFTOceanNormalSRV");
+        descriptorManager_->CreateSRV(
+            jacobianTexture_.Get(),
+            srvDesc,
+            jacobianSrvCpuHandle_,
+            jacobianSrvHandle_,
+            "FFTOceanJacobianSRV");
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
         uavDesc.Format = textureDesc.Format;
@@ -505,9 +528,16 @@ namespace CoreEngine
             normalUavCpuHandle_,
             normalUavHandle_,
             "FFTOceanNormalUAV");
+        descriptorManager_->CreateUAV(
+            jacobianTexture_.Get(),
+            uavDesc,
+            jacobianUavCpuHandle_,
+            jacobianUavHandle_,
+            "FFTOceanJacobianUAV");
 
         displacementState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         normalState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        jacobianState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         return true;
     }
 
@@ -1224,6 +1254,11 @@ namespace CoreEngine
         const int normalOutputSlot = finalizePipeline_.GetComputeRootParamIndex("gNormalOutput");
         if (normalOutputSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(normalOutputSlot), normalUavHandle_);
+        }
+
+        const int jacobianOutputSlot = finalizePipeline_.GetComputeRootParamIndex("gJacobianOutput");
+        if (jacobianOutputSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(jacobianOutputSlot), jacobianUavHandle_);
         }
 
         const int constantsSlot = finalizePipeline_.GetComputeRootParamIndex("FFTOceanSimulationConstants");

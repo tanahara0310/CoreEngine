@@ -32,6 +32,7 @@ enum class WaterDebugViewMode : uint32_t {
     Reflectance = 13,
     WaterComposite = 14,
     RTRefractionSuccessMask = 15,
+    FFTOceanJacobian = 16,
 };
 
 struct WaterWaveLayerConfig {

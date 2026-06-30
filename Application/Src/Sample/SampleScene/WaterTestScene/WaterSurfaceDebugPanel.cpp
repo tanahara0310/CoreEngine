@@ -33,6 +33,7 @@ const char* const kWaterDebugViewNames[] = {
 	"反射率",
 	"最終合成",
 	"RT屈折成功マスク",
+	"FFT Jacobian",
 };
 }
 

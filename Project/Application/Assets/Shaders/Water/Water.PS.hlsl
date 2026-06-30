@@ -22,6 +22,7 @@ struct WaterPSInput
 {
     float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD0;
+    float4 jacobianData : TEXCOORD1;
     float3 normal : NORMAL0;
     float3 worldPosition : POSITION0;
     float4 lightSpacePos : POSITION1;
@@ -91,6 +92,17 @@ float FresnelSchlick(float cosTheta, float f0)
 float3 VisualizeDepthValue(float value)
 {
     return float3(value, value, value);
+}
+
+float3 VisualizeJacobian(float4 jacobianData)
+{
+    const float detJ = jacobianData.x;
+    const float breakingCandidate = saturate(jacobianData.y);
+    const float compression = saturate(jacobianData.z);
+    const float foldover = saturate(jacobianData.w);
+
+    const float detVisualization = saturate((1.0f - detJ) * 0.5f + 0.5f);
+    return saturate(float3(detVisualization, breakingCandidate, max(compression, foldover)));
 }
 
 float3 ApplyWaterTransmissionFilter(float3 refractionColor, float3 waterTint, float absorption)
@@ -396,6 +408,12 @@ PixelShaderOutput main(WaterPSInput input)
         {
             float rtSuccess = IsRTRefractionSuccess(SampleRTWaterRefraction(pixelCoord).a);
             output.color.rgb = lerp(float3(1.0f, 0.0f, 0.0f), float3(0.0f, 1.0f, 0.0f), rtSuccess);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 16)
+        {
+            output.color.rgb = VisualizeJacobian(input.jacobianData);
             return output;
         }
 

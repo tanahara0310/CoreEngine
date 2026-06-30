@@ -2,6 +2,7 @@
 
 Texture2D<float4> gFFTOceanDisplacement : register(t18);
 Texture2D<float4> gFFTOceanNormal : register(t19);
+Texture2D<float4> gFFTOceanJacobian : register(t20);
 SamplerState gLinearClamp : register(s2);
 
 cbuffer WaterFrameConstants : register(b5)
@@ -27,6 +28,7 @@ struct FFTWaterVSOutput
 {
     float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD0;
+    float4 jacobianData : TEXCOORD1;
     float3 normal : NORMAL0;
     float3 worldPosition : POSITION0;
     float4 lightSpacePos : POSITION1;
@@ -46,11 +48,6 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     float2 sampleUV = input.texcoord;
 
     float3 displacement = gFFTOceanDisplacement.SampleLevel(gLinearClamp, sampleUV, 0.0f).xyz;
-    const float maxVerticalDisplacement = 0.5f;
-    const float maxHorizontalDisplacement = 0.25f;
-    displacement.x = clamp(displacement.x, -maxHorizontalDisplacement, maxHorizontalDisplacement);
-    displacement.y = clamp(displacement.y, -maxVerticalDisplacement, maxVerticalDisplacement);
-    displacement.z = clamp(displacement.z, -maxHorizontalDisplacement, maxHorizontalDisplacement);
 
     float3 encodedNormal = gFFTOceanNormal.SampleLevel(gLinearClamp, sampleUV, 0.0f).xyz;
     float3 fftNormal = normalize(encodedNormal * 2.0f - 1.0f);
@@ -63,6 +60,7 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
 
     FFTWaterVSOutput output;
     output.texcoord = input.texcoord;
+    output.jacobianData = gFFTOceanJacobian.SampleLevel(gLinearClamp, sampleUV, 0.0f);
 
     float4 baseClip = mul(input.position, mtx.WVP);
     float3x3 invWorld3 = transpose((float3x3)mtx.WorldInversTranspose);

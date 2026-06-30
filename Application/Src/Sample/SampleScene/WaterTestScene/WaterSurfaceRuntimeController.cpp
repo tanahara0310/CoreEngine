@@ -91,7 +91,8 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 		if (auto* fftOceanManager = renderDomainContext->GetFFTOceanManager()) {
 			waterPlane_->SetFFTOceanTextureSRVs(
 				fftOceanManager->GetDisplacementSRVHandle(),
-				fftOceanManager->GetNormalSRVHandle());
+				fftOceanManager->GetNormalSRVHandle(),
+				fftOceanManager->GetJacobianSRVHandle());
 		}
 	}
 }

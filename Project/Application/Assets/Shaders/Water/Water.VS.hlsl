@@ -60,6 +60,7 @@ struct WaterVSOutput
 {
     float4 position         : SV_POSITION;
     float2 texcoord         : TEXCOORD0;
+    float4 jacobianData     : TEXCOORD1;
     float3 normal           : NORMAL0;
     float3 worldPosition    : POSITION0;
     float4 lightSpacePos    : POSITION1;
@@ -157,6 +158,7 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // ---- 4. 出力組み立て ----
     WaterVSOutput output;
     output.texcoord = input.texcoord;
+    output.jacobianData = float4(1.0f, 0.0f, 0.0f, 0.0f);
 
     float4 baseClip = mul(input.position, mtx.WVP);
     // WorldInversTranspose = (World^-1)^T なので transpose すると World^-1 になる

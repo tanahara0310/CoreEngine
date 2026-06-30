@@ -127,10 +127,11 @@ public:
     /// @param srvHandle DXR 屈折結果テクスチャの GPU ハンドル
     void SetRefractionColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
 
-    /// @brief FFT Ocean の変位/法線テクスチャ SRV を設定する
+    /// @brief FFT Ocean の変位/法線/Jacobian テクスチャ SRV を設定する
     void SetFFTOceanTextureSRVs(
         D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle);
+        D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle);
 
     /// @brief FFT Ocean 描画経路を切り替える
     void SetUseFFTOcean(bool useFFTOcean);
@@ -218,7 +219,8 @@ private:
     // ---- DXR 屈折カラー SRV（t17 にバインド） ----
     D3D12_GPU_DESCRIPTOR_HANDLE refractionColorSRV_ = { 0 };         ///< DXR 屈折カラー SRV
 
-    // ---- FFT Ocean の変位/法線 SRV（t18/t19 にバインド） ----
+    // ---- FFT Ocean の変位/法線/Jacobian SRV（t18/t19/t20 にバインド） ----
     D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV_ = { 0 };
     D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV_ = { 0 };
+    D3D12_GPU_DESCRIPTOR_HANDLE fftJacobianSRV_ = { 0 };
 };

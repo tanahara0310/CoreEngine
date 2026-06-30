@@ -264,6 +264,14 @@ void WaterPlaneObject::BindCustomResources(
                 static_cast<UINT>(fftNormalSlot), fftNormalSRV_);
         }
     }
+
+    if (fftJacobianSRV_.ptr != 0) {
+        int fftJacobianSlot = pipeline->GetRootParamIndex("gFFTOceanJacobian");
+        if (fftJacobianSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(fftJacobianSlot), fftJacobianSRV_);
+        }
+    }
 }
 
 void WaterPlaneObject::SetUseFFTOcean(bool useFFTOcean) {
@@ -300,17 +308,20 @@ void WaterPlaneObject::SetWave(uint32_t index, const WaveParams& wave) {
 
 void WaterPlaneObject::SetFFTOceanTextureSRVs(
     D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle,
-    D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle) {
+    D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle,
+    D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle) {
     fftDisplacementSRV_ = displacementSrvHandle;
     fftNormalSRV_ = normalSrvHandle;
+    fftJacobianSRV_ = jacobianSrvHandle;
 
     if (frameCB_.depthFadeDebugEnabled != 0) {
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::RenderTarget,
-            "WaterPlane SetFFTOceanTextureSRVs: displacementSRV=0x{:X} normalSRV=0x{:X} useFFTOcean={}",
+            "WaterPlane SetFFTOceanTextureSRVs: displacementSRV=0x{:X} normalSRV=0x{:X} jacobianSRV=0x{:X} useFFTOcean={}",
             fftDisplacementSRV_.ptr,
             fftNormalSRV_.ptr,
+            fftJacobianSRV_.ptr,
             useFFTOcean_);
     }
 }

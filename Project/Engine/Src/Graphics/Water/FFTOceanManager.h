@@ -34,6 +34,7 @@ namespace CoreEngine
         bool IsInitialized() const { return isInitialized_; }
         D3D12_GPU_DESCRIPTOR_HANDLE GetDisplacementSRVHandle() const { return displacementSrvHandle_; }
         D3D12_GPU_DESCRIPTOR_HANDLE GetNormalSRVHandle() const { return normalSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetJacobianSRVHandle() const { return jacobianSrvHandle_; }
         const Settings& GetSettings() const { return settings_; }
 
     private:
@@ -146,6 +147,7 @@ namespace CoreEngine
 
         Microsoft::WRL::ComPtr<ID3D12Resource> displacementTexture_;
         Microsoft::WRL::ComPtr<ID3D12Resource> normalTexture_;
+        Microsoft::WRL::ComPtr<ID3D12Resource> jacobianTexture_;
         Microsoft::WRL::ComPtr<ID3D12Resource> displacementReadbackBuffer_;
         Microsoft::WRL::ComPtr<ID3D12Resource> normalReadbackBuffer_;
         Microsoft::WRL::ComPtr<ID3D12Resource> evolutionAReadbackBuffer_;
@@ -160,8 +162,13 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE normalUavCpuHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE normalUavHandle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE jacobianSrvCpuHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE jacobianUavCpuHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE jacobianUavHandle_{};
         D3D12_RESOURCE_STATES displacementState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_RESOURCE_STATES normalState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        D3D12_RESOURCE_STATES jacobianState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT displacementReadbackLayout_{};
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT normalReadbackLayout_{};
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT evolutionAReadbackLayout_{};
