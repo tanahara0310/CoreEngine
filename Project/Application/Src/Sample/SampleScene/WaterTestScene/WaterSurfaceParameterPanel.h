@@ -25,12 +25,16 @@ private:
 	void RestoreRecommendedWaveCount(WaterSurfaceRuntimeController& runtimeController, WaterPresetType preset);
 	/// @brief プリセット設定に基づくレイヤー波を再生成する
 	void RegenerateLayeredWaves(WaterSurfaceRuntimeController& runtimeController, WaterPresetType preset, uint32_t activeWaveCount);
-	/// @brief 見た目・反射・透過に関する通常パラメータ UI を描画する
-	void DrawRuntimeParameterSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	/// @brief 描画方式の切り替えと現在状態を表示する
+	void DrawWaterTypeSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	/// @brief 見た目・反射・透過・UV に関する共通パラメータ UI を描画する
+	void DrawCommonParameterSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
 	/// @brief FFT Ocean に関する描画経路切替とパラメータ UI を描画する
 	void DrawFFTOceanSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
-	/// @brief UV と波生成に関する UI を描画する
-	void DrawWaveToolSection(WaterSurfaceRuntimeController& runtimeController);
+	/// @brief FFT Ocean プリセットを適用する
+	void ApplyFFTOceanPreset(WaterEditorFacade& editorFacade, int presetIndex);
+	/// @brief Gerstner Wave のプリセット・波生成に関する UI を描画する
+	void DrawGerstnerWaveSection(WaterSurfaceRuntimeController& runtimeController);
 	/// @brief 個別波編集 UI を描画する
 	void DrawIndividualWaveEditor(WaterSurfaceRuntimeController& runtimeController);
 
@@ -65,6 +69,7 @@ private:
 
 	/// @brief FFT Ocean 調整 UI のキャッシュ
 	struct FFTOceanParameters {
+		int preset = 0;
 		bool enabled = true;
 		float patchLength = 96.0f;
 		float amplitudeScale = 1.0f;

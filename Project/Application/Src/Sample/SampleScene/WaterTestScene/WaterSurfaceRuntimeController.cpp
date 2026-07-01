@@ -3,6 +3,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderDomainContext.h"
@@ -38,6 +39,7 @@ void WaterSurfaceRuntimeController::Initialize(const WaterSceneObjects& sceneObj
 
 void WaterSurfaceRuntimeController::UpdateSimulation(float deltaTime) {
 	if (!waterPlane_) {
+		surfaceModelProvider_.SetSource(nullptr, WaterSurfaceSimulationType::Gerstner, "WaterSurfaceRuntimeController");
 		return;
 	}
 
@@ -49,6 +51,16 @@ void WaterSurfaceRuntimeController::UpdateSimulation(float deltaTime) {
 }
 
 void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
+	const IWaterSurfaceModelProvider* surfaceModelProvider = waterPlane_ ? &surfaceModelProvider_ : nullptr;
+	if (auto* renderDomainContext = engine.GetRenderDomainContext()) {
+		if (auto* waterRefractionManager = renderDomainContext->GetWaterRefractionRayTracingManager()) {
+			waterRefractionManager->SetSurfaceModelProvider(surfaceModelProvider);
+		}
+		if (auto* waterCausticsManager = renderDomainContext->GetWaterCausticsRayTracingManager()) {
+			waterCausticsManager->SetSurfaceModelProvider(surfaceModelProvider);
+		}
+	}
+
 	if (!waterPlane_) {
 		return;
 	}
@@ -106,6 +118,15 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 			simulationInput,
 			waterSurfaceSnapshot_,
 			waterRefractionSurfaceData_);
+		surfaceModelProvider_.SetSource(
+			&waterRefractionSurfaceData_,
+			activeSimulator->GetSimulationType(),
+			"WaterSurfaceRuntimeController");
+	} else {
+		surfaceModelProvider_.SetSource(
+			&waterRefractionSurfaceData_,
+			WaterSurfaceSimulationType::Gerstner,
+			"WaterSurfaceRuntimeController");
 	}
 
 	static uint32_t sSurfaceDataLogCounter = 0u;

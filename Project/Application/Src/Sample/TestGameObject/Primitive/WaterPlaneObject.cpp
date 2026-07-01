@@ -22,6 +22,7 @@ WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution, bool useFFTO
     , uvTiling_({ 4.0f, 4.0f })
     , uvOffset_({ 0.0f, 0.0f }) {
     waterCB_.activeWaveCount = kMaxWaterWaveCount;
+    frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
 
     // デフォルトの波パラメータを設定（16 本の Gerstner Wave を重ね合わせる）
     waterCB_.waves[0]  = { {  1.0f,  0.0f }, 0.18f, 14.0f, 1.6f, 0.24f, 0.0f };
@@ -89,8 +90,23 @@ void WaterPlaneObject::RebuildWaterShaderPipeline() {
         return;
     }
 
+    // 旧カスタムPSOがGPU実行中のまま破棄されると
+    // OBJECT_DELETED_WHILE_STILL_IN_USE が発生するため、切替時のみ同期する。
+    CoreEngine::Logger::GetInstance().Infof(
+        CoreEngine::LogCategory::Graphics,
+        CoreEngine::LogSubCategory::Pipeline,
+        "WaterPlane: begin shader pipeline rebuild. wait for GPU before PSO replacement. useFFTOcean={}",
+        useFFTOcean_);
+    dxCommon->WaitForPreviousFrame();
+
     SetCustomShaderProvider(this);
     BuildCustomShaderPipelineIfNeeded(dxCommon->GetDevice(), modelManager);
+
+    CoreEngine::Logger::GetInstance().Infof(
+        CoreEngine::LogCategory::Graphics,
+        CoreEngine::LogSubCategory::Pipeline,
+        "WaterPlane: end shader pipeline rebuild. useFFTOcean={}",
+        useFFTOcean_);
 }
 
 void WaterPlaneObject::BindCustomResources(
@@ -153,7 +169,9 @@ void WaterPlaneObject::SetUseFFTOcean(bool useFFTOcean) {
     }
 
     useFFTOcean_ = useFFTOcean;
+    frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
     RebuildWaterShaderPipeline();
+    UpdateFrameConstants();
 
     CoreEngine::Logger::GetInstance().Infof(
         CoreEngine::LogCategory::Graphics,

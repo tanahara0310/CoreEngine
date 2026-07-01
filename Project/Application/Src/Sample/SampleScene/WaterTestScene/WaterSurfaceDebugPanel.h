@@ -15,8 +15,14 @@ public:
 	void Draw(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
 
 private:
+	/// @brief 水面共通の診断情報と Depth Fade 可視化 UI を描画する
+	void DrawCommonDebugSection(WaterSurfaceRuntimeController& runtimeController);
+
 	/// @brief FFT Ocean の診断 UI を描画する
 	void DrawFFTOceanDebugSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+
+	/// @brief Gerstner Wave の診断 UI を描画する
+	void DrawGerstnerWaveDebugSection(WaterSurfaceRuntimeController& runtimeController);
 
 	/// @brief コースティクスのデバッグ UI を描画する
 	void DrawCausticsDebugSection(WaterEditorFacade& editorFacade);

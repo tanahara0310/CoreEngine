@@ -7,6 +7,8 @@
 
 #include "Utility/Debug/ImGui/ImGuiAll.h"
 
+#include <algorithm>
+
 using namespace CoreEngine;
 
 namespace {
@@ -46,19 +48,28 @@ void WaterSurfaceDebugPanel::Draw(WaterSurfaceRuntimeController& runtimeControll
 		return;
 	}
 
-	// 現在の水面状態を診断用に表示する
+	ImGui::TextDisabled("ここは見た目調整ではなく、状態確認と可視化のための項目です。");
+	DrawCommonDebugSection(runtimeController);
+	DrawFFTOceanDebugSection(runtimeController, editorFacade);
+	DrawGerstnerWaveDebugSection(runtimeController);
+	DrawCausticsDebugSection(editorFacade);
+}
+
+void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterSurfaceRuntimeController& runtimeController) {
+	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	if (!waterPlane || !ImGui::TreeNodeEx("共通デバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
+		return;
+	}
+
 	const WaterConstants& waterConstants = waterPlane->GetWaterConstants();
 	const WaterFrameConstants& frameConstants = waterPlane->GetFrameConstants();
 
-	ImGui::TextDisabled("ここは見た目調整ではなく、状態確認と可視化のための項目です。");
-	ImGui::SeparatorText("診断情報");
+	ImGui::Text("現在の描画方式: %s", waterPlane->IsUsingFFTOcean() ? "FFTOcean" : "Gerstner Wave");
 	ImGui::Text("反射が有効: %s", frameConstants.reflectionEnabled != 0 ? "はい" : "いいえ");
 	ImGui::Text("水面高さ: %.3f", waterPlane->GetTransform().translate.y);
 	ImGui::Text("波時間: %.3f", waterConstants.time);
 	ImGui::Text("有効波数: %u", waterConstants.activeWaveCount);
 
-	// Depth Fade の可視化パラメータを直接切り替えられるようにする
-	ImGui::Spacing();
 	ImGui::SeparatorText("Depth Fade デバッグ");
 	bool debugChanged = false;
 	debugChanged |= ImGui::Checkbox("Depth Fade デバッグを有効にする", &depthFadeDebugEnabled_);
@@ -69,21 +80,25 @@ void WaterSurfaceDebugPanel::Draw(WaterSurfaceRuntimeController& runtimeControll
 		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(depthDebugViewMode_));
 	}
 
-	DrawFFTOceanDebugSection(runtimeController, editorFacade);
-	DrawCausticsDebugSection(editorFacade);
+	ImGui::TreePop();
 }
 
 void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
 	WaterSurfaceRuntimeController& runtimeController,
 	WaterEditorFacade& editorFacade) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane || !ImGui::TreeNode("FFT Ocean デバッグ")) {
+	if (!waterPlane) {
+		return;
+	}
+
+	const ImGuiTreeNodeFlags flags = waterPlane->IsUsingFFTOcean() ? ImGuiTreeNodeFlags_DefaultOpen : 0;
+	if (!ImGui::TreeNodeEx(waterPlane->IsUsingFFTOcean() ? "FFTOcean デバッグ" : "FFTOcean デバッグ（待機中）", flags)) {
 		return;
 	}
 
 	const WaterEditorFFTSettings settings = editorFacade.GetFFTSettings();
 
-	ImGui::Text("描画経路: %s", waterPlane->IsUsingFFTOcean() ? "FFT Ocean" : "Gerstner Wave");
+	ImGui::Text("状態: %s", waterPlane->IsUsingFFTOcean() ? "使用中" : "待機中");
 	ImGui::Text("FFT SRV 接続: %s", waterPlane->HasFFTOceanTextureSRVs() ? "有効" : "無効");
 
 	if (!settings.managerAvailable) {
@@ -103,6 +118,61 @@ void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
 	ImGui::Text("重力: %.3f", settings.gravity);
 	ImGui::Separator();
 	ImGui::TextDisabled("注: DXR 屈折データは現在 Gerstner 系 WaterConstants を参照しており、FFT 表示と完全一致しない場合があります。");
+
+	ImGui::TreePop();
+}
+
+void WaterSurfaceDebugPanel::DrawGerstnerWaveDebugSection(WaterSurfaceRuntimeController& runtimeController) {
+	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	if (!waterPlane) {
+		return;
+	}
+
+	const bool isActive = !waterPlane->IsUsingFFTOcean();
+	const ImGuiTreeNodeFlags flags = isActive ? ImGuiTreeNodeFlags_DefaultOpen : 0;
+	if (!ImGui::TreeNodeEx(isActive ? "Gerstner Wave デバッグ" : "Gerstner Wave デバッグ（待機中）", flags)) {
+		return;
+	}
+
+	const WaterConstants& waterConstants = waterPlane->GetWaterConstants();
+	const WaveParams* waves = waterPlane->GetWaves();
+	const uint32_t activeWaveCount = std::min(waterConstants.activeWaveCount, kMaxWaterWaveCount);
+
+	ImGui::Text("状態: %s", isActive ? "使用中" : "待機中");
+	ImGui::Text("有効波数: %u / %u", activeWaveCount, kMaxWaterWaveCount);
+
+	float maxAmplitude = 0.0f;
+	float minWavelength = activeWaveCount > 0 ? waves[0].wavelength : 0.0f;
+	float maxWavelength = 0.0f;
+	float averageSpeed = 0.0f;
+	for (uint32_t waveIndex = 0; waveIndex < activeWaveCount; ++waveIndex) {
+		maxAmplitude = std::max(maxAmplitude, waves[waveIndex].amplitude);
+		minWavelength = std::min(minWavelength, waves[waveIndex].wavelength);
+		maxWavelength = std::max(maxWavelength, waves[waveIndex].wavelength);
+		averageSpeed += waves[waveIndex].speed;
+	}
+	if (activeWaveCount > 0) {
+		averageSpeed /= static_cast<float>(activeWaveCount);
+	}
+
+	ImGui::Text("最大振幅: %.3f", maxAmplitude);
+	ImGui::Text("波長レンジ: %.3f - %.3f", minWavelength, maxWavelength);
+	ImGui::Text("平均速度: %.3f", averageSpeed);
+
+	if (ImGui::TreeNode("有効波プレビュー")) {
+		for (uint32_t waveIndex = 0; waveIndex < activeWaveCount; ++waveIndex) {
+			ImGui::BulletText(
+				"波 %u: dir=(%.2f, %.2f) amp=%.3f len=%.3f speed=%.3f steep=%.3f",
+				waveIndex,
+				waves[waveIndex].direction.x,
+				waves[waveIndex].direction.y,
+				waves[waveIndex].amplitude,
+				waves[waveIndex].wavelength,
+				waves[waveIndex].speed,
+				waves[waveIndex].steepness);
+		}
+		ImGui::TreePop();
+	}
 
 	ImGui::TreePop();
 }

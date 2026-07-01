@@ -1,6 +1,7 @@
 # Copilot Instructions
 
 ## プロジェクト ガイドライン
+- コーディング前に Project/.github/copilot-instructions.md の内容を参照してから実装すること。
 - vcxprojファイルには勝手にファイルを追加しない。新規ファイルのプロジェクト登録はユーザーが手動で行う。
 - utf-8でコードを生成する。BOMは付けない。
 - パワーシェルでもコードを生成する際は、utf-8で生成する。BOMは付けない。

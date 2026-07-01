@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Water/WaterSurfaceData.h"
+#include "Graphics/Water/Simulation/WaterSurfaceModelProvider.h"
 #include "Graphics/Water/Simulation/WaterSurfaceSimulator.h"
 #include "WaterSceneSetup.h"
 #include "Sample/TestGameObject/Model/ModelObject.h"
@@ -55,6 +56,11 @@ private:
 	CoreEngine::WaterSurfaceSnapshot waterSurfaceSnapshot_{};
 	/// @brief DXR 屈折用に転送する水面データ
 	CoreEngine::WaterSurfaceData waterRefractionSurfaceData_{};
+	/// @brief RT 水面パスへ渡す surface model provider
+	CoreEngine::StaticWaterSurfaceModelProvider surfaceModelProvider_{
+		nullptr,
+		CoreEngine::WaterSurfaceSimulationType::Gerstner,
+		"WaterSurfaceRuntimeController" };
 	/// @brief Gerstner Wave 用 simulator
 	std::unique_ptr<CoreEngine::WaterSurfaceSimulator> gerstnerSimulator_{};
 	/// @brief FFT Ocean 用 simulator

@@ -19,6 +19,43 @@ using namespace CoreEngine;
 namespace {
 constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
 
+enum FFTOceanPresetIndex : int {
+	kFFTOceanPresetCustom = 0,
+	kFFTOceanPresetMirrorLike = 1,
+	kFFTOceanPresetCalm = 2,
+	kFFTOceanPresetOpenSea = 3,
+	kFFTOceanPresetRough = 4,
+	kFFTOceanPresetStorm = 5,
+};
+
+struct FFTOceanPresetData {
+	const char* name;
+	float patchLength;
+	float amplitudeScale;
+	float windDirection[2];
+	float windSpeed;
+	float choppiness;
+	int activeComponentCount;
+	float gravity;
+};
+
+Vector2 NormalizeDirection(const Vector2& direction);
+
+WaterEditorFFTSettings BuildSanitizedFFTOceanSettings(const FFTOceanPresetData& preset) {
+	WaterEditorFFTSettings settings{};
+	settings.patchLength = (std::max)(preset.patchLength, 1.0f);
+	settings.amplitudeScale = (std::max)(preset.amplitudeScale, 0.0f);
+	settings.windSpeed = (std::max)(preset.windSpeed, 0.0f);
+	settings.choppiness = (std::max)(preset.choppiness, 0.0f);
+	settings.activeComponentCount = (std::clamp)(preset.activeComponentCount, 1, 64);
+	settings.gravity = (std::max)(preset.gravity, 0.1f);
+
+	const Vector2 normalizedWindDirection = NormalizeDirection({ preset.windDirection[0], preset.windDirection[1] });
+	settings.windDirection[0] = normalizedWindDirection.x;
+	settings.windDirection[1] = normalizedWindDirection.y;
+	return settings;
+}
+
 // 波方向のゼロ長入力を吸収しつつ正規化する。
 Vector2 NormalizeDirection(const Vector2& direction) {
 	const Vector3 direction3 = { direction.x, direction.y, 0.0f };
@@ -50,6 +87,48 @@ const char* const kPresetNames[] = {
 	"池・プール",
 	"雨水・水たまり",
 };
+
+const char* const kFFTOceanPresetNames[] = {
+	"カスタム",
+	"鏡面に近い海",
+	"静かな海",
+	"うねりのある外洋",
+	"荒れた海",
+	"嵐の海",
+};
+
+const FFTOceanPresetData kFFTOceanPresets[] = {
+	{ "カスタム", 96.0f, 1.0f, { 0.92f, 0.38f }, 24.0f, 1.35f, 32, 9.81f },
+	{ "鏡面に近い海", 220.0f, 0.08f, { 1.0f, 0.0f }, 2.0f, 0.10f, 8, 9.81f },
+	{ "静かな海", 180.0f, 0.30f, { 0.98f, 0.18f }, 7.5f, 0.35f, 16, 9.81f },
+	{ "うねりのある外洋", 96.0f, 1.0f, { 0.92f, 0.38f }, 24.0f, 1.35f, 32, 9.81f },
+	{ "荒れた海", 72.0f, 1.85f, { 0.84f, 0.54f }, 36.0f, 2.10f, 48, 9.81f },
+	{ "嵐の海", 56.0f, 2.80f, { 0.72f, 0.69f }, 52.0f, 3.25f, 64, 9.81f },
+};
+
+bool NearlyEqual(float lhs, float rhs, float epsilon = 1.0e-3f) {
+	return std::fabs(lhs - rhs) <= epsilon;
+}
+
+int FindMatchingFFTOceanPreset(const WaterEditorFFTSettings& settings) {
+	for (int presetIndex = 1; presetIndex < static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresets)); ++presetIndex) {
+		const WaterEditorFFTSettings presetSettings = BuildSanitizedFFTOceanSettings(kFFTOceanPresets[presetIndex]);
+		if (!NearlyEqual(settings.patchLength, presetSettings.patchLength) ||
+			!NearlyEqual(settings.amplitudeScale, presetSettings.amplitudeScale) ||
+			!NearlyEqual(settings.windDirection[0], presetSettings.windDirection[0]) ||
+			!NearlyEqual(settings.windDirection[1], presetSettings.windDirection[1]) ||
+			!NearlyEqual(settings.windSpeed, presetSettings.windSpeed) ||
+			!NearlyEqual(settings.choppiness, presetSettings.choppiness) ||
+			settings.activeComponentCount != presetSettings.activeComponentCount ||
+			!NearlyEqual(settings.gravity, presetSettings.gravity)) {
+			continue;
+		}
+
+		return presetIndex;
+	}
+
+	return kFFTOceanPresetCustom;
+}
 }
 
 void WaterSurfaceParameterPanel::Initialize(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade) {
@@ -64,6 +143,7 @@ void WaterSurfaceParameterPanel::Initialize(WaterSurfaceRuntimeController& runti
 	fftOceanParameters_.activeComponentCount = fftSettings.activeComponentCount;
 	fftOceanParameters_.gravity = fftSettings.gravity;
 	fftOceanParameters_.resolution = fftSettings.resolution;
+	fftOceanParameters_.preset = FindMatchingFFTOceanPreset(fftSettings);
 
 	// 現在の DXR 屈折設定を UI の初期値へ反映する
 	rtRefractionOffsetPixels_ = editorFacade.GetRayTracingSettings().maxRefractionOffsetPixels;
@@ -73,16 +153,137 @@ void WaterSurfaceParameterPanel::Initialize(WaterSurfaceRuntimeController& runti
 }
 
 void WaterSurfaceParameterPanel::Draw(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade) {
-	// 通常パラメータと波編集ツールを用途別に分けて表示する
-	if (ImGui::CollapsingHeader("パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
-		DrawRuntimeParameterSection(runtimeController, editorFacade);
-		DrawFFTOceanSection(runtimeController, editorFacade);
+	// 共通設定と方式別設定をタブで分離して、開発用 UI の見通しを良くする
+	if (ImGui::CollapsingHeader("水面パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
+		const WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+		const bool usingFFTOcean = waterPlane && waterPlane->IsUsingFFTOcean();
+
+		ImGui::Text("現在の編集中モード: %s", usingFFTOcean ? "FFTOcean" : "Gerstner Wave");
+		ImGui::TextDisabled("共通設定と方式別設定をタブで切り替えて編集できます。");
+
+		if (ImGui::BeginTabBar("WaterParameterTabs")) {
+			if (ImGui::BeginTabItem("共通設定")) {
+				DrawWaterTypeSection(runtimeController, editorFacade);
+				DrawCommonParameterSection(runtimeController, editorFacade);
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem(usingFFTOcean ? "FFTOcean *" : "FFTOcean")) {
+				DrawFFTOceanSection(runtimeController, editorFacade);
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem(usingFFTOcean ? "Gerstner Wave" : "Gerstner Wave *")) {
+				DrawGerstnerWaveSection(runtimeController);
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+	}
+}
+
+void WaterSurfaceParameterPanel::DrawWaterTypeSection(
+	WaterSurfaceRuntimeController& runtimeController,
+	WaterEditorFacade& editorFacade) {
+	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	if (!waterPlane) {
+		return;
 	}
 
-	if (ImGui::CollapsingHeader("波生成 / 編集", ImGuiTreeNodeFlags_DefaultOpen)) {
-		DrawWaveToolSection(runtimeController);
+	ImGui::SeparatorText("描画方式");
+	ImGui::Text("現在の方式: %s", waterPlane->IsUsingFFTOcean() ? "FFTOcean" : "Gerstner Wave");
+	ImGui::TextDisabled("共通設定は下部、方式固有の調整は各専用セクションに分けています。");
+
+	bool useFFTOcean = waterPlane->IsUsingFFTOcean();
+	bool switched = false;
+	if (ImGui::RadioButton("FFTOcean を使用", useFFTOcean)) {
+		useFFTOcean = true;
+		switched = true;
 	}
+	if (ImGui::RadioButton("Gerstner Wave を使用", !useFFTOcean)) {
+		useFFTOcean = false;
+		switched = true;
 	}
+
+	if (switched) {
+		WaterEditorFFTSettings settings = editorFacade.GetFFTSettings();
+		settings.enabled = useFFTOcean;
+		editorFacade.ApplyFFTSettings(settings);
+	}
+}
+
+void WaterSurfaceParameterPanel::DrawCommonParameterSection(
+	WaterSurfaceRuntimeController& runtimeController,
+	WaterEditorFacade& editorFacade) {
+	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
+	if (!waterPlane) {
+		return;
+	}
+
+	ImGui::Spacing();
+	ImGui::SeparatorText("共通の見た目");
+	if (ImGui::ColorEdit4("ベースカラー", appearanceParameters_.baseColor)) {
+		waterPlane->SetBaseColor({
+			appearanceParameters_.baseColor[0],
+			appearanceParameters_.baseColor[1],
+			appearanceParameters_.baseColor[2],
+			appearanceParameters_.baseColor[3] });
+	}
+	if (ImGui::SliderFloat("ラフネス", &appearanceParameters_.roughness, 0.0f, 1.0f)) {
+		waterPlane->SetRoughness(appearanceParameters_.roughness);
+	}
+	if (ImGui::SliderFloat("メタリック", &appearanceParameters_.metallic, 0.0f, 1.0f)) {
+		waterPlane->SetMetallic(appearanceParameters_.metallic);
+	}
+	if (ImGui::Checkbox("IBLを有効にする", &appearanceParameters_.iblEnabled)) {
+		waterPlane->SetIBLEnabled(appearanceParameters_.iblEnabled);
+	}
+
+	ImGui::Spacing();
+	ImGui::SeparatorText("反射 / 屈折");
+	bool fresnelChanged = false;
+	fresnelChanged |= ImGui::SliderFloat("フレネル反射スケール", &appearanceParameters_.fresnelReflectanceScale, 0.0f, 2.0f, "%.3f");
+	fresnelChanged |= ImGui::SliderFloat("正面反射率 F0", &appearanceParameters_.fresnelBaseReflectance, 0.0f, 0.10f, "%.4f");
+	if (fresnelChanged) {
+		waterPlane->SetFresnelParameters(
+			appearanceParameters_.fresnelReflectanceScale,
+			appearanceParameters_.fresnelBaseReflectance);
+	}
+
+	if (ImGui::SliderFloat("DXR屈折ずれ量 (px)", &rtRefractionOffsetPixels_, 0.0f, 12.0f, "%.2f")) {
+		WaterEditorRayTracingSettings settings = editorFacade.GetRayTracingSettings();
+		settings.maxRefractionOffsetPixels = rtRefractionOffsetPixels_;
+		editorFacade.ApplyRayTracingSettings(settings);
+	}
+
+	ImGui::Spacing();
+	ImGui::SeparatorText("透過 / 水色");
+	bool depthFadeChanged = false;
+	depthFadeChanged |= ImGui::Checkbox("Depth Fade を有効にする", &surfaceParameters_.depthFadeEnabled);
+	depthFadeChanged |= ImGui::SliderFloat("吸収係数", &surfaceParameters_.absorptionCoeff, 0.0f, 8.0f, "%.3f");
+	if (depthFadeChanged) {
+		waterPlane->SetDepthFade(surfaceParameters_.absorptionCoeff, surfaceParameters_.depthFadeEnabled);
+	}
+
+	bool waterColorChanged = false;
+	waterColorChanged |= ImGui::ColorEdit3("浅瀬の色", surfaceParameters_.shallowColor);
+	waterColorChanged |= ImGui::ColorEdit3("深場の色", surfaceParameters_.deepColor);
+	if (waterColorChanged) {
+		waterPlane->SetWaterColors(
+			{ surfaceParameters_.shallowColor[0], surfaceParameters_.shallowColor[1], surfaceParameters_.shallowColor[2] },
+			{ surfaceParameters_.deepColor[0], surfaceParameters_.deepColor[1], surfaceParameters_.deepColor[2] });
+	}
+
+	ImGui::Spacing();
+	ImGui::SeparatorText("共通 UV アニメーション");
+	if (ImGui::DragFloat2("スクロール速度 (U, V)", surfaceParameters_.scrollSpeed, 0.001f, -1.0f, 1.0f, "%.4f")) {
+		waterPlane->SetScrollSpeed({ surfaceParameters_.scrollSpeed[0], surfaceParameters_.scrollSpeed[1] });
+	}
+	if (ImGui::DragFloat2("UVタイリング (U, V)", surfaceParameters_.uvTiling, 0.1f, 0.1f, 32.0f, "%.2f")) {
+		waterPlane->SetUVTiling({ surfaceParameters_.uvTiling[0], surfaceParameters_.uvTiling[1] });
+	}
+}
 
 void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 	WaterSurfaceRuntimeController& runtimeController,
@@ -93,14 +294,25 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 	}
 
 	const WaterEditorFFTSettings currentFFTSettings = editorFacade.GetFFTSettings();
+	fftOceanParameters_.preset = FindMatchingFFTOceanPreset(currentFFTSettings);
+	fftOceanParameters_.enabled = currentFFTSettings.enabled;
+	fftOceanParameters_.patchLength = currentFFTSettings.patchLength;
+	fftOceanParameters_.amplitudeScale = currentFFTSettings.amplitudeScale;
+	fftOceanParameters_.windDirection[0] = currentFFTSettings.windDirection[0];
+	fftOceanParameters_.windDirection[1] = currentFFTSettings.windDirection[1];
+	fftOceanParameters_.windSpeed = currentFFTSettings.windSpeed;
+	fftOceanParameters_.choppiness = currentFFTSettings.choppiness;
+	fftOceanParameters_.activeComponentCount = currentFFTSettings.activeComponentCount;
+	fftOceanParameters_.gravity = currentFFTSettings.gravity;
 	fftOceanParameters_.resolution = currentFFTSettings.resolution;
 
-	ImGui::Spacing();
-	ImGui::SeparatorText("FFT Ocean");
-	if (ImGui::Checkbox("FFT Ocean 描画を使用する", &fftOceanParameters_.enabled)) {
+	ImGui::Text("状態: %s", waterPlane->IsUsingFFTOcean() ? "使用中" : "待機中");
+	ImGui::TextDisabled("広域の海面調整用です。現在使っていなくても事前に設定を整えておけます。");
+	if (!waterPlane->IsUsingFFTOcean() && ImGui::Button("この方式へ切り替える", ImVec2(-1.0f, 0.0f))) {
 		WaterEditorFFTSettings updatedSettings = editorFacade.GetFFTSettings();
-		updatedSettings.enabled = fftOceanParameters_.enabled;
+		updatedSettings.enabled = true;
 		editorFacade.ApplyFFTSettings(updatedSettings);
+		fftOceanParameters_.enabled = true;
 	}
 
 	if (!currentFFTSettings.managerAvailable) {
@@ -108,6 +320,36 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 		return;
 	}
 
+	ImGui::SeparatorText("海況プリセット");
+	const int previousPreset = fftOceanParameters_.preset;
+	if (ImGui::Button("前のプリセット##fftPreset")) {
+		const int nextPreset = (fftOceanParameters_.preset <= 1)
+			? static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresetNames)) - 1
+			: (fftOceanParameters_.preset - 1);
+		fftOceanParameters_.preset = nextPreset;
+		ApplyFFTOceanPreset(editorFacade, fftOceanParameters_.preset);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("次のプリセット##fftPreset")) {
+		const int nextPreset = (fftOceanParameters_.preset >= static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresetNames)) - 1)
+			? 1
+			: (fftOceanParameters_.preset + 1);
+		fftOceanParameters_.preset = nextPreset;
+		ApplyFFTOceanPreset(editorFacade, fftOceanParameters_.preset);
+	}
+	ImGui::Combo("FFT Ocean プリセット", &fftOceanParameters_.preset, kFFTOceanPresetNames, IM_ARRAYSIZE(kFFTOceanPresetNames));
+	if (fftOceanParameters_.preset != previousPreset && fftOceanParameters_.preset != kFFTOceanPresetCustom) {
+		ApplyFFTOceanPreset(editorFacade, fftOceanParameters_.preset);
+	}
+	ImGui::Text("現在の海況: %s", kFFTOceanPresetNames[fftOceanParameters_.preset]);
+	ImGui::TextDisabled("静穏な海から荒天まで、海面の傾向をまとめて切り替えます。\n手動調整すると自動でカスタムへ戻ります。");
+
+	if (fftOceanParameters_.preset != kFFTOceanPresetCustom && ImGui::Button("現在のプリセットを再適用", ImVec2(-1.0f, 0.0f))) {
+		ApplyFFTOceanPreset(editorFacade, fftOceanParameters_.preset);
+	}
+
+	ImGui::Spacing();
+	ImGui::SeparatorText("FFT Ocean 詳細");
 	ImGui::Text("解像度: %d (再生成が必要なため表示のみ)", fftOceanParameters_.resolution);
 	bool fftChanged = false;
 	bool fftEditCommitted = false;
@@ -126,6 +368,7 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 
 	fftEditCommitted = fftEditCommitted || (!ImGui::IsAnyItemActive() && fftChanged);
 	if (fftEditCommitted) {
+		fftOceanParameters_.preset = kFFTOceanPresetCustom;
 		WaterEditorFFTSettings updatedSettings = editorFacade.GetFFTSettings();
 		updatedSettings.enabled = fftOceanParameters_.enabled;
 		updatedSettings.patchLength = fftOceanParameters_.patchLength;
@@ -151,6 +394,7 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 
 	if (ImGui::Button("FFT Ocean 設定を既定値へ戻す", ImVec2(-1.0f, 0.0f))) {
 		const WaterEditorFFTSettings appliedSettings = editorFacade.ResetFFTSettings();
+		fftOceanParameters_.preset = FindMatchingFFTOceanPreset(appliedSettings);
 		fftOceanParameters_.enabled = appliedSettings.enabled;
 		fftOceanParameters_.patchLength = appliedSettings.patchLength;
 		fftOceanParameters_.amplitudeScale = appliedSettings.amplitudeScale;
@@ -162,6 +406,35 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 		fftOceanParameters_.gravity = appliedSettings.gravity;
 		fftOceanParameters_.resolution = static_cast<int>(appliedSettings.resolution);
 	}
+}
+
+void WaterSurfaceParameterPanel::ApplyFFTOceanPreset(WaterEditorFacade& editorFacade, int presetIndex) {
+	if (presetIndex <= kFFTOceanPresetCustom || presetIndex >= static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresets))) {
+		return;
+	}
+
+	const FFTOceanPresetData& preset = kFFTOceanPresets[presetIndex];
+	fftOceanParameters_.preset = presetIndex;
+	fftOceanParameters_.patchLength = preset.patchLength;
+	fftOceanParameters_.amplitudeScale = preset.amplitudeScale;
+	fftOceanParameters_.windDirection[0] = preset.windDirection[0];
+	fftOceanParameters_.windDirection[1] = preset.windDirection[1];
+	fftOceanParameters_.windSpeed = preset.windSpeed;
+	fftOceanParameters_.choppiness = preset.choppiness;
+	fftOceanParameters_.activeComponentCount = preset.activeComponentCount;
+	fftOceanParameters_.gravity = preset.gravity;
+
+	WaterEditorFFTSettings updatedSettings = editorFacade.GetFFTSettings();
+	updatedSettings.enabled = fftOceanParameters_.enabled;
+	updatedSettings.patchLength = fftOceanParameters_.patchLength;
+	updatedSettings.amplitudeScale = fftOceanParameters_.amplitudeScale;
+	updatedSettings.windDirection[0] = fftOceanParameters_.windDirection[0];
+	updatedSettings.windDirection[1] = fftOceanParameters_.windDirection[1];
+	updatedSettings.windSpeed = fftOceanParameters_.windSpeed;
+	updatedSettings.choppiness = fftOceanParameters_.choppiness;
+	updatedSettings.activeComponentCount = fftOceanParameters_.activeComponentCount;
+	updatedSettings.gravity = fftOceanParameters_.gravity;
+	editorFacade.ApplyFFTSettings(updatedSettings);
 }
 
 void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterSurfaceRuntimeController& runtimeController, WaterPresetType preset) {
@@ -299,98 +572,45 @@ void WaterSurfaceParameterPanel::RegenerateLayeredWaves(
 	waterPlane->SetActiveWaveCount(activeWaveCount);
 }
 
-void WaterSurfaceParameterPanel::DrawRuntimeParameterSection(
-	WaterSurfaceRuntimeController& runtimeController,
-	WaterEditorFacade& editorFacade) {
+void WaterSurfaceParameterPanel::DrawGerstnerWaveSection(WaterSurfaceRuntimeController& runtimeController) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
 	}
 
-	// プリセット操作と見た目調整 UI を描画し、その場で水面へ反映する
+	ImGui::Text("状態: %s", waterPlane->IsUsingFFTOcean() ? "待機中" : "使用中");
+	ImGui::TextDisabled("局所的な波の作り込みや、個別波の直接編集はこちらで行います。");
+	if (waterPlane->IsUsingFFTOcean() && ImGui::Button("この方式へ切り替える", ImVec2(-1.0f, 0.0f))) {
+		waterPlane->SetUseFFTOcean(false);
+	}
+
+	ImGui::Spacing();
 	ImGui::SeparatorText("プリセット");
 	const int previousPreset = waveToolState_.preset;
+	if (ImGui::Button("前のプリセット##gerstnerPreset")) {
+		waveToolState_.preset = (waveToolState_.preset <= 0)
+			? (IM_ARRAYSIZE(kPresetNames) - 1)
+			: (waveToolState_.preset - 1);
+		ApplyWaterPreset(runtimeController, static_cast<WaterPresetType>(waveToolState_.preset));
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("次のプリセット##gerstnerPreset")) {
+		waveToolState_.preset = (waveToolState_.preset >= IM_ARRAYSIZE(kPresetNames) - 1)
+			? 0
+			: (waveToolState_.preset + 1);
+		ApplyWaterPreset(runtimeController, static_cast<WaterPresetType>(waveToolState_.preset));
+	}
 	ImGui::Combo("水面プリセット", &waveToolState_.preset, kPresetNames, IM_ARRAYSIZE(kPresetNames));
 	if (waveToolState_.preset != previousPreset) {
 		ApplyWaterPreset(runtimeController, static_cast<WaterPresetType>(waveToolState_.preset));
 	}
+	ImGui::Text("現在のプリセット: %s", kPresetNames[waveToolState_.preset]);
 
-	const WaterPresetType currentPreset = static_cast<WaterPresetType>(waveToolState_.preset);
-	if (ImGui::Button("プリセットを再適用", ImVec2(-1.0f, 0.0f))) {
-		ApplyWaterPreset(runtimeController, currentPreset);
-	}
-
-	ImGui::Spacing();
-	ImGui::SeparatorText("水面の見た目");
-	if (ImGui::ColorEdit4("ベースカラー", appearanceParameters_.baseColor)) {
-		waterPlane->SetBaseColor({
-			appearanceParameters_.baseColor[0],
-			appearanceParameters_.baseColor[1],
-			appearanceParameters_.baseColor[2],
-			appearanceParameters_.baseColor[3] });
-	}
-	if (ImGui::SliderFloat("ラフネス", &appearanceParameters_.roughness, 0.0f, 1.0f)) {
-		waterPlane->SetRoughness(appearanceParameters_.roughness);
-	}
-	if (ImGui::SliderFloat("メタリック", &appearanceParameters_.metallic, 0.0f, 1.0f)) {
-		waterPlane->SetMetallic(appearanceParameters_.metallic);
-	}
-	if (ImGui::Checkbox("IBLを有効にする", &appearanceParameters_.iblEnabled)) {
-		waterPlane->SetIBLEnabled(appearanceParameters_.iblEnabled);
-	}
-
-	ImGui::Spacing();
-	ImGui::SeparatorText("反射 / 屈折");
-	bool fresnelChanged = false;
-	fresnelChanged |= ImGui::SliderFloat("フレネル反射スケール", &appearanceParameters_.fresnelReflectanceScale, 0.0f, 2.0f, "%.3f");
-	fresnelChanged |= ImGui::SliderFloat("正面反射率 F0", &appearanceParameters_.fresnelBaseReflectance, 0.0f, 0.10f, "%.4f");
-	if (fresnelChanged) {
-		waterPlane->SetFresnelParameters(
-			appearanceParameters_.fresnelReflectanceScale,
-			appearanceParameters_.fresnelBaseReflectance);
-	}
-
-	if (ImGui::SliderFloat("DXR屈折ずれ量 (px)", &rtRefractionOffsetPixels_, 0.0f, 12.0f, "%.2f")) {
-		WaterEditorRayTracingSettings settings = editorFacade.GetRayTracingSettings();
-		settings.maxRefractionOffsetPixels = rtRefractionOffsetPixels_;
-		editorFacade.ApplyRayTracingSettings(settings);
-	}
-
-	ImGui::Spacing();
-	ImGui::SeparatorText("透過 / 水色");
-	bool depthFadeChanged = false;
-	depthFadeChanged |= ImGui::Checkbox("Depth Fade を有効にする", &surfaceParameters_.depthFadeEnabled);
-	depthFadeChanged |= ImGui::SliderFloat("吸収係数", &surfaceParameters_.absorptionCoeff, 0.0f, 8.0f, "%.3f");
-	if (depthFadeChanged) {
-		waterPlane->SetDepthFade(surfaceParameters_.absorptionCoeff, surfaceParameters_.depthFadeEnabled);
-	}
-
-	bool waterColorChanged = false;
-	waterColorChanged |= ImGui::ColorEdit3("浅瀬の色", surfaceParameters_.shallowColor);
-	waterColorChanged |= ImGui::ColorEdit3("深場の色", surfaceParameters_.deepColor);
-	if (waterColorChanged) {
-		waterPlane->SetWaterColors(
-			{ surfaceParameters_.shallowColor[0], surfaceParameters_.shallowColor[1], surfaceParameters_.shallowColor[2] },
-			{ surfaceParameters_.deepColor[0], surfaceParameters_.deepColor[1], surfaceParameters_.deepColor[2] });
-	}
-}
-
-void WaterSurfaceParameterPanel::DrawWaveToolSection(WaterSurfaceRuntimeController& runtimeController) {
-	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
-	if (!waterPlane) {
-		return;
-	}
-
-	// UV アニメーションとレイヤー波生成の補助 UI を描画する
 	const WaterPresetType currentPreset = static_cast<WaterPresetType>(waveToolState_.preset);
 	const WaterPresetData& presetData = GetWaterPresetData(currentPreset);
 
-	ImGui::SeparatorText("UVアニメーション");
-	if (ImGui::DragFloat2("スクロール速度 (U, V)", surfaceParameters_.scrollSpeed, 0.001f, -1.0f, 1.0f, "%.4f")) {
-		waterPlane->SetScrollSpeed({ surfaceParameters_.scrollSpeed[0], surfaceParameters_.scrollSpeed[1] });
-	}
-	if (ImGui::DragFloat2("UVタイリング (U, V)", surfaceParameters_.uvTiling, 0.1f, 0.1f, 32.0f, "%.2f")) {
-		waterPlane->SetUVTiling({ surfaceParameters_.uvTiling[0], surfaceParameters_.uvTiling[1] });
+	if (ImGui::Button("プリセットを再適用", ImVec2(-1.0f, 0.0f))) {
+		ApplyWaterPreset(runtimeController, currentPreset);
 	}
 
 	ImGui::Spacing();

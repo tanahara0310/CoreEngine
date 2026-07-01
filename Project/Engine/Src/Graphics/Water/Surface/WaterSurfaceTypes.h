@@ -69,7 +69,9 @@ struct WaterFrameConstants {
 	float deepColor[3] = { 0.02f, 0.08f, 0.45f };
 	float deepColorPad = 0.0f;
 	uint32_t depthDebugViewMode = static_cast<uint32_t>(WaterDebugViewMode::None);
-	float debugPadding[3] = {};
+	// FFT Ocean 使用時、頂点解像度に依存しないピクセル単位の法線マップ再サンプリングを行うか
+	int useFFTOceanNormalMap = 0;
+	float debugPadding[2] = {};
 };
 
 enum class WaterPresetType : int {

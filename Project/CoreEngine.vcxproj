@@ -196,7 +196,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterCausticsRayTracingManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.cpp" />
@@ -212,6 +214,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp" />
     <ClCompile Include="Engine\Src\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -561,10 +564,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\WaterCausticsRayTracingManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\WaterRayTracingPassBase.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\FrameBlackboard.h" />
@@ -666,6 +671,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\IWaterSurfaceModelProvider.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterDebugViewMode.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceTypes.h" />
@@ -805,7 +812,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include=".github\copilot-instructions.md" />
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin" />
     <None Include="Application\Assets\SampleAssets\human\walk.bin" />
     <None Include="Application\Assets\SampleAssets\simpleSkin\simpleSkin.bin" />

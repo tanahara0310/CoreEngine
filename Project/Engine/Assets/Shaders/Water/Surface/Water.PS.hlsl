@@ -18,6 +18,10 @@ Texture2D<float4> gSceneColor : register(t16);
 // WaterPlaneObject::BindCustomResources() が t17 にバインドする
 Texture2D<float4> gRTWaterRefractionColor : register(t17);
 
+// ===== FFT Ocean 法線マップ（FFTOceanFinalize.CS.hlsl 出力）=====
+// 頂点解像度に依存しない法線を得るため、ピクセルシェーダーで直接再サンプリングする
+Texture2D<float4> gFFTOceanNormal : register(t19);
+
 struct WaterPSInput
 {
     float4 position : SV_POSITION;
@@ -55,7 +59,9 @@ cbuffer WaterFrameConstants : register(b5)
 
     // ---- デバッグ表示 ----
     uint gDepthDebugViewMode;
-    float3 gDebugPadding;
+    // FFT Ocean 使用時、頂点解像度に依存しないピクセル単位の法線マップ再サンプリングを行うか
+    int gUseFFTOceanNormalMap;
+    float2 gDebugPadding;
 };
 
 /// @brief NDC 深度値をビュー空間線形深度（メートル単位）に変換する
@@ -147,6 +153,27 @@ float3 VisualizeRTRefractionReason(float reasonCode)
     return float3(0.15f, 0.15f, 0.15f);
 }
 
+/// @brief ピクセル単位の法線を解決する
+/// @details Gerstner Wave は頂点シェーダーで解析的に計算した法線をそのまま補間して使えるが、
+///          FFT Ocean はテクスチャベースの法線マップであるため、頂点解像度で補間すると
+///          メッシュの三角形境界に沿った法線のファセット化（IBL 反射のギザギザ）が発生する。
+///          FFT Ocean 使用時は texcoord から法線マップを直接再サンプリングし、
+///          頂点密度に依存しない滑らかな法線を得る。
+float3 ResolveSurfaceNormal(WaterPSInput input)
+{
+    float3 vertexNormal = normalize(input.normal);
+    if (gUseFFTOceanNormalMap == 0)
+    {
+        return vertexNormal;
+    }
+
+    float3 encodedNormal = gFFTOceanNormal.Sample(gLinearClamp, input.texcoord).xyz;
+    float3 localNormal = normalize(encodedNormal * 2.0f - 1.0f);
+    float3 tangent = normalize(input.tangent);
+    float3 bitangent = normalize(input.bitangent);
+    return normalize(localNormal.x * tangent + localNormal.y * vertexNormal + localNormal.z * bitangent);
+}
+
 /// @brief 水面専用フォワードパス処理（ForwardMain の discard 処理を削除したバージョン）
 /// 水面は常に描画され、alpha 値で透明度を制御する
 VertexShaderOutput ToVertexShaderOutput(WaterPSInput input)
@@ -169,8 +196,8 @@ PixelShaderOutput WaterForwardMain(WaterPSInput input)
     VertexShaderOutput forwardInput = ToVertexShaderOutput(input);
     PixelShaderOutput output;
 
-    // 頂点シェーダーで再構築した Gerstner Wave 由来法線をそのまま使用する
-    forwardInput.normal = normalize(forwardInput.normal);
+    // FFT Ocean 使用時はピクセル単位で法線マップを再サンプリングし、Gerstner Wave 使用時は頂点法線をそのまま使う
+    forwardInput.normal = ResolveSurfaceNormal(input);
 
     // 視線方向と alpha
     float3 toEye = normalize(gCamera.worldPosition - forwardInput.worldPosition);
@@ -276,7 +303,7 @@ PixelShaderOutput main(WaterPSInput input)
 
     // ---- 4. 視線方向と Fresnel 係数を計算する ----
     float3 viewDir = normalize(gCamera.worldPosition - input.worldPosition);
-    float3 geomNormal = normalize(input.normal);
+    float3 geomNormal = ResolveSurfaceNormal(input);
     float cosTheta = saturate(dot(geomNormal, viewDir));
     float fresnel = FresnelSchlick(cosTheta, saturate(gFresnelBaseReflectance));
     float reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
@@ -350,7 +377,7 @@ PixelShaderOutput main(WaterPSInput input)
         if (gDepthDebugViewMode == 7)
         {
             float3 debugViewDir = normalize(gCamera.worldPosition - input.worldPosition);
-            float3 debugGeomNormal = normalize(input.normal);
+            float3 debugGeomNormal = ResolveSurfaceNormal(input);
             float debugCosTheta = saturate(dot(debugGeomNormal, debugViewDir));
             float debugFresnel = FresnelSchlick(debugCosTheta, saturate(gFresnelBaseReflectance));
             output.color.rgb = VisualizeDepthValue(debugFresnel);

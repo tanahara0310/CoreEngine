@@ -52,7 +52,8 @@ cbuffer WaterFrameConstants : register(b5)
 
     // ---- デバッグ表示（VS では未使用）----
     uint   gDepthDebugViewMode;
-    float3 gDebugPadding;
+    int    gUseFFTOceanNormalMap; // PS と共有（VS では未使用、レイアウト一致のため保持）
+    float2 gDebugPadding;
 };
 
 // ===== 水面専用出力構造体（SV_ClipDistance0 を追加）=====

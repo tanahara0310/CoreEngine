@@ -40,7 +40,13 @@
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterCausticsRayTracingManager.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRayTracingPassBase.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.cpp">
@@ -86,6 +92,9 @@
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
@@ -1113,6 +1122,9 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
@@ -1123,6 +1135,9 @@
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\WaterCausticsRayTracingManager.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\WaterRayTracingPassBase.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.h">
@@ -1426,6 +1441,12 @@
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\IWaterSurfaceModelProvider.h">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.h">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceSimulator.h">
@@ -1829,9 +1850,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include=".github\copilot-instructions.md">
-      <Filter>.github</Filter>
-    </None>
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin">
       <Filter>Application\Assets\SampleAssets\human</Filter>
     </None>
@@ -1942,9 +1960,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include=".github">
-      <UniqueIdentifier>{0B38F8F0-EDB2-4A29-8F38-053A0F52BE38}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application">
       <UniqueIdentifier>{a6d9c513-d1e3-44be-a485-2950bd8c02a7}</UniqueIdentifier>
     </Filter>

@@ -1,7 +1,6 @@
 #include "Object3dVertex.hlsli"
 
 Texture2D<float4> gFFTOceanDisplacement : register(t18);
-Texture2D<float4> gFFTOceanNormal : register(t19);
 Texture2D<float4> gFFTOceanJacobian : register(t20);
 SamplerState gLinearClamp : register(s2);
 
@@ -21,7 +20,8 @@ cbuffer WaterFrameConstants : register(b5)
     float3 gDeepColor;
     float gDeepColorPad;
     uint gDepthDebugViewMode;
-    float3 gDebugPadding;
+    int gUseFFTOceanNormalMap;
+    float2 gDebugPadding;
 };
 
 struct FFTWaterVSOutput
@@ -49,14 +49,15 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
 
     float3 displacement = gFFTOceanDisplacement.SampleLevel(gLinearClamp, sampleUV, 0.0f).xyz;
 
-    float3 encodedNormal = gFFTOceanNormal.SampleLevel(gLinearClamp, sampleUV, 0.0f).xyz;
-    float3 fftNormal = normalize(encodedNormal * 2.0f - 1.0f);
-
     float3 worldPos = baseWorldPos + displacement;
 
-    float3 tangent = normalize(float3(1.0f, 0.0f, 0.0f));
-    float3 binormal = normalize(cross(fftNormal, tangent));
-    tangent = normalize(cross(binormal, fftNormal));
+    // タンジェント基底は波の傾き（fftNormal）に依存させず、水面が平坦なときの基準フレームを
+    // そのままワールド変換して渡す。法線自体はピクセルシェーダー側で gFFTOceanNormal を
+    // texcoord から直接再サンプリングして構築するため（頂点解像度に依存しない滑らかな法線を得るため）、
+    // ここでは TBN 基底の元になるローカル軸のみを用意すればよい。
+    const float3 baseNormalLocal = float3(0.0f, 1.0f, 0.0f);
+    const float3 baseTangentLocal = float3(1.0f, 0.0f, 0.0f);
+    const float3 baseBinormalLocal = float3(0.0f, 0.0f, 1.0f);
 
     FFTWaterVSOutput output;
     output.texcoord = input.texcoord;
@@ -68,9 +69,9 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     float4 offsetClip = mul(float4(offsetLS, 0.0f), mtx.WVP);
     output.position = baseClip + offsetClip;
 
-    output.normal = normalize(mul(fftNormal, (float3x3)mtx.WorldInversTranspose));
-    output.tangent = normalize(mul(tangent, (float3x3)mtx.World));
-    output.bitangent = normalize(mul(binormal, (float3x3)mtx.World));
+    output.normal = normalize(mul(baseNormalLocal, (float3x3)mtx.WorldInversTranspose));
+    output.tangent = normalize(mul(baseTangentLocal, (float3x3)mtx.World));
+    output.bitangent = normalize(mul(baseBinormalLocal, (float3x3)mtx.World));
     output.worldPosition = worldPos;
     output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);
     output.clipPosCurrent = output.position;

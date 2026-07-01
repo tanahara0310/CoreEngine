@@ -3,30 +3,12 @@
 // 第2段階ではまず受光点ごとの簡易集光量を専用RT出力へ書き出す。
 // ============================================================
 
+#include "RTWaterSurfaceCommon.hlsli"
+
 RWTexture2D<float4> gCausticsOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
 Texture2D<float4> gWorldPosition : register(t1);
 Texture2D<float4> gNormalRoughness : register(t2);
-
-struct WaveParam
-{
-    float2 direction;
-    float amplitude;
-    float wavelength;
-    float speed;
-    float steepness;
-    float phaseOffset;
-    float padding;
-};
-
-cbuffer WaterSurfaceData : register(b1)
-{
-    float gSurfaceWaterHeight;
-    uint gSurfaceActiveWaveCount;
-    float gSurfaceTime;
-    float gSurfacePadding;
-    WaveParam gSurfaceWaves[16];
-};
 
 cbuffer WaterCausticsConstants : register(b0)
 {
@@ -47,74 +29,6 @@ struct CausticsPayload
     float ndotL;
     float receiverDepth;
 };
-
-float3 EvaluateWaterOffset(float2 worldXZ)
-{
-    float3 totalOffset = float3(0.0f, 0.0f, 0.0f);
-
-    [unroll]
-    for (uint waveIndex = 0; waveIndex < 16; ++waveIndex)
-    {
-        if (waveIndex >= gSurfaceActiveWaveCount)
-        {
-            break;
-        }
-
-        WaveParam wave = gSurfaceWaves[waveIndex];
-        float k = 2.0f * 3.14159265f / max(wave.wavelength, 1.0e-4f);
-        float omega = wave.speed * k;
-        float kA = max(k * wave.amplitude, 1.0e-4f);
-        float safeSteepness = min(wave.steepness, 0.95f / kA);
-        float phase = k * dot(wave.direction, worldXZ) + omega * gSurfaceTime + wave.phaseOffset;
-        float sinP = sin(phase);
-        float cosP = cos(phase);
-
-        totalOffset.x += safeSteepness * wave.amplitude * wave.direction.x * cosP;
-        totalOffset.y += wave.amplitude * sinP;
-        totalOffset.z += safeSteepness * wave.amplitude * wave.direction.y * cosP;
-    }
-
-    return totalOffset;
-}
-
-float3 EvaluateWaterNormal(float2 worldXZ)
-{
-    float3 dPdX = float3(1.0f, 0.0f, 0.0f);
-    float3 dPdZ = float3(0.0f, 0.0f, 1.0f);
-
-    [unroll]
-    for (uint waveIndex = 0; waveIndex < 16; ++waveIndex)
-    {
-        if (waveIndex >= gSurfaceActiveWaveCount)
-        {
-            break;
-        }
-
-        WaveParam wave = gSurfaceWaves[waveIndex];
-        float k = 2.0f * 3.14159265f / max(wave.wavelength, 1.0e-4f);
-        float omega = wave.speed * k;
-        float kA = max(k * wave.amplitude, 1.0e-4f);
-        float safeSteepness = min(wave.steepness, 0.95f / kA);
-        float phase = k * dot(wave.direction, worldXZ) + omega * gSurfaceTime + wave.phaseOffset;
-        float sinP = sin(phase);
-        float cosP = cos(phase);
-        float common = safeSteepness * wave.amplitude * k * sinP;
-        float heightSlope = wave.amplitude * k * cosP;
-
-        dPdX += float3(
-            -common * wave.direction.x * wave.direction.x,
-             heightSlope * wave.direction.x,
-            -common * wave.direction.x * wave.direction.y);
-
-        dPdZ += float3(
-            -common * wave.direction.x * wave.direction.y,
-             heightSlope * wave.direction.y,
-            -common * wave.direction.y * wave.direction.y);
-    }
-
-    float3 normal = normalize(cross(dPdZ, dPdX));
-    return normal.y < 0.0f ? -normal : normal;
-}
 
 [shader("raygeneration")]
 void RTWaterCausticsRayGen()
