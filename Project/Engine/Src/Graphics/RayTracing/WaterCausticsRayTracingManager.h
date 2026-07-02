@@ -4,12 +4,12 @@
 #include <dxcapi.h>
 #include <wrl.h>
 #include <cstdint>
+#include <memory>
 
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Vector/Vector3.h"
-#include "GlobalRootSignatureManager.h"
-#include "RayTracingPipelineBuilder.h"
-#include "ShaderTableBuilder.h"
+#include "RayTracingOutputViewSet.h"
+#include "WaterRayTracingPassBase.h"
 
 namespace CoreEngine
 {
@@ -24,7 +24,7 @@ namespace CoreEngine
         float padding = 0.0f;
     };
 
-    class WaterCausticsRayTracingManager {
+    class WaterCausticsRayTracingManager : public WaterRayTracingPassBase {
     public:
         enum class ViewID : uint32_t {
             GameView = 0,
@@ -55,6 +55,8 @@ namespace CoreEngine
         };
 
         static constexpr uint32_t kViewCount = static_cast<uint32_t>(ViewID::Count);
+        static_assert(kViewCount <= RayTracingOutputViewSet::kMaxViewCount,
+            "WaterCausticsRayTracingManager: ViewID::Count exceeds RayTracingOutputViewSet::kMaxViewCount");
 
         bool Initialize(
             DirectXCommon* dxCommon,
@@ -79,40 +81,19 @@ namespace CoreEngine
 
         bool IsInitialized() const { return isInitialized_; }
 
+        void SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider);
+        std::shared_ptr<const IWaterSurfaceModelProvider> GetSurfaceModelProvider() const;
+
         void SetSettings(const WaterCausticsRayTracingSettings& settings) { settings_ = settings; }
         const WaterCausticsRayTracingSettings& GetSettings() const { return settings_; }
         const DispatchDiagnostics& GetLastDiagnostics() const { return lastDiagnostics_; }
 
     private:
-        struct CausticsView {
-            Microsoft::WRL::ComPtr<ID3D12Resource> texture;
-            D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
-            D3D12_CPU_DESCRIPTOR_HANDLE uavCpuHandle{};
-            D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
-            D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
-            UINT width = 0;
-            UINT height = 0;
-            D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        };
-
         bool EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex);
         bool EnsureConstantBuffer();
 
-        DirectXCommon* dxCommon_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
-        AccelerationStructureManager* asMgr_ = nullptr;
-
         Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-        uint8_t* constantBufferMapped_ = nullptr;
-        GlobalRootSignatureManager globalRootSigMgr_;
-        Microsoft::WRL::ComPtr<ID3D12StateObject> stateObject_;
-        Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> stateObjectProperties_;
-        ShaderTableBuilder shaderTableBuilder_;
-
-        CausticsView views_[kViewCount]{};
         WaterCausticsRayTracingSettings settings_{};
         DispatchDiagnostics lastDiagnostics_{};
-        bool isInitialized_ = false;
     };
 }

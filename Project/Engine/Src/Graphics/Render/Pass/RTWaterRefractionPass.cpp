@@ -47,6 +47,7 @@ namespace CoreEngine
         const WaterSurfaceData& dispatchSurfaceData = context.waterRefractionSurfaceData
             ? *context.waterRefractionSurfaceData
             : defaultSurfaceData;
+
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,

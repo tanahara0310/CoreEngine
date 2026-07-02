@@ -17,6 +17,7 @@
 #include "Sample/TestGameObject/Primitive/PrimitiveSphereObject.h"
 #include "Sample/TestGameObject/Primitive/CubeObject.h"
 #include "Sample/TestGameObject/Primitive/RingObject.h"
+#include "Sample/TestGameObject/Primitive/CylinderObject.h"
 
 using namespace CoreEngine;
 
@@ -59,6 +60,19 @@ void PrimitiveTestScene::OnInitialize()
         mat->SetIBLEnabled(true);
     }
     ring->SetActive(true);
+
+    // ===== シリンダー（Cylinder） =====
+    auto cylinder = CreateObject<CylinderObject>(0.7f, 0.7f, 2.2f, 64u, "gradationLine.png");
+    cylinder->GetTransform().translate = { 0.0f, 0.1f, 3.5f };
+    cylinder->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
+    if (auto* mat = cylinder->GetModel()->GetMaterial()) {
+        mat->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+        mat->SetMetallic(0.0f);
+        mat->SetRoughness(0.35f);
+        mat->SetLightingEnabled(true);
+        mat->SetIBLEnabled(true);
+    }
+    cylinder->SetActive(true);
 
     // ===== 地面（Plane） =====
     // 幅20・奥行20、10×10分割

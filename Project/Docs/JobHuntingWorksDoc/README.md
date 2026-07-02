@@ -58,7 +58,8 @@
 - 水面の主線は `Water.VS.hlsl` / `Water.PS.hlsl` に集約され、ReflectionView / SceneColor / SceneDepth を使った描画経路まで接続済み
 - 屈折は `RTWaterRefractionPass` / `RTWaterRefraction.hlsl` による DXR ベースの最小経路が実装され、`Water.PS.hlsl` 側で RT 成功時は屈折色を採用し、失敗時は `SceneColor` へフォールバックする構成になっている
 - コースティクスは `RTWaterCausticsPass` / `RTWaterCaustics.hlsl` と deferred lighting への入力経路が接続済みで、浅瀬・受光法線・入射方向に基づく簡易強度出力まで実装されている
-- 一方で、FFT Ocean、Foam、SSR、RGB 吸収、水中散乱、水中影を含む RT 最終統合は未着手または検証継続段階に留まる
+- FFT Ocean は Compute Shader によるスペクトル初期化、時間発展、IFFT、変位・法線生成、`WaterPlaneObject` への接続、ImGui 調整 UI まで実装済みで、現在は波強度と品質検証を継続している
+- 一方で、Foam、SSR、RGB 吸収、水中散乱、水中影を含む RT 最終統合は未着手または検証継続段階に留まる
 - Step ごとの状態は、設計メモではなく **現行コード確認ベース** で更新する
 
 ### 2-2. ステップ進捗一覧
@@ -71,7 +72,7 @@
 | 4 | 反射基盤（Planar Reflection / IBL） | 実装完了（検証継続） | Step 1, Step 3 | 反射経路の土台 | [Step4_PlanarReflection.md](Step4_PlanarReflection.md) |
 | 5 | 表面 BRDF/BTDF と材質校正 | 実装完了（検証継続） | Step 3, Step 4 | 水面を PBR 的に扱う基礎 | [Step5_NormalMap_PBR.md](Step5_NormalMap_PBR.md) |
 | 6 | 透過・吸収・屈折の主線 | 実装中 | Step 4, Step 5 | 物理ベース水面の中心 | [Step6_SurfaceShading.md](Step6_SurfaceShading.md) |
-| 6B | FFT Ocean 分岐 | 未着手 | Step 3, Step 6 | 大規模海面向け発展経路 | [Step6_FFTOcean.md](Step6_FFTOcean.md) |
+| 6B | FFT Ocean 分岐 | 実装中（検証継続） | Step 3, Step 6 | 大規模海面向け発展経路 | [Step6_FFTOcean.md](Step6_FFTOcean.md) |
 | 7 | Foam | 未着手 | Step 3, Step 6, Step 6B | 散逸と接触の補強 | [Step7_Foam.md](Step7_Foam.md) |
 | 8 | Caustics / Underwater Lighting | 実装中 | Step 6 | 水中への光伝播表現 | [Step8_Caustics.md](Step8_Caustics.md) |
 | 9 | SSR と反射統合 | 未着手 | Step 4, Step 6 | 反射品質の補完と統合 | [Step9_SSR.md](Step9_SSR.md) |

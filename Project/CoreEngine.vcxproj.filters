@@ -1,8 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterEditorFacade.cpp">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSceneController.cpp">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSceneSetup.cpp">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceDebugPanel.cpp">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceParameterPanel.cpp">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceRuntimeController.cpp">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBufferSet.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterRenderResources.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterShaderResourceBinder.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Outline</Filter>
@@ -10,10 +37,19 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Random</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\CylinderMeshGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterCausticsRayTracingManager.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRayTracingPassBase.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.cpp">
@@ -52,8 +88,35 @@
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
       <Filter>Engine\Src\Particle\Modules</Filter>
@@ -759,10 +822,25 @@
     <ClInclude Include="Application\Src\Sample\SampleScene\SpriteTestScene\SpriteTestScene.h">
       <Filter>Application\Src\Sample\SampleScene\SpriteTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene.h">
-      <Filter>Application\Src\Sample\SampleScene</Filter>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterEditorFacade.h">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterReflectionPass.h">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSceneController.h">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSceneSetup.h">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceDebugPanel.h">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceParameterPanel.h">
+      <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceRuntimeController.h">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\AnimatedModel\WalkModelObject.h">
@@ -783,6 +861,9 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CylinderObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
@@ -795,7 +876,16 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBufferSet.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterPlaneObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterRenderResources.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterShaderResourceBinder.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\SkyBox\SkyBoxObject.h">
@@ -1038,6 +1128,9 @@
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Primitive\CylinderMeshGenerator.h">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
@@ -1056,6 +1149,9 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
@@ -1066,6 +1162,9 @@
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\WaterCausticsRayTracingManager.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\WaterRayTracingPassBase.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.h">
@@ -1362,8 +1461,47 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h">
       <Filter>Engine\Src\Graphics\Texture\Path</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\IWaterSurfaceModelProvider.h">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.h">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceSimulator.h">
+      <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterDebugViewMode.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceTypes.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\WaterSurfaceData.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
@@ -1757,9 +1895,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include=".github\copilot-instructions.md">
-      <Filter>.github</Filter>
-    </None>
     <None Include="Application\Assets\SampleAssets\human\sneakWalk.bin">
       <Filter>Application\Assets\SampleAssets\human</Filter>
     </None>
@@ -1856,6 +1991,9 @@
     <None Include="Docs\Refactoring\Step08_FullPassGraphMigration.md">
       <Filter>Docs\Refactoring</Filter>
     </None>
+    <None Include="Docs\Refactoring\WaterRefactoringPlan.md">
+      <Filter>Docs\Refactoring</Filter>
+    </None>
     <None Include="Engine\Src\ObjectCommon\README.md">
       <Filter>Engine\Src\ObjectCommon</Filter>
     </None>
@@ -1867,9 +2005,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include=".github">
-      <UniqueIdentifier>{0B38F8F0-EDB2-4A29-8F38-053A0F52BE38}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application">
       <UniqueIdentifier>{a6d9c513-d1e3-44be-a485-2950bd8c02a7}</UniqueIdentifier>
     </Filter>
@@ -2202,6 +2337,12 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water">
       <UniqueIdentifier>{79C2596E-AEE7-4E3F-AAC7-C231E50A7DFA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\Simulation">
+      <UniqueIdentifier>{885AB6EC-E224-419F-8C36-DD519D941E3B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\Surface">
+      <UniqueIdentifier>{DC70B5CC-F394-41D8-AE69-0F79ED80E885}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Input">
       <UniqueIdentifier>{54C16D33-E6EA-45EA-BFD5-732F01D04340}</UniqueIdentifier>

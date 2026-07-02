@@ -1,10 +1,10 @@
 # Step 6B : FFT Ocean 分岐
 
 ## ステータス
-- 状態: 未着手
+- 状態: 実装中（検証継続）
 - 優先度: 中
 - 依存ステップ: Step 3, Step 6
-- 現在位置: 主線外の発展経路として設計のみ。現行コードに FFT Ocean / Compute ベース海面は未実装
+- 現在位置: Compute Shader ベースの FFT Ocean 経路は実装済み。Phillips スペクトル初期化、時間発展、IFFT、変位・法線テクスチャ生成、`WaterPlaneObject` への SRV 接続、ImGui からの調整 UI まで接続済み。現在は波強度と最終見た目の検証を継続中
 - 完了後に着手しやすい次ステップ: Step 7, Step 9, Step 10
 
 ## 目的
@@ -35,15 +35,46 @@ FFT Ocean は、
 を扱うための分岐である。
 
 ## 作業項目
-- [ ] Phillips / JONSWAP などのスペクトルから初期海面を構築する
-- [ ] Compute Shader で時間発展と IFFT を行う
-- [ ] 変位、法線、必要に応じて Jacobian を生成する
-- [ ] 主線の反射・透過・泡系へ橋渡しする
-- [ ] 近景主線と FFT 分岐の使い分け基準を明文化する
+- [x] Phillips スペクトルから初期海面を構築する
+- [x] Compute Shader で時間発展と IFFT を行う
+- [x] 変位、法線テクスチャを生成する
+- [x] `WaterPlaneObject` から FFT / Gerstner の描画経路を切り替えられるようにする
+- [x] ImGui から `patchLength` `amplitudeScale` `windDirection` `windSpeed` `choppiness` `activeComponentCount` `gravity` を調整できるようにする
+- [ ] Jacobian / 砕波候補量を生成する
+- [ ] 主線の反射・透過・泡系との整合を詰める
+- [ ] 近景主線と FFT 分岐の使い分け基準を文書化し切る
 
 ## 現状メモ
-- `WaterPlaneObject` と `Water.VS.hlsl` は Gerstner Wave 前提で組まれており、FFT 出力を受ける経路はまだ存在しない
-- `Compute Shader`、周波数空間バッファ、IFFT パス、スペクトル定義は未実装
+- `FFTOceanManager` が `FFTOceanTimeEvolution.CS.hlsl` `FFTOceanIFFT.CS.hlsl` `FFTOceanFinalize.CS.hlsl` を用いて、スペクトルから空間変位・法線テクスチャを生成する
+- `FFTOceanPass` から毎フレーム dispatch され、`WaterPlaneObject` は `FFTWater.VS.hlsl` を使う経路へ切り替え可能
+- `WaterSurfaceParameterPanel` / `WaterSurfaceDebugPanel` から設定値と接続状態を確認できる
+- `FFTWater.VS.hlsl` の固定クランプで最終変位が頭打ちになっていたため、縦 `±0.5` / 横 `±0.25` の制限は削除済み
+- 現在の見た目上の主要論点は「FFT の出力が無い」ではなく、「スペクトル強度とパラメータ帯域のチューニング」である
+
+## 現行実装の構成
+| レイヤ | 実装 |
+|------|------|
+| 管理 | `Project/Engine/Src/Graphics/Water/FFTOceanManager.{h,cpp}` |
+| Dispatch | `Project/Engine/Src/Graphics/Render/Pass/FFTOceanPass.cpp` |
+| 時間発展 | `Project/Application/Assets/Shaders/Water/FFTOceanTimeEvolution.CS.hlsl` |
+| IFFT | `Project/Application/Assets/Shaders/Water/FFTOceanIFFT.CS.hlsl` |
+| 最終化 | `Project/Application/Assets/Shaders/Water/FFTOceanFinalize.CS.hlsl` |
+| 頂点適用 | `Project/Application/Assets/Shaders/Water/FFTWater.VS.hlsl` |
+| ランタイム調整 | `Application/Src/Sample/SampleScene/WaterTestScene/WaterSurfaceParameterPanel.cpp` |
+| 診断 UI | `Application/Src/Sample/SampleScene/WaterTestScene/WaterSurfaceDebugPanel.cpp` |
+
+## 波が弱く見えるときの確認順
+1. `FFTWater.VS.hlsl` 側で固定クランプしていないか確認する
+2. `amplitudeScale` を上げる
+3. `windSpeed` を上げる
+4. `choppiness` を上げる
+5. `patchLength` を下げて空間周波数を上げる
+6. `activeComponentCount` を増やして帯域を広げる
+
+### 補足
+- 現行実装では `BuildSpectrum()` で Phillips スペクトルを使っている
+- `FFTOceanTimeEvolution.CS.hlsl` では `activeComponentCount` に応じた `bandFade` が掛かるため、成分数が少ないと高周波成分が強く抑えられる
+- したがって「波っぽくは動くが全体に弱い」場合は、計算停止よりもスペクトル強度または最終適用段の制限を疑う
 
 ## 物理ベース観点
 ### 1. FFT は波面生成の高忠実度化
@@ -80,8 +111,9 @@ FFT Ocean は色や反射を直接正しくする技術ではない。
 - RT 反射 / RT 屈折と組み合わせた最終品質強化の足場になる
 
 ## 完了条件
-- [ ] スペクトルベースの大規模波面が生成される
-- [ ] 分散性が見た目に現れる
+- [x] スペクトルベースの大規模波面が生成される
+- [x] FFT 出力を使う頂点変位・法線経路へ切り替えられる
+- [ ] 分散性が見た目に十分現れる
 - [ ] 主線の反射・透過・泡系と接続できる
 - [ ] RT 反射 / RT 屈折の入力波面として利用できる
 
