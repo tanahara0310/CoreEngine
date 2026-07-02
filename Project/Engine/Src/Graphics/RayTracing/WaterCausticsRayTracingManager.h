@@ -4,6 +4,7 @@
 #include <dxcapi.h>
 #include <wrl.h>
 #include <cstdint>
+#include <memory>
 
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Vector/Vector3.h"
@@ -80,8 +81,8 @@ namespace CoreEngine
 
         bool IsInitialized() const { return isInitialized_; }
 
-        void SetSurfaceModelProvider(const IWaterSurfaceModelProvider* provider);
-        const IWaterSurfaceModelProvider* GetSurfaceModelProvider() const;
+        void SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider);
+        std::shared_ptr<const IWaterSurfaceModelProvider> GetSurfaceModelProvider() const;
 
         void SetSettings(const WaterCausticsRayTracingSettings& settings) { settings_ = settings; }
         const WaterCausticsRayTracingSettings& GetSettings() const { return settings_; }

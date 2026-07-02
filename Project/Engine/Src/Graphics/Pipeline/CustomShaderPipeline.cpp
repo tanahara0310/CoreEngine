@@ -55,7 +55,13 @@ namespace CoreEngine
         const std::wstring psPath = ResolveShaderPath(provider.GetPixelShaderPath());
 
         if (!vsPath.empty() && !psPath.empty()) {
-            if (!BuildForwardPipeline(device, compiler, reflectionBuilder, vsPath, psPath)) {
+            if (!BuildForwardPipeline(
+                device,
+                compiler,
+                reflectionBuilder,
+                vsPath,
+                psPath,
+                provider.GetCullMode())) {
                 return false;
             }
         }
@@ -73,7 +79,8 @@ namespace CoreEngine
         ShaderCompiler& compiler,
         ShaderReflectionBuilder& reflectionBuilder,
         const std::wstring& vsPath,
-        const std::wstring& psPath)
+        const std::wstring& psPath,
+        D3D12_CULL_MODE cullMode)
     {
         IDxcBlob* vsBlob = compiler.CompileShader(vsPath, L"vs_6_0");
         if (!vsBlob) {
@@ -109,7 +116,7 @@ namespace CoreEngine
         // 独自 RootSignature で PSO を構築する
         const bool psoResult = forwardPsoMg_.CreateBuilder()
             .SetInputLayoutFromReflection(*reflectionData)
-            .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
+            .SetRasterizer(cullMode, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
             .BuildAllBlendModes(device, vsBlob, psBlob, forwardRootSignatureMg_->GetRootSignature());

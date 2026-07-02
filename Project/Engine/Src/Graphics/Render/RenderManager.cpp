@@ -51,6 +51,10 @@ namespace CoreEngine
 
     void RenderManager::SetCameraManager(CameraManager* cameraManager) {
         cameraManager_ = cameraManager;
+
+        // シーン切り替えで CameraManager が差し替わる際、旧シーン由来の
+        // 互換ポインタ camera_ を残すとダングリング参照になるためクリアする。
+        camera_ = nullptr;
     }
 
     const Matrix4x4& RenderManager::GetViewMatrix() const {

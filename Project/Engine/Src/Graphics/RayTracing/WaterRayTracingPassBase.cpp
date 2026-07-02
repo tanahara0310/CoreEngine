@@ -286,14 +286,14 @@ namespace CoreEngine
         return surfaceConstants;
     }
 
-    void WaterRayTracingPassBase::SetSurfaceModelProviderBase(const IWaterSurfaceModelProvider* provider)
+    void WaterRayTracingPassBase::SetSurfaceModelProviderBase(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider)
     {
         surfaceModelProvider_ = provider;
     }
 
-    const IWaterSurfaceModelProvider* WaterRayTracingPassBase::GetSurfaceModelProviderBase() const
+    std::shared_ptr<const IWaterSurfaceModelProvider> WaterRayTracingPassBase::GetSurfaceModelProviderBase() const
     {
-        return surfaceModelProvider_;
+        return surfaceModelProvider_.lock();
     }
 
     const WaterSurfaceData& WaterRayTracingPassBase::ResolveSurfaceDataForDispatch(
@@ -301,18 +301,19 @@ namespace CoreEngine
         WaterSurfaceData& outResolvedSurfaceData,
         const char* ownerName) const
     {
-        if (!surfaceModelProvider_) {
+        const std::shared_ptr<const IWaterSurfaceModelProvider> surfaceModelProvider = surfaceModelProvider_.lock();
+        if (!surfaceModelProvider) {
             return fallbackSurfaceData;
         }
 
-        if (!surfaceModelProvider_->TryGetSurfaceData(outResolvedSurfaceData)) {
+        if (!surfaceModelProvider->TryGetSurfaceData(outResolvedSurfaceData)) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
                 "{}: surface model provider returned no data. fallback path is used. provider='{}' type={}",
                 ownerName ? ownerName : "WaterRayTracingPassBase",
-                surfaceModelProvider_->GetProviderName(),
-                static_cast<uint32_t>(surfaceModelProvider_->GetSimulationType()));
+                surfaceModelProvider->GetProviderName(),
+                static_cast<uint32_t>(surfaceModelProvider->GetSimulationType()));
             return fallbackSurfaceData;
         }
 
@@ -321,8 +322,8 @@ namespace CoreEngine
             LogSubCategory::Pipeline,
             "{}: surface model provider resolved. provider='{}' type={} waterHeight={:.3f} activeWaveCount={} time={:.3f}",
             ownerName ? ownerName : "WaterRayTracingPassBase",
-            surfaceModelProvider_->GetProviderName(),
-            static_cast<uint32_t>(surfaceModelProvider_->GetSimulationType()),
+            surfaceModelProvider->GetProviderName(),
+            static_cast<uint32_t>(surfaceModelProvider->GetSimulationType()),
             outResolvedSurfaceData.waterHeight,
             outResolvedSurfaceData.activeWaveCount,
             outResolvedSurfaceData.time);

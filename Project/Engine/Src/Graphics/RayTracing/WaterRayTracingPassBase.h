@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <wrl.h>
 #include <cstdint>
+#include <memory>
 #include <string>
 
 #include "Graphics/Water/WaterSurfaceData.h"
@@ -97,8 +98,8 @@ namespace CoreEngine
         WaterSurfaceConstants BuildSurfaceConstants(const WaterSurfaceData& surfaceData) const;
         void UploadSurfaceConstants(const WaterSurfaceConstants& surfaceConstants, const char* ownerName) const;
         WaterSurfaceConstants UploadSurfaceDataForDispatch(const WaterSurfaceData& surfaceData, const char* ownerName) const;
-        void SetSurfaceModelProviderBase(const IWaterSurfaceModelProvider* provider);
-        const IWaterSurfaceModelProvider* GetSurfaceModelProviderBase() const;
+        void SetSurfaceModelProviderBase(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider);
+        std::shared_ptr<const IWaterSurfaceModelProvider> GetSurfaceModelProviderBase() const;
         const WaterSurfaceData& ResolveSurfaceDataForDispatch(
             const WaterSurfaceData& fallbackSurfaceData,
             WaterSurfaceData& outResolvedSurfaceData,
@@ -115,7 +116,7 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> stateObjectProperties_;
         ShaderTableBuilder shaderTableBuilder_;
         RayTracingOutputViewSet outputViews_;
-        const IWaterSurfaceModelProvider* surfaceModelProvider_ = nullptr;
+        std::weak_ptr<const IWaterSurfaceModelProvider> surfaceModelProvider_;
 
         bool isInitialized_ = false;
     };

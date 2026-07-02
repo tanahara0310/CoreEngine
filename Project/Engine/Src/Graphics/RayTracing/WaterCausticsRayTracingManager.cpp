@@ -134,12 +134,12 @@ namespace CoreEngine
             "RTWaterCausticsSRV");
     }
 
-    void WaterCausticsRayTracingManager::SetSurfaceModelProvider(const IWaterSurfaceModelProvider* provider)
+    void WaterCausticsRayTracingManager::SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider)
     {
         SetSurfaceModelProviderBase(provider);
     }
 
-    const IWaterSurfaceModelProvider* WaterCausticsRayTracingManager::GetSurfaceModelProvider() const
+    std::shared_ptr<const IWaterSurfaceModelProvider> WaterCausticsRayTracingManager::GetSurfaceModelProvider() const
     {
         return GetSurfaceModelProviderBase();
     }

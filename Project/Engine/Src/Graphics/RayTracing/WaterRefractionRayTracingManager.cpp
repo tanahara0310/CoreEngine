@@ -151,12 +151,12 @@ namespace CoreEngine
         return GetOutputCurrentStateBase(static_cast<uint32_t>(viewId));
     }
 
-    void WaterRefractionRayTracingManager::SetSurfaceModelProvider(const IWaterSurfaceModelProvider* provider)
+    void WaterRefractionRayTracingManager::SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider)
     {
         SetSurfaceModelProviderBase(provider);
     }
 
-    const IWaterSurfaceModelProvider* WaterRefractionRayTracingManager::GetSurfaceModelProvider() const
+    std::shared_ptr<const IWaterSurfaceModelProvider> WaterRefractionRayTracingManager::GetSurfaceModelProvider() const
     {
         return GetSurfaceModelProviderBase();
     }

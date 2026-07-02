@@ -37,6 +37,9 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Random\Random.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Random</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\CylinderMeshGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
@@ -858,6 +861,9 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CylinderObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
@@ -1120,6 +1126,9 @@
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Vignette</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.h">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Primitive\CylinderMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Primitive\IPrimitiveMeshGenerator.h">

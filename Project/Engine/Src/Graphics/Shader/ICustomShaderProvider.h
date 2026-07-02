@@ -25,6 +25,10 @@ namespace CoreEngine
         /// @note ファイル名のみ指定。ディレクトリは AssetDatabase が自動解決する。
         virtual std::wstring GetComputeShaderPath() const { return {}; }
 
+        /// @brief フォワード描画用 PSO のカリングモードを返す
+        /// @note 既定は背面カリング。必要なオブジェクトのみオーバーライドする。
+        virtual D3D12_CULL_MODE GetCullMode() const { return D3D12_CULL_MODE_BACK; }
+
         /// @brief カスタムルートパラメータをバインドする（エンジン既定バインド完了後に呼ばれる）
         /// @param cmdList 現在のコマンドリスト
         /// @param pipeline 構築済みカスタムパイプライン（GetRootParamIndex() でスロット番号を取得できる）

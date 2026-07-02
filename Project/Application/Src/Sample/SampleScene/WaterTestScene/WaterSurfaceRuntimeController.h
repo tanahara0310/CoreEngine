@@ -64,11 +64,8 @@ private:
 	CoreEngine::WaterSurfaceSnapshot waterSurfaceSnapshot_{};
 	/// @brief DXR 屈折用に転送する水面データ
 	CoreEngine::WaterSurfaceData waterRefractionSurfaceData_{};
-	/// @brief RT 水面パスへ渡す surface model provider
-	CoreEngine::StaticWaterSurfaceModelProvider surfaceModelProvider_{
-		nullptr,
-		CoreEngine::WaterSurfaceSimulationType::Gerstner,
-		"WaterSurfaceRuntimeController" };
+	/// @brief RT 水面パスへ渡す surface model provider（寿命管理付き）
+	std::shared_ptr<CoreEngine::StaticWaterSurfaceModelProvider> surfaceModelProvider_{};
 	/// @brief Gerstner Wave 用 simulator
 	std::unique_ptr<CoreEngine::WaterSurfaceSimulator> gerstnerSimulator_{};
 	/// @brief FFT Ocean 用 simulator

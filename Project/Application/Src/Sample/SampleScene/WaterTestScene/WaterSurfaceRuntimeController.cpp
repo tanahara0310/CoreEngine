@@ -29,6 +29,13 @@ void WaterSurfaceRuntimeController::Initialize(const WaterSceneObjects& sceneObj
 		fftOceanSimulator_ = std::make_unique<FFTOceanSurfaceSimulator>();
 	}
 
+	if (!surfaceModelProvider_) {
+		surfaceModelProvider_ = std::make_shared<StaticWaterSurfaceModelProvider>(
+			nullptr,
+			WaterSurfaceSimulationType::Gerstner,
+			"WaterSurfaceRuntimeController");
+	}
+
 	if (waterPlane_) {
 		// 初期フレームでも水面シェーダーの時間が不定にならないよう、
 		// アクティブ simulator 側の時間を即時反映する
@@ -44,7 +51,9 @@ void WaterSurfaceRuntimeController::UpdateSimulation(float deltaTime) {
 	if (!waterPlane_) {
 		// 水面が存在しないフレームでは、RT 側がフォールバックへ切り替わるよう
 		// provider の参照元を明示的に null にする
-		surfaceModelProvider_.SetSource(nullptr, WaterSurfaceSimulationType::Gerstner, "WaterSurfaceRuntimeController");
+		if (surfaceModelProvider_) {
+			surfaceModelProvider_->SetSource(nullptr, WaterSurfaceSimulationType::Gerstner, "WaterSurfaceRuntimeController");
+		}
 		return;
 	}
 
@@ -59,7 +68,9 @@ void WaterSurfaceRuntimeController::UpdateSimulation(float deltaTime) {
 void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 	// RT マネージャーへ provider を毎フレーム接続し、
 	// Gerstner / FFT 切り替え結果を屈折・コースティクスへ伝播する
-	const IWaterSurfaceModelProvider* surfaceModelProvider = waterPlane_ ? &surfaceModelProvider_ : nullptr;
+	const std::shared_ptr<const IWaterSurfaceModelProvider> surfaceModelProvider =
+		waterPlane_ ? std::static_pointer_cast<const IWaterSurfaceModelProvider>(surfaceModelProvider_)
+		: std::shared_ptr<const IWaterSurfaceModelProvider>{};
 	if (auto* renderDomainContext = engine.GetRenderDomainContext()) {
 		if (auto* waterRefractionManager = renderDomainContext->GetWaterRefractionRayTracingManager()) {
 			waterRefractionManager->SetSurfaceModelProvider(surfaceModelProvider);
@@ -131,17 +142,21 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 			waterSurfaceSnapshot_,
 			waterRefractionSurfaceData_);
 		// RT 側へ渡す provider の参照先を最新 surface data に更新する
-		surfaceModelProvider_.SetSource(
-			&waterRefractionSurfaceData_,
-			activeSimulator->GetSimulationType(),
-			"WaterSurfaceRuntimeController");
+		if (surfaceModelProvider_) {
+			surfaceModelProvider_->SetSource(
+				&waterRefractionSurfaceData_,
+				activeSimulator->GetSimulationType(),
+				"WaterSurfaceRuntimeController");
+		}
 	} else {
 		// simulator 不在時も provider の参照先を維持し、
 		// RT 側がゼロ初期化データへ安全にフォールバックできるようにする
-		surfaceModelProvider_.SetSource(
-			&waterRefractionSurfaceData_,
-			WaterSurfaceSimulationType::Gerstner,
-			"WaterSurfaceRuntimeController");
+		if (surfaceModelProvider_) {
+			surfaceModelProvider_->SetSource(
+				&waterRefractionSurfaceData_,
+				WaterSurfaceSimulationType::Gerstner,
+				"WaterSurfaceRuntimeController");
+		}
 	}
 
 	static uint32_t sSurfaceDataLogCounter = 0;
