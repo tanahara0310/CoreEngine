@@ -20,6 +20,7 @@ void WaterSurfaceRuntimeController::Initialize(const WaterSceneObjects& sceneObj
 	waterPlane_ = sceneObjects.waterPlane;
 	groundObject_ = sceneObjects.groundObject;
 
+	// 描画経路切り替えに備えて、Gerstner / FFT の両 simulator を初期化する
 	if (!gerstnerSimulator_) {
 		gerstnerSimulator_ = std::make_unique<GerstnerWaterSimulator>();
 	}
@@ -29,6 +30,8 @@ void WaterSurfaceRuntimeController::Initialize(const WaterSceneObjects& sceneObj
 	}
 
 	if (waterPlane_) {
+		// 初期フレームでも水面シェーダーの時間が不定にならないよう、
+		// アクティブ simulator 側の時間を即時反映する
 		if (auto* activeSimulator = GetActiveSimulator()) {
 			waterPlane_->SetSimulationTime(activeSimulator->GetElapsedTime());
 		}
@@ -39,11 +42,14 @@ void WaterSurfaceRuntimeController::Initialize(const WaterSceneObjects& sceneObj
 
 void WaterSurfaceRuntimeController::UpdateSimulation(float deltaTime) {
 	if (!waterPlane_) {
+		// 水面が存在しないフレームでは、RT 側がフォールバックへ切り替わるよう
+		// provider の参照元を明示的に null にする
 		surfaceModelProvider_.SetSource(nullptr, WaterSurfaceSimulationType::Gerstner, "WaterSurfaceRuntimeController");
 		return;
 	}
 
 	if (auto* activeSimulator = GetActiveSimulator()) {
+		// シミュレーション時間の進行と表示用UVアニメーションを同期させる
 		activeSimulator->AdvanceSimulation(deltaTime);
 		waterPlane_->UpdateUVAnimation(deltaTime);
 		waterPlane_->SetSimulationTime(activeSimulator->GetElapsedTime());
@@ -51,6 +57,8 @@ void WaterSurfaceRuntimeController::UpdateSimulation(float deltaTime) {
 }
 
 void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
+	// RT マネージャーへ provider を毎フレーム接続し、
+	// Gerstner / FFT 切り替え結果を屈折・コースティクスへ伝播する
 	const IWaterSurfaceModelProvider* surfaceModelProvider = waterPlane_ ? &surfaceModelProvider_ : nullptr;
 	if (auto* renderDomainContext = engine.GetRenderDomainContext()) {
 		if (auto* waterRefractionManager = renderDomainContext->GetWaterRefractionRayTracingManager()) {
@@ -62,6 +70,7 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 	}
 
 	if (!waterPlane_) {
+		// provider 接続だけは維持し、描画リソース同期は水面オブジェクト不在時に省略する
 		return;
 	}
 
@@ -110,27 +119,33 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 	}
 
 	WaterSurfaceSimulationInput simulationInput{};
+	// 水面オブジェクトの現在状態を simulator へ入力し、
+	// 共通 snapshot と DXR surface data を同時に更新する
 	simulationInput.waterHeight = waterPlane_->GetTransform().translate.y;
 	simulationInput.gerstnerConstants = &waterPlane_->GetWaterConstants();
 
 	if (auto* activeSimulator = GetActiveSimulator()) {
+		// 実際に有効な simulator 種別で surface data を構築する
 		activeSimulator->CaptureSurface(
 			simulationInput,
 			waterSurfaceSnapshot_,
 			waterRefractionSurfaceData_);
+		// RT 側へ渡す provider の参照先を最新 surface data に更新する
 		surfaceModelProvider_.SetSource(
 			&waterRefractionSurfaceData_,
 			activeSimulator->GetSimulationType(),
 			"WaterSurfaceRuntimeController");
 	} else {
+		// simulator 不在時も provider の参照先を維持し、
+		// RT 側がゼロ初期化データへ安全にフォールバックできるようにする
 		surfaceModelProvider_.SetSource(
 			&waterRefractionSurfaceData_,
 			WaterSurfaceSimulationType::Gerstner,
 			"WaterSurfaceRuntimeController");
 	}
 
-	static uint32_t sSurfaceDataLogCounter = 0u;
-	if ((sSurfaceDataLogCounter++ % 120u) == 0u) {
+	static uint32_t sSurfaceDataLogCounter = 0;
+	if ((sSurfaceDataLogCounter++ % 120) == 0) {
 		Logger::GetInstance().Infof(
 			LogCategory::Graphics,
 			LogSubCategory::Pipeline,

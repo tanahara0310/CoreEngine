@@ -30,8 +30,8 @@ public:
     void UpdateFrameConstants(const WaterFrameConstants& frameConstants, bool useReflectionFrame);
 
 private:
-    static constexpr UINT kWaterCBSize = (sizeof(WaterConstants) + 255) & ~255u;
-    static constexpr UINT kFrameCBSize = (sizeof(WaterFrameConstants) + 255) & ~255u;
+    static constexpr UINT kWaterCBSize = (sizeof(WaterConstants) + 255) & ~255;
+    static constexpr UINT kFrameCBSize = (sizeof(WaterFrameConstants) + 255) & ~255;
 
     /// @brief Upload Heap 上のバッファを 1 本作成してマップする
     void CreateBuffer(

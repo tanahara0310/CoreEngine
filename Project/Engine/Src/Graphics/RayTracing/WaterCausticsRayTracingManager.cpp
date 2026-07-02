@@ -227,8 +227,9 @@ namespace CoreEngine
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
 
-        const WaterSurfaceConstants surfaceConstants = BuildSurfaceConstants(dispatchSurfaceData);
-        UploadSurfaceConstants(surfaceConstants, "WaterCausticsRayTracingManager");
+        const WaterSurfaceConstants surfaceConstants = UploadSurfaceDataForDispatch(
+            dispatchSurfaceData,
+            "WaterCausticsRayTracingManager");
 
         cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         cmdList4->SetPipelineState1(stateObject_.Get());
@@ -269,12 +270,13 @@ namespace CoreEngine
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "WaterCausticsRayTracingManager: dispatch completed. status={} viewId={} width={} height={} waterHeight={:.3f} activeWaveCount={} outputSRV=0x{:X}",
+            "WaterCausticsRayTracingManager: dispatch completed. status={} viewId={} width={} height={} waterHeight={:.3f} simulationType={} activeWaveCount={} outputSRV=0x{:X}",
             ToString(lastDiagnostics_.status),
             viewIndex,
             width,
             height,
             dispatchSurfaceData.waterHeight,
+            dispatchSurfaceData.simulationType,
             dispatchSurfaceData.activeWaveCount,
             outputSrvHandle.ptr);
     }

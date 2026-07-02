@@ -25,19 +25,21 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     const uint2 coord = dispatchThreadId.xy;
-    const uint2 coordLeft = uint2((coord.x + gResolution - 1u) % gResolution, coord.y);
-    const uint2 coordRight = uint2((coord.x + 1u) % gResolution, coord.y);
-    const uint2 coordDown = uint2(coord.x, (coord.y + gResolution - 1u) % gResolution);
-    const uint2 coordUp = uint2(coord.x, (coord.y + 1u) % gResolution);
+    const uint one = 1;
+    const uint2 coordLeft = uint2((coord.x + gResolution - one) % gResolution, coord.y);
+    const uint2 coordRight = uint2((coord.x + one) % gResolution, coord.y);
+    const uint2 coordDown = uint2(coord.x, (coord.y + gResolution - one) % gResolution);
+    const uint2 coordUp = uint2(coord.x, (coord.y + one) % gResolution);
 
     const float4 spectrumA = gHeightDisplacementXSpectrum.Load(int3(coord, 0));
     const float4 spectrumB = gDisplacementZSpectrum.Load(int3(coord, 0));
 
-    const float checker = ((coord.x + coord.y) & 1u) != 0u ? -1.0f : 1.0f;
-    const float checkerLeft = ((coordLeft.x + coordLeft.y) & 1u) != 0u ? -1.0f : 1.0f;
-    const float checkerRight = ((coordRight.x + coordRight.y) & 1u) != 0u ? -1.0f : 1.0f;
-    const float checkerDown = ((coordDown.x + coordDown.y) & 1u) != 0u ? -1.0f : 1.0f;
-    const float checkerUp = ((coordUp.x + coordUp.y) & 1u) != 0u ? -1.0f : 1.0f;
+    const uint oddMask = 1;
+    const float checker = ((coord.x + coord.y) & oddMask) != 0 ? -1.0f : 1.0f;
+    const float checkerLeft = ((coordLeft.x + coordLeft.y) & oddMask) != 0 ? -1.0f : 1.0f;
+    const float checkerRight = ((coordRight.x + coordRight.y) & oddMask) != 0 ? -1.0f : 1.0f;
+    const float checkerDown = ((coordDown.x + coordDown.y) & oddMask) != 0 ? -1.0f : 1.0f;
+    const float checkerUp = ((coordUp.x + coordUp.y) & oddMask) != 0 ? -1.0f : 1.0f;
 
     const float debugScale = 1.0f;
     const float displacementX = spectrumA.z * checker * debugScale;

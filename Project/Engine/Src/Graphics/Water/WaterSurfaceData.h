@@ -5,6 +5,8 @@
 namespace CoreEngine
 {
     static constexpr uint32_t kMaxWaterSurfaceWaveCount = kMaxWaterWaveCount;
+    static constexpr uint32_t kWaterSurfaceModelTypeGerstner = 0;
+    static constexpr uint32_t kWaterSurfaceModelTypeFFTOcean = 1;
 
     struct WaterWaveParam {
         float direction[2] = { 1.0f, 0.0f };
@@ -20,7 +22,7 @@ namespace CoreEngine
         float waterHeight = 0.0f;
         uint32_t activeWaveCount = 0;
         float time = 0.0f;
-        float padding = 0.0f;
+        uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
         WaveParams waves[kMaxWaterSurfaceWaveCount]{};
     };
 
@@ -28,7 +30,7 @@ namespace CoreEngine
         float waterHeight = 0.0f;
         uint32_t activeWaveCount = 0;
         float time = 0.0f;
-        float padding = 0.0f;
+        uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
         WaterWaveParam waves[kMaxWaterSurfaceWaveCount]{};
     };
 

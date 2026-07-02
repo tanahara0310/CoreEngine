@@ -211,7 +211,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderGraph.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp" />
@@ -668,7 +674,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\IWaterSurfaceModelProvider.h" />

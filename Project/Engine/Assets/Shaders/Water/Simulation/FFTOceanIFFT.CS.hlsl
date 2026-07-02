@@ -14,7 +14,8 @@ static const float PI = 3.14159265359f;
 uint ReverseIndex(uint index, uint resolution)
 {
     const uint bitCount = firstbithigh(resolution);
-    return reversebits(index) >> (32u - bitCount);
+    const uint bitWidth = 32;
+    return reversebits(index) >> (bitWidth - bitCount);
 }
 
 float2 ComplexMultiply(float2 a, float2 b)
@@ -32,11 +33,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-    const uint stride = 1u << gStageIndex;
-    const uint butterflySpan = stride << 1u;
+    const uint one = uint(1);
+    const uint stride = one << gStageIndex;
+    const uint butterflySpan = stride << one;
 
-    uint lineIndex = gIsHorizontal != 0u ? dispatchThreadId.y : dispatchThreadId.x;
-    uint elementIndex = gIsHorizontal != 0u ? dispatchThreadId.x : dispatchThreadId.y;
+    uint lineIndex = gIsHorizontal != 0 ? dispatchThreadId.y : dispatchThreadId.x;
+    uint elementIndex = gIsHorizontal != 0 ? dispatchThreadId.x : dispatchThreadId.y;
 
     const uint blockBase = (elementIndex / butterflySpan) * butterflySpan;
     const uint pairOffset = elementIndex % stride;
@@ -45,14 +47,14 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     uint sourceFirstIndex = firstIndex;
     uint sourceSecondIndex = secondIndex;
-    if (gStageIndex == 0u)
+    if (gStageIndex == 0)
     {
         sourceFirstIndex = ReverseIndex(firstIndex, gResolution);
         sourceSecondIndex = ReverseIndex(secondIndex, gResolution);
     }
 
-    uint2 firstCoord = gIsHorizontal != 0u ? uint2(sourceFirstIndex, lineIndex) : uint2(lineIndex, sourceFirstIndex);
-    uint2 secondCoord = gIsHorizontal != 0u ? uint2(sourceSecondIndex, lineIndex) : uint2(lineIndex, sourceSecondIndex);
+    uint2 firstCoord = gIsHorizontal != 0 ? uint2(sourceFirstIndex, lineIndex) : uint2(lineIndex, sourceFirstIndex);
+    uint2 secondCoord = gIsHorizontal != 0 ? uint2(sourceSecondIndex, lineIndex) : uint2(lineIndex, sourceSecondIndex);
 
     float4 firstValue = gInputSpectrum.Load(int3(firstCoord, 0));
     float4 secondValue = gInputSpectrum.Load(int3(secondCoord, 0));

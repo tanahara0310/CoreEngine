@@ -85,7 +85,25 @@
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.cpp">
@@ -1434,7 +1452,25 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h">
       <Filter>Engine\Src\Graphics\Texture\Path</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h">

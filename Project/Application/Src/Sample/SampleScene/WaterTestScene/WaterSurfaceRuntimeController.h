@@ -18,6 +18,7 @@ class WaterSurfaceRuntimeController {
 public:
 	/// @brief setup 済みの水面関連オブジェクトを受け取り、runtime 制御を初期化する
 	/// @param sceneObjects WaterSceneSetup が構築したオブジェクト群
+	/// @details Gerstner/FFT の simulator を準備し、初期フレームの水面データを構築する。
 	void Initialize(const WaterSceneObjects& sceneObjects);
 
 	/// @brief 水面の時間進行と UV アニメーションを更新する
@@ -26,9 +27,13 @@ public:
 
 	/// @brief 水面描画に必要な SRV とフレームリソースを同期する
 	/// @param engine エンジンシステム
+	/// @details RTマネージャーへの surface provider 接続、および水面描画に必要な
+	/// SceneColor / SceneDepth / RT屈折 / FFTテクスチャを同期する。
 	void SyncFrameResources(CoreEngine::EngineSystem& engine);
 
 	/// @brief DXR 屈折用の水面サーフェスデータを更新する
+	/// @details 現在有効な simulator から snapshot と surface data を再構築し、
+	/// RT屈折・コースティクスで共有する provider の参照元を更新する。
 	void UpdateWaterRefractionSurfaceData();
 
 	/// @brief ReflectionView の描画結果を水面へ反映する
@@ -36,12 +41,15 @@ public:
 	void ApplyWaterRenderViewResult(const CoreEngine::RenderViewResult& result);
 
 	/// @brief 管理中の水面オブジェクトを返す
+	/// @return 管理対象の水面オブジェクト。未初期化時は nullptr。
 	WaterPlaneObject* GetWaterPlane() const { return waterPlane_; }
 
 	/// @brief 現在の水面高さを返す
+	/// @return 水面オブジェクトのワールドY座標。未初期化時は 0.0f。
 	float GetWaterHeight() const;
 
 	/// @brief 現在の水面サーフェスデータを返す
+	/// @return 現在フレームの surface data。未初期化時は nullptr。
 	const CoreEngine::WaterSurfaceData* GetWaterRefractionSurfaceData() const;
 
 private:

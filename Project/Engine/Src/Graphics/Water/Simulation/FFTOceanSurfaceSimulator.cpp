@@ -21,9 +21,11 @@ namespace CoreEngine
         snapshot.waterHeight = input.waterHeight;
         snapshot.activeWaveCount = 0;
         snapshot.time = elapsedTime_;
+        snapshot.simulationType = kWaterSurfaceModelTypeFFTOcean;
 
         surfaceData.waterHeight = snapshot.waterHeight;
         surfaceData.activeWaveCount = 0;
         surfaceData.time = snapshot.time;
+        surfaceData.simulationType = snapshot.simulationType;
     }
 }

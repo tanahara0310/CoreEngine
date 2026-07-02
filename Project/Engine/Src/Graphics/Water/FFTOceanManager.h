@@ -213,6 +213,6 @@ namespace CoreEngine
         SimulationConstants* mappedSimulationConstants_ = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> ifftConstantsBuffer_;
         uint8_t* mappedIFFTConstantsData_ = nullptr;
-        uint32_t ifftConstantsWriteIndex_ = 0u;
+        uint32_t ifftConstantsWriteIndex_ = 0;
     };
 }

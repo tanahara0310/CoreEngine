@@ -260,7 +260,7 @@ namespace CoreEngine
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "WaterRefractionRayTracingManager: dispatch begin. viewId={} waterHeight={:.3f} width={} height={} blasCount={} worldPosSRV=0x{:X} sceneColorSRV=0x{:X} outputSRV=0x{:X} eta={:.4f} maxRayDistance={:.3f} absorptionCoeff={:.3f} surfaceBias={:.4f} maxOffsetPx={:.3f} cameraPos=({:.3f}, {:.3f}, {:.3f}) activeWaveCount={} waveTime={:.3f}",
+            "WaterRefractionRayTracingManager: dispatch begin. viewId={} waterHeight={:.3f} width={} height={} blasCount={} worldPosSRV=0x{:X} sceneColorSRV=0x{:X} outputSRV=0x{:X} eta={:.4f} maxRayDistance={:.3f} absorptionCoeff={:.3f} surfaceBias={:.4f} maxOffsetPx={:.3f} cameraPos=({:.3f}, {:.3f}, {:.3f}) simulationType={} activeWaveCount={} waveTime={:.3f}",
             viewIndex,
             dispatchSurfaceData.waterHeight,
             width,
@@ -277,19 +277,22 @@ namespace CoreEngine
             cameraPosition.x,
             cameraPosition.y,
             cameraPosition.z,
+            dispatchSurfaceData.simulationType,
             dispatchSurfaceData.activeWaveCount,
             dispatchSurfaceData.time);
 
-        const WaterSurfaceConstants surfaceConstants = BuildSurfaceConstants(dispatchSurfaceData);
-        UploadSurfaceConstants(surfaceConstants, "WaterRefractionRayTracingManager");
+        const WaterSurfaceConstants surfaceConstants = UploadSurfaceDataForDispatch(
+            dispatchSurfaceData,
+            "WaterRefractionRayTracingManager");
 
         if (surfaceConstants.activeWaveCount > 0) {
             const WaterWaveParam& firstWave = surfaceConstants.waves[0];
             Logger::GetInstance().Infof(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "WaterRefractionRayTracingManager: surface constants uploaded. waterHeight={:.3f} activeWaveCount={} waveTime={:.3f} firstWave(dir=({:.3f}, {:.3f}) amp={:.4f} len={:.3f} speed={:.3f} steep={:.3f} phase={:.3f})",
+                "WaterRefractionRayTracingManager: surface constants uploaded. waterHeight={:.3f} simulationType={} activeWaveCount={} waveTime={:.3f} firstWave(dir=({:.3f}, {:.3f}) amp={:.4f} len={:.3f} speed={:.3f} steep={:.3f} phase={:.3f})",
                 surfaceConstants.waterHeight,
+                surfaceConstants.simulationType,
                 surfaceConstants.activeWaveCount,
                 surfaceConstants.time,
                 firstWave.direction[0],
@@ -303,8 +306,9 @@ namespace CoreEngine
             Logger::GetInstance().Infof(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "WaterRefractionRayTracingManager: surface constants uploaded. waterHeight={:.3f} activeWaveCount=0 waveTime={:.3f}",
+                "WaterRefractionRayTracingManager: surface constants uploaded. waterHeight={:.3f} simulationType={} activeWaveCount=0 waveTime={:.3f}",
                 surfaceConstants.waterHeight,
+                surfaceConstants.simulationType,
                 surfaceConstants.time);
         }
 

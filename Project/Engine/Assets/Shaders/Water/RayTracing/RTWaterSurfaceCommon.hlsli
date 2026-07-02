@@ -25,11 +25,14 @@ cbuffer WaterSurfaceData : register(b1)
     float gSurfaceWaterHeight;
     uint gSurfaceActiveWaveCount;
     float gSurfaceTime;
-    float gSurfacePadding;
+    uint gSurfaceSimulationType;
     WaveParam gSurfaceWaves[16];
 };
 
-float3 EvaluateWaterOffset(float2 worldXZ)
+static const uint kWaterSurfaceModelTypeGerstner = 0;
+static const uint kWaterSurfaceModelTypeFFTOcean = 1;
+
+float3 EvaluateWaterOffsetGerstner(float2 worldXZ)
 {
     float3 totalOffset = float3(0.0f, 0.0f, 0.0f);
 
@@ -58,7 +61,7 @@ float3 EvaluateWaterOffset(float2 worldXZ)
     return totalOffset;
 }
 
-float3 EvaluateWaterNormal(float2 worldXZ)
+float3 EvaluateWaterNormalGerstner(float2 worldXZ)
 {
     float3 dPdX = float3(1.0f, 0.0f, 0.0f);
     float3 dPdZ = float3(0.0f, 0.0f, 1.0f);
@@ -95,6 +98,38 @@ float3 EvaluateWaterNormal(float2 worldXZ)
 
     float3 normal = normalize(cross(dPdZ, dPdX));
     return normal.y < 0.0f ? -normal : normal;
+}
+
+float3 EvaluateWaterOffsetFFTOcean(float2 worldXZ)
+{
+    worldXZ = worldXZ;
+    return float3(0.0f, 0.0f, 0.0f);
+}
+
+float3 EvaluateWaterNormalFFTOcean(float2 worldXZ)
+{
+    worldXZ = worldXZ;
+    return float3(0.0f, 1.0f, 0.0f);
+}
+
+float3 EvaluateWaterOffset(float2 worldXZ)
+{
+    if (gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean)
+    {
+        return EvaluateWaterOffsetFFTOcean(worldXZ);
+    }
+
+    return EvaluateWaterOffsetGerstner(worldXZ);
+}
+
+float3 EvaluateWaterNormal(float2 worldXZ)
+{
+    if (gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean)
+    {
+        return EvaluateWaterNormalFFTOcean(worldXZ);
+    }
+
+    return EvaluateWaterNormalGerstner(worldXZ);
 }
 
 #endif // RT_WATER_SURFACE_COMMON_HLSLI

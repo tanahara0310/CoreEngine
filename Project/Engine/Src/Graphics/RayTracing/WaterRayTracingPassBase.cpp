@@ -254,6 +254,7 @@ namespace CoreEngine
         surfaceConstants.waterHeight = surfaceData.waterHeight;
         surfaceConstants.activeWaveCount = (std::min)(surfaceData.activeWaveCount, kMaxWaterSurfaceWaveCount);
         surfaceConstants.time = surfaceData.time;
+        surfaceConstants.simulationType = surfaceData.simulationType;
         for (uint32_t waveIndex = 0; waveIndex < surfaceConstants.activeWaveCount; ++waveIndex) {
             surfaceConstants.waves[waveIndex] = surfaceData.waves[waveIndex];
         }
@@ -274,6 +275,15 @@ namespace CoreEngine
         }
 
         std::memcpy(constantBufferMapped_, &surfaceConstants, sizeof(surfaceConstants));
+    }
+
+    WaterRayTracingPassBase::WaterSurfaceConstants WaterRayTracingPassBase::UploadSurfaceDataForDispatch(
+        const WaterSurfaceData& surfaceData,
+        const char* ownerName) const
+    {
+        const WaterSurfaceConstants surfaceConstants = BuildSurfaceConstants(surfaceData);
+        UploadSurfaceConstants(surfaceConstants, ownerName);
+        return surfaceConstants;
     }
 
     void WaterRayTracingPassBase::SetSurfaceModelProviderBase(const IWaterSurfaceModelProvider* provider)

@@ -118,7 +118,7 @@ void WaterEditorFacade::ApplyCausticsSettings(const WaterEditorCausticsSettings&
         params.alignmentPower = settings.alignmentPower;
         params.debugDisplayScale = settings.debugDisplayScale;
         params.debugViewMode = static_cast<uint32_t>(settings.debugViewMode);
-        params.debugLogEnabled = settings.debugLogEnabled ? 1u : 0u;
+        params.debugLogEnabled = settings.debugLogEnabled ? 1 : 0;
         waterCaustics->SetParams(params);
     }
 }

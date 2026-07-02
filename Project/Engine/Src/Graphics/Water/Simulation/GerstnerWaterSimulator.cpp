@@ -46,10 +46,12 @@ namespace CoreEngine
         snapshot.waterHeight = input.waterHeight;
         snapshot.activeWaveCount = (std::min)(waterConstants.activeWaveCount, kMaxWaterSurfaceWaveCount);
         snapshot.time = elapsedTime_;
+        snapshot.simulationType = kWaterSurfaceModelTypeGerstner;
 
         surfaceData.waterHeight = snapshot.waterHeight;
         surfaceData.activeWaveCount = snapshot.activeWaveCount;
         surfaceData.time = snapshot.time;
+        surfaceData.simulationType = snapshot.simulationType;
 
         for (uint32_t waveIndex = 0; waveIndex < snapshot.activeWaveCount; ++waveIndex) {
             snapshot.waves[waveIndex] = waterConstants.waves[waveIndex];

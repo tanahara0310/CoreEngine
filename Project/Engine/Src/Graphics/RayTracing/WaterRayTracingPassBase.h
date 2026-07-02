@@ -23,7 +23,7 @@ namespace CoreEngine
             float waterHeight = 0.0f;
             uint32_t activeWaveCount = 0;
             float time = 0.0f;
-            float padding = 0.0f;
+            uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
             WaterWaveParam waves[kMaxWaterSurfaceWaveCount]{};
         };
 
@@ -92,10 +92,11 @@ namespace CoreEngine
             DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT);
         static constexpr UINT GetSurfaceConstantBufferSize()
         {
-            return (sizeof(WaterSurfaceConstants) + 255u) & ~255u;
+            return (sizeof(WaterSurfaceConstants) + 255) & ~255;
         }
         WaterSurfaceConstants BuildSurfaceConstants(const WaterSurfaceData& surfaceData) const;
         void UploadSurfaceConstants(const WaterSurfaceConstants& surfaceConstants, const char* ownerName) const;
+        WaterSurfaceConstants UploadSurfaceDataForDispatch(const WaterSurfaceData& surfaceData, const char* ownerName) const;
         void SetSurfaceModelProviderBase(const IWaterSurfaceModelProvider* provider);
         const IWaterSurfaceModelProvider* GetSurfaceModelProviderBase() const;
         const WaterSurfaceData& ResolveSurfaceDataForDispatch(

@@ -148,8 +148,8 @@ void WaterPlaneObject::BindCustomResources(
         renderResources_);
 
     if (renderResources_.fftDisplacementSRV.ptr != 0) {
-        static uint32_t sFftBindLogCounter = 0u;
-        if ((sFftBindLogCounter++ % 240u) == 0u) {
+        static uint32_t sFftBindLogCounter = 0;
+        if ((sFftBindLogCounter++ % 240) == 0) {
             const int fftDisplacementSlot = pipeline->GetRootParamIndex("gFFTOceanDisplacement");
             CoreEngine::Logger::GetInstance().Infof(
                 CoreEngine::LogCategory::Graphics,
