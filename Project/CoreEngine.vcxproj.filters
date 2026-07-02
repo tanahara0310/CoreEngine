@@ -118,6 +118,9 @@
     <ClCompile Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.cpp">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\ObjectCommon\Model\DynamicModelObject.cpp">
+      <Filter>Engine\Src\ObjectCommon\Model</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\LifetimeModule.cpp">
       <Filter>Engine\Src\Particle\Modules</Filter>
     </ClCompile>

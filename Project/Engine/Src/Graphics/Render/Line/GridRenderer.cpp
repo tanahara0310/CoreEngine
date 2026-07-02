@@ -60,12 +60,20 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
 {
     std::vector<Line> lines;
 
-    // カメラ位置を中心にグリッドを生成（グリッド間隔にスナップ）
-    const float snapX = std::floor(cameraPosition.x / spacing_) * spacing_;
-    const float snapZ = std::floor(cameraPosition.z / spacing_) * spacing_;
+    // ワールド原点基準でグリッドを生成
+    // 以前はカメラ追従で生成していたため、カメラを引くと
+    // シーン中心（原点）付近のグリッドが視界から外れて消えて見えていた。
+    const float snapX = 0.0f;
+    const float snapZ = 0.0f;
 
-    // グリッドの範囲を計算
-    const int halfCount = static_cast<int>(gridSize_ / spacing_);
+    // グリッド境界が視界内に見えると、遠景エッジがサブピクセルで明滅しやすい。
+    // カメラが原点から離れた分だけ描画範囲を拡張し、境界を常に視界外へ押し出す。
+    const float cameraMaxDistance = std::max(std::abs(cameraPosition.x), std::abs(cameraPosition.z));
+    const float dynamicGridExtent = std::max(gridSize_ * 4.0f, cameraMaxDistance + gridSize_ * 2.0f);
+
+    // spacing_ の整数倍に切り上げて範囲を安定化する
+    const int halfCount = static_cast<int>(std::ceil(dynamicGridExtent / spacing_));
+    const int edgeFadeLineWidth = std::max(8, halfCount / 12);
     const float startX = snapX - halfCount * spacing_;
     const float endX = snapX + halfCount * spacing_;
     const float startZ = snapZ - halfCount * spacing_;
@@ -78,13 +86,13 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
     // === 原点を通る軸ライン（X/Y/Z） ===
     // 軸ラインは常に完全不透明
     // X軸（赤）: Z方向に伸びる
-    lines.push_back({ { 0.0f, 0.0f, startZ }, { 0.0f, 0.0f, endZ }, xAxisColor_, kAxisAlpha });
+    lines.push_back({ { 0.0f, kGridPlaneYOffset, startZ }, { 0.0f, kGridPlaneYOffset, endZ }, xAxisColor_, kAxisAlpha });
     
     // Y軸（青）: 垂直方向
-    lines.push_back({ { 0.0f, yMin, 0.0f }, { 0.0f, yMax, 0.0f }, yAxisColor_, kAxisAlpha });
+    lines.push_back({ { 0.0f, yMin + kGridPlaneYOffset, 0.0f }, { 0.0f, yMax + kGridPlaneYOffset, 0.0f }, yAxisColor_, kAxisAlpha });
     
     // Z軸（緑）: X方向に伸びる
-    lines.push_back({ { startX, 0.0f, 0.0f }, { endX, 0.0f, 0.0f }, zAxisColor_, kAxisAlpha });
+    lines.push_back({ { startX, kGridPlaneYOffset, 0.0f }, { endX, kGridPlaneYOffset, 0.0f }, zAxisColor_, kAxisAlpha });
 
     // === グリッドライン生成（距離ベースフェード対応） ===
     const float majorBlendFactor = 0.3f; // 太いラインの色ブレンド率
@@ -95,6 +103,10 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
     for (int i = -halfCount; i <= halfCount; ++i) {
         const float x = snapX + i * spacing_;
         const float z = snapZ + i * spacing_;
+        const float edgeFade = std::clamp(
+            static_cast<float>(halfCount - std::abs(i)) / static_cast<float>(edgeFadeLineWidth),
+            0.0f,
+            1.0f);
         
         const int xLineIndex = static_cast<int>(std::round(x / spacing_));
         const int zLineIndex = static_cast<int>(std::round(z / spacing_));
@@ -106,7 +118,7 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
             
             // 距離に基づくフェード率を計算（0.0 = 完全不透明、1.0 = 完全透明）
             float fadeFactor = 0.0f;
-            if (distanceX > fadeStartDistance_) {
+            if (enableDistanceFade_ && fadeRange > 0.0f && distanceX > fadeStartDistance_) {
                 fadeFactor = (distanceX - fadeStartDistance_) / fadeRange;
                 fadeFactor = std::clamp(fadeFactor, 0.0f, 1.0f);
             }
@@ -122,11 +134,11 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
             
             // α値にフェードを適用
             const float baseAlpha = isMajorX ? kMajorAlpha : kNormalAlpha;
-            const float alphaX = baseAlpha * (1.0f - fadeFactor);
+            const float alphaX = baseAlpha * (1.0f - fadeFactor) * edgeFade;
             
             // 完全に透明になったラインはスキップ
             if (alphaX > 0.01f) {
-                lines.push_back({ { x, 0.0f, startZ }, { x, 0.0f, endZ }, colorX, alphaX });
+                lines.push_back({ { x, kGridPlaneYOffset, startZ }, { x, kGridPlaneYOffset, endZ }, colorX, alphaX });
             }
         }
         
@@ -137,7 +149,7 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
             
             // 距離に基づくフェード率を計算
             float fadeFactor = 0.0f;
-            if (distanceZ > fadeStartDistance_) {
+            if (enableDistanceFade_ && fadeRange > 0.0f && distanceZ > fadeStartDistance_) {
                 fadeFactor = (distanceZ - fadeStartDistance_) / fadeRange;
                 fadeFactor = std::clamp(fadeFactor, 0.0f, 1.0f);
             }
@@ -153,11 +165,11 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
             
             // α値にフェードを適用
             const float baseAlpha = isMajorZ ? kMajorAlpha : kNormalAlpha;
-            const float alphaZ = baseAlpha * (1.0f - fadeFactor);
+            const float alphaZ = baseAlpha * (1.0f - fadeFactor) * edgeFade;
             
             // 完全に透明になったラインはスキップ
             if (alphaZ > 0.01f) {
-                lines.push_back({ { startX, 0.0f, z }, { endX, 0.0f, z }, colorZ, alphaZ });
+                lines.push_back({ { startX, kGridPlaneYOffset, z }, { endX, kGridPlaneYOffset, z }, colorZ, alphaZ });
             }
         }
     }
@@ -194,11 +206,16 @@ bool GridRenderer::DrawInspectorTabContent(int tabIndex)
     }
 
     UI::SectionHeader("フェード");
-    if (UI::DragFloat("フェード開始距離", fadeStartDistance_, 1.0f, 0.0f, fadeEndDistance_)) {
+    if (UI::Widgets::ToggleSwitch("距離フェード有効", &enableDistanceFade_)) {
         changed = true;
     }
-    if (UI::DragFloat("フェード終了距離", fadeEndDistance_, 1.0f, fadeStartDistance_, gridSize_)) {
-        changed = true;
+    if (enableDistanceFade_) {
+        if (UI::DragFloat("フェード開始距離", fadeStartDistance_, 1.0f, 0.0f, fadeEndDistance_)) {
+            changed = true;
+        }
+        if (UI::DragFloat("フェード終了距離", fadeEndDistance_, 1.0f, fadeStartDistance_, gridSize_)) {
+            changed = true;
+        }
     }
 
     UI::SectionHeader("カラー");

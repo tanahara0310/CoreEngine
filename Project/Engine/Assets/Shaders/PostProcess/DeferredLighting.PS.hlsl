@@ -163,7 +163,8 @@ PixelShaderOutput main(PixelShaderInput input)
         gWaterCaustics.GetDimensions(causticsW, causticsH);
         if (causticsW > 1.0f && causticsH > 1.0f)
         {
-            rawCaustics = gWaterCaustics.Load(loadCoord).rgb * gWaterCausticsDebug.debugDisplayScale;
+            float2 causticsUV = (input.position.xy + 0.5f.xx) / float2(causticsW, causticsH);
+            rawCaustics = gWaterCaustics.SampleLevel(gSampler, causticsUV, 0.0f).rgb * gWaterCausticsDebug.debugDisplayScale;
         }
 
         if (gWaterCausticsDebug.debugViewMode == 1)
@@ -593,11 +594,12 @@ PixelShaderOutput main(PixelShaderInput input)
         gWaterCaustics.GetDimensions(causticsW, causticsH);
         if (causticsW > 1.0f && causticsH > 1.0f)
         {
-            waterCaustics = gWaterCaustics.Load(loadCoord).rgb;
+            float2 causticsUV = (input.position.xy + 0.5f.xx) / float2(causticsW, causticsH);
+            waterCaustics = gWaterCaustics.SampleLevel(gSampler, causticsUV, 0.0f).rgb;
             float3 causticsAlbedoScale = lerp(0.35f.xxx, albedo, 0.65f);
             float causticsAOScale = lerp(0.45f, 1.0f, ao);
             float causticsMetallicScale = lerp(1.0f, 0.25f, metallic);
-            static const float kWaterCausticsCompositeScale = 2.5f;
+            static const float kWaterCausticsCompositeScale = 4.5f;
             waterCaustics *= causticsAlbedoScale * causticsAOScale * causticsMetallicScale * kWaterCausticsCompositeScale;
         }
     }

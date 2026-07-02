@@ -10,6 +10,8 @@ RWTexture2D<float4> gRefractionOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
 Texture2D<float4> gWorldPosition : register(t1);
 Texture2D<float4> gSceneColor : register(t2);
+Texture2D<float4> gFFTOceanDisplacement : register(t3);
+Texture2D<float4> gFFTOceanNormal : register(t4);
 
 cbuffer WaterRefractionConstants : register(b0)
 {
@@ -23,6 +25,9 @@ cbuffer WaterRefractionConstants : register(b0)
     float gScreenWidth;
     float gScreenHeight;
     float gMaxRefractionOffsetPixels;
+    uint gFFTOceanEnabled;
+    float gFFTOceanPatchLength;
+    uint gFFTOceanResolution;
     float gPadding;
 };
 
@@ -44,6 +49,46 @@ static const float kRTReasonSuccess = 8.0f / 255.0f;
 float4 MakeFallbackOutput(float3 fallbackColor, float reasonCode)
 {
     return float4(fallbackColor, reasonCode);
+}
+
+bool UseFFTOceanSurface()
+{
+    return gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean
+        && gFFTOceanEnabled != 0
+        && gFFTOceanResolution > 0
+        && gFFTOceanPatchLength > 1.0e-4f;
+}
+
+uint2 ComputeFFTSampleCoord(float2 worldXZ)
+{
+    const float2 uv = frac(worldXZ / gFFTOceanPatchLength + 0.5f.xx);
+    const float2 scaled = uv * (float)gFFTOceanResolution;
+    const uint2 coord = uint2(scaled);
+    return min(coord, uint2(gFFTOceanResolution - 1, gFFTOceanResolution - 1));
+}
+
+float3 EvaluateRefractionWaterOffset(float2 worldXZ)
+{
+    if (!UseFFTOceanSurface())
+    {
+        return EvaluateWaterOffset(worldXZ);
+    }
+
+    const uint2 coord = ComputeFFTSampleCoord(worldXZ);
+    return gFFTOceanDisplacement.Load(int3(coord, 0)).xyz;
+}
+
+float3 EvaluateRefractionWaterNormal(float2 worldXZ)
+{
+    if (!UseFFTOceanSurface())
+    {
+        return EvaluateWaterNormal(worldXZ);
+    }
+
+    const uint2 coord = ComputeFFTSampleCoord(worldXZ);
+    const float3 encodedNormal = gFFTOceanNormal.Load(int3(coord, 0)).xyz;
+    const float3 decodedNormal = normalize(encodedNormal * 2.0f - 1.0f);
+    return decodedNormal.y < 0.0f ? -decodedNormal : decodedNormal;
 }
 
 [shader("raygeneration")]
@@ -91,13 +136,13 @@ void RTWaterRefractionRayGen()
     [unroll]
     for (int iteration = 0; iteration < 3; ++iteration)
     {
-        float3 waveOffset = EvaluateWaterOffset(waterPos.xz);
+        float3 waveOffset = EvaluateRefractionWaterOffset(waterPos.xz);
         float surfaceY = gSurfaceWaterHeight + waveOffset.y;
         float deltaY = waterPos.y - surfaceY;
         waterPos -= primaryDir * (deltaY / safeDenom);
     }
 
-    float3 waterNormal = EvaluateWaterNormal(waterPos.xz);
+    float3 waterNormal = EvaluateRefractionWaterNormal(waterPos.xz);
     float3 refractedDir = refract(primaryDir, waterNormal, gRefractionEta);
     if (dot(refractedDir, refractedDir) <= 1.0e-6f)
     {

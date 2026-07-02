@@ -113,7 +113,7 @@ namespace CoreEngine
     {
         if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
             renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
-            renderManager->SetDebugLineRenderingEnabled(false);
+            renderManager->SetDebugLineRenderingEnabled(true);
         }
         Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
         DrawWithCamera(ResolveGameViewCameraName());

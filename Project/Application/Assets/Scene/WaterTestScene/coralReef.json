@@ -4,23 +4,24 @@
         "ao": 1.0,
         "aoMap": false,
         "color": [
-            0.03999999910593033,
-            0.18000000715255737,
-            0.2800000011920929,
-            0.8500000238418579
+            1.0,
+            1.0,
+            1.0,
+            1.0
         ],
-        "dithering": true,
+        "dithering": false,
         "ditheringScale": 1.0,
         "ibl": true,
         "iblIntensity": 1.0,
         "lighting": true,
-        "metallic": 0.0,
+        "metallic": 1.0,
         "metallicMap": false,
         "normalMap": false,
-        "roughness": 0.029999999329447746,
+        "roughness": 1.0,
         "roughnessMap": false
     },
-    "name": "WaterPlane_0",
+    "modelPath": "coralReef.gltf",
+    "name": "coralReef",
     "transform": {
         "rotate": [
             0.0,
@@ -28,14 +29,14 @@
             0.0
         ],
         "scale": [
-            1.206974983215332,
-            1.206974983215332,
-            1.206974983215332
+            7.7911696434021,
+            7.7911696434021,
+            7.700564384460449
         ],
         "translate": [
-            0.0,
-            25.256254196166992,
-            -8.508995056152344
+            10.319631576538086,
+            12.887001037597656,
+            -11.46633243560791
         ]
     }
 }

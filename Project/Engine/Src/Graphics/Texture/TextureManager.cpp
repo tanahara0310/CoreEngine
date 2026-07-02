@@ -5,12 +5,43 @@
 #include "Generate/TextureCubemapGenerator.h"
 #include "Load/TextureLoadExecutor.h"
 #include "Load/TextureMetadataLoader.h"
+#include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
 #include "Threading/ThreadPool.h"
 
 #include <cassert>
 #include <format>
 #include <stdexcept>
+#include <algorithm>
+
+namespace
+{
+    constexpr const char* kFallbackTexturePath = "error.png";
+
+    std::string ExtractFileName(const std::string& path)
+    {
+        const size_t pos = path.find_last_of("/\\");
+        if (pos == std::string::npos) {
+            return path;
+        }
+        return path.substr(pos + 1);
+    }
+
+    bool IsFallbackTextureRequest(const std::string& requestPath, const std::string& resolvedPath)
+    {
+        auto& assetDatabase = CoreEngine::AssetDatabase::GetInstance();
+        const std::string fallbackAssetPath = assetDatabase.FindAssetPath(kFallbackTexturePath);
+
+        if (!fallbackAssetPath.empty()) {
+            if (requestPath == fallbackAssetPath || resolvedPath == fallbackAssetPath) {
+                return true;
+            }
+        }
+
+        return ExtractFileName(requestPath) == kFallbackTexturePath ||
+            ExtractFileName(resolvedPath) == kFallbackTexturePath;
+    }
+}
 
 
 namespace CoreEngine
@@ -105,42 +136,90 @@ namespace CoreEngine
         // ロード開始ログ
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Loading texture: {}", resolvedPath));
 
-        // 読み込み対象の実パスを事前に計画し、変換やキャッシュ判定を一箇所に集約する。
-        TextureLoadPlan::PlanResult loadPlan = textureLoadPlan_.BuildPlan(
-            resolvedPath,
-            ddsGenerationEnabled,
-            texturePathResolver_,
-            [this](const std::string& hdrPath, const std::string& cubemapDDSPath) {
-                return cubemapGenerator_.GenerateFromHDR(hdrPath, cubemapDDSPath);
+        try {
+            // 読み込み対象の実パスを事前に計画し、変換やキャッシュ判定を一箇所に集約する。
+            TextureLoadPlan::PlanResult loadPlan = textureLoadPlan_.BuildPlan(
+                resolvedPath,
+                ddsGenerationEnabled,
+                texturePathResolver_,
+                [this](const std::string& hdrPath, const std::string& cubemapDDSPath) {
+                    return cubemapGenerator_.GenerateFromHDR(hdrPath, cubemapDDSPath);
+                }
+            );
+
+            resolvedPath = loadPlan.resolvedPath;
+            const std::string& ddsPath = loadPlan.ddsPathToGenerate;
+
+            // ロード実行の本体処理は専用クラスに委譲し、Managerはオーケストレーションに集中する。
+            TextureLoadExecutor::ExecutionResult executionResult = TextureLoadExecutor::Execute(
+                dxCommon,
+                resolvedPath,
+                ddsGenerationEnabled,
+                ddsPath,
+                [this](const std::string& sourcePath, const std::string& outputDdsPath) {
+                    return ddsCacheGenerator_.GenerateCache(sourcePath, outputDdsPath);
+                }
+            );
+
+            LoadedTexture result{};
+
+            // 結果をLoadedTexture形式へ詰め替えて、既存インターフェースを維持する。
+            result.texture = executionResult.uploadResult.texture;
+            result.intermediate = executionResult.uploadResult.intermediate;
+            result.cpuHandle = executionResult.uploadResult.cpuHandle;
+            result.gpuHandle = executionResult.uploadResult.gpuHandle;
+
+            // 最終登録時もストア側で重複登録競合を吸収する。
+            LoadedTexture storedTexture{};
+            cacheStore_->StoreIfAbsent(cacheKey, result, executionResult.metadata, storedTexture);
+            return storedTexture;
+        }
+        catch (const std::exception& ex) {
+            Logger::GetInstance().Errorf(
+                LogCategory::Graphics,
+                LogSubCategory::Texture,
+                "Texture load failed. request='{}' resolved='{}' reason='{}'",
+                filePath,
+                resolvedPath,
+                ex.what());
+
+            if (IsFallbackTextureRequest(filePath, resolvedPath)) {
+                Logger::GetInstance().Errorf(
+                    LogCategory::Graphics,
+                    LogSubCategory::Texture,
+                    "Fallback texture '{}' could not be loaded. Engine cannot recover this texture error.",
+                    kFallbackTexturePath);
+                throw;
             }
-        );
 
-        resolvedPath = loadPlan.resolvedPath;
-        const std::string& ddsPath = loadPlan.ddsPathToGenerate;
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Texture,
+                "Applying fallback texture '{}'. request='{}'",
+                kFallbackTexturePath,
+                filePath);
 
-        // ロード実行の本体処理は専用クラスに委譲し、Managerはオーケストレーションに集中する。
-        TextureLoadExecutor::ExecutionResult executionResult = TextureLoadExecutor::Execute(
-            dxCommon,
-            resolvedPath,
-            ddsGenerationEnabled,
-            ddsPath,
-            [this](const std::string& sourcePath, const std::string& outputDdsPath) {
-                return ddsCacheGenerator_.GenerateCache(sourcePath, outputDdsPath);
+            LoadedTexture fallbackTexture = Load(kFallbackTexturePath);
+            const std::string fallbackResolvedPath = texturePathResolver_.ResolveAssetPath(kFallbackTexturePath, false);
+
+            DirectX::TexMetadata fallbackMetadata{};
+            if (!cacheStore_->TryGetMetadata(fallbackResolvedPath, fallbackMetadata)) {
+                fallbackMetadata = TextureMetadataLoader::LoadOrThrow(fallbackResolvedPath);
+                cacheStore_->StoreMetadata(fallbackResolvedPath, fallbackMetadata);
             }
-        );
 
-        LoadedTexture result{};
+            LoadedTexture storedTexture{};
+            cacheStore_->StoreIfAbsent(cacheKey, fallbackTexture, fallbackMetadata, storedTexture);
 
-        // 結果をLoadedTexture形式へ詰め替えて、既存インターフェースを維持する。
-        result.texture = executionResult.uploadResult.texture;
-        result.intermediate = executionResult.uploadResult.intermediate;
-        result.cpuHandle = executionResult.uploadResult.cpuHandle;
-        result.gpuHandle = executionResult.uploadResult.gpuHandle;
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Texture,
+                "Fallback texture applied. request='{}' fallback='{}'",
+                filePath,
+                fallbackResolvedPath);
 
-        // 最終登録時もストア側で重複登録競合を吸収する。
-        LoadedTexture storedTexture{};
-        cacheStore_->StoreIfAbsent(cacheKey, result, executionResult.metadata, storedTexture);
-        return storedTexture;
+            return storedTexture;
+        }
     }
 
     DirectX::TexMetadata TextureManager::GetMetadata(const std::string& filePath)
@@ -157,13 +236,47 @@ namespace CoreEngine
             return cachedMetadata;
         }
 
-        // キャッシュミス時のI/Oとエラー処理は専用クラスへ委譲する。
-        DirectX::TexMetadata texMetadata = TextureMetadataLoader::LoadOrThrow(resolvedPath);
+        try {
+            // キャッシュミス時のI/Oとエラー処理は専用クラスへ委譲する。
+            DirectX::TexMetadata texMetadata = TextureMetadataLoader::LoadOrThrow(resolvedPath);
 
-        // 取得済みメタデータをキャッシュ化し、次回のI/Oを削減する。
-        cacheStore_->StoreMetadata(cacheKey, texMetadata);
+            // 取得済みメタデータをキャッシュ化し、次回のI/Oを削減する。
+            cacheStore_->StoreMetadata(cacheKey, texMetadata);
 
-        return texMetadata;
+            return texMetadata;
+        }
+        catch (const std::exception& ex) {
+            Logger::GetInstance().Errorf(
+                LogCategory::Graphics,
+                LogSubCategory::Texture,
+                "Texture metadata load failed. request='{}' resolved='{}' reason='{}'",
+                filePath,
+                resolvedPath,
+                ex.what());
+
+            if (IsFallbackTextureRequest(filePath, resolvedPath)) {
+                throw;
+            }
+
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Texture,
+                "Metadata load fallback to '{}' for request='{}'",
+                kFallbackTexturePath,
+                filePath);
+
+            Load(kFallbackTexturePath);
+
+            const std::string fallbackResolvedPath = texturePathResolver_.ResolveAssetPath(kFallbackTexturePath, false);
+            DirectX::TexMetadata fallbackMetadata{};
+            if (!cacheStore_->TryGetMetadata(fallbackResolvedPath, fallbackMetadata)) {
+                fallbackMetadata = TextureMetadataLoader::LoadOrThrow(fallbackResolvedPath);
+                cacheStore_->StoreMetadata(fallbackResolvedPath, fallbackMetadata);
+            }
+
+            cacheStore_->StoreMetadata(cacheKey, fallbackMetadata);
+            return fallbackMetadata;
+        }
     }
 
     void TextureManager::Clear()

@@ -80,6 +80,7 @@ private:
     int majorLineInterval_ = 10;   // 太いラインの間隔
 
     // フェード設定
+    bool enableDistanceFade_ = false;    // 距離フェード有効フラグ
     float fadeStartDistance_ = 30.0f;  // フェード開始距離
     float fadeEndDistance_ = 80.0f;    // フェード終了距離（完全に透明）
 
@@ -93,5 +94,8 @@ private:
     static constexpr float kAxisAlpha = 1.0f;    // 軸ライン透明度
     static constexpr float kMajorAlpha = 1.0f;   // 太いライン透明度（10本ごと）
     static constexpr float kNormalAlpha = 1.0f;  // 通常のライン透明度
+
+    // 地面や水面とのZ-fightingを避けるため、グリッドをわずかに浮かせる
+    static constexpr float kGridPlaneYOffset = 0.01f;
 };
 }

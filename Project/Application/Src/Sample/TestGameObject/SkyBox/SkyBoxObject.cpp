@@ -12,6 +12,7 @@
 #include <cassert>
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/IBL/IBLSystem.h"
+#include "Utility/Logger/Logger.h"
 
 using namespace CoreEngine;
 
@@ -22,6 +23,45 @@ namespace {
 
 void SkyBoxObject::SetSkyBoxRenderer(SkyBoxRenderer* renderer) {
     sSkyBoxRenderer_ = renderer;
+}
+
+void SkyBoxObject::SetTexture(const CoreEngine::TextureManager::LoadedTexture& texture, const std::string& textureKey) {
+    texture_ = texture;
+    UpdateIBLFromTexture(textureKey, true);
+}
+
+void SkyBoxObject::UpdateIBLFromTexture(const std::string& textureKey, bool forceRegenerate) {
+    if (texture_.gpuHandle.ptr == 0 || !texture_.texture) {
+        return;
+    }
+
+    auto* engine = GetEngineSystem();
+    if (!engine) {
+        return;
+    }
+
+    auto* iblSystem = engine->GetComponent<CoreEngine::IBLSystem>();
+    if (!iblSystem) {
+        return;
+    }
+
+    CoreEngine::IBLSystem::SetupParams iblParams;
+    iblParams.environmentMap = texture_.texture.Get();
+    iblParams.environmentMapSRV = texture_.gpuHandle;
+    iblParams.environmentKey = textureKey;
+    iblParams.irradianceSize = 128;
+    iblParams.prefilteredSize = 256;
+    iblParams.brdfLUTSize = 512;
+    iblParams.forceRegenerate = forceRegenerate;
+
+    if (!iblSystem->Setup(iblParams)) {
+        CoreEngine::Logger::GetInstance().Logf(
+            CoreEngine::LogLevel::Warn,
+            CoreEngine::LogCategory::Graphics,
+            "SkyBox: IBL setup failed when applying texture. key='{}' srv=0x{:X}",
+            textureKey,
+            texture_.gpuHandle.ptr);
+    }
 }
 
 struct SkyBoxVertex {
@@ -326,24 +366,10 @@ bool SkyBoxObject::DrawTextureSection() {
                 for (auto& c : ext) c = static_cast<char>(::tolower(c));
 
                 if (ext == ".hdr") {
-                    texture_ = CoreEngine::TextureManager::GetInstance().Load(filename);
                     textureName_ = filename;
+                    SetTexture(CoreEngine::TextureManager::GetInstance().Load(filename), filename);
                     dropWarning_.clear();
                     changed = true;
-
-                    // IBLシステムを新しい環境マップで再セットアップし、シーン内モデルに反映
-                    auto engine = GetEngineSystem();
-                    if (auto* iblSystem = engine->GetComponent<CoreEngine::IBLSystem>()) {
-                        CoreEngine::IBLSystem::SetupParams iblParams;
-                        iblParams.environmentMap = texture_.texture.Get();
-                        iblParams.environmentMapSRV = texture_.gpuHandle;
-                        iblParams.environmentKey = filename;
-                        iblParams.irradianceSize = 128;
-                        iblParams.prefilteredSize = 256;
-                        iblParams.brdfLUTSize = 512;
-                        iblParams.forceRegenerate = true;
-                        iblSystem->Setup(iblParams);
-                    }
                 } else {
                     dropWarning_ = "HDRファイル (.hdr) のみ使用できます: " + filename;
                 }
