@@ -149,6 +149,7 @@ float3 VisualizeRTRefractionReason(float reasonCode)
     if (reasonIndex == 6.0f) return float3(0.0f, 0.0f, 1.0f);
     if (reasonIndex == 7.0f) return float3(1.0f, 0.0f, 1.0f);
     if (reasonIndex == 8.0f) return float3(0.0f, 1.0f, 0.0f);
+    if (reasonIndex == 9.0f) return float3(1.0f, 1.0f, 1.0f);
 
     return float3(0.15f, 0.15f, 0.15f);
 }

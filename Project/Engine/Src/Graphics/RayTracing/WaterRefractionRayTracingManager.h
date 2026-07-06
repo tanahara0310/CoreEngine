@@ -23,7 +23,10 @@ namespace CoreEngine
         float waterRefractiveIndex = 1.333f;
         float surfaceBias = 0.02f;
         float absorptionCoeff = 0.3f;
-        float maxRefractionOffsetPixels = 3.0f;
+        float maxRefractionOffsetPixels = 8.0f;
+        float debugDisplayScale = 1.0f;
+        uint32_t debugViewMode = 0;
+        uint32_t debugLogEnabled = 0;
     };
 
     class WaterRefractionRayTracingManager : public WaterRayTracingPassBase {

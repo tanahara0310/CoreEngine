@@ -21,7 +21,10 @@ namespace CoreEngine
         float maxTraceDistance = 500.0f;
         float surfaceBias = 0.02f;
         float intensityScale = 3.0f;
-        float padding = 0.0f;
+        float refractiveIndex = 1.333f;
+        float debugDisplayScale = 1.0f;
+        uint32_t debugViewMode = 0;
+        uint32_t debugLogEnabled = 0;
     };
 
     class WaterCausticsRayTracingManager : public WaterRayTracingPassBase {

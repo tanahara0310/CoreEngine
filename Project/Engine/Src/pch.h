@@ -39,6 +39,7 @@
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
+#include <stdint.h>
 #include <filesystem>
 #include <functional>
 #include <memory>

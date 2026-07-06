@@ -32,6 +32,23 @@ const char* const kWaterDebugViewNames[] = {
 	"RT屈折成功マスク",
 	"FFT Jacobian",
 };
+
+const char* const kRTRefractionDebugViewNames[] = {
+	"なし",
+	"UVオフセット量(px)",
+	"深度不一致量",
+	"水面法線",
+	"屈折方向",
+};
+
+const char* const kRTCausticsDebugViewNames[] = {
+	"なし",
+	"Shallow Fade",
+	"Match Factor",
+	"Attenuation",
+	"Receiver Facing",
+	"最終Intensity",
+};
 }
 
 void WaterSurfaceDebugPanel::Initialize(WaterSurfaceRuntimeController& runtimeController) {
@@ -49,13 +66,13 @@ void WaterSurfaceDebugPanel::Draw(WaterSurfaceRuntimeController& runtimeControll
 	}
 
 	ImGui::TextDisabled("ここは見た目調整ではなく、状態確認と可視化のための項目です。");
-	DrawCommonDebugSection(runtimeController);
+	DrawCommonDebugSection(runtimeController, editorFacade);
 	DrawFFTOceanDebugSection(runtimeController, editorFacade);
 	DrawGerstnerWaveDebugSection(runtimeController);
 	DrawCausticsDebugSection(editorFacade);
 }
 
-void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterSurfaceRuntimeController& runtimeController) {
+void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane || !ImGui::TreeNodeEx("共通デバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
 		return;
@@ -78,6 +95,17 @@ void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterSurfaceRuntimeControlle
 	if (debugChanged) {
 		waterPlane->SetDepthFadeDebug(depthFadeDebugEnabled_, depthFadeDebugScale_);
 		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(depthDebugViewMode_));
+	}
+
+	ImGui::SeparatorText("RT屈折デバッグ");
+	WaterEditorRayTracingSettings rtSettings = editorFacade.GetRayTracingSettings();
+	bool rtChanged = false;
+	rtChanged |= ImGui::SliderFloat("RT屈折表示倍率", &rtSettings.debugDisplayScale, 0.1f, 16.0f, "%.2f");
+	rtChanged |= ImGui::Combo("RT屈折シェーダー表示", &rtSettings.debugViewMode, kRTRefractionDebugViewNames, IM_ARRAYSIZE(kRTRefractionDebugViewNames));
+	rtChanged |= ImGui::Checkbox("RT屈折ログを有効にする", &rtSettings.debugLogEnabled);
+	ImGui::TextDisabled("RT屈折シェーダー表示を使うときは、水面可視化モードを『RT屈折』か『RT屈折とシーン比較』にすると確認しやすいです。");
+	if (rtChanged) {
+		editorFacade.ApplyRayTracingSettings(rtSettings);
 	}
 
 	ImGui::TreePop();
@@ -210,6 +238,16 @@ void WaterSurfaceDebugPanel::DrawCausticsDebugSection(WaterEditorFacade& editorF
 	};
 	changed |= ImGui::Combo("表示モード", &settings.debugViewMode, kCausticsDebugModes, IM_ARRAYSIZE(kCausticsDebugModes));
 	changed |= ImGui::Checkbox("ログ出力を有効にする", &settings.debugLogEnabled);
+
+	ImGui::SeparatorText("RTコースティクス デバッグ");
+	if (settings.rtManagerAvailable) {
+		changed |= ImGui::SliderFloat("RT表示倍率", &settings.rtDebugDisplayScale, 0.1f, 16.0f, "%.2f");
+		changed |= ImGui::Combo("RTシェーダー表示", &settings.rtDebugViewMode, kRTCausticsDebugViewNames, IM_ARRAYSIZE(kRTCausticsDebugViewNames));
+		changed |= ImGui::Checkbox("RTログを有効にする", &settings.rtDebugLogEnabled);
+		ImGui::TextDisabled("RTシェーダー表示を使うと DeferredLighting 側のコースティクス入力そのものが可視化されます。");
+	} else {
+		ImGui::TextDisabled("RTWaterCausticsManager を取得できません。");
+	}
 
 	// 現在の出力先や入力 SRV を診断情報として表示する
 	const WaterEditorCausticsDiagnostics diagnostics = editorFacade.GetCausticsDiagnostics();

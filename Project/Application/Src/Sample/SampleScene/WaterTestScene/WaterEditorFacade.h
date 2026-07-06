@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Water/FFTOceanManager.h"
 
@@ -27,12 +28,16 @@ struct WaterEditorFFTSettings {
 
 /// @brief Water UI から扱う DXR 屈折設定
 struct WaterEditorRayTracingSettings {
-    float maxRefractionOffsetPixels = 3.0f;
+    float maxRefractionOffsetPixels = 8.0f;
+    float debugDisplayScale = 1.0f;
+    int debugViewMode = 0;
+    bool debugLogEnabled = false;
 };
 
 /// @brief Water UI から扱うコースティクス設定
 struct WaterEditorCausticsSettings {
     bool techniqueAvailable = false;
+    bool rtManagerAvailable = false;
     float intensity = 0.35f;
     float depthAttenuation = 1.5f;
     float curvatureScale = 1.5f;
@@ -43,6 +48,9 @@ struct WaterEditorCausticsSettings {
     float debugDisplayScale = 1.0f;
     int debugViewMode = 0;
     bool debugLogEnabled = false;
+    float rtDebugDisplayScale = 1.0f;
+    int rtDebugViewMode = 0;
+    bool rtDebugLogEnabled = false;
 };
 
 /// @brief Water UI から扱うコースティクス診断情報
@@ -89,6 +97,7 @@ public:
 private:
     CoreEngine::FFTOceanManager* GetFFTOceanManager() const;
     CoreEngine::WaterRefractionRayTracingManager* GetWaterRefractionManager() const;
+    CoreEngine::WaterCausticsRayTracingManager* GetWaterCausticsManager() const;
     CoreEngine::WaterCausticsTechnique* GetWaterCausticsTechnique() const;
 
     WaterSurfaceRuntimeController* runtimeController_ = nullptr;

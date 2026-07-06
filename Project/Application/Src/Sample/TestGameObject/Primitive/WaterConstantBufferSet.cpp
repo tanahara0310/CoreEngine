@@ -64,6 +64,12 @@ void WaterConstantBufferSet::CreateBuffer(
         D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
         IID_PPV_ARGS(&resource));
+    if (FAILED(hr)) {
+        resource.Reset();
+        gpuAddress = 0;
+        mappedData = nullptr;
+        return;
+    }
     assert(SUCCEEDED(hr));
 
     gpuAddress = resource->GetGPUVirtualAddress();

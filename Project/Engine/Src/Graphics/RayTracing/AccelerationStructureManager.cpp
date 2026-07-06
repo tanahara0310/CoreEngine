@@ -172,6 +172,14 @@ namespace CoreEngine
                 &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
                 D3D12_RESOURCE_STATE_GENERIC_READ,
                 nullptr, IID_PPV_ARGS(&tlasInstanceDescBuffer_));
+            if (FAILED(hr)) {
+                Logger::GetInstance().Logf(
+                    LogLevel::Error,
+                    LogCategory::Graphics,
+                    "BuildTLAS: Failed to create TLAS instance buffer. hr=0x{:08X}",
+                    static_cast<unsigned int>(hr));
+                return;
+            }
             assert(SUCCEEDED(hr));
         }
 

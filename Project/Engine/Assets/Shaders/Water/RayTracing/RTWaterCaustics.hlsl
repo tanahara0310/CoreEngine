@@ -24,8 +24,18 @@ cbuffer WaterCausticsConstants : register(b0)
     uint gFFTOceanEnabled;
     float gFFTOceanPatchLength;
     uint gFFTOceanResolution;
-    float gPadding;
+    float gRefractiveIndex;
+    float gDebugDisplayScale;
+    uint gDebugViewMode;
+    uint gPadding;
 };
+
+static const uint kRTCausticsDebugNone = 0;
+static const uint kRTCausticsDebugShallowFade = 1;
+static const uint kRTCausticsDebugMatchFactor = 2;
+static const uint kRTCausticsDebugAttenuation = 3;
+static const uint kRTCausticsDebugReceiverFacing = 4;
+static const uint kRTCausticsDebugFinalIntensity = 5;
 
 struct CausticsPayload
 {
@@ -34,6 +44,60 @@ struct CausticsPayload
     float ndotL;
     float receiverDepth;
 };
+
+#ifdef __INTELLISENSE__
+void TraceRay(
+    RaytracingAccelerationStructure scene,
+    uint rayFlags,
+    uint instanceInclusionMask,
+    uint rayContributionToHitGroupIndex,
+    uint multiplierForGeometryContributionToHitGroupIndex,
+    uint missShaderIndex,
+    RayDesc ray,
+    inout CausticsPayload payload);
+#endif
+
+float3 VisualizeScalar(float value)
+{
+    const float scaled = 1.0f - exp(-max(value, 0.0f) * max(gDebugDisplayScale, 1.0e-4f));
+    return scaled.xxx;
+}
+
+float3 BuildCausticsDebugColor(
+    uint debugViewMode,
+    float shallowFade,
+    float matchFactor,
+    float attenuation,
+    float receiverFacingFactor,
+    float intensity)
+{
+    if (debugViewMode == kRTCausticsDebugShallowFade)
+    {
+        return VisualizeScalar(shallowFade);
+    }
+
+    if (debugViewMode == kRTCausticsDebugMatchFactor)
+    {
+        return VisualizeScalar(matchFactor);
+    }
+
+    if (debugViewMode == kRTCausticsDebugAttenuation)
+    {
+        return VisualizeScalar(attenuation);
+    }
+
+    if (debugViewMode == kRTCausticsDebugReceiverFacing)
+    {
+        return VisualizeScalar(receiverFacingFactor);
+    }
+
+    if (debugViewMode == kRTCausticsDebugFinalIntensity)
+    {
+        return VisualizeScalar(intensity);
+    }
+
+    return 0.0f.xxx;
+}
 
 bool UseFFTOceanSurface()
 {
@@ -139,7 +203,7 @@ void RTWaterCausticsRayGen()
 
     float3 waterNormal = EvaluateCausticsWaterNormal(waterPos.xz);
     float3 lightDir = normalize(gLightDirection);
-    float3 refractedDir = refract(-lightDir, waterNormal, 1.0f / 1.333f);
+    float3 refractedDir = refract(-lightDir, waterNormal, 1.0f / max(gRefractiveIndex, 1.001f));
     if (dot(refractedDir, refractedDir) <= 1.0e-6f || refractedDir.y >= -1.0e-4f)
     {
         gCausticsOutput[launchIndex] = 0.0f.xxxx;
@@ -210,6 +274,20 @@ void RTWaterCausticsRayGen()
     float attenuation = exp(-receiverDistance * 0.16f);
     float focus = saturate(dot(receiverNormal, -lightDir));
     float intensity = gIntensityScale * attenuation * focus * matchFactor * shallowFade * receiverUpFactor * receiverFacingFactor;
+
+    if (gDebugViewMode != kRTCausticsDebugNone)
+    {
+        const float3 debugColor = BuildCausticsDebugColor(
+            gDebugViewMode,
+            shallowFade,
+            matchFactor,
+            attenuation,
+            receiverFacingFactor,
+            intensity);
+        gCausticsOutput[launchIndex] = float4(debugColor, 1.0f);
+        return;
+    }
+
     gCausticsOutput[launchIndex] = float4(intensity.xxx, 1.0f);
 }
 
