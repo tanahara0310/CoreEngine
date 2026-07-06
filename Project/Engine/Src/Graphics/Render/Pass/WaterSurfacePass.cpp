@@ -45,7 +45,7 @@ namespace CoreEngine
         targetToUse->Begin(cmdList);
         if (context.renderManager) {
             context.renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
-            context.renderManager->SetDebugLineRenderingEnabled(false);
+            context.renderManager->SetDebugLineRenderingEnabled(true);
             if (context.sceneManager) {
                 context.renderManager->SetCamera(context.sceneManager->GetGameViewCamera3D());
             }

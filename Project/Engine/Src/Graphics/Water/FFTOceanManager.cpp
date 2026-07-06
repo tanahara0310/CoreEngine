@@ -30,6 +30,7 @@ namespace CoreEngine
 
     bool FFTOceanManager::Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager)
     {
+        // 外部依存を保持し、設定をGPU向けに正規化してから初期化を開始する。
         dxCommon_ = dxCommon;
         descriptorManager_ = descriptorManager;
         SanitizeSettings(settings_);
@@ -44,6 +45,7 @@ namespace CoreEngine
             return false;
         }
 
+        // 実行に必要なパイプライン/リソースを順番に構築する。
         if (!CreatePipelines()
             || !CreateOutputTextures()
             || !CreateIntermediateTextures()
@@ -54,6 +56,7 @@ namespace CoreEngine
             return false;
         }
 
+        // 初期スペクトルと定数を作成して、初回Dispatch可能な状態へ揃える。
         BuildSpectrum();
         UpdateSimulationConstants(0.0f);
         UpdateIFFTConstants(0, true, 1.0f);
@@ -68,9 +71,11 @@ namespace CoreEngine
 
     void FFTOceanManager::SetSettings(const Settings& settings)
     {
+        // 外部入力を安全なレンジへ補正する。
         Settings sanitized = settings;
         SanitizeSettings(sanitized);
 
+        // 解像度変更はリソース再生成が必要なため現時点では固定。
         sanitized.resolution = settings_.resolution;
 
         const bool settingsChanged =
@@ -87,6 +92,7 @@ namespace CoreEngine
             return;
         }
 
+        // GPU参照中のリソース更新を避けるため、フレーム完了を待機する。
         if (dxCommon_) {
             dxCommon_->WaitForPreviousFrame();
         }
@@ -117,6 +123,7 @@ namespace CoreEngine
             return;
         }
 
+        // フレーム時刻とデバッグReadbackの状態を先頭で更新する。
         UpdateSimulationConstants(timeSeconds);
         ifftConstantsWriteIndex_ = 0;
         LogPendingIFFTDebugReadback();
@@ -165,6 +172,7 @@ namespace CoreEngine
             }
         }
 
+        // 出力先をUAVに遷移して各Computeパスを実行する。
         ResourceBarrierHelper::Transition(cmdList, displacementTexture_.Get(), displacementState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         ResourceBarrierHelper::Transition(cmdList, normalTexture_.Get(), normalState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         ResourceBarrierHelper::Transition(cmdList, jacobianTexture_.Get(), jacobianState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -172,6 +180,7 @@ namespace CoreEngine
         ID3D12DescriptorHeap* descriptorHeaps[] = { descriptorManager_->GetSRVHeap() };
         cmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
+        // スペクトル時間発展 -> IFFT(2系統) -> 最終合成 の順で波面を生成する。
         DispatchEvolutionPass(cmdList);
 
         static uint32_t sEvolutionReadbackCounter = 0;
@@ -220,6 +229,7 @@ namespace CoreEngine
             spectrumBState_[finalSpectrumBIndex],
             spectrumBSrvHandle_[finalSpectrumBIndex]);
 
+        // 後段シェーダー参照用にSRV状態へ戻す。
         ResourceBarrierHelper::UAV(cmdList, displacementTexture_.Get());
         ResourceBarrierHelper::UAV(cmdList, normalTexture_.Get());
         ResourceBarrierHelper::UAV(cmdList, jacobianTexture_.Get());
@@ -421,6 +431,7 @@ namespace CoreEngine
             return;
         }
 
+        // 現在設定からPhillipsスペクトルを再生成し、次DispatchでGPUへ反映する。
         const uint32_t resolution = settings_.resolution;
         const uint32_t sampleCount = resolution * resolution;
         FFTOceanSpectrumBuilder::Settings builderSettings{};
@@ -466,6 +477,7 @@ namespace CoreEngine
             return;
         }
 
+        // 時刻と設定値をCS共通定数へ転送する。
         mappedSimulationConstants_->resolution = settings_.resolution;
         mappedSimulationConstants_->activeComponentCount = (std::min)(settings_.activeComponentCount, kMaxSpectrumComponents);
         mappedSimulationConstants_->patchLength = settings_.patchLength;
@@ -491,6 +503,7 @@ namespace CoreEngine
             ifftConstantsWriteIndex_ = kMaxIFFTPassCount - 1;
         }
 
+        // IFFTの1パス分定数をリングバッファ上に書き込み、GPUアドレスを返す。
         const UINT slotSize = Align256(sizeof(IFFTConstants));
         IFFTConstants* constants = reinterpret_cast<IFFTConstants*>(
             mappedIFFTConstantsData_ + static_cast<size_t>(slotSize) * ifftConstantsWriteIndex_);
@@ -508,6 +521,7 @@ namespace CoreEngine
     void FFTOceanManager::DispatchEvolutionPass(ID3D12GraphicsCommandList* cmdList)
     {
         if (spectrumBufferDirty_) {
+            // スペクトルが更新された直後のみアップロードログを出力する。
             spectrumBufferDirty_ = false;
             FFTOceanManagerLogHelper::LogSpectrumUpload(spectrumUploadBuffer_->GetDesc().Width);
         }
@@ -567,6 +581,7 @@ namespace CoreEngine
         uint32_t writeIndex = (initialIndex + 1) % kPingPongCount;
         const uint32_t log2Resolution = GetLog2Resolution();
 
+        // 横方向IFFT。
         for (uint32_t stageIndex = 0; stageIndex < log2Resolution; ++stageIndex) {
             const float normalizationScale = 1.0f;
             DispatchIFFTPass(
@@ -584,6 +599,7 @@ namespace CoreEngine
             std::swap(readIndex, writeIndex);
         }
 
+        // 縦方向IFFT。最終ステージのみ1/N正規化を適用する。
         for (uint32_t stageIndex = 0; stageIndex < log2Resolution; ++stageIndex) {
             const float normalizationScale = (stageIndex + 1 == log2Resolution)
                 ? 1.0f / static_cast<float>(settings_.resolution)
@@ -707,6 +723,7 @@ namespace CoreEngine
             return;
         }
 
+        // IFFT完了後のスペクトルをReadbackバッファへコピーして次フレームで解析する。
         D3D12_TEXTURE_COPY_LOCATION srcA{};
         srcA.pResource = spectrumAResource;
         srcA.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
@@ -744,6 +761,7 @@ namespace CoreEngine
             return;
         }
 
+        // 時間発展直後の中間スペクトルをReadbackする。
         D3D12_TEXTURE_COPY_LOCATION srcA{};
         srcA.pResource = spectrumTextureA_[0].Get();
         srcA.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
@@ -781,6 +799,7 @@ namespace CoreEngine
             return;
         }
 
+        // 最終出力(変位/法線)をReadbackして統計ログに利用する。
         D3D12_TEXTURE_COPY_LOCATION displacementSrc{};
         displacementSrc.pResource = displacementTexture_.Get();
         displacementSrc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;

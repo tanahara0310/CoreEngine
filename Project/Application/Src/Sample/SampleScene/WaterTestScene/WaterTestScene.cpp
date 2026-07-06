@@ -66,8 +66,7 @@ void WaterTestScene::SetupWaterReflectionView(ICamera* mainCamera, float planeHe
     }
 }
 
-void WaterTestScene::RestoreWaterReflectionView(ICamera* mainCamera)
-{
+void WaterTestScene::RestoreWaterReflectionView(ICamera* mainCamera){
     reflectionPass_.RestoreMainCamera(mainCamera);
 }
 

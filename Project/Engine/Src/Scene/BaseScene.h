@@ -10,7 +10,7 @@
 
 #include "Scene/SceneSaveSystem.h"
 
-#if defined(USE_IMGUI) && defined(_DEBUG)
+#ifdef USE_IMGUI
 #include "Scene/SceneDebugEditor.h"
 #endif
 
@@ -90,7 +90,7 @@ namespace CoreEngine
         /// @brief シャドウマップ用のライトView-Projection行列を更新
         void UpdateLightViewProjection();
 
-#if defined(USE_IMGUI) && defined(_DEBUG)
+#ifdef USE_IMGUI
         /// @brief グリッドのセットアップ（デバッグビルドのみ）
         void SetupGrid();
 #endif
@@ -114,7 +114,7 @@ namespace CoreEngine
         CollisionConfig collisionConfig_;
         CollisionManager collisionManager_{ &collisionConfig_ };
 
-#if defined(USE_IMGUI) && defined(_DEBUG)
+#ifdef USE_IMGUI
         // グリッドレンダラー（デバッグビルドのみ）
         GridRenderer* gridRenderer_ = nullptr;
 #endif
@@ -170,7 +170,7 @@ namespace CoreEngine
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
 
-#if defined(USE_IMGUI) && defined(_DEBUG)
+#ifdef USE_IMGUI
         std::unique_ptr<SceneDebugEditor> debugEditor_;  // Undo/Redo・デバッグ編集機能
 #endif
 

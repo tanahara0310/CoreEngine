@@ -13,7 +13,7 @@
 namespace CoreEngine
 {
     namespace {
-        struct alignas(16) WaterRefractionConstants {
+        struct WaterRefractionConstants {
             Matrix4x4 viewProjection;
             float cameraPosition[3];
             float waterHeight;
@@ -24,7 +24,12 @@ namespace CoreEngine
             float screenWidth;
             float screenHeight;
             float maxRefractionOffsetPixels;
-            float padding;
+            uint32_t fftOceanEnabled;
+            float fftOceanPatchLength;
+            uint32_t fftOceanResolution;
+            float debugDisplayScale;
+            uint32_t debugViewMode;
+            uint32_t padding0;
         };
 
         const char* ToString(WaterRefractionRayTracingManager::DispatchStatus status)
@@ -42,7 +47,7 @@ namespace CoreEngine
         }
     }
 
-    static_assert(sizeof(WaterRefractionConstants) == 112,
+    static_assert(sizeof(WaterRefractionConstants) == 132,
         "WaterRefractionConstants size mismatch with HLSL cbuffer");
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
@@ -75,6 +80,8 @@ namespace CoreEngine
             .AddSRVTable("gScene", 0)
             .AddSRVTable("gWorldPosition", 1)
             .AddSRVTable("gSceneColor", 2)
+            .AddSRVTable("gFFTOceanDisplacement", 3)
+            .AddSRVTable("gFFTOceanNormal", 4)
             .AddCBV("gWaterSurfaceData", 1)
             .AddRootConstants("WaterRefractionConstants", 0,
                 sizeof(WaterRefractionConstants) / sizeof(uint32_t));
@@ -168,6 +175,7 @@ namespace CoreEngine
         const Matrix4x4& viewProjection,
         const Vector3& cameraPosition,
         const WaterSurfaceData& surfaceData,
+        const FFTOceanRefractionInput& fftOceanInput,
         UINT width,
         UINT height,
         ViewID viewId)
@@ -256,11 +264,21 @@ namespace CoreEngine
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
         constants.maxRefractionOffsetPixels = settings_.maxRefractionOffsetPixels;
+        constants.fftOceanEnabled = fftOceanInput.enabled;
+        constants.fftOceanPatchLength = fftOceanInput.patchLength;
+        constants.fftOceanResolution = fftOceanInput.resolution;
+        constants.debugDisplayScale = settings_.debugDisplayScale;
+        constants.debugViewMode = settings_.debugViewMode;
+
+        const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
+            (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : sceneColorSRV;
+        const D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV =
+            (fftOceanInput.normalSRV.ptr != 0) ? fftOceanInput.normalSRV : sceneColorSRV;
 
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "WaterRefractionRayTracingManager: dispatch begin. viewId={} waterHeight={:.3f} width={} height={} blasCount={} worldPosSRV=0x{:X} sceneColorSRV=0x{:X} outputSRV=0x{:X} eta={:.4f} maxRayDistance={:.3f} absorptionCoeff={:.3f} surfaceBias={:.4f} maxOffsetPx={:.3f} cameraPos=({:.3f}, {:.3f}, {:.3f}) simulationType={} activeWaveCount={} waveTime={:.3f}",
+            "WaterRefractionRayTracingManager: dispatch begin. viewId={} waterHeight={:.3f} width={} height={} blasCount={} worldPosSRV=0x{:X} sceneColorSRV=0x{:X} outputSRV=0x{:X} eta={:.4f} maxRayDistance={:.3f} absorptionCoeff={:.3f} surfaceBias={:.4f} maxOffsetPx={:.3f} cameraPos=({:.3f}, {:.3f}, {:.3f}) simulationType={} activeWaveCount={} waveTime={:.3f} fftEnabled={} fftResolution={} fftPatchLength={:.3f} fftDispSRV=0x{:X} fftNormalSRV=0x{:X} debugViewMode={} debugScale={:.3f} debugLogEnabled={}",
             viewIndex,
             dispatchSurfaceData.waterHeight,
             width,
@@ -279,7 +297,26 @@ namespace CoreEngine
             cameraPosition.z,
             dispatchSurfaceData.simulationType,
             dispatchSurfaceData.activeWaveCount,
-            dispatchSurfaceData.time);
+            dispatchSurfaceData.time,
+            constants.fftOceanEnabled,
+            constants.fftOceanResolution,
+            constants.fftOceanPatchLength,
+            fftDisplacementSRV.ptr,
+            fftNormalSRV.ptr,
+            constants.debugViewMode,
+            constants.debugDisplayScale,
+            settings_.debugLogEnabled);
+
+        if (settings_.debugLogEnabled != 0) {
+            Logger::GetInstance().Infof(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "WaterRefractionRayTracingManager: RT refraction debug active. mode={} scale={:.3f} maxOffsetPx={:.3f} absorptionCoeff={:.3f}",
+                settings_.debugViewMode,
+                settings_.debugDisplayScale,
+                settings_.maxRefractionOffsetPixels,
+                settings_.absorptionCoeff);
+        }
 
         const WaterSurfaceConstants surfaceConstants = UploadSurfaceDataForDispatch(
             dispatchSurfaceData,
@@ -329,6 +366,12 @@ namespace CoreEngine
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneColor")),
             sceneColorSRV);
+        cmdList->SetComputeRootDescriptorTable(
+            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gFFTOceanDisplacement")),
+            fftDisplacementSRV);
+        cmdList->SetComputeRootDescriptorTable(
+            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gFFTOceanNormal")),
+            fftNormalSRV);
         cmdList->SetComputeRootConstantBufferView(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gWaterSurfaceData")),
             constantBuffer_->GetGPUVirtualAddress());

@@ -51,8 +51,10 @@ public:
     CoreEngine::RenderPassType GetRenderPassType() const override { return CoreEngine::RenderPassType::SkyBox; }
     CoreEngine::Vector3 GetWorldPosition() const override { return transform_.translate; }
 
-    /// @brief キューブマップテクスチャを設定する
-    void SetTexture(const CoreEngine::TextureManager::LoadedTexture& texture) { texture_ = texture; }
+    /// @brief キューブマップテクスチャを設定し、必要に応じて IBL を再構築する
+    /// @param texture 設定するキューブマップテクスチャ
+    /// @param textureKey IBL キャッシュ識別キー（空文字列時は内部で自動生成）
+    void SetTexture(const CoreEngine::TextureManager::LoadedTexture& texture, const std::string& textureKey = "");
 
     /// @brief Y軸回転を取得（IBL回転確認用）
     float GetRotationY() const { return transform_.rotate.y; }
@@ -63,6 +65,7 @@ public:
 private:
     void CreateBoxVertices();
     void CreateTransformBuffer();
+    void UpdateIBLFromTexture(const std::string& textureKey, bool forceRegenerate);
 
     /// @brief トランスフォーム（EulerTransform: translate/rotate/scale のみ。GPU行列バッファは持たない）
     CoreEngine::EulerTransform transform_;

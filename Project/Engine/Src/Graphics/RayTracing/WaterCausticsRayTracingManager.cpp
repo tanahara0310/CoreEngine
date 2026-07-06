@@ -11,7 +11,7 @@
 namespace CoreEngine
 {
     namespace {
-        struct alignas(16) WaterCausticsConstants {
+        struct WaterCausticsConstants {
             float maxTraceDistance;
             float surfaceBias;
             float intensityScale;
@@ -19,7 +19,13 @@ namespace CoreEngine
             float lightDirection[3];
             float screenWidth;
             float screenHeight;
-            float padding[3];
+            uint32_t fftOceanEnabled;
+            float fftOceanPatchLength;
+            uint32_t fftOceanResolution;
+            float refractiveIndex;
+            float debugDisplayScale;
+            uint32_t debugViewMode;
+            uint32_t padding;
         };
 
         const char* ToString(WaterCausticsRayTracingManager::DispatchStatus status)
@@ -39,7 +45,7 @@ namespace CoreEngine
 
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
-    static_assert(sizeof(WaterCausticsConstants) == 48,
+    static_assert(sizeof(WaterCausticsConstants) == 64,
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
 
     bool WaterCausticsRayTracingManager::Initialize(
@@ -71,6 +77,8 @@ namespace CoreEngine
             .AddSRVTable("gScene", 0)
             .AddSRVTable("gWorldPosition", 1)
             .AddSRVTable("gNormalRoughness", 2)
+            .AddSRVTable("gFFTOceanDisplacement", 3)
+            .AddSRVTable("gFFTOceanNormal", 4)
             .AddCBV("gWaterSurfaceData", 1)
             .AddRootConstants("WaterCausticsConstants", 0,
                 sizeof(WaterCausticsConstants) / sizeof(uint32_t));
@@ -150,6 +158,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
         const Vector3& lightDirection,
         const WaterSurfaceData& surfaceData,
+        const FFTOceanCausticsInput& fftOceanInput,
         UINT width,
         UINT height,
         ViewID viewId)
@@ -226,6 +235,28 @@ namespace CoreEngine
         constants.lightDirection[2] = lightDirection.z;
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
+        constants.fftOceanEnabled = fftOceanInput.enabled;
+        constants.fftOceanPatchLength = fftOceanInput.patchLength;
+        constants.fftOceanResolution = fftOceanInput.resolution;
+        constants.debugDisplayScale = settings_.debugDisplayScale;
+        constants.debugViewMode = settings_.debugViewMode;
+        constants.refractiveIndex = settings_.refractiveIndex;
+
+        const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
+            (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : normalRoughnessSRV;
+        const D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV =
+            (fftOceanInput.normalSRV.ptr != 0) ? fftOceanInput.normalSRV : normalRoughnessSRV;
+
+        if (settings_.debugLogEnabled != 0) {
+            Logger::GetInstance().Infof(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "WaterCausticsRayTracingManager: RT caustics debug active. mode={} scale={:.3f} intensityScale={:.3f} refractiveIndex={:.4f}",
+                settings_.debugViewMode,
+                settings_.debugDisplayScale,
+                settings_.intensityScale,
+                settings_.refractiveIndex);
+        }
 
         const WaterSurfaceConstants surfaceConstants = UploadSurfaceDataForDispatch(
             dispatchSurfaceData,
@@ -248,6 +279,12 @@ namespace CoreEngine
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness")),
             normalRoughnessSRV);
+        cmdList->SetComputeRootDescriptorTable(
+            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gFFTOceanDisplacement")),
+            fftDisplacementSRV);
+        cmdList->SetComputeRootDescriptorTable(
+            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gFFTOceanNormal")),
+            fftNormalSRV);
         cmdList->SetComputeRootConstantBufferView(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gWaterSurfaceData")),
             constantBuffer_->GetGPUVirtualAddress());
@@ -270,7 +307,7 @@ namespace CoreEngine
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "WaterCausticsRayTracingManager: dispatch completed. status={} viewId={} width={} height={} waterHeight={:.3f} simulationType={} activeWaveCount={} outputSRV=0x{:X}",
+            "WaterCausticsRayTracingManager: dispatch completed. status={} viewId={} width={} height={} waterHeight={:.3f} simulationType={} activeWaveCount={} outputSRV=0x{:X} debugViewMode={} debugScale={:.3f} debugLogEnabled={}",
             ToString(lastDiagnostics_.status),
             viewIndex,
             width,
@@ -278,7 +315,10 @@ namespace CoreEngine
             dispatchSurfaceData.waterHeight,
             dispatchSurfaceData.simulationType,
             dispatchSurfaceData.activeWaveCount,
-            outputSrvHandle.ptr);
+            outputSrvHandle.ptr,
+            settings_.debugViewMode,
+            settings_.debugDisplayScale,
+            settings_.debugLogEnabled);
     }
 
     void WaterCausticsRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)

@@ -402,14 +402,14 @@ namespace CoreEngine
         auto rtShadowPass = std::make_unique<RTShadowPass>();
         renderPipeline_->AddPass(std::move(rtShadowPass));
 
+        auto fftOceanPass = std::make_unique<FFTOceanPass>();
+        renderPipeline_->AddPass(std::move(fftOceanPass));
+
         auto rtWaterCausticsPass = std::make_unique<RTWaterCausticsPass>();
         renderPipeline_->AddPass(std::move(rtWaterCausticsPass));
 
         auto rtWaterRefractionPass = std::make_unique<RTWaterRefractionPass>();
         renderPipeline_->AddPass(std::move(rtWaterRefractionPass));
-
-        auto fftOceanPass = std::make_unique<FFTOceanPass>();
-        renderPipeline_->AddPass(std::move(fftOceanPass));
 
         auto waterCausticsPass = std::make_unique<WaterCausticsPass>();
         renderPipeline_->AddPass(std::move(waterCausticsPass));

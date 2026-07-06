@@ -12,6 +12,7 @@
 #include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Graphics/Water/FFTOceanManager.h"
 #include "ObjectCommon/Model/ModelGameObject.h"
 #include "ObjectCommon/GameObjectManager.h"
 #include "Camera/ICamera.h"
@@ -260,6 +261,18 @@ namespace CoreEngine
             surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].steepness : 0.0f,
             surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].phaseOffset : 0.0f);
 
+        WaterRefractionRayTracingManager::FFTOceanRefractionInput fftOceanInput{};
+        if (context.fftOceanManager
+            && context.fftOceanManager->IsInitialized()
+            && surfaceData.simulationType == kWaterSurfaceModelTypeFFTOcean) {
+            const FFTOceanManager::Settings& fftSettings = context.fftOceanManager->GetSettings();
+            fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
+            fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
+            fftOceanInput.resolution = fftSettings.resolution;
+            fftOceanInput.patchLength = fftSettings.patchLength;
+            fftOceanInput.enabled = 1;
+        }
+
         rtWaterRefraction->Dispatch(
             cmdList,
             worldPosSRV,
@@ -267,6 +280,7 @@ namespace CoreEngine
             viewProjection,
             cameraPosition,
             surfaceData,
+            fftOceanInput,
             width,
             height,
             viewId);
@@ -302,12 +316,25 @@ namespace CoreEngine
             }
         }
 
+        WaterCausticsRayTracingManager::FFTOceanCausticsInput fftOceanInput{};
+        if (context.fftOceanManager
+            && context.fftOceanManager->IsInitialized()
+            && surfaceData.simulationType == kWaterSurfaceModelTypeFFTOcean) {
+            const FFTOceanManager::Settings& fftSettings = context.fftOceanManager->GetSettings();
+            fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
+            fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
+            fftOceanInput.resolution = fftSettings.resolution;
+            fftOceanInput.patchLength = fftSettings.patchLength;
+            fftOceanInput.enabled = 1;
+        }
+
         rtWaterCaustics->Dispatch(
             cmdList,
             worldPosSRV,
             normalRoughnessSRV,
             lightDirection,
             surfaceData,
+            fftOceanInput,
             width,
             height,
             viewId);

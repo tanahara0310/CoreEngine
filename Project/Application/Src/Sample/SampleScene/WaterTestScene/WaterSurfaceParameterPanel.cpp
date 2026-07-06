@@ -294,17 +294,22 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 	}
 
 	const WaterEditorFFTSettings currentFFTSettings = editorFacade.GetFFTSettings();
-	fftOceanParameters_.preset = FindMatchingFFTOceanPreset(currentFFTSettings);
-	fftOceanParameters_.enabled = currentFFTSettings.enabled;
-	fftOceanParameters_.patchLength = currentFFTSettings.patchLength;
-	fftOceanParameters_.amplitudeScale = currentFFTSettings.amplitudeScale;
-	fftOceanParameters_.windDirection[0] = currentFFTSettings.windDirection[0];
-	fftOceanParameters_.windDirection[1] = currentFFTSettings.windDirection[1];
-	fftOceanParameters_.windSpeed = currentFFTSettings.windSpeed;
-	fftOceanParameters_.choppiness = currentFFTSettings.choppiness;
-	fftOceanParameters_.activeComponentCount = currentFFTSettings.activeComponentCount;
-	fftOceanParameters_.gravity = currentFFTSettings.gravity;
-	fftOceanParameters_.resolution = currentFFTSettings.resolution;
+	if (!ImGui::IsAnyItemActive()) {
+		fftOceanParameters_.enabled = currentFFTSettings.enabled;
+		fftOceanParameters_.patchLength = currentFFTSettings.patchLength;
+		fftOceanParameters_.amplitudeScale = currentFFTSettings.amplitudeScale;
+		fftOceanParameters_.windDirection[0] = currentFFTSettings.windDirection[0];
+		fftOceanParameters_.windDirection[1] = currentFFTSettings.windDirection[1];
+		fftOceanParameters_.windSpeed = currentFFTSettings.windSpeed;
+		fftOceanParameters_.choppiness = currentFFTSettings.choppiness;
+		fftOceanParameters_.activeComponentCount = currentFFTSettings.activeComponentCount;
+		fftOceanParameters_.gravity = currentFFTSettings.gravity;
+		fftOceanParameters_.resolution = currentFFTSettings.resolution;
+
+		if (fftOceanParameters_.preset != kFFTOceanPresetCustom) {
+			fftOceanParameters_.preset = FindMatchingFFTOceanPreset(currentFFTSettings);
+		}
+	}
 
 	ImGui::Text("状態: %s", waterPlane->IsUsingFFTOcean() ? "使用中" : "待機中");
 	ImGui::TextDisabled("広域の海面調整用です。現在使っていなくても事前に設定を整えておけます。");
@@ -351,11 +356,14 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 	ImGui::Spacing();
 	ImGui::SeparatorText("FFT Ocean 詳細");
 	ImGui::Text("解像度: %d (再生成が必要なため表示のみ)", fftOceanParameters_.resolution);
+	const bool isCustomPreset = (fftOceanParameters_.preset == kFFTOceanPresetCustom);
+	if (!isCustomPreset) {
+		ImGui::TextDisabled("プリセット適用中は詳細パラメータをロックしています。\n「カスタム」を選択すると調整できます。");
+	}
+	ImGui::BeginDisabled(!isCustomPreset);
 	bool fftChanged = false;
-	bool fftEditCommitted = false;
 	auto trackFFTEdit = [&](bool changed) {
 		fftChanged |= changed;
-		fftEditCommitted |= ImGui::IsItemDeactivatedAfterEdit();
 	};
 
 	trackFFTEdit(ImGui::SliderFloat("パッチ長", &fftOceanParameters_.patchLength, 8.0f, 512.0f, "%.2f"));
@@ -365,9 +373,9 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 	trackFFTEdit(ImGui::SliderFloat("Choppiness", &fftOceanParameters_.choppiness, 0.0f, 4.0f, "%.3f"));
 	trackFFTEdit(ImGui::SliderInt("スペクトル成分数", &fftOceanParameters_.activeComponentCount, 1, 64));
 	trackFFTEdit(ImGui::SliderFloat("重力", &fftOceanParameters_.gravity, 0.1f, 20.0f, "%.3f"));
+	ImGui::EndDisabled();
 
-	fftEditCommitted = fftEditCommitted || (!ImGui::IsAnyItemActive() && fftChanged);
-	if (fftEditCommitted) {
+	if (isCustomPreset && fftChanged) {
 		fftOceanParameters_.preset = kFFTOceanPresetCustom;
 		WaterEditorFFTSettings updatedSettings = editorFacade.GetFFTSettings();
 		updatedSettings.enabled = fftOceanParameters_.enabled;

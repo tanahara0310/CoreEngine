@@ -5,6 +5,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/CameraManager.h"
 #include "ObjectCommon/GameObjectManager.h"
+#include "ObjectCommon/Model/DynamicModelObject.h"
 #include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Utility/Debug/ImGui/ObjectSelector.h"
@@ -12,7 +13,6 @@
 #include "Utility/Debug/ImGui/Gizmo.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
-#include "ObjectCommon/Model/DynamicModelObject.h"
 #include "Utility/Collision/CollisionUtils.h"
 #include "Utility/Logger/Logger.h"
 #include <cctype>

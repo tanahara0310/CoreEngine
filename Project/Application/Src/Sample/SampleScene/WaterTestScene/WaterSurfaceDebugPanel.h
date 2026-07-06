@@ -16,7 +16,7 @@ public:
 
 private:
 	/// @brief 水面共通の診断情報と Depth Fade 可視化 UI を描画する
-	void DrawCommonDebugSection(WaterSurfaceRuntimeController& runtimeController);
+	void DrawCommonDebugSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
 
 	/// @brief FFT Ocean の診断 UI を描画する
 	void DrawFFTOceanDebugSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);

@@ -20,12 +20,23 @@ namespace CoreEngine
     struct WaterCausticsRayTracingSettings {
         float maxTraceDistance = 500.0f;
         float surfaceBias = 0.02f;
-        float intensityScale = 1.0f;
-        float padding = 0.0f;
+        float intensityScale = 3.0f;
+        float refractiveIndex = 1.333f;
+        float debugDisplayScale = 1.0f;
+        uint32_t debugViewMode = 0;
+        uint32_t debugLogEnabled = 0;
     };
 
     class WaterCausticsRayTracingManager : public WaterRayTracingPassBase {
     public:
+        struct FFTOceanCausticsInput {
+            D3D12_GPU_DESCRIPTOR_HANDLE displacementSRV{};
+            D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
+            uint32_t resolution = 0;
+            float patchLength = 0.0f;
+            uint32_t enabled = 0;
+        };
+
         enum class ViewID : uint32_t {
             GameView = 0,
             ReflectionView = 1,
@@ -69,6 +80,7 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
             const Vector3& lightDirection,
             const WaterSurfaceData& surfaceData,
+            const FFTOceanCausticsInput& fftOceanInput,
             UINT width,
             UINT height,
             ViewID viewId = ViewID::GameView);

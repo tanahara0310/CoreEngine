@@ -5,7 +5,6 @@
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Graphics/Texture/Gpu/TextureGpuUploader.h"
 #include "Utility/Logger/Logger.h"
-#include "Utility/FileErrorDialog/FileErrorDialog.h"
 
 #include <format>
 #include <stdexcept>
@@ -38,7 +37,6 @@ namespace CoreEngine
                 resolvedPath,
                 static_cast<unsigned int>(hr));
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
-            FileErrorDialog::ShowTextureError("Failed to load texture file", resolvedPath, hr);
             throw std::runtime_error(errorMsg);
         }
 
@@ -52,7 +50,6 @@ namespace CoreEngine
                 resolvedPath,
                 static_cast<unsigned int>(hr));
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
-            FileErrorDialog::ShowTextureError("Failed to generate mipmaps for texture", resolvedPath, hr);
             throw std::runtime_error(errorMsg);
         }
 

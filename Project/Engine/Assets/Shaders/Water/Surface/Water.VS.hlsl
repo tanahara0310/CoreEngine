@@ -123,7 +123,7 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // ---- 1. ワールド変換 ----
     float4 worldPos4 = mul(input.position, mtx.World);
     float3 worldPos = worldPos4.xyz;
-    // 法線・接線の解析偏微分は変位前の静止位置（restPos）で評価する
+    // 法線・接線の解析偏微分は変位前のワールド静止位置で評価する
     float3 restPos = worldPos;
 
     // ---- 2. Gerstner Wave 頂点変位（ワールド空間） ----
@@ -169,9 +169,11 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     float4 offsetClip = mul(float4(offsetLS, 0.0f), mtx.WVP);
     output.position = baseClip + offsetClip;
 
-    output.normal = normalize(mul(normal, (float3x3) mtx.WorldInversTranspose));
-    output.tangent = normalize(mul(tangent, (float3x3) mtx.World));
-    output.bitangent = normalize(mul(binormal, (float3x3) mtx.World));
+    // dPdX/dPdZ から再構成した法線・接線はすでにワールド空間なので
+    // ここで再度 World / WorldInversTranspose を掛けるとスケール依存の歪みが発生する。
+    output.normal = normal;
+    output.tangent = tangent;
+    output.bitangent = binormal;
 
     output.worldPosition = worldPos;
     output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);

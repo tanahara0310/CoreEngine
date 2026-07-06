@@ -45,7 +45,10 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
 
     float4 worldPos4 = mul(input.position, mtx.World);
     float3 baseWorldPos = worldPos4.xyz;
-    float2 sampleUV = input.texcoord;
+    float scaleX = length(mtx.World[0].xyz);
+    float scaleZ = length(mtx.World[2].xyz);
+    float2 scaleUV = float2(max(scaleX, 1.0e-4f), max(scaleZ, 1.0e-4f));
+    float2 sampleUV = frac(input.texcoord * scaleUV);
 
     float3 displacement = gFFTOceanDisplacement.SampleLevel(gLinearClamp, sampleUV, 0.0f).xyz;
 

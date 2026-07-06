@@ -10,6 +10,8 @@ RWTexture2D<float4> gRefractionOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
 Texture2D<float4> gWorldPosition : register(t1);
 Texture2D<float4> gSceneColor : register(t2);
+Texture2D<float4> gFFTOceanDisplacement : register(t3);
+Texture2D<float4> gFFTOceanNormal : register(t4);
 
 cbuffer WaterRefractionConstants : register(b0)
 {
@@ -23,14 +25,38 @@ cbuffer WaterRefractionConstants : register(b0)
     float gScreenWidth;
     float gScreenHeight;
     float gMaxRefractionOffsetPixels;
-    float gPadding;
+    uint gFFTOceanEnabled;
+    float gFFTOceanPatchLength;
+    uint gFFTOceanResolution;
+    float gDebugDisplayScale;
+    uint gDebugViewMode;
+    uint gPadding0;
 };
+
+static const uint kRTRefractionDebugNone = 0;
+static const uint kRTRefractionDebugUVOffsetPixels = 1;
+static const uint kRTRefractionDebugDepthMismatch = 2;
+static const uint kRTRefractionDebugWaterNormal = 3;
+static const uint kRTRefractionDebugRefractedDirection = 4;
 
 struct RefractionPayload
 {
     float hitT;
     float hitFlag;
 };
+
+#ifdef __INTELLISENSE__
+#define RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH 0x4
+void TraceRay(
+    RaytracingAccelerationStructure scene,
+    uint rayFlags,
+    uint instanceInclusionMask,
+    uint rayContributionToHitGroupIndex,
+    uint multiplierForGeometryContributionToHitGroupIndex,
+    uint missShaderIndex,
+    RayDesc ray,
+    inout RefractionPayload payload);
+#endif
 
 static const float kRTReasonNoWorldPosition = 1.0f / 255.0f;
 static const float kRTReasonNearZeroSceneDistance = 2.0f / 255.0f;
@@ -40,10 +66,92 @@ static const float kRTReasonInvalidRefractionVector = 5.0f / 255.0f;
 static const float kRTReasonTraceMiss = 6.0f / 255.0f;
 static const float kRTReasonInvalidClip = 7.0f / 255.0f;
 static const float kRTReasonSuccess = 8.0f / 255.0f;
+static const float kRTReasonDepthMismatch = 9.0f / 255.0f;
 
 float4 MakeFallbackOutput(float3 fallbackColor, float reasonCode)
 {
     return float4(fallbackColor, reasonCode);
+}
+
+float3 EncodeSignedVector(float3 vectorValue)
+{
+    return normalize(vectorValue) * 0.5f + 0.5f;
+}
+
+float3 VisualizeScalar(float value, float displayScale)
+{
+    const float scaled = 1.0f - exp(-max(value, 0.0f) * max(displayScale, 1.0e-4f));
+    return scaled.xxx;
+}
+
+float3 BuildRefractionDebugColor(
+    uint debugViewMode,
+    float uvOffsetPixels,
+    float depthMismatch,
+    float3 waterNormal,
+    float3 refractedDir)
+{
+    if (debugViewMode == kRTRefractionDebugUVOffsetPixels)
+    {
+        return VisualizeScalar(uvOffsetPixels, gDebugDisplayScale);
+    }
+
+    if (debugViewMode == kRTRefractionDebugDepthMismatch)
+    {
+        return VisualizeScalar(depthMismatch, gDebugDisplayScale);
+    }
+
+    if (debugViewMode == kRTRefractionDebugWaterNormal)
+    {
+        return EncodeSignedVector(waterNormal);
+    }
+
+    if (debugViewMode == kRTRefractionDebugRefractedDirection)
+    {
+        return EncodeSignedVector(refractedDir);
+    }
+
+    return 0.0f.xxx;
+}
+
+bool UseFFTOceanSurface()
+{
+    return gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean
+        && gFFTOceanEnabled != 0
+        && gFFTOceanResolution > 0
+        && gFFTOceanPatchLength > 1.0e-4f;
+}
+
+uint2 ComputeFFTSampleCoord(float2 worldXZ)
+{
+    const float2 uv = frac(worldXZ / gFFTOceanPatchLength + 0.5f.xx);
+    const float2 scaled = uv * (float)gFFTOceanResolution;
+    const uint2 coord = uint2(scaled);
+    return min(coord, uint2(gFFTOceanResolution - 1, gFFTOceanResolution - 1));
+}
+
+float3 EvaluateRefractionWaterOffset(float2 worldXZ)
+{
+    if (!UseFFTOceanSurface())
+    {
+        return EvaluateWaterOffset(worldXZ);
+    }
+
+    const uint2 coord = ComputeFFTSampleCoord(worldXZ);
+    return gFFTOceanDisplacement.Load(int3(coord, 0)).xyz;
+}
+
+float3 EvaluateRefractionWaterNormal(float2 worldXZ)
+{
+    if (!UseFFTOceanSurface())
+    {
+        return EvaluateWaterNormal(worldXZ);
+    }
+
+    const uint2 coord = ComputeFFTSampleCoord(worldXZ);
+    const float3 encodedNormal = gFFTOceanNormal.Load(int3(coord, 0)).xyz;
+    const float3 decodedNormal = normalize(encodedNormal * 2.0f - 1.0f);
+    return decodedNormal.y < 0.0f ? -decodedNormal : decodedNormal;
 }
 
 [shader("raygeneration")]
@@ -91,13 +199,13 @@ void RTWaterRefractionRayGen()
     [unroll]
     for (int iteration = 0; iteration < 3; ++iteration)
     {
-        float3 waveOffset = EvaluateWaterOffset(waterPos.xz);
+        float3 waveOffset = EvaluateRefractionWaterOffset(waterPos.xz);
         float surfaceY = gSurfaceWaterHeight + waveOffset.y;
         float deltaY = waterPos.y - surfaceY;
         waterPos -= primaryDir * (deltaY / safeDenom);
     }
 
-    float3 waterNormal = EvaluateWaterNormal(waterPos.xz);
+    float3 waterNormal = EvaluateRefractionWaterNormal(waterPos.xz);
     float3 refractedDir = refract(primaryDir, waterNormal, gRefractionEta);
     if (dot(refractedDir, refractedDir) <= 1.0e-6f)
     {
@@ -154,6 +262,56 @@ void RTWaterRefractionRayGen()
 
     uint2 sampleCoord = uint2(refractedUV * float2(gScreenWidth, gScreenHeight));
     sampleCoord = min(sampleCoord, uint2(gScreenWidth - 1.0f, gScreenHeight - 1.0f));
+
+    const float uvOffsetPixels = length((refractedUV - screenUV) * float2(gScreenWidth, gScreenHeight));
+
+    float4 sampledWorldPos = gWorldPosition.Load(int3(sampleCoord, 0));
+    float depthMismatch = 0.0f;
+    float depthMismatchThreshold = 0.0f;
+    if (sampledWorldPos.a < 0.5f)
+    {
+        if (gDebugViewMode != kRTRefractionDebugNone)
+        {
+            const float3 debugColor = BuildRefractionDebugColor(
+                gDebugViewMode,
+                uvOffsetPixels,
+                0.0f,
+                waterNormal,
+                refractedDir);
+            gRefractionOutput[launchIndex] = float4(debugColor, kRTReasonDepthMismatch);
+            return;
+        }
+
+        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonDepthMismatch);
+        return;
+    }
+
+    float sampledViewDistance = length(sampledWorldPos.xyz - gCameraPosition);
+    float hitViewDistance = length(hitWorldPos - gCameraPosition);
+    depthMismatch = abs(sampledViewDistance - hitViewDistance);
+    depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);
+
+    if (gDebugViewMode != kRTRefractionDebugNone)
+    {
+        const float3 debugColor = BuildRefractionDebugColor(
+            gDebugViewMode,
+            uvOffsetPixels,
+            depthMismatch,
+            waterNormal,
+            refractedDir);
+        const float reasonCode = (depthMismatch > depthMismatchThreshold)
+            ? kRTReasonDepthMismatch
+            : kRTReasonSuccess;
+        gRefractionOutput[launchIndex] = float4(debugColor, reasonCode);
+        return;
+    }
+
+    if (depthMismatch > depthMismatchThreshold)
+    {
+        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonDepthMismatch);
+        return;
+    }
+
     float3 refractedColor = gSceneColor.Load(int3(sampleCoord, 0)).rgb;
 
     gRefractionOutput[launchIndex] = float4(refractedColor, kRTReasonSuccess);

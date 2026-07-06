@@ -82,6 +82,6 @@ private:
 	} fftOceanParameters_{};
 
 	/// @brief DXR 屈折の最大スクリーンずれ量（px）
-	float rtRefractionOffsetPixels_ = 3.0f;
+	float rtRefractionOffsetPixels_ = 8.0f;
 };
 #endif

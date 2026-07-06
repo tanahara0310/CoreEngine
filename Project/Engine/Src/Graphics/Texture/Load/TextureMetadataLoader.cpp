@@ -2,7 +2,6 @@
 #include "TextureMetadataLoader.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Logger/Logger.h"
-#include "Utility/FileErrorDialog/FileErrorDialog.h"
 
 #include <format>
 #include <stdexcept>
@@ -17,13 +16,12 @@ namespace CoreEngine
 
         HRESULT hr = TextureImageProcessor::LoadMetadata(filePathW, metadata);
         if (FAILED(hr)) {
-            // 失敗時は既存方針に合わせてログ・ダイアログ・例外を一括処理する。
+            // 失敗時はログと例外で上位へ通知し、呼び出し元でフォールバックを判断する。
             std::string errorMsg = std::format(
                 "Failed to load texture file: {}\nHRESULT: 0x{:08X}\nPlease check if the file exists and the path is correct.",
                 resolvedPath,
                 static_cast<unsigned int>(hr));
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
-            FileErrorDialog::ShowTextureError("Failed to load texture file", resolvedPath, hr);
             throw std::runtime_error(errorMsg);
         }
 

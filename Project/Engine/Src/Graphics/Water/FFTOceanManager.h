@@ -13,9 +13,11 @@ namespace CoreEngine
     class DirectXCommon;
     class DescriptorManager;
 
+    /// @brief FFTベースの海面シミュレーションを実行し、変位/法線/ヤコビアンを生成する管理クラス
     class FFTOceanManager
     {
     public:
+        /// @brief 海面スペクトル生成と時間発展で使用する入力設定
         struct Settings {
             uint32_t resolution = 256;
             float patchLength = 96.0f;
@@ -27,14 +29,33 @@ namespace CoreEngine
             float gravity = 9.81f;
         };
 
+        /// @brief 必要なGPUリソースとComputeパイプラインを初期化する
         bool Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager);
+
+        /// @brief 1フレーム分の海面シミュレーションをDispatchし、出力テクスチャを更新する
         void Dispatch(ID3D12GraphicsCommandList* cmdList, float timeSeconds);
+
+        /// @brief シミュレーション設定を更新し、必要に応じてスペクトルを再構築する
         void SetSettings(const Settings& settings);
 
+        /// @brief 初期化済みかどうかを返す
+        /// @return 初期化済みの場合 true
         bool IsInitialized() const { return isInitialized_; }
+
+        /// @brief 変位テクスチャのSRVハンドルを返す
+        /// @return 変位SRVのGPUディスクリプタハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetDisplacementSRVHandle() const { return displacementSrvHandle_; }
+
+        /// @brief 法線テクスチャのSRVハンドルを返す
+        /// @return 法線SRVのGPUディスクリプタハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetNormalSRVHandle() const { return normalSrvHandle_; }
+
+        /// @brief ヤコビアンテクスチャのSRVハンドルを返す
+        /// @return ヤコビアンSRVのGPUディスクリプタハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetJacobianSRVHandle() const { return jacobianSrvHandle_; }
+
+        /// @brief 現在のシミュレーション設定を返す
+        /// @return 設定参照
         const Settings& GetSettings() const { return settings_; }
 
     private:
@@ -51,7 +72,7 @@ namespace CoreEngine
             float padding[2] = {};
         };
 
-        struct alignas(16) SimulationConstants {
+        struct SimulationConstants {
             uint32_t resolution = 0;
             uint32_t activeComponentCount = 0;
             float patchLength = 1.0f;
@@ -70,30 +91,61 @@ namespace CoreEngine
             float padding[3] = {};
         };
 
+        /// @brief 時間発展パス用Compute Shaderのパスを提供する
         struct TimeEvolutionShaderProvider final : ICustomShaderProvider {
+            /// @brief 時間発展CSのファイルパスを返す
             std::wstring GetComputeShaderPath() const override { return L"FFTOceanTimeEvolution.CS.hlsl"; }
         };
 
+        /// @brief IFFTパス用Compute Shaderのパスを提供する
         struct IFFTShaderProvider final : ICustomShaderProvider {
+            /// @brief IFFT CSのファイルパスを返す
             std::wstring GetComputeShaderPath() const override { return L"FFTOceanIFFT.CS.hlsl"; }
         };
 
+        /// @brief 最終合成パス用Compute Shaderのパスを提供する
         struct FinalizeShaderProvider final : ICustomShaderProvider {
+            /// @brief 最終合成CSのファイルパスを返す
             std::wstring GetComputeShaderPath() const override { return L"FFTOceanFinalize.CS.hlsl"; }
         };
 
+        /// @brief Computeパイプライン群を作成する
         bool CreatePipelines();
+
+        /// @brief 最終出力テクスチャ(変位/法線/ヤコビアン)を作成する
         bool CreateOutputTextures();
+
+        /// @brief デバッグ用Readbackバッファを作成する
         bool CreateDebugReadbackBuffers();
+
+        /// @brief 初期スペクトル格納用バッファを作成する
         bool CreateSpectrumBuffer();
+
+        /// @brief シミュレーション定数バッファを作成する
         bool CreateSimulationConstantBuffer();
+
+        /// @brief IFFT用定数バッファを作成する
         bool CreateIFFTConstantBuffer();
+
+        /// @brief IFFTピンポン用中間テクスチャを作成する
         bool CreateIntermediateTextures();
+
+        /// @brief 設定値を有効範囲へ補正する
         void SanitizeSettings(Settings& settings) const;
+
+        /// @brief 現在設定から初期スペクトルを再構築する
         void BuildSpectrum();
+
+        /// @brief フレーム時刻を含むシミュレーション定数を更新する
         void UpdateSimulationConstants(float timeSeconds);
+
+        /// @brief IFFT 1パス分の定数を書き込み、GPU仮想アドレスを返す
         D3D12_GPU_VIRTUAL_ADDRESS UpdateIFFTConstants(uint32_t stageIndex, bool isHorizontal, float normalizationScale);
+
+        /// @brief 時間発展パスをDispatchする
         void DispatchEvolutionPass(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief IFFT 1ステージ分のパスをDispatchする
         void DispatchIFFTPass(
             ID3D12GraphicsCommandList* cmdList,
             ID3D12Resource* inputResource,
@@ -106,6 +158,8 @@ namespace CoreEngine
             uint32_t stageIndex,
             bool isHorizontal,
             float normalizationScale);
+
+        /// @brief 指定テクスチャ列に対して横方向/縦方向のIFFTを実行する
         uint32_t DispatchIFFTForTexture(
             ID3D12GraphicsCommandList* cmdList,
             std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPingPongCount>& resources,
@@ -113,6 +167,8 @@ namespace CoreEngine
             std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount>& srvHandles,
             std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount>& uavHandles,
             uint32_t initialIndex);
+
+        /// @brief IFFT結果から最終の変位/法線/ヤコビアンを生成する
         void DispatchFinalizePass(
             ID3D12GraphicsCommandList* cmdList,
             ID3D12Resource* spectrumAResource,
@@ -121,19 +177,37 @@ namespace CoreEngine
             ID3D12Resource* spectrumBResource,
             D3D12_RESOURCE_STATES& spectrumBState,
             D3D12_GPU_DESCRIPTOR_HANDLE spectrumBSrv);
+
+        /// @brief IFFT Readback結果が揃っていればログ出力する
         void LogPendingIFFTDebugReadback();
+
+        /// @brief IFFT結果のReadbackコピーをスケジュールする
         void ScheduleIFFTDebugReadback(
             ID3D12GraphicsCommandList* cmdList,
             ID3D12Resource* spectrumAResource,
             D3D12_RESOURCE_STATES& spectrumAState,
             ID3D12Resource* spectrumBResource,
             D3D12_RESOURCE_STATES& spectrumBState);
+
+        /// @brief 時間発展Readback結果が揃っていればログ出力する
         void LogPendingEvolutionDebugReadback();
+
+        /// @brief 時間発展結果のReadbackコピーをスケジュールする
         void ScheduleEvolutionDebugReadback(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief 最終出力Readback結果が揃っていればログ出力する
         void LogPendingDebugReadback();
+
+        /// @brief 最終出力のReadbackコピーをスケジュールする
         void ScheduleDebugReadback(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief 現在解像度に対するIFFTステージ数(log2)を返す
+        /// @return IFFTステージ数
         uint32_t GetLog2Resolution() const;
 
+        // ──────────────────────────────────────────────────────────
+        // 基本依存とパイプライン状態
+        // ──────────────────────────────────────────────────────────
         DirectXCommon* dxCommon_ = nullptr;
         DescriptorManager* descriptorManager_ = nullptr;
         CustomShaderPipeline evolutionPipeline_{};
@@ -145,6 +219,9 @@ namespace CoreEngine
         Settings settings_{};
         bool isInitialized_ = false;
 
+        // ──────────────────────────────────────────────────────────
+        // 最終出力テクスチャとReadbackリソース
+        // ──────────────────────────────────────────────────────────
         Microsoft::WRL::ComPtr<ID3D12Resource> displacementTexture_;
         Microsoft::WRL::ComPtr<ID3D12Resource> normalTexture_;
         Microsoft::WRL::ComPtr<ID3D12Resource> jacobianTexture_;
@@ -154,6 +231,10 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> evolutionBReadbackBuffer_;
         Microsoft::WRL::ComPtr<ID3D12Resource> ifftAReadbackBuffer_;
         Microsoft::WRL::ComPtr<ID3D12Resource> ifftBReadbackBuffer_;
+
+        // ──────────────────────────────────────────────────────────
+        // 出力テクスチャのSRV/UAVハンドルとリソース状態管理
+        // ──────────────────────────────────────────────────────────
         D3D12_CPU_DESCRIPTOR_HANDLE displacementSrvCpuHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE displacementUavCpuHandle_{};
@@ -169,6 +250,10 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES displacementState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_RESOURCE_STATES normalState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_RESOURCE_STATES jacobianState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+        // ──────────────────────────────────────────────────────────
+        // Readbackレイアウト/サイズと非同期ログ制御
+        // ──────────────────────────────────────────────────────────
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT displacementReadbackLayout_{};
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT normalReadbackLayout_{};
         D3D12_PLACED_SUBRESOURCE_FOOTPRINT evolutionAReadbackLayout_{};
@@ -188,6 +273,9 @@ namespace CoreEngine
         uint64_t evolutionDebugReadbackSequence_ = 0;
         uint64_t ifftDebugReadbackSequence_ = 0;
 
+        // ──────────────────────────────────────────────────────────
+        // IFFT用ピンポンテクスチャと対応ハンドル/状態
+        // ──────────────────────────────────────────────────────────
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPingPongCount> spectrumTextureA_;
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPingPongCount> spectrumTextureB_;
         std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kPingPongCount> spectrumASrvCpuHandle_{};
@@ -201,6 +289,9 @@ namespace CoreEngine
         std::array<D3D12_RESOURCE_STATES, kPingPongCount> spectrumAState_{};
         std::array<D3D12_RESOURCE_STATES, kPingPongCount> spectrumBState_{};
 
+        // ──────────────────────────────────────────────────────────
+        // 初期スペクトルバッファとアップロード状態
+        // ──────────────────────────────────────────────────────────
         Microsoft::WRL::ComPtr<ID3D12Resource> spectrumBuffer_;
         Microsoft::WRL::ComPtr<ID3D12Resource> spectrumUploadBuffer_;
         SpectrumSample* mappedSpectrumSamples_ = nullptr;
@@ -209,6 +300,9 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES spectrumBufferState_ = D3D12_RESOURCE_STATE_COPY_DEST;
         bool spectrumBufferDirty_ = false;
 
+        // ──────────────────────────────────────────────────────────
+        // シミュレーション/IFFT定数バッファと書き込みカーソル
+        // ──────────────────────────────────────────────────────────
         Microsoft::WRL::ComPtr<ID3D12Resource> simulationConstantsBuffer_;
         SimulationConstants* mappedSimulationConstants_ = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> ifftConstantsBuffer_;

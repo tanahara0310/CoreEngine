@@ -23,11 +23,22 @@ namespace CoreEngine
         float waterRefractiveIndex = 1.333f;
         float surfaceBias = 0.02f;
         float absorptionCoeff = 0.3f;
-        float maxRefractionOffsetPixels = 3.0f;
+        float maxRefractionOffsetPixels = 8.0f;
+        float debugDisplayScale = 1.0f;
+        uint32_t debugViewMode = 0;
+        uint32_t debugLogEnabled = 0;
     };
 
     class WaterRefractionRayTracingManager : public WaterRayTracingPassBase {
     public:
+        struct FFTOceanRefractionInput {
+            D3D12_GPU_DESCRIPTOR_HANDLE displacementSRV{};
+            D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
+            uint32_t resolution = 0;
+            float patchLength = 0.0f;
+            uint32_t enabled = 0;
+        };
+
         enum class ViewID : uint32_t {
             GameView = 0,
             ReflectionView = 1,
@@ -72,6 +83,7 @@ namespace CoreEngine
             const Matrix4x4& viewProjection,
             const Vector3& cameraPosition,
             const WaterSurfaceData& surfaceData,
+            const FFTOceanRefractionInput& fftOceanInput,
             UINT width,
             UINT height,
             ViewID viewId = ViewID::GameView);
