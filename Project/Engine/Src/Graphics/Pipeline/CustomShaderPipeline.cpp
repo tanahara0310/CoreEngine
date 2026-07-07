@@ -61,7 +61,8 @@ namespace CoreEngine
                 reflectionBuilder,
                 vsPath,
                 psPath,
-                provider.GetCullMode())) {
+                provider.GetCullMode(),
+                provider.GetDepthWriteEnable())) {
                 return false;
             }
         }
@@ -80,7 +81,8 @@ namespace CoreEngine
         ShaderReflectionBuilder& reflectionBuilder,
         const std::wstring& vsPath,
         const std::wstring& psPath,
-        D3D12_CULL_MODE cullMode)
+        D3D12_CULL_MODE cullMode,
+        bool depthWriteEnable)
     {
         IDxcBlob* vsBlob = compiler.CompileShader(vsPath, L"vs_6_0");
         if (!vsBlob) {
@@ -117,7 +119,7 @@ namespace CoreEngine
         const bool psoResult = forwardPsoMg_.CreateBuilder()
             .SetInputLayoutFromReflection(*reflectionData)
             .SetRasterizer(cullMode, D3D12_FILL_MODE_SOLID)
-            .SetDepthStencil(true, true)
+            .SetDepthStencil(true, depthWriteEnable)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
             .BuildAllBlendModes(device, vsBlob, psBlob, forwardRootSignatureMg_->GetRootSignature());
 

@@ -117,9 +117,25 @@ float3 ApplyWaterTransmissionFilter(float3 refractionColor, float3 waterTint, fl
     return refractionColor * tintFilter;
 }
 
+// RTWaterRefraction.hlsl 側の成功時アルファエンコードと必ず一致させること。
+// 失敗理由コードは [0, 0.5) の範囲（1〜9/255）、成功時は [0.5, 1.0] の範囲に
+// 実際の屈折光路長（水柱厚さ、メートル）を詰め込んでいる。
+static const float kRTSuccessRangeMin = 0.5f;
+static const float kRTMaxOpticalPathMeters = 64.0f;
+
 float IsRTRefractionSuccess(float reasonCode)
 {
-    return abs(reasonCode - (8.0f / 255.0f)) < (0.5f / 255.0f) ? 1.0f : 0.0f;
+    return reasonCode >= kRTSuccessRangeMin ? 1.0f : 0.0f;
+}
+
+/// @brief RT屈折が成功した場合の、屈折レイが実際に水中を進んだ光路長（メートル）を復元する
+/// @details RTWaterRefraction.hlsl の EncodeSuccessAlpha() の逆変換。
+///          この値は「表示されている屈折後の内容」に対応する真の水柱厚さであり、
+///          スクリーン空間の素の深度（屈折で曲げる前の深度）とは異なる。
+float DecodeRTOpticalPath(float reasonCode)
+{
+    float normalized = saturate((reasonCode - kRTSuccessRangeMin) / (1.0f - kRTSuccessRangeMin));
+    return normalized * kRTMaxOpticalPathMeters;
 }
 
 float3 ResolveWaterTransmissionColor(uint2 pixelCoord, float2 screenUV)
@@ -139,6 +155,8 @@ float4 SampleRTWaterRefraction(uint2 pixelCoord)
 
 float3 VisualizeRTRefractionReason(float reasonCode)
 {
+    if (reasonCode >= kRTSuccessRangeMin) return float3(0.0f, 1.0f, 0.0f);
+
     const float reasonIndex = floor(reasonCode * 255.0f + 0.5f);
 
     if (reasonIndex == 1.0f) return float3(1.0f, 0.0f, 0.0f);
@@ -148,7 +166,6 @@ float3 VisualizeRTRefractionReason(float reasonCode)
     if (reasonIndex == 5.0f) return float3(0.0f, 1.0f, 1.0f);
     if (reasonIndex == 6.0f) return float3(0.0f, 0.0f, 1.0f);
     if (reasonIndex == 7.0f) return float3(1.0f, 0.0f, 1.0f);
-    if (reasonIndex == 8.0f) return float3(0.0f, 1.0f, 0.0f);
     if (reasonIndex == 9.0f) return float3(1.0f, 1.0f, 1.0f);
 
     return float3(0.15f, 0.15f, 0.15f);
@@ -300,6 +317,24 @@ PixelShaderOutput main(WaterPSInput input)
             tintBlend = absorption;
             waterTint = lerp(gShallowColor, gDeepColor, saturate(tintBlend));
         }
+
+        // RT屈折が成功している場合、実際に画面へ表示している内容（屈折で曲がった先）に
+        // 対応する「真の光路長」で上の近似値を上書きする。
+        // 上のスクリーン空間近似は水面ピクセル直下の素の深度（屈折前の深度）を使っており、
+        // 屈折で表示位置がズレた分だけ吸収量が表示内容と食い違ってしまう
+        // （＝水中オブジェクトが水面に浮いて見える一因）。RT側で実測した光路長を
+        // 使うことでこの食い違いを解消する。
+        float4 rtRefractionSample = SampleRTWaterRefraction(pixelCoord);
+        if (IsRTRefractionSuccess(rtRefractionSample.a) > 0.5f)
+        {
+            hasValidDepthFade = true;
+            waterColumn = DecodeRTOpticalPath(rtRefractionSample.a);
+            float extinction = waterColumn * max(gAbsorptionCoeff, 1.0e-4f);
+            transmittance = exp(-extinction);
+            absorption = 1.0f - transmittance;
+            tintBlend = absorption;
+            waterTint = lerp(gShallowColor, gDeepColor, saturate(tintBlend));
+        }
     }
 
     // ---- 4. 視線方向と Fresnel 係数を計算する ----
@@ -310,7 +345,6 @@ PixelShaderOutput main(WaterPSInput input)
     float reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
 
     float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);
-    float3 backgroundColor = gSceneColor.Sample(gLinearClamp, screenUV).rgb;
     float3 transmissionColor = ApplyWaterTransmissionFilter(
         refractionColor,
         waterTint,
@@ -324,8 +358,17 @@ PixelShaderOutput main(WaterPSInput input)
     }
 
     float3 desiredWaterView = lerp(transmissionColor, reflectColor, reflectanceWeight);
+    // 水面ピクセルは常に「水面越しに見える像」（屈折 or 反射）そのものであるべきで、
+    // 屈折で曲げていない生のスクリーン座標の背景（gSceneColor.Sample(screenUV)）を
+    // 混ぜてはいけない。以前はここで backgroundColor（未屈折・未反射の素の背景）と
+    // desiredWaterView（正しく屈折/反射された像）を gMaterial.color.a（既定 0.85）で
+    // ブレンドしていたため、屈折によるズレが小さかった頃は両者がほぼ同じ位置を指しており
+    // 気付かなかったが、屈折のクランプを撤廃して正しくズレるようになった結果、
+    // 「同じ地形が少しズレた位置に二重に見える」ゴースト（二重像）として顕在化した。
+    // gMaterial.color.a による不透明度は、背景との合成ではなく屈折色自体との
+    // ブレンドとして扱うことで、常に「同じ位置を指す像」同士を混ぜるようにする。
     float surfaceCoverage = saturate(baseCoverage);
-    float3 finalWaterComposite = lerp(backgroundColor, desiredWaterView, surfaceCoverage);
+    float3 finalWaterComposite = lerp(refractionColor, desiredWaterView, surfaceCoverage);
 
     if (gDepthFadeDebugEnabled != 0)
     {

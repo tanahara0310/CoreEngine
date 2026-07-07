@@ -27,7 +27,7 @@ struct Material
     // ===== Shading Mode =====
     int shadingMode; ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
     float iblIntensity;
-    float padding2; ///< アライメント用
+    float alphaCutoff; ///< discard 判定に使用するアルファしきい値
 };
 
 /// @brief シーン共通 IBL パラメータ（スカイボックス回転と連動）
@@ -381,7 +381,7 @@ PixelShaderOutput ForwardMain(VertexShaderOutput input)
         if (finalAlpha <= GetDitheringThreshold(screenPos) + 0.001f)
             discard;
     }
-    else if (finalAlpha <= 0.5f)
+    else if (finalAlpha <= gMaterial.alphaCutoff)
     {
         discard;
     }

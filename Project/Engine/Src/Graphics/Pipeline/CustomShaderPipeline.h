@@ -72,7 +72,8 @@ namespace CoreEngine
             ShaderReflectionBuilder& reflectionBuilder,
             const std::wstring& vsPath,
             const std::wstring& psPath,
-            D3D12_CULL_MODE cullMode);
+            D3D12_CULL_MODE cullMode,
+            bool depthWriteEnable);
 
         /// @brief コンピュートパイプラインステートを構築する
         /// @param device D3D12 デバイス

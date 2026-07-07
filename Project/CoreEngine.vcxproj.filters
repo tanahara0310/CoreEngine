@@ -1943,12 +1943,6 @@
     <None Include="Docs\Engine\Graphics\Rendering\PBR_RoadMap.md">
       <Filter>Docs\Engine\Graphics\Rendering</Filter>
     </None>
-    <None Include="Docs\JobHuntingWorksDoc\WaterSurface_README.md">
-      <Filter>Docs\JobHuntingWorksDoc</Filter>
-    </None>
-    <None Include="Docs\JobHuntingWorksDoc\WaterSurface_TechnicalOverview.md">
-      <Filter>Docs\JobHuntingWorksDoc</Filter>
-    </None>
     <None Include="Docs\Refactoring\README.md">
       <Filter>Docs\Refactoring</Filter>
     </None>
@@ -2118,9 +2112,6 @@
     </Filter>
     <Filter Include="Docs\Engine\Utility">
       <UniqueIdentifier>{0FA29CFD-660E-4053-9501-B303826B2E13}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\JobHuntingWorksDoc">
-      <UniqueIdentifier>{7D712FD0-623C-4AE6-A568-D4BCAC5B14D1}</UniqueIdentifier>
     </Filter>
     <Filter Include="Docs\Refactoring">
       <UniqueIdentifier>{6F074EBB-8840-4753-AEAC-EDF53A07FA36}</UniqueIdentifier>

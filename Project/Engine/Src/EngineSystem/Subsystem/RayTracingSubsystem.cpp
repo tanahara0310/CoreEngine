@@ -308,12 +308,23 @@ namespace CoreEngine
         auto normalRoughnessSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
         const UINT width = static_cast<UINT>(dx->GetClientWidth());
         const UINT height = static_cast<UINT>(dx->GetClientHeight());
-        Vector3 lightDirection = { 0.0f, -1.0f, 0.0f };
+
+        // シーンの実際のディレクショナルライトの方向・色・強度・有効フラグを RT コースティクスへ
+        // 伝える。以前は方向しか渡しておらず、ライトを消してもコースティクスが消えない、
+        // ライトの色/強度を変えても常に一定の白い光量のままになる不具合の原因だった。
+        WaterCausticsRayTracingManager::LightInput lightInput{};
         if (context.lightManager) {
             if (DirectionalLightData* mainLight = context.lightManager->GetDirectionalLight(0);
                 mainLight && mainLight->enabled) {
-                lightDirection = MathCore::Vector::Normalize(mainLight->direction);
+                lightInput.direction = MathCore::Vector::Normalize(mainLight->direction);
+                lightInput.color = { mainLight->color.x, mainLight->color.y, mainLight->color.z };
+                lightInput.intensity = mainLight->intensity;
+                lightInput.enabled = true;
+            } else {
+                lightInput.enabled = false;
             }
+        } else {
+            lightInput.enabled = false;
         }
 
         WaterCausticsRayTracingManager::FFTOceanCausticsInput fftOceanInput{};
@@ -332,7 +343,7 @@ namespace CoreEngine
             cmdList,
             worldPosSRV,
             normalRoughnessSRV,
-            lightDirection,
+            lightInput,
             surfaceData,
             fftOceanInput,
             width,

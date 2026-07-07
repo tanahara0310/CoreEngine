@@ -29,6 +29,11 @@ namespace CoreEngine
         /// @note 既定は背面カリング。必要なオブジェクトのみオーバーライドする。
         virtual D3D12_CULL_MODE GetCullMode() const { return D3D12_CULL_MODE_BACK; }
 
+        /// @brief フォワード描画用 PSO の深度書き込み（DepthWriteMask）を有効にするか返す
+        /// @note 既定は有効（DepthWriteMask::ALL）。半透明エフェクト等で深度を汚したくない
+        ///       オブジェクトは false（DepthWriteMask::ZERO 相当）をオーバーライドする。
+        virtual bool GetDepthWriteEnable() const { return true; }
+
         /// @brief カスタムルートパラメータをバインドする（エンジン既定バインド完了後に呼ばれる）
         /// @param cmdList 現在のコマンドリスト
         /// @param pipeline 構築済みカスタムパイプライン（GetRootParamIndex() でスロット番号を取得できる）

@@ -46,6 +46,7 @@ struct RefractionPayload
 };
 
 #ifdef __INTELLISENSE__
+#define RAY_FLAG_NONE 0x0
 #define RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH 0x4
 void TraceRay(
     RaytracingAccelerationStructure scene,
@@ -65,12 +66,32 @@ static const float kRTReasonInvalidPlaneIntersection = 4.0f / 255.0f;
 static const float kRTReasonInvalidRefractionVector = 5.0f / 255.0f;
 static const float kRTReasonTraceMiss = 6.0f / 255.0f;
 static const float kRTReasonInvalidClip = 7.0f / 255.0f;
-static const float kRTReasonSuccess = 8.0f / 255.0f;
 static const float kRTReasonDepthMismatch = 9.0f / 255.0f;
+
+// ------------------------------------------------------------
+// 成功時のアルファ値エンコード
+// 失敗理由コード（1〜9/255、= [0, 0.5) の範囲）と衝突しないよう、
+// 成功時は [0.5, 1.0] の範囲を使い、その中に「屈折レイが水面から
+// ヒット点まで実際に進んだ光路長（＝真の水柱厚さ）」を詰め込む。
+// Water.PS.hlsl 側の Beer-Lambert 吸収計算はこれまで水面ピクセル
+// 直下のスクリーン空間深度（屈折で曲げる前の深度）を使っていたため、
+// 実際に表示されている（屈折で曲がった先の）内容と深度が食い違い、
+// 「水中オブジェクトが水面にそのまま浮いて見える」原因になっていた。
+// この光路長を伝搬させることで、表示内容と吸収量を一致させる。
+// kRTMaxOpticalPathMeters は Water.PS.hlsl 側の同名定数と必ず一致させること。
+// ------------------------------------------------------------
+static const float kRTSuccessRangeMin = 0.5f;
+static const float kRTMaxOpticalPathMeters = 64.0f;
 
 float4 MakeFallbackOutput(float3 fallbackColor, float reasonCode)
 {
     return float4(fallbackColor, reasonCode);
+}
+
+float EncodeSuccessAlpha(float opticalPathLength)
+{
+    float normalized = saturate(opticalPathLength / kRTMaxOpticalPathMeters);
+    return kRTSuccessRangeMin + normalized * (1.0f - kRTSuccessRangeMin);
 }
 
 float3 EncodeSignedVector(float3 vectorValue)
@@ -122,14 +143,6 @@ bool UseFFTOceanSurface()
         && gFFTOceanPatchLength > 1.0e-4f;
 }
 
-uint2 ComputeFFTSampleCoord(float2 worldXZ)
-{
-    const float2 uv = frac(worldXZ / gFFTOceanPatchLength + 0.5f.xx);
-    const float2 scaled = uv * (float)gFFTOceanResolution;
-    const uint2 coord = uint2(scaled);
-    return min(coord, uint2(gFFTOceanResolution - 1, gFFTOceanResolution - 1));
-}
-
 float3 EvaluateRefractionWaterOffset(float2 worldXZ)
 {
     if (!UseFFTOceanSurface())
@@ -137,8 +150,7 @@ float3 EvaluateRefractionWaterOffset(float2 worldXZ)
         return EvaluateWaterOffset(worldXZ);
     }
 
-    const uint2 coord = ComputeFFTSampleCoord(worldXZ);
-    return gFFTOceanDisplacement.Load(int3(coord, 0)).xyz;
+    return SampleFFTOceanBilinear(gFFTOceanDisplacement, worldXZ, gFFTOceanPatchLength, gFFTOceanResolution).xyz;
 }
 
 float3 EvaluateRefractionWaterNormal(float2 worldXZ)
@@ -148,8 +160,7 @@ float3 EvaluateRefractionWaterNormal(float2 worldXZ)
         return EvaluateWaterNormal(worldXZ);
     }
 
-    const uint2 coord = ComputeFFTSampleCoord(worldXZ);
-    const float3 encodedNormal = gFFTOceanNormal.Load(int3(coord, 0)).xyz;
+    const float3 encodedNormal = SampleFFTOceanBilinear(gFFTOceanNormal, worldXZ, gFFTOceanPatchLength, gFFTOceanResolution).xyz;
     const float3 decodedNormal = normalize(encodedNormal * 2.0f - 1.0f);
     return decodedNormal.y < 0.0f ? -decodedNormal : decodedNormal;
 }
@@ -183,14 +194,24 @@ void RTWaterRefractionRayGen()
         return;
     }
 
-    float tSurface = (gSurfaceWaterHeight - gCameraPosition.y) / denom;
-    if (tSurface <= 0.0f || tSurface >= sceneDistance)
+    // フラット平面（波なし）での交点は、あくまで反復解法の初期値（シード）に過ぎない。
+    // 実際の水面は波で上下するため、フラット高さでの交点が sceneDistance の近く/外側に
+    // あっても、波を反映した本当の交点は有効範囲内に収まることがある。
+    // 以前はこの「シード」段階で 0 < t < sceneDistance を厳密に要求していたため、
+    // カメラを水面へ近づけるとカメラ直下の近い/浅いジオメトリ（sceneDistance が小さい）
+    // でフラット高さの誤差が相対的に大きくなり、本来は有効なはずの交点まで誤って
+    // 弾かれ、その領域だけ屈折がフォールバックしていた
+    // （＝「カメラを近づけるとカメラ下側のエリアの屈折が消える」不具合の原因）。
+    // ここではシード自体の妥当性判定を行わず、波を反映した精密化後に判定し直す。
+    float tSurfaceSeed = (gSurfaceWaterHeight - gCameraPosition.y) / denom;
+    if (!isfinite(tSurfaceSeed))
     {
         gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidPlaneIntersection);
         return;
     }
+    float tSeedClamped = clamp(tSurfaceSeed, 0.0f, sceneDistance);
 
-    float3 waterPos = gCameraPosition + primaryDir * tSurface;
+    float3 waterPos = gCameraPosition + primaryDir * tSeedClamped;
     float safeDenom = denom;
     if (abs(safeDenom) < 1.0e-4f)
     {
@@ -205,6 +226,14 @@ void RTWaterRefractionRayGen()
         waterPos -= primaryDir * (deltaY / safeDenom);
     }
 
+    // 波を反映した精密化後の実際の交点までの距離で改めて有効性を判定する。
+    float tRefined = dot(waterPos - gCameraPosition, primaryDir);
+    if (tRefined <= 1.0e-4f || tRefined >= sceneDistance)
+    {
+        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidPlaneIntersection);
+        return;
+    }
+
     float3 waterNormal = EvaluateRefractionWaterNormal(waterPos.xz);
     float3 refractedDir = refract(primaryDir, waterNormal, gRefractionEta);
     if (dot(refractedDir, refractedDir) <= 1.0e-6f)
@@ -214,7 +243,11 @@ void RTWaterRefractionRayGen()
     }
 
     RayDesc ray;
-    ray.Origin = waterPos + waterNormal * gSurfaceBias;
+    // 屈折後のレイは水中（-waterNormal 側）へ進むため、バイアスも同じ -waterNormal 方向へ
+    // かける必要がある（RTWaterCaustics.hlsl と同じ規約）。
+    // +waterNormal 方向（空気側）へずらしていた場合、レイが水面直下でバイアス距離分
+    // 逆走することになり、浅瀬や水面ぎりぎりのジオメトリで自己交差・誤ミスを招く。
+    ray.Origin = waterPos - waterNormal * gSurfaceBias;
     ray.Direction = normalize(refractedDir);
     ray.TMin = 0.001f;
     ray.TMax = gMaxRayDistance;
@@ -223,9 +256,14 @@ void RTWaterRefractionRayGen()
     payload.hitT = 0.0f;
     payload.hitFlag = 0.0f;
 
+    // 屈折は「屈折レイが最初に交差する最も近い面」の色が必要なため、
+    // 最近接ヒット（RAY_FLAG_NONE）でトレースする。
+    // 以前は RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH（遮蔽判定用の任意ヒット）を
+    // 使っていたため、最近接ではない面がヒットして誤った屈折色や
+    // depth mismatch によるフォールバックの原因になっていた。
     TraceRay(
         gScene,
-        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+        RAY_FLAG_NONE,
         0xFF,
         0,
         1,
@@ -251,12 +289,42 @@ void RTWaterRefractionRayGen()
     float2 uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
 
     float2 screenUV = (float2(launchIndex) + 0.5f) / float2(gScreenWidth, gScreenHeight);
-    float2 refractedUV = screenUV;
-    if (all(uv >= 0.0f.xx) && all(uv <= 1.0f.xx))
+
+    // スクリーン空間で SceneColor を再利用する都合上、屈折先が画面外に出た場合は
+    // その位置の色を物理的に取得できない（この手法の原理的な制約）。
+    // 以前はここで画面境界をまたいだ瞬間に「屈折あり／なし」を二値で切り替えていたため、
+    // 画面下部や画面端に近い水面ほど（＝屈折先が画面外に出やすいほど）屈折が
+    // 唐突に消える境界線として視認されていた（「見切れる」不具合）。
+    // ここでは画面端手前でなだらかにフォールバック色へフェードし、
+    // 境界での急な切り替わりを解消する。完全に画面外なら fade=0 となり
+    // 従来通りフォールバックへ収束する。
+    const float2 kEdgeFadeMargin = float2(0.06f, 0.06f);
+    float2 edgeFadeXY = smoothstep(0.0f.xx, kEdgeFadeMargin, uv)
+        * smoothstep(0.0f.xx, kEdgeFadeMargin, 1.0f.xx - uv);
+    float edgeFade = saturate(edgeFadeXY.x) * saturate(edgeFadeXY.y);
+
+    if (edgeFade <= 1.0e-4f)
     {
-        float2 pixelSize = 1.0f / float2(gScreenWidth, gScreenHeight);
-        float2 maxOffset = pixelSize * max(gMaxRefractionOffsetPixels, 0.0f);
-        float2 uvOffset = clamp(uv - screenUV, -maxOffset, maxOffset);
+        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidClip);
+        return;
+    }
+
+    // サンプル座標の算出には必ず [0,1] にクランプした値を使う。
+    // 範囲外の uv をそのまま uint へキャストすると負値が巨大な符号なし値にラップし、
+    // 意図せず画面反対側の端をサンプルしてしまうため。
+    float2 clampedUV = saturate(uv);
+
+    // レイトレーシングで得た屈折ヒット点の「正確な」スクリーン投影位置をそのまま使う。
+    // 以前は gMaxRefractionOffsetPixels でずれ量を固定ピクセルに強制クランプしていたため、
+    // 屈折が「水中オブジェクトが少しずれただけ」に見え、さらにクランプ後のサンプル位置と
+    // 実ヒット点の深度が食い違い depth mismatch でフォールバックしていた。
+    // gMaxRefractionOffsetPixels は 0 で無制限（物理的に正しい RT 屈折）、
+    // 正の値のときのみ暴発防止用の安全クランプとして機能する。
+    float2 refractedUV = clampedUV;
+    if (gMaxRefractionOffsetPixels > 0.0f)
+    {
+        float2 maxOffset = max(gMaxRefractionOffsetPixels, 0.0f) / float2(gScreenWidth, gScreenHeight);
+        float2 uvOffset = clamp(clampedUV - screenUV, -maxOffset, maxOffset);
         refractedUV = saturate(screenUV + uvOffset);
     }
 
@@ -291,6 +359,10 @@ void RTWaterRefractionRayGen()
     depthMismatch = abs(sampledViewDistance - hitViewDistance);
     depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);
 
+    // 屈折レイが水面から実際のヒット点まで進んだ距離 = 真の光路長（水柱厚さ）。
+    // Water.PS.hlsl の Beer-Lambert 吸収計算に渡し、表示内容と深度を一致させる。
+    const float opticalPathLength = length(hitWorldPos - ray.Origin);
+
     if (gDebugViewMode != kRTRefractionDebugNone)
     {
         const float3 debugColor = BuildRefractionDebugColor(
@@ -301,7 +373,7 @@ void RTWaterRefractionRayGen()
             refractedDir);
         const float reasonCode = (depthMismatch > depthMismatchThreshold)
             ? kRTReasonDepthMismatch
-            : kRTReasonSuccess;
+            : EncodeSuccessAlpha(opticalPathLength);
         gRefractionOutput[launchIndex] = float4(debugColor, reasonCode);
         return;
     }
@@ -313,8 +385,10 @@ void RTWaterRefractionRayGen()
     }
 
     float3 refractedColor = gSceneColor.Load(int3(sampleCoord, 0)).rgb;
+    // 画面端フェードを適用し、画面外へ抜ける手前でなだらかにフォールバック色へ収束させる。
+    float3 blendedColor = lerp(fallbackSample.rgb, refractedColor, edgeFade);
 
-    gRefractionOutput[launchIndex] = float4(refractedColor, kRTReasonSuccess);
+    gRefractionOutput[launchIndex] = float4(blendedColor, EncodeSuccessAlpha(opticalPathLength));
 }
 
 [shader("miss")]

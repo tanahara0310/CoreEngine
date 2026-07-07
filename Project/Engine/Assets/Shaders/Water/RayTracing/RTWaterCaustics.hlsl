@@ -27,7 +27,11 @@ cbuffer WaterCausticsConstants : register(b0)
     float gRefractiveIndex;
     float gDebugDisplayScale;
     uint gDebugViewMode;
-    uint gPadding;
+    // シーンの実際のディレクショナルライトが無効な場合はコースティクスも出さない。
+    // 以前はここが未使用の padding で、ライトを消してもコースティクスが消えなかった。
+    uint gLightEnabled;
+    float3 gLightColor;
+    float gLightIntensity;
 };
 
 static const uint kRTCausticsDebugNone = 0;
@@ -107,41 +111,6 @@ bool UseFFTOceanSurface()
         && gFFTOceanPatchLength > 1.0e-4f;
 }
 
-uint WrapFFTOceanCoord(int coord)
-{
-    const int resolution = (int)gFFTOceanResolution;
-    int wrapped = coord % resolution;
-    if (wrapped < 0)
-    {
-        wrapped += resolution;
-    }
-
-    return (uint)wrapped;
-}
-
-float4 SampleFFTOceanBilinear(Texture2D<float4> textureData, float2 worldXZ)
-{
-    const float2 uv = frac(worldXZ / gFFTOceanPatchLength + 0.5f.xx);
-    const float resolution = (float)gFFTOceanResolution;
-    const float2 texelPos = uv * resolution - 0.5f.xx;
-    const int2 baseCoord = int2(floor(texelPos));
-    const float2 fracCoord = frac(texelPos);
-
-    const uint2 p00 = uint2(WrapFFTOceanCoord(baseCoord.x), WrapFFTOceanCoord(baseCoord.y));
-    const uint2 p10 = uint2(WrapFFTOceanCoord(baseCoord.x + 1), WrapFFTOceanCoord(baseCoord.y));
-    const uint2 p01 = uint2(WrapFFTOceanCoord(baseCoord.x), WrapFFTOceanCoord(baseCoord.y + 1));
-    const uint2 p11 = uint2(WrapFFTOceanCoord(baseCoord.x + 1), WrapFFTOceanCoord(baseCoord.y + 1));
-
-    const float4 c00 = textureData.Load(int3(p00, 0));
-    const float4 c10 = textureData.Load(int3(p10, 0));
-    const float4 c01 = textureData.Load(int3(p01, 0));
-    const float4 c11 = textureData.Load(int3(p11, 0));
-
-    const float4 cx0 = lerp(c00, c10, fracCoord.x);
-    const float4 cx1 = lerp(c01, c11, fracCoord.x);
-    return lerp(cx0, cx1, fracCoord.y);
-}
-
 float3 EvaluateCausticsWaterOffset(float2 worldXZ)
 {
     if (!UseFFTOceanSurface())
@@ -149,7 +118,7 @@ float3 EvaluateCausticsWaterOffset(float2 worldXZ)
         return EvaluateWaterOffset(worldXZ);
     }
 
-    return SampleFFTOceanBilinear(gFFTOceanDisplacement, worldXZ).xyz;
+    return SampleFFTOceanBilinear(gFFTOceanDisplacement, worldXZ, gFFTOceanPatchLength, gFFTOceanResolution).xyz;
 }
 
 float3 EvaluateCausticsWaterNormal(float2 worldXZ)
@@ -159,7 +128,7 @@ float3 EvaluateCausticsWaterNormal(float2 worldXZ)
         return EvaluateWaterNormal(worldXZ);
     }
 
-    const float3 encodedNormal = SampleFFTOceanBilinear(gFFTOceanNormal, worldXZ).xyz;
+    const float3 encodedNormal = SampleFFTOceanBilinear(gFFTOceanNormal, worldXZ, gFFTOceanPatchLength, gFFTOceanResolution).xyz;
     const float3 decodedNormal = normalize(encodedNormal * 2.0f - 1.0f);
     return decodedNormal.y < 0.0f ? -decodedNormal : decodedNormal;
 }
@@ -168,6 +137,15 @@ float3 EvaluateCausticsWaterNormal(float2 worldXZ)
 void RTWaterCausticsRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
+
+    // ライトが無効（消灯）な場合はコースティクスも出さない。
+    // 非RT版 WaterCaustics.PS.hlsl の gMainLightEnabled チェックと同じ扱い。
+    if (gLightEnabled == 0)
+    {
+        gCausticsOutput[launchIndex] = 0.0f.xxxx;
+        return;
+    }
+
     float4 worldPosSample = gWorldPosition.Load(int3(launchIndex, 0));
     if (worldPosSample.a < 0.5f)
     {
@@ -203,7 +181,11 @@ void RTWaterCausticsRayGen()
 
     float3 waterNormal = EvaluateCausticsWaterNormal(waterPos.xz);
     float3 lightDir = normalize(gLightDirection);
-    float3 refractedDir = refract(-lightDir, waterNormal, 1.0f / max(gRefractiveIndex, 1.001f));
+    // refract() の入射ベクトルは「光の進行方向」（=下向きの lightDir）を渡す。
+    // 以前は -lightDir を渡しており、屈折方向の水平成分が反転して
+    // コースティクスが本来と逆向き・不正な位置に集光していた。
+    // （非RT 版 WaterCaustics.PS.hlsl も incidentDir = gMainLightDirection をそのまま使用している）
+    float3 refractedDir = refract(lightDir, waterNormal, 1.0f / max(gRefractiveIndex, 1.001f));
     if (dot(refractedDir, refractedDir) <= 1.0e-6f || refractedDir.y >= -1.0e-4f)
     {
         gCausticsOutput[launchIndex] = 0.0f.xxxx;
@@ -273,7 +255,9 @@ void RTWaterCausticsRayGen()
     float receiverFacingFactor = saturate(dot(receiverNormal, -ray.Direction));
     float attenuation = exp(-receiverDistance * 0.16f);
     float focus = saturate(dot(receiverNormal, -lightDir));
-    float intensity = gIntensityScale * attenuation * focus * matchFactor * shallowFade * receiverUpFactor * receiverFacingFactor;
+    // gLightIntensity をここで掛けることで、シーンのライト強度に連動させる
+    // （以前は gIntensityScale のみで、ライトを暗くしても集光が弱まらなかった）。
+    float intensity = gIntensityScale * gLightIntensity * attenuation * focus * matchFactor * shallowFade * receiverUpFactor * receiverFacingFactor;
 
     if (gDebugViewMode != kRTCausticsDebugNone)
     {
@@ -288,7 +272,9 @@ void RTWaterCausticsRayGen()
         return;
     }
 
-    gCausticsOutput[launchIndex] = float4(intensity.xxx, 1.0f);
+    // gLightColor を掛けることで、シーンのライト色（夕焼けなど）に連動させる
+    // （以前は常にグレースケールの強度そのままで、ライト色を変えても白いままだった）。
+    gCausticsOutput[launchIndex] = float4(gLightColor * intensity, 1.0f);
 }
 
 [shader("miss")]

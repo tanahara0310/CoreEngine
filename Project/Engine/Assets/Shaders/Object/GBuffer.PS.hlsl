@@ -20,7 +20,7 @@ struct Material
     float ditheringScale;
     int shadingMode; ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
     float iblIntensity;
-    float padding2;
+    float alphaCutoff; ///< discard 判定に使用するアルファしきい値
 };
 
 ConstantBuffer<Material> gMaterial : register(b0);
@@ -115,7 +115,7 @@ GBufferOutput main(VertexShaderOutput input)
             discard;
         }
     }
-    else if (textureColor.a <= 0.5f)
+    else if (textureColor.a <= gMaterial.alphaCutoff)
     {
         discard;
     }

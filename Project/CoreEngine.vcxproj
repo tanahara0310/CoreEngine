@@ -841,8 +841,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\Engine\Graphics\ModelManager.md" />
     <None Include="Docs\Engine\Graphics\README.md" />
     <None Include="Docs\Engine\Graphics\Rendering\PBR_RoadMap.md" />
-    <None Include="Docs\JobHuntingWorksDoc\WaterSurface_README.md" />
-    <None Include="Docs\JobHuntingWorksDoc\WaterSurface_TechnicalOverview.md" />
     <None Include="Docs\Refactoring\README.md" />
     <None Include="Docs\Engine\Graphics\TextureManager.md" />
     <None Include="Docs\Engine\Input\Input.md" />

@@ -132,4 +132,47 @@ float3 EvaluateWaterNormal(float2 worldXZ)
     return EvaluateWaterNormalGerstner(worldXZ);
 }
 
+// ------------------------------------------------------------
+// FFT Ocean テクスチャ（変位・法線）のバイリニアサンプリング
+// FFT Ocean はテクセル解像度が有限のため、Load によるニアレストサンプリングでは
+// テクセル境界で法線が階段状に変化し、屈折方向がテクセル単位でジャンプする。
+// このジャンプは再投影 UV の飛びとなり、画面上に FFT 解像度グリッドに一致した
+// 四角いモザイク状の破綻として現れる。RTWaterRefraction / RTWaterCaustics の
+// 両方で同じバイリニア補間を使い、この量子化を避ける。
+// ------------------------------------------------------------
+uint WrapFFTOceanCoord(int coord, int resolution)
+{
+    int wrapped = coord % resolution;
+    if (wrapped < 0)
+    {
+        wrapped += resolution;
+    }
+
+    return (uint)wrapped;
+}
+
+float4 SampleFFTOceanBilinear(Texture2D<float4> textureData, float2 worldXZ, float patchLength, uint resolution)
+{
+    const float2 uv = frac(worldXZ / patchLength + 0.5f.xx);
+    const float resolutionF = (float)resolution;
+    const float2 texelPos = uv * resolutionF - 0.5f.xx;
+    const int2 baseCoord = int2(floor(texelPos));
+    const float2 fracCoord = frac(texelPos);
+    const int wrapResolution = (int)resolution;
+
+    const uint2 p00 = uint2(WrapFFTOceanCoord(baseCoord.x, wrapResolution), WrapFFTOceanCoord(baseCoord.y, wrapResolution));
+    const uint2 p10 = uint2(WrapFFTOceanCoord(baseCoord.x + 1, wrapResolution), WrapFFTOceanCoord(baseCoord.y, wrapResolution));
+    const uint2 p01 = uint2(WrapFFTOceanCoord(baseCoord.x, wrapResolution), WrapFFTOceanCoord(baseCoord.y + 1, wrapResolution));
+    const uint2 p11 = uint2(WrapFFTOceanCoord(baseCoord.x + 1, wrapResolution), WrapFFTOceanCoord(baseCoord.y + 1, wrapResolution));
+
+    const float4 c00 = textureData.Load(int3(p00, 0));
+    const float4 c10 = textureData.Load(int3(p10, 0));
+    const float4 c01 = textureData.Load(int3(p01, 0));
+    const float4 c11 = textureData.Load(int3(p11, 0));
+
+    const float4 cx0 = lerp(c00, c10, fracCoord.x);
+    const float4 cx1 = lerp(c01, c11, fracCoord.x);
+    return lerp(cx0, cx1, fracCoord.y);
+}
+
 #endif // RT_WATER_SURFACE_COMMON_HLSLI
