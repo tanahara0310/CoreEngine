@@ -33,6 +33,8 @@
 #include "Graphics/Render/Pass/RTWaterCausticsPass.h"
 #include "Graphics/Render/Pass/RTWaterRefractionPass.h"
 #include "Graphics/Render/Pass/FFTOceanPass.h"
+#include "Graphics/Render/Pass/AtmosphereLUTPass.h"
+#include "Graphics/Render/Pass/AerialPerspectivePass.h"
 #include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/SceneColorCopyPass.h"
@@ -247,6 +249,7 @@ namespace CoreEngine
         context.rtWaterCausticsManager = renderDomainContext_ ? renderDomainContext_->GetWaterCausticsRayTracingManager() : nullptr;
         context.rtWaterRefractionManager = renderDomainContext_ ? renderDomainContext_->GetWaterRefractionRayTracingManager() : nullptr;
         context.fftOceanManager = renderDomainContext_ ? renderDomainContext_->GetFFTOceanManager() : nullptr;
+        context.atmosphereManager = renderDomainContext_ ? renderDomainContext_->GetAtmosphereManager() : nullptr;
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
         context.waterRefractionSurfaceData = sceneManager ? sceneManager->GetWaterRefractionSurfaceData() : nullptr;
@@ -386,6 +389,10 @@ namespace CoreEngine
         auto shadowMapPass = std::make_unique<ShadowMapPass>();
         renderPipeline_->AddPass(std::move(shadowMapPass));
 
+        // 1.5. 大気散乱 LUT 生成パス（パラメータ変更時のみ Compute 実行）
+        auto atmosphereLUTPass = std::make_unique<AtmosphereLUTPass>();
+        renderPipeline_->AddPass(std::move(atmosphereLUTPass));
+
         // 2. G-Bufferパス（不透明 Model / SkinnedModel の描画）
         auto gBufferPass = std::make_unique<GBufferPass>();
         renderPipeline_->AddPass(std::move(gBufferPass));
@@ -419,6 +426,10 @@ namespace CoreEngine
         // 遅延ライティングを計算して現在の SceneColor ターゲットへ書き込む
         auto deferredLightingPass = std::make_unique<DeferredLightingPass>();
         renderPipeline_->AddPass(std::move(deferredLightingPass));
+
+        // 3.5. 空気遠近感パス（不透明ジオメトリへ大気の霞を合成。GameView のみ）
+        auto aerialPerspectivePass = std::make_unique<AerialPerspectivePass>();
+        renderPipeline_->AddPass(std::move(aerialPerspectivePass));
 
         // 4. ジオメトリパス（透過オブジェクト / SkyBox / UI / パーティクル 等の Forward 描画）
         // DeferredLightingPass が SceneColor ターゲットへ書き込んだ結果の上に重ね描きする

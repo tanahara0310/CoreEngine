@@ -40,6 +40,7 @@ namespace CoreEngine
     class WaterCausticsRayTracingManager;
     class WaterRefractionRayTracingManager;
     class FFTOceanManager;
+    class AtmosphereManager;
     class CameraManager;
     class DepthStencilManager;
     /// @brief レンダリングパスのコンテキスト情報
@@ -59,6 +60,7 @@ namespace CoreEngine
         WaterCausticsRayTracingManager* rtWaterCausticsManager = nullptr; ///< DXR 水面コースティクス
         WaterRefractionRayTracingManager* rtWaterRefractionManager = nullptr; ///< DXR 水面屈折
         FFTOceanManager* fftOceanManager = nullptr; ///< FFT Ocean 波面生成マネージャー
+        AtmosphereManager* atmosphereManager = nullptr; ///< 大気散乱管理（LUT生成・太陽情報）
         CameraManager* cameraManager = nullptr; ///< カメラ管理（SSAO等でビュー/プロジェクション行列取得用）
         DepthStencilManager* depthStencilManager = nullptr; ///< 深度ステンシル管理（バリア遷移・クリアを一元管理）
         FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理

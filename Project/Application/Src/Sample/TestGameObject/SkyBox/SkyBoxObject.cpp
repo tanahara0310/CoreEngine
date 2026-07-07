@@ -12,6 +12,8 @@
 #include <cassert>
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/IBL/IBLSystem.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Utility/Logger/Logger.h"
 
 using namespace CoreEngine;
@@ -235,8 +237,8 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
     auto* skyBoxRenderer = renderManager->GetRenderer(RenderPassType::SkyBox);
     if (!skyBoxRenderer) return;
 
-    // テクスチャが未設定の場合は描画しない
-    if (texture_.gpuHandle.ptr == 0) return;
+    // テクスチャが未設定の場合は描画しない（大気散乱モードではテクスチャ不要）
+    if (!atmosphereMode_ && texture_.gpuHandle.ptr == 0) return;
 
     // 頂点バッファの設定
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
@@ -264,6 +266,49 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
     transformData_[transformBufferIndex_]->WVP = MathCore::Matrix::Multiply(worldMatrix, viewProjectionMatrix);
 
     assert(sSkyBoxRenderer_ != nullptr);
+
+    // ===== 大気散乱モード =====
+    // BeginPass で設定されたキューブマップ用 RootSignature / PSO を
+    // 大気散乱用に差し替えてから描画する（メッシュ・WVP は共通）
+    if (atmosphereMode_) {
+        if (!sSkyBoxRenderer_->IsAtmospherePipelineReady()) return;
+
+        auto* domainContext = engine->GetRenderDomainContext();
+        auto* atmosphereManager = domainContext ? domainContext->GetAtmosphereManager() : nullptr;
+        if (!atmosphereManager || !atmosphereManager->IsConstantBufferReady()) return;
+
+        commandList->SetGraphicsRootSignature(sSkyBoxRenderer_->GetAtmosphereRootSignature());
+        commandList->SetPipelineState(sSkyBoxRenderer_->GetAtmospherePipelineState());
+
+        commandList->SetGraphicsRootConstantBufferView(
+            sSkyBoxRenderer_->GetAtmosphereRootParamIndex("gTransformationMatrix"),
+            transformBuffers_[transformBufferIndex_]->GetGPUVirtualAddress()
+        );
+        commandList->SetGraphicsRootConstantBufferView(
+            sSkyBoxRenderer_->GetAtmosphereRootParamIndex("gAtmosphere"),
+            atmosphereManager->GetConstantBufferGPUAddress()
+        );
+
+        // LUT 群（未生成の初回フレームは黒がサンプルされるだけなので許容）
+        // 描画は Sky-View LUT の1サンプルで完結する。Transmittance は太陽ディスク描画で使用。
+        const int skyViewParamIndex = sSkyBoxRenderer_->GetAtmosphereRootParamIndex("gSkyViewLUT");
+        if (skyViewParamIndex >= 0) {
+            commandList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(skyViewParamIndex),
+                atmosphereManager->GetSkyViewLUTSRVHandle()
+            );
+        }
+        const int transmittanceParamIndex = sSkyBoxRenderer_->GetAtmosphereRootParamIndex("gTransmittanceLUT");
+        if (transmittanceParamIndex >= 0) {
+            commandList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(transmittanceParamIndex),
+                atmosphereManager->GetTransmittanceLUTSRVHandle()
+            );
+        }
+
+        commandList->DrawIndexedInstanced(kIndexCount, 1, 0, 0, 0);
+        return;
+    }
 
     // トランスフォーム行列CBV
     commandList->SetGraphicsRootConstantBufferView(

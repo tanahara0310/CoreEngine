@@ -8,6 +8,7 @@
 #include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -71,6 +72,11 @@ namespace CoreEngine
                 "RenderDomainContext: FFTOceanManager 初期化完了\n");
         }
 
+        atmosphereManager_ = std::make_unique<AtmosphereManager>();
+        atmosphereManager_->Initialize(device, descriptorManager);
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "RenderDomainContext: AtmosphereManager 初期化完了\n");
+
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext::Initialize: 全ドメインマネージャーの初期化完了\n");
     }
@@ -81,6 +87,7 @@ namespace CoreEngine
             "RenderDomainContext::Shutdown: ドメインマネージャーを解放します\n");
 
         // 依存関係を考慮した逆順解放
+        atmosphereManager_.reset();
         rtWaterCausticsManager_.reset();
         rtWaterRefractionManager_.reset();
         rtShadowManager_.reset();

@@ -22,6 +22,21 @@
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereTestScene.cpp">
+      <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereEditorFacade.cpp">
+      <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp">
+      <Filter>Engine\Src\Graphics\Atmosphere</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBufferSet.cpp">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClCompile>
@@ -1890,6 +1905,21 @@
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.h">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereTestScene.h">
+      <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereEditorFacade.h">
+      <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.h">
+      <Filter>Engine\Src\Graphics\Atmosphere</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
@@ -2046,6 +2076,12 @@
     </Filter>
     <Filter Include="Application\Src\Sample\SampleScene\WaterTestScene">
       <UniqueIdentifier>{7A2A7A72-9064-4808-88B4-1B308EC90298}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Sample\SampleScene\AtmosphereTestScene">
+      <UniqueIdentifier>{4E8F1A3B-6C2D-4B7E-9A5F-D3B8C1E76A92}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Atmosphere">
+      <UniqueIdentifier>{9D2C5E7F-3A4B-4C8D-B6E1-F0A9D8C7B654}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Sample\TestGameObject">
       <UniqueIdentifier>{554C1F16-770E-445F-8F03-2D6704FDBBAE}</UniqueIdentifier>

@@ -5,15 +5,15 @@
 
 namespace CoreEngine
 {
-namespace RenderTargetNames {
-    constexpr const char* SceneColor = "SceneColor";
-    constexpr const char* SceneColorSnapshot = "SceneColorSnapshot";
-    constexpr const char* PostEffectIntermediatePrefix = "PostEffectIntermediate";
-    constexpr const char* PostEffectFinal = "PostEffectFinal";
-    constexpr const char* BackBuffer  = "BackBuffer";
-    constexpr const char* ReflectionView = "ReflectionView";
-    constexpr const char* SSAOBuffer  = "SSAOBuffer";
-    constexpr const char* SSAOBlurBuffer = "SSAOBlurBuffer";
-    constexpr const char* WaterCausticsBuffer = "WaterCausticsBuffer";
-}
+    namespace RenderTargetNames {
+        constexpr const char* SceneColor = "SceneColor";
+        constexpr const char* SceneColorSnapshot = "SceneColorSnapshot";
+        constexpr const char* PostEffectIntermediatePrefix = "PostEffectIntermediate";
+        constexpr const char* PostEffectFinal = "PostEffectFinal";
+        constexpr const char* BackBuffer = "BackBuffer";
+        constexpr const char* ReflectionView = "ReflectionView";
+        constexpr const char* SSAOBuffer = "SSAOBuffer";
+        constexpr const char* SSAOBlurBuffer = "SSAOBlurBuffer";
+        constexpr const char* WaterCausticsBuffer = "WaterCausticsBuffer";
+    }
 }

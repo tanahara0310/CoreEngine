@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "RenderPipeline.h"
 
+#include "AerialPerspectivePass.h"
+#include "AtmosphereLUTPass.h"
 #include "BackBufferPass.h"
 #include "DeferredLightingPass.h"
 #include "GeometryPass.h"
@@ -322,6 +324,13 @@ namespace CoreEngine
                 });
         }
 
+        // 大気散乱 LUT はダーティ時のみ Compute 実行する（リソース遷移は内部管理）。
+        if (auto* pass = GetPass<AtmosphereLUTPass>()) {
+            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
+                (void)builder;
+                });
+        }
+
         // GBuffer は各 MRT と SceneDepth を書き込む起点パスとして登録する。
         if (auto* pass = GetPass<GBufferPass>()) {
             renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
@@ -399,6 +408,18 @@ namespace CoreEngine
             renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
                 (void)builder;
                 });
+        }
+
+        // Aerial Perspective は SceneColor / SceneDepth を読み、SceneColor へ霞を合成する。
+        // （SceneColor の SRV/COPY 遷移はパス内部で状態参照を通じて管理する）
+        if (viewSettings.viewType == RenderViewType::GameView) {
+            if (auto* pass = GetPass<AerialPerspectivePass>()) {
+                renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
+                    builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    });
+            }
         }
 
         // Geometry は SceneColor に上乗せしつつ SceneDepth を read-only DSV/SRV として参照する。
