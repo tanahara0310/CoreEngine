@@ -48,6 +48,10 @@ namespace CoreEngine
         void SetDitheringScale(float scale)   { materialData_->ditheringScale = scale; }
         float GetDitheringScale() const       { return materialData_->ditheringScale; }
 
+        // ===== Alpha Cutoff (discard しきい値) =====
+        void SetAlphaCutoff(float cutoff)     { materialData_->alphaCutoff = cutoff; }
+        float GetAlphaCutoff() const          { return materialData_->alphaCutoff; }
+
         // ===== IBL / Shading Mode =====
         /// @brief シェーディングモードを設定
         void SetShadingMode(ShadingMode mode) { materialData_->shadingMode = static_cast<int32_t>(mode); }

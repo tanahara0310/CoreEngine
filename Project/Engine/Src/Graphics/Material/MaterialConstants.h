@@ -39,7 +39,7 @@ namespace CoreEngine
         float ditheringScale;       ///< ディザリングスケール
         int32_t shadingMode;        ///< シェーディングモード（ShadingMode 列挙型）
         float iblIntensity;         ///< IBL強度 (ShadingMode::PBR_IBL 時に使用, デフォルト: 1.0)
-        float padding2;             ///< 16バイトアライメント用
+        float alphaCutoff;          ///< discard 判定に使用するアルファしきい値（デフォルト: 0.5）
     };
 
     static_assert(sizeof(MaterialConstants) % 16 == 0,

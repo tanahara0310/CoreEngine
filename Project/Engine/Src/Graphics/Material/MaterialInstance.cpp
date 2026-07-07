@@ -24,7 +24,7 @@ namespace CoreEngine
         materialData_->ditheringScale = 1.0f;
         materialData_->shadingMode = static_cast<int32_t>(ShadingMode::PBR);
         materialData_->iblIntensity = 1.0f;
-        materialData_->padding2 = 0.0f;
+        materialData_->alphaCutoff = 0.5f;
     }
 
 } // namespace CoreEngine
