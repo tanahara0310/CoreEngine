@@ -23,7 +23,10 @@ namespace CoreEngine
         float waterRefractiveIndex = 1.333f;
         float surfaceBias = 0.02f;
         float absorptionCoeff = 0.3f;
-        float maxRefractionOffsetPixels = 8.0f;
+        // 屈折ヒット点のスクリーン再投影ずれ量の上限（ピクセル）。
+        // 0 = 無制限（RT で求めた正確な位置をそのまま使う。既定）。
+        // 正の値を指定した場合のみ暴発防止の安全クランプとして機能する。
+        float maxRefractionOffsetPixels = 0.0f;
         float debugDisplayScale = 1.0f;
         uint32_t debugViewMode = 0;
         uint32_t debugLogEnabled = 0;

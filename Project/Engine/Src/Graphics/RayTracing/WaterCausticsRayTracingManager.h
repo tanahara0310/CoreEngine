@@ -37,6 +37,17 @@ namespace CoreEngine
             uint32_t enabled = 0;
         };
 
+        // シーンの実際のディレクショナルライト情報。
+        // 以前は方向のみを受け取っており、色・強度・有効フラグが RT コースティクスへ
+        // 一切反映されていなかった（ライトを消してもコースティクスが消えない、
+        // ライト色を変えても常に白いままになる不具合の原因）。
+        struct LightInput {
+            Vector3 direction{ 0.0f, -1.0f, 0.0f };
+            Vector3 color{ 1.0f, 1.0f, 1.0f };
+            float intensity = 1.0f;
+            bool enabled = true;
+        };
+
         enum class ViewID : uint32_t {
             GameView = 0,
             ReflectionView = 1,
@@ -78,7 +89,7 @@ namespace CoreEngine
             ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-            const Vector3& lightDirection,
+            const LightInput& lightInput,
             const WaterSurfaceData& surfaceData,
             const FFTOceanCausticsInput& fftOceanInput,
             UINT width,

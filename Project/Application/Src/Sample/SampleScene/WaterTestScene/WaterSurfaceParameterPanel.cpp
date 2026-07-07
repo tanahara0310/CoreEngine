@@ -251,7 +251,7 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(
 			appearanceParameters_.fresnelBaseReflectance);
 	}
 
-	if (ImGui::SliderFloat("DXR屈折ずれ量 (px)", &rtRefractionOffsetPixels_, 0.0f, 12.0f, "%.2f")) {
+	if (ImGui::SliderFloat("DXR屈折 最大ずれ量 (px, 0=無制限)", &rtRefractionOffsetPixels_, 0.0f, 64.0f, "%.2f")) {
 		WaterEditorRayTracingSettings settings = editorFacade.GetRayTracingSettings();
 		settings.maxRefractionOffsetPixels = rtRefractionOffsetPixels_;
 		editorFacade.ApplyRayTracingSettings(settings);

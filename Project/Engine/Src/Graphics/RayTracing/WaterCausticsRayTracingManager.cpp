@@ -25,7 +25,9 @@ namespace CoreEngine
             float refractiveIndex;
             float debugDisplayScale;
             uint32_t debugViewMode;
-            uint32_t padding;
+            uint32_t lightEnabled; // 旧 padding を転用
+            float lightColor[3];
+            float lightIntensity;
         };
 
         const char* ToString(WaterCausticsRayTracingManager::DispatchStatus status)
@@ -45,7 +47,7 @@ namespace CoreEngine
 
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
-    static_assert(sizeof(WaterCausticsConstants) == 64,
+    static_assert(sizeof(WaterCausticsConstants) == 80,
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
 
     bool WaterCausticsRayTracingManager::Initialize(
@@ -156,7 +158,7 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-        const Vector3& lightDirection,
+        const LightInput& lightInput,
         const WaterSurfaceData& surfaceData,
         const FFTOceanCausticsInput& fftOceanInput,
         UINT width,
@@ -230,9 +232,9 @@ namespace CoreEngine
         constants.surfaceBias = settings_.surfaceBias;
         constants.intensityScale = settings_.intensityScale;
         constants.waterHeight = dispatchSurfaceData.waterHeight;
-        constants.lightDirection[0] = lightDirection.x;
-        constants.lightDirection[1] = lightDirection.y;
-        constants.lightDirection[2] = lightDirection.z;
+        constants.lightDirection[0] = lightInput.direction.x;
+        constants.lightDirection[1] = lightInput.direction.y;
+        constants.lightDirection[2] = lightInput.direction.z;
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
         constants.fftOceanEnabled = fftOceanInput.enabled;
@@ -241,6 +243,11 @@ namespace CoreEngine
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
         constants.refractiveIndex = settings_.refractiveIndex;
+        constants.lightEnabled = lightInput.enabled ? 1u : 0u;
+        constants.lightColor[0] = lightInput.color.x;
+        constants.lightColor[1] = lightInput.color.y;
+        constants.lightColor[2] = lightInput.color.z;
+        constants.lightIntensity = lightInput.intensity;
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : normalRoughnessSRV;

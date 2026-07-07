@@ -28,7 +28,8 @@ struct WaterEditorFFTSettings {
 
 /// @brief Water UI から扱う DXR 屈折設定
 struct WaterEditorRayTracingSettings {
-    float maxRefractionOffsetPixels = 8.0f;
+    // 0 = 無制限（RT で求めた正確な屈折位置を使用。既定）。正の値で安全クランプ。
+    float maxRefractionOffsetPixels = 0.0f;
     float debugDisplayScale = 1.0f;
     int debugViewMode = 0;
     bool debugLogEnabled = false;
