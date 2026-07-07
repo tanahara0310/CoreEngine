@@ -135,6 +135,18 @@ float3 BuildRefractionDebugColor(
     return 0.0f.xxx;
 }
 
+float ComputeScreenBoundsFade(float2 uv)
+{
+    // 画面内では減衰させず、画面外へはみ出した距離に応じて対称にフェードする。
+    // 以前の実装は下端だけ広い固定マージンを持っており、uv.y が 1 に近づくだけで
+    // 実際には画面内にある屈折まで早期にフォールバックしていた。
+    const float2 screenSize = float2(gScreenWidth, gScreenHeight);
+    const float2 outsideDistancePixels = abs(uv - saturate(uv)) * screenSize;
+    const float outsidePixels = max(outsideDistancePixels.x, outsideDistancePixels.y);
+    const float fadeMarginPixels = 32.0f;
+    return 1.0f - smoothstep(0.0f, fadeMarginPixels, outsidePixels);
+}
+
 bool UseFFTOceanSurface()
 {
     return gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean
@@ -292,16 +304,10 @@ void RTWaterRefractionRayGen()
 
     // スクリーン空間で SceneColor を再利用する都合上、屈折先が画面外に出た場合は
     // その位置の色を物理的に取得できない（この手法の原理的な制約）。
-    // 以前はここで画面境界をまたいだ瞬間に「屈折あり／なし」を二値で切り替えていたため、
-    // 画面下部や画面端に近い水面ほど（＝屈折先が画面外に出やすいほど）屈折が
-    // 唐突に消える境界線として視認されていた（「見切れる」不具合）。
-    // ここでは画面端手前でなだらかにフォールバック色へフェードし、
-    // 境界での急な切り替わりを解消する。完全に画面外なら fade=0 となり
-    // 従来通りフォールバックへ収束する。
-    const float2 kEdgeFadeMargin = float2(0.06f, 0.06f);
-    float2 edgeFadeXY = smoothstep(0.0f.xx, kEdgeFadeMargin, uv)
-        * smoothstep(0.0f.xx, kEdgeFadeMargin, 1.0f.xx - uv);
-    float edgeFade = saturate(edgeFadeXY.x) * saturate(edgeFadeXY.y);
+    // ただし画面端に近いだけの有効な屈折まで減衰させると、特定方向だけ
+    // 不自然に途切れて見える。そこでフェードは「画面外へ実際にはみ出した距離」に対してのみ
+    // 適用し、画面内に留まっている屈折は上下左右で等しく保持する。
+    float edgeFade = ComputeScreenBoundsFade(uv);
 
     if (edgeFade <= 1.0e-4f)
     {
