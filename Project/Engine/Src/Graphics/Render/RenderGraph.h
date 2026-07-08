@@ -14,6 +14,8 @@ namespace CoreEngine
         std::string name;
         uint32_t lastWriterIndex = 0;
         bool hasWriter = false;
+        uint32_t version = 0;              ///< Write 宣言ごとにインクリメントされる版番号
+        std::vector<uint32_t> readers;     ///< 現行バージョンを読むパス一覧（WAR 依存の計算元）
         ID3D12Resource* resource = nullptr;
         D3D12_RESOURCE_STATES* currentState = nullptr;
     };
@@ -38,6 +40,14 @@ namespace CoreEngine
         void Write(
             const std::string& resourceName,
             D3D12_RESOURCE_STATES requiredState = D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+        /// @brief UAV 書き込みリソースを登録する
+        /// @details UNORDERED_ACCESS 状態のまま連続書き込みされる場合、
+        ///          Graph が遷移バリアの代わりに UAV バリアを自動発行する。
+        /// @param resourceName 論理リソース名
+        void WriteUAV(const std::string& resourceName) {
+            Write(resourceName, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
 
         /// @brief 登録済み読み取り情報を取得する
         /// @return 読み取りリソース一覧
@@ -95,14 +105,12 @@ namespace CoreEngine
         /// @param context 実行時コンテキスト
         void ResolveResources(const RenderContext& context);
 
-        /// @brief 1 パス実行前に必要な状態遷移を自動発行する
+        /// @brief 1 パス実行前に必要な状態遷移をバッチで自動発行する
+        /// @details 同一リソースへの Read + Write 宣言は最終状態（Write 優先）へ 1 回で遷移する。
+        ///          Compile 時に未解決だったリソースは実行時に Blackboard から再解決を試みる。
         /// @param pass 実行対象 Graph パス
         /// @param context 実行時コンテキスト
-        void ApplyTransitionsForPass(const RenderGraphPass& pass, const RenderContext& context) const;
-
-        /// @brief パス依存情報を登録する
-        /// @param pass 依存を計算する Graph パス
-        void RegisterDependencies(RenderGraphPass& pass);
+        void ApplyTransitionsForPass(const RenderGraphPass& pass, const RenderContext& context);
 
         std::vector<RenderGraphPass> passes_;
         std::unordered_map<std::string, RenderGraphResource> resources_;

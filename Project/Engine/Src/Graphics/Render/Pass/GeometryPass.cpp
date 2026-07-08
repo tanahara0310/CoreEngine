@@ -8,73 +8,86 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Scene/SceneManager.h"
+#include "Graphics/Render/RenderGraph.h"
 #include <cassert>
 
 namespace CoreEngine
 {
-    void GeometryPass::Execute(const RenderContext& context)
+    void ForwardQueuePassBase::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
-        // RenderTargetManagerが必要
+        // SceneColor に上乗せしつつ SceneDepth を read-only DSV/SRV として参照する。
+        builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    }
+
+    void ForwardQueuePassBase::ConfigureForView(const RenderContext& context)
+    {
+        SetRenderTargetName(context.viewSettings.sceneColorTargetName);
+    }
+
+    void ForwardQueuePassBase::Execute(const RenderContext& context)
+    {
         if (!context.renderTargetManager) {
 #ifdef _DEBUG
-            OutputDebugStringA("ERROR: GeometryPass: RenderTargetManager is null in RenderContext!\n");
+            OutputDebugStringA("ERROR: ForwardQueuePass: RenderTargetManager is null in RenderContext!\n");
 #endif
-            assert(false && "GeometryPass requires RenderTargetManager in RenderContext");
+            assert(false && "ForwardQueuePass requires RenderTargetManager in RenderContext");
             return;
         }
 
-        // 名前ベースでターゲットを取得
         RenderTarget* targetToUse = context.renderTargetManager->GetRenderTarget(targetName_);
-
         if (!targetToUse) {
 #ifdef _DEBUG
-            std::string msg = "ERROR: GeometryPass: RenderTarget '" + targetName_ + "' not found in RenderTargetManager!\n";
+            std::string msg = "ERROR: ForwardQueuePass: RenderTarget '" + targetName_ + "' not found!\n";
             OutputDebugStringA(msg.c_str());
 #endif
-            assert(false && "GeometryPass requires a valid RenderTarget.");
+            assert(false && "ForwardQueuePass requires a valid RenderTarget.");
             return;
         }
 
-        // DirectXCommonが必要
         if (!context.dxCommon) {
-#ifdef _DEBUG
-            OutputDebugStringA("ERROR: GeometryPass: DirectXCommon is null in RenderContext!\n");
-#endif
-            assert(false && "GeometryPass requires DirectXCommon in RenderContext");
+            assert(false && "ForwardQueuePass requires DirectXCommon in RenderContext");
             return;
         }
 
         auto* cmdList = context.dxCommon->GetCommandList();
 
         // DeferredLightingPass が先に書き込んでいる場合はクリアしない
-        targetToUse->SetClearEnabled(clearEnabled_);
+        targetToUse->SetClearEnabled(ShouldClear());
 
         targetToUse->Begin(cmdList);
 
         if (context.renderManager) {
+            // パス分離契約 2: 描画に必要な状態は先行パスに依存せず自分で設定する。
             context.renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
             context.renderManager->SetDebugLineRenderingEnabled(true);
             if (context.sceneManager) {
                 context.renderManager->SetCamera(context.sceneManager->GetGameViewCamera3D());
             }
             Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
-            context.renderManager->DrawMainQueuePass();
-            context.renderManager->DrawSkyQueuePass();
-            context.renderManager->DrawTransparentQueuePass();
+
+            DrawQueue(context);
         }
 
         targetToUse->End(cmdList);
 
-        if (context.frameBlackboard) {
-            D3D12_RESOURCE_STATES* stateRef = nullptr;
-            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(targetToUse)) {
-                stateRef = &offscreen->GetCurrentState();
-            }
-            context.frameBlackboard->SetResource(
-                FrameBlackboard::SceneColor,
-                targetToUse->GetSRVHandle(),
-                targetToUse->GetResource(),
-                stateRef);
-        }
+        // SceneColor は RegisterFrameResources で同一の実体が登録済みのため、
+        // 実行中の Blackboard 再登録は行わない（パス分離契約 3）。
+    }
+
+    void GeometryPass::DrawQueue(const RenderContext& context)
+    {
+        context.renderManager->DrawMainQueuePass();
+    }
+
+    void SkyBoxQueuePass::DrawQueue(const RenderContext& context)
+    {
+        context.renderManager->DrawSkyQueuePass();
+    }
+
+    void TransparentQueuePass::DrawQueue(const RenderContext& context)
+    {
+        context.renderManager->DrawTransparentQueuePass();
     }
 }

@@ -14,9 +14,14 @@ namespace CoreEngine
         Vector4 color;        // ライトの色
         Vector3 direction;    // ライトの方向
         float intensity;      // 輝度
-        bool enabled;         // 有効フラグ
-        Vector3 padding;      // パディング（16バイトアライメント）
+        bool enabled;         // 有効フラグ（GPU側は bytes32-35 を bool として読むため、この4バイト内に他のフラグを置かない）
+        uint8_t enabledPadding[3];  // enabled の4バイト境界を明示的に埋める
+        bool isAtmosphereSun; // 大気散乱の太陽として扱うフラグ（CPU専用。GPU側は padding 領域として無視される）
+        uint8_t sunPadding[3];      // isAtmosphereSun の4バイト境界を明示的に埋める
+        Vector2 padding;      // パディング（GPU側 float3 padding の残り8バイト）
     };
+    static_assert(sizeof(DirectionalLightData) == 48,
+        "DirectionalLightData は HLSL 側 LightStructures.hlsli の 48 バイトストライドと一致させること");
 
     /// @brief ポイントライトのデータ構造体（StructuredBuffer用）
     struct PointLightData {

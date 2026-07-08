@@ -9,9 +9,17 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Utility/Logger/Logger.h"
+#include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
 {
+    void WaterCausticsPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::WaterCaustics, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    }
+
     void WaterCausticsPass::Execute(const RenderContext& context)
     {
         if (!context.renderingTechniqueManager || !context.renderTargetManager || !context.dxCommon) {

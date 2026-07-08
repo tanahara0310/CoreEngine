@@ -85,7 +85,7 @@ namespace CoreEngine
         }
     }
 
-    void RayTracingSubsystem::DispatchRTShadow(
+    void RayTracingSubsystem::DispatchRTShadowTrace(
         const RenderContext& context,
         DirectXCommon* dx,
         ID3D12GraphicsCommandList* cmdList,
@@ -121,6 +121,28 @@ namespace CoreEngine
                 li);
         }
 
+        // GBuffer 入力の前後状態遷移は RenderGraph 側の自動遷移へ委譲する。
+    }
+
+    void RayTracingSubsystem::DispatchRTShadowTemporal(
+        const RenderContext& context,
+        DirectXCommon* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        RayTracingShadowManager::ViewID viewId)
+    {
+        auto* rtShadow = context.rtShadowManager;
+        if (!rtShadow || !rtShadow->IsInitialized()) return;
+        if (!context.gBufferManager || !context.lightManager) return;
+        if (!dx || !cmdList) return;
+
+        auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+        auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
+        auto motionVecSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
+
+        const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
+        const UINT width = static_cast<UINT>(dx->GetClientWidth());
+        const UINT height = static_cast<UINT>(dx->GetClientHeight());
+
         // 全ライト分 テンポラル蓄積パス（空間前処理+再投影+Variance Clamping）
         for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
             auto* dirLight = context.lightManager->GetDirectionalLight(li);
@@ -136,6 +158,25 @@ namespace CoreEngine
                 viewId,
                 li);
         }
+    }
+
+    void RayTracingSubsystem::DispatchRTShadowDenoise(
+        const RenderContext& context,
+        DirectXCommon* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        RayTracingShadowManager::ViewID viewId)
+    {
+        auto* rtShadow = context.rtShadowManager;
+        if (!rtShadow || !rtShadow->IsInitialized()) return;
+        if (!context.gBufferManager || !context.lightManager) return;
+        if (!dx || !cmdList) return;
+
+        auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+        auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
+
+        const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
+        const UINT width = static_cast<UINT>(dx->GetClientWidth());
+        const UINT height = static_cast<UINT>(dx->GetClientHeight());
 
         // 全ライト分 A-Trous デノイズをまとめて実行
         for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
@@ -151,8 +192,6 @@ namespace CoreEngine
                 viewId,
                 li);
         }
-
-        // GBuffer 入力の前後状態遷移は RenderGraph 側の自動遷移へ委譲する。
     }
 
     void RayTracingSubsystem::DispatchWaterRefraction(

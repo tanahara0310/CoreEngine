@@ -15,6 +15,10 @@ namespace CoreEngine
 
         const char* GetName() const override { return "BackBuffer"; }
 
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+
+        bool IsEnabledForView(const RenderViewSettings& view) const override { return view.enableBackBuffer; }
+
         void Execute(const RenderContext& context) override;
 
         /// @brief レンダーターゲット名を設定

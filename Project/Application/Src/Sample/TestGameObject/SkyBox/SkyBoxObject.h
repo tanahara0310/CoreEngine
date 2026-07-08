@@ -62,6 +62,14 @@ public:
     /// @brief マテリアルインスタンスを直接取得
     CoreEngine::IMaterial* GetMaterial() { return material_.get(); }
 
+    /// @brief 大気散乱モードの有効/無効を設定
+    /// @details 有効時はキューブマップの代わりに大気散乱（SkyAtmosphere.PS.hlsl）で空を描画する。
+    ///          テクスチャ設定は不要になる。
+    void SetAtmosphereMode(bool enabled) { atmosphereMode_ = enabled; }
+
+    /// @brief 大気散乱モードが有効か
+    bool IsAtmosphereMode() const { return atmosphereMode_; }
+
 private:
     void CreateBoxVertices();
     void CreateTransformBuffer();
@@ -95,6 +103,9 @@ private:
 
     /// @brief テクスチャ名（インスペクター表示用）
     std::string textureName_;
+
+    /// @brief 大気散乱モード（true でキューブマップの代わりに大気散乱で空を描く）
+    bool atmosphereMode_ = false;
 
 #ifdef _DEBUG
     /// @brief 非HDRファイルドロップ時の警告メッセージ

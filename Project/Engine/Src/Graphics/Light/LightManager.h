@@ -106,6 +106,11 @@ namespace CoreEngine
         /// @return ライトデータへのポインタ（範囲外の場合はnullptr）
         DirectionalLightData* GetDirectionalLight(size_t index);
 
+        /// @brief 大気散乱の太陽として使用するディレクショナルライトを取得
+        /// @return isAtmosphereSun が立っている最初のライト。
+        ///         無ければメインライト（インデックス0）へフォールバック、それも無ければ nullptr
+        DirectionalLightData* GetAtmosphereSunLight();
+
         /// @brief 全てのライトをクリア（シーン切り替え時に使用）
         void ClearAllLights();
 

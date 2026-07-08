@@ -38,10 +38,26 @@ namespace CoreEngine
             ModelManager* modelManager,
             SceneManager* sceneManager);
 
-        /// @brief RT シャドウのディスパッチ（全ディレクショナルライト分）
-        /// @details DispatchRays → テンポラル蓄積 → A-Trous デノイズの 3 ステージを実行する。
-        ///　リソースバリア遷移は内部で処理する。
-        void DispatchRTShadow(
+        /// @brief RT シャドウの DispatchRays ステージ（全ディレクショナルライト分）
+        /// @details RenderGraph 上では RTShadowTracePass として実行される。
+        ///　ライト別の内部リソースバリアはマネージャ内で処理する。
+        void DispatchRTShadowTrace(
+            const RenderContext& context,
+            DirectXCommon* dx,
+            ID3D12GraphicsCommandList* cmdList,
+            RayTracingShadowManager::ViewID viewId);
+
+        /// @brief RT シャドウのテンポラル蓄積ステージ（全ディレクショナルライト分）
+        /// @details RenderGraph 上では RTShadowTemporalPass として実行される。
+        void DispatchRTShadowTemporal(
+            const RenderContext& context,
+            DirectXCommon* dx,
+            ID3D12GraphicsCommandList* cmdList,
+            RayTracingShadowManager::ViewID viewId);
+
+        /// @brief RT シャドウの A-Trous デノイズステージ（全ディレクショナルライト分）
+        /// @details RenderGraph 上では RTShadowDenoisePass として実行される。
+        void DispatchRTShadowDenoise(
             const RenderContext& context,
             DirectXCommon* dx,
             ID3D12GraphicsCommandList* cmdList,

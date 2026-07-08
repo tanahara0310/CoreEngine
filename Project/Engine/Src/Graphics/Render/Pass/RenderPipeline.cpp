@@ -1,21 +1,17 @@
 #include "pch.h"
 #include "RenderPipeline.h"
 
+// 各パスのリソース宣言は RenderPass::DeclareResources へ移設済み。
+// ここに残る具象パス include は以下の理由による暫定依存（Phase C/F で削除予定）:
+//  - BackBufferPass:      最終入力論理リソース名の接続（ConfigureBackBufferInput）
+//  - PostEffectPass:      有効エフェクト列のノード分解（AppendPostEffectPasses）
+//  - GeometryPass/DeferredLightingPass: Deferred/Forward 境界のクリア制御ハック
 #include "BackBufferPass.h"
 #include "DeferredLightingPass.h"
 #include "GeometryPass.h"
-#include "FFTOceanPass.h"
-#include "GBufferPass.h"
 #include "PostEffectPass.h"
-#include "SceneColorCopyPass.h"
-#include "RTShadowPass.h"
-#include "RTWaterCausticsPass.h"
-#include "RTWaterRefractionPass.h"
-#include "SSAOPass.h"
-#include "ShadowMapPass.h"
-#include "WaterSurfacePass.h"
-#include "WaterCausticsPass.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/BackBufferRenderTarget.h"
@@ -27,6 +23,7 @@
 #include "Graphics/PostEffect/Effect/PostEffectBase.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Scene/IScene.h"
+#include <algorithm>
 
 namespace CoreEngine
 {
@@ -89,18 +86,66 @@ namespace CoreEngine
         }
     }
 
-    void RenderPipeline::AddPass(std::unique_ptr<RenderPass> pass)
+    RenderPass* RenderPipeline::AddPass(
+        std::unique_ptr<RenderPass> pass,
+        RenderPassPhase phase,
+        int priority)
     {
-        if (pass) {
-            passes_.push_back(std::move(pass));
+        if (!pass) {
+            return nullptr;
         }
+
+        RenderPassEntry entry;
+        entry.pass = std::move(pass);
+        entry.phase = phase;
+        entry.priority = priority;
+        entry.sequence = nextSequence_++;
+        entry.owner = activeOwner_;
+        RenderPass* passPtr = entry.pass.get();
+
+        // (phase, priority, 登録順) で決まる位置へ挿入し、passes_ を常にソート済みに保つ。
+        const auto insertPos = std::find_if(
+            passes_.begin(), passes_.end(),
+            [&entry](const RenderPassEntry& existing) {
+                if (existing.phase != entry.phase) {
+                    return existing.phase > entry.phase;
+                }
+                return existing.priority > entry.priority;
+            });
+        passes_.insert(insertPos, std::move(entry));
+
+        return passPtr;
+    }
+
+    void RenderPipeline::RemovePass(RenderPass* pass)
+    {
+        if (!pass) {
+            return;
+        }
+
+        passes_.erase(
+            std::remove_if(passes_.begin(), passes_.end(),
+                [pass](const RenderPassEntry& entry) { return entry.pass.get() == pass; }),
+            passes_.end());
+    }
+
+    void RenderPipeline::RemovePassesByOwner(const void* owner)
+    {
+        if (!owner) {
+            return;
+        }
+
+        passes_.erase(
+            std::remove_if(passes_.begin(), passes_.end(),
+                [owner](const RenderPassEntry& entry) { return entry.owner == owner; }),
+            passes_.end());
     }
 
     RenderPass* RenderPipeline::GetPass(const std::string& name)
     {
-        for (auto& pass : passes_) {
-            if (pass->GetName() == name) {
-                return pass.get();
+        for (auto& entry : passes_) {
+            if (entry.pass->GetName() == name) {
+                return entry.pass.get();
             }
         }
         return nullptr;
@@ -110,31 +155,23 @@ namespace CoreEngine
     {
         RegisterFrameResources(context);
 
-        // View ごとの差分設定を先に反映し、後続の Graph 構築条件を揃える。
-        ConfigurePassesForView(context);
+        // 各パス自身の View 依存設定（出力先ターゲット名など）を反映する。
+        for (auto& entry : passes_) {
+            entry.pass->ConfigureForView(context);
+        }
+
+        // Deferred / Forward 境界の暫定連携（Phase F で投入時キュー振り分けへ移行し削除予定）。
+        // DeferredLighting が SceneColor へ書き込む場合、Geometry はクリアせず上乗せし、
+        // 不透明 Model/SkinnedModel の forward 二重描画をスキップする。
+        const auto* deferredLightingPass = GetPass<DeferredLightingPass>();
+        const bool deferredEnabled = deferredLightingPass && deferredLightingPass->IsEnabled();
 
         if (auto* geometryPass = GetPass<GeometryPass>()) {
-            const bool deferredEnabled = GetPass<DeferredLightingPass>()
-                && GetPass<DeferredLightingPass>()->IsEnabled();
             geometryPass->SetClearEnabled(!deferredEnabled);
         }
 
-        if (auto* waterSurfacePass = GetPass<WaterSurfacePass>()) {
-            waterSurfacePass->SetRenderTargetName(context.viewSettings.sceneColorTargetName);
-        }
-
-        if (auto* sceneColorCopyPass = GetPass<SceneColorCopyPass>()) {
-            sceneColorCopyPass->SetSourceTargetName(context.viewSettings.sceneColorTargetName);
-            sceneColorCopyPass->SetDestinationTargetName(RenderTargetNames::SceneColorSnapshot);
-            sceneColorCopyPass->SetEnabled(
-                context.viewSettings.viewType == RenderViewType::GameView
-                && context.viewSettings.sceneColorTargetName == RenderTargetNames::SceneColor);
-        }
-
         if (context.renderManager) {
-            const bool deferredEnabled = GetPass<DeferredLightingPass>()
-                && GetPass<DeferredLightingPass>()->IsEnabled();
-            context.renderManager->SetSkipOpaqueMeshInForwardPass(deferredEnabled);
+            context.renderManager->SetDeferredLightingActive(deferredEnabled);
         }
 
         BuildRenderGraph(context);
@@ -257,6 +294,20 @@ namespace CoreEngine
                 &context.shadowMapManager->GetCurrentState());
         }
 
+        // RTShadowMask は View 依存の実体を持つため、現在の View に対応する
+        // リソースをここで登録する（旧 RenderGraph::ResolveResources の特例を移設）。
+        if (context.rtShadowManager) {
+            const RayTracingShadowManager::ViewID rtShadowViewId =
+                (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView))
+                ? RayTracingShadowManager::ViewID::ReflectionView
+                : RayTracingShadowManager::ViewID::GameView;
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::RTShadowMask,
+                context.rtShadowManager->GetShadowSRVHandle(rtShadowViewId, 0),
+                context.rtShadowManager->GetShadowResource(rtShadowViewId, 0),
+                &context.rtShadowManager->GetShadowCurrentState(rtShadowViewId, 0));
+        }
+
         if (context.gBufferManager) {
             const struct {
                 const char* logicalName;
@@ -279,177 +330,31 @@ namespace CoreEngine
         }
     }
 
-    void RenderPipeline::ConfigurePassesForView(const RenderContext& context)
-    {
-        // View ごとに必要なパス有効化と出力先ターゲットを切り替える。
-        if (auto* deferredPass = GetPass<DeferredLightingPass>()) {
-            deferredPass->SetRenderTargetName(context.viewSettings.sceneColorTargetName);
-        }
-
-        if (auto* geometryPass = GetPass<GeometryPass>()) {
-            geometryPass->SetRenderTargetName(context.viewSettings.sceneColorTargetName);
-        }
-
-        if (auto* ssaoPass = GetPass<SSAOPass>()) {
-            ssaoPass->SetEnabled(context.viewSettings.enableSSAO);
-        }
-
-        if (auto* rtShadowPass = GetPass<RTShadowPass>()) {
-            rtShadowPass->SetEnabled(context.viewSettings.enableRTShadow);
-        }
-
-        if (auto* postEffectPass = GetPass<PostEffectPass>()) {
-            postEffectPass->SetEnabled(context.viewSettings.enablePostEffect);
-        }
-
-        if (auto* backBufferPass = GetPass<BackBufferPass>()) {
-            backBufferPass->SetEnabled(context.viewSettings.enableBackBuffer);
-        }
-    }
-
-    void RenderPipeline::BuildRenderGraph([[maybe_unused]] const RenderContext& context)
+    void RenderPipeline::BuildRenderGraph(const RenderContext& context)
     {
         renderGraph_.Reset();
         postEffectSubpasses_.clear();
         finalDisplayResourceName_ = FrameBlackboard::SceneColor;
         ConfigureBackBufferInput(FrameBlackboard::SceneColor);
-        const RenderViewSettings& viewSettings = context.viewSettings;
 
-        // ShadowMap は主方向ライトの深度を書き出す先行パスとして登録する。
-        if (auto* pass = GetPass<ShadowMapPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                builder.Write(FrameBlackboard::ShadowMap, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-                });
-        }
-
-        // GBuffer は各 MRT と SceneDepth を書き込む起点パスとして登録する。
-        if (auto* pass = GetPass<GBufferPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                builder.Write(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-                builder.Write(FrameBlackboard::GBufferAlbedoAO, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                builder.Write(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                builder.Write(FrameBlackboard::GBufferEmissiveMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                builder.Write(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                builder.Write(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                });
-        }
-
-        // SSAO は GBuffer と深度を SRV として読み取り、AO バッファへ書き込む。
-        if (viewSettings.enableSSAO) {
-            if (auto* pass = GetPass<SSAOPass>()) {
-                renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                    builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    builder.Read(FrameBlackboard::GBufferAlbedoAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    builder.Write(FrameBlackboard::SSAO, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                    });
+        // 各パスの Read / Write 宣言（DeclareResources）のみから Graph を構築する。
+        // 登録順は (phase, priority, 登録順) でソート済みの passes_ に従い、
+        // 実行順・バリアは RenderGraph が宣言から導出する。
+        for (auto& entry : passes_) {
+            if (!entry.pass->IsEnabledForView(context.viewSettings)) {
+                continue;
             }
-        }
 
-        // RT Shadow は GBuffer を読み取り、シャドウ結果を生成する。
-        if (viewSettings.enableRTShadow) {
-            if (auto* pass = GetPass<RTShadowPass>()) {
-                renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                    builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                    builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                    builder.Read(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                    builder.Write(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                    });
+            // PostEffect の placeholder は直接登録せず、有効エフェクト列をノード列へ分解する。
+            if (dynamic_cast<PostEffectPass*>(entry.pass.get())) {
+                AppendPostEffectPasses(context);
+                continue;
             }
-        }
 
-        if (auto* pass = GetPass<RTWaterCausticsPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                builder.Write(FrameBlackboard::RTWaterCaustics, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            RenderPass* passPtr = entry.pass.get();
+            renderGraph_.AddPass(passPtr->GetName(), passPtr, [passPtr, &context](RenderGraphBuilder& builder) {
+                passPtr->DeclareResources(builder, context);
                 });
-        }
-
-        if (auto* pass = GetPass<WaterCausticsPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Write(FrameBlackboard::WaterCaustics, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                });
-        }
-
-        // Deferred Lighting は GBuffer / SSAO / ShadowMap / RTShadow / SceneDepth を読み、SceneColor を生成する。
-        if (auto* pass = GetPass<DeferredLightingPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [viewSettings](RenderGraphBuilder& builder) {
-                builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::GBufferAlbedoAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::GBufferEmissiveMetallic, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                if (viewSettings.enableSSAO) {
-                    builder.Read(FrameBlackboard::SSAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                }
-                builder.Read(FrameBlackboard::WaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::RTWaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::ShadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                if (viewSettings.enableRTShadow) {
-                    builder.Read(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                }
-                builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                });
-        }
-
-        if (auto* pass = GetPass<FFTOceanPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                (void)builder;
-                });
-        }
-
-        // Geometry は SceneColor に上乗せしつつ SceneDepth を read-only DSV/SRV として参照する。
-        if (auto* pass = GetPass<GeometryPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                });
-        }
-
-        // 水面が参照する背景は、forward 側の SkyBox/透明物を含む完成済み SceneColor を使用する。
-        if (auto* pass = GetPass<SceneColorCopyPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_COPY_SOURCE);
-                builder.Write(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_COPY_DEST);
-                });
-        }
-
-        if (auto* pass = GetPass<RTWaterRefractionPass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                builder.Write(FrameBlackboard::RTWaterRefractionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                });
-        }
-
-        if (auto* pass = GetPass<WaterSurfacePass>()) {
-            renderGraph_.AddPass(pass->GetName(), pass, [](RenderGraphBuilder& builder) {
-                builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Read(FrameBlackboard::RTWaterRefractionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                });
-        }
-
-        // PostEffect は有効エフェクトごとのノード列として分解する。
-        if (viewSettings.enablePostEffect) {
-            AppendPostEffectPasses(context);
-        }
-
-        // BackBuffer は最終入力を読み、Present 前のレンダーターゲットとして書き込む。
-        if (viewSettings.enableBackBuffer) {
-            if (auto* pass = GetPass<BackBufferPass>()) {
-                const std::string inputResourceName = pass->GetInputResourceName();
-                renderGraph_.AddPass(pass->GetName(), pass, [inputResourceName](RenderGraphBuilder& builder) {
-                    builder.Read(inputResourceName, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    builder.Write(FrameBlackboard::BackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
-                    });
-            }
         }
 
         renderGraph_.Compile(context);
@@ -488,18 +393,8 @@ namespace CoreEngine
             PostEffectPass* passPtr = postEffectPass.get();
             postEffectSubpasses_.push_back(std::move(postEffectPass));
 
-            renderGraph_.AddPass(passPtr->GetName(), passPtr, [currentInput, outputResource, effect](RenderGraphBuilder& builder) {
-                const D3D12_RESOURCE_STATES inputState =
-                    (effect->GetExecutionType() == PostEffectExecutionType::Compute)
-                    ? D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
-                    : D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-                const D3D12_RESOURCE_STATES outputState =
-                    (effect->GetExecutionType() == PostEffectExecutionType::Compute)
-                    ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS
-                    : D3D12_RESOURCE_STATE_RENDER_TARGET;
-
-                builder.Read(currentInput, inputState);
-                builder.Write(outputResource, outputState);
+            renderGraph_.AddPass(passPtr->GetName(), passPtr, [passPtr, &context](RenderGraphBuilder& builder) {
+                passPtr->DeclareResources(builder, context);
                 });
 
             currentInput = outputResource;

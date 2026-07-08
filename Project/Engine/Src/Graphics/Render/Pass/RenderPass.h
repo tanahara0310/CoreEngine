@@ -29,6 +29,7 @@ namespace CoreEngine
     class RenderManager;
     class RayTracingSubsystem;
     class SceneManager;
+    class ModelManager;
     class PostEffectManager;
     class RenderingTechniqueManager;
     class LightManager;
@@ -40,6 +41,7 @@ namespace CoreEngine
     class WaterCausticsRayTracingManager;
     class WaterRefractionRayTracingManager;
     class FFTOceanManager;
+    class AtmosphereManager;
     class CameraManager;
     class DepthStencilManager;
     /// @brief レンダリングパスのコンテキスト情報
@@ -59,15 +61,46 @@ namespace CoreEngine
         WaterCausticsRayTracingManager* rtWaterCausticsManager = nullptr; ///< DXR 水面コースティクス
         WaterRefractionRayTracingManager* rtWaterRefractionManager = nullptr; ///< DXR 水面屈折
         FFTOceanManager* fftOceanManager = nullptr; ///< FFT Ocean 波面生成マネージャー
+        AtmosphereManager* atmosphereManager = nullptr; ///< 大気散乱管理（LUT生成・太陽情報）
         CameraManager* cameraManager = nullptr; ///< カメラ管理（SSAO等でビュー/プロジェクション行列取得用）
         DepthStencilManager* depthStencilManager = nullptr; ///< 深度ステンシル管理（バリア遷移・クリアを一元管理）
         FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理
+        ModelManager* modelManager = nullptr; ///< モデル資産管理（BLAS 遅延ビルド用）
         const WaterSurfaceData* waterRefractionSurfaceData = nullptr; ///< DXR 水面屈折用の波面データ
         RenderViewSettings viewSettings{}; ///< 現在の View 種別と有効化するパス群設定
         uint32_t currentRTShadowViewId = static_cast<uint32_t>(RenderViewType::GameView); ///< 現在の RT シャドウビュー
+        uint64_t frameNumber = 0; ///< フレーム通し番号（View 間で共有。フレーム内 1 回実行パスのガードに使う）
+    };
+
+    class RenderGraphBuilder;
+
+    /// @brief レンダーパスの挿入フェーズ
+    /// @details パスの登録位置を示す論理フック。同一フェーズ内は priority（小さいほど先）、
+    ///          同 priority は登録順。実行順とバリアは最終的に RenderGraph が
+    ///          DeclareResources の宣言から導出するため、フェーズは「宣言順の骨格」を決める。
+    ///          ユーザー定義パスはエンジンコードを編集せず任意フェーズへ挿入できる。
+    enum class RenderPassPhase : uint32_t {
+        FrameSetup = 0, ///< LUT 生成・波面計算などフレーム前処理（compute 中心）
+        Shadow,         ///< シャドウマップ生成
+        GBuffer,        ///< G-Buffer 蓄積
+        PreLighting,    ///< SSAO / RTShadow / Caustics などライティング前処理
+        Lighting,       ///< Deferred ライティング
+        PostLighting,   ///< AerialPerspective などライティング直後の合成
+        Sky,            ///< SkyBox / 大気
+        Transparent,    ///< 透明オブジェクト
+        Water,          ///< 水面（Snapshot 複製 → RT 屈折 → 水面合成）
+        PostProcess,    ///< ポストエフェクト
+        Overlay,        ///< Sprite / UI / デバッグ描画
+        Final,          ///< BackBuffer への最終出力
     };
 
     /// @brief レンダリングパスの基底クラス
+    /// @details パス分離契約（新規パスが既存描画へ影響しないための不変条件）:
+    ///  1. GPU 上では DeclareResources で宣言したリソース以外に触れない
+    ///  2. RenderManager 等の残留グローバル状態を変更しない
+    ///     （カメラ・トランスフォームスロット等、描画に必要な状態はパス自身が毎回設定する）
+    ///  3. FrameBlackboard への登録は Graph 構築前のみ（実行中は読み取り専用）
+    ///  4. 他パスとの実行順に関する仮定を書かない（順序は宣言した依存からのみ導出される）
     class RenderPass {
     public:
         virtual ~RenderPass() = default;
@@ -75,6 +108,26 @@ namespace CoreEngine
         /// @brief パス名を取得
         /// @return パス名
         virtual const char* GetName() const = 0;
+
+        /// @brief Graph 構築時に自身の Read / Write リソースを宣言する
+        /// @details RenderPipeline はこの宣言のみから依存・実行順・バリアを導出する。
+        ///          パス追加時にパイプライン側の編集を不要にするための自己記述ポイント。
+        /// @param builder Read / Write 宣言を受け取るビルダー
+        /// @param context レンダリングコンテキスト（View 設定による宣言分岐に使用）
+        virtual void DeclareResources(
+            [[maybe_unused]] RenderGraphBuilder& builder,
+            [[maybe_unused]] const RenderContext& context) {
+        }
+
+        /// @brief Graph 構築前に View 依存の自身の設定を更新する
+        /// @details 出力先ターゲット名の切り替えなど、旧 ConfigurePassesForView の移設先。
+        /// @param context レンダリングコンテキスト
+        virtual void ConfigureForView([[maybe_unused]] const RenderContext& context) {}
+
+        /// @brief この View でパスを Graph へ登録するかを判定する
+        /// @param view 現在の View 設定
+        /// @return 登録する場合 true
+        virtual bool IsEnabledForView([[maybe_unused]] const RenderViewSettings& view) const { return true; }
 
         /// @brief パスのセットアップ（リソース準備など）
         /// @param context レンダリングコンテキスト

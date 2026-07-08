@@ -155,6 +155,10 @@ namespace CoreEngine
         RootSignatureConfig csConfig = RootSignatureConfig::PerformanceOptimized();
         csConfig.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
         csConfig.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
+        // 大気 LUT サンプラー（gLUTSampler）は端をクランプする。既定の WRAP だと LUT の
+        // 端で反対側の値が巻き込まれ、地平線・天頂・太陽方位の境界にアーティファクトが出る。
+        // この名前のサンプラーを持たないシェーダーでは無視されるため他パイプラインには無影響。
+        csConfig.ConfigureSampler("gLUTSampler", SamplerConfig::LinearClamp());
 
         auto buildResult = computeRootSignatureMg_->Build(device, *csReflection, csConfig);
         if (!buildResult.success) {

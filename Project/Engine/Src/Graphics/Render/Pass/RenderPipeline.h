@@ -2,6 +2,7 @@
 #include "RenderPass.h"
 #include "PostEffectPass.h"
 #include "Graphics/Render/RenderGraph.h"
+#include <cstdint>
 #include <vector>
 #include <memory>
 #include <string>
@@ -17,9 +18,32 @@ namespace CoreEngine
         RenderPipeline() = default;
         ~RenderPipeline() = default;
 
-        /// @brief レンダーパスを追加
+        /// @brief レンダーパスを指定フェーズへ追加
+        /// @details 同一フェーズ内は priority（小さいほど先）、同 priority は登録順。
+        ///          エンジンコードを編集せずにユーザーパスを挿入する唯一の入口。
         /// @param pass 追加するレンダーパス
-        void AddPass(std::unique_ptr<RenderPass> pass);
+        /// @param phase 挿入フェーズ
+        /// @param priority フェーズ内優先度
+        /// @return 追加したパスへのポインタ（RemovePass 用ハンドル）
+        RenderPass* AddPass(
+            std::unique_ptr<RenderPass> pass,
+            RenderPassPhase phase,
+            int priority = 0);
+
+        /// @brief レンダーパスを削除
+        /// @param pass AddPass が返したパスポインタ
+        void RemovePass(RenderPass* pass);
+
+        /// @brief 所有者タグが一致する全パスを削除（シーン破棄時のユーザーパス一括除去）
+        /// @param owner BeginOwnerScope で設定した所有者タグ
+        void RemovePassesByOwner(const void* owner);
+
+        /// @brief 以降の AddPass に所有者タグを付与する（SceneManager がシーン登録前後に呼ぶ）
+        /// @param owner 所有者タグ（通常はシーンのポインタ）
+        void BeginOwnerScope(const void* owner) { activeOwner_ = owner; }
+
+        /// @brief 所有者タグの付与を終了する
+        void EndOwnerScope() { activeOwner_ = nullptr; }
 
         /// @brief 名前でレンダーパスを取得
         /// @param name パス名
@@ -31,8 +55,8 @@ namespace CoreEngine
         /// @return レンダーパスのポインタ（見つからない場合nullptr）
         template<typename T>
         T* GetPass() {
-            for (auto& pass : passes_) {
-                if (auto* castedPass = dynamic_cast<T*>(pass.get())) {
+            for (auto& entry : passes_) {
+                if (auto* castedPass = dynamic_cast<T*>(entry.pass.get())) {
                     return castedPass;
                 }
             }
@@ -82,10 +106,6 @@ namespace CoreEngine
         /// @param context レンダリングコンテキスト
         void RegisterFrameResources(const RenderContext& context);
 
-        /// @brief View 設定に応じて各パスの有効状態と出力先を切り替える
-        /// @param context レンダリングコンテキスト
-        void ConfigurePassesForView(const RenderContext& context);
-
         /// @brief PostEffect の有効エフェクト列を Graph ノードへ分解して追加する
         /// @param context レンダリングコンテキスト
         void AppendPostEffectPasses(const RenderContext& context);
@@ -103,10 +123,21 @@ namespace CoreEngine
         /// @return 補助 View の共有結果
         RenderViewResult BuildRenderViewResult(const RenderContext& context) const;
 
+        /// @brief フェーズ順序管理付きのパス登録エントリ
+        struct RenderPassEntry {
+            std::unique_ptr<RenderPass> pass;
+            RenderPassPhase phase = RenderPassPhase::Overlay;
+            int priority = 0;
+            uint64_t sequence = 0;     ///< 登録順（同フェーズ・同 priority の安定ソート用）
+            const void* owner = nullptr; ///< nullptr = エンジン所有。シーン所有パスの一括除去に使う
+        };
+
         std::vector<std::unique_ptr<PostEffectPass>> postEffectSubpasses_;
         std::string finalDisplayResourceName_ = FrameBlackboard::SceneColor;
 
-        std::vector<std::unique_ptr<RenderPass>> passes_;
+        std::vector<RenderPassEntry> passes_;
+        uint64_t nextSequence_ = 0;
+        const void* activeOwner_ = nullptr;
         RenderGraph renderGraph_{};
     };
 }

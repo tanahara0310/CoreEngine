@@ -12,6 +12,8 @@ namespace CoreEngine
 
         const char* GetName() const override { return "ShadowMap"; }
 
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+
         void Execute(const RenderContext& context) override;
 
         /// @brief シーンの中心と半径を設定

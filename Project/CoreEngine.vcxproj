@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -190,6 +190,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterSurfaceRuntimeController.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp" />
+    <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereEditorFacade.cpp" />
+    <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereTestScene.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\CylinderObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterRenderResources.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterShaderResourceBinder.cpp" />
@@ -201,8 +207,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterCausticsRayTracingManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp" />
@@ -630,6 +640,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h" />
@@ -678,6 +689,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
+    <ClInclude Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.h" />
@@ -820,6 +834,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
     <ClInclude Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereTestScene.h" />
+    <ClInclude Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereEditorFacade.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

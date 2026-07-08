@@ -222,6 +222,25 @@ namespace CoreEngine
         return nullptr;
     }
 
+    DirectionalLightData* LightManager::GetAtmosphereSunLight()
+    {
+        for (auto& light : directionalLights_)
+        {
+            if (light.isAtmosphereSun)
+            {
+                return &light;
+            }
+        }
+
+        // フラグ付きライトが無い場合はメインライト（インデックス0）へフォールバック
+        // （CalculateMainDirectionalLightViewProjection がインデックス0をメインとして扱う慣習に合わせる）
+        if (!directionalLights_.empty())
+        {
+            return &directionalLights_[0];
+        }
+        return nullptr;
+    }
+
     void LightManager::ClearAllLights()
     {
     directionalLights_.clear();

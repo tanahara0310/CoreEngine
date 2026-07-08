@@ -13,6 +13,7 @@ namespace CoreEngine
         ~WaterCausticsPass() override = default;
 
         const char* GetName() const override { return "WaterCausticsPass"; }
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
         void Execute(const RenderContext& context) override;
 
         void SetTargetName(const std::string& name) { targetName_ = name; }

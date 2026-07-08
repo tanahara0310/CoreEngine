@@ -25,6 +25,7 @@
 
 // レンダーパス
 #include "Graphics/Render/Pass/RenderPipeline.h"
+#include "Graphics/Render/Pass/ASBuildPass.h"
 #include "Graphics/Render/Pass/ShadowMapPass.h"
 #include "Graphics/Render/Pass/GBufferPass.h"
 #include "Graphics/Render/Pass/SSAOPass.h"
@@ -33,6 +34,8 @@
 #include "Graphics/Render/Pass/RTWaterCausticsPass.h"
 #include "Graphics/Render/Pass/RTWaterRefractionPass.h"
 #include "Graphics/Render/Pass/FFTOceanPass.h"
+#include "Graphics/Render/Pass/AtmosphereLUTPass.h"
+#include "Graphics/Render/Pass/AerialPerspectivePass.h"
 #include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/SceneColorCopyPass.h"
@@ -46,6 +49,7 @@
 // レイトレーシング
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 
 #include "ObjectCommon/GameObject.h"
 #include "Scene/SceneManager.h"
@@ -247,9 +251,12 @@ namespace CoreEngine
         context.rtWaterCausticsManager = renderDomainContext_ ? renderDomainContext_->GetWaterCausticsRayTracingManager() : nullptr;
         context.rtWaterRefractionManager = renderDomainContext_ ? renderDomainContext_->GetWaterRefractionRayTracingManager() : nullptr;
         context.fftOceanManager = renderDomainContext_ ? renderDomainContext_->GetFFTOceanManager() : nullptr;
+        context.atmosphereManager = renderDomainContext_ ? renderDomainContext_->GetAtmosphereManager() : nullptr;
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
+        context.modelManager = GetComponent<ModelManager>();
         context.waterRefractionSurfaceData = sceneManager ? sceneManager->GetWaterRefractionSurfaceData() : nullptr;
+        context.frameNumber = ++renderFrameNumber_;
 
         if (dx) {
             frameBlackboard.SetResource(
@@ -273,11 +280,8 @@ namespace CoreEngine
         if (debug) debug->BeginRenderPipeline(cmdList, currentFrameIndex);
 #endif
 
-        // DXR BLAS / TLAS 構築（RayTracingSubsystem に委譲）
-        if (rayTracing) {
-            rayTracing->BuildAccelerationStructures(
-                context, dx, GetComponent<ModelManager>(), GetComponent<SceneManager>());
-        }
+        // DXR BLAS / TLAS 構築は ASBuildPass（FrameSetup フェーズ）として
+        // 最初に実行される View の RenderGraph 内で行われる。
 
         // 補助 RenderView は Scene からの要求リストとして受け取り、RenderGraph 単位で順に実行する。
         if (sceneManager && render) {
@@ -315,6 +319,12 @@ namespace CoreEngine
             // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
             EngineProfileScope scope(this, GpuTimestampSlot::GBufferPass, cmdList);
             renderPipeline_->ExecuteView(context);
+        }
+
+        // 全 View の描画（AerialPerspective 合成を含む）が完了したので大気有効化フラグを落とす。
+        // 次フレームは Update() を呼ぶ大気シーンでのみ再度有効化され、他シーンへの漏れ出しを防ぐ。
+        if (context.atmosphereManager) {
+            context.atmosphereManager->ResetFrameActivation();
         }
 
         if (sceneManager) {
@@ -380,66 +390,59 @@ namespace CoreEngine
     void EngineSystem::BuildDefaultRenderPipeline()
     {
         // レンダーパイプラインの作成
+        // 各パスは (フェーズ, フェーズ内優先度) で登録する。
+        // 実行順・バリアは各パスの DeclareResources 宣言から RenderGraph が導出する。
         renderPipeline_ = std::make_unique<RenderPipeline>();
 
-        // 1. シャドウマップパス
-        auto shadowMapPass = std::make_unique<ShadowMapPass>();
-        renderPipeline_->AddPass(std::move(shadowMapPass));
+        // フレーム前処理: DXR 加速構造構築（frameNumber ガードでフレーム内 1 回のみ実行）
+        renderPipeline_->AddPass(std::make_unique<ASBuildPass>(), RenderPassPhase::FrameSetup);
 
-        // 2. G-Bufferパス（不透明 Model / SkinnedModel の描画）
-        auto gBufferPass = std::make_unique<GBufferPass>();
-        renderPipeline_->AddPass(std::move(gBufferPass));
+        // フレーム前処理: 大気散乱 LUT 生成（パラメータ変更時のみ Compute 実行）
+        // パス自身が SRV ヒープをバインドするため、フレーム先頭でも安全に実行できる
+        renderPipeline_->AddPass(std::make_unique<AtmosphereLUTPass>(), RenderPassPhase::FrameSetup, 10);
 
-        // 2.5. SSAOパス（GBufferからワールド位置と法線を使用してAOを生成）
+        // シャドウマップ生成
+        renderPipeline_->AddPass(std::make_unique<ShadowMapPass>(), RenderPassPhase::Shadow, 0);
+
+        // G-Buffer 蓄積（不透明 Model / SkinnedModel の描画）
+        renderPipeline_->AddPass(std::make_unique<GBufferPass>(), RenderPassPhase::GBuffer);
+
+        // ライティング前処理: SSAO / RT シャドウ / コースティクス
         auto ssaoPass = std::make_unique<SSAOPass>();
         ssaoPass->SetSSAOTargetName(RenderTargetNames::SSAOBuffer);
         ssaoPass->SetSSAOBlurTargetName(RenderTargetNames::SSAOBlurBuffer);
-        renderPipeline_->AddPass(std::move(ssaoPass));
+        renderPipeline_->AddPass(std::move(ssaoPass), RenderPassPhase::PreLighting, 0);
+        renderPipeline_->AddPass(std::make_unique<RTShadowPass>(), RenderPassPhase::PreLighting, 10);
+        renderPipeline_->AddPass(std::make_unique<RTShadowTemporalPass>(), RenderPassPhase::PreLighting, 11);
+        renderPipeline_->AddPass(std::make_unique<RTShadowDenoisePass>(), RenderPassPhase::PreLighting, 12);
+        renderPipeline_->AddPass(std::make_unique<RTWaterCausticsPass>(), RenderPassPhase::PreLighting, 20);
+        renderPipeline_->AddPass(std::make_unique<WaterCausticsPass>(), RenderPassPhase::PreLighting, 30);
 
-        // 2.75. RT シャドウパス（GameView のみ）
-        // Step 2 段階では既存 RayTracingSubsystem のディスパッチ処理を薄くラップし、
-        // GBuffer/SSAO 後、DeferredLighting 前に差し込む。
-        auto rtShadowPass = std::make_unique<RTShadowPass>();
-        renderPipeline_->AddPass(std::move(rtShadowPass));
+        // Deferred ライティング: G-Buffer を読み取り SceneColor を生成
+        renderPipeline_->AddPass(std::make_unique<DeferredLightingPass>(), RenderPassPhase::Lighting);
 
-        auto fftOceanPass = std::make_unique<FFTOceanPass>();
-        renderPipeline_->AddPass(std::move(fftOceanPass));
+        // ライティング後: FFT 波面更新と空気遠近感の合成（GameView のみ）
+        renderPipeline_->AddPass(std::make_unique<FFTOceanPass>(), RenderPassPhase::PostLighting, 0);
+        renderPipeline_->AddPass(std::make_unique<AerialPerspectivePass>(), RenderPassPhase::PostLighting, 10);
 
-        auto rtWaterCausticsPass = std::make_unique<RTWaterCausticsPass>();
-        renderPipeline_->AddPass(std::move(rtWaterCausticsPass));
+        // Forward 合成（従来の大箱 GeometryPass をキュー単位の 3 パスへ分割）
+        // 不透明 Model/SkinnedModel は投入時に GBuffer 経路へ振り分け済みなので含まれない
+        renderPipeline_->AddPass(std::make_unique<GeometryPass>(), RenderPassPhase::Sky, 0);
+        renderPipeline_->AddPass(std::make_unique<SkyBoxQueuePass>(), RenderPassPhase::Sky, 10);
+        renderPipeline_->AddPass(std::make_unique<TransparentQueuePass>(), RenderPassPhase::Transparent, 0);
 
-        auto rtWaterRefractionPass = std::make_unique<RTWaterRefractionPass>();
-        renderPipeline_->AddPass(std::move(rtWaterRefractionPass));
+        // 水面: 背景 SceneColor の複製 → RT 屈折 → 水面合成（データフロー順）
+        renderPipeline_->AddPass(std::make_unique<SceneColorCopyPass>(), RenderPassPhase::Water, 0);
+        renderPipeline_->AddPass(std::make_unique<RTWaterRefractionPass>(), RenderPassPhase::Water, 10);
+        renderPipeline_->AddPass(std::make_unique<WaterSurfacePass>(), RenderPassPhase::Water, 20);
 
-        auto waterCausticsPass = std::make_unique<WaterCausticsPass>();
-        renderPipeline_->AddPass(std::move(waterCausticsPass));
+        // ポストエフェクト（有効エフェクト列は Graph 構築時にノード分解される）
+        renderPipeline_->AddPass(std::make_unique<PostEffectPass>(), RenderPassPhase::PostProcess);
 
-        // 3. DeferredLightingパス
-        // G-Buffer (AlbedoAO / NormalRoughness / EmissiveMetallic) を読み取り、
-        // 遅延ライティングを計算して現在の SceneColor ターゲットへ書き込む
-        auto deferredLightingPass = std::make_unique<DeferredLightingPass>();
-        renderPipeline_->AddPass(std::move(deferredLightingPass));
-
-        // 4. ジオメトリパス（透過オブジェクト / SkyBox / UI / パーティクル 等の Forward 描画）
-        // DeferredLightingPass が SceneColor ターゲットへ書き込んだ結果の上に重ね描きする
-        // 不透明 Model/SkinnedModel は GBufferPass + DeferredLightingPass で処理済みなので描画しない
-        auto geometryPass = std::make_unique<GeometryPass>();
-        renderPipeline_->AddPass(std::move(geometryPass));
-
-        auto sceneColorCopyPass = std::make_unique<SceneColorCopyPass>();
-        renderPipeline_->AddPass(std::move(sceneColorCopyPass));
-
-        auto waterSurfacePass = std::make_unique<WaterSurfacePass>();
-        renderPipeline_->AddPass(std::move(waterSurfacePass));
-
-        // 5. ポストエフェクトパス
-        auto postEffectPass = std::make_unique<PostEffectPass>();
-        renderPipeline_->AddPass(std::move(postEffectPass));
-
-        // 6. バックバッファパス（最終出力）
+        // バックバッファへの最終出力
         auto backBufferPass = std::make_unique<BackBufferPass>();
         backBufferPass->SetRenderTargetName(RenderTargetNames::BackBuffer);  // 名前ベースで指定
-        renderPipeline_->AddPass(std::move(backBufferPass));
+        renderPipeline_->AddPass(std::move(backBufferPass), RenderPassPhase::Final);
     }
 
 #pragma endregion

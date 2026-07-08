@@ -2,16 +2,10 @@
 #include "RenderGraph.h"
 
 #include <algorithm>
+#include <cassert>
 #include <queue>
 
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DepthStencilManager.h"
-#include "Graphics/RayTracing/RayTracingShadowManager.h"
-#include "Graphics/Render/GBuffer/GBufferManager.h"
-#include "Graphics/Render/RenderTarget/RenderTarget.h"
-#include "Graphics/Render/RenderTarget/RenderTargetManager.h"
-#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -74,24 +68,57 @@ namespace CoreEngine
         }
 
         // Graph ノードへ宣言済みリソースアクセスを転記する。
+        const uint32_t passIndex = static_cast<uint32_t>(passes_.size());
+
         RenderGraphPass pass;
         pass.name = name;
         pass.renderPass = renderPass;
         pass.reads = builder.GetReads();
         pass.writes = builder.GetWrites();
 
-        RegisterDependencies(pass);
+        std::vector<uint32_t> dependencies;
 
-        const uint32_t passIndex = static_cast<uint32_t>(passes_.size());
-        passes_.push_back(pass);
+        // Read (RAW): 現行バージョンのライターへ依存し、自身をそのバージョンの読者として登録する。
+        for (const RenderGraphResourceAccess& readAccess : pass.reads) {
+            RenderGraphResource& resource = resources_[readAccess.resourceName];
+            resource.name = readAccess.resourceName;
+            if (resource.hasWriter) {
+                dependencies.push_back(resource.lastWriterIndex);
+            }
+            if (std::find(resource.readers.begin(), resource.readers.end(), passIndex)
+                == resource.readers.end()) {
+                resource.readers.push_back(passIndex);
+            }
+        }
 
-        // 書き込み先ごとに最新ライターを更新し、後続依存計算へ使う。
-        for (const RenderGraphResourceAccess& writeAccess : builder.GetWrites()) {
+        // Write (WAW + WAR): 現行ライターと現行バージョンの全読者へ依存したうえで、
+        // 新バージョンのライターとなり読者リストをリセットする。
+        for (const RenderGraphResourceAccess& writeAccess : pass.writes) {
             RenderGraphResource& resource = resources_[writeAccess.resourceName];
             resource.name = writeAccess.resourceName;
+            if (resource.hasWriter) {
+                dependencies.push_back(resource.lastWriterIndex);
+            }
+            for (uint32_t reader : resource.readers) {
+                dependencies.push_back(reader);
+            }
             resource.lastWriterIndex = passIndex;
             resource.hasWriter = true;
+            resource.readers.clear();
+            ++resource.version;
         }
+
+        // 自己依存を除去し、重複をまとめる。
+        dependencies.erase(
+            std::remove(dependencies.begin(), dependencies.end(), passIndex),
+            dependencies.end());
+        std::sort(dependencies.begin(), dependencies.end());
+        dependencies.erase(
+            std::unique(dependencies.begin(), dependencies.end()),
+            dependencies.end());
+        pass.dependencies = std::move(dependencies);
+
+        passes_.push_back(std::move(pass));
     }
 
     void RenderGraph::Compile(const RenderContext& context)
@@ -118,7 +145,9 @@ namespace CoreEngine
             }
         }
 
-        std::queue<uint32_t> ready;
+        // 実行可能ノードのうち最小 index を常に選ぶことで、
+        // 依存を満たす範囲で登録順と一致する決定的な実行順を得る。
+        std::priority_queue<uint32_t, std::vector<uint32_t>, std::greater<uint32_t>> ready;
         for (uint32_t passIndex = 0; passIndex < indegree.size(); ++passIndex) {
             if (indegree[passIndex] == 0) {
                 ready.push(passIndex);
@@ -126,7 +155,7 @@ namespace CoreEngine
         }
 
         while (!ready.empty()) {
-            const uint32_t current = ready.front();
+            const uint32_t current = ready.top();
             ready.pop();
             executionOrder_.push_back(current);
 
@@ -138,7 +167,16 @@ namespace CoreEngine
         }
 
         if (executionOrder_.size() != passes_.size()) {
-            // 循環依存などで解決できない場合は登録順へフォールバックする。
+            // 依存は常に先行パスのみを参照する構築規則のため、ここへの到達は Graph 実装のバグ。
+            Logger::GetInstance().Logf(
+                LogLevel::Error,
+                LogCategory::Graphics,
+                LogSubCategory::Barrier,
+                "[RenderGraph] Cycle detected: resolved {} of {} passes. Falling back to registration order.",
+                executionOrder_.size(),
+                passes_.size());
+            assert(false && "RenderGraph::Compile detected a dependency cycle");
+
             executionOrder_.clear();
             for (uint32_t passIndex = 0; passIndex < passes_.size(); ++passIndex) {
                 executionOrder_.push_back(passIndex);
@@ -172,32 +210,22 @@ namespace CoreEngine
 
     void RenderGraph::ResolveResources(const RenderContext& context)
     {
-        // Blackboard を正本として優先し、未登録分だけ最小限に補完する。
+        // Blackboard を唯一の解決元とする。ここで未解決のリソースは、
+        // ApplyTransitionsForPass の実行時再解決に委ねる。
+        // （旧 RTShadowMask の View 特例は RenderPipeline::RegisterFrameResources へ移設済み）
         for (auto& [resourceName, resource] : resources_) {
             resource.resource = nullptr;
             resource.currentState = nullptr;
 
-            if (context.frameBlackboard &&
-                context.frameBlackboard->TryResolveResource(resourceName, resource.resource, resource.currentState)) {
-                continue;
-            }
-
-            // RTShadowMask は View 依存で実行後に更新されるため、この段階では最小限の fallback を残す。
-            if (resourceName == FrameBlackboard::RTShadowMask && context.rtShadowManager) {
-                const RayTracingShadowManager::ViewID viewId =
-                    (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView))
-                    ? RayTracingShadowManager::ViewID::ReflectionView
-                    : RayTracingShadowManager::ViewID::GameView;
-                resource.resource = context.rtShadowManager->GetShadowResource(viewId, 0);
-                resource.currentState = &context.rtShadowManager->GetShadowCurrentState(viewId, 0);
-                continue;
+            if (context.frameBlackboard) {
+                context.frameBlackboard->TryResolveResource(resourceName, resource.resource, resource.currentState);
             }
         }
     }
 
-    void RenderGraph::ApplyTransitionsForPass(const RenderGraphPass& pass, const RenderContext& context) const
+    void RenderGraph::ApplyTransitionsForPass(const RenderGraphPass& pass, const RenderContext& context)
     {
-        // 各ノードの要求状態に合わせて、実行前に自動バリアを発行する。
+        // 各ノードの要求状態に合わせて、実行前に自動バリアをバッチ発行する。
         if (!context.dxCommon) {
             return;
         }
@@ -207,9 +235,63 @@ namespace CoreEngine
             return;
         }
 
+        // 同一パス内で同じリソースに Read と Write の両方が宣言された場合、
+        // 中間状態を経由せず最終的に必要な状態（Write 優先）へ 1 回で遷移する。
+        struct MergedAccess {
+            const std::string* resourceName;
+            D3D12_RESOURCE_STATES requiredState;
+            bool isWrite;
+        };
+        std::vector<MergedAccess> mergedAccesses;
+        mergedAccesses.reserve(pass.reads.size() + pass.writes.size());
+
+        auto mergeAccess = [&mergedAccesses](const RenderGraphResourceAccess& access, bool isWrite) {
+            for (MergedAccess& entry : mergedAccesses) {
+                if (*entry.resourceName == access.resourceName) {
+                    if (isWrite) {
+                        entry.requiredState = access.requiredState;
+                        entry.isWrite = true;
+                    }
+                    return;
+                }
+            }
+            mergedAccesses.push_back({ &access.resourceName, access.requiredState, isWrite });
+        };
+
         for (const RenderGraphResourceAccess& readAccess : pass.reads) {
-            auto it = resources_.find(readAccess.resourceName);
-            if (it == resources_.end() || !it->second.resource || !it->second.currentState) {
+            mergeAccess(readAccess, false);
+        }
+        for (const RenderGraphResourceAccess& writeAccess : pass.writes) {
+            mergeAccess(writeAccess, true);
+        }
+
+        ResourceBarrierBatch barrierBatch(cmdList);
+
+        for (const MergedAccess& access : mergedAccesses) {
+            auto it = resources_.find(*access.resourceName);
+            if (it == resources_.end()) {
+                continue;
+            }
+            RenderGraphResource& resource = it->second;
+
+            // Compile 時に未解決だったリソースは、先行パスが実行中に Blackboard へ
+            // 登録した可能性があるため、実行直前に再解決を試みる（SSAO / RT 系の遅延登録対応）。
+            if ((!resource.resource || !resource.currentState) && context.frameBlackboard) {
+                context.frameBlackboard->TryResolveResource(
+                    *access.resourceName, resource.resource, resource.currentState);
+            }
+
+            if (!resource.resource || !resource.currentState) {
+#ifdef _DEBUG
+                Logger::GetInstance().Logf(
+                    LogLevel::Debug,
+                    LogCategory::Graphics,
+                    LogSubCategory::Barrier,
+                    "[RenderGraph] View={} Pass={} Unresolved={} (barrier skipped)",
+                    RenderViewTypeToString(context.viewSettings.viewType),
+                    pass.name,
+                    *access.resourceName);
+#endif
                 continue;
             }
 
@@ -218,71 +300,27 @@ namespace CoreEngine
                 LogLevel::Debug,
                 LogCategory::Graphics,
                 LogSubCategory::Barrier,
-                "[RenderGraph] View={} Pass={} Read={} resource=0x{:X} current=0x{:X} required=0x{:X}",
+                "[RenderGraph] View={} Pass={} {}={} resource=0x{:X} current=0x{:X} required=0x{:X}",
                 RenderViewTypeToString(context.viewSettings.viewType),
                 pass.name,
-                readAccess.resourceName,
-                reinterpret_cast<uintptr_t>(it->second.resource),
-                static_cast<uint32_t>(*it->second.currentState),
-                static_cast<uint32_t>(readAccess.requiredState));
+                access.isWrite ? "Write" : "Read",
+                *access.resourceName,
+                reinterpret_cast<uintptr_t>(resource.resource),
+                static_cast<uint32_t>(*resource.currentState),
+                static_cast<uint32_t>(access.requiredState));
 #endif
 
-            ResourceBarrierHelper::Transition(
-                cmdList,
-                it->second.resource,
-                *it->second.currentState,
-                readAccess.requiredState);
-        }
-
-        for (const RenderGraphResourceAccess& writeAccess : pass.writes) {
-            auto it = resources_.find(writeAccess.resourceName);
-            if (it == resources_.end() || !it->second.resource || !it->second.currentState) {
-                continue;
-            }
-
-#ifdef _DEBUG
-            Logger::GetInstance().Logf(
-                LogLevel::Debug,
-                LogCategory::Graphics,
-                LogSubCategory::Barrier,
-                "[RenderGraph] View={} Pass={} Write={} resource=0x{:X} current=0x{:X} required=0x{:X}",
-                RenderViewTypeToString(context.viewSettings.viewType),
-                pass.name,
-                writeAccess.resourceName,
-                reinterpret_cast<uintptr_t>(it->second.resource),
-                static_cast<uint32_t>(*it->second.currentState),
-                static_cast<uint32_t>(writeAccess.requiredState));
-#endif
-
-            ResourceBarrierHelper::Transition(
-                cmdList,
-                it->second.resource,
-                *it->second.currentState,
-                writeAccess.requiredState);
-        }
-    }
-
-    void RenderGraph::RegisterDependencies(RenderGraphPass& pass)
-    {
-        std::vector<uint32_t> dependencies;
-
-        // 読み取り元・書き込み先の直前ライターを依存として束ねる。
-        for (const RenderGraphResourceAccess& readAccess : pass.reads) {
-            auto it = resources_.find(readAccess.resourceName);
-            if (it != resources_.end() && it->second.hasWriter) {
-                dependencies.push_back(it->second.lastWriterIndex);
+            // UNORDERED_ACCESS のまま連続書き込みする場合は遷移が発生しないため、
+            // UAV バリアで書き込みの直列化を保証する。
+            if (access.isWrite
+                && access.requiredState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS
+                && *resource.currentState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
+                barrierBatch.AddUAV(resource.resource);
+            } else {
+                barrierBatch.Add(resource.resource, *resource.currentState, access.requiredState);
             }
         }
 
-        for (const RenderGraphResourceAccess& writeAccess : pass.writes) {
-            auto it = resources_.find(writeAccess.resourceName);
-            if (it != resources_.end() && it->second.hasWriter) {
-                dependencies.push_back(it->second.lastWriterIndex);
-            }
-        }
-
-        std::sort(dependencies.begin(), dependencies.end());
-        dependencies.erase(std::unique(dependencies.begin(), dependencies.end()), dependencies.end());
-        pass.dependencies = std::move(dependencies);
+        barrierBatch.Flush();
     }
 }

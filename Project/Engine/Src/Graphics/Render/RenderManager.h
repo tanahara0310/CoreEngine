@@ -124,10 +124,12 @@ namespace CoreEngine
         /// @brief デバッグライン描画の有効/無効を設定
         void SetDebugLineRenderingEnabled(bool enabled) { renderDebugLines_ = enabled; }
 
-        /// @brief 不透明の Model/SkinnedModel を GeometryPass でスキップするか設定する
-        /// @param skip true: スキップ（DeferredLighting に任せる）/ false: 旧従来 Forwardで描画
-        /// @note GBufferPass + DeferredLightingPass が有効な場合に true を設定する
-        void SetSkipOpaqueMeshInForwardPass(bool skip) { skipOpaqueModelsInForward_ = skip; }
+        /// @brief Deferred ライティング経路が有効かを設定する
+        /// @details true（既定）: 不透明 Model/SkinnedModel は投入時に GBuffer キューへ
+        ///          振り分けられ、DeferredLighting で描画される。
+        ///          false: Forward 経路にフォールバックし、不透明キューを Forward で描画する
+        ///          （デバッグ用途）。
+        void SetDeferredLightingActive(bool active) { deferredLightingActive_ = active; }
 
         /// @brief Irradiance Map の GPU SRV ハンドルを取得（DeferredLightingPass の IBL 接続用）
         D3D12_GPU_DESCRIPTOR_HANDLE GetIrradianceMapHandle() const { return irradianceMapHandle_; }
@@ -158,6 +160,7 @@ namespace CoreEngine
 
     private:
         std::vector<RenderItem> drawQueue_;
+        std::vector<RenderItem> opaqueDrawQueue_; ///< Deferred 経路（GBuffer）へ振り分けた不透明 Model/SkinnedModel
         std::vector<RenderItem> skyDrawQueue_;
         std::vector<RenderItem> transparentDrawQueue_;
         std::vector<RenderItem> waterDrawQueue_;
@@ -175,10 +178,10 @@ namespace CoreEngine
     ShadowMapManager* shadowMapManager_ = nullptr;
     bool renderDebugLines_ = true;
 
-    // GBuffer 移行制御
-    // true にすると RenderNormalPass で不透明 Model/SkinnedModel をスキップする
-    // DeferredLightingPass が有効な場合に使用する
-        bool skipOpaqueModelsInForward_ = false;
+    // Deferred ライティング経路の有効フラグ
+    // true: 不透明 Model/SkinnedModel は opaqueDrawQueue_（GBuffer 経路）で描画される
+    // false: Forward フォールバック（DrawMainQueuePass が不透明キューも描画する）
+        bool deferredLightingActive_ = true;
 
     // アクティブなトランスフォームスロット
     TransformBufferSlot activeTransformSlot_ = TransformBufferSlot::Game;

@@ -15,6 +15,8 @@ namespace CoreEngine
         ~SSAOPass() override = default;
 
         const char* GetName() const override { return "SSAOPass"; }
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+        bool IsEnabledForView(const RenderViewSettings& view) const override { return view.enableSSAO; }
         void Execute(const RenderContext& context) override;
 
         void SetSSAOTargetName(const std::string& name) { ssaoTargetName_ = name; }

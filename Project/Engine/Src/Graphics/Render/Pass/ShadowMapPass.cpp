@@ -5,9 +5,16 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
+#include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
 {
+    void ShadowMapPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // 主方向ライトの深度を書き出す先行パス。
+        builder.Write(FrameBlackboard::ShadowMap, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+    }
+
     void ShadowMapPass::Execute(const RenderContext& context)
     {
         if (!context.renderManager || !context.lightManager || !context.shadowMapManager) {
@@ -31,14 +38,7 @@ namespace CoreEngine
         // シャドウマップパスの実行
         context.renderManager->DrawShadowPass();
 
-        if (context.frameBlackboard) {
-            // Blackboard にシャドウマップ出力の実リソースと現在状態参照を公開する。
-            D3D12_RESOURCE_STATES& currentState = context.shadowMapManager->GetCurrentState();
-            context.frameBlackboard->SetResource(
-                FrameBlackboard::ShadowMap,
-                context.shadowMapManager->GetSRVHandle(),
-                context.shadowMapManager->GetShadowMapResource(),
-                &currentState);
-        }
+        // ShadowMap は RegisterFrameResources で同一の実体が登録済みのため、
+        // 実行中の Blackboard 再登録は行わない（パス分離契約 3）。
     }
 }
