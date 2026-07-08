@@ -52,6 +52,8 @@ public:
     CoreEngine::Vector3 GetWorldPosition() const override { return transform_.translate; }
 
     /// @brief キューブマップテクスチャを設定し、必要に応じて IBL を再構築する
+    /// @details テクスチャ指定＝キューブマップ背景の明示指定とみなし、
+    ///          大気散乱モードから自動的にキューブマップモードへ切り替わる。
     /// @param texture 設定するキューブマップテクスチャ
     /// @param textureKey IBL キャッシュ識別キー（空文字列時は内部で自動生成）
     void SetTexture(const CoreEngine::TextureManager::LoadedTexture& texture, const std::string& textureKey = "");
@@ -63,8 +65,9 @@ public:
     CoreEngine::IMaterial* GetMaterial() { return material_.get(); }
 
     /// @brief 大気散乱モードの有効/無効を設定
-    /// @details 有効時はキューブマップの代わりに大気散乱（SkyAtmosphere.PS.hlsl）で空を描画する。
-    ///          テクスチャ設定は不要になる。
+    /// @details 既定で有効。有効時はキューブマップの代わりに大気散乱（SkyAtmosphere.PS.hlsl）で
+    ///          空を描画し、テクスチャ設定は不要になる。
+    ///          SetTexture() を呼ぶと自動的に無効化（キューブマップモード）される。
     void SetAtmosphereMode(bool enabled) { atmosphereMode_ = enabled; }
 
     /// @brief 大気散乱モードが有効か
@@ -104,8 +107,8 @@ private:
     /// @brief テクスチャ名（インスペクター表示用）
     std::string textureName_;
 
-    /// @brief 大気散乱モード（true でキューブマップの代わりに大気散乱で空を描く）
-    bool atmosphereMode_ = false;
+    /// @brief 大気散乱モード（true でキューブマップの代わりに大気散乱で空を描く。既定は大気散乱）
+    bool atmosphereMode_ = true;
 
 #ifdef _DEBUG
     /// @brief 非HDRファイルドロップ時の警告メッセージ

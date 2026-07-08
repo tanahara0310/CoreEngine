@@ -3,11 +3,42 @@
 
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "Math/MathCore.h"
+#include <cmath>
 
 using namespace CoreEngine;
 
+namespace {
+    constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+
+    // 太陽高度角・方位角からライト方向（太陽 → 地表への進行方向）を計算する。
+    // AtmosphereEditorFacade::ComputeSunLightDirection と同じ規約（elevation=90°で天頂）。
+    Vector3 ComputeSunLightDirection(float elevationDeg, float azimuthDeg) {
+        const float elevation = elevationDeg * kDegToRad;
+        const float azimuth = azimuthDeg * kDegToRad;
+        const Vector3 toSun = {
+            std::cos(elevation) * std::sin(azimuth),
+            std::sin(elevation),
+            std::cos(elevation) * std::cos(azimuth),
+        };
+        return MathCore::Vector::Normalize({ -toSun.x, -toSun.y, -toSun.z });
+    }
+}
+
 void WaterTestScene::OnInitialize() {
     SetSceneName("WaterTestScene");
+
+    // ===== 太陽ライト =====
+    // BaseScene::SetupLight() の既定値（天頂・intensity=1）は通常の直接光用の目安であり、
+    // 大気散乱が期待する輝度スケール（AtmosphereEditorSunSettings 既定値は intensity=20）とは
+    // 整合しない。既定背景が大気散乱モードになったため、AtmosphereTestScene と同じ考え方で
+    // 見栄えの良い太陽高度・強度に調整し、水面反射／コースティクスが参照する太陽と
+    // 空に映る太陽を一致させる。
+    if (directionalLight_) {
+        directionalLight_->direction = ComputeSunLightDirection(35.0f, 25.0f);
+        directionalLight_->intensity = 20.0f;
+    }
+
     waterController_.Initialize(*this, *engine_);
 }
 

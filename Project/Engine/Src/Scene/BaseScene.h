@@ -15,6 +15,8 @@
 #endif
 
 // 前方宣言
+class SkyBoxObject;
+
 namespace CoreEngine {
     class EngineSystem;
     class CameraManager;
@@ -87,6 +89,16 @@ namespace CoreEngine
         /// @brief ライトのセットアップ
         void SetupLight();
 
+        /// @brief 既定の空（大気散乱モードの SkyBox）のセットアップ
+        /// @details OnInitialize() 完了後に呼ばれる。シーンが SkyBox を生成済みの場合は
+        ///          それを採用し、未生成の場合のみ大気散乱モードの SkyBox を自動生成する。
+        void SetupDefaultSky();
+
+        /// @brief 大気散乱システムの毎フレーム更新
+        /// @details SkyBox が大気散乱モードの場合のみ AtmosphereManager へ太陽情報と
+        ///          カメラ情報を反映する（LUT 生成・Aerial Perspective の有効化トリガ）。
+        void UpdateAtmosphere();
+
         /// @brief シャドウマップ用のライトView-Projection行列を更新
         void UpdateLightViewProjection();
 
@@ -158,6 +170,9 @@ namespace CoreEngine
         /// @param obj 保存対象のオブジェクト
         void SaveSingleObjectToJson(GameObject* obj);
 
+        /// @brief シーンの SkyBox を取得（既定で大気散乱モード。SetTexture() でキューブマップへ切替）
+        SkyBoxObject* GetSkyBox() const { return skyBox_; }
+
         /// @brief シーンBGMを登録し、トランジション時の自動フェードを有効化
         /// @param bgm BGMのSoundResourceポインタ（現在のSetVolume()で設定した音量が使用されます）
         void RegisterSceneBGM(std::unique_ptr<SoundManager::SoundResource>* bgm);
@@ -166,6 +181,9 @@ namespace CoreEngine
         // BGM管理用
         std::unique_ptr<SoundManager::SoundResource>* sceneBGM_ = nullptr;
         float baseBGMVolume_ = 1.0f;
+
+        // 既定背景の SkyBox（所有権は gameObjectManager_。Finalize でポインタをクリアする）
+        SkyBoxObject* skyBox_ = nullptr;
 
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;

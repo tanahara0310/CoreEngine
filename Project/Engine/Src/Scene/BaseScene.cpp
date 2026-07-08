@@ -6,13 +6,17 @@
 #include "Camera/Release/Camera.h"
 #include "Camera/Camera2D.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/Line/GridRenderer.h"
 #include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
+#include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
+#include "Utility/Logger/Logger.h"
 
 
 namespace CoreEngine
@@ -43,6 +47,10 @@ namespace CoreEngine
 
         // 派生クラス固有の初期化（オブジェクト生成など）
         OnInitialize();
+
+        // 既定の空（大気散乱）のセットアップ
+        // シーンが SkyBox を生成していない場合のみ自動生成するため OnInitialize() の後に行う
+        SetupDefaultSky();
 
         // 全オブジェクト生成後にシーンデータを JSON から自動復元
         LoadObjectsFromJson();
@@ -91,6 +99,9 @@ namespace CoreEngine
 
         // 派生クラスの後処理（クリーンアップ前）
         OnLateUpdate();
+
+        // 大気散乱の更新（全ロジック更新後の最新の太陽・カメラ情報を反映する）
+        UpdateAtmosphere();
     }
 
     void BaseScene::PrepareRender()
@@ -192,6 +203,9 @@ namespace CoreEngine
 
     void BaseScene::Finalize()
     {
+        // 既定背景の SkyBox は gameObjectManager_ が所有しているためポインタのみクリア
+        skyBox_ = nullptr;
+
         // ゲームオブジェクトをクリア（新システム）
         gameObjectManager_.Clear();
 
@@ -280,8 +294,58 @@ namespace CoreEngine
                 directionalLight_->direction = MathCore::Vector::Normalize({ 0.0f, -1.0f, 0.0f });
                 directionalLight_->intensity = 1.0f;
                 directionalLight_->enabled = true;
+                // 既定背景（大気散乱）の太陽として扱う。
+                // キューブマップモードのシーンでは大気が非アクティブのため影響はない。
+                directionalLight_->isAtmosphereSun = true;
             }
         }
+    }
+
+    void BaseScene::SetupDefaultSky()
+    {
+        // シーン側（OnInitialize）で生成済みの SkyBox があればそれを採用する
+        for (const auto& obj : gameObjectManager_.GetAllObjects()) {
+            if (auto* sceneSkyBox = dynamic_cast<SkyBoxObject*>(obj.get())) {
+                skyBox_ = sceneSkyBox;
+                Logger::GetInstance().Infof(LogCategory::System,
+                    "BaseScene: シーン生成の SkyBox を採用 (背景モード={})",
+                    skyBox_->IsAtmosphereMode() ? "大気散乱" : "キューブマップ");
+                return;
+            }
+        }
+
+        // 未生成なら既定の背景として大気散乱モードの SkyBox を自動生成する
+        skyBox_ = CreateObject<SkyBoxObject>();
+        skyBox_->SetActive(true);
+        Logger::GetInstance().Infof(LogCategory::System,
+            "BaseScene: 既定背景として大気散乱モードの SkyBox を自動生成");
+    }
+
+    void BaseScene::UpdateAtmosphere()
+    {
+        // キューブマップモード中は AtmosphereManager を非アクティブのままにし、
+        // LUT 生成・Aerial Perspective 合成をスキップさせる
+        if (!skyBox_ || !skyBox_->IsAtmosphereMode()) {
+            return;
+        }
+
+        auto* domainContext = engine_->GetRenderDomainContext();
+        auto* atmosphereManager = domainContext ? domainContext->GetAtmosphereManager() : nullptr;
+        if (!atmosphereManager) {
+            return;
+        }
+
+        // ゲームビューカメラ基準で太陽情報とカメラ高度を反映する
+        Vector3 cameraPosition{};
+        Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
+        Matrix4x4 projMatrix = MathCore::Matrix::Identity();
+        if (const ICamera* camera = GetGameViewCamera3D()) {
+            cameraPosition = camera->GetPosition();
+            viewMatrix = camera->GetViewMatrix();
+            projMatrix = camera->GetProjectionMatrix();
+        }
+        atmosphereManager->Update(cameraPosition, viewMatrix, projMatrix,
+                                  engine_->GetComponent<LightManager>());
     }
 
 #ifdef USE_IMGUI
