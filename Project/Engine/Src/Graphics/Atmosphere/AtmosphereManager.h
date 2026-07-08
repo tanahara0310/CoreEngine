@@ -88,8 +88,8 @@ namespace CoreEngine
         /// @param projMatrix カメラのプロジェクション行列（Aerial Perspective 用）
         /// @param lightManager 太陽情報の取得元（GetAtmosphereSunLight() を使用）
         void Update(const Vector3& cameraWorldPosition,
-                    const Matrix4x4& viewMatrix, const Matrix4x4& projMatrix,
-                    LightManager* lightManager);
+            const Matrix4x4& viewMatrix, const Matrix4x4& projMatrix,
+            LightManager* lightManager);
 
         // ===== パラメータ =====
 
@@ -174,6 +174,17 @@ namespace CoreEngine
         /// @brief LUT 生成パイプラインが利用可能か
         bool AreLUTsReady() const { return lutsGenerated_; }
 
+        // ===== フレーム有効化 =====
+
+        /// @brief このフレームで大気散乱が要求されているか
+        /// @details Update() を呼ぶシーン（大気を使うシーン）でのみ true になる。
+        ///          AtmosphereLUTPass / AerialPerspectivePass はこれが false のとき
+        ///          SceneColor に触れずスキップする（大気非対応シーンへの漏れ出し防止）。
+        bool IsAtmosphereActive() const { return atmosphereActive_; }
+
+        /// @brief フレーム終端で有効化フラグをリセットする（EngineSystem が全 View 描画後に呼ぶ）
+        void ResetFrameActivation() { atmosphereActive_ = false; }
+
     private:
         /// @brief 現在のパラメータ・太陽情報から定数バッファを更新する
         void UploadConstants();
@@ -233,6 +244,7 @@ namespace CoreEngine
         bool paramsDirty_ = true;   ///< 大気パラメータ変更 → 全 LUT 再生成
         bool skyViewDirty_ = true;  ///< 太陽方向・カメラ高度変更 → Sky-View LUT のみ再生成
         bool lutsGenerated_ = false;
+        bool atmosphereActive_ = false; ///< このフレームで Update() が呼ばれ大気が要求されたか
         ID3D12Device* device_ = nullptr;
 
         // Sky-View の変化検知用キャッシュ

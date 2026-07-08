@@ -192,6 +192,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereEditorFacade.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereTestScene.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\CylinderObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterRenderResources.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterShaderResourceBinder.cpp" />

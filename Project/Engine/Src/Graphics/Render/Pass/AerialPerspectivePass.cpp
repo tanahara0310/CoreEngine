@@ -31,6 +31,13 @@ namespace CoreEngine
             return;
         }
 
+        // 大気を使うシーン（Update() を呼ぶシーン）でのみ SceneColor へ合成する。
+        // これを判定しないと大気非対応シーンの SceneColor まで上書きし、
+        // モデルが真っ黒／大気散乱で白っぽくなる不具合が発生する。
+        if (!context.atmosphereManager->IsAtmosphereActive()) {
+            return;
+        }
+
         ID3D12GraphicsCommandList* cmdList = context.dxCommon->GetCommandList();
         if (!cmdList) {
             return;

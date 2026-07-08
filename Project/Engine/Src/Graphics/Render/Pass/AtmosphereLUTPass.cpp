@@ -12,6 +12,13 @@ namespace CoreEngine
             return;
         }
 
+        // 大気を使うシーン（Update() を呼ぶシーン）でのみ LUT を生成する。
+        // これを判定しないと、大気非対応シーンでも LUT が生成され lutsGenerated_ が
+        // 立ち続け、AerialPerspectivePass が全シーンの SceneColor を上書きしてしまう。
+        if (!context.atmosphereManager->IsAtmosphereActive()) {
+            return;
+        }
+
         ID3D12GraphicsCommandList* cmdList = context.dxCommon->GetCommandList();
         if (!cmdList) {
             return;

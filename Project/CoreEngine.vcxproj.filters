@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterEditorFacade.cpp">
@@ -22,20 +22,23 @@
     <ClCompile Include="Application\Src\Sample\SampleScene\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereTestScene.cpp">
-      <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereEditorFacade.cpp">
       <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp">
-      <Filter>Engine\Src\Graphics\Atmosphere</Filter>
+    <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereTestScene.cpp">
+      <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.cpp">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.cpp">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\CylinderObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBufferSet.cpp">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
@@ -69,6 +72,15 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\WaterRefractionRayTracingManager.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp">
+      <Filter>Engine\Src\Graphics\Atmosphere</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
@@ -1485,6 +1497,15 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h">
       <Filter>Engine\Src\Graphics\Texture\Path</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.h">
+      <Filter>Engine\Src\Graphics\Atmosphere</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
@@ -1917,15 +1938,6 @@
     <ClInclude Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereEditorFacade.h">
       <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.h">
-      <Filter>Engine\Src\Graphics\Atmosphere</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.h">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.h">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
@@ -2065,6 +2077,9 @@
     <Filter Include="Application\Src\Sample\SampleScene">
       <UniqueIdentifier>{E4376BC7-4CEE-404A-A441-4F72CA1B9924}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Sample\SampleScene\AtmosphereTestScene">
+      <UniqueIdentifier>{4E8F1A3B-6C2D-4B7E-9A5F-D3B8C1E76A92}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Sample\SampleScene\HomeworkScene">
       <UniqueIdentifier>{53E1BDA6-38DA-4577-8049-D877564B3166}</UniqueIdentifier>
     </Filter>
@@ -2082,12 +2097,6 @@
     </Filter>
     <Filter Include="Application\Src\Sample\SampleScene\WaterTestScene">
       <UniqueIdentifier>{7A2A7A72-9064-4808-88B4-1B308EC90298}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Sample\SampleScene\AtmosphereTestScene">
-      <UniqueIdentifier>{4E8F1A3B-6C2D-4B7E-9A5F-D3B8C1E76A92}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\Atmosphere">
-      <UniqueIdentifier>{9D2C5E7F-3A4B-4C8D-B6E1-F0A9D8C7B654}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Sample\TestGameObject">
       <UniqueIdentifier>{554C1F16-770E-445F-8F03-2D6704FDBBAE}</UniqueIdentifier>
@@ -2202,6 +2211,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Asset">
       <UniqueIdentifier>{79ECF4E4-C7DC-4F22-A25A-D2E02D05D867}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Atmosphere">
+      <UniqueIdentifier>{9D2C5E7F-3A4B-4C8D-B6E1-F0A9D8C7B654}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Common">
       <UniqueIdentifier>{B4421BB1-DD73-4CFF-9FD3-7C2C0C8DE69A}</UniqueIdentifier>

@@ -116,7 +116,8 @@ namespace CoreEngine
         /// @param context レンダリングコンテキスト（View 設定による宣言分岐に使用）
         virtual void DeclareResources(
             [[maybe_unused]] RenderGraphBuilder& builder,
-            [[maybe_unused]] const RenderContext& context) {}
+            [[maybe_unused]] const RenderContext& context) {
+        }
 
         /// @brief Graph 構築前に View 依存の自身の設定を更新する
         /// @details 出力先ターゲット名の切り替えなど、旧 ConfigurePassesForView の移設先。

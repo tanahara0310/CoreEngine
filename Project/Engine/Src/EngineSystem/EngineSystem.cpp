@@ -49,6 +49,7 @@
 // レイトレーシング
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 
 #include "ObjectCommon/GameObject.h"
 #include "Scene/SceneManager.h"
@@ -318,6 +319,12 @@ namespace CoreEngine
             // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
             EngineProfileScope scope(this, GpuTimestampSlot::GBufferPass, cmdList);
             renderPipeline_->ExecuteView(context);
+        }
+
+        // 全 View の描画（AerialPerspective 合成を含む）が完了したので大気有効化フラグを落とす。
+        // 次フレームは Update() を呼ぶ大気シーンでのみ再度有効化され、他シーンへの漏れ出しを防ぐ。
+        if (context.atmosphereManager) {
+            context.atmosphereManager->ResetFrameActivation();
         }
 
         if (sceneManager) {

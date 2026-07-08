@@ -506,6 +506,9 @@ namespace CoreEngine
                                    const Matrix4x4& viewMatrix, const Matrix4x4& projMatrix,
                                    LightManager* lightManager)
     {
+        // Update() を呼ぶのは大気を使うシーンのみ。このフレームは大気合成を有効にする。
+        atmosphereActive_ = true;
+
         // ===== Aerial Perspective 用カメラ情報 =====
         cameraWorldPos_ = cameraWorldPosition;
         invViewProj_ = MathCore::Matrix::Inverse(
