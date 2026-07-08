@@ -13,6 +13,7 @@ namespace CoreEngine
         ~GBufferPass() override = default;
 
         const char* GetName() const override { return "GBuffer"; }
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
         void Execute(const RenderContext& context) override;
     };
 }

@@ -21,6 +21,12 @@ namespace CoreEngine
         const std::string& GetInputResourceName() const { return inputResourceName_; }
         const std::string& GetOutputResourceName() const { return outputResourceName_; }
 
+        /// @brief エフェクト実行種別に応じた入出力リソースを宣言する
+        /// @note effect 未割り当ての placeholder インスタンスは何も宣言しない
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+
+        bool IsEnabledForView(const RenderViewSettings& view) const override { return view.enablePostEffect; }
+
         void Execute(const RenderContext& context) override;
 
     private:

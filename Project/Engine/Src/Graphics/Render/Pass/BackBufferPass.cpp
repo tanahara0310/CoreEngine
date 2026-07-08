@@ -5,10 +5,18 @@
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
+#include "Graphics/Render/RenderGraph.h"
 #include <cassert>
 
 namespace CoreEngine
 {
+    void BackBufferPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // 最終入力を読み、Present 前のレンダーターゲットとして書き込む。
+        builder.Read(inputResourceName_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::BackBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    }
+
     void BackBufferPass::Execute(const RenderContext& context)
     {
         D3D12_GPU_DESCRIPTOR_HANDLE finalInput{};

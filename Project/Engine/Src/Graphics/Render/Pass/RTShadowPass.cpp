@@ -4,47 +4,91 @@
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
 {
+    namespace {
+        /// @brief 現在の描画対象ビューに対応する RT シャドウ ViewID を解決する
+        RayTracingShadowManager::ViewID ResolveRTShadowViewId(const RenderContext& context)
+        {
+            return (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView))
+                ? RayTracingShadowManager::ViewID::ReflectionView
+                : RayTracingShadowManager::ViewID::GameView;
+        }
+
+        /// @brief RT シャドウ各ステージ共通の実行前提を検証してコマンドリストを返す
+        ID3D12GraphicsCommandList* ResolveRTShadowCommandList(const RenderContext& context)
+        {
+            if (!context.rayTracingSubsystem || !context.dxCommon || !context.rtShadowManager) {
+                return nullptr;
+            }
+            if (!context.rtShadowManager->IsInitialized()) {
+                return nullptr;
+            }
+            return context.dxCommon->GetCommandList();
+        }
+    }
+
+    void RTShadowPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // GBuffer を読み取り、ライトごとのレイトレース結果を生成する。
+        builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    }
+
     void RTShadowPass::Execute(const RenderContext& context)
     {
-        if (!context.rayTracingSubsystem || !context.dxCommon || !context.rtShadowManager) {
-            return;
-        }
-
-        if (!context.rtShadowManager->IsInitialized()) {
-            return;
-        }
-
-        ID3D12GraphicsCommandList* cmdList = context.dxCommon->GetCommandList();
+        ID3D12GraphicsCommandList* cmdList = ResolveRTShadowCommandList(context);
         if (!cmdList) {
             return;
         }
 
-        // 現在の描画対象ビューに合わせて RT シャドウ出力先を切り替える。
-        const RayTracingShadowManager::ViewID viewId =
-            (context.currentRTShadowViewId == static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView))
-            ? RayTracingShadowManager::ViewID::ReflectionView
-            : RayTracingShadowManager::ViewID::GameView;
+        context.rayTracingSubsystem->DispatchRTShadowTrace(
+            context, context.dxCommon, cmdList, ResolveRTShadowViewId(context));
+    }
 
-        // GBuffer を入力に RT シャドウをディスパッチする。
-        context.rayTracingSubsystem->DispatchRTShadow(
-            context,
-            context.dxCommon,
-            cmdList,
-            viewId);
+    void RTShadowTemporalPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // レイトレース結果（RTShadowMask）へ再投影と Variance Clamping を適用する。
+        builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    }
 
-        if (context.frameBlackboard) {
-            // Blackboard に RT シャドウ出力の実リソースと現在状態参照を公開する。
-            D3D12_GPU_DESCRIPTOR_HANDLE shadowHandle = context.rtShadowManager->GetShadowSRVHandle(viewId, 0);
-            ID3D12Resource* shadowResource = context.rtShadowManager->GetShadowResource(viewId, 0);
-            D3D12_RESOURCE_STATES& currentState = context.rtShadowManager->GetShadowCurrentState(viewId, 0);
-            context.frameBlackboard->SetResource(
-                FrameBlackboard::RTShadowMask,
-                shadowHandle,
-                shadowResource,
-                &currentState);
+    void RTShadowTemporalPass::Execute(const RenderContext& context)
+    {
+        ID3D12GraphicsCommandList* cmdList = ResolveRTShadowCommandList(context);
+        if (!cmdList) {
+            return;
         }
+
+        context.rayTracingSubsystem->DispatchRTShadowTemporal(
+            context, context.dxCommon, cmdList, ResolveRTShadowViewId(context));
+    }
+
+    void RTShadowDenoisePass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // テンポラル蓄積済みの RTShadowMask へ A-Trous デノイズを適用する。
+        builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    }
+
+    void RTShadowDenoisePass::Execute(const RenderContext& context)
+    {
+        ID3D12GraphicsCommandList* cmdList = ResolveRTShadowCommandList(context);
+        if (!cmdList) {
+            return;
+        }
+
+        context.rayTracingSubsystem->DispatchRTShadowDenoise(
+            context, context.dxCommon, cmdList, ResolveRTShadowViewId(context));
+
+        // RTShadowMask の Blackboard 登録は RegisterFrameResources（View 対応済み）が行うため、
+        // 実行中の再登録は不要（パス分離契約 3）。
     }
 }

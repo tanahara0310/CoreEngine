@@ -14,6 +14,11 @@ namespace CoreEngine
 
         const char* GetName() const override { return "WaterSurface"; }
 
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+
+        /// @brief View の SceneColor ターゲット名を出力先へ反映する
+        void ConfigureForView(const RenderContext& context) override;
+
         void Execute(const RenderContext& context) override;
 
         void SetRenderTargetName(const std::string& name) {

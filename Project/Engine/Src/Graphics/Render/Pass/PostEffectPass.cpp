@@ -12,6 +12,7 @@
 #include "Camera/CameraManager.h"
 #include "Camera/ICamera.h"
 #include "Camera/CameraStructs.h"
+#include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
 {
@@ -58,6 +59,25 @@ namespace CoreEngine
     void PostEffectPass::SetOutputResourceName(const std::string& resourceName)
     {
         outputResourceName_ = resourceName;
+    }
+
+    void PostEffectPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // effect 未割り当ての placeholder は Graph へ直接登録されないため宣言しない。
+        if (!effect_) {
+            return;
+        }
+
+        const bool isCompute = (effect_->GetExecutionType() == PostEffectExecutionType::Compute);
+        const D3D12_RESOURCE_STATES inputState = isCompute
+            ? D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
+            : D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        const D3D12_RESOURCE_STATES outputState = isCompute
+            ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS
+            : D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+        builder.Read(inputResourceName_, inputState);
+        builder.Write(outputResourceName_, outputState);
     }
 
     void PostEffectPass::Execute(const RenderContext& context)

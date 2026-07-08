@@ -24,6 +24,12 @@ namespace CoreEngine{
         /// @param context レンダリングコンテキスト
         void Setup(const RenderContext& context) override;
 
+        /// @brief Read / Write リソースを自己宣言する（SSAO / RTShadow は View 設定で分岐）
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+
+        /// @brief View の SceneColor ターゲット名を出力先へ反映する
+        void ConfigureForView(const RenderContext& context) override;
+
         /// @brief 出力先レンダーターゲット名を設定
         /// @param name レンダーターゲット名（RenderTargetManager に登録されている名前を指定）
         void SetRenderTargetName(const std::string& name) { targetName_ = name; }

@@ -6,10 +6,30 @@
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
+#include "Graphics/Render/RenderGraph.h"
 #include <cassert>
 
 namespace CoreEngine
 {
+    void SceneColorCopyPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // 水面が参照する背景として、forward 側の SkyBox/透明物を含む完成済み SceneColor を複製する。
+        builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        builder.Write(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_COPY_DEST);
+    }
+
+    void SceneColorCopyPass::ConfigureForView(const RenderContext& context)
+    {
+        SetSourceTargetName(context.viewSettings.sceneColorTargetName);
+        SetDestinationTargetName(RenderTargetNames::SceneColorSnapshot);
+    }
+
+    bool SceneColorCopyPass::IsEnabledForView(const RenderViewSettings& view) const
+    {
+        return view.viewType == RenderViewType::GameView
+            && view.sceneColorTargetName == RenderTargetNames::SceneColor;
+    }
+
     void SceneColorCopyPass::Execute(const RenderContext& context)
     {
         if (!context.renderTargetManager) {
@@ -70,12 +90,7 @@ namespace CoreEngine
             sourceState,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        if (context.frameBlackboard) {
-            context.frameBlackboard->SetResource(
-                FrameBlackboard::SceneColorSnapshot,
-                destinationTarget->GetSRVHandle(),
-                destinationTarget->GetResource(),
-                &destinationState);
-        }
+        // SceneColorSnapshot は RegisterFrameResources で同一の実体が登録済みのため、
+        // 実行中の Blackboard 再登録は行わない（パス分離契約 3）。
     }
 }

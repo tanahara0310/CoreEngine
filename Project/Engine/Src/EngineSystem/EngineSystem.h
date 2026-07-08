@@ -116,6 +116,9 @@ public:
     DebugSubsystem* GetDebugSubsystem() { return GetSubsystem<DebugSubsystem>(); }
 #endif
 
+    /// @brief レンダーパイプラインを取得（シーンのユーザーパス登録などに使用）
+    RenderPipeline* GetRenderPipeline() const { return renderPipeline_.get(); }
+
     /// @brief 型指定でサブシステムを取得する
     /// @tparam T IEngineSubsystemを継承するサブシステムの型
     /// @return 該当サブシステムへのポインタ（未登録の場合nullptr）
@@ -184,6 +187,9 @@ private:
 
     // レンダーパイプライン
     std::unique_ptr<RenderPipeline> renderPipeline_;
+
+    // レンダリングフレーム通し番号（RenderContext::frameNumber の供給元）
+    uint64_t renderFrameNumber_ = 0;
 
     // ドメイン管理コンテキスト（GBuffer / シャドウ / レイトレーシング）
     std::unique_ptr<RenderDomainContext> renderDomainContext_;

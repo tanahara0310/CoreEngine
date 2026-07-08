@@ -137,7 +137,16 @@ namespace CoreEngine
         } else if (item.kind == RenderItemKind::Transparent) {
             transparentDrawQueue_.push_back(std::move(item));
         } else {
-            drawQueue_.push_back(std::move(item));
+            // 不透明の Model/SkinnedModel は投入時に Deferred（GBuffer）経路へ振り分ける。
+            // それ以外（パーティクル・ライン・スプライト・透過ブレンド等）は Forward 経路。
+            const bool isOpaqueModel =
+                (item.passType == RenderPassType::Model || item.passType == RenderPassType::SkinnedModel)
+                && item.blendMode == BlendMode::kBlendModeNone;
+            if (isOpaqueModel) {
+                opaqueDrawQueue_.push_back(std::move(item));
+            } else {
+                drawQueue_.push_back(std::move(item));
+            }
         }
 
         isQueueSorted_ = false;
@@ -187,7 +196,7 @@ namespace CoreEngine
     }
 
     void RenderManager::DrawGBufferPass() {
-        if (drawQueue_.empty() || !cmdList_) {
+        if (opaqueDrawQueue_.empty() || !cmdList_) {
             return;
         }
 
@@ -210,16 +219,9 @@ namespace CoreEngine
         IRenderer* activeRenderer = nullptr;
         RenderPassType activePass = RenderPassType::Invalid;
 
-        for (const auto& cmd : drawQueue_) {
+        // 投入時に GBuffer 経路へ振り分けられた不透明 Model/SkinnedModel のみを描画する。
+        for (const auto& cmd : opaqueDrawQueue_) {
             if (!cmd.object || cmd.object->IsMarkedForDestroy()) {
-                continue;
-            }
-
-            const bool isGBufferTarget =
-                (cmd.passType == RenderPassType::Model || cmd.passType == RenderPassType::SkinnedModel)
-                && cmd.blendMode == BlendMode::kBlendModeNone;
-
-            if (!isGBufferTarget) {
                 continue;
             }
 
@@ -264,11 +266,17 @@ namespace CoreEngine
     }
 
     void RenderManager::DrawMainQueuePass() {
-        if (drawQueue_.empty() || !cmdList_) {
+        if ((drawQueue_.empty() && (deferredLightingActive_ || opaqueDrawQueue_.empty())) || !cmdList_) {
             return;
         }
 
         EnsureQueueSorted();
+
+        // Deferred 経路が無効な場合のみ、不透明キューを Forward でフォールバック描画する。
+        if (!deferredLightingActive_ && !opaqueDrawQueue_.empty()) {
+            RenderNormalPassQueue(opaqueDrawQueue_);
+        }
+
         RenderNormalPassQueue(drawQueue_);
     }
 
@@ -419,16 +427,8 @@ namespace CoreEngine
                 continue;
             }
 
-            // ハイブリッド: 不透明の Model/SkinnedModel は GBufferPass + DeferredLightingPass 済みなのでスキップする。
-            // 透明（ブレンドあり）の Model/SkinnedModel は Forward 経路で描画するためスキップしない。
-            if (skipOpaqueModelsInForward_) {
-                const bool isOpaqueModel =
-                    (cmd.passType == RenderPassType::Model || cmd.passType == RenderPassType::SkinnedModel)
-                    && cmd.blendMode == BlendMode::kBlendModeNone;
-                if (isOpaqueModel) {
-                    continue;
-                }
-            }
+            // 不透明 Model/SkinnedModel は AddRenderItem 時点で opaqueDrawQueue_（Deferred 経路）へ
+            // 振り分け済みのため、ここでのスキップ判定は不要。
 
             const bool passChanged = cmd.passType != currentPass;
             const bool blendChanged = cmd.blendMode != currentBlendMode;
@@ -505,6 +505,7 @@ namespace CoreEngine
 
     void RenderManager::ClearQueue() {
         drawQueue_.clear();
+        opaqueDrawQueue_.clear();
         skyDrawQueue_.clear();
         transparentDrawQueue_.clear();
         waterDrawQueue_.clear();
@@ -548,6 +549,7 @@ namespace CoreEngine
 
     void RenderManager::SortDrawQueue() {
         SortRenderQueue(drawQueue_);
+        SortRenderQueue(opaqueDrawQueue_);
         SortRenderQueue(skyDrawQueue_);
         SortRenderQueue(transparentDrawQueue_);
         SortRenderQueue(waterDrawQueue_);

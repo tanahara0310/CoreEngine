@@ -14,6 +14,14 @@ namespace CoreEngine
 
         const char* GetName() const override { return "SceneColorCopy"; }
 
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+
+        /// @brief コピー元 / コピー先を View 設定へ追従させる
+        void ConfigureForView(const RenderContext& context) override;
+
+        /// @brief GameView かつ標準 SceneColor ターゲット時のみ有効
+        bool IsEnabledForView(const RenderViewSettings& view) const override;
+
         void Execute(const RenderContext& context) override;
 
         void SetSourceTargetName(const std::string& name) { sourceTargetName_ = name; }

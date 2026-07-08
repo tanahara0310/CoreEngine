@@ -13,6 +13,13 @@ namespace CoreEngine
             return;
         }
 
+        // 波面は時刻依存で View 非依存のため、フレーム内 1 回だけ計算する。
+        // （View ごとの Graph 実行で同一時刻の FFT を二重計算していた無駄を排除）
+        if (lastDispatchFrame_ == context.frameNumber) {
+            return;
+        }
+        lastDispatchFrame_ = context.frameNumber;
+
         if (!context.fftOceanManager->IsInitialized()) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,

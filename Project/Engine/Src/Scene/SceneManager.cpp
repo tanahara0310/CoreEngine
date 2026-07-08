@@ -4,6 +4,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "ObjectCommon/GameObjectManager.h"
 
@@ -181,6 +182,12 @@ namespace CoreEngine
             if (sceneTransition_) {
                 sceneTransition_->ClearBGMVolumeCallback();
             }
+
+            // シーンが登録したユーザーレンダーパスを一括除去
+            if (auto* pipeline = engine_->GetRenderPipeline()) {
+                pipeline->RemovePassesByOwner(currentScene_.get());
+            }
+
             currentScene_->Finalize();
         }
 
@@ -203,5 +210,12 @@ namespace CoreEngine
         currentSceneName_ = name;
         currentScene_->SetSceneManager(this);
         currentScene_->Initialize(engine_);
+
+        // シーン固有レンダーパスの登録（所有者タグ付きで、シーン破棄時に自動除去される）
+        if (auto* pipeline = engine_->GetRenderPipeline()) {
+            pipeline->BeginOwnerScope(currentScene_.get());
+            currentScene_->RegisterRenderPasses(*pipeline);
+            pipeline->EndOwnerScope();
+        }
     }
 }

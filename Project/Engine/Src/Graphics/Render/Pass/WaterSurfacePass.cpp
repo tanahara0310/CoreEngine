@@ -8,10 +8,25 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Scene/SceneManager.h"
+#include "Graphics/Render/RenderGraph.h"
 #include <cassert>
 
 namespace CoreEngine
 {
+    void WaterSurfacePass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::RTWaterRefractionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    }
+
+    void WaterSurfacePass::ConfigureForView(const RenderContext& context)
+    {
+        SetRenderTargetName(context.viewSettings.sceneColorTargetName);
+    }
+
     void WaterSurfacePass::Execute(const RenderContext& context)
     {
         if (!context.renderTargetManager) {
@@ -54,16 +69,7 @@ namespace CoreEngine
         }
         targetToUse->End(cmdList);
 
-        if (context.frameBlackboard) {
-            D3D12_RESOURCE_STATES* stateRef = nullptr;
-            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(targetToUse)) {
-                stateRef = &offscreen->GetCurrentState();
-            }
-            context.frameBlackboard->SetResource(
-                FrameBlackboard::SceneColor,
-                targetToUse->GetSRVHandle(),
-                targetToUse->GetResource(),
-                stateRef);
-        }
+        // SceneColor は RegisterFrameResources で同一の実体が登録済みのため、
+        // 実行中の Blackboard 再登録は行わない（パス分離契約 3）。
     }
 }

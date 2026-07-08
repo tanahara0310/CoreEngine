@@ -17,6 +17,12 @@ namespace CoreEngine
         /// @brief パス名を取得
         const char* GetName() const override { return "AerialPerspective"; }
 
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+
+        bool IsEnabledForView(const RenderViewSettings& view) const override {
+            return view.viewType == RenderViewType::GameView;
+        }
+
         /// @brief パスの実行
         /// @param context レンダリングコンテキスト
         void Execute(const RenderContext& context) override;
