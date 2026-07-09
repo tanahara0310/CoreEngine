@@ -7,7 +7,9 @@
 #include "Camera/Camera2D.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Light/LightManager.h"
+#include "Utility/FrameRate/FrameRateController.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/Line/GridRenderer.h"
@@ -346,6 +348,15 @@ namespace CoreEngine
         }
         atmosphereManager->Update(cameraPosition, viewMatrix, projMatrix,
                                   engine_->GetComponent<LightManager>());
+
+        // 大気散乱の直後に雲を更新する（大気モード時のみ、という既存ガードの内側なので追加ガード不要）。
+        // 雲は太陽情報・カメラ高度を AtmosphereManager から取得するため、大気 Update の後に呼ぶ。
+        if (auto* cloudManager = domainContext->GetVolumetricCloudManager()) {
+            auto* frameRate = engine_->GetComponent<FrameRateController>();
+            const float deltaTime = frameRate ? frameRate->GetDeltaTime() : 0.016f;
+            cloudManager->Update(cameraPosition, viewMatrix, projMatrix,
+                                 atmosphereManager, deltaTime);
+        }
     }
 
 #ifdef USE_IMGUI
