@@ -24,12 +24,16 @@ public:
     /// @param skeleton スケルトン
     /// @param modelData モデルデータ
     /// @param descriptorManager ディスクリプタマネージャー
+    /// @param sourceVertexBuffer GPUスキニング（CS）が読み取る元頂点バッファ（ModelResourceが保持するもの）
+    /// @param vertexCount 頂点数（sourceVertexBufferの要素数）
     /// @return 生成されたスキンクラスター
     static CoreEngine::SkinCluster CreateSkinCluster(
         const Microsoft::WRL::ComPtr<ID3D12Device>& device,
         const Skeleton& skeleton,
         const ModelData& modelData,
-        CoreEngine::DescriptorManager* descriptorManager);
+        CoreEngine::DescriptorManager* descriptorManager,
+        ID3D12Resource* sourceVertexBuffer,
+        UINT vertexCount);
     
     /// @brief スキンクラスターを更新
     /// @param skinCluster 更新するスキンクラスター

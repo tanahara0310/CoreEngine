@@ -7,6 +7,7 @@ namespace CoreEngine {
     class BaseModelRenderer;
     class ShadowMapRenderer;
     class InstanceBatchManager;
+    class SkinningComputeDispatcher;
 }
 
 namespace CoreEngine
@@ -27,6 +28,7 @@ namespace CoreEngine
         BaseModelRenderer* skinnedRenderer = nullptr; ///< スキニングモデル描画用レンダラー
         ShadowMapRenderer* shadowRenderer = nullptr; ///< シャドウマップ描画用レンダラー
         InstanceBatchManager* instanceBatchManager = nullptr; ///< 通常モデルのインスタンシング集約（ModelManager 内で自動設定）
+        SkinningComputeDispatcher* skinningDispatcher = nullptr; ///< GPUスキニング(CS)ディスパッチャー（ModelManager 内で自動設定）
 
         /// @brief ポインタ依存が全て設定済みか確認
         /// @note instanceBatchManager は ModelManager が内部生成するため検証対象外

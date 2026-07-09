@@ -3,13 +3,9 @@
 
 #include "Camera/CameraStructs.h"
 #include "Camera/ICamera.h"
-#include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Graphics/Light/LightManager.h"
-#include "Graphics/Render/RenderDomainContext.h"
 
 #include "Sample/TestGameObject/Primitive/CubeObject.h"
 #include "Sample/TestGameObject/Primitive/PlaneObject.h"
-#include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
 
 using namespace CoreEngine;
 
@@ -18,20 +14,16 @@ void AtmosphereTestScene::OnInitialize()
     SetSceneName("AtmosphereTestScene");
 
     // ===== 太陽ライト =====
-    // BaseScene::SetupLight() が生成した既定の DirectionalLight を太陽として使用する
+    // BaseScene::SetupLight() が生成した既定の DirectionalLight（isAtmosphereSun 付与済み）を
+    // 本シーンの既定仰角・方位へ調整する
     if (directionalLight_) {
-        directionalLight_->isAtmosphereSun = true;
-
         const AtmosphereEditorSunSettings defaultSun{};
         directionalLight_->direction = AtmosphereEditorFacade::ComputeSunLightDirection(
             defaultSun.elevationDeg, defaultSun.azimuthDeg);
         directionalLight_->intensity = defaultSun.intensity;
     }
 
-    // ===== 空（大気散乱モードの SkyBox） =====
-    auto skyBox = CreateObject<SkyBoxObject>();
-    skyBox->SetAtmosphereMode(true);
-    skyBox->SetActive(true);
+    // 空は BaseScene が既定で大気散乱モードの SkyBox を自動生成するためここでは何もしない
 
     // ===== 床（高度の目安になる基準面） =====
     auto ground = CreateObject<PlaneObject>(40.0f, 40.0f, 10u, 10u);
@@ -84,22 +76,7 @@ void AtmosphereTestScene::OnInitialize()
 
 void AtmosphereTestScene::OnUpdate()
 {
-    // AtmosphereManager へ太陽情報とカメラ高度を毎フレーム反映する
-    auto* domainContext = engine_->GetRenderDomainContext();
-    auto* atmosphereManager = domainContext ? domainContext->GetAtmosphereManager() : nullptr;
-    if (atmosphereManager) {
-        Vector3 cameraPosition{};
-        Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
-        Matrix4x4 projMatrix = MathCore::Matrix::Identity();
-        if (const ICamera* camera = GetGameViewCamera3D()) {
-            cameraPosition = camera->GetPosition();
-            viewMatrix = camera->GetViewMatrix();
-            projMatrix = camera->GetProjectionMatrix();
-        }
-        atmosphereManager->Update(cameraPosition, viewMatrix, projMatrix,
-                                  engine_->GetComponent<LightManager>());
-    }
-
+    // AtmosphereManager への太陽・カメラ情報の反映は BaseScene::UpdateAtmosphere() が毎フレーム行う
 #ifdef USE_IMGUI
     editorFacade_.DrawImGui();
 #endif

@@ -134,12 +134,14 @@ namespace CoreEngine
             for (UINT j = 0; j < shaderDesc.BoundResources; ++j) {
                 reflection->GetResourceBindingDesc(j, &bindDesc);
                 if (std::string(bindDesc.Name) == bufferDesc.Name) {
-                    // StructuredBufferの場合はスキップ（ReflectBoundResourcesで処理される）
-                    if (bindDesc.Type == D3D_SIT_STRUCTURED) {
+                    // StructuredBuffer/RWStructuredBuffer等の場合はスキップ（ReflectBoundResourcesで処理される）
+                    // これらは要素構造体のレイアウト取得用に疑似CBufferとしてもリフレクションされてしまうため、
+                    // 実際のCBufferではないリソース種別を除外する（本物のCBufferだけがD3D_SIT_CBUFFER）
+                    if (bindDesc.Type != D3D_SIT_CBUFFER) {
                         isStructuredBuffer = true;
                         break;
                     }
-                    
+
                     binding.bindPoint = bindDesc.BindPoint;
                     binding.bindCount = bindDesc.BindCount;
                     binding.space = bindDesc.Space;

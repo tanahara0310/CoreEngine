@@ -3,39 +3,20 @@
 
 #include "WaterTestScene.h"
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/IBL/IBLSystem.h"
-#include "Graphics/Texture/TextureManager.h"
-#include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
 
 using namespace CoreEngine;
 
-namespace {
-    /// @brief WaterTestScene で使用する IBL 環境マップ名
-    constexpr const char* kWaterSceneEnvironmentMap = "kloppenheim_06_puresky_4k.hdr";
-}
-
-WaterSceneObjects WaterSceneSetup::SetupScene(WaterTestScene& scene, EngineSystem& engine) {
+WaterSceneObjects WaterSceneSetup::SetupScene(WaterTestScene& scene, [[maybe_unused]] EngineSystem& engine) {
     WaterSceneObjects sceneObjects{};
 
-    if (auto* iblSystem = engine.GetComponent<IBLSystem>()) {
-        // IBL 用の環境マップを読み込み、Water シーン用のライティング環境を初期化する
-        auto& textureManager = TextureManager::GetInstance();
-        auto environmentMapTexture = textureManager.Load(kWaterSceneEnvironmentMap);
-
-        IBLSystem::SetupParams iblParams;
-        iblParams.environmentMap = environmentMapTexture.texture.Get();
-        iblParams.environmentMapSRV = environmentMapTexture.gpuHandle;
-        iblParams.environmentKey = kWaterSceneEnvironmentMap;
-        iblParams.irradianceSize = 128;
-        iblParams.prefilteredSize = 256;
-        iblParams.brdfLUTSize = 512;
-        iblSystem->Setup(iblParams);
-
-        // SkyBox を生成して現在の環境マップを可視化する
-        auto skyBox = scene.CreateWaterSceneObject<SkyBoxObject>();
-        skyBox->SetTexture(environmentMapTexture);
-        skyBox->SetActive(true);
-    }
+    // 背景・IBL 環境マップは明示指定しない。BaseScene::SetupDefaultSky() が
+    // OnInitialize() 完了後に既定背景（大気散乱モード SkyBox）を自動生成し、
+    // BaseScene::SetupLight() が生成した isAtmosphereSun 付きライトと連動して
+    // AtmosphereManager を毎フレーム更新する。
+    // これにより水面の Planar Reflection（ReflectionView）が大気散乱の空を
+    // そのまま映し込み、コースティクス（RTWaterCaustics 等）が参照する太陽も
+    // 同一の isAtmosphereSun ライトのため、反射・コースティクス・空が常に
+    // 同じ太陽方向/色で整合する。
 
     // Water 描画に必要な主要オブジェクトを順に構築する
     sceneObjects.waterPlane = CreateWaterPlane(scene);
@@ -79,7 +60,11 @@ void WaterSceneSetup::ConfigureWaterMaterial(WaterPlaneObject* waterPlane) {
     material->SetMetallic(0.0f);
     material->SetRoughness(0.04f);
     material->SetLightingEnabled(true);
-    material->SetIBLEnabled(true);
+    // 大気散乱モードでは静的環境マップの IBL を使わない（既定の ShadingMode::PBR の
+    // ハーフランバートアンビエントで代替）。水面の鏡面反射は Planar Reflection
+    // （ReflectionView が大気散乱の空を含めて描画した SceneColor）で賄うため、
+    // ここで静的 IBL を有効にすると大気の空と映り込みが食い違う。
+    material->SetIBLEnabled(false);
     material->SetNormalMapEnabled(false);
     material->SetMetallicMapEnabled(false);
     material->SetRoughnessMapEnabled(false);
@@ -95,6 +80,7 @@ void WaterSceneSetup::ConfigureGroundObject(ModelObject* groundObject) {
     groundObject->GetTransform().translate = { 0.0f, -0.1f, 0.0f };
     groundObject->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
     groundObject->SetPBRTextureMapsEnabled(true, true, true, true);
-    groundObject->SetIBLEnabled(true);
+    // 水面と同じ理由で静的 IBL は使わず、大気散乱と整合する直接光ベースの PBR とする。
+    groundObject->SetIBLEnabled(false);
     groundObject->SetActive(true);
 }

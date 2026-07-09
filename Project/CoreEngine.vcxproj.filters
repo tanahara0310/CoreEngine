@@ -28,6 +28,12 @@
     <ClCompile Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereTestScene.cpp">
       <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\VolumetricCloudTestScene\CloudEditorFacade.cpp">
+      <Filter>Application\Src\Sample\SampleScene\VolumetricCloudTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Sample\SampleScene\VolumetricCloudTestScene\VolumetricCloudTestScene.cpp">
+      <Filter>Application\Src\Sample\SampleScene\VolumetricCloudTestScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.cpp">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClCompile>
@@ -76,10 +82,19 @@
     <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp">
       <Filter>Engine\Src\Graphics\Atmosphere</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.cpp">
+      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudNoisePass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp">
@@ -422,6 +437,9 @@
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinClusterGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinningComputeDispatcher.cpp">
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.cpp">
@@ -1095,6 +1113,9 @@
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinCluster.h">
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinningComputeDispatcher.h">
+      <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
@@ -1500,10 +1521,19 @@
     <ClInclude Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.h">
       <Filter>Engine\Src\Graphics\Atmosphere</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.h">
+      <Filter>Engine\Src\Graphics\Cloud</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudNoisePass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">
@@ -1938,6 +1968,12 @@
     <ClInclude Include="Application\Src\Sample\SampleScene\AtmosphereTestScene\AtmosphereEditorFacade.h">
       <Filter>Application\Src\Sample\SampleScene\AtmosphereTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\VolumetricCloudTestScene\VolumetricCloudTestScene.h">
+      <Filter>Application\Src\Sample\SampleScene\VolumetricCloudTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Sample\SampleScene\VolumetricCloudTestScene\CloudEditorFacade.h">
+      <Filter>Application\Src\Sample\SampleScene\VolumetricCloudTestScene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
@@ -2080,6 +2116,9 @@
     <Filter Include="Application\Src\Sample\SampleScene\AtmosphereTestScene">
       <UniqueIdentifier>{4E8F1A3B-6C2D-4B7E-9A5F-D3B8C1E76A92}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Sample\SampleScene\VolumetricCloudTestScene">
+      <UniqueIdentifier>{9A3D5E71-2B6F-4C89-A1D4-7E6F0B3C5A28}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Sample\SampleScene\HomeworkScene">
       <UniqueIdentifier>{53E1BDA6-38DA-4577-8049-D877564B3166}</UniqueIdentifier>
     </Filter>
@@ -2214,6 +2253,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Atmosphere">
       <UniqueIdentifier>{9D2C5E7F-3A4B-4C8D-B6E1-F0A9D8C7B654}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Cloud">
+      <UniqueIdentifier>{7E1B4A62-2C9D-4F3E-8A5B-1D6C0E2F9A73}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Common">
       <UniqueIdentifier>{B4421BB1-DD73-4CFF-9FD3-7C2C0C8DE69A}</UniqueIdentifier>

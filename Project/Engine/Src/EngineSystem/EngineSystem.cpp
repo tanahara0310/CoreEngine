@@ -36,6 +36,8 @@
 #include "Graphics/Render/Pass/FFTOceanPass.h"
 #include "Graphics/Render/Pass/AtmosphereLUTPass.h"
 #include "Graphics/Render/Pass/AerialPerspectivePass.h"
+#include "Graphics/Render/Pass/VolumetricCloudNoisePass.h"
+#include "Graphics/Render/Pass/VolumetricCloudPass.h"
 #include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/SceneColorCopyPass.h"
@@ -50,6 +52,7 @@
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Cloud/VolumetricCloudManager.h"
 
 #include "ObjectCommon/GameObject.h"
 #include "Scene/SceneManager.h"
@@ -252,6 +255,7 @@ namespace CoreEngine
         context.rtWaterRefractionManager = renderDomainContext_ ? renderDomainContext_->GetWaterRefractionRayTracingManager() : nullptr;
         context.fftOceanManager = renderDomainContext_ ? renderDomainContext_->GetFFTOceanManager() : nullptr;
         context.atmosphereManager = renderDomainContext_ ? renderDomainContext_->GetAtmosphereManager() : nullptr;
+        context.volumetricCloudManager = renderDomainContext_ ? renderDomainContext_->GetVolumetricCloudManager() : nullptr;
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
         context.modelManager = GetComponent<ModelManager>();
@@ -325,6 +329,9 @@ namespace CoreEngine
         // 次フレームは Update() を呼ぶ大気シーンでのみ再度有効化され、他シーンへの漏れ出しを防ぐ。
         if (context.atmosphereManager) {
             context.atmosphereManager->ResetFrameActivation();
+        }
+        if (context.volumetricCloudManager) {
+            context.volumetricCloudManager->ResetFrameActivation();
         }
 
         if (sceneManager) {
@@ -401,6 +408,9 @@ namespace CoreEngine
         // パス自身が SRV ヒープをバインドするため、フレーム先頭でも安全に実行できる
         renderPipeline_->AddPass(std::make_unique<AtmosphereLUTPass>(), RenderPassPhase::FrameSetup, 10);
 
+        // フレーム前処理: ボリューメトリック雲のノイズ生成（ダーティ時のみ Compute 実行）
+        renderPipeline_->AddPass(std::make_unique<VolumetricCloudNoisePass>(), RenderPassPhase::FrameSetup, 20);
+
         // シャドウマップ生成
         renderPipeline_->AddPass(std::make_unique<ShadowMapPass>(), RenderPassPhase::Shadow, 0);
 
@@ -429,6 +439,10 @@ namespace CoreEngine
         // 不透明 Model/SkinnedModel は投入時に GBuffer 経路へ振り分け済みなので含まれない
         renderPipeline_->AddPass(std::make_unique<GeometryPass>(), RenderPassPhase::Sky, 0);
         renderPipeline_->AddPass(std::make_unique<SkyBoxQueuePass>(), RenderPassPhase::Sky, 10);
+
+        // ボリューメトリック雲: SkyBox 描画後の SceneColor へレイマーチ結果を合成（GameView のみ）
+        renderPipeline_->AddPass(std::make_unique<VolumetricCloudPass>(), RenderPassPhase::Sky, 20);
+
         renderPipeline_->AddPass(std::make_unique<TransparentQueuePass>(), RenderPassPhase::Transparent, 0);
 
         // 水面: 背景 SceneColor の複製 → RT 屈折 → 水面合成（データフロー順）

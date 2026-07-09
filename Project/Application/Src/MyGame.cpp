@@ -8,6 +8,7 @@
 #include "Sample/SampleScene/SpriteTestScene/SpriteTestScene.h"
 #include "Sample/SampleScene/WaterTestScene/WaterTestScene.h"
 #include "Sample/SampleScene/AtmosphereTestScene/AtmosphereTestScene.h"
+#include "Sample/SampleScene/VolumetricCloudTestScene/VolumetricCloudTestScene.h"
 #include "Sample/SampleScene/HomeworkScene/HomeworkScene.h"
 
 using namespace CoreEngine;
@@ -31,10 +32,11 @@ void MyGame::Initialize()
     sceneManager_->RegisterScene<SpriteTestScene>("SpriteTestScene");
     sceneManager_->RegisterScene<WaterTestScene>("WaterTestScene");
     sceneManager_->RegisterScene<AtmosphereTestScene>("AtmosphereTestScene");
+    sceneManager_->RegisterScene<VolumetricCloudTestScene>("VolumetricCloudTestScene");
     sceneManager_->RegisterScene<HomeworkScene>("HomeworkScene");
 
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene("WaterTestScene");
+    sceneManager_->SetInitialScene("PrimitiveTestScene");
 
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
 #ifdef USE_IMGUI

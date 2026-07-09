@@ -29,6 +29,13 @@ void SkyBoxObject::SetSkyBoxRenderer(SkyBoxRenderer* renderer) {
 
 void SkyBoxObject::SetTexture(const CoreEngine::TextureManager::LoadedTexture& texture, const std::string& textureKey) {
     texture_ = texture;
+
+    // テクスチャの明示指定＝キューブマップ背景の要求とみなし、
+    // 既定の大気散乱モードからキューブマップモードへ自動で切り替える
+    if (texture_.gpuHandle.ptr != 0) {
+        atmosphereMode_ = false;
+    }
+
     UpdateIBLFromTexture(textureKey, true);
 }
 
@@ -378,6 +385,21 @@ bool SkyBoxObject::DrawTransformSection() {
 bool SkyBoxObject::DrawTextureSection() {
     bool changed = false;
 
+    UI::SectionHeader("背景モード");
+    {
+        int mode = atmosphereMode_ ? 0 : 1;
+        if (ImGui::RadioButton("大気散乱", &mode, 0)) { changed = true; }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("キューブマップ", &mode, 1)) { changed = true; }
+        atmosphereMode_ = (mode == 0);
+
+        if (!atmosphereMode_ && texture_.gpuHandle.ptr == 0) {
+            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.3f, 1.0f),
+                "テクスチャ未設定のため描画されません");
+        }
+    }
+    ImGui::Spacing();
+
     UI::SectionHeader("HDRテクスチャ");
     const bool hasTexture = texture_.gpuHandle.ptr != 0;
 
@@ -429,13 +451,14 @@ bool SkyBoxObject::DrawTextureSection() {
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", dropWarning_.c_str());
     }
 
-    // テクスチャ解除ボタン
+    // テクスチャ解除ボタン（解除後は既定の大気散乱モードへ復帰）
     if (hasTexture) {
         ImGui::Spacing();
         if (ImGui::Button("テクスチャ解除##skybox", ImVec2(-FLT_MIN, 0.0f))) {
             texture_ = {};
             textureName_.clear();
             dropWarning_.clear();
+            atmosphereMode_ = true;
             changed = true;
         }
     }

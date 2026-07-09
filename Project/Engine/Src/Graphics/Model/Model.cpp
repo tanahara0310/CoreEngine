@@ -9,6 +9,7 @@
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Model/Skeleton/SkinClusterGenerator.h"
+#include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
 #include "Utility/Logger/Logger.h"
 #include "Math/MathCore.h"
 
@@ -72,7 +73,9 @@ namespace CoreEngine
                     renderContext_.dxCommon->GetDevice(),
                     *skeleton_,
                     modelData,
-                    renderContext_.dxCommon->GetDescriptorManager()
+                    renderContext_.dxCommon->GetDescriptorManager(),
+                    resource_->GetVertexBuffer(),
+                    resource_->GetVertexCount()
                 );
             }
         }
@@ -90,6 +93,25 @@ namespace CoreEngine
         // SkinClusterとSkeletonが両方存在する場合のみ更新
         if (skinCluster_ && skeleton_) {
             SkinClusterGenerator::Update(*skinCluster_, *skeleton_);
+        }
+    }
+
+    void Model::EnsureGPUSkinning(ID3D12GraphicsCommandList* cmdList, ID3D12PipelineState* restorePSO) {
+        if (!skinCluster_ || !skinCluster_->needsGPUSkinning) {
+            return;
+        }
+        assert(renderContext_.skinningDispatcher);
+
+        renderContext_.skinningDispatcher->Dispatch(
+            cmdList,
+            renderContext_.dxCommon->GetSRVHeap(),
+            *skinCluster_,
+            resource_->GetVertexCount());
+        skinCluster_->needsGPUSkinning = false;
+
+        // Dispatch がPSOスロットを書き換えるため、呼び出し元パスのグラフィックスPSOへ戻す
+        if (restorePSO) {
+            cmdList->SetPipelineState(restorePSO);
         }
     }
 
@@ -157,6 +179,8 @@ namespace CoreEngine
 
             BaseModelRenderer* renderer = renderContext_.skinnedRenderer;
             assert(renderer);
+
+            EnsureGPUSkinning(cmdList, renderer->GetCurrentPipelineState());
 
             for (const auto& subMesh : subMeshes) {
                 const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
@@ -253,8 +277,13 @@ namespace CoreEngine
     mappedData->lightViewProjection = lightVP;
     transformBuffer->Unmap(0, nullptr);
 
-    // 頂点バッファを設定
-    cmdList->IASetVertexBuffers(0, 1, &resource_->GetVertexBufferView());
+    // スキニングモデルの場合は描画前にGPUスキニング(CS)を実行し、結果の頂点バッファを使う
+    if (HasSkinCluster()) {
+        EnsureGPUSkinning(cmdList, renderContext_.shadowRenderer ? renderContext_.shadowRenderer->GetCurrentPipelineState() : nullptr);
+        cmdList->IASetVertexBuffers(0, 1, &skinCluster_->outputVertexBufferView);
+    } else {
+        cmdList->IASetVertexBuffers(0, 1, &resource_->GetVertexBufferView());
+    }
 
     // インデックスバッファを設定
     cmdList->IASetIndexBuffer(&resource_->GetIndexBufferView());
@@ -263,24 +292,6 @@ namespace CoreEngine
     int lightTransformIdx = renderContext_.shadowRenderer ? renderContext_.shadowRenderer->GetRootParamIndex("gLightTransform") : 0;
     if (lightTransformIdx >= 0) {
         cmdList->SetGraphicsRootConstantBufferView(lightTransformIdx, transformBuffer->GetGPUVirtualAddress());
-    }
-
-    // スキニングモデルの場合はMatrixPaletteも設定
-    if (HasSkinCluster()) {
-        // スキニング用の頂点バッファも設定（slot 1）
-        D3D12_VERTEX_BUFFER_VIEW skinningVBV = skinCluster_->influenceBufferView;
-        cmdList->IASetVertexBuffers(1, 1, &skinningVBV);
-
-        // MatrixPalette SRV（シェーダーリフレクションからインデックスを取得）
-        int matrixPaletteIdx = renderContext_.shadowRenderer ? renderContext_.shadowRenderer->GetRootParamIndex("gMatrixPalette") : 1;
-        if (matrixPaletteIdx >= 0 && skinCluster_->paletteSrvHandle.second.ptr != 0) {
-            cmdList->SetGraphicsRootDescriptorTable(matrixPaletteIdx, skinCluster_->paletteSrvHandle.second);
-        }
-#ifdef _DEBUG
-        else if (matrixPaletteIdx >= 0 && skinCluster_->paletteSrvHandle.second.ptr == 0) {
-            OutputDebugStringA("WARNING: Model::DrawShadow - MatrixPalette SRV is null for skinned model.\n");
-        }
-#endif
     }
 
     // 描画実行
@@ -460,9 +471,9 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     assert(renderContext_.skinnedRenderer);
 
     ModelDrawPacket packet;
-    packet.vertexBufferViews[0] = resource_->GetVertexBufferView();
-    packet.vertexBufferViews[1] = skinCluster_->influenceBufferView;
-    packet.vertexBufferViewCount = 2;
+    // GPUスキニング(CS)で計算済みの頂点バッファをそのまま使う（Influence/MatrixPaletteは描画時には不要）
+    packet.vertexBufferViews[0] = skinCluster_->outputVertexBufferView;
+    packet.vertexBufferViewCount = 1;
     packet.indexBufferView = resource_->GetIndexBufferView();
     packet.indexCount = subMesh.indexCount;
     packet.startIndex = subMesh.startIndex;
@@ -474,7 +485,6 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.metallicRoughnessSRV = metallicRoughnessTexture;
     packet.occlusionSRV = occlusionTexture;
     packet.isSkinned = true;
-    packet.matrixPaletteSRV = skinCluster_->paletteSrvHandle.second;
     return packet;
 }
 

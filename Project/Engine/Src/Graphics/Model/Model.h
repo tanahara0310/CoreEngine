@@ -240,6 +240,13 @@ namespace CoreEngine
         /// @brief SkinClusterを更新（スケルトンアニメーションの場合のみ）
         void UpdateSkinCluster();
 
+        /// @brief GPUスキニング(CS)がまだ実行されていなければ実行する
+        /// @details 同一フレーム内でForward/GBuffer/Shadowが同じモデルを描画する際、
+        ///          スキニング計算を1回に統合するためのガード。
+        /// @param cmdList コマンドリスト
+        /// @param restorePSO Dispatch後に復元するグラフィックスPSO（CSのDispatchでPSOスロットが上書きされるため）
+        void EnsureGPUSkinning(ID3D12GraphicsCommandList* cmdList, ID3D12PipelineState* restorePSO);
+
         /// @brief 指定スロット用行列バッファを取得
         ID3D12Resource* GetTransformBuffer(TransformBufferSlot slot) const;
 

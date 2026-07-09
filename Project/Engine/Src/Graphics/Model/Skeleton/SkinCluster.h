@@ -35,9 +35,25 @@ struct SkinCluster {
     Microsoft::WRL::ComPtr<ID3D12Resource> influenceResource;  // Influence用リソース
     D3D12_VERTEX_BUFFER_VIEW influenceBufferView;              // InfluenceのBufferView
     std::span<VertexInfluence> mappedInfluence;                // Influenceデータをマップしたもの
+    std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> influenceSrvHandle; // InfluenceのSRV（CS読み取り用）
 
     Microsoft::WRL::ComPtr<ID3D12Resource> paletteResource;    // Palette用リソース
     std::span<WellForGPU> mappedPalette;                       // Paletteデータをマップしたもの
     std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> paletteSrvHandle; // PaletteのSRV
+
+    // ===== GPUスキニング（ComputeShader）関連 =====
+
+    std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> sourceVertexSrvHandle; // 元頂点バッファのSRV（CS読み取り用）
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> outputVertexResource; // CSが書き込むスキニング後頂点バッファ（UAV）
+    D3D12_VERTEX_BUFFER_VIEW outputVertexBufferView;             // 上記をそのまま描画時の頂点バッファとして使う
+    std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> outputUavHandle; // 出力バッファのUAV
+    D3D12_RESOURCE_STATES outputBufferState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS; // 出力バッファの現在のリソース状態
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> skinningParamsCB; // SkinningParams（頂点数）用定数バッファ
+
+    // 今フレームまだGPUスキニングを実行していないか（true = 描画前にCS Dispatchが必要）
+    // SkinClusterGenerator::Update() でtrueにセットされ、Model側でDispatch後にfalseへ戻す。
+    bool needsGPUSkinning = true;
 };
 }

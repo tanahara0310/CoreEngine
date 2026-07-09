@@ -40,6 +40,12 @@ namespace CoreEngine
         /// @brief GBuffer パス用 RootSignature を取得
         ID3D12RootSignature* GetGBufferRootSignature() const { return gBufferRootSignatureMg_->GetRootSignature(); }
 
+        /// @brief 現在のパス（Forward/GBuffer）に応じたPSOを取得
+        /// @note GPUスキニング(CS)Dispatch後にPSOを復元するために使用する
+        ID3D12PipelineState* GetCurrentPipelineState() const {
+            return isInGBufferPass_ ? gBufferPipelineState_ : forwardPipelineState_;
+        }
+
         /// @brief ライトマネージャーを設定
         void SetLightManager(LightManager* lightManager) { lightManager_ = lightManager; }
 
