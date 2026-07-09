@@ -439,6 +439,9 @@
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinClusterGenerator.cpp">
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinningComputeDispatcher.cpp">
+      <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
@@ -1108,6 +1111,9 @@
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinCluster.h">
+      <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinningComputeDispatcher.h">
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h">

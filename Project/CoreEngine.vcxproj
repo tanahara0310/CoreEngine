@@ -332,6 +332,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkeletonAnimator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkeletonLoader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinClusterGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinningComputeDispatcher.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp" />
@@ -560,6 +561,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\ModelRenderContext.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Node.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinCluster.h" />
+    <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinningComputeDispatcher.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\TransformationMatrix.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
     <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.h" />

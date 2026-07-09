@@ -6,6 +6,7 @@
 #include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
+#include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
 #include "Graphics/Debug/EngineStats.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/Animator.h"
@@ -47,6 +48,11 @@ namespace CoreEngine
         if (renderContext_.modelRenderer) {
             renderContext_.modelRenderer->SetInstanceBatchManager(instanceBatchManager_.get());
         }
+
+        // GPUスキニング(CS)ディスパッチャーを生成
+        skinningDispatcher_ = std::make_unique<SkinningComputeDispatcher>();
+        skinningDispatcher_->Initialize(dxCommon_->GetDevice());
+        renderContext_.skinningDispatcher = skinningDispatcher_.get();
     }
 
     std::unique_ptr<Model> ModelManager::CreateStaticModel(const std::string& filePath)

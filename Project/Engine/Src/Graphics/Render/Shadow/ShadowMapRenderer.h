@@ -53,6 +53,10 @@ namespace CoreEngine
 
         ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
 
+        /// @brief 現在設定されているPSOを取得
+        /// @note GPUスキニング(CS)Dispatch後にPSOを復元するために使用する
+        ID3D12PipelineState* GetCurrentPipelineState() const { return currentPipelineState_; }
+
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得
         int GetRootParamIndex(const std::string& resourceName) const;
 

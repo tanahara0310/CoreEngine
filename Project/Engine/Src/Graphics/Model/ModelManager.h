@@ -17,6 +17,7 @@
 namespace CoreEngine { class ThreadPool; }
 namespace CoreEngine { class IPrimitiveMeshGenerator; }
 namespace CoreEngine { class InstanceBatchManager; }
+namespace CoreEngine { class SkinningComputeDispatcher; }
 
 namespace CoreEngine
 {
@@ -127,6 +128,9 @@ private:
 
     // インスタンシングバッチマネージャー（通常モデル用）
     std::unique_ptr<InstanceBatchManager> instanceBatchManager_;
+
+    // GPUスキニング(CS)ディスパッチャー（スキニングモデル用）
+    std::unique_ptr<SkinningComputeDispatcher> skinningDispatcher_;
 
     // デフォルトのベースパス
     const std::string basePath_ = "Application/Assets/";
