@@ -126,7 +126,12 @@ float2 TransmittanceParamsToUv(float radiusKm, float mu, float bottomRadiusKm, f
     float dMax = rho + H;
     float xMu = (d - dMin) / max(dMax - dMin, 1e-6f);
     float xR = rho / max(H, 1e-6f);
-    return float2(xMu, xR);
+
+    // 地平線より下を向くレイでは xMu が 1 を超える（このパラメータ化は大気圏上端へ
+    // 到達するレイしか表現できない）。呼び出し側のサンプラーが WRAP だと反対端の値
+    // （＝ほぼ透過率 1.0）を拾い、太陽が沈む瞬間に透過率が跳ね上がる。
+    // サンプラー設定に依存しないよう、ここで明示的にクランプする。
+    return saturate(float2(xMu, xR));
 }
 
 /// @brief Transmittance LUT の UV から (r, mu) を復元する
@@ -150,17 +155,37 @@ void UvToTransmittanceParams(float2 uv, float bottomRadiusKm, float topRadiusKm,
     mu = clamp(mu, -1.0f, 1.0f);
 }
 
+/// @brief 惑星本体による太陽の可視率（1=完全に見える, 0=地平線下に完全に沈んだ）
+/// @param radiusKm 評価点の惑星中心距離 [km]
+/// @param muSun 評価点での太陽天頂角余弦
+/// @details Transmittance LUT のパラメータ化は「大気圏上端へ抜けるレイ」しか表現できず、
+///          地平線より下の太陽に対しては地平線すれすれの透過率で頭打ちになる。
+///          そのため LUT 単体では日没後も光が消えない。ここで幾何的な遮蔽を掛け直す。
+///          太陽は角半径を持つため、地平線を跨ぐ間は部分的に隠れる（＝滑らかに減衰する）。
+float PlanetSunVisibility(float radiusKm, float muSun, AtmosphereConstants atm)
+{
+    float cosHorizon = -sqrt(max(0.0f,
+        1.0f - (atm.planetRadiusKm * atm.planetRadiusKm) / (radiusKm * radiusKm)));
+
+    // 地平線付近では d(cos)/d(角度) ≈ -1 なので、角半径をそのまま余弦の幅として使える
+    float softness = max(atm.sunDiskHalfAngleRad, 1e-4f);
+    return smoothstep(cosHorizon - softness, cosHorizon + softness, muSun);
+}
+
 /// @brief Transmittance LUT から指定点→太陽方向の透過率を取得する
 /// @param transmittanceLUT 事前計算済み透過率 LUT
 /// @param position 惑星中心基準の位置 [km]
 /// @param toSun 太陽の位置方向（正規化）
+/// @details 惑星による遮蔽（アースシャドウ）を含む。日没後に空・雲・太陽ディスクが
+///          正しく消えるために必須。
 float3 SampleTransmittanceToSun(Texture2D<float4> transmittanceLUT, SamplerState lutSampler,
                                 float3 position, float3 toSun, AtmosphereConstants atm)
 {
     float radiusKm = length(position);
     float mu = dot(position / radiusKm, toSun);
     float2 uv = TransmittanceParamsToUv(radiusKm, mu, atm.planetRadiusKm, atm.atmosphereTopRadiusKm);
-    return transmittanceLUT.SampleLevel(lutSampler, uv, 0).rgb;
+    float3 transmittance = transmittanceLUT.SampleLevel(lutSampler, uv, 0).rgb;
+    return transmittance * PlanetSunVisibility(radiusKm, mu, atm);
 }
 
 // ============================================================================

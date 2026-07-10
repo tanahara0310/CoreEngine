@@ -66,9 +66,11 @@ PixelShaderOutput main(VertexShaderOutput input)
         // 視線と太陽の間の角度 [rad]
         float cosViewSun = clamp(dot(viewDir, toSun), -1.0f, 1.0f);
         float angleToSun = acos(cosViewSun);
-        float halfAngle = gAtmosphere.sunDiskHalfAngleRad;
+        float halfAngle = max(gAtmosphere.sunDiskHalfAngleRad, 1e-5f);
 
         float3 cameraPos = float3(0.0f, radiusKm, 0.0f);
+        // SampleTransmittanceToSun は惑星による遮蔽を含むため、太陽が地平線を
+        // 跨ぐ間にディスクとグレアが一緒に滑らかに消える。
         float3 sunTransmittance = SampleTransmittanceToSun(
             gTransmittanceLUT, gLUTSampler, cameraPos, toSun, gAtmosphere);
         float3 sunRadiance = sunTransmittance * gAtmosphere.sunDiskLuminanceScale;
@@ -76,22 +78,27 @@ PixelShaderOutput main(VertexShaderOutput input)
         // 太陽本体: 縁を fwidth 1 ピクセル分だけソフトにして硬い輪郭（ジャギ）を防ぐ。
         // 角度基準の一定幅なので LUT／画面解像度に依存しない。
         float edge = max(fwidth(angleToSun), 1e-5f);
-        float disk = 1.0f - smoothstep(halfAngle - edge, halfAngle + edge, angleToSun);
+        float diskMask = 1.0f - smoothstep(halfAngle - edge, halfAngle + edge, angleToSun);
 
-        // 太陽周辺光（aureole）: 本体の外側に滑らかに減衰するにじみを加え、円盤が
-        // 空へ唐突に切り立つ（クッキリした丸に見える）のを防ぐ。
-        // 注意: にじみの振幅を sunRadiance（キャップ無し）にそのまま比例させると、
-        // 天頂付近で透過率が最大になった瞬間に振幅が跳ね上がり、指数減衰の裾野が
-        // トーンマップ後も「見える明るさ」として残る範囲＝見た目の太陽サイズが
-        // 太陽の高度（明るさ）につれて際限なく膨らんでしまう。
-        // そのため、にじみの振幅だけは透過率を小さい値でクランプしてから使い、
-        // 本体(disk)の明るさ（＝白飛びの度合い）と、にじみの「広がり」を分離する。
-        float glowAngle = max(angleToSun - halfAngle, 0.0f);
-        float3 glowTransmittance = min(sunTransmittance, float3(0.15f, 0.15f, 0.15f));
-        float3 glowRadiance = glowTransmittance * gAtmosphere.sunDiskLuminanceScale * 0.02f;
-        float glowFalloff = exp(-glowAngle / (halfAngle * 3.0f));
+        // 周縁減光（limb darkening）: 太陽面は中心が明るく縁ほど暗い。縁で 0 へ落ちるため
+        // ディスクの外周が「切り立った円」ではなくなる。指数は波長依存（青ほど強く暗い）。
+        float centerToEdge = saturate(angleToSun / halfAngle);
+        float muDisk = sqrt(saturate(1.0f - centerToEdge * centerToEdge));
+        float3 limbDarkening = pow(max(muDisk, 1e-4f), float3(0.397f, 0.503f, 0.652f));
 
-        luminance += disk * sunRadiance + glowFalloff * glowRadiance;
+        // グレア（本体外側のにじみ）: 二重ローブの指数減衰。
+        // 振幅は sunRadiance に「一定比率」で連動させる。以前は透過率を絶対値でクランプして
+        // 振幅を抑えていたため、太陽が低いほど（＝透過率が小さいほど）にじみだけが先に
+        // 見えなくなり、白飛びしたディスクだけが裸の完全な円として残っていた。
+        // 比率を固定すればディスクとグレアの明暗差が高度によらず一定になり、
+        // どの高度でも「にじんだ光球」として見える。
+        // 見かけサイズの膨張は減衰幅で抑える（単位は太陽半径）: 内側 0.45 半径・外側 2.2 半径。
+        // 可視半径は振幅の対数でしか伸びないので、振幅が 20 倍変わっても数半径しか広がらない。
+        // なお太陽から数度に及ぶ広いオーラは Sky-View LUT のミー前方散乱が担う。
+        float x = max(angleToSun - halfAngle, 0.0f) / halfAngle; // 太陽半径単位
+        float3 glare = sunRadiance * (0.28f * exp(-x * 2.2f) + 0.02f * exp(-x * 0.45f));
+
+        luminance += diskMask * sunRadiance * limbDarkening + glare;
     }
 
     output.color.rgb = luminance * gAtmosphere.sunColor * gAtmosphere.sunIntensity;
