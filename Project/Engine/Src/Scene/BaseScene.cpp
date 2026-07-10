@@ -18,6 +18,7 @@
 #include "Scene/SceneManager.h"
 #include "ObjectCommon/Sprite/SpriteObject.h"
 #include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
+#include "Sample/TestGameObject/Ground/InfiniteGroundObject.h"
 #include "Utility/Logger/Logger.h"
 
 
@@ -54,6 +55,9 @@ namespace CoreEngine
         // シーンが SkyBox を生成していない場合のみ自動生成するため OnInitialize() の後に行う
         SetupDefaultSky();
 
+        // 既定の無限地面（y=0 のグレータイル床）のセットアップ
+        SetupDefaultGround();
+
         // 全オブジェクト生成後にシーンデータを JSON から自動復元
         LoadObjectsFromJson();
     }
@@ -89,6 +93,9 @@ namespace CoreEngine
 
         // 派生クラスの更新処理（GameObjectの更新前）
         OnUpdate();
+
+        // 既定の無限地面をカメラ XZ に追従させる（GameObject 更新前に位置を確定する）
+        UpdateGroundPlane();
 
         // ゲームオブジェクトの更新
         gameObjectManager_.UpdateAll();
@@ -205,8 +212,9 @@ namespace CoreEngine
 
     void BaseScene::Finalize()
     {
-        // 既定背景の SkyBox は gameObjectManager_ が所有しているためポインタのみクリア
+        // 既定背景の SkyBox / 無限地面は gameObjectManager_ が所有しているためポインタのみクリア
         skyBox_ = nullptr;
+        groundPlane_ = nullptr;
 
         // ゲームオブジェクトをクリア（新システム）
         gameObjectManager_.Clear();
@@ -232,9 +240,11 @@ namespace CoreEngine
         // ===== 3Dカメラの設定 =====
 
         // リリースカメラを作成して登録（斜め上から俯瞰する視点）
+        // y は既定の無限遠タイル床（y=0）より上に置く。床の高さにカメラがあると
+        // 足元の床がニアクリップで消え、地平線より下に大気の下向き（＝黒）が見えてしまう。
         auto releaseCamera = std::make_unique<Camera>();
         releaseCamera->Initialize(dxCommon->GetDevice());
-        releaseCamera->SetTranslate({ 0.0f, 0.0f, -30.0f });
+        releaseCamera->SetTranslate({ 0.0f, kDefaultCameraHeight, -30.0f });
         releaseCamera->SetRotate({ 0.0f, 0.0f, 0.0f });
 
         cameraManager_->RegisterCamera("Release", std::move(releaseCamera));
@@ -299,6 +309,10 @@ namespace CoreEngine
                 // 既定背景（大気散乱）の太陽として扱う。
                 // キューブマップモードのシーンでは大気が非アクティブのため影響はない。
                 directionalLight_->isAtmosphereSun = true;
+                // 0 = 空の輝度スケールを intensity にフォールバックさせる（従来動作）。
+                // 空を明るくしたいシーンは atmosphereIntensity のみを上げること。
+                // intensity（サーフェス直接光）を上げるとアルベドの明るい面が ACES の飽和域へ入る。
+                directionalLight_->atmosphereIntensity = 0.0f;
             }
         }
     }
@@ -321,6 +335,53 @@ namespace CoreEngine
         skyBox_->SetActive(true);
         Logger::GetInstance().Infof(LogCategory::System,
             "BaseScene: 既定背景として大気散乱モードの SkyBox を自動生成");
+    }
+
+    void BaseScene::SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate)
+    {
+        if (!cameraManager_) {
+            return;
+        }
+        if (auto* releaseCamera = dynamic_cast<Camera*>(cameraManager_->GetCamera("Release"))) {
+            releaseCamera->SetTranslate(translate);
+            releaseCamera->SetRotate(rotate);
+        }
+    }
+
+    void BaseScene::SetupDefaultGround()
+    {
+        // シーン側（OnInitialize）で生成済みの無限地面があればそれを採用する
+        for (const auto& obj : gameObjectManager_.GetAllObjects()) {
+            if (auto* sceneGround = dynamic_cast<InfiniteGroundObject*>(obj.get())) {
+                groundPlane_ = sceneGround;
+                Logger::GetInstance().Infof(LogCategory::System,
+                    "BaseScene: シーン生成の無限地面を採用");
+                return;
+            }
+        }
+
+        // シーンがオプトアウトしている場合は生成しない（独自地形・水面・2D シーン等）
+        if (!WantsDefaultGround()) {
+            return;
+        }
+
+        // 未生成なら既定の床として無限地面を自動生成する
+        groundPlane_ = CreateObject<InfiniteGroundObject>();
+        groundPlane_->SetActive(true);
+        Logger::GetInstance().Infof(LogCategory::System,
+            "BaseScene: 既定の床として無限地面を自動生成");
+    }
+
+    void BaseScene::UpdateGroundPlane()
+    {
+        if (!groundPlane_) {
+            return;
+        }
+
+        // ゲームビューカメラの XZ に追従させる（タイルはワールド固定）
+        if (const ICamera* camera = GetGameViewCamera3D()) {
+            groundPlane_->FollowCamera(camera->GetPosition());
+        }
     }
 
     void BaseScene::UpdateAtmosphere()

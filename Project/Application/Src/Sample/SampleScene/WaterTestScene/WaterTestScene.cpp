@@ -36,10 +36,17 @@ void WaterTestScene::OnInitialize() {
     // 空に映る太陽を一致させる。
     if (directionalLight_) {
         directionalLight_->direction = ComputeSunLightDirection(35.0f, 25.0f);
-        directionalLight_->intensity = 20.0f;
+        // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える。
+        // 両方に 20 を入れると床のような明るいアルベドが ACES の飽和域に入り真っ白になる。
+        directionalLight_->atmosphereIntensity = 20.0f;
+        directionalLight_->intensity = kAtmosphereSurfaceSunIntensity;
     }
 
     waterController_.Initialize(*this, *engine_);
+
+    // プール一式は既定の無限遠タイル床（y=0）の上へ 6m 持ち上げてある。
+    // 従来と同じ構図になるようカメラも同じだけ持ち上げる。
+    SetReleaseCameraTransform({ 0.0f, 6.0f, -30.0f });
 }
 
 void WaterTestScene::OnUpdate() {

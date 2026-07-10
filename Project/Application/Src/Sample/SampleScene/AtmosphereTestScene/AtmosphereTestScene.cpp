@@ -5,7 +5,6 @@
 #include "Camera/ICamera.h"
 
 #include "Sample/TestGameObject/Primitive/CubeObject.h"
-#include "Sample/TestGameObject/Primitive/PlaneObject.h"
 
 using namespace CoreEngine;
 
@@ -20,21 +19,14 @@ void AtmosphereTestScene::OnInitialize()
         const AtmosphereEditorSunSettings defaultSun{};
         directionalLight_->direction = AtmosphereEditorFacade::ComputeSunLightDirection(
             defaultSun.elevationDeg, defaultSun.azimuthDeg);
-        directionalLight_->intensity = defaultSun.intensity;
+        // 太陽UIの intensity は「空の輝度スケール」。サーフェスの直接光は別単位で与える。
+        directionalLight_->atmosphereIntensity = defaultSun.intensity;
+        directionalLight_->intensity = kAtmosphereSurfaceSunIntensity;
     }
 
     // 空は BaseScene が既定で大気散乱モードの SkyBox を自動生成するためここでは何もしない
 
-    // ===== 床（高度の目安になる基準面） =====
-    auto ground = CreateObject<PlaneObject>(40.0f, 40.0f, 10u, 10u);
-    ground->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-    if (auto* mat = ground->GetModel()->GetMaterial()) {
-        mat->SetColor({ 0.5f, 0.5f, 0.5f, 1.0f });
-        mat->SetMetallic(0.0f);
-        mat->SetRoughness(0.8f);
-        mat->SetLightingEnabled(true);
-    }
-    ground->SetActive(true);
+    // 床（高度の目安になる基準面）は BaseScene が既定で生成する無限遠タイル床（y=0）を使う
 
     // ===== 空気遠近感（Aerial Perspective）確認用の遠距離キューブ列 =====
     // 遠いものほど大気の霞で青白くなることを確認する。

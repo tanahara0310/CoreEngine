@@ -195,6 +195,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Sample\SampleScene\VolumetricCloudTestScene\CloudEditorFacade.cpp" />
     <ClCompile Include="Application\Src\Sample\SampleScene\VolumetricCloudTestScene\VolumetricCloudTestScene.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.cpp" />
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Ground\InfiniteGroundObject.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\CylinderObject.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.cpp" />
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.cpp" />
@@ -494,6 +495,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\Plane.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Model\SphereObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CubeObject.h" />
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Ground\InfiniteGroundObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\CylinderObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PlaneObject.h" />
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\PrimitiveSphereObject.h" />

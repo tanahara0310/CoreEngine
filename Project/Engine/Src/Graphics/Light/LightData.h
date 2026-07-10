@@ -13,12 +13,20 @@ namespace CoreEngine
     struct DirectionalLightData {
         Vector4 color;        // ライトの色
         Vector3 direction;    // ライトの方向
-        float intensity;      // 輝度
+        float intensity;      // 輝度（サーフェスの直接光。DeferredLighting が使用する）
         bool enabled;         // 有効フラグ（GPU側は bytes32-35 を bool として読むため、この4バイト内に他のフラグを置かない）
         uint8_t enabledPadding[3];  // enabled の4バイト境界を明示的に埋める
         bool isAtmosphereSun; // 大気散乱の太陽として扱うフラグ（CPU専用。GPU側は padding 領域として無視される）
         uint8_t sunPadding[3];      // isAtmosphereSun の4バイト境界を明示的に埋める
-        Vector2 padding;      // パディング（GPU側 float3 padding の残り8バイト）
+
+        /// @brief 大気散乱（空・雲）の輝度スケール。CPU専用（GPU側は padding 領域として無視される）
+        /// @details intensity（サーフェス直接光）とは単位系が異なる。大気の LUT は散乱係数を
+        ///          掛けた結果を返すため空が破綻しない輝度（20 前後）を要求するが、その値を
+        ///          そのままサーフェスの直接光に使うと明るいアルベドが ACES の飽和域
+        ///          （HDR >= 7.24 で 1.0 に張り付く）へ入り、テクスチャの階調が消える。
+        ///          そのため両者を分離する。0 のときは intensity にフォールバックする。
+        float atmosphereIntensity;
+        float padding;        // パディング（GPU側 float3 padding の残り4バイト）
     };
     static_assert(sizeof(DirectionalLightData) == 48,
         "DirectionalLightData は HLSL 側 LightStructures.hlsli の 48 バイトストライドと一致させること");

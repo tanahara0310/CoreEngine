@@ -31,10 +31,11 @@ void HomeworkScene::OnInitialize()
 
     for (int row = 0; row < kRows; ++row) {
         for (int col = 0; col < kCols; ++col) {
+            // 半径 0.8 なので y=0.8 で既定の無限遠タイル床（y=0）に接地する
             auto sphere = CreateObject<PrimitiveSphereObject>(0.8f, 32, 16);
             sphere->GetTransform().translate = {
                 kOriginX + col * kSpacing,
-                0.0f,
+                0.8f,
                 kOriginZ + row * kSpacing
             };
             sphere->SetActive(true);

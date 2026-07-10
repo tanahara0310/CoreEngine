@@ -46,7 +46,9 @@ void AtmosphereEditorFacade::ApplySunSettings(const AtmosphereEditorSunSettings&
     if (auto* lightManager = GetLightManager()) {
         if (DirectionalLightData* sun = lightManager->GetAtmosphereSunLight()) {
             sun->direction = ComputeSunLightDirection(settings.elevationDeg, settings.azimuthDeg);
-            sun->intensity = settings.intensity;
+            // UI の「強度」は空（大気散乱）の輝度スケール。サーフェスの直接光（sun->intensity）は
+            // 単位系が別なので触らない（同じ値を入れると明るいアルベドが ACES の飽和域に入る）。
+            sun->atmosphereIntensity = settings.intensity;
         }
     }
 
