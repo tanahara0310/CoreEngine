@@ -40,7 +40,7 @@ struct AtmosphereConstants
     float4x4 invViewProj;         // 逆ビュープロジェクション行列（Aerial Perspective 用）
 
     float3 cameraWorldPos;        // カメラのワールド座標 [m]
-    float pad2;
+    float groundLevelY;           // 地表とみなすワールドY座標 [m]（InfiniteGroundObject 等の実床と揃える）
 };
 
 /// @brief レイと原点中心球の交差判定

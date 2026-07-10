@@ -593,6 +593,7 @@ namespace CoreEngine
         constants.sunDiskLuminanceScale = parameters_.sunDiskLuminanceScale;
         constants.invViewProj = invViewProj_;
         constants.cameraWorldPos = cameraWorldPos_;
+        constants.groundLevelY = parameters_.groundLevelY;
 
         *constantData_ = constants;
     }

@@ -38,6 +38,7 @@
 #include "Graphics/Render/Pass/AerialPerspectivePass.h"
 #include "Graphics/Render/Pass/VolumetricCloudNoisePass.h"
 #include "Graphics/Render/Pass/VolumetricCloudPass.h"
+#include "Graphics/Render/Pass/GodRayPass.h"
 #include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/SceneColorCopyPass.h"
@@ -442,6 +443,9 @@ namespace CoreEngine
 
         // ボリューメトリック雲: SkyBox 描画後の SceneColor へレイマーチ結果を合成（GameView のみ）
         renderPipeline_->AddPass(std::make_unique<VolumetricCloudPass>(), RenderPassPhase::Sky, 20);
+
+        // ゴッドレイ: 雲シャドウマップ生成 + 内散乱の遮蔽差分を SceneColor へ合成（GameView のみ）
+        renderPipeline_->AddPass(std::make_unique<GodRayPass>(), RenderPassPhase::Sky, 30);
 
         renderPipeline_->AddPass(std::make_unique<TransparentQueuePass>(), RenderPassPhase::Transparent, 0);
 

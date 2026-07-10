@@ -102,6 +102,59 @@ PixelShaderOutput main(VertexShaderOutput input)
     }
 
     output.color.rgb = luminance * gAtmosphere.sunColor * gAtmosphere.sunIntensity;
+
+    // ===== 地面の解析的フィル（無限遠タイル床の遠景埋め） =====
+    // InfiniteGroundObject は有限メッシュ（半径60km）のため、カメラ高度が上がる・
+    // 視線が水平に近づくほど「地面との交点」までの距離が際限なく伸び、メッシュの縁や
+    // カメラの far clip より先に大気の下向き視線（ここまでの luminance。ほぼ0）が露出する。
+    // ここでは視線と y = groundLevelY 平面の交点を解析的に（メッシュ非依存で）求め、
+    // 実床と同じ1m角チェッカーを焼くことでその領域を埋める。
+    // 距離によるフェード・暗転は行わない（以前は haze で遠方を暗くしていたが、
+    // 「遠いものほど黒く薄いグレーになる」「模様が途中から見えなくなる」との指摘を受け撤去した）。
+    // チェッカーは fwidth による解析的ボックスフィルタ（IQ の checkersGradBox 法）で
+    // アンチエイリアスする。ハードな floor/fmod 判定は遠方でモアレを起こすが、単純に
+    // 距離でコントラストを均すと「模様が消える」問題を再発するため、正しいピクセルフィルタで
+    // 解決する（ピクセルが解像できる限り模様は保持される。実テクスチャのミップと同じ理屈）。
+    // 実メッシュは通常の深度テストで手前にあればそのまま優先され、これは背景埋めに過ぎない。
+    // sunIntensity（空の輝度スケール, 既定20）は実床の直接光スケール（既定1.75）と桁が違うため、
+    // luminance には混ぜず、このフィルは独立した美術値スケール(kGroundLightScale)で計算する。
+    if (intersectGround && viewDir.y < -1e-5f)
+    {
+        float tGround = (gAtmosphere.groundLevelY - gAtmosphere.cameraWorldPos.y) / viewDir.y;
+        if (tGround > 0.0f)
+        {
+            float3 groundPointWS = gAtmosphere.cameraWorldPos + viewDir * tGround;
+
+            // 1m角チェッカー（InfiniteGroundObject の tile_white.png と同じ 2m 周期に揃える）。
+            // 位相は world (0,0) 起点。実メッシュの UV 焼き込みも world 座標基準のため
+            // カメラ追従のタイルスナップに関わらずここと位相が一致する。
+            const float kGroundCheckerCellM = 1.0f;
+            const float kGroundCheckerDark = 0.55f;
+            float2 p = groundPointWS.xz / kGroundCheckerCellM;
+            float2 w = fwidth(p) + 1e-4f;
+            // IQ の checkersGradBox: 解析的ボックスフィルタで市松をアンチエイリアスする。
+            // https://iquilezles.org/articles/checkerfiltering/
+            float2 i = 2.0f * (abs(frac((p - 0.5f * w) * 0.5f) - 0.5f)
+                              - abs(frac((p + 0.5f * w) * 0.5f) - 0.5f)) / w;
+            float checkerT = 0.5f - 0.5f * i.x * i.y; // 0..1（0.5=解像不能なほど遠方＝平均へ収束）
+            float checker = lerp(kGroundCheckerDark, 1.0f, checkerT);
+
+            float NdotL = saturate(dot(float3(0.0f, 1.0f, 0.0f), toSun));
+            float groundRadiusKm = radiusKm + (gAtmosphere.groundLevelY - gAtmosphere.cameraWorldPos.y) * 0.001f;
+            float3 groundPosAtmo = float3(0.0f, groundRadiusKm, 0.0f);
+            float3 sunTransAtGround = SampleTransmittanceToSun(
+                gTransmittanceLUT, gLUTSampler, groundPosAtmo, toSun, gAtmosphere);
+
+            // 直接光 + 常夜灯的な最小アンビエント（夜間も完全な黒穴に戻らないようにする）
+            const float kGroundLightScale = 5.0f;   // 美術値。実床（DeferredLighting）の明るさに大まかに合わせる
+            const float kGroundAmbientFloor = 0.03f;
+            float3 groundColor = gAtmosphere.groundAlbedo * checker * gAtmosphere.sunColor
+                                * (NdotL * sunTransAtGround * kGroundLightScale + kGroundAmbientFloor);
+
+            output.color.rgb += groundColor;
+        }
+    }
+
     output.color.a = 1.0f;
     return output;
 }

@@ -18,14 +18,33 @@ namespace CoreEngine
         /// @brief デバッグカメラの操作設定
         struct CameraSettings {
             float rotationSensitivity = 0.003f;     // マウス回転感度（低めに調整）
-            float panSensitivity = 0.0005f;    // パン操作感度
-            float zoomSensitivity = 1.0f;         // ズーム感度
+            // パン操作感度（ワールド単位/ピクセル。以前は distance_ に比例していたため
+            // 注視点に近づくほど（distance_ が小さいほど）パンが実質止まって見えた。
+            // 固定値にすることでズーム量に関わらず一定速度でパンできるようにする。
+            float panSensitivity = 0.05f;
+            // ズーム1ノッチあたりの視線方向ドリー移動量 [m]。
+            // distance_ に比例させず一定値にすることで、注視点に寄っても頭打ちにならず、
+            // 遠くでもステップが巨大化せず、どの位置でも同じ量でズームできる。
+            float zoomSensitivity = 2.0f;
             float minDistance = 0.1f;    // 最小距離（制限を大幅に緩和）
             float maxDistance = 10000.0f;       // 最大距離（制限を大幅に緩和）
             bool invertY = false;     // Y軸反転
             bool smoothMovement = true;    // スムーズ移動
             float smoothingFactor = 0.2f;           // スムージング係数
             bool useGameView = false;               // Gameビューでのカメラ操作を有効化
+
+            // ===== WASD 自由移動（distance_/target_ の束縛を受けないワールド固定速度） =====
+            float flySpeed = 10.0f;        // 基本速度 [m/s]
+            float flySpeedBoost = 4.0f;    // Shift 押下時の速度倍率
+
+            // ===== 移動範囲の制限 =====
+            // 注視点（target_ ＝ カメラの回転中心）を収める範囲。ズーム(ドリー)・パン・
+            // WASD 自由移動はすべて target_ を動かすため、ここでクランプすればカメラが
+            // どこまでも飛んでいくのを防げる。以前は 100km と実質無制限だったため、
+            // 有限で扱いやすい範囲に絞る（必要に応じて SetSettings で調整可能）。
+            float maxHorizontalExtent = 5000.0f;   // 水平(X/Z)方向の移動限界 [m]（原点からの各軸絶対値）
+            float minHeight = -100.0f;             // 注視点の最低高度 [m]（地面下へ潜りすぎない）
+            float maxHeight = 10000.0f;            // 注視点の最高高度 [m]
         };
 
         /// @brief カメラプリセット
@@ -196,6 +215,13 @@ private:
         /// @brief マウス操作を処理（エンジンのMouseInputクラス使用）
         void HandleMouseInput();
 
+        /// @brief WASD等によるキーボード自由移動を処理
+        /// @details target_（＝カメラの回転中心）を視線基準の forward/right/up 方向へ
+        ///          ワールド固定速度で移動させる。distance_ には依存しないため、
+        ///          注視点との距離に関わらず常に一定速度で自由に移動できる。
+        /// @param deltaTime 前フレームからの経過秒
+        void HandleKeyboardInput(float deltaTime);
+
         /// @brief シーンウィンドウ内でのマウス操作かを判定
         /// @return シーンウィンドウ内での操作の場合true
         bool IsMouseInSceneWindow() const;
@@ -213,6 +239,11 @@ private:
         /// @param angle 角度（ラジアン）
         /// @return 正規化された角度
         float NormalizeAngle(float angle) const;
+
+        /// @brief target_ を移動範囲（水平 maxHorizontalExtent／高度 min-maxHeight）へクランプする
+        /// @details ズーム(ドリー)・パン・WASD 自由移動それぞれの末尾で呼ぶ。これが無いと
+        ///          注視点をどこまでも動かせてしまい、カメラが無限にワールド上を移動できてしまう。
+        void ClampTargetToWorldBounds();
 
         /// @brief スムーズ移動を更新
         void UpdateSmoothMovement();

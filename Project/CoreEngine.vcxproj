@@ -216,6 +216,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudNoisePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\GodRayPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.cpp" />
@@ -704,6 +705,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudNoisePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.h" />

@@ -37,6 +37,22 @@ namespace CoreEngine
     static_assert(sizeof(VolumetricCloudShaderConstants) == 224,
         "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 224 バイトレイアウトと一致させること");
 
+    /// @brief ゴッドレイシェーダーへ渡す定数バッファレイアウト
+    /// @details HLSL 側 GodRayCommon.hlsli の GodRayConstants と一致させること（128 バイト）。
+    ///          太陽方向・散乱係数などは gAtmosphere / gCloud 側 CB から取るため持たない。
+    struct GodRayShaderConstants {
+        Matrix4x4 invViewProj;                                      // 0
+        Vector3 cameraWorldPos;      float maxDistanceM;            // 64
+        float shadowRegionCenterX;   float shadowRegionCenterZ;
+        float shadowRegionSizeM;     float shadowAnchorWorldY;      // 80
+        float intensity;             float mieBoost;
+        float groundLevelY;          float edgeFadeStart;           // 96
+        uint32_t stepCount;          uint32_t outputWidth;
+        uint32_t outputHeight;       uint32_t pad0;                 // 112 (= 128)
+    };
+    static_assert(sizeof(GodRayShaderConstants) == 128,
+        "GodRayShaderConstants は HLSL 側 GodRayConstants の 128 バイトレイアウトと一致させること");
+
     /// @brief 雲の見た目パラメータ（単位はメートル・秒・無次元）
     /// @details 既定値は設計書 12 章の一覧に準拠（地球の積雲を想定）。
     struct VolumetricCloudParameters {
@@ -126,6 +142,14 @@ namespace CoreEngine
         /// 実測では 1 にしても見た目の改善は無く（雲底のぼやけは密度勾配由来）、
         /// GPU 使用率が 56% → 86% へ増える。既定は 2。
         uint32_t resolutionDivisor = 2;
+
+        // ===== ゴッドレイ（雲の隙間の光芒） =====
+        bool godRayEnabled = true;               ///< ゴッドレイの有効/無効
+        float godRayIntensity = 1.0f;            ///< 遮蔽差分（物理項）のスケール。1 が物理値
+        float godRayMieBoost = 0.8f;             ///< 加算ミー項（演出）。0 で完全物理
+        float godRayMaxDistanceM = 25000.0f;     ///< ビューレイマーチの最大距離 [m]
+        uint32_t godRayStepCount = 32;           ///< ビューレイマーチのステップ数
+        float cloudShadowRegionSizeM = 60000.0f; ///< 雲シャドウマップのカバー範囲（一辺）[m]
     };
 
     /// @brief ボリューメトリック雲システムの管理クラス
@@ -138,6 +162,8 @@ namespace CoreEngine
         static constexpr uint32_t kBaseShapeNoiseSize = 128;
         static constexpr uint32_t kDetailNoiseSize = 32;
         static constexpr uint32_t kWeatherMapSize = 512;
+        // 雲シャドウマップ解像度（HLSL 側 GodRayCommon.hlsli の定数と一致させること）
+        static constexpr uint32_t kCloudShadowMapSize = 1024;
 
         /// @brief 初期化
         /// @param device D3D12 デバイス
@@ -205,6 +231,20 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
             const AtmosphereManager* atmosphereManager);
 
+        // ===== ゴッドレイ（GodRayPass から呼ばれる） =====
+
+        /// @brief 雲シャドウマップ生成 → ゴッドレイマーチ → SceneColor 合成
+        /// @details 合成モデルは差分法（遮蔽あり − 遮蔽なし ≤ 0 を加算）。
+        ///          既存の Sky-View / Aerial Perspective が加算済みの「遮蔽なし内散乱」との
+        ///          二重加算を避けつつ、雲影の空気柱を暗くして光芒の明暗対比を作る。
+        void RenderGodRays(
+            ID3D12GraphicsCommandList* cmdList,
+            ID3D12Resource* sceneColor,
+            D3D12_RESOURCE_STATES& sceneColorState,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
+            const AtmosphereManager* atmosphereManager);
+
     private:
         /// @brief 現在のパラメータ・カメラ・太陽情報から定数バッファを更新する
         void UploadConstants();
@@ -221,6 +261,15 @@ namespace CoreEngine
         /// @brief 半解像度 CloudBuffer と合成用中間テクスチャを SceneColor サイズ追従で確保する（Phase 2 で実装）
         bool EnsureCloudTargets(ID3D12Resource* sceneColor);
 
+        /// @brief 雲シャドウマップテクスチャと CB を生成する（ゴッドレイ用）
+        bool CreateGodRayResources(ID3D12Device* device, DescriptorManager* descriptorManager);
+
+        /// @brief ゴッドレイ用コンピュートパイプライン群を構築する
+        bool CreateGodRayPipelines(ID3D12Device* device);
+
+        /// @brief ゴッドレイ CB を現在のカメラ・パラメータで更新する
+        void UploadGodRayConstants(const AtmosphereManager* atmosphereManager);
+
         // ===== シェーダープロバイダ（AtmosphereManager の Provider 構造体群を踏襲） =====
         struct BaseShapeNoiseShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudBaseShapeNoise.CS.hlsl"; }
@@ -236,6 +285,15 @@ namespace CoreEngine
         };
         struct CompositeShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudComposite.CS.hlsl"; }
+        };
+        struct CloudShadowMapShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"CloudShadowMap.CS.hlsl"; }
+        };
+        struct GodRayMarchShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"GodRayMarch.CS.hlsl"; }
+        };
+        struct GodRayCompositeShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"GodRayComposite.CS.hlsl"; }
         };
 
         VolumetricCloudParameters parameters_{};
@@ -294,6 +352,24 @@ namespace CoreEngine
         uint64_t targetsWidth_ = 0;
         uint32_t targetsHeight_ = 0;
 
+        // ===== ゴッドレイ =====
+        // 雲シャドウマップ（1024² R16_FLOAT。太陽方向の雲透過率の上面図）
+        Microsoft::WRL::ComPtr<ID3D12Resource> cloudShadowMap_;
+        D3D12_RESOURCE_STATES cloudShadowMapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMapSrvHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMapUavHandle_{};
+
+        // 半解像度ゴッドレイバッファ（EnsureCloudTargets で cloudBuffer_ と同サイズ確保）
+        Microsoft::WRL::ComPtr<ID3D12Resource> godRayBuffer_;
+        D3D12_RESOURCE_STATES godRayBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        D3D12_GPU_DESCRIPTOR_HANDLE godRayBufferSrvHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE godRayBufferUavHandle_{};
+
+        // ゴッドレイ定数バッファ（永続マップ）
+        Microsoft::WRL::ComPtr<ID3D12Resource> godRayConstantBuffer_;
+        GodRayShaderConstants* godRayConstantData_ = nullptr;
+        bool godRayPipelinesReady_ = false;
+
         // パイプライン
         CustomShaderPipeline baseShapeNoisePipeline_{};
         BaseShapeNoiseShaderProvider baseShapeNoiseShaderProvider_{};
@@ -305,5 +381,11 @@ namespace CoreEngine
         RayMarchShaderProvider rayMarchShaderProvider_{};
         CustomShaderPipeline compositePipeline_{};
         CompositeShaderProvider compositeShaderProvider_{};
+        CustomShaderPipeline cloudShadowPipeline_{};
+        CloudShadowMapShaderProvider cloudShadowShaderProvider_{};
+        CustomShaderPipeline godRayMarchPipeline_{};
+        GodRayMarchShaderProvider godRayMarchShaderProvider_{};
+        CustomShaderPipeline godRayCompositePipeline_{};
+        GodRayCompositeShaderProvider godRayCompositeShaderProvider_{};
     };
 }

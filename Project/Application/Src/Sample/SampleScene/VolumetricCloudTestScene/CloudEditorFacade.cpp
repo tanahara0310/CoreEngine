@@ -96,6 +96,19 @@ void CloudEditorFacade::DrawImGui()
         ImGui::DragFloat("サンライトマーチ基準ステップ [m]", &params.lightMarchStepM, 5.0f, 20.0f, 1000.0f, "%.0f");
     }
 
+    // ===== ゴッドレイ（雲の隙間の光芒） =====
+    if (ImGui::CollapsingHeader("ゴッドレイ", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Checkbox("ゴッドレイを有効にする", &params.godRayEnabled);
+        ImGui::DragFloat("遮蔽差分の強度（物理項）", &params.godRayIntensity, 0.05f, 0.0f, 3.0f, "%.2f");
+        ImGui::DragFloat("ミー散乱ブースト（演出）", &params.godRayMieBoost, 0.05f, 0.0f, 2.0f, "%.2f");
+        ImGui::DragFloat("マーチ最大距離 [m]##godray", &params.godRayMaxDistanceM, 500.0f, 5000.0f, 60000.0f, "%.0f");
+        int godRaySteps = static_cast<int>(params.godRayStepCount);
+        if (ImGui::SliderInt("ステップ数##godray", &godRaySteps, 8, 64)) {
+            params.godRayStepCount = static_cast<uint32_t>(godRaySteps);
+        }
+        ImGui::DragFloat("雲シャドウ範囲 [m]", &params.cloudShadowRegionSizeM, 1000.0f, 20000.0f, 200000.0f, "%.0f");
+    }
+
     // ===== マーチング・パフォーマンス =====
     if (ImGui::CollapsingHeader("マーチング・パフォーマンス")) {
         int maxSteps = static_cast<int>(params.maxSteps);

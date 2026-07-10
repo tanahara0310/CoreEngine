@@ -100,6 +100,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\GodRayPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClCompile>
@@ -1540,6 +1543,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">

@@ -10,6 +10,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace CoreEngine
 {
@@ -41,17 +42,26 @@ namespace CoreEngine
         constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&constantData_));
         UploadConstants();
 
+        // ゴッドレイ定数バッファ（永続マップ）
+        godRayConstantBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(GodRayShaderConstants));
+        godRayConstantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&godRayConstantData_));
+
         // ノイズリソースと生成パイプライン（Phase 1）。
         // レイマーチ/合成パイプライン（Phase 2）は CreateRenderPipelines で別途構築する。
         const bool noiseResourcesReady = CreateNoiseResources(device, descriptorManager);
         noisePipelinesReady_ = noiseResourcesReady && CreateNoisePipelines(device);
         pipelinesReady_ = CreateRenderPipelines(device);
 
+        // ゴッドレイ（失敗しても雲本体は無効化しない）
+        const bool godRayResourcesReady = CreateGodRayResources(device, descriptorManager);
+        godRayPipelinesReady_ = godRayResourcesReady && CreateGodRayPipelines(device);
+
         Logger::GetInstance().Infof(LogCategory::Graphics,
-            "VolumetricCloudManager: 初期化完了 (雲底={:.0f}m, 層厚={:.0f}m, ノイズ生成={}, 描画={})",
+            "VolumetricCloudManager: 初期化完了 (雲底={:.0f}m, 層厚={:.0f}m, ノイズ生成={}, 描画={}, ゴッドレイ={})",
             parameters_.layerBottomAltitudeM, parameters_.layerThicknessM,
             noisePipelinesReady_ ? "OK" : "無効",
-            pipelinesReady_ ? "OK" : "無効");
+            pipelinesReady_ ? "OK" : "無効",
+            godRayPipelinesReady_ ? "OK" : "無効");
     }
 
     void VolumetricCloudManager::Update(const Vector3& cameraWorldPosition,
@@ -458,7 +468,7 @@ namespace CoreEngine
         }
 
         // SceneColor と同サイズで確保済みなら再利用
-        if (compositeResult_ &&
+        if (compositeResult_ && godRayBuffer_ &&
             compositeResult_->GetDesc().Width == sceneDesc.Width &&
             compositeResult_->GetDesc().Height == sceneDesc.Height) {
             return true;
@@ -507,6 +517,32 @@ namespace CoreEngine
             descriptorManager_->CreateUAV(cloudBuffer_.Get(), uavDesc, cpuHandle, cloudBufferUavHandle_, "CloudBufferUAV");
         }
 
+        // ===== 半解像度ゴッドレイバッファ（CloudBuffer と同サイズ・同フォーマット） =====
+        try {
+            godRayBuffer_ = ResourceFactory::CreateTextureResource(
+                deviceRef, cloudDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
+        catch (const std::exception&) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "VolumetricCloudManager: 半解像度 GodRayBuffer の生成に失敗");
+            return false;
+        }
+        godRayBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+        {
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.Format = cloudDesc.Format;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MipLevels = 1;
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+            uavDesc.Format = cloudDesc.Format;
+            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+            D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
+            descriptorManager_->CreateSRV(godRayBuffer_.Get(), srvDesc, cpuHandle, godRayBufferSrvHandle_, "GodRayBufferSRV");
+            descriptorManager_->CreateUAV(godRayBuffer_.Get(), uavDesc, cpuHandle, godRayBufferUavHandle_, "GodRayBufferUAV");
+        }
+
         // ===== 合成用中間テクスチャ（SceneColor と同サイズ・同フォーマット, UAV） =====
         D3D12_RESOURCE_DESC compositeDesc = sceneDesc;
         compositeDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
@@ -532,5 +568,300 @@ namespace CoreEngine
         targetsWidth_ = halfW;
         targetsHeight_ = halfH;
         return true;
+    }
+
+    bool VolumetricCloudManager::CreateGodRayResources(ID3D12Device* device, DescriptorManager* descriptorManager)
+    {
+        if (!device || !descriptorManager) {
+            return false;
+        }
+
+        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
+
+        // ===== 雲シャドウマップ（1024² R16_FLOAT） =====
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        desc.Width = kCloudShadowMapSize;
+        desc.Height = kCloudShadowMapSize;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.Format = DXGI_FORMAT_R16_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        try {
+            cloudShadowMap_ = ResourceFactory::CreateTextureResource(
+                deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
+        catch (const std::exception&) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "VolumetricCloudManager: 雲シャドウマップテクスチャの生成に失敗");
+            return false;
+        }
+        cloudShadowMapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = desc.Format;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+        uavDesc.Format = desc.Format;
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
+        descriptorManager->CreateSRV(cloudShadowMap_.Get(), srvDesc, cpuHandle, cloudShadowMapSrvHandle_, "CloudShadowMapSRV");
+        descriptorManager->CreateUAV(cloudShadowMap_.Get(), uavDesc, cpuHandle, cloudShadowMapUavHandle_, "CloudShadowMapUAV");
+
+        return true;
+    }
+
+    bool VolumetricCloudManager::CreateGodRayPipelines(ID3D12Device* device)
+    {
+        ShaderCompiler shaderCompiler;
+        shaderCompiler.Initialize();
+
+        ShaderReflectionBuilder reflectionBuilder;
+        reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
+
+        const bool shadowBuilt = cloudShadowPipeline_.Build(
+            device, shaderCompiler, reflectionBuilder, cloudShadowShaderProvider_);
+        if (!shadowBuilt || !cloudShadowPipeline_.HasComputePSO()) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "VolumetricCloudManager: CloudShadowMap コンピュートパイプラインの構築に失敗");
+            return false;
+        }
+
+        const bool marchBuilt = godRayMarchPipeline_.Build(
+            device, shaderCompiler, reflectionBuilder, godRayMarchShaderProvider_);
+        if (!marchBuilt || !godRayMarchPipeline_.HasComputePSO()) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "VolumetricCloudManager: GodRayMarch コンピュートパイプラインの構築に失敗");
+            return false;
+        }
+
+        const bool godRayCompositeBuilt = godRayCompositePipeline_.Build(
+            device, shaderCompiler, reflectionBuilder, godRayCompositeShaderProvider_);
+        if (!godRayCompositeBuilt || !godRayCompositePipeline_.HasComputePSO()) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "VolumetricCloudManager: GodRayComposite コンピュートパイプラインの構築に失敗");
+            return false;
+        }
+
+        return true;
+    }
+
+    void VolumetricCloudManager::UploadGodRayConstants(const AtmosphereManager* atmosphereManager)
+    {
+        if (!godRayConstantData_) {
+            return;
+        }
+
+        const float groundY = atmosphereManager
+            ? atmosphereManager->GetParameters().groundLevelY
+            : 0.0f;
+
+        GodRayShaderConstants g{};
+        g.invViewProj = invViewProj_;
+        g.cameraWorldPos = cameraWorldPos_;
+        g.maxDistanceM = parameters_.godRayMaxDistanceM;
+
+        // シャドウマップ範囲の中心はテクセルサイズへスナップする（カメラ移動での泳ぎ防止）
+        const float texelM = parameters_.cloudShadowRegionSizeM / static_cast<float>(kCloudShadowMapSize);
+        g.shadowRegionCenterX = std::floor(cameraWorldPos_.x / texelM) * texelM;
+        g.shadowRegionCenterZ = std::floor(cameraWorldPos_.z / texelM) * texelM;
+        g.shadowRegionSizeM = parameters_.cloudShadowRegionSizeM;
+        g.shadowAnchorWorldY = groundY + parameters_.layerBottomAltitudeM;
+
+        g.intensity = parameters_.godRayIntensity;
+        g.mieBoost = parameters_.godRayMieBoost;
+        g.groundLevelY = groundY;
+        g.edgeFadeStart = 0.8f;
+        g.stepCount = std::max(parameters_.godRayStepCount, 1u);
+        g.outputWidth = static_cast<uint32_t>(targetsWidth_);
+        g.outputHeight = targetsHeight_;
+
+        *godRayConstantData_ = g;
+    }
+
+    void VolumetricCloudManager::RenderGodRays(
+        ID3D12GraphicsCommandList* cmdList,
+        ID3D12Resource* sceneColor,
+        D3D12_RESOURCE_STATES& sceneColorState,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
+        const AtmosphereManager* atmosphereManager)
+    {
+        if (!cmdList || !godRayPipelinesReady_ || !noiseGenerated_ || !atmosphereManager) {
+            return;
+        }
+        if (!parameters_.godRayEnabled) {
+            return;
+        }
+        if (!EnsureCloudTargets(sceneColor)) {
+            return;
+        }
+
+        // 出力サイズ（半解像度）確定後に CB を更新する
+        UploadGodRayConstants(atmosphereManager);
+
+        // ===== 雲シャドウマップ生成 =====
+        // 風の移流・太陽移動・カメラ追従で毎フレーム変わるため、雲アクティブ中は毎回焼き直す
+        // （1024²×24 サンプルの cheap 密度で Transmittance LUT 生成より軽い）。
+        ResourceBarrierHelper::Transition(cmdList, cloudShadowMap_.Get(),
+            cloudShadowMapState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmdList->SetPipelineState(cloudShadowPipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(cloudShadowPipeline_.GetComputeRootSignature());
+
+        {
+            const int cloudCbSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gCloud");
+            if (cloudCbSlot >= 0) {
+                cmdList->SetComputeRootConstantBufferView(
+                    static_cast<UINT>(cloudCbSlot), constantBuffer_->GetGPUVirtualAddress());
+            }
+            const int godRayCbSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gGodRay");
+            if (godRayCbSlot >= 0) {
+                cmdList->SetComputeRootConstantBufferView(
+                    static_cast<UINT>(godRayCbSlot), godRayConstantBuffer_->GetGPUVirtualAddress());
+            }
+            const int baseSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gBaseShapeNoise");
+            if (baseSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_);
+            }
+            const int detailSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gDetailNoise");
+            if (detailSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_);
+            }
+            const int weatherSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gWeatherMap");
+            if (weatherSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_);
+            }
+            const int outSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gCloudShadowMap");
+            if (outSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), cloudShadowMapUavHandle_);
+            }
+        }
+
+        cmdList->Dispatch(
+            (kCloudShadowMapSize + 7) / 8,
+            (kCloudShadowMapSize + 7) / 8,
+            1);
+
+        // マーチ CS が SRV として読めるよう遷移
+        ResourceBarrierHelper::UAV(cmdList, cloudShadowMap_.Get());
+        ResourceBarrierHelper::Transition(cmdList, cloudShadowMap_.Get(),
+            cloudShadowMapState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        // ===== ゴッドレイマーチ CS: 遮蔽差分を半解像度で積分 =====
+        // 雲透過率（cloudBuffer_.a）で差分をスケールするため SRV として読む
+        // （RenderClouds が末尾で UAV 状態へ戻している）
+        ResourceBarrierHelper::Transition(cmdList, cloudBuffer_.Get(),
+            cloudBufferState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, godRayBuffer_.Get(),
+            godRayBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmdList->SetPipelineState(godRayMarchPipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(godRayMarchPipeline_.GetComputeRootSignature());
+
+        {
+            const int cbSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gGodRay");
+            if (cbSlot >= 0) {
+                cmdList->SetComputeRootConstantBufferView(
+                    static_cast<UINT>(cbSlot), godRayConstantBuffer_->GetGPUVirtualAddress());
+            }
+            const int atmoCbSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gAtmosphere");
+            if (atmoCbSlot >= 0) {
+                cmdList->SetComputeRootConstantBufferView(
+                    static_cast<UINT>(atmoCbSlot), atmosphereManager->GetConstantBufferGPUAddress());
+            }
+            const int shadowSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gCloudShadowMap");
+            if (shadowSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(shadowSlot), cloudShadowMapSrvHandle_);
+            }
+            const int transmittanceSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
+            if (transmittanceSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(
+                    static_cast<UINT>(transmittanceSlot), atmosphereManager->GetTransmittanceLUTSRVHandle());
+            }
+            const int depthSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gSceneDepth");
+            if (depthSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(depthSlot), depthSrvHandle);
+            }
+            const int cloudBufSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gCloudBuffer");
+            if (cloudBufSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(cloudBufSlot), cloudBufferSrvHandle_);
+            }
+            const int outSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gGodRayOutput");
+            if (outSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), godRayBufferUavHandle_);
+            }
+        }
+
+        cmdList->Dispatch(
+            (static_cast<UINT>(targetsWidth_) + 7) / 8,
+            (targetsHeight_ + 7) / 8,
+            1);
+
+        // 合成 CS が SRV として読めるよう遷移
+        ResourceBarrierHelper::UAV(cmdList, godRayBuffer_.Get());
+        ResourceBarrierHelper::Transition(cmdList, godRayBuffer_.Get(),
+            godRayBufferState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        // ===== 合成 CS: SceneColor + Δ輝度 → 中間テクスチャ =====
+        ResourceBarrierHelper::Transition(cmdList, sceneColor,
+            sceneColorState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, compositeResult_.Get(),
+            compositeResultState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmdList->SetPipelineState(godRayCompositePipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(godRayCompositePipeline_.GetComputeRootSignature());
+
+        {
+            const int cbSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gGodRay");
+            if (cbSlot >= 0) {
+                cmdList->SetComputeRootConstantBufferView(
+                    static_cast<UINT>(cbSlot), godRayConstantBuffer_->GetGPUVirtualAddress());
+            }
+            const int sceneSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gSceneColor");
+            if (sceneSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(sceneSlot), sceneColorSrvHandle);
+            }
+            const int bufSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gGodRayBuffer");
+            if (bufSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(bufSlot), godRayBufferSrvHandle_);
+            }
+            const int outSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gOutput");
+            if (outSlot >= 0) {
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), compositeResultUavHandle_);
+            }
+        }
+
+        cmdList->Dispatch(
+            (static_cast<UINT>(compositeResult_->GetDesc().Width) + 7) / 8,
+            (compositeResult_->GetDesc().Height + 7) / 8,
+            1);
+
+        // ===== 結果を SceneColor へコピーバック =====
+        ResourceBarrierHelper::UAV(cmdList, compositeResult_.Get());
+        ResourceBarrierHelper::Transition(cmdList, compositeResult_.Get(),
+            compositeResultState_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        ResourceBarrierHelper::Transition(cmdList, sceneColor,
+            sceneColorState, D3D12_RESOURCE_STATE_COPY_DEST);
+
+        cmdList->CopyResource(sceneColor, compositeResult_.Get());
+
+        // 後続パス（Transparent 等）に備えて元の想定状態へ戻す
+        ResourceBarrierHelper::Transition(cmdList, sceneColor,
+            sceneColorState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, compositeResult_.Get(),
+            compositeResultState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(cmdList, godRayBuffer_.Get(),
+            godRayBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(cmdList, cloudShadowMap_.Get(),
+            cloudShadowMapState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(cmdList, cloudBuffer_.Get(),
+            cloudBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 }
