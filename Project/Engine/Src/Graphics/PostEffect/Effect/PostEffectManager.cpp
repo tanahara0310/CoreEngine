@@ -19,6 +19,7 @@
 #include "RasterScroll/RasterScroll.h"
 #include "FadeEffect/FadeEffect.h"
 #include "Bloom/Bloom.h"
+#include "LensFlare/LensFlare.h"
 #include "Dissolve/Dissolve.h"
 #include "ToneMapping/ToneMapping.h"
 #include "Outline/Outline.h"
@@ -73,6 +74,8 @@ void PostEffectManager::RegisterAllEffects()
     RegisterEffect<Invert>(PostEffectNames::Invert, false);
     RegisterEffect<RasterScroll>(PostEffectNames::RasterScroll, false);
     RegisterEffect<Bloom>(PostEffectNames::Bloom, false);
+    // レンズフレアは既定で有効（大気散乱の太陽等の高輝度光源で自動的に発生する）
+    RegisterEffect<LensFlare>(PostEffectNames::LensFlare, true);
     RegisterEffect<Dissolve>(PostEffectNames::Dissolve, false);
 
     // アウトラインはデフォルトで無効
@@ -84,6 +87,7 @@ void PostEffectManager::RegisterAllEffects()
     // エフェクトチェーンの順序を登録と同じ場所で定義（二重管理を防ぐ）
     effectChain_ = {
         PostEffectNames::Bloom,
+        PostEffectNames::LensFlare, // HDR 空間で合成するため ToneMapping より前
         PostEffectNames::ToneMapping,
         PostEffectNames::FadeEffect,
         PostEffectNames::Shockwave,

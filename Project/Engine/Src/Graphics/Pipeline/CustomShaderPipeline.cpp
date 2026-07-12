@@ -159,6 +159,9 @@ namespace CoreEngine
         // 端で反対側の値が巻き込まれ、地平線・天頂・太陽方位の境界にアーティファクトが出る。
         // この名前のサンプラーを持たないシェーダーでは無視されるため他パイプラインには無影響。
         csConfig.ConfigureSampler("gLUTSampler", SamplerConfig::LinearClamp());
+        // スクリーンスペース系 CS（レンズフレア等）の汎用クランプサンプラー。
+        // 画面外へはみ出す UV を端で止める（WRAP だと反対側の輝度が巻き込まれる）。
+        csConfig.ConfigureSampler("gLinearClamp", SamplerConfig::LinearClamp());
 
         auto buildResult = computeRootSignatureMg_->Build(device, *csReflection, csConfig);
         if (!buildResult.success) {

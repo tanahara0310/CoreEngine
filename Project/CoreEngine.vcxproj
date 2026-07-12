@@ -295,6 +295,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare\LensFlare.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration\ChromaticAberration.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading\ColorGrading.cpp" />
@@ -569,6 +570,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\VertexData.h" />
     <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare\LensFlare.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ChromaticAberration\ChromaticAberration.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading\ColorGrading.h" />

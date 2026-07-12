@@ -328,6 +328,9 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare\LensFlare.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LensFlare</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Blur</Filter>
     </ClCompile>
@@ -1136,6 +1139,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare\LensFlare.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LensFlare</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Blur</Filter>
@@ -2316,6 +2322,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Bloom">
       <UniqueIdentifier>{5BA920F8-B810-440F-8341-B3E2DE6CEDB1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare">
+      <UniqueIdentifier>{A7C3E9D1-4B26-4F8E-9C05-6D1B2E8F3A47}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Blur">
       <UniqueIdentifier>{8804A9D4-C949-4F15-832E-578756300F3A}</UniqueIdentifier>
