@@ -13,7 +13,6 @@
 #include "Utility/Logger/Logger.h"
 
 #include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
-#include "Sample/TestGameObject/Primitive/PlaneObject.h"
 #include "Sample/TestGameObject/Primitive/PrimitiveSphereObject.h"
 #include "Sample/TestGameObject/Primitive/CubeObject.h"
 #include "Sample/TestGameObject/Primitive/RingObject.h"
@@ -49,8 +48,9 @@ void PrimitiveTestScene::OnInitialize()
     skyBox->SetActive(true);
 
     // ===== リング（Ring） =====
+    // リングは XY 平面（垂直）に生成されるため、外周半径 1.5 より高い位置に置いて床に埋めない
     auto ring = CreateObject<RingObject>(1.5f, 0.5f, 64u, "gradationLine.png");
-    ring->GetTransform().translate = { 0.0f, 1.0f, 0.0f };
+    ring->GetTransform().translate = { 0.0f, 1.8f, 0.0f };
     ring->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
     ring->SetBlendMode(BlendMode::kBlendModeNormal);
     if (auto* mat = ring->GetModel()->GetMaterial()) {
@@ -62,8 +62,9 @@ void PrimitiveTestScene::OnInitialize()
     ring->SetActive(true);
 
     // ===== シリンダー（Cylinder） =====
+    // 高さ 2.2 の中心が原点なので y=1.1 で床にちょうど接地する
     auto cylinder = CreateObject<CylinderObject>(0.7f, 0.7f, 2.2f, 64u, "gradationLine.png");
-    cylinder->GetTransform().translate = { 0.0f, 0.1f, 3.5f };
+    cylinder->GetTransform().translate = { 0.0f, 1.1f, 3.5f };
     cylinder->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
     if (auto* mat = cylinder->GetModel()->GetMaterial()) {
         mat->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
@@ -74,19 +75,8 @@ void PrimitiveTestScene::OnInitialize()
     }
     cylinder->SetActive(true);
 
-    // ===== 地面（Plane） =====
-    // 幅20・奥行20、10×10分割
-    auto ground = CreateObject<PlaneObject>(20.0f, 20.0f, 10u, 10u);
-    ground->GetTransform().translate = { 0.0f, -1.0f, 0.0f };
-    ground->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-    if (auto* mat = ground->GetModel()->GetMaterial()) {
-        mat->SetColor({ 0.6f, 0.6f, 0.6f, 1.0f });
-        mat->SetMetallic(0.0f);
-        mat->SetRoughness(0.8f);
-        mat->SetLightingEnabled(true);
-        mat->SetIBLEnabled(true);
-    }
-    ground->SetActive(true);
+    // 地面は BaseScene が既定で生成する無限遠タイル床（y=0）を使う。
+    // 以降のオブジェクトは全て床の上（y > 0）に配置する。
 
     // ===== 球体（PrimitiveSphere）× 5 ─ Roughness グラデーション =====
     constexpr int   kSphereCount = 5;
@@ -96,10 +86,11 @@ void PrimitiveTestScene::OnInitialize()
     for (int i = 0; i < kSphereCount; ++i) {
         float roughness = static_cast<float>(i) / (kSphereCount - 1);
 
+        // 半径 0.8 なので y=0.8 で床に接地する
         auto sphere = CreateObject<PrimitiveSphereObject>(0.8f, 32u, 16u);
         sphere->GetTransform().translate = {
             kSphereOriginX + i * kSphereSpacing,
-            0.0f,
+            0.8f,
             0.0f
         };
         if (auto* mat = sphere->GetModel()->GetMaterial()) {
@@ -126,10 +117,11 @@ void PrimitiveTestScene::OnInitialize()
     const float     kCubeOriginX = -(3) * kCubeSpacing * 0.5f;
 
     for (int i = 0; i < 4; ++i) {
+        // 一辺 1.2 の中心が原点なので y=0.6 で床に接地する
         auto cube = CreateObject<CubeObject>(1.2f);
         cube->GetTransform().translate = {
             kCubeOriginX + i * kCubeSpacing,
-            -0.4f,
+            0.6f,
             kCubeZ
         };
         cube->GetTransform().rotate = { 0.0f, 0.0f, 0.0f };

@@ -1,41 +1,41 @@
 {
-    "active": true,
-    "material": {
-        "ao": 1.0,
-        "aoMap": false,
-        "color": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-        ],
-        "dithering": true,
-        "ditheringScale": 1.0,
-        "ibl": true,
-        "iblIntensity": 1.0,
-        "lighting": true,
-        "metallic": 0.8333333134651184,
-        "metallicMap": false,
-        "normalMap": false,
-        "roughness": 1.0,
-        "roughnessMap": false
-    },
-    "name": "Model_41",
-    "transform": {
-        "rotate": [
-            0.0,
-            0.0,
-            0.0
-        ],
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ],
-        "translate": [
-            7.5,
-            5.0,
-            0.0
-        ]
-    }
+    "active":  true,
+    "material":  {
+                     "ao":  1.0,
+                     "aoMap":  false,
+                     "color":  [
+                                   1.0,
+                                   1.0,
+                                   1.0,
+                                   1.0
+                               ],
+                     "dithering":  true,
+                     "ditheringScale":  1.0,
+                     "ibl":  true,
+                     "iblIntensity":  1.0,
+                     "lighting":  true,
+                     "metallic":  0.8333333134651184,
+                     "metallicMap":  false,
+                     "normalMap":  false,
+                     "roughness":  1.0,
+                     "roughnessMap":  false
+                 },
+    "name":  "Model_41",
+    "transform":  {
+                      "rotate":  [
+                                     0.0,
+                                     0.0,
+                                     0.0
+                                 ],
+                      "scale":  [
+                                    1.0,
+                                    1.0,
+                                    1.0
+                                ],
+                      "translate":  [
+                                        7.5,
+                                        14,
+                                        0.0
+                                    ]
+                  }
 }

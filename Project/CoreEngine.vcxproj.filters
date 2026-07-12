@@ -46,6 +46,9 @@
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.cpp">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Sample\TestGameObject\Ground\InfiniteGroundObject.cpp">
+      <Filter>Application\Src\Sample\TestGameObject\Ground</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBufferSet.cpp">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClCompile>
@@ -95,6 +98,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\GodRayPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp">
@@ -321,6 +327,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare\LensFlare.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LensFlare</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Blur</Filter>
@@ -924,6 +933,9 @@
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\RingObject.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Sample\TestGameObject\Ground\InfiniteGroundObject.h">
+      <Filter>Application\Src\Sample\TestGameObject\Ground</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Sample\TestGameObject\Primitive\WaterConstantBuffer.h">
       <Filter>Application\Src\Sample\TestGameObject\Primitive</Filter>
     </ClInclude>
@@ -1127,6 +1139,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Bloom</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare\LensFlare.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LensFlare</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Blur\Blur.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Blur</Filter>
@@ -1534,6 +1549,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">
@@ -2146,6 +2164,9 @@
     <Filter Include="Application\Src\Sample\TestGameObject\Effect">
       <UniqueIdentifier>{96B9CEF6-1D6D-4E24-99B7-FBDD2A42BBD3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Sample\TestGameObject\Ground">
+      <UniqueIdentifier>{3F5A9C21-7B4E-4D18-9C2A-6E1D4F8B0A73}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Sample\TestGameObject\Model">
       <UniqueIdentifier>{BF4478FF-10FE-444C-84A7-012D6C0818E6}</UniqueIdentifier>
     </Filter>
@@ -2301,6 +2322,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Bloom">
       <UniqueIdentifier>{5BA920F8-B810-440F-8341-B3E2DE6CEDB1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare">
+      <UniqueIdentifier>{A7C3E9D1-4B26-4F8E-9C05-6D1B2E8F3A47}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Blur">
       <UniqueIdentifier>{8804A9D4-C949-4F15-832E-578756300F3A}</UniqueIdentifier>

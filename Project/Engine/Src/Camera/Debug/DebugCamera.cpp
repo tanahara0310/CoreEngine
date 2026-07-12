@@ -2,6 +2,7 @@
 #include "DebugCamera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#include "Utility/FrameRate/FrameRateController.h"
 #include "WinApp/WinApp.h"
 
 // 新しい数学
@@ -220,6 +221,14 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         HandleMouseInput();
 
+        float deltaTime = 1.0f / 60.0f;
+        if (engineSystem_) {
+            if (auto* frameRate = engineSystem_->GetComponent<FrameRateController>()) {
+                deltaTime = frameRate->GetDeltaTime();
+            }
+        }
+        HandleKeyboardInput(deltaTime);
+
         if (settings_.smoothMovement) {
             UpdateSmoothMovement();
         }
@@ -344,10 +353,13 @@ namespace CoreEngine
             Vector3 right = Vector::Normalize(Vector::Cross({ 0.0f, 1.0f, 0.0f }, forward));
             Vector3 up = Vector::Normalize(Vector::Cross(forward, right));
 
-            float speed = distance_ * settings_.panSensitivity;
+            // 固定速度（distance_ に比例させない）。以前は distance_ * panSensitivity だったため、
+            // 注視点に近づく（distance_ が小さくなる）ほどパンが遅くなり自由に動けなかった。
+            float speed = settings_.panSensitivity;
 
             target_ = Vector::Add(target_, Vector::Multiply(deltaX * speed, right));
             target_ = Vector::Add(target_, Vector::Multiply(deltaY * speed, up));
+            ClampTargetToWorldBounds();
 
             // 現在位置を更新
             mouseState_.lastX = currentX;
@@ -378,18 +390,98 @@ namespace CoreEngine
                 int wheelSteps = mouseState_.accumulatedWheelDelta / wheelThreshold;
                 wheelSteps = std::clamp(wheelSteps, -3, 3); // 1フレームあたり最大3ノッチ
 
-                float zoomDelta = static_cast<float>(-wheelSteps) * settings_.zoomSensitivity;
+                // ズーム = 視線方向への一定量ドリー移動。注視点(target_)ごと前後に動かす。
+                // 以前は distance_（軌道半径）を距離比例のステップで増減していたため、
+                //  ・寄ると minDistance で頭打ちになり注視点より内側へ寄れない
+                //  ・遠ざかるとステップ幅が際限なく大きくなり収拾がつかない
+                // という問題があった。distance_ を変えず target_ を一定量動かすことで、
+                // どの位置でも同じ量・上限下限なくズームできるようにする。
+                // wheelSteps > 0（手前へ回す）＝前進＝ズームイン。
+                float dolly = static_cast<float>(wheelSteps) * settings_.zoomSensitivity;
 
-                // 距離に応じてズーム量を調整（近い時は細かく、遠い時は大きく）
-                float adaptiveZoom = (0.1f > distance_ * 0.08f) ? 0.1f : distance_ * 0.08f;
-                zoomDelta *= adaptiveZoom;
-
-                SetDistance(distance_ + zoomDelta);
+                // カメラが向いている方向（注視点→シーン奥）。GetPosition の outward の逆。
+                Vector3 forward = {
+                    -cosf(pitch_) * sinf(yaw_),
+                    -sinf(pitch_),
+                    -cosf(pitch_) * cosf(yaw_)
+                };
+                target_ = Vector::Add(target_, Vector::Multiply(dolly, forward));
+                ClampTargetToWorldBounds();
 
                 // 持ち越しで連続ジャンプしないよう処理後はリセット
                 mouseState_.accumulatedWheelDelta = 0;
             }
         }
+    }
+
+    void DebugCamera::HandleKeyboardInput(float deltaTime)
+    {
+        if (!engineSystem_) {
+            return;
+        }
+
+        // テキスト入力等、ImGui がキーボードを掴んでいる間は奪わない
+        if (ImGui::GetIO().WantCaptureKeyboard) {
+            return;
+        }
+
+        // ギズモ操作中は無効化（マウス操作と同じガード）
+        if (ImGuizmo::IsOver() || ImGuizmo::IsUsing()) {
+            return;
+        }
+
+        // シーン/ゲームビューをホバー中のみ有効（他の操作中の誤動作防止）
+        if (!IsMouseInSceneWindow()) {
+            return;
+        }
+
+        auto inputManager = engineSystem_->GetComponent<InputManager>();
+        if (!inputManager) {
+            return;
+        }
+        auto& input = inputManager->GetQuery();
+
+        // 視線方向の基底ベクトル。GetPosition() の式（target + distance*outward）における
+        // outward（注視点→カメラ方向）の符号を反転したものが「カメラが向いている方向」。
+        Vector3 outward = {
+            cosf(pitch_) * sinf(yaw_),
+            sinf(pitch_),
+            cosf(pitch_) * cosf(yaw_)
+        };
+        Vector3 forward = Vector::Multiply(-1.0f, outward);
+        Vector3 right = Vector::Normalize(Vector::Cross({ 0.0f, 1.0f, 0.0f }, outward));
+        Vector3 up = { 0.0f, 1.0f, 0.0f };
+
+        Vector3 move = { 0.0f, 0.0f, 0.0f };
+        if (input.IsKeyPressed(DIK_W))                                move = Vector::Add(move, forward);
+        if (input.IsKeyPressed(DIK_S))                                move = Vector::Add(move, Vector::Multiply(-1.0f, forward));
+        if (input.IsKeyPressed(DIK_D))                                move = Vector::Add(move, right);
+        if (input.IsKeyPressed(DIK_A))                                move = Vector::Add(move, Vector::Multiply(-1.0f, right));
+        if (input.IsKeyPressed(DIK_E) || input.IsKeyPressed(DIK_SPACE))    move = Vector::Add(move, up);
+        if (input.IsKeyPressed(DIK_Q) || input.IsKeyPressed(DIK_LCONTROL)) move = Vector::Add(move, Vector::Multiply(-1.0f, up));
+
+        const float moveLenSq = move.x * move.x + move.y * move.y + move.z * move.z;
+        if (moveLenSq <= 1e-10f) {
+            return;
+        }
+        move = Vector::Normalize(move);
+
+        bool boost = input.IsKeyPressed(DIK_LSHIFT) || input.IsKeyPressed(DIK_RSHIFT);
+        float speed = settings_.flySpeed * (boost ? settings_.flySpeedBoost : 1.0f) * deltaTime;
+
+        // target_（＝回転中心）を直接動かす。distance_ はそのままなので、
+        // カメラは注視点との相対位置を保ったままワールド上を自由に平行移動する。
+        target_ = Vector::Add(target_, Vector::Multiply(speed, move));
+        ClampTargetToWorldBounds();
+    }
+
+    void DebugCamera::ClampTargetToWorldBounds()
+    {
+        // 水平(X/Z)は原点からの各軸絶対値、高度(Y)は独立した上下限でクランプする。
+        const float h = settings_.maxHorizontalExtent;
+        target_.x = std::clamp(target_.x, -h, h);
+        target_.z = std::clamp(target_.z, -h, h);
+        target_.y = std::clamp(target_.y, settings_.minHeight, settings_.maxHeight);
     }
 
     bool DebugCamera::IsMouseInSceneWindow() const
@@ -487,9 +579,10 @@ namespace CoreEngine
             return;
         }
 
-        // DebugCamera用パラメータを復元
+        // DebugCamera用パラメータを復元（範囲外の値を持つスナップショットに備えクランプする）
         target_ = snapshot.target;
-        distance_ = snapshot.distance;
+        ClampTargetToWorldBounds();
+        distance_ = std::clamp(snapshot.distance, settings_.minDistance, settings_.maxDistance);
         pitch_ = snapshot.pitch;
         yaw_ = snapshot.yaw;
 

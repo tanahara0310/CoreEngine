@@ -1,42 +1,42 @@
 {
-    "active": true,
-    "material": {
-        "ao": 1.0,
-        "aoMap": false,
-        "color": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-        ],
-        "dithering": true,
-        "ditheringScale": 1.0,
-        "ibl": true,
-        "iblIntensity": 1.0,
-        "lighting": true,
-        "metallic": 0.0,
-        "metallicMap": true,
-        "normalMap": false,
-        "roughness": 0.5,
-        "roughnessMap": true
-    },
-    "modelPath": "ground.gltf",
-    "name": "ground (1)",
-    "transform": {
-        "rotate": [
-            0.0,
-            -0.0,
-            0.0
-        ],
-        "scale": [
-            1.0,
-            1.0,
-            1.0
-        ],
-        "translate": [
-            2.4609811305999756,
-            -1.908600926399231,
-            0.05477547645568848
-        ]
-    }
+    "active":  true,
+    "material":  {
+                     "ao":  1.0,
+                     "aoMap":  false,
+                     "color":  [
+                                   1.0,
+                                   1.0,
+                                   1.0,
+                                   1.0
+                               ],
+                     "dithering":  true,
+                     "ditheringScale":  1.0,
+                     "ibl":  true,
+                     "iblIntensity":  1.0,
+                     "lighting":  true,
+                     "metallic":  0.0,
+                     "metallicMap":  true,
+                     "normalMap":  false,
+                     "roughness":  0.5,
+                     "roughnessMap":  true
+                 },
+    "modelPath":  "ground.gltf",
+    "name":  "ground (1)",
+    "transform":  {
+                      "rotate":  [
+                                     0.0,
+                                     0.0,
+                                     0.0
+                                 ],
+                      "scale":  [
+                                    1.0,
+                                    1.0,
+                                    1.0
+                                ],
+                      "translate":  [
+                                        2.4609811305999756,
+                                        4.091399073600769,
+                                        0.05477547645568848
+                                    ]
+                  }
 }

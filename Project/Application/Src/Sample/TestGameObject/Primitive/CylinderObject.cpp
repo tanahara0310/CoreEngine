@@ -68,6 +68,8 @@ void CylinderObject::OnInitialize() {
     SetBlendMode(CoreEngine::BlendMode::kBlendModeNormal);
 
     if (auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr) {
+        // ディザリングが有効だとシェーダーが alphaCutoff 分岐に入らない
+        mat->SetDitheringEnabled(false);
         mat->SetAlphaCutoff(discardThreshold_);
     }
     ApplyUVTransform();

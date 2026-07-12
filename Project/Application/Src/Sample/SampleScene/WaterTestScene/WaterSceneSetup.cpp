@@ -6,6 +6,12 @@
 
 using namespace CoreEngine;
 
+namespace {
+    /// 既定の無限遠タイル床（y=0）より上へプール一式を持ち上げる量（m）。
+    /// 保存済みシーン JSON の座標も同じ量だけシフトしてある。
+    constexpr float kWaterSceneGroundClearance = 6.0f;
+}
+
 WaterSceneObjects WaterSceneSetup::SetupScene(WaterTestScene& scene, [[maybe_unused]] EngineSystem& engine) {
     WaterSceneObjects sceneObjects{};
 
@@ -34,7 +40,8 @@ WaterPlaneObject* WaterSceneSetup::CreateWaterPlane(WaterTestScene& scene) {
         return nullptr;
     }
 
-    waterPlane->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
+    // 既定の無限遠タイル床（y=0）の上にプール一式を載せるため、水面も床より上に置く
+    waterPlane->GetTransform().translate = { 0.0f, kWaterSceneGroundClearance, 0.0f };
     waterPlane->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
     waterPlane->SetBlendMode(BlendMode::kBlendModeNormal);
     waterPlane->SetScrollSpeed({ 0.03f, 0.01f });
@@ -77,7 +84,7 @@ void WaterSceneSetup::ConfigureGroundObject(ModelObject* groundObject) {
     }
 
     // 水中地形モデルを水面直下へ配置し、PBR 描画を有効化する
-    groundObject->GetTransform().translate = { 0.0f, -0.1f, 0.0f };
+    groundObject->GetTransform().translate = { 0.0f, kWaterSceneGroundClearance - 0.1f, 0.0f };
     groundObject->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
     groundObject->SetPBRTextureMapsEnabled(true, true, true, true);
     // 水面と同じ理由で静的 IBL は使わず、大気散乱と整合する直接光ベースの PBR とする。

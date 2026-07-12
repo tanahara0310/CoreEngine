@@ -1,42 +1,42 @@
 {
-    "active": true,
-    "material": {
-        "ao": 1.0,
-        "aoMap": false,
-        "color": [
-            1.0,
-            1.0,
-            1.0,
-            1.0
-        ],
-        "dithering": true,
-        "ditheringScale": 1.0,
-        "ibl": true,
-        "iblIntensity": 1.0,
-        "lighting": true,
-        "metallic": 0.0,
-        "metallicMap": true,
-        "normalMap": false,
-        "roughness": 0.5,
-        "roughnessMap": true
-    },
-    "modelPath": "ground.gltf",
-    "name": "ground",
-    "transform": {
-        "rotate": [
-            0.0,
-            -0.0,
-            0.07911580055952072
-        ],
-        "scale": [
-            2.709998607635498,
-            2.709998607635498,
-            2.7100000381469727
-        ],
-        "translate": [
-            -15.361542701721191,
-            -4.667868614196777,
-            6.647552490234375
-        ]
-    }
+    "active":  true,
+    "material":  {
+                     "ao":  1.0,
+                     "aoMap":  false,
+                     "color":  [
+                                   1.0,
+                                   1.0,
+                                   1.0,
+                                   1.0
+                               ],
+                     "dithering":  true,
+                     "ditheringScale":  1.0,
+                     "ibl":  true,
+                     "iblIntensity":  1.0,
+                     "lighting":  true,
+                     "metallic":  0.0,
+                     "metallicMap":  true,
+                     "normalMap":  false,
+                     "roughness":  0.5,
+                     "roughnessMap":  true
+                 },
+    "modelPath":  "ground.gltf",
+    "name":  "ground",
+    "transform":  {
+                      "rotate":  [
+                                     0.0,
+                                     0.0,
+                                     0.07911580055952072
+                                 ],
+                      "scale":  [
+                                    2.709998607635498,
+                                    2.709998607635498,
+                                    2.7100000381469727
+                                ],
+                      "translate":  [
+                                        -15.361542701721191,
+                                        1.3321313858032227,
+                                        6.647552490234375
+                                    ]
+                  }
 }

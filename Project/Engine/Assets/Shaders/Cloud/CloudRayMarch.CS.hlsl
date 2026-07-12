@@ -19,6 +19,11 @@ Texture2D<float>  gSceneDepth : register(t3);
 Texture2D<float4> gTransmittanceLUT : register(t4);
 Texture2D<float4> gSkyViewLUT : register(t5);
 SamplerState gSamplerLinearWrap : register(s0);
+// 大気 LUT 専用のクランプサンプラー。ノイズ／weather map は WRAP が必要なので分ける。
+// WRAP のまま LUT を引くと、太陽が地平線を跨いだ瞬間に Transmittance LUT の U 座標が
+// 1 を超えて反対端（＝天頂方向・透過率≈1）へ巻き込み、雲が真っ白に光ってから
+// 一気に真っ黒へ落ちる。（RootSignature 側で "gLUTSampler" は LinearClamp 固定）
+SamplerState gLUTSampler : register(s1);
 RWTexture2D<float4> gCloudOutput : register(u0);
 
 /// @brief 雲内部の 1 点における太陽由来の輝度
@@ -95,9 +100,11 @@ float3 SunLuminanceAt(float3 pos, float3 rayDir)
 
     // (3) 大気透過率（夕暮れに雲が赤くなる要因）。大気座標系は km・惑星中心基準。
     //     雲の高度差のみを反映すれば十分。
+    //     SampleTransmittanceToSun は惑星による遮蔽を含むので、日没後は雲の高度から見た
+    //     地平線を太陽が下回った時点で滑らかに消灯する（高い雲ほど長く照らされる）。
     float radiusKm = gAtmosphere.cameraRadiusKm + (pos.y - gCloud.cameraWorldPos.y) * 0.001f;
     float3 posAtmo = float3(0.0f, radiusKm, 0.0f);
-    float3 sunTrans = SampleTransmittanceToSun(gTransmittanceLUT, gSamplerLinearWrap,
+    float3 sunTrans = SampleTransmittanceToSun(gTransmittanceLUT, gLUTSampler,
                                                posAtmo, toSun, gAtmosphere);
 
     return sunTrans * energy * gCloud.sunColor * gCloud.sunIntensity;
@@ -110,7 +117,7 @@ float3 AmbientLuminance(float h)
     // Sky-View LUT のやや上向き 1 サンプルを半球平均の代用とする
     float radiusKm = gAtmosphere.cameraRadiusKm;
     float2 uv = SkyViewParamsToUv(false, 0.7f, 0.0f, radiusKm, gAtmosphere.planetRadiusKm);
-    float3 skyLum = gSkyViewLUT.SampleLevel(gSamplerLinearWrap, uv, 0).rgb;
+    float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
 
     // 空（SkyAtmosphere.PS）と同じ輝度ドメインへ揃える
     skyLum *= gCloud.sunColor * gCloud.sunIntensity;
@@ -320,7 +327,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
             1.0f - (gAtmosphere.planetRadiusKm * gAtmosphere.planetRadiusKm) / (radiusKm * radiusKm)));
         float2 skyUv = SkyViewParamsToUv(rayDir.y < cosHorizon, rayDir.y, 0.0f,
                                          radiusKm, gAtmosphere.planetRadiusKm);
-        float3 skyLum = gSkyViewLUT.SampleLevel(gSamplerLinearWrap, skyUv, 0).rgb
+        float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, skyUv, 0).rgb
                       * gCloud.sunColor * gCloud.sunIntensity;
 
         // 60km で約 63% 空へ溶ける消散近似（地表付近の Rayleigh+Mie の視程感覚に合わせた美術値）

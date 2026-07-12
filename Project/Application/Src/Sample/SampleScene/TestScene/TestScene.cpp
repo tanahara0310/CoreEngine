@@ -99,9 +99,11 @@ namespace CoreEngine
         constexpr int   kMetallicSteps = 7;   // 行数（Metallic 軸）
         constexpr float kSpacing = 2.5f; // 球体間の間隔
 
-        // グリッド原点（中央が座標原点になるよう計算）
+        // グリッド原点。X は中央が座標原点になるよう計算する。
+        // Y は既定の無限遠タイル床（y=0）より上にグリッド全体が載るよう下端を持ち上げる。
+        constexpr float kGridBaseY = 1.5f;   // 最下段の中心高さ（球半径 1 を考慮して床に埋まらない）
         const float originX = -(kRoughnessSteps - 1) * kSpacing * 0.5f;
-        const float originY = -(kMetallicSteps - 1) * kSpacing * 0.5f;
+        const float originY = kGridBaseY;
 
         for (int row = 0; row < kMetallicSteps; ++row)
         {
@@ -125,6 +127,9 @@ namespace CoreEngine
             }
         }
 
+        // グリッドは床の上（y=1.5〜16.5）に持ち上がったため、その中心を正面に捉える
+        const float gridCenterY = kGridBaseY + (kMetallicSteps - 1) * kSpacing * 0.5f;
+        SetReleaseCameraTransform({ 0.0f, gridCenterY, -30.0f });
     }
 
     void TestScene::OnUpdate()

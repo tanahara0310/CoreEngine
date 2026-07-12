@@ -25,7 +25,7 @@ namespace CoreEngine
         float cameraRadiusKm;         float sunDiskHalfAngleRad;   // 太陽の視半径 [rad]
         Vector3 groundAlbedo;         float sunDiskLuminanceScale; // ディスク輝度スケール
         Matrix4x4 invViewProj;        // 逆ビュープロジェクション行列（Aerial Perspective 用）
-        Vector3 cameraWorldPos;       float pad2;                  // カメラのワールド座標 [m]
+        Vector3 cameraWorldPos;       float groundLevelY;          // カメラのワールド座標 [m] / 地表とみなす世界Y座標 [m]
     };
     static_assert(sizeof(AtmosphereShaderConstants) == 192,
         "AtmosphereShaderConstants は HLSL 側 AtmosphereConstants の 192 バイトレイアウトと一致させること");

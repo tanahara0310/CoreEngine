@@ -526,7 +526,9 @@ namespace CoreEngine
             if (DirectionalLightData* sun = lightManager->GetAtmosphereSunLight()) {
                 sunDirection_ = MathCore::Vector::Normalize(sun->direction);
                 sunColor_ = sun->color;
-                sunIntensity_ = sun->intensity;
+                // 空の輝度スケールは atmosphereIntensity（サーフェス直接光の intensity とは単位系が別）。
+                // 0（未設定）の場合は従来どおり intensity にフォールバックする。
+                sunIntensity_ = (sun->atmosphereIntensity > 0.0f) ? sun->atmosphereIntensity : sun->intensity;
                 hasSunLight_ = sun->enabled;
             }
         }
@@ -591,6 +593,7 @@ namespace CoreEngine
         constants.sunDiskLuminanceScale = parameters_.sunDiskLuminanceScale;
         constants.invViewProj = invViewProj_;
         constants.cameraWorldPos = cameraWorldPos_;
+        constants.groundLevelY = parameters_.groundLevelY;
 
         *constantData_ = constants;
     }

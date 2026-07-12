@@ -16,6 +16,7 @@
 
 // 前方宣言
 class SkyBoxObject;
+class InfiniteGroundObject;
 
 namespace CoreEngine {
     class EngineSystem;
@@ -75,6 +76,28 @@ namespace CoreEngine
         /// @brief 派生クラスでオーバーライドする後処理（GameObjectの更新後、クリーンアップ前）
         virtual void OnLateUpdate() {}
 
+        /// @brief 既定の無限地面（y=0 のグレータイル床）を自動生成するかどうか
+        /// @return true で自動生成（既定）。床が不要／邪魔になるシーンだけ false を返す。
+        virtual bool WantsDefaultGround() const { return true; }
+
+        /// @brief 既定の GameView カメラ（"Release"）の位置・回転を上書きする
+        /// @param translate ワールド座標（無限床より上＝y > 0 にすること）
+        /// @param rotate    オイラー角（ラジアン）
+        /// @note OnInitialize() から呼ぶ。シーン固有の構図に合わせて使う。
+        void SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate = { 0.0f, 0.0f, 0.0f });
+
+        /// 既定 GameView カメラの高さ（無限床 y=0 より上）
+        static constexpr float kDefaultCameraHeight = 3.0f;
+
+        /// @brief 大気散乱シーンでサーフェスの直接光に使う太陽強度
+        /// @details 空の輝度スケール（DirectionalLightData::atmosphereIntensity ≒ 20）とは単位系が別。
+        ///          この値を空と同じ 20 にすると、明るいアルベド（既定床のタイルなど）が
+        ///          ACES の飽和域（HDR >= 7.24）へ入り階調が全て 1.0 に潰れる。
+        ///
+        ///          値の根拠: 既定シーン（太陽が真下・intensity=1 → NdotL=1）と既定床の見た目を
+        ///          揃えるため、大気シーンの太陽高度 35°（NdotL≈0.574）を打ち消す 1/0.574 ≈ 1.75 とする。
+        static constexpr float kAtmosphereSurfaceSunIntensity = 1.75f;
+
     private:
 
         /// @brief カメラのセットアップ
@@ -93,6 +116,15 @@ namespace CoreEngine
         /// @details OnInitialize() 完了後に呼ばれる。シーンが SkyBox を生成済みの場合は
         ///          それを採用し、未生成の場合のみ大気散乱モードの SkyBox を自動生成する。
         void SetupDefaultSky();
+
+        /// @brief 既定の無限地面（y=0 のグレータイル床）のセットアップ
+        /// @details OnInitialize() 完了後に呼ばれる。シーンが InfiniteGroundObject を
+        ///          生成済みならそれを採用し、未生成かつ WantsDefaultGround()==true の
+        ///          場合のみ自動生成する。
+        void SetupDefaultGround();
+
+        /// @brief 既定の無限地面をカメラ XZ に追従させる（毎フレーム）
+        void UpdateGroundPlane();
 
         /// @brief 大気散乱システムの毎フレーム更新
         /// @details SkyBox が大気散乱モードの場合のみ AtmosphereManager へ太陽情報と
@@ -184,6 +216,9 @@ namespace CoreEngine
 
         // 既定背景の SkyBox（所有権は gameObjectManager_。Finalize でポインタをクリアする）
         SkyBoxObject* skyBox_ = nullptr;
+
+        // 既定の無限地面（所有権は gameObjectManager_。Finalize でポインタをクリアする）
+        InfiniteGroundObject* groundPlane_ = nullptr;
 
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
