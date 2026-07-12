@@ -12,7 +12,7 @@
 #include <optional>
 #include <string>
 
-#include "ObjectCommon/IObjectSpawner.h"
+#include "GameObject/IObjectSpawner.h"
 
 // Forward declaration
 namespace CoreEngine {

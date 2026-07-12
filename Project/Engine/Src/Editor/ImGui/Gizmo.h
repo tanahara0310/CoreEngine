@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #include <ImGuizmo.h>
 #include "Math/Matrix/Matrix4x4.h"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/Model/ModelGameObject.h"
+#include "GameObject/Model/ModelGameObject.h"
 #include "Graphics/Material/MaterialConstants.h"
 
 /// @brief 汎用モデルオブジェクト（glTFなどのモデル読み込み用）

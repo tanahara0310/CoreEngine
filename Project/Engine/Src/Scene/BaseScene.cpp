@@ -3,7 +3,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Debug/DebugCamera.h"
-#include "Camera/Release/Camera.h"
+#include "Camera/Camera.h"
 #include "Camera/Camera2D.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
@@ -16,9 +16,9 @@
 #include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
 #include "Scene/SceneManager.h"
-#include "ObjectCommon/Sprite/SpriteObject.h"
-#include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
-#include "Sample/TestGameObject/Ground/InfiniteGroundObject.h"
+#include "GameObject/Sprite/SpriteObject.h"
+#include "GameObjects/SkyBox/SkyBoxObject.h"
+#include "GameObject/Ground/InfiniteGroundObject.h"
 #include "Utility/Logger/Logger.h"
 
 

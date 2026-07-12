@@ -3,8 +3,8 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
-#include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"

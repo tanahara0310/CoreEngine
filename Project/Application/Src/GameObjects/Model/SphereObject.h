@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/Model/ModelGameObject.h"
+#include "GameObject/Model/ModelGameObject.h"
 
 /// @brief Sphereモデルオブジェクト
     class SphereObject : public CoreEngine::ModelGameObject {
@@ -26,7 +26,7 @@
         void OnCollisionExit(GameObject* other) override;
 
     protected:
-        std::string GetModelPath() const override { return "SampleAssets/Sphere/sphere.obj"; }
+        std::string GetModelPath() const override { return "Models/Sphere/sphere.obj"; }
         std::string GetTexturePath() const override { return "white1x1.png"; }
 
 

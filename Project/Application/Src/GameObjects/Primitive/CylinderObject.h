@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/Primitive/PrimitiveGameObject.h"
+#include "GameObject/Primitive/PrimitiveGameObject.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Math/Vector/Vector2.h"
 

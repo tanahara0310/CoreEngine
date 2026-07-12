@@ -8,7 +8,7 @@
 #include "Input/InputManager.h"
 #include "Particle/ParticleSystem.h"
 
-#include "Sample/TestGameObject/Primitive/PrimitiveSphereObject.h"
+#include "GameObjects/Primitive/PrimitiveSphereObject.h"
 
 #include <dinput.h>
 

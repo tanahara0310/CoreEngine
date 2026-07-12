@@ -2,8 +2,8 @@
 
 #include "Scene/BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
-#include "ObjectCommon/Sprite/SpriteObject.h"
-#include "ObjectCommon/Sprite/SpriteAnimationClip.h"
+#include "GameObject/Sprite/SpriteObject.h"
+#include "GameObject/Sprite/SpriteAnimationClip.h"
 #include "TileMap/TileMap.h"
 #include "TileMap/TileCollider.h"
 #include "UI/UICanvas.h"

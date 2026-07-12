@@ -2,7 +2,7 @@
 
 #include "Scene/BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
-#include "Sample/TestGameObject/Effect/HitEffect.h"
+#include "GameObjects/Effect/HitEffect.h"
 
 #include <memory>
 

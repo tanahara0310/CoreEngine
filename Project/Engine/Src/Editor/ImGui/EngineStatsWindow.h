@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/Debug/EngineStats.h"
+#include "Graphics/Common/EngineStats.h"
 #include "Graphics/Common/GpuTimestampProfiler.h"
 #include <array>
 

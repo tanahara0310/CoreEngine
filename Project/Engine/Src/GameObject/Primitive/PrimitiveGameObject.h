@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/Model/ModelGameObject.h"
+#include "GameObject/Model/ModelGameObject.h"
 #include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
 #include <memory>
 #include <string>

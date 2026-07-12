@@ -4,7 +4,7 @@
 #include "Camera/CameraStructs.h"
 #include "Camera/ICamera.h"
 
-#include "Sample/TestGameObject/Primitive/CubeObject.h"
+#include "GameObjects/Primitive/CubeObject.h"
 
 using namespace CoreEngine;
 

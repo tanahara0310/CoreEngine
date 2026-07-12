@@ -8,7 +8,7 @@
 #include <string>
 
 #ifdef USE_IMGUI
-#include "Utility/Debug/ImGui/ImguiManager.h"
+#include "Editor/ImGui/ImguiManager.h"
 #include "Debug/ParticleSystemDebugUI.h"
 #endif
 
@@ -22,7 +22,7 @@
 #include "Graphics/Pipeline/PipelineStateManager.h"
 
 // GameObject基底クラス
-#include "ObjectCommon/GameObject.h"
+#include "GameObject/GameObject.h"
 
 // モジュール関連
 #include "Modules/MainModule.h"

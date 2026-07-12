@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Gizmo.h"
-#include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/Sprite/SpriteObject.h"
-#include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/Sprite/SpriteObject.h"
+#include "Editor/ImGui/GameObjectDebugAccess.h"
 #include "Camera/ICamera.h"
 #include "WorldTransform/WorldTransform.h"
 #include <numbers>

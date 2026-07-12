@@ -14,7 +14,7 @@
 #include "Audio/SoundManager.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Debug/DebugCamera.h"
-#include "Camera/Release/Camera.h"
+#include "Camera/Camera.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -28,8 +28,8 @@
 #include "EngineSystem/EngineSystem.h"
 
 // GameObjectのインクルード
-#include "Sample/TestGameObject/Model/ModelObject.h"
-#include "Sample/TestGameObject/AnimatedModel/WalkModelObject.h"
+#include "GameObjects/Model/ModelObject.h"
+#include "GameObjects/AnimatedModel/WalkModelObject.h"
 
 using namespace Microsoft::WRL;
 

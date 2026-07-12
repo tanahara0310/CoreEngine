@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cstring>
 
-#include "AccelerationStructureManager.h"
+#include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"

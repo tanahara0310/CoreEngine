@@ -3,14 +3,14 @@
 
 #ifdef USE_IMGUI
 
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #include <algorithm>
 
 #include "Camera/CameraManager.h"
 #include "Camera/Debug/DebugCamera.h"
-#include "Camera/Release/Camera.h"
-#include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/GameObjectManager.h"
+#include "Camera/Camera.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
 
 namespace CoreEngine
 {

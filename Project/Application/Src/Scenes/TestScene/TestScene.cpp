@@ -4,14 +4,14 @@
 #include "Graphics/Model/ModelManager.h"
 
 #ifdef _DEBUG
-#include "Camera/Debug/Editor/CameraDebugUI.h"
+#include "Editor/Camera/CameraDebugUI.h"
 #endif
 
 #include "TestScene.h"
 #include "WinApp/WinApp.h"
 #include "Scene/SceneManager.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
+#include "GameObjects/SkyBox/SkyBoxObject.h"
 #include "Graphics/Texture/TextureManager.h"
 
 #include <iostream>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/Primitive/PrimitiveGameObject.h"
+#include "GameObject/Primitive/PrimitiveGameObject.h"
 #include "Graphics/Primitive/SphereMeshGenerator.h"
 
 /// @brief 球体プリミティブオブジェクト

@@ -3,7 +3,7 @@
 
 #include "KeyConfigUI.h"
 #include "Input/InputQuery.h"
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #include <format>
 
 namespace CoreEngine {

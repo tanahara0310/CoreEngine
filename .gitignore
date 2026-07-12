@@ -69,6 +69,12 @@ StyleCopReport.xml
 # Files built by Visual Studio
 *.pdb
 Project/Cache/
+Project/Dumps/
+
+# 実行時キャッシュがカレントディレクトリ事故で紛れ込むのを防止
+imgui.ini
+**/Cache/logs/
+**/Cache/imgui.ini
 *Application/Assets/Scene
 generated/
 Captures/

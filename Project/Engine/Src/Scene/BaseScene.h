@@ -2,7 +2,7 @@
 
 #include "IScene.h"
 #include "Graphics/Light/LightData.h"
-#include "ObjectCommon/GameObjectManager.h"
+#include "GameObject/GameObjectManager.h"
 #include "Audio/SoundManager.h"
 #include "Collider/CollisionManager.h"
 #include "Collider/CollisionConfig.h"
@@ -11,7 +11,7 @@
 #include "Scene/SceneSaveSystem.h"
 
 #ifdef USE_IMGUI
-#include "Scene/SceneDebugEditor.h"
+#include "Editor/Scene/SceneDebugEditor.h"
 #endif
 
 // 前方宣言

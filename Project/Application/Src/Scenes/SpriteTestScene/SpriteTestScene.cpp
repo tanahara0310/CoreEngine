@@ -6,7 +6,7 @@
 #include "Scene/SceneManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Camera/CameraManager.h"
-#include "ObjectCommon/Sprite/SpriteAnimationClip.h"
+#include "GameObject/Sprite/SpriteAnimationClip.h"
 
 using namespace CoreEngine;
 using namespace CoreEngine::MathCore;

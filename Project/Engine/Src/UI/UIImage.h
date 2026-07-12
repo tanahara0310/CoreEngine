@@ -1,7 +1,7 @@
 #pragma once
 
 #include "UIElement.h"
-#include "ObjectCommon/GameObject.h"
+#include "GameObject/GameObject.h"
 #include "Graphics/Material/UIMaterialInstance.h"
 #include "Graphics/Texture/TextureManager.h"
 #include <memory>

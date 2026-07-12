@@ -2,9 +2,9 @@
 
 #ifdef USE_IMGUI
 
-#include "Scene/UndoRedoHistory.h"
-#include "Utility/Debug/ImGui/Gizmo.h"
-#include "Utility/Debug/ImGui/ObjectSelector.h"
+#include "Editor/Scene/UndoRedoHistory.h"
+#include "Editor/ImGui/Gizmo.h"
+#include "Editor/ImGui/ObjectSelector.h"
 #include <string>
 
 namespace CoreEngine

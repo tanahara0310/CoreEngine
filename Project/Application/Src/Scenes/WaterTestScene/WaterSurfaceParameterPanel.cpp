@@ -6,7 +6,7 @@
 #include "WaterSurfaceRuntimeController.h"
 
 #include "Math/MathCore.h"
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #include "Utility/Random/RandomGenerator.h"
 
 #include <algorithm>

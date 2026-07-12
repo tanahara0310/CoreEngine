@@ -2,7 +2,7 @@
 #include "PrimitiveTestScene.h"
 
 #ifdef _DEBUG
-#include "Camera/Debug/Editor/CameraDebugUI.h"
+#include "Editor/Camera/CameraDebugUI.h"
 #endif
 
 #include "Graphics/Model/ModelManager.h"
@@ -12,11 +12,11 @@
 #include "Scene/SceneManager.h"
 #include "Utility/Logger/Logger.h"
 
-#include "Sample/TestGameObject/SkyBox/SkyBoxObject.h"
-#include "Sample/TestGameObject/Primitive/PrimitiveSphereObject.h"
-#include "Sample/TestGameObject/Primitive/CubeObject.h"
-#include "Sample/TestGameObject/Primitive/RingObject.h"
-#include "Sample/TestGameObject/Primitive/CylinderObject.h"
+#include "GameObjects/SkyBox/SkyBoxObject.h"
+#include "GameObjects/Primitive/PrimitiveSphereObject.h"
+#include "GameObjects/Primitive/CubeObject.h"
+#include "GameObjects/Primitive/RingObject.h"
+#include "GameObjects/Primitive/CylinderObject.h"
 
 using namespace CoreEngine;
 

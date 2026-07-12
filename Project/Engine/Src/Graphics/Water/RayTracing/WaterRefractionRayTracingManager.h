@@ -9,7 +9,7 @@
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
-#include "RayTracingOutputViewSet.h"
+#include "Graphics/RayTracing/RayTracingOutputViewSet.h"
 #include "WaterRayTracingPassBase.h"
 
 namespace CoreEngine

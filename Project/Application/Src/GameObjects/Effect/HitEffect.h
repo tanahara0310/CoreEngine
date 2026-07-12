@@ -24,7 +24,7 @@ public:
     void Initialize(ParticleSystem* particleSystem,
                     DirectXCommon* dxCommon,
                     ResourceFactory* factory,
-                    const std::string& texturePath = "Application/Assets/Texture/circle.png");
+                    const std::string& texturePath = "Application/Assets/Textures/circle.png");
 
     /// @brief 指定位置でヒットエフェクトを再生する
     /// @param position ワールド空間の再生位置

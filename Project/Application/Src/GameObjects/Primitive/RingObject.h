@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/Primitive/PrimitiveGameObject.h"
+#include "GameObject/Primitive/PrimitiveGameObject.h"
 
 /// @brief リングプリミティブオブジェクト
 class RingObject : public CoreEngine::PrimitiveGameObject {

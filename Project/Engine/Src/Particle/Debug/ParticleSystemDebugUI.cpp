@@ -5,7 +5,7 @@
 
 #include "Particle/ParticleSystem.h"
 #include "Graphics/Model/ModelResource.h"
-#include "Utility/Debug/ImGui/ImguiManager.h"
+#include "Editor/ImGui/ImguiManager.h"
 
 
 namespace CoreEngine

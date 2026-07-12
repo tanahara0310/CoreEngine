@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/Model/ModelGameObject.h"
-#include "ObjectCommon/Sprite/SpriteObject.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/Model/ModelGameObject.h"
+#include "GameObject/Sprite/SpriteObject.h"
 
 namespace CoreEngine {
     namespace DebugAccess {

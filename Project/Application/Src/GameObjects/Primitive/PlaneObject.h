@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/Primitive/PrimitiveGameObject.h"
+#include "GameObject/Primitive/PrimitiveGameObject.h"
 
 /// @brief 平面プリミティブオブジェクト
 class PlaneObject : public CoreEngine::PrimitiveGameObject {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #include "Graphics/Common/GpuTimestampProfiler.h"
 #include <imgui_internal.h>
 #include <d3d12.h>

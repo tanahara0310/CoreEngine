@@ -1,13 +1,13 @@
 #include "pch.h"
 #include "EngineStatsWindow.h"
 
-#include "Graphics/Debug/EngineStats.h"
+#include "Graphics/Common/EngineStats.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Scene/SceneManager.h"
-#include "ObjectCommon/GameObjectManager.h"
+#include "GameObject/GameObjectManager.h"
 
 #include <imgui.h>
 

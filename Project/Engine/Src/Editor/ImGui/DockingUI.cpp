@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "DockingUI.h"
-#include "Scene/SceneDebugEditor.h"
+#include "Editor/Scene/SceneDebugEditor.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
 #include <format>

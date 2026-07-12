@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Sample/TestGameObject/Model/ModelObject.h"
-#include "Sample/TestGameObject/Primitive/WaterPlaneObject.h"
+#include "GameObjects/Model/ModelObject.h"
+#include "GameObjects/Water/WaterPlaneObject.h"
 
 class WaterTestScene;
 

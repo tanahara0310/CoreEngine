@@ -3,7 +3,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
-#include "Scene/SceneDebugEditor.h"
+#include "Editor/Scene/SceneDebugEditor.h"
 #include "Utility/Debug/GameDebugUI.h"
 #include "WinApp/WinApp.h"
 #include <ImGuizmo.h>

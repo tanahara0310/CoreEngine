@@ -3,10 +3,10 @@
 
 #ifdef USE_IMGUI
 
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 
 #include "Camera/CameraManager.h"
-#include "Camera/Release/Camera.h"
+#include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
 #include "Input/InputQuery.h"

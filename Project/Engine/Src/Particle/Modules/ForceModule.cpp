@@ -2,7 +2,7 @@
 #include "ForceModule.h"
 #include "../ParticleSystem.h"
 #include <algorithm>
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 
 // コンストラクタでデフォルトパラメータを設定
 

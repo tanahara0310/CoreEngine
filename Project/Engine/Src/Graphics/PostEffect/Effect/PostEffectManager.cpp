@@ -24,7 +24,7 @@
 #include "ToneMapping/ToneMapping.h"
 #include "Outline/Outline.h"
 #include "PostEffectPresetManager.h"
-#include "Utility/Debug/ImGui/ImguiManager.h"
+#include "Editor/ImGui/ImguiManager.h"
 #include <algorithm>
 #include <cassert>
 #include <unordered_set>

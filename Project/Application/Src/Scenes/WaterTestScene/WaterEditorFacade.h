@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
-#include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Water/FFTOceanManager.h"
 

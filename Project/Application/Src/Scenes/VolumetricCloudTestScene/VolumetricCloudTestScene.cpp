@@ -4,7 +4,7 @@
 #include "Camera/CameraStructs.h"
 #include "Camera/ICamera.h"
 
-#include "Sample/SampleScene/AtmosphereTestScene/AtmosphereEditorFacade.h"
+#include "Scenes/AtmosphereTestScene/AtmosphereEditorFacade.h"
 
 using namespace CoreEngine;
 

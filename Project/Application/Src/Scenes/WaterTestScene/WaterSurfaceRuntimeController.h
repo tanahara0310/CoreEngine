@@ -4,8 +4,8 @@
 #include "Graphics/Water/Simulation/WaterSurfaceModelProvider.h"
 #include "Graphics/Water/Simulation/WaterSurfaceSimulator.h"
 #include "WaterSceneSetup.h"
-#include "Sample/TestGameObject/Model/ModelObject.h"
-#include "Sample/TestGameObject/Primitive/WaterPlaneObject.h"
+#include "GameObjects/Model/ModelObject.h"
+#include "GameObjects/Water/WaterPlaneObject.h"
 
 #include <memory>
 

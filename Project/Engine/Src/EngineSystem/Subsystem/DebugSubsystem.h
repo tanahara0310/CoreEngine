@@ -6,13 +6,13 @@
 #include <functional>
 
 #include "IEngineSubsystem.h"
-#include "Utility/Debug/ImGui/ImGuiManager.h"
+#include "Editor/ImGui/ImGuiManager.h"
 #include "Utility/Debug/GameDebugUI.h"
 #include "Graphics/Common/GpuTimestampProfiler.h"
-#include "Utility/Debug/ImGui/ThreadProfilerUI.h"
-#include "Utility/Debug/ImGui/KeyConfigUI.h"
-#include "Utility/Debug/ImGui/EngineStatsWindow.h"
-#include "Utility/Debug/ImGui/RenderPassDebugPanel.h"
+#include "Editor/ImGui/ThreadProfilerUI.h"
+#include "Editor/ImGui/KeyConfigUI.h"
+#include "Editor/ImGui/EngineStatsWindow.h"
+#include "Editor/ImGui/RenderPassDebugPanel.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 

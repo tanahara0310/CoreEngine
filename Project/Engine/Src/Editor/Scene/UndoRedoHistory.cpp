@@ -2,12 +2,12 @@
 #ifdef USE_IMGUI
 
 #include "UndoRedoHistory.h"
-#include "ObjectCommon/GameObjectManager.h"
-#include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/Model/DynamicModelObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/Model/DynamicModelObject.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Material/MaterialInstance.h"
-#include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
+#include "Editor/ImGui/GameObjectDebugAccess.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine

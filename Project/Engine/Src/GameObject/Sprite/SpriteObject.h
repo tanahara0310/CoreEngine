@@ -1,12 +1,12 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
+#include "GameObject/GameObject.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Material/SpriteMaterialInstance.h"
 #include "Math/EulerTransform.h"
-#include "ObjectCommon/Sprite/SpriteAnimator.h"
+#include "GameObject/Sprite/SpriteAnimator.h"
 #include <memory>
 #include <string>
 #include <d3d12.h>

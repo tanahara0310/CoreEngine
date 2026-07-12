@@ -3,12 +3,12 @@
 
 #ifdef USE_IMGUI
 
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #include <numbers>
 
 #include "Camera/CameraManager.h"
 #include "Camera/Debug/DebugCamera.h"
-#include "Camera/Release/Camera.h"
+#include "Camera/Camera.h"
 
 namespace CoreEngine
 {

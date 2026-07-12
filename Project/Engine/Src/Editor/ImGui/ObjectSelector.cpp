@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "ObjectSelector.h"
-#include "ObjectCommon/GameObject.h"
-#include "ObjectCommon/Sprite/SpriteObject.h"
-#include "ObjectCommon/GameObjectManager.h"
-#include "Utility/Debug/ImGui/GameObjectDebugAccess.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/Sprite/SpriteObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "Editor/ImGui/GameObjectDebugAccess.h"
 #include "Camera/ICamera.h"
 #include "Camera/Camera2D.h"
 #include "Math/Matrix/Matrix4x4.h"
@@ -15,7 +15,7 @@
 #include <algorithm>
 #include <limits>
 #include <cmath>
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 
 namespace CoreEngine
 {

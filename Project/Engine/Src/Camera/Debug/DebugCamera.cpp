@@ -475,15 +475,6 @@ namespace CoreEngine
         ClampTargetToWorldBounds();
     }
 
-    void DebugCamera::ClampTargetToWorldBounds()
-    {
-        // 水平(X/Z)は原点からの各軸絶対値、高度(Y)は独立した上下限でクランプする。
-        const float h = settings_.maxHorizontalExtent;
-        target_.x = std::clamp(target_.x, -h, h);
-        target_.z = std::clamp(target_.z, -h, h);
-        target_.y = std::clamp(target_.y, settings_.minHeight, settings_.maxHeight);
-    }
-
     bool DebugCamera::IsMouseInSceneWindow() const
     {
         // useGameView が有効な場合は "Game" ウィンドウ、無効な場合は "Scene" ウィンドウを判定する
@@ -523,6 +514,15 @@ namespace CoreEngine
         yawSmooth_ = NormalizeAngle(yawSmooth_);
     }
 #endif
+
+    void DebugCamera::ClampTargetToWorldBounds()
+    {
+        // 水平(X/Z)は原点からの各軸絶対値、高度(Y)は独立した上下限でクランプする。
+        const float h = settings_.maxHorizontalExtent;
+        target_.x = std::clamp(target_.x, -h, h);
+        target_.z = std::clamp(target_.z, -h, h);
+        target_.y = std::clamp(target_.y, settings_.minHeight, settings_.maxHeight);
+    }
 
     const char* DebugCamera::GetPresetName(CameraPreset preset) const
     {

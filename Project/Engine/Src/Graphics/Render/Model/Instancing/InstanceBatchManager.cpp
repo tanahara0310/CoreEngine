@@ -10,7 +10,7 @@
 #include "Graphics/Render/Model/ModelDrawPacket.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/TransformationMatrix.h"
-#include "Graphics/Debug/EngineStats.h"
+#include "Graphics/Common/EngineStats.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 
 namespace CoreEngine

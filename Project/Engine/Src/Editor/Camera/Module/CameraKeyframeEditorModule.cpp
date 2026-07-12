@@ -4,7 +4,7 @@
 
 #ifdef USE_IMGUI
 
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -13,7 +13,7 @@
 
 #include "Camera/CameraManager.h"
 #include "Camera/Debug/DebugCamera.h"
-#include "Camera/Release/Camera.h"
+#include "Camera/Camera.h"
 #include "Graphics/Line/LineManager.h"
 #include "Utility/JsonManager/JsonManager.h"
 

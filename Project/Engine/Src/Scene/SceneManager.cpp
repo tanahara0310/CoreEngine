@@ -6,7 +6,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Utility/FrameRate/FrameRateController.h"
-#include "ObjectCommon/GameObjectManager.h"
+#include "GameObject/GameObjectManager.h"
 
 
 namespace CoreEngine

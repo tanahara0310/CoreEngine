@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
+#include "GameObject/GameObject.h"
 #include "Math/MathCore.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Material/SkyBoxMaterialInstance.h"

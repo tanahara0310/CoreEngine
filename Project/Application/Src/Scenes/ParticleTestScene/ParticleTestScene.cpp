@@ -4,7 +4,7 @@
 #include "Graphics/Resource/ResourceFactory.h"
 
 #ifdef _DEBUG
-#include "Camera/Debug/Editor/CameraDebugUI.h"
+#include "Editor/Camera/CameraDebugUI.h"
 #endif
 
 using namespace CoreEngine;

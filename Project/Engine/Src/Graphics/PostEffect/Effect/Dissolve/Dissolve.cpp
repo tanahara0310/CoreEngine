@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Dissolve.h"
-#include "Utility/Debug/ImGui/ImguiManager.h"
+#include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Common/DirectXCommon.h"

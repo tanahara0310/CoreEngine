@@ -2,7 +2,7 @@
 
 #ifdef USE_IMGUI
 
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #include "Math/Vector/Vector2.h"
 #include <string>
 #include <vector>

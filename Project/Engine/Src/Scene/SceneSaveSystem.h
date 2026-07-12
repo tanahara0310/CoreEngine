@@ -12,7 +12,7 @@ namespace CoreEngine
     ///
     /// データはオブジェクト単位でファイル分割し、1つのシーンフォルダにまとめて管理する。
     /// @code
-    /// Application/Assets/Scene/
+    /// Application/Assets/Scenes/
     ///   {sceneName}/                  ← シーンフォルダ
     ///     _scene.json                  ← マニフェスト（version + オブジェクトキー一覧）
     ///     {serializeKey}.json          ← 個別オブジェクトデータ
@@ -40,7 +40,7 @@ namespace CoreEngine
         }
 
     private:
-        /// @brief シーンフォルダのパスを返す  (例: "Application/Assets/Scene/TestScene")
+        /// @brief シーンフォルダのパスを返す  (例: "Application/Assets/Scenes/TestScene")
         std::string GetSceneDir() const;
 
         /// @brief マニフェストファイルのパスを返す  (例: ".../TestScene/_scene.json")

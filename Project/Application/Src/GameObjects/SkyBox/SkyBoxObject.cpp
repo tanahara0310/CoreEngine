@@ -8,7 +8,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Math/MathCore.h"
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #include <cassert>
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/IBL/IBLSystem.h"

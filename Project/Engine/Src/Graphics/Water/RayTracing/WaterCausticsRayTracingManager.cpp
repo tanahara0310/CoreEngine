@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "WaterCausticsRayTracingManager.h"
 
-#include "AccelerationStructureManager.h"
+#include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "RayTracingPipelineBuilder.h"
+#include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 
@@ -65,7 +65,7 @@ namespace CoreEngine
 
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();
-        shaderBlob_.Attach(shaderCompiler.CompileShaderLibrary(L"Application/Assets/Shaders/Water/RTWaterCaustics.hlsl"));
+        shaderBlob_.Attach(shaderCompiler.CompileShaderLibrary(L"Engine/Assets/Shaders/Water/RayTracing/RTWaterCaustics.hlsl"));
         if (!shaderBlob_) {
             Logger::GetInstance().Errorf(
                 LogCategory::Graphics,

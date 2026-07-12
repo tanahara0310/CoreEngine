@@ -1,11 +1,11 @@
 #pragma once
 
-#include "ObjectCommon/Model/ModelGameObject.h"
+#include "GameObject/Model/ModelGameObject.h"
 
-class Plane : public CoreEngine::ModelGameObject {
+class PlaneModelObject : public CoreEngine::ModelGameObject {
 public:
     /// @brief オブジェクト名を取得
-    const char* GetObjectName() const override { return "Plane"; }
+    const char* GetObjectName() const override { return "PlaneModelObject"; }
 
 protected:
     std::string GetModelPath()   const override { return "plane.obj"; }

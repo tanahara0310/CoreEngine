@@ -7,7 +7,7 @@
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
-#include "Graphics/Debug/EngineStats.h"
+#include "Graphics/Common/EngineStats.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/Animator.h"
 #include "Animation/SkeletonAnimatorFactory.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
+#include "GameObject/GameObject.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/Model.h"

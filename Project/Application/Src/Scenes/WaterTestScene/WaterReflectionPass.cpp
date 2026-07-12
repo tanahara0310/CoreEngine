@@ -2,7 +2,7 @@
 #include "WaterReflectionPass.h"
 
 #include "Camera/ICamera.h"
-#include "Camera/Release/Camera.h"
+#include "Camera/Camera.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 

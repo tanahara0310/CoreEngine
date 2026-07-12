@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "LensFlare.h"
-#include "Utility/Debug/ImGui/ImguiManager.h"
+#include "Editor/ImGui/ImguiManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"

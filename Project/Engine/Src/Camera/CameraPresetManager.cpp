@@ -5,7 +5,7 @@
 #include <iostream>
 #include "Camera/ICamera.h"
 #include "Camera/Debug/DebugCamera.h"
-#include "Camera/Release/Camera.h"
+#include "Camera/Camera.h"
 
 namespace CoreEngine
 {

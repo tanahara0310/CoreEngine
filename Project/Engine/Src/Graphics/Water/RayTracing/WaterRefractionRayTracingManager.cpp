@@ -3,10 +3,10 @@
 
 #include <algorithm>
 
-#include "AccelerationStructureManager.h"
+#include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "RayTracingPipelineBuilder.h"
+#include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 
@@ -68,7 +68,7 @@ namespace CoreEngine
 
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();
-        shaderBlob_.Attach(shaderCompiler.CompileShaderLibrary(L"Application/Assets/Shaders/Water/RTWaterRefraction.hlsl"));
+        shaderBlob_.Attach(shaderCompiler.CompileShaderLibrary(L"Engine/Assets/Shaders/Water/RayTracing/RTWaterRefraction.hlsl"));
         if (!shaderBlob_) {
             log.Log("WaterRefractionRayTracingManager: Shader compile failed",
                 LogLevel::Error, LogCategory::Graphics);

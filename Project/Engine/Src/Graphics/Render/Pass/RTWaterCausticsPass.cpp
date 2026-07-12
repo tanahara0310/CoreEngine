@@ -3,7 +3,7 @@
 
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
 

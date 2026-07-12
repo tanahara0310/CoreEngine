@@ -8,9 +8,9 @@
 
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Graphics/Water/Simulation/WaterSurfaceModelProvider.h"
-#include "GlobalRootSignatureManager.h"
-#include "RayTracingOutputViewSet.h"
-#include "ShaderTableBuilder.h"
+#include "Graphics/RayTracing/GlobalRootSignatureManager.h"
+#include "Graphics/RayTracing/RayTracingOutputViewSet.h"
+#include "Graphics/RayTracing/ShaderTableBuilder.h"
 
 namespace CoreEngine
 {

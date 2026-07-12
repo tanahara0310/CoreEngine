@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/Model/AnimatedModelObject.h"
+#include "GameObject/Model/AnimatedModelObject.h"
 
 /// @brief Walkモデルオブジェクト
 class WalkModelObject : public CoreEngine::AnimatedModelObject {

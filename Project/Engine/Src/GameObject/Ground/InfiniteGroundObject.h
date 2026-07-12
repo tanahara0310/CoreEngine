@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/Primitive/PrimitiveGameObject.h"
+#include "GameObject/Primitive/PrimitiveGameObject.h"
 #include "Math/MathCore.h"
 
 /// @brief y=0 に広がる無限遠グレータイル床（全シーン共通の既定床）
