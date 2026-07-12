@@ -1,0 +1,502 @@
+#include "pch.h"
+#include "ModelGameObject.h"
+#include "EngineSystem/EngineSystem.h"
+#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Model/ModelManager.h"
+#include "Graphics/Texture/TextureManager.h"
+#include "Graphics/Model/ModelResource.h"
+#include "Graphics/Render/Model/BaseModelRenderer.h"
+#include "Camera/ICamera.h"
+#include "Utility/JsonManager/JsonManager.h"
+
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
+
+namespace CoreEngine
+{
+    void ModelGameObject::Initialize() {
+        auto* engine = GetEngineSystem();
+        auto* dxCommon = engine->GetComponent<DirectXCommon>();
+        auto* modelMgr = engine->GetComponent<ModelManager>();
+
+        if (dxCommon) {
+            transform_.Initialize(dxCommon->GetDevice());
+        }
+
+        const std::string modelPath = GetModelPath();
+        if (!modelPath.empty() && modelMgr) {
+            model_ = modelMgr->CreateStaticModel(modelPath);
+        }
+
+        const std::string texPath = GetTexturePath();
+        if (!texPath.empty()) {
+            texture_ = TextureManager::GetInstance().Load(texPath);
+            textureName_ = texPath;
+        }
+
+        OnInitialize();
+
+        // OnInitialize() で SetCustomShaderProvider() が呼ばれた場合、カスタム PSO を構築する
+        BuildCustomShaderPipelineIfNeeded(dxCommon ? dxCommon->GetDevice() : nullptr, modelMgr);
+
+        SetActive(true);
+    }
+
+    void ModelGameObject::BuildCustomShaderPipelineIfNeeded(ID3D12Device* device, ModelManager* modelMgr)
+    {
+        if (!customShaderProvider_ || !model_ || !modelMgr || !device) {
+            return;
+        }
+        const ModelRenderContext& ctx = modelMgr->GetRenderContext();
+        if (!ctx.IsValid()) {
+            return;
+        }
+        customShaderPipeline_ = std::make_unique<CustomShaderPipeline>();
+        BaseModelRenderer* renderer = ctx.modelRenderer;
+        const bool built = customShaderPipeline_->Build(
+            device,
+            *renderer->GetShaderCompiler(),
+            *renderer->GetReflectionBuilder(),
+            *customShaderProvider_);
+
+        if (built && customShaderPipeline_->HasForwardPSO()) {
+            model_->SetCustomForwardPSO(
+                customShaderPipeline_->GetForwardPSO(blendMode_));
+            model_->SetCustomRootSignature(
+                customShaderPipeline_->GetForwardRootSignature());
+            model_->SetCustomPipeline(customShaderPipeline_.get());
+            model_->SetCustomShaderProvider(customShaderProvider_);
+        }
+    }
+
+    void ModelGameObject::Update() {
+        if (!IsActive()) return;
+        transform_.TransferMatrix();
+        OnUpdate();
+    }
+
+    void ModelGameObject::Draw(const ICamera* camera) {
+        if (!model_ || !camera) return;
+
+        // 視錐台カリング: ワールドAABBが視錐台の外側なら描画をスキップ
+        BoundingBox worldAABB = GetWorldBoundingBox();
+        if (worldAABB.IsValid()) {
+            Frustum frustum = camera->GetFrustum();
+            if (frustum.IsOutside(worldAABB)) {
+                return;
+            }
+        }
+
+        model_->Draw(transform_, camera, texture_.gpuHandle);
+        OnDraw(camera);
+    }
+
+    void ModelGameObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {
+        if (model_ && model_->IsInitialized()) {
+            model_->DrawShadow(transform_, cmdList);
+        }
+    }
+
+    BoundingBox ModelGameObject::GetWorldBoundingBox() const {
+        if (!model_ || !model_->GetModelResource()) {
+            return BoundingBox(); // 無効なAABBを返す
+        }
+
+        const BoundingBox& localAABB = model_->GetModelResource()->GetLocalBoundingBox();
+        if (!localAABB.IsValid()) {
+            return BoundingBox();
+        }
+
+        // ローカルAABBの8頂点をワールド変換し、新しいAABBを構築
+        const Matrix4x4& world = transform_.GetWorldMatrix();
+        BoundingBox worldAABB;
+
+        for (int i = 0; i < 8; ++i) {
+            Vector3 corner = {
+                (i & 1) ? localAABB.max.x : localAABB.min.x,
+                (i & 2) ? localAABB.max.y : localAABB.min.y,
+                (i & 4) ? localAABB.max.z : localAABB.min.z
+            };
+
+            // ワールド行列で変換
+            Vector3 transformed = {
+                corner.x * world.m[0][0] + corner.y * world.m[1][0] + corner.z * world.m[2][0] + world.m[3][0],
+                corner.x * world.m[0][1] + corner.y * world.m[1][1] + corner.z * world.m[2][1] + world.m[3][1],
+                corner.x * world.m[0][2] + corner.y * world.m[1][2] + corner.z * world.m[2][2] + world.m[3][2]
+            };
+
+            if (transformed.x < worldAABB.min.x) worldAABB.min.x = transformed.x;
+            if (transformed.y < worldAABB.min.y) worldAABB.min.y = transformed.y;
+            if (transformed.z < worldAABB.min.z) worldAABB.min.z = transformed.z;
+            if (transformed.x > worldAABB.max.x) worldAABB.max.x = transformed.x;
+            if (transformed.y > worldAABB.max.y) worldAABB.max.y = transformed.y;
+            if (transformed.z > worldAABB.max.z) worldAABB.max.z = transformed.z;
+        }
+
+        return worldAABB;
+    }
+
+    json ModelGameObject::OnSerialize() const {
+        json j;
+        j["active"] = IsActive();
+        if (!name_.empty()) {
+            j["name"] = name_;
+        }
+        j["transform"]["translate"] = JsonManager::Vector3ToJson(transform_.translate);
+        j["transform"]["rotate"] = JsonManager::Vector3ToJson(transform_.rotate);
+        j["transform"]["scale"] = JsonManager::Vector3ToJson(transform_.scale);
+
+        // コピー・Undo Redo 用にモデルパスを保存する
+        const std::string modelPath = GetModelPath();
+        if (!modelPath.empty()) {
+            j["modelPath"] = modelPath;
+        }
+
+        if (!textureName_.empty()) {
+            j["texture"] = textureName_;
+        }
+
+        if (model_ && model_->GetMaterial()) {
+            const MaterialInstance* mat = model_->GetMaterial();
+            json& m = j["material"];
+            m["color"] = JsonManager::Vector4ToJson(mat->GetColor());
+            m["lighting"] = mat->IsLightingEnabled();
+            m["metallic"] = mat->GetMetallic();
+            m["roughness"] = mat->GetRoughness();
+            m["ao"] = mat->GetAO();
+            m["normalMap"] = mat->IsNormalMapEnabled();
+            m["metallicMap"] = mat->IsMetallicMapEnabled();
+            m["roughnessMap"] = mat->IsRoughnessMapEnabled();
+            m["aoMap"] = mat->IsAOMapEnabled();
+            m["dithering"] = mat->IsDitheringEnabled();
+            m["ditheringScale"] = mat->GetDitheringScale();
+            m["ibl"] = mat->IsIBLEnabled();
+            m["iblIntensity"] = mat->GetIBLIntensity();
+        }
+
+        return j;
+    }
+
+    void ModelGameObject::OnDeserialize(const json& j) {
+        if (j.contains("name")) {
+            name_ = j["name"].get<std::string>();
+        }
+        if (j.contains("active")) {
+            SetActive(j["active"].get<bool>());
+        }
+        if (j.contains("transform")) {
+            const json& t = j["transform"];
+            transform_.translate = JsonManager::SafeGetVector3(t, "translate", transform_.translate);
+            transform_.rotate = JsonManager::SafeGetVector3(t, "rotate", transform_.rotate);
+            transform_.scale = JsonManager::SafeGetVector3(t, "scale", transform_.scale);
+        }
+        if (j.contains("texture")) {
+            textureName_ = j["texture"].get<std::string>();
+            if (!textureName_.empty()) {
+                texture_ = TextureManager::GetInstance().Load(textureName_);
+            }
+        }
+        if (j.contains("material") && model_ && model_->GetMaterial()) {
+            MaterialInstance* mat = model_->GetMaterial();
+            const json& m = j["material"];
+            if (m.contains("color"))
+                mat->SetColor(JsonManager::JsonToVector4(m["color"]));
+            mat->SetLightingEnabled(JsonManager::SafeGet<bool>(m, "lighting", mat->IsLightingEnabled()));
+            mat->SetMetallic(JsonManager::SafeGet<float>(m, "metallic", mat->GetMetallic()));
+            mat->SetRoughness(JsonManager::SafeGet<float>(m, "roughness", mat->GetRoughness()));
+            mat->SetAO(JsonManager::SafeGet<float>(m, "ao", mat->GetAO()));
+            mat->SetNormalMapEnabled(JsonManager::SafeGet<bool>(m, "normalMap", mat->IsNormalMapEnabled()));
+            mat->SetMetallicMapEnabled(JsonManager::SafeGet<bool>(m, "metallicMap", mat->IsMetallicMapEnabled()));
+            mat->SetRoughnessMapEnabled(JsonManager::SafeGet<bool>(m, "roughnessMap", mat->IsRoughnessMapEnabled()));
+            mat->SetAOMapEnabled(JsonManager::SafeGet<bool>(m, "aoMap", mat->IsAOMapEnabled()));
+            mat->SetDitheringEnabled(JsonManager::SafeGet<bool>(m, "dithering", mat->IsDitheringEnabled()));
+            mat->SetDitheringScale(JsonManager::SafeGet<float>(m, "ditheringScale", mat->GetDitheringScale()));
+            mat->SetIBLEnabled(JsonManager::SafeGet<bool>(m, "ibl", mat->IsIBLEnabled()));
+            mat->SetIBLIntensity(JsonManager::SafeGet<float>(m, "iblIntensity", mat->GetIBLIntensity()));
+        }
+    }
+
+#ifdef USE_IMGUI
+    void ModelGameObject::OnImGuiActiveChanged(bool prevActive) {
+        if (onEditCommitted_) {
+            onEditCommitted_(this,
+                transform_.translate, transform_.rotate, transform_.scale,
+                prevActive);
+        }
+    }
+
+    int ModelGameObject::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
+        if (maxTabs < 4) return 0;
+        outTabs[0] = { "scene.png",      "描画設定",     {0.34f,0.67f,0.88f,1.0f}, {0.34f,0.67f,0.88f,0.25f} };
+        outTabs[1] = { "object_data.png", "トランスフォーム", {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
+        outTabs[2] = { "material.png",    "マテリアル",   {0.90f,0.30f,0.40f,1.0f}, {0.90f,0.30f,0.40f,0.25f} };
+        outTabs[3] = { "imagePlane.png",  "テクスチャ",   {0.60f,0.40f,0.80f,1.0f}, {0.60f,0.40f,0.80f,0.25f} };
+        return 4;
+    }
+
+    bool ModelGameObject::DrawInspectorTabContent(int tabIndex) {
+        switch (tabIndex) {
+        case 0: return DrawRenderSection();
+        case 1: return DrawTransformSection();
+        case 2: return DrawMaterialImGui();
+        case 3: return DrawTextureSection();
+        default: return false;
+        }
+    }
+
+    bool ModelGameObject::DrawTransformSection() {
+        bool changed = false;
+
+        // ドラッグ中のカーソル非表示＆復帰用
+        static ImVec2 sDragOrigin = {};
+        static bool   sDragActive = false;
+
+        Vector3& pos = transform_.translate;
+        Vector3& rot = transform_.rotate;
+        Vector3& sc = transform_.scale;
+
+        // ── フィールドスタイル ───────────────────────────────
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.20f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.20f, 0.20f, 0.28f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.26f, 0.26f, 0.36f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 4.0f));
+
+        // 右揃えラベル + DragFloat 行を描画するヘルパー
+        auto row = [&](const char* label, float* val, float speed) {
+            constexpr float kLabelCol = 82.0f;
+            const float textW = ImGui::CalcTextSize(label).x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (kLabelCol - textW));
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(label);
+            ImGui::SameLine(0.0f, 6.0f);
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            char id[64];
+            snprintf(id, sizeof(id), "##%s%p", label, static_cast<void*>(val));
+            changed |= ImGui::DragFloat(id, val, speed, 0.0f, 0.0f, "%.3f");
+            if (ImGui::IsItemActivated()) {
+                sDragOrigin = ImGui::GetIO().MousePos;
+                sDragActive = true;
+                imguiSnapTranslate_ = transform_.translate;
+                imguiSnapRotate_ = transform_.rotate;
+                imguiSnapScale_ = transform_.scale;
+                imguiSnapActive_ = isActive_;
+            }
+            if (sDragActive && ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+            }
+            if (sDragActive && ImGui::IsItemDeactivated()) {
+                ImGuiIO& io = ImGui::GetIO();
+                io.MousePos = sDragOrigin;
+                io.WantSetMousePos = true;
+                sDragActive = false;
+            }
+            if (ImGui::IsItemDeactivatedAfterEdit() && onEditCommitted_) {
+                onEditCommitted_(this,
+                    imguiSnapTranslate_, imguiSnapRotate_,
+                    imguiSnapScale_, imguiSnapActive_);
+            }
+            };
+
+        UI::SectionHeader("位置");
+        row("位置 X", &pos.x, 0.1f);
+        row("Y", &pos.y, 0.1f);
+        row("Z", &pos.z, 0.1f);
+
+        UI::SectionHeader("回転");
+        row("回転 X", &rot.x, 0.01f);
+        row("Y", &rot.y, 0.01f);
+        row("Z", &rot.z, 0.01f);
+
+        UI::SectionHeader("スケール");
+        row("スケール X", &sc.x, 0.01f);
+        row("Y", &sc.y, 0.01f);
+        row("Z", &sc.z, 0.01f);
+
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(3);
+
+        return changed;
+    }
+
+    bool ModelGameObject::DrawRenderSection() {
+        bool changed = false;
+
+        constexpr float kLabelCol = 82.0f;
+
+        // フィールドスタイル
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.20f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.20f, 0.20f, 0.28f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.26f, 0.26f, 0.36f, 1.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 4.0f));
+
+        // 右揃えラベルを描画するヘルパー
+        auto label = [&](const char* text) {
+            const float tw = ImGui::CalcTextSize(text).x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (kLabelCol - tw));
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(text);
+            ImGui::SameLine(0.0f, 6.0f);
+            };
+
+        // ── 描画パス（読み取り専用） ─────────────────────────
+        UI::SectionHeader("描画パス");
+        {
+            static const char* kPassNames[] = {
+                "Shadow Map", "Model", "Skinned Model", "Sky Box",
+                "Model Particle", "Line", "Particle", "Sprite"
+            };
+            const int passIdx = static_cast<int>(GetRenderPassType());
+            const char* passName = (passIdx >= 0 && passIdx < 8) ? kPassNames[passIdx] : "Unknown";
+            label("パス種別");
+            ImGui::TextUnformatted(passName);
+        }
+
+        // ── 描画順序 ──────────────────────────────────────────
+        UI::SectionHeader("描画順序");
+        {
+            bool hasOverride = renderOrder_.has_value();
+            label("オーバーライド");
+            if (ImGui::Checkbox("##renderOrderEnable", &hasOverride)) {
+                if (hasOverride) {
+                    SetRenderOrder(0);
+                } else {
+                    ResetRenderOrder();
+                }
+                changed = true;
+            }
+            if (hasOverride) {
+                int orderVal = renderOrder_.value_or(0);
+                label("順序値");
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                if (ImGui::DragInt("##renderOrder", &orderVal, 1.0f)) {
+                    SetRenderOrder(orderVal);
+                    changed = true;
+                }
+            }
+        }
+
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(3);
+
+        return changed;
+    }
+
+    bool ModelGameObject::DrawMaterialImGui() {
+        bool changed = false;
+
+        // ── ブレンドモード（マテリアルの描画設定として管理） ────────
+        {
+            constexpr float kLabelCol = 82.0f;
+
+            ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.20f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.20f, 0.20f, 0.28f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.26f, 0.26f, 0.36f, 1.0f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 4.0f));
+
+            UI::SectionHeader("ブレンドモード");
+            static const char* kBlendNames[] = {
+                "なし", "通常", "加算", "減算", "乗算", "スクリーン"
+            };
+            int blendIdx = static_cast<int>(blendMode_);
+            const float tw = ImGui::CalcTextSize("モード").x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (kLabelCol - tw));
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted("モード");
+            ImGui::SameLine(0.0f, 6.0f);
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            if (ImGui::Combo("##blendMode", &blendIdx, kBlendNames, 6)) {
+                blendMode_ = static_cast<BlendMode>(blendIdx);
+                changed = true;
+            }
+
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(3);
+        }
+
+        // ── Material Properties ─────────────────────────────────
+        if (model_ && model_->GetMaterial()) {
+            if (!materialDebugUI_) materialDebugUI_ = std::make_unique<MaterialDebugUI>();
+            changed |= materialDebugUI_->Draw(model_.get());
+        }
+
+        return changed;
+    }
+
+    bool ModelGameObject::DrawTextureSection() {
+        bool changed = false;
+
+        // ── テクスチャプレビュー ─────────────────────────────────────
+        UI::SectionHeader("ベーステクスチャ");
+
+        // 現在のテクスチャのプレビュー表示
+        constexpr float kPreviewSize = 96.0f;
+        const bool hasTexture = (texture_.gpuHandle.ptr != 0);
+
+        if (hasTexture) {
+            // テクスチャサムネイルを中央揃えで描画
+            const float availW = ImGui::GetContentRegionAvail().x;
+            if (availW > kPreviewSize) {
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availW - kPreviewSize) * 0.5f);
+            }
+            ImGui::Image((ImTextureID)texture_.gpuHandle.ptr,
+                ImVec2(kPreviewSize, kPreviewSize));
+        }
+
+        // ── ドロップターゲットエリア ─────────────────────────────────
+        {
+            // 枠線スタイルを設定
+            const bool isDragHovering = ImGui::IsMouseDragging(ImGuiMouseButton_Left);
+            ImVec4 borderCol = isDragHovering
+                ? ImVec4(0.60f, 0.40f, 0.80f, 0.8f)
+                : ImVec4(0.30f, 0.30f, 0.30f, 1.0f);
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.12f, 0.16f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.18f, 0.24f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_Border, borderCol);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+
+            // ドロップ受付用のボタン領域
+            const float areaW = ImGui::GetContentRegionAvail().x;
+            constexpr float kAreaH = 40.0f;
+            ImGui::Button(hasTexture ? textureName_.c_str() : "テクスチャをドロップ", ImVec2(areaW, kAreaH));
+
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(3);
+
+            // ドロップターゲット: プロジェクトビューからのテクスチャファイルを受け付ける
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE")) {
+                    const char* droppedFilename = static_cast<const char*>(payload->Data);
+                    texture_ = TextureManager::GetInstance().Load(droppedFilename);
+                    textureName_ = droppedFilename;
+                    changed = true;
+                }
+                ImGui::EndDragDropTarget();
+            }
+        }
+
+        // ── テクスチャ解除ボタン ─────────────────────────────────────
+        if (hasTexture) {
+            ImGui::Spacing();
+            if (ImGui::Button("テクスチャ解除", ImVec2(-FLT_MIN, 0.0f))) {
+                texture_ = {};
+                textureName_.clear();
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    bool ModelGameObject::DrawImGui() {
+        // 基底クラスの共通インスペクターを使用
+        return GameObject::DrawImGui();
+    }
+#endif // USE_IMGUI
+
+}  // namespace CoreEngine

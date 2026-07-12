@@ -2,8 +2,8 @@
 
 #include "IEngineSubsystem.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
-#include "Graphics/RayTracing/WaterCausticsRayTracingManager.h"
-#include "Graphics/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 
 struct ID3D12GraphicsCommandList;

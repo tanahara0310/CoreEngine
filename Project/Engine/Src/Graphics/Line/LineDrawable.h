@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Line.h"
-#include "ObjectCommon/GameObject.h"
+#include "GameObject/GameObject.h"
 #include <vector>
 
 // 前方宣言

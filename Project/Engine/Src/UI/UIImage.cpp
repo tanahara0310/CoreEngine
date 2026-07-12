@@ -6,8 +6,8 @@
 #include "EngineSystem/EngineSystem.h"
 
 #ifdef USE_IMGUI
-#include "Utility/Debug/ImGui/Wrappers/ImGuiInput.h"
-#include "Utility/Debug/ImGui/Wrappers/ImGuiLayout.h"
+#include "Editor/ImGui/Wrappers/ImGuiInput.h"
+#include "Editor/ImGui/Wrappers/ImGuiLayout.h"
 #include <imgui.h>
 #include <numbers>
 #endif

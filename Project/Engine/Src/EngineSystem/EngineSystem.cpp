@@ -20,7 +20,7 @@
 #include "Utility/FrameRate/FrameRateController.h"
 
 #if defined(USE_IMGUI) && defined(USE_PIX)
-#include "Utility/Debug/ImGui/PixCapture.h"
+#include "Editor/ImGui/PixCapture.h"
 #endif
 
 // レンダーパス
@@ -55,7 +55,7 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 
-#include "ObjectCommon/GameObject.h"
+#include "GameObject/GameObject.h"
 #include "Scene/SceneManager.h"
 #include "EngineSystem/EngineConfig.h"
 

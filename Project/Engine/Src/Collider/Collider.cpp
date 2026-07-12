@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Collider.h"
-#include "ObjectCommon/GameObject.h"
+#include "GameObject/GameObject.h"
 
 
 namespace CoreEngine

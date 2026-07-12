@@ -3,7 +3,7 @@
 #include "../ParticleSystem.h" // Particle構造体のために必要
 
 #ifdef USE_IMGUI
-#include "Utility/Debug/ImGui/ImguiManager.h"
+#include "Editor/ImGui/ImguiManager.h"
 #endif
 
 

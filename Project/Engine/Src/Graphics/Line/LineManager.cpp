@@ -6,7 +6,7 @@
 #include <numbers>
 
 #ifdef _DEBUG
-#include "Utility/Debug/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/ImGuiAll.h"
 #endif
 
 namespace CoreEngine

@@ -2,14 +2,14 @@
 #include "MyGame.h"
 #include <EngineSystem/EngineSystem.h>
 #include "WinApp/WinApp.h"
-#include "Sample/SampleScene/TestScene/TestScene.h"
-#include "Sample/SampleScene/ParticleTestScene/ParticleTestScene.h"
-#include "Sample/SampleScene/PrimitiveTestScene/PrimitiveTestScene.h"
-#include "Sample/SampleScene/SpriteTestScene/SpriteTestScene.h"
-#include "Sample/SampleScene/WaterTestScene/WaterTestScene.h"
-#include "Sample/SampleScene/AtmosphereTestScene/AtmosphereTestScene.h"
-#include "Sample/SampleScene/VolumetricCloudTestScene/VolumetricCloudTestScene.h"
-#include "Sample/SampleScene/HomeworkScene/HomeworkScene.h"
+#include "Scenes/TestScene/TestScene.h"
+#include "Scenes/ParticleTestScene/ParticleTestScene.h"
+#include "Scenes/PrimitiveTestScene/PrimitiveTestScene.h"
+#include "Scenes/SpriteTestScene/SpriteTestScene.h"
+#include "Scenes/WaterTestScene/WaterTestScene.h"
+#include "Scenes/AtmosphereTestScene/AtmosphereTestScene.h"
+#include "Scenes/VolumetricCloudTestScene/VolumetricCloudTestScene.h"
+#include "Scenes/HomeworkScene/HomeworkScene.h"
 
 using namespace CoreEngine;
 

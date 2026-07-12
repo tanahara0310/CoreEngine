@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "SceneSaveSystem.h"
-#include "ObjectCommon/GameObjectManager.h"
-#include "ObjectCommon/Model/DynamicModelObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "GameObject/Model/DynamicModelObject.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 namespace CoreEngine
@@ -9,7 +9,7 @@ namespace CoreEngine
     // ===== パスヘルパー =====
 
     std::string SceneSaveSystem::GetSceneDir() const {
-        return "Application/Assets/Scene/" + sceneName_;
+        return "Application/Assets/Scenes/" + sceneName_;
     }
 
     std::string SceneSaveSystem::GetManifestPath() const {

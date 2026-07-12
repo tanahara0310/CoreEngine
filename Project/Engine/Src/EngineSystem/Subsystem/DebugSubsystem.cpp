@@ -22,14 +22,14 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
-#include "Graphics/Debug/EngineStats.h"
+#include "Graphics/Common/EngineStats.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Material/MaterialConstants.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
-#include "ObjectCommon/GameObjectManager.h"
-#include "ObjectCommon/Model/ModelGameObject.h"
+#include "GameObject/GameObjectManager.h"
+#include "GameObject/Model/ModelGameObject.h"
 #include <imgui.h>
 
 namespace CoreEngine

@@ -1,11 +1,11 @@
 #pragma once
-#include "Utility/Debug/ImGui/Gizmo.h"
+#include "Editor/ImGui/Gizmo.h"
 #ifdef USE_IMGUI
 #include "Utility/Debug/ConsoleUI.h"
-#include "Utility/Debug/ImGui/ScreenCapture.h"
-#include "Utility/Debug/ImGui/PixCapture.h"
+#include "Editor/ImGui/ScreenCapture.h"
+#include "Editor/ImGui/PixCapture.h"
 #endif
-#include "Utility/Debug/ImGui/SceneManagerTab.h"
+#include "Editor/ImGui/SceneManagerTab.h"
 #include <functional>
 #include <memory>
 #include <string>

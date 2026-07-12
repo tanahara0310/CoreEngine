@@ -8,7 +8,7 @@
 #include <iostream>
 #include <cstdio>
 #ifdef USE_IMGUI
-#include "Utility/Debug/ImGui/ImguiManager.h"
+#include "Editor/ImGui/ImguiManager.h"
 #endif
 #ifdef _DEBUG
 #include "Graphics/Render/Line/LineRendererPipeline.h"
@@ -87,7 +87,7 @@ void ParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* resour
     };
 
     // デフォルトテクスチャを設定（存在するパスに変更）
-    SetTexture("Texture/circle.png");
+    SetTexture("Textures/circle.png");
 }
 
 // 更新処理関数（他のオブジェクトと統一）

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ObjectCommon/GameObject.h"
+#include "GameObject/GameObject.h"
 #include "Graphics/Line/Line.h"
 #include "Math/Vector/Vector3.h"
 #include <vector>

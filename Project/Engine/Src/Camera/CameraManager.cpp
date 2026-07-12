@@ -2,8 +2,8 @@
 #include "CameraManager.h"
 
 #ifdef USE_IMGUI
-#include "Camera/Debug/Editor/CameraDebugUI.h"
-#include "ObjectCommon/GameObjectManager.h"
+#include "Editor/Camera/CameraDebugUI.h"
+#include "GameObject/GameObjectManager.h"
 #endif
 
 namespace CoreEngine
