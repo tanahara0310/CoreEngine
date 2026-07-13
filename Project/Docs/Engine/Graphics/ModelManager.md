@@ -26,19 +26,17 @@ auto modelManager = engine_->GetComponent<CoreEngine::ModelManager>();
 // 静的モデルの作成
 auto staticModel = modelManager->CreateStaticModel("character.gltf");
 
-// キーフレームアニメーションモデルの作成
-auto keyframeModel = modelManager->CreateKeyframeModel(
+// スケルトンアニメーションモデルの作成（AnimationPlayer 付き）
+auto skeletonModel = modelManager->CreateSkeletonModel(
     "character.gltf",
-    "idle",   // アニメーション名（空 = 最初のアニメーション）
+    "walk",   // アニメーション名（空 = 最初のアニメーション）
     true      // ループ再生
 );
 
-// スケルトンアニメーションモデルの作成
-auto skeletonModel = modelManager->CreateSkeletonModel(
-    "character.gltf",
-    "walk",   // アニメーション名
-    true      // ループ再生
-);
+// アニメーションの切り替え・ブレンドは AnimationPlayer 経由で行う
+if (auto* player = skeletonModel->GetAnimationPlayer()) {
+    player->SwitchWithBlend("run", 0.3f, true);
+}
 ```
 
 ## アニメーションの追加読み込み
@@ -57,8 +55,7 @@ bool success = modelManager->LoadAnimation(loadInfo);
 | メソッド | 説明 |
 |---------|------|
 | `CreateStaticModel(filePath)` | 静的モデルを作成（アニメーションなし） |
-| `CreateKeyframeModel(filePath, animName, loop)` | キーフレームアニメーションモデルを作成 |
-| `CreateSkeletonModel(filePath, animName, loop)` | スケルトンアニメーションモデルを作成 |
+| `CreateSkeletonModel(filePath, animName, loop)` | スケルトンアニメーションモデルを作成（AnimationPlayer 付き） |
 | `LoadAnimation(loadInfo)` | アニメーションを追加読み込み |
 | `ClearCache()` | 全キャッシュをクリア |
 | `IsInitialized()` | 初期化済みか確認 |

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Texture/Path/TexturePathResolver.h"
+#include "Graphics/Texture/TextureColorSpace.h"
 
 #include <string>
 #include <functional>
@@ -24,11 +25,13 @@ namespace CoreEngine
         /// @param ddsGenerationEnabled DDS生成の有効/無効
         /// @param pathResolver パス解決ヘルパー
         /// @param cubemapGenerator HDR->Cubemap DDS生成関数
+        /// @param colorSpace 色空間（DDSキャッシュパスの分離に使用）
         /// @return 実行に使う読み込み計画
         PlanResult BuildPlan(
             const std::string& resolvedPath,
             bool ddsGenerationEnabled,
             const TexturePathResolver& pathResolver,
-            const std::function<bool(const std::string&, const std::string&)>& cubemapGenerator) const;
+            const std::function<bool(const std::string&, const std::string&)>& cubemapGenerator,
+            TextureColorSpace colorSpace = TextureColorSpace::SRGB) const;
     };
 }

@@ -57,22 +57,11 @@ public:
     /// @return 作成されたModelのユニークポインタ
     std::unique_ptr<Model> CreateStaticModel(const std::string& filePath);
 
-    /// @brief キーフレームアニメーションモデルを作成
+    /// @brief スケルトンアニメーションモデルを作成（AnimationPlayer 付き）
     /// @param filePath ファイルパス（Assetsフォルダを省略可能）
     /// @param animationName アニメーション名（空の場合は最初のアニメーション）
     /// @param loop ループ再生するか
-    /// @return 作成されたModelのユニークポインタ
-    std::unique_ptr<Model> CreateKeyframeModel(
-        const std::string& filePath,
-        const std::string& animationName = "",
-        bool loop = true
-    );
-
-    /// @brief スケルトンアニメーションモデルを作成
-    /// @param filePath ファイルパス（Assetsフォルダを省略可能）
-    /// @param animationName アニメーション名（空の場合は最初のアニメーション）
-    /// @param loop ループ再生するか
-    /// @return 作成されたModelのユニークポインタ
+    /// @return 作成されたModelのユニークポインタ（スケルトンやアニメーションが無い場合は静的モデル）
     std::unique_ptr<Model> CreateSkeletonModel(
         const std::string& filePath,
         const std::string& animationName = "",

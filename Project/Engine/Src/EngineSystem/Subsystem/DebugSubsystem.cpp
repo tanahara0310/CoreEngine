@@ -140,33 +140,27 @@ namespace CoreEngine
             }
             });
 
-        // Shading パネル
+        // Shading パネル（IBL はシーン側で有効化され、マテリアルは強度のみ持つ）
         gameDebugUI_->RegisterEnginePanel("Shading", [this]() {
             auto* sceneManager = engine_->GetSceneManager();
             auto* objManager = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
 
             ImGui::SeparatorText("シーン全体に適用");
 
-            static const char* kModeItems[] = {
-                "PBR  (IBL なし)",
-                "PBR + IBL",
-                "Lambert  (従来)",
-                "Half-Lambert  (従来)"
-            };
-            static int sceneWideShadingMode = 0;
+            static float sceneWideIBLIntensity = 1.0f;
             ImGui::SetNextItemWidth(220.0f);
-            ImGui::Combo("モード##SceneWide", &sceneWideShadingMode, kModeItems, 4);
+            ImGui::SliderFloat("IBL 強度##SceneWide", &sceneWideIBLIntensity, 0.0f, 2.0f);
 
             ImGui::BeginDisabled(objManager == nullptr);
             if (ImGui::Button("シーン全体に適用", ImVec2(-1.0f, 0.0f))) {
-                const auto mode = static_cast<ShadingMode>(sceneWideShadingMode);
                 for (auto& obj : objManager->GetAllObjects()) {
                     auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
                     if (!modelObj) continue;
                     auto* model = modelObj->GetModel();
                     if (!model) continue;
-                    auto* mat = model->GetMaterial();
-                    if (mat) mat->SetShadingMode(mode);
+                    model->ForEachMaterial([](MaterialInstance* mat) {
+                        mat->SetIBLIntensity(sceneWideIBLIntensity);
+                    });
                 }
             }
             ImGui::EndDisabled();
@@ -175,7 +169,7 @@ namespace CoreEngine
             }
 
             ImGui::Spacing();
-            ImGui::SeparatorText("モデル別シェーディングモード");
+            ImGui::SeparatorText("モデル別 IBL 強度");
 
             if (objManager) {
                 int modelIndex = 0;
@@ -190,9 +184,12 @@ namespace CoreEngine
                     ImGui::PushID(modelIndex++);
                     const char* name = modelObj->GetObjectName();
                     ImGui::SetNextItemWidth(170.0f);
-                    int mode = static_cast<int>(mat->GetShadingMode());
-                    if (ImGui::Combo(name, &mode, kModeItems, 4)) {
-                        mat->SetShadingMode(static_cast<ShadingMode>(mode));
+                    float intensity = mat->GetIBLIntensity();
+                    if (ImGui::SliderFloat(name, &intensity, 0.0f, 2.0f)) {
+                        // スロット0の値を代表値として全スロットへ反映する
+                        model->ForEachMaterial([intensity](MaterialInstance* m) {
+                            m->SetIBLIntensity(intensity);
+                        });
                     }
                     ImGui::PopID();
                 }

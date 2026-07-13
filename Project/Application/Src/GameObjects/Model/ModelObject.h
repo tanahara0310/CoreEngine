@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GameObject/Model/ModelGameObject.h"
-#include "Graphics/Material/MaterialConstants.h"
 
 /// @brief 汎用モデルオブジェクト（glTFなどのモデル読み込み用）
 class ModelObject : public CoreEngine::ModelGameObject {
@@ -21,27 +20,23 @@ public:
     /// @return MaterialInstance へのポインタ（未初期化の場合 nullptr）
     CoreEngine::MaterialInstance* GetMaterial();
 
-    /// @brief PBRパラメータを設定
-    void SetPBRParameters(float metallic, float roughness, float ao);
+    /// @brief PBRファクターを設定（テクスチャ有りマテリアルではマップ値と乗算される）
+    /// @param metallic 金属性ファクター
+    /// @param roughness 粗さファクター
+    /// @param occlusionStrength AOマップ適用強度
+    void SetPBRParameters(float metallic, float roughness, float occlusionStrength = 1.0f);
 
-    /// @brief PBRテクスチャマップを有効/無効にする
-    /// @param useNormal ノーマルマップを使用するか
-    /// @param useMetallic メタリックマップを使用するか
-    /// @param useRoughness ラフネスマップを使用するか
-    /// @param useAO AOマップを使用するか
-    void SetPBRTextureMapsEnabled(bool useNormal = true, bool useMetallic = true,
-        bool useRoughness = true, bool useAO = true);
+    /// @brief 法線マップを有効/無効にする
+    /// @note Metallic/Roughness/AO はファクター×マップ乗算方式になったためフラグは法線のみ
+    void SetNormalMapEnabled(bool enable);
 
-    /// @brief マテリアルカラーを設定
+    /// @brief マテリアルカラーを設定（全マテリアルスロットに適用）
     void SetMaterialColor(const CoreEngine::Vector4& color);
 
-    /// @brief IBLを有効/無効にする
+    /// @brief IBLを有効/無効にする（IBL強度 1/0 の設定に相当）
     void SetIBLEnabled(bool enable);
 
-    /// @brief シェーディングモードを設定
-    void SetShadingMode(CoreEngine::ShadingMode mode);
-
-    /// @brief IBL強度を設定
+    /// @brief IBL強度を設定（0 でこのモデルの IBL を無効化）
     void SetIBLIntensity(float intensity);
 
 private:

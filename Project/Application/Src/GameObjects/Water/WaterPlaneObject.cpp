@@ -379,8 +379,9 @@ void WaterPlaneObject::SetMetallic(float metallic) {
 }
 
 void WaterPlaneObject::SetIBLEnabled(bool enable) {
+    // IBL の有効/無効はシーン側で決まるため、マテリアル側は強度によるオプトアウトで表現する
     auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
-    if (mat) { mat->SetIBLEnabled(enable); }
+    if (mat) { mat->SetIBLIntensity(enable ? 1.0f : 0.0f); }
 }
 
 void WaterPlaneObject::UpdateUVScroll(float deltaTime) {

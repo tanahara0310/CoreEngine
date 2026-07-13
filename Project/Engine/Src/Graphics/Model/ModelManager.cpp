@@ -9,9 +9,10 @@
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
 #include "Graphics/Common/EngineStats.h"
 #include "Animation/AnimationLoader.h"
-#include "Animation/Animator.h"
+#include "Animation/AnimationPlayer.h"
 #include "Animation/SkeletonAnimatorFactory.h"
 #include "Threading/ThreadPool.h"
+#include "Utility/Logger/Logger.h"
 
 #include <cassert>
 #include <filesystem>
@@ -76,53 +77,6 @@ namespace CoreEngine
         return instance;
     }
 
-    std::unique_ptr<Model> ModelManager::CreateKeyframeModel(
-        const std::string& filePath,
-        const std::string& animationName,
-        bool loop
-    )
-    {
-        assert(IsInitialized());
-
-        // パスを解決
-        std::string resolvedPath = ResolveFilePath(filePath);
-
-        std::string directoryPath, filename;
-        SplitPath(resolvedPath, directoryPath, filename);
-
-        // リソースを取得または読み込み
-        ModelResource* resource = LoadModelResourceInternal(directoryPath, filename);
-        assert(resource && resource->IsLoaded());
-
-        // アニメーションを取得
-        std::string animName = animationName;
-        if (animName.empty() && resource->HasAnimation()) {
-            const auto& animations = resource->GetAnimations();
-            if (!animations.empty()) {
-                animName = animations.begin()->first;
-            }
-        }
-
-        const Animation* animation = resource->GetAnimation(animName);
-        if (!animation) {
-            // アニメーションが見つからない場合は静的モデルとして作成
-            auto instance = std::make_unique<Model>();
-            instance->Initialize(resource, renderContext_);
-            return instance;
-        }
-
-        // Animatorを作成
-        auto animator = std::make_unique<Animator>();
-        animator->SetAnimation(*animation);
-        animator->SetLooping(loop);
-
-        // インスタンスを作成
-        auto instance = std::make_unique<Model>();
-        instance->Initialize(resource, std::move(animator), renderContext_);
-
-        return instance;
-    }
-
     std::unique_ptr<Model> ModelManager::CreateSkeletonModel(
         const std::string& filePath,
         const std::string& animationName,
@@ -141,36 +95,30 @@ namespace CoreEngine
         ModelResource* resource = LoadModelResourceInternal(directoryPath, filename);
         assert(resource && resource->IsLoaded());
 
-        // スケルトンがない場合はキーフレームモデルとして作成
+        auto instance = std::make_unique<Model>();
+        instance->Initialize(resource, renderContext_);
+
+        // スケルトンがない場合は静的モデルとして返す
         if (!resource->GetSkeleton()) {
-            return CreateKeyframeModel(filePath, animationName, loop);
-        }
-
-        // アニメーションを取得
-        std::string animName = animationName;
-        if (animName.empty() && resource->HasAnimation()) {
-            const auto& animations = resource->GetAnimations();
-            if (!animations.empty()) {
-                animName = animations.begin()->first;
-            }
-        }
-
-        const Animation* animation = resource->GetAnimation(animName);
-        if (!animation) {
-            // アニメーションが見つからない場合は静的モデルとして作成
-            auto instance = std::make_unique<Model>();
-            instance->Initialize(resource, renderContext_);
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}",
+                "CreateSkeletonModel: model has no skeleton, created as static model: " + filePath);
             return instance;
         }
 
-        // SkeletonAnimatorFactory を使って初期アニメーションを生成
+        // アニメーションを取得（名前が空の場合は最初のアニメーション）
+        const Animation* animation = resource->GetAnimation(animationName);
+        if (!animation) {
+            // アニメーションが見つからない場合は静的モデルとして返す
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}",
+                "CreateSkeletonModel: animation not found, created as static model: " + filePath);
+            return instance;
+        }
+
+        // 初期アニメーションのコントローラーと切り替え用ファクトリーを持つプレイヤーを注入する
         auto factory = std::make_unique<SkeletonAnimatorFactory>();
         auto skeletonAnimator = factory->CreateSkeletonAnimator(*resource->GetSkeleton(), *animation, loop);
-
-        // インスタンスを作成し、ファクトリーを注入（SwitchAnimation で使用）
-        auto instance = std::make_unique<Model>();
-        instance->Initialize(resource, std::move(skeletonAnimator), renderContext_);
-        instance->SetAnimationControllerFactory(std::make_unique<SkeletonAnimatorFactory>());
+        instance->SetAnimationPlayer(std::make_unique<AnimationPlayer>(
+            resource, std::move(skeletonAnimator), std::move(factory)));
 
         return instance;
     }

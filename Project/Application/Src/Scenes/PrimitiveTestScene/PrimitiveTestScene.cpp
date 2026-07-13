@@ -57,7 +57,7 @@ void PrimitiveTestScene::OnInitialize()
         mat->SetMetallic(0.0f);
         mat->SetRoughness(0.5f);
         mat->SetLightingEnabled(true);
-        mat->SetIBLEnabled(true);
+        // IBL はシーン側で自動有効化されるため個別設定は不要
     }
     ring->SetActive(true);
 
@@ -71,7 +71,7 @@ void PrimitiveTestScene::OnInitialize()
         mat->SetMetallic(0.0f);
         mat->SetRoughness(0.35f);
         mat->SetLightingEnabled(true);
-        mat->SetIBLEnabled(true);
+        // IBL はシーン側で自動有効化されるため個別設定は不要
     }
     cylinder->SetActive(true);
 
@@ -98,7 +98,7 @@ void PrimitiveTestScene::OnInitialize()
             mat->SetMetallic(1.0f);
             mat->SetRoughness(roughness);
             mat->SetLightingEnabled(true);
-            mat->SetIBLEnabled(true);
+            // IBL はシーン側で自動有効化されるため個別設定は不要
             mat->SetIBLIntensity(1.0f);
         }
         sphere->SetActive(true);
@@ -130,7 +130,7 @@ void PrimitiveTestScene::OnInitialize()
             mat->SetMetallic(0.0f);
             mat->SetRoughness(0.4f);
             mat->SetLightingEnabled(true);
-            mat->SetIBLEnabled(true);
+            // IBL はシーン側で自動有効化されるため個別設定は不要
         }
         cube->SetActive(true);
     }

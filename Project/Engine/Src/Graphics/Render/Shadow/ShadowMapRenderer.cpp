@@ -52,6 +52,18 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
+    void ShadowMapRenderer::BindShadowDrawPacket(ID3D12GraphicsCommandList* cmdList, const ShadowDrawPacket& packet) {
+        cmdList->IASetVertexBuffers(0, 1, &packet.vertexBufferView);
+        cmdList->IASetIndexBuffer(&packet.indexBufferView);
+
+        const int idx = GetRootParamIndex("gLightTransform");
+        if (idx >= 0 && packet.transformCBV != 0) {
+            cmdList->SetGraphicsRootConstantBufferView(idx, packet.transformCBV);
+        }
+
+        cmdList->DrawIndexedInstanced(packet.indexCount, 1, 0, 0, 0);
+    }
+
     void ShadowMapRenderer::CreatePipelineStates() {
         // ===================================
         // 通常モデル用 Pipeline State 作成

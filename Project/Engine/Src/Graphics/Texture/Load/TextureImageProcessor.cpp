@@ -22,7 +22,8 @@ namespace CoreEngine
         return FileType::WIC;
     }
 
-    HRESULT TextureImageProcessor::LoadTextureImage(const std::wstring& filePath, DirectX::ScratchImage& image)
+    HRESULT TextureImageProcessor::LoadTextureImage(const std::wstring& filePath, DirectX::ScratchImage& image,
+        TextureColorSpace colorSpace)
     {
         // 拡張子判定結果に応じて最適なDirectXTexローダーを呼び分ける。
         FileType fileType = DetectFileType(filePath);
@@ -33,7 +34,14 @@ namespace CoreEngine
             return DirectX::LoadFromHDRFile(filePath.c_str(), nullptr, image);
         }
 
-        return DirectX::LoadFromWICFile(filePath.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
+        // 色空間指定に応じて WIC フラグを切り替える。
+        // 法線・MetallicRoughness・AO などのデータテクスチャを sRGB として読み込むと
+        // サンプリング時にガンマデコードが掛かり値が歪むため、Linear では
+        // 埋め込みプロファイルを無視して UNORM（非sRGB）フォーマットで読み込む。
+        const DirectX::WIC_FLAGS wicFlags = (colorSpace == TextureColorSpace::Linear)
+            ? DirectX::WIC_FLAGS_IGNORE_SRGB
+            : DirectX::WIC_FLAGS_FORCE_SRGB;
+        return DirectX::LoadFromWICFile(filePath.c_str(), wicFlags, nullptr, image);
     }
 
     HRESULT TextureImageProcessor::LoadMetadata(const std::wstring& filePath, DirectX::TexMetadata& metadata)

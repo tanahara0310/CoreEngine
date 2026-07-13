@@ -57,8 +57,14 @@
 ## 今後の改善候補（Phase G 相当・任意）
 - RGResourceRegistry 化（Create/Import 分離・状態唯一所有・ハンドル化）→ SSAO 等の実行時公開を静的宣言へ
 - FFTOcean / Atmosphere のマネージャ内ステージ（約 40 バリア箇所）の Graph ノード分解
-- sticky グローバル状態（RenderManager::SetCamera 系 / Model::SetCurrentRenderSlot static）の引数渡し化
-  → IRenderer プロトコル全体の変更を伴うため独立タスクとして実施
+- ~~sticky グローバル状態（RenderManager::SetCamera 系 / Model::SetCurrentRenderSlot static）の引数渡し化~~
+  → **2026-07-13 解決**: `TransformBufferSlot::Scene` および `RenderManager::activeTransformSlot_` の
+  getter は実装全体で一度も消費されておらず（常に `Game` のみが設定・使用されていた）、当初想定した
+  「IRenderer プロトコル全体への引数追加」は不要と判明。`Model::SetCurrentRenderSlot`/`GetCurrentRenderSlot`・
+  `RenderManager::SetActiveTransformSlot`/`GetActiveTransformSlot`・`TransformBufferSlot` enum 自体を削除し、
+  3 箇所の呼び出し元（BaseScene::Draw / GeometryPass::Execute / WaterSurfacePass::Execute）から
+  対応する呼び出しを除去した（`ModelSystemRefactoringPlan.md` Phase 4 B2）。
+  `RenderManager::SetCamera` 系の sticky 状態は本項目の対象外で未解決のまま。
 - RenderManager の PassType 優先度ソートは「単一キュー内の異種レンダラー順序制御」として存続が妥当
   （Graph が管理するのはパス間順序であり、キュー内アイテム順序は引き続き RenderManager の責務）
 - IBL / 環境設定の RenderManager からの分離、BaseScene::Draw 旧経路の削除

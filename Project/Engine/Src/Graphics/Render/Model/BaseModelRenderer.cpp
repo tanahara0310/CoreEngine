@@ -50,8 +50,8 @@ namespace CoreEngine
         forwardCache_.material = GetRootParamIndex("gMaterial");
         forwardCache_.texture = GetRootParamIndex("gTexture");
         forwardCache_.normalMap = GetRootParamIndex("gNormalMap");
-        forwardCache_.metallicMap = GetRootParamIndex("gMetallicMap");
-        forwardCache_.roughnessMap = GetRootParamIndex("gRoughnessMap");
+        forwardCache_.metallicRoughnessMap = GetRootParamIndex("gMetallicRoughnessMap");
+        forwardCache_.emissiveMap = GetRootParamIndex("gEmissiveMap");
         forwardCache_.aoMap = GetRootParamIndex("gAOMap");
         forwardCache_.matrixPalette = GetRootParamIndex("gMatrixPalette");
 
@@ -60,8 +60,8 @@ namespace CoreEngine
         gBufferCache_.material = GetGBufferRootParamIndex("gMaterial");
         gBufferCache_.texture = GetGBufferRootParamIndex("gTexture");
         gBufferCache_.normalMap = GetGBufferRootParamIndex("gNormalMap");
-        gBufferCache_.metallicMap = GetGBufferRootParamIndex("gMetallicMap");
-        gBufferCache_.roughnessMap = GetGBufferRootParamIndex("gRoughnessMap");
+        gBufferCache_.metallicRoughnessMap = GetGBufferRootParamIndex("gMetallicRoughnessMap");
+        gBufferCache_.emissiveMap = GetGBufferRootParamIndex("gEmissiveMap");
         gBufferCache_.aoMap = GetGBufferRootParamIndex("gAOMap");
         gBufferCache_.matrixPalette = GetGBufferRootParamIndex("gMatrixPalette");
     }
@@ -114,18 +114,16 @@ namespace CoreEngine
                 cmdList->SetGraphicsRootDescriptorTable(idx, packet.normalMapSRV);
             }
         }
-        if (packet.metallicRoughnessSRV.ptr != 0) {
-            {
-                int idx = resolveIdx("gMetallicMap", c.metallicMap);
-                if (idx >= 0) {
-                    cmdList->SetGraphicsRootDescriptorTable(idx, packet.metallicRoughnessSRV);
-                }
+        {
+            int idx = resolveIdx("gMetallicRoughnessMap", c.metallicRoughnessMap);
+            if (idx >= 0 && packet.metallicRoughnessSRV.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(idx, packet.metallicRoughnessSRV);
             }
-            {
-                int idx = resolveIdx("gRoughnessMap", c.roughnessMap);
-                if (idx >= 0) {
-                    cmdList->SetGraphicsRootDescriptorTable(idx, packet.metallicRoughnessSRV);
-                }
+        }
+        {
+            int idx = resolveIdx("gEmissiveMap", c.emissiveMap);
+            if (idx >= 0 && packet.emissiveSRV.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(idx, packet.emissiveSRV);
             }
         }
         {
@@ -296,7 +294,13 @@ namespace CoreEngine
             cmdList->SetGraphicsRootDescriptorTable(forwardCache_.brdfLUT, iblParams_.brdfLUT);
         }
         if (iblParamsBuffer_) {
-            IBLSceneParamsCPU params{ iblParams_.rotation.x, iblParams_.rotation.y, iblParams_.rotation.z, iblParams_.intensity };
+            IBLSceneParamsCPU params{};
+            params.rotationX = iblParams_.rotation.x;
+            params.rotationY = iblParams_.rotation.y;
+            params.rotationZ = iblParams_.rotation.z;
+            params.environmentIntensity = iblParams_.intensity;
+            // IBL の有効/無効はシーン側（マップが揃っているか）で決まる
+            params.sceneIBLEnabled = HasIBLMaps() ? 1u : 0u;
             void* mapped = nullptr;
             iblParamsBuffer_->Map(0, nullptr, &mapped);
             std::memcpy(mapped, &params, sizeof(params));

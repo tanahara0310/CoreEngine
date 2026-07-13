@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "Graphics/Texture/TextureColorSpace.h"
+
 namespace CoreEngine
 {
     class TexturePathResolver {
@@ -15,8 +17,10 @@ namespace CoreEngine
 
         /// @brief DDSキャッシュのパスを取得する。元のファイルパスから対応するDDSファイルのパスを生成する。
         /// @param originalPath 元のファイルパス（Assetsフォルダを省略可能）
+        /// @param colorSpace 色空間。Linear は "_linear.dds" サフィックスで sRGB キャッシュと分離する
         /// @return DDSファイルのパス。Assetsフォルダを省略した場合は自動的に追加される。
-        std::string GetDDSCachePath(const std::string& originalPath) const;
+        std::string GetDDSCachePath(const std::string& originalPath,
+            TextureColorSpace colorSpace = TextureColorSpace::SRGB) const;
 
         /// @brief HDRファイルから生成されるキューブマップDDSのパスを取得する。元のファイルパスから対応するキューブマップDDSファイルのパスを生成する。
         /// @param originalPath 元のファイルパス（Assetsフォルダを省略可能）

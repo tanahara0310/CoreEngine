@@ -3,6 +3,8 @@
 #include <externals/DirectXTex/DirectXTex.h>
 #include <string>
 
+#include "Graphics/Texture/TextureColorSpace.h"
+
 namespace CoreEngine
 {
     class TextureImageProcessor
@@ -22,8 +24,10 @@ namespace CoreEngine
         /// @brief ファイルパスからテクスチャを読み込む。DDS、HDR、WIC形式に対応。
         /// @param filePath ファイルパス
         /// @param image 読み込んだテクスチャデータを格納するScratchImage参照
+        /// @param colorSpace 色空間（WIC形式のみ有効。DDS/HDRはファイル側のフォーマットに従う）
         /// @return 成功したらS_OK、失敗したらエラーコード
-        static HRESULT LoadTextureImage(const std::wstring& filePath, DirectX::ScratchImage& image);
+        static HRESULT LoadTextureImage(const std::wstring& filePath, DirectX::ScratchImage& image,
+            TextureColorSpace colorSpace = TextureColorSpace::SRGB);
 
         /// @brief ファイルパスからテクスチャのメタデータを読み込む。DDS、HDR、WIC形式に対応。
         /// @param filePath ファイルパス

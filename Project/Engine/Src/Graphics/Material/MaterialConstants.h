@@ -7,39 +7,31 @@
 
 namespace CoreEngine
 {
-    /// @brief マテリアルのシェーディングモード
-    enum class ShadingMode : int32_t
-    {
-        PBR = 0,  ///< PBR ライティング（IBL なし、ハーフランバートアンビエント代替）
-        PBR_IBL = 1,  ///< PBR + IBL ライティング
-        Lambert = 2,  ///< 従来のランバートシェーディング（拡散反射のみ、スペキュラなし）
-        HalfLambert = 3,  ///< 従来のハーフランバートシェーディング（拡散反射のみ、スペキュラなし）
-    };
-
     /// @brief GPU定数バッファに送信するマテリアルパラメータ（PBR専用）
-    /// @note シェーダーとのメモリレイアウトを一致させる必要があります
+    /// @note glTF 準拠の「ファクター × テクスチャ」乗算方式。
+    ///       テクスチャが無いマテリアルは白1x1フォールバックがバインドされるため、
+    ///       ファクター値がそのまま最終値になる。
+    /// @note IBL の有効/無効はシーン側（IBLマップの有無）で決まる。
+    ///       マテリアルは iblIntensity のみ保持し、0 で個別オプトアウトできる。
+    /// @note シェーダー側定義は Shaders/Include/Object/ObjectMaterial.hlsli と
+    ///       メモリレイアウトを一致させること。
     struct MaterialConstants {
-        Vector4 color;              ///< ベースカラー (RGBA)
-        int32_t enableLighting;     ///< 0=アンリット, 1=PBRライティング有効
-        float padding[3];           ///< 16バイトアライメント用
+        Vector4 color;              ///< ベースカラーファクター (RGBA)。ベースカラーテクスチャと乗算
         Matrix4x4 uvTransform;      ///< UVトランスフォーム行列
 
-        // ===== PBR Parameters =====
-        float metallic;             ///< 金属性 (0.0=非金属, 1.0=金属)
-        float roughness;            ///< 粗さ (0.0=滑らか, 1.0=粗い)
-        float ao;                   ///< Ambient Occlusion (0.0=完全遮蔽, 1.0=遮蔽なし)
-        int32_t useNormalMap;       ///< 法線マップ使用フラグ
+        // ===== PBR Factors =====
+        float metallic;             ///< 金属性ファクター。MRテクスチャの B チャネルと乗算
+        float roughness;            ///< 粗さファクター。MRテクスチャの G チャネルと乗算
+        float occlusionStrength;    ///< AOマップ適用強度 (0=無効, 1=フル適用)
+        int32_t useNormalMap;       ///< 法線マップ使用フラグ（法線のみ乗算合成不可のためフラグ制御）
 
-        int32_t useMetallicMap;     ///< メタリックマップ使用フラグ
-        int32_t useRoughnessMap;    ///< ラフネスマップ使用フラグ
-        int32_t useAOMap;           ///< AOマップ使用フラグ
+        Vector3 emissiveFactor;     ///< エミッシブファクター。エミッシブテクスチャと乗算
+        int32_t enableLighting;     ///< 0=アンリット, 1=PBRライティング有効
+
         int32_t enableDithering;    ///< ディザリング有効フラグ (透明・葉など)
-
-        // ===== Shading Mode =====
         float ditheringScale;       ///< ディザリングスケール
-        int32_t shadingMode;        ///< シェーディングモード（ShadingMode 列挙型）
-        float iblIntensity;         ///< IBL強度 (ShadingMode::PBR_IBL 時に使用, デフォルト: 1.0)
         float alphaCutoff;          ///< discard 判定に使用するアルファしきい値（デフォルト: 0.5）
+        float iblIntensity;         ///< IBL強度（0=このマテリアルはIBL無効, デフォルト: 1.0）
     };
 
     static_assert(sizeof(MaterialConstants) % 16 == 0,

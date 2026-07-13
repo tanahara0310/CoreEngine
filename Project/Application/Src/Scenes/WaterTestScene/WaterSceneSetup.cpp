@@ -67,15 +67,13 @@ void WaterSceneSetup::ConfigureWaterMaterial(WaterPlaneObject* waterPlane) {
     material->SetMetallic(0.0f);
     material->SetRoughness(0.04f);
     material->SetLightingEnabled(true);
-    // 大気散乱モードでは静的環境マップの IBL を使わない（既定の ShadingMode::PBR の
-    // ハーフランバートアンビエントで代替）。水面の鏡面反射は Planar Reflection
+    // 大気散乱モードでは静的環境マップの IBL を使わない（ハーフランバート
+    // アンビエントで代替）。水面の鏡面反射は Planar Reflection
     // （ReflectionView が大気散乱の空を含めて描画した SceneColor）で賄うため、
     // ここで静的 IBL を有効にすると大気の空と映り込みが食い違う。
-    material->SetIBLEnabled(false);
+    // 大気散乱モードでは静的環境マップの IBL を使わないため強度 0 でオプトアウトする
+    material->SetIBLIntensity(0.0f);
     material->SetNormalMapEnabled(false);
-    material->SetMetallicMapEnabled(false);
-    material->SetRoughnessMapEnabled(false);
-    material->SetAOMapEnabled(false);
 }
 
 void WaterSceneSetup::ConfigureGroundObject(ModelObject* groundObject) {
@@ -86,7 +84,7 @@ void WaterSceneSetup::ConfigureGroundObject(ModelObject* groundObject) {
     // 水中地形モデルを水面直下へ配置し、PBR 描画を有効化する
     groundObject->GetTransform().translate = { 0.0f, kWaterSceneGroundClearance - 0.1f, 0.0f };
     groundObject->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-    groundObject->SetPBRTextureMapsEnabled(true, true, true, true);
+    groundObject->SetNormalMapEnabled(true);
     // 水面と同じ理由で静的 IBL は使わず、大気散乱と整合する直接光ベースの PBR とする。
     groundObject->SetIBLEnabled(false);
     groundObject->SetActive(true);

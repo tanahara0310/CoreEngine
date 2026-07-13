@@ -45,7 +45,7 @@ namespace CoreEngine
 
     void AnimatedModelObject::OnUpdate() {
         auto* fc = GetEngineSystem()->GetComponent<FrameRateController>();
-        if (fc && model_ && model_->HasAnimationController()) {
+        if (fc && model_ && model_->GetAnimationPlayer()) {
             model_->UpdateAnimation(fc->GetDeltaTime());
         }
     }

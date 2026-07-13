@@ -7,12 +7,39 @@
 #include "Graphics/Material/MaterialConstants.h"
 #include "Editor/ImGui/ImGuiAll.h"
 
+#include <string>
+
 namespace CoreEngine {
 
     bool MaterialDebugUI::Draw(Model* model) {
         if (!model) return false;
 
-        auto* mat = model->GetMaterial();
+        const int materialCount = static_cast<int>(model->GetMaterialCount());
+        if (materialCount <= 0) return false;
+
+        // ─────────────── マテリアルスロット選択 ───────────────
+        if (materialCount > 1) {
+            UI::SectionHeader("マテリアルスロット");
+            if (selectedMaterial_ >= materialCount) {
+                selectedMaterial_ = 0;
+            }
+            std::string preview = "Slot " + std::to_string(selectedMaterial_);
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::BeginCombo("##MaterialSlot", preview.c_str())) {
+                for (int i = 0; i < materialCount; ++i) {
+                    std::string label = "Slot " + std::to_string(i);
+                    if (ImGui::Selectable(label.c_str(), selectedMaterial_ == i)) {
+                        selectedMaterial_ = i;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+        } else {
+            selectedMaterial_ = 0;
+        }
+
+        const size_t slot = static_cast<size_t>(selectedMaterial_);
+        auto* mat = model->GetMaterial(slot);
         if (!mat) return false;
 
         bool changed = false;
@@ -40,38 +67,27 @@ namespace CoreEngine {
         // ─────────────── PBR パラメータ ───────────────
         UI::SectionHeader("PBR パラメータ");
 
-        if (auto mapsTree = UI::Scope::TreeScope("テクスチャマップ##PBR")) {
-            const bool hasNormal = model->HasNormalMap();
-            const bool hasMetallic = model->HasMetallicRoughnessMap();
-            const bool hasOcclusion = model->HasOcclusionMap();
-
-            auto drawMapToggle = [&](const char* label, bool hasTexture,
-                bool (MaterialInstance::* getter)() const,
-                void (MaterialInstance::* setter)(bool)) {
-                    {
-                        UI::Scope::DisabledScope ds(!hasTexture);
-                        bool val = (mat->*getter)();
-                        if (UI::Widgets::ToggleSwitch(label, &val)) {
-                            (mat->*setter)(val);
-                            changed = true;
-                        }
-                    }
-                    if (!hasTexture) {
-                        UI::SameLine();
-                        UI::Hint("(なし)");
-                    }
-                };
-
-            drawMapToggle("Normal Map", hasNormal, &MaterialInstance::IsNormalMapEnabled, &MaterialInstance::SetNormalMapEnabled);
-            drawMapToggle("Metallic Map", hasMetallic, &MaterialInstance::IsMetallicMapEnabled, &MaterialInstance::SetMetallicMapEnabled);
-            drawMapToggle("Roughness Map", hasMetallic, &MaterialInstance::IsRoughnessMapEnabled, &MaterialInstance::SetRoughnessMapEnabled);
-            drawMapToggle("AO Map", hasOcclusion, &MaterialInstance::IsAOMapEnabled, &MaterialInstance::SetAOMapEnabled);
+        // ファクターはテクスチャと乗算合成される（glTF 準拠）。
+        // テクスチャ無しマテリアルは白フォールバックのためファクター値がそのまま最終値になる。
+        {
+            const bool hasNormal = model->HasNormalMap(slot);
+            UI::Scope::DisabledScope ds(!hasNormal);
+            bool normalEnabled = mat->IsNormalMapEnabled();
+            if (UI::Widgets::ToggleSwitch("Normal Map", &normalEnabled)) {
+                mat->SetNormalMapEnabled(normalEnabled);
+                changed = true;
+            }
+            if (!hasNormal) {
+                UI::SameLine();
+                UI::Hint("(なし)");
+            }
         }
 
-        UI::Hint("マップ無効時にスライダー値が適用されます");
+        if (model->HasMetallicRoughnessMap(slot)) {
+            UI::Hint("MRマップあり: ファクターはマップ値に乗算されます");
+        }
 
         {
-            UI::Scope::DisabledScope ds(mat->IsMetallicMapEnabled() && model->HasMetallicRoughnessMap());
             float metallic = mat->GetMetallic();
             if (UI::SliderFloat("Metallic", metallic, 0.0f, 1.0f)) {
                 mat->SetMetallic(metallic);
@@ -79,7 +95,6 @@ namespace CoreEngine {
             }
         }
         {
-            UI::Scope::DisabledScope ds(mat->IsRoughnessMapEnabled() && model->HasMetallicRoughnessMap());
             float roughness = mat->GetRoughness();
             if (UI::SliderFloat("Roughness", roughness, 0.0f, 1.0f)) {
                 mat->SetRoughness(roughness);
@@ -87,45 +102,35 @@ namespace CoreEngine {
             }
         }
         {
-            UI::Scope::DisabledScope ds(mat->IsAOMapEnabled() && model->HasOcclusionMap());
-            float ao = mat->GetAO();
-            if (UI::SliderFloat("AO", ao, 0.0f, 1.0f)) {
-                mat->SetAO(ao);
+            UI::Scope::DisabledScope ds(!model->HasOcclusionMap(slot));
+            float occlusionStrength = mat->GetOcclusionStrength();
+            if (UI::SliderFloat("AO 強度", occlusionStrength, 0.0f, 1.0f)) {
+                mat->SetOcclusionStrength(occlusionStrength);
+                changed = true;
+            }
+        }
+        {
+            Vector3 emissiveVec = mat->GetEmissiveFactor();
+            Vector4 emissive = { emissiveVec.x, emissiveVec.y, emissiveVec.z, 1.0f };
+            if (UI::ColorEdit("Emissive", emissive)) {
+                mat->SetEmissiveFactor({ emissive.x, emissive.y, emissive.z });
                 changed = true;
             }
         }
 
-        // ─────────────── シェーディングモード ───────────────
-        UI::SectionHeader("シェーディングモード");
+        // ─────────────── IBL ───────────────
+        UI::SectionHeader("IBL");
 
-        static const char* kModeItems[] = {
-            "PBR  (IBL なし)",
-            "PBR + IBL",
-            "Lambert  (従来)",
-            "Half-Lambert  (従来)"
-        };
-
-        int currentMode = static_cast<int>(mat->GetShadingMode());
-        ImGui::SetNextItemWidth(-1.0f);
-        if (ImGui::Combo("##ShadingMode", &currentMode, kModeItems, 4)) {
-            mat->SetShadingMode(static_cast<ShadingMode>(currentMode));
-            changed = true;
+        if (!model->IsIBLAvailable()) {
+            UI::Hint("(シーンに IBL マップ未設定のため無効)");
         }
-
-        // IBL 強度スライダーは PBR+IBL 時のみ表示
-        if (static_cast<ShadingMode>(currentMode) == ShadingMode::PBR_IBL) {
-            const bool iblAvailable = model->IsIBLAvailable();
-            if (!iblAvailable) {
-                UI::SameLine();
-                UI::Hint("(Irradiance/Prefiltered/BRDF LUT 未設定)");
-            } else {
-                UI::Scope::IndentScope is;
-                float iblIntensity = mat->GetIBLIntensity();
-                if (UI::SliderFloat("IBL 強度", iblIntensity, 0.0f, 2.0f)) {
-                    mat->SetIBLIntensity(iblIntensity);
-                    changed = true;
-                }
+        {
+            float iblIntensity = mat->GetIBLIntensity();
+            if (UI::SliderFloat("IBL 強度", iblIntensity, 0.0f, 2.0f)) {
+                mat->SetIBLIntensity(iblIntensity);
+                changed = true;
             }
+            UI::Hint("0 でこのマテリアルの IBL を無効化");
         }
 
         // ─────────────── エフェクト ───────────────

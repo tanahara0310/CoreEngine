@@ -10,9 +10,13 @@ namespace CoreEngine {
     class MaterialDebugUI {
     public:
         /// @brief マテリアルパラメータのImGuiウィジェットを描画
-        /// @param model モデルへのポインタ
+        /// @param model モデルへのポインタ（マルチマテリアルの場合はスロット選択コンボを表示）
         /// @return パラメータに変更があった場合 true
         bool Draw(Model* model);
+
+    private:
+        /// 編集対象のマテリアルスロットインデックス
+        int selectedMaterial_ = 0;
     };
 
 } // namespace CoreEngine

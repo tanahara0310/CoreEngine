@@ -148,6 +148,7 @@ namespace CoreEngine
         packet.normalMapSRV.ptr = batch.key.normalMapSRV;
         packet.metallicRoughnessSRV.ptr = batch.key.metallicRoughnessSRV;
         packet.occlusionSRV.ptr = batch.key.occlusionSRV;
+        packet.emissiveSRV.ptr = batch.key.emissiveSRV;
         packet.isSkinned = false;
 
         // カスタム PSO が指定されているバッチは RS と PSO を差し替えて描画する

@@ -21,6 +21,7 @@ namespace CoreEngine
         uint64_t normalMapSRV = 0;
         uint64_t metallicRoughnessSRV = 0;
         uint64_t occlusionSRV = 0;
+        uint64_t emissiveSRV = 0;
         uint64_t materialCBV = 0;                 ///< マテリアル定数バッファ
         bool isGBufferPass = false;               ///< Forward / GBuffer の区別
         ID3D12PipelineState* customForwardPSO = nullptr; ///< カスタムシェーダー PSO（nullptr = 既定）
@@ -35,6 +36,7 @@ namespace CoreEngine
                 && normalMapSRV == other.normalMapSRV
                 && metallicRoughnessSRV == other.metallicRoughnessSRV
                 && occlusionSRV == other.occlusionSRV
+                && emissiveSRV == other.emissiveSRV
                 && materialCBV == other.materialCBV
                 && isGBufferPass == other.isGBufferPass
                 && customForwardPSO == other.customForwardPSO
@@ -56,6 +58,7 @@ namespace CoreEngine
             h = mix(h, std::hash<uint64_t>{}(k.normalMapSRV));
             h = mix(h, std::hash<uint64_t>{}(k.metallicRoughnessSRV));
             h = mix(h, std::hash<uint64_t>{}(k.occlusionSRV));
+            h = mix(h, std::hash<uint64_t>{}(k.emissiveSRV));
             h = mix(h, std::hash<uint64_t>{}(k.materialCBV));
             h = mix(h, std::hash<bool>{}(k.isGBufferPass));
             h = mix(h, std::hash<const void*>{}(k.customForwardPSO));

@@ -19,27 +19,10 @@ namespace CoreEngine
         textureManager_ = textureMg;
     }
 
-    void ModelResource::LoadFromFile(const std::string& directoryPath, const std::string& filename)
+    void ModelResource::CreateGeometryBuffers()
     {
-        assert(dxCommon_ && resourceFactory_ && textureManager_);
-
-        // ModelLoaderを使用してモデルデータを読み込む
-        ModelData modelData = ModelLoader::LoadModelFile(directoryPath, filename);
-
-        // ModelDataを保存（スキンクラスター生成に必要）
-        // moveセマンティクスを使って大きなデータを効率的に移動
-        modelData_ = std::move(modelData);
-
-        // RootNodeを保存
-        rootNode_ = modelData_.rootNode;
-
-        // Skeletonを作成
-        skeleton_ = SkeletonLoader::CreateSkeleton(modelData_.rootNode);
-
-        // 頂点数を設定
+        // 頂点数・インデックス数を設定
         vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
-
-        // インデックス数を設定
         indexCount_ = static_cast<UINT>(modelData_.indices.size());
 
         // 頂点バッファの作成
@@ -84,27 +67,54 @@ namespace CoreEngine
             if (vertex.position.y > localBoundingBox_.max.y) localBoundingBox_.max.y = vertex.position.y;
             if (vertex.position.z > localBoundingBox_.max.z) localBoundingBox_.max.z = vertex.position.z;
         }
+    }
+
+    void ModelResource::LoadFromFile(const std::string& directoryPath, const std::string& filename)
+    {
+        assert(dxCommon_ && resourceFactory_ && textureManager_);
+
+        // ModelLoaderを使用してモデルデータを読み込む
+        ModelData modelData = ModelLoader::LoadModelFile(directoryPath, filename);
+
+        // ModelDataを保存（スキンクラスター生成に必要）
+        // moveセマンティクスを使って大きなデータを効率的に移動
+        modelData_ = std::move(modelData);
+
+        // RootNodeを保存
+        rootNode_ = modelData_.rootNode;
+
+        // Skeletonを作成
+        skeleton_ = SkeletonLoader::CreateSkeleton(modelData_.rootNode);
+
+        CreateGeometryBuffers();
 
         // ===== マテリアルのPBRテクスチャを並列読み込み =====
+        // 色空間: ベースカラー/エミッシブは sRGB、法線/MR/AO はデータテクスチャなので Linear。
         materialTextureHandles_.resize(modelData_.materials.size());
 
-        // 全マテリアルで必要なテクスチャパスを収集する。
-        std::vector<std::string> texturePaths;
-        texturePaths.push_back("white1x1.png");
+        // 全マテリアルで必要なテクスチャリクエストを収集する。
+        std::vector<TextureManager::LoadRequest> textureRequests;
+        textureRequests.push_back({ "white1x1.png", TextureColorSpace::SRGB });
 
         for (size_t i = 0; i < modelData_.materials.size(); ++i) {
             const MaterialAsset& material = modelData_.materials[i];
-            if (!material.baseColorTexture.empty()) texturePaths.push_back(material.baseColorTexture);
-            if (!material.metallicRoughnessTexture.empty()) texturePaths.push_back(material.metallicRoughnessTexture);
-            if (!material.normalTexture.empty()) texturePaths.push_back(material.normalTexture);
-            if (!material.occlusionTexture.empty()) texturePaths.push_back(material.occlusionTexture); 
-            if (!material.emissiveTexture.empty()) texturePaths.push_back(material.emissiveTexture);
+            if (!material.baseColorTexture.empty())
+                textureRequests.push_back({ material.baseColorTexture, TextureColorSpace::SRGB });
+            if (!material.metallicRoughnessTexture.empty())
+                textureRequests.push_back({ material.metallicRoughnessTexture, TextureColorSpace::Linear });
+            if (!material.normalTexture.empty())
+                textureRequests.push_back({ material.normalTexture, TextureColorSpace::Linear });
+            if (!material.occlusionTexture.empty())
+                textureRequests.push_back({ material.occlusionTexture, TextureColorSpace::Linear });
+            if (!material.emissiveTexture.empty())
+                textureRequests.push_back({ material.emissiveTexture, TextureColorSpace::SRGB });
         }
 
-        // 収集したパスを一括で並列ロードに投入し、完了を待つ。
-        textureManager_->Load(texturePaths);
+        // 収集したリクエストを一括で並列ロードに投入し、完了を待つ。
+        textureManager_->Load(textureRequests);
 
         // 全テクスチャがキャッシュ済みの状態で割り当てる（キャッシュヒットのみ）。
+        // 白1x1は値が(1,1,1,1)のため sRGB/Linear どちらのフォールバックとしても正しい。
         D3D12_GPU_DESCRIPTOR_HANDLE defaultWhiteTexture = textureManager_->Load("white1x1.png").gpuHandle;
 
         for (size_t i = 0; i < modelData_.materials.size(); ++i) {
@@ -118,9 +128,9 @@ namespace CoreEngine
                 handles.baseColor = defaultWhiteTexture;
             }
 
-            // MetallicRoughnessテクスチャ
+            // MetallicRoughnessテクスチャ (G=Roughness, B=Metallic)
             if (!material.metallicRoughnessTexture.empty()) {
-                handles.metallicRoughness = textureManager_->Load(material.metallicRoughnessTexture).gpuHandle;
+                handles.metallicRoughness = textureManager_->Load(material.metallicRoughnessTexture, TextureColorSpace::Linear).gpuHandle;
                 handles.hasMetallicRoughness = true;
             } else {
                 handles.metallicRoughness = defaultWhiteTexture;
@@ -129,7 +139,7 @@ namespace CoreEngine
 
             // Normalマップ
             if (!material.normalTexture.empty()) {
-                handles.normal = textureManager_->Load(material.normalTexture).gpuHandle;
+                handles.normal = textureManager_->Load(material.normalTexture, TextureColorSpace::Linear).gpuHandle;
                 handles.hasNormal = true;
             } else {
                 handles.normal = defaultWhiteTexture;
@@ -138,7 +148,7 @@ namespace CoreEngine
 
             // Occlusionマップ
             if (!material.occlusionTexture.empty()) {
-                handles.occlusion = textureManager_->Load(material.occlusionTexture).gpuHandle;
+                handles.occlusion = textureManager_->Load(material.occlusionTexture, TextureColorSpace::Linear).gpuHandle;
                 handles.hasOcclusion = true;
             } else {
                 handles.occlusion = defaultWhiteTexture;
@@ -169,48 +179,7 @@ namespace CoreEngine
         // RootNodeを保存
         rootNode_ = modelData_.rootNode;
 
-        // 頂点数・インデックス数を設定
-        vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
-        indexCount_ = static_cast<UINT>(modelData_.indices.size());
-
-        // 頂点バッファの作成
-        vertexBuffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon_->GetDevice(),
-            sizeof(VertexData) * modelData_.vertices.size());
-
-        vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-        vertexBufferView_.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * modelData_.vertices.size());
-        vertexBufferView_.StrideInBytes = sizeof(VertexData);
-
-        void* mapped = nullptr;
-        vertexBuffer_->Map(0, nullptr, &mapped);
-        memcpy(mapped, modelData_.vertices.data(), sizeof(VertexData) * modelData_.vertices.size());
-        vertexBuffer_->Unmap(0, nullptr);
-
-        // インデックスバッファの作成
-        indexBuffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon_->GetDevice(),
-            sizeof(uint32_t) * modelData_.indices.size());
-
-        indexBufferView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
-        indexBufferView_.SizeInBytes = static_cast<UINT>(sizeof(uint32_t) * modelData_.indices.size());
-        indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
-
-        void* mappedIndex = nullptr;
-        indexBuffer_->Map(0, nullptr, &mappedIndex);
-        memcpy(mappedIndex, modelData_.indices.data(), sizeof(uint32_t) * modelData_.indices.size());
-        indexBuffer_->Unmap(0, nullptr);
-
-        // ローカル空間AABBを頂点データから算出
-        localBoundingBox_ = BoundingBox();
-        for (const auto& vertex : modelData_.vertices) {
-            if (vertex.position.x < localBoundingBox_.min.x) localBoundingBox_.min.x = vertex.position.x;
-            if (vertex.position.y < localBoundingBox_.min.y) localBoundingBox_.min.y = vertex.position.y;
-            if (vertex.position.z < localBoundingBox_.min.z) localBoundingBox_.min.z = vertex.position.z;
-            if (vertex.position.x > localBoundingBox_.max.x) localBoundingBox_.max.x = vertex.position.x;
-            if (vertex.position.y > localBoundingBox_.max.y) localBoundingBox_.max.y = vertex.position.y;
-            if (vertex.position.z > localBoundingBox_.max.z) localBoundingBox_.max.z = vertex.position.z;
-        }
+        CreateGeometryBuffers();
 
         // マテリアルテクスチャハンドルの設定（デフォルト白テクスチャ）
         D3D12_GPU_DESCRIPTOR_HANDLE defaultWhiteTexture = textureManager_->Load("white1x1.png").gpuHandle;

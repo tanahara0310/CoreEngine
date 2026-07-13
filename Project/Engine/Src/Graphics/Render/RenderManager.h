@@ -4,7 +4,6 @@
 #include "RenderItem.h"
 #include "RenderPassType.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
-#include "Graphics/Model/ModelRenderContext.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
 #include <d3d12.h>
@@ -152,12 +151,6 @@ namespace CoreEngine
         /// @brief 環境輝度スケールを取得
         float GetEnvironmentIntensity() const { return environmentIntensity_; }
 
-        /// @brief アクティブなトランスフォームスロットを設定（Game=通常パス, Scene=エディタシーンビュー）
-        void SetActiveTransformSlot(TransformBufferSlot slot) { activeTransformSlot_ = slot; }
-
-        /// @brief 現在アクティブなトランスフォームスロットを取得
-        TransformBufferSlot GetActiveTransformSlot() const { return activeTransformSlot_; }
-
     private:
         std::vector<RenderItem> drawQueue_;
         std::vector<RenderItem> opaqueDrawQueue_; ///< Deferred 経路（GBuffer）へ振り分けた不透明 Model/SkinnedModel
@@ -182,9 +175,6 @@ namespace CoreEngine
     // true: 不透明 Model/SkinnedModel は opaqueDrawQueue_（GBuffer 経路）で描画される
     // false: Forward フォールバック（DrawMainQueuePass が不透明キューも描画する）
         bool deferredLightingActive_ = true;
-
-    // アクティブなトランスフォームスロット
-    TransformBufferSlot activeTransformSlot_ = TransformBufferSlot::Game;
 
     // IBL / Environment関連
     D3D12_GPU_DESCRIPTOR_HANDLE environmentMapHandle_ = {};

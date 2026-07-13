@@ -1,5 +1,6 @@
 #pragma once
 #include "Graphics/Render/BaseRenderer.h"
+#include "Graphics/Render/Shadow/ShadowDrawPacket.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include <d3d12.h>
@@ -59,6 +60,11 @@ namespace CoreEngine
 
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得
         int GetRootParamIndex(const std::string& resourceName) const;
+
+        /// @brief シャドウ描画パケットをバインドして描画コマンドを発行する
+        /// Model が組み立てた ShadowDrawPacket を受け取り、IA 設定・gLightTransform の
+        /// バインド・DrawIndexedInstanced の呼び出しを行う。
+        void BindShadowDrawPacket(ID3D12GraphicsCommandList* cmdList, const ShadowDrawPacket& packet);
 
     private:
         /// @brief PSOを作成（バイアス設定反映）

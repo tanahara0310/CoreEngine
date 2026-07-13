@@ -153,8 +153,8 @@ namespace CoreEngine
             int material = -1;
             int texture = -1;
             int normalMap = -1;
-            int metallicMap = -1;
-            int roughnessMap = -1;
+            int metallicRoughnessMap = -1; ///< gMetallicRoughnessMap (G=Roughness, B=Metallic)
+            int emissiveMap = -1;
             int aoMap = -1;
             int matrixPalette = -1;
         };

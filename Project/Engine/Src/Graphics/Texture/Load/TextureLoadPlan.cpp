@@ -13,7 +13,8 @@ namespace CoreEngine
         const std::string& resolvedPath,
         bool ddsGenerationEnabled,
         const TexturePathResolver& pathResolver,
-        const std::function<bool(const std::string&, const std::string&)>& cubemapGenerator) const
+        const std::function<bool(const std::string&, const std::string&)>& cubemapGenerator,
+        TextureColorSpace colorSpace) const
     {
         // 初期状態は入力パスをそのまま読み込む計画にする。
         PlanResult plan{};
@@ -89,7 +90,7 @@ namespace CoreEngine
 
         // 非DDS/非HDR入力の場合は通常DDSキャッシュを確認する。
         if (!plan.isDDS && !isHDR) {
-            plan.ddsPathToGenerate = pathResolver.GetDDSCachePath(plan.resolvedPath);
+            plan.ddsPathToGenerate = pathResolver.GetDDSCachePath(plan.resolvedPath, colorSpace);
             const std::wstring ddsPathW = Logger::GetInstance().ConvertString(plan.ddsPathToGenerate);
 
             if (std::filesystem::exists(ddsPathW)) {

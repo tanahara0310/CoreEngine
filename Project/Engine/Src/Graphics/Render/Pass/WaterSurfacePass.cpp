@@ -2,7 +2,6 @@
 #include "WaterSurfacePass.h"
 
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Model/Model.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
@@ -59,12 +58,10 @@ namespace CoreEngine
         targetToUse->SetClearEnabled(false);
         targetToUse->Begin(cmdList);
         if (context.renderManager) {
-            context.renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
             context.renderManager->SetDebugLineRenderingEnabled(true);
             if (context.sceneManager) {
                 context.renderManager->SetCamera(context.sceneManager->GetGameViewCamera3D());
             }
-            Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
             context.renderManager->DrawWaterQueuePass();
         }
         targetToUse->End(cmdList);

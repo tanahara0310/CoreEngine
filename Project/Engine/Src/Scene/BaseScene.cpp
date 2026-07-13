@@ -7,7 +7,6 @@
 #include "Camera/Camera2D.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
 #include "Particle/Gpu/GpuParticleSystem.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -131,10 +130,8 @@ namespace CoreEngine
     void BaseScene::Draw()
     {
         if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
-            renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
             renderManager->SetDebugLineRenderingEnabled(true);
         }
-        Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
         DrawWithCamera(ResolveGameViewCameraName());
     }
 

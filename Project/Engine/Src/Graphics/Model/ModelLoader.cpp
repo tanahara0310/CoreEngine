@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "ModelLoader.h"
 
+#include <assimp/GltfMaterial.h> // AI_MATKEY_GLTF_ALPHACUTOFF
+
 #include <cassert>
 #include <format>
 #include "Graphics/Model/VertexData.h"
@@ -18,8 +20,11 @@ namespace CoreEngine
         std::string fullPath = directoryPath + "/" + filename;
 
         // ===== フェーズ1: ファイルロードと検証 =====
+        // Importer はこの関数のスコープで所有する（=呼び出しごとにローカル）。
+        // static にすると PreloadModels の並列ロードでデータ競合するため注意。
         LogLoadStart(filename, directoryPath);
-        const aiScene* scene = LoadAssimpFile(fullPath);
+        Assimp::Importer importer;
+        const aiScene* scene = LoadAssimpFile(importer, fullPath);
         ValidateScene(scene, fullPath);
 
         ModelData result;
@@ -41,75 +46,56 @@ namespace CoreEngine
 
     // ===== ファイル読み込み・検証 =====
 
-    const aiScene* ModelLoader::LoadAssimpFile(const std::string& filepath)
+    const aiScene* ModelLoader::LoadAssimpFile(Assimp::Importer& importer, const std::string& filepath)
     {
-        // 静的Importerを2つ用意（通常用とスキニング用）
-        static Assimp::Importer importerNormal;
-        static Assimp::Importer importerSkinned;
-
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Loading model file: {}", filepath));
 
-        // まず軽量なフラグでシーンを読み込み、スキニングデータがあるか確認
-        Assimp::Importer checkImporter;
-        const aiScene* checkScene = checkImporter.ReadFile(
+        // スキニング有無に依存しない共通フラグで1回だけフルパースする。
+        // aiProcess_LimitBoneWeightsはボーンが無いメッシュに対しては単なる無処理。
+        const aiScene* scene = importer.ReadFile(
             filepath.c_str(),
-            aiProcess_Triangulate  // 最小限のフラグで読み込み
+            aiProcess_Triangulate |
+            aiProcess_GenSmoothNormals |
+            aiProcess_CalcTangentSpace |
+            aiProcess_LimitBoneWeights |      // ボーンウェイトを4つに制限
+            aiProcess_ConvertToLeftHanded |
+            aiProcess_FlipUVs
         );
 
-        if (!checkScene) {
+        if (!scene) {
             std::string errorMsg = std::format("Failed to load model file: {}\nAssimp Error: {}\nPlease check if the file exists and the path is correct.",
-                filepath, checkImporter.GetErrorString());
+                filepath, importer.GetErrorString());
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource, "{}", errorMsg);
-            FileErrorDialog::ShowModelError("Failed to load model file", filepath, checkImporter.GetErrorString());
+            FileErrorDialog::ShowModelError("Failed to load model file", filepath, importer.GetErrorString());
             assert(false && errorMsg.c_str());
             return nullptr;
         }
 
         // スキニングデータがあるかチェック
         bool hasSkinning = false;
-        for (uint32_t i = 0; i < checkScene->mNumMeshes; ++i) {
-            if (checkScene->mMeshes[i]->HasBones()) {
+        for (uint32_t i = 0; i < scene->mNumMeshes; ++i) {
+            if (scene->mMeshes[i]->HasBones()) {
                 hasSkinning = true;
                 break;
             }
         }
 
-        // スキニングデータの有無に応じてフラグを決定
-        const aiScene* scene = nullptr;
         if (hasSkinning) {
-            // スキニングモデル: aiProcess_PreTransformVerticesを使用しない
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Detected skinning data, loading without PreTransformVertices: {}", filepath));
-            scene = importerSkinned.ReadFile(
-                filepath.c_str(),
-                aiProcess_Triangulate |
-                aiProcess_GenSmoothNormals |
-                aiProcess_CalcTangentSpace |
-                aiProcess_LimitBoneWeights |      // ボーンウェイトを4つに制限
-                aiProcess_ConvertToLeftHanded |
-                aiProcess_FlipUVs
-            );
+            // スキニングモデル: Node変換を頂点へ焼き込むとボーン階層と矛盾するため何もしない
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Detected skinning data, keeping node hierarchy: {}", filepath));
         } else {
-            // 通常モデル: aiProcess_PreTransformVerticesを使用
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("No skinning data, loading with PreTransformVertices: {}", filepath));
-            scene = importerNormal.ReadFile(
-                filepath.c_str(),
-                aiProcess_Triangulate |
-                aiProcess_GenSmoothNormals |
-                aiProcess_CalcTangentSpace |
-                aiProcess_PreTransformVertices |  // Node変換を頂点に適用（スキニングなしの場合のみ）
-                aiProcess_ConvertToLeftHanded |
-                aiProcess_FlipUVs
-            );
-        }
+            // 通常モデル: 既存パース結果に対しPreTransformVerticesのみ追加適用（再パース不要）
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("No skinning data, applying PreTransformVertices: {}", filepath));
+            scene = importer.ApplyPostProcessing(aiProcess_PreTransformVertices);
 
-        if (!scene) {
-            const char* errorStr = hasSkinning ? importerSkinned.GetErrorString() : importerNormal.GetErrorString();
-            std::string errorMsg = std::format("Failed to load model file: {}\nAssimp Error: {}\nPlease check if the file exists and the path is correct.",
-                filepath, errorStr);
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource, "{}", errorMsg);
-            FileErrorDialog::ShowModelError("Failed to load model file", filepath, errorStr);
-            assert(false && errorMsg.c_str());
-            return nullptr;
+            if (!scene) {
+                std::string errorMsg = std::format("Failed to apply PreTransformVertices: {}\nAssimp Error: {}",
+                    filepath, importer.GetErrorString());
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource, "{}", errorMsg);
+                FileErrorDialog::ShowModelError("Failed to load model file", filepath, importer.GetErrorString());
+                assert(false && errorMsg.c_str());
+                return nullptr;
+            }
         }
 
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Model loaded successfully: {}", filepath));
@@ -148,11 +134,53 @@ namespace CoreEngine
             Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("  Material[{}]: {}", matIndex, material.name));
 
             // 各種テクスチャパスを取得
-            material.baseColorTexture = ExtractTexturePath(aiMat, aiTextureType_DIFFUSE, 0, directoryPath);
+            // ベースカラーは glTF PBR の BASE_COLOR を優先し、レガシー形式は DIFFUSE にフォールバック
+            material.baseColorTexture = ExtractTexturePath(aiMat, aiTextureType_BASE_COLOR, 0, directoryPath);
+            if (material.baseColorTexture.empty()) {
+                material.baseColorTexture = ExtractTexturePath(aiMat, aiTextureType_DIFFUSE, 0, directoryPath);
+            }
+            // MetallicRoughness は glTF では UNKNOWN として公開される。METALNESS にもフォールバック
             material.metallicRoughnessTexture = ExtractTexturePath(aiMat, aiTextureType_UNKNOWN, 0, directoryPath);
+            if (material.metallicRoughnessTexture.empty()) {
+                material.metallicRoughnessTexture = ExtractTexturePath(aiMat, aiTextureType_METALNESS, 0, directoryPath);
+            }
             material.normalTexture = ExtractTexturePath(aiMat, aiTextureType_NORMALS, 0, directoryPath);
             material.occlusionTexture = ExtractTexturePath(aiMat, aiTextureType_LIGHTMAP, 0, directoryPath);
             material.emissiveTexture = ExtractTexturePath(aiMat, aiTextureType_EMISSIVE, 0, directoryPath);
+
+            // ===== PBR ファクター（glTF はファクター×テクスチャの乗算合成） =====
+            // キーが存在しない形式（OBJ 等）は MaterialAsset のデフォルト値を維持する。
+            aiColor4D baseColor{};
+            if (aiMat->Get(AI_MATKEY_BASE_COLOR, baseColor) == AI_SUCCESS) {
+                material.baseColorFactor = { baseColor.r, baseColor.g, baseColor.b, baseColor.a };
+            } else if (aiMat->Get(AI_MATKEY_COLOR_DIFFUSE, baseColor) == AI_SUCCESS) {
+                material.baseColorFactor = { baseColor.r, baseColor.g, baseColor.b, baseColor.a };
+            }
+
+            float metallicFactor = 0.0f;
+            if (aiMat->Get(AI_MATKEY_METALLIC_FACTOR, metallicFactor) == AI_SUCCESS) {
+                material.metallicFactor = metallicFactor;
+            }
+            float roughnessFactor = 0.0f;
+            if (aiMat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughnessFactor) == AI_SUCCESS) {
+                material.roughnessFactor = roughnessFactor;
+            }
+
+            aiColor3D emissiveColor{};
+            if (aiMat->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor) == AI_SUCCESS) {
+                material.emissiveFactor = { emissiveColor.r, emissiveColor.g, emissiveColor.b };
+            }
+
+            float alphaCutoff = 0.0f;
+            if (aiMat->Get(AI_MATKEY_GLTF_ALPHACUTOFF, alphaCutoff) == AI_SUCCESS) {
+                material.alphaCutoff = alphaCutoff;
+            }
+
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format(
+                "    - Factors: baseColor=({:.2f},{:.2f},{:.2f},{:.2f}) metallic={:.2f} roughness={:.2f} emissive=({:.2f},{:.2f},{:.2f})",
+                material.baseColorFactor.x, material.baseColorFactor.y, material.baseColorFactor.z, material.baseColorFactor.w,
+                material.metallicFactor, material.roughnessFactor,
+                material.emissiveFactor.x, material.emissiveFactor.y, material.emissiveFactor.z));
 
             // ログ出力
             if (!material.baseColorTexture.empty())
