@@ -186,11 +186,21 @@ float4x4 uvTransform;
 - **B10（lightViewProjection の per-instance 重複除去）は意図的に見送り**: `TransformationMatrix.LightViewProjection` は Object3d/GBuffer/Skinning×2/Water×2/Shadow×2 の計8箇所のVS/PSシェーダーで直接参照されており、per-pass 定数バッファへの移設は RootSignature 構成を含む広範な変更を要する。メモリ・帯域の無駄であって正確性バグではないため、Phase 5 以降の独立タスクとして残す
 - 検証済み: TestScene（sponza位置のsphereグリッド、シャドウキャスト）+ WalkModel（スキニング即時描画+シャドウ）を約15秒間実行、複数回スクリーンショットでシャドウ・スキン姿勢の破損なし、60fps安定、全ログエラー0
 
-### Phase 5: ローダー/リソース整備
-1. Assimp Importer をローカル変数化（スレッド安全）+ 2パス読み込み解消（C1, C2）
-2. ModelData CPU データの解放ポリシー（static モデルは GPU 転送後に破棄、skinning/BLAS 用のみ保持）（C3）
-3. LoadFromFile/LoadFromModelData の共通部抽出（C4）
-4. （任意）VB/IB の default heap 化（C5）
+### Phase 5: ローダー/リソース整備 ✅ 完了 (2026-07-13)（C3・C5 は見送り、下記参照）
+1. ✅ Assimp Importer をローカル変数化（スレッド安全）+ 2パス読み込み解消（C1, C2）
+2. ⏸️ ModelData CPU データの解放ポリシー（C3）— 調査の結果、見送り（理由は後述）
+3. ✅ LoadFromFile/LoadFromModelData の共通部抽出（C4）
+4. ⏸️（任意）VB/IB の default heap 化（C5）— 優先度が低く見送り
+
+**Phase 5 実装メモ:**
+
+- **C1+C2（ローダーのスレッド安全化＋2パス読み込み解消）**: `ModelLoader::LoadAssimpFile` が保持していた `static Assimp::Importer importerNormal/importerSkinned` を廃止し、`Importer` を `LoadModelFile` のローカル変数として所有・参照渡しする方式に変更（`ModelLoader.h/.cpp`）。`ModelManager::PreloadModels` は `ThreadPool` で複数モデルを並列ロードするため、static Importer は実在するデータ競合バグだった。
+  また、スキニング判定のためだけに軽量フラグで全体を再パースしていた `checkImporter` を廃止。共通フラグ（`Triangulate | GenSmoothNormals | CalcTangentSpace | LimitBoneWeights | ConvertToLeftHanded | FlipUVs`）で1回だけ `ReadFile` し、`HasBones()` でスキニング有無を判定した後、非スキニングモデルのみ `importer.ApplyPostProcessing(aiProcess_PreTransformVertices)` を追加適用する方式に変更。これによりファイルI/O・フルパースが1回で済むようになった。
+  Importer をローカル変数化した際、`LoadAssimpFile` が返す `const aiScene*` の生存期間は呼び出し元の `Importer` インスタンスに紐づく点に注意（`Importer` のデストラクタで `aiReleaseImport` 相当が呼ばれるため、Importer が先にスコープを抜けると scene が無効になる）。そのため Importer は `LoadModelFile` 側で保持し、`LoadAssimpFile` へは参照で渡す設計にした。
+- **C4（LoadFromFile/LoadFromModelData の共通部抽出）**: VB/IB 作成・バッファビュー設定・GPUコピー・ローカルAABB算出の重複コード（約45行×2）を `ModelResource::CreateGeometryBuffers()` に抽出（`modelData_` が設定済みであることが前提の private ヘルパー）。
+- **C3（CPUデータ解放ポリシー）は意図的に見送り**: 調査の結果、`modelData_.vertices/indices` はエディタの `ObjectSelector::RayIntersectsMesh`（クリックでのオブジェクト選択、三角形単位のCPUレイキャスト）が **static モデルを含む全モデル** に対してランタイムで参照しており、解放すると当たり判定が球近似へ静かにフォールバックしてしまう。また `modelData_.skinClusterData` も `Model::Initialize()` で都度参照されるため、キャッシュされた同一 `ModelResource` から後で追加の `Model` インスタンスを生成するケース（スキニングモデルの複数配置）に備え、`ModelResource` の生存期間中は保持が必要。「static モデルは GPU 転送後に破棄可能」という当初の前提が成立しないため、B4/B10 同様に独立タスクとして見送り。再着手する場合はエディタ用に別途軽量な当たり判定メッシュを持たせる設計変更が前提になる。
+- **C5（VB/IB の default heap 化）は見送り**: 計画書で「任意」と明記されており、C1〜C4 と比較して正確性・スレッド安全性への寄与がなく優先度が低いため今回は着手しなかった。
+- 検証: TestScene の PBR球グリッド（sphere.obj、非スキニング）+ WalkModel（walk.gltf、スキニング）+ Sponza（PreloadModels 経由の並列ロード）を実際に読み込み、ログで両分岐（`No skinning data, applying PreTransformVertices` / `Detected skinning data, keeping node hierarchy`）が正しく通ることを確認。全ログカテゴリでエラー0件。
 
 ---
 

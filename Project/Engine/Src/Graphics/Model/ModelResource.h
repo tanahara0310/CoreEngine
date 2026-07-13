@@ -146,6 +146,10 @@ namespace CoreEngine
         bool HasBLAS() const { return blasIndex_ != UINT_MAX; }
 
     private:
+        /// @brief modelData_.vertices/indices からVB/IB・バッファビュー・ローカルAABBを構築する
+        /// LoadFromFile/LoadFromModelDataの共通処理（呼び出し前にmodelData_が設定済みであること）
+        void CreateGeometryBuffers();
+
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
         UINT vertexCount_ = 0;

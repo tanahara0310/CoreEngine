@@ -19,27 +19,10 @@ namespace CoreEngine
         textureManager_ = textureMg;
     }
 
-    void ModelResource::LoadFromFile(const std::string& directoryPath, const std::string& filename)
+    void ModelResource::CreateGeometryBuffers()
     {
-        assert(dxCommon_ && resourceFactory_ && textureManager_);
-
-        // ModelLoaderを使用してモデルデータを読み込む
-        ModelData modelData = ModelLoader::LoadModelFile(directoryPath, filename);
-
-        // ModelDataを保存（スキンクラスター生成に必要）
-        // moveセマンティクスを使って大きなデータを効率的に移動
-        modelData_ = std::move(modelData);
-
-        // RootNodeを保存
-        rootNode_ = modelData_.rootNode;
-
-        // Skeletonを作成
-        skeleton_ = SkeletonLoader::CreateSkeleton(modelData_.rootNode);
-
-        // 頂点数を設定
+        // 頂点数・インデックス数を設定
         vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
-
-        // インデックス数を設定
         indexCount_ = static_cast<UINT>(modelData_.indices.size());
 
         // 頂点バッファの作成
@@ -84,6 +67,26 @@ namespace CoreEngine
             if (vertex.position.y > localBoundingBox_.max.y) localBoundingBox_.max.y = vertex.position.y;
             if (vertex.position.z > localBoundingBox_.max.z) localBoundingBox_.max.z = vertex.position.z;
         }
+    }
+
+    void ModelResource::LoadFromFile(const std::string& directoryPath, const std::string& filename)
+    {
+        assert(dxCommon_ && resourceFactory_ && textureManager_);
+
+        // ModelLoaderを使用してモデルデータを読み込む
+        ModelData modelData = ModelLoader::LoadModelFile(directoryPath, filename);
+
+        // ModelDataを保存（スキンクラスター生成に必要）
+        // moveセマンティクスを使って大きなデータを効率的に移動
+        modelData_ = std::move(modelData);
+
+        // RootNodeを保存
+        rootNode_ = modelData_.rootNode;
+
+        // Skeletonを作成
+        skeleton_ = SkeletonLoader::CreateSkeleton(modelData_.rootNode);
+
+        CreateGeometryBuffers();
 
         // ===== マテリアルのPBRテクスチャを並列読み込み =====
         // 色空間: ベースカラー/エミッシブは sRGB、法線/MR/AO はデータテクスチャなので Linear。
@@ -176,48 +179,7 @@ namespace CoreEngine
         // RootNodeを保存
         rootNode_ = modelData_.rootNode;
 
-        // 頂点数・インデックス数を設定
-        vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
-        indexCount_ = static_cast<UINT>(modelData_.indices.size());
-
-        // 頂点バッファの作成
-        vertexBuffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon_->GetDevice(),
-            sizeof(VertexData) * modelData_.vertices.size());
-
-        vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-        vertexBufferView_.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * modelData_.vertices.size());
-        vertexBufferView_.StrideInBytes = sizeof(VertexData);
-
-        void* mapped = nullptr;
-        vertexBuffer_->Map(0, nullptr, &mapped);
-        memcpy(mapped, modelData_.vertices.data(), sizeof(VertexData) * modelData_.vertices.size());
-        vertexBuffer_->Unmap(0, nullptr);
-
-        // インデックスバッファの作成
-        indexBuffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon_->GetDevice(),
-            sizeof(uint32_t) * modelData_.indices.size());
-
-        indexBufferView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
-        indexBufferView_.SizeInBytes = static_cast<UINT>(sizeof(uint32_t) * modelData_.indices.size());
-        indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
-
-        void* mappedIndex = nullptr;
-        indexBuffer_->Map(0, nullptr, &mappedIndex);
-        memcpy(mappedIndex, modelData_.indices.data(), sizeof(uint32_t) * modelData_.indices.size());
-        indexBuffer_->Unmap(0, nullptr);
-
-        // ローカル空間AABBを頂点データから算出
-        localBoundingBox_ = BoundingBox();
-        for (const auto& vertex : modelData_.vertices) {
-            if (vertex.position.x < localBoundingBox_.min.x) localBoundingBox_.min.x = vertex.position.x;
-            if (vertex.position.y < localBoundingBox_.min.y) localBoundingBox_.min.y = vertex.position.y;
-            if (vertex.position.z < localBoundingBox_.min.z) localBoundingBox_.min.z = vertex.position.z;
-            if (vertex.position.x > localBoundingBox_.max.x) localBoundingBox_.max.x = vertex.position.x;
-            if (vertex.position.y > localBoundingBox_.max.y) localBoundingBox_.max.y = vertex.position.y;
-            if (vertex.position.z > localBoundingBox_.max.z) localBoundingBox_.max.z = vertex.position.z;
-        }
+        CreateGeometryBuffers();
 
         // マテリアルテクスチャハンドルの設定（デフォルト白テクスチャ）
         D3D12_GPU_DESCRIPTOR_HANDLE defaultWhiteTexture = textureManager_->Load("white1x1.png").gpuHandle;

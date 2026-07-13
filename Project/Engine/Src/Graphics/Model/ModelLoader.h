@@ -29,9 +29,10 @@ namespace CoreEngine
         // ===== ファイル読み込み・検証 =====
         
         /// @brief Assimpでファイルを読み込む
+        /// @param importer 呼び出し元が所有するImporter（戻り値のaiSceneの生存期間を握る）
         /// @param filepath ファイルパス
         /// @return Assimpシーン
-        static const aiScene* LoadAssimpFile(const std::string& filepath);
+        static const aiScene* LoadAssimpFile(Assimp::Importer& importer, const std::string& filepath);
         
         /// @brief シーンの妥当性を検証
         /// @param scene Assimpシーン
