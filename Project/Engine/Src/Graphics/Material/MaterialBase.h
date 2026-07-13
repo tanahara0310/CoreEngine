@@ -1,25 +1,27 @@
 #pragma once
 
-#include "IMaterial.h"
+#include <d3d12.h>
 #include "Graphics/Resource/ResourceFactory.h"
 #include <wrl.h>
 
 namespace CoreEngine
 {
     /// @brief マテリアル基底クラス（テンプレート）
-    /// @details GPUバッファの確保・マップ・解放を共通化します。
+    /// @details GPU定数バッファの確保・マップ・解放を共通化するユーティリティ基底。
+    ///          多態的には使用しない（各マテリアル型は具象型として保持する）。
     /// @tparam TData シェーダー定数バッファに対応するデータ型
     template<typename TData>
-    class MaterialBase : public IMaterial {
+    class MaterialBase {
     public:
-        ~MaterialBase() override {
+        ~MaterialBase() {
             if (materialResource_ && materialData_) {
                 materialResource_->Unmap(0, nullptr);
                 materialData_ = nullptr;
             }
         }
 
-        D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const override {
+        /// @brief GPU定数バッファの仮想アドレスを取得（コマンドリストへのバインド用）
+        D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const {
             return materialResource_->GetGPUVirtualAddress();
         }
 

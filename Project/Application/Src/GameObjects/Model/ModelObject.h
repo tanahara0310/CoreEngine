@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GameObject/Model/ModelGameObject.h"
-#include "Graphics/Material/MaterialConstants.h"
 
 /// @brief 汎用モデルオブジェクト（glTFなどのモデル読み込み用）
 class ModelObject : public CoreEngine::ModelGameObject {
@@ -31,16 +30,13 @@ public:
     /// @note Metallic/Roughness/AO はファクター×マップ乗算方式になったためフラグは法線のみ
     void SetNormalMapEnabled(bool enable);
 
-    /// @brief マテリアルカラーを設定
+    /// @brief マテリアルカラーを設定（全マテリアルスロットに適用）
     void SetMaterialColor(const CoreEngine::Vector4& color);
 
-    /// @brief IBLを有効/無効にする
+    /// @brief IBLを有効/無効にする（IBL強度 1/0 の設定に相当）
     void SetIBLEnabled(bool enable);
 
-    /// @brief シェーディングモードを設定
-    void SetShadingMode(CoreEngine::ShadingMode mode);
-
-    /// @brief IBL強度を設定
+    /// @brief IBL強度を設定（0 でこのモデルの IBL を無効化）
     void SetIBLIntensity(float intensity);
 
 private:

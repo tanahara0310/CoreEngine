@@ -67,11 +67,12 @@ void WaterSceneSetup::ConfigureWaterMaterial(WaterPlaneObject* waterPlane) {
     material->SetMetallic(0.0f);
     material->SetRoughness(0.04f);
     material->SetLightingEnabled(true);
-    // 大気散乱モードでは静的環境マップの IBL を使わない（既定の ShadingMode::PBR の
-    // ハーフランバートアンビエントで代替）。水面の鏡面反射は Planar Reflection
+    // 大気散乱モードでは静的環境マップの IBL を使わない（ハーフランバート
+    // アンビエントで代替）。水面の鏡面反射は Planar Reflection
     // （ReflectionView が大気散乱の空を含めて描画した SceneColor）で賄うため、
     // ここで静的 IBL を有効にすると大気の空と映り込みが食い違う。
-    material->SetIBLEnabled(false);
+    // 大気散乱モードでは静的環境マップの IBL を使わないため強度 0 でオプトアウトする
+    material->SetIBLIntensity(0.0f);
     material->SetNormalMapEnabled(false);
 }
 

@@ -119,10 +119,10 @@ void InfiniteGroundObject::OnInitialize() {
             mat->SetMetallic(0.0f);
             mat->SetRoughness(0.9f);
             mat->SetLightingEnabled(true);
-            // IBL は使わず PBR 既定アンビエントを使う。
+            // IBL は使わず PBR 既定アンビエントを使う（強度 0 でオプトアウト）。
             // 本オブジェクトは全シーン共通の既定床であり、IBL 未セットアップのシーンでも
             // アンビエントが黒つぶれしないようにするため。
-            mat->SetIBLEnabled(false);
+            mat->SetIBLIntensity(0.0f);
         }
     }
 

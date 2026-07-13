@@ -63,19 +63,9 @@ GBufferOutput main(VertexShaderOutput input)
 
     // worldPosition.a pixelFlag:
     // 0 = 背景（クリア値）
-    // 2 = PBR（IBL 無効）
-    // 3 = PBR + IBL
-    // 4 = Lambert
-    // 5 = Half-Lambert
-    float pixelFlag;
-    if (gMaterial.shadingMode == 1)
-        pixelFlag = 3.0f; // PBR_IBL
-    else if (gMaterial.shadingMode == 2)
-        pixelFlag = 4.0f; // Lambert
-    else if (gMaterial.shadingMode == 3)
-        pixelFlag = 5.0f; // HalfLambert
-    else
-        pixelFlag = 2.0f; // PBR (default)
+    // 2 = PBR（このマテリアルは IBL オプトアウト: iblIntensity == 0）
+    // 3 = PBR + IBL（シーンに IBL マップが無い場合は DeferredLighting 側で無効化される）
+    float pixelFlag = (gMaterial.iblIntensity > 0.0f) ? 3.0f : 2.0f;
 
     output.albedoAO = float4(albedo, ao);
     output.normalRoughness = float4(encodedNormal, roughness);

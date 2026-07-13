@@ -157,20 +157,15 @@ namespace CoreEngine
             j["texture"] = textureName_;
         }
 
-        if (model_ && model_->GetMaterial()) {
-            const MaterialInstance* mat = model_->GetMaterial();
-            json& m = j["material"];
-            m["color"] = JsonManager::Vector4ToJson(mat->GetColor());
-            m["lighting"] = mat->IsLightingEnabled();
-            m["metallic"] = mat->GetMetallic();
-            m["roughness"] = mat->GetRoughness();
-            m["occlusionStrength"] = mat->GetOcclusionStrength();
-            m["emissive"] = JsonManager::Vector3ToJson(mat->GetEmissiveFactor());
-            m["normalMap"] = mat->IsNormalMapEnabled();
-            m["dithering"] = mat->IsDitheringEnabled();
-            m["ditheringScale"] = mat->GetDitheringScale();
-            m["ibl"] = mat->IsIBLEnabled();
-            m["iblIntensity"] = mat->GetIBLIntensity();
+        // マテリアルスロットごとにシリアライズ（マルチマテリアル対応）
+        if (model_ && model_->GetMaterialCount() > 0) {
+            json materials = json::array();
+            for (size_t i = 0; i < model_->GetMaterialCount(); ++i) {
+                if (const MaterialInstance* mat = model_->GetMaterial(i)) {
+                    materials.push_back(mat->ToJson());
+                }
+            }
+            j["materials"] = std::move(materials);
         }
 
         return j;
@@ -195,25 +190,22 @@ namespace CoreEngine
                 texture_ = TextureManager::GetInstance().Load(textureName_);
             }
         }
-        if (j.contains("material") && model_ && model_->GetMaterial()) {
-            MaterialInstance* mat = model_->GetMaterial();
-            const json& m = j["material"];
-            if (m.contains("color"))
-                mat->SetColor(JsonManager::JsonToVector4(m["color"]));
-            mat->SetLightingEnabled(JsonManager::SafeGet<bool>(m, "lighting", mat->IsLightingEnabled()));
-            mat->SetMetallic(JsonManager::SafeGet<float>(m, "metallic", mat->GetMetallic()));
-            mat->SetRoughness(JsonManager::SafeGet<float>(m, "roughness", mat->GetRoughness()));
-            // 旧フォーマットの "ao"（定数AO）は occlusionStrength として読み替える
-            float occlusionStrength = JsonManager::SafeGet<float>(m, "occlusionStrength",
-                JsonManager::SafeGet<float>(m, "ao", mat->GetOcclusionStrength()));
-            mat->SetOcclusionStrength(occlusionStrength);
-            if (m.contains("emissive"))
-                mat->SetEmissiveFactor(JsonManager::JsonToVector3(m["emissive"]));
-            mat->SetNormalMapEnabled(JsonManager::SafeGet<bool>(m, "normalMap", mat->IsNormalMapEnabled()));
-            mat->SetDitheringEnabled(JsonManager::SafeGet<bool>(m, "dithering", mat->IsDitheringEnabled()));
-            mat->SetDitheringScale(JsonManager::SafeGet<float>(m, "ditheringScale", mat->GetDitheringScale()));
-            mat->SetIBLEnabled(JsonManager::SafeGet<bool>(m, "ibl", mat->IsIBLEnabled()));
-            mat->SetIBLIntensity(JsonManager::SafeGet<float>(m, "iblIntensity", mat->GetIBLIntensity()));
+        if (model_) {
+            if (j.contains("materials") && j["materials"].is_array()) {
+                // 新フォーマット: マテリアルスロットごとの配列
+                const json& materials = j["materials"];
+                for (size_t i = 0; i < materials.size() && i < model_->GetMaterialCount(); ++i) {
+                    if (MaterialInstance* mat = model_->GetMaterial(i)) {
+                        mat->FromJson(materials[i]);
+                    }
+                }
+            } else if (j.contains("material")) {
+                // 旧フォーマット: 単一マテリアル（全スロットへ適用 = 旧動作と同じ）
+                const json& m = j["material"];
+                model_->ForEachMaterial([&m](MaterialInstance* mat) {
+                    mat->FromJson(m);
+                });
+            }
         }
     }
 

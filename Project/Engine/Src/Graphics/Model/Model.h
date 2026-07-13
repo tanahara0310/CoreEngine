@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <wrl.h>
 #include <array>
+#include <functional>
 #include <memory>
 #include <vector>
 #include <optional>
@@ -14,9 +15,7 @@
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Model/Skeleton/SkinCluster.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
-#include "Animation/IAnimationController.h"
-#include "Animation/IAnimationControllerFactory.h"
-#include "Skeleton/Skeleton.h"
+#include "Animation/AnimationPlayer.h"
 
 // 前方宣言
 namespace CoreEngine {
@@ -27,6 +26,7 @@ namespace CoreEngine {
     class ShadowMapManager;
     class ICustomShaderProvider;
     class CustomShaderPipeline;
+    struct Skeleton;
 }
 
 /// @brief 配置された3Dモデルのインスタンスクラス
@@ -36,12 +36,6 @@ namespace CoreEngine
 {
     class Model {
     public:
-        /// @brief モデルの描画タイプ
-        enum class RenderType {
-            Normal,   // 通常モデル
-            Skinning  // スキニングモデル
-        };
-
         /// @brief デフォルトコンストラクタ
         Model() = default;
 
@@ -51,25 +45,19 @@ namespace CoreEngine
         /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
         bool IsIBLAvailable() const;
 
-        /// @brief モデルリソースに法線マップテクスチャがあるか確認
-        bool HasNormalMap() const;
+        /// @brief 指定マテリアルスロットに法線マップテクスチャがあるか確認
+        bool HasNormalMap(size_t materialIndex = 0) const;
 
-        /// @brief モデルリソースに MetallicRoughness テクスチャがあるか確認
-        bool HasMetallicRoughnessMap() const;
+        /// @brief 指定マテリアルスロットに MetallicRoughness テクスチャがあるか確認
+        bool HasMetallicRoughnessMap(size_t materialIndex = 0) const;
 
-        /// @brief モデルリソースに AO（陰影）テクスチャがあるか確認
-        bool HasOcclusionMap() const;
+        /// @brief 指定マテリアルスロットに AO（陰影）テクスチャがあるか確認
+        bool HasOcclusionMap(size_t materialIndex = 0) const;
 
-        /// @brief 初期化（アニメーションコントローラーなし）
+        /// @brief 初期化
         /// @param resource 共有するModelResourceのポインタ
         /// @param ctx 描画依存コンテキスト
         void Initialize(ModelResource* resource, const ModelRenderContext& ctx);
-
-        /// @brief 初期化（アニメーションコントローラーあり）
-        /// @param resource 共有するModelResourceのポインタ
-        /// @param controller アニメーションコントローラー
-        /// @param ctx 描画依存コンテキスト
-        void Initialize(ModelResource* resource, std::unique_ptr<IAnimationController> controller, const ModelRenderContext& ctx);
 
         /// @brief モデルを描画（スキニングモデルか通常モデルかは内部で自動判別）
         /// @param transform ワールドトランスフォーム
@@ -79,11 +67,6 @@ namespace CoreEngine
         void Draw(const WorldTransform& transform, const CoreEngine::ICamera* camera,
             D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {},
             TransformBufferSlot slot = TransformBufferSlot::Game);
-
-        /// @brief 法線マップテクスチャをオーバーライドする
-        /// @details モデルリソースに内蔵された法線マップの代わりに外部テクスチャを使用する。
-        ///          ptr == 0 を渡すとリソース内蔵テクスチャに戻る。
-        void SetNormalMapOverride(D3D12_GPU_DESCRIPTOR_HANDLE handle) { normalMapOverride_ = handle; }
 
         /// @brief シャドウマップ用の描画（深度のみ）
         /// @param transform ワールドトランスフォーム
@@ -95,53 +78,39 @@ namespace CoreEngine
         bool IsInitialized() const;
 
         /// @brief マテリアルインスタンスを取得（パラメータの直接操作用）
-        /// @return MaterialInstance へのポインタ
-        MaterialInstance* GetMaterial() { return materialInstance_.get(); }
-        const MaterialInstance* GetMaterial() const { return materialInstance_.get(); }
+        /// @param materialIndex マテリアルスロットインデックス（サブメッシュの materialIndex に対応）
+        /// @return MaterialInstance へのポインタ（範囲外は nullptr）
+        MaterialInstance* GetMaterial(size_t materialIndex = 0) {
+            return materialIndex < materialInstances_.size() ? materialInstances_[materialIndex].get() : nullptr;
+        }
+        const MaterialInstance* GetMaterial(size_t materialIndex = 0) const {
+            return materialIndex < materialInstances_.size() ? materialInstances_[materialIndex].get() : nullptr;
+        }
 
-        /// @brief Skeletonを取得（スケルトンアニメーションから同期）
-        /// @return Skeleton（存在しない場合はnullopt）
-        const std::optional<Skeleton>& GetSkeleton() const;
+        /// @brief マテリアルスロット数を取得
+        size_t GetMaterialCount() const { return materialInstances_.size(); }
+
+        /// @brief 全マテリアルスロットに対して処理を実行する（モデル全体のティントや IBL 設定用）
+        void ForEachMaterial(const std::function<void(MaterialInstance*)>& fn) {
+            for (auto& mat : materialInstances_) {
+                if (mat) fn(mat.get());
+            }
+        }
 
         /// @brief SkinClusterを持っているか確認
         /// @return SkinClusterがあればtrue
         bool HasSkinCluster() const;
 
-        /// @brief アニメーションコントローラーを持っているか確認
-        /// @return コントローラーがあればtrue
-        bool HasAnimationController() const;
+        /// @brief アニメーションプレイヤーを設定する（ModelManager::CreateSkeletonModel が注入する）
+        void SetAnimationPlayer(std::unique_ptr<AnimationPlayer> player);
 
-        /// @brief アニメーションを更新
+        /// @brief アニメーションプレイヤーを取得（切り替え・ブレンド等の操作用）
+        /// @return AnimationPlayer へのポインタ（アニメーションを持たない場合は nullptr）
+        AnimationPlayer* GetAnimationPlayer() const { return animationPlayer_.get(); }
+
+        /// @brief アニメーションを更新し、スケルトンの姿勢を SkinCluster に反映する
         /// @param deltaTime デルタタイム（秒）
         void UpdateAnimation(float deltaTime);
-
-        /// @brief アニメーションをリセット
-        void ResetAnimation();
-
-        /// @brief アニメーション時刻を取得
-        /// @return 現在のアニメーション時刻（秒）
-        float GetAnimationTime() const;
-
-        /// @brief アニメーションが終了したか確認
-        /// @return アニメーションが終了していればtrue
-        bool IsAnimationFinished() const;
-
-        /// @brief アニメーションを切り替える（スケルトンアニメーション専用）
-        /// @param animationName 切り替えるアニメーション名
-        /// @param loop ループ再生するか
-        /// @return 成功したらtrue
-        bool SwitchAnimation(const std::string& animationName, bool loop = true);
-
-        /// @brief アニメーションをブレンドしながら切り替える
-        /// @param animationName 切り替えるアニメーション名
-        /// @param blendDuration ブレンド時間（秒）
-        /// @param loop ループ再生するか
-        /// @return 成功したらtrue
-        bool SwitchAnimationWithBlend(const std::string& animationName, float blendDuration = 0.3f, bool loop = true);
-
-        /// @brief 描画タイプを取得（スキニングか通常かを判別）
-        /// @return 描画タイプ
-        RenderType GetRenderType() const;
 
         /// @brief ModelResourceを取得
         /// @return ModelResourceへのポインタ（nullptrの場合は未初期化）
@@ -150,12 +119,6 @@ namespace CoreEngine
         /// @brief ModelResourceを取得（const版）
         /// @return ModelResourceへのconstポインタ（nullptrの場合は未初期化）
         const ModelResource* GetModelResource() const;
-
-        void SetModelResource(ModelResource* resource);
-
-        /// @brief アニメーションコントローラーファクトリーを設定（スケルトンモデルのみ必須）
-        /// SwitchAnimation() / SwitchAnimationWithBlend() を呼び出す場合は ModelManager が事前に設定する
-        void SetAnimationControllerFactory(std::unique_ptr<IAnimationControllerFactory> factory);
 
         /// @brief 描画システムが使用する WVP バッファスロットをグローバルに設定する
         /// BaseScene::Draw() が各パスの直前に呼び出し、
@@ -188,8 +151,8 @@ namespace CoreEngine
         // 参照するModelResource
         ModelResource* resource_ = nullptr;
 
-        // インスタンス固有のマテリアル
-        std::unique_ptr<MaterialInstance> materialInstance_;
+        // インスタンス固有のマテリアル（マテリアルスロット数分。サブメッシュの materialIndex で参照）
+        std::vector<std::unique_ptr<MaterialInstance>> materialInstances_;
 
         static constexpr size_t kTransformBufferCount = 3;
 
@@ -205,20 +168,12 @@ namespace CoreEngine
         std::array<Matrix4x4, kTransformBufferCount> prevWVP_{};
         std::array<bool, kTransformBufferCount> prevWVPInitialized_{};
 
-        // Skeleton（スケルトンアニメーターから同期される）
-        std::optional<Skeleton> skeleton_;
-
         // SkinCluster（存在する場合）
         std::optional<SkinCluster> skinCluster_;
 
-        // アニメーションコントローラー
-        std::unique_ptr<IAnimationController> animationController_;
-
-        // スケルトンアニメーター等の生成ファクトリー（スケルトンモデルのみ設定される）
-        std::unique_ptr<IAnimationControllerFactory> animationFactory_;
-
-        // 法線マップのオーバーライドハンドル（ptr==0 のときはリソース内蔵テクスチャを使用）
-        D3D12_GPU_DESCRIPTOR_HANDLE normalMapOverride_ = {};
+        // アニメーションプレイヤー（スケルトンアニメーションを持つモデルのみ設定される）
+        // スケルトンの実体はプレイヤー内のコントローラーが所有し、Model はコピーを持たない
+        std::unique_ptr<AnimationPlayer> animationPlayer_;
 
         // カスタムシェーダー用フォワード PSO（nullptr = 既定 ModelRenderer の PSO を使用）
         ID3D12PipelineState* customForwardPSO_ = nullptr;
@@ -237,8 +192,8 @@ namespace CoreEngine
         void UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera,
             TransformBufferSlot slot);
 
-        /// @brief SkinClusterを更新（スケルトンアニメーションの場合のみ）
-        void UpdateSkinCluster();
+        /// @brief SkinCluster のマトリックスパレットを指定スケルトンの姿勢で更新する
+        void UpdateSkinCluster(const Skeleton& skeleton);
 
         /// @brief GPUスキニング(CS)がまだ実行されていなければ実行する
         /// @details 同一フレーム内でForward/GBuffer/Shadowが同じモデルを描画する際、
@@ -249,6 +204,9 @@ namespace CoreEngine
 
         /// @brief 指定スロット用行列バッファを取得
         ID3D12Resource* GetTransformBuffer(TransformBufferSlot slot) const;
+
+        /// @brief サブメッシュのマテリアルスロットに対応する MaterialInstance を取得（範囲外はスロット0）
+        MaterialInstance* MaterialForSlot(uint32_t materialIndex) const;
 
         /// @brief 通常モデル用の ModelDrawPacket を組み立てる
         ModelDrawPacket BuildNormalDrawPacket(const SubMeshData& subMesh,

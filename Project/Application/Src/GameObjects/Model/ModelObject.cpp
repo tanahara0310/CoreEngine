@@ -19,32 +19,37 @@ CoreEngine::MaterialInstance* ModelObject::GetMaterial() {
 }
 
 void ModelObject::SetPBRParameters(float metallic, float roughness, float occlusionStrength) {
-    if (auto* mat = GetMaterial()) {
+    if (!model_) return;
+    model_->ForEachMaterial([&](CoreEngine::MaterialInstance* mat) {
         mat->SetMetallic(metallic);
         mat->SetRoughness(roughness);
         mat->SetOcclusionStrength(occlusionStrength);
-    }
+    });
 }
 
 void ModelObject::SetNormalMapEnabled(bool enable) {
-    if (auto* mat = GetMaterial()) {
+    if (!model_) return;
+    model_->ForEachMaterial([enable](CoreEngine::MaterialInstance* mat) {
         mat->SetNormalMapEnabled(enable);
-    }
+    });
 }
 
 void ModelObject::SetMaterialColor(const CoreEngine::Vector4& color) {
-    if (auto* mat = GetMaterial()) mat->SetColor(color);
+    if (!model_) return;
+    model_->ForEachMaterial([&color](CoreEngine::MaterialInstance* mat) {
+        mat->SetColor(color);
+    });
 }
 
 void ModelObject::SetIBLEnabled(bool enable) {
-    if (auto* mat = GetMaterial()) mat->SetIBLEnabled(enable);
-}
-
-void ModelObject::SetShadingMode(CoreEngine::ShadingMode mode) {
-    if (auto* mat = GetMaterial()) mat->SetShadingMode(mode);
+    // IBL の有効/無効はシーン側で決まるため、マテリアル側は強度によるオプトアウトで表現する
+    SetIBLIntensity(enable ? 1.0f : 0.0f);
 }
 
 void ModelObject::SetIBLIntensity(float intensity) {
-    if (auto* mat = GetMaterial()) mat->SetIBLIntensity(intensity);
+    if (!model_) return;
+    model_->ForEachMaterial([intensity](CoreEngine::MaterialInstance* mat) {
+        mat->SetIBLIntensity(intensity);
+    });
 }
 

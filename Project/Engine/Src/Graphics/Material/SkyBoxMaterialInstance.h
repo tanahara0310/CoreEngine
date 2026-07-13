@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MaterialBase.h"
+#include "Math/Vector/Vector4.h"
 
 namespace CoreEngine
 {
@@ -15,9 +16,9 @@ namespace CoreEngine
     /// @details SkyBox描画に必要な最小限のGPU定数バッファを管理します。
     class SkyBoxMaterialInstance : public MaterialBase<SkyBoxGpuData> {
     public:
-        void Initialize(ID3D12Device* device) override;
-        void SetColor(const Vector4& color) override;
-        Vector4 GetColor() const override;
+        void Initialize(ID3D12Device* device);
+        void SetColor(const Vector4& color);
+        Vector4 GetColor() const;
 
         /// @brief HDR輝度スケールを設定
         void SetIntensity(float intensity) { materialData_->intensity = intensity; }

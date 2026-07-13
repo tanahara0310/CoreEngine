@@ -10,6 +10,8 @@ struct IBLSceneParams
 {
     float3 environmentRotation; ///< XYZ 環境回転（ラジアン）
     float environmentIntensity; ///< 環境輝度スケール（SkyBox intensity と連動）
+    int sceneIBLEnabled; ///< シーンに IBL マップ（Irradiance/Prefiltered/BRDF LUT）が揃っているか
+    float3 padding;
 };
 
 // ===== カメラ =====
@@ -45,36 +47,24 @@ Texture2D<float2> gBRDFLUT : register(t13); // BRDF LUT（スペキュラIBL統�
 void CalculateDirectionalLights(
     VertexShaderOutput input,
     float3 albedo, float metallic, float roughness, float ao, float3 toEye,
-    bool useLambert, bool useTraditional,
     inout float3 totalDiffuse, inout float3 totalSpecular)
 {
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {
         if (gDirectionalLights[i].enabled == 0)
             continue;
-        float3 L = normalize(-gDirectionalLights[i].direction);
         float shadowFactor = CalculateShadow(
             input.lightSpacePos, input.normal,
             gDirectionalLights[i].direction,
             gShadowMap, gShadowSampler);
         shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
 
-        if (useTraditional)
-        {
-            float3 diff = useLambert
-                ? CalculateLambertDiffuse(input.normal, L, gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity, albedo, ao)
-                : CalculateHalfLambertDiffuse(input.normal, L, gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity, albedo, ao);
-            totalDiffuse += diff * shadowFactor;
-        }
-        else
-        {
-            LightingResult result = CalculateDirectionalLightPBR(
-                input.normal, gDirectionalLights[i].direction,
-                gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity,
-                toEye, albedo, metallic, roughness, ao);
-            totalDiffuse += result.diffuse * shadowFactor;
-            totalSpecular += result.specular;
-        }
+        LightingResult result = CalculateDirectionalLightPBR(
+            input.normal, gDirectionalLights[i].direction,
+            gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity,
+            toEye, albedo, metallic, roughness, ao);
+        totalDiffuse += result.diffuse * shadowFactor;
+        totalSpecular += result.specular;
     }
 }
 
@@ -82,40 +72,20 @@ void CalculateDirectionalLights(
 void CalculatePointLights(
     VertexShaderOutput input,
     float3 albedo, float metallic, float roughness, float ao, float3 toEye,
-    bool useLambert, bool useTraditional,
     inout float3 totalDiffuse, inout float3 totalSpecular)
 {
     for (uint j = 0; j < gLightCounts.pointLightCount; ++j)
     {
         if (gPointLights[j].enabled == 0)
             continue;
-        if (useTraditional)
-        {
-            float3 tv = gPointLights[j].position - input.worldPosition;
-            float d = length(tv);
-            if (d >= gPointLights[j].radius)
-                continue;
-            float3 L = normalize(tv);
-            float atten = 1.0f / (1.0f + gPointLights[j].decay * d * d);
-            float pRatio = d / gPointLights[j].radius;
-            float pRange = saturate(1.0f - pRatio * pRatio * pRatio * pRatio);
-            atten *= pRange * pRange;
-            float3 diff = useLambert
-                ? CalculateLambertDiffuse(input.normal, L, gPointLights[j].color.rgb, gPointLights[j].intensity * atten, albedo, ao)
-                : CalculateHalfLambertDiffuse(input.normal, L, gPointLights[j].color.rgb, gPointLights[j].intensity * atten, albedo, ao);
-            totalDiffuse += diff;
-        }
-        else
-        {
-            LightingResult result = CalculatePointLightPBR(
-                input.normal,
-                gPointLights[j].position, input.worldPosition,
-                gPointLights[j].color.rgb, gPointLights[j].intensity,
-                gPointLights[j].radius, gPointLights[j].decay,
-                toEye, albedo, metallic, roughness, ao);
-            totalDiffuse += result.diffuse;
-            totalSpecular += result.specular;
-        }
+        LightingResult result = CalculatePointLightPBR(
+            input.normal,
+            gPointLights[j].position, input.worldPosition,
+            gPointLights[j].color.rgb, gPointLights[j].intensity,
+            gPointLights[j].radius, gPointLights[j].decay,
+            toEye, albedo, metallic, roughness, ao);
+        totalDiffuse += result.diffuse;
+        totalSpecular += result.specular;
     }
 }
 
@@ -123,45 +93,21 @@ void CalculatePointLights(
 void CalculateSpotLights(
     VertexShaderOutput input,
     float3 albedo, float metallic, float roughness, float ao, float3 toEye,
-    bool useLambert, bool useTraditional,
     inout float3 totalDiffuse, inout float3 totalSpecular)
 {
     for (uint k = 0; k < gLightCounts.spotLightCount; ++k)
     {
         if (gSpotLights[k].enabled == 0)
             continue;
-        if (useTraditional)
-        {
-            float3 tv = gSpotLights[k].position - input.worldPosition;
-            float d = length(tv);
-            if (d >= gSpotLights[k].distance)
-                continue;
-            float3 L = normalize(tv);
-            float atten = 1.0f / (1.0f + gSpotLights[k].decay * d * d);
-            float sRatio = d / gSpotLights[k].distance;
-            float sRange = saturate(1.0f - sRatio * sRatio * sRatio * sRatio);
-            atten *= sRange * sRange;
-            float cosTheta = dot(-L, normalize(gSpotLights[k].direction));
-            if (cosTheta < gSpotLights[k].cosAngle)
-                continue;
-            atten *= saturate((cosTheta - gSpotLights[k].cosAngle) / (gSpotLights[k].cosFalloffStart - gSpotLights[k].cosAngle));
-            float3 diff = useLambert
-                ? CalculateLambertDiffuse(input.normal, L, gSpotLights[k].color.rgb, gSpotLights[k].intensity * atten, albedo, ao)
-                : CalculateHalfLambertDiffuse(input.normal, L, gSpotLights[k].color.rgb, gSpotLights[k].intensity * atten, albedo, ao);
-            totalDiffuse += diff;
-        }
-        else
-        {
-            LightingResult result = CalculateSpotLightPBR(
-                input.normal,
-                gSpotLights[k].position, gSpotLights[k].direction, input.worldPosition,
-                gSpotLights[k].color.rgb, gSpotLights[k].intensity,
-                gSpotLights[k].distance, gSpotLights[k].decay,
-                gSpotLights[k].cosAngle, gSpotLights[k].cosFalloffStart,
-                toEye, albedo, metallic, roughness, ao);
-            totalDiffuse += result.diffuse;
-            totalSpecular += result.specular;
-        }
+        LightingResult result = CalculateSpotLightPBR(
+            input.normal,
+            gSpotLights[k].position, gSpotLights[k].direction, input.worldPosition,
+            gSpotLights[k].color.rgb, gSpotLights[k].intensity,
+            gSpotLights[k].distance, gSpotLights[k].decay,
+            gSpotLights[k].cosAngle, gSpotLights[k].cosFalloffStart,
+            toEye, albedo, metallic, roughness, ao);
+        totalDiffuse += result.diffuse;
+        totalSpecular += result.specular;
     }
 }
 
@@ -169,7 +115,6 @@ void CalculateSpotLights(
 void CalculateAreaLights(
     VertexShaderOutput input,
     float3 albedo, float metallic, float roughness, float ao, float3 toEye,
-    bool useLambert, bool useTraditional,
     inout float3 totalDiffuse)
 {
     for (uint l = 0; l < gLightCounts.areaLightCount; ++l)
@@ -210,21 +155,11 @@ void CalculateAreaLights(
         float facingFactor = max(0.0f, dot(gAreaLights[l].normal, -L));
         float finalAtten = distAtten * shapeFactor * facingFactor;
 
-        if (useTraditional)
-        {
-            float3 diff = useLambert
-                ? CalculateLambertDiffuse(input.normal, L, gAreaLights[l].color.rgb, gAreaLights[l].intensity * finalAtten, albedo, ao)
-                : CalculateHalfLambertDiffuse(input.normal, L, gAreaLights[l].color.rgb, gAreaLights[l].intensity * finalAtten, albedo, ao);
-            totalDiffuse += diff;
-        }
-        else
-        {
-            float3 contrib = CalculatePBRLighting(
-                normalize(input.normal), normalize(toEye), L,
-                gAreaLights[l].color.rgb, gAreaLights[l].intensity * finalAtten,
-                albedo, metallic, roughness, ao);
-            totalDiffuse += contrib;
-        }
+        float3 contrib = CalculatePBRLighting(
+            normalize(input.normal), normalize(toEye), L,
+            gAreaLights[l].color.rgb, gAreaLights[l].intensity * finalAtten,
+            albedo, metallic, roughness, ao);
+        totalDiffuse += contrib;
     }
 }
 
@@ -238,22 +173,19 @@ float3 CalculateAllLighting(
     float3 toEye,
     float4 textureColor)
 {
-    const bool useLambert = (gMaterial.shadingMode == 2);
-    const bool useHalfLambert = (gMaterial.shadingMode == 3);
-    const bool useTraditional = useLambert || useHalfLambert;
-
     float3 totalDiffuse = float3(0.0f, 0.0f, 0.0f);
     float3 totalSpecular = float3(0.0f, 0.0f, 0.0f);
 
-    CalculateDirectionalLights(input, albedo, metallic, roughness, ao, toEye, useLambert, useTraditional, totalDiffuse, totalSpecular);
-    CalculatePointLights(input, albedo, metallic, roughness, ao, toEye, useLambert, useTraditional, totalDiffuse, totalSpecular);
-    CalculateSpotLights(input, albedo, metallic, roughness, ao, toEye, useLambert, useTraditional, totalDiffuse, totalSpecular);
-    CalculateAreaLights(input, albedo, metallic, roughness, ao, toEye, useLambert, useTraditional, totalDiffuse);
+    CalculateDirectionalLights(input, albedo, metallic, roughness, ao, toEye, totalDiffuse, totalSpecular);
+    CalculatePointLights(input, albedo, metallic, roughness, ao, toEye, totalDiffuse, totalSpecular);
+    CalculateSpotLights(input, albedo, metallic, roughness, ao, toEye, totalDiffuse, totalSpecular);
+    CalculateAreaLights(input, albedo, metallic, roughness, ao, toEye, totalDiffuse);
 
     return totalDiffuse + totalSpecular;
 }
 
 /// @brief IBL（Image-Based Lighting）を適用
+/// シーンに IBL マップが揃っており、かつマテリアルの iblIntensity > 0 の場合のみ寄与する
 float3 ApplyIBL(
     VertexShaderOutput input,
     float3 albedo,
@@ -262,7 +194,7 @@ float3 ApplyIBL(
     float ao,
     float3 toEye)
 {
-    if (gMaterial.shadingMode != 1)
+    if (gIBLParams.sceneIBLEnabled == 0 || gMaterial.iblIntensity <= 0.0f)
         return float3(0.0f, 0.0f, 0.0f);
 
     float3 iblColor = CalculateFullIBL(

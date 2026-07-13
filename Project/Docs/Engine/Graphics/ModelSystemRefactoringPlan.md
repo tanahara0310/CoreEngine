@@ -148,17 +148,30 @@ float4x4 uvTransform;
 - アプリ側 API: `ModelObject::SetPBRTextureMapsEnabled` → `SetNormalMapEnabled` に置換、`SetPBRParameters` の第3引数は occlusionStrength に意味変更
 - 検証済み: Debug ビルド成功、TestScene（sponza glTF + PBR 球グリッド）60fps 描画・全シェーダーコンパイル成功・エラー0・`_linear.dds` キャッシュ44個生成・glTF ファクター抽出をログで確認
 
-### Phase 2: マテリアルのスロット対応と所有権整理
-1. Model がサブメッシュ（マテリアルスロット）数分の MaterialInstance を持つ（A6）
-2. ファクター初期値を MaterialAsset から流し込み、subMeshes[0] 特別扱い・Has*Map の [0] 固定を廃止
-3. IBL 有効/無効をシーン側判定へ（マテリアルは iblIntensity のみ保持）、`SetIBLEnabled`/ShadingMode 削除（A8, A9）
-4. MaterialInstance に ToJson/FromJson を実装し ModelGameObject の手書きシリアライズを移設（B12 前半）
-5. IMaterial/MaterialBase の整理: 「CB 確保テンプレート」としてのみ残し、無意味な仮想 SetColor 契約を削除（B5）
+### Phase 2: マテリアルのスロット対応と所有権整理 — ✅ 完了 (2026-07-13)
+1. ✅ Model がマテリアルスロット数分の MaterialInstance を持つ（`materialInstances_` vector、サブメッシュの materialIndex で参照）。`GetMaterial(index=0)` / `GetMaterialCount()` / `ForEachMaterial()` を追加（A6）
+2. ✅ ファクター初期値を全スロットへ MaterialAsset から適用。`Has*Map(materialIndex=0)` に引数追加し [0] 固定を廃止
+3. ✅ IBL をシーン側判定へ: `IBLSceneParams.sceneIBLEnabled`（レンダラーが HasIBLMaps() を書き込む）× マテリアル iblIntensity（0=オプトアウト）。ShadingMode enum・Lambert/HalfLambert 分岐（forward/GBuffer/DeferredLighting）・pixelFlag 4/5 を削除。`SetIBLEnabled` は MaterialInstance から削除（アプリ層 ModelObject/WaterPlaneObject には intensity 1/0 のラッパーとして残置）（A8, A9, D2）
+4. ✅ MaterialInstance::ToJson/FromJson を実装。ModelGameObject は `"materials"` 配列でスロット毎にシリアライズ、旧 `"material"` 単一オブジェクトは全スロット適用で互換読み込み（B12 前半）
+5. ✅ IMaterial.h 削除。MaterialBase は非仮想の「CB確保テンプレート」に整理。SkyBoxObject::GetMaterial は具象型返しに変更（B5）
 
-### Phase 3: Model の責務分割・死に機能削除
-1. AnimationPlayer 抽出（controller/factory/Switch/Blend/Update を移す）。skeleton の毎フレーム丸コピーを参照渡しへ（B1, B6）
-2. 死に機能削除: SetNormalMapOverride / RenderType / SetModelResource / キーフレーム Animator（ノードアニメを実装しないなら CreateKeyframeModel ごと削除）（B7, B8）
-3. ModelRenderContext の検証を IsValid に一本化（B9）
+**Phase 2 実装メモ:**
+- IBL のデフォルトが「オプトイン」から「オプトアウト」に反転した。シーンに IBL マップがあれば全マテリアルに適用され、無効化したいオブジェクトは `SetIBLIntensity(0)`（InfiniteGround・水面が該当）
+- pixelFlag は 0=背景 / 2=PBR(IBLオプトアウト) / 3=PBR+IBL の3値のみ。DeferredLighting は gIrradianceMap の GetDimensions でシーンIBL有無を判定
+- IBLSceneParamsCPU は 32 バイトに拡張（sceneIBLEnabled 追加）。ValidateAllCBVSizes が HLSL とのサイズ一致を起動時検証する
+- モデル全体への一括設定（ティント・IBL強度等）は `Model::ForEachMaterial()` を使う。`GetMaterial()`（=スロット0）への設定はマルチマテリアルモデルでは一部にしか効かない
+- Shading デバッグパネルはシェーディングモード切替 → IBL 強度制御に置き換え
+
+### Phase 3: Model の責務分割・死に機能削除 — ✅ 完了 (2026-07-13)
+1. ✅ `AnimationPlayer`（Animation/AnimationPlayer.h/.cpp）を新設し、controller/factory/Switch/SwitchWithBlend/Reset/GetTime/IsFinished を Model から移設。Model は `SetAnimationPlayer`/`GetAnimationPlayer`/`UpdateAnimation`（プレイヤー更新＋SkinCluster同期）のみ保持（B1）
+2. ✅ Skeleton コピー撤廃: Model の `std::optional<Skeleton> skeleton_` を削除。SkinCluster 生成はリソースのバインドポーズを直接参照し、毎フレームの姿勢反映は `UpdateSkinCluster(const Skeleton&)` にアニメーターのスケルトンを参照渡し（毎フレームの joints vector 丸コピーと Blend 切替時の余分なコピーを解消）（B6）
+3. ✅ 死に機能削除: `SetNormalMapOverride`/`normalMapOverride_`・`RenderType`/`GetRenderType`・`SetModelResource`・`GetSkeleton`（呼び出しゼロ）・キーフレーム Animator クラスと `CreateKeyframeModel`（描画に反映されない死に機能。スケルトン無しモデルは警告ログ付きで静的モデルとして返す）（B7, B8）
+4. ✅ `ModelRenderContext::IsComplete()` を追加（内部生成分含む全依存の検証）。`Model::Initialize` が前提条件として assert（B9）
+
+**Phase 3 実装メモ:**
+- アニメーション切り替え・ブレンドは `model->GetAnimationPlayer()->Switch()/SwitchWithBlend()` を使う（Model 直のAPIは削除済み）
+- スケルトンの実体は常にコントローラー（SkeletonAnimator/AnimationBlender）が所有する。Model はコピーを持たない
+- 検証済み: walk.gltf（スキニングモデル）を TestScene で一時有効化し、AnimationPlayer → SkinCluster → GPUスキニング経路でポーズが毎フレーム変化することをスクリーンショット差分（キャラ領域2948px差）で確認。60fps・全ログエラー0
 
 ### Phase 4: 描画経路の統一
 1. Shadow / Skinned も DrawPacket + Submit 経路へ統一し、Model から D3D12 コマンド発行を完全排除（B3）

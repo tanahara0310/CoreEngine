@@ -1,5 +1,6 @@
 #pragma once
 #include <d3d12.h>
+#include <cstdint>
 
 namespace CoreEngine
 {
@@ -9,6 +10,8 @@ namespace CoreEngine
         float rotationY;
         float rotationZ;
         float environmentIntensity; ///< 環境輝度スケール（SkyBox intensity と連動）
+        uint32_t sceneIBLEnabled;   ///< シーンに IBL マップ（Irradiance/Prefiltered/BRDF LUT）が揃っているか
+        float padding[3];
     };
-    static_assert(sizeof(IBLSceneParamsCPU) == 16, "IBLSceneParamsCPU size mismatch");
+    static_assert(sizeof(IBLSceneParamsCPU) == 32, "IBLSceneParamsCPU size mismatch");
 }

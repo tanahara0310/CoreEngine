@@ -26,33 +26,34 @@ namespace CoreEngine
 
     void Model::Initialize(ModelResource* resource, const ModelRenderContext& ctx) {
         assert(resource && resource->IsLoaded());
+        assert(ctx.IsComplete() && "ModelRenderContext must be fully initialized (use ModelManager to create models)");
         resource_ = resource;
         renderContext_ = ctx;
 
-        // MaterialInstanceを作成
-        materialInstance_ = std::make_unique<MaterialInstance>();
-        materialInstance_->Initialize(renderContext_.dxCommon->GetDevice());
-
-        // アセット側の PBR ファクターとテクスチャ有無をマテリアルへ反映する。
-        // NOTE: MaterialInstance はモデル単位で 1 つのため先頭サブメッシュのマテリアルを採用する
-        //       （サブメッシュごとのマテリアル対応は Phase 2 で行う）。
-        const auto& subMeshes = resource_->GetSubMeshes();
+        // マテリアルスロット数分の MaterialInstance を作成し、
+        // アセット側の PBR ファクターとテクスチャ有無を各スロットへ反映する。
         const auto& materials = resource_->GetMaterials();
-        if (!subMeshes.empty()) {
-            const uint32_t matIndex = subMeshes[0].materialIndex;
+        const size_t materialCount = (std::max<size_t>)(materials.size(), 1);
+        materialInstances_.clear();
+        materialInstances_.reserve(materialCount);
+        for (size_t i = 0; i < materialCount; ++i) {
+            auto instance = std::make_unique<MaterialInstance>();
+            instance->Initialize(renderContext_.dxCommon->GetDevice());
 
-            if (matIndex < materials.size()) {
-                const MaterialAsset& asset = materials[matIndex];
-                materialInstance_->SetColor(asset.baseColorFactor);
-                materialInstance_->SetMetallic(asset.metallicFactor);
-                materialInstance_->SetRoughness(asset.roughnessFactor);
-                materialInstance_->SetEmissiveFactor(asset.emissiveFactor);
-                materialInstance_->SetAlphaCutoff(asset.alphaCutoff);
+            if (i < materials.size()) {
+                const MaterialAsset& asset = materials[i];
+                instance->SetColor(asset.baseColorFactor);
+                instance->SetMetallic(asset.metallicFactor);
+                instance->SetRoughness(asset.roughnessFactor);
+                instance->SetEmissiveFactor(asset.emissiveFactor);
+                instance->SetAlphaCutoff(asset.alphaCutoff);
             }
 
             // 法線マップのみフラグ制御（法線はファクター乗算で無効化できないため）
-            const auto& textures = resource_->GetMaterialTextures(matIndex);
-            materialInstance_->SetNormalMapEnabled(textures.hasNormal);
+            const auto& textures = resource_->GetMaterialTextures(static_cast<uint32_t>(i));
+            instance->SetNormalMapEnabled(textures.hasNormal);
+
+            materialInstances_.push_back(std::move(instance));
         }
 
         for (auto& wvpResource : wvpResources_) {
@@ -62,15 +63,14 @@ namespace CoreEngine
             );
         }
 
-        // Skeletonをコピー
+        // スケルトンを持つモデルは SkinCluster を作成する
+        // （スケルトンの実体はリソースまたはアニメーターが所有し、Model はコピーを持たない）
         if (resource_->GetSkeleton()) {
-            skeleton_ = *resource_->GetSkeleton();
-
             const ModelData& modelData = resource_->GetModelData();
             if (!modelData.skinClusterData.empty()) {
                 skinCluster_ = SkinClusterGenerator::CreateSkinCluster(
                     renderContext_.dxCommon->GetDevice(),
-                    *skeleton_,
+                    *resource_->GetSkeleton(),
                     modelData,
                     renderContext_.dxCommon->GetDescriptorManager(),
                     resource_->GetVertexBuffer(),
@@ -80,18 +80,13 @@ namespace CoreEngine
         }
     }
 
-    void Model::Initialize(ModelResource* resource, std::unique_ptr<IAnimationController> controller, const ModelRenderContext& ctx) {
-        // 基本の初期化を実行
-        Initialize(resource, ctx);
-
-        // アニメーションコントローラーを設定
-        animationController_ = std::move(controller);
+    void Model::SetAnimationPlayer(std::unique_ptr<AnimationPlayer> player) {
+        animationPlayer_ = std::move(player);
     }
 
-    void Model::UpdateSkinCluster() {
-        // SkinClusterとSkeletonが両方存在する場合のみ更新
-        if (skinCluster_ && skeleton_) {
-            SkinClusterGenerator::Update(*skinCluster_, *skeleton_);
+    void Model::UpdateSkinCluster(const Skeleton& skeleton) {
+        if (skinCluster_) {
+            SkinClusterGenerator::Update(*skinCluster_, skeleton);
         }
     }
 
@@ -223,22 +218,20 @@ namespace CoreEngine
         // パスの種別はレンダラーのフレームコンテキストから判定する
         const bool isGBufferPass = renderContext_.modelRenderer->IsInGBufferPass();
 
-        // マテリアルCBVは全サブメッシュで共通
-        const D3D12_GPU_VIRTUAL_ADDRESS materialCBV = materialInstance_->GetGPUVirtualAddress();
-
         for (uint32_t i = 0; i < subMeshes.size(); ++i) {
             const auto& subMesh = subMeshes[i];
             const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
+            // マテリアルCBVはサブメッシュのマテリアルスロットに対応するインスタンスを使用
+            const D3D12_GPU_VIRTUAL_ADDRESS materialCBV =
+                MaterialForSlot(subMesh.materialIndex)->GetGPUVirtualAddress();
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
                 ? textureHandle : textures.baseColor;
-            D3D12_GPU_DESCRIPTOR_HANDLE normalTex = (normalMapOverride_.ptr != 0)
-                ? normalMapOverride_ : textures.normal;
 
             InstanceBatchKey key{};
             key.resource = resource_;
             key.subMeshIndex = i;
             key.baseColorSRV = baseColorTex.ptr;
-            key.normalMapSRV = normalTex.ptr;
+            key.normalMapSRV = textures.normal.ptr;
             key.metallicRoughnessSRV = textures.metallicRoughness.ptr;
             key.occlusionSRV = textures.occlusion.ptr;
             key.emissiveSRV = textures.emissive.ptr;
@@ -299,131 +292,15 @@ namespace CoreEngine
 }
 
 void Model::UpdateAnimation(float deltaTime) {
-    if (!animationController_) return;
+    if (!animationPlayer_) return;
 
     // アニメーション時刻を進める
-    animationController_->Update(deltaTime);
+    animationPlayer_->Update(deltaTime);
 
-    // スケルトンが存在する場合はインスタンス変数に同期し、SkinCluster も更新する
-    if (const Skeleton* skel = animationController_->GetSkeleton()) {
-        skeleton_ = *skel;
-        UpdateSkinCluster();
+    // スケルトンの姿勢を SkinCluster のマトリックスパレットへ反映する（コピーなし・参照渡し）
+    if (const Skeleton* skel = animationPlayer_->GetSkeleton()) {
+        UpdateSkinCluster(*skel);
     }
-}
-
-void Model::ResetAnimation() {
-    if (animationController_) {
-        animationController_->Reset();
-    }
-}
-
-float Model::GetAnimationTime() const {
-    return animationController_ ? animationController_->GetAnimationTime() : 0.0f;
-}
-
-bool Model::IsAnimationFinished() const {
-    return animationController_ ? animationController_->IsFinished() : true;
-}
-
-void Model::SetModelResource(ModelResource* resource)
-{
-    resource_ = resource;
-}
-
-void Model::SetAnimationControllerFactory(std::unique_ptr<IAnimationControllerFactory> factory)
-{
-    animationFactory_ = std::move(factory);
-}
-
-bool Model::SwitchAnimation(const std::string& animationName, bool loop) {
-
-    // リソースがない場合は失敗
-    if (!resource_) {
-        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: ModelResource is null");
-        return false;
-    }
-
-    // アニメーションを取得
-    const Animation* newAnimation = resource_->GetAnimation(animationName);
-    if (!newAnimation) {
-        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Animation not found: " + animationName);
-        return false;
-    }
-
-    // アニメーションコントローラーがない場合は失敗
-    if (!animationController_) {
-        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: no animation controller");
-        return false;
-    }
-
-    // ファクトリーが未設定の場合は失敗
-    if (!animationFactory_) {
-        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "AnimationControllerFactory is not set. Use ModelManager::CreateSkeletonModel()");
-        return false;
-    }
-
-    // スケルトンを持つコントローラーのみアニメーション切り替えが可能
-    const Skeleton* skel = animationController_->GetSkeleton();
-    if (!skel) {
-        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "Animation switching is only supported for SkeletonAnimator");
-        return false;
-    }
-
-    // ファクトリー経由で新しいコントローラーを生成
-    animationController_ = animationFactory_->CreateSkeletonAnimator(*skel, *newAnimation, loop);
-
-    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Switched to animation: " + animationName);
-    return true;
-}
-
-bool Model::SwitchAnimationWithBlend(const std::string& animationName, float blendDuration, bool loop) {
-    // リソースがない場合は失敗
-    if (!resource_) {
-        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: ModelResource is null");
-        return false;
-    }
-
-    // アニメーションを取得
-    const Animation* newAnimation = resource_->GetAnimation(animationName);
-    if (!newAnimation) {
-        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Animation not found: " + animationName);
-        return false;
-    }
-
-    // アニメーションコントローラーがない場合は失敗
-    if (!animationController_) {
-        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Cannot switch animation: no animation controller");
-        return false;
-    }
-
-    // ファクトリーが未設定の場合は失敗
-    if (!animationFactory_) {
-        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "AnimationControllerFactory is not set. Use ModelManager::CreateSkeletonModel()");
-        return false;
-    }
-
-    // スケルトンを持つコントローラーのみブレンド可能
-    const Skeleton* skel = animationController_->GetSkeleton();
-    if (!skel) {
-        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", "Animation blending is only supported for SkeletonAnimator");
-        return false;
-    }
-    Skeleton currentSkeleton = *skel;
-
-    // ファクトリー経由でブレンド先コントローラーを生成
-    auto newAnimator = animationFactory_->CreateSkeletonAnimator(currentSkeleton, *newAnimation, loop);
-
-    if (animationController_->IsBlending()) {
-        // 既に AnimationBlender として動作中 → ターゲットだけ切り替える（dynamic_cast 不要）
-        animationController_->AddBlendTarget(std::move(newAnimator), blendDuration);
-    } else {
-        // SkeletonAnimator からブレンダーへ置き換え
-        animationController_ = animationFactory_->CreateBlenderWithTarget(
-            std::move(animationController_), std::move(newAnimator), blendDuration);
-    }
-
-    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "Started blend to animation: " + animationName);
-    return true;
 }
 
 // ===== ModelDrawPacket 組み立て =====
@@ -449,7 +326,7 @@ ModelDrawPacket Model::BuildNormalDrawPacket(
     packet.startIndex = subMesh.startIndex;
     packet.instanceDataSRV = transformBuffer->GetGPUVirtualAddress();
     packet.instanceCount = 1;
-    packet.materialCBV = materialInstance_->GetGPUVirtualAddress();
+    packet.materialCBV = MaterialForSlot(subMesh.materialIndex)->GetGPUVirtualAddress();
     packet.baseColorSRV = baseColorTexture;
     packet.normalMapSRV = normalTexture;
     packet.metallicRoughnessSRV = metallicRoughnessTexture;
@@ -482,7 +359,7 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.startIndex = subMesh.startIndex;
     packet.instanceDataSRV = transformBuffer->GetGPUVirtualAddress();
     packet.instanceCount = 1;
-    packet.materialCBV = materialInstance_->GetGPUVirtualAddress();
+    packet.materialCBV = MaterialForSlot(subMesh.materialIndex)->GetGPUVirtualAddress();
     packet.baseColorSRV = baseColorTexture;
     packet.normalMapSRV = normalTexture;
     packet.metallicRoughnessSRV = metallicRoughnessTexture;
@@ -501,39 +378,33 @@ ID3D12Resource* Model::GetTransformBuffer(TransformBufferSlot slot) const
 
 // ===== クエリ =====
 
-bool Model::IsInitialized() const {
-    return resource_ != nullptr && materialInstance_ != nullptr;
+MaterialInstance* Model::MaterialForSlot(uint32_t materialIndex) const {
+    assert(!materialInstances_.empty());
+    const size_t index = materialIndex < materialInstances_.size() ? materialIndex : 0;
+    return materialInstances_[index].get();
 }
 
-const std::optional<Skeleton>& Model::GetSkeleton() const {
-    return skeleton_;
+bool Model::IsInitialized() const {
+    return resource_ != nullptr && !materialInstances_.empty();
 }
 
 bool Model::HasSkinCluster() const {
     return skinCluster_.has_value();
 }
 
-bool Model::HasAnimationController() const {
-    return animationController_ != nullptr;
+bool Model::HasNormalMap(size_t materialIndex) const {
+    if (!resource_ || materialIndex >= resource_->GetMaterials().size()) return false;
+    return resource_->GetMaterialTextures(static_cast<uint32_t>(materialIndex)).hasNormal;
 }
 
-bool Model::HasNormalMap() const {
-    if (!resource_ || resource_->GetSubMeshes().empty()) return false;
-    return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasNormal;
+bool Model::HasMetallicRoughnessMap(size_t materialIndex) const {
+    if (!resource_ || materialIndex >= resource_->GetMaterials().size()) return false;
+    return resource_->GetMaterialTextures(static_cast<uint32_t>(materialIndex)).hasMetallicRoughness;
 }
 
-bool Model::HasMetallicRoughnessMap() const {
-    if (!resource_ || resource_->GetSubMeshes().empty()) return false;
-    return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasMetallicRoughness;
-}
-
-bool Model::HasOcclusionMap() const {
-    if (!resource_ || resource_->GetSubMeshes().empty()) return false;
-    return resource_->GetMaterialTextures(resource_->GetSubMeshes()[0].materialIndex).hasOcclusion;
-}
-
-Model::RenderType Model::GetRenderType() const {
-    return HasSkinCluster() ? RenderType::Skinning : RenderType::Normal;
+bool Model::HasOcclusionMap(size_t materialIndex) const {
+    if (!resource_ || materialIndex >= resource_->GetMaterials().size()) return false;
+    return resource_->GetMaterialTextures(static_cast<uint32_t>(materialIndex)).hasOcclusion;
 }
 
 ModelResource* Model::GetModelResource() {

@@ -62,7 +62,7 @@ public:
     float GetRotationY() const { return transform_.rotate.y; }
 
     /// @brief マテリアルインスタンスを直接取得
-    CoreEngine::IMaterial* GetMaterial() { return material_.get(); }
+    CoreEngine::SkyBoxMaterialInstance* GetMaterial() { return material_.get(); }
 
     /// @brief 大気散乱モードの有効/無効を設定
     /// @details 既定で有効。有効時はキューブマップの代わりに大気散乱（SkyAtmosphere.PS.hlsl）で

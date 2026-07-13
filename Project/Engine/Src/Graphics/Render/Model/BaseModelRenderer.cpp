@@ -294,7 +294,13 @@ namespace CoreEngine
             cmdList->SetGraphicsRootDescriptorTable(forwardCache_.brdfLUT, iblParams_.brdfLUT);
         }
         if (iblParamsBuffer_) {
-            IBLSceneParamsCPU params{ iblParams_.rotation.x, iblParams_.rotation.y, iblParams_.rotation.z, iblParams_.intensity };
+            IBLSceneParamsCPU params{};
+            params.rotationX = iblParams_.rotation.x;
+            params.rotationY = iblParams_.rotation.y;
+            params.rotationZ = iblParams_.rotation.z;
+            params.environmentIntensity = iblParams_.intensity;
+            // IBL の有効/無効はシーン側（マップが揃っているか）で決まる
+            params.sceneIBLEnabled = HasIBLMaps() ? 1u : 0u;
             void* mapped = nullptr;
             iblParamsBuffer_->Map(0, nullptr, &mapped);
             std::memcpy(mapped, &params, sizeof(params));

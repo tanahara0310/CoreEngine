@@ -111,11 +111,10 @@ namespace CoreEngine
                 DynamicModelObject* raw = manager->AddObject(std::move(newObj));
                 if (raw) {
                     if (Model* model = raw->GetModel()) {
-                        if (MaterialInstance* material = model->GetMaterial()) {
+                        model->ForEachMaterial([](MaterialInstance* material) {
                             material->SetLightingEnabled(true);
-                            material->SetIBLEnabled(true);
                             material->SetNormalMapEnabled(false);
-                        }
+                        });
                     }
                     DebugAccess::TransformAccess access;
                     if (DebugAccess::TryGetTransformAccess(raw, access)) {

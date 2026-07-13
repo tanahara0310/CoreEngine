@@ -433,10 +433,10 @@
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.cpp">
+    <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationPlayer.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Model\Animation\Animator.cpp">
+    <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkeletonAnimator.cpp">
@@ -1107,9 +1107,6 @@
     <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h">
       <Filter>Engine\Src\Graphics\Material\Debug</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Material\IMaterial.h">
-      <Filter>Engine\Src\Graphics\Material</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
@@ -1311,10 +1308,10 @@
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.h">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.h">
+    <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationPlayer.h">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\Animator.h">
+    <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.h">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationController.h">
