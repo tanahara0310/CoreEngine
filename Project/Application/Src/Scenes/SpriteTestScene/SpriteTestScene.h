@@ -15,11 +15,11 @@
 class SpriteTestScene : public CoreEngine::BaseScene {
 public:
     void OnInitialize() override;
-    void Finalize() override;
     void Draw() override;
 
 protected:
     void OnUpdate() override;
+    void OnFinalize() override;
 
 private:
     void BuildTileMap();

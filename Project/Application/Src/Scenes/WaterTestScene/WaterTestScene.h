@@ -29,9 +29,6 @@ public:
     /// @brief 現在の DXR 水面屈折用波面データを返す
     const CoreEngine::WaterSurfaceData* GetWaterRefractionSurfaceData() const override;
 
-    /// @brief 解放
-    void Finalize() override;
-
     template<typename TObject, typename... TArgs>
     TObject* CreateWaterSceneObject(TArgs&&... args) {
         return CreateObject<TObject>(std::forward<TArgs>(args)...);

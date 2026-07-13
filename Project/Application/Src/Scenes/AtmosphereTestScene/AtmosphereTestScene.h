@@ -22,9 +22,6 @@ public:
     /// @brief 描画処理
     void Draw() override;
 
-    /// @brief 解放
-    void Finalize() override;
-
 private:
     AtmosphereEditorFacade editorFacade_{};
 };

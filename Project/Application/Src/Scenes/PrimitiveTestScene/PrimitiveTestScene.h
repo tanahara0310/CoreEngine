@@ -13,9 +13,6 @@ public:
     /// @brief 描画
     void Draw() override;
 
-    /// @brief 解放
-    void Finalize() override;
-
 protected:
     /// @brief 更新
     void OnUpdate() override;

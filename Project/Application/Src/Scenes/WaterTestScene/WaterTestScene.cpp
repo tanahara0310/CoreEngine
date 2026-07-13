@@ -125,6 +125,3 @@ const WaterSurfaceData* WaterTestScene::GetWaterRefractionSurfaceData() const
     return waterController_.GetWaterRefractionSurfaceData();
 }
 
-void WaterTestScene::Finalize() {
-    BaseScene::Finalize();
-}

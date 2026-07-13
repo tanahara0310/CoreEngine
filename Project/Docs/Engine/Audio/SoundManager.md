@@ -138,7 +138,7 @@ private:
         }
     }
 
-    void Finalize() override {
+    void OnFinalize() override {
         bgm_.reset();
     }
 };

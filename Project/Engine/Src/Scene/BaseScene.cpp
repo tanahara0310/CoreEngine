@@ -6,22 +6,20 @@
 #include "Camera/Camera.h"
 #include "Camera/Camera2D.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Graphics/Cloud/VolumetricCloudManager.h"
-#include "Graphics/Light/LightManager.h"
-#include "Utility/FrameRate/FrameRateController.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Graphics/Render/RenderDomainContext.h"
-#include "Graphics/Render/Line/GridRenderer.h"
 #include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
 #include "Particle/Gpu/GpuParticleSystem.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Scene/SceneManager.h"
-#include "GameObject/Sprite/SpriteObject.h"
-#include "GameObjects/SkyBox/SkyBoxObject.h"
-#include "GameObject/Ground/InfiniteGroundObject.h"
+#include "Scene/Feature/LightingFeature.h"
+#include "Scene/Feature/EnvironmentFeature.h"
+#include "Scene/Feature/CollisionFeature.h"
+#include "Scene/Feature/GridFeature.h"
+#include "Scene/Feature/DebugEditorFeature.h"
+#include "Scene/Feature/SceneBGMFeature.h"
 #include "Utility/Logger/Logger.h"
+#include <algorithm>
 
 
 namespace CoreEngine
@@ -57,29 +55,29 @@ namespace CoreEngine
         //カメラ
         SetupCamera();
 
-        //ライト
-        SetupLight();
+        // 既定 Feature（ライト・グリッド・デバッグエディタ・コリジョン・環境・BGM）の登録と初期化
+        RegisterDefaultFeatures();
+        RefreshFeatureContext();
+        for (auto& entry : features_) {
+            entry.feature->Initialize(featureContext_);
+        }
+        featuresInitialized_ = true;
 
-#ifdef USE_IMGUI
-        //グリッド（デバッグビルドのみ）
-        SetupGrid();
-#endif
-
-#ifdef USE_IMGUI
-        // デバッグエディター初期化
-        debugEditor_ = std::make_unique<SceneDebugEditor>();
-        debugEditor_->Initialize(engine_, &gameObjectManager_, cameraManager_.get(), sceneSaveSystem_.get());
-#endif
+        // 既定ディレクショナルライトを従来の protected メンバーとして派生クラスへ公開する
+        directionalLight_ = lightingFeature_ ? lightingFeature_->GetDirectionalLight() : nullptr;
 
         // 派生クラス固有の初期化（オブジェクト生成など）
         OnInitialize();
 
-        // 既定の空（大気散乱）のセットアップ
-        // シーンが SkyBox を生成していない場合のみ自動生成するため OnInitialize() の後に行う
-        SetupDefaultSky();
-
-        // 既定の無限地面（y=0 のグレータイル床）のセットアップ
-        SetupDefaultGround();
+        // OnInitialize() 完了後の Feature フック
+        // （シーン生成済みオブジェクトを見る SkyBox / 無限床の採用判定など）
+        if (environmentFeature_) {
+            environmentFeature_->SetWantsDefaultGround(WantsDefaultGround());
+        }
+        RefreshFeatureContext();
+        for (auto& entry : features_) {
+            entry.feature->PostSceneInitialize(featureContext_);
+        }
 
         // 全オブジェクト生成後にシーンデータを JSON から自動復元
         LoadObjectsFromJson();
@@ -92,48 +90,26 @@ namespace CoreEngine
             cameraManager_->Update();
         }
 
-        // ライトマネージャーの更新
-        auto lightManager = engine_->GetComponent<LightManager>();
-        if (lightManager) {
-            lightManager->UpdateAll();
-
-            // シャドウマップ用のライトView-Projection行列を更新
-            UpdateLightViewProjection();
-        }
-
-#ifdef USE_IMGUI
-        debugEditor_->Update();
-
-        // グリッド表示状態を更新
-        if (gridRenderer_) {
-            if (auto* debug = engine_->GetDebugSubsystem()) {
-                if (auto* dockingUI = debug->GetDockingUI()) {
-                    gridRenderer_->SetVisible(dockingUI->IsGridVisible());
-                }
-            }
-        }
-#endif
+        // フレーム前処理（ライト/影・グリッド・デバッグエディタ）
+        DispatchUpdate(SceneUpdatePhase::FrameStart);
 
         // 派生クラスの更新処理（GameObjectの更新前）
         OnUpdate();
 
-        // 既定の無限地面をカメラ XZ に追従させる（GameObject 更新前に位置を確定する）
-        UpdateGroundPlane();
+        // GameObject 更新前の Feature 更新（床のカメラ追従など位置の事前確定）
+        DispatchUpdate(SceneUpdatePhase::PreObjectUpdate);
 
         // ゲームオブジェクトの更新
         gameObjectManager_.UpdateAll();
 
-        // コリジョン判定（毎フレーム: 収集 → 判定）
-        // ClearColliders()でコライダーリストのみリセット
-        collisionManager_.ClearColliders();
-        gameObjectManager_.RegisterAllColliders(&collisionManager_);
-        collisionManager_.CheckAllCollisions();
+        // GameObject 更新後の Feature 更新（コリジョン収集 → 判定など）
+        DispatchUpdate(SceneUpdatePhase::PostObjectUpdate);
 
         // 派生クラスの後処理（クリーンアップ前）
         OnLateUpdate();
 
-        // 大気散乱の更新（全ロジック更新後の最新の太陽・カメラ情報を反映する）
-        UpdateAtmosphere();
+        // 全ロジック確定後の Feature 更新（大気→雲など最新の太陽・カメラ情報の反映）
+        DispatchUpdate(SceneUpdatePhase::PostLogic);
     }
 
     void BaseScene::PrepareRender()
@@ -229,25 +205,102 @@ namespace CoreEngine
         if (shouldSwitchCamera && !previousCameraName.empty()) {
             cameraManager_->SetActiveCamera(previousCameraName, CameraType::Camera3D);
         }
-
-
     }
 
     void BaseScene::Finalize()
     {
-        // 既定背景の SkyBox / 無限地面は gameObjectManager_ が所有しているためポインタのみクリア
-        skyBox_ = nullptr;
-        groundPlane_ = nullptr;
+        // 派生クラス固有の解放
+        OnFinalize();
+
+        // Feature の解放（登録の逆順）
+        RefreshFeatureContext();
+        for (auto it = features_.rbegin(); it != features_.rend(); ++it) {
+            it->feature->Finalize(featureContext_);
+        }
 
         // ゲームオブジェクトをクリア（新システム）
         gameObjectManager_.Clear();
 
-#ifdef USE_IMGUI
-        // デバッグ編集履歴をクリア
-        if (debugEditor_) {
-            debugEditor_->ClearHistory();
+        // Feature を破棄（委譲先ポインタも無効化）
+        features_.clear();
+        featuresInitialized_ = false;
+        lightingFeature_ = nullptr;
+        environmentFeature_ = nullptr;
+        collisionFeature_ = nullptr;
+        bgmFeature_ = nullptr;
+        directionalLight_ = nullptr;
+    }
+
+    ISceneFeature* BaseScene::AddFeature(std::unique_ptr<ISceneFeature> feature, int priority)
+    {
+        if (!feature) {
+            return nullptr;
         }
+
+        FeatureEntry entry;
+        entry.feature = std::move(feature);
+        entry.priority = priority;
+        entry.sequence = featureSequence_++;
+
+        // (priority, 登録順) で決まる位置へ挿入し、features_ を常にソート済みに保つ
+        // （RenderPipeline::AddPass と同じ規約）
+        auto insertPos = std::find_if(features_.begin(), features_.end(),
+            [&entry](const FeatureEntry& existing) {
+                return existing.priority > entry.priority;
+            });
+
+        ISceneFeature* result = entry.feature.get();
+        features_.insert(insertPos, std::move(entry));
+
+        // シーン初期化後（OnInitialize() 内など）の追加は即座に初期化する
+        if (featuresInitialized_) {
+            RefreshFeatureContext();
+            result->Initialize(featureContext_);
+        }
+        return result;
+    }
+
+    void BaseScene::RegisterDefaultFeatures()
+    {
+        // 登録順 = 同 priority 内の実行順。従来 BaseScene::Update の暗黙順序を再現する
+        auto lighting = std::make_unique<LightingFeature>();
+        lightingFeature_ = lighting.get();
+        AddFeature(std::move(lighting));
+
+#ifdef USE_IMGUI
+        AddFeature(std::make_unique<GridFeature>());
+        AddFeature(std::make_unique<DebugEditorFeature>());
 #endif
+
+        auto collision = std::make_unique<CollisionFeature>();
+        collisionFeature_ = collision.get();
+        AddFeature(std::move(collision));
+
+        auto environment = std::make_unique<EnvironmentFeature>();
+        environmentFeature_ = environment.get();
+        AddFeature(std::move(environment));
+
+        auto bgm = std::make_unique<SceneBGMFeature>();
+        bgmFeature_ = bgm.get();
+        AddFeature(std::move(bgm));
+    }
+
+    void BaseScene::RefreshFeatureContext()
+    {
+        featureContext_.engine = engine_;
+        featureContext_.gameObjectManager = &gameObjectManager_;
+        featureContext_.cameraManager = cameraManager_.get();
+        featureContext_.sceneManager = sceneManager_;
+        featureContext_.saveSystem = sceneSaveSystem_.get();
+        featureContext_.gameViewCamera3D = GetGameViewCamera3D();
+    }
+
+    void BaseScene::DispatchUpdate(SceneUpdatePhase phase)
+    {
+        RefreshFeatureContext();
+        for (auto& entry : features_) {
+            entry.feature->Update(featureContext_, phase);
+        }
     }
 
     void BaseScene::SetupCamera()
@@ -318,48 +371,6 @@ namespace CoreEngine
         return cameraManager_->GetActiveCameraName(CameraType::Camera3D);
     }
 
-    void BaseScene::SetupLight()
-    {
-        // デフォルトのディレクショナルライトを設定
-        auto lightManager = engine_->GetComponent<LightManager>();
-        if (lightManager) {
-            directionalLight_ = lightManager->AddDirectionalLight();
-            if (directionalLight_) {
-                directionalLight_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-                directionalLight_->direction = MathCore::Vector::Normalize({ 0.0f, -1.0f, 0.0f });
-                directionalLight_->intensity = 1.0f;
-                directionalLight_->enabled = true;
-                // 既定背景（大気散乱）の太陽として扱う。
-                // キューブマップモードのシーンでは大気が非アクティブのため影響はない。
-                directionalLight_->isAtmosphereSun = true;
-                // 0 = 空の輝度スケールを intensity にフォールバックさせる（従来動作）。
-                // 空を明るくしたいシーンは atmosphereIntensity のみを上げること。
-                // intensity（サーフェス直接光）を上げるとアルベドの明るい面が ACES の飽和域へ入る。
-                directionalLight_->atmosphereIntensity = 0.0f;
-            }
-        }
-    }
-
-    void BaseScene::SetupDefaultSky()
-    {
-        // シーン側（OnInitialize）で生成済みの SkyBox があればそれを採用する
-        for (const auto& obj : gameObjectManager_.GetAllObjects()) {
-            if (auto* sceneSkyBox = dynamic_cast<SkyBoxObject*>(obj.get())) {
-                skyBox_ = sceneSkyBox;
-                Logger::GetInstance().Infof(LogCategory::System,
-                    "BaseScene: シーン生成の SkyBox を採用 (背景モード={})",
-                    skyBox_->IsAtmosphereMode() ? "大気散乱" : "キューブマップ");
-                return;
-            }
-        }
-
-        // 未生成なら既定の背景として大気散乱モードの SkyBox を自動生成する
-        skyBox_ = CreateObject<SkyBoxObject>();
-        skyBox_->SetActive(true);
-        Logger::GetInstance().Infof(LogCategory::System,
-            "BaseScene: 既定背景として大気散乱モードの SkyBox を自動生成");
-    }
-
     void BaseScene::SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate)
     {
         if (!cameraManager_) {
@@ -371,145 +382,23 @@ namespace CoreEngine
         }
     }
 
-    void BaseScene::SetupDefaultGround()
+    void BaseScene::SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable)
     {
-        // シーン側（OnInitialize）で生成済みの無限地面があればそれを採用する
-        for (const auto& obj : gameObjectManager_.GetAllObjects()) {
-            if (auto* sceneGround = dynamic_cast<InfiniteGroundObject*>(obj.get())) {
-                groundPlane_ = sceneGround;
-                Logger::GetInstance().Infof(LogCategory::System,
-                    "BaseScene: シーン生成の無限地面を採用");
-                return;
-            }
-        }
-
-        // シーンがオプトアウトしている場合は生成しない（独自地形・水面・2D シーン等）
-        if (!WantsDefaultGround()) {
-            return;
-        }
-
-        // 未生成なら既定の床として無限地面を自動生成する
-        groundPlane_ = CreateObject<InfiniteGroundObject>();
-        groundPlane_->SetActive(true);
-        Logger::GetInstance().Infof(LogCategory::System,
-            "BaseScene: 既定の床として無限地面を自動生成");
-    }
-
-    void BaseScene::UpdateGroundPlane()
-    {
-        if (!groundPlane_) {
-            return;
-        }
-
-        // ゲームビューカメラの XZ に追従させる（タイルはワールド固定）
-        if (const ICamera* camera = GetGameViewCamera3D()) {
-            groundPlane_->FollowCamera(camera->GetPosition());
+        if (collisionFeature_) {
+            collisionFeature_->SetCollisionEnabled(a, b, enable);
         }
     }
 
-    void BaseScene::UpdateAtmosphere()
+    SkyBoxObject* BaseScene::GetSkyBox() const
     {
-        // キューブマップモード中は AtmosphereManager を非アクティブのままにし、
-        // LUT 生成・Aerial Perspective 合成をスキップさせる
-        if (!skyBox_ || !skyBox_->IsAtmosphereMode()) {
-            return;
-        }
-
-        auto* domainContext = engine_->GetRenderDomainContext();
-        auto* atmosphereManager = domainContext ? domainContext->GetAtmosphereManager() : nullptr;
-        if (!atmosphereManager) {
-            return;
-        }
-
-        // ゲームビューカメラ基準で太陽情報とカメラ高度を反映する
-        Vector3 cameraPosition{};
-        Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
-        Matrix4x4 projMatrix = MathCore::Matrix::Identity();
-        if (const ICamera* camera = GetGameViewCamera3D()) {
-            cameraPosition = camera->GetPosition();
-            viewMatrix = camera->GetViewMatrix();
-            projMatrix = camera->GetProjectionMatrix();
-        }
-        atmosphereManager->Update(cameraPosition, viewMatrix, projMatrix,
-                                  engine_->GetComponent<LightManager>());
-
-        // 大気散乱の直後に雲を更新する（大気モード時のみ、という既存ガードの内側なので追加ガード不要）。
-        // 雲は太陽情報・カメラ高度を AtmosphereManager から取得するため、大気 Update の後に呼ぶ。
-        if (auto* cloudManager = domainContext->GetVolumetricCloudManager()) {
-            auto* frameRate = engine_->GetComponent<FrameRateController>();
-            const float deltaTime = frameRate ? frameRate->GetDeltaTime() : 0.016f;
-            cloudManager->Update(cameraPosition, viewMatrix, projMatrix,
-                                 atmosphereManager, deltaTime);
-        }
+        return environmentFeature_ ? environmentFeature_->GetSkyBox() : nullptr;
     }
 
-#ifdef USE_IMGUI
-    void BaseScene::SetupGrid()
+    void BaseScene::RegisterSceneBGM(std::unique_ptr<SoundManager::SoundResource>* bgm)
     {
-        // GridRendererを作成
-        gridRenderer_ = CreateObject<GridRenderer>();
-        gridRenderer_->Initialize();
-
-        // デフォルト設定
-        gridRenderer_->SetGridSize(100.0f);
-        gridRenderer_->SetSpacing(1.0f);
-        gridRenderer_->SetVisible(true);
-
-        // グリッドはシーンデータに保存しない
-        gridRenderer_->SetSerializeEnabled(false);
-    }
-
-#endif
-
-    void BaseScene::UpdateLightViewProjection()
-    {
-        // ディレクショナルライトが有効な場合のみ、シャドウマップ用の行列を計算
-        if (!directionalLight_ || !directionalLight_->enabled) {
-            return;
-        }
-
-        // ライト位置を計算（ライト方向の逆方向、シーン中心から一定距離）
-        Vector3 lightDir = MathCore::Vector::Normalize(directionalLight_->direction);
-        Vector3 lightPos = MathCore::Vector::Multiply(-kShadowLightDistance, lightDir);
-
-        // ライトのビュー行列（シーン中心を見る）
-        Vector3 target = { 0.0f, 0.0f, 0.0f };
-        Vector3 up = { 0.0f, 1.0f, 0.0f };
-        Matrix4x4 lightView = MathCore::Matrix::LookAt(lightPos, target, up);
-
-        // シャドウマップ用の正射影行列
-        Matrix4x4 lightProjection = MathCore::Rendering::Orthographic(
-            -kShadowOrthoSize, kShadowOrthoSize,  // 左、上
-            kShadowOrthoSize, -kShadowOrthoSize,  // 右、下
-            kShadowNearPlane, kShadowFarPlane      // 近平面、遠平面
-        );
-
-        // View * Projection
-        Matrix4x4 lightViewProjection = MathCore::Matrix::Multiply(lightView, lightProjection);
-
-        // RenderManagerに設定
-        auto renderManager = engine_->GetComponent<RenderManager>();
-        if (renderManager) {
-            renderManager->SetLightViewProjection(lightViewProjection);
-        }
-    }
-
-    void BaseScene::RegisterSceneBGM(std::unique_ptr<SoundManager::SoundResource>* bgm) {
-        sceneBGM_ = bgm;
-
-        // 現在設定されているBGM音量を取得
-        if (bgm && *bgm && (*bgm)->IsValid()) {
-            baseBGMVolume_ = (*bgm)->GetVolume();
-        }
-
-        // SceneManager経由でBGMコールバックを登録
-        if (sceneManager_) {
-            sceneManager_->RegisterSceneBGMCallback([this](float volumeMultiplier) {
-                if (sceneBGM_ && *sceneBGM_ && (*sceneBGM_)->IsValid()) {
-                    // 基本音量 × トランジション倍率で音量を設定
-                    (*sceneBGM_)->SetVolume(baseBGMVolume_ * volumeMultiplier);
-                }
-                });
+        if (bgmFeature_) {
+            RefreshFeatureContext();
+            bgmFeature_->RegisterSceneBGM(featureContext_, bgm);
         }
     }
 
@@ -528,4 +417,3 @@ namespace CoreEngine
         sceneSaveSystem_->SaveObject(obj);
     }
 }
-
