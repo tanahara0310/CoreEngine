@@ -15,6 +15,7 @@
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Model/Skeleton/SkinCluster.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
+#include "Graphics/Render/Shadow/ShadowDrawPacket.h"
 #include "Animation/AnimationPlayer.h"
 
 // 前方宣言
@@ -63,10 +64,8 @@ namespace CoreEngine
         /// @param transform ワールドトランスフォーム
         /// @param camera カメラ（ICamera インターフェース）
         /// @param textureHandle テクスチャハンドル（省略時はモデル組み込みテクスチャを使用）
-        /// @param slot 使用する WVP バッファスロット（Game=通常/GBuffer, Scene=エディタ）
         void Draw(const WorldTransform& transform, const CoreEngine::ICamera* camera,
-            D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {},
-            TransformBufferSlot slot = TransformBufferSlot::Game);
+            D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
 
         /// @brief シャドウマップ用の描画（深度のみ）
         /// @param transform ワールドトランスフォーム
@@ -120,14 +119,6 @@ namespace CoreEngine
         /// @return ModelResourceへのconstポインタ（nullptrの場合は未初期化）
         const ModelResource* GetModelResource() const;
 
-        /// @brief 描画システムが使用する WVP バッファスロットをグローバルに設定する
-        /// BaseScene::Draw() が各パスの直前に呼び出し、
-        /// 明示的にスロットを指定しない全モデルの Draw() に反映される。
-        static void SetCurrentRenderSlot(TransformBufferSlot slot) { s_currentRenderSlot_ = slot; }
-
-        /// @brief 現在設定されているグローバルレンダースロットを取得する
-        static TransformBufferSlot GetCurrentRenderSlot() { return s_currentRenderSlot_; }
-
         /// @brief カスタムシェーダー用フォワード PSO を設定する（nullptr = 既定シェーダーを使用）
         /// @note ModelGameObject::Initialize() 内部から呼び出される。直接呼ぶ必要はない。
         void SetCustomForwardPSO(ID3D12PipelineState* pso) { customForwardPSO_ = pso; }
@@ -154,19 +145,19 @@ namespace CoreEngine
         // インスタンス固有のマテリアル（マテリアルスロット数分。サブメッシュの materialIndex で参照）
         std::vector<std::unique_ptr<MaterialInstance>> materialInstances_;
 
-        static constexpr size_t kTransformBufferCount = 3;
+        // WVP バッファのリングサイズ（スワップチェーンのバックバッファ数と一致させる。
+        // ModelManager が InstanceBatchManager に渡すフレーム数と同じ値）
+        static constexpr size_t kFrameBufferCount = 3;
 
-        // 描画システムが制御するグローバルスロット
-        // BaseScene::Draw() によってパス開始前に設定される
-        inline static TransformBufferSlot s_currentRenderSlot_ = TransformBufferSlot::Game;
+        // スキニングモデルの即時描画（Draw）用 WVP バッファ。
+        // フレームインデックスでリングバッファ化し、CPU が複数フレーム先行して
+        // 書き込んでも GPU がまだ参照中の前フレームのデータを上書きしないようにする。
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameBufferCount> gameTransformBuffers_;
+        Matrix4x4 prevGameWVP_{}; // 前フレームのWVP行列（モーションベクター計算用）
+        bool prevGameWVPInitialized_ = false; // false = 未初期化（初回フレームはMV=0にする）
 
-        // WVP行列用のリソース（ビュー/パスごとに分離）
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kTransformBufferCount> wvpResources_;
-
-        // 前フレームのWVP行列（モーションベクター計算用）
-        // false = 未初期化（初回フレームはprevWVP=currentWVPとして扱い、MV=0にする）
-        std::array<Matrix4x4, kTransformBufferCount> prevWVP_{};
-        std::array<bool, kTransformBufferCount> prevWVPInitialized_{};
+        // シャドウマップ描画（DrawShadow）用 WVP バッファ。同様にリングバッファ化する。
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameBufferCount> shadowTransformBuffers_;
 
         // SkinCluster（存在する場合）
         std::optional<SkinCluster> skinCluster_;
@@ -188,9 +179,8 @@ namespace CoreEngine
         const ICustomShaderProvider* customProvider_ = nullptr;
 
         // 内部ヘルパーメソッド
-        /// @brief WVP行列データを更新（slot で使用バッファを指定）
-        void UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera,
-            TransformBufferSlot slot);
+        /// @brief 即時描画（スキニングモデル）用の WVP 行列データを更新する
+        void UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera);
 
         /// @brief SkinCluster のマトリックスパレットを指定スケルトンの姿勢で更新する
         void UpdateSkinCluster(const Skeleton& skeleton);
@@ -202,20 +192,14 @@ namespace CoreEngine
         /// @param restorePSO Dispatch後に復元するグラフィックスPSO（CSのDispatchでPSOスロットが上書きされるため）
         void EnsureGPUSkinning(ID3D12GraphicsCommandList* cmdList, ID3D12PipelineState* restorePSO);
 
-        /// @brief 指定スロット用行列バッファを取得
-        ID3D12Resource* GetTransformBuffer(TransformBufferSlot slot) const;
+        /// @brief 現在フレームに対応する Game 用 WVP バッファを取得（リングバッファから解決）
+        ID3D12Resource* GetGameTransformBuffer() const;
+
+        /// @brief 現在フレームに対応する Shadow 用 WVP バッファを取得（リングバッファから解決）
+        ID3D12Resource* GetShadowTransformBuffer() const;
 
         /// @brief サブメッシュのマテリアルスロットに対応する MaterialInstance を取得（範囲外はスロット0）
         MaterialInstance* MaterialForSlot(uint32_t materialIndex) const;
-
-        /// @brief 通常モデル用の ModelDrawPacket を組み立てる
-        ModelDrawPacket BuildNormalDrawPacket(const SubMeshData& subMesh,
-            D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
-            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
-            D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
-            D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
-            D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture,
-            TransformBufferSlot slot) const;
 
         /// @brief スキニングモデル用の ModelDrawPacket を組み立てる
         ModelDrawPacket BuildSkinningDrawPacket(const SubMeshData& subMesh,
@@ -223,7 +207,6 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
             D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
             D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
-            D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture,
-            TransformBufferSlot slot) const;
+            D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture) const;
     };
 }

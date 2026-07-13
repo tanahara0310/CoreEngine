@@ -173,11 +173,18 @@ float4x4 uvTransform;
 - スケルトンの実体は常にコントローラー（SkeletonAnimator/AnimationBlender）が所有する。Model はコピーを持たない
 - 検証済み: walk.gltf（スキニングモデル）を TestScene で一時有効化し、AnimationPlayer → SkinCluster → GPUスキニング経路でポーズが毎フレーム変化することをスクリーンショット差分（キャラ領域2948px差）で確認。60fps・全ログエラー0
 
-### Phase 4: 描画経路の統一
-1. Shadow / Skinned も DrawPacket + Submit 経路へ統一し、Model から D3D12 コマンド発行を完全排除（B3）
-2. `s_currentRenderSlot_` 廃止 → PassContext（ビュー種別・パス種別）を Draw 引数で明示（B2）
-3. per-instance CBV ×3 を InstanceBatchManager と同型のフレームリングバッファへ統合、TransformationMatrix から lightViewProjection を削除（B10, B11）
-4. カスタムシェーダーを ShaderMaterial 化。InstanceBatchKey を「メッシュ+サブメッシュ+マテリアルID」に縮小（B4）
+### Phase 4: 描画経路の統一 — ✅ 一部完了 (2026-07-13)（B4 は見送り、下記参照）
+1. ✅ Shadow を `ShadowDrawPacket` + `ShadowMapRenderer::BindShadowDrawPacket()` 経路へ統一。`Model::DrawShadow()` から IASetVertexBuffers/IASetIndexBuffer/SetGraphicsRootConstantBufferView/DrawIndexedInstanced の直接発行を排除（B3）。Skinned の即時描画（`Draw()`）は `ModelDrawPacket` + `BindModelDrawPacket` 経路のまま（Phase 1 以前から未変更、こちらは元々パケット化済みだった）
+2. ✅ `Model::s_currentRenderSlot_` / `SetCurrentRenderSlot` / `GetCurrentRenderSlot`、`RenderManager::activeTransformSlot_` / `SetActiveTransformSlot` / `GetActiveTransformSlot`、`TransformBufferSlot::Scene` を削除。**調査の結果 Scene スロットは実装のどこからも一度も生成されておらず**（常に Game のみが設定・消費）、`RenderManager::GetActiveTransformSlot()` も呼び出しゼロだった。`Docs/Refactoring/Step09_RenderGraphCompletion.md` が「IRenderer プロトコル全体への影響を伴う独立タスク」として先送りしていた項目だが、実際には単純削除で解決（該当箇所に解決済みを追記）（B2）
+3. ✅ per-instance WVP CBV を **Game ロール／Shadow ロールそれぞれ 3 バッファのフレームリングバッファ化**（`InstanceBatchManager` と同じ `GetSwapChain()->GetCurrentBackBufferIndex()` パターン）。**これは最適化ではなく実在するバグ修正**: 従来は Model 1 個につき WVP CBV が Game/Scene/Shadow で各 1 個の単一 Upload Heap で、CPU が複数フレーム先行して Map/Unmap する構成（`WaitForFrame` はバックバッファ数分遅延した fence 待ち）のため、GPU がまだ参照中の前フレームのシャドウ・スキニング即時描画データを CPU が上書きする競合が理論上常に起こり得た。lightViewProjection の per-instance 重複除去（B10）は見送り（下記参照）（B11 実施、B10 未実施）
+4. ⏸️ **見送り**: カスタムシェーダーの ShaderMaterial 化・InstanceBatchKey 縮小（B4）。4 ポインタ（customForwardPSO/customRootSignature/customProvider/customPipeline）が Model・InstanceBatchKey に重複している問題は健在。Model/InstanceBatchKey/BaseModelRenderer/ModelGameObject/InstanceBatchManager 全体に波及する変更で、正味の是正効果（重複の解消）に対してリスクが見合わないため今回は見送り。次回着手時は `ShaderMaterial { pso, rootSignature, provider, pipeline }` 構造体を先に定義し、Model 側とInstanceBatchKey側で共有する形が妥当
+
+**Phase 4 実装メモ:**
+- `ShadowDrawPacket`（`Graphics/Render/Shadow/ShadowDrawPacket.h`）を新設。`ModelDrawPacket` を流用せず専用の小さな型にした（シャドウは深度のみで material/texture フィールドが不要なため）
+- `Model` の WVP バッファは `gameTransformBuffers_[3]`（スキニング即時描画用）/ `shadowTransformBuffers_[3]`（DrawShadow用）の2系統×3フレームに整理。`prevWVP`（モーションベクター用CPU側追跡）はロールごとに1個のみで足りる（GPU側リングと独立した値のため）
+- `BuildNormalDrawPacket`（呼び出しゼロの死にコード）を削除。通常モデルは InstanceBatchManager 経由のバッチ描画のみ
+- **B10（lightViewProjection の per-instance 重複除去）は意図的に見送り**: `TransformationMatrix.LightViewProjection` は Object3d/GBuffer/Skinning×2/Water×2/Shadow×2 の計8箇所のVS/PSシェーダーで直接参照されており、per-pass 定数バッファへの移設は RootSignature 構成を含む広範な変更を要する。メモリ・帯域の無駄であって正確性バグではないため、Phase 5 以降の独立タスクとして残す
+- 検証済み: TestScene（sponza位置のsphereグリッド、シャドウキャスト）+ WalkModel（スキニング即時描画+シャドウ）を約15秒間実行、複数回スクリーンショットでシャドウ・スキン姿勢の破損なし、60fps安定、全ログエラー0
 
 ### Phase 5: ローダー/リソース整備
 1. Assimp Importer をローカル変数化（スレッド安全）+ 2パス読み込み解消（C1, C2）

@@ -56,8 +56,16 @@ namespace CoreEngine
             materialInstances_.push_back(std::move(instance));
         }
 
-        for (auto& wvpResource : wvpResources_) {
-            wvpResource = ResourceFactory::CreateBufferResource(
+        // WVP バッファをフレーム数分確保する（CPU が複数フレーム先行して書き込んでも
+        // GPU がまだ参照中のデータを上書きしないよう、役割ごとにリングバッファ化する）。
+        for (auto& buffer : gameTransformBuffers_) {
+            buffer = ResourceFactory::CreateBufferResource(
+                renderContext_.dxCommon->GetDevice(),
+                sizeof(TransformationMatrix)
+            );
+        }
+        for (auto& buffer : shadowTransformBuffers_) {
+            buffer = ResourceFactory::CreateBufferResource(
                 renderContext_.dxCommon->GetDevice(),
                 sizeof(TransformationMatrix)
             );
@@ -110,10 +118,9 @@ namespace CoreEngine
     }
 
 
-    void Model::UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera,
-        TransformBufferSlot slot)
+    void Model::UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera)
     {
-        ID3D12Resource* transformBuffer = GetTransformBuffer(slot);
+        ID3D12Resource* transformBuffer = GetGameTransformBuffer();
         assert(transformBuffer);
 
         // 行列計算
@@ -129,35 +136,27 @@ namespace CoreEngine
         Matrix4x4 lightVP = renderContext_.shadowMapManager ?
             renderContext_.shadowMapManager->GetLightViewProjection() : MathCore::Matrix::Identity();
 
-        size_t slotIdx = static_cast<size_t>(slot);
-
         // GPUメモリに書き込み
         TransformationMatrix* mappedData = nullptr;
         transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
         mappedData->world = worldMatrix;
         // 初回フレームは prevWVP = currentWVP にしてモーションベクター=0を保証する
-        mappedData->prevWVP = prevWVPInitialized_[slotIdx] ? prevWVP_[slotIdx] : worldViewProjectionMatrix;
+        mappedData->prevWVP = prevGameWVPInitialized_ ? prevGameWVP_ : worldViewProjectionMatrix;
         mappedData->WVP = worldViewProjectionMatrix;
         mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mappedData->lightViewProjection = lightVP;
         transformBuffer->Unmap(0, nullptr);
 
         // 今フレームのWVPを次フレームの prevWVP として保存
-        prevWVP_[slotIdx] = worldViewProjectionMatrix;
-        prevWVPInitialized_[slotIdx] = true;
+        prevGameWVP_ = worldViewProjectionMatrix;
+        prevGameWVPInitialized_ = true;
     }
 
     void Model::Draw(const WorldTransform& transform, const ICamera* camera,
-        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle, TransformBufferSlot slot) {
+        D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
 
         assert(IsInitialized());
         assert(camera);
-
-        // 呼び出し側がスロットを明示しない場合（デフォルト Game）は
-        // BaseScene が SetCurrentRenderSlot() で設定したグローバルスロットを使用する。
-        if (slot == TransformBufferSlot::Game) {
-            slot = s_currentRenderSlot_;
-        }
 
         ID3D12GraphicsCommandList* cmdList = renderContext_.dxCommon->GetCommandList();
         assert(cmdList);
@@ -169,7 +168,7 @@ namespace CoreEngine
 
         if (isSkinned) {
             // スキニングモデルは従来通り CBV 経由で即時描画する
-            UpdateTransformationMatrix(transform, camera, slot);
+            UpdateTransformationMatrix(transform, camera);
 
             BaseModelRenderer* renderer = renderContext_.skinnedRenderer;
             assert(renderer);
@@ -183,7 +182,7 @@ namespace CoreEngine
 
                 ModelDrawPacket packet = BuildSkinningDrawPacket(
                     subMesh, baseColorTex, textures.normal,
-                    textures.metallicRoughness, textures.occlusion, textures.emissive, slot);
+                    textures.metallicRoughness, textures.occlusion, textures.emissive);
 
                 renderer->BindModelDrawPacket(cmdList, packet);
             }
@@ -205,15 +204,14 @@ namespace CoreEngine
             ? renderContext_.shadowMapManager->GetLightViewProjection()
             : MathCore::Matrix::Identity();
 
-        const size_t slotIdx = static_cast<size_t>(slot);
         TransformationMatrix mtx{};
         mtx.world = worldMatrix;
         mtx.WVP = wvp;
-        mtx.prevWVP = prevWVPInitialized_[slotIdx] ? prevWVP_[slotIdx] : wvp;
+        mtx.prevWVP = prevGameWVPInitialized_ ? prevGameWVP_ : wvp;
         mtx.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mtx.lightViewProjection = lightVP;
-        prevWVP_[slotIdx] = wvp;
-        prevWVPInitialized_[slotIdx] = true;
+        prevGameWVP_ = wvp;
+        prevGameWVPInitialized_ = true;
 
         // パスの種別はレンダラーのフレームコンテキストから判定する
         const bool isGBufferPass = renderContext_.modelRenderer->IsInGBufferPass();
@@ -247,49 +245,44 @@ namespace CoreEngine
     }
 
     void Model::DrawShadow(const WorldTransform& transform, ID3D12GraphicsCommandList* cmdList) {
-    assert(IsInitialized());
-    assert(cmdList);
+        assert(IsInitialized());
+        assert(cmdList);
+        assert(renderContext_.shadowRenderer);
 
-    ID3D12Resource* transformBuffer = GetTransformBuffer(TransformBufferSlot::Shadow);
-    assert(transformBuffer);
+        ID3D12Resource* transformBuffer = GetShadowTransformBuffer();
+        assert(transformBuffer);
 
-    // ShadowMapManagerからライトVP行列を取得
-    Matrix4x4 lightVP = renderContext_.shadowMapManager ?
-        renderContext_.shadowMapManager->GetLightViewProjection() : MathCore::Matrix::Identity();
+        // ShadowMapManagerからライトVP行列を取得
+        Matrix4x4 lightVP = renderContext_.shadowMapManager ?
+            renderContext_.shadowMapManager->GetLightViewProjection() : MathCore::Matrix::Identity();
 
-    // シャドウマップ用のWVP行列を計算（ライトVP行列を使用）
-    Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-    Matrix4x4 lightWVP = MathCore::Matrix::Multiply(worldMatrix, lightVP);
+        // シャドウマップ用のWVP行列を計算（ライトVP行列を使用）
+        Matrix4x4 worldMatrix = transform.GetWorldMatrix();
+        Matrix4x4 lightWVP = MathCore::Matrix::Multiply(worldMatrix, lightVP);
 
-    // GPUメモリに書き込み
-    TransformationMatrix* mappedData = nullptr;
-    transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-    mappedData->WVP = lightWVP;
-    mappedData->world = worldMatrix;
-    mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
-    mappedData->lightViewProjection = lightVP;
-    transformBuffer->Unmap(0, nullptr);
+        // GPUメモリに書き込み
+        TransformationMatrix* mappedData = nullptr;
+        transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
+        mappedData->WVP = lightWVP;
+        mappedData->world = worldMatrix;
+        mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
+        mappedData->lightViewProjection = lightVP;
+        transformBuffer->Unmap(0, nullptr);
 
-    // スキニングモデルの場合は描画前にGPUスキニング(CS)を実行し、結果の頂点バッファを使う
-    if (HasSkinCluster()) {
-        EnsureGPUSkinning(cmdList, renderContext_.shadowRenderer ? renderContext_.shadowRenderer->GetCurrentPipelineState() : nullptr);
-        cmdList->IASetVertexBuffers(0, 1, &skinCluster_->outputVertexBufferView);
-    } else {
-        cmdList->IASetVertexBuffers(0, 1, &resource_->GetVertexBufferView());
+        // シャドウ描画パケットを組み立てる（スキニングモデルの場合は描画前にGPUスキニング(CS)を実行）
+        ShadowDrawPacket packet;
+        if (HasSkinCluster()) {
+            EnsureGPUSkinning(cmdList, renderContext_.shadowRenderer->GetCurrentPipelineState());
+            packet.vertexBufferView = skinCluster_->outputVertexBufferView;
+        } else {
+            packet.vertexBufferView = resource_->GetVertexBufferView();
+        }
+        packet.indexBufferView = resource_->GetIndexBufferView();
+        packet.indexCount = resource_->GetIndexCount();
+        packet.transformCBV = transformBuffer->GetGPUVirtualAddress();
+
+        renderContext_.shadowRenderer->BindShadowDrawPacket(cmdList, packet);
     }
-
-    // インデックスバッファを設定
-    cmdList->IASetIndexBuffer(&resource_->GetIndexBufferView());
-
-    // WVP行列を設定（シェーダーリフレクションからインデックスを取得）
-    int lightTransformIdx = renderContext_.shadowRenderer ? renderContext_.shadowRenderer->GetRootParamIndex("gLightTransform") : 0;
-    if (lightTransformIdx >= 0) {
-        cmdList->SetGraphicsRootConstantBufferView(lightTransformIdx, transformBuffer->GetGPUVirtualAddress());
-    }
-
-    // 描画実行
-    cmdList->DrawIndexedInstanced(resource_->GetIndexCount(), 1, 0, 0, 0);
-}
 
 void Model::UpdateAnimation(float deltaTime) {
     if (!animationPlayer_) return;
@@ -305,47 +298,15 @@ void Model::UpdateAnimation(float deltaTime) {
 
 // ===== ModelDrawPacket 組み立て =====
 
-ModelDrawPacket Model::BuildNormalDrawPacket(
-    const SubMeshData& subMesh,
-    D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
-    D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
-    D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
-    D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
-    D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture,
-    TransformBufferSlot slot) const
-{
-    ID3D12Resource* transformBuffer = GetTransformBuffer(slot);
-    assert(transformBuffer);
-    assert(renderContext_.modelRenderer);
-
-    ModelDrawPacket packet;
-    packet.vertexBufferViews[0] = resource_->GetVertexBufferView();
-    packet.vertexBufferViewCount = 1;
-    packet.indexBufferView = resource_->GetIndexBufferView();
-    packet.indexCount = subMesh.indexCount;
-    packet.startIndex = subMesh.startIndex;
-    packet.instanceDataSRV = transformBuffer->GetGPUVirtualAddress();
-    packet.instanceCount = 1;
-    packet.materialCBV = MaterialForSlot(subMesh.materialIndex)->GetGPUVirtualAddress();
-    packet.baseColorSRV = baseColorTexture;
-    packet.normalMapSRV = normalTexture;
-    packet.metallicRoughnessSRV = metallicRoughnessTexture;
-    packet.occlusionSRV = occlusionTexture;
-    packet.emissiveSRV = emissiveTexture;
-    packet.isSkinned = false;
-    return packet;
-}
-
 ModelDrawPacket Model::BuildSkinningDrawPacket(
     const SubMeshData& subMesh,
     D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,
     D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
     D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
     D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
-    D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture,
-    TransformBufferSlot slot) const
+    D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture) const
 {
-    ID3D12Resource* transformBuffer = GetTransformBuffer(slot);
+    ID3D12Resource* transformBuffer = GetGameTransformBuffer();
     assert(transformBuffer);
     assert(skinCluster_.has_value());
     assert(renderContext_.skinnedRenderer);
@@ -369,11 +330,18 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     return packet;
 }
 
-ID3D12Resource* Model::GetTransformBuffer(TransformBufferSlot slot) const
+ID3D12Resource* Model::GetGameTransformBuffer() const
 {
-    const size_t index = static_cast<size_t>(slot);
-    assert(index < wvpResources_.size());
-    return wvpResources_[index].Get();
+    const UINT frameIndex = renderContext_.dxCommon->GetSwapChain()->GetCurrentBackBufferIndex();
+    assert(frameIndex < gameTransformBuffers_.size());
+    return gameTransformBuffers_[frameIndex].Get();
+}
+
+ID3D12Resource* Model::GetShadowTransformBuffer() const
+{
+    const UINT frameIndex = renderContext_.dxCommon->GetSwapChain()->GetCurrentBackBufferIndex();
+    assert(frameIndex < shadowTransformBuffers_.size());
+    return shadowTransformBuffers_[frameIndex].Get();
 }
 
 // ===== クエリ =====
@@ -416,5 +384,3 @@ const ModelResource* Model::GetModelResource() const {
 }
 
 }
-
-

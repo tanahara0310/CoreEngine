@@ -3,7 +3,6 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
-#include "Graphics/Model/Model.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -60,12 +59,10 @@ namespace CoreEngine
 
         if (context.renderManager) {
             // パス分離契約 2: 描画に必要な状態は先行パスに依存せず自分で設定する。
-            context.renderManager->SetActiveTransformSlot(TransformBufferSlot::Game);
             context.renderManager->SetDebugLineRenderingEnabled(true);
             if (context.sceneManager) {
                 context.renderManager->SetCamera(context.sceneManager->GetGameViewCamera3D());
             }
-            Model::SetCurrentRenderSlot(TransformBufferSlot::Game);
 
             DrawQueue(context);
         }

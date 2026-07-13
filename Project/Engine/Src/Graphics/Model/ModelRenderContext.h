@@ -12,13 +12,6 @@ namespace CoreEngine {
 
 namespace CoreEngine
 {
-    /// @brief WVP 行列バッファの用途スロット（Game / Scene / Shadow パスで切り替え）
-    enum class TransformBufferSlot : uint32_t {
-        Game = 0, ///< ゲームカメラ用
-        Scene = 1, ///< シーンビュー用
-        Shadow = 2, ///< シャドウマップ用
-    };
-
     /// @brief Model クラスが描画に必要とする固定依存をまとめたコンテキスト構造体
     /// 起動時に一度だけ設定される依存オブジェクトを集約する。
     struct ModelRenderContext {
