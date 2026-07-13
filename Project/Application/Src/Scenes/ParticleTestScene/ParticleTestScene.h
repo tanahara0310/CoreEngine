@@ -6,8 +6,8 @@
 #include "Scene/BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
 
-// パーティクルシステム
-#include "Particle/ParticleSystem.h"
+// パーティクルシステム（CPU/GPU共通インターフェース）
+#include "Particle/IParticleSystem.h"
 
 
     /// @brief パーティクルシステムのテストシーン
@@ -27,7 +27,10 @@ protected:
     void OnUpdate() override;
 
 private:
-    // パーティクルシステム
-    CoreEngine::ParticleSystem* particleSystem_ = nullptr;
+    // パーティクルシステム（CPU/GPUとも共通インターフェースで保持）
+    CoreEngine::IParticleSystem* particleSystem_ = nullptr;
+
+    // GPUパーティクルシステム（CPU版との比較用）
+    CoreEngine::IParticleSystem* gpuParticleSystem_ = nullptr;
 };
 

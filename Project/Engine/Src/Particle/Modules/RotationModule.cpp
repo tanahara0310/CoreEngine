@@ -115,24 +115,18 @@ void RotationModule::UpdateRotation(Particle& particle, float deltaTime)
 #ifdef USE_IMGUI
 bool RotationModule::ShowImGui() {
     bool changed = false;
-    
-    // 有効/無効の切り替え
-    if (UI::Widgets::ToggleSwitch("有効##回転", &enabled_)) {
-        changed = true;
-    }
-
-    if (!enabled_) {
-        ImGui::BeginDisabled();
-    }
 
     // 2D/3D回転切り替え
-    changed |= UI::Widgets::ToggleSwitch("2D回転使用", &rotationData_.use2DRotation);
+    changed |= UI::Widgets::ToggleSwitch("2D回転（Z軸のみ）", &rotationData_.use2DRotation);
+    UI::Tooltip("ビルボード（板ポリ）の見た目回転は通常2Dで十分です。\n3Dモデルパーティクルには3D回転を使います。");
 
     if (rotationData_.use2DRotation) {
         // 2D回転設定
-        changed |= UI::DragFloat("回転速度", rotationData_.rotation2DSpeed, 0.1f, -10.0f, 10.0f);
-        changed |= UI::DragFloat("速度ランダム性", rotationData_.rotation2DSpeedRandomness, 0.01f, 0.0f, 1.0f);
-        
+        changed |= UI::DragFloat("回転速度（rad/秒）", rotationData_.rotation2DSpeed, 0.1f, -10.0f, 10.0f);
+        UI::SameLine();
+        UI::HelpMarker("約6.28で1秒に1回転します。");
+        changed |= UI::SliderFloat("速度ランダム幅", rotationData_.rotation2DSpeedRandomness, 0.0f, 1.0f, "%.2f");
+
         // 回転方向設定
         static const char* directionNames[] = {
             "時計回り", "反時計回り", "ランダム", "両方向"
@@ -144,33 +138,34 @@ bool RotationModule::ShowImGui() {
         }
     } else {
         // 3D回転設定
-        UI::Hint("注意: 初期回転はMainModuleで設定してください");
-        changed |= UI::DragVec3("回転速度", rotationData_.rotationSpeed, 0.1f, -10.0f, 10.0f);
-        changed |= UI::DragVec3("速度ランダム性", rotationData_.rotationSpeedRandomness, 0.01f, 0.0f, 1.0f);
+        changed |= UI::DragVec3("回転速度（rad/秒）", rotationData_.rotationSpeed, 0.1f, -10.0f, 10.0f);
+        UI::SameLine();
+        UI::HelpMarker("初期の向きはメインモジュールの「回転」で設定します。");
+        changed |= UI::DragVec3("速度ランダム幅", rotationData_.rotationSpeedRandomness, 0.01f, 0.0f, 1.0f);
     }
 
-    // 高度な設定
-    UI::Separator();
-    changed |= UI::Widgets::ToggleSwitch("寿命に応じた回転", &rotationData_.rotationOverLifetime);
+    // 詳細設定
+    UI::SectionHeader("詳細");
+
+    changed |= UI::Widgets::ToggleSwitch("寿命で回転速度を変化", &rotationData_.rotationOverLifetime);
     if (rotationData_.rotationOverLifetime) {
-        changed |= UI::DragFloat("開始速度倍率", rotationData_.startRotationSpeedMultiplier, 0.01f, 0.0f, 5.0f);
-        changed |= UI::DragFloat("終了速度倍率", rotationData_.endRotationSpeedMultiplier, 0.01f, 0.0f, 5.0f);
+        changed |= UI::DragFloat("開始時の倍率", rotationData_.startRotationSpeedMultiplier, 0.01f, 0.0f, 5.0f);
+        changed |= UI::DragFloat("終了時の倍率", rotationData_.endRotationSpeedMultiplier, 0.01f, 0.0f, 5.0f);
     }
 
-    changed |= UI::Widgets::ToggleSwitch("速度に合わせて回転", &rotationData_.alignToVelocity);
-    if (rotationData_.alignToVelocity) {
-        changed |= UI::DragFloat("速度合わせ強度", rotationData_.velocityAlignmentStrength, 0.01f, 0.0f, 2.0f);
-    }
+    // 以下はCPU版のみ対応（GPU側のシェーダーには実装されていない）
+    if (!gpuBackend_) {
+        changed |= UI::Widgets::ToggleSwitch("進行方向へ整列", &rotationData_.alignToVelocity);
+        UI::Tooltip("移動方向に合わせて回転を加えます（火花や流星の軌跡向け）");
+        if (rotationData_.alignToVelocity) {
+            changed |= UI::DragFloat("整列の強さ", rotationData_.velocityAlignmentStrength, 0.01f, 0.0f, 2.0f);
+        }
 
-    // 角度制限
-    changed |= UI::Widgets::ToggleSwitch("角度制限", &rotationData_.limitRotationRange);
-    if (rotationData_.limitRotationRange) {
-        changed |= UI::DragVec3("最小角度(度)", rotationData_.minRotation, 1.0f, -360.0f, 360.0f);
-        changed |= UI::DragVec3("最大角度(度)", rotationData_.maxRotation, 1.0f, -360.0f, 360.0f);
-    }
-
-    if (!enabled_) {
-        ImGui::EndDisabled();
+        changed |= UI::Widgets::ToggleSwitch("回転角度を制限", &rotationData_.limitRotationRange);
+        if (rotationData_.limitRotationRange) {
+            changed |= UI::DragVec3("最小角度（度）", rotationData_.minRotation, 1.0f, -360.0f, 360.0f);
+            changed |= UI::DragVec3("最大角度（度）", rotationData_.maxRotation, 1.0f, -360.0f, 360.0f);
+        }
     }
 
     return changed;

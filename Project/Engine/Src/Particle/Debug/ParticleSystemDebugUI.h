@@ -8,36 +8,48 @@ namespace CoreEngine
 {
     // 前方宣言
     class ParticleSystem;
+    class GpuParticleSystem;
+    class IParticleSystem;
+    class ParticleModule;
 
-    /// @brief ParticleSystemのデバッグUI表示クラス
-    /// ImGuiを使用したデバッグ情報の表示を担当
+    /// @brief パーティクルシステムの開発UI（CPU/GPU共通）
+    /// @details Unity の Particle System インスペクターに近い構成:
+    ///          ステータス → 再生コントロール → プリセット → モジュール一覧 → レンダラー
+    ///          モジュールの有効/無効はヘッダー右端のトグルで切り替える。
     class ParticleSystemDebugUI {
     public:
         ParticleSystemDebugUI() = default;
         ~ParticleSystemDebugUI() = default;
 
-        /// @brief ImGuiデバッグUI表示
-        /// @param particleSystem 対象のパーティクルシステム
+        /// @brief CPUパーティクルシステムのUI表示
         /// @return UIに変更があった場合true
         static bool ShowImGui(ParticleSystem* particleSystem);
 
+        /// @brief GPUパーティクルシステムのUI表示
+        /// @return UIに変更があった場合true
+        static bool ShowImGui(GpuParticleSystem* particleSystem);
+
     private:
-        /// @brief システム状態表示
-        static void ShowSystemStatus(ParticleSystem* particleSystem);
+        /// @brief ステータスヘッダー（バックエンド・再生状態・粒子数バー）
+        static void ShowStatusHeader(IParticleSystem* system, bool isGpu,
+                                     uint32_t aliveCount, uint32_t capacity);
 
-        /// @brief 制御ボタン表示
-        static void ShowControlButtons(ParticleSystem* particleSystem);
+        /// @brief 再生コントロールとエミッター位置
+        /// @param cpuSystem CPU版のみ渡す（クリアボタン用。GPU版はnullptr）
+        static bool ShowTransport(IParticleSystem* system, ParticleSystem* cpuSystem);
 
-        /// @brief プリセット管理UI表示
-        static void ShowPresetManager(ParticleSystem* particleSystem);
+        /// @brief モジュール一覧（有効トグル付きヘッダー）
+        static bool ShowModules(IParticleSystem* system);
 
-        /// @brief 各モジュールのUI表示
-        static void ShowModules(ParticleSystem* particleSystem);
+        /// @brief 有効トグル付き折りたたみヘッダーでモジュールUIを表示する
+        static bool DrawModuleSection(const char* label, ParticleModule& module,
+                                      bool defaultOpen = false);
 
-        /// @brief エミッター設定UI表示
-        static void ShowEmitterSettings(ParticleSystem* particleSystem);
+        /// @brief レンダラー設定（ブレンド・ビルボード・描画モード）
+        /// @param cpuSystem CPU版のみ渡す（モデルパーティクル情報用。GPU版はnullptr）
+        static bool ShowRendererSection(IParticleSystem* system, ParticleSystem* cpuSystem);
 
-        /// @brief 統計情報表示
+        /// @brief 統計情報（CPU版のみ）
         static void ShowStatistics(ParticleSystem* particleSystem);
     };
 

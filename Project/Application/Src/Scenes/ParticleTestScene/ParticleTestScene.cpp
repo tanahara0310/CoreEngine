@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "ParticleTestScene.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Particle/Modules/MainModule.h"
 
 #ifdef _DEBUG
 #include "Editor/Camera/CameraDebugUI.h"
@@ -13,27 +12,24 @@ void ParticleTestScene::OnInitialize()
 {
     SetSceneName("ParticleTestScene");
 
-    // コンポーネントを取得
-    auto dxCommon = engine_->GetComponent<DirectXCommon>();
-    auto resourceFactory = engine_->GetComponent<ResourceFactory>();
-
-    if (!dxCommon || !resourceFactory) {
-        return; // 必須コンポーネントがない場合は終了
+    // ===== パーティクルシステムの初期化（CPU/GPUとも統一入口から生成） =====
+    particleSystem_ = CreateParticleSystem(ParticleBackend::CPU, "TestParticle");
+    if (particleSystem_) {
+        particleSystem_->SetEmitterPosition({ 0.0f, 0.0f, 0.0f });
+        particleSystem_->SetBlendMode(BlendMode::kBlendModeAdd);
+        particleSystem_->SetBillboardType(BillboardType::ViewFacing);
+        particleSystem_->Play();
     }
 
-    // ===== パーティクルシステムの初期化 =====
-    auto particleSystem = CreateObject<ParticleSystem>();
-    particleSystem->Initialize(dxCommon, resourceFactory, "TestParticle");
-
-    // パーティクルシステムの基本設定
-    particleSystem->SetEmitterPosition({ 0.0f, 0.0f, 0.0f });
-    particleSystem->SetBlendMode(BlendMode::kBlendModeAdd);
-    particleSystem->SetBillboardType(BillboardType::ViewFacing);
-
-    particleSystem_ = particleSystem;
-
-    // パーティクルを再生開始
-    particleSystem_->Play();
+    // ===== GPUパーティクルシステム（CPU版との比較用に x=+3 へ配置） =====
+    gpuParticleSystem_ = CreateParticleSystem(ParticleBackend::GPU, "TestGpuParticle");
+    if (gpuParticleSystem_) {
+        gpuParticleSystem_->SetEmitterPosition({ 3.0f, 0.0f, 0.0f });
+        gpuParticleSystem_->SetBlendMode(BlendMode::kBlendModeAdd);
+        // CPU版(白)と区別するためオレンジ
+        gpuParticleSystem_->GetMainModule().GetMainData().startColor = { 1.0f, 0.4f, 0.1f, 1.0f };
+        gpuParticleSystem_->Play();
+    }
 }
 
 void ParticleTestScene::OnUpdate()

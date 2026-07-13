@@ -30,23 +30,14 @@ namespace CoreEngine
     bool ColorModule::ShowImGui() {
         bool changed = false;
 
-        // 有効/無効の切り替え
-        if (UI::Widgets::ToggleSwitch("有効##色", &enabled_)) {
-            changed = true;
-        }
+        changed |= UI::Widgets::ToggleSwitch("寿命に応じて色を変化", &colorData_.useGradient);
+        UI::Tooltip("開始色（メインの「色」）から終了色へ、寿命に沿って線形補間します");
 
-        if (!enabled_) {
-            ImGui::BeginDisabled();
-        }
-
-        UI::Hint("注意: 初期色はMainModuleで設定してください");
-        UI::Separator();
-
-        changed |= UI::ColorEdit("終了色", colorData_.endColor);
-        changed |= UI::Widgets::ToggleSwitch("グラデーション使用", &colorData_.useGradient);
-
-        if (!enabled_) {
-            ImGui::EndDisabled();
+        {
+            UI::Scope::DisabledScope ds(!colorData_.useGradient);
+            changed |= UI::ColorEdit("終了色", colorData_.endColor);
+            UI::SameLine();
+            UI::HelpMarker("寿命が尽きる瞬間の色。\nアルファを0にするとフェードアウトになります。\n開始色はメインモジュールの「色」です。");
         }
 
         return changed;

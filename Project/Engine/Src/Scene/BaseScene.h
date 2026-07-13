@@ -24,6 +24,9 @@ namespace CoreEngine {
     class DirectXCommon;
     class RenderManager;
     class GridRenderer;
+    class ResourceFactory;
+    class IParticleSystem;
+    enum class ParticleBackend;
 }
 
 /// @brief シーンの基底クラス（共通処理を実装）
@@ -175,6 +178,13 @@ namespace CoreEngine
             auto obj = std::make_unique<T>(std::forward<Args>(args)...);
             return gameObjectManager_.AddObject(std::move(obj));
         }
+
+        /// @brief パーティクルシステムを生成する（CPU/GPUバックエンドの統一入口）
+        /// @param backend ParticleBackend::CPU（ParticleSystem）/ GPU（GpuParticleSystem）
+        /// @param name オブジェクト名（ImGui表示用、省略可）
+        /// @return 共通インターフェース（モジュール編集・再生制御・プリセットは同じAPI）
+        /// @note DirectXCommon / ResourceFactory は engine_ から自動取得して Initialize まで行う
+        IParticleSystem* CreateParticleSystem(ParticleBackend backend, const std::string& name = "");
 
         /// @brief レイヤー間の衝突判定を有効/無効に設定
         /// @param a レイヤーA

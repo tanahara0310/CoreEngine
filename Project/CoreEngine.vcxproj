@@ -341,6 +341,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Model\ModelRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\SkinnedModelRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Particle\GpuParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.cpp" />
@@ -474,6 +475,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Resource\ResourceFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp" />
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
+    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystem.cpp" />
     <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
@@ -640,6 +642,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\SkinnedModelRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Particle\GpuParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
@@ -743,6 +746,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimationClip.h" />
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteAnimator.h" />
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteObject.h" />
+    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystem.h" />
+    <ClInclude Include="Engine\Src\Particle\IParticleSystem.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleEmitter.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleRenderDataBuilder.h" />
     <ClInclude Include="Engine\Src\Particle\Core\ParticleResourceManager.h" />

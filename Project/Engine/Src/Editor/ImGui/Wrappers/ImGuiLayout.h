@@ -60,6 +60,20 @@ namespace CoreEngine {
             ImGui::SetItemTooltip("%s", text);
         }
 
+        /// @brief "(?)" マークを表示し、ホバーで説明をツールチップ表示する
+        /// @note 常時表示のヒント文の代わりに使うとUIが縦に膨らまない。
+        ///       ウィジェットの右に置く場合は UI::SameLine() を先に呼ぶ。
+        inline void HelpMarker(const char* text)
+        {
+            ImGui::TextDisabled("(?)");
+            if (ImGui::BeginItemTooltip()) {
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
+                ImGui::TextUnformatted(text);
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+        }
+
                 /// @brief フォーマット付きグレーの補足テキストを表示する
                 /// @note UI::HintF("%d/%d", current, total) のように printf 形式で使う
                 template<typename... Args>

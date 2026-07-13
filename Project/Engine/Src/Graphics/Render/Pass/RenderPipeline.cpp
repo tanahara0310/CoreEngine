@@ -22,7 +22,14 @@
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectBase.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectNames.h"
+#include "Graphics/PostEffect/Effect/LensFlare/LensFlare.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Camera/CameraManager.h"
+#include "Camera/ICamera.h"
 #include "Scene/IScene.h"
+#include "Scene/SceneManager.h"
+#include "Math/MathCore.h"
 #include <algorithm>
 
 namespace CoreEngine
@@ -50,6 +57,57 @@ namespace CoreEngine
             }
 
             return {};
+        }
+
+        // 太陽（無限遠の方向光源）のスクリーン UV を計算し、LensFlare へ渡す。
+        // レンズフレアの光源を太陽に限定するため（パーティクル等の高輝度オブジェクトを
+        // フレア源にしない）、毎フレームここで太陽の投影位置を更新する。
+        void UpdateLensFlareSunPosition(const RenderContext& context)
+        {
+            if (!context.postEffectManager) {
+                return;
+            }
+            auto* lensFlare = context.postEffectManager->GetEffect<LensFlare>(PostEffectNames::LensFlare);
+            if (!lensFlare) {
+                return;
+            }
+
+            // 実際の描画に使われるカメラと同じものを使うこと。
+            // GeometryPass 等は sceneManager->GetGameViewCamera3D()（エディタではデバッグカメラ）
+            // を RenderManager へ渡しており、CameraManager のアクティブカメラとは別物になり得る。
+            // 別のカメラで太陽を投影するとマスク位置がずれ、太陽を直視してもフレアが出なくなる。
+            const ICamera* camera = context.sceneManager
+                ? context.sceneManager->GetGameViewCamera3D()
+                : nullptr;
+            if (!camera && context.cameraManager) {
+                camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+            }
+            if (!camera || !context.atmosphereManager) {
+                lensFlare->SetSunScreenPosition(0.5f, 0.5f, false);
+                return;
+            }
+
+            // AtmosphereManager の sunDirection は光の進行方向。太陽の見える方向はその逆。
+            const Vector3 sunDir = context.atmosphereManager->GetSunDirection();
+            const Vector3 toSun = { -sunDir.x, -sunDir.y, -sunDir.z };
+
+            const Matrix4x4 vp = MathCore::Matrix::Multiply(
+                camera->GetViewMatrix(), camera->GetProjectionMatrix());
+
+            // 無限遠の方向ベクトルとして投影（w=0 の行ベクトル変換 = 平行移動行を無視）
+            const float clipX = toSun.x * vp.m[0][0] + toSun.y * vp.m[1][0] + toSun.z * vp.m[2][0];
+            const float clipY = toSun.x * vp.m[0][1] + toSun.y * vp.m[1][1] + toSun.z * vp.m[2][1];
+            const float clipW = toSun.x * vp.m[0][3] + toSun.y * vp.m[1][3] + toSun.z * vp.m[2][3];
+
+            if (clipW <= 1e-5f) {
+                // 太陽がカメラ後方にある場合はフレアを出さない
+                lensFlare->SetSunScreenPosition(0.5f, 0.5f, false);
+                return;
+            }
+
+            const float u = clipX / clipW * 0.5f + 0.5f;
+            const float v = -clipY / clipW * 0.5f + 0.5f;
+            lensFlare->SetSunScreenPosition(u, v, true);
         }
 
         void EnsureSceneColorTarget(const RenderContext& context)
@@ -154,6 +212,9 @@ namespace CoreEngine
     void RenderPipeline::PrepareFrame(const RenderContext& context)
     {
         RegisterFrameResources(context);
+
+        // レンズフレアの光源を太陽に限定するため、太陽のスクリーン位置を毎フレーム更新
+        UpdateLensFlareSunPosition(context);
 
         // 各パス自身の View 依存設定（出力先ターゲット名など）を反映する。
         for (auto& entry : passes_) {

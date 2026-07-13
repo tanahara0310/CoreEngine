@@ -83,6 +83,14 @@ public:
     /// @return 経過時間（秒）
     float GetElapsedTime() const { return elapsedTime_; }
 
+    /// @brief 最大パーティクル数のハード上限（バッファ容量）を設定
+    /// @note 所有するパーティクルシステムが初期化時に設定する。
+    ///       ImGuiのスピン上限と実効値のクランプに使う（0 = 上限なし）。
+    void SetCapacityLimit(uint32_t limit) { capacityLimit_ = limit; }
+
+    /// @brief 最大パーティクル数のハード上限を取得
+    uint32_t GetCapacityLimit() const { return capacityLimit_; }
+
     /// @brief システムが終了したかどうか（ループなしの場合）
     /// @return 終了している場合true
     bool IsFinished() const;
@@ -117,6 +125,7 @@ private:
     MainData mainData_;
     float elapsedTime_ = 0.0f;  // 経過時間
     bool isPlaying_ = false;
+    uint32_t capacityLimit_ = 0;  // maxParticlesのハード上限（0 = 未設定）
 
     /// @brief ランダム値を生成（-range ～ +range）
     /// @param base 基本値

@@ -46,6 +46,9 @@ void ParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* resour
     rotationModule_ = std::make_unique<RotationModule>();
     noiseModule_ = std::make_unique<NoiseModule>();
 
+    // ImGuiの最大パーティクル数スピンをバッファ容量までに制限
+    mainModule_->SetCapacityLimit(kNumMaxInstance);
+
     // リソースマネージャーの初期化
     resourceManager_ = std::make_unique<ParticleResourceManager>();
     resourceManager_->Initialize(dxCommon, resourceFactory, kNumMaxInstance);

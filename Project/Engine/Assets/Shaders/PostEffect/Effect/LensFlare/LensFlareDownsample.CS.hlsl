@@ -47,5 +47,21 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         bright *= gMaxBrightness / brightLum;
     }
 
+    // ===== 太陽限定マスク =====
+    // フレアの光源を太陽スクリーン位置の周辺に限定する。閾値を超える明部が他に
+    // あっても（加算パーティクル・スペキュラ等）フレア源にはしない。
+    // 雲による太陽の遮蔽は輝度自体が下がることで従来通り自動反映される。
+    if (gSunValid < 0.5f)
+    {
+        bright = 0.0f;
+    }
+    else
+    {
+        const float aspect = float(gScreenWidth) / max(float(gScreenHeight), 1.0f);
+        const float2 d = LensFlareToAspect(uv - gSunUv, aspect);
+        const float mask = 1.0f - smoothstep(gSunMaskRadius * 0.7f, gSunMaskRadius, length(d));
+        bright *= mask;
+    }
+
     gBright[dispatchId.xy] = float4(bright, 1.0f);
 }

@@ -27,6 +27,7 @@ namespace CoreEngine
         Particle,            ///< パーティクル（ビルボード）
         Sprite,              ///< スプライト（ゲームワールド）
         UI,                  ///< UI（最前面・スクリーン固定座標）
+        GpuParticle,         ///< GPUパーティクル（Compute駆動ビルボード）※既存パスの値を変えないため末尾追加
 
         kBuiltInCount,       ///< 組み込みパス数
 
@@ -64,6 +65,7 @@ namespace CoreEngine
         case RenderPassType::Particle:      return "Particle";
         case RenderPassType::Sprite:        return "Sprite";
         case RenderPassType::UI:            return "UI";
+        case RenderPassType::GpuParticle:   return "GpuParticle";
         default:
             return IsUserDefinedPass(type) ? "UserDefined" : "Unknown";
         }

@@ -54,48 +54,37 @@ void SizeModule::UpdateSize(Particle& particle)
 #ifdef USE_IMGUI
 bool SizeModule::ShowImGui() {
     bool changed = false;
-    
-    // 有効/無効の切り替え
-    if (UI::Widgets::ToggleSwitch("有効##サイズ", &enabled_)) {
-        changed = true;
+
+    changed |= UI::Widgets::ToggleSwitch("寿命に応じてサイズを変化", &sizeData_.sizeOverLifetime);
+    UI::Tooltip("開始サイズ（メインの「サイズ」）から終了サイズへ、寿命に沿って変化させます");
+
+    {
+        UI::Scope::DisabledScope ds(!sizeData_.sizeOverLifetime);
+
+        changed |= UI::Widgets::ToggleSwitch("XYZ個別に設定", &sizeData_.use3DSize);
+
+        if (sizeData_.use3DSize) {
+            changed |= UI::DragVec3("終了サイズ", sizeData_.endSize3D, 0.01f, 0.0f, 10.0f);
+        } else {
+            changed |= UI::DragFloat("終了サイズ", sizeData_.endSize, 0.01f, 0.0f, 10.0f);
+        }
+        UI::SameLine();
+        UI::HelpMarker("寿命が尽きる瞬間のサイズ。\n0 にすると縮みながら消えます。\n開始サイズはメインモジュールの「サイズ」です。");
+
+        // 変化カーブ
+        static const char* sizeCurveNames[] = {
+            "線形", "加速（イーズイン）", "減速（イーズアウト）", "加減速（イーズインアウト）", "一定（開始サイズを維持）"
+        };
+        int currentCurve = static_cast<int>(sizeData_.sizeCurve);
+        if (ImGui::Combo("変化カーブ", &currentCurve, sizeCurveNames, IM_ARRAYSIZE(sizeCurveNames))) {
+            sizeData_.sizeCurve = static_cast<SizeData::SizeCurve>(currentCurve);
+            changed = true;
+        }
+
+        // サイズ制限
+        changed |= UI::DragFloat("最小サイズ", sizeData_.minSize, 0.01f, 0.0f, 1.0f);
+        changed |= UI::DragFloat("最大サイズ", sizeData_.maxSize, 0.1f, 1.0f, 100.0f);
     }
-
-    if (!enabled_) {
-        ImGui::BeginDisabled();
-    }
-
-    UI::Hint("注意: 初期サイズはMainModuleで設定してください");
-    UI::Separator();
-
-    // 3Dサイズ設定
-    changed |= UI::Widgets::ToggleSwitch("3Dサイズ使用", &sizeData_.use3DSize);
-    
-    if (sizeData_.use3DSize) {
-     changed |= UI::DragVec3("終了サイズ3D", sizeData_.endSize3D, 0.01f, 0.0f, 10.0f);
-  changed |= UI::Widgets::ToggleSwitch("均等スケーリング", &sizeData_.uniformScaling);
-    } else {
-        changed |= UI::DragFloat("終了サイズ", sizeData_.endSize, 0.01f, 0.0f, 10.0f);
-    }
-    
-    changed |= UI::Widgets::ToggleSwitch("寿命に応じたサイズ変化", &sizeData_.sizeOverLifetime);
-
-  // サイズカーブ設定
-    static const char* sizeCurveNames[] = {
-        "線形", "イーズイン", "イーズアウト", "イーズインアウト", "一定"
-    };
-    int currentCurve = static_cast<int>(sizeData_.sizeCurve);
-    if (ImGui::Combo("サイズカーブ", &currentCurve, sizeCurveNames, IM_ARRAYSIZE(sizeCurveNames))) {
-        sizeData_.sizeCurve = static_cast<SizeData::SizeCurve>(currentCurve);
-        changed = true;
-    }
-
-    // サイズ制限
-    changed |= UI::DragFloat("最小サイズ", sizeData_.minSize, 0.01f, 0.01f, 1.0f);
- changed |= UI::DragFloat("最大サイズ", sizeData_.maxSize, 0.1f, 1.0f, 50.0f);
-
-    if (!enabled_) {
-     ImGui::EndDisabled();
-  }
 
     return changed;
 }

@@ -15,6 +15,8 @@
 #include "Graphics/Render/Line/GridRenderer.h"
 #include "Graphics/Model/Model.h"
 #include "Particle/ParticleSystem.h"
+#include "Particle/Gpu/GpuParticleSystem.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include "Scene/SceneManager.h"
 #include "GameObject/Sprite/SpriteObject.h"
 #include "GameObjects/SkyBox/SkyBoxObject.h"
@@ -24,6 +26,27 @@
 
 namespace CoreEngine
 {
+    IParticleSystem* BaseScene::CreateParticleSystem(ParticleBackend backend, const std::string& name)
+    {
+        auto dxCommon = engine_->GetComponent<DirectXCommon>();
+        auto resourceFactory = engine_->GetComponent<ResourceFactory>();
+        if (!dxCommon || !resourceFactory) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::General,
+                "BaseScene::CreateParticleSystem: DirectXCommon / ResourceFactory が未登録のため生成できません");
+            return nullptr;
+        }
+
+        if (backend == ParticleBackend::GPU) {
+            auto* system = CreateObject<GpuParticleSystem>();
+            system->Initialize(dxCommon, resourceFactory, name);
+            return system;
+        }
+
+        auto* system = CreateObject<ParticleSystem>();
+        system->Initialize(dxCommon, resourceFactory, name);
+        return system;
+    }
+
     void BaseScene::Initialize(EngineSystem* engine)
     {
         engine_ = engine;

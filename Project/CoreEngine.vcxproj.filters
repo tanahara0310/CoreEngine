@@ -472,6 +472,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\Particle</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Particle\GpuParticleRenderer.cpp">
+      <Filter>Engine\Src\Graphics\Render\Particle</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\Particle</Filter>
     </ClCompile>
@@ -861,6 +864,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp">
       <Filter>Engine\Src\WorldTransform</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystem.cpp">
+      <Filter>Engine\Src\Particle\Gpu</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp">
       <Filter>Engine\Src\Particle</Filter>
@@ -1356,6 +1362,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Particle</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Particle\GpuParticleRenderer.h">
+      <Filter>Engine\Src\Graphics\Render\Particle</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Particle</Filter>
     </ClInclude>
@@ -1664,6 +1673,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Sprite\SpriteObject.h">
       <Filter>Engine\Src\GameObject\Sprite</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystem.h">
+      <Filter>Engine\Src\Particle\Gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\IParticleSystem.h">
+      <Filter>Engine\Src\Particle</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Core\ParticleEmitter.h">
       <Filter>Engine\Src\Particle\Core</Filter>
@@ -2511,6 +2526,9 @@
     </Filter>
     <Filter Include="Engine\Src\Particle\Debug">
       <UniqueIdentifier>{22576EEA-4D70-4394-9259-FB63EDAD61E0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Particle\Gpu">
+      <UniqueIdentifier>{771131E5-303E-432F-8D22-A5F52B5121E6}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Particle\Modules">
       <UniqueIdentifier>{E550DB62-CBDA-4DBB-933B-B205EE3B0311}</UniqueIdentifier>

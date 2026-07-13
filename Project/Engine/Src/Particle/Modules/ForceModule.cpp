@@ -56,25 +56,26 @@ namespace CoreEngine
     bool ForceModule::ShowImGui() {
         bool changed = false;
 
-        // 有効/無効の切り替え
-        if (UI::Widgets::ToggleSwitch("有効##力場", &enabled_)) {
-            changed = true;
-        }
+        changed |= UI::DragVec3("重力", forceData_.gravity, 0.1f);
+        UI::SameLine();
+        UI::HelpMarker("重力加速度（既定は (0, -9.8, 0)）。\n実際の効き方はメインモジュールの「重力係数」との掛け算で決まります。\n重力係数が 0 のままだと効きません。");
 
-        {
-            UI::Scope::DisabledScope ds(!enabled_);
-            changed |= UI::DragVec3("重力", forceData_.gravity, 0.1f);
-            changed |= UI::DragVec3("風", forceData_.wind, 0.1f);
-            changed |= UI::DragFloat("抵抗", forceData_.drag, 0.01f, 0.0f, 1.0f);
+        changed |= UI::DragVec3("風", forceData_.wind, 0.1f);
+        UI::SameLine();
+        UI::HelpMarker("常に加わる加速度。重力係数の影響を受けません。");
 
-            UI::Separator();
-            changed |= UI::Widgets::ToggleSwitch("加速フィールド使用", &forceData_.useAccelerationField);
+        changed |= UI::DragFloat("空気抵抗", forceData_.drag, 0.01f, 0.0f, 1.0f);
+        UI::SameLine();
+        UI::HelpMarker("速度を毎秒この割合だけ減衰させます。0 で減衰なし。");
 
-            if (forceData_.useAccelerationField) {
-                changed |= UI::DragVec3("加速度", forceData_.acceleration, 0.1f);
-                changed |= UI::DragVec3("エリア最小", forceData_.area.min, 0.1f);
-                changed |= UI::DragVec3("エリア最大", forceData_.area.max, 0.1f);
-            }
+        UI::SectionHeader("加速フィールド");
+        changed |= UI::Widgets::ToggleSwitch("加速フィールドを使用", &forceData_.useAccelerationField);
+        UI::Tooltip("指定した箱型エリア内にいるパーティクルにのみ追加の加速度をかけます");
+
+        if (forceData_.useAccelerationField) {
+            changed |= UI::DragVec3("加速度", forceData_.acceleration, 0.1f);
+            changed |= UI::DragVec3("エリア最小", forceData_.area.min, 0.1f);
+            changed |= UI::DragVec3("エリア最大", forceData_.area.max, 0.1f);
         }
 
         return changed;
