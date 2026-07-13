@@ -1,36 +1,10 @@
 #include "Object3d.hlsli"
+#include "../Include/Object/ObjectMaterial.hlsli"
 
 // ハイブリッドレンダリングの GBuffer 書き込み専用シェーダー。
 // 不透明モデル（BlendMode::None）の全てのメッシュがこのパスを通る。
 // ライティングは DeferredLighting.PS.hlsl で行う。
-
-struct Material
-{
-    float4 color;
-    int enableLighting;
-    float4x4 uvTransform;
-    float metallic;
-    float roughness;
-    float ao;
-    int useNormalMap;
-    int useMetallicMap;
-    int useRoughnessMap;
-    int useAOMap;
-    int enableDithering;
-    float ditheringScale;
-    int shadingMode; ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
-    float iblIntensity;
-    float alphaCutoff; ///< discard 判定に使用するアルファしきい値
-};
-
-ConstantBuffer<Material> gMaterial : register(b0);
-
-Texture2D<float4> gTexture : register(t0);
-SamplerState gSampler : register(s0);
-Texture2D<float4> gNormalMap : register(t7);
-Texture2D<float> gMetallicMap : register(t8);
-Texture2D<float> gRoughnessMap : register(t9);
-Texture2D<float> gAOMap : register(t10);
+// マテリアル定義とサンプリングヘルパーは ObjectMaterial.hlsli と共有する。
 
 struct GBufferOutput
 {
@@ -41,57 +15,6 @@ struct GBufferOutput
     float2 motionVector : SV_TARGET4; ///< モーションベクター（NDC空間の2Dオフセット）
 };
 
-float GetDitheringThreshold(float2 screenPos)
-{
-    const float bayerMatrix[4][4] =
-    {
-        { 0.0f / 16.0f, 8.0f / 16.0f, 2.0f / 16.0f, 10.0f / 16.0f },
-        { 12.0f / 16.0f, 4.0f / 16.0f, 14.0f / 16.0f, 6.0f / 16.0f },
-        { 3.0f / 16.0f, 11.0f / 16.0f, 1.0f / 16.0f, 9.0f / 16.0f },
-        { 15.0f / 16.0f, 7.0f / 16.0f, 13.0f / 16.0f, 5.0f / 16.0f }
-    };
-
-    int x = int(screenPos.x) % 4;
-    int y = int(screenPos.y) % 4;
-    return bayerMatrix[y][x];
-}
-
-void GetPBRParameters(float2 uv, out float outMetallic, out float outRoughness, out float outAO)
-{
-    outMetallic = gMaterial.useMetallicMap != 0
-        ? gMetallicMap.Sample(gSampler, uv)
-        : gMaterial.metallic;
-
-    outRoughness = gMaterial.useRoughnessMap != 0
-        ? gRoughnessMap.Sample(gSampler, uv)
-        : gMaterial.roughness;
-
-    outAO = gMaterial.useAOMap != 0
-        ? gAOMap.Sample(gSampler, uv)
-        : gMaterial.ao;
-}
-
-float3 GetNormalFromMap(VertexShaderOutput input, float2 uv)
-{
-    if (gMaterial.useNormalMap == 0)
-    {
-        return normalize(input.normal);
-    }
-
-    float3 normalMapSample = gNormalMap.Sample(gSampler, uv).rgb;
-    float3 tangentSpaceNormal = normalMapSample * 2.0f - 1.0f;
-
-    float3 N = normalize(input.normal);
-    float3 T = normalize(input.tangent);
-    float3 B = normalize(input.bitangent);
-
-    T = normalize(T - dot(T, N) * N);
-    B = cross(N, T);
-
-    float3x3 TBN = float3x3(T, B, N);
-    return normalize(mul(tangentSpaceNormal, TBN));
-}
-
 GBufferOutput main(VertexShaderOutput input)
 {
     GBufferOutput output;
@@ -101,21 +24,8 @@ GBufferOutput main(VertexShaderOutput input)
     float4 textureColor = gTexture.Sample(gSampler, uv);
     float finalAlpha = gMaterial.color.a * textureColor.a;
 
-    if (gMaterial.enableDithering != 0)
-    {
-        float2 screenPos = input.position.xy;
-        if (gMaterial.ditheringScale > 0.0f)
-        {
-            screenPos *= gMaterial.ditheringScale;
-        }
-
-        float threshold = GetDitheringThreshold(screenPos) + 0.001f;
-        if (finalAlpha <= threshold)
-        {
-            discard;
-        }
-    }
-    else if (textureColor.a <= gMaterial.alphaCutoff)
+    // アルファカット（ディザリング or 通常テスト）— Forward パスと共通判定
+    if (ShouldDiscardByAlpha(finalAlpha, input.position.xy))
     {
         discard;
     }
@@ -136,7 +46,7 @@ GBufferOutput main(VertexShaderOutput input)
     }
 
     // ===== PBR パス（常にここに到達） =====
-    float3 worldNormal = GetNormalFromMap(input, uv);
+    float3 worldNormal = GetNormalFromMap(input.normal, input.tangent, input.bitangent, uv);
     float3 encodedNormal = worldNormal * 0.5f + 0.5f;
 
     float metallic = 0.0f;
@@ -147,6 +57,9 @@ GBufferOutput main(VertexShaderOutput input)
     metallic = saturate(metallic);
     roughness = saturate(max(roughness, 0.01f));
     ao = saturate(ao);
+
+    // エミッシブ（DeferredLighting が最終カラーに加算する）
+    float3 emissive = GetEmissive(uv);
 
     // worldPosition.a pixelFlag:
     // 0 = 背景（クリア値）
@@ -166,7 +79,7 @@ GBufferOutput main(VertexShaderOutput input)
 
     output.albedoAO = float4(albedo, ao);
     output.normalRoughness = float4(encodedNormal, roughness);
-    output.emissiveMetallic = float4(0.0f, 0.0f, 0.0f, metallic);
+    output.emissiveMetallic = float4(emissive, metallic);
     output.worldPosition = float4(input.worldPosition, pixelFlag);
 
     // ===== モーションベクター計算 =====

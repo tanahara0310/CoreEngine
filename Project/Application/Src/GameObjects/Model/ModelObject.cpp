@@ -18,21 +18,17 @@ CoreEngine::MaterialInstance* ModelObject::GetMaterial() {
     return model_ ? model_->GetMaterial() : nullptr;
 }
 
-void ModelObject::SetPBRParameters(float metallic, float roughness, float ao) {
+void ModelObject::SetPBRParameters(float metallic, float roughness, float occlusionStrength) {
     if (auto* mat = GetMaterial()) {
         mat->SetMetallic(metallic);
         mat->SetRoughness(roughness);
-        mat->SetAO(ao);
+        mat->SetOcclusionStrength(occlusionStrength);
     }
 }
 
-void ModelObject::SetPBRTextureMapsEnabled(bool useNormal, bool useMetallic,
-    bool useRoughness, bool useAO) {
+void ModelObject::SetNormalMapEnabled(bool enable) {
     if (auto* mat = GetMaterial()) {
-        mat->SetNormalMapEnabled(useNormal);
-        mat->SetMetallicMapEnabled(useMetallic);
-        mat->SetRoughnessMapEnabled(useRoughness);
-        mat->SetAOMapEnabled(useAO);
+        mat->SetNormalMapEnabled(enable);
     }
 }
 

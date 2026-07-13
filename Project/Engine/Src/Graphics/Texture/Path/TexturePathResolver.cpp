@@ -45,14 +45,20 @@ namespace CoreEngine
         return ResolveFilePath(filePath);
     }
 
-    std::string TexturePathResolver::GetDDSCachePath(const std::string& originalPath) const
+    std::string TexturePathResolver::GetDDSCachePath(const std::string& originalPath,
+        TextureColorSpace colorSpace) const
     {
+        // 色空間ごとにキャッシュを分離する（同一ソースでも sRGB / Linear で内容が異なるため）
+        const std::string suffix = (colorSpace == TextureColorSpace::Linear)
+            ? "_linear.dds"
+            : ".dds";
+
         auto& assetDB = AssetDatabase::GetInstance();
         std::filesystem::path absPath = std::filesystem::absolute(originalPath);
         std::string guid = assetDB.GetGUID(absPath);
 
         if (!guid.empty()) {
-            std::filesystem::path cachePath = assetDB.GetCachedTexturePath(guid, ".dds");
+            std::filesystem::path cachePath = assetDB.GetCachedTexturePath(guid, suffix);
             return cachePath.string();
         }
 
@@ -62,9 +68,9 @@ namespace CoreEngine
 
         std::string result;
         if (parentPath.empty()) {
-            result = fileName + ".dds";
+            result = fileName + suffix;
         } else {
-            result = (parentPath / (fileName + ".dds")).string();
+            result = (parentPath / (fileName + suffix)).string();
         }
 
         std::replace(result.begin(), result.end(), '\\', '/');

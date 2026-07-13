@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "ModelLoader.h"
 
+#include <assimp/GltfMaterial.h> // AI_MATKEY_GLTF_ALPHACUTOFF
+
 #include <cassert>
 #include <format>
 #include "Graphics/Model/VertexData.h"
@@ -148,11 +150,53 @@ namespace CoreEngine
             Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("  Material[{}]: {}", matIndex, material.name));
 
             // 各種テクスチャパスを取得
-            material.baseColorTexture = ExtractTexturePath(aiMat, aiTextureType_DIFFUSE, 0, directoryPath);
+            // ベースカラーは glTF PBR の BASE_COLOR を優先し、レガシー形式は DIFFUSE にフォールバック
+            material.baseColorTexture = ExtractTexturePath(aiMat, aiTextureType_BASE_COLOR, 0, directoryPath);
+            if (material.baseColorTexture.empty()) {
+                material.baseColorTexture = ExtractTexturePath(aiMat, aiTextureType_DIFFUSE, 0, directoryPath);
+            }
+            // MetallicRoughness は glTF では UNKNOWN として公開される。METALNESS にもフォールバック
             material.metallicRoughnessTexture = ExtractTexturePath(aiMat, aiTextureType_UNKNOWN, 0, directoryPath);
+            if (material.metallicRoughnessTexture.empty()) {
+                material.metallicRoughnessTexture = ExtractTexturePath(aiMat, aiTextureType_METALNESS, 0, directoryPath);
+            }
             material.normalTexture = ExtractTexturePath(aiMat, aiTextureType_NORMALS, 0, directoryPath);
             material.occlusionTexture = ExtractTexturePath(aiMat, aiTextureType_LIGHTMAP, 0, directoryPath);
             material.emissiveTexture = ExtractTexturePath(aiMat, aiTextureType_EMISSIVE, 0, directoryPath);
+
+            // ===== PBR ファクター（glTF はファクター×テクスチャの乗算合成） =====
+            // キーが存在しない形式（OBJ 等）は MaterialAsset のデフォルト値を維持する。
+            aiColor4D baseColor{};
+            if (aiMat->Get(AI_MATKEY_BASE_COLOR, baseColor) == AI_SUCCESS) {
+                material.baseColorFactor = { baseColor.r, baseColor.g, baseColor.b, baseColor.a };
+            } else if (aiMat->Get(AI_MATKEY_COLOR_DIFFUSE, baseColor) == AI_SUCCESS) {
+                material.baseColorFactor = { baseColor.r, baseColor.g, baseColor.b, baseColor.a };
+            }
+
+            float metallicFactor = 0.0f;
+            if (aiMat->Get(AI_MATKEY_METALLIC_FACTOR, metallicFactor) == AI_SUCCESS) {
+                material.metallicFactor = metallicFactor;
+            }
+            float roughnessFactor = 0.0f;
+            if (aiMat->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughnessFactor) == AI_SUCCESS) {
+                material.roughnessFactor = roughnessFactor;
+            }
+
+            aiColor3D emissiveColor{};
+            if (aiMat->Get(AI_MATKEY_COLOR_EMISSIVE, emissiveColor) == AI_SUCCESS) {
+                material.emissiveFactor = { emissiveColor.r, emissiveColor.g, emissiveColor.b };
+            }
+
+            float alphaCutoff = 0.0f;
+            if (aiMat->Get(AI_MATKEY_GLTF_ALPHACUTOFF, alphaCutoff) == AI_SUCCESS) {
+                material.alphaCutoff = alphaCutoff;
+            }
+
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format(
+                "    - Factors: baseColor=({:.2f},{:.2f},{:.2f},{:.2f}) metallic={:.2f} roughness={:.2f} emissive=({:.2f},{:.2f},{:.2f})",
+                material.baseColorFactor.x, material.baseColorFactor.y, material.baseColorFactor.z, material.baseColorFactor.w,
+                material.metallicFactor, material.roughnessFactor,
+                material.emissiveFactor.x, material.emissiveFactor.y, material.emissiveFactor.z));
 
             // ログ出力
             if (!material.baseColorTexture.empty())

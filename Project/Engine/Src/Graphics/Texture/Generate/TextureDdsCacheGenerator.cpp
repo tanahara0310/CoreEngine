@@ -9,13 +9,14 @@
 
 namespace CoreEngine
 {
-    bool TextureDdsCacheGenerator::GenerateCache(const std::string& sourcePath, const std::string& ddsPath) const
+    bool TextureDdsCacheGenerator::GenerateCache(const std::string& sourcePath, const std::string& ddsPath,
+        TextureColorSpace colorSpace) const
     {
         try {
             // 入力画像を読み込み、形式に応じたローダーはImageProcessorへ委譲する。
             DirectX::ScratchImage sourceImage;
             std::wstring sourcePathW = Logger::GetInstance().ConvertString(sourcePath);
-            HRESULT hr = TextureImageProcessor::LoadTextureImage(sourcePathW, sourceImage);
+            HRESULT hr = TextureImageProcessor::LoadTextureImage(sourcePathW, sourceImage, colorSpace);
 
             if (FAILED(hr)) {
                 Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to load source for DDS generation: {}", sourcePath);
@@ -31,12 +32,16 @@ namespace CoreEngine
             }
 
             // DDS容量削減のためBC3に圧縮し、失敗時は非圧縮DDSとして保存する。
+            // 色空間に合わせて圧縮フォーマットを切り替える（Linear データを SRGB で保存すると値が歪む）。
+            const DXGI_FORMAT compressFormat = (colorSpace == TextureColorSpace::Linear)
+                ? DXGI_FORMAT_BC3_UNORM
+                : DXGI_FORMAT_BC3_UNORM_SRGB;
             DirectX::ScratchImage compressedImage;
             hr = DirectX::Compress(
                 mipChain.GetImages(),
                 mipChain.GetImageCount(),
                 mipChain.GetMetadata(),
-                DXGI_FORMAT_BC3_UNORM_SRGB,
+                compressFormat,
                 DirectX::TEX_COMPRESS_PARALLEL,
                 DirectX::TEX_THRESHOLD_DEFAULT,
                 compressedImage);

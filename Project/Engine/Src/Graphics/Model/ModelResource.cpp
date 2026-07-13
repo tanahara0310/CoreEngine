@@ -86,25 +86,32 @@ namespace CoreEngine
         }
 
         // ===== マテリアルのPBRテクスチャを並列読み込み =====
+        // 色空間: ベースカラー/エミッシブは sRGB、法線/MR/AO はデータテクスチャなので Linear。
         materialTextureHandles_.resize(modelData_.materials.size());
 
-        // 全マテリアルで必要なテクスチャパスを収集する。
-        std::vector<std::string> texturePaths;
-        texturePaths.push_back("white1x1.png");
+        // 全マテリアルで必要なテクスチャリクエストを収集する。
+        std::vector<TextureManager::LoadRequest> textureRequests;
+        textureRequests.push_back({ "white1x1.png", TextureColorSpace::SRGB });
 
         for (size_t i = 0; i < modelData_.materials.size(); ++i) {
             const MaterialAsset& material = modelData_.materials[i];
-            if (!material.baseColorTexture.empty()) texturePaths.push_back(material.baseColorTexture);
-            if (!material.metallicRoughnessTexture.empty()) texturePaths.push_back(material.metallicRoughnessTexture);
-            if (!material.normalTexture.empty()) texturePaths.push_back(material.normalTexture);
-            if (!material.occlusionTexture.empty()) texturePaths.push_back(material.occlusionTexture); 
-            if (!material.emissiveTexture.empty()) texturePaths.push_back(material.emissiveTexture);
+            if (!material.baseColorTexture.empty())
+                textureRequests.push_back({ material.baseColorTexture, TextureColorSpace::SRGB });
+            if (!material.metallicRoughnessTexture.empty())
+                textureRequests.push_back({ material.metallicRoughnessTexture, TextureColorSpace::Linear });
+            if (!material.normalTexture.empty())
+                textureRequests.push_back({ material.normalTexture, TextureColorSpace::Linear });
+            if (!material.occlusionTexture.empty())
+                textureRequests.push_back({ material.occlusionTexture, TextureColorSpace::Linear });
+            if (!material.emissiveTexture.empty())
+                textureRequests.push_back({ material.emissiveTexture, TextureColorSpace::SRGB });
         }
 
-        // 収集したパスを一括で並列ロードに投入し、完了を待つ。
-        textureManager_->Load(texturePaths);
+        // 収集したリクエストを一括で並列ロードに投入し、完了を待つ。
+        textureManager_->Load(textureRequests);
 
         // 全テクスチャがキャッシュ済みの状態で割り当てる（キャッシュヒットのみ）。
+        // 白1x1は値が(1,1,1,1)のため sRGB/Linear どちらのフォールバックとしても正しい。
         D3D12_GPU_DESCRIPTOR_HANDLE defaultWhiteTexture = textureManager_->Load("white1x1.png").gpuHandle;
 
         for (size_t i = 0; i < modelData_.materials.size(); ++i) {
@@ -118,9 +125,9 @@ namespace CoreEngine
                 handles.baseColor = defaultWhiteTexture;
             }
 
-            // MetallicRoughnessテクスチャ
+            // MetallicRoughnessテクスチャ (G=Roughness, B=Metallic)
             if (!material.metallicRoughnessTexture.empty()) {
-                handles.metallicRoughness = textureManager_->Load(material.metallicRoughnessTexture).gpuHandle;
+                handles.metallicRoughness = textureManager_->Load(material.metallicRoughnessTexture, TextureColorSpace::Linear).gpuHandle;
                 handles.hasMetallicRoughness = true;
             } else {
                 handles.metallicRoughness = defaultWhiteTexture;
@@ -129,7 +136,7 @@ namespace CoreEngine
 
             // Normalマップ
             if (!material.normalTexture.empty()) {
-                handles.normal = textureManager_->Load(material.normalTexture).gpuHandle;
+                handles.normal = textureManager_->Load(material.normalTexture, TextureColorSpace::Linear).gpuHandle;
                 handles.hasNormal = true;
             } else {
                 handles.normal = defaultWhiteTexture;
@@ -138,7 +145,7 @@ namespace CoreEngine
 
             // Occlusionマップ
             if (!material.occlusionTexture.empty()) {
-                handles.occlusion = textureManager_->Load(material.occlusionTexture).gpuHandle;
+                handles.occlusion = textureManager_->Load(material.occlusionTexture, TextureColorSpace::Linear).gpuHandle;
                 handles.hasOcclusion = true;
             } else {
                 handles.occlusion = defaultWhiteTexture;

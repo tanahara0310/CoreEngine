@@ -256,6 +256,7 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
             D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
             D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
+            D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture,
             TransformBufferSlot slot) const;
 
         /// @brief スキニングモデル用の ModelDrawPacket を組み立てる
@@ -264,6 +265,7 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
             D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
             D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
+            D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture,
             TransformBufferSlot slot) const;
     };
 }

@@ -16,14 +16,15 @@ namespace CoreEngine
         const std::string& resolvedPath,
         bool ddsGenerationEnabled,
         const std::string& ddsPath,
-        const std::function<bool(const std::string&, const std::string&)>& ddsCacheGenerator)
+        const std::function<bool(const std::string&, const std::string&)>& ddsCacheGenerator,
+        TextureColorSpace colorSpace)
     {
         // 読み込み対象パスをワイド文字列化し、DirectXTexのI/Oに渡す。
         std::wstring filePathW = Logger::GetInstance().ConvertString(resolvedPath);
 
         // 画像データを読み込み、必要であれば後続でDDS生成も実行する。
         DirectX::ScratchImage image;
-        HRESULT hr = TextureImageProcessor::LoadTextureImage(filePathW, image);
+        HRESULT hr = TextureImageProcessor::LoadTextureImage(filePathW, image, colorSpace);
 
         // ddsPathToGenerate はBuildPlan内でWICファイルのみ設定される。
         // DDS/HDRの場合は空文字列になるため isDDS/isHDR の重複チェックは不要。

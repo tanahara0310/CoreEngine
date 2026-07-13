@@ -33,27 +33,26 @@ namespace CoreEngine
         materialInstance_ = std::make_unique<MaterialInstance>();
         materialInstance_->Initialize(renderContext_.dxCommon->GetDevice());
 
-        // モデルに埋め込まれた PBR テクスチャに基づきマテリアルフラグを自動設定
+        // アセット側の PBR ファクターとテクスチャ有無をマテリアルへ反映する。
+        // NOTE: MaterialInstance はモデル単位で 1 つのため先頭サブメッシュのマテリアルを採用する
+        //       （サブメッシュごとのマテリアル対応は Phase 2 で行う）。
         const auto& subMeshes = resource_->GetSubMeshes();
+        const auto& materials = resource_->GetMaterials();
         if (!subMeshes.empty()) {
-            const auto& textures = resource_->GetMaterialTextures(subMeshes[0].materialIndex);
-            bool hasPBRTextures = false;
+            const uint32_t matIndex = subMeshes[0].materialIndex;
 
-            if (textures.hasNormal) {
-                materialInstance_->SetNormalMapEnabled(true);
+            if (matIndex < materials.size()) {
+                const MaterialAsset& asset = materials[matIndex];
+                materialInstance_->SetColor(asset.baseColorFactor);
+                materialInstance_->SetMetallic(asset.metallicFactor);
+                materialInstance_->SetRoughness(asset.roughnessFactor);
+                materialInstance_->SetEmissiveFactor(asset.emissiveFactor);
+                materialInstance_->SetAlphaCutoff(asset.alphaCutoff);
             }
-            if (textures.hasMetallicRoughness) {
-                materialInstance_->SetMetallicMapEnabled(true);
-                materialInstance_->SetRoughnessMapEnabled(true);
-                hasPBRTextures = true;
-            }
-            if (textures.hasOcclusion) {
-                materialInstance_->SetAOMapEnabled(true);
-                hasPBRTextures = true;
-            }
-            if (hasPBRTextures) {
-                // PBR は常に有効。テクスチャマップフラグは上で個別に設定済み。
-            }
+
+            // 法線マップのみフラグ制御（法線はファクター乗算で無効化できないため）
+            const auto& textures = resource_->GetMaterialTextures(matIndex);
+            materialInstance_->SetNormalMapEnabled(textures.hasNormal);
         }
 
         for (auto& wvpResource : wvpResources_) {
@@ -189,7 +188,7 @@ namespace CoreEngine
 
                 ModelDrawPacket packet = BuildSkinningDrawPacket(
                     subMesh, baseColorTex, textures.normal,
-                    textures.metallicRoughness, textures.occlusion, slot);
+                    textures.metallicRoughness, textures.occlusion, textures.emissive, slot);
 
                 renderer->BindModelDrawPacket(cmdList, packet);
             }
@@ -242,6 +241,7 @@ namespace CoreEngine
             key.normalMapSRV = normalTex.ptr;
             key.metallicRoughnessSRV = textures.metallicRoughness.ptr;
             key.occlusionSRV = textures.occlusion.ptr;
+            key.emissiveSRV = textures.emissive.ptr;
             key.materialCBV = static_cast<uint64_t>(materialCBV);
             key.isGBufferPass = isGBufferPass;
             key.customForwardPSO = isGBufferPass ? nullptr : customForwardPSO_;
@@ -434,6 +434,7 @@ ModelDrawPacket Model::BuildNormalDrawPacket(
     D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
     D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
     D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
+    D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture,
     TransformBufferSlot slot) const
 {
     ID3D12Resource* transformBuffer = GetTransformBuffer(slot);
@@ -453,6 +454,7 @@ ModelDrawPacket Model::BuildNormalDrawPacket(
     packet.normalMapSRV = normalTexture;
     packet.metallicRoughnessSRV = metallicRoughnessTexture;
     packet.occlusionSRV = occlusionTexture;
+    packet.emissiveSRV = emissiveTexture;
     packet.isSkinned = false;
     return packet;
 }
@@ -463,6 +465,7 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     D3D12_GPU_DESCRIPTOR_HANDLE normalTexture,
     D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessTexture,
     D3D12_GPU_DESCRIPTOR_HANDLE occlusionTexture,
+    D3D12_GPU_DESCRIPTOR_HANDLE emissiveTexture,
     TransformBufferSlot slot) const
 {
     ID3D12Resource* transformBuffer = GetTransformBuffer(slot);
@@ -484,6 +487,7 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.normalMapSRV = normalTexture;
     packet.metallicRoughnessSRV = metallicRoughnessTexture;
     packet.occlusionSRV = occlusionTexture;
+    packet.emissiveSRV = emissiveTexture;
     packet.isSkinned = true;
     return packet;
 }

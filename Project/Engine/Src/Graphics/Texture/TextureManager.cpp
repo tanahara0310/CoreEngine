@@ -90,12 +90,20 @@ namespace CoreEngine
         return context;
     }
 
-    // テクスチャの読み込み
-    TextureManager::LoadedTexture TextureManager::Load(const std::string& filePath)
+    std::string TextureManager::MakeCacheKey(const std::string& resolvedPath, TextureColorSpace colorSpace)
     {
-        // 入力パスを実体パスに解決し、キャッシュ検索キーとして扱う。
+        // 同一ファイルでも色空間が異なればGPUリソースの内容が異なるため、キーを分離する。
+        return (colorSpace == TextureColorSpace::Linear)
+            ? resolvedPath + "|linear"
+            : resolvedPath;
+    }
+
+    // テクスチャの読み込み
+    TextureManager::LoadedTexture TextureManager::Load(const std::string& filePath, TextureColorSpace colorSpace)
+    {
+        // 入力パスを実体パスに解決し、色空間を加えたキーでキャッシュ検索する。
         std::string resolvedPath = texturePathResolver_.ResolveAssetPath(filePath, false);
-        std::string cacheKey = resolvedPath;
+        std::string cacheKey = MakeCacheKey(resolvedPath, colorSpace);
 
         // キャッシュヒット時は即時返却し、重い処理を回避する。
         LoadedTexture cachedTexture{};
@@ -144,7 +152,8 @@ namespace CoreEngine
                 texturePathResolver_,
                 [this](const std::string& hdrPath, const std::string& cubemapDDSPath) {
                     return cubemapGenerator_.GenerateFromHDR(hdrPath, cubemapDDSPath);
-                }
+                },
+                colorSpace
             );
 
             resolvedPath = loadPlan.resolvedPath;
@@ -156,9 +165,10 @@ namespace CoreEngine
                 resolvedPath,
                 ddsGenerationEnabled,
                 ddsPath,
-                [this](const std::string& sourcePath, const std::string& outputDdsPath) {
-                    return ddsCacheGenerator_.GenerateCache(sourcePath, outputDdsPath);
-                }
+                [this, colorSpace](const std::string& sourcePath, const std::string& outputDdsPath) {
+                    return ddsCacheGenerator_.GenerateCache(sourcePath, outputDdsPath, colorSpace);
+                },
+                colorSpace
             );
 
             LoadedTexture result{};
@@ -312,12 +322,13 @@ namespace CoreEngine
         }
     }
 
-    std::shared_future<TextureManager::LoadedTexture> TextureManager::SubmitAsync(const std::string& filePath)
+    std::shared_future<TextureManager::LoadedTexture> TextureManager::SubmitAsync(const std::string& filePath,
+        TextureColorSpace colorSpace)
     {
         // キャッシュヒット時は即座に完了済み future を返す。
         std::string resolvedPath = texturePathResolver_.ResolveAssetPath(filePath, false);
         LoadedTexture cachedTexture{};
-        if (cacheStore_->TryGetTexture(resolvedPath, cachedTexture)) {
+        if (cacheStore_->TryGetTexture(MakeCacheKey(resolvedPath, colorSpace), cachedTexture)) {
             std::promise<LoadedTexture> p;
             p.set_value(cachedTexture);
             return p.get_future().share();
@@ -327,8 +338,8 @@ namespace CoreEngine
 
         // ワーカースレッドで Load を実行し、結果を future で返す。
         std::string pathCopy = filePath;
-        auto future = threadPool_->Submit([this, pathCopy]() -> LoadedTexture {
-            return Load(pathCopy);
+        auto future = threadPool_->Submit([this, pathCopy, colorSpace]() -> LoadedTexture {
+            return Load(pathCopy, colorSpace);
         });
 
         auto sharedFuture = future.share();
@@ -347,6 +358,16 @@ namespace CoreEngine
 
         for (const auto& path : filePaths) {
             SubmitAsync(path);
+        }
+        WaitForAllPendingLoads();
+    }
+
+    void TextureManager::Load(const std::vector<LoadRequest>& requests)
+    {
+        if (requests.empty()) return;
+
+        for (const auto& request : requests) {
+            SubmitAsync(request.path, request.colorSpace);
         }
         WaitForAllPendingLoads();
     }

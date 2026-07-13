@@ -40,38 +40,27 @@ namespace CoreEngine {
         // ─────────────── PBR パラメータ ───────────────
         UI::SectionHeader("PBR パラメータ");
 
-        if (auto mapsTree = UI::Scope::TreeScope("テクスチャマップ##PBR")) {
+        // ファクターはテクスチャと乗算合成される（glTF 準拠）。
+        // テクスチャ無しマテリアルは白フォールバックのためファクター値がそのまま最終値になる。
+        {
             const bool hasNormal = model->HasNormalMap();
-            const bool hasMetallic = model->HasMetallicRoughnessMap();
-            const bool hasOcclusion = model->HasOcclusionMap();
-
-            auto drawMapToggle = [&](const char* label, bool hasTexture,
-                bool (MaterialInstance::* getter)() const,
-                void (MaterialInstance::* setter)(bool)) {
-                    {
-                        UI::Scope::DisabledScope ds(!hasTexture);
-                        bool val = (mat->*getter)();
-                        if (UI::Widgets::ToggleSwitch(label, &val)) {
-                            (mat->*setter)(val);
-                            changed = true;
-                        }
-                    }
-                    if (!hasTexture) {
-                        UI::SameLine();
-                        UI::Hint("(なし)");
-                    }
-                };
-
-            drawMapToggle("Normal Map", hasNormal, &MaterialInstance::IsNormalMapEnabled, &MaterialInstance::SetNormalMapEnabled);
-            drawMapToggle("Metallic Map", hasMetallic, &MaterialInstance::IsMetallicMapEnabled, &MaterialInstance::SetMetallicMapEnabled);
-            drawMapToggle("Roughness Map", hasMetallic, &MaterialInstance::IsRoughnessMapEnabled, &MaterialInstance::SetRoughnessMapEnabled);
-            drawMapToggle("AO Map", hasOcclusion, &MaterialInstance::IsAOMapEnabled, &MaterialInstance::SetAOMapEnabled);
+            UI::Scope::DisabledScope ds(!hasNormal);
+            bool normalEnabled = mat->IsNormalMapEnabled();
+            if (UI::Widgets::ToggleSwitch("Normal Map", &normalEnabled)) {
+                mat->SetNormalMapEnabled(normalEnabled);
+                changed = true;
+            }
+            if (!hasNormal) {
+                UI::SameLine();
+                UI::Hint("(なし)");
+            }
         }
 
-        UI::Hint("マップ無効時にスライダー値が適用されます");
+        if (model->HasMetallicRoughnessMap()) {
+            UI::Hint("MRマップあり: ファクターはマップ値に乗算されます");
+        }
 
         {
-            UI::Scope::DisabledScope ds(mat->IsMetallicMapEnabled() && model->HasMetallicRoughnessMap());
             float metallic = mat->GetMetallic();
             if (UI::SliderFloat("Metallic", metallic, 0.0f, 1.0f)) {
                 mat->SetMetallic(metallic);
@@ -79,7 +68,6 @@ namespace CoreEngine {
             }
         }
         {
-            UI::Scope::DisabledScope ds(mat->IsRoughnessMapEnabled() && model->HasMetallicRoughnessMap());
             float roughness = mat->GetRoughness();
             if (UI::SliderFloat("Roughness", roughness, 0.0f, 1.0f)) {
                 mat->SetRoughness(roughness);
@@ -87,10 +75,18 @@ namespace CoreEngine {
             }
         }
         {
-            UI::Scope::DisabledScope ds(mat->IsAOMapEnabled() && model->HasOcclusionMap());
-            float ao = mat->GetAO();
-            if (UI::SliderFloat("AO", ao, 0.0f, 1.0f)) {
-                mat->SetAO(ao);
+            UI::Scope::DisabledScope ds(!model->HasOcclusionMap());
+            float occlusionStrength = mat->GetOcclusionStrength();
+            if (UI::SliderFloat("AO 強度", occlusionStrength, 0.0f, 1.0f)) {
+                mat->SetOcclusionStrength(occlusionStrength);
+                changed = true;
+            }
+        }
+        {
+            Vector3 emissiveVec = mat->GetEmissiveFactor();
+            Vector4 emissive = { emissiveVec.x, emissiveVec.y, emissiveVec.z, 1.0f };
+            if (UI::ColorEdit("Emissive", emissive)) {
+                mat->SetEmissiveFactor({ emissive.x, emissive.y, emissive.z });
                 changed = true;
             }
         }

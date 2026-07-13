@@ -708,6 +708,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureLoadPlan.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Load\TextureMetadataLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Path\TexturePathResolver.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\TextureColorSpace.h" />
     <ClInclude Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.h" />

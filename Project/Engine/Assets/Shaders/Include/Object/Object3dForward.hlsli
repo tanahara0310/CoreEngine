@@ -1,34 +1,9 @@
 // Object3dForward.hlsli
 #include "Object3d.hlsli"
+#include "ObjectMaterial.hlsli"
 #include "../Lighting/LightStructures.hlsli"
 #include "../Shadow/ShadowCalculation.hlsli"
 #include "../PBR/PBR.hlsli"
-
-// ===== マテリアル =====
-struct Material
-{
-    float4 color;
-    int enableLighting;
-    float4x4 uvTransform;
-
-    // ===== PBR Parameters =====
-    float metallic;
-    float roughness;
-    float ao;
-    int useNormalMap;
-    int useMetallicMap;
-    int useRoughnessMap;
-    int useAOMap;
-
-    // ===== Alpha =====
-    int enableDithering;
-    float ditheringScale;
-
-    // ===== Shading Mode =====
-    int shadingMode; ///< 0=PBR, 1=PBR+IBL, 2=Lambert, 3=HalfLambert
-    float iblIntensity;
-    float alphaCutoff; ///< discard 判定に使用するアルファしきい値
-};
 
 /// @brief シーン共通 IBL パラメータ（スカイボックス回転と連動）
 struct IBLSceneParams
@@ -44,14 +19,10 @@ struct Camera
 };
 
 // ===== ConstantBuffer =====
-ConstantBuffer<Material> gMaterial : register(b0);
+// gMaterial(b0) と マテリアルテクスチャ(t0, t7-t10) は ObjectMaterial.hlsli で定義
 ConstantBuffer<Camera> gCamera : register(b2);
 ConstantBuffer<LightCounts> gLightCounts : register(b1);
 ConstantBuffer<IBLSceneParams> gIBLParams : register(b3);
-
-// ===== Texture & Sampler =====
-Texture2D<float4> gTexture : register(t0);
-SamplerState gSampler : register(s0);
 
 // ===== StructuredBuffer (Lights) =====
 StructuredBuffer<DirectionalLightData> gDirectionalLights : register(t1);
@@ -63,59 +34,10 @@ StructuredBuffer<AreaLightData> gAreaLights : register(t4);
 Texture2D<float> gShadowMap : register(t6);
 SamplerComparisonState gShadowSampler : register(s1);
 
-// ===== PBR Texture Maps =====
-Texture2D<float4> gNormalMap : register(t7); // 法線マップ (RGB: タンジェント空間法線)
-Texture2D<float> gMetallicMap : register(t8); // メタリックマップ (R: 金属性)
-Texture2D<float> gRoughnessMap : register(t9); // ラフネスマップ (R: 粗さ)
-Texture2D<float> gAOMap : register(t10); // AOマップ (R: 環境遮蔽)
-
 // ===== IBL Texture Maps =====
 TextureCube<float4> gIrradianceMap : register(t11); // Irradianceマップ（拡散IBL）
 TextureCube<float4> gPrefilteredMap : register(t12); // Prefilteredマップ（スペキュラIBL）
 Texture2D<float2> gBRDFLUT : register(t13); // BRDF LUT（スペキュラIBL統合用）
-
-// ===== ディザリングパターン（4x4 Bayer Matrix）=====
-float GetDitheringThreshold(float2 screenPos)
-{
-    const float bayerMatrix[4][4] =
-    {
-        { 0.0f / 16.0f, 8.0f / 16.0f, 2.0f / 16.0f, 10.0f / 16.0f },
-        { 12.0f / 16.0f, 4.0f / 16.0f, 14.0f / 16.0f, 6.0f / 16.0f },
-        { 3.0f / 16.0f, 11.0f / 16.0f, 1.0f / 16.0f, 9.0f / 16.0f },
-        { 15.0f / 16.0f, 7.0f / 16.0f, 13.0f / 16.0f, 5.0f / 16.0f }
-    };
-    int x = int(screenPos.x) % 4;
-    int y = int(screenPos.y) % 4;
-    return bayerMatrix[y][x];
-}
-
-/// @brief PBR パラメータを取得（テクスチャマップまたはマテリアル値から）
-void GetPBRParameters(float2 uv, out float outMetallic, out float outRoughness, out float outAO)
-{
-    outMetallic = gMaterial.useMetallicMap != 0 ? gMetallicMap.Sample(gSampler, uv) : gMaterial.metallic;
-    outRoughness = gMaterial.useRoughnessMap != 0 ? gRoughnessMap.Sample(gSampler, uv) : gMaterial.roughness;
-    outAO = gMaterial.useAOMap != 0 ? gAOMap.Sample(gSampler, uv) : gMaterial.ao;
-}
-
-/// @brief ノーマルマップから法線を取得してワールド空間に変換
-float3 GetNormalFromMap(VertexShaderOutput input, float2 uv)
-{
-    if (gMaterial.useNormalMap == 0)
-        return normalize(input.normal);
-
-    float3 normalMapSample = gNormalMap.Sample(gSampler, uv).rgb;
-    float3 tangentSpaceNormal = normalMapSample * 2.0f - 1.0f;
-
-    float3 N = normalize(input.normal);
-    float3 T = normalize(input.tangent);
-    float3 B = normalize(input.bitangent);
-
-    T = normalize(T - dot(T, N) * N);
-    B = cross(N, T);
-
-    float3x3 TBN = float3x3(T, B, N);
-    return normalize(mul(tangentSpaceNormal, TBN));
-}
 
 // ===== ライティング計算ヘルパー =====
 
@@ -364,24 +286,17 @@ PixelShaderOutput ForwardMain(VertexShaderOutput input)
     PixelShaderOutput output;
 
     float4 transformedUV = mul(float4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
-    float4 textureColor  = gTexture.Sample(gSampler, transformedUV.xy);
+    float2 uv = transformedUV.xy;
+    float4 textureColor = gTexture.Sample(gSampler, uv);
 
-    float3 finalNormal = GetNormalFromMap(input, transformedUV.xy);
+    float3 finalNormal = GetNormalFromMap(input.normal, input.tangent, input.bitangent, uv);
     input.normal = finalNormal;
 
     float3 toEye     = normalize(gCamera.worldPosition - input.worldPosition);
     float  finalAlpha = gMaterial.color.a * textureColor.a;
 
-    // アルファカット（ディザリング or 通常テスト）
-    if (gMaterial.enableDithering != 0)
-    {
-        float2 screenPos = input.position.xy;
-        if (gMaterial.ditheringScale > 0.0f)
-            screenPos *= gMaterial.ditheringScale;
-        if (finalAlpha <= GetDitheringThreshold(screenPos) + 0.001f)
-            discard;
-    }
-    else if (finalAlpha <= gMaterial.alphaCutoff)
+    // アルファカット（ディザリング or 通常テスト）— GBuffer パスと共通判定
+    if (ShouldDiscardByAlpha(finalAlpha, input.position.xy))
     {
         discard;
     }
@@ -393,9 +308,9 @@ PixelShaderOutput ForwardMain(VertexShaderOutput input)
         return output;
     }
 
-    // PBR パラメータ取得
+    // PBR パラメータ取得（ファクター × テクスチャ）
     float metallic, roughness, ao;
-    GetPBRParameters(transformedUV.xy, metallic, roughness, ao);
+    GetPBRParameters(uv, metallic, roughness, ao);
     roughness = max(roughness, 0.01f);
 
     float3 albedo = gMaterial.color.rgb * textureColor.rgb;
@@ -406,6 +321,9 @@ PixelShaderOutput ForwardMain(VertexShaderOutput input)
 
     // IBL
     output.color.rgb += ApplyIBL(input, albedo, metallic, roughness, ao, toEye);
+
+    // エミッシブ（自己発光: ライティングの影響を受けず加算）
+    output.color.rgb += GetEmissive(uv);
 
     // HDR 値をそのまま出力（トーンマッピングはポストエフェクトチェーンで適用）
 

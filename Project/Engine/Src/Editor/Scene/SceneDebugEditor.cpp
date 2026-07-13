@@ -80,15 +80,9 @@ namespace
         if (CoreEngine::MaterialInstance* material = model->GetMaterial()) {
             material->SetLightingEnabled(true);
             material->SetIBLEnabled(true);
-            material->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-            material->SetMetallic(0.0f);
-            material->SetRoughness(0.5f);
-            material->SetAO(1.0f);
+            // PBR ファクター（metallic/roughness/color 等）は Model::Initialize() が
+            // アセット側の値を適用済みのため、ここでは上書きしない。
             material->SetNormalMapEnabled(false);
-            const bool hasMetallicRoughnessMap = model->HasMetallicRoughnessMap();
-            material->SetMetallicMapEnabled(hasMetallicRoughnessMap);
-            material->SetRoughnessMapEnabled(hasMetallicRoughnessMap);
-            material->SetAOMapEnabled(model->HasOcclusionMap());
         }
     }
 }

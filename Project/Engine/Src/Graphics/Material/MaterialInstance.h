@@ -7,11 +7,14 @@
 namespace CoreEngine
 {
     /// @brief 1つのマテリアルのGPU定数バッファを保持するクラス（PBR専用）
+    /// @note glTF 準拠の「ファクター × テクスチャ」乗算方式。
+    ///       Metallic / Roughness / EmissiveFactor はテクスチャと乗算されるファクター値。
     class MaterialInstance : public MaterialBase<MaterialConstants> {
     public:
         void Initialize(ID3D12Device* device) override;
 
-        // ===== Color =====
+        // ===== Base Color =====
+        /// @brief ベースカラーファクターを設定（ベースカラーテクスチャと乗算される）
         void SetColor(const Vector4& color) override { materialData_->color = color; }
         Vector4 GetColor() const override { return materialData_->color; }
 
@@ -24,23 +27,24 @@ namespace CoreEngine
         void SetUVTransform(const Matrix4x4& uvTransform) { materialData_->uvTransform = uvTransform; }
         Matrix4x4 GetUVTransform() const { return materialData_->uvTransform; }
 
-        // ===== PBR Parameters =====
+        // ===== PBR Factors =====
+        /// @brief 金属性ファクター（MRテクスチャのBチャネルと乗算）
         void SetMetallic(float metallic)   { materialData_->metallic = metallic; }
         float GetMetallic() const          { return materialData_->metallic; }
+        /// @brief 粗さファクター（MRテクスチャのGチャネルと乗算）
         void SetRoughness(float roughness) { materialData_->roughness = roughness; }
         float GetRoughness() const         { return materialData_->roughness; }
-        void SetAO(float ao)               { materialData_->ao = ao; }
-        float GetAO() const                { return materialData_->ao; }
+        /// @brief AOマップ適用強度 (0=AOマップ無効, 1=フル適用)
+        void SetOcclusionStrength(float strength) { materialData_->occlusionStrength = strength; }
+        float GetOcclusionStrength() const        { return materialData_->occlusionStrength; }
+        /// @brief エミッシブファクター（エミッシブテクスチャと乗算）
+        void SetEmissiveFactor(const Vector3& factor) { materialData_->emissiveFactor = factor; }
+        Vector3 GetEmissiveFactor() const             { return materialData_->emissiveFactor; }
 
-        // ===== PBR Texture Maps =====
-        void SetNormalMapEnabled(bool enable)    { materialData_->useNormalMap    = static_cast<int32_t>(enable); }
+        // ===== Normal Map =====
+        /// @brief 法線マップ使用フラグ（法線は乗算合成できないためフラグで制御）
+        void SetNormalMapEnabled(bool enable)    { materialData_->useNormalMap = static_cast<int32_t>(enable); }
         bool IsNormalMapEnabled() const          { return materialData_->useNormalMap != 0; }
-        void SetMetallicMapEnabled(bool enable)  { materialData_->useMetallicMap  = static_cast<int32_t>(enable); }
-        bool IsMetallicMapEnabled() const        { return materialData_->useMetallicMap != 0; }
-        void SetRoughnessMapEnabled(bool enable) { materialData_->useRoughnessMap = static_cast<int32_t>(enable); }
-        bool IsRoughnessMapEnabled() const       { return materialData_->useRoughnessMap != 0; }
-        void SetAOMapEnabled(bool enable)        { materialData_->useAOMap        = static_cast<int32_t>(enable); }
-        bool IsAOMapEnabled() const              { return materialData_->useAOMap != 0; }
 
         // ===== Alpha Dithering =====
         void SetDitheringEnabled(bool enable) { materialData_->enableDithering = static_cast<int32_t>(enable); }

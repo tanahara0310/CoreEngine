@@ -21,16 +21,15 @@ public:
     /// @return MaterialInstance へのポインタ（未初期化の場合 nullptr）
     CoreEngine::MaterialInstance* GetMaterial();
 
-    /// @brief PBRパラメータを設定
-    void SetPBRParameters(float metallic, float roughness, float ao);
+    /// @brief PBRファクターを設定（テクスチャ有りマテリアルではマップ値と乗算される）
+    /// @param metallic 金属性ファクター
+    /// @param roughness 粗さファクター
+    /// @param occlusionStrength AOマップ適用強度
+    void SetPBRParameters(float metallic, float roughness, float occlusionStrength = 1.0f);
 
-    /// @brief PBRテクスチャマップを有効/無効にする
-    /// @param useNormal ノーマルマップを使用するか
-    /// @param useMetallic メタリックマップを使用するか
-    /// @param useRoughness ラフネスマップを使用するか
-    /// @param useAO AOマップを使用するか
-    void SetPBRTextureMapsEnabled(bool useNormal = true, bool useMetallic = true,
-        bool useRoughness = true, bool useAO = true);
+    /// @brief 法線マップを有効/無効にする
+    /// @note Metallic/Roughness/AO はファクター×マップ乗算方式になったためフラグは法線のみ
+    void SetNormalMapEnabled(bool enable);
 
     /// @brief マテリアルカラーを設定
     void SetMaterialColor(const CoreEngine::Vector4& color);

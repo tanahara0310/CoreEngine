@@ -29,6 +29,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE normalMapSRV = {};
         D3D12_GPU_DESCRIPTOR_HANDLE metallicRoughnessSRV = {};
         D3D12_GPU_DESCRIPTOR_HANDLE occlusionSRV = {};
+        D3D12_GPU_DESCRIPTOR_HANDLE emissiveSRV = {};
 
         // スキニング専用 (isSkinned == false のとき matrixPaletteSRV は未使用)
         bool isSkinned = false;

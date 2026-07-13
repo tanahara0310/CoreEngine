@@ -164,11 +164,9 @@ namespace CoreEngine
             m["lighting"] = mat->IsLightingEnabled();
             m["metallic"] = mat->GetMetallic();
             m["roughness"] = mat->GetRoughness();
-            m["ao"] = mat->GetAO();
+            m["occlusionStrength"] = mat->GetOcclusionStrength();
+            m["emissive"] = JsonManager::Vector3ToJson(mat->GetEmissiveFactor());
             m["normalMap"] = mat->IsNormalMapEnabled();
-            m["metallicMap"] = mat->IsMetallicMapEnabled();
-            m["roughnessMap"] = mat->IsRoughnessMapEnabled();
-            m["aoMap"] = mat->IsAOMapEnabled();
             m["dithering"] = mat->IsDitheringEnabled();
             m["ditheringScale"] = mat->GetDitheringScale();
             m["ibl"] = mat->IsIBLEnabled();
@@ -205,11 +203,13 @@ namespace CoreEngine
             mat->SetLightingEnabled(JsonManager::SafeGet<bool>(m, "lighting", mat->IsLightingEnabled()));
             mat->SetMetallic(JsonManager::SafeGet<float>(m, "metallic", mat->GetMetallic()));
             mat->SetRoughness(JsonManager::SafeGet<float>(m, "roughness", mat->GetRoughness()));
-            mat->SetAO(JsonManager::SafeGet<float>(m, "ao", mat->GetAO()));
+            // 旧フォーマットの "ao"（定数AO）は occlusionStrength として読み替える
+            float occlusionStrength = JsonManager::SafeGet<float>(m, "occlusionStrength",
+                JsonManager::SafeGet<float>(m, "ao", mat->GetOcclusionStrength()));
+            mat->SetOcclusionStrength(occlusionStrength);
+            if (m.contains("emissive"))
+                mat->SetEmissiveFactor(JsonManager::JsonToVector3(m["emissive"]));
             mat->SetNormalMapEnabled(JsonManager::SafeGet<bool>(m, "normalMap", mat->IsNormalMapEnabled()));
-            mat->SetMetallicMapEnabled(JsonManager::SafeGet<bool>(m, "metallicMap", mat->IsMetallicMapEnabled()));
-            mat->SetRoughnessMapEnabled(JsonManager::SafeGet<bool>(m, "roughnessMap", mat->IsRoughnessMapEnabled()));
-            mat->SetAOMapEnabled(JsonManager::SafeGet<bool>(m, "aoMap", mat->IsAOMapEnabled()));
             mat->SetDitheringEnabled(JsonManager::SafeGet<bool>(m, "dithering", mat->IsDitheringEnabled()));
             mat->SetDitheringScale(JsonManager::SafeGet<float>(m, "ditheringScale", mat->GetDitheringScale()));
             mat->SetIBLEnabled(JsonManager::SafeGet<bool>(m, "ibl", mat->IsIBLEnabled()));

@@ -231,7 +231,7 @@ PixelShaderOutput WaterForwardMain(WaterPSInput input)
     // 水面はテクスチャを使わず、マテリアル値のみで PBR パラメータを構成する
     float metallic = gMaterial.metallic;
     float roughness = max(gMaterial.roughness, 0.01f);
-    float ao = gMaterial.ao;
+    float ao = 1.0f; // 水面は AO マップを持たないため遮蔽なし固定
 
     float3 albedo = gMaterial.color.rgb;
 

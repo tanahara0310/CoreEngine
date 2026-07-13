@@ -2,6 +2,7 @@
 
 #include <externals/DirectXTex/DirectXTex.h>
 #include "Graphics/Texture/Runtime/TextureLoadedResource.h"
+#include "Graphics/Texture/TextureColorSpace.h"
 #include "Graphics/Texture/Path/TexturePathResolver.h"
 #include "Graphics/Texture/Load/TextureLoadPlan.h"
 #include "Graphics/Texture/Generate/TextureCubemapGenerator.h"
@@ -41,14 +42,26 @@ namespace CoreEngine {
         /// @param dxCommon dxCommonへのポインタ
         void Initialize(CoreEngine::DirectXCommon* dxCommon);
 
+        /// @brief 色空間付きテクスチャ読み込みリクエスト
+        struct LoadRequest {
+            std::string path;                                        ///< ファイルパス（Assetsフォルダを省略可能）
+            TextureColorSpace colorSpace = TextureColorSpace::SRGB;  ///< 色空間
+        };
+
         /// @brief テクスチャの読み込み
         /// @param filePath ファイルパス（Assetsフォルダを省略可能）
+        /// @param colorSpace 色空間（法線・MR・AOなどのデータテクスチャは Linear を指定）
         /// @return 読み込まれたテクスチャ
-        LoadedTexture Load(const std::string& filePath);
+        LoadedTexture Load(const std::string& filePath,
+            TextureColorSpace colorSpace = TextureColorSpace::SRGB);
 
         /// @brief 複数テクスチャの並列読み込み（全完了まで待機）
         /// @param filePaths ファイルパスのリスト
         void Load(const std::vector<std::string>& filePaths);
+
+        /// @brief 複数テクスチャの並列読み込み（色空間指定あり・全完了まで待機）
+        /// @param requests 読み込みリクエストのリスト
+        void Load(const std::vector<LoadRequest>& requests);
 
         /// @brief テクスチャのメタデータを取得
         /// @param filePath ファイルパス（Assetsフォルダを省略可能）
@@ -125,7 +138,11 @@ namespace CoreEngine {
         void EnsureThreadPool();
 
         /// @brief ワーカースレッドへロードを投入する内部ヘルパー
-        std::shared_future<LoadedTexture> SubmitAsync(const std::string& filePath);
+        std::shared_future<LoadedTexture> SubmitAsync(const std::string& filePath,
+            TextureColorSpace colorSpace = TextureColorSpace::SRGB);
+
+        /// @brief 色空間を含めたキャッシュキーを構築する
+        static std::string MakeCacheKey(const std::string& resolvedPath, TextureColorSpace colorSpace);
 
         /// @brief 未完了の非同期ロードを全て待機する内部ヘルパー
         void WaitForAllPendingLoads();

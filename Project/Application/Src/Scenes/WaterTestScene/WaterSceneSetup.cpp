@@ -73,9 +73,6 @@ void WaterSceneSetup::ConfigureWaterMaterial(WaterPlaneObject* waterPlane) {
     // ここで静的 IBL を有効にすると大気の空と映り込みが食い違う。
     material->SetIBLEnabled(false);
     material->SetNormalMapEnabled(false);
-    material->SetMetallicMapEnabled(false);
-    material->SetRoughnessMapEnabled(false);
-    material->SetAOMapEnabled(false);
 }
 
 void WaterSceneSetup::ConfigureGroundObject(ModelObject* groundObject) {
@@ -86,7 +83,7 @@ void WaterSceneSetup::ConfigureGroundObject(ModelObject* groundObject) {
     // 水中地形モデルを水面直下へ配置し、PBR 描画を有効化する
     groundObject->GetTransform().translate = { 0.0f, kWaterSceneGroundClearance - 0.1f, 0.0f };
     groundObject->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-    groundObject->SetPBRTextureMapsEnabled(true, true, true, true);
+    groundObject->SetNormalMapEnabled(true);
     // 水面と同じ理由で静的 IBL は使わず、大気散乱と整合する直接光ベースの PBR とする。
     groundObject->SetIBLEnabled(false);
     groundObject->SetActive(true);
