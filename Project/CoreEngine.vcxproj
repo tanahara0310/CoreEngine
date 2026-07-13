@@ -400,6 +400,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\Modules\ShapeModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\ParticlePresetManager.cpp" />
     <ClCompile Include="Engine\Src\Scene\BaseScene.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\EnvironmentFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
@@ -759,6 +765,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\ShapeModule.h" />
     <ClInclude Include="Engine\Src\Particle\ParticlePresetManager.h" />
     <ClInclude Include="Engine\Src\Scene\BaseScene.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\ISceneFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\LightingFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\EnvironmentFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />

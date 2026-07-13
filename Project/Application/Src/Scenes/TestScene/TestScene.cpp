@@ -164,12 +164,6 @@ namespace CoreEngine
     {
         BaseScene::Draw();
     }
-
-
-    void TestScene::Finalize()
-    {
-        BaseScene::Finalize();
-    }
 }
 
 

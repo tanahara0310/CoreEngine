@@ -69,7 +69,3 @@ void HomeworkScene::Draw()
     BaseScene::Draw();
 }
 
-void HomeworkScene::Finalize()
-{
-    BaseScene::Finalize();
-}

@@ -156,7 +156,3 @@ void PrimitiveTestScene::Draw()
     BaseScene::Draw();
 }
 
-void PrimitiveTestScene::Finalize()
-{
-    BaseScene::Finalize();
-}

@@ -43,9 +43,4 @@ void ParticleTestScene::Draw()
     BaseScene::Draw();
 }
 
-void ParticleTestScene::Finalize()
-{
-    // 基底クラスの解放
-    BaseScene::Finalize();
-}
 

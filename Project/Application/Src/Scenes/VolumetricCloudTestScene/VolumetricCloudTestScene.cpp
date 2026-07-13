@@ -57,7 +57,3 @@ void VolumetricCloudTestScene::Draw()
     BaseScene::Draw();
 }
 
-void VolumetricCloudTestScene::Finalize()
-{
-    BaseScene::Finalize();
-}

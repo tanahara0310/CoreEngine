@@ -79,7 +79,3 @@ void AtmosphereTestScene::Draw()
     BaseScene::Draw();
 }
 
-void AtmosphereTestScene::Finalize()
-{
-    BaseScene::Finalize();
-}

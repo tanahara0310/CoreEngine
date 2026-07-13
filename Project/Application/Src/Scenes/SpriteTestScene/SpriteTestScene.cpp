@@ -242,7 +242,7 @@ void SpriteTestScene::Draw()
     BaseScene::Draw();
 }
 
-void SpriteTestScene::Finalize()
+void SpriteTestScene::OnFinalize()
 {
     Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::General,
         "{}", "SpriteTestScene: 終了");

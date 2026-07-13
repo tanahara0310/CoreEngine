@@ -45,9 +45,6 @@ namespace CoreEngine
         /// @brief 描画処理
         void Draw() override;
 
-        /// @brief 解放
-        void Finalize() override;
-
     protected:
         /// @brief 更新処理（BaseSceneのOnUpdate()をオーバーライド）
         void OnUpdate() override;

@@ -4,28 +4,27 @@
 #include "Graphics/Light/LightData.h"
 #include "GameObject/GameObjectManager.h"
 #include "Audio/SoundManager.h"
-#include "Collider/CollisionManager.h"
 #include "Collider/CollisionConfig.h"
+#include "Scene/Feature/ISceneFeature.h"
 #include <memory>
+#include <vector>
 
 #include "Scene/SceneSaveSystem.h"
 
-#ifdef USE_IMGUI
-#include "Editor/Scene/SceneDebugEditor.h"
-#endif
-
 // 前方宣言
 class SkyBoxObject;
-class InfiniteGroundObject;
 
 namespace CoreEngine {
     class EngineSystem;
     class CameraManager;
     class DirectXCommon;
     class RenderManager;
-    class GridRenderer;
     class ResourceFactory;
     class IParticleSystem;
+    class LightingFeature;
+    class EnvironmentFeature;
+    class CollisionFeature;
+    class SceneBGMFeature;
     enum class ParticleBackend;
 }
 
@@ -53,7 +52,8 @@ namespace CoreEngine
         virtual void Draw() override;
 
         /// @brief 解放（共通処理 + 派生クラスの解放）
-        virtual void Finalize() override;
+        /// @note このメソッドはfinalです。派生クラスはOnFinalize()をオーバーライドしてください
+        virtual void Finalize() override final;
 
         /// @brief Gameビュー用3Dカメラを取得
         ICamera* GetGameViewCamera3D() const override;
@@ -78,6 +78,10 @@ namespace CoreEngine
 
         /// @brief 派生クラスでオーバーライドする後処理（GameObjectの更新後、クリーンアップ前）
         virtual void OnLateUpdate() {}
+
+        /// @brief 派生クラスでオーバーライドするシーン固有の解放処理
+        /// @note Feature の解放・GameObject のクリアより前に呼ばれる
+        virtual void OnFinalize() {}
 
         /// @brief 既定の無限地面（y=0 のグレータイル床）を自動生成するかどうか
         /// @return true で自動生成（既定）。床が不要／邪魔になるシーンだけ false を返す。
@@ -112,35 +116,14 @@ namespace CoreEngine
         /// @brief Gameビューに使用する3Dカメラ名を解決
         std::string ResolveGameViewCameraName() const;
 
-        /// @brief ライトのセットアップ
-        void SetupLight();
+        /// @brief 既定 Feature（ライト・グリッド・デバッグエディタ・コリジョン・環境・BGM）を登録
+        void RegisterDefaultFeatures();
 
-        /// @brief 既定の空（大気散乱モードの SkyBox）のセットアップ
-        /// @details OnInitialize() 完了後に呼ばれる。シーンが SkyBox を生成済みの場合は
-        ///          それを採用し、未生成の場合のみ大気散乱モードの SkyBox を自動生成する。
-        void SetupDefaultSky();
+        /// @brief Feature へ渡すコンテキストを最新化（gameViewCamera3D の再解決）
+        void RefreshFeatureContext();
 
-        /// @brief 既定の無限地面（y=0 のグレータイル床）のセットアップ
-        /// @details OnInitialize() 完了後に呼ばれる。シーンが InfiniteGroundObject を
-        ///          生成済みならそれを採用し、未生成かつ WantsDefaultGround()==true の
-        ///          場合のみ自動生成する。
-        void SetupDefaultGround();
-
-        /// @brief 既定の無限地面をカメラ XZ に追従させる（毎フレーム）
-        void UpdateGroundPlane();
-
-        /// @brief 大気散乱システムの毎フレーム更新
-        /// @details SkyBox が大気散乱モードの場合のみ AtmosphereManager へ太陽情報と
-        ///          カメラ情報を反映する（LUT 生成・Aerial Perspective の有効化トリガ）。
-        void UpdateAtmosphere();
-
-        /// @brief シャドウマップ用のライトView-Projection行列を更新
-        void UpdateLightViewProjection();
-
-#ifdef USE_IMGUI
-        /// @brief グリッドのセットアップ（デバッグビルドのみ）
-        void SetupGrid();
-#endif
+        /// @brief 全 Feature の Update を指定フェーズでディスパッチ
+        void DispatchUpdate(SceneUpdatePhase phase);
 
     protected:
         // 派生クラスからアクセス可能な共通メンバー
@@ -148,25 +131,20 @@ namespace CoreEngine
         std::unique_ptr<CameraManager> cameraManager_;
         DirectionalLightData* directionalLight_ = nullptr;
 
-        // シャドウマップ設定（派生クラスで調整可能）
-        static constexpr float kShadowLightDistance = 50.0f;  // ライトの距離
-        static constexpr float kShadowOrthoSize = 50.0f;      // 正射影範囲
-        static constexpr float kShadowNearPlane = 0.1f;       // 近平面
-        static constexpr float kShadowFarPlane = 100.0f;      // 遠平面
-
         // ゲームオブジェクト管理（新システム）
         GameObjectManager gameObjectManager_;
 
-        // コリジョン管理
-        CollisionConfig collisionConfig_;
-        CollisionManager collisionManager_{ &collisionConfig_ };
-
-#ifdef USE_IMGUI
-        // グリッドレンダラー（デバッグビルドのみ）
-        GridRenderer* gridRenderer_ = nullptr;
-#endif
-
         // === 派生クラス用ヘルパーメソッド ===
+
+        /// @brief シーン横断機能（Feature）を追加登録する
+        /// @details 各フックは priority 昇順（小さいほど先）・同 priority は登録順で呼ばれる。
+        ///          シーン初期化後（OnInitialize() 内など）に追加した場合は即座に
+        ///          Initialize が実行される。エンジン機能のシーン組み込みは
+        ///          BaseScene を編集せず Feature の追加で行うこと。
+        /// @param feature 登録する Feature（所有権は BaseScene へ移動）
+        /// @param priority フェーズ内優先度
+        /// @return 登録した Feature へのポインタ
+        ISceneFeature* AddFeature(std::unique_ptr<ISceneFeature> feature, int priority = 0);
 
         /// @brief GameObjectを生成して登録
         /// @tparam T GameObjectの派生クラス
@@ -190,9 +168,7 @@ namespace CoreEngine
         /// @param a レイヤーA
         /// @param b レイヤーB
         /// @param enable true:衝突判定有効 / false:衝突判定無効
-        void SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable = true) {
-            collisionConfig_.SetCollisionEnabled(a, b, enable);
-        }
+        void SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable = true);
 
         /// @brief シーン名を設定（JSON ファイルパスに使用）
         /// @note 派生クラスの Initialize()内、BaseScene::Initialize() の後に呼ぶ
@@ -213,29 +189,33 @@ namespace CoreEngine
         void SaveSingleObjectToJson(GameObject* obj);
 
         /// @brief シーンの SkyBox を取得（既定で大気散乱モード。SetTexture() でキューブマップへ切替）
-        SkyBoxObject* GetSkyBox() const { return skyBox_; }
+        SkyBoxObject* GetSkyBox() const;
 
         /// @brief シーンBGMを登録し、トランジション時の自動フェードを有効化
         /// @param bgm BGMのSoundResourceポインタ（現在のSetVolume()で設定した音量が使用されます）
         void RegisterSceneBGM(std::unique_ptr<SoundManager::SoundResource>* bgm);
 
     private:
-        // BGM管理用
-        std::unique_ptr<SoundManager::SoundResource>* sceneBGM_ = nullptr;
-        float baseBGMVolume_ = 1.0f;
+        /// @brief Feature の登録エントリ（priority 昇順・同 priority は登録順でソート済み）
+        struct FeatureEntry {
+            std::unique_ptr<ISceneFeature> feature;
+            int priority = 0;
+            uint64_t sequence = 0; ///< 登録順（同 priority の安定ソート用）
+        };
 
-        // 既定背景の SkyBox（所有権は gameObjectManager_。Finalize でポインタをクリアする）
-        SkyBoxObject* skyBox_ = nullptr;
+        std::vector<FeatureEntry> features_;
+        uint64_t featureSequence_ = 0;
+        bool featuresInitialized_ = false;
+        SceneContext featureContext_{};
 
-        // 既定の無限地面（所有権は gameObjectManager_。Finalize でポインタをクリアする）
-        InfiniteGroundObject* groundPlane_ = nullptr;
+        // 既定 Feature への型付き参照（所有権は features_。派生シーン互換 API の委譲先）
+        LightingFeature* lightingFeature_ = nullptr;
+        EnvironmentFeature* environmentFeature_ = nullptr;
+        CollisionFeature* collisionFeature_ = nullptr;
+        SceneBGMFeature* bgmFeature_ = nullptr;
 
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
-
-#ifdef USE_IMGUI
-        std::unique_ptr<SceneDebugEditor> debugEditor_;  // Undo/Redo・デバッグ編集機能
-#endif
 
         std::string gameViewCameraName_ = "Release";
     };

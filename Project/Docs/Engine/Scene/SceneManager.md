@@ -64,11 +64,12 @@ public:
         BaseScene::Draw();  // 必ず基底クラスの Draw を呼ぶ
     }
 
-    void Finalize() override {
-        // シーン固有の解放処理
+protected:
+    void OnFinalize() override {
+        // シーン固有の解放処理（Finalize() は final のためオーバーライド不可。
+        // 基底クラスの呼び出しは不要）
     }
 
-protected:
     void OnUpdate() override {
         // キーボード入力の取得
         auto keyboard = engine_->GetComponent<KeyboardInput>();
@@ -91,7 +92,9 @@ protected:
 | `OnUpdate()` | 毎フレーム（GameObject更新前） | ゲームロジックの更新 |
 | `OnLateUpdate()` | 毎フレーム（GameObject更新後） | 後処理（カメラ追従など） |
 | `Draw()` | 描画時 | 描画処理（`BaseScene::Draw()` を呼ぶこと） |
-| `Finalize()` | 終了時 | シーン固有のリソース解放 |
+| `OnFinalize()` | 終了時 | シーン固有のリソース解放（Feature 解放・GameObject クリアの前に呼ばれる） |
+
+※ `Initialize()` / `Update()` / `Finalize()` は final のためオーバーライドできません。対応する `OnXxx()` フックを使用してください。
 
 ### BaseScene のヘルパーメソッド
 
@@ -108,9 +111,43 @@ protected:
 |---------|-----|------|
 | `engine_` | `EngineSystem*` | エンジンシステムへのポインタ |
 | `cameraManager_` | `unique_ptr<CameraManager>` | カメラ管理 |
-| `directionalLight_` | `DirectionalLightData*` | ディレクショナルライト |
+| `directionalLight_` | `DirectionalLightData*` | ディレクショナルライト（LightingFeature が生成） |
 | `gameObjectManager_` | `GameObjectManager` | ゲームオブジェクト管理 |
-| `collisionManager_` | `CollisionManager` | コリジョン管理 |
+
+### シーン横断機能（SceneFeature）
+
+ライト・影・コリジョン・環境（SkyBox / 無限床 / 大気 / 雲）・グリッド・デバッグエディタ・BGM といった
+共通処理は `ISceneFeature`（`Engine/Src/Scene/Feature/`）としてモジュール化されており、
+BaseScene は登録された Feature を決まったフェーズでディスパッチするだけの薄いコンポーザーです。
+エンジン機能をシーンへ組み込む場合は **BaseScene を編集せず Feature を追加**します。
+
+```cpp
+class MyFeature : public CoreEngine::ISceneFeature {
+public:
+    const char* GetName() const override { return "My"; }
+
+    void Update(SceneContext& ctx, SceneUpdatePhase phase) override {
+        if (phase != SceneUpdatePhase::PostLogic) {
+            return;
+        }
+        // 毎フレーム処理（ctx.engine / ctx.gameObjectManager / ctx.gameViewCamera3D 等が使える）
+    }
+};
+
+// 既定 Feature に追加する場合は BaseScene::RegisterDefaultFeatures() に登録、
+// 特定シーンだけの場合は OnInitialize() 内で:
+AddFeature(std::make_unique<MyFeature>());
+```
+
+| `SceneUpdatePhase` | タイミング | 既定 Feature の例 |
+|---|---|---|
+| `FrameStart` | カメラ更新後・`OnUpdate()` 前 | ライト更新＋影LVP、グリッド、デバッグエディタ |
+| `PreObjectUpdate` | `OnUpdate()` 後・GameObject 更新前 | 無限床のカメラ追従 |
+| `PostObjectUpdate` | GameObject 更新後・`OnLateUpdate()` 前 | コリジョン収集→判定 |
+| `PostLogic` | `OnLateUpdate()` 後 | 大気散乱→雲の更新 |
+
+同一フェーズ内の実行順は `AddFeature(feature, priority)` の priority 昇順（同値は登録順）で、
+`RenderPipeline::AddPass` と同じ規約です。
 
 ---
 

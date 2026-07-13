@@ -649,6 +649,24 @@
     <ClCompile Include="Engine\Src\Scene\BaseScene.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\EnvironmentFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.cpp">
       <Filter>Application\Src\Scenes\ParticleTestScene</Filter>
     </ClCompile>
@@ -1713,6 +1731,27 @@
     <ClInclude Include="Engine\Src\Scene\BaseScene.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\ISceneFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\LightingFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\EnvironmentFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.h">
       <Filter>Application\Src\Scenes\ParticleTestScene</Filter>
     </ClInclude>
@@ -2535,6 +2574,9 @@
     </Filter>
     <Filter Include="Engine\Src\Scene">
       <UniqueIdentifier>{863EA1EF-7BCF-42DB-9258-C0D9FAE56DED}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Scene\Feature">
+      <UniqueIdentifier>{D4DC083E-4D17-492A-A32F-9CBA81EC3352}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Threading">
       <UniqueIdentifier>{BA947100-DF5F-4273-BD5F-45D5B7B58B7B}</UniqueIdentifier>
