@@ -62,45 +62,26 @@ void NoiseModule::ApplyNoise(Particle& particle, float deltaTime) {
 bool NoiseModule::ShowImGui() {
     bool changed = false;
 
-    // 有効/無効の切り替え
-    if (UI::Widgets::ToggleSwitch("有効##ノイズ", &enabled_)) {
-        changed = true;
-    }
+    UI::Hint("パーリンノイズで位置に揺らぎを加えます（煙・炎のゆらめき向け）");
 
-    if (!enabled_) {
-        ImGui::BeginDisabled();
-    }
-
-    ImGui::Text("パーリンノイズによる位置の揺らぎを追加します");
-    UI::Separator();
-
-    // 強度
     changed |= UI::DragFloat("強度", noiseData_.strength, 0.1f, 0.0f, 10.0f);
-    UI::Hint("ノイズの影響の大きさ");
+    UI::SameLine();
+    UI::HelpMarker("揺らぎの大きさ。0で無効と同じ。");
 
-    // 周波数
     changed |= UI::DragFloat("周波数", noiseData_.frequency, 0.01f, 0.01f, 5.0f);
-    UI::Hint("ノイズの細かさ（高いほど細かい揺らぎ）");
+    UI::SameLine();
+    UI::HelpMarker("揺らぎの細かさ。高いほど細かく震えます。");
 
-    // スクロール速度
     changed |= UI::DragFloat("スクロール速度", noiseData_.scrollSpeed, 0.1f, -10.0f, 10.0f);
-    UI::Hint("ノイズパターンの移動速度");
+    UI::SameLine();
+    UI::HelpMarker("ノイズパターン自体が流れる速さ。風に流される表現に使えます。");
 
-    UI::Separator();
+    changed |= UI::DragVec3("軸ごとの影響量", noiseData_.positionAmount, 0.1f, 0.0f, 5.0f);
+    UI::SameLine();
+    UI::HelpMarker("X/Y/Z軸それぞれへの揺らぎの配分。\n例: (1,0,1) で水平方向のみ揺らす。");
 
-    // 各軸の影響量
-    changed |= UI::DragVec3("軸別影響量", noiseData_.positionAmount, 0.1f, 0.0f, 5.0f);
-    UI::Hint("X, Y, Z軸それぞれのノイズ影響量");
-
-    UI::Separator();
-
-    // 減衰設定
-    changed |= UI::Widgets::ToggleSwitch("ライフタイム減衰", &noiseData_.damping);
-    UI::Hint("ONにすると、パーティクルの寿命に応じてノイズが減衰します");
-
-    if (!enabled_) {
-        ImGui::EndDisabled();
-    }
+    changed |= UI::Widgets::ToggleSwitch("寿命に応じて減衰", &noiseData_.damping);
+    UI::Tooltip("寿命の終わりに近づくほど揺らぎを弱めます");
 
     return changed;
 }

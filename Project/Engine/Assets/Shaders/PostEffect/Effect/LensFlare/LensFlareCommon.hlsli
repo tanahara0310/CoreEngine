@@ -1,5 +1,5 @@
 // LensFlareCommon.hlsli - レンズフレア共通定義
-// C++ 側 LensFlare::LensFlareConstants と 96 バイトレイアウトを一致させること。
+// C++ 側 LensFlare::LensFlareConstants と 112 バイトレイアウトを一致させること。
 
 #ifndef LENS_FLARE_COMMON_HLSLI
 #define LENS_FLARE_COMMON_HLSLI
@@ -32,6 +32,11 @@ cbuffer LensFlareParams : register(b0)
     float gApertureRotationRad; // 絞りの回転角 [rad]
     float gGhostRadius;         // ゴースト半径（アスペクト補正済み UV 単位）
     float gGhostPolygonMix;     // 多角形ゴーストの混在比率 [0,1]（0=円形、1=多角形）
+
+    // ===== 太陽限定化（CPU 側で毎フレーム設定） =====
+    float2 gSunUv;              // 太陽のスクリーン UV（画角外でも投影値が入る）
+    float gSunValid;            // 1=太陽が前方（投影有効）/ 0=無効（フレアを出さない）
+    float gSunMaskRadius;       // 輝度抽出を許可する太陽周辺の半径（アスペクト補正済み UV 単位）
 };
 
 static const float kLensFlarePi2 = 6.2831853f;

@@ -3,8 +3,10 @@
 #include "IGBufferRenderer.h"
 #include "GameObject/GameObject.h"
 #include "Particle/ParticleSystem.h"
+#include "Particle/Gpu/GpuParticleSystem.h"
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
+#include "Graphics/Render/Particle/GpuParticleRenderer.h"
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Model/IBLParameters.h"
@@ -482,6 +484,13 @@ namespace CoreEngine
                         modelParticleRenderer->Draw(particleSystem);
                     }
                 }
+                // GPUパーティクルの場合（CSディスパッチ + 描画をレンダラーに委託）
+                else if (cmd.passType == RenderPassType::GpuParticle) {
+                    if (auto* gpuParticleRenderer = static_cast<GpuParticleRenderer*>(currentRenderer)) {
+                        auto* gpuParticleSystem = static_cast<GpuParticleSystem*>(cmd.object);
+                        gpuParticleRenderer->DrawGpu(gpuParticleSystem);
+                    }
+                }
             }
         }
 
@@ -536,6 +545,7 @@ namespace CoreEngine
         passTypePriorities_[RenderPassType::ModelParticle] = 400;
         passTypePriorities_[RenderPassType::Line] = 500;
         passTypePriorities_[RenderPassType::Particle] = 600;
+        passTypePriorities_[RenderPassType::GpuParticle] = 650;
         passTypePriorities_[RenderPassType::Sprite] = 700;
         passTypePriorities_[RenderPassType::UI] = 800;       // UI は常に最後（最前面）
     }

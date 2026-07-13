@@ -511,30 +511,21 @@ namespace CoreEngine
     bool ShapeModule::ShowImGui() {
         bool changed = false;
 
-        if (UI::Widgets::ToggleSwitch("有効##形状", &enabled_)) {
-            changed = true;
-        }
-
-        if (!enabled_) {
-            ImGui::BeginDisabled();
-        }
-
-        UI::Separator();
-        ImGui::Text("形状設定");
-
         static const char* shapeTypeNames[] = {
         "点", "ボックス", "球体", "円", "コーン", "半球", "リング", "ライン", "円柱", "エッジ", "半円"
         };
         int currentShapeType = static_cast<int>(shapeData_.shapeType);
-        if (ImGui::Combo("形状タイプ", &currentShapeType, shapeTypeNames, IM_ARRAYSIZE(shapeTypeNames))) {
+        if (ImGui::Combo("形状", &currentShapeType, shapeTypeNames, IM_ARRAYSIZE(shapeTypeNames))) {
             shapeData_.shapeType = static_cast<ShapeType>(currentShapeType);
             changed = true;
         }
+        UI::SameLine();
+        UI::HelpMarker("パーティクルが生成される範囲の形。\n無効にするとエミッター位置の1点から放出されます。");
 
         // 形状ごとのパラメータ表示
         switch (shapeData_.shapeType) {
         case ShapeType::Point:
-            UI::Hint("点形状：単一の点から放出");
+            UI::Hint("エミッター位置の1点から放出します（追加設定なし）");
             break;
 
         case ShapeType::Box:
@@ -547,6 +538,8 @@ namespace CoreEngine
             changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
             if (shapeData_.shapeType == ShapeType::Sphere) {
                 changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &shapeData_.emitFromSurface);
+            } else {
+                UI::Hint("エッジ: 球の表面上から放出します");
             }
             break;
 
@@ -554,9 +547,9 @@ namespace CoreEngine
         case ShapeType::CircleHalf:
             changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
             {
-                const char* planeNames[] = { "XZ (地面)", "XY (垂直 Z固定)", "YZ (垂直 X固定)" };
+                const char* planeNames[] = { "XZ（地面と平行）", "XY（正面向き）", "YZ（横向き）" };
                 int curPlane = static_cast<int>(shapeData_.circlePlane);
-                if (ImGui::Combo("円の平面", &curPlane, planeNames, IM_ARRAYSIZE(planeNames))) {
+                if (ImGui::Combo("平面", &curPlane, planeNames, IM_ARRAYSIZE(planeNames))) {
                     shapeData_.circlePlane = static_cast<CirclePlane>(curPlane);
                     changed = true;
                 }
@@ -564,7 +557,7 @@ namespace CoreEngine
             break;
 
         case ShapeType::Cone:
-            changed |= UI::DragFloat("コーン角度", shapeData_.angle, 1.0f, 0.0f, 90.0f, "%.1f度");
+            changed |= UI::DragFloat("角度（度）", shapeData_.angle, 1.0f, 0.0f, 90.0f, "%.1f");
             changed |= UI::DragFloat("高さ", shapeData_.height, 0.1f, 0.1f, 20.0f);
             break;
 
@@ -577,9 +570,9 @@ namespace CoreEngine
             changed |= UI::DragFloat("外径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
             changed |= UI::DragFloat("内径", shapeData_.innerRadius, 0.1f, 0.0f, shapeData_.radius);
             {
-                const char* planeNames[] = { "XZ (地面)", "XY (垂直 Z固定)", "YZ (垂直 X固定)" };
+                const char* planeNames[] = { "XZ（地面と平行）", "XY（正面向き）", "YZ（横向き）" };
                 int curPlane = static_cast<int>(shapeData_.circlePlane);
-                if (ImGui::Combo("リングの平面", &curPlane, planeNames, IM_ARRAYSIZE(planeNames))) {
+                if (ImGui::Combo("平面", &curPlane, planeNames, IM_ARRAYSIZE(planeNames))) {
                     shapeData_.circlePlane = static_cast<CirclePlane>(curPlane);
                     changed = true;
                 }
@@ -598,20 +591,16 @@ namespace CoreEngine
             break;
         }
 
-        // 追加パラメータ
-        UI::Separator();
-        ImGui::Text("追加パラメータ");
-        changed |= UI::DragFloat("ランダム位置範囲", shapeData_.randomPositionRange, 0.01f, 0.0f, 2.0f);
+        changed |= UI::DragFloat("位置の追加ランダム", shapeData_.randomPositionRange, 0.01f, 0.0f, 2.0f);
+        UI::SameLine();
+        UI::HelpMarker("形状で決まった生成位置に、さらに各軸±この値のランダムなずれを加えます。");
 
-        // デバッグ描画
-        UI::Separator();
-        ImGui::Text("デバッグ表示");
-        if (UI::Widgets::ToggleSwitch("形状を表示", &debugDraw_)) {
-            changed = true;
-        }
-
-        if (!enabled_) {
-            ImGui::EndDisabled();
+        // デバッグ描画（形状のワイヤーフレーム表示はCPU版の描画パスのみ対応）
+        if (!gpuBackend_) {
+            if (UI::Widgets::ToggleSwitch("形状をシーンに表示", &debugDraw_)) {
+                changed = true;
+            }
+            UI::Tooltip("エミッター形状を緑のワイヤーフレームで表示します（デバッグ用）");
         }
 
         return changed;

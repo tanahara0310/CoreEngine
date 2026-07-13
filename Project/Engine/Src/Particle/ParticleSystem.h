@@ -44,6 +44,9 @@
 // プリセット管理
 #include "ParticlePresetManager.h"
 
+// CPU/GPU共通インターフェース
+#include "IParticleSystem.h"
+
 // 前方宣言
 class ICamera;
 namespace CoreEngine { class ModelResource; }
@@ -63,8 +66,8 @@ struct Particle {
     Vector3 rotationSpeed = { 0.0f, 0.0f, 0.0f };
 };
 
-/// @brief パーティクルシステムクラス
-class ParticleSystem : public GameObject {
+/// @brief パーティクルシステムクラス（CPU更新版。GPU版は Particle/Gpu/GpuParticleSystem）
+class ParticleSystem : public GameObject, public IParticleSystem {
 public:
     // GPU用の絶対的な最大インスタンス数（メモリ確保用）
     // 実際の最大パーティクル数はMainModule.maxParticlesで制御

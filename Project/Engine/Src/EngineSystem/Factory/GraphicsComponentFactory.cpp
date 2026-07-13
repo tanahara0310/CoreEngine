@@ -21,6 +21,7 @@
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
+#include "Graphics/Render/Particle/GpuParticleRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
@@ -125,6 +126,12 @@ namespace CoreEngine
         modelParticleRenderer->SetResourceFactory(resourcePtr);
         modelParticleRenderer->Initialize(dxPtr->GetDevice());
         renderManager->RegisterRenderer(RenderPassType::ModelParticle, std::move(modelParticleRenderer));
+
+        // GpuParticleRendererの作成と登録
+        auto gpuParticleRenderer = std::make_unique<GpuParticleRenderer>();
+        gpuParticleRenderer->SetResourceFactory(resourcePtr);
+        gpuParticleRenderer->Initialize(dxPtr->GetDevice());
+        renderManager->RegisterRenderer(RenderPassType::GpuParticle, std::move(gpuParticleRenderer));
 
         // LineRendererPipelineの作成と登録
         auto lineRendererPipeline = std::make_unique<LineRendererPipeline>();

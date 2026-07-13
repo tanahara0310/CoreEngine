@@ -63,9 +63,18 @@ public:
         /// 実レンズは絞り面共役の位置にできるゴーストだけが多角形になり、それ以外はボケた円形になる
         /// ため、両方混在する 0.5〜0.8 程度が最も写実的。
         float ghostPolygonMix = 0.85f;
+
+        // ===== 太陽限定化（SetSunScreenPosition で毎フレーム設定） =====
+        /// 太陽のスクリーン UV。輝度抽出をこの周辺に限定することで、加算パーティクル等の
+        /// 高輝度オブジェクトがフレア源になるのを防ぐ（フレアは太陽からのみ発生）。
+        float sunUv[2] = { 0.5f, 0.5f };
+        float sunValid = 0.0f;        ///< 1=太陽が前方（有効）/ 0=無効（フレアなし）
+        /// 抽出を許可する太陽周辺の半径（アスペクト補正済み UV 単位）。
+        /// 太陽ディスク＋芯グレアを覆う程度。大きくしすぎるとミー散乱オーラまで源になる。
+        float sunMaskRadius = 0.12f;
     };
-    static_assert(sizeof(LensFlareConstants) == 96,
-        "LensFlareConstants は HLSL 側 LensFlareParams の 96 バイトレイアウトと一致させること");
+    static_assert(sizeof(LensFlareConstants) == 112,
+        "LensFlareConstants は HLSL 側 LensFlareParams の 112 バイトレイアウトと一致させること");
 
 public:
     LensFlare() = default;
@@ -83,6 +92,16 @@ public:
 
     const LensFlareConstants& GetParams() const { return params_; }
     void SetParams(const LensFlareConstants& params) { params_ = params; }
+
+    /// @brief 太陽のスクリーン位置を設定（毎フレーム、描画パイプラインから呼ばれる）
+    /// @param u 太陽のスクリーン UV.x
+    /// @param v 太陽のスクリーン UV.y
+    /// @param valid 太陽がカメラ前方にある場合 true（false でフレア無効）
+    void SetSunScreenPosition(float u, float v, bool valid) {
+        params_.sunUv[0] = u;
+        params_.sunUv[1] = v;
+        params_.sunValid = valid ? 1.0f : 0.0f;
+    }
 
 protected:
     std::string  GetEffectName()        const override { return "LensFlare"; }

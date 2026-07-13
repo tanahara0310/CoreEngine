@@ -405,6 +405,12 @@ namespace CoreEngine
             UI::SliderFloat("ソフトニー", params_.softKnee, 0.0f, 1.0f);
             UI::SliderFloat("最大輝度クランプ", params_.maxBrightness, 1.0f, 256.0f);
             ImGui::ColorEdit3("ティント", params_.tint);
+            UI::SliderFloat("太陽マスク半径", params_.sunMaskRadius, 0.02f, 0.4f);
+            ImGui::TextWrapped(
+                "フレア源は太陽スクリーン位置の周辺のみ（太陽限定）。"
+                "パーティクル等の高輝度オブジェクトはフレアを起こさない。");
+            ImGui::Text("太陽UV: (%.3f, %.3f) %s", params_.sunUv[0], params_.sunUv[1],
+                params_.sunValid > 0.5f ? "有効" : "無効(後方/情報なし)");
             ImGui::TreePop();
         }
         if (ImGui::TreeNode("ゴースト")) {

@@ -56,50 +56,38 @@ void VelocityModule::ApplyInitialVelocity(Particle& particle) {
 bool VelocityModule::ShowImGui() {
     bool changed = false;
 
-    // 有効/無効の切り替え
-    if (UI::Widgets::ToggleSwitch("有効##速度", &enabled_)) {
-        changed = true;
+    UI::Hint("パーティクルが飛んでいく「方向」を決めます（速さはメインの「速度」で設定）");
+
+    // 方向モード選択
+    if (ImGui::RadioButton("ランダム方向", velocityData_.useRandomDirection)) {
+        if (!velocityData_.useRandomDirection) {
+            velocityData_.useRandomDirection = true;
+            changed = true;
+        }
+    }
+    UI::SameLine();
+    if (ImGui::RadioButton("指定方向", !velocityData_.useRandomDirection)) {
+        if (velocityData_.useRandomDirection) {
+            velocityData_.useRandomDirection = false;
+            changed = true;
+        }
     }
 
-    if (!enabled_) {
-        ImGui::BeginDisabled();
-    }
+    if (velocityData_.useRandomDirection) {
+        // ランダムモード: 軸ごとの広がりのみ意味を持つ
+        changed |= UI::DragVec3("軸ごとの広がり", velocityData_.randomSpeedRange, 0.1f, 0.0f, 5.0f);
+        UI::SameLine();
+        UI::HelpMarker("ランダム方向に各軸±この値の偏りを加えます。\n例: Yだけ大きくすると上下方向へ飛びやすくなります。\n(0,0,0) で全方向に均等。");
+    } else {
+        // 指定方向モード
+        if (UI::DragVec3("方向", velocityData_.startSpeed, 0.01f, -1.0f, 1.0f)) {
+            changed = true;
+        }
+        UI::SameLine();
+        UI::HelpMarker("全パーティクルがこの方向へ飛びます。\n長さは自動的に1に正規化されるため、比率だけが意味を持ちます。");
 
-    UI::Hint("注意: 速度の大きさはMainModuleのstartSpeedで設定してください");
-    ImGui::Text("このモジュールは速度の方向のみを決定します。");
-    UI::Separator();
-
-    // 速度方向の編集（-1.0 ～ 1.0 に制限）
-    if (UI::DragVec3("速度方向", velocityData_.startSpeed, 0.01f, -1.0f, 1.0f)) {
-        changed = true;
-    }
-    UI::Hint("（自動的に正規化されます）");
-
-    // 正規化後の値を表示（読み取り専用）
-    Vector3 normalized = Vector::Normalize(velocityData_.startSpeed);
-    float length = Vector::Length(velocityData_.startSpeed);
-    
-    // 色付きで表示（正規化されていることを強調）
-    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), 
-           "正規化後: (%.3f, %.3f, %.3f)", 
-        normalized.x, normalized.y, normalized.z);
-    UI::Hint("実際にパーティクルに適用される方向（大きさ1.0）");
-
-    // 大きさを表示
-    ImGui::Text("入力ベクトルの大きさ: %.3f", length);
-    UI::Hint("正規化により1.0になります");
-
-    UI::Separator();
-    ImGui::Text("ランダム設定");
-    
-    changed |= UI::DragVec3("方向ランダム範囲", velocityData_.randomSpeedRange, 0.1f, 0.0f, 5.0f);
-    UI::Hint("方向に揺らぎを加えます（正規化後に適用）");
-    
-    changed |= UI::Widgets::ToggleSwitch("完全ランダム方向", &velocityData_.useRandomDirection);
-    UI::Hint("ONにすると、設定した方向を無視してランダムな方向になります");
-
-    if (!enabled_) {
-        ImGui::EndDisabled();
+        Vector3 normalized = Vector::Normalize(velocityData_.startSpeed);
+        UI::HintF("正規化後: (%.2f, %.2f, %.2f)", normalized.x, normalized.y, normalized.z);
     }
 
     return changed;

@@ -2,6 +2,7 @@
 #include "MainModule.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImguiManager.h"
@@ -131,84 +132,76 @@ float MainModule::ApplyRandomness(float base, float randomness) const {
 bool MainModule::ShowImGui() {
     bool changed = false;
 
-    // 有効/無効の切り替え
-    if (UI::Widgets::ToggleSwitch("有効##Main", &enabled_)) {
-        changed = true;
-    }
+    // ===== システム =====
+    UI::SectionHeader("システム");
 
-    if (!enabled_) {
-        ImGui::BeginDisabled();
-    }
+    changed |= UI::DragFloat("継続時間（秒）", mainData_.duration, 0.1f, 0.1f, 60.0f, "%.1f");
+    UI::SameLine();
+    UI::HelpMarker(
+        "エミッターが1サイクル動作する時間。\n"
+        "ループONの場合はこの時間ごとに繰り返します。\n"
+        "個々の粒の寿命は下の「寿命」で設定します。\n"
+        "注意: バースト時刻がこの時間を超えていると、継続時間の終了時に強制発火します。");
 
-    // システム設定
-    UI::Separator();
-    ImGui::Text("システム設定");
-    
-    changed |= UI::DragFloat("持続時間", mainData_.duration, 0.1f, 0.1f, 60.0f, "%.1f秒");
-    UI::Hint("パーティクルシステム全体の動作時間");
-    UI::Hint("注意: バーストタイミングがこの時間を超える場合、");
-    UI::Hint("   持続時間到達時に強制的にバーストが発生します");
-    
     changed |= UI::Widgets::ToggleSwitch("ループ", &mainData_.looping);
-    UI::Hint("持続時間後に自動的にリセットして再開");
-    
-    changed |= UI::Widgets::ToggleSwitch("起動時に再生", &mainData_.playOnAwake);
-    
-    changed |= ImGui::DragInt("最大パーティクル数", reinterpret_cast<int*>(&mainData_.maxParticles), 10, 1, 10000);
+    UI::Tooltip("継続時間の終了後、自動的に最初から繰り返します");
 
-    // シミュレーション空間
+    changed |= UI::Widgets::ToggleSwitch("起動時に再生", &mainData_.playOnAwake);
+    UI::Tooltip("シーン開始時に自動的に再生を始めます");
+
     {
-        const char* spaceNames[] = { "ローカル", "ワールド" };
+        int maxParticles = static_cast<int>(mainData_.maxParticles);
+        const int hardLimit = (capacityLimit_ > 0) ? static_cast<int>(capacityLimit_) : 100000;
+        if (ImGui::DragInt("最大パーティクル数", &maxParticles, 10, 1, hardLimit)) {
+            mainData_.maxParticles = static_cast<uint32_t>(std::clamp(maxParticles, 1, hardLimit));
+            changed = true;
+        }
+        if (capacityLimit_ > 0) {
+            UI::SameLine();
+            char help[128];
+            std::snprintf(help, sizeof(help),
+                "同時に存在できる粒子数の上限。\nこのシステムのバッファ容量は %u です（それ以上は設定しても反映されません）。",
+                capacityLimit_);
+            UI::HelpMarker(help);
+        }
+    }
+
+    {
+        const char* spaceNames[] = { "ローカル（エミッターに追従）", "ワールド（放出後は独立）" };
         int currentSpace = static_cast<int>(mainData_.simulationSpace);
         if (ImGui::Combo("シミュレーション空間", &currentSpace, spaceNames, IM_ARRAYSIZE(spaceNames))) {
             mainData_.simulationSpace = static_cast<SimulationSpace>(currentSpace);
             changed = true;
         }
-        UI::Hint("ローカル: エミッターに追従 / ワールド: 独立");
     }
 
-    // 初期寿命
-    UI::Separator();
-    ImGui::Text("初期寿命");
-    changed |= UI::DragFloat("寿命", mainData_.startLifetime, 0.1f, 0.01f, 10.0f, "%.2f秒");
-    UI::Hint("各パーティクルが消えるまでの時間");
-    UI::Hint("注意: 持続時間（duration）とは別の設定です");
-    
-    changed |= UI::SliderFloat("ランダム性##Lifetime", mainData_.startLifetimeRandomness, 0.0f, 1.0f, "%.2f");
+    // ===== パーティクル初期値（Unityの Start～ に相当） =====
+    UI::SectionHeader("パーティクル初期値");
 
-    // 初期速度
-    UI::Separator();
-    ImGui::Text("初期速度");
+    changed |= UI::DragFloat("寿命（秒）", mainData_.startLifetime, 0.1f, 0.01f, 10.0f, "%.2f");
+    UI::SameLine();
+    UI::HelpMarker("粒1つが生成されてから消えるまでの時間。\n上の「継続時間」（エミッター全体の動作時間）とは別の設定です。");
+    changed |= UI::SliderFloat("寿命ランダム幅", mainData_.startLifetimeRandomness, 0.0f, 1.0f, "%.2f");
+
     changed |= UI::DragFloat("速度", mainData_.startSpeed, 0.1f, 0.0f, 50.0f, "%.1f");
-    changed |= UI::SliderFloat("ランダム性##Speed", mainData_.startSpeedRandomness, 0.0f, 1.0f, "%.2f");
+    UI::SameLine();
+    UI::HelpMarker("放出時の速さ（大きさ）。飛ぶ方向は「初速方向」モジュールで設定します。");
+    changed |= UI::SliderFloat("速度ランダム幅", mainData_.startSpeedRandomness, 0.0f, 1.0f, "%.2f");
 
-    // 初期サイズ
-    UI::Separator();
-    ImGui::Text("初期サイズ");
     changed |= UI::DragVec3("サイズ", mainData_.startSize, 0.1f, 0.1f, 10.0f);
-    changed |= UI::SliderFloat("ランダム性##Size", mainData_.startSizeRandomness, 0.0f, 1.0f, "%.2f");
+    changed |= UI::SliderFloat("サイズランダム幅", mainData_.startSizeRandomness, 0.0f, 1.0f, "%.2f");
 
-    // 初期回転
-    UI::Separator();
-    ImGui::Text("初期回転");
     changed |= UI::DragVec3("回転（度）", mainData_.startRotation, 1.0f, -180.0f, 180.0f);
-    changed |= UI::SliderFloat("ランダム性##Rotation", mainData_.startRotationRandomness, 0.0f, 1.0f, "%.2f");
+    changed |= UI::SliderFloat("回転ランダム幅", mainData_.startRotationRandomness, 0.0f, 1.0f, "%.2f");
 
-    // 初期色
-    UI::Separator();
-    ImGui::Text("初期色");
     changed |= UI::ColorEdit("色", mainData_.startColor);
-    changed |= UI::SliderFloat("ランダム性##Color", mainData_.startColorRandomness, 0.0f, 1.0f, "%.2f");
+    changed |= UI::SliderFloat("色ランダム幅", mainData_.startColorRandomness, 0.0f, 1.0f, "%.2f");
 
-    // 重力
-    UI::Separator();
-    ImGui::Text("物理設定");
-    changed |= UI::DragFloat("重力の影響", mainData_.gravityModifier, 0.1f, -2.0f, 2.0f, "%.1f");
-    UI::Hint("0.0=無効, 1.0=通常, 負の値=上昇");
-
-    if (!enabled_) {
-        ImGui::EndDisabled();
-    }
+    // ===== 物理 =====
+    UI::SectionHeader("物理");
+    changed |= UI::DragFloat("重力係数", mainData_.gravityModifier, 0.1f, -2.0f, 2.0f, "%.1f");
+    UI::SameLine();
+    UI::HelpMarker("「外力」モジュールの重力に掛かる係数。\n0.0 = 重力なし / 1.0 = 通常 / 負の値 = 逆方向（上昇）");
 
     return changed;
 }

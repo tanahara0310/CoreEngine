@@ -1,6 +1,15 @@
 #include "pch.h"
 #include "ParticlePresetManager.h"
-#include "ParticleSystem.h"
+#include "IParticleSystem.h"
+#include "Modules/MainModule.h"
+#include "Modules/EmissionModule.h"
+#include "Modules/ShapeModule.h"
+#include "Modules/VelocityModule.h"
+#include "Modules/ColorModule.h"
+#include "Modules/ForceModule.h"
+#include "Modules/SizeModule.h"
+#include "Modules/RotationModule.h"
+#include "Modules/NoiseModule.h"
 #include <filesystem>
 #include <iostream>
 
@@ -19,7 +28,7 @@
 
 namespace CoreEngine
 {
-bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, const std::string& filePath)
+bool ParticlePresetManager::SavePreset(IParticleSystem* particleSystem, const std::string& filePath)
 {
     json presetData;
 
@@ -31,7 +40,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     presetData["blendMode"] = static_cast<int>(particleSystem->GetBlendMode());
 
     // MainModuleの保存
-    auto& mainModule = const_cast<ParticleSystem*>(particleSystem)->GetMainModule();
+    auto& mainModule = particleSystem->GetMainModule();
     auto mainData = mainModule.GetMainData();
     json mainJson;
     mainJson["duration"] = mainData.duration;
@@ -53,7 +62,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     presetData["main"] = mainJson;
 
     // EmissionModuleの保存
-    auto& emissionModule = const_cast<ParticleSystem*>(particleSystem)->GetEmissionModule();
+    auto& emissionModule = particleSystem->GetEmissionModule();
     auto emissionData = emissionModule.GetEmissionData();
     json emissionJson;
     emissionJson["rateOverTime"] = emissionData.rateOverTime;
@@ -62,7 +71,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     presetData["emission"] = emissionJson;
 
     // ShapeModuleの保存
-    auto& shapeModule = const_cast<ParticleSystem*>(particleSystem)->GetShapeModule();
+    auto& shapeModule = particleSystem->GetShapeModule();
     auto shapeData = shapeModule.GetShapeData();
     json shapeJson;
     shapeJson["shapeType"] = static_cast<int>(shapeData.shapeType);
@@ -78,7 +87,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     presetData["shape"] = shapeJson;
 
     // VelocityModuleの保存
-    auto& velocityModule = const_cast<ParticleSystem*>(particleSystem)->GetVelocityModule();
+    auto& velocityModule = particleSystem->GetVelocityModule();
     auto velocityData = velocityModule.GetVelocityData();
     json velocityJson;
     velocityJson["startSpeed"] = JsonManager::Vector3ToJson(velocityData.startSpeed);
@@ -87,7 +96,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     presetData["velocity"] = velocityJson;
 
     // ColorModuleの保存
-    auto& colorModule = const_cast<ParticleSystem*>(particleSystem)->GetColorModule();
+    auto& colorModule = particleSystem->GetColorModule();
     auto colorData = colorModule.GetColorData();
     json colorJson;
     colorJson["endColor"] = JsonManager::Vector4ToJson(colorData.endColor);
@@ -95,7 +104,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     presetData["color"] = colorJson;
 
     // ForceModuleの保存
-    auto& forceModule = const_cast<ParticleSystem*>(particleSystem)->GetForceModule();
+    auto& forceModule = particleSystem->GetForceModule();
     auto forceData = forceModule.GetForceData();
     json forceJson;
     forceJson["gravity"] = JsonManager::Vector3ToJson(forceData.gravity);
@@ -108,7 +117,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     presetData["force"] = forceJson;
 
     // SizeModuleの保存
-    auto& sizeModule = const_cast<ParticleSystem*>(particleSystem)->GetSizeModule();
+    auto& sizeModule = particleSystem->GetSizeModule();
     auto sizeData = sizeModule.GetSizeData();
     json sizeJson;
     sizeJson["endSize"] = sizeData.endSize;
@@ -122,7 +131,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     presetData["size"] = sizeJson;
 
     // RotationModuleの保存
-    auto& rotationModule = const_cast<ParticleSystem*>(particleSystem)->GetRotationModule();
+    auto& rotationModule = particleSystem->GetRotationModule();
     auto rotationData = rotationModule.GetRotationData();
     json rotationJson;
     rotationJson["rotationSpeed"] = JsonManager::Vector3ToJson(rotationData.rotationSpeed);
@@ -142,7 +151,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     presetData["rotation"] = rotationJson;
 
     // NoiseModuleの保存
-    auto& noiseModule = const_cast<ParticleSystem*>(particleSystem)->GetNoiseModule();
+    auto& noiseModule = particleSystem->GetNoiseModule();
     auto noiseData = noiseModule.GetNoiseData();
     json noiseJson;
     noiseJson["strength"] = noiseData.strength;
@@ -171,7 +180,7 @@ bool ParticlePresetManager::SavePreset(const ParticleSystem* particleSystem, con
     return success;
 }
 
-bool ParticlePresetManager::LoadPreset(ParticleSystem* particleSystem, const std::string& filePath)
+bool ParticlePresetManager::LoadPreset(IParticleSystem* particleSystem, const std::string& filePath)
 {
     // ファイルが存在するかチェック
     if (!JsonManager::GetInstance().FileExists(filePath)) {
@@ -380,170 +389,177 @@ std::vector<std::string> ParticlePresetManager::GetPresetList(const std::string&
     return fileList;
 }
 
-void ParticlePresetManager::ShowImGui(ParticleSystem* particleSystem)
+void ParticlePresetManager::ShowImGui(IParticleSystem* particleSystem)
 {
 #ifdef USE_IMGUI
-    if (ImGui::CollapsingHeader("プリセット管理")) {
-        // キーボードショートカット: Ctrl+S で上書き保存
-        if (!currentPresetPath_.empty() && ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_S)) {
-            if (SaveCurrentPreset(particleSystem)) {
-                ImGui::OpenPopup("上書き保存成功");
-            } else {
-                ImGui::OpenPopup("上書き保存失敗");
-            }
+    ImGui::PushID(this);
+
+    // キーボードショートカット: Ctrl+S で上書き保存（ウィンドウがフォーカスされている時のみ）
+    if (!currentPresetPath_.empty() &&
+        ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+        ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_S, false)) {
+        const bool ok = SaveCurrentPreset(particleSystem);
+        SetStatus(ok ? "上書き保存しました: " + currentPresetName_
+                     : "上書き保存に失敗しました", !ok);
+    }
+
+    // ── ツールバー行: プリセット名 + 保存/読み込みボタン ──
+    if (currentPresetPath_.empty()) {
+        ImGui::TextDisabled("プリセット: なし");
+    } else {
+        ImGui::Text("プリセット:");
+        UI::SameLine();
+        ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.4f, 1.0f), "%s", currentPresetName_.c_str());
+        UI::Tooltip(currentPresetPath_.c_str());
+    }
+
+    // 上書き保存（プリセット未読み込み時は無効）
+    {
+        UI::Scope::DisabledScope ds(currentPresetPath_.empty());
+        if (ImGui::Button("上書き保存")) {
+            const bool ok = SaveCurrentPreset(particleSystem);
+            SetStatus(ok ? "上書き保存しました: " + currentPresetName_
+                         : "上書き保存に失敗しました", !ok);
         }
+        UI::Tooltip("現在のプリセットファイルに保存します（Ctrl+S）");
+    }
 
-        // 現在読み込まれているプリセット情報を表示
-        if (!currentPresetPath_.empty()) {
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "現在のプリセット: %s", currentPresetName_.c_str());
-            ImGui::Text("パス: %s", currentPresetPath_.c_str());
+    UI::SameLine();
+    if (ImGui::Button("別名で保存...")) {
+        ImGui::OpenPopup("PresetSaveAsPopup");
+    }
 
-            // 上書き保存ボタン
-            if (ImGui::Button("上書き保存 (Ctrl+S)", ImVec2(200, 0))) {
-                if (SaveCurrentPreset(particleSystem)) {
-                    ImGui::OpenPopup("上書き保存成功");
-                } else {
-                    ImGui::OpenPopup("上書き保存失敗");
-                }
-            }
+    UI::SameLine();
+    if (ImGui::Button("読み込む...")) {
+        UpdatePresetFileList();
+        needUpdateFileList_ = false;
+        ImGui::OpenPopup("PresetLoadPopup");
+    }
 
-            UI::SameLine();
-
-            // プリセットをクリア
-            if (ImGui::Button("プリセットをクリア", ImVec2(150, 0))) {
-                currentPresetPath_.clear();
-                currentPresetName_.clear();
-            }
-
-            UI::Separator();
-        } else {
-            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.0f, 1.0f), "現在のプリセット: なし");
-            UI::Separator();
-        }
-
-        // 上書き保存成功ポップアップ
-        if (ImGui::BeginPopupModal("上書き保存成功", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("プリセットを上書き保存しました。");
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-
-        // 上書き保存失敗ポップアップ
-        if (ImGui::BeginPopupModal("上書き保存失敗", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("プリセットの上書き保存に失敗しました。");
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-
+    // ── 別名保存ポップアップ ──
+    if (auto popup = UI::Scope::PopupScope("PresetSaveAsPopup")) {
+        ImGui::Text("プリセットを保存");
         UI::Separator();
 
-        // ディレクトリパス設定
-        ImGui::Text("保存先ディレクトリ");
-        if (UI::InputText("##Directory", directoryPathBuffer_, sizeof(directoryPathBuffer_))) {
+        UI::InputTextWithHint("ファイル名", "例: Fire01", saveFileNameBuffer_, sizeof(saveFileNameBuffer_));
+        if (UI::InputText("保存先", directoryPathBuffer_, sizeof(directoryPathBuffer_))) {
             needUpdateFileList_ = true;
         }
 
-        UI::Separator();
-
-        // 保存セクション
-        ImGui::Text("=== 保存 ===");
-        UI::InputText("ファイル名", saveFileNameBuffer_, sizeof(saveFileNameBuffer_));
-
-        if (ImGui::Button("プリセットを保存", ImVec2(200, 0))) {
-            std::string fileName = std::string(saveFileNameBuffer_);
-            if (!fileName.empty()) {
-                // 拡張子がない場合は追加
+        const bool nameEmpty = (saveFileNameBuffer_[0] == '\0');
+        {
+            UI::Scope::DisabledScope ds(nameEmpty);
+            if (ImGui::Button("保存", ImVec2(120, 0))) {
+                std::string fileName = saveFileNameBuffer_;
                 if (fileName.find(".json") == std::string::npos) {
                     fileName += ".json";
                 }
 
-            std::string fullPath = std::string(directoryPathBuffer_) + fileName;
+                // ディレクトリが存在しない場合は作成
+                JsonManager::GetInstance().CreateJsonDirectory(directoryPathBuffer_);
 
-            // ディレクトリが存在しない場合は作成
-            JsonManager::GetInstance().CreateJsonDirectory(directoryPathBuffer_);
-
-            if (SavePreset(particleSystem, fullPath)) {
-                    ImGui::OpenPopup("保存成功");
-                } else {
-                    ImGui::OpenPopup("保存失敗");
-                }
+                const std::string fullPath = BuildPresetPath(fileName);
+                const bool ok = SavePreset(particleSystem, fullPath);
+                SetStatus(ok ? "保存しました: " + fileName
+                             : "保存に失敗しました: " + fileName, !ok);
+                ImGui::CloseCurrentPopup();
             }
         }
-
-        if (auto m = UI::Scope::ModalScope("保存成功", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("プリセットを保存しました。");
-            if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+        UI::SameLine();
+        if (ImGui::Button("キャンセル", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
         }
+    }
 
-        if (auto m = UI::Scope::ModalScope("保存失敗", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("プリセットの保存に失敗しました。");
-            if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
-        }
-
+    // ── 読み込みポップアップ ──
+    if (auto popup = UI::Scope::PopupScope("PresetLoadPopup")) {
+        ImGui::Text("プリセットを読み込み");
         UI::Separator();
 
-        // 読み込みセクション
-        ImGui::Text("=== 読み込み ===");
-
-        // ファイルリスト更新ボタン
-        if (ImGui::Button("リストを更新") || needUpdateFileList_) {
+        if (UI::InputText("フォルダ", directoryPathBuffer_, sizeof(directoryPathBuffer_))) {
+            needUpdateFileList_ = true;
+        }
+        UI::SameLine();
+        if (ImGui::Button("更新") || needUpdateFileList_) {
             UpdatePresetFileList();
             needUpdateFileList_ = false;
         }
 
-        // プリセットファイルリスト表示
-        if (!presetFileList_.empty()) {
-            if (auto child = UI::Scope::ChildScope("PresetList", ImVec2(0, 150), ImGuiChildFlags_Border)) {
-                for (size_t i = 0; i < presetFileList_.size(); ++i) {
-                    bool isSelected = (selectedPresetIndex_ == static_cast<int>(i));
-                    if (ImGui::Selectable(GetFileNameWithoutExtension(presetFileList_[i]).c_str(), isSelected)) {
-                        selectedPresetIndex_ = static_cast<int>(i);
-                    }
-                }
-            }
-
-            // 選択中のファイルを表示
-            if (selectedPresetIndex_ >= 0 && selectedPresetIndex_ < static_cast<int>(presetFileList_.size())) {
-                ImGui::Text("選択: %s", presetFileList_[selectedPresetIndex_].c_str());
-
-                if (ImGui::Button("プリセットを読み込む", ImVec2(200, 0))) {
-                    std::string fullPath = std::string(directoryPathBuffer_) + presetFileList_[selectedPresetIndex_];
-                    if (LoadPreset(particleSystem, fullPath)) {
-                        ImGui::OpenPopup("読み込み成功");
-                    } else {
-                        ImGui::OpenPopup("読み込み失敗");
-                    }
-                }
-            }
+        if (presetFileList_.empty()) {
+            UI::Hint("プリセットファイルが見つかりません");
         } else {
-            ImGui::Text("プリセットファイルが見つかりません。");
-        }
+            if (auto child = UI::Scope::ChildScope("PresetList", ImVec2(320, 180), ImGuiChildFlags_Border)) {
+                for (size_t i = 0; i < presetFileList_.size(); ++i) {
+                    const bool isSelected = (selectedPresetIndex_ == static_cast<int>(i));
+                    if (ImGui::Selectable(GetFileNameWithoutExtension(presetFileList_[i]).c_str(), isSelected,
+                        ImGuiSelectableFlags_AllowDoubleClick)) {
+                        selectedPresetIndex_ = static_cast<int>(i);
 
-        // 読み込み成功ポップアップ
-        if (ImGui::BeginPopupModal("読み込み成功", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("プリセットを読み込みました。");
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
+                        // ダブルクリックで即読み込み
+                        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                            const std::string fullPath = BuildPresetPath(presetFileList_[i]);
+                            const bool ok = LoadPreset(particleSystem, fullPath);
+                            SetStatus(ok ? "読み込みました: " + presetFileList_[i]
+                                         : "読み込みに失敗しました: " + presetFileList_[i], !ok);
+                            ImGui::CloseCurrentPopup();
+                        }
+                    }
+                }
+            }
+            UI::Hint("ダブルクリックで読み込み");
+
+            const bool hasSelection =
+                (selectedPresetIndex_ >= 0 && selectedPresetIndex_ < static_cast<int>(presetFileList_.size()));
+            {
+                UI::Scope::DisabledScope ds(!hasSelection);
+                if (ImGui::Button("読み込む", ImVec2(120, 0)) && hasSelection) {
+                    const std::string& fileName = presetFileList_[selectedPresetIndex_];
+                    const std::string fullPath = BuildPresetPath(fileName);
+                    const bool ok = LoadPreset(particleSystem, fullPath);
+                    SetStatus(ok ? "読み込みました: " + fileName
+                                 : "読み込みに失敗しました: " + fileName, !ok);
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            UI::SameLine();
+            if (ImGui::Button("キャンセル", ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
             }
-            ImGui::EndPopup();
-        }
-
-        // 読み込み失敗ポップアップ
-        if (ImGui::BeginPopupModal("読み込み失敗", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("プリセットの読み込みに失敗しました。");
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
         }
     }
+
+    // ── 操作結果の一時表示 ──
+    if (!statusMessage_.empty() && ImGui::GetTime() < statusExpireTime_) {
+        const ImVec4 color = statusIsError_
+            ? ImVec4(0.95f, 0.4f, 0.35f, 1.0f)
+            : ImVec4(0.3f, 0.9f, 0.4f, 1.0f);
+        ImGui::TextColored(color, "%s", statusMessage_.c_str());
+    }
+
+    ImGui::PopID();
 #else
     (void)particleSystem; // 未使用警告を抑制
 #endif // USE_IMGUI
+}
+
+void ParticlePresetManager::SetStatus(const std::string& message, bool isError)
+{
+#ifdef USE_IMGUI
+    statusMessage_ = message;
+    statusIsError_ = isError;
+    statusExpireTime_ = ImGui::GetTime() + 4.0; // 4秒間表示
+#else
+    (void)message; (void)isError;
+#endif
+}
+
+std::string ParticlePresetManager::BuildPresetPath(const std::string& fileName) const
+{
+    std::string dir = directoryPathBuffer_;
+    if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') {
+        dir += '/';
+    }
+    return dir + fileName;
 }
 
 void ParticlePresetManager::UpdatePresetFileList()
@@ -561,7 +577,7 @@ std::string ParticlePresetManager::GetFileNameWithoutExtension(const std::string
     return filename;
 }
 
-bool ParticlePresetManager::SaveCurrentPreset(ParticleSystem* particleSystem)
+bool ParticlePresetManager::SaveCurrentPreset(IParticleSystem* particleSystem)
 {
     if (currentPresetPath_.empty()) {
         return false;
