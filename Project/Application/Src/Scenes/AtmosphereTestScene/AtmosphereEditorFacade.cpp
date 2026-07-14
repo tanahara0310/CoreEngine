@@ -105,6 +105,15 @@ void AtmosphereEditorFacade::DrawContent()
         if (changed) {
             ApplySunSettings(settings);
         }
+
+        // 太陽直接光への大気透過率適用（UE の Transmittance on light color 相当）。
+        // OFF にすると従来どおり日没後も地表が昼の明るさのまま照らされる
+        if (auto* atmosphereManager = GetAtmosphereManager()) {
+            bool transmittanceOnLight = atmosphereManager->IsTransmittanceOnLightEnabled();
+            if (ImGui::Checkbox("直接光へ透過率を適用", &transmittanceOnLight)) {
+                atmosphereManager->SetTransmittanceOnLightEnabled(transmittanceOnLight);
+            }
+        }
     }
 
     // ===== 大気パラメータ =====
@@ -186,6 +195,8 @@ void AtmosphereEditorFacade::DrawContent()
             ImGui::Text("太陽ライト方向: (%.3f, %.3f, %.3f)", sunDir.x, sunDir.y, sunDir.z);
             ImGui::Text("太陽ライト有効: %s", atmosphereManager->HasSunLight() ? "true" : "false");
             ImGui::Text("太陽光強度: %.2f", atmosphereManager->GetSunIntensity());
+            const Vector3& sunTrans = atmosphereManager->GetSunTransmittance();
+            ImGui::Text("太陽透過率（地表）: (%.3f, %.3f, %.3f)", sunTrans.x, sunTrans.y, sunTrans.z);
             ImGui::Text("カメラ高度（地表基準）: %.2f m", atmosphereManager->GetCameraHeightAboveGround());
             ImGui::Text("惑星中心距離: %.1f m", atmosphereManager->GetDistanceFromPlanetCenter());
             ImGui::Text("LUT再計算要求: %s", atmosphereManager->IsLUTDirty() ? "true" : "false");

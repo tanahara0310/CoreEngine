@@ -10,12 +10,20 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace CoreEngine
 {
     namespace {
         constexpr float kMetersToKm = 1.0f / 1000.0f;
         constexpr float kPerMeterToPerKm = 1000.0f;
+
+        /// @brief HLSL の smoothstep と同じ（エルミート補間）
+        float SmoothStep(float edge0, float edge1, float x)
+        {
+            const float t = std::clamp((x - edge0) / std::max(edge1 - edge0, 1e-6f), 0.0f, 1.0f);
+            return t * t * (3.0f - 2.0f * t);
+        }
 
         D3D12_RESOURCE_DESC MakeLUTTexture2DDesc(uint32_t width, uint32_t height, DXGI_FORMAT format)
         {
@@ -562,8 +570,98 @@ namespace CoreEngine
             lastCameraRadius_ = distanceFromPlanetCenter_;
         }
 
+        // ===== 太陽直接光の大気透過率（Transmittance on Light） =====
+        // 地表→太陽の透過率で太陽ライトの実効色を変調する（UE の Atmosphere Sun Light 相当）。
+        // authored なライトデータは書き換えず、LightManager が GPU 転送時のコピーへ適用する
+        // （直接書き換えると翌フレームに減衰済みの色を再度読み、フィードバックで光が消えていく）。
+        // ライトの GPU 転送（FrameStart）は本 Update（PostLogic）より先に走るため反映は
+        // 1 フレーム遅延だが、太陽方向は連続的にしか変化しないため知覚できない。
+        sunTransmittance_ = ComputeSunTransmittanceCPU();
+        if (lightManager) {
+            lightManager->SetAtmosphereSunTransmittance(
+                transmittanceOnLight_ ? sunTransmittance_ : Vector3{ 1.0f, 1.0f, 1.0f });
+        }
+
         // ===== 定数バッファ更新 =====
         UploadConstants();
+    }
+
+    Vector3 AtmosphereManager::ComputeSunTransmittanceCPU() const
+    {
+        if (!hasSunLight_) {
+            return { 1.0f, 1.0f, 1.0f };
+        }
+
+        // 単位系は HLSL 側（AtmosphereCommon.hlsli）と同じ km / 1_km
+        const float planetRadiusKm = parameters_.planetRadius * kMetersToKm;
+        const float topRadiusKm = parameters_.atmosphereTopRadius * kMetersToKm;
+        const float radiusKm = planetRadiusKm + 0.002f; // 地表 +2m（地表すれすれの特異点回避）
+
+        // 評価点は (0, radiusKm, 0)。太陽天頂角余弦は toSun.y に一致する
+        const Vector3 toSun = { -sunDirection_.x, -sunDirection_.y, -sunDirection_.z };
+        const float mu = toSun.y;
+
+        // 惑星本体による遮蔽（HLSL PlanetSunVisibility と同一式）。
+        // 太陽は角半径を持つため、地平線を跨ぐ間は smoothstep で滑らかに減衰する
+        const float cosHorizon = -std::sqrt(std::max(0.0f,
+            1.0f - (planetRadiusKm * planetRadiusKm) / (radiusKm * radiusKm)));
+        const float softness = std::max(
+            parameters_.sunDiskAngularRadiusDeg * 3.14159265358979323846f / 180.0f, 1e-4f);
+        const float visibility = SmoothStep(cosHorizon - softness, cosHorizon + softness, mu);
+        if (visibility <= 0.0f) {
+            return { 0.0f, 0.0f, 0.0f };
+        }
+
+        // 大気圏上端までの距離（評価点は大気圏内なので正の根が必ず存在する）
+        const float b = radiusKm * mu;
+        const float c = radiusKm * radiusKm - topRadiusKm * topRadiusKm;
+        const float tTop = -b + std::sqrt(std::max(0.0f, b * b - c));
+        if (tTop <= 0.0f) {
+            return { visibility, visibility, visibility };
+        }
+
+        // 係数を 1/km へ変換（UploadConstants と同じ変換）
+        const Vector3 rayleigh = {
+            parameters_.rayleighScattering.x * kPerMeterToPerKm,
+            parameters_.rayleighScattering.y * kPerMeterToPerKm,
+            parameters_.rayleighScattering.z * kPerMeterToPerKm };
+        const float mieExtinction =
+            (parameters_.mieScattering + parameters_.mieAbsorption) * kPerMeterToPerKm;
+        const Vector3 ozone = {
+            parameters_.ozoneAbsorption.x * kPerMeterToPerKm,
+            parameters_.ozoneAbsorption.y * kPerMeterToPerKm,
+            parameters_.ozoneAbsorption.z * kPerMeterToPerKm };
+        const float rayleighScaleHeightKm = std::max(parameters_.rayleighScaleHeight * kMetersToKm, 1e-3f);
+        const float mieScaleHeightKm = std::max(parameters_.mieScaleHeight * kMetersToKm, 1e-3f);
+        const float ozoneCenterKm = parameters_.ozoneLayerCenter * kMetersToKm;
+        const float ozoneHalfWidthKm = std::max(parameters_.ozoneLayerHalfWidth * kMetersToKm, 1e-3f);
+
+        // 光学的深度の数値積分（HLSL ComputeTransmittanceToSunRayMarch と同じ中点則 40 ステップ）
+        constexpr int kStepCount = 40;
+        const float dt = tTop / kStepCount;
+        Vector3 opticalDepth = { 0.0f, 0.0f, 0.0f };
+        for (int i = 0; i < kStepCount; ++i) {
+            const float t = (static_cast<float>(i) + 0.5f) * dt;
+            const float px = toSun.x * t;
+            const float py = radiusKm + toSun.y * t;
+            const float pz = toSun.z * t;
+            const float heightKm = std::max(
+                std::sqrt(px * px + py * py + pz * pz) - planetRadiusKm, 0.0f);
+
+            const float densityRayleigh = std::exp(-heightKm / rayleighScaleHeightKm);
+            const float densityMie = std::exp(-heightKm / mieScaleHeightKm);
+            const float densityOzone = std::clamp(
+                1.0f - std::abs(heightKm - ozoneCenterKm) / ozoneHalfWidthKm, 0.0f, 1.0f);
+
+            opticalDepth.x += (rayleigh.x * densityRayleigh + mieExtinction * densityMie + ozone.x * densityOzone) * dt;
+            opticalDepth.y += (rayleigh.y * densityRayleigh + mieExtinction * densityMie + ozone.y * densityOzone) * dt;
+            opticalDepth.z += (rayleigh.z * densityRayleigh + mieExtinction * densityMie + ozone.z * densityOzone) * dt;
+        }
+
+        return {
+            std::exp(-opticalDepth.x) * visibility,
+            std::exp(-opticalDepth.y) * visibility,
+            std::exp(-opticalDepth.z) * visibility };
     }
 
     void AtmosphereManager::UploadConstants()

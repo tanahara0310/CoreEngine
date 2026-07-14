@@ -111,6 +111,22 @@ namespace CoreEngine
         ///         無ければメインライト（インデックス0）へフォールバック、それも無ければ nullptr
         DirectionalLightData* GetAtmosphereSunLight();
 
+        /// @brief 太陽ライトへ適用する大気透過率を設定する（AtmosphereManager が毎フレーム呼ぶ）
+        /// @details authored なライトデータは変更せず、GPU 転送時のコピーの color へ乗算される
+        ///          （UE の Transmittance on light color 相当）。大気非アクティブ時は {1,1,1}。
+        void SetAtmosphereSunTransmittance(const Vector3& transmittance) {
+            atmosphereSunTransmittance_ = transmittance;
+        }
+
+        /// @brief 太陽ライトへ適用中の大気透過率を取得する
+        const Vector3& GetAtmosphereSunTransmittance() const { return atmosphereSunTransmittance_; }
+
+        /// @brief 大気透過率を適用した実効色（RGB）を取得する
+        /// @details GPU 転送値と同じ色。CPU 側でライト色を直接参照する箇所
+        ///          （水面コースティクス等）はこれを使うことで日没の減光・赤方偏移に追従する。
+        ///          大気の太陽でないライトはそのままの色を返す。
+        Vector3 GetEffectiveLightColorRGB(const DirectionalLightData& light) const;
+
         /// @brief 全てのライトをクリア（シーン切り替え時に使用）
         void ClearAllLights();
 
@@ -121,10 +137,16 @@ namespace CoreEngine
         Matrix4x4 CalculateMainDirectionalLightViewProjection(const Vector3& sceneCenter, float sceneRadius);
 
     private:
+        /// @brief GetAtmosphereSunLight と同じ選択規則の const 版（透過率の適用先判定に共用）
+        const DirectionalLightData* FindAtmosphereSunLight() const;
+
         std::vector<DirectionalLightData> directionalLights_;
         std::vector<PointLightData> pointLights_;
         std::vector<SpotLightData> spotLights_;
         std::vector<AreaLightData> areaLights_;
+
+        /// @brief 太陽ライトの GPU 転送色へ乗算する大気透過率（大気非アクティブ時は {1,1,1}）
+        Vector3 atmosphereSunTransmittance_ = { 1.0f, 1.0f, 1.0f };
 
         LightBufferManager bufferManager_;
         LightDebugVisualizer debugVisualizer_;

@@ -124,6 +124,16 @@ namespace CoreEngine
         /// @brief 有効な太陽ライトが取得できているか
         bool HasSunLight() const { return hasSunLight_; }
 
+        /// @brief 地表から太陽方向への大気透過率（惑星遮蔽込み。Update() で毎フレーム計算）
+        /// @details 昼はほぼ白、夕方は赤方偏移、日没後はゼロへ滑らかに減衰する。
+        ///          太陽ディレクショナルライトの実効色の変調（UE の Transmittance on light color 相当）に使う。
+        const Vector3& GetSunTransmittance() const { return sunTransmittance_; }
+
+        /// @brief 太陽直接光への透過率適用（Transmittance on Light）の有効/無効
+        /// @details 無効時は LightManager へ {1,1,1} を渡す（＝従来動作）。既定は有効。
+        void SetTransmittanceOnLightEnabled(bool enabled) { transmittanceOnLight_ = enabled; }
+        bool IsTransmittanceOnLightEnabled() const { return transmittanceOnLight_; }
+
         /// @brief カメラの地表からの高度 [m]
         float GetCameraHeightAboveGround() const { return cameraHeightAboveGround_; }
 
@@ -189,6 +199,12 @@ namespace CoreEngine
         /// @brief 現在のパラメータ・太陽情報から定数バッファを更新する
         void UploadConstants();
 
+        /// @brief 地表から太陽方向への大気透過率を計算する（CPU レイマーチ 40 ステップ）
+        /// @details HLSL 側 AtmosphereCommon.hlsli の ComputeExtinction / PlanetSunVisibility の忠実な移植。
+        ///          評価点は地表（groundLevelY 相当）+2m。シーンのオブジェクトを照らす光の減衰なので
+        ///          カメラ高度ではなく地表基準で評価する。
+        Vector3 ComputeSunTransmittanceCPU() const;
+
         /// @brief LUT テクスチャと SRV/UAV を生成する
         bool CreateLUTResources(ID3D12Device* device, DescriptorManager* descriptorManager);
 
@@ -240,6 +256,8 @@ namespace CoreEngine
         bool hasSunLight_ = false;
         float cameraHeightAboveGround_ = 0.0f;
         float distanceFromPlanetCenter_ = 6360000.0f;
+        Vector3 sunTransmittance_ = { 1.0f, 1.0f, 1.0f }; ///< 地表→太陽の大気透過率（惑星遮蔽込み）
+        bool transmittanceOnLight_ = true; ///< 太陽直接光へ透過率を適用するか（Transmittance on Light）
 
         bool paramsDirty_ = true;   ///< 大気パラメータ変更 → 全 LUT 再生成
         bool skyViewDirty_ = true;  ///< 太陽方向・カメラ高度変更 → Sky-View LUT のみ再生成
