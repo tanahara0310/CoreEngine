@@ -154,16 +154,22 @@ private:
     D3D12_RESOURCE_STATES brightBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     D3D12_GPU_DESCRIPTOR_HANDLE brightSrvHandle_{};
     D3D12_GPU_DESCRIPTOR_HANDLE brightUavHandle_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE brightSrvCpuHandle_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE brightUavCpuHandle_{};
 
     Microsoft::WRL::ComPtr<ID3D12Resource> featureBuffer_;  ///< ゴースト/ハロー（最終フレア）
     D3D12_RESOURCE_STATES featureBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     D3D12_GPU_DESCRIPTOR_HANDLE featureSrvHandle_{};
     D3D12_GPU_DESCRIPTOR_HANDLE featureUavHandle_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE featureSrvCpuHandle_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE featureUavCpuHandle_{};
 
     Microsoft::WRL::ComPtr<ID3D12Resource> blurBuffer_;     ///< ブラー中間（水平パス結果）
     D3D12_RESOURCE_STATES blurBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
     D3D12_GPU_DESCRIPTOR_HANDLE blurSrvHandle_{};
     D3D12_GPU_DESCRIPTOR_HANDLE blurUavHandle_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE blurSrvCpuHandle_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE blurUavCpuHandle_{};
 
     /// 支配的な光源の UV 位置（1x1・R32G32_FLOAT）。ゴーストへ絞り羽根形状の
     /// マスクを正しい位置に合わせて重ねるための前段検出結果。

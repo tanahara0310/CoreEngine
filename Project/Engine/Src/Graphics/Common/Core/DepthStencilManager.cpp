@@ -66,6 +66,11 @@ namespace CoreEngine
         // リソースを再作成
         CreateDepthStencilResource();
 
+        // 再作成したリソースの初期状態は DEPTH_WRITE。
+        // 旧リソースの追跡状態を引き継ぐと次のバリアで Before 状態不一致
+        // (D3D12 ERROR #527) となりデバッグレイヤーがブレークするため必ずリセットする
+        currentState_ = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
         // 既存のハンドルでDSVを更新
         UpdateDepthStencilView();
 

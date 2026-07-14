@@ -531,8 +531,8 @@ namespace CoreEngine
         uavDesc.Format = desc.Format;
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        descriptorManager_->CreateUAV(apResult_.Get(), uavDesc, cpuHandle, apResultUavHandle_, "AtmosphereAerialPerspectiveUAV");
+        // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
+        descriptorManager_->CreateOrUpdateUAV(apResult_.Get(), uavDesc, apResultUavCpuHandle_, apResultUavHandle_, "AtmosphereAerialPerspectiveUAV");
 
         return true;
     }

@@ -84,6 +84,31 @@ void DescriptorManager::CreateUAV(ID3D12Resource* resource, const D3D12_UNORDERE
     device_->CreateUnorderedAccessView(resource, nullptr, &desc, outCpuDesc);
 }
 
+void DescriptorManager::CreateOrUpdateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc,
+    D3D12_CPU_DESCRIPTOR_HANDLE& ioCpuDesc,
+    D3D12_GPU_DESCRIPTOR_HANDLE& ioGpuDesc,
+    const std::string& debugName)
+{
+    if (ioCpuDesc.ptr != 0) {
+        // 確保済みスロットへビューだけ書き直す（リサイズ時のスロットリーク防止）
+        device_->CreateShaderResourceView(resource, &desc, ioCpuDesc);
+        return;
+    }
+    CreateSRV(resource, desc, ioCpuDesc, ioGpuDesc, debugName);
+}
+
+void DescriptorManager::CreateOrUpdateUAV(ID3D12Resource* resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc,
+    D3D12_CPU_DESCRIPTOR_HANDLE& ioCpuDesc,
+    D3D12_GPU_DESCRIPTOR_HANDLE& ioGpuDesc,
+    const std::string& debugName)
+{
+    if (ioCpuDesc.ptr != 0) {
+        device_->CreateUnorderedAccessView(resource, nullptr, &desc, ioCpuDesc);
+        return;
+    }
+    CreateUAV(resource, desc, ioCpuDesc, ioGpuDesc, debugName);
+}
+
 void DescriptorManager::CreateCBV(const D3D12_CONSTANT_BUFFER_VIEW_DESC& desc,
     D3D12_CPU_DESCRIPTOR_HANDLE& outCpuDesc,
     D3D12_GPU_DESCRIPTOR_HANDLE& outGpuDesc,

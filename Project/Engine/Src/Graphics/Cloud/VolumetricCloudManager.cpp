@@ -512,9 +512,9 @@ namespace CoreEngine
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = cloudDesc.Format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-            descriptorManager_->CreateSRV(cloudBuffer_.Get(), srvDesc, cpuHandle, cloudBufferSrvHandle_, "CloudBufferSRV");
-            descriptorManager_->CreateUAV(cloudBuffer_.Get(), uavDesc, cpuHandle, cloudBufferUavHandle_, "CloudBufferUAV");
+            // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
+            descriptorManager_->CreateOrUpdateSRV(cloudBuffer_.Get(), srvDesc, cloudBufferSrvCpuHandle_, cloudBufferSrvHandle_, "CloudBufferSRV");
+            descriptorManager_->CreateOrUpdateUAV(cloudBuffer_.Get(), uavDesc, cloudBufferUavCpuHandle_, cloudBufferUavHandle_, "CloudBufferUAV");
         }
 
         // ===== 半解像度ゴッドレイバッファ（CloudBuffer と同サイズ・同フォーマット） =====
@@ -538,9 +538,8 @@ namespace CoreEngine
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = cloudDesc.Format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-            descriptorManager_->CreateSRV(godRayBuffer_.Get(), srvDesc, cpuHandle, godRayBufferSrvHandle_, "GodRayBufferSRV");
-            descriptorManager_->CreateUAV(godRayBuffer_.Get(), uavDesc, cpuHandle, godRayBufferUavHandle_, "GodRayBufferUAV");
+            descriptorManager_->CreateOrUpdateSRV(godRayBuffer_.Get(), srvDesc, godRayBufferSrvCpuHandle_, godRayBufferSrvHandle_, "GodRayBufferSRV");
+            descriptorManager_->CreateOrUpdateUAV(godRayBuffer_.Get(), uavDesc, godRayBufferUavCpuHandle_, godRayBufferUavHandle_, "GodRayBufferUAV");
         }
 
         // ===== 合成用中間テクスチャ（SceneColor と同サイズ・同フォーマット, UAV） =====
@@ -561,8 +560,7 @@ namespace CoreEngine
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = compositeDesc.Format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-            descriptorManager_->CreateUAV(compositeResult_.Get(), uavDesc, cpuHandle, compositeResultUavHandle_, "CloudCompositeUAV");
+            descriptorManager_->CreateOrUpdateUAV(compositeResult_.Get(), uavDesc, compositeResultUavCpuHandle_, compositeResultUavHandle_, "CloudCompositeUAV");
         }
 
         targetsWidth_ = halfW;

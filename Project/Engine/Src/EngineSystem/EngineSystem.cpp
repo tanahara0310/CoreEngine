@@ -281,7 +281,10 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
 
 #ifdef USE_IMGUI
-        const UINT currentFrameIndex = dx ? dx->GetSwapChain()->GetCurrentBackBufferIndex() : 0;
+        // プロファイラのリングスロットは記録中フレームインデックスに合わせる
+        // （スワップチェーンのインデックスはリサイズで 0 にリセットされるため使わない）
+        const UINT currentFrameIndex =
+            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0;
         if (debug) debug->BeginRenderPipeline(cmdList, currentFrameIndex);
 #endif
 
@@ -353,7 +356,7 @@ namespace CoreEngine
         // フレームの最終処理（バックバッファ終了、コマンド実行、Present）
         // FinalizeFrame 内で SignalFrame されるフレームインデックスを事前に取得する
         const UINT currentFrameIndexForFlush =
-            (dx && dx->GetSwapChain()) ? dx->GetSwapChain()->GetCurrentBackBufferIndex() : 0;
+            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0;
 
         if (render) {
             render->FinalizeFrame();

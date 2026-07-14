@@ -43,6 +43,16 @@ public:
     /// @brief 特定のフレームのコマンドアロケータを取得
     ID3D12CommandAllocator* GetCommandAllocator(UINT frameIndex) const { return commandAllocators_[frameIndex].Get(); }
 
+    /// @brief 現在コマンドリストが記録中のフレームインデックスを取得
+    /// @details アロケータ/フェンスのローテーションはこの値を使う。
+    ///          スワップチェーンの GetCurrentBackBufferIndex() は ResizeBuffers で
+    ///          0 にリセットされるため、アロケータ選択に使うと実行中アロケータを
+    ///          Reset してしまう（D3D12 ERROR #552）。
+    UINT GetRecordingFrameIndex() const { return recordingFrameIndex_; }
+
+    /// @brief 記録中フレームインデックスを設定（FinalizeFrame でのローテーション用）
+    void SetRecordingFrameIndex(UINT index) { recordingFrameIndex_ = index % frameCount_; }
+
 private:
     /// @brief コマンド関連の初期化
     void InitializeCommand();
@@ -64,6 +74,9 @@ private:
     Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator_; // レガシー用（後方互換性）
     std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> commandAllocators_; // フレームごとのアロケータ
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList_;
+
+    // 現在記録中のフレームインデックス（スワップチェーンとは独立にローテーション）
+    UINT recordingFrameIndex_ = 0;
 
     // フェンス & イベント
     Microsoft::WRL::ComPtr<ID3D12Fence> fence_;

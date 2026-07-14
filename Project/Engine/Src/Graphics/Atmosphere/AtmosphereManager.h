@@ -349,6 +349,7 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> apResult_;
         D3D12_RESOURCE_STATES apResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_GPU_DESCRIPTOR_HANDLE apResultUavHandle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE apResultUavCpuHandle_{};
         uint64_t apResultWidth_ = 0;
         uint32_t apResultHeight_ = 0;
         DescriptorManager* descriptorManager_ = nullptr;

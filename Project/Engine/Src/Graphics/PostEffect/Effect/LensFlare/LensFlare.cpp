@@ -172,12 +172,14 @@ namespace CoreEngine
             D3D12_RESOURCE_STATES& state;
             D3D12_GPU_DESCRIPTOR_HANDLE& srv;
             D3D12_GPU_DESCRIPTOR_HANDLE& uav;
+            D3D12_CPU_DESCRIPTOR_HANDLE& srvCpu;
+            D3D12_CPU_DESCRIPTOR_HANDLE& uavCpu;
             const char* name;
         };
         Target targets[] = {
-            { brightBuffer_,  brightBufferState_,  brightSrvHandle_,  brightUavHandle_,  "LensFlareBright" },
-            { featureBuffer_, featureBufferState_, featureSrvHandle_, featureUavHandle_, "LensFlareFeature" },
-            { blurBuffer_,    blurBufferState_,    blurSrvHandle_,    blurUavHandle_,    "LensFlareBlur" },
+            { brightBuffer_,  brightBufferState_,  brightSrvHandle_,  brightUavHandle_,  brightSrvCpuHandle_,  brightUavCpuHandle_,  "LensFlareBright" },
+            { featureBuffer_, featureBufferState_, featureSrvHandle_, featureUavHandle_, featureSrvCpuHandle_, featureUavCpuHandle_, "LensFlareFeature" },
+            { blurBuffer_,    blurBufferState_,    blurSrvHandle_,    blurUavHandle_,    blurSrvCpuHandle_,    blurUavCpuHandle_,    "LensFlareBlur" },
         };
 
         for (Target& t : targets) {
@@ -200,9 +202,9 @@ namespace CoreEngine
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = desc.Format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-            descriptorManager->CreateSRV(t.tex.Get(), srvDesc, cpuHandle, t.srv, (std::string(t.name) + "SRV").c_str());
-            descriptorManager->CreateUAV(t.tex.Get(), uavDesc, cpuHandle, t.uav, (std::string(t.name) + "UAV").c_str());
+            // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
+            descriptorManager->CreateOrUpdateSRV(t.tex.Get(), srvDesc, t.srvCpu, t.srv, (std::string(t.name) + "SRV").c_str());
+            descriptorManager->CreateOrUpdateUAV(t.tex.Get(), uavDesc, t.uavCpu, t.uav, (std::string(t.name) + "UAV").c_str());
         }
 
         targetsWidth_ = flareW;

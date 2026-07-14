@@ -109,6 +109,15 @@ namespace CoreEngine
         if (gBufferManager_) {
             gBufferManager_->Resize(width, height);
         }
+
+        // RTシャドウ出力はフレーム先頭で Blackboard に登録されるため、
+        // Dispatch 中の遅延再作成に任せず、この時点（GPU アイドル保証済み）で
+        // 新サイズへ再作成しておく（旧リソースへのバリア発行を防ぐ）
+        if (rtShadowManager_) {
+            rtShadowManager_->ResizeAllExisting(
+                static_cast<UINT>(width), static_cast<UINT>(height));
+        }
+
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext::OnWindowResize: %dx%d にリサイズ完了\n", width, height);
     }
