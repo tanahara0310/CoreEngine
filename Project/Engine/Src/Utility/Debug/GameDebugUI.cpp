@@ -3,12 +3,14 @@
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/DockingUI.h"
+#include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include <imgui.h>
 
 #include <algorithm>
+#include <cctype>
 #include <iterator>
 
 
@@ -54,8 +56,8 @@ namespace CoreEngine
                 return;
             }
         }
-        // Camera Editorをエンジンパネルとして登録（独立ウィンドウ、他パネルと統一）
-        RegisterEnginePanel("Camera Editor", std::move(callback));
+        // Camera Editorを作業用ツールとして登録（Toolsメニューから開くフローティングウィンドウ）
+        RegisterEnginePanel("Camera Editor", std::move(callback), EnginePanelCategory::Tools);
     }
 
     void GameDebugUI::RegisterAppEditor(const std::string& label, std::function<void()> drawer)
@@ -74,16 +76,40 @@ namespace CoreEngine
         engineEditors_.push_back({ label, std::move(drawer), false });
     }
 
-    void GameDebugUI::RegisterEnginePanel(const std::string& label, std::function<void()> drawer)
+    void GameDebugUI::RegisterEnginePanel(const std::string& label, std::function<void()> drawer,
+        EnginePanelCategory category)
     {
         for (auto& p : enginePanels_) {
-            if (p.label == label) { p.drawer = std::move(drawer); return; }
+            if (p.label == label) { p.drawer = std::move(drawer); p.category = category; return; }
         }
-        enginePanels_.push_back({ label, std::move(drawer), false });
+        enginePanels_.push_back({ label, std::move(drawer), false, category });
+        // Settings は Engine Settings ウィンドウ内のセクション、Tools はフローティングで開くため
+        // どちらもドッキングシステムへは登録しない
+    }
 
-        // ドッキングシステムにウィンドウを登録
-        if (dockingUI_) {
-            dockingUI_->RegisterWindow(label, DockArea::Right);
+    void GameDebugUI::RegisterEnvironmentEditor(const std::string& label, const void* owner,
+        std::function<void()> drawer)
+    {
+        for (auto& e : environmentEditors_) {
+            if (e.label == label) {
+                e.owner = owner;
+                e.drawer = std::move(drawer);
+                return;
+            }
+        }
+        environmentEditors_.push_back({ label, owner, std::move(drawer) });
+    }
+
+    void GameDebugUI::UnregisterEnvironmentEditor(const std::string& label, const void* owner)
+    {
+        // owner が一致する場合のみ解除する。
+        // シーン切り替えで「新シーンの登録 → 旧シーンの破棄」の順になっても
+        // 新シーンの登録を旧シーンのデストラクタが消してしまわないようにするため。
+        std::erase_if(environmentEditors_, [&](const EnvironmentEntry& e) {
+            return e.label == label && e.owner == owner;
+        });
+        if (selectedEnvironmentLabel_ == label && !FindSelectedEnvironmentEntry()) {
+            selectedEnvironmentLabel_.clear();
         }
     }
 
@@ -116,13 +142,46 @@ namespace CoreEngine
         pixCapture_.ProcessPendingCapture();
 
         if (ImGui::BeginMainMenuBar()) {
-            if (ImGui::BeginMenu("Debug")) {
-                ImGui::Checkbox("Console", &showConsole_);
+            // Window メニュー：常設パネルの表示トグルと Engine Settings
+            if (ImGui::BeginMenu("Window")) {
+                ImGui::MenuItem("Hierarchy", nullptr, &showHierarchy_);
+                ImGui::MenuItem("Inspector", nullptr, &showInspector_);
+                ImGui::MenuItem("Console", nullptr, &showConsole_);
+
+                ImGui::Separator();
+                ImGui::MenuItem("Engine Settings", nullptr, &showEngineSettings_);
+
+                if (!appEditors_.empty()) {
+                    ImGui::Separator();
+                    for (auto& entry : appEditors_) {
+                        ImGui::MenuItem(entry.label.c_str(), nullptr, &entry.visible);
+                    }
+                }
                 ImGui::EndMenu();
             }
 
-            // Window Manager パネルの開閉トグル
-            ImGui::MenuItem("Window", nullptr, &showEditorSwitcher_);
+            // Tools メニュー：作業用ツールウィンドウ（フローティング）
+            if (ImGui::BeginMenu("Tools")) {
+                for (auto& p : enginePanels_) {
+                    if (p.category != EnginePanelCategory::Tools) continue;
+                    ImGui::MenuItem(p.label.c_str(), nullptr, &p.visible);
+                }
+                ImGui::EndMenu();
+            }
+
+            // Debug メニュー：エンジン統計（Inspectorタブ）とデバッグパネル
+            if (ImGui::BeginMenu("Debug")) {
+                if (ImGui::BeginMenu("Engine Stats")) {
+                    for (auto& entry : engineEditors_) {
+                        ImGui::MenuItem(entry.label.c_str(), nullptr, &entry.visible);
+                    }
+                    ImGui::EndMenu();
+                }
+                for (auto& p : engineDebugPanels_) {
+                    ImGui::MenuItem(p.label.c_str(), nullptr, &p.visible);
+                }
+                ImGui::EndMenu();
+            }
 
             // Capture メニュー（右端に配置）
             float captureMenuWidth = ImGui::CalcTextSize("Capture").x + ImGui::GetStyle().ItemSpacing.x * 4.0f;
@@ -166,7 +225,7 @@ namespace CoreEngine
         DrawInspectorPanel();
         DrawEnginePanels();
         DrawEngineDebugPanels();
-        DrawEditorSwitcherPanel();
+        DrawEngineSettingsWindow();
 
         if (showConsole_) ShowConsoleUI();
 
@@ -183,9 +242,12 @@ namespace CoreEngine
 
     void GameDebugUI::DrawHierarchyPanel()
     {
+        if (!showHierarchy_) return;
+
         if (auto w = UI::Scope::WindowScope("Hierarchy")) {
                 if (auto tabBar = UI::Scope::TabBarScope("##HierarchyTabs")) {
                     if (auto tab = UI::Scope::TabItemScope("Objects")) {
+                        DrawEnvironmentTree();
                         if (hierarchyContentDrawer_) {
                             hierarchyContentDrawer_();
                         } else {
@@ -199,13 +261,54 @@ namespace CoreEngine
             }
     }
 
+    void GameDebugUI::DrawEnvironmentTree()
+    {
+        if (environmentEditors_.empty()) return;
+
+        if (ImGui::TreeNodeEx("Environment",
+            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+            for (const auto& entry : environmentEditors_) {
+                const bool selected = (entry.label == selectedEnvironmentLabel_);
+                if (ImGui::Selectable(entry.label.c_str(), selected)) {
+                    selectedEnvironmentLabel_ = entry.label;
+                    // Inspector の表示先を一意にするため、シーンオブジェクトの選択は解除する
+                    if (sceneDebugEditor_) {
+                        sceneDebugEditor_->ClearSelection();
+                    }
+                }
+            }
+            ImGui::TreePop();
+        }
+        ImGui::Separator();
+    }
+
+    const GameDebugUI::EnvironmentEntry* GameDebugUI::FindSelectedEnvironmentEntry() const
+    {
+        if (selectedEnvironmentLabel_.empty()) return nullptr;
+        for (const auto& entry : environmentEditors_) {
+            if (entry.label == selectedEnvironmentLabel_) return &entry;
+        }
+        return nullptr;
+    }
+
     void GameDebugUI::DrawInspectorPanel()
     {
+        if (!showInspector_) return;
+
         if (auto w = UI::Scope::WindowScope("Inspector")) {
             if (auto tabBar = UI::Scope::TabBarScope("##InspectorTabs", ImGuiTabBarFlags_AutoSelectNewTabs)) {
                 // Object タブ（常時表示、閉じるボタンなし）
+                // 環境エディタ選択中はその内容を、シーンオブジェクト選択中はそのプロパティを表示する
                 if (auto tab = UI::Scope::TabItemScope("Object")) {
-                    if (inspectorObjectDrawer_) {
+                    // シーンオブジェクトが選択されたら環境エディタの選択は解除（後から選んだ方を優先）
+                    if (sceneDebugEditor_ && sceneDebugEditor_->HasSelection()) {
+                        selectedEnvironmentLabel_.clear();
+                    }
+
+                    if (const EnvironmentEntry* env = FindSelectedEnvironmentEntry(); env && env->drawer) {
+                        ImGui::SeparatorText(env->label.c_str());
+                        env->drawer();
+                    } else if (inspectorObjectDrawer_) {
                         inspectorObjectDrawer_();
                     } else {
                         UI::Hint("シーンが読み込まれていません");
@@ -239,8 +342,13 @@ namespace CoreEngine
 
     void GameDebugUI::DrawEnginePanels()
     {
+        // 独立ウィンドウとして描画するのは Tools カテゴリのみ
+        //（Settings カテゴリは Engine Settings ウィンドウ内のセクションとして描画される）
         for (auto& panel : enginePanels_) {
+            if (panel.category != EnginePanelCategory::Tools) continue;
             if (!panel.visible) continue;
+            // ツールはドックに登録されずフローティングで開くため、初回サイズを与える
+            ImGui::SetNextWindowSize(ImVec2(460.0f, 540.0f), ImGuiCond_FirstUseEver);
             if (ImGui::Begin(panel.label.c_str(), &panel.visible)) {
                 if (panel.drawer) panel.drawer();
             }
@@ -260,151 +368,76 @@ namespace CoreEngine
         }
     }
 
-    void GameDebugUI::DrawEditorSwitcherPanel()
+    void GameDebugUI::DrawEngineSettingsWindow()
     {
-        if (!showEditorSwitcher_) return;
+        if (!showEngineSettings_) return;
 
-        ImGui::SetNextWindowSize(ImVec2(520.0f, 360.0f), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSizeConstraints(ImVec2(360.0f, 200.0f), ImVec2(900.0f, 900.0f));
-        if (!ImGui::Begin("Window Manager", &showEditorSwitcher_)) {
+        ImGui::SetNextWindowSize(ImVec2(780.0f, 560.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSizeConstraints(ImVec2(480.0f, 280.0f), ImVec2(1600.0f, 1200.0f));
+        if (!ImGui::Begin("Engine Settings", &showEngineSettings_)) {
             ImGui::End();
             return;
         }
 
-        // ── カテゴリ定義 ──────────────────────────────────────────
-        struct Category {
-            const char* label;
-            const char* icon;
+        // ── 検索ボックス ──
+        ImGui::SetNextItemWidth(220.0f);
+        ImGui::InputTextWithHint("##settings_filter", "検索...", settingsFilter_, sizeof(settingsFilter_));
+        ImGui::Separator();
+
+        // 大文字小文字を無視した部分一致
+        auto matchesFilter = [this](const std::string& label) {
+            if (settingsFilter_[0] == '\0') return true;
+            std::string target = label;
+            std::string query = settingsFilter_;
+            std::transform(target.begin(), target.end(), target.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            std::transform(query.begin(), query.end(), query.begin(),
+                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            return target.find(query) != std::string::npos;
         };
-        static constexpr Category kCategories[] = {
-            { "Panels",    "[ ]" },
-            { "Inspector", "[ ]" },
-        };
-        static constexpr int kCategoryCount = static_cast<int>(std::size(kCategories));
 
-        const ImVec4 kEngineColor = ImVec4(0.35f, 0.65f, 1.0f,  1.0f);
-        const ImVec4 kAppColor    = ImVec4(0.45f, 0.85f, 0.45f, 1.0f);
-        const ImVec4 kPanelColor  = ImVec4(0.85f, 0.65f, 0.25f, 1.0f);
-        const ImVec4 kSelBg       = ImVec4(0.22f, 0.22f, 0.27f, 1.0f);
-        const ImVec4 kHoverBg     = ImVec4(0.18f, 0.18f, 0.22f, 1.0f);
-        const ImVec4 kHeaderCol   = ImVec4(1.0f,  0.65f, 0.0f,  1.0f);
+        const float leftPaneW = 180.0f;
 
-        const float leftPaneW  = 110.0f;
-        const float totalH     = ImGui::GetContentRegionAvail().y;
-
-        // ── 左ペイン：カテゴリリスト ──────────────────────────────
-        ImGui::BeginChild("##wm_left", ImVec2(leftPaneW, totalH), false,
-            ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        // ── 左ペイン：セクション一覧 ──
+        ImGui::BeginChild("##settings_left", ImVec2(leftPaneW, 0.0f), true);
         {
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  ImVec2(0.0f, 2.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8.0f, 6.0f));
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            EnginePanelEntry* firstVisible = nullptr;
+            bool selectionVisible = false;
+            for (auto& p : enginePanels_) {
+                if (p.category != EnginePanelCategory::Settings) continue;
+                if (!matchesFilter(p.label)) continue;
+                if (!firstVisible) firstVisible = &p;
 
-            for (int i = 0; i < kCategoryCount; ++i)
-            {
-                const bool selected = (selectedCategory_ == i);
-                if (selected)
-                    ImGui::PushStyleColor(ImGuiCol_Button,        kSelBg);
-                else
-                    ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
-
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, kHoverBg);
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  kSelBg);
-
-                char lbl[64];
-                snprintf(lbl, sizeof(lbl), "%s##cat%d", kCategories[i].label, i);
-                if (ImGui::Button(lbl, ImVec2(leftPaneW - 4.0f, 0.0f)))
-                    selectedCategory_ = i;
-
-                ImGui::PopStyleColor(3);
+                const bool selected = (p.label == selectedSettingsLabel_);
+                selectionVisible |= selected;
+                if (ImGui::Selectable(p.label.c_str(), selected)) {
+                    selectedSettingsLabel_ = p.label;
+                    selectionVisible = true;
+                }
             }
-            ImGui::PopStyleVar(3);
+            // 未選択・選択セクションが絞り込みで消えた場合は先頭を選ぶ
+            if (!selectionVisible && firstVisible) {
+                selectedSettingsLabel_ = firstVisible->label;
+            }
         }
         ImGui::EndChild();
 
         ImGui::SameLine();
 
-        // セパレータ
+        // ── 右ペイン：選択セクションの内容 ──
+        ImGui::BeginChild("##settings_right", ImVec2(0.0f, 0.0f), false);
         {
-            ImDrawList* dl = ImGui::GetWindowDrawList();
-            ImVec2 p = ImGui::GetCursorScreenPos();
-            dl->AddLine(ImVec2(p.x, p.y), ImVec2(p.x, p.y + totalH),
-                ImGui::GetColorU32(ImVec4(0.35f, 0.35f, 0.35f, 1.0f)));
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 4.0f);
-        }
-
-        // ── 右ペイン：選択カテゴリのコンテンツ ────────────────────
-        ImGui::BeginChild("##wm_right", ImVec2(0.0f, totalH), false);
-        {
-            const float toggleW = ImGui::GetFrameHeight() * 1.8f;
-
-            auto drawToggleTable = [&](const char* tableId, auto& entries, const ImVec4& dotColor) {
-                if (entries.empty()) {
-                    ImGui::TextDisabled("（登録なし）");
-                    return;
-                }
-                ImGuiTableFlags tableFlags =
-                    ImGuiTableFlags_SizingStretchProp |
-                    ImGuiTableFlags_RowBg |
-                    ImGuiTableFlags_BordersInnerH |
-                    ImGuiTableFlags_PadOuterX;
-                if (ImGui::BeginTable(tableId, 2, tableFlags))
-                {
-                    ImGui::TableSetupColumn("Label",  ImGuiTableColumnFlags_WidthStretch);
-                    ImGui::TableSetupColumn("Switch", ImGuiTableColumnFlags_WidthFixed, toggleW);
-
-                    for (auto& entry : entries)
-                    {
-                        ImGui::PushID(entry.label.c_str());
-                        ImGui::TableNextRow();
-                        ImGui::TableNextColumn();
-                        {
-                            ImDrawList* dl = ImGui::GetWindowDrawList();
-                            ImVec2 pos = ImGui::GetCursorScreenPos();
-                            float cy = pos.y + ImGui::GetFrameHeight() * 0.5f;
-                            dl->AddCircleFilled(ImVec2(pos.x + 4.0f, cy), 3.5f,
-                                ImGui::GetColorU32(dotColor));
-                            ImGui::Indent(14.0f);
-                            ImGui::AlignTextToFramePadding();
-                            ImGui::Text("%s", entry.label.c_str());
-                            ImGui::Unindent(14.0f);
-                        }
-                        ImGui::TableNextColumn();
-                        UI::Widgets::ToggleSwitch("##sw", &entry.visible);
-                        ImGui::PopID();
-                    }
-                    ImGui::EndTable();
-                }
-            };
-
-            if (selectedCategory_ == 0)
-            {
-                // ── Panels ──
-                ImGui::TextColored(kHeaderCol, "Panels");
-                ImGui::Separator();
-                ImGui::Spacing();
-                drawToggleTable("##PanelTable", enginePanels_, kPanelColor);
+            EnginePanelEntry* selectedEntry = nullptr;
+            for (auto& p : enginePanels_) {
+                if (p.category != EnginePanelCategory::Settings) continue;
+                if (p.label == selectedSettingsLabel_) { selectedEntry = &p; break; }
             }
-            else if (selectedCategory_ == 1)
-            {
-                // ── Inspector ──
-                ImGui::TextColored(kHeaderCol, "Inspector");
-                ImGui::Separator();
-                ImGui::Spacing();
 
-                if (!engineEditors_.empty())
-                {
-                    UI::Hint("Engine");
-                    drawToggleTable("##EngineTable", engineEditors_, kEngineColor);
-                    ImGui::Spacing();
-                }
-                if (!appEditors_.empty())
-                {
-                    UI::Hint("Application");
-                    drawToggleTable("##AppTable", appEditors_, kAppColor);
-                }
-                if (engineEditors_.empty() && appEditors_.empty())
-                    ImGui::TextDisabled("（登録なし）");
+            if (selectedEntry && selectedEntry->drawer) {
+                ImGui::SeparatorText(selectedEntry->label.c_str());
+                selectedEntry->drawer();
+            } else {
+                ImGui::TextDisabled("セクションがありません");
             }
         }
         ImGui::EndChild();
@@ -421,10 +454,8 @@ namespace CoreEngine
         dockingUI_->RegisterWindow(consoleWindow, DockArea::Bottom);
         dockingUI_->RegisterWindow("Project",     DockArea::Bottom);
 
-        // Initialize時に登録済みのエンジンパネルをドッキングに追加
-        for (const auto& panel : enginePanels_) {
-            dockingUI_->RegisterWindow(panel.label, DockArea::Right);
-        }
+        // エンジンパネルはドッキング登録しない
+        //（Settings は Engine Settings ウィンドウ内、Tools はフローティングで開く）
     }
 }
 #endif // USE_IMGUI

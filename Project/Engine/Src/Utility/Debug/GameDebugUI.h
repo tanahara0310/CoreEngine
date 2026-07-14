@@ -19,6 +19,12 @@ namespace CoreEngine
     class SceneManager; // 前方宣言
     class SceneDebugEditor;
 
+    /// @brief エンジンパネルのカテゴリ（表示先の分類）
+    enum class EnginePanelCategory {
+        Settings, ///< Engine Settings ウィンドウ内のセクション（設定系）
+        Tools,    ///< Toolsメニューから開く独立ウィンドウ（作業用ツール。フローティング）
+    };
+
     /// @brief ゲームデバッグUIクラス
     class GameDebugUI {
     public:
@@ -50,17 +56,30 @@ namespace CoreEngine
         /// @param drawer タブ内に描画するコンテンツドロワー
         void RegisterEngineEditor(const std::string& label, std::function<void()> drawer);
 
-        /// @brief エンジン専用デバッグパネルを登録（Engineメニュー → 独立ウィンドウ）
-        /// @param label メニュー / ウィンドウタイトルに表示する名前
-        /// @param drawer ウィンドウ内に描画するコンテンツドロワー
-        void RegisterEnginePanel(const std::string& label, std::function<void()> drawer);
+        /// @brief エンジン専用デバッグパネルを登録
+        /// @param label セクション / ウィンドウタイトルに表示する名前
+        /// @param drawer コンテンツドロワー
+        /// @param category Settings=Engine Settingsウィンドウのセクション / Tools=Toolsメニューから開くフローティングウィンドウ
+        void RegisterEnginePanel(const std::string& label, std::function<void()> drawer,
+            EnginePanelCategory category = EnginePanelCategory::Settings);
+
+        /// @brief 環境エディタを登録（HierarchyのEnvironmentツリーに表示し、選択時にInspectorで編集）
+        /// @param label Environmentツリーに表示する名前
+        /// @param owner 登録元の識別子（登録元の破棄時に自分の登録だけを解除するために使う）
+        /// @param drawer Inspector内に描画するコンテンツドロワー
+        void RegisterEnvironmentEditor(const std::string& label, const void* owner, std::function<void()> drawer);
+
+        /// @brief 環境エディタの登録を解除する（ownerが現在の登録元と一致する場合のみ）
+        /// @param label 登録時のラベル
+        /// @param owner 登録時に渡したowner
+        void UnregisterEnvironmentEditor(const std::string& label, const void* owner);
 
         /// @brief EngineDebug メニュー専用パネルを登録（デバッグ情報カテゴリ用）
         /// @param label メニュー / ウィンドウタイトルに表示する名前
         /// @param drawer ウィンドウ内に描画するコンテンツドロワー
         void RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer);
 
-        /// @brief 指定ラベルのエンジンパネルの表示状態を設定する
+        /// @brief 指定ラベルのエンジンパネルの表示状態を設定する（Toolsカテゴリの独立ウィンドウ用）
         /// @param label パネルのラベル
         /// @param visible 表示するならtrue
         void SetPanelVisible(const std::string& label, bool visible);
@@ -116,16 +135,28 @@ namespace CoreEngine
             std::string label;
             std::function<void()> drawer;
             bool visible = false;
+            EnginePanelCategory category = EnginePanelCategory::Settings;
         };
         std::vector<EnginePanelEntry> enginePanels_;
 
-        /// @brief EngineDebug メニュー専用パネル（デバッグ情報カテゴリ、Window Manager には出ない）
+        /// @brief EngineDebug メニュー専用パネル（デバッグ情報カテゴリ、Debug メニューからトグル）
         std::vector<EnginePanelEntry> engineDebugPanels_;
 
+        /// @brief 環境エディタ（HierarchyのEnvironmentツリー → Inspector表示）
+        struct EnvironmentEntry {
+            std::string label;
+            const void* owner = nullptr;
+            std::function<void()> drawer;
+        };
+        std::vector<EnvironmentEntry> environmentEditors_;
+        std::string selectedEnvironmentLabel_; ///< Environmentツリーで選択中のエントリー（空=未選択）
+
+        bool showHierarchy_ = true;
+        bool showInspector_ = true;
         bool showConsole_ = true;
-        bool showEditorSwitcher_ = false;  ///< Window Managerパネルの表示状態
-        bool showEngineDebugMenu_ = false; ///< EngineDebug メニューの展開状態（未使用・予約）
-        int  selectedCategory_ = 0;        ///< Window Manager 2ペインで選択中のカテゴリインデックス
+        bool showEngineSettings_ = false;   ///< Engine Settings ウィンドウの表示状態
+        std::string selectedSettingsLabel_; ///< Engine Settings で選択中のセクション（空=未選択）
+        char settingsFilter_[64] = {};      ///< Engine Settings のセクション検索文字列
 
 #ifdef USE_IMGUI
         ScreenCapture screenCapture_;  ///< スクリーンキャプチャ機能
@@ -137,10 +168,12 @@ namespace CoreEngine
     private:
         void ShowConsoleUI();
         void DrawHierarchyPanel();
+        void DrawEnvironmentTree();
+        const EnvironmentEntry* FindSelectedEnvironmentEntry() const;
         void DrawInspectorPanel();
         void DrawEnginePanels();
         void DrawEngineDebugPanels();
-        void DrawEditorSwitcherPanel();
+        void DrawEngineSettingsWindow();
         void RegisterWindowsForDocking();
     };
 }

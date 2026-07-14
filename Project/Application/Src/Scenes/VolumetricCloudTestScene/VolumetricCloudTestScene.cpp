@@ -47,9 +47,7 @@ void VolumetricCloudTestScene::OnUpdate()
 {
     // VolumetricCloudManager への太陽・カメラ情報の反映は
     // BaseScene::UpdateAtmosphere() が大気散乱の直後に毎フレーム行う
-#ifdef USE_IMGUI
-    editorFacade_.DrawImGui();
-#endif
+    // 雲の編集 UI は editorFacade_ が Hierarchy の Environment ツリーに登録済み
 }
 
 void VolumetricCloudTestScene::Draw()

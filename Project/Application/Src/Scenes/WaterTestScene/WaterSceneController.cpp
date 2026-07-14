@@ -7,9 +7,29 @@
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
+#include "EngineSystem/Subsystem/DebugSubsystem.h"
 #endif
 
 using namespace CoreEngine;
+
+#ifdef USE_IMGUI
+namespace {
+	constexpr const char* kEditorLabel = "Water";
+}
+#endif
+
+WaterSceneController::~WaterSceneController() {
+#ifdef USE_IMGUI
+	// シーン破棄後にドロワーがダングリングしないよう登録を解除する
+	if (engine_) {
+		if (auto* debug = engine_->GetDebugSubsystem()) {
+			if (auto* ui = debug->GetGameDebugUI()) {
+				ui->UnregisterEnvironmentEditor(kEditorLabel, this);
+			}
+		}
+	}
+#endif
+}
 
 void WaterSceneController::Initialize(WaterTestScene& scene, EngineSystem& engine) {
 	// scene setup でオブジェクトを構築し、その結果を runtime 制御へ渡す
@@ -17,11 +37,19 @@ void WaterSceneController::Initialize(WaterTestScene& scene, EngineSystem& engin
 	runtimeController_.Initialize(sceneObjects);
 
 #ifdef USE_IMGUI
+	engine_ = &engine;
 	// UI は facade 経由で Water 設定を取得・適用する
 	editorFacade_.Initialize(runtimeController_, engine);
 	// 通常パラメータ編集とデバッグ表示の各パネルを初期化する
 	parameterPanel_.Initialize(runtimeController_, editorFacade_);
 	debugPanel_.Initialize(runtimeController_);
+
+	// Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする
+	if (auto* debug = engine.GetDebugSubsystem()) {
+		if (auto* ui = debug->GetGameDebugUI()) {
+			ui->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawImGuiContent(); });
+		}
+	}
 #endif
 
 	// 初期状態の波面データを DXR 側参照用に構築する
@@ -32,10 +60,7 @@ void WaterSceneController::Update(EngineSystem& engine, float deltaTime) {
 	// 水面アニメーションと時間進行を更新する
 	runtimeController_.UpdateSimulation(deltaTime);
 
-#ifdef USE_IMGUI
-	// 水面制御用 UI を描画し、その場で変更を反映する
-	DrawImGui();
-#endif
+	// 水面制御用 UI は Hierarchy の Environment ツリーに登録済み（選択時に Inspector で編集）
 
 	// UI やアニメーション結果を反映した最新の水面データを再構築する
 	runtimeController_.UpdateWaterRefractionSurfaceData();
@@ -74,24 +99,17 @@ const WaterSurfaceData* WaterSceneController::GetWaterRefractionSurfaceData() co
 }
 
 #ifdef USE_IMGUI
-void WaterSceneController::DrawImGui() {
+void WaterSceneController::DrawImGuiContent() {
 	if (!runtimeController_.GetWaterPlane()) {
+		ImGui::TextDisabled("水面オブジェクトがありません");
 		return;
 	}
 
-	// 見た目調整とデバッグ機能を同一ウィンドウ内で用途別に分けて表示する
-	ImGui::SetNextWindowSize(ImVec2(460.0f, 760.0f), ImGuiCond_FirstUseEver);
-	if (!ImGui::Begin("水面コントローラ")) {
-		ImGui::End();
-		return;
-	}
-
+	// 見た目調整とデバッグ機能を用途別に分けて表示する
 	ImGui::TextDisabled("見た目調整とデバッグ表示を分けて管理します。");
 	ImGui::Spacing();
 
 	parameterPanel_.Draw(runtimeController_, editorFacade_);
 	debugPanel_.Draw(runtimeController_, editorFacade_);
-
-	ImGui::End();
 }
 #endif

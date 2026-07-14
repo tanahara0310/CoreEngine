@@ -17,10 +17,15 @@ struct AtmosphereEditorSunSettings {
 
 /// @brief Atmosphere UI と Engine 内部 AtmosphereManager / LightManager の仲介を担当する facade
 /// @details UI はこの facade だけを通して大気散乱関連の設定を取得・適用する。
-///          （WaterTestScene の WaterEditorFacade と同じ役割分担）
+///          Initialize で GameDebugUI の環境エディタ（Hierarchy の Environment ツリー）へ
+///          自己登録し、選択時に Inspector 内へ編集パネルを描画する。
+///          （VolumetricCloudTestScene の CloudEditorFacade と同じ役割分担）
 class AtmosphereEditorFacade {
 public:
-    /// @brief facade の参照先を初期化する
+    /// @brief 環境エディタの登録を解除する
+    ~AtmosphereEditorFacade();
+
+    /// @brief facade の参照先を初期化し、環境エディタとして登録する
     void Initialize(CoreEngine::EngineSystem& engine);
 
     /// @brief 現在の太陽設定を取得する
@@ -29,14 +34,14 @@ public:
     /// @brief 太陽設定を適用する（太陽ライトの方向・強度へ反映し、LUT再計算を要求）
     void ApplySunSettings(const AtmosphereEditorSunSettings& settings);
 
-    /// @brief 大気散乱の ImGui 編集パネルを描画する（USE_IMGUI 時のみ動作）
-    void DrawImGui();
-
     /// @brief 高度角・方位角から太陽光の進行方向ベクトルを計算する
     /// @return 正規化済みのライト方向（太陽から地表へ向かう方向）
     static CoreEngine::Vector3 ComputeSunLightDirection(float elevationDeg, float azimuthDeg);
 
 private:
+    /// @brief 大気散乱の編集パネル内容を描画する（Inspector 内に埋め込み）
+    void DrawContent();
+
     CoreEngine::AtmosphereManager* GetAtmosphereManager() const;
     CoreEngine::LightManager* GetLightManager() const;
 

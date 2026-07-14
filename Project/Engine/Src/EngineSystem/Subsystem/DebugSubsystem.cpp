@@ -97,14 +97,14 @@ namespace CoreEngine
             });
         gameDebugUI_->RegisterEnginePanel("Thread Profiler", [this]() {
             threadProfilerUI_->Draw();
-            });
+            }, EnginePanelCategory::Tools);
 
         // キーコンフィグUIの登録
         gameDebugUI_->RegisterEnginePanel("Key Config", [this]() {
             if (auto* inputManager = engine_->GetComponent<InputManager>()) {
                 keyConfigUI_.Draw(inputManager->GetQuery());
             }
-            });
+            }, EnginePanelCategory::Tools);
 
         // エンジン統計ウィンドウ（EngineDebug メニュー：カテゴリ別個別ウィンドウ）
         engineStatsWindow_ = std::make_unique<EngineStatsWindow>();
@@ -133,8 +133,8 @@ namespace CoreEngine
 
         // ── ドメイン固有パネルの登録 ──
 
-        // Lighting パネル
-        gameDebugUI_->RegisterEnginePanel("Lighting", [this]() {
+        // Lighting は環境エディタとして Hierarchy の Environment ツリーから選択して編集する
+        gameDebugUI_->RegisterEnvironmentEditor("Lighting", this, [this]() {
             if (auto* lightManager = engine_->GetComponent<LightManager>()) {
                 lightManager->DrawAllImGui();
             }
@@ -198,13 +198,12 @@ namespace CoreEngine
             }
             });
 
-        // Post Effects パネル（デフォルト表示）
+        // Post Effects セクション（Engine Settings 内）
         gameDebugUI_->RegisterEnginePanel("Post Effects", [this]() {
             if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
                 postEffect->DrawImGuiContent();
             }
             });
-        gameDebugUI_->SetPanelVisible("Post Effects", true);
 
         // Rendering Techniques パネル（SSAO, TAA等のレンダリング技術）
         gameDebugUI_->RegisterEnginePanel("Rendering Techniques", [this]() {
@@ -224,7 +223,7 @@ namespace CoreEngine
             }
             gameDebugUI_->RegisterEnginePanel("Render Pass", [this]() {
                 renderPassDebugPanel_.Draw();
-                });
+                }, EnginePanelCategory::Tools);
         }
 
         // その他の固定ウィンドウをドッキングシステムに登録
