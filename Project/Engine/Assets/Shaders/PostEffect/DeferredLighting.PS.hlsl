@@ -84,6 +84,45 @@ struct IBLParams
 };
 ConstantBuffer<IBLParams> gIBLParams : register(b4);
 
+// ============================================================
+// 空アンビエント（大気散乱 Sky-View LUT の SH9 射影。Sky Light 相当）
+// ============================================================
+// gSkyIrradianceSH には放射照度畳み込み済みの SH9 係数が入っており、
+// Σ c_i・Y_i(N) がそのまま「法線 N に対する空からの放射照度 / π」になる。
+StructuredBuffer<float4> gSkyIrradianceSH : register(t18);
+
+struct SkyAmbientParams
+{
+    uint enabled;      // 1 = 空アンビエント有効（大気アクティブなフレームのみ）
+    float scale;       // 空の輝度単位 → サーフェス光単位の変換係数
+    float2 padding;
+};
+ConstantBuffer<SkyAmbientParams> gSkyAmbient : register(b6);
+
+/// @brief SH9 係数から法線方向の空の放射照度/π を評価する
+float3 EvaluateSkyIrradiance(float3 n)
+{
+    float basis[9];
+    basis[0] = 0.282095f;
+    basis[1] = 0.488603f * n.y;
+    basis[2] = 0.488603f * n.z;
+    basis[3] = 0.488603f * n.x;
+    basis[4] = 1.092548f * n.x * n.y;
+    basis[5] = 1.092548f * n.y * n.z;
+    basis[6] = 0.315392f * (3.0f * n.z * n.z - 1.0f);
+    basis[7] = 1.092548f * n.x * n.z;
+    basis[8] = 0.546274f * (n.x * n.x - n.y * n.y);
+
+    float3 irradiance = float3(0.0f, 0.0f, 0.0f);
+    [unroll]
+    for (int i = 0; i < 9; ++i)
+    {
+        irradiance += gSkyIrradianceSH[i].rgb * basis[i];
+    }
+    // SH の帯域打ち切りによる負のリンギングを防ぐ
+    return max(irradiance, 0.0f);
+}
+
 SamplerState gSampler : register(s0);
 
 // ============================================================
@@ -403,6 +442,26 @@ PixelShaderOutput main(PixelShaderInput input)
                 iblShadow = lerp(0.3f, 1.0f, iblShadow);
             }
             ambient = CalculateDeferredIBL(N, V, albedo, metallic, roughness, F0, ao) * iblShadow;
+        }
+        else if (gSkyAmbient.enabled != 0)
+        {
+            // ===== 空アンビエント（大気散乱由来。Sky Light 相当） =====
+            // 大気の Sky-View LUT を SH9 射影した放射照度で照らす。
+            // 昼は青みがかった環境光・夕方はオレンジ・夜はほぼゼロと時刻に追従する。
+            // 影は IBL 分岐と同様にメインライトのシャドウを弱く適用する
+            float skyShadow = 1.0f;
+            if (gLightCounts.directionalLightCount > 0 && gDirectionalLights[0].enabled)
+            {
+                if (useRTShadow)
+                    skyShadow = gRTShadowMask0.Load(loadCoord).r;
+                else
+                    skyShadow = CalculateShadow(lightSpacePos, N, gDirectionalLights[0].direction, gShadowMap, gShadowSampler);
+                skyShadow = lerp(0.3f, 1.0f, skyShadow);
+            }
+
+            // 拡散のみ（スペキュラ環境反射は将来拡張）。金属は拡散反射しないため減衰させる
+            float3 skyIrradiance = EvaluateSkyIrradiance(N);
+            ambient = albedo * (1.0f - metallic) * skyIrradiance * gSkyAmbient.scale * ao * skyShadow;
         }
         else
         {

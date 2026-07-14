@@ -49,7 +49,7 @@ namespace CoreEngine
         RootSignatureConfig config;
         config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
         // 1要素のバッファなのでディスクリプタを介さず Root UAV で直接バインドする
-        config.ConfigureResource("gAvgLogLuminance", BindingStrategy::RootDescriptor);
+        config.ConfigureResource("gAvgLuminance", BindingStrategy::RootDescriptor);
 
         reductionRootSignature_ = std::make_unique<RootSignatureManager>();
         auto buildResult = reductionRootSignature_->Build(
@@ -118,8 +118,8 @@ namespace CoreEngine
             return;
         }
 
-        const float avgLogLum = *mappedReadback_[slot];
-        const float targetLuminance = std::exp2(avgLogLum);
+        // 計測値は線形輝度の算術平均（カメラの平均測光相当）
+        const float targetLuminance = *mappedReadback_[slot];
 
         if (!adaptationInitialized_) {
             // 初回は目標値へ即座に合わせる（起動直後に真っ白/真っ黒から順応し始めるのを防ぐ）
@@ -131,9 +131,24 @@ namespace CoreEngine
             adaptedLuminance_ += (targetLuminance - adaptedLuminance_) * blend;
         }
 
-        // 順応輝度が keyValue（中間グレー）に写る露出を求める
+        // ===== ターゲットキーの決定 =====
+        // 固定キー（0.18）への正規化は「どんな暗さのシーンも中間グレーへ持ち上げる」ため、
+        // 薄暮の反太陽側の空が昼のような明るさに見えてしまう（暗さの絶対感が消える）。
+        // 人間の目は完全には順応しないので、Krawczyk 2005 の自動キー
+        // （シーンが暗いほど小さいキー = 暗い出力へ写す）で明暗の絶対感を保つ。
+        // 例: 昼(順応輝度~1.0)でキー~0.17（従来とほぼ同じ）、薄暮(~0.1)で~0.06、夜(~0.01)で~0.03
+        float targetKey = keyValue_;
+        if (preserveSceneBrightness_) {
+            const float krawczykKey =
+                1.03f - 2.0f / (2.0f + std::log10(adaptedLuminance_ + 1.0f));
+            // ユーザー設定のキー値は 0.18 を基準とした相対倍率として効かせる
+            targetKey = krawczykKey * (keyValue_ / 0.18f);
+        }
+        currentKey_ = targetKey;
+
+        // 順応輝度が targetKey へ写る露出を求める
         autoEV_ = std::clamp(
-            std::log2(keyValue_ / std::max(adaptedLuminance_, 1e-6f)),
+            std::log2(targetKey / std::max(adaptedLuminance_, 1e-6f)),
             minAutoEV_, maxAutoEV_);
     }
 
@@ -145,7 +160,7 @@ namespace CoreEngine
 
         const int texIdx = reductionReflection_->GetRootParameterIndexByName("gTexture");
         const int cbIdx = reductionReflection_->GetRootParameterIndexByName("ScreenParams");
-        const int uavIdx = reductionReflection_->GetRootParameterIndexByName("gAvgLogLuminance");
+        const int uavIdx = reductionReflection_->GetRootParameterIndexByName("gAvgLuminance");
         if (texIdx >= 0) cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
         if (cbIdx >= 0) cmdList->SetComputeRootConstantBufferView(cbIdx, screenParamsCB_->GetGPUVirtualAddress());
         if (uavIdx >= 0) cmdList->SetComputeRootUnorderedAccessView(uavIdx, avgLogLumBuffer_->GetGPUVirtualAddress());
@@ -244,9 +259,11 @@ namespace CoreEngine
                     "輝度計測リソースの初期化に失敗しています（ログ参照）");
             } else {
                 ImGui::Text("自動EV: %.2f（合計EV: %.2f）", autoEV_, autoEV_ + exposureEV_);
-                ImGui::Text("順応輝度: %.4f", adaptedLuminance_);
+                ImGui::Text("順応輝度: %.4f / ターゲットキー: %.3f", adaptedLuminance_, currentKey_);
+                // OFF だと全シーンが中間グレーへ正規化され、薄暮の空が昼のように明るくなる
+                ImGui::Checkbox("明暗の絶対感を保持（暗いシーンは暗く）", &preserveSceneBrightness_);
                 ImGui::SliderFloat("順応速度 [1/s]", &adaptationSpeed_, 0.1f, 10.0f, "%.1f");
-                ImGui::SliderFloat("キー値（中間グレー）", &keyValue_, 0.05f, 0.5f, "%.2f");
+                ImGui::SliderFloat("キー値（明るさの基準）", &keyValue_, 0.05f, 0.5f, "%.2f");
                 ImGui::SliderFloat("自動EV下限", &minAutoEV_, -8.0f, 0.0f, "%.1f");
                 ImGui::SliderFloat("自動EV上限", &maxAutoEV_, 0.0f, 8.0f, "%.1f");
             }

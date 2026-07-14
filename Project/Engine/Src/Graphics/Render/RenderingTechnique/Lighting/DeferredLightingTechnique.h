@@ -110,5 +110,15 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> waterCausticsDebugBuffer_;
         D3D12_GPU_VIRTUAL_ADDRESS waterCausticsDebugCBVAddress_ = 0;
         WaterCausticsDebugSettings waterCausticsDebugSettings_{};
+
+        // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
+        // 有効フラグ・スケールは AtmosphereManager が持ち、Execute で毎フレーム CB へ反映する
+        Microsoft::WRL::ComPtr<ID3D12Resource> skyAmbientBuffer_;
+        D3D12_GPU_VIRTUAL_ADDRESS skyAmbientCBVAddress_ = 0;
+        struct SkyAmbientParams {
+            uint32_t enabled = 0;
+            float scale = 0.0f;
+            float padding[2] = {};
+        };
     };
 }

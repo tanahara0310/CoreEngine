@@ -174,6 +174,52 @@ namespace CoreEngine
         descriptorManager->CreateSRV(cameraVolumeLUT_.Get(), volumeSrvDesc, cpuHandle, cameraVolumeSrvHandle_, "AtmosphereCameraVolumeSRV");
         descriptorManager->CreateUAV(cameraVolumeLUT_.Get(), volumeUavDesc, cpuHandle, cameraVolumeUavHandle_, "AtmosphereCameraVolumeUAV");
 
+        // ===== 空アンビエント SH9 係数バッファ（StructuredBuffer<float4> × 9） =====
+        {
+            constexpr uint32_t kCoeffStride = sizeof(float) * 4;
+
+            D3D12_HEAP_PROPERTIES heapProps{};
+            heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+            D3D12_RESOURCE_DESC bufferDesc{};
+            bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+            bufferDesc.Width = kCoeffStride * kSkyIrradianceSHCoeffCount;
+            bufferDesc.Height = 1;
+            bufferDesc.DepthOrArraySize = 1;
+            bufferDesc.MipLevels = 1;
+            bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+            bufferDesc.SampleDesc.Count = 1;
+            bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            bufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+            if (FAILED(device->CreateCommittedResource(
+                    &heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc,
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
+                    IID_PPV_ARGS(&skyIrradianceSHBuffer_)))) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "AtmosphereManager: 空アンビエント SH バッファの生成に失敗");
+                return false;
+            }
+            skyIrradianceState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+            D3D12_SHADER_RESOURCE_VIEW_DESC shSrvDesc{};
+            shSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
+            shSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+            shSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            shSrvDesc.Buffer.FirstElement = 0;
+            shSrvDesc.Buffer.NumElements = kSkyIrradianceSHCoeffCount;
+            shSrvDesc.Buffer.StructureByteStride = kCoeffStride;
+
+            D3D12_UNORDERED_ACCESS_VIEW_DESC shUavDesc{};
+            shUavDesc.Format = DXGI_FORMAT_UNKNOWN;
+            shUavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+            shUavDesc.Buffer.FirstElement = 0;
+            shUavDesc.Buffer.NumElements = kSkyIrradianceSHCoeffCount;
+            shUavDesc.Buffer.StructureByteStride = kCoeffStride;
+
+            descriptorManager->CreateSRV(skyIrradianceSHBuffer_.Get(), shSrvDesc, cpuHandle, skyIrradianceSrvHandle_, "AtmosphereSkyIrradianceSHSRV");
+            descriptorManager->CreateUAV(skyIrradianceSHBuffer_.Get(), shUavDesc, cpuHandle, skyIrradianceUavHandle_, "AtmosphereSkyIrradianceSHUAV");
+        }
+
         return true;
     }
 
@@ -230,6 +276,15 @@ namespace CoreEngine
             return false;
         }
 
+        const bool skyIrradianceBuilt = skyIrradiancePipeline_.Build(
+            device, shaderCompiler, reflectionBuilder, skyIrradianceShaderProvider_);
+
+        if (!skyIrradianceBuilt || !skyIrradiancePipeline_.HasComputePSO()) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "AtmosphereManager: 空アンビエント SH コンピュートパイプラインの構築に失敗");
+            return false;
+        }
+
         return true;
     }
 
@@ -249,6 +304,8 @@ namespace CoreEngine
         }
         if (paramsDirty_ || skyViewDirty_) {
             GenerateSkyViewLUT(cmdList);
+            // 空アンビエント SH は Sky-View LUT の内容から射影するため、直後に再生成する
+            GenerateSkyIrradianceSH(cmdList);
         }
         // Camera Volume は太陽・パラメータ・カメラ姿勢のいずれの変化でも再生成が必要
         GenerateCameraVolumeLUT(cmdList);
@@ -360,6 +417,46 @@ namespace CoreEngine
         ResourceBarrierHelper::UAV(cmdList, skyViewLUT_.Get());
         ResourceBarrierHelper::Transition(cmdList, skyViewLUT_.Get(),
             skyViewState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    }
+
+    void AtmosphereManager::GenerateSkyIrradianceSH(ID3D12GraphicsCommandList* cmdList)
+    {
+        if (!skyIrradianceSHBuffer_) {
+            return;
+        }
+
+        // GenerateSkyViewLUT 直後に呼ばれる前提（Sky-View LUT は SRV 状態）
+        ResourceBarrierHelper::Transition(cmdList, skyIrradianceSHBuffer_.Get(),
+            skyIrradianceState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmdList->SetPipelineState(skyIrradiancePipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(skyIrradiancePipeline_.GetComputeRootSignature());
+
+        const int cbSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gAtmosphere");
+        if (cbSlot >= 0) {
+            cmdList->SetComputeRootConstantBufferView(
+                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
+        }
+        const int skyViewSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
+        if (skyViewSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(
+                static_cast<UINT>(skyViewSlot), skyViewSrvHandle_);
+        }
+        const int uavSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gSkyIrradianceSH");
+        if (uavSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(
+                static_cast<UINT>(uavSlot), skyIrradianceUavHandle_);
+        }
+
+        // シェーダー側が 1 グループで全方向を分担する
+        cmdList->Dispatch(1, 1, 1);
+
+        // DeferredLighting（ピクセルシェーダー）から読めるよう SRV 状態へ遷移
+        ResourceBarrierHelper::UAV(cmdList, skyIrradianceSHBuffer_.Get());
+        ResourceBarrierHelper::Transition(cmdList, skyIrradianceSHBuffer_.Get(),
+            skyIrradianceState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        skyIrradianceGenerated_ = true;
     }
 
     void AtmosphereManager::GenerateCameraVolumeLUT(ID3D12GraphicsCommandList* cmdList)
@@ -692,6 +789,7 @@ namespace CoreEngine
         constants.invViewProj = invViewProj_;
         constants.cameraWorldPos = cameraWorldPos_;
         constants.groundLevelY = parameters_.groundLevelY;
+        constants.multiScatteringFactor = parameters_.multiScatteringFactor;
 
         *constantData_ = constants;
     }

@@ -26,9 +26,10 @@ namespace CoreEngine
         Vector3 groundAlbedo;         float sunDiskLuminanceScale; // ディスク輝度スケール
         Matrix4x4 invViewProj;        // 逆ビュープロジェクション行列（Aerial Perspective 用）
         Vector3 cameraWorldPos;       float groundLevelY;          // カメラのワールド座標 [m] / 地表とみなす世界Y座標 [m]
+        float multiScatteringFactor;  Vector3 constantsPad;        // 多重散乱スケール / パディング
     };
-    static_assert(sizeof(AtmosphereShaderConstants) == 192,
-        "AtmosphereShaderConstants は HLSL 側 AtmosphereConstants の 192 バイトレイアウトと一致させること");
+    static_assert(sizeof(AtmosphereShaderConstants) == 208,
+        "AtmosphereShaderConstants は HLSL 側 AtmosphereConstants の 208 バイトレイアウトと一致させること");
 
     /// @brief 大気散乱の物理パラメータ
     /// @details 単位はメートル基準（散乱・吸収係数は 1/m）。
@@ -61,6 +62,12 @@ namespace CoreEngine
         // ===== 太陽ディスク =====
         float sunDiskAngularRadiusDeg = 0.265f; ///< 太陽の視半径 [deg]（実際の太陽は約0.265°）
         float sunDiskLuminanceScale = 50.0f;    ///< ディスク輝度スケール（空の散乱輝度に対する倍率）
+
+        // ===== 多重散乱 =====
+        /// @brief 多重散乱寄与のスケール（1=近似そのまま）
+        /// @details Hillaire の等方 Psi_ms 近似は薄明時（太陽が地平線際）に空全体、
+        ///          特に反太陽側を過大に持ち上げる傾向がある。UE の MultiScatteringFactor 相当。
+        float multiScatteringFactor = 1.0f;
     };
 
     /// @brief 大気散乱システムの管理クラス
@@ -76,6 +83,7 @@ namespace CoreEngine
         static constexpr uint32_t kSkyViewLUTWidth = 192;
         static constexpr uint32_t kSkyViewLUTHeight = 108;
         static constexpr uint32_t kCameraVolumeSize = 32;
+        static constexpr uint32_t kSkyIrradianceSHCoeffCount = 9; ///< 2次SH係数の数
 
         /// @brief 初期化
         /// @param device D3D12デバイス
@@ -166,6 +174,23 @@ namespace CoreEngine
         /// @brief Sky-View LUT の SRV ハンドルを取得（描画シェーダーのバインド用）
         D3D12_GPU_DESCRIPTOR_HANDLE GetSkyViewLUTSRVHandle() const { return skyViewSrvHandle_; }
 
+        // ===== 空アンビエント（Sky Light 相当） =====
+
+        /// @brief 空の放射照度 SH9 係数バッファの SRV ハンドルを取得（DeferredLighting 用）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSkyIrradianceSHSRVHandle() const { return skyIrradianceSrvHandle_; }
+
+        /// @brief 空アンビエントの SH バッファが一度でも生成されたか
+        /// @details false の間は内容が未定義のため、DeferredLighting 側で無効扱いにすること
+        bool IsSkyAmbientReady() const { return skyIrradianceGenerated_; }
+
+        /// @brief 空アンビエント（大気からの環境光）の有効/無効
+        void SetSkyAmbientEnabled(bool enabled) { skyAmbientEnabled_ = enabled; }
+        bool IsSkyAmbientEnabled() const { return skyAmbientEnabled_; }
+
+        /// @brief 空アンビエントの強度スケール（空の輝度単位 → サーフェス光単位の変換係数）
+        void SetSkyAmbientScale(float scale) { skyAmbientScale_ = scale; }
+        float GetSkyAmbientScale() const { return skyAmbientScale_; }
+
         // ===== Aerial Perspective =====
 
         /// @brief SceneColor へ空気遠近感を合成する（AerialPerspectivePass から呼ばれる）
@@ -214,6 +239,9 @@ namespace CoreEngine
         /// @brief Sky-View LUT を再生成する（太陽方向・カメラ高度変更時）
         void GenerateSkyViewLUT(ID3D12GraphicsCommandList* cmdList);
 
+        /// @brief Sky-View LUT から空の放射照度 SH9 係数を再生成する（Sky-View 再生成時のみ）
+        void GenerateSkyIrradianceSH(ID3D12GraphicsCommandList* cmdList);
+
         /// @brief LUT 生成用コンピュートパイプラインを構築する
         bool CreateLUTPipelines(ID3D12Device* device);
 
@@ -235,6 +263,11 @@ namespace CoreEngine
         /// @brief Camera Volume LUT 用シェーダープロバイダ
         struct CameraVolumeLUTShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CameraVolumeLUT.CS.hlsl"; }
+        };
+
+        /// @brief 空アンビエント SH 射影用シェーダープロバイダ
+        struct SkyIrradianceSHShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"SkyIrradianceSH.CS.hlsl"; }
         };
 
         /// @brief Aerial Perspective 合成用シェーダープロバイダ
@@ -303,6 +336,15 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeSrvHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeUavHandle_{};
 
+        // 空アンビエント SH9 係数バッファ（9 要素の StructuredBuffer<float4>）
+        Microsoft::WRL::ComPtr<ID3D12Resource> skyIrradianceSHBuffer_;
+        D3D12_RESOURCE_STATES skyIrradianceState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrvHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceUavHandle_{};
+        bool skyIrradianceGenerated_ = false; ///< 一度でも SH が書き込まれたか
+        bool skyAmbientEnabled_ = true;       ///< 空アンビエント（大気アクティブなシーンのみ効く）
+        float skyAmbientScale_ = 0.3f;        ///< 空の輝度単位 → サーフェス光単位の変換係数（美術値。昼の従来アンビエントと概ね揃う値）
+
         // Aerial Perspective 合成用中間テクスチャ（SceneColor と同サイズ）
         Microsoft::WRL::ComPtr<ID3D12Resource> apResult_;
         D3D12_RESOURCE_STATES apResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
@@ -320,6 +362,8 @@ namespace CoreEngine
         SkyViewLUTShaderProvider skyViewShaderProvider_{};
         CustomShaderPipeline cameraVolumePipeline_{};
         CameraVolumeLUTShaderProvider cameraVolumeShaderProvider_{};
+        CustomShaderPipeline skyIrradiancePipeline_{};
+        SkyIrradianceSHShaderProvider skyIrradianceShaderProvider_{};
         CustomShaderPipeline aerialPerspectivePipeline_{};
         AerialPerspectiveShaderProvider aerialPerspectiveShaderProvider_{};
         bool pipelinesReady_ = false;

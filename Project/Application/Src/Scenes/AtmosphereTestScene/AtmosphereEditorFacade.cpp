@@ -116,6 +116,25 @@ void AtmosphereEditorFacade::DrawContent()
         }
     }
 
+    // ===== 空アンビエント（Sky Light 相当） =====
+    if (ImGui::CollapsingHeader("環境光", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (auto* atmosphereManager = GetAtmosphereManager()) {
+            // Sky-View LUT を SH 射影した環境光。昼は青、夕方はオレンジ、夜はほぼゼロと時刻に追従する。
+            // OFF にすると従来のハーフランバートアンビエント（ライト色固定）に戻る
+            bool skyAmbient = atmosphereManager->IsSkyAmbientEnabled();
+            if (ImGui::Checkbox("空アンビエント（大気連動）", &skyAmbient)) {
+                atmosphereManager->SetSkyAmbientEnabled(skyAmbient);
+            }
+            if (skyAmbient) {
+                float scale = atmosphereManager->GetSkyAmbientScale();
+                if (ImGui::SliderFloat("環境光スケール", &scale, 0.0f, 1.0f, "%.3f")) {
+                    atmosphereManager->SetSkyAmbientScale(scale);
+                }
+                ImGui::Text("SH生成済み: %s", atmosphereManager->IsSkyAmbientReady() ? "true" : "false");
+            }
+        }
+    }
+
     // ===== 大気パラメータ =====
     if (ImGui::CollapsingHeader("大気パラメータ")) {
         if (auto* atmosphereManager = GetAtmosphereManager()) {
@@ -158,6 +177,10 @@ void AtmosphereEditorFacade::DrawContent()
             }
             paramsChanged |= ImGui::DragFloat("層中心高度 [m]##ozone", &params.ozoneLayerCenter, 100.0f, 5000.0f, 60000.0f, "%.0f");
             paramsChanged |= ImGui::DragFloat("層半幅 [m]##ozone", &params.ozoneLayerHalfWidth, 100.0f, 1000.0f, 30000.0f, "%.0f");
+
+            ImGui::SeparatorText("多重散乱");
+            // 等方 Psi_ms 近似は薄明時に反太陽側を過大に持ち上げる。1 未満で抑制（UE の MultiScatteringFactor 相当）
+            paramsChanged |= ImGui::SliderFloat("寄与スケール", &params.multiScatteringFactor, 0.0f, 2.0f, "%.2f");
 
             ImGui::SeparatorText("地表・その他");
             float albedo[3] = { params.groundAlbedo.x, params.groundAlbedo.y, params.groundAlbedo.z };

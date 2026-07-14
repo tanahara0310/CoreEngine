@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "DeferredLightingTechnique.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
@@ -85,6 +86,16 @@ namespace CoreEngine
             directXCommon_->GetDevice(), sizeof(float) * 4);
         waterCausticsDebugCBVAddress_ = waterCausticsDebugBuffer_->GetGPUVirtualAddress();
         UpdateWaterCausticsDebugBuffer();
+
+        // 空アンビエントパラメータ定数バッファ（既定は無効。Execute で毎フレーム更新）
+        skyAmbientBuffer_ = ResourceFactory::CreateBufferResource(
+            directXCommon_->GetDevice(), sizeof(SkyAmbientParams));
+        skyAmbientCBVAddress_ = skyAmbientBuffer_->GetGPUVirtualAddress();
+        SkyAmbientParams skyDefaults{};
+        SkyAmbientParams* skyMapped = nullptr;
+        skyAmbientBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&skyMapped));
+        *skyMapped = skyDefaults;
+        skyAmbientBuffer_->Unmap(0, nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -315,6 +326,38 @@ namespace CoreEngine
         const int waterCausticsDebugIdx = GetRootParamIndex("gWaterCausticsDebug");
         if (waterCausticsDebugIdx >= 0 && waterCausticsDebugCBVAddress_ != 0) {
             cmdList->SetGraphicsRootConstantBufferView(waterCausticsDebugIdx, waterCausticsDebugCBVAddress_);
+        }
+
+        // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
+        {
+            auto* atmosphere = context.atmosphereManager;
+            const bool skyAmbientUsable = atmosphere
+                && atmosphere->IsAtmosphereActive()
+                && atmosphere->IsSkyAmbientEnabled()
+                && atmosphere->IsSkyAmbientReady()
+                && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0;
+
+            // フラグ・スケールを毎フレーム CB へ反映する
+            if (skyAmbientBuffer_) {
+                SkyAmbientParams params{};
+                params.enabled = skyAmbientUsable ? 1u : 0u;
+                params.scale = atmosphere ? atmosphere->GetSkyAmbientScale() : 0.0f;
+                SkyAmbientParams* mapped = nullptr;
+                skyAmbientBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
+                *mapped = params;
+                skyAmbientBuffer_->Unmap(0, nullptr);
+            }
+
+            const int skyAmbientIdx = GetRootParamIndex("gSkyAmbient");
+            if (skyAmbientIdx >= 0 && skyAmbientCBVAddress_ != 0) {
+                cmdList->SetGraphicsRootConstantBufferView(skyAmbientIdx, skyAmbientCBVAddress_);
+            }
+            // SH バッファはバッファ自体が常に存在する（AtmosphereManager 初期化時に生成）。
+            // enabled=0 のフレームではシェーダーが読まないため内容は問われない
+            const int skyShIdx = GetRootParamIndex("gSkyIrradianceSH");
+            if (skyShIdx >= 0 && atmosphere && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(skyShIdx, atmosphere->GetSkyIrradianceSHSRVHandle());
+            }
         }
 
         // フルスクリーンクアッドで描画

@@ -1,10 +1,16 @@
-// LuminanceReduction.CS.hlsl - 自動露出用の平均対数輝度計測
+// LuminanceReduction.CS.hlsl - 自動露出用の平均輝度計測
 // シーンカラー（トーンマッピング入力のリニアHDR値）を 64x64 の均等グリッドで
-// サンプリングし、対数輝度の平均を 1 要素のバッファへ出力する。
+// サンプリングし、線形輝度の算術平均を 1 要素のバッファへ出力する。
 // 1 スレッドグループのみで実行する（Dispatch(1,1,1)）。
+//
+// 対数平均（幾何平均）ではなく算術平均を使う理由:
+// 幾何平均はゼロ近傍のピクセルに過敏で、「真っ暗な地面 + 薄明の空」のような
+// シーンで平均が桁違いに小さくなり、露出が空を昼のように持ち上げてしまう。
+// カメラの平均測光と同じ算術平均なら暗部の面積に引きずられにくく、
+// 空（明部）の絶対的な明るさが露出を支配する。
 
 Texture2D<float4> gTexture : register(t0);
-RWStructuredBuffer<float> gAvgLogLuminance : register(u0);
+RWStructuredBuffer<float> gAvgLuminance : register(u0);
 
 // ToneMapping.CS.hlsl と同じレイアウト（同じ定数バッファを共有する）
 cbuffer ScreenParams : register(b0)
@@ -41,8 +47,8 @@ void main(uint3 groupThreadId : SV_GroupThreadID, uint groupIndex : SV_GroupInde
             const float3 color = gTexture.Load(int3(pixel, 0)).rgb;
             const float luminance = dot(color, float3(0.2126f, 0.7152f, 0.0722f));
 
-            // 対数空間で平均する（幾何平均）。真っ黒の画素で -inf にならないよう下限を設ける
-            sum += log2(max(luminance, 1e-4f));
+            // 太陽ディスク等の極端な高輝度ピクセルが数サンプルで平均を支配しないよう上限を設ける
+            sum += clamp(luminance, 0.0f, 64.0f);
         }
     }
     sLogLumSum[groupIndex] = sum;
@@ -60,6 +66,6 @@ void main(uint3 groupThreadId : SV_GroupThreadID, uint groupIndex : SV_GroupInde
 
     if (groupIndex == 0)
     {
-        gAvgLogLuminance[0] = sLogLumSum[0] / (kGridSize * kGridSize);
+        gAvgLuminance[0] = sLogLumSum[0] / (kGridSize * kGridSize);
     }
 }

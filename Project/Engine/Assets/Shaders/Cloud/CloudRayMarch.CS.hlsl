@@ -99,11 +99,15 @@ float3 SunLuminanceAt(float3 pos, float3 rayDir)
     energy *= gCloud.sunLightScale;
 
     // (3) 大気透過率（夕暮れに雲が赤くなる要因）。大気座標系は km・惑星中心基準。
-    //     雲の高度差のみを反映すれば十分。
-    //     SampleTransmittanceToSun は惑星による遮蔽を含むので、日没後は雲の高度から見た
+    //     高度差に加えて水平距離も含める。惑星中心基準では水平に離れた点ほど
+    //     天頂方向が傾き（距離 d で d/R ラジアン）、太陽の局所高度が方位で変わる。
+    //     これが日没時の「太陽側の雲は照り、反太陽側の雲は地球影に入って暗い」を生む。
+    //     高度のみ（0, r, 0）だと全天の雲が真上の雲と同じ日照になり、日没直後に
+    //     反太陽側の雲まで一様にオレンジへ光る不具合になる。
+    //     SampleTransmittanceToSun は惑星による遮蔽を含むので、日没後は雲の位置から見た
     //     地平線を太陽が下回った時点で滑らかに消灯する（高い雲ほど長く照らされる）。
-    float radiusKm = gAtmosphere.cameraRadiusKm + (pos.y - gCloud.cameraWorldPos.y) * 0.001f;
-    float3 posAtmo = float3(0.0f, radiusKm, 0.0f);
+    float3 offsetKm = (pos - gCloud.cameraWorldPos) * 0.001f;
+    float3 posAtmo = float3(offsetKm.x, gAtmosphere.cameraRadiusKm + offsetKm.y, offsetKm.z);
     float3 sunTrans = SampleTransmittanceToSun(gTransmittanceLUT, gLUTSampler,
                                                posAtmo, toSun, gAtmosphere);
 

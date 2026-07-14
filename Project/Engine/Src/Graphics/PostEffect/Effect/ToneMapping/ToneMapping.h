@@ -103,7 +103,11 @@ namespace CoreEngine
 
         // ----- 自動露出: パラメータと順応状態 -----
         bool autoExposureEnabled_ = false; ///< 既定OFF（有効化はImGuiか SetAutoExposureEnabled）
-        float keyValue_ = 0.18f;           ///< 順応輝度をこの値（中間グレー）へ写す
+        /// @brief 明暗の絶対感を保持する（Krawczyk 自動キー）
+        /// @details false だと全シーンを中間グレーへ正規化してしまい、薄暮の空が昼のように明るくなる
+        bool preserveSceneBrightness_ = true;
+        float currentKey_ = 0.18f;         ///< 現在のターゲットキー（診断表示用）
+        float keyValue_ = 0.18f;           ///< 順応輝度をこの値（中間グレー）へ写す（自動キー時は相対倍率）
         float minAutoEV_ = -4.0f;          ///< 自動EVの下限（真っ暗な画面で増幅しすぎない）
         float maxAutoEV_ = 4.0f;           ///< 自動EVの上限（真っ白な画面で絞りすぎない）
         float adaptationSpeed_ = 1.5f;     ///< 明暗順応の速さ [1/s]

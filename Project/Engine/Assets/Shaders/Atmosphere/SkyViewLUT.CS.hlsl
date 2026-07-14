@@ -42,10 +42,17 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     float3 rayOrigin = float3(0.0f, radiusKm, 0.0f);
 
-    const int kStepCount = 40;
+    // ステップ数は経路長に比例させる。地平線際のレイは経路が 1000km 超になり、
+    // 固定 40 ステップでは 1 ステップ約 30km となって低高度の濃い散乱を解像できない
+    // （日没の地平線グラデーションの精度に直結する）。天頂方向（~80km）は少なくてよい
+    float tTop = RaySphereIntersectNearest(rayOrigin, rayDir, gAtmosphere.atmosphereTopRadiusKm);
+    float tGround = RaySphereIntersectNearest(rayOrigin, rayDir, gAtmosphere.planetRadiusKm);
+    float pathKm = (tGround >= 0.0f) ? tGround : max(tTop, 0.0f);
+    const int stepCount = (int)lerp(16.0f, 64.0f, saturate(pathKm / 150.0f));
+
     float3 luminance = IntegrateScatteredLuminance(
         rayOrigin, rayDir, toSun, gAtmosphere,
-        gTransmittanceLUT, gMultiScatteringLUT, gLUTSampler, kStepCount);
+        gTransmittanceLUT, gMultiScatteringLUT, gLUTSampler, stepCount);
 
     gSkyViewLUT[dispatchThreadId.xy] = float4(luminance, 1.0f);
 }
