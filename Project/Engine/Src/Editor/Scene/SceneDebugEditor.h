@@ -33,6 +33,15 @@ namespace CoreEngine
         /// @brief 履歴をすべてクリア（シーン切り替え時）
         void ClearHistory();
 
+        /// @brief シーンオブジェクト（3D/スプライト）が選択中かどうか
+        bool HasSelection() const {
+            return objectSelector_.GetSelectedObject() != nullptr
+                || objectSelector_.GetSelectedSprite() != nullptr;
+        }
+
+        /// @brief シーンオブジェクトの選択を解除する
+        void ClearSelection() { objectSelector_.ClearSelection(); }
+
         bool Undo(GameObjectManager* mgr) { return undoRedoHistory_.Undo(mgr); }
         bool Redo(GameObjectManager* mgr) { return undoRedoHistory_.Redo(mgr); }
         bool CanUndo() const { return undoRedoHistory_.CanUndo(); }

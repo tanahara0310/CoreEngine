@@ -7,32 +7,50 @@
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
+#include "EngineSystem/Subsystem/DebugSubsystem.h"
 #endif
 
 #include <cmath>
 
 using namespace CoreEngine;
 
+namespace {
+    constexpr const char* kEditorLabel = "Volumetric Cloud";
+}
+
 void CloudEditorFacade::Initialize(EngineSystem& engine)
 {
     engine_ = &engine;
+#ifdef USE_IMGUI
+    // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする
+    if (auto* debug = engine_->GetDebugSubsystem()) {
+        if (auto* ui = debug->GetGameDebugUI()) {
+            ui->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawContent(); });
+        }
+    }
+#endif
 }
 
-void CloudEditorFacade::DrawImGui()
+CloudEditorFacade::~CloudEditorFacade()
 {
 #ifdef USE_IMGUI
-    // 初回表示時は画面内の見やすい位置に配置する（ドック外へはみ出して診断値が読めなくなるのを防ぐ）
-    ImGui::SetNextWindowPos(ImVec2(60.0f, 80.0f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(440.0f, 620.0f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Volumetric Cloud")) {
-        ImGui::End();
-        return;
+    // シーン破棄後にドロワーがダングリングしないよう登録を解除する
+    if (engine_) {
+        if (auto* debug = engine_->GetDebugSubsystem()) {
+            if (auto* ui = debug->GetGameDebugUI()) {
+                ui->UnregisterEnvironmentEditor(kEditorLabel, this);
+            }
+        }
     }
+#endif
+}
 
+void CloudEditorFacade::DrawContent()
+{
+#ifdef USE_IMGUI
     auto* cloudManager = GetVolumetricCloudManager();
     if (!cloudManager) {
         ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "VolumetricCloudManager が見つかりません");
-        ImGui::End();
         return;
     }
 
@@ -139,8 +157,6 @@ void CloudEditorFacade::DrawImGui()
         ImGui::Text("雲アクティブ（このフレーム）: %s", cloudManager->AreCloudsActive() ? "true" : "false");
         ImGui::Text("ノイズテクスチャ生成済み: %s", cloudManager->AreNoiseTexturesReady() ? "true" : "false");
     }
-
-    ImGui::End();
 #endif
 }
 

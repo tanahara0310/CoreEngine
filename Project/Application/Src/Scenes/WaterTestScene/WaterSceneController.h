@@ -13,7 +13,10 @@ class WaterTestScene;
 
 class WaterSceneController {
 public:
-	/// @brief 水面制御の各補助クラスを初期化する
+	/// @brief 環境エディタの登録を解除する
+	~WaterSceneController();
+
+	/// @brief 水面制御の各補助クラスを初期化し、環境エディタとして登録する
 	/// @param scene 水面オブジェクト生成元のシーン
 	/// @param engine エンジンシステム
 	void Initialize(WaterTestScene& scene, CoreEngine::EngineSystem& engine);
@@ -38,14 +41,16 @@ public:
 
 private:
 #ifdef USE_IMGUI
-	/// @brief 水面制御用 ImGui ウィンドウを描画する
-	void DrawImGui();
+	/// @brief 水面制御用 UI の内容を描画する（Inspector 内に埋め込み）
+	void DrawImGuiContent();
 	/// @brief 水面の通常パラメータ編集パネル
 	WaterSurfaceParameterPanel parameterPanel_{};
 	/// @brief 水面のデバッグ表示・診断パネル
 	WaterSurfaceDebugPanel debugPanel_{};
 	/// @brief Water UI と Engine 内部設定の仲介 facade
 	WaterEditorFacade editorFacade_{};
+	/// @brief 環境エディタの登録解除に使うエンジン参照（非所有）
+	CoreEngine::EngineSystem* engine_ = nullptr;
 #endif
 
 	/// @brief 水面オブジェクト生成とフレーム同期を担当するランタイム制御

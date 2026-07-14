@@ -69,9 +69,7 @@ void AtmosphereTestScene::OnInitialize()
 void AtmosphereTestScene::OnUpdate()
 {
     // AtmosphereManager への太陽・カメラ情報の反映は BaseScene::UpdateAtmosphere() が毎フレーム行う
-#ifdef USE_IMGUI
-    editorFacade_.DrawImGui();
-#endif
+    // 大気の編集 UI は editorFacade_ が Hierarchy の Environment ツリーに登録済み
 }
 
 void AtmosphereTestScene::Draw()

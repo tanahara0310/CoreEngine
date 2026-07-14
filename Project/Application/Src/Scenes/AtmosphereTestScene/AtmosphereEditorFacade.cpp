@@ -8,6 +8,7 @@
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
+#include "EngineSystem/Subsystem/DebugSubsystem.h"
 #endif
 
 #include <cmath>
@@ -16,11 +17,34 @@ using namespace CoreEngine;
 
 namespace {
     constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+    constexpr const char* kEditorLabel = "Sky Atmosphere";
 }
 
 void AtmosphereEditorFacade::Initialize(EngineSystem& engine)
 {
     engine_ = &engine;
+#ifdef USE_IMGUI
+    // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする
+    if (auto* debug = engine_->GetDebugSubsystem()) {
+        if (auto* ui = debug->GetGameDebugUI()) {
+            ui->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawContent(); });
+        }
+    }
+#endif
+}
+
+AtmosphereEditorFacade::~AtmosphereEditorFacade()
+{
+#ifdef USE_IMGUI
+    // シーン破棄後にドロワーがダングリングしないよう登録を解除する
+    if (engine_) {
+        if (auto* debug = engine_->GetDebugSubsystem()) {
+            if (auto* ui = debug->GetGameDebugUI()) {
+                ui->UnregisterEnvironmentEditor(kEditorLabel, this);
+            }
+        }
+    }
+#endif
 }
 
 Vector3 AtmosphereEditorFacade::ComputeSunLightDirection(float elevationDeg, float azimuthDeg)
@@ -56,17 +80,9 @@ void AtmosphereEditorFacade::ApplySunSettings(const AtmosphereEditorSunSettings&
     // Sky-View LUT のみを再生成するため、ここで MarkLUTDirty()（全LUT再生成）は呼ばない
 }
 
-void AtmosphereEditorFacade::DrawImGui()
+void AtmosphereEditorFacade::DrawContent()
 {
 #ifdef USE_IMGUI
-    // 初回表示時は画面内の見やすい位置に配置する（ドック外へはみ出して診断値が読めなくなるのを防ぐ）
-    ImGui::SetNextWindowPos(ImVec2(60.0f, 80.0f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(420.0f, 480.0f), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin("Atmosphere")) {
-        ImGui::End();
-        return;
-    }
-
     // ===== 太陽設定 =====
     if (ImGui::CollapsingHeader("太陽", ImGuiTreeNodeFlags_DefaultOpen)) {
         AtmosphereEditorSunSettings settings = sunSettings_;
@@ -177,8 +193,6 @@ void AtmosphereEditorFacade::DrawImGui()
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "AtmosphereManager が見つかりません");
         }
     }
-
-    ImGui::End();
 #endif
 }
 

@@ -36,7 +36,7 @@ void MyGame::Initialize()
     sceneManager_->RegisterScene<HomeworkScene>("HomeworkScene");
 
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene("ParticleTestScene"); // TODO: GPUパーティクル検証後に PrimitiveTestScene へ戻す
+    sceneManager_->SetInitialScene("AtmosphereTestScene");
 
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
 #ifdef USE_IMGUI
