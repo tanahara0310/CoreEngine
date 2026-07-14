@@ -21,7 +21,19 @@ namespace CoreEngine
 
     void LightManager::UpdateAll()
     {
-        bufferManager_.UpdateBuffers(directionalLights_, pointLights_, spotLights_, areaLights_);
+        // 太陽ライトには大気透過率を掛けた実効色を GPU へ転送する（Transmittance on Light）。
+        // authored な directionalLights_ 自体は変更しない（AtmosphereManager が毎フレーム
+        // 元の色を読むため、直接書き換えるとフィードバックで光が減衰し続ける）。
+        std::vector<DirectionalLightData> gpuDirectionalLights = directionalLights_;
+        if (const DirectionalLightData* sun = FindAtmosphereSunLight()) {
+            const size_t sunIndex = static_cast<size_t>(sun - directionalLights_.data());
+            DirectionalLightData& gpuSun = gpuDirectionalLights[sunIndex];
+            gpuSun.color.x *= atmosphereSunTransmittance_.x;
+            gpuSun.color.y *= atmosphereSunTransmittance_.y;
+            gpuSun.color.z *= atmosphereSunTransmittance_.z;
+        }
+
+        bufferManager_.UpdateBuffers(gpuDirectionalLights, pointLights_, spotLights_, areaLights_);
         debugVisualizer_.DrawVisualization(directionalLights_, pointLights_, spotLights_);
         
         // エリアライトの可視化
@@ -222,9 +234,9 @@ namespace CoreEngine
         return nullptr;
     }
 
-    DirectionalLightData* LightManager::GetAtmosphereSunLight()
+    const DirectionalLightData* LightManager::FindAtmosphereSunLight() const
     {
-        for (auto& light : directionalLights_)
+        for (const auto& light : directionalLights_)
         {
             if (light.isAtmosphereSun)
             {
@@ -241,12 +253,32 @@ namespace CoreEngine
         return nullptr;
     }
 
+    DirectionalLightData* LightManager::GetAtmosphereSunLight()
+    {
+        return const_cast<DirectionalLightData*>(FindAtmosphereSunLight());
+    }
+
+    Vector3 LightManager::GetEffectiveLightColorRGB(const DirectionalLightData& light) const
+    {
+        Vector3 color = { light.color.x, light.color.y, light.color.z };
+        if (&light == FindAtmosphereSunLight())
+        {
+            color.x *= atmosphereSunTransmittance_.x;
+            color.y *= atmosphereSunTransmittance_.y;
+            color.z *= atmosphereSunTransmittance_.z;
+        }
+        return color;
+    }
+
     void LightManager::ClearAllLights()
     {
     directionalLights_.clear();
     pointLights_.clear();
     spotLights_.clear();
     areaLights_.clear();
+
+    // シーン切り替え時は透過率もリセットする（次のシーンが大気非対応でも変調が残らないように）
+    atmosphereSunTransmittance_ = { 1.0f, 1.0f, 1.0f };
     }
 
     Matrix4x4 LightManager::CalculateMainDirectionalLightViewProjection(const Vector3& sceneCenter, float sceneRadius)

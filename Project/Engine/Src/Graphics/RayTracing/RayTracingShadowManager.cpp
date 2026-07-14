@@ -320,7 +320,7 @@ namespace CoreEngine
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
         std::string uavName = "RTShadow_UAV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateUAV(view.texture.Get(), uavDesc,
+        descriptorManager_->CreateOrUpdateUAV(view.texture.Get(), uavDesc,
             view.uavCpuHandle, view.uavHandle, uavName);
 
         // SRV 作成（DeferredLighting でサンプリング用）
@@ -330,7 +330,7 @@ namespace CoreEngine
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.Texture2D.MipLevels = 1;
         std::string srvName = "RTShadow_SRV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateSRV(view.texture.Get(), srvDesc,
+        descriptorManager_->CreateOrUpdateSRV(view.texture.Get(), srvDesc,
             view.srvCpuHandle, view.srvHandle, srvName);
 
         // -------------------------------------------------------
@@ -349,7 +349,7 @@ namespace CoreEngine
 
         // 履歴テクスチャの SRV（RTShadow.hlsl の gHistoryShadow に対応）
         std::string histSrvName = "RTShadow_Hist_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateSRV(view.historyTexture.Get(), srvDesc,
+        descriptorManager_->CreateOrUpdateSRV(view.historyTexture.Get(), srvDesc,
             view.historySrvCpuHandle, view.historySrvHandle, histSrvName);
 
         // -------------------------------------------------------
@@ -366,11 +366,11 @@ namespace CoreEngine
         view.denoiseTempState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         std::string denoiseTempUavName = "RTShadow_DenoiseTemp_UAV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateUAV(view.denoiseTemp.Get(), uavDesc,
+        descriptorManager_->CreateOrUpdateUAV(view.denoiseTemp.Get(), uavDesc,
             view.denoiseTempUavCpuHandle, view.denoiseTempUavHandle, denoiseTempUavName);
 
         std::string denoiseTempSrvName = "RTShadow_DenoiseTemp_SRV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateSRV(view.denoiseTemp.Get(), srvDesc,
+        descriptorManager_->CreateOrUpdateSRV(view.denoiseTemp.Get(), srvDesc,
             view.denoiseTempSrvCpuHandle, view.denoiseTempSrvHandle, denoiseTempSrvName);
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
@@ -387,6 +387,21 @@ namespace CoreEngine
     {
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
         EnsureOutputTexture(width, height, static_cast<uint32_t>(viewId), lightIndex);
+    }
+
+    void RayTracingShadowManager::ResizeAllExisting(UINT width, UINT height)
+    {
+        if (!isInitialized_ || width == 0 || height == 0) {
+            return;
+        }
+
+        for (uint32_t viewIndex = 0; viewIndex < kViewCount; ++viewIndex) {
+            for (uint32_t lightIndex = 0; lightIndex < kMaxDirectionalLights; ++lightIndex) {
+                if (views_[viewIndex][lightIndex].texture) {
+                    EnsureOutputTexture(width, height, viewIndex, lightIndex);
+                }
+            }
+        }
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetShadowSRVHandle(

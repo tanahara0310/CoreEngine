@@ -281,7 +281,10 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
 
 #ifdef USE_IMGUI
-        const UINT currentFrameIndex = dx ? dx->GetSwapChain()->GetCurrentBackBufferIndex() : 0;
+        // プロファイラのリングスロットは記録中フレームインデックスに合わせる
+        // （スワップチェーンのインデックスはリサイズで 0 にリセットされるため使わない）
+        const UINT currentFrameIndex =
+            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0;
         if (debug) debug->BeginRenderPipeline(cmdList, currentFrameIndex);
 #endif
 
@@ -329,6 +332,12 @@ namespace CoreEngine
         // 全 View の描画（AerialPerspective 合成を含む）が完了したので大気有効化フラグを落とす。
         // 次フレームは Update() を呼ぶ大気シーンでのみ再度有効化され、他シーンへの漏れ出しを防ぐ。
         if (context.atmosphereManager) {
+            // 大気が要求されなかったフレームは太陽ライトの透過率変調も解除する
+            // （大気シーンからキューブマップ空へ切り替えた際に減衰が残らないように。
+            //   大気アクティブ時は AtmosphereManager::Update() が毎フレーム上書きする）
+            if (!context.atmosphereManager->IsAtmosphereActive() && context.lightManager) {
+                context.lightManager->SetAtmosphereSunTransmittance({ 1.0f, 1.0f, 1.0f });
+            }
             context.atmosphereManager->ResetFrameActivation();
         }
         if (context.volumetricCloudManager) {
@@ -347,7 +356,7 @@ namespace CoreEngine
         // フレームの最終処理（バックバッファ終了、コマンド実行、Present）
         // FinalizeFrame 内で SignalFrame されるフレームインデックスを事前に取得する
         const UINT currentFrameIndexForFlush =
-            (dx && dx->GetSwapChain()) ? dx->GetSwapChain()->GetCurrentBackBufferIndex() : 0;
+            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0;
 
         if (render) {
             render->FinalizeFrame();

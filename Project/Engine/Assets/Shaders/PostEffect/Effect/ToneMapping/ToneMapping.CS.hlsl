@@ -7,7 +7,8 @@ cbuffer ScreenParams : register(b0)
 {
     uint screenWidth;
     uint screenHeight;
-    float2 pad;
+    float exposureEV; // 露出補正 [EV]。ACES 適用前に exp2(EV) を乗算（0 = 従来動作）
+    float pad;
 };
 
 static const uint kGroupSize = 8;
@@ -32,6 +33,9 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     }
 
     float4 color = gTexture.Load(int3(dispatchId.xy, 0));
+
+    // 露出補正（トーンカーブ適用前のリニア HDR 値に対して行う）
+    color.rgb *= exp2(exposureEV);
 
     // HDR → LDR 変換
     color.rgb = ACESFilm(color.rgb);

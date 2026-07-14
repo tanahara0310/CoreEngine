@@ -112,6 +112,13 @@ namespace CoreEngine
         void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
 
+        /// @brief 生成済みの全ビュー・全ライトの出力テクスチャを新サイズで再作成する
+        /// @details ウィンドウリサイズ時に呼ぶ。Dispatch 中の遅延再作成に任せると、
+        ///          フレーム先頭で Blackboard に登録済みの旧リソースポインタが
+        ///          グラフ実行中に解放され、後続パスのバリアが解放済みリソースを
+        ///          参照してしまう（D3D12 ERROR #524）
+        void ResizeAllExisting(UINT width, UINT height);
+
         /// @brief シャドウパラメータを設定する
         void SetSettings(const RayTracingShadowSettings& settings) { settings_ = settings; }
 

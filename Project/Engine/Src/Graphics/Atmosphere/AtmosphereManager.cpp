@@ -10,12 +10,20 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace CoreEngine
 {
     namespace {
         constexpr float kMetersToKm = 1.0f / 1000.0f;
         constexpr float kPerMeterToPerKm = 1000.0f;
+
+        /// @brief HLSL の smoothstep と同じ（エルミート補間）
+        float SmoothStep(float edge0, float edge1, float x)
+        {
+            const float t = std::clamp((x - edge0) / std::max(edge1 - edge0, 1e-6f), 0.0f, 1.0f);
+            return t * t * (3.0f - 2.0f * t);
+        }
 
         D3D12_RESOURCE_DESC MakeLUTTexture2DDesc(uint32_t width, uint32_t height, DXGI_FORMAT format)
         {
@@ -166,6 +174,52 @@ namespace CoreEngine
         descriptorManager->CreateSRV(cameraVolumeLUT_.Get(), volumeSrvDesc, cpuHandle, cameraVolumeSrvHandle_, "AtmosphereCameraVolumeSRV");
         descriptorManager->CreateUAV(cameraVolumeLUT_.Get(), volumeUavDesc, cpuHandle, cameraVolumeUavHandle_, "AtmosphereCameraVolumeUAV");
 
+        // ===== 空アンビエント SH9 係数バッファ（StructuredBuffer<float4> × 9） =====
+        {
+            constexpr uint32_t kCoeffStride = sizeof(float) * 4;
+
+            D3D12_HEAP_PROPERTIES heapProps{};
+            heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+            D3D12_RESOURCE_DESC bufferDesc{};
+            bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+            bufferDesc.Width = kCoeffStride * kSkyIrradianceSHCoeffCount;
+            bufferDesc.Height = 1;
+            bufferDesc.DepthOrArraySize = 1;
+            bufferDesc.MipLevels = 1;
+            bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+            bufferDesc.SampleDesc.Count = 1;
+            bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            bufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+            if (FAILED(device->CreateCommittedResource(
+                    &heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc,
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
+                    IID_PPV_ARGS(&skyIrradianceSHBuffer_)))) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "AtmosphereManager: 空アンビエント SH バッファの生成に失敗");
+                return false;
+            }
+            skyIrradianceState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+            D3D12_SHADER_RESOURCE_VIEW_DESC shSrvDesc{};
+            shSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
+            shSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+            shSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            shSrvDesc.Buffer.FirstElement = 0;
+            shSrvDesc.Buffer.NumElements = kSkyIrradianceSHCoeffCount;
+            shSrvDesc.Buffer.StructureByteStride = kCoeffStride;
+
+            D3D12_UNORDERED_ACCESS_VIEW_DESC shUavDesc{};
+            shUavDesc.Format = DXGI_FORMAT_UNKNOWN;
+            shUavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+            shUavDesc.Buffer.FirstElement = 0;
+            shUavDesc.Buffer.NumElements = kSkyIrradianceSHCoeffCount;
+            shUavDesc.Buffer.StructureByteStride = kCoeffStride;
+
+            descriptorManager->CreateSRV(skyIrradianceSHBuffer_.Get(), shSrvDesc, cpuHandle, skyIrradianceSrvHandle_, "AtmosphereSkyIrradianceSHSRV");
+            descriptorManager->CreateUAV(skyIrradianceSHBuffer_.Get(), shUavDesc, cpuHandle, skyIrradianceUavHandle_, "AtmosphereSkyIrradianceSHUAV");
+        }
+
         return true;
     }
 
@@ -222,6 +276,15 @@ namespace CoreEngine
             return false;
         }
 
+        const bool skyIrradianceBuilt = skyIrradiancePipeline_.Build(
+            device, shaderCompiler, reflectionBuilder, skyIrradianceShaderProvider_);
+
+        if (!skyIrradianceBuilt || !skyIrradiancePipeline_.HasComputePSO()) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "AtmosphereManager: 空アンビエント SH コンピュートパイプラインの構築に失敗");
+            return false;
+        }
+
         return true;
     }
 
@@ -241,6 +304,8 @@ namespace CoreEngine
         }
         if (paramsDirty_ || skyViewDirty_) {
             GenerateSkyViewLUT(cmdList);
+            // 空アンビエント SH は Sky-View LUT の内容から射影するため、直後に再生成する
+            GenerateSkyIrradianceSH(cmdList);
         }
         // Camera Volume は太陽・パラメータ・カメラ姿勢のいずれの変化でも再生成が必要
         GenerateCameraVolumeLUT(cmdList);
@@ -354,6 +419,46 @@ namespace CoreEngine
             skyViewState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 
+    void AtmosphereManager::GenerateSkyIrradianceSH(ID3D12GraphicsCommandList* cmdList)
+    {
+        if (!skyIrradianceSHBuffer_) {
+            return;
+        }
+
+        // GenerateSkyViewLUT 直後に呼ばれる前提（Sky-View LUT は SRV 状態）
+        ResourceBarrierHelper::Transition(cmdList, skyIrradianceSHBuffer_.Get(),
+            skyIrradianceState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmdList->SetPipelineState(skyIrradiancePipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(skyIrradiancePipeline_.GetComputeRootSignature());
+
+        const int cbSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gAtmosphere");
+        if (cbSlot >= 0) {
+            cmdList->SetComputeRootConstantBufferView(
+                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
+        }
+        const int skyViewSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
+        if (skyViewSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(
+                static_cast<UINT>(skyViewSlot), skyViewSrvHandle_);
+        }
+        const int uavSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gSkyIrradianceSH");
+        if (uavSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(
+                static_cast<UINT>(uavSlot), skyIrradianceUavHandle_);
+        }
+
+        // シェーダー側が 1 グループで全方向を分担する
+        cmdList->Dispatch(1, 1, 1);
+
+        // DeferredLighting（ピクセルシェーダー）から読めるよう SRV 状態へ遷移
+        ResourceBarrierHelper::UAV(cmdList, skyIrradianceSHBuffer_.Get());
+        ResourceBarrierHelper::Transition(cmdList, skyIrradianceSHBuffer_.Get(),
+            skyIrradianceState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        skyIrradianceGenerated_ = true;
+    }
+
     void AtmosphereManager::GenerateCameraVolumeLUT(ID3D12GraphicsCommandList* cmdList)
     {
         ResourceBarrierHelper::Transition(cmdList, cameraVolumeLUT_.Get(),
@@ -426,8 +531,8 @@ namespace CoreEngine
         uavDesc.Format = desc.Format;
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        descriptorManager_->CreateUAV(apResult_.Get(), uavDesc, cpuHandle, apResultUavHandle_, "AtmosphereAerialPerspectiveUAV");
+        // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
+        descriptorManager_->CreateOrUpdateUAV(apResult_.Get(), uavDesc, apResultUavCpuHandle_, apResultUavHandle_, "AtmosphereAerialPerspectiveUAV");
 
         return true;
     }
@@ -562,8 +667,98 @@ namespace CoreEngine
             lastCameraRadius_ = distanceFromPlanetCenter_;
         }
 
+        // ===== 太陽直接光の大気透過率（Transmittance on Light） =====
+        // 地表→太陽の透過率で太陽ライトの実効色を変調する（UE の Atmosphere Sun Light 相当）。
+        // authored なライトデータは書き換えず、LightManager が GPU 転送時のコピーへ適用する
+        // （直接書き換えると翌フレームに減衰済みの色を再度読み、フィードバックで光が消えていく）。
+        // ライトの GPU 転送（FrameStart）は本 Update（PostLogic）より先に走るため反映は
+        // 1 フレーム遅延だが、太陽方向は連続的にしか変化しないため知覚できない。
+        sunTransmittance_ = ComputeSunTransmittanceCPU();
+        if (lightManager) {
+            lightManager->SetAtmosphereSunTransmittance(
+                transmittanceOnLight_ ? sunTransmittance_ : Vector3{ 1.0f, 1.0f, 1.0f });
+        }
+
         // ===== 定数バッファ更新 =====
         UploadConstants();
+    }
+
+    Vector3 AtmosphereManager::ComputeSunTransmittanceCPU() const
+    {
+        if (!hasSunLight_) {
+            return { 1.0f, 1.0f, 1.0f };
+        }
+
+        // 単位系は HLSL 側（AtmosphereCommon.hlsli）と同じ km / 1_km
+        const float planetRadiusKm = parameters_.planetRadius * kMetersToKm;
+        const float topRadiusKm = parameters_.atmosphereTopRadius * kMetersToKm;
+        const float radiusKm = planetRadiusKm + 0.002f; // 地表 +2m（地表すれすれの特異点回避）
+
+        // 評価点は (0, radiusKm, 0)。太陽天頂角余弦は toSun.y に一致する
+        const Vector3 toSun = { -sunDirection_.x, -sunDirection_.y, -sunDirection_.z };
+        const float mu = toSun.y;
+
+        // 惑星本体による遮蔽（HLSL PlanetSunVisibility と同一式）。
+        // 太陽は角半径を持つため、地平線を跨ぐ間は smoothstep で滑らかに減衰する
+        const float cosHorizon = -std::sqrt(std::max(0.0f,
+            1.0f - (planetRadiusKm * planetRadiusKm) / (radiusKm * radiusKm)));
+        const float softness = std::max(
+            parameters_.sunDiskAngularRadiusDeg * 3.14159265358979323846f / 180.0f, 1e-4f);
+        const float visibility = SmoothStep(cosHorizon - softness, cosHorizon + softness, mu);
+        if (visibility <= 0.0f) {
+            return { 0.0f, 0.0f, 0.0f };
+        }
+
+        // 大気圏上端までの距離（評価点は大気圏内なので正の根が必ず存在する）
+        const float b = radiusKm * mu;
+        const float c = radiusKm * radiusKm - topRadiusKm * topRadiusKm;
+        const float tTop = -b + std::sqrt(std::max(0.0f, b * b - c));
+        if (tTop <= 0.0f) {
+            return { visibility, visibility, visibility };
+        }
+
+        // 係数を 1/km へ変換（UploadConstants と同じ変換）
+        const Vector3 rayleigh = {
+            parameters_.rayleighScattering.x * kPerMeterToPerKm,
+            parameters_.rayleighScattering.y * kPerMeterToPerKm,
+            parameters_.rayleighScattering.z * kPerMeterToPerKm };
+        const float mieExtinction =
+            (parameters_.mieScattering + parameters_.mieAbsorption) * kPerMeterToPerKm;
+        const Vector3 ozone = {
+            parameters_.ozoneAbsorption.x * kPerMeterToPerKm,
+            parameters_.ozoneAbsorption.y * kPerMeterToPerKm,
+            parameters_.ozoneAbsorption.z * kPerMeterToPerKm };
+        const float rayleighScaleHeightKm = std::max(parameters_.rayleighScaleHeight * kMetersToKm, 1e-3f);
+        const float mieScaleHeightKm = std::max(parameters_.mieScaleHeight * kMetersToKm, 1e-3f);
+        const float ozoneCenterKm = parameters_.ozoneLayerCenter * kMetersToKm;
+        const float ozoneHalfWidthKm = std::max(parameters_.ozoneLayerHalfWidth * kMetersToKm, 1e-3f);
+
+        // 光学的深度の数値積分（HLSL ComputeTransmittanceToSunRayMarch と同じ中点則 40 ステップ）
+        constexpr int kStepCount = 40;
+        const float dt = tTop / kStepCount;
+        Vector3 opticalDepth = { 0.0f, 0.0f, 0.0f };
+        for (int i = 0; i < kStepCount; ++i) {
+            const float t = (static_cast<float>(i) + 0.5f) * dt;
+            const float px = toSun.x * t;
+            const float py = radiusKm + toSun.y * t;
+            const float pz = toSun.z * t;
+            const float heightKm = std::max(
+                std::sqrt(px * px + py * py + pz * pz) - planetRadiusKm, 0.0f);
+
+            const float densityRayleigh = std::exp(-heightKm / rayleighScaleHeightKm);
+            const float densityMie = std::exp(-heightKm / mieScaleHeightKm);
+            const float densityOzone = std::clamp(
+                1.0f - std::abs(heightKm - ozoneCenterKm) / ozoneHalfWidthKm, 0.0f, 1.0f);
+
+            opticalDepth.x += (rayleigh.x * densityRayleigh + mieExtinction * densityMie + ozone.x * densityOzone) * dt;
+            opticalDepth.y += (rayleigh.y * densityRayleigh + mieExtinction * densityMie + ozone.y * densityOzone) * dt;
+            opticalDepth.z += (rayleigh.z * densityRayleigh + mieExtinction * densityMie + ozone.z * densityOzone) * dt;
+        }
+
+        return {
+            std::exp(-opticalDepth.x) * visibility,
+            std::exp(-opticalDepth.y) * visibility,
+            std::exp(-opticalDepth.z) * visibility };
     }
 
     void AtmosphereManager::UploadConstants()
@@ -594,6 +789,7 @@ namespace CoreEngine
         constants.invViewProj = invViewProj_;
         constants.cameraWorldPos = cameraWorldPos_;
         constants.groundLevelY = parameters_.groundLevelY;
+        constants.multiScatteringFactor = parameters_.multiScatteringFactor;
 
         *constantData_ = constants;
     }

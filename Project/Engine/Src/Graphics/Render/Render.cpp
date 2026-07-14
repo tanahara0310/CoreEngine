@@ -88,7 +88,6 @@ namespace CoreEngine
     void Render::FinalizeFrame()
     {
         auto* cmdList = dxCommon_->GetCommandList();
-        UINT backBufferIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
 
         // バックバッファの終了処理
         auto* backBuffer = renderTargetManager_->GetRenderTarget(RenderTargetNames::BackBuffer);
@@ -105,10 +104,12 @@ namespace CoreEngine
         dxCommon_->GetCommandQueue()->ExecuteCommandLists(1, commandLists);
 
         // 現在のフレーム完了をシグナル（非ブロッキング）
+        // アロケータ/フェンスのローテーションには CommandManager が持つ記録中インデックスを使う。
+        // スワップチェーンの GetCurrentBackBufferIndex() は ResizeBuffers で 0 にリセットされる
+        // ため、それを使うと実行中アロケータを Reset してしまう（D3D12 ERROR #552）
         auto* commandManager = dxCommon_->GetCommandManager();
-        if (commandManager) {
-            commandManager->SignalFrame(backBufferIndex);
-        }
+        const UINT recordingIndex = commandManager->GetRecordingFrameIndex();
+        commandManager->SignalFrame(recordingIndex);
 
         // Present（画面に反映）
         static constexpr UINT kVSyncEnabled = 1;
@@ -116,12 +117,8 @@ namespace CoreEngine
         dxCommon_->GetSwapChain()->Present(kVSyncEnabled, kPresentFlags);
 
         // 次のフレームの準備
-        UINT nextFrameIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
-
-   
-        if (commandManager) {
-            commandManager->WaitForFrame(nextFrameIndex);
-        }
+        const UINT nextFrameIndex = (recordingIndex + 1) % commandManager->GetFrameCount();
+        commandManager->WaitForFrame(nextFrameIndex);
 
         // 次のフレーム用のコマンドアロケータをリセット
         hr = commandManager->GetCommandAllocator(nextFrameIndex)->Reset();
@@ -130,5 +127,7 @@ namespace CoreEngine
         // コマンドリストをリセット
         hr = dxCommon_->GetCommandList()->Reset(commandManager->GetCommandAllocator(nextFrameIndex), nullptr);
         assert(SUCCEEDED(hr));
+
+        commandManager->SetRecordingFrameIndex(nextFrameIndex);
     }
 }

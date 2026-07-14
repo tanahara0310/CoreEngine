@@ -41,6 +41,9 @@ struct AtmosphereConstants
 
     float3 cameraWorldPos;        // カメラのワールド座標 [m]
     float groundLevelY;           // 地表とみなすワールドY座標 [m]（InfiniteGroundObject 等の実床と揃える）
+
+    float multiScatteringFactor;  // 多重散乱寄与のスケール（1=近似そのまま。等方Psi_ms近似は薄明時に過大評価するため抑制用）
+    float3 constantsPad;
 };
 
 /// @brief レイと原点中心球の交差判定
@@ -197,29 +200,58 @@ float3 SampleTransmittanceToSun(Texture2D<float4> transmittanceLUT, SamplerState
 static const uint MULTISCATTERING_LUT_SIZE = 32;
 
 /// @brief (muSun, r) から Multi-Scattering LUT の UV を求める
+/// @details muSun は線形ではなく √エンコードで格納する。昼→夜の遷移（muSun ≈ 0、
+///          太陽が地平線を跨ぐ瞬間）は数度の範囲で急激に起こるが、線形マッピングだと
+///          32 テクセルで 1 テクセル ≈ 3.6°となり、日没直後でもバイリニア補間が
+///          「太陽が地平線上にある構成」の明るい多重散乱を拾ってしまう。
+///          その漏れは等方（方位無依存）なので、反太陽側の空が太陽側と同じ明るさに
+///          持ち上がる（= 日没時に反太陽側が暗くならない不具合の主因）。
+///          √エンコードは terminator 付近の分解能を約16倍にし、この漏れを解消する。
 float2 MultiScatteringParamsToUv(float muSun, float radiusKm, float bottomRadiusKm, float topRadiusKm)
 {
-    float xMuSun = muSun * 0.5f + 0.5f;
+    float xMuSun = 0.5f + 0.5f * sign(muSun) * sqrt(abs(muSun));
     float xR = saturate((radiusKm - bottomRadiusKm) / max(topRadiusKm - bottomRadiusKm, 1e-6f));
-    return float2(xMuSun, xR);
+    return float2(saturate(xMuSun), xR);
 }
 
 /// @brief Multi-Scattering LUT の UV から (muSun, r) を復元する
 void UvToMultiScatteringParams(float2 uv, float bottomRadiusKm, float topRadiusKm,
                                out float muSun, out float radiusKm)
 {
-    muSun = uv.x * 2.0f - 1.0f;
+    float t = uv.x * 2.0f - 1.0f;
+    muSun = sign(t) * t * t; // √エンコードの逆変換
     radiusKm = lerp(bottomRadiusKm, topRadiusKm, uv.y);
 }
 
+/// @brief 多重散乱項に掛ける惑星影の減衰
+/// @details MS LUT は「2次散乱の発生点」での地球影しか含まず、無限次数への増幅
+///          1/(1 - f_ms) は影をまったく考慮しない（Hillaire 2020 が自認する
+///          薄明時の過大評価）。高次散乱の実効的な光源は各点の上空の日照大気なので、
+///          太陽が「大気の実効厚（レイリースケールハイト×3 ≈ 24km）の上空から見た
+///          地平線」より沈むにつれて滑らかに 0 へ減衰させる（地上なら太陽高度 0°→
+///          約 -5° で 1→0。civil twilight の減衰と一致する）。
+///          これが無いと日没時に等方の多重散乱だけが空全体を持ち上げ、
+///          地球影側（反太陽側）が太陽側と同じ明るさになってしまう。
+float MultiScatteringPlanetShadow(float radiusKm, float muSun, AtmosphereConstants atm)
+{
+    float cosHorizonLocal = -sqrt(max(0.0f,
+        1.0f - (atm.planetRadiusKm * atm.planetRadiusKm) / (radiusKm * radiusKm)));
+    float rEffKm = radiusKm + 3.0f * atm.rayleighScaleHeightKm;
+    float cosHorizonEff = -sqrt(max(0.0f,
+        1.0f - (atm.planetRadiusKm * atm.planetRadiusKm) / (rEffKm * rEffKm)));
+    return smoothstep(cosHorizonEff, cosHorizonLocal, muSun);
+}
+
 /// @brief Multi-Scattering LUT から指定点の多重散乱寄与 Psi_ms を取得する
+/// @details 惑星影の減衰（MultiScatteringPlanetShadow）込み。
 float3 SampleMultiScattering(Texture2D<float4> multiScatteringLUT, SamplerState lutSampler,
                              float3 position, float3 toSun, AtmosphereConstants atm)
 {
     float radiusKm = length(position);
     float muSun = dot(position / radiusKm, toSun);
     float2 uv = MultiScatteringParamsToUv(muSun, radiusKm, atm.planetRadiusKm, atm.atmosphereTopRadiusKm);
-    return multiScatteringLUT.SampleLevel(lutSampler, uv, 0).rgb;
+    return multiScatteringLUT.SampleLevel(lutSampler, uv, 0).rgb
+         * MultiScatteringPlanetShadow(radiusKm, muSun, atm);
 }
 
 // ============================================================================
@@ -327,7 +359,7 @@ float3 IntegrateScatteredLuminance(
     float phaseMie = HenyeyGreensteinPhase(atm.miePhaseG, cosTheta);
 
     float3 luminance = float3(0.0f, 0.0f, 0.0f);
-    float3 opticalDepth = float3(0.0f, 0.0f, 0.0f);
+    float3 throughput = float3(1.0f, 1.0f, 1.0f);
 
     for (int i = 0; i < stepCount; ++i)
     {
@@ -335,9 +367,8 @@ float3 IntegrateScatteredLuminance(
         float heightKm = length(p) - atm.planetRadiusKm;
 
         float3 density = ComputeMediumDensity(heightKm, atm);
-
-        opticalDepth += ComputeExtinction(heightKm, atm) * dt;
-        float3 transmittanceToCamera = exp(-opticalDepth);
+        float3 sigmaT = max(ComputeExtinction(heightKm, atm), 1e-7f);
+        float3 stepTransmittance = exp(-sigmaT * dt);
 
         float3 transmittanceToSun = SampleTransmittanceToSun(transmittanceLUT, lutSampler, p, toSun, atm);
 
@@ -348,9 +379,15 @@ float3 IntegrateScatteredLuminance(
                                  + atm.mieScattering.xxx * density.y;
         float3 psiMs = SampleMultiScattering(multiScatteringLUT, lutSampler, p, toSun, atm);
 
-        luminance += transmittanceToCamera
-                   * (transmittanceToSun * scattering + psiMs * scatteringNoPhase)
-                   * dt;
+        // 放射源項をステップ内で解析的に積分する（Hillaire 2020 §5.3、エネルギー保存）。
+        // 旧実装（ステップ末端の透過率 × S × dt）は地平線際の長経路（dt が数十 km）で
+        // 濃い低高度の寄与を大きく取りこぼし、特に日没の太陽側の赤い散乱帯を過小評価していた
+        float3 S = transmittanceToSun * scattering
+                 + psiMs * scatteringNoPhase * atm.multiScatteringFactor;
+        float3 Sint = (S - S * stepTransmittance) / sigmaT;
+
+        luminance += throughput * Sint;
+        throughput *= stepTransmittance;
     }
 
     return luminance;
@@ -405,7 +442,7 @@ float3 IntegrateScatteredLuminanceToDistance(
     float phaseMie = HenyeyGreensteinPhase(atm.miePhaseG, cosTheta);
 
     float3 luminance = float3(0.0f, 0.0f, 0.0f);
-    float3 opticalDepth = float3(0.0f, 0.0f, 0.0f);
+    float3 throughput = float3(1.0f, 1.0f, 1.0f);
 
     for (int i = 0; i < stepCount; ++i)
     {
@@ -413,9 +450,8 @@ float3 IntegrateScatteredLuminanceToDistance(
         float heightKm = length(p) - atm.planetRadiusKm;
 
         float3 density = ComputeMediumDensity(heightKm, atm);
-
-        opticalDepth += ComputeExtinction(heightKm, atm) * dt;
-        float3 transmittanceToCamera = exp(-opticalDepth);
+        float3 sigmaT = max(ComputeExtinction(heightKm, atm), 1e-7f);
+        float3 stepTransmittance = exp(-sigmaT * dt);
 
         float3 transmittanceToSun = SampleTransmittanceToSun(transmittanceLUT, lutSampler, p, toSun, atm);
 
@@ -426,12 +462,16 @@ float3 IntegrateScatteredLuminanceToDistance(
                                  + atm.mieScattering.xxx * density.y;
         float3 psiMs = SampleMultiScattering(multiScatteringLUT, lutSampler, p, toSun, atm);
 
-        luminance += transmittanceToCamera
-                   * (transmittanceToSun * scattering + psiMs * scatteringNoPhase)
-                   * dt;
+        // ステップ内解析積分（IntegrateScatteredLuminance と同じエネルギー保存形式）
+        float3 S = transmittanceToSun * scattering
+                 + psiMs * scatteringNoPhase * atm.multiScatteringFactor;
+        float3 Sint = (S - S * stepTransmittance) / sigmaT;
+
+        luminance += throughput * Sint;
+        throughput *= stepTransmittance;
     }
 
-    transmittanceOut = exp(-opticalDepth);
+    transmittanceOut = throughput;
     return luminance;
 }
 

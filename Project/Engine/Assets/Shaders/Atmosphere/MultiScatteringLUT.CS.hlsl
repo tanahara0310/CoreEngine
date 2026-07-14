@@ -44,7 +44,7 @@ void IntegrateDirection(float3 rayOrigin, float3 rayDir, float3 toSun,
     float dt = tMax / kStepCount;
     const float uniformPhase = 1.0f / (4.0f * ATMOSPHERE_PI);
 
-    float3 opticalDepth = float3(0.0f, 0.0f, 0.0f);
+    float3 throughput = float3(1.0f, 1.0f, 1.0f);
 
     for (int i = 0; i < kStepCount; ++i)
     {
@@ -55,17 +55,21 @@ void IntegrateDirection(float3 rayOrigin, float3 rayDir, float3 toSun,
         float3 scattering = gAtmosphere.rayleighScattering * density.x
                           + gAtmosphere.mieScattering.xxx * density.y;
 
-        opticalDepth += ComputeExtinction(heightKm, gAtmosphere) * dt;
-        float3 transmittanceToOrigin = exp(-opticalDepth);
+        float3 sigmaT = max(ComputeExtinction(heightKm, gAtmosphere), 1e-7f);
+        float3 stepTransmittance = exp(-sigmaT * dt);
 
         float3 transmittanceToSun = SampleTransmittanceToSun(
             gTransmittanceLUT, gLUTSampler, p, toSun, gAtmosphere);
 
+        // ステップ内解析積分（AtmosphereCommon.hlsli の積分器と同じエネルギー保存形式）
         // 2次散乱の元: 太陽光がこの点で等方的に散乱される量
-        outLuminance += transmittanceToOrigin * transmittanceToSun * scattering * uniformPhase * dt;
+        float3 S2 = transmittanceToSun * scattering * uniformPhase;
+        outLuminance += throughput * (S2 - S2 * stepTransmittance) / sigmaT;
 
         // 再散乱率: この方向に散乱された光がさらに散乱される割合
-        outMultiScatFactor += transmittanceToOrigin * scattering * dt;
+        outMultiScatFactor += throughput * (scattering - scattering * stepTransmittance) / sigmaT;
+
+        throughput *= stepTransmittance;
     }
 
     // 地面に当たる場合はアルベド反射も2次光源として加える
@@ -76,8 +80,7 @@ void IntegrateDirection(float3 rayOrigin, float3 rayDir, float3 toSun,
         float NdotL = saturate(dot(groundNormal, toSun));
         float3 transmittanceToSun = SampleTransmittanceToSun(
             gTransmittanceLUT, gLUTSampler, groundPoint, toSun, gAtmosphere);
-        float3 transmittanceToOrigin = exp(-opticalDepth);
-        outLuminance += transmittanceToOrigin * transmittanceToSun * NdotL
+        outLuminance += throughput * transmittanceToSun * NdotL
                       * gAtmosphere.groundAlbedo / ATMOSPHERE_PI;
     }
 }

@@ -23,11 +23,8 @@ namespace CoreEngine
             return true;
         }
 
+        // ディスクリプタハンドルは保持したまま再利用する（リサイズ毎の確保はスロットリークになる）
         view.texture.Reset();
-        view.uavHandle = {};
-        view.uavCpuHandle = {};
-        view.srvHandle = {};
-        view.srvCpuHandle = {};
         view.width = width;
         view.height = height;
         view.currentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
@@ -69,7 +66,7 @@ namespace CoreEngine
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
         uavDesc.Format = format;
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        descriptorManager->CreateUAV(
+        descriptorManager->CreateOrUpdateUAV(
             view.texture.Get(),
             uavDesc,
             view.uavCpuHandle,
@@ -81,7 +78,7 @@ namespace CoreEngine
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.Texture2D.MipLevels = 1;
-        descriptorManager->CreateSRV(
+        descriptorManager->CreateOrUpdateSRV(
             view.texture.Get(),
             srvDesc,
             view.srvCpuHandle,
@@ -109,11 +106,8 @@ namespace CoreEngine
             return;
         }
 
+        // テクスチャのみ解放し、ディスクリプタハンドルは次回 EnsureTexture() で再利用する
         view.texture.Reset();
-        view.uavHandle = {};
-        view.uavCpuHandle = {};
-        view.srvHandle = {};
-        view.srvCpuHandle = {};
         view.width = width;
         view.height = height;
         view.currentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;

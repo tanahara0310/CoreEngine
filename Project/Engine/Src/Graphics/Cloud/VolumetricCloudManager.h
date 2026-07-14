@@ -344,11 +344,14 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES cloudBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_GPU_DESCRIPTOR_HANDLE cloudBufferSrvHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE cloudBufferUavHandle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE cloudBufferSrvCpuHandle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE cloudBufferUavCpuHandle_{};
 
         // 合成用中間テクスチャ（SceneColor と同サイズ・Phase 2 で確保）
         Microsoft::WRL::ComPtr<ID3D12Resource> compositeResult_;
         D3D12_RESOURCE_STATES compositeResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_GPU_DESCRIPTOR_HANDLE compositeResultUavHandle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE compositeResultUavCpuHandle_{};
         uint64_t targetsWidth_ = 0;
         uint32_t targetsHeight_ = 0;
 
@@ -364,6 +367,8 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES godRayBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_GPU_DESCRIPTOR_HANDLE godRayBufferSrvHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE godRayBufferUavHandle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE godRayBufferSrvCpuHandle_{};
+        D3D12_CPU_DESCRIPTOR_HANDLE godRayBufferUavCpuHandle_{};
 
         // ゴッドレイ定数バッファ（永続マップ）
         Microsoft::WRL::ComPtr<ID3D12Resource> godRayConstantBuffer_;

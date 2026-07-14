@@ -320,7 +320,11 @@ namespace CoreEngine
         if (!dx) {
             return;
         }
-        const UINT nextFrameIndex = dx->GetSwapChain()->GetCurrentBackBufferIndex();
+        // FinalizeFrame でローテーション済みの記録中フレームインデックスを使う
+        // （スワップチェーンのインデックスはリサイズで 0 にリセットされるため使わない）
+        const UINT nextFrameIndex = dx->GetCommandManager()
+            ? dx->GetCommandManager()->GetRecordingFrameIndex()
+            : dx->GetSwapChain()->GetCurrentBackBufferIndex();
         gpuProfiler_.ReadResults(dx->GetCommandQueue(), nextFrameIndex);
 
         if (auto* dockingUI = GetDockingUI()) {
