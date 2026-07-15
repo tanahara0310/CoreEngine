@@ -24,7 +24,8 @@ public:
 	/// @brief 水面制御全体のフレーム更新を行う
 	/// @param engine エンジンシステム
 	/// @param deltaTime 前フレームからの経過時間（秒）
-	void Update(CoreEngine::EngineSystem& engine, float deltaTime);
+	/// @param atmosphereSky シーンの空が大気散乱モードか（水面への空気遠近感の適用可否）
+	void Update(CoreEngine::EngineSystem& engine, float deltaTime, bool atmosphereSky);
 
 	/// @brief ReflectionView の出力を水面描画へ適用する
 	/// @param result 反射描画結果

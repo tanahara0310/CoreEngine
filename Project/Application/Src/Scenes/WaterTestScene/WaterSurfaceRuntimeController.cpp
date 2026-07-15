@@ -2,6 +2,7 @@
 #include "WaterSurfaceRuntimeController.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
@@ -117,6 +118,20 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 				fftOceanManager->GetDisplacementSRVHandle(),
 				fftOceanManager->GetNormalSRVHandle(),
 				fftOceanManager->GetJacobianSRVHandle());
+		}
+
+		// 大気散乱（Aerial Perspective）のリソースを水面へ接続する。
+		// IsAtmosphereActive() はこの時点（OnUpdate）ではまだ立っていないため、
+		// シーン側から受け取った SkyBox の大気モード + LUT/CB の準備完了で判定する
+		if (auto* atmosphereManager = renderDomainContext->GetAtmosphereManager()) {
+			const bool apEnabled = atmosphereSkyEnabled_
+				&& atmosphereManager->IsConstantBufferReady()
+				&& atmosphereManager->AreLUTsReady();
+			waterPlane_->SetAtmosphereAPResources(
+				atmosphereManager->GetConstantBufferGPUAddress(),
+				atmosphereManager->GetCameraVolumeLUTSRVHandle(),
+				atmosphereManager->GetSkyViewLUTSRVHandle(),
+				apEnabled);
 		}
 	}
 }

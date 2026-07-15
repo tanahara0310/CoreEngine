@@ -71,7 +71,9 @@ struct WaterFrameConstants {
 	uint32_t depthDebugViewMode = static_cast<uint32_t>(WaterDebugViewMode::None);
 	// FFT Ocean 使用時、頂点解像度に依存しないピクセル単位の法線マップ再サンプリングを行うか
 	int useFFTOceanNormalMap = 0;
-	float debugPadding[2] = {};
+	// 大気散乱の空気遠近感を水面へ適用するか（大気アクティブなシーンでのみ 1）
+	int aerialPerspectiveEnabled = 0;
+	float debugPadding = 0.0f;
 };
 
 enum class WaterPresetType : int {

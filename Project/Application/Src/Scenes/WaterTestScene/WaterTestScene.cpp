@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WaterTestScene.h"
 
+#include "GameObjects/SkyBox/SkyBoxObject.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Math/MathCore.h"
@@ -52,7 +53,11 @@ void WaterTestScene::OnInitialize() {
 void WaterTestScene::OnUpdate() {
     auto* frameRate = engine_->GetComponent<FrameRateController>();
     const float deltaTime = frameRate ? frameRate->GetDeltaTime() : (1.0f / 60.0f);
-    waterController_.Update(*engine_, deltaTime);
+
+    // 空が大気散乱モードなら水面へ空気遠近感（Aerial Perspective）を適用する
+    SkyBoxObject* skyBox = GetSkyBox();
+    const bool atmosphereSky = (skyBox != nullptr) && skyBox->IsAtmosphereMode();
+    waterController_.Update(*engine_, deltaTime, atmosphereSky);
 }
 
 void WaterTestScene::Draw() {

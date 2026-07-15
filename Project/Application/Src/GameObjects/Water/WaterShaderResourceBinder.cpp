@@ -96,4 +96,29 @@ void WaterShaderResourceBinder::Bind(
                 renderResources.fftJacobianSRV);
         }
     }
+
+    // 大気散乱（Aerial Perspective）のリソース群をバインドする
+    // （未接続のフレームはシェーダー側フラグ gAerialPerspectiveEnabled=0 で参照されない）
+    if (renderResources.HasAtmosphere()) {
+        const int atmosphereSlot = pipeline->GetRootParamIndex("gAtmosphereAP");
+        if (atmosphereSlot >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(
+                static_cast<UINT>(atmosphereSlot),
+                renderResources.atmosphereCB);
+        }
+
+        const int cameraVolumeSlot = pipeline->GetRootParamIndex("gCameraVolumeLUT");
+        if (cameraVolumeSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(cameraVolumeSlot),
+                renderResources.cameraVolumeSRV);
+        }
+
+        const int skyViewSlot = pipeline->GetRootParamIndex("gSkyViewLUTAP");
+        if (skyViewSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(skyViewSlot),
+                renderResources.skyViewSRV);
+        }
+    }
 }

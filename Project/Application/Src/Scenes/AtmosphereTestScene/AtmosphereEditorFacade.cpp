@@ -182,6 +182,10 @@ void AtmosphereEditorFacade::DrawContent()
             // 等方 Psi_ms 近似は薄明時に反太陽側を過大に持ち上げる。1 未満で抑制（UE の MultiScatteringFactor 相当）
             paramsChanged |= ImGui::SliderFloat("寄与スケール", &params.multiScatteringFactor, 0.0f, 2.0f, "%.2f");
 
+            ImGui::SeparatorText("空気遠近感（Aerial Perspective）");
+            // Camera Volume は 32 スライスなので最大適用距離 = 32 × この値（既定 4 → 128km）
+            paramsChanged |= ImGui::SliderFloat("距離スケール [km/slice]", &params.apKmPerSlice, 1.0f, 16.0f, "%.1f");
+
             ImGui::SeparatorText("地表・その他");
             float albedo[3] = { params.groundAlbedo.x, params.groundAlbedo.y, params.groundAlbedo.z };
             if (ImGui::ColorEdit3("地表アルベド", albedo)) {

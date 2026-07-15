@@ -33,7 +33,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     // スライス距離（テクセル中心 = (z+0.5)×スライス幅。サンプリング側の
     // CameraVolumeDistanceToW と半テクセルずれなく対応させる）
-    float tMaxKm = (float(dispatchThreadId.z) + 0.5f) * CAMERA_VOLUME_KM_PER_SLICE;
+    float tMaxKm = (float(dispatchThreadId.z) + 0.5f) * gAtmosphere.apKmPerSlice;
 
     // 大気空間: カメラは +Y 軸上。方向ベクトルはワールドと共通（Y-up）
     float3 rayOrigin = float3(0.0f, gAtmosphere.cameraRadiusKm, 0.0f);

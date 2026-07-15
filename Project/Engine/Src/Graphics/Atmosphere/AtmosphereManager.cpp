@@ -790,6 +790,7 @@ namespace CoreEngine
         constants.cameraWorldPos = cameraWorldPos_;
         constants.groundLevelY = parameters_.groundLevelY;
         constants.multiScatteringFactor = parameters_.multiScatteringFactor;
+        constants.apKmPerSlice = parameters_.apKmPerSlice;
 
         *constantData_ = constants;
     }

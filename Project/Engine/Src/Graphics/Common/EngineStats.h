@@ -137,13 +137,12 @@ namespace CoreEngine
 
         // ドローコールを記録（三角形数・頂点数も加算）
         void RecordDrawCall(bool isInstanced, uint32_t instanceCount,
-                            uint32_t indexCount, uint32_t vertexCountPerInstance)
+            uint32_t indexCount, uint32_t vertexCountPerInstance)
         {
             if (isInstanced)
             {
                 renderStats_.instancedDrawCallCount++;
-            }
-            else
+            } else
             {
                 renderStats_.drawCallCount++;
             }

@@ -1095,6 +1095,9 @@
     <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\IResizable.h">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.h">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClInclude>

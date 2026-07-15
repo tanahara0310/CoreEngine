@@ -43,7 +43,8 @@ struct AtmosphereConstants
     float groundLevelY;           // 地表とみなすワールドY座標 [m]（InfiniteGroundObject 等の実床と揃える）
 
     float multiScatteringFactor;  // 多重散乱寄与のスケール（1=近似そのまま。等方Psi_ms近似は薄明時に過大評価するため抑制用）
-    float3 constantsPad;
+    float apKmPerSlice;           // Camera Volume の1スライスあたり距離 [km]（UE の AP View Distance Scale 相当。最大距離 = 32×この値）
+    float2 constantsPad;
 };
 
 /// @brief レイと原点中心球の交差判定
@@ -400,12 +401,12 @@ float3 IntegrateScatteredLuminance(
 // ============================================================================
 
 static const uint CAMERA_VOLUME_SIZE = 32;
-static const float CAMERA_VOLUME_KM_PER_SLICE = 4.0f; // 1スライスあたりの距離 [km]（最大 32*4=128km）
 
 /// @brief カメラからの距離 [km] を CameraVolume の Wスライス座標 [0,1] へ変換する
-float CameraVolumeDistanceToW(float distanceKm)
+/// @param kmPerSlice 1スライスあたりの距離 [km]（AtmosphereConstants.apKmPerSlice を渡す）
+float CameraVolumeDistanceToW(float distanceKm, float kmPerSlice)
 {
-    float slice = distanceKm / CAMERA_VOLUME_KM_PER_SLICE;
+    float slice = distanceKm / max(kmPerSlice, 1e-3f);
     return saturate(slice / CAMERA_VOLUME_SIZE);
 }
 

@@ -142,6 +142,17 @@ public:
         D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle);
 
+    /// @brief 大気散乱（Aerial Perspective）のリソースと有効フラグを設定する
+    /// @param atmosphereCB AtmosphereManager 定数バッファの GPU 仮想アドレス
+    /// @param cameraVolumeSrvHandle CameraVolume LUT（Texture3D）の SRV
+    /// @param skyViewSrvHandle Sky-View LUT の SRV（遠距離フォールバック用）
+    /// @param enabled 水面へ空気遠近感を適用するか（大気アクティブなシーンでのみ true）
+    void SetAtmosphereAPResources(
+        D3D12_GPU_VIRTUAL_ADDRESS atmosphereCB,
+        D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE skyViewSrvHandle,
+        bool enabled);
+
     /// @brief FFT Ocean 描画経路を切り替える
     void SetUseFFTOcean(bool useFFTOcean);
 

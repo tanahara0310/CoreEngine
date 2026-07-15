@@ -21,6 +21,10 @@ bool WaterRenderResources::HasFFTOceanTextureSRVs() const {
     return fftDisplacementSRV.ptr != 0 && fftNormalSRV.ptr != 0;
 }
 
+bool WaterRenderResources::HasAtmosphere() const {
+    return atmosphereCB != 0 && cameraVolumeSRV.ptr != 0 && skyViewSRV.ptr != 0;
+}
+
 void WaterRenderResources::SetFFTOceanTextureSRVs(
     D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle,
     D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle,

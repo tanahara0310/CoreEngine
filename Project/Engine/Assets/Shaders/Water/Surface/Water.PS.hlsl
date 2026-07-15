@@ -1,4 +1,6 @@
 #include "Object3dForward.hlsli"
+// 大気散乱の空気遠近感を水面（フォワード半透明）にも適用する（b6 / t22 / t23 を使用）
+#include "AtmosphereApply.hlsli"
 
 // ===== 反射テクスチャ（Planar Reflection RTT）=====
 Texture2D<float4> gReflectionTexture : register(t14);
@@ -61,7 +63,9 @@ cbuffer WaterFrameConstants : register(b5)
     uint gDepthDebugViewMode;
     // FFT Ocean 使用時、頂点解像度に依存しないピクセル単位の法線マップ再サンプリングを行うか
     int gUseFFTOceanNormalMap;
-    float2 gDebugPadding;
+    // 大気散乱の空気遠近感を水面へ適用するか（大気アクティブなシーンでのみ 1）
+    int gAerialPerspectiveEnabled;
+    float gDebugPadding;
 };
 
 /// @brief NDC 深度値をビュー空間線形深度（メートル単位）に変換する
@@ -493,6 +497,17 @@ PixelShaderOutput main(WaterPSInput input)
     }
 
     output.color.rgb = finalWaterComposite;
+
+    // ---- 5. 空気遠近感（Aerial Perspective）----
+    // 不透明パスへの合成（AerialPerspective.CS）は水面より前に終わっているため、
+    // 水面自身の距離で同じ霞をここで適用する。屈折成分（背景）には背景自身の距離の
+    // 霞が既に乗っているが、水面までの区間が重複適用されるのは半透明の慣例的な近似として許容する
+    if (gAerialPerspectiveEnabled != 0)
+    {
+        output.color.rgb = ApplyAerialPerspective(
+            output.color.rgb, input.worldPosition, screenUV, gLinearClamp);
+    }
+
     output.color.a = 1.0f;
 
     return output;

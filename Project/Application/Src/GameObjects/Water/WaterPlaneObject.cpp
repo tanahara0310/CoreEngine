@@ -218,6 +218,18 @@ void WaterPlaneObject::SetFFTOceanTextureSRVs(
     }
 }
 
+void WaterPlaneObject::SetAtmosphereAPResources(
+    D3D12_GPU_VIRTUAL_ADDRESS atmosphereCB,
+    D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeSrvHandle,
+    D3D12_GPU_DESCRIPTOR_HANDLE skyViewSrvHandle,
+    bool enabled) {
+    renderResources_.atmosphereCB = atmosphereCB;
+    renderResources_.cameraVolumeSRV = cameraVolumeSrvHandle;
+    renderResources_.skyViewSRV = skyViewSrvHandle;
+    // リソースが揃っていない場合はシェーダー側の参照を止める
+    frameCB_.aerialPerspectiveEnabled = (enabled && renderResources_.HasAtmosphere()) ? 1 : 0;
+}
+
 void WaterPlaneObject::SetRefractionColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
     renderResources_.refractionColorSRV = srvHandle;
 

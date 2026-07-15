@@ -26,7 +26,8 @@ namespace CoreEngine
         Vector3 groundAlbedo;         float sunDiskLuminanceScale; // ディスク輝度スケール
         Matrix4x4 invViewProj;        // 逆ビュープロジェクション行列（Aerial Perspective 用）
         Vector3 cameraWorldPos;       float groundLevelY;          // カメラのワールド座標 [m] / 地表とみなす世界Y座標 [m]
-        float multiScatteringFactor;  Vector3 constantsPad;        // 多重散乱スケール / パディング
+        float multiScatteringFactor;  float apKmPerSlice;          // 多重散乱スケール / APの1スライスあたり距離 [km]
+        float constantsPad[2];        // パディング
     };
     static_assert(sizeof(AtmosphereShaderConstants) == 208,
         "AtmosphereShaderConstants は HLSL 側 AtmosphereConstants の 208 バイトレイアウトと一致させること");
@@ -68,6 +69,12 @@ namespace CoreEngine
         /// @details Hillaire の等方 Psi_ms 近似は薄明時（太陽が地平線際）に空全体、
         ///          特に反太陽側を過大に持ち上げる傾向がある。UE の MultiScatteringFactor 相当。
         float multiScatteringFactor = 1.0f;
+
+        // ===== Aerial Perspective =====
+        /// @brief Camera Volume LUT の1スライスあたり距離 [km]（既定 4 = 最大 32×4 = 128km）
+        /// @details UE の Aerial Perspective View Distance Scale 相当。大きくすると霞が
+        ///          より遠距離まで届く代わりに近距離の分解能が落ちる。
+        float apKmPerSlice = 4.0f;
     };
 
     /// @brief 大気散乱システムの管理クラス
@@ -173,6 +180,11 @@ namespace CoreEngine
 
         /// @brief Sky-View LUT の SRV ハンドルを取得（描画シェーダーのバインド用）
         D3D12_GPU_DESCRIPTOR_HANDLE GetSkyViewLUTSRVHandle() const { return skyViewSrvHandle_; }
+
+        /// @brief CameraVolume（Aerial Perspective froxel）LUT の SRV ハンドルを取得
+        /// @details 半透明パス（水面等）が自前で空気遠近感を適用する際に使う。
+        ///          生成後は PIXEL_SHADER_RESOURCE 込みの状態のためピクセルシェーダーから直接サンプル可能
+        D3D12_GPU_DESCRIPTOR_HANDLE GetCameraVolumeLUTSRVHandle() const { return cameraVolumeSrvHandle_; }
 
         // ===== 空アンビエント（Sky Light 相当） =====
 
