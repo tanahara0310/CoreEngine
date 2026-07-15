@@ -27,11 +27,11 @@ namespace CoreEngine
                 device, bufferSize, D3D12_HEAP_TYPE_READBACK);
         }
 
-        // スロット名を初期設定
-        for (uint32_t i = 0; i < kSlotCount; ++i)
-        {
-            lastResults_[i].name = GetSlotName(static_cast<GpuTimestampSlot>(i));
-        }
+        // 固定スロットの名前・カテゴリを初期設定（動的スロットは登録時に設定される）
+        lastResults_[static_cast<uint32_t>(GpuTimestampSlot::ImGuiDraw)].name = GetSlotName(static_cast<uint32_t>(GpuTimestampSlot::ImGuiDraw));
+        lastResults_[static_cast<uint32_t>(GpuTimestampSlot::ImGuiDraw)].category = GpuTimingCategory::Editor;
+        lastResults_[static_cast<uint32_t>(GpuTimestampSlot::Total)].name = GetSlotName(static_cast<uint32_t>(GpuTimestampSlot::Total));
+        lastResults_[static_cast<uint32_t>(GpuTimestampSlot::Total)].category = GpuTimingCategory::Frame;
 
         initialized_ = true;
     }
@@ -46,27 +46,48 @@ namespace CoreEngine
     void GpuTimestampProfiler::NewFrame(uint32_t frameIndex)
     {
         currentFrameIndex_ = frameIndex % kFrameCount;
-        activatedSlots_[currentFrameIndex_] = 0;
+        activatedSlots_[currentFrameIndex_].fill(false);
         for (uint32_t i = 0; i < kSlotCount; ++i)
         {
             cpuTimesMs_[currentFrameIndex_][i] = 0.0f;
         }
     }
 
-    void GpuTimestampProfiler::BeginGpuTimestamp(GpuTimestampSlot slot, ID3D12GraphicsCommandList* cmdList)
+    uint32_t GpuTimestampProfiler::GetOrCreateNamedSlot(const std::string& name, GpuTimingCategory category)
     {
-        if (!initialized_ || !cmdList) return;
-        activatedSlots_[currentFrameIndex_] |= (1u << static_cast<uint32_t>(slot));
+        if (auto it = namedSlotIndex_.find(name); it != namedSlotIndex_.end()) {
+            return it->second;
+        }
+        if (dynamicSlotCount_ >= kMaxDynamicSlots) {
+            return UINT32_MAX;
+        }
+
+        const uint32_t dynIndex = dynamicSlotCount_++;
+        const uint32_t slotIndex = kFixedSlotCount + dynIndex;
+        dynamicNames_[dynIndex] = name;
+        dynamicCategories_[dynIndex] = category;
+        namedSlotIndex_.emplace(name, slotIndex);
+
+        lastResults_[slotIndex].name = dynamicNames_[dynIndex].c_str();
+        lastResults_[slotIndex].category = category;
+
+        return slotIndex;
+    }
+
+    void GpuTimestampProfiler::BeginGpuTimestamp(uint32_t slotIndex, ID3D12GraphicsCommandList* cmdList)
+    {
+        if (!initialized_ || !cmdList || slotIndex >= kSlotCount) return;
+        activatedSlots_[currentFrameIndex_][slotIndex] = true;
         const uint32_t base = currentFrameIndex_ * kQueriesPerFrame;
-        const uint32_t index = static_cast<uint32_t>(slot) * kQueriesPerSlot;
+        const uint32_t index = slotIndex * kQueriesPerSlot;
         cmdList->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, base + index);
     }
 
-    void GpuTimestampProfiler::EndGpuTimestamp(GpuTimestampSlot slot, ID3D12GraphicsCommandList* cmdList)
+    void GpuTimestampProfiler::EndGpuTimestamp(uint32_t slotIndex, ID3D12GraphicsCommandList* cmdList)
     {
-        if (!initialized_ || !cmdList) return;
+        if (!initialized_ || !cmdList || slotIndex >= kSlotCount) return;
         const uint32_t base = currentFrameIndex_ * kQueriesPerFrame;
-        const uint32_t index = static_cast<uint32_t>(slot) * kQueriesPerSlot + 1;
+        const uint32_t index = slotIndex * kQueriesPerSlot + 1;
         cmdList->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, base + index);
     }
 
@@ -80,7 +101,7 @@ namespace CoreEngine
         // 未使用クエリの RESOLVE_QUERY_INVALID_QUERY_STATE を防ぐ。
         for (uint32_t i = 0; i < kSlotCount; ++i)
         {
-            if (!(activatedSlots_[bufIdx] & (1u << i))) continue;
+            if (!activatedSlots_[bufIdx][i]) continue;
 
             const uint32_t firstQuery = base + i * kQueriesPerSlot;
             const UINT64 destOffset = static_cast<UINT64>(i * kQueriesPerSlot) * sizeof(uint64_t);
@@ -112,10 +133,9 @@ namespace CoreEngine
         const uint64_t* ts = static_cast<const uint64_t*>(pData);
         for (uint32_t i = 0; i < kSlotCount; ++i)
         {
-            lastResults_[i].name = GetSlotName(static_cast<GpuTimestampSlot>(i));
             lastResults_[i].cpuMs = cpuTimesMs_[bufIdx][i];
 
-            if (activatedSlots_[bufIdx] & (1u << i)) {
+            if (activatedSlots_[bufIdx][i]) {
                 const uint64_t t0 = ts[i * kQueriesPerSlot];
                 const uint64_t t1 = ts[i * kQueriesPerSlot + 1];
                 lastResults_[i].gpuMs = (t1 >= t0) ? static_cast<float>((t1 - t0) * msPerTick) : 0.0f;
@@ -128,15 +148,16 @@ namespace CoreEngine
         readbackBuffers_[bufIdx]->Unmap(0, &writeRange);
     }
 
-    void GpuTimestampProfiler::BeginCpuTimestamp(GpuTimestampSlot slot)
+    void GpuTimestampProfiler::BeginCpuTimestamp(uint32_t slotIndex)
     {
-        cpuBegin_[currentFrameIndex_][static_cast<uint32_t>(slot)] = std::chrono::high_resolution_clock::now();
+        if (slotIndex >= kSlotCount) return;
+        cpuBegin_[currentFrameIndex_][slotIndex] = std::chrono::high_resolution_clock::now();
     }
 
-    void GpuTimestampProfiler::EndCpuTimestamp(GpuTimestampSlot slot)
+    void GpuTimestampProfiler::EndCpuTimestamp(uint32_t slotIndex)
     {
-        const uint32_t idx = static_cast<uint32_t>(slot);
-        cpuTimesMs_[currentFrameIndex_][idx] = std::chrono::duration<float, std::milli>(
-            std::chrono::high_resolution_clock::now() - cpuBegin_[currentFrameIndex_][idx]).count();
+        if (slotIndex >= kSlotCount) return;
+        cpuTimesMs_[currentFrameIndex_][slotIndex] = std::chrono::duration<float, std::milli>(
+            std::chrono::high_resolution_clock::now() - cpuBegin_[currentFrameIndex_][slotIndex]).count();
     }
 }

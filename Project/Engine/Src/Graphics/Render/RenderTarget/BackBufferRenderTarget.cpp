@@ -10,8 +10,6 @@ namespace CoreEngine
     {
         assert(dx);
         dxCommon_ = dx;
-        width_ = dx->GetClientWidth();
-        height_ = dx->GetClientHeight();
         currentState_ = D3D12_RESOURCE_STATE_PRESENT;
     }
 
@@ -38,10 +36,12 @@ namespace CoreEngine
         // バックバッファのみクリアする。
         cmdList->ClearRenderTargetView(rtvHandle, clearColor_, 0, nullptr);
 
-        // ビューポート設定
+        // ビューポート設定（キャッシュせず現在のクライアント領域サイズを都度取得する）
+        const int32_t width = dxCommon_->GetClientWidth();
+        const int32_t height = dxCommon_->GetClientHeight();
         D3D12_VIEWPORT viewport{};
-        viewport.Width = static_cast<float>(width_);
-        viewport.Height = static_cast<float>(height_);
+        viewport.Width = static_cast<float>(width);
+        viewport.Height = static_cast<float>(height);
         viewport.TopLeftX = 0;
         viewport.TopLeftY = 0;
         viewport.MinDepth = 0.0f;
@@ -52,8 +52,8 @@ namespace CoreEngine
         D3D12_RECT scissor{};
         scissor.left = 0;
         scissor.top = 0;
-        scissor.right = width_;
-        scissor.bottom = height_;
+        scissor.right = width;
+        scissor.bottom = height;
         cmdList->RSSetScissorRects(1, &scissor);
 
         // SRVヒープ設定
@@ -92,8 +92,18 @@ namespace CoreEngine
 
     void BackBufferRenderTarget::GetSize(int32_t& width, int32_t& height) const
     {
-        width = width_;
-        height = height_;
+        width = dxCommon_->GetClientWidth();
+        height = dxCommon_->GetClientHeight();
+    }
+
+    int32_t BackBufferRenderTarget::GetWidth() const
+    {
+        return dxCommon_->GetClientWidth();
+    }
+
+    int32_t BackBufferRenderTarget::GetHeight() const
+    {
+        return dxCommon_->GetClientHeight();
     }
 
     UINT BackBufferRenderTarget::GetCurrentBackBufferIndex() const

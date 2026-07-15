@@ -59,6 +59,27 @@ namespace CoreEngine
             return {};
         }
 
+        // RenderPassPhase（パス挿入フェーズ）を GpuTimingCategory（タイミング表示カテゴリ）へ変換する。
+        // フェーズは 1:1 対応のため、パス追加時に UI 側の分類テーブルを編集する必要がない。
+        GpuTimingCategory ToGpuTimingCategory(RenderPassPhase phase)
+        {
+            switch (phase) {
+            case RenderPassPhase::FrameSetup:    return GpuTimingCategory::Setup;
+            case RenderPassPhase::Shadow:        return GpuTimingCategory::Shadow;
+            case RenderPassPhase::GBuffer:       return GpuTimingCategory::GBuffer;
+            case RenderPassPhase::PreLighting:   return GpuTimingCategory::PreLighting;
+            case RenderPassPhase::Lighting:      return GpuTimingCategory::Lighting;
+            case RenderPassPhase::PostLighting:  return GpuTimingCategory::PostLighting;
+            case RenderPassPhase::Sky:           return GpuTimingCategory::Sky;
+            case RenderPassPhase::Transparent:   return GpuTimingCategory::Transparent;
+            case RenderPassPhase::Water:         return GpuTimingCategory::Water;
+            case RenderPassPhase::PostProcess:   return GpuTimingCategory::PostProcess;
+            case RenderPassPhase::Overlay:       return GpuTimingCategory::Overlay;
+            case RenderPassPhase::Final:         return GpuTimingCategory::Final;
+            default:                             return GpuTimingCategory::Setup;
+            }
+        }
+
         // 太陽（無限遠の方向光源）のスクリーン UV を計算し、LensFlare へ渡す。
         // レンズフレアの光源を太陽に限定するため（パーティクル等の高輝度オブジェクトを
         // フレア源にしない）、毎フレームここで太陽の投影位置を更新する。
@@ -415,7 +436,7 @@ namespace CoreEngine
             RenderPass* passPtr = entry.pass.get();
             renderGraph_.AddPass(passPtr->GetName(), passPtr, [passPtr, &context](RenderGraphBuilder& builder) {
                 passPtr->DeclareResources(builder, context);
-                });
+                }, ToGpuTimingCategory(entry.phase));
         }
 
         renderGraph_.Compile(context);
@@ -428,6 +449,7 @@ namespace CoreEngine
         }
 
         const std::vector<PostEffectBase*>& enabledEffects = context.postEffectManager->GetEnabledEffects();
+        const std::vector<std::string>& enabledEffectNames = context.postEffectManager->GetEnabledEffectNames();
         if (enabledEffects.empty()) {
             return;
         }
@@ -445,7 +467,11 @@ namespace CoreEngine
                 ? std::string(FrameBlackboard::PostEffectFinal)
                 : FrameBlackboard::MakePostEffectIntermediateName(effectIndex);
 
-            const std::string effectName = std::string("PostEffect_") + std::to_string(effectIndex);
+            // 登録名（"LensFlare"/"Bloom"/"Outline" 等）をそのままパス名として使う。
+            // タイミング表示やデバッグログでエフェクトを個別に識別できるようにするため。
+            const std::string effectName = (effectIndex < enabledEffectNames.size())
+                ? enabledEffectNames[effectIndex]
+                : (std::string("PostEffect_") + std::to_string(effectIndex));
 
             auto postEffectPass = std::make_unique<PostEffectPass>();
             postEffectPass->SetEffect(effect, effectName);
@@ -454,9 +480,9 @@ namespace CoreEngine
             PostEffectPass* passPtr = postEffectPass.get();
             postEffectSubpasses_.push_back(std::move(postEffectPass));
 
-            renderGraph_.AddPass(passPtr->GetName(), passPtr, [passPtr, &context](RenderGraphBuilder& builder) {
+            renderGraph_.AddPass(effectName, passPtr, [passPtr, &context](RenderGraphBuilder& builder) {
                 passPtr->DeclareResources(builder, context);
-                });
+                }, GpuTimingCategory::PostProcess);
 
             currentInput = outputResource;
             ++effectIndex;

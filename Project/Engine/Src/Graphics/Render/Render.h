@@ -1,4 +1,5 @@
 #pragma once
+#include "Graphics/Common/IResizable.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -15,7 +16,7 @@ class DirectXCommon;
 
 /// @brief レンダリング管理クラス
 /// レンダーターゲットの管理とフレーム処理を担当
-class Render {
+class Render : public IResizable {
 public:
     // 統一クリアカラー
     static constexpr float kClearColor[4] = {0.1f, 0.25f, 0.5f, 1.0f};
@@ -44,6 +45,10 @@ public:
 
     /// @brief バックバッファの最終処理（コマンド実行、Present）
     void FinalizeFrame();
+
+    /// @brief ウィンドウリサイズ時の処理（IResizable）
+    /// @details autoResize フラグの立った RenderTarget 群を再作成する
+    void OnWindowResize(int32_t width, int32_t height) override;
 
     /// @brief DirectXCommonを取得
     /// @return DirectXCommon

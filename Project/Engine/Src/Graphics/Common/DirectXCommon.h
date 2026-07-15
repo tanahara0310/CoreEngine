@@ -5,7 +5,6 @@
 #include <dxgi1_6.h>
 #include <wrl.h>
 #include <memory>
-#include <functional>
 #include <vector>
 
 #include "WinApp/WinApp.h"
@@ -17,6 +16,7 @@
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/Core/SwapChainManager.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/Common/IResizable.h"
 
 using namespace Microsoft::WRL;
 
@@ -45,9 +45,13 @@ public:
     /// @param height 新しい高さ
     void OnWindowResize(int32_t width, int32_t height);
 
-    /// @brief ウィンドウリサイズ時の追加コールバックを登録
-    /// @param callback リサイズ通知コールバック
-    void AddResizeCallback(std::function<void(int32_t, int32_t)> callback) { resizeCallbacks_.push_back(std::move(callback)); }
+    /// @brief ウィンドウリサイズ通知を受け取るクラスを登録する
+    /// @details スワップチェーン/深度バッファの再作成が終わった後に OnWindowResize() が呼ばれる。
+    ///          呼び出し元は登録したオブジェクトを DirectXCommon より先に破棄してはならない
+    ///          （生存期間の管理は呼び出し元の責務。エンジン構成上、常に DirectXCommon より
+    ///          先に破棄されることはない）
+    /// @param resizable 登録するインスタンス
+    void RegisterResizable(IResizable* resizable) { resizables_.push_back(resizable); }
 
     // デバイス関連のアクセッサ
     ID3D12Device* GetDevice() { return deviceManager_->GetDevice(); }
@@ -102,6 +106,6 @@ private:
     std::unique_ptr<SwapChainManager> swapChainManager_ = std::make_unique<SwapChainManager>();
     std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
 
-    std::vector<std::function<void(int32_t, int32_t)>> resizeCallbacks_;
+    std::vector<IResizable*> resizables_;
 };
 }

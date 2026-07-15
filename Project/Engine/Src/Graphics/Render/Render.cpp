@@ -85,6 +85,11 @@ namespace CoreEngine
         return renderTargetManager_->GetRenderTarget(name);
     }
 
+    void Render::OnWindowResize(int32_t width, int32_t height)
+    {
+        renderTargetManager_->ResizeAutoTargets(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+    }
+
     void Render::FinalizeFrame()
     {
         auto* cmdList = dxCommon_->GetCommandList();

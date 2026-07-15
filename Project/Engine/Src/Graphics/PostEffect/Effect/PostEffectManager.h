@@ -94,6 +94,10 @@ public:
     /// @return 有効エフェクトの実行順リスト
     const std::vector<PostEffectBase*>& GetEnabledEffects() const { return effectPtrCache_; }
 
+    /// @brief 現在有効なポストエフェクトの登録名列を取得する（GetEnabledEffects() と同順）
+    /// @return 有効エフェクトの登録名リスト
+    const std::vector<std::string>& GetEnabledEffectNames() const { return effectNameCache_; }
+
     private:
     /// @brief 全エフェクトを登録
     void RegisterAllEffects();
@@ -133,6 +137,7 @@ public:
     /// @brief effectChain_中の有効エフェクトのポインタキャッシュ
     /// @details 毎フレームの unordered_map ルックアップを排除するため使用
     std::vector<PostEffectBase*> effectPtrCache_;
+    std::vector<std::string> effectNameCache_; ///< effectPtrCache_ と同順の登録名キャッシュ
 
     std::unique_ptr<PostEffectPresetManager> presetManager_;
 

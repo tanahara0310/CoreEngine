@@ -45,6 +45,7 @@ namespace CoreEngine
     class VolumetricCloudManager;
     class CameraManager;
     class DepthStencilManager;
+    class GpuTimestampProfiler;
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
         DirectXCommon* dxCommon = nullptr;
@@ -68,6 +69,7 @@ namespace CoreEngine
         DepthStencilManager* depthStencilManager = nullptr; ///< 深度ステンシル管理（バリア遷移・クリアを一元管理）
         FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理
         ModelManager* modelManager = nullptr; ///< モデル資産管理（BLAS 遅延ビルド用）
+        GpuTimestampProfiler* gpuProfiler = nullptr; ///< パス別 GPU/CPU タイミング計測（nullptr の場合は計測しない）
         const WaterSurfaceData* waterRefractionSurfaceData = nullptr; ///< DXR 水面屈折用の波面データ
         RenderViewSettings viewSettings{}; ///< 現在の View 種別と有効化するパス群設定
         uint32_t currentRTShadowViewId = static_cast<uint32_t>(RenderViewType::GameView); ///< 現在の RT シャドウビュー

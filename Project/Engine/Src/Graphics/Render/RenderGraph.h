@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Graphics/Common/GpuTimestampProfiler.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Pass/RenderPass.h"
 
@@ -68,6 +69,7 @@ namespace CoreEngine
         std::vector<RenderGraphResourceAccess> reads;
         std::vector<RenderGraphResourceAccess> writes;
         std::vector<uint32_t> dependencies;
+        GpuTimingCategory timingCategory = GpuTimingCategory::Setup; ///< タイミング表示のグルーピングカテゴリ
     };
 
     struct RenderGraphContext {
@@ -83,10 +85,12 @@ namespace CoreEngine
         /// @param name パス名
         /// @param renderPass 実行対象パス
         /// @param setup Read / Write 宣言を行うビルダー設定関数
+        /// @param timingCategory タイミング表示のグルーピングカテゴリ
         void AddPass(
             const std::string& name,
             RenderPass* renderPass,
-            const std::function<void(RenderGraphBuilder&)>& setup);
+            const std::function<void(RenderGraphBuilder&)>& setup,
+            GpuTimingCategory timingCategory = GpuTimingCategory::Setup);
 
         /// @brief Graph 内の依存関係を解決して実行順を確定する
         /// @brief Blackboard / Manager から実リソースを解決したうえで依存関係を確定する
