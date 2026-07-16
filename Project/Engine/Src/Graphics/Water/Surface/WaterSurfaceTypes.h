@@ -60,14 +60,18 @@ struct WaterFrameConstants {
 	int reflectionEnabled = 0;
 	float fresnelReflectanceScale = 1.0f;
 	float fresnelBaseReflectance = 0.02f;
-	float absorptionCoeff = 0.3f;
 	int depthFadeEnabled = 1;
 	int depthFadeDebugEnabled = 0;
 	float depthFadeDebugScale = 1.5f;
-	float shallowColor[3] = { 0.10f, 0.85f, 0.65f };
-	float shallowColorPad = 0.0f;
-	float deepColor[3] = { 0.02f, 0.08f, 0.45f };
-	float deepColorPad = 0.0f;
+	// 空アンビエントの輝度単位 → サーフェス光単位の変換係数（AtmosphereManager::GetSkyAmbientScale と同値）
+	float skyAmbientScale = 0.3f;
+	// 波長依存の吸収係数 σa [1/m]（RGB）。赤 > 緑 > 青 が水の青さの物理的源泉
+	float absorptionCoeff[3] = { 0.35f, 0.07f, 0.02f };
+	// 1 = 大気散乱の Sky Irradiance SH を天空光として使う（大気アクティブ＋SH生成済みのシーンのみ）
+	int skyAmbientEnabled = 0;
+	// 波長依存の散乱係数 σs [1/m]（RGB）。深瀬のインスキャッタ色 (σs/σt) を決める
+	float scatteringCoeff[3] = { 0.003f, 0.008f, 0.016f };
+	float scatteringPad = 0.0f;
 	uint32_t depthDebugViewMode = static_cast<uint32_t>(WaterDebugViewMode::None);
 	// FFT Ocean 使用時、頂点解像度に依存しないピクセル単位の法線マップ再サンプリングを行うか
 	int useFFTOceanNormalMap = 0;
@@ -89,9 +93,9 @@ struct WaterPresetData {
 	CoreEngine::Vector4 baseColor;
 	float roughness;
 	float metallic;
-	float absorptionCoeff;
-	CoreEngine::Vector3 shallowColor;
-	CoreEngine::Vector3 deepColor;
+	// 波長依存の光学特性（水質）。色は光源 × 係数から導出されるため色指定は持たない
+	CoreEngine::Vector3 absorptionCoeff; // σa [1/m]
+	CoreEngine::Vector3 scatteringCoeff; // σs [1/m]
 	float fresnelReflectanceScale;
 	float fresnelBaseReflectance;
 	CoreEngine::Vector2 dominantDirection;
@@ -108,9 +112,9 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
 		{ 0.04f, 0.18f, 0.28f, 0.85f },
 		0.03f,
 		0.0f,
-		0.8f,
-		{ 0.08f, 0.70f, 0.55f },
-		{ 0.01f, 0.06f, 0.30f },
+		// やや緑がかった淡水: 溶存有機物で青の吸収が増え、緑寄りの散乱が強い
+		{ 0.45f, 0.09f, 0.06f },
+		{ 0.010f, 0.032f, 0.028f },
 		1.0f, 0.02f,
 		{ 1.0f, 0.0f },
 		1.4f,
@@ -129,9 +133,9 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
 		{ 0.03f, 0.12f, 0.22f, 0.88f },
 		0.10f,
 		0.0f,
-		1.5f,
-		{ 0.05f, 0.55f, 0.60f },
-		{ 0.01f, 0.05f, 0.40f },
+		// 澄んだ熱帯外洋水（Jerlov I 相当）: 浅瀬エメラルド〜深瀬青が σ から生じる
+		{ 0.35f, 0.07f, 0.02f },
+		{ 0.003f, 0.008f, 0.016f },
 		1.0f, 0.02f,
 		{ 0.95f, 0.25f },
 		1.9f,
@@ -150,9 +154,9 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
 		{ 0.02f, 0.22f, 0.35f, 0.78f },
 		0.01f,
 		0.0f,
-		2.0f,
-		{ 0.12f, 0.90f, 0.80f },
-		{ 0.02f, 0.10f, 0.50f },
+		// 純水に近い透明度: 吸収・散乱とも最小で、シアン寄りの淡い色になる
+		{ 0.30f, 0.05f, 0.015f },
+		{ 0.002f, 0.004f, 0.007f },
 		1.0f, 0.02f,
 		{ 1.0f, 0.1f },
 		1.0f,
@@ -171,9 +175,9 @@ inline const WaterPresetData& GetWaterPresetData(WaterPresetType type) {
 		{ 0.06f, 0.10f, 0.15f, 0.72f },
 		0.06f,
 		0.0f,
-		1.0f,
-		{ 0.15f, 0.35f, 0.40f },
-		{ 0.04f, 0.08f, 0.18f },
+		// 濁水: 泥・有機物が短波長（青）を強く吸収し、散乱も強く茶褐色寄りになる
+		{ 0.60f, 0.70f, 1.10f },
+		{ 0.35f, 0.30f, 0.22f },
 		1.0f, 0.02f,
 		{ 0.8f, 0.2f },
 		2.2f,

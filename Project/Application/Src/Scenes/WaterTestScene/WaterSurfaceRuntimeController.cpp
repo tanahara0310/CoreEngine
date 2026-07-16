@@ -132,6 +132,16 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 				atmosphereManager->GetCameraVolumeLUTSRVHandle(),
 				atmosphereManager->GetSkyViewLUTSRVHandle(),
 				apEnabled);
+
+			// 水中インスキャッタの天空光として Sky Irradiance SH を接続する
+			// （DeferredLighting の空アンビエントと同じソース・同じスケール）
+			const bool skyAmbientEnabled = apEnabled
+				&& atmosphereManager->IsSkyAmbientEnabled()
+				&& atmosphereManager->IsSkyAmbientReady();
+			waterPlane_->SetSkyAmbientResources(
+				atmosphereManager->GetSkyIrradianceSHSRVHandle(),
+				atmosphereManager->GetSkyAmbientScale(),
+				skyAmbientEnabled);
 		}
 	}
 }

@@ -18,6 +18,9 @@ struct WaterRenderResources {
     D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeSRV = { 0 };
     D3D12_GPU_DESCRIPTOR_HANDLE skyViewSRV = { 0 };
 
+    // ---- 空アンビエント（Sky Irradiance SH。水中インスキャッタの天空光）----
+    D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSRV = { 0 };
+
     /// @brief 反射テクスチャが接続済みか返す
     bool HasReflectionTexture() const;
 

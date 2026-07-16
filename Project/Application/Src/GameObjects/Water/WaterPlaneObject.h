@@ -153,6 +153,15 @@ public:
         D3D12_GPU_DESCRIPTOR_HANDLE skyViewSrvHandle,
         bool enabled);
 
+    /// @brief 空アンビエント（Sky Irradiance SH）を水中インスキャッタの天空光として接続する
+    /// @param skyIrradianceSrvHandle SH9 係数バッファ（StructuredBuffer<float4> × 9）の SRV
+    /// @param skyAmbientScale 空の輝度単位 → サーフェス光単位の変換係数（AtmosphereManager::GetSkyAmbientScale）
+    /// @param enabled 大気アクティブ＋SH 生成済みのシーンでのみ true
+    void SetSkyAmbientResources(
+        D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrvHandle,
+        float skyAmbientScale,
+        bool enabled);
+
     /// @brief FFT Ocean 描画経路を切り替える
     void SetUseFFTOcean(bool useFFTOcean);
 
@@ -168,10 +177,9 @@ public:
     /// @param result RenderView 出力一式
     void ApplyWaterReflectionResult(const CoreEngine::RenderViewResult& result);
 
-    /// @brief Depth Fade パラメータを設定する
-    /// @param absorptionCoeff 光吸収係数（大きいほど短距離で不透明になる）
+    /// @brief Depth Fade の有効・無効を設定する
     /// @param enabled true のとき Depth Fade を有効にする
-    void SetDepthFade(float absorptionCoeff, bool enabled);
+    void SetDepthFade(bool enabled);
 
     /// @brief Depth Fade のデバッグ表示を設定する
     /// @param enabled true のときデバッグ表示を有効にする
@@ -182,8 +190,10 @@ public:
     /// @param mode デバッグ可視化モード
     void SetDepthDebugViewMode(WaterDebugViewMode mode);
 
-    /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
-    void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);
+    /// @brief 水の光学特性（波長依存の吸収・散乱係数）を設定する
+    /// @param absorptionCoeff 吸収係数 σa [1/m]（RGB 波長別。赤 > 緑 > 青 が自然な水）
+    /// @param scatteringCoeff 散乱係数 σs [1/m]（RGB 波長別。深瀬のインスキャッタ色を決める）
+    void SetWaterOpticalCoefficients(const CoreEngine::Vector3& absorptionCoeff, const CoreEngine::Vector3& scatteringCoeff);
 
 protected:
     std::string GetTexturePath() const override { return {}; }

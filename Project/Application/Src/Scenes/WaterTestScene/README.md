@@ -86,11 +86,11 @@
 
 - **レベルB:**  
   1. 深度バッファから「水面のすぐ下に何があるか」の距離を求める
-  2. 距離が短い（浅瀬）ほど元の色が透けて見え、遠い（深場）ほど設定した深い色に近づける
-  3. 浅瀬色・深場色・吸収係数はImGuiで調整可能
+  2. 波長依存の吸収・散乱係数（赤 > 緑 > 青）で Beer-Lambert 減衰させるため、浅瀬はエメラルド、深場は青に自然に遷移する
+  3. 吸収係数 σa・散乱係数 σs（RGB別）はImGuiで調整可能。色はシーンの光源から導出される
 
 - **レベルC:**  
-  `WaterFrameConstants::absorptionCoeff / shallowColor / deepColor`、Water.PS.hlsl 側の Depth Fade 計算
+  `WaterFrameConstants::absorptionCoeff / scatteringCoeff`、Water.PS.hlsl 側の Depth Fade 計算（波長別透過 + 単一散乱インスキャッタ）
 
 ---
 

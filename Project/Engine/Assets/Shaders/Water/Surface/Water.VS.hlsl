@@ -39,16 +39,16 @@ cbuffer WaterFrameConstants : register(b5)
     float  gFresnelBaseReflectance;  // PS と共有（VS では未使用、レイアウト一致のため保持）
 
     // ---- Depth Fade（VS では未使用、レイアウト一致のため保持）----
-    float  gAbsorptionCoeff;
     int    gDepthFadeEnabled;
     int    gDepthFadeDebugEnabled;
     float  gDepthFadeDebugScale;
+    float  gSkyAmbientScale;
 
-    // ---- 水色（VS では未使用）----
-    float3 gShallowColor;
-    float  gShallowColorPad;
-    float3 gDeepColor;
-    float  gDeepColorPad;
+    // ---- 水の光学特性（VS では未使用）----
+    float3 gAbsorptionCoeff;
+    int    gSkyAmbientEnabled;
+    float3 gScatteringCoeff;
+    float  gScatteringPad;
 
     // ---- デバッグ表示（VS では未使用）----
     uint   gDepthDebugViewMode;

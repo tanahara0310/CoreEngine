@@ -26,7 +26,7 @@ const char* const kWaterDebugViewNames[] = {
 	"RT屈折理由",
 	"RT屈折とシーン比較",
 	"透過光",
-	"吸収",
+	"波長別透過率",
 	"反射率",
 	"最終合成",
 	"RT屈折成功マスク",

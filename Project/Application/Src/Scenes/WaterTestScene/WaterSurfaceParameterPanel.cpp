@@ -12,12 +12,43 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <iterator>
 #include <numbers>
 
 using namespace CoreEngine;
 
 namespace {
 constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
+
+/// @brief Jerlov 水型に基づく水質プリセット（σa/σs はアート調整済みの近似値 [1/m]）
+/// @details Jerlov 分類は外洋 I〜III、沿岸 1C〜9C の順に濁っていく。
+///          濁るほど CDOM（溶存有機物）が短波長（青）を強く吸収するため、
+///          澄んだ水の「青」から沿岸の「緑」へ色相が移る。
+struct JerlovWaterType {
+	const char* name;
+	float absorptionCoeff[3];
+	float scatteringCoeff[3];
+};
+
+constexpr JerlovWaterType kJerlovWaterTypes[] = {
+	{ "I（熱帯外洋・沖縄）",   { 0.35f, 0.07f, 0.02f }, { 0.003f, 0.008f, 0.016f } },
+	{ "IB（澄んだ外洋）",      { 0.38f, 0.09f, 0.04f }, { 0.006f, 0.012f, 0.020f } },
+	{ "II（外洋）",            { 0.45f, 0.13f, 0.09f }, { 0.010f, 0.018f, 0.026f } },
+	{ "III（沿岸寄り外洋）",   { 0.52f, 0.18f, 0.15f }, { 0.018f, 0.028f, 0.035f } },
+	{ "1C（澄んだ沿岸）",      { 0.55f, 0.17f, 0.20f }, { 0.030f, 0.045f, 0.045f } },
+	{ "5C（沿岸）",            { 0.65f, 0.30f, 0.45f }, { 0.080f, 0.100f, 0.085f } },
+	{ "9C（濁った沿岸）",      { 0.85f, 0.50f, 0.90f }, { 0.180f, 0.200f, 0.150f } },
+};
+constexpr int kJerlovWaterTypeCount = static_cast<int>(std::size(kJerlovWaterTypes));
+
+// 濁度 1.0 のときにベース係数へ加算する量 [1/m]。
+// 吸収は CDOM・植物プランクトンによる短波長（青）優位の吸収、
+// 散乱は懸濁粒子によるほぼ無選択（わずかに短波長寄り）の散乱を表す。
+constexpr float kTurbidityAbsorptionGain[3] = { 0.05f, 0.08f, 0.35f };
+constexpr float kTurbidityScatteringGain[3] = { 0.22f, 0.26f, 0.20f };
+
+// 白砂海底の検証用ティント色（乗算）。サンゴ砂のわずかに暖色の白
+constexpr float kSeabedSandTint[4] = { 0.93f, 0.88f, 0.76f, 1.0f };
 
 enum FFTOceanPresetIndex : int {
 	kFFTOceanPresetCustom = 0,
@@ -213,6 +244,24 @@ void WaterSurfaceParameterPanel::DrawWaterTypeSection(
 	}
 }
 
+void WaterSurfaceParameterPanel::ApplyEffectiveOpticalCoefficients(WaterPlaneObject* waterPlane) const {
+	if (!waterPlane) {
+		return;
+	}
+
+	// 実効係数 = ベース水質 + 濁度による加算（CDOM の青吸収・懸濁粒子の散乱）
+	float effectiveAbsorption[3]{};
+	float effectiveScattering[3]{};
+	for (int c = 0; c < 3; ++c) {
+		effectiveAbsorption[c] = surfaceParameters_.absorptionCoeff[c] + surfaceParameters_.turbidity * kTurbidityAbsorptionGain[c];
+		effectiveScattering[c] = surfaceParameters_.scatteringCoeff[c] + surfaceParameters_.turbidity * kTurbidityScatteringGain[c];
+	}
+
+	waterPlane->SetWaterOpticalCoefficients(
+		{ effectiveAbsorption[0], effectiveAbsorption[1], effectiveAbsorption[2] },
+		{ effectiveScattering[0], effectiveScattering[1], effectiveScattering[2] });
+}
+
 void WaterSurfaceParameterPanel::DrawCommonParameterSection(
 	WaterSurfaceRuntimeController& runtimeController,
 	WaterEditorFacade& editorFacade) {
@@ -258,21 +307,48 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(
 	}
 
 	ImGui::Spacing();
-	ImGui::SeparatorText("透過 / 水色");
-	bool depthFadeChanged = false;
-	depthFadeChanged |= ImGui::Checkbox("Depth Fade を有効にする", &surfaceParameters_.depthFadeEnabled);
-	depthFadeChanged |= ImGui::SliderFloat("吸収係数", &surfaceParameters_.absorptionCoeff, 0.0f, 8.0f, "%.3f");
-	if (depthFadeChanged) {
-		waterPlane->SetDepthFade(surfaceParameters_.absorptionCoeff, surfaceParameters_.depthFadeEnabled);
+	ImGui::SeparatorText("透過 / 水質（光学特性）");
+	if (ImGui::Checkbox("Depth Fade を有効にする", &surfaceParameters_.depthFadeEnabled)) {
+		waterPlane->SetDepthFade(surfaceParameters_.depthFadeEnabled);
 	}
 
-	bool waterColorChanged = false;
-	waterColorChanged |= ImGui::ColorEdit3("浅瀬の色", surfaceParameters_.shallowColor);
-	waterColorChanged |= ImGui::ColorEdit3("深場の色", surfaceParameters_.deepColor);
-	if (waterColorChanged) {
-		waterPlane->SetWaterColors(
-			{ surfaceParameters_.shallowColor[0], surfaceParameters_.shallowColor[1], surfaceParameters_.shallowColor[2] },
-			{ surfaceParameters_.deepColor[0], surfaceParameters_.deepColor[1], surfaceParameters_.deepColor[2] });
+	// Jerlov 水型プリセット: ベース係数を一括設定し、濁度をリセットする
+	if (ImGui::BeginCombo("水質プリセット (Jerlov)", kJerlovWaterTypes[surfaceParameters_.jerlovPreset].name)) {
+		for (int i = 0; i < kJerlovWaterTypeCount; ++i) {
+			const bool selected = (surfaceParameters_.jerlovPreset == i);
+			if (ImGui::Selectable(kJerlovWaterTypes[i].name, selected)) {
+				surfaceParameters_.jerlovPreset = i;
+				for (int c = 0; c < 3; ++c) {
+					surfaceParameters_.absorptionCoeff[c] = kJerlovWaterTypes[i].absorptionCoeff[c];
+					surfaceParameters_.scatteringCoeff[c] = kJerlovWaterTypes[i].scatteringCoeff[c];
+				}
+				surfaceParameters_.turbidity = 0.0f;
+				ApplyEffectiveOpticalCoefficients(waterPlane);
+			}
+			if (selected) {
+				ImGui::SetItemDefaultFocus();
+			}
+		}
+		ImGui::EndCombo();
+	}
+
+	// 水の色は直接指定せず、波長依存の吸収・散乱係数（＝水質）から光源と合わせて導出する
+	bool opticalChanged = false;
+	opticalChanged |= ImGui::DragFloat3("吸収係数 σa (R, G, B) [1/m]", surfaceParameters_.absorptionCoeff, 0.005f, 0.0f, 4.0f, "%.4f");
+	opticalChanged |= ImGui::DragFloat3("散乱係数 σs (R, G, B) [1/m]", surfaceParameters_.scatteringCoeff, 0.001f, 0.0f, 2.0f, "%.4f");
+	opticalChanged |= ImGui::SliderFloat("濁度", &surfaceParameters_.turbidity, 0.0f, 1.0f, "%.3f");
+	if (opticalChanged) {
+		ApplyEffectiveOpticalCoefficients(waterPlane);
+	}
+	ImGui::TextDisabled("自然な水は 吸収: 赤 > 緑 > 青。濁度は青の吸収と粒子散乱を加算（緑濁り方向）");
+
+	// 浅瀬エメラルドは白い海底アルベドがあって初めて映える（検証補助）
+	if (ImGui::Checkbox("海底を白砂色にする（検証用）", &seabedSandTintEnabled_)) {
+		if (ModelObject* ground = runtimeController.GetGroundObject()) {
+			ground->SetMaterialColor(seabedSandTintEnabled_
+				? CoreEngine::Vector4{ kSeabedSandTint[0], kSeabedSandTint[1], kSeabedSandTint[2], kSeabedSandTint[3] }
+				: CoreEngine::Vector4{ 1.0f, 1.0f, 1.0f, 1.0f });
+		}
 	}
 
 	ImGui::Spacing();
@@ -464,13 +540,13 @@ void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterSurfaceRuntimeController&
 	appearanceParameters_.fresnelReflectanceScale = presetData.fresnelReflectanceScale;
 	appearanceParameters_.fresnelBaseReflectance = presetData.fresnelBaseReflectance;
 
-	surfaceParameters_.absorptionCoeff = presetData.absorptionCoeff;
-	surfaceParameters_.shallowColor[0] = presetData.shallowColor.x;
-	surfaceParameters_.shallowColor[1] = presetData.shallowColor.y;
-	surfaceParameters_.shallowColor[2] = presetData.shallowColor.z;
-	surfaceParameters_.deepColor[0] = presetData.deepColor.x;
-	surfaceParameters_.deepColor[1] = presetData.deepColor.y;
-	surfaceParameters_.deepColor[2] = presetData.deepColor.z;
+	surfaceParameters_.absorptionCoeff[0] = presetData.absorptionCoeff.x;
+	surfaceParameters_.absorptionCoeff[1] = presetData.absorptionCoeff.y;
+	surfaceParameters_.absorptionCoeff[2] = presetData.absorptionCoeff.z;
+	surfaceParameters_.scatteringCoeff[0] = presetData.scatteringCoeff.x;
+	surfaceParameters_.scatteringCoeff[1] = presetData.scatteringCoeff.y;
+	surfaceParameters_.scatteringCoeff[2] = presetData.scatteringCoeff.z;
+	surfaceParameters_.turbidity = 0.0f;
 	surfaceParameters_.scrollSpeed[0] = presetData.scrollSpeed.x;
 	surfaceParameters_.scrollSpeed[1] = presetData.scrollSpeed.y;
 	surfaceParameters_.uvTiling[0] = presetData.uvTiling.x;
@@ -488,10 +564,8 @@ void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterSurfaceRuntimeController&
 	waterPlane->SetFresnelParameters(
 		appearanceParameters_.fresnelReflectanceScale,
 		appearanceParameters_.fresnelBaseReflectance);
-	waterPlane->SetDepthFade(surfaceParameters_.absorptionCoeff, surfaceParameters_.depthFadeEnabled);
-	waterPlane->SetWaterColors(
-		{ surfaceParameters_.shallowColor[0], surfaceParameters_.shallowColor[1], surfaceParameters_.shallowColor[2] },
-		{ surfaceParameters_.deepColor[0], surfaceParameters_.deepColor[1], surfaceParameters_.deepColor[2] });
+	waterPlane->SetDepthFade(surfaceParameters_.depthFadeEnabled);
+	ApplyEffectiveOpticalCoefficients(waterPlane);
 	waterPlane->SetScrollSpeed({ surfaceParameters_.scrollSpeed[0], surfaceParameters_.scrollSpeed[1] });
 	waterPlane->SetUVTiling({ surfaceParameters_.uvTiling[0], surfaceParameters_.uvTiling[1] });
 

@@ -49,6 +49,10 @@ public:
 	/// @return 管理対象の水面オブジェクト。未初期化時は nullptr。
 	WaterPlaneObject* GetWaterPlane() const { return waterPlane_; }
 
+	/// @brief 水中地形モデルを返す（海底アルベドの調整用）
+	/// @return 水中地形オブジェクト。未初期化時は nullptr。
+	ModelObject* GetGroundObject() const { return groundObject_; }
+
 	/// @brief 現在の水面高さを返す
 	/// @return 水面オブジェクトのワールドY座標。未初期化時は 0.0f。
 	float GetWaterHeight() const;

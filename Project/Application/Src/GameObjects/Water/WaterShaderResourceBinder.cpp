@@ -121,4 +121,15 @@ void WaterShaderResourceBinder::Bind(
                 renderResources.skyViewSRV);
         }
     }
+
+    // 空アンビエント SH（水中インスキャッタの天空光）をバインドする
+    // （未接続のフレームはシェーダー側フラグ gSkyAmbientEnabled=0 で参照されない）
+    if (renderResources.skyIrradianceSRV.ptr != 0) {
+        const int skyIrradianceSlot = pipeline->GetRootParamIndex("gWaterSkyIrradianceSH");
+        if (skyIrradianceSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(skyIrradianceSlot),
+                renderResources.skyIrradianceSRV);
+        }
+    }
 }
