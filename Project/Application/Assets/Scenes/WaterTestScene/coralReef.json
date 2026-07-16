@@ -14,10 +14,10 @@
                      "ibl":  true,
                      "iblIntensity":  1.0,
                      "lighting":  true,
-                     "metallic":  1.0,
+                     "metallic":  0.0,
                      "metallicMap":  false,
                      "normalMap":  false,
-                     "roughness":  1.0,
+                     "roughness":  0.85,
                      "roughnessMap":  false
                  },
     "modelPath":  "coralReef.gltf",

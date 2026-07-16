@@ -34,13 +34,19 @@ namespace CoreEngine {
         }
 
         /// @brief ビューマトリックスの取得（ICamera から）
-        const Matrix4x4& GetViewMatrix() const override { return viewMatrix_; }
+        const Matrix4x4& GetViewMatrix() const override {
+            return viewOverrideActive_ ? overrideViewMatrix_ : viewMatrix_;
+        }
 
         /// @brief プロジェクションマトリックスの取得（ICamera から）
-        const Matrix4x4& GetProjectionMatrix() const override { return projectionMatrix_; }
+        const Matrix4x4& GetProjectionMatrix() const override {
+            return projectionOverrideActive_ ? overrideProjectionMatrix_ : projectionMatrix_;
+        }
 
         /// @brief カメラの位置取得（ICamera から）
-        Vector3 GetPosition() const override { return translate_; }
+        Vector3 GetPosition() const override {
+            return viewOverrideActive_ ? overrideViewPosition_ : translate_;
+        }
 
         /// @brief カメラのGPU仮想アドレスを取得（ICamera から）
         D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const override {
@@ -58,6 +64,15 @@ namespace CoreEngine {
 
         /// @brief カメラパラメータを設定
         void SetParameters(const CameraParameters& params) override { parameters_ = params; }
+
+        /// @brief ビュー行列と視点位置を一時的に差し替える（ICamera から）
+        bool BeginViewOverride(
+            const Matrix4x4& viewMatrix,
+            const Vector3& viewPosition,
+            const Matrix4x4* projectionOverride = nullptr) override;
+
+        /// @brief ビュー差し替えを解除する（ICamera から）
+        void EndViewOverride() override;
 
         // ====== Camera 固有のアクセッサ ======
 

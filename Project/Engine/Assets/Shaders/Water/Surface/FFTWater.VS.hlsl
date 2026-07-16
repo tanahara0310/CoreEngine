@@ -63,7 +63,12 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     const float3 baseBinormalLocal = float3(0.0f, 0.0f, 1.0f);
 
     FFTWaterVSOutput output;
-    output.texcoord = input.texcoord;
+    // ピクセルシェーダーの法線マップ再サンプリングが、ここでサンプリングした変位と
+    // 同じ空間スケールになるよう、スケール適用後の UV を渡す（frac はPS側でピクセル単位に行う）。
+    // 以前は素の texcoord を渡していたため、メッシュがスケールされていると
+    // シェーディング法線が実際の波形とズレ、ジオメトリと無関係な位置に
+    // フレネル起因の明るいまだらが出ていた。
+    output.texcoord = input.texcoord * scaleUV;
     output.jacobianData = gFFTOceanJacobian.SampleLevel(gLinearClamp, sampleUV, 0.0f);
 
     float4 baseClip = mul(input.position, mtx.WVP);

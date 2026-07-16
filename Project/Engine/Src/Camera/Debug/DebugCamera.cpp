@@ -84,6 +84,11 @@ namespace CoreEngine
 
     Vector3 DebugCamera::GetPosition() const
     {
+        // ビュー差し替え（BeginViewOverride）中は差し替え後の視点を返す
+        if (viewOverrideActive_) {
+            return overrideViewPosition_;
+        }
+
         // スムーズ移動が有効な場合はスムーズ値を使用
         if (settings_.smoothMovement) {
             return {
@@ -128,9 +133,37 @@ namespace CoreEngine
     void DebugCamera::TransferMatrix()
     {
         // カメラ座標の転送（CameraForGPU）
+        // GetPosition() がビュー差し替え（BeginViewOverride）を考慮する
         if (cameraGPUData_) {
             cameraGPUData_->worldPosition = GetPosition();
         }
+    }
+
+    bool DebugCamera::BeginViewOverride(
+        const Matrix4x4& viewMatrix,
+        const Vector3& viewPosition,
+        const Matrix4x4* projectionOverride)
+    {
+        // 差し替え中も distance_ / target_ 等の操作状態には一切触れない。
+        // TransferMatrix()（GPU 定数バッファへの書き込み）もここでは行わない。
+        // 定数バッファは単一のアップロードバッファであり、フレーム内で
+        // 「差し替え→復元」と 2 回書き換えると実行中の前フレーム（インフライト）が
+        // どちらを読むかタイミング依存になり、カメラ位置依存のフレネル項が
+        // 毎フレームちらつく。差し替えは CPU 側 WVP 計算経路にのみ作用させる。
+        viewOverrideActive_ = true;
+        overrideViewMatrix_ = viewMatrix;
+        overrideViewPosition_ = viewPosition;
+        projectionOverrideActive_ = (projectionOverride != nullptr);
+        if (projectionOverride) {
+            overrideProjectionMatrix_ = *projectionOverride;
+        }
+        return true;
+    }
+
+    void DebugCamera::EndViewOverride()
+    {
+        viewOverrideActive_ = false;
+        projectionOverrideActive_ = false;
     }
 
     void DebugCamera::ApplyPreset(CameraPreset preset)

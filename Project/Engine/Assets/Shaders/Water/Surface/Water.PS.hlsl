@@ -189,7 +189,9 @@ float3 ResolveSurfaceNormal(WaterPSInput input)
         return vertexNormal;
     }
 
-    float3 encodedNormal = gFFTOceanNormal.Sample(gLinearClamp, input.texcoord).xyz;
+    // FFTWater.VS は変位サンプリングと同じ「スケール適用後 UV」を texcoord に渡してくる。
+    // パッチ境界を跨ぐ補間を避けるためピクセル単位で frac して [0,1) に折り返す。
+    float3 encodedNormal = gFFTOceanNormal.Sample(gLinearClamp, frac(input.texcoord)).xyz;
     float3 localNormal = normalize(encodedNormal * 2.0f - 1.0f);
     float3 tangent = normalize(input.tangent);
     float3 bitangent = normalize(input.bitangent);
@@ -354,11 +356,14 @@ PixelShaderOutput main(WaterPSInput input)
         waterTint,
         absorption);
 
+    // 反射有効時、環境反射は平面反射像で「置き換える」（加算しない）。
+    // 平面反射像には空・雲・太陽そのものが含まれるため、PBR 出力（太陽スペキュラ＋
+    // 拡散＋環境光）へさらに加算するとエネルギーが二重計上され、フレネルが立つ
+    // 波面で空の輝度が飽和して白飛びの原因になる。
     float3 reflectColor = output.color.rgb;
     if (gReflectionEnabled)
     {
-        float3 planarReflection = gReflectionTexture.Sample(gLinearClamp, screenUV).rgb;
-        reflectColor += planarReflection;
+        reflectColor = gReflectionTexture.Sample(gLinearClamp, screenUV).rgb;
     }
 
     float3 desiredWaterView = lerp(transmissionColor, reflectColor, reflectanceWeight);
