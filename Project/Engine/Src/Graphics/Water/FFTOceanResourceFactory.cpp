@@ -17,14 +17,14 @@ namespace CoreEngine
             return (value + 255) & ~255;
         }
 
-        D3D12_RESOURCE_DESC MakeTexture2DDesc(uint32_t resolution, DXGI_FORMAT format)
+        D3D12_RESOURCE_DESC MakeTexture2DDesc(uint32_t resolution, DXGI_FORMAT format, uint32_t mipLevels = 1)
         {
             D3D12_RESOURCE_DESC desc{};
             desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
             desc.Width = resolution;
             desc.Height = resolution;
             desc.DepthOrArraySize = 1;
-            desc.MipLevels = 1;
+            desc.MipLevels = static_cast<UINT16>(mipLevels);
             desc.Format = format;
             desc.SampleDesc.Count = 1;
             desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
@@ -37,6 +37,7 @@ namespace CoreEngine
         ID3D12Device* device,
         DescriptorManager* descriptorManager,
         uint32_t resolution,
+        uint32_t normalMipLevels,
         Microsoft::WRL::ComPtr<ID3D12Resource>& displacementTexture,
         Microsoft::WRL::ComPtr<ID3D12Resource>& normalTexture,
         Microsoft::WRL::ComPtr<ID3D12Resource>& jacobianTexture,
@@ -62,7 +63,10 @@ namespace CoreEngine
 
         Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
 
+        const uint32_t sanitizedNormalMipLevels = (normalMipLevels == 0) ? 1u : normalMipLevels;
         const D3D12_RESOURCE_DESC textureDesc = MakeTexture2DDesc(resolution, DXGI_FORMAT_R16G16B16A16_FLOAT);
+        const D3D12_RESOURCE_DESC normalTextureDesc =
+            MakeTexture2DDesc(resolution, DXGI_FORMAT_R16G16B16A16_FLOAT, sanitizedNormalMipLevels);
         try {
             displacementTexture = ResourceFactory::CreateTextureResource(
                 deviceRef,
@@ -74,7 +78,7 @@ namespace CoreEngine
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             normalTexture = ResourceFactory::CreateTextureResource(
                 deviceRef,
-                textureDesc,
+                normalTextureDesc,
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         catch (const std::exception&) {
@@ -87,6 +91,10 @@ namespace CoreEngine
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.Texture2D.MipLevels = 1;
 
+        // 法線 SRV は全ミップを見せる（Water.PS がミップ付きサンプリングでスペックルを抑制する）
+        D3D12_SHADER_RESOURCE_VIEW_DESC normalSrvDesc = srvDesc;
+        normalSrvDesc.Texture2D.MipLevels = sanitizedNormalMipLevels;
+
         descriptorManager->CreateSRV(
             displacementTexture.Get(),
             srvDesc,
@@ -95,7 +103,7 @@ namespace CoreEngine
             "FFTOceanDisplacementSRV");
         descriptorManager->CreateSRV(
             normalTexture.Get(),
-            srvDesc,
+            normalSrvDesc,
             normalSrvCpuHandle,
             normalSrvHandle,
             "FFTOceanNormalSRV");
@@ -132,6 +140,56 @@ namespace CoreEngine
         displacementState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         normalState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         jacobianState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        return true;
+    }
+
+    bool FFTOceanResourceFactory::CreateNormalMipChainViews(
+        DescriptorManager* descriptorManager,
+        ID3D12Resource* normalTexture,
+        DXGI_FORMAT format,
+        uint32_t mipLevels,
+        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>& mipSrvCpuHandles,
+        std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>& mipSrvHandles,
+        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>& mipUavCpuHandles,
+        std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>& mipUavHandles)
+    {
+        if (!descriptorManager || !normalTexture || mipLevels == 0) {
+            return false;
+        }
+
+        mipSrvCpuHandles.resize(mipLevels);
+        mipSrvHandles.resize(mipLevels);
+        mipUavCpuHandles.resize(mipLevels);
+        mipUavHandles.resize(mipLevels);
+
+        for (uint32_t mip = 0; mip < mipLevels; ++mip) {
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.Format = format;
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.Texture2D.MostDetailedMip = mip;
+            srvDesc.Texture2D.MipLevels = 1;
+
+            descriptorManager->CreateSRV(
+                normalTexture,
+                srvDesc,
+                mipSrvCpuHandles[mip],
+                mipSrvHandles[mip],
+                std::string("FFTOceanNormalMipSRV_") + std::to_string(mip));
+
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+            uavDesc.Format = format;
+            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+            uavDesc.Texture2D.MipSlice = mip;
+
+            descriptorManager->CreateUAV(
+                normalTexture,
+                uavDesc,
+                mipUavCpuHandles[mip],
+                mipUavHandles[mip],
+                std::string("FFTOceanNormalMipUAV_") + std::to_string(mip));
+        }
+
         return true;
     }
 

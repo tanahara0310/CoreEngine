@@ -132,4 +132,15 @@ void WaterShaderResourceBinder::Bind(
                 renderResources.skyIrradianceSRV);
         }
     }
+
+    // 空スペキュラキューブマップ（平面反射への雲合成）をバインドする
+    // （未接続のフレームはシェーダー側フラグ gSkyEnvReflectionEnabled=0 で参照されない）
+    if (renderResources.skyEnvironmentSRV.ptr != 0) {
+        const int skyEnvSlot = pipeline->GetRootParamIndex("gSkyEnvironmentMap");
+        if (skyEnvSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(skyEnvSlot),
+                renderResources.skyEnvironmentSRV);
+        }
+    }
 }

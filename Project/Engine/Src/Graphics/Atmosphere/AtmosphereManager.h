@@ -91,6 +91,8 @@ namespace CoreEngine
         static constexpr uint32_t kSkyViewLUTHeight = 108;
         static constexpr uint32_t kCameraVolumeSize = 32;
         static constexpr uint32_t kSkyIrradianceSHCoeffCount = 9; ///< 2次SH係数の数
+        static constexpr uint32_t kSkyCubemapSize = 64;           ///< 空キューブマップ 1 面の解像度
+        static constexpr uint32_t kSkySpecularMipCount = 5;       ///< プリフィルタ済みスペキュラのミップ数（64→4）
 
         /// @brief 初期化
         /// @param device D3D12デバイス
@@ -203,6 +205,37 @@ namespace CoreEngine
         void SetSkyAmbientScale(float scale) { skyAmbientScale_ = scale; }
         float GetSkyAmbientScale() const { return skyAmbientScale_; }
 
+        // ===== 空スペキュラIBL（Phase 3b: Sky Light のスペキュラ成分相当） =====
+
+        /// @brief 空スペキュラIBL（空＋雲キューブマップの環境反射）の有効/無効
+        void SetSkySpecularEnabled(bool enabled) { skySpecularEnabled_ = enabled; }
+        bool IsSkySpecularEnabled() const { return skySpecularEnabled_; }
+
+        /// @brief プリフィルタ済み空スペキュラキューブマップの SRV ハンドルを取得
+        /// @details TextureCube・kSkySpecularMipCount ミップ。mip = roughness×(ミップ数-1) で評価する。
+        ///          α には雲の透過率が入っている（水面が平面反射との合成不透明度に使う）。
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSkySpecularSRVHandle() const { return skySpecularSrvHandle_; }
+
+        /// @brief 空キューブマップ（mip0・雲合成前後の作業面）の UAV ハンドルを取得
+        /// @details VolumetricCloudManager が雲を前乗算合成する際のバインド先。
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSkyCubemapUAVHandle() const { return skyCubemapUavHandle_; }
+
+        /// @brief 空スペキュラキューブマップが一度でも生成されたか
+        bool IsSkyEnvironmentReady() const { return skyEnvironmentGenerated_; }
+
+        /// @brief このフレームで空キューブマップの再生成が必要か（消費型）
+        /// @param cloudsActive 雲が有効なフレームか（雲は毎フレーム動くため常時再生成になる）
+        /// @param frameNumber フレーム通し番号（View 間の二重実行ガード）
+        /// @details true を返した場合、呼び出し側は CaptureSkyEnvironment →
+        ///          （雲があれば）雲合成 → PrefilterSkyEnvironment の順で実行すること。
+        bool ConsumeSkyEnvironmentDirty(bool cloudsActive, uint64_t frameNumber);
+
+        /// @brief Sky-View LUT から空キューブマップ（mip0）を再生成する
+        void CaptureSkyEnvironment(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief 空キューブマップを GGX プリフィルタしてスペキュラミップ群を生成する
+        void PrefilterSkyEnvironment(ID3D12GraphicsCommandList* cmdList);
+
         // ===== Aerial Perspective =====
 
         /// @brief SceneColor へ空気遠近感を合成する（AerialPerspectivePass から呼ばれる）
@@ -282,6 +315,16 @@ namespace CoreEngine
             std::wstring GetComputeShaderPath() const override { return L"SkyIrradianceSH.CS.hlsl"; }
         };
 
+        /// @brief 空キューブマップ焼き込み用シェーダープロバイダ
+        struct SkyEnvironmentCaptureShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"SkyEnvironmentCapture.CS.hlsl"; }
+        };
+
+        /// @brief 空キューブマップ GGX プリフィルタ用シェーダープロバイダ
+        struct SkyEnvironmentPrefilterShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"SkyEnvironmentPrefilter.CS.hlsl"; }
+        };
+
         /// @brief Aerial Perspective 合成用シェーダープロバイダ
         struct AerialPerspectiveShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"AerialPerspective.CS.hlsl"; }
@@ -357,6 +400,26 @@ namespace CoreEngine
         bool skyAmbientEnabled_ = true;       ///< 空アンビエント（大気アクティブなシーンのみ効く）
         float skyAmbientScale_ = 0.3f;        ///< 空の輝度単位 → サーフェス光単位の変換係数（美術値。昼の従来アンビエントと概ね揃う値）
 
+        // 空キューブマップ（空＋雲の作業面。mip0 のみ。α=雲透過率）
+        Microsoft::WRL::ComPtr<ID3D12Resource> skyCubemap_;
+        D3D12_RESOURCE_STATES skyCubemapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        D3D12_GPU_DESCRIPTOR_HANDLE skyCubemapSrvHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE skyCubemapUavHandle_{};
+
+        // プリフィルタ済み空スペキュラキューブマップ（kSkySpecularMipCount ミップ）
+        Microsoft::WRL::ComPtr<ID3D12Resource> skySpecularMap_;
+        D3D12_RESOURCE_STATES skySpecularState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        D3D12_GPU_DESCRIPTOR_HANDLE skySpecularSrvHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE skySpecularUavHandles_[kSkySpecularMipCount]{};
+
+        // プリフィルタのミップ別パラメータ CB（kSkySpecularMipCount × 256B スロット）
+        Microsoft::WRL::ComPtr<ID3D12Resource> skyPrefilterParamsCB_;
+
+        bool skyEnvironmentGenerated_ = false; ///< 一度でもスペキュラキューブマップが生成されたか
+        bool skyEnvironmentDirty_ = true;      ///< Sky-View 再生成 → 空キューブマップ再生成が必要か
+        bool skySpecularEnabled_ = true;       ///< 空スペキュラIBL（大気アクティブなシーンのみ効く）
+        uint64_t lastSkyEnvironmentFrame_ = UINT64_MAX; ///< View 間の二重実行ガード
+
         // Aerial Perspective 合成用中間テクスチャ（SceneColor と同サイズ）
         Microsoft::WRL::ComPtr<ID3D12Resource> apResult_;
         D3D12_RESOURCE_STATES apResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
@@ -377,6 +440,10 @@ namespace CoreEngine
         CameraVolumeLUTShaderProvider cameraVolumeShaderProvider_{};
         CustomShaderPipeline skyIrradiancePipeline_{};
         SkyIrradianceSHShaderProvider skyIrradianceShaderProvider_{};
+        CustomShaderPipeline skyEnvironmentCapturePipeline_{};
+        SkyEnvironmentCaptureShaderProvider skyEnvironmentCaptureShaderProvider_{};
+        CustomShaderPipeline skyEnvironmentPrefilterPipeline_{};
+        SkyEnvironmentPrefilterShaderProvider skyEnvironmentPrefilterShaderProvider_{};
         CustomShaderPipeline aerialPerspectivePipeline_{};
         AerialPerspectiveShaderProvider aerialPerspectiveShaderProvider_{};
         bool pipelinesReady_ = false;

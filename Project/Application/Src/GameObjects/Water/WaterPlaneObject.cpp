@@ -240,6 +240,14 @@ void WaterPlaneObject::SetSkyAmbientResources(
     frameCB_.skyAmbientEnabled = (enabled && skyIrradianceSrvHandle.ptr != 0) ? 1 : 0;
 }
 
+void WaterPlaneObject::SetSkyEnvironmentReflection(
+    D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSrvHandle,
+    bool enabled) {
+    renderResources_.skyEnvironmentSRV = skyEnvironmentSrvHandle;
+    // SRV が未接続のフレームはシェーダー側の参照を止める
+    frameCB_.skyEnvReflectionEnabled = (enabled && skyEnvironmentSrvHandle.ptr != 0) ? 1 : 0;
+}
+
 void WaterPlaneObject::SetRefractionColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
     renderResources_.refractionColorSRV = srvHandle;
 

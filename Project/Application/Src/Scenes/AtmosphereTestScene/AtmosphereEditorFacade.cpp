@@ -131,6 +131,18 @@ void AtmosphereEditorFacade::DrawContent()
                     atmosphereManager->SetSkyAmbientScale(scale);
                 }
                 ImGui::Text("SH生成済み: %s", atmosphereManager->IsSkyAmbientReady() ? "true" : "false");
+
+                // 空＋雲キューブマップによる環境反射（Phase 3b）。
+                // モデルの roughness に応じたぼけ付きで空・雲が映り込み、
+                // 水面は平面反射に雲が合成される
+                bool skySpecular = atmosphereManager->IsSkySpecularEnabled();
+                if (ImGui::Checkbox("スペキュラIBL（空・雲の映り込み）", &skySpecular)) {
+                    atmosphereManager->SetSkySpecularEnabled(skySpecular);
+                }
+                if (skySpecular) {
+                    ImGui::Text("キューブマップ生成済み: %s",
+                        atmosphereManager->IsSkyEnvironmentReady() ? "true" : "false");
+                }
             }
         }
     }

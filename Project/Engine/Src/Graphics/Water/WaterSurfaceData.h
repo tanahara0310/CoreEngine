@@ -32,6 +32,14 @@ namespace CoreEngine
         float time = 0.0f;
         uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
         WaterWaveParam waves[kMaxWaterSurfaceWaveCount]{};
+
+        // FFT Ocean 用: ワールドXZ → FFT テクスチャ UV の写像（uv = worldXZ * scale + offset）。
+        // ラスタ描画（FFTWater.VS の sampleUV）と同一の波面を DXR 側が評価するために、
+        // 水面メッシュのローカルサイズ・スケール・平行移動から導出した値を水面オブジェクト側が設定する。
+        // fftUVMappingValid == 0 の場合、RT 側はパッチ長ベースの旧写像へフォールバックする。
+        float fftUVScale[2] = { 0.0f, 0.0f };
+        float fftUVOffset[2] = { 0.5f, 0.5f };
+        uint32_t fftUVMappingValid = 0;
     };
 
     struct WaterOpticalProperties {

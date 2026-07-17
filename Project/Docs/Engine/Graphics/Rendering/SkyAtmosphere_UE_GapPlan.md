@@ -210,7 +210,34 @@ CPU が 2 フレーム遅れで読み取り → 指数的時間順応 → `autoE
 （t18 + b6 `gSkyAmbient`）。非IBL・大気アクティブ時にハーフランバートアンビエントを置き換える。
 既定 ON・`skyAmbientScale` 既定 0.3。UI は Environment → Sky Atmosphere → 環境光。
 検証済み: 昼=青みがかったアンビエント / 夕方=暖色で減光 / 夜=ほぼゼロ（完全な夜） /
-OFF で従来アンビエントへ復帰。**3b（スペキュラIBL キューブマップ）は未実装**（将来拡張）。
+OFF で従来アンビエントへ復帰。
+
+**✅ 3b（スペキュラIBL キューブマップ）実装済み（2026-07-17）** — 空＋雲の動的キューブマップによる
+環境反射。UE Sky Light (Real-Time Capture) のスペキュラ成分相当。
+
+- **空キューブマップ生成**: `SkyEnvironmentCapture.CS.hlsl`（Sky-View LUT → 64²×6 RGBA16F、
+  太陽ディスクは除外=UE と同方針。α=1 で初期化）→ 雲が有効なら
+  `CloudCubemapCapture.CS.hlsl`（CloudRayMarch と同一の物理レイマーチを面方向レイで実行し
+  前乗算合成。α=雲透過率。24.6k レイ ≈ メインビューの数%）→
+  `SkyEnvironmentPrefilter.CS.hlsl`（GGX 64spp・5ミップ・αも同重みでフィルタ）。
+  実行は AtmosphereLUTPass 内（Sky-View 再生成時＋雲アニメーション中は毎フレーム。
+  `ConsumeSkyEnvironmentDirty` の frameNumber ガードで View 間二重実行を防止）。
+  雲ノイズは NoisePass(priority20) が LUTPass(10) の後のため初回フレームのみ雲なし（次から雲込み）。
+- **モデルへの適用**: DeferredLighting.PS の空アンビエント分岐に t19 `gSkySpecularMap` ＋
+  解析的 EnvBRDF（Karis 近似。gBRDFLUT はシーンIBL専用資産のため不使用）でスペキュラ項を追加。
+  `gSkyAmbient.specularEnabled` でゲート。従来 IBL 経路（キューブマップ空シーン）は不変。
+- **水面への適用**: 平面反射は雲を含まない（VolumetricCloudPass は GameView 限定）ため、
+  Water.PS が t25 `gSkyEnvironmentMap` を反射方向・mip1.2（グロッシー反射と同ぼけ）でサンプルし、
+  `lerp(平面反射, env.rgb, 1-env.a)` で雲部分だけを置換合成。空部分（α≈1）は平面反射のまま＝
+  反射像内の他オブジェクトを保護。太陽ディスクは SkyBoxQueuePass（ビュー制限なし）が
+  ReflectionView にも解析的に描くため平面反射経由で既に映る。
+- **UI**: 大気エディタ 環境光 →「スペキュラIBL（空・雲の映り込み）」トグル（既定 ON）＋生成状態表示。
+- **検証（2026-07-17 実機）**: キューブマップ生成済み=true / ログ 0 errors・0 warns /
+  新 CS 3本コンパイル成功 / Water PSO に gSkyEnvironmentMap→t25 反映 /
+  水面へ生サンプル出力する一時診断で「雲＋青空のキューブマップが波の法線に沿って歪んで映る」を
+  目視確認（配管・雲焼き込み・方向サンプリング・フラグ制御すべて動作）→ 診断コード撤去済み /
+  モデル A/B（トグル ON/OFF）: キューブ5個で ON 時 +1〜2/255（誘電体正面の物理的に正しい微小差。
+  金属・低ラフネス材質ほど顕著になる）/ 本番状態の水面・空・雲に回帰なし。
 
 ### 目的
 

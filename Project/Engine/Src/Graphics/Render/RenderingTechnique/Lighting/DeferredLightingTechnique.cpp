@@ -337,11 +337,18 @@ namespace CoreEngine
                 && atmosphere->IsSkyAmbientReady()
                 && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0;
 
+            // 空スペキュラIBL（Phase 3b）はキューブマップ生成済みのフレームのみ有効
+            const bool skySpecularUsable = skyAmbientUsable
+                && atmosphere->IsSkySpecularEnabled()
+                && atmosphere->IsSkyEnvironmentReady()
+                && atmosphere->GetSkySpecularSRVHandle().ptr != 0;
+
             // フラグ・スケールを毎フレーム CB へ反映する
             if (skyAmbientBuffer_) {
                 SkyAmbientParams params{};
                 params.enabled = skyAmbientUsable ? 1u : 0u;
                 params.scale = atmosphere ? atmosphere->GetSkyAmbientScale() : 0.0f;
+                params.specularEnabled = skySpecularUsable ? 1u : 0u;
                 SkyAmbientParams* mapped = nullptr;
                 skyAmbientBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
                 *mapped = params;
@@ -357,6 +364,11 @@ namespace CoreEngine
             const int skyShIdx = GetRootParamIndex("gSkyIrradianceSH");
             if (skyShIdx >= 0 && atmosphere && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0) {
                 cmdList->SetGraphicsRootDescriptorTable(skyShIdx, atmosphere->GetSkyIrradianceSHSRVHandle());
+            }
+            // 空スペキュラキューブマップ（specularEnabled=0 のフレームではシェーダーが読まない）
+            const int skySpecIdx = GetRootParamIndex("gSkySpecularMap");
+            if (skySpecIdx >= 0 && atmosphere && atmosphere->GetSkySpecularSRVHandle().ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(skySpecIdx, atmosphere->GetSkySpecularSRVHandle());
             }
         }
 

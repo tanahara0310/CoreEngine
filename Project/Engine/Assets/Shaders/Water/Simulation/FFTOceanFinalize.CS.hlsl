@@ -70,15 +70,27 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float upDisplacementZ = upSpectrumB.x * checkerUp * debugScale;
 
     const float texelLength = gPatchLength / (float)gResolution;
-    const float slopeX = (rightHeight - leftHeight) / max(2.0f * texelLength, 1.0e-4f);
-    const float slopeZ = (upHeight - downHeight) / max(2.0f * texelLength, 1.0e-4f);
-    const float3 normal = normalize(float3(-slopeX, 1.0f, -slopeZ));
-
     const float invTwoTexelLength = 1.0f / max(2.0f * texelLength, 1.0e-4f);
+    const float slopeX = (rightHeight - leftHeight) * invTwoTexelLength;
+    const float slopeZ = (upHeight - downHeight) * invTwoTexelLength;
+
     const float dDx_dx = (rightDisplacementX - leftDisplacementX) * invTwoTexelLength;
     const float dDx_dz = (upDisplacementX - downDisplacementX) * invTwoTexelLength;
     const float dDz_dx = (rightDisplacementZ - leftDisplacementZ) * invTwoTexelLength;
     const float dDz_dz = (upDisplacementZ - downDisplacementZ) * invTwoTexelLength;
+
+    // 法線は高さ勾配だけでなく choppiness の水平変位勾配も含めた
+    // 「実際に描画される変位後サーフェス」の接ベクトルから求める。
+    // 高さ勾配のみの normalize(-slopeX, 1, -slopeZ) では、水平変位で
+    // 波頭が圧縮される箇所（detJ < 1）ほど実ジオメトリと法線がズレて、
+    // スペキュラ・フレネルの明暗が波の面と一致しなくなる。
+    // 水平変位ゼロなら tangentX=(1,slopeX,0), tangentZ=(0,slopeZ,1) となり
+    // cross(tangentZ, tangentX) = (-slopeX, 1, -slopeZ) で従来式と一致する。
+    const float3 tangentX = float3(1.0f + dDx_dx, slopeX, dDz_dx);
+    const float3 tangentZ = float3(dDx_dz, slopeZ, 1.0f + dDz_dz);
+    float3 normal = normalize(cross(tangentZ, tangentX));
+    // 波の折り返し（foldover, detJ < 0）で面が裏返った場合も上向きを保つ
+    normal = (normal.y < 0.0f) ? -normal : normal;
 
     const float detJ = (1.0f + dDx_dx) * (1.0f + dDz_dz) - dDx_dz * dDz_dx;
     const float compression = max(1.0f - detJ, 0.0f);

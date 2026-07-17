@@ -77,7 +77,8 @@ struct WaterFrameConstants {
 	int useFFTOceanNormalMap = 0;
 	// 大気散乱の空気遠近感を水面へ適用するか（大気アクティブなシーンでのみ 1）
 	int aerialPerspectiveEnabled = 0;
-	float debugPadding = 0.0f;
+	// 空スペキュラキューブマップで平面反射へ雲を合成するか（大気アクティブ＋生成済みのみ 1）
+	int skyEnvReflectionEnabled = 0;
 };
 
 enum class WaterPresetType : int {

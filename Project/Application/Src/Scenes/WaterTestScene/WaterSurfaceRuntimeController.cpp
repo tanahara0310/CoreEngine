@@ -142,6 +142,14 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 				atmosphereManager->GetSkyIrradianceSHSRVHandle(),
 				atmosphereManager->GetSkyAmbientScale(),
 				skyAmbientEnabled);
+
+			// 空スペキュラキューブマップ（空＋雲）を平面反射への雲合成用に接続する
+			const bool skyEnvEnabled = apEnabled
+				&& atmosphereManager->IsSkySpecularEnabled()
+				&& atmosphereManager->IsSkyEnvironmentReady();
+			waterPlane_->SetSkyEnvironmentReflection(
+				atmosphereManager->GetSkySpecularSRVHandle(),
+				skyEnvEnabled);
 		}
 	}
 }
@@ -166,6 +174,24 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 			simulationInput,
 			waterSurfaceSnapshot_,
 			waterRefractionSurfaceData_);
+
+		// FFT Ocean の DXR 側サンプリングがラスタ描画（FFTWater.VS）と同一の波面を
+		// 評価できるよう、ワールドXZ → FFT テクスチャ UV の写像を水面メッシュの
+		// トランスフォームから導出して渡す。
+		// FFTWater.VS: sampleUV = (worldXZ - translate)/ローカルサイズ + scale/2
+		// （メッシュの texcoord は {u, 1-v} で生成されるが、VS 側で V を戻して
+		//   「テクスチャ +v = ワールド +Z」に統一済み。回転は非対応＝ゼロ前提）
+		const float localSize = waterPlane_->GetSize();
+		if (localSize > 1.0e-4f) {
+			const auto& transform = waterPlane_->GetTransform();
+			waterRefractionSurfaceData_.fftUVScale[0] = 1.0f / localSize;
+			waterRefractionSurfaceData_.fftUVScale[1] = 1.0f / localSize;
+			waterRefractionSurfaceData_.fftUVOffset[0] =
+				0.5f * transform.scale.x - transform.translate.x / localSize;
+			waterRefractionSurfaceData_.fftUVOffset[1] =
+				0.5f * transform.scale.z - transform.translate.z / localSize;
+			waterRefractionSurfaceData_.fftUVMappingValid = 1;
+		}
 		// RT 側へ渡す provider の参照先を最新 surface data に更新する
 		if (surfaceModelProvider_) {
 			surfaceModelProvider_->SetSource(

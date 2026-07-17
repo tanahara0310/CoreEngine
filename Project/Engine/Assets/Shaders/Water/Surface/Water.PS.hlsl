@@ -30,6 +30,12 @@ Texture2D<float4> gFFTOceanNormal : register(t19);
 // 「法線 N に対する空からの放射照度 / π」になる（DeferredLighting と同じ規約）。
 StructuredBuffer<float4> gWaterSkyIrradianceSH : register(t24);
 
+// ===== プリフィルタ済み空スペキュラキューブマップ（空＋雲。Phase 3b）=====
+// AtmosphereManager が Sky-View LUT＋雲レイマーチから毎フレーム生成する。
+// rgb は空（SkyAtmosphere.PS）と同一の輝度ドメイン（平面反射像と直接ブレンド可能）。
+// α には雲の透過率が入っており、平面反射（雲を含まない）へ雲を被せる不透明度に使う。
+TextureCube<float4> gSkyEnvironmentMap : register(t25);
+
 struct WaterPSInput
 {
     float4 position : SV_POSITION;
@@ -75,7 +81,8 @@ cbuffer WaterFrameConstants : register(b5)
     int gUseFFTOceanNormalMap;
     // 大気散乱の空気遠近感を水面へ適用するか（大気アクティブなシーンでのみ 1）
     int gAerialPerspectiveEnabled;
-    float gDebugPadding;
+    // 空スペキュラキューブマップで平面反射へ雲を合成するか（大気アクティブ＋生成済みのみ 1）
+    int gSkyEnvReflectionEnabled;
 };
 
 /// @brief NDC 深度値をビュー空間線形深度（メートル単位）に変換する
@@ -314,12 +321,25 @@ float3 VisualizeRTRefractionReason(float reasonCode)
     return float3(0.15f, 0.15f, 0.15f);
 }
 
+/// @brief FFT 法線マップのエンコード値をワールド空間法線へ展開する
+float3 BuildWorldNormalFromFFTSample(float3 encodedNormal, WaterPSInput input)
+{
+    float3 localNormal = normalize(encodedNormal * 2.0f - 1.0f);
+    float3 vertexNormal = normalize(input.normal);
+    float3 tangent = normalize(input.tangent);
+    float3 bitangent = normalize(input.bitangent);
+    return normalize(localNormal.x * tangent + localNormal.y * vertexNormal + localNormal.z * bitangent);
+}
+
 /// @brief ピクセル単位の法線を解決する
 /// @details Gerstner Wave は頂点シェーダーで解析的に計算した法線をそのまま補間して使えるが、
 ///          FFT Ocean はテクスチャベースの法線マップであるため、頂点解像度で補間すると
 ///          メッシュの三角形境界に沿った法線のファセット化（IBL 反射のギザギザ）が発生する。
 ///          FFT Ocean 使用時は texcoord から法線マップを直接再サンプリングし、
 ///          頂点密度に依存しない滑らかな法線を得る。
+///          サンプリングは WRAP アドレスの gSampler で行う（frac 不要でタイル境界の
+///          微分不連続が出ず、ミップチェーン＋異方性フィルタが自動LODで効くため、
+///          遠方・かすめ角で法線がピクセル毎に暴れるエイリアシングを抑制できる）。
 float3 ResolveSurfaceNormal(WaterPSInput input)
 {
     float3 vertexNormal = normalize(input.normal);
@@ -328,13 +348,88 @@ float3 ResolveSurfaceNormal(WaterPSInput input)
         return vertexNormal;
     }
 
-    // FFTWater.VS は変位サンプリングと同じ「スケール適用後 UV」を texcoord に渡してくる。
-    // パッチ境界を跨ぐ補間を避けるためピクセル単位で frac して [0,1) に折り返す。
-    float3 encodedNormal = gFFTOceanNormal.Sample(gLinearClamp, frac(input.texcoord)).xyz;
-    float3 localNormal = normalize(encodedNormal * 2.0f - 1.0f);
-    float3 tangent = normalize(input.tangent);
-    float3 bitangent = normalize(input.bitangent);
-    return normalize(localNormal.x * tangent + localNormal.y * vertexNormal + localNormal.z * bitangent);
+    float3 encodedNormal = gFFTOceanNormal.Sample(gSampler, input.texcoord).xyz;
+    return BuildWorldNormalFromFFTSample(encodedNormal, input);
+}
+
+// フレネル評価用の法線に掛けるミップバイアス。
+// 法線マップの短波長成分（メッシュ解像度未満のさざ波）は、(1-cosθ)^5 の強い非線形に
+// そのまま食わせると数度の傾きで反射率が激変し、水面に「青と水色の大きなまだら」や
+// 高周波スペックルとして浮き出る。マイクロファセット的には未解像の斜面は粗さとして
+// 均されるべきなので、フレネルは数テクセル分ぼかした低周波法線（うねりスケール）で
+// 評価する。バイアス +3 ≒ 8x8 テクセル（パッチ長 180m / 256px で約 5.6m）の平均。
+static const float kFresnelNormalMipBias = 3.0f;
+
+/// @brief フレネル（反射/透過の混合比）評価に使う低周波の面法線を解決する
+float3 ResolveFresnelNormal(WaterPSInput input)
+{
+    if (gUseFFTOceanNormalMap != 0)
+    {
+        // ミップバイアス付きで法線マップをサンプリングし、うねりスケールの
+        // 滑らかな法線を得る。以前使っていた ddx/ddy(worldPosition) の面法線は
+        // 三角形単位で一定になるため、フレネルがファセット状に量子化されて
+        // まだらの輪郭が硬くなる問題があった。
+        float3 encodedNormal = gFFTOceanNormal.SampleBias(gSampler, input.texcoord, kFresnelNormalMipBias).xyz;
+        return BuildWorldNormalFromFFTSample(encodedNormal, input);
+    }
+
+    // Gerstner Wave など法線マップが無い経路では、変位適用後のワールド座標の
+    // 画面微分から面法線を再構成する（頂点法線は常に真上でうねりを含まないため）。
+    float3 faceNormal = normalize(cross(ddy(input.worldPosition), ddx(input.worldPosition)));
+    return (faceNormal.y < 0.0f) ? -faceNormal : faceNormal;
+}
+
+// ===== 反射のグロッシー化（ラフネスを考慮した反射）=====
+// 平面反射(gReflectionTexture)は完全な鏡像であり、明るい空がそのままフレネルで
+// 波面へ塗られるため、うねりの向きに沿ってハードな明暗の斑（水色/青のまだら）が出る。
+// 実際の水面は未解像の微細なさざ波が「ラフネス」として働き、
+//  (1) 反射をにじませ（グロッシー反射）、
+//  (2) かすめ角では微細斜面同士の幾何遮蔽で反射スパイクを抑える。
+// この 2 つを再現して、穏やかな海が均一に見えるようにする。
+static const float kWaterReflectionMicroRoughness = 0.30f; // 未解像さざ波の実効ラフネス
+static const float kWaterReflectionBlurTexels = 3.0f; // 反射のにじみ半径（テクセル基準）
+
+/// @brief 平面反射をラフネス相当でにじませてサンプリングする（グロッシー反射）
+/// @param screenUV スクリーンUV
+/// @param grazing  かすめ具合 = 1 - cosθ（大きいほど反射が伸び・ぼける）
+float3 SampleGlossyReflection(float2 screenUV, float grazing)
+{
+    uint reflWidth = 1;
+    uint reflHeight = 1;
+    gReflectionTexture.GetDimensions(reflWidth, reflHeight);
+    const float2 texel = 1.0f / float2(reflWidth, reflHeight);
+
+    // 反射像は面が寝るほど鉛直方向へ伸びるため縦を強めに、かすめ角ほど広くぼかす。
+    const float2 radius = kWaterReflectionBlurTexels * texel * float2(1.0f, 2.0f) * (1.0f + grazing * 2.0f);
+
+    const float2 kOffsets[9] = {
+        float2( 0.0f,  0.0f),
+        float2(-1.0f, -1.0f), float2( 1.0f, -1.0f),
+        float2(-1.0f,  1.0f), float2( 1.0f,  1.0f),
+        float2( 0.0f, -1.0f), float2( 0.0f,  1.0f),
+        float2(-1.0f,  0.0f), float2( 1.0f,  0.0f)
+    };
+    const float kWeights[9] = { 4.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f };
+
+    float3 sum = float3(0.0f, 0.0f, 0.0f);
+    float weightSum = 0.0f;
+    [unroll]
+    for (int i = 0; i < 9; ++i)
+    {
+        const float2 uv = saturate(screenUV + kOffsets[i] * radius);
+        sum += gReflectionTexture.Sample(gLinearClamp, uv).rgb * kWeights[i];
+        weightSum += kWeights[i];
+    }
+    return sum / weightSum;
+}
+
+/// @brief かすめ角の反射スパイクを微細さざ波の幾何遮蔽で抑える係数
+/// @details Schlick-GGX の視線側幾何項に相当。cosθ→0（かすめ角）で 0 に近づき、
+///          明るい空の反射が波の裏面へハードに乗るのを弱める。cosθ→1 では 1（無影響）。
+float ReflectionGeometricOcclusion(float cosTheta)
+{
+    const float k = kWaterReflectionMicroRoughness;
+    return cosTheta / max(cosTheta * (1.0f - k) + k, 1.0e-4f);
 }
 
 /// @brief 水面専用フォワードパス処理（ForwardMain の discard 処理を削除したバージョン）
@@ -452,16 +547,46 @@ PixelShaderOutput main(WaterPSInput input)
         }
 
         // RT屈折が成功している場合、実際に画面へ表示している内容（屈折で曲がった先）に
-        // 対応する「真の光路長」で上の近似値を上書きする。
+        // 対応する「真の光路長」で上の近似値を置き換える。
         // 上のスクリーン空間近似は水面ピクセル直下の素の深度（屈折前の深度）を使っており、
         // 屈折で表示位置がズレた分だけ吸収量が表示内容と食い違ってしまう
-        // （＝水中オブジェクトが水面に浮いて見える一因）。RT側で実測した光路長を
-        // 使うことでこの食い違いを解消する。
+        // （＝水中オブジェクトが水面に浮いて見える一因）。
+        //
+        // ただし RT の成功/失敗はピクセル単位の2値で、波の揺らぎに応じて成功領域が
+        // パッチ状に変化する（DepthMismatch・画面外クリップ等）。成功側=実測光路長と
+        // 失敗側=スクリーン空間近似が不連続に切り替わると、その境界が透過率の段差
+        // （色の輪郭）としてそのまま見えてしまうため、近傍タップの成功率で
+        // 光路長をフェザリングして境界を空間的になじませる。
+        const int2 kRTNeighborOffsets[4] = { int2(-3, -3), int2(3, -3), int2(-3, 3), int2(3, 3) };
+        float rtOpticalPathSum = 0.0f;
+        float rtSuccessCount = 0.0f;
         float4 rtRefractionSample = SampleRTWaterRefraction(pixelCoord);
         if (IsRTRefractionSuccess(rtRefractionSample.a) > 0.5f)
         {
+            rtOpticalPathSum += DecodeRTOpticalPath(rtRefractionSample.a);
+            rtSuccessCount += 1.0f;
+        }
+        [unroll]
+        for (int tapIndex = 0; tapIndex < 4; ++tapIndex)
+        {
+            int2 tapCoord = clamp(
+                int2(pixelCoord) + kRTNeighborOffsets[tapIndex],
+                int2(0, 0),
+                int2(sceneDepthWidth - 1, sceneDepthHeight - 1));
+            float tapAlpha = gRTWaterRefractionColor.Load(int3(tapCoord, 0)).a;
+            if (IsRTRefractionSuccess(tapAlpha) > 0.5f)
+            {
+                rtOpticalPathSum += DecodeRTOpticalPath(tapAlpha);
+                rtSuccessCount += 1.0f;
+            }
+        }
+        if (rtSuccessCount > 0.0f)
+        {
+            const float rtColumn = rtOpticalPathSum / rtSuccessCount;
+            const float rtSuccessWeight = rtSuccessCount / 5.0f;
+            // フォールバック推定が無効なピクセルでは RT 実測値をそのまま使う
+            waterColumn = hasValidDepthFade ? lerp(waterColumn, rtColumn, rtSuccessWeight) : rtColumn;
             hasValidDepthFade = true;
-            waterColumn = DecodeRTOpticalPath(rtRefractionSample.a);
         }
     }
 
@@ -471,9 +596,16 @@ PixelShaderOutput main(WaterPSInput input)
     // ---- 4. 視線方向と Fresnel 係数を計算する ----
     float3 viewDir = normalize(gCamera.worldPosition - input.worldPosition);
     float3 geomNormal = ResolveSurfaceNormal(input);
-    float cosTheta = saturate(dot(geomNormal, viewDir));
+
+    // フレネルは「うねりスケールの低周波法線」で評価する（ResolveFresnelNormal 参照）。
+    // 短波長のさざ波斜面を (1-cosθ)^5 に直接食わせるとまだら・スペックルになるため、
+    // ミップバイアス付き法線マップで未解像斜面を平均してから角度応答を計算する。
+    float3 fresnelNormal = ResolveFresnelNormal(input);
+    float cosTheta = saturate(dot(fresnelNormal, viewDir));
     float fresnel = FresnelSchlick(cosTheta, saturate(gFresnelBaseReflectance));
-    float reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
+    // 微細さざ波の幾何遮蔽でかすめ角の反射スパイクを抑え、うねりに沿った
+    // ハードな明暗の斑（水色/青のまだら）を和らげる。
+    float reflectanceWeight = saturate(fresnel * ReflectionGeometricOcclusion(cosTheta) * gFresnelReflectanceScale);
 
     float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);
     float3 underwaterAmbient = ComputeUnderwaterAmbientLight();
@@ -494,21 +626,42 @@ PixelShaderOutput main(WaterPSInput input)
     float3 reflectColor = output.color.rgb;
     if (gReflectionEnabled)
     {
-        reflectColor = gReflectionTexture.Sample(gLinearClamp, screenUV).rgb;
+        // 完全な鏡ではなくラフネス相当でにじませた反射を使う（グロッシー反射）。
+        // 明るい空のエッジやコントラストが波面へハードに乗るのを防ぐ。
+        reflectColor = SampleGlossyReflection(screenUV, 1.0f - cosTheta);
+
+        // ===== 雲の映り込み（Phase 3b）=====
+        // 平面反射には空・太陽ディスクは入るが、雲（GameView 限定の合成パス）は入らない。
+        // 空キューブマップ（空＋雲・α=雲透過率）を反射方向でサンプルし、雲がある方向だけ
+        // 平面反射をキューブマップ色で置き換える。空部分（α≈1）は平面反射がそのまま残る
+        // ため、反射像内の他オブジェクトを不当に上書きしない。
+        // ミップは水面のグロッシー反射と同じ実効ラフネス相当を選び、ぼけ具合を揃える。
+        if (gSkyEnvReflectionEnabled != 0)
+        {
+            float3 envReflectDir = reflect(-viewDir, fresnelNormal);
+            const float kEnvMipCount = 5.0f;
+            const float kEnvMip = kWaterReflectionMicroRoughness * (kEnvMipCount - 1.0f);
+            float4 skyEnv = gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, kEnvMip);
+            float cloudOpacity = saturate(1.0f - skyEnv.a);
+            reflectColor = lerp(reflectColor, skyEnv.rgb, cloudOpacity);
+        }
     }
 
     float3 desiredWaterView = lerp(transmissionColor, reflectColor, reflectanceWeight);
     // 水面ピクセルは常に「水面越しに見える像」（屈折 or 反射）そのものであるべきで、
     // 屈折で曲げていない生のスクリーン座標の背景（gSceneColor.Sample(screenUV)）を
-    // 混ぜてはいけない。以前はここで backgroundColor（未屈折・未反射の素の背景）と
-    // desiredWaterView（正しく屈折/反射された像）を gMaterial.color.a（既定 0.85）で
-    // ブレンドしていたため、屈折によるズレが小さかった頃は両者がほぼ同じ位置を指しており
-    // 気付かなかったが、屈折のクランプを撤廃して正しくズレるようになった結果、
-    // 「同じ地形が少しズレた位置に二重に見える」ゴースト（二重像）として顕在化した。
-    // gMaterial.color.a による不透明度は、背景との合成ではなく屈折色自体との
-    // ブレンドとして扱うことで、常に「同じ位置を指す像」同士を混ぜるようにする。
+    // 混ぜてはいけない（以前はそれが原因で二重像ゴーストが出ていた）。
+    // さらに、透明側の端点には「生の屈折色（refractionColor）」ではなく
+    // 「吸収・散乱を通した透過色（transmissionColor）」を使う。
+    // 以前は lerp(refractionColor, desiredWaterView, α=0.85) だったため、
+    // Beer-Lambert もフレネルも迂回した水底の色が常に約15%そのまま混入し、
+    // 深い水でも水底（市松床＋コースティクスのセル模様）が薄い水色の斑として
+    // 浮き出ていた（穏やかな海ほどセルが大きく明瞭になり顕著）。
+    // transmissionColor は refractionColor から導出されるため「同じ位置を指す像」
+    // 同士のブレンドであることは変わらず、ゴーストは発生しない。
+    // これにより gMaterial.color.a は実質「フレネル反射成分の不透明度」として働く。
     float surfaceCoverage = saturate(baseCoverage);
-    float3 finalWaterComposite = lerp(refractionColor, desiredWaterView, surfaceCoverage);
+    float3 finalWaterComposite = lerp(transmissionColor, desiredWaterView, surfaceCoverage);
 
     if (gDepthFadeDebugEnabled != 0)
     {

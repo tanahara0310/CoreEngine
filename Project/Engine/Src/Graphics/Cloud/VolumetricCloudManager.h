@@ -231,6 +231,17 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
             const AtmosphereManager* atmosphereManager);
 
+        // ===== 空キューブマップへの雲焼き込み（AtmosphereLUTPass から呼ばれる） =====
+
+        /// @brief 空キューブマップへ雲を前乗算合成する（Phase 3b: スペキュラIBL / 水面の雲反射）
+        /// @param cmdList 記録先コマンドリスト
+        /// @param atmosphereManager 大気 CB / LUT SRV / キューブマップ UAV の取得元
+        /// @details AtmosphereManager::CaptureSkyEnvironment（空の焼き込み）の直後・
+        ///          PrefilterSkyEnvironment の前に呼ぶこと。キューブマップは UAV 状態前提。
+        void RenderCloudsToSkyCubemap(
+            ID3D12GraphicsCommandList* cmdList,
+            const AtmosphereManager* atmosphereManager);
+
         // ===== ゴッドレイ（GodRayPass から呼ばれる） =====
 
         /// @brief 雲シャドウマップ生成 → ゴッドレイマーチ → SceneColor 合成
@@ -285,6 +296,9 @@ namespace CoreEngine
         };
         struct CompositeShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudComposite.CS.hlsl"; }
+        };
+        struct CloudCubemapCaptureShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"CloudCubemapCapture.CS.hlsl"; }
         };
         struct CloudShadowMapShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudShadowMap.CS.hlsl"; }
@@ -386,6 +400,8 @@ namespace CoreEngine
         RayMarchShaderProvider rayMarchShaderProvider_{};
         CustomShaderPipeline compositePipeline_{};
         CompositeShaderProvider compositeShaderProvider_{};
+        CustomShaderPipeline cubemapCapturePipeline_{};
+        CloudCubemapCaptureShaderProvider cubemapCaptureShaderProvider_{};
         CustomShaderPipeline cloudShadowPipeline_{};
         CloudShadowMapShaderProvider cloudShadowShaderProvider_{};
         CustomShaderPipeline godRayMarchPipeline_{};

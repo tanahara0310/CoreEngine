@@ -107,6 +107,9 @@ public:
     /// @brief 現在有効な Gerstner Wave 本数を返す
     uint32_t GetActiveWaveCount() const { return waterCB_.activeWaveCount; }
 
+    /// @brief メッシュのローカルサイズ（1 辺の長さ、スケール適用前）を返す
+    float GetSize() const { return size_; }
+
     /// @brief DXR 屈折用に現在の WaterConstants を取得する
     const WaterConstants& GetWaterConstants() const { return waterCB_; }
 
@@ -160,6 +163,13 @@ public:
     void SetSkyAmbientResources(
         D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrvHandle,
         float skyAmbientScale,
+        bool enabled);
+
+    /// @brief 空スペキュラキューブマップ（空＋雲）を平面反射への雲合成用に接続する
+    /// @param skyEnvironmentSrvHandle プリフィルタ済み空キューブマップ（α=雲透過率）の SRV
+    /// @param enabled 大気アクティブ＋キューブマップ生成済みのシーンでのみ true
+    void SetSkyEnvironmentReflection(
+        D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSrvHandle,
         bool enabled);
 
     /// @brief FFT Ocean 描画経路を切り替える

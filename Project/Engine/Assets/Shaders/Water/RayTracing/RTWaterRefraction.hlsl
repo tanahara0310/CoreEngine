@@ -30,7 +30,10 @@ cbuffer WaterRefractionConstants : register(b0)
     uint gFFTOceanResolution;
     float gDebugDisplayScale;
     uint gDebugViewMode;
-    uint gPadding0;
+    // ワールドXZ → FFT テクスチャ UV の写像（ラスタ描画 FFTWater.VS と一致させる）
+    // float2 が 16 バイト境界を跨がないよう、旧 gPadding0 を置き換えて配置する
+    float2 gFFTOceanUVScale;
+    float2 gFFTOceanUVOffset;
 };
 
 static const uint kRTRefractionDebugNone = 0;
@@ -162,7 +165,7 @@ float3 EvaluateRefractionWaterOffset(float2 worldXZ)
         return EvaluateWaterOffset(worldXZ);
     }
 
-    return SampleFFTOceanBilinear(gFFTOceanDisplacement, worldXZ, gFFTOceanPatchLength, gFFTOceanResolution).xyz;
+    return SampleFFTOceanBilinear(gFFTOceanDisplacement, worldXZ, gFFTOceanUVScale, gFFTOceanUVOffset, gFFTOceanResolution).xyz;
 }
 
 float3 EvaluateRefractionWaterNormal(float2 worldXZ)
@@ -172,7 +175,7 @@ float3 EvaluateRefractionWaterNormal(float2 worldXZ)
         return EvaluateWaterNormal(worldXZ);
     }
 
-    const float3 encodedNormal = SampleFFTOceanBilinear(gFFTOceanNormal, worldXZ, gFFTOceanPatchLength, gFFTOceanResolution).xyz;
+    const float3 encodedNormal = SampleFFTOceanBilinear(gFFTOceanNormal, worldXZ, gFFTOceanUVScale, gFFTOceanUVOffset, gFFTOceanResolution).xyz;
     const float3 decodedNormal = normalize(encodedNormal * 2.0f - 1.0f);
     return decodedNormal.y < 0.0f ? -decodedNormal : decodedNormal;
 }
