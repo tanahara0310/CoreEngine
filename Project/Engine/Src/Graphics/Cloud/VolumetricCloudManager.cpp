@@ -81,12 +81,17 @@ namespace CoreEngine
         invViewProj_ = MathCore::Matrix::Inverse(
             MathCore::Matrix::Multiply(viewMatrix, projMatrix));
 
-        // 太陽情報・カメラ高度は AtmosphereManager から取得（単一情報源）。
+        // 太陽・月情報・カメラ高度は AtmosphereManager から取得（単一情報源）。
         if (atmosphereManager) {
             sunDirection_ = atmosphereManager->GetSunDirection();
             const Vector4& sc = atmosphereManager->GetSunColor();
             sunColor_ = { sc.x, sc.y, sc.z };
             sunIntensity_ = atmosphereManager->GetSunIntensity();
+            hasMoon_ = atmosphereManager->HasMoonLight();
+            moonDirection_ = atmosphereManager->GetMoonDirection();
+            const Vector4& mc = atmosphereManager->GetMoonColor();
+            moonColor_ = { mc.x, mc.y, mc.z };
+            moonIntensity_ = atmosphereManager->GetMoonIntensity();
             distanceFromPlanetCenter_ = atmosphereManager->GetDistanceFromPlanetCenter();
         }
 
@@ -137,6 +142,10 @@ namespace CoreEngine
         c.msAttenuation = parameters_.msAttenuation;
         c.msContribution = parameters_.msContribution;
         c.msEccentricity = parameters_.msEccentricity;
+        c.moonDirection = moonDirection_;
+        c.moonIntensity = moonIntensity_;
+        c.moonColor = moonColor_;
+        c.hasMoon = hasMoon_ ? 1.0f : 0.0f;
 
         *constantData_ = c;
     }

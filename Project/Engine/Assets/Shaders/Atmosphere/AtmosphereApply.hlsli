@@ -32,11 +32,11 @@ float3 ApplyAerialPerspective(float3 color, float3 worldPos, float2 screenUv, Sa
     float distanceKm = distanceMeters * 0.001f;
 
     // CameraVolume LUT から (inscattering, 透過率) を取得して合成。
-    // 式は不透明への合成（AerialPerspective.CS.hlsl）と完全に一致させること
+    // 式は不透明への合成（AerialPerspective.CS.hlsl）と完全に一致させること。
+    // LUT はライト色・強度前乗算済み（サンプル後の色乗算は二重適用になる）
     float w = CameraVolumeDistanceToW(distanceKm, gAtmosphereAP.apKmPerSlice);
     float4 aerial = gCameraVolumeLUT.SampleLevel(lutClampSampler, float3(screenUv, w), 0);
-    float3 result = color * aerial.a
-                  + aerial.rgb * gAtmosphereAP.sunColor * gAtmosphereAP.sunIntensity;
+    float3 result = color * aerial.a + aerial.rgb;
 
     // ===== CameraVolume の最大距離を超える遠方: Sky-View LUT へ溶かす =====
     // LUT は w=1 で頭打ちになり、それ以上遠くても霞が濃くならない。
@@ -50,25 +50,16 @@ float3 ApplyAerialPerspective(float3 color, float3 worldPos, float2 screenUv, Sa
             gAtmosphereAP.planetRadiusKm + 0.001f,
             gAtmosphereAP.atmosphereTopRadiusKm - 0.001f);
 
-        // SkyAtmosphere.PS.hlsl と同じ UV 算出（天頂角＋太陽相対方位角）
+        // SkyAtmosphere.PS.hlsl と同じ UV 算出（天頂角＋絶対方位角）。
+        // Sky-View LUT もライト色・強度前乗算済みのため色乗算はしない
         float viewZenithCos = viewDir.y;
-        float3 toSun = -gAtmosphereAP.sunDirection;
-        float2 viewHorizontal = viewDir.xz;
-        float2 sunHorizontal = toSun.xz;
-        float viewHorizontalLen = length(viewHorizontal);
-        float sunHorizontalLen = length(sunHorizontal);
-        float lightViewCos = 1.0f;
-        if (viewHorizontalLen > 1e-5f && sunHorizontalLen > 1e-5f)
-        {
-            lightViewCos = dot(viewHorizontal / viewHorizontalLen, sunHorizontal / sunHorizontalLen);
-        }
+        float viewAzimuth = SkyViewAzimuth(viewDir);
         float cosHorizon = -sqrt(max(0.0f,
             1.0f - (gAtmosphereAP.planetRadiusKm * gAtmosphereAP.planetRadiusKm) / (radiusKm * radiusKm)));
         bool intersectGround = (viewZenithCos < cosHorizon);
-        float2 skyUv = SkyViewParamsToUv(intersectGround, viewZenithCos, lightViewCos,
+        float2 skyUv = SkyViewParamsToUv(intersectGround, viewZenithCos, viewAzimuth,
                                          radiusKm, gAtmosphereAP.planetRadiusKm);
-        float3 skyLum = gSkyViewLUTAP.SampleLevel(lutClampSampler, skyUv, 0).rgb
-                      * gAtmosphereAP.sunColor * gAtmosphereAP.sunIntensity;
+        float3 skyLum = gSkyViewLUTAP.SampleLevel(lutClampSampler, skyUv, 0).rgb;
 
         float blend = 1.0f - exp(-(distanceKm - maxDistKm) / 60.0f);
         result = lerp(result, skyLum, blend);

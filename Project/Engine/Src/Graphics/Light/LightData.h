@@ -16,8 +16,9 @@ namespace CoreEngine
         float intensity;      // 輝度（サーフェスの直接光。DeferredLighting が使用する）
         bool enabled;         // 有効フラグ（GPU側は bytes32-35 を bool として読むため、この4バイト内に他のフラグを置かない）
         uint8_t enabledPadding[3];  // enabled の4バイト境界を明示的に埋める
-        bool isAtmosphereSun; // 大気散乱の太陽として扱うフラグ（CPU専用。GPU側は padding 領域として無視される）
-        uint8_t sunPadding[3];      // isAtmosphereSun の4バイト境界を明示的に埋める
+        bool isAtmosphereSun;  // 大気散乱の太陽として扱うフラグ（CPU専用。GPU側は padding 領域として無視される）
+        bool isAtmosphereMoon; // 大気散乱の月（第2大気ライト）として扱うフラグ（CPU専用。UE の Atmosphere Sun Light Index=1 相当）
+        uint8_t sunPadding[2];      // フラグ2つの4バイト境界を明示的に埋める
 
         /// @brief 大気散乱（空・雲）の輝度スケール。CPU専用（GPU側は padding 領域として無視される）
         /// @details intensity（サーフェス直接光）とは単位系が異なる。大気の LUT は散乱係数を

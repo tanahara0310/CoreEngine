@@ -40,10 +40,11 @@ float3 GetCubemapDirection(uint faceIndex, float2 uv)
     return normalize(dir);
 }
 
-/// @brief 雲内部の 1 点における太陽由来の輝度（CloudRayMarch.CS.hlsl と同一ロジック）
-float3 SunLuminanceAt(float3 pos, float3 rayDir)
+/// @brief 雲内部の 1 点における指定ライト由来の輝度（CloudRayMarch.CS.hlsl と同一ロジック）
+float3 DirectLightLuminanceAt(float3 pos, float3 rayDir,
+                              float3 lightDirection, float3 lightColor, float lightIntensity)
 {
-    float3 toSun = -gCloud.sunDirection;
+    float3 toSun = -lightDirection;
 
     // 雲自身によるセルフシャドウ（指数ステップのサンライトマーチ）
     float densitySum = 0.0f;
@@ -94,17 +95,30 @@ float3 SunLuminanceAt(float3 pos, float3 rayDir)
     float3 sunTrans = SampleTransmittanceToSun(gTransmittanceLUT, gLUTSampler,
                                                posAtmo, toSun, gAtmosphere);
 
-    return sunTrans * energy * gCloud.sunColor * gCloud.sunIntensity;
+    return sunTrans * energy * lightColor * lightIntensity;
+}
+
+/// @brief 雲内部の 1 点における直接光（太陽＋月）の合計輝度（CloudRayMarch.CS.hlsl と同一）
+float3 SunLuminanceAt(float3 pos, float3 rayDir)
+{
+    float3 luminance = DirectLightLuminanceAt(pos, rayDir,
+        gCloud.sunDirection, gCloud.sunColor, gCloud.sunIntensity);
+    if (gCloud.hasMoon > 0.5f)
+    {
+        luminance += DirectLightLuminanceAt(pos, rayDir,
+            gCloud.moonDirection, gCloud.moonColor, gCloud.moonIntensity);
+    }
+    return luminance;
 }
 
 /// @brief 雲内部の 1 点における空由来のアンビエント輝度（CloudRayMarch.CS.hlsl と同一）
 float3 AmbientLuminance(float h)
 {
+    // 方位は太陽から 90°の固定値。LUT はライト色・強度前乗算済みのため色乗算はしない
     float radiusKm = gAtmosphere.cameraRadiusKm;
-    float2 uv = SkyViewParamsToUv(false, 0.7f, 0.0f, radiusKm, gAtmosphere.planetRadiusKm);
+    float azimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * ATMOSPHERE_PI;
+    float2 uv = SkyViewParamsToUv(false, 0.7f, azimuth, radiusKm, gAtmosphere.planetRadiusKm);
     float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
-
-    skyLum *= gCloud.sunColor * gCloud.sunIntensity;
 
     float gray = dot(skyLum, float3(0.333f, 0.333f, 0.334f));
     skyLum = lerp(float3(gray, gray, gray), skyLum, 0.35f);
@@ -241,10 +255,11 @@ void main(uint3 dtid : SV_DispatchThreadID)
             gAtmosphere.atmosphereTopRadiusKm - 0.001f);
         float cosHorizon = -sqrt(max(0.0f,
             1.0f - (gAtmosphere.planetRadiusKm * gAtmosphere.planetRadiusKm) / (radiusKm * radiusKm)));
-        float2 skyUv = SkyViewParamsToUv(rayDir.y < cosHorizon, rayDir.y, 0.0f,
+        // 方位は太陽から 90°の固定値。LUT はライト色・強度前乗算済みのため色乗算はしない
+        float hazeAzimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * ATMOSPHERE_PI;
+        float2 skyUv = SkyViewParamsToUv(rayDir.y < cosHorizon, rayDir.y, hazeAzimuth,
                                          radiusKm, gAtmosphere.planetRadiusKm);
-        float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, skyUv, 0).rgb
-                      * gCloud.sunColor * gCloud.sunIntensity;
+        float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, skyUv, 0).rgb;
 
         float haze = 1.0f - exp(-cloudDist / 60000.0f);
         color = lerp(color, skyLum * alpha, haze);

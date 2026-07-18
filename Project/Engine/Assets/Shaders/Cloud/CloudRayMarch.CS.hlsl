@@ -26,17 +26,21 @@ SamplerState gSamplerLinearWrap : register(s0);
 SamplerState gLUTSampler : register(s1);
 RWTexture2D<float4> gCloudOutput : register(u0);
 
-/// @brief 雲内部の 1 点における太陽由来の輝度
+/// @brief 雲内部の 1 点における指定ディレクショナルライト由来の輝度（太陽・月共用）
 /// @param pos ワールド座標 [m]
 /// @param rayDir 視線方向（位相関数用）
+/// @param lightDirection 光の進行方向（正規化）
+/// @param lightColor ライト色
+/// @param lightIntensity ライト強度（大気の輝度ドメイン）
 /// @details セルフシャドウのサンライトマーチは「指数的に伸びる固定ステップ」で行う
 ///          （Schneider/Nubis 標準）。近傍を密に・遠方を粗くサンプルするため、
 ///          ピクセルごとのジッタ無しでも滑らかな遮蔽が得られる。
 ///          以前は固定 200m×5 + ジッタで行っていたが、ジッタ（画面空間 IGN）が
 ///          exp() の急峻さで増幅され、IGN 特有の斜めドット格子が雲面に焼き付いていた。
-float3 SunLuminanceAt(float3 pos, float3 rayDir)
+float3 DirectLightLuminanceAt(float3 pos, float3 rayDir,
+                              float3 lightDirection, float3 lightColor, float lightIntensity)
 {
-    float3 toSun = -gCloud.sunDirection; // sunDirection は光の進行方向
+    float3 toSun = -lightDirection; // lightDirection は光の進行方向
 
     // (1) 雲自身によるセルフシャドウ: 太陽方向へ指数ステップでマーチし光学的深さを積む。
     //     累積距離 = 200, 600, 1400, 3000, 6200, 12600 m（近傍密・遠方粗）。
@@ -111,20 +115,35 @@ float3 SunLuminanceAt(float3 pos, float3 rayDir)
     float3 sunTrans = SampleTransmittanceToSun(gTransmittanceLUT, gLUTSampler,
                                                posAtmo, toSun, gAtmosphere);
 
-    return sunTrans * energy * gCloud.sunColor * gCloud.sunIntensity;
+    return sunTrans * energy * lightColor * lightIntensity;
+}
+
+/// @brief 雲内部の 1 点における直接光（太陽＋月）の合計輝度
+float3 SunLuminanceAt(float3 pos, float3 rayDir)
+{
+    float3 luminance = DirectLightLuminanceAt(pos, rayDir,
+        gCloud.sunDirection, gCloud.sunColor, gCloud.sunIntensity);
+    // 月光の直接照明（夜の雲の月側の縁が銀色に照る silver lining）。
+    // 月有効時のみ2本目のライトマーチが走る（コスト約2倍は夜間限定）
+    if (gCloud.hasMoon > 0.5f)
+    {
+        luminance += DirectLightLuminanceAt(pos, rayDir,
+            gCloud.moonDirection, gCloud.moonColor, gCloud.moonIntensity);
+    }
+    return luminance;
 }
 
 /// @brief 雲内部の 1 点における空由来のアンビエント輝度
 /// @param h 雲層内の高さ率（底ほど暗くする遮蔽近似）
 float3 AmbientLuminance(float h)
 {
-    // Sky-View LUT のやや上向き 1 サンプルを半球平均の代用とする
+    // Sky-View LUT のやや上向き 1 サンプルを半球平均の代用とする。
+    // 方位は太陽から 90°の固定値（仰角による明るさ変化が支配的で方位の精度は不要）。
+    // LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない
     float radiusKm = gAtmosphere.cameraRadiusKm;
-    float2 uv = SkyViewParamsToUv(false, 0.7f, 0.0f, radiusKm, gAtmosphere.planetRadiusKm);
+    float azimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * ATMOSPHERE_PI;
+    float2 uv = SkyViewParamsToUv(false, 0.7f, azimuth, radiusKm, gAtmosphere.planetRadiusKm);
     float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
-
-    // 空（SkyAtmosphere.PS）と同じ輝度ドメインへ揃える
-    skyLum *= gCloud.sunColor * gCloud.sunIntensity;
 
     // 空色（青）をそのまま使うと、太陽光が届かない厚い部分が青黒い染みに見える。
     // 実際の雲内部は多重散乱で色が無彩色化するため、大部分を灰色へ寄せる。
@@ -314,25 +333,21 @@ void main(uint3 dtid : SV_DispatchThreadID)
         float cloudDist = weightedDist / weightSum;
 
         // Sky-View LUT を視線方向の仰角のみでサンプルする。
-        // 方位角（太陽との相対角 lightViewCos）は当初 dot(viewH/|viewH|, sunH/|sunH|) で
-        // 毎ピクセル計算していたが、この値は SkyViewParamsToUv 内の sqrt エンコードで
-        // U 座標へ変換される際、太陽の方位角（および真反対の方位角）＝画面上で太陽の
-        // 軌跡（子午線）に一致する列で不安定になり、その列だけ薄暗い縦筋として見えて
-        // いた。この処理は雲の不透明度がある画素でしか実行されない（alpha>0.001 の
-        // ときだけ）ため、同じ LUT パラメータ化を使う空自体（SkyAtmosphere.PS.hlsl）
-        // には出ず「雲にだけ太陽の軌跡上に線が入る」不具合として現れていた。
-        // AmbientLuminance 関数と同様、方位角は固定値（太陽から 90°の向き）にして
-        // 毎ピクセルの方位角計算自体を無くす。ヘイズは遠景をぼかす近似であり、
-        // 方位角までの精度は不要（仰角による空の明るさ変化の方が支配的）。
+        // 方位角は AmbientLuminance 関数と同様「太陽から 90°」の固定値。
+        // （旧・太陽相対パラメータ化時代に、毎ピクセルの相対方位計算が sqrt エンコードの
+        //   太陽子午線の列で不安定になり雲にだけ縦筋が出た経緯から固定化した。
+        //   現在の絶対方位・線形パラメータ化ではその不安定性は無いが、ヘイズは遠景を
+        //   ぼかす近似で方位角までの精度は不要のため、挙動維持を優先して固定のまま）
         float radiusKm = clamp(gAtmosphere.cameraRadiusKm,
             gAtmosphere.planetRadiusKm + 0.001f,
             gAtmosphere.atmosphereTopRadiusKm - 0.001f);
         float cosHorizon = -sqrt(max(0.0f,
             1.0f - (gAtmosphere.planetRadiusKm * gAtmosphere.planetRadiusKm) / (radiusKm * radiusKm)));
-        float2 skyUv = SkyViewParamsToUv(rayDir.y < cosHorizon, rayDir.y, 0.0f,
+        float hazeAzimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * ATMOSPHERE_PI;
+        float2 skyUv = SkyViewParamsToUv(rayDir.y < cosHorizon, rayDir.y, hazeAzimuth,
                                          radiusKm, gAtmosphere.planetRadiusKm);
-        float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, skyUv, 0).rgb
-                      * gCloud.sunColor * gCloud.sunIntensity;
+        // LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない
+        float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, skyUv, 0).rgb;
 
         // 60km で約 63% 空へ溶ける消散近似（地表付近の Rayleigh+Mie の視程感覚に合わせた美術値）
         float haze = 1.0f - exp(-cloudDist / 60000.0f);

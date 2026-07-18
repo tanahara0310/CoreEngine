@@ -43,31 +43,18 @@ float3 SampleSkyLuminance(float3 dir)
         gAtmosphere.planetRadiusKm + 0.001f,
         gAtmosphere.atmosphereTopRadiusKm - 0.001f);
 
-    const float3 toSun = -gAtmosphere.sunDirection;
-
     const float viewZenithCos = dir.y;
-
-    // 太陽との相対方位角余弦（水平面内）
-    float2 viewHorizontal = dir.xz;
-    float2 sunHorizontal = toSun.xz;
-    const float viewHorizontalLen = length(viewHorizontal);
-    const float sunHorizontalLen = length(sunHorizontal);
-    float lightViewCos = 1.0f;
-    if (viewHorizontalLen > 1e-5f && sunHorizontalLen > 1e-5f)
-    {
-        lightViewCos = dot(viewHorizontal / viewHorizontalLen, sunHorizontal / sunHorizontalLen);
-    }
+    const float viewAzimuth = SkyViewAzimuth(dir);
 
     const float cosHorizon = -sqrt(max(0.0f,
         1.0f - (gAtmosphere.planetRadiusKm * gAtmosphere.planetRadiusKm) / (radiusKm * radiusKm)));
     const bool intersectGround = (viewZenithCos < cosHorizon);
 
-    const float2 uv = SkyViewParamsToUv(intersectGround, viewZenithCos, lightViewCos,
+    const float2 uv = SkyViewParamsToUv(intersectGround, viewZenithCos, viewAzimuth,
                                         radiusKm, gAtmosphere.planetRadiusKm);
 
-    // 本番描画（SkyAtmosphere.PS）と同じ輝度スケールへ揃える
-    return gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb
-         * gAtmosphere.sunColor * gAtmosphere.sunIntensity;
+    // LUT はライト色・強度前乗算済み（本番描画 SkyAtmosphere.PS と同じ輝度ドメイン）
+    return gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
 }
 
 [numthreads(8, 8, 1)]

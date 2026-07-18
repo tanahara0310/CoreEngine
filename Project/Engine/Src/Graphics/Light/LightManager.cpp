@@ -17,6 +17,13 @@ namespace CoreEngine
             MAX_SPOT_LIGHTS,
             MAX_AREA_LIGHTS
         );
+
+        // ライト追加時の再確保でシーン側が保持するポインタ（LightingFeature の
+        // directionalLight_ 等）がダングリングしないよう、最大数ぶんを先に確保する
+        directionalLights_.reserve(MAX_DIRECTIONAL_LIGHTS);
+        pointLights_.reserve(MAX_POINT_LIGHTS);
+        spotLights_.reserve(MAX_SPOT_LIGHTS);
+        areaLights_.reserve(MAX_AREA_LIGHTS);
     }
 
     void LightManager::UpdateAll()
@@ -31,6 +38,14 @@ namespace CoreEngine
             gpuSun.color.x *= atmosphereSunTransmittance_.x;
             gpuSun.color.y *= atmosphereSunTransmittance_.y;
             gpuSun.color.z *= atmosphereSunTransmittance_.z;
+        }
+        // 月ライトも同じ配管（月の出・月の入りで月光が減光・赤方偏移する）
+        if (const DirectionalLightData* moon = FindAtmosphereMoonLight()) {
+            const size_t moonIndex = static_cast<size_t>(moon - directionalLights_.data());
+            DirectionalLightData& gpuMoon = gpuDirectionalLights[moonIndex];
+            gpuMoon.color.x *= atmosphereMoonTransmittance_.x;
+            gpuMoon.color.y *= atmosphereMoonTransmittance_.y;
+            gpuMoon.color.z *= atmosphereMoonTransmittance_.z;
         }
 
         bufferManager_.UpdateBuffers(gpuDirectionalLights, pointLights_, spotLights_, areaLights_);
@@ -258,6 +273,24 @@ namespace CoreEngine
         return const_cast<DirectionalLightData*>(FindAtmosphereSunLight());
     }
 
+    const DirectionalLightData* LightManager::FindAtmosphereMoonLight() const
+    {
+        for (const auto& light : directionalLights_)
+        {
+            // 同一ライトに両フラグが立っている場合は太陽として扱う（月はオプトイン・フォールバック無し）
+            if (light.isAtmosphereMoon && !light.isAtmosphereSun)
+            {
+                return &light;
+            }
+        }
+        return nullptr;
+    }
+
+    DirectionalLightData* LightManager::GetAtmosphereMoonLight()
+    {
+        return const_cast<DirectionalLightData*>(FindAtmosphereMoonLight());
+    }
+
     Vector3 LightManager::GetEffectiveLightColorRGB(const DirectionalLightData& light) const
     {
         Vector3 color = { light.color.x, light.color.y, light.color.z };
@@ -266,6 +299,12 @@ namespace CoreEngine
             color.x *= atmosphereSunTransmittance_.x;
             color.y *= atmosphereSunTransmittance_.y;
             color.z *= atmosphereSunTransmittance_.z;
+        }
+        else if (&light == FindAtmosphereMoonLight())
+        {
+            color.x *= atmosphereMoonTransmittance_.x;
+            color.y *= atmosphereMoonTransmittance_.y;
+            color.z *= atmosphereMoonTransmittance_.z;
         }
         return color;
     }
@@ -279,6 +318,7 @@ namespace CoreEngine
 
     // シーン切り替え時は透過率もリセットする（次のシーンが大気非対応でも変調が残らないように）
     atmosphereSunTransmittance_ = { 1.0f, 1.0f, 1.0f };
+    atmosphereMoonTransmittance_ = { 1.0f, 1.0f, 1.0f };
     }
 
     Matrix4x4 LightManager::CalculateMainDirectionalLightViewProjection(const Vector3& sceneCenter, float sceneRadius)

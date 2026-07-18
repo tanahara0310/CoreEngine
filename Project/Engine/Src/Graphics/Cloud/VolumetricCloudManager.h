@@ -12,7 +12,7 @@ namespace CoreEngine
     class DescriptorManager;
 
     /// @brief 雲シェーダーへ渡す定数バッファレイアウト
-    /// @details HLSL 側 CloudCommon.hlsli の CloudConstants と一致させること（208 バイト）。
+    /// @details HLSL 側 CloudCommon.hlsli の CloudConstants と一致させること（256 バイト）。
     ///          距離はメートル基準。sunDirection は「光の進行方向」（大気散乱と同じ規約）。
     struct VolumetricCloudShaderConstants {
         Matrix4x4 invViewProj;                                              // 0
@@ -33,9 +33,12 @@ namespace CoreEngine
         uint32_t outputHeight;       uint32_t frameIndex;                   // 192
         float sunLightScale;         float msAttenuation;
         float msContribution;        float msEccentricity;                  // 208
+        // ===== 月（第2大気ライト。夜の雲の直接照明） =====
+        Vector3 moonDirection;       float moonIntensity;                   // 224
+        Vector3 moonColor;           float hasMoon;                         // 240 (= 256)
     };
-    static_assert(sizeof(VolumetricCloudShaderConstants) == 224,
-        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 224 バイトレイアウトと一致させること");
+    static_assert(sizeof(VolumetricCloudShaderConstants) == 256,
+        "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 256 バイトレイアウトと一致させること");
 
     /// @brief ゴッドレイシェーダーへ渡す定数バッファレイアウト
     /// @details HLSL 側 GodRayCommon.hlsli の GodRayConstants と一致させること（128 バイト）。
@@ -318,6 +321,10 @@ namespace CoreEngine
         Vector3 sunDirection_ = { 0.0f, -1.0f, 0.0f };
         Vector3 sunColor_ = { 1.0f, 1.0f, 1.0f };
         float sunIntensity_ = 1.0f;
+        Vector3 moonDirection_ = { 0.0f, -1.0f, 0.0f };
+        Vector3 moonColor_ = { 1.0f, 1.0f, 1.0f };
+        float moonIntensity_ = 0.0f;
+        bool hasMoon_ = false;
         float distanceFromPlanetCenter_ = 6360000.0f;
         float timeSec_ = 0.0f;
         uint32_t frameIndex_ = 0;

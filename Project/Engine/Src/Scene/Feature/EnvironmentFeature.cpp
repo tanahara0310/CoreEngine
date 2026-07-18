@@ -8,6 +8,9 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Light/LightManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectNames.h"
+#include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/Logger/Logger.h"
@@ -127,6 +130,16 @@ namespace CoreEngine
         }
         atmosphereManager->Update(cameraPosition, viewMatrix, projMatrix,
                                   ctx.engine->GetComponent<LightManager>());
+
+        // 照明駆動露出: 大気が解析した「シーン照明の代表輝度」を ToneMapping へ毎フレーム供給する。
+        // カメラの向き（画面の構図）に露出が影響されなくなる（供給が無いシーンは画面平均測光へ
+        // 自動フォールバックするため、大気非対応シーンではこの呼び出し自体が無くてよい）
+        if (auto* postEffect = ctx.engine->GetComponent<PostEffectManager>()) {
+            if (auto* toneMapping = postEffect->GetEffect<ToneMapping>(PostEffectNames::ToneMapping)) {
+                toneMapping->SetSceneIlluminationLuminance(
+                    atmosphereManager->GetSceneIlluminationLuminance());
+            }
+        }
 
         // 大気散乱の直後に雲を更新する（大気モード時のみ、という既存ガードの内側なので追加ガード不要）。
         // 雲は太陽情報・カメラ高度を AtmosphereManager から取得するため、大気 Update の後に呼ぶ。

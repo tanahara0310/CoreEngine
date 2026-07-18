@@ -869,6 +869,17 @@ namespace CoreEngine
             }
         }
 
+        // ===== 月情報の取得（第2大気ライト。オプトイン） =====
+        hasMoonLight_ = false;
+        if (lightManager) {
+            if (DirectionalLightData* moon = lightManager->GetAtmosphereMoonLight()) {
+                moonDirection_ = MathCore::Vector::Normalize(moon->direction);
+                moonColor_ = moon->color;
+                moonIntensity_ = (moon->atmosphereIntensity > 0.0f) ? moon->atmosphereIntensity : moon->intensity;
+                hasMoonLight_ = moon->enabled && moonIntensity_ > 0.0f;
+            }
+        }
+
         // ===== カメラ高度 → 惑星中心距離の変換 =====
         // ワールド全体を惑星スケールへは変換しない。Y座標のみを高度として扱う。
         cameraHeightAboveGround_ = cameraWorldPosition.y - parameters_.groundLevelY;
@@ -882,55 +893,124 @@ namespace CoreEngine
             minRadius, maxRadius);
 
         // ===== Sky-View LUT の変化検知 =====
-        // 太陽方向・カメラ高度が変わった場合のみ Sky-View を再生成する
-        // （Transmittance / Multi-Scattering は太陽方向に依存しないため再生成しない）
+        // 太陽方向・色・強度・カメラ高度が変わった場合のみ Sky-View を再生成する
+        // （Transmittance / Multi-Scattering は太陽に依存しないため再生成しない）。
+        // 色・強度が対象なのは、Sky-View / CameraVolume LUT にライト色を前乗算して
+        // 格納しているため（サンプル時乗算だった旧方式では方向のみで足りた）
         constexpr float kDirEpsilon = 1e-5f;
         constexpr float kRadiusEpsilonMeters = 0.5f;
+        constexpr float kColorEpsilon = 1e-5f;
         const bool sunChanged =
             std::abs(sunDirection_.x - lastSunDirection_.x) > kDirEpsilon ||
             std::abs(sunDirection_.y - lastSunDirection_.y) > kDirEpsilon ||
-            std::abs(sunDirection_.z - lastSunDirection_.z) > kDirEpsilon;
+            std::abs(sunDirection_.z - lastSunDirection_.z) > kDirEpsilon ||
+            std::abs(sunColor_.x - lastSunColor_.x) > kColorEpsilon ||
+            std::abs(sunColor_.y - lastSunColor_.y) > kColorEpsilon ||
+            std::abs(sunColor_.z - lastSunColor_.z) > kColorEpsilon ||
+            std::abs(sunIntensity_ - lastSunIntensity_) > kColorEpsilon;
+        // 月も同様（月の有無自体の切替も再生成対象）
+        const bool moonChanged =
+            hasMoonLight_ != lastHasMoon_ ||
+            (hasMoonLight_ && (
+                std::abs(moonDirection_.x - lastMoonDirection_.x) > kDirEpsilon ||
+                std::abs(moonDirection_.y - lastMoonDirection_.y) > kDirEpsilon ||
+                std::abs(moonDirection_.z - lastMoonDirection_.z) > kDirEpsilon ||
+                std::abs(moonColor_.x - lastMoonColor_.x) > kColorEpsilon ||
+                std::abs(moonColor_.y - lastMoonColor_.y) > kColorEpsilon ||
+                std::abs(moonColor_.z - lastMoonColor_.z) > kColorEpsilon ||
+                std::abs(moonIntensity_ - lastMoonIntensity_) > kColorEpsilon));
         const bool cameraChanged =
             std::abs(distanceFromPlanetCenter_ - lastCameraRadius_) > kRadiusEpsilonMeters;
-        if (sunChanged || cameraChanged) {
+        if (sunChanged || moonChanged || cameraChanged) {
             skyViewDirty_ = true;
             lastSunDirection_ = sunDirection_;
             lastCameraRadius_ = distanceFromPlanetCenter_;
+            lastSunColor_ = sunColor_;
+            lastSunIntensity_ = sunIntensity_;
+            lastMoonDirection_ = moonDirection_;
+            lastMoonColor_ = moonColor_;
+            lastMoonIntensity_ = moonIntensity_;
+            lastHasMoon_ = hasMoonLight_;
         }
 
-        // ===== 太陽直接光の大気透過率（Transmittance on Light） =====
-        // 地表→太陽の透過率で太陽ライトの実効色を変調する（UE の Atmosphere Sun Light 相当）。
+        // ===== 直接光の大気透過率（Transmittance on Light。太陽・月共通） =====
+        // 地表→光源の透過率でライトの実効色を変調する（UE の Atmosphere Sun Light 相当）。
         // authored なライトデータは書き換えず、LightManager が GPU 転送時のコピーへ適用する
         // （直接書き換えると翌フレームに減衰済みの色を再度読み、フィードバックで光が消えていく）。
         // ライトの GPU 転送（FrameStart）は本 Update（PostLogic）より先に走るため反映は
-        // 1 フレーム遅延だが、太陽方向は連続的にしか変化しないため知覚できない。
-        sunTransmittance_ = ComputeSunTransmittanceCPU();
+        // 1 フレーム遅延だが、光源方向は連続的にしか変化しないため知覚できない。
+        sunTransmittance_ = hasSunLight_
+            ? ComputeLightTransmittanceCPU(sunDirection_) : Vector3{ 1.0f, 1.0f, 1.0f };
+        moonTransmittance_ = hasMoonLight_
+            ? ComputeLightTransmittanceCPU(moonDirection_) : Vector3{ 1.0f, 1.0f, 1.0f };
         if (lightManager) {
             lightManager->SetAtmosphereSunTransmittance(
                 transmittanceOnLight_ ? sunTransmittance_ : Vector3{ 1.0f, 1.0f, 1.0f });
+            lightManager->SetAtmosphereMoonTransmittance(
+                transmittanceOnLight_ ? moonTransmittance_ : Vector3{ 1.0f, 1.0f, 1.0f });
         }
+
+        // ===== 照明駆動露出用のシーン代表輝度 =====
+        sceneIlluminationLuminance_ = ComputeSceneIlluminationLuminance();
 
         // ===== 定数バッファ更新 =====
         UploadConstants();
     }
 
-    Vector3 AtmosphereManager::ComputeSunTransmittanceCPU() const
+    float AtmosphereManager::ComputeSceneIlluminationLuminance() const
     {
-        if (!hasSunLight_) {
-            return { 1.0f, 1.0f, 1.0f };
+        // 光源1灯（intensity=1）あたりの相対地表照度。
+        //  - 高度 >= 0: 地平線で 0.1（直達が水平でも空の散乱光がある）→ 天頂で 1.0 の線形。
+        //  - 高度 < 0（薄明）: 実測の薄明照度カーブに合わせた指数減衰
+        //    （太陽高度1°につき約10^0.36倍。市民薄明-6°で日没時の約1/150、
+        //     天文薄明-18°で実質ゼロ。文献値の log-linear 近似）。
+        auto relativeIlluminance = [](float sinElevation) {
+            if (sinElevation >= 0.0f) {
+                return 0.1f + 0.9f * sinElevation;
+            }
+            const float elevationDeg =
+                std::asin(std::clamp(sinElevation, -1.0f, 1.0f)) * (180.0f / 3.14159265358979323846f);
+            return 0.1f * std::pow(10.0f, 0.36f * elevationDeg); // elevationDeg < 0
+        };
+        auto lumaOf = [](const Vector4& c) {
+            return 0.299f * c.x + 0.587f * c.y + 0.114f * c.z;
+        };
+
+        float illuminance = 0.0f;
+        if (hasSunLight_) {
+            // toSun.y = -direction.y = sin(高度)
+            illuminance += sunIntensity_ * lumaOf(sunColor_) * relativeIlluminance(-sunDirection_.y);
+        }
+        if (hasMoonLight_) {
+            illuminance += moonIntensity_ * lumaOf(moonColor_) * relativeIlluminance(-moonDirection_.y);
         }
 
+        // 屋外の代表的な画面平均輝度への変換係数。
+        // 昼（太陽高度30°・intensity=20）で従来の画面平均測光の実測順応輝度（≈1.4）と
+        // 一致するよう校正した値（照明駆動へ切り替えても昼の見た目が変わらない）。
+        constexpr float kSceneReflectanceScale = 0.127f;
+
+        // 星明かり・大気光相当の下限（月なしの夜の代表輝度。0 だと EV がクランプに
+        // 張り付くだけなので、Krawczyk キーが意味を持つ微小な床を与える）
+        constexpr float kStarlightFloorLuminance = 2e-4f;
+
+        return std::max(illuminance * kSceneReflectanceScale, kStarlightFloorLuminance);
+    }
+
+    Vector3 AtmosphereManager::ComputeLightTransmittanceCPU(const Vector3& lightDirection) const
+    {
         // 単位系は HLSL 側（AtmosphereCommon.hlsli）と同じ km / 1_km
         const float planetRadiusKm = parameters_.planetRadius * kMetersToKm;
         const float topRadiusKm = parameters_.atmosphereTopRadius * kMetersToKm;
         const float radiusKm = planetRadiusKm + 0.002f; // 地表 +2m（地表すれすれの特異点回避）
 
-        // 評価点は (0, radiusKm, 0)。太陽天頂角余弦は toSun.y に一致する
-        const Vector3 toSun = { -sunDirection_.x, -sunDirection_.y, -sunDirection_.z };
+        // 評価点は (0, radiusKm, 0)。光源天頂角余弦は toSun.y に一致する（太陽・月共用）
+        const Vector3 toSun = { -lightDirection.x, -lightDirection.y, -lightDirection.z };
         const float mu = toSun.y;
 
         // 惑星本体による遮蔽（HLSL PlanetSunVisibility と同一式）。
-        // 太陽は角半径を持つため、地平線を跨ぐ間は smoothstep で滑らかに減衰する
+        // 光源は角半径を持つため、地平線を跨ぐ間は smoothstep で滑らかに減衰する
+        // （太陽 0.265°・月 0.259°でソフトネス差は知覚できないため太陽の視半径で共用する）
         const float cosHorizon = -std::sqrt(std::max(0.0f,
             1.0f - (planetRadiusKm * planetRadiusKm) / (radiusKm * radiusKm)));
         const float softness = std::max(
@@ -1022,6 +1102,18 @@ namespace CoreEngine
         constants.groundLevelY = parameters_.groundLevelY;
         constants.multiScatteringFactor = parameters_.multiScatteringFactor;
         constants.apKmPerSlice = parameters_.apKmPerSlice;
+
+        // ===== 月（第2大気ライト） =====
+        constants.moonDirection = moonDirection_;
+        constants.moonIntensity = moonIntensity_;
+        constants.moonColor = { moonColor_.x, moonColor_.y, moonColor_.z };
+        constants.moonDiskHalfAngleRad = parameters_.moonDiskAngularRadiusDeg * 3.14159265358979323846f / 180.0f;
+        constants.moonDiskLuminanceScale = parameters_.moonDiskLuminanceScale;
+        constants.hasMoon = hasMoonLight_ ? 1.0f : 0.0f;
+        constants.moonPhaseFromSun = parameters_.moonPhaseFromSun ? 1.0f : 0.0f;
+
+        // ===== 星空（SkyAtmosphere.PS が消費。LUT には影響しない） =====
+        constants.starIntensity = parameters_.starIntensity;
 
         *constantData_ = constants;
     }

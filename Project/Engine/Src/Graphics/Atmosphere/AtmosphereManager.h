@@ -28,9 +28,14 @@ namespace CoreEngine
         Vector3 cameraWorldPos;       float groundLevelY;          // カメラのワールド座標 [m] / 地表とみなす世界Y座標 [m]
         float multiScatteringFactor;  float apKmPerSlice;          // 多重散乱スケール / APの1スライスあたり距離 [km]
         float constantsPad[2];        // パディング
+        // ===== 月（第2大気ライト。UE の Second Atmosphere Light 相当） =====
+        Vector3 moonDirection;        float moonIntensity;         // 月光の進行方向 / 強度（sunIntensity と同ドメイン）
+        Vector3 moonColor;            float moonDiskHalfAngleRad;  // 月光色 / 月の視半径 [rad]
+        float moonDiskLuminanceScale; float hasMoon;               // 月ディスク輝度スケール / 月有効フラグ (0/1)
+        float moonPhaseFromSun;       float starIntensity;         // 満ち欠けの太陽連動 (0=常に満月) / 星空の強度 (0=無効)
     };
-    static_assert(sizeof(AtmosphereShaderConstants) == 208,
-        "AtmosphereShaderConstants は HLSL 側 AtmosphereConstants の 208 バイトレイアウトと一致させること");
+    static_assert(sizeof(AtmosphereShaderConstants) == 256,
+        "AtmosphereShaderConstants は HLSL 側 AtmosphereConstants の 256 バイトレイアウトと一致させること");
 
     /// @brief 大気散乱の物理パラメータ
     /// @details 単位はメートル基準（散乱・吸収係数は 1/m）。
@@ -63,6 +68,27 @@ namespace CoreEngine
         // ===== 太陽ディスク =====
         float sunDiskAngularRadiusDeg = 0.265f; ///< 太陽の視半径 [deg]（実際の太陽は約0.265°）
         float sunDiskLuminanceScale = 50.0f;    ///< ディスク輝度スケール（空の散乱輝度に対する倍率）
+
+        // ===== 月ディスク =====
+        float moonDiskAngularRadiusDeg = 0.259f; ///< 月の視半径 [deg]（実際の月の平均視半径）
+        /// @brief 月ディスクの輝度スケール（moonIntensity に乗算）
+        /// @details 既定 25 は moonIntensity=0.02 でディスク輝度 ≈ 0.3（昼の空 ≈ 1 の約1/3）になる値。
+        ///          実際の満月面輝度（約2500 cd/m² ≒ 昼空の1/3）に合わせた美術値で、
+        ///          夜空では白い円盤・昼の空にはほぼ埋もれる現実の見え方になる。
+        float moonDiskLuminanceScale = 25.0f;
+
+        /// @brief 月の満ち欠けを太陽方向から計算するか
+        /// @details false（既定）= 常に満月。ゲームでは太陽と月を独立に動かすことが多く、
+        ///          実位相だと配置次第で意図せず新月（ほぼ見えない月）になるため固定満月を既定とする。
+        ///          true = 太陽・月の位置関係から実際の位相（新月〜満月）を自動計算する。
+        bool moonPhaseFromSun = false;
+
+        // ===== 星空（Phase 5: 手続き的星field） =====
+        /// @brief 星空の強度スケール（0=無効）
+        /// @details シェーダー内で方向ハッシュから生成する星の輝度倍率。テクスチャ不要。
+        ///          空の輝度による暗さマスクが掛かるため、昼・薄明・月グレア近傍では
+        ///          有効のままでも自動的に見えなくなる（常時 ON で害がない）。
+        float starIntensity = 1.0f;
 
         // ===== 多重散乱 =====
         /// @brief 多重散乱寄与のスケール（1=近似そのまま）
@@ -145,6 +171,29 @@ namespace CoreEngine
         /// @details 昼はほぼ白、夕方は赤方偏移、日没後はゼロへ滑らかに減衰する。
         ///          太陽ディレクショナルライトの実効色の変調（UE の Transmittance on light color 相当）に使う。
         const Vector3& GetSunTransmittance() const { return sunTransmittance_; }
+
+        // ===== 月（第2大気ライト） =====
+
+        /// @brief 月光の進行方向（正規化。月の位置方向はこの逆ベクトル）
+        const Vector3& GetMoonDirection() const { return moonDirection_; }
+
+        /// @brief 月光の色
+        const Vector4& GetMoonColor() const { return moonColor_; }
+
+        /// @brief 月光の強度（大気の輝度ドメイン）
+        float GetMoonIntensity() const { return moonIntensity_; }
+
+        /// @brief 有効な月ライトが取得できているか
+        bool HasMoonLight() const { return hasMoonLight_; }
+
+        /// @brief 地表から月方向への大気透過率（惑星遮蔽込み。月ライト有効時のみ計算）
+        const Vector3& GetMoonTransmittance() const { return moonTransmittance_; }
+
+        /// @brief 照明駆動露出用のシーン代表輝度（カメラ非依存。Update() で毎フレーム計算）
+        /// @details 太陽・月の高度と強度から「屋外の代表的な画面平均輝度」を解析的に見積もった値。
+        ///          ToneMapping の照明駆動測光モードがこれをターゲット輝度として使うことで、
+        ///          カメラの向き（画面の構図）に露出が影響されなくなる。
+        float GetSceneIlluminationLuminance() const { return sceneIlluminationLuminance_; }
 
         /// @brief 太陽直接光への透過率適用（Transmittance on Light）の有効/無効
         /// @details 無効時は LightManager へ {1,1,1} を渡す（＝従来動作）。既定は有効。
@@ -269,11 +318,15 @@ namespace CoreEngine
         /// @brief 現在のパラメータ・太陽情報から定数バッファを更新する
         void UploadConstants();
 
-        /// @brief 地表から太陽方向への大気透過率を計算する（CPU レイマーチ 40 ステップ）
+        /// @brief 照明駆動露出用のシーン代表輝度を計算する（太陽・月の高度・強度から解析）
+        float ComputeSceneIlluminationLuminance() const;
+
+        /// @brief 地表から指定ライト方向への大気透過率を計算する（CPU レイマーチ 40 ステップ）
         /// @details HLSL 側 AtmosphereCommon.hlsli の ComputeExtinction / PlanetSunVisibility の忠実な移植。
         ///          評価点は地表（groundLevelY 相当）+2m。シーンのオブジェクトを照らす光の減衰なので
-        ///          カメラ高度ではなく地表基準で評価する。
-        Vector3 ComputeSunTransmittanceCPU() const;
+        ///          カメラ高度ではなく地表基準で評価する。太陽・月で共用する。
+        /// @param lightDirection ライトの進行方向（正規化済み。光源の位置方向はこの逆）
+        Vector3 ComputeLightTransmittanceCPU(const Vector3& lightDirection) const;
 
         /// @brief LUT テクスチャと SRV/UAV を生成する
         bool CreateLUTResources(ID3D12Device* device, DescriptorManager* descriptorManager);
@@ -345,7 +398,15 @@ namespace CoreEngine
         float cameraHeightAboveGround_ = 0.0f;
         float distanceFromPlanetCenter_ = 6360000.0f;
         Vector3 sunTransmittance_ = { 1.0f, 1.0f, 1.0f }; ///< 地表→太陽の大気透過率（惑星遮蔽込み）
-        bool transmittanceOnLight_ = true; ///< 太陽直接光へ透過率を適用するか（Transmittance on Light）
+        bool transmittanceOnLight_ = true; ///< 直接光へ透過率を適用するか（Transmittance on Light。太陽・月共通）
+
+        // 月（第2大気ライト）。isAtmosphereMoon のライトが無ければ hasMoonLight_=false のまま
+        Vector3 moonDirection_ = { 0.0f, -1.0f, 0.0f };
+        Vector4 moonColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+        float moonIntensity_ = 0.0f;
+        bool hasMoonLight_ = false;
+        Vector3 moonTransmittance_ = { 1.0f, 1.0f, 1.0f }; ///< 地表→月の大気透過率（惑星遮蔽込み）
+        float sceneIlluminationLuminance_ = 0.18f; ///< 照明駆動露出用のシーン代表輝度（カメラ非依存）
 
         bool paramsDirty_ = true;   ///< 大気パラメータ変更 → 全 LUT 再生成
         bool skyViewDirty_ = true;  ///< 太陽方向・カメラ高度変更 → Sky-View LUT のみ再生成
@@ -354,8 +415,16 @@ namespace CoreEngine
         ID3D12Device* device_ = nullptr;
 
         // Sky-View の変化検知用キャッシュ
+        // 色・強度も対象にするのは、LUT にライト色を前乗算して格納しているため
+        //（色変更を検知しないと、エディタで太陽色を動かしても空が変わらない）
         Vector3 lastSunDirection_ = { 0.0f, -1.0f, 0.0f };
         float lastCameraRadius_ = 0.0f;
+        Vector4 lastSunColor_ = { -1.0f, -1.0f, -1.0f, -1.0f };
+        float lastSunIntensity_ = -1.0f;
+        Vector3 lastMoonDirection_ = { 0.0f, -1.0f, 0.0f };
+        Vector4 lastMoonColor_ = { -1.0f, -1.0f, -1.0f, -1.0f };
+        float lastMoonIntensity_ = -1.0f;
+        bool lastHasMoon_ = false;
 
         // Camera Volume の変化検知用キャッシュ
         bool cameraVolumeDirty_ = true;

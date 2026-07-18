@@ -1,8 +1,10 @@
 /// @file SkyViewLUT.CS.hlsl
-/// @brief Sky-View LUT の生成（Hillaire 2020）
-/// @details 各テクセル = カメラ視点からの (視線天頂角, 太陽相対方位角) に対する空の輝度。
+/// @brief Sky-View LUT の生成（Hillaire 2020 / パラメータ化は UE 方式の絶対方位）
+/// @details 各テクセル = カメラ視点からの (視線天頂角, 絶対方位角) に対する空の放射輝度。
+///          ライト色・強度（sunColor × sunIntensity）は前乗算して格納する
+///          （第2大気ライト＝月の寄与を将来同じ LUT へ合算するための輝度ドメイン）。
 ///          本番描画（SkyAtmosphere.PS.hlsl）はこの LUT を1回サンプリングするだけになる。
-///          太陽方向・カメラ高度・大気パラメータの変化時のみ再計算される。
+///          太陽方向・色・強度・カメラ高度・大気パラメータの変化時のみ再計算される。
 
 #include "Common/AtmosphereCommon.hlsli"
 
@@ -27,18 +29,18 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         gAtmosphere.atmosphereTopRadiusKm - 0.001f);
 
     float viewZenithCos;
-    float lightViewCos;
-    UvToSkyViewParams(uv, radiusKm, gAtmosphere.planetRadiusKm, viewZenithCos, lightViewCos);
+    float viewAzimuth;
+    UvToSkyViewParams(uv, radiusKm, gAtmosphere.planetRadiusKm, viewZenithCos, viewAzimuth);
 
-    // 大気空間: カメラは +Y 軸上、太陽は XZ 平面内の X 側に配置（LUT は太陽相対方位で格納）
-    float muSun = dot(float3(0.0f, 1.0f, 0.0f), -gAtmosphere.sunDirection);
-    float3 toSun = normalize(float3(sqrt(max(0.0f, 1.0f - muSun * muSun)), muSun, 0.0f));
+    // 大気空間: カメラは +Y 軸上（天頂 = ワールド +Y）。方位は絶対方位なので
+    // 太陽方向はワールドの値をそのまま使う（旧実装のような X 側への再配置はしない）
+    float3 toSun = -gAtmosphere.sunDirection;
 
     float viewZenithSin = sqrt(max(0.0f, 1.0f - viewZenithCos * viewZenithCos));
     float3 rayDir = float3(
-        viewZenithSin * lightViewCos,
+        viewZenithSin * cos(viewAzimuth),
         viewZenithCos,
-        viewZenithSin * sqrt(max(0.0f, 1.0f - lightViewCos * lightViewCos)));
+        viewZenithSin * sin(viewAzimuth));
 
     float3 rayOrigin = float3(0.0f, radiusKm, 0.0f);
 
@@ -53,6 +55,20 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     float3 luminance = IntegrateScatteredLuminance(
         rayOrigin, rayDir, toSun, gAtmosphere,
         gTransmittanceLUT, gMultiScatteringLUT, gLUTSampler, stepCount);
+
+    // ライト色・強度を前乗算して「最終放射輝度」で格納する（消費側は乗算しない）
+    luminance *= gAtmosphere.sunColor * gAtmosphere.sunIntensity;
+
+    // 月（第2大気ライト）の散乱寄与を合算する（UE の Second Atmosphere Light 相当）。
+    // Transmittance / MultiScattering LUT はライト非依存（高度×天頂角）なのでそのまま共用できる
+    if (gAtmosphere.hasMoon > 0.5f)
+    {
+        float3 toMoon = -gAtmosphere.moonDirection;
+        luminance += IntegrateScatteredLuminance(
+            rayOrigin, rayDir, toMoon, gAtmosphere,
+            gTransmittanceLUT, gMultiScatteringLUT, gLUTSampler, stepCount)
+            * gAtmosphere.moonColor * gAtmosphere.moonIntensity;
+    }
 
     gSkyViewLUT[dispatchThreadId.xy] = float4(luminance, 1.0f);
 }

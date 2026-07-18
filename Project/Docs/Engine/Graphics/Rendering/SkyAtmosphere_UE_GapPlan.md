@@ -47,7 +47,7 @@ Aerial Perspective（froxel、不透明のみ）、変化検知による LUT 再
 | G5 | 積分がエネルギー保存でない・固定40ステップ（地平線際の精度不足） | 解析的ステップ積分＋距離比例サンプル数 | ★★☆ | 小 | Phase 4 |
 | G6 | 大気圏外カメラ非対応（半径クランプ・Y軸天頂固定・惑星地表なし） | 宇宙からの惑星レンダリング（ピクセル単位レイマーチ） | ★★☆ | 大 | Phase 5 |
 | G7 | AP が半透明に効かない・128km 固定 | 半透明への AP 適用・View Distance Scale | ★★☆ | 中 | Phase 6 |
-| G8 | 月（第2大気ライト）・星空が無い | Second Atmosphere Light | ★☆☆ | 中 | 将来 |
+| G8 | 月（第2大気ライト）・星空が無い | Second Atmosphere Light | ★☆☆ | 中 | 別文書 `SkyAtmosphere_NightMoon_Plan.md`（2026-07-18 Phase 1-4 完了: LUT絶対方位化＋色前乗算・月ライト配管・2光源積分・満ち欠け付き月ディスク。残: 星空・露出クランプ） |
 | G9 | 大気散乱への影（Atmosphere Shadow）が無い | Cast Shadows on Atmosphere | ★☆☆ | 大 | 将来（ゴッドレイで代替中） |
 
 **「夕暮れの反太陽側が現実より明るい」問題は G1＋G2＋G4＋G5 の複合**。

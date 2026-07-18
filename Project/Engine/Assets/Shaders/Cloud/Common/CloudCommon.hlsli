@@ -1,6 +1,6 @@
 /// @file CloudCommon.hlsli
 /// @brief ボリューメトリック雲の共通定数バッファ・ジオメトリ・密度関数
-/// @details C++ 側 VolumetricCloudShaderConstants（208 バイト）と一致させること。
+/// @details C++ 側 VolumetricCloudShaderConstants（256 バイト）と一致させること。
 ///          座標系は 1unit=1m。惑星中心はカメラ基準で下方 planetRadiusM に置く。
 
 #ifndef CLOUD_COMMON_HLSLI
@@ -28,7 +28,9 @@ struct CloudConstants
     uint outputHeight;          uint frameIndex;                         // 192
     float sunLightScale;        float msAttenuation;
     float msContribution;       float msEccentricity;                    // 208
-};                                                                       // = 224
+    float3 moonDirection;       float moonIntensity;                     // 224 月光の進行方向 / 強度
+    float3 moonColor;           float hasMoon;                           // 240 月光色 / 月有効(0/1)
+};                                                                       // = 256
 
 // ===== 雲層ジオメトリ =====
 
