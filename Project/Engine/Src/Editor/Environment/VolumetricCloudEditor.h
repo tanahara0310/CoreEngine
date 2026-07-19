@@ -3,6 +3,7 @@
 namespace CoreEngine {
     class EngineSystem;
     class VolumetricCloudManager;
+    class GameDebugUI;
 
     /// @brief ボリューメトリック雲のエンジン常駐エディタ
     /// @details 雲は全シーン既定の機能のため、シーン所有の facade ではなく DebugSubsystem が
@@ -28,6 +29,15 @@ namespace CoreEngine {
         VolumetricCloudManager* GetVolumetricCloudManager() const;
 
         EngineSystem* engine_ = nullptr;
+
+        /// @brief Initialize 時にキャッシュした GameDebugUI（デストラクタでの登録解除用）
+        /// @details デストラクタで engine_->GetDebugSubsystem() を呼び直すと、この
+        ///          エディタ自体を所有する DebugSubsystem が EngineSystem::Finalize() の
+        ///          サブシステム一括破棄の途中（デストラクタ実行中）に自分自身を
+        ///          dynamic_cast で探しに行くことになり、その時点で破棄済みの他サブシステムに
+        ///          当たってアクセス違反になる（RTTI 読み取り不可 → std::terminate）。
+        ///          そのため参照は Initialize 時に一度だけ取得してキャッシュする。
+        GameDebugUI* gameDebugUI_ = nullptr;
 
         /// 現在適用中のプリセット（-1=カスタム。パラメータを手動変更すると自動でカスタムになる）
         int activePresetIndex_ = 1;

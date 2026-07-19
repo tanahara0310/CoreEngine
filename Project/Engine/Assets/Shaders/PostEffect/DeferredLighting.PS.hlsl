@@ -355,7 +355,8 @@ PixelShaderOutput main(PixelShaderInput input)
         if (d >= pL.radius)
             continue;
         float3 L = normalize(tv);
-        float attenuation = 1.0f / (1.0f + pL.decay * d * d);
+        // 物理ベース: 純粋な逆二乗則（intensity は光度 [cd] 由来。最小距離 10cm でクランプ）
+        float attenuation = 1.0f / max(d * d, 0.01f);
         float distRatio = d / pL.radius;
         float rangeFactor = saturate(1.0f - distRatio * distRatio * distRatio * distRatio);
         attenuation *= rangeFactor * rangeFactor;
@@ -373,7 +374,8 @@ PixelShaderOutput main(PixelShaderInput input)
         if (d >= sL.distance)
             continue;
         float3 L = normalize(tv);
-        float attenuation = 1.0f / (1.0f + sL.decay * d * d);
+        // 物理ベース: 純粋な逆二乗則（ポイントライトと同一式）
+        float attenuation = 1.0f / max(d * d, 0.01f);
         float sDistRatio = d / sL.distance;
         float sRangeFactor = saturate(1.0f - sDistRatio * sDistRatio * sDistRatio * sDistRatio);
         attenuation *= sRangeFactor * sRangeFactor;
@@ -411,8 +413,10 @@ PixelShaderOutput main(PixelShaderInput input)
             continue;
         float3 L = toClosest / max(dist, 0.001f);
 
-        float distFactor = 1.0f - saturate(dist / aL.range);
-        float distAttenuation = distFactor * distFactor;
+        // 物理ベース: 純粋な逆二乗則 + 範囲窓関数（intensity は 輝度[nt]×面積 由来）
+        float aDistRatio = dist / aL.range;
+        float aRangeFactor = saturate(1.0f - aDistRatio * aDistRatio * aDistRatio * aDistRatio);
+        float distAttenuation = aRangeFactor * aRangeFactor / max(dist * dist, 0.01f);
 
         float shapeFactor = 1.0f;
         float outsideU = max(0.0f, abs(u) - halfW);

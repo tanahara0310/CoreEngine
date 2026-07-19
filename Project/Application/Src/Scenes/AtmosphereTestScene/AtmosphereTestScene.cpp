@@ -22,7 +22,7 @@ void AtmosphereTestScene::OnInitialize()
             defaultSun.elevationDeg, defaultSun.azimuthDeg);
         // 太陽UIの intensity は「空の輝度スケール」。サーフェスの直接光は別単位で与える。
         directionalLight_->atmosphereIntensity = defaultSun.intensity;
-        directionalLight_->intensity = kAtmosphereSurfaceSunIntensity;
+        directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
     }
 
     // 空は BaseScene が既定で大気散乱モードの SkyBox を自動生成するためここでは何もしない

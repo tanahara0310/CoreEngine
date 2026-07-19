@@ -140,8 +140,10 @@ void CalculateAreaLights(
             continue;
         float3 L = toClosest / max(dist, 0.001f);
 
-        float distFactor = 1.0f - saturate(dist / gAreaLights[l].range);
-        float distAtten = distFactor * distFactor;
+        // 物理ベース: 純粋な逆二乗則 + 範囲窓関数（Deferred と同一式。intensity は 輝度[nt]×面積 由来）
+        float aDistRatio = dist / gAreaLights[l].range;
+        float aRangeFactor = saturate(1.0f - aDistRatio * aDistRatio * aDistRatio * aDistRatio);
+        float distAtten = aRangeFactor * aRangeFactor / max(dist * dist, 0.01f);
         float outsideU = max(0.0f, abs(u) - halfW);
         float outsideV = max(0.0f, abs(v) - halfH);
         float outsideDist = sqrt(outsideU * outsideU + outsideV * outsideV);

@@ -91,10 +91,12 @@ namespace CoreEngine {
     {
         engine_ = &engine;
 #ifdef USE_IMGUI
-        // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする
+        // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする。
+        // GameDebugUI はここで一度だけ取得してキャッシュする（デストラクタで使うため）
         if (auto* debug = engine_->GetDebugSubsystem()) {
-            if (auto* ui = debug->GetGameDebugUI()) {
-                ui->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawContent(); });
+            gameDebugUI_ = debug->GetGameDebugUI();
+            if (gameDebugUI_) {
+                gameDebugUI_->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawContent(); });
             }
         }
 #endif
@@ -103,13 +105,14 @@ namespace CoreEngine {
     VolumetricCloudEditor::~VolumetricCloudEditor()
     {
 #ifdef USE_IMGUI
-        // エンジン終了時にドロワーがダングリングしないよう登録を解除する
-        if (engine_) {
-            if (auto* debug = engine_->GetDebugSubsystem()) {
-                if (auto* ui = debug->GetGameDebugUI()) {
-                    ui->UnregisterEnvironmentEditor(kEditorLabel, this);
-                }
-            }
+        // エンジン終了時にドロワーがダングリングしないよう登録を解除する。
+        // ここで engine_->GetDebugSubsystem() を呼び直してはいけない: 本エディタは
+        // DebugSubsystem が所有するため、この呼び出しは EngineSystem::Finalize() の
+        // サブシステム一括破棄中（DebugSubsystem 自身のデストラクタの最中）に発生し、
+        // 破棄済みの他サブシステムへの dynamic_cast がアクセス違反を起こす
+        // （RTTI 読み取り不可 → std::terminate で abort）。キャッシュ済みポインタのみ使う
+        if (gameDebugUI_) {
+            gameDebugUI_->UnregisterEnvironmentEditor(kEditorLabel, this);
         }
 #endif
     }

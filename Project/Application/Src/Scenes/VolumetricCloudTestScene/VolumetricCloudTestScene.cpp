@@ -21,7 +21,7 @@ void VolumetricCloudTestScene::OnInitialize()
         // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える。
         // 両方に 20 を入れると床のような明るいアルベドが ACES の飽和域に入り真っ白になる。
         directionalLight_->atmosphereIntensity = 20.0f;
-        directionalLight_->intensity = kAtmosphereSurfaceSunIntensity;
+        directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
     }
 
     // 空は BaseScene が既定で大気散乱モードの SkyBox を自動生成する。

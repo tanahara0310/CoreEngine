@@ -368,11 +368,12 @@ namespace CoreEngine
         // ライトの色/強度を変えても常に一定の白い光量のままになる不具合の原因だった。
         WaterCausticsRayTracingManager::LightInput lightInput{};
         if (context.lightManager) {
-            if (DirectionalLightData* mainLight = context.lightManager->GetDirectionalLight(0);
+            if (Light* mainLight = context.lightManager->GetDirectionalLight(0);
                 mainLight && mainLight->enabled) {
                 lightInput.direction = MathCore::Vector::Normalize(mainLight->direction);
                 lightInput.color = { mainLight->color.x, mainLight->color.y, mainLight->color.z };
-                lightInput.intensity = mainLight->intensity;
+                // オーサリングは照度 [lx]。シェーダーが期待する従来単位へ換算する
+                lightInput.intensity = LightUnits::LuxToShader(mainLight->intensity);
                 lightInput.enabled = true;
             } else {
                 lightInput.enabled = false;

@@ -356,8 +356,9 @@ LightingResult CalculatePointLightPBR(
 	float3 V = normalize(toEye);
 	float3 N = normalize(normal);
     
-	// 距離減衰計算（物理ベース: 逆二乗則）
-	float attenuation = 1.0f / (1.0f + decay * distance * distance);
+	// 距離減衰計算（物理ベース: 純粋な逆二乗則。intensity は光度 [cd] 由来のシェーダー単位）
+	// 至近距離の発散は最小距離 10cm（d²=0.01）でクランプする。decay は旧仕様の名残で未使用
+	float attenuation = 1.0f / max(distance * distance, 0.01f);
 
 	// 半径外カットオフ: UE4/Filament 方式 (1-(d/r)^4)^2 で滑らかに消失
 	float distRatio = distance / radius;
@@ -427,8 +428,8 @@ LightingResult CalculateSpotLightPBR(
 	float3 V = normalize(toEye);
 	float3 N = normalize(normal);
     
-	// 距離減衰
-	float attenuation = 1.0f / (1.0f + decay * dist * dist);
+	// 距離減衰（物理ベース: 純粋な逆二乗則。decay は旧仕様の名残で未使用）
+	float attenuation = 1.0f / max(dist * dist, 0.01f);
 	// UE4/Filament 方式 (1-(d/r)^4)^2 で滑らかに消失
 	float distRatio = dist / distance;
 	float rangeFactor = saturate(1.0f - distRatio * distRatio * distRatio * distRatio);

@@ -32,7 +32,7 @@ void PrimitiveTestScene::OnInitialize()
         directionalLight_->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
         // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える
         directionalLight_->atmosphereIntensity = 20.0f;
-        directionalLight_->intensity = kAtmosphereSurfaceSunIntensity;
+        directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
     }
 
     // ===== リング（Ring） =====

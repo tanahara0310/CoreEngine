@@ -1,7 +1,7 @@
 #pragma once
 
 #include "IScene.h"
-#include "Graphics/Light/LightData.h"
+#include "Graphics/Light/Light.h"
 #include "GameObject/GameObjectManager.h"
 #include "Audio/SoundManager.h"
 #include "Collider/CollisionConfig.h"
@@ -96,14 +96,12 @@ namespace CoreEngine
         /// 既定 GameView カメラの高さ（無限床 y=0 より上）
         static constexpr float kDefaultCameraHeight = 3.0f;
 
-        /// @brief 大気散乱シーンでサーフェスの直接光に使う太陽強度
-        /// @details 空の輝度スケール（DirectionalLightData::atmosphereIntensity ≒ 20）とは単位系が別。
-        ///          この値を空と同じ 20 にすると、明るいアルベド（既定床のタイルなど）が
-        ///          ACES の飽和域（HDR >= 7.24）へ入り階調が全て 1.0 に潰れる。
-        ///
-        ///          値の根拠: 既定シーン（太陽が真下・intensity=1 → NdotL=1）と既定床の見た目を
-        ///          揃えるため、大気シーンの太陽高度 35°（NdotL≈0.574）を打ち消す 1/0.574 ≈ 1.75 とする。
-        static constexpr float kAtmosphereSurfaceSunIntensity = 1.75f;
+        /// @brief 大気散乱シーンでサーフェスの直接光に使う太陽照度 [lx]
+        /// @details 快晴の太陽直下照度（LightUnits::kSunIlluminanceLux）。空の輝度スケール
+        ///          （Light::atmosphereIntensity ≒ 20）とは単位系が別で、シェーダー単位では
+        ///          較正定数により旧 kAtmosphereSurfaceSunIntensity=1.75 と同値になる
+        ///          （明るいアルベドが ACES の飽和域へ入らない既存チューニングを維持）。
+        static constexpr float kAtmosphereSunIlluminanceLux = LightUnits::kSunIlluminanceLux;
 
     private:
 
@@ -129,7 +127,7 @@ namespace CoreEngine
         // 派生クラスからアクセス可能な共通メンバー
         EngineSystem* engine_ = nullptr;
         std::unique_ptr<CameraManager> cameraManager_;
-        DirectionalLightData* directionalLight_ = nullptr;
+        Light* directionalLight_ = nullptr;
 
         // ゲームオブジェクト管理（新システム）
         GameObjectManager gameObjectManager_;

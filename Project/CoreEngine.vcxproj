@@ -618,6 +618,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Line\GridRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Light\Light.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightBufferManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightData.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightDebugVisualizer.h" />

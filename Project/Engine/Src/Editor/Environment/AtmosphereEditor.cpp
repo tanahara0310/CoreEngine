@@ -28,10 +28,12 @@ namespace CoreEngine {
     {
         engine_ = &engine;
 #ifdef USE_IMGUI
-        // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする
+        // Hierarchy の Environment ツリーへ登録し、選択時に Inspector で編集できるようにする。
+        // GameDebugUI はここで一度だけ取得してキャッシュする（デストラクタで使うため）
         if (auto* debug = engine_->GetDebugSubsystem()) {
-            if (auto* ui = debug->GetGameDebugUI()) {
-                ui->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawContent(); });
+            gameDebugUI_ = debug->GetGameDebugUI();
+            if (gameDebugUI_) {
+                gameDebugUI_->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawContent(); });
             }
         }
 #endif
@@ -40,13 +42,14 @@ namespace CoreEngine {
     AtmosphereEditor::~AtmosphereEditor()
     {
 #ifdef USE_IMGUI
-        // エンジン終了時にドロワーがダングリングしないよう登録を解除する
-        if (engine_) {
-            if (auto* debug = engine_->GetDebugSubsystem()) {
-                if (auto* ui = debug->GetGameDebugUI()) {
-                    ui->UnregisterEnvironmentEditor(kEditorLabel, this);
-                }
-            }
+        // エンジン終了時にドロワーがダングリングしないよう登録を解除する。
+        // ここで engine_->GetDebugSubsystem() を呼び直してはいけない: 本エディタは
+        // DebugSubsystem が所有するため、この呼び出しは EngineSystem::Finalize() の
+        // サブシステム一括破棄中（DebugSubsystem 自身のデストラクタの最中）に発生し、
+        // 破棄済みの他サブシステムへの dynamic_cast がアクセス違反を起こす
+        // （RTTI 読み取り不可 → std::terminate で abort）。キャッシュ済みポインタのみ使う
+        if (gameDebugUI_) {
+            gameDebugUI_->UnregisterEnvironmentEditor(kEditorLabel, this);
         }
 #endif
     }
@@ -72,7 +75,7 @@ namespace CoreEngine {
         sunSettings_ = settings;
 
         if (auto* lightManager = GetLightManager()) {
-            if (DirectionalLightData* sun = lightManager->GetAtmosphereSunLight()) {
+            if (Light* sun = lightManager->GetAtmosphereSunLight()) {
                 sun->direction = ComputeSunLightDirection(settings.elevationDeg, settings.azimuthDeg);
                 // UI の「強度」は空（大気散乱）の輝度スケール。サーフェスの直接光（sun->intensity）は
                 // 単位系が別なので触らない（同じ値を入れると明るいアルベドが ACES の飽和域に入る）。
@@ -93,11 +96,11 @@ namespace CoreEngine {
             return;
         }
 
-        DirectionalLightData* moon = lightManager->GetAtmosphereMoonLight();
+        Light* moon = lightManager->GetAtmosphereMoonLight();
         if (!moon && settings.enabled) {
             // 月ライトはオプトイン。初回有効化時に第2ディレクショナルライトとして生成する
-            // （LightManager は最大数ぶん reserve 済みのため、追加で既存ポインタは無効化されない）
-            moon = lightManager->AddDirectionalLight();
+            LightHandle moonHandle = lightManager->CreateLight(LightType::Directional, "Moon");
+            moon = lightManager->GetLight(moonHandle);
             if (moon) {
                 moon->isAtmosphereMoon = true;
             }
@@ -108,8 +111,8 @@ namespace CoreEngine {
 
         moon->enabled = settings.enabled;
         moon->direction = ComputeSunLightDirection(settings.elevationDeg, settings.azimuthDeg);
-        moon->color = { settings.color.x, settings.color.y, settings.color.z, 1.0f };
-        // 太陽と同じく「空の輝度」と「サーフェス直接光」は単位系が別（ACES 飽和域回避）
+        moon->color = settings.color;
+        // 太陽と同じく「空の輝度」と「サーフェス直接光（照度 [lx]）」は単位系が別（ACES 飽和域回避）
         moon->intensity = settings.surfaceIntensity;
         moon->atmosphereIntensity = settings.skyIntensity;
 
@@ -123,7 +126,7 @@ namespace CoreEngine {
             return;
         }
 
-        if (const DirectionalLightData* sun = lightManager->GetAtmosphereSunLight()) {
+        if (const Light* sun = lightManager->GetAtmosphereSunLight()) {
             const Vector3 toSun = MathCore::Vector::Normalize(
                 { -sun->direction.x, -sun->direction.y, -sun->direction.z });
             sunSettings_.elevationDeg = std::asin(std::clamp(toSun.y, -1.0f, 1.0f)) / kDegToRad;
@@ -134,7 +137,7 @@ namespace CoreEngine {
             sunSettings_.intensity = sun->atmosphereIntensity;
         }
 
-        if (const DirectionalLightData* moon = lightManager->GetAtmosphereMoonLight()) {
+        if (const Light* moon = lightManager->GetAtmosphereMoonLight()) {
             moonSettings_.enabled = moon->enabled;
             const Vector3 toMoon = MathCore::Vector::Normalize(
                 { -moon->direction.x, -moon->direction.y, -moon->direction.z });
@@ -144,7 +147,7 @@ namespace CoreEngine {
             }
             moonSettings_.skyIntensity = moon->atmosphereIntensity;
             moonSettings_.surfaceIntensity = moon->intensity;
-            moonSettings_.color = { moon->color.x, moon->color.y, moon->color.z };
+            moonSettings_.color = moon->color;
         } else {
             // 月ライトが無いシーンでは無効表示にする（色などの既定値は次回有効化用に維持）
             moonSettings_.enabled = false;
@@ -212,11 +215,15 @@ namespace CoreEngine {
 
         // ===== 太陽設定 =====
         if (ImGui::CollapsingHeader("太陽", ImGuiTreeNodeFlags_DefaultOpen)) {
+            // ここは Lighting > Sun（大気の太陽フラグ付きライト）を操作する別ビュー。
+            // 「空の明るさ」は大気散乱（空・雲）専用のスケールで、地面や物への
+            // 直接光の強さ（照度 [lx]）は Lighting > Sun 側で設定する
+            UI::Hint("Lighting > Sun と同じライトを操作します。地表への直接光は Lighting 側の「照度 [lx]」");
             AtmosphereEditorSunSettings settings = sunSettings_;
             bool changed = false;
             changed |= ImGui::SliderFloat("高度角 [deg]", &settings.elevationDeg, -20.0f, 90.0f, "%.1f");
             changed |= ImGui::SliderFloat("方位角 [deg]", &settings.azimuthDeg, -180.0f, 180.0f, "%.1f");
-            changed |= ImGui::SliderFloat("強度", &settings.intensity, 0.0f, 100.0f, "%.2f");
+            changed |= ImGui::SliderFloat("空の明るさ（散乱スケール）", &settings.intensity, 0.0f, 100.0f, "%.2f");
             if (changed) {
                 ApplySunSettings(settings);
             }
@@ -241,12 +248,12 @@ namespace CoreEngine {
                 changed |= ImGui::SliderFloat("方位角 [deg]##moon", &settings.azimuthDeg, -180.0f, 180.0f, "%.1f");
                 // 空の輝度スケール（太陽 20 に対し既定 0.02 = 1/1000 の美術値）。
                 // 微小値を扱うためログスケール
-                changed |= ImGui::SliderFloat("強度（空）##moon", &settings.skyIntensity,
+                changed |= ImGui::SliderFloat("空の明るさ（散乱スケール）##moon", &settings.skyIntensity,
                     0.0f, 1.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
-                // サーフェス直接光（太陽の 1.75 と同じ単位。既定は太陽の空:直接光比に揃えた 0.002。
+                // サーフェス直接光の照度 [lx]（既定は太陽の空:直接光比に揃えた約 114 lx。
                 // 盛りすぎると自動露出下で「空だけ暗く床だけ明るい」不整合になる）
-                changed |= ImGui::SliderFloat("強度（直接光）##moon", &settings.surfaceIntensity,
-                    0.0f, 0.1f, "%.4f", ImGuiSliderFlags_Logarithmic);
+                changed |= ImGui::SliderFloat("直接光の照度 [lx]##moon", &settings.surfaceIntensity,
+                    0.0f, 2000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
                 float moonColor[3] = { settings.color.x, settings.color.y, settings.color.z };
                 if (ImGui::ColorEdit3("月光色", moonColor)) {
                     settings.color = { moonColor[0], moonColor[1], moonColor[2] };

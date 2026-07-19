@@ -859,12 +859,14 @@ namespace CoreEngine
         // ===== 太陽情報の取得 =====
         hasSunLight_ = false;
         if (lightManager) {
-            if (DirectionalLightData* sun = lightManager->GetAtmosphereSunLight()) {
+            if (Light* sun = lightManager->GetAtmosphereSunLight()) {
                 sunDirection_ = MathCore::Vector::Normalize(sun->direction);
-                sunColor_ = sun->color;
-                // 空の輝度スケールは atmosphereIntensity（サーフェス直接光の intensity とは単位系が別）。
-                // 0（未設定）の場合は従来どおり intensity にフォールバックする。
-                sunIntensity_ = (sun->atmosphereIntensity > 0.0f) ? sun->atmosphereIntensity : sun->intensity;
+                sunColor_ = { sun->color.x, sun->color.y, sun->color.z, 1.0f };
+                // 空の輝度スケールは atmosphereIntensity（サーフェス直接光の照度 [lx] とは単位系が別）。
+                // 0（未設定）の場合は照度をシェーダー単位へ換算した値にフォールバックする
+                // （旧仕様「intensity へフォールバック」の物理単位版。旧 intensity=1.0 ≒ 57,143 lx）。
+                sunIntensity_ = (sun->atmosphereIntensity > 0.0f)
+                    ? sun->atmosphereIntensity : LightUnits::LuxToShader(sun->intensity);
                 hasSunLight_ = sun->enabled;
             }
         }
@@ -872,10 +874,11 @@ namespace CoreEngine
         // ===== 月情報の取得（第2大気ライト。オプトイン） =====
         hasMoonLight_ = false;
         if (lightManager) {
-            if (DirectionalLightData* moon = lightManager->GetAtmosphereMoonLight()) {
+            if (Light* moon = lightManager->GetAtmosphereMoonLight()) {
                 moonDirection_ = MathCore::Vector::Normalize(moon->direction);
-                moonColor_ = moon->color;
-                moonIntensity_ = (moon->atmosphereIntensity > 0.0f) ? moon->atmosphereIntensity : moon->intensity;
+                moonColor_ = { moon->color.x, moon->color.y, moon->color.z, 1.0f };
+                moonIntensity_ = (moon->atmosphereIntensity > 0.0f)
+                    ? moon->atmosphereIntensity : LightUnits::LuxToShader(moon->intensity);
                 hasMoonLight_ = moon->enabled && moonIntensity_ > 0.0f;
             }
         }

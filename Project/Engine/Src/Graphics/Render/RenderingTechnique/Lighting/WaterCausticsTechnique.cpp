@@ -199,14 +199,15 @@ namespace CoreEngine
 
         MainLightConstants constants{};
         if (lightManager) {
-            if (DirectionalLightData* light = lightManager->GetDirectionalLight(0); light && light->enabled) {
+            if (Light* light = lightManager->GetDirectionalLight(0); light && light->enabled) {
                 // 大気透過率適用済みの実効色（DeferredLighting へ転送される色と同じ）。
                 // 太陽の見た目とコースティクスの色・明るさを日没時も一致させる
                 const Vector3 effectiveColor = lightManager->GetEffectiveLightColorRGB(*light);
                 constants.color[0] = effectiveColor.x;
                 constants.color[1] = effectiveColor.y;
                 constants.color[2] = effectiveColor.z;
-                constants.intensity = light->intensity;
+                // オーサリングは照度 [lx]。シェーダーが期待する従来単位へ換算する
+                constants.intensity = LightUnits::LuxToShader(light->intensity);
                 constants.direction[0] = light->direction.x;
                 constants.direction[1] = light->direction.y;
                 constants.direction[2] = light->direction.z;

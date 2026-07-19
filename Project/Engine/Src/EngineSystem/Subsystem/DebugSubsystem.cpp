@@ -133,11 +133,24 @@ namespace CoreEngine
 
         // ── ドメイン固有パネルの登録 ──
 
-        // Lighting は環境エディタとして Hierarchy の Environment ツリーから選択して編集する
-        gameDebugUI_->RegisterEnvironmentEditor("Lighting", this, [this]() {
-            if (auto* lightManager = engine_->GetComponent<LightManager>()) {
-                lightManager->DrawAllImGui();
-            }
+        // Lighting は環境エディタとして Hierarchy の Environment ツリーから選択して編集する。
+        // 配下に各ライトを子行として列挙し、選択したライトを Inspector に表示する（Unity 風）
+        gameDebugUI_->RegisterEnvironmentEditor("Lighting", this,
+            [this]() {
+                if (auto* lightManager = engine_->GetComponent<LightManager>()) {
+                    lightManager->DrawAllImGui();
+                }
+            },
+            [this]() -> bool {
+                if (auto* lightManager = engine_->GetComponent<LightManager>()) {
+                    return lightManager->DrawLightTreeImGui();
+                }
+                return false;
+            },
+            [this]() {
+                if (auto* lightManager = engine_->GetComponent<LightManager>()) {
+                    lightManager->ClearLightUISelection();
+                }
             });
 
         // 大気散乱・雲は全シーン既定の機能のため、シーン所有の facade ではなく

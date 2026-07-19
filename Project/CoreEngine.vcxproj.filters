@@ -1284,6 +1284,9 @@
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLManager.h">
       <Filter>Engine\Src\Graphics\IBL</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Light\Light.h">
+      <Filter>Engine\Src\Graphics\Light</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Light\LightBufferManager.h">
       <Filter>Engine\Src\Graphics\Light</Filter>
     </ClInclude>
@@ -2302,11 +2305,11 @@
     <Filter Include="Engine\Src\Editor\Camera">
       <UniqueIdentifier>{7948DDA0-E342-42C7-A7E4-7C26135423C2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Editor\Environment">
-      <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Editor\Camera\Module">
       <UniqueIdentifier>{931C7218-F1A0-427B-89D1-0C2266D82491}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Environment">
+      <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\ImGui">
       <UniqueIdentifier>{AC458439-F252-40B2-838E-13455FEB9AB5}</UniqueIdentifier>
