@@ -173,7 +173,10 @@ float3 ComputeUnderwaterAmbientLight()
     const float kPi = 3.14159265f;
 
     // 太陽など平行光源: 水平な水面へ入る下向き放射照度を Lambert 面の放射輝度へ換算（/π）
-    float3 ambient = float3(0.0f, 0.0f, 0.0f);
+    // downwelling は太陽高度に対してほぼ線形に 0 へ落ちる（sin(elevation) 相当）ため、
+    // 太陽を下げていくと直射成分だけが急激に暗転する。
+    float3 sunAmbient = float3(0.0f, 0.0f, 0.0f);
+    float maxDownwelling = 0.0f;
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {
         if (gDirectionalLights[i].enabled == 0)
@@ -181,24 +184,31 @@ float3 ComputeUnderwaterAmbientLight()
             continue;
         }
         float downwelling = saturate(-normalize(gDirectionalLights[i].direction).y);
-        ambient += gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity * downwelling / kPi;
+        maxDownwelling = max(maxDownwelling, downwelling);
+        sunAmbient += gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity * downwelling / kPi;
     }
 
     // 天空拡散光
+    float3 skyAmbient = float3(0.0f, 0.0f, 0.0f);
     if (gSkyAmbientEnabled != 0)
     {
         // 大気散乱の空を SH9 で評価（上向き法線＝水面へ降り注ぐ天空放射照度/π）。
         // DeferredLighting と同じスケールでサーフェス光単位へ変換する
-        ambient += EvaluateWaterSkyIrradiance(float3(0.0f, 1.0f, 0.0f)) * gSkyAmbientScale;
+        skyAmbient = EvaluateWaterSkyIrradiance(float3(0.0f, 1.0f, 0.0f)) * gSkyAmbientScale;
     }
     else if (gIBLParams.sceneIBLEnabled != 0)
     {
         // Irradiance マップは既に「albedo に掛けるだけ」の放射輝度相当なのでそのまま加算
-        ambient += gIrradianceMap.SampleLevel(gSampler, float3(0.0f, 1.0f, 0.0f), 0.0f).rgb
+        skyAmbient = gIrradianceMap.SampleLevel(gSampler, float3(0.0f, 1.0f, 0.0f), 0.0f).rgb
                  * gIBLParams.environmentIntensity;
     }
 
-    return ambient;
+    // 天空光はブーストせずそのまま使う。
+    // 以前ここに「太陽が低いほど天空光を最大2.5倍へ底上げする」ハックがあったが、
+    // 夜間に水中インスキャッタ（透過側）だけが空の反射（ほぼ黒）より明るくなり、
+    // フレネルの振れに応じて青/黒のうねりスケールのまだらを生む原因になったため撤去。
+    // 水中に入る光と水面に映る空は同じ空なので、両者の明るさは常に整合させる。
+    return sunAmbient + skyAmbient;
 }
 
 /// @brief 海底へ届く太陽光の下り光路の透過率を求める
@@ -360,9 +370,23 @@ float3 ResolveSurfaceNormal(WaterPSInput input)
 // 評価する。バイアス +3 ≒ 8x8 テクセル（パッチ長 180m / 256px で約 5.6m）の平均。
 static const float kFresnelNormalMipBias = 3.0f;
 
+// フレネル評価用法線を鉛直へブレンドする強さ（0=波法線そのまま, 1=完全に平坦）。
+// ★まだらの根本対策★
+// フレネル混合比を「うねり（低周波の大波）の傾き」で評価すると、うねりがカメラを
+// 向く面＝低フレネル＝暗い透過、うねりが寝る面＝高フレネル＝明るい空反射、となり
+// うねりスケールの大きな明暗の塊（青/黒のまだら）が出る。これは細かいさざ波ではなく
+// うねり＝低周波成分が原因なので、ミップバイアス（高周波ぼかし）では消せない
+// （うねりは全ミップに存在するため。過去に平坦化を試して効果が無かった真因）。
+// フレネル法線を鉛直へ強くブレンドし、うねりの傾き自体を減衰させることで、
+// 反射/透過の混合比が「視線角度に応じた滑らかなグラデーション」になり塊が消える。
+// 反射像の歪み（geomNormal 使用）や鏡面ハイライトはフル法線のままなので、
+// 波のディテールは失わない。
+static const float kFresnelNormalFlatten = 0.75f;
+
 /// @brief フレネル（反射/透過の混合比）評価に使う低周波の面法線を解決する
 float3 ResolveFresnelNormal(WaterPSInput input)
 {
+    float3 waveNormal;
     if (gUseFFTOceanNormalMap != 0)
     {
         // ミップバイアス付きで法線マップをサンプリングし、うねりスケールの
@@ -370,13 +394,19 @@ float3 ResolveFresnelNormal(WaterPSInput input)
         // 三角形単位で一定になるため、フレネルがファセット状に量子化されて
         // まだらの輪郭が硬くなる問題があった。
         float3 encodedNormal = gFFTOceanNormal.SampleBias(gSampler, input.texcoord, kFresnelNormalMipBias).xyz;
-        return BuildWorldNormalFromFFTSample(encodedNormal, input);
+        waveNormal = BuildWorldNormalFromFFTSample(encodedNormal, input);
+    }
+    else
+    {
+        // Gerstner Wave など法線マップが無い経路では、変位適用後のワールド座標の
+        // 画面微分から面法線を再構成する（頂点法線は常に真上でうねりを含まないため）。
+        float3 faceNormal = normalize(cross(ddy(input.worldPosition), ddx(input.worldPosition)));
+        waveNormal = (faceNormal.y < 0.0f) ? -faceNormal : faceNormal;
     }
 
-    // Gerstner Wave など法線マップが無い経路では、変位適用後のワールド座標の
-    // 画面微分から面法線を再構成する（頂点法線は常に真上でうねりを含まないため）。
-    float3 faceNormal = normalize(cross(ddy(input.worldPosition), ddx(input.worldPosition)));
-    return (faceNormal.y < 0.0f) ? -faceNormal : faceNormal;
+    // うねりの傾きを鉛直へブレンドして減衰させる（まだらの根本対策・上記コメント参照）。
+    float3 flattened = normalize(lerp(waveNormal, float3(0.0f, 1.0f, 0.0f), kFresnelNormalFlatten));
+    return flattened;
 }
 
 // ===== 反射のグロッシー化（ラフネスを考慮した反射）=====
@@ -386,8 +416,12 @@ float3 ResolveFresnelNormal(WaterPSInput input)
 //  (1) 反射をにじませ（グロッシー反射）、
 //  (2) かすめ角では微細斜面同士の幾何遮蔽で反射スパイクを抑える。
 // この 2 つを再現して、穏やかな海が均一に見えるようにする。
-static const float kWaterReflectionMicroRoughness = 0.30f; // 未解像さざ波の実効ラフネス
-static const float kWaterReflectionBlurTexels = 3.0f; // 反射のにじみ半径（テクセル基準）
+static const float kWaterReflectionMicroRoughness = 0.55f; // 未解像さざ波の実効ラフネス（0.30→0.55: かすめ角の反射スパイクをより強く抑制）
+static const float kWaterReflectionBlurTexels = 5.0f; // 反射のにじみ半径（テクセル基準、3→5でうねりスケールのまだらをさらに均す）
+// 反射UVを波法線で歪ませる強さ（スクリーンUV単位）。平面反射は平らな鏡として
+// 描かれているため、波法線でサンプル位置をずらして「波に沿って砕けた反射」に見せる。
+// これが無いと平坦な鏡像がフレネルの波形状で明滅し、大きなまだらになる。
+static const float kWaterReflectionDistortStrength = 0.03f;
 
 /// @brief 平面反射をラフネス相当でにじませてサンプリングする（グロッシー反射）
 /// @param screenUV スクリーンUV
@@ -626,9 +660,15 @@ PixelShaderOutput main(WaterPSInput input)
     float3 reflectColor = output.color.rgb;
     if (gReflectionEnabled)
     {
+        // 反射UVを波法線で歪ませる。平面反射は平らな鏡なので、そのまま screenUV で
+        // 引くと「フラットな鏡像がフレネルの波形状で明滅する」大きなまだらになる。
+        // 波法線の水平成分でサンプル位置をずらし、各波面が空の別方向を映す
+        // 「砕けた反射」に近づける（本来の水面反射の定石。これが欠けていた）。
+        float2 reflectDistortedUV = saturate(screenUV + geomNormal.xz * kWaterReflectionDistortStrength);
+
         // 完全な鏡ではなくラフネス相当でにじませた反射を使う（グロッシー反射）。
         // 明るい空のエッジやコントラストが波面へハードに乗るのを防ぐ。
-        reflectColor = SampleGlossyReflection(screenUV, 1.0f - cosTheta);
+        reflectColor = SampleGlossyReflection(reflectDistortedUV, 1.0f - cosTheta);
 
         // ===== 雲の映り込み（Phase 3b）=====
         // 平面反射には空・太陽ディスクは入るが、雲（GameView 限定の合成パス）は入らない。
@@ -638,13 +678,59 @@ PixelShaderOutput main(WaterPSInput input)
         // ミップは水面のグロッシー反射と同じ実効ラフネス相当を選び、ぼけ具合を揃える。
         if (gSkyEnvReflectionEnabled != 0)
         {
-            float3 envReflectDir = reflect(-viewDir, fresnelNormal);
+            // 反射方向は波法線ではなく「水面のフラットな面法線」で計算する。
+            // 平面反射テクスチャは平らな鏡としてレンダリングされており波法線を含まない。
+            // 雲上書きだけを波法線（fresnelNormal）でサンプルすると、波の斜面ごとに
+            // サンプル方向が水平線フェードの内外・雲の明暗を行き来し、
+            // 「波の形に沿った明るい/暗いパッチ」が反射色に混入する
+            // （夜間の可視化「反射」で波に沿った薄青パッチとして実証済み）。
+            // フラット法線なら上書き内容は視線にのみ依存する滑らかな像になり、
+            // 平面反射と同じ幾何規約で整合する。
+            float3 envReflectDir = reflect(-viewDir, float3(0.0f, 1.0f, 0.0f));
             const float kEnvMipCount = 5.0f;
             const float kEnvMip = kWaterReflectionMicroRoughness * (kEnvMipCount - 1.0f);
             float4 skyEnv = gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, kEnvMip);
             float cloudOpacity = saturate(1.0f - skyEnv.a);
-            reflectColor = lerp(reflectColor, skyEnv.rgb, cloudOpacity);
+
+            // ---- 水平線フェード（まだら模様の根本対策）----
+            // 雲キューブマップの α（雲透過率）は、雲層シェルをレイが数十 km 横切る
+            // 水平線付近の方向では光学的厚さが巨大になり、雲量に関係なくほぼ 0
+            // （＝雲被覆 1.0）になる。水面の反射ベクトルは大半が水平線すれすれを
+            // 向くため、そのまま使うと平面反射のほぼ全面が 64² の粗い雲キューブ
+            // マップ色で置き換わり、波の法線の揺れに応じて「白い雲帯／青い空／
+            // 水平線下の暗部」を行き来する大きなまだら・縞の原因になっていた
+            // （可視化「雲上書き強度」が水面全域で被覆≈1 になることで実証済み）。
+            // 雲の映り込みは反射方向が十分上を向くピクセル（頭上の雲が映る状況）
+            // に限定し、水平線付近の空は大気散乱を正しく含む平面反射に任せる。
+            float horizonFade = smoothstep(0.08f, 0.30f, envReflectDir.y);
+
+            // ---- 暗い雲の上書き抑制（夕暮れ・夜対策）----
+            // 太陽が低いと雲はほぼ照らされず真っ黒になる一方、平面反射の空はまだ
+            // 明るさが残る。雲が反射先より暗いほど上書きを弱め、明るい昼の白雲は
+            // 全強度で映す。
+            const float3 kLuma = float3(0.2126f, 0.7152f, 0.0722f);
+            float skyLuma = dot(reflectColor, kLuma);
+            float cloudLuma = dot(skyEnv.rgb, kLuma);
+            float darkRatio = saturate(cloudLuma / max(skyLuma, 1.0e-5f));
+            const float kMinDarkCloudOverlay = 0.25f; // 真っ黒な雲でも残す上書き強度
+            float overlayScale = lerp(kMinDarkCloudOverlay, 1.0f, darkRatio);
+
+            reflectColor = lerp(reflectColor, skyEnv.rgb, cloudOpacity * overlayScale * horizonFade);
         }
+
+        // ---- 反射の輝度圧縮（白飛び端点の除去・まだらの根本対策）----
+        // 平面反射テクスチャは enablePostEffect=false のビューで描かれるため、
+        // 露出・トーンマッピングのかかっていない生 HDR 輝度が入っている。
+        // 夜間は自動露出 EV が最大 +8（≈256倍）まで上がり、生 HDR の空（小さいが
+        // 非ゼロ）を白飛びさせる。一方で透過色はほぼ 0 に落ちるため、
+        // lerp(黒い透過, 白い反射, フレネル) が波法線に沿って黒⇔白の最大コントラストで
+        // 振れ、大きな白黒まだらになっていた（可視化: モード17=平面反射が真っ白／
+        // モード20=透過が真っ黒／モード21=反射が真っ白 で実証）。
+        // 反射を輝度ベースの Reinhard で [0,1) に丸め、露出増幅による青天井の
+        // 白飛び端点をなくす。色相は保持し、暗部（夜空）はほぼそのまま、
+        // 明部（生 HDR の飽和空）だけを圧縮するので昼の見た目への影響は小さい。
+        float reflLuma = dot(reflectColor, float3(0.2126f, 0.7152f, 0.0722f));
+        reflectColor *= 1.0f / (1.0f + reflLuma);
     }
 
     float3 desiredWaterView = lerp(transmissionColor, reflectColor, reflectanceWeight);
@@ -707,7 +793,11 @@ PixelShaderOutput main(WaterPSInput input)
 
         if (gDepthDebugViewMode == 6)
         {
-            output.color.rgb = gReflectionEnabled ? gReflectionTexture.Sample(gLinearClamp, screenUV).rgb : float3(1.0f, 0.0f, 1.0f);
+            // 生のテクスチャではなく、グロッシー化＋雲キューブマップ合成まで済んだ
+            // 「実際に水面合成へ使われる反射色」を表示する。
+            // （以前は gReflectionTexture を直接表示していたため、雲の上書き合成が
+            //   原因の明暗まだらがこの可視化に映らず、切り分けを誤った）
+            output.color.rgb = gReflectionEnabled ? reflectColor : float3(1.0f, 0.0f, 1.0f);
             return output;
         }
 
@@ -779,6 +869,85 @@ PixelShaderOutput main(WaterPSInput input)
         if (gDepthDebugViewMode == 16)
         {
             output.color.rgb = VisualizeJacobian(input.jacobianData);
+            return output;
+        }
+
+        // ---- まだら切り分け用の追加可視化（reflectColor の構成要素を単独表示）----
+        if (gDepthDebugViewMode == 17)
+        {
+            // 生の平面反射テクスチャ（グロッシー化・雲合成の一切なし）。
+            // ここにブロブが出るなら平面反射（ミラー描画）自体が原因。
+            output.color.rgb = gReflectionEnabled
+                ? gReflectionTexture.Sample(gLinearClamp, screenUV).rgb
+                : float3(1.0f, 0.0f, 1.0f);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 18)
+        {
+            // 雲キューブマップの色（反射方向サンプル）。無効時はマゼンタ。
+            // ここにブロブが出るなら雲キューブマップの内容が原因。
+            if (gSkyEnvReflectionEnabled != 0)
+            {
+                float3 dbgReflectDir = reflect(-viewDir, float3(0.0f, 1.0f, 0.0f));
+                float4 dbgSkyEnv = gSkyEnvironmentMap.SampleLevel(gLinearClamp, dbgReflectDir, 0.0f);
+                output.color.rgb = dbgSkyEnv.rgb;
+            }
+            else
+            {
+                output.color.rgb = float3(1.0f, 0.0f, 1.0f);
+            }
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 19)
+        {
+            // 雲上書きの実効強度: R=cloudOpacity（雲の被覆）、G=輝度比減衰後の実効上書き量。
+            // R が強く G が弱ければ「暗雲抑制は効いているが被覆自体が広い」と分かる。
+            if (gSkyEnvReflectionEnabled != 0)
+            {
+                float3 dbgReflectDir = reflect(-viewDir, float3(0.0f, 1.0f, 0.0f));
+                const float kDbgEnvMipCount = 5.0f;
+                const float kDbgEnvMip = kWaterReflectionMicroRoughness * (kDbgEnvMipCount - 1.0f);
+                float4 dbgSkyEnv = gSkyEnvironmentMap.SampleLevel(gLinearClamp, dbgReflectDir, kDbgEnvMip);
+                float dbgCloudOpacity = saturate(1.0f - dbgSkyEnv.a);
+
+                const float3 kDbgLuma = float3(0.2126f, 0.7152f, 0.0722f);
+                float dbgSkyLuma = dot(SampleGlossyReflection(screenUV, 1.0f - cosTheta), kDbgLuma);
+                float dbgCloudLuma = dot(dbgSkyEnv.rgb, kDbgLuma);
+                float dbgDarkRatio = saturate(dbgCloudLuma / max(dbgSkyLuma, 1.0e-5f));
+                float dbgOverlayScale = lerp(0.25f, 1.0f, dbgDarkRatio);
+                float dbgHorizonFade = smoothstep(0.08f, 0.30f, dbgReflectDir.y);
+
+                output.color.rgb = float3(dbgCloudOpacity, dbgCloudOpacity * dbgOverlayScale * dbgHorizonFade, 0.0f);
+            }
+            else
+            {
+                output.color.rgb = float3(1.0f, 0.0f, 1.0f);
+            }
+            return output;
+        }
+
+        // ---- まだら診断: フレネル混合を強制して端点を単独表示 ----
+        // 20/21 のどちらに斑が出るかで、透過側と反射側のどちらが犯人かを一意に確定する。
+        if (gDepthDebugViewMode == 20)
+        {
+            // reflectanceWeight = 0（純透過）の最終合成。ここに斑が出れば透過側が犯人。
+            output.color.rgb = lerp(transmissionColor, transmissionColor, surfaceCoverage);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 21)
+        {
+            // reflectanceWeight = 1（純反射）の最終合成。ここに斑が出れば反射側が犯人。
+            output.color.rgb = lerp(transmissionColor, reflectColor, surfaceCoverage);
+            return output;
+        }
+
+        if (gDepthDebugViewMode == 22)
+        {
+            // 反射と透過の輝度差。明るいほど、そこでフレネルが振れると斑が見える。
+            output.color.rgb = abs(reflectColor - transmissionColor) * 3.0f;
             return output;
         }
 
