@@ -4,6 +4,7 @@
 #include "WaterEditorFacade.h"
 
 class WaterSurfaceRuntimeController;
+class WaterPlaneObject;
 
 #ifdef USE_IMGUI
 class WaterSurfaceParameterPanel {
@@ -37,6 +38,8 @@ private:
 	void DrawGerstnerWaveSection(WaterSurfaceRuntimeController& runtimeController);
 	/// @brief 個別波編集 UI を描画する
 	void DrawIndividualWaveEditor(WaterSurfaceRuntimeController& runtimeController);
+	/// @brief ベース光学係数と濁度から実効 σa/σs を計算して水面へ反映する
+	void ApplyEffectiveOpticalCoefficients(WaterPlaneObject* waterPlane) const;
 
 	/// @brief 水面の見た目に関する UI キャッシュ
 	struct AppearanceParameters {
@@ -53,10 +56,17 @@ private:
 		float scrollSpeed[2] = { 0.03f, 0.01f };
 		float uvTiling[2] = { 4.0f, 4.0f };
 		bool depthFadeEnabled = true;
-		float absorptionCoeff = 1.2f;
-		float shallowColor[3] = { 0.10f, 0.85f, 0.65f };
-		float deepColor[3] = { 0.02f, 0.08f, 0.45f };
+		// 波長依存の光学特性（ベース値）[1/m]。既定は澄んだ熱帯外洋水（Jerlov I 相当）
+		float absorptionCoeff[3] = { 0.35f, 0.07f, 0.02f };
+		float scatteringCoeff[3] = { 0.003f, 0.008f, 0.016f };
+		// Jerlov 水型プリセットの現在選択（表示用。手動編集後は目安に過ぎない）
+		int jerlovPreset = 0;
+		// 濁度 0..1。CDOM の青吸収＋懸濁粒子の散乱としてベース値へ加算される
+		float turbidity = 0.0f;
 	} surfaceParameters_{};
+
+	/// @brief 海底（水中地形）を白砂色にティントしているか（浅瀬エメラルドの検証用）
+	bool seabedSandTintEnabled_ = false;
 
 	/// @brief 波生成補助機能の UI 状態
 	struct WaveToolState {

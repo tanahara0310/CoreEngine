@@ -56,9 +56,12 @@ void WaterSceneController::Initialize(WaterTestScene& scene, EngineSystem& engin
 	runtimeController_.UpdateWaterRefractionSurfaceData();
 }
 
-void WaterSceneController::Update(EngineSystem& engine, float deltaTime) {
+void WaterSceneController::Update(EngineSystem& engine, float deltaTime, bool atmosphereSky) {
 	// 水面アニメーションと時間進行を更新する
 	runtimeController_.UpdateSimulation(deltaTime);
+
+	// 大気散乱の空気遠近感を水面へ適用するか（SyncFrameResources が参照する）
+	runtimeController_.SetAtmosphereSkyEnabled(atmosphereSky);
 
 	// 水面制御用 UI は Hierarchy の Environment ツリーに登録済み（選択時に Inspector で編集）
 

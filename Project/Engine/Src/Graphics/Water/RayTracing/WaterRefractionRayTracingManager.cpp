@@ -29,7 +29,10 @@ namespace CoreEngine
             uint32_t fftOceanResolution;
             float debugDisplayScale;
             uint32_t debugViewMode;
-            uint32_t padding0;
+            // ワールドXZ → FFT テクスチャ UV の写像（uv = worldXZ * scale + offset）。
+            // ラスタ描画（FFTWater.VS）と同じ波面を RT が評価するために必須
+            float fftOceanUVScale[2];
+            float fftOceanUVOffset[2];
         };
 
         const char* ToString(WaterRefractionRayTracingManager::DispatchStatus status)
@@ -47,7 +50,7 @@ namespace CoreEngine
         }
     }
 
-    static_assert(sizeof(WaterRefractionConstants) == 132,
+    static_assert(sizeof(WaterRefractionConstants) == 144,
         "WaterRefractionConstants size mismatch with HLSL cbuffer");
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
@@ -269,6 +272,10 @@ namespace CoreEngine
         constants.fftOceanResolution = fftOceanInput.resolution;
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
+        constants.fftOceanUVScale[0] = fftOceanInput.uvScale[0];
+        constants.fftOceanUVScale[1] = fftOceanInput.uvScale[1];
+        constants.fftOceanUVOffset[0] = fftOceanInput.uvOffset[0];
+        constants.fftOceanUVOffset[1] = fftOceanInput.uvOffset[1];
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : sceneColorSRV;

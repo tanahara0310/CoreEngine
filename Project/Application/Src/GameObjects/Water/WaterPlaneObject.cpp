@@ -218,6 +218,36 @@ void WaterPlaneObject::SetFFTOceanTextureSRVs(
     }
 }
 
+void WaterPlaneObject::SetAtmosphereAPResources(
+    D3D12_GPU_VIRTUAL_ADDRESS atmosphereCB,
+    D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeSrvHandle,
+    D3D12_GPU_DESCRIPTOR_HANDLE skyViewSrvHandle,
+    bool enabled) {
+    renderResources_.atmosphereCB = atmosphereCB;
+    renderResources_.cameraVolumeSRV = cameraVolumeSrvHandle;
+    renderResources_.skyViewSRV = skyViewSrvHandle;
+    // リソースが揃っていない場合はシェーダー側の参照を止める
+    frameCB_.aerialPerspectiveEnabled = (enabled && renderResources_.HasAtmosphere()) ? 1 : 0;
+}
+
+void WaterPlaneObject::SetSkyAmbientResources(
+    D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrvHandle,
+    float skyAmbientScale,
+    bool enabled) {
+    renderResources_.skyIrradianceSRV = skyIrradianceSrvHandle;
+    frameCB_.skyAmbientScale = skyAmbientScale;
+    // SRV が未接続のフレームはシェーダー側の参照を止める
+    frameCB_.skyAmbientEnabled = (enabled && skyIrradianceSrvHandle.ptr != 0) ? 1 : 0;
+}
+
+void WaterPlaneObject::SetSkyEnvironmentReflection(
+    D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSrvHandle,
+    bool enabled) {
+    renderResources_.skyEnvironmentSRV = skyEnvironmentSrvHandle;
+    // SRV が未接続のフレームはシェーダー側の参照を止める
+    frameCB_.skyEnvReflectionEnabled = (enabled && skyEnvironmentSrvHandle.ptr != 0) ? 1 : 0;
+}
+
 void WaterPlaneObject::SetRefractionColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
     renderResources_.refractionColorSRV = srvHandle;
 
@@ -264,20 +294,19 @@ void WaterPlaneObject::UpdateFrameConstants() {
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::Pipeline,
-            "WaterPlane UpdateFrameConstants: clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={} absorptionCoeff={:.3f} fresnelScale={:.3f} fresnelF0={:.4f} shallow=({:.3f}, {:.3f}, {:.3f}) deep=({:.3f}, {:.3f}, {:.3f})",
+            "WaterPlane UpdateFrameConstants: clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={} fresnelScale={:.3f} fresnelF0={:.4f} sigmaA=({:.3f}, {:.3f}, {:.3f}) sigmaS=({:.4f}, {:.4f}, {:.4f})",
             frameCB_.clipEnabled,
             frameCB_.reflectionEnabled,
             frameCB_.depthFadeEnabled,
             frameCB_.depthDebugViewMode,
-            frameCB_.absorptionCoeff,
             frameCB_.fresnelReflectanceScale,
             frameCB_.fresnelBaseReflectance,
-            frameCB_.shallowColor[0],
-            frameCB_.shallowColor[1],
-            frameCB_.shallowColor[2],
-            frameCB_.deepColor[0],
-            frameCB_.deepColor[1],
-            frameCB_.deepColor[2]);
+            frameCB_.absorptionCoeff[0],
+            frameCB_.absorptionCoeff[1],
+            frameCB_.absorptionCoeff[2],
+            frameCB_.scatteringCoeff[0],
+            frameCB_.scatteringCoeff[1],
+            frameCB_.scatteringCoeff[2]);
     }
 }
 
@@ -327,8 +356,7 @@ void WaterPlaneObject::ApplyWaterReflectionResult(const CoreEngine::RenderViewRe
     }
 }
 
-void WaterPlaneObject::SetDepthFade(float absorptionCoeff, bool enabled) {
-    frameCB_.absorptionCoeff  = absorptionCoeff;
+void WaterPlaneObject::SetDepthFade(bool enabled) {
     frameCB_.depthFadeEnabled = enabled ? 1 : 0;
 }
 
@@ -354,13 +382,13 @@ void WaterPlaneObject::SetDepthDebugViewMode(WaterDebugViewMode mode) {
         frameCB_.depthFadeDebugScale);
 }
 
-void WaterPlaneObject::SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor) {
-    frameCB_.shallowColor[0] = shallowColor.x;
-    frameCB_.shallowColor[1] = shallowColor.y;
-    frameCB_.shallowColor[2] = shallowColor.z;
-    frameCB_.deepColor[0]    = deepColor.x;
-    frameCB_.deepColor[1]    = deepColor.y;
-    frameCB_.deepColor[2]    = deepColor.z;
+void WaterPlaneObject::SetWaterOpticalCoefficients(const CoreEngine::Vector3& absorptionCoeff, const CoreEngine::Vector3& scatteringCoeff) {
+    frameCB_.absorptionCoeff[0] = absorptionCoeff.x;
+    frameCB_.absorptionCoeff[1] = absorptionCoeff.y;
+    frameCB_.absorptionCoeff[2] = absorptionCoeff.z;
+    frameCB_.scatteringCoeff[0] = scatteringCoeff.x;
+    frameCB_.scatteringCoeff[1] = scatteringCoeff.y;
+    frameCB_.scatteringCoeff[2] = scatteringCoeff.z;
 }
 
 void WaterPlaneObject::SetBaseColor(const CoreEngine::Vector4& color) {

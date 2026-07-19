@@ -80,9 +80,9 @@ namespace CoreEngine
         // 深度ステンシルのリサイズ（DSVハンドルは再利用）
         depthStencilManager_->ResizeResource(width, height);
 
-        for (const auto& callback : resizeCallbacks_) {
-            if (callback) {
-                callback(width, height);
+        for (IResizable* resizable : resizables_) {
+            if (resizable) {
+                resizable->OnWindowResize(width, height);
             }
         }
 

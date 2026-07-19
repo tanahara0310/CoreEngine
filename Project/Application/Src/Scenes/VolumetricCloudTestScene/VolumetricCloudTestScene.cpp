@@ -4,7 +4,7 @@
 #include "Camera/CameraStructs.h"
 #include "Camera/ICamera.h"
 
-#include "Scenes/AtmosphereTestScene/AtmosphereEditorFacade.h"
+#include "Editor/Environment/AtmosphereEditor.h"
 
 using namespace CoreEngine;
 
@@ -17,11 +17,11 @@ void VolumetricCloudTestScene::OnInitialize()
     // 輝度スケール（intensity=20 目安）と整合しない。明示的に上書きしないと
     // 空が暗い紺色のまま・雲も真っ黒になる（WaterTestScene で実際に踏んだ不具合）。
     if (directionalLight_) {
-        directionalLight_->direction = AtmosphereEditorFacade::ComputeSunLightDirection(35.0f, 25.0f);
+        directionalLight_->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
         // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える。
         // 両方に 20 を入れると床のような明るいアルベドが ACES の飽和域に入り真っ白になる。
         directionalLight_->atmosphereIntensity = 20.0f;
-        directionalLight_->intensity = kAtmosphereSurfaceSunIntensity;
+        directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
     }
 
     // 空は BaseScene が既定で大気散乱モードの SkyBox を自動生成する。
@@ -39,15 +39,13 @@ void VolumetricCloudTestScene::OnInitialize()
         camera->SetParameters(params);
     }
 
-    // ===== エディタファサード =====
-    editorFacade_.Initialize(*engine_);
+    // 雲の編集 UI はエンジン常駐の VolumetricCloudEditor が全シーン共通で登録済み
 }
 
 void VolumetricCloudTestScene::OnUpdate()
 {
     // VolumetricCloudManager への太陽・カメラ情報の反映は
     // BaseScene::UpdateAtmosphere() が大気散乱の直後に毎フレーム行う
-    // 雲の編集 UI は editorFacade_ が Hierarchy の Environment ツリーに登録済み
 }
 
 void VolumetricCloudTestScene::Draw()

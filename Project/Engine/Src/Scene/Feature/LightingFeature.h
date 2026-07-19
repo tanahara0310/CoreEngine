@@ -1,14 +1,18 @@
 #pragma once
 
 #include "ISceneFeature.h"
-#include "Graphics/Light/LightData.h"
+#include "Graphics/Light/Light.h"
 
 namespace CoreEngine
 {
+    class LightManager;
+
     /// @brief 既定ディレクショナルライトとシャドウマップ用行列を管理する Feature
     /// @details Initialize でシーン既定の太陽光（大気散乱の太陽を兼ねる）を生成し、
     ///          FrameStart で LightManager の更新とシャドウマップ用
     ///          View-Projection 行列の反映を行う。
+    ///          ライトはハンドルで保持し、参照時に毎回 LightManager から引き直す
+    ///          （エディタでの削除後も安全にアクセスできる）。
     class LightingFeature : public ISceneFeature {
     public:
         /// @brief シャドウマップ設定
@@ -24,8 +28,8 @@ namespace CoreEngine
         void Initialize(SceneContext& ctx) override;
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
 
-        /// @brief 既定ディレクショナルライトを取得（未生成時は nullptr）
-        DirectionalLightData* GetDirectionalLight() const { return directionalLight_; }
+        /// @brief 既定ディレクショナルライトを取得（未生成・削除済みの場合は nullptr）
+        Light* GetDirectionalLight() const;
 
         Config& GetConfig() { return config_; }
 
@@ -34,6 +38,7 @@ namespace CoreEngine
         void UpdateLightViewProjection(SceneContext& ctx);
 
         Config config_{};
-        DirectionalLightData* directionalLight_ = nullptr;
+        LightManager* lightManager_ = nullptr;
+        LightHandle directionalLightHandle_{};
     };
 }

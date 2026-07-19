@@ -2,6 +2,7 @@
 #include "WaterSurfaceRuntimeController.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
@@ -118,6 +119,38 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 				fftOceanManager->GetNormalSRVHandle(),
 				fftOceanManager->GetJacobianSRVHandle());
 		}
+
+		// 大気散乱（Aerial Perspective）のリソースを水面へ接続する。
+		// IsAtmosphereActive() はこの時点（OnUpdate）ではまだ立っていないため、
+		// シーン側から受け取った SkyBox の大気モード + LUT/CB の準備完了で判定する
+		if (auto* atmosphereManager = renderDomainContext->GetAtmosphereManager()) {
+			const bool apEnabled = atmosphereSkyEnabled_
+				&& atmosphereManager->IsConstantBufferReady()
+				&& atmosphereManager->AreLUTsReady();
+			waterPlane_->SetAtmosphereAPResources(
+				atmosphereManager->GetConstantBufferGPUAddress(),
+				atmosphereManager->GetCameraVolumeLUTSRVHandle(),
+				atmosphereManager->GetSkyViewLUTSRVHandle(),
+				apEnabled);
+
+			// 水中インスキャッタの天空光として Sky Irradiance SH を接続する
+			// （DeferredLighting の空アンビエントと同じソース・同じスケール）
+			const bool skyAmbientEnabled = apEnabled
+				&& atmosphereManager->IsSkyAmbientEnabled()
+				&& atmosphereManager->IsSkyAmbientReady();
+			waterPlane_->SetSkyAmbientResources(
+				atmosphereManager->GetSkyIrradianceSHSRVHandle(),
+				atmosphereManager->GetSkyAmbientScale(),
+				skyAmbientEnabled);
+
+			// 空スペキュラキューブマップ（空＋雲）を平面反射への雲合成用に接続する
+			const bool skyEnvEnabled = apEnabled
+				&& atmosphereManager->IsSkySpecularEnabled()
+				&& atmosphereManager->IsSkyEnvironmentReady();
+			waterPlane_->SetSkyEnvironmentReflection(
+				atmosphereManager->GetSkySpecularSRVHandle(),
+				skyEnvEnabled);
+		}
 	}
 }
 
@@ -141,6 +174,24 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 			simulationInput,
 			waterSurfaceSnapshot_,
 			waterRefractionSurfaceData_);
+
+		// FFT Ocean の DXR 側サンプリングがラスタ描画（FFTWater.VS）と同一の波面を
+		// 評価できるよう、ワールドXZ → FFT テクスチャ UV の写像を水面メッシュの
+		// トランスフォームから導出して渡す。
+		// FFTWater.VS: sampleUV = (worldXZ - translate)/ローカルサイズ + scale/2
+		// （メッシュの texcoord は {u, 1-v} で生成されるが、VS 側で V を戻して
+		//   「テクスチャ +v = ワールド +Z」に統一済み。回転は非対応＝ゼロ前提）
+		const float localSize = waterPlane_->GetSize();
+		if (localSize > 1.0e-4f) {
+			const auto& transform = waterPlane_->GetTransform();
+			waterRefractionSurfaceData_.fftUVScale[0] = 1.0f / localSize;
+			waterRefractionSurfaceData_.fftUVScale[1] = 1.0f / localSize;
+			waterRefractionSurfaceData_.fftUVOffset[0] =
+				0.5f * transform.scale.x - transform.translate.x / localSize;
+			waterRefractionSurfaceData_.fftUVOffset[1] =
+				0.5f * transform.scale.z - transform.translate.z / localSize;
+			waterRefractionSurfaceData_.fftUVMappingValid = 1;
+		}
 		// RT 側へ渡す provider の参照先を最新 surface data に更新する
 		if (surfaceModelProvider_) {
 			surfaceModelProvider_->SetSource(

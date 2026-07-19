@@ -33,7 +33,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     // スライス距離（テクセル中心 = (z+0.5)×スライス幅。サンプリング側の
     // CameraVolumeDistanceToW と半テクセルずれなく対応させる）
-    float tMaxKm = (float(dispatchThreadId.z) + 0.5f) * CAMERA_VOLUME_KM_PER_SLICE;
+    float tMaxKm = (float(dispatchThreadId.z) + 0.5f) * gAtmosphere.apKmPerSlice;
 
     // 大気空間: カメラは +Y 軸上。方向ベクトルはワールドと共通（Y-up）
     float3 rayOrigin = float3(0.0f, gAtmosphere.cameraRadiusKm, 0.0f);
@@ -45,7 +45,23 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         rayOrigin, rayDir, toSun, tMaxKm, gAtmosphere,
         gTransmittanceLUT, gMultiScatteringLUT, gLUTSampler, kStepCount, transmittance);
 
-    // 透過率は輝度への寄与平均で1チャンネル化（UE と同じ近似）
+    // ライト色・強度を前乗算して「最終放射輝度」で格納する（Sky-View LUT と同じ輝度ドメイン。
+    // 消費側は乗算しない）
+    luminance *= gAtmosphere.sunColor * gAtmosphere.sunIntensity;
+
+    // 月（第2大気ライト）の散乱寄与を合算する。視線透過率はライト非依存のため
+    // 1回目の積分の値をそのまま使う（2回目の out は捨てる）
+    if (gAtmosphere.hasMoon > 0.5f)
+    {
+        float3 toMoon = -gAtmosphere.moonDirection;
+        float3 moonTransmittanceUnused;
+        luminance += IntegrateScatteredLuminanceToDistance(
+            rayOrigin, rayDir, toMoon, tMaxKm, gAtmosphere,
+            gTransmittanceLUT, gMultiScatteringLUT, gLUTSampler, kStepCount, moonTransmittanceUnused)
+            * gAtmosphere.moonColor * gAtmosphere.moonIntensity;
+    }
+
+    // 透過率は輝度への寄与平均で1チャンネル化（UE と同じ近似）。色は掛けないこと
     float meanTransmittance = dot(transmittance, float3(1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f));
 
     gCameraVolumeLUT[dispatchThreadId] = float4(luminance, meanTransmittance);

@@ -151,9 +151,16 @@ uint WrapFFTOceanCoord(int coord, int resolution)
     return (uint)wrapped;
 }
 
-float4 SampleFFTOceanBilinear(Texture2D<float4> textureData, float2 worldXZ, float patchLength, uint resolution)
+/// @brief ワールドXZ → FFT テクスチャ UV の写像を適用してバイリニアサンプリングする
+/// @param uvScale  uv = worldXZ * uvScale + uvOffset の係数。
+///                 ラスタ描画（FFTWater.VS の sampleUV = (world - translate)/ローカルサイズ + scale/2）と
+///                 同一の写像を渡すこと。以前は worldXZ / patchLength + 0.5 の固定写像で、
+///                 メッシュの位置・スケール・V反転を考慮していなかったため、RT が評価する波面と
+///                 実際に描画されている波面の位相が一致せず、屈折レイの交点・法線がズレて
+///                 depth mismatch フォールバック（水面の一部だけ色が変わる領域）の原因になっていた。
+float4 SampleFFTOceanBilinear(Texture2D<float4> textureData, float2 worldXZ, float2 uvScale, float2 uvOffset, uint resolution)
 {
-    const float2 uv = frac(worldXZ / patchLength + 0.5f.xx);
+    const float2 uv = frac(worldXZ * uvScale + uvOffset);
     const float resolutionF = (float)resolution;
     const float2 texelPos = uv * resolutionF - 0.5f.xx;
     const int2 baseCoord = int2(floor(texelPos));

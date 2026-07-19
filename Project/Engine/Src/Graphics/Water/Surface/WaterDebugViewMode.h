@@ -16,7 +16,7 @@ enum class WaterDebugViewMode : uint32_t {
     RTRefractionReason = 9,
     RTRefractionVsScene = 10,
     Transmission = 11,
-    Absorption = 12,
+    Transmittance = 12,
     Reflectance = 13,
     WaterComposite = 14,
     RTRefractionSuccessMask = 15,

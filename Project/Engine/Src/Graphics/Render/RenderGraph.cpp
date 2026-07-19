@@ -55,7 +55,8 @@ namespace CoreEngine
     void RenderGraph::AddPass(
         const std::string& name,
         RenderPass* renderPass,
-        const std::function<void(RenderGraphBuilder&)>& setup)
+        const std::function<void(RenderGraphBuilder&)>& setup,
+        GpuTimingCategory timingCategory)
     {
         if (!renderPass) {
             return;
@@ -75,6 +76,7 @@ namespace CoreEngine
         pass.renderPass = renderPass;
         pass.reads = builder.GetReads();
         pass.writes = builder.GetWrites();
+        pass.timingCategory = timingCategory;
 
         std::vector<uint32_t> dependencies;
 
@@ -196,15 +198,35 @@ namespace CoreEngine
                 continue;
             }
 
-            RenderPass* renderPass = passes_[passIndex].renderPass;
+            RenderGraphPass& graphPass = passes_[passIndex];
+            RenderPass* renderPass = graphPass.renderPass;
             if (!renderPass || !renderPass->IsEnabled()) {
                 continue;
             }
 
-            ApplyTransitionsForPass(passes_[passIndex], *context.renderContext);
+            // パス名から動的タイミングスロットを解決し、Setup～Cleanup 全体を計測する。
+            // これにより新規パスは登録するだけで自動的にタイミング表示へ現れる。
+            GpuTimestampProfiler* profiler = context.renderContext->gpuProfiler;
+            ID3D12GraphicsCommandList* profileCmdList =
+                (profiler && context.renderContext->dxCommon) ? context.renderContext->dxCommon->GetCommandList() : nullptr;
+            uint32_t timingSlot = UINT32_MAX;
+            if (profiler && profileCmdList) {
+                timingSlot = profiler->GetOrCreateNamedSlot(graphPass.name, graphPass.timingCategory);
+                if (timingSlot != UINT32_MAX) {
+                    profiler->BeginCpuTimestamp(timingSlot);
+                    profiler->BeginGpuTimestamp(timingSlot, profileCmdList);
+                }
+            }
+
+            ApplyTransitionsForPass(graphPass, *context.renderContext);
             renderPass->Setup(*context.renderContext);
             renderPass->Execute(*context.renderContext);
             renderPass->Cleanup(*context.renderContext);
+
+            if (timingSlot != UINT32_MAX) {
+                profiler->EndGpuTimestamp(timingSlot, profileCmdList);
+                profiler->EndCpuTimestamp(timingSlot);
+            }
         }
     }
 

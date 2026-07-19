@@ -118,7 +118,8 @@ namespace CoreEngine
         struct SkyAmbientParams {
             uint32_t enabled = 0;
             float scale = 0.0f;
-            float padding[2] = {};
+            uint32_t specularEnabled = 0; ///< 1 = 空スペキュラIBL（空＋雲キューブマップの環境反射）有効
+            float padding = 0.0f;
         };
     };
 }

@@ -107,6 +107,9 @@ public:
     /// @brief 現在有効な Gerstner Wave 本数を返す
     uint32_t GetActiveWaveCount() const { return waterCB_.activeWaveCount; }
 
+    /// @brief メッシュのローカルサイズ（1 辺の長さ、スケール適用前）を返す
+    float GetSize() const { return size_; }
+
     /// @brief DXR 屈折用に現在の WaterConstants を取得する
     const WaterConstants& GetWaterConstants() const { return waterCB_; }
 
@@ -142,6 +145,33 @@ public:
         D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle);
 
+    /// @brief 大気散乱（Aerial Perspective）のリソースと有効フラグを設定する
+    /// @param atmosphereCB AtmosphereManager 定数バッファの GPU 仮想アドレス
+    /// @param cameraVolumeSrvHandle CameraVolume LUT（Texture3D）の SRV
+    /// @param skyViewSrvHandle Sky-View LUT の SRV（遠距離フォールバック用）
+    /// @param enabled 水面へ空気遠近感を適用するか（大気アクティブなシーンでのみ true）
+    void SetAtmosphereAPResources(
+        D3D12_GPU_VIRTUAL_ADDRESS atmosphereCB,
+        D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE skyViewSrvHandle,
+        bool enabled);
+
+    /// @brief 空アンビエント（Sky Irradiance SH）を水中インスキャッタの天空光として接続する
+    /// @param skyIrradianceSrvHandle SH9 係数バッファ（StructuredBuffer<float4> × 9）の SRV
+    /// @param skyAmbientScale 空の輝度単位 → サーフェス光単位の変換係数（AtmosphereManager::GetSkyAmbientScale）
+    /// @param enabled 大気アクティブ＋SH 生成済みのシーンでのみ true
+    void SetSkyAmbientResources(
+        D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrvHandle,
+        float skyAmbientScale,
+        bool enabled);
+
+    /// @brief 空スペキュラキューブマップ（空＋雲）を平面反射への雲合成用に接続する
+    /// @param skyEnvironmentSrvHandle プリフィルタ済み空キューブマップ（α=雲透過率）の SRV
+    /// @param enabled 大気アクティブ＋キューブマップ生成済みのシーンでのみ true
+    void SetSkyEnvironmentReflection(
+        D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSrvHandle,
+        bool enabled);
+
     /// @brief FFT Ocean 描画経路を切り替える
     void SetUseFFTOcean(bool useFFTOcean);
 
@@ -157,10 +187,9 @@ public:
     /// @param result RenderView 出力一式
     void ApplyWaterReflectionResult(const CoreEngine::RenderViewResult& result);
 
-    /// @brief Depth Fade パラメータを設定する
-    /// @param absorptionCoeff 光吸収係数（大きいほど短距離で不透明になる）
+    /// @brief Depth Fade の有効・無効を設定する
     /// @param enabled true のとき Depth Fade を有効にする
-    void SetDepthFade(float absorptionCoeff, bool enabled);
+    void SetDepthFade(bool enabled);
 
     /// @brief Depth Fade のデバッグ表示を設定する
     /// @param enabled true のときデバッグ表示を有効にする
@@ -171,8 +200,10 @@ public:
     /// @param mode デバッグ可視化モード
     void SetDepthDebugViewMode(WaterDebugViewMode mode);
 
-    /// @brief 浅瀬と深場の水色を設定する（Depth Fade と連動）
-    void SetWaterColors(const CoreEngine::Vector3& shallowColor, const CoreEngine::Vector3& deepColor);
+    /// @brief 水の光学特性（波長依存の吸収・散乱係数）を設定する
+    /// @param absorptionCoeff 吸収係数 σa [1/m]（RGB 波長別。赤 > 緑 > 青 が自然な水）
+    /// @param scatteringCoeff 散乱係数 σs [1/m]（RGB 波長別。深瀬のインスキャッタ色を決める）
+    void SetWaterOpticalCoefficients(const CoreEngine::Vector3& absorptionCoeff, const CoreEngine::Vector3& scatteringCoeff);
 
 protected:
     std::string GetTexturePath() const override { return {}; }

@@ -35,10 +35,12 @@ namespace CoreEngine
         void GetSize(int32_t& width, int32_t& height) const override;
 
         /// @brief 幅を取得
-        int32_t GetWidth() const override { return width_; }
+        /// @details キャッシュせず DirectXCommon から都度取得する（リサイズ通知の配線が不要になる）
+        int32_t GetWidth() const override;
 
         /// @brief 高さを取得
-        int32_t GetHeight() const override { return height_; }
+        /// @details キャッシュせず DirectXCommon から都度取得する（リサイズ通知の配線が不要になる）
+        int32_t GetHeight() const override;
 
         /// @brief 現在のバックバッファインデックスを取得
         UINT GetCurrentBackBufferIndex() const;
@@ -53,8 +55,6 @@ namespace CoreEngine
 
     private:
         DirectXCommon* dxCommon_ = nullptr;
-        int32_t width_ = 0;
-        int32_t height_ = 0;
         D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_PRESENT;
     };
 }

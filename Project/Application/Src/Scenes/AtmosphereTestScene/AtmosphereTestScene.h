@@ -6,11 +6,11 @@
 // エンジンシステム
 #include "EngineSystem/EngineSystem.h"
 
-#include "AtmosphereEditorFacade.h"
-
 /// @brief 大気散乱（Sky Atmosphere）検証専用シーン
 /// @details 太陽用 DirectionalLight 1灯と床のみの隔離環境で、
 ///          大気散乱システムの実装・調整・検証を行う。
+///          編集 UI はエンジン常駐の AtmosphereEditor（DebugSubsystem 所有）が
+///          全シーン共通で Environment ツリーへ登録するため、シーン側には無い。
 class AtmosphereTestScene : public CoreEngine::BaseScene {
 public:
     /// @brief シーン固有の初期化
@@ -21,7 +21,4 @@ public:
 
     /// @brief 描画処理
     void Draw() override;
-
-private:
-    AtmosphereEditorFacade editorFacade_{};
 };

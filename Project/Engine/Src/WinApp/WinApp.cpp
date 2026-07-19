@@ -129,17 +129,16 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
 // メッセージ処理
 bool WinApp::ProcessMessage()
 {
-    MSG msg;
-    // メッセージがある限りループ
-    if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+    MSG msg{};
+    // キューが空になるまで全メッセージを処理（1件ずつだと入力がキューに滞留し遅延する）
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        // ウィンドウが破棄されたら終了
+        if (msg.message == WM_QUIT) {
+            return true;
+        }
         // メッセージを処理
         TranslateMessage(&msg);
         DispatchMessage(&msg);
-    }
-
-    // ウィンドウが破棄されたら終了
-    if (msg.message == WM_QUIT) {
-        return true;
     }
 
     return false;

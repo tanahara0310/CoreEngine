@@ -1,11 +1,30 @@
 #include "pch.h"
 #include "LightManager.h"
 
-#include "LightData.h"
 #include "Math/MathCore.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+
+        const char* GetLightTypeName(LightType type)
+        {
+            switch (type) {
+            case LightType::Directional: return "Directional";
+            case LightType::Point:       return "Point";
+            case LightType::Spot:        return "Spot";
+            case LightType::Area:        return "Area";
+            }
+            return "Unknown";
+        }
+    }
+
     void LightManager::Initialize(ID3D12Device* device, ResourceFactory* resourceFactory, DescriptorManager* descriptorManager)
     {
         bufferManager_.Initialize(
@@ -17,137 +36,378 @@ namespace CoreEngine
             MAX_SPOT_LIGHTS,
             MAX_AREA_LIGHTS
         );
+
+        // 総最大数ぶんを先に確保し、スロットは再確保しない（Light* がスロット生存中は安定）
+        slots_.reserve(MAX_TOTAL_LIGHTS);
+    }
+
+    // ==================== 生成・破棄・参照 ====================
+
+    void LightManager::SetupDefaults(Light& light, LightType type)
+    {
+        light.type = type;
+        light.enabled = true;
+        light.color = { 1.0f, 1.0f, 1.0f };
+
+        // 生成位置は床（y=0）より上に置く。床面上（y=0）ぴったりに生成すると
+        // 床への入射がかすめ角（NdotL≈0）になり、逆二乗減衰も相まって
+        // 「ライトを追加したのに何も照らされない」ように見える
+        switch (type) {
+        case LightType::Directional:
+            // 旧既定（シェーダー単位 intensity=1.0）と同輝度になる照度（≈ 57,143 lx。薄曇り相当）
+            light.intensity = 1.0f / LightUnits::kShaderUnitsPerLux;
+            light.direction = { 0.0f, -1.0f, 0.0f };
+            light.position = { 0.0f, 5.0f, 0.0f };  // 平行光のためギズモ表示位置のみに使用
+            break;
+        case LightType::Point:
+            // 100,000 cd: 1m で 100,000 lx。快晴の太陽下でも存在が分かる光度
+            light.intensity = 100000.0f;
+            light.position = { 0.0f, 2.0f, 0.0f };
+            light.range = 10.0f;
+            break;
+        case LightType::Spot:
+            light.intensity = 100000.0f;
+            light.position = { 0.0f, 3.0f, 0.0f };
+            light.direction = { 0.0f, -1.0f, 0.0f };
+            light.range = 10.0f;
+            light.innerConeAngleDeg = 30.0f;
+            light.outerConeAngleDeg = 45.0f;
+            break;
+        case LightType::Area:
+            // 25,000 nt × 2m×2m ≈ 旧既定（シェーダー単位 1.75）相当の発光面
+            light.intensity = 25000.0f;
+            light.position = { 0.0f, 2.5f, 0.0f };
+            light.direction = { 0.0f, -1.0f, 0.0f };
+            light.range = 10.0f;
+            light.areaWidth = 2.0f;
+            light.areaHeight = 2.0f;
+            break;
+        }
+    }
+
+    LightHandle LightManager::CreateLight(LightType type, std::string name)
+    {
+        if (GetLightCount(type) >= GetMaxLightCount(type)) {
+            return {};
+        }
+
+        // 空きスロットを再利用し、無ければ末尾へ追加（reserve 済みのため再確保は起きない）
+        size_t slotIndex = slots_.size();
+        for (size_t i = 0; i < slots_.size(); ++i) {
+            if (!slots_[i].alive) {
+                slotIndex = i;
+                break;
+            }
+        }
+        if (slotIndex == slots_.size()) {
+            if (slots_.size() >= MAX_TOTAL_LIGHTS) {
+                return {};
+            }
+            slots_.emplace_back();
+        }
+
+        Slot& slot = slots_[slotIndex];
+        slot.alive = true;
+        slot.light = Light{};
+        SetupDefaults(slot.light, type);
+
+        if (name.empty()) {
+            char buf[32];
+            std::snprintf(buf, sizeof(buf), "%s %u", GetLightTypeName(type), GetLightCount(type));
+            slot.light.name = buf;
+        } else {
+            slot.light.name = std::move(name);
+        }
+
+        return { static_cast<uint16_t>(slotIndex), slot.generation };
+    }
+
+    bool LightManager::DestroyLight(LightHandle handle)
+    {
+        Light* light = GetLight(handle);
+        if (!light) {
+            return false;
+        }
+        Slot& slot = slots_[handle.index];
+        slot.alive = false;
+        slot.generation++;  // 世代を進めて既存ハンドル・ポインタを無効化する
+        slot.light = Light{};
+        return true;
+    }
+
+    Light* LightManager::GetLight(LightHandle handle)
+    {
+        return const_cast<Light*>(static_cast<const LightManager*>(this)->GetLight(handle));
+    }
+
+    const Light* LightManager::GetLight(LightHandle handle) const
+    {
+        if (!handle.IsValid() || handle.index >= slots_.size()) {
+            return nullptr;
+        }
+        const Slot& slot = slots_[handle.index];
+        if (!slot.alive || slot.generation != handle.generation) {
+            return nullptr;
+        }
+        return &slot.light;
+    }
+
+    LightHandle LightManager::FindLightByName(std::string_view name) const
+    {
+        for (size_t i = 0; i < slots_.size(); ++i) {
+            if (slots_[i].alive && slots_[i].light.name == name) {
+                return { static_cast<uint16_t>(i), slots_[i].generation };
+            }
+        }
+        return {};
+    }
+
+    void LightManager::ForEachLight(const std::function<void(LightHandle, Light&)>& fn)
+    {
+        for (size_t i = 0; i < slots_.size(); ++i) {
+            if (slots_[i].alive) {
+                fn({ static_cast<uint16_t>(i), slots_[i].generation }, slots_[i].light);
+            }
+        }
+    }
+
+    uint32_t LightManager::GetLightCount(LightType type) const
+    {
+        uint32_t count = 0;
+        for (const Slot& slot : slots_) {
+            if (slot.alive && slot.light.type == type) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    uint32_t LightManager::GetMaxLightCount(LightType type)
+    {
+        switch (type) {
+        case LightType::Directional: return MAX_DIRECTIONAL_LIGHTS;
+        case LightType::Point:       return MAX_POINT_LIGHTS;
+        case LightType::Spot:        return MAX_SPOT_LIGHTS;
+        case LightType::Area:        return MAX_AREA_LIGHTS;
+        }
+        return 0;
+    }
+
+    // ==================== ディレクショナルの正準順 ====================
+
+    std::vector<uint16_t> LightManager::CollectDirectionalSlotsCanonical() const
+    {
+        std::vector<uint16_t> indices;
+        indices.reserve(MAX_DIRECTIONAL_LIGHTS);
+        for (size_t i = 0; i < slots_.size(); ++i) {
+            if (slots_[i].alive && slots_[i].light.type == LightType::Directional) {
+                indices.push_back(static_cast<uint16_t>(i));
+            }
+        }
+
+        // 大気の太陽（無ければ先頭のまま）をメインとして先頭へ移動する。
+        // シャドウマップ・シェーダーの gDirectionalLights[0]・RT シャドウの
+        // インデックス 0 が常にメインライトを指すことを保証する
+        auto sunIt = std::find_if(indices.begin(), indices.end(), [this](uint16_t idx) {
+            return slots_[idx].light.isAtmosphereSun;
+        });
+        if (sunIt != indices.end() && sunIt != indices.begin()) {
+            std::rotate(indices.begin(), sunIt, sunIt + 1);
+        }
+        return indices;
+    }
+
+    Light* LightManager::GetDirectionalLight(size_t index)
+    {
+        const std::vector<uint16_t> indices = CollectDirectionalSlotsCanonical();
+        if (index >= indices.size()) {
+            return nullptr;
+        }
+        return &slots_[indices[index]].light;
+    }
+
+    const Light* LightManager::FindAtmosphereSunLight() const
+    {
+        const Light* firstDirectional = nullptr;
+        for (const Slot& slot : slots_) {
+            if (!slot.alive || slot.light.type != LightType::Directional) {
+                continue;
+            }
+            if (slot.light.isAtmosphereSun) {
+                return &slot.light;
+            }
+            if (!firstDirectional) {
+                firstDirectional = &slot.light;
+            }
+        }
+        // フラグ付きライトが無い場合は最初のディレクショナルライトへフォールバック
+        return firstDirectional;
+    }
+
+    Light* LightManager::GetAtmosphereSunLight()
+    {
+        return const_cast<Light*>(FindAtmosphereSunLight());
+    }
+
+    const Light* LightManager::FindAtmosphereMoonLight() const
+    {
+        for (const Slot& slot : slots_) {
+            if (!slot.alive || slot.light.type != LightType::Directional) {
+                continue;
+            }
+            // 同一ライトに両フラグが立っている場合は太陽として扱う（月はオプトイン・フォールバック無し）
+            if (slot.light.isAtmosphereMoon && !slot.light.isAtmosphereSun) {
+                return &slot.light;
+            }
+        }
+        return nullptr;
+    }
+
+    Light* LightManager::GetAtmosphereMoonLight()
+    {
+        return const_cast<Light*>(FindAtmosphereMoonLight());
+    }
+
+    Vector3 LightManager::GetEffectiveLightColorRGB(const Light& light) const
+    {
+        Vector3 color = light.color;
+        if (&light == FindAtmosphereSunLight())
+        {
+            color.x *= atmosphereSunTransmittance_.x;
+            color.y *= atmosphereSunTransmittance_.y;
+            color.z *= atmosphereSunTransmittance_.z;
+        }
+        else if (&light == FindAtmosphereMoonLight())
+        {
+            color.x *= atmosphereMoonTransmittance_.x;
+            color.y *= atmosphereMoonTransmittance_.y;
+            color.z *= atmosphereMoonTransmittance_.z;
+        }
+        return color;
+    }
+
+    // ==================== GPU 転送 ====================
+
+    void LightManager::ComputeAreaLightBasis(const Vector3& normal, Vector3& outRight, Vector3& outUp)
+    {
+        Vector3 n = MathCore::Vector::Normalize(normal);
+        Vector3 ref = { 0.0f, 1.0f, 0.0f };
+        if (std::abs(MathCore::Vector::Dot(n, ref)) > 0.99f) {
+            ref = { 1.0f, 0.0f, 0.0f };
+        }
+        outRight = MathCore::Vector::Normalize(MathCore::Vector::Cross(ref, n));
+        outUp = MathCore::Vector::Cross(n, outRight);
     }
 
     void LightManager::UpdateAll()
     {
-        // 太陽ライトには大気透過率を掛けた実効色を GPU へ転送する（Transmittance on Light）。
-        // authored な directionalLights_ 自体は変更しない（AtmosphereManager が毎フレーム
-        // 元の色を読むため、直接書き換えるとフィードバックで光が減衰し続ける）。
-        std::vector<DirectionalLightData> gpuDirectionalLights = directionalLights_;
-        if (const DirectionalLightData* sun = FindAtmosphereSunLight()) {
-            const size_t sunIndex = static_cast<size_t>(sun - directionalLights_.data());
-            DirectionalLightData& gpuSun = gpuDirectionalLights[sunIndex];
-            gpuSun.color.x *= atmosphereSunTransmittance_.x;
-            gpuSun.color.y *= atmosphereSunTransmittance_.y;
-            gpuSun.color.z *= atmosphereSunTransmittance_.z;
+        // ---- ディレクショナル（正準順。太陽・月には大気透過率を掛けた実効色を転送する）----
+        std::vector<DirectionalLightData> gpuDirectionals;
+        for (uint16_t slotIndex : CollectDirectionalSlotsCanonical()) {
+            const Light& light = slots_[slotIndex].light;
+            const Vector3 color = GetEffectiveLightColorRGB(light);
+
+            DirectionalLightData gpu{};
+            gpu.color = { color.x, color.y, color.z, 1.0f };
+            gpu.direction = MathCore::Vector::Normalize(light.direction);
+            gpu.intensity = LightUnits::LuxToShader(light.intensity);
+            gpu.enabled = light.enabled ? 1u : 0u;
+            gpuDirectionals.push_back(gpu);
         }
 
-        bufferManager_.UpdateBuffers(gpuDirectionalLights, pointLights_, spotLights_, areaLights_);
-        debugVisualizer_.DrawVisualization(directionalLights_, pointLights_, spotLights_);
-        
-        // エリアライトの可視化
+        // ---- ポイント / スポット / エリア（生成順）----
+        std::vector<PointLightData> gpuPoints;
+        std::vector<SpotLightData> gpuSpots;
+        std::vector<AreaLightData> gpuAreas;
+        for (const Slot& slot : slots_) {
+            if (!slot.alive) {
+                continue;
+            }
+            const Light& light = slot.light;
+
+            switch (light.type) {
+            case LightType::Point: {
+                PointLightData gpu{};
+                gpu.color = { light.color.x, light.color.y, light.color.z, 1.0f };
+                gpu.position = light.position;
+                gpu.intensity = LightUnits::CandelaToShader(light.intensity);
+                gpu.radius = light.range;
+                gpu.decay = 1.0f;
+                gpu.enabled = light.enabled ? 1u : 0u;
+                gpuPoints.push_back(gpu);
+                break;
+            }
+            case LightType::Spot: {
+                // 内角 > 外角 の不正入力はここで正す（オーサリング値は角度 [deg] のまま保持）
+                const float outerDeg = std::max(light.outerConeAngleDeg, 0.1f);
+                const float innerDeg = std::clamp(light.innerConeAngleDeg, 0.0f, outerDeg);
+
+                SpotLightData gpu{};
+                gpu.color = { light.color.x, light.color.y, light.color.z, 1.0f };
+                gpu.position = light.position;
+                gpu.intensity = LightUnits::CandelaToShader(light.intensity);
+                gpu.direction = MathCore::Vector::Normalize(light.direction);
+                gpu.distance = light.range;
+                gpu.decay = 1.0f;
+                gpu.cosAngle = std::cos(outerDeg * kDegToRad);
+                gpu.cosFalloffStart = std::cos(innerDeg * kDegToRad);
+                gpu.enabled = light.enabled ? 1u : 0u;
+                gpuSpots.push_back(gpu);
+                break;
+            }
+            case LightType::Area: {
+                AreaLightData gpu{};
+                gpu.color = { light.color.x, light.color.y, light.color.z, 1.0f };
+                gpu.position = light.position;
+                gpu.intensity = LightUnits::NitToShader(
+                    light.intensity, light.areaWidth * light.areaHeight);
+                gpu.normal = MathCore::Vector::Normalize(light.direction);
+                gpu.width = light.areaWidth;
+                gpu.height = light.areaHeight;
+                ComputeAreaLightBasis(light.direction, gpu.right, gpu.up);
+                gpu.range = light.range;
+                gpu.enabled = light.enabled ? 1u : 0u;
+                gpuAreas.push_back(gpu);
+                break;
+            }
+            case LightType::Directional:
+            default:
+                break;
+            }
+        }
+
+        bufferManager_.UpdateBuffers(gpuDirectionals, gpuPoints, gpuSpots, gpuAreas);
+
 #ifdef _DEBUG
-        for (const auto& light : areaLights_)
-        {
-            debugVisualizer_.DrawAreaLightVisualization(light);
+        if (debugVisualizer_.IsVisualizationEnabled()) {
+            // 選択中のライトのみ詳細ギズモ、他は簡略マーカーで描く（画面の線ノイズ抑制）
+            const LightHandle selected = debugVisualizer_.GetSelectedLight();
+            for (size_t i = 0; i < slots_.size(); ++i) {
+                const Slot& slot = slots_[i];
+                if (!slot.alive) continue;
+                const LightHandle handle{ static_cast<uint16_t>(i), slot.generation };
+                debugVisualizer_.DrawVisualization(slot.light, handle == selected);
+            }
         }
 #endif
     }
 
     void LightManager::DrawAllImGui()
     {
-        auto onAddDirectionalLight = [this]() { AddDirectionalLight(); };
-        auto onAddPointLight = [this]() { AddPointLight(); };
-        auto onAddSpotLight = [this]() { AddSpotLight(); };
-        auto onAddAreaLight = [this]() { AddAreaLight(); };
-
-        debugVisualizer_.DrawImGui(
-            directionalLights_,
-            pointLights_,
-            spotLights_,
-            areaLights_,
-            MAX_DIRECTIONAL_LIGHTS,
-            MAX_POINT_LIGHTS,
-            MAX_SPOT_LIGHTS,
-            MAX_AREA_LIGHTS,
-            onAddDirectionalLight,
-            onAddPointLight,
-            onAddSpotLight,
-            onAddAreaLight
-        );
+        debugVisualizer_.DrawImGui(*this);
     }
 
-    DirectionalLightData* LightManager::AddDirectionalLight()
+    bool LightManager::DrawLightTreeImGui()
     {
-        if (directionalLights_.size() >= MAX_DIRECTIONAL_LIGHTS)
-        {
-            return nullptr;
-        }
-
-        DirectionalLightData newLight{};
-        newLight.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-        newLight.direction = { 0.0f, -1.0f, 0.0f };
-        newLight.intensity = 1.0f;
-        newLight.enabled = true;
-
-        directionalLights_.push_back(newLight);
-        return &directionalLights_.back();
+        return debugVisualizer_.DrawHierarchyChildren(*this);
     }
 
-    PointLightData* LightManager::AddPointLight()
+    void LightManager::ClearLightUISelection()
     {
-        if (pointLights_.size() >= MAX_POINT_LIGHTS)
-        {
-            return nullptr;
-        }
-
-        PointLightData newLight{};
-        newLight.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-        newLight.position = { 0.0f, 0.0f, 0.0f };
-        newLight.intensity = 1.0f;
-        newLight.radius = 10.0f;
-        newLight.decay = 1.0f;
-        newLight.enabled = true;
-
-        pointLights_.push_back(newLight);
-        return &pointLights_.back();
+        debugVisualizer_.ClearSelection();
     }
 
-    SpotLightData* LightManager::AddSpotLight()
-    {
-        if (spotLights_.size() >= MAX_SPOT_LIGHTS)
-        {
-            return nullptr;
-        }
-
-        SpotLightData newLight{};
-        newLight.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-        newLight.position = { 0.0f, 0.0f, 0.0f };
-        newLight.intensity = 1.0f;
-        newLight.direction = { 0.0f, -1.0f, 0.0f };
-        newLight.distance = 10.0f;
-        newLight.decay = 1.0f;
-        newLight.cosAngle = 0.5f;
-        newLight.cosFalloffStart = 0.7f;
-        newLight.enabled = true;
-
-        spotLights_.push_back(newLight);
-        return &spotLights_.back();
-    }
-
-    AreaLightData* LightManager::AddAreaLight()
-    {
-        if (areaLights_.size() >= MAX_AREA_LIGHTS)
-        {
-            return nullptr;
-        }
-
-        AreaLightData newLight{};
-        newLight.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-        newLight.position = { 0.0f, 0.0f, 0.0f };
-        newLight.intensity = 1.0f;
-        newLight.normal = { 0.0f, -1.0f, 0.0f };
-        newLight.width = 2.0f;
-        newLight.right = { 1.0f, 0.0f, 0.0f };
-        newLight.height = 2.0f;
-        newLight.up = { 0.0f, 0.0f, 1.0f };
-        newLight.range = 10.0f;
-        newLight.enabled = true;
-
-        areaLights_.push_back(newLight);
-        return &areaLights_.back();
-    }
+    // ==================== GPU バインディング ====================
 
     void LightManager::SetLightsToCommandList(
         ID3D12GraphicsCommandList* commandList,
@@ -193,127 +453,55 @@ namespace CoreEngine
         return bufferManager_.GetAreaLightsSRVHandle();
     }
 
-    void LightManager::SetDirectionalLightEnabled(size_t index, bool enabled)
-    {
-        if (index < directionalLights_.size())
-        {
-            directionalLights_[index].enabled = enabled;
-        }
-    }
-
-    void LightManager::SetPointLightEnabled(size_t index, bool enabled)
-    {
-        if (index < pointLights_.size())
-        {
-            pointLights_[index].enabled = enabled;
-        }
-    }
-
-    void LightManager::SetSpotLightEnabled(size_t index, bool enabled)
-    {
-        if (index < spotLights_.size())
-        {
-            spotLights_[index].enabled = enabled;
-        }
-    }
-
-    void LightManager::SetAreaLightEnabled(size_t index, bool enabled)
-    {
-        if (index < areaLights_.size())
-        {
-            areaLights_[index].enabled = enabled;
-        }
-    }
-
-    DirectionalLightData* LightManager::GetDirectionalLight(size_t index)
-    {
-        if (index < directionalLights_.size())
-        {
-            return &directionalLights_[index];
-        }
-        return nullptr;
-    }
-
-    const DirectionalLightData* LightManager::FindAtmosphereSunLight() const
-    {
-        for (const auto& light : directionalLights_)
-        {
-            if (light.isAtmosphereSun)
-            {
-                return &light;
-            }
-        }
-
-        // フラグ付きライトが無い場合はメインライト（インデックス0）へフォールバック
-        // （CalculateMainDirectionalLightViewProjection がインデックス0をメインとして扱う慣習に合わせる）
-        if (!directionalLights_.empty())
-        {
-            return &directionalLights_[0];
-        }
-        return nullptr;
-    }
-
-    DirectionalLightData* LightManager::GetAtmosphereSunLight()
-    {
-        return const_cast<DirectionalLightData*>(FindAtmosphereSunLight());
-    }
-
-    Vector3 LightManager::GetEffectiveLightColorRGB(const DirectionalLightData& light) const
-    {
-        Vector3 color = { light.color.x, light.color.y, light.color.z };
-        if (&light == FindAtmosphereSunLight())
-        {
-            color.x *= atmosphereSunTransmittance_.x;
-            color.y *= atmosphereSunTransmittance_.y;
-            color.z *= atmosphereSunTransmittance_.z;
-        }
-        return color;
-    }
+    // ==================== その他 ====================
 
     void LightManager::ClearAllLights()
     {
-    directionalLights_.clear();
-    pointLights_.clear();
-    spotLights_.clear();
-    areaLights_.clear();
+        for (Slot& slot : slots_) {
+            if (slot.alive) {
+                slot.alive = false;
+                slot.generation++;
+                slot.light = Light{};
+            }
+        }
 
-    // シーン切り替え時は透過率もリセットする（次のシーンが大気非対応でも変調が残らないように）
-    atmosphereSunTransmittance_ = { 1.0f, 1.0f, 1.0f };
+        // シーン切り替え時は透過率もリセットする（次のシーンが大気非対応でも変調が残らないように）
+        atmosphereSunTransmittance_ = { 1.0f, 1.0f, 1.0f };
+        atmosphereMoonTransmittance_ = { 1.0f, 1.0f, 1.0f };
     }
 
     Matrix4x4 LightManager::CalculateMainDirectionalLightViewProjection(const Vector3& sceneCenter, float sceneRadius)
     {
-    // メインディレクショナルライト（インデックス0）を使用
-    if (directionalLights_.empty() || !directionalLights_[0].enabled) {
-    // ライトがない場合は単位行列を返す
-    return MathCore::Matrix::Identity();
+        // メインディレクショナルライト（正準順の先頭 = 大気の太陽）を使用
+        const Light* light = GetDirectionalLight(0);
+        if (!light || !light->enabled) {
+            // ライトがない場合は単位行列を返す
+            return MathCore::Matrix::Identity();
+        }
+
+        // ライトの方向（正規化）
+        Vector3 lightDir = MathCore::Vector::Normalize(light->direction);
+
+        // ライトの位置（シーンの中心からライト方向の逆方向に配置）
+        Vector3 lightPos = sceneCenter - lightDir * sceneRadius * 2.0f;
+
+        // ライトのビュー行列を計算
+        Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
+        // ライト方向がほぼ上向きの場合は別の上方向を使用
+        if (std::abs(MathCore::Vector::Dot(lightDir, up)) > 0.99f) {
+            up = Vector3(1.0f, 0.0f, 0.0f);
+        }
+        Matrix4x4 lightView = MathCore::Matrix::LookAt(lightPos, sceneCenter, up);
+
+        // ライトの正射影行列を計算（シーン全体をカバーするサイズ）
+        float orthoSize = sceneRadius * 2.0f;
+        Matrix4x4 lightProjection = MathCore::Rendering::Orthographic(
+            -orthoSize, orthoSize,   // left, right
+            orthoSize, -orthoSize,   // top, bottom (Y軸反転に注意)
+            0.1f, sceneRadius * 4.0f // near, far
+        );
+
+        // ビュープロジェクション行列を返す
+        return lightView * lightProjection;
     }
-
-    const DirectionalLightData& light = directionalLights_[0];
-
-    // ライトの方向（正規化）
-    Vector3 lightDir = MathCore::Vector::Normalize(light.direction);
-
-    // ライトの位置（シーンの中心からライト方向の逆方向に配置）
-    Vector3 lightPos = sceneCenter - lightDir * sceneRadius * 2.0f;
-
-    // ライトのビュー行列を計算
-    Vector3 up = Vector3(0.0f, 1.0f, 0.0f);
-    // ライト方向がほぼ上向きの場合は別の上方向を使用
-    if (std::abs(MathCore::Vector::Dot(lightDir, up)) > 0.99f) {
-    up = Vector3(1.0f, 0.0f, 0.0f);
-    }
-    Matrix4x4 lightView = MathCore::Matrix::LookAt(lightPos, sceneCenter, up);
-
-    // ライトの正射影行列を計算（シーン全体をカバーするサイズ）
-    float orthoSize = sceneRadius * 2.0f;
-    Matrix4x4 lightProjection = MathCore::Rendering::Orthographic(
-        -orthoSize, orthoSize,  // left, right
-        orthoSize, -orthoSize,  // top, bottom (Y軸反転に注意)
-        0.1f, sceneRadius * 4.0f // near, far
-    );
-
-    // ビュープロジェクション行列を返す
-    return lightView * lightProjection;
-    }
-    }
+}

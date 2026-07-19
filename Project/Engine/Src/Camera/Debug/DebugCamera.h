@@ -82,10 +82,14 @@ namespace CoreEngine
         void Update() override;
 
         /// @brief ビュー行列を取得（ICamera から）
-        const Matrix4x4& GetViewMatrix() const override { return viewMatrix_; }
+        const Matrix4x4& GetViewMatrix() const override {
+            return viewOverrideActive_ ? overrideViewMatrix_ : viewMatrix_;
+        }
 
         /// @brief プロジェクション行列を取得（ICamera から）
-        const Matrix4x4& GetProjectionMatrix() const override { return projectionMatrix_; }
+        const Matrix4x4& GetProjectionMatrix() const override {
+            return projectionOverrideActive_ ? overrideProjectionMatrix_ : projectionMatrix_;
+        }
 
         /// @brief カメラ位置を取得（ICamera から）
         Vector3 GetPosition() const override;
@@ -106,6 +110,15 @@ namespace CoreEngine
 
         /// @brief カメラパラメータを設定
         void SetParameters(const CameraParameters& params) override { parameters_ = params; }
+
+        /// @brief ビュー行列と視点位置を一時的に差し替える（ICamera から）
+        bool BeginViewOverride(
+            const Matrix4x4& viewMatrix,
+            const Vector3& viewPosition,
+            const Matrix4x4* projectionOverride = nullptr) override;
+
+        /// @brief ビュー差し替えを解除する（ICamera から）
+        void EndViewOverride() override;
 
         // ====== DebugCamera 固有のアクセッサ ======
 

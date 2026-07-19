@@ -81,12 +81,17 @@ namespace CoreEngine
         invViewProj_ = MathCore::Matrix::Inverse(
             MathCore::Matrix::Multiply(viewMatrix, projMatrix));
 
-        // 太陽情報・カメラ高度は AtmosphereManager から取得（単一情報源）。
+        // 太陽・月情報・カメラ高度は AtmosphereManager から取得（単一情報源）。
         if (atmosphereManager) {
             sunDirection_ = atmosphereManager->GetSunDirection();
             const Vector4& sc = atmosphereManager->GetSunColor();
             sunColor_ = { sc.x, sc.y, sc.z };
             sunIntensity_ = atmosphereManager->GetSunIntensity();
+            hasMoon_ = atmosphereManager->HasMoonLight();
+            moonDirection_ = atmosphereManager->GetMoonDirection();
+            const Vector4& mc = atmosphereManager->GetMoonColor();
+            moonColor_ = { mc.x, mc.y, mc.z };
+            moonIntensity_ = atmosphereManager->GetMoonIntensity();
             distanceFromPlanetCenter_ = atmosphereManager->GetDistanceFromPlanetCenter();
         }
 
@@ -137,6 +142,10 @@ namespace CoreEngine
         c.msAttenuation = parameters_.msAttenuation;
         c.msContribution = parameters_.msContribution;
         c.msEccentricity = parameters_.msEccentricity;
+        c.moonDirection = moonDirection_;
+        c.moonIntensity = moonIntensity_;
+        c.moonColor = moonColor_;
+        c.hasMoon = hasMoon_ ? 1.0f : 0.0f;
 
         *constantData_ = c;
     }
@@ -451,7 +460,73 @@ namespace CoreEngine
             return false;
         }
 
+        const bool cubemapCaptureBuilt = cubemapCapturePipeline_.Build(
+            device, shaderCompiler, reflectionBuilder, cubemapCaptureShaderProvider_);
+        if (!cubemapCaptureBuilt || !cubemapCapturePipeline_.HasComputePSO()) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "VolumetricCloudManager: CloudCubemapCapture コンピュートパイプラインの構築に失敗");
+            return false;
+        }
+
         return true;
+    }
+
+    void VolumetricCloudManager::RenderCloudsToSkyCubemap(
+        ID3D12GraphicsCommandList* cmdList,
+        const AtmosphereManager* atmosphereManager)
+    {
+        if (!cmdList || !pipelinesReady_ || !noiseGenerated_ || !atmosphereManager) {
+            return;
+        }
+        const D3D12_GPU_DESCRIPTOR_HANDLE cubemapUav = atmosphereManager->GetSkyCubemapUAVHandle();
+        if (cubemapUav.ptr == 0) {
+            return;
+        }
+
+        cmdList->SetPipelineState(cubemapCapturePipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(cubemapCapturePipeline_.GetComputeRootSignature());
+
+        const int cbSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gCloud");
+        if (cbSlot >= 0) {
+            cmdList->SetComputeRootConstantBufferView(
+                static_cast<UINT>(cbSlot), constantBuffer_->GetGPUVirtualAddress());
+        }
+        const int atmoCbSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gAtmosphere");
+        if (atmoCbSlot >= 0) {
+            cmdList->SetComputeRootConstantBufferView(
+                static_cast<UINT>(atmoCbSlot), atmosphereManager->GetConstantBufferGPUAddress());
+        }
+        const int baseSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gBaseShapeNoise");
+        if (baseSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_);
+        }
+        const int detailSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gDetailNoise");
+        if (detailSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_);
+        }
+        const int weatherSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gWeatherMap");
+        if (weatherSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_);
+        }
+        const int transmittanceSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
+        if (transmittanceSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(
+                static_cast<UINT>(transmittanceSlot), atmosphereManager->GetTransmittanceLUTSRVHandle());
+        }
+        const int skyViewSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
+        if (skyViewSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(
+                static_cast<UINT>(skyViewSlot), atmosphereManager->GetSkyViewLUTSRVHandle());
+        }
+        const int outSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gSkyCubemap");
+        if (outSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), cubemapUav);
+        }
+
+        constexpr uint32_t kCubemapSize = AtmosphereManager::kSkyCubemapSize;
+        cmdList->Dispatch((kCubemapSize + 7) / 8, (kCubemapSize + 7) / 8, 6);
+        // 後段のプリフィルタ（PrefilterSkyEnvironment）が SRV 遷移で同期するため、
+        // ここでの UAV バリアは不要
     }
 
     bool VolumetricCloudManager::EnsureCloudTargets(ID3D12Resource* sceneColor)

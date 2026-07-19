@@ -43,10 +43,25 @@ private:
         CoreEngine::ICamera* mainCamera,
         float waterHeight) const;
 
+    /// @brief 近クリップ面を水面平面に一致させた斜交射影行列を計算する
+    /// @details 反射ビューには専用のジオメトリクリップ機構が無いため、水面より下の
+    ///          ジオメトリ（水中の床・オブジェクト）がそのまま「反射」として映り込んでしまう。
+    ///          射影行列の近クリップ面を水面平面へ傾ける（oblique near-plane clipping）ことで、
+    ///          シェーダー変更なしに水面より上だけを反射へ描画する。
+    /// @param projection 元の射影行列（D3D 行ベクトル規約、z∈[0,1]）
+    /// @param reflectedView 鏡像ビュー行列（CalcReflectedViewMatrix の結果）
+    /// @param waterHeight 水面の Y 座標
+    /// @return 斜交近クリップ適用後の射影行列
+    CoreEngine::Matrix4x4 CalcObliqueClippedProjection(
+        const CoreEngine::Matrix4x4& projection,
+        const CoreEngine::Matrix4x4& reflectedView,
+        float waterHeight) const;
+
     /// @brief クリップ平面パラメータ（HLSL 側 SV_ClipDistance0 に渡す: dot(worldPos, clipPlane) > 0 なら描画）
     CoreEngine::Vector4 clipPlane_ = { 0.0f, 1.0f, 0.0f, 0.0f };
     bool clipEnabled_ = false;
-    bool hasSavedCameraState_ = false;
-    CoreEngine::Matrix4x4 savedView_{};
-    CoreEngine::Vector3 savedPosition_{};
+    /// @brief BeginViewOverride が適用されたか（Restore 時に EndViewOverride を呼ぶ判定）
+    bool viewOverrideApplied_ = false;
+    /// @brief 非対応カメラの警告ログを一度だけ出すためのフラグ
+    bool overrideUnsupportedLogged_ = false;
 };

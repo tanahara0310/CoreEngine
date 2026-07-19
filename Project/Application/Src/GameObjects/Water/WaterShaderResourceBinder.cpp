@@ -96,4 +96,51 @@ void WaterShaderResourceBinder::Bind(
                 renderResources.fftJacobianSRV);
         }
     }
+
+    // 大気散乱（Aerial Perspective）のリソース群をバインドする
+    // （未接続のフレームはシェーダー側フラグ gAerialPerspectiveEnabled=0 で参照されない）
+    if (renderResources.HasAtmosphere()) {
+        const int atmosphereSlot = pipeline->GetRootParamIndex("gAtmosphereAP");
+        if (atmosphereSlot >= 0) {
+            cmdList->SetGraphicsRootConstantBufferView(
+                static_cast<UINT>(atmosphereSlot),
+                renderResources.atmosphereCB);
+        }
+
+        const int cameraVolumeSlot = pipeline->GetRootParamIndex("gCameraVolumeLUT");
+        if (cameraVolumeSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(cameraVolumeSlot),
+                renderResources.cameraVolumeSRV);
+        }
+
+        const int skyViewSlot = pipeline->GetRootParamIndex("gSkyViewLUTAP");
+        if (skyViewSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(skyViewSlot),
+                renderResources.skyViewSRV);
+        }
+    }
+
+    // 空アンビエント SH（水中インスキャッタの天空光）をバインドする
+    // （未接続のフレームはシェーダー側フラグ gSkyAmbientEnabled=0 で参照されない）
+    if (renderResources.skyIrradianceSRV.ptr != 0) {
+        const int skyIrradianceSlot = pipeline->GetRootParamIndex("gWaterSkyIrradianceSH");
+        if (skyIrradianceSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(skyIrradianceSlot),
+                renderResources.skyIrradianceSRV);
+        }
+    }
+
+    // 空スペキュラキューブマップ（平面反射への雲合成）をバインドする
+    // （未接続のフレームはシェーダー側フラグ gSkyEnvReflectionEnabled=0 で参照されない）
+    if (renderResources.skyEnvironmentSRV.ptr != 0) {
+        const int skyEnvSlot = pipeline->GetRootParamIndex("gSkyEnvironmentMap");
+        if (skyEnvSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(skyEnvSlot),
+                renderResources.skyEnvironmentSRV);
+        }
+    }
 }

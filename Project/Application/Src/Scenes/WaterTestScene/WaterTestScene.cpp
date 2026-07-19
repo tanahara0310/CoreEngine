@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WaterTestScene.h"
 
+#include "GameObjects/SkyBox/SkyBoxObject.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Math/MathCore.h"
@@ -12,7 +13,7 @@ namespace {
     constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 
     // 太陽高度角・方位角からライト方向（太陽 → 地表への進行方向）を計算する。
-    // AtmosphereEditorFacade::ComputeSunLightDirection と同じ規約（elevation=90°で天頂）。
+    // AtmosphereEditor::ComputeSunLightDirection と同じ規約（elevation=90°で天頂）。
     Vector3 ComputeSunLightDirection(float elevationDeg, float azimuthDeg) {
         const float elevation = elevationDeg * kDegToRad;
         const float azimuth = azimuthDeg * kDegToRad;
@@ -39,7 +40,7 @@ void WaterTestScene::OnInitialize() {
         // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える。
         // 両方に 20 を入れると床のような明るいアルベドが ACES の飽和域に入り真っ白になる。
         directionalLight_->atmosphereIntensity = 20.0f;
-        directionalLight_->intensity = kAtmosphereSurfaceSunIntensity;
+        directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
     }
 
     waterController_.Initialize(*this, *engine_);
@@ -52,7 +53,11 @@ void WaterTestScene::OnInitialize() {
 void WaterTestScene::OnUpdate() {
     auto* frameRate = engine_->GetComponent<FrameRateController>();
     const float deltaTime = frameRate ? frameRate->GetDeltaTime() : (1.0f / 60.0f);
-    waterController_.Update(*engine_, deltaTime);
+
+    // 空が大気散乱モードなら水面へ空気遠近感（Aerial Perspective）を適用する
+    SkyBoxObject* skyBox = GetSkyBox();
+    const bool atmosphereSky = (skyBox != nullptr) && skyBox->IsAtmosphereMode();
+    waterController_.Update(*engine_, deltaTime, atmosphereSky);
 }
 
 void WaterTestScene::Draw() {

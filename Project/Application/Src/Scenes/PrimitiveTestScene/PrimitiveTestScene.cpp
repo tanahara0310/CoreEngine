@@ -6,13 +6,11 @@
 #endif
 
 #include "Graphics/Model/ModelManager.h"
-#include "Graphics/Texture/TextureManager.h"
-#include "Graphics/IBL/IBLSystem.h"
 #include "Input/KeyboardInput.h"
 #include "Scene/SceneManager.h"
 #include "Utility/Logger/Logger.h"
 
-#include "GameObjects/SkyBox/SkyBoxObject.h"
+#include "Editor/Environment/AtmosphereEditor.h"
 #include "GameObjects/Primitive/PrimitiveSphereObject.h"
 #include "GameObjects/Primitive/CubeObject.h"
 #include "GameObjects/Primitive/RingObject.h"
@@ -24,28 +22,18 @@ void PrimitiveTestScene::OnInitialize()
 {
     SetSceneName("PrimitiveTestScene");
 
-    auto iblSystem = engine_->GetComponent<IBLSystem>();
-    if (!iblSystem) {
-        return;
+    // ===== 太陽ライト =====
+    // 空は BaseScene が既定で大気散乱モードの SkyBox（＋雲）を自動生成するため、
+    // 以前の静的 HDR キューブマップ＋IBL セットアップは廃止した。
+    // 各プリミティブの環境反射は大気の空キューブマップ（スペキュラIBL）が担う。
+    // BaseScene::SetupLight() の既定値（天頂・intensity=1）は大気散乱が期待する
+    // 輝度スケールと整合しないため明示的に上書きする（他の大気シーンと同じ定石）。
+    if (directionalLight_) {
+        directionalLight_->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
+        // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える
+        directionalLight_->atmosphereIntensity = 20.0f;
+        directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
     }
-
-    // ===== 環境マップ・IBL =====
-    auto& textureManager = TextureManager::GetInstance();
-    auto environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
-
-    IBLSystem::SetupParams iblParams;
-    iblParams.environmentMap = environmentMapTexture.texture.Get();
-    iblParams.environmentMapSRV = environmentMapTexture.gpuHandle;
-    iblParams.environmentKey = "kloppenheim_06_puresky_4k.hdr";
-    iblParams.irradianceSize = 128;
-    iblParams.prefilteredSize = 256;
-    iblParams.brdfLUTSize = 512;
-    iblSystem->Setup(iblParams);
-
-    // ===== SkyBox =====
-    auto skyBox = CreateObject<SkyBoxObject>();
-    skyBox->SetTexture(environmentMapTexture);
-    skyBox->SetActive(true);
 
     // ===== リング（Ring） =====
     // リングは XY 平面（垂直）に生成されるため、外周半径 1.5 より高い位置に置いて床に埋めない

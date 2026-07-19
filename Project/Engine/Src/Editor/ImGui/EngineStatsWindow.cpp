@@ -304,42 +304,20 @@ namespace CoreEngine
             ImGui::TableSetupColumn("ms", ImGuiTableColumnFlags_WidthFixed, 52.0f);
             ImGui::TableSetupColumn("比率", ImGuiTableColumnFlags_WidthStretch);
 
-            // カテゴリ別に表示
-            struct SlotGroup {
-                const char* category;
-                GpuTimestampSlot slots[4];
-                int count;
-            };
-            static constexpr SlotGroup kGroups[] = {
-                { "Shadow",   { GpuTimestampSlot::ShadowPass, GpuTimestampSlot::RTShadow },                              2 },
-                { "G-Buffer", { GpuTimestampSlot::GBufferPass },                                                          1 },
-                { "SSAO",     { GpuTimestampSlot::SSAOPass },                                                             1 },
-                { "Lighting", { GpuTimestampSlot::DeferredLighting },                                                     1 },
-                { "Geometry", { GpuTimestampSlot::GeometryPass },                                                         1 },
-                { "PostFX",   { GpuTimestampSlot::PostEffect },                                                           1 },
-                { "Editor",   { GpuTimestampSlot::BackBufferPass, GpuTimestampSlot::ImGuiDraw }, 2 },
-            };
+            // カテゴリ別に表示（パス名から解決した GpuTimingCategory でグルーピング。
+            // RenderGraph に新規パスを追加してもここは編集不要）
+            const std::vector<GpuTimingGroup> groups = BuildGpuTimingGroups(frozenGpu_);
 
-            for (const auto& group : kGroups)
+            for (const auto& group : groups)
             {
-                bool hasAny = false;
-                for (int gi = 0; gi < group.count; ++gi)
-                {
-                    const auto& r = frozenGpu_[static_cast<uint32_t>(group.slots[gi])];
-                    if (r.gpuMs >= 0.001f) { hasAny = true; break; }
-                }
-                if (!hasAny) continue;
-
                 // カテゴリヘッダー行
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-                ImGui::TextColored(kHeaderColor, "%s", group.category);
+                ImGui::TextColored(kHeaderColor, "%s", GpuTimestampProfiler::GetCategoryLabel(group.category));
 
-                for (int gi = 0; gi < group.count; ++gi)
+                for (uint32_t idx : group.slotIndices)
                 {
-                    const auto slot = group.slots[gi];
-                    const auto& r = frozenGpu_[static_cast<uint32_t>(slot)];
-                    if (r.gpuMs < 0.001f) continue;
+                    const auto& r = frozenGpu_[idx];
 
                     float ratio = r.gpuMs / barMaxMs;
                     ImVec4 barColor = ratio < 0.3f ? ImVec4(0.25f, 0.75f, 0.35f, 0.85f) :
@@ -349,7 +327,7 @@ namespace CoreEngine
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Indent(12.0f);
-                    ImGui::TextColored(kLabelColor, "%s", GpuTimestampProfiler::GetSlotName(slot));
+                    ImGui::TextColored(kLabelColor, "%s", r.name);
                     ImGui::Unindent(12.0f);
                     ImGui::TableSetColumnIndex(1);
                     ImGui::TextColored(kValueColor, "%.3f", r.gpuMs);
@@ -381,21 +359,9 @@ namespace CoreEngine
         ImGui::Separator();
         ImGui::Spacing();
 
-        // カテゴリ定義（DrawGpuTimingsSection と同じ構造）
-        struct SlotGroup {
-            const char* category;
-            GpuTimestampSlot slots[4];
-            int count;
-        };
-        static constexpr SlotGroup kGroups[] = {
-            { "Shadow",   { GpuTimestampSlot::ShadowPass, GpuTimestampSlot::RTShadow },                                   2 },
-            { "G-Buffer", { GpuTimestampSlot::GBufferPass },                                                               1 },
-            { "SSAO",     { GpuTimestampSlot::SSAOPass },                                                                  1 },
-            { "Lighting", { GpuTimestampSlot::DeferredLighting },                                                          1 },
-            { "Geometry", { GpuTimestampSlot::GeometryPass },                                                              1 },
-            { "PostFX",   { GpuTimestampSlot::PostEffect },                                                                1 },
-            { "Editor",   { GpuTimestampSlot::BackBufferPass, GpuTimestampSlot::ImGuiDraw },  2 },
-        };
+        // カテゴリ別に表示（パス名から解決した GpuTimingCategory でグルーピング。
+        // RenderGraph に新規パスを追加してもここは編集不要）
+        const std::vector<GpuTimingGroup> groups = BuildGpuTimingGroups(frozenGpu_);
 
         ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
@@ -409,32 +375,21 @@ namespace CoreEngine
             ImGui::TableSetupScrollFreeze(0, 1);
             ImGui::TableHeadersRow();
 
-            for (const auto& group : kGroups)
+            for (const auto& group : groups)
             {
-                bool hasAny = false;
-                for (int gi = 0; gi < group.count; ++gi)
-                {
-                    const auto& r = frozenGpu_[static_cast<uint32_t>(group.slots[gi])];
-                    if (r.gpuMs >= 0.001f || r.cpuMs >= 0.001f) { hasAny = true; break; }
-                }
-                if (!hasAny) continue;
-
                 // カテゴリヘッダー行
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
-                ImGui::TextColored(kHeaderColor, "%s", group.category);
+                ImGui::TextColored(kHeaderColor, "%s", GpuTimestampProfiler::GetCategoryLabel(group.category));
 
-                for (int gi = 0; gi < group.count; ++gi)
+                for (uint32_t idx : group.slotIndices)
                 {
-                    const auto slot = group.slots[gi];
-                    const uint32_t idx = static_cast<uint32_t>(slot);
                     const auto& r = frozenGpu_[idx];
-                    if (r.gpuMs < 0.001f && r.cpuMs < 0.001f) continue;
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Indent(12.0f);
-                    ImGui::TextColored(kLabelColor, "%s", r.name[0] ? r.name : GpuTimestampProfiler::GetSlotName(slot));
+                    ImGui::TextColored(kLabelColor, "%s", r.name);
                     ImGui::Unindent(12.0f);
 
                     ImGui::TableSetColumnIndex(1);

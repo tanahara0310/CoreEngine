@@ -88,16 +88,20 @@ namespace CoreEngine
     }
 
     void GameDebugUI::RegisterEnvironmentEditor(const std::string& label, const void* owner,
-        std::function<void()> drawer)
+        std::function<void()> drawer, std::function<bool()> childTree,
+        std::function<void()> onParentSelected)
     {
         for (auto& e : environmentEditors_) {
             if (e.label == label) {
                 e.owner = owner;
                 e.drawer = std::move(drawer);
+                e.childTree = std::move(childTree);
+                e.onParentSelected = std::move(onParentSelected);
                 return;
             }
         }
-        environmentEditors_.push_back({ label, owner, std::move(drawer) });
+        environmentEditors_.push_back(
+            { label, owner, std::move(drawer), std::move(childTree), std::move(onParentSelected) });
     }
 
     void GameDebugUI::UnregisterEnvironmentEditor(const std::string& label, const void* owner)
@@ -269,11 +273,39 @@ namespace CoreEngine
             ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth)) {
             for (const auto& entry : environmentEditors_) {
                 const bool selected = (entry.label == selectedEnvironmentLabel_);
-                if (ImGui::Selectable(entry.label.c_str(), selected)) {
+
+                // Inspector の表示先を一意にするため、選択時はシーンオブジェクトの選択を解除する
+                auto selectThisEntry = [&]() {
                     selectedEnvironmentLabel_ = entry.label;
-                    // Inspector の表示先を一意にするため、シーンオブジェクトの選択は解除する
                     if (sceneDebugEditor_) {
                         sceneDebugEditor_->ClearSelection();
+                    }
+                };
+
+                if (entry.childTree) {
+                    // 子ツリーを持つエントリ（Lighting の各ライト等）は開閉可能なノードとして描画する
+                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow
+                        | ImGuiTreeNodeFlags_OpenOnDoubleClick
+                        | ImGuiTreeNodeFlags_SpanAvailWidth
+                        | ImGuiTreeNodeFlags_DefaultOpen;
+                    if (selected) flags |= ImGuiTreeNodeFlags_Selected;
+
+                    const bool open = ImGui::TreeNodeEx(entry.label.c_str(), flags);
+                    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+                        selectThisEntry();
+                        if (entry.onParentSelected) {
+                            entry.onParentSelected();
+                        }
+                    }
+                    if (open) {
+                        if (entry.childTree()) {
+                            selectThisEntry();
+                        }
+                        ImGui::TreePop();
+                    }
+                } else {
+                    if (ImGui::Selectable(entry.label.c_str(), selected)) {
+                        selectThisEntry();
                     }
                 }
             }

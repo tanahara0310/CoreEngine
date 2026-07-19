@@ -79,7 +79,7 @@ namespace CoreEngine
         void DrawStatusBar(float fps, float deltaTimeMs);
 
         /// @brief GPU/CPU タイミングデータを設定（ステータスバーホバー時に表示）
-        void SetTimingData(std::span<const GpuTimingResult> slots) { timingData_.assign(slots.begin(), slots.end()); }
+        void SetTimingData(const std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount>& slots) { timingData_ = slots; }
 
         /// @brief Gameビュー編集用のSceneDebugEditorを設定する
         void SetSceneDebugEditor(SceneDebugEditor* sceneDebugEditor) { sceneDebugEditor_ = sceneDebugEditor; }
@@ -121,7 +121,7 @@ namespace CoreEngine
         bool isGridVisible_ = true;
 
         // GPU/CPU タイミングデータ（ステータスバーホバー時に表示）
-        std::vector<GpuTimingResult> timingData_;
+        std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount> timingData_{};
 
         // Gameビュー編集状態参照
         SceneDebugEditor* sceneDebugEditor_ = nullptr;

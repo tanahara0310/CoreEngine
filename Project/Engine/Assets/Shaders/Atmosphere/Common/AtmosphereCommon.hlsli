@@ -43,7 +43,20 @@ struct AtmosphereConstants
     float groundLevelY;           // 地表とみなすワールドY座標 [m]（InfiniteGroundObject 等の実床と揃える）
 
     float multiScatteringFactor;  // 多重散乱寄与のスケール（1=近似そのまま。等方Psi_ms近似は薄明時に過大評価するため抑制用）
-    float3 constantsPad;
+    float apKmPerSlice;           // Camera Volume の1スライスあたり距離 [km]（UE の AP View Distance Scale 相当。最大距離 = 32×この値）
+    float2 constantsPad;
+
+    // ===== 月（第2大気ライト。UE の Second Atmosphere Light 相当） =====
+    float3 moonDirection;         // 月光の進行方向（正規化。月の位置方向は -moonDirection）
+    float moonIntensity;          // 月光強度スケール（sunIntensity と同じ輝度ドメイン）
+
+    float3 moonColor;             // 月光の色
+    float moonDiskHalfAngleRad;   // 月の視半径 [rad]
+
+    float moonDiskLuminanceScale; // 月ディスクの輝度スケール
+    float hasMoon;                // 月ライトが有効か（0/1。0 のとき月の積分・描画をスキップ）
+    float moonPhaseFromSun;       // 満ち欠けを太陽方向から計算するか（0=常に満月, 1=実位相）
+    float starIntensity;          // 星空の強度スケール（0=無効。手続き的星fieldの輝度倍率）
 };
 
 /// @brief レイと原点中心球の交差判定
@@ -255,17 +268,52 @@ float3 SampleMultiScattering(Texture2D<float4> multiScatteringLUT, SamplerState 
 }
 
 // ============================================================================
-// Sky-View LUT パラメータ化（Hillaire 2020）
-// 経度方向(u): 太陽との相対方位角の余弦（対称性により半周分のみ格納、√で太陽側に解像度集中）
-// 緯度方向(v): 地平線を境に上下分割し、√エンコードで地平線付近に解像度集中
+// Sky-View LUT パラメータ化（UE SkyAtmosphere 方式・絶対方位）
+// 経度方向(u): 視線の絶対方位角 atan2(z, x) を全周 [0,1] へ線形マッピング。
+//              Hillaire 原論文の「太陽相対方位＋半周対称」ではなく絶対方位にするのは、
+//              第2大気ライト（月）の寄与を同じ LUT へ合算できるようにするため
+//              （太陽相対の対称パラメータ化は方位の異なる2光源で破綻する）。
+//              ±π の継ぎ目はサブUVエンコード（端テクセルの中心 = unit 0/1 = どちらも
+//              方位±π の同一方向）により、CLAMP サンプラーのままバイリニア連続になる。
+// 緯度方向(v): 地平線を境に上下分割し、√エンコードで地平線付近に解像度集中（従来どおり）
+// 格納値: ライト色・強度を前乗算した最終放射輝度。
+//         消費側でのサンプル後に sunColor × sunIntensity を掛けないこと（二重適用禁止）。
 // ============================================================================
 
 static const uint SKYVIEW_LUT_WIDTH = 192;
 static const uint SKYVIEW_LUT_HEIGHT = 108;
 
-/// @brief (視線天頂角余弦, 太陽相対方位角余弦) から Sky-View LUT の UV を求める
+/// @brief 単位区間 [0,1] を「両端が端テクセルの中心に載る」サブUVへ変換する
+/// @details unit 0 → テクセル0中心、unit 1 → テクセル(N-1)中心。生成側が両端テクセルに
+///          同一方位（±π）の値を書くため、CLAMP サンプラーでも継ぎ目が連続になる。
+float FromUnitToSubUvs(float u, float resolution)
+{
+    return (u * (resolution - 1.0f) + 0.5f) / resolution;
+}
+
+/// @brief サブUV（テクセル中心 (i+0.5)/N）を単位区間 [0,1] へ戻す（FromUnitToSubUvs の逆変換）
+float FromSubUvsToUnit(float u, float resolution)
+{
+    return (u * resolution - 0.5f) / (resolution - 1.0f);
+}
+
+/// @brief 方向ベクトルの絶対方位角 [rad]（atan2(z, x) ∈ [-π, π]）
+/// @details ほぼ真上/真下（水平成分がゼロ）の場合は 0 を返す。
+///          その天頂角の LUT 行は全方位が同値に収束するため任意の値でよい。
+float SkyViewAzimuth(float3 dir)
+{
+    float2 horizontal = dir.xz;
+    if (dot(horizontal, horizontal) < 1e-10f)
+    {
+        return 0.0f;
+    }
+    return atan2(dir.z, dir.x);
+}
+
+/// @brief (視線天頂角余弦, 視線の絶対方位角) から Sky-View LUT の UV を求める
 /// @param intersectGround 視線が地面と交差するか
-float2 SkyViewParamsToUv(bool intersectGround, float viewZenithCos, float lightViewCos,
+/// @param viewAzimuthRad 視線の絶対方位角 [rad]（SkyViewAzimuth() の値。±π 超のオフセット指定も可）
+float2 SkyViewParamsToUv(bool intersectGround, float viewZenithCos, float viewAzimuthRad,
                          float radiusKm, float bottomRadiusKm)
 {
     float2 uv;
@@ -291,16 +339,16 @@ float2 SkyViewParamsToUv(bool intersectGround, float viewZenithCos, float lightV
         uv.y = coord * 0.5f + 0.5f;
     }
 
-    float coordX = -lightViewCos * 0.5f + 0.5f;
-    coordX = sqrt(saturate(coordX));
-    uv.x = coordX;
+    // 絶対方位を全周線形マッピング（frac は ±π を超える方位指定＝オフセット指定への保険）
+    float azimuthUnit = frac((viewAzimuthRad + ATMOSPHERE_PI) / (2.0f * ATMOSPHERE_PI));
+    uv.x = FromUnitToSubUvs(azimuthUnit, (float)SKYVIEW_LUT_WIDTH);
 
     return uv;
 }
 
-/// @brief Sky-View LUT の UV から (視線天頂角余弦, 太陽相対方位角余弦) を復元する
+/// @brief Sky-View LUT の UV（テクセル中心）から (視線天頂角余弦, 絶対方位角) を復元する
 void UvToSkyViewParams(float2 uv, float radiusKm, float bottomRadiusKm,
-                       out float viewZenithCos, out float lightViewCos)
+                       out float viewZenithCos, out float viewAzimuthRad)
 {
     float vHorizon = sqrt(max(0.0f, radiusKm * radiusKm - bottomRadiusKm * bottomRadiusKm));
     float cosBeta = vHorizon / radiusKm;
@@ -323,9 +371,8 @@ void UvToSkyViewParams(float2 uv, float radiusKm, float bottomRadiusKm,
     }
     viewZenithCos = cos(viewZenithAngle);
 
-    float coordX = uv.x;
-    coordX = coordX * coordX;
-    lightViewCos = -(coordX * 2.0f - 1.0f);
+    float azimuthUnit = FromSubUvsToUnit(uv.x, (float)SKYVIEW_LUT_WIDTH);
+    viewAzimuthRad = azimuthUnit * 2.0f * ATMOSPHERE_PI - ATMOSPHERE_PI;
 }
 
 /// @brief 視線レイに沿った散乱（単一＋多重）の積分
@@ -400,12 +447,12 @@ float3 IntegrateScatteredLuminance(
 // ============================================================================
 
 static const uint CAMERA_VOLUME_SIZE = 32;
-static const float CAMERA_VOLUME_KM_PER_SLICE = 4.0f; // 1スライスあたりの距離 [km]（最大 32*4=128km）
 
 /// @brief カメラからの距離 [km] を CameraVolume の Wスライス座標 [0,1] へ変換する
-float CameraVolumeDistanceToW(float distanceKm)
+/// @param kmPerSlice 1スライスあたりの距離 [km]（AtmosphereConstants.apKmPerSlice を渡す）
+float CameraVolumeDistanceToW(float distanceKm, float kmPerSlice)
 {
-    float slice = distanceKm / CAMERA_VOLUME_KM_PER_SLICE;
+    float slice = distanceKm / max(kmPerSlice, 1e-3f);
     return saturate(slice / CAMERA_VOLUME_SIZE);
 }
 
@@ -503,6 +550,109 @@ float3 ComputeTransmittanceToSunRayMarch(float3 position, float3 toSun, Atmosphe
         opticalDepth += ComputeExtinction(heightKm, atm) * dt;
     }
     return exp(-opticalDepth);
+}
+
+// ============================================================================
+// 手続き的星空（Phase 5）
+// 視線方向をキューブ面ごとの2Dグリッドへ分割し、セルIDのハッシュから星の
+// 有無・位置・等級・色温度を決める。テクスチャ不要・星はワールド方位に固定
+// （ハッシュ入力が方向のみのため自動的に固定される）。
+// 面内グリッドを使うのは、星（ガウス点像）の中心が必ず自セルの角度領域内に
+// 収まることを保証するため（3Dセル＋normalize だと中心が隣セル領域へ射影されて
+// 点像が欠ける・消えることがある）。
+// 合成は呼び出し側で「星 × 視線方向の大気透過率 × 空の暗さマスク」とすること。
+// ============================================================================
+
+static const float STARFIELD_GRID_SIZE = 96.0f;  // 面ごとの1軸セル数（全天 6×96² ≈ 5.5万セル）
+static const float STAR_PROBABILITY = 0.22f;     // セルに星が存在する確率（全天 ≈ 1.2万個相当）
+static const float STAR_CORE_RADIUS_RAD = 5e-4f; // 星像の固有角半径 [rad]（大気シーイング相当の美術値）
+static const float STAR_LUMINANCE_SCALE = 0.10f; // 最大等級の星のピーク輝度（starIntensity=1 のとき。
+                                                 // 夜の自動露出下で最輝星が白く飛ぶ＝実際の星の見え方に合わせた美術値）
+
+/// @brief 3D→3D ハッシュ（Dave Hoskins hash33。負の入力にも有効）
+float3 StarHash33(float3 p)
+{
+    p = frac(p * float3(0.1031f, 0.1030f, 0.0973f));
+    p += dot(p, p.yxz + 33.33f);
+    return frac((p.xxy + p.yxx) * p.zyx);
+}
+
+/// @brief 方向 → キューブ面ID と面内座標 st ∈ [-1,1]²（星グリッド専用の単純射影）
+uint StarFaceIndex(float3 dir, out float2 st)
+{
+    float3 a = abs(dir);
+    if (a.x >= a.y && a.x >= a.z)
+    {
+        st = dir.yz / a.x;
+        return (dir.x >= 0.0f) ? 0u : 1u;
+    }
+    if (a.y >= a.z)
+    {
+        st = dir.xz / a.y;
+        return (dir.y >= 0.0f) ? 2u : 3u;
+    }
+    st = dir.xy / a.z;
+    return (dir.z >= 0.0f) ? 4u : 5u;
+}
+
+/// @brief キューブ面ID と面内座標 st ∈ [-1,1]² → 方向（StarFaceIndex の逆変換。正規化はしない）
+float3 StarFaceToDir(uint face, float2 st)
+{
+    switch (face)
+    {
+        case 0: return float3(1.0f, st.x, st.y);
+        case 1: return float3(-1.0f, st.x, st.y);
+        case 2: return float3(st.x, 1.0f, st.y);
+        case 3: return float3(st.x, -1.0f, st.y);
+        case 4: return float3(st.x, st.y, 1.0f);
+        default: return float3(st.x, st.y, -1.0f);
+    }
+}
+
+/// @brief 指定方向の星の放射輝度（大気減衰・空の明るさマスクは含まない）
+/// @param dir 正規化済み視線方向
+/// @param pixelAngleRad 1ピクセルの角サイズ [rad]（PS では length(fwidth(dir)) で近似）
+/// @param starIntensity 強度スケール（AtmosphereConstants.starIntensity。0以下で無効）
+float3 ComputeStarLuminance(float3 dir, float pixelAngleRad, float starIntensity)
+{
+    if (starIntensity <= 0.0f)
+    {
+        return float3(0.0f, 0.0f, 0.0f);
+    }
+
+    float2 st;
+    uint face = StarFaceIndex(dir, st);
+    float2 cell = floor((st * 0.5f + 0.5f) * STARFIELD_GRID_SIZE);
+    float3 cellId = float3(cell, (float)face);
+
+    float3 h = StarHash33(cellId);
+    if (h.x > STAR_PROBABILITY)
+    {
+        return float3(0.0f, 0.0f, 0.0f);
+    }
+
+    // セル内位置は [0.3, 0.7] に制限し、点像（ガウス）の裾がセル境界で欠けないようにする
+    float2 starSt = ((cell + 0.3f + 0.4f * h.yz) / STARFIELD_GRID_SIZE) * 2.0f - 1.0f;
+    float3 starDir = normalize(StarFaceToDir(face, starSt));
+
+    // 微小角では弦長 ≈ 角度 [rad]
+    float angle = length(dir - starDir);
+
+    // 点像はピクセルより小さく描けないため、半径をピクセル角へ広げた分だけピーク輝度を
+    // 下げてエネルギーを保存する（解像度・FOV によらず星の総光量が一定になり、
+    // ズームや低解像度キャプチャでチラついたり明滅したりしない）
+    float radius = max(STAR_CORE_RADIUS_RAD, pixelAngleRad);
+    float energyScale = (STAR_CORE_RADIUS_RAD * STAR_CORE_RADIUS_RAD) / (radius * radius);
+    float core = exp(-(angle * angle) / (radius * radius));
+
+    // 等級分布: 大半は暗く、まれに明るい（実際の星の等級-個数分布のべき乗近似）
+    float3 h2 = StarHash33(cellId + 19.19f);
+    float brightness = 0.03f + 0.97f * pow(h2.x, 7.0f);
+
+    // 色温度: オレンジ（低温）〜青白（高温）をわずかに散らす
+    float3 starColor = lerp(float3(1.0f, 0.82f, 0.62f), float3(0.68f, 0.80f, 1.0f), h2.y);
+
+    return starColor * (starIntensity * STAR_LUMINANCE_SCALE * brightness * energyScale * core);
 }
 
 #endif // ATMOSPHERE_COMMON_HLSLI

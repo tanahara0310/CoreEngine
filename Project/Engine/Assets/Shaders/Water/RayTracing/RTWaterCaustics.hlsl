@@ -32,6 +32,9 @@ cbuffer WaterCausticsConstants : register(b0)
     uint gLightEnabled;
     float3 gLightColor;
     float gLightIntensity;
+    // ワールドXZ → FFT テクスチャ UV の写像（ラスタ描画 FFTWater.VS と一致させる）
+    float2 gFFTOceanUVScale;
+    float2 gFFTOceanUVOffset;
 };
 
 static const uint kRTCausticsDebugNone = 0;
@@ -118,7 +121,7 @@ float3 EvaluateCausticsWaterOffset(float2 worldXZ)
         return EvaluateWaterOffset(worldXZ);
     }
 
-    return SampleFFTOceanBilinear(gFFTOceanDisplacement, worldXZ, gFFTOceanPatchLength, gFFTOceanResolution).xyz;
+    return SampleFFTOceanBilinear(gFFTOceanDisplacement, worldXZ, gFFTOceanUVScale, gFFTOceanUVOffset, gFFTOceanResolution).xyz;
 }
 
 float3 EvaluateCausticsWaterNormal(float2 worldXZ)
@@ -128,7 +131,7 @@ float3 EvaluateCausticsWaterNormal(float2 worldXZ)
         return EvaluateWaterNormal(worldXZ);
     }
 
-    const float3 encodedNormal = SampleFFTOceanBilinear(gFFTOceanNormal, worldXZ, gFFTOceanPatchLength, gFFTOceanResolution).xyz;
+    const float3 encodedNormal = SampleFFTOceanBilinear(gFFTOceanNormal, worldXZ, gFFTOceanUVScale, gFFTOceanUVOffset, gFFTOceanResolution).xyz;
     const float3 decodedNormal = normalize(encodedNormal * 2.0f - 1.0f);
     return decodedNormal.y < 0.0f ? -decodedNormal : decodedNormal;
 }

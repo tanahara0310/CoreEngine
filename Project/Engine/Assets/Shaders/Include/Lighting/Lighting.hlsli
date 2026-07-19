@@ -131,8 +131,11 @@ LightingResult CalculatePointLight(
 {
     float3 lightDir = normalize(lightPosition - worldPosition);
     float distance = length(lightPosition - worldPosition);
-    float attenuation = pow(saturate(-distance / radius + 1.0f), decay);
-    
+    // 物理ベース: 純粋な逆二乗則 + 範囲窓関数（decay は旧仕様の名残で未使用）
+    float distRatio = distance / radius;
+    float rangeFactor = saturate(1.0f - distRatio * distRatio * distRatio * distRatio);
+    float attenuation = rangeFactor * rangeFactor / max(distance * distance, 0.01f);
+
     return CalculateLighting(
         normal,
         lightDir,
@@ -172,14 +175,19 @@ LightingResult CalculateSpotLight(
     float3 spotLightDirectionOnSurface = -lightDir;
     
     
+    // コーン減衰: cosFalloffStart（内角）→ cosAngle（外角）の間で滑らかに減衰する。
+    // 旧実装は分母が cosAngle - cosFalloffStart（負値 → max で 0.001 に張り付き）で
+    // 実質ステップ関数になっていたバグを修正済み
     float cosAngleValue = dot(spotLightDirectionOnSurface, lightDirection);
-    float denominator = max(cosAngle - cosFalloffStart, 0.001f);
+    float denominator = max(cosFalloffStart - cosAngle, 0.001f);
     float falloffFactor = saturate((cosAngleValue - cosAngle) / denominator);
-    
-   
+
+    // 物理ベース: 純粋な逆二乗則 + 範囲窓関数（decay は旧仕様の名残で未使用）
     float distanceToLight = length(lightPosition - worldPosition);
-    float distanceAttenuation = pow(saturate(-distanceToLight / distance + 1.0f), decay);
-    
+    float sDistRatio = distanceToLight / distance;
+    float sRangeFactor = saturate(1.0f - sDistRatio * sDistRatio * sDistRatio * sDistRatio);
+    float distanceAttenuation = sRangeFactor * sRangeFactor / max(distanceToLight * distanceToLight, 0.01f);
+
     float attenuation = distanceAttenuation * falloffFactor;
     
     return CalculateLighting(
@@ -254,9 +262,10 @@ LightingResult CalculateAreaLight(
     float dist = length(toClosest);
     float3 L = toClosest / max(dist, 0.001f); // 正規化（ゼロ除算回避）
     
-    // 距離減衰
-    float distFactor = 1.0f - saturate(dist / range);
-    float distAttenuation = distFactor * distFactor;
+    // 距離減衰（物理ベース: 純粋な逆二乗則 + 範囲窓関数）
+    float aDistRatio = dist / range;
+    float aRangeFactor = saturate(1.0f - aDistRatio * aDistRatio * aDistRatio * aDistRatio);
+    float distAttenuation = aRangeFactor * aRangeFactor / max(dist * dist, 0.01f);
     
     // 矩形の形状係数
     float shapeFactor = 1.0f;

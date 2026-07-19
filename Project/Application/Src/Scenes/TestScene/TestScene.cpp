@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/IBL/IBLSystem.h"
 #include "Graphics/Model/ModelManager.h"
 
 #ifdef _DEBUG
@@ -11,8 +10,7 @@
 #include "WinApp/WinApp.h"
 #include "Scene/SceneManager.h"
 #include "Graphics/Render/RenderManager.h"
-#include "GameObjects/SkyBox/SkyBoxObject.h"
-#include "Graphics/Texture/TextureManager.h"
+#include "Editor/Environment/AtmosphereEditor.h"
 
 #include <iostream>
 
@@ -32,9 +30,8 @@ namespace CoreEngine
 
         // コンポーネントを直接取得
         auto modelManager = engine_->GetComponent<ModelManager>();
-        auto iblSystem = engine_->GetComponent<IBLSystem>();
 
-        if (!modelManager || !iblSystem) {
+        if (!modelManager) {
             return; // 必須コンポーネントがない場合は終了
         }
 
@@ -44,31 +41,18 @@ namespace CoreEngine
         modelManager->PreloadModels({ "sponza/Sponza.gltf" });
         //modelManager->PreloadModels({ "sphere.obj", "walk.gltf" });
 
-        // ===== 環境マップテクスチャの読み込みと設定 =====
-        auto& textureManager = TextureManager::GetInstance();
-
-        // HDRファイルを読み込み（自動的にキューブマップDDSに変換される）
-        auto environmentMapTexture = textureManager.Load("kloppenheim_06_puresky_4k.hdr");
-
-        // ===== IBLシステムの初期化 =====
-        IBLSystem::SetupParams iblParams;
-        iblParams.environmentMap = environmentMapTexture.texture.Get();
-        iblParams.environmentMapSRV = environmentMapTexture.gpuHandle;
-        iblParams.environmentKey = "kloppenheim_06_puresky_4k.hdr";
-        iblParams.irradianceSize = 128;
-        iblParams.prefilteredSize = 256;
-        iblParams.brdfLUTSize = 512;
-
-        if (iblSystem->Setup(iblParams)) {
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", "IBL system initialized successfully");
-        } else {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBL system");
+        // ===== 太陽ライト =====
+        // 空は BaseScene が既定で大気散乱モードの SkyBox（＋雲）を自動生成するため、
+        // 以前の静的 HDR キューブマップ＋IBL セットアップは廃止した。
+        // 球体の環境反射は大気の空キューブマップ（スペキュラIBL）が担う。
+        // BaseScene::SetupLight() の既定値（天頂・intensity=1）は大気散乱が期待する
+        // 輝度スケールと整合しないため明示的に上書きする（他の大気シーンと同じ定石）。
+        if (directionalLight_) {
+            directionalLight_->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
+            // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える
+            directionalLight_->atmosphereIntensity = 20.0f;
+            directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
         }
-
-        // SkyBoxの初期化
-        auto skyBox = CreateObject<SkyBoxObject>();
-        skyBox->SetTexture(environmentMapTexture);
-        skyBox->SetActive(true);
 
         // ===== スポンザモデル =====
         /*auto sponza = CreateObject<ModelObject>("Sponza.gltf");
@@ -146,17 +130,6 @@ namespace CoreEngine
                 sceneManager_->ChangeScene("TestScene");
             }
             return;
-        }
-
-        // ===== SkyBoxの回転を全球体のマテリアルに反映 =====
-        SkyBoxObject* skyBox = nullptr;
-
-        // SkyBoxオブジェクトを検索
-        for (const auto& obj : gameObjectManager_.GetAllObjects()) {
-            if (auto* sb = dynamic_cast<SkyBoxObject*>(obj.get())) {
-                skyBox = sb;
-                break;
-            }
         }
     }
 

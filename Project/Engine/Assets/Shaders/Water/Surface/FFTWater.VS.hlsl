@@ -11,14 +11,14 @@ cbuffer WaterFrameConstants : register(b5)
     int gReflectionEnabled;
     float gFresnelReflectanceScale;
     float gFresnelBaseReflectance;
-    float gAbsorptionCoeff;
     int gDepthFadeEnabled;
     int gDepthFadeDebugEnabled;
     float gDepthFadeDebugScale;
-    float3 gShallowColor;
-    float gShallowColorPad;
-    float3 gDeepColor;
-    float gDeepColorPad;
+    float gSkyAmbientScale;
+    float3 gAbsorptionCoeff;
+    int gSkyAmbientEnabled;
+    float3 gScatteringCoeff;
+    float gScatteringPad;
     uint gDepthDebugViewMode;
     int gUseFFTOceanNormalMap;
     float2 gDebugPadding;
@@ -48,7 +48,18 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     float scaleX = length(mtx.World[0].xyz);
     float scaleZ = length(mtx.World[2].xyz);
     float2 scaleUV = float2(max(scaleX, 1.0e-4f), max(scaleZ, 1.0e-4f));
-    float2 sampleUV = frac(input.texcoord * scaleUV);
+
+    // メッシュの texcoord は PlaneMeshGenerator が { u, 1 - v }（V 反転）で生成するため、
+    // そのままサンプリングするとテクスチャ +v 方向がワールド -Z に対応してしまう。
+    // 変位はジオメトリと常に同時サンプリングなので見た目は破綻しないが、
+    // 法線マップ（FFTOceanFinalize.CS が +v = +Z 前提で ∂h/∂v から生成）を
+    // ピクセルシェーダーで (0,0,1) ビタンジェントへ展開した瞬間に
+    // 「シェーディング法線の Z 成分だけ実ジオメトリと符号が逆」になり、
+    // フレネル・反射の明るいまだらが実際の波の斜面と無関係な位置に現れる。
+    // また choppiness の水平変位 Z も高さ場に対して鏡写しに適用されていた。
+    // ここで V を戻して「テクスチャ +v = ワールド +Z」に統一する。
+    float2 uvLocal = float2(input.texcoord.x, 1.0f - input.texcoord.y);
+    float2 sampleUV = frac(uvLocal * scaleUV);
 
     float3 displacement = gFFTOceanDisplacement.SampleLevel(gLinearClamp, sampleUV, 0.0f).xyz;
 
@@ -63,7 +74,13 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     const float3 baseBinormalLocal = float3(0.0f, 0.0f, 1.0f);
 
     FFTWaterVSOutput output;
-    output.texcoord = input.texcoord;
+    // ピクセルシェーダーの法線マップ再サンプリングが、ここでサンプリングした変位と
+    // 同じ空間スケール・同じ軸向きになるよう、V 反転を戻しスケール適用後の UV を渡す
+    // （frac はPS側でピクセル単位に行う）。
+    // 以前は素の texcoord を渡していたため、メッシュがスケールされていると
+    // シェーディング法線が実際の波形とズレ、ジオメトリと無関係な位置に
+    // フレネル起因の明るいまだらが出ていた。
+    output.texcoord = uvLocal * scaleUV;
     output.jacobianData = gFFTOceanJacobian.SampleLevel(gLinearClamp, sampleUV, 0.0f);
 
     float4 baseClip = mul(input.position, mtx.WVP);

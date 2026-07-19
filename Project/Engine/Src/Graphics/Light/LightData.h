@@ -3,30 +3,21 @@
 #include "Math/MathCore.h"
 #include <cstdint>
 
-/// @brief StructuredBuffer用のライトデータ構造体群
-/// 新しいライトシステムで使用する統一された構造体
-
-/// @brief ディレクショナルライトのデータ構造体（StructuredBuffer用）
+/// @brief StructuredBuffer 用のライトデータ構造体群（純粋な GPU 転送フォーマット）
+/// オーサリング表現は Light.h の Light 構造体が担い、LightManager::UpdateAll() が
+/// 物理単位（lx / cd / nt）→ シェーダー単位への変換・cos 変換・基底導出を行って
+/// 本構造体へ詰め替える。CPU 専用の状態はここに置かないこと。
+/// レイアウトは HLSL 側 LightStructures.hlsli と 1:1 で一致させる（bool は uint32_t）。
 
 namespace CoreEngine
 {
+    /// @brief ディレクショナルライトのデータ構造体（StructuredBuffer用）
     struct DirectionalLightData {
-        Vector4 color;        // ライトの色
-        Vector3 direction;    // ライトの方向
-        float intensity;      // 輝度（サーフェスの直接光。DeferredLighting が使用する）
-        bool enabled;         // 有効フラグ（GPU側は bytes32-35 を bool として読むため、この4バイト内に他のフラグを置かない）
-        uint8_t enabledPadding[3];  // enabled の4バイト境界を明示的に埋める
-        bool isAtmosphereSun; // 大気散乱の太陽として扱うフラグ（CPU専用。GPU側は padding 領域として無視される）
-        uint8_t sunPadding[3];      // isAtmosphereSun の4バイト境界を明示的に埋める
-
-        /// @brief 大気散乱（空・雲）の輝度スケール。CPU専用（GPU側は padding 領域として無視される）
-        /// @details intensity（サーフェス直接光）とは単位系が異なる。大気の LUT は散乱係数を
-        ///          掛けた結果を返すため空が破綻しない輝度（20 前後）を要求するが、その値を
-        ///          そのままサーフェスの直接光に使うと明るいアルベドが ACES の飽和域
-        ///          （HDR >= 7.24 で 1.0 に張り付く）へ入り、テクスチャの階調が消える。
-        ///          そのため両者を分離する。0 のときは intensity にフォールバックする。
-        float atmosphereIntensity;
-        float padding;        // パディング（GPU側 float3 padding の残り4バイト）
+        Vector4 color;        // ライトの色（大気透過率適用済みの実効色）
+        Vector3 direction;    // ライトの方向（正規化済み）
+        float intensity;      // 輝度（シェーダー単位。lx から変換済み）
+        uint32_t enabled;     // 有効フラグ（HLSL の bool = 4 バイト）
+        float padding[3];     // パディング（HLSL 側 float3 padding）
     };
     static_assert(sizeof(DirectionalLightData) == 48,
         "DirectionalLightData は HLSL 側 LightStructures.hlsli の 48 バイトストライドと一致させること");
@@ -35,40 +26,46 @@ namespace CoreEngine
     struct PointLightData {
         Vector4 color;        // 光源の色
         Vector3 position;     // 光源の位置
-        float intensity;      // 光源の強度
-        float radius;         // ライトの届く最大距離
-        float decay;          // 光の減衰率
-        bool enabled;         // 有効フラグ
+        float intensity;      // 光源の強度（シェーダー単位。cd から変換済み。シェーダーで 1/d² を乗算）
+        float radius;         // ライトの届く最大距離 [m]
+        float decay;          // 旧減衰率。物理逆二乗化に伴い未使用（レイアウト互換のため残置。常に 1）
+        uint32_t enabled;     // 有効フラグ
         float padding;        // パディング（16バイトアライメント）
     };
+    static_assert(sizeof(PointLightData) == 48,
+        "PointLightData は HLSL 側 LightStructures.hlsli の 48 バイトストライドと一致させること");
 
     /// @brief スポットライトのデータ構造体（StructuredBuffer用）
     struct SpotLightData {
         Vector4 color;            // 光源の色
         Vector3 position;         // 光源の位置
-        float intensity;          // 光源の強度
-        Vector3 direction;        // 光源の向き
-        float distance;           // スポットライトの届く距離
-        float decay;              // 光の減衰率
-        float cosAngle;           // スポットライトの角度
-        float cosFalloffStart;    // スポットライトの角度の開始位置
-        bool enabled;             // 有効フラグ
+        float intensity;          // 光源の強度（シェーダー単位。cd から変換済み）
+        Vector3 direction;        // 光源の向き（正規化済み）
+        float distance;           // スポットライトの届く距離 [m]
+        float decay;              // 旧減衰率。物理逆二乗化に伴い未使用（レイアウト互換のため残置。常に 1）
+        float cosAngle;           // 外角の余弦（cos(outerConeAngle)）
+        float cosFalloffStart;    // 減衰開始角の余弦（cos(innerConeAngle)）
+        uint32_t enabled;         // 有効フラグ
     };
+    static_assert(sizeof(SpotLightData) == 64,
+        "SpotLightData は HLSL 側 LightStructures.hlsli の 64 バイトストライドと一致させること");
 
     /// @brief エリアライトのデータ構造体（StructuredBuffer用）
     struct AreaLightData {
         Vector4 color;        // 光源の色
         Vector3 position;     // 光源の中心位置
-        float intensity;      // 光源の強度
-        Vector3 normal;       // 光源の向き（法線）
-        float width;          // 矩形の幅
-        Vector3 right;        // 矩形の右方向ベクトル
-        float height;         // 矩形の高さ
-        Vector3 up;           // 矩形の上方向ベクトル
-        float range;          // ライトの届く最大距離
-        bool enabled;         // 有効フラグ
+        float intensity;      // 光源の強度（シェーダー単位。nt × 面積 から変換済み）
+        Vector3 normal;       // 光源の向き（法線。正規化済み）
+        float width;          // 矩形の幅 [m]
+        Vector3 right;        // 矩形の右方向ベクトル（法線から導出した正規直交基底）
+        float height;         // 矩形の高さ [m]
+        Vector3 up;           // 矩形の上方向ベクトル（法線から導出した正規直交基底）
+        float range;          // ライトの届く最大距離 [m]
+        uint32_t enabled;     // 有効フラグ
         Vector3 padding;      // パディング（16バイトアライメント）
     };
+    static_assert(sizeof(AreaLightData) == 96,
+        "AreaLightData は HLSL 側 LightStructures.hlsli の 96 バイトストライドと一致させること");
 
     /// @brief ライトカウント用の定数バッファ構造体
     struct LightCounts {

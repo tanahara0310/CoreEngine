@@ -112,9 +112,12 @@ void PostEffectManager::RebuildEffectPtrCache()
 {
     effectPtrCache_.clear();
     effectPtrCache_.reserve(effectChain_.size());
+    effectNameCache_.clear();
+    effectNameCache_.reserve(effectChain_.size());
     for (const auto& name : effectChain_) {
         if (auto* effect = GetEffectInternal(name); effect && effect->IsEnabled()) {
             effectPtrCache_.push_back(effect);
+            effectNameCache_.push_back(name);
         }
     }
 }

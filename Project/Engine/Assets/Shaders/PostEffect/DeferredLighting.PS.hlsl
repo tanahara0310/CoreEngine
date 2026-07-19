@@ -93,11 +93,30 @@ StructuredBuffer<float4> gSkyIrradianceSH : register(t18);
 
 struct SkyAmbientParams
 {
-    uint enabled;      // 1 = 空アンビエント有効（大気アクティブなフレームのみ）
-    float scale;       // 空の輝度単位 → サーフェス光単位の変換係数
-    float2 padding;
+    uint enabled;          // 1 = 空アンビエント有効（大気アクティブなフレームのみ）
+    float scale;           // 空の輝度単位 → サーフェス光単位の変換係数
+    uint specularEnabled;  // 1 = 空スペキュラIBL（空＋雲キューブマップの環境反射）有効
+    float padding;
 };
 ConstantBuffer<SkyAmbientParams> gSkyAmbient : register(b6);
+
+// プリフィルタ済み空スペキュラキューブマップ（空＋雲。Phase 3b: Sky Light のスペキュラ相当）
+// AtmosphereManager が Sky-View LUT＋雲レイマーチから毎フレーム生成する。
+// 5 ミップ（mip = roughness × 4）。輝度は空（SkyAtmosphere.PS）と同一ドメイン。
+TextureCube<float4> gSkySpecularMap : register(t19);
+static const float kSkySpecularMipCount = 5.0f;
+
+/// @brief 解析的 EnvBRDF 近似（Karis "Physically Based Shading on Mobile"）
+/// @details Split-Sum の BRDF 積分項を LUT 無しで近似する。シーン IBL の gBRDFLUT は
+///          IBLSystem がセットアップされたシーン専用資産のため、大気スペキュラでは使わない。
+float2 EnvBRDFApprox(float roughness, float NdotV)
+{
+    const float4 c0 = float4(-1.0f, -0.0275f, -0.572f, 0.022f);
+    const float4 c1 = float4(1.0f, 0.0425f, 1.04f, -0.04f);
+    float4 r = roughness * c0 + c1;
+    float a004 = min(r.x * r.x, exp2(-9.28f * NdotV)) * r.x + r.y;
+    return float2(-1.04f, 1.04f) * a004 + r.zw;
+}
 
 /// @brief SH9 係数から法線方向の空の放射照度/π を評価する
 float3 EvaluateSkyIrradiance(float3 n)
@@ -336,7 +355,8 @@ PixelShaderOutput main(PixelShaderInput input)
         if (d >= pL.radius)
             continue;
         float3 L = normalize(tv);
-        float attenuation = 1.0f / (1.0f + pL.decay * d * d);
+        // 物理ベース: 純粋な逆二乗則（intensity は光度 [cd] 由来。最小距離 10cm でクランプ）
+        float attenuation = 1.0f / max(d * d, 0.01f);
         float distRatio = d / pL.radius;
         float rangeFactor = saturate(1.0f - distRatio * distRatio * distRatio * distRatio);
         attenuation *= rangeFactor * rangeFactor;
@@ -354,7 +374,8 @@ PixelShaderOutput main(PixelShaderInput input)
         if (d >= sL.distance)
             continue;
         float3 L = normalize(tv);
-        float attenuation = 1.0f / (1.0f + sL.decay * d * d);
+        // 物理ベース: 純粋な逆二乗則（ポイントライトと同一式）
+        float attenuation = 1.0f / max(d * d, 0.01f);
         float sDistRatio = d / sL.distance;
         float sRangeFactor = saturate(1.0f - sDistRatio * sDistRatio * sDistRatio * sDistRatio);
         attenuation *= sRangeFactor * sRangeFactor;
@@ -392,8 +413,10 @@ PixelShaderOutput main(PixelShaderInput input)
             continue;
         float3 L = toClosest / max(dist, 0.001f);
 
-        float distFactor = 1.0f - saturate(dist / aL.range);
-        float distAttenuation = distFactor * distFactor;
+        // 物理ベース: 純粋な逆二乗則 + 範囲窓関数（intensity は 輝度[nt]×面積 由来）
+        float aDistRatio = dist / aL.range;
+        float aRangeFactor = saturate(1.0f - aDistRatio * aDistRatio * aDistRatio * aDistRatio);
+        float distAttenuation = aRangeFactor * aRangeFactor / max(dist * dist, 0.01f);
 
         float shapeFactor = 1.0f;
         float outsideU = max(0.0f, abs(u) - halfW);
@@ -459,9 +482,23 @@ PixelShaderOutput main(PixelShaderInput input)
                 skyShadow = lerp(0.3f, 1.0f, skyShadow);
             }
 
-            // 拡散のみ（スペキュラ環境反射は将来拡張）。金属は拡散反射しないため減衰させる
+            // 拡散: SH9 放射照度。金属は拡散反射しないため減衰させる
             float3 skyIrradiance = EvaluateSkyIrradiance(N);
             ambient = albedo * (1.0f - metallic) * skyIrradiance * gSkyAmbient.scale * ao * skyShadow;
+
+            // スペキュラ: プリフィルタ済み空キューブマップによる環境反射（Phase 3b）。
+            // 空・雲・太陽まわりのグレアが roughness に応じたぼけで映り込む。
+            // 拡散と同じ skyAmbientScale で空の輝度ドメインをサーフェス光単位へ変換する。
+            if (gSkyAmbient.specularEnabled != 0)
+            {
+                float3 R = reflect(-V, N);
+                float NdotV = saturate(dot(N, V));
+                float mipLevel = roughness * (kSkySpecularMipCount - 1.0f);
+                float3 prefiltered = gSkySpecularMap.SampleLevel(gSampler, R, mipLevel).rgb;
+                float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
+                float3 specular = prefiltered * (F0 * envBRDF.x + envBRDF.y);
+                ambient += specular * gSkyAmbient.scale * ao * skyShadow;
+            }
         }
         else
         {

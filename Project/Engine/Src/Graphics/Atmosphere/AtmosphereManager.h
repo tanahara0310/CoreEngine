@@ -26,10 +26,16 @@ namespace CoreEngine
         Vector3 groundAlbedo;         float sunDiskLuminanceScale; // ディスク輝度スケール
         Matrix4x4 invViewProj;        // 逆ビュープロジェクション行列（Aerial Perspective 用）
         Vector3 cameraWorldPos;       float groundLevelY;          // カメラのワールド座標 [m] / 地表とみなす世界Y座標 [m]
-        float multiScatteringFactor;  Vector3 constantsPad;        // 多重散乱スケール / パディング
+        float multiScatteringFactor;  float apKmPerSlice;          // 多重散乱スケール / APの1スライスあたり距離 [km]
+        float constantsPad[2];        // パディング
+        // ===== 月（第2大気ライト。UE の Second Atmosphere Light 相当） =====
+        Vector3 moonDirection;        float moonIntensity;         // 月光の進行方向 / 強度（sunIntensity と同ドメイン）
+        Vector3 moonColor;            float moonDiskHalfAngleRad;  // 月光色 / 月の視半径 [rad]
+        float moonDiskLuminanceScale; float hasMoon;               // 月ディスク輝度スケール / 月有効フラグ (0/1)
+        float moonPhaseFromSun;       float starIntensity;         // 満ち欠けの太陽連動 (0=常に満月) / 星空の強度 (0=無効)
     };
-    static_assert(sizeof(AtmosphereShaderConstants) == 208,
-        "AtmosphereShaderConstants は HLSL 側 AtmosphereConstants の 208 バイトレイアウトと一致させること");
+    static_assert(sizeof(AtmosphereShaderConstants) == 256,
+        "AtmosphereShaderConstants は HLSL 側 AtmosphereConstants の 256 バイトレイアウトと一致させること");
 
     /// @brief 大気散乱の物理パラメータ
     /// @details 単位はメートル基準（散乱・吸収係数は 1/m）。
@@ -63,11 +69,38 @@ namespace CoreEngine
         float sunDiskAngularRadiusDeg = 0.265f; ///< 太陽の視半径 [deg]（実際の太陽は約0.265°）
         float sunDiskLuminanceScale = 50.0f;    ///< ディスク輝度スケール（空の散乱輝度に対する倍率）
 
+        // ===== 月ディスク =====
+        float moonDiskAngularRadiusDeg = 0.259f; ///< 月の視半径 [deg]（実際の月の平均視半径）
+        /// @brief 月ディスクの輝度スケール（moonIntensity に乗算）
+        /// @details 既定 25 は moonIntensity=0.02 でディスク輝度 ≈ 0.3（昼の空 ≈ 1 の約1/3）になる値。
+        ///          実際の満月面輝度（約2500 cd/m² ≒ 昼空の1/3）に合わせた美術値で、
+        ///          夜空では白い円盤・昼の空にはほぼ埋もれる現実の見え方になる。
+        float moonDiskLuminanceScale = 25.0f;
+
+        /// @brief 月の満ち欠けを太陽方向から計算するか
+        /// @details false（既定）= 常に満月。ゲームでは太陽と月を独立に動かすことが多く、
+        ///          実位相だと配置次第で意図せず新月（ほぼ見えない月）になるため固定満月を既定とする。
+        ///          true = 太陽・月の位置関係から実際の位相（新月〜満月）を自動計算する。
+        bool moonPhaseFromSun = false;
+
+        // ===== 星空（Phase 5: 手続き的星field） =====
+        /// @brief 星空の強度スケール（0=無効）
+        /// @details シェーダー内で方向ハッシュから生成する星の輝度倍率。テクスチャ不要。
+        ///          空の輝度による暗さマスクが掛かるため、昼・薄明・月グレア近傍では
+        ///          有効のままでも自動的に見えなくなる（常時 ON で害がない）。
+        float starIntensity = 1.0f;
+
         // ===== 多重散乱 =====
         /// @brief 多重散乱寄与のスケール（1=近似そのまま）
         /// @details Hillaire の等方 Psi_ms 近似は薄明時（太陽が地平線際）に空全体、
         ///          特に反太陽側を過大に持ち上げる傾向がある。UE の MultiScatteringFactor 相当。
         float multiScatteringFactor = 1.0f;
+
+        // ===== Aerial Perspective =====
+        /// @brief Camera Volume LUT の1スライスあたり距離 [km]（既定 4 = 最大 32×4 = 128km）
+        /// @details UE の Aerial Perspective View Distance Scale 相当。大きくすると霞が
+        ///          より遠距離まで届く代わりに近距離の分解能が落ちる。
+        float apKmPerSlice = 4.0f;
     };
 
     /// @brief 大気散乱システムの管理クラス
@@ -84,6 +117,8 @@ namespace CoreEngine
         static constexpr uint32_t kSkyViewLUTHeight = 108;
         static constexpr uint32_t kCameraVolumeSize = 32;
         static constexpr uint32_t kSkyIrradianceSHCoeffCount = 9; ///< 2次SH係数の数
+        static constexpr uint32_t kSkyCubemapSize = 64;           ///< 空キューブマップ 1 面の解像度
+        static constexpr uint32_t kSkySpecularMipCount = 5;       ///< プリフィルタ済みスペキュラのミップ数（64→4）
 
         /// @brief 初期化
         /// @param device D3D12デバイス
@@ -137,6 +172,29 @@ namespace CoreEngine
         ///          太陽ディレクショナルライトの実効色の変調（UE の Transmittance on light color 相当）に使う。
         const Vector3& GetSunTransmittance() const { return sunTransmittance_; }
 
+        // ===== 月（第2大気ライト） =====
+
+        /// @brief 月光の進行方向（正規化。月の位置方向はこの逆ベクトル）
+        const Vector3& GetMoonDirection() const { return moonDirection_; }
+
+        /// @brief 月光の色
+        const Vector4& GetMoonColor() const { return moonColor_; }
+
+        /// @brief 月光の強度（大気の輝度ドメイン）
+        float GetMoonIntensity() const { return moonIntensity_; }
+
+        /// @brief 有効な月ライトが取得できているか
+        bool HasMoonLight() const { return hasMoonLight_; }
+
+        /// @brief 地表から月方向への大気透過率（惑星遮蔽込み。月ライト有効時のみ計算）
+        const Vector3& GetMoonTransmittance() const { return moonTransmittance_; }
+
+        /// @brief 照明駆動露出用のシーン代表輝度（カメラ非依存。Update() で毎フレーム計算）
+        /// @details 太陽・月の高度と強度から「屋外の代表的な画面平均輝度」を解析的に見積もった値。
+        ///          ToneMapping の照明駆動測光モードがこれをターゲット輝度として使うことで、
+        ///          カメラの向き（画面の構図）に露出が影響されなくなる。
+        float GetSceneIlluminationLuminance() const { return sceneIlluminationLuminance_; }
+
         /// @brief 太陽直接光への透過率適用（Transmittance on Light）の有効/無効
         /// @details 無効時は LightManager へ {1,1,1} を渡す（＝従来動作）。既定は有効。
         void SetTransmittanceOnLightEnabled(bool enabled) { transmittanceOnLight_ = enabled; }
@@ -174,6 +232,11 @@ namespace CoreEngine
         /// @brief Sky-View LUT の SRV ハンドルを取得（描画シェーダーのバインド用）
         D3D12_GPU_DESCRIPTOR_HANDLE GetSkyViewLUTSRVHandle() const { return skyViewSrvHandle_; }
 
+        /// @brief CameraVolume（Aerial Perspective froxel）LUT の SRV ハンドルを取得
+        /// @details 半透明パス（水面等）が自前で空気遠近感を適用する際に使う。
+        ///          生成後は PIXEL_SHADER_RESOURCE 込みの状態のためピクセルシェーダーから直接サンプル可能
+        D3D12_GPU_DESCRIPTOR_HANDLE GetCameraVolumeLUTSRVHandle() const { return cameraVolumeSrvHandle_; }
+
         // ===== 空アンビエント（Sky Light 相当） =====
 
         /// @brief 空の放射照度 SH9 係数バッファの SRV ハンドルを取得（DeferredLighting 用）
@@ -190,6 +253,37 @@ namespace CoreEngine
         /// @brief 空アンビエントの強度スケール（空の輝度単位 → サーフェス光単位の変換係数）
         void SetSkyAmbientScale(float scale) { skyAmbientScale_ = scale; }
         float GetSkyAmbientScale() const { return skyAmbientScale_; }
+
+        // ===== 空スペキュラIBL（Phase 3b: Sky Light のスペキュラ成分相当） =====
+
+        /// @brief 空スペキュラIBL（空＋雲キューブマップの環境反射）の有効/無効
+        void SetSkySpecularEnabled(bool enabled) { skySpecularEnabled_ = enabled; }
+        bool IsSkySpecularEnabled() const { return skySpecularEnabled_; }
+
+        /// @brief プリフィルタ済み空スペキュラキューブマップの SRV ハンドルを取得
+        /// @details TextureCube・kSkySpecularMipCount ミップ。mip = roughness×(ミップ数-1) で評価する。
+        ///          α には雲の透過率が入っている（水面が平面反射との合成不透明度に使う）。
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSkySpecularSRVHandle() const { return skySpecularSrvHandle_; }
+
+        /// @brief 空キューブマップ（mip0・雲合成前後の作業面）の UAV ハンドルを取得
+        /// @details VolumetricCloudManager が雲を前乗算合成する際のバインド先。
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSkyCubemapUAVHandle() const { return skyCubemapUavHandle_; }
+
+        /// @brief 空スペキュラキューブマップが一度でも生成されたか
+        bool IsSkyEnvironmentReady() const { return skyEnvironmentGenerated_; }
+
+        /// @brief このフレームで空キューブマップの再生成が必要か（消費型）
+        /// @param cloudsActive 雲が有効なフレームか（雲は毎フレーム動くため常時再生成になる）
+        /// @param frameNumber フレーム通し番号（View 間の二重実行ガード）
+        /// @details true を返した場合、呼び出し側は CaptureSkyEnvironment →
+        ///          （雲があれば）雲合成 → PrefilterSkyEnvironment の順で実行すること。
+        bool ConsumeSkyEnvironmentDirty(bool cloudsActive, uint64_t frameNumber);
+
+        /// @brief Sky-View LUT から空キューブマップ（mip0）を再生成する
+        void CaptureSkyEnvironment(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief 空キューブマップを GGX プリフィルタしてスペキュラミップ群を生成する
+        void PrefilterSkyEnvironment(ID3D12GraphicsCommandList* cmdList);
 
         // ===== Aerial Perspective =====
 
@@ -224,11 +318,15 @@ namespace CoreEngine
         /// @brief 現在のパラメータ・太陽情報から定数バッファを更新する
         void UploadConstants();
 
-        /// @brief 地表から太陽方向への大気透過率を計算する（CPU レイマーチ 40 ステップ）
+        /// @brief 照明駆動露出用のシーン代表輝度を計算する（太陽・月の高度・強度から解析）
+        float ComputeSceneIlluminationLuminance() const;
+
+        /// @brief 地表から指定ライト方向への大気透過率を計算する（CPU レイマーチ 40 ステップ）
         /// @details HLSL 側 AtmosphereCommon.hlsli の ComputeExtinction / PlanetSunVisibility の忠実な移植。
         ///          評価点は地表（groundLevelY 相当）+2m。シーンのオブジェクトを照らす光の減衰なので
-        ///          カメラ高度ではなく地表基準で評価する。
-        Vector3 ComputeSunTransmittanceCPU() const;
+        ///          カメラ高度ではなく地表基準で評価する。太陽・月で共用する。
+        /// @param lightDirection ライトの進行方向（正規化済み。光源の位置方向はこの逆）
+        Vector3 ComputeLightTransmittanceCPU(const Vector3& lightDirection) const;
 
         /// @brief LUT テクスチャと SRV/UAV を生成する
         bool CreateLUTResources(ID3D12Device* device, DescriptorManager* descriptorManager);
@@ -270,6 +368,16 @@ namespace CoreEngine
             std::wstring GetComputeShaderPath() const override { return L"SkyIrradianceSH.CS.hlsl"; }
         };
 
+        /// @brief 空キューブマップ焼き込み用シェーダープロバイダ
+        struct SkyEnvironmentCaptureShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"SkyEnvironmentCapture.CS.hlsl"; }
+        };
+
+        /// @brief 空キューブマップ GGX プリフィルタ用シェーダープロバイダ
+        struct SkyEnvironmentPrefilterShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"SkyEnvironmentPrefilter.CS.hlsl"; }
+        };
+
         /// @brief Aerial Perspective 合成用シェーダープロバイダ
         struct AerialPerspectiveShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"AerialPerspective.CS.hlsl"; }
@@ -290,7 +398,15 @@ namespace CoreEngine
         float cameraHeightAboveGround_ = 0.0f;
         float distanceFromPlanetCenter_ = 6360000.0f;
         Vector3 sunTransmittance_ = { 1.0f, 1.0f, 1.0f }; ///< 地表→太陽の大気透過率（惑星遮蔽込み）
-        bool transmittanceOnLight_ = true; ///< 太陽直接光へ透過率を適用するか（Transmittance on Light）
+        bool transmittanceOnLight_ = true; ///< 直接光へ透過率を適用するか（Transmittance on Light。太陽・月共通）
+
+        // 月（第2大気ライト）。isAtmosphereMoon のライトが無ければ hasMoonLight_=false のまま
+        Vector3 moonDirection_ = { 0.0f, -1.0f, 0.0f };
+        Vector4 moonColor_ = { 1.0f, 1.0f, 1.0f, 1.0f };
+        float moonIntensity_ = 0.0f;
+        bool hasMoonLight_ = false;
+        Vector3 moonTransmittance_ = { 1.0f, 1.0f, 1.0f }; ///< 地表→月の大気透過率（惑星遮蔽込み）
+        float sceneIlluminationLuminance_ = 0.18f; ///< 照明駆動露出用のシーン代表輝度（カメラ非依存）
 
         bool paramsDirty_ = true;   ///< 大気パラメータ変更 → 全 LUT 再生成
         bool skyViewDirty_ = true;  ///< 太陽方向・カメラ高度変更 → Sky-View LUT のみ再生成
@@ -299,8 +415,16 @@ namespace CoreEngine
         ID3D12Device* device_ = nullptr;
 
         // Sky-View の変化検知用キャッシュ
+        // 色・強度も対象にするのは、LUT にライト色を前乗算して格納しているため
+        //（色変更を検知しないと、エディタで太陽色を動かしても空が変わらない）
         Vector3 lastSunDirection_ = { 0.0f, -1.0f, 0.0f };
         float lastCameraRadius_ = 0.0f;
+        Vector4 lastSunColor_ = { -1.0f, -1.0f, -1.0f, -1.0f };
+        float lastSunIntensity_ = -1.0f;
+        Vector3 lastMoonDirection_ = { 0.0f, -1.0f, 0.0f };
+        Vector4 lastMoonColor_ = { -1.0f, -1.0f, -1.0f, -1.0f };
+        float lastMoonIntensity_ = -1.0f;
+        bool lastHasMoon_ = false;
 
         // Camera Volume の変化検知用キャッシュ
         bool cameraVolumeDirty_ = true;
@@ -345,6 +469,26 @@ namespace CoreEngine
         bool skyAmbientEnabled_ = true;       ///< 空アンビエント（大気アクティブなシーンのみ効く）
         float skyAmbientScale_ = 0.3f;        ///< 空の輝度単位 → サーフェス光単位の変換係数（美術値。昼の従来アンビエントと概ね揃う値）
 
+        // 空キューブマップ（空＋雲の作業面。mip0 のみ。α=雲透過率）
+        Microsoft::WRL::ComPtr<ID3D12Resource> skyCubemap_;
+        D3D12_RESOURCE_STATES skyCubemapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        D3D12_GPU_DESCRIPTOR_HANDLE skyCubemapSrvHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE skyCubemapUavHandle_{};
+
+        // プリフィルタ済み空スペキュラキューブマップ（kSkySpecularMipCount ミップ）
+        Microsoft::WRL::ComPtr<ID3D12Resource> skySpecularMap_;
+        D3D12_RESOURCE_STATES skySpecularState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        D3D12_GPU_DESCRIPTOR_HANDLE skySpecularSrvHandle_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE skySpecularUavHandles_[kSkySpecularMipCount]{};
+
+        // プリフィルタのミップ別パラメータ CB（kSkySpecularMipCount × 256B スロット）
+        Microsoft::WRL::ComPtr<ID3D12Resource> skyPrefilterParamsCB_;
+
+        bool skyEnvironmentGenerated_ = false; ///< 一度でもスペキュラキューブマップが生成されたか
+        bool skyEnvironmentDirty_ = true;      ///< Sky-View 再生成 → 空キューブマップ再生成が必要か
+        bool skySpecularEnabled_ = true;       ///< 空スペキュラIBL（大気アクティブなシーンのみ効く）
+        uint64_t lastSkyEnvironmentFrame_ = UINT64_MAX; ///< View 間の二重実行ガード
+
         // Aerial Perspective 合成用中間テクスチャ（SceneColor と同サイズ）
         Microsoft::WRL::ComPtr<ID3D12Resource> apResult_;
         D3D12_RESOURCE_STATES apResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
@@ -365,6 +509,10 @@ namespace CoreEngine
         CameraVolumeLUTShaderProvider cameraVolumeShaderProvider_{};
         CustomShaderPipeline skyIrradiancePipeline_{};
         SkyIrradianceSHShaderProvider skyIrradianceShaderProvider_{};
+        CustomShaderPipeline skyEnvironmentCapturePipeline_{};
+        SkyEnvironmentCaptureShaderProvider skyEnvironmentCaptureShaderProvider_{};
+        CustomShaderPipeline skyEnvironmentPrefilterPipeline_{};
+        SkyEnvironmentPrefilterShaderProvider skyEnvironmentPrefilterShaderProvider_{};
         CustomShaderPipeline aerialPerspectivePipeline_{};
         AerialPerspectiveShaderProvider aerialPerspectiveShaderProvider_{};
         bool pipelinesReady_ = false;

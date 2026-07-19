@@ -28,8 +28,13 @@ public:
 	/// @brief 水面描画に必要な SRV とフレームリソースを同期する
 	/// @param engine エンジンシステム
 	/// @details RTマネージャーへの surface provider 接続、および水面描画に必要な
-	/// SceneColor / SceneDepth / RT屈折 / FFTテクスチャを同期する。
+	/// SceneColor / SceneDepth / RT屈折 / FFTテクスチャ / 大気APリソースを同期する。
 	void SyncFrameResources(CoreEngine::EngineSystem& engine);
+
+	/// @brief シーンの空が大気散乱モードかを設定する（水面への空気遠近感の適用可否）
+	/// @details AtmosphereManager::IsAtmosphereActive() はフレーム後半（PostLogic）まで
+	/// 立たないため、ここではシーン側が知っている SkyBox のモードを受け取る。
+	void SetAtmosphereSkyEnabled(bool enabled) { atmosphereSkyEnabled_ = enabled; }
 
 	/// @brief DXR 屈折用の水面サーフェスデータを更新する
 	/// @details 現在有効な simulator から snapshot と surface data を再構築し、
@@ -43,6 +48,10 @@ public:
 	/// @brief 管理中の水面オブジェクトを返す
 	/// @return 管理対象の水面オブジェクト。未初期化時は nullptr。
 	WaterPlaneObject* GetWaterPlane() const { return waterPlane_; }
+
+	/// @brief 水中地形モデルを返す（海底アルベドの調整用）
+	/// @return 水中地形オブジェクト。未初期化時は nullptr。
+	ModelObject* GetGroundObject() const { return groundObject_; }
 
 	/// @brief 現在の水面高さを返す
 	/// @return 水面オブジェクトのワールドY座標。未初期化時は 0.0f。
@@ -70,4 +79,6 @@ private:
 	std::unique_ptr<CoreEngine::WaterSurfaceSimulator> gerstnerSimulator_{};
 	/// @brief FFT Ocean 用 simulator
 	std::unique_ptr<CoreEngine::WaterSurfaceSimulator> fftOceanSimulator_{};
+	/// @brief シーンの空が大気散乱モードか（水面への空気遠近感の適用可否）
+	bool atmosphereSkyEnabled_ = false;
 };

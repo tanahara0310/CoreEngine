@@ -385,7 +385,9 @@ namespace CoreEngine
             ImGui::PopStyleColor();
 
             // ── ホバー時に CPU / GPU タイムスタンプを表示 ─────────
-            if (ImGui::IsWindowHovered() && !timingData_.empty())
+            const bool hasTimingData = timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)].gpuMs > 0.0f
+                || timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)].cpuMs > 0.0f;
+            if (ImGui::IsWindowHovered() && hasTimingData)
             {
                 if (auto tooltip = UI::Scope::TooltipScope())
                 {
@@ -412,49 +414,29 @@ namespace CoreEngine
                         ImGui::TableSetupColumn("Budget", ImGuiTableColumnFlags_WidthFixed, 100.0f);
                         ImGui::TableHeadersRow();
 
-                        // カテゴリ定義（GpuTimestampSlot のインデックスに対応）
-                        struct SlotGroup {
-                            const char* category;
-                            uint32_t slots[4];
-                            int count;
-                        };
-                        static constexpr SlotGroup kGroups[] = {
-                            { "Shadow",   { 0 /*ShadowPass*/, 2 /*RTShadow*/ },                                          2 },
-                            { "G-Buffer", { 1 /*GBufferPass*/ },                                                          1 },
-                            { "SSAO",     { 3 /*SSAOPass*/ },                                                             1 },
-                            { "Lighting", { 4 /*DeferredLighting*/ },                                                     1 },
-                            { "Geometry", { 5 /*GeometryPass*/ },                                                         1 },
-                            { "PostFX",   { 6 /*PostEffect*/ },                                                           1 },
-                            { "Editor",   { 7 /*BackBufferPass*/, 8 /*ImGuiDraw*/ },                                      2 },
-                        };
+                        // パス名から解決したカテゴリ（GpuTimingCategory）でグルーピングする。
+                        // RenderGraph に新規パスを追加してもこのテーブルは編集不要（BuildGpuTimingGroups が自動集計）。
+                        const std::vector<GpuTimingGroup> groups = BuildGpuTimingGroups(timingData_);
 
-                        // Total スロットのインデックス
-                        const uint32_t totalIdx = static_cast<uint32_t>(timingData_.size()) - 1;
-
-                        for (const auto& group : kGroups)
+                        // Total（Frame カテゴリ）スロットのインデックスを探す
+                        uint32_t totalIdx = static_cast<uint32_t>(timingData_.size());
+                        for (uint32_t i = 0; i < timingData_.size(); ++i)
                         {
-                            bool hasAny = false;
-                            for (int gi = 0; gi < group.count; ++gi)
-                            {
-                                if (group.slots[gi] < timingData_.size())
-                                {
-                                    const auto& r = timingData_[group.slots[gi]];
-                                    if (r.gpuMs >= 0.001f || r.cpuMs >= 0.001f) { hasAny = true; break; }
-                                }
-                            }
-                            if (!hasAny) continue;
+                            if (timingData_[i].category == GpuTimingCategory::Frame) { totalIdx = i; break; }
+                        }
 
+                        for (const auto& group : groups)
+                        {
                             // カテゴリヘッダー行
                             ImGui::TableNextRow();
                             ImGui::TableSetColumnIndex(0);
-                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%s", group.category);
+                            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%s",
+                                GpuTimestampProfiler::GetCategoryLabel(group.category));
 
-                            for (int gi = 0; gi < group.count; ++gi)
+                            for (uint32_t idx : group.slotIndices)
                             {
-                                const uint32_t idx = group.slots[gi];
                                 if (idx >= timingData_.size()) continue;
                                 const auto& slot = timingData_[idx];
-                                if (slot.gpuMs < 0.001f && slot.cpuMs < 0.001f) continue;
 
                                 ImGui::TableNextRow();
 

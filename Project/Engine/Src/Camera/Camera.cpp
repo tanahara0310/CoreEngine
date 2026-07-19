@@ -60,13 +60,42 @@ void Camera::TransferMatrix()
     if (!cameraData_)
         return;
     // カメラの行列を定数バッファに転送
+    // ビュー差し替え（BeginViewOverride）中は差し替え後のビュー・視点を転送する
     cameraData_->world = Matrix::Identity();
-    cameraData_->WVP = Matrix::Multiply(viewMatrix_, projectionMatrix_);
+    cameraData_->WVP = Matrix::Multiply(GetViewMatrix(), GetProjectionMatrix());
 
     // カメラ座標の転送（CameraForGPU）
     if (cameraGPUData_) {
-        cameraGPUData_->worldPosition = translate_;
+        cameraGPUData_->worldPosition = GetPosition();
     }
+}
+
+bool Camera::BeginViewOverride(
+    const Matrix4x4& viewMatrix,
+    const Vector3& viewPosition,
+    const Matrix4x4* projectionOverride)
+{
+    // 注意: ここでは TransferMatrix()（GPU 定数バッファへの書き込み）を行わない。
+    // カメラの定数バッファは単一のアップロードバッファであり、GPU は 1 フレーム遅れで
+    // 実行されるため、フレーム内で「差し替え→復元」と 2 回書き換えると、実行中の
+    // 前フレームがどちらの値を読むかがタイミング依存になり、フレネル等のカメラ位置
+    // 依存項が毎フレームちらつく。差し替えの影響は CPU 側で WVP を計算する描画経路
+    // （GetViewMatrix()/GetProjectionMatrix() 経由）にのみ及び、GPU 定数はフレーム
+    // 更新時（UpdateMatrix → TransferMatrix）の値を保持し続ける。
+    viewOverrideActive_ = true;
+    overrideViewMatrix_ = viewMatrix;
+    overrideViewPosition_ = viewPosition;
+    projectionOverrideActive_ = (projectionOverride != nullptr);
+    if (projectionOverride) {
+        overrideProjectionMatrix_ = *projectionOverride;
+    }
+    return true;
+}
+
+void Camera::EndViewOverride()
+{
+    viewOverrideActive_ = false;
+    projectionOverrideActive_ = false;
 }
 
 // LookAt機能: 指定した位置を注視するようにカメラを回転

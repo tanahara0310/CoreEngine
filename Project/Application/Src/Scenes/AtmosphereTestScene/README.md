@@ -14,9 +14,10 @@ Rendering Technique", Hillaire 2020）をベースにした大気散乱レンダ
 | ファイル | 役割 |
 |---|---|
 | `AtmosphereTestScene.h/.cpp` | シーン本体。太陽用 DirectionalLight 1灯（`isAtmosphereSun = true`）と床の Plane のみを配置し、毎フレーム `AtmosphereManager::Update()` を呼ぶ |
-| `AtmosphereEditorFacade.h/.cpp` | ImGui パネルと Engine 内部（`AtmosphereManager` / `LightManager`）の仲介。太陽の高度角・方位角・強度の編集と診断情報の表示を担当 |
 
-WaterTestScene（シーン本体＋ EditorFacade）と同じ役割分担を踏襲している。
+編集 UI（旧 `AtmosphereEditorFacade`）は大気散乱が全シーン既定機能になったのに伴い、
+エンジン常駐の `Engine/Src/Editor/Environment/AtmosphereEditor.h/.cpp`（DebugSubsystem 所有）へ移設した。
+どのシーンでも Hierarchy の Environment ツリー →「Sky Atmosphere」から編集できる。
 
 ## エンジン側の関連実装
 

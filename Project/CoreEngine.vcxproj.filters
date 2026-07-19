@@ -22,14 +22,8 @@
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereEditorFacade.cpp">
-      <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.cpp">
       <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\VolumetricCloudTestScene\CloudEditorFacade.cpp">
-      <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.cpp">
       <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
@@ -670,6 +664,12 @@
     <ClCompile Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.cpp">
       <Filter>Application\Src\Scenes\ParticleTestScene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -1095,6 +1095,9 @@
     <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\IResizable.h">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.h">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClInclude>
@@ -1280,6 +1283,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLManager.h">
       <Filter>Engine\Src\Graphics\IBL</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Light\Light.h">
+      <Filter>Engine\Src\Graphics\Light</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Light\LightBufferManager.h">
       <Filter>Engine\Src\Graphics\Light</Filter>
@@ -1755,6 +1761,12 @@
     <ClInclude Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.h">
       <Filter>Application\Src\Scenes\ParticleTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
@@ -2034,13 +2046,7 @@
     <ClInclude Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.h">
       <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereEditorFacade.h">
-      <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.h">
-      <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\CloudEditorFacade.h">
       <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
@@ -2301,6 +2307,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Camera\Module">
       <UniqueIdentifier>{931C7218-F1A0-427B-89D1-0C2266D82491}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Environment">
+      <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\ImGui">
       <UniqueIdentifier>{AC458439-F252-40B2-838E-13455FEB9AB5}</UniqueIdentifier>

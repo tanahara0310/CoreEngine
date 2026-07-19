@@ -2,6 +2,7 @@
 #include "AtmosphereLUTPass.h"
 
 #include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 
 namespace CoreEngine
@@ -33,5 +34,22 @@ namespace CoreEngine
 
         // ダーティフラグが立っている場合のみ内部で再計算される
         context.atmosphereManager->GenerateLUTsIfNeeded(cmdList);
+
+        // ===== 空キューブマップ（Phase 3b: スペキュラIBL / 空・雲の映り込み） =====
+        // Sky-View LUT 再生成時、および雲が動いている間は毎フレーム、
+        // 「空の焼き込み → 雲の前乗算合成 → GGX プリフィルタ」を実行する。
+        // 雲ノイズは VolumetricCloudNoisePass（priority 20 = 本パスの後）で生成されるため、
+        // 初回フレームのみ雲なしで焼かれ、次フレームから雲込みになる。
+        auto* cloudManager = context.volumetricCloudManager;
+        const bool cloudsReady = cloudManager
+            && cloudManager->AreCloudsActive()
+            && cloudManager->AreNoiseTexturesReady();
+        if (context.atmosphereManager->ConsumeSkyEnvironmentDirty(cloudsReady, context.frameNumber)) {
+            context.atmosphereManager->CaptureSkyEnvironment(cmdList);
+            if (cloudsReady) {
+                cloudManager->RenderCloudsToSkyCubemap(cmdList, context.atmosphereManager);
+            }
+            context.atmosphereManager->PrefilterSkyEnvironment(cmdList);
+        }
     }
 }

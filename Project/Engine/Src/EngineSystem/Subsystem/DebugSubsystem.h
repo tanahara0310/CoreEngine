@@ -13,6 +13,8 @@
 #include "Editor/ImGui/KeyConfigUI.h"
 #include "Editor/ImGui/EngineStatsWindow.h"
 #include "Editor/ImGui/RenderPassDebugPanel.h"
+#include "Editor/Environment/AtmosphereEditor.h"
+#include "Editor/Environment/VolumetricCloudEditor.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 
@@ -89,6 +91,10 @@ namespace CoreEngine
         KeyConfigUI keyConfigUI_;
         RenderPassDebugPanel renderPassDebugPanel_;
 
+        // 環境エディタ（大気・雲はエンジン既定機能のため、シーンに依存せずエンジン寿命で保持する）
+        // gameDebugUI_ より後に宣言し、デストラクタでの登録解除が UI 解放前に走るようにする
+        std::unique_ptr<AtmosphereEditor> atmosphereEditor_;
+        std::unique_ptr<VolumetricCloudEditor> cloudEditor_;
     };
 }
 

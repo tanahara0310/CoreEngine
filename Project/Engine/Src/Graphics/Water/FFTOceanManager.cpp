@@ -233,6 +233,9 @@ namespace CoreEngine
         ResourceBarrierHelper::UAV(cmdList, displacementTexture_.Get());
         ResourceBarrierHelper::UAV(cmdList, normalTexture_.Get());
         ResourceBarrierHelper::UAV(cmdList, jacobianTexture_.Get());
+
+        // 法線マップのミップチェーンを更新する（ミップ0の書き込み完了後）。
+        DispatchNormalMipGenPass(cmdList);
         ResourceBarrierHelper::Transition(cmdList, displacementTexture_.Get(), displacementState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         ResourceBarrierHelper::Transition(cmdList, normalTexture_.Get(), normalState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         ResourceBarrierHelper::Transition(cmdList, jacobianTexture_.Get(), jacobianState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -266,6 +269,11 @@ namespace CoreEngine
             shaderCompiler,
             reflectionBuilder,
             finalizeShaderProvider_);
+        const bool normalMipGenBuilt = normalMipGenPipeline_.Build(
+            dxCommon_->GetDevice(),
+            shaderCompiler,
+            reflectionBuilder,
+            normalMipGenShaderProvider_);
 
         if (!evolutionBuilt || !evolutionPipeline_.HasComputePSO()) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
@@ -285,15 +293,29 @@ namespace CoreEngine
             return false;
         }
 
+        if (!normalMipGenBuilt || !normalMipGenPipeline_.HasComputePSO()) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "FFTOceanManager: failed to build normal mip gen compute pipeline.");
+            return false;
+        }
+
         return true;
     }
 
     bool FFTOceanManager::CreateOutputTextures()
     {
-        return FFTOceanResourceFactory::CreateOutputTextures(
+        // 法線マップはフルミップチェーンを確保し、毎フレーム 2x2 平均でダウンサンプルする。
+        // 解像度は 2 のべき乗（IFFT の前提）なので log2 で正確にレベル数が決まる。
+        normalMipLevels_ = 1;
+        for (uint32_t size = settings_.resolution; size > 1; size >>= 1) {
+            ++normalMipLevels_;
+        }
+
+        const bool created = FFTOceanResourceFactory::CreateOutputTextures(
             dxCommon_->GetDevice(),
             descriptorManager_,
             settings_.resolution,
+            normalMipLevels_,
             displacementTexture_,
             normalTexture_,
             jacobianTexture_,
@@ -312,6 +334,19 @@ namespace CoreEngine
             displacementState_,
             normalState_,
             jacobianState_);
+        if (!created) {
+            return false;
+        }
+
+        return FFTOceanResourceFactory::CreateNormalMipChainViews(
+            descriptorManager_,
+            normalTexture_.Get(),
+            DXGI_FORMAT_R16G16B16A16_FLOAT,
+            normalMipLevels_,
+            normalMipSrvCpuHandles_,
+            normalMipSrvHandles_,
+            normalMipUavCpuHandles_,
+            normalMipUavHandles_);
     }
 
     bool FFTOceanManager::CreateDebugReadbackBuffers()
@@ -645,6 +680,58 @@ namespace CoreEngine
             jacobianUavHandle_,
             simulationConstantsBuffer_.Get(),
             settings_.resolution);
+    }
+
+    void FFTOceanManager::DispatchNormalMipGenPass(ID3D12GraphicsCommandList* cmdList)
+    {
+        if (!cmdList || normalMipLevels_ <= 1 || !normalMipGenPipeline_.HasComputePSO()) {
+            return;
+        }
+        if (normalMipSrvHandles_.size() < normalMipLevels_ || normalMipUavHandles_.size() < normalMipLevels_) {
+            return;
+        }
+
+        const int sourceSlot = normalMipGenPipeline_.GetComputeRootParamIndex("gSourceNormalMip");
+        const int destSlot = normalMipGenPipeline_.GetComputeRootParamIndex("gDestNormalMip");
+        if (sourceSlot < 0 || destSlot < 0) {
+            return;
+        }
+
+        cmdList->SetPipelineState(normalMipGenPipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(normalMipGenPipeline_.GetComputeRootSignature());
+
+        // ResourceBarrierHelper はリソース単位のステートしか追跡できないため、
+        // ミップ単位の遷移はここで直接バリアを発行する。関数の入口/出口で
+        // 全サブリソースを UNORDERED_ACCESS に揃え、呼び出し元の一括管理と整合させる。
+        auto transitionMip = [&](uint32_t mip, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
+            D3D12_RESOURCE_BARRIER barrier{};
+            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            barrier.Transition.pResource = normalTexture_.Get();
+            barrier.Transition.Subresource = mip;
+            barrier.Transition.StateBefore = before;
+            barrier.Transition.StateAfter = after;
+            cmdList->ResourceBarrier(1, &barrier);
+        };
+
+        for (uint32_t mip = 1; mip < normalMipLevels_; ++mip) {
+            // 読み側（1段上のミップ）だけ SRV 状態へ。書き込み先ミップは UAV 状態のまま
+            transitionMip(mip - 1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(sourceSlot), normalMipSrvHandles_[mip - 1]);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(destSlot), normalMipUavHandles_[mip]);
+
+            const uint32_t mipResolution = (std::max)(settings_.resolution >> mip, 1u);
+            const UINT groupCount = (mipResolution + 7) / 8;
+            cmdList->Dispatch(groupCount, groupCount, 1);
+
+            // 次のレベルがこのミップを読むため、書き込み完了を保証する
+            ResourceBarrierHelper::UAV(cmdList, normalTexture_.Get());
+        }
+
+        // SRV 状態にしたミップ（0 〜 N-2）を UAV 状態へ戻し、全サブリソースを均一化する
+        for (uint32_t mip = 0; mip + 1 < normalMipLevels_; ++mip) {
+            transitionMip(mip, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
     }
 
     void FFTOceanManager::LogPendingDebugReadback()

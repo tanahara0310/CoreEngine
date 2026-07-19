@@ -4,6 +4,7 @@
 #include "Camera/CameraStructs.h"
 #include "Camera/ICamera.h"
 
+#include "Editor/Environment/AtmosphereEditor.h"
 #include "GameObjects/Primitive/CubeObject.h"
 
 using namespace CoreEngine;
@@ -17,11 +18,11 @@ void AtmosphereTestScene::OnInitialize()
     // 本シーンの既定仰角・方位へ調整する
     if (directionalLight_) {
         const AtmosphereEditorSunSettings defaultSun{};
-        directionalLight_->direction = AtmosphereEditorFacade::ComputeSunLightDirection(
+        directionalLight_->direction = AtmosphereEditor::ComputeSunLightDirection(
             defaultSun.elevationDeg, defaultSun.azimuthDeg);
         // 太陽UIの intensity は「空の輝度スケール」。サーフェスの直接光は別単位で与える。
         directionalLight_->atmosphereIntensity = defaultSun.intensity;
-        directionalLight_->intensity = kAtmosphereSurfaceSunIntensity;
+        directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
     }
 
     // 空は BaseScene が既定で大気散乱モードの SkyBox を自動生成するためここでは何もしない
@@ -62,14 +63,12 @@ void AtmosphereTestScene::OnInitialize()
         camera->SetParameters(params);
     }
 
-    // ===== エディタファサード =====
-    editorFacade_.Initialize(*engine_);
+    // 大気の編集 UI はエンジン常駐の AtmosphereEditor が全シーン共通で登録済み
 }
 
 void AtmosphereTestScene::OnUpdate()
 {
     // AtmosphereManager への太陽・カメラ情報の反映は BaseScene::UpdateAtmosphere() が毎フレーム行う
-    // 大気の編集 UI は editorFacade_ が Hierarchy の Environment ツリーに登録済み
 }
 
 void AtmosphereTestScene::Draw()

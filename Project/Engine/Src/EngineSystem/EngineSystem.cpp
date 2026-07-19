@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "EngineSystem.h"
-#include "Subsystem/EngineProfileScope.h"
 #include "Subsystem/RayTracingSubsystem.h"
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
@@ -262,6 +261,11 @@ namespace CoreEngine
         context.modelManager = GetComponent<ModelManager>();
         context.waterRefractionSurfaceData = sceneManager ? sceneManager->GetWaterRefractionSurfaceData() : nullptr;
         context.frameNumber = ++renderFrameNumber_;
+#ifdef USE_IMGUI
+        // RenderGraph 内の各パスが自動でタイミング計測できるようプロファイラを渡す
+        // （nullptr の場合 RenderGraph::Execute は計測をスキップする）
+        context.gpuProfiler = debug ? &debug->GetGpuProfiler() : nullptr;
+#endif
 
         if (dx) {
             frameBlackboard.SetResource(
@@ -276,8 +280,8 @@ namespace CoreEngine
             context.renderTargetManager = render->GetRenderTargetManager();
         }
 
-        // コマンドリストは EngineProfileScope に渡すため USE_IMGUI 外で宣言する
-        // （リリースビルドでは EngineProfileScope は no-op）
+        // コマンドリストは debug->BeginRenderPipeline 等へ渡すため USE_IMGUI 外で宣言する
+        // （リリースビルドではこれらの呼び出し自体が存在しない）
         ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
 
 #ifdef USE_IMGUI
@@ -323,11 +327,10 @@ namespace CoreEngine
 
         context.currentRTShadowViewId = static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
 
-        {
-            // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
-            EngineProfileScope scope(this, GpuTimestampSlot::GBufferPass, cmdList);
-            renderPipeline_->ExecuteView(context);
-        }
+        // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
+        // パス別のタイミングは RenderGraph::Execute が各パス名で自動計測する
+        // （EngineProfileScope でまとめて計測すると個別パスの内訳が失われるため使わない）。
+        renderPipeline_->ExecuteView(context);
 
         // 全 View の描画（AerialPerspective 合成を含む）が完了したので大気有効化フラグを落とす。
         // 次フレームは Update() を呼ぶ大気シーンでのみ再度有効化され、他シーンへの漏れ出しを防ぐ。

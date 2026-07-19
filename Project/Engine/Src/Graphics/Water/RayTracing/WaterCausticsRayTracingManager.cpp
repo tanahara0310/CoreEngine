@@ -26,8 +26,13 @@ namespace CoreEngine
             float debugDisplayScale;
             uint32_t debugViewMode;
             uint32_t lightEnabled; // 旧 padding を転用
+            // ここまでで HLSL 側 r0〜r3 に対応（lightColor/lightIntensity が r4）
             float lightColor[3];
             float lightIntensity;
+            // ワールドXZ → FFT テクスチャ UV の写像（uv = worldXZ * scale + offset）。
+            // ラスタ描画（FFTWater.VS）と同じ波面を RT が評価するために必須
+            float fftOceanUVScale[2];
+            float fftOceanUVOffset[2];
         };
 
         const char* ToString(WaterCausticsRayTracingManager::DispatchStatus status)
@@ -47,7 +52,7 @@ namespace CoreEngine
 
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
-    static_assert(sizeof(WaterCausticsConstants) == 80,
+    static_assert(sizeof(WaterCausticsConstants) == 96,
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
 
     bool WaterCausticsRayTracingManager::Initialize(
@@ -240,6 +245,10 @@ namespace CoreEngine
         constants.fftOceanEnabled = fftOceanInput.enabled;
         constants.fftOceanPatchLength = fftOceanInput.patchLength;
         constants.fftOceanResolution = fftOceanInput.resolution;
+        constants.fftOceanUVScale[0] = fftOceanInput.uvScale[0];
+        constants.fftOceanUVScale[1] = fftOceanInput.uvScale[1];
+        constants.fftOceanUVOffset[0] = fftOceanInput.uvOffset[0];
+        constants.fftOceanUVOffset[1] = fftOceanInput.uvOffset[1];
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
         constants.refractiveIndex = settings_.refractiveIndex;

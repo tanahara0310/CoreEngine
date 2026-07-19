@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 #include <wrl.h>
 
 namespace CoreEngine
@@ -11,10 +12,14 @@ namespace CoreEngine
     /// @brief FFT Ocean のGPUリソース生成を担当するファクトリ
     class FFTOceanResourceFactory {
     public:
+        /// @param normalMipLevels 法線テクスチャに確保するミップ数（1 でミップ無し）。
+        ///        法線マップはかすめ角・遠方でのエイリアシング（フレネルのスペックル化）対策として
+        ///        ミップチェーンを持ち、毎フレーム FFTOceanNormalMipGen.CS で再生成する。
         static bool CreateOutputTextures(
             ID3D12Device* device,
             DescriptorManager* descriptorManager,
             uint32_t resolution,
+            uint32_t normalMipLevels,
             Microsoft::WRL::ComPtr<ID3D12Resource>& displacementTexture,
             Microsoft::WRL::ComPtr<ID3D12Resource>& normalTexture,
             Microsoft::WRL::ComPtr<ID3D12Resource>& jacobianTexture,
@@ -33,6 +38,19 @@ namespace CoreEngine
             D3D12_RESOURCE_STATES& displacementState,
             D3D12_RESOURCE_STATES& normalState,
             D3D12_RESOURCE_STATES& jacobianState);
+
+        /// @brief 法線テクスチャの各ミップレベルへの単一ミップ SRV / UAV を作成する
+        /// @details FFTOceanNormalMipGen.CS が「ミップ i-1 を読み、ミップ i へ書く」ための
+        ///          ビュー群。添字はミップレベルに一致する（srv[i] = レベル i の SRV）。
+        static bool CreateNormalMipChainViews(
+            DescriptorManager* descriptorManager,
+            ID3D12Resource* normalTexture,
+            DXGI_FORMAT format,
+            uint32_t mipLevels,
+            std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>& mipSrvCpuHandles,
+            std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>& mipSrvHandles,
+            std::vector<D3D12_CPU_DESCRIPTOR_HANDLE>& mipUavCpuHandles,
+            std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>& mipUavHandles);
 
         static bool CreateIntermediateTextures(
             ID3D12Device* device,

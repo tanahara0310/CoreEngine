@@ -109,17 +109,23 @@ namespace CoreEngine
 
     void ToneMapping::UpdateAutoExposureAdaptation()
     {
-        // 2フレーム前に計測を書き込んだスロット（GPU 完了済み）を読む
-        if (reductionFrameCounter_ < kReadbackCount - 1) {
-            return; // まだ有効な計測値が無い
+        float targetLuminance = 0.0f;
+        if (meteringIllumination_ && illuminationValid_) {
+            // 照明駆動測光: 大気システムが解析した「シーンの照明状態の代表輝度」を使う。
+            // カメラの向き（画面の構図）に依存しないため、地面/空を見ても露出が変わらない
+            targetLuminance = illuminationLuminance_;
+        } else {
+            // 画面平均測光: 2フレーム前に計測を書き込んだスロット（GPU 完了済み）を読む
+            if (reductionFrameCounter_ < kReadbackCount - 1) {
+                return; // まだ有効な計測値が無い
+            }
+            const uint32_t slot = static_cast<uint32_t>((reductionFrameCounter_ + 1) % kReadbackCount);
+            if (!mappedReadback_[slot]) {
+                return;
+            }
+            // 計測値は線形輝度の算術平均（カメラの平均測光相当）
+            targetLuminance = *mappedReadback_[slot];
         }
-        const uint32_t slot = static_cast<uint32_t>((reductionFrameCounter_ + 1) % kReadbackCount);
-        if (!mappedReadback_[slot]) {
-            return;
-        }
-
-        // 計測値は線形輝度の算術平均（カメラの平均測光相当）
-        const float targetLuminance = *mappedReadback_[slot];
 
         if (!adaptationInitialized_) {
             // 初回は目標値へ即座に合わせる（起動直後に真っ白/真っ黒から順応し始めるのを防ぐ）
@@ -212,6 +218,7 @@ namespace CoreEngine
         uint32_t height)
     {
         const bool useAutoExposure = autoExposureEnabled_ && autoExposureReady_;
+        const bool useIlluminationMetering = meteringIllumination_ && illuminationValid_;
 
         // 過去フレームの計測値で順応を進めてから、今フレームの露出を CB へ書き込む
         if (useAutoExposure) {
@@ -221,10 +228,16 @@ namespace CoreEngine
 
         auto* cmdList = directXCommon_->GetCommandList();
 
-        // 今フレームの入力輝度を計測する（結果は2フレーム後の順応更新で使われる）
-        if (useAutoExposure) {
+        // 今フレームの入力輝度を計測する（結果は2フレーム後の順応更新で使われる）。
+        // 照明駆動測光が有効な間は GPU 計測が不要なのでスキップする
+        if (useAutoExposure && !useIlluminationMetering) {
             RecordLuminanceReduction(cmdList, inputSrvHandle);
         }
+
+        // 照明輝度は毎フレーム供給される前提の消費型フラグ。
+        // 供給が止まったフレーム（大気の無いシーン等）は画面平均へフォールバックする
+        illuminationActiveLastFrame_ = useIlluminationMetering;
+        illuminationValid_ = false;
 
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
@@ -258,14 +271,28 @@ namespace CoreEngine
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
                     "輝度計測リソースの初期化に失敗しています（ログ参照）");
             } else {
+                // 測光モード: 照明駆動は太陽・月の照明状態から EV を決める（カメラの向きに不変）。
+                // 画面平均は従来のカメラ測光（構図で露出が変わる。屋内等の将来用途向け）
+                int meteringMode = meteringIllumination_ ? 0 : 1;
+                ImGui::Text("測光モード:");
+                ImGui::SameLine();
+                if (ImGui::RadioButton("照明駆動（大気連動）", &meteringMode, 0)) { meteringIllumination_ = true; }
+                ImGui::SameLine();
+                if (ImGui::RadioButton("画面平均", &meteringMode, 1)) { meteringIllumination_ = false; }
+                if (meteringIllumination_) {
+                    ImGui::Text("照明輝度: %.5f %s", illuminationLuminance_,
+                        illuminationActiveLastFrame_ ? "" : "（未供給: 画面平均へフォールバック中）");
+                }
                 ImGui::Text("自動EV: %.2f（合計EV: %.2f）", autoEV_, autoEV_ + exposureEV_);
                 ImGui::Text("順応輝度: %.4f / ターゲットキー: %.3f", adaptedLuminance_, currentKey_);
                 // OFF だと全シーンが中間グレーへ正規化され、薄暮の空が昼のように明るくなる
                 ImGui::Checkbox("明暗の絶対感を保持（暗いシーンは暗く）", &preserveSceneBrightness_);
-                ImGui::SliderFloat("順応速度 [1/s]", &adaptationSpeed_, 0.1f, 10.0f, "%.1f");
+                // 8=ほぼ即座（95%到達≈0.4s）。小さくするほど目の明暗順応のような遅い演出になる
+                ImGui::SliderFloat("順応速度 [1/s]", &adaptationSpeed_, 0.1f, 20.0f, "%.1f");
                 ImGui::SliderFloat("キー値（明るさの基準）", &keyValue_, 0.05f, 0.5f, "%.2f");
-                ImGui::SliderFloat("自動EV下限", &minAutoEV_, -8.0f, 0.0f, "%.1f");
-                ImGui::SliderFloat("自動EV上限", &maxAutoEV_, 0.0f, 8.0f, "%.1f");
+                ImGui::SliderFloat("自動EV下限", &minAutoEV_, -12.0f, 0.0f, "%.1f");
+                // 月夜は約+5EV必要。上限を下げると夜がクランプされて暗く沈む（意図的な演出用）
+                ImGui::SliderFloat("自動EV上限", &maxAutoEV_, 0.0f, 12.0f, "%.1f");
             }
         }
 

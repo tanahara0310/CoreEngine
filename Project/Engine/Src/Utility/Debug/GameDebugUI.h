@@ -67,7 +67,12 @@ namespace CoreEngine
         /// @param label Environmentツリーに表示する名前
         /// @param owner 登録元の識別子（登録元の破棄時に自分の登録だけを解除するために使う）
         /// @param drawer Inspector内に描画するコンテンツドロワー
-        void RegisterEnvironmentEditor(const std::string& label, const void* owner, std::function<void()> drawer);
+        /// @param childTree 省略可。エントリ配下の子ツリー行を描画するドロワー（Lightingの各ライト等）。
+        ///                  子行がクリックされたら true を返すこと（Inspector をこのエントリへルーティングする）
+        /// @param onParentSelected 省略可。親エントリ自体が選択されたときに呼ばれる
+        ///                  （子側の選択状態をクリアして概要表示へ戻す等に使う）
+        void RegisterEnvironmentEditor(const std::string& label, const void* owner, std::function<void()> drawer,
+            std::function<bool()> childTree = nullptr, std::function<void()> onParentSelected = nullptr);
 
         /// @brief 環境エディタの登録を解除する（ownerが現在の登録元と一致する場合のみ）
         /// @param label 登録時のラベル
@@ -147,6 +152,8 @@ namespace CoreEngine
             std::string label;
             const void* owner = nullptr;
             std::function<void()> drawer;
+            std::function<bool()> childTree;        ///< 子ツリー行の描画（クリックで true。無ければ葉エントリ）
+            std::function<void()> onParentSelected; ///< 親エントリ選択時の通知（子側の選択解除用）
         };
         std::vector<EnvironmentEntry> environmentEditors_;
         std::string selectedEnvironmentLabel_; ///< Environmentツリーで選択中のエントリー（空=未選択）

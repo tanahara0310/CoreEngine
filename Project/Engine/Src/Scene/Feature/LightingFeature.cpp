@@ -9,23 +9,30 @@ namespace CoreEngine
     void LightingFeature::Initialize(SceneContext& ctx)
     {
         // デフォルトのディレクショナルライトを設定
-        auto lightManager = ctx.engine->GetComponent<LightManager>();
-        if (lightManager) {
-            directionalLight_ = lightManager->AddDirectionalLight();
-            if (directionalLight_) {
-                directionalLight_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-                directionalLight_->direction = MathCore::Vector::Normalize({ 0.0f, -1.0f, 0.0f });
-                directionalLight_->intensity = 1.0f;
-                directionalLight_->enabled = true;
+        lightManager_ = ctx.engine->GetComponent<LightManager>();
+        if (lightManager_) {
+            directionalLightHandle_ = lightManager_->CreateLight(LightType::Directional, "Sun");
+            if (Light* light = lightManager_->GetLight(directionalLightHandle_)) {
+                light->color = { 1.0f, 1.0f, 1.0f };
+                light->direction = MathCore::Vector::Normalize({ 0.0f, -1.0f, 0.0f });
+                // 旧既定（シェーダー単位 intensity=1.0）と同輝度の照度（≈ 57,143 lx）。
+                // 大気シーンは LightUnits::kSunIlluminanceLux（100,000 lx）へ上書きする。
+                light->intensity = 1.0f / LightUnits::kShaderUnitsPerLux;
+                light->enabled = true;
                 // 既定背景（大気散乱）の太陽として扱う。
                 // キューブマップモードのシーンでは大気が非アクティブのため影響はない。
-                directionalLight_->isAtmosphereSun = true;
-                // 0 = 空の輝度スケールを intensity にフォールバックさせる（従来動作）。
+                light->isAtmosphereSun = true;
+                // 0 = 空の輝度スケールを照度からの自動換算にフォールバックさせる（従来動作）。
                 // 空を明るくしたいシーンは atmosphereIntensity のみを上げること。
                 // intensity（サーフェス直接光）を上げるとアルベドの明るい面が ACES の飽和域へ入る。
-                directionalLight_->atmosphereIntensity = 0.0f;
+                light->atmosphereIntensity = 0.0f;
             }
         }
+    }
+
+    Light* LightingFeature::GetDirectionalLight() const
+    {
+        return lightManager_ ? lightManager_->GetLight(directionalLightHandle_) : nullptr;
     }
 
     void LightingFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
@@ -46,12 +53,13 @@ namespace CoreEngine
     void LightingFeature::UpdateLightViewProjection(SceneContext& ctx)
     {
         // ディレクショナルライトが有効な場合のみ、シャドウマップ用の行列を計算
-        if (!directionalLight_ || !directionalLight_->enabled) {
+        Light* directionalLight = GetDirectionalLight();
+        if (!directionalLight || !directionalLight->enabled) {
             return;
         }
 
         // ライト位置を計算（ライト方向の逆方向、シーン中心から一定距離）
-        Vector3 lightDir = MathCore::Vector::Normalize(directionalLight_->direction);
+        Vector3 lightDir = MathCore::Vector::Normalize(directionalLight->direction);
         Vector3 lightPos = MathCore::Vector::Multiply(-config_.shadowLightDistance, lightDir);
 
         // ライトのビュー行列（シーン中心を見る）
