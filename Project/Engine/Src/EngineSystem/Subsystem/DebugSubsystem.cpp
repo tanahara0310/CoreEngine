@@ -140,6 +140,13 @@ namespace CoreEngine
             }
             });
 
+        // 大気散乱・雲は全シーン既定の機能のため、シーン所有の facade ではなく
+        // エンジン寿命で常時登録する（どのシーンでも Environment ツリーから編集できる）
+        atmosphereEditor_ = std::make_unique<AtmosphereEditor>();
+        atmosphereEditor_->Initialize(*engine_);
+        cloudEditor_ = std::make_unique<VolumetricCloudEditor>();
+        cloudEditor_->Initialize(*engine_);
+
         // Shading パネル（IBL はシーン側で有効化され、マテリアルは強度のみ持つ）
         gameDebugUI_->RegisterEnginePanel("Shading", [this]() {
             auto* sceneManager = engine_->GetSceneManager();

@@ -190,9 +190,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceRuntimeController.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereEditorFacade.cpp" />
     <ClCompile Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\VolumetricCloudTestScene\CloudEditorFacade.cpp" />
     <ClCompile Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Primitive\CubeObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.cpp" />
@@ -409,6 +407,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp" />
@@ -776,6 +776,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.h" />
+    <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
+    <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneTransition.h" />
@@ -869,9 +871,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\MyGame.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h" />
     <ClInclude Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereEditorFacade.h" />
     <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\CloudEditorFacade.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

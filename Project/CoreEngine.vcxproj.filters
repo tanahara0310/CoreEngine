@@ -22,14 +22,8 @@
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereEditorFacade.cpp">
-      <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.cpp">
       <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\VolumetricCloudTestScene\CloudEditorFacade.cpp">
-      <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.cpp">
       <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
@@ -669,6 +663,12 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.cpp">
       <Filter>Application\Src\Scenes\ParticleTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
@@ -1758,6 +1758,12 @@
     <ClInclude Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.h">
       <Filter>Application\Src\Scenes\ParticleTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
@@ -2037,13 +2043,7 @@
     <ClInclude Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.h">
       <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereEditorFacade.h">
-      <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.h">
-      <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\CloudEditorFacade.h">
       <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
@@ -2301,6 +2301,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Camera">
       <UniqueIdentifier>{7948DDA0-E342-42C7-A7E4-7C26135423C2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Environment">
+      <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\Camera\Module">
       <UniqueIdentifier>{931C7218-F1A0-427B-89D1-0C2266D82491}</UniqueIdentifier>

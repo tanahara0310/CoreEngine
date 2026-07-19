@@ -13,7 +13,7 @@ namespace {
     constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
 
     // 太陽高度角・方位角からライト方向（太陽 → 地表への進行方向）を計算する。
-    // AtmosphereEditorFacade::ComputeSunLightDirection と同じ規約（elevation=90°で天頂）。
+    // AtmosphereEditor::ComputeSunLightDirection と同じ規約（elevation=90°で天頂）。
     Vector3 ComputeSunLightDirection(float elevationDeg, float azimuthDeg) {
         const float elevation = elevationDeg * kDegToRad;
         const float azimuth = azimuthDeg * kDegToRad;

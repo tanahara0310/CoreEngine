@@ -14,9 +14,11 @@ Schneider "Nubis" 方式（"The Real-time Volumetric Cloudscapes of Horizon: Zer
 | ファイル | 役割 |
 |---|---|
 | `VolumetricCloudTestScene.h/.cpp` | シーン本体。太陽用 DirectionalLight 1灯と床の Plane のみを配置する。雲の更新は `BaseScene::UpdateAtmosphere()` が大気散乱の直後に毎フレーム自動で行う |
-| `CloudEditorFacade.h/.cpp` | ImGui パネルと Engine 内部（`VolumetricCloudManager`）の仲介。カバレッジ・密度・風・層ジオメトリ・ライティング・マーチング設定の編集と診断情報の表示を担当 |
 
-AtmosphereTestScene（シーン本体＋ EditorFacade）と同じ役割分担を踏襲している。
+編集 UI（旧 `CloudEditorFacade`）は雲が全シーン既定機能になったのに伴い、
+エンジン常駐の `Engine/Src/Editor/Environment/VolumetricCloudEditor.h/.cpp`（DebugSubsystem 所有）へ移設した。
+どのシーンでも Hierarchy の Environment ツリー →「Volumetric Cloud」から編集でき、
+天候プリセット（快晴／部分的な曇り／曇天／高い薄雲／嵐の前）を1クリックで適用できる。
 
 ## エンジン側の関連実装
 

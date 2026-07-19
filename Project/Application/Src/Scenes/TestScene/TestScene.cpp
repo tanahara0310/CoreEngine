@@ -10,7 +10,7 @@
 #include "WinApp/WinApp.h"
 #include "Scene/SceneManager.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Scenes/AtmosphereTestScene/AtmosphereEditorFacade.h"
+#include "Editor/Environment/AtmosphereEditor.h"
 
 #include <iostream>
 
@@ -48,7 +48,7 @@ namespace CoreEngine
         // BaseScene::SetupLight() の既定値（天頂・intensity=1）は大気散乱が期待する
         // 輝度スケールと整合しないため明示的に上書きする（他の大気シーンと同じ定石）。
         if (directionalLight_) {
-            directionalLight_->direction = AtmosphereEditorFacade::ComputeSunLightDirection(35.0f, 25.0f);
+            directionalLight_->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
             // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える
             directionalLight_->atmosphereIntensity = 20.0f;
             directionalLight_->intensity = kAtmosphereSurfaceSunIntensity;
