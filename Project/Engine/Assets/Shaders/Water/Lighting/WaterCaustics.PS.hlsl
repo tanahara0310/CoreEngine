@@ -30,6 +30,13 @@ cbuffer gWaterSurfaceData : register(b2)
     float gSurfaceTime;
     float gSurfacePadding;
     WaterWaveParam gSurfaceWaves[16];
+    // 水面メッシュのワールドXZ範囲（WaterCausticsTechnique::WaterSurfaceConstants と一致）。
+    // コースティクスは解析的な無限水面として評価されるため、この矩形でマスクしないと
+    // 水域の外（無限床など「水面高さより低い場所すべて」）にも集光模様が漏れる。
+    float2 gSurfaceRegionCenter;
+    float2 gSurfaceRegionHalfExtent;
+    uint gSurfaceRegionValid;
+    float3 gSurfaceRegionPadding;
 };
 
 cbuffer WaterCausticsParams : register(b3)
@@ -174,6 +181,22 @@ PixelShaderOutput main(PixelShaderInput input)
     }
 
     float3 worldPos = worldPosSample.xyz;
+
+    // 水面メッシュの XZ 範囲外（無限床など水域の外）にはコースティクスを落とさない。
+    // 範囲の内側 2m でフェードアウトさせ、水域の縁で模様が急に切れる輪郭を防ぐ。
+    float regionFade = 1.0f;
+    if (gSurfaceRegionValid != 0)
+    {
+        float2 regionDelta = abs(worldPos.xz - gSurfaceRegionCenter) - gSurfaceRegionHalfExtent;
+        float outsideDistance = max(regionDelta.x, regionDelta.y);
+        const float kRegionEdgeFadeMeters = 2.0f;
+        regionFade = saturate(-outsideDistance / kRegionEdgeFadeMeters);
+        if (regionFade <= 0.0f)
+        {
+            return output;
+        }
+    }
+
     float3 surfaceOffset = EvaluateWaterOffset(worldPos.xz);
     float surfaceY = gSurfaceWaterHeight + surfaceOffset.y;
     float waterDepth = surfaceY - worldPos.y;
@@ -221,7 +244,7 @@ PixelShaderOutput main(PixelShaderInput input)
     float attenuation = exp(-waterDepth * max(gDepthAttenuation, 0.01f));
     float concentration = rcp(max(jacobian, 0.05f));
 
-    float strength = gIntensity * gMainLightIntensity * proximity * concentration * curvature * receiverFacing * attenuation;
+    float strength = gIntensity * gMainLightIntensity * proximity * concentration * curvature * receiverFacing * attenuation * regionFade;
     strength = strength / (1.0f + strength);
     output.color = float4(gMainLightColor * strength, 1.0f);
     return output;

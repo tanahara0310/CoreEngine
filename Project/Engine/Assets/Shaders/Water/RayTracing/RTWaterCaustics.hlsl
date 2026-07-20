@@ -35,6 +35,13 @@ cbuffer WaterCausticsConstants : register(b0)
     // ワールドXZ → FFT テクスチャ UV の写像（ラスタ描画 FFTWater.VS と一致させる）
     float2 gFFTOceanUVScale;
     float2 gFFTOceanUVOffset;
+    // 水面メッシュのワールドXZ範囲（WaterCausticsConstants と一致させること）。
+    // コースティクスは解析的な無限水面として評価されるため、この矩形でマスクしないと
+    // 水域の外（無限床など「水面高さより低い場所すべて」）にも集光模様が漏れる。
+    float2 gRegionCenterXZ;
+    float2 gRegionHalfExtentXZ;
+    uint gRegionValid;
+    float3 gRegionPadding;
 };
 
 static const uint kRTCausticsDebugNone = 0;
@@ -157,6 +164,23 @@ void RTWaterCausticsRayGen()
     }
 
     float3 receiverWorldPos = worldPosSample.xyz;
+
+    // 水面メッシュの XZ 範囲外（無限床など水域の外）にはコースティクスを落とさない。
+    // 範囲の内側 2m でフェードアウトさせ、水域の縁で模様が急に切れる輪郭を防ぐ。
+    float regionFade = 1.0f;
+    if (gRegionValid != 0)
+    {
+        float2 regionDelta = abs(receiverWorldPos.xz - gRegionCenterXZ) - gRegionHalfExtentXZ;
+        float outsideDistance = max(regionDelta.x, regionDelta.y);
+        const float kRegionEdgeFadeMeters = 2.0f;
+        regionFade = saturate(-outsideDistance / kRegionEdgeFadeMeters);
+        if (regionFade <= 0.0f)
+        {
+            gCausticsOutput[launchIndex] = 0.0f.xxxx;
+            return;
+        }
+    }
+
     float3 receiverNormal = normalize(gNormalRoughness.Load(int3(launchIndex, 0)).xyz * 2.0f - 1.0f);
     float3 waterPos = receiverWorldPos;
     waterPos.y = gWaterHeight;
@@ -260,7 +284,7 @@ void RTWaterCausticsRayGen()
     float focus = saturate(dot(receiverNormal, -lightDir));
     // gLightIntensity をここで掛けることで、シーンのライト強度に連動させる
     // （以前は gIntensityScale のみで、ライトを暗くしても集光が弱まらなかった）。
-    float intensity = gIntensityScale * gLightIntensity * attenuation * focus * matchFactor * shallowFade * receiverUpFactor * receiverFacingFactor;
+    float intensity = gIntensityScale * gLightIntensity * attenuation * focus * matchFactor * shallowFade * receiverUpFactor * receiverFacingFactor * regionFade;
 
     if (gDebugViewMode != kRTCausticsDebugNone)
     {

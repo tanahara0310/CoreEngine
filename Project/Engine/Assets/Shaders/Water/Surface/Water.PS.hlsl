@@ -381,7 +381,11 @@ static const float kFresnelNormalMipBias = 3.0f;
 // 反射/透過の混合比が「視線角度に応じた滑らかなグラデーション」になり塊が消える。
 // 反射像の歪み（geomNormal 使用）や鏡面ハイライトはフル法線のままなので、
 // 波のディテールは失わない。
-static const float kFresnelNormalFlatten = 0.75f;
+// 0.75 → 0.35: 平坦化が強すぎると波ごとの反射/透過の切り替わり（水面らしい
+// きらめきのコントラスト）まで消えて一様な膜に見えるため緩和。
+// まだらの真因（反射ビューへの水面自己描画）は修正済みなので、うねり由来の
+// フレネル変化はある程度残してよい。夜間にまだらが再発しないか要確認。
+static const float kFresnelNormalFlatten = 0.35f;
 
 /// @brief フレネル（反射/透過の混合比）評価に使う低周波の面法線を解決する
 float3 ResolveFresnelNormal(WaterPSInput input)
@@ -416,8 +420,12 @@ float3 ResolveFresnelNormal(WaterPSInput input)
 //  (1) 反射をにじませ（グロッシー反射）、
 //  (2) かすめ角では微細斜面同士の幾何遮蔽で反射スパイクを抑える。
 // この 2 つを再現して、穏やかな海が均一に見えるようにする。
-static const float kWaterReflectionMicroRoughness = 0.55f; // 未解像さざ波の実効ラフネス（0.30→0.55: かすめ角の反射スパイクをより強く抑制）
-static const float kWaterReflectionBlurTexels = 5.0f; // 反射のにじみ半径（テクセル基準、3→5でうねりスケールのまだらをさらに均す）
+// 0.55 → 0.20: 実際の穏やかな水面の実効マイクロラフネスは 0.02〜0.1 程度で、
+// 0.55 は嵐の海に相当する過大な値だった。かすめ角の「鏡のような空の映り込み」が
+// 幾何遮蔽で半減し、水面の輝き・透明感を大きく損なっていたため緩和
+// （まだらの真因＝反射ビューへの水面自己描画は修正済み）。
+static const float kWaterReflectionMicroRoughness = 0.20f; // 未解像さざ波の実効ラフネス
+static const float kWaterReflectionBlurTexels = 3.0f; // 反射のにじみ半径（テクセル基準。5→3: 反射のシャープさを回復）
 // 反射UVを波法線で歪ませる強さ（スクリーンUV単位）。平面反射は平らな鏡として
 // 描かれているため、波法線でサンプル位置をずらして「波に沿って砕けた反射」に見せる。
 // これが無いと平坦な鏡像がフレネルの波形状で明滅し、大きなまだらになる。
@@ -464,6 +472,42 @@ float ReflectionGeometricOcclusion(float cosTheta)
 {
     const float k = kWaterReflectionMicroRoughness;
     return cosTheta / max(cosTheta * (1.0f - k) + k, 1.0e-4f);
+}
+
+// ===== 太陽のスペキュラグリッター（解析的 GGX）=====
+// 反射有効時、PBR フォワード出力（太陽の解析的スペキュラを含む）は平面反射像で
+// 「置き換え」られるため、太陽ハイライトは鏡像の太陽ディスク頼みになる。
+// だが鏡像の太陽はグロッシーぼかし＋輝度圧縮でほぼ消えてしまい、
+// 参照画像のような波のきらめき（サングリッター）が全く出ない。
+// ここでは太陽の鏡面反射だけをディテール法線＋GGX で解析的に計算し、
+// フレネル合成後に加算で復元する。空・環境光は平面反射側にのみ含まれるので
+// エネルギーの二重計上はない（太陽ディスク分の平面反射側エネルギーは
+// ぼかし・圧縮で実質失われているため、加算しても過大にならない）。
+float3 ComputeSunGlintSpecular(float3 normal, float3 viewDir)
+{
+    // 水の垂直入射反射率 F0 ≈ 0.02
+    const float3 kWaterF0 = float3(0.02f, 0.02f, 0.02f);
+    // グリッターの広がり。マテリアルのラフネスと連動させる
+    // （小さいほど鋭く狭いきらめき、大きいほど広く柔らかい光の帯）
+    const float glintRoughness = max(gMaterial.roughness, 0.04f);
+
+    float3 totalGlint = float3(0.0f, 0.0f, 0.0f);
+    for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
+    {
+        if (gDirectionalLights[i].enabled == 0)
+        {
+            continue;
+        }
+        float3 lightVec = -normalize(gDirectionalLights[i].direction);
+        float ndotl = saturate(dot(normal, lightVec));
+        if (ndotl <= 0.0f)
+        {
+            continue;
+        }
+        float3 brdf = CookTorranceBRDF(normal, viewDir, lightVec, glintRoughness, kWaterF0);
+        totalGlint += brdf * gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity * ndotl;
+    }
+    return totalGlint;
 }
 
 /// @brief 水面専用フォワードパス処理（ForwardMain の discard 処理を削除したバージョン）
@@ -718,19 +762,26 @@ PixelShaderOutput main(WaterPSInput input)
             reflectColor = lerp(reflectColor, skyEnv.rgb, cloudOpacity * overlayScale * horizonFade);
         }
 
-        // ---- 反射の輝度圧縮（白飛び端点の除去・まだらの根本対策）----
+        // ---- 反射の輝度圧縮（白飛び端点の除去）----
         // 平面反射テクスチャは enablePostEffect=false のビューで描かれるため、
         // 露出・トーンマッピングのかかっていない生 HDR 輝度が入っている。
-        // 夜間は自動露出 EV が最大 +8（≈256倍）まで上がり、生 HDR の空（小さいが
-        // 非ゼロ）を白飛びさせる。一方で透過色はほぼ 0 に落ちるため、
-        // lerp(黒い透過, 白い反射, フレネル) が波法線に沿って黒⇔白の最大コントラストで
-        // 振れ、大きな白黒まだらになっていた（可視化: モード17=平面反射が真っ白／
-        // モード20=透過が真っ黒／モード21=反射が真っ白 で実証）。
-        // 反射を輝度ベースの Reinhard で [0,1) に丸め、露出増幅による青天井の
-        // 白飛び端点をなくす。色相は保持し、暗部（夜空）はほぼそのまま、
-        // 明部（生 HDR の飽和空）だけを圧縮するので昼の見た目への影響は小さい。
+        // 夜間は自動露出 EV が最大 +8（≈256倍）まで上がるため、極端に明るい輝度を
+        // 上限へ丸めて lerp(黒い透過, 白い反射, フレネル) の白黒まだらを防ぐ必要がある。
+        // ただし以前の無条件 Reinhard（1/(1+L)）は昼の明るい空・鏡像の太陽まで一律に
+        // 暗くし、かすめ角の輝きやきらめきを殺していた（1枚目参照画像との品質差の一因）。
+        // 膝（knee）未満の輝度は無圧縮で通し、超過分だけを漸近上限へ圧縮する
+        // ショルダー型に変更する（色相は保持）。昼の空（膝未満）はそのまま、
+        // 露出増幅で白飛びする極端な輝度だけが丸まる。
+        const float kReflectionCompressKnee = 2.0f; // これ未満の輝度は無圧縮 [シーン輝度単位]
+        const float kReflectionCompressMax = 6.0f; // 膝超過分の漸近上限（最終上限 = knee + max）
         float reflLuma = dot(reflectColor, float3(0.2126f, 0.7152f, 0.0722f));
-        reflectColor *= 1.0f / (1.0f + reflLuma);
+        if (reflLuma > kReflectionCompressKnee)
+        {
+            float excessLuma = reflLuma - kReflectionCompressKnee;
+            float compressedLuma = kReflectionCompressKnee
+                + excessLuma / (1.0f + excessLuma / kReflectionCompressMax);
+            reflectColor *= compressedLuma / max(reflLuma, 1.0e-5f);
+        }
     }
 
     float3 desiredWaterView = lerp(transmissionColor, reflectColor, reflectanceWeight);
@@ -956,6 +1007,14 @@ PixelShaderOutput main(WaterPSInput input)
     }
 
     output.color.rgb = finalWaterComposite;
+
+    // 太陽グリッター（きらめき）を加算で復元する（ComputeSunGlintSpecular 参照）。
+    // 反射無効時は WaterForwardMain の PBR 出力（太陽スペキュラ入り）が reflectColor
+    // 端点として生きているため、加算すると二重計上になる。反射有効時のみ。
+    if (gReflectionEnabled)
+    {
+        output.color.rgb += ComputeSunGlintSpecular(geomNormal, viewDir);
+    }
 
     // ---- 5. 空気遠近感（Aerial Perspective）----
     // 不透明パスへの合成（AerialPerspective.CS）は水面より前に終わっているため、

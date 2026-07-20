@@ -1,10 +1,10 @@
 # Step 8 : Caustics / Underwater Lighting
 
 ## ステータス
-- 状態: 実装中
+- 状態: 実装完了（検証継続）
 - 優先度: 中
 - 依存ステップ: Step 6
-- 現在位置: `RTWaterCausticsPass` / `RTWaterCaustics.hlsl` による RT コースティクスの最小経路が接続済み。現在は簡易集光量の検証、調整、Underwater Lighting 方向への拡張が主な残課題
+- 現在位置: DXR 版（`RTWaterCausticsPass` / `RTWaterCaustics.hlsl`）と後処理合成版（`WaterCausticsTechnique` / `WaterCaustics.PS.hlsl`）の 2 系統が接続済み。水域矩形マスク・大気太陽との情報源統一まで実装済み。残課題は Underwater Lighting 方向への拡張（水中散乱・水中影）
 - 完了後に着手しやすい次ステップ: Step 9, Step 10
 
 ## 目的
@@ -44,6 +44,8 @@
 - `RTWaterCausticsPass` は `FrameBlackboard::RTWaterCaustics` を更新し、`DeferredLightingPass` 側は RT 出力があれば近似パスより優先して使用する
 - `DeferredLighting.PS.hlsl` は `gWaterCaustics` を最終ライティングへ加算し、debug mode では Raw RGB / グレースケール表示へ切り替えられる
 - `WaterSurfaceDebugPanel` と `WaterCausticsTechnique` から強度、深度減衰、曲率、屈折率、表示倍率、表示モードなどを調整できる
+- コースティクスは解析的な無限水面として評価されるため、放置すると「水面高さより低い場所すべて」（水域外の床）に集光模様が漏れる。**水面メッシュ直下の矩形範囲マスク**（`WaterSurfaceData::regionCenterXZ / regionHalfExtentXZ`、境界 2m フェードアウト）で水域内へ限定している。水面メッシュの回転は非対応（FFT UV 写像と同じゼロ前提）
+- 太陽の方向・色・強度は大気散乱の太陽ライト（`isAtmosphereSun`）と同一情報源を参照する。CPU 直読みは透過率変調済みの `GetEffectiveLightColorRGB()` を使うため、夕方はコースティクスも赤方偏移し、太陽の見た目・反射ハイライト方向と自動的に一致する
 - Step 6 で整備された水面高さ・波データ・吸収設計は、今後の水中光拡張へ流用できる
 
 ## 物理ベース観点
@@ -99,6 +101,7 @@
 ## 引き継ぎメモ
 - Step 9 では SSR と組み合わせた際に表面反射側と視覚競合しないかを見る
 - Step 10 では depth attenuation、投影マスク、RT/近似ソースの使い分け、時系列安定性を可視化できると調整しやすい
+- 落とし穴: コースティクスの定数（水域矩形を含む）は **WaterCaustics.PS.hlsl ↔ WaterCausticsTechnique.h（WaterSurfaceConstants）、RTWaterCaustics.hlsl ↔ WaterCausticsRayTracingManager.cpp（WaterCausticsConstants）** で cbuffer レイアウトの一致が必須（static_assert あり）。変更時は両系統まとめて更新する
 
 ---
 

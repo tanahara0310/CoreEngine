@@ -1,11 +1,11 @@
 # Step 6 : 透過・吸収・屈折の主線
 
 ## ステータス
-- 状態: 実装中
+- 状態: 実装完了（検証継続）
 - 優先度: 最優先
 - 依存ステップ: Step 4, Step 5
-- 現在位置: SceneColor 透過、Beer-Lambert、浅瀬 / 深場色、Fresnel 配分に加え、`RTWaterRefractionPass` / `RTWaterRefraction.hlsl` による DXR 屈折の最小経路が接続済み。現在は RT 出力の検証強化と吸収・再投影品質の拡張が主な残課題
-- 完了後に着手しやすい次ステップ: Step 7, Step 8, Step 9
+- 現在位置: 水色は shallow / deep の手動色指定を全廃し、波長依存 σa / σs（RGB）の Beer-Lambert 透過＋単一散乱による物理ベース水色へ移行済み。インスキャッタ光は太陽（大気透過率連動）＋天空光（Sky SH）から導出し、Jerlov 水質プリセット・濁度 UI まで接続済み。DXR 屈折は実測光路長の吸収利用とフォールバック境界のフェザリングまで実装済み
+- 完了後に着手しやすい次ステップ: Step 7, Step 9
 
 ## 目的
 水面を表面反射だけでなく、透過・吸収・屈折を持つ光学境界面として扱い、水中の見え方を物理寄りに整える。
@@ -48,6 +48,10 @@ Step 6 では、**水中がどう見えるか** を決める。
 - [x] DXR の RayGen / ClosestHit / Miss で屈折経路を設計する
 - [x] TLAS 交差結果から水中背景取得の最小経路を行う
 - [x] 既存 `Water.PS.hlsl` と RT 屈折結果の合成責務を分離する
+- [x] 吸収を RGB（波長依存 σa）へ拡張する
+- [x] 単一散乱インスキャッタ（σs）を解析解で導入し、水色を光学特性×光源から導出する
+- [x] インスキャッタ光源を太陽（大気透過率連動）＋天空光（Sky SH）へ接続する
+- [x] Jerlov 水型プリセットと濁度による水質調整 UI を用意する
 
 ## 実施結果
 - `Water.PS.hlsl` が `gSceneColor` と `gSceneDepth` を参照し、水面越しの透過と深度差を扱う構成になった
@@ -58,13 +62,23 @@ Step 6 では、**水中がどう見えるか** を決める。
 - `RTWaterRefraction.hlsl` では波面オフセットと解析法線を再評価し、`refract(primaryDir, waterNormal, gRefractionEta)` で屈折方向を求めて TLAS へ `TraceRay` している
 - RT ヒット結果は再投影して `SceneColor` をサンプリングする最小構成で実装され、成功時は `Water.PS.hlsl` の透過色として採用される
 - RT 失敗時は理由コード付きで `SceneColor` フォールバックへ戻す構成になっており、`Water.PS.hlsl` と ImGui から理由別の可視化が可能になっている
-- Depth Fade と RT 屈折のデバッグ表示は ImGui から切り替え可能で、RT 屈折色、理由、比較、透過光、吸収、反射率、成功マスクまで確認できる
+- Depth Fade と RT 屈折のデバッグ表示は ImGui から切り替え可能で、RT 屈折色、理由、比較、透過光、波長別透過率、反射率、成功マスクまで確認できる
+
+### 物理ベース水色（2026-07 移行）
+- `WaterFrameConstants` を shallowColor / deepColor から **float3 σa（absorptionCoeff）＋ float3 σs（scatteringCoeff）** へ変更した。API も `SetWaterColors` → `SetWaterOpticalCoefficients(σa, σs)` へ改名
+- `Water.PS.hlsl` の `ComputeWaterVolumetricColor()` が、波長別 `exp(-σt·d)` の透過と、均質媒質の単一散乱解析解 `(σs/σt)·L·(1-exp(-σt·d))` を合成する。浅瀬エメラルド → 深場青の遷移は係数から自然に出る
+- インスキャッタ環境光 `ComputeUnderwaterAmbientLight()` は、太陽の下向き放射照度（大気の Transmittance がライト色へ乗算済み）＋ 天空光 SH（`SkyIrradianceSH.CS` 出力を t24 でバインド。大気非アクティブ時は IBL キューブマップへフォールバック）で構成する。日没の赤方偏移へ自動追従する
+- 太陽光の水中への下り減衰は `ComputeSunDownwellingTransmittance()`。太陽の水中天頂角はスネル則（臨界角 48.6° 制限）で求め、鉛直水深 × 経路補正で透過項のみに乗算する
+- 背景が far plane の場合は光路長 1e4 m（無限水柱）として水固有色へ収束させる
+- 水質 UI: Jerlov 水型プリセット 7 種（外洋 I〜III / 沿岸 1C・5C・9C）＋濁度スライダー 0..1（実効 σ = ベース + 濁度 × ゲイン。吸収ゲインは CDOM の青吸収、散乱ゲインは懸濁粒子）。検証用の「海底を白砂色にする」チェックもある
+- 透明側の合成端点は生の屈折色ではなく Beer-Lambert・フレネルを通した `transmissionColor` に統一した（生シーン色の常時混入で水底が斑に透けるバグを修正済み）
 
 ## 残タスク整理
 - 屈折出力は現状 `float4(color, reasonCode)` の最小構成であり、hit distance、透過率、水柱長などの補助情報は別出力化されていない
 - RT ヒット後の背景取得は `SceneColor` 再投影ベースで、ヒット材質そのものの評価や多段媒質通過は未対応
-- 吸収は現状スカラー係数であり、RGB 吸収、水中散乱、複数媒質通過は今後の拡張ポイント
 - DXR miss / clip fail / 平面交差失敗の理由別フォールバックはあるが、統計的な成功率や品質計測はまだ不足している
+- `Water.PS.hlsl` の near / far は 0.1 / 1000 のハードコードのまま（既知の課題）
+- 落とし穴: `WaterFrameConstants` の cbuffer レイアウトは **Water.PS.hlsl / Water.VS.hlsl / FFTWater.VS.hlsl / WaterSurfaceTypes.h の 4 箇所**で一致必須。変更時は全部更新する
 
 ## DXR 屈折の方針
 ### 1. 水面シェーディングと交差探索を分離する
@@ -208,13 +222,13 @@ Fresnel は本来、反射率と透過率の配分に効く。
 - [x] 深場ほど透過が弱くなる
 - [x] 背景が二重減衰しない
 - [x] DXR で屈折交差先を取得できる
-- [ ] 将来的な RGB 吸収 / 水中散乱へ接続できる
+- [x] RGB 吸収 / 水中散乱（単一散乱）が実装され、水色が光学特性×光源から導出される
 
 ## 引き継ぎメモ
 - Step 7 ではこの透過・反射基盤を壊さずに泡を重ねる必要がある
-- Step 8 ではここで整えた吸収と水深差を水中光へ接続する
+- Step 8 ではここで整えた吸収と水深差を水中光へ接続する（接続済み。RT コースティクスは同じ太陽情報源を参照）
 - Step 9 では反射経路側を補完して反射品質を高める
-- DXR 屈折は最小経路まで接続済みのため、次段では hit 後情報の増量、品質計測、吸収拡張、debug view の定量化を進める
+- DXR 屈折の次段は hit 後情報の増量、品質計測、debug view の定量化。RT の実測光路長（`DecodeRTOpticalPath`、メートル単位）はそのまま σ 系へ流用できる
 
 ---
 

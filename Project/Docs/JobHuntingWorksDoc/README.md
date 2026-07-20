@@ -27,7 +27,13 @@
 - [Step9_SSR.md](./Step9_SSR.md) - SSR と反射統合
 - [Step10_Tuning_Debug.md](./Step10_Tuning_Debug.md) - デバッグ / 検証 / RT 最終段
 
-### 0-3. 読み方
+### 0-3. 関連システムのまとめファイル
+水面と密接に連携する空・環境系システムのまとめは、同形式で以下に置く。
+
+- [Atmosphere/README.md](./Atmosphere/README.md) - 大気散乱（Sky Atmosphere）システム
+- [VolumetricCloud/README.md](./VolumetricCloud/README.md) - ボリューメトリック雲システム
+
+### 0-4. 読み方
 - 最初にこの `README.md` で全体像と現在位置を確認する
 - 実装時は対象ステップの詳細文書を主参照にする
 - 進捗更新は、まず各ステップ文書の `ステータス` と `作業項目` を更新し、その後この README のサマリーへ反映する
@@ -54,12 +60,16 @@
 ## 2. 全体進捗サマリー
 
 ### 2-1. 現在の実装状況
-- `WaterPlaneObject` と `WaterTestScene` を中心に、水面専用メッシュ、Gerstner Wave、Planar Reflection、PBR 材質調整、Depth Fade、デバッグ UI の基盤は実装済み
+- `WaterPlaneObject` と `WaterTestScene` を中心に、水面専用メッシュ、Gerstner Wave、Planar Reflection、PBR 材質調整、デバッグ UI の基盤は実装済み
 - 水面の主線は `Water.VS.hlsl` / `Water.PS.hlsl` に集約され、ReflectionView / SceneColor / SceneDepth を使った描画経路まで接続済み
-- 屈折は `RTWaterRefractionPass` / `RTWaterRefraction.hlsl` による DXR ベースの最小経路が実装され、`Water.PS.hlsl` 側で RT 成功時は屈折色を採用し、失敗時は `SceneColor` へフォールバックする構成になっている
-- コースティクスは `RTWaterCausticsPass` / `RTWaterCaustics.hlsl` と deferred lighting への入力経路が接続済みで、浅瀬・受光法線・入射方向に基づく簡易強度出力まで実装されている
-- FFT Ocean は Compute Shader によるスペクトル初期化、時間発展、IFFT、変位・法線生成、`WaterPlaneObject` への接続、ImGui 調整 UI まで実装済みで、現在は波強度と品質検証を継続している
-- 一方で、Foam、SSR、RGB 吸収、水中散乱、水中影を含む RT 最終統合は未着手または検証継続段階に留まる
+- 水の色は shallow / deep の手動色指定を全廃し、**波長依存の吸収係数 σa・散乱係数 σs（RGB）による Beer-Lambert 透過＋単一散乱の物理ベース水色**へ移行済み。インスキャッタ光は太陽光（大気透過率連動）と天空光（大気散乱由来の Sky SH）から導出し、Jerlov 水型プリセット 7 種と濁度スライダーで水質を調整できる
+- 平面反射は鏡像カメラ＋oblique near-plane clipping に加え、反射ビューでの水面自己描画防止（`WaterSurfacePass::IsEnabledForView`）、グロッシー化（ぼかし＋かすめ角の幾何遮蔽）、波法線による反射 UV 歪み、夜間の露出増幅対策（高輝度ショルダー圧縮）まで実装済み
+- 大気・雲システムとの統合が完了している: 平面反射には大気散乱の空（昼夜・月・星）がそのまま映り、頭上の雲は空＋雲キューブマップ（スペキュラ IBL）で上書き合成される（水平線付近はフェード）。遠方水面には Aerial Perspective が適用され、太陽のきらめきは Cook-Torrance ベースのサングリッターとして解析加算する
+- 屈折は `RTWaterRefractionPass` / `RTWaterRefraction.hlsl` による DXR 経路が主線で、RT の実測光路長を Beer-Lambert 吸収へ利用する。RT 失敗時は `SceneColor` フォールバックへ戻し、成功 / 失敗の境界は近傍集計でフェザリングする。RT とラスタが同じ波面を評価できるよう、ワールド XZ → FFT テクスチャ UV の写像を毎フレーム共有する
+- コースティクスは DXR 版（`RTWaterCausticsPass`）と後処理合成版（`WaterCausticsTechnique`）の 2 系統が実装済み。水面メッシュ直下の矩形範囲へマスクして水域外への漏れを防ぎ、太陽の方向・色は大気の太陽ライトと同一情報源を参照する
+- FFT Ocean は Phillips スペクトル初期化、時間発展、IFFT、変位・法線生成（choppiness の水平変位勾配込み）、法線ミップチェーン生成、海況プリセット、ImGui 調整 UI まで実装済み
+- デバッグ可視化は 22 種（深度系 / 反射系 / 透過系 / RT 屈折系 / 合成診断系）に拡充され、まだら模様などのアーティファクト調査で実運用済み
+- 一方で、Foam、SSR、RT 反射、水中影を含む RT 最終統合は未着手または整理段階に留まる
 - Step ごとの状態は、設計メモではなく **現行コード確認ベース** で更新する
 
 ### 2-2. ステップ進捗一覧
@@ -71,19 +81,18 @@
 | 3 | Gerstner Wave と解析法線 | 実装完了（検証継続） | Step 1, Step 2 | 近景水面の手続き波面 | [Step3_GerstnerWave.md](Step3_GerstnerWave.md) |
 | 4 | 反射基盤（Planar Reflection / IBL） | 実装完了（検証継続） | Step 1, Step 3 | 反射経路の土台 | [Step4_PlanarReflection.md](Step4_PlanarReflection.md) |
 | 5 | 表面 BRDF/BTDF と材質校正 | 実装完了（検証継続） | Step 3, Step 4 | 水面を PBR 的に扱う基礎 | [Step5_NormalMap_PBR.md](Step5_NormalMap_PBR.md) |
-| 6 | 透過・吸収・屈折の主線 | 実装中 | Step 4, Step 5 | 物理ベース水面の中心 | [Step6_SurfaceShading.md](Step6_SurfaceShading.md) |
-| 6B | FFT Ocean 分岐 | 実装中（検証継続） | Step 3, Step 6 | 大規模海面向け発展経路 | [Step6_FFTOcean.md](Step6_FFTOcean.md) |
+| 6 | 透過・吸収・屈折の主線 | 実装完了（検証継続） | Step 4, Step 5 | 物理ベース水面の中心 | [Step6_SurfaceShading.md](Step6_SurfaceShading.md) |
+| 6B | FFT Ocean 分岐 | 実装完了（検証継続） | Step 3, Step 6 | 大規模海面向け発展経路 | [Step6_FFTOcean.md](Step6_FFTOcean.md) |
 | 7 | Foam | 未着手 | Step 3, Step 6, Step 6B | 散逸と接触の補強 | [Step7_Foam.md](Step7_Foam.md) |
-| 8 | Caustics / Underwater Lighting | 実装中 | Step 6 | 水中への光伝播表現 | [Step8_Caustics.md](Step8_Caustics.md) |
+| 8 | Caustics / Underwater Lighting | 実装完了（検証継続） | Step 6 | 水中への光伝播表現 | [Step8_Caustics.md](Step8_Caustics.md) |
 | 9 | SSR と反射統合 | 未着手 | Step 4, Step 6 | 反射品質の補完と統合 | [Step9_SSR.md](Step9_SSR.md) |
 | 10 | デバッグ / 検証 / RT 最終段 | 実装中 | Step 1 ～ Step 9 | 品質保証と最終到達点整理 | [Step10_Tuning_Debug.md](Step10_Tuning_Debug.md) |
 
 ### 2-3. 推奨着手順
-1. **Step 6** の残タスクである DXR 屈折の検証強化、吸収拡張、透過品質の仕上げを進める
-2. **Step 8 / Step 10** で RT コースティクスの可視化・調整・deferred lighting 側の検証項目を拡充する
-3. **Step 7 ～ Step 9** で泡・SSR 反射補完・反射統合を追加して説得力を上げる
-4. 海面スケールが必要な場合のみ **Step 6B** を並行検討する
-5. 最後に RT 系到達点を反射・水中散乱側へ段階的に拡張する
+1. **Step 7（Foam）** に着手する。FFT 側の Jacobian は生成・可視化まで済んでおり、泡候補量として即利用できる
+2. **Step 9（SSR）** で画面内反射の補完と反射ソース統合を進める
+3. **Step 10** で品質確認チェックリストの文書化と、反射 / 透過 / フォールバック内訳の定量可視化を仕上げる
+4. 最後に RT 系到達点（RT 反射・水中影・水中散乱の拡張）へ段階的に進む
 
 ---
 
@@ -136,7 +145,7 @@
 
 ## 5. 現時点の優先順位
 
-### 5-1. 第 1 段階: リアルタイムで破綻しない物理ベース基礎
+### 5-1. 第 1 段階: リアルタイムで破綻しない物理ベース基礎 【完了】
 - 手続き波面
 - 解析法線
 - Planar Reflection
@@ -144,19 +153,20 @@
 - Beer-Lambert 吸収
 - `SceneColor` を使った透過整合
 
-### 5-2. 第 2 段階: 高忠実度化
-- DXR レイベース屈折
-- RGB 吸収
-- Foam
-- Caustics
-- SSR 反射補完
-- FFT Ocean 分岐
+### 5-2. 第 2 段階: 高忠実度化 【Foam / SSR を除き完了】
+- DXR レイベース屈折 【完了】
+- RGB 吸収・単一散乱（物理ベース水色） 【完了】
+- Foam 【未着手】
+- Caustics（RT 版＋後処理版・水域マスク） 【完了（検証継続）】
+- SSR 反射補完 【未着手】
+- FFT Ocean 分岐 【完了（検証継続）】
+- 大気・雲との統合（空の映り込み・雲 IBL・Aerial Perspective・Sky SH 天空光） 【完了】
 
-### 5-3. 第 3 段階: 最終到達点
+### 5-3. 第 3 段階: 最終到達点 【未着手（RT 屈折のみ先行）】
 - RT Reflection
-- RT Refraction
+- RT Refraction 【最小経路は実装済み】
 - 水中シャドウ / 水中減衰
-- 波面と RT 経路の整合
+- 波面と RT 経路の整合 【FFT UV 写像の共有まで実装済み】
 - ハイブリッド反射の品質最適化
 
 ---
@@ -228,4 +238,4 @@
 
 ---
 
-*最終更新: 2026年6月*
+*最終更新: 2026年7月*

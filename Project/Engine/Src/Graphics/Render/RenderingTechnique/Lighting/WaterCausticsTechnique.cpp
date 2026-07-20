@@ -233,6 +233,11 @@ namespace CoreEngine
             for (uint32_t waveIndex = 0; waveIndex < surfaceConstants.activeWaveCount; ++waveIndex) {
                 surfaceConstants.waves[waveIndex] = surfaceData->waves[waveIndex];
             }
+            surfaceConstants.regionCenterXZ[0] = surfaceData->regionCenterXZ[0];
+            surfaceConstants.regionCenterXZ[1] = surfaceData->regionCenterXZ[1];
+            surfaceConstants.regionHalfExtentXZ[0] = surfaceData->regionHalfExtentXZ[0];
+            surfaceConstants.regionHalfExtentXZ[1] = surfaceData->regionHalfExtentXZ[1];
+            surfaceConstants.regionValid = surfaceData->regionValid;
         }
 
         diagnostics_.activeWaveCount = surfaceConstants.activeWaveCount;

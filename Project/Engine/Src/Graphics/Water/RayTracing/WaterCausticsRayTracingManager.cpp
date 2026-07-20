@@ -33,6 +33,12 @@ namespace CoreEngine
             // ラスタ描画（FFTWater.VS）と同じ波面を RT が評価するために必須
             float fftOceanUVScale[2];
             float fftOceanUVOffset[2];
+            // 水面メッシュのワールドXZ範囲（RTWaterCaustics.hlsl の cbuffer 末尾と一致させること）。
+            // regionValid == 0 なら範囲制限なし
+            float regionCenterXZ[2];
+            float regionHalfExtentXZ[2];
+            uint32_t regionValid;
+            float regionPadding[3];
         };
 
         const char* ToString(WaterCausticsRayTracingManager::DispatchStatus status)
@@ -52,7 +58,7 @@ namespace CoreEngine
 
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
-    static_assert(sizeof(WaterCausticsConstants) == 96,
+    static_assert(sizeof(WaterCausticsConstants) == 128,
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
 
     bool WaterCausticsRayTracingManager::Initialize(
@@ -257,6 +263,11 @@ namespace CoreEngine
         constants.lightColor[1] = lightInput.color.y;
         constants.lightColor[2] = lightInput.color.z;
         constants.lightIntensity = lightInput.intensity;
+        constants.regionCenterXZ[0] = dispatchSurfaceData.regionCenterXZ[0];
+        constants.regionCenterXZ[1] = dispatchSurfaceData.regionCenterXZ[1];
+        constants.regionHalfExtentXZ[0] = dispatchSurfaceData.regionHalfExtentXZ[0];
+        constants.regionHalfExtentXZ[1] = dispatchSurfaceData.regionHalfExtentXZ[1];
+        constants.regionValid = dispatchSurfaceData.regionValid;
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : normalRoughnessSRV;
