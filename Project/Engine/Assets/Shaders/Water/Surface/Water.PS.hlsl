@@ -21,8 +21,27 @@ Texture2D<float4> gSceneColor : register(t16);
 Texture2D<float4> gRTWaterRefractionColor : register(t17);
 
 // ===== FFT Ocean 法線マップ（FFTOceanFinalize.CS.hlsl 出力）=====
-// 頂点解像度に依存しない法線を得るため、ピクセルシェーダーで直接再サンプリングする
-Texture2D<float4> gFFTOceanNormal : register(t19);
+// 頂点解像度に依存しない法線を得るため、ピクセルシェーダーで直接再サンプリングする。
+// カスケード（マルチスケールFFT）は Texture2DArray のスライスに格納される。
+Texture2DArray<float4> gFFTOceanNormal : register(t19);
+
+// マルチスケール・カスケード。FFTOceanManager / FFTWater.VS / RTWaterSurfaceCommon と一致必須
+// （パッチ長は互いに素な素数、格子回転 0°/+26°/-49° で周期の整列を破壊）。
+static const int kFFTCascadeCount = 3;
+static const float kFFTCascadePatch[3] = { 521.0f, 127.0f, 31.0f };
+static const float kFFTCascadeRotC[3] = { 1.0f, 0.89879405f, 0.65605903f };
+static const float kFFTCascadeRotS[3] = { 0.0f, 0.43837115f, -0.75471006f };
+
+// 波群エンベロープ（タイル周期破壊の空間振幅変調）。
+// FFTWater.VS / RTWaterSurfaceCommon と完全一致必須（詳細コメントは FFTWater.VS 参照）。
+static const float kFFTWaveGroupStrength = 0.12f;
+float ComputeFFTWaveGroupEnvelope(float2 worldXZ)
+{
+    float g = sin(dot(worldXZ, float2(0.01071f, 0.01353f)) + 0.917f)
+            + sin(dot(worldXZ, float2(-0.01409f, 0.00893f)) + 2.618f)
+            + sin(dot(worldXZ, float2(0.00531f, -0.00713f)) + 4.523f);
+    return 1.0f + kFFTWaveGroupStrength * g;
+}
 
 // ===== 空の放射照度 SH9 係数（SkyIrradianceSH.CS.hlsl 出力）=====
 // WaterPlaneObject::BindCustomResources() が t24 にバインドする。
@@ -350,6 +369,10 @@ float3 BuildWorldNormalFromFFTSample(float3 encodedNormal, WaterPSInput input)
 ///          サンプリングは WRAP アドレスの gSampler で行う（frac 不要でタイル境界の
 ///          微分不連続が出ず、ミップチェーン＋異方性フィルタが自動LODで効くため、
 ///          遠方・かすめ角で法線がピクセル毎に暴れるエイリアシングを抑制できる）。
+/// @brief カスケードごとの法線スライスを合算し、距離フェードでAAした面法線を作る
+/// @details 各カスケードの傾き（勾配 = nLocal.xz / nLocal.y）を加算してから鉛直へ再構成する。
+///          小さいパッチ（高周波）は遠方でフェードアウトさせ、法線ミップ連鎖の代わりに
+///          遠距離・かすめ角のスペックル（フレネルの高周波ノイズ）を抑える。
 float3 ResolveSurfaceNormal(WaterPSInput input)
 {
     float3 vertexNormal = normalize(input.normal);
@@ -358,8 +381,34 @@ float3 ResolveSurfaceNormal(WaterPSInput input)
         return vertexNormal;
     }
 
-    float3 encodedNormal = gFFTOceanNormal.Sample(gSampler, input.texcoord).xyz;
-    return BuildWorldNormalFromFFTSample(encodedNormal, input);
+    float3 tangent = normalize(input.tangent);
+    float3 bitangent = normalize(input.bitangent);
+    float dist = length(gCamera.worldPosition - input.worldPosition);
+
+    float2 slope = float2(0.0f, 0.0f);
+    [unroll]
+    for (int ci = 0; ci < kFFTCascadeCount; ++ci)
+    {
+        const float rc = kFFTCascadeRotC[ci];
+        const float rs = kFFTCascadeRotS[ci];
+        // ワールドXZ を回転格子系へ（FFTWater.VS と同一の写像）
+        float2 cuv = float2(
+            rc * input.worldPosition.x - rs * input.worldPosition.z,
+            rs * input.worldPosition.x + rc * input.worldPosition.z) / kFFTCascadePatch[ci];
+        float3 enc = gFFTOceanNormal.Sample(gSampler, float3(cuv, (float)ci)).xyz;
+        float3 nLocal = normalize(enc * 2.0f - 1.0f); // (x=+texU, y=up, z=+texV)
+        // 小パッチほど近距離でフェードアウト（パッチ長比例のフェード区間）。
+        float fade = 1.0f - smoothstep(kFFTCascadePatch[ci] * 8.0f, kFFTCascadePatch[ci] * 40.0f, dist);
+        // テクスチャ格子系の傾きをワールドへ逆回転してから合算する
+        float2 slopeTex = nLocal.xz / max(nLocal.y, 1.0e-3f);
+        slope += float2(rc * slopeTex.x + rs * slopeTex.y, -rs * slopeTex.x + rc * slopeTex.y) * fade;
+    }
+
+    // 波群エンベロープ: 変位（FFTWater.VS）と同じ変調を傾きへ掛け、幾何と法線を一致させる
+    slope *= ComputeFFTWaveGroupEnvelope(input.worldPosition.xz);
+
+    float3 combinedLocal = normalize(float3(slope.x, 1.0f, slope.y));
+    return normalize(combinedLocal.x * tangent + combinedLocal.y * vertexNormal + combinedLocal.z * bitangent);
 }
 
 // フレネル評価用の法線に掛けるミップバイアス。
@@ -393,12 +442,18 @@ float3 ResolveFresnelNormal(WaterPSInput input)
     float3 waveNormal;
     if (gUseFFTOceanNormalMap != 0)
     {
-        // ミップバイアス付きで法線マップをサンプリングし、うねりスケールの
-        // 滑らかな法線を得る。以前使っていた ddx/ddy(worldPosition) の面法線は
-        // 三角形単位で一定になるため、フレネルがファセット状に量子化されて
-        // まだらの輪郭が硬くなる問題があった。
-        float3 encodedNormal = gFFTOceanNormal.SampleBias(gSampler, input.texcoord, kFresnelNormalMipBias).xyz;
-        waveNormal = BuildWorldNormalFromFFTSample(encodedNormal, input);
+        // フレネルは「うねりスケールの低周波法線」で評価する。カスケード化により、
+        // 最大パッチ（低周波の大波）のスライスを単独でサンプルするだけで、旧来の
+        // ミップバイアスぼかしと同じ「うねりスケールの滑らかな法線」が得られる
+        // （小さいパッチ＝さざ波は混ぜない）。カスケード0は回転恒等なので uv 回転は不要。
+        float2 cuv = input.worldPosition.xz / kFFTCascadePatch[0];
+        float3 encodedNormal = gFFTOceanNormal.Sample(gSampler, float3(cuv, 0.0f)).xyz;
+        // 波群エンベロープを傾きへ掛け、実ジオメトリ（変位×エンベロープ）と整合させる
+        float3 nLocal = normalize(encodedNormal * 2.0f - 1.0f);
+        float2 slopeTex = (nLocal.xz / max(nLocal.y, 1.0e-3f))
+            * ComputeFFTWaveGroupEnvelope(input.worldPosition.xz);
+        float3 envLocal = normalize(float3(slopeTex.x, 1.0f, slopeTex.y));
+        waveNormal = BuildWorldNormalFromFFTSample(envLocal * 0.5f + 0.5f, input);
     }
     else
     {

@@ -10,8 +10,8 @@ RWTexture2D<float4> gCausticsOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
 Texture2D<float> gSceneDepth : register(t1); // WorldPosition ターゲット廃止に伴い深度から復元する
 Texture2D<float4> gNormalRoughness : register(t2);
-Texture2D<float4> gFFTOceanDisplacement : register(t3);
-Texture2D<float4> gFFTOceanNormal : register(t4);
+Texture2DArray<float4> gFFTOceanDisplacement : register(t3);
+Texture2DArray<float4> gFFTOceanNormal : register(t4);
 
 cbuffer WaterCausticsConstants : register(b0)
 {
@@ -130,7 +130,7 @@ float3 EvaluateCausticsWaterOffset(float2 worldXZ)
         return EvaluateWaterOffset(worldXZ);
     }
 
-    return SampleFFTOceanBilinear(gFFTOceanDisplacement, worldXZ, gFFTOceanUVScale, gFFTOceanUVOffset, gFFTOceanResolution).xyz;
+    return SampleFFTOceanCascadeDisplacement(gFFTOceanDisplacement, worldXZ, gFFTOceanResolution);
 }
 
 float3 EvaluateCausticsWaterNormal(float2 worldXZ)
@@ -140,9 +140,7 @@ float3 EvaluateCausticsWaterNormal(float2 worldXZ)
         return EvaluateWaterNormal(worldXZ);
     }
 
-    const float3 encodedNormal = SampleFFTOceanBilinear(gFFTOceanNormal, worldXZ, gFFTOceanUVScale, gFFTOceanUVOffset, gFFTOceanResolution).xyz;
-    const float3 decodedNormal = normalize(encodedNormal * 2.0f - 1.0f);
-    return decodedNormal.y < 0.0f ? -decodedNormal : decodedNormal;
+    return SampleFFTOceanCascadeNormal(gFFTOceanNormal, worldXZ, gFFTOceanResolution);
 }
 
 [shader("raygeneration")]

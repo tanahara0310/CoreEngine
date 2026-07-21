@@ -21,7 +21,7 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE spectrumSrvHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE spectrumAUavHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE spectrumBUavHandle,
-            ID3D12Resource* simulationConstantsBuffer,
+            D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
             uint32_t resolution);
 
         /// @brief IFFT単一ステージを実行する
@@ -50,7 +50,7 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE displacementUavHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE normalUavHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE jacobianUavHandle,
-            ID3D12Resource* simulationConstantsBuffer,
+            D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
             uint32_t resolution);
     };
 }

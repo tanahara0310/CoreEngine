@@ -1,8 +1,10 @@
 Texture2D<float4> gHeightDisplacementXSpectrum : register(t0);
 Texture2D<float4> gDisplacementZSpectrum : register(t1);
-RWTexture2D<float4> gDisplacementOutput : register(u0);
-RWTexture2D<float4> gNormalOutput : register(u1);
-RWTexture2D<float4> gJacobianOutput : register(u2);
+// 出力はカスケード配列テクスチャのスライス。UAV は ArraySize=1 で対象スライスを
+// 単独に見せているため、書き込みインデックスの配列成分は常に 0。
+RWTexture2DArray<float4> gDisplacementOutput : register(u0);
+RWTexture2DArray<float4> gNormalOutput : register(u1);
+RWTexture2DArray<float4> gJacobianOutput : register(u2);
 
 cbuffer FFTOceanSimulationConstants : register(b0)
 {
@@ -97,7 +99,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float foldover = detJ < 0.0f ? 1.0f : 0.0f;
     const float breakingCandidate = saturate(compression * 2.0f + foldover);
 
-    gDisplacementOutput[coord] = float4(displacementX, height, displacementZ, 1.0f);
-    gNormalOutput[coord] = float4(normalize(normal) * 0.5f + 0.5f, 1.0f);
-    gJacobianOutput[coord] = float4(detJ, breakingCandidate, compression, foldover);
+    gDisplacementOutput[uint3(coord, 0)] = float4(displacementX, height, displacementZ, 1.0f);
+    gNormalOutput[uint3(coord, 0)] = float4(normalize(normal) * 0.5f + 0.5f, 1.0f);
+    gJacobianOutput[uint3(coord, 0)] = float4(detJ, breakingCandidate, compression, foldover);
 }

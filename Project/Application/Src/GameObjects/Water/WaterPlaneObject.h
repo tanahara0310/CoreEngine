@@ -110,6 +110,9 @@ public:
     /// @brief メッシュのローカルサイズ（1 辺の長さ、スケール適用前）を返す
     float GetSize() const { return size_; }
 
+    /// @brief メッシュの分割数（XZ 方向共通）を返す
+    uint32_t GetResolution() const { return resolution_; }
+
     /// @brief DXR 屈折用に現在の WaterConstants を取得する
     const WaterConstants& GetWaterConstants() const { return waterCB_; }
 

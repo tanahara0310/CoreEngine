@@ -23,7 +23,9 @@ namespace CoreEngine
             float patchLength = 96.0f;
             float amplitudeScale = 1.0f;
             float windDirection[2] = { 0.92f, 0.38f };
-            float windSpeed = 24.0f;
+            // 波高は Pierson-Moskowitz 較正（Hs ≈ 0.21 v²/g）で風速から決まる。
+            // 12 m/s → 有義波高約 3m の「うねりのある外洋」相当を既定とする。
+            float windSpeed = 12.0f;
             float choppiness = 1.35f;
             uint32_t activeComponentCount = 32;
             float gravity = 9.81f;
@@ -58,10 +60,21 @@ namespace CoreEngine
         /// @return 設定参照
         const Settings& GetSettings() const { return settings_; }
 
+        // マルチスケール・カスケード数。各カスケードは異なるパッチ長の独立したFFTで、
+        // 周期が噛み合わないため単一タイルの「格子状の繰り返し」を打ち消す。
+        // 出力は Texture2DArray（スライス = カスケード）にまとめ、水面シェーダ側で
+        // ワールドXZベースに各スライスをサンプルして合算する。
+        // 各カスケードのワールドパッチ長／波高配分は .cpp の kCascadePatchLength / kCascadeRmsShare、
+        // パッチ長はシェーダ側 kFFTCascadePatch と一致させること。
+        // 波高は Pierson-Moskowitz（Hs ≈ 0.21 v²/g）へ較正され、風速だけで決まる。
+        static constexpr uint32_t kCascadeCount = 3;
+
     private:
         static constexpr uint32_t kMaxSpectrumComponents = 64;
         static constexpr uint32_t kPingPongCount = 2;
-        static constexpr uint32_t kMaxIFFTPassCount = 32;
+        // IFFT定数のリングスロット数。1フレームで全カスケードのIFFTパスを積むため、
+        // （2 * log2(最大解像度512=9) * 2系統 = 36）× kCascadeCount 分を余裕を持って確保する。
+        static constexpr uint32_t kMaxIFFTPassCount = 36 * kCascadeCount + 8;
 
         struct SpectrumSample {
             float h0[2] = {};
@@ -142,14 +155,17 @@ namespace CoreEngine
         /// @brief 現在設定から初期スペクトルを再構築する
         void BuildSpectrum();
 
-        /// @brief フレーム時刻を含むシミュレーション定数を更新する
-        void UpdateSimulationConstants(float timeSeconds);
+        /// @brief 指定カスケードのフレーム時刻・パッチ長を含むシミュレーション定数を更新する
+        void UpdateSimulationConstants(uint32_t cascadeIndex, float timeSeconds);
+
+        /// @brief 指定カスケードのシミュレーション定数スロットのGPU仮想アドレスを返す
+        D3D12_GPU_VIRTUAL_ADDRESS GetSimulationConstantsAddress(uint32_t cascadeIndex) const;
 
         /// @brief IFFT 1パス分の定数を書き込み、GPU仮想アドレスを返す
         D3D12_GPU_VIRTUAL_ADDRESS UpdateIFFTConstants(uint32_t stageIndex, bool isHorizontal, float normalizationScale);
 
-        /// @brief 時間発展パスをDispatchする
-        void DispatchEvolutionPass(ID3D12GraphicsCommandList* cmdList);
+        /// @brief 指定カスケードの時間発展パスをDispatchする
+        void DispatchEvolutionPass(ID3D12GraphicsCommandList* cmdList, uint32_t cascadeIndex);
 
         /// @brief IFFT 1ステージ分のパスをDispatchする
         void DispatchIFFTPass(
@@ -180,9 +196,10 @@ namespace CoreEngine
         ///          前提で、退出時にも同状態へ戻す（呼び出し元の一括ステート管理を保つ）。
         void DispatchNormalMipGenPass(ID3D12GraphicsCommandList* cmdList);
 
-        /// @brief IFFT結果から最終の変位/法線/ヤコビアンを生成する
+        /// @brief IFFT結果から最終の変位/法線/ヤコビアンを生成する（指定カスケードのスライスへ書き込む）
         void DispatchFinalizePass(
             ID3D12GraphicsCommandList* cmdList,
+            uint32_t cascadeIndex,
             ID3D12Resource* spectrumAResource,
             D3D12_RESOURCE_STATES& spectrumAState,
             D3D12_GPU_DESCRIPTOR_HANDLE spectrumASrv,
@@ -249,18 +266,20 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         // 出力テクスチャのSRV/UAVハンドルとリソース状態管理
         // ──────────────────────────────────────────────────────────
+        // SRV は配列全体（全カスケード）を1ビューで見せる。UAV は Finalize が
+        // カスケード単位で書き込むためスライスごとに用意する。
         D3D12_CPU_DESCRIPTOR_HANDLE displacementSrvCpuHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle_{};
-        D3D12_CPU_DESCRIPTOR_HANDLE displacementUavCpuHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE displacementUavHandle_{};
+        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> displacementUavCpuHandle_{};
+        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> displacementUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE normalSrvCpuHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle_{};
-        D3D12_CPU_DESCRIPTOR_HANDLE normalUavCpuHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE normalUavHandle_{};
+        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> normalUavCpuHandle_{};
+        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> normalUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE jacobianSrvCpuHandle_{};
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle_{};
-        D3D12_CPU_DESCRIPTOR_HANDLE jacobianUavCpuHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE jacobianUavHandle_{};
+        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> jacobianUavCpuHandle_{};
+        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> jacobianUavHandle_{};
         D3D12_RESOURCE_STATES displacementState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_RESOURCE_STATES normalState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_RESOURCE_STATES jacobianState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
@@ -315,19 +334,22 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         // 初期スペクトルバッファとアップロード状態
         // ──────────────────────────────────────────────────────────
-        Microsoft::WRL::ComPtr<ID3D12Resource> spectrumBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> spectrumUploadBuffer_;
-        SpectrumSample* mappedSpectrumSamples_ = nullptr;
-        D3D12_CPU_DESCRIPTOR_HANDLE spectrumSrvCpuHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE spectrumSrvHandle_{};
-        D3D12_RESOURCE_STATES spectrumBufferState_ = D3D12_RESOURCE_STATE_COPY_DEST;
+        // 初期スペクトル（h0）はパッチ長依存のためカスケードごとに独立して持つ。
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kCascadeCount> spectrumBuffer_;
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kCascadeCount> spectrumUploadBuffer_;
+        std::array<SpectrumSample*, kCascadeCount> mappedSpectrumSamples_{};
+        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> spectrumSrvCpuHandle_{};
+        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> spectrumSrvHandle_{};
+        std::array<D3D12_RESOURCE_STATES, kCascadeCount> spectrumBufferState_{};
         bool spectrumBufferDirty_ = false;
 
         // ──────────────────────────────────────────────────────────
         // シミュレーション/IFFT定数バッファと書き込みカーソル
         // ──────────────────────────────────────────────────────────
+        // シミュレーション定数はカスケードごとに patchLength / amplitudeScale が異なるため、
+        // 1フレームで全カスケードのDispatchを積むには kCascadeCount スロットのリングにする。
         Microsoft::WRL::ComPtr<ID3D12Resource> simulationConstantsBuffer_;
-        SimulationConstants* mappedSimulationConstants_ = nullptr;
+        uint8_t* mappedSimulationConstants_ = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> ifftConstantsBuffer_;
         uint8_t* mappedIFFTConstantsData_ = nullptr;
         uint32_t ifftConstantsWriteIndex_ = 0;
