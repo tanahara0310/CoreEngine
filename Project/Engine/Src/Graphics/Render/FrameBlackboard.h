@@ -41,7 +41,6 @@ namespace CoreEngine
         static const char* const GBufferAlbedoAO;
         static const char* const GBufferNormalRoughness;
         static const char* const GBufferEmissiveMetallic;
-        static const char* const GBufferWorldPosition;
         static const char* const GBufferMotionVector;
 
         /// @brief PostEffect の中間論理リソース名を生成する

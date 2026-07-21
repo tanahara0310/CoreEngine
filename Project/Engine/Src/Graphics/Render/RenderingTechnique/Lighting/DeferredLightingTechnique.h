@@ -1,8 +1,10 @@
 #pragma once
 #include "../RenderingTechniqueBase.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+#include "Graphics/Render/Pass/RenderPass.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
+#include <array>
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -36,6 +38,16 @@ namespace CoreEngine
 
         /// @brief ライトビュープロジェクション行列を設定（毎フレーム更新）
         void UpdateLightViewProjection(const Matrix4x4& lightViewProjection);
+
+        /// @brief 深度復元用の View*Projection 逆行列を更新する（ビューごとに毎回呼び出し）
+        /// @details gCamera（cameraCBVAddress_）は補助ビュー描画中フリッカー防止のため
+        ///          意図的に更新されない（Camera::BeginViewOverride 参照）ため、
+        ///          こちらは専用 CBV として毎ビュー確実に更新する。
+        /// @note DeferredLighting は GameView/ReflectionView の両方で同一フレーム内に実行されるため、
+        ///       単一バッファだと後勝ちで両ビューが同じ（間違った）行列を参照してしまう
+        ///       （CPU の Map/Unmap は GPU 実行を待たず即座に上書きするため）。
+        ///       ビュー種別ごとに別バッファを持つことで両ビューが自分の行列を正しく参照できるようにする。
+        void UpdateDepthReconstruction(RenderViewType viewType, const Matrix4x4& invViewProj);
 
         // ===== IBL セッター =====
 
@@ -92,6 +104,12 @@ namespace CoreEngine
         // ライトビュープロジェクション行列専用定数バッファ（毎フレーム更新）
         Microsoft::WRL::ComPtr<ID3D12Resource> lightVPBuffer_;
         D3D12_GPU_VIRTUAL_ADDRESS lightVPCBVAddress_ = 0;
+
+        // 深度復元用 View*Projection 逆行列専用定数バッファ（RenderViewType ごとに個別バッファ。
+        // 同一フレーム内で GameView/ReflectionView 両方から書き込まれるため単一バッファ不可）
+        static constexpr size_t kViewTypeCount = 3; // GameView / ReflectionView / CaptureView
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kViewTypeCount> depthReconstructionBuffers_;
+        std::array<D3D12_GPU_VIRTUAL_ADDRESS, kViewTypeCount> depthReconstructionCBVAddresses_{};
 
         // ===== IBL パラメータ =====
         Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;

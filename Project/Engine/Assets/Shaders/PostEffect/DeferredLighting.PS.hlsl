@@ -2,6 +2,7 @@
 #include "../Include/Lighting/LightStructures.hlsli"
 #include "../Include/Shadow/ShadowCalculation.hlsli"
 #include "../Include/PBR/PBR.hlsli"
+#include "../Include/Common/DepthReconstruction.hlsli"
 
 // ============================================================
 // G-Buffer テクスチャ
@@ -9,7 +10,7 @@
 Texture2D<float4> gAlbedoAO : register(t0);
 Texture2D<float4> gNormalRoughness : register(t1);
 Texture2D<float4> gEmissiveMetallic : register(t2);
-Texture2D<float4> gWorldPosition : register(t3);
+Texture2D<float> gSceneDepth : register(t3); // WorldPosition ターゲット廃止に伴い深度から復元する
 
 // ============================================================
 // ライトデータ
@@ -40,6 +41,18 @@ struct Camera
     float3 worldPosition;
 };
 ConstantBuffer<Camera> gCamera : register(b2);
+
+// ============================================================
+// 深度復元用（WorldPosition ターゲット廃止に伴う追加）
+// ============================================================
+// gCamera（b2）は BaseModelRenderer の WVP 用 CBV を共有しており、反射ビュー等の補助ビュー
+// 描画中は意図的に更新されない（フリッカー防止のため。Camera::BeginViewOverride 参照）。
+// そのため invViewProj は毎ビュー確実に更新される専用 CBV として別に持つ。
+struct DepthReconstructionParams
+{
+    float4x4 invViewProj;
+};
+ConstantBuffer<DepthReconstructionParams> gDepthReconstruction : register(b7);
 
 // ============================================================
 // IBL テクスチャ
@@ -203,16 +216,21 @@ PixelShaderOutput main(PixelShaderInput input)
     float4 albedoAO = gAlbedoAO.Load(loadCoord);
     float4 normalRoughness = gNormalRoughness.Load(loadCoord);
     float4 emissiveMetallic = gEmissiveMetallic.Load(loadCoord);
-    float4 worldPosSample = gWorldPosition.Load(loadCoord);
+    float ndcDepth = gSceneDepth.Load(loadCoord);
 
     // ===== 背景ピクセル検出 =====
-    // GBuffer は worldPosition.a >= 1.0 を書き込む。
-    // クリア後の背景ピクセルは a = 0 なのでここで早期リターン。
-    if (worldPosSample.a < 0.5f)
+    // 深度クリア値（1.0）のピクセルは未描画の背景。
+    if (IsBackgroundDepth(ndcDepth))
     {
         output.color = float4(0.1f, 0.25f, 0.5f, 1.0f);
         return output;
     }
+
+    // ===== ワールド座標復元 =====
+    float depthW, depthH;
+    gSceneDepth.GetDimensions(depthW, depthH);
+    float2 screenUV = (input.position.xy + 0.5f.xx) / float2(depthW, depthH);
+    float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gDepthReconstruction.invViewProj);
 
     if (gWaterCausticsDebug.debugViewMode != 0)
     {
@@ -236,24 +254,23 @@ PixelShaderOutput main(PixelShaderInput input)
         return output;
     }
 
-    // ===== マテリアルフラグのデコード =====
-    // GBuffer.PS.hlsl が worldPosition.a にエンコードしたフラグを読み取る。
-    // 2 = PBR（マテリアルの IBL オプトアウト）, 3 = PBR + IBL
-    int pixelType = int(round(worldPosSample.a));
-
     // ===== アンリットマテリアル検出 =====
-    // GBuffer.PS.hlsl は enableLighting==0 のとき normalRoughness.a=0 のセンチネル値を書き込み、
-    // emissiveMetallic.rgb にアンリットカラーを格納する。
-    if (normalRoughness.a <= 0.0f)
+    // GBuffer.PS.hlsl は enableLighting==0 のとき normalRoughness.a=0.0 の厳密なセンチネル値を書き込み、
+    // emissiveMetallic.rgb にアンリットカラーを格納する。IBLオプトアウト（負値）と区別するため
+    // <= ではなく == で判定する（ライト時のroughnessは0.01未満に丸められないため0との衝突は無い）。
+    if (normalRoughness.a == 0.0f)
     {
         output.color = float4(emissiveMetallic.rgb, 1.0f);
         return output;
     }
 
+    // ===== IBLフラグのデコード =====
+    // GBuffer.PS.hlsl は IBL 有効時 roughness を正、オプトアウト時は負で書き込む（符号ビット埋め込み）。
+    const bool materialWantsIBL = normalRoughness.a > 0.0f;
+
     // 共通パラメータ展開
     float3 albedo = albedoAO.rgb;
     float3 N = normalize(normalRoughness.rgb * 2.0f - 1.0f);
-    float3 worldPos = worldPosSample.xyz;
     float3 V = normalize(gCamera.worldPosition - worldPos);
 
     // ===== ライト空間座標（PCFシャドウフォールバック用） =====
@@ -284,12 +301,11 @@ PixelShaderOutput main(PixelShaderInput input)
     // ============================================================
     // PBR ライティングパス（常にここに到達）
     // ============================================================
-    // pixelType: 2=PBR（IBLオプトアウト）, 3=PBR+IBL
     // IBL はシーンに Irradiance マップがバインドされている場合のみ有効（幅1以下=未設定）
     float iblW, iblH;
     gIrradianceMap.GetDimensions(iblW, iblH);
     const bool sceneHasIBL = (iblW > 1.0f);
-    const bool enableIBL = (pixelType == 3) && sceneHasIBL;
+    const bool enableIBL = materialWantsIBL && sceneHasIBL;
 
     float ao = saturate(albedoAO.a);
 
@@ -304,7 +320,7 @@ PixelShaderOutput main(PixelShaderInput input)
         }
     }
 
-    float roughness = saturate(normalRoughness.a);
+    float roughness = saturate(abs(normalRoughness.a));
     float metallic = saturate(emissiveMetallic.a);
     float3 emissive = emissiveMetallic.rgb;
     float3 F0 = lerp(float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0), albedo, metallic);

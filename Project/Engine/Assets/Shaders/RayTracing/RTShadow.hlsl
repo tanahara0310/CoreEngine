@@ -3,14 +3,16 @@
 // TLAS に対してシャドウレイを飛ばし、遮蔽結果を UAV テクスチャに書き込む
 // ============================================================
 
+#include "../Include/Common/DepthReconstruction.hlsli"
+
 // 出力: シャドウマスク（0=影, 1=光）
 RWTexture2D<float> gShadowOutput : register(u0);
 
 // TLAS
 RaytracingAccelerationStructure gScene : register(t0);
 
-// G-Buffer: ワールド座標
-Texture2D<float4> gWorldPosition : register(t1);
+// G-Buffer: 深度（WorldPosition ターゲット廃止に伴い深度から復元する）
+Texture2D<float> gSceneDepth : register(t1);
 
 // G-Buffer: 法線（セルフシャドウバイアス用）
 Texture2D<float4> gNormalRoughness : register(t2);
@@ -35,6 +37,7 @@ cbuffer ShadowRayConstants : register(b0)
     float gScreenWidth; // スクリーン幅（ピクセル）
     float gScreenHeight; // スクリーン高さ（ピクセル）
     float gPadding_[1]; // 16バイトアライメント用パディング
+    float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
 };
 
 // ============================================================
@@ -92,17 +95,18 @@ void RTShadowRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
 
-    // G-Buffer からワールド座標を読み取り
-    float4 worldPosSample = gWorldPosition.Load(int3(launchIndex, 0));
+    // G-Buffer から深度を読み取り、ワールド座標を復元する
+    float ndcDepth = gSceneDepth.Load(int3(launchIndex, 0));
 
-    // 背景ピクセル（a < 0.5）はスキップ → 影なし（1.0）
-    if (worldPosSample.a < 0.5f)
+    // 背景ピクセルはスキップ → 影なし（1.0）
+    if (IsBackgroundDepth(ndcDepth))
     {
         gShadowOutput[launchIndex] = 1.0f;
         return;
     }
 
-    float3 worldPos = worldPosSample.xyz;
+    float2 screenUV = (float2(launchIndex) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
+    float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gInvViewProj);
 
     // G-Buffer から法線を読み取り（セルフシャドウ防止用）
     float4 normalSample = gNormalRoughness.Load(int3(launchIndex, 0));

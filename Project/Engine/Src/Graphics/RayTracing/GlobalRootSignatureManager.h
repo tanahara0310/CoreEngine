@@ -25,7 +25,7 @@ namespace CoreEngine
     ///   GlobalRootSignatureManager mgr;
     ///   mgr.AddUAVTable("gShadowOutput",    0)
     ///      .AddSRVTable("gScene",            0)
-    ///      .AddSRVTable("gWorldPosition",    1)
+    ///      .AddSRVTable("gSceneDepth",       1)
     ///      .AddSRVTable("gNormalRoughness",  2)
     ///      .AddCBV    ("ShadowRayConstants", 0);
     ///   mgr.Build(device);

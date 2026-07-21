@@ -4,10 +4,11 @@
 // ============================================================
 
 #include "RTWaterSurfaceCommon.hlsli"
+#include "../../Include/Common/DepthReconstruction.hlsli"
 
 RWTexture2D<float4> gCausticsOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
-Texture2D<float4> gWorldPosition : register(t1);
+Texture2D<float> gSceneDepth : register(t1); // WorldPosition ターゲット廃止に伴い深度から復元する
 Texture2D<float4> gNormalRoughness : register(t2);
 Texture2D<float4> gFFTOceanDisplacement : register(t3);
 Texture2D<float4> gFFTOceanNormal : register(t4);
@@ -42,6 +43,7 @@ cbuffer WaterCausticsConstants : register(b0)
     float2 gRegionHalfExtentXZ;
     uint gRegionValid;
     float3 gRegionPadding;
+    float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
 };
 
 static const uint kRTCausticsDebugNone = 0;
@@ -156,14 +158,15 @@ void RTWaterCausticsRayGen()
         return;
     }
 
-    float4 worldPosSample = gWorldPosition.Load(int3(launchIndex, 0));
-    if (worldPosSample.a < 0.5f)
+    float ndcDepth = gSceneDepth.Load(int3(launchIndex, 0));
+    if (IsBackgroundDepth(ndcDepth))
     {
         gCausticsOutput[launchIndex] = 0.0f.xxxx;
         return;
     }
 
-    float3 receiverWorldPos = worldPosSample.xyz;
+    float2 screenUV = (float2(launchIndex) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
+    float3 receiverWorldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gInvViewProj);
 
     // 水面メッシュの XZ 範囲外（無限床など水域の外）にはコースティクスを落とさない。
     // 範囲の内側 2m でフェードアウトさせ、水域の縁で模様が急に切れる輪郭を防ぐ。

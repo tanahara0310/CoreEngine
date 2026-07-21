@@ -16,6 +16,7 @@
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
+#include "Math/MathCore.h"
 
 namespace CoreEngine
 {
@@ -26,7 +27,6 @@ namespace CoreEngine
         builder.Read(FrameBlackboard::GBufferAlbedoAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferEmissiveMetallic, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        builder.Read(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         if (context.viewSettings.enableSSAO) {
             builder.Read(FrameBlackboard::SSAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
@@ -72,6 +72,14 @@ namespace CoreEngine
 
             // 環境輝度スケールを転送（SkyBox intensity と連動）
             deferredLighting->SetIBLIntensity(context.renderManager->GetEnvironmentIntensity());
+
+            // ===== 深度復元用 View*Projection 逆行列（ビューごとに毎回更新） =====
+            // GameView/ReflectionView いずれも RenderManager が現在実行中のビューの
+            // 行列を保持しているため、gCamera（フリーズされたCBV）に頼らずここで直接取得する。
+            const Matrix4x4& view = context.renderManager->GetViewMatrix();
+            const Matrix4x4& proj = context.renderManager->GetProjectionMatrix();
+            const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(MathCore::Matrix::Multiply(view, proj));
+            deferredLighting->UpdateDepthReconstruction(context.viewSettings.viewType, invViewProj);
         }
 
         // ===== IBL パラメータを GPU バッファに書き込む =====

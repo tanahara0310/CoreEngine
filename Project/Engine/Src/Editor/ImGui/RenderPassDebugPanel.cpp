@@ -37,14 +37,13 @@ namespace CoreEngine
 
         // ---- バッファエントリーを収集 ----
 
-        // GBuffer ターゲット
-        BufferEntry gbufEntries[5] = {};
+        // GBuffer ターゲット（WorldPosition は廃止済み。深度から復元する）
+        BufferEntry gbufEntries[4] = {};
         if (gbuf) {
             gbufEntries[0] = { "AlbedoAO",        "rgb=アルベド / a=AO",            gbuf->GetSRVHandle(GBufferManager::Target::AlbedoAO),        true };
-            gbufEntries[1] = { "NormalRoughness",  "rgb=ワールド法線(encode) / a=Roughness", gbuf->GetSRVHandle(GBufferManager::Target::NormalRoughness), true };
+            gbufEntries[1] = { "NormalRoughness",  "rgb=ワールド法線(encode) / a=符号付きRoughness(符号=IBL有効/無効, 0=アンリット)", gbuf->GetSRVHandle(GBufferManager::Target::NormalRoughness), true };
             gbufEntries[2] = { "EmissiveMetallic", "rgb=エミッシブ / a=メタリック", gbuf->GetSRVHandle(GBufferManager::Target::EmissiveMetallic), true };
-            gbufEntries[3] = { "WorldPosition",    "rgb=ワールド座標 / a=フラグ",   gbuf->GetSRVHandle(GBufferManager::Target::WorldPosition),    true };
-            gbufEntries[4] = { "MotionVector",     "rg=NDCモーションベクター",       gbuf->GetSRVHandle(GBufferManager::Target::MotionVector),     true };
+            gbufEntries[3] = { "MotionVector",     "rg=NDCモーションベクター",       gbuf->GetSRVHandle(GBufferManager::Target::MotionVector),     true };
         }
 
         // 説明テキスト

@@ -20,7 +20,6 @@ namespace CoreEngine
     const char* const FrameBlackboard::GBufferAlbedoAO = "GBufferAlbedoAO";
     const char* const FrameBlackboard::GBufferNormalRoughness = "GBufferNormalRoughness";
     const char* const FrameBlackboard::GBufferEmissiveMetallic = "GBufferEmissiveMetallic";
-    const char* const FrameBlackboard::GBufferWorldPosition = "GBufferWorldPosition";
     const char* const FrameBlackboard::GBufferMotionVector = "GBufferMotionVector";
 
     std::string FrameBlackboard::MakePostEffectIntermediateName(size_t index)

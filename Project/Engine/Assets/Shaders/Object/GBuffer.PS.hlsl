@@ -9,10 +9,9 @@
 struct GBufferOutput
 {
     float4 albedoAO : SV_TARGET0; ///< rgb=アルベド, a=AO
-    float4 normalRoughness : SV_TARGET1; ///< rgb=ワールド法線(エンコード済み), a=ラフネス
+    float4 normalRoughness : SV_TARGET1; ///< rgb=ワールド法線(エンコード済み), a=ラフネス（符号=IBL有効/無効、0=アンリット）
     float4 emissiveMetallic : SV_TARGET2; ///< rgb=エミッシブ, a=メタリック
-    float4 worldPosition : SV_TARGET3; ///< rgb=ワールド座標, a=ピクセルフラグ
-    float2 motionVector : SV_TARGET4; ///< モーションベクター（NDC空間の2Dオフセット）
+    float2 motionVector : SV_TARGET3; ///< モーションベクター（NDC空間の2Dオフセット）
 };
 
 GBufferOutput main(VertexShaderOutput input)
@@ -40,7 +39,6 @@ GBufferOutput main(VertexShaderOutput input)
         output.albedoAO = float4(0.0f, 0.0f, 0.0f, 1.0f);
         output.normalRoughness = float4(0.5f, 0.5f, 1.0f, 0.0f); // roughness=0 = アンリットセンチネル
         output.emissiveMetallic = float4(albedo, 0.0f); // rgb にアンリットカラーを格納
-        output.worldPosition = float4(input.worldPosition, 1.0f);
         output.motionVector = float2(0.0f, 0.0f);
         return output;
     }
@@ -61,16 +59,15 @@ GBufferOutput main(VertexShaderOutput input)
     // エミッシブ（DeferredLighting が最終カラーに加算する）
     float3 emissive = GetEmissive(uv);
 
-    // worldPosition.a pixelFlag:
-    // 0 = 背景（クリア値）
-    // 2 = PBR（このマテリアルは IBL オプトアウト: iblIntensity == 0）
-    // 3 = PBR + IBL（シーンに IBL マップが無い場合は DeferredLighting 側で無効化される）
-    float pixelFlag = (gMaterial.iblIntensity > 0.0f) ? 3.0f : 2.0f;
+    // WorldPosition ターゲット削除に伴い、IBL 有効/無効フラグを roughness の符号ビットへ
+    // 無劣化で埋め込む（roughness は上で 0.01 未満に丸め済みなので 0.0 との衝突は無い。
+    // 0.0 自体はアンリットセンチネルとして別途予約済み）。
+    // DeferredLighting.PS.hlsl はワールド座標を深度から復元し、背景判定は深度のクリア値で行う。
+    float encodedRoughness = (gMaterial.iblIntensity > 0.0f) ? roughness : -roughness;
 
     output.albedoAO = float4(albedo, ao);
-    output.normalRoughness = float4(encodedNormal, roughness);
+    output.normalRoughness = float4(encodedNormal, encodedRoughness);
     output.emissiveMetallic = float4(emissive, metallic);
-    output.worldPosition = float4(input.worldPosition, pixelFlag);
 
     // ===== モーションベクター計算 =====
     // NDC空間（-1〜1）での現フレームと前フレームの位置差分を格納する。

@@ -18,7 +18,6 @@ namespace
         DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,    // AlbedoAO
         DXGI_FORMAT_R16G16B16A16_FLOAT,      // NormalRoughness
         DXGI_FORMAT_R8G8B8A8_UNORM,          // EmissiveMetallic
-        DXGI_FORMAT_R32G32B32A32_FLOAT,      // WorldPosition
         DXGI_FORMAT_R16G16_FLOAT,            // MotionVector
     };
 
@@ -26,7 +25,6 @@ namespace
         std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f },  // AlbedoAO
         std::array<float, 4>{ 0.0f, 0.0f, 1.0f, 1.0f },  // NormalRoughness
         std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },  // EmissiveMetallic
-        std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },  // WorldPosition
         std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },  // MotionVector
     };
 
@@ -36,7 +34,6 @@ namespace
         case GBufferManager::Target::AlbedoAO:       return "GBuffer_AlbedoAO";
         case GBufferManager::Target::NormalRoughness:  return "GBuffer_NormalRoughness";
         case GBufferManager::Target::EmissiveMetallic: return "GBuffer_EmissiveMetallic";
-        case GBufferManager::Target::WorldPosition:    return "GBuffer_WorldPosition";
         case GBufferManager::Target::MotionVector:      return "GBuffer_MotionVector";
         default:
             return "GBuffer_Unknown";

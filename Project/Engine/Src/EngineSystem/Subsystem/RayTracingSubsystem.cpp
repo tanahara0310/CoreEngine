@@ -94,10 +94,19 @@ namespace CoreEngine
     {
         auto* rtShadow = context.rtShadowManager;
         if (!rtShadow || !rtShadow->IsInitialized()) return;
-        if (!context.gBufferManager || !context.lightManager) return;
+        if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return;
         if (!dx || !cmdList) return;
 
-        auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
+        if (!camera) return;
+
+        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
+        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
+        }
+        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(
+            camera->GetViewMatrix() * camera->GetProjectionMatrix());
         auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
         auto motionVecSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
 
@@ -116,6 +125,7 @@ namespace CoreEngine
                 normalSRV,
                 motionVecSRV,
                 dirLight->direction,
+                invViewProj,
                 width,
                 height,
                 viewId,
@@ -133,10 +143,19 @@ namespace CoreEngine
     {
         auto* rtShadow = context.rtShadowManager;
         if (!rtShadow || !rtShadow->IsInitialized()) return;
-        if (!context.gBufferManager || !context.lightManager) return;
+        if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return;
         if (!dx || !cmdList) return;
 
-        auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
+        if (!camera) return;
+
+        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
+        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
+        }
+        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(
+            camera->GetViewMatrix() * camera->GetProjectionMatrix());
         auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
         auto motionVecSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
 
@@ -154,6 +173,7 @@ namespace CoreEngine
                 normalSRV,
                 worldPosSRV,
                 motionVecSRV,
+                invViewProj,
                 width,
                 height,
                 viewId,
@@ -169,10 +189,19 @@ namespace CoreEngine
     {
         auto* rtShadow = context.rtShadowManager;
         if (!rtShadow || !rtShadow->IsInitialized()) return;
-        if (!context.gBufferManager || !context.lightManager) return;
+        if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return;
         if (!dx || !cmdList) return;
 
-        auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
+        if (!camera) return;
+
+        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
+        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
+        }
+        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(
+            camera->GetViewMatrix() * camera->GetProjectionMatrix());
         auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
 
         const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
@@ -188,6 +217,7 @@ namespace CoreEngine
                 cmdList,
                 normalSRV,
                 worldPosSRV,
+                invViewProj,
                 width,
                 height,
                 viewId,
@@ -272,7 +302,11 @@ namespace CoreEngine
             return;
         }
 
-        auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
+        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
+        }
         const Matrix4x4 viewProjection = camera->GetViewMatrix() * camera->GetProjectionMatrix();
         const Vector3 cameraPosition = camera->GetPosition();
         const UINT width = static_cast<UINT>(dx->GetClientWidth());
@@ -351,14 +385,25 @@ namespace CoreEngine
         if (!rtWaterCaustics || !rtWaterCaustics->IsInitialized()) {
             return;
         }
-        if (!context.gBufferManager) {
+        if (!context.gBufferManager || !context.sceneManager) {
             return;
         }
         if (!dx || !cmdList) {
             return;
         }
 
-        auto worldPosSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition);
+        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
+        if (!camera) {
+            return;
+        }
+
+        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
+        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
+        }
+        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(
+            camera->GetViewMatrix() * camera->GetProjectionMatrix());
         auto normalRoughnessSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
         const UINT width = static_cast<UINT>(dx->GetClientWidth());
         const UINT height = static_cast<UINT>(dx->GetClientHeight());
@@ -415,6 +460,7 @@ namespace CoreEngine
             lightInput,
             surfaceData,
             fftOceanInput,
+            invViewProj,
             width,
             height,
             viewId);

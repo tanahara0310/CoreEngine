@@ -12,6 +12,7 @@ namespace CoreEngine
         struct SSAOParams {
             float viewMatrix[16] = {};
             float projectionMatrix[16] = {};
+            float invViewProjMatrix[16] = {}; // WorldPosition ターゲット廃止に伴う深度復元用
             float radius = 0.5f;
             float bias = 0.025f;
             float intensity = 1.0f;

@@ -5,6 +5,7 @@
 #include <wrl.h>
 #include <cstdint>
 #include "Math/Vector/Vector3.h"
+#include "Math/Matrix/Matrix4x4.h"
 #include "GlobalRootSignatureManager.h"
 #include "RayTracingPipelineBuilder.h"
 #include "ShaderTableBuilder.h"
@@ -52,11 +53,14 @@ namespace CoreEngine
 
         /// @brief シャドウレイをディスパッチする
         /// @param lightIndex ディレクショナルライトのインデックス（0〜kMaxDirectionalLights-1）
+        /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
+        /// @param invViewProj 深度復元用 View*Projection の逆行列
         void Dispatch(ID3D12GraphicsCommandList* cmdList,
-            D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
             const Vector3& lightDirection,
+            const Matrix4x4& invViewProj,
             UINT width, UINT height,
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
@@ -64,7 +68,8 @@ namespace CoreEngine
         /// @brief A-Trous デノイズパスを実行する（Dispatch の直後に呼ぶ）
         void Denoise(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
+            const Matrix4x4& invViewProj,
             UINT width, UINT height,
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
@@ -72,8 +77,9 @@ namespace CoreEngine
         /// @brief 空間前処理＋テンポラル蓄積パスを実行する（Dispatch と Denoise の間に呼ぶ）
         void ApplyTemporal(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
+            const Matrix4x4& invViewProj,
             UINT width, UINT height,
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);

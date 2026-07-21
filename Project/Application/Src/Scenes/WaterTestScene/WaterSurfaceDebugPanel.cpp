@@ -260,7 +260,6 @@ void WaterSurfaceDebugPanel::DrawCausticsDebugSection(WaterEditorFacade& editorF
 	ImGui::Text("波数: %u", diagnostics.activeWaveCount);
 	ImGui::Text("メインライト: %s", diagnostics.mainLightEnabled ? "有効" : "無効");
 	ImGui::Text("出力 SRV: 0x%llX", diagnostics.outputHandle);
-	ImGui::Text("WorldPos SRV: 0x%llX", diagnostics.worldPositionHandle);
 	ImGui::Text("Normal SRV: 0x%llX", diagnostics.normalHandle);
 
 	if (changed) {

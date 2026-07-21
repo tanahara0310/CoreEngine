@@ -60,7 +60,6 @@ struct WaterEditorCausticsDiagnostics {
     uint32_t activeWaveCount = 0;
     bool mainLightEnabled = false;
     uint64_t outputHandle = 0;
-    uint64_t worldPositionHandle = 0;
     uint64_t normalHandle = 0;
 };
 

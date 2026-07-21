@@ -398,7 +398,6 @@ namespace CoreEngine
                 { FrameBlackboard::GBufferAlbedoAO, GBufferManager::Target::AlbedoAO },
                 { FrameBlackboard::GBufferNormalRoughness, GBufferManager::Target::NormalRoughness },
                 { FrameBlackboard::GBufferEmissiveMetallic, GBufferManager::Target::EmissiveMetallic },
-                { FrameBlackboard::GBufferWorldPosition, GBufferManager::Target::WorldPosition },
                 { FrameBlackboard::GBufferMotionVector, GBufferManager::Target::MotionVector },
             };
 

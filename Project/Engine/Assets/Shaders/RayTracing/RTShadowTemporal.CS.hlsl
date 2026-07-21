@@ -6,14 +6,16 @@
 //   history には A-Trous 出力ではなくこのパスの出力を保存する。
 // ============================================================
 
+#include "../Include/Common/DepthReconstruction.hlsli"
+
 // 入力: RayGen の生バイナリ出力（0=影, 1=光）
 Texture2D<float> gRawShadow : register(t0);
 
 // G-Buffer: 法線（空間前処理の幾何ガイド用）
 Texture2D<float4> gGBufferNormal : register(t1);
 
-// G-Buffer: ワールド座標（深度ガイド・背景判定用）
-Texture2D<float4> gGBufferWorldPos : register(t2);
+// G-Buffer: 深度（深度ガイド・背景判定用。WorldPosition ターゲット廃止に伴い深度から復元する）
+Texture2D<float> gGBufferDepth : register(t2);
 
 // 前フレームの Temporal 出力（この Temporal パスの結果を保存した履歴）
 Texture2D<float> gHistoryShadow : register(t3);
@@ -31,6 +33,7 @@ cbuffer TemporalConstants : register(b0)
     float gHistoryAlpha; // 通常時のブレンド係数（例: 0.15 = 85% 履歴採用）
     float gDisableHistory; // 1.0 で履歴を完全無効化（初回フレーム用）
     float gPadding[4];
+    float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
 };
 
 [numthreads(8, 8, 1)]
@@ -41,15 +44,18 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
         return;
 
     // 背景ピクセル: 影なし
-    float4 cWorldPos = gGBufferWorldPos.Load(int3(coord, 0));
-    if (cWorldPos.a < 0.5f)
+    float cNdcDepth = gGBufferDepth.Load(int3(coord, 0));
+    if (IsBackgroundDepth(cNdcDepth))
     {
         gOutputShadow[coord] = 1.0f;
         return;
     }
 
+    float2 cUV = (float2(coord) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
+    float3 cWorldPos = ReconstructWorldPosition(ScreenUVToNDC(cUV), cNdcDepth, gInvViewProj);
+
     float3 cNormal = normalize(gGBufferNormal.Load(int3(coord, 0)).rgb * 2.0f - 1.0f);
-    float cDepth = length(cWorldPos.xyz);
+    float cDepth = length(cWorldPos);
 
     // 法線・深度ガイドの 3×3 空間前処理
     //   バイナリを準連続値に変換しつつ、近傍範囲 [cMin, cMax] を取得
@@ -68,12 +74,15 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
                             int2(0, 0),
                             int2(gScreenWidth - 1, gScreenHeight - 1));
 
-            float4 nwp = gGBufferWorldPos.Load(int3(nc, 0));
-            if (nwp.a < 0.5f)
+            float nNdcDepth = gGBufferDepth.Load(int3(nc, 0));
+            if (IsBackgroundDepth(nNdcDepth))
                 continue;
 
+            float2 nUV = (float2(nc) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
+            float3 nwp = ReconstructWorldPosition(ScreenUVToNDC(nUV), nNdcDepth, gInvViewProj);
+
             float3 nNormal = normalize(gGBufferNormal.Load(int3(nc, 0)).rgb * 2.0f - 1.0f);
-            float nDepth = length(nwp.xyz);
+            float nDepth = length(nwp);
 
             // 幾何類似度
             float wNormal = pow(max(0.0f, dot(cNormal, nNormal)), 32.0f);

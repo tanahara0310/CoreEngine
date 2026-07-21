@@ -1,7 +1,8 @@
 #include "FullScreen.hlsli"
 #include "../Include/Lighting/LightStructures.hlsli"
+#include "../Include/Common/DepthReconstruction.hlsli"
 
-Texture2D<float4> gWorldPosition : register(t0);
+Texture2D<float> gSceneDepth : register(t0); // WorldPosition ターゲット廃止に伴い深度から復元する
 Texture2D<float4> gNormalRoughness : register(t1);
 
 cbuffer gMainLight : register(b1)
@@ -39,6 +40,12 @@ cbuffer gWaterSurfaceData : register(b2)
     float3 gSurfaceRegionPadding;
 };
 
+// C++ 側 WaterCausticsTechnique::Params と厳密にレイアウトを一致させること。
+// gPadding0 までの8フィールド(32B)はC++側の
+// intensity/depthAttenuation/curvatureScale/surfaceSampleRadius/refractiveIndex/
+// receiverNormalStrength/alignmentPower/debugDisplayScale に対応（このシェーダーは未使用）。
+// 続く16B（debugViewMode/debugLogEnabled/padding[2]）は本シェーダーで読まないため
+// gUnusedTail で読み飛ばし、その後ろの invViewProjMatrix[16] を gInvViewProj として受け取る。
 cbuffer WaterCausticsParams : register(b3)
 {
     float gIntensity;
@@ -49,6 +56,8 @@ cbuffer WaterCausticsParams : register(b3)
     float gReceiverNormalStrength;
     float gAlignmentPower;
     float gPadding0;
+    float4 gUnusedTail; // C++側 debugViewMode/debugLogEnabled/padding[2] (16B)
+    float4x4 gInvViewProj;
 };
 
 struct PixelShaderInput
@@ -174,13 +183,16 @@ PixelShaderOutput main(PixelShaderInput input)
     output.color = float4(0.0f, 0.0f, 0.0f, 1.0f);
 
     int3 loadCoord = int3(input.position.xy, 0);
-    float4 worldPosSample = gWorldPosition.Load(loadCoord);
-    if (worldPosSample.a < 0.5f || gSurfaceActiveWaveCount == 0 || gMainLightEnabled == 0)
+    float ndcDepth = gSceneDepth.Load(loadCoord);
+    if (IsBackgroundDepth(ndcDepth) || gSurfaceActiveWaveCount == 0 || gMainLightEnabled == 0)
     {
         return output;
     }
 
-    float3 worldPos = worldPosSample.xyz;
+    float depthW, depthH;
+    gSceneDepth.GetDimensions(depthW, depthH);
+    float2 screenUV = (input.position.xy + 0.5f.xx) / float2(depthW, depthH);
+    float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gInvViewProj);
 
     // 水面メッシュの XZ 範囲外（無限床など水域の外）にはコースティクスを落とさない。
     // 範囲の内側 2m でフェードアウトさせ、水域の縁で模様が急に切れる輪郭を防ぐ。
