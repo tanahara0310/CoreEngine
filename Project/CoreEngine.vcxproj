@@ -183,6 +183,15 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\simplifier.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\vcacheoptimizer.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneSetup.cpp" />

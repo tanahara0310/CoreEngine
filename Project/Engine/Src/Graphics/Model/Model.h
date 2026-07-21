@@ -201,6 +201,11 @@ namespace CoreEngine
         /// @brief サブメッシュのマテリアルスロットに対応する MaterialInstance を取得（範囲外はスロット0）
         MaterialInstance* MaterialForSlot(uint32_t materialIndex) const;
 
+        /// @brief AABB の画面投影サイズから LOD レベルを算出する（0=フル詳細）
+        /// @details 距離でなく画面占有率ベースのため、近距離では常にフル詳細になる。
+        ///          返り値はバイアス加算後に SubMeshData::GetLod でクランプされる前提。
+        uint32_t ComputeLodIndex(const Matrix4x4& worldMatrix, const ICamera* camera) const;
+
         /// @brief スキニングモデル用の ModelDrawPacket を組み立てる
         ModelDrawPacket BuildSkinningDrawPacket(const SubMeshData& subMesh,
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture,

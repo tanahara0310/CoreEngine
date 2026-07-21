@@ -150,6 +150,10 @@ namespace CoreEngine
         /// LoadFromFile/LoadFromModelDataの共通処理（呼び出し前にmodelData_が設定済みであること）
         void CreateGeometryBuffers();
 
+        /// @brief サブメッシュごとに簡略化インデックス（LOD1/LOD2）を生成し indices 末尾へ追記する
+        /// 頂点バッファは共有のため追加しない。ハイポリモデルのみ対象（小物はスキップ）。
+        void GenerateSubMeshLods();
+
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
         UINT vertexCount_ = 0;

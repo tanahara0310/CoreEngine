@@ -6,8 +6,12 @@
 #include "Graphics/Model/ModelLoader.h"
 #include "Graphics/Model/Skeleton/SkeletonLoader.h"
 #include "Graphics/Model/VertexData.h"
+#include "Utility/Logger/Logger.h"
+
+#include "meshoptimizer/src/meshoptimizer.h"
 
 #include <cassert>
+#include <format>
 
 
 namespace CoreEngine
@@ -19,11 +23,118 @@ namespace CoreEngine
         textureManager_ = textureMg;
     }
 
+    void ModelResource::GenerateSubMeshLods()
+    {
+        // LOD 生成の対象はハイポリの静的モデルのみ。
+        // 小さいモデルは簡略化の効果が無く、生成コストとバッファ増加だけが残る。
+        constexpr size_t kMinTriangleCountForLod = 10000;      // モデル全体でこれ未満なら LOD を作らない
+        constexpr size_t kMinSubMeshIndexCount = 3 * 256;      // サブメッシュ単位の下限（小物は原型のまま）
+        constexpr float kLodRatios[] = { 0.25f, 0.06f };       // LOD1 / LOD2 の目標三角形比率
+        constexpr float kLodTargetError = 0.05f;               // 許容誤差（AABB対角に対する相対値）
+        constexpr float kLodSloppyTargetError = 0.5f;          // Sloppy フォールバック時の許容誤差（目標到達を優先）
+
+        // lods[0] は常に原型の範囲を指すよう先に埋めておく
+        for (auto& subMesh : modelData_.subMeshes) {
+            subMesh.lods[0] = { subMesh.startIndex, subMesh.indexCount };
+            subMesh.lodCount = 1;
+        }
+
+        const size_t totalTriangles = modelData_.indices.size() / 3;
+        if (totalTriangles < kMinTriangleCountForLod) {
+            return;
+        }
+
+        const size_t vertexCount = modelData_.vertices.size();
+        const float* vertexPositions = &modelData_.vertices[0].position.x;
+
+        // 簡略化結果は既存インデックス列の末尾へ追記する（頂点バッファは共有）
+        std::vector<int32_t>& indices = modelData_.indices;
+
+        for (auto& subMesh : modelData_.subMeshes) {
+            if (subMesh.indexCount < kMinSubMeshIndexCount) {
+                continue;
+            }
+
+            uint32_t previousCount = subMesh.indexCount;
+            for (float ratio : kLodRatios) {
+                const size_t targetIndexCount = static_cast<size_t>(subMesh.indexCount * ratio) / 3 * 3;
+                if (targetIndexCount < 3) {
+                    break;
+                }
+
+                std::vector<unsigned int> simplified(subMesh.indexCount);
+                float resultError = 0.0f;
+                // Prune オプションで小さな孤立部品（葉・小石など）の除去を許可する
+                size_t simplifiedCount = meshopt_simplify(
+                    simplified.data(),
+                    reinterpret_cast<const unsigned int*>(indices.data()) + subMesh.startIndex,
+                    subMesh.indexCount,
+                    vertexPositions,
+                    vertexCount,
+                    sizeof(VertexData),
+                    targetIndexCount,
+                    kLodTargetError,
+                    meshopt_SimplifyPrune,
+                    &resultError);
+
+                // トポロジー保存型で目標に届かない場合（葉・草などの非連結な三角形スープは
+                // エッジコラプスできない）は、クラスタリング型の Sloppy 版へフォールバックする。
+                // 見た目の劣化は大きめだが、遠景 LOD 用途では画面上ほぼ判別できない。
+                if (simplifiedCount > targetIndexCount * 3 / 2) {
+                    simplifiedCount = meshopt_simplifySloppy(
+                        simplified.data(),
+                        reinterpret_cast<const unsigned int*>(indices.data()) + subMesh.startIndex,
+                        subMesh.indexCount,
+                        vertexPositions,
+                        vertexCount,
+                        sizeof(VertexData),
+                        targetIndexCount,
+                        kLodSloppyTargetError,
+                        &resultError);
+                }
+
+                // 削減が 1 割未満なら段を追加する価値なし
+                if (simplifiedCount == 0 || simplifiedCount >= static_cast<size_t>(previousCount) * 9 / 10) {
+                    break;
+                }
+
+                SubMeshLodRange lodRange;
+                lodRange.startIndex = static_cast<uint32_t>(indices.size());
+                lodRange.indexCount = static_cast<uint32_t>(simplifiedCount);
+                indices.insert(indices.end(),
+                    reinterpret_cast<const int32_t*>(simplified.data()),
+                    reinterpret_cast<const int32_t*>(simplified.data()) + simplifiedCount);
+
+                subMesh.lods[subMesh.lodCount] = lodRange;
+                ++subMesh.lodCount;
+                previousCount = lodRange.indexCount;
+
+                if (subMesh.lodCount >= SubMeshData::kMaxLodCount) {
+                    break;
+                }
+            }
+
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
+                std::format("ModelResource: SubMesh \"{}\" LOD生成 LOD0={} tris, LOD段数={}{}{}",
+                    subMesh.name,
+                    subMesh.indexCount / 3,
+                    subMesh.lodCount,
+                    subMesh.lodCount > 1 ? std::format(", LOD1={} tris", subMesh.lods[1].indexCount / 3) : "",
+                    subMesh.lodCount > 2 ? std::format(", LOD2={} tris", subMesh.lods[2].indexCount / 3) : ""));
+        }
+    }
+
     void ModelResource::CreateGeometryBuffers()
     {
+        // LOD0（原型）のインデックス数を先に確定してから簡略化インデックスを末尾へ追記する。
+        // indexCount_ は「原型のインデックス数」を維持する（BLAS 構築や DrawShadow が
+        // モデル全体 = LOD0 を描く前提のため。LOD 描画はサブメッシュの範囲指定で行う）。
+        const size_t lod0IndexCount = modelData_.indices.size();
+        GenerateSubMeshLods();
+
         // 頂点数・インデックス数を設定
         vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
-        indexCount_ = static_cast<UINT>(modelData_.indices.size());
+        indexCount_ = static_cast<UINT>(lod0IndexCount);
 
         // 頂点バッファの作成
         vertexBuffer_ = ResourceFactory::CreateBufferResource(

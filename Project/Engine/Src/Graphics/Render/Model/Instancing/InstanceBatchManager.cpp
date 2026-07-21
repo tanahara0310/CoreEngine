@@ -138,8 +138,10 @@ namespace CoreEngine
         const auto& subMeshes = res->GetSubMeshes();
         assert(batch.key.subMeshIndex < subMeshes.size());
         const auto& subMesh = subMeshes[batch.key.subMeshIndex];
-        packet.indexCount = subMesh.indexCount;
-        packet.startIndex = subMesh.startIndex;
+        // LOD範囲を使用（範囲外のLODレベルは GetLod が最終段へクランプする）
+        const SubMeshLodRange& lodRange = subMesh.GetLod(batch.key.lodIndex);
+        packet.indexCount = lodRange.indexCount;
+        packet.startIndex = lodRange.startIndex;
 
         packet.instanceDataSRV = instanceSRVAddress;
         packet.instanceCount = static_cast<UINT>(batch.instances.size());
