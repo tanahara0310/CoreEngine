@@ -5,6 +5,13 @@
 
 namespace CoreEngine
 {
+    /// @brief 平面反射ビューの解像度スケール
+    /// @details 反射はシーン全体をもう一周描画するため、フル解像度だと G-Buffer ラスタライズが
+    ///          メインビューと同等以上のコストになる。水面の歪みで低解像度の劣化はほぼ視認できないため
+    ///          1/2 解像度（ピクセル仕事 1/4）で描画する。反射用 G-Buffer / 深度 / 出力ターゲットの
+    ///          3 点が必ず同一スケールであること（DeferredLighting が Load(ピクセル座標) で読むため）。
+    inline constexpr float kReflectionViewResolutionScale = 0.5f;
+
     /// @brief レンダーターゲットの記述子
     /// レンダーターゲットの作成に必要な情報を保持
     struct RenderTargetDescriptor {
@@ -35,6 +42,10 @@ namespace CoreEngine
 
         /// @brief ウィンドウリサイズ時に自動的にリサイズするか
         bool autoResize = true;
+
+        /// @brief ウィンドウ追従時の解像度スケール（width / height が 0 のときのみ適用）
+        /// @details 0.5 で 1/2 解像度。反射など低解像度で十分なビューのターゲットに使う。
+        float resolutionScale = 1.0f;
 
         /// @brief デフォルトコンストラクタ
         RenderTargetDescriptor() = default;

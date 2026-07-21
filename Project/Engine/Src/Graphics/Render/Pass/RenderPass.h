@@ -18,6 +18,7 @@ namespace CoreEngine
     /// @brief View ごとの Graph 実行設定
     struct RenderViewSettings {
         RenderViewType viewType = RenderViewType::GameView;
+        std::string viewName; ///< 補助 View の表示名（空 = メイン GameView）。GPU 計測スロット名のプレフィックスに使う
         bool enableSSAO = true;
         bool enableRTShadow = true;
         bool enablePostEffect = true;

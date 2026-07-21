@@ -2,6 +2,7 @@
 #include "RenderTargetManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "RenderTargetNames.h"
+#include <algorithm>
 #include <cassert>
 
 #ifdef _DEBUG
@@ -235,8 +236,12 @@ namespace CoreEngine
             }
 
             if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(it->second.get())) {
-                const uint32_t targetWidth = (desc.width > 0) ? desc.width : newWidth;
-                const uint32_t targetHeight = (desc.height > 0) ? desc.height : newHeight;
+                const uint32_t targetWidth = (desc.width > 0)
+                    ? desc.width
+                    : std::max(1u, static_cast<uint32_t>(newWidth * desc.resolutionScale));
+                const uint32_t targetHeight = (desc.height > 0)
+                    ? desc.height
+                    : std::max(1u, static_cast<uint32_t>(newHeight * desc.resolutionScale));
                 offscreen->Resize(targetWidth, targetHeight);
             }
         }

@@ -44,6 +44,9 @@ namespace CoreEngine
         reflectionViewDesc.clearColor[1] = kClearColor[1];
         reflectionViewDesc.clearColor[2] = kClearColor[2];
         reflectionViewDesc.clearColor[3] = kClearColor[3];
+        // 反射ビューは半解像度で描画する（水面の歪みで劣化は視認されない）。
+        // 反射用 G-Buffer / 深度（RenderDomainContext 側）と同一スケールであること。
+        reflectionViewDesc.resolutionScale = kReflectionViewResolutionScale;
         renderTargetManager_->CreateRenderTarget(reflectionViewDesc);
 
         renderTargetManager_->EnsurePostEffectFinalTarget();

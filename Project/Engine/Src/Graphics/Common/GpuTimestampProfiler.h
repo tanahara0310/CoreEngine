@@ -66,7 +66,7 @@ namespace CoreEngine
     {
     public:
         static constexpr uint32_t kFixedSlotCount = static_cast<uint32_t>(GpuTimestampSlot::Count);
-        static constexpr uint32_t kMaxDynamicSlots = 48; ///< RenderGraph パス + PostEffect の名前付きスロット上限
+        static constexpr uint32_t kMaxDynamicSlots = 96; ///< RenderGraph パス + PostEffect の名前付きスロット上限（補助 View はビュー名プレフィックス付きで別スロットを消費する）
         static constexpr uint32_t kSlotCount = kFixedSlotCount + kMaxDynamicSlots;
         static constexpr uint32_t kFrameCount = 2;
         static constexpr uint32_t kQueriesPerSlot = 2; // begin + end

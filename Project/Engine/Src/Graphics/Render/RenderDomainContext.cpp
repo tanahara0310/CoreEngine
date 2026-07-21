@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "RenderDomainContext.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/Core/DepthStencilManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
@@ -11,6 +13,8 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Utility/Logger/Logger.h"
+
+#include <algorithm>
 
 namespace CoreEngine
 {
@@ -29,6 +33,20 @@ namespace CoreEngine
         gBufferManager_ = std::make_unique<GBufferManager>();
         gBufferManager_->Initialize(device, descriptorManager, width, height);
         Logger::GetInstance().Infof(LogCategory::Graphics, "RenderDomainContext: GBufferManager 初期化完了\n");
+
+        // 平面反射ビュー用の半解像度 G-Buffer / 深度
+        // 反射はシーンをもう一周描画するため、フル解像度共有だとコストが倍になる。
+        // DeferredLighting は Load(ピクセル座標) で G-Buffer を読むため、
+        // 反射用 G-Buffer・深度・ReflectionView ターゲットは必ず同一スケールにする。
+        const int32_t reflectionWidth = std::max(1, static_cast<int32_t>(width * kReflectionViewResolutionScale));
+        const int32_t reflectionHeight = std::max(1, static_cast<int32_t>(height * kReflectionViewResolutionScale));
+        reflectionGBufferManager_ = std::make_unique<GBufferManager>();
+        reflectionGBufferManager_->Initialize(device, descriptorManager, reflectionWidth, reflectionHeight);
+        reflectionDepthStencilManager_ = std::make_unique<DepthStencilManager>();
+        reflectionDepthStencilManager_->Initialize(device, descriptorManager, reflectionWidth, reflectionHeight);
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "RenderDomainContext: 反射ビュー用 GBuffer/Depth 初期化完了 ({}x{})\n",
+            reflectionWidth, reflectionHeight);
 
         // シャドウマップの初期化
         shadowMapManager_ = std::make_unique<ShadowMapManager>();
@@ -101,6 +119,8 @@ namespace CoreEngine
         fftOceanManager_.reset();
         accelerationStructureManager_.reset();
         shadowMapManager_.reset();
+        reflectionDepthStencilManager_.reset();
+        reflectionGBufferManager_.reset();
         gBufferManager_.reset();
     }
 
@@ -108,6 +128,16 @@ namespace CoreEngine
     {
         if (gBufferManager_) {
             gBufferManager_->Resize(width, height);
+        }
+
+        // 反射ビュー用リソースは半解像度スケールを維持したままリサイズする
+        const int32_t reflectionWidth = std::max(1, static_cast<int32_t>(width * kReflectionViewResolutionScale));
+        const int32_t reflectionHeight = std::max(1, static_cast<int32_t>(height * kReflectionViewResolutionScale));
+        if (reflectionGBufferManager_) {
+            reflectionGBufferManager_->Resize(reflectionWidth, reflectionHeight);
+        }
+        if (reflectionDepthStencilManager_) {
+            reflectionDepthStencilManager_->ResizeResource(reflectionWidth, reflectionHeight);
         }
 
         // RTシャドウ出力はフレーム先頭で Blackboard に登録されるため、
