@@ -4,7 +4,7 @@
 - 状態: 実装完了（検証継続）
 - 優先度: 高
 - 依存ステップ: Step 1, Step 3
-- 現在位置: ReflectionView、反射 RTT、clip plane、IBL フォールバックまで接続済み
+- 現在位置: ReflectionView、反射 RTT、oblique clipping、自己反射防止、グロッシー反射、雲キューブマップ IBL 上書き、サングリッターまで接続済み
 - 完了後に着手しやすい次ステップ: Step 5, Step 6, Step 9
 
 ## 目的
@@ -41,9 +41,20 @@ Step 4 の目的は、これらの基礎となる **Planar Reflection + IBL** �
 
 ## 実施結果
 - `WaterTestScene::BuildRenderViewRequests()` で ReflectionView を engine 側へ要求する構成へ移行した
-- `WaterReflectionPass` が反射カメラのセットアップ、clip plane 設定、カメラ復元を担当している
+- `WaterReflectionPass` が反射カメラのセットアップ、clip 設定、カメラ復元を担当している。ミラービューの適用は `ICamera::BeginViewOverride / EndViewOverride`（ビュー行列・視点・射影の一時差し替え API）経由で行い、DebugCamera を含む全カメラ型で機能する
+- 水面下ジオメトリの反射除外は clip plane から **oblique near-plane clipping**（`CalcObliqueClippedProjection`。射影行列の near 面を水面平面へ傾ける方式）へ移行した。SkyBox は `z=w` 描画のためクリップの影響を受けない
+- **反射ビューでは水面自身を描かない**（`WaterSurfacePass::IsEnabledForView` で GameView 限定）。これを怠ると波で変位した水面がクリップ面をまたいで反射 RTT に焼き付き、「波と一緒に動く巨大な明暗斑」になる（夜間に顕在化した実バグ。露出打ち消し付きの反射テクスチャ可視化で特定した）
 - `WaterPlaneObject::ApplyWaterReflectionResult()` が反射 RTT、SceneDepth、SceneColor の SRV を受け取る
-- `Water.PS.hlsl` は反射 RTT があるとき `gReflectionTexture` を加算し、無いときは IBL のみで成立する構造になっている
+- `Water.PS.hlsl` の反射合成は**置き換え**（`reflectColor = 平面反射`）で行う。PBR 出力への加算は空・太陽の二重計上で白飛びするため行わない
+- 反射品質のための追加実装:
+  - `SampleGlossyReflection()`: 平面反射の複数タップぼかし（かすめ角ほどぼけを強める）
+  - `ReflectionGeometricOcclusion()`: Schlick-GGX 視線項でかすめ角の反射スパイクを抑制し、空（明）と水（暗）のハードな明暗差を縮小
+  - 反射 UV を波法線の水平成分で歪ませる（フラット鏡像の明滅を防ぎ「砕けた反射」にする）
+  - フレネル反射率は鉛直へ弱くブレンドした低周波法線で評価（未解像の細かい斜面でフレネルが暴れて斑になるのを防止）
+  - 反射色の高輝度ショルダー圧縮（夜間の自動露出 +8EV による白飛び端点を丸める。昼の空・きらめきは無圧縮域で保存）
+- 環境反射は静的 IBL から**動的な空＋雲キューブマップ（スペキュラ IBL）**へ移行した。平面反射に映らない頭上の雲は `lerp(平面反射, 雲キューブマップ, 雲被覆)` で雲の部分だけ上書きし、反射方向が水平線に近い場合はフェードアウトする（球殻雲層を横切る長いレイのため水平線付近は常に被覆 ≈1 になる）。雲のサンプル方向は波法線ではなくフラット法線で計算する（平面反射との幾何整合）
+- 反射有効時は鏡像の太陽がぼかしで消えるため、太陽ハイライトは `ComputeSunGlintSpecular`（ディテール法線＋Cook-Torrance、F0=0.02）で解析的に加算する
+- ReflectionView は大気散乱の空（昼夜・月・星空）を SkyBoxQueuePass 経由で描くため、空の映り込みは常に本物と一致する
 
 ## 物理ベース観点
 ### 1. 反射は単独で存在しない
@@ -93,6 +104,8 @@ IBL 自体は重要だが、近景オブジェクトまで IBL のみで済ま�
 ## 引き継ぎメモ
 - Step 5 ではこの反射経路を PBR 上の反射ソースとして整理する
 - Step 9 では SSR を追加し、反射ソースの優先順位を再定義する
+- 既知の未解決点: 反射ビューはポストエフェクト無効（生 HDR）で描かれるため、透過側と輝度ドメインが揃っていない。現状はショルダー圧縮による対症で吸収しているが、正道は「反射ビューへ GameView と同じ露出を適用する」こと
+- 反射ビューで同一モデルを 2 回描くため、Model の prevWVP がビュー間で汚染される既知の副作用がある（モーションベクター誤り・別タスク管理）
 
 ---
 

@@ -1,41 +1,45 @@
 {
-    "active":  true,
-    "material":  {
-                     "ao":  1.0,
-                     "aoMap":  false,
-                     "color":  [
-                                   0.029999999329447746,
-                                   0.11999999731779099,
-                                   0.2199999988079071,
-                                   0.8799999952316284
-                               ],
-                     "dithering":  true,
-                     "ditheringScale":  1.0,
-                     "ibl":  true,
-                     "iblIntensity":  1.0,
-                     "lighting":  true,
-                     "metallic":  0.0,
-                     "metallicMap":  false,
-                     "normalMap":  false,
-                     "roughness":  0.10000000149011612,
-                     "roughnessMap":  false
-                 },
-    "name":  "WaterPlane_0",
-    "transform":  {
-                      "rotate":  [
-                                     0.0,
-                                     0.0,
-                                     0.0
-                                 ],
-                      "scale":  [
-                                    1.5932068824768066,
-                                    1.5932068824768066,
-                                    1.5932068824768066
-                                ],
-                      "translate":  [
-                                        0.0,
-                                        38.482830047607422,
-                                        -8.508995056152344
-                                    ]
-                  }
+    "active": true,
+    "materials": [
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                0.029999999329447746,
+                0.11999999731779099,
+                0.2199999988079071,
+                0.8799999952316284
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.10000000149011612
+        }
+    ],
+    "name": "WaterPlane_0",
+    "transform": {
+        "rotate": [
+            0.0,
+            -0.0,
+            0.0
+        ],
+        "scale": [
+            100.0,
+            1.0,
+            100.0
+        ],
+        "translate": [
+            0.0,
+            7.2702317237854,
+            -8.508995056152344
+        ]
+    }
 }

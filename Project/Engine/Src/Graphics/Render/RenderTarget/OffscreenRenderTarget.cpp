@@ -5,6 +5,7 @@
 #include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Resource/ResourceFactory.h"
 
+#include <algorithm>
 #include <format>
 #include <cassert>
 
@@ -29,8 +30,12 @@ namespace CoreEngine
         autoResize_ = desc.autoResize;
         SetClearColor(desc.clearColor);
 
-        const uint32_t width = (desc.width > 0) ? desc.width : static_cast<uint32_t>(dx->GetClientWidth());
-        const uint32_t height = (desc.height > 0) ? desc.height : static_cast<uint32_t>(dx->GetClientHeight());
+        const uint32_t width = (desc.width > 0)
+            ? desc.width
+            : std::max(1u, static_cast<uint32_t>(dx->GetClientWidth() * desc.resolutionScale));
+        const uint32_t height = (desc.height > 0)
+            ? desc.height
+            : std::max(1u, static_cast<uint32_t>(dx->GetClientHeight() * desc.resolutionScale));
         CreateOrResizeResource(width, height);
         CreateViews();
     }

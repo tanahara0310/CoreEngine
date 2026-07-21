@@ -65,6 +65,12 @@ namespace CoreEngine
 			float time = 0.0f;
 			float padding = 0.0f;
 			WaterWaveParam waves[kMaxWaterSurfaceWaveCount]{};
+			// 水面メッシュのワールドXZ範囲（WaterCaustics.PS.hlsl の cbuffer 末尾と一致させること）。
+			// regionValid == 0 なら範囲制限なし（従来挙動）
+			float regionCenterXZ[2] = { 0.0f, 0.0f };
+			float regionHalfExtentXZ[2] = { 0.0f, 0.0f };
+			uint32_t regionValid = 0;
+			float regionPadding[3] = {};
 		};
 
 		void CreateConstantBuffers();

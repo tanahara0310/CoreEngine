@@ -211,7 +211,15 @@ namespace CoreEngine
                 (profiler && context.renderContext->dxCommon) ? context.renderContext->dxCommon->GetCommandList() : nullptr;
             uint32_t timingSlot = UINT32_MAX;
             if (profiler && profileCmdList) {
-                timingSlot = profiler->GetOrCreateNamedSlot(graphPass.name, graphPass.timingCategory);
+                // 補助 View（平面反射など）はメイン View と同じパス名で実行されるため、
+                // View 名をプレフィックスしてスロットを分離する。同一スロットを共有すると
+                // 同じクエリインデックスへ二重に EndQuery され、後から実行される View の
+                // タイムスタンプが先の View を上書きして補助 View 分の時間が消えてしまう。
+                const std::string& viewName = context.renderContext->viewSettings.viewName;
+                const std::string slotName = viewName.empty()
+                    ? graphPass.name
+                    : viewName + "/" + graphPass.name;
+                timingSlot = profiler->GetOrCreateNamedSlot(slotName, graphPass.timingCategory);
                 if (timingSlot != UINT32_MAX) {
                     profiler->BeginCpuTimestamp(timingSlot);
                     profiler->BeginGpuTimestamp(timingSlot, profileCmdList);

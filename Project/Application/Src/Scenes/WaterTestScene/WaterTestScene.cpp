@@ -69,7 +69,10 @@ std::vector<RenderViewRequest> WaterTestScene::BuildRenderViewRequests()
     std::vector<RenderViewRequest> requests;
 
     WaterPlaneObject* waterPlane = waterController_.GetWaterPlane();
-    if (!waterPlane) {
+    // 水面が非アクティブ（エディタで非表示）の間は反射ビュー自体を止める。
+    // ポインタ存在だけで判定すると、水面を消しても毎フレーム全シーンを
+    // もう一周描画する反射コストが残り続ける。
+    if (!waterPlane || !waterPlane->IsActive()) {
         return requests;
     }
 

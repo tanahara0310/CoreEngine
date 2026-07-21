@@ -40,6 +40,14 @@ namespace CoreEngine
         float fftUVScale[2] = { 0.0f, 0.0f };
         float fftUVOffset[2] = { 0.5f, 0.5f };
         uint32_t fftUVMappingValid = 0;
+
+        // 水面メッシュのワールドXZ範囲（AABB）。コースティクスは解析的な無限水面として
+        // 評価されるため、この矩形で受光側をマスクしないと「水面高さより低い場所すべて」
+        // （無限市松床など水域の外）にも集光模様が投影されてしまう。
+        // regionValid == 0 の場合は範囲制限なし（従来挙動）。
+        float regionCenterXZ[2] = { 0.0f, 0.0f };
+        float regionHalfExtentXZ[2] = { 0.0f, 0.0f };
+        uint32_t regionValid = 0;
     };
 
     struct WaterOpticalProperties {

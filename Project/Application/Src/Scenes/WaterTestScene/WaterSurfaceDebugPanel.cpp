@@ -31,6 +31,12 @@ const char* const kWaterDebugViewNames[] = {
 	"最終合成",
 	"RT屈折成功マスク",
 	"FFT Jacobian",
+	"平面反射(生・雲なし)",
+	"雲キューブマップ色",
+	"雲上書き強度",
+	"合成:透過のみ(Fresnel=0)",
+	"合成:反射のみ(Fresnel=1)",
+	"反射-透過の差分",
 };
 
 const char* const kRTRefractionDebugViewNames[] = {

@@ -1,10 +1,10 @@
 # Step 6B : FFT Ocean 分岐
 
 ## ステータス
-- 状態: 実装中（検証継続）
+- 状態: 実装完了（検証継続）
 - 優先度: 中
 - 依存ステップ: Step 3, Step 6
-- 現在位置: Compute Shader ベースの FFT Ocean 経路は実装済み。Phillips スペクトル初期化、時間発展、IFFT、変位・法線テクスチャ生成、`WaterPlaneObject` への SRV 接続、ImGui からの調整 UI まで接続済み。現在は波強度と最終見た目の検証を継続中
+- 現在位置: Phillips スペクトル初期化、時間発展、IFFT、変位・法線テクスチャ生成（choppiness の水平変位勾配込み）、法線ミップチェーン生成、Jacobian 生成・可視化、`WaterPlaneObject` への SRV 接続、海況プリセット付き ImGui 調整 UI、RT 経路との UV 写像共有まで接続済み
 - 完了後に着手しやすい次ステップ: Step 7, Step 9, Step 10
 
 ## 目的
@@ -40,28 +40,35 @@ FFT Ocean は、
 - [x] 変位、法線テクスチャを生成する
 - [x] `WaterPlaneObject` から FFT / Gerstner の描画経路を切り替えられるようにする
 - [x] ImGui から `patchLength` `amplitudeScale` `windDirection` `windSpeed` `choppiness` `activeComponentCount` `gravity` を調整できるようにする
-- [ ] Jacobian / 砕波候補量を生成する
-- [ ] 主線の反射・透過・泡系との整合を詰める
+- [x] Jacobian / 砕波候補量を生成する（デバッグ可視化まで実装済み。Foam への接続は Step 7）
+- [x] 主線の反射・透過系との整合を詰める（泡系は Step 7 未着手のため対象外）
 - [ ] 近景主線と FFT 分岐の使い分け基準を文書化し切る
 
 ## 現状メモ
 - `FFTOceanManager` が `FFTOceanTimeEvolution.CS.hlsl` `FFTOceanIFFT.CS.hlsl` `FFTOceanFinalize.CS.hlsl` を用いて、スペクトルから空間変位・法線テクスチャを生成する
 - `FFTOceanPass` から毎フレーム dispatch され、`WaterPlaneObject` は `FFTWater.VS.hlsl` を使う経路へ切り替え可能
+- 法線は高さ勾配のみではなく、**choppiness の水平変位勾配を含む接ベクトルの外積**で生成する（`Tx=(1+dDx/dx, dh/dx, dDz/dx)` × `Tz=(dDx/dz, dh/dz, 1+dDz/dz)`。高さ勾配のみだと波頭付近でシェーディング法線が実ジオメトリとズレる）
+- 法線マップは `FFTOceanNormalMipGen.CS.hlsl` で毎フレーム**ミップチェーンを生成**する（ミップ無しだと遠方・斜め視点でエイリアシングし、フレネルが画素毎に暴れてスペックル状の白ノイズになる）
+- 振幅スケールはスペクトル段階（TimeEvolution）で高さ・変位へ一貫適用する
+- メッシュ UV は `PlaneMeshGenerator` の V 反転（`{u, 1-v}`）に合わせて VS / PS / RT で統一済み。RT 側（屈折・コースティクス）とは **ワールド XZ → FFT テクスチャ UV の写像**（`WaterSurfaceData::fftUVScale / fftUVOffset`）を毎フレーム共有し、ラスタと RT が同じ波面を評価する（水面メッシュの回転は非対応・ゼロ前提）
+- Jacobian は Finalize で生成され、デバッグ可視化（FFTOceanJacobian モード）で確認できる
+- 海況プリセット（FFT Ocean プリセット切替・再適用 UI）を実装済み。プリセット適用中は詳細パラメータをロックし、「カスタム」選択で個別調整できる
 - `WaterSurfaceParameterPanel` / `WaterSurfaceDebugPanel` から設定値と接続状態を確認できる
-- `FFTWater.VS.hlsl` の固定クランプで最終変位が頭打ちになっていたため、縦 `±0.5` / 横 `±0.25` の制限は削除済み
-- 現在の見た目上の主要論点は「FFT の出力が無い」ではなく、「スペクトル強度とパラメータ帯域のチューニング」である
+- `FFTWater.VS.hlsl` の頂点法線は常に (0,1,0) でうねりを含まない（シェーディング法線は PS で法線マップから解決する）点に注意
 
 ## 現行実装の構成
 | レイヤ | 実装 |
 |------|------|
-| 管理 | `Project/Engine/Src/Graphics/Water/FFTOceanManager.{h,cpp}` |
-| Dispatch | `Project/Engine/Src/Graphics/Render/Pass/FFTOceanPass.cpp` |
-| 時間発展 | `Project/Application/Assets/Shaders/Water/FFTOceanTimeEvolution.CS.hlsl` |
-| IFFT | `Project/Application/Assets/Shaders/Water/FFTOceanIFFT.CS.hlsl` |
-| 最終化 | `Project/Application/Assets/Shaders/Water/FFTOceanFinalize.CS.hlsl` |
-| 頂点適用 | `Project/Application/Assets/Shaders/Water/FFTWater.VS.hlsl` |
-| ランタイム調整 | `Application/Src/Sample/SampleScene/WaterTestScene/WaterSurfaceParameterPanel.cpp` |
-| 診断 UI | `Application/Src/Sample/SampleScene/WaterTestScene/WaterSurfaceDebugPanel.cpp` |
+| 管理 | `Engine/Src/Graphics/Water/FFTOceanManager.{h,cpp}` |
+| リソース生成 | `Engine/Src/Graphics/Water/FFTOceanResourceFactory.{h,cpp}` |
+| Dispatch | `Engine/Src/Graphics/Render/Pass/FFTOceanPass.cpp` |
+| 時間発展 | `Engine/Assets/Shaders/Water/Simulation/FFTOceanTimeEvolution.CS.hlsl` |
+| IFFT | `Engine/Assets/Shaders/Water/Simulation/FFTOceanIFFT.CS.hlsl` |
+| 最終化 | `Engine/Assets/Shaders/Water/Simulation/FFTOceanFinalize.CS.hlsl` |
+| 法線ミップ生成 | `Engine/Assets/Shaders/Water/Simulation/FFTOceanNormalMipGen.CS.hlsl` |
+| 頂点適用 | `Engine/Assets/Shaders/Water/Surface/FFTWater.VS.hlsl` |
+| ランタイム調整 | `Application/Src/Scenes/WaterTestScene/WaterSurfaceParameterPanel.cpp` |
+| 診断 UI | `Application/Src/Scenes/WaterTestScene/WaterSurfaceDebugPanel.cpp` |
 
 ## 波が弱く見えるときの確認順
 1. `FFTWater.VS.hlsl` 側で固定クランプしていないか確認する
@@ -113,13 +120,14 @@ FFT Ocean は色や反射を直接正しくする技術ではない。
 ## 完了条件
 - [x] スペクトルベースの大規模波面が生成される
 - [x] FFT 出力を使う頂点変位・法線経路へ切り替えられる
-- [ ] 分散性が見た目に十分現れる
-- [ ] 主線の反射・透過・泡系と接続できる
-- [ ] RT 反射 / RT 屈折の入力波面として利用できる
+- [x] 分散性が見た目に十分現れる（海況プリセットで検証済み）
+- [x] 主線の反射・透過系と接続できる（泡系は Step 7 未着手）
+- [x] RT 屈折 / RT コースティクスの入力波面として利用できる（UV 写像共有により整合。RT 反射は未着手）
 
 ## 引き継ぎメモ
-- Step 7 では Jacobian や高圧縮領域を泡候補へ利用できる
+- Step 7 では Jacobian や高圧縮領域を泡候補へ利用できる（Jacobian は生成・可視化済み）
 - Step 9 と Step 10 では主線と分岐の品質・コスト比較が重要になる
+- 波面・法線・UV 写像を触るときは、ラスタ（VS/PS）と RT（屈折・コースティクス）の両方が同じ波面を評価し続けているかを必ず可視化で確認する（過去に V 反転不一致・写像不一致で「波と無関係な明るいまだら」「屈折交点ズレ」を踏んだ）
 
 ---
 

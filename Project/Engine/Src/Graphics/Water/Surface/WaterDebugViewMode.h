@@ -21,4 +21,11 @@ enum class WaterDebugViewMode : uint32_t {
     WaterComposite = 14,
     RTRefractionSuccessMask = 15,
     FFTOceanJacobian = 16,
+    PlanarReflectionRaw = 17,
+    SkyEnvCloudColor = 18,
+    CloudOverlayWeight = 19,
+    // まだら診断: フレネル混合を強制して各端点を単独表示する
+    CompositeTransmissionOnly = 20, // reflectanceWeight=0 の最終合成（透過のみ）
+    CompositeReflectionOnly = 21,   // reflectanceWeight=1 の最終合成（反射のみ）
+    ReflectionMinusTransmission = 22, // |反射 - 透過| ×3（斑を生む輝度差の分布）
 };

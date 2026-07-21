@@ -1,42 +1,68 @@
 {
-    "active":  true,
-    "material":  {
-                     "ao":  1.0,
-                     "aoMap":  false,
-                     "color":  [
-                                   1.0,
-                                   1.0,
-                                   1.0,
-                                   1.0
-                               ],
-                     "dithering":  true,
-                     "ditheringScale":  1.0,
-                     "ibl":  true,
-                     "iblIntensity":  1.0,
-                     "lighting":  true,
-                     "metallic":  0.0,
-                     "metallicMap":  true,
-                     "normalMap":  false,
-                     "roughness":  0.5,
-                     "roughnessMap":  true
-                 },
-    "modelPath":  "ground.gltf",
-    "name":  "ground (8)",
-    "transform":  {
-                      "rotate":  [
-                                     -2.9057044982910156,
-                                     0.2868639826774597,
-                                     3.1415908336639404
-                                 ],
-                      "scale":  [
-                                    2.6999995708465576,
-                                    2.6999990940093994,
-                                    2.6999990940093994
-                                ],
-                      "translate":  [
-                                        -0.8717281818389893,
-                                        2.9215316772460938,
-                                        -20.926801681518555
-                                    ]
-                  }
+    "active": false,
+    "materials": [
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        }
+    ],
+    "modelPath": "ground.gltf",
+    "name": "ground (8)",
+    "transform": {
+        "rotate": [
+            -2.9057044982910156,
+            0.2868639826774597,
+            3.1415908336639404
+        ],
+        "scale": [
+            2.6999995708465576,
+            2.6999990940093994,
+            2.6999990940093994
+        ],
+        "translate": [
+            -0.8717281818389893,
+            2.9215316772460938,
+            -20.926801681518555
+        ]
+    }
 }

@@ -191,6 +191,16 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 			waterRefractionSurfaceData_.fftUVOffset[1] =
 				0.5f * transform.scale.z - transform.translate.z / localSize;
 			waterRefractionSurfaceData_.fftUVMappingValid = 1;
+
+			// 水面メッシュのワールドXZ範囲。コースティクスが水域の外
+			// （無限市松床など）へ漏れないようにするための受光マスク。
+			// メッシュはローカル ±localSize/2 に広がる正方形（回転非対応の前提は
+			// fftUV 写像と同じ）なので、ワールド半径は 0.5 * localSize * scale。
+			waterRefractionSurfaceData_.regionCenterXZ[0] = transform.translate.x;
+			waterRefractionSurfaceData_.regionCenterXZ[1] = transform.translate.z;
+			waterRefractionSurfaceData_.regionHalfExtentXZ[0] = 0.5f * localSize * transform.scale.x;
+			waterRefractionSurfaceData_.regionHalfExtentXZ[1] = 0.5f * localSize * transform.scale.z;
+			waterRefractionSurfaceData_.regionValid = 1;
 		}
 		// RT 側へ渡す provider の参照先を最新 surface data に更新する
 		if (surfaceModelProvider_) {
