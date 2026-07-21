@@ -9,9 +9,12 @@
 #include "Graphics/Model/MaterialAsset.h"
 #include "Graphics/Model/ModelData.h"
 #include "Graphics/Model/Node.h"
+#include "Graphics/Material/MaterialInstance.h"
 #include "Animation/Animation.h"
 #include "Skeleton/Skeleton.h"
 #include "Math/BoundingBox.h"
+#include <memory>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -119,6 +122,14 @@ namespace CoreEngine
         };
         const PBRTextureHandles& GetMaterialTextures(uint32_t materialIndex) const;
 
+        /// @brief 全 Model インスタンスで共有するデフォルトマテリアル（アセット既定値）を取得
+        /// @details Model はオーバーライドが発生するまで自前の MaterialInstance を持たず、
+        ///          このリソース共有インスタンスの GPU アドレスをそのまま使う（Copy-on-Write）。
+        ///          同一モデルの複数配置がインスタンシングバッチとして統合される前提条件になる。
+        /// @param materialIndex マテリアルインデックス（範囲外はスロット0にクランプ）
+        /// @return 共有 MaterialInstance へのポインタ（未ロードなら nullptr）
+        const MaterialInstance* GetDefaultMaterial(uint32_t materialIndex) const;
+
         /// @brief 頂点バッファビューを取得
         const D3D12_VERTEX_BUFFER_VIEW& GetVertexBufferView() const { return vertexBufferView_; }
 
@@ -154,6 +165,10 @@ namespace CoreEngine
         /// 頂点バッファは共有のため追加しない。ハイポリモデルのみ対象（小物はスキップ）。
         void GenerateSubMeshLods();
 
+        /// @brief マテリアルスロット数分の共有デフォルト MaterialInstance を作成する
+        /// LoadFromFile/LoadFromModelData の末尾（テクスチャハンドル確定後）で呼ぶ。
+        void CreateDefaultMaterials();
+
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
         UINT vertexCount_ = 0;
@@ -183,5 +198,8 @@ namespace CoreEngine
 
         // マテリアルごとのPBRテクスチャハンドル
         std::vector<PBRTextureHandles> materialTextureHandles_;
+
+        // 全 Model インスタンスで共有するデフォルトマテリアル（Copy-on-Write のコピー元）
+        std::vector<std::unique_ptr<MaterialInstance>> defaultMaterials_;
     };
 }

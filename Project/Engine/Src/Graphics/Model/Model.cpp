@@ -32,31 +32,13 @@ namespace CoreEngine
         resource_ = resource;
         renderContext_ = ctx;
 
-        // マテリアルスロット数分の MaterialInstance を作成し、
-        // アセット側の PBR ファクターとテクスチャ有無を各スロットへ反映する。
+        // マテリアルスロット数分の枠だけ確保する（中身は Copy-on-Write で未確保のまま）。
+        // オーバーライドが発生するまでは ModelResource 共有のデフォルトマテリアルを参照するため、
+        // 同一モデルを複数配置してもマテリアルCBVアドレスが一致しインスタンシングバッチが統合される。
         const auto& materials = resource_->GetMaterials();
         const size_t materialCount = (std::max<size_t>)(materials.size(), 1);
         materialInstances_.clear();
-        materialInstances_.reserve(materialCount);
-        for (size_t i = 0; i < materialCount; ++i) {
-            auto instance = std::make_unique<MaterialInstance>();
-            instance->Initialize(renderContext_.dxCommon->GetDevice());
-
-            if (i < materials.size()) {
-                const MaterialAsset& asset = materials[i];
-                instance->SetColor(asset.baseColorFactor);
-                instance->SetMetallic(asset.metallicFactor);
-                instance->SetRoughness(asset.roughnessFactor);
-                instance->SetEmissiveFactor(asset.emissiveFactor);
-                instance->SetAlphaCutoff(asset.alphaCutoff);
-            }
-
-            // 法線マップのみフラグ制御（法線はファクター乗算で無効化できないため）
-            const auto& textures = resource_->GetMaterialTextures(static_cast<uint32_t>(i));
-            instance->SetNormalMapEnabled(textures.hasNormal);
-
-            materialInstances_.push_back(std::move(instance));
-        }
+        materialInstances_.resize(materialCount);
 
         // WVP バッファをフレーム数分確保する（CPU が複数フレーム先行して書き込んでも
         // GPU がまだ参照中のデータを上書きしないよう、役割ごとにリングバッファ化する）。
@@ -231,8 +213,7 @@ namespace CoreEngine
             const auto& subMesh = subMeshes[i];
             const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
             // マテリアルCBVはサブメッシュのマテリアルスロットに対応するインスタンスを使用
-            const D3D12_GPU_VIRTUAL_ADDRESS materialCBV =
-                MaterialForSlot(subMesh.materialIndex)->GetGPUVirtualAddress();
+            const D3D12_GPU_VIRTUAL_ADDRESS materialCBV = MaterialCBVForSlot(subMesh.materialIndex);
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
                 ? textureHandle : textures.baseColor;
 
@@ -394,7 +375,7 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.startIndex = subMesh.startIndex;
     packet.instanceDataSRV = transformBuffer->GetGPUVirtualAddress();
     packet.instanceCount = 1;
-    packet.materialCBV = MaterialForSlot(subMesh.materialIndex)->GetGPUVirtualAddress();
+    packet.materialCBV = MaterialCBVForSlot(subMesh.materialIndex);
     packet.baseColorSRV = baseColorTexture;
     packet.normalMapSRV = normalTexture;
     packet.metallicRoughnessSRV = metallicRoughnessTexture;
@@ -420,10 +401,31 @@ ID3D12Resource* Model::GetShadowTransformBuffer() const
 
 // ===== クエリ =====
 
-MaterialInstance* Model::MaterialForSlot(uint32_t materialIndex) const {
+D3D12_GPU_VIRTUAL_ADDRESS Model::MaterialCBVForSlot(uint32_t materialIndex) const {
     assert(!materialInstances_.empty());
     const size_t index = materialIndex < materialInstances_.size() ? materialIndex : 0;
-    return materialInstances_[index].get();
+    // オーバーライド済みならそちらを、未オーバーライドなら ModelResource 共有のデフォルトを使う
+    if (materialInstances_[index]) {
+        return materialInstances_[index]->GetGPUVirtualAddress();
+    }
+    const MaterialInstance* def = resource_->GetDefaultMaterial(static_cast<uint32_t>(index));
+    return def ? def->GetGPUVirtualAddress() : 0;
+}
+
+MaterialInstance* Model::GetMaterial(size_t materialIndex) {
+    if (materialIndex >= materialInstances_.size()) {
+        return nullptr;
+    }
+    if (!materialInstances_[materialIndex]) {
+        // Copy-on-Write: 初回の書き込みアクセス時にのみ ModelResource の共有デフォルト値を複製する
+        auto instance = std::make_unique<MaterialInstance>();
+        instance->Initialize(renderContext_.dxCommon->GetDevice());
+        if (const MaterialInstance* def = resource_->GetDefaultMaterial(static_cast<uint32_t>(materialIndex))) {
+            instance->FromJson(def->ToJson());
+        }
+        materialInstances_[materialIndex] = std::move(instance);
+    }
+    return materialInstances_[materialIndex].get();
 }
 
 bool Model::IsInitialized() const {

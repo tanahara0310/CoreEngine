@@ -143,6 +143,11 @@ namespace CoreEngine
         packet.indexCount = lodRange.indexCount;
         packet.startIndex = lodRange.startIndex;
 
+        // 実際に使われたLODレベル（クランプ後）をデバッグ統計へ記録
+        const uint32_t actualLodIndex = (batch.key.lodIndex < subMesh.lodCount)
+            ? batch.key.lodIndex : (subMesh.lodCount - 1);
+        EngineStats::GetInstance().RecordLodUsage(actualLodIndex, static_cast<uint32_t>(batch.instances.size()));
+
         packet.instanceDataSRV = instanceSRVAddress;
         packet.instanceCount = static_cast<UINT>(batch.instances.size());
         packet.materialCBV = batch.materialCBV;  // バッチから取得

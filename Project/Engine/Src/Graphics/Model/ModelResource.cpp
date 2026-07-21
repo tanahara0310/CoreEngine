@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <format>
+#include <limits>
 
 
 namespace CoreEngine
@@ -31,7 +32,9 @@ namespace CoreEngine
         constexpr size_t kMinSubMeshIndexCount = 3 * 256;      // サブメッシュ単位の下限（小物は原型のまま）
         constexpr float kLodRatios[] = { 0.25f, 0.06f };       // LOD1 / LOD2 の目標三角形比率
         constexpr float kLodTargetError = 0.05f;               // 許容誤差（AABB対角に対する相対値）
-        constexpr float kLodSloppyTargetError = 0.5f;          // Sloppy フォールバック時の許容誤差（目標到達を優先）
+        // Sloppy フォールバックは「目標三角形数への到達」を最優先するため誤差上限を実質無効化する。
+        // （0.5 程度だと誤差上限が先に効いて 40k tris 級の葉サブメッシュが削減されず残る）
+        constexpr float kLodSloppyTargetError = std::numeric_limits<float>::max();
 
         // lods[0] は常に原型の範囲を指すよう先に埋めておく
         for (auto& subMesh : modelData_.subMeshes) {
@@ -77,10 +80,16 @@ namespace CoreEngine
                     meshopt_SimplifyPrune,
                     &resultError);
 
+                Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}",
+                    std::format("LODデバッグ: SubMesh \"{}\" simplify結果 count={} target={} error={:.4f}",
+                        subMesh.name, simplifiedCount, targetIndexCount, resultError));
+
                 // トポロジー保存型で目標に届かない場合（葉・草などの非連結な三角形スープは
                 // エッジコラプスできない）は、クラスタリング型の Sloppy 版へフォールバックする。
                 // 見た目の劣化は大きめだが、遠景 LOD 用途では画面上ほぼ判別できない。
-                if (simplifiedCount > targetIndexCount * 3 / 2) {
+                // count==0 は Prune が孤立部品を丸ごと消して0になる過剰崩壊で、これも失敗扱いにする
+                // （target*3/2 の上振れ判定だけだと 0 を素通りさせてしまい棄却止まりになる）。
+                if (simplifiedCount == 0 || simplifiedCount > targetIndexCount * 3 / 2) {
                     simplifiedCount = meshopt_simplifySloppy(
                         simplified.data(),
                         reinterpret_cast<const unsigned int*>(indices.data()) + subMesh.startIndex,
@@ -91,10 +100,17 @@ namespace CoreEngine
                         targetIndexCount,
                         kLodSloppyTargetError,
                         &resultError);
+
+                    Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}",
+                        std::format("LODデバッグ: SubMesh \"{}\" sloppyフォールバック count={} target={} error={:.4f}",
+                            subMesh.name, simplifiedCount, targetIndexCount, resultError));
                 }
 
                 // 削減が 1 割未満なら段を追加する価値なし
                 if (simplifiedCount == 0 || simplifiedCount >= static_cast<size_t>(previousCount) * 9 / 10) {
+                    Logger::GetInstance().Logf(LogLevel::Trace, LogCategory::Resource, "{}",
+                        std::format("LODデバッグ: SubMesh \"{}\" LOD段追加を棄却 count={} previousCount={} (閾値90%={})",
+                            subMesh.name, simplifiedCount, previousCount, static_cast<size_t>(previousCount) * 9 / 10));
                     break;
                 }
 
@@ -276,6 +292,8 @@ namespace CoreEngine
             }
         }
 
+        CreateDefaultMaterials();
+
         // ファイルパスを保存（デバッグ用）
         filePath_ = directoryPath + "/" + filename;
         isLoaded_ = true;
@@ -303,8 +321,47 @@ namespace CoreEngine
             handles.emissive = defaultWhiteTexture;
         }
 
+        CreateDefaultMaterials();
+
         filePath_ = name.empty() ? "<procedural>" : name;
         isLoaded_ = true;
+    }
+
+    void ModelResource::CreateDefaultMaterials()
+    {
+        // Model::Initialize が以前スロットごとに複製していたロジックをリソース側へ集約。
+        // 全 Model インスタンスがオーバーライドするまでこの共有インスタンスを参照するため、
+        // 同一モデルを複数配置してもマテリアルCBVアドレスが一致しインスタンシングバッチが統合される。
+        const size_t materialCount = (std::max<size_t>)(modelData_.materials.size(), 1);
+        defaultMaterials_.clear();
+        defaultMaterials_.reserve(materialCount);
+        for (size_t i = 0; i < materialCount; ++i) {
+            auto instance = std::make_unique<MaterialInstance>();
+            instance->Initialize(dxCommon_->GetDevice());
+
+            if (i < modelData_.materials.size()) {
+                const MaterialAsset& asset = modelData_.materials[i];
+                instance->SetColor(asset.baseColorFactor);
+                instance->SetMetallic(asset.metallicFactor);
+                instance->SetRoughness(asset.roughnessFactor);
+                instance->SetEmissiveFactor(asset.emissiveFactor);
+                instance->SetAlphaCutoff(asset.alphaCutoff);
+            }
+
+            // 法線マップのみフラグ制御（法線はファクター乗算で無効化できないため）
+            instance->SetNormalMapEnabled(materialTextureHandles_[i].hasNormal);
+
+            defaultMaterials_.push_back(std::move(instance));
+        }
+    }
+
+    const MaterialInstance* ModelResource::GetDefaultMaterial(uint32_t materialIndex) const
+    {
+        if (defaultMaterials_.empty()) {
+            return nullptr;
+        }
+        const size_t index = (materialIndex < defaultMaterials_.size()) ? materialIndex : 0;
+        return defaultMaterials_[index].get();
     }
 
     const Animation* ModelResource::GetAnimation(const std::string& name) const {

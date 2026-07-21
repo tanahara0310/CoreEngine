@@ -246,6 +246,48 @@ namespace CoreEngine
         ImGui::PopStyleColor(2);
 
         ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  LODレベル別インスタンス数");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        {
+            const uint32_t lodTotal = rs.lodInstanceCounts[0] + rs.lodInstanceCounts[1] + rs.lodInstanceCounts[2];
+            const float lodBarMax = (std::max)(lodTotal, 1u) * 1.0f;
+            static constexpr const char* kLodLabels[3] = { "LOD0 (フル詳細)", "LOD1 (25%)", "LOD2 (6%)" };
+            static constexpr ImVec4 kLodColors[3] = {
+                ImVec4(0.25f, 0.75f, 0.35f, 0.85f), // 緑
+                ImVec4(0.85f, 0.70f, 0.15f, 0.85f), // 黄
+                ImVec4(0.90f, 0.30f, 0.25f, 0.85f), // 赤
+            };
+
+            ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+            if (ImGui::BeginTable("lod_table", 3,
+                ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_PadOuterX))
+            {
+                ImGui::TableSetupColumn("レベル", ImGuiTableColumnFlags_WidthFixed, 110.0f);
+                ImGui::TableSetupColumn("インスタンス数", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+                ImGui::TableSetupColumn("比率", ImGuiTableColumnFlags_WidthStretch);
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    const uint32_t count = rs.lodInstanceCounts[i];
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextColored(kLabelColor, "%s", kLodLabels[i]);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TextColored(kValueColor, "%u", count);
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, kLodColors[i]);
+                    ImGui::ProgressBar(static_cast<float>(count) / lodBarMax, ImVec2(-1.0f, 0.0f), "");
+                    ImGui::PopStyleColor();
+                }
+                ImGui::EndTable();
+            }
+            ImGui::PopStyleColor(2);
+        }
+
+        ImGui::Spacing();
         ImGui::TextColored(kHeaderColor, "  ジオメトリ");
         ImGui::Separator();
         ImGui::Spacing();

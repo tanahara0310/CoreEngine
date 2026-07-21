@@ -77,22 +77,28 @@ namespace CoreEngine
         bool IsInitialized() const;
 
         /// @brief マテリアルインスタンスを取得（パラメータの直接操作用）
+        /// @details Copy-on-Write: 未オーバーライドのスロットは初回呼び出し時に
+        ///          ModelResource の共有デフォルトマテリアルから複製して確保する。
+        ///          同一モデルを複数配置してもオーバーライドしない限り追加GPU確保は発生しない。
         /// @param materialIndex マテリアルスロットインデックス（サブメッシュの materialIndex に対応）
         /// @return MaterialInstance へのポインタ（範囲外は nullptr）
-        MaterialInstance* GetMaterial(size_t materialIndex = 0) {
-            return materialIndex < materialInstances_.size() ? materialInstances_[materialIndex].get() : nullptr;
-        }
+        MaterialInstance* GetMaterial(size_t materialIndex = 0);
+
+        /// @brief マテリアルインスタンスを取得（読み取り専用。未オーバーライドならリソース共有のデフォルトを返す）
         const MaterialInstance* GetMaterial(size_t materialIndex = 0) const {
-            return materialIndex < materialInstances_.size() ? materialInstances_[materialIndex].get() : nullptr;
+            if (materialIndex >= materialInstances_.size()) return nullptr;
+            if (materialInstances_[materialIndex]) return materialInstances_[materialIndex].get();
+            return resource_ ? resource_->GetDefaultMaterial(static_cast<uint32_t>(materialIndex)) : nullptr;
         }
 
         /// @brief マテリアルスロット数を取得
         size_t GetMaterialCount() const { return materialInstances_.size(); }
 
         /// @brief 全マテリアルスロットに対して処理を実行する（モデル全体のティントや IBL 設定用）
+        /// @note fn は書き込み前提のため、全スロットを GetMaterial() 経由で materialize してから渡す
         void ForEachMaterial(const std::function<void(MaterialInstance*)>& fn) {
-            for (auto& mat : materialInstances_) {
-                if (mat) fn(mat.get());
+            for (size_t i = 0; i < materialInstances_.size(); ++i) {
+                if (MaterialInstance* mat = GetMaterial(i)) fn(mat);
             }
         }
 
@@ -198,8 +204,9 @@ namespace CoreEngine
         /// @brief 現在フレームに対応する Shadow 用 WVP バッファを取得（リングバッファから解決）
         ID3D12Resource* GetShadowTransformBuffer() const;
 
-        /// @brief サブメッシュのマテリアルスロットに対応する MaterialInstance を取得（範囲外はスロット0）
-        MaterialInstance* MaterialForSlot(uint32_t materialIndex) const;
+        /// @brief サブメッシュのマテリアルスロットに対応するマテリアル定数バッファのGPUアドレスを取得（範囲外はスロット0）
+        /// @details オーバーライド未発生のスロットは ModelResource 共有のデフォルトマテリアルのアドレスを返す。
+        D3D12_GPU_VIRTUAL_ADDRESS MaterialCBVForSlot(uint32_t materialIndex) const;
 
         /// @brief AABB の画面投影サイズから LOD レベルを算出する（0=フル詳細）
         /// @details 距離でなく画面占有率ベースのため、近距離では常にフル詳細になる。

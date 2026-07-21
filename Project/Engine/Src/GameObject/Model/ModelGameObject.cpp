@@ -193,8 +193,18 @@ namespace CoreEngine
         if (model_) {
             if (j.contains("materials") && j["materials"].is_array()) {
                 // 新フォーマット: マテリアルスロットごとの配列
+                // 保存済みシーンは全モデルが毎回フルの materials 配列を書き出すため、
+                // 素朴に FromJson すると未オーバーライドのモデルまで毎回 materialize してしまい
+                // ModelResource 側の Copy-on-Write（同一モデル複数配置のバッチ統合）が意味を失う。
+                // リソース既定値と一致する場合はスキップして共有デフォルトのままにする。
                 const json& materials = j["materials"];
+                const ModelResource* modelRes = model_->GetModelResource();
                 for (size_t i = 0; i < materials.size() && i < model_->GetMaterialCount(); ++i) {
+                    const MaterialInstance* def = modelRes
+                        ? modelRes->GetDefaultMaterial(static_cast<uint32_t>(i)) : nullptr;
+                    if (def && def->ToJson() == materials[i]) {
+                        continue;
+                    }
                     if (MaterialInstance* mat = model_->GetMaterial(i)) {
                         mat->FromJson(materials[i]);
                     }
