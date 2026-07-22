@@ -41,6 +41,7 @@ namespace CoreEngine
     class RayTracingShadowManager;
     class WaterCausticsRayTracingManager;
     class WaterRefractionRayTracingManager;
+    class WaterReflectionRayTracingManager;
     class FFTOceanManager;
     class AtmosphereManager;
     class VolumetricCloudManager;
@@ -63,6 +64,7 @@ namespace CoreEngine
         RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
         WaterCausticsRayTracingManager* rtWaterCausticsManager = nullptr; ///< DXR 水面コースティクス
         WaterRefractionRayTracingManager* rtWaterRefractionManager = nullptr; ///< DXR 水面屈折
+        WaterReflectionRayTracingManager* rtWaterReflectionManager = nullptr; ///< DXR 水面反射（鏡像カメラ置き換え）
         FFTOceanManager* fftOceanManager = nullptr; ///< FFT Ocean 波面生成マネージャー
         AtmosphereManager* atmosphereManager = nullptr; ///< 大気散乱管理（LUT生成・太陽情報）
         VolumetricCloudManager* volumetricCloudManager = nullptr; ///< ボリューメトリック雲管理（ノイズ生成・雲合成）

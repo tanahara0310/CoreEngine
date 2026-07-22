@@ -217,6 +217,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterCausticsRayTracingManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterRayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterRefractionRayTracingManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterReflectionRayTracingManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.cpp" />
@@ -230,6 +231,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterCausticsPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterSurfacePass.cpp" />
@@ -620,6 +622,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterCausticsRayTracingManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterRayTracingPassBase.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterRefractionRayTracingManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterReflectionRayTracingManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\FrameBlackboard.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.h" />
@@ -675,6 +678,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h" />

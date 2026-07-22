@@ -6,7 +6,6 @@
 //エンジンシステム
 #include "EngineSystem/EngineSystem.h"
 
-#include "WaterReflectionPass.h"
 #include "WaterSceneController.h"
 
 #include <utility>
@@ -23,7 +22,7 @@ public:
     /// @brief 描画処理
     void Draw() override;
 
-    /// @brief 水面反射用の補助 RenderView 要求を構築する
+    /// @brief 補助 RenderView 要求を構築する（鏡像カメラ反射廃止により現在は空）
     std::vector<CoreEngine::RenderViewRequest> BuildRenderViewRequests() override;
 
     /// @brief 現在の DXR 水面屈折用波面データを返す
@@ -35,13 +34,6 @@ public:
     }
 
 private:
-    void SetupWaterReflectionView(CoreEngine::ICamera* mainCamera, float planeHeight);
-    void RestoreWaterReflectionView(CoreEngine::ICamera* mainCamera);
-    void ApplyWaterRenderViewResult(const CoreEngine::RenderViewResult& result);
-
-    /// @brief 水面平面反射パス（Step 4）
-    WaterReflectionPass reflectionPass_;
-
     WaterSceneController waterController_{};
 };
 

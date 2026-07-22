@@ -66,66 +66,11 @@ void WaterTestScene::Draw() {
 
 std::vector<RenderViewRequest> WaterTestScene::BuildRenderViewRequests()
 {
-    std::vector<RenderViewRequest> requests;
-
-    WaterPlaneObject* waterPlane = waterController_.GetWaterPlane();
-    // 水面が非アクティブ（エディタで非表示）の間は反射ビュー自体を止める。
-    // ポインタ存在だけで判定すると、水面を消しても毎フレーム全シーンを
-    // もう一周描画する反射コストが残り続ける。
-    if (!waterPlane || !waterPlane->IsActive()) {
-        return requests;
-    }
-
-    ICamera* mainCamera = GetGameViewCamera3D();
-    const float planeHeight = waterController_.GetWaterHeight();
-
-    RenderViewRequest request{};
-    request.isEnabled = true;
-    request.name = "WaterReflection";
-    request.viewSettings.viewType = RenderViewType::ReflectionView;
-    request.viewSettings.enableSSAO = false;
-    request.viewSettings.enableRTShadow = false;
-    request.viewSettings.enablePostEffect = false;
-    request.viewSettings.enableBackBuffer = false;
-    request.viewSettings.sceneColorTargetName = RenderTargetNames::ReflectionView;
-    request.beforeExecute = [this, mainCamera, planeHeight]() {
-        SetupWaterReflectionView(mainCamera, planeHeight);
-    };
-    request.afterExecute = [this, mainCamera]() {
-        RestoreWaterReflectionView(mainCamera);
-    };
-    request.completionCallback = [this](const RenderViewResult& result) {
-        ApplyWaterRenderViewResult(result);
-    };
-
-    requests.push_back(std::move(request));
-    return requests;
-}
-
-void WaterTestScene::SetupWaterReflectionView(ICamera* mainCamera, float planeHeight)
-{
-    reflectionPass_.SetupReflectionCamera(mainCamera, planeHeight);
-
-    if (WaterPlaneObject* waterPlane = waterController_.GetWaterPlane()) {
-        waterPlane->SetClipPlane(reflectionPass_.GetClipPlane(), true);
-        waterPlane->UpdateFrameConstants();
-    }
-}
-
-void WaterTestScene::RestoreWaterReflectionView(ICamera* mainCamera){
-    reflectionPass_.RestoreMainCamera(mainCamera);
-}
-
-void WaterTestScene::ApplyWaterRenderViewResult(const RenderViewResult& result)
-{
-    WaterPlaneObject* waterPlane = waterController_.GetWaterPlane();
-    if (!waterPlane) {
-        return;
-    }
-
-    waterController_.ApplyWaterRenderViewResult(result);
-    waterPlane->SetClipPlane(reflectionPass_.GetClipPlane(), false);
-    waterPlane->UpdateFrameConstants();
+    // 鏡像カメラによる平面反射ビューは廃止した。
+    // 水面反射は DXR（RTWaterReflectionPass）へ置き換え済みで、シーン全体を
+    // もう一周描画する反射ビューは不要になった（反射コストがシーン複雑度から独立化）。
+    // 反射ビューを発行しないことで、GBuffer/FFTOcean/ライティングの二重実行が消える。
+    return {};
 }
 
 const WaterSurfaceData* WaterTestScene::GetWaterRefractionSurfaceData() const

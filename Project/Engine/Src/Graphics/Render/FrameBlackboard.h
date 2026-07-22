@@ -36,6 +36,7 @@ namespace CoreEngine
         static const char* const WaterCaustics;
         static const char* const RTWaterCaustics;
         static const char* const RTWaterRefractionColor;
+        static const char* const RTWaterReflectionColor;
         static const char* const BackBuffer;
         static const char* const PostEffectFinal;
         static const char* const GBufferAlbedoAO;

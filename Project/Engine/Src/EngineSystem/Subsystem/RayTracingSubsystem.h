@@ -4,6 +4,7 @@
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 
 struct ID3D12GraphicsCommandList;
@@ -69,6 +70,14 @@ namespace CoreEngine
             DirectXCommon* dx,
             ID3D12GraphicsCommandList* cmdList,
             WaterRefractionRayTracingManager::ViewID viewId,
+            const WaterSurfaceData& surfaceData);
+
+        /// @brief DXR 水面反射のディスパッチ（鏡像カメラ平面反射の置き換え）
+        void DispatchWaterReflection(
+            const RenderContext& context,
+            DirectXCommon* dx,
+            ID3D12GraphicsCommandList* cmdList,
+            WaterReflectionRayTracingManager::ViewID viewId,
             const WaterSurfaceData& surfaceData);
 
         /// @brief DXR 水面コースティクスのディスパッチ

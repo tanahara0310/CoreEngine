@@ -6,6 +6,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
@@ -79,6 +80,9 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 		if (auto* waterCausticsManager = renderDomainContext->GetWaterCausticsRayTracingManager()) {
 			waterCausticsManager->SetSurfaceModelProvider(surfaceModelProvider);
 		}
+		if (auto* waterReflectionManager = renderDomainContext->GetWaterReflectionRayTracingManager()) {
+			waterReflectionManager->SetSurfaceModelProvider(surfaceModelProvider);
+		}
 	}
 
 	if (!waterPlane_) {
@@ -111,6 +115,14 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 			waterPlane_->SetRefractionColorSRV(
 				waterRefractionManager->GetRefractionSRVHandle(
 					WaterRefractionRayTracingManager::ViewID::GameView));
+		}
+
+		// DXR 反射結果のカラー SRV を gReflectionTexture として設定する（鏡像カメラの置き換え）。
+		// これで反射源がシーン複雑度から切り離される（島の数に依存しない固定コスト）。
+		if (auto* waterReflectionManager = renderDomainContext->GetWaterReflectionRayTracingManager()) {
+			waterPlane_->SetReflectionTexture(
+				waterReflectionManager->GetReflectionSRVHandle(
+					WaterReflectionRayTracingManager::ViewID::GameView));
 		}
 
 		if (auto* fftOceanManager = renderDomainContext->GetFFTOceanManager()) {

@@ -85,6 +85,9 @@
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterRefractionRayTracingManager.cpp">
       <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterReflectionRayTracingManager.cpp">
+      <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp">
       <Filter>Engine\Src\Graphics\Atmosphere</Filter>
     </ClCompile>
@@ -122,6 +125,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.cpp">
@@ -1272,6 +1278,9 @@
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterRefractionRayTracingManager.h">
       <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterReflectionRayTracingManager.h">
+      <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
@@ -1435,6 +1444,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h">

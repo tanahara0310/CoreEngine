@@ -8,7 +8,7 @@
 #include "Graphics/Model/VertexData.h"
 #include "Utility/Logger/Logger.h"
 
-#include "meshoptimizer/src/meshoptimizer.h"
+#include "externals/meshoptimizer/src/meshoptimizer.h"
 
 #include <cassert>
 #include <format>
