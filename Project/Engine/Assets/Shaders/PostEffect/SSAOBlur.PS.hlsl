@@ -4,14 +4,16 @@
 // ワールド座標の差が大きい箇所はサンプル除外することでエッジを保つ。
 
 #include "FullScreen.hlsli"
+#include "../Include/Common/DepthReconstruction.hlsli"
 
-Texture2D<float4> gTexture       : register(t0); // 入力 SSAO（PostEffectBase 規約）
-Texture2D<float4> gWorldPosition : register(t1); // GBuffer ワールド座標
+Texture2D<float4> gTexture   : register(t0); // 入力 SSAO（PostEffectBase 規約）
+Texture2D<float> gSceneDepth : register(t1); // WorldPosition ターゲット廃止に伴い深度から復元する
 
 SamplerState gSampler : register(s0);
 
 cbuffer SSAOBlurParams : register(b0)
 {
+    float4x4 gInvViewProj;
     float2 gScreenSize;
     float  gDepthThreshold;
     float  _pad0;
@@ -33,14 +35,17 @@ PixelShaderOutput main(PixelShaderInput input)
     PixelShaderOutput output;
 
     int3 centerCoord = int3(input.position.xy, 0);
-    float  centerAO  = gTexture.Load(centerCoord).r;
-    float4 centerWP  = gWorldPosition.Load(centerCoord);
+    float centerAO    = gTexture.Load(centerCoord).r;
+    float centerDepth = gSceneDepth.Load(centerCoord);
 
-    if (centerWP.a < 0.5f)
+    if (IsBackgroundDepth(centerDepth))
     {
         output.color = float4(centerAO, centerAO, centerAO, 1.0f);
         return output;
     }
+
+    float2 centerUV = (input.position.xy + 0.5f.xx) / gScreenSize;
+    float3 centerWP = ReconstructWorldPosition(ScreenUVToNDC(centerUV), centerDepth, gInvViewProj);
 
     float sum    = 0.0f;
     float weight = 0.0f;
@@ -56,10 +61,13 @@ PixelShaderOutput main(PixelShaderInput input)
             int2 offset = int2(x, y);
             int3 coord  = int3(centerCoord.xy + offset, 0);
 
-            float4 sampleWP = gWorldPosition.Load(coord);
-            if (sampleWP.a < 0.5f) continue;
+            float sampleDepth = gSceneDepth.Load(coord);
+            if (IsBackgroundDepth(sampleDepth)) continue;
 
-            float dist = length(sampleWP.xyz - centerWP.xyz);
+            float2 sampleUV = (float2(coord.xy) + 0.5f.xx) / gScreenSize;
+            float3 sampleWP = ReconstructWorldPosition(ScreenUVToNDC(sampleUV), sampleDepth, gInvViewProj);
+
+            float dist = length(sampleWP - centerWP);
             if (dist > gDepthThreshold) continue;
 
             float w = 1.0f;

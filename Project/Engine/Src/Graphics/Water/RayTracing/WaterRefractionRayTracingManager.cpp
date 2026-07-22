@@ -8,6 +8,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
+#include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -15,6 +16,7 @@ namespace CoreEngine
     namespace {
         struct WaterRefractionConstants {
             Matrix4x4 viewProjection;
+            Matrix4x4 invViewProjection; // WorldPosition ターゲット廃止に伴う深度復元用
             float cameraPosition[3];
             float waterHeight;
             float surfaceBias;
@@ -50,7 +52,7 @@ namespace CoreEngine
         }
     }
 
-    static_assert(sizeof(WaterRefractionConstants) == 144,
+    static_assert(sizeof(WaterRefractionConstants) == 208,
         "WaterRefractionConstants size mismatch with HLSL cbuffer");
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
@@ -81,7 +83,7 @@ namespace CoreEngine
         globalRootSigMgr_
             .AddUAVTable("gRefractionOutput", 0)
             .AddSRVTable("gScene", 0)
-            .AddSRVTable("gWorldPosition", 1)
+            .AddSRVTable("gSceneDepth", 1)
             .AddSRVTable("gSceneColor", 2)
             .AddSRVTable("gFFTOceanDisplacement", 3)
             .AddSRVTable("gFFTOceanNormal", 4)
@@ -173,7 +175,7 @@ namespace CoreEngine
 
     void WaterRefractionRayTracingManager::Dispatch(
         ID3D12GraphicsCommandList* cmdList,
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV,
         const Matrix4x4& viewProjection,
         const Vector3& cameraPosition,
@@ -194,7 +196,7 @@ namespace CoreEngine
         lastDiagnostics_.waterHeight = dispatchSurfaceData.waterHeight;
         lastDiagnostics_.width = width;
         lastDiagnostics_.height = height;
-        lastDiagnostics_.worldPositionSrv = worldPositionSRV.ptr;
+        lastDiagnostics_.worldPositionSrv = sceneDepthSRV.ptr;
         lastDiagnostics_.sceneColorSrv = sceneColorSRV.ptr;
         lastDiagnostics_.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
 
@@ -256,6 +258,7 @@ namespace CoreEngine
 
         WaterRefractionConstants constants{};
         constants.viewProjection = viewProjection;
+        constants.invViewProjection = MathCore::Matrix::Inverse(viewProjection);
         constants.cameraPosition[0] = cameraPosition.x;
         constants.cameraPosition[1] = cameraPosition.y;
         constants.cameraPosition[2] = cameraPosition.z;
@@ -291,7 +294,7 @@ namespace CoreEngine
             width,
             height,
             lastDiagnostics_.blasCount,
-            worldPositionSRV.ptr,
+            sceneDepthSRV.ptr,
             sceneColorSRV.ptr,
             outputSrvHandle.ptr,
             constants.refractionEta,
@@ -368,8 +371,8 @@ namespace CoreEngine
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene")),
             asMgr_->GetTLASSRVHandle());
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gWorldPosition")),
-            worldPositionSRV);
+            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneDepth")),
+            sceneDepthSRV);
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneColor")),
             sceneColorSRV);

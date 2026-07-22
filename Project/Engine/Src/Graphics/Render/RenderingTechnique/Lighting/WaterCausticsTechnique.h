@@ -25,13 +25,13 @@ namespace CoreEngine
 			uint32_t debugViewMode = 0;
 			uint32_t debugLogEnabled = 0;
 			float padding[2] = {};
+			float invViewProjMatrix[16] = {}; // WorldPosition ターゲット廃止に伴う深度復元用
 		};
 
 		struct Diagnostics {
 			uint32_t activeWaveCount = 0;
 			uint32_t mainLightEnabled = 0;
 			uint64_t outputHandle = 0;
-			uint64_t worldPositionHandle = 0;
 			uint64_t normalHandle = 0;
 		};
 

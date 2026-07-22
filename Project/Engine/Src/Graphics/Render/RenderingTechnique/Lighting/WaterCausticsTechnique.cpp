@@ -9,6 +9,8 @@
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/Render/RenderManager.h"
+#include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 #include <cstring>
@@ -55,8 +57,15 @@ namespace CoreEngine
 
         UpdateWaterSurfaceBuffer(context.waterRefractionSurfaceData);
         UpdateMainLightBuffer(context.lightManager);
+
+        // 深度復元用 View*Projection 逆行列（ビューごとに更新）
+        if (context.renderManager) {
+            const Matrix4x4& view = context.renderManager->GetViewMatrix();
+            const Matrix4x4& proj = context.renderManager->GetProjectionMatrix();
+            const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(MathCore::Matrix::Multiply(view, proj));
+            std::memcpy(params_.invViewProjMatrix, &invViewProj, sizeof(float) * 16);
+        }
         UpdateParamsBuffer();
-        diagnostics_.worldPositionHandle = gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition).ptr;
         diagnostics_.normalHandle = gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness).ptr;
 
         if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
@@ -68,10 +77,13 @@ namespace CoreEngine
         cmdList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
-        const int worldPosIdx = GetRootParamIndex("gWorldPosition");
-        if (worldPosIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(worldPosIdx,
-                gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition));
+        // WorldPosition ターゲット廃止に伴い、深度から復元する
+        const int sceneDepthIdx = GetRootParamIndex("gSceneDepth");
+        if (sceneDepthIdx >= 0 && context.frameBlackboard) {
+            D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
+            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
+                cmdList->SetGraphicsRootDescriptorTable(sceneDepthIdx, depthHandle);
+            }
         }
 
         const int normalIdx = GetRootParamIndex("gNormalRoughness");
@@ -113,9 +125,8 @@ namespace CoreEngine
             Logger::GetInstance().Infof(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "WaterCausticsTechnique: output=0x{:X} worldPos=0x{:X} normal=0x{:X} activeWaveCount={} mainLightEnabled={} debugViewMode={} debugScale={:.2f}",
+                "WaterCausticsTechnique: output=0x{:X} normal=0x{:X} activeWaveCount={} mainLightEnabled={} debugViewMode={} debugScale={:.2f}",
                 diagnostics_.outputHandle,
-                diagnostics_.worldPositionHandle,
                 diagnostics_.normalHandle,
                 diagnostics_.activeWaveCount,
                 diagnostics_.mainLightEnabled,

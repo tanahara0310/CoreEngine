@@ -138,8 +138,15 @@ namespace CoreEngine
         const auto& subMeshes = res->GetSubMeshes();
         assert(batch.key.subMeshIndex < subMeshes.size());
         const auto& subMesh = subMeshes[batch.key.subMeshIndex];
-        packet.indexCount = subMesh.indexCount;
-        packet.startIndex = subMesh.startIndex;
+        // LOD範囲を使用（範囲外のLODレベルは GetLod が最終段へクランプする）
+        const SubMeshLodRange& lodRange = subMesh.GetLod(batch.key.lodIndex);
+        packet.indexCount = lodRange.indexCount;
+        packet.startIndex = lodRange.startIndex;
+
+        // 実際に使われたLODレベル（クランプ後）をデバッグ統計へ記録
+        const uint32_t actualLodIndex = (batch.key.lodIndex < subMesh.lodCount)
+            ? batch.key.lodIndex : (subMesh.lodCount - 1);
+        EngineStats::GetInstance().RecordLodUsage(actualLodIndex, static_cast<uint32_t>(batch.instances.size()));
 
         packet.instanceDataSRV = instanceSRVAddress;
         packet.instanceCount = static_cast<UINT>(batch.instances.size());

@@ -16,11 +16,13 @@ namespace CoreEngine
     class GBufferManager {
     public:
         /// @brief G-Bufferのターゲットタイプ
+        /// @note WorldPosition ターゲットは廃止済み（2026-07-21）。DeferredLighting 等は
+        ///       SceneDepth + View*Projection の逆行列からワールド座標を復元する
+        ///       （MRT 5枚→4枚・36B/px→20B/px の帯域削減が目的）。
         enum class Target : uint32_t {
             AlbedoAO = 0,       ///< PBR: rgb=アルベド,a=AO
-            NormalRoughness,    ///< PBR: rgb=ワールド法線(encoded),a=ラフネス
+            NormalRoughness,    ///< PBR: rgb=ワールド法線(encoded),a=符号付きラフネス（符号=IBL有効/無効, 0=アンリット）
             EmissiveMetallic,   ///< PBR: rgb=エミッシブ,a=メタリック
-            WorldPosition,      ///< rgb=ワールド座標, a=ピクセルフラグ
             MotionVector,       ///< rg=NDC空間モーションベクター（現フレーム-前フレーム）
             Count
         };
@@ -34,7 +36,6 @@ namespace CoreEngine
                 DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,  // AlbedoAO
                 DXGI_FORMAT_R16G16B16A16_FLOAT,   // NormalRoughness
                 DXGI_FORMAT_R8G8B8A8_UNORM,       // EmissiveMetallic
-                DXGI_FORMAT_R32G32B32A32_FLOAT,   // WorldPosition
                 DXGI_FORMAT_R16G16_FLOAT,          // MotionVector
             };
 

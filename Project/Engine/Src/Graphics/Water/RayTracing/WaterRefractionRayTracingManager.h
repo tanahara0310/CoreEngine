@@ -86,7 +86,7 @@ namespace CoreEngine
 
         void Dispatch(
             ID3D12GraphicsCommandList* cmdList,
-            D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV, // WorldPosition ターゲット廃止に伴い深度から復元する
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV,
             const Matrix4x4& viewProjection,
             const Vector3& cameraPosition,

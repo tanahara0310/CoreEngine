@@ -6,6 +6,9 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Graphics/Render/RenderManager.h"
+#include "Math/MathCore.h"
+#include <cstring>
 #include <cassert>
 
 namespace CoreEngine
@@ -32,6 +35,15 @@ namespace CoreEngine
         const float h = static_cast<float>(gBufferManager->GetHeight());
         params_.screenWidth = w;
         params_.screenHeight = h;
+
+        // 深度復元用 View*Projection 逆行列（ビューごとに更新）
+        if (context.renderManager) {
+            const Matrix4x4& view = context.renderManager->GetViewMatrix();
+            const Matrix4x4& proj = context.renderManager->GetProjectionMatrix();
+            const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(MathCore::Matrix::Multiply(view, proj));
+            std::memcpy(params_.invViewProjMatrix, &invViewProj, sizeof(float) * 16);
+        }
+
         UpdateConstantBuffer();
 
         // SSAO と SSAOBlur のレンダーターゲットを取得
@@ -55,12 +67,13 @@ namespace CoreEngine
             cmdList->SetGraphicsRootDescriptorTable(ssaoIdx, ssaoTarget->GetSRVHandle());
         }
 
-        // t1: WorldPosition (深度比較用)
-        const int posIdx = GetRootParamIndex("gWorldPosition");
-        if (posIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                posIdx,
-                gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition));
+        // t1: SceneDepth（WorldPosition ターゲット廃止に伴い、深度から復元する）
+        const int depthIdx = GetRootParamIndex("gSceneDepth");
+        if (depthIdx >= 0 && context.frameBlackboard) {
+            D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
+            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
+                cmdList->SetGraphicsRootDescriptorTable(depthIdx, depthHandle);
+            }
         }
 
         // CBV: SSAOBlurParams

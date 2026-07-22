@@ -82,9 +82,10 @@ namespace CoreEngine
         };
 
         std::vector<TempSpectrumSample> tempSpectrum(sampleCount);
-        std::mt19937 rng(20260626);
+        std::mt19937 rng(settings.randomSeed);
         std::normal_distribution<float> gaussianDistribution(0.0f, 1.0f);
         float accumulatedSpectralAmplitude = 0.0f;
+        double accumulatedAmplitudeSquared = 0.0;
 
         for (uint32_t y = 0; y < resolution; ++y) {
             for (uint32_t x = 0; x < resolution; ++x) {
@@ -126,10 +127,30 @@ namespace CoreEngine
                 if (spectralAmplitude > 0.0f) {
                     ++stats.activeSpectrumSampleCount;
                     accumulatedSpectralAmplitude += spectralAmplitude;
+                    accumulatedAmplitudeSquared += static_cast<double>(spectralAmplitude) * spectralAmplitude;
                     stats.maxSpectralAmplitude = (std::max)(stats.maxSpectralAmplitude, spectralAmplitude);
                     stats.maxAngularFrequency = (std::max)(stats.maxAngularFrequency, sample.angularFrequency);
                 }
             }
+        }
+
+        // ---- 波高の物理較正 ----
+        // 実装の高さ場は h(x) = (1/N)Σ h̃(k)e^{ikx}、h̃ = h0 e^{iωt} + h0m* e^{-iωt}。
+        // 各 h0 の実部/虚部が N(0, sa²) なので Var(h) ≈ (4/N²)·Σ sa² となり、
+        // RMS = 2·sqrt(Σ sa²)/N が生成スペクトルから決定論的に見積もれる。
+        // targetRmsHeight が指定されたら全モードを一様スケールして目標RMSへ合わせる
+        // （時間発展・choppiness 変位も同じ h̃ から導出されるため整合が保たれる）。
+        stats.measuredRmsHeight = static_cast<float>(
+            2.0 * std::sqrt(accumulatedAmplitudeSquared) / static_cast<double>(resolution));
+        if (settings.targetRmsHeight > 0.0f && stats.measuredRmsHeight > 1.0e-6f) {
+            const float heightScale = settings.targetRmsHeight / stats.measuredRmsHeight;
+            stats.appliedHeightScale = heightScale;
+            for (TempSpectrumSample& sample : tempSpectrum) {
+                sample.real *= heightScale;
+                sample.imag *= heightScale;
+            }
+            stats.maxSpectralAmplitude *= heightScale;
+            accumulatedSpectralAmplitude *= heightScale;
         }
 
         for (uint32_t y = 0; y < resolution; ++y) {

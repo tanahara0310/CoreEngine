@@ -5,17 +5,19 @@
 // ============================================================
 
 #include "RTWaterSurfaceCommon.hlsli"
+#include "../../Include/Common/DepthReconstruction.hlsli"
 
 RWTexture2D<float4> gRefractionOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
-Texture2D<float4> gWorldPosition : register(t1);
+Texture2D<float> gSceneDepth : register(t1); // WorldPosition ターゲット廃止に伴い深度から復元する
 Texture2D<float4> gSceneColor : register(t2);
-Texture2D<float4> gFFTOceanDisplacement : register(t3);
-Texture2D<float4> gFFTOceanNormal : register(t4);
+Texture2DArray<float4> gFFTOceanDisplacement : register(t3);
+Texture2DArray<float4> gFFTOceanNormal : register(t4);
 
 cbuffer WaterRefractionConstants : register(b0)
 {
     float4x4 gViewProjection;
+    float4x4 gInvViewProjection; // WorldPosition ターゲット廃止に伴う深度復元用
     float3 gCameraPosition;
     float gWaterHeight;
     float gSurfaceBias;
@@ -165,7 +167,7 @@ float3 EvaluateRefractionWaterOffset(float2 worldXZ)
         return EvaluateWaterOffset(worldXZ);
     }
 
-    return SampleFFTOceanBilinear(gFFTOceanDisplacement, worldXZ, gFFTOceanUVScale, gFFTOceanUVOffset, gFFTOceanResolution).xyz;
+    return SampleFFTOceanCascadeDisplacement(gFFTOceanDisplacement, worldXZ, gFFTOceanResolution);
 }
 
 float3 EvaluateRefractionWaterNormal(float2 worldXZ)
@@ -175,9 +177,7 @@ float3 EvaluateRefractionWaterNormal(float2 worldXZ)
         return EvaluateWaterNormal(worldXZ);
     }
 
-    const float3 encodedNormal = SampleFFTOceanBilinear(gFFTOceanNormal, worldXZ, gFFTOceanUVScale, gFFTOceanUVOffset, gFFTOceanResolution).xyz;
-    const float3 decodedNormal = normalize(encodedNormal * 2.0f - 1.0f);
-    return decodedNormal.y < 0.0f ? -decodedNormal : decodedNormal;
+    return SampleFFTOceanCascadeNormal(gFFTOceanNormal, worldXZ, gFFTOceanResolution);
 }
 
 [shader("raygeneration")]
@@ -185,15 +185,18 @@ void RTWaterRefractionRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
     float4 fallbackSample = gSceneColor.Load(int3(launchIndex, 0));
-    float4 worldPosSample = gWorldPosition.Load(int3(launchIndex, 0));
+    float ndcDepth = gSceneDepth.Load(int3(launchIndex, 0));
 
-    if (worldPosSample.a < 0.5f)
+    if (IsBackgroundDepth(ndcDepth))
     {
         gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonNoWorldPosition);
         return;
     }
 
-    float3 cameraToScene = worldPosSample.xyz - gCameraPosition;
+    float2 screenUV = (float2(launchIndex) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
+    float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gInvViewProjection);
+
+    float3 cameraToScene = worldPos - gCameraPosition;
     float sceneDistance = length(cameraToScene);
     if (sceneDistance <= 1.0e-4f)
     {
@@ -303,8 +306,6 @@ void RTWaterRefractionRayGen()
     float3 ndc = clip.xyz / clip.w;
     float2 uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
 
-    float2 screenUV = (float2(launchIndex) + 0.5f) / float2(gScreenWidth, gScreenHeight);
-
     // スクリーン空間で SceneColor を再利用する都合上、屈折先が画面外に出た場合は
     // その位置の色を物理的に取得できない（この手法の原理的な制約）。
     // ただし画面端に近いだけの有効な屈折まで減衰させると、特定方向だけ
@@ -342,10 +343,10 @@ void RTWaterRefractionRayGen()
 
     const float uvOffsetPixels = length((refractedUV - screenUV) * float2(gScreenWidth, gScreenHeight));
 
-    float4 sampledWorldPos = gWorldPosition.Load(int3(sampleCoord, 0));
+    float sampledDepth = gSceneDepth.Load(int3(sampleCoord, 0));
     float depthMismatch = 0.0f;
     float depthMismatchThreshold = 0.0f;
-    if (sampledWorldPos.a < 0.5f)
+    if (IsBackgroundDepth(sampledDepth))
     {
         if (gDebugViewMode != kRTRefractionDebugNone)
         {
@@ -363,7 +364,8 @@ void RTWaterRefractionRayGen()
         return;
     }
 
-    float sampledViewDistance = length(sampledWorldPos.xyz - gCameraPosition);
+    float3 sampledWorldPos = ReconstructWorldPosition(ScreenUVToNDC(refractedUV), sampledDepth, gInvViewProjection);
+    float sampledViewDistance = length(sampledWorldPos - gCameraPosition);
     float hitViewDistance = length(hitWorldPos - gCameraPosition);
     depthMismatch = abs(sampledViewDistance - hitViewDistance);
     depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);

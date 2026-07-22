@@ -31,8 +31,9 @@ namespace CoreEngine
         float    screenWidth;        // offset 36
         float    screenHeight;       // offset 40
         float    padding;            // offset 44  → row3 終了(48)
+        Matrix4x4 invViewProj;       // offset 48  → WorldPosition ターゲット廃止に伴う深度復元用(+64=112)
     };
-    static_assert(sizeof(ShadowRayConstants) == 48, "ShadowRayConstants size mismatch with HLSL cbuffer");
+    static_assert(sizeof(ShadowRayConstants) == 112, "ShadowRayConstants size mismatch with HLSL cbuffer");
     // =========================================================================
     // Initialize
     // =========================================================================
@@ -69,7 +70,7 @@ namespace CoreEngine
         globalRootSigMgr_
             .AddUAVTable("gShadowOutput", 0)      // u0: シャドウ出力
             .AddSRVTable("gScene", 0)              // t0: TLAS
-            .AddSRVTable("gWorldPosition", 1)      // t1: G-Buffer ワールド座標
+            .AddSRVTable("gSceneDepth", 1)         // t1: 深度（WorldPosition ターゲット廃止に伴い深度から復元する）
             .AddSRVTable("gNormalRoughness", 2)    // t2: G-Buffer 法線
             .AddSRVTable("gHistoryShadow", 3)      // t3: テンポラル蓄積履歴
             .AddSRVTable("gMotionVector", 4)       // t4: モーションベクター
@@ -119,7 +120,7 @@ namespace CoreEngine
         // A-Trous デノイズ用コンピュートパイプライン構築
         // =========================================================
         {
-            // ルートシグネチャ: t0=InputShadow, t1=Normal, t2=WorldPos, u0=Output, b0=Constants
+            // ルートシグネチャ: t0=InputShadow, t1=Normal, t2=SceneDepth, u0=Output, b0=Constants
             D3D12_DESCRIPTOR_RANGE srvRanges[3]{};
             srvRanges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
             srvRanges[0].NumDescriptors = 1;
@@ -160,7 +161,7 @@ namespace CoreEngine
             rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
             rootParams[4].Constants.ShaderRegister = 0;
             rootParams[4].Constants.RegisterSpace = 0;
-            rootParams[4].Constants.Num32BitValues = 8; // DenoiseConstants
+            rootParams[4].Constants.Num32BitValues = 24; // DenoiseConstants(8) + invViewProj(16, WorldPosition廃止に伴う深度復元用)
             rootParams[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
             D3D12_ROOT_SIGNATURE_DESC rsDesc{};
@@ -205,7 +206,7 @@ namespace CoreEngine
         // テンポラル蓄積用コンピュートパイプライン構築
         // =========================================================
         {
-            // t0=RawShadow, t1=Normal, t2=WorldPos, t3=History, t4=MotionVector, u0=Output, b0=Constants
+            // t0=RawShadow, t1=Normal, t2=SceneDepth, t3=History, t4=MotionVector, u0=Output, b0=Constants
             D3D12_DESCRIPTOR_RANGE srvRanges[5]{};
             for (UINT i = 0; i < 5; ++i) {
                 srvRanges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -232,7 +233,7 @@ namespace CoreEngine
 
             rootParams[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
             rootParams[6].Constants.ShaderRegister = 0;
-            rootParams[6].Constants.Num32BitValues = 8; // TemporalConstants (int,int,float,float + 4 pad)
+            rootParams[6].Constants.Num32BitValues = 24; // TemporalConstants(8) + invViewProj(16, WorldPosition廃止に伴う深度復元用)
             rootParams[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
             D3D12_ROOT_SIGNATURE_DESC rsDesc{};
@@ -450,10 +451,11 @@ namespace CoreEngine
     // =========================================================================
     void RayTracingShadowManager::Dispatch(
         ID3D12GraphicsCommandList* cmdList,
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
         const Vector3& lightDirection,
+        const Matrix4x4& invViewProj,
         UINT width, UINT height,
         ViewID viewId,
         uint32_t lightIndex)
@@ -488,6 +490,7 @@ namespace CoreEngine
         constants.historyAlpha = 1.0f; // RayGen側では使わない
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
+        constants.invViewProj = invViewProj;
 
         // CommandList4 を取得
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
@@ -511,8 +514,8 @@ namespace CoreEngine
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene")),
             asMgr_->GetTLASSRVHandle());
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gWorldPosition")),
-            worldPositionSRV);
+            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneDepth")),
+            sceneDepthSRV);
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness")),
             normalRoughnessSRV);
@@ -558,7 +561,8 @@ namespace CoreEngine
     void RayTracingShadowManager::Denoise(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
+        const Matrix4x4& invViewProj,
         UINT width, UINT height,
         ViewID viewId,
         uint32_t lightIndex)
@@ -571,7 +575,7 @@ namespace CoreEngine
 
         if (!view.texture || !view.denoiseTemp) return;
 
-        // DenoiseConstants（8 x 32bit = 32byte）
+        // DenoiseConstants（8 x 32bit = 32byte）+ invViewProj（WorldPosition ターゲット廃止に伴う深度復元用、16 x 32bit = 64byte）
         struct DenoiseConstants {
             int   stepSize;
             float phiShadow;
@@ -580,6 +584,7 @@ namespace CoreEngine
             int   screenWidth;
             int   screenHeight;
             float padding[2];
+            Matrix4x4 invViewProj;
         };
 
         // À-Trous 3パス: ステップ幅 1 → 2 → 4
@@ -629,7 +634,7 @@ namespace CoreEngine
             // バインド
             cmdList->SetComputeRootDescriptorTable(0, inputSrv);          // t0: InputShadow
             cmdList->SetComputeRootDescriptorTable(1, normalRoughnessSRV); // t1: Normal
-            cmdList->SetComputeRootDescriptorTable(2, worldPositionSRV);   // t2: WorldPos
+            cmdList->SetComputeRootDescriptorTable(2, sceneDepthSRV);      // t2: SceneDepth
             cmdList->SetComputeRootDescriptorTable(3, outputUav);          // u0: Output
 
             DenoiseConstants dc{};
@@ -639,7 +644,8 @@ namespace CoreEngine
             dc.phiDepth = 1.0f;
             dc.screenWidth = static_cast<int>(width);
             dc.screenHeight = static_cast<int>(height);
-            cmdList->SetComputeRoot32BitConstants(4, 8, &dc, 0);
+            dc.invViewProj = invViewProj;
+            cmdList->SetComputeRoot32BitConstants(4, 24, &dc, 0);
 
             cmdList->Dispatch(groupX, groupY, 1);
 
@@ -663,8 +669,9 @@ namespace CoreEngine
     void RayTracingShadowManager::ApplyTemporal(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
+        const Matrix4x4& invViewProj,
         UINT width, UINT height,
         ViewID viewId,
         uint32_t lightIndex)
@@ -688,10 +695,10 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(temporalRootSignature_.Get());
         cmdList->SetPipelineState(temporalPipelineState_.Get());
 
-        // t0=RawShadow, t1=Normal, t2=WorldPos, t3=History, t4=MotionVector, u0=Output
+        // t0=RawShadow, t1=Normal, t2=SceneDepth, t3=History, t4=MotionVector, u0=Output
         cmdList->SetComputeRootDescriptorTable(0, view.denoiseTempSrvHandle);
         cmdList->SetComputeRootDescriptorTable(1, normalRoughnessSRV);
-        cmdList->SetComputeRootDescriptorTable(2, worldPositionSRV);
+        cmdList->SetComputeRootDescriptorTable(2, sceneDepthSRV);
         cmdList->SetComputeRootDescriptorTable(3, view.historySrvHandle);
         cmdList->SetComputeRootDescriptorTable(4, motionVectorSRV);
         cmdList->SetComputeRootDescriptorTable(5, view.uavHandle);
@@ -703,13 +710,15 @@ namespace CoreEngine
             float historyAlpha;
             float disableHistory; // 1.0 = 履歴無効（初回フレーム）
             float padding[4];
+            Matrix4x4 invViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
         };
         TemporalConstants tc{};
         tc.screenWidth = static_cast<int>(width);
         tc.screenHeight = static_cast<int>(height);
         tc.historyAlpha = settings_.historyAlpha;
         tc.disableHistory = view.isHistoryValid ? 0.0f : 1.0f;
-        cmdList->SetComputeRoot32BitConstants(6, 8, &tc, 0);
+        tc.invViewProj = invViewProj;
+        cmdList->SetComputeRoot32BitConstants(6, 24, &tc, 0);
 
         const UINT groupX = (width + 7) / 8;
         const UINT groupY = (height + 7) / 8;

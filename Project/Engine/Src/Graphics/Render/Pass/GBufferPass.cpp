@@ -8,6 +8,7 @@
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderGraph.h"
+#include "Graphics/Render/Model/BaseModelRenderer.h"
 
 namespace CoreEngine
 {
@@ -18,7 +19,6 @@ namespace CoreEngine
         builder.Write(FrameBlackboard::GBufferAlbedoAO, D3D12_RESOURCE_STATE_RENDER_TARGET);
         builder.Write(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_RENDER_TARGET);
         builder.Write(FrameBlackboard::GBufferEmissiveMetallic, D3D12_RESOURCE_STATE_RENDER_TARGET);
-        builder.Write(FrameBlackboard::GBufferWorldPosition, D3D12_RESOURCE_STATE_RENDER_TARGET);
         builder.Write(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_RENDER_TARGET);
     }
 
@@ -43,6 +43,17 @@ namespace CoreEngine
             cmdList,
             context.depthStencilManager,
             context.dxCommon->GetSRVHeap());
+
+        // 反射ビューは半解像度かつ水面の歪みで細部が見えないため、LOD を 1 段落とす。
+        // パス分離契約 2 に従い、ビュー依存の状態は毎回このパス自身が設定する。
+        const uint32_t lodBias =
+            (context.viewSettings.viewType == RenderViewType::ReflectionView) ? 1u : 0u;
+        for (auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
+            if (auto* renderer = dynamic_cast<BaseModelRenderer*>(
+                    context.renderManager->GetRenderer(passType))) {
+                renderer->SetLodBias(lodBias);
+            }
+        }
 
         // 不透明オブジェクトを GBuffer へ描画する。
         context.renderManager->DrawGBufferPass();

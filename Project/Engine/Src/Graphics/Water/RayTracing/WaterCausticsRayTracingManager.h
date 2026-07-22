@@ -8,6 +8,7 @@
 
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Vector/Vector3.h"
+#include "Math/Matrix/Matrix4x4.h"
 #include "Graphics/RayTracing/RayTracingOutputViewSet.h"
 #include "WaterRayTracingPassBase.h"
 
@@ -90,13 +91,16 @@ namespace CoreEngine
             DescriptorManager* descriptorManager,
             AccelerationStructureManager* asMgr);
 
+        /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
+        /// @param invViewProj 深度復元用 View*Projection の逆行列
         void Dispatch(
             ID3D12GraphicsCommandList* cmdList,
-            D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
             const LightInput& lightInput,
             const WaterSurfaceData& surfaceData,
             const FFTOceanCausticsInput& fftOceanInput,
+            const Matrix4x4& invViewProj,
             UINT width,
             UINT height,
             ViewID viewId = ViewID::GameView);

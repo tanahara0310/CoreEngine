@@ -13,6 +13,8 @@ namespace CoreEngine
         uint32_t batchCount = 0;                 // バッチ数（Flush 時に集計）
         uint32_t totalTriangles = 0;             // 描画された総三角形数（インスタンス考慮）
         uint32_t totalVertices = 0;              // 描画された総頂点数（インスタンス考慮）
+        static constexpr uint32_t kLodLevelCount = 3;
+        uint32_t lodInstanceCounts[kLodLevelCount] = {}; // LODレベル別インスタンス数（0=フル詳細）
 
         void Reset()
         {
@@ -22,6 +24,7 @@ namespace CoreEngine
             batchCount = 0;
             totalTriangles = 0;
             totalVertices = 0;
+            for (uint32_t& c : lodInstanceCounts) c = 0;
         }
 
         uint32_t GetTotalDrawCalls() const
@@ -164,6 +167,14 @@ namespace CoreEngine
         void RecordBatch()
         {
             renderStats_.batchCount++;
+        }
+
+        // LODレベル別のインスタンス使用数を記録（範囲外は最終段へクランプ）
+        void RecordLodUsage(uint32_t lodIndex, uint32_t instanceCount)
+        {
+            const uint32_t clamped = (lodIndex < RenderStats::kLodLevelCount)
+                ? lodIndex : (RenderStats::kLodLevelCount - 1);
+            renderStats_.lodInstanceCounts[clamped] += instanceCount;
         }
 
         // 互換用（旧シグネチャ）

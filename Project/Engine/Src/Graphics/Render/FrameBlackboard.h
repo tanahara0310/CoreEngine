@@ -36,12 +36,12 @@ namespace CoreEngine
         static const char* const WaterCaustics;
         static const char* const RTWaterCaustics;
         static const char* const RTWaterRefractionColor;
+        static const char* const RTWaterReflectionColor;
         static const char* const BackBuffer;
         static const char* const PostEffectFinal;
         static const char* const GBufferAlbedoAO;
         static const char* const GBufferNormalRoughness;
         static const char* const GBufferEmissiveMetallic;
-        static const char* const GBufferWorldPosition;
         static const char* const GBufferMotionVector;
 
         /// @brief PostEffect の中間論理リソース名を生成する

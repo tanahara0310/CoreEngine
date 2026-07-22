@@ -13,7 +13,9 @@
 #include "Utility/Logger/Logger.h"
 #include "Math/MathCore.h"
 
+#include <algorithm>
 #include <cassert>
+#include <cmath>
 
 
 namespace CoreEngine
@@ -30,31 +32,13 @@ namespace CoreEngine
         resource_ = resource;
         renderContext_ = ctx;
 
-        // マテリアルスロット数分の MaterialInstance を作成し、
-        // アセット側の PBR ファクターとテクスチャ有無を各スロットへ反映する。
+        // マテリアルスロット数分の枠だけ確保する（中身は Copy-on-Write で未確保のまま）。
+        // オーバーライドが発生するまでは ModelResource 共有のデフォルトマテリアルを参照するため、
+        // 同一モデルを複数配置してもマテリアルCBVアドレスが一致しインスタンシングバッチが統合される。
         const auto& materials = resource_->GetMaterials();
         const size_t materialCount = (std::max<size_t>)(materials.size(), 1);
         materialInstances_.clear();
-        materialInstances_.reserve(materialCount);
-        for (size_t i = 0; i < materialCount; ++i) {
-            auto instance = std::make_unique<MaterialInstance>();
-            instance->Initialize(renderContext_.dxCommon->GetDevice());
-
-            if (i < materials.size()) {
-                const MaterialAsset& asset = materials[i];
-                instance->SetColor(asset.baseColorFactor);
-                instance->SetMetallic(asset.metallicFactor);
-                instance->SetRoughness(asset.roughnessFactor);
-                instance->SetEmissiveFactor(asset.emissiveFactor);
-                instance->SetAlphaCutoff(asset.alphaCutoff);
-            }
-
-            // 法線マップのみフラグ制御（法線はファクター乗算で無効化できないため）
-            const auto& textures = resource_->GetMaterialTextures(static_cast<uint32_t>(i));
-            instance->SetNormalMapEnabled(textures.hasNormal);
-
-            materialInstances_.push_back(std::move(instance));
-        }
+        materialInstances_.resize(materialCount);
 
         // WVP バッファをフレーム数分確保する（CPU が複数フレーム先行して書き込んでも
         // GPU がまだ参照中のデータを上書きしないよう、役割ごとにリングバッファ化する）。
@@ -195,6 +179,15 @@ namespace CoreEngine
 
         // 行列計算
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
+
+        // ===== LOD 選択（AABB の画面投影サイズベース） =====
+        // 距離ではなく「画面をどれだけ占めるか」で決めるため、カメラを近づければ
+        // 自然にフル詳細へ、遠ざかるほど低ポリへ切り替わる。
+        // 反射ビューなどの低品質ビューは BaseModelRenderer 側のバイアスで 1 段下げる。
+        const uint32_t lodBias = renderContext_.modelRenderer
+            ? renderContext_.modelRenderer->GetLodBias() : 0;
+        const uint32_t lodIndex = ComputeLodIndex(worldMatrix, camera) + lodBias;
+
         Matrix4x4 viewMatrix = camera->GetViewMatrix();
         Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
         Matrix4x4 wvp = MathCore::Matrix::Multiply(
@@ -220,14 +213,14 @@ namespace CoreEngine
             const auto& subMesh = subMeshes[i];
             const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
             // マテリアルCBVはサブメッシュのマテリアルスロットに対応するインスタンスを使用
-            const D3D12_GPU_VIRTUAL_ADDRESS materialCBV =
-                MaterialForSlot(subMesh.materialIndex)->GetGPUVirtualAddress();
+            const D3D12_GPU_VIRTUAL_ADDRESS materialCBV = MaterialCBVForSlot(subMesh.materialIndex);
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
                 ? textureHandle : textures.baseColor;
 
             InstanceBatchKey key{};
             key.resource = resource_;
             key.subMeshIndex = i;
+            key.lodIndex = lodIndex; // 実際の範囲は DrawBatch 側で SubMeshData::GetLod がクランプする
             key.baseColorSRV = baseColorTex.ptr;
             key.normalMapSRV = textures.normal.ptr;
             key.metallicRoughnessSRV = textures.metallicRoughness.ptr;
@@ -242,6 +235,68 @@ namespace CoreEngine
 
             batch->Submit(key, mtx, materialCBV);
         }
+    }
+
+    uint32_t Model::ComputeLodIndex(const Matrix4x4& worldMatrix, const ICamera* camera) const
+    {
+        // 画面占有率のしきい値。coverage は「モデルの外接球半径が画面半分の高さに
+        // 対して占める割合」で、1.0 なら画面の半分を覆う大きさ。
+        constexpr float kLod1CoverageThreshold = 0.60f; // これ未満で LOD1（詳細 25%）
+        constexpr float kLod2CoverageThreshold = 0.20f; // これ未満で LOD2（詳細 6%）
+
+        const BoundingBox& localAABB = resource_->GetLocalBoundingBox();
+        if (!localAABB.IsValid() || !camera) {
+            return 0;
+        }
+
+        const auto& m = worldMatrix.m;
+
+        // ローカルAABBの中心と外接球半径
+        const Vector3 localCenter = {
+            (localAABB.min.x + localAABB.max.x) * 0.5f,
+            (localAABB.min.y + localAABB.max.y) * 0.5f,
+            (localAABB.min.z + localAABB.max.z) * 0.5f,
+        };
+        const float ex = (localAABB.max.x - localAABB.min.x) * 0.5f;
+        const float ey = (localAABB.max.y - localAABB.min.y) * 0.5f;
+        const float ez = (localAABB.max.z - localAABB.min.z) * 0.5f;
+        const float localRadius = std::sqrt(ex * ex + ey * ey + ez * ez);
+
+        // 中心をワールドへ変換（行ベクトル規約: p' = p * M）
+        const Vector3 worldCenter = {
+            localCenter.x * m[0][0] + localCenter.y * m[1][0] + localCenter.z * m[2][0] + m[3][0],
+            localCenter.x * m[0][1] + localCenter.y * m[1][1] + localCenter.z * m[2][1] + m[3][1],
+            localCenter.x * m[0][2] + localCenter.y * m[1][2] + localCenter.z * m[2][2] + m[3][2],
+        };
+
+        // ワールド行列の各軸スケール（行ベクトルの長さ）の最大値で半径を拡大
+        const float scaleX = std::sqrt(m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2]);
+        const float scaleY = std::sqrt(m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2]);
+        const float scaleZ = std::sqrt(m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2]);
+        const float worldRadius = localRadius * (std::max)({ scaleX, scaleY, scaleZ });
+
+        const Vector3 cameraPosition = camera->GetPosition();
+        const float dx = worldCenter.x - cameraPosition.x;
+        const float dy = worldCenter.y - cameraPosition.y;
+        const float dz = worldCenter.z - cameraPosition.z;
+        const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+
+        // カメラが外接球の内側にいる場合は常にフル詳細
+        if (distance <= worldRadius) {
+            return 0;
+        }
+
+        // 射影行列の m[1][1] = cot(fovY/2)。coverage = 半径の NDC 高さ（半画面=1.0）
+        const float cotHalfFovY = camera->GetProjectionMatrix().m[1][1];
+        const float coverage = (worldRadius / distance) * cotHalfFovY;
+
+        if (coverage >= kLod1CoverageThreshold) {
+            return 0;
+        }
+        if (coverage >= kLod2CoverageThreshold) {
+            return 1;
+        }
+        return 2;
     }
 
     void Model::DrawShadow(const WorldTransform& transform, ID3D12GraphicsCommandList* cmdList) {
@@ -320,7 +375,7 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.startIndex = subMesh.startIndex;
     packet.instanceDataSRV = transformBuffer->GetGPUVirtualAddress();
     packet.instanceCount = 1;
-    packet.materialCBV = MaterialForSlot(subMesh.materialIndex)->GetGPUVirtualAddress();
+    packet.materialCBV = MaterialCBVForSlot(subMesh.materialIndex);
     packet.baseColorSRV = baseColorTexture;
     packet.normalMapSRV = normalTexture;
     packet.metallicRoughnessSRV = metallicRoughnessTexture;
@@ -346,10 +401,31 @@ ID3D12Resource* Model::GetShadowTransformBuffer() const
 
 // ===== クエリ =====
 
-MaterialInstance* Model::MaterialForSlot(uint32_t materialIndex) const {
+D3D12_GPU_VIRTUAL_ADDRESS Model::MaterialCBVForSlot(uint32_t materialIndex) const {
     assert(!materialInstances_.empty());
     const size_t index = materialIndex < materialInstances_.size() ? materialIndex : 0;
-    return materialInstances_[index].get();
+    // オーバーライド済みならそちらを、未オーバーライドなら ModelResource 共有のデフォルトを使う
+    if (materialInstances_[index]) {
+        return materialInstances_[index]->GetGPUVirtualAddress();
+    }
+    const MaterialInstance* def = resource_->GetDefaultMaterial(static_cast<uint32_t>(index));
+    return def ? def->GetGPUVirtualAddress() : 0;
+}
+
+MaterialInstance* Model::GetMaterial(size_t materialIndex) {
+    if (materialIndex >= materialInstances_.size()) {
+        return nullptr;
+    }
+    if (!materialInstances_[materialIndex]) {
+        // Copy-on-Write: 初回の書き込みアクセス時にのみ ModelResource の共有デフォルト値を複製する
+        auto instance = std::make_unique<MaterialInstance>();
+        instance->Initialize(renderContext_.dxCommon->GetDevice());
+        if (const MaterialInstance* def = resource_->GetDefaultMaterial(static_cast<uint32_t>(materialIndex))) {
+            instance->FromJson(def->ToJson());
+        }
+        materialInstances_[materialIndex] = std::move(instance);
+    }
+    return materialInstances_[materialIndex].get();
 }
 
 bool Model::IsInitialized() const {

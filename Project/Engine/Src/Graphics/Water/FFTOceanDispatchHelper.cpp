@@ -15,7 +15,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE spectrumSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE spectrumAUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE spectrumBUavHandle,
-        ID3D12Resource* simulationConstantsBuffer,
+        D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
         uint32_t resolution)
     {
         for (uint32_t i = 0; i < 2; ++i) {
@@ -50,10 +50,10 @@ namespace CoreEngine
         }
 
         const int constantsSlot = evolutionPipeline.GetComputeRootParamIndex("FFTOceanSimulationConstants");
-        if (constantsSlot >= 0 && simulationConstantsBuffer) {
+        if (constantsSlot >= 0 && simulationConstantsAddress != 0) {
             cmdList->SetComputeRootConstantBufferView(
                 static_cast<UINT>(constantsSlot),
-                simulationConstantsBuffer->GetGPUVirtualAddress());
+                simulationConstantsAddress);
         }
 
         const UINT dispatchX = (resolution + 7) / 8;
@@ -117,7 +117,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE displacementUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE normalUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianUavHandle,
-        ID3D12Resource* simulationConstantsBuffer,
+        D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
         uint32_t resolution)
     {
         ResourceBarrierHelper::Transition(cmdList, spectrumAResource, spectrumAState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -152,10 +152,10 @@ namespace CoreEngine
         }
 
         const int constantsSlot = finalizePipeline.GetComputeRootParamIndex("FFTOceanSimulationConstants");
-        if (constantsSlot >= 0 && simulationConstantsBuffer) {
+        if (constantsSlot >= 0 && simulationConstantsAddress != 0) {
             cmdList->SetComputeRootConstantBufferView(
                 static_cast<UINT>(constantsSlot),
-                simulationConstantsBuffer->GetGPUVirtualAddress());
+                simulationConstantsAddress);
         }
 
         const UINT dispatchX = (resolution + 7) / 8;

@@ -15,6 +15,7 @@ namespace CoreEngine
     class AccelerationStructureManager;
     class RayTracingShadowManager;
     class WaterRefractionRayTracingManager;
+    class WaterReflectionRayTracingManager;
     class WaterCausticsRayTracingManager;
     class FFTOceanManager;
     class AtmosphereManager;
@@ -53,6 +54,7 @@ namespace CoreEngine
         AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
         RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
         WaterRefractionRayTracingManager* GetWaterRefractionRayTracingManager() { return rtWaterRefractionManager_.get(); }
+        WaterReflectionRayTracingManager* GetWaterReflectionRayTracingManager() { return rtWaterReflectionManager_.get(); }
         WaterCausticsRayTracingManager* GetWaterCausticsRayTracingManager() { return rtWaterCausticsManager_.get(); }
         FFTOceanManager* GetFFTOceanManager() { return fftOceanManager_.get(); }
         AtmosphereManager* GetAtmosphereManager() { return atmosphereManager_.get(); }
@@ -66,6 +68,7 @@ namespace CoreEngine
         std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
         std::unique_ptr<RayTracingShadowManager>      rtShadowManager_;
         std::unique_ptr<WaterRefractionRayTracingManager> rtWaterRefractionManager_;
+        std::unique_ptr<WaterReflectionRayTracingManager> rtWaterReflectionManager_;
         std::unique_ptr<WaterCausticsRayTracingManager> rtWaterCausticsManager_;
         std::unique_ptr<FFTOceanManager> fftOceanManager_;
         std::unique_ptr<AtmosphereManager> atmosphereManager_;

@@ -9,6 +9,7 @@
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/FFTOceanManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
@@ -77,6 +78,14 @@ namespace CoreEngine
                 "RenderDomainContext: WaterRefractionRayTracingManager 初期化完了\n");
         }
 
+        rtWaterReflectionManager_ = std::make_unique<WaterReflectionRayTracingManager>();
+        if (accelerationStructureManager_->IsSupported()) {
+            rtWaterReflectionManager_->Initialize(dxCommon, descriptorManager,
+                accelerationStructureManager_.get());
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterReflectionRayTracingManager 初期化完了\n");
+        }
+
         rtWaterCausticsManager_ = std::make_unique<WaterCausticsRayTracingManager>();
         if (accelerationStructureManager_->IsSupported()) {
             rtWaterCausticsManager_->Initialize(dxCommon, descriptorManager,
@@ -114,6 +123,7 @@ namespace CoreEngine
         volumetricCloudManager_.reset();
         atmosphereManager_.reset();
         rtWaterCausticsManager_.reset();
+        rtWaterReflectionManager_.reset();
         rtWaterRefractionManager_.reset();
         rtShadowManager_.reset();
         fftOceanManager_.reset();

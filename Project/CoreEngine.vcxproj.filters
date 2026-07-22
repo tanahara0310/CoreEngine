@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\simplifier.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\vcacheoptimizer.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
@@ -76,6 +85,9 @@
     <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterRefractionRayTracingManager.cpp">
       <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\RayTracing\WaterReflectionRayTracingManager.cpp">
+      <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Atmosphere\AtmosphereManager.cpp">
       <Filter>Engine\Src\Graphics\Atmosphere</Filter>
     </ClCompile>
@@ -113,6 +125,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.cpp">
@@ -1263,6 +1278,9 @@
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterRefractionRayTracingManager.h">
       <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterReflectionRayTracingManager.h">
+      <Filter>Engine\Src\Graphics\Water\RayTracing</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\BaseRenderer.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
@@ -1426,6 +1444,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h">
@@ -2628,6 +2649,15 @@
     </Filter>
     <Filter Include="Engine\Src\WorldTransform">
       <UniqueIdentifier>{BC60000F-B135-4771-977F-D0BA3FC81CF9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals">
+      <UniqueIdentifier>{b3f1c8a2-6d47-4e0b-9a15-3c88e51f0d21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\meshoptimizer">
+      <UniqueIdentifier>{c7a92e14-8b53-49d6-b2f0-51d4ae67c832}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\meshoptimizer\src">
+      <UniqueIdentifier>{2CC2475C-0018-40F0-8016-771D8A381D02}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

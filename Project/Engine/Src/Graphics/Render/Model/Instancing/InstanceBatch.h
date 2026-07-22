@@ -17,6 +17,7 @@ namespace CoreEngine
     struct InstanceBatchKey {
         const ModelResource* resource = nullptr;  ///< 同一 VB / IB
         uint32_t subMeshIndex = 0;                ///< サブメッシュインデックス
+        uint32_t lodIndex = 0;                    ///< LODレベル（0=フル詳細）
         uint64_t baseColorSRV = 0;                ///< テクスチャハンドル
         uint64_t normalMapSRV = 0;
         uint64_t metallicRoughnessSRV = 0;
@@ -32,6 +33,7 @@ namespace CoreEngine
         bool operator==(const InstanceBatchKey& other) const {
             return resource == other.resource
                 && subMeshIndex == other.subMeshIndex
+                && lodIndex == other.lodIndex
                 && baseColorSRV == other.baseColorSRV
                 && normalMapSRV == other.normalMapSRV
                 && metallicRoughnessSRV == other.metallicRoughnessSRV
@@ -54,6 +56,7 @@ namespace CoreEngine
                 };
             size_t h = std::hash<const void*>{}(k.resource);
             h = mix(h, std::hash<uint32_t>{}(k.subMeshIndex));
+            h = mix(h, std::hash<uint32_t>{}(k.lodIndex));
             h = mix(h, std::hash<uint64_t>{}(k.baseColorSRV));
             h = mix(h, std::hash<uint64_t>{}(k.normalMapSRV));
             h = mix(h, std::hash<uint64_t>{}(k.metallicRoughnessSRV));

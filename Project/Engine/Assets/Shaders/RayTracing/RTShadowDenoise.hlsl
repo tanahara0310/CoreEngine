@@ -14,9 +14,11 @@
 //               -> ソフトシャドウ境界の滑らかさを維持
 // ============================================================
 
+#include "../Include/Common/DepthReconstruction.hlsli"
+
 Texture2D<float> gInputShadow : register(t0);
 Texture2D<float4> gNormalRoughness : register(t1);
-Texture2D<float4> gWorldPosition : register(t2);
+Texture2D<float> gSceneDepth : register(t2); // WorldPosition ターゲット廃止に伴い深度から復元する
 
 RWTexture2D<float> gOutputShadow : register(u0);
 
@@ -30,6 +32,7 @@ cbuffer DenoiseConstants : register(b0)
     int gScreenHeight;
     float gPadding0;
     float gPadding1;
+    float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
 };
 
 static const float kKernel[3][3] =
@@ -46,15 +49,18 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     if (coord.x >= gScreenWidth || coord.y >= gScreenHeight)
         return;
 
-    float4 centerWorldPos = gWorldPosition.Load(int3(coord, 0));
-    if (centerWorldPos.a < 0.5f)
+    float centerNdcDepth = gSceneDepth.Load(int3(coord, 0));
+    if (IsBackgroundDepth(centerNdcDepth))
     {
         gOutputShadow[coord] = gInputShadow.Load(int3(coord, 0));
         return;
     }
 
+    float2 centerUV = (float2(coord) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
+    float3 centerWorldPos = ReconstructWorldPosition(ScreenUVToNDC(centerUV), centerNdcDepth, gInvViewProj);
+
     float3 centerNormal = normalize(gNormalRoughness.Load(int3(coord, 0)).rgb * 2.0f - 1.0f);
-    float centerDepth = length(centerWorldPos.xyz);
+    float centerDepth = length(centerWorldPos);
     float centerShadow = gInputShadow.Load(int3(coord, 0));
 
     float weightSum = 0.0f;
@@ -71,12 +77,15 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
                 int2(0, 0),
                 int2(gScreenWidth - 1, gScreenHeight - 1));
 
-            float4 sampleWorldPos = gWorldPosition.Load(int3(sampleCoord, 0));
-            if (sampleWorldPos.a < 0.5f)
+            float sampleNdcDepth = gSceneDepth.Load(int3(sampleCoord, 0));
+            if (IsBackgroundDepth(sampleNdcDepth))
                 continue;
 
+            float2 sampleUV = (float2(sampleCoord) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
+            float3 sampleWorldPos = ReconstructWorldPosition(ScreenUVToNDC(sampleUV), sampleNdcDepth, gInvViewProj);
+
             float3 sampleNormal = normalize(gNormalRoughness.Load(int3(sampleCoord, 0)).rgb * 2.0f - 1.0f);
-            float sampleDepth = length(sampleWorldPos.xyz);
+            float sampleDepth = length(sampleWorldPos);
             float sampleShadow = gInputShadow.Load(int3(sampleCoord, 0));
 
             float w = kKernel[dy + 1][dx + 1];

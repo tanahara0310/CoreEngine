@@ -10,6 +10,7 @@ namespace CoreEngine
 class SSAOBlurTechnique : public RenderingTechniqueBase {
 public:
     struct SSAOBlurParams {
+        float invViewProjMatrix[16] = {}; // WorldPosition ターゲット廃止に伴う深度復元用
         float screenWidth   = 1280.0f;
         float screenHeight  = 720.0f;
         float depthThreshold = 0.5f;

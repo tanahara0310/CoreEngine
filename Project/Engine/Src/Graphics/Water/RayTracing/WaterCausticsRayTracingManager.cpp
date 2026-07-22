@@ -6,6 +6,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
+#include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -39,6 +40,7 @@ namespace CoreEngine
             float regionHalfExtentXZ[2];
             uint32_t regionValid;
             float regionPadding[3];
+            Matrix4x4 invViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
         };
 
         const char* ToString(WaterCausticsRayTracingManager::DispatchStatus status)
@@ -58,7 +60,7 @@ namespace CoreEngine
 
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
-    static_assert(sizeof(WaterCausticsConstants) == 128,
+    static_assert(sizeof(WaterCausticsConstants) == 192,
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
 
     bool WaterCausticsRayTracingManager::Initialize(
@@ -88,7 +90,7 @@ namespace CoreEngine
         globalRootSigMgr_
             .AddUAVTable("gCausticsOutput", 0)
             .AddSRVTable("gScene", 0)
-            .AddSRVTable("gWorldPosition", 1)
+            .AddSRVTable("gSceneDepth", 1)
             .AddSRVTable("gNormalRoughness", 2)
             .AddSRVTable("gFFTOceanDisplacement", 3)
             .AddSRVTable("gFFTOceanNormal", 4)
@@ -167,11 +169,12 @@ namespace CoreEngine
 
     void WaterCausticsRayTracingManager::Dispatch(
         ID3D12GraphicsCommandList* cmdList,
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPositionSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
         const LightInput& lightInput,
         const WaterSurfaceData& surfaceData,
         const FFTOceanCausticsInput& fftOceanInput,
+        const Matrix4x4& invViewProj,
         UINT width,
         UINT height,
         ViewID viewId)
@@ -189,7 +192,7 @@ namespace CoreEngine
         lastDiagnostics_.activeWaveCount = dispatchSurfaceData.activeWaveCount;
         lastDiagnostics_.width = width;
         lastDiagnostics_.height = height;
-        lastDiagnostics_.worldPositionSrv = worldPositionSRV.ptr;
+        lastDiagnostics_.worldPositionSrv = sceneDepthSRV.ptr;
         lastDiagnostics_.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
 
         DispatchGuardStatus guardStatus = DispatchGuardStatus::Ok;
@@ -268,6 +271,7 @@ namespace CoreEngine
         constants.regionHalfExtentXZ[0] = dispatchSurfaceData.regionHalfExtentXZ[0];
         constants.regionHalfExtentXZ[1] = dispatchSurfaceData.regionHalfExtentXZ[1];
         constants.regionValid = dispatchSurfaceData.regionValid;
+        constants.invViewProj = invViewProj;
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : normalRoughnessSRV;
@@ -301,8 +305,8 @@ namespace CoreEngine
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene")),
             asMgr_->GetTLASSRVHandle());
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gWorldPosition")),
-            worldPositionSRV);
+            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneDepth")),
+            sceneDepthSRV);
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness")),
             normalRoughnessSRV);

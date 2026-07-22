@@ -21,8 +21,27 @@ Texture2D<float4> gSceneColor : register(t16);
 Texture2D<float4> gRTWaterRefractionColor : register(t17);
 
 // ===== FFT Ocean 法線マップ（FFTOceanFinalize.CS.hlsl 出力）=====
-// 頂点解像度に依存しない法線を得るため、ピクセルシェーダーで直接再サンプリングする
-Texture2D<float4> gFFTOceanNormal : register(t19);
+// 頂点解像度に依存しない法線を得るため、ピクセルシェーダーで直接再サンプリングする。
+// カスケード（マルチスケールFFT）は Texture2DArray のスライスに格納される。
+Texture2DArray<float4> gFFTOceanNormal : register(t19);
+
+// マルチスケール・カスケード。FFTOceanManager / FFTWater.VS / RTWaterSurfaceCommon と一致必須
+// （パッチ長は互いに素な素数、格子回転 0°/+26°/-49° で周期の整列を破壊）。
+static const int kFFTCascadeCount = 3;
+static const float kFFTCascadePatch[3] = { 521.0f, 127.0f, 31.0f };
+static const float kFFTCascadeRotC[3] = { 1.0f, 0.89879405f, 0.65605903f };
+static const float kFFTCascadeRotS[3] = { 0.0f, 0.43837115f, -0.75471006f };
+
+// 波群エンベロープ（タイル周期破壊の空間振幅変調）。
+// FFTWater.VS / RTWaterSurfaceCommon と完全一致必須（詳細コメントは FFTWater.VS 参照）。
+static const float kFFTWaveGroupStrength = 0.12f;
+float ComputeFFTWaveGroupEnvelope(float2 worldXZ)
+{
+    float g = sin(dot(worldXZ, float2(0.01071f, 0.01353f)) + 0.917f)
+            + sin(dot(worldXZ, float2(-0.01409f, 0.00893f)) + 2.618f)
+            + sin(dot(worldXZ, float2(0.00531f, -0.00713f)) + 4.523f);
+    return 1.0f + kFFTWaveGroupStrength * g;
+}
 
 // ===== 空の放射照度 SH9 係数（SkyIrradianceSH.CS.hlsl 出力）=====
 // WaterPlaneObject::BindCustomResources() が t24 にバインドする。
@@ -350,6 +369,10 @@ float3 BuildWorldNormalFromFFTSample(float3 encodedNormal, WaterPSInput input)
 ///          サンプリングは WRAP アドレスの gSampler で行う（frac 不要でタイル境界の
 ///          微分不連続が出ず、ミップチェーン＋異方性フィルタが自動LODで効くため、
 ///          遠方・かすめ角で法線がピクセル毎に暴れるエイリアシングを抑制できる）。
+/// @brief カスケードごとの法線スライスを合算し、距離フェードでAAした面法線を作る
+/// @details 各カスケードの傾き（勾配 = nLocal.xz / nLocal.y）を加算してから鉛直へ再構成する。
+///          小さいパッチ（高周波）は遠方でフェードアウトさせ、法線ミップ連鎖の代わりに
+///          遠距離・かすめ角のスペックル（フレネルの高周波ノイズ）を抑える。
 float3 ResolveSurfaceNormal(WaterPSInput input)
 {
     float3 vertexNormal = normalize(input.normal);
@@ -358,8 +381,34 @@ float3 ResolveSurfaceNormal(WaterPSInput input)
         return vertexNormal;
     }
 
-    float3 encodedNormal = gFFTOceanNormal.Sample(gSampler, input.texcoord).xyz;
-    return BuildWorldNormalFromFFTSample(encodedNormal, input);
+    float3 tangent = normalize(input.tangent);
+    float3 bitangent = normalize(input.bitangent);
+    float dist = length(gCamera.worldPosition - input.worldPosition);
+
+    float2 slope = float2(0.0f, 0.0f);
+    [unroll]
+    for (int ci = 0; ci < kFFTCascadeCount; ++ci)
+    {
+        const float rc = kFFTCascadeRotC[ci];
+        const float rs = kFFTCascadeRotS[ci];
+        // ワールドXZ を回転格子系へ（FFTWater.VS と同一の写像）
+        float2 cuv = float2(
+            rc * input.worldPosition.x - rs * input.worldPosition.z,
+            rs * input.worldPosition.x + rc * input.worldPosition.z) / kFFTCascadePatch[ci];
+        float3 enc = gFFTOceanNormal.Sample(gSampler, float3(cuv, (float)ci)).xyz;
+        float3 nLocal = normalize(enc * 2.0f - 1.0f); // (x=+texU, y=up, z=+texV)
+        // 小パッチほど近距離でフェードアウト（パッチ長比例のフェード区間）。
+        float fade = 1.0f - smoothstep(kFFTCascadePatch[ci] * 8.0f, kFFTCascadePatch[ci] * 40.0f, dist);
+        // テクスチャ格子系の傾きをワールドへ逆回転してから合算する
+        float2 slopeTex = nLocal.xz / max(nLocal.y, 1.0e-3f);
+        slope += float2(rc * slopeTex.x + rs * slopeTex.y, -rs * slopeTex.x + rc * slopeTex.y) * fade;
+    }
+
+    // 波群エンベロープ: 変位（FFTWater.VS）と同じ変調を傾きへ掛け、幾何と法線を一致させる
+    slope *= ComputeFFTWaveGroupEnvelope(input.worldPosition.xz);
+
+    float3 combinedLocal = normalize(float3(slope.x, 1.0f, slope.y));
+    return normalize(combinedLocal.x * tangent + combinedLocal.y * vertexNormal + combinedLocal.z * bitangent);
 }
 
 // フレネル評価用の法線に掛けるミップバイアス。
@@ -393,12 +442,18 @@ float3 ResolveFresnelNormal(WaterPSInput input)
     float3 waveNormal;
     if (gUseFFTOceanNormalMap != 0)
     {
-        // ミップバイアス付きで法線マップをサンプリングし、うねりスケールの
-        // 滑らかな法線を得る。以前使っていた ddx/ddy(worldPosition) の面法線は
-        // 三角形単位で一定になるため、フレネルがファセット状に量子化されて
-        // まだらの輪郭が硬くなる問題があった。
-        float3 encodedNormal = gFFTOceanNormal.SampleBias(gSampler, input.texcoord, kFresnelNormalMipBias).xyz;
-        waveNormal = BuildWorldNormalFromFFTSample(encodedNormal, input);
+        // フレネルは「うねりスケールの低周波法線」で評価する。カスケード化により、
+        // 最大パッチ（低周波の大波）のスライスを単独でサンプルするだけで、旧来の
+        // ミップバイアスぼかしと同じ「うねりスケールの滑らかな法線」が得られる
+        // （小さいパッチ＝さざ波は混ぜない）。カスケード0は回転恒等なので uv 回転は不要。
+        float2 cuv = input.worldPosition.xz / kFFTCascadePatch[0];
+        float3 encodedNormal = gFFTOceanNormal.Sample(gSampler, float3(cuv, 0.0f)).xyz;
+        // 波群エンベロープを傾きへ掛け、実ジオメトリ（変位×エンベロープ）と整合させる
+        float3 nLocal = normalize(encodedNormal * 2.0f - 1.0f);
+        float2 slopeTex = (nLocal.xz / max(nLocal.y, 1.0e-3f))
+            * ComputeFFTWaveGroupEnvelope(input.worldPosition.xz);
+        float3 envLocal = normalize(float3(slopeTex.x, 1.0f, slopeTex.y));
+        waveNormal = BuildWorldNormalFromFFTSample(envLocal * 0.5f + 0.5f, input);
     }
     else
     {
@@ -704,76 +759,36 @@ PixelShaderOutput main(WaterPSInput input)
     float3 reflectColor = output.color.rgb;
     if (gReflectionEnabled)
     {
-        // 反射UVを波法線で歪ませる。平面反射は平らな鏡なので、そのまま screenUV で
-        // 引くと「フラットな鏡像がフレネルの波形状で明滅する」大きなまだらになる。
-        // 波法線の水平成分でサンプル位置をずらし、各波面が空の別方向を映す
-        // 「砕けた反射」に近づける（本来の水面反射の定石。これが欠けていた）。
-        float2 reflectDistortedUV = saturate(screenUV + geomNormal.xz * kWaterReflectionDistortStrength);
+        // ===== DXR 水面反射（鏡像カメラ平面反射の置き換え）=====
+        // gReflectionTexture は RTWaterReflectionPass の出力（スクリーン空間・
+        // 水面ピクセルごとの反射シーン色）。RT レイが既に波法線で反射方向を
+        // 計算済みなので、鏡像方式のような screenUV 歪みは不要。自分の screenUV で
+        // そのまま引く。alpha >= 0.5 が成功（反射シーン色）、< 0.5 はミス
+        // （反射レイが空へ抜けた／画面外／遮蔽）で、空環境マップへフォールバックする。
+        float4 rtReflection = gReflectionTexture.SampleLevel(gLinearClamp, screenUV, 0);
+        bool rtHit = rtReflection.a >= 0.5f;
 
-        // 完全な鏡ではなくラフネス相当でにじませた反射を使う（グロッシー反射）。
-        // 明るい空のエッジやコントラストが波面へハードに乗るのを防ぐ。
-        reflectColor = SampleGlossyReflection(reflectDistortedUV, 1.0f - cosTheta);
-
-        // ===== 雲の映り込み（Phase 3b）=====
-        // 平面反射には空・太陽ディスクは入るが、雲（GameView 限定の合成パス）は入らない。
-        // 空キューブマップ（空＋雲・α=雲透過率）を反射方向でサンプルし、雲がある方向だけ
-        // 平面反射をキューブマップ色で置き換える。空部分（α≈1）は平面反射がそのまま残る
-        // ため、反射像内の他オブジェクトを不当に上書きしない。
-        // ミップは水面のグロッシー反射と同じ実効ラフネス相当を選び、ぼけ具合を揃える。
+        // 空環境マップによる反射フォールバック（空＋雲を含む TextureCube）。
+        // 反射方向は波法線ではなくフラット面法線で計算し、波の斜面ごとの
+        // まだら混入を避ける（鏡像時代の知見を踏襲）。
+        float3 skyReflectColor = reflectColor;
         if (gSkyEnvReflectionEnabled != 0)
         {
-            // 反射方向は波法線ではなく「水面のフラットな面法線」で計算する。
-            // 平面反射テクスチャは平らな鏡としてレンダリングされており波法線を含まない。
-            // 雲上書きだけを波法線（fresnelNormal）でサンプルすると、波の斜面ごとに
-            // サンプル方向が水平線フェードの内外・雲の明暗を行き来し、
-            // 「波の形に沿った明るい/暗いパッチ」が反射色に混入する
-            // （夜間の可視化「反射」で波に沿った薄青パッチとして実証済み）。
-            // フラット法線なら上書き内容は視線にのみ依存する滑らかな像になり、
-            // 平面反射と同じ幾何規約で整合する。
             float3 envReflectDir = reflect(-viewDir, float3(0.0f, 1.0f, 0.0f));
             const float kEnvMipCount = 5.0f;
             const float kEnvMip = kWaterReflectionMicroRoughness * (kEnvMipCount - 1.0f);
-            float4 skyEnv = gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, kEnvMip);
-            float cloudOpacity = saturate(1.0f - skyEnv.a);
-
-            // ---- 水平線フェード（まだら模様の根本対策）----
-            // 雲キューブマップの α（雲透過率）は、雲層シェルをレイが数十 km 横切る
-            // 水平線付近の方向では光学的厚さが巨大になり、雲量に関係なくほぼ 0
-            // （＝雲被覆 1.0）になる。水面の反射ベクトルは大半が水平線すれすれを
-            // 向くため、そのまま使うと平面反射のほぼ全面が 64² の粗い雲キューブ
-            // マップ色で置き換わり、波の法線の揺れに応じて「白い雲帯／青い空／
-            // 水平線下の暗部」を行き来する大きなまだら・縞の原因になっていた
-            // （可視化「雲上書き強度」が水面全域で被覆≈1 になることで実証済み）。
-            // 雲の映り込みは反射方向が十分上を向くピクセル（頭上の雲が映る状況）
-            // に限定し、水平線付近の空は大気散乱を正しく含む平面反射に任せる。
-            float horizonFade = smoothstep(0.08f, 0.30f, envReflectDir.y);
-
-            // ---- 暗い雲の上書き抑制（夕暮れ・夜対策）----
-            // 太陽が低いと雲はほぼ照らされず真っ黒になる一方、平面反射の空はまだ
-            // 明るさが残る。雲が反射先より暗いほど上書きを弱め、明るい昼の白雲は
-            // 全強度で映す。
-            const float3 kLuma = float3(0.2126f, 0.7152f, 0.0722f);
-            float skyLuma = dot(reflectColor, kLuma);
-            float cloudLuma = dot(skyEnv.rgb, kLuma);
-            float darkRatio = saturate(cloudLuma / max(skyLuma, 1.0e-5f));
-            const float kMinDarkCloudOverlay = 0.25f; // 真っ黒な雲でも残す上書き強度
-            float overlayScale = lerp(kMinDarkCloudOverlay, 1.0f, darkRatio);
-
-            reflectColor = lerp(reflectColor, skyEnv.rgb, cloudOpacity * overlayScale * horizonFade);
+            skyReflectColor = gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, kEnvMip).rgb;
         }
 
+        // RT ヒット時は反射シーン色、ミス時は空環境マップ。
+        reflectColor = rtHit ? rtReflection.rgb : skyReflectColor;
+
         // ---- 反射の輝度圧縮（白飛び端点の除去）----
-        // 平面反射テクスチャは enablePostEffect=false のビューで描かれるため、
-        // 露出・トーンマッピングのかかっていない生 HDR 輝度が入っている。
-        // 夜間は自動露出 EV が最大 +8（≈256倍）まで上がるため、極端に明るい輝度を
-        // 上限へ丸めて lerp(黒い透過, 白い反射, フレネル) の白黒まだらを防ぐ必要がある。
-        // ただし以前の無条件 Reinhard（1/(1+L)）は昼の明るい空・鏡像の太陽まで一律に
-        // 暗くし、かすめ角の輝きやきらめきを殺していた（1枚目参照画像との品質差の一因）。
-        // 膝（knee）未満の輝度は無圧縮で通し、超過分だけを漸近上限へ圧縮する
-        // ショルダー型に変更する（色相は保持）。昼の空（膝未満）はそのまま、
-        // 露出増幅で白飛びする極端な輝度だけが丸まる。
-        const float kReflectionCompressKnee = 2.0f; // これ未満の輝度は無圧縮 [シーン輝度単位]
-        const float kReflectionCompressMax = 6.0f; // 膝超過分の漸近上限（最終上限 = knee + max）
+        // 反射ソース（SceneColorSnapshot）は水面合成前のライティング済み HDR 色。
+        // 露出増幅で極端に明るい輝度が lerp(暗い透過, 明るい反射, フレネル) の
+        // 白黒まだらを生むのを防ぐため、膝を超えた輝度だけショルダー圧縮する（色相保持）。
+        const float kReflectionCompressKnee = 2.0f;
+        const float kReflectionCompressMax = 6.0f;
         float reflLuma = dot(reflectColor, float3(0.2126f, 0.7152f, 0.0722f));
         if (reflLuma > kReflectionCompressKnee)
         {

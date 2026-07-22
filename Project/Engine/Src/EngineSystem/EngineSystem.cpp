@@ -32,6 +32,7 @@
 #include "Graphics/Render/Pass/RTShadowPass.h"
 #include "Graphics/Render/Pass/RTWaterCausticsPass.h"
 #include "Graphics/Render/Pass/RTWaterRefractionPass.h"
+#include "Graphics/Render/Pass/RTWaterReflectionPass.h"
 #include "Graphics/Render/Pass/FFTOceanPass.h"
 #include "Graphics/Render/Pass/AtmosphereLUTPass.h"
 #include "Graphics/Render/Pass/AerialPerspectivePass.h"
@@ -253,6 +254,7 @@ namespace CoreEngine
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
         context.rtWaterCausticsManager = renderDomainContext_ ? renderDomainContext_->GetWaterCausticsRayTracingManager() : nullptr;
         context.rtWaterRefractionManager = renderDomainContext_ ? renderDomainContext_->GetWaterRefractionRayTracingManager() : nullptr;
+        context.rtWaterReflectionManager = renderDomainContext_ ? renderDomainContext_->GetWaterReflectionRayTracingManager() : nullptr;
         context.fftOceanManager = renderDomainContext_ ? renderDomainContext_->GetFFTOceanManager() : nullptr;
         context.atmosphereManager = renderDomainContext_ ? renderDomainContext_->GetAtmosphereManager() : nullptr;
         context.volumetricCloudManager = renderDomainContext_ ? renderDomainContext_->GetVolumetricCloudManager() : nullptr;
@@ -492,9 +494,10 @@ namespace CoreEngine
 
         renderPipeline_->AddPass(std::make_unique<TransparentQueuePass>(), RenderPassPhase::Transparent, 0);
 
-        // 水面: 背景 SceneColor の複製 → RT 屈折 → 水面合成（データフロー順）
+        // 水面: 背景 SceneColor の複製 → RT 屈折 → RT 反射 → 水面合成（データフロー順）
         renderPipeline_->AddPass(std::make_unique<SceneColorCopyPass>(), RenderPassPhase::Water, 0);
         renderPipeline_->AddPass(std::make_unique<RTWaterRefractionPass>(), RenderPassPhase::Water, 10);
+        renderPipeline_->AddPass(std::make_unique<RTWaterReflectionPass>(), RenderPassPhase::Water, 15);
         renderPipeline_->AddPass(std::make_unique<WaterSurfacePass>(), RenderPassPhase::Water, 20);
 
         // ポストエフェクト（有効エフェクト列は Graph 構築時にノード分解される）

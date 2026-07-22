@@ -7,6 +7,7 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Math/MathCore.h"
 #include <cstring>
 #include <cassert>
 
@@ -45,6 +46,8 @@ namespace CoreEngine
         const Matrix4x4& proj = renderManager->GetProjectionMatrix();
         std::memcpy(params_.viewMatrix, &view, sizeof(float) * 16);
         std::memcpy(params_.projectionMatrix, &proj, sizeof(float) * 16);
+        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(MathCore::Matrix::Multiply(view, proj));
+        std::memcpy(params_.invViewProjMatrix, &invViewProj, sizeof(float) * 16);
 
         UpdateConstantBuffer();
 
@@ -69,12 +72,15 @@ namespace CoreEngine
                 gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
         }
 
-        // t1: WorldPosition
-        const int posIdx = GetRootParamIndex("gWorldPosition");
-        if (posIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                posIdx,
-                gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition));
+        // t1: SceneDepth（WorldPosition ターゲット廃止に伴い、深度から復元する）
+        // ビュー別（ゲーム/反射）に差し替わる FrameBlackboard 経由で取得する
+        // （dxCommon の深度は常にゲームビュー本解像度のため反射ビューでは不整合になる）。
+        const int depthIdx = GetRootParamIndex("gSceneDepth");
+        if (depthIdx >= 0 && context.frameBlackboard) {
+            D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
+            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
+                cmdList->SetGraphicsRootDescriptorTable(depthIdx, depthHandle);
+            }
         }
 
         // CBV: SSAOParams

@@ -155,7 +155,6 @@ WaterEditorCausticsDiagnostics WaterEditorFacade::GetCausticsDiagnostics() const
         diagnostics.activeWaveCount = source.activeWaveCount;
         diagnostics.mainLightEnabled = source.mainLightEnabled != 0;
         diagnostics.outputHandle = source.outputHandle;
-        diagnostics.worldPositionHandle = source.worldPositionHandle;
         diagnostics.normalHandle = source.normalHandle;
     }
 

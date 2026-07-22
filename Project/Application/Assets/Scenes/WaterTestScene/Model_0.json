@@ -1,42 +1,354 @@
 {
-    "active":  false,
-    "material":  {
-                     "ao":  1.0,
-                     "aoMap":  true,
-                     "color":  [
-                                   1.0,
-                                   1.0,
-                                   1.0,
-                                   1.0
-                               ],
-                     "dithering":  true,
-                     "ditheringScale":  1.0,
-                     "ibl":  true,
-                     "iblIntensity":  1.0,
-                     "lighting":  true,
-                     "metallic":  0.0,
-                     "metallicMap":  true,
-                     "normalMap":  true,
-                     "roughness":  0.5,
-                     "roughnessMap":  true
-                 },
-    "modelPath":  "pool.gltf",
-    "name":  "Model_0",
-    "transform":  {
-                      "rotate":  [
-                                     0.0,
-                                     0.0,
-                                     0.0
-                                 ],
-                      "scale":  [
-                                    1.0,
-                                    1.0,
-                                    1.0
-                                ],
-                      "translate":  [
-                                        0.0,
-                                        5.8999999985098839,
-                                        0.0
-                                    ]
-                  }
+    "active": false,
+    "materials": [
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                1.0,
+                0.8227859139442444,
+                0.4564110338687897
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": true,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        }
+    ],
+    "modelPath": "pool.gltf",
+    "name": "Model_0",
+    "transform": {
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "translate": [
+            0.0,
+            5.900000095367432,
+            0.0
+        ]
+    }
 }

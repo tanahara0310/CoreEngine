@@ -70,6 +70,17 @@ namespace CoreEngine
         std::memcpy(mapped, identity, sizeof(identity));
         lightVPBuffer_->Unmap(0, nullptr);
 
+        // 深度復元用 View*Projection 逆行列専用の定数バッファをビュー種別ごとに作成（64 バイト = float4x4）
+        for (size_t vi = 0; vi < kViewTypeCount; ++vi) {
+            depthReconstructionBuffers_[vi] = ResourceFactory::CreateBufferResource(
+                directXCommon_->GetDevice(), sizeof(float) * 16);
+            depthReconstructionCBVAddresses_[vi] = depthReconstructionBuffers_[vi]->GetGPUVirtualAddress();
+            float* drMapped = nullptr;
+            depthReconstructionBuffers_[vi]->Map(0, nullptr, reinterpret_cast<void**>(&drMapped));
+            std::memcpy(drMapped, identity, sizeof(identity));
+            depthReconstructionBuffers_[vi]->Unmap(0, nullptr);
+        }
+
         // IBL パラメータ定数バッファを作成（float x 4 = 16 バイト）
         iblParamsBuffer_ = ResourceFactory::CreateBufferResource(
             directXCommon_->GetDevice(), sizeof(float) * 4);
@@ -110,6 +121,21 @@ namespace CoreEngine
         lightVPBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
         std::memcpy(mapped, &mat, sizeof(Matrix4x4));
         lightVPBuffer_->Unmap(0, nullptr);
+    }
+
+    // -------------------------------------------------------------------------
+    // 深度復元用 View*Projection 逆行列を GPU バッファに書き込む（ビューごとに呼び出し）
+    // -------------------------------------------------------------------------
+    void DeferredLightingTechnique::UpdateDepthReconstruction(RenderViewType viewType, const Matrix4x4& invViewProj)
+    {
+        const size_t vi = static_cast<size_t>(viewType);
+        if (vi >= kViewTypeCount || !depthReconstructionBuffers_[vi]) {
+            return;
+        }
+        float* mapped = nullptr;
+        depthReconstructionBuffers_[vi]->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
+        std::memcpy(mapped, &invViewProj, sizeof(Matrix4x4));
+        depthReconstructionBuffers_[vi]->Unmap(0, nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -217,17 +243,28 @@ namespace CoreEngine
                 gBufferManager->GetSRVHandle(GBufferManager::Target::EmissiveMetallic));
         }
 
-        // t3: WorldPosition
-        const int worldPosIdx = GetRootParamIndex("gWorldPosition");
-        if (worldPosIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(worldPosIdx,
-                gBufferManager->GetSRVHandle(GBufferManager::Target::WorldPosition));
+        // t3: SceneDepth（WorldPosition ターゲット廃止に伴い、深度から復元する）
+        const int sceneDepthIdx = GetRootParamIndex("gSceneDepth");
+        if (sceneDepthIdx >= 0 && context.frameBlackboard) {
+            D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
+            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
+                cmdList->SetGraphicsRootDescriptorTable(sceneDepthIdx, depthHandle);
+            }
         }
 
         // ===== カメラ CBV =====
         const int cameraIdx = GetRootParamIndex("gCamera");
         if (cameraIdx >= 0 && cameraCBVAddress_ != 0) {
             cmdList->SetGraphicsRootConstantBufferView(cameraIdx, cameraCBVAddress_);
+        }
+
+        // ===== 深度復元用 CBV（ビュー種別ごとに独立したバッファを参照） =====
+        const int depthReconIdx = GetRootParamIndex("gDepthReconstruction");
+        if (depthReconIdx >= 0) {
+            const size_t vi = static_cast<size_t>(context.viewSettings.viewType);
+            if (vi < kViewTypeCount && depthReconstructionCBVAddresses_[vi] != 0) {
+                cmdList->SetGraphicsRootConstantBufferView(depthReconIdx, depthReconstructionCBVAddresses_[vi]);
+            }
         }
 
         // ===== ライトバインド（LightManager 経由） =====

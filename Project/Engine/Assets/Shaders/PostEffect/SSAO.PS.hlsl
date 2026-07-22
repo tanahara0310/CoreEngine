@@ -5,9 +5,10 @@
 // 出力: 1.0 = 遮蔽なし（明るい）、0.0 = 完全遮蔽（暗い）
 
 #include "FullScreen.hlsli"
+#include "../Include/Common/DepthReconstruction.hlsli"
 
 Texture2D<float4> gNormalRoughness : register(t0); // NormalRoughness
-Texture2D<float4> gWorldPosition   : register(t1);
+Texture2D<float> gSceneDepth       : register(t1); // WorldPosition ターゲット廃止に伴い深度から復元する
 
 SamplerState gSampler : register(s0);
 
@@ -15,6 +16,7 @@ cbuffer SSAOParams : register(b0)
 {
     float4x4 gView;
     float4x4 gProjection;
+    float4x4 gInvViewProj;
     float    gRadius;
     float    gBias;
     float    gIntensity;
@@ -85,15 +87,17 @@ PixelShaderOutput main(PixelShaderInput input)
 
     int3 loadCoord = int3(input.position.xy, 0);
     float4 normalRoughness = gNormalRoughness.Load(loadCoord);
-    float4 worldPosSample  = gWorldPosition.Load(loadCoord);
+    float centerDepth = gSceneDepth.Load(loadCoord);
 
-    if (worldPosSample.a < 0.5f || normalRoughness.a <= 0.0f)
+    // normalRoughness.a: 0.0=アンリット(センチネル), 符号=IBL有効/無効, 絶対値=roughness
+    if (IsBackgroundDepth(centerDepth) || normalRoughness.a == 0.0f)
     {
         output.color = float4(1.0f, 1.0f, 1.0f, 1.0f);
         return output;
     }
 
-    float3 worldPos = worldPosSample.xyz;
+    float2 centerUV = (input.position.xy + 0.5f.xx) / gScreenSize;
+    float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(centerUV), centerDepth, gInvViewProj);
     float3 N        = normalize(normalRoughness.rgb * 2.0f - 1.0f);
 
     float randRot = Hash12(input.position.xy) * 6.28318531f;
@@ -123,11 +127,12 @@ PixelShaderOutput main(PixelShaderInput input)
         if (any(uv < 0.0f) || any(uv > 1.0f)) continue;
 
         int2 sampleCoord = int2(uv * gScreenSize);
-        float4 sampleWorldPos = gWorldPosition.Load(int3(sampleCoord, 0));
-        if (sampleWorldPos.a < 0.5f) continue;
+        float sampleDepth = gSceneDepth.Load(int3(sampleCoord, 0));
+        if (IsBackgroundDepth(sampleDepth)) continue;
+        float3 sampleWorldPos = ReconstructWorldPosition(ndc.xy, sampleDepth, gInvViewProj);
 
         float sampleViewZ = sampleView.z;
-        float realViewZ   = mul(float4(sampleWorldPos.xyz, 1.0f), gView).z;
+        float realViewZ   = mul(float4(sampleWorldPos, 1.0f), gView).z;
 
         float rangeCheck = smoothstep(0.0f, 1.0f, gRadius / max(abs(sampleViewZ - realViewZ), 0.0001f));
         float occluded   = (realViewZ <= sampleViewZ - gBias) ? 1.0f : 0.0f;

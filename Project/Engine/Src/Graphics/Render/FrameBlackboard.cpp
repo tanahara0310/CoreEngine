@@ -15,12 +15,12 @@ namespace CoreEngine
     const char* const FrameBlackboard::WaterCaustics = "WaterCaustics";
     const char* const FrameBlackboard::RTWaterCaustics = "RTWaterCaustics";
     const char* const FrameBlackboard::RTWaterRefractionColor = "RTWaterRefractionColor";
+    const char* const FrameBlackboard::RTWaterReflectionColor = "RTWaterReflectionColor";
     const char* const FrameBlackboard::BackBuffer = "BackBuffer";
     const char* const FrameBlackboard::PostEffectFinal = "PostEffectFinal";
     const char* const FrameBlackboard::GBufferAlbedoAO = "GBufferAlbedoAO";
     const char* const FrameBlackboard::GBufferNormalRoughness = "GBufferNormalRoughness";
     const char* const FrameBlackboard::GBufferEmissiveMetallic = "GBufferEmissiveMetallic";
-    const char* const FrameBlackboard::GBufferWorldPosition = "GBufferWorldPosition";
     const char* const FrameBlackboard::GBufferMotionVector = "GBufferMotionVector";
 
     std::string FrameBlackboard::MakePostEffectIntermediateName(size_t index)
