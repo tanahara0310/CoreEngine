@@ -241,8 +241,11 @@ namespace CoreEngine
     {
         // 画面占有率のしきい値。coverage は「モデルの外接球半径が画面半分の高さに
         // 対して占める割合」で、1.0 なら画面の半分を覆う大きさ。
-        constexpr float kLod1CoverageThreshold = 0.60f; // これ未満で LOD1（詳細 25%）
-        constexpr float kLod2CoverageThreshold = 0.20f; // これ未満で LOD2（詳細 6%）
+        // マイクロトライアングルのラスタライズがGBufferの支配項のため、閾値を上げて
+        // 近〜中距離でも早めにLOD1/2へ落とし三角形数を減らす（2026-07-22チューニング）。
+        // coverage は「外接球半径が半画面高に占める割合」で高いほど画面占有が大きい。
+        constexpr float kLod1CoverageThreshold = 0.75f; // これ未満で LOD1（詳細 25%）
+        constexpr float kLod2CoverageThreshold = 0.35f; // これ未満で LOD2（詳細 6%）
 
         const BoundingBox& localAABB = resource_->GetLocalBoundingBox();
         if (!localAABB.IsValid() || !camera) {

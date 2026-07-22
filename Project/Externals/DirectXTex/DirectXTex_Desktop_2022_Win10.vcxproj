@@ -64,24 +64,24 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|X64'">
-    <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
+    <OutDir>$(MSBuildThisFileDirectory)..\..\..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\..\..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <GenerateManifest>true</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|X64'">
-    <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
+    <OutDir>$(MSBuildThisFileDirectory)..\..\..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\..\..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <GenerateManifest>true</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|X64'">
-    <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configration)\</OutDir>
-    <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
+    <OutDir>$(MSBuildThisFileDirectory)..\..\..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\..\..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <TargetName>DirectXTex</TargetName>
     <GenerateManifest>true</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|X64'">
-    <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configration)\</OutDir>
-    <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
+    <OutDir>$(MSBuildThisFileDirectory)..\..\..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\..\..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <TargetName>DirectXTex</TargetName>
     <GenerateManifest>true</GenerateManifest>
   </PropertyGroup>

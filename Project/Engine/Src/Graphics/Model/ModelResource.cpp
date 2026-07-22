@@ -140,6 +140,67 @@ namespace CoreEngine
         }
     }
 
+    void ModelResource::OptimizeGeometryForGpu()
+    {
+        const size_t vertexCount = modelData_.vertices.size();
+        if (vertexCount == 0 || modelData_.indices.empty()) {
+            return;
+        }
+
+        // indices は int32_t、meshopt は unsigned int を取る。頂点インデックスは非負なので
+        // 同幅の reinterpret_cast で問題ない（既存の LOD 生成コードと同じ規約）。
+        unsigned int* indexData = reinterpret_cast<unsigned int*>(modelData_.indices.data());
+        const float* vertexPositions = &modelData_.vertices[0].position.x;
+        const size_t stride = sizeof(VertexData);
+        constexpr float kOverdrawThreshold = 1.05f; // ACMR を最大 5% 悪化させてよい範囲でオーバードローを削減
+
+        // (1)(2) 各 LOD 範囲へ 頂点キャッシュ最適化 → オーバードロー最適化（どちらも VB 不変）。
+        // 範囲の startIndex/indexCount は変わらないため、後段のドロー範囲指定はそのまま有効。
+        std::vector<unsigned int> scratch;
+        for (const auto& subMesh : modelData_.subMeshes) {
+            for (uint32_t lod = 0; lod < subMesh.lodCount; ++lod) {
+                const SubMeshLodRange& range = subMesh.lods[lod];
+                if (range.indexCount < 3) {
+                    continue;
+                }
+                unsigned int* rangeIndices = indexData + range.startIndex;
+                scratch.assign(rangeIndices, rangeIndices + range.indexCount);
+
+                // 頂点キャッシュ最適化: post-transform キャッシュのヒット率を上げ VS 呼び出しを減らす
+                meshopt_optimizeVertexCache(
+                    rangeIndices, scratch.data(), range.indexCount, vertexCount);
+
+                // オーバードロー最適化: カメラ非依存で前後関係の良い三角形順へ並べ替え
+                scratch.assign(rangeIndices, rangeIndices + range.indexCount);
+                meshopt_optimizeOverdraw(
+                    rangeIndices, scratch.data(), range.indexCount,
+                    vertexPositions, vertexCount, stride, kOverdrawThreshold);
+            }
+        }
+
+        // (3) VertexFetch 最適化は VB を並べ替える。スキンモデルは influence バッファが
+        // 頂点インデックス参照（SkinClusterGenerator）のため VB を動かせない。静的モデルのみ適用する。
+        if (modelData_.skinClusterData.empty()) {
+            // 全インデックス（全 LOD・全サブメッシュ）を対象に remap を作る。
+            // これで LOD ごとの範囲を跨いで一貫した VB 並べ替えとインデックス再マップになる。
+            std::vector<unsigned int> remap(vertexCount);
+            const size_t uniqueVertices = meshopt_optimizeVertexFetchRemap(
+                remap.data(), indexData, modelData_.indices.size(), vertexCount);
+            (void)uniqueVertices;
+
+            // remapVertexBuffer は scatter（vertices[i] → dst[remap[i]]）のため in-place 不可。
+            // 別バッファへ書き出してから差し替える。remapIndexBuffer は要素毎の gather で in-place 可。
+            std::vector<VertexData> remappedVertices(vertexCount);
+            meshopt_remapVertexBuffer(
+                remappedVertices.data(), modelData_.vertices.data(),
+                vertexCount, stride, remap.data());
+            modelData_.vertices = std::move(remappedVertices);
+
+            meshopt_remapIndexBuffer(
+                indexData, indexData, modelData_.indices.size(), remap.data());
+        }
+    }
+
     void ModelResource::CreateGeometryBuffers()
     {
         // LOD0（原型）のインデックス数を先に確定してから簡略化インデックスを末尾へ追記する。
@@ -147,6 +208,10 @@ namespace CoreEngine
         // モデル全体 = LOD0 を描く前提のため。LOD 描画はサブメッシュの範囲指定で行う）。
         const size_t lod0IndexCount = modelData_.indices.size();
         GenerateSubMeshLods();
+
+        // GPU 向けジオメトリ再配置（VB/IB アップロード前・LOD 生成後）。
+        // 頂点キャッシュ効率を上げ、頂点シェーダ呼び出し（GBuffer ラスタの頂点バウンド要因）を削減する。
+        OptimizeGeometryForGpu();
 
         // 頂点数・インデックス数を設定
         vertexCount_ = static_cast<UINT>(modelData_.vertices.size());

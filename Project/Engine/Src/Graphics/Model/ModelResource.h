@@ -165,6 +165,12 @@ namespace CoreEngine
         /// 頂点バッファは共有のため追加しない。ハイポリモデルのみ対象（小物はスキップ）。
         void GenerateSubMeshLods();
 
+        /// @brief meshoptimizer で GPU 向けにジオメトリを再配置する（GB/IB アップロード前に呼ぶ）。
+        /// 頂点キャッシュ最適化＋オーバードロー最適化を全 LOD 範囲へ適用（VB 不変で安全）。
+        /// 静的モデル（skinClusterData 空）のみ VertexFetch 最適化で VB を並べ替える
+        /// （スキンモデルは influence バッファが頂点インデックス参照のため VB 並べ替え不可）。
+        void OptimizeGeometryForGpu();
+
         /// @brief マテリアルスロット数分の共有デフォルト MaterialInstance を作成する
         /// LoadFromFile/LoadFromModelData の末尾（テクスチャハンドル確定後）で呼ぶ。
         void CreateDefaultMaterials();

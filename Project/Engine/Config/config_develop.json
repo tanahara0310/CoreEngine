@@ -5,7 +5,7 @@
         "height": 720
     },
     "debug": {
-        "enableDebugLayer": true,
+        "enableDebugLayer": false,
         "enableGPUBasedValidation": false,
         "enablePixRuntime": false
     },

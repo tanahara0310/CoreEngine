@@ -1,15 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
-      <Filter>Externals\meshoptimizer\src</Filter>
-    </ClCompile>
-    <ClCompile Include="Externals\meshoptimizer\src\simplifier.cpp">
-      <Filter>Externals\meshoptimizer\src</Filter>
-    </ClCompile>
-    <ClCompile Include="Externals\meshoptimizer\src\vcacheoptimizer.cpp">
-      <Filter>Externals\meshoptimizer\src</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
@@ -909,6 +900,24 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp">
       <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\indexgenerator.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\overdrawoptimizer.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\simplifier.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\vcacheoptimizer.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -2069,6 +2078,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.h">
       <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h">
+      <Filter>Externals\meshoptimizer\src</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
