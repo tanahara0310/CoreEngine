@@ -30,7 +30,10 @@ namespace CoreEngine
         static constexpr uint32_t kInvalidId = 0xFFFFFFFFu;
         static constexpr uint32_t kMaxQueries = 4096;
 
-        static HiZOcclusionSystem& GetInstance();
+        HiZOcclusionSystem() = default;
+        ~HiZOcclusionSystem() = default;
+        HiZOcclusionSystem(const HiZOcclusionSystem&) = delete;
+        HiZOcclusionSystem& operator=(const HiZOcclusionSystem&) = delete;
 
         // ---------------------------------------------------------------
         // CPU 側フレームフロー
@@ -82,20 +85,13 @@ namespace CoreEngine
         bool IsEnabled() const { return enabled_; }
 
         /// @brief 全 GPU リソースを解放する
-        /// @details シングルトンの静的破棄は DirectXCommon（デバイス）より後になるため、
-        ///          EngineSystem::Finalize からデバイス破棄前に明示的に呼ぶこと。
-        ///          呼ばないと LeakChecker の ReportLiveObjects にリソースが報告される。
+        /// @details EngineSystem::Finalize からデバイス破棄前に明示的に呼ぶこと
+        ///          （呼ばないと LeakChecker の ReportLiveObjects にリソースが報告される）。
+        ///          Shutdown 後もインスタンス自体は全 Model の破棄まで生存させること
+        ///          （~ModelVisibility の UnregisterTarget は slots_ が空なので安全に空振りする）。
         void Shutdown();
 
-        /// @brief ローカル AABB をワールド行列で変換した AABB を返す（行ベクトル規約）
-        static BoundingBox TransformBounds(const BoundingBox& localBounds, const Matrix4x4& worldMatrix);
-
     private:
-        HiZOcclusionSystem() = default;
-        ~HiZOcclusionSystem() = default;
-        HiZOcclusionSystem(const HiZOcclusionSystem&) = delete;
-        HiZOcclusionSystem& operator=(const HiZOcclusionSystem&) = delete;
-
         // フレームリング数（CommandManager の frameCount 最大値以上にする）
         static constexpr uint32_t kFrameRing = 3;
         // Hi-Z ピラミッドの最大ミップ数（8K 解像度でも 13 段で足りる）

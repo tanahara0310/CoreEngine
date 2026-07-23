@@ -27,12 +27,6 @@ namespace CoreEngine
         constexpr uint32_t kCbSlotSize = 256;
     }
 
-    HiZOcclusionSystem& HiZOcclusionSystem::GetInstance()
-    {
-        static HiZOcclusionSystem instance;
-        return instance;
-    }
-
     // ---------------------------------------------------------------
     // CPU 側フレームフロー
     // ---------------------------------------------------------------
@@ -127,31 +121,6 @@ namespace CoreEngine
             return true;
         }
         return slot.visible;
-    }
-
-    BoundingBox HiZOcclusionSystem::TransformBounds(
-        const BoundingBox& localBounds, const Matrix4x4& worldMatrix)
-    {
-        // 中心 + 拡張の変換（行ベクトル規約: p' = p * M）
-        const auto& m = worldMatrix.m;
-        const float cx = (localBounds.min.x + localBounds.max.x) * 0.5f;
-        const float cy = (localBounds.min.y + localBounds.max.y) * 0.5f;
-        const float cz = (localBounds.min.z + localBounds.max.z) * 0.5f;
-        const float ex = (localBounds.max.x - localBounds.min.x) * 0.5f;
-        const float ey = (localBounds.max.y - localBounds.min.y) * 0.5f;
-        const float ez = (localBounds.max.z - localBounds.min.z) * 0.5f;
-
-        const float wx = cx * m[0][0] + cy * m[1][0] + cz * m[2][0] + m[3][0];
-        const float wy = cx * m[0][1] + cy * m[1][1] + cz * m[2][1] + m[3][1];
-        const float wz = cx * m[0][2] + cy * m[1][2] + cz * m[2][2] + m[3][2];
-
-        const float rx = ex * std::abs(m[0][0]) + ey * std::abs(m[1][0]) + ez * std::abs(m[2][0]);
-        const float ry = ex * std::abs(m[0][1]) + ey * std::abs(m[1][1]) + ez * std::abs(m[2][1]);
-        const float rz = ex * std::abs(m[0][2]) + ey * std::abs(m[1][2]) + ez * std::abs(m[2][2]);
-
-        return BoundingBox(
-            Vector3{ wx - rx, wy - ry, wz - rz },
-            Vector3{ wx + rx, wy + ry, wz + rz });
     }
 
     void HiZOcclusionSystem::Shutdown()

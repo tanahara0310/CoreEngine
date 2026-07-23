@@ -487,14 +487,17 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.cpp">
+      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.cpp">
+      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.cpp">
-      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GeometryPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
@@ -1434,14 +1437,20 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.h">
+      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.h">
+      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderOptimizationSettings.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.h">
-      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GeometryPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
@@ -2503,6 +2512,9 @@
     <Filter Include="Engine\Src\Graphics\Render">
       <UniqueIdentifier>{914A25D2-E4AB-4015-82E8-D55EC9CA375E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\Culling">
+      <UniqueIdentifier>{7A3C41B8-52D9-4E6F-9C1A-8B4E2D5F0A63}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Graphics\Render\GBuffer">
       <UniqueIdentifier>{BBE36D21-BD6D-4AFF-AC1C-E4DD0FA39218}</UniqueIdentifier>
     </Filter>
@@ -2514,9 +2526,6 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\Model\Instancing">
       <UniqueIdentifier>{1939F963-60B0-4596-97E4-24E73156CB85}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\Render\Culling">
-      <UniqueIdentifier>{7A3C41B8-52D9-4E6F-9C1A-8B4E2D5F0A63}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\Particle">
       <UniqueIdentifier>{BE0CED7A-38D5-4709-8A9B-7EDB5DF5DB03}</UniqueIdentifier>

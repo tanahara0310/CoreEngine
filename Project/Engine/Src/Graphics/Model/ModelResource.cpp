@@ -286,6 +286,36 @@ namespace CoreEngine
                 if (p.z > bounds.max.z) bounds.max.z = p.z;
             }
         }
+
+        // 不変条件の検証: 添字対応の配列は必ずサブメッシュ数と一致させる。
+        // AABB が無効なサブメッシュ（空範囲・全インデックス不正）は描画には害がない
+        // （利用側が IsValid で除外しカリング対象外になるだけ）が、データ異常なので記録する
+        assert(subMeshLocalBounds_.size() == modelData_.subMeshes.size());
+        for (size_t s = 0; s < subMeshLocalBounds_.size(); ++s) {
+            if (!subMeshLocalBounds_[s].IsValid()) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource, "{}",
+                    "[ModelResource] サブメッシュAABBが無効（空範囲/不正インデックス）: "
+                    + filePath_ + " subMesh=" + std::to_string(s));
+            }
+        }
+    }
+
+    const BoundingBox& ModelResource::GetSubMeshLocalBounds(uint32_t subMeshIndex) const
+    {
+        if (subMeshIndex < subMeshLocalBounds_.size()) {
+            return subMeshLocalBounds_[subMeshIndex];
+        }
+        // ここに来るのはサブメッシュとの対応ズレ（呼び出し側のバグ）か未ロード時のみ。
+        // Debug では即停止し、Release では保守的にモデル全体 AABB で誤カリングを防ぐ
+        assert(false && "GetSubMeshLocalBounds: subMeshIndex out of range (index mismatch bug)");
+        if (!subMeshBoundsRangeWarned_) {
+            subMeshBoundsRangeWarned_ = true;
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource, "{}",
+                "[ModelResource] GetSubMeshLocalBounds 範囲外アクセス（モデル全体AABBへフォールバック）: "
+                + filePath_ + " subMesh=" + std::to_string(subMeshIndex)
+                + " size=" + std::to_string(subMeshLocalBounds_.size()));
+        }
+        return localBoundingBox_;
     }
 
     void ModelResource::LoadFromFile(const std::string& directoryPath, const std::string& filename)

@@ -98,13 +98,11 @@ namespace CoreEngine
 
         /// @brief サブメッシュ単位のローカル AABB を取得（Hi-Z オクルージョンカリングの判定単位）
         /// @details LOD0 のインデックス範囲から算出。簡略化 LOD は同一頂点の部分集合のため
-        ///          LOD0 の AABB で保守的に覆える。範囲外・未算出はモデル全体の AABB を返す。
+        ///          LOD0 の AABB で保守的に覆える。
+        ///          範囲外はサブメッシュとの対応ズレ（バグ）なので Debug では assert で停止し、
+        ///          Release ではモデル全体の AABB へフォールバック（初回のみ警告ログ）する。
         /// @param subMeshIndex サブメッシュインデックス
-        const BoundingBox& GetSubMeshLocalBounds(uint32_t subMeshIndex) const {
-            return (subMeshIndex < subMeshLocalBounds_.size())
-                ? subMeshLocalBounds_[subMeshIndex]
-                : localBoundingBox_;
-        }
+        const BoundingBox& GetSubMeshLocalBounds(uint32_t subMeshIndex) const;
 
         /// @brief サブメッシュ情報を取得
         /// @return サブメッシュデータのベクター
@@ -210,9 +208,15 @@ namespace CoreEngine
         // ローカル空間のバウンディングボックス（頂点データから算出）
         BoundingBox localBoundingBox_;
 
-        // サブメッシュ単位のローカル AABB（LOD0 範囲から算出。添字はサブメッシュに一致）
-        // SubMeshData 本体に持たせるとレイアウト変更で ODR 事故になるため別配列で持つ
+        // サブメッシュ単位のローカル AABB（LOD0 範囲から算出）
+        // SubMeshData 本体でなく別配列で持つのは、値コピーされる SubMeshData のレイアウトを
+        // 不変に保つため（サイズ変更×増分ビルド中断でヒープ破損事故の前歴あり）。
+        // 不変条件: 添字は modelData_.subMeshes と 1:1 対応し、サイズは
+        // CreateGeometryBuffers で必ず一致させる（ズレは GetSubMeshLocalBounds が検出する）
         std::vector<BoundingBox> subMeshLocalBounds_;
+
+        // GetSubMeshLocalBounds の範囲外警告を初回のみ出すためのフラグ（ログスパム防止）
+        mutable bool subMeshBoundsRangeWarned_ = false;
 
         std::map<std::string, Animation> animations_;
 

@@ -10,8 +10,6 @@
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Model/Skeleton/SkinClusterGenerator.h"
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
-#include "Graphics/Render/Culling/HiZOcclusionSystem.h"
-#include "Graphics/Common/EngineStats.h"
 #include "Utility/Logger/Logger.h"
 #include "Math/MathCore.h"
 
@@ -22,16 +20,6 @@
 
 namespace CoreEngine
 {
-
-    Model::~Model()
-    {
-        // Hi-Z オクルージョンカリングの判定スロットを返却する
-        HiZOcclusionSystem& hiZ = HiZOcclusionSystem::GetInstance();
-        for (uint32_t id : submeshOcclusionIds_) {
-            hiZ.UnregisterTarget(id);
-        }
-        submeshOcclusionIds_.clear();
-    }
 
     bool Model::IsIBLAvailable() const {
         // 自身の renderContext_ 経由でレンダラーの IBL テクスチャ状態を確認
@@ -192,13 +180,11 @@ namespace CoreEngine
         // 行列計算
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 
-        // ===== LOD 選択（AABB の画面投影サイズベース） =====
-        // 距離ではなく「画面をどれだけ占めるか」で決めるため、カメラを近づければ
-        // 自然にフル詳細へ、遠ざかるほど低ポリへ切り替わる。
+        // ===== LOD 選択（AABB の画面投影サイズベース、詳細は ModelVisibility 側） =====
         // 反射ビューなどの低品質ビューは BaseModelRenderer 側のバイアスで 1 段下げる。
         const uint32_t lodBias = renderContext_.modelRenderer
             ? renderContext_.modelRenderer->GetLodBias() : 0;
-        const uint32_t lodIndex = ComputeLodIndex(worldMatrix, camera) + lodBias;
+        const uint32_t lodIndex = ModelVisibility::SelectLod(*resource_, worldMatrix, camera, lodBias);
 
         Matrix4x4 viewMatrix = camera->GetViewMatrix();
         Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
@@ -223,40 +209,17 @@ namespace CoreEngine
 
         // ===== Hi-Z オクルージョンカリング（メイン GameView の GBuffer 構築時のみ） =====
         // サブメッシュ単位で前々フレームの遮蔽判定結果を参照し、遮蔽中の範囲だけ Submit を
-        // スキップする。モデル全体では見えていても、完全に隠れているサブメッシュを個別に落とせる。
-        // AABB はスキップ中も毎フレーム登録し続け、再可視化の判定対象から外さない。
+        // スキップする。スロット管理・AABB登録などの詳細は ModelVisibility 側が持つ。
         // prevGameWVP_ は上で更新済みのため、再可視化フレームのモーションベクターは正しい。
         // シャドウは DrawShadow の別経路なので影響しない。
-        HiZOcclusionSystem& hiZ = HiZOcclusionSystem::GetInstance();
-        const bool occlusionActive = isGBufferPass && hiZ.IsCollectEnabled();
-        if (occlusionActive) {
-            hiZ.SetViewProjection(MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
-            if (submeshOcclusionIds_.size() != subMeshes.size()) {
-                // サブメッシュ数が変わった場合（リロード等）は登録し直す
-                for (uint32_t id : submeshOcclusionIds_) {
-                    hiZ.UnregisterTarget(id);
-                }
-                submeshOcclusionIds_.assign(subMeshes.size(), HiZOcclusionSystem::kInvalidId);
-            }
-        }
+        visibility_.BeginOcclusionQuery(renderContext_.hiZOcclusion, *resource_, worldMatrix,
+            MathCore::Matrix::Multiply(viewMatrix, projectionMatrix), isGBufferPass);
 
         for (uint32_t i = 0; i < subMeshes.size(); ++i) {
             const auto& subMesh = subMeshes[i];
 
-            if (occlusionActive) {
-                uint32_t& occlusionId = submeshOcclusionIds_[i];
-                if (occlusionId == HiZOcclusionSystem::kInvalidId) {
-                    occlusionId = hiZ.RegisterTarget();
-                }
-                const BoundingBox& localBounds = resource_->GetSubMeshLocalBounds(i);
-                if (occlusionId != HiZOcclusionSystem::kInvalidId && localBounds.IsValid()) {
-                    hiZ.SubmitBounds(occlusionId,
-                        HiZOcclusionSystem::TransformBounds(localBounds, worldMatrix));
-                    if (!hiZ.IsVisible(occlusionId)) {
-                        EngineStats::GetInstance().RecordOcclusionCulled();
-                        continue;
-                    }
-                }
+            if (!visibility_.IsSubMeshVisible(i)) {
+                continue;
             }
 
             const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
@@ -265,89 +228,16 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
                 ? textureHandle : textures.baseColor;
 
-            InstanceBatchKey key{};
-            key.resource = resource_;
-            key.subMeshIndex = i;
-            key.lodIndex = lodIndex; // 実際の範囲は DrawBatch 側で SubMeshData::GetLod がクランプする
-            key.baseColorSRV = baseColorTex.ptr;
-            key.normalMapSRV = textures.normal.ptr;
-            key.metallicRoughnessSRV = textures.metallicRoughness.ptr;
-            key.occlusionSRV = textures.occlusion.ptr;
-            key.emissiveSRV = textures.emissive.ptr;
-            key.materialCBV = static_cast<uint64_t>(materialCBV);
-            key.isGBufferPass = isGBufferPass;
-            key.customForwardPSO = isGBufferPass ? nullptr : customForwardPSO_;
-            key.customRootSignature = isGBufferPass ? nullptr : customRootSignature_;
-            key.customProvider = isGBufferPass ? nullptr : customProvider_;
-            key.customPipeline = isGBufferPass ? nullptr : customPipeline_;
+            // lodIndex の実際の範囲は DrawBatch 側で SubMeshData::GetLod がクランプする
+            const InstanceBatchKey key = InstanceBatchKey::Make(
+                resource_, i, lodIndex,
+                baseColorTex, textures.normal, textures.metallicRoughness,
+                textures.occlusion, textures.emissive,
+                materialCBV, isGBufferPass,
+                customForwardPSO_, customRootSignature_, customProvider_, customPipeline_);
 
             batch->Submit(key, mtx, materialCBV);
         }
-    }
-
-    uint32_t Model::ComputeLodIndex(const Matrix4x4& worldMatrix, const ICamera* camera) const
-    {
-        // 画面占有率のしきい値。coverage は「モデルの外接球半径が画面半分の高さに
-        // 対して占める割合」で、1.0 なら画面の半分を覆う大きさ。
-        // マイクロトライアングルのラスタライズがGBufferの支配項のため、閾値を上げて
-        // 近〜中距離でも早めにLOD1/2へ落とし三角形数を減らす（2026-07-22チューニング）。
-        // coverage は「外接球半径が半画面高に占める割合」で高いほど画面占有が大きい。
-        constexpr float kLod1CoverageThreshold = 0.75f; // これ未満で LOD1（詳細 25%）
-        constexpr float kLod2CoverageThreshold = 0.35f; // これ未満で LOD2（詳細 6%）
-
-        const BoundingBox& localAABB = resource_->GetLocalBoundingBox();
-        if (!localAABB.IsValid() || !camera) {
-            return 0;
-        }
-
-        const auto& m = worldMatrix.m;
-
-        // ローカルAABBの中心と外接球半径
-        const Vector3 localCenter = {
-            (localAABB.min.x + localAABB.max.x) * 0.5f,
-            (localAABB.min.y + localAABB.max.y) * 0.5f,
-            (localAABB.min.z + localAABB.max.z) * 0.5f,
-        };
-        const float ex = (localAABB.max.x - localAABB.min.x) * 0.5f;
-        const float ey = (localAABB.max.y - localAABB.min.y) * 0.5f;
-        const float ez = (localAABB.max.z - localAABB.min.z) * 0.5f;
-        const float localRadius = std::sqrt(ex * ex + ey * ey + ez * ez);
-
-        // 中心をワールドへ変換（行ベクトル規約: p' = p * M）
-        const Vector3 worldCenter = {
-            localCenter.x * m[0][0] + localCenter.y * m[1][0] + localCenter.z * m[2][0] + m[3][0],
-            localCenter.x * m[0][1] + localCenter.y * m[1][1] + localCenter.z * m[2][1] + m[3][1],
-            localCenter.x * m[0][2] + localCenter.y * m[1][2] + localCenter.z * m[2][2] + m[3][2],
-        };
-
-        // ワールド行列の各軸スケール（行ベクトルの長さ）の最大値で半径を拡大
-        const float scaleX = std::sqrt(m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2]);
-        const float scaleY = std::sqrt(m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2]);
-        const float scaleZ = std::sqrt(m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2]);
-        const float worldRadius = localRadius * (std::max)({ scaleX, scaleY, scaleZ });
-
-        const Vector3 cameraPosition = camera->GetPosition();
-        const float dx = worldCenter.x - cameraPosition.x;
-        const float dy = worldCenter.y - cameraPosition.y;
-        const float dz = worldCenter.z - cameraPosition.z;
-        const float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
-
-        // カメラが外接球の内側にいる場合は常にフル詳細
-        if (distance <= worldRadius) {
-            return 0;
-        }
-
-        // 射影行列の m[1][1] = cot(fovY/2)。coverage = 半径の NDC 高さ（半画面=1.0）
-        const float cotHalfFovY = camera->GetProjectionMatrix().m[1][1];
-        const float coverage = (worldRadius / distance) * cotHalfFovY;
-
-        if (coverage >= kLod1CoverageThreshold) {
-            return 0;
-        }
-        if (coverage >= kLod2CoverageThreshold) {
-            return 1;
-        }
-        return 2;
     }
 
     void Model::DrawShadow(const WorldTransform& transform, ID3D12GraphicsCommandList* cmdList) {

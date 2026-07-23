@@ -24,7 +24,7 @@ namespace CoreEngine
 
     void HiZOcclusionPass::Execute(const RenderContext& context)
     {
-        if (!context.dxCommon) {
+        if (!system_ || !context.dxCommon) {
             return;
         }
         ID3D12GraphicsCommandList* cmdList = context.dxCommon->GetCommandList();
@@ -32,7 +32,7 @@ namespace CoreEngine
             return;
         }
 
-        HiZOcclusionSystem::GetInstance().ExecuteCulling(
+        system_->ExecuteCulling(
             cmdList,
             context.dxCommon,
             context.dxCommon->GetDepthStencilResource(),

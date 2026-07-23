@@ -4,6 +4,7 @@
 #include "Graphics/Common/EngineStats.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Culling/HiZOcclusionSystem.h"
+#include "Graphics/Render/RenderOptimizationSettings.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -247,6 +248,27 @@ namespace CoreEngine
         ImGui::PopStyleColor(2);
 
         ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  最適化トグル");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        {
+            // 各最適化を単独でオン/オフして問題を切り分けるためのトグル群。
+            // Hi-Z はGPUリソース状態と結びつくため下の専用セクションで切り替える。
+            auto& opt = RenderOptimizationSettings::Get();
+            ImGui::Checkbox("視錐台カリング##opt_frustum", &opt.frustumCullingEnabled);
+            ImGui::SameLine(0.0f, 16.0f);
+            ImGui::Checkbox("LOD##opt_lod", &opt.lodEnabled);
+
+            static constexpr const char* kForcedLodNames[] = { "自動", "LOD0", "LOD1", "LOD2" };
+            int forcedIdx = opt.forcedLodIndex + 1;
+            ImGui::SetNextItemWidth(120.0f);
+            if (ImGui::Combo("強制LOD##opt_forced_lod", &forcedIdx, kForcedLodNames, 4)) {
+                opt.forcedLodIndex = forcedIdx - 1;
+            }
+        }
+
+        ImGui::Spacing();
         ImGui::TextColored(kHeaderColor, "  LODレベル別インスタンス数");
         ImGui::Separator();
         ImGui::Spacing();
@@ -294,11 +316,13 @@ namespace CoreEngine
         ImGui::Spacing();
 
         {
-            auto& hiZ = HiZOcclusionSystem::GetInstance();
-            bool hiZEnabled = hiZ.IsEnabled();
-            if (ImGui::Checkbox("有効##hiz_occlusion", &hiZEnabled))
+            if (HiZOcclusionSystem* hiZ = engine_ ? engine_->GetHiZOcclusionSystem() : nullptr)
             {
-                hiZ.SetEnabled(hiZEnabled);
+                bool hiZEnabled = hiZ->IsEnabled();
+                if (ImGui::Checkbox("有効##hiz_occlusion", &hiZEnabled))
+                {
+                    hiZ->SetEnabled(hiZEnabled);
+                }
             }
 
             ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.13f, 0.13f, 0.13f, 1.0f));

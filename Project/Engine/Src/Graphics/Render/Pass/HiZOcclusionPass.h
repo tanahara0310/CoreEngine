@@ -4,6 +4,8 @@
 
 namespace CoreEngine
 {
+    class HiZOcclusionSystem;
+
     /// @brief Hi-Z オクルージョンカリングパス
     /// @note G-Buffer 完成直後の SceneDepth から Hi-Z ピラミッドを構築し、
     ///       フレーム中に収集したワールド AABB を遮蔽判定して Readback する。
@@ -11,12 +13,15 @@ namespace CoreEngine
     ///       メインの GameView のみで実行する（補助ビューはカメラが異なるため）。
     class HiZOcclusionPass : public RenderPass {
     public:
-        HiZOcclusionPass() = default;
+        explicit HiZOcclusionPass(HiZOcclusionSystem* system) : system_(system) {}
         ~HiZOcclusionPass() override = default;
 
         const char* GetName() const override { return "HiZOcclusion"; }
         void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
         bool IsEnabledForView(const RenderViewSettings& view) const override;
         void Execute(const RenderContext& context) override;
+
+    private:
+        HiZOcclusionSystem* system_ = nullptr;
     };
 }
