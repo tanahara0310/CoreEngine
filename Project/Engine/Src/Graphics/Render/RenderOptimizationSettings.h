@@ -17,5 +17,6 @@ namespace CoreEngine
             static RenderOptimizationSettings instance;
             return instance;
         }
+
     };
 }  // namespace CoreEngine

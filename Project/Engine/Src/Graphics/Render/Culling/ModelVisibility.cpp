@@ -93,17 +93,28 @@ namespace CoreEngine
     }
 
     uint32_t ModelVisibility::SelectLod(const ModelResource& resource, const Matrix4x4& worldMatrix,
-        const ICamera* camera, uint32_t lodBias)
+        const ICamera* camera)
     {
         const auto& settings = RenderOptimizationSettings::Get();
         if (settings.forcedLodIndex >= 0) {
-            // デバッグ用の強制LOD（A/B計測）: バイアスも無視して固定する
+            // デバッグ用の強制LOD（A/B計測用に固定する）
             return static_cast<uint32_t>(settings.forcedLodIndex);
         }
         if (!settings.lodEnabled) {
             return 0;
         }
-        return ComputeLodByCoverage(resource.GetLocalBoundingBox(), worldMatrix, camera) + lodBias;
+        return ComputeLodByCoverage(resource.GetLocalBoundingBox(), worldMatrix, camera);
+    }
+
+    bool ModelVisibility::IsModelInView(const ICamera* camera, const BoundingBox& worldBounds)
+    {
+        if (!RenderOptimizationSettings::Get().frustumCullingEnabled) {
+            return true;
+        }
+        if (!camera || !worldBounds.IsValid()) {
+            return true;
+        }
+        return !camera->GetFrustum().IsOutside(worldBounds);
     }
 
     void ModelVisibility::BeginOcclusionQuery(HiZOcclusionSystem* hiZ,

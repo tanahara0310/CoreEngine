@@ -71,12 +71,6 @@ namespace CoreEngine
         /// @brief 現在 GBuffer パス中かどうかを返す
         bool IsInGBufferPass() const { return isInGBufferPass_; }
 
-        /// @brief LODバイアスを設定する（反射など低品質でよいビューで +1 する）
-        /// @note GBufferPass がビュー種別に応じて毎回設定する（パス分離契約 2 準拠）
-        void SetLodBias(uint32_t bias) { lodBias_ = bias; }
-        /// @brief 現在のLODバイアスを返す（Model::Draw のLOD選択で加算される）
-        uint32_t GetLodBias() const { return lodBias_; }
-
         /// @brief モデル描画パケットをバインドして描画コマンドを発行する
         /// Model が組み立てた ModelDrawPacket を受け取り、現在のパス（Forward/GBuffer）に
         /// 応じたルートパラメータへのバインドと DrawIndexedInstanced の呼び出しを行う。
@@ -136,7 +130,6 @@ namespace CoreEngine
         std::unique_ptr<ShaderReflectionData> forwardReflectionData_;
         std::unique_ptr<ShaderReflectionData> gBufferReflectionData_;
         bool isInGBufferPass_ = false;
-        uint32_t lodBias_ = 0; ///< ビュー別LODバイアス（反射ビュー=+1）
 
         // キャッシュ済みルートパラメータインデックス（Initialize後に一度だけ解決）
         struct CachedIndices {

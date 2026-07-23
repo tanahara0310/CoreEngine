@@ -6,7 +6,7 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
-#include "Graphics/Render/RenderOptimizationSettings.h"
+#include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Camera/ICamera.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -80,15 +80,9 @@ namespace CoreEngine
     void ModelGameObject::Draw(const ICamera* camera) {
         if (!model_ || !camera) return;
 
-        // 視錐台カリング: ワールドAABBが視錐台の外側なら描画をスキップ
-        if (RenderOptimizationSettings::Get().frustumCullingEnabled) {
-            BoundingBox worldAABB = GetWorldBoundingBox();
-            if (worldAABB.IsValid()) {
-                Frustum frustum = camera->GetFrustum();
-                if (frustum.IsOutside(worldAABB)) {
-                    return;
-                }
-            }
+        // 視錐台カリング: 判定内容とデバッグトグルは ModelVisibility（Culling層）が持つ
+        if (!ModelVisibility::IsModelInView(camera, GetWorldBoundingBox())) {
+            return;
         }
 
         model_->Draw(transform_, camera, texture_.gpuHandle);

@@ -181,10 +181,7 @@ namespace CoreEngine
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 
         // ===== LOD 選択（AABB の画面投影サイズベース、詳細は ModelVisibility 側） =====
-        // 反射ビューなどの低品質ビューは BaseModelRenderer 側のバイアスで 1 段下げる。
-        const uint32_t lodBias = renderContext_.modelRenderer
-            ? renderContext_.modelRenderer->GetLodBias() : 0;
-        const uint32_t lodIndex = ModelVisibility::SelectLod(*resource_, worldMatrix, camera, lodBias);
+        const uint32_t lodIndex = ModelVisibility::SelectLod(*resource_, worldMatrix, camera);
 
         Matrix4x4 viewMatrix = camera->GetViewMatrix();
         Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();

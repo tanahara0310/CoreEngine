@@ -47,7 +47,6 @@
 #include "Graphics/Render/Pass/PostEffectPass.h"
 #include "Graphics/Render/Pass/BackBufferPass.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
-#include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Scene/IScene.h"
 
 // Hi-Z オクルージョンカリング
@@ -343,31 +342,6 @@ namespace CoreEngine
                     (renderViewContext.viewSettings.viewType == RenderViewType::ReflectionView)
                     ? static_cast<uint32_t>(RayTracingShadowManager::ViewID::ReflectionView)
                     : static_cast<uint32_t>(RayTracingShadowManager::ViewID::GameView);
-
-                // 反射ビューは半解像度の専用 G-Buffer / 深度に差し替えて描画する。
-                // RegisterFrameResources は context のマネージャーから Blackboard へ登録するため、
-                // ここで差し替えるだけで G-Buffer 書き込み・DeferredLighting 読み取り・バリアの
-                // すべてが半解像度リソースへ切り替わる。出力ターゲット（ReflectionView）も
-                // 半解像度のため、Load(ピクセル座標) の整合が保たれる。
-                if (renderViewContext.viewSettings.viewType == RenderViewType::ReflectionView
-                    && renderDomainContext_) {
-                    if (auto* reflectionGBuffer = renderDomainContext_->GetReflectionGBufferManager()) {
-                        renderViewContext.gBufferManager = reflectionGBuffer;
-                    }
-                    if (auto* reflectionDepth = renderDomainContext_->GetReflectionDepthStencilManager()) {
-                        renderViewContext.depthStencilManager = reflectionDepth;
-
-                        // 出力ターゲットには専用深度の DSV をバインドさせる
-                        // （既定では DirectXCommon のフル解像度共有 DSV が使われ、サイズ不一致になる）
-                        if (context.renderTargetManager) {
-                            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(
-                                    context.renderTargetManager->GetRenderTarget(
-                                        renderViewContext.viewSettings.sceneColorTargetName))) {
-                                offscreen->SetDepthStencilHandle(reflectionDepth->GetDSVHandle());
-                            }
-                        }
-                    }
-                }
 
                 const RenderViewResult renderViewResult = renderPipeline_->ExecuteRenderView(
                     renderViewContext,
