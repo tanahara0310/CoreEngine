@@ -10,6 +10,8 @@
 #include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Model/Skeleton/SkinClusterGenerator.h"
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
+#include "Graphics/Render/Culling/HiZOcclusionSystem.h"
+#include "Graphics/Common/EngineStats.h"
 #include "Utility/Logger/Logger.h"
 #include "Math/MathCore.h"
 
@@ -20,6 +22,16 @@
 
 namespace CoreEngine
 {
+
+    Model::~Model()
+    {
+        // Hi-Z オクルージョンカリングの判定スロットを返却する
+        HiZOcclusionSystem& hiZ = HiZOcclusionSystem::GetInstance();
+        for (uint32_t id : submeshOcclusionIds_) {
+            hiZ.UnregisterTarget(id);
+        }
+        submeshOcclusionIds_.clear();
+    }
 
     bool Model::IsIBLAvailable() const {
         // 自身の renderContext_ 経由でレンダラーの IBL テクスチャ状態を確認
@@ -209,8 +221,44 @@ namespace CoreEngine
         // パスの種別はレンダラーのフレームコンテキストから判定する
         const bool isGBufferPass = renderContext_.modelRenderer->IsInGBufferPass();
 
+        // ===== Hi-Z オクルージョンカリング（メイン GameView の GBuffer 構築時のみ） =====
+        // サブメッシュ単位で前々フレームの遮蔽判定結果を参照し、遮蔽中の範囲だけ Submit を
+        // スキップする。モデル全体では見えていても、完全に隠れているサブメッシュを個別に落とせる。
+        // AABB はスキップ中も毎フレーム登録し続け、再可視化の判定対象から外さない。
+        // prevGameWVP_ は上で更新済みのため、再可視化フレームのモーションベクターは正しい。
+        // シャドウは DrawShadow の別経路なので影響しない。
+        HiZOcclusionSystem& hiZ = HiZOcclusionSystem::GetInstance();
+        const bool occlusionActive = isGBufferPass && hiZ.IsCollectEnabled();
+        if (occlusionActive) {
+            hiZ.SetViewProjection(MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
+            if (submeshOcclusionIds_.size() != subMeshes.size()) {
+                // サブメッシュ数が変わった場合（リロード等）は登録し直す
+                for (uint32_t id : submeshOcclusionIds_) {
+                    hiZ.UnregisterTarget(id);
+                }
+                submeshOcclusionIds_.assign(subMeshes.size(), HiZOcclusionSystem::kInvalidId);
+            }
+        }
+
         for (uint32_t i = 0; i < subMeshes.size(); ++i) {
             const auto& subMesh = subMeshes[i];
+
+            if (occlusionActive) {
+                uint32_t& occlusionId = submeshOcclusionIds_[i];
+                if (occlusionId == HiZOcclusionSystem::kInvalidId) {
+                    occlusionId = hiZ.RegisterTarget();
+                }
+                const BoundingBox& localBounds = resource_->GetSubMeshLocalBounds(i);
+                if (occlusionId != HiZOcclusionSystem::kInvalidId && localBounds.IsValid()) {
+                    hiZ.SubmitBounds(occlusionId,
+                        HiZOcclusionSystem::TransformBounds(localBounds, worldMatrix));
+                    if (!hiZ.IsVisible(occlusionId)) {
+                        EngineStats::GetInstance().RecordOcclusionCulled();
+                        continue;
+                    }
+                }
+            }
+
             const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
             // マテリアルCBVはサブメッシュのマテリアルスロットに対応するインスタンスを使用
             const D3D12_GPU_VIRTUAL_ADDRESS materialCBV = MaterialCBVForSlot(subMesh.materialIndex);

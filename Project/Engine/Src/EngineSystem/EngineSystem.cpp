@@ -27,6 +27,7 @@
 #include "Graphics/Render/Pass/ASBuildPass.h"
 #include "Graphics/Render/Pass/ShadowMapPass.h"
 #include "Graphics/Render/Pass/GBufferPass.h"
+#include "Graphics/Render/Pass/HiZOcclusionPass.h"
 #include "Graphics/Render/Pass/SSAOPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/RTShadowPass.h"
@@ -48,6 +49,9 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Scene/IScene.h"
+
+// Hi-Z オクルージョンカリング
+#include "Graphics/Render/Culling/HiZOcclusionSystem.h"
 
 // レイトレーシング
 #include "Graphics/Render/RenderDomainContext.h"
@@ -153,6 +157,11 @@ namespace CoreEngine
 
         // AssetDatabaseの終了処理
         AssetDatabase::GetInstance().Finalize();
+
+        // Hi-Z オクルージョンカリングの GPU リソースを解放する
+        // （シングルトンの静的破棄はデバイスより後になるため、DirectXCommon 破棄前に明示解放。
+        //   これを行わないと LeakChecker の ReportLiveObjects にリソースが報告される）
+        HiZOcclusionSystem::GetInstance().Shutdown();
 
         // RenderDomainContext を先にシャットダウンしてから DirectXCommon を解放する
         if (renderDomainContext_) {
@@ -294,6 +303,14 @@ namespace CoreEngine
         if (debug) debug->BeginRenderPipeline(cmdList, currentFrameIndex);
 #endif
 
+        // Hi-Z オクルージョンカリング: 完了済みリングスロットの可視性 Readback を反映する。
+        // AABB 収集と遮蔽スキップの適用はメイン GameView の構築中のみ有効化する
+        // （補助ビュー・反射ビューはカメラが異なり、メインカメラ基準の判定は誤カリングになる）。
+        auto& hiZOcclusion = HiZOcclusionSystem::GetInstance();
+        hiZOcclusion.BeginFrame(
+            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0u);
+        hiZOcclusion.SetCollectEnabled(false);
+
         // DXR BLAS / TLAS 構築は ASBuildPass（FrameSetup フェーズ）として
         // 最初に実行される View の RenderGraph 内で行われる。
 
@@ -363,7 +380,9 @@ namespace CoreEngine
         // GameView の主要描画は ShadowMap を含む RenderGraph へ統一して実行する。
         // パス別のタイミングは RenderGraph::Execute が各パス名で自動計測する
         // （EngineProfileScope でまとめて計測すると個別パスの内訳が失われるため使わない）。
+        hiZOcclusion.SetCollectEnabled(true);
         renderPipeline_->ExecuteView(context);
+        hiZOcclusion.SetCollectEnabled(false);
 
         // 全 View の描画（AerialPerspective 合成を含む）が完了したので大気有効化フラグを落とす。
         // 次フレームは Update() を呼ぶ大気シーンでのみ再度有効化され、他シーンへの漏れ出しを防ぐ。
@@ -462,6 +481,10 @@ namespace CoreEngine
 
         // G-Buffer 蓄積（不透明 Model / SkinnedModel の描画）
         renderPipeline_->AddPass(std::make_unique<GBufferPass>(), RenderPassPhase::GBuffer);
+
+        // G-Buffer 完成直後: Hi-Z ピラミッド構築 + 遮蔽判定（メイン GameView のみ。
+        // 結果はフレームリング一巡後の Model::Draw が Submit スキップに使う）
+        renderPipeline_->AddPass(std::make_unique<HiZOcclusionPass>(), RenderPassPhase::PreLighting, 5);
 
         // ライティング前処理: SSAO / RT シャドウ / コースティクス
         auto ssaoPass = std::make_unique<SSAOPass>();

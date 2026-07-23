@@ -65,9 +65,6 @@ private:
 		float turbidity = 0.0f;
 	} surfaceParameters_{};
 
-	/// @brief 海底（水中地形）を白砂色にティントしているか（浅瀬エメラルドの検証用）
-	bool seabedSandTintEnabled_ = false;
-
 	/// @brief 波生成補助機能の UI 状態
 	struct WaveToolState {
 		int preset = static_cast<int>(WaterPresetType::Lake);

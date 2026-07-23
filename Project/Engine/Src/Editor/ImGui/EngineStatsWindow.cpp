@@ -3,6 +3,7 @@
 
 #include "Graphics/Common/EngineStats.h"
 #include "Graphics/Model/ModelManager.h"
+#include "Graphics/Render/Culling/HiZOcclusionSystem.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -282,6 +283,36 @@ namespace CoreEngine
                     ImGui::ProgressBar(static_cast<float>(count) / lodBarMax, ImVec2(-1.0f, 0.0f), "");
                     ImGui::PopStyleColor();
                 }
+                ImGui::EndTable();
+            }
+            ImGui::PopStyleColor(2);
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  Hi-Z オクルージョンカリング");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        {
+            auto& hiZ = HiZOcclusionSystem::GetInstance();
+            bool hiZEnabled = hiZ.IsEnabled();
+            if (ImGui::Checkbox("有効##hiz_occlusion", &hiZEnabled))
+            {
+                hiZ.SetEnabled(hiZEnabled);
+            }
+
+            ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+            if (ImGui::BeginTable("hiz_table", 2, kTableFlags))
+            {
+                ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("値", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+                DrawKeyValue("判定対象数(サブメッシュ)", "%u", rs.occlusionTestedCount);
+                DrawKeyValue("遮蔽スキップ数", "%u", rs.occlusionCulledCount);
+                const float cullRate = rs.occlusionTestedCount > 0
+                    ? static_cast<float>(rs.occlusionCulledCount) / rs.occlusionTestedCount * 100.0f
+                    : 0.0f;
+                DrawKeyValue("カリング率", "%.1f%%", cullRate);
                 ImGui::EndTable();
             }
             ImGui::PopStyleColor(2);

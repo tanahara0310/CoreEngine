@@ -45,9 +45,9 @@ void WaterTestScene::OnInitialize() {
 
     waterController_.Initialize(*this, *engine_);
 
-    // プール一式は既定の無限遠タイル床（y=0）の上へ 6m 持ち上げてある。
-    // 従来と同じ構図になるようカメラも同じだけ持ち上げる。
-    SetReleaseCameraTransform({ 0.0f, 6.0f, -30.0f });
+    // 起動時のリリースカメラはシーン全体（水面・地形・配置物）を俯瞰する構図にする。
+    // 位置 (0, 60, -90) から約 35° 見下ろすと、原点付近（海面 y≈0）が画角中央に入る。
+    SetReleaseCameraTransform({ 0.0f, 60.0f, -90.0f }, { 35.0f * kDegToRad, 0.0f, 0.0f });
 }
 
 void WaterTestScene::OnUpdate() {

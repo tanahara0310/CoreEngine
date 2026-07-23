@@ -20,7 +20,6 @@ using namespace CoreEngine;
 void WaterSurfaceRuntimeController::Initialize(const WaterSceneObjects& sceneObjects) {
 	// setup 済みオブジェクト参照を受け取り、runtime 更新対象を確定する
 	waterPlane_ = sceneObjects.waterPlane;
-	groundObject_ = sceneObjects.groundObject;
 
 	// 描画経路切り替えに備えて、Gerstner / FFT の両 simulator を初期化する
 	if (!gerstnerSimulator_) {

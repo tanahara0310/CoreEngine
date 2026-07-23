@@ -96,6 +96,16 @@ namespace CoreEngine
         /// @return ローカル空間AABB
         const BoundingBox& GetLocalBoundingBox() const { return localBoundingBox_; }
 
+        /// @brief サブメッシュ単位のローカル AABB を取得（Hi-Z オクルージョンカリングの判定単位）
+        /// @details LOD0 のインデックス範囲から算出。簡略化 LOD は同一頂点の部分集合のため
+        ///          LOD0 の AABB で保守的に覆える。範囲外・未算出はモデル全体の AABB を返す。
+        /// @param subMeshIndex サブメッシュインデックス
+        const BoundingBox& GetSubMeshLocalBounds(uint32_t subMeshIndex) const {
+            return (subMeshIndex < subMeshLocalBounds_.size())
+                ? subMeshLocalBounds_[subMeshIndex]
+                : localBoundingBox_;
+        }
+
         /// @brief サブメッシュ情報を取得
         /// @return サブメッシュデータのベクター
         const std::vector<SubMeshData>& GetSubMeshes() const { return modelData_.subMeshes; }
@@ -199,6 +209,10 @@ namespace CoreEngine
 
         // ローカル空間のバウンディングボックス（頂点データから算出）
         BoundingBox localBoundingBox_;
+
+        // サブメッシュ単位のローカル AABB（LOD0 範囲から算出。添字はサブメッシュに一致）
+        // SubMeshData 本体に持たせるとレイアウト変更で ODR 事故になるため別配列で持つ
+        std::vector<BoundingBox> subMeshLocalBounds_;
 
         std::map<std::string, Animation> animations_;
 

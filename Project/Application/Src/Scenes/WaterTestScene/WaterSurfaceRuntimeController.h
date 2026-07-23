@@ -4,7 +4,6 @@
 #include "Graphics/Water/Simulation/WaterSurfaceModelProvider.h"
 #include "Graphics/Water/Simulation/WaterSurfaceSimulator.h"
 #include "WaterSceneSetup.h"
-#include "GameObjects/Model/ModelObject.h"
 #include "GameObjects/Water/WaterPlaneObject.h"
 
 #include <memory>
@@ -49,10 +48,6 @@ public:
 	/// @return 管理対象の水面オブジェクト。未初期化時は nullptr。
 	WaterPlaneObject* GetWaterPlane() const { return waterPlane_; }
 
-	/// @brief 水中地形モデルを返す（海底アルベドの調整用）
-	/// @return 水中地形オブジェクト。未初期化時は nullptr。
-	ModelObject* GetGroundObject() const { return groundObject_; }
-
 	/// @brief 現在の水面高さを返す
 	/// @return 水面オブジェクトのワールドY座標。未初期化時は 0.0f。
 	float GetWaterHeight() const;
@@ -67,8 +62,6 @@ private:
 
 	/// @brief 水面描画本体
 	WaterPlaneObject* waterPlane_ = nullptr;
-	/// @brief 水中地形モデル
-	ModelObject* groundObject_ = nullptr;
 	/// @brief 共通 surface snapshot
 	CoreEngine::WaterSurfaceSnapshot waterSurfaceSnapshot_{};
 	/// @brief DXR 屈折用に転送する水面データ

@@ -10,6 +10,7 @@
 
 #include "externals/meshoptimizer/src/meshoptimizer.h"
 
+#include <algorithm>
 #include <cassert>
 #include <format>
 #include <limits>
@@ -258,6 +259,32 @@ namespace CoreEngine
             if (vertex.position.x > localBoundingBox_.max.x) localBoundingBox_.max.x = vertex.position.x;
             if (vertex.position.y > localBoundingBox_.max.y) localBoundingBox_.max.y = vertex.position.y;
             if (vertex.position.z > localBoundingBox_.max.z) localBoundingBox_.max.z = vertex.position.z;
+        }
+
+        // ===== サブメッシュ単位のローカルAABBを算出（Hi-Zオクルージョンカリングの判定単位） =====
+        // LOD0 のインデックス範囲が参照する頂点のみ集計する。簡略化 LOD（lods[1..]）は
+        // 同一頂点バッファの部分集合を参照するため、LOD0 の AABB で保守的に覆える。
+        subMeshLocalBounds_.assign(modelData_.subMeshes.size(), BoundingBox());
+        for (size_t s = 0; s < modelData_.subMeshes.size(); ++s) {
+            const SubMeshData& subMesh = modelData_.subMeshes[s];
+            BoundingBox& bounds = subMeshLocalBounds_[s];
+            const size_t endIndex = (std::min)(
+                static_cast<size_t>(subMesh.startIndex) + subMesh.indexCount,
+                modelData_.indices.size());
+            for (size_t i = subMesh.startIndex; i < endIndex; ++i) {
+                const int32_t vertexIndex = modelData_.indices[i];
+                if (vertexIndex < 0
+                    || static_cast<size_t>(vertexIndex) >= modelData_.vertices.size()) {
+                    continue;
+                }
+                const auto& p = modelData_.vertices[vertexIndex].position;
+                if (p.x < bounds.min.x) bounds.min.x = p.x;
+                if (p.y < bounds.min.y) bounds.min.y = p.y;
+                if (p.z < bounds.min.z) bounds.min.z = p.z;
+                if (p.x > bounds.max.x) bounds.max.x = p.x;
+                if (p.y > bounds.max.y) bounds.max.y = p.y;
+                if (p.z > bounds.max.z) bounds.max.z = p.z;
+            }
         }
     }
 

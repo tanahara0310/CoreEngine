@@ -40,8 +40,8 @@ namespace CoreEngine
         /// @brief デフォルトコンストラクタ
         Model() = default;
 
-        /// @brief デストラクタ
-        ~Model() = default;
+        /// @brief デストラクタ（Hi-Z オクルージョンカリングの判定スロットを返却する）
+        ~Model();
 
         /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
         bool IsIBLAvailable() const;
@@ -183,6 +183,10 @@ namespace CoreEngine
 
         // カスタムリソースバインドプロバイダ（nullptr = 追加バインドなし）
         const ICustomShaderProvider* customProvider_ = nullptr;
+
+        // Hi-Z オクルージョンカリングの判定スロット ID（サブメッシュ単位。添字はサブメッシュに一致）
+        // 要素は HiZOcclusionSystem::kInvalidId = 未登録。初回 Draw 時に遅延登録する
+        std::vector<uint32_t> submeshOcclusionIds_;
 
         // 内部ヘルパーメソッド
         /// @brief 即時描画（スキニングモデル）用の WVP 行列データを更新する
