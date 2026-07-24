@@ -44,7 +44,8 @@ namespace CoreEngine
             context.dxCommon->GetSRVHeap());
 
         // 不透明オブジェクトを GBuffer へ描画する。
-        context.renderManager->DrawGBufferPass();
+        // ビュー種別は DrawViewInfo として各オブジェクト（Model）まで明示的に流れる。
+        context.renderManager->DrawGBufferPass(context.viewSettings.viewType);
 
         // GBuffer 各 MRT と SceneDepth は RegisterFrameResources で同一の実体が
         // 登録済みのため、実行中の Blackboard 再登録は行わない（パス分離契約 3）。

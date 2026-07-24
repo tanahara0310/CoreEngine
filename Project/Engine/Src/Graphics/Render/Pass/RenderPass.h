@@ -4,17 +4,11 @@
 
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+#include "Graphics/Render/RenderViewType.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 
 namespace CoreEngine
 {
-    /// @brief RenderGraph が扱う描画ビュー種別
-    enum class RenderViewType : uint32_t {
-        GameView = 0,
-        ReflectionView = 1,
-        CaptureView = 2,
-    };
-
     /// @brief View ごとの Graph 実行設定
     struct RenderViewSettings {
         RenderViewType viewType = RenderViewType::GameView;

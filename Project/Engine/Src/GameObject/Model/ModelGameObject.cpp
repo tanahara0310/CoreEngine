@@ -78,15 +78,22 @@ namespace CoreEngine
     }
 
     void ModelGameObject::Draw(const ICamera* camera) {
-        if (!model_ || !camera) return;
+        // RenderGraph を経由しない直接呼び出し（レガシー経路）は GameView・Forward として扱う
+        DrawViewInfo view{};
+        view.camera = camera;
+        Draw(view);
+    }
+
+    void ModelGameObject::Draw(const DrawViewInfo& view) {
+        if (!model_ || !view.camera) return;
 
         // 視錐台カリング: 判定内容とデバッグトグルは ModelVisibility（Culling層）が持つ
-        if (!ModelVisibility::IsModelInView(camera, GetWorldBoundingBox())) {
+        if (!ModelVisibility::IsModelInView(view.camera, GetWorldBoundingBox())) {
             return;
         }
 
-        model_->Draw(transform_, camera, texture_.gpuHandle);
-        OnDraw(camera);
+        model_->Draw(transform_, view, texture_.gpuHandle);
+        OnDraw(view.camera);
     }
 
     void ModelGameObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {

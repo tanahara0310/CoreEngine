@@ -102,15 +102,15 @@ namespace CoreEngine
     }
 
 
-    void Model::UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera)
+    void Model::UpdateTransformationMatrix(const WorldTransform& transform, const DrawViewInfo& view)
     {
         ID3D12Resource* transformBuffer = GetGameTransformBuffer();
         assert(transformBuffer);
 
         // 行列計算
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-        Matrix4x4 viewMatrix = camera->GetViewMatrix();
-        Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
+        Matrix4x4 viewMatrix = view.camera->GetViewMatrix();
+        Matrix4x4 projectionMatrix = view.camera->GetProjectionMatrix();
         Matrix4x4 worldViewProjectionMatrix = MathCore::Matrix::Multiply(
             worldMatrix,
             MathCore::Matrix::Multiply(viewMatrix, projectionMatrix)
@@ -120,26 +120,34 @@ namespace CoreEngine
         Matrix4x4 lightVP = renderContext_.shadowMapManager ?
             renderContext_.shadowMapManager->GetLightViewProjection() : MathCore::Matrix::Identity();
 
+        // モーションベクター履歴（prevWVP）は GameView 専用。補助ビュー（カメラが異なる）で
+        // 履歴を読む/更新すると GameView 側の MV が壊れるため、GameView 以外は MV=0 で描く
+        const bool isGameView = (view.viewType == RenderViewType::GameView);
+
         // GPUメモリに書き込み
         TransformationMatrix* mappedData = nullptr;
         transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
         mappedData->world = worldMatrix;
         // 初回フレームは prevWVP = currentWVP にしてモーションベクター=0を保証する
-        mappedData->prevWVP = prevGameWVPInitialized_ ? prevGameWVP_ : worldViewProjectionMatrix;
+        mappedData->prevWVP = (isGameView && prevGameWVPInitialized_)
+            ? prevGameWVP_ : worldViewProjectionMatrix;
         mappedData->WVP = worldViewProjectionMatrix;
         mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mappedData->lightViewProjection = lightVP;
         transformBuffer->Unmap(0, nullptr);
 
         // 今フレームのWVPを次フレームの prevWVP として保存
-        prevGameWVP_ = worldViewProjectionMatrix;
-        prevGameWVPInitialized_ = true;
+        if (isGameView) {
+            prevGameWVP_ = worldViewProjectionMatrix;
+            prevGameWVPInitialized_ = true;
+        }
     }
 
-    void Model::Draw(const WorldTransform& transform, const ICamera* camera,
+    void Model::Draw(const WorldTransform& transform, const DrawViewInfo& view,
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
 
         assert(IsInitialized());
+        const ICamera* camera = view.camera;
         assert(camera);
 
         ID3D12GraphicsCommandList* cmdList = renderContext_.dxCommon->GetCommandList();
@@ -152,7 +160,7 @@ namespace CoreEngine
 
         if (isSkinned) {
             // スキニングモデルは従来通り CBV 経由で即時描画する
-            UpdateTransformationMatrix(transform, camera);
+            UpdateTransformationMatrix(transform, view);
 
             BaseModelRenderer* renderer = renderContext_.skinnedRenderer;
             assert(renderer);
@@ -192,25 +200,31 @@ namespace CoreEngine
             ? renderContext_.shadowMapManager->GetLightViewProjection()
             : MathCore::Matrix::Identity();
 
+        // モーションベクター履歴（prevWVP）は GameView 専用（UpdateTransformationMatrix と同じ規約）
+        const bool isGameView = (view.viewType == RenderViewType::GameView);
+
         TransformationMatrix mtx{};
         mtx.world = worldMatrix;
         mtx.WVP = wvp;
-        mtx.prevWVP = prevGameWVPInitialized_ ? prevGameWVP_ : wvp;
+        mtx.prevWVP = (isGameView && prevGameWVPInitialized_) ? prevGameWVP_ : wvp;
         mtx.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
         mtx.lightViewProjection = lightVP;
-        prevGameWVP_ = wvp;
-        prevGameWVPInitialized_ = true;
+        if (isGameView) {
+            prevGameWVP_ = wvp;
+            prevGameWVPInitialized_ = true;
+        }
 
-        // パスの種別はレンダラーのフレームコンテキストから判定する
-        const bool isGBufferPass = renderContext_.modelRenderer->IsInGBufferPass();
+        const bool isGBufferPass = view.isGBufferPass;
 
         // ===== Hi-Z オクルージョンカリング（メイン GameView の GBuffer 構築時のみ） =====
         // サブメッシュ単位で前々フレームの遮蔽判定結果を参照し、遮蔽中の範囲だけ Submit を
         // スキップする。スロット管理・AABB登録などの詳細は ModelVisibility 側が持つ。
+        // 適用可否は DrawViewInfo だけから決まる（呼び出し順やレンダラー状態に依存しない）。
         // prevGameWVP_ は上で更新済みのため、再可視化フレームのモーションベクターは正しい。
         // シャドウは DrawShadow の別経路なので影響しない。
+        const bool occlusionEligible = isGBufferPass && isGameView;
         visibility_.BeginOcclusionQuery(renderContext_.hiZOcclusion, *resource_, worldMatrix,
-            MathCore::Matrix::Multiply(viewMatrix, projectionMatrix), isGBufferPass);
+            MathCore::Matrix::Multiply(viewMatrix, projectionMatrix), occlusionEligible);
 
         for (uint32_t i = 0; i < subMeshes.size(); ++i) {
             const auto& subMesh = subMeshes[i];

@@ -68,8 +68,6 @@ namespace CoreEngine
         int GetRootParamIndex(const std::string& resourceName) const;
         /// @brief GBuffer パスのリソース名からルートパラメータインデックスを取得（-1: 未登録）
         int GetGBufferRootParamIndex(const std::string& resourceName) const;
-        /// @brief 現在 GBuffer パス中かどうかを返す
-        bool IsInGBufferPass() const { return isInGBufferPass_; }
 
         /// @brief モデル描画パケットをバインドして描画コマンドを発行する
         /// Model が組み立てた ModelDrawPacket を受け取り、現在のパス（Forward/GBuffer）に
@@ -129,6 +127,8 @@ namespace CoreEngine
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> forwardReflectionData_;
         std::unique_ptr<ShaderReflectionData> gBufferReflectionData_;
+        // 自身が最後に Begin したパス種別（PSO 復元とバッチ Flush 用の内部状態。
+        // 描画側のパス判定は DrawViewInfo で明示的に渡されるため、外部へは公開しない）
         bool isInGBufferPass_ = false;
 
         // キャッシュ済みルートパラメータインデックス（Initialize後に一度だけ解決）

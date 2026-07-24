@@ -1521,6 +1521,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.h">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\DrawViewInfo.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderItem.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
@@ -1528,6 +1531,9 @@
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderPassType.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderViewType.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.h">

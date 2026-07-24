@@ -62,7 +62,7 @@ namespace CoreEngine
             if (context.sceneManager) {
                 context.renderManager->SetCamera(context.sceneManager->GetGameViewCamera3D());
             }
-            context.renderManager->DrawWaterQueuePass();
+            context.renderManager->DrawWaterQueuePass(context.viewSettings.viewType);
         }
         targetToUse->End(cmdList);
 

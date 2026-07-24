@@ -14,6 +14,7 @@
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Model/Skeleton/SkinCluster.h"
+#include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
 #include "Graphics/Render/Shadow/ShadowDrawPacket.h"
 #include "Graphics/Render/Culling/ModelVisibility.h"
@@ -62,9 +63,10 @@ namespace CoreEngine
 
         /// @brief モデルを描画（スキニングモデルか通常モデルかは内部で自動判別）
         /// @param transform ワールドトランスフォーム
-        /// @param camera カメラ（ICamera インターフェース）
+        /// @param view ビュー/パス情報（カメラ・ビュー種別・GBufferパスか）。
+        ///             Hi-Z 適用可否やモーションベクター履歴の更新可否はこの情報だけで決まる
         /// @param textureHandle テクスチャハンドル（省略時はモデル組み込みテクスチャを使用）
-        void Draw(const WorldTransform& transform, const CoreEngine::ICamera* camera,
+        void Draw(const WorldTransform& transform, const DrawViewInfo& view,
             D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
 
         /// @brief シャドウマップ用の描画（深度のみ）
@@ -189,7 +191,7 @@ namespace CoreEngine
 
         // 内部ヘルパーメソッド
         /// @brief 即時描画（スキニングモデル）用の WVP 行列データを更新する
-        void UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera);
+        void UpdateTransformationMatrix(const WorldTransform& transform, const DrawViewInfo& view);
 
         /// @brief SkinCluster のマトリックスパレットを指定スケルトンの姿勢で更新する
         void UpdateSkinCluster(const Skeleton& skeleton);
