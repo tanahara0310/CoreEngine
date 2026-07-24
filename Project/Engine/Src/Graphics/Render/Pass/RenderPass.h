@@ -30,7 +30,6 @@ namespace CoreEngine
     class LightManager;
     class RenderTargetManager;
     class GBufferManager;
-    class ShadowMapManager;
     class AccelerationStructureManager;
     class RayTracingShadowManager;
     class WaterCausticsRayTracingManager;
@@ -51,7 +50,6 @@ namespace CoreEngine
         PostEffectManager* postEffectManager = nullptr;
         RenderingTechniqueManager* renderingTechniqueManager = nullptr; ///< レンダリング技術管理（SSAO・TAA等）
         LightManager* lightManager = nullptr;
-        ShadowMapManager* shadowMapManager = nullptr;  ///< シャドウマップ管理（LVP記列・ SRV 取得用）
         RenderTargetManager* renderTargetManager = nullptr;
         GBufferManager* gBufferManager = nullptr;  ///< G-Buffer管理（Deferred）
         AccelerationStructureManager* accelerationStructureManager = nullptr; ///< DXR 加速構造管理

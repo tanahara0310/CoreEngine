@@ -7,11 +7,9 @@
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Particle/GpuParticleRenderer.h"
-#include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Model/IBLParameters.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
 #include "GameObjects/SkyBox/SkyBoxObject.h"
 #include "Camera/CameraManager.h"
 #include "Camera/ICamera.h"
@@ -117,17 +115,6 @@ namespace CoreEngine
         cmdList_ = cmdList;
     }
 
-    void RenderManager::SetShadowMapManager(ShadowMapManager* shadowMapManager) {
-        shadowMapManager_ = shadowMapManager;
-    }
-
-    void RenderManager::SetLightViewProjection(const Matrix4x4& lightViewProjection) {
-        // ShadowMapManagerに委譲（一元管理）
-        if (shadowMapManager_) {
-            shadowMapManager_->SetLightViewProjection(lightViewProjection);
-        }
-    }
-
     void RenderManager::AddRenderItem(RenderItem item) {
         item.registrationOrder = registrationCounter_++;
         item.sortKey = ResolveRenderOrder(item);
@@ -175,26 +162,6 @@ namespace CoreEngine
         }
 
         return nullptr;
-    }
-
-    void RenderManager::DrawShadowPass() {
-        if (drawQueue_.empty() || !cmdList_) {
-            return;
-        }
-
-        EnsureQueueSorted();
-
-        // === Phase 1: シャドウマップパス ===
-        if (shadowMapManager_) {
-            RenderShadowMapPass();
-
-            // シャドウマップ载影を Model / SkinnedModel レンダラー両方に適用する
-            for (auto passType : {RenderPassType::Model, RenderPassType::SkinnedModel}) {
-                if (auto* renderer = dynamic_cast<BaseModelRenderer*>(GetRenderer(passType))) {
-                    renderer->SetShadowMap(shadowMapManager_->GetSRVHandle());
-                }
-            }
-        }
     }
 
     void RenderManager::DrawGBufferPass(RenderViewType viewType) {
@@ -311,74 +278,6 @@ namespace CoreEngine
 
         EnsureQueueSorted();
         RenderNormalPassQueue(transparentDrawQueue_, viewType);
-    }
-
-    void RenderManager::RenderShadowMapPass() {
-        // シャドウマップ用のレンダラーを取得
-        IRenderer* renderer = GetRenderer(RenderPassType::ShadowMap);
-        if (!renderer) {
-            return; // シャドウマップレンダラーが登録されていない
-        }
-
-        // 型の安全チェック
-        auto* shadowMapRenderer = static_cast<ShadowMapRenderer*>(renderer);
-        assert(shadowMapRenderer && "ShadowMapRenderer type mismatch!");
-
-        // リソースバリア: PIXEL_SHADER_RESOURCE -> DEPTH_WRITE
-        shadowMapManager_->TransitionToDepthWrite(cmdList_);
-
-        // シャドウマップをクリア
-        shadowMapManager_->ClearDepth(cmdList_);
-
-        // DSVを設定（RTVはなし）
-        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = shadowMapManager_->GetDSVHandle();
-        cmdList_->OMSetRenderTargets(0, nullptr, FALSE, &dsvHandle);
-
-        // ビューポートとシザー矩形を設定
-        UINT shadowMapSize = shadowMapManager_->GetShadowMapSize();
-        D3D12_VIEWPORT viewport = {};
-        viewport.TopLeftX = 0.0f;
-        viewport.TopLeftY = 0.0f;
-        viewport.Width = static_cast<FLOAT>(shadowMapSize);
-        viewport.Height = static_cast<FLOAT>(shadowMapSize);
-        viewport.MinDepth = 0.0f;
-        viewport.MaxDepth = 1.0f;
-        cmdList_->RSSetViewports(1, &viewport);
-
-        D3D12_RECT scissorRect = {};
-        scissorRect.left = 0;
-        scissorRect.top = 0;
-        scissorRect.right = static_cast<LONG>(shadowMapSize);
-        scissorRect.bottom = static_cast<LONG>(shadowMapSize);
-        cmdList_->RSSetScissorRects(1, &scissorRect);
-
-        // ライトVP行列を設定（ShadowMapManagerから取得）
-        shadowMapRenderer->SetLightViewProjection(shadowMapManager_->GetLightViewProjection());
-
-        // シャドウマップパスを開始
-        shadowMapRenderer->BeginPass(cmdList_, BlendMode::kBlendModeNone);
-
-        // モデルとスキニングモデルのみを描画
-        int drawCount = 0;
-        for (const auto& cmd : drawQueue_) {
-            if (!cmd.object || cmd.object->IsMarkedForDestroy()) {
-                continue;
-            }
-
-            // モデルまたはスキニングモデルのみシャドウを生成
-            if (cmd.passType == RenderPassType::Model) {
-                shadowMapRenderer->SetPSOForNormalModel();
-                cmd.object->DrawShadow(cmdList_);
-                drawCount++;
-            } else if (cmd.passType == RenderPassType::SkinnedModel) {
-                shadowMapRenderer->SetPSOForSkinnedModel();
-                cmd.object->DrawShadow(cmdList_);
-                drawCount++;
-            }
-        }
-
-        // シャドウマップパスを終了
-        shadowMapRenderer->EndPass();
     }
 
     void RenderManager::ApplyEnvironmentLightingToRenderers() {
@@ -529,7 +428,6 @@ namespace CoreEngine
 
     void RenderManager::ResetPassTypePriorities() {
         // デフォルト優先度（間隔 100 でユーザーが中間値を挿入しやすくする）
-        passTypePriorities_[RenderPassType::ShadowMap] = 0;
         passTypePriorities_[RenderPassType::Model] = 100;
         passTypePriorities_[RenderPassType::SkinnedModel] = 200;
         passTypePriorities_[RenderPassType::SkyBox] = 300;

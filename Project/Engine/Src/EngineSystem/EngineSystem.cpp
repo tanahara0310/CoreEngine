@@ -28,7 +28,6 @@
 // レンダーパス
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Graphics/Render/Pass/ASBuildPass.h"
-#include "Graphics/Render/Pass/ShadowMapPass.h"
 #include "Graphics/Render/Pass/GBufferPass.h"
 #include "Graphics/Render/Pass/HiZOcclusionPass.h"
 #include "Graphics/Render/Pass/SSAOPass.h"
@@ -266,7 +265,6 @@ namespace CoreEngine
         context.renderingTechniqueManager = GetComponent<RenderingTechniqueManager>();
         context.lightManager = GetComponent<LightManager>();
         context.gBufferManager = renderDomainContext_ ? renderDomainContext_->GetGBufferManager() : nullptr;
-        context.shadowMapManager = renderDomainContext_ ? renderDomainContext_->GetShadowMapManager() : nullptr;
         context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
         context.rtWaterCausticsManager = renderDomainContext_ ? renderDomainContext_->GetWaterCausticsRayTracingManager() : nullptr;
@@ -459,9 +457,6 @@ namespace CoreEngine
 
         // フレーム前処理: ボリューメトリック雲のノイズ生成（ダーティ時のみ Compute 実行）
         renderPipeline_->AddPass(std::make_unique<VolumetricCloudNoisePass>(), RenderPassPhase::FrameSetup, 20);
-
-        // シャドウマップ生成
-        renderPipeline_->AddPass(std::make_unique<ShadowMapPass>(), RenderPassPhase::Shadow, 0);
 
         // G-Buffer 蓄積（不透明 Model / SkinnedModel の描画）
         renderPipeline_->AddPass(std::make_unique<GBufferPass>(), RenderPassPhase::GBuffer);

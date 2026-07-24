@@ -60,13 +60,6 @@ namespace CoreEngine
         ///       変えるオブジェクト（ModelGameObject 等）のみオーバーライドする。
         virtual void Draw(const DrawViewInfo& view) { Draw(view.camera); }
 
-        /// @brief シャドウマップへの描画処理
-        /// @param cmdList DirectX12 コマンドリスト
-        /// @note シャドウパスで自動的に呼ばれる。
-        ///       モデルを持つオブジェクトは ModelGameObject が実装を提供する。
-        ///       基底クラスの実装は何もしない。
-        virtual void DrawShadow(ID3D12GraphicsCommandList* cmdList);
-
         // ===== アクティブ =====
 
         /// @brief アクティブ状態を設定する

@@ -19,7 +19,6 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectBase.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
@@ -366,14 +365,6 @@ namespace CoreEngine
                     waterCausticsTarget->GetResource(),
                     waterCausticsState);
             }
-        }
-
-        if (context.shadowMapManager) {
-            context.frameBlackboard->SetResource(
-                FrameBlackboard::ShadowMap,
-                context.shadowMapManager->GetSRVHandle(),
-                context.shadowMapManager->GetShadowMapResource(),
-                &context.shadowMapManager->GetCurrentState());
         }
 
         // RTShadowMask は View 依存の実体を持つため、現在の View に対応する

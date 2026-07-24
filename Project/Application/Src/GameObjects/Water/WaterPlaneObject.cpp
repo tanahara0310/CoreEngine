@@ -43,10 +43,6 @@ WaterPlaneObject::WaterPlaneObject(float size, uint32_t resolution, bool useFFTO
     waterCB_.waves[15] = { { -0.7f,  0.6f }, 0.008f,  5.5f, 2.6f, 0.01f, 6.0f };
 }
 
-void WaterPlaneObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {
-    (void)cmdList;
-}
-
 CoreEngine::RenderItem WaterPlaneObject::BuildRenderItem() const {
     CoreEngine::RenderItem item = CoreEngine::PrimitiveGameObject::BuildRenderItem();
     item.kind = CoreEngine::RenderItemKind::WaterSurface;

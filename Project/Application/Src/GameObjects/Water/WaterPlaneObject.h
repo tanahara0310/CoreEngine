@@ -27,9 +27,6 @@ public:
     /// @param useFFTOcean true のとき新規 FFT Ocean 描画経路を使用する
     WaterPlaneObject(float size = 50.0f, uint32_t resolution = 64, bool useFFTOcean = false);
 
-    /// @brief 水面はシャドウキャスターから除外する
-    void DrawShadow(ID3D12GraphicsCommandList* cmdList) override;
-
     CoreEngine::RenderPassType GetRenderPassType() const override {
         return CoreEngine::RenderPassType::WaterSurface;
     }

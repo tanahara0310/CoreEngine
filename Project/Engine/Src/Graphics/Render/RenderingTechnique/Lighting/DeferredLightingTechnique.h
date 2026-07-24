@@ -36,9 +36,6 @@ namespace CoreEngine
         /// @brief カメラ CBV アドレスを設定（スペキュラ計算用ビュー方向）
         void SetCameraCBVAddress(D3D12_GPU_VIRTUAL_ADDRESS address) { cameraCBVAddress_ = address; }
 
-        /// @brief ライトビュープロジェクション行列を設定（毎フレーム更新）
-        void UpdateLightViewProjection(const Matrix4x4& lightViewProjection);
-
         /// @brief 深度復元用の View*Projection 逆行列を更新する（ビューごとに毎回呼び出し）
         /// @details gCamera（cameraCBVAddress_）は補助ビュー描画中フリッカー防止のため
         ///          意図的に更新されない（Camera::BeginViewOverride 参照）ため、
@@ -100,10 +97,6 @@ namespace CoreEngine
 
         // ===== ライティングリソース =====
         D3D12_GPU_VIRTUAL_ADDRESS cameraCBVAddress_ = 0;
-
-        // ライトビュープロジェクション行列専用定数バッファ（毎フレーム更新）
-        Microsoft::WRL::ComPtr<ID3D12Resource> lightVPBuffer_;
-        D3D12_GPU_VIRTUAL_ADDRESS lightVPCBVAddress_ = 0;
 
         // 深度復元用 View*Projection 逆行列専用定数バッファ（RenderViewType ごとに個別バッファ。
         // 同一フレーム内で GameView/ReflectionView 両方から書き込まれるため単一バッファ不可）

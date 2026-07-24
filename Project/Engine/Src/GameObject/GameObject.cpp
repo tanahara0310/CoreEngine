@@ -33,10 +33,6 @@ namespace CoreEngine
         (void)camera;
     }
 
-    void GameObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {
-        (void)cmdList;
-    }
-
     // ===== アクティブ =====
 
     void GameObject::SetActive(bool active) { isActive_ = active; }

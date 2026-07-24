@@ -48,9 +48,6 @@ namespace CoreEngine {
         /// @brief ビュー/パス情報つき描画処理（本経路。カリング → model_->Draw → OnDraw）
         void Draw(const DrawViewInfo& view) override;
 
-        /// @brief シャドウ描画処理
-        void DrawShadow(ID3D12GraphicsCommandList* cmdList) override;
-
         /// @brief トランスフォームを取得
         WorldTransform& GetTransform() { return transform_; }
         /// @brief トランスフォームを取得（const版）

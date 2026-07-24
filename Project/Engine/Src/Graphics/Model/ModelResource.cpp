@@ -205,7 +205,7 @@ namespace CoreEngine
     void ModelResource::CreateGeometryBuffers()
     {
         // LOD0（原型）のインデックス数を先に確定してから簡略化インデックスを末尾へ追記する。
-        // indexCount_ は「原型のインデックス数」を維持する（BLAS 構築や DrawShadow が
+        // indexCount_ は「原型のインデックス数」を維持する（BLAS 構築が
         // モデル全体 = LOD0 を描く前提のため。LOD 描画はサブメッシュの範囲指定で行う）。
         const size_t lod0IndexCount = modelData_.indices.size();
         GenerateSubMeshLods();

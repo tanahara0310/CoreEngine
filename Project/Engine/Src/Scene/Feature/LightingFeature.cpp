@@ -44,43 +44,6 @@ namespace CoreEngine
         auto lightManager = ctx.engine->GetComponent<LightManager>();
         if (lightManager) {
             lightManager->UpdateAll();
-
-            // シャドウマップ用のライトView-Projection行列を更新
-            UpdateLightViewProjection(ctx);
-        }
-    }
-
-    void LightingFeature::UpdateLightViewProjection(SceneContext& ctx)
-    {
-        // ディレクショナルライトが有効な場合のみ、シャドウマップ用の行列を計算
-        Light* directionalLight = GetDirectionalLight();
-        if (!directionalLight || !directionalLight->enabled) {
-            return;
-        }
-
-        // ライト位置を計算（ライト方向の逆方向、シーン中心から一定距離）
-        Vector3 lightDir = MathCore::Vector::Normalize(directionalLight->direction);
-        Vector3 lightPos = MathCore::Vector::Multiply(-config_.shadowLightDistance, lightDir);
-
-        // ライトのビュー行列（シーン中心を見る）
-        Vector3 target = { 0.0f, 0.0f, 0.0f };
-        Vector3 up = { 0.0f, 1.0f, 0.0f };
-        Matrix4x4 lightView = MathCore::Matrix::LookAt(lightPos, target, up);
-
-        // シャドウマップ用の正射影行列
-        Matrix4x4 lightProjection = MathCore::Rendering::Orthographic(
-            -config_.shadowOrthoSize, config_.shadowOrthoSize,  // 左、上
-            config_.shadowOrthoSize, -config_.shadowOrthoSize,  // 右、下
-            config_.shadowNearPlane, config_.shadowFarPlane      // 近平面、遠平面
-        );
-
-        // View * Projection
-        Matrix4x4 lightViewProjection = MathCore::Matrix::Multiply(lightView, lightProjection);
-
-        // RenderManagerに設定
-        auto renderManager = ctx.engine->GetComponent<RenderManager>();
-        if (renderManager) {
-            renderManager->SetLightViewProjection(lightViewProjection);
         }
     }
 }

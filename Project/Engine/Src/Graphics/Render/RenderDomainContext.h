@@ -10,7 +10,6 @@ namespace CoreEngine
     class DirectXCommon;
     class DescriptorManager;
     class GBufferManager;
-    class ShadowMapManager;
     class AccelerationStructureManager;
     class RayTracingShadowManager;
     class WaterRefractionRayTracingManager;
@@ -45,7 +44,6 @@ namespace CoreEngine
         // アクセッサ
         GBufferManager* GetGBufferManager() { return gBufferManager_.get(); }
         const GBufferManager* GetGBufferManager()         const { return gBufferManager_.get(); }
-        ShadowMapManager* GetShadowMapManager() { return shadowMapManager_.get(); }
         AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
         RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
         WaterRefractionRayTracingManager* GetWaterRefractionRayTracingManager() { return rtWaterRefractionManager_.get(); }
@@ -57,7 +55,6 @@ namespace CoreEngine
 
     private:
         std::unique_ptr<GBufferManager>               gBufferManager_;
-        std::unique_ptr<ShadowMapManager>             shadowMapManager_;
         std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
         std::unique_ptr<RayTracingShadowManager>      rtShadowManager_;
         std::unique_ptr<WaterRefractionRayTracingManager> rtWaterRefractionManager_;

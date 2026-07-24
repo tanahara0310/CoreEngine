@@ -53,10 +53,10 @@ namespace CoreEngine
         /// @param params IBLパラメータ構造体
         void SetIBLParameters(const IBLParameters& params);
 
-        /// @brief シャドウマップ SRV ハンドルを設定
-        void SetShadowMap(D3D12_GPU_DESCRIPTOR_HANDLE handle) { shadowMapHandle_ = handle; }
-        /// @brief ライトビュープロジェクション CBV アドレスを設定
-        void SetLightViewProjection(D3D12_GPU_VIRTUAL_ADDRESS addr) { lightViewProjectionCBV_ = addr; }
+        /// @brief フォワード受影用 RT シャドウマスク SRV を設定（gRTShadowMask t6）
+        /// @details 毎フレーム DeferredLightingPass::Setup がメインライトのマスクを供給する。
+        ///          マスク未提供フレームは white1x1（=影なし）が入る。
+        void SetRTShadowMask(D3D12_GPU_DESCRIPTOR_HANDLE handle) { rtShadowMaskHandle_ = handle; }
 
         /// @brief 環境マップテクスチャが設定済みか確認
         bool HasEnvironmentMap() const { return iblParams_.HasEnvironmentMap(); }
@@ -117,8 +117,7 @@ namespace CoreEngine
         // IBL関連を構造体に集約
         IBLParameters iblParams_;
 
-        D3D12_GPU_DESCRIPTOR_HANDLE shadowMapHandle_ = {};
-        D3D12_GPU_VIRTUAL_ADDRESS   lightViewProjectionCBV_ = 0;
+        D3D12_GPU_DESCRIPTOR_HANDLE rtShadowMaskHandle_ = {};
 
         // IBL シーンパラメータ定数バッファ（environmentRotation）
         Microsoft::WRL::ComPtr<ID3D12Resource> iblParamsBuffer_;
@@ -141,8 +140,7 @@ namespace CoreEngine
             int spotLights = -1;
             int areaLights = -1;
             int envTexture = -1;
-            int lightVP = -1;
-            int shadowMap = -1;
+            int rtShadowMask = -1; ///< gRTShadowMask (t6) — フォワード受影用RTシャドウマスク
             int irradianceMap = -1;
             int prefilteredMap = -1;
             int brdfLUT = -1;

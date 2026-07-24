@@ -9,8 +9,8 @@
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
@@ -22,7 +22,7 @@ namespace CoreEngine
 {
     void DeferredLightingPass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
     {
-        // GBuffer / SSAO / ShadowMap / RTShadow / SceneDepth を読み、SceneColor を生成する。
+        // GBuffer / SSAO / RTShadow / SceneDepth を読み、SceneColor を生成する。
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferAlbedoAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -32,7 +32,6 @@ namespace CoreEngine
         }
         builder.Read(FrameBlackboard::WaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::RTWaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        builder.Read(FrameBlackboard::ShadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         if (context.viewSettings.enableRTShadow) {
             builder.Read(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         }
@@ -85,14 +84,8 @@ namespace CoreEngine
         // ===== IBL パラメータを GPU バッファに書き込む =====
         deferredLighting->UpdateIBLParams();
 
-        // ===== Shadow Map と LightViewProjection の設定 =====
-        if (context.shadowMapManager) {
-            // ライト VP 行列を GPU バッファに書き込む（毎フレーム更新）
-            deferredLighting->UpdateLightViewProjection(
-                context.shadowMapManager->GetLightViewProjection());
-        }
-
         // ===== RT シャドウマスクの設定（ライトごとに独立） =====
+        D3D12_GPU_DESCRIPTOR_HANDLE mainLightMask{}; // フォワード受影用（メインライトのマスク）
         if (context.rtShadowManager && context.rtShadowManager->IsInitialized()) {
             auto viewId = static_cast<RayTracingShadowManager::ViewID>(context.currentRTShadowViewId);
             // 全ライト分のハンドルをリセットしてから有効なものをセット
@@ -104,12 +97,30 @@ namespace CoreEngine
                     auto srvHandle = context.rtShadowManager->GetShadowSRVHandle(viewId, li);
                     if (srvHandle.ptr != 0) {
                         deferredLighting->SetRTShadowHandle(srvHandle, li);
+                        if (li == 0) {
+                            mainLightMask = srvHandle;
+                        }
                     }
                 }
             }
         } else {
             for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
                 deferredLighting->SetRTShadowHandle({}, li);
+            }
+        }
+
+        // ===== フォワード描画物（葉・草・水面等）の受影用にマスクを共有 =====
+        // gRTShadowMask(t6) としてバインドされる。マスク未提供フレームは white1x1 に戻し、
+        // シェーダ側の寸法ガード（1x1→影なし）へ倒す（t6 未バインドを防ぐ）。
+        if (context.renderManager) {
+            if (mainLightMask.ptr == 0) {
+                mainLightMask = TextureManager::GetInstance().Load("white1x1.png").gpuHandle;
+            }
+            for (auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
+                if (auto* renderer = dynamic_cast<BaseModelRenderer*>(
+                        context.renderManager->GetRenderer(passType))) {
+                    renderer->SetRTShadowMask(mainLightMask);
+                }
             }
         }
 
