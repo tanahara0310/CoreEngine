@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "EngineSystem.h"
 #include "Subsystem/RayTracingSubsystem.h"
+#ifdef USE_IMGUI
+#include "Settings/EditorSettingsSubsystem.h"
+#endif
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
 #include <cstring>
@@ -130,6 +133,8 @@ namespace CoreEngine
         }
 #ifdef USE_IMGUI
         {
+            // エディタ設定の自動保存（セクション登録元より先に生成しておく）
+            subsystems_.push_back(std::make_unique<EditorSettingsSubsystem>());
             subsystems_.push_back(std::make_unique<DebugSubsystem>());
         }
 #endif // USE_IMGUI

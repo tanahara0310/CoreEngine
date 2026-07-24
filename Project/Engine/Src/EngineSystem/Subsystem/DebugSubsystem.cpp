@@ -6,6 +6,8 @@
 #include "../EngineSystem.h"
 #include "EngineProfileScope.h"
 #include "../EngineConfig.h"
+#include "../Settings/EditorSettingsSubsystem.h"
+#include "Editor/ImGui/EditorSettingsPanel.h"
 
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
@@ -160,6 +162,25 @@ namespace CoreEngine
         cloudEditor_ = std::make_unique<VolumetricCloudEditor>();
         cloudEditor_->Initialize(*engine_);
 
+        // エディタ設定の自動保存セクション（登録時に保存済み JSON から前回状態が復元される）。
+        // 大気の太陽/月ライトはシーン寿命のため EnvironmentFeature 側の別セクションが扱う
+        if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
+            atmosphereSettingsSection_ = std::make_unique<AtmosphereSettingsSection>(engine_);
+            editorSettings->RegisterSection(atmosphereSettingsSection_.get(), this);
+            cloudSettingsSection_ = std::make_unique<VolumetricCloudSettingsSection>(engine_, cloudEditor_.get());
+            editorSettings->RegisterSection(cloudSettingsSection_.get(), this);
+            postEffectSettingsSection_ = std::make_unique<PostEffectSettingsSection>(engine_);
+            editorSettings->RegisterSection(postEffectSettingsSection_.get(), this);
+            renderingTechniqueSettingsSection_ = std::make_unique<RenderingTechniqueSettingsSection>(engine_);
+            editorSettings->RegisterSection(renderingTechniqueSettingsSection_.get(), this);
+        }
+
+        // Engine Settings ウィンドウの「Editor Settings」管理パネル
+        // （自動保存セクションの一覧・最終保存時刻・リセット / バックアップ復元）
+        gameDebugUI_->RegisterEnginePanel("Editor Settings", [this]() {
+            EditorSettingsPanel::Draw(engine_ ? engine_->GetSubsystem<EditorSettingsSubsystem>() : nullptr);
+        });
+
         // Shading パネル（IBL はシーン側で有効化され、マテリアルは強度のみ持つ）
         gameDebugUI_->RegisterEnginePanel("Shading", [this]() {
             auto* sceneManager = engine_->GetSceneManager();
@@ -263,6 +284,19 @@ namespace CoreEngine
 
     void DebugSubsystem::Finalize()
     {
+        // エディタ設定セクションの解除（解除時に最終保存が走る）。
+        // EngineSystem::Finalize は登録の逆順で呼ぶため、この時点で
+        // EditorSettingsSubsystem はまだ Finalize されていない
+        if (engine_) {
+            if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
+                editorSettings->UnregisterSections(this);
+            }
+        }
+        atmosphereSettingsSection_.reset();
+        cloudSettingsSection_.reset();
+        postEffectSettingsSection_.reset();
+        renderingTechniqueSettingsSection_.reset();
+
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();
 

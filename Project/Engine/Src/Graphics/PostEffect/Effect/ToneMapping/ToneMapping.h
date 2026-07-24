@@ -68,6 +68,18 @@ namespace CoreEngine
         /// @brief 現在の自動露出EV（自動露出無効時は 0）
         float GetAutoExposureEV() const { return autoExposureEnabled_ ? autoEV_ : 0.0f; }
 
+        // ===== 自動露出チューニング値のアクセサ（エディタ設定の自動保存用） =====
+
+        void SetPreserveSceneBrightness(bool preserve) { preserveSceneBrightness_ = preserve; }
+        bool GetPreserveSceneBrightness() const { return preserveSceneBrightness_; }
+        void SetAdaptationSpeed(float speed) { adaptationSpeed_ = speed; }
+        float GetAdaptationSpeed() const { return adaptationSpeed_; }
+        void SetKeyValue(float key) { keyValue_ = key; }
+        float GetKeyValue() const { return keyValue_; }
+        void SetAutoEVRange(float minEV, float maxEV) { minAutoEV_ = minEV; maxAutoEV_ = maxEV; }
+        float GetMinAutoEV() const { return minAutoEV_; }
+        float GetMaxAutoEV() const { return maxAutoEV_; }
+
         /// @brief 時間順応の更新用にデルタタイムを受け取る（PostEffectManager から毎フレーム呼ばれる）
         void Update(float deltaTime) override { deltaTime_ = deltaTime; }
 

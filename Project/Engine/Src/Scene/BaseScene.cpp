@@ -3,6 +3,10 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Debug/DebugCamera.h"
+#ifdef USE_IMGUI
+#include "Camera/Debug/DebugCameraSettingsSection.h"
+#include "EngineSystem/Settings/EditorSettingsSubsystem.h"
+#endif
 #include "Camera/Camera.h"
 #include "Camera/Camera2D.h"
 #include "Graphics/Common/DirectXCommon.h"
@@ -206,6 +210,16 @@ namespace CoreEngine
 
     void BaseScene::Finalize()
     {
+#ifdef USE_IMGUI
+        // エディタ設定セクションの解除（解除時に最終保存が走る）。カメラ破棄より先に行うこと
+        if (debugCameraSettingsSection_) {
+            if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
+                editorSettings->UnregisterSections(this);
+            }
+            debugCameraSettingsSection_.reset();
+        }
+#endif
+
         // 派生クラス固有の解放
         OnFinalize();
 
@@ -330,6 +344,14 @@ namespace CoreEngine
             settings.useGameView = true;
             debugCamera->SetSettings(settings);
         }
+#ifdef USE_IMGUI
+        // エディタ設定の自動保存: 登録時に前回終了時の姿勢・設定が復元され、以降の変更が
+        // 自動保存される。useGameView（コード制御フラグ・保存対象外）の設定後に登録すること
+        if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
+            debugCameraSettingsSection_ = std::make_unique<DebugCameraSettingsSection>(debugCamera.get());
+            editorSettings->RegisterSection(debugCameraSettingsSection_.get(), this);
+        }
+#endif
         cameraManager_->RegisterCamera("Debug", std::move(debugCamera));
 
         // デフォルトでリリースカメラをアクティブに設定

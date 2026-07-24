@@ -11,6 +11,10 @@
 
 #include "Scene/SceneSaveSystem.h"
 
+#ifdef USE_IMGUI
+#include "Camera/Debug/DebugCameraSettingsSection.h"
+#endif
+
 // 前方宣言
 class SkyBoxObject;
 
@@ -214,6 +218,12 @@ namespace CoreEngine
 
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
+
+#ifdef USE_IMGUI
+        // デバッグカメラのエディタ設定自動保存セクション
+        // （登録は SetupCamera、解除は Finalize。対象カメラは cameraManager_ が所有）
+        std::unique_ptr<DebugCameraSettingsSection> debugCameraSettingsSection_;
+#endif
 
         std::string gameViewCameraName_ = "Release";
     };

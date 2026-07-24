@@ -19,6 +19,12 @@ namespace CoreEngine {
         /// @brief 参照先を初期化し、環境エディタとして登録する
         void Initialize(EngineSystem& engine);
 
+        /// @brief 現在適用中のプリセット index を取得（-1=カスタム）
+        int GetActivePresetIndex() const { return activePresetIndex_; }
+
+        /// @brief プリセット index を設定（エディタ設定の復元用。UI 表示状態のみで、パラメータは変更しない）
+        void SetActivePresetIndex(int index) { activePresetIndex_ = index; }
+
     private:
         /// @brief 雲の編集パネル内容を描画する（Inspector 内に埋め込み）
         void DrawContent();

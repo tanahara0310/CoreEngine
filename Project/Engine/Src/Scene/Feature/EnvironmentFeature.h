@@ -1,6 +1,8 @@
 #pragma once
 
 #include "ISceneFeature.h"
+#include "Editor/Environment/AtmosphereLightsSettingsSection.h"
+#include <memory>
 
 // 前方宣言
 class SkyBoxObject;
@@ -50,5 +52,10 @@ namespace CoreEngine
         InfiniteGroundObject* groundPlane_ = nullptr;
 
         bool wantsDefaultGround_ = true;
+
+        // 太陽・月ライトのエディタ設定自動保存セクション（ライトはシーン寿命のため、
+        // ライト生成後の PostSceneInitialize で登録し Finalize で解除する。
+        // EditorSettingsSubsystem が無いビルド（USE_IMGUI 無効）では未登録のまま）
+        std::unique_ptr<AtmosphereLightsSettingsSection> atmosphereLightsSection_;
     };
 }

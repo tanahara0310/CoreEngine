@@ -97,6 +97,20 @@ namespace CoreEngine
             dxCommon->WaitForPreviousFrame();
         }
 
+        // DoChangeScene の旧シーン解放と同じ手順で必ず Finalize を呼んでから破棄する。
+        // Finalize を経ずに reset すると、シーンが外部システムへ登録したもの
+        // （EditorSettingsSubsystem のセクション・Feature の解放処理など）が
+        // 解除されないまま破棄され、終了処理でダングリングポインタになる
+        if (currentScene_) {
+            if (sceneTransition_) {
+                sceneTransition_->ClearBGMVolumeCallback();
+            }
+            if (auto* pipeline = engine_->GetRenderPipeline()) {
+                pipeline->RemovePassesByOwner(currentScene_.get());
+            }
+            currentScene_->Finalize();
+        }
+
         currentScene_.reset();
         currentSceneName_ = "None";
         sceneFactories_.clear();

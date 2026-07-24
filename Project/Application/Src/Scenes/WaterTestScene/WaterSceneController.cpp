@@ -8,6 +8,7 @@
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
+#include "EngineSystem/Settings/EditorSettingsSubsystem.h"
 #endif
 
 using namespace CoreEngine;
@@ -22,6 +23,10 @@ WaterSceneController::~WaterSceneController() {
 #ifdef USE_IMGUI
 	// シーン破棄後にドロワーがダングリングしないよう登録を解除する
 	if (engine_) {
+		// エディタ設定セクションの解除（解除時に最終保存が走る。パネル・facade はまだ生存中）
+		if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
+			editorSettings->UnregisterSections(this);
+		}
 		if (auto* debug = engine_->GetDebugSubsystem()) {
 			if (auto* ui = debug->GetGameDebugUI()) {
 				ui->UnregisterEnvironmentEditor(kEditorLabel, this);
@@ -49,6 +54,13 @@ void WaterSceneController::Initialize(WaterTestScene& scene, EngineSystem& engin
 		if (auto* ui = debug->GetGameDebugUI()) {
 			ui->RegisterEnvironmentEditor(kEditorLabel, this, [this]() { DrawImGuiContent(); });
 		}
+	}
+
+	// エディタ設定の自動保存（登録時に前回状態が復元される）。
+	// parameterPanel_.Initialize の既定プリセット適用より後に登録することで復元値が起点になる
+	settingsSection_.Initialize(&parameterPanel_, &runtimeController_, &editorFacade_);
+	if (auto* editorSettings = engine.GetSubsystem<EditorSettingsSubsystem>()) {
+		editorSettings->RegisterSection(&settingsSection_, this);
 	}
 #endif
 

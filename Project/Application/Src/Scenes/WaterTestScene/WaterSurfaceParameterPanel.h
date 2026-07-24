@@ -2,6 +2,7 @@
 
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 #include "WaterEditorFacade.h"
+#include "externals/nlohmann/single_include/nlohmann/json_fwd.hpp"
 
 class WaterSurfaceRuntimeController;
 class WaterPlaneObject;
@@ -18,6 +19,18 @@ public:
 	/// @param runtimeController 水面ランタイム制御
 	/// @param editorFacade Water UI 用 facade
 	void Draw(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+
+	// ===== エディタ設定の自動保存（WaterSettingsSection から委譲） =====
+
+	/// @brief UI キャッシュ（見た目/水質）と FFT・DXR屈折・コースティクス設定を JSON へ書き出す
+	/// @note ベース水質（σa/σs）＋濁度は実効係数へ合成後の水面側から復元できないため、
+	///       パネルの UI キャッシュが唯一の情報源になる。デバッグ表示系の項目は保存しない
+	void SerializeSettings(nlohmann::json& out, const WaterEditorFacade& editorFacade) const;
+
+	/// @brief JSON から UI キャッシュを復元し、水面・facade へ適用する
+	/// @note 適用は Draw と同じ経路（WaterPlaneObject の setter / facade の Apply）を使う
+	void DeserializeSettings(const nlohmann::json& in,
+		WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
 
 private:
 	/// @brief 指定プリセットの値を水面と UI キャッシュへ適用する

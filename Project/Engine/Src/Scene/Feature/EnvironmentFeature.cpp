@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "EnvironmentFeature.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/Settings/EditorSettingsSubsystem.h"
 #include "Camera/ICamera.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObjects/SkyBox/SkyBoxObject.h"
@@ -24,6 +25,16 @@ namespace CoreEngine
 
         // 既定の無限地面（y=0 のグレータイル床）のセットアップ
         SetupDefaultGround(ctx);
+
+        // 太陽・月ライトのエディタ設定自動保存（登録時に前回状態が復元される）。
+        // ライト（LightingFeature 生成）とシーン OnInitialize の両方より後のこの時点で
+        // 登録することで、復元値が最終的な起点になる
+        if (ctx.engine) {
+            if (auto* editorSettings = ctx.engine->GetSubsystem<EditorSettingsSubsystem>()) {
+                atmosphereLightsSection_ = std::make_unique<AtmosphereLightsSettingsSection>(ctx.engine);
+                editorSettings->RegisterSection(atmosphereLightsSection_.get(), this);
+            }
+        }
     }
 
     void EnvironmentFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
@@ -42,8 +53,17 @@ namespace CoreEngine
         }
     }
 
-    void EnvironmentFeature::Finalize(SceneContext&)
+    void EnvironmentFeature::Finalize(SceneContext& ctx)
     {
+        // エディタ設定セクションの解除（解除時に最終保存が走る）。
+        // ライトのクリア（SceneManager::DoChangeScene の ClearAllLights）より前に行う
+        if (atmosphereLightsSection_ && ctx.engine) {
+            if (auto* editorSettings = ctx.engine->GetSubsystem<EditorSettingsSubsystem>()) {
+                editorSettings->UnregisterSections(this);
+            }
+        }
+        atmosphereLightsSection_.reset();
+
         // SkyBox / 無限地面は GameObjectManager が所有しているためポインタのみクリア
         skyBox_ = nullptr;
         groundPlane_ = nullptr;

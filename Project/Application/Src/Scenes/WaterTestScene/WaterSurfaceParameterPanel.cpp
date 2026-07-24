@@ -315,6 +315,8 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(
 	}
 
 	// Jerlov 水型プリセット: ベース係数を一括設定し、濁度をリセットする
+	// （復元値が範囲外でも安全に表示できるよう、使用直前にクランプする）
+	surfaceParameters_.jerlovPreset = std::clamp(surfaceParameters_.jerlovPreset, 0, kJerlovWaterTypeCount - 1);
 	if (ImGui::BeginCombo("水質プリセット (Jerlov)", kJerlovWaterTypes[surfaceParameters_.jerlovPreset].name)) {
 		for (int i = 0; i < kJerlovWaterTypeCount; ++i) {
 			const bool selected = (surfaceParameters_.jerlovPreset == i);

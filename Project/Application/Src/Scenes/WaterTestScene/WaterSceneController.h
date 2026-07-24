@@ -9,6 +9,7 @@ class WaterTestScene;
 #include "WaterEditorFacade.h"
 #include "WaterSurfaceDebugPanel.h"
 #include "WaterSurfaceParameterPanel.h"
+#include "WaterSettingsSection.h"
 #endif
 
 class WaterSceneController {
@@ -52,6 +53,9 @@ private:
 	WaterEditorFacade editorFacade_{};
 	/// @brief 環境エディタの登録解除に使うエンジン参照（非所有）
 	CoreEngine::EngineSystem* engine_ = nullptr;
+
+	/// @brief 水面エディタ設定の自動保存セクション（登録は Initialize、解除はデストラクタ）
+	WaterSettingsSection settingsSection_{};
 #endif
 
 	/// @brief 水面オブジェクト生成とフレーム同期を担当するランタイム制御
