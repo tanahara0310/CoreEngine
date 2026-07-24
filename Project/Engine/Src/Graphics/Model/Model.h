@@ -14,8 +14,10 @@
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Model/Skeleton/SkinCluster.h"
+#include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
 #include "Graphics/Render/Shadow/ShadowDrawPacket.h"
+#include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Animation/AnimationPlayer.h"
 
 // 前方宣言
@@ -40,7 +42,6 @@ namespace CoreEngine
         /// @brief デフォルトコンストラクタ
         Model() = default;
 
-        /// @brief デストラクタ
         ~Model() = default;
 
         /// @brief IBLテクスチャ（Irradiance/Prefiltered/BRDF LUT）がレンダラーに全て設定済みか確認
@@ -62,9 +63,10 @@ namespace CoreEngine
 
         /// @brief モデルを描画（スキニングモデルか通常モデルかは内部で自動判別）
         /// @param transform ワールドトランスフォーム
-        /// @param camera カメラ（ICamera インターフェース）
+        /// @param view ビュー/パス情報（カメラ・ビュー種別・GBufferパスか）。
+        ///             Hi-Z 適用可否やモーションベクター履歴の更新可否はこの情報だけで決まる
         /// @param textureHandle テクスチャハンドル（省略時はモデル組み込みテクスチャを使用）
-        void Draw(const WorldTransform& transform, const CoreEngine::ICamera* camera,
+        void Draw(const WorldTransform& transform, const DrawViewInfo& view,
             D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
 
         /// @brief シャドウマップ用の描画（深度のみ）
@@ -184,9 +186,12 @@ namespace CoreEngine
         // カスタムリソースバインドプロバイダ（nullptr = 追加バインドなし）
         const ICustomShaderProvider* customProvider_ = nullptr;
 
+        // 可視性評価（LOD選択・Hi-Zオクルージョン判定）。最適化の実装詳細はこちらが持つ
+        ModelVisibility visibility_;
+
         // 内部ヘルパーメソッド
         /// @brief 即時描画（スキニングモデル）用の WVP 行列データを更新する
-        void UpdateTransformationMatrix(const WorldTransform& transform, const ICamera* camera);
+        void UpdateTransformationMatrix(const WorldTransform& transform, const DrawViewInfo& view);
 
         /// @brief SkinCluster のマトリックスパレットを指定スケルトンの姿勢で更新する
         void UpdateSkinCluster(const Skeleton& skeleton);
@@ -207,11 +212,6 @@ namespace CoreEngine
         /// @brief サブメッシュのマテリアルスロットに対応するマテリアル定数バッファのGPUアドレスを取得（範囲外はスロット0）
         /// @details オーバーライド未発生のスロットは ModelResource 共有のデフォルトマテリアルのアドレスを返す。
         D3D12_GPU_VIRTUAL_ADDRESS MaterialCBVForSlot(uint32_t materialIndex) const;
-
-        /// @brief AABB の画面投影サイズから LOD レベルを算出する（0=フル詳細）
-        /// @details 距離でなく画面占有率ベースのため、近距離では常にフル詳細になる。
-        ///          返り値はバイアス加算後に SubMeshData::GetLod でクランプされる前提。
-        uint32_t ComputeLodIndex(const Matrix4x4& worldMatrix, const ICamera* camera) const;
 
         /// @brief スキニングモデル用の ModelDrawPacket を組み立てる
         ModelDrawPacket BuildSkinningDrawPacket(const SubMeshData& subMesh,

@@ -2,6 +2,7 @@
 
 #include "Graphics/Render/RenderPassType.h"
 #include "Graphics/Render/RenderItem.h"
+#include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Vector/Vector3.h"
 #include "Collider/Collider.h"
@@ -50,9 +51,14 @@ namespace CoreEngine
 
         /// @brief 毎フレームの描画処理
         /// @param camera 描画に使用するカメラ（2Dオブジェクトは nullptr 可）
-        /// @note RenderManager 経由でレンダーパス順に自動的に呼ばれる。
-        ///       派生クラスでオーバーライドして描画コマンドを発行する。
+        /// @note 派生クラスでオーバーライドして描画コマンドを発行する。
         virtual void Draw(const ICamera* camera);
+
+        /// @brief ビュー/パス情報つきの描画処理（RenderManager からの本経路）
+        /// @param view カメラ・ビュー種別・パス種別をまとめた描画コンテキスト
+        /// @note 既定実装は Draw(view.camera) へ委譲する。パス/ビュー種別で挙動を
+        ///       変えるオブジェクト（ModelGameObject 等）のみオーバーライドする。
+        virtual void Draw(const DrawViewInfo& view) { Draw(view.camera); }
 
         /// @brief シャドウマップへの描画処理
         /// @param cmdList DirectX12 コマンドリスト

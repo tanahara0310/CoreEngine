@@ -41,9 +41,11 @@ class RayTracingSubsystem;
 class RenderPipeline;
 class RenderingTechniqueManager;
 class RenderDomainContext;
+class HiZOcclusionSystem;
 
 class EngineSystem {
 public:
+    EngineSystem(); // 前方宣言型の unique_ptr メンバがあるため .cpp で定義する
     ~EngineSystem();
     /// @brief エンジンシステムの初期化
     /// @param winApp ウィンドウアプリケーション
@@ -73,6 +75,9 @@ public:
 
     /// @brief RenderDomainContextを取得
     RenderDomainContext* GetRenderDomainContext() { return renderDomainContext_.get(); }
+
+    /// @brief Hi-Zオクルージョンカリングシステムを取得
+    HiZOcclusionSystem* GetHiZOcclusionSystem() { return hiZOcclusionSystem_.get(); }
 
     // ──────────────────────────────────────────────────────────
     // コンポーネントアクセッサ
@@ -193,6 +198,12 @@ private:
 
     // ドメイン管理コンテキスト（GBuffer / シャドウ / レイトレーシング）
     std::unique_ptr<RenderDomainContext> renderDomainContext_;
+
+    // Hi-Z オクルージョンカリングシステム（GraphicsComponentFactory が生成）。
+    // GPU リソースは Finalize 内の Shutdown() で解放するが、インスタンス自体は
+    // 全 Model（~ModelVisibility が UnregisterTarget を呼ぶ）より長く生存させる
+    // 必要があるため、EngineSystem のデストラクタまで保持する
+    std::unique_ptr<HiZOcclusionSystem> hiZOcclusionSystem_;
 
     // ──────────────────────────────────────────────────────────
     // サブシステム管理

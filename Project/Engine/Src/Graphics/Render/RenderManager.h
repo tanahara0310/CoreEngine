@@ -3,6 +3,7 @@
 #include "IRenderer.h"
 #include "RenderItem.h"
 #include "RenderPassType.h"
+#include "DrawViewInfo.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
@@ -86,23 +87,27 @@ namespace CoreEngine
     /// @brief シャドウパスのみ描画（描画キュー必須）
     void DrawShadowPass();
 
+    // 各 Draw*Pass の viewType はパスが context.viewSettings.viewType から明示的に渡す。
+    // 描画オブジェクトへは DrawViewInfo（カメラ・ビュー種別・パス種別）として届く。
+    // 省略時は GameView（RenderGraph を経由しないレガシー呼び出し向け）。
+
     /// @brief G-Bufferパスのみ描画（不透明 Model / SkinnedModel を蓄積）
-    void DrawGBufferPass();
+    void DrawGBufferPass(RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
-    void DrawGeometryPass();
+    void DrawGeometryPass(RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief 通常 RenderItem キューのみ描画する
-    void DrawMainQueuePass();
+    void DrawMainQueuePass(RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief 水面 RenderItem キューのみ描画する
-    void DrawWaterQueuePass();
+    void DrawWaterQueuePass(RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief Sky RenderItem キューのみ描画する
-    void DrawSkyQueuePass();
+    void DrawSkyQueuePass(RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief Transparent RenderItem キューのみ描画する
-    void DrawTransparentQueuePass();
+    void DrawTransparentQueuePass(RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief 描画パスタイプの描画順序優先度を設定（小さいほど先に描画）
     /// @param type 描画パスタイプ
@@ -195,17 +200,9 @@ namespace CoreEngine
     /// @return カメラポインタ
     const CoreEngine::ICamera* GetCameraForPass(RenderPassType passType);
 
-    /// @brief 通常描画パス
-    void RenderNormalPass();
-
-    /// @brief 指定キューに対する通常描画パス
-    void RenderNormalPassQueue(const std::vector<RenderItem>& queue);
-
-    /// @brief フィルタ条件付き通常描画パス
-    void RenderNormalPassFiltered(const std::function<bool(const RenderItem&)>& filter);
-
-    /// @brief 指定キューに対するフィルタ条件付き通常描画パス
-    void RenderNormalPassFilteredQueue(const std::vector<RenderItem>& queue, const std::function<bool(const RenderItem&)>& filter);
+    /// @brief 指定キューに対する通常（Forward 系）描画パス
+    /// @param viewType 実行中のビュー種別（DrawViewInfo として各オブジェクトへ渡す）
+    void RenderNormalPassQueue(const std::vector<RenderItem>& queue, RenderViewType viewType);
 
     /// @brief 指定キューを sortKey 順にソートする
     void SortRenderQueue(std::vector<RenderItem>& queue);

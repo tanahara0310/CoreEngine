@@ -1,15 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
-      <Filter>Externals\meshoptimizer\src</Filter>
-    </ClCompile>
-    <ClCompile Include="Externals\meshoptimizer\src\simplifier.cpp">
-      <Filter>Externals\meshoptimizer\src</Filter>
-    </ClCompile>
-    <ClCompile Include="Externals\meshoptimizer\src\vcacheoptimizer.cpp">
-      <Filter>Externals\meshoptimizer\src</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
@@ -496,7 +487,16 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.cpp">
+      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.cpp">
+      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GeometryPass.cpp">
@@ -909,6 +909,24 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp">
       <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\indexgenerator.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\overdrawoptimizer.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\simplifier.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\vcacheoptimizer.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
+      <Filter>Externals\meshoptimizer\src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1419,7 +1437,19 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.h">
+      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.h">
+      <Filter>Engine\Src\Graphics\Render\Culling</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderOptimizationSettings.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GeometryPass.h">
@@ -1491,6 +1521,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.h">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\DrawViewInfo.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderItem.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
@@ -1498,6 +1531,9 @@
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderPassType.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderViewType.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.h">
@@ -2070,6 +2106,9 @@
     <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.h">
       <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h">
+      <Filter>Externals\meshoptimizer\src</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
@@ -2478,6 +2517,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render">
       <UniqueIdentifier>{914A25D2-E4AB-4015-82E8-D55EC9CA375E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\Culling">
+      <UniqueIdentifier>{7A3C41B8-52D9-4E6F-9C1A-8B4E2D5F0A63}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\GBuffer">
       <UniqueIdentifier>{BBE36D21-BD6D-4AFF-AC1C-E4DD0FA39218}</UniqueIdentifier>

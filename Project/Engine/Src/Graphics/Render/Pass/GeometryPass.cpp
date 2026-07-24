@@ -75,16 +75,16 @@ namespace CoreEngine
 
     void GeometryPass::DrawQueue(const RenderContext& context)
     {
-        context.renderManager->DrawMainQueuePass();
+        context.renderManager->DrawMainQueuePass(context.viewSettings.viewType);
     }
 
     void SkyBoxQueuePass::DrawQueue(const RenderContext& context)
     {
-        context.renderManager->DrawSkyQueuePass();
+        context.renderManager->DrawSkyQueuePass(context.viewSettings.viewType);
     }
 
     void TransparentQueuePass::DrawQueue(const RenderContext& context)
     {
-        context.renderManager->DrawTransparentQueuePass();
+        context.renderManager->DrawTransparentQueuePass(context.viewSettings.viewType);
     }
 }

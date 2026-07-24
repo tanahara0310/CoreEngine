@@ -10,6 +10,7 @@
 
 #include "externals/meshoptimizer/src/meshoptimizer.h"
 
+#include <algorithm>
 #include <cassert>
 #include <format>
 #include <limits>
@@ -140,6 +141,67 @@ namespace CoreEngine
         }
     }
 
+    void ModelResource::OptimizeGeometryForGpu()
+    {
+        const size_t vertexCount = modelData_.vertices.size();
+        if (vertexCount == 0 || modelData_.indices.empty()) {
+            return;
+        }
+
+        // indices は int32_t、meshopt は unsigned int を取る。頂点インデックスは非負なので
+        // 同幅の reinterpret_cast で問題ない（既存の LOD 生成コードと同じ規約）。
+        unsigned int* indexData = reinterpret_cast<unsigned int*>(modelData_.indices.data());
+        const float* vertexPositions = &modelData_.vertices[0].position.x;
+        const size_t stride = sizeof(VertexData);
+        constexpr float kOverdrawThreshold = 1.05f; // ACMR を最大 5% 悪化させてよい範囲でオーバードローを削減
+
+        // (1)(2) 各 LOD 範囲へ 頂点キャッシュ最適化 → オーバードロー最適化（どちらも VB 不変）。
+        // 範囲の startIndex/indexCount は変わらないため、後段のドロー範囲指定はそのまま有効。
+        std::vector<unsigned int> scratch;
+        for (const auto& subMesh : modelData_.subMeshes) {
+            for (uint32_t lod = 0; lod < subMesh.lodCount; ++lod) {
+                const SubMeshLodRange& range = subMesh.lods[lod];
+                if (range.indexCount < 3) {
+                    continue;
+                }
+                unsigned int* rangeIndices = indexData + range.startIndex;
+                scratch.assign(rangeIndices, rangeIndices + range.indexCount);
+
+                // 頂点キャッシュ最適化: post-transform キャッシュのヒット率を上げ VS 呼び出しを減らす
+                meshopt_optimizeVertexCache(
+                    rangeIndices, scratch.data(), range.indexCount, vertexCount);
+
+                // オーバードロー最適化: カメラ非依存で前後関係の良い三角形順へ並べ替え
+                scratch.assign(rangeIndices, rangeIndices + range.indexCount);
+                meshopt_optimizeOverdraw(
+                    rangeIndices, scratch.data(), range.indexCount,
+                    vertexPositions, vertexCount, stride, kOverdrawThreshold);
+            }
+        }
+
+        // (3) VertexFetch 最適化は VB を並べ替える。スキンモデルは influence バッファが
+        // 頂点インデックス参照（SkinClusterGenerator）のため VB を動かせない。静的モデルのみ適用する。
+        if (modelData_.skinClusterData.empty()) {
+            // 全インデックス（全 LOD・全サブメッシュ）を対象に remap を作る。
+            // これで LOD ごとの範囲を跨いで一貫した VB 並べ替えとインデックス再マップになる。
+            std::vector<unsigned int> remap(vertexCount);
+            const size_t uniqueVertices = meshopt_optimizeVertexFetchRemap(
+                remap.data(), indexData, modelData_.indices.size(), vertexCount);
+            (void)uniqueVertices;
+
+            // remapVertexBuffer は scatter（vertices[i] → dst[remap[i]]）のため in-place 不可。
+            // 別バッファへ書き出してから差し替える。remapIndexBuffer は要素毎の gather で in-place 可。
+            std::vector<VertexData> remappedVertices(vertexCount);
+            meshopt_remapVertexBuffer(
+                remappedVertices.data(), modelData_.vertices.data(),
+                vertexCount, stride, remap.data());
+            modelData_.vertices = std::move(remappedVertices);
+
+            meshopt_remapIndexBuffer(
+                indexData, indexData, modelData_.indices.size(), remap.data());
+        }
+    }
+
     void ModelResource::CreateGeometryBuffers()
     {
         // LOD0（原型）のインデックス数を先に確定してから簡略化インデックスを末尾へ追記する。
@@ -147,6 +209,10 @@ namespace CoreEngine
         // モデル全体 = LOD0 を描く前提のため。LOD 描画はサブメッシュの範囲指定で行う）。
         const size_t lod0IndexCount = modelData_.indices.size();
         GenerateSubMeshLods();
+
+        // GPU 向けジオメトリ再配置（VB/IB アップロード前・LOD 生成後）。
+        // 頂点キャッシュ効率を上げ、頂点シェーダ呼び出し（GBuffer ラスタの頂点バウンド要因）を削減する。
+        OptimizeGeometryForGpu();
 
         // 頂点数・インデックス数を設定
         vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
@@ -194,6 +260,62 @@ namespace CoreEngine
             if (vertex.position.y > localBoundingBox_.max.y) localBoundingBox_.max.y = vertex.position.y;
             if (vertex.position.z > localBoundingBox_.max.z) localBoundingBox_.max.z = vertex.position.z;
         }
+
+        // ===== サブメッシュ単位のローカルAABBを算出（Hi-Zオクルージョンカリングの判定単位） =====
+        // LOD0 のインデックス範囲が参照する頂点のみ集計する。簡略化 LOD（lods[1..]）は
+        // 同一頂点バッファの部分集合を参照するため、LOD0 の AABB で保守的に覆える。
+        subMeshLocalBounds_.assign(modelData_.subMeshes.size(), BoundingBox());
+        for (size_t s = 0; s < modelData_.subMeshes.size(); ++s) {
+            const SubMeshData& subMesh = modelData_.subMeshes[s];
+            BoundingBox& bounds = subMeshLocalBounds_[s];
+            const size_t endIndex = (std::min)(
+                static_cast<size_t>(subMesh.startIndex) + subMesh.indexCount,
+                modelData_.indices.size());
+            for (size_t i = subMesh.startIndex; i < endIndex; ++i) {
+                const int32_t vertexIndex = modelData_.indices[i];
+                if (vertexIndex < 0
+                    || static_cast<size_t>(vertexIndex) >= modelData_.vertices.size()) {
+                    continue;
+                }
+                const auto& p = modelData_.vertices[vertexIndex].position;
+                if (p.x < bounds.min.x) bounds.min.x = p.x;
+                if (p.y < bounds.min.y) bounds.min.y = p.y;
+                if (p.z < bounds.min.z) bounds.min.z = p.z;
+                if (p.x > bounds.max.x) bounds.max.x = p.x;
+                if (p.y > bounds.max.y) bounds.max.y = p.y;
+                if (p.z > bounds.max.z) bounds.max.z = p.z;
+            }
+        }
+
+        // 不変条件の検証: 添字対応の配列は必ずサブメッシュ数と一致させる。
+        // AABB が無効なサブメッシュ（空範囲・全インデックス不正）は描画には害がない
+        // （利用側が IsValid で除外しカリング対象外になるだけ）が、データ異常なので記録する
+        assert(subMeshLocalBounds_.size() == modelData_.subMeshes.size());
+        for (size_t s = 0; s < subMeshLocalBounds_.size(); ++s) {
+            if (!subMeshLocalBounds_[s].IsValid()) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource, "{}",
+                    "[ModelResource] サブメッシュAABBが無効（空範囲/不正インデックス）: "
+                    + filePath_ + " subMesh=" + std::to_string(s));
+            }
+        }
+    }
+
+    const BoundingBox& ModelResource::GetSubMeshLocalBounds(uint32_t subMeshIndex) const
+    {
+        if (subMeshIndex < subMeshLocalBounds_.size()) {
+            return subMeshLocalBounds_[subMeshIndex];
+        }
+        // ここに来るのはサブメッシュとの対応ズレ（呼び出し側のバグ）か未ロード時のみ。
+        // Debug では即停止し、Release では保守的にモデル全体 AABB で誤カリングを防ぐ
+        assert(false && "GetSubMeshLocalBounds: subMeshIndex out of range (index mismatch bug)");
+        if (!subMeshBoundsRangeWarned_) {
+            subMeshBoundsRangeWarned_ = true;
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource, "{}",
+                "[ModelResource] GetSubMeshLocalBounds 範囲外アクセス（モデル全体AABBへフォールバック）: "
+                + filePath_ + " subMesh=" + std::to_string(subMeshIndex)
+                + " size=" + std::to_string(subMeshLocalBounds_.size()));
+        }
+        return localBoundingBox_;
     }
 
     void ModelResource::LoadFromFile(const std::string& directoryPath, const std::string& filename)

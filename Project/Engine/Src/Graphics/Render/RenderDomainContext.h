@@ -9,7 +9,6 @@ namespace CoreEngine
 {
     class DirectXCommon;
     class DescriptorManager;
-    class DepthStencilManager;
     class GBufferManager;
     class ShadowMapManager;
     class AccelerationStructureManager;
@@ -46,10 +45,6 @@ namespace CoreEngine
         // アクセッサ
         GBufferManager* GetGBufferManager() { return gBufferManager_.get(); }
         const GBufferManager* GetGBufferManager()         const { return gBufferManager_.get(); }
-        /// @brief 平面反射ビュー専用の半解像度 G-Buffer（ReflectionView 実行中のみ context に差し替えて使う）
-        GBufferManager* GetReflectionGBufferManager() { return reflectionGBufferManager_.get(); }
-        /// @brief 平面反射ビュー専用の半解像度深度（ReflectionView 実行中のみ context に差し替えて使う）
-        DepthStencilManager* GetReflectionDepthStencilManager() { return reflectionDepthStencilManager_.get(); }
         ShadowMapManager* GetShadowMapManager() { return shadowMapManager_.get(); }
         AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
         RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
@@ -62,8 +57,6 @@ namespace CoreEngine
 
     private:
         std::unique_ptr<GBufferManager>               gBufferManager_;
-        std::unique_ptr<GBufferManager>               reflectionGBufferManager_;      ///< 反射ビュー用（半解像度）
-        std::unique_ptr<DepthStencilManager>          reflectionDepthStencilManager_; ///< 反射ビュー用（半解像度）
         std::unique_ptr<ShadowMapManager>             shadowMapManager_;
         std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
         std::unique_ptr<RayTracingShadowManager>      rtShadowManager_;

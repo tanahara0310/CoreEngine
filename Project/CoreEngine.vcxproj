@@ -183,15 +183,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="Externals\meshoptimizer\src\simplifier.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="Externals\meshoptimizer\src\vcacheoptimizer.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneSetup.cpp" />
@@ -357,7 +348,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GeometryPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
@@ -498,6 +492,24 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
+    <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\indexgenerator.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\overdrawoptimizer.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\simplifier.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\vcacheoptimizer.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Scenes\HomeworkScene\HomeworkScene.h" />
@@ -669,7 +681,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderOptimizationSettings.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GeometryPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPass.h" />
@@ -693,9 +709,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueNames.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\DrawViewInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderItem.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderPassType.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderViewType.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTarget.h" />
@@ -886,6 +904,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h" />
     <ClInclude Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.h" />
     <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.h" />
+    <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
@@ -931,6 +950,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Build\Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->
+  </ItemGroup>
+  <ItemGroup>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

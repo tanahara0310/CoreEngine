@@ -96,6 +96,14 @@ namespace CoreEngine
         /// @return ローカル空間AABB
         const BoundingBox& GetLocalBoundingBox() const { return localBoundingBox_; }
 
+        /// @brief サブメッシュ単位のローカル AABB を取得（Hi-Z オクルージョンカリングの判定単位）
+        /// @details LOD0 のインデックス範囲から算出。簡略化 LOD は同一頂点の部分集合のため
+        ///          LOD0 の AABB で保守的に覆える。
+        ///          範囲外はサブメッシュとの対応ズレ（バグ）なので Debug では assert で停止し、
+        ///          Release ではモデル全体の AABB へフォールバック（初回のみ警告ログ）する。
+        /// @param subMeshIndex サブメッシュインデックス
+        const BoundingBox& GetSubMeshLocalBounds(uint32_t subMeshIndex) const;
+
         /// @brief サブメッシュ情報を取得
         /// @return サブメッシュデータのベクター
         const std::vector<SubMeshData>& GetSubMeshes() const { return modelData_.subMeshes; }
@@ -165,6 +173,12 @@ namespace CoreEngine
         /// 頂点バッファは共有のため追加しない。ハイポリモデルのみ対象（小物はスキップ）。
         void GenerateSubMeshLods();
 
+        /// @brief meshoptimizer で GPU 向けにジオメトリを再配置する（GB/IB アップロード前に呼ぶ）。
+        /// 頂点キャッシュ最適化＋オーバードロー最適化を全 LOD 範囲へ適用（VB 不変で安全）。
+        /// 静的モデル（skinClusterData 空）のみ VertexFetch 最適化で VB を並べ替える
+        /// （スキンモデルは influence バッファが頂点インデックス参照のため VB 並べ替え不可）。
+        void OptimizeGeometryForGpu();
+
         /// @brief マテリアルスロット数分の共有デフォルト MaterialInstance を作成する
         /// LoadFromFile/LoadFromModelData の末尾（テクスチャハンドル確定後）で呼ぶ。
         void CreateDefaultMaterials();
@@ -193,6 +207,16 @@ namespace CoreEngine
 
         // ローカル空間のバウンディングボックス（頂点データから算出）
         BoundingBox localBoundingBox_;
+
+        // サブメッシュ単位のローカル AABB（LOD0 範囲から算出）
+        // SubMeshData 本体でなく別配列で持つのは、値コピーされる SubMeshData のレイアウトを
+        // 不変に保つため（サイズ変更×増分ビルド中断でヒープ破損事故の前歴あり）。
+        // 不変条件: 添字は modelData_.subMeshes と 1:1 対応し、サイズは
+        // CreateGeometryBuffers で必ず一致させる（ズレは GetSubMeshLocalBounds が検出する）
+        std::vector<BoundingBox> subMeshLocalBounds_;
+
+        // GetSubMeshLocalBounds の範囲外警告を初回のみ出すためのフラグ（ログスパム防止）
+        mutable bool subMeshBoundsRangeWarned_ = false;
 
         std::map<std::string, Animation> animations_;
 

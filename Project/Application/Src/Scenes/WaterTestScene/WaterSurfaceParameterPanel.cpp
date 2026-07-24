@@ -47,9 +47,6 @@ constexpr int kJerlovWaterTypeCount = static_cast<int>(std::size(kJerlovWaterTyp
 constexpr float kTurbidityAbsorptionGain[3] = { 0.05f, 0.08f, 0.35f };
 constexpr float kTurbidityScatteringGain[3] = { 0.22f, 0.26f, 0.20f };
 
-// 白砂海底の検証用ティント色（乗算）。サンゴ砂のわずかに暖色の白
-constexpr float kSeabedSandTint[4] = { 0.93f, 0.88f, 0.76f, 1.0f };
-
 enum FFTOceanPresetIndex : int {
 	kFFTOceanPresetCustom = 0,
 	kFFTOceanPresetMirrorLike = 1,
@@ -346,15 +343,6 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(
 		ApplyEffectiveOpticalCoefficients(waterPlane);
 	}
 	ImGui::TextDisabled("自然な水は 吸収: 赤 > 緑 > 青。濁度は青の吸収と粒子散乱を加算（緑濁り方向）");
-
-	// 浅瀬エメラルドは白い海底アルベドがあって初めて映える（検証補助）
-	if (ImGui::Checkbox("海底を白砂色にする（検証用）", &seabedSandTintEnabled_)) {
-		if (ModelObject* ground = runtimeController.GetGroundObject()) {
-			ground->SetMaterialColor(seabedSandTintEnabled_
-				? CoreEngine::Vector4{ kSeabedSandTint[0], kSeabedSandTint[1], kSeabedSandTint[2], kSeabedSandTint[3] }
-				: CoreEngine::Vector4{ 1.0f, 1.0f, 1.0f, 1.0f });
-		}
-	}
 
 	ImGui::Spacing();
 	ImGui::SeparatorText("共通 UV アニメーション");

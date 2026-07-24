@@ -11,7 +11,6 @@ namespace CoreEngine
         constexpr const char* PostEffectIntermediatePrefix = "PostEffectIntermediate";
         constexpr const char* PostEffectFinal = "PostEffectFinal";
         constexpr const char* BackBuffer = "BackBuffer";
-        constexpr const char* ReflectionView = "ReflectionView";
         constexpr const char* SSAOBuffer = "SSAOBuffer";
         constexpr const char* SSAOBlurBuffer = "SSAOBlurBuffer";
         constexpr const char* WaterCausticsBuffer = "WaterCausticsBuffer";

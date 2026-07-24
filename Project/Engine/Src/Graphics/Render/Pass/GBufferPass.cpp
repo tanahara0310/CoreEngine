@@ -8,7 +8,6 @@
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderGraph.h"
-#include "Graphics/Render/Model/BaseModelRenderer.h"
 
 namespace CoreEngine
 {
@@ -44,19 +43,9 @@ namespace CoreEngine
             context.depthStencilManager,
             context.dxCommon->GetSRVHeap());
 
-        // 反射ビューは半解像度かつ水面の歪みで細部が見えないため、LOD を 1 段落とす。
-        // パス分離契約 2 に従い、ビュー依存の状態は毎回このパス自身が設定する。
-        const uint32_t lodBias =
-            (context.viewSettings.viewType == RenderViewType::ReflectionView) ? 1u : 0u;
-        for (auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
-            if (auto* renderer = dynamic_cast<BaseModelRenderer*>(
-                    context.renderManager->GetRenderer(passType))) {
-                renderer->SetLodBias(lodBias);
-            }
-        }
-
         // 不透明オブジェクトを GBuffer へ描画する。
-        context.renderManager->DrawGBufferPass();
+        // ビュー種別は DrawViewInfo として各オブジェクト（Model）まで明示的に流れる。
+        context.renderManager->DrawGBufferPass(context.viewSettings.viewType);
 
         // GBuffer 各 MRT と SceneDepth は RegisterFrameResources で同一の実体が
         // 登録済みのため、実行中の Blackboard 再登録は行わない（パス分離契約 3）。

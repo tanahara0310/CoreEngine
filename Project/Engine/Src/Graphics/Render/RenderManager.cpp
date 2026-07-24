@@ -197,7 +197,7 @@ namespace CoreEngine
         }
     }
 
-    void RenderManager::DrawGBufferPass() {
+    void RenderManager::DrawGBufferPass(RenderViewType viewType) {
         if (opaqueDrawQueue_.empty() || !cmdList_) {
             return;
         }
@@ -245,7 +245,11 @@ namespace CoreEngine
             }
 
             if (activeRenderer) {
-                cmd.object->Draw(currentCamera);
+                DrawViewInfo view{};
+                view.camera = currentCamera;
+                view.viewType = viewType;
+                view.isGBufferPass = true;
+                cmd.object->Draw(view);
             }
         }
 
@@ -254,20 +258,20 @@ namespace CoreEngine
         }
     }
 
-    void RenderManager::DrawGeometryPass() {
+    void RenderManager::DrawGeometryPass(RenderViewType viewType) {
         if ((drawQueue_.empty() && skyDrawQueue_.empty() && transparentDrawQueue_.empty() && waterDrawQueue_.empty()) || !cmdList_) {
             return;
         }
 
         EnsureQueueSorted();
 
-        DrawMainQueuePass();
-        DrawSkyQueuePass();
-        DrawTransparentQueuePass();
-        DrawWaterQueuePass();
+        DrawMainQueuePass(viewType);
+        DrawSkyQueuePass(viewType);
+        DrawTransparentQueuePass(viewType);
+        DrawWaterQueuePass(viewType);
     }
 
-    void RenderManager::DrawMainQueuePass() {
+    void RenderManager::DrawMainQueuePass(RenderViewType viewType) {
         if ((drawQueue_.empty() && (deferredLightingActive_ || opaqueDrawQueue_.empty())) || !cmdList_) {
             return;
         }
@@ -276,37 +280,37 @@ namespace CoreEngine
 
         // Deferred 経路が無効な場合のみ、不透明キューを Forward でフォールバック描画する。
         if (!deferredLightingActive_ && !opaqueDrawQueue_.empty()) {
-            RenderNormalPassQueue(opaqueDrawQueue_);
+            RenderNormalPassQueue(opaqueDrawQueue_, viewType);
         }
 
-        RenderNormalPassQueue(drawQueue_);
+        RenderNormalPassQueue(drawQueue_, viewType);
     }
 
-    void RenderManager::DrawWaterQueuePass() {
+    void RenderManager::DrawWaterQueuePass(RenderViewType viewType) {
         if (waterDrawQueue_.empty() || !cmdList_) {
             return;
         }
 
         EnsureQueueSorted();
-        RenderNormalPassQueue(waterDrawQueue_);
+        RenderNormalPassQueue(waterDrawQueue_, viewType);
     }
 
-    void RenderManager::DrawSkyQueuePass() {
+    void RenderManager::DrawSkyQueuePass(RenderViewType viewType) {
         if (skyDrawQueue_.empty() || !cmdList_) {
             return;
         }
 
         EnsureQueueSorted();
-        RenderNormalPassQueue(skyDrawQueue_);
+        RenderNormalPassQueue(skyDrawQueue_, viewType);
     }
 
-    void RenderManager::DrawTransparentQueuePass() {
+    void RenderManager::DrawTransparentQueuePass(RenderViewType viewType) {
         if (transparentDrawQueue_.empty() || !cmdList_) {
             return;
         }
 
         EnsureQueueSorted();
-        RenderNormalPassQueue(transparentDrawQueue_);
+        RenderNormalPassQueue(transparentDrawQueue_, viewType);
     }
 
     void RenderManager::RenderShadowMapPass() {
@@ -408,7 +412,7 @@ namespace CoreEngine
         return nullptr;
     }
 
-    void RenderManager::RenderNormalPassFilteredQueue(const std::vector<RenderItem>& queue, const std::function<bool(const RenderItem&)>& filter) {
+    void RenderManager::RenderNormalPassQueue(const std::vector<RenderItem>& queue, RenderViewType viewType) {
         RenderPassType currentPass = RenderPassType::Invalid;
         BlendMode currentBlendMode = BlendMode::kBlendModeNone;
         IRenderer* currentRenderer = nullptr;
@@ -422,10 +426,6 @@ namespace CoreEngine
             }
 
             if (!renderDebugLines_ && cmd.passType == RenderPassType::Line) {
-                continue;
-            }
-
-            if (filter && !filter(cmd)) {
                 continue;
             }
 
@@ -468,7 +468,11 @@ namespace CoreEngine
 
             // オブジェクトを描画
             if (currentRenderer) {
-                cmd.object->Draw(currentCamera);
+                DrawViewInfo view{};
+                view.camera = currentCamera;
+                view.viewType = viewType;
+                view.isGBufferPass = false;
+                cmd.object->Draw(view);
 
                 // パーティクルの場合は、レンダラーに描画コマンド発行を委託
                 if (cmd.passType == RenderPassType::Particle) {
@@ -498,18 +502,6 @@ namespace CoreEngine
         if (currentRenderer) {
             currentRenderer->EndPass();
         }
-    }
-
-    void RenderManager::RenderNormalPassFiltered(const std::function<bool(const RenderItem&)>& filter) {
-        RenderNormalPassFilteredQueue(drawQueue_, filter);
-    }
-
-    void RenderManager::RenderNormalPassQueue(const std::vector<RenderItem>& queue) {
-        RenderNormalPassFilteredQueue(queue, {});
-    }
-
-    void RenderManager::RenderNormalPass() {
-        RenderNormalPassQueue(drawQueue_);
     }
 
     void RenderManager::ClearQueue() {

@@ -6,6 +6,7 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
+#include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Camera/ICamera.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -77,19 +78,22 @@ namespace CoreEngine
     }
 
     void ModelGameObject::Draw(const ICamera* camera) {
-        if (!model_ || !camera) return;
+        // RenderGraph を経由しない直接呼び出し（レガシー経路）は GameView・Forward として扱う
+        DrawViewInfo view{};
+        view.camera = camera;
+        Draw(view);
+    }
 
-        // 視錐台カリング: ワールドAABBが視錐台の外側なら描画をスキップ
-        BoundingBox worldAABB = GetWorldBoundingBox();
-        if (worldAABB.IsValid()) {
-            Frustum frustum = camera->GetFrustum();
-            if (frustum.IsOutside(worldAABB)) {
-                return;
-            }
+    void ModelGameObject::Draw(const DrawViewInfo& view) {
+        if (!model_ || !view.camera) return;
+
+        // 視錐台カリング: 判定内容とデバッグトグルは ModelVisibility（Culling層）が持つ
+        if (!ModelVisibility::IsModelInView(view.camera, GetWorldBoundingBox())) {
+            return;
         }
 
-        model_->Draw(transform_, camera, texture_.gpuHandle);
-        OnDraw(camera);
+        model_->Draw(transform_, view, texture_.gpuHandle);
+        OnDraw(view.camera);
     }
 
     void ModelGameObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {
@@ -104,37 +108,7 @@ namespace CoreEngine
         }
 
         const BoundingBox& localAABB = model_->GetModelResource()->GetLocalBoundingBox();
-        if (!localAABB.IsValid()) {
-            return BoundingBox();
-        }
-
-        // ローカルAABBの8頂点をワールド変換し、新しいAABBを構築
-        const Matrix4x4& world = transform_.GetWorldMatrix();
-        BoundingBox worldAABB;
-
-        for (int i = 0; i < 8; ++i) {
-            Vector3 corner = {
-                (i & 1) ? localAABB.max.x : localAABB.min.x,
-                (i & 2) ? localAABB.max.y : localAABB.min.y,
-                (i & 4) ? localAABB.max.z : localAABB.min.z
-            };
-
-            // ワールド行列で変換
-            Vector3 transformed = {
-                corner.x * world.m[0][0] + corner.y * world.m[1][0] + corner.z * world.m[2][0] + world.m[3][0],
-                corner.x * world.m[0][1] + corner.y * world.m[1][1] + corner.z * world.m[2][1] + world.m[3][1],
-                corner.x * world.m[0][2] + corner.y * world.m[1][2] + corner.z * world.m[2][2] + world.m[3][2]
-            };
-
-            if (transformed.x < worldAABB.min.x) worldAABB.min.x = transformed.x;
-            if (transformed.y < worldAABB.min.y) worldAABB.min.y = transformed.y;
-            if (transformed.z < worldAABB.min.z) worldAABB.min.z = transformed.z;
-            if (transformed.x > worldAABB.max.x) worldAABB.max.x = transformed.x;
-            if (transformed.y > worldAABB.max.y) worldAABB.max.y = transformed.y;
-            if (transformed.z > worldAABB.max.z) worldAABB.max.z = transformed.z;
-        }
-
-        return worldAABB;
+        return localAABB.TransformBy(transform_.GetWorldMatrix());
     }
 
     json ModelGameObject::OnSerialize() const {

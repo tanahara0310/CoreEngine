@@ -7,6 +7,7 @@
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Render/Culling/HiZOcclusionSystem.h"
 #include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -50,6 +51,10 @@ namespace CoreEngine
             engine.GetWinApp()->GetClientHeight());
 
         dxPtr->RegisterResizable(engine.renderDomainContext_.get());
+
+        // Hi-Zオクルージョンカリングシステムの作成
+        // （GPUリソースは初回 ExecuteCulling で遅延生成。解放タイミングは EngineSystem::Finalize 参照）
+        engine.hiZOcclusionSystem_ = std::make_unique<HiZOcclusionSystem>();
 
         // TextureManagerの初期化（シングルトン）
         TextureManager::GetInstance().Initialize(dxPtr);
@@ -160,6 +165,7 @@ namespace CoreEngine
         modelCtx.modelRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::Model));
         modelCtx.skinnedRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::SkinnedModel));
         modelCtx.shadowRenderer = static_cast<ShadowMapRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::ShadowMap));
+        modelCtx.hiZOcclusion = engine.hiZOcclusionSystem_.get();
         engine.GetComponent<ModelManager>()->SetRenderContext(modelCtx);
 
         // IBLGeneratorの作成と初期化

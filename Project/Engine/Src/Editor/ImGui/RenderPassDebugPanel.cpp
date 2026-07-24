@@ -167,8 +167,6 @@ namespace CoreEngine
                 AppendTargetEntry(targetName, label.c_str(), "PostEffect 中間ターゲット");
             }
 
-            AppendTargetEntry(RenderTargetNames::ReflectionView, "ReflectionView", "ReflectionView 用 RT（補助ビュー用）");
-
             int col = 0;
             for (const auto& entry : outputEntries) {
                 if (col > 0) ImGui::SameLine();

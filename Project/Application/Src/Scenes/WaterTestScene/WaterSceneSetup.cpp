@@ -6,12 +6,6 @@
 
 using namespace CoreEngine;
 
-namespace {
-    /// 既定の無限遠タイル床（y=0）より上へプール一式を持ち上げる量（m）。
-    /// 保存済みシーン JSON の座標も同じ量だけシフトしてある。
-    constexpr float kWaterSceneGroundClearance = 6.0f;
-}
-
 WaterSceneObjects WaterSceneSetup::SetupScene(WaterTestScene& scene, [[maybe_unused]] EngineSystem& engine) {
     WaterSceneObjects sceneObjects{};
 
@@ -26,10 +20,8 @@ WaterSceneObjects WaterSceneSetup::SetupScene(WaterTestScene& scene, [[maybe_unu
 
     // Water 描画に必要な主要オブジェクトを順に構築する
     sceneObjects.waterPlane = CreateWaterPlane(scene);
-    sceneObjects.groundObject = CreateGroundObject(scene);
 
     ConfigureWaterMaterial(sceneObjects.waterPlane);
-    ConfigureGroundObject(sceneObjects.groundObject);
     return sceneObjects;
 }
 
@@ -46,19 +38,14 @@ WaterPlaneObject* WaterSceneSetup::CreateWaterPlane(WaterTestScene& scene) {
         return nullptr;
     }
 
-    // 既定の無限遠タイル床（y=0）の上にプール一式を載せるため、水面も床より上に置く
-    waterPlane->GetTransform().translate = { 0.0f, kWaterSceneGroundClearance, 0.0f };
+    // 既定の無限遠タイル床（y=0）の高さに合わせて水面を配置する
+    waterPlane->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
     waterPlane->GetTransform().scale = { 40.0f, 1.0f, 40.0f };
     waterPlane->SetBlendMode(BlendMode::kBlendModeNormal);
     waterPlane->SetScrollSpeed({ 0.03f, 0.01f });
     waterPlane->SetUVTiling({ 4.0f, 4.0f });
     waterPlane->SetActive(true);
     return waterPlane;
-}
-
-ModelObject* WaterSceneSetup::CreateGroundObject(WaterTestScene& scene) {
-    // 水中地形モデルを生成し、水面直下へ配置する
-    return scene.CreateWaterSceneObject<ModelObject>("pool.gltf");
 }
 
 void WaterSceneSetup::ConfigureWaterMaterial(WaterPlaneObject* waterPlane) {
@@ -80,18 +67,4 @@ void WaterSceneSetup::ConfigureWaterMaterial(WaterPlaneObject* waterPlane) {
     // 大気散乱モードでは静的環境マップの IBL を使わないため強度 0 でオプトアウトする
     material->SetIBLIntensity(0.0f);
     material->SetNormalMapEnabled(false);
-}
-
-void WaterSceneSetup::ConfigureGroundObject(ModelObject* groundObject) {
-    if (!groundObject) {
-        return;
-    }
-
-    // 水中地形モデルを水面直下へ配置し、PBR 描画を有効化する
-    groundObject->GetTransform().translate = { 0.0f, kWaterSceneGroundClearance - 0.1f, 0.0f };
-    groundObject->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-    groundObject->SetNormalMapEnabled(true);
-    // 水面と同じ理由で静的 IBL は使わず、大気散乱と整合する直接光ベースの PBR とする。
-    groundObject->SetIBLEnabled(false);
-    groundObject->SetActive(true);
 }

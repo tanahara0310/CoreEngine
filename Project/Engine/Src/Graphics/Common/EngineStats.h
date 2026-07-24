@@ -15,6 +15,8 @@ namespace CoreEngine
         uint32_t totalVertices = 0;              // 描画された総頂点数（インスタンス考慮）
         static constexpr uint32_t kLodLevelCount = 3;
         uint32_t lodInstanceCounts[kLodLevelCount] = {}; // LODレベル別インスタンス数（0=フル詳細）
+        uint32_t occlusionTestedCount = 0;       // Hi-Zオクルージョン判定対象数（GameView）
+        uint32_t occlusionCulledCount = 0;       // Hi-Zオクルージョンで描画スキップされたモデル数
 
         void Reset()
         {
@@ -25,6 +27,8 @@ namespace CoreEngine
             totalTriangles = 0;
             totalVertices = 0;
             for (uint32_t& c : lodInstanceCounts) c = 0;
+            occlusionTestedCount = 0;
+            occlusionCulledCount = 0;
         }
 
         uint32_t GetTotalDrawCalls() const
@@ -181,6 +185,18 @@ namespace CoreEngine
         void RecordBatch(uint32_t /*instanceCount*/)
         {
             renderStats_.batchCount++;
+        }
+
+        // Hi-Zオクルージョンの判定対象数を記録
+        void RecordOcclusionTested(uint32_t count)
+        {
+            renderStats_.occlusionTestedCount += count;
+        }
+
+        // Hi-Zオクルージョンで描画スキップされたモデルを記録
+        void RecordOcclusionCulled()
+        {
+            renderStats_.occlusionCulledCount++;
         }
 
         // キャッシュヒットを記録

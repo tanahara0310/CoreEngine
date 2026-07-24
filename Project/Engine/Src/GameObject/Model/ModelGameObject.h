@@ -41,8 +41,12 @@ namespace CoreEngine {
         /// @brief 更新処理（TransferMatrix → OnUpdate の順に実行）
         void Update() override;
 
-        /// @brief 描画処理（model_->Draw → OnDraw の順に実行）
+        /// @brief 描画処理（RenderGraph を経由しない直接呼び出し用のレガシー経路）
+        /// @details GameView・Forward パス扱いの DrawViewInfo を組み立てて本経路へ委譲する。
         void Draw(const ICamera* camera) override;
+
+        /// @brief ビュー/パス情報つき描画処理（本経路。カリング → model_->Draw → OnDraw）
+        void Draw(const DrawViewInfo& view) override;
 
         /// @brief シャドウ描画処理
         void DrawShadow(ID3D12GraphicsCommandList* cmdList) override;

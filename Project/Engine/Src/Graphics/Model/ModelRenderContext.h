@@ -8,6 +8,7 @@ namespace CoreEngine {
     class ShadowMapRenderer;
     class InstanceBatchManager;
     class SkinningComputeDispatcher;
+    class HiZOcclusionSystem;
 }
 
 namespace CoreEngine
@@ -22,6 +23,7 @@ namespace CoreEngine
         ShadowMapRenderer* shadowRenderer = nullptr; ///< シャドウマップ描画用レンダラー
         InstanceBatchManager* instanceBatchManager = nullptr; ///< 通常モデルのインスタンシング集約（ModelManager 内で自動設定）
         SkinningComputeDispatcher* skinningDispatcher = nullptr; ///< GPUスキニング(CS)ディスパッチャー（ModelManager 内で自動設定）
+        HiZOcclusionSystem* hiZOcclusion = nullptr; ///< Hi-Zオクルージョンカリング（任意依存: nullptr なら遮蔽判定なしで描画する）
 
         /// @brief 外部から注入される依存が全て設定済みか確認
         /// @note ModelManager::SetRenderContext() の受け入れ検証に使用する。
