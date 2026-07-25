@@ -32,7 +32,9 @@ cbuffer TemporalConstants : register(b0)
     int gScreenHeight;
     float gHistoryAlpha; // 通常時のブレンド係数（例: 0.15 = 85% 履歴採用）
     float gDisableHistory; // 1.0 で履歴を完全無効化（初回フレーム用）
-    float gPadding[4];
+    // 注意: float gPadding[4] のような配列パディングは禁止（cbuffer配列は要素毎に16バイト整列され
+    // gInvViewProj がオフセット80へずれてC++側(TemporalConstants, オフセット32)と不一致になる）。
+    float4 gPadding;
     float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
 };
 

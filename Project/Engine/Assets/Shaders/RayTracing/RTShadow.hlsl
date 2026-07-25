@@ -36,7 +36,10 @@ cbuffer ShadowRayConstants : register(b0)
     float gHistoryAlpha; // テンポラル蓄積ブレンド係数（初回フレームは 1.0）
     float gScreenWidth; // スクリーン幅（ピクセル）
     float gScreenHeight; // スクリーン高さ（ピクセル）
-    float gPadding_[1]; // 16バイトアライメント用パディング
+    // 注意: ここをfloat配列(gPadding_[1])にしてはいけない。cbuffer内の配列は16バイト境界へ
+    // 整列されるため gInvViewProj がオフセット64へずれ、C++側(ShadowRayConstants, オフセット48)と
+    // 不一致になり深度復元行列が壊れる（2026-07-25に影が全消失した原因）。スカラーなら44..48に収まる。
+    float gPadding_;
     float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
 };
 
@@ -115,8 +118,26 @@ void RTShadowRayGen()
     // ライト方向の逆（光源へ向かう方向）
     float3 rayDir = normalize(-gLightDirection);
 
+    // ===== セルフシャドウ防止バイアス（深度復元の誤差に追従させる） =====
+    // ワールド座標は深度バッファ（D24_UNORM）から復元しているため、深度 1 コード分の
+    // 量子化がワールド空間では「カメラからの距離の 2 乗」に比例した誤差に拡大される
+    // （near=0.1 / far=100000 の構成では 500m 先で約 0.15m）。固定値 0.05 のままだと
+    // 数百メートル先で誤差がバイアスを上回り、レイが自分の面の内側から始まって
+    // 即座に自己交差する＝モデル全体が真っ黒になる。カメラが動くと量子化コードが
+    // 変わるたびに交差する/しないが切り替わるため「移動中だけチカチカ」する。
+    // 誤差量は解析式ではなく実際に 1 コードずらして復元した差分で測る（near/far 非依存）。
+    const float kDepthQuantum = 1.0f / 16777216.0f; // D24_UNORM の 1 コード
+    float3 worldPosQuantized = ReconstructWorldPosition(
+        ScreenUVToNDC(screenUV), max(ndcDepth - kDepthQuantum, 0.0f), gInvViewProj);
+    float depthPrecisionError = length(worldPos - worldPosQuantized);
+
+    // かすめ角では法線方向のオフセットが実効的に薄くなるので傾斜スケールを掛ける
+    float NdotL = saturate(dot(N, rayDir));
+    float slopeScale = clamp(1.0f / max(NdotL, 0.15f), 1.0f, 6.0f);
+    float bias = max(gShadowBias, depthPrecisionError * 4.0f) * slopeScale;
+
     // 法線方向 + ライト方向のバイアスでセルフシャドウを防止
-    float3 origin = worldPos + N * gShadowBias + rayDir * gShadowBias * 0.5f;
+    float3 origin = worldPos + N * bias + rayDir * bias * 0.5f;
 
     // ソフトシャドウ：コーン内ジッターレイの平均（N=1 はバイナリ）
     static const int kMaxSamples = 16;
