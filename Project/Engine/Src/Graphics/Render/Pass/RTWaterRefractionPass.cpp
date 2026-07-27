@@ -37,6 +37,14 @@ namespace CoreEngine
             return;
         }
 
+        // 水面が存在しない・非表示のフレームはディスパッチしない（regionValid=0 = 有効な水域なし）。
+        // RTWaterCausticsPass は同じガードを持っていたが、屈折・反射は持っておらず
+        // 水面が消えていてもフル解像度で DispatchRays が走っていた。
+        if (!context.waterRefractionSurfaceData
+            || context.waterRefractionSurfaceData->regionValid == 0) {
+            return;
+        }
+
         ID3D12GraphicsCommandList* cmdList = context.dxCommon->GetCommandList();
         if (!cmdList) {
             Logger::GetInstance().Warnf(
@@ -51,20 +59,7 @@ namespace CoreEngine
             ? WaterRefractionRayTracingManager::ViewID::ReflectionView
             : WaterRefractionRayTracingManager::ViewID::GameView;
 
-        WaterSurfaceData defaultSurfaceData{};
-        const WaterSurfaceData& dispatchSurfaceData = context.waterRefractionSurfaceData
-            ? *context.waterRefractionSurfaceData
-            : defaultSurfaceData;
-
-        Logger::GetInstance().Infof(
-            LogCategory::Graphics,
-            LogSubCategory::Pipeline,
-            "RTWaterRefractionPass: execute begin. viewId={} currentRTShadowViewId={} dispatchWaterHeight={:.3f} activeWaveCount={} waveTime={:.3f}",
-            static_cast<uint32_t>(viewId),
-            context.currentRTShadowViewId,
-            dispatchSurfaceData.waterHeight,
-            dispatchSurfaceData.activeWaveCount,
-            dispatchSurfaceData.time);
+        const WaterSurfaceData& dispatchSurfaceData = *context.waterRefractionSurfaceData;
 
         context.rayTracingSubsystem->DispatchWaterRefraction(
             context,
@@ -72,20 +67,6 @@ namespace CoreEngine
             cmdList,
             viewId,
             dispatchSurfaceData);
-
-        const WaterRefractionRayTracingManager::DispatchDiagnostics& diagnostics =
-            context.rtWaterRefractionManager->GetLastDiagnostics();
-        Logger::GetInstance().Infof(
-            LogCategory::Graphics,
-            LogSubCategory::Pipeline,
-            "RTWaterRefractionPass: execute end. diagStatus={} diagViewId={} waterHeight={:.3f} size={}x{} blasCount={} outputSRV=0x{:X}",
-            static_cast<uint32_t>(diagnostics.status),
-            static_cast<uint32_t>(diagnostics.viewId),
-            diagnostics.waterHeight,
-            diagnostics.width,
-            diagnostics.height,
-            diagnostics.blasCount,
-            diagnostics.outputSrv);
 
         if (context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE handle = context.rtWaterRefractionManager->GetRefractionSRVHandle(viewId);
@@ -96,14 +77,23 @@ namespace CoreEngine
                 handle,
                 resource,
                 &currentState);
+        }
 
+        // 診断ログは UI の「RT屈折ログを有効にする」でのみ出す
+        // （以前は毎フレーム 3 本が無条件に流れていた）
+        if (context.rtWaterRefractionManager->GetSettings().debugLogEnabled != 0) {
+            const auto& diagnostics = context.rtWaterRefractionManager->GetLastDiagnostics();
             Logger::GetInstance().Infof(
                 LogCategory::Graphics,
-                LogSubCategory::RenderTarget,
-                "RTWaterRefractionPass: blackboard updated. handle=0x{:X} resource={} state={}",
-                handle.ptr,
-                resource != nullptr,
-                static_cast<uint32_t>(currentState));
+                LogSubCategory::Pipeline,
+                "RTWaterRefractionPass: status={} viewIndex={} waterHeight={:.3f} size={}x{} blasCount={} outputSRV=0x{:X}",
+                WaterRefractionRayTracingManager::ToString(diagnostics.status),
+                diagnostics.viewIndex,
+                diagnostics.waterHeight,
+                diagnostics.width,
+                diagnostics.height,
+                diagnostics.blasCount,
+                diagnostics.outputSrv);
         }
     }
 }

@@ -339,14 +339,23 @@ SetWaterOpticalCoefficients / SetFresnelParameters
 4. `WaterFrameConstants` / `WaterConstants` に `static_assert(sizeof(...) == N)` とオフセット検証を追加（RT 側と同水準に）
 5. C++ 側のカスケード定数（`FFTOceanManager`）と HLSL を 1 つのヘッダで共有するか、少なくとも `static_assert` で結ぶ
 
-### Phase R2: `Water.PS.hlsl` の整理（見た目に影響しうる・要目視）
+### Phase R2: `Water.PS.hlsl` の整理（見た目に影響しうる・要目視）— **実施済み（2026-07-27）**
+
+> 実施記録は [WaterPhaseR2_WaterSurfaceShader.md](WaterPhaseR2_WaterSurfaceShader.md) を参照。
+> 項目 5（マジックナンバーの値の見直し）はチューニング判断のため未実施。
+> **§5-2 の「PBR 出力は必ず捨てられる」という記述は誤りだった**（実施記録 §0 参照）。
+
 1. **法線を 1 回だけ計算**して `surfaceNormal` / `fresnelNormal` をローカルに保持（§5-1）
 2. `gReflectionEnabled` 時に `WaterForwardMain` の PBR/IBL をスキップ（§5-2）。必要なのは `gMaterial.color.a` のみ
 3. 水柱厚さの決定を 1 つの関数 `ResolveWaterColumn()` に閉じ、4 系統の関係を「1 つの連続場 + 深部の RT 補正」として書き直す。到達不能になった系統は削除
 4. デバッグ表示 22 モードを `Water.Debug.hlsli` へ分離。診断専用モード（17〜22）は削除するか、`#if WATER_DEBUG_VIEW` でビルド分離
 5. 緩和済みマジックナンバー（§4-2）を 1 箇所にまとめ、既定値の根拠をコメントではなく**プリセット / UI 露出**に移す
 
-### Phase R3: RT 水面パス 3 本の共通化（約 500 行減）
+### Phase R3: RT 水面パス 3 本の共通化（約 500 行減）— **実施済み（2026-07-27）**
+
+> 実施記録は [WaterPhaseR3_RayTracingConsolidation.md](WaterPhaseR3_RayTracingConsolidation.md) を参照。
+> 項目 3（`Get*SRVHandle` の一本化）は、呼び出し側の可読性が落ちるため意図的に見送った。
+
 1. `FFTOcean*Input` を `WaterFFTOceanInput` 1 つに統合
 2. `DispatchStatus` / `DispatchDiagnostics` / `ViewID` / `ToString` / ガード変換 switch を `WaterRayTracingPassBase` へ引き上げ
 3. `Get*SRVHandle/Resource/CurrentState` を基底の `GetOutput*` に一本化（呼び出し側の名前は using かインライン別名で吸収）

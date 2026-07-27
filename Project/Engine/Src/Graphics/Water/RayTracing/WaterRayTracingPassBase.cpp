@@ -12,12 +12,30 @@
 
 namespace CoreEngine
 {
+    const char* WaterRayTracingPassBase::ToString(DispatchStatus status)
+    {
+        switch (status) {
+        case DispatchStatus::None: return "None";
+        case DispatchStatus::NotInitialized: return "NotInitialized";
+        case DispatchStatus::RayTracingUnsupported: return "RayTracingUnsupported";
+        case DispatchStatus::NoBLAS: return "NoBLAS";
+        case DispatchStatus::OutputAllocationFailed: return "OutputAllocationFailed";
+        case DispatchStatus::CommandList4Unavailable: return "CommandList4Unavailable";
+        case DispatchStatus::Dispatched: return "Dispatched";
+        default: return "Unknown";
+        }
+    }
+
     bool WaterRayTracingPassBase::InitializeBase(
         DirectXCommon* dxCommon,
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr,
-        const char* ownerName)
+        const char* ownerName,
+        const char* outputDebugName)
     {
+        ownerName_ = ownerName ? ownerName : "WaterRayTracingPassBase";
+        outputDebugName_ = outputDebugName ? outputDebugName : "RTWaterOutput";
+
         dxCommon_ = dxCommon;
         descriptorManager_ = descriptorManager;
         asMgr_ = asMgr;
@@ -27,14 +45,14 @@ namespace CoreEngine
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
                 "{}: DXR unsupported. initialization skipped.",
-                ownerName ? ownerName : "WaterRayTracingPassBase");
+                ownerName_);
             return false;
         }
 
         return true;
     }
 
-    bool WaterRayTracingPassBase::EnsureSurfaceConstantBuffer(UINT bufferSize, const char* ownerName)
+    bool WaterRayTracingPassBase::EnsureSurfaceConstantBuffer(UINT bufferSize)
     {
         if (constantBuffer_) {
             return true;
@@ -64,7 +82,7 @@ namespace CoreEngine
                 LogCategory::Graphics,
                 LogSubCategory::Buffer,
                 "{}: constant buffer allocation failed. hr={:#x}",
-                ownerName ? ownerName : "WaterRayTracingPassBase",
+                ownerName_,
                 static_cast<uint32_t>(hr));
             return false;
         }
@@ -76,7 +94,7 @@ namespace CoreEngine
                 LogCategory::Graphics,
                 LogSubCategory::Buffer,
                 "{}: constant buffer map failed. hr={:#x}",
-                ownerName ? ownerName : "WaterRayTracingPassBase",
+                ownerName_,
                 static_cast<uint32_t>(hr));
             constantBuffer_.Reset();
             constantBufferMapped_ = nullptr;
@@ -91,20 +109,18 @@ namespace CoreEngine
         UINT width,
         UINT height,
         uint32_t viewIndex,
-        const char* ownerName,
-        const std::string& uavDebugName,
-        const std::string& srvDebugName,
         DXGI_FORMAT format)
     {
+        const std::string suffix = "_v" + std::to_string(viewIndex);
         return outputViews_.EnsureTexture(
             dxCommon_,
             descriptorManager_,
             width,
             height,
             viewIndex,
-            ownerName,
-            uavDebugName,
-            srvDebugName,
+            ownerName_,
+            std::string(outputDebugName_) + "_UAV" + suffix,
+            std::string(outputDebugName_) + "_SRV" + suffix,
             format);
     }
 
@@ -148,8 +164,7 @@ namespace CoreEngine
 
     bool WaterRayTracingPassBase::QueryCommandList4(
         ID3D12GraphicsCommandList* cmdList,
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4>& cmdList4,
-        const char* ownerName) const
+        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4>& cmdList4) const
     {
         cmdList4.Reset();
         if (!cmdList) {
@@ -161,9 +176,98 @@ namespace CoreEngine
                 LogCategory::Graphics,
                 LogSubCategory::Command,
                 "{}: QueryInterface(ID3D12GraphicsCommandList4) failed.",
-                ownerName ? ownerName : "WaterRayTracingPassBase");
+                ownerName_);
             return false;
         }
+        return true;
+    }
+
+    void WaterRayTracingPassBase::ReportDispatchGuardFailure(
+        DispatchGuardStatus guardStatus,
+        ID3D12GraphicsCommandList* cmdList)
+    {
+        switch (guardStatus) {
+        case DispatchGuardStatus::NotInitialized:
+            lastDiagnostics_.status = DispatchStatus::NotInitialized;
+            break;
+        case DispatchGuardStatus::RayTracingUnsupported:
+            lastDiagnostics_.status = DispatchStatus::RayTracingUnsupported;
+            break;
+        case DispatchGuardStatus::NoBLAS:
+            lastDiagnostics_.status = DispatchStatus::NoBLAS;
+            break;
+        case DispatchGuardStatus::InvalidCommandList:
+        case DispatchGuardStatus::CommandList4Unavailable:
+            lastDiagnostics_.status = DispatchStatus::CommandList4Unavailable;
+            break;
+        case DispatchGuardStatus::OutputAllocationFailed:
+            lastDiagnostics_.status = DispatchStatus::OutputAllocationFailed;
+            break;
+        default:
+            lastDiagnostics_.status = DispatchStatus::RayTracingUnsupported;
+            break;
+        }
+
+        Logger::GetInstance().Warnf(
+            LogCategory::Graphics,
+            LogSubCategory::Pipeline,
+            "{}: dispatch skipped. status={} initialized={} cmdList={} asMgr={} supported={}",
+            ownerName_,
+            ToString(lastDiagnostics_.status),
+            isInitialized_,
+            cmdList != nullptr,
+            asMgr_ != nullptr,
+            asMgr_ ? asMgr_->IsSupported() : false);
+    }
+
+    void WaterRayTracingPassBase::BeginDiagnostics(
+        uint32_t viewIndex,
+        UINT width,
+        UINT height,
+        const WaterSurfaceData& surfaceData,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV)
+    {
+        lastDiagnostics_ = {};
+        lastDiagnostics_.viewIndex = viewIndex;
+        lastDiagnostics_.waterHeight = surfaceData.waterHeight;
+        lastDiagnostics_.activeWaveCount = surfaceData.activeWaveCount;
+        lastDiagnostics_.width = width;
+        lastDiagnostics_.height = height;
+        lastDiagnostics_.sceneDepthSrv = sceneDepthSRV.ptr;
+        lastDiagnostics_.sceneColorSrv = sceneColorSRV.ptr;
+        lastDiagnostics_.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
+    }
+
+    bool WaterRayTracingPassBase::BeginDispatch(
+        ID3D12GraphicsCommandList* cmdList,
+        UINT width,
+        UINT height,
+        uint32_t viewIndex,
+        DispatchResources& outResources,
+        DXGI_FORMAT format)
+    {
+        DispatchGuardStatus guardStatus = ValidateDispatchPreconditions(cmdList);
+        if (guardStatus == DispatchGuardStatus::Ok) {
+            if (!EnsureOutputTextureBase(width, height, viewIndex, format)) {
+                guardStatus = DispatchGuardStatus::OutputAllocationFailed;
+            } else if (!EnsureSurfaceConstantBuffer(GetSurfaceConstantBufferSize())) {
+                guardStatus = DispatchGuardStatus::OutputAllocationFailed;
+            } else if (!QueryCommandList4(cmdList, outResources.cmdList4)) {
+                guardStatus = DispatchGuardStatus::CommandList4Unavailable;
+            }
+        }
+
+        if (guardStatus != DispatchGuardStatus::Ok) {
+            ReportDispatchGuardFailure(guardStatus, cmdList);
+            return false;
+        }
+
+        outResources.outputSrvHandle = GetOutputSRVHandleBase(viewIndex);
+        outResources.outputUavHandle = outputViews_.GetUAVHandle(viewIndex);
+        outResources.outputResource = GetOutputResourceBase(viewIndex);
+        outResources.outputCurrentState = &GetOutputCurrentStateBase(viewIndex);
+        lastDiagnostics_.outputSrv = outResources.outputSrvHandle.ptr;
         return true;
     }
 
@@ -195,58 +299,6 @@ namespace CoreEngine
         outputCurrentState = finalState;
     }
 
-    bool WaterRayTracingPassBase::PrepareDispatchResources(
-        ID3D12GraphicsCommandList* cmdList,
-        UINT width,
-        UINT height,
-        uint32_t viewIndex,
-        UINT constantBufferSize,
-        const char* ownerName,
-        const std::string& uavDebugName,
-        const std::string& srvDebugName,
-        DispatchGuardStatus& outStatus,
-        D3D12_GPU_DESCRIPTOR_HANDLE& outOutputSrvHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE& outOutputUavHandle,
-        ID3D12Resource*& outOutputResource,
-        D3D12_RESOURCE_STATES*& outOutputCurrentState,
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4>& outCmdList4,
-        DXGI_FORMAT format)
-    {
-        outStatus = ValidateDispatchPreconditions(cmdList);
-        if (outStatus != DispatchGuardStatus::Ok) {
-            return false;
-        }
-
-        if (!EnsureOutputTextureBase(
-            width,
-            height,
-            viewIndex,
-            ownerName,
-            uavDebugName,
-            srvDebugName,
-            format)) {
-            outStatus = DispatchGuardStatus::OutputAllocationFailed;
-            return false;
-        }
-
-        if (!EnsureSurfaceConstantBuffer(constantBufferSize, ownerName)) {
-            outStatus = DispatchGuardStatus::OutputAllocationFailed;
-            return false;
-        }
-
-        if (!QueryCommandList4(cmdList, outCmdList4, ownerName)) {
-            outStatus = DispatchGuardStatus::CommandList4Unavailable;
-            return false;
-        }
-
-        outOutputSrvHandle = GetOutputSRVHandleBase(viewIndex);
-        outOutputUavHandle = outputViews_.GetUAVHandle(viewIndex);
-        outOutputResource = GetOutputResourceBase(viewIndex);
-        outOutputCurrentState = &GetOutputCurrentStateBase(viewIndex);
-        outStatus = DispatchGuardStatus::Ok;
-        return true;
-    }
-
     WaterRayTracingPassBase::WaterSurfaceConstants WaterRayTracingPassBase::BuildSurfaceConstants(
         const WaterSurfaceData& surfaceData) const
     {
@@ -261,16 +313,14 @@ namespace CoreEngine
         return surfaceConstants;
     }
 
-    void WaterRayTracingPassBase::UploadSurfaceConstants(
-        const WaterSurfaceConstants& surfaceConstants,
-        const char* ownerName) const
+    void WaterRayTracingPassBase::UploadSurfaceConstants(const WaterSurfaceConstants& surfaceConstants) const
     {
         if (!constantBufferMapped_) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Buffer,
                 "{}: surface constant upload skipped. constant buffer is not mapped.",
-                ownerName ? ownerName : "WaterRayTracingPassBase");
+                ownerName_);
             return;
         }
 
@@ -278,28 +328,26 @@ namespace CoreEngine
     }
 
     WaterRayTracingPassBase::WaterSurfaceConstants WaterRayTracingPassBase::UploadSurfaceDataForDispatch(
-        const WaterSurfaceData& surfaceData,
-        const char* ownerName) const
+        const WaterSurfaceData& surfaceData) const
     {
         const WaterSurfaceConstants surfaceConstants = BuildSurfaceConstants(surfaceData);
-        UploadSurfaceConstants(surfaceConstants, ownerName);
+        UploadSurfaceConstants(surfaceConstants);
         return surfaceConstants;
     }
 
-    void WaterRayTracingPassBase::SetSurfaceModelProviderBase(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider)
+    void WaterRayTracingPassBase::SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider)
     {
         surfaceModelProvider_ = provider;
     }
 
-    std::shared_ptr<const IWaterSurfaceModelProvider> WaterRayTracingPassBase::GetSurfaceModelProviderBase() const
+    std::shared_ptr<const IWaterSurfaceModelProvider> WaterRayTracingPassBase::GetSurfaceModelProvider() const
     {
         return surfaceModelProvider_.lock();
     }
 
     const WaterSurfaceData& WaterRayTracingPassBase::ResolveSurfaceDataForDispatch(
         const WaterSurfaceData& fallbackSurfaceData,
-        WaterSurfaceData& outResolvedSurfaceData,
-        const char* ownerName) const
+        WaterSurfaceData& outResolvedSurfaceData) const
     {
         const std::shared_ptr<const IWaterSurfaceModelProvider> surfaceModelProvider = surfaceModelProvider_.lock();
         if (!surfaceModelProvider) {
@@ -311,22 +359,14 @@ namespace CoreEngine
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
                 "{}: surface model provider returned no data. fallback path is used. provider='{}' type={}",
-                ownerName ? ownerName : "WaterRayTracingPassBase",
+                ownerName_,
                 surfaceModelProvider->GetProviderName(),
                 static_cast<uint32_t>(surfaceModelProvider->GetSimulationType()));
             return fallbackSurfaceData;
         }
 
-        Logger::GetInstance().Infof(
-            LogCategory::Graphics,
-            LogSubCategory::Pipeline,
-            "{}: surface model provider resolved. provider='{}' type={} waterHeight={:.3f} activeWaveCount={} time={:.3f}",
-            ownerName ? ownerName : "WaterRayTracingPassBase",
-            surfaceModelProvider->GetProviderName(),
-            static_cast<uint32_t>(surfaceModelProvider->GetSimulationType()),
-            outResolvedSurfaceData.waterHeight,
-            outResolvedSurfaceData.activeWaveCount,
-            outResolvedSurfaceData.time);
+        // 以前はここで毎フレーム Infof を出していたが、3 マネージャ分が常時流れて
+        // ログを埋めるだけだったため撤去した（解決結果は GetLastDiagnostics で参照できる）。
         return outResolvedSurfaceData;
     }
 }

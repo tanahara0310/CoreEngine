@@ -42,19 +42,6 @@ namespace CoreEngine
             Matrix4x4 invViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
         };
 
-        const char* ToString(WaterCausticsRayTracingManager::DispatchStatus status)
-        {
-            switch (status) {
-            case WaterCausticsRayTracingManager::DispatchStatus::None: return "None";
-            case WaterCausticsRayTracingManager::DispatchStatus::NotInitialized: return "NotInitialized";
-            case WaterCausticsRayTracingManager::DispatchStatus::RayTracingUnsupported: return "RayTracingUnsupported";
-            case WaterCausticsRayTracingManager::DispatchStatus::NoBLAS: return "NoBLAS";
-            case WaterCausticsRayTracingManager::DispatchStatus::OutputAllocationFailed: return "OutputAllocationFailed";
-            case WaterCausticsRayTracingManager::DispatchStatus::CommandList4Unavailable: return "CommandList4Unavailable";
-            case WaterCausticsRayTracingManager::DispatchStatus::Dispatched: return "Dispatched";
-            default: return "Unknown";
-            }
-        }
     }
 
     static_assert(sizeof(WaterWaveParam) == 32,
@@ -71,7 +58,8 @@ namespace CoreEngine
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr)
     {
-        if (!InitializeBase(dxCommon, descriptorManager, asMgr, "WaterCausticsRayTracingManager")) {
+        if (!InitializeBase(dxCommon, descriptorManager, asMgr,
+            "WaterCausticsRayTracingManager", "RTWaterCaustics")) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
@@ -144,31 +132,6 @@ namespace CoreEngine
         return true;
     }
 
-    bool WaterCausticsRayTracingManager::EnsureConstantBuffer()
-    {
-        return EnsureSurfaceConstantBuffer(GetSurfaceConstantBufferSize(), "WaterCausticsRayTracingManager");
-    }
-
-    bool WaterCausticsRayTracingManager::EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex)
-    {
-        return EnsureOutputTextureBase(
-            width,
-            height,
-            viewIndex,
-            "WaterCausticsRayTracingManager",
-            "RTWaterCausticsUAV",
-            "RTWaterCausticsSRV");
-    }
-
-    void WaterCausticsRayTracingManager::SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider)
-    {
-        SetSurfaceModelProviderBase(provider);
-    }
-
-    std::shared_ptr<const IWaterSurfaceModelProvider> WaterCausticsRayTracingManager::GetSurfaceModelProvider() const
-    {
-        return GetSurfaceModelProviderBase();
-    }
 
     void WaterCausticsRayTracingManager::Dispatch(
         ID3D12GraphicsCommandList* cmdList,
@@ -176,73 +139,23 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
         const LightInput& lightInput,
         const WaterSurfaceData& surfaceData,
-        const FFTOceanCausticsInput& fftOceanInput,
+        const FFTOceanInput& fftOceanInput,
         const Matrix4x4& invViewProj,
         UINT width,
         UINT height,
         ViewID viewId)
     {
         WaterSurfaceData resolvedSurfaceData{};
-        const WaterSurfaceData& dispatchSurfaceData = ResolveSurfaceDataForDispatch(
-            surfaceData,
-            resolvedSurfaceData,
-            "WaterCausticsRayTracingManager");
+        const WaterSurfaceData& dispatchSurfaceData =
+            ResolveSurfaceDataForDispatch(surfaceData, resolvedSurfaceData);
 
         const uint32_t viewIndex = static_cast<uint32_t>(viewId);
-        lastDiagnostics_ = {};
-        lastDiagnostics_.viewId = viewId;
-        lastDiagnostics_.waterHeight = dispatchSurfaceData.waterHeight;
-        lastDiagnostics_.activeWaveCount = dispatchSurfaceData.activeWaveCount;
-        lastDiagnostics_.width = width;
-        lastDiagnostics_.height = height;
-        lastDiagnostics_.worldPositionSrv = sceneDepthSRV.ptr;
-        lastDiagnostics_.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
+        BeginDiagnostics(viewIndex, width, height, dispatchSurfaceData, sceneDepthSRV, {});
 
-        DispatchGuardStatus guardStatus = DispatchGuardStatus::Ok;
-        D3D12_GPU_DESCRIPTOR_HANDLE outputSrvHandle{};
-        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle{};
-        ID3D12Resource* outputResource = nullptr;
-        D3D12_RESOURCE_STATES* outputCurrentState = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
-        if (!PrepareDispatchResources(
-            cmdList,
-            width,
-            height,
-            viewIndex,
-            GetSurfaceConstantBufferSize(),
-            "WaterCausticsRayTracingManager",
-            "RTWaterCausticsUAV",
-            "RTWaterCausticsSRV",
-            guardStatus,
-            outputSrvHandle,
-            outputUavHandle,
-            outputResource,
-            outputCurrentState,
-            cmdList4)) {
-            switch (guardStatus) {
-            case DispatchGuardStatus::NotInitialized:
-                lastDiagnostics_.status = DispatchStatus::NotInitialized;
-                break;
-            case DispatchGuardStatus::RayTracingUnsupported:
-                lastDiagnostics_.status = DispatchStatus::RayTracingUnsupported;
-                break;
-            case DispatchGuardStatus::NoBLAS:
-                lastDiagnostics_.status = DispatchStatus::NoBLAS;
-                break;
-            case DispatchGuardStatus::InvalidCommandList:
-            case DispatchGuardStatus::CommandList4Unavailable:
-                lastDiagnostics_.status = DispatchStatus::CommandList4Unavailable;
-                break;
-            case DispatchGuardStatus::OutputAllocationFailed:
-                lastDiagnostics_.status = DispatchStatus::OutputAllocationFailed;
-                break;
-            default:
-                lastDiagnostics_.status = DispatchStatus::RayTracingUnsupported;
-                break;
-            }
+        DispatchResources resources;
+        if (!BeginDispatch(cmdList, width, height, viewIndex, resources)) {
             return;
         }
-        lastDiagnostics_.outputSrv = outputSrvHandle.ptr;
 
         WaterCausticsConstants constants{};
         constants.maxTraceDistance = settings_.maxTraceDistance;
@@ -290,18 +203,16 @@ namespace CoreEngine
                 settings_.refractiveIndex);
         }
 
-        const WaterSurfaceConstants surfaceConstants = UploadSurfaceDataForDispatch(
-            dispatchSurfaceData,
-            "WaterCausticsRayTracingManager");
+        UploadSurfaceDataForDispatch(dispatchSurfaceData);
 
-        cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
-        cmdList4->SetPipelineState1(stateObject_.Get());
+        resources.cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
+        resources.cmdList4->SetPipelineState1(stateObject_.Get());
 
-        BeginOutputWrite(cmdList, outputResource, *outputCurrentState);
+        BeginOutputWrite(cmdList, resources.outputResource, *resources.outputCurrentState);
 
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gCausticsOutput")),
-            outputUavHandle);
+            resources.outputUavHandle);
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene")),
             asMgr_->GetTLASSRVHandle());
@@ -327,30 +238,33 @@ namespace CoreEngine
             0);
 
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
-        cmdList4->DispatchRays(&dispatchDesc);
+        resources.cmdList4->DispatchRays(&dispatchDesc);
         lastDiagnostics_.status = DispatchStatus::Dispatched;
 
         EndOutputWrite(
             cmdList,
-            outputResource,
-            *outputCurrentState,
+            resources.outputResource,
+            *resources.outputCurrentState,
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-        Logger::GetInstance().Infof(
-            LogCategory::Graphics,
-            LogSubCategory::Pipeline,
-            "WaterCausticsRayTracingManager: dispatch completed. status={} viewId={} width={} height={} waterHeight={:.3f} simulationType={} activeWaveCount={} outputSRV=0x{:X} debugViewMode={} debugScale={:.3f} debugLogEnabled={}",
-            ToString(lastDiagnostics_.status),
-            viewIndex,
-            width,
-            height,
-            dispatchSurfaceData.waterHeight,
-            dispatchSurfaceData.simulationType,
-            dispatchSurfaceData.activeWaveCount,
-            outputSrvHandle.ptr,
-            settings_.debugViewMode,
-            settings_.debugDisplayScale,
-            settings_.debugLogEnabled);
+        // 完了ログは UI の「RTログを有効にする」でのみ出す（以前は毎フレーム無条件だった）
+        if (settings_.debugLogEnabled != 0) {
+            Logger::GetInstance().Infof(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "WaterCausticsRayTracingManager: dispatch completed. status={} viewId={} size={}x{} "
+                "waterHeight={:.3f} simulationType={} activeWaveCount={} outputSRV=0x{:X} debug(mode={} scale={:.3f})",
+                ToString(lastDiagnostics_.status),
+                viewIndex,
+                width,
+                height,
+                dispatchSurfaceData.waterHeight,
+                dispatchSurfaceData.simulationType,
+                dispatchSurfaceData.activeWaveCount,
+                resources.outputSrvHandle.ptr,
+                settings_.debugViewMode,
+                settings_.debugDisplayScale);
+        }
     }
 
     void WaterCausticsRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)
