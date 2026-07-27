@@ -1,4 +1,6 @@
 #include "Object3dVertex.hlsli"
+// カスケード定数・回転写像・波群エンベロープの唯一の情報源
+#include "../Common/FFTOceanCascade.hlsli"
 
 // カスケード（マルチスケールFFT）は Texture2DArray のスライスに格納される。
 Texture2DArray<float4> gFFTOceanDisplacement : register(t18);
@@ -6,37 +8,6 @@ Texture2DArray<float4> gFFTOceanJacobian : register(t20);
 SamplerState gLinearClamp : register(s2);
 // WRAP サンプラ（カスケードのワールドタイリング用）。gSampler は Anisotropic=WRAP。
 SamplerState gSampler : register(s0);
-
-// マルチスケール・カスケード。異なるパッチ長の独立FFTを合算し、単一タイルの
-// 「格子状の繰り返し」を打ち消す。値は FFTOceanManager の kCascadePatchLength と一致必須。
-// パッチ長は互いに素（全て素数）で合成周期を事実上無限化し、さらにカスケードごとに
-// サンプリング格子を回転（0°/+26°/-49°）して残存周期の空間整列も破壊する。
-// 回転定数は FFTOceanManager kCascadeRotCos/Sin および Water.PS / RTWaterSurfaceCommon と一致必須。
-static const int kFFTCascadeCount = 3;
-static const float kFFTCascadePatch[3] = { 521.0f, 127.0f, 31.0f };
-static const float kFFTCascadeRotC[3] = { 1.0f, 0.89879405f, 0.65605903f };
-static const float kFFTCascadeRotS[3] = { 0.0f, 0.43837115f, -0.75471006f };
-
-// ===== 波群エンベロープ（タイル周期破壊の空間振幅変調）=====
-// カスケード0（波高を支配する最大パッチ）は自分自身のタイルが 521m 周期で
-// 正確に繰り返すため、「同じ波の高低差が一定間隔で並ぶ」列がどうしても残る。
-// 無理数比の方向・波長（≈364/377/707m）の正弦和による滑らかな包絡を波高に掛けると、
-// どのカスケード格子とも整列しない非周期変調になり、同一コピーが二度と同じ強さで
-// 現れなくなる（実海面の波群＝セット波の見た目にも一致）。
-// Water.PS / RTWaterSurfaceCommon と完全一致必須。
-static const float kFFTWaveGroupStrength = 0.12f;
-float ComputeFFTWaveGroupEnvelope(float2 worldXZ)
-{
-    float g = sin(dot(worldXZ, float2(0.01071f, 0.01353f)) + 0.917f)
-            + sin(dot(worldXZ, float2(-0.01409f, 0.00893f)) + 2.618f)
-            + sin(dot(worldXZ, float2(0.00531f, -0.00713f)) + 4.523f);
-    return 1.0f + kFFTWaveGroupStrength * g;
-}
-// 頂点変位（ジオメトリ）に使うカスケード数。最小パッチ（23m のさざ波）は
-// メッシュ頂点間隔（≈15.6m）より波長が短くジオメトリでは解像できないため、
-// 変位には含めず PS の法線ディテール（Water.PS の全カスケード合算）だけで表現する。
-// 含めると頂点ごとに位相が飛んだエイリアシングノイズ（頂点のちらつき）になる。
-static const int kFFTGeometryCascadeCount = 2;
 
 // VS では実際には使用しないが、PS（Water.PS.hlsl）と同一レイアウトを保つために宣言する。
 cbuffer WaterFrameConstants : register(b5)
@@ -93,15 +64,12 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     [unroll]
     for (int ci = 0; ci < kFFTGeometryCascadeCount; ++ci)
     {
-        const float rc = kFFTCascadeRotC[ci];
-        const float rs = kFFTCascadeRotS[ci];
         // ワールドXZ を回転格子系へ（uv = R(θ)·p / patch）
-        float2 cuv = float2(
-            rc * baseWorldPos.x - rs * baseWorldPos.z,
-            rs * baseWorldPos.x + rc * baseWorldPos.z) / kFFTCascadePatch[ci];
+        float2 cuv = ComputeFFTCascadeUV(baseWorldPos.xz, ci);
         float3 d = gFFTOceanDisplacement.SampleLevel(gSampler, float3(cuv, (float)ci), 0.0f).xyz;
         // テクスチャ格子系の水平変位 (d.x, d.z) をワールドへ逆回転（高さ d.y はそのまま）
-        displacement += float3(rc * d.x + rs * d.z, d.y, -rs * d.x + rc * d.z);
+        float2 horizontal = RotateFromFFTCascadeGrid(float2(d.x, d.z), ci);
+        displacement += float3(horizontal.x, d.y, horizontal.y);
     }
 
     // 波群エンベロープでタイル周期を崩す（PS の法線・RT の波面評価と同一の変調）

@@ -328,7 +328,11 @@ SetWaterOpticalCoefficients / SetFresnelParameters
 
 > **検証**: 水面の見た目に変化が出ないこと（全て到達不能コードのため）。Gerstner / FFT 両モードで確認。
 
-### Phase R1: 単一情報源化（中リスク・事故予防）
+### Phase R1: 単一情報源化（中リスク・事故予防）— **実施済み（2026-07-27）**
+
+> 実施記録は [WaterPhaseR1_SingleSourceOfTruth.md](WaterPhaseR1_SingleSourceOfTruth.md) を参照。
+> 項目 4（cbuffer の static_assert）は R0 で先行実施済み。
+
 1. FFT カスケード定数と `ComputeFFTWaveGroupEnvelope` を `Shaders/Water/Common/FFTOceanCascade.hlsli` へ集約し、`Water.PS` / `FFTWater.VS` / `RTWaterSurfaceCommon` から include
 2. RT 屈折アルファのエンコード / デコードを `Shaders/Water/Common/WaterRefractionEncoding.hlsli` へ集約
 3. Gerstner 波評価を `Shaders/Water/Common/GerstnerWave.hlsli` へ集約し、`WaterCaustics.PS.hlsl` の重複実装を置換（cbuffer レイアウトも統一）

@@ -10,16 +10,8 @@
 #ifndef RT_WATER_SURFACE_COMMON_HLSLI
 #define RT_WATER_SURFACE_COMMON_HLSLI
 
-struct WaveParam
-{
-    float2 direction;
-    float amplitude;
-    float wavelength;
-    float speed;
-    float steepness;
-    float phaseOffset;
-    float padding;
-};
+#include "../Common/GerstnerWave.hlsli"
+#include "../Common/FFTOceanCascade.hlsli"
 
 cbuffer WaterSurfaceData : register(b1)
 {
@@ -27,7 +19,7 @@ cbuffer WaterSurfaceData : register(b1)
     uint gSurfaceActiveWaveCount;
     float gSurfaceTime;
     uint gSurfaceSimulationType;
-    WaveParam gSurfaceWaves[16];
+    GerstnerWave gSurfaceWaves[GERSTNER_MAX_WAVE_COUNT];
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -38,25 +30,14 @@ float3 EvaluateWaterOffsetGerstner(float2 worldXZ)
     float3 totalOffset = float3(0.0f, 0.0f, 0.0f);
 
     [unroll]
-    for (uint waveIndex = 0; waveIndex < 16; ++waveIndex)
+    for (uint waveIndex = 0; waveIndex < kMaxGerstnerWaveCount; ++waveIndex)
     {
         if (waveIndex >= gSurfaceActiveWaveCount)
         {
             break;
         }
 
-        WaveParam wave = gSurfaceWaves[waveIndex];
-        float k = 2.0f * 3.14159265f / max(wave.wavelength, 1.0e-4f);
-        float omega = wave.speed * k;
-        float kA = max(k * wave.amplitude, 1.0e-4f);
-        float safeSteepness = min(wave.steepness, 0.95f / kA);
-        float phase = k * dot(wave.direction, worldXZ) + omega * gSurfaceTime + wave.phaseOffset;
-        float sinP = sin(phase);
-        float cosP = cos(phase);
-
-        totalOffset.x += safeSteepness * wave.amplitude * wave.direction.x * cosP;
-        totalOffset.y += wave.amplitude * sinP;
-        totalOffset.z += safeSteepness * wave.amplitude * wave.direction.y * cosP;
+        totalOffset += EvaluateGerstnerWaveOffset(gSurfaceWaves[waveIndex], gSurfaceTime, worldXZ);
     }
 
     return totalOffset;
@@ -68,37 +49,18 @@ float3 EvaluateWaterNormalGerstner(float2 worldXZ)
     float3 dPdZ = float3(0.0f, 0.0f, 1.0f);
 
     [unroll]
-    for (uint waveIndex = 0; waveIndex < 16; ++waveIndex)
+    for (uint waveIndex = 0; waveIndex < kMaxGerstnerWaveCount; ++waveIndex)
     {
         if (waveIndex >= gSurfaceActiveWaveCount)
         {
             break;
         }
 
-        WaveParam wave = gSurfaceWaves[waveIndex];
-        float k = 2.0f * 3.14159265f / max(wave.wavelength, 1.0e-4f);
-        float omega = wave.speed * k;
-        float kA = max(k * wave.amplitude, 1.0e-4f);
-        float safeSteepness = min(wave.steepness, 0.95f / kA);
-        float phase = k * dot(wave.direction, worldXZ) + omega * gSurfaceTime + wave.phaseOffset;
-        float sinP = sin(phase);
-        float cosP = cos(phase);
-        float common = safeSteepness * wave.amplitude * k * sinP;
-        float heightSlope = wave.amplitude * k * cosP;
-
-        dPdX += float3(
-            -common * wave.direction.x * wave.direction.x,
-             heightSlope * wave.direction.x,
-            -common * wave.direction.x * wave.direction.y);
-
-        dPdZ += float3(
-            -common * wave.direction.x * wave.direction.y,
-             heightSlope * wave.direction.y,
-            -common * wave.direction.y * wave.direction.y);
+        AccumulateGerstnerWaveDerivatives(
+            gSurfaceWaves[waveIndex], gSurfaceTime, worldXZ, dPdX, dPdZ);
     }
 
-    float3 normal = normalize(cross(dPdZ, dPdX));
-    return normal.y < 0.0f ? -normal : normal;
+    return BuildGerstnerNormal(dPdX, dPdZ);
 }
 
 // ------------------------------------------------------------
@@ -123,40 +85,8 @@ uint WrapFFTOceanCoord(int coord, int resolution)
 // ============================================================
 // マルチスケール・カスケード（Texture2DArray）
 // ラスタ描画（FFTWater.VS / Water.PS）と同一の「回転格子系ワールドXZ / パッチ長」写像で
-// 各スライスをサンプルして合算する。FFTOceanManager kCascadePatchLength / kCascadeRotCos/Sin
-// と一致必須（パッチ長は互いに素な素数、格子回転 0°/+26°/-49°）。
+// 各スライスをサンプルして合算する。定数と写像は Common/FFTOceanCascade.hlsli が唯一の情報源。
 // ============================================================
-static const int kFFTCascadeCount = 3;
-static const float kFFTCascadePatch[3] = { 521.0f, 127.0f, 31.0f };
-static const float kFFTCascadeRotC[3] = { 1.0f, 0.89879405f, 0.65605903f };
-static const float kFFTCascadeRotS[3] = { 0.0f, 0.43837115f, -0.75471006f };
-
-/// @brief ワールドXZ を指定カスケードの回転格子系へ変換する
-float2 RotateToFFTCascadeGrid(float2 worldXZ, int cascade)
-{
-    const float rc = kFFTCascadeRotC[cascade];
-    const float rs = kFFTCascadeRotS[cascade];
-    return float2(rc * worldXZ.x - rs * worldXZ.y, rs * worldXZ.x + rc * worldXZ.y);
-}
-
-/// @brief 回転格子系の水平ベクトル（変位・傾き）をワールドへ逆回転する
-float2 RotateFromFFTCascadeGrid(float2 gridVector, int cascade)
-{
-    const float rc = kFFTCascadeRotC[cascade];
-    const float rs = kFFTCascadeRotS[cascade];
-    return float2(rc * gridVector.x + rs * gridVector.y, -rs * gridVector.x + rc * gridVector.y);
-}
-
-// 波群エンベロープ（タイル周期破壊の空間振幅変調）。
-// FFTWater.VS / Water.PS と完全一致必須（詳細コメントは FFTWater.VS 参照）。
-static const float kFFTWaveGroupStrength = 0.12f;
-float ComputeFFTWaveGroupEnvelope(float2 worldXZ)
-{
-    float g = sin(dot(worldXZ, float2(0.01071f, 0.01353f)) + 0.917f)
-            + sin(dot(worldXZ, float2(-0.01409f, 0.00893f)) + 2.618f)
-            + sin(dot(worldXZ, float2(0.00531f, -0.00713f)) + 4.523f);
-    return 1.0f + kFFTWaveGroupStrength * g;
-}
 
 /// @brief 配列テクスチャの1スライスをワールドXZ/パッチ長でバイリニアサンプルする
 float4 SampleFFTOceanArraySlice(Texture2DArray<float4> textureData, float2 worldXZ, float patchLength, uint slice, uint resolution)

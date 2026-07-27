@@ -172,7 +172,8 @@ float3 SampleMeshVertexDisplacement(float2 baseXZ)
 {
     float3 disp = 0.0f.xxx;
     [unroll]
-    for (int c = 0; c < 2; ++c) // kFFTGeometryCascadeCount と一致必須
+    // 頂点変位に使うカスケード数は FFTWater.VS と共有（Common/FFTOceanCascade.hlsli）
+    for (int c = 0; c < kFFTGeometryCascadeCount; ++c)
     {
         const float2 gridXZ = RotateToFFTCascadeGrid(baseXZ, c);
         const float3 d = SampleFFTOceanArraySlice(

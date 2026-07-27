@@ -1,6 +1,10 @@
 #include "Object3dForward.hlsli"
 // 大気散乱の空気遠近感を水面（フォワード半透明）にも適用する（b6 / t22 / t23 を使用）
 #include "AtmosphereApply.hlsli"
+// カスケード定数・回転写像・波群エンベロープの唯一の情報源
+#include "../Common/FFTOceanCascade.hlsli"
+// RT 屈折アルファのエンコード規約（RTWaterRefraction.hlsl と共有）
+#include "../Common/WaterRefractionEncoding.hlsli"
 
 // ===== 反射テクスチャ（RTWaterReflectionPass の DXR 出力）=====
 // 鏡像カメラによる Planar Reflection は廃止済み。スクリーン空間・水面ピクセル単位の
@@ -26,24 +30,6 @@ Texture2D<float4> gRTWaterRefractionColor : register(t17);
 // 頂点解像度に依存しない法線を得るため、ピクセルシェーダーで直接再サンプリングする。
 // カスケード（マルチスケールFFT）は Texture2DArray のスライスに格納される。
 Texture2DArray<float4> gFFTOceanNormal : register(t19);
-
-// マルチスケール・カスケード。FFTOceanManager / FFTWater.VS / RTWaterSurfaceCommon と一致必須
-// （パッチ長は互いに素な素数、格子回転 0°/+26°/-49° で周期の整列を破壊）。
-static const int kFFTCascadeCount = 3;
-static const float kFFTCascadePatch[3] = { 521.0f, 127.0f, 31.0f };
-static const float kFFTCascadeRotC[3] = { 1.0f, 0.89879405f, 0.65605903f };
-static const float kFFTCascadeRotS[3] = { 0.0f, 0.43837115f, -0.75471006f };
-
-// 波群エンベロープ（タイル周期破壊の空間振幅変調）。
-// FFTWater.VS / RTWaterSurfaceCommon と完全一致必須（詳細コメントは FFTWater.VS 参照）。
-static const float kFFTWaveGroupStrength = 0.12f;
-float ComputeFFTWaveGroupEnvelope(float2 worldXZ)
-{
-    float g = sin(dot(worldXZ, float2(0.01071f, 0.01353f)) + 0.917f)
-            + sin(dot(worldXZ, float2(-0.01409f, 0.00893f)) + 2.618f)
-            + sin(dot(worldXZ, float2(0.00531f, -0.00713f)) + 4.523f);
-    return 1.0f + kFFTWaveGroupStrength * g;
-}
 
 // ===== 空の放射照度 SH9 係数（SkyIrradianceSH.CS.hlsl 出力）=====
 // WaterPlaneObject::BindCustomResources() が t24 にバインドする。
@@ -357,39 +343,11 @@ float3 ComputeWaterVolumetricColor(
     return transmitted + inscatter;
 }
 
-// RTWaterRefraction.hlsl 側のアルファエンコードと必ず一致させること。
-//   [0, 0.5)   : ヒットなし。光路長も色も無効（理由コード 1〜9/255）
-//   [0.5, 1.0] : ヒットあり・色も有効。光路長をパック
-//   [1.5, 2.0] : ヒットあり・色は無効（rgb はフォールバック色）。光路長は同じ刻み
+// アルファのエンコード規約・IsRTPathValid / IsRTColorValid / DecodeRTOpticalPath は
+// Common/WaterRefractionEncoding.hlsli（RTWaterRefraction.hlsl と共有）が唯一の情報源。
 // 「光路長が有効か」と「色が有効か」を分けているのが要点。色が取れないだけの
 // ピクセルでも光路長は正しいので、水柱厚さの推定を別の量へ切り替えてはいけない
 // （切り替えると境界が透過率の段差＝波打ち際の二重線になる）。
-static const float kRTSuccessRangeMin = 0.5f;
-static const float kRTMaxOpticalPathMeters = 64.0f;
-static const float kRTColorInvalidOffset = 1.0f;
-
-/// @brief 屈折レイがジオメトリにヒットしたか（＝光路長が使えるか）
-float IsRTPathValid(float alpha)
-{
-    return alpha >= kRTSuccessRangeMin ? 1.0f : 0.0f;
-}
-
-/// @brief 屈折色をスクリーン空間から取得できたか
-float IsRTColorValid(float alpha)
-{
-    return (alpha >= kRTSuccessRangeMin && alpha <= 1.0f) ? 1.0f : 0.0f;
-}
-
-/// @brief 屈折レイが実際に水中を進んだ光路長（メートル）を復元する
-/// @details RTWaterRefraction.hlsl の EncodeHitAlpha() の逆変換。
-///          この値は「表示されている屈折後の内容」に対応する真の水柱厚さであり、
-///          スクリーン空間の素の深度（屈折で曲げる前の深度）とは異なる。
-float DecodeRTOpticalPath(float alpha)
-{
-    const float packed = (alpha > 1.0f) ? (alpha - kRTColorInvalidOffset) : alpha;
-    const float normalized = saturate((packed - kRTSuccessRangeMin) / (1.0f - kRTSuccessRangeMin));
-    return normalized * kRTMaxOpticalPathMeters;
-}
 
 float3 ResolveWaterTransmissionColor(uint2 pixelCoord, float2 screenUV)
 {
@@ -476,19 +434,15 @@ float3 ResolveSurfaceNormal(WaterPSInput input)
     [unroll]
     for (int ci = 0; ci < kFFTCascadeCount; ++ci)
     {
-        const float rc = kFFTCascadeRotC[ci];
-        const float rs = kFFTCascadeRotS[ci];
-        // ワールドXZ を回転格子系へ（FFTWater.VS と同一の写像）
-        float2 cuv = float2(
-            rc * input.worldPosition.x - rs * input.worldPosition.z,
-            rs * input.worldPosition.x + rc * input.worldPosition.z) / kFFTCascadePatch[ci];
+        // ワールドXZ を回転格子系へ（FFTWater.VS / RT と同一の写像）
+        float2 cuv = ComputeFFTCascadeUV(input.worldPosition.xz, ci);
         float3 enc = gFFTOceanNormal.Sample(gSampler, float3(cuv, (float)ci)).xyz;
         float3 nLocal = normalize(enc * 2.0f - 1.0f); // (x=+texU, y=up, z=+texV)
         // 小パッチほど近距離でフェードアウト（パッチ長比例のフェード区間）。
         float fade = 1.0f - smoothstep(kFFTCascadePatch[ci] * 8.0f, kFFTCascadePatch[ci] * 40.0f, dist);
         // テクスチャ格子系の傾きをワールドへ逆回転してから合算する
         float2 slopeTex = nLocal.xz / max(nLocal.y, 1.0e-3f);
-        slope += float2(rc * slopeTex.x + rs * slopeTex.y, -rs * slopeTex.x + rc * slopeTex.y) * fade;
+        slope += RotateFromFFTCascadeGrid(slopeTex, ci) * fade;
     }
 
     // 波群エンベロープ: 変位（FFTWater.VS）と同じ変調を傾きへ掛け、幾何と法線を一致させる

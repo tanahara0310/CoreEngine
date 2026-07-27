@@ -6,6 +6,8 @@
 
 #include "RTWaterSurfaceCommon.hlsli"
 #include "../../Include/Common/DepthReconstruction.hlsli"
+// 出力アルファのエンコード規約（読み手の Water.PS.hlsl と共有）
+#include "../Common/WaterRefractionEncoding.hlsli"
 
 RWTexture2D<float4> gRefractionOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
@@ -69,59 +71,14 @@ static const float kRTReasonTraceMiss = 6.0f / 255.0f;
 static const float kRTReasonInvalidClip = 7.0f / 255.0f;
 static const float kRTReasonDepthMismatch = 9.0f / 255.0f;
 
-// ------------------------------------------------------------
-// 成功時のアルファ値エンコード
-// 失敗理由コード（1〜9/255、= [0, 0.5) の範囲）と衝突しないよう、
-// 成功時は [0.5, 1.0] の範囲を使い、その中に「屈折レイが水面から
-// ヒット点まで実際に進んだ光路長（＝真の水柱厚さ）」を詰め込む。
-// Water.PS.hlsl 側の Beer-Lambert 吸収計算はこれまで水面ピクセル
-// 直下のスクリーン空間深度（屈折で曲げる前の深度）を使っていたため、
-// 実際に表示されている（屈折で曲がった先の）内容と深度が食い違い、
-// 「水中オブジェクトが水面にそのまま浮いて見える」原因になっていた。
-// この光路長を伝搬させることで、表示内容と吸収量を一致させる。
-// kRTMaxOpticalPathMeters は Water.PS.hlsl 側の同名定数と必ず一致させること。
-// ------------------------------------------------------------
-static const float kRTSuccessRangeMin = 0.5f;
-static const float kRTMaxOpticalPathMeters = 64.0f;
-
-// ------------------------------------------------------------
-// 「光路長が有効か」と「屈折色が有効か」は別々の事実である
-// ------------------------------------------------------------
-// 光路長 length(hitWorldPos - ray.Origin) はレイトレースの結果そのもので、
-// レイがジオメトリにヒットしさえすれば常に正しい。一方、屈折色はヒット点を
-// スクリーン空間へ再投影して SceneColor から拾う都合上、
-//   ・再投影先が画面外（InvalidClip）
-//   ・再投影先に別の面が写っている（DepthMismatch）
-// のときに取得できない。この2つは独立した失敗である。
-//
-// 旧実装は両者を1つの成功/失敗フラグにまとめていたため、色が取れないだけの
-// ピクセルで「有効な光路長」まで捨てられ、Water.PS.hlsl が別の推定量
-// （スクリーン空間近似）へ切り替わっていた。岸際では色の失敗が帯状に起きるため、
-// その境界で水柱厚さが不連続になり、波打ち際に白線が二重に見えていた。
-//
-// そこでアルファのレンジを分けて両方を伝える（出力は R16G16B16A16_FLOAT なので
-// 1.0 を超える値も格納できる）:
-//   [0, 0.5)   : ヒットなし。光路長も色も無効（理由コード 1〜9/255）
-//   [0.5, 1.0] : ヒットあり・色も有効。光路長をパック
-//   [1.5, 2.0] : ヒットあり・色は無効（rgb にはフォールバック色が入っている）。
-//                光路長を同じ刻みでパック（値から 1.0 を引いて復号する）
-// Water.PS.hlsl 側の IsRTPathValid / IsRTColorValid / DecodeRTOpticalPath と
-// 必ず一致させること。
-static const float kRTColorInvalidOffset = 1.0f;
+// アルファのエンコード規約（kRTSuccessRangeMin / kRTMaxOpticalPathMeters /
+// kRTColorInvalidOffset / EncodeHitAlpha）は Common/WaterRefractionEncoding.hlsli が
+// 唯一の情報源。読み手の Water.PS.hlsl も同じヘッダーを include する。
+// 失敗理由コード（1〜9/255 = [0, 0.5) の範囲）は成功レンジと衝突しない。
 
 float4 MakeFallbackOutput(float3 fallbackColor, float reasonCode)
 {
     return float4(fallbackColor, reasonCode);
-}
-
-/// @brief ヒット済みピクセルのアルファを作る
-/// @param opticalPathLength 屈折レイが水面からヒット点まで進んだ距離（＝真の水柱厚さ）
-/// @param colorValid        屈折色をスクリーン空間から取得できたか
-float EncodeHitAlpha(float opticalPathLength, bool colorValid)
-{
-    float normalized = saturate(opticalPathLength / kRTMaxOpticalPathMeters);
-    float packed = kRTSuccessRangeMin + normalized * (1.0f - kRTSuccessRangeMin);
-    return colorValid ? packed : (packed + kRTColorInvalidOffset);
 }
 
 /// @brief ヒットはしたが色が取れなかった場合の出力（光路長は必ず伝える）
