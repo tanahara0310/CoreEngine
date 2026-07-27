@@ -16,7 +16,9 @@ namespace CoreEngine
             float maxTraceDistance;
             float surfaceBias;
             float intensityScale;
-            float waterHeight;
+            // 旧 waterHeight。水面高さは WaterSurfaceData 側（b1）に一本化され未使用。
+            // 削除すると後続 float3 が 16B 境界をまたぎ HLSL とずれるためスロットは残す
+            float padding0;
             float lightDirection[3];
             float screenWidth;
             float screenHeight;
@@ -39,7 +41,8 @@ namespace CoreEngine
             float regionCenterXZ[2];
             float regionHalfExtentXZ[2];
             uint32_t regionValid;
-            float regionPadding[3];
+            // 波長依存の吸収係数 σa [1/m]（RGB）。水面描画の WaterFrameConstants と同値を同期
+            float absorptionCoeff[3];
             Matrix4x4 invViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
         };
 
@@ -245,7 +248,6 @@ namespace CoreEngine
         constants.maxTraceDistance = settings_.maxTraceDistance;
         constants.surfaceBias = settings_.surfaceBias;
         constants.intensityScale = settings_.intensityScale;
-        constants.waterHeight = dispatchSurfaceData.waterHeight;
         constants.lightDirection[0] = lightInput.direction.x;
         constants.lightDirection[1] = lightInput.direction.y;
         constants.lightDirection[2] = lightInput.direction.z;
@@ -271,6 +273,9 @@ namespace CoreEngine
         constants.regionHalfExtentXZ[0] = dispatchSurfaceData.regionHalfExtentXZ[0];
         constants.regionHalfExtentXZ[1] = dispatchSurfaceData.regionHalfExtentXZ[1];
         constants.regionValid = dispatchSurfaceData.regionValid;
+        constants.absorptionCoeff[0] = settings_.absorptionCoeff[0];
+        constants.absorptionCoeff[1] = settings_.absorptionCoeff[1];
+        constants.absorptionCoeff[2] = settings_.absorptionCoeff[2];
         constants.invViewProj = invViewProj;
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =

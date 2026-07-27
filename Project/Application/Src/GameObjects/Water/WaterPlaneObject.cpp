@@ -283,6 +283,15 @@ void WaterPlaneObject::SetClipPlane(const CoreEngine::Vector4& clipPlane, bool e
     frameCB_.clipEnabled  = enable ? 1 : 0;
 }
 
+void WaterPlaneObject::SetCameraClipPlanes(float nearZ, float farZ) {
+    // 不正値（0 や逆転）はシェーダーの LinearizeDepth を破綻させるため弾く
+    if (!(nearZ > 0.0f) || !(farZ > nearZ)) {
+        return;
+    }
+    frameCB_.cameraNearZ = nearZ;
+    frameCB_.cameraFarZ = farZ;
+}
+
 void WaterPlaneObject::UpdateFrameConstants() {
     constantBuffers_.UpdateFrameConstants(frameCB_, frameCB_.clipEnabled != 0);
 

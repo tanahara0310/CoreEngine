@@ -79,6 +79,14 @@ struct WaterFrameConstants {
 	int aerialPerspectiveEnabled = 0;
 	// 空スペキュラキューブマップで平面反射へ雲を合成するか（大気アクティブ＋生成済みのみ 1）
 	int skyEnvReflectionEnabled = 0;
+	// ---- 描画カメラのクリップ距離（深度の線形化に必須）----
+	// Water.PS.hlsl は NDC 深度差から水柱の厚さを求めるため、実際に描画している
+	// カメラの near/far が要る。以前はシェーダーに 0.1 / 1000 がハードコードされており、
+	// エディタ保存カメラ（far=100000）では線形深度が狂って水柱厚さを数十%過小評価し、
+	// RT屈折の実測光路長との差が波打ち際の段差（白線の二重）として見えていた。
+	float cameraNearZ = 0.1f;
+	float cameraFarZ = 1000.0f;
+	float cameraClipPadding[2] = {};
 };
 
 enum class WaterPresetType : int {

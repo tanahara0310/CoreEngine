@@ -35,6 +35,15 @@ namespace CoreEngine
 			uint64_t normalHandle = 0;
 		};
 
+		/// @brief DeferredLighting へ合成するコースティクスの生成方式
+		/// @details 両方式は同時に走らせず、ここで選んだ側だけが実行・合成される。
+		///          以前は RT 出力が存在する限り無条件で優先されていたため、
+		///          スクリーンスペース版と本テクニックのパラメータが死んでいた。
+		enum class Backend : uint32_t {
+			RayTracing = 0,  ///< RTWaterCausticsPass（DXR。既定）
+			ScreenSpace = 1, ///< WaterCausticsPass（本テクニックのピクセルシェーダー）
+		};
+
 		WaterCausticsTechnique() = default;
 		~WaterCausticsTechnique() override = default;
 
@@ -46,6 +55,9 @@ namespace CoreEngine
 		const Params& GetParams() const { return params_; }
 		const Diagnostics& GetDiagnostics() const { return diagnostics_; }
 		void SetParams(const Params& params);
+
+		Backend GetBackend() const { return backend_; }
+		void SetBackend(Backend backend) { backend_ = backend; }
 
 	protected:
 		std::string GetTechniqueName() const override { return "WaterCaustics"; }
@@ -79,6 +91,7 @@ namespace CoreEngine
 		void UpdateParamsBuffer();
 
 		std::string targetName_ = RenderTargetNames::WaterCausticsBuffer;
+		Backend backend_ = Backend::RayTracing;
 		Params params_{};
 		Diagnostics diagnostics_{};
 		Microsoft::WRL::ComPtr<ID3D12Resource> paramsBuffer_;

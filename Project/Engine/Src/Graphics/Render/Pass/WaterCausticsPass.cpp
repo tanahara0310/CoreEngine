@@ -32,6 +32,12 @@ namespace CoreEngine
             return;
         }
 
+        // RT 方式が選択されているフレームはスクリーンスペース版を実行しない
+        // （合成されるのは片方だけなので、描いても捨てるだけになる）
+        if (caustics->GetBackend() != WaterCausticsTechnique::Backend::ScreenSpace) {
+            return;
+        }
+
         caustics->SetRenderTargetName(targetName_);
 
         D3D12_GPU_DESCRIPTOR_HANDLE outputHandle{};

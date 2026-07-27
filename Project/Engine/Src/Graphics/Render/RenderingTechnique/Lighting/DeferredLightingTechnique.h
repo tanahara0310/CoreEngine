@@ -19,10 +19,20 @@ namespace CoreEngine
     public:
         static constexpr uint32_t kMaxRTShadowLights = 4;
 
+        /// @brief コースティクスのデバッグ表示＋水中ライティング設定（HLSL 側 WaterCausticsDebug と一致させること）
+        /// @details waterVolumeEnabled=1 のとき、水中ピクセルのメインライト直接光を
+        ///          コースティクス（完全な透過直接光）で置換し、アンビエントを Beer–Lambert で
+        ///          減衰させる。これにより海底が「水なしの直射日光＋コースティクス加算」を
+        ///          受ける二重計上を排除する。RT コースティクスが有効なフレームのみ立てる。
         struct WaterCausticsDebugSettings {
             uint32_t debugViewMode = 0;
             float debugDisplayScale = 1.0f;
-            float padding[2] = {};
+            uint32_t waterVolumeEnabled = 0;
+            float waterHeight = 0.0f;
+            float regionCenterXZ[2] = {};
+            float regionHalfExtentXZ[2] = {};
+            float absorptionCoeff[3] = {};
+            float padding0 = 0.0f;
         };
 
         DeferredLightingTechnique() = default;

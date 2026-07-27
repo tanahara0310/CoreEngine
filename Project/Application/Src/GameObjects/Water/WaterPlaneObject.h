@@ -79,6 +79,12 @@ public:
     /// @param enable true のとき SV_ClipDistance0 を有効化する
     void SetClipPlane(const CoreEngine::Vector4& clipPlane, bool enable);
 
+    /// @brief 描画カメラのクリップ距離を設定する（深度の線形化に使用）
+    /// @details Water.PS.hlsl は NDC 深度差から水柱の厚さを求めるため、実際に描画している
+    ///          カメラの near/far が必須。ここを渡さないとシェーダー既定値との食い違いで
+    ///          水柱厚さが狂い、RT屈折の実測光路長との段差が波打ち際に線として現れる。
+    void SetCameraClipPlanes(float nearZ, float farZ);
+
     /// @brief フレーム定数バッファ（クリップ平面）を GPU に転送する
     void UpdateFrameConstants();
 

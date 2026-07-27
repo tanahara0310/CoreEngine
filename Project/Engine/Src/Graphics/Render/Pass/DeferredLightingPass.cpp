@@ -14,6 +14,7 @@
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
+#include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
 #include "Math/MathCore.h"
@@ -146,7 +147,30 @@ namespace CoreEngine
             hasRTWaterCaustics = context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::RTWaterCaustics, rtWaterCausticsHandle);
         }
 
-        if (hasRTWaterCaustics) {
+        auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(
+            RenderingTechniqueNames::WaterCaustics);
+
+        // コースティクスの合成入力を決める。
+        // - テクニックが無効なら合成しない（トグルが見た目に効くようにする）
+        // - 生成方式（RT / スクリーンスペース）は Backend で明示的に選ぶ。
+        //   以前は RT 出力が存在する限り無条件で優先していたため、RT が
+        //   1ピクセルも出さない状況（斜め太陽など）でスクリーンスペース版へ
+        //   フォールバックできず、コースティクスが完全に消えていた。
+        const bool causticsEnabled = (caustics == nullptr) || caustics->IsEnabled();
+        const bool preferRayTracing =
+            (caustics == nullptr) || caustics->GetBackend() == WaterCausticsTechnique::Backend::RayTracing;
+
+        bool usingRT = false;
+        if (!causticsEnabled) {
+            deferredLighting->SetWaterCausticsHandle({});
+        } else if (preferRayTracing && hasRTWaterCaustics) {
+            usingRT = true;
+            deferredLighting->SetWaterCausticsHandle(rtWaterCausticsHandle);
+        } else if (!preferRayTracing && hasWaterCaustics) {
+            deferredLighting->SetWaterCausticsHandle(waterCausticsHandle);
+        } else if (hasRTWaterCaustics) {
+            // 選択した方式の出力が未生成のフレームは、もう一方があればそれで代替する
+            usingRT = true;
             deferredLighting->SetWaterCausticsHandle(rtWaterCausticsHandle);
         } else if (hasWaterCaustics) {
             deferredLighting->SetWaterCausticsHandle(waterCausticsHandle);
@@ -154,26 +178,47 @@ namespace CoreEngine
             deferredLighting->SetWaterCausticsHandle({});
         }
 
-        if (auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(RenderingTechniqueNames::WaterCaustics)) {
+        {
             DeferredLightingTechnique::WaterCausticsDebugSettings debugSettings{};
-            debugSettings.debugViewMode = caustics->GetParams().debugViewMode;
-            debugSettings.debugDisplayScale = caustics->GetParams().debugDisplayScale;
+            if (caustics) {
+                debugSettings.debugViewMode = caustics->GetParams().debugViewMode;
+                debugSettings.debugDisplayScale = caustics->GetParams().debugDisplayScale;
+            }
+
+            // ===== 水中ライティング（直接光の二重計上排除） =====
+            // RT コースティクス（＝完全な透過直接光）が今フレーム合成される場合のみ、
+            // 水中ピクセルのメインライト直接光をコースティクスへ置換し、
+            // アンビエントを Beer–Lambert で減衰させる。スクリーンスペース版は
+            // 透過直接光の全量を持たない（模様のみ）ため置換しない。
+            const WaterSurfaceData* surface = context.waterRefractionSurfaceData;
+            if (usingRT && surface && surface->regionValid != 0 && context.rtWaterCausticsManager) {
+                const WaterCausticsRayTracingSettings& rtSettings =
+                    context.rtWaterCausticsManager->GetSettings();
+                debugSettings.waterVolumeEnabled = 1;
+                debugSettings.waterHeight = surface->waterHeight;
+                debugSettings.regionCenterXZ[0] = surface->regionCenterXZ[0];
+                debugSettings.regionCenterXZ[1] = surface->regionCenterXZ[1];
+                debugSettings.regionHalfExtentXZ[0] = surface->regionHalfExtentXZ[0];
+                debugSettings.regionHalfExtentXZ[1] = surface->regionHalfExtentXZ[1];
+                debugSettings.absorptionCoeff[0] = rtSettings.absorptionCoeff[0];
+                debugSettings.absorptionCoeff[1] = rtSettings.absorptionCoeff[1];
+                debugSettings.absorptionCoeff[2] = rtSettings.absorptionCoeff[2];
+            }
             deferredLighting->SetWaterCausticsDebugSettings(debugSettings);
-        } else {
-            deferredLighting->SetWaterCausticsDebugSettings({});
         }
 
-        if (auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(RenderingTechniqueNames::WaterCaustics);
-            caustics && caustics->GetParams().debugLogEnabled != 0) {
+        if (caustics && caustics->GetParams().debugLogEnabled != 0) {
             Logger::GetInstance().Infof(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "DeferredLightingPass: WaterCaustics input approx=0x{:X} hasApprox={} rt=0x{:X} hasRT={} usingRT={} debugViewMode={} debugScale={:.2f}",
+                "DeferredLightingPass: WaterCaustics input approx=0x{:X} hasApprox={} rt=0x{:X} hasRT={} enabled={} backend={} usingRT={} debugViewMode={} debugScale={:.2f}",
                 waterCausticsHandle.ptr,
                 hasWaterCaustics,
                 rtWaterCausticsHandle.ptr,
                 hasRTWaterCaustics,
-                hasRTWaterCaustics,
+                causticsEnabled,
+                static_cast<uint32_t>(caustics->GetBackend()),
+                usingRT,
                 caustics->GetParams().debugViewMode,
                 caustics->GetParams().debugDisplayScale);
         }

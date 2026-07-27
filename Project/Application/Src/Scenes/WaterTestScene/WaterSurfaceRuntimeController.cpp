@@ -2,6 +2,9 @@
 #include "WaterSurfaceRuntimeController.h"
 
 #include "EngineSystem/EngineSystem.h"
+#include "Camera/CameraStructs.h"
+#include "Camera/ICamera.h"
+#include "Scene/SceneManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
@@ -108,6 +111,16 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 		waterPlane_->SetSceneDepthSRV(dxCommon->GetDepthStencilSRV());
 	}
 
+	// Depth Fade の深度線形化に使うカメラのクリップ距離を毎フレーム同期する。
+	// エディタでは far=100000 のデバッグカメラ、実行時は既定 far=1000 のリリースカメラと
+	// 値が変わるため、シェーダー側に定数で持たせてはいけない（水柱厚さが狂う）。
+	if (auto* sceneManager = engine.GetSceneManager()) {
+		if (ICamera* camera = sceneManager->GetGameViewCamera3D()) {
+			const CameraParameters cameraParams = camera->GetParameters();
+			waterPlane_->SetCameraClipPlanes(cameraParams.nearClip, cameraParams.farClip);
+		}
+	}
+
 	// DXR 屈折結果のカラー SRV を設定する
 	if (auto* renderDomainContext = engine.GetRenderDomainContext()) {
 		if (auto* waterRefractionManager = renderDomainContext->GetWaterRefractionRayTracingManager()) {
@@ -129,6 +142,17 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 				fftOceanManager->GetDisplacementSRVHandle(),
 				fftOceanManager->GetNormalSRVHandle(),
 				fftOceanManager->GetJacobianSRVHandle());
+		}
+
+		// 水面描画と同じ波長依存吸収係数 σa を RT コースティクスへ毎フレーム同期する
+		// （Jerlov プリセット / 濁度 UI の変更に Beer–Lambert 減衰を追従させる）
+		if (auto* waterCausticsManager = renderDomainContext->GetWaterCausticsRayTracingManager()) {
+			const WaterFrameConstants& frameConstants = waterPlane_->GetFrameConstants();
+			WaterCausticsRayTracingSettings causticsSettings = waterCausticsManager->GetSettings();
+			causticsSettings.absorptionCoeff[0] = frameConstants.absorptionCoeff[0];
+			causticsSettings.absorptionCoeff[1] = frameConstants.absorptionCoeff[1];
+			causticsSettings.absorptionCoeff[2] = frameConstants.absorptionCoeff[2];
+			waterCausticsManager->SetSettings(causticsSettings);
 		}
 
 		// 大気散乱（Aerial Perspective）のリソースを水面へ接続する。
@@ -170,6 +194,21 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 	waterSurfaceSnapshot_ = {};
 	waterRefractionSurfaceData_ = {};
 	if (!waterPlane_) {
+		return;
+	}
+
+	// 水面オブジェクトが非表示のフレームは「水なし」として扱う。
+	// ここで surface data（regionValid=0 のゼロ値）を publish しないと、
+	// RT コースティクスのディスパッチと DeferredLighting の水中ライティング
+	// （直接光のコースティクス置換・アンビエントの Beer–Lambert 減衰）が
+	// 動き続け、非表示のはずの水の光学効果（薄い青色）が床に乗り続ける。
+	if (!waterPlane_->IsActive()) {
+		if (surfaceModelProvider_) {
+			surfaceModelProvider_->SetSource(
+				nullptr,
+				WaterSurfaceSimulationType::Gerstner,
+				"WaterSurfaceRuntimeController");
+		}
 		return;
 	}
 

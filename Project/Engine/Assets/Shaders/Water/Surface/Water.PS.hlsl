@@ -102,6 +102,14 @@ cbuffer WaterFrameConstants : register(b5)
     int gAerialPerspectiveEnabled;
     // 空スペキュラキューブマップで平面反射へ雲を合成するか（大気アクティブ＋生成済みのみ 1）
     int gSkyEnvReflectionEnabled;
+
+    // ---- 描画カメラのクリップ距離（LinearizeDepth 用）----
+    // C++ 側 WaterFrameConstants::cameraNearZ / cameraFarZ と一致させること。
+    // ここをハードコードしてはいけない（エディタ保存カメラは far=100000 で、
+    // 既定 1000 と食い違うと水柱厚さが数十%狂う）。
+    float gCameraNearZ;
+    float gCameraFarZ;
+    float2 gCameraClipPadding;
 };
 
 /// @brief NDC 深度値をビュー空間線形深度（メートル単位）に変換する
@@ -126,6 +134,97 @@ float ComputeWaterOpticalPathLength(float viewDepthDelta, float waterDepthView, 
     float viewToRayScale = rayDistanceToWater / max(waterDepthView, 1.0e-4f);
     return max(0.0f, viewDepthDelta * viewToRayScale);
 }
+
+/// @brief 屈折を無視した視線光路長を、実際の屈折光路長へ換算する係数を返す
+/// @param viewDir       水面上の点 → カメラ方向（正規化済み）
+/// @param surfaceNormal 水面法線（正規化済み）
+/// @details ComputeWaterOpticalPathLength は「屈折させていない視線」が水中を進む距離を返すが、
+///          waterColumn の利用側（Beer-Lambert の transmittance、
+///          ComputeSunDownwellingTransmittance の鉛直深度換算）はいずれも
+///          「屈折後の光路長」を前提にしている。RTWaterRefraction が返す実測値も屈折後の
+///          光路長なので、換算しないと両者が別物の量になり、RT の成功/失敗が切り替わる
+///          境界で透過率が段差になる（波打ち際の白線が二重に見える原因）。
+///
+///          水柱の鉛直厚さ t は視線・屈折線のどちらで測っても同じなので、
+///            t = L_view × |viewDown.y| = L_refract × |refracted.y|
+///          より L_refract = L_view × |viewDown.y| / |refracted.y|。
+///          かすめ角ほど屈折線は立つ（|refracted.y| が大きい）ので係数は 1 未満になる。
+float ComputeRefractedPathScale(float3 viewDir, float3 surfaceNormal)
+{
+    const float kEtaAirToWater = 1.0f / 1.333f;
+    const float3 refractedView = refract(-viewDir, surfaceNormal, kEtaAirToWater);
+    // 全反射・上向き屈折（荒れた波面法線で起こりうる）は換算不能なので等倍に落とす
+    if (dot(refractedView, refractedView) <= 1.0e-6f || refractedView.y >= -1.0e-4f)
+    {
+        return 1.0f;
+    }
+    // viewDir は水面 → カメラ。その y 成分がカメラ → 水面の下向き成分の大きさに等しい
+    const float viewDownY = saturate(viewDir.y);
+    return saturate(viewDownY / max(-refractedView.y, 1.0e-4f));
+}
+
+/// @brief 水中へ屈折した視線方向（下向き・正規化済み）を返す
+/// @param viewDir       水面上の点 → カメラ方向（正規化済み）
+/// @param surfaceNormal 水面法線（正規化済み）
+/// @details 全反射・上向き屈折（荒れた波面法線で起こりうる）のときは真下へ退避する。
+///          水中では屈折角が臨界角 48.6° に制限されるため、正常時の -y は 0.66 以上になる。
+float3 ComputeRefractedViewDir(float3 viewDir, float3 surfaceNormal)
+{
+    const float kEtaAirToWater = 1.0f / 1.333f;
+    const float3 refractedView = refract(-viewDir, surfaceNormal, kEtaAirToWater);
+    if (dot(refractedView, refractedView) <= 1.0e-6f || refractedView.y >= -1.0e-4f)
+    {
+        return float3(0.0f, -1.0f, 0.0f);
+    }
+    return normalize(refractedView);
+}
+
+/// @brief 水面と海底の「高さの差」から水中光路長を解析的に求める
+/// @param worldPos       水面ピクセルのワールド座標（頂点変位適用後 ＝ 水面の高さそのもの）
+/// @param sceneDepthView 背景（海底）のビュー空間線形深度 [m]
+/// @param waterDepthView 水面自身のビュー空間線形深度 [m]
+/// @param refractedView  水中へ屈折した視線（ComputeRefractedViewDir）
+/// @details ★波打ち際に線が出続けた問題の恒久対策★（2026-07-27）
+///          浅瀬は吸収がゼロ（exp(-σt·d), d≈0 → 1）なので、水柱厚さの推定誤差が
+///          そのまま素通しで見える。そこで水柱厚さが「RT実測光路長 / スクリーン空間近似 /
+///          無限水柱 / ゼロ」に分岐すると、分岐の境界が必ず 1 ピクセルの等高線＝線になる。
+///          過去の白線・二重線・紺色のヘアラインは全てこの構図だった。
+///
+///          この関数は分岐を一切持たない連続場として水柱厚さを与える:
+///            鉛直水深 = 水面の高さ − 海底の高さ
+///          水面の高さは変位適用後の worldPos.y がそのまま使える。海底の高さは
+///          シーン深度から視線に沿って復元する（レイ距離 = ビュー空間Z / cos(視線軸角)）。
+///          汀線は「この場のゼロ等高線」になるため、段差が原理的に発生しない。
+float ComputeAnalyticWaterColumn(
+    float3 worldPos, float sceneDepthView, float waterDepthView, float3 refractedView)
+{
+    const float3 cameraToWater = worldPos - gCamera.worldPosition;
+    const float distanceToWater = length(cameraToWater);
+    if (distanceToWater <= 1.0e-4f || waterDepthView <= 1.0e-4f)
+    {
+        return 0.0f;
+    }
+
+    const float3 rayDir = cameraToWater / distanceToWater;
+    // ビュー空間Z（深度）からレイ長へ戻す係数。視線とカメラ前方軸のなす角の余弦。
+    const float cosAxis = max(waterDepthView / distanceToWater, 1.0e-4f);
+    const float3 groundPos = gCamera.worldPosition + rayDir * (sceneDepthView / cosAxis);
+
+    const float verticalDepth = max(worldPos.y - groundPos.y, 0.0f);
+    // 鉛直水深 → 屈折後の光路長。臨界角があるので -y は 0.66 以上のはずだが安全側に切る
+    return verticalDepth / max(-refractedView.y, 0.2f);
+}
+
+// 解析水柱厚さと RT 実測光路長のブレンド範囲 [m]。
+// 浅い側（〜1m）は解析値 100%: 分岐が無いので線が出ない。ここは吸収がほぼ効かず
+// 誤差が丸見えになる領域なので、連続性を最優先する。
+// 深い側（4m〜）は RT 実測 100%: 屈折で曲がった先の距離が効くので水中オブジェクトの
+// 見え方が正しくなる。
+// 0.3〜1.5m から 1.0〜4.0m へ拡大（2026-07-27）: 遷移域では RT 実測値の不連続が
+// 重み分だけ漏れて薄い線として残るため、その重みが立ち上がる深さを、吸収が十分効いて
+// 差が視覚的に潰れる所まで押し出す（赤の σa≈0.45/m なら 4m で透過率 0.16）。
+static const float kAnalyticColumnFullMeters = 1.0f;
+static const float kAnalyticColumnBlendEndMeters = 4.0f;
 
 /// @brief Schlick 近似による Fresnel 係数を計算する
 /// @param cosTheta  視線と法線のなす角の余弦（saturate 済み推奨）
@@ -279,48 +378,73 @@ float3 ComputeSunDownwellingTransmittance(
 /// @brief 水柱を通過した背景色に波長依存の吸収・散乱を適用する
 /// @param refractionColor 水面越しに見える背景（海底・水中物体）の色
 /// @param transmittance   exp(-σt·d) 視線（上り）光路の波長別透過率
-/// @param sunDownTransmittance 太陽 → 海底の下り光路の透過率（ComputeSunDownwellingTransmittance）
 /// @param sigmaS          散乱係数 σs [1/m]
 /// @param sigmaT          消散係数 σt = σa + σs [1/m]
 /// @param ambientLight    水面に入射する環境光（ComputeUnderwaterAmbientLight）
 /// @details 透過項 + 均質媒質の単一散乱解析解。
 ///          浅瀬では transmittance がまだ緑・青を通すため海底アルベド（白砂）が
 ///          エメラルドに、深瀬では透過が消えて (σs/σt)·L の水固有の青に収束する。
+///          太陽 → 海底の下り光路の減衰は DeferredLighting の水中ライティング置換
+///          （RT コースティクス）が海底色に織り込み済みなので、ここでは掛けない
+///          （掛けると二重計上。呼び出し側のコメント参照）。
 float3 ComputeWaterVolumetricColor(
-    float3 refractionColor, float3 transmittance, float3 sunDownTransmittance,
+    float3 refractionColor, float3 transmittance,
     float3 sigmaS, float3 sigmaT, float3 ambientLight)
 {
-    // 海底からの光は「太陽の下り + 視線の上り」の両光路で減衰する
-    float3 transmitted = refractionColor * transmittance * sunDownTransmittance;
+    float3 transmitted = refractionColor * transmittance;
     float3 inscatter = (sigmaS / sigmaT) * ambientLight * (1.0f - transmittance);
     return transmitted + inscatter;
 }
 
-// RTWaterRefraction.hlsl 側の成功時アルファエンコードと必ず一致させること。
-// 失敗理由コードは [0, 0.5) の範囲（1〜9/255）、成功時は [0.5, 1.0] の範囲に
-// 実際の屈折光路長（水柱厚さ、メートル）を詰め込んでいる。
+// RTWaterRefraction.hlsl 側のアルファエンコードと必ず一致させること。
+//   [0, 0.5)   : ヒットなし。光路長も色も無効（理由コード 1〜9/255）
+//   [0.5, 1.0] : ヒットあり・色も有効。光路長をパック
+//   [1.5, 2.0] : ヒットあり・色は無効（rgb はフォールバック色）。光路長は同じ刻み
+// 「光路長が有効か」と「色が有効か」を分けているのが要点。色が取れないだけの
+// ピクセルでも光路長は正しいので、水柱厚さの推定を別の量へ切り替えてはいけない
+// （切り替えると境界が透過率の段差＝波打ち際の二重線になる）。
 static const float kRTSuccessRangeMin = 0.5f;
 static const float kRTMaxOpticalPathMeters = 64.0f;
+static const float kRTColorInvalidOffset = 1.0f;
 
-float IsRTRefractionSuccess(float reasonCode)
+/// @brief 屈折レイがジオメトリにヒットしたか（＝光路長が使えるか）
+float IsRTPathValid(float alpha)
 {
-    return reasonCode >= kRTSuccessRangeMin ? 1.0f : 0.0f;
+    return alpha >= kRTSuccessRangeMin ? 1.0f : 0.0f;
 }
 
-/// @brief RT屈折が成功した場合の、屈折レイが実際に水中を進んだ光路長（メートル）を復元する
-/// @details RTWaterRefraction.hlsl の EncodeSuccessAlpha() の逆変換。
+/// @brief 屈折色をスクリーン空間から取得できたか
+float IsRTColorValid(float alpha)
+{
+    return (alpha >= kRTSuccessRangeMin && alpha <= 1.0f) ? 1.0f : 0.0f;
+}
+
+/// @brief 屈折レイが実際に水中を進んだ光路長（メートル）を復元する
+/// @details RTWaterRefraction.hlsl の EncodeHitAlpha() の逆変換。
 ///          この値は「表示されている屈折後の内容」に対応する真の水柱厚さであり、
 ///          スクリーン空間の素の深度（屈折で曲げる前の深度）とは異なる。
-float DecodeRTOpticalPath(float reasonCode)
+float DecodeRTOpticalPath(float alpha)
 {
-    float normalized = saturate((reasonCode - kRTSuccessRangeMin) / (1.0f - kRTSuccessRangeMin));
+    const float packed = (alpha > 1.0f) ? (alpha - kRTColorInvalidOffset) : alpha;
+    const float normalized = saturate((packed - kRTSuccessRangeMin) / (1.0f - kRTSuccessRangeMin));
     return normalized * kRTMaxOpticalPathMeters;
 }
 
 float3 ResolveWaterTransmissionColor(uint2 pixelCoord, float2 screenUV)
 {
     float4 rtRefraction = gRTWaterRefractionColor.Load(int3(pixelCoord, 0));
-    if (IsRTRefractionSuccess(rtRefraction.a) > 0.5f) {
+
+    // ★ここで IsRTColorValid の 2 値で切り替えてはいけない★
+    // RTWaterRefraction.hlsl は「屈折先のシーン色」と「屈折させていない自分の
+    // ピクセルのシーン色（フォールバック）」を depthConfidence × edgeFade で
+    // 連続ブレンドした結果を rgb に書いている。ここで 2 値切替を入れると、
+    // 岸際に帯状に出る色フォールバック領域の縁が色の段差になり、
+    // 波打ち際に沿った細い暗線として見える（光路長で起きたのと同じ事故）。
+    //
+    // ヒットしていないピクセルの rgb もフォールバック色（＝この関数の else と
+    // 同じ値）なので、実質どちらでも同じだが、RT パスが走っていないフレーム
+    // （テクスチャがダミー）のために else 側は残す。
+    if (IsRTPathValid(rtRefraction.a) > 0.5f) {
         return rtRefraction.rgb;
     }
 
@@ -334,6 +458,8 @@ float4 SampleRTWaterRefraction(uint2 pixelCoord)
 
 float3 VisualizeRTRefractionReason(float reasonCode)
 {
+    // 緑 = 光路長も色も有効 / 橙 = ヒット済みで光路長のみ有効（色はフォールバック）
+    if (reasonCode > 1.0f) return float3(1.0f, 0.5f, 0.0f);
     if (reasonCode >= kRTSuccessRangeMin) return float3(0.0f, 1.0f, 0.0f);
 
     const float reasonIndex = floor(reasonCode * 255.0f + 0.5f);
@@ -647,27 +773,43 @@ PixelShaderOutput main(WaterPSInput input)
     bool hasValidDepthFade = false;
     if (gDepthFadeEnabled)
     {
-        // near/far クリップ（カメラデフォルト値）
-        const float kNear = 0.1f;
-        const float kFar = 1000.0f;
+        // 実際に描画しているカメラのクリップ距離を使う。
+        // 0 が来た場合（未設定フレーム）だけ既定値へ退避する。
+        const float kNear = max(gCameraNearZ, 1.0e-4f);
+        const float kFar = max(gCameraFarZ, kNear + 1.0e-3f);
+
+        const float3 toEyeDir = normalize(gCamera.worldPosition - input.worldPosition);
+        const float3 depthSurfaceNormal = ResolveSurfaceNormal(input);
+        const float3 refractedView = ComputeRefractedViewDir(toEyeDir, depthSurfaceNormal);
+
+        // スクリーン空間近似を RT 実測値と同じ「屈折後の光路長」へ揃えるための係数
+        const float refractedPathScale = ComputeRefractedPathScale(toEyeDir, depthSurfaceNormal);
 
         // シーン深度を NDC → ビュー空間線形深度（m）に変換する
         sceneDepthNDC = gSceneDepth.Sample(gLinearClamp, screenUV).r;
         waterDepthView = LinearizeDepth(waterDepthNDC, kNear, kFar);
 
-        if (sceneDepthNDC < 0.99999f)
+        // 浅瀬の権威値（分岐を持たない連続場）。背景が far plane のときは無効。
+        float analyticColumn = 0.0f;
+        const bool hasBackgroundGeometry = (sceneDepthNDC < 0.99999f);
+
+        if (hasBackgroundGeometry)
         {
             sceneDepthView = LinearizeDepth(sceneDepthNDC, kNear, kFar);
+
+            analyticColumn = ComputeAnalyticWaterColumn(
+                input.worldPosition, sceneDepthView, waterDepthView, refractedView);
 
             if (sceneDepthView > waterDepthView + 1.0e-4f)
             {
                 hasValidDepthFade = true;
 
-                // 水面自身の線形深度を求め、背景との深度差を水中の光路長として扱う
+                // 水面自身の線形深度を求め、背景との深度差を水中の光路長として扱う。
+                // さらに屈折換算を掛けて RT 実測値（屈折後の光路長）と同じ量に揃える。
                 waterColumn = ComputeWaterOpticalPathLength(
                     sceneDepthView - waterDepthView,
                     waterDepthView,
-                    input.worldPosition);
+                    input.worldPosition) * refractedPathScale;
             }
         }
         else
@@ -679,46 +821,41 @@ PixelShaderOutput main(WaterPSInput input)
             waterColumn = kInfiniteWaterColumnMeters;
         }
 
-        // RT屈折が成功している場合、実際に画面へ表示している内容（屈折で曲がった先）に
-        // 対応する「真の光路長」で上の近似値を置き換える。
+        // ===== 水柱厚さは「屈折レイの実測光路長」に一本化する =====
         // 上のスクリーン空間近似は水面ピクセル直下の素の深度（屈折前の深度）を使っており、
-        // 屈折で表示位置がズレた分だけ吸収量が表示内容と食い違ってしまう
+        // 屈折で表示位置がズレた分だけ吸収量が表示内容と食い違う
         // （＝水中オブジェクトが水面に浮いて見える一因）。
         //
-        // ただし RT の成功/失敗はピクセル単位の2値で、波の揺らぎに応じて成功領域が
-        // パッチ状に変化する（DepthMismatch・画面外クリップ等）。成功側=実測光路長と
-        // 失敗側=スクリーン空間近似が不連続に切り替わると、その境界が透過率の段差
-        // （色の輪郭）としてそのまま見えてしまうため、近傍タップの成功率で
-        // 光路長をフェザリングして境界を空間的になじませる。
-        const int2 kRTNeighborOffsets[4] = { int2(-3, -3), int2(3, -3), int2(-3, 3), int2(3, 3) };
-        float rtOpticalPathSum = 0.0f;
-        float rtSuccessCount = 0.0f;
-        float4 rtRefractionSample = SampleRTWaterRefraction(pixelCoord);
-        if (IsRTRefractionSuccess(rtRefractionSample.a) > 0.5f)
+        // RTWaterRefraction はレイがジオメトリにヒットしさえすれば必ず実測光路長を返す。
+        // 「色が取れなかった（画面外・DepthMismatch）」ケースでも光路長は有効なので、
+        // ここで別の推定量へ切り替える必要はない。これによりピクセル単位の 2 値切り替えが
+        // 消え、岸際の失敗帯の境界に出ていた透過率の段差（白線の二重）が原理的に生じなくなる。
+        // 近傍フェザリングも不要になったため撤去した（12 タップ削減）。
+        //
+        // スクリーン空間近似が残るのは「レイがどこにもヒットしなかった」場合だけで、
+        // これは屈折先に何も無い外洋を意味し、下の kInfiniteWaterColumnMeters と
+        // 連続的につながるため段差にならない。
+        const float rtAlpha = SampleRTWaterRefraction(pixelCoord).a;
+        if (IsRTPathValid(rtAlpha) > 0.5f)
         {
-            rtOpticalPathSum += DecodeRTOpticalPath(rtRefractionSample.a);
-            rtSuccessCount += 1.0f;
+            waterColumn = DecodeRTOpticalPath(rtAlpha);
+            hasValidDepthFade = true;
         }
-        [unroll]
-        for (int tapIndex = 0; tapIndex < 4; ++tapIndex)
+
+        // ===== 浅瀬は解析水柱厚さへ一本化する（波打ち際の線の恒久対策）=====
+        // ここまでで waterColumn は「RT実測 or スクリーン空間近似」のいずれかで、
+        // どちらもピクセル単位で切り替わりうる（＝境界が線になる）。浅瀬は吸収が
+        // 効かないので、その段差が減衰されずそのまま見えてしまう。
+        // ComputeAnalyticWaterColumn は分岐を一切持たない連続場なので、浅い側を
+        // これで置き換えれば、RT の成功/失敗や深度不一致がどう転んでも
+        // 波打ち際の見た目には影響しなくなる。
+        // 背景が far plane（外洋）のときは海底が無く解析値が定義できないため除外する
+        // （そこは kInfiniteWaterColumnMeters が連続的に効く）。
+        if (hasBackgroundGeometry)
         {
-            int2 tapCoord = clamp(
-                int2(pixelCoord) + kRTNeighborOffsets[tapIndex],
-                int2(0, 0),
-                int2(sceneDepthWidth - 1, sceneDepthHeight - 1));
-            float tapAlpha = gRTWaterRefractionColor.Load(int3(tapCoord, 0)).a;
-            if (IsRTRefractionSuccess(tapAlpha) > 0.5f)
-            {
-                rtOpticalPathSum += DecodeRTOpticalPath(tapAlpha);
-                rtSuccessCount += 1.0f;
-            }
-        }
-        if (rtSuccessCount > 0.0f)
-        {
-            const float rtColumn = rtOpticalPathSum / rtSuccessCount;
-            const float rtSuccessWeight = rtSuccessCount / 5.0f;
-            // フォールバック推定が無効なピクセルでは RT 実測値をそのまま使う
-            waterColumn = hasValidDepthFade ? lerp(waterColumn, rtColumn, rtSuccessWeight) : rtColumn;
+            const float deepWeight = smoothstep(
+                kAnalyticColumnFullMeters, kAnalyticColumnBlendEndMeters, analyticColumn);
+            waterColumn = lerp(analyticColumn, waterColumn, deepWeight);
             hasValidDepthFade = true;
         }
     }
@@ -742,12 +879,17 @@ PixelShaderOutput main(WaterPSInput input)
 
     float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);
     float3 underwaterAmbient = ComputeUnderwaterAmbientLight();
-    float3 sunDownTransmittance = ComputeSunDownwellingTransmittance(
-        viewDir, geomNormal, waterColumn, sigmaT);
+    // ★太陽の下り光路（太陽→海底）の吸収をここで掛けてはいけない★（2026-07-27 撤去）
+    // DeferredLighting の水中ライティング置換（RT コースティクス）が、海底ピクセルの
+    // 直接光として exp(-σa·実光路長) を含む透過直接光を既に合成している。
+    // つまり refractionColor（水面越しに見える海底の色）には下り光路の減衰が
+    // 織り込み済みで、ここで ComputeSunDownwellingTransmittance を再度掛けると
+    // 下り光路が二重計上になる。深い水ほど余計に暗く飽和し、浅い棚（ほぼ無色）との
+    // 対比が誇張されて「棚の縁で色が急変する二層」に見える一因だった。
+    // 本シェーダーが担当するのは「視線の上り光路」（transmittance）のみ。
     float3 transmissionColor = ComputeWaterVolumetricColor(
         refractionColor,
         transmittance,
-        sunDownTransmittance,
         sigmaS,
         sigmaT,
         underwaterAmbient);
@@ -893,7 +1035,7 @@ PixelShaderOutput main(WaterPSInput input)
         {
             float4 rtRefraction = SampleRTWaterRefraction(pixelCoord);
             float3 sceneColor = gSceneColor.Sample(gLinearClamp, screenUV).rgb;
-            float rtSuccess = IsRTRefractionSuccess(rtRefraction.a);
+            float rtSuccess = IsRTColorValid(rtRefraction.a);
             output.color.rgb = rtSuccess > 0.5f
                 ? abs(rtRefraction.rgb - sceneColor) * 4.0f
                 : VisualizeRTRefractionReason(rtRefraction.a);
@@ -927,7 +1069,7 @@ PixelShaderOutput main(WaterPSInput input)
 
         if (gDepthDebugViewMode == 15)
         {
-            float rtSuccess = IsRTRefractionSuccess(SampleRTWaterRefraction(pixelCoord).a);
+            float rtSuccess = IsRTColorValid(SampleRTWaterRefraction(pixelCoord).a);
             output.color.rgb = lerp(float3(1.0f, 0.0f, 0.0f), float3(0.0f, 1.0f, 0.0f), rtSuccess);
             return output;
         }

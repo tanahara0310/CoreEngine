@@ -39,6 +39,9 @@ struct WaterEditorRayTracingSettings {
 struct WaterEditorCausticsSettings {
     bool techniqueAvailable = false;
     bool rtManagerAvailable = false;
+    /// @brief 生成方式（0: レイトレーシング / 1: スクリーンスペース）
+    /// @details WaterCausticsTechnique::Backend と同じ値。合成されるのは選んだ側だけ。
+    int backend = 0;
     float intensity = 0.35f;
     float depthAttenuation = 1.5f;
     float curvatureScale = 1.5f;

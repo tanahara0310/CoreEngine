@@ -8,11 +8,13 @@
 #include <functional>
 #include <vector>
 
-class EngineSystem; // 前方宣言
-
-
 namespace CoreEngine
 {
+// 前方宣言。実体は CoreEngine::EngineSystem なので、必ず名前空間の中で宣言すること。
+// 以前はグローバルスコープに書かれており、EngineSystem.h と本ヘッダを両方 include した
+// 翻訳単位で `using namespace CoreEngine;` すると ::EngineSystem と衝突して
+// 「あいまいなシンボル」エラーになっていた。
+class EngineSystem;
 class ICamera;
 class GameObjectManager;
 

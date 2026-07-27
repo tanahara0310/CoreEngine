@@ -84,7 +84,7 @@ namespace CoreEngine
         iblParamsBuffer_->Unmap(0, nullptr);
 
         waterCausticsDebugBuffer_ = ResourceFactory::CreateBufferResource(
-            directXCommon_->GetDevice(), sizeof(float) * 4);
+            directXCommon_->GetDevice(), sizeof(WaterCausticsDebugSettings));
         waterCausticsDebugCBVAddress_ = waterCausticsDebugBuffer_->GetGPUVirtualAddress();
         UpdateWaterCausticsDebugBuffer();
 

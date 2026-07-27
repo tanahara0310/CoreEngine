@@ -4,6 +4,9 @@
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
 
@@ -26,6 +29,27 @@ namespace CoreEngine
                 context.dxCommon != nullptr,
                 context.rtWaterCausticsManager != nullptr);
             return;
+        }
+
+        // 水面が存在しない・非表示のフレームはディスパッチしない
+        // （regionValid=0 = 有効な水域なし）。出力を Blackboard へ登録しないため、
+        // DeferredLighting のコースティクス合成と水中ライティングも自動的に無効化される。
+        if (!context.waterRefractionSurfaceData
+            || context.waterRefractionSurfaceData->regionValid == 0) {
+            return;
+        }
+
+        // 生成方式の選択に従う。無効時・スクリーンスペース選択時は DispatchRays ごと省く
+        // （出力を Blackboard へ登録しないため、DeferredLighting は自動的に
+        //   WaterCausticsPass の出力側を使う）。
+        if (context.renderingTechniqueManager) {
+            if (auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(
+                    RenderingTechniqueNames::WaterCaustics)) {
+                if (!caustics->IsEnabled()
+                    || caustics->GetBackend() != WaterCausticsTechnique::Backend::RayTracing) {
+                    return;
+                }
+            }
         }
 
         if (!context.rtWaterCausticsManager->IsInitialized()) {

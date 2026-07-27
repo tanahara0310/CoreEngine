@@ -21,8 +21,14 @@ namespace CoreEngine
     struct WaterCausticsRayTracingSettings {
         float maxTraceDistance = 500.0f;
         float surfaceBias = 0.02f;
-        float intensityScale = 3.0f;
+        // 1.0 = 物理値（水平太陽照度 × ヤコビアン集光率）をそのまま出力する。
+        // 旧実装（集光項なし・可視性テストのみ）の見た目合わせだった 3.0 から変更。
+        float intensityScale = 1.0f;
         float refractiveIndex = 1.333f;
+        // 波長依存の吸収係数 σa [1/m]（RGB）。水面描画（Jerlov プリセット/濁度 UI）と
+        // 同じ値が WaterSurfaceRuntimeController から毎フレーム同期される。
+        // 既定値は Ocean プリセット（Jerlov I 相当）と同値。
+        float absorptionCoeff[3] = { 0.35f, 0.07f, 0.02f };
         float debugDisplayScale = 1.0f;
         uint32_t debugViewMode = 0;
         uint32_t debugLogEnabled = 0;

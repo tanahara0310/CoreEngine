@@ -107,6 +107,7 @@ WaterEditorCausticsSettings WaterEditorFacade::GetCausticsSettings() const {
         settings.debugDisplayScale = params.debugDisplayScale;
         settings.debugViewMode = static_cast<int>(params.debugViewMode);
         settings.debugLogEnabled = (params.debugLogEnabled != 0);
+        settings.backend = static_cast<int>(waterCaustics->GetBackend());
     }
 
     if (auto* rtWaterCausticsManager = GetWaterCausticsManager()) {
@@ -134,6 +135,9 @@ void WaterEditorFacade::ApplyCausticsSettings(const WaterEditorCausticsSettings&
         params.debugViewMode = static_cast<uint32_t>(settings.debugViewMode);
         params.debugLogEnabled = settings.debugLogEnabled ? 1 : 0;
         waterCaustics->SetParams(params);
+        waterCaustics->SetBackend(settings.backend == 1
+            ? WaterCausticsTechnique::Backend::ScreenSpace
+            : WaterCausticsTechnique::Backend::RayTracing);
     }
 
     if (auto* rtWaterCausticsManager = GetWaterCausticsManager()) {

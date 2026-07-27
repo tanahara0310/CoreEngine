@@ -51,9 +51,10 @@ const char* const kRTCausticsDebugViewNames[] = {
 	"なし",
 	"Shallow Fade",
 	"Match Factor",
-	"Attenuation",
-	"Receiver Facing",
+	"透過率 (Beer-Lambert)",
+	"受光面幾何項",
 	"最終Intensity",
+	"集光率 (Jacobian)",
 };
 }
 
@@ -225,6 +226,13 @@ void WaterSurfaceDebugPanel::DrawCausticsDebugSection(WaterEditorFacade& editorF
 
 	bool changed = false;
 
+	// 生成方式（合成されるのは選んだ側だけ。もう一方のパスは実行自体をスキップする）
+	static const char* kCausticsBackends[] = {
+		"レイトレーシング (DXR)",
+		"スクリーンスペース",
+	};
+	changed |= ImGui::Combo("生成方式", &settings.backend, kCausticsBackends, IM_ARRAYSIZE(kCausticsBackends));
+
 	// コースティクス計算に影響する主要パラメータを調整する
 	changed |= ImGui::SliderFloat("強度", &settings.intensity, 0.0f, 8.0f, "%.3f");
 	changed |= ImGui::SliderFloat("深度減衰", &settings.depthAttenuation, 0.0f, 4.0f, "%.3f");
@@ -241,8 +249,13 @@ void WaterSurfaceDebugPanel::DrawCausticsDebugSection(WaterEditorFacade& editorF
 		"合成結果",
 		"Raw RGB",
 		"グレースケール",
+		"水中判定マップ (R=置換率/G=矩形/B=水深)",
+		"水面線の連続性 (緑=連続/赤=明るすぎ)",
 	};
 	changed |= ImGui::Combo("表示モード", &settings.debugViewMode, kCausticsDebugModes, IM_ARRAYSIZE(kCausticsDebugModes));
+	ImGui::TextDisabled(
+		"「水中判定マップ」「水面線の連続性」は不透明パス（海底・砂）の可視化です。\n"
+		"水面に隠れる領域も見たいときは水面オブジェクトを非表示にしてください。");
 	changed |= ImGui::Checkbox("ログ出力を有効にする", &settings.debugLogEnabled);
 
 	ImGui::SeparatorText("RTコースティクス デバッグ");

@@ -59,6 +59,7 @@ void WaterSurfaceParameterPanel::SerializeSettings(json& out, const WaterEditorF
 	out["causticsRefractiveIndex"] = caustics.refractiveIndex;
 	out["causticsReceiverNormalStrength"] = caustics.receiverNormalStrength;
 	out["causticsAlignmentPower"] = caustics.alignmentPower;
+	out["causticsBackend"] = caustics.backend;
 }
 
 void WaterSurfaceParameterPanel::DeserializeSettings(const json& in,
@@ -151,6 +152,7 @@ void WaterSurfaceParameterPanel::DeserializeSettings(const json& in,
 	caustics.refractiveIndex = JsonManager::SafeGet(in, "causticsRefractiveIndex", caustics.refractiveIndex);
 	caustics.receiverNormalStrength = JsonManager::SafeGet(in, "causticsReceiverNormalStrength", caustics.receiverNormalStrength);
 	caustics.alignmentPower = JsonManager::SafeGet(in, "causticsAlignmentPower", caustics.alignmentPower);
+	caustics.backend = JsonManager::SafeGet(in, "causticsBackend", caustics.backend);
 	editorFacade.ApplyCausticsSettings(caustics);
 }
 

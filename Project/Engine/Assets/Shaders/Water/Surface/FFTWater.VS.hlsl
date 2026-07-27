@@ -56,6 +56,10 @@ cbuffer WaterFrameConstants : register(b5)
     uint gDepthDebugViewMode;
     int gUseFFTOceanNormalMap;
     float2 gDebugPadding;
+    // 描画カメラのクリップ距離（PS と共有、VS では未使用、レイアウト一致のため保持）
+    float gCameraNearZ;
+    float gCameraFarZ;
+    float2 gCameraClipPadding;
 };
 
 struct FFTWaterVSOutput

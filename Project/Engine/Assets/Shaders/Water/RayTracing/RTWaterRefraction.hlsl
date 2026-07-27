@@ -88,15 +88,50 @@ static const float kRTReasonDepthMismatch = 9.0f / 255.0f;
 static const float kRTSuccessRangeMin = 0.5f;
 static const float kRTMaxOpticalPathMeters = 64.0f;
 
+// ------------------------------------------------------------
+// 「光路長が有効か」と「屈折色が有効か」は別々の事実である
+// ------------------------------------------------------------
+// 光路長 length(hitWorldPos - ray.Origin) はレイトレースの結果そのもので、
+// レイがジオメトリにヒットしさえすれば常に正しい。一方、屈折色はヒット点を
+// スクリーン空間へ再投影して SceneColor から拾う都合上、
+//   ・再投影先が画面外（InvalidClip）
+//   ・再投影先に別の面が写っている（DepthMismatch）
+// のときに取得できない。この2つは独立した失敗である。
+//
+// 旧実装は両者を1つの成功/失敗フラグにまとめていたため、色が取れないだけの
+// ピクセルで「有効な光路長」まで捨てられ、Water.PS.hlsl が別の推定量
+// （スクリーン空間近似）へ切り替わっていた。岸際では色の失敗が帯状に起きるため、
+// その境界で水柱厚さが不連続になり、波打ち際に白線が二重に見えていた。
+//
+// そこでアルファのレンジを分けて両方を伝える（出力は R16G16B16A16_FLOAT なので
+// 1.0 を超える値も格納できる）:
+//   [0, 0.5)   : ヒットなし。光路長も色も無効（理由コード 1〜9/255）
+//   [0.5, 1.0] : ヒットあり・色も有効。光路長をパック
+//   [1.5, 2.0] : ヒットあり・色は無効（rgb にはフォールバック色が入っている）。
+//                光路長を同じ刻みでパック（値から 1.0 を引いて復号する）
+// Water.PS.hlsl 側の IsRTPathValid / IsRTColorValid / DecodeRTOpticalPath と
+// 必ず一致させること。
+static const float kRTColorInvalidOffset = 1.0f;
+
 float4 MakeFallbackOutput(float3 fallbackColor, float reasonCode)
 {
     return float4(fallbackColor, reasonCode);
 }
 
-float EncodeSuccessAlpha(float opticalPathLength)
+/// @brief ヒット済みピクセルのアルファを作る
+/// @param opticalPathLength 屈折レイが水面からヒット点まで進んだ距離（＝真の水柱厚さ）
+/// @param colorValid        屈折色をスクリーン空間から取得できたか
+float EncodeHitAlpha(float opticalPathLength, bool colorValid)
 {
     float normalized = saturate(opticalPathLength / kRTMaxOpticalPathMeters);
-    return kRTSuccessRangeMin + normalized * (1.0f - kRTSuccessRangeMin);
+    float packed = kRTSuccessRangeMin + normalized * (1.0f - kRTSuccessRangeMin);
+    return colorValid ? packed : (packed + kRTColorInvalidOffset);
+}
+
+/// @brief ヒットはしたが色が取れなかった場合の出力（光路長は必ず伝える）
+float4 MakeColorFallbackWithPath(float3 fallbackColor, float opticalPathLength)
+{
+    return float4(fallbackColor, EncodeHitAlpha(opticalPathLength, false));
 }
 
 float3 EncodeSignedVector(float3 vectorValue)
@@ -245,10 +280,21 @@ void RTWaterRefractionRayGen()
     }
 
     // 波を反映した精密化後の実際の交点までの距離で改めて有効性を判定する。
-    float tRefined = dot(waterPos - gCameraPosition, primaryDir);
+    const float tRefined = dot(waterPos - gCameraPosition, primaryDir);
     if (tRefined <= 1.0e-4f || tRefined >= sceneDistance)
     {
-        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidPlaneIntersection);
+        // ★波打ち際の細い暗線の真因★（2026-07-26 実測で特定）
+        // tRefined >= sceneDistance は「水面交点が不透明面より奥（＝そこに水は無い）」を意味し、
+        // 波打ち際ではまさに水柱ゼロの汀線そのものに当たる。ここを reason コード付きの
+        // 「光路長も無効」なフォールバックにすると、Water.PS.hlsl が RT 実測光路長から
+        // スクリーン空間近似へ 1 ピクセル境界で切り替わり、水柱厚さが段差になって
+        // 波打ち際に沿った細い暗線（Beer-Lambert で赤から落ちるので紺色）が出る。
+        // 波の上下でピクセル単位に判定が反転するため、破線状に見えるのも説明がつく。
+        //
+        // 正しい答えは「無効」ではなく「水柱ゼロ」。光路長 0 を返せば透過率 1 になり、
+        // 有効側（汀線際の光路長もほぼ 0）と連続につながって段差が原理的に消える。
+        // rgb は屈折なしのシーン色そのもので、これも水柱ゼロのときの正解と一致する。
+        gRefractionOutput[launchIndex] = MakeColorFallbackWithPath(fallbackSample.rgb, 0.0f);
         return;
     }
 
@@ -296,10 +342,17 @@ void RTWaterRefractionRayGen()
     }
 
     float3 hitWorldPos = ray.Origin + ray.Direction * payload.hitT;
+
+    // 屈折レイが実際に水中を進んだ距離 = 真の光路長（水柱厚さ）。
+    // ここから先の失敗はすべて「スクリーン空間から色を拾えない」というだけで、
+    // この光路長は常に正しい。以降のフォールバックでも必ず伝搬させること
+    // （捨てると Water.PS.hlsl が別の推定量へ切り替わり、境界が線として見える）。
+    const float opticalPathLength = length(hitWorldPos - ray.Origin);
+
     float4 clip = mul(float4(hitWorldPos, 1.0f), gViewProjection);
     if (clip.w <= 1.0e-5f)
     {
-        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidClip);
+        gRefractionOutput[launchIndex] = MakeColorFallbackWithPath(fallbackSample.rgb, opticalPathLength);
         return;
     }
 
@@ -315,7 +368,7 @@ void RTWaterRefractionRayGen()
 
     if (edgeFade <= 1.0e-4f)
     {
-        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidClip);
+        gRefractionOutput[launchIndex] = MakeColorFallbackWithPath(fallbackSample.rgb, opticalPathLength);
         return;
     }
 
@@ -343,36 +396,35 @@ void RTWaterRefractionRayGen()
 
     const float uvOffsetPixels = length((refractedUV - screenUV) * float2(gScreenWidth, gScreenHeight));
 
-    float sampledDepth = gSceneDepth.Load(int3(sampleCoord, 0));
-    float depthMismatch = 0.0f;
-    float depthMismatchThreshold = 0.0f;
-    if (IsBackgroundDepth(sampledDepth))
-    {
-        if (gDebugViewMode != kRTRefractionDebugNone)
-        {
-            const float3 debugColor = BuildRefractionDebugColor(
-                gDebugViewMode,
-                uvOffsetPixels,
-                0.0f,
-                waterNormal,
-                refractedDir);
-            gRefractionOutput[launchIndex] = float4(debugColor, kRTReasonDepthMismatch);
-            return;
-        }
+    const float sampledDepth = gSceneDepth.Load(int3(sampleCoord, 0));
 
-        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonDepthMismatch);
-        return;
-    }
+    // 再投影先の可視サーフェスと実ヒット点のカメラ距離差。
+    // 背景（空）が写っている場合は復元位置がファークリップ相当まで飛ぶため、
+    // 特別扱いせずともこの差が巨大になり、下の信頼度が自動的に 0 へ落ちる。
+    const float3 sampledWorldPos =
+        ReconstructWorldPosition(ScreenUVToNDC(refractedUV), sampledDepth, gInvViewProjection);
+    const float sampledViewDistance = length(sampledWorldPos - gCameraPosition);
+    const float hitViewDistance = length(hitWorldPos - gCameraPosition);
+    const float depthMismatch =
+        IsBackgroundDepth(sampledDepth) ? 1.0e8f : abs(sampledViewDistance - hitViewDistance);
+    const float depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);
 
-    float3 sampledWorldPos = ReconstructWorldPosition(ScreenUVToNDC(refractedUV), sampledDepth, gInvViewProjection);
-    float sampledViewDistance = length(sampledWorldPos - gCameraPosition);
-    float hitViewDistance = length(hitWorldPos - gCameraPosition);
-    depthMismatch = abs(sampledViewDistance - hitViewDistance);
-    depthMismatchThreshold = max(0.08f, hitViewDistance * 0.03f);
+    // ===== 深度不一致は「2値の棄却」ではなく「連続の信頼度」で扱う =====
+    // ★波打ち際の細い暗線の真因★（2026-07-26 実測で特定）
+    // 旧実装は depthMismatch > 閾値 で即フォールバックしていた。フォールバック色は
+    // 「屈折させていない自分のピクセルのシーン色」で、成功側は「屈折先のシーン色」。
+    // この 2 つは屈折オフセット（岸際では十数ピクセル）分だけ別の場所の色なので、
+    // 成功/失敗が入れ替わる 1 ピクセル境界がそのまま色の段差になる。
+    // 岸際は浅い水底を屈折レイが大きく横へ進み、再投影が自己遮蔽で外れるため
+    // 失敗が帯状に発生する（可視化で確認済み）→ 帯の縁が波打ち際に沿った細い暗線になる。
+    //
+    // 光路長のときと同じ処方: 2値切替を消して連続量にする。閾値の 1〜4 倍で
+    // なだらかにフォールバック色へ寄せれば、段差そのものが原理的に生じない。
+    const float depthConfidence =
+        1.0f - smoothstep(depthMismatchThreshold, depthMismatchThreshold * 4.0f, depthMismatch);
 
-    // 屈折レイが水面から実際のヒット点まで進んだ距離 = 真の光路長（水柱厚さ）。
-    // Water.PS.hlsl の Beer-Lambert 吸収計算に渡し、表示内容と深度を一致させる。
-    const float opticalPathLength = length(hitWorldPos - ray.Origin);
+    // 画面端フェードと合成した「屈折色をどれだけ信用するか」の重み
+    const float colorWeight = saturate(edgeFade * depthConfidence);
 
     if (gDebugViewMode != kRTRefractionDebugNone)
     {
@@ -382,24 +434,19 @@ void RTWaterRefractionRayGen()
             depthMismatch,
             waterNormal,
             refractedDir);
-        const float reasonCode = (depthMismatch > depthMismatchThreshold)
-            ? kRTReasonDepthMismatch
-            : EncodeSuccessAlpha(opticalPathLength);
-        gRefractionOutput[launchIndex] = float4(debugColor, reasonCode);
+        gRefractionOutput[launchIndex] = float4(
+            debugColor,
+            EncodeHitAlpha(opticalPathLength, colorWeight >= 0.5f));
         return;
     }
 
-    if (depthMismatch > depthMismatchThreshold)
-    {
-        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonDepthMismatch);
-        return;
-    }
+    const float3 refractedColor = gSceneColor.Load(int3(sampleCoord, 0)).rgb;
+    const float3 blendedColor = lerp(fallbackSample.rgb, refractedColor, colorWeight);
 
-    float3 refractedColor = gSceneColor.Load(int3(sampleCoord, 0)).rgb;
-    // 画面端フェードを適用し、画面外へ抜ける手前でなだらかにフォールバック色へ収束させる。
-    float3 blendedColor = lerp(fallbackSample.rgb, refractedColor, edgeFade);
-
-    gRefractionOutput[launchIndex] = float4(blendedColor, EncodeSuccessAlpha(opticalPathLength));
+    // アルファの colorValid ビットは診断用（デバッグ表示・統計）に残すが、
+    // rgb は既に連続ブレンド済みなので Water.PS.hlsl はこのビットで
+    // 色を切り替えてはいけない（切り替えると段差が復活する）。
+    gRefractionOutput[launchIndex] = float4(blendedColor, EncodeHitAlpha(opticalPathLength, colorWeight >= 0.5f));
 }
 
 [shader("miss")]
