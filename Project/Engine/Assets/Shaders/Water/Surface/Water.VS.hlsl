@@ -28,40 +28,36 @@ cbuffer WaterConstants : register(b4)
     float2 gPadding;
 };
 
-// ===== フレーム定数バッファ（クリップ平面）=====
-// WaterPlaneObject::BindCustomResources() が b5 にバインドする
+// ===== フレーム定数バッファ =====
+// WaterPlaneObject::BindCustomResources() が b5 にバインドする。
+// VS では実際には使用しないが、PS（Water.PS.hlsl）と同一レイアウトを保つために宣言する。
 cbuffer WaterFrameConstants : register(b5)
 {
-    float4 gClipPlane;         // クリップ平面 (A, B, C, D): dot(worldPos, plane) > 0 で描画
-    int    gClipEnabled;       // 1 = 有効，0 = 無効
-    int    gReflectionEnabled; // 1 = 反射テクスチャ有効，0 = IBL フォールバック
-    float  gFresnelReflectanceScale; // PS と共有（VS では未使用、レイアウト一致のため保持）
-    float  gFresnelBaseReflectance;  // PS と共有（VS では未使用、レイアウト一致のため保持）
+    int    gReflectionEnabled;
+    float  gFresnelReflectanceScale;
+    float  gFresnelBaseReflectance;
 
-    // ---- Depth Fade（VS では未使用、レイアウト一致のため保持）----
     int    gDepthFadeEnabled;
     int    gDepthFadeDebugEnabled;
     float  gDepthFadeDebugScale;
     float  gSkyAmbientScale;
-
-    // ---- 水の光学特性（VS では未使用）----
-    float3 gAbsorptionCoeff;
     int    gSkyAmbientEnabled;
+
+    float3 gAbsorptionCoeff;
+    float  gAbsorptionPad;
     float3 gScatteringCoeff;
     float  gScatteringPad;
 
-    // ---- デバッグ表示（VS では未使用）----
     uint   gDepthDebugViewMode;
-    int    gUseFFTOceanNormalMap; // PS と共有（VS では未使用、レイアウト一致のため保持）
+    int    gUseFFTOceanNormalMap;
     float2 gDebugPadding;
 
-    // ---- 描画カメラのクリップ距離（PS と共有、VS では未使用、レイアウト一致のため保持）----
     float  gCameraNearZ;
     float  gCameraFarZ;
     float2 gCameraClipPadding;
 };
 
-// ===== 水面専用出力構造体（SV_ClipDistance0 を追加）=====
+// ===== 水面専用出力構造体 =====
 struct WaterVSOutput
 {
     float4 position         : SV_POSITION;
@@ -74,7 +70,6 @@ struct WaterVSOutput
     float3 bitangent        : BINORMAL0;
     float4 clipPosCurrent   : POSITION2;
     float4 clipPosPrev      : POSITION3;
-    float  clipDist         : SV_ClipDistance0; // 水面クリップ（反射パス用）
 };
 
 /// @brief Gerstner Wave 1 本分の頂点変位を計算する
@@ -184,12 +179,6 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);
     output.clipPosCurrent = output.position;
     output.clipPosPrev = mul(input.position, mtx.PrevWVP);
-
-    // ---- 5. クリップ平面（反射パス中に水面自体を除外する） ----
-    // gClipEnabled == 0 のときは常に正（全頂点描画）
-    output.clipDist = gClipEnabled
-        ? dot(float4(worldPos, 1.0f), gClipPlane)
-        : 1.0f;
 
     return output;
 }

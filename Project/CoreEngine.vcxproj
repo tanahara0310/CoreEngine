@@ -250,7 +250,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\HomeworkScene\HomeworkScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\SpriteTestScene\SpriteTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterReflectionPass.cpp" />
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Model\ModelObject.cpp" />
@@ -524,7 +523,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h" />
     <ClInclude Include="Application\Src\Scenes\SpriteTestScene\SpriteTestScene.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterReflectionPass.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneSetup.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
@@ -542,7 +540,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\GameObjects\Primitive\PlaneObject.h" />
     <ClInclude Include="Application\Src\GameObjects\Primitive\PrimitiveSphereObject.h" />
     <ClInclude Include="Application\Src\GameObjects\Primitive\RingObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\Water\WaterConstantBuffer.h" />
     <ClInclude Include="Application\Src\GameObjects\Water\WaterConstantBufferSet.h" />
     <ClInclude Include="Application\Src\GameObjects\Water\WaterPlaneObject.h" />
     <ClInclude Include="Application\Src\GameObjects\Water\WaterRenderResources.h" />

@@ -38,10 +38,9 @@ float ComputeFFTWaveGroupEnvelope(float2 worldXZ)
 // 含めると頂点ごとに位相が飛んだエイリアシングノイズ（頂点のちらつき）になる。
 static const int kFFTGeometryCascadeCount = 2;
 
+// VS では実際には使用しないが、PS（Water.PS.hlsl）と同一レイアウトを保つために宣言する。
 cbuffer WaterFrameConstants : register(b5)
 {
-    float4 gClipPlane;
-    int gClipEnabled;
     int gReflectionEnabled;
     float gFresnelReflectanceScale;
     float gFresnelBaseReflectance;
@@ -49,8 +48,9 @@ cbuffer WaterFrameConstants : register(b5)
     int gDepthFadeDebugEnabled;
     float gDepthFadeDebugScale;
     float gSkyAmbientScale;
-    float3 gAbsorptionCoeff;
     int gSkyAmbientEnabled;
+    float3 gAbsorptionCoeff;
+    float gAbsorptionPad;
     float3 gScatteringCoeff;
     float gScatteringPad;
     uint gDepthDebugViewMode;
@@ -74,7 +74,6 @@ struct FFTWaterVSOutput
     float3 bitangent : BINORMAL0;
     float4 clipPosCurrent : POSITION2;
     float4 clipPosPrev : POSITION3;
-    float clipDist : SV_ClipDistance0;
 };
 
 FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
@@ -138,6 +137,5 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);
     output.clipPosCurrent = output.position;
     output.clipPosPrev = mul(input.position, mtx.PrevWVP);
-    output.clipDist = gClipEnabled ? dot(float4(worldPos, 1.0f), gClipPlane) : 1.0f;
     return output;
 }

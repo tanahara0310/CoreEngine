@@ -41,8 +41,6 @@ namespace CoreEngine
             uint32_t resolution = 0;
             float patchLength = 0.0f;
             uint32_t enabled = 0;
-            float uvScale[2] = { 0.0f, 0.0f };
-            float uvOffset[2] = { 0.5f, 0.5f };
         };
 
         enum class ViewID : uint32_t {

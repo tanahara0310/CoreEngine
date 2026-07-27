@@ -9,15 +9,14 @@ void WaterConstantBufferSet::Initialize(ID3D12Device* device) {
 
     CreateBuffer(device, kWaterCBSize, waterCBResource_, waterCBGpuAddress_, waterCBMapped_);
     CreateBuffer(device, kFrameCBSize, frameCBResource_, frameCBGpuAddress_, frameCBMapped_);
-    CreateBuffer(device, kFrameCBSize, reflectionFrameCBResource_, reflectionFrameCBGpuAddress_, reflectionFrameCBMapped_);
 }
 
 D3D12_GPU_VIRTUAL_ADDRESS WaterConstantBufferSet::GetWaterCBGpuAddress() const {
     return waterCBGpuAddress_;
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS WaterConstantBufferSet::GetFrameCBGpuAddress(bool useReflectionFrame) const {
-    return useReflectionFrame ? reflectionFrameCBGpuAddress_ : frameCBGpuAddress_;
+D3D12_GPU_VIRTUAL_ADDRESS WaterConstantBufferSet::GetFrameCBGpuAddress() const {
+    return frameCBGpuAddress_;
 }
 
 void WaterConstantBufferSet::UpdateWaterConstants(const WaterConstants& waterConstants) {
@@ -29,14 +28,12 @@ void WaterConstantBufferSet::UpdateWaterConstants(const WaterConstants& waterCon
     std::memcpy(waterCBMapped_, &waterConstants, sizeof(WaterConstants));
 }
 
-void WaterConstantBufferSet::UpdateFrameConstants(const WaterFrameConstants& frameConstants, bool useReflectionFrame) {
-    uint8_t* targetMapped = useReflectionFrame ? reflectionFrameCBMapped_ : frameCBMapped_;
-    if (!targetMapped) {
+void WaterConstantBufferSet::UpdateFrameConstants(const WaterFrameConstants& frameConstants) {
+    if (!frameCBMapped_) {
         return;
     }
 
-    // 通常描画用または反射パス用のフレーム定数を切り替えて転送する
-    std::memcpy(targetMapped, &frameConstants, sizeof(WaterFrameConstants));
+    std::memcpy(frameCBMapped_, &frameConstants, sizeof(WaterFrameConstants));
 }
 
 void WaterConstantBufferSet::CreateBuffer(

@@ -2,7 +2,9 @@
 // 大気散乱の空気遠近感を水面（フォワード半透明）にも適用する（b6 / t22 / t23 を使用）
 #include "AtmosphereApply.hlsli"
 
-// ===== 反射テクスチャ（Planar Reflection RTT）=====
+// ===== 反射テクスチャ（RTWaterReflectionPass の DXR 出力）=====
+// 鏡像カメラによる Planar Reflection は廃止済み。スクリーン空間・水面ピクセル単位の
+// 反射シーン色が入っており、alpha >= 0.5 が成功・< 0.5 がミス（空環境マップへ落とす）。
 Texture2D<float4> gReflectionTexture : register(t14);
 SamplerState gLinearClamp : register(s2);
 
@@ -72,8 +74,6 @@ struct WaterPSInput
 // ===== フレーム定数バッファ（VS と共有）=====
 cbuffer WaterFrameConstants : register(b5)
 {
-    float4 gClipPlane;
-    int gClipEnabled;
     int gReflectionEnabled; // 1 = 反射テクスチャ有効，0 = IBL フォールバック
     float gFresnelReflectanceScale; // Fresnel 反射率スケール
     float gFresnelBaseReflectance; // 正面入射時の反射率（F0）
@@ -84,13 +84,14 @@ cbuffer WaterFrameConstants : register(b5)
     float gDepthFadeDebugScale; // 水深デバッグ表示倍率
     // 空アンビエントの輝度単位 → サーフェス光単位の変換係数（AtmosphereManager::GetSkyAmbientScale と同値）
     float gSkyAmbientScale;
+    // 1 = 大気散乱の Sky Irradiance SH を天空光として使う（大気アクティブ＋SH生成済みのシーンのみ）
+    int gSkyAmbientEnabled;
 
     // ---- 水の光学特性（波長依存 Beer-Lambert）----
     // 水の色は shallow/deep の色指定ではなく、吸収・散乱係数と光源から導出する。
     // 赤 > 緑 > 青 の順に吸収が強いことが「水が青い」物理の本体。
     float3 gAbsorptionCoeff; // 吸収係数 σa [1/m]（RGB 波長別）
-    // 1 = 大気散乱の Sky Irradiance SH を天空光として使う（大気アクティブ＋SH生成済みのシーンのみ）
-    int gSkyAmbientEnabled;
+    float gAbsorptionPad;
     float3 gScatteringCoeff; // 散乱係数 σs [1/m]（RGB 波長別）
     float gScatteringPad;
 
@@ -139,8 +140,7 @@ float ComputeWaterOpticalPathLength(float viewDepthDelta, float waterDepthView, 
 /// @param viewDir       水面上の点 → カメラ方向（正規化済み）
 /// @param surfaceNormal 水面法線（正規化済み）
 /// @details ComputeWaterOpticalPathLength は「屈折させていない視線」が水中を進む距離を返すが、
-///          waterColumn の利用側（Beer-Lambert の transmittance、
-///          ComputeSunDownwellingTransmittance の鉛直深度換算）はいずれも
+///          waterColumn の利用側（Beer-Lambert の transmittance）は
 ///          「屈折後の光路長」を前提にしている。RTWaterRefraction が返す実測値も屈折後の
 ///          光路長なので、換算しないと両者が別物の量になり、RT の成功/失敗が切り替わる
 ///          境界で透過率が段差になる（波打ち際の白線が二重に見える原因）。
@@ -329,51 +329,12 @@ float3 ComputeUnderwaterAmbientLight()
     return sunAmbient + skyAmbient;
 }
 
-/// @brief 海底へ届く太陽光の下り光路の透過率を求める
-/// @param viewDir 水面ピクセル → カメラの正規化ベクトル
-/// @param surfaceNormal 水面法線
-/// @param waterColumn 視線（上り）の水中光路長 [m]
-/// @param sigmaT 消散係数 σt [1/m]
-/// @details 透過して見える海底の明るさは、視線の上り光路だけでなく
-///          太陽から海底までの下り光路でも減衰している。
-///          鉛直水深は視線の屈折方向から d・|refr.y| で近似し、
-///          太陽の水中天頂角はスネル則で求める（水中では臨界角 ≈48.6° に制限されるため
-///          太陽が低くても cos は ≈0.66 以上に留まり、発散しない）。
-///          背景色には空光で照らされた成分も含まれるため一様に掛けるのは近似だが、
-///          「深い水底ほど太陽が届かず暗い」という支配的な挙動を再現する。
-float3 ComputeSunDownwellingTransmittance(
-    float3 viewDir, float3 surfaceNormal, float waterColumn, float3 sigmaT)
-{
-    const float kEtaAirToWater = 1.0f / 1.333f;
-
-    // 太陽 = 最初の有効な平行光源。無ければ減衰なし
-    float3 sunTravelDir = float3(0.0f, -1.0f, 0.0f);
-    bool sunFound = false;
-    for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
-    {
-        if (gDirectionalLights[i].enabled != 0)
-        {
-            sunTravelDir = normalize(gDirectionalLights[i].direction);
-            sunFound = true;
-            break;
-        }
-    }
-    // 太陽が無い・地平線下（上向き進行）の場合は下り減衰を追加しない
-    if (!sunFound || sunTravelDir.y >= 0.0f)
-    {
-        return float3(1.0f, 1.0f, 1.0f);
-    }
-
-    // 視線を水中へ屈折させ、光路長の鉛直成分から水深を近似する
-    float3 refractedView = refract(-viewDir, surfaceNormal, kEtaAirToWater);
-    float verticalDepth = waterColumn * saturate(-refractedView.y);
-
-    // 太陽光の水中屈折方向（水平な水面で近似）から下り光路長を求める
-    float3 refractedSun = refract(sunTravelDir, float3(0.0f, 1.0f, 0.0f), kEtaAirToWater);
-    float sunPathLength = verticalDepth / max(-refractedSun.y, 1.0e-2f);
-
-    return exp(-sigmaT * sunPathLength);
-}
+// ★太陽の下り光路（太陽→海底）の吸収はこのシェーダーの責務ではない★（2026-07-27 撤去）
+// DeferredLighting の水中ライティング置換（RT コースティクス）が、海底ピクセルの
+// 直接光として exp(-σa·実光路長) を含む透過直接光を既に合成している。
+// ここで再度掛けると下り光路が二重計上になるため、以前あった
+// ComputeSunDownwellingTransmittance() は呼び出しごと削除した。
+// 本シェーダーが担当するのは「視線の上り光路」（transmittance）のみ。
 
 /// @brief 水柱を通過した背景色に波長依存の吸収・散乱を適用する
 /// @param refractionColor 水面越しに見える背景（海底・水中物体）の色
@@ -607,10 +568,6 @@ float3 ResolveFresnelNormal(WaterPSInput input)
 // （まだらの真因＝反射ビューへの水面自己描画は修正済み）。
 static const float kWaterReflectionMicroRoughness = 0.20f; // 未解像さざ波の実効ラフネス
 static const float kWaterReflectionBlurTexels = 3.0f; // 反射のにじみ半径（テクセル基準。5→3: 反射のシャープさを回復）
-// 反射UVを波法線で歪ませる強さ（スクリーンUV単位）。平面反射は平らな鏡として
-// 描かれているため、波法線でサンプル位置をずらして「波に沿って砕けた反射」に見せる。
-// これが無いと平坦な鏡像がフレネルの波形状で明滅し、大きなまだらになる。
-static const float kWaterReflectionDistortStrength = 0.03f;
 
 /// @brief 平面反射をラフネス相当でにじませてサンプリングする（グロッシー反射）
 /// @param screenUV スクリーンUV
@@ -879,14 +836,8 @@ PixelShaderOutput main(WaterPSInput input)
 
     float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);
     float3 underwaterAmbient = ComputeUnderwaterAmbientLight();
-    // ★太陽の下り光路（太陽→海底）の吸収をここで掛けてはいけない★（2026-07-27 撤去）
-    // DeferredLighting の水中ライティング置換（RT コースティクス）が、海底ピクセルの
-    // 直接光として exp(-σa·実光路長) を含む透過直接光を既に合成している。
-    // つまり refractionColor（水面越しに見える海底の色）には下り光路の減衰が
-    // 織り込み済みで、ここで ComputeSunDownwellingTransmittance を再度掛けると
-    // 下り光路が二重計上になる。深い水ほど余計に暗く飽和し、浅い棚（ほぼ無色）との
-    // 対比が誇張されて「棚の縁で色が急変する二層」に見える一因だった。
-    // 本シェーダーが担当するのは「視線の上り光路」（transmittance）のみ。
+    // refractionColor には既に太陽の下り光路の減衰が織り込まれている（上のコメント参照）。
+    // ここで掛けるのは視線の上り光路 transmittance のみ。
     float3 transmissionColor = ComputeWaterVolumetricColor(
         refractionColor,
         transmittance,

@@ -36,9 +36,6 @@ cbuffer WaterCausticsConstants : register(b0)
     uint gLightEnabled;
     float3 gLightColor;
     float gLightIntensity;
-    // ワールドXZ → FFT テクスチャ UV の写像（ラスタ描画 FFTWater.VS と一致させる）
-    float2 gFFTOceanUVScale;
-    float2 gFFTOceanUVOffset;
     // 水面メッシュのワールドXZ範囲（WaterCausticsConstants と一致させること）。
     // コースティクスは解析的な無限水面として評価されるため、この矩形でマスクしないと
     // 水域の外（無限床など「水面高さより低い場所すべて」）にも集光模様が漏れる。
@@ -138,7 +135,7 @@ float3 EvaluateCausticsWaterOffset(float2 worldXZ)
 {
     if (!UseFFTOceanSurface())
     {
-        return EvaluateWaterOffset(worldXZ);
+        return EvaluateWaterOffsetGerstner(worldXZ);
     }
 
     return SampleFFTOceanCascadeDisplacement(gFFTOceanDisplacement, worldXZ, gFFTOceanResolution);
@@ -191,7 +188,7 @@ float EvaluateDrawnSurfaceHeight(float2 worldXZ)
 {
     if (!UseFFTOceanSurface())
     {
-        return EvaluateWaterOffset(worldXZ).y;
+        return EvaluateWaterOffsetGerstner(worldXZ).y;
     }
     if (gRegionValid == 0)
     {
@@ -227,7 +224,7 @@ float3 EvaluateCausticsWaterNormal(float2 worldXZ)
 {
     if (!UseFFTOceanSurface())
     {
-        return EvaluateWaterNormal(worldXZ);
+        return EvaluateWaterNormalGerstner(worldXZ);
     }
 
     return SampleFFTOceanCascadeNormal(gFFTOceanNormal, worldXZ, gFFTOceanResolution);

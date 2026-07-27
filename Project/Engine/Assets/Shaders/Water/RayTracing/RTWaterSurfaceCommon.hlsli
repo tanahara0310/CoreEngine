@@ -1,10 +1,11 @@
 // ============================================================
-// DXR 水面共通サーフェス評価 (Gerstner)
-// RTWaterRefraction.hlsl / RTWaterCaustics.hlsl から共有される
-// 波オフセット・法線評価ロジックを一元化する。
-// 将来 FFT Ocean 版を追加する際は、同じシグネチャ
-// (EvaluateWaterOffset / EvaluateWaterNormal) を持つ
-// 代替バックエンドに差し替えるだけで済むようにする。
+// DXR 水面共通サーフェス評価
+// RTWaterRefraction / RTWaterReflection / RTWaterCaustics から共有する。
+//   - Gerstner 経路: EvaluateWaterOffsetGerstner / EvaluateWaterNormalGerstner
+//   - FFT Ocean 経路: SampleFFTOceanCascadeDisplacement / SampleFFTOceanCascadeNormal
+// どちらを使うかは各シェーダーの IsFFTOceanSurfaceActive() が判定する
+// （以前はここに simulationType 分岐と平坦を返す FFT スタブがあり、
+//   呼ぶと「波の無い水面」になる罠だったため撤去した）。
 // ============================================================
 #ifndef RT_WATER_SURFACE_COMMON_HLSLI
 #define RT_WATER_SURFACE_COMMON_HLSLI
@@ -100,38 +101,6 @@ float3 EvaluateWaterNormalGerstner(float2 worldXZ)
     return normal.y < 0.0f ? -normal : normal;
 }
 
-float3 EvaluateWaterOffsetFFTOcean(float2 worldXZ)
-{
-    worldXZ = worldXZ;
-    return float3(0.0f, 0.0f, 0.0f);
-}
-
-float3 EvaluateWaterNormalFFTOcean(float2 worldXZ)
-{
-    worldXZ = worldXZ;
-    return float3(0.0f, 1.0f, 0.0f);
-}
-
-float3 EvaluateWaterOffset(float2 worldXZ)
-{
-    if (gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean)
-    {
-        return EvaluateWaterOffsetFFTOcean(worldXZ);
-    }
-
-    return EvaluateWaterOffsetGerstner(worldXZ);
-}
-
-float3 EvaluateWaterNormal(float2 worldXZ)
-{
-    if (gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean)
-    {
-        return EvaluateWaterNormalFFTOcean(worldXZ);
-    }
-
-    return EvaluateWaterNormalGerstner(worldXZ);
-}
-
 // ------------------------------------------------------------
 // FFT Ocean テクスチャ（変位・法線）のバイリニアサンプリング
 // FFT Ocean はテクセル解像度が有限のため、Load によるニアレストサンプリングでは
@@ -149,37 +118,6 @@ uint WrapFFTOceanCoord(int coord, int resolution)
     }
 
     return (uint)wrapped;
-}
-
-/// @brief ワールドXZ → FFT テクスチャ UV の写像を適用してバイリニアサンプリングする
-/// @param uvScale  uv = worldXZ * uvScale + uvOffset の係数。
-///                 ラスタ描画（FFTWater.VS の sampleUV = (world - translate)/ローカルサイズ + scale/2）と
-///                 同一の写像を渡すこと。以前は worldXZ / patchLength + 0.5 の固定写像で、
-///                 メッシュの位置・スケール・V反転を考慮していなかったため、RT が評価する波面と
-///                 実際に描画されている波面の位相が一致せず、屈折レイの交点・法線がズレて
-///                 depth mismatch フォールバック（水面の一部だけ色が変わる領域）の原因になっていた。
-float4 SampleFFTOceanBilinear(Texture2D<float4> textureData, float2 worldXZ, float2 uvScale, float2 uvOffset, uint resolution)
-{
-    const float2 uv = frac(worldXZ * uvScale + uvOffset);
-    const float resolutionF = (float)resolution;
-    const float2 texelPos = uv * resolutionF - 0.5f.xx;
-    const int2 baseCoord = int2(floor(texelPos));
-    const float2 fracCoord = frac(texelPos);
-    const int wrapResolution = (int)resolution;
-
-    const uint2 p00 = uint2(WrapFFTOceanCoord(baseCoord.x, wrapResolution), WrapFFTOceanCoord(baseCoord.y, wrapResolution));
-    const uint2 p10 = uint2(WrapFFTOceanCoord(baseCoord.x + 1, wrapResolution), WrapFFTOceanCoord(baseCoord.y, wrapResolution));
-    const uint2 p01 = uint2(WrapFFTOceanCoord(baseCoord.x, wrapResolution), WrapFFTOceanCoord(baseCoord.y + 1, wrapResolution));
-    const uint2 p11 = uint2(WrapFFTOceanCoord(baseCoord.x + 1, wrapResolution), WrapFFTOceanCoord(baseCoord.y + 1, wrapResolution));
-
-    const float4 c00 = textureData.Load(int3(p00, 0));
-    const float4 c10 = textureData.Load(int3(p10, 0));
-    const float4 c01 = textureData.Load(int3(p01, 0));
-    const float4 c11 = textureData.Load(int3(p11, 0));
-
-    const float4 cx0 = lerp(c00, c10, fracCoord.x);
-    const float4 cx1 = lerp(c01, c11, fracCoord.x);
-    return lerp(cx0, cx1, fracCoord.y);
 }
 
 // ============================================================

@@ -191,7 +191,6 @@ void WaterSurfaceRuntimeController::SyncFrameResources(EngineSystem& engine) {
 
 void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 	// 前フレームの値を破棄し、現在の水面状態から再構築する
-	waterSurfaceSnapshot_ = {};
 	waterRefractionSurfaceData_ = {};
 	if (!waterPlane_) {
 		return;
@@ -213,39 +212,21 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 	}
 
 	WaterSurfaceSimulationInput simulationInput{};
-	// 水面オブジェクトの現在状態を simulator へ入力し、
-	// 共通 snapshot と DXR surface data を同時に更新する
+	// 水面オブジェクトの現在状態を simulator へ入力し、DXR surface data を更新する
 	simulationInput.waterHeight = waterPlane_->GetTransform().translate.y;
 	simulationInput.gerstnerConstants = &waterPlane_->GetWaterConstants();
 
 	if (auto* activeSimulator = GetActiveSimulator()) {
 		// 実際に有効な simulator 種別で surface data を構築する
-		activeSimulator->CaptureSurface(
-			simulationInput,
-			waterSurfaceSnapshot_,
-			waterRefractionSurfaceData_);
+		activeSimulator->CaptureSurface(simulationInput, waterRefractionSurfaceData_);
 
-		// FFT Ocean の DXR 側サンプリングがラスタ描画（FFTWater.VS）と同一の波面を
-		// 評価できるよう、ワールドXZ → FFT テクスチャ UV の写像を水面メッシュの
-		// トランスフォームから導出して渡す。
-		// FFTWater.VS: sampleUV = (worldXZ - translate)/ローカルサイズ + scale/2
-		// （メッシュの texcoord は {u, 1-v} で生成されるが、VS 側で V を戻して
-		//   「テクスチャ +v = ワールド +Z」に統一済み。回転は非対応＝ゼロ前提）
+		// 水面メッシュのワールドXZ範囲。コースティクスが水域の外
+		// （無限市松床など）へ漏れないようにするための受光マスク。
+		// メッシュはローカル ±localSize/2 に広がる正方形（回転は非対応＝ゼロ前提）
+		// なので、ワールド半径は 0.5 * localSize * scale。
 		const float localSize = waterPlane_->GetSize();
 		if (localSize > 1.0e-4f) {
 			const auto& transform = waterPlane_->GetTransform();
-			waterRefractionSurfaceData_.fftUVScale[0] = 1.0f / localSize;
-			waterRefractionSurfaceData_.fftUVScale[1] = 1.0f / localSize;
-			waterRefractionSurfaceData_.fftUVOffset[0] =
-				0.5f * transform.scale.x - transform.translate.x / localSize;
-			waterRefractionSurfaceData_.fftUVOffset[1] =
-				0.5f * transform.scale.z - transform.translate.z / localSize;
-			waterRefractionSurfaceData_.fftUVMappingValid = 1;
-
-			// 水面メッシュのワールドXZ範囲。コースティクスが水域の外
-			// （無限市松床など）へ漏れないようにするための受光マスク。
-			// メッシュはローカル ±localSize/2 に広がる正方形（回転非対応の前提は
-			// fftUV 写像と同じ）なので、ワールド半径は 0.5 * localSize * scale。
 			waterRefractionSurfaceData_.regionCenterXZ[0] = transform.translate.x;
 			waterRefractionSurfaceData_.regionCenterXZ[1] = transform.translate.z;
 			waterRefractionSurfaceData_.regionHalfExtentXZ[0] = 0.5f * localSize * transform.scale.x;
@@ -282,12 +263,6 @@ void WaterSurfaceRuntimeController::UpdateWaterRefractionSurfaceData() {
 			waterRefractionSurfaceData_.time,
 			waterRefractionSurfaceData_.activeWaveCount,
 			waterRefractionSurfaceData_.waterHeight);
-	}
-}
-
-void WaterSurfaceRuntimeController::ApplyWaterRenderViewResult(const RenderViewResult& result) {
-	if (waterPlane_) {
-		waterPlane_->ApplyWaterReflectionResult(result);
 	}
 }
 

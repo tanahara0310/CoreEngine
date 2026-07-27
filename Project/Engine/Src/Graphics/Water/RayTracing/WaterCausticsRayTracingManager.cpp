@@ -32,10 +32,6 @@ namespace CoreEngine
             // ここまでで HLSL 側 r0〜r3 に対応（lightColor/lightIntensity が r4）
             float lightColor[3];
             float lightIntensity;
-            // ワールドXZ → FFT テクスチャ UV の写像（uv = worldXZ * scale + offset）。
-            // ラスタ描画（FFTWater.VS）と同じ波面を RT が評価するために必須
-            float fftOceanUVScale[2];
-            float fftOceanUVOffset[2];
             // 水面メッシュのワールドXZ範囲（RTWaterCaustics.hlsl の cbuffer 末尾と一致させること）。
             // regionValid == 0 なら範囲制限なし
             float regionCenterXZ[2];
@@ -63,8 +59,12 @@ namespace CoreEngine
 
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
-    static_assert(sizeof(WaterCausticsConstants) == 192,
+    static_assert(sizeof(WaterCausticsConstants) == 176,
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
+    static_assert(offsetof(WaterCausticsConstants, absorptionCoeff) / 16 == (offsetof(WaterCausticsConstants, absorptionCoeff) + 11) / 16,
+        "absorptionCoeff (float3) must not straddle a 16-byte boundary");
+    static_assert(offsetof(WaterCausticsConstants, invViewProj) % 16 == 0,
+        "invViewProj must start on a 16-byte boundary");
 
     bool WaterCausticsRayTracingManager::Initialize(
         DirectXCommon* dxCommon,
@@ -256,10 +256,6 @@ namespace CoreEngine
         constants.fftOceanEnabled = fftOceanInput.enabled;
         constants.fftOceanPatchLength = fftOceanInput.patchLength;
         constants.fftOceanResolution = fftOceanInput.resolution;
-        constants.fftOceanUVScale[0] = fftOceanInput.uvScale[0];
-        constants.fftOceanUVScale[1] = fftOceanInput.uvScale[1];
-        constants.fftOceanUVOffset[0] = fftOceanInput.uvOffset[0];
-        constants.fftOceanUVOffset[1] = fftOceanInput.uvOffset[1];
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
         constants.refractiveIndex = settings_.refractiveIndex;

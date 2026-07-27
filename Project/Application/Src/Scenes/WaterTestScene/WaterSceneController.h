@@ -28,10 +28,6 @@ public:
 	/// @param atmosphereSky シーンの空が大気散乱モードか（水面への空気遠近感の適用可否）
 	void Update(CoreEngine::EngineSystem& engine, float deltaTime, bool atmosphereSky);
 
-	/// @brief ReflectionView の出力を水面描画へ適用する
-	/// @param result 反射描画結果
-	void ApplyWaterRenderViewResult(const CoreEngine::RenderViewResult& result);
-
 	/// @brief 現在操作中の水面オブジェクトを返す
 	WaterPlaneObject* GetWaterPlane() const { return runtimeController_.GetWaterPlane(); }
 

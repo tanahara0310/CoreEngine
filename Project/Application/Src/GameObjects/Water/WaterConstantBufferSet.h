@@ -16,9 +16,8 @@ public:
     /// @brief WaterConstants の GPU 仮想アドレスを返す
     D3D12_GPU_VIRTUAL_ADDRESS GetWaterCBGpuAddress() const;
 
-    /// @brief 描画モードに応じた WaterFrameConstants の GPU 仮想アドレスを返す
-    /// @param useReflectionFrame true のとき反射パス用フレーム定数を返す
-    D3D12_GPU_VIRTUAL_ADDRESS GetFrameCBGpuAddress(bool useReflectionFrame) const;
+    /// @brief WaterFrameConstants の GPU 仮想アドレスを返す
+    D3D12_GPU_VIRTUAL_ADDRESS GetFrameCBGpuAddress() const;
 
     /// @brief WaterConstants を GPU へ転送する
     /// @param waterConstants 転送元の CPU 側定数
@@ -26,8 +25,7 @@ public:
 
     /// @brief WaterFrameConstants を GPU へ転送する
     /// @param frameConstants 転送元の CPU 側定数
-    /// @param useReflectionFrame true のとき反射パス用フレーム定数へ書き込む
-    void UpdateFrameConstants(const WaterFrameConstants& frameConstants, bool useReflectionFrame);
+    void UpdateFrameConstants(const WaterFrameConstants& frameConstants);
 
 private:
     static constexpr UINT kWaterCBSize = (sizeof(WaterConstants) + 255) & ~255;
@@ -48,8 +46,4 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> frameCBResource_;
     D3D12_GPU_VIRTUAL_ADDRESS frameCBGpuAddress_ = 0;
     uint8_t* frameCBMapped_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> reflectionFrameCBResource_;
-    D3D12_GPU_VIRTUAL_ADDRESS reflectionFrameCBGpuAddress_ = 0;
-    uint8_t* reflectionFrameCBMapped_ = nullptr;
 };

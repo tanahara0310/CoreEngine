@@ -73,8 +73,7 @@ void WaterPlaneObject::OnInitialize() {
     if (dxCommon) {
         constantBuffers_.Initialize(dxCommon->GetDevice());
         constantBuffers_.UpdateWaterConstants(waterCB_);
-        constantBuffers_.UpdateFrameConstants(frameCB_, false);
-        constantBuffers_.UpdateFrameConstants(frameCB_, true);
+        constantBuffers_.UpdateFrameConstants(frameCB_);
     }
 }
 
@@ -114,33 +113,30 @@ void WaterPlaneObject::BindCustomResources(
         return;
     }
 
+    const D3D12_GPU_VIRTUAL_ADDRESS frameCBGpuAddress = constantBuffers_.GetFrameCBGpuAddress();
+
     if (frameCB_.depthFadeDebugEnabled != 0) {
-        const D3D12_GPU_VIRTUAL_ADDRESS selectedFrameCBGpuAddress =
-            constantBuffers_.GetFrameCBGpuAddress(frameCB_.clipEnabled != 0);
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::Pipeline,
-            "WaterPlane BindCustomResources: b4={} b5={} reflSRV=0x{:X} depthSRV=0x{:X} sceneColorSRV=0x{:X} refractionColorSRV=0x{:X} clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={}",
+            "WaterPlane BindCustomResources: b4={} b5={} reflSRV=0x{:X} depthSRV=0x{:X} sceneColorSRV=0x{:X} refractionColorSRV=0x{:X} reflectionEnabled={} depthFadeEnabled={} debugMode={}",
             waterCBGpuAddress,
-            selectedFrameCBGpuAddress,
+            frameCBGpuAddress,
             renderResources_.reflectionSRV.ptr,
             renderResources_.sceneDepthSRV.ptr,
             renderResources_.sceneColorSRV.ptr,
             renderResources_.refractionColorSRV.ptr,
-            frameCB_.clipEnabled,
             frameCB_.reflectionEnabled,
             frameCB_.depthFadeEnabled,
             frameCB_.depthDebugViewMode);
     }
 
-    const D3D12_GPU_VIRTUAL_ADDRESS selectedFrameCBGpuAddress =
-        constantBuffers_.GetFrameCBGpuAddress(frameCB_.clipEnabled != 0);
     // Water 専用のバインダへ委譲して CBV / SRV の接続を行う
     WaterShaderResourceBinder::Bind(
         cmdList,
         pipeline,
         waterCBGpuAddress,
-        selectedFrameCBGpuAddress,
+        frameCBGpuAddress,
         renderResources_);
 
     if (renderResources_.fftDisplacementSRV.ptr != 0) {
@@ -275,14 +271,6 @@ void WaterPlaneObject::SetReflectionTexture(D3D12_GPU_DESCRIPTOR_HANDLE srvHandl
     }
 }
 
-void WaterPlaneObject::SetClipPlane(const CoreEngine::Vector4& clipPlane, bool enable) {
-    frameCB_.clipPlane[0] = clipPlane.x;
-    frameCB_.clipPlane[1] = clipPlane.y;
-    frameCB_.clipPlane[2] = clipPlane.z;
-    frameCB_.clipPlane[3] = clipPlane.w;
-    frameCB_.clipEnabled  = enable ? 1 : 0;
-}
-
 void WaterPlaneObject::SetCameraClipPlanes(float nearZ, float farZ) {
     // 不正値（0 や逆転）はシェーダーの LinearizeDepth を破綻させるため弾く
     if (!(nearZ > 0.0f) || !(farZ > nearZ)) {
@@ -293,14 +281,13 @@ void WaterPlaneObject::SetCameraClipPlanes(float nearZ, float farZ) {
 }
 
 void WaterPlaneObject::UpdateFrameConstants() {
-    constantBuffers_.UpdateFrameConstants(frameCB_, frameCB_.clipEnabled != 0);
+    constantBuffers_.UpdateFrameConstants(frameCB_);
 
     if (frameCB_.depthFadeDebugEnabled != 0) {
         CoreEngine::Logger::GetInstance().Infof(
             CoreEngine::LogCategory::Graphics,
             CoreEngine::LogSubCategory::Pipeline,
-            "WaterPlane UpdateFrameConstants: clipEnabled={} reflectionEnabled={} depthFadeEnabled={} debugMode={} fresnelScale={:.3f} fresnelF0={:.4f} sigmaA=({:.3f}, {:.3f}, {:.3f}) sigmaS=({:.4f}, {:.4f}, {:.4f})",
-            frameCB_.clipEnabled,
+            "WaterPlane UpdateFrameConstants: reflectionEnabled={} depthFadeEnabled={} debugMode={} fresnelScale={:.3f} fresnelF0={:.4f} sigmaA=({:.3f}, {:.3f}, {:.3f}) sigmaS=({:.4f}, {:.4f}, {:.4f})",
             frameCB_.reflectionEnabled,
             frameCB_.depthFadeEnabled,
             frameCB_.depthDebugViewMode,
@@ -341,23 +328,6 @@ void WaterPlaneObject::SetSceneColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle) {
             CoreEngine::LogSubCategory::RenderTarget,
             "WaterPlane SetSceneColorSRV: srv=0x{:X}",
             renderResources_.sceneColorSRV.ptr);
-    }
-}
-
-void WaterPlaneObject::ApplyWaterReflectionResult(const CoreEngine::RenderViewResult& result)
-{
-    // ReflectionView 出力は反射テクスチャとしてのみ使用する。
-    // SceneDepth / SceneColor は GameView 側の SRV を別経路で設定する。
-    SetReflectionTexture(result.viewSrv);
-
-    if (frameCB_.depthFadeDebugEnabled != 0) {
-        CoreEngine::Logger::GetInstance().Infof(
-            CoreEngine::LogCategory::Graphics,
-            CoreEngine::LogSubCategory::RenderTarget,
-            "WaterPlane ApplyWaterReflectionResult: reflectionSRV=0x{:X} sceneDepthSRV(ignored)=0x{:X} sceneColorSRV(ignored)=0x{:X}",
-            result.viewSrv.ptr,
-            result.sceneDepthSrv.ptr,
-            result.sceneColorSrv.ptr);
     }
 }
 
@@ -415,15 +385,6 @@ void WaterPlaneObject::SetIBLEnabled(bool enable) {
     // IBL の有効/無効はシーン側で決まるため、マテリアル側は強度によるオプトアウトで表現する
     auto* mat = GetModel() ? GetModel()->GetMaterial() : nullptr;
     if (mat) { mat->SetIBLIntensity(enable ? 1.0f : 0.0f); }
-}
-
-void WaterPlaneObject::UpdateUVScroll(float deltaTime) {
-    // 旧呼び出し経路との互換のため、UV 更新と simulation 時間更新をまとめて行う
-    UpdateUVAnimation(deltaTime);
-
-    // 経過時間を加算（波の位相計算に使用）
-    elapsedTime_ += deltaTime;
-    SetSimulationTime(elapsedTime_);
 }
 
 void WaterPlaneObject::UpdateUVAnimation(float deltaTime) {

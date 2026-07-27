@@ -31,30 +31,21 @@ namespace CoreEngine
 
     void GerstnerWaterSimulator::CaptureSurface(
         const WaterSurfaceSimulationInput& input,
-        WaterSurfaceSnapshot& snapshot,
         WaterSurfaceData& surfaceData) const
     {
-        snapshot = {};
         surfaceData = {};
 
         if (!input.gerstnerConstants) {
             return;
         }
 
-        // 共通 snapshot と DXR 用 surface data の両方へ同じ水面基底情報を反映する
         const WaterConstants& waterConstants = *input.gerstnerConstants;
-        snapshot.waterHeight = input.waterHeight;
-        snapshot.activeWaveCount = (std::min)(waterConstants.activeWaveCount, kMaxWaterSurfaceWaveCount);
-        snapshot.time = elapsedTime_;
-        snapshot.simulationType = kWaterSurfaceModelTypeGerstner;
+        surfaceData.waterHeight = input.waterHeight;
+        surfaceData.activeWaveCount = (std::min)(waterConstants.activeWaveCount, kMaxWaterSurfaceWaveCount);
+        surfaceData.time = elapsedTime_;
+        surfaceData.simulationType = kWaterSurfaceModelTypeGerstner;
 
-        surfaceData.waterHeight = snapshot.waterHeight;
-        surfaceData.activeWaveCount = snapshot.activeWaveCount;
-        surfaceData.time = snapshot.time;
-        surfaceData.simulationType = snapshot.simulationType;
-
-        for (uint32_t waveIndex = 0; waveIndex < snapshot.activeWaveCount; ++waveIndex) {
-            snapshot.waves[waveIndex] = waterConstants.waves[waveIndex];
+        for (uint32_t waveIndex = 0; waveIndex < surfaceData.activeWaveCount; ++waveIndex) {
             surfaceData.waves[waveIndex] = ConvertToWaterWaveParam(waterConstants.waves[waveIndex]);
         }
     }

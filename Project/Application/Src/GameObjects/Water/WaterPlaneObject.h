@@ -12,10 +12,6 @@
 
 #include <d3d12.h>
 
-namespace CoreEngine {
-    struct RenderViewResult;
-}
-
 /// @brief 水面表現用のグリッドメッシュオブジェクト
 /// PlaneMeshGenerator を使用して N×N 分割の平面メッシュを生成する。
 /// resolution（分割数）が高いほど後のステップで波の表現が細かくなる。
@@ -50,10 +46,6 @@ public:
     /// @brief UV タイリング（繰り返し回数）を設定する
     void SetUVTiling(const CoreEngine::Vector2& tiling);
 
-    /// @brief UV スクロールと波パラメータ定数バッファを毎フレーム更新する
-    /// @param deltaTime 前フレームからの経過時間（秒）
-    void UpdateUVScroll(float deltaTime);
-
     /// @brief UV スクロールのみを更新する
     /// @param deltaTime 前フレームからの経過時間（秒）
     void UpdateUVAnimation(float deltaTime);
@@ -70,14 +62,9 @@ public:
     /// @brief 有効な Gerstner Wave 本数を設定する
     void SetActiveWaveCount(uint32_t count);
 
-    /// @brief 反射テクスチャの SRV を設定する（毎フレーム WaterReflectionPass から渡す）
-    /// @param srvHandle 反射テクスチャの GPU ディスクリプタハンドル
+    /// @brief 反射テクスチャの SRV を設定する
+    /// @param srvHandle RTWaterReflectionPass が出力した反射テクスチャの GPU ディスクリプタハンドル
     void SetReflectionTexture(D3D12_GPU_DESCRIPTOR_HANDLE srvHandle);
-
-    /// @brief クリップ平面パラメータを設定する（反射パス中に水面自体がクリップされないよう制御）
-    /// @param clipPlane クリップ平面ベクトル (A, B, C, D) — dot(worldPos, plane) > 0 で描画
-    /// @param enable true のとき SV_ClipDistance0 を有効化する
-    void SetClipPlane(const CoreEngine::Vector4& clipPlane, bool enable);
 
     /// @brief 描画カメラのクリップ距離を設定する（深度の線形化に使用）
     /// @details Water.PS.hlsl は NDC 深度差から水柱の厚さを求めるため、実際に描画している
@@ -188,10 +175,6 @@ public:
     bool HasFFTOceanTextureSRVs() const {
         return renderResources_.HasFFTOceanTextureSRVs();
     }
-
-    /// @brief Water Reflection の出力を水面描画へ適用する
-    /// @param result RenderView 出力一式
-    void ApplyWaterReflectionResult(const CoreEngine::RenderViewResult& result);
 
     /// @brief Depth Fade の有効・無効を設定する
     /// @param enabled true のとき Depth Fade を有効にする

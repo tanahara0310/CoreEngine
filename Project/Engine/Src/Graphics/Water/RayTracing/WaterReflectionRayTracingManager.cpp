@@ -31,8 +31,6 @@ namespace CoreEngine
             uint32_t fftOceanResolution;
             float debugDisplayScale;
             uint32_t debugViewMode;
-            float fftOceanUVScale[2];
-            float fftOceanUVOffset[2];
         };
 
         const char* ToString(WaterReflectionRayTracingManager::DispatchStatus status)
@@ -50,7 +48,7 @@ namespace CoreEngine
         }
     }
 
-    static_assert(sizeof(WaterReflectionConstants) == 208,
+    static_assert(sizeof(WaterReflectionConstants) == 192,
         "WaterReflectionConstants size mismatch with HLSL cbuffer");
 
     bool WaterReflectionRayTracingManager::Initialize(
@@ -271,10 +269,6 @@ namespace CoreEngine
         constants.fftOceanResolution = fftOceanInput.resolution;
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
-        constants.fftOceanUVScale[0] = fftOceanInput.uvScale[0];
-        constants.fftOceanUVScale[1] = fftOceanInput.uvScale[1];
-        constants.fftOceanUVOffset[0] = fftOceanInput.uvOffset[0];
-        constants.fftOceanUVOffset[1] = fftOceanInput.uvOffset[1];
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : sceneColorSRV;

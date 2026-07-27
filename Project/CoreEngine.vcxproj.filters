@@ -193,9 +193,6 @@
     <ClCompile Include="Application\Src\Scenes\SpriteTestScene\SpriteTestScene.cpp">
       <Filter>Application\Src\Scenes\SpriteTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterReflectionPass.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp">
       <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
     </ClCompile>
@@ -966,9 +963,6 @@
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterReflectionPass.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
@@ -1019,9 +1013,6 @@
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Primitive\RingObject.h">
       <Filter>Application\Src\GameObjects\Primitive</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Water\WaterConstantBuffer.h">
-      <Filter>Application\Src\GameObjects\Water</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Water\WaterConstantBufferSet.h">
       <Filter>Application\Src\GameObjects\Water</Filter>

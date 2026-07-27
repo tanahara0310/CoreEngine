@@ -10,7 +10,6 @@
 
 namespace CoreEngine {
 	class EngineSystem;
-	struct RenderViewResult;
 }
 
 class WaterSurfaceRuntimeController {
@@ -40,10 +39,6 @@ public:
 	/// RT屈折・コースティクスで共有する provider の参照元を更新する。
 	void UpdateWaterRefractionSurfaceData();
 
-	/// @brief ReflectionView の描画結果を水面へ反映する
-	/// @param result 反射描画結果
-	void ApplyWaterRenderViewResult(const CoreEngine::RenderViewResult& result);
-
 	/// @brief 管理中の水面オブジェクトを返す
 	/// @return 管理対象の水面オブジェクト。未初期化時は nullptr。
 	WaterPlaneObject* GetWaterPlane() const { return waterPlane_; }
@@ -62,8 +57,6 @@ private:
 
 	/// @brief 水面描画本体
 	WaterPlaneObject* waterPlane_ = nullptr;
-	/// @brief 共通 surface snapshot
-	CoreEngine::WaterSurfaceSnapshot waterSurfaceSnapshot_{};
 	/// @brief DXR 屈折用に転送する水面データ
 	CoreEngine::WaterSurfaceData waterRefractionSurfaceData_{};
 	/// @brief RT 水面パスへ渡す surface model provider（寿命管理付き）

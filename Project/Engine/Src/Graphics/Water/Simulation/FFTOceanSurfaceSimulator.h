@@ -5,7 +5,7 @@
 namespace CoreEngine
 {
     /// @brief FFT Ocean ベースの Water simulation 実装
-    /// @details FFT GPU シミュレーション本体は FFTOceanManager を利用し、ここでは CPU 側の surface snapshot を管理する。
+    /// @details FFT GPU シミュレーション本体は FFTOceanManager を利用し、ここでは CPU 側の simulation 時間を管理する。
     class FFTOceanSurfaceSimulator final : public WaterSurfaceSimulator {
     public:
         WaterSurfaceSimulationType GetSimulationType() const override {
@@ -18,7 +18,6 @@ namespace CoreEngine
 
         void CaptureSurface(
             const WaterSurfaceSimulationInput& input,
-            WaterSurfaceSnapshot& snapshot,
             WaterSurfaceData& surfaceData) const override;
     private:
         float elapsedTime_ = 0.0f;

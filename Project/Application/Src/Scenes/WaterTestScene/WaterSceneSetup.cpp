@@ -13,10 +13,9 @@ WaterSceneObjects WaterSceneSetup::SetupScene(WaterTestScene& scene, [[maybe_unu
     // OnInitialize() 完了後に既定背景（大気散乱モード SkyBox）を自動生成し、
     // BaseScene::SetupLight() が生成した isAtmosphereSun 付きライトと連動して
     // AtmosphereManager を毎フレーム更新する。
-    // これにより水面の Planar Reflection（ReflectionView）が大気散乱の空を
-    // そのまま映し込み、コースティクス（RTWaterCaustics 等）が参照する太陽も
-    // 同一の isAtmosphereSun ライトのため、反射・コースティクス・空が常に
-    // 同じ太陽方向/色で整合する。
+    // 水面反射（RTWaterReflectionPass）もコースティクス（RTWaterCaustics）も
+    // 同一の isAtmosphereSun ライトを参照するため、反射・コースティクス・空が
+    // 常に同じ太陽方向/色で整合する。
 
     // Water 描画に必要な主要オブジェクトを順に構築する
     sceneObjects.waterPlane = CreateWaterPlane(scene);
@@ -29,10 +28,10 @@ WaterPlaneObject* WaterSceneSetup::CreateWaterPlane(WaterTestScene& scene) {
     // 水面グリッドを生成し、水面描画用の基本状態を設定する。
     // FFT カスケード（パッチ長 340/89/23m）の波形をジオメトリで解像するには
     // 頂点間隔がカスケード波長より十分細かい必要がある。
-    // ローカル 100m × 分割 256 × スケール 40 = 一辺 4km / 頂点間隔 15.6m とし、
-    // カメラ追従（WaterTestScene::OnUpdate）でタイルを常にカメラ直下へ置くことで
-    // 「有限メッシュ＋実質無限の海面」を両立する。スケールを極端に上げると
-    // 頂点間隔が波長を超えて「平面全体が上下するだけ」の見た目に退化するので注意。
+    // ローカル 100m × 分割 256 × スケール 40 = 一辺 4km / 頂点間隔 15.6m とする。
+    // （カメラ追従はギズモ操作を阻害するため撤去済み。水域は固定タイル）
+    // スケールを極端に上げると頂点間隔が波長を超えて
+    // 「平面全体が上下するだけ」の見た目に退化するので注意。
     WaterPlaneObject* waterPlane = scene.CreateWaterSceneObject<WaterPlaneObject>(100.0f, 256, true);
     if (!waterPlane) {
         return nullptr;
@@ -60,11 +59,9 @@ void WaterSceneSetup::ConfigureWaterMaterial(WaterPlaneObject* waterPlane) {
     material->SetMetallic(0.0f);
     material->SetRoughness(0.04f);
     material->SetLightingEnabled(true);
-    // 大気散乱モードでは静的環境マップの IBL を使わない（ハーフランバート
-    // アンビエントで代替）。水面の鏡面反射は Planar Reflection
-    // （ReflectionView が大気散乱の空を含めて描画した SceneColor）で賄うため、
-    // ここで静的 IBL を有効にすると大気の空と映り込みが食い違う。
-    // 大気散乱モードでは静的環境マップの IBL を使わないため強度 0 でオプトアウトする
+    // 水面の鏡面反射は RTWaterReflectionPass（DXR）と空環境キューブマップで賄うため、
+    // ここで静的環境マップの IBL を有効にすると大気の空と映り込みが食い違う。
+    // 強度 0 でオプトアウトする。
     material->SetIBLIntensity(0.0f);
     material->SetNormalMapEnabled(false);
 }

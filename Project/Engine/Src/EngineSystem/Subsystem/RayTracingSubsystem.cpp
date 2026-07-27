@@ -345,20 +345,6 @@ namespace CoreEngine
             fftOceanInput.resolution = fftSettings.resolution;
             fftOceanInput.patchLength = fftSettings.patchLength;
             fftOceanInput.enabled = 1;
-            if (surfaceData.fftUVMappingValid != 0) {
-                // ラスタ描画（FFTWater.VS）と同じワールドXZ→UV写像を使う
-                fftOceanInput.uvScale[0] = surfaceData.fftUVScale[0];
-                fftOceanInput.uvScale[1] = surfaceData.fftUVScale[1];
-                fftOceanInput.uvOffset[0] = surfaceData.fftUVOffset[0];
-                fftOceanInput.uvOffset[1] = surfaceData.fftUVOffset[1];
-            } else {
-                // 写像未提供の場合はパッチ長ベースの旧写像へフォールバック
-                const float invPatch = 1.0f / (std::max)(fftSettings.patchLength, 1.0e-4f);
-                fftOceanInput.uvScale[0] = invPatch;
-                fftOceanInput.uvScale[1] = invPatch;
-                fftOceanInput.uvOffset[0] = 0.5f;
-                fftOceanInput.uvOffset[1] = 0.5f;
-            }
         }
 
         rtWaterRefraction->Dispatch(
@@ -436,18 +422,6 @@ namespace CoreEngine
             fftOceanInput.resolution = fftSettings.resolution;
             fftOceanInput.patchLength = fftSettings.patchLength;
             fftOceanInput.enabled = 1;
-            if (surfaceData.fftUVMappingValid != 0) {
-                fftOceanInput.uvScale[0] = surfaceData.fftUVScale[0];
-                fftOceanInput.uvScale[1] = surfaceData.fftUVScale[1];
-                fftOceanInput.uvOffset[0] = surfaceData.fftUVOffset[0];
-                fftOceanInput.uvOffset[1] = surfaceData.fftUVOffset[1];
-            } else {
-                const float invPatch = 1.0f / (std::max)(fftSettings.patchLength, 1.0e-4f);
-                fftOceanInput.uvScale[0] = invPatch;
-                fftOceanInput.uvScale[1] = invPatch;
-                fftOceanInput.uvOffset[0] = 0.5f;
-                fftOceanInput.uvOffset[1] = 0.5f;
-            }
         }
 
         rtWaterReflection->Dispatch(
@@ -526,20 +500,6 @@ namespace CoreEngine
             fftOceanInput.resolution = fftSettings.resolution;
             fftOceanInput.patchLength = fftSettings.patchLength;
             fftOceanInput.enabled = 1;
-            if (surfaceData.fftUVMappingValid != 0) {
-                // ラスタ描画（FFTWater.VS）と同じワールドXZ→UV写像を使う
-                fftOceanInput.uvScale[0] = surfaceData.fftUVScale[0];
-                fftOceanInput.uvScale[1] = surfaceData.fftUVScale[1];
-                fftOceanInput.uvOffset[0] = surfaceData.fftUVOffset[0];
-                fftOceanInput.uvOffset[1] = surfaceData.fftUVOffset[1];
-            } else {
-                // 写像未提供の場合はパッチ長ベースの旧写像へフォールバック
-                const float invPatch = 1.0f / (std::max)(fftSettings.patchLength, 1.0e-4f);
-                fftOceanInput.uvScale[0] = invPatch;
-                fftOceanInput.uvScale[1] = invPatch;
-                fftOceanInput.uvOffset[0] = 0.5f;
-                fftOceanInput.uvOffset[1] = 0.5f;
-            }
         }
 
         rtWaterCaustics->Dispatch(

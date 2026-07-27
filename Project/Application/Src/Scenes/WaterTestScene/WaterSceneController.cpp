@@ -101,10 +101,6 @@ void WaterSceneController::Update(EngineSystem& engine, float deltaTime, bool at
 	}
 }
 
-void WaterSceneController::ApplyWaterRenderViewResult(const RenderViewResult& result) {
-	runtimeController_.ApplyWaterRenderViewResult(result);
-}
-
 float WaterSceneController::GetWaterHeight() const {
 	return runtimeController_.GetWaterHeight();
 }

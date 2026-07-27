@@ -11,21 +11,14 @@ namespace CoreEngine
 
     void FFTOceanSurfaceSimulator::CaptureSurface(
         const WaterSurfaceSimulationInput& input,
-        WaterSurfaceSnapshot& snapshot,
         WaterSurfaceData& surfaceData) const
     {
-        snapshot = {};
         surfaceData = {};
 
-        // FFT 経路では Gerstner 波配列に依存せず、時間と高さだけを共通 surface として保持する
-        snapshot.waterHeight = input.waterHeight;
-        snapshot.activeWaveCount = 0;
-        snapshot.time = elapsedTime_;
-        snapshot.simulationType = kWaterSurfaceModelTypeFFTOcean;
-
-        surfaceData.waterHeight = snapshot.waterHeight;
+        // FFT 経路では Gerstner 波配列に依存せず、時間と高さだけを surface として保持する
+        surfaceData.waterHeight = input.waterHeight;
         surfaceData.activeWaveCount = 0;
-        surfaceData.time = snapshot.time;
-        surfaceData.simulationType = snapshot.simulationType;
+        surfaceData.time = elapsedTime_;
+        surfaceData.simulationType = kWaterSurfaceModelTypeFFTOcean;
     }
 }
