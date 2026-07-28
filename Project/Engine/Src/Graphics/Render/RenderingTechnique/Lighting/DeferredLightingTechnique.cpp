@@ -9,7 +9,6 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/Pass/RenderPass.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -53,22 +52,13 @@ namespace CoreEngine
     {
         assert(directXCommon_);
 
-        // ライトビュープロジェクション行列専用の定数バッファを作成（64 バイト = float4x4）
-        lightVPBuffer_ = ResourceFactory::CreateBufferResource(
-            directXCommon_->GetDevice(), sizeof(float) * 16);
-        lightVPCBVAddress_ = lightVPBuffer_->GetGPUVirtualAddress();
-
-        // 単位行列で初期化
-        float identity[16] = {
+        // 単位行列（各定数バッファの初期値）
+        const float identity[16] = {
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1
         };
-        float* mapped = nullptr;
-        lightVPBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-        std::memcpy(mapped, identity, sizeof(identity));
-        lightVPBuffer_->Unmap(0, nullptr);
 
         // 深度復元用 View*Projection 逆行列専用の定数バッファをビュー種別ごとに作成（64 バイト = float4x4）
         for (size_t vi = 0; vi < kViewTypeCount; ++vi) {
@@ -94,7 +84,7 @@ namespace CoreEngine
         iblParamsBuffer_->Unmap(0, nullptr);
 
         waterCausticsDebugBuffer_ = ResourceFactory::CreateBufferResource(
-            directXCommon_->GetDevice(), sizeof(float) * 4);
+            directXCommon_->GetDevice(), sizeof(WaterCausticsDebugSettings));
         waterCausticsDebugCBVAddress_ = waterCausticsDebugBuffer_->GetGPUVirtualAddress();
         UpdateWaterCausticsDebugBuffer();
 
@@ -107,20 +97,6 @@ namespace CoreEngine
         skyAmbientBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&skyMapped));
         *skyMapped = skyDefaults;
         skyAmbientBuffer_->Unmap(0, nullptr);
-    }
-
-    // -------------------------------------------------------------------------
-    // ライト VP 行列を GPU バッファに書き込む（毎フレーム呼び出し）
-    // -------------------------------------------------------------------------
-    void DeferredLightingTechnique::UpdateLightViewProjection(const Matrix4x4& mat)
-    {
-        if (!lightVPBuffer_) {
-            return;
-        }
-        float* mapped = nullptr;
-        lightVPBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-        std::memcpy(mapped, &mat, sizeof(Matrix4x4));
-        lightVPBuffer_->Unmap(0, nullptr);
     }
 
     // -------------------------------------------------------------------------
@@ -285,21 +261,6 @@ namespace CoreEngine
                     static_cast<UINT>(alIdx)
                 );
             }
-        }
-
-        // ===== シャドウマップ SRV =====
-        if (context.shadowMapManager) {
-            const int shadowIdx = GetRootParamIndex("gShadowMap");
-            if (shadowIdx >= 0) {
-                cmdList->SetGraphicsRootDescriptorTable(shadowIdx,
-                    context.shadowMapManager->GetSRVHandle());
-            }
-        }
-
-        // ===== ライト VP 行列 CBV =====
-        const int lightVPIdx = GetRootParamIndex("gLightViewProjection");
-        if (lightVPIdx >= 0 && lightVPCBVAddress_ != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(lightVPIdx, lightVPCBVAddress_);
         }
 
         // ===== IBL SRV =====

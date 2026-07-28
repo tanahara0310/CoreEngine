@@ -55,8 +55,8 @@ namespace CoreEngine
         const aiScene* scene = importer.ReadFile(
             filepath.c_str(),
             aiProcess_Triangulate |
+            aiProcess_JoinIdenticalVertices | // 重複頂点の統合（インデックス化）。理由は上記コメント参照
             aiProcess_GenSmoothNormals |
-            aiProcess_CalcTangentSpace |
             aiProcess_LimitBoneWeights |      // ボーンウェイトを4つに制限
             aiProcess_ConvertToLeftHanded |
             aiProcess_FlipUVs
@@ -96,6 +96,20 @@ namespace CoreEngine
                 assert(false && errorMsg.c_str());
                 return nullptr;
             }
+        }
+
+        // タンジェント計算は頂点統合（JoinIdenticalVertices）より後でなければならないため、
+        // 独立したパスとして最後に適用する。理由は ReadFile 呼び出し前のコメント参照。
+        // UV が異なる頂点は Join で統合されずに残るので、UV シームのタンジェント分割は保たれる。
+        scene = importer.ApplyPostProcessing(aiProcess_CalcTangentSpace);
+
+        if (!scene) {
+            std::string errorMsg = std::format("Failed to apply CalcTangentSpace: {}\nAssimp Error: {}",
+                filepath, importer.GetErrorString());
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource, "{}", errorMsg);
+            FileErrorDialog::ShowModelError("Failed to load model file", filepath, importer.GetErrorString());
+            assert(false && errorMsg.c_str());
+            return nullptr;
         }
 
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Model loaded successfully: {}", filepath));

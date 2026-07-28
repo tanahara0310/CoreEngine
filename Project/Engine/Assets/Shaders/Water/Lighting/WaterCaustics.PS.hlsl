@@ -1,6 +1,7 @@
 #include "FullScreen.hlsli"
 #include "../Include/Lighting/LightStructures.hlsli"
 #include "../Include/Common/DepthReconstruction.hlsli"
+#include "../Common/GerstnerWave.hlsli"
 
 Texture2D<float> gSceneDepth : register(t0); // WorldPosition ターゲット廃止に伴い深度から復元する
 Texture2D<float4> gNormalRoughness : register(t1);
@@ -13,24 +14,13 @@ cbuffer gMainLight : register(b1)
     uint gMainLightEnabled;
 };
 
-struct WaterWaveParam
-{
-    float2 direction;
-    float amplitude;
-    float wavelength;
-    float speed;
-    float steepness;
-    float phaseOffset;
-    float padding;
-};
-
 cbuffer gWaterSurfaceData : register(b2)
 {
     float gSurfaceWaterHeight;
     uint gSurfaceActiveWaveCount;
     float gSurfaceTime;
     float gSurfacePadding;
-    WaterWaveParam gSurfaceWaves[16];
+    GerstnerWave gSurfaceWaves[GERSTNER_MAX_WAVE_COUNT];
     // 水面メッシュのワールドXZ範囲（WaterCausticsTechnique::WaterSurfaceConstants と一致）。
     // コースティクスは解析的な無限水面として評価されるため、この矩形でマスクしないと
     // 水域の外（無限床など「水面高さより低い場所すべて」）にも集光模様が漏れる。
@@ -71,30 +61,22 @@ struct PixelShaderOutput
     float4 color : SV_Target;
 };
 
+// 波の数式は Common/GerstnerWave.hlsli が唯一の情報源（DXR 側の
+// RTWaterSurfaceCommon.hlsli と同じ関数を使う）。cbuffer レイアウトだけが
+// スクリーンスペース版と DXR 版で異なるため、ループはここに残す。
 float3 EvaluateWaterOffset(float2 worldXZ)
 {
     float3 totalOffset = 0.0f.xxx;
 
     [unroll]
-    for (uint waveIndex = 0; waveIndex < 16; ++waveIndex)
+    for (uint waveIndex = 0; waveIndex < kMaxGerstnerWaveCount; ++waveIndex)
     {
         if (waveIndex >= gSurfaceActiveWaveCount)
         {
             break;
         }
 
-        WaterWaveParam wave = gSurfaceWaves[waveIndex];
-        float k = 2.0f * 3.14159265f / max(wave.wavelength, 1.0e-4f);
-        float omega = wave.speed * k;
-        float kA = max(k * wave.amplitude, 1.0e-4f);
-        float safeSteepness = min(wave.steepness, 0.95f / kA);
-        float phase = k * dot(wave.direction, worldXZ) + omega * gSurfaceTime + wave.phaseOffset;
-        float sinP = sin(phase);
-        float cosP = cos(phase);
-
-        totalOffset.x += safeSteepness * wave.amplitude * wave.direction.x * cosP;
-        totalOffset.y += wave.amplitude * sinP;
-        totalOffset.z += safeSteepness * wave.amplitude * wave.direction.y * cosP;
+        totalOffset += EvaluateGerstnerWaveOffset(gSurfaceWaves[waveIndex], gSurfaceTime, worldXZ);
     }
 
     return totalOffset;
@@ -106,37 +88,18 @@ float3 EvaluateWaterNormal(float2 worldXZ)
     float3 dPdZ = float3(0.0f, 0.0f, 1.0f);
 
     [unroll]
-    for (uint waveIndex = 0; waveIndex < 16; ++waveIndex)
+    for (uint waveIndex = 0; waveIndex < kMaxGerstnerWaveCount; ++waveIndex)
     {
         if (waveIndex >= gSurfaceActiveWaveCount)
         {
             break;
         }
 
-        WaterWaveParam wave = gSurfaceWaves[waveIndex];
-        float k = 2.0f * 3.14159265f / max(wave.wavelength, 1.0e-4f);
-        float omega = wave.speed * k;
-        float kA = max(k * wave.amplitude, 1.0e-4f);
-        float safeSteepness = min(wave.steepness, 0.95f / kA);
-        float phase = k * dot(wave.direction, worldXZ) + omega * gSurfaceTime + wave.phaseOffset;
-        float sinP = sin(phase);
-        float cosP = cos(phase);
-        float common = safeSteepness * wave.amplitude * k * sinP;
-        float heightSlope = wave.amplitude * k * cosP;
-
-        dPdX += float3(
-            -common * wave.direction.x * wave.direction.x,
-             heightSlope * wave.direction.x,
-            -common * wave.direction.x * wave.direction.y);
-
-        dPdZ += float3(
-            -common * wave.direction.x * wave.direction.y,
-             heightSlope * wave.direction.y,
-            -common * wave.direction.y * wave.direction.y);
+        AccumulateGerstnerWaveDerivatives(
+            gSurfaceWaves[waveIndex], gSurfaceTime, worldXZ, dPdX, dPdZ);
     }
 
-    float3 normal = normalize(cross(dPdZ, dPdX));
-    return normal.y < 0.0f ? -normal : normal;
+    return BuildGerstnerNormal(dPdX, dPdZ);
 }
 
 float EvaluateCurvature(float2 worldXZ)

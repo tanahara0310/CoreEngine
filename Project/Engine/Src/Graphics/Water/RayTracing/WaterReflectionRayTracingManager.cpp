@@ -31,26 +31,10 @@ namespace CoreEngine
             uint32_t fftOceanResolution;
             float debugDisplayScale;
             uint32_t debugViewMode;
-            float fftOceanUVScale[2];
-            float fftOceanUVOffset[2];
         };
-
-        const char* ToString(WaterReflectionRayTracingManager::DispatchStatus status)
-        {
-            switch (status) {
-            case WaterReflectionRayTracingManager::DispatchStatus::None: return "None";
-            case WaterReflectionRayTracingManager::DispatchStatus::NotInitialized: return "NotInitialized";
-            case WaterReflectionRayTracingManager::DispatchStatus::RayTracingUnsupported: return "RayTracingUnsupported";
-            case WaterReflectionRayTracingManager::DispatchStatus::NoBLAS: return "NoBLAS";
-            case WaterReflectionRayTracingManager::DispatchStatus::OutputAllocationFailed: return "OutputAllocationFailed";
-            case WaterReflectionRayTracingManager::DispatchStatus::CommandList4Unavailable: return "CommandList4Unavailable";
-            case WaterReflectionRayTracingManager::DispatchStatus::Dispatched: return "Dispatched";
-            default: return "Unknown";
-            }
-        }
     }
 
-    static_assert(sizeof(WaterReflectionConstants) == 208,
+    static_assert(sizeof(WaterReflectionConstants) == 192,
         "WaterReflectionConstants size mismatch with HLSL cbuffer");
 
     bool WaterReflectionRayTracingManager::Initialize(
@@ -60,7 +44,8 @@ namespace CoreEngine
     {
         Logger& log = Logger::GetInstance();
 
-        if (!InitializeBase(dxCommon, descriptorManager, asMgr, "WaterReflectionRayTracingManager")) {
+        if (!InitializeBase(dxCommon, descriptorManager, asMgr,
+            "WaterReflectionRayTracingManager", "RTWaterReflection")) {
             log.Log("WaterReflectionRayTracingManager: DXR not supported, skipping",
                 LogLevel::Warn,
                 LogCategory::Graphics);
@@ -123,22 +108,6 @@ namespace CoreEngine
         return true;
     }
 
-    bool WaterReflectionRayTracingManager::EnsureConstantBuffer()
-    {
-        return EnsureSurfaceConstantBuffer(GetSurfaceConstantBufferSize(), "WaterReflectionRayTracingManager");
-    }
-
-    bool WaterReflectionRayTracingManager::EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex)
-    {
-        return EnsureOutputTextureBase(
-            width,
-            height,
-            viewIndex,
-            "WaterReflectionRayTracingManager",
-            "RTWaterReflection_UAV_v" + std::to_string(viewIndex),
-            "RTWaterReflection_SRV_v" + std::to_string(viewIndex));
-    }
-
     void WaterReflectionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)
     {
         ReleaseOutputIfSizeMismatchBase(width, height, static_cast<uint32_t>(viewId));
@@ -159,16 +128,6 @@ namespace CoreEngine
         return GetOutputCurrentStateBase(static_cast<uint32_t>(viewId));
     }
 
-    void WaterReflectionRayTracingManager::SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider)
-    {
-        SetSurfaceModelProviderBase(provider);
-    }
-
-    std::shared_ptr<const IWaterSurfaceModelProvider> WaterReflectionRayTracingManager::GetSurfaceModelProvider() const
-    {
-        return GetSurfaceModelProviderBase();
-    }
-
     void WaterReflectionRayTracingManager::Dispatch(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
@@ -176,81 +135,22 @@ namespace CoreEngine
         const Matrix4x4& viewProjection,
         const Vector3& cameraPosition,
         const WaterSurfaceData& surfaceData,
-        const FFTOceanReflectionInput& fftOceanInput,
+        const FFTOceanInput& fftOceanInput,
         UINT width,
         UINT height,
         ViewID viewId)
     {
         WaterSurfaceData resolvedSurfaceData{};
-        const WaterSurfaceData& dispatchSurfaceData = ResolveSurfaceDataForDispatch(
-            surfaceData,
-            resolvedSurfaceData,
-            "WaterReflectionRayTracingManager");
+        const WaterSurfaceData& dispatchSurfaceData =
+            ResolveSurfaceDataForDispatch(surfaceData, resolvedSurfaceData);
 
-        lastDiagnostics_ = {};
-        lastDiagnostics_.viewId = viewId;
-        lastDiagnostics_.waterHeight = dispatchSurfaceData.waterHeight;
-        lastDiagnostics_.width = width;
-        lastDiagnostics_.height = height;
-        lastDiagnostics_.sceneDepthSrv = sceneDepthSRV.ptr;
-        lastDiagnostics_.sceneColorSrv = sceneColorSRV.ptr;
-        lastDiagnostics_.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
-
-        DispatchGuardStatus guardStatus = DispatchGuardStatus::Ok;
         const uint32_t viewIndex = static_cast<uint32_t>(viewId);
-        D3D12_GPU_DESCRIPTOR_HANDLE outputSrvHandle{};
-        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle{};
-        ID3D12Resource* outputResource = nullptr;
-        D3D12_RESOURCE_STATES* outputCurrentState = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
-        if (!PrepareDispatchResources(
-            cmdList,
-            width,
-            height,
-            viewIndex,
-            GetSurfaceConstantBufferSize(),
-            "WaterReflectionRayTracingManager",
-            "RTWaterReflection_UAV_v" + std::to_string(viewIndex),
-            "RTWaterReflection_SRV_v" + std::to_string(viewIndex),
-            guardStatus,
-            outputSrvHandle,
-            outputUavHandle,
-            outputResource,
-            outputCurrentState,
-            cmdList4)) {
-            switch (guardStatus) {
-            case DispatchGuardStatus::NotInitialized:
-                lastDiagnostics_.status = WaterReflectionRayTracingManager::DispatchStatus::NotInitialized;
-                break;
-            case DispatchGuardStatus::RayTracingUnsupported:
-                lastDiagnostics_.status = WaterReflectionRayTracingManager::DispatchStatus::RayTracingUnsupported;
-                break;
-            case DispatchGuardStatus::InvalidCommandList:
-            case DispatchGuardStatus::CommandList4Unavailable:
-                lastDiagnostics_.status = WaterReflectionRayTracingManager::DispatchStatus::CommandList4Unavailable;
-                break;
-            case DispatchGuardStatus::NoBLAS:
-                lastDiagnostics_.status = WaterReflectionRayTracingManager::DispatchStatus::NoBLAS;
-                break;
-            case DispatchGuardStatus::OutputAllocationFailed:
-                lastDiagnostics_.status = WaterReflectionRayTracingManager::DispatchStatus::OutputAllocationFailed;
-                break;
-            default:
-                lastDiagnostics_.status = WaterReflectionRayTracingManager::DispatchStatus::RayTracingUnsupported;
-                break;
-            }
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "WaterReflectionRayTracingManager: dispatch skipped. status={} initialized={} cmdList={} asMgr={} supported={}",
-                ToString(lastDiagnostics_.status),
-                isInitialized_,
-                cmdList != nullptr,
-                asMgr_ != nullptr,
-                asMgr_ ? asMgr_->IsSupported() : false);
+        BeginDiagnostics(viewIndex, width, height, dispatchSurfaceData, sceneDepthSRV, sceneColorSRV);
+
+        DispatchResources resources;
+        if (!BeginDispatch(cmdList, width, height, viewIndex, resources)) {
             return;
         }
-        lastDiagnostics_.outputSrv = outputSrvHandle.ptr;
 
         WaterReflectionConstants constants{};
         constants.viewProjection = viewProjection;
@@ -271,29 +171,22 @@ namespace CoreEngine
         constants.fftOceanResolution = fftOceanInput.resolution;
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
-        constants.fftOceanUVScale[0] = fftOceanInput.uvScale[0];
-        constants.fftOceanUVScale[1] = fftOceanInput.uvScale[1];
-        constants.fftOceanUVOffset[0] = fftOceanInput.uvOffset[0];
-        constants.fftOceanUVOffset[1] = fftOceanInput.uvOffset[1];
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : sceneColorSRV;
         const D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV =
             (fftOceanInput.normalSRV.ptr != 0) ? fftOceanInput.normalSRV : sceneColorSRV;
 
-        const WaterSurfaceConstants surfaceConstants = UploadSurfaceDataForDispatch(
-            dispatchSurfaceData,
-            "WaterReflectionRayTracingManager");
-        (void)surfaceConstants;
+        UploadSurfaceDataForDispatch(dispatchSurfaceData);
 
-        cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
-        cmdList4->SetPipelineState1(stateObject_.Get());
+        resources.cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
+        resources.cmdList4->SetPipelineState1(stateObject_.Get());
 
-        BeginOutputWrite(cmdList, outputResource, *outputCurrentState);
+        BeginOutputWrite(cmdList, resources.outputResource, *resources.outputCurrentState);
 
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gReflectionOutput")),
-            outputUavHandle);
+            resources.outputUavHandle);
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene")),
             asMgr_->GetTLASSRVHandle());
@@ -319,13 +212,13 @@ namespace CoreEngine
             0);
 
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
-        cmdList4->DispatchRays(&dispatchDesc);
-        lastDiagnostics_.status = WaterReflectionRayTracingManager::DispatchStatus::Dispatched;
+        resources.cmdList4->DispatchRays(&dispatchDesc);
+        lastDiagnostics_.status = DispatchStatus::Dispatched;
 
         EndOutputWrite(
             cmdList,
-            outputResource,
-            *outputCurrentState,
+            resources.outputResource,
+            *resources.outputCurrentState,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 }

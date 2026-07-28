@@ -64,8 +64,8 @@ namespace CoreEngine
         // 周期が噛み合わないため単一タイルの「格子状の繰り返し」を打ち消す。
         // 出力は Texture2DArray（スライス = カスケード）にまとめ、水面シェーダ側で
         // ワールドXZベースに各スライスをサンプルして合算する。
-        // 各カスケードのワールドパッチ長／波高配分は .cpp の kCascadePatchLength / kCascadeRmsShare、
-        // パッチ長はシェーダ側 kFFTCascadePatch と一致させること。
+        // 各カスケードのワールドパッチ長／回転は Assets/Shaders/Water/Common/FFTOceanCascadeValues.hlsli
+        // （C++ / HLSL 共通の唯一の情報源）から .cpp が展開する。波高配分は .cpp の kCascadeRmsShare。
         // 波高は Pierson-Moskowitz（Hs ≈ 0.21 v²/g）へ較正され、風速だけで決まる。
         static constexpr uint32_t kCascadeCount = 3;
 

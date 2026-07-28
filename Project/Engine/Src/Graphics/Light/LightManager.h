@@ -128,12 +128,6 @@ namespace CoreEngine
         /// @brief 全てのライトをクリア（シーン切り替え時に使用）
         void ClearAllLights();
 
-        /// @brief メインディレクショナルライト（正準順の先頭）のビュープロジェクション行列を計算
-        /// @param sceneCenter シーンの中心座標
-        /// @param sceneRadius シーンを囲む半径
-        /// @return ライトビュープロジェクション行列
-        Matrix4x4 CalculateMainDirectionalLightViewProjection(const Vector3& sceneCenter, float sceneRadius);
-
         /// @brief エリアライトの法線から発光面の正規直交基底を導出する
         /// @details GPU 転送と可視化で同じ基底を使うための共通ヘルパー
         static void ComputeAreaLightBasis(const Vector3& normal, Vector3& outRight, Vector3& outUp);

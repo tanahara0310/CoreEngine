@@ -161,7 +161,8 @@ namespace CoreEngine
         ImGui::SetCursorScreenPos(ImVec2(contentPos.x + offsetX, contentPos.y + offsetY));
         ImGui::Image((ImTextureID)textureHandle.ptr, ImVec2(drawW, drawH));
 
-#if defined(_DEBUG)
+        // Gameビュー上のギズモ・オブジェクト選択・モデルドロップ。
+        // エディタ機能の有効条件は USE_IMGUI（Development ビルドにも必要）。_DEBUG で囲まないこと
         SceneDebugEditor* sceneDebugEditor = gameDebugUI ? gameDebugUI->GetSceneDebugEditor() : nullptr;
 
         if (sceneDebugEditor) {
@@ -175,7 +176,6 @@ namespace CoreEngine
                 imageSize,
                 isImageHovered);
         }
-#endif
 
         ImGui::End();
 #endif

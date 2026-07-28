@@ -15,6 +15,10 @@
 #include "Editor/ImGui/RenderPassDebugPanel.h"
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Editor/Environment/VolumetricCloudEditor.h"
+#include "Editor/Environment/AtmosphereSettingsSection.h"
+#include "Editor/Environment/VolumetricCloudSettingsSection.h"
+#include "Graphics/PostEffect/Effect/PostEffectSettingsSection.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueSettingsSection.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 
@@ -95,6 +99,14 @@ namespace CoreEngine
         // gameDebugUI_ より後に宣言し、デストラクタでの登録解除が UI 解放前に走るようにする
         std::unique_ptr<AtmosphereEditor> atmosphereEditor_;
         std::unique_ptr<VolumetricCloudEditor> cloudEditor_;
+
+        // エディタ設定の自動保存セクション（大気物性・雲。太陽/月ライトはシーン寿命のため
+        // EnvironmentFeature 側が別セクションで扱う）。cloudEditor_ を参照するため
+        // エディタより後に宣言し、先に破棄されるようにする
+        std::unique_ptr<AtmosphereSettingsSection> atmosphereSettingsSection_;
+        std::unique_ptr<VolumetricCloudSettingsSection> cloudSettingsSection_;
+        std::unique_ptr<PostEffectSettingsSection> postEffectSettingsSection_;
+        std::unique_ptr<RenderingTechniqueSettingsSection> renderingTechniqueSettingsSection_;
     };
 }
 

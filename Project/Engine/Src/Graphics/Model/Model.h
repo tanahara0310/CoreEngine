@@ -16,7 +16,6 @@
 #include "Graphics/Model/Skeleton/SkinCluster.h"
 #include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
-#include "Graphics/Render/Shadow/ShadowDrawPacket.h"
 #include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Animation/AnimationPlayer.h"
 
@@ -26,7 +25,6 @@ namespace CoreEngine {
     class DirectXCommon;
     class ResourceFactory;
     class LightBase;
-    class ShadowMapManager;
     class ICustomShaderProvider;
     class CustomShaderPipeline;
     struct Skeleton;
@@ -68,11 +66,6 @@ namespace CoreEngine
         /// @param textureHandle テクスチャハンドル（省略時はモデル組み込みテクスチャを使用）
         void Draw(const WorldTransform& transform, const DrawViewInfo& view,
             D3D12_GPU_DESCRIPTOR_HANDLE textureHandle = {});
-
-        /// @brief シャドウマップ用の描画（深度のみ）
-        /// @param transform ワールドトランスフォーム
-        /// @param cmdList コマンドリスト
-        void DrawShadow(const WorldTransform& transform, ID3D12GraphicsCommandList* cmdList);
 
         /// @brief 初期化されているか確認
         /// @return 初期化済みならtrue
@@ -164,9 +157,6 @@ namespace CoreEngine
         Matrix4x4 prevGameWVP_{}; // 前フレームのWVP行列（モーションベクター計算用）
         bool prevGameWVPInitialized_ = false; // false = 未初期化（初回フレームはMV=0にする）
 
-        // シャドウマップ描画（DrawShadow）用 WVP バッファ。同様にリングバッファ化する。
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameBufferCount> shadowTransformBuffers_;
-
         // SkinCluster（存在する場合）
         std::optional<SkinCluster> skinCluster_;
 
@@ -205,9 +195,6 @@ namespace CoreEngine
 
         /// @brief 現在フレームに対応する Game 用 WVP バッファを取得（リングバッファから解決）
         ID3D12Resource* GetGameTransformBuffer() const;
-
-        /// @brief 現在フレームに対応する Shadow 用 WVP バッファを取得（リングバッファから解決）
-        ID3D12Resource* GetShadowTransformBuffer() const;
 
         /// @brief サブメッシュのマテリアルスロットに対応するマテリアル定数バッファのGPUアドレスを取得（範囲外はスロット0）
         /// @details オーバーライド未発生のスロットは ModelResource 共有のデフォルトマテリアルのアドレスを返す。

@@ -20,6 +20,12 @@
 #include "Graphics/Water/FFTOceanSpectrumBuilder.h"
 #include "Utility/Logger/Logger.h"
 
+// カスケードの数値はシェーダーと共有する。マクロだけで構成されているため
+// HLSL / C++ のどちらからも include でき、ここが唯一の情報源になる。
+// （実行時のシェーダーコンパイルは配備先の同ファイルを読むので、
+//   xcopy 済みのツリーとソースツリーの内容は常に一致する）
+#include "../../../Assets/Shaders/Water/Common/FFTOceanCascadeValues.hlsli"
+
 namespace CoreEngine
 {
     namespace
@@ -29,19 +35,24 @@ namespace CoreEngine
             return (value + 255) & ~255;
         }
 
-        // カスケードのワールドパッチ長（m）。すべて素数にして互いに素とし、
-        // 合成波形の繰り返し周期を LCM = 521×127×31 ≈ 205万m まで引き延ばす。
-        // シェーダ側 kFFTCascadePatch（FFTWater.VS / Water.PS / RTWaterSurfaceCommon）と一致必須。
-        constexpr float kCascadePatchLength[FFTOceanManager::kCascadeCount] = { 521.0f, 127.0f, 31.0f };
+        // ---- カスケードの幾何定数（値は FFTOceanCascadeValues.hlsli が唯一の情報源）----
+        // 以前はこれらの数値がシェーダー 3 本とここの計 4 箇所へ手コピーされ、
+        // 「一致必須」というコメントだけで守られていた。共有マクロ経由にしたことで、
+        // 片方だけ変えるという事故が起こりえなくなっている。
+        static_assert(FFTOceanManager::kCascadeCount == FFT_OCEAN_CASCADE_COUNT,
+            "FFTOceanManager::kCascadeCount must match FFT_OCEAN_CASCADE_COUNT in FFTOceanCascadeValues.hlsli");
 
-        // カスケードごとのサンプリング格子回転（cos/sin）。0° / +26° / -49°。
+        // ワールドパッチ長（m）。すべて素数にして互いに素とし、
+        // 合成波形の繰り返し周期を LCM = 521×127×31 ≈ 205万m まで引き延ばす。
+        constexpr float kCascadePatchLength[FFTOceanManager::kCascadeCount] = FFT_OCEAN_CASCADE_PATCH_LENGTHS;
+
+        // サンプリング格子回転（cos/sin）。0° / +26° / -49°。
         // 全カスケードの格子軸が揃っていると、各カスケード固有のタイル周期が
         // 同じ向き・同じ位置で強め合い「格子状の同じパターン」として知覚される。
         // 格子を互いに回転させると残存周期が空間的に整列しなくなり視認できなくなる。
-        // シェーダ側 kFFTCascadeRotC/S（FFTWater.VS / Water.PS / RTWaterSurfaceCommon）と一致必須。
         // スペクトルの風向は逆回転で補正するため、波の進行方向はワールドで全カスケード共通のまま。
-        constexpr float kCascadeRotCos[FFTOceanManager::kCascadeCount] = { 1.0f, 0.89879405f, 0.65605903f };
-        constexpr float kCascadeRotSin[FFTOceanManager::kCascadeCount] = { 0.0f, 0.43837115f, -0.75471006f };
+        constexpr float kCascadeRotCos[FFTOceanManager::kCascadeCount] = FFT_OCEAN_CASCADE_ROT_COS;
+        constexpr float kCascadeRotSin[FFTOceanManager::kCascadeCount] = FFT_OCEAN_CASCADE_ROT_SIN;
 
         // カスケードごとの乱数シード。同一シードだと全カスケードの位相パターンが
         // 完全相関し「同じ波の配置が縮尺違いで繰り返される」自己相似模様になる。

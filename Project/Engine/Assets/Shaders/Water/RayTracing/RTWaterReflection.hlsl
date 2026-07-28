@@ -35,8 +35,6 @@ cbuffer WaterReflectionConstants : register(b0)
     uint gFFTOceanResolution;
     float gDebugDisplayScale;
     uint gDebugViewMode;
-    float2 gFFTOceanUVScale;
-    float2 gFFTOceanUVOffset;
 };
 
 struct ReflectionPayload
@@ -99,7 +97,7 @@ float3 EvaluateReflectionWaterOffset(float2 worldXZ)
 {
     if (!UseFFTOceanSurface())
     {
-        return EvaluateWaterOffset(worldXZ);
+        return EvaluateWaterOffsetGerstner(worldXZ);
     }
     return SampleFFTOceanCascadeDisplacement(gFFTOceanDisplacement, worldXZ, gFFTOceanResolution);
 }
@@ -108,7 +106,7 @@ float3 EvaluateReflectionWaterNormal(float2 worldXZ)
 {
     if (!UseFFTOceanSurface())
     {
-        return EvaluateWaterNormal(worldXZ);
+        return EvaluateWaterNormalGerstner(worldXZ);
     }
     return SampleFFTOceanCascadeNormal(gFFTOceanNormal, worldXZ, gFFTOceanResolution);
 }

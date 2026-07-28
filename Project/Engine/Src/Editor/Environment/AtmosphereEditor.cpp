@@ -163,34 +163,19 @@ namespace CoreEngine {
         // ===== 太陽・月の配置（UE 風の直接操作） =====
         if (ImGui::CollapsingHeader("太陽と月の配置", ImGuiTreeNodeFlags_DefaultOpen)) {
             // --- プリセット（1クリックで代表的な時間帯へ） ---
-            if (ImGui::Button("正午")) { timeOfDay_ = 12.0f; ApplyTimeOfDay(); }
+            if (ImGui::Button("正午")) { ApplyDaytimePreset(12.0f); }
             ImGui::SameLine();
-            if (ImGui::Button("朝")) { timeOfDay_ = 6.7f; ApplyTimeOfDay(); }
+            if (ImGui::Button("朝")) { ApplyDaytimePreset(6.7f); }
             ImGui::SameLine();
-            if (ImGui::Button("夕暮れ")) { timeOfDay_ = 17.6f; ApplyTimeOfDay(); }
+            if (ImGui::Button("夕暮れ")) { ApplyDaytimePreset(17.6f); }
             ImGui::SameLine();
-            if (ImGui::Button("夜（満月）")) {
-                timeOfDay_ = 0.0f;
-                ApplyTimeOfDay();
-                AtmosphereEditorMoonSettings moon = moonSettings_;
-                moon.enabled = true;
-                moon.elevationDeg = 40.0f;
-                moon.azimuthDeg = 180.0f;
-                ApplyMoonSettings(moon);
-                // 月光は物理準拠の暗さ（太陽の1/1000）のため、露出補正なしではほぼ黒になる。
-                // 自動露出（Krawczyk キー＝暗さの絶対感は保持）を有効化して「暗いが見える夜」にする
-                if (engine_) {
-                    if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
-                        if (auto* toneMapping = postEffect->GetEffect<ToneMapping>(PostEffectNames::ToneMapping)) {
-                            toneMapping->SetAutoExposureEnabled(true);
-                        }
-                    }
-                }
-            }
+            if (ImGui::Button("夜（満月）")) { ApplyNightPreset(); }
             ImGui::SameLine();
             ImGui::TextDisabled("(?)");
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("「夜（満月）」は自動露出も有効化します\n（月光は物理準拠の暗さのため露出補正が必要）");
+                ImGui::SetTooltip("「夜（満月）」は自動露出も有効化します\n"
+                    "（月光は物理準拠の暗さのため露出補正が必要）\n"
+                    "昼系プリセット（正午・朝・夕暮れ）を押すと自動露出は元の設定へ戻ります");
             }
 
             // --- スカイマップ（太陽・月をドラッグで配置） ---
@@ -557,6 +542,54 @@ namespace CoreEngine {
         ApplySunSettings(settings);
     }
 
+    void AtmosphereEditor::ApplyDaytimePreset(float hour)
+    {
+        timeOfDay_ = hour;
+        ApplyTimeOfDay();
+        // 夜プリセットは自動露出を強制 ON にする。戻さないと昼のシーンにも
+        // Krawczyk キーの減光（昼で約 -3EV）が掛かり続け、夜を経由する前より暗くなる
+        RestoreAutoExposureFromNightPreset();
+    }
+
+    void AtmosphereEditor::ApplyNightPreset()
+    {
+        timeOfDay_ = 0.0f;
+        ApplyTimeOfDay();
+
+        AtmosphereEditorMoonSettings moon = moonSettings_;
+        moon.enabled = true;
+        moon.elevationDeg = 40.0f;
+        moon.azimuthDeg = 180.0f;
+        ApplyMoonSettings(moon);
+
+        // 月光は物理準拠の暗さ（太陽の1/1000）のため、露出補正なしではほぼ黒になる。
+        // 自動露出（Krawczyk キー＝暗さの絶対感は保持）を有効化して「暗いが見える夜」にする
+        if (ToneMapping* toneMapping = GetToneMapping()) {
+            // 昼系プリセットで元へ戻せるよう、プリセットが触る前の値を退避する。
+            // 夜プリセットを連打しても最初の退避（＝ユーザーの元設定）を保つ
+            if (!autoExposureSaved_) {
+                autoExposureBeforeNight_ = toneMapping->IsAutoExposureEnabled();
+                autoExposureSaved_ = true;
+            }
+            toneMapping->SetAutoExposureEnabled(true);
+        }
+    }
+
+    void AtmosphereEditor::RestoreAutoExposureFromNightPreset()
+    {
+        if (!autoExposureSaved_) {
+            return; // 夜プリセットを経由していない＝触らない
+        }
+
+        if (ToneMapping* toneMapping = GetToneMapping()) {
+            // 夜の間にユーザーが自分で自動露出を切っていた場合は、その操作を尊重して復元しない
+            if (toneMapping->IsAutoExposureEnabled()) {
+                toneMapping->SetAutoExposureEnabled(autoExposureBeforeNight_);
+            }
+        }
+        autoExposureSaved_ = false;
+    }
+
     AtmosphereManager* AtmosphereEditor::GetAtmosphereManager() const
     {
         if (!engine_ || !engine_->GetRenderDomainContext()) {
@@ -571,5 +604,17 @@ namespace CoreEngine {
             return nullptr;
         }
         return engine_->GetComponent<LightManager>();
+    }
+
+    ToneMapping* AtmosphereEditor::GetToneMapping() const
+    {
+        if (!engine_) {
+            return nullptr;
+        }
+        auto* postEffect = engine_->GetComponent<PostEffectManager>();
+        if (!postEffect) {
+            return nullptr;
+        }
+        return postEffect->GetEffect<ToneMapping>(PostEffectNames::ToneMapping);
     }
 }

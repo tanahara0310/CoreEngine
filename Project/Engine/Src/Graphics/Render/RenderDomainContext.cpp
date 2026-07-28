@@ -2,7 +2,6 @@
 #include "RenderDomainContext.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
@@ -31,11 +30,8 @@ namespace CoreEngine
         gBufferManager_->Initialize(device, descriptorManager, width, height);
         Logger::GetInstance().Infof(LogCategory::Graphics, "RenderDomainContext: GBufferManager 初期化完了\n");
 
-        // シャドウマップの初期化
-        shadowMapManager_ = std::make_unique<ShadowMapManager>();
-        shadowMapManager_->Initialize(device, descriptorManager);
-        Logger::GetInstance().Infof(LogCategory::Graphics, "RenderDomainContext: ShadowMapManager 初期化完了\n");
-
+        // 従来型シャドウマップは全面廃止（2026-07-25）: 影はDXRのRTShadowPassが担い、
+        // フォワード描画物の受影も gRTShadowMask(t6) 参照へ統一した。
         // 加速構造マネージャーの初期化（DXR 非対応の場合は内部でスキップ）
         accelerationStructureManager_ = std::make_unique<AccelerationStructureManager>();
         accelerationStructureManager_->Initialize(device, descriptorManager);
@@ -110,7 +106,6 @@ namespace CoreEngine
         rtShadowManager_.reset();
         fftOceanManager_.reset();
         accelerationStructureManager_.reset();
-        shadowMapManager_.reset();
         gBufferManager_.reset();
     }
 

@@ -17,7 +17,6 @@
 namespace CoreEngine {
     class ICamera;
     class CameraManager;
-    class ShadowMapManager;
 }
 
 /// @brief レンダリング全体を自動管理するマネージャー
@@ -72,20 +71,9 @@ namespace CoreEngine
         /// @param cmdList コマンドリスト
         void SetCommandList(ID3D12GraphicsCommandList* cmdList);
 
-    /// @brief シャドウマップマネージャーを設定
-    /// @param shadowMapManager シャドウマップマネージャー
-    void SetShadowMapManager(ShadowMapManager* shadowMapManager);
-
-    /// @brief ライトビュープロジェクション行列を設定（ShadowMapManagerに委譲）
-    /// @param lightViewProjection ライトから見たビュープロジェクション行列
-    void SetLightViewProjection(const Matrix4x4& lightViewProjection);
-
         /// @brief 描画項目をキューに追加
         /// @param item 描画する RenderItem
         void AddRenderItem(RenderItem item);
-
-    /// @brief シャドウパスのみ描画（描画キュー必須）
-    void DrawShadowPass();
 
     // 各 Draw*Pass の viewType はパスが context.viewSettings.viewType から明示的に渡す。
     // 描画オブジェクトへは DrawViewInfo（カメラ・ビュー種別・パス種別）として届く。
@@ -172,8 +160,6 @@ namespace CoreEngine
     CoreEngine::CameraManager* cameraManager_ = nullptr;
     const CoreEngine::ICamera* camera_ = nullptr; // 従来の互換性維持用
 
-    // シャドウマップ関連
-    ShadowMapManager* shadowMapManager_ = nullptr;
     bool renderDebugLines_ = true;
 
     // Deferred ライティング経路の有効フラグ
@@ -212,9 +198,6 @@ namespace CoreEngine
 
     /// @brief 指定パスに対応するレンダラーを解決する
     IRenderer* ResolveRendererForPass(RenderPassType passType);
-
-    /// @brief シャドウマップ描画の内部実行
-    void RenderShadowMapPass();
 
     /// @brief PBR対象レンダラーへ環境/IBLを適用
     void ApplyEnvironmentLightingToRenderers();

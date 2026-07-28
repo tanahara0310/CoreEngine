@@ -7,7 +7,7 @@ namespace CoreEngine
     /// @brief 大気散乱 LUT 生成パス（Compute）
     /// @details AtmosphereManager のダーティフラグが立っている場合のみ
     ///          Transmittance / Multi-Scattering / Sky-View LUT を再計算する。
-    ///          ShadowMapPass の後・GBufferPass の前に実行される。
+    ///          GBufferPass の前に実行される。
     class AtmosphereLUTPass : public RenderPass {
     public:
         AtmosphereLUTPass() = default;

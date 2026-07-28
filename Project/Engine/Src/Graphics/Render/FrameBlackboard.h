@@ -30,7 +30,6 @@ namespace CoreEngine
         static const char* const ReflectionColor;
         static const char* const ReflectionDepth;
         static const char* const SSAO;
-        static const char* const ShadowMap;
         static const char* const ShadowMask;
         static const char* const RTShadowMask;
         static const char* const WaterCaustics;

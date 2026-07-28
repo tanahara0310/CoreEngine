@@ -5,7 +5,7 @@
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Water/FFTOceanManager.h"
 
-class WaterSurfaceRuntimeController;
+namespace CoreEngine { class WaterRenderFeature; }
 
 namespace CoreEngine {
     class EngineSystem;
@@ -39,6 +39,9 @@ struct WaterEditorRayTracingSettings {
 struct WaterEditorCausticsSettings {
     bool techniqueAvailable = false;
     bool rtManagerAvailable = false;
+    /// @brief 生成方式（0: レイトレーシング / 1: スクリーンスペース）
+    /// @details WaterCausticsTechnique::Backend と同じ値。合成されるのは選んだ側だけ。
+    int backend = 0;
     float intensity = 0.35f;
     float depthAttenuation = 1.5f;
     float curvatureScale = 1.5f;
@@ -68,7 +71,7 @@ struct WaterEditorCausticsDiagnostics {
 class WaterEditorFacade {
 public:
     /// @brief facade の参照先を初期化する
-    void Initialize(WaterSurfaceRuntimeController& runtimeController, CoreEngine::EngineSystem& engine);
+    void Initialize(CoreEngine::WaterRenderFeature& runtimeController, CoreEngine::EngineSystem& engine);
 
     /// @brief 現在の FFT Ocean 設定を取得する
     WaterEditorFFTSettings GetFFTSettings() const;
@@ -100,6 +103,6 @@ private:
     CoreEngine::WaterCausticsRayTracingManager* GetWaterCausticsManager() const;
     CoreEngine::WaterCausticsTechnique* GetWaterCausticsTechnique() const;
 
-    WaterSurfaceRuntimeController* runtimeController_ = nullptr;
+    CoreEngine::WaterRenderFeature* runtimeController_ = nullptr;
     CoreEngine::EngineSystem* engine_ = nullptr;
 };

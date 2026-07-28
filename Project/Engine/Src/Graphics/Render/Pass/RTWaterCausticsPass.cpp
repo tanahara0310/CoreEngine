@@ -4,6 +4,9 @@
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
 
@@ -28,6 +31,27 @@ namespace CoreEngine
             return;
         }
 
+        // 水面が存在しない・非表示のフレームはディスパッチしない
+        // （regionValid=0 = 有効な水域なし）。出力を Blackboard へ登録しないため、
+        // DeferredLighting のコースティクス合成と水中ライティングも自動的に無効化される。
+        if (!context.waterSurfaceState
+            || context.waterSurfaceState->regionValid == 0) {
+            return;
+        }
+
+        // 生成方式の選択に従う。無効時・スクリーンスペース選択時は DispatchRays ごと省く
+        // （出力を Blackboard へ登録しないため、DeferredLighting は自動的に
+        //   WaterCausticsPass の出力側を使う）。
+        if (context.renderingTechniqueManager) {
+            if (auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(
+                    RenderingTechniqueNames::WaterCaustics)) {
+                if (!caustics->IsEnabled()
+                    || caustics->GetBackend() != WaterCausticsTechnique::Backend::RayTracing) {
+                    return;
+                }
+            }
+        }
+
         if (!context.rtWaterCausticsManager->IsInitialized()) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
@@ -50,10 +74,7 @@ namespace CoreEngine
             ? WaterCausticsRayTracingManager::ViewID::ReflectionView
             : WaterCausticsRayTracingManager::ViewID::GameView;
 
-        WaterSurfaceData defaultSurfaceData{};
-        const WaterSurfaceData& dispatchSurfaceData = context.waterRefractionSurfaceData
-            ? *context.waterRefractionSurfaceData
-            : defaultSurfaceData;
+        const WaterSurfaceData& dispatchSurfaceData = *context.waterSurfaceState;
 
         context.rayTracingSubsystem->DispatchWaterCaustics(
             context,
@@ -62,20 +83,22 @@ namespace CoreEngine
             viewId,
             dispatchSurfaceData);
 
-        const WaterCausticsRayTracingManager::DispatchDiagnostics& diagnostics =
-            context.rtWaterCausticsManager->GetLastDiagnostics();
-        Logger::GetInstance().Infof(
-            LogCategory::Graphics,
-            LogSubCategory::Pipeline,
-            "RTWaterCausticsPass: execute end. diagStatus={} diagViewId={} waterHeight={:.3f} activeWaveCount={} size={}x{} blasCount={} outputSRV=0x{:X}",
-            static_cast<uint32_t>(diagnostics.status),
-            static_cast<uint32_t>(diagnostics.viewId),
-            diagnostics.waterHeight,
-            diagnostics.activeWaveCount,
-            diagnostics.width,
-            diagnostics.height,
-            diagnostics.blasCount,
-            diagnostics.outputSrv);
+        // 診断ログは UI の「RTログを有効にする」でのみ出す（以前は毎フレーム無条件だった）
+        if (context.rtWaterCausticsManager->GetSettings().debugLogEnabled != 0) {
+            const auto& diagnostics = context.rtWaterCausticsManager->GetLastDiagnostics();
+            Logger::GetInstance().Infof(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "RTWaterCausticsPass: status={} viewIndex={} waterHeight={:.3f} activeWaveCount={} size={}x{} blasCount={} outputSRV=0x{:X}",
+                WaterCausticsRayTracingManager::ToString(diagnostics.status),
+                diagnostics.viewIndex,
+                diagnostics.waterHeight,
+                diagnostics.activeWaveCount,
+                diagnostics.width,
+                diagnostics.height,
+                diagnostics.blasCount,
+                diagnostics.outputSrv);
+        }
 
         if (context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE handle = context.rtWaterCausticsManager->GetCausticsSRVHandle(viewId);

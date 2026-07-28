@@ -13,6 +13,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <Windows.h>
 #include <Psapi.h>
 #include <dxgi1_4.h>

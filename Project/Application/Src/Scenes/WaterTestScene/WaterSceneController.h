@@ -1,44 +1,35 @@
 #pragma once
 
-#include "WaterSceneSetup.h"
-#include "WaterSurfaceRuntimeController.h"
-
-class WaterTestScene;
-
 #ifdef USE_IMGUI
 #include "WaterEditorFacade.h"
 #include "WaterSurfaceDebugPanel.h"
 #include "WaterSurfaceParameterPanel.h"
+#include "WaterSettingsSection.h"
 #endif
 
+namespace CoreEngine {
+	class EngineSystem;
+	class WaterRenderFeature;
+}
+
+/// @brief 水面エディタ UI の組み立てと Hierarchy への登録を担当する
+/// @details 水面本体・波シミュレーション・毎フレームのリソース結線は
+///          Engine 側の WaterRenderFeature が持つ。ここは UI だけを扱う。
 class WaterSceneController {
 public:
 	/// @brief 環境エディタの登録を解除する
 	~WaterSceneController();
 
-	/// @brief 水面制御の各補助クラスを初期化し、環境エディタとして登録する
-	/// @param scene 水面オブジェクト生成元のシーン
+	/// @brief 水面 UI の各パネルを初期化し、環境エディタとして登録する
+	/// @param waterFeature シーンへ登録済みの水面 Feature（nullptr のとき UI は出ない）
 	/// @param engine エンジンシステム
-	void Initialize(WaterTestScene& scene, CoreEngine::EngineSystem& engine);
+	void Initialize(CoreEngine::WaterRenderFeature* waterFeature, CoreEngine::EngineSystem& engine);
 
-	/// @brief 水面制御全体のフレーム更新を行う
-	/// @param engine エンジンシステム
-	/// @param deltaTime 前フレームからの経過時間（秒）
-	/// @param atmosphereSky シーンの空が大気散乱モードか（水面への空気遠近感の適用可否）
-	void Update(CoreEngine::EngineSystem& engine, float deltaTime, bool atmosphereSky);
-
-	/// @brief ReflectionView の出力を水面描画へ適用する
-	/// @param result 反射描画結果
-	void ApplyWaterRenderViewResult(const CoreEngine::RenderViewResult& result);
-
-	/// @brief 現在操作中の水面オブジェクトを返す
-	WaterPlaneObject* GetWaterPlane() const { return runtimeController_.GetWaterPlane(); }
-
-	/// @brief 現在の水面高さを返す
-	float GetWaterHeight() const;
-
-	/// @brief DXR 水面屈折用の波面データを返す
-	const CoreEngine::WaterSurfaceData* GetWaterRefractionSurfaceData() const;
+	/// @brief UI 登録を解除し、Feature 参照を切る
+	/// @details Feature の所有者は BaseScene（Finalize で features_ が破棄される）なので、
+	///          それより先に呼ぶこと。WaterTestScene::OnFinalize() から呼ばれる。
+	///          冪等。デストラクタからも保険として呼ぶ。
+	void Shutdown();
 
 private:
 #ifdef USE_IMGUI
@@ -52,10 +43,11 @@ private:
 	WaterEditorFacade editorFacade_{};
 	/// @brief 環境エディタの登録解除に使うエンジン参照（非所有）
 	CoreEngine::EngineSystem* engine_ = nullptr;
+
+	/// @brief 水面エディタ設定の自動保存セクション（登録は Initialize、解除はデストラクタ）
+	WaterSettingsSection settingsSection_{};
 #endif
 
-	/// @brief 水面オブジェクト生成とフレーム同期を担当するランタイム制御
-	WaterSurfaceRuntimeController runtimeController_{};
-	/// @brief WaterTestScene の初期オブジェクト生成と初期状態設定
-	WaterSceneSetup sceneSetup_{};
+	/// @brief UI の操作対象（所有権は BaseScene の Feature 一覧）
+	CoreEngine::WaterRenderFeature* waterFeature_ = nullptr;
 };

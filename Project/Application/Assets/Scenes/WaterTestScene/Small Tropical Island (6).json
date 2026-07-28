@@ -1,0 +1,178 @@
+{
+    "active": true,
+    "materials": [
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                0.6000000238418579,
+                0.6000000238418579,
+                0.6000000238418579,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.5
+        }
+    ],
+    "modelPath": "Small Tropical Island.obj",
+    "name": "Small Tropical Island (6)",
+    "transform": {
+        "rotate": [
+            -3.141549825668335,
+            1.323606252670288,
+            -3.1415445804595947
+        ],
+        "scale": [
+            0.3000003695487976,
+            0.2999999523162842,
+            0.30000051856040955
+        ],
+        "translate": [
+            -150.77935791015625,
+            1.5236154794692993,
+            -509.5512390136719
+        ]
+    }
+}

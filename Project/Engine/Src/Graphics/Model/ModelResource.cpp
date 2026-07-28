@@ -205,7 +205,7 @@ namespace CoreEngine
     void ModelResource::CreateGeometryBuffers()
     {
         // LOD0（原型）のインデックス数を先に確定してから簡略化インデックスを末尾へ追記する。
-        // indexCount_ は「原型のインデックス数」を維持する（BLAS 構築や DrawShadow が
+        // indexCount_ は「原型のインデックス数」を維持する（BLAS 構築が
         // モデル全体 = LOD0 を描く前提のため。LOD 描画はサブメッシュの範囲指定で行う）。
         const size_t lod0IndexCount = modelData_.indices.size();
         GenerateSubMeshLods();
@@ -218,37 +218,65 @@ namespace CoreEngine
         vertexCount_ = static_cast<UINT>(modelData_.vertices.size());
         indexCount_ = static_cast<UINT>(lod0IndexCount);
 
-        // 頂点バッファの作成
-        vertexBuffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon_->GetDevice(),
-            sizeof(VertexData) * modelData_.vertices.size());
+        // ===== 頂点／インデックスバッファを VRAM（DEFAULT ヒープ）へ配置する =====
+        // UPLOAD ヒープはシステムメモリ常駐のため、毎フレームの頂点フェッチが PCIe を
+        // 経由し、CPU・DWM・他プロセスと帯域を奪い合って GBuffer の時間が不安定になる。
+        // テクスチャと同じく中間バッファ経由でコピーし、以後は VRAM から読ませる。
+        const size_t vertexBytes = sizeof(VertexData) * modelData_.vertices.size();
+        const size_t indexBytes = sizeof(uint32_t) * modelData_.indices.size();
+        ID3D12Device* device = dxCommon_->GetDevice();
+        ID3D12GraphicsCommandList* cmdList = dxCommon_->GetCommandList();
 
-        // 頂点バッファビューの設定
+        vertexBuffer_ = ResourceFactory::CreateBufferResource(
+            device, vertexBytes, D3D12_HEAP_TYPE_DEFAULT);
+        vertexUploadBuffer_ = ResourceFactory::CreateBufferResource(device, vertexBytes);
+
         vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-        vertexBufferView_.SizeInBytes = static_cast<UINT>(sizeof(VertexData) * modelData_.vertices.size());
+        vertexBufferView_.SizeInBytes = static_cast<UINT>(vertexBytes);
         vertexBufferView_.StrideInBytes = sizeof(VertexData);
 
-        // 頂点データをGPUメモリにコピー
         void* mapped = nullptr;
-        vertexBuffer_->Map(0, nullptr, &mapped);
-        memcpy(mapped, modelData_.vertices.data(), sizeof(VertexData) * modelData_.vertices.size());
-        vertexBuffer_->Unmap(0, nullptr);
+        vertexUploadBuffer_->Map(0, nullptr, &mapped);
+        memcpy(mapped, modelData_.vertices.data(), vertexBytes);
+        vertexUploadBuffer_->Unmap(0, nullptr);
 
-        // インデックスバッファの作成
         indexBuffer_ = ResourceFactory::CreateBufferResource(
-            dxCommon_->GetDevice(),
-            sizeof(uint32_t) * modelData_.indices.size());
+            device, indexBytes, D3D12_HEAP_TYPE_DEFAULT);
+        indexUploadBuffer_ = ResourceFactory::CreateBufferResource(device, indexBytes);
 
-        // インデックスバッファビューの設定
         indexBufferView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
-        indexBufferView_.SizeInBytes = static_cast<UINT>(sizeof(uint32_t) * modelData_.indices.size());
+        indexBufferView_.SizeInBytes = static_cast<UINT>(indexBytes);
         indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
 
-        // インデックスデータをGPUメモリにコピー
         void* mappedIndex = nullptr;
-        indexBuffer_->Map(0, nullptr, &mappedIndex);
-        memcpy(mappedIndex, modelData_.indices.data(), sizeof(uint32_t) * modelData_.indices.size());
-        indexBuffer_->Unmap(0, nullptr);
+        indexUploadBuffer_->Map(0, nullptr, &mappedIndex);
+        memcpy(mappedIndex, modelData_.indices.data(), indexBytes);
+        indexUploadBuffer_->Unmap(0, nullptr);
+
+        // GENERIC_READ で作られた DEFAULT ヒープバッファを COPY_DEST へ落としてコピーし、
+        // 読み側（IA / DXR BLAS 構築 / スキニング SRV）が使える GENERIC_READ へ戻す。
+        {
+            D3D12_RESOURCE_BARRIER toCopy[2]{};
+            for (uint32_t i = 0; i < 2; ++i) {
+                toCopy[i].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                toCopy[i].Transition.pResource = (i == 0) ? vertexBuffer_.Get() : indexBuffer_.Get();
+                toCopy[i].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                toCopy[i].Transition.StateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
+                toCopy[i].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+            }
+            cmdList->ResourceBarrier(2, toCopy);
+
+            cmdList->CopyBufferRegion(vertexBuffer_.Get(), 0, vertexUploadBuffer_.Get(), 0, vertexBytes);
+            cmdList->CopyBufferRegion(indexBuffer_.Get(), 0, indexUploadBuffer_.Get(), 0, indexBytes);
+
+            D3D12_RESOURCE_BARRIER toRead[2]{};
+            for (uint32_t i = 0; i < 2; ++i) {
+                toRead[i] = toCopy[i];
+                toRead[i].Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+                toRead[i].Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+            }
+            cmdList->ResourceBarrier(2, toRead);
+        }
 
         // ===== ローカル空間AABBを頂点データから算出 =====
         localBoundingBox_ = BoundingBox(); // 無効値で初期化

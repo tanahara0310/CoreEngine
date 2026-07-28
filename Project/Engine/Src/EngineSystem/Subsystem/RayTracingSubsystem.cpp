@@ -225,6 +225,84 @@ namespace CoreEngine
         }
     }
 
+    bool RayTracingSubsystem::BuildWaterDispatchContext(
+        const RenderContext& context,
+        DirectXCommon* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        const WaterSurfaceData& surfaceData,
+        const char* debugLabel,
+        bool requireSceneColor,
+        WaterDispatchContext& outDispatchContext)
+    {
+        if (!context.gBufferManager || !context.sceneManager || !dx || !cmdList) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "RayTracingSubsystem: {} dispatch skipped. gBuffer={} sceneManager={} dx={} cmdList={}",
+                debugLabel,
+                context.gBufferManager != nullptr,
+                context.sceneManager != nullptr,
+                dx != nullptr,
+                cmdList != nullptr);
+            return false;
+        }
+
+        outDispatchContext.camera = context.sceneManager->GetGameViewCamera3D();
+        if (!outDispatchContext.camera) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "RayTracingSubsystem: {} dispatch skipped. camera is null.",
+                debugLabel);
+            return false;
+        }
+
+        // 深度は WorldPosition ターゲット廃止に伴いここから復元する
+        // （ビュー別に差し替わるので FrameBlackboard 経由で取る）
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(
+                FrameBlackboard::SceneDepth, outDispatchContext.sceneDepthSRV);
+
+            // カラーソースは水面合成前の SceneColor スナップショット
+            // （空・雲・ゴッドレイ・島すべてを含み、水面のみ未合成）。
+            if (!context.frameBlackboard->TryGetSrvHandle(
+                FrameBlackboard::SceneColorSnapshot, outDispatchContext.sceneColorSRV)) {
+                context.frameBlackboard->TryGetSrvHandle(
+                    FrameBlackboard::SceneColor, outDispatchContext.sceneColorSRV);
+            }
+        }
+
+        if (requireSceneColor && outDispatchContext.sceneColorSRV.ptr == 0) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::RenderTarget,
+                "RayTracingSubsystem: {} dispatch skipped. SceneColorSnapshot/SceneColor SRV is invalid.",
+                debugLabel);
+            return false;
+        }
+
+        outDispatchContext.viewProjection =
+            outDispatchContext.camera->GetViewMatrix() * outDispatchContext.camera->GetProjectionMatrix();
+        outDispatchContext.cameraPosition = outDispatchContext.camera->GetPosition();
+        outDispatchContext.width = static_cast<UINT>(dx->GetClientWidth());
+        outDispatchContext.height = static_cast<UINT>(dx->GetClientHeight());
+
+        // FFT Ocean 経路のときだけ波面テクスチャを接続する。
+        // Gerstner 経路では enabled=0 のままにして、シェーダー側を解析評価へ倒す。
+        if (context.fftOceanManager
+            && context.fftOceanManager->IsInitialized()
+            && surfaceData.simulationType == kWaterSurfaceModelTypeFFTOcean) {
+            const FFTOceanManager::Settings& fftSettings = context.fftOceanManager->GetSettings();
+            outDispatchContext.fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
+            outDispatchContext.fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
+            outDispatchContext.fftOceanInput.resolution = fftSettings.resolution;
+            outDispatchContext.fftOceanInput.patchLength = fftSettings.patchLength;
+            outDispatchContext.fftOceanInput.enabled = 1;
+        }
+
+        return true;
+    }
+
     void RayTracingSubsystem::DispatchWaterRefraction(
         const RenderContext& context,
         DirectXCommon* dx,
@@ -233,144 +311,26 @@ namespace CoreEngine
         const WaterSurfaceData& surfaceData)
     {
         auto* rtWaterRefraction = context.rtWaterRefractionManager;
-        if (!rtWaterRefraction) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "RayTracingSubsystem: water refraction dispatch skipped. manager is null.");
-            return;
-        }
-        if (!rtWaterRefraction->IsInitialized()) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "RayTracingSubsystem: water refraction dispatch skipped. manager is not initialized.");
-            return;
-        }
-        if (!context.gBufferManager || !context.sceneManager) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "RayTracingSubsystem: water refraction dispatch skipped. gBufferManager={} sceneManager={}",
-                context.gBufferManager != nullptr,
-                context.sceneManager != nullptr);
-            return;
-        }
-        if (!dx || !cmdList) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Command,
-                "RayTracingSubsystem: water refraction dispatch skipped. dx={} cmdList={}",
-                dx != nullptr,
-                cmdList != nullptr);
+        if (!rtWaterRefraction || !rtWaterRefraction->IsInitialized()) {
             return;
         }
 
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV{};
-        bool hasSceneColorSnapshot = false;
-        if (context.frameBlackboard) {
-            hasSceneColorSnapshot = context.frameBlackboard->TryGetSrvHandle(
-                FrameBlackboard::SceneColorSnapshot,
-                sceneColorSRV);
-
-            if (!hasSceneColorSnapshot) {
-                context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, sceneColorSRV);
-            }
-        }
-        if (sceneColorSRV.ptr == 0) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::RenderTarget,
-                "RayTracingSubsystem: water refraction dispatch skipped. SceneColorSnapshot/SceneColor SRV is invalid.");
+        WaterDispatchContext dispatchContext;
+        if (!BuildWaterDispatchContext(
+            context, dx, cmdList, surfaceData, "water refraction", true, dispatchContext)) {
             return;
-        }
-
-        Logger::GetInstance().Infof(
-            LogCategory::Graphics,
-            LogSubCategory::RenderTarget,
-            "RayTracingSubsystem: water refraction input selected. viewId={} usesSceneColorSnapshot={} srv=0x{:X}",
-            static_cast<uint32_t>(viewId),
-            hasSceneColorSnapshot,
-            sceneColorSRV.ptr);
-
-        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
-        if (!camera) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "RayTracingSubsystem: water refraction dispatch skipped. camera is null.");
-            return;
-        }
-
-        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
-        if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
-        }
-        const Matrix4x4 viewProjection = camera->GetViewMatrix() * camera->GetProjectionMatrix();
-        const Vector3 cameraPosition = camera->GetPosition();
-        const UINT width = static_cast<UINT>(dx->GetClientWidth());
-        const UINT height = static_cast<UINT>(dx->GetClientHeight());
-
-        Logger::GetInstance().Infof(
-            LogCategory::Graphics,
-            LogSubCategory::Pipeline,
-            "RayTracingSubsystem: water refraction dispatch request. viewId={} waterHeight={:.3f} activeWaveCount={} waveTime={:.3f} width={} height={} worldPosSRV=0x{:X} sceneColorSRV=0x{:X} cameraPos=({:.3f}, {:.3f}, {:.3f}) firstWave(dir=({:.3f}, {:.3f}) amp={:.4f} len={:.3f} speed={:.3f} steep={:.3f} phase={:.3f})",
-            static_cast<uint32_t>(viewId),
-            surfaceData.waterHeight,
-            surfaceData.activeWaveCount,
-            surfaceData.time,
-            width,
-            height,
-            worldPosSRV.ptr,
-            sceneColorSRV.ptr,
-            cameraPosition.x,
-            cameraPosition.y,
-            cameraPosition.z,
-            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].direction[0] : 0.0f,
-            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].direction[1] : 0.0f,
-            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].amplitude : 0.0f,
-            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].wavelength : 0.0f,
-            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].speed : 0.0f,
-            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].steepness : 0.0f,
-            surfaceData.activeWaveCount > 0 ? surfaceData.waves[0].phaseOffset : 0.0f);
-
-        WaterRefractionRayTracingManager::FFTOceanRefractionInput fftOceanInput{};
-        if (context.fftOceanManager
-            && context.fftOceanManager->IsInitialized()
-            && surfaceData.simulationType == kWaterSurfaceModelTypeFFTOcean) {
-            const FFTOceanManager::Settings& fftSettings = context.fftOceanManager->GetSettings();
-            fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
-            fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
-            fftOceanInput.resolution = fftSettings.resolution;
-            fftOceanInput.patchLength = fftSettings.patchLength;
-            fftOceanInput.enabled = 1;
-            if (surfaceData.fftUVMappingValid != 0) {
-                // ラスタ描画（FFTWater.VS）と同じワールドXZ→UV写像を使う
-                fftOceanInput.uvScale[0] = surfaceData.fftUVScale[0];
-                fftOceanInput.uvScale[1] = surfaceData.fftUVScale[1];
-                fftOceanInput.uvOffset[0] = surfaceData.fftUVOffset[0];
-                fftOceanInput.uvOffset[1] = surfaceData.fftUVOffset[1];
-            } else {
-                // 写像未提供の場合はパッチ長ベースの旧写像へフォールバック
-                const float invPatch = 1.0f / (std::max)(fftSettings.patchLength, 1.0e-4f);
-                fftOceanInput.uvScale[0] = invPatch;
-                fftOceanInput.uvScale[1] = invPatch;
-                fftOceanInput.uvOffset[0] = 0.5f;
-                fftOceanInput.uvOffset[1] = 0.5f;
-            }
         }
 
         rtWaterRefraction->Dispatch(
             cmdList,
-            worldPosSRV,
-            sceneColorSRV,
-            viewProjection,
-            cameraPosition,
+            dispatchContext.sceneDepthSRV,
+            dispatchContext.sceneColorSRV,
+            dispatchContext.viewProjection,
+            dispatchContext.cameraPosition,
             surfaceData,
-            fftOceanInput,
-            width,
-            height,
+            dispatchContext.fftOceanInput,
+            dispatchContext.width,
+            dispatchContext.height,
             viewId);
     }
 
@@ -385,81 +345,22 @@ namespace CoreEngine
         if (!rtWaterReflection || !rtWaterReflection->IsInitialized()) {
             return;
         }
-        if (!context.gBufferManager || !context.sceneManager) {
+        WaterDispatchContext dispatchContext;
+        if (!BuildWaterDispatchContext(
+            context, dx, cmdList, surfaceData, "water reflection", true, dispatchContext)) {
             return;
-        }
-        if (!dx || !cmdList) {
-            return;
-        }
-
-        // 反射のカラーソースは水面合成前の SceneColor スナップショット
-        // （空・雲・ゴッドレイ・島すべてを含み、水面のみ未合成）。
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV{};
-        bool hasSceneColorSnapshot = false;
-        if (context.frameBlackboard) {
-            hasSceneColorSnapshot = context.frameBlackboard->TryGetSrvHandle(
-                FrameBlackboard::SceneColorSnapshot,
-                sceneColorSRV);
-            if (!hasSceneColorSnapshot) {
-                context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, sceneColorSRV);
-            }
-        }
-        if (sceneColorSRV.ptr == 0) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::RenderTarget,
-                "RayTracingSubsystem: water reflection dispatch skipped. SceneColorSnapshot/SceneColor SRV is invalid.");
-            return;
-        }
-
-        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
-        if (!camera) {
-            return;
-        }
-
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV{};
-        if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, sceneDepthSRV);
-        }
-        const Matrix4x4 viewProjection = camera->GetViewMatrix() * camera->GetProjectionMatrix();
-        const Vector3 cameraPosition = camera->GetPosition();
-        const UINT width = static_cast<UINT>(dx->GetClientWidth());
-        const UINT height = static_cast<UINT>(dx->GetClientHeight());
-
-        WaterReflectionRayTracingManager::FFTOceanReflectionInput fftOceanInput{};
-        if (context.fftOceanManager
-            && context.fftOceanManager->IsInitialized()
-            && surfaceData.simulationType == kWaterSurfaceModelTypeFFTOcean) {
-            const FFTOceanManager::Settings& fftSettings = context.fftOceanManager->GetSettings();
-            fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
-            fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
-            fftOceanInput.resolution = fftSettings.resolution;
-            fftOceanInput.patchLength = fftSettings.patchLength;
-            fftOceanInput.enabled = 1;
-            if (surfaceData.fftUVMappingValid != 0) {
-                fftOceanInput.uvScale[0] = surfaceData.fftUVScale[0];
-                fftOceanInput.uvScale[1] = surfaceData.fftUVScale[1];
-                fftOceanInput.uvOffset[0] = surfaceData.fftUVOffset[0];
-                fftOceanInput.uvOffset[1] = surfaceData.fftUVOffset[1];
-            } else {
-                const float invPatch = 1.0f / (std::max)(fftSettings.patchLength, 1.0e-4f);
-                fftOceanInput.uvScale[0] = invPatch;
-                fftOceanInput.uvScale[1] = invPatch;
-                fftOceanInput.uvOffset[0] = 0.5f;
-                fftOceanInput.uvOffset[1] = 0.5f;
-            }
         }
 
         rtWaterReflection->Dispatch(
             cmdList,
-            sceneDepthSRV,
-            sceneColorSRV,
-            viewProjection,
-            cameraPosition,
+            dispatchContext.sceneDepthSRV,
+            dispatchContext.sceneColorSRV,
+            dispatchContext.viewProjection,
+            dispatchContext.cameraPosition,
             surfaceData,
-            fftOceanInput,
-            width,
-            height,
+            dispatchContext.fftOceanInput,
+            dispatchContext.width,
+            dispatchContext.height,
             viewId);
     }
 
@@ -474,28 +375,12 @@ namespace CoreEngine
         if (!rtWaterCaustics || !rtWaterCaustics->IsInitialized()) {
             return;
         }
-        if (!context.gBufferManager || !context.sceneManager) {
+        // コースティクスは屈折・反射と違い SceneColor へ再投影しないので必須ではない
+        WaterDispatchContext dispatchContext;
+        if (!BuildWaterDispatchContext(
+            context, dx, cmdList, surfaceData, "water caustics", false, dispatchContext)) {
             return;
         }
-        if (!dx || !cmdList) {
-            return;
-        }
-
-        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
-        if (!camera) {
-            return;
-        }
-
-        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
-        if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
-        }
-        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(
-            camera->GetViewMatrix() * camera->GetProjectionMatrix());
-        auto normalRoughnessSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
-        const UINT width = static_cast<UINT>(dx->GetClientWidth());
-        const UINT height = static_cast<UINT>(dx->GetClientHeight());
 
         // シーンの実際のディレクショナルライトの方向・色・強度・有効フラグを RT コースティクスへ
         // 伝える。以前は方向しか渡しておらず、ライトを消してもコースティクスが消えない、
@@ -516,42 +401,16 @@ namespace CoreEngine
             lightInput.enabled = false;
         }
 
-        WaterCausticsRayTracingManager::FFTOceanCausticsInput fftOceanInput{};
-        if (context.fftOceanManager
-            && context.fftOceanManager->IsInitialized()
-            && surfaceData.simulationType == kWaterSurfaceModelTypeFFTOcean) {
-            const FFTOceanManager::Settings& fftSettings = context.fftOceanManager->GetSettings();
-            fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
-            fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
-            fftOceanInput.resolution = fftSettings.resolution;
-            fftOceanInput.patchLength = fftSettings.patchLength;
-            fftOceanInput.enabled = 1;
-            if (surfaceData.fftUVMappingValid != 0) {
-                // ラスタ描画（FFTWater.VS）と同じワールドXZ→UV写像を使う
-                fftOceanInput.uvScale[0] = surfaceData.fftUVScale[0];
-                fftOceanInput.uvScale[1] = surfaceData.fftUVScale[1];
-                fftOceanInput.uvOffset[0] = surfaceData.fftUVOffset[0];
-                fftOceanInput.uvOffset[1] = surfaceData.fftUVOffset[1];
-            } else {
-                // 写像未提供の場合はパッチ長ベースの旧写像へフォールバック
-                const float invPatch = 1.0f / (std::max)(fftSettings.patchLength, 1.0e-4f);
-                fftOceanInput.uvScale[0] = invPatch;
-                fftOceanInput.uvScale[1] = invPatch;
-                fftOceanInput.uvOffset[0] = 0.5f;
-                fftOceanInput.uvOffset[1] = 0.5f;
-            }
-        }
-
         rtWaterCaustics->Dispatch(
             cmdList,
-            worldPosSRV,
-            normalRoughnessSRV,
+            dispatchContext.sceneDepthSRV,
+            context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness),
             lightInput,
             surfaceData,
-            fftOceanInput,
-            invViewProj,
-            width,
-            height,
+            dispatchContext.fftOceanInput,
+            MathCore::Matrix::Inverse(dispatchContext.viewProjection),
+            dispatchContext.width,
+            dispatchContext.height,
             viewId);
     }
 }

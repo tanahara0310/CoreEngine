@@ -34,13 +34,11 @@ namespace CoreEngine
 		/// @param deltaTime 前フレームからの経過時間（秒）
 		virtual void AdvanceSimulation(float deltaTime) = 0;
 
-		/// @brief 共通 snapshot と DXR 用 surface data を構築する
+		/// @brief DXR 用 surface data を構築する
 		/// @param input 現在の水面状態入力
-		/// @param snapshot 共通 snapshot の出力先
 		/// @param surfaceData DXR 用 surface data の出力先
 		virtual void CaptureSurface(
 			const WaterSurfaceSimulationInput& input,
-			WaterSurfaceSnapshot& snapshot,
 			WaterSurfaceData& surfaceData) const = 0;
 	};
 }

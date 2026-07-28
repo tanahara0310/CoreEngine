@@ -8,7 +8,6 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/Culling/HiZOcclusionSystem.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/Render.h"
@@ -16,7 +15,6 @@
 #include "Graphics/Render/Model/ModelRenderer.h"
 #include "Graphics/Render/Model/SkinnedModelRenderer.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
-#include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Render/UI/UIRenderer.h"
@@ -77,24 +75,22 @@ namespace CoreEngine
         renderManager->Initialize(dxPtr->GetDevice());
         RenderManager* renderManagerPtr = renderManager.get();
 
-        // ShadowMapManagerを設定
-        renderManager->SetShadowMapManager(engine.renderDomainContext_->GetShadowMapManager());
-
-        // ShadowMapRendererの作成と登録（最優先）
-        auto shadowMapRenderer = std::make_unique<ShadowMapRenderer>();
-        shadowMapRenderer->Initialize(dxPtr->GetDevice());
-        renderManager->RegisterRenderer(RenderPassType::ShadowMap, std::move(shadowMapRenderer));
+        // フォワード受影用RTシャドウマスクの初期値: white1x1（=影なし）。
+        // 実マスクは毎フレーム DeferredLightingPass::Setup が供給する。
+        // t6が未バインドのままシェーダのGetDimensionsが走るのを防ぐためのフォールバック。
+        const D3D12_GPU_DESCRIPTOR_HANDLE whiteFallback =
+            TextureManager::GetInstance().Load("white1x1.png").gpuHandle;
 
         // ModelRendererの作成と登録
         auto modelRenderer = std::make_unique<ModelRenderer>();
         modelRenderer->Initialize(dxPtr->GetDevice());
-        modelRenderer->SetShadowMap(engine.renderDomainContext_->GetShadowMapManager()->GetSRVHandle());
+        modelRenderer->SetRTShadowMask(whiteFallback);
         renderManager->RegisterRenderer(RenderPassType::Model, std::move(modelRenderer));
 
         // SkinnedModelRendererの作成と登録
         auto skinnedRenderer = std::make_unique<SkinnedModelRenderer>();
         skinnedRenderer->Initialize(dxPtr->GetDevice());
-        skinnedRenderer->SetShadowMap(engine.renderDomainContext_->GetShadowMapManager()->GetSRVHandle());
+        skinnedRenderer->SetRTShadowMask(whiteFallback);
         renderManager->RegisterRenderer(RenderPassType::SkinnedModel, std::move(skinnedRenderer));
 
         // SkyBoxRendererの作成と登録
@@ -161,10 +157,8 @@ namespace CoreEngine
         // （Model インスタンス生成時に各 Model へ注入される）
         ModelRenderContext modelCtx;
         modelCtx.dxCommon = dxPtr;
-        modelCtx.shadowMapManager = engine.renderDomainContext_->GetShadowMapManager();
         modelCtx.modelRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::Model));
         modelCtx.skinnedRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::SkinnedModel));
-        modelCtx.shadowRenderer = static_cast<ShadowMapRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::ShadowMap));
         modelCtx.hiZOcclusion = engine.hiZOcclusionSystem_.get();
         engine.GetComponent<ModelManager>()->SetRenderContext(modelCtx);
 

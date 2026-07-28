@@ -30,7 +30,6 @@ namespace CoreEngine
     class LightManager;
     class RenderTargetManager;
     class GBufferManager;
-    class ShadowMapManager;
     class AccelerationStructureManager;
     class RayTracingShadowManager;
     class WaterCausticsRayTracingManager;
@@ -51,7 +50,6 @@ namespace CoreEngine
         PostEffectManager* postEffectManager = nullptr;
         RenderingTechniqueManager* renderingTechniqueManager = nullptr; ///< レンダリング技術管理（SSAO・TAA等）
         LightManager* lightManager = nullptr;
-        ShadowMapManager* shadowMapManager = nullptr;  ///< シャドウマップ管理（LVP記列・ SRV 取得用）
         RenderTargetManager* renderTargetManager = nullptr;
         GBufferManager* gBufferManager = nullptr;  ///< G-Buffer管理（Deferred）
         AccelerationStructureManager* accelerationStructureManager = nullptr; ///< DXR 加速構造管理
@@ -67,7 +65,8 @@ namespace CoreEngine
         FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理
         ModelManager* modelManager = nullptr; ///< モデル資産管理（BLAS 遅延ビルド用）
         GpuTimestampProfiler* gpuProfiler = nullptr; ///< パス別 GPU/CPU タイミング計測（nullptr の場合は計測しない）
-        const WaterSurfaceData* waterRefractionSurfaceData = nullptr; ///< DXR 水面屈折用の波面データ
+        const WaterSurfaceData* waterSurfaceState = nullptr; ///< 現在フレームの水面状態（水面不在なら nullptr）
+        float fftOceanSimulationTime = 0.0f; ///< FFT Ocean のシミュレーション時刻（水面の表示状態と独立）
         RenderViewSettings viewSettings{}; ///< 現在の View 種別と有効化するパス群設定
         uint32_t currentRTShadowViewId = static_cast<uint32_t>(RenderViewType::GameView); ///< 現在の RT シャドウビュー
         uint64_t frameNumber = 0; ///< フレーム通し番号（View 間で共有。フレーム内 1 回実行パスのガードに使う）

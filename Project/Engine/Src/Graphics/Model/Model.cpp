@@ -3,11 +3,9 @@
 #include "ModelRenderContext.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Shadow/ShadowMapManager.h"
 #include "Camera/ICamera.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
-#include "Graphics/Render/Shadow/ShadowMapRenderer.h"
 #include "Graphics/Model/Skeleton/SkinClusterGenerator.h"
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
 #include "Utility/Logger/Logger.h"
@@ -43,12 +41,6 @@ namespace CoreEngine
         // WVP バッファをフレーム数分確保する（CPU が複数フレーム先行して書き込んでも
         // GPU がまだ参照中のデータを上書きしないよう、役割ごとにリングバッファ化する）。
         for (auto& buffer : gameTransformBuffers_) {
-            buffer = ResourceFactory::CreateBufferResource(
-                renderContext_.dxCommon->GetDevice(),
-                sizeof(TransformationMatrix)
-            );
-        }
-        for (auto& buffer : shadowTransformBuffers_) {
             buffer = ResourceFactory::CreateBufferResource(
                 renderContext_.dxCommon->GetDevice(),
                 sizeof(TransformationMatrix)
@@ -116,9 +108,9 @@ namespace CoreEngine
             MathCore::Matrix::Multiply(viewMatrix, projectionMatrix)
         );
 
-        // ShadowMapManagerからライトVP行列を取得
-        Matrix4x4 lightVP = renderContext_.shadowMapManager ?
-            renderContext_.shadowMapManager->GetLightViewProjection() : MathCore::Matrix::Identity();
+        // 従来型シャドウマップ廃止（2026-07-25）: lightViewProjection は cbuffer レイアウト
+        // 維持のためフィールドだけ残し、単位行列を書き込む（シェーダ側に読者はいない）
+        Matrix4x4 lightVP = MathCore::Matrix::Identity();
 
         // モーションベクター履歴（prevWVP）は GameView 専用。補助ビュー（カメラが異なる）で
         // 履歴を読む/更新すると GameView 側の MV が壊れるため、GameView 以外は MV=0 で描く
@@ -196,9 +188,8 @@ namespace CoreEngine
         Matrix4x4 wvp = MathCore::Matrix::Multiply(
             worldMatrix,
             MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
-        Matrix4x4 lightVP = renderContext_.shadowMapManager
-            ? renderContext_.shadowMapManager->GetLightViewProjection()
-            : MathCore::Matrix::Identity();
+        // 従来型シャドウマップ廃止に伴い lightViewProjection はレイアウト維持のみ（単位行列）
+        Matrix4x4 lightVP = MathCore::Matrix::Identity();
 
         // モーションベクター履歴（prevWVP）は GameView 専用（UpdateTransformationMatrix と同じ規約）
         const bool isGameView = (view.viewType == RenderViewType::GameView);
@@ -221,7 +212,6 @@ namespace CoreEngine
         // スキップする。スロット管理・AABB登録などの詳細は ModelVisibility 側が持つ。
         // 適用可否は DrawViewInfo だけから決まる（呼び出し順やレンダラー状態に依存しない）。
         // prevGameWVP_ は上で更新済みのため、再可視化フレームのモーションベクターは正しい。
-        // シャドウは DrawShadow の別経路なので影響しない。
         const bool occlusionEligible = isGBufferPass && isGameView;
         visibility_.BeginOcclusionQuery(renderContext_.hiZOcclusion, *resource_, worldMatrix,
             MathCore::Matrix::Multiply(viewMatrix, projectionMatrix), occlusionEligible);
@@ -249,46 +239,6 @@ namespace CoreEngine
 
             batch->Submit(key, mtx, materialCBV);
         }
-    }
-
-    void Model::DrawShadow(const WorldTransform& transform, ID3D12GraphicsCommandList* cmdList) {
-        assert(IsInitialized());
-        assert(cmdList);
-        assert(renderContext_.shadowRenderer);
-
-        ID3D12Resource* transformBuffer = GetShadowTransformBuffer();
-        assert(transformBuffer);
-
-        // ShadowMapManagerからライトVP行列を取得
-        Matrix4x4 lightVP = renderContext_.shadowMapManager ?
-            renderContext_.shadowMapManager->GetLightViewProjection() : MathCore::Matrix::Identity();
-
-        // シャドウマップ用のWVP行列を計算（ライトVP行列を使用）
-        Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-        Matrix4x4 lightWVP = MathCore::Matrix::Multiply(worldMatrix, lightVP);
-
-        // GPUメモリに書き込み
-        TransformationMatrix* mappedData = nullptr;
-        transformBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-        mappedData->WVP = lightWVP;
-        mappedData->world = worldMatrix;
-        mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
-        mappedData->lightViewProjection = lightVP;
-        transformBuffer->Unmap(0, nullptr);
-
-        // シャドウ描画パケットを組み立てる（スキニングモデルの場合は描画前にGPUスキニング(CS)を実行）
-        ShadowDrawPacket packet;
-        if (HasSkinCluster()) {
-            EnsureGPUSkinning(cmdList, renderContext_.shadowRenderer->GetCurrentPipelineState());
-            packet.vertexBufferView = skinCluster_->outputVertexBufferView;
-        } else {
-            packet.vertexBufferView = resource_->GetVertexBufferView();
-        }
-        packet.indexBufferView = resource_->GetIndexBufferView();
-        packet.indexCount = resource_->GetIndexCount();
-        packet.transformCBV = transformBuffer->GetGPUVirtualAddress();
-
-        renderContext_.shadowRenderer->BindShadowDrawPacket(cmdList, packet);
     }
 
 void Model::UpdateAnimation(float deltaTime) {
@@ -342,13 +292,6 @@ ID3D12Resource* Model::GetGameTransformBuffer() const
     const UINT frameIndex = renderContext_.dxCommon->GetSwapChain()->GetCurrentBackBufferIndex();
     assert(frameIndex < gameTransformBuffers_.size());
     return gameTransformBuffers_[frameIndex].Get();
-}
-
-ID3D12Resource* Model::GetShadowTransformBuffer() const
-{
-    const UINT frameIndex = renderContext_.dxCommon->GetSwapChain()->GetCurrentBackBufferIndex();
-    assert(frameIndex < shadowTransformBuffers_.size());
-    return shadowTransformBuffers_[frameIndex].Get();
 }
 
 // ===== クエリ =====

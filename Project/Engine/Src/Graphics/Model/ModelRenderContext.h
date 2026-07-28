@@ -3,9 +3,7 @@
 // 前方宣言（ModelRenderContext が参照する全依存クラス）
 namespace CoreEngine {
     class DirectXCommon;
-    class ShadowMapManager;
     class BaseModelRenderer;
-    class ShadowMapRenderer;
     class InstanceBatchManager;
     class SkinningComputeDispatcher;
     class HiZOcclusionSystem;
@@ -17,10 +15,8 @@ namespace CoreEngine
     /// 起動時に一度だけ設定される依存オブジェクトを集約する。
     struct ModelRenderContext {
         DirectXCommon* dxCommon = nullptr; ///< デバイス・コマンドリスト・DescriptorManager 取得元
-        ShadowMapManager* shadowMapManager = nullptr; ///< ライト VP 行列の一元管理
         BaseModelRenderer* modelRenderer = nullptr; ///< 通常モデル描画用レンダラー
         BaseModelRenderer* skinnedRenderer = nullptr; ///< スキニングモデル描画用レンダラー
-        ShadowMapRenderer* shadowRenderer = nullptr; ///< シャドウマップ描画用レンダラー
         InstanceBatchManager* instanceBatchManager = nullptr; ///< 通常モデルのインスタンシング集約（ModelManager 内で自動設定）
         SkinningComputeDispatcher* skinningDispatcher = nullptr; ///< GPUスキニング(CS)ディスパッチャー（ModelManager 内で自動設定）
         HiZOcclusionSystem* hiZOcclusion = nullptr; ///< Hi-Zオクルージョンカリング（任意依存: nullptr なら遮蔽判定なしで描画する）
@@ -30,10 +26,8 @@ namespace CoreEngine
         ///       instanceBatchManager / skinningDispatcher は ModelManager が内部生成するため対象外。
         bool IsValid() const {
             return dxCommon != nullptr
-                && shadowMapManager != nullptr
                 && modelRenderer != nullptr
-                && skinnedRenderer != nullptr
-                && shadowRenderer != nullptr;
+                && skinnedRenderer != nullptr;
         }
 
         /// @brief 内部生成分を含む全依存が設定済みか確認

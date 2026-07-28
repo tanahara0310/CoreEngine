@@ -39,8 +39,7 @@ namespace CoreEngine
         forwardCache_.spotLights = GetRootParamIndex("gSpotLights");
         forwardCache_.areaLights = GetRootParamIndex("gAreaLights");
         forwardCache_.envTexture = GetRootParamIndex("gEnvironmentTexture");
-        forwardCache_.lightVP = GetRootParamIndex("gLightViewProjection");
-        forwardCache_.shadowMap = GetRootParamIndex("gShadowMap");
+        forwardCache_.rtShadowMask = GetRootParamIndex("gRTShadowMask");
         forwardCache_.irradianceMap = GetRootParamIndex("gIrradianceMap");
         forwardCache_.prefilteredMap = GetRootParamIndex("gPrefilteredMap");
         forwardCache_.brdfLUT = GetRootParamIndex("gBRDFLUT");
@@ -167,11 +166,8 @@ namespace CoreEngine
                 forwardCache_.areaLights
             );
         }
-        if (lightViewProjectionCBV_ != 0 && forwardCache_.lightVP >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(forwardCache_.lightVP, lightViewProjectionCBV_);
-        }
-        if (shadowMapHandle_.ptr != 0 && forwardCache_.shadowMap >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.shadowMap, shadowMapHandle_);
+        if (rtShadowMaskHandle_.ptr != 0 && forwardCache_.rtShadowMask >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.rtShadowMask, rtShadowMaskHandle_);
         }
         if (iblParams_.irradianceMap.ptr != 0 && forwardCache_.irradianceMap >= 0) {
             cmdList->SetGraphicsRootDescriptorTable(forwardCache_.irradianceMap, iblParams_.irradianceMap);
@@ -217,14 +213,9 @@ namespace CoreEngine
             lightManager_->SetLightsToCommandList(
                 cmdList, lightCounts, dirLights, pointLights, spotLights, areaLights);
         }
-        bind("gLightViewProjection", [&](int i) {
-            if (lightViewProjectionCBV_ != 0) {
-                cmdList->SetGraphicsRootConstantBufferView(i, lightViewProjectionCBV_);
-            }
-        });
-        bind("gShadowMap", [&](int i) {
-            if (shadowMapHandle_.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(i, shadowMapHandle_);
+        bind("gRTShadowMask", [&](int i) {
+            if (rtShadowMaskHandle_.ptr != 0) {
+                cmdList->SetGraphicsRootDescriptorTable(i, rtShadowMaskHandle_);
             }
         });
         bind("gIrradianceMap", [&](int i) {
@@ -278,11 +269,8 @@ namespace CoreEngine
         if (iblParams_.environmentMap.ptr != 0 && forwardCache_.envTexture >= 0) {
             cmdList->SetGraphicsRootDescriptorTable(forwardCache_.envTexture, iblParams_.environmentMap);
         }
-        if (lightViewProjectionCBV_ != 0 && forwardCache_.lightVP >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(forwardCache_.lightVP, lightViewProjectionCBV_);
-        }
-        if (shadowMapHandle_.ptr != 0 && forwardCache_.shadowMap >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.shadowMap, shadowMapHandle_);
+        if (rtShadowMaskHandle_.ptr != 0 && forwardCache_.rtShadowMask >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.rtShadowMask, rtShadowMaskHandle_);
         }
         if (iblParams_.irradianceMap.ptr != 0 && forwardCache_.irradianceMap >= 0) {
             cmdList->SetGraphicsRootDescriptorTable(forwardCache_.irradianceMap, iblParams_.irradianceMap);

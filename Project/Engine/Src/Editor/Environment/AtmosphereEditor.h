@@ -7,6 +7,7 @@ namespace CoreEngine {
     class AtmosphereManager;
     class LightManager;
     class GameDebugUI;
+    class ToneMapping;
 
     /// @brief Atmosphere UI から扱う太陽設定の読み書きモデル
     struct AtmosphereEditorSunSettings {
@@ -78,8 +79,22 @@ namespace CoreEngine {
         /// @brief 時刻・緯度から太陽の高度角・方位角を計算して適用する（春分・赤緯0の太陽軌道）
         void ApplyTimeOfDay();
 
+        /// @brief 昼系プリセット（正午・朝・夕暮れ）を適用する
+        /// @details 時刻の適用に加え、夜プリセットが変更した自動露出を元へ戻す。
+        ///          プリセット同士を対称にしておかないと「夜を経由すると昼が暗いまま」になる。
+        void ApplyDaytimePreset(float hour);
+
+        /// @brief 夜（満月）プリセットを適用する（時刻0時・月の配置・自動露出の有効化）
+        void ApplyNightPreset();
+
+        /// @brief 夜プリセットが変更した自動露出の設定を、プリセット適用前の値へ戻す
+        /// @details 夜プリセット後にユーザーが自分で自動露出を切っていた場合は、
+        ///          その操作を上書きしないよう復元をスキップする。
+        void RestoreAutoExposureFromNightPreset();
+
         AtmosphereManager* GetAtmosphereManager() const;
         LightManager* GetLightManager() const;
+        ToneMapping* GetToneMapping() const;
 
         AtmosphereEditorSunSettings sunSettings_{};
         AtmosphereEditorMoonSettings moonSettings_{};
@@ -101,5 +116,10 @@ namespace CoreEngine {
         float timeSpeedHoursPerSec_ = 0.5f;  ///< 自動進行の速度 [h/s]
 
         int placementDrag_ = 0;              ///< スカイマップのドラッグ対象（0=なし 1=太陽 2=月）
+
+        // 夜プリセットが自動露出を強制 ON にする前の値（昼系プリセットで復元するための退避）。
+        // 復元は「夜 → 昼」の1往復ぶんだけ有効で、復元後は退避を破棄する
+        bool autoExposureSaved_ = false;       ///< 退避値を保持しているか
+        bool autoExposureBeforeNight_ = false; ///< 夜プリセット適用直前の自動露出の有効/無効
     };
 }

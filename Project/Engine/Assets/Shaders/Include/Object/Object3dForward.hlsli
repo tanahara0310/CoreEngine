@@ -2,7 +2,6 @@
 #include "Object3d.hlsli"
 #include "ObjectMaterial.hlsli"
 #include "../Lighting/LightStructures.hlsli"
-#include "../Shadow/ShadowCalculation.hlsli"
 #include "../PBR/PBR.hlsli"
 
 /// @brief シーン共通 IBL パラメータ（スカイボックス回転と連動）
@@ -32,9 +31,12 @@ StructuredBuffer<PointLightData> gPointLights : register(t2);
 StructuredBuffer<SpotLightData> gSpotLights : register(t3);
 StructuredBuffer<AreaLightData> gAreaLights : register(t4);
 
-// ===== Shadow Map =====
-Texture2D<float> gShadowMap : register(t6);
-SamplerComparisonState gShadowSampler : register(s1);
+// ===== RT Shadow Mask =====
+// DXRレイトレ影のスクリーン空間マスク（メインライト分・GameView解像度）。
+// 旧従来型シャドウマップ gShadowMap(t6) の置き換え（2026-07-25）。
+// C++側は DeferredLightingPass::Setup が毎フレーム供給し、
+// マスク未提供フレームは white1x1（=影なし）がバインドされる。
+Texture2D<float> gRTShadowMask : register(t6);
 
 // ===== IBL Texture Maps =====
 TextureCube<float4> gIrradianceMap : register(t11); // Irradianceマップ（拡散IBL）
@@ -49,15 +51,27 @@ void CalculateDirectionalLights(
     float3 albedo, float metallic, float roughness, float ao, float3 toEye,
     inout float3 totalDiffuse, inout float3 totalSpecular)
 {
+    // RTシャドウマスクをスクリーン座標でLoadする（全ディレクショナルライト共通。
+    // 旧シャドウマップも単一マップを全ライトへ適用していたため意味は等価）。
+    // 1x1ダミー（マスク未提供・非DXR環境）は寸法ガードで「影なし」に倒す。
+    // 座標クランプは補助ビュー等でマスク解像度と画面解像度がずれた場合の
+    // 範囲外Load（=0が返り誤って影られる）防止。
+    float rtShadow = 1.0f;
+    {
+        float rtW, rtH;
+        gRTShadowMask.GetDimensions(rtW, rtH);
+        if (rtW > 1.0f && rtH > 1.0f)
+        {
+            int2 coord = int2(clamp(input.position.xy, float2(0.0f, 0.0f), float2(rtW - 1.0f, rtH - 1.0f)));
+            rtShadow = gRTShadowMask.Load(int3(coord, 0)).r;
+        }
+    }
+    float shadowFactor = lerp(0.3f, 1.0f, rtShadow);
+
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {
         if (gDirectionalLights[i].enabled == 0)
             continue;
-        float shadowFactor = CalculateShadow(
-            input.lightSpacePos, input.normal,
-            gDirectionalLights[i].direction,
-            gShadowMap, gShadowSampler);
-        shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
 
         LightingResult result = CalculateDirectionalLightPBR(
             input.normal, gDirectionalLights[i].direction,

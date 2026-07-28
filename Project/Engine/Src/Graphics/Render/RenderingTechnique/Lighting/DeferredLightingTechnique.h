@@ -19,10 +19,20 @@ namespace CoreEngine
     public:
         static constexpr uint32_t kMaxRTShadowLights = 4;
 
+        /// @brief コースティクスのデバッグ表示＋水中ライティング設定（HLSL 側 WaterCausticsDebug と一致させること）
+        /// @details waterVolumeEnabled=1 のとき、水中ピクセルのメインライト直接光を
+        ///          コースティクス（完全な透過直接光）で置換し、アンビエントを Beer–Lambert で
+        ///          減衰させる。これにより海底が「水なしの直射日光＋コースティクス加算」を
+        ///          受ける二重計上を排除する。RT コースティクスが有効なフレームのみ立てる。
         struct WaterCausticsDebugSettings {
             uint32_t debugViewMode = 0;
             float debugDisplayScale = 1.0f;
-            float padding[2] = {};
+            uint32_t waterVolumeEnabled = 0;
+            float waterHeight = 0.0f;
+            float regionCenterXZ[2] = {};
+            float regionHalfExtentXZ[2] = {};
+            float absorptionCoeff[3] = {};
+            float padding0 = 0.0f;
         };
 
         DeferredLightingTechnique() = default;
@@ -35,9 +45,6 @@ namespace CoreEngine
 
         /// @brief カメラ CBV アドレスを設定（スペキュラ計算用ビュー方向）
         void SetCameraCBVAddress(D3D12_GPU_VIRTUAL_ADDRESS address) { cameraCBVAddress_ = address; }
-
-        /// @brief ライトビュープロジェクション行列を設定（毎フレーム更新）
-        void UpdateLightViewProjection(const Matrix4x4& lightViewProjection);
 
         /// @brief 深度復元用の View*Projection 逆行列を更新する（ビューごとに毎回呼び出し）
         /// @details gCamera（cameraCBVAddress_）は補助ビュー描画中フリッカー防止のため
@@ -100,10 +107,6 @@ namespace CoreEngine
 
         // ===== ライティングリソース =====
         D3D12_GPU_VIRTUAL_ADDRESS cameraCBVAddress_ = 0;
-
-        // ライトビュープロジェクション行列専用定数バッファ（毎フレーム更新）
-        Microsoft::WRL::ComPtr<ID3D12Resource> lightVPBuffer_;
-        D3D12_GPU_VIRTUAL_ADDRESS lightVPCBVAddress_ = 0;
 
         // 深度復元用 View*Projection 逆行列専用定数バッファ（RenderViewType ごとに個別バッファ。
         // 同一フレーム内で GameView/ReflectionView 両方から書き込まれるため単一バッファ不可）

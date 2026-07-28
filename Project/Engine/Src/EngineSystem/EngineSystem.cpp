@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "EngineSystem.h"
 #include "Subsystem/RayTracingSubsystem.h"
+#ifdef USE_IMGUI
+#include "Settings/EditorSettingsSubsystem.h"
+#endif
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
 #include <cstring>
@@ -25,7 +28,6 @@
 // レンダーパス
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Graphics/Render/Pass/ASBuildPass.h"
-#include "Graphics/Render/Pass/ShadowMapPass.h"
 #include "Graphics/Render/Pass/GBufferPass.h"
 #include "Graphics/Render/Pass/HiZOcclusionPass.h"
 #include "Graphics/Render/Pass/SSAOPass.h"
@@ -130,6 +132,8 @@ namespace CoreEngine
         }
 #ifdef USE_IMGUI
         {
+            // エディタ設定の自動保存（セクション登録元より先に生成しておく）
+            subsystems_.push_back(std::make_unique<EditorSettingsSubsystem>());
             subsystems_.push_back(std::make_unique<DebugSubsystem>());
         }
 #endif // USE_IMGUI
@@ -261,7 +265,6 @@ namespace CoreEngine
         context.renderingTechniqueManager = GetComponent<RenderingTechniqueManager>();
         context.lightManager = GetComponent<LightManager>();
         context.gBufferManager = renderDomainContext_ ? renderDomainContext_->GetGBufferManager() : nullptr;
-        context.shadowMapManager = renderDomainContext_ ? renderDomainContext_->GetShadowMapManager() : nullptr;
         context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
         context.rtWaterCausticsManager = renderDomainContext_ ? renderDomainContext_->GetWaterCausticsRayTracingManager() : nullptr;
@@ -273,7 +276,10 @@ namespace CoreEngine
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
         context.modelManager = GetComponent<ModelManager>();
-        context.waterRefractionSurfaceData = sceneManager ? sceneManager->GetWaterRefractionSurfaceData() : nullptr;
+        // 水面状態は WaterRenderFeature が RenderDomainContext へ publish する
+        // （シーンに水面用の仮想関数を持たせない）
+        context.waterSurfaceState = renderDomainContext_ ? renderDomainContext_->GetWaterSurfaceState() : nullptr;
+        context.fftOceanSimulationTime = renderDomainContext_ ? renderDomainContext_->GetFFTOceanSimulationTime() : 0.0f;
         context.frameNumber = ++renderFrameNumber_;
 #ifdef USE_IMGUI
         // RenderGraph 内の各パスが自動でタイミング計測できるようプロファイラを渡す
@@ -454,9 +460,6 @@ namespace CoreEngine
 
         // フレーム前処理: ボリューメトリック雲のノイズ生成（ダーティ時のみ Compute 実行）
         renderPipeline_->AddPass(std::make_unique<VolumetricCloudNoisePass>(), RenderPassPhase::FrameSetup, 20);
-
-        // シャドウマップ生成
-        renderPipeline_->AddPass(std::make_unique<ShadowMapPass>(), RenderPassPhase::Shadow, 0);
 
         // G-Buffer 蓄積（不透明 Model / SkinnedModel の描画）
         renderPipeline_->AddPass(std::make_unique<GBufferPass>(), RenderPassPhase::GBuffer);

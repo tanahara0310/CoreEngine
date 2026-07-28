@@ -3,31 +3,34 @@
 
 namespace CoreEngine
 {
-    StaticWaterSurfaceModelProvider::StaticWaterSurfaceModelProvider(
-        const WaterSurfaceData* surfaceData,
-        WaterSurfaceSimulationType simulationType,
-        const char* providerName)
+    StaticWaterSurfaceModelProvider::StaticWaterSurfaceModelProvider(const char* providerName)
+        : providerName_(providerName ? providerName : "StaticWaterSurfaceModelProvider")
     {
-        SetSource(surfaceData, simulationType, providerName);
     }
 
-    void StaticWaterSurfaceModelProvider::SetSource(
-        const WaterSurfaceData* surfaceData,
-        WaterSurfaceSimulationType simulationType,
-        const char* providerName)
+    void StaticWaterSurfaceModelProvider::SetSurfaceData(
+        const WaterSurfaceData& surfaceData,
+        WaterSurfaceSimulationType simulationType)
     {
         surfaceData_ = surfaceData;
+        hasSurfaceData_ = true;
         simulationType_ = simulationType;
-        providerName_ = providerName ? providerName : "StaticWaterSurfaceModelProvider";
+    }
+
+    void StaticWaterSurfaceModelProvider::ClearSurfaceData()
+    {
+        surfaceData_ = {};
+        hasSurfaceData_ = false;
+        simulationType_ = WaterSurfaceSimulationType::Gerstner;
     }
 
     bool StaticWaterSurfaceModelProvider::TryGetSurfaceData(WaterSurfaceData& outSurfaceData) const
     {
-        if (!surfaceData_) {
+        if (!hasSurfaceData_) {
             return false;
         }
 
-        outSurfaceData = *surfaceData_;
+        outSurfaceData = surfaceData_;
         return true;
     }
 

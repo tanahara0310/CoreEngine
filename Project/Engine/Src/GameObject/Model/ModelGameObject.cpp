@@ -96,12 +96,6 @@ namespace CoreEngine
         OnDraw(view.camera);
     }
 
-    void ModelGameObject::DrawShadow(ID3D12GraphicsCommandList* cmdList) {
-        if (model_ && model_->IsInitialized()) {
-            model_->DrawShadow(transform_, cmdList);
-        }
-    }
-
     BoundingBox ModelGameObject::GetWorldBoundingBox() const {
         if (!model_ || !model_->GetModelResource()) {
             return BoundingBox(); // 無効なAABBを返す

@@ -71,6 +71,9 @@ StyleCopReport.xml
 Project/Cache/
 Project/Dumps/
 
+# エディタ設定の自動保存（ローカルのエディタ状態。カメラ姿勢・大気/雲の編集値など）
+Project/Application/Saved/
+
 # 実行時キャッシュがカレントディレクトリ事故で紛れ込むのを防止
 imgui.ini
 **/Cache/logs/

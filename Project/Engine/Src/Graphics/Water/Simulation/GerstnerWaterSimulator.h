@@ -5,7 +5,7 @@
 namespace CoreEngine
 {
     /// @brief Gerstner Wave ベースの Water simulation 実装
-    /// @details WaterConstants を時間更新し、snapshot と DXR 用 surface data を構築する。
+    /// @details WaterConstants を時間更新し、DXR 用 surface data を構築する。
     class GerstnerWaterSimulator final : public WaterSurfaceSimulator {
     public:
         WaterSurfaceSimulationType GetSimulationType() const override {
@@ -18,7 +18,6 @@ namespace CoreEngine
 
         void CaptureSurface(
             const WaterSurfaceSimulationInput& input,
-            WaterSurfaceSnapshot& snapshot,
             WaterSurfaceData& surfaceData) const override;
     private:
         float elapsedTime_ = 0.0f;

@@ -5,6 +5,7 @@
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
 
+#include <cstddef>
 #include <cstdint>
 
 static constexpr uint32_t kMaxWaterWaveCount = 16;
@@ -53,10 +54,9 @@ struct WaterConstants {
 };
 
 /// @brief 毎フレーム更新する水面用フレーム定数バッファ
-/// @note HLSL 側の WaterFrameConstants と一致させること
+/// @note HLSL 側の WaterFrameConstants（Water.PS / Water.VS / FFTWater.VS の 3 本）と
+///       一致させること。末尾の static_assert がサイズと float3 の 16B 境界を検証する。
 struct WaterFrameConstants {
-	float clipPlane[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
-	int clipEnabled = 0;
 	int reflectionEnabled = 0;
 	float fresnelReflectanceScale = 1.0f;
 	float fresnelBaseReflectance = 0.02f;
@@ -65,10 +65,11 @@ struct WaterFrameConstants {
 	float depthFadeDebugScale = 1.5f;
 	// 空アンビエントの輝度単位 → サーフェス光単位の変換係数（AtmosphereManager::GetSkyAmbientScale と同値）
 	float skyAmbientScale = 0.3f;
-	// 波長依存の吸収係数 σa [1/m]（RGB）。赤 > 緑 > 青 が水の青さの物理的源泉
-	float absorptionCoeff[3] = { 0.35f, 0.07f, 0.02f };
 	// 1 = 大気散乱の Sky Irradiance SH を天空光として使う（大気アクティブ＋SH生成済みのシーンのみ）
 	int skyAmbientEnabled = 0;
+	// 波長依存の吸収係数 σa [1/m]（RGB）。赤 > 緑 > 青 が水の青さの物理的源泉
+	float absorptionCoeff[3] = { 0.35f, 0.07f, 0.02f };
+	float absorptionPad = 0.0f;
 	// 波長依存の散乱係数 σs [1/m]（RGB）。深瀬のインスキャッタ色 (σs/σt) を決める
 	float scatteringCoeff[3] = { 0.003f, 0.008f, 0.016f };
 	float scatteringPad = 0.0f;
@@ -77,9 +78,25 @@ struct WaterFrameConstants {
 	int useFFTOceanNormalMap = 0;
 	// 大気散乱の空気遠近感を水面へ適用するか（大気アクティブなシーンでのみ 1）
 	int aerialPerspectiveEnabled = 0;
-	// 空スペキュラキューブマップで平面反射へ雲を合成するか（大気アクティブ＋生成済みのみ 1）
+	// 空スペキュラキューブマップで反射へ雲を合成するか（大気アクティブ＋生成済みのみ 1）
 	int skyEnvReflectionEnabled = 0;
+	// ---- 描画カメラのクリップ距離（深度の線形化に必須）----
+	// Water.PS.hlsl は NDC 深度差から水柱の厚さを求めるため、実際に描画している
+	// カメラの near/far が要る。以前はシェーダーに 0.1 / 1000 がハードコードされており、
+	// エディタ保存カメラ（far=100000）では線形深度が狂って水柱厚さを数十%過小評価し、
+	// RT屈折の実測光路長との差が波打ち際の段差（白線の二重）として見えていた。
+	float cameraNearZ = 0.1f;
+	float cameraFarZ = 1000.0f;
+	float cameraClipPadding[2] = {};
 };
+
+// HLSL の cbuffer packing 規則（float3 は 16B 境界をまたげない）と C++ のレイアウトが
+// 一致していることを検証する。ずれると水柱厚さ・光学係数が別のフィールドを読み、
+// 波打ち際の段差として現れる（RTシャドウの cbuffer 配列ずれ事故と同型）。
+static_assert(sizeof(WaterFrameConstants) == 96, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(offsetof(WaterFrameConstants, absorptionCoeff) % 16 == 0, "absorptionCoeff must start on a 16-byte boundary");
+static_assert(offsetof(WaterFrameConstants, scatteringCoeff) % 16 == 0, "scatteringCoeff must start on a 16-byte boundary");
+static_assert(offsetof(WaterFrameConstants, cameraNearZ) == 80, "cameraNearZ offset mismatch with HLSL cbuffer");
 
 enum class WaterPresetType : int {
 	Lake = 0,

@@ -34,45 +34,10 @@ namespace CoreEngine
 
     class WaterRefractionRayTracingManager : public WaterRayTracingPassBase {
     public:
-        struct FFTOceanRefractionInput {
-            D3D12_GPU_DESCRIPTOR_HANDLE displacementSRV{};
-            D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
-            uint32_t resolution = 0;
-            float patchLength = 0.0f;
-            uint32_t enabled = 0;
-            // ワールドXZ → FFT テクスチャ UV の写像（uv = worldXZ * scale + offset）。
-            // ラスタ描画（FFTWater.VS）と同じ波面を評価するために、水面メッシュの
-            // 位置・スケールから導出した値を渡す
-            float uvScale[2] = { 0.0f, 0.0f };
-            float uvOffset[2] = { 0.5f, 0.5f };
-        };
-
         enum class ViewID : uint32_t {
             GameView = 0,
             ReflectionView = 1,
             Count
-        };
-
-        enum class DispatchStatus : uint32_t {
-            None = 0,
-            NotInitialized,
-            RayTracingUnsupported,
-            NoBLAS,
-            OutputAllocationFailed,
-            CommandList4Unavailable,
-            Dispatched,
-        };
-
-        struct DispatchDiagnostics {
-            DispatchStatus status = DispatchStatus::None;
-            ViewID viewId = ViewID::GameView;
-            float waterHeight = 0.0f;
-            UINT width = 0;
-            UINT height = 0;
-            UINT blasCount = 0;
-            UINT64 worldPositionSrv = 0;
-            UINT64 sceneColorSrv = 0;
-            UINT64 outputSrv = 0;
         };
 
         static constexpr uint32_t kViewCount = static_cast<uint32_t>(ViewID::Count);
@@ -91,7 +56,7 @@ namespace CoreEngine
             const Matrix4x4& viewProjection,
             const Vector3& cameraPosition,
             const WaterSurfaceData& surfaceData,
-            const FFTOceanRefractionInput& fftOceanInput,
+            const FFTOceanInput& fftOceanInput,
             UINT width,
             UINT height,
             ViewID viewId = ViewID::GameView);
@@ -102,21 +67,11 @@ namespace CoreEngine
         ID3D12Resource* GetRefractionResource(ViewID viewId = ViewID::GameView) const;
         D3D12_RESOURCE_STATES& GetRefractionCurrentState(ViewID viewId = ViewID::GameView);
 
-        bool IsInitialized() const { return isInitialized_; }
-
-        void SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider);
-        std::shared_ptr<const IWaterSurfaceModelProvider> GetSurfaceModelProvider() const;
-
         void SetSettings(const WaterRefractionRayTracingSettings& settings) { settings_ = settings; }
         const WaterRefractionRayTracingSettings& GetSettings() const { return settings_; }
-        const DispatchDiagnostics& GetLastDiagnostics() const { return lastDiagnostics_; }
 
     private:
-        bool EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex);
-        bool EnsureConstantBuffer();
-
         Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob_;
         WaterRefractionRayTracingSettings settings_{};
-        DispatchDiagnostics lastDiagnostics_{};
     };
 }

@@ -18,28 +18,12 @@ namespace CoreEngine
         float padding = 0.0f;
     };
 
-    struct WaterSurfaceSnapshot {
-        float waterHeight = 0.0f;
-        uint32_t activeWaveCount = 0;
-        float time = 0.0f;
-        uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
-        WaveParams waves[kMaxWaterSurfaceWaveCount]{};
-    };
-
     struct WaterSurfaceData {
         float waterHeight = 0.0f;
         uint32_t activeWaveCount = 0;
         float time = 0.0f;
         uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
         WaterWaveParam waves[kMaxWaterSurfaceWaveCount]{};
-
-        // FFT Ocean 用: ワールドXZ → FFT テクスチャ UV の写像（uv = worldXZ * scale + offset）。
-        // ラスタ描画（FFTWater.VS の sampleUV）と同一の波面を DXR 側が評価するために、
-        // 水面メッシュのローカルサイズ・スケール・平行移動から導出した値を水面オブジェクト側が設定する。
-        // fftUVMappingValid == 0 の場合、RT 側はパッチ長ベースの旧写像へフォールバックする。
-        float fftUVScale[2] = { 0.0f, 0.0f };
-        float fftUVOffset[2] = { 0.5f, 0.5f };
-        uint32_t fftUVMappingValid = 0;
 
         // 水面メッシュのワールドXZ範囲（AABB）。コースティクスは解析的な無限水面として
         // 評価されるため、この矩形で受光側をマスクしないと「水面高さより低い場所すべて」

@@ -3,7 +3,8 @@
 
 #ifdef USE_IMGUI
 
-#include "WaterSurfaceRuntimeController.h"
+#include "Graphics/Water/Render/WaterRenderFeature.h"
+#include "Graphics/Water/Surface/WaterPlaneObject.h"
 
 #include "Editor/ImGui/ImGuiAll.h"
 
@@ -51,13 +52,14 @@ const char* const kRTCausticsDebugViewNames[] = {
 	"なし",
 	"Shallow Fade",
 	"Match Factor",
-	"Attenuation",
-	"Receiver Facing",
+	"透過率 (Beer-Lambert)",
+	"受光面幾何項",
 	"最終Intensity",
+	"集光率 (Jacobian)",
 };
 }
 
-void WaterSurfaceDebugPanel::Initialize(WaterSurfaceRuntimeController& runtimeController) {
+void WaterSurfaceDebugPanel::Initialize(WaterRenderFeature& runtimeController) {
 	if (WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane()) {
 		// デバッグパネルの既定状態を水面へ反映する
 		waterPlane->SetDepthFadeDebug(depthFadeDebugEnabled_, depthFadeDebugScale_);
@@ -65,7 +67,7 @@ void WaterSurfaceDebugPanel::Initialize(WaterSurfaceRuntimeController& runtimeCo
 	}
 }
 
-void WaterSurfaceDebugPanel::Draw(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade) {
+void WaterSurfaceDebugPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane || !ImGui::CollapsingHeader("デバッグ / 診断", ImGuiTreeNodeFlags_DefaultOpen)) {
 		return;
@@ -78,7 +80,7 @@ void WaterSurfaceDebugPanel::Draw(WaterSurfaceRuntimeController& runtimeControll
 	DrawCausticsDebugSection(editorFacade);
 }
 
-void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade) {
+void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane || !ImGui::TreeNodeEx("共通デバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
 		return;
@@ -118,7 +120,7 @@ void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterSurfaceRuntimeControlle
 }
 
 void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
-	WaterSurfaceRuntimeController& runtimeController,
+	WaterRenderFeature& runtimeController,
 	WaterEditorFacade& editorFacade) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
@@ -156,7 +158,7 @@ void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
 	ImGui::TreePop();
 }
 
-void WaterSurfaceDebugPanel::DrawGerstnerWaveDebugSection(WaterSurfaceRuntimeController& runtimeController) {
+void WaterSurfaceDebugPanel::DrawGerstnerWaveDebugSection(WaterRenderFeature& runtimeController) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
@@ -225,6 +227,13 @@ void WaterSurfaceDebugPanel::DrawCausticsDebugSection(WaterEditorFacade& editorF
 
 	bool changed = false;
 
+	// 生成方式（合成されるのは選んだ側だけ。もう一方のパスは実行自体をスキップする）
+	static const char* kCausticsBackends[] = {
+		"レイトレーシング (DXR)",
+		"スクリーンスペース",
+	};
+	changed |= ImGui::Combo("生成方式", &settings.backend, kCausticsBackends, IM_ARRAYSIZE(kCausticsBackends));
+
 	// コースティクス計算に影響する主要パラメータを調整する
 	changed |= ImGui::SliderFloat("強度", &settings.intensity, 0.0f, 8.0f, "%.3f");
 	changed |= ImGui::SliderFloat("深度減衰", &settings.depthAttenuation, 0.0f, 4.0f, "%.3f");
@@ -241,8 +250,13 @@ void WaterSurfaceDebugPanel::DrawCausticsDebugSection(WaterEditorFacade& editorF
 		"合成結果",
 		"Raw RGB",
 		"グレースケール",
+		"水中判定マップ (R=置換率/G=矩形/B=水深)",
+		"水面線の連続性 (緑=連続/赤=明るすぎ)",
 	};
 	changed |= ImGui::Combo("表示モード", &settings.debugViewMode, kCausticsDebugModes, IM_ARRAYSIZE(kCausticsDebugModes));
+	ImGui::TextDisabled(
+		"「水中判定マップ」「水面線の連続性」は不透明パス（海底・砂）の可視化です。\n"
+		"水面に隠れる領域も見たいときは水面オブジェクトを非表示にしてください。");
 	changed |= ImGui::Checkbox("ログ出力を有効にする", &settings.debugLogEnabled);
 
 	ImGui::SeparatorText("RTコースティクス デバッグ");

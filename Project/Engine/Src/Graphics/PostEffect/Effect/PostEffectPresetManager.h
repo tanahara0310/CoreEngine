@@ -30,6 +30,14 @@ public:
     /// @return 読み込みに成功した場合true
     bool LoadPreset(CoreEngine::PostEffectManager* postEffectManager, const std::string& filePath);
 
+    /// @brief 全エフェクトの有効状態とパラメータを JSON 化する
+    /// @details プリセット保存とエディタ設定自動保存（PostEffectSettingsSection）で共用する
+    static json CaptureToJson(const CoreEngine::PostEffectManager* postEffectManager);
+
+    /// @brief JSON から全エフェクトの有効状態とパラメータを適用する
+    /// @details 欠損キーは現在値を維持する（後方互換）
+    static void ApplyFromJson(CoreEngine::PostEffectManager* postEffectManager, const json& presetData);
+
     /// @brief 指定ディレクトリ内のプリセットファイル一覧を取得
     /// @param directory ディレクトリパス
     /// @return プリセットファイル名のリスト

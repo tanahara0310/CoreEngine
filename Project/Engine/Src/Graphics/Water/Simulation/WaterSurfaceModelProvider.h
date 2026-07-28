@@ -14,25 +14,30 @@ namespace CoreEngine
 		virtual const char* GetProviderName() const = 0;
 	};
 
-	/// @brief 外部保持の WaterSurfaceData を供給する軽量プロバイダー
+	/// @brief WaterSurfaceData のスナップショットを供給する軽量プロバイダー
+	/// @details **値で保持する。** 以前は外部が持つ実体への生ポインタを握っており、
+	///          RT マネージャが握る shared_ptr のコピーが供給元（シーン側のメンバ）より
+	///          長生きするとダングリングになる構造だった。値コピー（1 フレーム分の
+	///          スナップショット）にすることで、供給元の寿命から完全に切り離す。
 	class StaticWaterSurfaceModelProvider final : public IWaterSurfaceModelProvider {
 	public:
-		StaticWaterSurfaceModelProvider(
-			const WaterSurfaceData* surfaceData,
-			WaterSurfaceSimulationType simulationType,
-			const char* providerName);
+		explicit StaticWaterSurfaceModelProvider(const char* providerName);
 
-		void SetSource(
-			const WaterSurfaceData* surfaceData,
-			WaterSurfaceSimulationType simulationType,
-			const char* providerName);
+		/// @brief このフレームの surface data を差し替える
+		void SetSurfaceData(
+			const WaterSurfaceData& surfaceData,
+			WaterSurfaceSimulationType simulationType);
+
+		/// @brief 「水面なし」状態にする（TryGetSurfaceData が false を返すようになる）
+		void ClearSurfaceData();
 
 		bool TryGetSurfaceData(WaterSurfaceData& outSurfaceData) const override;
 		WaterSurfaceSimulationType GetSimulationType() const override;
 		const char* GetProviderName() const override;
 
 	private:
-		const WaterSurfaceData* surfaceData_ = nullptr;
+		WaterSurfaceData surfaceData_{};
+		bool hasSurfaceData_ = false;
 		WaterSurfaceSimulationType simulationType_ = WaterSurfaceSimulationType::Gerstner;
 		const char* providerName_ = "StaticWaterSurfaceModelProvider";
 	};

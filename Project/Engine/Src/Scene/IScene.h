@@ -53,7 +53,6 @@ public:
     virtual ICamera* GetDefaultGameViewCamera3D() const { return GetGameViewCamera3D(); }
     virtual ICamera* GetGameViewCamera2D() const { return nullptr; }
     virtual GameObjectManager* GetGameObjectManager() { return nullptr; }
-    virtual const WaterSurfaceData* GetWaterRefractionSurfaceData() const { return nullptr; }
 
     /// @brief Scene が要求する補助 RenderView 一覧を構築する
     /// @return Engine 側 RenderGraph で実行する補助 View 要求群

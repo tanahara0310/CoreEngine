@@ -7,16 +7,16 @@
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneSetup.cpp">
+    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp">
+    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSettingsSection.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceRuntimeController.cpp">
+    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanelSerialization.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
@@ -43,14 +43,17 @@
     <ClCompile Include="Application\Src\GameObjects\Primitive\RingObject.cpp">
       <Filter>Application\Src\GameObjects\Primitive</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Water\WaterConstantBufferSet.cpp">
-      <Filter>Application\Src\GameObjects\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
+      <Filter>Engine\Src\Graphics\Water\Render</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Water\WaterRenderResources.cpp">
-      <Filter>Application\Src\GameObjects\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Water\WaterShaderResourceBinder.cpp">
-      <Filter>Application\Src\GameObjects\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.cpp">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\Outline</Filter>
@@ -187,9 +190,6 @@
     <ClCompile Include="Application\Src\Scenes\SpriteTestScene\SpriteTestScene.cpp">
       <Filter>Application\Src\Scenes\SpriteTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterReflectionPass.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp">
       <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
     </ClCompile>
@@ -205,8 +205,8 @@
     <ClCompile Include="Application\Src\GameObjects\Model\SphereObject.cpp">
       <Filter>Application\Src\GameObjects\Model</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Water\WaterPlaneObject.cpp">
-      <Filter>Application\Src\GameObjects\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
@@ -279,6 +279,18 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.cpp">
       <Filter>Engine\Src\EngineSystem\Factory</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereLightsSettingsSection.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereSettingsSection.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudSettingsSection.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.cpp">
       <Filter>Engine\Src\EngineSystem\Subsystem</Filter>
@@ -454,6 +466,12 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectSerialization.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectSettingsSection.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.cpp">
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
     </ClCompile>
@@ -508,9 +526,6 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.cpp">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SSAOPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -521,6 +536,9 @@
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueSettingsSection.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.cpp">
@@ -541,9 +559,6 @@
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetManager.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.cpp">
-      <Filter>Engine\Src\Graphics\Render\Shadow</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
     </ClCompile>
@@ -561,9 +576,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionData.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Shadow\ShadowMapManager.cpp">
-      <Filter>Engine\Src\Graphics\Shadow</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.cpp">
       <Filter>Engine\Src\Graphics\Texture\Cache</Filter>
@@ -733,6 +745,9 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\CanvasViewport.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\EditorSettingsPanel.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\EngineStatsWindow.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
@@ -824,6 +839,9 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Debug\DebugCamera.cpp">
+      <Filter>Engine\Src\Camera\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.cpp">
       <Filter>Engine\Src\Camera\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera.cpp">
@@ -942,22 +960,16 @@
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterReflectionPass.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneSetup.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h">
+    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSettingsSection.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceRuntimeController.h">
+    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.h">
@@ -993,20 +1005,20 @@
     <ClInclude Include="Application\Src\GameObjects\Primitive\RingObject.h">
       <Filter>Application\Src\GameObjects\Primitive</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Water\WaterConstantBuffer.h">
-      <Filter>Application\Src\GameObjects\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h">
+      <Filter>Engine\Src\Graphics\Water\Render</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Water\WaterConstantBufferSet.h">
-      <Filter>Application\Src\GameObjects\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Water\WaterPlaneObject.h">
-      <Filter>Application\Src\GameObjects\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Water\WaterRenderResources.h">
-      <Filter>Application\Src\GameObjects\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Water\WaterShaderResourceBinder.h">
-      <Filter>Application\Src\GameObjects\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
@@ -1094,6 +1106,21 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h">
       <Filter>Engine\Src\EngineSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereLightsSettingsSection.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereSettingsSection.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudSettingsSection.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\IEditorSettingsSection.h">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.h">
       <Filter>Engine\Src\EngineSystem\Subsystem</Filter>
@@ -1386,6 +1413,9 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectSettingsSection.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\IRenderer.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
@@ -1482,9 +1512,6 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\ShadowMapPass.h">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -1510,6 +1537,9 @@
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueSettingsSection.h">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueNames.h">
@@ -1554,9 +1584,6 @@
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetNames.h">
       <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Shadow\ShadowMapRenderer.h">
-      <Filter>Engine\Src\Graphics\Render\Shadow</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h">
       <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
     </ClInclude>
@@ -1586,9 +1613,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionData.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Shadow\ShadowMapManager.h">
-      <Filter>Engine\Src\Graphics\Shadow</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Texture\Runtime\TextureLoadedResource.h">
       <Filter>Engine\Src\Graphics\Texture\Runtime</Filter>
@@ -1884,6 +1908,9 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\CanvasViewport.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorSettingsPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\EngineStatsWindow.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -2005,6 +2032,9 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Debug\DebugCamera.h">
+      <Filter>Engine\Src\Camera\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.h">
       <Filter>Engine\Src\Camera\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Camera.h">
@@ -2162,9 +2192,6 @@
     <None Include="Docs\Engine\Graphics\Rendering\PBR_RoadMap.md">
       <Filter>Docs\Engine\Graphics\Rendering</Filter>
     </None>
-    <None Include="Docs\Refactoring\README.md">
-      <Filter>Docs\Refactoring</Filter>
-    </None>
     <None Include="Docs\Engine\Graphics\TextureManager.md">
       <Filter>Docs\Engine\Graphics</Filter>
     </None>
@@ -2185,33 +2212,6 @@
     </None>
     <None Include="Docs\Engine\Utility\Utility.md">
       <Filter>Docs\Engine\Utility</Filter>
-    </None>
-    <None Include="Docs\Refactoring\Step01_RenderPipelineExecution.md">
-      <Filter>Docs\Refactoring</Filter>
-    </None>
-    <None Include="Docs\Refactoring\Step02_RTShadowAndComposite.md">
-      <Filter>Docs\Refactoring</Filter>
-    </None>
-    <None Include="Docs\Refactoring\Step03_FrameBlackboard.md">
-      <Filter>Docs\Refactoring</Filter>
-    </None>
-    <None Include="Docs\Refactoring\Step04_RenderGraphMinimum.md">
-      <Filter>Docs\Refactoring</Filter>
-    </None>
-    <None Include="Docs\Refactoring\Step05_AutoBarrier.md">
-      <Filter>Docs\Refactoring</Filter>
-    </None>
-    <None Include="Docs\Refactoring\Step06_MultiViewIntegration.md">
-      <Filter>Docs\Refactoring</Filter>
-    </None>
-    <None Include="Docs\Refactoring\Step07_LegacyPipelineRemoval.md">
-      <Filter>Docs\Refactoring</Filter>
-    </None>
-    <None Include="Docs\Refactoring\Step08_FullPassGraphMigration.md">
-      <Filter>Docs\Refactoring</Filter>
-    </None>
-    <None Include="Docs\Refactoring\WaterRefactoringPlan.md">
-      <Filter>Docs\Refactoring</Filter>
     </None>
     <None Include="Engine\Src\GameObject\README.md">
       <Filter>Engine\Src\GameObject</Filter>
@@ -2259,9 +2259,6 @@
     </Filter>
     <Filter Include="Application\Src\GameObjects\SkyBox">
       <UniqueIdentifier>{FF839B3D-8C16-469D-91A5-1E40A85FE4CB}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\GameObjects\Water">
-      <UniqueIdentifier>{4B12F921-6D73-4BD6-B4F9-23B4F214771D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes">
       <UniqueIdentifier>{E0897678-58CC-4A82-AA9F-47042D9CD67B}</UniqueIdentifier>
@@ -2338,9 +2335,6 @@
     <Filter Include="Docs\Engine\Utility">
       <UniqueIdentifier>{0FA29CFD-660E-4053-9501-B303826B2E13}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Docs\Refactoring">
-      <UniqueIdentifier>{6F074EBB-8840-4753-AEAC-EDF53A07FA36}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine">
       <UniqueIdentifier>{f6f7eb83-ae86-4048-be21-0fc749f83aa2}</UniqueIdentifier>
     </Filter>
@@ -2388,6 +2382,9 @@
     </Filter>
     <Filter Include="Engine\Src\EngineSystem\Factory">
       <UniqueIdentifier>{24AEC308-0DFF-42F8-842C-E6EA55C8507A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\EngineSystem\Settings">
+      <UniqueIdentifier>{3D9F5A1C-8B47-4E62-9A0D-6C21E4B7F853}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\EngineSystem\Subsystem">
       <UniqueIdentifier>{F7C65E0B-77E7-404D-AF2F-F65303EC33B6}</UniqueIdentifier>
@@ -2551,9 +2548,6 @@
     <Filter Include="Engine\Src\Graphics\Render\RenderTarget">
       <UniqueIdentifier>{5446C3E1-4C5F-4C98-9DD5-B757A27FEA12}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Graphics\Render\Shadow">
-      <UniqueIdentifier>{F8E3D9FD-E5C8-429B-8293-D1B02E8F3319}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Graphics\Render\SkyBox">
       <UniqueIdentifier>{62674C76-9783-4635-BD13-C255A03C8986}</UniqueIdentifier>
     </Filter>
@@ -2571,9 +2565,6 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Shader">
       <UniqueIdentifier>{249A8CEB-EC05-4796-9F5E-6D0441BFE8B1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\Shadow">
-      <UniqueIdentifier>{1AC6C8BB-9FE4-4157-B447-1C3303D19ABF}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Texture">
       <UniqueIdentifier>{95DC8CAB-0112-41D4-9C1B-1D5308D6FCE6}</UniqueIdentifier>
@@ -2601,6 +2592,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\RayTracing">
       <UniqueIdentifier>{01A8FFFF-937C-46E3-98EF-476A65F5EEAC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\Render">
+      <UniqueIdentifier>{4B12F921-6D73-4BD6-B4F9-23B4F214771D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Simulation">
       <UniqueIdentifier>{885AB6EC-E224-419F-8C36-DD519D941E3B}</UniqueIdentifier>

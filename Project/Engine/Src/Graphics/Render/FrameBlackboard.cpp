@@ -9,7 +9,6 @@ namespace CoreEngine
     const char* const FrameBlackboard::ReflectionColor = "ReflectionColor";
     const char* const FrameBlackboard::ReflectionDepth = "ReflectionDepth";
     const char* const FrameBlackboard::SSAO = "SSAO";
-    const char* const FrameBlackboard::ShadowMap = "ShadowMap";
     const char* const FrameBlackboard::ShadowMask = "ShadowMask";
     const char* const FrameBlackboard::RTShadowMask = "RTShadowMask";
     const char* const FrameBlackboard::WaterCaustics = "WaterCaustics";
