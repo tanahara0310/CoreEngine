@@ -37,21 +37,9 @@ namespace CoreEngine
             return;
         }
 
-        const float timeSeconds = context.waterRefractionSurfaceData
-            ? context.waterRefractionSurfaceData->time
-            : 0.0f;
-
-        static uint32_t sLogFrameCounter = 0u;
-        if ((sLogFrameCounter++ % 120u) == 0u) {
-            Logger::GetInstance().Infof(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "FFTOceanPass: dispatch time={:.3f} hasSurfaceData={} activeWaveCount={}",
-                timeSeconds,
-                context.waterRefractionSurfaceData != nullptr,
-                context.waterRefractionSurfaceData ? context.waterRefractionSurfaceData->activeWaveCount : 0u);
-        }
-
-        context.fftOceanManager->Dispatch(cmdList, timeSeconds);
+        // FFT の時刻は水面サーフェス状態から独立している。
+        // 以前は surface data の time を流用していたため、水面を非表示にした
+        // フレームで 0 秒へ巻き戻り、再表示時に波形が飛んでいた。
+        context.fftOceanManager->Dispatch(cmdList, context.fftOceanSimulationTime);
     }
 }

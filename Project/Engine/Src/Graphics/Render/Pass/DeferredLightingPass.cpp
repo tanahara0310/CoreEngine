@@ -190,7 +190,7 @@ namespace CoreEngine
             // 水中ピクセルのメインライト直接光をコースティクスへ置換し、
             // アンビエントを Beer–Lambert で減衰させる。スクリーンスペース版は
             // 透過直接光の全量を持たない（模様のみ）ため置換しない。
-            const WaterSurfaceData* surface = context.waterRefractionSurfaceData;
+            const WaterSurfaceData* surface = context.waterSurfaceState;
             if (usingRT && surface && surface->regionValid != 0 && context.rtWaterCausticsManager) {
                 const WaterCausticsRayTracingSettings& rtSettings =
                     context.rtWaterCausticsManager->GetSettings();

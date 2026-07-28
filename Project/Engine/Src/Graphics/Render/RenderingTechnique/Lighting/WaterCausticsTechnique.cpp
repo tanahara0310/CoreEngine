@@ -55,7 +55,7 @@ namespace CoreEngine
             return;
         }
 
-        UpdateWaterSurfaceBuffer(context.waterRefractionSurfaceData);
+        UpdateWaterSurfaceBuffer(context.waterSurfaceState);
         UpdateMainLightBuffer(context.lightManager);
 
         // 深度復元用 View*Projection 逆行列（ビューごとに更新）

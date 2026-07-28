@@ -5,7 +5,7 @@
 #include "EngineSystem/Settings/IEditorSettingsSection.h"
 
 class WaterSurfaceParameterPanel;
-class WaterSurfaceRuntimeController;
+namespace CoreEngine { class WaterRenderFeature; }
 class WaterEditorFacade;
 
 /// @brief 水面エディタ設定の自動保存セクション
@@ -16,7 +16,7 @@ class WaterSettingsSection : public CoreEngine::IEditorSettingsSection {
 public:
 	/// @brief 委譲先を設定する（いずれも本セクションより長く生存させること）
 	void Initialize(WaterSurfaceParameterPanel* panel,
-		WaterSurfaceRuntimeController* runtimeController, WaterEditorFacade* facade);
+		CoreEngine::WaterRenderFeature* runtimeController, WaterEditorFacade* facade);
 
 	const char* GetSectionName() const override { return "Water"; }
 	void Serialize(nlohmann::json& out) const override;
@@ -24,7 +24,7 @@ public:
 
 private:
 	WaterSurfaceParameterPanel* panel_ = nullptr;
-	WaterSurfaceRuntimeController* runtimeController_ = nullptr;
+	CoreEngine::WaterRenderFeature* runtimeController_ = nullptr;
 	WaterEditorFacade* facade_ = nullptr;
 };
 

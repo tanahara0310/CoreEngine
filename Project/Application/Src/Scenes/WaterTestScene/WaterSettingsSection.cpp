@@ -4,11 +4,11 @@
 #ifdef USE_IMGUI
 
 #include "WaterSurfaceParameterPanel.h"
-#include "WaterSurfaceRuntimeController.h"
+#include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "WaterEditorFacade.h"
 
 void WaterSettingsSection::Initialize(WaterSurfaceParameterPanel* panel,
-	WaterSurfaceRuntimeController* runtimeController, WaterEditorFacade* facade) {
+	CoreEngine::WaterRenderFeature* runtimeController, WaterEditorFacade* facade) {
 	panel_ = panel;
 	runtimeController_ = runtimeController;
 	facade_ = facade;

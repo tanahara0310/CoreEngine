@@ -4,8 +4,8 @@
 #include "WaterEditorFacade.h"
 #include "externals/nlohmann/single_include/nlohmann/json_fwd.hpp"
 
-class WaterSurfaceRuntimeController;
-class WaterPlaneObject;
+namespace CoreEngine { class WaterRenderFeature; }
+namespace CoreEngine { class WaterPlaneObject; }
 
 #ifdef USE_IMGUI
 class WaterSurfaceParameterPanel {
@@ -13,12 +13,12 @@ public:
 	/// @brief パラメータパネルの初期状態を構築する
 	/// @param runtimeController 水面ランタイム制御
 	/// @param editorFacade Water UI 用 facade
-	void Initialize(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	void Initialize(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
 	/// @brief 水面パラメータ編集 UI を描画する
 	/// @param runtimeController 水面ランタイム制御
 	/// @param editorFacade Water UI 用 facade
-	void Draw(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	void Draw(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
 	// ===== エディタ設定の自動保存（WaterSettingsSection から委譲） =====
 
@@ -30,29 +30,29 @@ public:
 	/// @brief JSON から UI キャッシュを復元し、水面・facade へ適用する
 	/// @note 適用は Draw と同じ経路（WaterPlaneObject の setter / facade の Apply）を使う
 	void DeserializeSettings(const nlohmann::json& in,
-		WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+		CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
 private:
 	/// @brief 指定プリセットの値を水面と UI キャッシュへ適用する
-	void ApplyWaterPreset(WaterSurfaceRuntimeController& runtimeController, WaterPresetType preset);
+	void ApplyWaterPreset(CoreEngine::WaterRenderFeature& runtimeController, WaterPresetType preset);
 	/// @brief 指定プリセットの推奨波数を水面へ反映する
-	void RestoreRecommendedWaveCount(WaterSurfaceRuntimeController& runtimeController, WaterPresetType preset);
+	void RestoreRecommendedWaveCount(CoreEngine::WaterRenderFeature& runtimeController, WaterPresetType preset);
 	/// @brief プリセット設定に基づくレイヤー波を再生成する
-	void RegenerateLayeredWaves(WaterSurfaceRuntimeController& runtimeController, WaterPresetType preset, uint32_t activeWaveCount);
+	void RegenerateLayeredWaves(CoreEngine::WaterRenderFeature& runtimeController, WaterPresetType preset, uint32_t activeWaveCount);
 	/// @brief 描画方式の切り替えと現在状態を表示する
-	void DrawWaterTypeSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	void DrawWaterTypeSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 	/// @brief 見た目・反射・透過・UV に関する共通パラメータ UI を描画する
-	void DrawCommonParameterSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	void DrawCommonParameterSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 	/// @brief FFT Ocean に関する描画経路切替とパラメータ UI を描画する
-	void DrawFFTOceanSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	void DrawFFTOceanSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 	/// @brief FFT Ocean プリセットを適用する
 	void ApplyFFTOceanPreset(WaterEditorFacade& editorFacade, int presetIndex);
 	/// @brief Gerstner Wave のプリセット・波生成に関する UI を描画する
-	void DrawGerstnerWaveSection(WaterSurfaceRuntimeController& runtimeController);
+	void DrawGerstnerWaveSection(CoreEngine::WaterRenderFeature& runtimeController);
 	/// @brief 個別波編集 UI を描画する
-	void DrawIndividualWaveEditor(WaterSurfaceRuntimeController& runtimeController);
+	void DrawIndividualWaveEditor(CoreEngine::WaterRenderFeature& runtimeController);
 	/// @brief ベース光学係数と濁度から実効 σa/σs を計算して水面へ反映する
-	void ApplyEffectiveOpticalCoefficients(WaterPlaneObject* waterPlane) const;
+	void ApplyEffectiveOpticalCoefficients(CoreEngine::WaterPlaneObject* waterPlane) const;
 
 	/// @brief 水面の見た目に関する UI キャッシュ
 	struct AppearanceParameters {

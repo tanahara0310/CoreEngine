@@ -1,11 +1,10 @@
 #include "pch.h"
 #include "WaterTestScene.h"
 
-#include "GameObjects/SkyBox/SkyBoxObject.h"
-#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
-#include "Utility/FrameRate/FrameRateController.h"
+#include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "Math/MathCore.h"
 #include <cmath>
+#include <memory>
 
 using namespace CoreEngine;
 
@@ -43,25 +42,25 @@ void WaterTestScene::OnInitialize() {
         directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
     }
 
-    waterController_.Initialize(*this, *engine_);
+    // 水面一式（水面オブジェクト・波シミュレーション・リソース結線）は Feature が持つ。
+    // シーン側は登録するだけで、以降の毎フレーム処理に手を入れる必要がない。
+    auto* waterFeature = static_cast<WaterRenderFeature*>(
+        AddFeature(std::make_unique<WaterRenderFeature>()));
+    waterController_.Initialize(waterFeature, *engine_);
 
     // 起動時のリリースカメラはシーン全体（水面・地形・配置物）を俯瞰する構図にする。
     // 位置 (0, 60, -90) から約 35° 見下ろすと、原点付近（海面 y≈0）が画角中央に入る。
     SetReleaseCameraTransform({ 0.0f, 60.0f, -90.0f }, { 35.0f * kDegToRad, 0.0f, 0.0f });
 }
 
-void WaterTestScene::OnUpdate() {
-    auto* frameRate = engine_->GetComponent<FrameRateController>();
-    const float deltaTime = frameRate ? frameRate->GetDeltaTime() : (1.0f / 60.0f);
-
-    // 空が大気散乱モードなら水面へ空気遠近感（Aerial Perspective）を適用する
-    SkyBoxObject* skyBox = GetSkyBox();
-    const bool atmosphereSky = (skyBox != nullptr) && skyBox->IsAtmosphereMode();
-    waterController_.Update(*engine_, deltaTime, atmosphereSky);
-}
-
 void WaterTestScene::Draw() {
     BaseScene::Draw();
+}
+
+void WaterTestScene::OnFinalize() {
+    // WaterRenderFeature の所有者は BaseScene（この直後に features_ が破棄される）。
+    // UI が Feature ポインタを持ったままにならないよう、ここで先に切る。
+    waterController_.Shutdown();
 }
 
 std::vector<RenderViewRequest> WaterTestScene::BuildRenderViewRequests()
@@ -73,8 +72,4 @@ std::vector<RenderViewRequest> WaterTestScene::BuildRenderViewRequests()
     return {};
 }
 
-const WaterSurfaceData* WaterTestScene::GetWaterRefractionSurfaceData() const
-{
-    return waterController_.GetWaterRefractionSurfaceData();
-}
 

@@ -3,9 +3,12 @@
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 
+namespace CoreEngine
+{
+
 void WaterShaderResourceBinder::Bind(
     ID3D12GraphicsCommandList* cmdList,
-    const CoreEngine::CustomShaderPipeline* pipeline,
+    const CustomShaderPipeline* pipeline,
     D3D12_GPU_VIRTUAL_ADDRESS waterCBGpuAddress,
     D3D12_GPU_VIRTUAL_ADDRESS frameCBGpuAddress,
     const WaterRenderResources& renderResources) {
@@ -143,4 +146,5 @@ void WaterShaderResourceBinder::Bind(
                 renderResources.skyEnvironmentSRV);
         }
     }
+}
 }

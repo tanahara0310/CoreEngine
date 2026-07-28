@@ -3,7 +3,8 @@
 
 #ifdef USE_IMGUI
 
-#include "WaterSurfaceRuntimeController.h"
+#include "Graphics/Water/Render/WaterRenderFeature.h"
+#include "Graphics/Water/Surface/WaterPlaneObject.h"
 
 #include "Math/MathCore.h"
 #include "Editor/ImGui/ImGuiAll.h"
@@ -164,7 +165,7 @@ int FindMatchingFFTOceanPreset(const WaterEditorFFTSettings& settings) {
 }
 }
 
-void WaterSurfaceParameterPanel::Initialize(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade) {
+void WaterSurfaceParameterPanel::Initialize(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
 	const WaterEditorFFTSettings fftSettings = editorFacade.GetFFTSettings();
 	fftOceanParameters_.enabled = fftSettings.enabled;
 	fftOceanParameters_.patchLength = fftSettings.patchLength;
@@ -185,7 +186,7 @@ void WaterSurfaceParameterPanel::Initialize(WaterSurfaceRuntimeController& runti
 	ApplyWaterPreset(runtimeController, static_cast<WaterPresetType>(waveToolState_.preset));
 }
 
-void WaterSurfaceParameterPanel::Draw(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade) {
+void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
 	// 共通設定と方式別設定をタブで分離して、開発用 UI の見通しを良くする
 	if (ImGui::CollapsingHeader("水面パラメータ", ImGuiTreeNodeFlags_DefaultOpen)) {
 		const WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
@@ -217,7 +218,7 @@ void WaterSurfaceParameterPanel::Draw(WaterSurfaceRuntimeController& runtimeCont
 }
 
 void WaterSurfaceParameterPanel::DrawWaterTypeSection(
-	WaterSurfaceRuntimeController& runtimeController,
+	WaterRenderFeature& runtimeController,
 	WaterEditorFacade& editorFacade) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
@@ -265,7 +266,7 @@ void WaterSurfaceParameterPanel::ApplyEffectiveOpticalCoefficients(WaterPlaneObj
 }
 
 void WaterSurfaceParameterPanel::DrawCommonParameterSection(
-	WaterSurfaceRuntimeController& runtimeController,
+	WaterRenderFeature& runtimeController,
 	WaterEditorFacade& editorFacade) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
@@ -357,7 +358,7 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(
 }
 
 void WaterSurfaceParameterPanel::DrawFFTOceanSection(
-	WaterSurfaceRuntimeController& runtimeController,
+	WaterRenderFeature& runtimeController,
 	WaterEditorFacade& editorFacade) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
@@ -516,7 +517,7 @@ void WaterSurfaceParameterPanel::ApplyFFTOceanPreset(WaterEditorFacade& editorFa
 	editorFacade.ApplyFFTSettings(updatedSettings);
 }
 
-void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterSurfaceRuntimeController& runtimeController, WaterPresetType preset) {
+void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterRenderFeature& runtimeController, WaterPresetType preset) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
@@ -572,7 +573,7 @@ void WaterSurfaceParameterPanel::ApplyWaterPreset(WaterSurfaceRuntimeController&
 	RegenerateLayeredWaves(runtimeController, preset, ClampWaveCountToRange(waveToolState_.activeWaveCount));
 }
 
-void WaterSurfaceParameterPanel::RestoreRecommendedWaveCount(WaterSurfaceRuntimeController& runtimeController, WaterPresetType preset) {
+void WaterSurfaceParameterPanel::RestoreRecommendedWaveCount(WaterRenderFeature& runtimeController, WaterPresetType preset) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
@@ -585,7 +586,7 @@ void WaterSurfaceParameterPanel::RestoreRecommendedWaveCount(WaterSurfaceRuntime
 }
 
 void WaterSurfaceParameterPanel::RegenerateLayeredWaves(
-	WaterSurfaceRuntimeController& runtimeController,
+	WaterRenderFeature& runtimeController,
 	WaterPresetType preset,
 	uint32_t activeWaveCount) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
@@ -649,7 +650,7 @@ void WaterSurfaceParameterPanel::RegenerateLayeredWaves(
 	waterPlane->SetActiveWaveCount(activeWaveCount);
 }
 
-void WaterSurfaceParameterPanel::DrawGerstnerWaveSection(WaterSurfaceRuntimeController& runtimeController) {
+void WaterSurfaceParameterPanel::DrawGerstnerWaveSection(WaterRenderFeature& runtimeController) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane) {
 		return;
@@ -734,7 +735,7 @@ void WaterSurfaceParameterPanel::DrawGerstnerWaveSection(WaterSurfaceRuntimeCont
 	DrawIndividualWaveEditor(runtimeController);
 }
 
-void WaterSurfaceParameterPanel::DrawIndividualWaveEditor(WaterSurfaceRuntimeController& runtimeController) {
+void WaterSurfaceParameterPanel::DrawIndividualWaveEditor(WaterRenderFeature& runtimeController) {
 	WaterPlaneObject* waterPlane = runtimeController.GetWaterPlane();
 	if (!waterPlane || !ImGui::TreeNode("個別波編集")) {
 		return;

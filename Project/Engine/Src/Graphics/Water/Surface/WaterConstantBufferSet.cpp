@@ -4,6 +4,9 @@
 #include <cassert>
 #include <cstring>
 
+namespace CoreEngine
+{
+
 void WaterConstantBufferSet::Initialize(ID3D12Device* device) {
     assert(device);
 
@@ -74,4 +77,5 @@ void WaterConstantBufferSet::CreateBuffer(
     // Upload Heap は常時マップしたまま使用する
     D3D12_RANGE readRange = { 0, 0 };
     resource->Map(0, &readRange, reinterpret_cast<void**>(&mappedData));
+}
 }

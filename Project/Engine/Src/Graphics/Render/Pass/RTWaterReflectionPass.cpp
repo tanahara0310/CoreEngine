@@ -33,12 +33,12 @@ namespace CoreEngine
 
         // 水面が存在しない・非表示のフレームはディスパッチしない（RTWaterCausticsPass と同じガード）。
         // 出力を Blackboard へ登録しないため、Water.PS の反射合成も自動的に無効化される。
-        if (!context.waterRefractionSurfaceData
-            || context.waterRefractionSurfaceData->regionValid == 0) {
+        if (!context.waterSurfaceState
+            || context.waterSurfaceState->regionValid == 0) {
             return;
         }
 
-        const WaterSurfaceData& dispatchSurfaceData = *context.waterRefractionSurfaceData;
+        const WaterSurfaceData& dispatchSurfaceData = *context.waterSurfaceState;
 
         context.rayTracingSubsystem->DispatchWaterReflection(
             context,

@@ -276,7 +276,10 @@ namespace CoreEngine
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
         context.modelManager = GetComponent<ModelManager>();
-        context.waterRefractionSurfaceData = sceneManager ? sceneManager->GetWaterRefractionSurfaceData() : nullptr;
+        // 水面状態は WaterRenderFeature が RenderDomainContext へ publish する
+        // （シーンに水面用の仮想関数を持たせない）
+        context.waterSurfaceState = renderDomainContext_ ? renderDomainContext_->GetWaterSurfaceState() : nullptr;
+        context.fftOceanSimulationTime = renderDomainContext_ ? renderDomainContext_->GetFFTOceanSimulationTime() : 0.0f;
         context.frameNumber = ++renderFrameNumber_;
 #ifdef USE_IMGUI
         // RenderGraph 内の各パスが自動でタイミング計測できるようプロファイラを渡す

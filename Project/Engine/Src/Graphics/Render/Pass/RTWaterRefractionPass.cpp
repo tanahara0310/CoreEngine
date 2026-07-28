@@ -40,8 +40,8 @@ namespace CoreEngine
         // 水面が存在しない・非表示のフレームはディスパッチしない（regionValid=0 = 有効な水域なし）。
         // RTWaterCausticsPass は同じガードを持っていたが、屈折・反射は持っておらず
         // 水面が消えていてもフル解像度で DispatchRays が走っていた。
-        if (!context.waterRefractionSurfaceData
-            || context.waterRefractionSurfaceData->regionValid == 0) {
+        if (!context.waterSurfaceState
+            || context.waterSurfaceState->regionValid == 0) {
             return;
         }
 
@@ -59,7 +59,7 @@ namespace CoreEngine
             ? WaterRefractionRayTracingManager::ViewID::ReflectionView
             : WaterRefractionRayTracingManager::ViewID::GameView;
 
-        const WaterSurfaceData& dispatchSurfaceData = *context.waterRefractionSurfaceData;
+        const WaterSurfaceData& dispatchSurfaceData = *context.waterSurfaceState;
 
         context.rayTracingSubsystem->DispatchWaterRefraction(
             context,

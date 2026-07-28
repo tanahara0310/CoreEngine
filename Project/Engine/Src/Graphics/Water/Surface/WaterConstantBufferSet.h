@@ -5,6 +5,8 @@
 #include <d3d12.h>
 #include <wrl.h>
 
+namespace CoreEngine
+{
 /// @brief Water 描画用の定数バッファ群をまとめて管理する helper
 /// @details WaterPlaneObject から GPU バッファ生成・マップ・更新責務を切り離す。
 class WaterConstantBufferSet {
@@ -47,3 +49,4 @@ private:
     D3D12_GPU_VIRTUAL_ADDRESS frameCBGpuAddress_ = 0;
     uint8_t* frameCBMapped_ = nullptr;
 };
+}

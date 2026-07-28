@@ -8,7 +8,8 @@
 
 #ifdef USE_IMGUI
 
-#include "WaterSurfaceRuntimeController.h"
+#include "Graphics/Water/Render/WaterRenderFeature.h"
+#include "Graphics/Water/Surface/WaterPlaneObject.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 using namespace CoreEngine;
@@ -63,7 +64,7 @@ void WaterSurfaceParameterPanel::SerializeSettings(json& out, const WaterEditorF
 }
 
 void WaterSurfaceParameterPanel::DeserializeSettings(const json& in,
-	WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade) {
+	WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
 	// ===== UI キャッシュの復元（欠損キーは現在値＝Initialize 後のプリセット値を維持） =====
 	const Vector4 baseColor = JsonManager::SafeGetVector4(in, "baseColor", {
 		appearanceParameters_.baseColor[0], appearanceParameters_.baseColor[1],

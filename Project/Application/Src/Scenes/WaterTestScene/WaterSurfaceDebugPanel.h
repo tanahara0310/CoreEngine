@@ -3,26 +3,26 @@
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
 #include "WaterEditorFacade.h"
 
-class WaterSurfaceRuntimeController;
+namespace CoreEngine { class WaterRenderFeature; }
 
 #ifdef USE_IMGUI
 class WaterSurfaceDebugPanel {
 public:
 	/// @brief デバッグパネルの初期状態を水面へ反映する
-	void Initialize(WaterSurfaceRuntimeController& runtimeController);
+	void Initialize(CoreEngine::WaterRenderFeature& runtimeController);
 
 	/// @brief 水面デバッグ表示と診断 UI を描画する
-	void Draw(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	void Draw(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
 private:
 	/// @brief 水面共通の診断情報と Depth Fade 可視化 UI を描画する
-	void DrawCommonDebugSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	void DrawCommonDebugSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
 	/// @brief FFT Ocean の診断 UI を描画する
-	void DrawFFTOceanDebugSection(WaterSurfaceRuntimeController& runtimeController, WaterEditorFacade& editorFacade);
+	void DrawFFTOceanDebugSection(CoreEngine::WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade);
 
 	/// @brief Gerstner Wave の診断 UI を描画する
-	void DrawGerstnerWaveDebugSection(WaterSurfaceRuntimeController& runtimeController);
+	void DrawGerstnerWaveDebugSection(CoreEngine::WaterRenderFeature& runtimeController);
 
 	/// @brief コースティクスのデバッグ UI を描画する
 	void DrawCausticsDebugSection(WaterEditorFacade& editorFacade);

@@ -26,7 +26,7 @@ namespace CoreEngine
         float intensityScale = 1.0f;
         float refractiveIndex = 1.333f;
         // 波長依存の吸収係数 σa [1/m]（RGB）。水面描画（Jerlov プリセット/濁度 UI）と
-        // 同じ値が WaterSurfaceRuntimeController から毎フレーム同期される。
+        // 同じ値が WaterRenderFeature から毎フレーム同期される。
         // 既定値は Ocean プリセット（Jerlov I 相当）と同値。
         float absorptionCoeff[3] = { 0.35f, 0.07f, 0.02f };
         float debugDisplayScale = 1.0f;

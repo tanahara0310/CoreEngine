@@ -34,8 +34,8 @@ namespace CoreEngine
         // 水面が存在しない・非表示のフレームはディスパッチしない
         // （regionValid=0 = 有効な水域なし）。出力を Blackboard へ登録しないため、
         // DeferredLighting のコースティクス合成と水中ライティングも自動的に無効化される。
-        if (!context.waterRefractionSurfaceData
-            || context.waterRefractionSurfaceData->regionValid == 0) {
+        if (!context.waterSurfaceState
+            || context.waterSurfaceState->regionValid == 0) {
             return;
         }
 
@@ -74,7 +74,7 @@ namespace CoreEngine
             ? WaterCausticsRayTracingManager::ViewID::ReflectionView
             : WaterCausticsRayTracingManager::ViewID::GameView;
 
-        const WaterSurfaceData& dispatchSurfaceData = *context.waterRefractionSurfaceData;
+        const WaterSurfaceData& dispatchSurfaceData = *context.waterSurfaceState;
 
         context.rayTracingSubsystem->DispatchWaterCaustics(
             context,
