@@ -35,6 +35,8 @@ namespace CoreEngine
         shadowJson["historyAlpha"] = settings.historyAlpha;
         shadowJson["atrousPassCount"] = settings.atrousPassCount;
         shadowJson["denoisePhiDepth"] = settings.denoisePhiDepth;
+        shadowJson["halfResolutionTrace"] = settings.halfResolutionTrace;
+        shadowJson["upsamplePhiDepth"] = settings.upsamplePhiDepth;
         shadowJson["disableHistory"] = settings.disableHistory;
         out["shadow"] = shadowJson;
     }
@@ -62,6 +64,10 @@ namespace CoreEngine
         settings.historyAlpha = JsonManager::SafeGet(shadowJson, "historyAlpha", settings.historyAlpha);
         settings.atrousPassCount = JsonManager::SafeGet(shadowJson, "atrousPassCount", settings.atrousPassCount);
         settings.denoisePhiDepth = JsonManager::SafeGet(shadowJson, "denoisePhiDepth", settings.denoisePhiDepth);
+        settings.halfResolutionTrace = JsonManager::SafeGet(
+            shadowJson, "halfResolutionTrace", settings.halfResolutionTrace);
+        settings.upsamplePhiDepth = JsonManager::SafeGet(
+            shadowJson, "upsamplePhiDepth", settings.upsamplePhiDepth);
         settings.disableHistory = JsonManager::SafeGet(shadowJson, "disableHistory", settings.disableHistory);
         shadowManager->SetSettings(settings);
     }

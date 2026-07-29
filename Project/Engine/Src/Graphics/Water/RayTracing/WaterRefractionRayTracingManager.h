@@ -41,8 +41,8 @@ namespace CoreEngine
         };
 
         static constexpr uint32_t kViewCount = static_cast<uint32_t>(ViewID::Count);
-        static_assert(kViewCount <= RayTracingOutputViewSet::kMaxViewCount,
-            "WaterRefractionRayTracingManager: ViewID::Count exceeds RayTracingOutputViewSet::kMaxViewCount");
+        static_assert(kViewCount <= RayTracingOutputViewSet::kMaxSlotCount,
+            "WaterRefractionRayTracingManager: ViewID::Count exceeds RayTracingOutputViewSet::kMaxSlotCount");
 
         bool Initialize(
             DirectXCommon* dxCommon,

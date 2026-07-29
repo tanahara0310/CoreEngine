@@ -312,22 +312,13 @@ namespace CoreEngine
             ImGui::SetTooltip("小さいほど履歴を重視（0.15 = 履歴 85%）。1.0 で履歴を使わない。");
         }
 
-        // A-Trous パス数（ping-pong の都合で偶数のみ）
-        static const char* kAtrousLabels[] = { "0 (デノイズ無効)", "2 (step 1,2)", "4 (step 1,2,4,8)" };
-        static const int   kAtrousValues[] = { 0, 2, 4 };
-        int atrousIndex = 2;
-        for (int i = 0; i < 3; ++i) {
-            if (kAtrousValues[i] == shadowMgr->GetEffectiveAtrousPassCount()) { atrousIndex = i; }
-        }
-        if (ImGui::Combo("A-Trous パス数", &atrousIndex, kAtrousLabels, 3)) {
-            settings.atrousPassCount = kAtrousValues[atrousIndex];
-            changed = true;
-        }
+        // A-Trous パス数（Stage 3 で専用スクラッチを持たせたので任意値が指定できる）
+        changed |= ImGui::SliderInt("A-Trous パス数", &settings.atrousPassCount, 0, 4);
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "1 パスあたり約 0.28ms @1920x991。\n"
-                "ping-pong の都合で偶数のみ（Stage 3 で解消予定）。\n"
-                "1spp のシャドウに step=8（実効31x31）まで広げる必要は無い。");
+                "0 = デノイズ無効。1 パスごとにステップ幅が 1→2→4→8 と倍になる。\n"
+                "1spp のシャドウに step=8（実効31x31）まで広げる必要は無い。\n"
+                "Stage 2 まであった「偶数のみ」の制約は解消済み。");
         }
 
         changed |= ImGui::SliderFloat("深度エッジ重み (phiDepth)", &settings.denoisePhiDepth, 0.05f, 8.0f, "%.2f");
@@ -339,7 +330,23 @@ namespace CoreEngine
                 "この値の意味が変わっている。");
         }
 
+        changed |= ImGui::SliderFloat("アップサンプル深度重み", &settings.upsamplePhiDepth, 0.5f, 40.0f, "%.1f");
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "ハーフ解像度時のみ有効。\n"
+                "大きいほど深度が近いトレース結果しか採用しない（輪郭はシャープだがエイリアスが出る）。\n"
+                "小さいほど滑らかになるが物体境界を跨いで影が漏れる。");
+        }
+
         ImGui::PopItemWidth();
+
+        changed |= ImGui::Checkbox("ハーフ解像度トレース", &settings.halfResolutionTrace);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "トレース〜デノイズを 1/2 解像度で行い、最後にバイラテラルアップサンプルする。\n"
+                "レイ本数もデノイズの帯域も 1/4 になる（最終マスクはフル解像度のまま）。\n"
+                "サンプル位置はフレームごとに 2x2 を巡回し、テンポラル蓄積で回収する。");
+        }
 
         changed |= ImGui::Checkbox("射程を太陽高度でスケールする", &settings.scaleRayDistanceBySunElevation);
         if (ImGui::IsItemHovered()) {
@@ -433,7 +440,7 @@ namespace CoreEngine
             return;
         }
 
-        // 生マスク（denoiseTemp）と履歴はパス終了時 UAV / NON_PIXEL_SHADER_RESOURCE で
+        // 生マスク（Raw）と履歴はパス終了時 UAV / NON_PIXEL_SHADER_RESOURCE で
         // 残るため、そのまま ImGui::Image に渡すと不正な状態でのピクセルシェーダ読みになる。
         // このフレームだけ PIXEL_SHADER_RESOURCE へ遷移するよう要求する。
         // パネル（またはこのチェックボックス）を閉じれば要求が止まりバリアも消える。
@@ -443,7 +450,7 @@ namespace CoreEngine
         ImGui::SliderInt("対象ライト", &selectedLightIndex_, 0,
             static_cast<int>(RayTracingShadowManager::kMaxDirectionalLights) - 1);
 
-        // マスクは R32_FLOAT の 1 チャンネルなので、ImGui では赤成分のみで表示される
+        // マスクは R8_UNORM の 1 チャンネルなので、ImGui では赤成分のみで表示される
         // （0=影, 1=光 → 赤いほど光が当たっている）
         ImGui::TextDisabled("  1ch テクスチャのため赤で表示される（赤 = 非遮蔽 / 黒 = 影）");
 
@@ -462,13 +469,13 @@ namespace CoreEngine
         };
         const Entry entries[] = {
             { "1. Raw (RayGen 出力)",
-              "デノイズ前の生マスク。1spp なので 0/1 のバイナリノイズに見えるのが正常",
+              "デノイズ前の生マスク（トレース解像度）。1spp なので 0/1 のバイナリノイズに見えるのが正常",
               shadowMgr->GetRawShadowSRVHandle(viewId, li) },
-            { "2. Temporal 後 / A-Trous 後",
-              "テンポラル蓄積 → A-Trous を適用した最終マスク（DeferredLighting が読む実体）",
+            { "2. 最終マスク (フル解像度)",
+              "テンポラル蓄積 → A-Trous → アップサンプルまで通した実体（DeferredLighting が読む）",
               shadowMgr->GetShadowSRVHandle(viewId, li) },
-            { "3. History (前フレーム)",
-              "テンポラル蓄積の履歴。CopyResource で毎フレーム全画面コピーしている（Stage 3 で ping-pong 化）",
+            { "3. History (今フレームの書き込み先)",
+              "テンポラル蓄積の履歴（トレース解像度）。Stage 3 で 2 枚 ping-pong になり全画面コピーは廃止した",
               shadowMgr->GetHistorySRVHandle(viewId, li) },
         };
 

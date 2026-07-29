@@ -21,11 +21,9 @@ namespace CoreEngine
     class RayTracingOutputViewSet {
     public:
         /// @brief 管理可能なスロット数の上限
-        /// @details RT シャドウが view(2) × ライト(4) × 用途(3) = 24 スロットを使うため 32 を確保する。
-        static constexpr uint32_t kMaxSlotCount = 32;
-
-        /// @brief 旧名。水面パスは「スロット = view インデックス」で使っている
-        static constexpr uint32_t kMaxViewCount = kMaxSlotCount;
+        /// @details RT シャドウが view(2) × ライト(4) × 用途(6) = 48 スロットを使うため 64 を確保する
+        ///          （Stage 3 で履歴 ping-pong 用の 2 枚とハーフ解像度用の中間 2 枚が増えた）。
+        static constexpr uint32_t kMaxSlotCount = 64;
 
         /// @brief テクスチャ 1 枚の作成オプション
         struct TextureOptions {

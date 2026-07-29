@@ -150,7 +150,6 @@ namespace CoreEngine
                 cmdList,
                 stage.sceneDepthSRV,
                 stage.normalSRV,
-                stage.motionVectorSRV,
                 light.direction,
                 stage.invViewProj,
                 stage.width,
@@ -179,8 +178,6 @@ namespace CoreEngine
                 stage.sceneDepthSRV,
                 stage.motionVectorSRV,
                 stage.projection,
-                stage.width,
-                stage.height,
                 viewId,
                 li);
             });
@@ -202,8 +199,6 @@ namespace CoreEngine
                 stage.normalSRV,
                 stage.sceneDepthSRV,
                 stage.projection,
-                stage.width,
-                stage.height,
                 viewId,
                 li);
             });

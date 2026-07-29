@@ -5,7 +5,7 @@
 
 #include "../Include/Common/DepthReconstruction.hlsli"
 
-// 出力: シャドウマスク（0=影, 1=光）
+// 出力: シャドウマスク（0=影, 1=光）。トレース解像度（ハーフ解像度時はフルの半分）
 RWTexture2D<float> gShadowOutput : register(u0);
 
 // TLAS
@@ -17,14 +17,11 @@ Texture2D<float> gSceneDepth : register(t1);
 // G-Buffer: 法線（セルフシャドウバイアス用）
 Texture2D<float4> gNormalRoughness : register(t2);
 
-// テンポラル蓄積用: 前フレームのシャドウ蓄積結果
-Texture2D<float> gHistoryShadow : register(t3);
-
-// モーションベクター（GBuffer で書き込まれた NDC 差分）
-Texture2D<float2> gMotionVector : register(t4);
-
-// ライト方向 + ソフトシャドウ + テンポラル蓄積パラメータ
+// ライト方向 + ソフトシャドウ + 解像度パラメータ
 // C++ 側 ShadowRayConstants 構造体と厳密にレイアウトを合わせること
+// 注意: この cbuffer は全てスカラーで構成する。float2/float3 や配列を混ぜると
+// 16 バイト境界への切り上げが入り、gInvViewProj のオフセットが C++ 側とずれる
+// （2026-07-25 に影が全消失した原因がこれ）。
 cbuffer ShadowRayConstants : register(b0)
 {
     float3 gLightDirection; // 正規化済みライト方向（光源→シーン）
@@ -33,13 +30,14 @@ cbuffer ShadowRayConstants : register(b0)
     float gLightRadius; // 光源の角半径（ラジアン）：ペナンブラ幅を制御
     int gSoftShadowSamples; // ソフトシャドウのサンプル数（1=ハードシャドウ）
     uint gFrameIndex; // フレームカウンタ（ノイズのテンポラル変化用）
-    float gHistoryAlpha; // テンポラル蓄積ブレンド係数（初回フレームは 1.0）
-    float gScreenWidth; // スクリーン幅（ピクセル）
-    float gScreenHeight; // スクリーン高さ（ピクセル）
-    // 注意: ここをfloat配列(gPadding_[1])にしてはいけない。cbuffer内の配列は16バイト境界へ
-    // 整列されるため gInvViewProj がオフセット64へずれ、C++側(ShadowRayConstants, オフセット48)と
-    // 不一致になり深度復元行列が壊れる（2026-07-25に影が全消失した原因）。スカラーなら44..48に収まる。
-    float gPadding_;
+    float gScreenWidth; // フル解像度の幅（ピクセル）
+    float gScreenHeight; // フル解像度の高さ（ピクセル）
+    int gTraceOffsetX; // ハーフ解像度時の 2x2 サンプル位置（フレームごとに巡回）
+    int gTraceOffsetY;
+    int gTraceScale; // 1 = フル解像度 / 2 = ハーフ解像度
+    int gPad0_;
+    int gPad1_;
+    int gPad2_;
     float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
 };
 
@@ -98,8 +96,14 @@ void RTShadowRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
 
+    // ハーフ解像度時は、トレース座標に対応するフル解像度ピクセルを選ぶ。
+    // オフセットはフレームごとに 2x2 を巡回するので、テンポラル蓄積が
+    // 4 フレームで全サブピクセルの情報を回収する。
+    int2 fullCoord = int2(launchIndex) * gTraceScale + int2(gTraceOffsetX, gTraceOffsetY);
+    fullCoord = min(fullCoord, int2(int(gScreenWidth) - 1, int(gScreenHeight) - 1));
+
     // G-Buffer から深度を読み取り、ワールド座標を復元する
-    float ndcDepth = gSceneDepth.Load(int3(launchIndex, 0));
+    float ndcDepth = gSceneDepth.Load(int3(fullCoord, 0));
 
     // 背景ピクセルはスキップ → 影なし（1.0）
     if (IsBackgroundDepth(ndcDepth))
@@ -108,11 +112,11 @@ void RTShadowRayGen()
         return;
     }
 
-    float2 screenUV = (float2(launchIndex) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
+    float2 screenUV = (float2(fullCoord) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
     float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gInvViewProj);
 
     // G-Buffer から法線を読み取り（セルフシャドウ防止用）
-    float4 normalSample = gNormalRoughness.Load(int3(launchIndex, 0));
+    float4 normalSample = gNormalRoughness.Load(int3(fullCoord, 0));
     float3 N = normalize(normalSample.rgb * 2.0f - 1.0f);
 
     // ライト方向の逆（光源へ向かう方向）

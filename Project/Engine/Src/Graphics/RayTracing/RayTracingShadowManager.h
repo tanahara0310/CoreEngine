@@ -44,12 +44,22 @@ namespace CoreEngine
         ///< Variance Clampingと組み合わせて使用する固定値
 
         /// @brief A-Trous デノイズのパス数（0 = デノイズ無効）
-        /// @details ping-pong の都合で偶数のみ有効（奇数を渡すと切り捨てられる）。
-        ///          この制約は Stage 3 の履歴 ping-pong 化で解消予定。
-        ///          実測では 1 パスあたり約 0.28ms（1920x991）。
+        /// @details Stage 3 で専用の ping/pong スクラッチを 2 枚持たせたため、
+        ///          「偶数のみ」という旧制約は無くなり 0〜4 の任意値が指定できる。
         ///          既定 2: step 1,2（実効 7x7）。1spp の粒はテンポラル蓄積が主に均すため、
         ///          step 8（実効 31x31）まで広げても、得られる差よりコスト増のほうが大きい。
         int   atrousPassCount = 2;
+
+        /// @brief トレース〜デノイズをハーフ解像度で行い、最後にバイラテラルアップサンプルする
+        /// @details レイ本数・デノイズの帯域がともに 1/4 になる。最終マスク（DeferredLighting が
+        ///          読む実体）はフル解像度のまま。フレームごとに 2x2 のサンプル位置を巡回させ、
+        ///          テンポラル蓄積で 4 サブピクセルぶんの情報を回収する。
+        bool  halfResolutionTrace = true;
+
+        /// @brief アップサンプル時の深度エッジ重み係数
+        /// @details 大きいほど深度が近いトレース結果だけを採用する（＝境界がシャープになるが
+        ///          採用サンプルが減ってエイリアスが出やすい）。
+        float upsamplePhiDepth = 8.0f;
 
         /// @brief A-Trous / テンポラルの深度エッジ重み係数
         /// @details 大きいほどエッジ検出が厳しくなり（＝ぼけにくく）、小さいほど広くぼける。
@@ -86,38 +96,38 @@ namespace CoreEngine
         bool Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager,
             AccelerationStructureManager* asMgr);
 
-        /// @brief シャドウレイをディスパッチする
+        /// @brief シャドウレイをディスパッチする（3 ステージの最初。ここで解像度が確定する）
         /// @param lightIndex ディレクショナルライトのインデックス（0〜kMaxDirectionalLights-1）
         /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
         /// @param invViewProj 深度復元用 View*Projection の逆行列
+        /// @param width,height フル解像度。ハーフ解像度時のトレース解像度はここから導出する
         void Dispatch(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
             const Vector3& lightDirection,
             const Matrix4x4& invViewProj,
             UINT width, UINT height,
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
 
-        /// @brief A-Trous デノイズパスを実行する（Dispatch の直後に呼ぶ）
+        /// @brief 空間前処理＋テンポラル蓄積パスを実行する（Dispatch の直後に呼ぶ）
         /// @param projection 投影行列。深度重みの線形化にのみ使う（Stage 1 で invViewProj から変更）
-        void Denoise(ID3D12GraphicsCommandList* cmdList,
-            D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
-            const Matrix4x4& projection,
-            UINT width, UINT height,
-            ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0);
-
-        /// @brief 空間前処理＋テンポラル蓄積パスを実行する（Dispatch と Denoise の間に呼ぶ）
-        /// @param projection 投影行列。深度重みの線形化にのみ使う（Stage 1 で invViewProj から変更）
+        /// @note 解像度は Dispatch が確定させたものを使うので受け取らない
         void ApplyTemporal(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
             const Matrix4x4& projection,
-            UINT width, UINT height,
+            ViewID viewId = ViewID::GameView,
+            uint32_t lightIndex = 0);
+
+        /// @brief A-Trous デノイズ＋フル解像度への解決を実行する（ApplyTemporal の直後に呼ぶ）
+        /// @param projection 投影行列。深度重みの線形化にのみ使う（Stage 1 で invViewProj から変更）
+        /// @note 解像度は Dispatch が確定させたものを使うので受け取らない
+        void Denoise(ID3D12GraphicsCommandList* cmdList,
+            D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
+            const Matrix4x4& projection,
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
 
@@ -130,11 +140,11 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
 
         /// @brief RayGen が書いた生マスク（デノイズ前）の SRV を取得
-        /// @details RayGen の出力先は denoiseTemp。テンポラル・A-Trous の前段を見るために公開する。
+        /// @details 専用の Raw スロットなので、A-Trous を何パス回しても上書きされない。
         D3D12_GPU_DESCRIPTOR_HANDLE GetRawShadowSRVHandle(ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0) const;
 
-        /// @brief テンポラル蓄積の履歴テクスチャの SRV を取得
+        /// @brief テンポラル蓄積の履歴テクスチャ（今フレームの書き込み先）の SRV を取得
         D3D12_GPU_DESCRIPTOR_HANDLE GetHistorySRVHandle(ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0) const;
 
@@ -142,11 +152,14 @@ namespace CoreEngine
         const RayTracingDispatchInfo& GetDispatchInfo(ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0) const;
 
-        /// @brief 実際に適用される A-Trous パス数（偶数への切り捨て後）
+        /// @brief 実際に適用される A-Trous パス数（0〜kMaxAtrousPassCount へのクランプ後）
         int GetEffectiveAtrousPassCount() const;
 
+        /// @brief トレース解像度の縮小率（1 = フル解像度 / 2 = ハーフ解像度）
+        UINT GetTraceScale() const;
+
         /// @brief 中間バッファ（生マスク・履歴）を ImGui で表示することを要求する
-        /// @details denoiseTemp はパス終了時 UNORDERED_ACCESS、historyTexture は
+        /// @details Raw はパス終了時 UNORDERED_ACCESS、履歴テクスチャは
         ///          NON_PIXEL_SHADER_RESOURCE で残るため、そのまま ImGui::Image に渡すと
         ///          ピクセルシェーダから不正な状態で読むことになる。
         ///          表示したいフレームに本関数を呼ぶと、PrepareDebugViews が
@@ -200,7 +213,12 @@ namespace CoreEngine
         const RayTracingShadowSettings& GetSettings() const { return settings_; }
 
     private:
-        bool EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex, uint32_t lightIndex);
+        /// @brief (view, light) の全テクスチャを確保する
+        /// @param width,height           フル解像度（Mask のサイズ）
+        /// @param traceWidth,traceHeight トレース解像度（Mask 以外のサイズ）
+        /// @param traceScale             フル / トレースの比
+        bool EnsureOutputTexture(UINT width, UINT height, UINT traceWidth, UINT traceHeight,
+            UINT traceScale, uint32_t viewIndex, uint32_t lightIndex);
 
         // dxCommon_ / descriptorManager_ / asMgr_ / globalRootSigMgr_ / stateObject_ /
         // stateObjectProperties_ / shaderTableBuilder_ / outputViews_ / isInitialized_ は
@@ -218,8 +236,6 @@ namespace CoreEngine
             UINT scene = 0;
             UINT sceneDepth = 0;
             UINT normalRoughness = 0;
-            UINT historyShadow = 0;
-            UINT motionVector = 0;
             UINT constants = 0;
         };
         RootParamIndices rootParams_{};
@@ -227,10 +243,14 @@ namespace CoreEngine
         /// @brief 1 つの (view, light) が持つテクスチャの用途
         /// @details 実体は共通基盤の RayTracingOutputViewSet が持ち、
         ///          ここではスロット番号への写像だけを定義する（Stage 2c）。
+        ///          Mask 以外は「トレース解像度」（ハーフ解像度時はフルの半分）で確保する。
         enum class TextureSlot : uint32_t {
-            Mask = 0,        ///< 最終シャドウマスク（DeferredLighting が読む）
-            History = 1,     ///< テンポラル蓄積の履歴（UAV 不要・COPY_DEST + SRV）
-            DenoiseTemp = 2, ///< RayGen の生出力兼 A-Trous の ping-pong 相手
+            Mask = 0,        ///< 最終シャドウマスク（フル解像度・DeferredLighting が読む）
+            Raw = 1,         ///< RayGen の生出力（デバッグ表示用に温存する）
+            DenoiseA = 2,    ///< A-Trous の ping
+            DenoiseB = 3,    ///< A-Trous の pong
+            HistoryA = 4,    ///< テンポラル履歴（偶数フレーム）
+            HistoryB = 5,    ///< テンポラル履歴（奇数フレーム）
             Count
         };
         static constexpr uint32_t kTextureSlotCount = static_cast<uint32_t>(TextureSlot::Count);
@@ -247,11 +267,26 @@ namespace CoreEngine
 
         /// @brief ビュー × ライトごとの、テクスチャ以外の状態
         struct ShadowView {
-            UINT width = 0;
+            UINT width = 0;          ///< フル解像度（Mask のサイズ）
             UINT height = 0;
+            UINT traceWidth = 0;     ///< トレース解像度（Mask 以外のサイズ）
+            UINT traceHeight = 0;
+            UINT traceScale = 1;     ///< フル / トレースの比（1 or 2）
+            UINT traceOffsetX = 0;   ///< 今フレームの 2x2 サンプル位置（ハーフ解像度時のみ非ゼロ）
+            UINT traceOffsetY = 0;
             bool dispatchedThisFrame = false;
-            bool isHistoryValid = false; ///< 履歴テクスチャが初回フレーム書き込み済みか
+            bool isHistoryValid = false;   ///< 履歴テクスチャが初回フレーム書き込み済みか
+            uint32_t historyParity = 0;    ///< 今フレームの書き込み先（0 = HistoryA / 1 = HistoryB）
             RayTracingDispatchInfo dispatchInfo{}; ///< デバッグ表示用（Dispatch のたびに更新）
+
+            /// @brief 今フレームのテンポラル出力先（次フレームの履歴）
+            TextureSlot CurrentHistorySlot() const {
+                return (historyParity == 0) ? TextureSlot::HistoryA : TextureSlot::HistoryB;
+            }
+            /// @brief 前フレームのテンポラル出力（今フレームが読む履歴）
+            TextureSlot PreviousHistorySlot() const {
+                return (historyParity == 0) ? TextureSlot::HistoryB : TextureSlot::HistoryA;
+            }
         };
         ShadowView views_[kViewCount][kMaxDirectionalLights]{};
 
@@ -271,6 +306,12 @@ namespace CoreEngine
 
         /// @brief A-Trous デノイズの最大パス数（kSteps / kPhi* テーブルの要素数）
         static constexpr int kMaxAtrousPassCount = 4;
+
+        /// @brief シャドウ関連テクスチャのフォーマット
+        /// @details マスクは 0〜1 の 1 チャンネルなので R8_UNORM で足り、
+        ///          R32_FLOAT 比で全パスの帯域が 1/4 になる（Stage 3）。
+        ///          テンポラル蓄積の量子化が気になる場合はここを R16_FLOAT へ変えるだけでよい。
+        static constexpr DXGI_FORMAT kShadowTextureFormat = DXGI_FORMAT_R8_UNORM;
 
         /// @brief 太陽高度による射程距離の最大倍率（高度 ~5.7° 相当で頭打ち）
         /// @details 際限なく伸ばすと地平線近くでトラバースが爆発するため上限を設ける。
@@ -298,5 +339,35 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12RootSignature> temporalRootSignature_;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> temporalPipelineState_;
         bool temporalInitialized_ = false;
+
+        // トレース解像度 → フル解像度への解決（バイラテラルアップサンプル）パイプライン
+        Microsoft::WRL::ComPtr<ID3D12RootSignature> resolveRootSignature_;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> resolvePipelineState_;
+        bool resolveInitialized_ = false;
+
+        /// @brief トレース解像度の結果をフル解像度 Mask へ書き出す
+        /// @param sourceSlot 解決元（A-Trous の最終出力、またはパス数 0 なら履歴）
+        void ResolveToFullResolution(
+            ID3D12GraphicsCommandList* cmdList,
+            D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
+            const Matrix4x4& projection,
+            uint32_t viewIndex,
+            uint32_t lightIndex,
+            TextureSlot sourceSlot);
+
+        /// @brief コンピュートパイプライン（RS + PSO）をまとめて構築する共通ヘルパー
+        /// @param srvCount  連続する t0..t(srvCount-1) のディスクリプタテーブル数
+        /// @param constantDwordCount b0 のルート定数の dword 数
+        /// @details デノイズ / テンポラル / 解決の 3 本が「SRV テーブル n 個 + UAV テーブル 1 個
+        ///          + ルート定数 1 個」という完全に同じ形をしていたので 1 か所へまとめた。
+        ///          ルートパラメータ番号は t0..=0..n-1 / u0=n / b0=n+1 で固定される。
+        bool CreateComputePass(
+            const wchar_t* shaderPath,
+            UINT srvCount,
+            UINT constantDwordCount,
+            const char* debugLabel,
+            Microsoft::WRL::ComPtr<ID3D12RootSignature>& outRootSignature,
+            Microsoft::WRL::ComPtr<ID3D12PipelineState>& outPipelineState);
     };
 }
