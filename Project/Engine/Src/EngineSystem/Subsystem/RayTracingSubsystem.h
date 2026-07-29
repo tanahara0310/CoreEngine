@@ -10,12 +10,14 @@
 #include "Math/Vector/Vector3.h"
 
 #include <d3d12.h>
+#include <functional>
 
 struct ID3D12GraphicsCommandList;
 
 namespace CoreEngine
 {
     struct RenderContext;
+    struct Light;
     class DirectXCommon;
     class ModelManager;
     class SceneManager;
@@ -95,6 +97,32 @@ namespace CoreEngine
 
     private:
         /// @brief 水面 RT ディスパッチ 3 種で共通の入力一式
+        /// @brief RT シャドウ 3 ステージ共通の入力一式
+        /// @details Trace / Temporal / Denoise が同じ前処理をコピペしていたのを集約した（Stage 2d）。
+        struct ShadowStageContext {
+            RayTracingShadowManager* rtShadow = nullptr;
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV{};
+            D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
+            D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV{};
+            Matrix4x4 projection{};   ///< 深度線形化用（Temporal / Denoise）
+            Matrix4x4 invViewProj{};  ///< ワールド座標復元用（RayGen のみ）
+            UINT width = 0;
+            UINT height = 0;
+        };
+
+        /// @brief RT シャドウ各ステージの共通前処理
+        /// @return 前提が揃ったか。false のときはディスパッチしてはいけない。
+        static bool BuildShadowStageContext(
+            const RenderContext& context,
+            DirectXCommon* dx,
+            ID3D12GraphicsCommandList* cmdList,
+            ShadowStageContext& outStageContext);
+
+        /// @brief 影を落とす有効なディレクショナルライトを列挙する
+        static void ForEachShadowCastingLight(
+            const RenderContext& context,
+            const std::function<void(uint32_t lightIndex, const Light& light)>& body);
+
         struct WaterDispatchContext {
             ICamera* camera = nullptr;
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV{};

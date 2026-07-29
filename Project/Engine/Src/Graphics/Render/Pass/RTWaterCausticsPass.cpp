@@ -85,19 +85,19 @@ namespace CoreEngine
 
         // 診断ログは UI の「RTログを有効にする」でのみ出す（以前は毎フレーム無条件だった）
         if (context.rtWaterCausticsManager->GetSettings().debugLogEnabled != 0) {
-            const auto& diagnostics = context.rtWaterCausticsManager->GetLastDiagnostics();
+            const auto& diagnostics = context.rtWaterCausticsManager->GetDispatchInfo();
             Logger::GetInstance().Infof(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
                 "RTWaterCausticsPass: status={} viewIndex={} waterHeight={:.3f} activeWaveCount={} size={}x{} blasCount={} outputSRV=0x{:X}",
-                WaterCausticsRayTracingManager::ToString(diagnostics.status),
+                ToString(diagnostics.status),
                 diagnostics.viewIndex,
-                diagnostics.waterHeight,
-                diagnostics.activeWaveCount,
+                context.rtWaterCausticsManager->GetLastWaterHeight(),
+                context.rtWaterCausticsManager->GetLastActiveWaveCount(),
                 diagnostics.width,
                 diagnostics.height,
                 diagnostics.blasCount,
-                diagnostics.outputSrv);
+                diagnostics.outputSrvPtr);
         }
 
         if (context.frameBlackboard) {

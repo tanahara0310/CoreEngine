@@ -403,7 +403,16 @@
     <ClCompile Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.cpp">
@@ -764,6 +773,9 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp">
@@ -1302,10 +1314,19 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h">
@@ -1933,6 +1954,9 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h">

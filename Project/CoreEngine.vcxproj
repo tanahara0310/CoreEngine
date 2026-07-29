@@ -320,7 +320,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
@@ -441,6 +444,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\ObjectSelector.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\PixCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneManagerTab.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp" />
@@ -636,8 +640,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterCausticsRayTracingManager.h" />
@@ -847,6 +854,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\ObjectSelector.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\PixCapture.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneManagerTab.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ScreenCapture.h" />

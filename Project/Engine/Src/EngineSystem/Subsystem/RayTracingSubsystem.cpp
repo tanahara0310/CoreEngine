@@ -86,51 +86,78 @@ namespace CoreEngine
         }
     }
 
+    bool RayTracingSubsystem::BuildShadowStageContext(
+        const RenderContext& context,
+        DirectXCommon* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        ShadowStageContext& outStageContext)
+    {
+        auto* rtShadow = context.rtShadowManager;
+        if (!rtShadow || !rtShadow->IsInitialized()) return false;
+        if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return false;
+        if (!dx || !cmdList) return false;
+
+        // TODO(Stage 2d 積み残し): ここは実行中のビューに関わらず GameView のカメラを使っている。
+        // ReflectionView へ RT シャドウを出すと行列が食い違うが、現在は
+        // Scene::BuildRenderViewRequests() が反射ビューを発行しないため発火しない。
+        // ViewID::ReflectionView を復活させる場合は、ビュー別のカメラ供給を先に用意すること。
+        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
+        if (!camera) return false;
+
+        outStageContext.rtShadow = rtShadow;
+
+        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(
+                FrameBlackboard::SceneDepth, outStageContext.sceneDepthSRV);
+        }
+        outStageContext.projection = camera->GetProjectionMatrix();
+        outStageContext.invViewProj = MathCore::Matrix::Inverse(
+            camera->GetViewMatrix() * outStageContext.projection);
+        outStageContext.normalSRV =
+            context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
+        outStageContext.motionVectorSRV =
+            context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
+        outStageContext.width = static_cast<UINT>(dx->GetClientWidth());
+        outStageContext.height = static_cast<UINT>(dx->GetClientHeight());
+        return true;
+    }
+
+    void RayTracingSubsystem::ForEachShadowCastingLight(
+        const RenderContext& context,
+        const std::function<void(uint32_t lightIndex, const Light& light)>& body)
+    {
+        const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
+        for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
+            auto* dirLight = context.lightManager->GetDirectionalLight(li);
+            if (!dirLight || !dirLight->enabled) continue;
+            body(li, *dirLight);
+        }
+    }
+
     void RayTracingSubsystem::DispatchRTShadowTrace(
         const RenderContext& context,
         DirectXCommon* dx,
         ID3D12GraphicsCommandList* cmdList,
         RayTracingShadowManager::ViewID viewId)
     {
-        auto* rtShadow = context.rtShadowManager;
-        if (!rtShadow || !rtShadow->IsInitialized()) return;
-        if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return;
-        if (!dx || !cmdList) return;
-
-        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
-        if (!camera) return;
-
-        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
-        if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
-        }
-        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(
-            camera->GetViewMatrix() * camera->GetProjectionMatrix());
-        auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
-        auto motionVecSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
-
-        const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
-        const UINT width = static_cast<UINT>(dx->GetClientWidth());
-        const UINT height = static_cast<UINT>(dx->GetClientHeight());
+        ShadowStageContext stage;
+        if (!BuildShadowStageContext(context, dx, cmdList, stage)) return;
 
         // 全ライト分 DispatchRays を先に実行（GPU パイプラインを詰めるため）
-        for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
-            auto* dirLight = context.lightManager->GetDirectionalLight(li);
-            if (!dirLight || !dirLight->enabled) continue;
-
-            rtShadow->Dispatch(
+        ForEachShadowCastingLight(context, [&](uint32_t li, const Light& light) {
+            stage.rtShadow->Dispatch(
                 cmdList,
-                worldPosSRV,
-                normalSRV,
-                motionVecSRV,
-                dirLight->direction,
-                invViewProj,
-                width,
-                height,
+                stage.sceneDepthSRV,
+                stage.normalSRV,
+                stage.motionVectorSRV,
+                light.direction,
+                stage.invViewProj,
+                stage.width,
+                stage.height,
                 viewId,
                 li);
-        }
+            });
 
         // GBuffer 入力の前後状態遷移は RenderGraph 側の自動遷移へ委譲する。
     }
@@ -141,44 +168,22 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList,
         RayTracingShadowManager::ViewID viewId)
     {
-        auto* rtShadow = context.rtShadowManager;
-        if (!rtShadow || !rtShadow->IsInitialized()) return;
-        if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return;
-        if (!dx || !cmdList) return;
-
-        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
-        if (!camera) return;
-
-        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
-        if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
-        }
-        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(
-            camera->GetViewMatrix() * camera->GetProjectionMatrix());
-        auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
-        auto motionVecSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
-
-        const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
-        const UINT width = static_cast<UINT>(dx->GetClientWidth());
-        const UINT height = static_cast<UINT>(dx->GetClientHeight());
+        ShadowStageContext stage;
+        if (!BuildShadowStageContext(context, dx, cmdList, stage)) return;
 
         // 全ライト分 テンポラル蓄積パス（空間前処理+再投影+Variance Clamping）
-        for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
-            auto* dirLight = context.lightManager->GetDirectionalLight(li);
-            if (!dirLight || !dirLight->enabled) continue;
-
-            rtShadow->ApplyTemporal(
+        ForEachShadowCastingLight(context, [&](uint32_t li, const Light&) {
+            stage.rtShadow->ApplyTemporal(
                 cmdList,
-                normalSRV,
-                worldPosSRV,
-                motionVecSRV,
-                invViewProj,
-                width,
-                height,
+                stage.normalSRV,
+                stage.sceneDepthSRV,
+                stage.motionVectorSRV,
+                stage.projection,
+                stage.width,
+                stage.height,
                 viewId,
                 li);
-        }
+            });
     }
 
     void RayTracingSubsystem::DispatchRTShadowDenoise(
@@ -187,42 +192,26 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList,
         RayTracingShadowManager::ViewID viewId)
     {
-        auto* rtShadow = context.rtShadowManager;
-        if (!rtShadow || !rtShadow->IsInitialized()) return;
-        if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return;
-        if (!dx || !cmdList) return;
-
-        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
-        if (!camera) return;
-
-        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
-        D3D12_GPU_DESCRIPTOR_HANDLE worldPosSRV{};
-        if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, worldPosSRV);
-        }
-        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(
-            camera->GetViewMatrix() * camera->GetProjectionMatrix());
-        auto normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
-
-        const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
-        const UINT width = static_cast<UINT>(dx->GetClientWidth());
-        const UINT height = static_cast<UINT>(dx->GetClientHeight());
+        ShadowStageContext stage;
+        if (!BuildShadowStageContext(context, dx, cmdList, stage)) return;
 
         // 全ライト分 A-Trous デノイズをまとめて実行
-        for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
-            auto* dirLight = context.lightManager->GetDirectionalLight(li);
-            if (!dirLight || !dirLight->enabled) continue;
-
-            rtShadow->Denoise(
+        ForEachShadowCastingLight(context, [&](uint32_t li, const Light&) {
+            stage.rtShadow->Denoise(
                 cmdList,
-                normalSRV,
-                worldPosSRV,
-                invViewProj,
-                width,
-                height,
+                stage.normalSRV,
+                stage.sceneDepthSRV,
+                stage.projection,
+                stage.width,
+                stage.height,
                 viewId,
                 li);
-        }
+            });
+
+        // RT シャドウの全ステージが終わったので、デバッグパネルが中間バッファ
+        // （生マスク・履歴）を ImGui で表示できる状態へ整える。
+        // パネルが要求していないフレームは何もしない。
+        stage.rtShadow->PrepareDebugViews(cmdList);
     }
 
     bool RayTracingSubsystem::BuildWaterDispatchContext(

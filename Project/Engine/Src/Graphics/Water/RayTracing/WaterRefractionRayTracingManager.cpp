@@ -196,7 +196,7 @@ namespace CoreEngine
                 viewIndex,
                 width,
                 height,
-                lastDiagnostics_.blasCount,
+                lastDispatchInfo_.blasCount,
                 dispatchSurfaceData.waterHeight,
                 dispatchSurfaceData.simulationType,
                 surfaceConstants.activeWaveCount,
@@ -249,7 +249,7 @@ namespace CoreEngine
 
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
         resources.cmdList4->DispatchRays(&dispatchDesc);
-        lastDiagnostics_.status = DispatchStatus::Dispatched;
+        lastDispatchInfo_.status = RayTracingDispatchStatus::Dispatched;
 
         EndOutputWrite(
             cmdList,

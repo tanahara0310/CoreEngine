@@ -13,11 +13,13 @@
 #include "Editor/ImGui/KeyConfigUI.h"
 #include "Editor/ImGui/EngineStatsWindow.h"
 #include "Editor/ImGui/RenderPassDebugPanel.h"
+#include "Editor/ImGui/RayTracingDebugPanel.h"
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Editor/Environment/VolumetricCloudEditor.h"
 #include "Editor/Environment/AtmosphereSettingsSection.h"
 #include "Editor/Environment/VolumetricCloudSettingsSection.h"
 #include "Graphics/PostEffect/Effect/PostEffectSettingsSection.h"
+#include "Graphics/RayTracing/RayTracingSettingsSection.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueSettingsSection.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
@@ -94,6 +96,7 @@ namespace CoreEngine
         std::unique_ptr<EngineStatsWindow> engineStatsWindow_;
         KeyConfigUI keyConfigUI_;
         RenderPassDebugPanel renderPassDebugPanel_;
+        RayTracingDebugPanel rayTracingDebugPanel_;
 
         // 環境エディタ（大気・雲はエンジン既定機能のため、シーンに依存せずエンジン寿命で保持する）
         // gameDebugUI_ より後に宣言し、デストラクタでの登録解除が UI 解放前に走るようにする
@@ -107,6 +110,7 @@ namespace CoreEngine
         std::unique_ptr<VolumetricCloudSettingsSection> cloudSettingsSection_;
         std::unique_ptr<PostEffectSettingsSection> postEffectSettingsSection_;
         std::unique_ptr<RenderingTechniqueSettingsSection> renderingTechniqueSettingsSection_;
+        std::unique_ptr<RayTracingSettingsSection> rayTracingSettingsSection_;
     };
 }
 

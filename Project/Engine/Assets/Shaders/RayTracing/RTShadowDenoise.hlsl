@@ -30,9 +30,11 @@ cbuffer DenoiseConstants : register(b0)
     float gPhiDepth;
     int gScreenWidth;
     int gScreenHeight;
-    float gPadding0;
-    float gPadding1;
-    float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
+    // 深度重みに使う線形化パラメータ float2(proj._33, proj._43)。
+    // 以前は gInvViewProj(16 float) を受け取り、1 タップごとに 4x4 行列積で
+    // ワールド座標を復元してから length() を取っていた（1px あたり 10 回 × 4 パス = 40 回）。
+    // 深度差しか要らないので線形ビュー深度で十分。C++ 側 DenoiseConstants と要一致。
+    float2 gProjZW;
 };
 
 static const float kKernel[3][3] =
@@ -56,11 +58,11 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
         return;
     }
 
-    float2 centerUV = (float2(coord) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
-    float3 centerWorldPos = ReconstructWorldPosition(ScreenUVToNDC(centerUV), centerNdcDepth, gInvViewProj);
-
     float3 centerNormal = normalize(gNormalRoughness.Load(int3(coord, 0)).rgb * 2.0f - 1.0f);
-    float centerDepth = length(centerWorldPos);
+    // 旧実装は length(worldPos)＝ワールド原点からの距離を深度扱いしていた。
+    // 視線方向に沿っていないので、原点から等距離のシルエット両側でエッジを検出できない。
+    // 線形ビュー深度に置き換えることで安くなり、かつ指標としても正しくなる。
+    float centerDepth = LinearizeViewDepth(centerNdcDepth, gProjZW);
     float centerShadow = gInputShadow.Load(int3(coord, 0));
 
     float weightSum = 0.0f;
@@ -81,11 +83,8 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
             if (IsBackgroundDepth(sampleNdcDepth))
                 continue;
 
-            float2 sampleUV = (float2(sampleCoord) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
-            float3 sampleWorldPos = ReconstructWorldPosition(ScreenUVToNDC(sampleUV), sampleNdcDepth, gInvViewProj);
-
             float3 sampleNormal = normalize(gNormalRoughness.Load(int3(sampleCoord, 0)).rgb * 2.0f - 1.0f);
-            float sampleDepth = length(sampleWorldPos);
+            float sampleDepth = LinearizeViewDepth(sampleNdcDepth, gProjZW);
             float sampleShadow = gInputShadow.Load(int3(sampleCoord, 0));
 
             float w = kKernel[dy + 1][dx + 1];

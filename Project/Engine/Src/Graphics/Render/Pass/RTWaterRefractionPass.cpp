@@ -82,18 +82,18 @@ namespace CoreEngine
         // 診断ログは UI の「RT屈折ログを有効にする」でのみ出す
         // （以前は毎フレーム 3 本が無条件に流れていた）
         if (context.rtWaterRefractionManager->GetSettings().debugLogEnabled != 0) {
-            const auto& diagnostics = context.rtWaterRefractionManager->GetLastDiagnostics();
+            const auto& diagnostics = context.rtWaterRefractionManager->GetDispatchInfo();
             Logger::GetInstance().Infof(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
                 "RTWaterRefractionPass: status={} viewIndex={} waterHeight={:.3f} size={}x{} blasCount={} outputSRV=0x{:X}",
-                WaterRefractionRayTracingManager::ToString(diagnostics.status),
+                ToString(diagnostics.status),
                 diagnostics.viewIndex,
-                diagnostics.waterHeight,
+                context.rtWaterRefractionManager->GetLastWaterHeight(),
                 diagnostics.width,
                 diagnostics.height,
                 diagnostics.blasCount,
-                diagnostics.outputSrv);
+                diagnostics.outputSrvPtr);
         }
     }
 }

@@ -32,10 +32,10 @@ cbuffer TemporalConstants : register(b0)
     int gScreenHeight;
     float gHistoryAlpha; // 通常時のブレンド係数（例: 0.15 = 85% 履歴採用）
     float gDisableHistory; // 1.0 で履歴を完全無効化（初回フレーム用）
-    // 注意: float gPadding[4] のような配列パディングは禁止（cbuffer配列は要素毎に16バイト整列され
-    // gInvViewProj がオフセット80へずれてC++側(TemporalConstants, オフセット32)と不一致になる）。
-    float4 gPadding;
-    float4x4 gInvViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
+    // 深度重みに使う線形化パラメータ float2(proj._33, proj._43)。
+    // 以前は gInvViewProj(16 float) で 1px あたり 10 回ワールド座標を復元していた。
+    // 深度差しか要らないので線形ビュー深度で足りる。C++ 側 TemporalConstants と要一致。
+    float2 gProjZW;
 };
 
 [numthreads(8, 8, 1)]
@@ -53,11 +53,9 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
         return;
     }
 
-    float2 cUV = (float2(coord) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
-    float3 cWorldPos = ReconstructWorldPosition(ScreenUVToNDC(cUV), cNdcDepth, gInvViewProj);
-
     float3 cNormal = normalize(gGBufferNormal.Load(int3(coord, 0)).rgb * 2.0f - 1.0f);
-    float cDepth = length(cWorldPos);
+    // 深度差しか使わないので線形ビュー深度で足りる（旧: ワールド座標復元 + length）
+    float cDepth = LinearizeViewDepth(cNdcDepth, gProjZW);
 
     // 法線・深度ガイドの 3×3 空間前処理
     //   バイナリを準連続値に変換しつつ、近傍範囲 [cMin, cMax] を取得
@@ -80,11 +78,8 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
             if (IsBackgroundDepth(nNdcDepth))
                 continue;
 
-            float2 nUV = (float2(nc) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
-            float3 nwp = ReconstructWorldPosition(ScreenUVToNDC(nUV), nNdcDepth, gInvViewProj);
-
             float3 nNormal = normalize(gGBufferNormal.Load(int3(nc, 0)).rgb * 2.0f - 1.0f);
-            float nDepth = length(nwp);
+            float nDepth = LinearizeViewDepth(nNdcDepth, gProjZW);
 
             // 幾何類似度
             float wNormal = pow(max(0.0f, dot(cNormal, nNormal)), 32.0f);

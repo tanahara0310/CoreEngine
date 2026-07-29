@@ -10,53 +10,62 @@ namespace CoreEngine
     class DirectXCommon;
     class DescriptorManager;
 
-    /// @brief DXR 水面パス（屈折/コースティクス等）が使う view 毎の UAV/SRV 出力テクスチャを
-    ///        まとめて管理するクラス。
-    /// @details EnsureTexture() はサイズ変更時のみテクスチャを再確保し、UAV/SRV を再生成する。
-    ///          各 view の現在ステートも保持し、ResourceBarrierHelper と組み合わせて使用する。
-    ///          WaterRefractionRayTracingManager / WaterCausticsRayTracingManager など、
-    ///          同一パターンの RT パスから共有利用されることを想定している。
-    ///          view 数は固定上限 kMaxViewCount 以内で、呼び出し元が viewIndex で管理する
-    ///          （現状は GameView/ReflectionView の 2 view のみ使用）。
+    /// @brief DXR パスが使う UAV/SRV 出力テクスチャをスロット単位でまとめて管理するクラス
+    /// @details EnsureTexture() はサイズ・フォーマット変更時のみテクスチャを再確保し、UAV/SRV を再生成する。
+    ///          各スロットの現在ステートも保持し、ResourceBarrierHelper と組み合わせて使用する。
+    ///
+    ///          **スロットの意味は呼び出し元が決める。** 平坦な添字なので、
+    ///          水面パスのように「view ごとに 1 枚」でも、
+    ///          RT シャドウのように「view × ライト × 用途（マスク/履歴/中間）」でも表現できる
+    ///          （Stage 2b で view 固定から一般化した）。
     class RayTracingOutputViewSet {
     public:
-        /// @brief 管理可能な view 数の上限（現状は GameView/ReflectionView の 2）
-        static constexpr uint32_t kMaxViewCount = 2;
+        /// @brief 管理可能なスロット数の上限
+        /// @details RT シャドウが view(2) × ライト(4) × 用途(3) = 24 スロットを使うため 32 を確保する。
+        static constexpr uint32_t kMaxSlotCount = 32;
 
-        /// @brief 指定 view の出力
-        /// @param descriptorManager UAV/SRV 作成用
-        /// @param width             テクスチャ幅
-        /// @param height            テクスチャ高さ
-        /// @param viewIndex         view インデックス（0 以上 ViewCount 未満）
-        /// @param ownerName         ログ出力用の呼び出し元名（例: "WaterRefractionRayTracingManager"）
-        /// @param uavDebugName      UAV 作成時のデバッグ名
-        /// @param srvDebugName      SRV 作成時のデバッグ名
-        /// @param format            テクスチャフォーマット（省略時 R16G16B16A16_FLOAT）
+        /// @brief 旧名。水面パスは「スロット = view インデックス」で使っている
+        static constexpr uint32_t kMaxViewCount = kMaxSlotCount;
+
+        /// @brief テクスチャ 1 枚の作成オプション
+        struct TextureOptions {
+            DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+            /// @brief UAV を作るか。false ならリソースに ALLOW_UNORDERED_ACCESS も付けない
+            ///        （テンポラル履歴のように「コピー先＋SRV」だけで足りるテクスチャ用）
+            bool allowUAV = true;
+            /// @brief 作成直後のリソースステート
+            D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        };
+
+        /// @brief 指定スロットのテクスチャを確保する（サイズ・フォーマットが同じなら何もしない）
+        /// @param slotIndex   スロット番号（0 以上 kMaxSlotCount 未満）
+        /// @param ownerName   ログ出力用の呼び出し元名
+        /// @param debugName   ディスクリプタのデバッグ名の接頭辞（"_UAV" / "_SRV" が付く）
         /// @return 確保に成功した場合 true
         bool EnsureTexture(
             DirectXCommon* dxCommon,
             DescriptorManager* descriptorManager,
             UINT width,
             UINT height,
-            uint32_t viewIndex,
+            uint32_t slotIndex,
             const char* ownerName,
-            const std::string& uavDebugName,
-            const std::string& srvDebugName,
-            DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT);
+            const std::string& debugName,
+            const TextureOptions& options);
 
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle(uint32_t viewIndex) const { return views_[viewIndex].srvHandle; }
-        D3D12_GPU_DESCRIPTOR_HANDLE GetUAVHandle(uint32_t viewIndex) const { return views_[viewIndex].uavHandle; }
-        ID3D12Resource* GetResource(uint32_t viewIndex) const { return views_[viewIndex].texture.Get(); }
-        D3D12_RESOURCE_STATES& GetCurrentState(uint32_t viewIndex) { return views_[viewIndex].currentState; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle(uint32_t slotIndex) const { return slots_[slotIndex].srvHandle; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetUAVHandle(uint32_t slotIndex) const { return slots_[slotIndex].uavHandle; }
+        ID3D12Resource* GetResource(uint32_t slotIndex) const { return slots_[slotIndex].texture.Get(); }
+        D3D12_RESOURCE_STATES& GetCurrentState(uint32_t slotIndex) { return slots_[slotIndex].currentState; }
+        bool HasTexture(uint32_t slotIndex) const { return slots_[slotIndex].texture != nullptr; }
+        UINT GetWidth(uint32_t slotIndex) const { return slots_[slotIndex].width; }
+        UINT GetHeight(uint32_t slotIndex) const { return slots_[slotIndex].height; }
 
-        /// @brief サイズが一致しない場合のみ、指定 view のテクスチャ/ハンドルを解放する
+        /// @brief サイズが一致しない場合のみ、指定スロットのテクスチャを解放する
         /// @details 実際の再生成は次回の EnsureTexture() 呼び出しまで遅延される。
-        ///          Resize() 通知を受けてから実際の Dispatch までテクスチャ確保を遅延させたい
-        ///          呼び出し元（例: キャッシュ済み Resize 通知）向けのヘルパー。
-        void ReleaseIfSizeMismatch(UINT width, UINT height, uint32_t viewIndex);
+        void ReleaseIfSizeMismatch(UINT width, UINT height, uint32_t slotIndex);
 
     private:
-        struct View {
+        struct Slot {
             Microsoft::WRL::ComPtr<ID3D12Resource> texture;
             D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
             D3D12_CPU_DESCRIPTOR_HANDLE uavCpuHandle{};
@@ -64,9 +73,10 @@ namespace CoreEngine
             D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
             UINT width = 0;
             UINT height = 0;
+            DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
             D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         };
 
-        View views_[kMaxViewCount]{};
+        Slot slots_[kMaxSlotCount]{};
     };
 }

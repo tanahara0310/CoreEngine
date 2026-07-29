@@ -300,9 +300,10 @@ namespace CoreEngine
             context.renderTargetManager = render->GetRenderTargetManager();
         }
 
-        // コマンドリストは debug->BeginRenderPipeline 等へ渡すため USE_IMGUI 外で宣言する
-        // （リリースビルドではこれらの呼び出し自体が存在しない）
-        ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
+        // コマンドリストは debug->BeginRenderPipeline 等へ渡すため USE_IMGUI 外で宣言する。
+        // USE_IMGUI 無効（Release）ではこれらの呼び出し自体が消えて未使用になるため、
+        // maybe_unused を付ける（Release は TreatWarningAsError なので C4189 でビルドが止まる）。
+        [[maybe_unused]] ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
 
 #ifdef USE_IMGUI
         // プロファイラのリングスロットは記録中フレームインデックスに合わせる
