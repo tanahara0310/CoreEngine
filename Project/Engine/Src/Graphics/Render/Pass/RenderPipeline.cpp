@@ -23,6 +23,11 @@
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/LensFlare/LensFlare.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
+#include "Graphics/Render/RenderingTechnique/TAA/TAATechnique.h"
+#include "Graphics/Render/RenderingTechnique/CAS/CASTechnique.h"
+#include "CASPass.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Camera/CameraManager.h"
 #include "Camera/ICamera.h"
@@ -144,6 +149,156 @@ namespace CoreEngine
             context.renderTargetManager->CreateRenderTarget(desc);
         }
 
+        // TAA が今フレームこの View で走るか。
+        // 「履歴ターゲットを用意するか」「ポストエフェクト列の入力を TAAOutput へ差し替えるか」の
+        // 両方がこの判定を共有する必要があるため、1 箇所にまとめる。
+        bool IsTAAActive(const RenderContext& context)
+        {
+            if (context.viewSettings.viewType != RenderViewType::GameView) {
+                return false;
+            }
+            if (!context.renderingTechniqueManager) {
+                return false;
+            }
+
+            const auto* taa = context.renderingTechniqueManager->GetTechnique<TAATechnique>(
+                RenderingTechniqueNames::TAA);
+            return taa && taa->IsEnabled();
+        }
+
+        // CAS が今フレームこの View で走るか
+        bool IsCASActive(const RenderContext& context)
+        {
+            if (context.viewSettings.viewType != RenderViewType::GameView) {
+                return false;
+            }
+            if (!context.renderingTechniqueManager) {
+                return false;
+            }
+
+            const auto* cas = context.renderingTechniqueManager->GetTechnique<CASTechnique>(
+                RenderingTechniqueNames::CAS);
+            return cas && cas->IsEnabled();
+        }
+
+        void EnsureCASTarget(const RenderContext& context)
+        {
+            if (!context.renderTargetManager
+                || context.renderTargetManager->HasRenderTarget(RenderTargetNames::CASOutput)) {
+                return;
+            }
+
+            // 入力と同じ HDR フォーマット（既定）。CAS はトーンマップ前に掛かる
+            RenderTargetDescriptor desc(RenderTargetNames::CASOutput);
+            desc.needsDepthStencil = false;
+            desc.clearColor[0] = 0.0f;
+            desc.clearColor[1] = 0.0f;
+            desc.clearColor[2] = 0.0f;
+            desc.clearColor[3] = 1.0f;
+            context.renderTargetManager->CreateRenderTarget(desc);
+        }
+
+        /// @brief Halton 列（radical inverse）
+        /// @details 低食い違い量列。ランダムより偏りが少なく、少ないフレーム数で
+        ///          ピクセル内を均等に埋められるため TAA のジッタに使われる。
+        float RadicalInverse(uint32_t index, uint32_t base)
+        {
+            float result = 0.0f;
+            const float invBase = 1.0f / static_cast<float>(base);
+            float fraction = invBase;
+
+            while (index > 0) {
+                result += static_cast<float>(index % base) * fraction;
+                index /= base;
+                fraction *= invBase;
+            }
+            return result;
+        }
+
+        // TAA のジッタ周期。長いほど収束後の品質は上がるが、動きの多い画では
+        // 履歴がすぐ棄却されるため差が出にくい。8 は一般的な妥協点。
+        constexpr uint64_t kJitterSampleCount = 8;
+
+        // 実際に描画へ使われるカメラ（エディタではデバッグカメラ）を取得する。
+        // CameraManager のアクティブカメラとは別物になり得るため、
+        // UpdateLensFlareSunPosition と同じ選択規則をここでも使う。
+        ICamera* GetRenderingCamera(const RenderContext& context)
+        {
+            ICamera* camera = context.sceneManager
+                ? context.sceneManager->GetGameViewCamera3D()
+                : nullptr;
+            if (!camera && context.cameraManager) {
+                camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+            }
+            return camera;
+        }
+
+        // カメラの射影行列へ今フレームのサブピクセルジッタを入れる。
+        // 「実際にサンプル位置をずらして描く」のが TAA の本体で、
+        // これが無いと履歴を混ぜても情報が増えずぼけるだけになる。
+        void UpdateCameraJitter(const RenderContext& context)
+        {
+            ICamera* camera = GetRenderingCamera(context);
+            if (!camera) {
+                return;
+            }
+
+            if (!IsTAAActive(context)) {
+                camera->SetProjectionJitter(0.0f, 0.0f);
+                return;
+            }
+
+            const uint32_t width = context.gBufferManager ? context.gBufferManager->GetWidth() : 0;
+            const uint32_t height = context.gBufferManager ? context.gBufferManager->GetHeight() : 0;
+            if (width == 0 || height == 0) {
+                camera->SetProjectionJitter(0.0f, 0.0f);
+                return;
+            }
+
+            // Halton(2,3) を [-0.5, 0.5) のピクセルオフセットへ
+            const uint32_t sampleIndex = static_cast<uint32_t>(context.frameNumber % kJitterSampleCount) + 1u;
+            const float offsetPixelX = RadicalInverse(sampleIndex, 2u) - 0.5f;
+            const float offsetPixelY = RadicalInverse(sampleIndex, 3u) - 0.5f;
+
+            // ピクセル → NDC（NDC の幅 2.0 が画面幅に対応する）
+            const float jitterNdcX = offsetPixelX * 2.0f / static_cast<float>(width);
+            const float jitterNdcY = offsetPixelY * 2.0f / static_cast<float>(height);
+
+            camera->SetProjectionJitter(jitterNdcX, jitterNdcY);
+
+            // モーションベクターからジッタ分を差し引くための差分を TAA へ渡す
+            if (context.renderingTechniqueManager) {
+                if (auto* taa = context.renderingTechniqueManager->GetTechnique<TAATechnique>(
+                        RenderingTechniqueNames::TAA)) {
+                    taa->SetJitter(jitterNdcX, jitterNdcY, context.frameNumber);
+                }
+            }
+        }
+
+        void EnsureTAATargets(const RenderContext& context)
+        {
+            if (!context.renderTargetManager) {
+                return;
+            }
+
+            for (uint32_t index = 0; index < 2; ++index) {
+                const char* targetName = TAATechnique::GetHistoryTargetName(index);
+                if (context.renderTargetManager->HasRenderTarget(targetName)) {
+                    continue;
+                }
+
+                // SceneColor と同じ HDR フォーマット（RenderTargetDescriptor の既定）で作る。
+                // トーンマップ前に解決するため、ここを LDR にすると白飛びが履歴に焼き付く。
+                RenderTargetDescriptor desc(targetName);
+                desc.needsDepthStencil = false;
+                desc.clearColor[0] = 0.0f;
+                desc.clearColor[1] = 0.0f;
+                desc.clearColor[2] = 0.0f;
+                desc.clearColor[3] = 1.0f;
+                context.renderTargetManager->CreateRenderTarget(desc);
+            }
+        }
+
         void EnsureWaterCausticsTarget(const RenderContext& context)
         {
             if (!context.renderTargetManager) {
@@ -231,6 +386,10 @@ namespace CoreEngine
 
     void RenderPipeline::PrepareFrame(const RenderContext& context)
     {
+        // 射影行列へのジッタ注入は、この後の描画が作る WVP / invViewProj へ効かせる必要があるため
+        // 必ずリソース登録・Graph 構築より前に行う。
+        UpdateCameraJitter(context);
+
         RegisterFrameResources(context);
 
         // レンズフレアの光源を太陽に限定するため、太陽のスクリーン位置を毎フレーム更新
@@ -266,6 +425,14 @@ namespace CoreEngine
 
         EnsureSceneColorTarget(context);
         EnsureWaterCausticsTarget(context);
+
+        if (IsTAAActive(context)) {
+            EnsureTAATargets(context);
+        }
+
+        if (IsCASActive(context)) {
+            EnsureCASTarget(context);
+        }
 
         if (context.depthStencilManager) {
             context.frameBlackboard->SetResource(
@@ -365,6 +532,55 @@ namespace CoreEngine
                     waterCausticsTarget->GetResource(),
                     waterCausticsState);
             }
+
+            // TAA 履歴の ping-pong を論理名へ束ねる。
+            // 書き込み先の決定基準は TAATechnique::GetWriteHistoryIndex に一本化してあり、
+            // ここと TAATechnique::Execute が同じ frameNumber から同じ答えを出す。
+            if (IsTAAActive(context)) {
+                const uint32_t writeIndex = TAATechnique::GetWriteHistoryIndex(context.frameNumber);
+
+                const struct {
+                    const char* logicalName;
+                    uint32_t historyIndex;
+                } taaTargets[] = {
+                    { FrameBlackboard::TAAOutput,  writeIndex },
+                    { FrameBlackboard::TAAHistory, 1u - writeIndex },
+                };
+
+                for (const auto& entry : taaTargets) {
+                    RenderTarget* taaTarget = context.renderTargetManager->GetRenderTarget(
+                        TAATechnique::GetHistoryTargetName(entry.historyIndex));
+                    if (!taaTarget) {
+                        continue;
+                    }
+
+                    D3D12_RESOURCE_STATES* taaState = nullptr;
+                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(taaTarget)) {
+                        taaState = &offscreen->GetCurrentState();
+                    }
+
+                    context.frameBlackboard->SetResource(
+                        entry.logicalName,
+                        taaTarget->GetSRVHandle(),
+                        taaTarget->GetResource(),
+                        taaState);
+                }
+            }
+
+            if (IsCASActive(context)) {
+                if (RenderTarget* casTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::CASOutput)) {
+                    D3D12_RESOURCE_STATES* casState = nullptr;
+                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(casTarget)) {
+                        casState = &offscreen->GetCurrentState();
+                    }
+
+                    context.frameBlackboard->SetResource(
+                        FrameBlackboard::CASOutput,
+                        casTarget->GetSRVHandle(),
+                        casTarget->GetResource(),
+                        casState);
+                }
+            }
         }
 
         // RTShadowMask は View 依存の実体を持つため、現在の View に対応する
@@ -406,8 +622,28 @@ namespace CoreEngine
     {
         renderGraph_.Reset();
         postEffectSubpasses_.clear();
-        finalDisplayResourceName_ = FrameBlackboard::SceneColor;
-        ConfigureBackBufferInput(FrameBlackboard::SceneColor);
+
+        // シーン画の受け渡し連鎖を 1 箇所で組み立てる:
+        //   SceneColor →(TAA)→ TAAOutput →(CAS)→ CASOutput → ポストエフェクト列 → BackBuffer
+        // 各段が無効なら、その段を飛ばして前段の論理名がそのまま次段へ渡る。
+        const char* sceneImage = FrameBlackboard::SceneColor;
+
+        if (IsTAAActive(context)) {
+            sceneImage = FrameBlackboard::TAAOutput;
+        }
+
+        if (IsCASActive(context)) {
+            // CAS の入力は前段の結果。宣言（DeclareResources）と実際の読み先を
+            // 一致させるため、Graph へ登録する前にここで確定させる。
+            if (auto* casPass = GetPass<CASPass>()) {
+                casPass->SetInputResourceName(sceneImage);
+            }
+            sceneImage = FrameBlackboard::CASOutput;
+        }
+
+        sceneImageResourceName_ = sceneImage;
+        finalDisplayResourceName_ = sceneImage;
+        ConfigureBackBufferInput(sceneImage);
 
         // 各パスの Read / Write 宣言（DeclareResources）のみから Graph を構築する。
         // 登録順は (phase, priority, 登録順) でソート済みの passes_ に従い、
@@ -444,7 +680,7 @@ namespace CoreEngine
             return;
         }
 
-        std::string currentInput = FrameBlackboard::SceneColor;
+        std::string currentInput = sceneImageResourceName_;
         size_t effectIndex = 0;
 
         for (PostEffectBase* effect : enabledEffects) {

@@ -42,6 +42,9 @@ namespace CoreEngine
         static const char* const GBufferNormalRoughness;
         static const char* const GBufferEmissiveMetallic;
         static const char* const GBufferMotionVector;
+        static const char* const TAAHistory; ///< 前フレームの TAA 出力（読み取り側）
+        static const char* const TAAOutput;  ///< 今フレームの TAA 出力（書き込み側 = 次フレームの履歴）
+        static const char* const CASOutput;  ///< CAS（シャープ化）の出力
 
         /// @brief PostEffect の中間論理リソース名を生成する
         /// @param index 中間段インデックス

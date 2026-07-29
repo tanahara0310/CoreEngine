@@ -133,6 +133,8 @@ namespace CoreEngine
         };
 
         std::vector<std::unique_ptr<PostEffectPass>> postEffectSubpasses_;
+        /// @brief ポストエフェクト列へ渡す「シーンの画」の論理名（TAA / CAS 適用後）
+        std::string sceneImageResourceName_ = FrameBlackboard::SceneColor;
         std::string finalDisplayResourceName_ = FrameBlackboard::SceneColor;
 
         std::vector<RenderPassEntry> passes_;

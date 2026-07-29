@@ -38,7 +38,6 @@ namespace CoreEngine
         // ===== モデルリソースを並列プリロード =====
         // 全モデルを事前にバックグラウンドスレッドで並列読み込みし、
         // 後続の CreateObject 時にはキャッシュヒットで即座に返る
-        modelManager->PreloadModels({ "sponza/Sponza.gltf" });
         //modelManager->PreloadModels({ "sphere.obj", "walk.gltf" });
 
         // ===== 太陽ライト =====
@@ -53,14 +52,6 @@ namespace CoreEngine
             directionalLight_->atmosphereIntensity = 20.0f;
             directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
         }
-
-        // ===== スポンザモデル =====
-        /*auto sponza = CreateObject<ModelObject>("Sponza.gltf");
-        sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-        sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        sponza->SetIBLEnabled(true);
-        sponza->SetIBLIntensity(1.0f);
-        sponza->SetActive(true);*/
 
         //// ===== ウォーキングモデル（PBR グリッドと重ならない位置に配置） =====
         //auto walkModel = CreateObject<WalkModelObject>();

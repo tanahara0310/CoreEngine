@@ -2,6 +2,7 @@
 #include "../RenderingTechniqueBase.h"
 #include <wrl.h>
 #include <d3d12.h>
+#include <string>
 
 namespace CoreEngine
 {
@@ -26,18 +27,20 @@ public:
     void OnResize(uint32_t width, uint32_t height) override;
 
     const SSAOBlurParams& GetParams() const { return params_; }
-    void SetParams(const SSAOBlurParams& params);
-    void UpdateConstantBuffer();
+    void SetParams(const SSAOBlurParams& params) { params_ = params; }
+
+    /// @brief 入力レンダーターゲット名を設定する
+    /// @details テンポラル蓄積の有無で入力が変わるため、SSAOPass が毎フレーム設定する
+    void SetInputTargetName(const std::string& name) { inputTargetName_ = name; }
 
 protected:
     std::string GetTechniqueName() const override { return "SSAOBlur"; }
     const std::wstring& GetPixelShaderPath() const override;
 
 private:
-    void CreateConstantBuffer();
-
     SSAOBlurParams params_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-    SSAOBlurParams* mappedData_ = nullptr;
+    // invViewProj がジッタで毎フレーム変わるため、フレームオーバーラップ対応のリングで運ぶ
+    FrameRingConstantBuffer cbRing_;
+    std::string inputTargetName_; ///< 空ならデフォルト（RenderTargetNames::SSAOBuffer）
 };
 }

@@ -22,12 +22,6 @@
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.cpp">
-      <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.cpp">
-      <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Primitive\CubeObject.cpp">
       <Filter>Application\Src\GameObjects\Primitive</Filter>
     </ClCompile>
@@ -181,14 +175,8 @@
     <ClCompile Include="Engine\Src\pch.cpp">
       <Filter>Engine\Src</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\HomeworkScene\HomeworkScene.cpp">
-      <Filter>Application\Src\Scenes\HomeworkScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.cpp">
       <Filter>Application\Src\Scenes\PrimitiveTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\SpriteTestScene\SpriteTestScene.cpp">
-      <Filter>Application\Src\Scenes\SpriteTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp">
       <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
@@ -323,9 +311,6 @@
       <Filter>Engine\Src\Graphics\Material\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp">
-      <Filter>Engine\Src\Graphics\Material</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp">
@@ -538,6 +523,12 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SSAOPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\TAAPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\CASPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
     </ClCompile>
@@ -555,6 +546,15 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTemporalTechnique.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\TAA\TAATechnique.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\TAA</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\CAS\CASTechnique.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\CAS</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderManager.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
@@ -696,9 +696,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.cpp">
-      <Filter>Application\Src\Scenes\ParticleTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
@@ -960,14 +957,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Scenes\HomeworkScene\HomeworkScene.h">
-      <Filter>Application\Src\Scenes\HomeworkScene</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h">
       <Filter>Application\Src\Scenes\PrimitiveTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\SpriteTestScene\SpriteTestScene.h">
-      <Filter>Application\Src\Scenes\SpriteTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
@@ -1189,9 +1180,6 @@
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialInstance.h">
-      <Filter>Engine\Src\Graphics\Material</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.h">
@@ -1536,6 +1524,12 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\TAAPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\CASPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterCausticsPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -1571,6 +1565,15 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.h">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTemporalTechnique.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\SSAO</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\TAA\TAATechnique.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\TAA</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\CAS\CASTechnique.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\CAS</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\DrawViewInfo.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
@@ -1859,9 +1862,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.h">
-      <Filter>Application\Src\Scenes\ParticleTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
@@ -2154,12 +2154,6 @@
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.h">
-      <Filter>Application\Src\Scenes\AtmosphereTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.h">
-      <Filter>Application\Src\Scenes\VolumetricCloudTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClInclude>
@@ -2168,14 +2162,8 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Application\Assets\Models\human\sneakWalk.bin">
-      <Filter>Application\Assets\Models\human</Filter>
-    </None>
     <None Include="Application\Assets\Models\human\walk.bin">
       <Filter>Application\Assets\Models\human</Filter>
-    </None>
-    <None Include="Application\Assets\Models\simpleSkin\simpleSkin.bin">
-      <Filter>Application\Assets\Models\simpleSkin</Filter>
     </None>
     <None Include="Docs\Engine\Audio\SoundManager.md">
       <Filter>Docs\Engine\Audio</Filter>
@@ -2260,9 +2248,6 @@
     <Filter Include="Application\Assets\Models\human">
       <UniqueIdentifier>{426FC420-35FD-4168-B68A-5AEF6441C635}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Assets\Models\simpleSkin">
-      <UniqueIdentifier>{7130B224-03CE-49E0-ABB2-9AB922D3C1EE}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application\Src">
       <UniqueIdentifier>{8C016CA9-9773-40DE-8792-E8B53FB9372C}</UniqueIdentifier>
     </Filter>
@@ -2287,26 +2272,11 @@
     <Filter Include="Application\Src\Scenes">
       <UniqueIdentifier>{E0897678-58CC-4A82-AA9F-47042D9CD67B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src\Scenes\AtmosphereTestScene">
-      <UniqueIdentifier>{7420FFAF-1245-4D92-9B54-030DB57F0C9D}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\HomeworkScene">
-      <UniqueIdentifier>{A9C12FFD-976E-4C7A-9B5C-B910208B864D}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\ParticleTestScene">
-      <UniqueIdentifier>{154A2AEB-02C5-4818-ACFD-D6AEC80E6295}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application\Src\Scenes\PrimitiveTestScene">
       <UniqueIdentifier>{D473AE08-3695-412C-B895-5704EB4C75C5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src\Scenes\SpriteTestScene">
-      <UniqueIdentifier>{90ABD6FB-DA8C-4F58-B860-61DDFD9AC1A2}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\VolumetricCloudTestScene">
-      <UniqueIdentifier>{4B8D7636-3F2B-40CC-AADB-295A21F0938E}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\WaterTestScene">
       <UniqueIdentifier>{BA0CCBB8-F2BE-4C5C-95A3-D52C8433C8F5}</UniqueIdentifier>
@@ -2568,6 +2538,12 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO">
       <UniqueIdentifier>{2D8C0B18-8520-4DC7-9437-61CFBAFFD299}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique\TAA">
+      <UniqueIdentifier>{7B3E1C42-59A6-4D0E-9F17-3C8B25A4E610}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique\CAS">
+      <UniqueIdentifier>{4A9D6E38-2F51-4C7B-B0E4-8D19C63F27A5}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\RenderTarget">
       <UniqueIdentifier>{5446C3E1-4C5F-4C98-9DD5-B757A27FEA12}</UniqueIdentifier>

@@ -100,7 +100,17 @@ PixelShaderOutput main(PixelShaderInput input)
     float3 worldPos = ReconstructWorldPosition(ScreenUVToNDC(centerUV), centerDepth, gInvViewProj);
     float3 N        = normalize(normalRoughness.rgb * 2.0f - 1.0f);
 
-    float randRot = Hash12(input.position.xy) * 6.28318531f;
+    // サンプル回転のランダム化。
+    //
+    // 基準は「毎フレーム同じ値になる量」でなければならない。
+    //   × ワールド座標: 深度から復元した worldPos は TAA のジッタで毎フレーム微妙に動き、
+    //     ハッシュはカオス的（微小変化で出力が全く変わる）なので回転が毎フレーム
+    //     完全ランダムになる ＝ AO がフレームごとに別ノイズ（ちかちか）
+    //   × ジッタ補正したピクセル座標: floor の結果がジッタの正負で反転する画素が出る
+    //   ○ 生のピクセル座標: フルスクリーンパスの SV_Position はシーンのジッタと無関係で、
+    //     静止時は毎フレーム完全に同一。回転が固定されれば、残る変動は深度入力の
+    //     サブピクセル変化だけになり、ブラーと TAA で吸収できる
+    float randRot = Hash12(floor(input.position.xy)) * 6.28318531f;
 
     uint sampleCount = (uint)clamp(gSampleCount, 1, 64);
 
@@ -135,7 +145,18 @@ PixelShaderOutput main(PixelShaderInput input)
         float realViewZ   = mul(float4(sampleWorldPos, 1.0f), gView).z;
 
         float rangeCheck = smoothstep(0.0f, 1.0f, gRadius / max(abs(sampleViewZ - realViewZ), 0.0001f));
-        float occluded   = (realViewZ <= sampleViewZ - gBias) ? 1.0f : 0.0f;
+
+        // 遮蔽の有無を 2 値で決めてはいけない。
+        //
+        // 深度入力がほんのわずか動いただけで 0↔1 が反転し、16 サンプル中 1 つ反転するだけで
+        // AO が 1/16（6%）跳ねる。草の揺れ・波・サブピクセルのずれなど、入力が少しでも動けば
+        // 出力がバイナリに暴れる ＝ 影の部分が毎フレームちらつく。
+        //
+        // バイアス幅で滑らかに立ち上げれば、入力の微小変化は出力の微小変化に収まる。
+        // 遠いほど深度の量子化誤差が大きくなるため、しきい値も距離に比例させる。
+        float biasScaled = gBias * max(1.0f, abs(sampleViewZ) * 0.05f);
+        float depthDelta = (sampleViewZ - biasScaled) - realViewZ;
+        float occluded   = smoothstep(0.0f, max(biasScaled * 2.0f, 1e-4f), depthDelta);
 
         occlusion += occluded * rangeCheck;
         weightSum += 1.0f;

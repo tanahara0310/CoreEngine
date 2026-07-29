@@ -57,7 +57,16 @@ namespace CoreEngine
         camera_ = nullptr;
     }
 
+    // 以下 2 つは 3D 描画に実際へ使われるカメラと同じ優先順位で解決する
+    // （GetCameraForPass と一致させること）。
+    // 以前は CameraManager のアクティブカメラだけを見ており、それが未設定の場合に
+    // 単位行列を返していた。この行列で深度からワールド座標を復元する画面空間パス
+    // （SSAO 等）は座標が全く合わず、結果がノイズと黒斑になる。
+
     const Matrix4x4& RenderManager::GetViewMatrix() const {
+        if (camera_) {
+            return camera_->GetViewMatrix();
+        }
         if (cameraManager_) {
             if (auto* cam = cameraManager_->GetActiveCamera(CameraType::Camera3D)) {
                 return cam->GetViewMatrix();
@@ -68,6 +77,9 @@ namespace CoreEngine
     }
 
     const Matrix4x4& RenderManager::GetProjectionMatrix() const {
+        if (camera_) {
+            return camera_->GetProjectionMatrix();
+        }
         if (cameraManager_) {
             if (auto* cam = cameraManager_->GetActiveCamera(CameraType::Camera3D)) {
                 return cam->GetProjectionMatrix();

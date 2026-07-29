@@ -3,7 +3,10 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "RenderingTechniqueNames.h"
 #include "SSAO/SSAOTechnique.h"
+#include "SSAO/SSAOTemporalTechnique.h"
 #include "SSAO/SSAOBlurTechnique.h"
+#include "TAA/TAATechnique.h"
+#include "CAS/CASTechnique.h"
 #include "Lighting/DeferredLightingTechnique.h"
 #include "Lighting/WaterCausticsTechnique.h"
 #include <cassert>
@@ -28,12 +31,14 @@ namespace CoreEngine
         RegisterTechnique<DeferredLightingTechnique>(RenderingTechniqueNames::DeferredLighting, true);
         RegisterTechnique<WaterCausticsTechnique>(RenderingTechniqueNames::WaterCaustics, true);
 
-        // SSAO系の登録
+        // SSAO系の登録（生成 → テンポラル蓄積 → ブラー の順に実行される）
         RegisterTechnique<SSAOTechnique>(RenderingTechniqueNames::SSAO, true);
+        RegisterTechnique<SSAOTemporalTechnique>(RenderingTechniqueNames::SSAOTemporal, true);
         RegisterTechnique<SSAOBlurTechnique>(RenderingTechniqueNames::SSAOBlur, true);
 
-        // 将来的な実装例:
-        // RegisterTechnique<TAATechnique>(RenderingTechniqueNames::TAA, true);
+        // TAA と、その直後で解像感を戻す CAS の登録
+        RegisterTechnique<TAATechnique>(RenderingTechniqueNames::TAA, true);
+        RegisterTechnique<CASTechnique>(RenderingTechniqueNames::CAS, true);
     }
 
     bool RenderingTechniqueManager::HasTechnique(const std::string& name) const

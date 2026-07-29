@@ -11,7 +11,9 @@ namespace CoreEngine
 // 前方宣言
 class ShaderReflectionData;
 
-/// @brief SkyBox描画用レンダラー
+/// @brief 空（大気散乱）描画用レンダラー
+/// @details 内向きボックスの頂点変換は Skybox.VS.hlsl、
+///          空の色は大気散乱（SkyAtmosphere.PS.hlsl）で決まる。
 class SkyBoxRenderer : public BaseRenderer {
 public:
     // IRendererインターフェースの実装
@@ -20,34 +22,14 @@ public:
     void EndPass() override;
     RenderPassType GetRenderPassType() const override { return RenderPassType::SkyBox; }
     void SetCamera(const ICamera* camera) override;
-    
+
     /// @brief ルートシグネチャを取得
     ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
 
+    /// @brief パイプラインが利用可能か
+    bool IsPipelineReady() const { return pipelineState_ != nullptr; }
+
     /// @brief シェーダーリソース名からルートパラメータインデックスを取得
     int GetRootParamIndex(const std::string& resourceName) const;
-
-    // ===== 大気散乱モード（SkyAtmosphere.PS.hlsl） =====
-    // キューブマップの代わりに大気散乱で空を描く第2パイプライン。
-    // メッシュ・VS・深度設定はキューブマップ版と共通。
-
-    /// @brief 大気散乱用パイプラインが利用可能か
-    bool IsAtmospherePipelineReady() const { return atmospherePipelineState_ != nullptr; }
-
-    /// @brief 大気散乱用ルートシグネチャを取得
-    ID3D12RootSignature* GetAtmosphereRootSignature() const { return atmosphereRootSignatureMg_->GetRootSignature(); }
-
-    /// @brief 大気散乱用パイプラインステートを取得
-    ID3D12PipelineState* GetAtmospherePipelineState() const { return atmospherePipelineState_; }
-
-    /// @brief 大気散乱用シェーダーのリソース名からルートパラメータインデックスを取得
-    int GetAtmosphereRootParamIndex(const std::string& resourceName) const;
-
-private:
-    // 大気散乱モード用サブシステム（キューブマップ版とルートシグネチャ構成が異なるため別管理）
-    std::unique_ptr<RootSignatureManager> atmosphereRootSignatureMg_ = std::make_unique<RootSignatureManager>();
-    std::unique_ptr<PipelineStateManager> atmospherePsoMg_ = std::make_unique<PipelineStateManager>();
-    std::unique_ptr<ShaderReflectionData> atmosphereReflectionData_;
-    ID3D12PipelineState* atmospherePipelineState_ = nullptr;
 };
 }

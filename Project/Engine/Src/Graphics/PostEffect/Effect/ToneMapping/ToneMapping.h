@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include <d3d12.h>
 #include <cassert>
+#include <algorithm>
 
 
 namespace CoreEngine
@@ -79,6 +80,11 @@ namespace CoreEngine
         void SetAutoEVRange(float minEV, float maxEV) { minAutoEV_ = minEV; maxAutoEV_ = maxEV; }
         float GetMinAutoEV() const { return minAutoEV_; }
         float GetMaxAutoEV() const { return maxAutoEV_; }
+        void SetReferenceLuminance(float luminance) { referenceLuminance_ = luminance; }
+        float GetReferenceLuminance() const { return referenceLuminance_; }
+
+        /// @brief 現在の順応輝度を基準輝度に設定する（「今の明るさを 0EV にする」操作）
+        void CalibrateReferenceToCurrent() { referenceLuminance_ = std::max(adaptedLuminance_, 1e-6f); }
 
         /// @brief 時間順応の更新用にデルタタイムを受け取る（PostEffectManager から毎フレーム呼ばれる）
         void Update(float deltaTime) override { deltaTime_ = deltaTime; }
@@ -102,6 +108,12 @@ namespace CoreEngine
         /// @brief 入力テクスチャの平均対数輝度の計測をコマンドリストへ記録する
         void RecordLuminanceReduction(
             ID3D12GraphicsCommandList* cmdList, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
+
+        /// @brief 順応輝度に対するターゲットキーを返す（Krawczyk 自動キー）
+        /// @details 自動EVの基準点を求めるときにも同じ式を使う必要があるため関数に切り出している
+        /// @param luminance 順応輝度
+        /// @return ターゲットキー
+        float KeyForLuminance(float luminance) const;
 
     private:
         Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
@@ -144,6 +156,12 @@ namespace CoreEngine
         ///          約 +5EV が必要。旧上限 4 では月夜がクランプされて一段暗く沈んでいた。
         ///          8 あれば月無しの星明かり相当（~0.0002）まで「暗いが見える」に持ち上げられる。
         float maxAutoEV_ = 8.0f;
+        /// @brief 自動EVの基準輝度（このシーン輝度のとき自動EV = 0 になる）
+        /// @details SceneColor は「露出補正 0EV でそのまま表示して適正」になるよう
+        ///          ライティング側が較正済みなので、自動露出は絶対露出ではなく
+        ///          基準からの相対補正として働かせる必要がある。
+        ///          既定 2.0 は晴天正午の照明駆動輝度の実測値（約 2.13）に合わせたもの。
+        float referenceLuminance_ = 2.0f;
         /// @brief 明暗順応の速さ [1/s]（指数追従の時定数の逆数）
         /// @details 8.0 で時定数 0.125s・95% 到達 ≈0.4s。カメラ操作に対して「ほぼ即座だが
         ///          フレーム単位のちらつきは平滑化される」応答になる。
