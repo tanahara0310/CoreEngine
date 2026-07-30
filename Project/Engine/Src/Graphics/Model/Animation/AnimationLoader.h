@@ -17,10 +17,19 @@ public:
     /// @brief アニメーションファイルを読み込む
     /// @param directoryPath ディレクトリパス
     /// @param filename ファイル名
-  /// @return 読み込んだアニメーションデータ
-    static Animation LoadAnimationFile(const std::string& directoryPath, const std::string& filename);
+    /// @param sourceAnimationName ファイル内のアニメーション名（空 = 先頭の 1 本）
+    /// @return 読み込んだアニメーションデータ
+    /// @note 1 つのファイルに複数のアニメーションが入っている場合があるため、
+    ///       名前で選べるようにしている（例: Fox.gltf の Survey / Walk / Run）。
+    static Animation LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
+        const std::string& sourceAnimationName = "");
 
 private:
+    /// @brief 名前からアニメーションのインデックスを引く（見つからなければ 0 を返して警告）
+    /// @param scene Assimpシーン
+    /// @param sourceAnimationName 探すアニメーション名（空 = 先頭）
+    static unsigned int FindAnimationIndex(const ::aiScene* scene, const std::string& sourceAnimationName);
+
     /// @brief Assimpシーンからアニメーションを解析
     /// @param scene Assimpシーン
     /// @param animationIndex アニメーションインデックス（デフォルト0）

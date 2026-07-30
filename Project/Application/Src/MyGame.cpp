@@ -5,6 +5,7 @@
 #include "Scenes/TestScene/TestScene.h"
 #include "Scenes/PrimitiveTestScene/PrimitiveTestScene.h"
 #include "Scenes/WaterTestScene/WaterTestScene.h"
+#include "Scenes/AssignmentScene/AssignmentScene.h"
 
 using namespace CoreEngine;
 
@@ -24,9 +25,10 @@ void MyGame::Initialize()
     sceneManager_->RegisterScene<TestScene>("TestScene");
     sceneManager_->RegisterScene<PrimitiveTestScene>("PrimitiveTestScene");
     sceneManager_->RegisterScene<WaterTestScene>("WaterTestScene");
+    sceneManager_->RegisterScene<AssignmentScene>("AssignmentScene");
 
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene("WaterTestScene");
+    sceneManager_->SetInitialScene("AssignmentScene");
 
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
 #ifdef USE_IMGUI

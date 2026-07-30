@@ -245,7 +245,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.cpp" />
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp" />
+    <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Model\ModelObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Model\PlaneModelObject.cpp" />
@@ -522,12 +524,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h" />
+    <ClInclude Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSettingsSection.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h" />
     <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.h" />
+    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\BrainStemObject.h" />
+    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.h" />
+    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\FoxObject.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
     <ClInclude Include="Application\Src\GameObjects\Model\ModelObject.h" />
     <ClInclude Include="Application\Src\GameObjects\Model\PlaneModelObject.h" />

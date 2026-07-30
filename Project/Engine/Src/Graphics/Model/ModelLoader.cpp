@@ -219,7 +219,7 @@ namespace CoreEngine
         for (uint32_t meshIndex = 0; meshIndex < scene->mNumMeshes; ++meshIndex) {
             aiMesh* mesh = scene->mMeshes[meshIndex];
             assert(mesh->HasNormals() && "Mesh must have normals");
-            assert(mesh->HasTextureCoords(0) && "Mesh must have texture coordinates");
+            // UV は必須ではない（持たない場合は ConvertVertex が (0,0) を入れる）
 
             // サブメッシュ情報を記録
             SubMeshData subMesh;
@@ -260,7 +260,7 @@ namespace CoreEngine
         }
     }
 
-    void ModelLoader::LoadSkinClusterData(const aiMesh* mesh, uint32_t /*baseVertexIndex*/, ModelData& outResult)
+    void ModelLoader::LoadSkinClusterData(const aiMesh* mesh, uint32_t baseVertexIndex, ModelData& outResult)
     {
         for (uint32_t boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex) {
             aiBone* bone = mesh->mBones[boneIndex];
@@ -271,10 +271,15 @@ namespace CoreEngine
             jointWeightData.inverseBindPoseMatrix = CalculateBindPoseMatrix(bone->mOffsetMatrix);
 
             // 頂点ウェイト情報を格納
+            // aiBone の mVertexId はメッシュ内ローカルのインデックス。
+            // ModelData::vertices は全メッシュを 1 本の頂点バッファへ連結しているため、
+            // このメッシュの開始位置 baseVertexIndex を足してグローバルなインデックスへ直す。
+            // （マルチメッシュのスキニングモデルで、別メッシュの頂点にウェイトが
+            //   乗ってしまう不具合を防ぐ）
             for (uint32_t weightIndex = 0; weightIndex < bone->mNumWeights; ++weightIndex) {
                 jointWeightData.vertexWeights.push_back({
                     bone->mWeights[weightIndex].mWeight,
-                    bone->mWeights[weightIndex].mVertexId
+                    baseVertexIndex + bone->mWeights[weightIndex].mVertexId
                     });
             }
         }
@@ -286,12 +291,19 @@ namespace CoreEngine
     {
         aiVector3D position = mesh->mVertices[vertexIndex];
         aiVector3D normal = mesh->mNormals[vertexIndex];
-        aiVector3D texCoord = mesh->mTextureCoords[0][vertexIndex];
 
         VertexData vertex{};
         vertex.position = { position.x, position.y, position.z, 1.0f };
         vertex.normal = { normal.x, normal.y, normal.z };
-        vertex.texcoord = { texCoord.x, texCoord.y };
+
+        // UV を持たないモデル（マテリアルの色だけで表現された glTF など）があるため、
+        // mTextureCoords[0] は null になりうる。参照する前に必ず存在を確認する。
+        if (mesh->HasTextureCoords(0)) {
+            aiVector3D texCoord = mesh->mTextureCoords[0][vertexIndex];
+            vertex.texcoord = { texCoord.x, texCoord.y };
+        } else {
+            vertex.texcoord = { 0.0f, 0.0f };
+        }
 
         // Tangent（接線）をコピー（aiProcess_CalcTangentSpaceで計算済み）
         if (mesh->HasTangentsAndBitangents()) {

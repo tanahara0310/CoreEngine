@@ -31,6 +31,11 @@ struct AnimationLoadInfo {
     std::string modelFile;          ///< モデルファイル名（例: "walk.gltf"）
     std::string animationName;      ///< 識別用のアニメーション名（例: "walkAnimation"）
     std::string animationFile = ""; ///< アニメーションファイル名（空 = modelFile と同じ）
+
+    /// ファイル内のアニメーション名（空 = 先頭の 1 本）
+    /// @note 1 ファイルに複数アニメーションが入っている場合に使う（例: Fox.gltf の "Walk"）。
+    ///       animationName（エンジン内の識別キー）とは別物。
+    std::string sourceAnimationName = "";
 };
 
 /// @brief モデルリソースとインスタンスを管理するマネージャークラス

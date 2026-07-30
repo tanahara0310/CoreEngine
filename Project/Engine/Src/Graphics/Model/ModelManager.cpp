@@ -140,7 +140,8 @@ namespace CoreEngine
             ? resolvedFilename
             : loadInfo.animationFile;
 
-        Animation animation = AnimationLoader::LoadAnimationFile(resolvedDirectory, animFile);
+        Animation animation = AnimationLoader::LoadAnimationFile(
+            resolvedDirectory, animFile, loadInfo.sourceAnimationName);
         resource->AddAnimation(loadInfo.animationName, animation);
         return true;
     }

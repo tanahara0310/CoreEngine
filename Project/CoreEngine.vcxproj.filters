@@ -178,7 +178,13 @@
     <ClCompile Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.cpp">
       <Filter>Application\Src\Scenes\PrimitiveTestScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.cpp">
+      <Filter>Application\Src\Scenes\AssignmentScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp">
+      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.cpp">
       <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp">
@@ -960,6 +966,9 @@
     <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h">
       <Filter>Application\Src\Scenes\PrimitiveTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.h">
+      <Filter>Application\Src\Scenes\AssignmentScene</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
@@ -976,6 +985,15 @@
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.h">
+      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\BrainStemObject.h">
+      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.h">
+      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\FoxObject.h">
       <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
@@ -2274,6 +2292,9 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\PrimitiveTestScene">
       <UniqueIdentifier>{D473AE08-3695-412C-B895-5704EB4C75C5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\AssignmentScene">
+      <UniqueIdentifier>{7B3C1F42-9D6E-4C58-8A21-3F5E0B7D4C19}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>

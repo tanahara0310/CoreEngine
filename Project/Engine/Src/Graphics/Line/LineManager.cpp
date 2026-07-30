@@ -22,12 +22,13 @@ void LineManager::Initialize(LineRendererPipeline* lineRenderer) {
     lineRenderer_ = lineRenderer;
 }
 
-void LineManager::DrawLine(const Vector3& start, const Vector3& end, const Vector3& color, float alpha) {
+void LineManager::DrawLine(const Vector3& start, const Vector3& end, const Vector3& color, float alpha,
+                           bool depthTest) {
     if (!lineRenderer_) {
         return;
     }
 
-    Line line(start, end, color, alpha);
+    Line line(start, end, color, alpha, depthTest);
     lineRenderer_->AddLine(line);
 }
 
@@ -220,7 +221,8 @@ float angleStep = (std::numbers::pi_v<float> * 2.0f) / static_cast<float>(segmen
     }
 }
 
-void LineManager::DrawCross(const Vector3& position, float size, const Vector3& color, float alpha) {
+void LineManager::DrawCross(const Vector3& position, float size, const Vector3& color, float alpha,
+                            bool depthTest) {
 if (!lineRenderer_) {
     return;
 }
@@ -231,21 +233,21 @@ float halfSize = size * 0.5f;
     DrawLine(
         position + Vector3(-halfSize, 0.0f, 0.0f),
         position + Vector3( halfSize, 0.0f, 0.0f),
-        color, alpha
+        color, alpha, depthTest
     );
 
     // Y軸方向
     DrawLine(
         position + Vector3(0.0f, -halfSize, 0.0f),
         position + Vector3(0.0f,  halfSize, 0.0f),
-        color, alpha
+        color, alpha, depthTest
     );
 
     // Z軸方向
     DrawLine(
         position + Vector3(0.0f, 0.0f, -halfSize),
         position + Vector3(0.0f, 0.0f,  halfSize),
-        color, alpha
+        color, alpha, depthTest
     );
 }
 

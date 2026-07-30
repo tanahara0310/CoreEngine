@@ -70,7 +70,9 @@ namespace CoreEngine
         /// @brief ラインを描画（低レベルAPI - 通常は使用しない）
         /// @param cmdList コマンドリスト
         /// @param vertexCount 頂点数
-        void DrawLines(ID3D12GraphicsCommandList* cmdList, uint32_t vertexCount);
+        /// @param startVertexLocation 頂点バッファ内の開始位置（深度あり／なしを分けて描くため）
+        void DrawLines(ID3D12GraphicsCommandList* cmdList, uint32_t vertexCount,
+            uint32_t startVertexLocation = 0);
 
         /// @brief WVP行列を設定（低レベルAPI - 通常は使用しない）
         /// @param view ビュー行列
@@ -89,6 +91,10 @@ namespace CoreEngine
     private:
         std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
         std::unique_ptr<PipelineStateManager> psoMg_ = std::make_unique<PipelineStateManager>();
+
+        // 深度テストを行わない PSO（Line::depthTest == false のライン用）。
+        // 骨のデバッグ表示のようにメッシュ内部にある線を隠さず見せるために使う。
+        std::unique_ptr<PipelineStateManager> overlayPsoMg_ = std::make_unique<PipelineStateManager>();
         std::unique_ptr<ShaderCompiler> shaderCompiler_ = std::make_unique<ShaderCompiler>();
         std::unique_ptr<ShaderReflectionBuilder> reflectionBuilder_ = std::make_unique<ShaderReflectionBuilder>();
 
