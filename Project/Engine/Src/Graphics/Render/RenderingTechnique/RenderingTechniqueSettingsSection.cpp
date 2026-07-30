@@ -7,6 +7,8 @@
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueBase.h"
 #include "Graphics/Render/RenderingTechnique/SSAO/SSAOTechnique.h"
 #include "Graphics/Render/RenderingTechnique/SSAO/SSAOBlurTechnique.h"
+#include "Graphics/Render/RenderingTechnique/TAA/TAATechnique.h"
+#include "Graphics/Render/RenderingTechnique/CAS/CASTechnique.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 namespace CoreEngine
@@ -23,7 +25,10 @@ namespace CoreEngine
             RenderingTechniqueNames::DeferredLighting,
             RenderingTechniqueNames::WaterCaustics,
             RenderingTechniqueNames::SSAO,
+            RenderingTechniqueNames::SSAOTemporal,
             RenderingTechniqueNames::SSAOBlur,
+            RenderingTechniqueNames::TAA,
+            RenderingTechniqueNames::CAS,
         };
     }
 
@@ -60,6 +65,22 @@ namespace CoreEngine
             json blurJson;
             blurJson["depthThreshold"] = ssaoBlur->GetParams().depthThreshold;
             out["ssaoBlur"] = blurJson;
+        }
+
+        // TAA のチューニング値（画面サイズ・ジッタ差分・履歴無効フラグは毎フレーム自動設定のため保存しない）
+        if (auto* taa = manager->GetTechnique<TAATechnique>(RenderingTechniqueNames::TAA)) {
+            const auto& params = taa->GetParams();
+            json taaJson;
+            taaJson["blendAlpha"] = params.blendAlpha;
+            taaJson["clampScale"] = params.clampScale;
+            out["taa"] = taaJson;
+        }
+
+        // CAS のチューニング値
+        if (auto* cas = manager->GetTechnique<CASTechnique>(RenderingTechniqueNames::CAS)) {
+            json casJson;
+            casJson["sharpness"] = cas->GetParams().sharpness;
+            out["cas"] = casJson;
         }
 
         // WaterCaustics のパラメータは Water セクション（WaterEditorFacade）所有のため保存しない
@@ -106,6 +127,27 @@ namespace CoreEngine
                 SSAOBlurTechnique::SSAOBlurParams params = ssaoBlur->GetParams();
                 params.depthThreshold = JsonManager::SafeGet(blurJson, "depthThreshold", params.depthThreshold);
                 ssaoBlur->SetParams(params);
+            }
+        }
+
+        // TAA
+        if (in.contains("taa")) {
+            const auto& taaJson = in["taa"];
+            if (auto* taa = manager->GetTechnique<TAATechnique>(RenderingTechniqueNames::TAA)) {
+                TAATechnique::TAAParams params = taa->GetParams();
+                params.blendAlpha = JsonManager::SafeGet(taaJson, "blendAlpha", params.blendAlpha);
+                params.clampScale = JsonManager::SafeGet(taaJson, "clampScale", params.clampScale);
+                taa->SetParams(params);
+            }
+        }
+
+        // CAS
+        if (in.contains("cas")) {
+            const auto& casJson = in["cas"];
+            if (auto* cas = manager->GetTechnique<CASTechnique>(RenderingTechniqueNames::CAS)) {
+                CASTechnique::CASParams params = cas->GetParams();
+                params.sharpness = JsonManager::SafeGet(casJson, "sharpness", params.sharpness);
+                cas->SetParams(params);
             }
         }
     }

@@ -38,8 +38,7 @@ namespace CoreEngine
         // ===== モデルリソースを並列プリロード =====
         // 全モデルを事前にバックグラウンドスレッドで並列読み込みし、
         // 後続の CreateObject 時にはキャッシュヒットで即座に返る
-        modelManager->PreloadModels({ "sponza/Sponza.gltf" });
-        //modelManager->PreloadModels({ "sphere.obj", "walk.gltf" });
+        //modelManager->PreloadModels({ "sphere.obj" });
 
         // ===== 太陽ライト =====
         // 空は BaseScene が既定で大気散乱モードの SkyBox（＋雲）を自動生成するため、
@@ -53,20 +52,6 @@ namespace CoreEngine
             directionalLight_->atmosphereIntensity = 20.0f;
             directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
         }
-
-        // ===== スポンザモデル =====
-        /*auto sponza = CreateObject<ModelObject>("Sponza.gltf");
-        sponza->GetTransform().translate = { 0.0f, 0.0f, 0.0f };
-        sponza->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        sponza->SetIBLEnabled(true);
-        sponza->SetIBLIntensity(1.0f);
-        sponza->SetActive(true);*/
-
-        //// ===== ウォーキングモデル（PBR グリッドと重ならない位置に配置） =====
-        //auto walkModel = CreateObject<WalkModelObject>();
-        //walkModel->GetTransform().translate = { 25.0f, 0.0f, 0.0f };
-        //walkModel->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-        //walkModel->SetActive(false);
 
         // ===== PBR パラメータテスト用球体グリッド =====
         // 列（X 軸）: Roughness  0.0（左=鏡面） → 1.0（右=粗面）

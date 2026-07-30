@@ -17,15 +17,17 @@ namespace CoreEngine
         auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Skybox.VS.hlsl", L"vs_6_0");
         assert(vertexShaderBlob != nullptr);
 
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Skybox.PS.hlsl", L"ps_6_0");
+        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"SkyAtmosphere.PS.hlsl", L"ps_6_0");
         assert(pixelShaderBlob != nullptr);
 
         // リフレクション
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "SkyBoxRenderer");
 
-        // シンプルな設定でRootSignatureを構築
         RootSignatureConfig config = RootSignatureConfig::Simple();
-        config.ConfigureSampler("gSampler", SamplerConfig::Linear());
+        // Sky-View / Transmittance LUT は u(方位: 太陽↔反太陽)・v(天頂↔地面)の両端が
+        // 本来連続しない。既定の WRAP だと反対端の値（地面=黒 / 反太陽=暗）がバイリニア
+        // 補間で混入し、天頂の黒い穴・太陽を貫く縦線の原因になるため CLAMP を使う。
+        config.ConfigureSampler("gLUTSampler", SamplerConfig::LinearClamp());
 
         auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
 
@@ -49,48 +51,8 @@ namespace CoreEngine
 
         pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNone);
 
-        // ===== 大気散乱モード用パイプライン =====
-        // 頂点シェーダー・メッシュ・深度設定はキューブマップ版と共通。
-        // ピクセルシェーダーのみ大気散乱（SkyAtmosphere.PS.hlsl）に差し替える。
-        auto atmospherePixelShaderBlob = shaderCompiler_->CompileShader(L"SkyAtmosphere.PS.hlsl", L"ps_6_0");
-        if (atmospherePixelShaderBlob) {
-            atmosphereReflectionData_ = reflectionBuilder_->BuildFromShaders(
-                vertexShaderBlob, atmospherePixelShaderBlob, "SkyBoxRenderer_Atmosphere");
-
-            RootSignatureConfig atmosphereConfig = RootSignatureConfig::Simple();
-            // Sky-View / Transmittance LUT は u(方位: 太陽↔反太陽)・v(天頂↔地面)の両端が
-            // 本来連続しない。既定の WRAP だと反対端の値（地面=黒 / 反太陽=暗）がバイリニア
-            // 補間で混入し、天頂の黒い穴・太陽を貫く縦線の原因になるため CLAMP を使う。
-            atmosphereConfig.ConfigureSampler("gLUTSampler", SamplerConfig::LinearClamp());
-            auto atmosphereBuildResult = atmosphereRootSignatureMg_->Build(
-                device, *atmosphereReflectionData_, atmosphereConfig);
-
-            if (atmosphereBuildResult.success) {
-                bool atmosphereResult = atmospherePsoMg_->CreateBuilder()
-                    .SetInputLayoutFromReflection(*atmosphereReflectionData_)
-                    .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
-                    .SetDepthStencil(true, false, D3D12_COMPARISON_FUNC_LESS_EQUAL)
-                    .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-                    .BuildAllBlendModes(device, vertexShaderBlob, atmospherePixelShaderBlob,
-                        atmosphereRootSignatureMg_->GetRootSignature());
-
-                if (atmosphereResult) {
-                    atmospherePipelineState_ = atmospherePsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
-                    Logger::GetInstance().Infof(LogCategory::Graphics,
-                        "SkyBoxRenderer: 大気散乱パイプライン初期化完了");
-                } else {
-                    Logger::GetInstance().Warnf(LogCategory::Graphics,
-                        "SkyBoxRenderer: 大気散乱PSOの生成に失敗（キューブマップモードのみ利用可能）");
-                }
-            } else {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "SkyBoxRenderer: 大気散乱RootSignatureの生成に失敗: {}",
-                    atmosphereBuildResult.errorMessage);
-            }
-        } else {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "SkyBoxRenderer: SkyAtmosphere.PS.hlsl のコンパイルに失敗（キューブマップモードのみ利用可能）");
-        }
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "SkyBoxRenderer: 大気散乱パイプライン初期化完了");
     }
 
     int SkyBoxRenderer::GetRootParamIndex(const std::string& resourceName) const {
@@ -98,13 +60,6 @@ namespace CoreEngine
             return -1;
         }
         return reflectionData_->GetRootParameterIndexByName(resourceName);
-    }
-
-    int SkyBoxRenderer::GetAtmosphereRootParamIndex(const std::string& resourceName) const {
-        if (!atmosphereReflectionData_) {
-            return -1;
-        }
-        return atmosphereReflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
     void SkyBoxRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {

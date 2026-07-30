@@ -1,0 +1,69 @@
+{
+    "active": true,
+    "materials": [
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 0.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 0.2928932309150696
+        },
+        {
+            "alphaCutoff": 0.5,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "dithering": true,
+            "ditheringScale": 1.0,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "iblIntensity": 1.0,
+            "lighting": true,
+            "metallic": 1.0,
+            "normalMap": false,
+            "occlusionStrength": 1.0,
+            "roughness": 1.0
+        }
+    ],
+    "modelPath": "walk.gltf",
+    "name": "WalkModel_0",
+    "texture": "white.png",
+    "transform": {
+        "rotate": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "translate": [
+            0.0,
+            0.0,
+            0.0
+        ]
+    }
+}

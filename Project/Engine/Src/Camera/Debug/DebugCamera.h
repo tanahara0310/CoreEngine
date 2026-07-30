@@ -88,8 +88,14 @@ namespace CoreEngine
 
         /// @brief プロジェクション行列を取得（ICamera から）
         const Matrix4x4& GetProjectionMatrix() const override {
-            return projectionOverrideActive_ ? overrideProjectionMatrix_ : projectionMatrix_;
+            if (projectionOverrideActive_) {
+                return overrideProjectionMatrix_;
+            }
+            return projectionJitterActive_ ? jitteredProjectionMatrix_ : projectionMatrix_;
         }
+
+        /// @brief ジッタ適用前の射影行列（ICamera から。TAA のジッタ生成元）
+        const Matrix4x4* GetUnjitteredProjectionMatrix() const override { return &projectionMatrix_; }
 
         /// @brief カメラ位置を取得（ICamera から）
         Vector3 GetPosition() const override;

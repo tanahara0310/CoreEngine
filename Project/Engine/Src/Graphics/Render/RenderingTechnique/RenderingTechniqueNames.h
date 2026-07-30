@@ -10,8 +10,10 @@ namespace RenderingTechniqueNames {
     constexpr const char* DeferredLighting = "DeferredLighting";
     constexpr const char* WaterCaustics = "WaterCaustics";
     constexpr const char* SSAO      = "SSAO";
+    constexpr const char* SSAOTemporal = "SSAOTemporal"; ///< SSAO のテンポラル蓄積（ジッタ起因のちらつき対策）
     constexpr const char* SSAOBlur  = "SSAOBlur";
     constexpr const char* TAA       = "TAA";
+    constexpr const char* CAS       = "CAS"; ///< Contrast Adaptive Sharpening（TAA 直後のシャープ化）
     // 将来的な拡張用
     // constexpr const char* SSR       = "SSR";
     // constexpr const char* RTAO      = "RTAO";

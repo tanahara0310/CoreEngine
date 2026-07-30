@@ -182,6 +182,7 @@ json PostEffectPresetManager::CaptureToJson(const PostEffectManager* postEffectM
         toneMappingJson["keyValue"] = toneMapping->GetKeyValue();
         toneMappingJson["minAutoEV"] = toneMapping->GetMinAutoEV();
         toneMappingJson["maxAutoEV"] = toneMapping->GetMaxAutoEV();
+        toneMappingJson["referenceLuminance"] = toneMapping->GetReferenceLuminance();
         presetData["toneMapping"] = toneMappingJson;
     }
 
@@ -452,6 +453,8 @@ void PostEffectPresetManager::ApplyFromJson(PostEffectManager* postEffectManager
             toneMapping->SetAutoEVRange(
                 JsonManager::SafeGet(toneMappingJson, "minAutoEV", toneMapping->GetMinAutoEV()),
                 JsonManager::SafeGet(toneMappingJson, "maxAutoEV", toneMapping->GetMaxAutoEV()));
+            toneMapping->SetReferenceLuminance(
+                JsonManager::SafeGet(toneMappingJson, "referenceLuminance", toneMapping->GetReferenceLuminance()));
         }
     }
 

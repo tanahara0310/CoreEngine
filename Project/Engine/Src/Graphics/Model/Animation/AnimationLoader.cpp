@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "AnimationLoader.h"
+#include "Utility/Logger/Logger.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -8,7 +9,8 @@
 
 namespace CoreEngine
 {
-Animation AnimationLoader::LoadAnimationFile(const std::string& directoryPath, const std::string& filename) {
+Animation AnimationLoader::LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
+    const std::string& sourceAnimationName) {
     // ファイルパスを構築
     std::string filePath = directoryPath + "/" + filename;
 
@@ -22,8 +24,35 @@ Animation AnimationLoader::LoadAnimationFile(const std::string& directoryPath, c
     // アニメーションがない場合はアサート
     assert(scene != nullptr && scene->mNumAnimations != 0 && "Animation not found in file");
 
-    // 最初のアニメーションだけ採用（複数対応する場合は引数で制御）
-    return ParseAnimation(scene, 0);
+    // 1 つのファイルに複数のアニメーションが入っていることがある
+    // （例: Fox.gltf は Survey / Walk / Run の 3 本）。
+    // 名前が指定されていればそれを探し、無指定なら先頭の 1 本を使う。
+    const unsigned int animationIndex = FindAnimationIndex(scene, sourceAnimationName);
+
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource,
+        "AnimationLoader: {} からアニメーション[{}] '{}' を読み込み（ファイル内 {} 本）",
+        filename, animationIndex,
+        scene->mAnimations[animationIndex]->mName.C_Str(), scene->mNumAnimations);
+
+    return ParseAnimation(scene, animationIndex);
+}
+
+unsigned int AnimationLoader::FindAnimationIndex(const aiScene* scene, const std::string& sourceAnimationName) {
+    if (sourceAnimationName.empty()) {
+        return 0;
+    }
+
+    for (unsigned int i = 0; i < scene->mNumAnimations; ++i) {
+        if (sourceAnimationName == scene->mAnimations[i]->mName.C_Str()) {
+            return i;
+        }
+    }
+
+    // 見つからないまま先頭を返すと「別のアニメーションが静かに再生される」ことになるので警告する
+    Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource,
+        "AnimationLoader: アニメーション '{}' が見つかりません。先頭の 1 本を使用します",
+        sourceAnimationName);
+    return 0;
 }
 
 Animation AnimationLoader::ParseAnimation(const aiScene* scene, unsigned int animationIndex) {

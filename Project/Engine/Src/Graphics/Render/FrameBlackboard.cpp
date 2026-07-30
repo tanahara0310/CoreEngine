@@ -21,6 +21,9 @@ namespace CoreEngine
     const char* const FrameBlackboard::GBufferNormalRoughness = "GBufferNormalRoughness";
     const char* const FrameBlackboard::GBufferEmissiveMetallic = "GBufferEmissiveMetallic";
     const char* const FrameBlackboard::GBufferMotionVector = "GBufferMotionVector";
+    const char* const FrameBlackboard::TAAHistory = "TAAHistory";
+    const char* const FrameBlackboard::TAAOutput = "TAAOutput";
+    const char* const FrameBlackboard::CASOutput = "CASOutput";
 
     std::string FrameBlackboard::MakePostEffectIntermediateName(size_t index)
     {

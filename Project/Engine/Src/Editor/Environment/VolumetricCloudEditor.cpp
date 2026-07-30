@@ -117,7 +117,9 @@ namespace CoreEngine {
 #endif
     }
 
-    void VolumetricCloudEditor::DrawPresetSelector(VolumetricCloudManager& manager)
+    // manager は USE_IMGUI 無効時（Release）に本体が丸ごと消えて未使用になる。
+    // Release は TreatWarningAsError なので C4100 でビルドが止まる。
+    void VolumetricCloudEditor::DrawPresetSelector([[maybe_unused]] VolumetricCloudManager& manager)
     {
 #ifdef USE_IMGUI
         const char* currentName = (activePresetIndex_ >= 0 && activePresetIndex_ < kCloudPresetCount)

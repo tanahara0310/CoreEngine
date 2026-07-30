@@ -70,9 +70,9 @@ namespace CoreEngine
 
     void WaterRenderFeature::PostSceneInitialize(SceneContext& ctx)
     {
-        // 空気遠近感の適用可否は SkyBox が大気散乱モードかで決まる。
+        // 空気遠近感の適用可否は「シーンに空（大気散乱の SkyBox）があるか」で決まる。
         // AtmosphereManager::IsAtmosphereActive() はフレーム後半まで立たないため、
-        // モードそのものを見る（EnvironmentFeature が先に SkyBox を確定させている）。
+        // 空の有無そのものを見る（EnvironmentFeature が先に SkyBox を確定させている）。
         if (!ctx.gameObjectManager) {
             return;
         }
@@ -305,7 +305,7 @@ namespace CoreEngine
 
         // 大気散乱（Aerial Perspective）・空アンビエント・空スペキュラの接続
         if (auto* atmosphere = domain.GetAtmosphereManager()) {
-            const bool atmosphereSky = (skyBox_ != nullptr) && skyBox_->IsAtmosphereMode();
+            const bool atmosphereSky = (skyBox_ != nullptr);
             const bool apEnabled = atmosphereSky
                 && atmosphere->IsConstantBufferReady()
                 && atmosphere->AreLUTsReady();

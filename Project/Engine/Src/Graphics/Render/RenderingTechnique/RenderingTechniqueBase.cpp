@@ -2,11 +2,49 @@
 #include "RenderingTechniqueBase.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Common/Core/CommandManager.h"
+#include "Graphics/Resource/ResourceFactory.h"
 #include <cassert>
+#include <cstring>
 
 namespace CoreEngine
 {
     std::wstring RenderingTechniqueBase::emptyPath_ = L"";
+
+    void FrameRingConstantBuffer::Initialize(DirectXCommon* dxCommon, uint32_t paramsSize)
+    {
+        assert(dxCommon);
+        alignedSize_ = (paramsSize + 255u) & ~255u;
+
+        sliceCount_ = 1;
+        if (auto* commandManager = dxCommon->GetCommandManager()) {
+            sliceCount_ = (std::max)(1u, static_cast<uint32_t>(commandManager->GetFrameCount()));
+        }
+
+        buffer_ = ResourceFactory::CreateBufferResource(
+            dxCommon->GetDevice(), alignedSize_ * sliceCount_);
+
+        void* mapped = nullptr;
+        [[maybe_unused]] HRESULT hr = buffer_->Map(0, nullptr, &mapped);
+        assert(SUCCEEDED(hr));
+        mappedBase_ = static_cast<uint8_t*>(mapped);
+    }
+
+    D3D12_GPU_VIRTUAL_ADDRESS FrameRingConstantBuffer::Upload(
+        DirectXCommon* dxCommon, const void* src, uint32_t size)
+    {
+        if (!mappedBase_ || !dxCommon || size > alignedSize_) {
+            return 0;
+        }
+
+        uint32_t slice = 0;
+        if (auto* commandManager = dxCommon->GetCommandManager()) {
+            slice = static_cast<uint32_t>(commandManager->GetRecordingFrameIndex()) % sliceCount_;
+        }
+
+        std::memcpy(mappedBase_ + static_cast<size_t>(slice) * alignedSize_, src, size);
+        return buffer_->GetGPUVirtualAddress() + static_cast<uint64_t>(slice) * alignedSize_;
+    }
 
     void RenderingTechniqueBase::Initialize(DirectXCommon* dxCommon)
     {

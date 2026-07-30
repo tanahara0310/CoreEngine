@@ -2,6 +2,7 @@
 #include "SkeletonAnimator.h"
 #include "Graphics/Model/Animation/AnimationUtils.h"
 #include "Math/MathCore.h"
+#include "Utility/Logger/Logger.h"
 #include <algorithm>
 #include <cassert>
 
@@ -14,6 +15,23 @@ SkeletonAnimator::SkeletonAnimator(const Skeleton& skeleton, const Animation& an
     , animationTime_(0.0f)
     , isLooping_(looping) {
     assert(animation_);
+
+    // アニメーションはジョイント名で引くため、名前が一致しないと
+    // 「エラーは出ないがバインドポーズのまま動かない」という無音の失敗になる。
+    // 一致数を数えて、0 件なら警告を出す。
+    size_t matchedJointCount = 0;
+    for (const Joint& joint : skeleton_.joints) {
+        if (animation_->nodeAnimations.contains(joint.name)) {
+            ++matchedJointCount;
+        }
+    }
+
+    Logger::GetInstance().Logf(
+        matchedJointCount == 0 ? LogLevel::WARNING : LogLevel::INFO,
+        LogCategory::Graphics,
+        "SkeletonAnimator: joints={} nodeAnimations={} matched={} duration={:.3f}s",
+        skeleton_.joints.size(), animation_->nodeAnimations.size(),
+        matchedJointCount, animation_->duration);
 }
 
 void SkeletonAnimator::Update(float deltaTime) {

@@ -143,19 +143,36 @@ namespace CoreEngine
         // 人間の目は完全には順応しないので、Krawczyk 2005 の自動キー
         // （シーンが暗いほど小さいキー = 暗い出力へ写す）で明暗の絶対感を保つ。
         // 例: 昼(順応輝度~1.0)でキー~0.17（従来とほぼ同じ）、薄暮(~0.1)で~0.06、夜(~0.01)で~0.03
-        float targetKey = keyValue_;
-        if (preserveSceneBrightness_) {
-            const float krawczykKey =
-                1.03f - 2.0f / (2.0f + std::log10(adaptedLuminance_ + 1.0f));
-            // ユーザー設定のキー値は 0.18 を基準とした相対倍率として効かせる
-            targetKey = krawczykKey * (keyValue_ / 0.18f);
-        }
+        const float targetKey = KeyForLuminance(adaptedLuminance_);
         currentKey_ = targetKey;
 
-        // 順応輝度が targetKey へ写る露出を求める
-        autoEV_ = std::clamp(
-            std::log2(targetKey / std::max(adaptedLuminance_, 1e-6f)),
-            minAutoEV_, maxAutoEV_);
+        // ===== 自動EVの決定 =====
+        //
+        // 「順応輝度を中間グレーへ写す」写真的な絶対露出をそのまま使ってはいけない。
+        // このエンジンの SceneColor は、露出補正 0EV でそのまま表示して適正になるよう
+        // ライティング側が較正されている（＝すでに露出済みの値）。
+        // そこへ絶対露出を重ねると二重に絞られ、晴天昼で約 -3.2EV（1/9 の明るさ）まで
+        // 落ちて「自動露出を入れると極端に暗い」という症状になる。
+        //
+        // そこで基準輝度でのEVを 0 点として差し引き、
+        // 「基準より明るいシーンでは絞り、暗いシーンでは開く」相対補正にする。
+        // 差分を取っているので Krawczyk 自動キーの性質（暗いシーンを持ち上げすぎない）は保たれる。
+        const float rawEV = std::log2(targetKey / std::max(adaptedLuminance_, 1e-6f));
+        const float referenceEV = std::log2(
+            KeyForLuminance(referenceLuminance_) / std::max(referenceLuminance_, 1e-6f));
+
+        autoEV_ = std::clamp(rawEV - referenceEV, minAutoEV_, maxAutoEV_);
+    }
+
+    float ToneMapping::KeyForLuminance(float luminance) const
+    {
+        if (!preserveSceneBrightness_) {
+            return keyValue_;
+        }
+        // Krawczyk 2005 の自動キー（シーンが暗いほど小さいキー = 暗い出力へ写す）。
+        // ユーザー設定のキー値は 0.18 を基準とした相対倍率として効かせる
+        const float krawczykKey = 1.03f - 2.0f / (2.0f + std::log10(luminance + 1.0f));
+        return krawczykKey * (keyValue_ / 0.18f);
     }
 
     void ToneMapping::RecordLuminanceReduction(
@@ -285,6 +302,20 @@ namespace CoreEngine
                 }
                 ImGui::Text("自動EV: %.2f（合計EV: %.2f）", autoEV_, autoEV_ + exposureEV_);
                 ImGui::Text("順応輝度: %.4f / ターゲットキー: %.3f", adaptedLuminance_, currentKey_);
+
+                // 自動露出は「基準輝度で 0EV」の相対補正。SceneColor は 0EV でそのまま
+                // 表示して適正になるよう較正済みのため、絶対露出だと二重に絞られてしまう
+                ImGui::SliderFloat("基準輝度（この明るさで 0EV）", &referenceLuminance_, 0.05f, 10.0f, "%.3f");
+                if (ImGui::Button("今の明るさを基準にする")) {
+                    CalibrateReferenceToCurrent();
+                }
+                ImGui::SameLine();
+                ImGui::TextDisabled("(?)");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip(
+                        "自動露出を切った状態の見た目に合う構図・時刻で押すと、\n"
+                        "そこを 0EV の基準にできる");
+                }
                 // OFF だと全シーンが中間グレーへ正規化され、薄暮の空が昼のように明るくなる
                 ImGui::Checkbox("明暗の絶対感を保持（暗いシーンは暗く）", &preserveSceneBrightness_);
                 // 8=ほぼ即座（95%到達≈0.4s）。小さくするほど目の明暗順応のような遅い演出になる

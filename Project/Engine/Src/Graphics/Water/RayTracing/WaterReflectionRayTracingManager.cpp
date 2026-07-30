@@ -213,7 +213,7 @@ namespace CoreEngine
 
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
         resources.cmdList4->DispatchRays(&dispatchDesc);
-        lastDiagnostics_.status = DispatchStatus::Dispatched;
+        lastDispatchInfo_.status = RayTracingDispatchStatus::Dispatched;
 
         EndOutputWrite(
             cmdList,

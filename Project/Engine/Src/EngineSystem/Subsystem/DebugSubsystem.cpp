@@ -173,6 +173,9 @@ namespace CoreEngine
             editorSettings->RegisterSection(postEffectSettingsSection_.get(), this);
             renderingTechniqueSettingsSection_ = std::make_unique<RenderingTechniqueSettingsSection>(engine_);
             editorSettings->RegisterSection(renderingTechniqueSettingsSection_.get(), this);
+            // RT シャドウのチューニング値（Stage 0: それまで設定は到達不能だった）
+            rayTracingSettingsSection_ = std::make_unique<RayTracingSettingsSection>(engine_);
+            editorSettings->RegisterSection(rayTracingSettingsSection_.get(), this);
         }
 
         // Engine Settings ウィンドウの「Editor Settings」管理パネル
@@ -267,6 +270,13 @@ namespace CoreEngine
                 }, EnginePanelCategory::Tools);
         }
 
+        // レイトレーシング専用デバッグパネル（Debug メニュー > Ray Tracing）
+        // 加速構造の統計・RTシャドウのステージ別内訳・中間バッファ・設定をまとめる。
+        rayTracingDebugPanel_.Initialize(engine_, &gpuProfiler_);
+        gameDebugUI_->RegisterEngineDebugPanel("Ray Tracing", [this]() {
+            rayTracingDebugPanel_.Draw();
+            });
+
         // その他の固定ウィンドウをドッキングシステムに登録
         DockingUI* dockingUI = imGui_->GetDockingUI();
         if (dockingUI) {
@@ -296,6 +306,7 @@ namespace CoreEngine
         cloudSettingsSection_.reset();
         postEffectSettingsSection_.reset();
         renderingTechniqueSettingsSection_.reset();
+        rayTracingSettingsSection_.reset();
 
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();

@@ -239,7 +239,7 @@ namespace CoreEngine
 
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
         resources.cmdList4->DispatchRays(&dispatchDesc);
-        lastDiagnostics_.status = DispatchStatus::Dispatched;
+        lastDispatchInfo_.status = RayTracingDispatchStatus::Dispatched;
 
         EndOutputWrite(
             cmdList,
@@ -254,7 +254,7 @@ namespace CoreEngine
                 LogSubCategory::Pipeline,
                 "WaterCausticsRayTracingManager: dispatch completed. status={} viewId={} size={}x{} "
                 "waterHeight={:.3f} simulationType={} activeWaveCount={} outputSRV=0x{:X} debug(mode={} scale={:.3f})",
-                ToString(lastDiagnostics_.status),
+                ToString(lastDispatchInfo_.status),
                 viewIndex,
                 width,
                 height,

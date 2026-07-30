@@ -27,7 +27,7 @@ namespace CoreEngine
         ///       WantsDefaultGround() の値を反映する）
         void SetWantsDefaultGround(bool wants) { wantsDefaultGround_ = wants; }
 
-        /// @brief シーンの SkyBox を取得（既定で大気散乱モード）
+        /// @brief シーンの SkyBox（大気散乱で描く空）を取得
         SkyBoxObject* GetSkyBox() const { return skyBox_; }
 
     private:

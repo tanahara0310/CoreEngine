@@ -190,7 +190,7 @@ namespace CoreEngine
         /// @param obj 保存対象のオブジェクト
         void SaveSingleObjectToJson(GameObject* obj);
 
-        /// @brief シーンの SkyBox を取得（既定で大気散乱モード。SetTexture() でキューブマップへ切替）
+        /// @brief シーンの SkyBox（大気散乱で描く空）を取得
         SkyBoxObject* GetSkyBox() const;
 
         /// @brief シーンBGMを登録し、トランジション時の自動フェードを有効化

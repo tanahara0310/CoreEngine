@@ -106,7 +106,7 @@ namespace CoreEngine
         /// @brief 水面描画本体（所有権は GameObjectManager）
         WaterPlaneObject* waterPlane_ = nullptr;
 
-        /// @brief 空気遠近感の適用可否判定に使う SkyBox（所有権は GameObjectManager）
+        /// @brief 空気遠近感の適用可否判定に使う空（所有権は GameObjectManager）
         SkyBoxObject* skyBox_ = nullptr;
 
         /// @brief 現在フレームの水面状態（RenderDomainContext へ publish する実体）

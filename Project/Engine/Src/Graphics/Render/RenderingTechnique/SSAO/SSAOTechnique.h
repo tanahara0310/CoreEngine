@@ -33,18 +33,17 @@ namespace CoreEngine
         void DrawImGui() override;
 
         const SSAOParams& GetParams() const { return params_; }
-        void SetParams(const SSAOParams& params);
-        void UpdateConstantBuffer();
+        void SetParams(const SSAOParams& params) { params_ = params; }
 
     protected:
         std::string GetTechniqueName() const override { return "SSAO"; }
         const std::wstring& GetPixelShaderPath() const override;
 
     private:
-        void CreateConstantBuffer();
-
         SSAOParams params_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-        SSAOParams* mappedData_ = nullptr;
+        // ジッタ入り行列が毎フレーム変わるため、フレームオーバーラップ対応のリングで運ぶ。
+        // 単一バッファ上書きだと GPU 実行中フレームの行列を CPU が書き潰し、
+        // 深度バッファと行列が食い違って AO が毎フレームちらつく。
+        FrameRingConstantBuffer cbRing_;
     };
 }

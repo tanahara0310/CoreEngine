@@ -87,9 +87,37 @@ namespace CoreEngine
         /// @brief BeginViewOverride() によるビュー差し替えを解除する
         virtual void EndViewOverride() {}
 
+        /// @brief TAA 用のサブピクセルジッタ（NDC 単位）を設定する
+        /// @details 射影行列へジッタを加えた写しを内部に作り、以降 GetProjectionMatrix() が
+        ///          そちらを返すようにする。モデルの WVP・深度復元用の invViewProj・視錐台が
+        ///          すべて同じジッタ付き行列から導かれるため、フレーム内で整合が取れる。
+        ///
+        ///          ジッタは「毎フレーム設定し直す」前提。射影行列が作り直された場合も
+        ///          次の呼び出しで最新のものから作り直される。
+        /// @param ndcX NDC の X オフセット（1 ピクセル = 2 / 画面幅）
+        /// @param ndcY NDC の Y オフセット
+        void SetProjectionJitter(float ndcX, float ndcY);
+
+        /// @brief 現在適用中のジッタ（NDC）を取得する
+        float GetProjectionJitterX() const { return projectionJitterX_; }
+        float GetProjectionJitterY() const { return projectionJitterY_; }
+
     protected:
 
+        /// @brief ジッタを適用する前の射影行列を返す
+        /// @details ジッタへ対応するカメラは生の projectionMatrix_ を返すこと。
+        ///          nullptr を返す実装（既定）ではジッタは無効化される。
+        virtual const Matrix4x4* GetUnjitteredProjectionMatrix() const { return nullptr; }
+
         bool isActive_ = true;
+
+        // ===== SetProjectionJitter() 用の共有状態 =====
+        // 対応するカメラ実装は GetProjectionMatrix() でこの状態を参照する。
+        // ビュー差し替え（BeginViewOverride）中は補助ビューの描画なのでジッタより差し替えを優先する。
+        bool projectionJitterActive_ = false;
+        float projectionJitterX_ = 0.0f;
+        float projectionJitterY_ = 0.0f;
+        Matrix4x4 jitteredProjectionMatrix_{};
 
         // ===== BeginViewOverride() 用の共有状態 =====
         // 対応するカメラ実装（Camera / DebugCamera）は GetViewMatrix() / GetProjectionMatrix() /

@@ -3,13 +3,9 @@
 #include <EngineSystem/EngineSystem.h>
 #include "WinApp/WinApp.h"
 #include "Scenes/TestScene/TestScene.h"
-#include "Scenes/ParticleTestScene/ParticleTestScene.h"
 #include "Scenes/PrimitiveTestScene/PrimitiveTestScene.h"
-#include "Scenes/SpriteTestScene/SpriteTestScene.h"
 #include "Scenes/WaterTestScene/WaterTestScene.h"
-#include "Scenes/AtmosphereTestScene/AtmosphereTestScene.h"
-#include "Scenes/VolumetricCloudTestScene/VolumetricCloudTestScene.h"
-#include "Scenes/HomeworkScene/HomeworkScene.h"
+#include "Scenes/AssignmentScene/AssignmentScene.h"
 
 using namespace CoreEngine;
 
@@ -27,16 +23,12 @@ void MyGame::Initialize()
 
     // 全シーンを登録（アプリ層で実装）
     sceneManager_->RegisterScene<TestScene>("TestScene");
-    sceneManager_->RegisterScene<ParticleTestScene>("ParticleTestScene");
     sceneManager_->RegisterScene<PrimitiveTestScene>("PrimitiveTestScene");
-    sceneManager_->RegisterScene<SpriteTestScene>("SpriteTestScene");
     sceneManager_->RegisterScene<WaterTestScene>("WaterTestScene");
-    sceneManager_->RegisterScene<AtmosphereTestScene>("AtmosphereTestScene");
-    sceneManager_->RegisterScene<VolumetricCloudTestScene>("VolumetricCloudTestScene");
-    sceneManager_->RegisterScene<HomeworkScene>("HomeworkScene");
+    sceneManager_->RegisterScene<AssignmentScene>("AssignmentScene");
 
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene("WaterTestScene");
+    sceneManager_->SetInitialScene("AssignmentScene");
 
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
 #ifdef USE_IMGUI

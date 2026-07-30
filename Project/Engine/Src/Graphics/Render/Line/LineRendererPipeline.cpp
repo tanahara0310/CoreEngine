@@ -40,6 +40,18 @@ namespace CoreEngine
             throw std::runtime_error("Failed to create pipeline state for LineRendererPipeline.");
         }
 
+        // 深度テスト・深度書き込みを切った PSO も用意しておく（オーバーレイ描画用）
+        const bool overlayResult = overlayPsoMg_->CreateBuilder()
+            .SetInputLayoutFromReflection(*reflectionData_)
+            .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
+            .SetDepthStencil(false, false)
+            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE)
+            .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
+
+        if (!overlayResult) {
+            throw std::runtime_error("Failed to create overlay pipeline state for LineRendererPipeline.");
+        }
+
         uint32_t bufferSize = sizeof(LineVertex) * kMaxVertexCount;
 
         // 頂点バッファリソースを生成
@@ -118,7 +130,8 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    void LineRendererPipeline::DrawLines(ID3D12GraphicsCommandList* cmdList, uint32_t vertexCount) {
+    void LineRendererPipeline::DrawLines(ID3D12GraphicsCommandList* cmdList, uint32_t vertexCount,
+        uint32_t startVertexLocation) {
         if (vertexCount == 0 || !currentCmdList_) {
             return;
         }
@@ -133,7 +146,7 @@ namespace CoreEngine
                 cameraIdx,  // シェーダーリフレクションから自動決定
                 wvpBuffer_->GetGPUVirtualAddress());
         }
-        cmdList->DrawInstanced(vertexCount, 1, 0, 0);
+        cmdList->DrawInstanced(vertexCount, 1, startVertexLocation, 0);
     }
 
     void LineRendererPipeline::SetWVPMatrix(const Matrix4x4& view, const Matrix4x4& proj) {
@@ -160,25 +173,50 @@ namespace CoreEngine
             return;
         }
 
-        // ラインを頂点データに変換
-        std::vector<LineVertex> vertices;
-        vertices.reserve(lineBatch_.size() * 2);
-
-        for (const auto& line : lineBatch_) {
-            vertices.push_back({ line.start, line.color, line.alpha });
-            vertices.push_back({ line.end, line.color, line.alpha });
-        }
-
-        // 頂点バッファを更新
-        UpdateVertexBuffer(vertices);
-
-        // WVP行列を設定
+        // WVP行列を設定（深度あり・なしで共通）
         Matrix4x4 view = camera_->GetViewMatrix();
         Matrix4x4 proj = camera_->GetProjectionMatrix();
         SetWVPMatrix(view, proj);
 
-        // 描画
-        DrawLines(currentCmdList_, static_cast<uint32_t>(vertices.size()));
+        // 深度テストの有無で PSO が変わるので 2 グループに分ける。
+        // ただし頂点バッファは 1 本しかないため、途中で作り直すと
+        // GPU がまだ最初のドローを実行する前に CPU が上書きしてしまう。
+        // そこで「深度あり → 深度なし」の順に 1 本の配列へ詰めて 1 回だけ転送し、
+        // 開始頂点をずらした 2 回のドローに分ける。
+        std::vector<LineVertex> vertices;
+        vertices.reserve(lineBatch_.size() * 2);
+
+        auto appendVertices = [&vertices](const Line& line) {
+            vertices.push_back({ line.start, line.color, line.alpha });
+            vertices.push_back({ line.end, line.color, line.alpha });
+        };
+
+        for (const Line& line : lineBatch_) {
+            if (line.depthTest) appendVertices(line);
+        }
+        const uint32_t depthTestedVertexCount = static_cast<uint32_t>(vertices.size());
+
+        for (const Line& line : lineBatch_) {
+            if (!line.depthTest) appendVertices(line);
+        }
+        const uint32_t overlayVertexCount = static_cast<uint32_t>(vertices.size()) - depthTestedVertexCount;
+
+        UpdateVertexBuffer(vertices);
+
+        if (depthTestedVertexCount > 0) {
+            currentCmdList_->SetPipelineState(pipelineState_);
+            DrawLines(currentCmdList_, depthTestedVertexCount, 0);
+        }
+
+        if (overlayVertexCount > 0) {
+            if (ID3D12PipelineState* overlayPso = overlayPsoMg_->GetPipelineState(currentBlendMode_)) {
+                currentCmdList_->SetPipelineState(overlayPso);
+                DrawLines(currentCmdList_, overlayVertexCount, depthTestedVertexCount);
+
+                // 呼び出し元は通常 PSO が設定されている前提でいるため元に戻す
+                currentCmdList_->SetPipelineState(pipelineState_);
+            }
+        }
     }
 
     void LineRendererPipeline::ClearBatch() {

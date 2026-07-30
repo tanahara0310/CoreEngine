@@ -76,8 +76,7 @@ namespace CoreEngine
             if (auto* sceneSkyBox = dynamic_cast<SkyBoxObject*>(obj.get())) {
                 skyBox_ = sceneSkyBox;
                 Logger::GetInstance().Infof(LogCategory::System,
-                    "BaseScene: シーン生成の SkyBox を採用 (背景モード={})",
-                    skyBox_->IsAtmosphereMode() ? "大気散乱" : "キューブマップ");
+                    "BaseScene: シーン生成の SkyBox を採用");
                 return;
             }
         }
@@ -127,9 +126,9 @@ namespace CoreEngine
 
     void EnvironmentFeature::UpdateAtmosphere(SceneContext& ctx)
     {
-        // キューブマップモード中は AtmosphereManager を非アクティブのままにし、
+        // 空（SkyBox）が無いシーンでは AtmosphereManager を非アクティブのままにし、
         // LUT 生成・Aerial Perspective 合成をスキップさせる
-        if (!skyBox_ || !skyBox_->IsAtmosphereMode()) {
+        if (!skyBox_) {
             return;
         }
 

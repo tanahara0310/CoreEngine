@@ -36,9 +36,37 @@ namespace CoreEngine
         }
 
         isSupported_ = true;
+        raytracingTier_ = static_cast<UINT>(opts5.RaytracingTier);
         logger.Log("AccelerationStructureManager initialized (DXR supported)",
             LogLevel::Info, LogCategory::Graphics);
         return true;
+    }
+
+    // =========================================================================
+    // デバッグ表示用の統計
+    // =========================================================================
+    UINT64 AccelerationStructureManager::GetBLASTotalBytes() const
+    {
+        UINT64 total = 0;
+        for (const BLASEntry& entry : blasList_) {
+            if (entry.result) {
+                total += entry.result->GetDesc().Width;
+            }
+        }
+        return total;
+    }
+
+    UINT64 AccelerationStructureManager::GetTLASResultBytes() const
+    {
+        return tlasResult_ ? tlasResult_->GetDesc().Width : 0;
+    }
+
+    UINT64 AccelerationStructureManager::GetScratchTotalBytes() const
+    {
+        UINT64 total = 0;
+        if (blasScratch_) { total += blasScratch_->GetDesc().Width; }
+        if (tlasScratch_) { total += tlasScratch_->GetDesc().Width; }
+        return total;
     }
 
     UINT AccelerationStructureManager::BuildBLAS(
@@ -139,11 +167,16 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList,
         const std::vector<InstanceDesc>& instances)
     {
-        if (!isSupported_ || instances.empty()) return;
+        if (!isSupported_ || instances.empty()) {
+            tlasInstanceCount_ = 0;
+            return;
+        }
 
         // ID3D12GraphicsCommandList4 を取得
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
         if (FAILED(cmdList->QueryInterface(IID_PPV_ARGS(&cmdList4)))) return;
+
+        tlasInstanceCount_ = static_cast<UINT>(instances.size());
 
         const UINT64 instanceBufferSize =
             sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * instances.size();

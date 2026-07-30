@@ -392,7 +392,8 @@ namespace CoreEngine
     {
         for (auto& panel : engineDebugPanels_) {
             if (!panel.visible) continue;
-            ImGui::SetNextWindowSize(ImVec2(420.0f, 480.0f), ImGuiCond_FirstUseEver);
+            // デバッグ情報パネルは表形式が多く 420px では列が潰れるため、初回サイズを広めに取る
+            ImGui::SetNextWindowSize(ImVec2(620.0f, 620.0f), ImGuiCond_FirstUseEver);
             if (ImGui::Begin(panel.label.c_str(), &panel.visible)) {
                 if (panel.drawer) panel.drawer();
             }

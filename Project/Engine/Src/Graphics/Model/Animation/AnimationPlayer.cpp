@@ -35,6 +35,10 @@ namespace CoreEngine
         return controller_ ? controller_->IsFinished() : true;
     }
 
+    bool AnimationPlayer::IsBlending() const {
+        return controller_ ? controller_->IsBlending() : false;
+    }
+
     const Skeleton* AnimationPlayer::GetSkeleton() const {
         return controller_ ? controller_->GetSkeleton() : nullptr;
     }

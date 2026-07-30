@@ -3,15 +3,12 @@
 #include "Camera/ICamera.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Texture/TextureManager.h"
-#include "Graphics/Material/SkyBoxMaterialInstance.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Math/MathCore.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include <cassert>
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/IBL/IBLSystem.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Utility/Logger/Logger.h"
@@ -25,52 +22,6 @@ namespace {
 
 void SkyBoxObject::SetSkyBoxRenderer(SkyBoxRenderer* renderer) {
     sSkyBoxRenderer_ = renderer;
-}
-
-void SkyBoxObject::SetTexture(const CoreEngine::TextureManager::LoadedTexture& texture, const std::string& textureKey) {
-    texture_ = texture;
-
-    // テクスチャの明示指定＝キューブマップ背景の要求とみなし、
-    // 既定の大気散乱モードからキューブマップモードへ自動で切り替える
-    if (texture_.gpuHandle.ptr != 0) {
-        atmosphereMode_ = false;
-    }
-
-    UpdateIBLFromTexture(textureKey, true);
-}
-
-void SkyBoxObject::UpdateIBLFromTexture(const std::string& textureKey, bool forceRegenerate) {
-    if (texture_.gpuHandle.ptr == 0 || !texture_.texture) {
-        return;
-    }
-
-    auto* engine = GetEngineSystem();
-    if (!engine) {
-        return;
-    }
-
-    auto* iblSystem = engine->GetComponent<CoreEngine::IBLSystem>();
-    if (!iblSystem) {
-        return;
-    }
-
-    CoreEngine::IBLSystem::SetupParams iblParams;
-    iblParams.environmentMap = texture_.texture.Get();
-    iblParams.environmentMapSRV = texture_.gpuHandle;
-    iblParams.environmentKey = textureKey;
-    iblParams.irradianceSize = 128;
-    iblParams.prefilteredSize = 256;
-    iblParams.brdfLUTSize = 512;
-    iblParams.forceRegenerate = forceRegenerate;
-
-    if (!iblSystem->Setup(iblParams)) {
-        CoreEngine::Logger::GetInstance().Logf(
-            CoreEngine::LogLevel::Warn,
-            CoreEngine::LogCategory::Graphics,
-            "SkyBox: IBL setup failed when applying texture. key='{}' srv=0x{:X}",
-            textureKey,
-            texture_.gpuHandle.ptr);
-    }
 }
 
 struct SkyBoxVertex {
@@ -87,17 +38,10 @@ void SkyBoxObject::Initialize() {
     // 頂点データ生成
     CreateBoxVertices();
 
-    // マテリアル初期化
-    auto engine = GetEngineSystem();
-    auto* dxCommon = engine->GetComponent<DirectXCommon>();
-    assert(dxCommon != nullptr);
-    material_ = std::make_unique<SkyBoxMaterialInstance>();
-    material_->Initialize(dxCommon->GetDevice());
-
     // トランスフォーム用定数バッファ生成
     CreateTransformBuffer();
 
-    // SkyBox はシーン JSON のシリアライズ対象外（テクスチャ・回転はコードで制御）
+    // SkyBox はシーン JSON のシリアライズ対象外（回転・輝度はコードで制御）
     SetSerializeEnabled(false);
 }
 
@@ -212,7 +156,7 @@ void SkyBoxObject::Update() {
     if (auto* renderManager = engine->GetComponent<RenderManager>()) {
         renderManager->SetIBLRotation(transform_.rotate);
         // SkyBox 輝度スケールを IBL に伝播（環境マップの映り込みも連動）
-        renderManager->SetEnvironmentIntensity(material_->GetIntensity());
+        renderManager->SetEnvironmentIntensity(environmentIntensity_);
     }
 }
 
@@ -244,9 +188,6 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
     auto* skyBoxRenderer = renderManager->GetRenderer(RenderPassType::SkyBox);
     if (!skyBoxRenderer) return;
 
-    // テクスチャが未設定の場合は描画しない（大気散乱モードではテクスチャ不要）
-    if (!atmosphereMode_ && texture_.gpuHandle.ptr == 0) return;
-
     // 頂点バッファの設定
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
     commandList->IASetIndexBuffer(&indexBufferView_);
@@ -274,66 +215,39 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
 
     assert(sSkyBoxRenderer_ != nullptr);
 
-    // ===== 大気散乱モード =====
-    // BeginPass で設定されたキューブマップ用 RootSignature / PSO を
-    // 大気散乱用に差し替えてから描画する（メッシュ・WVP は共通）
-    if (atmosphereMode_) {
-        if (!sSkyBoxRenderer_->IsAtmospherePipelineReady()) return;
+    // 空は常に大気散乱で描く。RootSignature / PSO は BeginPass が設定済みなので、
+    // ここでは定数バッファと LUT のバインドだけを行う。
+    if (!sSkyBoxRenderer_->IsPipelineReady()) return;
 
-        auto* domainContext = engine->GetRenderDomainContext();
-        auto* atmosphereManager = domainContext ? domainContext->GetAtmosphereManager() : nullptr;
-        if (!atmosphereManager || !atmosphereManager->IsConstantBufferReady()) return;
+    auto* domainContext = engine->GetRenderDomainContext();
+    auto* atmosphereManager = domainContext ? domainContext->GetAtmosphereManager() : nullptr;
+    if (!atmosphereManager || !atmosphereManager->IsConstantBufferReady()) return;
 
-        commandList->SetGraphicsRootSignature(sSkyBoxRenderer_->GetAtmosphereRootSignature());
-        commandList->SetPipelineState(sSkyBoxRenderer_->GetAtmospherePipelineState());
-
-        commandList->SetGraphicsRootConstantBufferView(
-            sSkyBoxRenderer_->GetAtmosphereRootParamIndex("gTransformationMatrix"),
-            transformBuffers_[transformBufferIndex_]->GetGPUVirtualAddress()
-        );
-        commandList->SetGraphicsRootConstantBufferView(
-            sSkyBoxRenderer_->GetAtmosphereRootParamIndex("gAtmosphere"),
-            atmosphereManager->GetConstantBufferGPUAddress()
-        );
-
-        // LUT 群（未生成の初回フレームは黒がサンプルされるだけなので許容）
-        // 描画は Sky-View LUT の1サンプルで完結する。Transmittance は太陽ディスク描画で使用。
-        const int skyViewParamIndex = sSkyBoxRenderer_->GetAtmosphereRootParamIndex("gSkyViewLUT");
-        if (skyViewParamIndex >= 0) {
-            commandList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(skyViewParamIndex),
-                atmosphereManager->GetSkyViewLUTSRVHandle()
-            );
-        }
-        const int transmittanceParamIndex = sSkyBoxRenderer_->GetAtmosphereRootParamIndex("gTransmittanceLUT");
-        if (transmittanceParamIndex >= 0) {
-            commandList->SetGraphicsRootDescriptorTable(
-                static_cast<UINT>(transmittanceParamIndex),
-                atmosphereManager->GetTransmittanceLUTSRVHandle()
-            );
-        }
-
-        commandList->DrawIndexedInstanced(kIndexCount, 1, 0, 0, 0);
-        return;
-    }
-
-    // トランスフォーム行列CBV
     commandList->SetGraphicsRootConstantBufferView(
         sSkyBoxRenderer_->GetRootParamIndex("gTransformationMatrix"),
         transformBuffers_[transformBufferIndex_]->GetGPUVirtualAddress()
     );
-
-    // マテリアルCBV
     commandList->SetGraphicsRootConstantBufferView(
-        sSkyBoxRenderer_->GetRootParamIndex("gMaterial"),
-        material_->GetGPUVirtualAddress()
+        sSkyBoxRenderer_->GetRootParamIndex("gAtmosphere"),
+        atmosphereManager->GetConstantBufferGPUAddress()
     );
 
-    // テクスチャの設定
-    commandList->SetGraphicsRootDescriptorTable(
-        sSkyBoxRenderer_->GetRootParamIndex("gTexture"),
-        texture_.gpuHandle
-    );
+    // LUT 群（未生成の初回フレームは黒がサンプルされるだけなので許容）
+    // 描画は Sky-View LUT の1サンプルで完結する。Transmittance は太陽ディスク描画で使用。
+    const int skyViewParamIndex = sSkyBoxRenderer_->GetRootParamIndex("gSkyViewLUT");
+    if (skyViewParamIndex >= 0) {
+        commandList->SetGraphicsRootDescriptorTable(
+            static_cast<UINT>(skyViewParamIndex),
+            atmosphereManager->GetSkyViewLUTSRVHandle()
+        );
+    }
+    const int transmittanceParamIndex = sSkyBoxRenderer_->GetRootParamIndex("gTransmittanceLUT");
+    if (transmittanceParamIndex >= 0) {
+        commandList->SetGraphicsRootDescriptorTable(
+            static_cast<UINT>(transmittanceParamIndex),
+            atmosphereManager->GetTransmittanceLUTSRVHandle()
+        );
+    }
 
     // 描画コマンド
     commandList->DrawIndexedInstanced(kIndexCount, 1, 0, 0, 0);
@@ -341,16 +255,14 @@ void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
 
 #ifdef _DEBUG
 int SkyBoxObject::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
-    if (maxTabs < 2) return 0;
+    if (maxTabs < 1) return 0;
     outTabs[0] = { "object_data.png", "トランスフォーム", {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
-    outTabs[1] = { "imagePlane.png",  "テクスチャ",       {0.60f,0.40f,0.80f,1.0f}, {0.60f,0.40f,0.80f,0.25f} };
-    return 2;
+    return 1;
 }
 
 bool SkyBoxObject::DrawInspectorTabContent(int tabIndex) {
     switch (tabIndex) {
     case 0: return DrawTransformSection();
-    case 1: return DrawTextureSection();
     default: return false;
     }
 }
@@ -364,13 +276,11 @@ bool SkyBoxObject::DrawTransformSection() {
     UI::SectionHeader("スケール");
     changed |= UI::DragVec3("スケール", transform_.scale, 0.01f);
 
-    UI::SectionHeader("HDR設定");
-    float intensity = material_->GetIntensity();
-    if (ImGui::SliderFloat("輝度スケール", &intensity, 0.01f, 5.0f, "%.2f")) {
-        material_->SetIntensity(intensity);
+    UI::SectionHeader("環境設定");
+    if (ImGui::SliderFloat("輝度スケール", &environmentIntensity_, 0.01f, 5.0f, "%.2f")) {
         changed = true;
     }
-    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "HDR環境マップの明るさを調整します");
+    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "環境マップ（映り込み）の明るさを調整します");
 
     UI::Spacing();
     if (ImGui::Button("リセット##skybox")) {
@@ -382,88 +292,5 @@ bool SkyBoxObject::DrawTransformSection() {
     return changed;
 }
 
-bool SkyBoxObject::DrawTextureSection() {
-    bool changed = false;
-
-    UI::SectionHeader("背景モード");
-    {
-        int mode = atmosphereMode_ ? 0 : 1;
-        if (ImGui::RadioButton("大気散乱", &mode, 0)) { changed = true; }
-        ImGui::SameLine();
-        if (ImGui::RadioButton("キューブマップ", &mode, 1)) { changed = true; }
-        atmosphereMode_ = (mode == 0);
-
-        if (!atmosphereMode_ && texture_.gpuHandle.ptr == 0) {
-            ImGui::TextColored(ImVec4(1.0f, 0.7f, 0.3f, 1.0f),
-                "テクスチャ未設定のため描画されません");
-        }
-    }
-    ImGui::Spacing();
-
-    UI::SectionHeader("HDRテクスチャ");
-    const bool hasTexture = texture_.gpuHandle.ptr != 0;
-
-    // ドロップターゲットエリア
-    {
-        const bool isDragHovering = ImGui::IsMouseDragging(ImGuiMouseButton_Left);
-        ImVec4 borderCol = isDragHovering
-            ? ImVec4(0.60f, 0.40f, 0.80f, 0.8f)
-            : ImVec4(0.30f, 0.30f, 0.30f, 1.0f);
-
-        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.12f, 0.12f, 0.16f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.18f, 0.24f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_Border,        borderCol);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.5f);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding,   4.0f);
-
-        const float areaW = ImGui::GetContentRegionAvail().x;
-        constexpr float kAreaH = 40.0f;
-        const char* btnLabel = (hasTexture && !textureName_.empty()) ? textureName_.c_str() : ".hdr ファイルをドロップ";
-        ImGui::Button(btnLabel, ImVec2(areaW, kAreaH));
-
-        ImGui::PopStyleVar(2);
-        ImGui::PopStyleColor(3);
-
-        // ドロップターゲット: HDRファイルのみ受け付ける
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE")) {
-                const char* droppedFilename = static_cast<const char*>(payload->Data);
-                std::string filename = droppedFilename;
-                std::string ext = filename.size() >= 4 ? filename.substr(filename.size() - 4) : "";
-                for (auto& c : ext) c = static_cast<char>(::tolower(c));
-
-                if (ext == ".hdr") {
-                    textureName_ = filename;
-                    SetTexture(CoreEngine::TextureManager::GetInstance().Load(filename), filename);
-                    dropWarning_.clear();
-                    changed = true;
-                } else {
-                    dropWarning_ = "HDRファイル (.hdr) のみ使用できます: " + filename;
-                }
-            }
-            ImGui::EndDragDropTarget();
-        }
-    }
-
-    // 非HDRファイルがドロップされた場合の警告表示
-    if (!dropWarning_.empty()) {
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", dropWarning_.c_str());
-    }
-
-    // テクスチャ解除ボタン（解除後は既定の大気散乱モードへ復帰）
-    if (hasTexture) {
-        ImGui::Spacing();
-        if (ImGui::Button("テクスチャ解除##skybox", ImVec2(-FLT_MIN, 0.0f))) {
-            texture_ = {};
-            textureName_.clear();
-            dropWarning_.clear();
-            atmosphereMode_ = true;
-            changed = true;
-        }
-    }
-
-    return changed;
-}
 #endif
 

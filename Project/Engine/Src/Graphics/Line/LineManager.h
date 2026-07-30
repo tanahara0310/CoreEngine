@@ -26,9 +26,11 @@ public:
     /// @param end 終点のワールド座標
     /// @param color 色（RGB、デフォルトは白）
     /// @param alpha 透明度（デフォルトは1.0）
-    void DrawLine(const Vector3& start, const Vector3& end, 
-                  const Vector3& color = {1.0f, 1.0f, 1.0f}, 
-                  float alpha = 1.0f);
+    /// @param depthTest false にするとモデルに隠れず常に手前へ描く（骨のデバッグ表示など）
+    void DrawLine(const Vector3& start, const Vector3& end,
+                  const Vector3& color = {1.0f, 1.0f, 1.0f},
+                  float alpha = 1.0f,
+                  bool depthTest = true);
 
     /// @brief ラインを描画（Lineオブジェクトから）
     /// @param line ライン
@@ -91,9 +93,11 @@ public:
     /// @param size サイズ
     /// @param color 色
     /// @param alpha 透明度
+    /// @param depthTest false にするとモデルに隠れず常に手前へ描く
     void DrawCross(const Vector3& position, float size = 0.1f,
                    const Vector3& color = {1.0f, 0.0f, 0.0f},
-                   float alpha = 1.0f);
+                   float alpha = 1.0f,
+                   bool depthTest = true);
 
     /// @brief ライン配列を生成するヘルパー関数群（バッチング用）
     static std::vector<Line> GenerateSphereLines(const Vector3& center, float radius,

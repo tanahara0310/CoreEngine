@@ -7,6 +7,9 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Camera/CameraManager.h"
+#include "Camera/ICamera.h"
+#include "Scene/SceneManager.h"
 #include "Math/MathCore.h"
 #include <cstring>
 #include <cassert>
@@ -20,7 +23,7 @@ namespace CoreEngine
     void SSAOTechnique::Initialize(DirectXCommon* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
-        CreateConstantBuffer();
+        cbRing_.Initialize(dxCommon, sizeof(SSAOParams));
     }
 
     void SSAOTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
@@ -31,7 +34,6 @@ namespace CoreEngine
         }
 
         auto* gBufferManager = context.gBufferManager;
-        auto* renderManager = context.renderManager;
         auto* renderTargetManager = context.renderTargetManager;
         auto* cmdList = context.dxCommon->GetCommandList();
 
@@ -42,14 +44,33 @@ namespace CoreEngine
         params_.screenHeight = h;
 
         // カメラ行列の設定
-        const Matrix4x4& view = renderManager->GetViewMatrix();
-        const Matrix4x4& proj = renderManager->GetProjectionMatrix();
+        //
+        // 実際に描画へ使われたカメラから取ること。RenderManager::GetViewMatrix() は
+        // CameraManager のアクティブカメラだけを見るが、エディタ実行ではそれが未設定で
+        // 単位行列が返る。単位行列で深度からワールド座標を復元すると座標が全く合わず、
+        // AO がノイズと黒斑（隣接面のちらつき）になる。
+        // TAA のジッタもこのカメラの射影行列に入っているため、G-Buffer と完全に整合する。
+        const ICamera* camera = context.sceneManager
+            ? context.sceneManager->GetGameViewCamera3D()
+            : nullptr;
+        if (!camera && context.cameraManager) {
+            camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        }
+        if (!camera) {
+            outputSrvHandle = {};
+            return;
+        }
+
+        const Matrix4x4& view = camera->GetViewMatrix();
+        const Matrix4x4& proj = camera->GetProjectionMatrix();
         std::memcpy(params_.viewMatrix, &view, sizeof(float) * 16);
         std::memcpy(params_.projectionMatrix, &proj, sizeof(float) * 16);
         const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(MathCore::Matrix::Multiply(view, proj));
         std::memcpy(params_.invViewProjMatrix, &invViewProj, sizeof(float) * 16);
 
-        UpdateConstantBuffer();
+        // 今フレームのスライスへ書き込む（フレームオーバーラップ対応）
+        const D3D12_GPU_VIRTUAL_ADDRESS cbAddress =
+            cbRing_.Upload(context.dxCommon, &params_, sizeof(params_));
 
         // SSAO用のレンダーターゲットを取得
         auto* ssaoTarget = renderTargetManager->GetRenderTarget(RenderTargetNames::SSAOBuffer);
@@ -85,8 +106,8 @@ namespace CoreEngine
 
         // CBV: SSAOParams
         const int paramsIdx = GetRootParamIndex("SSAOParams");
-        if (paramsIdx >= 0 && constantBuffer_) {
-            cmdList->SetGraphicsRootConstantBufferView(paramsIdx, constantBuffer_->GetGPUVirtualAddress());
+        if (paramsIdx >= 0 && cbAddress != 0) {
+            cmdList->SetGraphicsRootConstantBufferView(paramsIdx, cbAddress);
         }
 
         DrawFullscreenQuad(cmdList);
@@ -99,9 +120,9 @@ namespace CoreEngine
 
     void SSAOTechnique::OnResize(uint32_t width, uint32_t height)
     {
+        // 定数は毎フレーム Execute でリングへ書かれるため、CPU 側の値だけ更新すればよい
         params_.screenWidth = static_cast<float>(width);
         params_.screenHeight = static_cast<float>(height);
-        UpdateConstantBuffer();
     }
 
     void SSAOTechnique::DrawImGui()
@@ -119,9 +140,7 @@ namespace CoreEngine
             ImGui::TreePop();
         }
 
-        if (changed) {
-            UpdateConstantBuffer();
-        }
+        (void)changed; // 定数は毎フレーム Execute でリングへ書かれる
 
         if (ImGui::Button("デフォルトに戻す")) {
             params_.radius      = 0.5f;
@@ -129,7 +148,6 @@ namespace CoreEngine
             params_.intensity   = 1.0f;
             params_.power       = 1.5f;
             params_.sampleCount = 16;
-            UpdateConstantBuffer();
         }
 
         ImGui::PopID();
@@ -140,28 +158,5 @@ namespace CoreEngine
     {
         static const std::wstring path = L"SSAO.PS.hlsl";
         return path;
-    }
-
-    void SSAOTechnique::SetParams(const SSAOParams& params)
-    {
-        params_ = params;
-        UpdateConstantBuffer();
-    }
-
-    void SSAOTechnique::UpdateConstantBuffer()
-    {
-        if (mappedData_) {
-            *mappedData_ = params_;
-        }
-    }
-
-    void SSAOTechnique::CreateConstantBuffer()
-    {
-        assert(directXCommon_);
-        const UINT bufferSize = (sizeof(SSAOParams) + 255) & ~255;
-        constantBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), bufferSize);
-        [[maybe_unused]] HRESULT hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
-        assert(SUCCEEDED(hr));
-        UpdateConstantBuffer();
     }
 }

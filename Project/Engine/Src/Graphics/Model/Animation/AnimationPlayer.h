@@ -41,6 +41,9 @@ namespace CoreEngine
         /// @brief アニメーションが終了したか確認（ループ再生中は常にfalse）
         bool IsFinished() const;
 
+        /// @brief アニメーションブレンドの実行中か
+        bool IsBlending() const;
+
         /// @brief 現在のスケルトンを取得（コントローラーが所有する実体への参照）
         /// @return スケルトンへのポインタ（スケルトンアニメーションでない場合は nullptr）
         const Skeleton* GetSkeleton() const;

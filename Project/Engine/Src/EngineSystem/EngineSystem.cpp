@@ -31,6 +31,8 @@
 #include "Graphics/Render/Pass/GBufferPass.h"
 #include "Graphics/Render/Pass/HiZOcclusionPass.h"
 #include "Graphics/Render/Pass/SSAOPass.h"
+#include "Graphics/Render/Pass/TAAPass.h"
+#include "Graphics/Render/Pass/CASPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/RTShadowPass.h"
 #include "Graphics/Render/Pass/RTWaterCausticsPass.h"
@@ -300,9 +302,10 @@ namespace CoreEngine
             context.renderTargetManager = render->GetRenderTargetManager();
         }
 
-        // コマンドリストは debug->BeginRenderPipeline 等へ渡すため USE_IMGUI 外で宣言する
-        // （リリースビルドではこれらの呼び出し自体が存在しない）
-        ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
+        // コマンドリストは debug->BeginRenderPipeline 等へ渡すため USE_IMGUI 外で宣言する。
+        // USE_IMGUI 無効（Release）ではこれらの呼び出し自体が消えて未使用になるため、
+        // maybe_unused を付ける（Release は TreatWarningAsError なので C4189 でビルドが止まる）。
+        [[maybe_unused]] ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
 
 #ifdef USE_IMGUI
         // プロファイラのリングスロットは記録中フレームインデックスに合わせる
@@ -505,8 +508,14 @@ namespace CoreEngine
         renderPipeline_->AddPass(std::make_unique<RTWaterReflectionPass>(), RenderPassPhase::Water, 15);
         renderPipeline_->AddPass(std::make_unique<WaterSurfacePass>(), RenderPassPhase::Water, 20);
 
+        // TAA: トーンマップ前の HDR 空間で解決する（ポストエフェクト列より必ず前）
+        renderPipeline_->AddPass(std::make_unique<TAAPass>(), RenderPassPhase::PostProcess, 0);
+
+        // CAS: TAA でぼけた分のシャープ化。必ず TAA の直後
+        renderPipeline_->AddPass(std::make_unique<CASPass>(), RenderPassPhase::PostProcess, 5);
+
         // ポストエフェクト（有効エフェクト列は Graph 構築時にノード分解される）
-        renderPipeline_->AddPass(std::make_unique<PostEffectPass>(), RenderPassPhase::PostProcess);
+        renderPipeline_->AddPass(std::make_unique<PostEffectPass>(), RenderPassPhase::PostProcess, 10);
 
         // バックバッファへの最終出力
         auto backBufferPass = std::make_unique<BackBufferPass>();

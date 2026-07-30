@@ -9,17 +9,23 @@
 #include "Utility/Logger/Logger.h"
 
 #include <d3d12.h>
+#include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstring>
+#include <vector>
 
 namespace CoreEngine
 {
     // =========================================================================
-    // HLSL 側の cbuffer ShadowRayConstants とレイアウトを共有する構造体
-    // HLSL: float3 gLightDirection, float gShadowBias,
-    //       float gMaxRayDistance, float gLightRadius, int gSoftShadowSamples,
-    //       uint gFrameIndex, float gHistoryAlpha, float3 gPadding_
+    // HLSL 側の cbuffer とレイアウトを共有する構造体
+    //
+    // どれもスカラーのみで構成する。cbuffer 内で float2/float3 や配列を使うと
+    // 16 バイト境界への切り上げが入り、C++ 側とオフセットが食い違う
+    // （2026-07-25 に影が全消失した原因がこれ）。
     // =========================================================================
+
+    /// @brief RayGen（RTShadow.hlsl）の ShadowRayConstants
     struct alignas(16) ShadowRayConstants {
         float    lightDir[3];        // offset  0
         float    shadowBias;         // offset 12  → row1 終了(16)
@@ -27,13 +33,179 @@ namespace CoreEngine
         float    lightRadius;        // offset 20
         int      softShadowSamples;  // offset 24
         uint32_t frameIndex;         // offset 28  → row2 終了(32)
-        float    historyAlpha;       // offset 32
-        float    screenWidth;        // offset 36
-        float    screenHeight;       // offset 40
-        float    padding;            // offset 44  → row3 終了(48)
-        Matrix4x4 invViewProj;       // offset 48  → WorldPosition ターゲット廃止に伴う深度復元用(+64=112)
+        float    screenWidth;        // offset 32  フル解像度（UV 計算に使う）
+        float    screenHeight;       // offset 36
+        int      traceOffsetX;       // offset 40  ハーフ解像度時の 2x2 サンプル位置
+        int      traceOffsetY;       // offset 44  → row3 終了(48)
+        int      traceScale;         // offset 48  1 = フル / 2 = ハーフ
+        int      pad0;               // offset 52
+        int      pad1;               // offset 56
+        int      pad2;               // offset 60  → row4 終了(64)
+        Matrix4x4 invViewProj;       // offset 64  深度復元用 → 128
     };
-    static_assert(sizeof(ShadowRayConstants) == 112, "ShadowRayConstants size mismatch with HLSL cbuffer");
+    static_assert(sizeof(ShadowRayConstants) == 128, "ShadowRayConstants size mismatch with HLSL cbuffer");
+    static constexpr UINT kShadowRayConstantCount = sizeof(ShadowRayConstants) / sizeof(uint32_t);
+
+    /// @brief A-Trous デノイズ（RTShadowDenoise.hlsl）の DenoiseConstants
+    struct DenoiseConstants {
+        int   stepSize;      // offset  0
+        float phiShadow;     // offset  4
+        float phiNormal;     // offset  8
+        float phiDepth;      // offset 12 → row1 終了(16)
+        int   traceWidth;    // offset 16
+        int   traceHeight;   // offset 20
+        float projM33;       // offset 24  proj._33 = far/(far-near)
+        float projM43;       // offset 28  proj._43 = -near*far/(far-near) → row2 終了(32)
+        int   traceScale;    // offset 32
+        int   traceOffsetX;  // offset 36
+        int   traceOffsetY;  // offset 40
+        int   fullWidth;     // offset 44 → row3 終了(48)
+        int   fullHeight;    // offset 48
+        int   pad0;          // offset 52
+        int   pad1;          // offset 56
+        int   pad2;          // offset 60 → row4 終了(64)
+    };
+    static_assert(sizeof(DenoiseConstants) == 64, "DenoiseConstants size mismatch with HLSL cbuffer");
+    static constexpr UINT kDenoiseConstantCount = sizeof(DenoiseConstants) / sizeof(uint32_t);
+
+    /// @brief テンポラル蓄積（RTShadowTemporal.CS.hlsl）の TemporalConstants
+    struct TemporalConstants {
+        int   traceWidth;     // offset  0
+        int   traceHeight;    // offset  4
+        float historyAlpha;   // offset  8
+        float disableHistory; // offset 12 → row1 終了(16)
+        float projM33;        // offset 16
+        float projM43;        // offset 20
+        int   traceScale;     // offset 24
+        int   traceOffsetX;   // offset 28 → row2 終了(32)
+        int   traceOffsetY;   // offset 32
+        int   fullWidth;      // offset 36
+        int   fullHeight;     // offset 40
+        int   pad0;           // offset 44 → row3 終了(48)
+    };
+    static_assert(sizeof(TemporalConstants) == 48, "TemporalConstants size mismatch with HLSL cbuffer");
+    static constexpr UINT kTemporalConstantCount = sizeof(TemporalConstants) / sizeof(uint32_t);
+
+    /// @brief 解決＝バイラテラルアップサンプル（RTShadowResolve.CS.hlsl）の ResolveConstants
+    struct ResolveConstants {
+        int   fullWidth;      // offset  0
+        int   fullHeight;     // offset  4
+        int   traceWidth;     // offset  8
+        int   traceHeight;    // offset 12 → row1 終了(16)
+        float projM33;        // offset 16
+        float projM43;        // offset 20
+        int   traceScale;     // offset 24
+        int   traceOffsetX;   // offset 28 → row2 終了(32)
+        int   traceOffsetY;   // offset 32
+        float phiDepth;       // offset 36
+        int   pad0;           // offset 40
+        int   pad1;           // offset 44 → row3 終了(48)
+    };
+    static_assert(sizeof(ResolveConstants) == 48, "ResolveConstants size mismatch with HLSL cbuffer");
+    static constexpr UINT kResolveConstantCount = sizeof(ResolveConstants) / sizeof(uint32_t);
+
+    namespace {
+        /// @brief 投影行列から線形深度復元用の 2 要素を取り出す
+        /// @details 行ベクトル規約の透視投影では ndcZ = _33 + _43/viewZ。
+        ///          MathCore::Matrix::PerspectiveFov の構成に対応する。
+        inline void ExtractProjectionZW(const Matrix4x4& projection, float& outM33, float& outM43)
+        {
+            outM33 = projection.m[2][2];
+            outM43 = projection.m[3][2];
+        }
+
+        /// @brief 8x8 スレッドグループでの必要グループ数
+        inline UINT DispatchGroupCount(UINT pixels) { return (pixels + 7) / 8; }
+
+        /// @brief ハーフ解像度時に巡回させる 2x2 サンプル位置
+        /// @details 固定オフセットだと常に同じサブピクセルしか見ないため、
+        ///          細い遮蔽物が原理的に落ちる。4 フレームで全サブピクセルを踏み、
+        ///          テンポラル蓄積で平均させる。
+        constexpr UINT kTraceOffsetTable[4][2] = { {0, 0}, {1, 1}, {1, 0}, {0, 1} };
+    }
+
+    // =========================================================================
+    // コンピュートパス（RS + PSO）の共通構築
+    // デノイズ / テンポラル / 解決の 3 本が全く同じ形なのでまとめてある。
+    // ルートパラメータ番号: t0..t(n-1) = 0..n-1, u0 = n, b0 = n+1
+    // =========================================================================
+    bool RayTracingShadowManager::CreateComputePass(
+        const wchar_t* shaderPath,
+        UINT srvCount,
+        UINT constantDwordCount,
+        const char* debugLabel,
+        Microsoft::WRL::ComPtr<ID3D12RootSignature>& outRootSignature,
+        Microsoft::WRL::ComPtr<ID3D12PipelineState>& outPipelineState)
+    {
+        Logger& log = Logger::GetInstance();
+
+        // ディスクリプタレンジは D3D12SerializeRootSignature が読むまで生存させる必要がある
+        std::vector<D3D12_DESCRIPTOR_RANGE> ranges(srvCount + 1);
+        for (UINT i = 0; i < srvCount; ++i) {
+            ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+            ranges[i].NumDescriptors = 1;
+            ranges[i].BaseShaderRegister = i;
+        }
+        ranges[srvCount].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+        ranges[srvCount].NumDescriptors = 1;
+        ranges[srvCount].BaseShaderRegister = 0;
+
+        std::vector<D3D12_ROOT_PARAMETER> rootParams(srvCount + 2);
+        for (UINT i = 0; i <= srvCount; ++i) {
+            rootParams[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            rootParams[i].DescriptorTable.NumDescriptorRanges = 1;
+            rootParams[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+            rootParams[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        }
+        rootParams[srvCount + 1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        rootParams[srvCount + 1].Constants.ShaderRegister = 0;
+        rootParams[srvCount + 1].Constants.RegisterSpace = 0;
+        rootParams[srvCount + 1].Constants.Num32BitValues = constantDwordCount;
+        rootParams[srvCount + 1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+        D3D12_ROOT_SIGNATURE_DESC rsDesc{};
+        rsDesc.NumParameters = static_cast<UINT>(rootParams.size());
+        rsDesc.pParameters = rootParams.data();
+        rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+        Microsoft::WRL::ComPtr<ID3DBlob> rsBlob, rsError;
+        if (FAILED(D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &rsError))) {
+            log.Logf(LogLevel::Error, LogCategory::Graphics,
+                "RayTracingShadowManager: {} root signature serialize failed", debugLabel);
+            return false;
+        }
+        if (FAILED(dxCommon_->GetDevice()->CreateRootSignature(0, rsBlob->GetBufferPointer(),
+            rsBlob->GetBufferSize(), IID_PPV_ARGS(&outRootSignature)))) {
+            log.Logf(LogLevel::Error, LogCategory::Graphics,
+                "RayTracingShadowManager: {} root signature creation failed", debugLabel);
+            return false;
+        }
+
+        ShaderCompiler compiler;
+        compiler.Initialize();
+        Microsoft::WRL::ComPtr<IDxcBlob> csBlob;
+        csBlob.Attach(compiler.CompileShader(shaderPath, L"cs_6_6"));
+        if (!csBlob || csBlob->GetBufferSize() == 0) {
+            log.Logf(LogLevel::Warn, LogCategory::Graphics,
+                "RayTracingShadowManager: {} shader compile failed", debugLabel);
+            return false;
+        }
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
+        psoDesc.pRootSignature = outRootSignature.Get();
+        psoDesc.CS.pShaderBytecode = csBlob->GetBufferPointer();
+        psoDesc.CS.BytecodeLength = csBlob->GetBufferSize();
+        if (FAILED(dxCommon_->GetDevice()->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&outPipelineState)))) {
+            log.Logf(LogLevel::Error, LogCategory::Graphics,
+                "RayTracingShadowManager: {} PSO creation failed", debugLabel);
+            return false;
+        }
+
+        log.Logf(LogLevel::Info, LogCategory::Graphics,
+            "RayTracingShadowManager: {} pipeline created", debugLabel);
+        return true;
+    }
+
     // =========================================================================
     // Initialize
     // =========================================================================
@@ -42,15 +214,11 @@ namespace CoreEngine
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr)
     {
-        dxCommon_ = dxCommon;
-        descriptorManager_ = descriptorManager;
-        asMgr_ = asMgr;
-
         Logger& log = Logger::GetInstance();
 
-        if (!asMgr_ || !asMgr_->IsSupported()) {
-            log.Log("RayTracingShadowManager: DXR not supported, skipping",
-                LogLevel::Warn, LogCategory::Graphics);
+        // 共通基盤へ委譲（ポインタ保持と DXR サポート判定・警告ログまで面倒を見る）
+        if (!InitializeBase(dxCommon, descriptorManager, asMgr,
+            "RayTracingShadowManager", "RTShadow")) {
             return false;
         }
 
@@ -67,15 +235,13 @@ namespace CoreEngine
             LogLevel::Info, LogCategory::Graphics);
 
         // グローバルルートシグネチャを構築
+        // 履歴・モーションベクターは RayGen では読まない（テンポラルパスの仕事）ので張らない。
         globalRootSigMgr_
-            .AddUAVTable("gShadowOutput", 0)      // u0: シャドウ出力
+            .AddUAVTable("gShadowOutput", 0)      // u0: シャドウ出力（トレース解像度）
             .AddSRVTable("gScene", 0)              // t0: TLAS
-            .AddSRVTable("gSceneDepth", 1)         // t1: 深度（WorldPosition ターゲット廃止に伴い深度から復元する）
-            .AddSRVTable("gNormalRoughness", 2)    // t2: G-Buffer 法線
-            .AddSRVTable("gHistoryShadow", 3)      // t3: テンポラル蓄積履歴
-            .AddSRVTable("gMotionVector", 4)       // t4: モーションベクター
-            .AddRootConstants("ShadowRayConstants", 0,
-                sizeof(ShadowRayConstants) / sizeof(uint32_t)); // b0: Root Constants
+            .AddSRVTable("gSceneDepth", 1)         // t1: 深度（ワールド座標復元用）
+            .AddSRVTable("gNormalRoughness", 2)    // t2: G-Buffer 法線（セルフシャドウバイアス用）
+            .AddRootConstants("ShadowRayConstants", 0, kShadowRayConstantCount); // b0
         if (!globalRootSigMgr_.Build(dxCommon_->GetDevice())) {
             log.Log("RayTracingShadowManager: Global root signature build failed",
                 LogLevel::Error, LogCategory::Graphics);
@@ -83,6 +249,13 @@ namespace CoreEngine
         }
         log.Log("RayTracingShadowManager: Global root signature created",
             LogLevel::Info, LogCategory::Graphics);
+
+        // ルートパラメータ番号はここで 1 回だけ解決する（毎ディスパッチの map 検索を避ける）
+        rootParams_.shadowOutput = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gShadowOutput"));
+        rootParams_.scene = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene"));
+        rootParams_.sceneDepth = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneDepth"));
+        rootParams_.normalRoughness = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness"));
+        rootParams_.constants = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("ShadowRayConstants"));
 
         // State Objectを構築
         RayTracingPipelineBuilder pipelineBuilder;
@@ -116,163 +289,16 @@ namespace CoreEngine
         isInitialized_ = true;
         shaderBlob_.Reset();  // State Object構築後は不要
 
-        // =========================================================
-        // A-Trous デノイズ用コンピュートパイプライン構築
-        // =========================================================
-        {
-            // ルートシグネチャ: t0=InputShadow, t1=Normal, t2=SceneDepth, u0=Output, b0=Constants
-            D3D12_DESCRIPTOR_RANGE srvRanges[3]{};
-            srvRanges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-            srvRanges[0].NumDescriptors = 1;
-            srvRanges[0].BaseShaderRegister = 0; // t0
-            srvRanges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-            srvRanges[1].NumDescriptors = 1;
-            srvRanges[1].BaseShaderRegister = 1; // t1
-            srvRanges[2].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-            srvRanges[2].NumDescriptors = 1;
-            srvRanges[2].BaseShaderRegister = 2; // t2
-
-            D3D12_DESCRIPTOR_RANGE uavRange{};
-            uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-            uavRange.NumDescriptors = 1;
-            uavRange.BaseShaderRegister = 0; // u0
-
-            D3D12_ROOT_PARAMETER rootParams[5]{};
-            rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-            rootParams[0].DescriptorTable.NumDescriptorRanges = 1;
-            rootParams[0].DescriptorTable.pDescriptorRanges = &srvRanges[0];
-            rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-            rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-            rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-            rootParams[1].DescriptorTable.pDescriptorRanges = &srvRanges[1];
-            rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-            rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-            rootParams[2].DescriptorTable.NumDescriptorRanges = 1;
-            rootParams[2].DescriptorTable.pDescriptorRanges = &srvRanges[2];
-            rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-            rootParams[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-            rootParams[3].DescriptorTable.NumDescriptorRanges = 1;
-            rootParams[3].DescriptorTable.pDescriptorRanges = &uavRange;
-            rootParams[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-            rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-            rootParams[4].Constants.ShaderRegister = 0;
-            rootParams[4].Constants.RegisterSpace = 0;
-            rootParams[4].Constants.Num32BitValues = 24; // DenoiseConstants(8) + invViewProj(16, WorldPosition廃止に伴う深度復元用)
-            rootParams[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-            D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-            rsDesc.NumParameters = 5;
-            rsDesc.pParameters = rootParams;
-            rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
-
-            Microsoft::WRL::ComPtr<ID3DBlob> rsBlob, rsError;
-            D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &rsError);
-            dxCommon_->GetDevice()->CreateRootSignature(0, rsBlob->GetBufferPointer(),
-                rsBlob->GetBufferSize(), IID_PPV_ARGS(&denoiseRootSignature_));
-
-            // コンピュートシェーダーをコンパイル
-            ShaderCompiler denoiseCompiler;
-            denoiseCompiler.Initialize();
-            Microsoft::WRL::ComPtr<IDxcBlob> csBlob;
-            csBlob.Attach(denoiseCompiler.CompileShader(L"RTShadowDenoise.hlsl", L"cs_6_6"));
-
-            if (csBlob && csBlob->GetBufferSize() > 0)
-            {
-                D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
-                psoDesc.pRootSignature = denoiseRootSignature_.Get();
-                psoDesc.CS.pShaderBytecode = csBlob->GetBufferPointer();
-                psoDesc.CS.BytecodeLength = csBlob->GetBufferSize();
-                HRESULT psoHr = dxCommon_->GetDevice()->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&denoisePipelineState_));
-                if (SUCCEEDED(psoHr)) {
-                    denoiseInitialized_ = true;
-                    log.Log("RayTracingShadowManager: A-Trous denoise pipeline created",
-                        LogLevel::Info, LogCategory::Graphics);
-                } else {
-                    log.Log("RayTracingShadowManager: A-Trous denoise PSO creation failed",
-                        LogLevel::Error, LogCategory::Graphics);
-                }
-            } else
-            {
-                log.Log("RayTracingShadowManager: A-Trous denoise shader compile failed, denoising disabled",
-                    LogLevel::Warn, LogCategory::Graphics);
-            }
-        }
-
-        // =========================================================
-        // テンポラル蓄積用コンピュートパイプライン構築
-        // =========================================================
-        {
-            // t0=RawShadow, t1=Normal, t2=SceneDepth, t3=History, t4=MotionVector, u0=Output, b0=Constants
-            D3D12_DESCRIPTOR_RANGE srvRanges[5]{};
-            for (UINT i = 0; i < 5; ++i) {
-                srvRanges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-                srvRanges[i].NumDescriptors = 1;
-                srvRanges[i].BaseShaderRegister = i;
-            }
-
-            D3D12_DESCRIPTOR_RANGE uavRange{};
-            uavRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-            uavRange.NumDescriptors = 1;
-            uavRange.BaseShaderRegister = 0;
-
-            D3D12_ROOT_PARAMETER rootParams[7]{};
-            for (UINT i = 0; i < 5; ++i) {
-                rootParams[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-                rootParams[i].DescriptorTable.NumDescriptorRanges = 1;
-                rootParams[i].DescriptorTable.pDescriptorRanges = &srvRanges[i];
-                rootParams[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-            }
-            rootParams[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-            rootParams[5].DescriptorTable.NumDescriptorRanges = 1;
-            rootParams[5].DescriptorTable.pDescriptorRanges = &uavRange;
-            rootParams[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-            rootParams[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-            rootParams[6].Constants.ShaderRegister = 0;
-            rootParams[6].Constants.Num32BitValues = 24; // TemporalConstants(8) + invViewProj(16, WorldPosition廃止に伴う深度復元用)
-            rootParams[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-            D3D12_ROOT_SIGNATURE_DESC rsDesc{};
-            rsDesc.NumParameters = 7;
-            rsDesc.pParameters = rootParams;
-            rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
-
-            Microsoft::WRL::ComPtr<ID3DBlob> rsBlob, rsError;
-            D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &rsError);
-            dxCommon_->GetDevice()->CreateRootSignature(0, rsBlob->GetBufferPointer(),
-                rsBlob->GetBufferSize(), IID_PPV_ARGS(&temporalRootSignature_));
-
-            ShaderCompiler temporalCompiler;
-            temporalCompiler.Initialize();
-            Microsoft::WRL::ComPtr<IDxcBlob> csBlob;
-            csBlob.Attach(temporalCompiler.CompileShader(L"RTShadowTemporal.CS.hlsl", L"cs_6_6"));
-
-            if (csBlob && csBlob->GetBufferSize() > 0)
-            {
-                D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
-                psoDesc.pRootSignature = temporalRootSignature_.Get();
-                psoDesc.CS.pShaderBytecode = csBlob->GetBufferPointer();
-                psoDesc.CS.BytecodeLength = csBlob->GetBufferSize();
-                HRESULT psoHr = dxCommon_->GetDevice()->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&temporalPipelineState_));
-                if (SUCCEEDED(psoHr)) {
-                    temporalInitialized_ = true;
-                    log.Log("RayTracingShadowManager: Temporal accumulation pipeline created",
-                        LogLevel::Info, LogCategory::Graphics);
-                } else {
-                    log.Log("RayTracingShadowManager: Temporal PSO creation failed",
-                        LogLevel::Error, LogCategory::Graphics);
-                }
-            }
-            else
-            {
-                log.Log("RayTracingShadowManager: Temporal shader compile failed",
-                    LogLevel::Warn, LogCategory::Graphics);
-            }
-        }
+        // 後段の 3 本はどれも「SRV テーブル n 個 + UAV 1 個 + ルート定数」なので共通構築
+        denoiseInitialized_ = CreateComputePass(
+            L"RTShadowDenoise.hlsl", 3, kDenoiseConstantCount, "A-Trous denoise",
+            denoiseRootSignature_, denoisePipelineState_);
+        temporalInitialized_ = CreateComputePass(
+            L"RTShadowTemporal.CS.hlsl", 5, kTemporalConstantCount, "Temporal accumulation",
+            temporalRootSignature_, temporalPipelineState_);
+        resolveInitialized_ = CreateComputePass(
+            L"RTShadowResolve.CS.hlsl", 3, kResolveConstantCount, "Bilateral resolve",
+            resolveRootSignature_, resolvePipelineState_);
 
         log.Log("RayTracingShadowManager: Initialized successfully",
             LogLevel::Info, LogCategory::Graphics);
@@ -280,103 +306,62 @@ namespace CoreEngine
     }
 
     // =========================================================================
-    // 出力テクスチャの確保（リサイズ対応、ビューごと）
+    // 出力テクスチャの確保（リサイズ対応、ビュー × ライトごと）
+    //   Mask だけがフル解像度、それ以外はトレース解像度。
     // =========================================================================
-    bool RayTracingShadowManager::EnsureOutputTexture(UINT width, UINT height, uint32_t viewIndex, uint32_t lightIndex)
+    bool RayTracingShadowManager::EnsureOutputTexture(
+        UINT width, UINT height, UINT traceWidth, UINT traceHeight, UINT traceScale,
+        uint32_t viewIndex, uint32_t lightIndex)
     {
         auto& view = views_[viewIndex][lightIndex];
-        if (width == view.width && height == view.height && view.texture) {
+        const uint32_t maskSlot = MakeSlotIndex(viewIndex, lightIndex, TextureSlot::Mask);
+        if (width == view.width && height == view.height
+            && traceWidth == view.traceWidth && traceHeight == view.traceHeight
+            && outputViews_.HasTexture(maskSlot)) {
             return true;  // サイズ変更なし
         }
 
         view.width = width;
         view.height = height;
+        view.traceWidth = traceWidth;
+        view.traceHeight = traceHeight;
+        view.traceScale = traceScale;
         // サイズ変更時は履歴を無効化（古いサイズの履歴を引き継がない）
         view.isHistoryValid = false;
 
-        // R32_FLOAT UAV テクスチャ（シャドウ出力）
-        D3D12_HEAP_PROPERTIES heapProps{};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+        const std::string suffix = "_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
 
-        D3D12_RESOURCE_DESC texDesc{};
-        texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        texDesc.Width = width;
-        texDesc.Height = height;
-        texDesc.DepthOrArraySize = 1;
-        texDesc.MipLevels = 1;
-        texDesc.Format = DXGI_FORMAT_R32_FLOAT;
-        texDesc.SampleDesc.Count = 1;
-        texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        RayTracingOutputViewSet::TextureOptions options{};
+        options.format = kShadowTextureFormat;
+        options.allowUAV = true;
+        options.initialState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
-        HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-            &heapProps, D3D12_HEAP_FLAG_NONE, &texDesc,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            nullptr, IID_PPV_ARGS(&view.texture));
-        if (FAILED(hr)) return false;
+        // 最終シャドウマスク（フル解像度。DeferredLighting がフル解像度座標で Load する）
+        if (!outputViews_.EnsureTexture(dxCommon_, descriptorManager_, width, height,
+            maskSlot, "RayTracingShadowManager", "RTShadow_Mask" + suffix, options)) {
+            return false;
+        }
 
-        view.currentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-
-        // UAV 作成
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
-        std::string uavName = "RTShadow_UAV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateOrUpdateUAV(view.texture.Get(), uavDesc,
-            view.uavCpuHandle, view.uavHandle, uavName);
-
-        // SRV 作成（DeferredLighting でサンプリング用）
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MipLevels = 1;
-        std::string srvName = "RTShadow_SRV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateOrUpdateSRV(view.texture.Get(), srvDesc,
-            view.srvCpuHandle, view.srvHandle, srvName);
-
-        // -------------------------------------------------------
-        // テンポラル蓄積用 履歴テクスチャ（UAV なし、COPY_DEST + SRV のみ）
-        // -------------------------------------------------------
-        D3D12_RESOURCE_DESC histDesc = texDesc;
-        histDesc.Flags = D3D12_RESOURCE_FLAG_NONE; // UAV 不要
-
-        hr = dxCommon_->GetDevice()->CreateCommittedResource(
-            &heapProps, D3D12_HEAP_FLAG_NONE, &histDesc,
-            D3D12_RESOURCE_STATE_COMMON,
-            nullptr, IID_PPV_ARGS(&view.historyTexture));
-        if (FAILED(hr)) return false;
-
-        view.historyCurrentState = D3D12_RESOURCE_STATE_COMMON;
-
-        // 履歴テクスチャの SRV（RTShadow.hlsl の gHistoryShadow に対応）
-        std::string histSrvName = "RTShadow_Hist_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateOrUpdateSRV(view.historyTexture.Get(), srvDesc,
-            view.historySrvCpuHandle, view.historySrvHandle, histSrvName);
-
-        // -------------------------------------------------------
-        // A-Trous デノイズ用中間バッファ（ping-pong のもう片面）
-        // UAV + SRV 両方必要
-        // -------------------------------------------------------
-        D3D12_RESOURCE_DESC denoiseDesc = texDesc; // R32_FLOAT UAV フラグ付き
-        hr = dxCommon_->GetDevice()->CreateCommittedResource(
-            &heapProps, D3D12_HEAP_FLAG_NONE, &denoiseDesc,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            nullptr, IID_PPV_ARGS(&view.denoiseTemp));
-        if (FAILED(hr)) return false;
-
-        view.denoiseTempState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-
-        std::string denoiseTempUavName = "RTShadow_DenoiseTemp_UAV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateOrUpdateUAV(view.denoiseTemp.Get(), uavDesc,
-            view.denoiseTempUavCpuHandle, view.denoiseTempUavHandle, denoiseTempUavName);
-
-        std::string denoiseTempSrvName = "RTShadow_DenoiseTemp_SRV_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
-        descriptorManager_->CreateOrUpdateSRV(view.denoiseTemp.Get(), srvDesc,
-            view.denoiseTempSrvCpuHandle, view.denoiseTempSrvHandle, denoiseTempSrvName);
+        // 残りはすべてトレース解像度
+        struct TraceSlot { TextureSlot slot; const char* name; };
+        static constexpr TraceSlot kTraceSlots[] = {
+            { TextureSlot::Raw,      "RTShadow_Raw" },
+            { TextureSlot::DenoiseA, "RTShadow_DenoiseA" },
+            { TextureSlot::DenoiseB, "RTShadow_DenoiseB" },
+            { TextureSlot::HistoryA, "RTShadow_HistoryA" },
+            { TextureSlot::HistoryB, "RTShadow_HistoryB" },
+        };
+        for (const TraceSlot& traceSlot : kTraceSlots) {
+            if (!outputViews_.EnsureTexture(dxCommon_, descriptorManager_, traceWidth, traceHeight,
+                MakeSlotIndex(viewIndex, lightIndex, traceSlot.slot),
+                "RayTracingShadowManager", traceSlot.name + suffix, options)) {
+                return false;
+            }
+        }
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-            "RayTracingShadowManager: Output texture[view={} light={}] created ({}x{})",
-            viewIndex, lightIndex, width, height);
+            "RayTracingShadowManager: Output texture[view={} light={}] created (mask {}x{} / trace {}x{})",
+            viewIndex, lightIndex, width, height, traceWidth, traceHeight);
 
         return true;
     }
@@ -384,10 +369,18 @@ namespace CoreEngine
     // =========================================================================
     // アクセサ
     // =========================================================================
+    UINT RayTracingShadowManager::GetTraceScale() const
+    {
+        return settings_.halfResolutionTrace ? 2u : 1u;
+    }
+
     void RayTracingShadowManager::Resize(UINT width, UINT height, ViewID viewId, uint32_t lightIndex)
     {
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        EnsureOutputTexture(width, height, static_cast<uint32_t>(viewId), lightIndex);
+        const UINT scale = GetTraceScale();
+        EnsureOutputTexture(width, height,
+            (width + scale - 1) / scale, (height + scale - 1) / scale, scale,
+            static_cast<uint32_t>(viewId), lightIndex);
     }
 
     void RayTracingShadowManager::ResizeAllExisting(UINT width, UINT height)
@@ -396,10 +389,14 @@ namespace CoreEngine
             return;
         }
 
+        const UINT scale = GetTraceScale();
+        const UINT traceWidth = (width + scale - 1) / scale;
+        const UINT traceHeight = (height + scale - 1) / scale;
+
         for (uint32_t viewIndex = 0; viewIndex < kViewCount; ++viewIndex) {
             for (uint32_t lightIndex = 0; lightIndex < kMaxDirectionalLights; ++lightIndex) {
-                if (views_[viewIndex][lightIndex].texture) {
-                    EnsureOutputTexture(width, height, viewIndex, lightIndex);
+                if (outputViews_.HasTexture(MakeSlotIndex(viewIndex, lightIndex, TextureSlot::Mask))) {
+                    EnsureOutputTexture(width, height, traceWidth, traceHeight, scale, viewIndex, lightIndex);
                 }
             }
         }
@@ -409,7 +406,94 @@ namespace CoreEngine
         ViewID viewId, uint32_t lightIndex) const
     {
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return views_[static_cast<uint32_t>(viewId)][lightIndex].srvHandle;
+        return SlotSRV(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetRawShadowSRVHandle(
+        ViewID viewId, uint32_t lightIndex) const
+    {
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        return SlotSRV(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Raw);
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetHistorySRVHandle(
+        ViewID viewId, uint32_t lightIndex) const
+    {
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        const uint32_t vi = static_cast<uint32_t>(viewId);
+        return SlotSRV(vi, lightIndex, views_[vi][lightIndex].CurrentHistorySlot());
+    }
+
+    const RayTracingDispatchInfo& RayTracingShadowManager::GetDispatchInfo(
+        ViewID viewId, uint32_t lightIndex) const
+    {
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        return views_[static_cast<uint32_t>(viewId)][lightIndex].dispatchInfo;
+    }
+
+    int RayTracingShadowManager::GetEffectiveAtrousPassCount() const
+    {
+        // Stage 3 で ping/pong 専用スクラッチを持たせたため偶数制約は無い
+        return std::clamp(settings_.atrousPassCount, 0, kMaxAtrousPassCount);
+    }
+
+    float RayTracingShadowManager::ResolveEffectiveRayDistance(const Vector3& lightDirection) const
+    {
+        if (!settings_.scaleRayDistanceBySunElevation) {
+            return settings_.maxRayDistance;
+        }
+
+        // lightDirection は「光源 → シーン」向き。真上の太陽なら y = -1。
+        // sin(高度) = -normalize(dir).y
+        const float lengthSq =
+            lightDirection.x * lightDirection.x +
+            lightDirection.y * lightDirection.y +
+            lightDirection.z * lightDirection.z;
+        if (lengthSq <= 1.0e-12f) {
+            return settings_.maxRayDistance;
+        }
+
+        const float sinElevation = -lightDirection.y / std::sqrt(lengthSq);
+
+        // 光源が地平線より下（sin<=0）なら影を落とす意味が無いので基準値のまま返す。
+        // 倍率は kMaxRayDistanceScale で頭打ちにする（地平線近傍での爆発を防ぐ）。
+        const float minSin = 1.0f / kMaxRayDistanceScale;
+        const float scale = 1.0f / (std::max)(sinElevation, minSin);
+        return settings_.maxRayDistance * (std::min)(scale, kMaxRayDistanceScale);
+    }
+
+    void RayTracingShadowManager::PrepareDebugViews(ID3D12GraphicsCommandList* cmdList)
+    {
+        // 要求は 1 フレーム限り。ここで消費してクリアするので、パネルを閉じれば
+        // 次フレームからバリアは発行されなくなる。
+        if (!debugViewRequested_) {
+            return;
+        }
+        debugViewRequested_ = false;
+
+        if (!isInitialized_ || !cmdList) {
+            return;
+        }
+
+        // ImGui はピクセルシェーダでサンプルするため PIXEL_SHADER_RESOURCE へ揃える。
+        // Mask は各ステージ終了時点で既に PIXEL_SHADER_RESOURCE なので対象外。
+        for (uint32_t viewIndex = 0; viewIndex < kViewCount; ++viewIndex) {
+            for (uint32_t lightIndex = 0; lightIndex < kMaxDirectionalLights; ++lightIndex) {
+                const ShadowView& view = views_[viewIndex][lightIndex];
+                if (!view.dispatchedThisFrame) {
+                    continue;
+                }
+
+                const TextureSlot debugSlots[] = { TextureSlot::Raw, view.CurrentHistorySlot() };
+                ResourceBarrierBatch batch(cmdList);
+                for (TextureSlot slot : debugSlots) {
+                    if (auto* resource = SlotResource(viewIndex, lightIndex, slot)) {
+                        batch.Add(resource, SlotState(viewIndex, lightIndex, slot),
+                            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                    }
+                }
+            }
+        }
     }
 
     ID3D12Resource* RayTracingShadowManager::GetShadowResource(
@@ -418,7 +502,7 @@ namespace CoreEngine
     {
         // 指定ビュー・ライトの現在のシャドウ出力テクスチャを返す。
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return views_[static_cast<uint32_t>(viewId)][lightIndex].texture.Get();
+        return SlotResource(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
     }
 
     D3D12_RESOURCE_STATES& RayTracingShadowManager::GetShadowCurrentState(
@@ -427,7 +511,7 @@ namespace CoreEngine
     {
         // 自動遷移処理が共有するシャドウ出力の現在状態参照を返す。
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return views_[static_cast<uint32_t>(viewId)][lightIndex].currentState;
+        return SlotState(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
     }
 
     bool RayTracingShadowManager::IsDispatchedThisFrame(
@@ -448,231 +532,163 @@ namespace CoreEngine
 
     // =========================================================================
     // Dispatch（毎フレーム呼び出し）
+    //   RayGen はトレース解像度で Raw スロットへ書き出す。
     // =========================================================================
     void RayTracingShadowManager::Dispatch(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-        D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
         const Vector3& lightDirection,
         const Matrix4x4& invViewProj,
         UINT width, UINT height,
         ViewID viewId,
         uint32_t lightIndex)
     {
-        if (!isInitialized_ || !asMgr_->IsSupported()) return;
-        if (asMgr_->GetBLASCount() == 0) return;
-
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        uint32_t vi = static_cast<uint32_t>(viewId);
+        const uint32_t vi = static_cast<uint32_t>(viewId);
         auto& view = views_[vi][lightIndex];
+
+        const UINT traceScale = GetTraceScale();
+        const UINT traceWidth = (width + traceScale - 1) / traceScale;
+        const UINT traceHeight = (height + traceScale - 1) / traceScale;
+
+        // 診断情報を毎回リセットしてから埋める（失敗経路でも状態が UI に出るようにする）
+        const int numSamples = std::clamp(settings_.softShadowSamples, 1, 16);
+        const float effectiveRayDistance = ResolveEffectiveRayDistance(lightDirection);
+        view.dispatchInfo = {};
+        view.dispatchInfo.passName = "RTShadow";
+        view.dispatchInfo.viewIndex = vi;
+        view.dispatchInfo.slotIndex = lightIndex;
+        view.dispatchInfo.width = traceWidth;
+        view.dispatchInfo.height = traceHeight;
+        view.dispatchInfo.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
+        view.dispatchInfo.AddExtra("traceScale", static_cast<float>(traceScale));
+        view.dispatchInfo.AddExtra("samples/px", static_cast<float>(numSamples));
+        view.dispatchInfo.AddExtra("atrousPasses", static_cast<float>(GetEffectiveAtrousPassCount()));
+        view.dispatchInfo.AddExtra("lightRadius", settings_.lightRadius);
+        view.dispatchInfo.AddExtra("rayDist(実効)", effectiveRayDistance);
+
+        if (!isInitialized_) {
+            view.dispatchInfo.status = RayTracingDispatchStatus::NotInitialized;
+            return;
+        }
+        if (!asMgr_ || !asMgr_->IsSupported()) {
+            view.dispatchInfo.status = RayTracingDispatchStatus::RayTracingUnsupported;
+            return;
+        }
+        if (asMgr_->GetBLASCount() == 0) {
+            view.dispatchInfo.status = RayTracingDispatchStatus::NoBLAS;
+            return;
+        }
 
         if (dispatchLogCount_ < 10) {
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-                "RTShadow::Dispatch START viewId={} lightIndex={} size={}x{} BLAS={}",
-                vi, lightIndex, width, height, asMgr_->GetBLASCount());
+                "RTShadow::Dispatch START viewId={} lightIndex={} size={}x{} trace={}x{} BLAS={} "
+                "samples={} rayDist={:.1f} lightDir=({:.3f},{:.3f},{:.3f})",
+                vi, lightIndex, width, height, traceWidth, traceHeight, asMgr_->GetBLASCount(),
+                numSamples, effectiveRayDistance,
+                lightDirection.x, lightDirection.y, lightDirection.z);
         }
 
-        // 出力テクスチャの確保（リサイズ対応）
-        EnsureOutputTexture(width, height, vi, lightIndex);
+        // 出力テクスチャの確保（リサイズ・解像度モード変更に対応）
+        if (!EnsureOutputTexture(width, height, traceWidth, traceHeight, traceScale, vi, lightIndex)) {
+            view.dispatchInfo.status = RayTracingDispatchStatus::OutputAllocationFailed;
+            return;
+        }
+        view.dispatchInfo.outputSrvPtr = SlotSRV(vi, lightIndex, TextureSlot::Mask).ptr;
 
-        // 定数データを構築（テンポラル蓄積は ApplyTemporal 側で行うので
-        // historyAlpha / screenWidth / screenHeight はシェーダー側では未使用）
+        // フレームを 1 つ進める（履歴の書き込み先を入れ替え、サンプル位置を巡回させる）
+        view.historyParity ^= 1u;
+        if (traceScale > 1) {
+            const UINT phase = frameIndex_ & 3u;
+            view.traceOffsetX = kTraceOffsetTable[phase][0];
+            view.traceOffsetY = kTraceOffsetTable[phase][1];
+        } else {
+            view.traceOffsetX = 0;
+            view.traceOffsetY = 0;
+        }
+
+        // 定数データを構築
         ShadowRayConstants constants{};
         constants.lightDir[0] = lightDirection.x;
         constants.lightDir[1] = lightDirection.y;
         constants.lightDir[2] = lightDirection.z;
         constants.shadowBias = settings_.shadowBias;
-        constants.maxRayDistance = settings_.maxRayDistance;
+        constants.maxRayDistance = effectiveRayDistance;
         constants.lightRadius = settings_.lightRadius;
-        constants.softShadowSamples = settings_.softShadowSamples;
+        constants.softShadowSamples = numSamples;
         constants.frameIndex = frameIndex_++;
-        constants.historyAlpha = 1.0f; // RayGen側では使わない
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
+        constants.traceOffsetX = static_cast<int>(view.traceOffsetX);
+        constants.traceOffsetY = static_cast<int>(view.traceOffsetY);
+        constants.traceScale = static_cast<int>(traceScale);
         constants.invViewProj = invViewProj;
 
         // CommandList4 を取得
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
-        if (FAILED(cmdList->QueryInterface(IID_PPV_ARGS(&cmdList4)))) return;
+        if (FAILED(cmdList->QueryInterface(IID_PPV_ARGS(&cmdList4)))) {
+            view.dispatchInfo.status = RayTracingDispatchStatus::CommandList4Unavailable;
+            return;
+        }
 
         // パイプライン設定
         cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         cmdList4->SetPipelineState1(stateObject_.Get());
 
-        // RayGen は生バイナリを denoiseTemp に書き込む（ApplyTemporal が読む）
         ResourceBarrierHelper::Transition(
-            cmdList, view.denoiseTemp.Get(),
-            view.denoiseTempState,
+            cmdList, SlotResource(vi, lightIndex, TextureSlot::Raw),
+            SlotState(vi, lightIndex, TextureSlot::Raw),
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        // ルートパラメータのバインド（history / motionVector は未使用だがスロット維持のためダミーで埋める）
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gShadowOutput")),
-            view.denoiseTempUavHandle);
+            rootParams_.shadowOutput, SlotUAV(vi, lightIndex, TextureSlot::Raw));
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene")),
-            asMgr_->GetTLASSRVHandle());
+            rootParams_.scene, asMgr_->GetTLASSRVHandle());
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneDepth")),
-            sceneDepthSRV);
+            rootParams_.sceneDepth, sceneDepthSRV);
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness")),
-            normalRoughnessSRV);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gHistoryShadow")),
-            view.historySrvHandle);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gMotionVector")),
-            motionVectorSRV);
+            rootParams_.normalRoughness, normalRoughnessSRV);
 
         cmdList->SetComputeRoot32BitConstants(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("ShadowRayConstants")),
-            sizeof(ShadowRayConstants) / sizeof(uint32_t),
-            &constants,
-            0);
+            rootParams_.constants, kShadowRayConstantCount, &constants, 0);
 
-        // DispatchRays: 生バイナリを denoiseTemp に書き出す
-        auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
+        // DispatchRays はトレース解像度で行う（ハーフ解像度ならレイ本数は 1/4）
+        auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(traceWidth, traceHeight);
         cmdList4->DispatchRays(&dispatchDesc);
 
-        // ApplyTemporal の読み取り前に完了を保証
-        ResourceBarrierHelper::UAV(cmdList, view.denoiseTemp.Get());
-
-        // denoiseTemp を SRV 状態へ
+        // ApplyTemporal の読み取り前に完了を保証してから SRV 状態へ
+        ResourceBarrierHelper::UAV(cmdList, SlotResource(vi, lightIndex, TextureSlot::Raw));
         ResourceBarrierHelper::Transition(
-            cmdList, view.denoiseTemp.Get(),
-            view.denoiseTempState,
+            cmdList, SlotResource(vi, lightIndex, TextureSlot::Raw),
+            SlotState(vi, lightIndex, TextureSlot::Raw),
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         view.dispatchedThisFrame = true;
+        view.dispatchInfo.status = RayTracingDispatchStatus::Dispatched;
+        view.dispatchInfo.rayCount =
+            static_cast<uint64_t>(traceWidth) * static_cast<uint64_t>(traceHeight)
+            * static_cast<uint64_t>(numSamples);
 
         if (dispatchLogCount_ < 10) {
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
                 "RTShadow::Dispatch complete viewId={} lightIndex={} srvHandle=0x{:X}",
-                vi, lightIndex, view.srvHandle.ptr);
+                vi, lightIndex, SlotSRV(vi, lightIndex, TextureSlot::Mask).ptr);
             ++dispatchLogCount_;
         }
     }
 
     // =========================================================================
-    // A-Trous デノイズ（Dispatch の直後に呼ぶ）
-    // =========================================================================
-    void RayTracingShadowManager::Denoise(
-        ID3D12GraphicsCommandList* cmdList,
-        D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
-        const Matrix4x4& invViewProj,
-        UINT width, UINT height,
-        ViewID viewId,
-        uint32_t lightIndex)
-    {
-        if (!isInitialized_ || !denoiseInitialized_) return;
-
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        const uint32_t vi = static_cast<uint32_t>(viewId);
-        auto& view = views_[vi][lightIndex];
-
-        if (!view.texture || !view.denoiseTemp) return;
-
-        // DenoiseConstants（8 x 32bit = 32byte）+ invViewProj（WorldPosition ターゲット廃止に伴う深度復元用、16 x 32bit = 64byte）
-        struct DenoiseConstants {
-            int   stepSize;
-            float phiShadow;
-            float phiNormal;
-            float phiDepth;
-            int   screenWidth;
-            int   screenHeight;
-            float padding[2];
-            Matrix4x4 invViewProj;
-        };
-
-        // À-Trous 3パス: ステップ幅 1 → 2 → 4
-        // ping=view.texture / pong=view.denoiseTemp で交互に入出力
-        // 最終出力を常に view.texture にするためパス数は奇数にする
-        // パス数は「偶数」にすること:
-        //   ping-pong は pass%2==0 で texture→denoiseTemp, pass%2==1 で denoiseTemp→texture
-        //   最後のパスが奇数インデックス（pass = kNumPasses-1 が奇数）のとき texture に書き込まれる
-        //   → kNumPasses が偶数のとき、最終パスインデックス = kNumPasses-1 は奇数 → texture に書き込み ✓
-        static const int   kSteps[] = { 1,    2,    4,    8 };
-        static const float kPhiNormal[] = { 4.0f, 8.0f, 16.0f, 32.0f };
-        static const float kPhiShadow[] = { 1.0f, 0.7f,  0.5f,  0.35f };
-        static_assert((sizeof(kSteps) / sizeof(kSteps[0])) % 2 == 0,
-            "kNumPasses must be even so the final result lands in view.texture");
-        static const int kNumPasses = sizeof(kSteps) / sizeof(kSteps[0]);
-
-        // view.texture は Dispatch 直後に PIXEL_SHADER_RESOURCE 状態になっているので
-        // 最初のパスで SRV として読む前にそのまま使える（NON_PIXEL_SHADER_RESOURCE に遷移）
-        ResourceBarrierHelper::Transition(cmdList, view.texture.Get(),
-            view.currentState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-        cmdList->SetComputeRootSignature(denoiseRootSignature_.Get());
-        cmdList->SetPipelineState(denoisePipelineState_.Get());
-
-        const UINT groupX = (width + 7) / 8;
-        const UINT groupY = (height + 7) / 8;
-
-        for (int pass = 0; pass < kNumPasses; ++pass)
-        {
-            // pass が偶数: texture → denoiseTemp / 奇数: denoiseTemp → texture
-            bool pingToTemp = (pass % 2 == 0);
-
-            ID3D12Resource* inputRes = pingToTemp ? view.texture.Get() : view.denoiseTemp.Get();
-            ID3D12Resource* outputRes = pingToTemp ? view.denoiseTemp.Get() : view.texture.Get();
-            D3D12_RESOURCE_STATES& inputState = pingToTemp ? view.currentState : view.denoiseTempState;
-            D3D12_RESOURCE_STATES& outputState = pingToTemp ? view.denoiseTempState : view.currentState;
-            D3D12_GPU_DESCRIPTOR_HANDLE inputSrv = pingToTemp ? view.srvHandle : view.denoiseTempSrvHandle;
-            D3D12_GPU_DESCRIPTOR_HANDLE outputUav = pingToTemp ? view.denoiseTempUavHandle : view.uavHandle;
-
-            // 入力: SRV へ、出力: UAV へ（2リソースを一括バリア）
-            {
-                ResourceBarrierBatch batch(cmdList);
-                batch.Add(inputRes, inputState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                batch.Add(outputRes, outputState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            }
-
-            // バインド
-            cmdList->SetComputeRootDescriptorTable(0, inputSrv);          // t0: InputShadow
-            cmdList->SetComputeRootDescriptorTable(1, normalRoughnessSRV); // t1: Normal
-            cmdList->SetComputeRootDescriptorTable(2, sceneDepthSRV);      // t2: SceneDepth
-            cmdList->SetComputeRootDescriptorTable(3, outputUav);          // u0: Output
-
-            DenoiseConstants dc{};
-            dc.stepSize = kSteps[pass];
-            dc.phiShadow = kPhiShadow[pass];
-            dc.phiNormal = kPhiNormal[pass];
-            dc.phiDepth = 1.0f;
-            dc.screenWidth = static_cast<int>(width);
-            dc.screenHeight = static_cast<int>(height);
-            dc.invViewProj = invViewProj;
-            cmdList->SetComputeRoot32BitConstants(4, 24, &dc, 0);
-
-            cmdList->Dispatch(groupX, groupY, 1);
-
-            // UAV バリア（次パスの読み取りを保証）
-            ResourceBarrierHelper::UAV(cmdList, outputRes);
-        }
-
-        // 最終結果は view.texture（kNumPasses が偶数のため）
-        {
-            ResourceBarrierBatch batch(cmdList);
-            batch.Add(view.texture.Get(), view.currentState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            batch.Add(view.denoiseTemp.Get(), view.denoiseTempState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-
-        // 履歴へのコピーは ApplyTemporal で行う（A-Trous 出力は履歴に書かない）
-    }
-
-    // =========================================================================
-    // テンポラル蓄積パス（RayGenの直後、Denoiseの前に呼び出す）
+    // テンポラル蓄積パス（RayGen の直後、Denoise の前に呼び出す）
+    //   Raw + 前フレーム履歴 → 今フレーム履歴。
+    //   Stage 3 で履歴を 2 枚の ping-pong にしたため、全画面 CopyResource は不要になった。
     // =========================================================================
     void RayTracingShadowManager::ApplyTemporal(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
-        const Matrix4x4& invViewProj,
-        UINT width, UINT height,
+        const Matrix4x4& projection,
         ViewID viewId,
         uint32_t lightIndex)
     {
@@ -681,67 +697,216 @@ namespace CoreEngine
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
         const uint32_t vi = static_cast<uint32_t>(viewId);
         auto& view = views_[vi][lightIndex];
+        if (!view.dispatchedThisFrame) return;
 
-        if (!view.texture || !view.denoiseTemp || !view.historyTexture) return;
+        const TextureSlot currentHistory = view.CurrentHistorySlot();
+        const TextureSlot previousHistory = view.PreviousHistorySlot();
+
+        ID3D12Resource* rawRes = SlotResource(vi, lightIndex, TextureSlot::Raw);
+        ID3D12Resource* prevRes = SlotResource(vi, lightIndex, previousHistory);
+        ID3D12Resource* curRes = SlotResource(vi, lightIndex, currentHistory);
+        if (!rawRes || !prevRes || !curRes) return;
 
         // 入出力の状態遷移（3リソースを一括バリア）
         {
             ResourceBarrierBatch batch(cmdList);
-            batch.Add(view.denoiseTemp.Get(), view.denoiseTempState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(view.texture.Get(), view.currentState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            batch.Add(view.historyTexture.Get(), view.historyCurrentState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Add(rawRes, SlotState(vi, lightIndex, TextureSlot::Raw),
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Add(prevRes, SlotState(vi, lightIndex, previousHistory),
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Add(curRes, SlotState(vi, lightIndex, currentHistory),
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
         cmdList->SetComputeRootSignature(temporalRootSignature_.Get());
         cmdList->SetPipelineState(temporalPipelineState_.Get());
 
-        // t0=RawShadow, t1=Normal, t2=SceneDepth, t3=History, t4=MotionVector, u0=Output
-        cmdList->SetComputeRootDescriptorTable(0, view.denoiseTempSrvHandle);
+        // t0=RawShadow, t1=Normal, t2=SceneDepth, t3=History(前フレーム), t4=MotionVector, u0=History(今フレーム)
+        cmdList->SetComputeRootDescriptorTable(0, SlotSRV(vi, lightIndex, TextureSlot::Raw));
         cmdList->SetComputeRootDescriptorTable(1, normalRoughnessSRV);
         cmdList->SetComputeRootDescriptorTable(2, sceneDepthSRV);
-        cmdList->SetComputeRootDescriptorTable(3, view.historySrvHandle);
+        cmdList->SetComputeRootDescriptorTable(3, SlotSRV(vi, lightIndex, previousHistory));
         cmdList->SetComputeRootDescriptorTable(4, motionVectorSRV);
-        cmdList->SetComputeRootDescriptorTable(5, view.uavHandle);
+        cmdList->SetComputeRootDescriptorTable(5, SlotUAV(vi, lightIndex, currentHistory));
 
-        // ── 定数 ──
-        struct TemporalConstants {
-            int   screenWidth;
-            int   screenHeight;
-            float historyAlpha;
-            float disableHistory; // 1.0 = 履歴無効（初回フレーム）
-            float padding[4];
-            Matrix4x4 invViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
-        };
         TemporalConstants tc{};
-        tc.screenWidth = static_cast<int>(width);
-        tc.screenHeight = static_cast<int>(height);
+        tc.traceWidth = static_cast<int>(view.traceWidth);
+        tc.traceHeight = static_cast<int>(view.traceHeight);
         tc.historyAlpha = settings_.historyAlpha;
-        tc.disableHistory = view.isHistoryValid ? 0.0f : 1.0f;
-        tc.invViewProj = invViewProj;
-        cmdList->SetComputeRoot32BitConstants(6, 24, &tc, 0);
+        // 初回フレーム（履歴未生成）か、デバッグトグルで明示的に無効化された場合は履歴を使わない
+        tc.disableHistory = (view.isHistoryValid && !settings_.disableHistory) ? 0.0f : 1.0f;
+        ExtractProjectionZW(projection, tc.projM33, tc.projM43);
+        tc.traceScale = static_cast<int>(view.traceScale);
+        tc.traceOffsetX = static_cast<int>(view.traceOffsetX);
+        tc.traceOffsetY = static_cast<int>(view.traceOffsetY);
+        tc.fullWidth = static_cast<int>(view.width);
+        tc.fullHeight = static_cast<int>(view.height);
+        cmdList->SetComputeRoot32BitConstants(6, kTemporalConstantCount, &tc, 0);
 
-        const UINT groupX = (width + 7) / 8;
-        const UINT groupY = (height + 7) / 8;
-        cmdList->Dispatch(groupX, groupY, 1);
+        cmdList->Dispatch(DispatchGroupCount(view.traceWidth), DispatchGroupCount(view.traceHeight), 1);
 
-        ResourceBarrierHelper::UAV(cmdList, view.texture.Get());
-
-        // テンポラル結果を履歴にコピー（次フレームの参照用）
-        {
-            ResourceBarrierBatch batch(cmdList);
-            batch.Add(view.texture.Get(), view.currentState, D3D12_RESOURCE_STATE_COPY_SOURCE);
-            batch.Add(view.historyTexture.Get(), view.historyCurrentState, D3D12_RESOURCE_STATE_COPY_DEST);
-        }
-
-        cmdList->CopyResource(view.historyTexture.Get(), view.texture.Get());
-
-        // 状態を後段（A-Trous）向けに整える
-        {
-            ResourceBarrierBatch batch(cmdList);
-            batch.Add(view.historyTexture.Get(), view.historyCurrentState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(view.texture.Get(), view.currentState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        }
+        // Denoise が SRV として読むので完了を保証してから遷移
+        ResourceBarrierHelper::UAV(cmdList, curRes);
+        ResourceBarrierHelper::Transition(cmdList, curRes,
+            SlotState(vi, lightIndex, currentHistory),
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         view.isHistoryValid = true;
+    }
+
+    // =========================================================================
+    // A-Trous デノイズ ＋ フル解像度への解決（ApplyTemporal の直後に呼ぶ）
+    //   入力はテンポラル出力（＝今フレームの履歴）。
+    //   ping/pong は DenoiseA / DenoiseB 専用スロットで行うので、
+    //   Stage 2 までの「パス数は偶数」という制約は無くなった。
+    // =========================================================================
+    void RayTracingShadowManager::Denoise(
+        ID3D12GraphicsCommandList* cmdList,
+        D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
+        const Matrix4x4& projection,
+        ViewID viewId,
+        uint32_t lightIndex)
+    {
+        if (!isInitialized_) return;
+
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        const uint32_t vi = static_cast<uint32_t>(viewId);
+        auto& view = views_[vi][lightIndex];
+        if (!view.dispatchedThisFrame) return;
+
+        // A-Trous: ステップ幅 1 → 2 → 4 → 8
+        static constexpr int   kSteps[kMaxAtrousPassCount] = { 1,    2,    4,    8 };
+        static constexpr float kPhiNormal[kMaxAtrousPassCount] = { 4.0f, 8.0f, 16.0f, 32.0f };
+        static constexpr float kPhiShadow[kMaxAtrousPassCount] = { 1.0f, 0.7f,  0.5f,  0.35f };
+
+        // デノイズ PSO が作れていない場合はパス数 0 として扱う
+        // （その場合でも解決パスがテンポラル結果を Mask へ運ぶので影は消えない）
+        const int numPasses = denoiseInitialized_ ? GetEffectiveAtrousPassCount() : 0;
+
+        // フル解像度のときだけ最終パスが Mask へ直接書ける（ハーフだと寸法が違う）
+        const bool directToMask = (view.traceScale == 1) && (numPasses > 0);
+
+        TextureSlot lastSlot = view.CurrentHistorySlot();
+
+        if (numPasses > 0) {
+            cmdList->SetComputeRootSignature(denoiseRootSignature_.Get());
+            cmdList->SetPipelineState(denoisePipelineState_.Get());
+
+            const UINT groupX = DispatchGroupCount(view.traceWidth);
+            const UINT groupY = DispatchGroupCount(view.traceHeight);
+
+            for (int pass = 0; pass < numPasses; ++pass)
+            {
+                const bool isLast = (pass == numPasses - 1);
+                const TextureSlot inSlot = lastSlot;
+                const TextureSlot outSlot = (isLast && directToMask)
+                    ? TextureSlot::Mask
+                    : ((pass % 2 == 0) ? TextureSlot::DenoiseA : TextureSlot::DenoiseB);
+
+                ID3D12Resource* inputRes = SlotResource(vi, lightIndex, inSlot);
+                ID3D12Resource* outputRes = SlotResource(vi, lightIndex, outSlot);
+                if (!inputRes || !outputRes) return;
+
+                // 入力: SRV へ、出力: UAV へ（2リソースを一括バリア）
+                {
+                    ResourceBarrierBatch batch(cmdList);
+                    batch.Add(inputRes, SlotState(vi, lightIndex, inSlot),
+                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    batch.Add(outputRes, SlotState(vi, lightIndex, outSlot),
+                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                }
+
+                cmdList->SetComputeRootDescriptorTable(0, SlotSRV(vi, lightIndex, inSlot));   // t0: InputShadow
+                cmdList->SetComputeRootDescriptorTable(1, normalRoughnessSRV);                // t1: Normal
+                cmdList->SetComputeRootDescriptorTable(2, sceneDepthSRV);                     // t2: SceneDepth
+                cmdList->SetComputeRootDescriptorTable(3, SlotUAV(vi, lightIndex, outSlot));  // u0: Output
+
+                DenoiseConstants dc{};
+                dc.stepSize = kSteps[pass];
+                dc.phiShadow = kPhiShadow[pass];
+                dc.phiNormal = kPhiNormal[pass];
+                dc.phiDepth = settings_.denoisePhiDepth;
+                dc.traceWidth = static_cast<int>(view.traceWidth);
+                dc.traceHeight = static_cast<int>(view.traceHeight);
+                ExtractProjectionZW(projection, dc.projM33, dc.projM43);
+                dc.traceScale = static_cast<int>(view.traceScale);
+                dc.traceOffsetX = static_cast<int>(view.traceOffsetX);
+                dc.traceOffsetY = static_cast<int>(view.traceOffsetY);
+                dc.fullWidth = static_cast<int>(view.width);
+                dc.fullHeight = static_cast<int>(view.height);
+                cmdList->SetComputeRoot32BitConstants(4, kDenoiseConstantCount, &dc, 0);
+
+                // directToMask は traceScale==1 のときだけ成立するので、
+                // Mask へ直接書く場合もトレース解像度＝フル解像度で寸法は一致する
+                cmdList->Dispatch(groupX, groupY, 1);
+
+                ResourceBarrierHelper::UAV(cmdList, outputRes);
+                lastSlot = outSlot;
+            }
+        }
+
+        if (!directToMask) {
+            // ハーフ解像度、またはデノイズ 0 パス。
+            // トレース解像度の最終結果をフル解像度の Mask へ解決する。
+            ResolveToFullResolution(cmdList, normalRoughnessSRV, sceneDepthSRV, projection,
+                vi, lightIndex, lastSlot);
+        }
+
+        // 後段（DeferredLighting）はピクセルシェーダから読む
+        ResourceBarrierHelper::Transition(cmdList, SlotResource(vi, lightIndex, TextureSlot::Mask),
+            SlotState(vi, lightIndex, TextureSlot::Mask), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    }
+
+    // =========================================================================
+    // 解決パス（トレース解像度 → フル解像度のバイラテラルアップサンプル）
+    // =========================================================================
+    void RayTracingShadowManager::ResolveToFullResolution(
+        ID3D12GraphicsCommandList* cmdList,
+        D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
+        const Matrix4x4& projection,
+        uint32_t viewIndex,
+        uint32_t lightIndex,
+        TextureSlot sourceSlot)
+    {
+        if (!resolveInitialized_) return;
+
+        auto& view = views_[viewIndex][lightIndex];
+        ID3D12Resource* sourceRes = SlotResource(viewIndex, lightIndex, sourceSlot);
+        ID3D12Resource* maskRes = SlotResource(viewIndex, lightIndex, TextureSlot::Mask);
+        if (!sourceRes || !maskRes) return;
+
+        {
+            ResourceBarrierBatch batch(cmdList);
+            batch.Add(sourceRes, SlotState(viewIndex, lightIndex, sourceSlot),
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Add(maskRes, SlotState(viewIndex, lightIndex, TextureSlot::Mask),
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
+
+        cmdList->SetComputeRootSignature(resolveRootSignature_.Get());
+        cmdList->SetPipelineState(resolvePipelineState_.Get());
+
+        cmdList->SetComputeRootDescriptorTable(0, SlotSRV(viewIndex, lightIndex, sourceSlot)); // t0: トレース解像度シャドウ
+        cmdList->SetComputeRootDescriptorTable(1, sceneDepthSRV);                              // t1: フル解像度 深度
+        cmdList->SetComputeRootDescriptorTable(2, normalRoughnessSRV);                         // t2: フル解像度 法線
+        cmdList->SetComputeRootDescriptorTable(3, SlotUAV(viewIndex, lightIndex, TextureSlot::Mask)); // u0
+
+        ResolveConstants rc{};
+        rc.fullWidth = static_cast<int>(view.width);
+        rc.fullHeight = static_cast<int>(view.height);
+        rc.traceWidth = static_cast<int>(view.traceWidth);
+        rc.traceHeight = static_cast<int>(view.traceHeight);
+        ExtractProjectionZW(projection, rc.projM33, rc.projM43);
+        rc.traceScale = static_cast<int>(view.traceScale);
+        rc.traceOffsetX = static_cast<int>(view.traceOffsetX);
+        rc.traceOffsetY = static_cast<int>(view.traceOffsetY);
+        rc.phiDepth = settings_.upsamplePhiDepth;
+        cmdList->SetComputeRoot32BitConstants(4, kResolveConstantCount, &rc, 0);
+
+        cmdList->Dispatch(DispatchGroupCount(view.width), DispatchGroupCount(view.height), 1);
+
+        ResourceBarrierHelper::UAV(cmdList, maskRes);
     }
 }

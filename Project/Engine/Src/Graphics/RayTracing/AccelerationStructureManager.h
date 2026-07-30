@@ -80,6 +80,28 @@ namespace CoreEngine
         /// @brief 登録済み BLAS 数を取得
         UINT GetBLASCount() const { return static_cast<UINT>(blasList_.size()); }
 
+        // ──────────────────────────────────────────────────────────
+        // デバッグ表示用の統計（Stage 0: RayTracingDebugPanel が参照する）
+        // ──────────────────────────────────────────────────────────
+
+        /// @brief D3D12_RAYTRACING_TIER の生値（非対応時は 0）
+        UINT GetRaytracingTier() const { return raytracingTier_; }
+
+        /// @brief 直近の BuildTLAS に渡したインスタンス数
+        UINT GetTLASInstanceCount() const { return tlasInstanceCount_; }
+
+        /// @brief 全 BLAS の結果バッファ合計バイト数
+        UINT64 GetBLASTotalBytes() const;
+
+        /// @brief TLAS 結果バッファのバイト数（未構築なら 0）
+        UINT64 GetTLASResultBytes() const;
+
+        /// @brief AS 構築用スクラッチバッファの合計バイト数（BLAS 用 + TLAS 用）
+        UINT64 GetScratchTotalBytes() const;
+
+        /// @brief 解放待ちの退避リソース数（リーク調査用）
+        size_t GetRetiredResourceCount() const { return retiredResources_.size(); }
+
     private:
         void EnsureScratchBuffer(UINT64 requiredSize);
 
@@ -104,6 +126,10 @@ namespace CoreEngine
 
         // コマンドリスト実行完了まで旧リソースを保持する退避リスト
         std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> retiredResources_;
+
+        // デバッグ表示用の統計
+        UINT raytracingTier_ = 0;       ///< D3D12_RAYTRACING_TIER の生値
+        UINT tlasInstanceCount_ = 0;    ///< 直近の BuildTLAS のインスタンス数
 
         bool isSupported_ = false;
     };

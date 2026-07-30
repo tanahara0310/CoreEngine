@@ -190,8 +190,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanelSerialization.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Primitive\CubeObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Primitive\CylinderObject.cpp" />
@@ -246,10 +244,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\HomeworkScene\HomeworkScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\SpriteTestScene\SpriteTestScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.cpp" />
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp" />
+    <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Model\ModelObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Model\PlaneModelObject.cpp" />
@@ -294,7 +292,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp" />
@@ -320,7 +317,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
@@ -362,12 +362,17 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\PostEffectPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SSAOPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\TAAPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\CASPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTemporalTechnique.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\TAA\TAATechnique.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\CAS\CASTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\BackBufferRenderTarget.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\OffscreenRenderTarget.cpp" />
@@ -415,7 +420,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp" />
-    <ClCompile Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
@@ -441,6 +445,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\ObjectSelector.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\PixCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneManagerTab.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp" />
@@ -518,15 +523,17 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Scenes\HomeworkScene\HomeworkScene.h" />
     <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\SpriteTestScene\SpriteTestScene.h" />
+    <ClInclude Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSettingsSection.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h" />
     <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.h" />
+    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\BrainStemObject.h" />
+    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.h" />
+    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\FoxObject.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
     <ClInclude Include="Application\Src\GameObjects\Model\ModelObject.h" />
     <ClInclude Include="Application\Src\GameObjects\Model\PlaneModelObject.h" />
@@ -595,7 +602,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialBase.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialConstants.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\MaterialInstance.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\SkyBoxMaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\SpriteMaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h" />
@@ -636,8 +642,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterCausticsRayTracingManager.h" />
@@ -707,6 +716,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\TAAPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\CASPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterCausticsPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterSurfacePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderDomainContext.h" />
@@ -719,6 +730,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueNames.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTemporalTechnique.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\TAA\TAATechnique.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\CAS\CASTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\DrawViewInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderItem.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderManager.h" />
@@ -815,7 +829,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h" />
-    <ClInclude Include="Application\Src\Scenes\ParticleTestScene\ParticleTestScene.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
@@ -847,6 +860,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\ObjectSelector.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\PixCapture.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneManagerTab.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ScreenCapture.h" />
@@ -912,8 +926,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\AtmosphereTestScene\AtmosphereTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\VolumetricCloudTestScene\VolumetricCloudTestScene.h" />
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h" />
   </ItemGroup>
   <ItemGroup>
@@ -922,9 +934,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Application\Assets\Models\human\sneakWalk.bin" />
     <None Include="Application\Assets\Models\human\walk.bin" />
-    <None Include="Application\Assets\Models\simpleSkin\simpleSkin.bin" />
     <None Include="Docs\Engine\Audio\SoundManager.md" />
     <None Include="Docs\Engine\Camera\CameraManager.md" />
     <None Include="Docs\Engine\Collision\Collision.md" />
