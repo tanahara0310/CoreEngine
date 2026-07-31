@@ -856,6 +856,12 @@
     <ClCompile Include="Engine\Src\Camera\Camera.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\View\ViewBuilder.cpp">
+      <Filter>Engine\Src\Camera\View</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\DrawViewInfo.cpp">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\CrashDump.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
@@ -2070,6 +2076,12 @@
     <ClInclude Include="Engine\Src\Camera\Camera.h">
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\View\ViewInfo.h">
+      <Filter>Engine\Src\Camera\View</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\View\ViewBuilder.h">
+      <Filter>Engine\Src\Camera\View</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Scene\IScene.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
@@ -2278,11 +2290,11 @@
     <Filter Include="Application\Src\Scenes">
       <UniqueIdentifier>{E0897678-58CC-4A82-AA9F-47042D9CD67B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src\Scenes\PrimitiveTestScene">
-      <UniqueIdentifier>{D473AE08-3695-412C-B895-5704EB4C75C5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application\Src\Scenes\AssignmentScene">
       <UniqueIdentifier>{7B3C1F42-9D6E-4C58-8A21-3F5E0B7D4C19}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\PrimitiveTestScene">
+      <UniqueIdentifier>{D473AE08-3695-412C-B895-5704EB4C75C5}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
@@ -2352,6 +2364,9 @@
     </Filter>
     <Filter Include="Engine\Src\Camera\Debug">
       <UniqueIdentifier>{08318A63-7E81-4992-88CF-85F136FCA598}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Camera\View">
+      <UniqueIdentifier>{F5ABBF85-A32B-4EA0-9D89-C0AD772A11EC}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Collider">
       <UniqueIdentifier>{FE7CD193-3AA7-4398-A7A5-43C789EB47D3}</UniqueIdentifier>
@@ -2542,6 +2557,9 @@
     <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique">
       <UniqueIdentifier>{29E5101D-EA93-4F8B-AA86-B028D945C9F5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique\CAS">
+      <UniqueIdentifier>{4A9D6E38-2F51-4C7B-B0E4-8D19C63F27A5}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting">
       <UniqueIdentifier>{F294A755-C4D0-415D-8D91-772247DCA32B}</UniqueIdentifier>
     </Filter>
@@ -2550,9 +2568,6 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique\TAA">
       <UniqueIdentifier>{7B3E1C42-59A6-4D0E-9F17-3C8B25A4E610}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Graphics\Render\RenderingTechnique\CAS">
-      <UniqueIdentifier>{4A9D6E38-2F51-4C7B-B0E4-8D19C63F27A5}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\RenderTarget">
       <UniqueIdentifier>{5446C3E1-4C5F-4C98-9DD5-B757A27FEA12}</UniqueIdentifier>

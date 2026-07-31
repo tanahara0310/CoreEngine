@@ -106,15 +106,15 @@ namespace CoreEngine
         return ComputeLodByCoverage(resource.GetLocalBoundingBox(), worldMatrix, camera);
     }
 
-    bool ModelVisibility::IsModelInView(const ICamera* camera, const BoundingBox& worldBounds)
+    bool ModelVisibility::IsModelInView(const Frustum& frustum, const BoundingBox& worldBounds)
     {
         if (!RenderOptimizationSettings::Get().frustumCullingEnabled) {
             return true;
         }
-        if (!camera || !worldBounds.IsValid()) {
+        if (!worldBounds.IsValid()) {
             return true;
         }
-        return !camera->GetFrustum().IsOutside(worldBounds);
+        return !frustum.IsOutside(worldBounds);
     }
 
     void ModelVisibility::BeginOcclusionQuery(HiZOcclusionSystem* hiZ,

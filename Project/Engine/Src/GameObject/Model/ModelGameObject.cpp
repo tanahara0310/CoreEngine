@@ -8,6 +8,7 @@
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Camera/ICamera.h"
+#include "Camera/View/ViewBuilder.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 #ifdef USE_IMGUI
@@ -78,22 +79,26 @@ namespace CoreEngine
     }
 
     void ModelGameObject::Draw(const ICamera* camera) {
-        // RenderGraph を経由しない直接呼び出し（レガシー経路）は GameView・Forward として扱う
+        // RenderGraph を経由しない直接呼び出し（レガシー経路）。
+        // ViewInfo を持たないため、その場で 1 つ組み立てて本経路へ合流させる。
+        if (!camera) return;
+        const ViewInfo legacyView = ViewBuilder::Build(camera, RenderViewType::GameView);
         DrawViewInfo view{};
-        view.camera = camera;
+        view.view = &legacyView;
         Draw(view);
     }
 
     void ModelGameObject::Draw(const DrawViewInfo& view) {
-        if (!model_ || !view.camera) return;
+        if (!model_ || !view.view || !view.view->isValid) return;
 
-        // 視錐台カリング: 判定内容とデバッグトグルは ModelVisibility（Culling層）が持つ
-        if (!ModelVisibility::IsModelInView(view.camera, GetWorldBoundingBox())) {
+        // 視錐台カリング: 判定内容とデバッグトグルは ModelVisibility（Culling層）が持つ。
+        // 視錐台は ViewInfo 構築時に 1 回だけ抽出済み（以前はモデルごとに抽出し直していた）。
+        if (!ModelVisibility::IsModelInView(view.view->frustum, GetWorldBoundingBox())) {
             return;
         }
 
         model_->Draw(transform_, view, texture_.gpuHandle);
-        OnDraw(view.camera);
+        OnDraw(view.GetCamera());
     }
 
     BoundingBox ModelGameObject::GetWorldBoundingBox() const {

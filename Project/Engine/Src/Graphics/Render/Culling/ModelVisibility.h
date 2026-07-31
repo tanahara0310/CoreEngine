@@ -16,6 +16,7 @@ namespace CoreEngine
     class ModelResource;
     class HiZOcclusionSystem;
     struct BoundingBox;
+    struct Frustum;
 
     class ModelVisibility {
     public:
@@ -38,9 +39,10 @@ namespace CoreEngine
         /// @brief オブジェクト単位の視錐台カリング判定（デバッグトグル込み）
         /// @details カリング判定と RenderOptimizationSettings の参照を Culling 層へ
         ///          集約するための入口。呼び出し側（GameObject 層）はトグルを意識しない。
-        ///          無効 AABB・カメラ無しは安全側（可視）に倒す。
+        ///          無効 AABB は安全側（可視）に倒す。
+        /// @param frustum ViewInfo が保持する視錐台（フレーム先頭で 1 回だけ抽出済み）
         /// @return 描画すべきなら true（視錐台の完全外側なら false）
-        static bool IsModelInView(const ICamera* camera, const BoundingBox& worldBounds);
+        static bool IsModelInView(const Frustum& frustum, const BoundingBox& worldBounds);
 
         /// @brief フレームのオクルージョン判定を準備する（モデル単位で Draw 毎に呼ぶ）
         /// @param hiZ Hi-Zオクルージョンカリングシステム（nullptr なら判定なし = 常に可視）

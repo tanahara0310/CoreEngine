@@ -10,6 +10,7 @@
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
@@ -58,12 +59,12 @@ namespace CoreEngine
         UpdateWaterSurfaceBuffer(context.waterSurfaceState);
         UpdateMainLightBuffer(context.lightManager);
 
-        // 深度復元用 View*Projection 逆行列（ビューごとに更新）
-        if (context.renderManager) {
-            const Matrix4x4& view = context.renderManager->GetViewMatrix();
-            const Matrix4x4& proj = context.renderManager->GetProjectionMatrix();
-            const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(MathCore::Matrix::Multiply(view, proj));
-            std::memcpy(params_.invViewProjMatrix, &invViewProj, sizeof(float) * 16);
+        // 深度復元用 View*Projection 逆行列（実行中のビューの ViewInfo から取る）
+        if (context.frameViews) {
+            const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+            if (view.isValid) {
+                std::memcpy(params_.invViewProjMatrix, &view.invViewProjection, sizeof(float) * 16);
+            }
         }
         UpdateParamsBuffer();
         diagnostics_.normalHandle = gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness).ptr;

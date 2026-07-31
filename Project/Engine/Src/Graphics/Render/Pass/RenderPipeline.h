@@ -63,6 +63,14 @@ namespace CoreEngine
             return nullptr;
         }
 
+        /// @brief 今フレームのビュー（ViewInfo）を確定する
+        /// @details 「どのカメラで描くか」を解決する唯一の場所。TAA の射影ジッタを注入してから
+        ///          スナップショットするため、これ以降フレーム内の全パス・全描画が同じ行列を使う。
+        ///          RenderGraph 構築より前、かつ RenderContext::frameViews を差す前に呼ぶこと。
+        /// @param context レンダリングコンテキスト（frameViews はまだ未設定でよい）
+        /// @param outViews 構築先
+        void PrepareFrameViews(const RenderContext& context, FrameViews& outViews);
+
         /// @brief フレーム実行前のパス設定を行う
         /// @param context レンダリングコンテキスト
         void PrepareFrame(const RenderContext& context);

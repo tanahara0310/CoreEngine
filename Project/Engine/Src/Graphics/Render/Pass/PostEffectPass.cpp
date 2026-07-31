@@ -9,9 +9,7 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
-#include "Camera/CameraManager.h"
-#include "Camera/ICamera.h"
-#include "Camera/CameraStructs.h"
+#include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
@@ -98,11 +96,13 @@ namespace CoreEngine
             return;
         }
 
-        if (effectName_ == PostEffectNames::Outline && context.cameraManager) {
+        // 注: 以前は context.cameraManager を見ていたが、この項はどこからも代入されておらず
+        //     常に nullptr だったため、Outline のクリップ面が一度も更新されていなかった。
+        if (effectName_ == PostEffectNames::Outline && context.frameViews) {
             if (auto* outline = dynamic_cast<Outline*>(effect_)) {
-                if (const ICamera* cam = context.cameraManager->GetActiveCamera(CameraType::Camera3D)) {
-                    const CameraParameters params = cam->GetParameters();
-                    outline->SetCameraClipPlanes(params.nearClip, params.farClip);
+                const ViewInfo& view = context.frameViews->GameView();
+                if (view.isValid) {
+                    outline->SetCameraClipPlanes(view.nearZ, view.farZ);
                 }
             }
         }

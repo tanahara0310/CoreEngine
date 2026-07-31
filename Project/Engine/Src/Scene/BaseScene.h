@@ -112,9 +112,6 @@ namespace CoreEngine
         /// @brief カメラのセットアップ
         void SetupCamera();
 
-        /// @brief 指定カメラでジオメトリ描画
-        void DrawWithCamera(const std::string& cameraName);
-
         /// @brief Gameビューに使用する3Dカメラ名を解決
         std::string ResolveGameViewCameraName() const;
 

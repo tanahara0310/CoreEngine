@@ -59,10 +59,9 @@ namespace CoreEngine
 
         if (context.renderManager) {
             // パス分離契約 2: 描画に必要な状態は先行パスに依存せず自分で設定する。
+            // 描画に使うビューは EngineSystem がフレーム先頭で RenderManager へ渡し済み
+            // （FrameViews）。パスごとにカメラを差し込む必要はない。
             context.renderManager->SetDebugLineRenderingEnabled(true);
-            if (context.sceneManager) {
-                context.renderManager->SetCamera(context.sceneManager->GetGameViewCamera3D());
-            }
 
             DrawQueue(context);
         }

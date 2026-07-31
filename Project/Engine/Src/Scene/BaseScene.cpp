@@ -124,19 +124,25 @@ namespace CoreEngine
             return;
         }
 
-        // カメラマネージャーを設定（タイプ別カメラを自動選択）
-        renderManager->SetCameraManager(cameraManager_.get());
-
         // 全てのゲームオブジェクトを描画キューに追加
         gameObjectManager_.RegisterAllToRender(renderManager);
     }
 
     void BaseScene::Draw()
     {
-        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
-            renderManager->SetDebugLineRenderingEnabled(true);
+        auto* renderManager = engine_->GetComponent<RenderManager>();
+        auto* dxCommon = engine_->GetComponent<DirectXCommon>();
+        if (!renderManager || !dxCommon) {
+            return;
         }
-        DrawWithCamera(ResolveGameViewCameraName());
+
+        // 描画に使うビューは EngineSystem がフレーム先頭で確定済み（FrameViews）。
+        // 以前はここでアクティブカメラを一時的に差し替えて描き、元へ戻していたが、
+        // その間だけ「アクティブカメラ」の意味が変わるため、ギズモ／ピッキングが
+        // 描画とは別のカメラを見てズレる原因になっていた。
+        renderManager->SetDebugLineRenderingEnabled(true);
+        renderManager->SetCommandList(dxCommon->GetCommandList());
+        renderManager->DrawGeometryPass();
     }
 
     ICamera* BaseScene::GetDefaultGameViewCamera3D() const
@@ -172,40 +178,6 @@ namespace CoreEngine
     ICamera* BaseScene::GetGameViewCamera2D() const
     {
         return cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
-    }
-
-    void BaseScene::DrawWithCamera(const std::string& cameraName)
-    {
-        auto renderManager = engine_->GetComponent<RenderManager>();
-        auto dxCommon = engine_->GetComponent<DirectXCommon>();
-        if (!cameraManager_) {
-            return;
-        }
-
-        const std::string previousCameraName = cameraManager_->GetActiveCameraName(CameraType::Camera3D);
-        const bool shouldSwitchCamera = !cameraName.empty() && cameraName != previousCameraName;
-
-        if (shouldSwitchCamera) {
-            cameraManager_->SetActiveCamera(cameraName, CameraType::Camera3D);
-        }
-
-        ICamera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
-
-        if (!renderManager || !dxCommon || !activeCamera3D) {
-            if (shouldSwitchCamera && !previousCameraName.empty()) {
-                cameraManager_->SetActiveCamera(previousCameraName, CameraType::Camera3D);
-            }
-            return;
-        }
-
-        ID3D12GraphicsCommandList* cmdList = dxCommon->GetCommandList();
-        renderManager->SetCommandList(cmdList);
-
-        renderManager->DrawGeometryPass();
-
-        if (shouldSwitchCamera && !previousCameraName.empty()) {
-            cameraManager_->SetActiveCamera(previousCameraName, CameraType::Camera3D);
-        }
     }
 
     void BaseScene::Finalize()

@@ -7,8 +7,7 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
-#include "Camera/CameraManager.h"
-#include "Camera/ICamera.h"
+#include "Camera/View/ViewInfo.h"
 #include "Scene/SceneManager.h"
 #include "Math/MathCore.h"
 #include <cstring>
@@ -45,28 +44,23 @@ namespace CoreEngine
 
         // カメラ行列の設定
         //
-        // 実際に描画へ使われたカメラから取ること。RenderManager::GetViewMatrix() は
-        // CameraManager のアクティブカメラだけを見るが、エディタ実行ではそれが未設定で
-        // 単位行列が返る。単位行列で深度からワールド座標を復元すると座標が全く合わず、
-        // AO がノイズと黒斑（隣接面のちらつき）になる。
-        // TAA のジッタもこのカメラの射影行列に入っているため、G-Buffer と完全に整合する。
-        const ICamera* camera = context.sceneManager
-            ? context.sceneManager->GetGameViewCamera3D()
-            : nullptr;
-        if (!camera && context.cameraManager) {
-            camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        // 実際に G-Buffer を描いたビューから取ること。単位行列や別カメラの行列で深度から
+        // ワールド座標を復元すると座標が全く合わず、AO がノイズと黒斑（隣接面のちらつき）になる。
+        // frameViews はフレーム先頭で確定した唯一のスナップショットで、TAA のジッタも
+        // 織り込み済みなので G-Buffer と完全に整合する。
+        if (!context.frameViews) {
+            outputSrvHandle = {};
+            return;
         }
-        if (!camera) {
+        const ViewInfo& view = context.frameViews->GameView();
+        if (!view.isValid) {
             outputSrvHandle = {};
             return;
         }
 
-        const Matrix4x4& view = camera->GetViewMatrix();
-        const Matrix4x4& proj = camera->GetProjectionMatrix();
-        std::memcpy(params_.viewMatrix, &view, sizeof(float) * 16);
-        std::memcpy(params_.projectionMatrix, &proj, sizeof(float) * 16);
-        const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(MathCore::Matrix::Multiply(view, proj));
-        std::memcpy(params_.invViewProjMatrix, &invViewProj, sizeof(float) * 16);
+        std::memcpy(params_.viewMatrix, &view.viewMatrix, sizeof(float) * 16);
+        std::memcpy(params_.projectionMatrix, &view.projection, sizeof(float) * 16);
+        std::memcpy(params_.invViewProjMatrix, &view.invViewProjection, sizeof(float) * 16);
 
         // 今フレームのスライスへ書き込む（フレームオーバーラップ対応）
         const D3D12_GPU_VIRTUAL_ADDRESS cbAddress =

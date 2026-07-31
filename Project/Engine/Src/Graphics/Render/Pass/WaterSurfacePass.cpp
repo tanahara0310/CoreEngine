@@ -58,10 +58,8 @@ namespace CoreEngine
         targetToUse->SetClearEnabled(false);
         targetToUse->Begin(cmdList);
         if (context.renderManager) {
+            // 描画に使うビューは FrameViews として RenderManager が保持済み
             context.renderManager->SetDebugLineRenderingEnabled(true);
-            if (context.sceneManager) {
-                context.renderManager->SetCamera(context.sceneManager->GetGameViewCamera3D());
-            }
             context.renderManager->DrawWaterQueuePass(context.viewSettings.viewType);
         }
         targetToUse->End(cmdList);

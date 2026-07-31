@@ -471,6 +471,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Camera\Debug\DebugCamera.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera.cpp" />
+    <ClCompile Include="Engine\Src\Camera\View\ViewBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\DrawViewInfo.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\CrashDump.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\DirectXCommon.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LeakChecker.cpp" />
@@ -892,6 +894,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Camera\Debug\DebugCamera.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
+    <ClInclude Include="Engine\Src\Camera\View\ViewInfo.h" />
+    <ClInclude Include="Engine\Src\Camera\View\ViewBuilder.h" />
     <ClInclude Include="Engine\Src\Scene\IScene.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\CrashDump.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\DirectXCommon.h" />

@@ -29,8 +29,8 @@
 #include "Graphics/Render/RenderingTechnique/CAS/CASTechnique.h"
 #include "CASPass.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Camera/CameraManager.h"
 #include "Camera/ICamera.h"
+#include "Camera/View/ViewBuilder.h"
 #include "Scene/IScene.h"
 #include "Scene/SceneManager.h"
 #include "Math/MathCore.h"
@@ -97,17 +97,16 @@ namespace CoreEngine
                 return;
             }
 
-            // 実際の描画に使われるカメラと同じものを使うこと。
-            // GeometryPass 等は sceneManager->GetGameViewCamera3D()（エディタではデバッグカメラ）
-            // を RenderManager へ渡しており、CameraManager のアクティブカメラとは別物になり得る。
-            // 別のカメラで太陽を投影するとマスク位置がずれ、太陽を直視してもフレアが出なくなる。
-            const ICamera* camera = context.sceneManager
-                ? context.sceneManager->GetGameViewCamera3D()
-                : nullptr;
-            if (!camera && context.cameraManager) {
-                camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+            // 実際に描画へ使われたビューと同じ行列を使うこと。別のカメラで太陽を投影すると
+            // マスク位置がずれ、太陽を直視してもフレアが出なくなる。
+            // FrameViews はフレーム先頭で確定した唯一のスナップショットなので、
+            // 描画側とここで行列が食い違うことは構造上ありえない。
+            if (!context.frameViews || !context.atmosphereManager) {
+                lensFlare->SetSunScreenPosition(0.5f, 0.5f, false);
+                return;
             }
-            if (!camera || !context.atmosphereManager) {
+            const ViewInfo& view = context.frameViews->GameView();
+            if (!view.isValid) {
                 lensFlare->SetSunScreenPosition(0.5f, 0.5f, false);
                 return;
             }
@@ -116,8 +115,7 @@ namespace CoreEngine
             const Vector3 sunDir = context.atmosphereManager->GetSunDirection();
             const Vector3 toSun = { -sunDir.x, -sunDir.y, -sunDir.z };
 
-            const Matrix4x4 vp = MathCore::Matrix::Multiply(
-                camera->GetViewMatrix(), camera->GetProjectionMatrix());
+            const Matrix4x4& vp = view.viewProjection;
 
             // 無限遠の方向ベクトルとして投影（w=0 の行ベクトル変換 = 平行移動行を無視）
             const float clipX = toSun.x * vp.m[0][0] + toSun.y * vp.m[1][0] + toSun.z * vp.m[2][0];
@@ -219,26 +217,14 @@ namespace CoreEngine
         // 履歴がすぐ棄却されるため差が出にくい。8 は一般的な妥協点。
         constexpr uint64_t kJitterSampleCount = 8;
 
-        // 実際に描画へ使われるカメラ（エディタではデバッグカメラ）を取得する。
-        // CameraManager のアクティブカメラとは別物になり得るため、
-        // UpdateLensFlareSunPosition と同じ選択規則をここでも使う。
-        ICamera* GetRenderingCamera(const RenderContext& context)
-        {
-            ICamera* camera = context.sceneManager
-                ? context.sceneManager->GetGameViewCamera3D()
-                : nullptr;
-            if (!camera && context.cameraManager) {
-                camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
-            }
-            return camera;
-        }
-
         // カメラの射影行列へ今フレームのサブピクセルジッタを入れる。
         // 「実際にサンプル位置をずらして描く」のが TAA の本体で、
         // これが無いと履歴を混ぜても情報が増えずぼけるだけになる。
-        void UpdateCameraJitter(const RenderContext& context)
+        //
+        // 呼び出しは PrepareFrameViews から「ViewInfo を作る直前」に 1 回だけ。
+        // ここで入れたジッタがスナップショットされ、以降フレーム内の全パスが同じ射影を使う。
+        void UpdateCameraJitter(const RenderContext& context, ICamera* camera)
         {
-            ICamera* camera = GetRenderingCamera(context);
             if (!camera) {
                 return;
             }
@@ -384,12 +370,30 @@ namespace CoreEngine
         return nullptr;
     }
 
+    void RenderPipeline::PrepareFrameViews(const RenderContext& context, FrameViews& outViews)
+    {
+        // ===== 「どのカメラで描くか」を決める唯一の場所 =====
+        // 以前は BaseScene / RenderManager / RenderPipeline / SSAO がそれぞれ別の規則で
+        // カメラを解決しており、「一致させること」というコメントで整合を守ろうとしていた。
+        // ここで 1 回解決し、以降は ViewInfo という値を配る。
+        ICamera* camera = context.sceneManager
+            ? context.sceneManager->GetGameViewCamera3D()
+            : nullptr;
+
+        // 射影行列へのジッタ注入は、この後の描画が作る WVP / invViewProj / 視錐台へ
+        // 効かせる必要があるため、必ず ViewInfo のスナップショットより前に行う。
+        UpdateCameraJitter(context, camera);
+
+        outViews.Set(RenderViewType::GameView, ViewBuilder::Build(camera, RenderViewType::GameView));
+
+        ICamera* camera2D = context.sceneManager
+            ? context.sceneManager->GetGameViewCamera2D()
+            : nullptr;
+        outViews.Set2D(ViewBuilder::Build(camera2D, RenderViewType::GameView));
+    }
+
     void RenderPipeline::PrepareFrame(const RenderContext& context)
     {
-        // 射影行列へのジッタ注入は、この後の描画が作る WVP / invViewProj へ効かせる必要があるため
-        // 必ずリソース登録・Graph 構築より前に行う。
-        UpdateCameraJitter(context);
-
         RegisterFrameResources(context);
 
         // レンズフレアの光源を太陽に限定するため、太陽のスクリーン位置を毎フレーム更新

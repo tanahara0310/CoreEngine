@@ -70,16 +70,20 @@ return cameraManager_->GetGameViewCameraOverride().empty()
 と、「override が有効なとき override 名を無視して既定名を引く」という名前と実装が食い違う分岐を持つ。
 到達条件が狭いため現在は表面化していないが、`ResolveGameViewCameraName()` と結論が変わり得る。
 
-### ★★★ B. 描画のたびにアクティブカメラを差し替えて戻す
-`BaseScene::DrawWithCamera()` は `SetActiveCamera(name)` → `DrawGeometryPass()` → 元に戻す、
-という**グローバル状態の一時変更**で描画カメラを選んでいる。副作用:
+### ★★★ B. ギズモ／ピッキングと描画が別のカメラを見る
+ギズモ／ピッキング（`ObjectSelector`, `Gizmo`）は `CameraManager::GetActiveCamera(Camera3D)` を、
+実際の描画は `SceneManager::GetGameViewCamera3D()`（override 優先）を見る。**この 2 つは
+別の規則なので食い違い得る。**
+カメラ一覧 UI（`CameraListEditorModule`）のラジオボタンは `SetActiveCamera` だけ呼び
+`SetGameViewCameraOverride` を呼ばないため、キー 1/2 を一度でも押した後は
+「一覧で選んでも画は変わらないのにギズモだけズレる」状態になる。
 
-- 描画中とそれ以外でアクティブカメラが違う（＝アクティブカメラが何を意味するか時間依存）
-- ギズモ／ピッキング（`ObjectSelector`, `Gizmo`）は「アクティブカメラ」を見るため、
-  **カメラ一覧 UI（`CameraListEditorModule`）でカメラを切り替えると描画は override 側のまま、
-  ピッキングだけ別カメラになる → ギズモが実際の絵とズレる。**
-  一覧のラジオボタンは `SetActiveCamera` だけ呼び `SetGameViewCameraOverride` を呼ばないため、
-  キー 1/2 を一度でも押した後は「一覧で選んでも画は変わらないのにギズモだけズレる」状態になる。
+> **調査時の訂正（2026-07-31）**: 当初この項を「`BaseScene::DrawWithCamera()` が描画のたびに
+> アクティブカメラを差し替えて戻すのが原因」と書いたが、**`BaseScene::Draw()` はメインループから
+> 呼ばれていない**（`Framework::Run` は `Update` → `PrepareRender` → `ExecuteRenderPipeline` のみ。
+> 実描画は RenderGraph の `GeometryPass` → `RenderManager::DrawMainQueuePass` 経由）。
+> つまり差し替えコードは死んだ経路にあり、症状の原因は上記「2 つの解決規則の食い違い」の方。
+> 差し替え自体は Phase 1 で削除済み。
 
 ### ★★★ C. カメラの「複数ビュー」概念が無い
 反射ビュー・RT・カスケードのように 1 フレームで複数の視点が必要なのに、
@@ -184,31 +188,56 @@ engineSystem_->GetComponent<InputManager>()      // エンジン全体への参�
 > ⚠️ このフェーズは `ICamera` / `Camera` / `DebugCamera::CameraSettings` のクラスレイアウトを変える。
 > 増分ビルドだと ODR 不整合でヒープ破損（`c0000374`）を起こすため、**クリーンリビルド必須**。
 
-### Phase 1: ViewInfo の導入（**効果が最も大きい。Phase 2 より先にやる**）
-```cpp
-/// フレーム先頭で 1 回だけ作る不変スナップショット
-struct ViewInfo {
-    Matrix4x4 view, proj, viewProj, invViewProj;
-    Vector3   position;
-    Frustum   frustum;          // 1 回だけ抽出（現状はモデル単位で毎回）
-    float     nearZ, farZ, aspect;
-    Vector2   jitterNdc;        // TAA
-    RenderViewType type;        // GameView / ReflectionView / ...
-};
-```
-- `DrawViewInfo::camera`（`const ICamera*`）と `RenderContext` のカメラ参照を `const ViewInfo&` へ置換。
-- `GetCameraForPass()` / `GetRenderingCamera()` / `ResolveGameViewCameraName()` の 3 経路を
-  「フレーム開始時に ViewInfo を作って配る」に一本化。**「一致させること」というコメントが不要になる。**
-- 反射ビュー・RT シャドウ・カスケードは ViewInfo をもう 1 つ作るだけ。
-  `RayTracingSubsystem` の ReflectionView 潜在バグもこれで直る。
-- TAA ジッタは ViewInfo 生成時に注入。`ICamera` から可変ジッタ状態が消える。
-- `BaseScene::DrawWithCamera()` のアクティブカメラ差し替え／復元が不要になる（B の解消）。
+### Phase 1: ViewInfo の導入 — **実施済み（2026-07-31）**
 
-**維持すべき不変条件**
-- `gCamera` CBV は 1 フレームに 1 回だけ書く（インフライトのフリッカー対策。`Camera::BeginViewOverride`
-  のコメント参照）。ビュー別に必要なものは `DeferredLightingTechnique` が既にやっている
-  「ビュー種別ごとの別バッファ」方式に統一する。
-- モデルの WVP・invViewProj・Frustum が**同じ**（ジッタ込みの）行列から導かれること。
+**追加した型**（`Engine/Src/Camera/View/`）
+```cpp
+struct ViewInfo {                  // フレーム内不変のスナップショット
+    const ICamera* camera;         // 移行期の互換用（Phase 2 で撤去）
+    RenderViewType type;
+    Matrix4x4 viewMatrix, projection, viewProjection, invViewProjection;
+    Vector3 position;
+    Frustum frustum;               // 構築時に 1 回だけ抽出
+    float nearZ, farZ;
+    Vector2 jitterNdc;
+    D3D12_GPU_VIRTUAL_ADDRESS cameraCBV;
+    bool isValid;
+};
+class FrameViews { ... };          // ビュー種別で引く。2D ビューは独立に保持
+class ViewBuilder { static ViewInfo Build(const ICamera*, RenderViewType); };
+```
+
+**唯一の解決点**: `RenderPipeline::PrepareFrameViews()`。
+`EngineSystem::ExecuteRenderPipeline()` がフレーム先頭で呼び、
+「カメラ解決 → TAA ジッタ注入 → ViewInfo スナップショット」を 1 回だけ行い、
+`RenderContext::frameViews` と `RenderManager::SetFrameViews()` で配る。
+
+1. ✅ 解決経路の統合: `RenderManager::GetCameraForPass()` / `RenderPipeline::GetRenderingCamera()` /
+   `BaseScene::DrawWithCamera()` を削除。**「GetCameraForPass と一致させること」というコメントが不要になった。**
+2. ✅ `DrawViewInfo::camera`（`const ICamera*`）→ `const ViewInfo* view` に置換。
+   `RenderContext::cameraManager` → `const FrameViews* frameViews`。
+3. ✅ 消費側の切り替え: SSAO / SSAOBlur / DeferredLightingPass / WaterCausticsTechnique /
+   PostEffectPass(Outline) / RayTracingSubsystem / Model / ModelGameObject / ModelVisibility。
+4. ✅ 視錐台は ViewInfo 構築時に 1 回だけ抽出（`ICamera::GetFrustum()` のモデル単位呼び出しを廃止）。
+5. ✅ VP 乗算の重複除去: `Model` は `view.view->viewProjection` を使い、モデルごとに掛け直さない。
+6. ✅ RT はビュー種別に対応する ViewInfo を引く（`context.viewSettings.viewType`）。
+   ReflectionView を復活させる場合は `FrameViews` へ 1 つ足すだけでよくなった。
+
+**この過程で見つかった既存バグ**
+- `RenderContext::cameraManager` は**どこからも代入されておらず常に nullptr** だった。
+  そのため `PostEffectPass` の Outline は `SetCameraClipPlanes()` が一度も呼ばれず、
+  クリップ面が既定値のままだった（Phase 1 で `ViewInfo` 経由になり解消）。
+  SSAO / SSAOBlur / RenderPipeline にあった `cameraManager` フォールバックも全て死んでいた。
+- `BaseScene::Draw()` はメインループから呼ばれていない（B の訂正欄参照）。
+
+**維持した不変条件**
+- `gCamera` CBV は 1 フレームに 1 回だけ書く（インフライトのフリッカー対策）。ビュー別に必要な
+  invViewProj は `DeferredLightingTechnique` のビュー別バッファ方式のまま。
+- モデルの WVP・invViewProj・Frustum が**同じ**（ジッタ込みの）行列から導かれる
+  → ViewBuilder がジッタ注入後にスナップショットすることで構造的に保証。
+
+**検証**: Development / Release 両構成ビルド成功。実機で `git stash` による A/B（HEAD vs Phase 0+1）を
+取り、グリッド・床・空・モデル・影・パーティクル・SSAO すべて同一描画を確認。
 
 ### Phase 2: カメラのデータ化（`Camera` / `DebugCamera` の統合）
 ```cpp

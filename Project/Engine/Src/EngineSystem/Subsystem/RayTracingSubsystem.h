@@ -124,7 +124,6 @@ namespace CoreEngine
             const std::function<void(uint32_t lightIndex, const Light& light)>& body);
 
         struct WaterDispatchContext {
-            ICamera* camera = nullptr;
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV{};
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV{};
             Matrix4x4 viewProjection{};
