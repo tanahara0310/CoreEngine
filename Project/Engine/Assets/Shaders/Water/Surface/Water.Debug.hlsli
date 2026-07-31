@@ -205,9 +205,8 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
         float4 dbgSkyEnv = gSkyEnvironmentMap.SampleLevel(gLinearClamp, dbgReflectDir, kDbgEnvMip);
         float dbgCloudOpacity = saturate(1.0f - dbgSkyEnv.a);
 
-        const float3 kDbgLuma = float3(0.2126f, 0.7152f, 0.0722f);
-        float dbgSkyLuma = dot(SampleGlossyReflection(ctx.screenUV, 1.0f - ctx.cosTheta), kDbgLuma);
-        float dbgCloudLuma = dot(dbgSkyEnv.rgb, kDbgLuma);
+        float dbgSkyLuma = Luminance(SampleGlossyReflection(ctx.screenUV, 1.0f - ctx.cosTheta));
+        float dbgCloudLuma = Luminance(dbgSkyEnv.rgb);
         float dbgDarkRatio = saturate(dbgCloudLuma / max(dbgSkyLuma, 1.0e-5f));
         float dbgOverlayScale = lerp(0.25f, 1.0f, dbgDarkRatio);
         float dbgHorizonFade = smoothstep(0.08f, 0.30f, dbgReflectDir.y);

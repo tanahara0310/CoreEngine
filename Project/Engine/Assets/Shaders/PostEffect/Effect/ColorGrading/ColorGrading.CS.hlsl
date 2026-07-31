@@ -1,5 +1,7 @@
 // ColorGrading.CS.hlsl - カラーグレーディング コンピュートシェーダー
 
+#include "ColorSpace.hlsli" // LuminanceRec601
+
 Texture2D<float4> gTexture : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -82,7 +84,7 @@ float3 ApplyTemperature(float3 col, float temp, float tintValue)
 // Shadow/Midtone/Highlight 調整
 float3 ApplySMH(float3 col, float3 shadowLiftRGB, float3 midtoneGammaRGB, float3 highlightGainRGB)
 {
-    float lum = dot(col, float3(0.299f, 0.587f, 0.114f));
+    float lum = LuminanceRec601(col);
     float shadowW = 1.0f - smoothstep(0.0f, 0.5f, lum);
     float highlightW = smoothstep(0.5f, 1.0f, lum);
     float3 shadowAdj = col + shadowLiftRGB * shadowW;

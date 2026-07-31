@@ -5,6 +5,7 @@
 
 #include "RTWaterSurfaceCommon.hlsli"
 #include "../../Include/Common/DepthReconstruction.hlsli"
+#include "ColorSpace.hlsli" // Luminance
 
 RWTexture2D<float4> gCausticsOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
@@ -607,8 +608,8 @@ void RTWaterCausticsRayGen()
 
     if (gDebugViewMode != kRTCausticsDebugNone)
     {
-        const float transmittanceLuma = dot(transmittance, float3(0.2126f, 0.7152f, 0.0722f));
-        const float intensityLuma = dot(causticsRadiance, float3(0.2126f, 0.7152f, 0.0722f));
+        const float transmittanceLuma = Luminance(transmittance);
+        const float intensityLuma = Luminance(causticsRadiance);
         const float3 debugColor = BuildCausticsDebugColor(
             gDebugViewMode,
             1.0f, // 旧 patternFade（撤去済み。Shallow Fade 表示は常に白）

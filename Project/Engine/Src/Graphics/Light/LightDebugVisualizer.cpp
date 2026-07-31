@@ -17,7 +17,7 @@ namespace CoreEngine
 {
     namespace
     {
-        constexpr float kPi = 3.14159265f;
+        constexpr float kPi = MathCore::Constants::kPi;
 
         const char* GetTypeLabel(LightType type)
         {

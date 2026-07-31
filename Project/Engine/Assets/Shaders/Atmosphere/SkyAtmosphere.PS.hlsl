@@ -5,6 +5,7 @@
 ///          本番描画は LUT 1サンプルで完結する。
 
 #include "Common/AtmosphereCommon.hlsli"
+#include "ColorSpace.hlsli" // Luminance
 
 // Skybox.VS.hlsl の出力と一致させる（Skybox.hlsli と同一レイアウト）
 struct VertexShaderOutput
@@ -160,7 +161,7 @@ PixelShaderOutput main(VertexShaderOutput input)
                 // 空の暗さマスク: 空の輝度がしきい値（月夜の空 ≈ 数e-3 は通し、
                 // 薄明 ≈ 数e-2 以上で消える美術値）へ近づくほど星を消す
                 const float kStarVisibilityLuminance = 0.02f;
-                float skyLuma = dot(luminance, float3(0.2126f, 0.7152f, 0.0722f));
+                float skyLuma = Luminance(luminance);
                 float darknessMask = saturate(1.0f - skyLuma / kStarVisibilityLuminance);
 
                 luminance += star * viewTransmittance * darknessMask;

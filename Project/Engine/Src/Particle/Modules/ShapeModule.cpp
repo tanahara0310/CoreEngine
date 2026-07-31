@@ -4,6 +4,8 @@
 #include <cmath>
 #include <algorithm>
 
+#include "Math/MathCore.h"
+
 #ifdef _DEBUG
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
@@ -132,7 +134,7 @@ namespace CoreEngine
     }
 
     Vector3 ShapeModule::GenerateCirclePosition(const Vector3& emitterPosition) {
-        float angle = random_.GetFloat(0.0f, 2.0f * 3.14159f);
+        float angle = random_.GetFloat(0.0f, Constants::kTwoPi);
         float r = std::sqrt(random_.GetFloat()) * shapeData_.radius;
 
         // 平面に応じた座標計算
@@ -165,9 +167,9 @@ namespace CoreEngine
     }
 
     Vector3 ShapeModule::GenerateConePosition(const Vector3& emitterPosition) {
-        float circleAngle = random_.GetFloat(0.0f, 2.0f * 3.14159f);
+        float circleAngle = random_.GetFloat(0.0f, Constants::kTwoPi);
         float height = random_.GetFloat() * shapeData_.height;
-        float coneRadius = height * std::tan(shapeData_.angle * 3.14159f / 180.0f);
+        float coneRadius = height * std::tan(shapeData_.angle * Constants::kDegToRad);
         float r = std::sqrt(random_.GetFloat()) * coneRadius;
 
         return {
@@ -212,7 +214,7 @@ namespace CoreEngine
     }
 
     Vector3 ShapeModule::GenerateRingPosition(const Vector3& emitterPosition) {
-        float angle = random_.GetFloat(0.0f, 2.0f * 3.14159f);
+        float angle = random_.GetFloat(0.0f, Constants::kTwoPi);
         float minR = shapeData_.innerRadius;
         float maxR = shapeData_.radius;
         float r = minR + std::sqrt(random_.GetFloat()) * (maxR - minR);
@@ -266,7 +268,7 @@ namespace CoreEngine
     }
 
     Vector3 ShapeModule::GenerateCylinderPosition(const Vector3& emitterPosition) {
-        float angle = random_.GetFloat(0.0f, 2.0f * 3.14159f);
+        float angle = random_.GetFloat(0.0f, Constants::kTwoPi);
         float height = random_.GetFloatSigned() * (shapeData_.height * 0.5f);
 
         float r;
@@ -310,7 +312,7 @@ namespace CoreEngine
     }
 
     Vector3 ShapeModule::GenerateCircleHalfPosition(const Vector3& emitterPosition) {
-        constexpr float PI = 3.14159265358979323846f;
+        constexpr float PI = Constants::kPi;
         bool top = random_.GetBool();
 
         float minAngle, maxAngle;

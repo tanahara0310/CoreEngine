@@ -14,6 +14,8 @@
 #ifndef GERSTNER_WAVE_INCLUDED
 #define GERSTNER_WAVE_INCLUDED
 
+#include "ShaderMath.hlsli" // TWO_PI
+
 // 定数バッファに格納できる Gerstner 波の最大本数。
 // C++ 側 kMaxWaterWaveCount / kMaxWaterSurfaceWaveCount と一致させること。
 #define GERSTNER_MAX_WAVE_COUNT 16
@@ -40,7 +42,7 @@ void ResolveGerstnerWaveTerms(
     GerstnerWave wave, float time, float2 worldXZ,
     out float waveNumber, out float safeSteepness, out float sinPhase, out float cosPhase)
 {
-    waveNumber = 2.0f * 3.14159265f / max(wave.wavelength, 1.0e-4f);
+    waveNumber = TWO_PI / max(wave.wavelength, 1.0e-4f);
     const float angularFrequency = wave.speed * waveNumber;
     const float kA = max(waveNumber * wave.amplitude, 1.0e-4f);
     safeSteepness = min(wave.steepness, 0.95f / kA);

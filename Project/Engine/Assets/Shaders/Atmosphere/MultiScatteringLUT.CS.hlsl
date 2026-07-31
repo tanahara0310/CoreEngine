@@ -42,7 +42,7 @@ void IntegrateDirection(float3 rayOrigin, float3 rayDir, float3 toSun,
 
     const int kStepCount = 20;
     float dt = tMax / kStepCount;
-    const float uniformPhase = 1.0f / (4.0f * ATMOSPHERE_PI);
+    const float uniformPhase = 1.0f / (4.0f * PI);
 
     float3 throughput = float3(1.0f, 1.0f, 1.0f);
 
@@ -81,7 +81,7 @@ void IntegrateDirection(float3 rayOrigin, float3 rayDir, float3 toSun,
         float3 transmittanceToSun = SampleTransmittanceToSun(
             gTransmittanceLUT, gLUTSampler, groundPoint, toSun, gAtmosphere);
         outLuminance += throughput * transmittanceToSun * NdotL
-                      * gAtmosphere.groundAlbedo / ATMOSPHERE_PI;
+                      * gAtmosphere.groundAlbedo / PI;
     }
 }
 
@@ -122,7 +122,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
             float randA = (i + 0.5f) / SQRT_SAMPLE_COUNT;
             float randB = (j + 0.5f) / SQRT_SAMPLE_COUNT;
             float theta = acos(1.0f - 2.0f * randA); // cosθ を一様に
-            float phi = 2.0f * ATMOSPHERE_PI * randB;
+            float phi = 2.0f * PI * randB;
 
             float3 rayDir = float3(
                 sin(theta) * cos(phi),

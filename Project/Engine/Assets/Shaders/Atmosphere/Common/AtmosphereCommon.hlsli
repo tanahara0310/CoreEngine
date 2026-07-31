@@ -7,7 +7,7 @@
 #ifndef ATMOSPHERE_COMMON_HLSLI
 #define ATMOSPHERE_COMMON_HLSLI
 
-static const float ATMOSPHERE_PI = 3.14159265358979323846f;
+#include "ShaderMath.hlsli" // PI
 
 /// @brief 大気散乱の定数バッファ（C++ 側 AtmosphereShaderConstants と一致させること）
 struct AtmosphereConstants
@@ -106,7 +106,7 @@ float3 ComputeExtinction(float heightKm, AtmosphereConstants atm)
 /// @brief レイリー位相関数
 float RayleighPhase(float cosTheta)
 {
-    return 3.0f / (16.0f * ATMOSPHERE_PI) * (1.0f + cosTheta * cosTheta);
+    return 3.0f / (16.0f * PI) * (1.0f + cosTheta * cosTheta);
 }
 
 /// @brief Henyey-Greenstein 位相関数（ミー散乱の前方散乱を近似）
@@ -114,7 +114,7 @@ float HenyeyGreensteinPhase(float g, float cosTheta)
 {
     float g2 = g * g;
     float denom = 1.0f + g2 - 2.0f * g * cosTheta;
-    return (1.0f - g2) / (4.0f * ATMOSPHERE_PI * denom * sqrt(max(denom, 1e-6f)));
+    return (1.0f - g2) / (4.0f * PI * denom * sqrt(max(denom, 1e-6f)));
 }
 
 // ============================================================================
@@ -321,7 +321,7 @@ float2 SkyViewParamsToUv(bool intersectGround, float viewZenithCos, float viewAz
     float vHorizon = sqrt(max(0.0f, radiusKm * radiusKm - bottomRadiusKm * bottomRadiusKm));
     float cosBeta = vHorizon / radiusKm; // 地平線角の余弦
     float beta = acos(clamp(cosBeta, -1.0f, 1.0f));
-    float zenithHorizonAngle = ATMOSPHERE_PI - beta;
+    float zenithHorizonAngle = PI - beta;
     float viewZenithAngle = acos(clamp(viewZenithCos, -1.0f, 1.0f));
 
     if (!intersectGround)
@@ -340,7 +340,7 @@ float2 SkyViewParamsToUv(bool intersectGround, float viewZenithCos, float viewAz
     }
 
     // 絶対方位を全周線形マッピング（frac は ±π を超える方位指定＝オフセット指定への保険）
-    float azimuthUnit = frac((viewAzimuthRad + ATMOSPHERE_PI) / (2.0f * ATMOSPHERE_PI));
+    float azimuthUnit = frac((viewAzimuthRad + PI) / (2.0f * PI));
     uv.x = FromUnitToSubUvs(azimuthUnit, (float)SKYVIEW_LUT_WIDTH);
 
     return uv;
@@ -353,7 +353,7 @@ void UvToSkyViewParams(float2 uv, float radiusKm, float bottomRadiusKm,
     float vHorizon = sqrt(max(0.0f, radiusKm * radiusKm - bottomRadiusKm * bottomRadiusKm));
     float cosBeta = vHorizon / radiusKm;
     float beta = acos(clamp(cosBeta, -1.0f, 1.0f));
-    float zenithHorizonAngle = ATMOSPHERE_PI - beta;
+    float zenithHorizonAngle = PI - beta;
 
     float viewZenithAngle;
     if (uv.y < 0.5f)
@@ -372,7 +372,7 @@ void UvToSkyViewParams(float2 uv, float radiusKm, float bottomRadiusKm,
     viewZenithCos = cos(viewZenithAngle);
 
     float azimuthUnit = FromSubUvsToUnit(uv.x, (float)SKYVIEW_LUT_WIDTH);
-    viewAzimuthRad = azimuthUnit * 2.0f * ATMOSPHERE_PI - ATMOSPHERE_PI;
+    viewAzimuthRad = azimuthUnit * 2.0f * PI - PI;
 }
 
 /// @brief 視線レイに沿った散乱（単一＋多重）の積分

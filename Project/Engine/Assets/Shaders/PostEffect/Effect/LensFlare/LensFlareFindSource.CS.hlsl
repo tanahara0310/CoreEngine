@@ -36,7 +36,7 @@ void main(uint3 groupThreadId : SV_GroupThreadID)
     for (uint idx = tid; idx < totalTexels; idx += kThreadCount)
     {
         const uint2 coord = uint2(idx % gFlareWidth, idx / gFlareWidth);
-        const float lum = LensFlareLuminance(gBright.Load(int3(coord, 0)).rgb);
+        const float lum = Luminance(gBright.Load(int3(coord, 0)).rgb);
         // 輝度の2乗で重み付けし、高輝度コア（太陽ディスク）へ重心を寄せる。
         // 1乗だと周辺グレアの裾（面積が広い）に重心が引っ張られる。
         const float w = lum * lum;

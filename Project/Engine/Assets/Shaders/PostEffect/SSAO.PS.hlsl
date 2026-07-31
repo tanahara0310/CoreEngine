@@ -6,6 +6,8 @@
 
 #include "FullScreen.hlsli"
 #include "../Include/Common/DepthReconstruction.hlsli"
+#include "../Include/Common/Sampling.hlsli" // TWO_PI / Hammersley / HemisphereSampleCosine
+#include "../Include/Common/Hash.hlsli"     // Hash12
 
 Texture2D<float4> gNormalRoughness : register(t0); // NormalRoughness
 Texture2D<float> gSceneDepth       : register(t1); // WorldPosition ターゲット廃止に伴い深度から復元する
@@ -36,36 +38,6 @@ struct PixelShaderOutput
 {
     float4 color : SV_Target;
 };
-
-float RadicalInverse_VdC(uint bits)
-{
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10f;
-}
-
-float2 Hammersley(uint i, uint N)
-{
-    return float2(float(i) / float(N), RadicalInverse_VdC(i));
-}
-
-float3 HemisphereSampleCosine(float2 xi)
-{
-    float phi = 2.0f * 3.14159265f * xi.x;
-    float cosTheta = sqrt(1.0f - xi.y);
-    float sinTheta = sqrt(xi.y);
-    return float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-}
-
-float Hash12(float2 p)
-{
-    float3 p3 = frac(float3(p.xyx) * 0.1031f);
-    p3 += dot(p3, p3.yzx + 33.33f);
-    return frac((p3.x + p3.y) * p3.z);
-}
 
 float3 BuildTBN(float3 N, float rotAngle, float3 v)
 {
@@ -110,7 +82,7 @@ PixelShaderOutput main(PixelShaderInput input)
     //   ○ 生のピクセル座標: フルスクリーンパスの SV_Position はシーンのジッタと無関係で、
     //     静止時は毎フレーム完全に同一。回転が固定されれば、残る変動は深度入力の
     //     サブピクセル変化だけになり、ブラーと TAA で吸収できる
-    float randRot = Hash12(floor(input.position.xy)) * 6.28318531f;
+    float randRot = Hash12(floor(input.position.xy)) * TWO_PI;
 
     uint sampleCount = (uint)clamp(gSampleCount, 1, 64);
 

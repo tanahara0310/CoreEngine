@@ -2,6 +2,7 @@
 #include "../Include/Lighting/LightStructures.hlsli"
 #include "../Include/PBR/PBR.hlsli"
 #include "../Include/Common/DepthReconstruction.hlsli"
+#include "../Include/Common/ColorSpace.hlsli" // Luminance / ACESFilm
 
 // ============================================================
 // G-Buffer テクスチャ
@@ -155,15 +156,6 @@ float3 EvaluateSkyIrradiance(float3 n)
 SamplerState gSampler : register(s0);
 
 // ============================================================
-// ACES トーンマッピング
-// ============================================================
-float3 ACESFilm(float3 x)
-{
-    const float a = 2.51f, b = 0.03f, c = 2.43f, d = 0.59f, e = 0.14f;
-    return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
-}
-
-// ============================================================
 // IBL（PBR.hlsli CalculateFullIBL と同じロジック）
 // ============================================================
 float3 CalculateDeferredIBL(float3 N, float3 V, float3 albedo, float metallic, float roughness, float3 F0, float ao)
@@ -248,7 +240,7 @@ PixelShaderOutput main(PixelShaderInput input)
             return output;
         }
 
-        float luminance = dot(rawCaustics, float3(0.2126f, 0.7152f, 0.0722f));
+        float luminance = Luminance(rawCaustics);
         output.color = float4(luminance.xxx, 1.0f);
         return output;
     }
@@ -681,9 +673,8 @@ PixelShaderOutput main(PixelShaderInput input)
         //   赤   = コースティクスが明るすぎる（+2EV で真っ赤）→ 白線の原因
         //   青   = コースティクスが暗すぎる（-2EV で真っ青）→ 黒い縁の原因
         //   マゼンタ = 水中判定ゼロ（置換していない領域）
-        const float3 kLuma = float3(0.2126f, 0.7152f, 0.0722f);
-        const float replacedLuma = dot(replacedMainLight, kLuma);
-        const float causticsLuma = dot(waterCaustics, kLuma);
+        const float replacedLuma = Luminance(replacedMainLight);
+        const float causticsLuma = Luminance(waterCaustics);
         if (underwaterFactor < 0.01f || replacedLuma < 1.0e-6f)
         {
             output.color = float4(1.0f, 0.0f, 1.0f, 1.0f);

@@ -4,6 +4,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Math/MathCore.h"
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
@@ -19,7 +20,7 @@ namespace CoreEngine {
         constexpr const char* kEditorLabel = "Volumetric Cloud";
 
 #ifdef USE_IMGUI
-        constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+        constexpr float kDegToRad = MathCore::Constants::kDegToRad;
 
         /// @brief UE 風の (?) ホバーツールチップ（ラベルの右に付ける）
         void HelpMarker(const char* desc)

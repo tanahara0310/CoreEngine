@@ -5,6 +5,7 @@
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Camera/Camera.h"
 #include "Particle/Core/ParticleResourceManager.h" // ParticleForGPU（インスタンスデータレイアウト共有）
+#include "Math/MathCore.h"
 
 #include <algorithm>
 #include <cmath>
@@ -21,7 +22,7 @@ namespace CoreEngine
 using namespace CoreEngine::MathCore;
 
 namespace {
-    constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+    constexpr float kDegToRad = MathCore::Constants::kDegToRad;
 }
 
 void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, const std::string& name)

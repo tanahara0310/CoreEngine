@@ -49,14 +49,14 @@ float32_t3 GenerateShapeOffset(inout uint32_t state)
 
     case kShapeCircle:
     {
-        float32_t angle = RandRange(state, 0.0f, 2.0f * kGpuParticlePi);
+        float32_t angle = RandRange(state, 0.0f, TWO_PI);
         float32_t r = sqrt(Rand01(state)) * gShapeRadius;
         return CirclePlanePosition(cos(angle), sin(angle), r, gShapeCirclePlane);
     }
 
     case kShapeCone:
     {
-        float32_t circleAngle = RandRange(state, 0.0f, 2.0f * kGpuParticlePi);
+        float32_t circleAngle = RandRange(state, 0.0f, TWO_PI);
         float32_t height = Rand01(state) * gShapeHeight;
         float32_t coneRadius = height * tan(gShapeAngleRad);
         float32_t r = sqrt(Rand01(state)) * coneRadius;
@@ -76,7 +76,7 @@ float32_t3 GenerateShapeOffset(inout uint32_t state)
 
     case kShapeRing:
     {
-        float32_t angle = RandRange(state, 0.0f, 2.0f * kGpuParticlePi);
+        float32_t angle = RandRange(state, 0.0f, TWO_PI);
         float32_t r = gShapeInnerRadius + sqrt(Rand01(state)) * (gShapeRadius - gShapeInnerRadius);
         return CirclePlanePosition(cos(angle), sin(angle), r, gShapeCirclePlane);
     }
@@ -92,7 +92,7 @@ float32_t3 GenerateShapeOffset(inout uint32_t state)
 
     case kShapeCylinder:
     {
-        float32_t angle = RandRange(state, 0.0f, 2.0f * kGpuParticlePi);
+        float32_t angle = RandRange(state, 0.0f, TWO_PI);
         float32_t height = RandSigned(state) * (gShapeHeight * 0.5f);
         float32_t r;
         if (gShapeEmitFromSurface != 0u)
@@ -128,18 +128,18 @@ float32_t3 GenerateShapeOffset(inout uint32_t state)
         float32_t minAngle, maxAngle;
         if (top)
         {
-            minAngle = 5.0f * kGpuParticlePi / 6.0f;
-            maxAngle = 7.0f * kGpuParticlePi / 6.0f;
+            minAngle = 5.0f * PI / 6.0f;
+            maxAngle = 7.0f * PI / 6.0f;
         }
         else if (Rand01(state) < 0.5f)
         {
-            minAngle = 11.0f * kGpuParticlePi / 6.0f;
-            maxAngle = 2.0f * kGpuParticlePi;
+            minAngle = 11.0f * PI / 6.0f;
+            maxAngle = TWO_PI;
         }
         else
         {
             minAngle = 0.0f;
-            maxAngle = kGpuParticlePi / 6.0f;
+            maxAngle = PI / 6.0f;
         }
         float32_t angle = RandRange(state, minAngle, maxAngle);
         return CirclePlanePosition(cos(angle), sin(angle), gShapeRadius, gShapeCirclePlane);

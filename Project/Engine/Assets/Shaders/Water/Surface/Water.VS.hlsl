@@ -1,4 +1,5 @@
 #include "Object3dVertex.hlsli"
+#include "ShaderMath.hlsli" // TWO_PI
 
 // ===== Gerstner Wave 定数バッファ =====
 // WaterPlaneObject::BindCustomResources() が b4 にバインドする
@@ -79,7 +80,7 @@ struct WaterVSOutput
 WaveDerivatives CalcGerstnerWave(float3 worldPos, WaveParams wave)
 {
     // 波数 k = 2π / λ
-    float k = 2.0f * 3.14159265f / wave.wavelength;
+    float k = TWO_PI / wave.wavelength;
 
     // 角周波数 ω ≒ speed * k（簡易近似、本来は √(g*k)）
     float omega = wave.speed * k;

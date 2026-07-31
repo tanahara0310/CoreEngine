@@ -11,7 +11,7 @@ namespace CoreEngine
 {
     namespace
     {
-        constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+        constexpr float kDegToRad = MathCore::Constants::kDegToRad;
 
         const char* GetLightTypeName(LightType type)
         {

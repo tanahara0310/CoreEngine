@@ -5,6 +5,7 @@
 
 #include "Utility/JsonManager/JsonManager.h"
 #include "Camera/Control/OrbitFlyController.h"
+#include "Math/MathCore.h"
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -43,7 +44,7 @@ namespace CoreEngine
                 const Vector3 target = JsonManager::JsonToVector3(jsonData["target"]);
                 const float distance = JsonManager::SafeGet(jsonData, "distance", 20.0f);
                 const float pitch = JsonManager::SafeGet(jsonData, "pitch", 0.25f);
-                const float yaw = JsonManager::SafeGet(jsonData, "yaw", 3.14159265359f);
+                const float yaw = JsonManager::SafeGet(jsonData, "yaw", MathCore::Constants::kPi);
 
                 snapshot.position = {
                     target.x + distance * std::cosf(pitch) * std::sinf(yaw),
@@ -51,7 +52,7 @@ namespace CoreEngine
                     target.z + distance * std::cosf(pitch) * std::cosf(yaw)
                 };
                 // 注視点を向くオイラー角（OrbitFlyController::ApplyTo と同じ変換）
-                snapshot.rotation = { pitch, OrbitFlyController::NormalizeAngle(yaw + 3.14159265359f), 0.0f };
+                snapshot.rotation = { pitch, OrbitFlyController::NormalizeAngle(yaw + MathCore::Constants::kPi), 0.0f };
                 snapshot.scale = { 1.0f, 1.0f, 1.0f };
             } else {
                 snapshot.position = JsonManager::JsonToVector3(jsonData["position"]);

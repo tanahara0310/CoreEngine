@@ -6,12 +6,14 @@
 #include <random>
 #include <vector>
 
+#include "Math/MathCore.h"
+
 namespace CoreEngine
 {
     namespace
     {
-        constexpr float kPi = 3.14159265359f;
-        constexpr float kTwoPi = 6.28318530718f;
+        constexpr float kPi = MathCore::Constants::kPi;
+        constexpr float kTwoPi = MathCore::Constants::kTwoPi;
 
         uint32_t MirrorCoord(uint32_t value, uint32_t resolution)
         {

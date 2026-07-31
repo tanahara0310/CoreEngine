@@ -9,6 +9,7 @@
 #include "Graphics/Model/VertexData.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "Math/MathCore.h"
 #include <cmath>
 #include <cstdio>
 #ifdef USE_IMGUI
@@ -387,7 +388,7 @@ namespace CoreEngine
             bool uvChanged = false;
             uvChanged |= ImGui::DragFloat2("オフセット##UV", &uvTransform_.translate.x, 0.01f);
             uvChanged |= ImGui::DragFloat2("スケール##UV", &uvTransform_.scale.x, 0.01f, 0.01f, 10.0f);
-            uvChanged |= UI::SliderFloat("回転##UV", uvTransform_.rotate.z, -3.14159f, 3.14159f);
+            uvChanged |= UI::SliderFloat("回転##UV", uvTransform_.rotate.z, -MathCore::Constants::kPi, MathCore::Constants::kPi);
 
             if (uvChanged) {
                 UpdateUVTransformMatrix(uvTransform_);

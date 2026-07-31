@@ -8,6 +8,7 @@
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Math/MathCore.h"
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
@@ -20,7 +21,7 @@
 namespace CoreEngine {
 
     namespace {
-        constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
+        constexpr float kDegToRad = MathCore::Constants::kDegToRad;
         constexpr const char* kEditorLabel = "Sky Atmosphere";
     }
 

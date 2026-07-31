@@ -9,6 +9,8 @@
 // カメラの平均測光と同じ算術平均なら暗部の面積に引きずられにくく、
 // 空（明部）の絶対的な明るさが露出を支配する。
 
+#include "ColorSpace.hlsli" // Luminance
+
 Texture2D<float4> gTexture : register(t0);
 RWStructuredBuffer<float> gAvgLuminance : register(u0);
 
@@ -45,7 +47,7 @@ void main(uint3 groupThreadId : SV_GroupThreadID, uint groupIndex : SV_GroupInde
             pixel = min(pixel, uint2(screenWidth - 1, screenHeight - 1));
 
             const float3 color = gTexture.Load(int3(pixel, 0)).rgb;
-            const float luminance = dot(color, float3(0.2126f, 0.7152f, 0.0722f));
+            const float luminance = Luminance(color);
 
             // 太陽ディスク等の極端な高輝度ピクセルが数サンプルで平均を支配しないよう上限を設ける
             sum += clamp(luminance, 0.0f, 64.0f);

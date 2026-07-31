@@ -32,7 +32,7 @@ float3 SampleChromatic(float2 uv, float2 offset)
 float3 GhostTint(uint i, uint count)
 {
     const float t = (count > 1) ? (float)i / (float)(count - 1) : 0.0f;
-    return 0.78f + 0.22f * cos(kLensFlarePi2 * (t * 0.7f + float3(0.0f, 0.33f, 0.67f)));
+    return 0.78f + 0.22f * cos(TWO_PI * (t * 0.7f + float3(0.0f, 0.33f, 0.67f)));
 }
 
 // RGB シフト量をアスペクト比に依らず等方（画面上で真円状）にする。
@@ -83,7 +83,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     sourceColor += gBright.SampleLevel(gLinearClamp, sourceUv + float2( 0.0f,  2.0f) * srcTexel, 0).rgb;
     sourceColor += gBright.SampleLevel(gLinearClamp, sourceUv + float2( 0.0f, -2.0f) * srcTexel, 0).rgb;
     sourceColor *= 0.2f;
-    sourceColor /= (1.0f + LensFlareLuminance(sourceColor));
+    sourceColor /= (1.0f + Luminance(sourceColor));
 
     float3 result = 0.0f;
 
@@ -105,8 +105,8 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         // 実レンズでも全てのゴーストが多角形になるわけではなく、両方が混在するのが写実的。
         // ブレンド（距離比の lerp）ではなく二択にすること: 中間値のブレンドは角が
         // 丸まって結局円に見え、多角形ゴーストが1つも出ない（実機で確認した不具合）。
-        const float hashA = LensFlareHash11((float)i * 17.13f + 4.0f);
-        const float hashB = LensFlareHash11((float)i * 3.7f + 1.0f);
+        const float hashA = HashSine11((float)i * 17.13f + 4.0f);
+        const float hashB = HashSine11((float)i * 3.7f + 1.0f);
 
         // レンズ内反射の像倍率: この配置変換（アフィン）は出力空間で 1/|1-s| 倍の
         // 拡大に相当する。ゴーストの大きさを倍率と連動させると「太陽側に弾かれた

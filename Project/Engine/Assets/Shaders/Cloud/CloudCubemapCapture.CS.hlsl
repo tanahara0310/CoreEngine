@@ -10,6 +10,7 @@
 
 #include "Common/CloudCommon.hlsli"
 #include "../Atmosphere/Common/AtmosphereCommon.hlsli"
+#include "Cubemap.hlsli" // GetCubemapDirection
 
 ConstantBuffer<CloudConstants> gCloud : register(b0);
 ConstantBuffer<AtmosphereConstants> gAtmosphere : register(b1);
@@ -21,24 +22,6 @@ Texture2D<float4> gSkyViewLUT : register(t5);
 SamplerState gSamplerLinearWrap : register(s0);
 SamplerState gLUTSampler : register(s1); // RootSignature 側で LinearClamp 固定
 RWTexture2DArray<float4> gSkyCubemap : register(u0);
-
-/// @brief キューブマップ面IDと2D座標から方向ベクトルを計算（DirectX標準座標系）
-float3 GetCubemapDirection(uint faceIndex, float2 uv)
-{
-    float2 texCoord = uv * 2.0f - 1.0f;
-    float3 dir;
-    switch (faceIndex)
-    {
-        case 0: dir = float3(1.0f, -texCoord.y, -texCoord.x); break;  // +X
-        case 1: dir = float3(-1.0f, -texCoord.y, texCoord.x); break;  // -X
-        case 2: dir = float3(texCoord.x, 1.0f, texCoord.y); break;    // +Y
-        case 3: dir = float3(texCoord.x, -1.0f, -texCoord.y); break;  // -Y
-        case 4: dir = float3(texCoord.x, -texCoord.y, 1.0f); break;   // +Z
-        case 5: dir = float3(-texCoord.x, -texCoord.y, -1.0f); break; // -Z
-        default: dir = float3(0.0f, 1.0f, 0.0f); break;
-    }
-    return normalize(dir);
-}
 
 /// @brief 雲内部の 1 点における指定ライト由来の輝度（CloudRayMarch.CS.hlsl と同一ロジック）
 float3 DirectLightLuminanceAt(float3 pos, float3 rayDir,
@@ -116,7 +99,7 @@ float3 AmbientLuminance(float h)
 {
     // 方位は太陽から 90°の固定値。LUT はライト色・強度前乗算済みのため色乗算はしない
     float radiusKm = gAtmosphere.cameraRadiusKm;
-    float azimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * ATMOSPHERE_PI;
+    float azimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * PI;
     float2 uv = SkyViewParamsToUv(false, 0.7f, azimuth, radiusKm, gAtmosphere.planetRadiusKm);
     float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
 
@@ -256,7 +239,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
         float cosHorizon = -sqrt(max(0.0f,
             1.0f - (gAtmosphere.planetRadiusKm * gAtmosphere.planetRadiusKm) / (radiusKm * radiusKm)));
         // 方位は太陽から 90°の固定値。LUT はライト色・強度前乗算済みのため色乗算はしない
-        float hazeAzimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * ATMOSPHERE_PI;
+        float hazeAzimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * PI;
         float2 skyUv = SkyViewParamsToUv(rayDir.y < cosHorizon, rayDir.y, hazeAzimuth,
                                          radiusKm, gAtmosphere.planetRadiusKm);
         float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, skyUv, 0).rgb;

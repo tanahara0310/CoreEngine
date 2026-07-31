@@ -74,13 +74,13 @@ struct CameraParameters {
     /// @brief 視野角を度数法で取得
     /// @return 視野角（度）
     float GetFovDegrees() const {
-        return fov * 180.0f / 3.14159265359f;
+        return fov * MathCore::Constants::kRadToDeg;
     }
 
     /// @brief 視野角を度数法で設定
     /// @param degrees 視野角（度）
     void SetFovDegrees(float degrees) {
-        fov = degrees * 3.14159265359f / 180.0f;
+        fov = degrees * MathCore::Constants::kDegToRad;
     }
 
     /// @brief このパラメータが表すカメラタイプ
