@@ -205,9 +205,6 @@
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\Camera2D.cpp">
-      <Filter>Engine\Src\Camera</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -237,9 +234,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\ICamera.cpp">
-      <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Collider\AABBCollider.cpp">
       <Filter>Engine\Src\Collider</Filter>
@@ -847,14 +841,20 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\Debug\DebugCamera.cpp">
-      <Filter>Engine\Src\Camera\Debug</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.cpp">
       <Filter>Engine\Src\Camera\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera.cpp">
       <Filter>Engine\Src\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp">
+      <Filter>Engine\Src\Camera\Control</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Control\FreeLookController.cpp">
+      <Filter>Engine\Src\Camera\Control</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Camera\EditorCameraInput.cpp">
+      <Filter>Engine\Src\Editor\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\View\ViewBuilder.cpp">
       <Filter>Engine\Src\Camera\View</Filter>
@@ -1044,9 +1044,6 @@
     <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\Camera2D.h">
-      <Filter>Engine\Src\Camera</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Camera\CameraManager.h">
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
@@ -1085,9 +1082,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\ICameraEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\ICamera.h">
-      <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Collider\AABBCollider.h">
       <Filter>Engine\Src\Collider</Filter>
@@ -2067,14 +2061,26 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\Debug\DebugCamera.h">
-      <Filter>Engine\Src\Camera\Debug</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.h">
       <Filter>Engine\Src\Camera\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Camera.h">
       <Filter>Engine\Src\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h">
+      <Filter>Engine\Src\Camera\Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Control\FreeLookController.h">
+      <Filter>Engine\Src\Camera\Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Control\ICameraController.h">
+      <Filter>Engine\Src\Camera\Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Control\CameraInputState.h">
+      <Filter>Engine\Src\Camera\Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Camera\EditorCameraInput.h">
+      <Filter>Engine\Src\Editor\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\View\ViewInfo.h">
       <Filter>Engine\Src\Camera\View</Filter>
@@ -2361,6 +2367,9 @@
     </Filter>
     <Filter Include="Engine\Src\Camera">
       <UniqueIdentifier>{00C02E6E-5071-4A1A-86DD-FC5D5CDD2BC7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Camera\Control">
+      <UniqueIdentifier>{D99583A0-6A9E-4104-B12D-EFFF3B6DB30F}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Camera\Debug">
       <UniqueIdentifier>{08318A63-7E81-4992-88CF-85F136FCA598}</UniqueIdentifier>

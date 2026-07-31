@@ -9,7 +9,7 @@
 // 前方宣言
 namespace CoreEngine {
     class ParticleSystem;
-    class ICamera;
+    class Camera;
     class ResourceFactory;
     class ShaderReflectionData;
 }
@@ -38,7 +38,7 @@ public:
 
     /// @brief カメラを設定
     /// @param camera カメラオブジェクト
-    void SetCamera(const CoreEngine::ICamera* camera) override;
+    void SetCamera(const CoreEngine::Camera* camera) override;
 
     /// @brief ResourceFactoryを設定（初期化前に呼び出す必要がある）
     /// @param resourceFactory リソースファクトリ
@@ -59,7 +59,7 @@ protected:
     CoreEngine::ResourceFactory* resourceFactory_ = nullptr;
     ID3D12Device* device_ = nullptr;
     ID3D12GraphicsCommandList* cmdList_ = nullptr;
-    const CoreEngine::ICamera* camera_ = nullptr;
+    const CoreEngine::Camera* camera_ = nullptr;
 
     // BaseRenderer から継承したサブシステムを使用（pipelineMg_, rootSignatureMg_, shaderCompiler_, reflectionBuilder_ は削除）
 

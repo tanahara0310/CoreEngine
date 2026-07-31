@@ -30,7 +30,7 @@ public:
     void Update() override;
 
     /// @brief 描画
-    void Draw(const CoreEngine::ICamera* camera) override;
+    void Draw(const CoreEngine::Camera* camera) override;
 
 #ifdef _DEBUG
     /// @brief インスペクタータブ定義を返す

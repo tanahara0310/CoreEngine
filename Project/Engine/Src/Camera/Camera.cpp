@@ -8,80 +8,119 @@
 namespace CoreEngine
 {
 
-// 新しい数学ライブラリを使用
 using namespace CoreEngine::MathCore;
 
-/// 初期化
 void Camera::Initialize(ID3D12Device* device)
 {
-    // CameraForGPU用の定数バッファを初期化
-    cameraGPUResource_ = ResourceFactory::CreateBufferResource(device, sizeof(CameraForGPU));
-    // マッピングしてデータを書き込む
-    cameraGPUResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraGPUData_));
+    if (device) {
+        cameraGPUResource_ = ResourceFactory::CreateBufferResource(device, sizeof(CameraForGPU));
+        cameraGPUResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraGPUData_));
+    }
+
+    UpdateMatrix();
 }
 
-// カメラの更新
+void Camera::Update()
+{
+    UpdateMatrix();
+}
+
 void Camera::UpdateMatrix()
 {
-    // カメラ行列を計算
-    cameraMatrix_ = Matrix::MakeAffine(scale_, rotate_, translate_);
-    // ビュー行列を計算（外部ビュー行列を使用しない場合のみ）
-    if (!useExternalViewMatrix_) {
-        viewMatrix_ = Matrix::Inverse(cameraMatrix_);
-    }
-
-    // アスペクト比の計算（パラメータで指定されていない場合は自動計算）
-    float aspectRatio = parameters_.aspectRatio;
-    if (aspectRatio <= 0.0f) {
-        aspectRatio = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
-            static_cast<float>(WinApp::GetCurrentClientHeightStatic());
-    }
-
-    // プロジェクション行列をパラメータから初期化
-    projectionMatrix_ = Rendering::PerspectiveFov(
-        parameters_.fov,
-        aspectRatio,
-        parameters_.nearClip,
-        parameters_.farClip
-    );
-
-    // カメラの行列を転送
+    RebuildMatrices();
     TransferMatrix();
 }
 
-// カメラの行列を転送
+float Camera::ResolveAspectRatio() const
+{
+    if (parameters_.aspectRatio > 0.0f) {
+        return parameters_.aspectRatio;
+    }
+    const float height = static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+    if (height <= 0.0f) {
+        return 1.0f;
+    }
+    return static_cast<float>(WinApp::GetCurrentClientWidthStatic()) / height;
+}
+
+void Camera::RebuildMatrices()
+{
+    if (parameters_.projectionType == CameraProjectionType::Orthographic) {
+        // ===== 2D（正射影）=====
+        // ビュー行列: ズーム → Z 回転 → カメラ位置の逆平行移動
+        const Matrix4x4 scaleMatrix = Matrix::Scale({ scale_.x, scale_.y, 1.0f });
+        const Matrix4x4 rotationMatrix = Matrix::RotationZ(rotate_.z);
+        const Matrix4x4 translationMatrix = Matrix::Translation({ -translate_.x, -translate_.y, 0.0f });
+
+        viewMatrix_ = Matrix::Multiply(
+            translationMatrix,
+            Matrix::Multiply(rotationMatrix, scaleMatrix));
+
+        // カメラ行列は 3D 用の派生（GetForward 等）のためだけに保持する
+        cameraMatrix_ = Matrix::Inverse(viewMatrix_);
+
+        // 画面中央を原点、Y軸は上が正（top/bottom を入れ替えて実現）
+        const float screenWidth = static_cast<float>(WinApp::GetCurrentClientWidthStatic());
+        const float screenHeight = static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+        projectionMatrix_ = Rendering::Orthographic(
+            -screenWidth * 0.5f,
+            screenHeight * 0.5f,
+            screenWidth * 0.5f,
+            -screenHeight * 0.5f,
+            parameters_.nearClip,
+            parameters_.farClip);
+        return;
+    }
+
+    // ===== 3D（透視投影）=====
+    cameraMatrix_ = Matrix::MakeAffine(scale_, rotate_, translate_);
+    viewMatrix_ = Matrix::Inverse(cameraMatrix_);
+
+    projectionMatrix_ = Rendering::PerspectiveFov(
+        parameters_.fov,
+        ResolveAspectRatio(),
+        parameters_.nearClip,
+        parameters_.farClip);
+}
+
 void Camera::TransferMatrix()
 {
-    // カメラ座標の転送（CameraForGPU）。
-    // GPU 定数バッファはフレーム更新時（UpdateMatrix → TransferMatrix）に 1 回だけ書く。
-    // 単一のアップロードバッファなので、フレーム内で複数回書き換えると実行中の前フレーム
-    // （インフライト）がどちらの値を読むかがタイミング依存になり、フレネル等のカメラ位置
-    // 依存項が毎フレームちらつく。
     if (cameraGPUData_) {
         cameraGPUData_->worldPosition = GetPosition();
     }
 }
 
-// LookAt機能: 指定した位置を注視するようにカメラを回転
-void Camera::LookAt(const Vector3& target)
+void Camera::SetProjectionJitter(float ndcX, float ndcY)
 {
-    // カメラから注視点への方向ベクトル
-    Vector3 forward = Vector::Normalize(Vector::Subtract(target, translate_));
+    projectionJitterX_ = ndcX;
+    projectionJitterY_ = ndcY;
+    projectionJitterActive_ = (ndcX != 0.0f) || (ndcY != 0.0f);
 
-    // Y軸周りの回転（ヨー角）を計算
-    float yaw = std::atan2f(forward.x, forward.z);
+    if (!projectionJitterActive_) {
+        return;
+    }
 
-    // X軸周りの回転（ピッチ角）を計算
-    float pitch = std::asinf(-forward.y);
-
-    // 回転を設定（ロールは0）
-    rotate_ = { pitch, yaw, 0.0f };
+    // 行ベクトル規約（clip = v * P）。透視射影では clip.w にビュー空間 z が入るため、
+    // m[2][0] / m[2][1] への加算は「clip.xy += ndc * clip.w」と等価になり、
+    // 深度に関わらず一定のサブピクセルずれになる。
+    jitteredProjectionMatrix_ = projectionMatrix_;
+    jitteredProjectionMatrix_.m[2][0] += ndcX;
+    jitteredProjectionMatrix_.m[2][1] += ndcY;
 }
 
-// カメラの前方向ベクトルを取得
+void Camera::LookAt(const Vector3& target)
+{
+    const Vector3 forward = Vector::Normalize(Vector::Subtract(target, translate_));
+
+    // MakeAffine の回転は Rx * Ry * Rz（行ベクトル規約）。roll = 0 のとき
+    // 第 3 行（前方軸）は (cosX sinY, -sinX, cosX cosY) になるので、
+    // yaw = atan2(f.x, f.z) / pitch = asin(-f.y) が LookAt と厳密に一致する。
+    rotate_ = { std::asinf(-forward.y), std::atan2f(forward.x, forward.z), 0.0f };
+}
+
 Vector3 Camera::GetForward() const
 {
-    // カメラ行列から前方向ベクトルを抽出（-Z軸方向）
+    // 従来通り「カメラ行列の Z 軸の逆」を返す（呼び出し側がこの符号前提で組まれている）
     return Vector::Normalize(Vector3{
         -cameraMatrix_.m[2][0],
         -cameraMatrix_.m[2][1],
@@ -89,10 +128,8 @@ Vector3 Camera::GetForward() const
     });
 }
 
-// カメラの右方向ベクトルを取得
 Vector3 Camera::GetRight() const
 {
-    // カメラ行列から右方向ベクトルを抽出（X軸方向）
     return Vector::Normalize(Vector3{
         cameraMatrix_.m[0][0],
         cameraMatrix_.m[0][1],
@@ -100,10 +137,8 @@ Vector3 Camera::GetRight() const
     });
 }
 
-// カメラの上方向ベクトルを取得
 Vector3 Camera::GetUp() const
 {
-    // カメラ行列から上方向ベクトルを抽出（Y軸方向）
     return Vector::Normalize(Vector3{
         cameraMatrix_.m[1][0],
         cameraMatrix_.m[1][1],
@@ -111,51 +146,33 @@ Vector3 Camera::GetUp() const
     });
 }
 
-// カメラをリセット
 void Camera::Reset()
 {
     scale_ = { 1.0f, 1.0f, 1.0f };
     rotate_ = { 0.0f, 0.0f, 0.0f };
     translate_ = { 0.0f, 0.0f, -10.0f };
     parameters_.Reset();
-    useExternalViewMatrix_ = false;
+    RebuildMatrices();
 }
 
-// 現在の状態をスナップショットとして保存
 CameraSnapshot Camera::CaptureSnapshot(const std::string& name) const
 {
     CameraSnapshot snapshot;
     snapshot.name = name;
-    snapshot.isDebugCamera = false;
-
-    // Transform情報
     snapshot.position = translate_;
     snapshot.rotation = rotate_;
     snapshot.scale = scale_;
-
-    // カメラパラメータ
     snapshot.parameters = parameters_;
-
     return snapshot;
 }
 
-// スナップショットから状態を復元
 void Camera::RestoreSnapshot(const CameraSnapshot& snapshot)
 {
-    // DebugCamera用のスナップショットは無視
-    if (snapshot.isDebugCamera) {
-        return;
-    }
-
-    // Transform情報を復元
     translate_ = snapshot.position;
     rotate_ = snapshot.rotation;
     scale_ = snapshot.scale;
-
-    // カメラパラメータを復元
     parameters_ = snapshot.parameters;
-
-    // 外部ビュー行列フラグをリセット
-    useExternalViewMatrix_ = false;
+    RebuildMatrices();
 }
+
 }

@@ -27,11 +27,11 @@ namespace CoreEngine
         /// @brief 追従先名から対象オブジェクトを検索
         GameObject* FindTargetObject(const CameraEditorContext& context) const;
 
-        /// @brief Releaseカメラへ追従/注視を適用
-        void ApplyToReleaseCamera(const CameraEditorContext& context, const Vector3& targetPosition) const;
+        /// @brief コントローラ無しカメラへ追従/注視を適用（Transform を直接動かす）
+        void ApplyToFreeCamera(const CameraEditorContext& context, const Vector3& targetPosition) const;
 
-        /// @brief Debugカメラへ追従/注視を適用
-        void ApplyToDebugCamera(const CameraEditorContext& context, const Vector3& targetPosition) const;
+        /// @brief 軌道操作カメラへ追従/注視を適用（注視点を動かす）
+        void ApplyToOrbitCamera(const CameraEditorContext& context, const Vector3& targetPosition) const;
 
         /// @brief 線形補間（Vector3）
         static Vector3 LerpVector3(const Vector3& from, const Vector3& to, float t);

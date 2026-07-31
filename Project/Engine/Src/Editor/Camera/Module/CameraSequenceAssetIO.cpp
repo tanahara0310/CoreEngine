@@ -4,7 +4,9 @@
 #ifdef USE_IMGUI
 
 #include "Utility/JsonManager/JsonManager.h"
+#include "Camera/Control/OrbitFlyController.h"
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 
 namespace CoreEngine
@@ -14,19 +16,12 @@ namespace CoreEngine
         /// @brief スナップショットをJSONへ変換
         json SnapshotToJson(const CameraSnapshot& snapshot)
         {
+            // カメラが 1 種類になったため、スナップショットは常に Transform + 投影パラメータ。
+            // 旧フォーマット（isDebugCamera + target/distance/pitch/yaw）も読めるようにしてある。
             json jsonData;
-            jsonData["isDebugCamera"] = snapshot.isDebugCamera;
-
-            if (snapshot.isDebugCamera) {
-                jsonData["target"] = JsonManager::Vector3ToJson(snapshot.target);
-                jsonData["distance"] = snapshot.distance;
-                jsonData["pitch"] = snapshot.pitch;
-                jsonData["yaw"] = snapshot.yaw;
-            } else {
-                jsonData["position"] = JsonManager::Vector3ToJson(snapshot.position);
-                jsonData["rotation"] = JsonManager::Vector3ToJson(snapshot.rotation);
-                jsonData["scale"] = JsonManager::Vector3ToJson(snapshot.scale);
-            }
+            jsonData["position"] = JsonManager::Vector3ToJson(snapshot.position);
+            jsonData["rotation"] = JsonManager::Vector3ToJson(snapshot.rotation);
+            jsonData["scale"] = JsonManager::Vector3ToJson(snapshot.scale);
 
             json paramsJson;
             paramsJson["fov"] = snapshot.parameters.fov;
@@ -41,13 +36,23 @@ namespace CoreEngine
         CameraSnapshot JsonToSnapshot(const json& jsonData)
         {
             CameraSnapshot snapshot{};
-            snapshot.isDebugCamera = JsonManager::SafeGet(jsonData, "isDebugCamera", false);
 
-            if (snapshot.isDebugCamera) {
-                snapshot.target = JsonManager::JsonToVector3(jsonData["target"]);
-                snapshot.distance = JsonManager::SafeGet(jsonData, "distance", 20.0f);
-                snapshot.pitch = JsonManager::SafeGet(jsonData, "pitch", 0.25f);
-                snapshot.yaw = JsonManager::SafeGet(jsonData, "yaw", 3.14159265359f);
+            // 旧フォーマット（軌道パラメータで保存されたクリップ）は、注視点・距離・角度から
+            // 視点位置と姿勢を復元して新形式へ移す。
+            if (JsonManager::SafeGet(jsonData, "isDebugCamera", false) && jsonData.contains("target")) {
+                const Vector3 target = JsonManager::JsonToVector3(jsonData["target"]);
+                const float distance = JsonManager::SafeGet(jsonData, "distance", 20.0f);
+                const float pitch = JsonManager::SafeGet(jsonData, "pitch", 0.25f);
+                const float yaw = JsonManager::SafeGet(jsonData, "yaw", 3.14159265359f);
+
+                snapshot.position = {
+                    target.x + distance * std::cosf(pitch) * std::sinf(yaw),
+                    target.y + distance * std::sinf(pitch),
+                    target.z + distance * std::cosf(pitch) * std::cosf(yaw)
+                };
+                // 注視点を向くオイラー角（OrbitFlyController::ApplyTo と同じ変換）
+                snapshot.rotation = { pitch, OrbitFlyController::NormalizeAngle(yaw + 3.14159265359f), 0.0f };
+                snapshot.scale = { 1.0f, 1.0f, 1.0f };
             } else {
                 snapshot.position = JsonManager::JsonToVector3(jsonData["position"]);
                 snapshot.rotation = JsonManager::JsonToVector3(jsonData["rotation"]);

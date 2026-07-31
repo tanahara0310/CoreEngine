@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "LineRendererPipeline.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -104,7 +104,7 @@ namespace CoreEngine
         currentCmdList_ = nullptr;
     }
 
-    void LineRendererPipeline::SetCamera(const ICamera* camera) {
+    void LineRendererPipeline::SetCamera(const Camera* camera) {
         camera_ = camera;
     }
 

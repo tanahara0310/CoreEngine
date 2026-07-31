@@ -3,7 +3,7 @@
 #include "ModelRenderContext.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
@@ -139,7 +139,7 @@ namespace CoreEngine
 
         assert(IsInitialized());
         assert(view.view && view.view->isValid);
-        const ICamera* camera = view.GetCamera();
+        const Camera* camera = view.GetCamera();
 
         ID3D12GraphicsCommandList* cmdList = renderContext_.dxCommon->GetCommandList();
         assert(cmdList);

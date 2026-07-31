@@ -21,7 +21,7 @@ namespace CoreEngine
     class DirectXCommon;
     class ModelManager;
     class SceneManager;
-    class ICamera;
+    class Camera;
 
     /// @brief DXR (DirectX Raytracing) 関連処理を担当するサブシステム
     /// @details EngineSystem::ExecuteRenderPipeline から DXR の BLAS/TLAS 構築および

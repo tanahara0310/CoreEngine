@@ -6,7 +6,7 @@
 
 namespace CoreEngine
 {
-    class ICamera;
+    class Camera;
 
     class ViewBuilder {
     public:
@@ -17,6 +17,6 @@ namespace CoreEngine
         /// @param camera スナップショット元のカメラ（nullptr 可）
         /// @param type ビュー種別
         /// @return 構築した ViewInfo（camera が nullptr なら isValid == false）
-        static ViewInfo Build(const ICamera* camera, RenderViewType type);
+        static ViewInfo Build(const Camera* camera, RenderViewType type);
     };
 }

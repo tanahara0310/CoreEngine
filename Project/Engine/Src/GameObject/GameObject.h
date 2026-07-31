@@ -17,7 +17,7 @@
 
 // Forward declaration
 namespace CoreEngine {
-    class ICamera;
+    class Camera;
     class EngineSystem;
 }
 
@@ -52,7 +52,7 @@ namespace CoreEngine
         /// @brief 毎フレームの描画処理
         /// @param camera 描画に使用するカメラ（2Dオブジェクトは nullptr 可）
         /// @note 派生クラスでオーバーライドして描画コマンドを発行する。
-        virtual void Draw(const ICamera* camera);
+        virtual void Draw(const Camera* camera);
 
         /// @brief ビュー/パス情報つきの描画処理（RenderManager からの本経路）
         /// @param view カメラ・ビュー種別・パス種別をまとめた描画コンテキスト

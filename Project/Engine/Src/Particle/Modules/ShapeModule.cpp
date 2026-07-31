@@ -7,7 +7,7 @@
 #ifdef _DEBUG
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #endif
 
 namespace CoreEngine
@@ -359,7 +359,7 @@ namespace CoreEngine
     }
 
 #ifdef _DEBUG
-    void ShapeModule::DrawEmitterShape(LineRendererPipeline* pipeline, const ICamera* camera,
+    void ShapeModule::DrawEmitterShape(LineRendererPipeline* pipeline, const Camera* camera,
         const Vector3& emitterPosition) {
 
         if (!debugDraw_ || !pipeline || !camera) {

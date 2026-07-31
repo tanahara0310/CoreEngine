@@ -70,7 +70,7 @@ public:
     /// @param pipeline ラインレンダラーパイプライン
     /// @param camera カメラ
     /// @param emitterPosition エミッターの位置
-    void DrawEmitterShape(class LineRendererPipeline* pipeline, const class ICamera* camera,
+    void DrawEmitterShape(class LineRendererPipeline* pipeline, const class Camera* camera,
         const Vector3& emitterPosition);
 
     /// @brief デバッグ描画の有効/無効を設定
@@ -107,7 +107,7 @@ private:
 #ifdef _DEBUG
 
     /// @brief 半球をデバッグ描画
-    void DrawHemisphere(class LineRenderer* lineRenderer, const class ICamera* camera,
+    void DrawHemisphere(class LineRenderer* lineRenderer, const class Camera* camera,
         const Vector3& center, float radius, const Vector3& color, float alpha);
 
 #endif // _DEBUG

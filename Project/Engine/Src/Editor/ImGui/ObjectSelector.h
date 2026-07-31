@@ -11,7 +11,7 @@ namespace CoreEngine
 {
     class GameObject;
     class SpriteObject;
-    class ICamera;
+    class Camera;
     class GameObjectManager;
 
     /// @brief シーン内のオブジェクト選択と操作を管理するクラス
@@ -25,7 +25,7 @@ namespace CoreEngine
         /// @param camera カメラ
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @param isViewportHovered ビューポートがホバー状態か
-        void Update(GameObjectManager* gameObjectManager, const ICamera* camera,
+        void Update(GameObjectManager* gameObjectManager, const Camera* camera,
             const Vector2& mousePos, bool isViewportHovered);
 
         /// @brief 2Dオブジェクト用の更新処理（スプライト選択）
@@ -33,16 +33,16 @@ namespace CoreEngine
         /// @param camera 2Dカメラ
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @param isViewportHovered ビューポートがホバー状態か
-        void Update2D(GameObjectManager* gameObjectManager, const ICamera* camera,
+        void Update2D(GameObjectManager* gameObjectManager, const Camera* camera,
             const Vector2& mousePos, bool isViewportHovered);
 
         /// @brief 選択されたオブジェクトにギズモを描画
         /// @param camera カメラ
-        void DrawGizmo(const ICamera* camera);
+        void DrawGizmo(const Camera* camera);
 
         /// @brief 選択されたスプライトにギズモを描画（2D用）
         /// @param camera 2Dカメラ
-        void DrawGizmo2D(const ICamera* camera);
+        void DrawGizmo2D(const Camera* camera);
 
         /// @brief 選択中のオブジェクトを取得
         /// @return 選択中のオブジェクト（nullptrの場合は未選択）
@@ -90,7 +90,7 @@ namespace CoreEngine
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @return 検出されたオブジェクト（nullptrの場合は検出失敗）
         GameObject* RaycastObject(GameObjectManager* gameObjectManager,
-            const ICamera* camera, const Vector2& mousePos);
+            const Camera* camera, const Vector2& mousePos);
 
         /// @brief マウス位置からスプライトを検出（2D用）
         /// @param gameObjectManager ゲームオブジェクトマネージャー
@@ -98,13 +98,13 @@ namespace CoreEngine
         /// @param mousePos マウス座標（ビューポート座標系）
         /// @return 検出されたスプライト（nullptrの場合は検出失敗）
         SpriteObject* RaycastSprite(GameObjectManager* gameObjectManager,
-            const ICamera* camera, const Vector2& mousePos);
+            const Camera* camera, const Vector2& mousePos);
 
         /// @brief スクリーン座標をワールド座標に変換（2D用）
         /// @param mousePos マウス座標（0.0〜1.0の正規化座標）
         /// @param camera 2Dカメラ
         /// @return ワールド座標
-        Vector2 ScreenToWorld2D(const Vector2& mousePos, const ICamera* camera);
+        Vector2 ScreenToWorld2D(const Vector2& mousePos, const Camera* camera);
 
         /// @brief レイとスフィアの交差判定
         /// @param rayOrigin レイの始点
@@ -121,7 +121,7 @@ namespace CoreEngine
         /// @param camera カメラ
         /// @param rayOrigin レイの始点（出力）
         /// @param rayDirection レイの方向（出力、正規化済み）
-        void ScreenToWorldRay(const Vector2& mousePos, const ICamera* camera,
+        void ScreenToWorldRay(const Vector2& mousePos, const Camera* camera,
             Vector3& rayOrigin, Vector3& rayDirection);
 
         /// @brief レイと三角形の交差判定（Möller–Trumbore アルゴリズム）

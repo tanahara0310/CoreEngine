@@ -7,7 +7,7 @@
 // 前方宣言
 namespace CoreEngine {
     class LineRendererPipeline;
-    class ICamera;
+    class Camera;
 }
 
 /// @brief ライン描画用GameObjectクラス
@@ -26,7 +26,7 @@ public:
 
     // GameObjectインターフェースの実装
     void Update() override;
-    void Draw(const CoreEngine::ICamera* camera) override;
+    void Draw(const CoreEngine::Camera* camera) override;
     RenderPassType GetRenderPassType() const override { return RenderPassType::Line; }
 
 #ifdef _DEBUG

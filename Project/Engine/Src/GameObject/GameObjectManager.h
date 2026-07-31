@@ -11,7 +11,7 @@
 // Forward declaration
 namespace CoreEngine {
     class RenderManager;
-    class ICamera;
+    class Camera;
     class CollisionManager;
 }
 

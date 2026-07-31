@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "LineDrawable.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Math/MathCore.h"
 
 
@@ -16,7 +16,7 @@ void LineDrawable::Update() {
     // ライン管理クラスなので、特に更新処理はない
 }
 
-void LineDrawable::Draw(const CoreEngine::ICamera* camera) {
+void LineDrawable::Draw(const CoreEngine::Camera* camera) {
     if (!camera || !rendererPipeline_ || lines_.empty()) {
         return;
     }

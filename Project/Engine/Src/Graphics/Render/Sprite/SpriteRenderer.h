@@ -35,7 +35,7 @@ namespace CoreEngine
         void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) override;
         void EndPass() override;
         RenderPassType GetRenderPassType() const override { return RenderPassType::Sprite; }
-        void SetCamera(const ICamera* camera) override;
+        void SetCamera(const Camera* camera) override;
 
         /// @brief 初期化（DirectXCommonとResourceFactory付き）
         /// @param dxCommon DirectXCommon
@@ -62,7 +62,7 @@ namespace CoreEngine
         /// @param rotation 回転
         /// @param camera カメラ
         /// @return WVP行列
-        Matrix4x4 CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation, const ICamera* camera) const;
+        Matrix4x4 CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation, const Camera* camera) const;
 
         /// @brief DirectXCommonを取得
         DirectXCommon* GetDirectXCommon() { return dxCommon_; }

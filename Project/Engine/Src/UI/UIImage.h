@@ -33,7 +33,7 @@ namespace CoreEngine
         RenderPassType GetRenderPassType() const override { return RenderPassType::UI; }
         BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
         const char* GetObjectName() const override { return "UIImage"; }
-        void Draw(const ICamera* camera) override;
+        void Draw(const Camera* camera) override;
 
         // ===== UILayout アクセサ =====
         void SetAnchor(UIAnchor anchor) { layout_.anchor = anchor; }

@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "BaseModelRenderer.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
@@ -331,7 +331,7 @@ namespace CoreEngine
         currentCommandList_ = nullptr;
     }
 
-    void BaseModelRenderer::SetCamera(const ICamera* camera) {
+    void BaseModelRenderer::SetCamera(const Camera* camera) {
         // カメラが有効な場合は GPU 仮想アドレスを保持し、無効時は 0 にリセット
         cameraCBV_ = camera ? camera->GetGPUVirtualAddress() : 0;
     }

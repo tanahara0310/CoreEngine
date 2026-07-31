@@ -239,47 +239,109 @@ class ViewBuilder { static ViewInfo Build(const ICamera*, RenderViewType); };
 **検証**: Development / Release 両構成ビルド成功。実機で `git stash` による A/B（HEAD vs Phase 0+1）を
 取り、グリッド・床・空・モデル・影・パーティクル・SSAO すべて同一描画を確認。
 
-### Phase 2: カメラのデータ化（`Camera` / `DebugCamera` の統合）
+### Phase 2: カメラのデータ化 — **実施済み（2026-07-31）**
+
+**削除**: `ICamera` / `DebugCamera` / `Camera2D`（4 型 → 1 型）
+**追加**: `Camera/Control/OrbitFlyController`（旧 DebugCamera の操作部）
+
 ```cpp
-struct CameraTransform { Vector3 position; Vector3 eulerRotation; };
-struct CameraProjection {                       // 現 CameraParameters を拡張
-    enum class Type { Perspective, Orthographic } type = Type::Perspective;
-    float fovY = 0.45f, nearZ = 0.1f, farZ = 1000.0f;
-    float orthoHeight = 10.0f;
-    float aspect = 0.0f;                        // 0 = ビューポートから供給
+class Camera final {                 // 継承なし・具象 1 つ
+    Vector3 scale_, rotate_, translate_;   // 正射影時は zoom / Z回転 / 中心座標
+    CameraParameters parameters_;          // projectionType で 3D / 2D を表す
+    // 行列導出 + TAA ジッタ + GPU 定数バッファのみ。入力も操作方法も持たない
 };
-class Camera final {                            // 具象 1 つ。継承なし
-    CameraTransform transform;
-    CameraProjection projection;
-    ViewInfo BuildView(float aspect) const;     // 純粋関数
+class OrbitFlyController {           // 「どう動かすか」はこちら
+    Settings settings_; OrbitState state_;  // target / distance / pitch / yaw
+    void Update(Camera* camera);            // 入力 → 軌道状態 → Camera の Transform
 };
 ```
-- 軌道パラメータ（target/distance/pitch/yaw）は**カメラの状態ではなく `OrbitController` の内部状態**へ移す。
-  コントローラが毎フレーム `CameraTransform` を出力する。
-- `CameraSnapshot` の `isDebugCamera` 分岐と 21 箇所の `dynamic_cast` が消える。
-- 2D は `CameraProjection::Orthographic` で表現し、`Camera2D` を畳む
-  （`GetGPUVirtualAddress()` が 0、`TransferMatrix()` が空実装、という「実装できないインターフェース」も消える）。
 
-### Phase 3: 操作の分離
+1. ✅ 姿勢表現の統一。軌道パラメータは `OrbitFlyController::OrbitState` の内部状態へ移動し、
+   毎フレーム `Camera` の Transform（位置・オイラー角）へ書き出す。
+2. ✅ `CameraSnapshot` から `isDebugCamera` 分岐を撤去（Transform + 投影パラメータのみ）。
+3. ✅ **具象型への `dynamic_cast` 21 箇所 → 0 箇所**。
+4. ✅ 2D は `CameraParameters::projectionType == Orthographic` で表現し `Camera2D` を畳んだ。
+   `GetGPUVirtualAddress()` が 0 / `TransferMatrix()` が空、という「実装できないインターフェース」も消滅。
+5. ✅ カメラの取り付け先を `CameraManager` が管理（`AttachOrbitController(name)`）。
+   同じ操作を任意のカメラへ付け替えられる。
+6. ✅ 更新順序を `CameraManager::Update()` で「コントローラ → Transform → 行列」に一本化。
+
+**姿勢変換の等価性（この変更で最も behavior-sensitive な点）**
+旧 `DebugCamera` は `Matrix::LookAt(eye, target, +Y)` で直接ビュー行列を作っていた。
+新実装は軌道角をオイラー角へ変換して `Inverse(MakeAffine(scale, rotate, translate))` に載せる。
+`MakeAffine` の回転は `Rx*Ry*Rz`（行ベクトル規約）で、roll = 0 のとき前方軸は
+`(cosX sinY, -sinX, cosX cosY)`。ここへ `rotate = (pitch, yaw + π, 0)` を入れると
+前方軸・右軸・上軸の 3 本すべてが `LookAt` の出力と一致する（pitch は ±0.49π にクランプされ
+`cos(pitch) > 0` が保証されるため場合分け不要）。**数式上は厳密に同じビュー行列**。
+
+**保存ファイルの互換**
+- `DebugCamera.json` はキー名を変えていない（`target`/`distance`/`pitch`/`yaw` は
+  コントローラ側の状態として同じキーで保存される）。既存ファイルをそのまま読める。
+- カメラクリップ（`CameraSequenceAssetIO`）は旧フォーマット（`isDebugCamera` + 軌道パラメータ）を
+  読み込み時に視点位置＋オイラー角へ変換する。保存は新フォーマットのみ。
+
+**この過程で見つかった／作り込みかけた問題**
+- `CameraGameViewControlModule` は「最初に見つかった `Camera` 型」を操作対象にしていた。
+  型が 1 つになったことで対象が不定（Debug や 2D を拾い得る）になるため、
+  「アクティブ 3D カメラ、ただし軌道コントローラ付きなら対象外」へ修正した。
+
+> ⚠️ `Camera` / `CameraParameters` / `CameraSnapshot` のレイアウトが変わる。
+> 増分ビルドの途中中断を挟んだ場合は ODR 不整合を避けるため
+> `-t:Clean -p:BuildProjectReferences=false` → `-t:Build`（外部プロジェクトを巻き込まない）で通すこと。
+
+**検証**: Development / Release 両構成クリーンビルド成功。実機で通常描画がベースラインと一致することを確認。
+さらに Debug カメラを一時的に既定へ差し替えて起動し、保存状態（高度 151m・俯角 45°）どおりの
+見下ろし画になることを確認（オイラー変換の実機検証。確認後に一時変更は撤去済み）。
+
+### Phase 3: 操作の分離 — **実施済み（2026-07-31）**
+
+**追加**
 ```cpp
-struct CameraInputState {   // ImGui / InputManager から変換して渡す
+struct CameraInputState {          // Camera/Control/CameraInputState.h
     Vector2 mouseDelta; int wheelDelta;
     bool orbitButton, panButton, lookButton;
     bool forward, back, left, right, up, down, boost;
-    bool hovered;           // ビューポート上か（ギズモ・ドッキング操作中は false）
+    bool active;                   // ビューポート上かつギズモ/ドッキング操作中でない
 };
-class ICameraController {
-    virtual void Update(const CameraInputState&, float dt, CameraTransform& io) = 0;
+class ICameraController {          // Camera/Control/ICameraController.h
+    virtual void Update(const CameraInputState&, float dt, Camera&) = 0;
+    virtual void ApplyTo(Camera&) const = 0;
+    virtual void Reset() = 0;
+    virtual const char* GetDisplayName() const = 0;
 };
-class OrbitFlyController;      // 現 DebugCamera の操作部（Blender 風）
-class FreeLookController;      // 現 CameraGameViewControlModule
-class FollowController;        // 現 CameraFollowEditorModule
-class ClipPlaybackController;  // 現 CameraClipPlayerModule
+class OrbitFlyController;          // Blender 風（旧 DebugCamera の操作部）
+class FreeLookController;          // 一人称フライ（旧 CameraGameViewControlModule の操作部）
+class EditorCameraInput;           // Editor/Camera/。ImGui 依存はここだけ
 ```
-- **どのカメラにどのコントローラが付くかを 1 箇所で決める**ので、F（3 系統の競合）が構造的に起きない。
-- ImGui / ImGuizmo / InputManager / EngineSystem / WinApp への依存がカメラ本体から消え、単体テスト可能になる。
-- 「Blender 操作をゲームカメラでも使いたい」が `OrbitFlyController` を付け替えるだけで実現する。
-- Release ビルドでも姿勢更新（＝行列・アスペクト追随）が走るようになる。
+
+1. ✅ 入力の正規化層 `EditorCameraInput::Collect()` を新設。
+   **ImGui / ImGuizmo / InputManager / ウィンドウ判定への依存はこの 1 ファイルに閉じた。**
+   `OrbitFlyController` から `#ifdef USE_IMGUI` が消え、全構成で同じコードパスが走る。
+2. ✅ `ICameraController` を導入し `OrbitFlyController` / `FreeLookController` が実装。
+3. ✅ `CameraManager::AttachController<T>(name)` で **1 カメラにつきコントローラは 1 つ**。
+   更新は `CameraManager::Update(input, dt)` の 1 経路のみ。
+   → 「DebugCamera 内蔵の操作 / GameView 操作モジュール / 追従モジュールが同じカメラを
+   別々に書き換え、どれが勝つか未定義」という状態が構造的に起きなくなった。
+4. ✅ `CameraGameViewControlModule` は入力処理を手放し、**設定 UI だけ**になった。
+   対象カメラも「最初に見つかった Camera 型」からアクティブ 3D カメラへ。
+5. ✅ 「Blender 操作をゲームカメラでも」は `AttachController<OrbitFlyController>("Release")` で実現できる。
+
+**この過程で作り込んだリグレッションと修正**
+入力を正規化する際、旧実装にあった「ドラッグは**押し込みエッジ**で開始する」判定を落とし、
+「ボタン押下中なら操作中」にしてしまった。その結果ビューポート外で押されたままの状態や
+入力デバイスの状態がフレーム途中で有効になった場合に軌道カメラが勝手に回り、
+**エディタ設定の自動保存によって `DebugCamera.json` の姿勢が書き換わった**（実際に発生）。
+`OrbitFlyController` / `FreeLookController` の両方でエッジ判定を復活させ、
+非アクティブ時はボタン状態も忘れる（＝ビューポートへ戻った瞬間に再開しない）ようにした。
+
+**検証**: Development / Release 両構成ビルド成功。実機で通常描画がベースラインと一致。
+起動 → 20 秒放置 → 終了で `DebugCamera.json` が 1 バイトも変化しないことを確認（ドリフト無し）。
+
+### Phase 3 の残り（未実施）
+- `CameraFollowEditorModule` / `CameraClipPlayerModule` / `CameraKeyframeEditorModule` は
+  まだコントローラ化しておらず、カメラの Transform／軌道状態を直接書いている。
+  既定では無効なので現状の競合リスクは低いが、`FollowController` / `ClipPlaybackController`
+  として `ICameraController` に載せれば「1 カメラ 1 コントローラ」の保証が全操作へ及ぶ。
 
 ### Phase 4: エディタ側の整理（使い勝手の本丸）
 現状の「Debug カメラ／Release カメラを `SetActiveCamera` + `SetGameViewCameraOverride` の

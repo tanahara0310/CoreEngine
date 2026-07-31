@@ -3,7 +3,7 @@
 #include "Particle/ParticleSystem.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Model/ModelResource.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Graphics/Texture/TextureManager.h"
 #include <cassert>
 

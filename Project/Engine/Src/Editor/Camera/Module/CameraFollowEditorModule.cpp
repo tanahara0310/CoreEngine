@@ -7,7 +7,7 @@
 #include <algorithm>
 
 #include "Camera/CameraManager.h"
-#include "Camera/Debug/DebugCamera.h"
+#include "Camera/Camera.h"
 #include "Camera/Camera.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
@@ -29,12 +29,12 @@ namespace CoreEngine
 
         const Vector3 targetPosition = targetObject->GetWorldPosition();
 
-        // アクティブ3Dカメラの型に合わせて追従/注視を適用する。
-        ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
-        if (dynamic_cast<Camera*>(active3D)) {
-            ApplyToReleaseCamera(context, targetPosition);
-        } else if (dynamic_cast<DebugCamera*>(active3D)) {
-            ApplyToDebugCamera(context, targetPosition);
+        // 軌道コントローラが付いているカメラは注視点を動かす（位置を直接書いても
+        // 次フレームでコントローラに上書きされるため）。付いていなければ Transform を直接動かす。
+        if (context.cameraManager->GetActiveOrbitController()) {
+            ApplyToOrbitCamera(context, targetPosition);
+        } else {
+            ApplyToFreeCamera(context, targetPosition);
         }
     }
 
@@ -90,13 +90,12 @@ namespace CoreEngine
             followSmoothing_ = 0.01f;
         }
 
-        ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
-        if (dynamic_cast<Camera*>(active3D)) {
-            UI::Hint("現在の3Dカメラ: ReleaseCamera (追従+注視対応)");
-        } else if (dynamic_cast<DebugCamera*>(active3D)) {
-            UI::Hint("現在の3Dカメラ: DebugCamera (注視点追従)");
+        if (!context.cameraManager->GetActiveCamera(CameraType::Camera3D)) {
+            UI::Hint("アクティブな3Dカメラがありません。");
+        } else if (context.cameraManager->GetActiveOrbitController()) {
+            UI::Hint("現在の3Dカメラ: 軌道操作つき (注視点追従)");
         } else {
-            UI::Hint("現在の3Dカメラは追従モジュール未対応です。");
+            UI::Hint("現在の3Dカメラ: 自由カメラ (追従+注視対応)");
         }
 
         if (!statusMessage_.empty()) {
@@ -124,39 +123,37 @@ namespace CoreEngine
         return nullptr;
     }
 
-    void CameraFollowEditorModule::ApplyToReleaseCamera(const CameraEditorContext& context, const Vector3& targetPosition) const
+    void CameraFollowEditorModule::ApplyToFreeCamera(const CameraEditorContext& context, const Vector3& targetPosition) const
     {
-        ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
-        auto* releaseCamera = dynamic_cast<Camera*>(active3D);
-        if (!releaseCamera) {
+        Camera* camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        if (!camera) {
             return;
         }
 
         // 位置追従と注視を個別設定できるように分離して適用する。
         if (followEnabled_) {
             const Vector3 desiredPosition = targetPosition + followOffset_;
-            const Vector3 current = releaseCamera->GetTranslate();
-            releaseCamera->SetTranslate(LerpVector3(current, desiredPosition, followSmoothing_));
+            const Vector3 current = camera->GetTranslate();
+            camera->SetTranslate(LerpVector3(current, desiredPosition, followSmoothing_));
         }
 
         if (lookAtEnabled_) {
-            releaseCamera->LookAt(targetPosition + lookAtOffset_);
+            camera->LookAt(targetPosition + lookAtOffset_);
         }
     }
 
-    void CameraFollowEditorModule::ApplyToDebugCamera(const CameraEditorContext& context, const Vector3& targetPosition) const
+    void CameraFollowEditorModule::ApplyToOrbitCamera(const CameraEditorContext& context, const Vector3& targetPosition) const
     {
-        ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
-        auto* debugCamera = dynamic_cast<DebugCamera*>(active3D);
-        if (!debugCamera) {
+        auto* orbit = context.cameraManager->GetActiveOrbitController();
+        if (!orbit) {
             return;
         }
 
-        // DebugCameraは注視点中心のカメラなので、追従/注視とも注視点移動として扱う。
+        // 軌道カメラは注視点中心なので、追従/注視とも注視点移動として扱う。
         if (followEnabled_ || lookAtEnabled_) {
             const Vector3 desiredTarget = targetPosition + lookAtOffset_;
-            const Vector3 currentTarget = debugCamera->GetTarget();
-            debugCamera->SetTarget(LerpVector3(currentTarget, desiredTarget, followSmoothing_));
+            const Vector3 currentTarget = orbit->GetTarget();
+            orbit->SetTarget(LerpVector3(currentTarget, desiredTarget, followSmoothing_));
         }
     }
 

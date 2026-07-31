@@ -10,7 +10,7 @@
 #include <filesystem>
 
 #include "Camera/CameraManager.h"
-#include "Camera/Debug/DebugCamera.h"
+#include "Camera/Camera.h"
 #include "Camera/Camera.h"
 
 namespace CoreEngine
@@ -319,27 +319,16 @@ namespace CoreEngine
 
     CameraSnapshot CameraClipPlayerModule::InterpolateSnapshot(const CameraSnapshot& from, const CameraSnapshot& to, float t) const
     {
-        if (from.isDebugCamera != to.isDebugCamera) {
-            return from;
-        }
-
         CameraSnapshot result{};
-        result.isDebugCamera = from.isDebugCamera;
         const EasingUtil::Type easingType = GetSelectedEasingType();
 
-        if (result.isDebugCamera) {
-            result.target = EasingUtil::LerpVector3(from.target, to.target, t, easingType);
-            result.distance = EasingUtil::Lerp(from.distance, to.distance, t, easingType);
-            result.pitch = EasingUtil::LerpAngle(from.pitch, to.pitch, t, easingType);
-            result.yaw = EasingUtil::LerpAngle(from.yaw, to.yaw, t, easingType);
-        } else {
-            result.position = EasingUtil::LerpVector3(from.position, to.position, t, easingType);
-            result.rotation = Vector3(
-                EasingUtil::LerpAngle(from.rotation.x, to.rotation.x, t, easingType),
-                EasingUtil::LerpAngle(from.rotation.y, to.rotation.y, t, easingType),
-                EasingUtil::LerpAngle(from.rotation.z, to.rotation.z, t, easingType));
-            result.scale = EasingUtil::LerpVector3(from.scale, to.scale, t, easingType);
-        }
+        result.position = EasingUtil::LerpVector3(from.position, to.position, t, easingType);
+        result.rotation = Vector3(
+            EasingUtil::LerpAngle(from.rotation.x, to.rotation.x, t, easingType),
+            EasingUtil::LerpAngle(from.rotation.y, to.rotation.y, t, easingType),
+            EasingUtil::LerpAngle(from.rotation.z, to.rotation.z, t, easingType));
+        result.scale = EasingUtil::LerpVector3(from.scale, to.scale, t, easingType);
+        result.parameters.projectionType = from.parameters.projectionType;
 
         result.parameters.fov = EasingUtil::Lerp(from.parameters.fov, to.parameters.fov, t, easingType);
         result.parameters.nearClip = EasingUtil::Lerp(from.parameters.nearClip, to.parameters.nearClip, t, easingType);
@@ -377,25 +366,13 @@ namespace CoreEngine
 
     bool CameraClipPlayerModule::ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot) const
     {
-        ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
         if (!active3D) {
             return false;
         }
 
-        if (snapshot.isDebugCamera) {
-            if (auto* debugCamera = dynamic_cast<DebugCamera*>(active3D)) {
-                debugCamera->RestoreSnapshot(snapshot);
-                return true;
-            }
-            return false;
-        }
-
-        if (auto* releaseCamera = dynamic_cast<Camera*>(active3D)) {
-            releaseCamera->RestoreSnapshot(snapshot);
-            return true;
-        }
-
-        return false;
+        active3D->RestoreSnapshot(snapshot);
+        return true;
     }
 }
 

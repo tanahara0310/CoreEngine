@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "SpriteRenderer.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "SpriteMaterial.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -118,7 +118,7 @@ namespace CoreEngine
         // 今は空
     }
 
-    void SpriteRenderer::SetCamera(const ICamera* camera) {
+    void SpriteRenderer::SetCamera(const Camera* camera) {
         // スプライトはカメラ不要（2D描画）
         (void)camera;
     }
@@ -156,7 +156,7 @@ namespace CoreEngine
         return MathCore::Matrix::Multiply(worldMatrix, MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
     }
 
-    Matrix4x4 SpriteRenderer::CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation, const ICamera* camera) const {
+    Matrix4x4 SpriteRenderer::CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation, const Camera* camera) const {
         // ワールド変換
         Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(scale, rotation, position);
 

@@ -13,7 +13,7 @@
 // エンジンコア
 #include "Audio/SoundManager.h"
 #include "Camera/CameraManager.h"
-#include "Camera/Debug/DebugCamera.h"
+#include "Camera/Camera.h"
 #include "Camera/Camera.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"

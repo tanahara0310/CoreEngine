@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ParticleSystem.h"
 #include "Utility/Random/RandomGenerator.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Camera/CameraManager.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Model/ModelResource.h"
@@ -188,7 +188,7 @@ void ParticleSystem::Update()
 }
 
 // 描画関数（Object3dと同じインターフェース）
-void ParticleSystem::Draw(const ICamera* camera)
+void ParticleSystem::Draw(const Camera* camera)
 {
     if (!camera) return;
 

@@ -5,7 +5,7 @@
 
 namespace CoreEngine
 {
-    const ICamera* DrawViewInfo::GetCamera() const
+    const Camera* DrawViewInfo::GetCamera() const
     {
         return view ? view->camera : nullptr;
     }

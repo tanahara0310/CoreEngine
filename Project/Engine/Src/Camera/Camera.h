@@ -4,139 +4,167 @@
 #include <wrl.h>
 
 #include "Math/MathCore.h"
-#include "Camera/ICamera.h"
+#include "Math/Frustum.h"
 #include "Camera/CameraStructs.h"
 
-/// <summary>
-/// カメラクラス
-/// </summary>
+/// @brief カメラ（エンジン唯一の具象カメラ）
 
 namespace CoreEngine {
 
-    class Camera : public ICamera {
+    /// @brief カメラ
+    /// @details 継承階層を持たない「データ + 行列導出」だけのクラス。
+    ///          以前は ICamera / Camera / DebugCamera / Camera2D の 4 型があり、
+    ///          姿勢の表現（SRT vs 軌道）も投影方式もクラスの違いとして持っていたため、
+    ///          具象型への dynamic_cast が 21 箇所に散っていた。
+    ///
+    ///          - 投影方式は CameraParameters::projectionType で表す（2D は正射影）
+    ///          - 操作方法（Blender 風の軌道操作・追従など）はカメラではなく
+    ///            コントローラ（OrbitFlyController 等）が持ち、結果を Transform へ書き込む
+    class Camera final {
     public:
-        /// <summary>
-        /// 初期化
-        /// </summary>
+        Camera() = default;
+        explicit Camera(const CameraParameters& parameters) : parameters_(parameters) {}
+
+        /// @brief GPU リソースの初期化
+        /// @param device D3D12デバイス（nullptr なら GPU 定数バッファを持たない）
         void Initialize(ID3D12Device* device);
 
-        /// <summary>
-        /// 行列の更新
-        /// </summary>
+        /// @brief 行列の更新 + GPU 転送（フレームごとに 1 回）
+        void Update();
+
+        /// @brief 行列の更新（GPU 転送を含む）
         void UpdateMatrix();
 
-        // ====== ICamera インターフェースの実装 ======
+        // ====== 行列・視点 ======
 
-        /// @brief カメラの更新（ICamera から）
-        void Update() override {
-            UpdateMatrix();
-        }
+        /// @brief ビュー行列を取得
+        const Matrix4x4& GetViewMatrix() const { return viewMatrix_; }
 
-        /// @brief ビューマトリックスの取得（ICamera から）
-        const Matrix4x4& GetViewMatrix() const override {
-            return viewMatrix_;
-        }
-
-        /// @brief プロジェクションマトリックスの取得（ICamera から）
-        const Matrix4x4& GetProjectionMatrix() const override {
+        /// @brief 射影行列を取得（TAA ジッタ適用後）
+        const Matrix4x4& GetProjectionMatrix() const {
             return projectionJitterActive_ ? jitteredProjectionMatrix_ : projectionMatrix_;
         }
 
-        /// @brief ジッタ適用前の射影行列（ICamera から。TAA のジッタ生成元）
-        const Matrix4x4* GetUnjitteredProjectionMatrix() const override { return &projectionMatrix_; }
+        /// @brief カメラのワールド座標を取得
+        Vector3 GetPosition() const { return translate_; }
 
-        /// @brief カメラの位置取得（ICamera から）
-        Vector3 GetPosition() const override {
-            return translate_;
+        /// @brief カメラ行列（ビュー行列の逆）を取得
+        const Matrix4x4& GetCameraMatrix() const { return cameraMatrix_; }
+
+        /// @brief 視錐台を取得
+        /// @note 毎フレーム多数回呼ぶ用途では ViewInfo::frustum（構築時に 1 回抽出）を使うこと
+        Frustum GetFrustum() const {
+            Frustum frustum;
+            frustum.ExtractFromMatrix(MathCore::Matrix::Multiply(GetViewMatrix(), GetProjectionMatrix()));
+            return frustum;
         }
 
-        /// @brief カメラのGPU仮想アドレスを取得（ICamera から）
-        D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const override {
+        // ====== GPU リソース ======
+
+        /// @brief カメラ用定数バッファ（CameraForGPU）の GPU 仮想アドレス
+        D3D12_GPU_VIRTUAL_ADDRESS GetGPUVirtualAddress() const {
             return cameraGPUResource_ ? cameraGPUResource_->GetGPUVirtualAddress() : 0;
         }
 
-        /// @brief 行列をGPUに転送（ICamera から）
-        void TransferMatrix() override;
+        /// @brief 視点ワールド座標を GPU へ転送する
+        /// @details 定数バッファは単一のアップロードバッファ。フレーム内で複数回書き換えると
+        ///          実行中の前フレーム（インフライト）がどちらを読むかタイミング依存になり、
+        ///          カメラ位置依存のフレネル項がちらつく。書き込みはフレーム 1 回に限ること。
+        void TransferMatrix();
 
-        /// @brief カメラのタイプを取得
-        CameraType GetCameraType() const override { return CameraType::Camera3D; }
+        // ====== パラメータ ======
 
-        /// @brief カメラパラメータを取得
-        CameraParameters GetParameters() const override { return parameters_; }
+        CameraParameters GetParameters() const { return parameters_; }
+        void SetParameters(const CameraParameters& params) { parameters_ = params; }
+        void ResetParameters() { parameters_.Reset(); }
 
-        /// @brief カメラパラメータを設定
-        void SetParameters(const CameraParameters& params) override { parameters_ = params; }
+        /// @brief カメラタイプ（投影方式から決まる）
+        CameraType GetCameraType() const { return parameters_.GetCameraType(); }
 
-        // ====== Camera 固有のアクセッサ ======
+        /// @brief 有効/無効状態
+        void SetActive(bool isActive) { isActive_ = isActive; }
+        bool GetActive() const { return isActive_; }
 
-        void SetScale(const Vector3& scale) { this->scale_ = scale; }
-        void SetRotate(const Vector3& rotate) { this->rotate_ = rotate; }
-        void SetTranslate(const Vector3& translate) { this->translate_ = translate; }
+        // ====== Transform ======
+
+        void SetScale(const Vector3& scale) { scale_ = scale; }
+        void SetRotate(const Vector3& rotate) { rotate_ = rotate; }
+        void SetTranslate(const Vector3& translate) { translate_ = translate; }
 
         Vector3 GetScale() const { return scale_; }
         Vector3 GetRotate() const { return rotate_; }
         Vector3 GetTranslate() const { return translate_; }
 
-        const Matrix4x4& GetCameraMatrix() const { return cameraMatrix_; }
+        /// @brief 2D カメラのズーム倍率を設定（正射影時のみ意味を持つ）
+        void SetZoom(float zoom) { scale_ = { zoom, zoom, 1.0f }; }
 
-        void SetViewMatrix(const Matrix4x4& viewMatrix)
-        {
-            this->viewMatrix_ = viewMatrix;
-            useExternalViewMatrix_ = true;
-        }
-
-        /// @brief 外部から設定されたビュー行列の固定状態を解除する
-        void ClearExternalViewMatrix()
-        {
-            useExternalViewMatrix_ = false;
-        }
+        /// @brief 2D カメラのズーム倍率を取得
+        float GetZoom() const { return scale_.x; }
 
         /// @brief 指定した位置を注視するようにカメラを回転
         /// @param target 注視点
         void LookAt(const Vector3& target);
 
-        /// @brief カメラの前方向ベクトルを取得
-        /// @return 前方向ベクトル（正規化済み）
+        /// @brief カメラの前方向ベクトル（正規化済み）
         Vector3 GetForward() const;
 
-        /// @brief カメラの右方向ベクトルを取得
-        /// @return 右方向ベクトル（正規化済み）
+        /// @brief カメラの右方向ベクトル（正規化済み）
         Vector3 GetRight() const;
 
-        /// @brief カメラの上方向ベクトルを取得
-        /// @return 上方向ベクトル（正規化済み）
+        /// @brief カメラの上方向ベクトル（正規化済み）
         Vector3 GetUp() const;
 
-        /// @brief カメラをリセット（初期状態に戻す）
+        /// @brief カメラを初期状態に戻す
         void Reset();
 
-        /// @brief カメラパラメータをリセット
-        void ResetParameters() { parameters_.Reset(); }
+        // ====== TAA ジッタ ======
+
+        /// @brief TAA 用のサブピクセルジッタ（NDC 単位）を設定する
+        /// @details 射影行列へジッタを加えた写しを内部に作り、以降 GetProjectionMatrix() が
+        ///          そちらを返す。ViewBuilder がこの後にスナップショットを取ることで、
+        ///          モデルの WVP・深度復元の invViewProj・視錐台がすべて同じ行列から導かれる。
+        /// @param ndcX NDC の X オフセット（1 ピクセル = 2 / 画面幅）
+        /// @param ndcY NDC の Y オフセット
+        void SetProjectionJitter(float ndcX, float ndcY);
+
+        float GetProjectionJitterX() const { return projectionJitterX_; }
+        float GetProjectionJitterY() const { return projectionJitterY_; }
+
+        // ====== スナップショット ======
 
         /// @brief 現在の状態をスナップショットとして保存
-        /// @return カメラスナップショット
         CameraSnapshot CaptureSnapshot(const std::string& name = "Snapshot") const;
 
         /// @brief スナップショットから状態を復元
-        /// @param snapshot 復元するスナップショット
         void RestoreSnapshot(const CameraSnapshot& snapshot);
 
     private:
-        Vector3 scale_ = { 1.0f, 1.0f, 1.0f }; // スケール
-        Vector3 rotate_ = { 0.0f, 0.0f, 0.0f }; // 回転
-        Vector3 translate_ = { 0.0f, 0.0f, -10.0f }; // 平行移動
+        /// @brief 投影方式に応じて view / projection を作り直す
+        void RebuildMatrices();
 
-        Matrix4x4 viewMatrix_; // ビュー行列
-        Matrix4x4 projectionMatrix_; // 射影行列
-        Matrix4x4 cameraMatrix_; // カメラ行列
+        /// @brief パラメータからアスペクト比を解決する（0 指定ならウィンドウから自動）
+        float ResolveAspectRatio() const;
 
-        // GPU 用リソース（CameraForGPU = 視点ワールド座標）。
-        // GetGPUVirtualAddress() が返すのはこのバッファで、BaseModelRenderer が gCamera として束縛する。
+        // Transform（正射影時は translate=中心座標 / rotate.z=回転 / scale.x=ズーム）
+        Vector3 scale_ = { 1.0f, 1.0f, 1.0f };
+        Vector3 rotate_ = { 0.0f, 0.0f, 0.0f };
+        Vector3 translate_ = { 0.0f, 0.0f, -10.0f };
+
+        Matrix4x4 viewMatrix_{};
+        Matrix4x4 projectionMatrix_{};
+        Matrix4x4 cameraMatrix_{};
+
+        CameraParameters parameters_{};
+        bool isActive_ = true;
+
+        // TAA ジッタ
+        bool projectionJitterActive_ = false;
+        float projectionJitterX_ = 0.0f;
+        float projectionJitterY_ = 0.0f;
+        Matrix4x4 jitteredProjectionMatrix_{};
+
+        // GPU 用リソース（CameraForGPU = 視点ワールド座標）
         Microsoft::WRL::ComPtr<ID3D12Resource> cameraGPUResource_;
         CameraForGPU* cameraGPUData_ = nullptr;
-
-        bool useExternalViewMatrix_ = false; // 外部ビュー行列を使用するかどうか
-
-        CameraParameters parameters_; // カメラパラメータ
     };
 }

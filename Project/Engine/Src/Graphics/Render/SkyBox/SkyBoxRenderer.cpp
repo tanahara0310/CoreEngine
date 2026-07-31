@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "SkyBoxRenderer.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Utility/Logger/Logger.h"
@@ -77,7 +77,7 @@ namespace CoreEngine
         // 今は空
     }
 
-    void SkyBoxRenderer::SetCamera(const ICamera* camera) {
+    void SkyBoxRenderer::SetCamera(const Camera* camera) {
         // SkyBoxでは特にカメラCBVを保持する必要はないため空実装
         (void)camera;
     }

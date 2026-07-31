@@ -2,7 +2,7 @@
 #include "EnvironmentFeature.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/Settings/EditorSettingsSubsystem.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObjects/SkyBox/SkyBoxObject.h"
 #include "GameObject/Ground/InfiniteGroundObject.h"
@@ -119,7 +119,7 @@ namespace CoreEngine
         }
 
         // ゲームビューカメラの XZ に追従させる（タイルはワールド固定）
-        if (const ICamera* camera = ctx.gameViewCamera3D) {
+        if (const Camera* camera = ctx.gameViewCamera3D) {
             groundPlane_->FollowCamera(camera->GetPosition());
         }
     }
@@ -142,7 +142,7 @@ namespace CoreEngine
         Vector3 cameraPosition{};
         Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
         Matrix4x4 projMatrix = MathCore::Matrix::Identity();
-        if (const ICamera* camera = ctx.gameViewCamera3D) {
+        if (const Camera* camera = ctx.gameViewCamera3D) {
             cameraPosition = camera->GetPosition();
             viewMatrix = camera->GetViewMatrix();
             projMatrix = camera->GetProjectionMatrix();

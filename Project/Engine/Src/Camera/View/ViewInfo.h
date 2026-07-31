@@ -11,7 +11,7 @@
 
 namespace CoreEngine
 {
-    class ICamera;
+    class Camera;
 
     /// @brief 描画・カリング・RT が参照するビュー情報
     /// @details フレーム先頭で 1 回だけ構築し、以降は誰も書き換えない「値」。
@@ -24,10 +24,10 @@ namespace CoreEngine
     ///          深度復元・カリングが同じ行列に揃う。
     struct ViewInfo {
         /// @brief 移行期の互換用カメラポインタ
-        /// @details GameObject::Draw(const ICamera*) 系のレガシー描画経路がまだ ICamera を
+        /// @details GameObject::Draw(const Camera*) 系のレガシー描画経路がまだ Camera を
         ///          要求するため保持する。Phase 2（カメラのデータ化）で撤去する。
         ///          新規コードはここではなく下の行列群を参照すること。
-        const ICamera* camera = nullptr;
+        const Camera* camera = nullptr;
 
         RenderViewType type = RenderViewType::GameView;
 

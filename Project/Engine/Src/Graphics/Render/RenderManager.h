@@ -15,7 +15,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class ICamera;
+    class Camera;
     class FrameViews;
     struct ViewInfo;
 }

@@ -1,14 +1,14 @@
 #include "pch.h"
 #include "ViewBuilder.h"
 
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Camera/CameraStructs.h"
 
 namespace CoreEngine
 {
     using namespace CoreEngine::MathCore;
 
-    ViewInfo ViewBuilder::Build(const ICamera* camera, RenderViewType type)
+    ViewInfo ViewBuilder::Build(const Camera* camera, RenderViewType type)
     {
         ViewInfo view{};
         view.type = type;
@@ -25,7 +25,7 @@ namespace CoreEngine
         view.position = camera->GetPosition();
 
         // 視錐台はここで 1 回だけ抽出する。以前はモデル単位のカリングから
-        // ICamera::GetFrustum() を呼ぶたびに VP 乗算 + 6 平面抽出をやり直していた。
+        // Camera::GetFrustum() を呼ぶたびに VP 乗算 + 6 平面抽出をやり直していた。
         view.frustum.ExtractFromMatrix(view.viewProjection);
 
         const CameraParameters params = camera->GetParameters();

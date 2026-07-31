@@ -2,13 +2,13 @@
 #include "BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/CameraManager.h"
-#include "Camera/Debug/DebugCamera.h"
+#include "Camera/Camera.h"
 #ifdef USE_IMGUI
 #include "Camera/Debug/DebugCameraSettingsSection.h"
 #include "EngineSystem/Settings/EditorSettingsSubsystem.h"
 #endif
-#include "Camera/Camera.h"
-#include "Camera/Camera2D.h"
+#include "Editor/Camera/EditorCameraInput.h"
+#include "Utility/FrameRate/FrameRateController.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Particle/ParticleSystem.h"
@@ -89,8 +89,14 @@ namespace CoreEngine
     void BaseScene::Update()
     {
         // カメラの更新
+        // 入力の正規化（ImGui / InputManager 依存）は EditorCameraInput に閉じており、
+        // コントローラは CameraInputState しか見ない。
         if (cameraManager_) {
-            cameraManager_->Update();
+            float deltaTime = 1.0f / 60.0f;
+            if (auto* frameRate = engine_->GetComponent<FrameRateController>()) {
+                deltaTime = frameRate->GetDeltaTime();
+            }
+            cameraManager_->Update(EditorCameraInput::Collect(engine_), deltaTime);
         }
 
         // フレーム前処理（ライト/影・グリッド・デバッグエディタ）
@@ -118,7 +124,7 @@ namespace CoreEngine
     void BaseScene::PrepareRender()
     {
         auto renderManager = engine_->GetComponent<RenderManager>();
-        ICamera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
+        Camera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
 
         if (!renderManager || !activeCamera3D) {
             return;
@@ -145,14 +151,14 @@ namespace CoreEngine
         renderManager->DrawGeometryPass();
     }
 
-    ICamera* BaseScene::GetDefaultGameViewCamera3D() const
+    Camera* BaseScene::GetDefaultGameViewCamera3D() const
     {
         if (!cameraManager_) {
             return nullptr;
         }
 
         if (!gameViewCameraName_.empty()) {
-            if (ICamera* gameCamera = cameraManager_->GetCamera(gameViewCameraName_)) {
+            if (Camera* gameCamera = cameraManager_->GetCamera(gameViewCameraName_)) {
                 return gameCamera;
             }
         }
@@ -162,20 +168,20 @@ namespace CoreEngine
             : cameraManager_->GetCamera(gameViewCameraName_);
     }
 
-    ICamera* BaseScene::GetGameViewCamera3D() const
+    Camera* BaseScene::GetGameViewCamera3D() const
     {
         if (!cameraManager_) {
             return nullptr;
         }
 
-        if (ICamera* gameCamera = cameraManager_->GetCamera(ResolveGameViewCameraName())) {
+        if (Camera* gameCamera = cameraManager_->GetCamera(ResolveGameViewCameraName())) {
             return gameCamera;
         }
 
         return cameraManager_->GetActiveCamera(CameraType::Camera3D);
     }
 
-    ICamera* BaseScene::GetGameViewCamera2D() const
+    Camera* BaseScene::GetGameViewCamera2D() const
     {
         return cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
     }
@@ -308,29 +314,40 @@ namespace CoreEngine
 
         cameraManager_->RegisterCamera("Release", std::move(releaseCamera));
 
-        // デバッグカメラを作成して登録
-        auto debugCamera = std::make_unique<DebugCamera>();
-        debugCamera->Initialize(engine_, dxCommon->GetDevice());
+        // デバッグ用カメラ（カメラ自体は Release と同じ型。Blender 風の操作は
+        // OrbitFlyController を取り付けることで与える）
+        auto debugCamera = std::make_unique<Camera>();
+        debugCamera->Initialize(dxCommon->GetDevice());
+        cameraManager_->RegisterCamera("Debug", std::move(debugCamera));
+
+        cameraManager_->SetEngineSystem(engine_);
+        OrbitFlyController* orbitController = cameraManager_->AttachController<OrbitFlyController>("Debug");
+
+        // Release カメラは一人称の自由移動で操作する（旧 GameView 操作モジュール相当）
+        cameraManager_->AttachController<FreeLookController>("Release");
+
 #ifdef USE_IMGUI
         // エディタ設定の自動保存: 登録時に前回終了時の姿勢・設定が復元され、以降の変更が
         // 自動保存される
         if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
-            debugCameraSettingsSection_ = std::make_unique<DebugCameraSettingsSection>(debugCamera.get());
+            debugCameraSettingsSection_ = std::make_unique<DebugCameraSettingsSection>(
+                cameraManager_->GetCamera("Debug"), orbitController);
             editorSettings->RegisterSection(debugCameraSettingsSection_.get(), this);
         }
+#else
+        (void)orbitController;
 #endif
-        cameraManager_->RegisterCamera("Debug", std::move(debugCamera));
 
         // デフォルトでリリースカメラをアクティブに設定
         cameraManager_->SetActiveCamera("Release", CameraType::Camera3D);
 
         // ===== 2Dカメラの設定 =====
 
-        // 2Dカメラを作成して登録（スクリーンサイズは自動取得）
-        auto camera2D = std::make_unique<Camera2D>();
-        // 2Dカメラの初期位置：画面中央
-        camera2D->SetPosition(Vector2{ 0.0f, 0.0f });
+        // 2Dカメラ = 正射影パラメータを持つ同じ Camera（画面中央が原点）
+        auto camera2D = std::make_unique<Camera>(CameraParameters::Orthographic2D());
+        camera2D->SetTranslate({ 0.0f, 0.0f, 0.0f });
         camera2D->SetZoom(1.0f);
+        camera2D->Initialize(nullptr); // 2D は GPU 定数バッファ不要
 
         cameraManager_->RegisterCamera("Camera2D", std::move(camera2D));
 
@@ -362,7 +379,7 @@ namespace CoreEngine
         if (!cameraManager_) {
             return;
         }
-        if (auto* releaseCamera = dynamic_cast<Camera*>(cameraManager_->GetCamera("Release"))) {
+        if (auto* releaseCamera = cameraManager_->GetCamera("Release")) {
             releaseCamera->SetTranslate(translate);
             releaseCamera->SetRotate(rotate);
         }

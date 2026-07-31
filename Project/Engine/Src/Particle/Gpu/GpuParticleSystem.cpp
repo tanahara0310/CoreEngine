@@ -3,7 +3,7 @@
 
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Particle/Core/ParticleResourceManager.h" // ParticleForGPU（インスタンスデータレイアウト共有）
 
 #include <algorithm>
@@ -256,7 +256,7 @@ void GpuParticleSystem::Update()
     emitCountThisFrame_ = (std::min)(emitCountThisFrame_, GetEffectiveCapacity());
 }
 
-void GpuParticleSystem::Draw(const ICamera* camera)
+void GpuParticleSystem::Draw(const Camera* camera)
 {
     if (!camera || !paramsData_) {
         return;

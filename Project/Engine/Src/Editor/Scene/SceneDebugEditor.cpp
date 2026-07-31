@@ -257,8 +257,8 @@ namespace CoreEngine
             (mousePos.x - viewportPos.x) / viewportSize.x,
             (mousePos.y - viewportPos.y) / viewportSize.y);
 
-        const ICamera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
-        const ICamera* camera2D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
+        const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
+        const Camera* camera2D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
 
         if (camera3D) {
             objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered);
@@ -553,7 +553,7 @@ namespace CoreEngine
         if (DebugAccess::TryGetTransformAccess(raw, access) && access.translate) {
             Vector3 spawnPosition = { 0.0f, 1.0f, 0.0f };
 
-            if (const ICamera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr) {
+            if (const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr) {
                 const Vector2 dropPos = normalizedDropPos ? *normalizedDropPos : Vector2{ 0.5f, 0.5f };
                 const Vector2 ndcPos(
                     dropPos.x * 2.0f - 1.0f,

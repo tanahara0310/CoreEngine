@@ -9,7 +9,7 @@ namespace CoreEngine
     class CameraManager;
     class SceneManager;
     class SceneSaveSystem;
-    class ICamera;
+    class Camera;
 
     /// @brief BaseScene::Update 内の Feature ディスパッチ位置
     /// @details 従来 BaseScene::Update に暗黙の順序として埋まっていた更新タイミングを
@@ -31,7 +31,7 @@ namespace CoreEngine
         CameraManager* cameraManager = nullptr;
         SceneManager* sceneManager = nullptr;
         SceneSaveSystem* saveSystem = nullptr;
-        ICamera* gameViewCamera3D = nullptr;
+        Camera* gameViewCamera3D = nullptr;
     };
 
     /// @brief シーン横断機能（ライト・コリジョン・環境等）の基底クラス

@@ -13,17 +13,16 @@ namespace CoreEngine
 
     CameraManager::~CameraManager() = default;
 
-    void CameraManager::RegisterCamera(const std::string& name, std::unique_ptr<ICamera> camera)
+    void CameraManager::RegisterCamera(const std::string& name, std::unique_ptr<Camera> camera)
     {
         if (!camera) {
             return;
         }
 
-        CameraType cameraType = camera->GetCameraType();
+        const CameraType cameraType = camera->GetCameraType();
 
-        // 既存の同名カメラがあれば削除
+        // 既存の同名カメラがあればアクティブ参照をクリアしてから差し替える
         if (cameras_.find(name) != cameras_.end()) {
-            // アクティブカメラだった場合はクリア
             if (cameraType == CameraType::Camera3D && activeCamera3DName_ == name) {
                 activeCamera3DName_.clear();
                 activeCamera3D_ = nullptr;
@@ -50,9 +49,8 @@ namespace CoreEngine
             return;
         }
 
-        CameraType cameraType = it->second->GetCameraType();
+        const CameraType cameraType = it->second->GetCameraType();
 
-        // アクティブカメラだった場合はクリア
         if (cameraType == CameraType::Camera3D && activeCamera3DName_ == name) {
             activeCamera3DName_.clear();
             activeCamera3D_ = nullptr;
@@ -61,7 +59,19 @@ namespace CoreEngine
             activeCamera2D_ = nullptr;
         }
 
+        controllers_.erase(name);
         cameras_.erase(it);
+    }
+
+    ICameraController* CameraManager::GetController(const std::string& name) const
+    {
+        auto it = controllers_.find(name);
+        return (it != controllers_.end()) ? it->second.get() : nullptr;
+    }
+
+    ICameraController* CameraManager::GetActiveController() const
+    {
+        return activeCamera3DName_.empty() ? nullptr : GetController(activeCamera3DName_);
     }
 
     bool CameraManager::SetActiveCamera(const std::string& name, CameraType type)
@@ -71,7 +81,6 @@ namespace CoreEngine
             return false;
         }
 
-        // カメラタイプが一致するか確認
         if (it->second->GetCameraType() != type) {
             return false;
         }
@@ -87,69 +96,52 @@ namespace CoreEngine
         return true;
     }
 
-    ICamera* CameraManager::GetActiveCamera(CameraType type) const
+    Camera* CameraManager::GetActiveCamera(CameraType type) const
     {
         if (type == CameraType::Camera3D) {
             return activeCamera3D_;
-        } else if (type == CameraType::Camera2D) {
+        }
+        if (type == CameraType::Camera2D) {
             return activeCamera2D_;
         }
         return nullptr;
     }
 
-    ICamera* CameraManager::GetCamera(const std::string& name) const
+    Camera* CameraManager::GetCamera(const std::string& name) const
     {
         auto it = cameras_.find(name);
-        if (it == cameras_.end()) {
-            return nullptr;
-        }
-        return it->second.get();
-    }
-
-    const Matrix4x4& CameraManager::GetViewMatrix() const
-    {
-        static Matrix4x4 identity = MathCore::Matrix::Identity();
-        if (!activeCamera3D_) {
-            return identity;
-        }
-        return activeCamera3D_->GetViewMatrix();
-    }
-
-    const Matrix4x4& CameraManager::GetProjectionMatrix() const
-    {
-        static Matrix4x4 identity = MathCore::Matrix::Identity();
-        if (!activeCamera3D_) {
-            return identity;
-        }
-        return activeCamera3D_->GetProjectionMatrix();
-    }
-
-    Vector3 CameraManager::GetCameraPosition() const
-    {
-        if (!activeCamera3D_) {
-            return { 0.0f, 0.0f, 0.0f };
-        }
-        return activeCamera3D_->GetPosition();
+        return (it != cameras_.end()) ? it->second.get() : nullptr;
     }
 
     const std::string& CameraManager::GetActiveCameraName(CameraType type) const
     {
-        static std::string empty = "";
+        static const std::string empty;
         if (type == CameraType::Camera3D) {
             return activeCamera3DName_;
-        } else if (type == CameraType::Camera2D) {
+        }
+        if (type == CameraType::Camera2D) {
             return activeCamera2DName_;
         }
         return empty;
     }
 
-    void CameraManager::Update()
+    void CameraManager::Update(const CameraInputState& input, float deltaTime)
     {
         for (auto& [name, camera] : cameras_) {
-            (void)name;
-            if (camera && camera->GetActive()) {
-                camera->Update();
+            if (!camera || !camera->GetActive()) {
+                continue;
             }
+
+            // コントローラ（付いていれば）が先に Transform を書き、そのあと行列を作る。
+            // この順序が「操作 → 姿勢 → 行列」の一方向の流れを保証する。
+            //
+            // 入力は非アクティブなカメラにも同じものが渡るが、実際に操作されるのは
+            // input.active（ビューポート上で操作中）のときだけ。
+            if (auto it = controllers_.find(name); it != controllers_.end() && it->second) {
+                it->second->Update(input, deltaTime, *camera);
+            }
+
+            camera->Update();
         }
     }
 

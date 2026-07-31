@@ -29,7 +29,7 @@
 #include "Graphics/Render/RenderingTechnique/CAS/CASTechnique.h"
 #include "CASPass.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Camera/View/ViewBuilder.h"
 #include "Scene/IScene.h"
 #include "Scene/SceneManager.h"
@@ -223,7 +223,7 @@ namespace CoreEngine
         //
         // 呼び出しは PrepareFrameViews から「ViewInfo を作る直前」に 1 回だけ。
         // ここで入れたジッタがスナップショットされ、以降フレーム内の全パスが同じ射影を使う。
-        void UpdateCameraJitter(const RenderContext& context, ICamera* camera)
+        void UpdateCameraJitter(const RenderContext& context, Camera* camera)
         {
             if (!camera) {
                 return;
@@ -376,7 +376,7 @@ namespace CoreEngine
         // 以前は BaseScene / RenderManager / RenderPipeline / SSAO がそれぞれ別の規則で
         // カメラを解決しており、「一致させること」というコメントで整合を守ろうとしていた。
         // ここで 1 回解決し、以降は ViewInfo という値を配る。
-        ICamera* camera = context.sceneManager
+        Camera* camera = context.sceneManager
             ? context.sceneManager->GetGameViewCamera3D()
             : nullptr;
 
@@ -386,7 +386,7 @@ namespace CoreEngine
 
         outViews.Set(RenderViewType::GameView, ViewBuilder::Build(camera, RenderViewType::GameView));
 
-        ICamera* camera2D = context.sceneManager
+        Camera* camera2D = context.sceneManager
             ? context.sceneManager->GetGameViewCamera2D()
             : nullptr;
         outViews.Set2D(ViewBuilder::Build(camera2D, RenderViewType::GameView));

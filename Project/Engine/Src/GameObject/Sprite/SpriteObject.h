@@ -36,11 +36,11 @@ public:
     
     /// @brief 描画処理
     /// @param camera カメラ
-    void Draw(const ICamera* camera) override;
+    void Draw(const Camera* camera) override;
     
     /// @brief 2D専用描画（内部実装）
     /// @param camera 2D用カメラ
-    void Draw2D(const ICamera* camera);
+    void Draw2D(const Camera* camera);
     
 #ifdef USE_IMGUI
     /// @brief インスペクタータブ定義を返す

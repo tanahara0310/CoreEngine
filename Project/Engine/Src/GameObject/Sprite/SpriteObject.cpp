@@ -167,7 +167,7 @@ namespace CoreEngine
         return *animator_;
     }
 
-    void SpriteObject::Draw2D(const ICamera* camera) {
+    void SpriteObject::Draw2D(const Camera* camera) {
         if (!spriteRenderer_) {
 #ifdef _DEBUG
             OutputDebugStringA("ERROR: SpriteRenderer is null in SpriteObject::Draw2D!\n");
@@ -487,7 +487,7 @@ namespace CoreEngine
         if (j.contains("flipY")) { SetFlipY(j["flipY"].get<bool>()); }
     }
 
-    void SpriteObject::Draw(const ICamera* camera) {
+    void SpriteObject::Draw(const Camera* camera) {
         Draw2D(camera);
     }
 }

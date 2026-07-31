@@ -43,7 +43,7 @@ namespace CoreEngine {
 
         /// @brief 描画処理（RenderGraph を経由しない直接呼び出し用のレガシー経路）
         /// @details GameView・Forward パス扱いの DrawViewInfo を組み立てて本経路へ委譲する。
-        void Draw(const ICamera* camera) override;
+        void Draw(const Camera* camera) override;
 
         /// @brief ビュー/パス情報つき描画処理（本経路。カリング → model_->Draw → OnDraw）
         void Draw(const DrawViewInfo& view) override;
@@ -99,7 +99,7 @@ namespace CoreEngine {
         virtual void OnUpdate() {}
 
         /// @brief Draw() 内で model_->Draw() の後に呼ばれる
-        virtual void OnDraw(const ICamera* camera) { (void)camera; }
+        virtual void OnDraw(const Camera* camera) { (void)camera; }
 
         /// @brief カスタムシェーダープロバイダーを登録する
         /// OnInitialize() 内で this を渡すことで Initialize() 完了後にカスタム PSO が構築される。

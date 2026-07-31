@@ -6,7 +6,7 @@
 #ifdef _DEBUG
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Line/LineManager.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #endif
 
 
@@ -49,7 +49,7 @@ CoreEngine::Vector3 AABBCollider::GetMax() const {
 }
 
 #ifdef _DEBUG
-void AABBCollider::DrawDebug(CoreEngine::LineRendererPipeline* pipeline, const CoreEngine::ICamera* camera, const CoreEngine::Vector3& color) const {
+void AABBCollider::DrawDebug(CoreEngine::LineRendererPipeline* pipeline, const CoreEngine::Camera* camera, const CoreEngine::Vector3& color) const {
    if (!pipeline || !camera) return;
 
    CoreEngine::Vector3 center = GetPosition();

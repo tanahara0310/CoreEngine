@@ -7,7 +7,7 @@
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Culling/ModelVisibility.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Camera/View/ViewBuilder.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -78,7 +78,7 @@ namespace CoreEngine
         OnUpdate();
     }
 
-    void ModelGameObject::Draw(const ICamera* camera) {
+    void ModelGameObject::Draw(const Camera* camera) {
         // RenderGraph を経由しない直接呼び出し（レガシー経路）。
         // ViewInfo を持たないため、その場で 1 つ組み立てて本経路へ合流させる。
         if (!camera) return;

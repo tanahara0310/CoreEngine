@@ -12,7 +12,7 @@
 
 namespace CoreEngine
 {
-    class ICamera;
+    class Camera;
     class ModelResource;
     class HiZOcclusionSystem;
     struct BoundingBox;
@@ -34,7 +34,7 @@ namespace CoreEngine
         ///          カメラを近づければ自然にフル詳細へ、遠ざかるほど低ポリへ切り替わる。
         ///          返り値は SubMeshData::GetLod でクランプされる前提。
         static uint32_t SelectLod(const ModelResource& resource, const Matrix4x4& worldMatrix,
-            const ICamera* camera);
+            const Camera* camera);
 
         /// @brief オブジェクト単位の視錐台カリング判定（デバッグトグル込み）
         /// @details カリング判定と RenderOptimizationSettings の参照を Culling 層へ

@@ -60,13 +60,13 @@ namespace CoreEngine
         virtual void Finalize() override final;
 
         /// @brief Gameビュー用3Dカメラを取得
-        ICamera* GetGameViewCamera3D() const override;
+        Camera* GetGameViewCamera3D() const override;
 
         /// @brief 既定の Gameビュー用3Dカメラを取得
-        ICamera* GetDefaultGameViewCamera3D() const override;
+        Camera* GetDefaultGameViewCamera3D() const override;
 
         /// @brief Gameビュー用2Dカメラを取得
-        ICamera* GetGameViewCamera2D() const override;
+        Camera* GetGameViewCamera2D() const override;
 
         /// @brief 現在のゲームオブジェクトマネージャーを取得
         GameObjectManager* GetGameObjectManager() override { return &gameObjectManager_; }

@@ -4,7 +4,7 @@
 
 namespace CoreEngine
 {
-    class ICamera;
+    class Camera;
     struct ViewInfo;
 
     /// @brief 1 回の描画呼び出しに対するビュー/パス情報
@@ -21,8 +21,8 @@ namespace CoreEngine
         RenderViewType viewType = RenderViewType::GameView; ///< 実行中のビュー種別
         bool isGBufferPass = false;                    ///< true: GBuffer 蓄積パス / false: Forward 系パス
 
-        /// @brief 移行期の互換用カメラ取得（レガシーな Draw(const ICamera*) 経路向け）
+        /// @brief 移行期の互換用カメラ取得（レガシーな Draw(const Camera*) 経路向け）
         /// @return ビュー未設定なら nullptr
-        const ICamera* GetCamera() const;
+        const Camera* GetCamera() const;
     };
 }

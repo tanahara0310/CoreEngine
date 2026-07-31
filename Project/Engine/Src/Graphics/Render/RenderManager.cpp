@@ -11,7 +11,7 @@
 #include "Graphics/Render/Model/IBLParameters.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "GameObjects/SkyBox/SkyBoxObject.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include <algorithm>
@@ -134,7 +134,7 @@ namespace CoreEngine
         auto* modelGBuffer   = dynamic_cast<IGBufferRenderer*>(modelRenderer);
         auto* skinnedGBuffer = dynamic_cast<IGBufferRenderer*>(skinnedRenderer);
         const ViewInfo* currentView = GetViewForPass(RenderPassType::Model, viewType);
-        const ICamera* currentCamera = currentView ? currentView->camera : nullptr;
+        const Camera* currentCamera = currentView ? currentView->camera : nullptr;
 
         if (modelRenderer) {
             modelRenderer->SetCamera(currentCamera);
