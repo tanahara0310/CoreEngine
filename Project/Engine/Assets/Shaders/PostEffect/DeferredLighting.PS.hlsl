@@ -32,8 +32,8 @@ ConstantBuffer<Camera> gCamera : register(b2);
 // ============================================================
 // 深度復元用（WorldPosition ターゲット廃止に伴う追加）
 // ============================================================
-// gCamera（b2）は BaseModelRenderer の WVP 用 CBV を共有しており、反射ビュー等の補助ビュー
-// 描画中は意図的に更新されない（フリッカー防止のため。Camera::BeginViewOverride 参照）。
+// gCamera（b2）は BaseModelRenderer の WVP 用 CBV を共有しており、フリッカー防止のため
+// フレーム更新時に 1 回しか書かれない（Camera::TransferMatrix 参照）。
 // そのため invViewProj は毎ビュー確実に更新される専用 CBV として別に持つ。
 struct DepthReconstructionParams
 {

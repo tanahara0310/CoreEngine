@@ -31,7 +31,6 @@ namespace CoreEngine
             bool invertY = false;     // Y軸反転
             bool smoothMovement = true;    // スムーズ移動
             float smoothingFactor = 0.2f;           // スムージング係数
-            bool useGameView = false;               // Gameビューでのカメラ操作を有効化
 
             // ===== WASD 自由移動（distance_/target_ の束縛を受けないワールド固定速度） =====
             float flySpeed = 10.0f;        // 基本速度 [m/s]
@@ -83,14 +82,11 @@ namespace CoreEngine
 
         /// @brief ビュー行列を取得（ICamera から）
         const Matrix4x4& GetViewMatrix() const override {
-            return viewOverrideActive_ ? overrideViewMatrix_ : viewMatrix_;
+            return viewMatrix_;
         }
 
         /// @brief プロジェクション行列を取得（ICamera から）
         const Matrix4x4& GetProjectionMatrix() const override {
-            if (projectionOverrideActive_) {
-                return overrideProjectionMatrix_;
-            }
             return projectionJitterActive_ ? jitteredProjectionMatrix_ : projectionMatrix_;
         }
 
@@ -116,15 +112,6 @@ namespace CoreEngine
 
         /// @brief カメラパラメータを設定
         void SetParameters(const CameraParameters& params) override { parameters_ = params; }
-
-        /// @brief ビュー行列と視点位置を一時的に差し替える（ICamera から）
-        bool BeginViewOverride(
-            const Matrix4x4& viewMatrix,
-            const Vector3& viewPosition,
-            const Matrix4x4* projectionOverride = nullptr) override;
-
-        /// @brief ビュー差し替えを解除する（ICamera から）
-        void EndViewOverride() override;
 
         // ====== DebugCamera 固有のアクセッサ ======
 
@@ -174,7 +161,7 @@ namespace CoreEngine
 
         /// @brief カメラが操作中かどうか
         /// @return 操作中の場合true
-        bool IsControlling() const { return draggingLeft_ || draggingMiddle_; }
+        bool IsControlling() const { return orbiting_ || panning_; }
 
     /// @brief カメラパラメータをリセット
     void ResetParameters() { parameters_.Reset(); }
@@ -202,9 +189,9 @@ private:
         Microsoft::WRL::ComPtr<ID3D12Resource> cameraGPUResource_;
         CameraForGPU* cameraGPUData_ = nullptr;
 
-        // 操作状態
-        bool draggingLeft_;   // 左ドラッグ中
-        bool draggingMiddle_;               // 中ドラッグ中
+        // 操作状態（Blender と同じ割り当て：中ドラッグ＝回転 / Shift+中ドラッグ＝パン）
+        bool orbiting_;   // 回転（オービット）中
+        bool panning_;    // パン中
 
         // 設定
         CameraSettings settings_;       // カメラ設定
@@ -241,9 +228,9 @@ private:
         /// @param deltaTime 前フレームからの経過秒
         void HandleKeyboardInput(float deltaTime);
 
-        /// @brief シーンウィンドウ内でのマウス操作かを判定
-        /// @return シーンウィンドウ内での操作の場合true
-        bool IsMouseInSceneWindow() const;
+        /// @brief Gameビューウィンドウ内でのマウス操作かを判定
+        /// @return Gameビューウィンドウ内での操作の場合true
+        bool IsMouseInGameWindow() const;
 #endif
 
         /// @brief ビュー行列とプロジェクション行列を更新

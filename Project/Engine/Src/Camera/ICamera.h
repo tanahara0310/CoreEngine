@@ -65,28 +65,6 @@ namespace CoreEngine
             return frustum;
         }
 
-        /// @brief ビュー行列と視点位置を一時的に差し替える（平面反射などの補助ビュー描画用）
-        /// @details 差し替え中も カメラ自身の transform / 入力状態は変更しない。
-        ///          EndViewOverride() で即座に元のビューへ戻る。
-        ///          対応していないカメラ実装では false を返す（呼び出し側は
-        ///          差し替え無しで描画される前提のフォールバックを行うこと）。
-        /// @param viewMatrix 差し替え後のビュー行列
-        /// @param viewPosition 差し替え後の視点ワールド座標（GPU の gCamera.worldPosition に反映）
-        /// @param projectionOverride 差し替え後の射影行列（斜交近クリップ等）。nullptr なら通常の射影を使う
-        /// @return 差し替えが適用された場合 true
-        virtual bool BeginViewOverride(
-            const Matrix4x4& viewMatrix,
-            const Vector3& viewPosition,
-            const Matrix4x4* projectionOverride = nullptr) {
-            (void)viewMatrix;
-            (void)viewPosition;
-            (void)projectionOverride;
-            return false;
-        }
-
-        /// @brief BeginViewOverride() によるビュー差し替えを解除する
-        virtual void EndViewOverride() {}
-
         /// @brief TAA 用のサブピクセルジッタ（NDC 単位）を設定する
         /// @details 射影行列へジッタを加えた写しを内部に作り、以降 GetProjectionMatrix() が
         ///          そちらを返すようにする。モデルの WVP・深度復元用の invViewProj・視錐台が
@@ -113,20 +91,10 @@ namespace CoreEngine
 
         // ===== SetProjectionJitter() 用の共有状態 =====
         // 対応するカメラ実装は GetProjectionMatrix() でこの状態を参照する。
-        // ビュー差し替え（BeginViewOverride）中は補助ビューの描画なのでジッタより差し替えを優先する。
         bool projectionJitterActive_ = false;
         float projectionJitterX_ = 0.0f;
         float projectionJitterY_ = 0.0f;
         Matrix4x4 jitteredProjectionMatrix_{};
-
-        // ===== BeginViewOverride() 用の共有状態 =====
-        // 対応するカメラ実装（Camera / DebugCamera）は GetViewMatrix() / GetProjectionMatrix() /
-        // GetPosition() / TransferMatrix() でこの状態を参照する。
-        bool viewOverrideActive_ = false;
-        bool projectionOverrideActive_ = false;
-        Matrix4x4 overrideViewMatrix_{};
-        Matrix4x4 overrideProjectionMatrix_{};
-        Vector3 overrideViewPosition_{ 0.0f, 0.0f, 0.0f };
 
     };
 }

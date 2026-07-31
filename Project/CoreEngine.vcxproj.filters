@@ -211,12 +211,6 @@
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\CameraPresetManager.cpp">
-      <Filter>Engine\Src\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\CameraShake.cpp">
-      <Filter>Engine\Src\Camera</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
@@ -1048,12 +1042,6 @@
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\CameraManager.h">
-      <Filter>Engine\Src\Camera</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\CameraPresetManager.h">
-      <Filter>Engine\Src\Camera</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\CameraShake.h">
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h">

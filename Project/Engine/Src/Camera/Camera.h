@@ -4,7 +4,6 @@
 #include <wrl.h>
 
 #include "Math/MathCore.h"
-#include "Graphics/Model/TransformationMatrix.h"
 #include "Camera/ICamera.h"
 #include "Camera/CameraStructs.h"
 
@@ -35,14 +34,11 @@ namespace CoreEngine {
 
         /// @brief ビューマトリックスの取得（ICamera から）
         const Matrix4x4& GetViewMatrix() const override {
-            return viewOverrideActive_ ? overrideViewMatrix_ : viewMatrix_;
+            return viewMatrix_;
         }
 
         /// @brief プロジェクションマトリックスの取得（ICamera から）
         const Matrix4x4& GetProjectionMatrix() const override {
-            if (projectionOverrideActive_) {
-                return overrideProjectionMatrix_;
-            }
             return projectionJitterActive_ ? jitteredProjectionMatrix_ : projectionMatrix_;
         }
 
@@ -51,7 +47,7 @@ namespace CoreEngine {
 
         /// @brief カメラの位置取得（ICamera から）
         Vector3 GetPosition() const override {
-            return viewOverrideActive_ ? overrideViewPosition_ : translate_;
+            return translate_;
         }
 
         /// @brief カメラのGPU仮想アドレスを取得（ICamera から）
@@ -70,15 +66,6 @@ namespace CoreEngine {
 
         /// @brief カメラパラメータを設定
         void SetParameters(const CameraParameters& params) override { parameters_ = params; }
-
-        /// @brief ビュー行列と視点位置を一時的に差し替える（ICamera から）
-        bool BeginViewOverride(
-            const Matrix4x4& viewMatrix,
-            const Vector3& viewPosition,
-            const Matrix4x4* projectionOverride = nullptr) override;
-
-        /// @brief ビュー差し替えを解除する（ICamera から）
-        void EndViewOverride() override;
 
         // ====== Camera 固有のアクセッサ ======
 
@@ -143,9 +130,8 @@ namespace CoreEngine {
         Matrix4x4 projectionMatrix_; // 射影行列
         Matrix4x4 cameraMatrix_; // カメラ行列
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
-        TransformationMatrix* cameraData_ = nullptr;
-
+        // GPU 用リソース（CameraForGPU = 視点ワールド座標）。
+        // GetGPUVirtualAddress() が返すのはこのバッファで、BaseModelRenderer が gCamera として束縛する。
         Microsoft::WRL::ComPtr<ID3D12Resource> cameraGPUResource_;
         CameraForGPU* cameraGPUData_ = nullptr;
 

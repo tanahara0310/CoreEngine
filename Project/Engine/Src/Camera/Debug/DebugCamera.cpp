@@ -21,8 +21,8 @@ namespace CoreEngine
         , projectionMatrix_(Matrix::Identity())
         , cameraGPUResource_(nullptr)
         , cameraGPUData_(nullptr)
-        , draggingLeft_(false)
-        , draggingMiddle_(false)
+        , orbiting_(false)
+        , panning_(false)
         , settings_{}
         , parameters_{}  // デフォルトパラメータ
         , targetSmooth_{ 0.0f, 0.0f, 0.0f }
@@ -84,11 +84,6 @@ namespace CoreEngine
 
     Vector3 DebugCamera::GetPosition() const
     {
-        // ビュー差し替え（BeginViewOverride）中は差し替え後の視点を返す
-        if (viewOverrideActive_) {
-            return overrideViewPosition_;
-        }
-
         // スムーズ移動が有効な場合はスムーズ値を使用
         if (settings_.smoothMovement) {
             return {
@@ -132,38 +127,13 @@ namespace CoreEngine
 
     void DebugCamera::TransferMatrix()
     {
-        // カメラ座標の転送（CameraForGPU）
-        // GetPosition() がビュー差し替え（BeginViewOverride）を考慮する
+        // カメラ座標の転送（CameraForGPU）。
+        // GPU 定数バッファは単一のアップロードバッファなので、フレーム内で複数回書き換えると
+        // 実行中の前フレーム（インフライト）がどちらを読むかタイミング依存になる。
+        // 書き込みは Update() からのフレーム更新時 1 回に限ること。
         if (cameraGPUData_) {
             cameraGPUData_->worldPosition = GetPosition();
         }
-    }
-
-    bool DebugCamera::BeginViewOverride(
-        const Matrix4x4& viewMatrix,
-        const Vector3& viewPosition,
-        const Matrix4x4* projectionOverride)
-    {
-        // 差し替え中も distance_ / target_ 等の操作状態には一切触れない。
-        // TransferMatrix()（GPU 定数バッファへの書き込み）もここでは行わない。
-        // 定数バッファは単一のアップロードバッファであり、フレーム内で
-        // 「差し替え→復元」と 2 回書き換えると実行中の前フレーム（インフライト）が
-        // どちらを読むかタイミング依存になり、カメラ位置依存のフレネル項が
-        // 毎フレームちらつく。差し替えは CPU 側 WVP 計算経路にのみ作用させる。
-        viewOverrideActive_ = true;
-        overrideViewMatrix_ = viewMatrix;
-        overrideViewPosition_ = viewPosition;
-        projectionOverrideActive_ = (projectionOverride != nullptr);
-        if (projectionOverride) {
-            overrideProjectionMatrix_ = *projectionOverride;
-        }
-        return true;
-    }
-
-    void DebugCamera::EndViewOverride()
-    {
-        viewOverrideActive_ = false;
-        projectionOverrideActive_ = false;
     }
 
     void DebugCamera::ApplyPreset(CameraPreset preset)
@@ -285,8 +255,8 @@ namespace CoreEngine
         // === ギズモ操作中はカメラ操作を無効化 ===
         bool gizmoActive = ImGuizmo::IsOver() || ImGuizmo::IsUsing();
         if (gizmoActive) {
-            draggingLeft_ = false;
-            draggingMiddle_ = false;
+            orbiting_ = false;
+            panning_ = false;
             return;
         }
 
@@ -296,8 +266,8 @@ namespace CoreEngine
             || mc == ImGuiMouseCursor_ResizeNS
             || mc == ImGuiMouseCursor_Hand
             || ImGui::IsDragDropActive()) {
-            draggingLeft_ = false;
-            draggingMiddle_ = false;
+            orbiting_ = false;
+            panning_ = false;
             return;
         }
 
@@ -308,8 +278,8 @@ namespace CoreEngine
         }
         auto& input = inputManager->GetQuery();
 
-        // シーンウィンドウ内での操作かを判定
-        bool isInSceneWindow = IsMouseInSceneWindow();
+        // Gameビューウィンドウ内での操作かを判定
+        bool isInGameWindow = IsMouseInGameWindow();
 
         // Shiftキーの状態を取得
         bool isShiftPressed = input.IsKeyPressed(DIK_LSHIFT) || input.IsKeyPressed(DIK_RSHIFT);
@@ -318,26 +288,26 @@ namespace CoreEngine
         bool middlePressed = input.IsMouseButtonPressed(MouseButton::Middle);
         bool middleTriggered = input.IsMouseButtonTriggered(MouseButton::Middle);
 
-        if (middleTriggered && isInSceneWindow) {
+        if (middleTriggered && isInGameWindow) {
             if (isShiftPressed) {
-                draggingMiddle_ = true; // Shift + 中ボタン = パン操作
-                draggingLeft_ = false;
+                panning_ = true;    // Shift + 中ボタン = パン操作
+                orbiting_ = false;
             } else {
-                draggingLeft_ = true;   // 中ボタンのみ = 回転操作
-                draggingMiddle_ = false;
+                orbiting_ = true;   // 中ボタンのみ = 回転操作
+                panning_ = false;
             }
             POINT pos = input.GetCursorPosition();
             mouseState_.lastX = static_cast<float>(pos.x);
             mouseState_.lastY = static_cast<float>(pos.y);
         }
 
-        if (!middlePressed || !isInSceneWindow) {
-            draggingLeft_ = false;
-            draggingMiddle_ = false;
+        if (!middlePressed || !isInGameWindow) {
+            orbiting_ = false;
+            panning_ = false;
         }
 
         // === 回転操作（中ボタンドラッグ） ===
-        if (draggingLeft_) {
+        if (orbiting_) {
             POINT currentPos = input.GetCursorPosition();
             float currentX = static_cast<float>(currentPos.x);
             float currentY = static_cast<float>(currentPos.y);
@@ -369,7 +339,7 @@ namespace CoreEngine
         }
 
         // === パン操作（Shift + 中ボタンドラッグ） ===
-        if (draggingMiddle_) {
+        if (panning_) {
             POINT currentPos = input.GetCursorPosition();
             float currentX = static_cast<float>(currentPos.x);
             float currentY = static_cast<float>(currentPos.y);
@@ -401,12 +371,12 @@ namespace CoreEngine
 
         // === ホイールによるズーム ===
         int wheelDelta = input.GetWheelDelta();
-        if (!isInSceneWindow) {
-            // シーン外で溜まった値を持ち越さない
+        if (!isInGameWindow) {
+            // ビューポート外で溜まった値を持ち越さない
             mouseState_.accumulatedWheelDelta = 0;
         }
 
-        if (isInSceneWindow && wheelDelta != 0) {
+        if (isInGameWindow && wheelDelta != 0) {
             // ホイールの値をフレーム単位で累積
             mouseState_.accumulatedWheelDelta += wheelDelta;
 
@@ -463,8 +433,8 @@ namespace CoreEngine
             return;
         }
 
-        // シーン/ゲームビューをホバー中のみ有効（他の操作中の誤動作防止）
-        if (!IsMouseInSceneWindow()) {
+        // Gameビューをホバー中のみ有効（他の操作中の誤動作防止）
+        if (!IsMouseInGameWindow()) {
             return;
         }
 
@@ -508,11 +478,11 @@ namespace CoreEngine
         ClampTargetToWorldBounds();
     }
 
-    bool DebugCamera::IsMouseInSceneWindow() const
+    bool DebugCamera::IsMouseInGameWindow() const
     {
-        // useGameView が有効な場合は "Game" ウィンドウ、無効な場合は "Scene" ウィンドウを判定する
-        const char* targetWindowName = settings_.useGameView ? "Game" : "Scene";
-        ImGuiWindow* targetWin = ImGui::FindWindowByName(targetWindowName);
+        // ビューポートは DockingUI が登録する "Game" ウィンドウのみ。
+        // （かつて "Scene" ウィンドウ向けの分岐があったが、そのウィンドウは存在しない）
+        ImGuiWindow* targetWin = ImGui::FindWindowByName("Game");
         if (!targetWin) {
             return false;
         }

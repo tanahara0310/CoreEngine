@@ -12,7 +12,6 @@ namespace CoreEngine
         }
 
         // 操作設定
-        // useGameView はコード制御フラグ（BaseScene::SetupCamera が設定）のため保存しない
         const auto& s = camera_->GetSettings();
         out["rotationSensitivity"] = s.rotationSensitivity;
         out["panSensitivity"] = s.panSensitivity;

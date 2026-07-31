@@ -121,8 +121,8 @@ namespace CoreEngine {
 
     void CameraDebugUI::Draw()
     {
-        UpdateModules();
-
+        // モジュールの更新は SceneDebugEditor::Update() → CameraManager::UpdateDebugModules()
+        // に一本化する。ここで呼ぶと 1 フレームに 2 回更新されてしまう。
         if (ImGui::Begin("Camera", nullptr, ImGuiWindowFlags_None)) {
             DrawContent();
         }

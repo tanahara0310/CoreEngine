@@ -256,8 +256,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera2D.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
-    <ClCompile Include="Engine\Src\Camera\CameraPresetManager.cpp" />
-    <ClCompile Include="Engine\Src\Camera\CameraShake.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\CameraDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraFollowEditorModule.cpp" />
@@ -552,8 +550,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h" />
     <ClInclude Include="Engine\Src\Camera\Camera2D.h" />
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
-    <ClInclude Include="Engine\Src\Camera\CameraPresetManager.h" />
-    <ClInclude Include="Engine\Src\Camera\CameraShake.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\CameraDebugUI.h" />

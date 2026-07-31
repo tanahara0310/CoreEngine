@@ -11,7 +11,7 @@ namespace CoreEngine
     /// @brief DebugCamera の設定・姿勢を自動保存するセクションアダプタ
     /// @details DebugCamera 本体に nlohmann/json への依存を持ち込まないため、
     ///          シリアライズ処理をアダプタとして分離する。
-    ///          保存対象: CameraSettings（useGameView 除く）・姿勢（target/distance/pitch/yaw）・
+    ///          保存対象: CameraSettings・姿勢（target/distance/pitch/yaw）・
     ///          投影パラメータ（fov/nearClip/farClip/aspectRatio）
     class DebugCameraSettingsSection : public IEditorSettingsSection
     {
