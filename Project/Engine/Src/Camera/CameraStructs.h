@@ -13,6 +13,18 @@ enum class CameraType {
     Camera2D   // 2D用カメラ（正射影）
 };
 
+/// @brief エンジンが既定で用意するカメラの名前
+/// @details 役割は API 名（SceneCamera / GameCamera）で表す。ここは登録キーの文字列で、
+///          コード各所へマジックストリングが散らばるのを防ぐためだけに置いている。
+namespace CameraNames {
+    /// @brief エディタ視点カメラ（Blender 風の軌道操作つき）
+    inline constexpr const char* Scene = "Debug";
+    /// @brief ゲーム視点カメラ（シーンが構図を決める）
+    inline constexpr const char* Game = "Release";
+    /// @brief 2D（正射影）カメラ
+    inline constexpr const char* Camera2D = "Camera2D";
+}
+
 /// @brief カメラのGPU用構造体
 struct CameraForGPU {
     Vector3 worldPosition; // ワールド座標

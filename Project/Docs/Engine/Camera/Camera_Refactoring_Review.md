@@ -343,31 +343,50 @@ class EditorCameraInput;           // Editor/Camera/。ImGui 依存はここだ�
   既定では無効なので現状の競合リスクは低いが、`FollowController` / `ClipPlaybackController`
   として `ICameraController` に載せれば「1 カメラ 1 コントローラ」の保証が全操作へ及ぶ。
 
-### Phase 4: エディタ側の整理（使い勝手の本丸）
-現状の「Debug カメラ／Release カメラを `SetActiveCamera` + `SetGameViewCameraOverride` の
-**2 つの状態**で切り替える」をやめ、Unity/UE と同じ役割分担にする。
+### Phase 4: エディタ側の整理 — **実施済み（2026-07-31）**
 
-| | 所有者 | 寿命 | 保存 |
-|---|---|---|---|
-| **Scene カメラ** | エディタ（`EngineSystem` 側） | シーンをまたいで生存 | `DebugCameraSettingsSection` を流用 |
-| **Game カメラ** | シーン | シーンと同じ | シーン JSON |
+「Debug カメラ／Release カメラを `SetActiveCamera` + `SetGameViewCameraOverride` の
+**2 つの状態**で切り替える」をやめ、役割 2 つ + フラグ 1 つにした。
 
-- Game ウィンドウに流す ViewInfo を Scene カメラ由来にするかどうか、を**フラグ 1 つ**にする
-  （現在のキー 1/2 はこのフラグのトグルになる）。二重管理と復元処理が消える。
-- ギズモ／ピッキングは「そのウィンドウを実際に描いた ViewInfo」を使う → B のギズモずれが消える。
-- カメラ一覧はシーンの Game カメラの選択 UI にする（選択＝描画にも反映される、が保証される）。
-- マジックストリングを `CameraId`（強い型 or ハンドル）へ。`ICamera*` の生キャッシュをやめる。
-
-### 推奨順序と規模感
+```cpp
+// CameraManager
+SetSceneCameraName(name);   // エディタ視点（既定 "Debug"）
+SetGameCameraName(name);    // ゲーム視点（既定 "Release"）
+SetUseSceneCamera(bool);    // ← どちらを覗いているかはこのフラグ 1 つだけ
+Camera* GetViewCamera();    // 描画・ギズモ・ピッキングが見る唯一の 3D カメラ
 ```
-Phase 0 掃除            半日   単独マージ可・振る舞い不変
-Phase 1 ViewInfo        2-3日  ★描画側の整合性が構造で保証される。最優先
-Phase 2 カメラのデータ化 2日    dynamic_cast 21 箇所が消える
-Phase 3 操作の分離       2日    使い勝手の改善が入るのはここ
-Phase 4 エディタ統合     2日    Scene/Game カメラの整理
+
+1. ✅ **状態を 1 つに統合**。`gameViewCameraOverride_` と 3D の「アクティブカメラ名」を廃止。
+   キー 1/2 は `SetUseSceneCamera(true/false)` のトグルになった。
+2. ✅ **`GetActiveCamera(Camera3D)` を `GetViewCamera()` に一本化**。
+   ギズモ／ピッキング（`ObjectSelector` / `Gizmo`）と描画が同じカメラを見ることが
+   型のレベルで保証され、**問題 B（一覧で選んでもギズモだけズレる）が消えた**。
+3. ✅ シーン側の解決規則を撤去。`BaseScene::ResolveGameViewCameraName()` /
+   `GetDefaultGameViewCamera3D()`（呼び出し元ゼロの死に API）/ `gameViewCameraName_` を削除し、
+   `IScene` / `SceneManager` からも `GetDefaultGameViewCamera3D` を除去。
+4. ✅ マジックストリングを `CameraNames::Scene / Game / Camera2D` に集約。
+   登録キーの文字列は従来のまま（"Debug" / "Release"）で、役割は API 名で表す。
+5. ✅ カメラ一覧 UI を「ビューの切り替え（エディタ視点／ゲーム視点）」＋
+   「各カメラを役割へ割り当てる」構成に変更。選択が必ず描画へ反映される。
+
+**残り（未実施）**: Scene カメラをエディタ（`EngineSystem`）所有にしてシーンをまたいで生存させる件。
+現在も `BaseScene` が両方を所有しており、シーン切替でエディタ視点がリセットされる。
+姿勢自体は `DebugCamera.json` から復元されるため実害は小さい。所有権と
+`EditorSettingsSubsystem` への登録タイミングを動かす変更になるため、独立した作業として切り出す。
+
+**検証**: Development / Release 両構成ビルド成功。実機で描画がベースラインと一致。
+起動 → 20 秒放置 → 終了で `DebugCamera.json` に変化なし。
+
+### 推奨順序と規模感（実績）
+```
+Phase 0 掃除            振る舞い不変。単独マージ可
+Phase 1 ViewInfo        ★描画側の整合性が構造で保証される。最優先
+Phase 2 カメラのデータ化 dynamic_cast 21 箇所 → 0
+Phase 3 操作の分離       ImGui 依存がカメラ層から消える
+Phase 4 エディタ統合     Scene/Game カメラの整理（使い勝手の本丸）
 ```
 Phase 1 を先に済ませると、Phase 2/3 でカメラ型を触っても描画側へ波及しない（境界が ViewInfo で切れる）ため、
-この順序が最も安全。
+この順序が最も安全だった。
 
 ---
 

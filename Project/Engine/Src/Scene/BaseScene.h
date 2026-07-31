@@ -62,9 +62,6 @@ namespace CoreEngine
         /// @brief Gameビュー用3Dカメラを取得
         Camera* GetGameViewCamera3D() const override;
 
-        /// @brief 既定の Gameビュー用3Dカメラを取得
-        Camera* GetDefaultGameViewCamera3D() const override;
-
         /// @brief Gameビュー用2Dカメラを取得
         Camera* GetGameViewCamera2D() const override;
 
@@ -91,7 +88,7 @@ namespace CoreEngine
         /// @return true で自動生成（既定）。床が不要／邪魔になるシーンだけ false を返す。
         virtual bool WantsDefaultGround() const { return true; }
 
-        /// @brief 既定の GameView カメラ（"Release"）の位置・回転を上書きする
+        /// @brief ゲーム視点カメラ（CameraNames::Game）の位置・回転を上書きする
         /// @param translate ワールド座標（無限床より上＝y > 0 にすること）
         /// @param rotate    オイラー角（ラジアン）
         /// @note OnInitialize() から呼ぶ。シーン固有の構図に合わせて使う。
@@ -111,9 +108,6 @@ namespace CoreEngine
 
         /// @brief カメラのセットアップ
         void SetupCamera();
-
-        /// @brief Gameビューに使用する3Dカメラ名を解決
-        std::string ResolveGameViewCameraName() const;
 
         /// @brief 既定 Feature（ライト・グリッド・デバッグエディタ・コリジョン・環境・BGM）を登録
         void RegisterDefaultFeatures();
@@ -222,6 +216,5 @@ namespace CoreEngine
         std::unique_ptr<DebugCameraSettingsSection> debugCameraSettingsSection_;
 #endif
 
-        std::string gameViewCameraName_ = "Release";
     };
 }

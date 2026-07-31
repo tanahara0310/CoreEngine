@@ -22,22 +22,17 @@ namespace CoreEngine
         const CameraType cameraType = camera->GetCameraType();
 
         // 既存の同名カメラがあればアクティブ参照をクリアしてから差し替える
-        if (cameras_.find(name) != cameras_.end()) {
-            if (cameraType == CameraType::Camera3D && activeCamera3DName_ == name) {
-                activeCamera3DName_.clear();
-                activeCamera3D_ = nullptr;
-            } else if (cameraType == CameraType::Camera2D && activeCamera2DName_ == name) {
-                activeCamera2DName_.clear();
-                activeCamera2D_ = nullptr;
-            }
+        if (cameras_.find(name) != cameras_.end()
+            && cameraType == CameraType::Camera2D && activeCamera2DName_ == name) {
+            activeCamera2DName_.clear();
+            activeCamera2D_ = nullptr;
         }
 
         cameras_[name] = std::move(camera);
 
-        // タイプごとに最初に登録されたカメラを自動的にアクティブに設定
-        if (cameraType == CameraType::Camera3D && !activeCamera3D_) {
-            SetActiveCamera(name, CameraType::Camera3D);
-        } else if (cameraType == CameraType::Camera2D && !activeCamera2D_) {
+        // 2D は最初に登録されたものを自動的にアクティブにする。
+        // 3D は役割（Scene / Game）で引くため、ここでアクティブ指定は行わない。
+        if (cameraType == CameraType::Camera2D && !activeCamera2D_) {
             SetActiveCamera(name, CameraType::Camera2D);
         }
     }
@@ -49,12 +44,7 @@ namespace CoreEngine
             return;
         }
 
-        const CameraType cameraType = it->second->GetCameraType();
-
-        if (cameraType == CameraType::Camera3D && activeCamera3DName_ == name) {
-            activeCamera3DName_.clear();
-            activeCamera3D_ = nullptr;
-        } else if (cameraType == CameraType::Camera2D && activeCamera2DName_ == name) {
+        if (it->second->GetCameraType() == CameraType::Camera2D && activeCamera2DName_ == name) {
             activeCamera2DName_.clear();
             activeCamera2D_ = nullptr;
         }
@@ -71,35 +61,57 @@ namespace CoreEngine
 
     ICameraController* CameraManager::GetActiveController() const
     {
-        return activeCamera3DName_.empty() ? nullptr : GetController(activeCamera3DName_);
+        const std::string& name = GetViewCameraName();
+        return name.empty() ? nullptr : GetController(name);
+    }
+
+    const std::string& CameraManager::GetViewCameraName() const
+    {
+        static const std::string empty;
+
+        // 覗いている側が未登録なら、もう一方へフォールバックする
+        // （シーンが片方しか用意していない場合でも画が出るように）
+        const std::string& primary = useSceneCamera_ ? sceneCameraName_ : gameCameraName_;
+        if (cameras_.find(primary) != cameras_.end()) {
+            return primary;
+        }
+
+        const std::string& fallback = useSceneCamera_ ? gameCameraName_ : sceneCameraName_;
+        if (cameras_.find(fallback) != cameras_.end()) {
+            return fallback;
+        }
+
+        return empty;
+    }
+
+    Camera* CameraManager::GetViewCamera() const
+    {
+        const std::string& name = GetViewCameraName();
+        return name.empty() ? nullptr : GetCamera(name);
     }
 
     bool CameraManager::SetActiveCamera(const std::string& name, CameraType type)
     {
+        // 3D は役割（Scene / Game）で決まるため、ここでは 2D のみ扱う
+        if (type != CameraType::Camera2D) {
+            return false;
+        }
+
         auto it = cameras_.find(name);
-        if (it == cameras_.end()) {
+        if (it == cameras_.end() || it->second->GetCameraType() != CameraType::Camera2D) {
             return false;
         }
 
-        if (it->second->GetCameraType() != type) {
-            return false;
-        }
-
-        if (type == CameraType::Camera3D) {
-            activeCamera3DName_ = name;
-            activeCamera3D_ = it->second.get();
-        } else if (type == CameraType::Camera2D) {
-            activeCamera2DName_ = name;
-            activeCamera2D_ = it->second.get();
-        }
-
+        activeCamera2DName_ = name;
+        activeCamera2D_ = it->second.get();
         return true;
     }
 
     Camera* CameraManager::GetActiveCamera(CameraType type) const
     {
+        // 3D は「今覗いているカメラ」と同一。編集対象と描画対象が食い違わないようにする。
         if (type == CameraType::Camera3D) {
-            return activeCamera3D_;
+            return GetViewCamera();
         }
         if (type == CameraType::Camera2D) {
             return activeCamera2D_;
@@ -117,7 +129,7 @@ namespace CoreEngine
     {
         static const std::string empty;
         if (type == CameraType::Camera3D) {
-            return activeCamera3DName_;
+            return GetViewCameraName();
         }
         if (type == CameraType::Camera2D) {
             return activeCamera2DName_;

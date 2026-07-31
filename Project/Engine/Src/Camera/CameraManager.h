@@ -71,7 +71,7 @@ namespace CoreEngine
             return dynamic_cast<T*>(GetController(name));
         }
 
-        /// @brief アクティブ 3D カメラのコントローラを取得
+        /// @brief 現在覗いている 3D カメラのコントローラを取得
         ICameraController* GetActiveController() const;
 
         /// @brief アクティブ 3D カメラのコントローラを型付きで取得
@@ -81,19 +81,54 @@ namespace CoreEngine
             return dynamic_cast<T*>(GetActiveController());
         }
 
-        /// @brief アクティブ 3D カメラの軌道コントローラを取得（未取り付け／別種なら nullptr）
+        /// @brief 現在覗いている 3D カメラの軌道コントローラを取得（未取り付け／別種なら nullptr）
         OrbitFlyController* GetActiveOrbitController() const
         {
             return GetActiveControllerAs<OrbitFlyController>();
         }
 
-        /// @brief アクティブカメラを設定（カメラタイプ別）
+        // ===== カメラの役割（Scene / Game）=====
+        //
+        // 以前は「アクティブカメラ名」と「Gameビュー上書き名」という 2 つの状態で
+        // Debug / Release を切り替えており、片方だけ変える UI があったために
+        // 「一覧で選んでも画は変わらないのにギズモだけズレる」状態が起きていた。
+        //
+        // 役割を 2 つに固定し、「どちらを覗いているか」をフラグ 1 つで表す。
+        //   Scene カメラ … エディタ視点。シーンの構図とは無関係に自由に動かす
+        //   Game  カメラ … ゲーム視点。シーンが構図を決める
+        // 描画・ギズモ・ピッキングはすべて GetViewCamera() を見るため食い違わない。
+
+        /// @brief エディタ視点カメラの名前を設定
+        void SetSceneCameraName(const std::string& name) { sceneCameraName_ = name; }
+        const std::string& GetSceneCameraName() const { return sceneCameraName_; }
+
+        /// @brief ゲーム視点カメラの名前を設定
+        void SetGameCameraName(const std::string& name) { gameCameraName_ = name; }
+        const std::string& GetGameCameraName() const { return gameCameraName_; }
+
+        /// @brief エディタ視点で覗くかどうかを設定（false = ゲーム視点）
+        void SetUseSceneCamera(bool useSceneCamera) { useSceneCamera_ = useSceneCamera; }
+
+        /// @brief エディタ視点で覗いているか
+        bool IsUsingSceneCamera() const { return useSceneCamera_; }
+
+        /// @brief 今このフレームで覗いている 3D カメラ
+        /// @details 描画・ギズモ・ピッキングが参照する唯一の 3D カメラ。
+        /// @return カメラ（未登録なら nullptr）
+        Camera* GetViewCamera() const;
+
+        /// @brief 現在覗いている 3D カメラの名前
+        const std::string& GetViewCameraName() const;
+
+        /// @brief アクティブカメラを設定（2D 専用）
         /// @param name カメラの名前
-        /// @param type カメラタイプ（3D or 2D）
+        /// @param type カメラタイプ（Camera2D のみ有効）
         /// @return 設定に成功した場合true
         bool SetActiveCamera(const std::string& name, CameraType type);
 
         /// @brief アクティブカメラを取得（カメラタイプ別）
+        /// @details Camera3D は GetViewCamera() と同じものを返す。
+        ///          「編集対象のカメラ」と「描画に使うカメラ」を一致させるための入口。
         /// @param type カメラタイプ（3D or 2D）
         /// @return アクティブカメラのポインタ（存在しない場合nullptr）
         Camera* GetActiveCamera(CameraType type) const;
@@ -116,12 +151,6 @@ namespace CoreEngine
 
         /// @brief 全カメラのコンテナを取得（デバッグUI用）
         const std::unordered_map<std::string, std::unique_ptr<Camera>>& GetAllCameras() const { return cameras_; }
-
-        /// @brief Gameビューに使用するカメラ名を上書き設定（空文字でリセット）
-        void SetGameViewCameraOverride(const std::string& name) { gameViewCameraOverride_ = name; }
-
-        /// @brief Gameビューカメラ上書き名を取得
-        const std::string& GetGameViewCameraOverride() const { return gameViewCameraOverride_; }
 
         /// @brief デバッグUIが参照するEngineSystemを設定
         void SetEngineSystem(EngineSystem* engine) { engineSystem_ = engine; }
@@ -147,15 +176,15 @@ namespace CoreEngine
         /// @brief カメラ名 → コントローラ（1 カメラにつき 1 つ。付いていないカメラもある）
         std::unordered_map<std::string, std::unique_ptr<ICameraController>> controllers_;
 
-        /// @brief アクティブなカメラの名前（タイプ別）
-        std::string activeCamera3DName_;
+        /// @brief 役割ごとのカメラ名
+        std::string sceneCameraName_ = CameraNames::Scene;
+        std::string gameCameraName_ = CameraNames::Game;
+
+        /// @brief エディタ視点で覗いているか（false = ゲーム視点）
+        bool useSceneCamera_ = false;
+
+        /// @brief アクティブな 2D カメラ
         std::string activeCamera2DName_;
-
-        /// @brief Gameビューカメラのオーバーライド名（空文字 = 上書きなし）
-        std::string gameViewCameraOverride_;
-
-        /// @brief アクティブなカメラのポインタ（キャッシュ、タイプ別）
-        Camera* activeCamera3D_ = nullptr;
         Camera* activeCamera2D_ = nullptr;
 
         /// @brief 入力・デルタタイム参照用（非所有）

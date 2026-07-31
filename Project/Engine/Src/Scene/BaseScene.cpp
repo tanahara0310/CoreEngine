@@ -151,34 +151,11 @@ namespace CoreEngine
         renderManager->DrawGeometryPass();
     }
 
-    Camera* BaseScene::GetDefaultGameViewCamera3D() const
-    {
-        if (!cameraManager_) {
-            return nullptr;
-        }
-
-        if (!gameViewCameraName_.empty()) {
-            if (Camera* gameCamera = cameraManager_->GetCamera(gameViewCameraName_)) {
-                return gameCamera;
-            }
-        }
-
-        return cameraManager_->GetGameViewCameraOverride().empty()
-            ? cameraManager_->GetActiveCamera(CameraType::Camera3D)
-            : cameraManager_->GetCamera(gameViewCameraName_);
-    }
-
     Camera* BaseScene::GetGameViewCamera3D() const
     {
-        if (!cameraManager_) {
-            return nullptr;
-        }
-
-        if (Camera* gameCamera = cameraManager_->GetCamera(ResolveGameViewCameraName())) {
-            return gameCamera;
-        }
-
-        return cameraManager_->GetActiveCamera(CameraType::Camera3D);
+        // 覗いているカメラの決定は CameraManager に一本化されている（Scene / Game の役割 + フラグ）。
+        // シーン側で名前を解決し直すと、また規則が二重化して食い違う。
+        return cameraManager_ ? cameraManager_->GetViewCamera() : nullptr;
     }
 
     Camera* BaseScene::GetGameViewCamera2D() const
@@ -307,39 +284,40 @@ namespace CoreEngine
         // リリースカメラを作成して登録（斜め上から俯瞰する視点）
         // y は既定の無限遠タイル床（y=0）より上に置く。床の高さにカメラがあると
         // 足元の床がニアクリップで消え、地平線より下に大気の下向き（＝黒）が見えてしまう。
-        auto releaseCamera = std::make_unique<Camera>();
-        releaseCamera->Initialize(dxCommon->GetDevice());
-        releaseCamera->SetTranslate({ 0.0f, kDefaultCameraHeight, -30.0f });
-        releaseCamera->SetRotate({ 0.0f, 0.0f, 0.0f });
+        auto gameCamera = std::make_unique<Camera>();
+        gameCamera->Initialize(dxCommon->GetDevice());
+        gameCamera->SetTranslate({ 0.0f, kDefaultCameraHeight, -30.0f });
+        gameCamera->SetRotate({ 0.0f, 0.0f, 0.0f });
 
-        cameraManager_->RegisterCamera("Release", std::move(releaseCamera));
+        cameraManager_->RegisterCamera(CameraNames::Game, std::move(gameCamera));
 
-        // デバッグ用カメラ（カメラ自体は Release と同じ型。Blender 風の操作は
+        // エディタ視点カメラ（カメラ自体は Game と同じ型。Blender 風の操作は
         // OrbitFlyController を取り付けることで与える）
-        auto debugCamera = std::make_unique<Camera>();
-        debugCamera->Initialize(dxCommon->GetDevice());
-        cameraManager_->RegisterCamera("Debug", std::move(debugCamera));
+        auto sceneCamera = std::make_unique<Camera>();
+        sceneCamera->Initialize(dxCommon->GetDevice());
+        cameraManager_->RegisterCamera(CameraNames::Scene, std::move(sceneCamera));
 
         cameraManager_->SetEngineSystem(engine_);
-        OrbitFlyController* orbitController = cameraManager_->AttachController<OrbitFlyController>("Debug");
+        OrbitFlyController* orbitController =
+            cameraManager_->AttachController<OrbitFlyController>(CameraNames::Scene);
 
-        // Release カメラは一人称の自由移動で操作する（旧 GameView 操作モジュール相当）
-        cameraManager_->AttachController<FreeLookController>("Release");
+        // ゲーム視点カメラは一人称の自由移動で操作する（既定は無効）
+        cameraManager_->AttachController<FreeLookController>(CameraNames::Game);
+
+        // 起動時はゲーム視点で覗く（エディタ視点への切り替えはキー 1 / カメラUI）
+        cameraManager_->SetUseSceneCamera(false);
 
 #ifdef USE_IMGUI
         // エディタ設定の自動保存: 登録時に前回終了時の姿勢・設定が復元され、以降の変更が
         // 自動保存される
         if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
             debugCameraSettingsSection_ = std::make_unique<DebugCameraSettingsSection>(
-                cameraManager_->GetCamera("Debug"), orbitController);
+                cameraManager_->GetCamera(CameraNames::Scene), orbitController);
             editorSettings->RegisterSection(debugCameraSettingsSection_.get(), this);
         }
 #else
         (void)orbitController;
 #endif
-
-        // デフォルトでリリースカメラをアクティブに設定
-        cameraManager_->SetActiveCamera("Release", CameraType::Camera3D);
 
         // ===== 2Dカメラの設定 =====
 
@@ -349,29 +327,8 @@ namespace CoreEngine
         camera2D->SetZoom(1.0f);
         camera2D->Initialize(nullptr); // 2D は GPU 定数バッファ不要
 
-        cameraManager_->RegisterCamera("Camera2D", std::move(camera2D));
-
-        // 2Dカメラをアクティブに設定
-        cameraManager_->SetActiveCamera("Camera2D", CameraType::Camera2D);
-    }
-
-    std::string BaseScene::ResolveGameViewCameraName() const
-    {
-        if (!cameraManager_) {
-            return {};
-        }
-
-        // CameraManager 側のオーバーライドが有効であれば最優先で使用する
-        const std::string& overrideName = cameraManager_->GetGameViewCameraOverride();
-        if (!overrideName.empty() && cameraManager_->GetCamera(overrideName)) {
-            return overrideName;
-        }
-
-        if (!gameViewCameraName_.empty() && cameraManager_->GetCamera(gameViewCameraName_)) {
-            return gameViewCameraName_;
-        }
-
-        return cameraManager_->GetActiveCameraName(CameraType::Camera3D);
+        cameraManager_->RegisterCamera(CameraNames::Camera2D, std::move(camera2D));
+        cameraManager_->SetActiveCamera(CameraNames::Camera2D, CameraType::Camera2D);
     }
 
     void BaseScene::SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate)
@@ -379,7 +336,7 @@ namespace CoreEngine
         if (!cameraManager_) {
             return;
         }
-        if (auto* releaseCamera = cameraManager_->GetCamera("Release")) {
+        if (auto* releaseCamera = cameraManager_->GetCamera(CameraNames::Game)) {
             releaseCamera->SetTranslate(translate);
             releaseCamera->SetRotate(rotate);
         }

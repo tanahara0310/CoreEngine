@@ -50,7 +50,6 @@ public:
     virtual void Finalize() = 0;
 
     virtual Camera* GetGameViewCamera3D() const { return nullptr; }
-    virtual Camera* GetDefaultGameViewCamera3D() const { return GetGameViewCamera3D(); }
     virtual Camera* GetGameViewCamera2D() const { return nullptr; }
     virtual GameObjectManager* GetGameObjectManager() { return nullptr; }
 
