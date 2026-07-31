@@ -1,3 +1,5 @@
+#include "ShaderMath.hlsli" // PI / TWO_PI
+
 // GPUパーティクル共通定義（Emit / Update CSで共有）
 // Phase 2: CPU版モジュール（Shape/Velocity/Force/Color/Size/Rotation/Noise）の
 // パラメータを GpuParticleParams に詰め、CPU版と同じ数式で適用する。
@@ -163,7 +165,6 @@ cbuffer GpuParticleParams : register(b0)
 };
 
 static const uint32_t kGpuParticleGroupSize = 64;
-static const float32_t kGpuParticlePi = 3.14159265358979323846f;
 
 // ============================================================
 // 乱数

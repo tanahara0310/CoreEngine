@@ -16,6 +16,29 @@ namespace CoreEngine
     namespace MathCore {
 
         //================================================
+        // 数学定数
+        //================================================
+        /// @details 円周率を各ファイルで書き写すと桁数がばらつく（3.14159f / 3.14159265f /
+        ///          3.14159265358979323846f が混在していた）。ここに一本化する。
+        ///          シェーダー側の対応物は Assets/Shaders/Include/Common/ShaderMath.hlsli。
+        namespace Constants {
+            inline constexpr float kPi = std::numbers::pi_v<float>;
+            inline constexpr float kTwoPi = 2.0f * kPi;
+            inline constexpr float kHalfPi = 0.5f * kPi;
+            inline constexpr float kInvPi = std::numbers::inv_pi_v<float>;
+
+            /// @brief 度 → ラジアン
+            inline constexpr float kDegToRad = kPi / 180.0f;
+            /// @brief ラジアン → 度
+            inline constexpr float kRadToDeg = 180.0f / kPi;
+
+            /// @brief 度をラジアンへ変換する
+            inline constexpr float ToRadians(float degrees) { return degrees * kDegToRad; }
+            /// @brief ラジアンを度へ変換する
+            inline constexpr float ToDegrees(float radians) { return radians * kRadToDeg; }
+        }
+
+        //================================================
         // ベクトル演算
         //================================================
         namespace Vector {

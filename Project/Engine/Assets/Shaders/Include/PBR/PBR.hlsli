@@ -6,12 +6,7 @@
 #define PBR_HLSLI
 
 #include "Lighting.hlsli" // LightingResult構造体の定義
-
-// ===================================================================
-// 数学定数
-// ===================================================================
-static const float PI = 3.14159265359f;
-static const float EPSILON = 0.00001f;
+#include "ShaderMath.hlsli" // PI / EPSILON などの共通数学定数
 
 // ===================================================================
 // PBR 定数
@@ -490,9 +485,8 @@ float3 CalculateIrradianceIBL(
 	float3 irradiance = irradianceMap.SampleLevel(samp, rotatedN, 0.0f).rgb;
     
     // F0計算（垂直入射時の反射率）
-	float3 F0 = float3(0.04f, 0.04f, 0.04f);
-	F0 = lerp(F0, albedo, metallic);
-    
+	float3 F0 = CalculateF0(albedo, metallic);
+
     // Fresnel項（環境光用、実際のroughnessを使用）
 	float NdotV = max(dot(normalizedN, V), 0.0f);
 	float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
@@ -582,8 +576,7 @@ float3 CalculateFullIBL(
     SamplerState samp,
     float3 environmentRotation)
 {
-    float3 F0 = float3(0.04f, 0.04f, 0.04f);
-    F0 = lerp(F0, albedo, metallic);
+    float3 F0 = CalculateF0(albedo, metallic);
     float NdotV = max(dot(N, V), 0.0f);
     float3 F = FresnelSchlickRoughness(NdotV, F0, roughness);
 

@@ -5,7 +5,7 @@
 #include "Graphics/Render/RenderOptimizationSettings.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Common/EngineStats.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Math/BoundingBox.h"
 
 #include <algorithm>
@@ -18,7 +18,7 @@ namespace CoreEngine
     {
         /// @brief AABB の画面投影サイズから LOD レベルを算出する（0=フル詳細）
         uint32_t ComputeLodByCoverage(const BoundingBox& localAABB,
-            const Matrix4x4& worldMatrix, const ICamera* camera)
+            const Matrix4x4& worldMatrix, const Camera* camera)
         {
             // 画面占有率のしきい値。coverage は「モデルの外接球半径が画面半分の高さに
             // 対して占める割合」で、1.0 なら画面の半分を覆う大きさ。
@@ -93,7 +93,7 @@ namespace CoreEngine
     }
 
     uint32_t ModelVisibility::SelectLod(const ModelResource& resource, const Matrix4x4& worldMatrix,
-        const ICamera* camera)
+        const Camera* camera)
     {
         const auto& settings = RenderOptimizationSettings::Get();
         if (settings.forcedLodIndex >= 0) {
@@ -106,15 +106,15 @@ namespace CoreEngine
         return ComputeLodByCoverage(resource.GetLocalBoundingBox(), worldMatrix, camera);
     }
 
-    bool ModelVisibility::IsModelInView(const ICamera* camera, const BoundingBox& worldBounds)
+    bool ModelVisibility::IsModelInView(const Frustum& frustum, const BoundingBox& worldBounds)
     {
         if (!RenderOptimizationSettings::Get().frustumCullingEnabled) {
             return true;
         }
-        if (!camera || !worldBounds.IsValid()) {
+        if (!worldBounds.IsValid()) {
             return true;
         }
-        return !camera->GetFrustum().IsOutside(worldBounds);
+        return !frustum.IsOutside(worldBounds);
     }
 
     void ModelVisibility::BeginOcclusionQuery(HiZOcclusionSystem* hiZ,

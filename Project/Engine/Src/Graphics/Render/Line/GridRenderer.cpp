@@ -3,7 +3,7 @@
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Render/RenderManager.h"
 #include "EngineSystem/EngineSystem.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Math/MathCore.h"
 #include <cmath>
 
@@ -24,7 +24,7 @@ void GridRenderer::Update()
     // グリッドは静的なので特に更新処理なし
 }
 
-void GridRenderer::Draw(const ICamera* camera)
+void GridRenderer::Draw(const Camera* camera)
 {
     if (!visible_ || !camera) {
         return;

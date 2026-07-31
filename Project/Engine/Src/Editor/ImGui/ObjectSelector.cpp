@@ -4,8 +4,8 @@
 #include "GameObject/Sprite/SpriteObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Editor/ImGui/GameObjectDebugAccess.h"
-#include "Camera/ICamera.h"
-#include "Camera/Camera2D.h"
+#include "Camera/Camera.h"
+#include "WinApp/WinApp.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Model/Model.h"
@@ -26,7 +26,7 @@ namespace CoreEngine
         gizmoMode_ = Gizmo::Mode::Translate;
     }
 
-    void ObjectSelector::Update(GameObjectManager* gameObjectManager, const ICamera* camera,
+    void ObjectSelector::Update(GameObjectManager* gameObjectManager, const Camera* camera,
         const Vector2& mousePos, bool isViewportHovered)
     {
         if (!gameObjectManager || !camera) {
@@ -63,7 +63,7 @@ namespace CoreEngine
         }
     }
 
-    void ObjectSelector::DrawGizmo(const ICamera* camera)
+    void ObjectSelector::DrawGizmo(const Camera* camera)
     {
         if (selectedObject_ && camera) {
             auto* modelObj = DebugAccess::AsModelObject(selectedObject_);
@@ -91,7 +91,7 @@ namespace CoreEngine
         }
     }
 
-    void ObjectSelector::Update2D(GameObjectManager* gameObjectManager, const ICamera* camera,
+    void ObjectSelector::Update2D(GameObjectManager* gameObjectManager, const Camera* camera,
         const Vector2& mousePos, bool isViewportHovered)
     {
         if (!gameObjectManager || !camera) {
@@ -129,7 +129,7 @@ namespace CoreEngine
         }
     }
 
-    void ObjectSelector::DrawGizmo2D(const ICamera* camera)
+    void ObjectSelector::DrawGizmo2D(const Camera* camera)
     {
         if (selectedSprite_ && camera) {
             // ギズモ非使用中は操作前スナップショットを連続更新する
@@ -157,34 +157,36 @@ namespace CoreEngine
         }
     }
 
-    Vector2 ObjectSelector::ScreenToWorld2D(const Vector2& mousePos, const ICamera* camera)
+    Vector2 ObjectSelector::ScreenToWorld2D(const Vector2& mousePos, const Camera* camera)
     {
-        // Camera2Dとしてキャスト
-        const Camera2D* camera2D = dynamic_cast<const Camera2D*>(camera);
-        if (!camera2D) {
+        // 2D（正射影）カメラでなければ変換できない
+        if (!camera || camera->GetCameraType() != CameraType::Camera2D) {
             return Vector2(0.0f, 0.0f);
         }
 
-        // スクリーンサイズを取得
-        Vector2 screenSize = camera2D->GetScreenSize();
+        // スクリーンサイズ（2D カメラの正射影はウィンドウのクライアント領域に一致する）
+        const Vector2 screenSize = {
+            static_cast<float>(WinApp::GetCurrentClientWidthStatic()),
+            static_cast<float>(WinApp::GetCurrentClientHeightStatic())
+        };
 
         // 正規化座標（0.0〜1.0）をスクリーン座標に変換
         // 画面中央が原点、Y軸上が正
-        float screenX = (mousePos.x - 0.5f) * screenSize.x;
-        float screenY = (0.5f - mousePos.y) * screenSize.y;  // Y軸反転
+        const float screenX = (mousePos.x - 0.5f) * screenSize.x;
+        const float screenY = (0.5f - mousePos.y) * screenSize.y;  // Y軸反転
 
         // カメラの位置とズームを考慮してワールド座標に変換
-        Vector2 cameraPos = camera2D->GetPosition2D();
-        float zoom = camera2D->GetZoom();
+        const Vector3 cameraPos = camera->GetTranslate();
+        const float zoom = camera->GetZoom();
+        if (zoom == 0.0f) {
+            return Vector2(0.0f, 0.0f);
+        }
 
-        float worldX = screenX / zoom + cameraPos.x;
-        float worldY = screenY / zoom + cameraPos.y;
-
-        return Vector2(worldX, worldY);
+        return Vector2(screenX / zoom + cameraPos.x, screenY / zoom + cameraPos.y);
     }
 
     SpriteObject* ObjectSelector::RaycastSprite(GameObjectManager* gameObjectManager,
-        const ICamera* camera, const Vector2& mousePos)
+        const Camera* camera, const Vector2& mousePos)
     {
         // マウス位置をワールド座標に変換
         Vector2 worldMousePos = ScreenToWorld2D(mousePos, camera);
@@ -239,7 +241,7 @@ namespace CoreEngine
         return closestSprite;
     }
 
-    void ObjectSelector::ScreenToWorldRay(const Vector2& mousePos, const ICamera* camera,
+    void ObjectSelector::ScreenToWorldRay(const Vector2& mousePos, const Camera* camera,
         Vector3& rayOrigin, Vector3& rayDirection)
     {
         // カメラの位置を取得（レイの始点）
@@ -496,7 +498,7 @@ namespace CoreEngine
     }
 
     GameObject* ObjectSelector::RaycastObject(GameObjectManager* gameObjectManager,
-        const ICamera* camera, const Vector2& mousePos)
+        const Camera* camera, const Vector2& mousePos)
     {
         const auto& objects = gameObjectManager->GetAllObjects();
         GameObject* closestObject = nullptr;

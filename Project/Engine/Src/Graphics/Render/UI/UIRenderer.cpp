@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "UIRenderer.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "WinApp/WinApp.h"
@@ -105,7 +105,7 @@ namespace CoreEngine
         // 何もしない
     }
 
-    void UIRenderer::SetCamera(const ICamera* camera) {
+    void UIRenderer::SetCamera(const Camera* camera) {
         // UI はカメラ非依存（スクリーン固定座標）
         (void)camera;
     }

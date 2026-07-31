@@ -15,8 +15,9 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class ICamera;
-    class CameraManager;
+    class Camera;
+    class FrameViews;
+    struct ViewInfo;
 }
 
 /// @brief レンダリング全体を自動管理するマネージャー
@@ -39,20 +40,11 @@ namespace CoreEngine
         /// @return レンダラーポインタ
         IRenderer* GetRenderer(RenderPassType type);
 
-        /// @brief カメラマネージャーを設定
-        /// @param cameraManager カメラマネージャー
-        void SetCameraManager(CoreEngine::CameraManager* cameraManager);
-
-        /// @brief アクティブな Camera3D のビュー行列を取得
-        const Matrix4x4& GetViewMatrix() const;
-
-        /// @brief アクティブな Camera3D のプロジェクション行列を取得
-        const Matrix4x4& GetProjectionMatrix() const;
-
-
-        /// @brief カメラを設定（従来の互換性維持版）
-        /// @param camera カメラオブジェクト
-        void SetCamera(const CoreEngine::ICamera* camera);
+        /// @brief 今フレームのビュー群を設定（EngineSystem がフレーム先頭で 1 回呼ぶ）
+        /// @details 描画キュー実行はここから ViewInfo を引く。カメラを直接参照しないため、
+        ///          パスごとに違う行列を使う事故が起きない。
+        /// @param frameViews フレーム内不変のビュー群（フレーム終了まで生存すること）
+        void SetFrameViews(const CoreEngine::FrameViews* frameViews) { frameViews_ = frameViews; }
 
         /// @brief 環境マップをPBR対象レンダラーへ設定
         /// @param environmentMapHandle 環境マップSRV
@@ -157,8 +149,7 @@ namespace CoreEngine
 
     // フレームごとに設定されるコンテキスト
     ID3D12GraphicsCommandList* cmdList_ = nullptr;
-    CoreEngine::CameraManager* cameraManager_ = nullptr;
-    const CoreEngine::ICamera* camera_ = nullptr; // 従来の互換性維持用
+    const CoreEngine::FrameViews* frameViews_ = nullptr;
 
     bool renderDebugLines_ = true;
 
@@ -181,10 +172,11 @@ namespace CoreEngine
         /// @brief 必要な場合のみ描画キューをソート
         void EnsureQueueSorted();
 
-    /// @brief 描画パスタイプに応じた適切なカメラを取得
-    /// @param passType 描画パスタイプ
-    /// @return カメラポインタ
-    const CoreEngine::ICamera* GetCameraForPass(RenderPassType passType);
+    /// @brief 描画パスタイプ・ビュー種別に対応する ViewInfo を取得
+    /// @param passType 描画パスタイプ（Sprite は 2D ビュー、UI はビュー非依存）
+    /// @param viewType 実行中のビュー種別
+    /// @return ビュー情報（該当なしなら nullptr）
+    const CoreEngine::ViewInfo* GetViewForPass(RenderPassType passType, RenderViewType viewType) const;
 
     /// @brief 指定キューに対する通常（Forward 系）描画パス
     /// @param viewType 実行中のビュー種別（DrawViewInfo として各オブジェクトへ渡す）

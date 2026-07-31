@@ -11,8 +11,8 @@
 #include "Graphics/Render/Model/IBLParameters.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "GameObjects/SkyBox/SkyBoxObject.h"
-#include "Camera/CameraManager.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
+#include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include <algorithm>
 
@@ -47,55 +47,6 @@ namespace CoreEngine
             return it->second.get();
         }
         return nullptr;
-    }
-
-    void RenderManager::SetCameraManager(CameraManager* cameraManager) {
-        cameraManager_ = cameraManager;
-
-        // シーン切り替えで CameraManager が差し替わる際、旧シーン由来の
-        // 互換ポインタ camera_ を残すとダングリング参照になるためクリアする。
-        camera_ = nullptr;
-    }
-
-    // 以下 2 つは 3D 描画に実際へ使われるカメラと同じ優先順位で解決する
-    // （GetCameraForPass と一致させること）。
-    // 以前は CameraManager のアクティブカメラだけを見ており、それが未設定の場合に
-    // 単位行列を返していた。この行列で深度からワールド座標を復元する画面空間パス
-    // （SSAO 等）は座標が全く合わず、結果がノイズと黒斑になる。
-
-    const Matrix4x4& RenderManager::GetViewMatrix() const {
-        if (camera_) {
-            return camera_->GetViewMatrix();
-        }
-        if (cameraManager_) {
-            if (auto* cam = cameraManager_->GetActiveCamera(CameraType::Camera3D)) {
-                return cam->GetViewMatrix();
-            }
-        }
-        static const Matrix4x4 identity = MathCore::Matrix::Identity();
-        return identity;
-    }
-
-    const Matrix4x4& RenderManager::GetProjectionMatrix() const {
-        if (camera_) {
-            return camera_->GetProjectionMatrix();
-        }
-        if (cameraManager_) {
-            if (auto* cam = cameraManager_->GetActiveCamera(CameraType::Camera3D)) {
-                return cam->GetProjectionMatrix();
-            }
-        }
-        static const Matrix4x4 identity = MathCore::Matrix::Identity();
-        return identity;
-    }
-
-    void RenderManager::SetCamera(const ICamera* camera) {
-        camera_ = camera;
-
-        // 各レンダラーにもカメラを設定（互換性維持）
-        for (auto& [type, renderer] : renderers_) {
-            renderer->SetCamera(camera);
-        }
     }
 
     void RenderManager::SetIBLRotation(const Vector3& rotation) {
@@ -153,27 +104,21 @@ namespace CoreEngine
         isQueueSorted_ = false;
     }
 
-    const ICamera* RenderManager::GetCameraForPass(RenderPassType passType) {
+    const ViewInfo* RenderManager::GetViewForPass(RenderPassType passType, RenderViewType viewType) const {
+        if (!frameViews_) {
+            return nullptr;
+        }
+
+        // UI はスクリーン固定座標でビュー非依存
         if (passType == RenderPassType::UI) {
             return nullptr;
         }
 
-        if (passType == RenderPassType::Sprite) {
-            if (cameraManager_) {
-                return cameraManager_->GetActiveCamera(CameraType::Camera2D);
-            }
-            return camera_;
-        }
+        const ViewInfo& view = (passType == RenderPassType::Sprite)
+            ? frameViews_->View2D()
+            : frameViews_->Get(viewType);
 
-        if (camera_) {
-            return camera_;
-        }
-
-        if (cameraManager_) {
-            return cameraManager_->GetActiveCamera(CameraType::Camera3D);
-        }
-
-        return nullptr;
+        return view.isValid ? &view : nullptr;
     }
 
     void RenderManager::DrawGBufferPass(RenderViewType viewType) {
@@ -188,7 +133,8 @@ namespace CoreEngine
         IRenderer* skinnedRenderer = GetRenderer(RenderPassType::SkinnedModel);
         auto* modelGBuffer   = dynamic_cast<IGBufferRenderer*>(modelRenderer);
         auto* skinnedGBuffer = dynamic_cast<IGBufferRenderer*>(skinnedRenderer);
-        const ICamera* currentCamera = GetCameraForPass(RenderPassType::Model);
+        const ViewInfo* currentView = GetViewForPass(RenderPassType::Model, viewType);
+        const Camera* currentCamera = currentView ? currentView->camera : nullptr;
 
         if (modelRenderer) {
             modelRenderer->SetCamera(currentCamera);
@@ -225,7 +171,7 @@ namespace CoreEngine
 
             if (activeRenderer) {
                 DrawViewInfo view{};
-                view.camera = currentCamera;
+                view.view = currentView;
                 view.viewType = viewType;
                 view.isGBufferPass = true;
                 cmd.object->Draw(view);
@@ -327,7 +273,7 @@ namespace CoreEngine
         RenderPassType currentPass = RenderPassType::Invalid;
         BlendMode currentBlendMode = BlendMode::kBlendModeNone;
         IRenderer* currentRenderer = nullptr;
-        const ICamera* currentCamera = nullptr;
+        const ViewInfo* currentView = nullptr;
 
         for (const auto& cmd : queue) {
             // GameObjectManagerで事前フィルタリング済み
@@ -359,9 +305,9 @@ namespace CoreEngine
                 currentRenderer = ResolveRendererForPass(currentPass);
                 if (currentRenderer) {
 
-                    // パスに応じたカメラを取得
-                    currentCamera = GetCameraForPass(currentPass);
-                    currentRenderer->SetCamera(currentCamera);
+                    // パスに応じたビューを取得
+                    currentView = GetViewForPass(currentPass, viewType);
+                    currentRenderer->SetCamera(currentView ? currentView->camera : nullptr);
 
                     currentRenderer->BeginPass(cmdList_, cmd.blendMode);
                 } else {
@@ -369,7 +315,7 @@ namespace CoreEngine
                     OutputDebugStringA("WARNING: Renderer not found for pass type!\n");
 #endif
                     currentRenderer = nullptr;
-                    currentCamera = nullptr;
+                    currentView = nullptr;
                 }
             } else if (blendChanged && currentRenderer) {
                 // 同一パス内でブレンドモードが変わった場合はPSOを切り替え
@@ -380,7 +326,7 @@ namespace CoreEngine
             // オブジェクトを描画
             if (currentRenderer) {
                 DrawViewInfo view{};
-                view.camera = currentCamera;
+                view.view = currentView;
                 view.viewType = viewType;
                 view.isGBufferPass = false;
                 cmd.object->Draw(view);

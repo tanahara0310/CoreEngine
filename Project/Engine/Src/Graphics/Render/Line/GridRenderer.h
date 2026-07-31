@@ -7,7 +7,7 @@
 
 // 前方宣言
 class LineRendererPipeline;
-class ICamera;
+class Camera;
 
 /// @brief 無限遠グリッドレンダラー（Unity風）
 /// @details XZ平面に無限に広がるグリッドを描画
@@ -27,7 +27,7 @@ public:
 
     /// @brief 描画処理
     /// @param camera カメラ
-    void Draw(const ICamera* camera) override;
+    void Draw(const Camera* camera) override;
 
     /// @brief 描画パスタイプを取得
     RenderPassType GetRenderPassType() const override { return RenderPassType::Line; }

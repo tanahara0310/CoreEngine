@@ -119,7 +119,7 @@ namespace CoreEngine
         rebuildVertex_ = false;
     }
 
-    void UIImage::Draw(const ICamera* /*camera*/)
+    void UIImage::Draw(const Camera* /*camera*/)
     {
         if (!IsActive() || !renderer_ || !material_) { return; }
 

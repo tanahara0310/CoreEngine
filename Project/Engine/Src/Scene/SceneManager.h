@@ -15,7 +15,7 @@ namespace CoreEngine
 // 翻訳単位で `using namespace CoreEngine;` すると ::EngineSystem と衝突して
 // 「あいまいなシンボル」エラーになっていた。
 class EngineSystem;
-class ICamera;
+class Camera;
 class GameObjectManager;
 
 class SceneManager {
@@ -86,13 +86,10 @@ public:
     void RegisterSceneBGMCallback(std::function<void(float)> callback);
 
     /// @brief Gameビュー用3Dカメラを取得
-    ICamera* GetGameViewCamera3D() const;
-
-    /// @brief 既定の Gameビュー用3Dカメラを取得
-    ICamera* GetDefaultGameViewCamera3D() const;
+    Camera* GetGameViewCamera3D() const;
 
     /// @brief Gameビュー用2Dカメラを取得
-    ICamera* GetGameViewCamera2D() const;
+    Camera* GetGameViewCamera2D() const;
 
     /// @brief 現在シーンのオブジェクトマネージャーを取得
     GameObjectManager* GetCurrentGameObjectManager() const;

@@ -3,7 +3,7 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/Sprite/SpriteObject.h"
 #include "Editor/ImGui/GameObjectDebugAccess.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "WorldTransform/WorldTransform.h"
 #include <numbers>
 
@@ -29,7 +29,7 @@ namespace CoreEngine
         ImGuizmo::Enable(true);
     }
 
-    bool Gizmo::Manipulate(GameObject* object, const ICamera* camera, Mode mode)
+    bool Gizmo::Manipulate(GameObject* object, const Camera* camera, Mode mode)
     {
         if (!object || !camera) {
             return false;
@@ -102,7 +102,7 @@ namespace CoreEngine
         return changed;
     }
 
-    bool Gizmo::Manipulate2D(SpriteObject* sprite, const ICamera* camera, Mode mode)
+    bool Gizmo::Manipulate2D(SpriteObject* sprite, const Camera* camera, Mode mode)
     {
         if (!sprite || !camera) {
             return false;

@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ParticleRenderDataBuilder.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Particle/ParticleSystem.h" // Particle, BillboardType, ParticleRenderMode定義のため
 #include <cmath>
 
@@ -11,7 +11,7 @@ using namespace CoreEngine::MathCore;
 
 uint32_t ParticleRenderDataBuilder::BuildRenderData(
     const std::vector<Particle>& particles,
-    const ICamera* camera,
+    const Camera* camera,
     BillboardType billboardType,
     ParticleRenderMode renderMode,
     ParticleForGPU* instancingData,

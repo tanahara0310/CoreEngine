@@ -81,7 +81,7 @@ void main(uint3 groupThreadId : SV_GroupThreadID, uint groupIndex : SV_GroupInde
 
             const float cosTheta = 1.0f - 2.0f * u;
             const float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
-            const float phi = 2.0f * ATMOSPHERE_PI * v;
+            const float phi = 2.0f * PI * v;
 
             // ワールド +Y を天頂とする方向ベクトル
             const float3 dir = float3(
@@ -122,7 +122,7 @@ void main(uint3 groupThreadId : SV_GroupThreadID, uint groupIndex : SV_GroupInde
     if (groupIndex == 0)
     {
         // モンテカルロ正規化: (4π / N) Σ L・Y
-        const float sampleWeight = 4.0f * ATMOSPHERE_PI / (kDirGridSize * kDirGridSize);
+        const float sampleWeight = 4.0f * PI / (kDirGridSize * kDirGridSize);
 
         // 放射照度畳み込み（Â_l / π）: l=0 → 1, l=1 → 2/3, l=2 → 1/4
         // これを掛けておくことで、評価側は Σ c_i・Y_i(N) だけで「放射照度/π」になる

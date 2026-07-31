@@ -3,7 +3,8 @@
 #include "ModelRenderContext.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
+#include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Model/Skeleton/SkinClusterGenerator.h"
@@ -99,13 +100,11 @@ namespace CoreEngine
         ID3D12Resource* transformBuffer = GetGameTransformBuffer();
         assert(transformBuffer);
 
-        // 行列計算
+        // 行列計算。VP は ViewInfo で確定済みなので毎モデルで掛け直さない。
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-        Matrix4x4 viewMatrix = view.camera->GetViewMatrix();
-        Matrix4x4 projectionMatrix = view.camera->GetProjectionMatrix();
         Matrix4x4 worldViewProjectionMatrix = MathCore::Matrix::Multiply(
             worldMatrix,
-            MathCore::Matrix::Multiply(viewMatrix, projectionMatrix)
+            view.view->viewProjection
         );
 
         // 従来型シャドウマップ廃止（2026-07-25）: lightViewProjection は cbuffer レイアウト
@@ -139,8 +138,8 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
 
         assert(IsInitialized());
-        const ICamera* camera = view.camera;
-        assert(camera);
+        assert(view.view && view.view->isValid);
+        const Camera* camera = view.GetCamera();
 
         ID3D12GraphicsCommandList* cmdList = renderContext_.dxCommon->GetCommandList();
         assert(cmdList);
@@ -183,11 +182,7 @@ namespace CoreEngine
         // ===== LOD 選択（AABB の画面投影サイズベース、詳細は ModelVisibility 側） =====
         const uint32_t lodIndex = ModelVisibility::SelectLod(*resource_, worldMatrix, camera);
 
-        Matrix4x4 viewMatrix = camera->GetViewMatrix();
-        Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
-        Matrix4x4 wvp = MathCore::Matrix::Multiply(
-            worldMatrix,
-            MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
+        Matrix4x4 wvp = MathCore::Matrix::Multiply(worldMatrix, view.view->viewProjection);
         // 従来型シャドウマップ廃止に伴い lightViewProjection はレイアウト維持のみ（単位行列）
         Matrix4x4 lightVP = MathCore::Matrix::Identity();
 
@@ -214,7 +209,7 @@ namespace CoreEngine
         // prevGameWVP_ は上で更新済みのため、再可視化フレームのモーションベクターは正しい。
         const bool occlusionEligible = isGBufferPass && isGameView;
         visibility_.BeginOcclusionQuery(renderContext_.hiZOcclusion, *resource_, worldMatrix,
-            MathCore::Matrix::Multiply(viewMatrix, projectionMatrix), occlusionEligible);
+            view.view->viewProjection, occlusionEligible);
 
         for (uint32_t i = 0; i < subMeshes.size(); ++i) {
             const auto& subMesh = subMeshes[i];

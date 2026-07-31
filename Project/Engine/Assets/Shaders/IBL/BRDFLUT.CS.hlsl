@@ -3,63 +3,12 @@
 /// @details Cook-Torrance BRDFの積分をモンテカルロ法で計算し、
 ///          2Dテクスチャ(NdotV, roughness) -> (scale, bias)として保存
 
-static const float PI = 3.14159265359;
+#include "Sampling.hlsli" // PI / Hammersley / ImportanceSampleGGX
+
 static const uint SAMPLE_COUNT = 1024u;
 
 // 出力テクスチャ（RG16F: R=scale, G=bias）
 RWTexture2D<float2> gOutputBRDFLUT : register(u0);
-
-// ===================================================================
-// Hammersley サンプリング（低食い違い列）
-// ===================================================================
-/// @brief Van der Corput ビット反転
-float RadicalInverse_VdC(uint bits)
-{
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
-}
-
-/// @brief Hammersley点列生成
-float2 Hammersley(uint i, uint N)
-{
-    return float2(float(i) / float(N), RadicalInverse_VdC(i));
-}
-
-// ===================================================================
-// GGX Importance Sampling
-// ===================================================================
-/// @brief GGX分布に基づくハーフベクトルのサンプリング
-/// @param Xi ランダム値 [0,1]^2
-/// @param N 法線ベクトル
-/// @param roughness 粗さ
-/// @return サンプリングされたハーフベクトル
-float3 ImportanceSampleGGX(float2 Xi, float3 N, float roughness)
-{
-    float a = roughness * roughness;
-    
-    // 球面座標での角度計算
-    float phi = 2.0 * PI * Xi.x;
-    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a * a - 1.0) * Xi.y));
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-    
-    // タンジェント空間でのハーフベクトル
-    float3 H;
-    H.x = cos(phi) * sinTheta;
-    H.y = sin(phi) * sinTheta;
-    H.z = cosTheta;
-    
-    // タンジェント空間からワールド空間への変換
-    float3 up = abs(N.z) < 0.999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
-    float3 tangent = normalize(cross(up, N));
-    float3 bitangent = cross(N, tangent);
-    
-    float3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
-    return normalize(sampleVec);
-}
 
 // ===================================================================
 // Geometry関数（Smith's method）

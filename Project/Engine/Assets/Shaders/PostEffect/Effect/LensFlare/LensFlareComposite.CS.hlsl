@@ -10,22 +10,16 @@ RWTexture2D<float4> gOutput : register(u0);
 SamplerState gLinearClamp : register(s0);
 
 static const uint kGroupSize = 8;
-static const float kPi2 = 6.2831853f;
-
-float Hash11(float n)
-{
-    return frac(sin(n * 127.1f + 311.7f) * 43758.5453f);
-}
 
 // 角度方向の 1 次元値ノイズ。格子数を整数にして 2π 周期で連続にする。
 float AngularNoise(float ang, float cells)
 {
-    const float x = (ang / kPi2 + 0.5f) * cells;
+    const float x = (ang / TWO_PI + 0.5f) * cells;
     const float i = floor(x);
     float f = frac(x);
     f = f * f * (3.0f - 2.0f * f);
-    const float a = Hash11(fmod(i, cells));
-    const float b = Hash11(fmod(i + 1.0f, cells));
+    const float a = HashSine11(fmod(i, cells));
+    const float b = HashSine11(fmod(i + 1.0f, cells));
     return lerp(a, b, f);
 }
 

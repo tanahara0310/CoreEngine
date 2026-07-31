@@ -11,30 +11,12 @@
 ///          Sky-View LUT 再生成時、および雲アニメーション中は毎フレーム実行される。
 
 #include "Common/AtmosphereCommon.hlsli"
+#include "Cubemap.hlsli" // GetCubemapDirection
 
 ConstantBuffer<AtmosphereConstants> gAtmosphere : register(b0);
 Texture2D<float4> gSkyViewLUT : register(t0);
 SamplerState gLUTSampler : register(s0);
 RWTexture2DArray<float4> gSkyCubemap : register(u0);
-
-/// @brief キューブマップ面IDと2D座標から方向ベクトルを計算（DirectX標準座標系）
-/// @details IBL/PrefilterEnvironment.CS.hlsl と同じマッピング。
-float3 GetCubemapDirection(uint faceIndex, float2 uv)
-{
-    float2 texCoord = uv * 2.0f - 1.0f;
-    float3 dir;
-    switch (faceIndex)
-    {
-        case 0: dir = float3(1.0f, -texCoord.y, -texCoord.x); break;  // +X
-        case 1: dir = float3(-1.0f, -texCoord.y, texCoord.x); break;  // -X
-        case 2: dir = float3(texCoord.x, 1.0f, texCoord.y); break;    // +Y
-        case 3: dir = float3(texCoord.x, -1.0f, -texCoord.y); break;  // -Y
-        case 4: dir = float3(texCoord.x, -texCoord.y, 1.0f); break;   // +Z
-        case 5: dir = float3(-texCoord.x, -texCoord.y, -1.0f); break; // -Z
-        default: dir = float3(0.0f, 1.0f, 0.0f); break;
-    }
-    return normalize(dir);
-}
 
 /// @brief 指定方向の空の輝度を Sky-View LUT から取得する（SkyIrradianceSH.CS.hlsl と同じマッピング）
 float3 SampleSkyLuminance(float3 dir)

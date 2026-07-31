@@ -4,6 +4,8 @@
 #include <cmath>
 #include <cstdio>
 
+#include "Math/MathCore.h"
+
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImguiManager.h"
 #endif
@@ -98,7 +100,7 @@ Vector3 MainModule::GenerateStartSize() const {
 Vector3 MainModule::GenerateStartRotation() const {
     float randomness = mainData_.startRotationRandomness;
     // 度からラジアンに変換
-    constexpr float kDegToRad = 3.14159265f / 180.0f;
+    constexpr float kDegToRad = MathCore::Constants::kDegToRad;
     return {
  ApplyRandomness(mainData_.startRotation.x, randomness) * kDegToRad,
         ApplyRandomness(mainData_.startRotation.y, randomness) * kDegToRad,

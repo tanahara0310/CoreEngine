@@ -16,7 +16,7 @@
 #include "Graphics/Water/FFTOceanManager.h"
 #include "GameObject/Model/ModelGameObject.h"
 #include "GameObject/GameObjectManager.h"
-#include "Camera/ICamera.h"
+#include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
 #include "Utility/Logger/Logger.h"
@@ -97,12 +97,11 @@ namespace CoreEngine
         if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return false;
         if (!dx || !cmdList) return false;
 
-        // TODO(Stage 2d 積み残し): ここは実行中のビューに関わらず GameView のカメラを使っている。
-        // ReflectionView へ RT シャドウを出すと行列が食い違うが、現在は
-        // Scene::BuildRenderViewRequests() が反射ビューを発行しないため発火しない。
-        // ViewID::ReflectionView を復活させる場合は、ビュー別のカメラ供給を先に用意すること。
-        ICamera* camera = context.sceneManager->GetGameViewCamera3D();
-        if (!camera) return false;
+        // 実行中のビューの ViewInfo を使う。ReflectionView を復活させる場合は
+        // FrameViews へそのビューを 1 つ足せば、ここは自動的に正しい行列を引く。
+        if (!context.frameViews) return false;
+        const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+        if (!view.isValid) return false;
 
         outStageContext.rtShadow = rtShadow;
 
@@ -111,9 +110,8 @@ namespace CoreEngine
             context.frameBlackboard->TryGetSrvHandle(
                 FrameBlackboard::SceneDepth, outStageContext.sceneDepthSRV);
         }
-        outStageContext.projection = camera->GetProjectionMatrix();
-        outStageContext.invViewProj = MathCore::Matrix::Inverse(
-            camera->GetViewMatrix() * outStageContext.projection);
+        outStageContext.projection = view.projection;
+        outStageContext.invViewProj = view.invViewProjection;
         outStageContext.normalSRV =
             context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
         outStageContext.motionVectorSRV =
@@ -231,15 +229,15 @@ namespace CoreEngine
             return false;
         }
 
-        outDispatchContext.camera = context.sceneManager->GetGameViewCamera3D();
-        if (!outDispatchContext.camera) {
+        if (!context.frameViews || !context.frameViews->Get(context.viewSettings.viewType).isValid) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "RayTracingSubsystem: {} dispatch skipped. camera is null.",
+                "RayTracingSubsystem: {} dispatch skipped. view is invalid.",
                 debugLabel);
             return false;
         }
+        const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
 
         // 深度は WorldPosition ターゲット廃止に伴いここから復元する
         // （ビュー別に差し替わるので FrameBlackboard 経由で取る）
@@ -265,9 +263,8 @@ namespace CoreEngine
             return false;
         }
 
-        outDispatchContext.viewProjection =
-            outDispatchContext.camera->GetViewMatrix() * outDispatchContext.camera->GetProjectionMatrix();
-        outDispatchContext.cameraPosition = outDispatchContext.camera->GetPosition();
+        outDispatchContext.viewProjection = view.viewProjection;
+        outDispatchContext.cameraPosition = view.position;
         outDispatchContext.width = static_cast<UINT>(dx->GetClientWidth());
         outDispatchContext.height = static_cast<UINT>(dx->GetClientHeight());
 

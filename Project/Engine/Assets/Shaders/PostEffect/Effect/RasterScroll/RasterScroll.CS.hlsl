@@ -1,5 +1,7 @@
 // RasterScroll.CS.hlsl - ラスタースクロール コンピュートシェーダー
 
+#include "ShaderMath.hlsli" // TWO_PI
+
 Texture2D<float4> gTexture : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -39,7 +41,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     );
 
     // 波形歪みの計算
-    float wavePhase      = (uv.y + lineOffset) * frequency * 6.28318530718f;
+    float wavePhase      = (uv.y + lineOffset) * frequency * TWO_PI;
     float horizontalWave = sin(wavePhase + time * scrollSpeed) * amplitude;
     float detailWave1    = sin(uv.y * lineHeight * 2.0f + time * scrollSpeed * 1.5f) * amplitude * 0.3f;
     float detailWave2    = sin(uv.y * lineHeight * 0.5f + time * scrollSpeed * 0.7f) * amplitude * 0.5f;

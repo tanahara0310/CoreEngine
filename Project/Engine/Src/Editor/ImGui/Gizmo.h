@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include <ImGuizmo.h>
@@ -8,7 +8,7 @@ namespace CoreEngine
 {
     class GameObject;
     class SpriteObject;
-    class ICamera;
+    class Camera;
 
     /// @brief ImGuizmo操作クラス
     class Gizmo {
@@ -30,14 +30,14 @@ namespace CoreEngine
         /// @param camera カメラ
         /// @param mode 操作モード
         /// @return トランスフォームが変更された場合true
-        static bool Manipulate(GameObject* object, const ICamera* camera, Mode mode = Mode::Translate);
+        static bool Manipulate(GameObject* object, const Camera* camera, Mode mode = Mode::Translate);
 
         /// @brief スプライト用ギズモを描画し、2Dトランスフォームを操作
         /// @param sprite 操作対象のスプライトオブジェクト
         /// @param camera 2Dカメラ
         /// @param mode 操作モード
         /// @return トランスフォームが変更された場合true
-        static bool Manipulate2D(SpriteObject* sprite, const ICamera* camera, Mode mode = Mode::Translate);
+        static bool Manipulate2D(SpriteObject* sprite, const Camera* camera, Mode mode = Mode::Translate);
 
         /// @brief ギズモが現在操作中かどうか
         /// @return 操作中ならtrue

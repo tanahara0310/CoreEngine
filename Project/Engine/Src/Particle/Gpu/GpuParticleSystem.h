@@ -35,7 +35,7 @@
 namespace CoreEngine {
     class DirectXCommon;
     class ResourceFactory;
-    class ICamera;
+    class Camera;
 }
 
 namespace CoreEngine
@@ -191,7 +191,7 @@ public:
     void Update() override;
 
     /// @brief 描画前処理（定数バッファへの書き込み。ディスパッチはレンダラーが行う）
-    void Draw(const ICamera* camera) override;
+    void Draw(const Camera* camera) override;
 
     // ──────────────────────────────────────────────────────────
     // GameObjectインターフェース実装

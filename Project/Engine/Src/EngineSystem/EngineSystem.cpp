@@ -64,6 +64,7 @@
 
 #include "GameObject/GameObject.h"
 #include "Scene/SceneManager.h"
+#include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineConfig.h"
 
 
@@ -289,17 +290,27 @@ namespace CoreEngine
         context.gpuProfiler = debug ? &debug->GetGpuProfiler() : nullptr;
 #endif
 
+        // RenderTargetManager はビュー確定より前に必要（TAA 履歴ターゲット等の判定に使う）
+        if (render) {
+            context.renderTargetManager = render->GetRenderTargetManager();
+        }
+
+        // ===== 今フレームのビューを確定する =====
+        // ここで作った ViewInfo が「フレーム内の唯一の真実」になる。以降、描画・カリング・
+        // 深度復元・RT はカメラを直接読まず frameViews から行列を取る。
+        FrameViews frameViews;
+        renderPipeline_->PrepareFrameViews(context, frameViews);
+        context.frameViews = &frameViews;
+        if (renderManager) {
+            renderManager->SetFrameViews(&frameViews);
+        }
+
         if (dx) {
             frameBlackboard.SetResource(
                 FrameBlackboard::SceneDepth,
                 dx->GetDepthStencilSRV(),
                 dx->GetDepthStencilResource(),
                 context.depthStencilManager ? &context.depthStencilManager->GetCurrentState() : nullptr);
-        }
-
-        // RenderTargetManagerを設定
-        if (render) {
-            context.renderTargetManager = render->GetRenderTargetManager();
         }
 
         // コマンドリストは debug->BeginRenderPipeline 等へ渡すため USE_IMGUI 外で宣言する。
@@ -414,6 +425,11 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         if (debug) debug->PostFinalizeFrame(dx);
 #endif // USE_IMGUI
+
+        // frameViews はこの関数のローカル。フレーム外から参照されないよう参照を切る。
+        if (renderManager) {
+            renderManager->SetFrameViews(nullptr);
+        }
     }
 
     // ──────────────────────────────────────────────────────────

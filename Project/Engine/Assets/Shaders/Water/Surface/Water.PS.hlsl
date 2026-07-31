@@ -5,6 +5,7 @@
 #include "../Common/FFTOceanCascade.hlsli"
 // RT 屈折アルファのエンコード規約（RTWaterRefraction.hlsl と共有）
 #include "../Common/WaterRefractionEncoding.hlsli"
+#include "ColorSpace.hlsli" // Luminance
 
 // ===== 反射テクスチャ（RTWaterReflectionPass の DXR 出力）=====
 // 鏡像カメラによる Planar Reflection は廃止済み。スクリーン空間・水面ピクセル単位の
@@ -274,7 +275,6 @@ float3 EvaluateWaterSkyIrradiance(float3 n)
 ///          非アクティブ時は静的な拡散 IBL キューブマップへフォールバックする。
 float3 ComputeUnderwaterAmbientLight()
 {
-    const float kPi = 3.14159265f;
 
     // 太陽など平行光源: 水平な水面へ入る下向き放射照度を Lambert 面の放射輝度へ換算（/π）
     // downwelling は太陽高度に対してほぼ線形に 0 へ落ちる（sin(elevation) 相当）ため、
@@ -289,7 +289,7 @@ float3 ComputeUnderwaterAmbientLight()
         }
         float downwelling = saturate(-normalize(gDirectionalLights[i].direction).y);
         maxDownwelling = max(maxDownwelling, downwelling);
-        sunAmbient += gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity * downwelling / kPi;
+        sunAmbient += gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity * downwelling / PI;
     }
 
     // 天空拡散光
@@ -891,7 +891,7 @@ PixelShaderOutput main(WaterPSInput input)
         // 白黒まだらを生むのを防ぐため、膝を超えた輝度だけショルダー圧縮する（色相保持）。
         const float kReflectionCompressKnee = 2.0f;
         const float kReflectionCompressMax = 6.0f;
-        float reflLuma = dot(reflectColor, float3(0.2126f, 0.7152f, 0.0722f));
+        float reflLuma = Luminance(reflectColor);
         if (reflLuma > kReflectionCompressKnee)
         {
             float excessLuma = reflLuma - kReflectionCompressKnee;

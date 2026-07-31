@@ -21,7 +21,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class ICamera;
+    class Camera;
     class DirectXCommon;
     class ResourceFactory;
     class LightBase;

@@ -1,5 +1,8 @@
 // Random.CS.hlsl - ランダムノイズ コンピュートシェーダー
 
+#include "ColorSpace.hlsli" // LuminanceRec601
+#include "Hash.hlsli"       // Hash12 / Hash32
+
 Texture2D<float4> gTexture : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -25,21 +28,6 @@ cbuffer ScreenParams : register(b1)
 
 static const uint kGroupSize = 8;
 
-float Hash12(float2 p)
-{
-    float3 p3 = frac(float3(p.xyx) * 0.1031f);
-    p3 += dot(p3, p3.yzx + 33.33f);
-    return frac((p3.x + p3.y) * p3.z);
-}
-
-float3 Hash32(float2 p)
-{
-    return float3(
-        Hash12(p + float2(1.0f, 0.0f)),
-        Hash12(p + float2(0.0f, 1.0f)),
-        Hash12(p + float2(1.0f, 1.0f)));
-}
-
 [numthreads(kGroupSize, kGroupSize, 1)]
 void main(uint3 dispatchId : SV_DispatchThreadID)
 {
@@ -53,7 +41,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         (float)dispatchId.y / (float)screenHeight);
 
     float4 baseColor = gTexture.Load(int3(dispatchId.xy, 0));
-    float luminance = dot(baseColor.rgb, float3(0.299f, 0.587f, 0.114f));
+    float luminance = LuminanceRec601(baseColor.rgb);
 
     float2 noiseCoord = uv * float2(screenWidth, screenHeight) * grainScale + time * float2(17.0f, 29.0f);
     float noise = Hash12(noiseCoord) * 2.0f - 1.0f;

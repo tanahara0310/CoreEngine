@@ -48,7 +48,7 @@
 #include "IParticleSystem.h"
 
 // 前方宣言
-class ICamera;
+class Camera;
 namespace CoreEngine { class ModelResource; }
 
 // パーティクルのパラメータ
@@ -87,7 +87,7 @@ public:
 
     /// @brief 描画（3D専用 - カメラ必須、Object3dと同じインターフェース）
     /// @param camera カメラオブジェクト
-    void Draw(const ICamera* camera) override;
+    void Draw(const Camera* camera) override;
 
     // ──────────────────────────────────────────────────────────
     // GameObjectインターフェース実装

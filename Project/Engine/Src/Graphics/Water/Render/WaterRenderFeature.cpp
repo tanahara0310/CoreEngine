@@ -2,7 +2,7 @@
 #include "WaterRenderFeature.h"
 
 #include "Camera/CameraStructs.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObjects/SkyBox/SkyBoxObject.h"

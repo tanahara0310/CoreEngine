@@ -47,8 +47,8 @@ namespace CoreEngine
         void SetCameraCBVAddress(D3D12_GPU_VIRTUAL_ADDRESS address) { cameraCBVAddress_ = address; }
 
         /// @brief 深度復元用の View*Projection 逆行列を更新する（ビューごとに毎回呼び出し）
-        /// @details gCamera（cameraCBVAddress_）は補助ビュー描画中フリッカー防止のため
-        ///          意図的に更新されない（Camera::BeginViewOverride 参照）ため、
+        /// @details gCamera（cameraCBVAddress_）はインフライトのフリッカー防止のため
+        ///          フレーム更新時に 1 回しか書かれない（Camera::TransferMatrix 参照）ため、
         ///          こちらは専用 CBV として毎ビュー確実に更新する。
         /// @note DeferredLighting は GameView/ReflectionView の両方で同一フレーム内に実行されるため、
         ///       単一バッファだと後勝ちで両ビューが同じ（間違った）行列を参照してしまう

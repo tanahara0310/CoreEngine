@@ -1,5 +1,7 @@
 // Sepia.CS.hlsl - セピア コンピュートシェーダー
 
+#include "ColorSpace.hlsli" // LuminanceRec601
+
 Texture2D<float4> gTexture : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -31,7 +33,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     float4 color = gTexture.Load(int3(dispatchId.xy, 0));
 
     // グレースケール輝度計算
-    float luminance = dot(color.rgb, float3(0.299f, 0.587f, 0.114f));
+    float luminance = LuminanceRec601(color.rgb);
 
     // セピアトーン適用
     float3 sepiaColor = float3(

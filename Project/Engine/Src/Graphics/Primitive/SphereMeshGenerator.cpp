@@ -15,7 +15,7 @@ namespace CoreEngine
     {
         ModelData data;
 
-        constexpr float kPi = 3.14159265358979f;
+        constexpr float kPi = MathCore::Constants::kPi;
 
         // 頂点生成
         data.vertices.reserve((stacks_ + 1) * (slices_ + 1));

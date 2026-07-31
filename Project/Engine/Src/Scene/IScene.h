@@ -12,7 +12,7 @@
 namespace CoreEngine {
     class EngineSystem;
     class SceneManager;
-    class ICamera;
+    class Camera;
     class GameObjectManager;
     class RenderPipeline;
 }
@@ -49,9 +49,8 @@ public:
     virtual void Draw() = 0;
     virtual void Finalize() = 0;
 
-    virtual ICamera* GetGameViewCamera3D() const { return nullptr; }
-    virtual ICamera* GetDefaultGameViewCamera3D() const { return GetGameViewCamera3D(); }
-    virtual ICamera* GetGameViewCamera2D() const { return nullptr; }
+    virtual Camera* GetGameViewCamera3D() const { return nullptr; }
+    virtual Camera* GetGameViewCamera2D() const { return nullptr; }
     virtual GameObjectManager* GetGameObjectManager() { return nullptr; }
 
     /// @brief Scene が要求する補助 RenderView 一覧を構築する

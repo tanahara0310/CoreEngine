@@ -10,6 +10,7 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Camera/View/ViewInfo.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
@@ -74,12 +75,15 @@ namespace CoreEngine
             deferredLighting->SetIBLIntensity(context.renderManager->GetEnvironmentIntensity());
 
             // ===== 深度復元用 View*Projection 逆行列（ビューごとに毎回更新） =====
-            // GameView/ReflectionView いずれも RenderManager が現在実行中のビューの
-            // 行列を保持しているため、gCamera（フリーズされたCBV）に頼らずここで直接取得する。
-            const Matrix4x4& view = context.renderManager->GetViewMatrix();
-            const Matrix4x4& proj = context.renderManager->GetProjectionMatrix();
-            const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(MathCore::Matrix::Multiply(view, proj));
-            deferredLighting->UpdateDepthReconstruction(context.viewSettings.viewType, invViewProj);
+            // 実行中のビューの ViewInfo から取る。gCamera（フレーム 1 回しか書かれない CBV）
+            // には頼らない。逆行列は ViewInfo 構築時に 1 回だけ計算済み。
+            if (context.frameViews) {
+                const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+                if (view.isValid) {
+                    deferredLighting->UpdateDepthReconstruction(
+                        context.viewSettings.viewType, view.invViewProjection);
+                }
+            }
         }
 
         // ===== IBL パラメータを GPU バッファに書き込む =====

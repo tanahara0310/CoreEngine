@@ -1,5 +1,7 @@
 // Bloom.CS.hlsl - ブルーム コンピュートシェーダー
 
+#include "ColorSpace.hlsli" // Luminance
+
 Texture2D<float4> gTexture : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -19,12 +21,6 @@ cbuffer ScreenParams : register(b1)
 };
 
 static const uint kGroupSize = 8;
-
-// Rec.709 輝度計算
-float Luminance(float3 col)
-{
-    return dot(col, float3(0.2126f, 0.7152f, 0.0722f));
-}
 
 // ソフトスレッショルド
 float SoftThreshold(float lum, float thresh, float knee)

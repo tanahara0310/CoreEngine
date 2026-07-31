@@ -5,7 +5,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class ICamera;
+    class Camera;
 }
 
 /// @brief 描画オブジェクト種別ごとのレンダラー基底インターフェース
@@ -58,6 +58,6 @@ public:
 
     /// @brief カメラを設定（View/Projection の参照元）
     /// @param camera カメラオブジェクト
-    virtual void SetCamera(const CoreEngine::ICamera* camera) = 0;
+    virtual void SetCamera(const CoreEngine::Camera* camera) = 0;
 };
 }

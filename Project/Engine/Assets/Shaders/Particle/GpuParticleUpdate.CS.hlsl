@@ -37,12 +37,12 @@ float32_t ApplySizeCurve(float32_t t)
 // 角度を -π〜π に正規化（RotationModule::NormalizeAngle 相当）
 float32_t NormalizeAngle(float32_t angle)
 {
-    angle = fmod(angle + kGpuParticlePi, 2.0f * kGpuParticlePi);
+    angle = fmod(angle + PI, TWO_PI);
     if (angle < 0.0f)
     {
-        angle += 2.0f * kGpuParticlePi;
+        angle += TWO_PI;
     }
-    return angle - kGpuParticlePi;
+    return angle - PI;
 }
 
 [numthreads(kGpuParticleGroupSize, 1, 1)]

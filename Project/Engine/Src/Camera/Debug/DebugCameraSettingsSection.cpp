@@ -1,19 +1,19 @@
 #include "pch.h"
 #include "DebugCameraSettingsSection.h"
-#include "Camera/Debug/DebugCamera.h"
+#include "Camera/Camera.h"
+#include "Camera/Control/OrbitFlyController.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 namespace CoreEngine
 {
     void DebugCameraSettingsSection::Serialize(json& out) const
     {
-        if (!camera_) {
+        if (!camera_ || !controller_) {
             return;
         }
 
         // 操作設定
-        // useGameView はコード制御フラグ（BaseScene::SetupCamera が設定）のため保存しない
-        const auto& s = camera_->GetSettings();
+        const auto& s = controller_->GetSettings();
         out["rotationSensitivity"] = s.rotationSensitivity;
         out["panSensitivity"] = s.panSensitivity;
         out["zoomSensitivity"] = s.zoomSensitivity;
@@ -28,13 +28,14 @@ namespace CoreEngine
         out["minHeight"] = s.minHeight;
         out["maxHeight"] = s.maxHeight;
 
-        // 姿勢
-        out["target"] = JsonManager::Vector3ToJson(camera_->GetTarget());
-        out["distance"] = camera_->GetDistance();
-        out["pitch"] = camera_->GetPitch();
-        out["yaw"] = camera_->GetYaw();
+        // 軌道状態（コントローラの内部状態）
+        const auto& state = controller_->GetState();
+        out["target"] = JsonManager::Vector3ToJson(state.target);
+        out["distance"] = state.distance;
+        out["pitch"] = state.pitch;
+        out["yaw"] = state.yaw;
 
-        // 投影パラメータ
+        // 投影パラメータ（カメラ本体）
         const CameraParameters params = camera_->GetParameters();
         out["fov"] = params.fov;
         out["nearClip"] = params.nearClip;
@@ -44,12 +45,12 @@ namespace CoreEngine
 
     void DebugCameraSettingsSection::Deserialize(const json& in)
     {
-        if (!camera_) {
+        if (!camera_ || !controller_) {
             return;
         }
 
         // 操作設定（欠損キーは現在値＝コードデフォルトを維持）
-        auto s = camera_->GetSettings();
+        auto s = controller_->GetSettings();
         s.rotationSensitivity = JsonManager::SafeGet(in, "rotationSensitivity", s.rotationSensitivity);
         s.panSensitivity = JsonManager::SafeGet(in, "panSensitivity", s.panSensitivity);
         s.zoomSensitivity = JsonManager::SafeGet(in, "zoomSensitivity", s.zoomSensitivity);
@@ -63,19 +64,26 @@ namespace CoreEngine
         s.maxHorizontalExtent = JsonManager::SafeGet(in, "maxHorizontalExtent", s.maxHorizontalExtent);
         s.minHeight = JsonManager::SafeGet(in, "minHeight", s.minHeight);
         s.maxHeight = JsonManager::SafeGet(in, "maxHeight", s.maxHeight);
-        camera_->SetSettings(s);
+        controller_->SetSettings(s);
 
-        // 姿勢と投影パラメータは RestoreSnapshot 経由で適用する
-        // （クランプ・スムーズ移動値の同期・行列更新までまとめて行われる）
-        CameraSnapshot snapshot = camera_->CaptureSnapshot("EditorSettings");
-        snapshot.target = JsonManager::SafeGetVector3(in, "target", snapshot.target);
-        snapshot.distance = JsonManager::SafeGet(in, "distance", snapshot.distance);
-        snapshot.pitch = JsonManager::SafeGet(in, "pitch", snapshot.pitch);
-        snapshot.yaw = JsonManager::SafeGet(in, "yaw", snapshot.yaw);
-        snapshot.parameters.fov = JsonManager::SafeGet(in, "fov", snapshot.parameters.fov);
-        snapshot.parameters.nearClip = JsonManager::SafeGet(in, "nearClip", snapshot.parameters.nearClip);
-        snapshot.parameters.farClip = JsonManager::SafeGet(in, "farClip", snapshot.parameters.farClip);
-        snapshot.parameters.aspectRatio = JsonManager::SafeGet(in, "aspectRatio", snapshot.parameters.aspectRatio);
-        camera_->RestoreSnapshot(snapshot);
+        // 軌道状態（SetState がクランプとスムーズ値の同期までまとめて行う）
+        auto state = controller_->GetState();
+        state.target = JsonManager::SafeGetVector3(in, "target", state.target);
+        state.distance = JsonManager::SafeGet(in, "distance", state.distance);
+        state.pitch = JsonManager::SafeGet(in, "pitch", state.pitch);
+        state.yaw = JsonManager::SafeGet(in, "yaw", state.yaw);
+        controller_->SetState(state);
+
+        // 投影パラメータ
+        CameraParameters params = camera_->GetParameters();
+        params.fov = JsonManager::SafeGet(in, "fov", params.fov);
+        params.nearClip = JsonManager::SafeGet(in, "nearClip", params.nearClip);
+        params.farClip = JsonManager::SafeGet(in, "farClip", params.farClip);
+        params.aspectRatio = JsonManager::SafeGet(in, "aspectRatio", params.aspectRatio);
+        camera_->SetParameters(params);
+
+        // 復元直後に姿勢と行列を反映しておく（次フレームの Update を待たない）
+        controller_->ApplyTo(*camera_);
+        camera_->UpdateMatrix();
     }
 }

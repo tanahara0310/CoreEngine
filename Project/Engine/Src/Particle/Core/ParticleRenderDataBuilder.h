@@ -8,7 +8,7 @@
 namespace CoreEngine
 {
 // 前方宣言
-class ICamera;
+class Camera;
 struct Particle;
 struct ParticleForGPU;
 
@@ -43,7 +43,7 @@ public:
     /// @return 準備したインスタンス数
     uint32_t BuildRenderData(
         const std::vector<Particle>& particles,
-        const ICamera* camera,
+        const Camera* camera,
         BillboardType billboardType,
         ParticleRenderMode renderMode,
         ParticleForGPU* instancingData,

@@ -2,8 +2,10 @@
 /// @brief Prefiltered Environment Map生成用コンピュートシェーダー
 /// @details 各roughnessレベルで環境マップをImportance Samplingでフィルタリング
 
+#include "Sampling.hlsli" // PI / Hammersley / ImportanceSampleGGX
+#include "Cubemap.hlsli"  // GetCubemapDirection
+
 // ===== 定数 =====
-static const float PI = 3.14159265359f;
 static const uint SAMPLE_COUNT = 512u; // サンプル数（Hammersley低不一致列で512sppは十分な品質）
 
 // ===== SRV & UAV =====
@@ -21,52 +23,6 @@ cbuffer PrefilteredParams : register(b0)
 
 // ===== ユーティリティ関数 =====
 
-/// @brief Van der Corput低不一致シーケンス
-float RadicalInverse_VdC(uint bits)
-{
-    bits = (bits << 16u) | (bits >> 16u);
-    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
-}
-
-/// @brief Hammersley低不一致サンプリング
-float2 Hammersley(uint i, uint N)
-{
-    return float2(float(i) / float(N), RadicalInverse_VdC(i));
-}
-
-/// @brief GGX Importance Sampling
-/// @param Xi 2D乱数 (0-1)
-/// @param N 法線ベクトル
-/// @param roughness 粗さ
-/// @return ハーフベクトルH
-float3 ImportanceSampleGGX(float2 Xi, float3 N, float roughness)
-{
-    float a = roughness * roughness;
-    
-    // 球面座標でのサンプリング
-    float phi = 2.0f * PI * Xi.x;
-    float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (a * a - 1.0f) * Xi.y));
-    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
-    
-    // タンジェント空間でのハーフベクトル
-    float3 H;
-    H.x = cos(phi) * sinTheta;
-    H.y = sin(phi) * sinTheta;
-    H.z = cosTheta;
-    
-    // タンジェント空間 -> ワールド空間
-    float3 up = abs(N.z) < 0.999f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
-    float3 tangent = normalize(cross(up, N));
-    float3 bitangent = cross(N, tangent);
-    
-    float3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
-    return normalize(sampleVec);
-}
-
 /// @brief GGX法線分布関数
 float DistributionGGX(float NdotH, float roughness)
 {
@@ -79,41 +35,6 @@ float DistributionGGX(float NdotH, float roughness)
     denom = PI * denom * denom;
     
     return nom / max(denom, 0.0001f);
-}
-
-/// @brief キューブマップ面IDと2D座標から方向ベクトルを計算
-/// @details DirectX標準キューブマップ座標系に準拠
-float3 GetCubemapDirection(uint faceIndex, float2 uv)
-{
-    // UV座標を-1～1に変換（中心が(0,0)、右上が(1,1)、左下が(-1,-1)）
-    float2 texCoord = uv * 2.0f - 1.0f;
-    
-    float3 dir;
-    switch (faceIndex)
-    {
-        case 0: // +X (右)
-            dir = normalize(float3(1.0f, -texCoord.y, -texCoord.x));
-            break;
-        case 1: // -X (左)
-            dir = normalize(float3(-1.0f, -texCoord.y, texCoord.x));
-            break;
-        case 2: // +Y (上)
-            dir = normalize(float3(texCoord.x, 1.0f, texCoord.y));
-            break;
-        case 3: // -Y (下)
-            dir = normalize(float3(texCoord.x, -1.0f, -texCoord.y));
-            break;
-        case 4: // +Z (前)
-            dir = normalize(float3(texCoord.x, -texCoord.y, 1.0f));
-            break;
-        case 5: // -Z (後ろ)
-            dir = normalize(float3(-texCoord.x, -texCoord.y, -1.0f));
-            break;
-        default:
-            dir = float3(0.0f, 1.0f, 0.0f);
-            break;
-    }
-    return dir;
 }
 
 // ===== メインコンピュートシェーダー =====

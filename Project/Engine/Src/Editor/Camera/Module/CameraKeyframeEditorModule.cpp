@@ -12,7 +12,7 @@
 #include <string>
 
 #include "Camera/CameraManager.h"
-#include "Camera/Debug/DebugCamera.h"
+#include "Camera/Camera.h"
 #include "Camera/Camera.h"
 #include "Graphics/Line/LineManager.h"
 #include "Utility/JsonManager/JsonManager.h"
@@ -468,10 +468,9 @@ namespace CoreEngine
         if (auto lb = UI::Scope::ListBoxScope("キーフレーム一覧", ImVec2(-1.0f, 180.0f))) {
             for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
                 const bool isSelected = (i == selectedIndex_);
-                const char* cameraTypeLabel = keyframes_[i].snapshot.isDebugCamera ? "デバッグ" : "リリース";
                 char timeLabel[32]{};
                 std::snprintf(timeLabel, sizeof(timeLabel), "%.2f秒", keyframes_[i].time);
-                const std::string label = std::string(timeLabel) + " [" + cameraTypeLabel + "]";
+                const std::string label = timeLabel;
                 if (ImGui::Selectable(label.c_str(), isSelected)) {
                     selectedIndex_ = i;
                 }
@@ -680,28 +679,16 @@ namespace CoreEngine
 
     CameraSnapshot CameraKeyframeEditorModule::InterpolateSnapshot(const CameraSnapshot& from, const CameraSnapshot& to, float t) const
     {
-        // カメラタイプが異なる場合は始点スナップショットを優先する。
-        if (from.isDebugCamera != to.isDebugCamera) {
-            return from;
-        }
-
         CameraSnapshot result{};
-        result.isDebugCamera = from.isDebugCamera;
         const EasingUtil::Type easingType = GetSelectedEasingType();
 
-        if (result.isDebugCamera) {
-            result.target = EasingUtil::LerpVector3(from.target, to.target, t, easingType);
-            result.distance = EasingUtil::Lerp(from.distance, to.distance, t, easingType);
-            result.pitch = EasingUtil::LerpAngle(from.pitch, to.pitch, t, easingType);
-            result.yaw = EasingUtil::LerpAngle(from.yaw, to.yaw, t, easingType);
-        } else {
-            result.position = EasingUtil::LerpVector3(from.position, to.position, t, easingType);
-            result.rotation = Vector3(
-                EasingUtil::LerpAngle(from.rotation.x, to.rotation.x, t, easingType),
-                EasingUtil::LerpAngle(from.rotation.y, to.rotation.y, t, easingType),
-                EasingUtil::LerpAngle(from.rotation.z, to.rotation.z, t, easingType));
-            result.scale = EasingUtil::LerpVector3(from.scale, to.scale, t, easingType);
-        }
+        result.position = EasingUtil::LerpVector3(from.position, to.position, t, easingType);
+        result.rotation = Vector3(
+            EasingUtil::LerpAngle(from.rotation.x, to.rotation.x, t, easingType),
+            EasingUtil::LerpAngle(from.rotation.y, to.rotation.y, t, easingType),
+            EasingUtil::LerpAngle(from.rotation.z, to.rotation.z, t, easingType));
+        result.scale = EasingUtil::LerpVector3(from.scale, to.scale, t, easingType);
+        result.parameters.projectionType = from.parameters.projectionType;
 
         result.parameters.fov = EasingUtil::Lerp(from.parameters.fov, to.parameters.fov, t, easingType);
         result.parameters.nearClip = EasingUtil::Lerp(from.parameters.nearClip, to.parameters.nearClip, t, easingType);
@@ -721,51 +708,27 @@ namespace CoreEngine
 
     bool CameraKeyframeEditorModule::CaptureFromActiveCamera(const CameraEditorContext& context, CameraSnapshot& outSnapshot) const
     {
-        ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
         if (!active3D) {
             return false;
         }
 
-        if (auto* releaseCamera = dynamic_cast<Camera*>(active3D)) {
-            outSnapshot = releaseCamera->CaptureSnapshot("Keyframe");
-            return true;
-        }
-
-        if (auto* debugCamera = dynamic_cast<DebugCamera*>(active3D)) {
-            outSnapshot = debugCamera->CaptureSnapshot("Keyframe");
-            return true;
-        }
-
-        return false;
+        outSnapshot = active3D->CaptureSnapshot("Keyframe");
+        return true;
     }
 
     bool CameraKeyframeEditorModule::ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot)
     {
-        ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
         if (!active3D) {
             return false;
         }
 
-        if (snapshot.isDebugCamera) {
-            if (auto* debugCamera = dynamic_cast<DebugCamera*>(active3D)) {
-                debugCamera->RestoreSnapshot(snapshot);
-                ignoreNextAutoKey_ = true;
-                observedSnapshot_ = snapshot;
-                hasObservedSnapshot_ = true;
-                return true;
-            }
-            return false;
-        }
-
-        if (auto* releaseCamera = dynamic_cast<Camera*>(active3D)) {
-            releaseCamera->RestoreSnapshot(snapshot);
-            ignoreNextAutoKey_ = true;
-            observedSnapshot_ = snapshot;
-            hasObservedSnapshot_ = true;
-            return true;
-        }
-
-        return false;
+        active3D->RestoreSnapshot(snapshot);
+        ignoreNextAutoKey_ = true;
+        observedSnapshot_ = snapshot;
+        hasObservedSnapshot_ = true;
+        return true;
     }
 
     bool CameraKeyframeEditorModule::IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const
@@ -776,7 +739,7 @@ namespace CoreEngine
             return std::fabs(a - b) <= 0.0001f;
         };
 
-        if (lhs.isDebugCamera != rhs.isDebugCamera) {
+        if (lhs.parameters.projectionType != rhs.parameters.projectionType) {
             return false;
         }
 
@@ -785,15 +748,6 @@ namespace CoreEngine
             || !nearEqual(lhs.parameters.farClip, rhs.parameters.farClip)
             || !nearEqual(lhs.parameters.aspectRatio, rhs.parameters.aspectRatio)) {
             return false;
-        }
-
-        if (lhs.isDebugCamera) {
-            return nearEqual(lhs.target.x, rhs.target.x)
-                && nearEqual(lhs.target.y, rhs.target.y)
-                && nearEqual(lhs.target.z, rhs.target.z)
-                && nearEqual(lhs.distance, rhs.distance)
-                && nearEqual(lhs.pitch, rhs.pitch)
-                && nearEqual(lhs.yaw, rhs.yaw);
         }
 
         return nearEqual(lhs.position.x, rhs.position.x)
@@ -901,26 +855,14 @@ namespace CoreEngine
                 const Vector3 position = GetSnapshotWorldPosition(keyframes_[i].snapshot);
                 const Vector3 color = (i == selectedIndex_) ? viewportSelectedKeyColor_ : viewportKeyMarkerColor_;
                 lineManager.DrawWireSphere(position, viewportMarkerSize_, 8, color, 0.95f);
-
-                if (viewportShowDebugTarget_ && keyframes_[i].snapshot.isDebugCamera) {
-                    lineManager.DrawCross(keyframes_[i].snapshot.target, viewportMarkerSize_ * 1.2f, viewportDebugTargetColor_, 0.95f);
-                    lineManager.DrawLine(position, keyframes_[i].snapshot.target, viewportDebugTargetColor_, 0.5f);
-                }
             }
         }
     }
 
     Vector3 CameraKeyframeEditorModule::GetSnapshotWorldPosition(const CameraSnapshot& snapshot) const
     {
-        if (!snapshot.isDebugCamera) {
-            return snapshot.position;
-        }
-
-        return {
-            snapshot.target.x + snapshot.distance * std::cos(snapshot.pitch) * std::sin(snapshot.yaw),
-            snapshot.target.y + snapshot.distance * std::sin(snapshot.pitch),
-            snapshot.target.z + snapshot.distance * std::cos(snapshot.pitch) * std::cos(snapshot.yaw)
-        };
+        // スナップショットは常に視点ワールド座標を持つ（軌道パラメータは持たない）
+        return snapshot.position;
     }
 
     int CameraKeyframeEditorModule::FindNearestKeyframeIndex(float time) const

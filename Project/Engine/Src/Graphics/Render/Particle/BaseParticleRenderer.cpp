@@ -4,7 +4,7 @@
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include <cassert>
 
 
@@ -46,7 +46,7 @@ namespace CoreEngine
         cmdList_ = nullptr;
     }
 
-    void BaseParticleRenderer::SetCamera(const ICamera* camera) {
+    void BaseParticleRenderer::SetCamera(const Camera* camera) {
         camera_ = camera;
     }
 

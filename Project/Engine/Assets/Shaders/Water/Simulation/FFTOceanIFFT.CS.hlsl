@@ -9,7 +9,7 @@ cbuffer FFTOceanIFFTConstants : register(b0)
     float gNormalizationScale;
 };
 
-static const float PI = 3.14159265359f;
+#include "ShaderMath.hlsli" // PI
 
 uint ReverseIndex(uint index, uint resolution)
 {

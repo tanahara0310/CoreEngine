@@ -15,7 +15,7 @@
 #include <vector>
 
 // 前方宣言
-class ICamera;
+class Camera;
 
 
 namespace CoreEngine
@@ -39,7 +39,7 @@ namespace CoreEngine
         void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) override;
         void EndPass() override;
         RenderPassType GetRenderPassType() const override { return RenderPassType::Line; }
-        void SetCamera(const ICamera* camera) override;
+        void SetCamera(const Camera* camera) override;
 
         /// @brief 初期化（DirectXCommonとResourceFactory付き）
         /// @param dxCommon DirectXCommon
@@ -106,7 +106,7 @@ namespace CoreEngine
         ResourceFactory* resourceFactory_ = nullptr;
 
         // カメラ
-        const ICamera* camera_ = nullptr;
+        const Camera* camera_ = nullptr;
 
         // 頂点バッファ
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;

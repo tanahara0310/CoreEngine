@@ -4,6 +4,7 @@
 // ============================================================
 
 #include "../Include/Common/DepthReconstruction.hlsli"
+#include "../Include/Common/ShaderMath.hlsli" // PI / TWO_PI
 
 // 出力: シャドウマスク（0=影, 1=光）。トレース解像度（ハーフ解像度時はフルの半分）
 RWTexture2D<float> gShadowOutput : register(u0);
@@ -52,7 +53,6 @@ struct ShadowPayload
 // ============================================================
 // ソフトシャドウ用ユーティリティ
 // ============================================================
-static const float kPi = 3.14159265358979f;
 
 // PCG ハッシュ
 uint PcgHash(uint seed)
@@ -72,7 +72,7 @@ float3 SampleConeDirection(float3 dir, float coneAngle, float r1, float r2)
     float cosMax = cos(coneAngle);
     float cosTheta = r1 * (1.0f - cosMax) + cosMax;
     float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
-    float phi = r2 * 2.0f * kPi;
+    float phi = r2 * TWO_PI;
 
     // ローカル座標
     float lx = sinTheta * cos(phi);

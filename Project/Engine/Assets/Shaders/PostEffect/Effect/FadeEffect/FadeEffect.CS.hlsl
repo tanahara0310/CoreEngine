@@ -1,5 +1,8 @@
 // FadeEffect.CS.hlsl - フェード効果 コンピュートシェーダー
 
+#include "ShaderMath.hlsli" // PI
+#include "Hash.hlsli"       // HashSine12
+
 Texture2D<float4> gTexture : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -44,21 +47,15 @@ float3 RGBtoHSV(float3 rgb)
     return float3(abs(q.z + (q.w - q.y) / (6.0f * d + e)), d / (q.x + e), q.x);
 }
 
-// 乱数
-float RandomVal(float2 st)
-{
-    return frac(sin(dot(st.xy, float2(12.9898f, 78.233f))) * 43758.5453123f);
-}
-
 // ノイズ
 float NoiseVal(float2 st)
 {
     float2 i = floor(st);
     float2 f = frac(st);
-    float a = RandomVal(i);
-    float b = RandomVal(i + float2(1.0f, 0.0f));
-    float c = RandomVal(i + float2(0.0f, 1.0f));
-    float d = RandomVal(i + float2(1.0f, 1.0f));
+    float a = HashSine12(i);
+    float b = HashSine12(i + float2(1.0f, 0.0f));
+    float c = HashSine12(i + float2(0.0f, 1.0f));
+    float d = HashSine12(i + float2(1.0f, 1.0f));
     float2 u = f * f * (3.0f - 2.0f * f);
     return lerp(a, b, u.x) + (c - a) * u.y * (1.0f - u.x) + (d - b) * u.x * u.y;
 }
@@ -70,7 +67,7 @@ float SpiralFade(float2 uv, float alpha, float power, float t)
     float dist = length(toCenter);
     float angle = atan2(toCenter.y, toCenter.x);
     float spiral = angle + dist * power + t * 2.0f;
-    float spiralMask = sin(spiral * 3.14159f) * 0.5f + 0.5f;
+    float spiralMask = sin(spiral * PI) * 0.5f + 0.5f;
     float distanceFade = 1.0f - smoothstep(0.0f, 0.7f, dist);
     return saturate(spiralMask * alpha + (1.0f - distanceFade) * alpha);
 }

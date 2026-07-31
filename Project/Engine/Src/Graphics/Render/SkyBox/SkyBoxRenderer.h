@@ -21,7 +21,7 @@ public:
     void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) override;
     void EndPass() override;
     RenderPassType GetRenderPassType() const override { return RenderPassType::SkyBox; }
-    void SetCamera(const ICamera* camera) override;
+    void SetCamera(const Camera* camera) override;
 
     /// @brief ルートシグネチャを取得
     ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }

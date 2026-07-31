@@ -33,7 +33,7 @@ namespace CoreEngine
         /// @brief パスを終了（GBuffer フラグをリセット）
         void EndPass() override;
         /// @brief カメラの GPU 仮想アドレスを取得して保持
-        void SetCamera(const ICamera* camera) override;
+        void SetCamera(const Camera* camera) override;
 
         /// @brief フォワードパス用 RootSignature を取得
         ID3D12RootSignature* GetRootSignature() const { return forwardRootSignatureMg_->GetRootSignature(); }

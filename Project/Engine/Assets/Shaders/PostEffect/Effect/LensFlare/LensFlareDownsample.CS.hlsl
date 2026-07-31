@@ -31,7 +31,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     col *= 0.25f;
 
     // ソフトニー付き輝度閾値（Bloom と同形式）
-    const float lum = LensFlareLuminance(col);
+    const float lum = Luminance(col);
     const float k = gThreshold * gSoftKnee;
     float soft = lum - gThreshold + k;
     soft = clamp(soft, 0.0f, 2.0f * k);
@@ -41,7 +41,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     float3 bright = col * contribution;
 
     // 高輝度クランプ（太陽の数千倍の放射輝度がゴーストで飽和・ちらつきになるのを防ぐ）
-    const float brightLum = LensFlareLuminance(bright);
+    const float brightLum = Luminance(bright);
     if (brightLum > gMaxBrightness)
     {
         bright *= gMaxBrightness / brightLum;

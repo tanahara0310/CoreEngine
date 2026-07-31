@@ -7,8 +7,7 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Camera/CameraManager.h"
-#include "Camera/ICamera.h"
+#include "Camera/View/ViewInfo.h"
 #include "Scene/SceneManager.h"
 #include "Math/MathCore.h"
 #include <cstring>
@@ -43,17 +42,11 @@ namespace CoreEngine
         // 実際に描画へ使われたカメラから取ること（SSAOTechnique と同じ理由）。
         // 誤った行列だとワールド座標差の判定が壊れ、バイラテラルブラーが
         // 「エッジ保存」ではなく「ほぼ全サンプル棄却」になってノイズが残る。
-        const ICamera* camera = context.sceneManager
-            ? context.sceneManager->GetGameViewCamera3D()
-            : nullptr;
-        if (!camera && context.cameraManager) {
-            camera = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
-        }
-        if (camera) {
-            const Matrix4x4& view = camera->GetViewMatrix();
-            const Matrix4x4& proj = camera->GetProjectionMatrix();
-            const Matrix4x4 invViewProj = MathCore::Matrix::Inverse(MathCore::Matrix::Multiply(view, proj));
-            std::memcpy(params_.invViewProjMatrix, &invViewProj, sizeof(float) * 16);
+        if (context.frameViews) {
+            const ViewInfo& view = context.frameViews->GameView();
+            if (view.isValid) {
+                std::memcpy(params_.invViewProjMatrix, &view.invViewProjection, sizeof(float) * 16);
+            }
         }
 
         // 今フレームのスライスへ書き込む（フレームオーバーラップ対応）

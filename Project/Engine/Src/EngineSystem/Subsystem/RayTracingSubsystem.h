@@ -21,7 +21,7 @@ namespace CoreEngine
     class DirectXCommon;
     class ModelManager;
     class SceneManager;
-    class ICamera;
+    class Camera;
 
     /// @brief DXR (DirectX Raytracing) 関連処理を担当するサブシステム
     /// @details EngineSystem::ExecuteRenderPipeline から DXR の BLAS/TLAS 構築および
@@ -124,7 +124,6 @@ namespace CoreEngine
             const std::function<void(uint32_t lightIndex, const Light& light)>& body);
 
         struct WaterDispatchContext {
-            ICamera* camera = nullptr;
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV{};
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV{};
             Matrix4x4 viewProjection{};

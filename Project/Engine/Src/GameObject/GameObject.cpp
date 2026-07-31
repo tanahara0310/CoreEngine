@@ -29,7 +29,7 @@ namespace CoreEngine
 
     void GameObject::Update() {}
 
-    void GameObject::Draw(const ICamera* camera) {
+    void GameObject::Draw(const Camera* camera) {
         (void)camera;
     }
 

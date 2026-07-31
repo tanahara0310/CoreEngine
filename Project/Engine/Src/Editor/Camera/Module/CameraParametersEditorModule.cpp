@@ -6,7 +6,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 
 #include "Camera/CameraManager.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Camera/CameraStructs.h"
 
 namespace CoreEngine
@@ -24,7 +24,7 @@ namespace CoreEngine
         }
 
         // まず3Dカメラを編集対象にし、将来必要であれば2D側にも拡張する。
-        ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
         if (!active3D) {
             UI::Hint("アクティブな3Dカメラがありません。");
             return;

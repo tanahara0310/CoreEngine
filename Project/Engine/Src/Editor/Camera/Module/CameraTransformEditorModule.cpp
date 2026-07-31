@@ -7,7 +7,7 @@
 #include <numbers>
 
 #include "Camera/CameraManager.h"
-#include "Camera/Debug/DebugCamera.h"
+#include "Camera/Camera.h"
 #include "Camera/Camera.h"
 
 namespace CoreEngine
@@ -31,7 +31,7 @@ namespace CoreEngine
         }
 
         // 新API前提: 3Dアクティブカメラを明示取得して編集する。
-        ICamera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
+        Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);
         if (!active3D) {
             UI::Hint("アクティブな3Dカメラがありません。");
             return;
@@ -41,71 +41,64 @@ namespace CoreEngine
         ImGui::Text("アクティブ3D: %s", activeName.c_str());
         UI::Separator();
 
-        // ReleaseCamera: SRTを直接編集する。
-        if (auto* releaseCamera = dynamic_cast<Camera*>(active3D)) {
-            Vector3 translate = releaseCamera->GetTranslate();
-            Vector3 rotate = releaseCamera->GetRotate();
-            Vector3 scale = releaseCamera->GetScale();
+        // 軌道コントローラが付いているカメラは、位置ではなく「注視点まわりの軌道」を編集する。
+        // （コントローラが毎フレーム Transform を上書きするため、位置を直接いじっても戻される）
+        if (auto* orbit = context.cameraManager->GetActiveOrbitController()) {
+            auto state = orbit->GetState();
+            float pitchDeg = state.pitch * kRadToDeg;
+            float yawDeg = state.yaw * kRadToDeg;
 
             bool changed = false;
-            changed |= UI::DragVec3("位置", translate, 0.1f);
-
-            Vector3 rotateDeg = {
-                rotate.x * kRadToDeg,
-                rotate.y * kRadToDeg,
-                rotate.z * kRadToDeg
-            };
-            if (UI::DragVec3("回転 (度)", rotateDeg, 0.5f, -360.0f, 360.0f)) {
-                rotate = {
-                    rotateDeg.x * kDegToRad,
-                    rotateDeg.y * kDegToRad,
-                    rotateDeg.z * kDegToRad
-                };
-                changed = true;
-            }
-
-            changed |= UI::DragVec3("スケール", scale, 0.01f, 0.01f, 10.0f);
-
-            if (changed) {
-                // 編集結果を一括反映し、次フレーム描画で反映できる状態にする。
-                releaseCamera->SetTranslate(translate);
-                releaseCamera->SetRotate(rotate);
-                releaseCamera->SetScale(scale);
-            }
-
-            if (ImGui::Button("カメラをリセット")) {
-                releaseCamera->Reset();
-            }
-            return;
-        }
-
-        // DebugCamera: Orbitパラメータを編集する。
-        if (auto* debugCamera = dynamic_cast<DebugCamera*>(active3D)) {
-            Vector3 target = debugCamera->GetTarget();
-            float distance = debugCamera->GetDistance();
-            float pitchDeg = debugCamera->GetPitch() * kRadToDeg;
-            float yawDeg = debugCamera->GetYaw() * kRadToDeg;
-
-            bool changed = false;
-            changed |= UI::DragVec3("注視点", target, 0.1f);
-            changed |= UI::DragFloat("距離", distance, 0.1f, 0.1f, 10000.0f);
+            changed |= UI::DragVec3("注視点", state.target, 0.1f);
+            changed |= UI::DragFloat("距離", state.distance, 0.1f, 0.1f, 10000.0f);
             changed |= UI::SliderFloat("ピッチ (度)", pitchDeg, -89.0f, 89.0f, "%.1f");
             changed |= UI::SliderFloat("ヨー (度)", yawDeg, -360.0f, 360.0f, "%.1f");
 
             if (changed) {
-                debugCamera->SetTarget(target);
-                debugCamera->SetDistance(distance);
-                debugCamera->SetPitch(pitchDeg * kDegToRad);
-                debugCamera->SetYaw(yawDeg * kDegToRad);
+                state.pitch = pitchDeg * kDegToRad;
+                state.yaw = yawDeg * kDegToRad;
+                orbit->SetState(state);
             }
 
             if (ImGui::Button("カメラをリセット")) {
-                debugCamera->Reset();
+                orbit->Reset();
             }
             return;
         }
 
-        UI::Hint("現在のカメラタイプはトランスフォーム編集に未対応です。");
+        // コントローラ無しのカメラは SRT を直接編集する。
+        Vector3 translate = active3D->GetTranslate();
+        Vector3 rotate = active3D->GetRotate();
+        Vector3 scale = active3D->GetScale();
+
+        bool changed = false;
+        changed |= UI::DragVec3("位置", translate, 0.1f);
+
+        Vector3 rotateDeg = {
+            rotate.x * kRadToDeg,
+            rotate.y * kRadToDeg,
+            rotate.z * kRadToDeg
+        };
+        if (UI::DragVec3("回転 (度)", rotateDeg, 0.5f, -360.0f, 360.0f)) {
+            rotate = {
+                rotateDeg.x * kDegToRad,
+                rotateDeg.y * kDegToRad,
+                rotateDeg.z * kDegToRad
+            };
+            changed = true;
+        }
+
+        changed |= UI::DragVec3("スケール", scale, 0.01f, 0.01f, 10.0f);
+
+        if (changed) {
+            active3D->SetTranslate(translate);
+            active3D->SetRotate(rotate);
+            active3D->SetScale(scale);
+        }
+
+        if (ImGui::Button("カメラをリセット")) {
+            active3D->Reset();
+        }
     }
 }
 

@@ -21,20 +21,44 @@ namespace CoreEngine
             return;
         }
 
-        // 3D/2Dごとに一覧を分けることで、将来の機能拡張（検索・タグ付け）に備える。
-        const auto& allCameras = context.cameraManager->GetAllCameras();
+        auto* cameraManager = context.cameraManager;
+        const auto& allCameras = cameraManager->GetAllCameras();
 
-        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "3Dカメラ");
+        // ===== どちらの視点で覗くか（Scene / Game）=====
+        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "ビュー");
+        UI::Separator();
+
+        bool useScene = cameraManager->IsUsingSceneCamera();
+        if (ImGui::RadioButton("エディタ視点 (キー 1)", useScene)) {
+            cameraManager->SetUseSceneCamera(true);
+        }
+        if (ImGui::RadioButton("ゲーム視点 (キー 2)", !useScene)) {
+            cameraManager->SetUseSceneCamera(false);
+        }
+        ImGui::Text("描画中: %s", cameraManager->GetViewCameraName().c_str());
+        UI::Hint("描画・ギズモ・ピッキングはすべてこのカメラを使います。");
+
+        UI::Spacing();
+
+        // ===== 役割の割り当て =====
+        ImGui::TextColored(ImVec4(0.2f, 0.8f, 1.0f, 1.0f), "3Dカメラの役割");
         UI::Separator();
         for (const auto& [name, camera] : allCameras) {
             if (camera->GetCameraType() != CameraType::Camera3D) {
                 continue;
             }
 
-            bool isActive = (context.cameraManager->GetActiveCameraName(CameraType::Camera3D) == name);
-            if (ImGui::RadioButton(name.c_str(), isActive)) {
-                context.cameraManager->SetActiveCamera(name, CameraType::Camera3D);
+            ImGui::PushID(name.c_str());
+            ImGui::Text("%s", name.c_str());
+            UI::SameLine();
+            if (ImGui::SmallButton("エディタ視点にする")) {
+                cameraManager->SetSceneCameraName(name);
             }
+            UI::SameLine();
+            if (ImGui::SmallButton("ゲーム視点にする")) {
+                cameraManager->SetGameCameraName(name);
+            }
+            ImGui::PopID();
         }
 
         UI::Spacing();

@@ -198,12 +198,13 @@ namespace CoreEngine
         // デバッグ / リリースカメラの切り替え
         if (auto* inputManager = engine_->GetComponent<InputManager>()) {
             auto& input = inputManager->GetQuery();
+            // 「どちらの視点で覗くか」はフラグ 1 つ。以前は アクティブカメラ名 と
+            // Gameビュー上書き名 の 2 状態を両方更新する必要があり、片方だけ変える UI が
+            // あったせいで描画とギズモが別カメラを見る状態が起きていた。
             if (input.IsKeyTriggered(DIK_1)) {
-                cameraManager_->SetActiveCamera("Debug", CameraType::Camera3D);
-                cameraManager_->SetGameViewCameraOverride("Debug");
+                cameraManager_->SetUseSceneCamera(true);
             } else if (input.IsKeyTriggered(DIK_2)) {
-                cameraManager_->SetActiveCamera("Release", CameraType::Camera3D);
-                cameraManager_->SetGameViewCameraOverride("Release");
+                cameraManager_->SetUseSceneCamera(false);
             }
         }
 
@@ -257,8 +258,8 @@ namespace CoreEngine
             (mousePos.x - viewportPos.x) / viewportSize.x,
             (mousePos.y - viewportPos.y) / viewportSize.y);
 
-        const ICamera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
-        const ICamera* camera2D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
+        const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr;
+        const Camera* camera2D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera2D) : nullptr;
 
         if (camera3D) {
             objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered);
@@ -553,7 +554,7 @@ namespace CoreEngine
         if (DebugAccess::TryGetTransformAccess(raw, access) && access.translate) {
             Vector3 spawnPosition = { 0.0f, 1.0f, 0.0f };
 
-            if (const ICamera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr) {
+            if (const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr) {
                 const Vector2 dropPos = normalizedDropPos ? *normalizedDropPos : Vector2{ 0.5f, 0.5f };
                 const Vector2 ndcPos(
                     dropPos.x * 2.0f - 1.0f,

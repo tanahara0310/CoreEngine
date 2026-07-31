@@ -8,6 +8,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Utility/Logger/Logger.h"
+#include "Math/MathCore.h"
 
 #include <algorithm>
 #include <cmath>
@@ -972,7 +973,7 @@ namespace CoreEngine
                 return 0.1f + 0.9f * sinElevation;
             }
             const float elevationDeg =
-                std::asin(std::clamp(sinElevation, -1.0f, 1.0f)) * (180.0f / 3.14159265358979323846f);
+                std::asin(std::clamp(sinElevation, -1.0f, 1.0f)) * MathCore::Constants::kRadToDeg;
             return 0.1f * std::pow(10.0f, 0.36f * elevationDeg); // elevationDeg < 0
         };
         auto lumaOf = [](const Vector4& c) {
@@ -1017,7 +1018,7 @@ namespace CoreEngine
         const float cosHorizon = -std::sqrt(std::max(0.0f,
             1.0f - (planetRadiusKm * planetRadiusKm) / (radiusKm * radiusKm)));
         const float softness = std::max(
-            parameters_.sunDiskAngularRadiusDeg * 3.14159265358979323846f / 180.0f, 1e-4f);
+            parameters_.sunDiskAngularRadiusDeg * MathCore::Constants::kDegToRad, 1e-4f);
         const float visibility = SmoothStep(cosHorizon - softness, cosHorizon + softness, mu);
         if (visibility <= 0.0f) {
             return { 0.0f, 0.0f, 0.0f };
@@ -1097,7 +1098,7 @@ namespace CoreEngine
         constants.ozoneLayerCenterKm = parameters_.ozoneLayerCenter * kMetersToKm;
         constants.ozoneLayerHalfWidthKm = parameters_.ozoneLayerHalfWidth * kMetersToKm;
         constants.cameraRadiusKm = distanceFromPlanetCenter_ * kMetersToKm;
-        constants.sunDiskHalfAngleRad = parameters_.sunDiskAngularRadiusDeg * 3.14159265358979323846f / 180.0f;
+        constants.sunDiskHalfAngleRad = parameters_.sunDiskAngularRadiusDeg * MathCore::Constants::kDegToRad;
         constants.groundAlbedo = parameters_.groundAlbedo;
         constants.sunDiskLuminanceScale = parameters_.sunDiskLuminanceScale;
         constants.invViewProj = invViewProj_;
@@ -1110,7 +1111,7 @@ namespace CoreEngine
         constants.moonDirection = moonDirection_;
         constants.moonIntensity = moonIntensity_;
         constants.moonColor = { moonColor_.x, moonColor_.y, moonColor_.z };
-        constants.moonDiskHalfAngleRad = parameters_.moonDiskAngularRadiusDeg * 3.14159265358979323846f / 180.0f;
+        constants.moonDiskHalfAngleRad = parameters_.moonDiskAngularRadiusDeg * MathCore::Constants::kDegToRad;
         constants.moonDiskLuminanceScale = parameters_.moonDiskLuminanceScale;
         constants.hasMoon = hasMoonLight_ ? 1.0f : 0.0f;
         constants.moonPhaseFromSun = parameters_.moonPhaseFromSun ? 1.0f : 0.0f;

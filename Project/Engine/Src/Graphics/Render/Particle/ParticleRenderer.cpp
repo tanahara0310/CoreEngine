@@ -2,7 +2,7 @@
 #include "ParticleRenderer.h"
 #include "Particle/ParticleSystem.h"
 #include "Graphics/Resource/ResourceFactory.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include <cassert>
 
 

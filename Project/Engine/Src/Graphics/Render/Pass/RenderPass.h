@@ -38,7 +38,7 @@ namespace CoreEngine
     class FFTOceanManager;
     class AtmosphereManager;
     class VolumetricCloudManager;
-    class CameraManager;
+    class FrameViews;
     class DepthStencilManager;
     class GpuTimestampProfiler;
     /// @brief レンダリングパスのコンテキスト情報
@@ -60,7 +60,11 @@ namespace CoreEngine
         FFTOceanManager* fftOceanManager = nullptr; ///< FFT Ocean 波面生成マネージャー
         AtmosphereManager* atmosphereManager = nullptr; ///< 大気散乱管理（LUT生成・太陽情報）
         VolumetricCloudManager* volumetricCloudManager = nullptr; ///< ボリューメトリック雲管理（ノイズ生成・雲合成）
-        CameraManager* cameraManager = nullptr; ///< カメラ管理（SSAO等でビュー/プロジェクション行列取得用）
+        /// @brief 今フレームの全ビュー（フレーム先頭で確定した不変スナップショット）
+        /// @details 描画・カリング・深度復元・RT はすべてここから行列を取ること。
+        ///          カメラを直接読みに行くと読み取り時刻で値が変わり、パスごとに
+        ///          違う行列を使う事故（SSAO の黒斑）が起きる。
+        const FrameViews* frameViews = nullptr;
         DepthStencilManager* depthStencilManager = nullptr; ///< 深度ステンシル管理（バリア遷移・クリアを一元管理）
         FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理
         ModelManager* modelManager = nullptr; ///< モデル資産管理（BLAS 遅延ビルド用）

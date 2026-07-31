@@ -152,15 +152,11 @@ namespace CoreEngine
         }
     }
 
-    ICamera* SceneManager::GetGameViewCamera3D() const {
+    Camera* SceneManager::GetGameViewCamera3D() const {
         return currentScene_ ? currentScene_->GetGameViewCamera3D() : nullptr;
     }
 
-    ICamera* SceneManager::GetDefaultGameViewCamera3D() const {
-        return currentScene_ ? currentScene_->GetDefaultGameViewCamera3D() : nullptr;
-    }
-
-    ICamera* SceneManager::GetGameViewCamera2D() const {
+    Camera* SceneManager::GetGameViewCamera2D() const {
         return currentScene_ ? currentScene_->GetGameViewCamera2D() : nullptr;
     }
 

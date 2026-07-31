@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "SkyBoxObject.h"
-#include "Camera/ICamera.h"
+#include "Camera/Camera.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/RenderManager.h"
@@ -174,7 +174,7 @@ void SkyBoxObject::CreateTransformBuffer() {
     }
 }
 
-void SkyBoxObject::Draw(const CoreEngine::ICamera* camera) {
+void SkyBoxObject::Draw(const CoreEngine::Camera* camera) {
     if (!camera) return;
     auto engine = GetEngineSystem();
     auto* dxCommon = engine->GetComponent<DirectXCommon>();

@@ -37,7 +37,7 @@ namespace CoreEngine
         void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) override;
         void EndPass() override;
         RenderPassType GetRenderPassType() const override { return RenderPassType::UI; }
-        void SetCamera(const ICamera* camera) override;
+        void SetCamera(const Camera* camera) override;
 
         /// @brief 初期化（DirectXCommon と ResourceFactory 付き）
         void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory);

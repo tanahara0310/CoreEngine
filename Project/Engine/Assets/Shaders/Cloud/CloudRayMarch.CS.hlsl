@@ -141,7 +141,7 @@ float3 AmbientLuminance(float h)
     // 方位は太陽から 90°の固定値（仰角による明るさ変化が支配的で方位の精度は不要）。
     // LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない
     float radiusKm = gAtmosphere.cameraRadiusKm;
-    float azimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * ATMOSPHERE_PI;
+    float azimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * PI;
     float2 uv = SkyViewParamsToUv(false, 0.7f, azimuth, radiusKm, gAtmosphere.planetRadiusKm);
     float3 skyLum = gSkyViewLUT.SampleLevel(gLUTSampler, uv, 0).rgb;
 
@@ -343,7 +343,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
             gAtmosphere.atmosphereTopRadiusKm - 0.001f);
         float cosHorizon = -sqrt(max(0.0f,
             1.0f - (gAtmosphere.planetRadiusKm * gAtmosphere.planetRadiusKm) / (radiusKm * radiusKm)));
-        float hazeAzimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * ATMOSPHERE_PI;
+        float hazeAzimuth = SkyViewAzimuth(-gAtmosphere.sunDirection) + 0.5f * PI;
         float2 skyUv = SkyViewParamsToUv(rayDir.y < cosHorizon, rayDir.y, hazeAzimuth,
                                          radiusKm, gAtmosphere.planetRadiusKm);
         // LUT はライト色・強度前乗算済みのため、サンプル後の色乗算はしない

@@ -3,6 +3,9 @@
 
 #ifndef LENS_FLARE_COMMON_HLSLI
 #define LENS_FLARE_COMMON_HLSLI
+#include "ShaderMath.hlsli"  // TWO_PI
+#include "ColorSpace.hlsli"  // Luminance
+#include "Hash.hlsli"        // HashSine11
 
 cbuffer LensFlareParams : register(b0)
 {
@@ -39,20 +42,6 @@ cbuffer LensFlareParams : register(b0)
     float gSunMaskRadius;       // 輝度抽出を許可する太陽周辺の半径（アスペクト補正済み UV 単位）
 };
 
-static const float kLensFlarePi2 = 6.2831853f;
-
-// Rec.709 輝度
-float LensFlareLuminance(float3 col)
-{
-    return dot(col, float3(0.2126f, 0.7152f, 0.0722f));
-}
-
-// 簡易ハッシュ（ゴースト毎の疑似ランダム値。形状・回転のバリエーションに使う）
-float LensFlareHash11(float n)
-{
-    return frac(sin(n * 127.1f + 311.7f) * 43758.5453f);
-}
-
 // アスペクト比補正: UV 空間の差分ベクトルを x が物理的に等方になる空間へ変換する
 float2 LensFlareToAspect(float2 uvDelta, float aspect)
 {
@@ -65,7 +54,7 @@ float2 LensFlareToAspect(float2 uvDelta, float aspect)
 float LensFlarePolygonDistanceRatio(float2 d, float radius, float sides, float rotation)
 {
     float angle = atan2(d.y, d.x) - rotation;
-    float seg = kLensFlarePi2 / max(sides, 3.0f);
+    float seg = TWO_PI / max(sides, 3.0f);
     float a = fmod(angle, seg);
     if (a < 0.0f) { a += seg; }
     a -= seg * 0.5f;
