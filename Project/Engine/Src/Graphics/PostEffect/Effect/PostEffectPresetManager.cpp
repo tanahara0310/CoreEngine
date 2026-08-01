@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "PostEffectPresetManager.h"
 #include "PostEffectManager.h"
+#include "Utility/CVar/CVarSerialization.h"
 #include <filesystem>
 #include <iostream>
 
@@ -11,9 +12,48 @@
 
 namespace CoreEngine
 {
+namespace
+{
+    /// @brief プリセットが対象とする CVar の接頭辞
+    /// @details ポストエフェクト以外の "r.*"（大気・雲など）を巻き込まないよう明示列挙する。
+    ///          エフェクトを追加したらここにも接頭辞を足すこと（漏れてもプリセットに
+    ///          含まれないだけで、前回状態の自動保存は CVars.json 側が全件行う）
+    constexpr const char* kPostEffectCVarPrefixes[] = {
+        "r.GrayScale", "r.Blur", "r.RadialBlur", "r.Shockwave", "r.Vignette",
+        "r.ColorGrading", "r.ChromaticAberration", "r.Sepia", "r.Invert",
+        "r.Random", "r.RasterScroll", "r.Fade", "r.Bloom", "r.LensFlare",
+        "r.Outline", "r.Dissolve", "r.AutoExposure",
+    };
+}
+
+json PostEffectPresetManager::CaptureToJson()
+{
+    json presetData;
+    json cvars = json::object();
+    for (const char* prefix : kPostEffectCVarPrefixes) {
+        // プリセットは完全なスナップショットなのでデフォルト値も含めて保存する
+        CVarSerialization::Save(cvars, prefix, /*skipDefaults=*/false);
+    }
+    presetData["cvars"] = cvars;
+    presetData["version"] = "2.0";
+    return presetData;
+}
+
+void PostEffectPresetManager::ApplyFromJson(const json& presetData)
+{
+    if (!presetData.contains("cvars")) {
+        return;
+    }
+    const json& cvars = presetData["cvars"];
+    for (const char* prefix : kPostEffectCVarPrefixes) {
+        CVarSerialization::Load(cvars, prefix);
+    }
+}
+
 bool PostEffectPresetManager::SavePreset(const PostEffectManager* postEffectManager, const std::string& filePath)
 {
-    json presetData = CaptureToJson(postEffectManager);
+    (void)postEffectManager;  // 状態は CVar が持つため参照不要（呼び出し側の互換のため引数は残す）
+    json presetData = CaptureToJson();
 
     bool success = JsonManager::GetInstance().SaveJson(filePath, presetData);
     if (success) {
@@ -42,7 +82,8 @@ bool PostEffectPresetManager::LoadPreset(PostEffectManager* postEffectManager, c
         return false;
     }
 
-    ApplyFromJson(postEffectManager, presetData);
+    (void)postEffectManager;  // 状態は CVar が持つため参照不要
+    ApplyFromJson(presetData);
 
     currentPresetPath_ = filePath;
     currentPresetName_ = GetFileNameWithoutExtension(std::filesystem::path(filePath).filename().string());

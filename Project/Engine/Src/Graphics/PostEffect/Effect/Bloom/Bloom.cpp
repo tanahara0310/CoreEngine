@@ -3,11 +3,45 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<float> cvThreshold{
+            "r.Bloom.Threshold", 0.8f,
+            "ブルームを発生させる輝度の閾値。低いほど広い範囲が光る",
+            CVarRange{ 0.0f, 2.0f } };
+
+        CVar<float> cvIntensity{
+            "r.Bloom.Intensity", 1.0f,
+            "ブルームの強度",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<float> cvBlurRadius{
+            "r.Bloom.BlurRadius", 2.0f,
+            "にじみの広がり半径",
+            CVarRange{ 0.5f, 5.0f } };
+
+        CVar<float> cvSoftKnee{
+            "r.Bloom.SoftKnee", 0.5f,
+            "閾値付近のなめらかさ。0 で硬い切り替わり",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.Bloom.Enabled", false,
+            "ブルームを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.Bloom";
+    }
+
     void Bloom::OnCreateConstantBuffers()
     {
         UINT bloomSize = (sizeof(BloomParams) + 255) & ~255;
@@ -24,7 +58,13 @@ namespace CoreEngine
 
     void Bloom::UpdateConstantBuffer()
     {
-        if (mappedBloomParams_) { *mappedBloomParams_ = params_; }
+        if (!mappedBloomParams_) {
+            return;
+        }
+        mappedBloomParams_->threshold  = cvThreshold.Get();
+        mappedBloomParams_->intensity  = cvIntensity.Get();
+        mappedBloomParams_->blurRadius = cvBlurRadius.Get();
+        mappedBloomParams_->softKnee   = cvSoftKnee.Get();
     }
 
     void Bloom::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -35,18 +75,13 @@ namespace CoreEngine
         }
     }
 
-    void Bloom::SetParams(const BloomParams& params)
-    {
-        params_ = params;
-        UpdateConstantBuffer();
-    }
-
     void Bloom::Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
         uint32_t width,
         uint32_t height)
     {
+        UpdateConstantBuffer();
         UpdateScreenConstantBuffer(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
@@ -75,22 +110,18 @@ namespace CoreEngine
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            changed |= UI::SliderFloat("輝度閾値", params_.threshold, 0.0f, 2.0f);
-            changed |= UI::SliderFloat("強度", params_.intensity, 0.0f, 3.0f);
-            changed |= UI::SliderFloat("ブラー半径", params_.blurRadius, 0.5f, 5.0f);
-            changed |= UI::SliderFloat("ソフトニー", params_.softKnee, 0.0f, 1.0f);
-            ImGui::TreePop();
-        }
-        if (changed) { UpdateConstantBuffer(); }
+        CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
         if (ImGui::Button("デフォルトに戻す")) {
-            params_ = BloomParams{};
-            UpdateConstantBuffer();
+            CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* Bloom::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

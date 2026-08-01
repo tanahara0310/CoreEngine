@@ -6,6 +6,10 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -13,6 +17,76 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<float> cvExposureEV{
+            "r.AutoExposure.ExposureEV", 0.0f,
+            "露出補正 [EV]。+1 で明るさ2倍。自動露出が有効なときは加算オフセットとして働く",
+            CVarRange{ -6.0f, 6.0f } };
+
+        CVar<bool> cvAutoExposureEnabled{
+            "r.AutoExposure.Enabled", false,
+            "自動露出。画面または照明の明るさから露出を毎フレーム計算し、目の明暗順応のように追従する" };
+
+        CVar<bool> cvMeteringIllumination{
+            "r.AutoExposure.MeteringIllumination", true,
+            "照明駆動測光を使う。OFF だと画面平均測光になり、カメラの向きで露出がポンピングする" };
+
+        CVar<bool> cvPreserveSceneBrightness{
+            "r.AutoExposure.PreserveSceneBrightness", true,
+            "明暗の絶対感を保持する（Krawczyk 自動キー）。"
+            "OFF だと全シーンが中間グレーへ正規化され、薄暮の空が昼のように明るくなる" };
+
+        CVar<float> cvAdaptationSpeed{
+            "r.AutoExposure.AdaptationSpeed", 8.0f,
+            "明暗順応の速さ [1/s]。8.0 で 95% 到達 ≈0.4s。"
+            "小さいとカメラを振るたび明るさが遅れて追従する",
+            CVarRange{ 0.1f, 20.0f } };
+
+        CVar<float> cvKeyValue{
+            "r.AutoExposure.KeyValue", 0.18f,
+            "順応輝度を写す明るさの基準（中間グレー）。自動キー時は相対倍率として効く",
+            CVarRange{ 0.05f, 0.5f } };
+
+        CVar<float> cvMinAutoEV{
+            "r.AutoExposure.MinEV", -4.0f,
+            "自動EVの下限。真っ白な画面で絞りすぎないようにする",
+            CVarRange{ -12.0f, 0.0f } };
+
+        CVar<float> cvMaxAutoEV{
+            "r.AutoExposure.MaxEV", 8.0f,
+            "自動EVの上限。月夜には約 +5EV 必要で、下げると夜がクランプされて暗く沈む",
+            CVarRange{ 0.0f, 12.0f } };
+
+        CVar<float> cvReferenceLuminance{
+            "r.AutoExposure.ReferenceLuminance", 2.0f,
+            "自動EVが 0 になる基準輝度。SceneColor は 0EV で適正になるよう較正済みのため、"
+            "絶対露出ではなくこの基準からの相対補正として働かせる（既定 2.0 は晴天正午の実測値）",
+            CVarRange{ 0.05f, 10.0f } };
+
+        constexpr const char* kCVarPrefix = "r.AutoExposure";
+    }
+
+    void ToneMapping::SetAutoExposureEnabled(bool enabled)
+    {
+        cvAutoExposureEnabled.Set(enabled);
+    }
+
+    bool ToneMapping::IsAutoExposureEnabled() const
+    {
+        return cvAutoExposureEnabled.Get();
+    }
+
+    float ToneMapping::GetAutoExposureEV() const
+    {
+        return cvAutoExposureEnabled.Get() ? autoEV_ : 0.0f;
+    }
+
+    void ToneMapping::CalibrateReferenceToCurrent()
+    {
+        cvReferenceLuminance.Set(std::max(adaptedLuminance_, 1e-6f));
+    }
+
     void ToneMapping::OnCreateConstantBuffers()
     {
         UINT size = (sizeof(ScreenParams) + 255) & ~255;
@@ -110,7 +184,7 @@ namespace CoreEngine
     void ToneMapping::UpdateAutoExposureAdaptation()
     {
         float targetLuminance = 0.0f;
-        if (meteringIllumination_ && illuminationValid_) {
+        if (cvMeteringIllumination.Get() && illuminationValid_) {
             // 照明駆動測光: 大気システムが解析した「シーンの照明状態の代表輝度」を使う。
             // カメラの向き（画面の構図）に依存しないため、地面/空を見ても露出が変わらない
             targetLuminance = illuminationLuminance_;
@@ -133,7 +207,7 @@ namespace CoreEngine
             adaptationInitialized_ = true;
         } else {
             // 目の明暗順応: 目標輝度へ指数的に追従する
-            const float blend = 1.0f - std::exp(-deltaTime_ * adaptationSpeed_);
+            const float blend = 1.0f - std::exp(-deltaTime_ * cvAdaptationSpeed.Get());
             adaptedLuminance_ += (targetLuminance - adaptedLuminance_) * blend;
         }
 
@@ -157,22 +231,23 @@ namespace CoreEngine
         // そこで基準輝度でのEVを 0 点として差し引き、
         // 「基準より明るいシーンでは絞り、暗いシーンでは開く」相対補正にする。
         // 差分を取っているので Krawczyk 自動キーの性質（暗いシーンを持ち上げすぎない）は保たれる。
+        const float referenceLuminance = cvReferenceLuminance.Get();
         const float rawEV = std::log2(targetKey / std::max(adaptedLuminance_, 1e-6f));
         const float referenceEV = std::log2(
-            KeyForLuminance(referenceLuminance_) / std::max(referenceLuminance_, 1e-6f));
+            KeyForLuminance(referenceLuminance) / std::max(referenceLuminance, 1e-6f));
 
-        autoEV_ = std::clamp(rawEV - referenceEV, minAutoEV_, maxAutoEV_);
+        autoEV_ = std::clamp(rawEV - referenceEV, cvMinAutoEV.Get(), cvMaxAutoEV.Get());
     }
 
     float ToneMapping::KeyForLuminance(float luminance) const
     {
-        if (!preserveSceneBrightness_) {
-            return keyValue_;
+        if (!cvPreserveSceneBrightness.Get()) {
+            return cvKeyValue.Get();
         }
         // Krawczyk 2005 の自動キー（シーンが暗いほど小さいキー = 暗い出力へ写す）。
         // ユーザー設定のキー値は 0.18 を基準とした相対倍率として効かせる
         const float krawczykKey = 1.03f - 2.0f / (2.0f + std::log10(luminance + 1.0f));
-        return krawczykKey * (keyValue_ / 0.18f);
+        return krawczykKey * (cvKeyValue.Get() / 0.18f);
     }
 
     void ToneMapping::RecordLuminanceReduction(
@@ -223,8 +298,8 @@ namespace CoreEngine
             mappedScreenParams_->screenWidth = width;
             mappedScreenParams_->screenHeight = height;
             // 自動露出有効時: 自動EV + 手動EV（補正オフセット）。無効時: 手動EVのみ（従来動作）
-            const bool useAuto = autoExposureEnabled_ && autoExposureReady_;
-            mappedScreenParams_->exposureEV = exposureEV_ + (useAuto ? autoEV_ : 0.0f);
+            const bool useAuto = cvAutoExposureEnabled.Get() && autoExposureReady_;
+            mappedScreenParams_->exposureEV = cvExposureEV.Get() + (useAuto ? autoEV_ : 0.0f);
         }
     }
 
@@ -234,8 +309,8 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        const bool useAutoExposure = autoExposureEnabled_ && autoExposureReady_;
-        const bool useIlluminationMetering = meteringIllumination_ && illuminationValid_;
+        const bool useAutoExposure = cvAutoExposureEnabled.Get() && autoExposureReady_;
+        const bool useIlluminationMetering = cvMeteringIllumination.Get() && illuminationValid_;
 
         // 過去フレームの計測値で順応を進めてから、今フレームの露出を CB へ書き込む
         if (useAutoExposure) {
@@ -280,32 +355,19 @@ namespace CoreEngine
         ImGui::Text("ACES トーンマッピング（HDR→LDR変換）");
         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "このエフェクトは常に有効です。");
 
-        // 自動露出: 画面の平均輝度から露出を毎フレーム計算し、目の明暗順応のように時間追従する。
-        // 太陽の位置を動かすと露出も計算で追従するため、時刻ごとの手動調整が不要になる
-        ImGui::Checkbox("自動露出（Auto Exposure）", &autoExposureEnabled_);
-        if (autoExposureEnabled_) {
+        // 自動露出が有効なときだけ意味を持つ診断情報（計測結果なので CVar ではない）
+        if (cvAutoExposureEnabled.Get()) {
             if (!autoExposureReady_) {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
                     "輝度計測リソースの初期化に失敗しています（ログ参照）");
             } else {
-                // 測光モード: 照明駆動は太陽・月の照明状態から EV を決める（カメラの向きに不変）。
-                // 画面平均は従来のカメラ測光（構図で露出が変わる。屋内等の将来用途向け）
-                int meteringMode = meteringIllumination_ ? 0 : 1;
-                ImGui::Text("測光モード:");
-                ImGui::SameLine();
-                if (ImGui::RadioButton("照明駆動（大気連動）", &meteringMode, 0)) { meteringIllumination_ = true; }
-                ImGui::SameLine();
-                if (ImGui::RadioButton("画面平均", &meteringMode, 1)) { meteringIllumination_ = false; }
-                if (meteringIllumination_) {
+                if (cvMeteringIllumination.Get()) {
                     ImGui::Text("照明輝度: %.5f %s", illuminationLuminance_,
                         illuminationActiveLastFrame_ ? "" : "（未供給: 画面平均へフォールバック中）");
                 }
-                ImGui::Text("自動EV: %.2f（合計EV: %.2f）", autoEV_, autoEV_ + exposureEV_);
+                ImGui::Text("自動EV: %.2f（合計EV: %.2f）", autoEV_, autoEV_ + cvExposureEV.Get());
                 ImGui::Text("順応輝度: %.4f / ターゲットキー: %.3f", adaptedLuminance_, currentKey_);
 
-                // 自動露出は「基準輝度で 0EV」の相対補正。SceneColor は 0EV でそのまま
-                // 表示して適正になるよう較正済みのため、絶対露出だと二重に絞られてしまう
-                ImGui::SliderFloat("基準輝度（この明るさで 0EV）", &referenceLuminance_, 0.05f, 10.0f, "%.3f");
                 if (ImGui::Button("今の明るさを基準にする")) {
                     CalibrateReferenceToCurrent();
                 }
@@ -316,23 +378,15 @@ namespace CoreEngine
                         "自動露出を切った状態の見た目に合う構図・時刻で押すと、\n"
                         "そこを 0EV の基準にできる");
                 }
-                // OFF だと全シーンが中間グレーへ正規化され、薄暮の空が昼のように明るくなる
-                ImGui::Checkbox("明暗の絶対感を保持（暗いシーンは暗く）", &preserveSceneBrightness_);
-                // 8=ほぼ即座（95%到達≈0.4s）。小さくするほど目の明暗順応のような遅い演出になる
-                ImGui::SliderFloat("順応速度 [1/s]", &adaptationSpeed_, 0.1f, 20.0f, "%.1f");
-                ImGui::SliderFloat("キー値（明るさの基準）", &keyValue_, 0.05f, 0.5f, "%.2f");
-                ImGui::SliderFloat("自動EV下限", &minAutoEV_, -12.0f, 0.0f, "%.1f");
-                // 月夜は約+5EV必要。上限を下げると夜がクランプされて暗く沈む（意図的な演出用）
-                ImGui::SliderFloat("自動EV上限", &maxAutoEV_, 0.0f, 12.0f, "%.1f");
             }
+            UI::Separator();
         }
 
-        // 露出補正: ACES 適用前に exp2(EV) を乗算する。
-        // 自動露出が有効な場合は自動EVへの加算オフセットとして働く
-        ImGui::SliderFloat(autoExposureEnabled_ ? "露出補正 [EV]（オフセット）" : "露出補正 [EV]",
-                           &exposureEV_, -6.0f, 6.0f, "%.2f");
-        if (ImGui::Button("露出をリセット")) {
-            exposureEV_ = 0.0f;
+        CVarUI::DrawTree(kCVarPrefix);
+
+        UI::Separator();
+        if (ImGui::Button("デフォルトに戻す")) {
+            CVarUI::ResetTree(kCVarPrefix);
         }
         UI::Separator();
         ImGui::PopID();

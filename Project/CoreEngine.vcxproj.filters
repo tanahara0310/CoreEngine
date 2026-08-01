@@ -454,12 +454,6 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectSerialization.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectSettingsSection.cpp">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.cpp">
       <Filter>Engine\Src\Graphics\Render\Line</Filter>
     </ClCompile>
@@ -967,6 +961,9 @@
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
@@ -979,6 +976,9 @@
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h">
@@ -1450,9 +1450,6 @@
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.h">
-      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectSettingsSection.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\IRenderer.h">

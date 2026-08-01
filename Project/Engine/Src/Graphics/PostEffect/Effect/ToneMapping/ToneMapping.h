@@ -44,18 +44,12 @@ namespace CoreEngine
         /// @brief 常時有効なエフェクト
         bool IsAlwaysEnabled() const override { return true; }
 
-        /// @brief 露出補正 [EV] を設定する（+1 で明るさ2倍、-1 で半分）
-        /// @details 自動露出が有効な場合は自動EVへの加算オフセットになる
-        void SetExposureEV(float ev) { exposureEV_ = ev; }
-
-        /// @brief 露出補正 [EV] を取得する
-        float GetExposureEV() const { return exposureEV_; }
-
         /// @brief 自動露出の有効/無効を設定する
-        void SetAutoExposureEnabled(bool enabled) { autoExposureEnabled_ = enabled; }
+        /// @note AtmosphereEditor が夜間プリセットで一時的に切り替えるため公開している
+        void SetAutoExposureEnabled(bool enabled);
 
         /// @brief 自動露出が有効か
-        bool IsAutoExposureEnabled() const { return autoExposureEnabled_; }
+        bool IsAutoExposureEnabled() const;
 
         /// @brief 照明駆動測光用のシーン代表輝度を設定する（大気システムが毎フレーム呼ぶ）
         /// @details 太陽・月の照明状態から解析されたカメラ非依存の輝度。
@@ -67,24 +61,10 @@ namespace CoreEngine
         }
 
         /// @brief 現在の自動露出EV（自動露出無効時は 0）
-        float GetAutoExposureEV() const { return autoExposureEnabled_ ? autoEV_ : 0.0f; }
-
-        // ===== 自動露出チューニング値のアクセサ（エディタ設定の自動保存用） =====
-
-        void SetPreserveSceneBrightness(bool preserve) { preserveSceneBrightness_ = preserve; }
-        bool GetPreserveSceneBrightness() const { return preserveSceneBrightness_; }
-        void SetAdaptationSpeed(float speed) { adaptationSpeed_ = speed; }
-        float GetAdaptationSpeed() const { return adaptationSpeed_; }
-        void SetKeyValue(float key) { keyValue_ = key; }
-        float GetKeyValue() const { return keyValue_; }
-        void SetAutoEVRange(float minEV, float maxEV) { minAutoEV_ = minEV; maxAutoEV_ = maxEV; }
-        float GetMinAutoEV() const { return minAutoEV_; }
-        float GetMaxAutoEV() const { return maxAutoEV_; }
-        void SetReferenceLuminance(float luminance) { referenceLuminance_ = luminance; }
-        float GetReferenceLuminance() const { return referenceLuminance_; }
+        float GetAutoExposureEV() const;
 
         /// @brief 現在の順応輝度を基準輝度に設定する（「今の明るさを 0EV にする」操作）
-        void CalibrateReferenceToCurrent() { referenceLuminance_ = std::max(adaptedLuminance_, 1e-6f); }
+        void CalibrateReferenceToCurrent();
 
         /// @brief 時間順応の更新用にデルタタイムを受け取る（PostEffectManager から毎フレーム呼ばれる）
         void Update(float deltaTime) override { deltaTime_ = deltaTime; }
@@ -118,7 +98,6 @@ namespace CoreEngine
     private:
         Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
         ScreenParams* mappedScreenParams_ = nullptr;
-        float exposureEV_ = 0.0f; ///< 露出補正 [EV]（自動露出有効時は加算オフセット）
 
         // ----- 自動露出: 輝度計測パイプライン -----
         Microsoft::WRL::ComPtr<IDxcBlob> reductionShaderBlob_;
@@ -134,40 +113,11 @@ namespace CoreEngine
         uint64_t reductionFrameCounter_ = 0;
         bool autoExposureReady_ = false; ///< 計測リソースの構築に成功したか
 
-        // ----- 自動露出: パラメータと順応状態 -----
-        bool autoExposureEnabled_ = false; ///< 既定OFF（有効化はImGuiか SetAutoExposureEnabled）
-        /// @brief 照明駆動測光を使う（既定ON）
-        /// @details 画面平均測光はカメラの向き（構図）で露出がポンピングする
-        ///          （地面を見ると明るく・空を見ると暗く順応する）ため、
-        ///          屋外シーンでは照明状態から EV を決める方が安定する。
-        ///          UE 実務の「Manual＋時刻ベース露出カーブ」に相当する方式。
-        bool meteringIllumination_ = true;
+        // ----- 自動露出: 順応状態（調整値は CVar "r.AutoExposure.*" 側が持つ） -----
         float illuminationLuminance_ = 0.18f; ///< 大気システムから供給されるシーン代表輝度
         bool illuminationValid_ = false;      ///< 今フレームに供給があったか（無ければ画面平均へフォールバック）
         bool illuminationActiveLastFrame_ = false; ///< 直近の Dispatch で照明駆動が実際に使われたか（診断表示用）
-        /// @brief 明暗の絶対感を保持する（Krawczyk 自動キー）
-        /// @details false だと全シーンを中間グレーへ正規化してしまい、薄暮の空が昼のように明るくなる
-        bool preserveSceneBrightness_ = true;
         float currentKey_ = 0.18f;         ///< 現在のターゲットキー（診断表示用）
-        float keyValue_ = 0.18f;           ///< 順応輝度をこの値（中間グレー）へ写す（自動キー時は相対倍率）
-        float minAutoEV_ = -4.0f;          ///< 自動EVの下限（真っ白な画面で絞りすぎない）
-        /// @brief 自動EVの上限（真っ暗な画面で増幅しすぎない）
-        /// @details 月夜（月光強度=太陽の1/1000、画面平均輝度 ~0.001）を Krawczyk キーへ写すには
-        ///          約 +5EV が必要。旧上限 4 では月夜がクランプされて一段暗く沈んでいた。
-        ///          8 あれば月無しの星明かり相当（~0.0002）まで「暗いが見える」に持ち上げられる。
-        float maxAutoEV_ = 8.0f;
-        /// @brief 自動EVの基準輝度（このシーン輝度のとき自動EV = 0 になる）
-        /// @details SceneColor は「露出補正 0EV でそのまま表示して適正」になるよう
-        ///          ライティング側が較正済みなので、自動露出は絶対露出ではなく
-        ///          基準からの相対補正として働かせる必要がある。
-        ///          既定 2.0 は晴天正午の照明駆動輝度の実測値（約 2.13）に合わせたもの。
-        float referenceLuminance_ = 2.0f;
-        /// @brief 明暗順応の速さ [1/s]（指数追従の時定数の逆数）
-        /// @details 8.0 で時定数 0.125s・95% 到達 ≈0.4s。カメラ操作に対して「ほぼ即座だが
-        ///          フレーム単位のちらつきは平滑化される」応答になる。
-        ///          旧既定 1.5（95% 到達 ≈2s）はカメラを振るたび画面の明るさが
-        ///          目に見えて遅れて追従し「徐々に明るくなる」と感じられた。
-        float adaptationSpeed_ = 8.0f;
         float adaptedLuminance_ = 0.18f;   ///< 順応済み輝度（時間追従する）
         bool adaptationInitialized_ = false;
         float autoEV_ = 0.0f;              ///< 計算された自動露出EV

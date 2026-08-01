@@ -280,6 +280,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.cpp" />
@@ -341,8 +342,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinClusterGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinningComputeDispatcher.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectSerialization.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Model\Instancing\InstanceBatchManager.cpp" />
@@ -586,6 +585,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h" />
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.h" />
@@ -686,7 +686,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinClusterGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectNames.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectPresetManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectSettingsSection.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\IRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Line\LineRendererPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\BaseModelRenderer.h" />

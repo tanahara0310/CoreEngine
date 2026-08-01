@@ -8,7 +8,6 @@
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "Editor/ImGui/Wrappers/ImGuiLayout.h"
 #include <algorithm>
-#include <cctype>
 #include <imgui.h>
 #include <string>
 #include <vector>
@@ -63,21 +62,6 @@ namespace CoreEngine
                 pos = dot + 1;
             }
             return name;
-        }
-
-        /// @brief 大文字小文字を区別しない部分一致
-        bool ContainsIgnoreCase(std::string_view haystack, std::string_view needle)
-        {
-            if (needle.empty()) {
-                return true;
-            }
-            const auto it = std::search(
-                haystack.begin(), haystack.end(), needle.begin(), needle.end(),
-                [](char a, char b) {
-                    return std::tolower(static_cast<unsigned char>(a))
-                        == std::tolower(static_cast<unsigned char>(b));
-                });
-            return it != haystack.end();
         }
 
         /// @brief 説明とフルネームのツールチップを直前の項目に付ける
@@ -226,16 +210,13 @@ namespace CoreEngine
         }
     }
 
-    bool CVarUI::DrawTree(std::string_view prefix, std::string_view filter)
+    bool CVarUI::DrawTree(std::string_view prefix)
     {
         std::vector<ICVar*> items = CVarRegistry::Get().GetByPrefix(prefix);
 
-        // フィルタと NoUI を除外
-        items.erase(std::remove_if(items.begin(), items.end(), [&](ICVar* cvar) {
-            if (HasFlag(cvar->GetFlags(), CVarFlags::NoUI)) {
-                return true;
-            }
-            return !ContainsIgnoreCase(cvar->GetName(), filter);
+        // NoUI（別の UI が担当する項目・コンソール専用）を除外
+        items.erase(std::remove_if(items.begin(), items.end(), [](const ICVar* cvar) {
+            return HasFlag(cvar->GetFlags(), CVarFlags::NoUI);
         }), items.end());
 
         if (items.empty()) {
@@ -256,49 +237,6 @@ namespace CoreEngine
         }
     }
 
-    void CVarUI::DrawPanel()
-    {
-        static char filter[64] = {};
-        static bool showModifiedOnly = false;
-
-        UI::InputTextWithHint("##cvarfilter", "検索（例: Vignette）", filter, sizeof(filter));
-        ImGui::SameLine();
-        ImGui::Checkbox("変更のみ", &showModifiedOnly);
-
-        const auto& all = CVarRegistry::Get().GetAll();
-        size_t modifiedCount = 0;
-        for (const ICVar* cvar : all) {
-            if (cvar->IsModified()) {
-                ++modifiedCount;
-            }
-        }
-        ImGui::TextDisabled("登録数: %d / 変更済み: %d",
-                            static_cast<int>(all.size()), static_cast<int>(modifiedCount));
-        UI::Separator();
-
-        if (showModifiedOnly) {
-            // ツリー化せずフラットに並べる（変更点の一覧性を優先）
-            std::vector<ICVar*> items = CVarRegistry::Get().GetSortedByName();
-            bool any = false;
-            for (ICVar* cvar : items) {
-                if (!cvar->IsModified() || HasFlag(cvar->GetFlags(), CVarFlags::NoUI)) {
-                    continue;
-                }
-                if (!ContainsIgnoreCase(cvar->GetName(), filter)) {
-                    continue;
-                }
-                ImGui::TextDisabled("%s", cvar->GetName());
-                DrawWidget(cvar);
-                any = true;
-            }
-            if (!any) {
-                ImGui::TextDisabled("デフォルトから変更された項目はありません");
-            }
-            return;
-        }
-
-        DrawTree("", filter);
-    }
 }
 
 #endif // USE_IMGUI

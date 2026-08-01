@@ -8,14 +8,17 @@
 namespace CoreEngine
 {
     /// @brief ランダムノイズエフェクト（CS方式）
+    /// @details 調整パラメータは CVar（"r.Random.*"）が唯一の保持者。
+    ///          time だけは実行時に累積される値なので CVar 化していない。
+    ///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
     class Random : public PostEffectComputeBase {
     public:
-        /// @brief ランダムノイズパラメータ構造体
+        /// @brief ランダムノイズパラメータ構造体（GPU 定数バッファのレイアウト）
         struct RandomParams {
             float intensity = 0.15f; // ノイズ強度 (0.0-1.0)
             float blend = 0.35f; // 元画像とのブレンド率 (0.0-1.0)
             float speed = 1.0f;  // 時間変化速度 (0.0-10.0)
-            float time = 0.0f;  // 時間
+            float time = 0.0f;  // 時間（実行時に累積。CVar 化していない）
 
             float grainScale = 1.0f;  // 粒度スケール (0.1-8.0)
             float luminanceInfluence = 0.25f; // 輝度への影響度 (0.0-1.0)
@@ -43,10 +46,10 @@ namespace CoreEngine
         void Update(float deltaTime) override;
         void DrawImGui() override;
 
-        const RandomParams& GetParams() const { return params_; }
-        void SetParams(const RandomParams& params);
-
     protected:
+        /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
+        CVar<bool>* GetEnabledCVar() const override;
+
         std::string  GetEffectName()        const override { return "Random"; }
         std::wstring GetComputeShaderPath() const override { return L"Random.CS.hlsl"; }
         void OnCreateConstantBuffers() override;
@@ -56,8 +59,6 @@ namespace CoreEngine
         void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
     private:
-        RandomParams params_;
-
         Microsoft::WRL::ComPtr<ID3D12Resource> randomParamsCB_;
         RandomParams* mappedRandomParams_ = nullptr;
 

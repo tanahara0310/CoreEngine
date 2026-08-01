@@ -3,12 +3,21 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
 #include <cassert>
 #include <stdexcept>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvEnabled{
+            "r.GrayScale.Enabled", false,
+            "グレースケール変換を有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+    }
+
     void GrayScale::OnCreateConstantBuffers()
     {
         UINT size = (sizeof(ScreenParams) + 255) & ~255;
@@ -62,5 +71,10 @@ namespace CoreEngine
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* GrayScale::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

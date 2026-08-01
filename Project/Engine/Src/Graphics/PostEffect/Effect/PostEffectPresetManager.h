@@ -31,12 +31,14 @@ public:
     bool LoadPreset(CoreEngine::PostEffectManager* postEffectManager, const std::string& filePath);
 
     /// @brief 全エフェクトの有効状態とパラメータを JSON 化する
-    /// @details プリセット保存とエディタ設定自動保存（PostEffectSettingsSection）で共用する
-    static json CaptureToJson(const CoreEngine::PostEffectManager* postEffectManager);
+    /// @details ポストエフェクトの CVar（"r.<Effect>.*"）のスナップショットを取る。
+    ///          プリセットは「完全な状態の記録」なのでデフォルト値も含めて保存する
+    ///          （前回状態の自動保存は CVarSettingsSection が別途行う）
+    static json CaptureToJson();
 
     /// @brief JSON から全エフェクトの有効状態とパラメータを適用する
     /// @details 欠損キーは現在値を維持する（後方互換）
-    static void ApplyFromJson(CoreEngine::PostEffectManager* postEffectManager, const json& presetData);
+    static void ApplyFromJson(const json& presetData);
 
     /// @brief 指定ディレクトリ内のプリセットファイル一覧を取得
     /// @param directory ディレクトリパス

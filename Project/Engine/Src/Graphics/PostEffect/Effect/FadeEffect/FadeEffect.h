@@ -8,6 +8,10 @@
 namespace CoreEngine
 {
     /// @brief フェード効果ポストエフェクト（CS方式）
+    /// @details 演出の調整パラメータは CVar（"r.Fade.*"）が唯一の保持者。
+    ///          fadeAlpha / fadeType / time は SceneTransition が制御する実行時状態のため
+    ///          CVar 化していない（保存すると黒画面で起動する事故になる）。
+    ///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
     class FadeEffect : public PostEffectComputeBase {
     public:
         /// @brief フェードのタイプ
@@ -20,11 +24,11 @@ namespace CoreEngine
             PortalFade = 5
         };
 
-        /// @brief フェードパラメータ構造体
+        /// @brief フェードパラメータ構造体（GPU 定数バッファのレイアウト）
         struct FadeParams {
-            float fadeAlpha = 0.0f; // フェード強度 (0.0 = 透明, 1.0 = 完全フェード)
-            float fadeType = 0.0f; // フェードタイプ
-            float time = 0.0f; // 時間パラメータ
+            float fadeAlpha = 0.0f; // フェード強度（実行時値）
+            float fadeType = 0.0f; // フェードタイプ（実行時値）
+            float time = 0.0f; // 時間パラメータ（実行時値）
             float spiralPower = 5.0f; // 渦巻きの強さ
             float rippleFreq = 10.0f;// 波紋の周波数
             float glitchIntensity = 0.5f; // グリッチの強さ
@@ -57,19 +61,16 @@ namespace CoreEngine
         /// @brief ImGuiでパラメータを調整
         void DrawImGui() override;
 
+        /// @brief フェードの進行度を設定する（SceneTransition が毎フレーム呼ぶ）
         void SetFadeAlpha(float alpha);
-        void SetFadeType(bool fadeToBlack);
-        void SetFadeType(FadeType type);
-        void SetSpiralPower(float power);
-        void SetRippleFrequency(float frequency);
-        void SetGlitchIntensity(float intensity);
-        void SetPortalSize(float size);
-        void SetColorShift(float shift);
 
-        float GetFadeAlpha() const { return params_.fadeAlpha; }
-        const FadeParams& GetParams() const { return params_; }
+        /// @brief フェードの種類を設定する
+        void SetFadeType(FadeType type);
 
     protected:
+        /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
+        CVar<bool>* GetEnabledCVar() const override;
+
         std::string  GetEffectName()        const override { return "FadeEffect"; }
         std::wstring GetComputeShaderPath() const override { return L"FadeEffect.CS.hlsl"; }
         void OnCreateConstantBuffers() override;
@@ -79,14 +80,15 @@ namespace CoreEngine
         void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
     private:
-        FadeParams params_;
-
         Microsoft::WRL::ComPtr<ID3D12Resource> fadeParamsCB_;
         FadeParams* mappedFadeParams_ = nullptr;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
         ScreenParams* mappedScreenParams_ = nullptr;
 
+        // 実行時状態（保存対象ではない）
+        float fadeAlpha_ = 0.0f;
+        float fadeType_ = 0.0f;
         float timeAccumulator_ = 0.0f;
     };
 }

@@ -62,15 +62,6 @@ namespace CoreEngine
         return it != lookup_.end() ? it->second : nullptr;
     }
 
-    std::vector<ICVar*> CVarRegistry::GetSortedByName() const
-    {
-        std::vector<ICVar*> sorted = cvars_;
-        std::sort(sorted.begin(), sorted.end(), [](const ICVar* a, const ICVar* b) {
-            return std::string_view(a->GetName()) < std::string_view(b->GetName());
-        });
-        return sorted;
-    }
-
     std::vector<ICVar*> CVarRegistry::GetByPrefix(std::string_view prefix) const
     {
         std::vector<ICVar*> result;

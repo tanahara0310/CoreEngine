@@ -52,8 +52,12 @@ namespace CoreEngine
     enum class CVarFlags : uint32_t
     {
         None   = 0,
-        NoSave = 1 << 0,  ///< JSON へ保存しない（一時的な実験用フラグなど）
-        NoUI   = 1 << 1,  ///< 自動生成 UI に出さない（コンソールからのみ操作）
+        NoSave = 1 << 0,  ///< JSON へ保存しない（実行時状態など、復元すると事故になる値）
+        /// @brief 自動生成 UI（CVarUI::DrawTree）に出さない
+        /// @details 専用の UI が既にある項目に付ける。例えばポストエフェクトの
+        ///          "r.<Effect>.Enabled" は Post Effects タブのトグルスイッチが担当するため、
+        ///          これを付けないと同じ値を操作する UI が 2 つ並んでしまう
+        NoUI   = 1 << 1,
     };
 
     constexpr CVarFlags operator|(CVarFlags a, CVarFlags b) noexcept

@@ -55,6 +55,9 @@ public:
     void UpdateConstantBuffer();
 
 protected:
+    /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
+    CVar<bool>* GetEnabledCVar() const override;
+
     std::string  GetEffectName()        const override { return "Vignette"; }
     std::wstring GetComputeShaderPath() const override { return L"Vignette.CS.hlsl"; }
     void OnCreateConstantBuffers() override;

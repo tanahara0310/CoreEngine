@@ -2,6 +2,7 @@
 #include "PostEffectManager.h"
 
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVarRegistry.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
@@ -55,34 +56,27 @@ void PostEffectManager::Initialize(DirectXCommon* dxCommon, Render* render)
 
 void PostEffectManager::RegisterAllEffects()
 {
-    // FullScreenは常に有効（コピー用）
-    RegisterEffect<FullScreen>(PostEffectNames::FullScreen, true);
-
-    // FadeEffectはデフォルトで有効
-    RegisterEffect<FadeEffect>(PostEffectNames::FadeEffect, true);
-
-    // その他のエフェクトはデフォルトで無効
-    RegisterEffect<GrayScale>(PostEffectNames::GrayScale, false);
-    RegisterEffect<Random>(PostEffectNames::Random, false);
-    RegisterEffect<Blur>(PostEffectNames::Blur, false);
-    RegisterEffect<RadialBlur>(PostEffectNames::RadialBlur, false);
-    RegisterEffect<Shockwave>(PostEffectNames::Shockwave, false);
-    RegisterEffect<Vignette>(PostEffectNames::Vignette, false);
-    RegisterEffect<ColorGrading>(PostEffectNames::ColorGrading, false);
-    RegisterEffect<ChromaticAberration>(PostEffectNames::ChromaticAberration, false);
-    RegisterEffect<Sepia>(PostEffectNames::Sepia, false);
-    RegisterEffect<Invert>(PostEffectNames::Invert, false);
-    RegisterEffect<RasterScroll>(PostEffectNames::RasterScroll, false);
-    RegisterEffect<Bloom>(PostEffectNames::Bloom, false);
-    // レンズフレアは既定で有効（大気散乱の太陽等の高輝度光源で自動的に発生する）
-    RegisterEffect<LensFlare>(PostEffectNames::LensFlare, true);
-    RegisterEffect<Dissolve>(PostEffectNames::Dissolve, false);
-
-    // アウトラインはデフォルトで無効
-    RegisterEffect<Outline>(PostEffectNames::Outline, false);
-
-    // トーンマッピングは常に有効（HDR→LDR変換）
-    RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping, true);
+    // 各エフェクトの既定の有効/無効は CVar（"r.<Effect>.Enabled"）の既定値が持つ。
+    // ここで指定していたフラグは二重管理になるため廃止した。
+    // FullScreen / ToneMapping は CVar を持たず常時有効（PostEffectBase::enabled_ = true）
+    RegisterEffect<FullScreen>(PostEffectNames::FullScreen);
+    RegisterEffect<FadeEffect>(PostEffectNames::FadeEffect);
+    RegisterEffect<GrayScale>(PostEffectNames::GrayScale);
+    RegisterEffect<Random>(PostEffectNames::Random);
+    RegisterEffect<Blur>(PostEffectNames::Blur);
+    RegisterEffect<RadialBlur>(PostEffectNames::RadialBlur);
+    RegisterEffect<Shockwave>(PostEffectNames::Shockwave);
+    RegisterEffect<Vignette>(PostEffectNames::Vignette);
+    RegisterEffect<ColorGrading>(PostEffectNames::ColorGrading);
+    RegisterEffect<ChromaticAberration>(PostEffectNames::ChromaticAberration);
+    RegisterEffect<Sepia>(PostEffectNames::Sepia);
+    RegisterEffect<Invert>(PostEffectNames::Invert);
+    RegisterEffect<RasterScroll>(PostEffectNames::RasterScroll);
+    RegisterEffect<Bloom>(PostEffectNames::Bloom);
+    RegisterEffect<LensFlare>(PostEffectNames::LensFlare);
+    RegisterEffect<Dissolve>(PostEffectNames::Dissolve);
+    RegisterEffect<Outline>(PostEffectNames::Outline);
+    RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping);
 
     // エフェクトチェーンの順序を登録と同じ場所で定義（二重管理を防ぐ）
     effectChain_ = {
@@ -192,6 +186,16 @@ void PostEffectManager::SetEffectChain(const std::vector<std::string>& effectNam
 
 void PostEffectManager::Update(float deltaTime)
 {
+    // 有効/無効は CVar（"r.<Effect>.Enabled"）が持つため、SetEffectEnabled を通らない経路でも
+    // 変化しうる（CVars.json からの復元、コンソール入力、プリセット適用など）。
+    // その場合キャッシュが古いままだと「タブ上は有効なのに画面に反映されない」状態になるので、
+    // CVar の変更通番を見て再構築する
+    const uint32_t cvarRevision = CVarRegistry::Get().GetGlobalRevision();
+    if (cvarRevision != lastCVarRevision_) {
+        lastCVarRevision_ = cvarRevision;
+        RebuildEffectPtrCache();
+    }
+
     // effectChain_順に有効エフェクトを更新（実行順と一致させ、毎回同じ順序を保証）
     for (const auto& name : effectChain_) {
         auto* effect = GetEffectInternal(name);

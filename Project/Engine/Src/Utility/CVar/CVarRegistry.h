@@ -38,8 +38,6 @@ namespace CoreEngine
         /// @brief 登録順の全 CVar
         const std::vector<ICVar*>& GetAll() const noexcept { return cvars_; }
 
-        /// @brief 名前昇順にソートした全 CVar（UI 表示用）
-        std::vector<ICVar*> GetSortedByName() const;
 
         /// @brief 接頭辞に一致する CVar を名前昇順で取得する
         /// @param prefix "r.Vignette" のような接頭辞（空文字なら全件）

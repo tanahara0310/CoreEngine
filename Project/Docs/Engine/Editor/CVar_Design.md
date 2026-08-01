@@ -1,7 +1,7 @@
 # CVar（コンソール変数）システム 設計書
 
 作成日: 2026-08-01
-ステータス: **コア実装＋Vignette 移行 完了**
+ステータス: **コア実装＋ポストエフェクト全 13 種の移行 完了**
 
 ## 目的
 
@@ -162,8 +162,90 @@ CVarUI::ResetTree("r.Vignette");       // まとめてデフォルトへ戻す
 そのため全 CVar がコードデフォルトのままなら `CVars.json` は作られない。
 いずれかの値が変わった時点（UI 操作、またはプリセット適用による `SetParams`）で生成される。
 
+## ポストエフェクト全 13 種の移行（完了）
+
+| エフェクト | CVar 接頭辞 | 実行時値として CVar 化しなかったもの |
+|---|---|---|
+| Vignette | `r.Vignette` | — |
+| Blur | `r.Blur` | — |
+| RadialBlur | `r.RadialBlur` | — |
+| Bloom | `r.Bloom` | — |
+| ChromaticAberration | `r.ChromaticAberration` | `samples`（未使用フィールド） |
+| Random | `r.Random` | `time` |
+| RasterScroll | `r.RasterScroll` | `time` / `lineOffset` |
+| ColorGrading | `r.ColorGrading` | — |
+| Shockwave | `r.Shockwave` | `center` / `time`（発動状態） |
+| FadeEffect | `r.Fade` | `fadeAlpha` / `fadeType` / `time`（SceneTransition が制御） |
+| Dissolve | `r.Dissolve` | — |
+| Outline | `r.Outline` | `nearPlane` / `farPlane`（カメラから毎フレーム設定） |
+| LensFlare | `r.LensFlare` | `sunUv` / `sunValid` / 解像度（毎フレーム設定） |
+| ToneMapping | `r.AutoExposure` | 順応輝度・自動EV などの計測結果 |
+
+### 判断基準: 何を CVar 化しないか
+
+**外部やエンジン内部が毎フレーム設定する値は CVar 化しない。** これらを保存すると、
+起動時に古い状態が復元されて事故になる（FadeEffect の `fadeAlpha` を保存すると
+黒画面で起動する、など）。実行時値はクラスのメンバとして残し、
+`UpdateConstantBuffer()` で「CVar の調整値 + メンバの実行時値」を組み立てて定数バッファへ書く。
+
+### 削除したもの
+
+- `PostEffectSerialization.cpp` のエフェクト別コード（保存 106 行 + 読み込み分）→
+  残ったのは有効/無効状態のみで、**約 350 行から約 70 行に縮小**
+- 各エフェクトの `GetParams` / `SetParams`（CVar が唯一のソースになったため）
+- `ChromaticAberration::ApplyPreset` / `ColorGrading::ApplyPreset`（呼び出し元ゼロのデッドコード）
+- `FadeEffect` の未使用 setter 6 個、`Dissolve` の未使用 setter 3 個
+- `ToneMapping` の自動露出チューニング値アクセサ 10 個
+- `PostEffectSettingsSection` の `fadeAlpha` 特別扱い（キー自体が無くなったため）
+
+また、有効/無効の対象エフェクト名が保存側・読み込み側に二重に並んでいたのを
+`kToggleableEffects` 配列 1 箇所へ統合し、`PostEffectNames` の定数を使うようにした。
+
+## 有効/無効状態の CVar 化（完了）
+
+エフェクトの有効/無効も `r.<Effect>.Enabled` として CVar 化し、
+**ポストエフェクト関連の保存を完全に CVars.json へ一本化した**（CVar 101 個）。
+
+仕組みは `PostEffectBase` の仮想フック 1 つ。
+
+```cpp
+// PostEffectBase
+virtual CVar<bool>* GetEnabledCVar() const { return nullptr; }
+
+bool IsEnabled() const {
+    if (const CVar<bool>* cvar = GetEnabledCVar()) { return cvar->Get(); }
+    return enabled_;   // CVar を持たないエフェクト（FullScreen / ToneMapping）
+}
+```
+
+各エフェクトはファイルスコープの `cvEnabled` を返すだけでよい。基底が能動的に問い合わせる
+形にしたので、初期化順序に依存しない。
+
+これに伴い削除したもの:
+- `PostEffectSettingsSection.h/.cpp`（セクションごと不要になった）
+- `PostEffectSerialization.cpp`（プリセット実装は CVar ベースへ作り替えて `PostEffectPresetManager.cpp` へ統合）
+- `PostEffectManager::RegisterEffect` の `enabled` 引数
+  （CVar の既定値と二重管理になっていた。既定値は CVar 側が持つ）
+
+### プリセット機能
+
+`PostEffectPresetManager::CaptureToJson / ApplyFromJson` はポストエフェクトの CVar の
+スナップショットを取る実装に変わった。自動保存（CVars.json）が「触った項目だけ」を
+保存するのに対し、プリセットは**完全な状態の記録**なのでデフォルト値も含めて保存する
+（`CVarSerialization::Save` の `skipDefaults` で切り替え）。
+
+共通処理は `Engine/Src/Utility/CVar/CVarSerialization.h/.cpp` に切り出し、
+`CVarSettingsSection` とプリセットの両方から使う。
+
+### NoSave が必要だったケース
+
+`r.Fade.Enabled` は `SceneTransition` が遷移のたびに切り替える実行時状態だった。
+そのまま保存すると「前回の遷移途中の状態」で起動してしまうため `CVarFlags::NoSave` を付けた。
+**実行時に制御される値は、パラメータだけでなく有効/無効フラグにも存在する**ので、
+CVar 化のときは「誰がこの値を書き換えるか」を必ず確認すること。
+
 ## 今後
 
-- 他のポストエフェクト（ColorGrading / ChromaticAberration / RadialBlur など）の移行
-- `ConsoleUI` との接続（`r.Vignette.Intensity 0.5` で即反映、`r.Vignette.*` で一覧）
-- 大気・雲エディタなど、手書き ImGui が 100 行規模のパネルの移行
+- `ConsoleUI` との接続（`r.Bloom.Intensity 0.5` で即反映、`r.Bloom.*` で一覧）
+- 大気・雲エディタ（`AtmosphereSettingsSection` / `VolumetricCloudSettingsSection`）の移行
+- Water（`WaterSettingsSection`）の移行

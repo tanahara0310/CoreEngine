@@ -8,7 +8,6 @@
 #include "../EngineConfig.h"
 #include "../Settings/EditorSettingsSubsystem.h"
 #include "Editor/ImGui/EditorSettingsPanel.h"
-#include "Editor/ImGui/CVarPanel.h"
 #include "Utility/CVar/CVarRegistry.h"
 
 #include "WinApp/WinApp.h"
@@ -171,8 +170,6 @@ namespace CoreEngine
             editorSettings->RegisterSection(atmosphereSettingsSection_.get(), this);
             cloudSettingsSection_ = std::make_unique<VolumetricCloudSettingsSection>(engine_, cloudEditor_.get());
             editorSettings->RegisterSection(cloudSettingsSection_.get(), this);
-            postEffectSettingsSection_ = std::make_unique<PostEffectSettingsSection>(engine_);
-            editorSettings->RegisterSection(postEffectSettingsSection_.get(), this);
             renderingTechniqueSettingsSection_ = std::make_unique<RenderingTechniqueSettingsSection>(engine_);
             editorSettings->RegisterSection(renderingTechniqueSettingsSection_.get(), this);
             // RT シャドウのチューニング値（Stage 0: それまで設定は到達不能だった）
@@ -189,10 +186,6 @@ namespace CoreEngine
         CVarRegistry::Get().FlushPendingWarnings();
 
         // 全 CVar の一覧・検索パネル（機能別パネルとは別に、横断的に触るための入口）
-        gameDebugUI_->RegisterEnginePanel("Console Variables", []() {
-            CVarUI::DrawPanel();
-        });
-
         // Engine Settings ウィンドウの「Editor Settings」管理パネル
         // （自動保存セクションの一覧・最終保存時刻・リセット / バックアップ復元）
         gameDebugUI_->RegisterEnginePanel("Editor Settings", [this]() {
@@ -319,7 +312,6 @@ namespace CoreEngine
         }
         atmosphereSettingsSection_.reset();
         cloudSettingsSection_.reset();
-        postEffectSettingsSection_.reset();
         renderingTechniqueSettingsSection_.reset();
         rayTracingSettingsSection_.reset();
         cvarSettingsSection_.reset();

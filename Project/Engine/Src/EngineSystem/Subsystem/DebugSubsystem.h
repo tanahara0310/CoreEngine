@@ -18,7 +18,6 @@
 #include "Editor/Environment/VolumetricCloudEditor.h"
 #include "Editor/Environment/AtmosphereSettingsSection.h"
 #include "Editor/Environment/VolumetricCloudSettingsSection.h"
-#include "Graphics/PostEffect/Effect/PostEffectSettingsSection.h"
 #include "Graphics/RayTracing/RayTracingSettingsSection.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueSettingsSection.h"
 #include "EngineSystem/Settings/CVarSettingsSection.h"
@@ -109,7 +108,6 @@ namespace CoreEngine
         // エディタより後に宣言し、先に破棄されるようにする
         std::unique_ptr<AtmosphereSettingsSection> atmosphereSettingsSection_;
         std::unique_ptr<VolumetricCloudSettingsSection> cloudSettingsSection_;
-        std::unique_ptr<PostEffectSettingsSection> postEffectSettingsSection_;
         std::unique_ptr<RenderingTechniqueSettingsSection> renderingTechniqueSettingsSection_;
         std::unique_ptr<RayTracingSettingsSection> rayTracingSettingsSection_;
 

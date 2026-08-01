@@ -8,10 +8,12 @@
 namespace CoreEngine
 {
 /// @brief ディゾルブエフェクト（CS方式）
-/// @details ノイズテクスチャを使いピクセルを段階的に消滅させる
+/// @details ノイズテクスチャを使いピクセルを段階的に消滅させる。
+///          パラメータは CVar（"r.Dissolve.*"）が唯一の保持者。
+///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
 class Dissolve : public PostEffectComputeBase {
 public:
-    /// @brief ディゾルブパラメータ構造体
+    /// @brief ディゾルブパラメータ構造体（GPU 定数バッファのレイアウト）
     struct DissolveParams {
         float threshold  = 0.0f;                  // ディゾルブ閾値 (0.0-1.0)
         float edgeWidth  = 0.1f;                  // エッジ幅 (0.0-0.5)
@@ -42,14 +44,13 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    const DissolveParams& GetParams() const { return params_; }
-    void SetParams(const DissolveParams& params);
-    void SetThreshold(float threshold);
-    void SetEdgeWidth(float width);
-    void SetEdgeColor(float r, float g, float b);
+    /// @brief CVar の現在値を定数バッファへ書き込む
     void UpdateConstantBuffer();
 
 protected:
+    /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
+    CVar<bool>* GetEnabledCVar() const override;
+
     std::string  GetEffectName()        const override { return "Dissolve"; }
     std::wstring GetComputeShaderPath() const override { return L"Dissolve.CS.hlsl"; }
 
@@ -60,8 +61,6 @@ private:
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
-    DissolveParams params_;
-
     Microsoft::WRL::ComPtr<ID3D12Resource> dissolveParamsCB_;
     DissolveParams* mappedDissolveParams_ = nullptr;
 

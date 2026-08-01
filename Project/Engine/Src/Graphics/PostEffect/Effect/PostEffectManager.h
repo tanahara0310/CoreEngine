@@ -30,7 +30,7 @@ public:
     /// @param name エフェクト名
     /// @param enabled 初期有効状態
     template<typename T>
-    void RegisterEffect(const std::string& name, bool enabled = false);
+    void RegisterEffect(const std::string& name);
 
     /// @brief 型安全なエフェクト取得
     /// @tparam T エフェクトの型
@@ -136,6 +136,11 @@ public:
 
     /// @brief effectChain_中の有効エフェクトのポインタキャッシュ
     /// @details 毎フレームの unordered_map ルックアップを排除するため使用
+    /// @brief 最後にキャッシュを再構築した時点の CVar 変更通番
+    /// @details 有効/無効は CVar が持つため、SetEffectEnabled を通らない変更
+    ///          （設定復元・コンソール・プリセット）も検知する必要がある
+    uint32_t lastCVarRevision_ = 0;
+
     std::vector<PostEffectBase*> effectPtrCache_;
     std::vector<std::string> effectNameCache_; ///< effectPtrCache_ と同順の登録名キャッシュ
 
@@ -149,14 +154,15 @@ public:
 // =============================================================================
 
 template<typename T>
-void PostEffectManager::RegisterEffect(const std::string& name, bool enabled)
+void PostEffectManager::RegisterEffect(const std::string& name)
 {
-    static_assert(std::is_base_of<PostEffectBase, T>::value, 
+    static_assert(std::is_base_of<PostEffectBase, T>::value,
         "T must inherit from PostEffectBase");
-    
+
     auto effect = std::make_unique<T>();
     effect->Initialize(directXCommon_);
-    effect->SetEnabled(enabled);
+    // 有効/無効は各エフェクトの CVar（"r.<Effect>.Enabled"）の既定値、
+    // または CVar を持たないエフェクトの enabled_ 初期値が決める
     RegisterEffectInternal(name, std::move(effect));
 }
 

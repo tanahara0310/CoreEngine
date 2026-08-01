@@ -8,9 +8,11 @@
 namespace CoreEngine
 {
 /// @brief ラジアルブラーエフェクト（CS方式）
+/// @details パラメータは CVar（"r.RadialBlur.*"）が唯一の保持者。
+///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
 class RadialBlur : public PostEffectComputeBase {
 public:
-    /// @brief ラジアルブラーパラメータ構造体
+    /// @brief ラジアルブラーパラメータ構造体（GPU 定数バッファのレイアウト）
     struct RadialBlurParams {
         float intensity    = 0.5f; // ブラー強度 (0.0-2.0)
         float sampleCount  = 8.0f; // サンプル数 (4.0-16.0)
@@ -39,10 +41,10 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    const RadialBlurParams& GetParams() const { return params_; }
-    void SetParams(const RadialBlurParams& newParams);
-
 protected:
+    /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
+    CVar<bool>* GetEnabledCVar() const override;
+
     std::string  GetEffectName()        const override { return "RadialBlur"; }
     std::wstring GetComputeShaderPath() const override { return L"RadialBlur.CS.hlsl"; }
     void OnCreateConstantBuffers() override;
@@ -52,8 +54,6 @@ private:
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
-    RadialBlurParams params_;
-
     Microsoft::WRL::ComPtr<ID3D12Resource> radialBlurParamsCB_;
     RadialBlurParams* mappedRadialBlurParams_ = nullptr;
 

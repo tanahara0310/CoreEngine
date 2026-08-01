@@ -3,11 +3,45 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<float> cvIntensity{
+            "r.RadialBlur.Intensity", 0.5f,
+            "放射状ブラーの強度",
+            CVarRange{ 0.0f, 2.0f } };
+
+        CVar<float> cvSampleCount{
+            "r.RadialBlur.SampleCount", 8.0f,
+            "サンプル数。多いほど滑らかだが重い",
+            CVarRange{ 4.0f, 16.0f } };
+
+        CVar<float> cvCenterX{
+            "r.RadialBlur.CenterX", 0.5f,
+            "ブラーの中心 X（画面比 0-1）",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvCenterY{
+            "r.RadialBlur.CenterY", 0.5f,
+            "ブラーの中心 Y（画面比 0-1）",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.RadialBlur.Enabled", false,
+            "ラジアルブラーを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.RadialBlur";
+    }
+
     void RadialBlur::OnCreateConstantBuffers()
     {
         UINT rbSize = (sizeof(RadialBlurParams) + 255) & ~255;
@@ -24,7 +58,13 @@ namespace CoreEngine
 
     void RadialBlur::UpdateConstantBuffer()
     {
-        if (mappedRadialBlurParams_) { *mappedRadialBlurParams_ = params_; }
+        if (!mappedRadialBlurParams_) {
+            return;
+        }
+        mappedRadialBlurParams_->intensity   = cvIntensity.Get();
+        mappedRadialBlurParams_->sampleCount = cvSampleCount.Get();
+        mappedRadialBlurParams_->centerX     = cvCenterX.Get();
+        mappedRadialBlurParams_->centerY     = cvCenterY.Get();
     }
 
     void RadialBlur::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -35,18 +75,13 @@ namespace CoreEngine
         }
     }
 
-    void RadialBlur::SetParams(const RadialBlurParams& newParams)
-    {
-        params_ = newParams;
-        UpdateConstantBuffer();
-    }
-
     void RadialBlur::Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
         uint32_t width,
         uint32_t height)
     {
+        UpdateConstantBuffer();
         UpdateScreenConstantBuffer(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
@@ -75,22 +110,18 @@ namespace CoreEngine
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            changed |= UI::SliderFloat("強度", params_.intensity, 0.0f, 2.0f);
-            changed |= UI::SliderFloat("サンプル数", params_.sampleCount, 4.0f, 16.0f);
-            changed |= UI::SliderFloat("中心X", params_.centerX, 0.0f, 1.0f);
-            changed |= UI::SliderFloat("中心Y", params_.centerY, 0.0f, 1.0f);
-            ImGui::TreePop();
-        }
-        if (changed) { UpdateConstantBuffer(); }
+        CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
         if (ImGui::Button("デフォルトに戻す")) {
-            params_ = RadialBlurParams{};
-            UpdateConstantBuffer();
+            CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* RadialBlur::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

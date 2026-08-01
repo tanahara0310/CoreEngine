@@ -31,6 +31,11 @@ namespace CoreEngine
             "効果のかかり始める半径。大きいほど画面中央の明るい領域が広がる",
             CVarRange{ 1.0f, 50.0f } };
 
+        CVar<bool> cvEnabled{
+            "r.Vignette.Enabled", false,
+            "ヴィネットを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
         constexpr const char* kCVarPrefix = "r.Vignette";
     }
 
@@ -132,5 +137,10 @@ namespace CoreEngine
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* Vignette::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

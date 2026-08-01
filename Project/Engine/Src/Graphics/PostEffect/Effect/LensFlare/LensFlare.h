@@ -14,6 +14,9 @@ namespace CoreEngine
 ///          画面中心対称のゴースト列＋ハロー生成（色収差付き）→ 分離ガウスブラー →
 ///          スターバースト変調付き加算合成の 4 パス構成。
 ///          Bloom の後・ToneMapping の前（HDR 空間）で実行することを前提とする。
+///          調整パラメータは CVar（"r.LensFlare.*"）が唯一の保持者。太陽スクリーン位置と
+///          解像度は毎フレーム設定される実行時値なので CVar 化していない。
+///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
 class LensFlare : public PostEffectComputeBase {
 public:
     /// @brief フレアパラメータ（HLSL 側 LensFlareParams と 80 バイトレイアウトを一致させること）
@@ -90,20 +93,20 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    const LensFlareConstants& GetParams() const { return params_; }
-    void SetParams(const LensFlareConstants& params) { params_ = params; }
-
     /// @brief 太陽のスクリーン位置を設定（毎フレーム、描画パイプラインから呼ばれる）
     /// @param u 太陽のスクリーン UV.x
     /// @param v 太陽のスクリーン UV.y
     /// @param valid 太陽がカメラ前方にある場合 true（false でフレア無効）
     void SetSunScreenPosition(float u, float v, bool valid) {
-        params_.sunUv[0] = u;
-        params_.sunUv[1] = v;
-        params_.sunValid = valid ? 1.0f : 0.0f;
+        sunUv_[0] = u;
+        sunUv_[1] = v;
+        sunValid_ = valid ? 1.0f : 0.0f;
     }
 
 protected:
+    /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
+    CVar<bool>* GetEnabledCVar() const override;
+
     std::string  GetEffectName()        const override { return "LensFlare"; }
     std::wstring GetComputeShaderPath() const override { return L"LensFlareComposite.CS.hlsl"; }
     void OnConfigureRootSignature(RootSignatureConfig& config) override;
@@ -118,6 +121,14 @@ private:
 
     /// @brief 定数バッファへ現在のパラメータと画面サイズを書き込む
     void UploadConstants(uint32_t width, uint32_t height);
+
+    /// @brief CVar の調整値と実行時値（太陽位置・解像度）から定数を組み立てる
+    /// @param width  フル解像度幅
+    /// @param height フル解像度高さ
+    /// @param flareWidth  フレアバッファ幅
+    /// @param flareHeight フレアバッファ高さ
+    LensFlareConstants BuildConstants(uint32_t width, uint32_t height,
+                                      uint32_t flareWidth, uint32_t flareHeight) const;
 
     /// @brief 支配的な光源位置（1x1テクスチャ）を確保する
     bool EnsureSourcePosTarget();
@@ -137,7 +148,9 @@ private:
     };
 
 private:
-    LensFlareConstants params_;
+    // 太陽のスクリーン位置（毎フレーム描画パイプラインが設定する実行時値。保存対象ではない）
+    float sunUv_[2] = { 0.5f, 0.5f };
+    float sunValid_ = 0.0f;
 
     // 定数バッファ（永続マップ）
     Microsoft::WRL::ComPtr<ID3D12Resource> paramsCB_;

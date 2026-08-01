@@ -8,9 +8,11 @@
 namespace CoreEngine
 {
 /// @brief ブルームエフェクト（CS方式）
+/// @details パラメータは CVar（"r.Bloom.*"）が唯一の保持者。
+///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
 class Bloom : public PostEffectComputeBase {
 public:
-    /// @brief ブルームパラメータ構造体
+    /// @brief ブルームパラメータ構造体（GPU 定数バッファのレイアウト）
     struct BloomParams {
         float threshold  = 0.8f; // 輝度閾値 (0.0-2.0)
         float intensity  = 1.0f; // ブルーム強度 (0.0-3.0)
@@ -39,11 +41,13 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    const BloomParams& GetParams() const { return params_; }
-    void SetParams(const BloomParams& params);
+    /// @brief CVar の現在値を定数バッファへ書き込む
     void UpdateConstantBuffer();
 
 protected:
+    /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
+    CVar<bool>* GetEnabledCVar() const override;
+
     std::string  GetEffectName()        const override { return "Bloom"; }
     std::wstring GetComputeShaderPath() const override { return L"Bloom.CS.hlsl"; }
     void OnCreateConstantBuffers() override;
@@ -52,8 +56,6 @@ private:
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
-    BloomParams params_;
-
     Microsoft::WRL::ComPtr<ID3D12Resource> bloomParamsCB_;
     BloomParams* mappedBloomParams_ = nullptr;
 
