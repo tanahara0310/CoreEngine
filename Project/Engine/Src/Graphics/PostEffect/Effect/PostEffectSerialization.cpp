@@ -9,7 +9,6 @@
 #include "PostEffectManager.h"
 #include "Blur/Blur.h"
 #include "RadialBlur/RadialBlur.h"
-#include "Vignette/Vignette.h"
 #include "ColorGrading/ColorGrading.h"
 #include "ChromaticAberration/ChromaticAberration.h"
 #include "Shockwave/Shockwave.h"
@@ -68,15 +67,9 @@ json PostEffectPresetManager::CaptureToJson(const PostEffectManager* postEffectM
         presetData["radialBlur"] = radialBlurJson;
     }
 
-    // Vignetteのパラメータ保存
-    if (auto* vignette = const_cast<PostEffectManager*>(postEffectManager)->GetEffect<Vignette>("Vignette")) {
-        auto params = vignette->GetParams();
-        json vignetteJson;
-        vignetteJson["intensity"] = params.intensity;
-        vignetteJson["smoothness"] = params.smoothness;
-        vignetteJson["size"] = params.size;
-        presetData["vignette"] = vignetteJson;
-    }
+    // Vignette のパラメータは CVar（"r.Vignette.*"）へ移行済みのため、ここでは扱わない。
+    // 保存・復元は CVarSettingsSection（CVars.json）が一括で行う。
+    // enabled 状態のみ従来どおり enabledStates 経由で保存される
 
     // ColorGradingのパラメータ保存
     if (auto* colorGrading = const_cast<PostEffectManager*>(postEffectManager)->GetEffect<ColorGrading>("ColorGrading")) {
@@ -289,17 +282,8 @@ void PostEffectPresetManager::ApplyFromJson(PostEffectManager* postEffectManager
         }
     }
 
-    // Vignetteのパラメータ読み込み
-    if (presetData.contains("vignette")) {
-        auto vignetteJson = presetData["vignette"];
-        if (auto* vignette = postEffectManager->GetEffect<Vignette>("Vignette")) {
-            Vignette::VignetteParams params;
-            params.intensity = JsonManager::SafeGet(vignetteJson, "intensity", 0.8f);
-            params.smoothness = JsonManager::SafeGet(vignetteJson, "smoothness", 0.8f);
-            params.size = JsonManager::SafeGet(vignetteJson, "size", 16.0f);
-            vignette->SetParams(params);
-        }
-    }
+    // Vignette のパラメータは CVar（"r.Vignette.*"）が唯一の保持者。
+    // 旧形式の "vignette" キーが残っているファイルは、読み飛ばして CVars.json 側を優先する
 
     // ColorGradingのパラメータ読み込み
     if (presetData.contains("colorGrading")) {

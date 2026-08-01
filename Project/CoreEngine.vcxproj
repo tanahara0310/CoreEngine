@@ -277,6 +277,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp" />
+    <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp" />
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\RayTracingSubsystem.cpp" />
@@ -579,6 +583,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudSettingsSection.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\IEditorSettingsSection.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h" />
+    <ClInclude Include="Engine\Src\Utility\CVar\CVar.h" />
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\IEngineSubsystem.h" />

@@ -961,8 +961,32 @@
     <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVar.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h">
       <Filter>Application\Src\Scenes\PrimitiveTestScene</Filter>
     </ClInclude>
@@ -2703,6 +2727,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\JsonManager">
       <UniqueIdentifier>{DDF59094-F412-4879-A350-D360A6435BCD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\CVar">
+      <UniqueIdentifier>{3C1F7A62-5D48-4B0E-9E21-7A6C0B4D8F13}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>

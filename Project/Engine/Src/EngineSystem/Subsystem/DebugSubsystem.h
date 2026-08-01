@@ -21,6 +21,7 @@
 #include "Graphics/PostEffect/Effect/PostEffectSettingsSection.h"
 #include "Graphics/RayTracing/RayTracingSettingsSection.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueSettingsSection.h"
+#include "EngineSystem/Settings/CVarSettingsSection.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 
@@ -111,6 +112,9 @@ namespace CoreEngine
         std::unique_ptr<PostEffectSettingsSection> postEffectSettingsSection_;
         std::unique_ptr<RenderingTechniqueSettingsSection> renderingTechniqueSettingsSection_;
         std::unique_ptr<RayTracingSettingsSection> rayTracingSettingsSection_;
+
+        // 全 CVar をまとめて保存するセクション（CVar を増やしてもここへの追記は不要）
+        std::unique_ptr<CVarSettingsSection> cvarSettingsSection_;
     };
 }
 
