@@ -166,15 +166,6 @@ namespace CoreEngine
         // エディタ設定の自動保存セクション（登録時に保存済み JSON から前回状態が復元される）。
         // 大気の太陽/月ライトはシーン寿命のため EnvironmentFeature 側の別セクションが扱う
         if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
-            atmosphereSettingsSection_ = std::make_unique<AtmosphereSettingsSection>(engine_);
-            editorSettings->RegisterSection(atmosphereSettingsSection_.get(), this);
-            cloudSettingsSection_ = std::make_unique<VolumetricCloudSettingsSection>(engine_, cloudEditor_.get());
-            editorSettings->RegisterSection(cloudSettingsSection_.get(), this);
-            renderingTechniqueSettingsSection_ = std::make_unique<RenderingTechniqueSettingsSection>(engine_);
-            editorSettings->RegisterSection(renderingTechniqueSettingsSection_.get(), this);
-            // RT シャドウのチューニング値（Stage 0: それまで設定は到達不能だった）
-            rayTracingSettingsSection_ = std::make_unique<RayTracingSettingsSection>(engine_);
-            editorSettings->RegisterSection(rayTracingSettingsSection_.get(), this);
             // 全 CVar を 1 ファイルへ保存する。個別セクションと違い、CVar が増えても
             // ここへの追記は不要（レジストリを走査するため）
             cvarSettingsSection_ = std::make_unique<CVarSettingsSection>();
@@ -310,10 +301,6 @@ namespace CoreEngine
                 editorSettings->UnregisterSections(this);
             }
         }
-        atmosphereSettingsSection_.reset();
-        cloudSettingsSection_.reset();
-        renderingTechniqueSettingsSection_.reset();
-        rayTracingSettingsSection_.reset();
         cvarSettingsSection_.reset();
 
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）

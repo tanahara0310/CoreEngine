@@ -13,6 +13,7 @@
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Editor/ImGui/CVarPanel.h"
 
 #include <imgui.h>
 #include <array>
@@ -30,6 +31,9 @@ namespace CoreEngine
             "RTShadowTemporal",
             "RTShadowDenoise",
         };
+
+        /// @brief RT シャドウ設定の CVar 接頭辞（定義は RayTracingShadowManager.cpp）
+        constexpr const char* kShadowCVarPrefix = "r.RTShadow";
 
         /// @brief 水面 RT のパス名
         constexpr const char* kWaterPassNames[] = {
@@ -280,96 +284,14 @@ namespace CoreEngine
             return;
         }
 
-        RayTracingShadowSettings settings = shadowMgr->GetSettings();
-        bool changed = false;
-
-        ImGui::PushItemWidth(220.0f);
-
-        changed |= ImGui::SliderInt("ソフトシャドウ サンプル数", &settings.softShadowSamples, 1, 16);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "1 ピクセルあたりのシャドウレイ本数。\n"
-                "コストはほぼ本数に比例する（1spp = 約1.14ms @1920x1080）。");
-        }
-
-        changed |= ImGui::SliderFloat("光源の角半径 [rad]", &settings.lightRadius, 0.0f, 0.2f, "%.4f");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "ペナンブラ幅を決める。実際の太陽は約 0.0046 rad。\n"
-                "0.15 以上はペナンブラが広すぎてゴーストが出るため非推奨。");
-        }
-
-        changed |= ImGui::SliderFloat("シャドウバイアス", &settings.shadowBias, 0.0f, 0.5f, "%.4f");
-        changed |= ImGui::SliderFloat("レイ基準距離", &settings.maxRayDistance, 10.0f, 20000.0f, "%.0f");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "これより遠い遮蔽物は影を落とさない。\n"
-                "実際に使われる距離は上の表の rayDist(実効) を参照。");
-        }
-
-        changed |= ImGui::SliderFloat("テンポラル ブレンド係数", &settings.historyAlpha, 0.01f, 1.0f, "%.3f");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("小さいほど履歴を重視（0.15 = 履歴 85%）。1.0 で履歴を使わない。");
-        }
-
-        // A-Trous パス数（Stage 3 で専用スクラッチを持たせたので任意値が指定できる）
-        changed |= ImGui::SliderInt("A-Trous パス数", &settings.atrousPassCount, 0, 4);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "0 = デノイズ無効。1 パスごとにステップ幅が 1→2→4→8 と倍になる。\n"
-                "1spp のシャドウに step=8（実効31x31）まで広げる必要は無い。\n"
-                "Stage 2 まであった「偶数のみ」の制約は解消済み。");
-        }
-
-        changed |= ImGui::SliderFloat("深度エッジ重み (phiDepth)", &settings.denoisePhiDepth, 0.05f, 8.0f, "%.2f");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "大きいほどエッジ検出が厳しくなり影の輪郭が保たれる（ぼけにくい）。\n"
-                "小さいほど深度差を跨いで広くぼける。\n"
-                "Stage 1 で深度指標をワールド原点距離→線形ビュー深度へ変えたので\n"
-                "この値の意味が変わっている。");
-        }
-
-        changed |= ImGui::SliderFloat("アップサンプル深度重み", &settings.upsamplePhiDepth, 0.5f, 40.0f, "%.1f");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "ハーフ解像度時のみ有効。\n"
-                "大きいほど深度が近いトレース結果しか採用しない（輪郭はシャープだがエイリアスが出る）。\n"
-                "小さいほど滑らかになるが物体境界を跨いで影が漏れる。");
-        }
-
-        ImGui::PopItemWidth();
-
-        changed |= ImGui::Checkbox("ハーフ解像度トレース", &settings.halfResolutionTrace);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "トレース〜デノイズを 1/2 解像度で行い、最後にバイラテラルアップサンプルする。\n"
-                "レイ本数もデノイズの帯域も 1/4 になる（最終マスクはフル解像度のまま）。\n"
-                "サンプル位置はフレームごとに 2x2 を巡回し、テンポラル蓄積で回収する。");
-        }
-
-        changed |= ImGui::Checkbox("射程を太陽高度でスケールする", &settings.scaleRayDistanceBySunElevation);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(
-                "光源が低いほどレイはほぼ水平に走るため、固定距離だと遠くの遮蔽物へ届かない。\n"
-                "有効時は 基準距離 / sin(太陽高度) を使う（最大 10 倍で頭打ち）。\n"
-                "OFF にすると従来どおり基準距離をそのまま使う。");
-        }
-
-        changed |= ImGui::Checkbox("履歴参照を無効化（テンポラル由来の切り分け用）", &settings.disableHistory);
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("ON にすると毎フレーム現フレームの空間前処理結果のみを使う。\n残像・ゴーストがテンポラル由来かを判定できる。");
-        }
-
-        if (changed) {
-            shadowMgr->SetSettings(settings);
-        }
+        // パラメータ UI は CVar から自動生成される（説明は各 CVar のツールチップに出る）
+        CVarUI::DrawTree(kShadowCVarPrefix);
 
         if (ImGui::Button("既定値へ戻す")) {
-            shadowMgr->SetSettings(RayTracingShadowSettings{});
+            CVarUI::ResetTree(kShadowCVarPrefix);
         }
         ImGui::SameLine();
-        ImGui::TextDisabled("変更は自動保存される（RayTracing.json）");
+        ImGui::TextDisabled("変更は自動保存される（CVars.json）");
     }
 
     // -------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Utility/CVar/CVar.h"
 #include "SSAOTemporalTechnique.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -13,6 +14,14 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvEnabled{
+            "r.SSAOTemporal.Enabled", true,
+            "SSAO のテンポラル蓄積を有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+    }
+
     void SSAOTemporalTechnique::Initialize(DirectXCommon* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
@@ -150,5 +159,10 @@ namespace CoreEngine
     {
         static const std::wstring path = L"SSAOTemporal.PS.hlsl";
         return path;
+    }
+
+    CVar<bool>* SSAOTemporalTechnique::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Utility/CVar/CVar.h"
 #include "WaterCausticsTechnique.h"
 
 #include "Graphics/Light/LightManager.h"
@@ -22,6 +23,14 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvEnabled{
+            "r.WaterCaustics.Enabled", true,
+            "水面コースティクスの適用を有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+    }
+
     void WaterCausticsTechnique::Initialize(DirectXCommon* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
@@ -261,5 +270,10 @@ namespace CoreEngine
         if (mappedParams_) {
             *mappedParams_ = params_;
         }
+    }
+
+    CVar<bool>* WaterCausticsTechnique::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

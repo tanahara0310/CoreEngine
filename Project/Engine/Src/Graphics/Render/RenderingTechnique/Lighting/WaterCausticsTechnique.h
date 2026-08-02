@@ -60,6 +60,9 @@ namespace CoreEngine
 		void SetBackend(Backend backend) { backend_ = backend; }
 
 	protected:
+        /// @brief 有効/無効は CVar "r.WaterCaustics.Enabled" が保持する
+        CVar<bool>* GetEnabledCVar() const override;
+
 		std::string GetTechniqueName() const override { return "WaterCaustics"; }
 		const std::wstring& GetPixelShaderPath() const override;
 

@@ -12,6 +12,7 @@
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/CVarPanel.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #endif
 
@@ -23,6 +24,8 @@ namespace CoreEngine {
     namespace {
         constexpr float kDegToRad = MathCore::Constants::kDegToRad;
         constexpr const char* kEditorLabel = "Sky Atmosphere";
+        /// @brief 大気パラメータの CVar 接頭辞（定義は AtmosphereManager.cpp）
+        constexpr const char* kAtmosphereCVarPrefix = "r.Atmosphere";
     }
 
     void AtmosphereEditor::Initialize(EngineSystem& engine)
@@ -247,10 +250,8 @@ namespace CoreEngine {
                 }
 
                 // 満ち欠け: 既定は常に満月（実位相は太陽の配置次第で意図せず新月になるためオプトイン）
-                if (auto* atmosphereManager = GetAtmosphereManager()) {
-                    auto& params = atmosphereManager->GetParametersMutable();
-                    ImGui::Checkbox("満ち欠けを太陽と連動（実位相）", &params.moonPhaseFromSun);
-                }
+                // 実体は CVar が持つ（GetParametersMutable への直書きは次の同期で戻されるため使わない）
+                CVarUI::DrawTree("r.Atmosphere.MoonPhaseFromSun");
             }
             if (changed) {
                 ApplyMoonSettings(settings);
@@ -291,85 +292,20 @@ namespace CoreEngine {
         // ===== 大気パラメータ =====
         if (ImGui::CollapsingHeader("大気パラメータ")) {
             if (auto* atmosphereManager = GetAtmosphereManager()) {
+                // パラメータ UI は CVar から自動生成される（説明は各項目のツールチップに出る）。
+                // 値の反映は AtmosphereManager::Update が CVar の変更を検知して行う
+                CVarUI::DrawTree(kAtmosphereCVarPrefix);
+
+                // groundLevelY だけはシーンが所有する値なので CVar 化していない
                 auto& params = atmosphereManager->GetParametersMutable();
-                bool paramsChanged = false;
-
-                ImGui::SeparatorText("レイリー散乱（青空の成分）");
-                float rayleigh[3] = {
-                    params.rayleighScattering.x * 1e6f,
-                    params.rayleighScattering.y * 1e6f,
-                    params.rayleighScattering.z * 1e6f };
-                if (ImGui::DragFloat3("散乱係数 [1e-6/m]##rayleigh", rayleigh, 0.1f, 0.0f, 200.0f, "%.2f")) {
-                    params.rayleighScattering = { rayleigh[0] * 1e-6f, rayleigh[1] * 1e-6f, rayleigh[2] * 1e-6f };
-                    paramsChanged = true;
+                if (ImGui::DragFloat("地表とみなすY座標 [m]（シーン設定）", &params.groundLevelY,
+                        1.0f, -1000.0f, 1000.0f, "%.1f")) {
+                    atmosphereManager->MarkLUTDirty();
                 }
-                paramsChanged |= ImGui::DragFloat("スケールハイト [m]##rayleigh", &params.rayleighScaleHeight, 50.0f, 1000.0f, 20000.0f, "%.0f");
-
-                ImGui::SeparatorText("ミー散乱（霞・太陽周りのハロ）");
-                float mieScattering = params.mieScattering * 1e6f;
-                if (ImGui::DragFloat("散乱係数 [1e-6/m]##mie", &mieScattering, 0.1f, 0.0f, 200.0f, "%.2f")) {
-                    params.mieScattering = mieScattering * 1e-6f;
-                    paramsChanged = true;
-                }
-                float mieAbsorption = params.mieAbsorption * 1e6f;
-                if (ImGui::DragFloat("吸収係数 [1e-6/m]##mie", &mieAbsorption, 0.1f, 0.0f, 100.0f, "%.2f")) {
-                    params.mieAbsorption = mieAbsorption * 1e-6f;
-                    paramsChanged = true;
-                }
-                paramsChanged |= ImGui::DragFloat("スケールハイト [m]##mie", &params.mieScaleHeight, 10.0f, 100.0f, 5000.0f, "%.0f");
-                paramsChanged |= ImGui::SliderFloat("位相 g（前方散乱度）", &params.miePhaseG, 0.0f, 0.99f, "%.2f");
-
-                ImGui::SeparatorText("オゾン吸収（夕暮れの色再現）");
-                float ozone[3] = {
-                    params.ozoneAbsorption.x * 1e6f,
-                    params.ozoneAbsorption.y * 1e6f,
-                    params.ozoneAbsorption.z * 1e6f };
-                if (ImGui::DragFloat3("吸収係数 [1e-6/m]##ozone", ozone, 0.05f, 0.0f, 20.0f, "%.3f")) {
-                    params.ozoneAbsorption = { ozone[0] * 1e-6f, ozone[1] * 1e-6f, ozone[2] * 1e-6f };
-                    paramsChanged = true;
-                }
-                paramsChanged |= ImGui::DragFloat("層中心高度 [m]##ozone", &params.ozoneLayerCenter, 100.0f, 5000.0f, 60000.0f, "%.0f");
-                paramsChanged |= ImGui::DragFloat("層半幅 [m]##ozone", &params.ozoneLayerHalfWidth, 100.0f, 1000.0f, 30000.0f, "%.0f");
-
-                ImGui::SeparatorText("多重散乱");
-                // 等方 Psi_ms 近似は薄明時に反太陽側を過大に持ち上げる。1 未満で抑制（UE の MultiScatteringFactor 相当）
-                paramsChanged |= ImGui::SliderFloat("寄与スケール", &params.multiScatteringFactor, 0.0f, 2.0f, "%.2f");
-
-                ImGui::SeparatorText("空気遠近感（Aerial Perspective）");
-                // Camera Volume は 32 スライスなので最大適用距離 = 32 × この値（既定 4 → 128km）
-                paramsChanged |= ImGui::SliderFloat("距離スケール [km/slice]", &params.apKmPerSlice, 1.0f, 16.0f, "%.1f");
-
-                ImGui::SeparatorText("地表・その他");
-                float albedo[3] = { params.groundAlbedo.x, params.groundAlbedo.y, params.groundAlbedo.z };
-                if (ImGui::ColorEdit3("地表アルベド", albedo)) {
-                    params.groundAlbedo = { albedo[0], albedo[1], albedo[2] };
-                    paramsChanged = true;
-                }
-                paramsChanged |= ImGui::DragFloat("地表とみなすY座標 [m]", &params.groundLevelY, 1.0f, -1000.0f, 1000.0f, "%.1f");
-
-                ImGui::SeparatorText("太陽ディスク");
-                paramsChanged |= ImGui::SliderFloat("視半径 [deg]", &params.sunDiskAngularRadiusDeg, 0.05f, 2.0f, "%.3f");
-                paramsChanged |= ImGui::DragFloat("輝度スケール", &params.sunDiskLuminanceScale, 1.0f, 0.0f, 1000.0f, "%.1f");
-
-                ImGui::SeparatorText("月ディスク");
-                paramsChanged |= ImGui::SliderFloat("視半径 [deg]##moonDisk", &params.moonDiskAngularRadiusDeg, 0.05f, 2.0f, "%.3f");
-                paramsChanged |= ImGui::DragFloat("輝度スケール##moonDisk", &params.moonDiskLuminanceScale, 0.1f, 0.0f, 100.0f, "%.1f");
-
-                ImGui::SeparatorText("星空");
-                // 手続き的星field（テクスチャ不要）。空の明るさマスクにより昼・薄明では自動的に消えるため
-                // 0 にする以外の昼夜切り替え操作は不要
-                paramsChanged |= ImGui::SliderFloat("星の強度", &params.starIntensity, 0.0f, 5.0f, "%.2f");
 
                 ImGui::Spacing();
                 if (ImGui::Button("大気パラメータをリセット")) {
-                    const float groundLevelY = params.groundLevelY; // シーン設定は維持する
-                    params = AtmosphereParameters{};
-                    params.groundLevelY = groundLevelY;
-                    paramsChanged = true;
-                }
-
-                if (paramsChanged) {
-                    atmosphereManager->MarkLUTDirty();
+                    CVarUI::ResetTree(kAtmosphereCVarPrefix);
                 }
             } else {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "AtmosphereManager が見つかりません");

@@ -273,9 +273,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.cpp" />
-    <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereLightsSettingsSection.cpp" />
-    <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereSettingsSection.cpp" />
-    <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp" />
@@ -321,7 +318,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
@@ -366,7 +362,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTemporalTechnique.cpp" />
@@ -469,9 +464,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\Modules\SizeModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\VelocityModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp" />
-    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\FreeLookController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\EditorCameraInput.cpp" />
     <ClCompile Include="Engine\Src\Camera\View\ViewBuilder.cpp" />
@@ -577,9 +572,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.h" />
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h" />
-    <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereLightsSettingsSection.h" />
-    <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereSettingsSection.h" />
-    <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudSettingsSection.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\IEditorSettingsSection.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h" />
@@ -650,7 +642,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h" />
-    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\ShaderTableBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\RayTracing\WaterCausticsRayTracingManager.h" />
@@ -729,7 +720,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueSettingsSection.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueNames.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOTechnique.h" />
@@ -896,9 +886,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h" />
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
-    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
+    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h" />
     <ClInclude Include="Engine\Src\Camera\Control\FreeLookController.h" />
     <ClInclude Include="Engine\Src\Camera\Control\ICameraController.h" />
     <ClInclude Include="Engine\Src\Camera\Control\CameraInputState.h" />

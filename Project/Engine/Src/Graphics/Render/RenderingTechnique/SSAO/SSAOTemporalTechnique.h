@@ -45,6 +45,9 @@ namespace CoreEngine
         void SetParams(const SSAOTemporalParams& params) { params_ = params; }
 
     protected:
+        /// @brief 有効/無効は CVar "r.SSAOTemporal.Enabled" が保持する
+        CVar<bool>* GetEnabledCVar() const override;
+
         std::string GetTechniqueName() const override { return "SSAOTemporal"; }
         const std::wstring& GetPixelShaderPath() const override;
 

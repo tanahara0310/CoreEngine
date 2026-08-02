@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "Utility/CVar/CVar.h"
+#include "Editor/ImGui/CVarPanel.h"
 #include "TAATechnique.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
@@ -14,6 +16,26 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvEnabled{
+            "r.TAA.Enabled", true,
+            "TAA（テンポラル アンチエイリアシング）を有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        CVar<float> cvBlendAlpha{
+            "r.TAA.BlendAlpha", 0.1f,
+            "現フレームの寄与率。小さいほど滑らかだが残像寄りになる",
+            CVarRange{ 0.01f, 1.0f } };
+
+        CVar<float> cvClampScale{
+            "r.TAA.ClampScale", 1.0f,
+            "近傍 AABB の拡張率。大きいほどゴーストが出やすく、小さいほどちらつく",
+            CVarRange{ 0.1f, 4.0f } };
+
+        constexpr const char* kCVarPrefix = "r.TAA";
+    }
+
     void TAATechnique::Initialize(DirectXCommon* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
@@ -28,6 +50,10 @@ namespace CoreEngine
     void TAATechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
     {
         outputSrvHandle = {};
+
+        // 調整値は CVar が保持する。UI・設定復元のどの経路で変わってもここで取り込む
+        params_.blendAlpha = cvBlendAlpha.Get();
+        params_.clampScale = cvClampScale.Get();
 
         if (!IsEnabled() || !context.renderTargetManager || !context.frameBlackboard
             || !context.gBufferManager || !context.dxCommon) {
@@ -136,16 +162,8 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         ImGui::PushID("TAAParams");
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            if (UI::SliderFloat("現フレーム寄与率", params_.blendAlpha, 0.02f, 0.5f)) { changed = true; }
-            ImGui::TextWrapped("小さいほど滑らかになるが残像が出やすい（0.1 前後が標準）");
-
-            if (UI::SliderFloat("クランプ幅", params_.clampScale, 0.5f, 3.0f)) { changed = true; }
-            ImGui::TextWrapped("大きいほど収束が速いがゴーストが出やすい");
-
-            ImGui::TreePop();
-        }
+        // パラメータ UI は CVar から自動生成される（値は毎フレーム Execute で取り込まれる）
+        CVarUI::DrawTree(kCVarPrefix);
 
         ImGui::Text("履歴: %s", historyValid_ ? "有効" : "無効（次フレームで再構築）");
         if (ImGui::Button("履歴をリセット")) {
@@ -153,12 +171,8 @@ namespace CoreEngine
         }
 
         if (ImGui::Button("デフォルトに戻す")) {
-            params_.blendAlpha = 0.1f;
-            params_.clampScale = 1.0f;
-            changed = true;
+            CVarUI::ResetTree(kCVarPrefix);
         }
-
-        (void)changed; // 定数は毎フレーム Execute でリングへ書かれる
 
         ImGui::PopID();
 #endif
@@ -168,5 +182,10 @@ namespace CoreEngine
     {
         static const std::wstring path = L"TAA.PS.hlsl";
         return path;
+    }
+
+    CVar<bool>* TAATechnique::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

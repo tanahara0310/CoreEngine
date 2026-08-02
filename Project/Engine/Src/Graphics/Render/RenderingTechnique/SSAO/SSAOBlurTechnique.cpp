@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "Utility/CVar/CVar.h"
+#include "Editor/ImGui/CVarPanel.h"
 #include "SSAOBlurTechnique.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
@@ -15,6 +17,21 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvEnabled{
+            "r.SSAOBlur.Enabled", true,
+            "SSAO のバイラテラルブラーを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        CVar<float> cvDepthThreshold{
+            "r.SSAOBlur.DepthThreshold", 0.5f,
+            "ブラーが深度差を跨がない閾値。小さいほど輪郭を保つ",
+            CVarRange{ 0.01f, 5.0f } };
+
+        constexpr const char* kCVarPrefix = "r.SSAOBlur";
+    }
+
     void SSAOBlurTechnique::Initialize(DirectXCommon* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
@@ -23,6 +40,9 @@ namespace CoreEngine
 
     void SSAOBlurTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
     {
+        // 調整値は CVar が保持する。UI・設定復元のどの経路で変わってもここで取り込む
+        params_.depthThreshold = cvDepthThreshold.Get();
+
         if (!IsEnabled() || !context.gBufferManager || !context.renderTargetManager) {
             outputSrvHandle = {};
             return;
@@ -111,5 +131,10 @@ namespace CoreEngine
     {
         static const std::wstring path = L"SSAOBlur.PS.hlsl";
         return path;
+    }
+
+    CVar<bool>* SSAOBlurTechnique::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

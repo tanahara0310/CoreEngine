@@ -16,7 +16,7 @@
 | `Engine/Src/Camera/CameraManager.h/.cpp` | 名前→カメラの辞書＋タイプ別アクティブカメラ |
 | `Engine/Src/Camera/CameraStructs.h` | `CameraParameters` / `CameraSnapshot` / `CameraForGPU` |
 | `Engine/Src/Camera/CameraShake.*`, `CameraPresetManager.*` | **呼び出し元ゼロ（デッドコード）** |
-| `Engine/Src/Camera/Debug/DebugCameraSettingsSection.*` | エディタ設定の自動保存 |
+| `Engine/Src/Camera/Debug/DebugCameraCVars.*` | 設定・姿勢の CVar 永続化（旧 `DebugCameraSettingsSection` を 2026-08-02 に置換） |
 
 ### 生成・解決側
 - `Scene/BaseScene.cpp` — `SetupCamera()` で "Release"/"Debug"/"Camera2D" を生成。`ResolveGameViewCameraName()` / `GetGameViewCamera3D()` / `GetDefaultGameViewCamera3D()` / `DrawWithCamera()`

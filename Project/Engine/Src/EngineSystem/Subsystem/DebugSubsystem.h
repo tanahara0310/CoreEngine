@@ -16,10 +16,6 @@
 #include "Editor/ImGui/RayTracingDebugPanel.h"
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Editor/Environment/VolumetricCloudEditor.h"
-#include "Editor/Environment/AtmosphereSettingsSection.h"
-#include "Editor/Environment/VolumetricCloudSettingsSection.h"
-#include "Graphics/RayTracing/RayTracingSettingsSection.h"
-#include "Graphics/Render/RenderingTechnique/RenderingTechniqueSettingsSection.h"
 #include "EngineSystem/Settings/CVarSettingsSection.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
@@ -106,10 +102,6 @@ namespace CoreEngine
         // エディタ設定の自動保存セクション（大気物性・雲。太陽/月ライトはシーン寿命のため
         // EnvironmentFeature 側が別セクションで扱う）。cloudEditor_ を参照するため
         // エディタより後に宣言し、先に破棄されるようにする
-        std::unique_ptr<AtmosphereSettingsSection> atmosphereSettingsSection_;
-        std::unique_ptr<VolumetricCloudSettingsSection> cloudSettingsSection_;
-        std::unique_ptr<RenderingTechniqueSettingsSection> renderingTechniqueSettingsSection_;
-        std::unique_ptr<RayTracingSettingsSection> rayTracingSettingsSection_;
 
         // 全 CVar をまとめて保存するセクション（CVar を増やしてもここへの追記は不要）
         std::unique_ptr<CVarSettingsSection> cvarSettingsSection_;

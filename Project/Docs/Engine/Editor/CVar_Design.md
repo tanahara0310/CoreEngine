@@ -1,7 +1,8 @@
 # CVar（コンソール変数）システム 設計書
 
 作成日: 2026-08-01
-ステータス: **コア実装＋ポストエフェクト全 13 種の移行 完了**
+ステータス: **コア実装＋ポストエフェクト全 13 種＋エンジン設定 5 セクションの移行 完了**
+（残: DebugCamera / Water）
 
 ## 目的
 
@@ -36,8 +37,12 @@ CVar<float> cvIntensity{ "r.Vignette.Intensity", 0.8f, "ヴィネットの強さ
 
 接続は `DebugSubsystem::Initialize`：
 - `CVarSettingsSection` を `EditorSettingsSubsystem` へ登録（＝起動時に前回値が復元される）
-- Engine Settings に「Console Variables」パネルを登録（全変数の検索・一覧）
 - `CVarRegistry::FlushPendingWarnings()` で静的初期化中の警告と登録数をログ出力
+
+**横断パネルは作らない。** 全 CVar を並べる「Console Variables」パネルは一度作ったが削除した。
+機能ごとのパネル（Post Effects タブ、Atmosphere エディタ等）と同じ値を操作する UI が
+2 つ並び、どちらから触ればよいか曖昧になるため。各パネルが自分の接頭辞で
+`CVarUI::DrawTree("r.Bloom")` を呼ぶ形に一本化してある。
 
 ## 仕組み
 
@@ -244,8 +249,93 @@ bool IsEnabled() const {
 **実行時に制御される値は、パラメータだけでなく有効/無効フラグにも存在する**ので、
 CVar 化のときは「誰がこの値を書き換えるか」を必ず確認すること。
 
+## エンジン設定の移行（旧セクションの全廃）
+
+手書きの `IEditorSettingsSection` を CVar へ置き換え、以下を**セクションごと削除**した。
+
+| 旧セクション | CVar 接頭辞 | 個数 | 同期方式 |
+|---|---|---|---|
+| RayTracing | `r.RTShadow.*` | 11 | `Dispatch()` 先頭で `settings_` へプル |
+| RenderingTechniques | `r.SSAO.*` `r.SSAOBlur.*` `r.SSAOTemporal.*` `r.TAA.*` `r.CAS.*` `r.WaterCaustics.*` | 15 | 各 `Execute()` 先頭でプル |
+| Atmosphere | `r.Atmosphere.*` | 24 | 変更通番が動いたときだけ `SetParameters()` |
+| VolumetricCloud | `r.Cloud.*` | 32 | `Update()` 先頭で毎フレームプル |
+| AtmosphereLights | `r.AtmosphereLights.*` | 7 | 実体（Light）から毎フレーム**ミラー** |
+| DebugCamera | `d.SceneCamera.*` | 20 | 実体（コントローラ・カメラ）から毎フレーム**ミラー** |
+
+### 同期方式の選び方
+
+CVar は「値の入れ物」でしかないため、既存クラスが自前の設定構造体を持っている場合は
+**どちらを唯一のソースにするか**を決める必要がある。
+
+1. **CVar が唯一のソース**（Vignette 等）— メンバを消して `Get()` を直接読む。最も単純
+2. **CVar → 実体へプル** — 内部で設定構造体を何十箇所も参照していて消しづらい場合。
+   構造体はキャッシュとして残し、更新の入口で CVar から取り込む。
+   **LUT のような重い再計算を伴う場合は毎フレーム流し込んではいけない**
+   （`AtmosphereManager` は `CVarRegistry::GetGlobalRevision()` が動いたときだけ
+   `SetParameters()` を呼ぶ。毎フレーム呼ぶと LUT を作り直し続ける）
+3. **実体 → CVar へミラー** — 値の実体がシーン寿命のオブジェクト側にあり、
+   CVar 側から所有できない場合（後述の AtmosphereLights）
+
+### 有効/無効フックの横展開
+
+`RenderingTechniqueBase` にも `PostEffectBase` と同じ `GetEnabledCVar()` フックを追加した。
+これにより「対象名を手で並べた配列に追記し忘れると保存されない」既知の罠
+（`RenderingTechniqueSettingsSection` の `kTechniqueNames`）が構造的に消えた。
+
+### 移行時に必ず確認する 3 点
+
+Atmosphere の移行で、既定値を**目視で**書いて km 単位（`planetRadius = 6360.0f`）にしてしまい、
+実際は m 単位（`6360000.0f`）だったため、そのまま起動すれば空が完全に壊れる状態になっていた。
+
+1. **既定値は宣言と 1 個ずつ突き合わせる**（目視で「それらしい値」を書かない）
+2. **その値をキャッシュしている場所を探す**（`PostEffectManager` の
+   `effectPtrCache_` は `SetEffectEnabled` 経由でしか再構築されず、
+   CVars.json からの復元が迂回して「タブ上は有効なのに画面に出ない」バグになった。
+   `GetGlobalRevision()` の監視で修正）
+3. **誰がその値を書き換えるか grep する**（実行時に制御される値は `NoSave`）
+
+### AtmosphereLights: 実体がシーン側にある場合のミラー方式
+
+太陽・月の向きや強度は `LightManager` が持つ `Light`（**シーン寿命**）が実体で、
+エディタ・ギズモ・シーンコードのどこからでも書き換えられる。
+CVar 側を唯一のソースにはできないため、`EnvironmentFeature` が両方向を担当する。
+
+```
+PostSceneInitialize : CVar ──▶ Light   復元（1回だけ）
+Update(PostLogic)   : Light ──▶ CVar   ミラー（毎フレーム）
+Finalize            : Light ──▶ CVar   最終ミラー（ライトのクリア前）
+```
+
+- 復元で**太陽は `IsModified()` が真の項目だけ**を上書きする。
+  自動保存は「触った項目だけ」を書き出すため、全項目を無条件に流し込むと
+  保存していない項目のコード既定値でシーン側の設定を潰してしまう
+- **月は全項目を無条件に**流し込む。月ライトはこの復元処理自身が生成する
+  （`MoonEnabled` が真なら第2ディレクショナルライトを作る）ため、
+  シーン固有の初期状態を持たないから
+- ミラーは毎フレーム走るが、`CVar::Set` は値が実際に変わったときだけ
+  変更通番を進めるので、比較コストだけで済む
+- 太陽のサーフェス照度・色は Lighting エディタ側の責務なのでミラーしない
+
+### DebugCamera: ミラー方式の 2 例目
+
+エディタ視点カメラ（`CameraNames::Scene` + `OrbitFlyController`）も同じ構図で、
+実体はシーン寿命・マウス操作とカメラ UI の両方から書き換わる。
+同期は `Engine/Src/Camera/Debug/DebugCameraCVars.h/.cpp` の 2 関数に閉じ、
+`BaseScene` が `SetupCamera` / `Update` / `Finalize` から呼ぶ。
+
+- **AtmosphereLights と違い、復元は全項目を無条件に流し込む。**
+  コントローラとカメラは生成直後（＝構造体のコード既定値そのまま）なので、
+  CVar の既定値を `OrbitFlyController::Settings` / `OrbitState` / `CameraParameters` と
+  一致させておけば、未保存の項目には同じ値が入るだけで害がない
+- **`aspectRatio` は CVar 化しない。** ウィンドウサイズから毎フレーム導出される実行時値
+  （`0.0f` = 自動計算）で、保存しても意味がない
+- 軌道状態（target / distance / pitch / yaw）は実行時状態だが、
+  **「前回の視点から再開する」ことが仕様**なので保存する（UE / Unity のビューポートカメラと同じ）。
+  初期視点に戻したいときは `CVars.json` から `d.SceneCamera.*` を消す
+- 復元は「設定 → 軌道状態」の順に行う。`SetState()` が移動範囲のクランプを行うため、
+  クランプ値を含む設定が先に入っていないと違う位置に落ちる
+
 ## 今後
 
 - `ConsoleUI` との接続（`r.Bloom.Intensity 0.5` で即反映、`r.Bloom.*` で一覧）
-- 大気・雲エディタ（`AtmosphereSettingsSection` / `VolumetricCloudSettingsSection`）の移行
-- Water（`WaterSettingsSection`）の移行
+- Water（`WaterSettingsSection`）の移行 — アプリ側（`Application/Src/Scenes/WaterTestScene/`）所有

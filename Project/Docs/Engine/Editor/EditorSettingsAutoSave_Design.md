@@ -3,18 +3,29 @@
 作成日: 2026-07-24
 ステータス: **Phase 1〜3 実装・検証済み（2026-07-24）**。Phase 4（Default 層との2層化）は任意・未着手
 
+> **2026-08-01〜 CVar 化により大半のセクションを廃止中**
+> 「保存対象を手で書く」手書きセクションは CVar（[CVar_Design.md](CVar_Design.md)）へ移行し、
+> 全パラメータが `CVars.json` 1 ファイルに集約される。保存機構（本書の
+> `EditorSettingsSubsystem`・ポーリング差分・アトミック書き込み・`.bak`）はそのまま流用し、
+> `CVarSettingsSection` が唯一のセクションとして全 CVar を担当する。
+>
+> | 旧セクション | 状態 |
+> |---|---|
+> | PostEffects | 廃止（`r.<Effect>.*`） |
+> | RayTracing | 廃止（`r.RTShadow.*`） |
+> | RenderingTechniques | 廃止（`r.SSAO.*` / `r.TAA.*` / `r.CAS.*` ほか） |
+> | Atmosphere | 廃止（`r.Atmosphere.*`） |
+> | VolumetricCloud | 廃止（`r.Cloud.*`） |
+> | AtmosphereLights | 廃止（`r.AtmosphereLights.*`） |
+> | DebugCamera | 廃止（`d.SceneCamera.*`） |
+> | Water | 移行予定 |
+>
+> 以下の記述は移行前の設計であり、廃止済みセクションの実装ファイルは既に存在しない。
+
 実装ファイル:
 - `Engine/Src/EngineSystem/Settings/IEditorSettingsSection.h`（登録先バックリンク＋デストラクタ自己解除つき）
 - `Engine/Src/EngineSystem/Settings/EditorSettingsSubsystem.h/.cpp`（USE_IMGUI 時のみ EngineSystem に登録）
-- `Engine/Src/Camera/Debug/DebugCameraSettingsSection.h/.cpp`
-  - 接続: `BaseScene::SetupCamera`（登録）/ `BaseScene::Finalize`（解除）
-- `Engine/Src/Editor/Environment/AtmosphereSettingsSection.h/.cpp`
-  - 大気物性＋トグル（エンジン寿命。DebugSubsystem が登録）
-- `Engine/Src/Editor/Environment/AtmosphereLightsSettingsSection.h/.cpp`
-  - 太陽/月ライト（シーン寿命。EnvironmentFeature が
-    PostSceneInitialize で登録 / Finalize で解除。月は moonEnabled 保存時に復元生成）
-- `Engine/Src/Editor/Environment/VolumetricCloudSettingsSection.h/.cpp`
-  - 雲パラメータ＋enabled＋プリセット index（エンジン寿命。DebugSubsystem が登録）
+- `Engine/Src/EngineSystem/Settings/CVarSettingsSection.h/.cpp`（全 CVar を `CVars.json` へ）
 
 - Water セクション（Phase 3）
   - `WaterSurfaceParameterPanel::SerializeSettings / DeserializeSettings`（UI キャッシュ＝ベース水質
@@ -22,19 +33,6 @@
     実装は `WaterSurfaceParameterPanelSerialization.cpp` に TU 分離）
   - `WaterTestScene/WaterSettingsSection.h/.cpp` がパネル・runtime・facade へ委譲。
     登録は `WaterSceneController::Initialize`（既定プリセット適用後）、解除はデストラクタ
-- PostEffects セクション（2026-07-24 追加）
-  - `Graphics/PostEffect/Effect/PostEffectSettingsSection.h/.cpp`（エンジン寿命。DebugSubsystem が登録）
-  - シリアライズは `PostEffectPresetManager::CaptureToJson / ApplyFromJson` をプリセットの明示保存と
-    共用（実装は `PostEffectSerialization.cpp` に TU 分離）。
-    ToneMapping / LensFlare / Outline / Dissolve をプリセット対応に追加
-  - FadeEffect の fadeAlpha は実行時のシーン遷移状態のため保存対象外（黒画面起動の事故防止)。
-    enabled 状態の欠損キーは「現在値維持」（旧: 強制 false）
-- RenderingTechniques セクション（2026-07-24 追加）
-  - `Graphics/Render/RenderingTechnique/RenderingTechniqueSettingsSection.h/.cpp`
-    （エンジン寿命。DebugSubsystem が登録）
-  - 各技術の有効状態 + SSAO / SSAOBlur のチューニング値（行列・画面サイズは実行時値のため対象外）
-  - 常時有効の技術（DeferredLighting）は復元時に enabled を変更しない
-  - WaterCaustics のパラメータは Water セクション（WaterEditorFacade）所有のため enabled のみ扱う
 - Engine Settings「Editor Settings」管理パネル（Phase 3）
   - `EditorSettingsSubsystem::GetSectionStatuses()`（名前/ファイル有無/バックアップ有無/最終保存時刻）
   - パネル描画は `Editor/ImGui/EditorSettingsPanel.h/.cpp`（`DebugSubsystem::Initialize` が

@@ -207,7 +207,10 @@ namespace CoreEngine
         void ResizeAllExisting(UINT width, UINT height);
 
         /// @brief シャドウパラメータを設定する
-        void SetSettings(const RayTracingShadowSettings& settings) { settings_ = settings; }
+        /// @brief 設定を一括で反映する
+        /// @details 実体は CVar（"r.RTShadow.*"）が保持するため、ここへ書くと
+        ///          UI 表示・自動保存にも反映される。設計: Docs/Engine/Editor/CVar_Design.md
+        void SetSettings(const RayTracingShadowSettings& settings);
 
         /// @brief 現在のシャドウパラメータを取得する
         const RayTracingShadowSettings& GetSettings() const { return settings_; }
@@ -319,6 +322,11 @@ namespace CoreEngine
 
         /// @brief ライト方向から実効レイ射程を求める
         float ResolveEffectiveRayDistance(const Vector3& lightDirection) const;
+
+        /// @brief CVar（"r.RTShadow.*"）の現在値を settings_ へ取り込む
+        /// @details settings_ は内部の複数箇所から参照されるため CVar のキャッシュとして残し、
+        ///          Dispatch の先頭で毎フレーム同期する（同期を怠ると設定復元が描画に反映されない）
+        void SyncSettingsFromCVars();
 
         // パラメータ
         RayTracingShadowSettings settings_;

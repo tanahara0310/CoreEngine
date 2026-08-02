@@ -197,7 +197,10 @@ namespace CoreEngine
         // ===== 機能トグル =====
 
         /// @brief 雲描画の有効/無効（既定 true。大気シーンで雲だけ OFF にできる）
-        void SetEnabled(bool enabled) { enabled_ = enabled; }
+        void SetEnabled(bool enabled);
+
+        /// @brief エディタ等からパラメータを編集する（CVar へ書き戻して自動保存に載せる）
+        void SetParametersFromEditor(const VolumetricCloudParameters& params);
         bool IsEnabled() const { return enabled_; }
 
         // ===== フレーム有効化（AtmosphereManager と同一パターン） =====

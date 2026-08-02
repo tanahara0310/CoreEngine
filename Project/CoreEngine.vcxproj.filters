@@ -262,15 +262,6 @@
     <ClCompile Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.cpp">
       <Filter>Engine\Src\EngineSystem\Factory</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereLightsSettingsSection.cpp">
-      <Filter>Engine\Src\Editor\Environment</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereSettingsSection.cpp">
-      <Filter>Engine\Src\Editor\Environment</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudSettingsSection.cpp">
-      <Filter>Engine\Src\Editor\Environment</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClCompile>
@@ -389,9 +380,6 @@
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp">
-      <Filter>Engine\Src\Graphics\RayTracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.cpp">
@@ -524,9 +512,6 @@
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.cpp">
-      <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueSettingsSection.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\SSAO\SSAOBlurTechnique.cpp">
@@ -835,14 +820,14 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.cpp">
-      <Filter>Engine\Src\Camera\Debug</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp">
       <Filter>Engine\Src\Camera\Control</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp">
+      <Filter>Engine\Src\Camera\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Control\FreeLookController.cpp">
       <Filter>Engine\Src\Camera\Control</Filter>
@@ -1140,15 +1125,6 @@
     <ClInclude Include="Engine\Src\EngineSystem\PlaybackState.h">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereLightsSettingsSection.h">
-      <Filter>Engine\Src\Editor\Environment</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereSettingsSection.h">
-      <Filter>Engine\Src\Editor\Environment</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudSettingsSection.h">
-      <Filter>Engine\Src\Editor\Environment</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
@@ -1342,9 +1318,6 @@
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h">
-      <Filter>Engine\Src\Graphics\RayTracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingSettingsSection.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.h">
@@ -1579,9 +1552,6 @@
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueManager.h">
-      <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueSettingsSection.h">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueNames.h">
@@ -2082,14 +2052,14 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraSettingsSection.h">
-      <Filter>Engine\Src\Camera\Debug</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Camera.h">
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h">
       <Filter>Engine\Src\Camera\Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h">
+      <Filter>Engine\Src\Camera\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Control\FreeLookController.h">
       <Filter>Engine\Src\Camera\Control</Filter>

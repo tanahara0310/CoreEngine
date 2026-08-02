@@ -13,12 +13,49 @@
 #include <cstring>
 #include <cassert>
 
+#include "Utility/CVar/CVar.h"
+#include "Editor/ImGui/CVarPanel.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImguiManager.h"
 #endif
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvEnabled{
+            "r.SSAO.Enabled", true,
+            "SSAO（スクリーンスペース アンビエントオクルージョン）を有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        CVar<float> cvRadius{
+            "r.SSAO.Radius", 0.5f,
+            "遮蔽を探すサンプル半径（ワールド単位）",
+            CVarRange{ 0.05f, 2.0f } };
+
+        CVar<float> cvBias{
+            "r.SSAO.Bias", 0.025f,
+            "自己遮蔽を防ぐ深度バイアス",
+            CVarRange{ 0.001f, 0.1f } };
+
+        CVar<float> cvIntensity{
+            "r.SSAO.Intensity", 1.0f,
+            "遮蔽の強さ",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<float> cvPower{
+            "r.SSAO.Power", 1.5f,
+            "遮蔽値のべき乗。大きいほどコントラストが強くなる",
+            CVarRange{ 0.5f, 4.0f } };
+
+        CVar<int> cvSampleCount{
+            "r.SSAO.SampleCount", 16,
+            "1 ピクセルあたりのサンプル数。多いほど滑らかだが重い",
+            CVarRange{ 4.0f, 64.0f } };
+
+        constexpr const char* kCVarPrefix = "r.SSAO";
+    }
+
     void SSAOTechnique::Initialize(DirectXCommon* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
@@ -27,6 +64,13 @@ namespace CoreEngine
 
     void SSAOTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
     {
+        // 調整値は CVar が保持する。UI・設定復元のどの経路で変わってもここで取り込む
+        params_.radius      = cvRadius.Get();
+        params_.bias        = cvBias.Get();
+        params_.intensity   = cvIntensity.Get();
+        params_.power       = cvPower.Get();
+        params_.sampleCount = cvSampleCount.Get();
+
         if (!IsEnabled() || !context.gBufferManager || !context.renderManager || !context.renderTargetManager) {
             outputSrvHandle = {};
             return;
@@ -124,24 +168,11 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         ImGui::PushID("SSAOParams");
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            if (UI::SliderFloat("半径", params_.radius, 0.05f, 2.0f))    { changed = true; }
-            if (UI::SliderFloat("バイアス", params_.bias, 0.001f, 0.1f)) { changed = true; }
-            if (UI::SliderFloat("強度", params_.intensity, 0.0f, 3.0f))  { changed = true; }
-            if (UI::SliderFloat("べき乗", params_.power, 0.5f, 4.0f))    { changed = true; }
-            if (ImGui::SliderInt("サンプル数", &params_.sampleCount, 4, 64)) { changed = true; }
-            ImGui::TreePop();
-        }
-
-        (void)changed; // 定数は毎フレーム Execute でリングへ書かれる
+        // パラメータ UI は CVar から自動生成される（値は毎フレーム Execute で取り込まれる）
+        CVarUI::DrawTree(kCVarPrefix);
 
         if (ImGui::Button("デフォルトに戻す")) {
-            params_.radius      = 0.5f;
-            params_.bias        = 0.025f;
-            params_.intensity   = 1.0f;
-            params_.power       = 1.5f;
-            params_.sampleCount = 16;
+            CVarUI::ResetTree(kCVarPrefix);
         }
 
         ImGui::PopID();
@@ -152,5 +183,10 @@ namespace CoreEngine
     {
         static const std::wstring path = L"SSAO.PS.hlsl";
         return path;
+    }
+
+    CVar<bool>* SSAOTechnique::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }
