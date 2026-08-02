@@ -100,7 +100,8 @@ namespace CoreEngine
         pipelineBuilder
             .SetDXILLibrary(shaderBlob_.Get())
             .AddHitGroup({ L"RTWaterCausticsHitGroup", L"RTWaterCausticsClosestHit" })
-            .SetShaderConfig(sizeof(float) * 4)
+            // CausticsPayload は float 2 個（hitT, hitFlag）。RTWaterCaustics.hlsl と一致させること
+            .SetShaderConfig(sizeof(float) * 2)
             .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
             .SetMaxRecursionDepth(1);
         if (!pipelineBuilder.Build(dxCommon_->GetDevice(), stateObject_, stateObjectProperties_)) {

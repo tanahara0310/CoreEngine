@@ -157,12 +157,6 @@ namespace CoreEngine
             std::wstring GetComputeShaderPath() const override { return L"FFTOceanFinalize.CS.hlsl"; }
         };
 
-        /// @brief 法線マップミップ生成パス用Compute Shaderのパスを提供する
-        struct NormalMipGenShaderProvider final : ICustomShaderProvider {
-            /// @brief 法線ミップ生成CSのファイルパスを返す
-            std::wstring GetComputeShaderPath() const override { return L"FFTOceanNormalMipGen.CS.hlsl"; }
-        };
-
         /// @brief 泡蓄積パス用Compute Shaderのパスを提供する
         struct FoamAccumulateShaderProvider final : ICustomShaderProvider {
             /// @brief 泡蓄積CSのファイルパスを返す
@@ -237,12 +231,6 @@ namespace CoreEngine
             std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount>& uavHandles,
             uint32_t initialIndex);
 
-        /// @brief 法線マップのミップチェーンを生成する
-        /// @details Finalize でミップ0へ書かれた法線を 2x2 平均で順次ダウンサンプルする。
-        ///          呼び出し時点で normalTexture_ の全サブリソースが UNORDERED_ACCESS 状態である
-        ///          前提で、退出時にも同状態へ戻す（呼び出し元の一括ステート管理を保つ）。
-        void DispatchNormalMipGenPass(ID3D12GraphicsCommandList* cmdList);
-
         /// @brief IFFT結果から最終の変位/法線/ヤコビアンを生成する（指定カスケードのスライスへ書き込む）
         void DispatchFinalizePass(
             ID3D12GraphicsCommandList* cmdList,
@@ -289,12 +277,10 @@ namespace CoreEngine
         CustomShaderPipeline evolutionPipeline_{};
         CustomShaderPipeline ifftPipeline_{};
         CustomShaderPipeline finalizePipeline_{};
-        CustomShaderPipeline normalMipGenPipeline_{};
         CustomShaderPipeline foamPipeline_{};
         TimeEvolutionShaderProvider timeEvolutionShaderProvider_{};
         IFFTShaderProvider ifftShaderProvider_{};
         FinalizeShaderProvider finalizeShaderProvider_{};
-        NormalMipGenShaderProvider normalMipGenShaderProvider_{};
         FoamAccumulateShaderProvider foamShaderProvider_{};
         Settings settings_{};
         FoamSettings foamSettings_{};
@@ -351,15 +337,6 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES displacementState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_RESOURCE_STATES normalState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         D3D12_RESOURCE_STATES jacobianState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-
-        // ──────────────────────────────────────────────────────────
-        // 法線マップミップチェーン（かすめ角のフレネルスペックル対策）
-        // ──────────────────────────────────────────────────────────
-        uint32_t normalMipLevels_ = 1;
-        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> normalMipSrvCpuHandles_;
-        std::vector<D3D12_GPU_DESCRIPTOR_HANDLE> normalMipSrvHandles_;
-        std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> normalMipUavCpuHandles_;
-        std::vector<D3D12_GPU_DESCRIPTOR_HANDLE> normalMipUavHandles_;
 
         // ──────────────────────────────────────────────────────────
         // Readbackレイアウト/サイズと非同期ログ制御

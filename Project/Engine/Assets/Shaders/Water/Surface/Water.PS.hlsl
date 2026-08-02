@@ -241,27 +241,6 @@ float FresnelSchlick(float cosTheta, float f0)
     return f0 + (1.0f - f0) * pow(saturate(1.0f - cosTheta), 5.0f);
 }
 
-float3 VisualizeDepthValue(float value)
-{
-    return float3(value, value, value);
-}
-
-/// @brief 合成ヤコビアン（全カスケード＋エンベロープ込みの detJ）の可視化
-/// @details R: detJ を 0.5 中心にマップ（0.5=無変形 / 白=圧縮 / 黒=引き伸ばし）
-///          G: 砕波候補 saturate(1 - detJ)（泡しきい値 foamBias の較正に使う）
-///          B: 折り返し detJ < 0（波面が自己交差した砕波確定域）
-///          泡と同じカスケード重み（gFoamCascadeWeights）で評価する。
-float3 VisualizeJacobian(float2 worldXZ)
-{
-    const float detJ = ComputeFFTCombinedDetJ(
-        worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights);
-
-    const float detVisualization = saturate((1.0f - detJ) * 0.5f + 0.5f);
-    const float breakingCandidate = saturate(1.0f - detJ);
-    const float foldover = detJ < 0.0f ? 1.0f : 0.0f;
-    return saturate(float3(detVisualization, breakingCandidate, foldover));
-}
-
 // 背景深度が取得できない（水面の背後が far plane = 外洋の水平線など）場合に
 // 使う光路長。σt が最小クラス（青 ≈ 0.02/m）でも exp(-σt·d) ≈ 0 になる十分な深さ。
 static const float kInfiniteWaterColumnMeters = 1.0e4f;
@@ -581,26 +560,6 @@ float4 SampleRTWaterRefraction(uint2 pixelCoord)
     return gRTWaterRefractionColor.Load(int3(pixelCoord, 0));
 }
 
-float3 VisualizeRTRefractionReason(float reasonCode)
-{
-    // 緑 = 光路長も色も有効 / 橙 = ヒット済みで光路長のみ有効（色はフォールバック）
-    if (reasonCode > 1.0f) return float3(1.0f, 0.5f, 0.0f);
-    if (reasonCode >= kRTSuccessRangeMin) return float3(0.0f, 1.0f, 0.0f);
-
-    const float reasonIndex = floor(reasonCode * 255.0f + 0.5f);
-
-    if (reasonIndex == 1.0f) return float3(1.0f, 0.0f, 0.0f);
-    if (reasonIndex == 2.0f) return float3(1.0f, 0.5f, 0.0f);
-    if (reasonIndex == 3.0f) return float3(1.0f, 1.0f, 0.0f);
-    if (reasonIndex == 4.0f) return float3(0.8f, 0.0f, 1.0f);
-    if (reasonIndex == 5.0f) return float3(0.0f, 1.0f, 1.0f);
-    if (reasonIndex == 6.0f) return float3(0.0f, 0.0f, 1.0f);
-    if (reasonIndex == 7.0f) return float3(1.0f, 0.0f, 1.0f);
-    if (reasonIndex == 9.0f) return float3(1.0f, 1.0f, 1.0f);
-
-    return float3(0.15f, 0.15f, 0.15f);
-}
-
 /// @brief FFT 法線マップのエンコード値をワールド空間法線へ展開する
 float3 BuildWorldNormalFromFFTSample(float3 encodedNormal, WaterPSInput input)
 {
@@ -723,44 +682,6 @@ float3 ResolveFresnelNormal(WaterPSInput input)
 // 幾何遮蔽で半減し、水面の輝き・透明感を大きく損なっていたため緩和
 // （まだらの真因＝反射ビューへの水面自己描画は修正済み）。
 static const float kWaterReflectionMicroRoughness = 0.20f; // 未解像さざ波の実効ラフネス
-static const float kWaterReflectionBlurTexels = 3.0f; // 反射のにじみ半径（テクセル基準。5→3: 反射のシャープさを回復）
-
-/// @brief 反射テクスチャをラフネス相当でにじませてサンプリングする（グロッシー反射）
-/// @param screenUV スクリーンUV
-/// @param grazing  かすめ具合 = 1 - cosθ（大きいほど反射が伸び・ぼける）
-/// @note 現在この関数を呼ぶのは Water.Debug.hlsli の可視化モード 19 だけ。
-///       本体の合成は DXR 反射（RT レイが波法線で反射方向を計算済み）を
-///       screenUV でそのまま引くため、にじませ処理を通していない。
-float3 SampleGlossyReflection(float2 screenUV, float grazing)
-{
-    uint reflWidth = 1;
-    uint reflHeight = 1;
-    gReflectionTexture.GetDimensions(reflWidth, reflHeight);
-    const float2 texel = 1.0f / float2(reflWidth, reflHeight);
-
-    // 反射像は面が寝るほど鉛直方向へ伸びるため縦を強めに、かすめ角ほど広くぼかす。
-    const float2 radius = kWaterReflectionBlurTexels * texel * float2(1.0f, 2.0f) * (1.0f + grazing * 2.0f);
-
-    const float2 kOffsets[9] = {
-        float2( 0.0f,  0.0f),
-        float2(-1.0f, -1.0f), float2( 1.0f, -1.0f),
-        float2(-1.0f,  1.0f), float2( 1.0f,  1.0f),
-        float2( 0.0f, -1.0f), float2( 0.0f,  1.0f),
-        float2(-1.0f,  0.0f), float2( 1.0f,  0.0f)
-    };
-    const float kWeights[9] = { 4.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f };
-
-    float3 sum = float3(0.0f, 0.0f, 0.0f);
-    float weightSum = 0.0f;
-    [unroll]
-    for (int i = 0; i < 9; ++i)
-    {
-        const float2 uv = saturate(screenUV + kOffsets[i] * radius);
-        sum += gReflectionTexture.Sample(gLinearClamp, uv).rgb * kWeights[i];
-        weightSum += kWeights[i];
-    }
-    return sum / weightSum;
-}
 
 /// @brief かすめ角の反射スパイクを微細さざ波の幾何遮蔽で抑える係数
 /// @details Schlick-GGX の視線側幾何項に相当。cosθ→0（かすめ角）で 0 に近づき、

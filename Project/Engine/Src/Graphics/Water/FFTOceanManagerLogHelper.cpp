@@ -107,7 +107,7 @@ namespace CoreEngine
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "FFTOceanManager: spectrum buffer updated on upload heap. bytes={}",
+            "FFTOceanManager: spectrum buffers copied to default heap. bytes={}",
             uploadBytes);
     }
 }

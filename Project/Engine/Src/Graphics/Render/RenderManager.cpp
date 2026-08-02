@@ -212,6 +212,13 @@ namespace CoreEngine
     }
 
     void RenderManager::DrawWaterQueuePass(RenderViewType viewType) {
+        // 水面は GameView 限定。反射ビューで描くと水面が自分の平面反射に
+        // 描き込まれる（夜の大きな明暗斑バグの原因）。WaterSurfacePass 側の
+        // IsEnabledForView と同じ制約をキュー層でも二重に守る
+        // （DrawGeometryPass 経由など、パスを通らない呼び出し経路への防壁）。
+        if (viewType != RenderViewType::GameView) {
+            return;
+        }
         if (waterDrawQueue_.empty() || !cmdList_) {
             return;
         }

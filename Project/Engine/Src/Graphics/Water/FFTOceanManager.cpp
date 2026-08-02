@@ -494,11 +494,6 @@ namespace CoreEngine
             shaderCompiler,
             reflectionBuilder,
             finalizeShaderProvider_);
-        const bool normalMipGenBuilt = normalMipGenPipeline_.Build(
-            dxCommon_->GetDevice(),
-            shaderCompiler,
-            reflectionBuilder,
-            normalMipGenShaderProvider_);
         const bool foamBuilt = foamPipeline_.Build(
             dxCommon_->GetDevice(),
             shaderCompiler,
@@ -523,12 +518,6 @@ namespace CoreEngine
             return false;
         }
 
-        if (!normalMipGenBuilt || !normalMipGenPipeline_.HasComputePSO()) {
-            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
-                "FFTOceanManager: failed to build normal mip gen compute pipeline.");
-            return false;
-        }
-
         if (!foamBuilt || !foamPipeline_.HasComputePSO()) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "FFTOceanManager: failed to build foam accumulate compute pipeline.");
@@ -544,10 +533,8 @@ namespace CoreEngine
             return false;
         }
 
-        // カスケードをスライスに持つ配列テクスチャを作る。法線ミップ連鎖は廃止し
+        // カスケードをスライスに持つ配列テクスチャを作る。法線ミップ連鎖は廃止済み
         // （AAは水面シェーダ側の距離フェード＋大カスケードで代替）、常にミップ0のみ。
-        normalMipLevels_ = 1;
-
         Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
         const DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
@@ -859,9 +846,24 @@ namespace CoreEngine
         }
 
         if (spectrumBufferDirty_ && cascadeIndex == 0) {
-            // スペクトルが更新された直後のみアップロードログを出力する。
+            // スペクトル再構築後の最初の Dispatch で UPLOAD → DEFAULT へ全カスケードをコピーする。
+            // SRV は DEFAULT 側（FFTOceanResourceFactory::CreateSpectrumBuffers 参照）。
             spectrumBufferDirty_ = false;
-            FFTOceanManagerLogHelper::LogSpectrumUpload(spectrumUploadBuffer_[0]->GetDesc().Width);
+            uint64_t copiedBytes = 0;
+            for (uint32_t c = 0; c < kCascadeCount; ++c) {
+                if (!spectrumBuffer_[c] || !spectrumUploadBuffer_[c]) {
+                    continue;
+                }
+                ResourceBarrierHelper::Transition(
+                    cmdList, spectrumBuffer_[c].Get(), spectrumBufferState_[c],
+                    D3D12_RESOURCE_STATE_COPY_DEST);
+                cmdList->CopyResource(spectrumBuffer_[c].Get(), spectrumUploadBuffer_[c].Get());
+                ResourceBarrierHelper::Transition(
+                    cmdList, spectrumBuffer_[c].Get(), spectrumBufferState_[c],
+                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                copiedBytes += spectrumUploadBuffer_[c]->GetDesc().Width;
+            }
+            FFTOceanManagerLogHelper::LogSpectrumUpload(copiedBytes);
         }
 
         FFTOceanDispatchHelper::DispatchEvolutionPass(
@@ -988,58 +990,6 @@ namespace CoreEngine
             jacobianUavHandle_[cascadeIndex],
             GetSimulationConstantsAddress(cascadeIndex),
             settings_.resolution);
-    }
-
-    void FFTOceanManager::DispatchNormalMipGenPass(ID3D12GraphicsCommandList* cmdList)
-    {
-        if (!cmdList || normalMipLevels_ <= 1 || !normalMipGenPipeline_.HasComputePSO()) {
-            return;
-        }
-        if (normalMipSrvHandles_.size() < normalMipLevels_ || normalMipUavHandles_.size() < normalMipLevels_) {
-            return;
-        }
-
-        const int sourceSlot = normalMipGenPipeline_.GetComputeRootParamIndex("gSourceNormalMip");
-        const int destSlot = normalMipGenPipeline_.GetComputeRootParamIndex("gDestNormalMip");
-        if (sourceSlot < 0 || destSlot < 0) {
-            return;
-        }
-
-        cmdList->SetPipelineState(normalMipGenPipeline_.GetComputePSO());
-        cmdList->SetComputeRootSignature(normalMipGenPipeline_.GetComputeRootSignature());
-
-        // ResourceBarrierHelper はリソース単位のステートしか追跡できないため、
-        // ミップ単位の遷移はここで直接バリアを発行する。関数の入口/出口で
-        // 全サブリソースを UNORDERED_ACCESS に揃え、呼び出し元の一括管理と整合させる。
-        auto transitionMip = [&](uint32_t mip, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = normalTexture_.Get();
-            barrier.Transition.Subresource = mip;
-            barrier.Transition.StateBefore = before;
-            barrier.Transition.StateAfter = after;
-            cmdList->ResourceBarrier(1, &barrier);
-        };
-
-        for (uint32_t mip = 1; mip < normalMipLevels_; ++mip) {
-            // 読み側（1段上のミップ）だけ SRV 状態へ。書き込み先ミップは UAV 状態のまま
-            transitionMip(mip - 1, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(sourceSlot), normalMipSrvHandles_[mip - 1]);
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(destSlot), normalMipUavHandles_[mip]);
-
-            const uint32_t mipResolution = (std::max)(settings_.resolution >> mip, 1u);
-            const UINT groupCount = (mipResolution + 7) / 8;
-            cmdList->Dispatch(groupCount, groupCount, 1);
-
-            // 次のレベルがこのミップを読むため、書き込み完了を保証する
-            ResourceBarrierHelper::UAV(cmdList, normalTexture_.Get());
-        }
-
-        // SRV 状態にしたミップ（0 〜 N-2）を UAV 状態へ戻し、全サブリソースを均一化する
-        for (uint32_t mip = 0; mip + 1 < normalMipLevels_; ++mip) {
-            transitionMip(mip, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
     }
 
     void FFTOceanManager::LogPendingDebugReadback()

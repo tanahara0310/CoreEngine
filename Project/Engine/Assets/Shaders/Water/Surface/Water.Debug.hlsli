@@ -12,16 +12,99 @@
 //   cbuffer : gDepthDebugViewMode / gDepthFadeDebugScale / gReflectionEnabled /
 //             gFresnelBaseReflectance / gSkyEnvReflectionEnabled
 //   資源    : gSceneColor / gSkyEnvironmentMap / gReflectionTexture /
-//             gRTWaterRefractionColor / gLinearClamp
-//   関数    : VisualizeDepthValue / VisualizeJacobian / VisualizeRTRefractionReason /
-//             ResolveWaterTransmissionColor / SampleRTWaterRefraction /
-//             IsRTColorValid / FresnelSchlick / SampleGlossyReflection
-//   定数    : kWaterReflectionMicroRoughness
+//             gRTWaterRefractionColor / gLinearClamp / gFFTOceanJacobian / gSampler
+//   関数    : ResolveWaterTransmissionColor / SampleRTWaterRefraction /
+//             IsRTColorValid / FresnelSchlick / ComputeFFTCombinedDetJ
+//   定数    : kWaterReflectionMicroRoughness / kRTSuccessRangeMin / gFoamCascadeWeights
 //
 // 計算済みの値はすべて WaterDebugContext で明示的に受け取る（暗黙参照しない）。
 // ============================================================
 #ifndef WATER_DEBUG_INCLUDED
 #define WATER_DEBUG_INCLUDED
+
+// ============================================================
+// デバッグ専用ヘルパー関数（本体からは呼ばれない）
+// ============================================================
+
+float3 VisualizeDepthValue(float value)
+{
+    return float3(value, value, value);
+}
+
+/// @brief 合成ヤコビアン（全カスケード＋エンベロープ込みの detJ）の可視化
+/// @details R: detJ を 0.5 中心にマップ（0.5=無変形 / 白=圧縮 / 黒=引き伸ばし）
+///          G: 砕波候補 saturate(1 - detJ)（泡しきい値 foamBias の較正に使う）
+///          B: 折り返し detJ < 0（波面が自己交差した砕波確定域）
+///          泡と同じカスケード重み（gFoamCascadeWeights）で評価する。
+float3 VisualizeJacobian(float2 worldXZ)
+{
+    const float detJ = ComputeFFTCombinedDetJ(
+        worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights);
+
+    const float detVisualization = saturate((1.0f - detJ) * 0.5f + 0.5f);
+    const float breakingCandidate = saturate(1.0f - detJ);
+    const float foldover = detJ < 0.0f ? 1.0f : 0.0f;
+    return saturate(float3(detVisualization, breakingCandidate, foldover));
+}
+
+float3 VisualizeRTRefractionReason(float reasonCode)
+{
+    // 緑 = 光路長も色も有効 / 橙 = ヒット済みで光路長のみ有効（色はフォールバック）
+    if (reasonCode > 1.0f) return float3(1.0f, 0.5f, 0.0f);
+    if (reasonCode >= kRTSuccessRangeMin) return float3(0.0f, 1.0f, 0.0f);
+
+    const float reasonIndex = floor(reasonCode * 255.0f + 0.5f);
+
+    if (reasonIndex == 1.0f) return float3(1.0f, 0.0f, 0.0f);
+    if (reasonIndex == 2.0f) return float3(1.0f, 0.5f, 0.0f);
+    if (reasonIndex == 3.0f) return float3(1.0f, 1.0f, 0.0f);
+    if (reasonIndex == 4.0f) return float3(0.8f, 0.0f, 1.0f);
+    if (reasonIndex == 5.0f) return float3(0.0f, 1.0f, 1.0f);
+    if (reasonIndex == 6.0f) return float3(0.0f, 0.0f, 1.0f);
+    if (reasonIndex == 7.0f) return float3(1.0f, 0.0f, 1.0f);
+    if (reasonIndex == 9.0f) return float3(1.0f, 1.0f, 1.0f);
+
+    return float3(0.15f, 0.15f, 0.15f);
+}
+
+static const float kWaterReflectionBlurTexels = 3.0f; // 反射のにじみ半径（テクセル基準。5→3: 反射のシャープさを回復）
+
+/// @brief 反射テクスチャをラフネス相当でにじませてサンプリングする（グロッシー反射）
+/// @param screenUV スクリーンUV
+/// @param grazing  かすめ具合 = 1 - cosθ（大きいほど反射が伸び・ぼける）
+/// @note 呼ぶのは可視化モード 19 だけ。本体の合成は DXR 反射
+///       （RT レイが波法線で反射方向を計算済み）を screenUV でそのまま引くため、
+///       にじませ処理を通していない。
+float3 SampleGlossyReflection(float2 screenUV, float grazing)
+{
+    uint reflWidth = 1;
+    uint reflHeight = 1;
+    gReflectionTexture.GetDimensions(reflWidth, reflHeight);
+    const float2 texel = 1.0f / float2(reflWidth, reflHeight);
+
+    // 反射像は面が寝るほど鉛直方向へ伸びるため縦を強めに、かすめ角ほど広くぼかす。
+    const float2 radius = kWaterReflectionBlurTexels * texel * float2(1.0f, 2.0f) * (1.0f + grazing * 2.0f);
+
+    const float2 kOffsets[9] = {
+        float2( 0.0f,  0.0f),
+        float2(-1.0f, -1.0f), float2( 1.0f, -1.0f),
+        float2(-1.0f,  1.0f), float2( 1.0f,  1.0f),
+        float2( 0.0f, -1.0f), float2( 0.0f,  1.0f),
+        float2(-1.0f,  0.0f), float2( 1.0f,  0.0f)
+    };
+    const float kWeights[9] = { 4.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f };
+
+    float3 sum = float3(0.0f, 0.0f, 0.0f);
+    float weightSum = 0.0f;
+    [unroll]
+    for (int i = 0; i < 9; ++i)
+    {
+        const float2 uv = saturate(screenUV + kOffsets[i] * radius);
+        sum += gReflectionTexture.Sample(gLinearClamp, uv).rgb * kWeights[i];
+        weightSum += kWeights[i];
+    }
+    return sum / weightSum;
+}
 
 /// @brief デバッグ表示が参照する、本体の合成過程で求まった値一式
 struct WaterDebugContext
