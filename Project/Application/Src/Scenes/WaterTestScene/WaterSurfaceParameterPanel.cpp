@@ -59,7 +59,6 @@ enum FFTOceanPresetIndex : int {
 
 struct FFTOceanPresetData {
 	const char* name;
-	float patchLength;
 	float amplitudeScale;
 	float windDirection[2];
 	float windSpeed;
@@ -72,7 +71,6 @@ Vector2 NormalizeDirection(const Vector2& direction);
 
 WaterEditorFFTSettings BuildSanitizedFFTOceanSettings(const FFTOceanPresetData& preset) {
 	WaterEditorFFTSettings settings{};
-	settings.patchLength = (std::max)(preset.patchLength, 1.0f);
 	settings.amplitudeScale = (std::max)(preset.amplitudeScale, 0.0f);
 	settings.windSpeed = (std::max)(preset.windSpeed, 0.0f);
 	settings.choppiness = (std::max)(preset.choppiness, 0.0f);
@@ -131,13 +129,14 @@ const char* const kFFTOceanPresetNames[] = {
 // 旧テーブルの大きな amplitudeScale（1.85〜2.8）は較正前の壊れたスケールへの
 // 補正値だったので、そのまま使うと非現実的な波高になる。
 // 目安: 静かな海 Hs≈0.6m / 外洋 Hs≈3m / 荒れた海 Hs≈7m / 嵐 Hs≈13m。
+// パッチ長はカスケード定数（FFTOceanCascadeValues.hlsli）で固定のためプリセットから撤去済み。
 const FFTOceanPresetData kFFTOceanPresets[] = {
-	{ "カスタム", 96.0f, 1.0f, { 0.92f, 0.38f }, 12.0f, 1.35f, 32, 9.81f },
-	{ "鏡面に近い海", 220.0f, 1.0f, { 1.0f, 0.0f }, 2.0f, 0.10f, 8, 9.81f },
-	{ "静かな海", 180.0f, 0.5f, { 0.98f, 0.18f }, 7.5f, 0.35f, 16, 9.81f },
-	{ "うねりのある外洋", 96.0f, 1.0f, { 0.92f, 0.38f }, 12.0f, 1.35f, 32, 9.81f },
-	{ "荒れた海", 72.0f, 1.0f, { 0.84f, 0.54f }, 18.0f, 1.80f, 48, 9.81f },
-	{ "嵐の海", 56.0f, 0.9f, { 0.72f, 0.69f }, 26.0f, 2.40f, 64, 9.81f },
+	{ "カスタム", 1.0f, { 0.92f, 0.38f }, 12.0f, 1.35f, 32, 9.81f },
+	{ "鏡面に近い海", 1.0f, { 1.0f, 0.0f }, 2.0f, 0.10f, 8, 9.81f },
+	{ "静かな海", 0.5f, { 0.98f, 0.18f }, 7.5f, 0.35f, 16, 9.81f },
+	{ "うねりのある外洋", 1.0f, { 0.92f, 0.38f }, 12.0f, 1.35f, 32, 9.81f },
+	{ "荒れた海", 1.0f, { 0.84f, 0.54f }, 18.0f, 1.80f, 48, 9.81f },
+	{ "嵐の海", 0.9f, { 0.72f, 0.69f }, 26.0f, 2.40f, 64, 9.81f },
 };
 
 bool NearlyEqual(float lhs, float rhs, float epsilon = 1.0e-3f) {
@@ -147,8 +146,7 @@ bool NearlyEqual(float lhs, float rhs, float epsilon = 1.0e-3f) {
 int FindMatchingFFTOceanPreset(const WaterEditorFFTSettings& settings) {
 	for (int presetIndex = 1; presetIndex < static_cast<int>(IM_ARRAYSIZE(kFFTOceanPresets)); ++presetIndex) {
 		const WaterEditorFFTSettings presetSettings = BuildSanitizedFFTOceanSettings(kFFTOceanPresets[presetIndex]);
-		if (!NearlyEqual(settings.patchLength, presetSettings.patchLength) ||
-			!NearlyEqual(settings.amplitudeScale, presetSettings.amplitudeScale) ||
+		if (!NearlyEqual(settings.amplitudeScale, presetSettings.amplitudeScale) ||
 			!NearlyEqual(settings.windDirection[0], presetSettings.windDirection[0]) ||
 			!NearlyEqual(settings.windDirection[1], presetSettings.windDirection[1]) ||
 			!NearlyEqual(settings.windSpeed, presetSettings.windSpeed) ||
@@ -168,7 +166,6 @@ int FindMatchingFFTOceanPreset(const WaterEditorFFTSettings& settings) {
 void WaterSurfaceParameterPanel::Initialize(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
 	const WaterEditorFFTSettings fftSettings = editorFacade.GetFFTSettings();
 	fftOceanParameters_.enabled = fftSettings.enabled;
-	fftOceanParameters_.patchLength = fftSettings.patchLength;
 	fftOceanParameters_.amplitudeScale = fftSettings.amplitudeScale;
 	fftOceanParameters_.windDirection[0] = fftSettings.windDirection[0];
 	fftOceanParameters_.windDirection[1] = fftSettings.windDirection[1];
@@ -403,7 +400,6 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 	const WaterEditorFFTSettings currentFFTSettings = editorFacade.GetFFTSettings();
 	if (!ImGui::IsAnyItemActive()) {
 		fftOceanParameters_.enabled = currentFFTSettings.enabled;
-		fftOceanParameters_.patchLength = currentFFTSettings.patchLength;
 		fftOceanParameters_.amplitudeScale = currentFFTSettings.amplitudeScale;
 		fftOceanParameters_.windDirection[0] = currentFFTSettings.windDirection[0];
 		fftOceanParameters_.windDirection[1] = currentFFTSettings.windDirection[1];
@@ -473,7 +469,6 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 		fftChanged |= changed;
 	};
 
-	trackFFTEdit(ImGui::SliderFloat("パッチ長", &fftOceanParameters_.patchLength, 8.0f, 512.0f, "%.2f"));
 	trackFFTEdit(ImGui::SliderFloat("振幅スケール", &fftOceanParameters_.amplitudeScale, 0.0f, 4.0f, "%.3f"));
 	trackFFTEdit(ImGui::DragFloat2("風向", fftOceanParameters_.windDirection, 0.01f, -1.0f, 1.0f, "%.3f"));
 	trackFFTEdit(ImGui::SliderFloat("風速", &fftOceanParameters_.windSpeed, 0.0f, 64.0f, "%.2f"));
@@ -486,7 +481,6 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 		fftOceanParameters_.preset = kFFTOceanPresetCustom;
 		WaterEditorFFTSettings updatedSettings = editorFacade.GetFFTSettings();
 		updatedSettings.enabled = fftOceanParameters_.enabled;
-		updatedSettings.patchLength = fftOceanParameters_.patchLength;
 		updatedSettings.amplitudeScale = fftOceanParameters_.amplitudeScale;
 		updatedSettings.windDirection[0] = fftOceanParameters_.windDirection[0];
 		updatedSettings.windDirection[1] = fftOceanParameters_.windDirection[1];
@@ -497,7 +491,6 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 		editorFacade.ApplyFFTSettings(updatedSettings);
 
 		const WaterEditorFFTSettings appliedSettings = editorFacade.GetFFTSettings();
-		fftOceanParameters_.patchLength = appliedSettings.patchLength;
 		fftOceanParameters_.amplitudeScale = appliedSettings.amplitudeScale;
 		fftOceanParameters_.windDirection[0] = appliedSettings.windDirection[0];
 		fftOceanParameters_.windDirection[1] = appliedSettings.windDirection[1];
@@ -511,7 +504,6 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 		const WaterEditorFFTSettings appliedSettings = editorFacade.ResetFFTSettings();
 		fftOceanParameters_.preset = FindMatchingFFTOceanPreset(appliedSettings);
 		fftOceanParameters_.enabled = appliedSettings.enabled;
-		fftOceanParameters_.patchLength = appliedSettings.patchLength;
 		fftOceanParameters_.amplitudeScale = appliedSettings.amplitudeScale;
 		fftOceanParameters_.windDirection[0] = appliedSettings.windDirection[0];
 		fftOceanParameters_.windDirection[1] = appliedSettings.windDirection[1];
@@ -530,7 +522,6 @@ void WaterSurfaceParameterPanel::ApplyFFTOceanPreset(WaterEditorFacade& editorFa
 
 	const FFTOceanPresetData& preset = kFFTOceanPresets[presetIndex];
 	fftOceanParameters_.preset = presetIndex;
-	fftOceanParameters_.patchLength = preset.patchLength;
 	fftOceanParameters_.amplitudeScale = preset.amplitudeScale;
 	fftOceanParameters_.windDirection[0] = preset.windDirection[0];
 	fftOceanParameters_.windDirection[1] = preset.windDirection[1];
@@ -541,7 +532,6 @@ void WaterSurfaceParameterPanel::ApplyFFTOceanPreset(WaterEditorFacade& editorFa
 
 	WaterEditorFFTSettings updatedSettings = editorFacade.GetFFTSettings();
 	updatedSettings.enabled = fftOceanParameters_.enabled;
-	updatedSettings.patchLength = fftOceanParameters_.patchLength;
 	updatedSettings.amplitudeScale = fftOceanParameters_.amplitudeScale;
 	updatedSettings.windDirection[0] = fftOceanParameters_.windDirection[0];
 	updatedSettings.windDirection[1] = fftOceanParameters_.windDirection[1];

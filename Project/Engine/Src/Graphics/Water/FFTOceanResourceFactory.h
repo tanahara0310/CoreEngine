@@ -1,8 +1,8 @@
 #pragma once
 
-#include <array>
+#include "Graphics/Water/FFTOceanGpuResources.h"
+
 #include <cstdint>
-#include <vector>
 #include <wrl.h>
 
 namespace CoreEngine
@@ -12,35 +12,22 @@ namespace CoreEngine
     /// @brief FFT Ocean のGPUリソース生成を担当するファクトリ
     class FFTOceanResourceFactory {
     public:
+        /// @brief IFFT ピンポン用中間テクスチャ（A/B × 2枚）を作成する
         static bool CreateIntermediateTextures(
             ID3D12Device* device,
             DescriptorManager* descriptorManager,
             uint32_t resolution,
-            std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2>& spectrumTextureA,
-            std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2>& spectrumTextureB,
-            std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 2>& spectrumASrvCpuHandle,
-            std::array<D3D12_GPU_DESCRIPTOR_HANDLE, 2>& spectrumASrvHandle,
-            std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 2>& spectrumAUavCpuHandle,
-            std::array<D3D12_GPU_DESCRIPTOR_HANDLE, 2>& spectrumAUavHandle,
-            std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 2>& spectrumBSrvCpuHandle,
-            std::array<D3D12_GPU_DESCRIPTOR_HANDLE, 2>& spectrumBSrvHandle,
-            std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 2>& spectrumBUavCpuHandle,
-            std::array<D3D12_GPU_DESCRIPTOR_HANDLE, 2>& spectrumBUavHandle,
-            std::array<D3D12_RESOURCE_STATES, 2>& spectrumAState,
-            std::array<D3D12_RESOURCE_STATES, 2>& spectrumBState);
+            FFTOceanPingPong& spectrumA,
+            FFTOceanPingPong& spectrumB);
 
+        /// @brief カスケード 1 本分の初期スペクトルバッファ（DEFAULT + UPLOAD）を作成する
+        /// @details SRV は DEFAULT 側に作る。CPU 書き込みは outSet.mapped（UPLOAD 側）へ。
         static bool CreateSpectrumBuffers(
             ID3D12Device* device,
             DescriptorManager* descriptorManager,
             uint32_t resolution,
             uint32_t sampleStride,
-            Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumBuffer,
-            Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumUploadBuffer,
-            void*& mappedSpectrumSamples,
-            D3D12_CPU_DESCRIPTOR_HANDLE& spectrumSrvCpuHandle,
-            D3D12_GPU_DESCRIPTOR_HANDLE& spectrumSrvHandle,
-            D3D12_RESOURCE_STATES& spectrumBufferState,
-            bool& spectrumBufferDirty);
+            FFTOceanSpectrumBufferSet& outSet);
 
         static bool CreateSimulationConstantBuffer(
             ID3D12Device* device,

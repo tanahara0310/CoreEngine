@@ -37,18 +37,8 @@ namespace CoreEngine
         ID3D12Device* device,
         DescriptorManager* descriptorManager,
         uint32_t resolution,
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2>& spectrumTextureA,
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2>& spectrumTextureB,
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 2>& spectrumASrvCpuHandle,
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, 2>& spectrumASrvHandle,
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 2>& spectrumAUavCpuHandle,
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, 2>& spectrumAUavHandle,
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 2>& spectrumBSrvCpuHandle,
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, 2>& spectrumBSrvHandle,
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, 2>& spectrumBUavCpuHandle,
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, 2>& spectrumBUavHandle,
-        std::array<D3D12_RESOURCE_STATES, 2>& spectrumAState,
-        std::array<D3D12_RESOURCE_STATES, 2>& spectrumBState)
+        FFTOceanPingPong& spectrumA,
+        FFTOceanPingPong& spectrumB)
     {
         if (!device || !descriptorManager) {
             return false;
@@ -68,13 +58,9 @@ namespace CoreEngine
         uavDesc.Format = textureDesc.Format;
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
-        for (uint32_t i = 0; i < 2; ++i) {
+        auto createOne = [&](FFTOceanGpuTexture& tex, const char* label, uint32_t index) -> bool {
             try {
-                spectrumTextureA[i] = ResourceFactory::CreateTextureResource(
-                    deviceRef,
-                    textureDesc,
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-                spectrumTextureB[i] = ResourceFactory::CreateTextureResource(
+                tex.resource = ResourceFactory::CreateTextureResource(
                     deviceRef,
                     textureDesc,
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -82,35 +68,21 @@ namespace CoreEngine
             catch (const std::exception&) {
                 return false;
             }
-
+            const std::string idx = std::to_string(index);
             descriptorManager->CreateSRV(
-                spectrumTextureA[i].Get(),
-                srvDesc,
-                spectrumASrvCpuHandle[i],
-                spectrumASrvHandle[i],
-                std::string("FFTOceanSpectrumA_SRV_") + std::to_string(i));
+                tex.Get(), srvDesc, tex.srvCpu, tex.srv,
+                std::string("FFTOceanSpectrum") + label + "_SRV_" + idx);
             descriptorManager->CreateUAV(
-                spectrumTextureA[i].Get(),
-                uavDesc,
-                spectrumAUavCpuHandle[i],
-                spectrumAUavHandle[i],
-                std::string("FFTOceanSpectrumA_UAV_") + std::to_string(i));
+                tex.Get(), uavDesc, tex.uavCpu, tex.uav,
+                std::string("FFTOceanSpectrum") + label + "_UAV_" + idx);
+            tex.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            return true;
+        };
 
-            descriptorManager->CreateSRV(
-                spectrumTextureB[i].Get(),
-                srvDesc,
-                spectrumBSrvCpuHandle[i],
-                spectrumBSrvHandle[i],
-                std::string("FFTOceanSpectrumB_SRV_") + std::to_string(i));
-            descriptorManager->CreateUAV(
-                spectrumTextureB[i].Get(),
-                uavDesc,
-                spectrumBUavCpuHandle[i],
-                spectrumBUavHandle[i],
-                std::string("FFTOceanSpectrumB_UAV_") + std::to_string(i));
-
-            spectrumAState[i] = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            spectrumBState[i] = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        for (uint32_t i = 0; i < 2; ++i) {
+            if (!createOne(spectrumA[i], "A", i) || !createOne(spectrumB[i], "B", i)) {
+                return false;
+            }
         }
 
         return true;
@@ -121,14 +93,15 @@ namespace CoreEngine
         DescriptorManager* descriptorManager,
         uint32_t resolution,
         uint32_t sampleStride,
-        Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumBuffer,
-        Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumUploadBuffer,
-        void*& mappedSpectrumSamples,
-        D3D12_CPU_DESCRIPTOR_HANDLE& spectrumSrvCpuHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE& spectrumSrvHandle,
-        D3D12_RESOURCE_STATES& spectrumBufferState,
-        bool& spectrumBufferDirty)
+        FFTOceanSpectrumBufferSet& outSet)
     {
+        Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumBuffer = outSet.defaultBuffer;
+        Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumUploadBuffer = outSet.uploadBuffer;
+        void*& mappedSpectrumSamples = outSet.mapped;
+        D3D12_CPU_DESCRIPTOR_HANDLE& spectrumSrvCpuHandle = outSet.srvCpu;
+        D3D12_GPU_DESCRIPTOR_HANDLE& spectrumSrvHandle = outSet.srv;
+        D3D12_RESOURCE_STATES& spectrumBufferState = outSet.state;
+
         if (!device || !descriptorManager || sampleStride == 0) {
             return false;
         }
@@ -191,7 +164,6 @@ namespace CoreEngine
             "FFTOceanSpectrumSamplesSRV");
 
         spectrumBufferState = D3D12_RESOURCE_STATE_COPY_DEST;
-        spectrumBufferDirty = true;
         return true;
     }
 

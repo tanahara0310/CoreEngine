@@ -23,7 +23,7 @@ namespace CoreEngine
             float screenWidth;
             float screenHeight;
             uint32_t fftOceanEnabled;
-            float fftOceanPatchLength;
+            float fftOceanPad0; // 旧 patchLength（形骸）。HLSL 側とレイアウト一致のため残す
             uint32_t fftOceanResolution;
             float refractiveIndex;
             float debugDisplayScale;
@@ -168,7 +168,7 @@ namespace CoreEngine
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
         constants.fftOceanEnabled = fftOceanInput.enabled;
-        constants.fftOceanPatchLength = fftOceanInput.patchLength;
+        constants.fftOceanPad0 = 0.0f;
         constants.fftOceanResolution = fftOceanInput.resolution;
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;

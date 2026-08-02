@@ -30,7 +30,7 @@ cbuffer WaterRefractionConstants : register(b0)
     float gScreenHeight;
     float gMaxRefractionOffsetPixels;
     uint gFFTOceanEnabled;
-    float gFFTOceanPatchLength;
+    float gFFTOceanPad0; // 旧 patchLength（形骸）。C++ 側とレイアウト一致のため残す
     uint gFFTOceanResolution;
     float gDebugDisplayScale;
     uint gDebugViewMode;
@@ -144,8 +144,7 @@ bool UseFFTOceanSurface()
 {
     return gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean
         && gFFTOceanEnabled != 0
-        && gFFTOceanResolution > 0
-        && gFFTOceanPatchLength > 1.0e-4f;
+        && gFFTOceanResolution > 0;
 }
 
 float3 EvaluateRefractionWaterOffset(float2 worldXZ)

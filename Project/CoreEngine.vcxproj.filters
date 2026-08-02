@@ -136,6 +136,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClCompile>
@@ -1689,7 +1692,13 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanGpuResources.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h">

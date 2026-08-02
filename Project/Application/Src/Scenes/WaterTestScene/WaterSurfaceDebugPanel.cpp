@@ -121,7 +121,7 @@ void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
 
 	ImGui::Text("初期化状態: %s", settings.initialized ? "完了" : "未初期化");
 	ImGui::Text("解像度: %d", settings.resolution);
-	ImGui::Text("パッチ長: %.2f", settings.patchLength);
+	ImGui::Text("パッチ長: 521/127/31 m (カスケード固定)");
 	ImGui::Text("振幅スケール: %.3f", settings.amplitudeScale);
 	ImGui::Text("風向: (%.3f, %.3f)", settings.windDirection[0], settings.windDirection[1]);
 	ImGui::Text("風速: %.3f", settings.windSpeed);

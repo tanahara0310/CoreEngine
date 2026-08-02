@@ -146,7 +146,32 @@ PrintWindow キャプチャで水面描画正常（色化け・帯なし）・sp
 
 検証: レイアウト static_assert が全構成で通ること、全デバッグビュー表示確認、Gerstner シーンの波形が前後一致（スクリーンショット比較）。
 
-### Phase 2: FFTOceanManager 解体（リスク: 中）
+### Phase 2: FFTOceanManager 解体（リスク: 中）✅ 完了 2026-08-03
+
+実施内容:
+1. **FFTOceanGpuTexture / FFTOceanPingPong / FFTOceanSpectrumBufferSet 導入**
+   （FFTOceanGpuResources.h 新設）: Manager の並列メンバ配列 約40本 → 構造体8個へ。
+   DispatchHelper は「束」を受け取る本物の部品になり、DispatchEvolutionPass 10引数→7、
+   DispatchIFFTPass 10→6、Finalize 13→9。ResourceFactory::CreateIntermediateTextures 15→5、
+   CreateSpectrumBuffers 11→5。Manager 側の出力テクスチャは CascadeOutputTexture
+   （配列SRV＋スライスUAV）に集約
+2. **FFTOceanDebugProbe 抽出**（新規 .h/.cpp、vcxproj/filters 登録済み）: readback 6本・
+   プローブログ・120F間引きカウンタ（旧: 関数ローカル static 4本＝インスタンス間共有の欠陥）を
+   1クラスへ。CVar **"d.FFTOcean.DebugProbe"（既定 off）** でオプトイン、リードバックバッファは
+   有効時に遅延生成。Manager.h は 425→約340行、Dispatch から診断コードが消滅。
+   実測: Pipeline ログが常時スパム→全8行に減少（サマリ/プローブ/IFFTログはゲートで停止）
+3. currentSimulationTime_ をメンバ化（write-combined UPLOAD からの CPU 読み戻しを解消）
+4. **Settings::patchLength（形骸の 96.0f）を全連鎖削除**: Manager Settings →
+   WaterEditorFFTSettings → UI パネル（スライダー・プリセット6種・一致判定）→
+   Water.json（fftPatchLength キー）→ FFTOceanInput → RT 3マネージャ →
+   RT シェーダー3本。cbuffer スロットは gFFTOceanPad0 としてレイアウト維持、
+   有効判定は gFFTOceanEnabled && gFFTOceanResolution > 0 へ
+5. DispatchHelper の ping-pong index1 毎フレーム COMMON 遷移を削除
+   （時間発展は index0 しか書かない。無意味なバリア 2本/カスケード/フレームを解消）
+
+検証: dxc で RT シェーダー3本 lib_6_6 コンパイル成功・Development ビルド成功・
+起動→UIオートメーションで WaterTestScene へ切替→水面/岸際泡の描画正常・
+BuildSpectrum 較正値がリファクタ前と完全一致・spectrum copy 正常・エラー0。
 1. **`struct UavTexture2D { resource; state; srv; uav; }` を導入して並列メンバ配列を畳む** → Helper の10〜15引数爆発が消え、DispatchHelper が本物の部品になる
 2. **FFTOceanDebugProbe 抽出**: readback / プローブログ / static カウンタ / LogHelper を1クラスへ吸収し CVar でオプトイン（Manager が .h/.cpp とも2〜3割痩せる）
 3. currentSimulationTime_ をメンバ化（write-combined 読みの解消）

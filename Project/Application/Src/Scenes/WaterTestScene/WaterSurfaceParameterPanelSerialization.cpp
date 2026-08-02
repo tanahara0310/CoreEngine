@@ -51,7 +51,6 @@ void WaterSurfaceParameterPanel::SerializeSettings(json& out, const WaterEditorF
 	// ===== FFT Ocean（facade 経由の実体値。デバッグ・状態フラグは保存しない） =====
 	const WaterEditorFFTSettings fft = editorFacade.GetFFTSettings();
 	out["fftEnabled"] = fft.enabled;
-	out["fftPatchLength"] = fft.patchLength;
 	out["fftAmplitudeScale"] = fft.amplitudeScale;
 	out["fftWindDirection"] = json::array({ fft.windDirection[0], fft.windDirection[1] });
 	out["fftWindSpeed"] = fft.windSpeed;
@@ -148,7 +147,6 @@ void WaterSurfaceParameterPanel::DeserializeSettings(const json& in,
 	// 拒否する（sanitize で現行解像度を強制）ため、復元しても効かない。
 	WaterEditorFFTSettings fft = editorFacade.GetFFTSettings();
 	fft.enabled = JsonManager::SafeGet(in, "fftEnabled", fft.enabled);
-	fft.patchLength = JsonManager::SafeGet(in, "fftPatchLength", fft.patchLength);
 	fft.amplitudeScale = JsonManager::SafeGet(in, "fftAmplitudeScale", fft.amplitudeScale);
 	const Vector3 wind = JsonManager::SafeGetVector3(in, "fftWindDirection",
 		{ fft.windDirection[0], fft.windDirection[1], 0.0f });

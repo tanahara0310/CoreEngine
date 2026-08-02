@@ -277,7 +277,6 @@ namespace CoreEngine
             outDispatchContext.fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
             outDispatchContext.fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
             outDispatchContext.fftOceanInput.resolution = fftSettings.resolution;
-            outDispatchContext.fftOceanInput.patchLength = fftSettings.patchLength;
             outDispatchContext.fftOceanInput.enabled = 1;
         }
 

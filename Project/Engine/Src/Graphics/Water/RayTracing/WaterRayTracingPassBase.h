@@ -21,11 +21,11 @@ namespace CoreEngine
     class WaterRayTracingPassBase : public RayTracingPassBase {
     public:
         /// @brief FFT Ocean の波面テクスチャ入力（3 パス共通）
+        /// @details 有効判定は enabled と resolution（旧 patchLength は形骸のため撤去）。
         struct FFTOceanInput {
             D3D12_GPU_DESCRIPTOR_HANDLE displacementSRV{};
             D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
             uint32_t resolution = 0;
-            float patchLength = 0.0f;
             uint32_t enabled = 0;
         };
 

@@ -27,7 +27,7 @@ namespace CoreEngine
             float screenHeight;
             float maxRefractionOffsetPixels;
             uint32_t fftOceanEnabled;
-            float fftOceanPatchLength;
+            float fftOceanPad0; // 旧 patchLength（形骸）。HLSL 側とレイアウト一致のため残す
             uint32_t fftOceanResolution;
             float debugDisplayScale;
             uint32_t debugViewMode;
@@ -170,7 +170,7 @@ namespace CoreEngine
         constants.screenHeight = static_cast<float>(height);
         constants.maxRefractionOffsetPixels = settings_.maxRefractionOffsetPixels;
         constants.fftOceanEnabled = fftOceanInput.enabled;
-        constants.fftOceanPatchLength = fftOceanInput.patchLength;
+        constants.fftOceanPad0 = 0.0f;
         constants.fftOceanResolution = fftOceanInput.resolution;
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
@@ -191,7 +191,7 @@ namespace CoreEngine
                 LogSubCategory::Pipeline,
                 "WaterRefractionRayTracingManager: dispatch. viewId={} size={}x{} blas={} waterHeight={:.3f} "
                 "simulationType={} activeWaveCount={} waveTime={:.3f} eta={:.4f} maxRayDistance={:.3f} "
-                "surfaceBias={:.4f} maxOffsetPx={:.3f} fft(enabled={} resolution={} patch={:.3f}) "
+                "surfaceBias={:.4f} maxOffsetPx={:.3f} fft(enabled={} resolution={}) "
                 "srv(depth=0x{:X} color=0x{:X} out=0x{:X}) debug(mode={} scale={:.3f})",
                 viewIndex,
                 width,
@@ -207,7 +207,6 @@ namespace CoreEngine
                 constants.maxRefractionOffsetPixels,
                 constants.fftOceanEnabled,
                 constants.fftOceanResolution,
-                constants.fftOceanPatchLength,
                 sceneDepthSRV.ptr,
                 sceneColorSRV.ptr,
                 resources.outputSrvHandle.ptr,

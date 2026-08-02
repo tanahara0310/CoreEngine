@@ -2,6 +2,8 @@
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
+#include "Graphics/Water/FFTOceanDebugProbe.h"
+#include "Graphics/Water/FFTOceanGpuResources.h"
 #include "Graphics/Water/FFTOceanSpectrumBuilder.h"
 
 #include <array>
@@ -20,9 +22,12 @@ namespace CoreEngine
     {
     public:
         /// @brief 海面スペクトル生成と時間発展で使用する入力設定
+        /// @note 実際のシミュレーションパッチ長はカスケード定数
+        ///       （FFTOceanCascadeValues.hlsli の {521,127,31}m）で決まる。
+        ///       以前ここにあった patchLength=96 はどのカスケードとも無関係の
+        ///       形骸パラメータだったため削除した。
         struct Settings {
             uint32_t resolution = 256;
-            float patchLength = 96.0f;
             float amplitudeScale = 1.0f;
             float windDirection[2] = { 0.92f, 0.38f };
             // 波高は Pierson-Moskowitz 較正（Hs ≈ 0.21 v²/g）で風速から決まる。
@@ -62,15 +67,15 @@ namespace CoreEngine
 
         /// @brief 変位テクスチャのSRVハンドルを返す
         /// @return 変位SRVのGPUディスクリプタハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE GetDisplacementSRVHandle() const { return displacementSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetDisplacementSRVHandle() const { return displacementMap_.srv; }
 
         /// @brief 法線テクスチャのSRVハンドルを返す
         /// @return 法線SRVのGPUディスクリプタハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE GetNormalSRVHandle() const { return normalSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetNormalSRVHandle() const { return normalMap_.srv; }
 
         /// @brief ヤコビアンテクスチャのSRVハンドルを返す
         /// @return ヤコビアンSRVのGPUディスクリプタハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE GetJacobianSRVHandle() const { return jacobianSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetJacobianSRVHandle() const { return jacobianMap_.srv; }
 
         /// @brief 蓄積泡テクスチャのSRVハンドルを返す
         /// @details ping-pong の「直近で書き終わった側」= (foamFrameIndex_ + 1) & 1。
@@ -78,7 +83,7 @@ namespace CoreEngine
         ///          この式は常に「今フレームの書き込み先ではない方」を指し、
         ///          読み書きハザードが起きない。
         D3D12_GPU_DESCRIPTOR_HANDLE GetFoamSRVHandle() const {
-            return foamSrvHandle_[(foamFrameIndex_ + 1u) & 1u];
+            return foam_[(foamFrameIndex_ + 1u) & 1u].srv;
         }
 
         /// @brief 現在のシミュレーション設定を返す
@@ -185,9 +190,6 @@ namespace CoreEngine
         /// @brief 泡の蓄積・減衰パスをDispatchする（Finalize 完了後・SRV遷移後に呼ぶ）
         void DispatchFoamPass(ID3D12GraphicsCommandList* cmdList, float timeSeconds);
 
-        /// @brief デバッグ用Readbackバッファを作成する
-        bool CreateDebugReadbackBuffers();
-
         /// @brief 初期スペクトル格納用バッファを作成する
         bool CreateSpectrumBuffer();
 
@@ -218,62 +220,19 @@ namespace CoreEngine
         /// @brief 指定カスケードの時間発展パスをDispatchする
         void DispatchEvolutionPass(ID3D12GraphicsCommandList* cmdList, uint32_t cascadeIndex);
 
-        /// @brief IFFT 1ステージ分のパスをDispatchする
-        void DispatchIFFTPass(
-            ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* inputResource,
-            D3D12_RESOURCE_STATES& inputState,
-            CustomShaderPipeline& pipeline,
-            D3D12_GPU_DESCRIPTOR_HANDLE inputSrv,
-            ID3D12Resource* outputResource,
-            D3D12_RESOURCE_STATES& outputState,
-            D3D12_GPU_DESCRIPTOR_HANDLE outputUav,
-            uint32_t stageIndex,
-            bool isHorizontal,
-            float normalizationScale);
-
-        /// @brief 指定テクスチャ列に対して横方向/縦方向のIFFTを実行する
+        /// @brief 指定 ping-pong テクスチャ列に対して横方向/縦方向のIFFTを実行する
+        /// @return 最終結果が入っている側の index
         uint32_t DispatchIFFTForTexture(
             ID3D12GraphicsCommandList* cmdList,
-            std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPingPongCount>& resources,
-            std::array<D3D12_RESOURCE_STATES, kPingPongCount>& resourceStates,
-            std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount>& srvHandles,
-            std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount>& uavHandles,
+            FFTOceanPingPong& textures,
             uint32_t initialIndex);
 
         /// @brief IFFT結果から最終の変位/法線/ヤコビアンを生成する（指定カスケードのスライスへ書き込む）
         void DispatchFinalizePass(
             ID3D12GraphicsCommandList* cmdList,
             uint32_t cascadeIndex,
-            ID3D12Resource* spectrumAResource,
-            D3D12_RESOURCE_STATES& spectrumAState,
-            D3D12_GPU_DESCRIPTOR_HANDLE spectrumASrv,
-            ID3D12Resource* spectrumBResource,
-            D3D12_RESOURCE_STATES& spectrumBState,
-            D3D12_GPU_DESCRIPTOR_HANDLE spectrumBSrv);
-
-        /// @brief IFFT Readback結果が揃っていればログ出力する
-        void LogPendingIFFTDebugReadback();
-
-        /// @brief IFFT結果のReadbackコピーをスケジュールする
-        void ScheduleIFFTDebugReadback(
-            ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* spectrumAResource,
-            D3D12_RESOURCE_STATES& spectrumAState,
-            ID3D12Resource* spectrumBResource,
-            D3D12_RESOURCE_STATES& spectrumBState);
-
-        /// @brief 時間発展Readback結果が揃っていればログ出力する
-        void LogPendingEvolutionDebugReadback();
-
-        /// @brief 時間発展結果のReadbackコピーをスケジュールする
-        void ScheduleEvolutionDebugReadback(ID3D12GraphicsCommandList* cmdList);
-
-        /// @brief 最終出力Readback結果が揃っていればログ出力する
-        void LogPendingDebugReadback();
-
-        /// @brief 最終出力のReadbackコピーをスケジュールする
-        void ScheduleDebugReadback(ID3D12GraphicsCommandList* cmdList);
+            FFTOceanGpuTexture& spectrumA,
+            FFTOceanGpuTexture& spectrumB);
 
         /// @brief 現在解像度に対するIFFTステージ数(log2)を返す
         /// @return IFFTステージ数
@@ -295,18 +254,30 @@ namespace CoreEngine
         Settings settings_{};
         FoamSettings foamSettings_{};
         bool isInitialized_ = false;
+        // 最後に Dispatch へ渡されたシミュレーション時刻。SetSettings がスペクトル
+        // 再構築時に時刻を引き継ぐために使う（マップ済み UPLOAD からの読み戻し禁止）。
+        float currentSimulationTime_ = 0.0f;
+
+        /// @brief 最終出力テクスチャ（配列 SRV ＋ カスケード単位のスライス UAV）
+        /// @details SRV は配列全体（全カスケード）を 1 ビューで見せる。UAV は Finalize が
+        ///          カスケード単位で書き込むためスライスごとに用意する。
+        struct CascadeOutputTexture {
+            Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+            D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            D3D12_CPU_DESCRIPTOR_HANDLE srvCpu{};
+            D3D12_GPU_DESCRIPTOR_HANDLE srv{};
+            std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> sliceUavCpu{};
+            std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> sliceUav{};
+
+            ID3D12Resource* Get() const { return resource.Get(); }
+        };
 
         // ──────────────────────────────────────────────────────────
         // 泡蓄積の ping-pong テクスチャ・定数・状態
         // ──────────────────────────────────────────────────────────
         // 書き込み先 = foamFrameIndex_ & 1（フレームカウンタの純粋関数。TAA の規約に合わせ、
         // トグル変数を持たない）。SRV/UAV とも全スライスを 1 ビューで見せる。
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPingPongCount> foamTexture_;
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kPingPongCount> foamSrvCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount> foamSrvHandle_{};
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kPingPongCount> foamUavCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount> foamUavHandle_{};
-        std::array<D3D12_RESOURCE_STATES, kPingPongCount> foamState_{};
+        FFTOceanPingPong foam_{};
         Microsoft::WRL::ComPtr<ID3D12Resource> foamConstantsBuffer_;
         uint8_t* mappedFoamConstants_ = nullptr;
         uint32_t foamFrameIndex_ = 0;
@@ -315,88 +286,35 @@ namespace CoreEngine
         float foamPreviousTimeSeconds_ = 0.0f;
 
         // ──────────────────────────────────────────────────────────
-        // 最終出力テクスチャとReadbackリソース
+        // 最終出力テクスチャ（変位 / 法線 / ヤコビアン）
         // ──────────────────────────────────────────────────────────
-        Microsoft::WRL::ComPtr<ID3D12Resource> displacementTexture_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> normalTexture_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> jacobianTexture_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> displacementReadbackBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> normalReadbackBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> evolutionAReadbackBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> evolutionBReadbackBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> ifftAReadbackBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> ifftBReadbackBuffer_;
+        CascadeOutputTexture displacementMap_{};
+        CascadeOutputTexture normalMap_{};
+        CascadeOutputTexture jacobianMap_{};
 
         // ──────────────────────────────────────────────────────────
-        // 出力テクスチャのSRV/UAVハンドルとリソース状態管理
+        // デバッグ計測（CVar "d.FFTOcean.DebugProbe" でオプトイン。
+        // リードバックバッファ・ログ間引きカウンタは probe が内部で持つ）
         // ──────────────────────────────────────────────────────────
-        // SRV は配列全体（全カスケード）を1ビューで見せる。UAV は Finalize が
-        // カスケード単位で書き込むためスライスごとに用意する。
-        D3D12_CPU_DESCRIPTOR_HANDLE displacementSrvCpuHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle_{};
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> displacementUavCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> displacementUavHandle_{};
-        D3D12_CPU_DESCRIPTOR_HANDLE normalSrvCpuHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle_{};
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> normalUavCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> normalUavHandle_{};
-        D3D12_CPU_DESCRIPTOR_HANDLE jacobianSrvCpuHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle_{};
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> jacobianUavCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> jacobianUavHandle_{};
-        D3D12_RESOURCE_STATES displacementState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_RESOURCE_STATES normalState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_RESOURCE_STATES jacobianState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        FFTOceanDebugProbe debugProbe_{};
 
         // ──────────────────────────────────────────────────────────
-        // Readbackレイアウト/サイズと非同期ログ制御
+        // IFFT用ピンポンテクスチャ（A = 高さ+変位X / B = 変位Z）
         // ──────────────────────────────────────────────────────────
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT displacementReadbackLayout_{};
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT normalReadbackLayout_{};
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT evolutionAReadbackLayout_{};
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT evolutionBReadbackLayout_{};
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT ifftAReadbackLayout_{};
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT ifftBReadbackLayout_{};
-        UINT64 displacementReadbackBytes_ = 0;
-        UINT64 normalReadbackBytes_ = 0;
-        UINT64 evolutionAReadbackBytes_ = 0;
-        UINT64 evolutionBReadbackBytes_ = 0;
-        UINT64 ifftAReadbackBytes_ = 0;
-        UINT64 ifftBReadbackBytes_ = 0;
-        bool debugReadbackPending_ = false;
-        bool evolutionDebugReadbackPending_ = false;
-        bool ifftDebugReadbackPending_ = false;
-        uint64_t debugReadbackSequence_ = 0;
-        uint64_t evolutionDebugReadbackSequence_ = 0;
-        uint64_t ifftDebugReadbackSequence_ = 0;
-
-        // ──────────────────────────────────────────────────────────
-        // IFFT用ピンポンテクスチャと対応ハンドル/状態
-        // ──────────────────────────────────────────────────────────
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPingPongCount> spectrumTextureA_;
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPingPongCount> spectrumTextureB_;
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kPingPongCount> spectrumASrvCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount> spectrumASrvHandle_{};
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kPingPongCount> spectrumAUavCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount> spectrumAUavHandle_{};
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kPingPongCount> spectrumBSrvCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount> spectrumBSrvHandle_{};
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kPingPongCount> spectrumBUavCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount> spectrumBUavHandle_{};
-        std::array<D3D12_RESOURCE_STATES, kPingPongCount> spectrumAState_{};
-        std::array<D3D12_RESOURCE_STATES, kPingPongCount> spectrumBState_{};
+        FFTOceanPingPong spectrumPingPongA_{};
+        FFTOceanPingPong spectrumPingPongB_{};
 
         // ──────────────────────────────────────────────────────────
         // 初期スペクトルバッファとアップロード状態
         // ──────────────────────────────────────────────────────────
         // 初期スペクトル（h0）はパッチ長依存のためカスケードごとに独立して持つ。
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kCascadeCount> spectrumBuffer_;
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kCascadeCount> spectrumUploadBuffer_;
-        std::array<SpectrumSample*, kCascadeCount> mappedSpectrumSamples_{};
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> spectrumSrvCpuHandle_{};
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> spectrumSrvHandle_{};
-        std::array<D3D12_RESOURCE_STATES, kCascadeCount> spectrumBufferState_{};
+        std::array<FFTOceanSpectrumBufferSet, kCascadeCount> spectrumBuffers_{};
         bool spectrumBufferDirty_ = false;
+
+        /// @brief カスケードの UPLOAD 側マップ先を要素型付きで返す
+        SpectrumSample* MappedSpectrumSamples(uint32_t cascadeIndex) const {
+            return static_cast<SpectrumSample*>(spectrumBuffers_[cascadeIndex].mapped);
+        }
 
         // ──────────────────────────────────────────────────────────
         // シミュレーション/IFFT定数バッファと書き込みカーソル

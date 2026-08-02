@@ -5,19 +5,17 @@
 
 namespace CoreEngine
 {
-    void FFTOceanManagerLogHelper::LogInitialize(uint32_t resolution, float patchLength, float windSpeed)
+    void FFTOceanManagerLogHelper::LogInitialize(uint32_t resolution, float windSpeed)
     {
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "FFTOceanManager: initialized. resolution={} patchLength={:.2f} windSpeed={:.2f}",
+            "FFTOceanManager: initialized. resolution={} windSpeed={:.2f}",
             resolution,
-            patchLength,
             windSpeed);
     }
 
     void FFTOceanManagerLogHelper::LogSettingsUpdated(
-        float patchLength,
         float amplitudeScale,
         float windDirX,
         float windDirY,
@@ -29,8 +27,7 @@ namespace CoreEngine
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "FFTOceanManager: settings updated. patchLength={:.2f} amplitudeScale={:.3f} windDir=({:.3f}, {:.3f}) windSpeed={:.3f} choppiness={:.3f} components={} gravity={:.3f}",
-            patchLength,
+            "FFTOceanManager: settings updated. amplitudeScale={:.3f} windDir=({:.3f}, {:.3f}) windSpeed={:.3f} choppiness={:.3f} components={} gravity={:.3f}",
             amplitudeScale,
             windDirX,
             windDirY,

@@ -14,9 +14,7 @@
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Water/FFTOceanDispatchHelper.h"
 #include "Graphics/Water/FFTOceanManagerLogHelper.h"
-#include "Graphics/Water/FFTOceanReadbackHelper.h"
 #include "Graphics/Water/FFTOceanResourceFactory.h"
-#include "Graphics/Water/FFTOceanSpectrumDebugHelper.h"
 #include "Graphics/Water/FFTOceanSpectrumBuilder.h"
 #include "Utility/Logger/Logger.h"
 
@@ -89,11 +87,11 @@ namespace CoreEngine
         }
 
         // 実行に必要なパイプライン/リソースを順番に構築する。
+        // （デバッグ用リードバックは FFTOceanDebugProbe が有効時に遅延生成する）
         if (!CreatePipelines()
             || !CreateOutputTextures()
             || !CreateFoamResources()
             || !CreateIntermediateTextures()
-            || !CreateDebugReadbackBuffers()
             || !CreateSpectrumBuffer()
             || !CreateSimulationConstantBuffer()
             || !CreateIFFTConstantBuffer()) {
@@ -110,7 +108,6 @@ namespace CoreEngine
 
         FFTOceanManagerLogHelper::LogInitialize(
             settings_.resolution,
-            settings_.patchLength,
             settings_.windSpeed);
         return true;
     }
@@ -125,7 +122,6 @@ namespace CoreEngine
         sanitized.resolution = settings_.resolution;
 
         const bool settingsChanged =
-            sanitized.patchLength != settings_.patchLength ||
             sanitized.amplitudeScale != settings_.amplitudeScale ||
             sanitized.windDirection[0] != settings_.windDirection[0] ||
             sanitized.windDirection[1] != settings_.windDirection[1] ||
@@ -149,16 +145,15 @@ namespace CoreEngine
         foamResetPending_ = true;
 
         // 現在時刻を保ったままスペクトルと全カスケードの定数を作り直す。
-        const float currentTime = mappedSimulationConstants_
-            ? reinterpret_cast<const SimulationConstants*>(mappedSimulationConstants_)->timeSeconds
-            : 0.0f;
+        // （以前はマップ済み UPLOAD バッファ（write-combined）から読み戻していた。
+        //   WC ページの CPU 読みは非常に遅いためメンバ変数で保持する）
+        const float currentTime = currentSimulationTime_;
         BuildSpectrum();
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
             UpdateSimulationConstants(c, currentTime);
         }
 
         FFTOceanManagerLogHelper::LogSettingsUpdated(
-            settings_.patchLength,
             settings_.amplitudeScale,
             settings_.windDirection[0],
             settings_.windDirection[1],
@@ -188,63 +183,27 @@ namespace CoreEngine
         }
 
         // フレーム時刻・パッチ長を全カスケードのスロットへ書き込む。
+        currentSimulationTime_ = timeSeconds;
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
             UpdateSimulationConstants(c, timeSeconds);
         }
         ifftConstantsWriteIndex_ = 0;
-        LogPendingIFFTDebugReadback();
-        LogPendingEvolutionDebugReadback();
-        LogPendingDebugReadback();
 
-        const SimulationConstants* slot0 =
-            mappedSimulationConstants_ ? reinterpret_cast<const SimulationConstants*>(mappedSimulationConstants_) : nullptr;
-
-        static uint32_t sDispatchLogCounter = 0;
-        if ((sDispatchLogCounter++ % 120) == 0 && slot0) {
-            static float sPreviousLoggedTime = 0.0f;
-            const float loggedDelta = timeSeconds - sPreviousLoggedTime;
-            sPreviousLoggedTime = timeSeconds;
-
-            FFTOceanManagerLogHelper::LogDispatchSummary(
-                timeSeconds,
-                loggedDelta,
-                slot0->timeSeconds,
-                slot0->amplitudeScale,
-                settings_.windSpeed,
-                slot0->choppiness,
-                slot0->activeComponentCount);
-
-            if (mappedSpectrumSamples_[0]) {
-                const uint32_t probeX = settings_.resolution / 2 + 1;
-                const uint32_t probeY = settings_.resolution / 2;
-                const uint32_t probeIndex = probeY * settings_.resolution + probeX;
-                const SpectrumSample& probeSample = mappedSpectrumSamples_[0][probeIndex];
-                const FFTOceanSpectrumDebugHelper::ComplexValue probeHeight =
-                    FFTOceanSpectrumDebugHelper::EvaluateSpectrumSample(
-                        probeSample.h0,
-                        probeSample.h0Minus,
-                        probeSample.angularFrequency,
-                        probeSample.directionalWeight,
-                        timeSeconds,
-                        slot0->amplitudeScale,
-                        slot0->activeComponentCount);
-
-                FFTOceanManagerLogHelper::LogProbeSpectrum(
-                    probeIndex,
-                    probeSample.waveVector[0],
-                    probeSample.waveVector[1],
-                    probeSample.angularFrequency,
-                    probeHeight.real,
-                    probeHeight.imag,
-                    FFTOceanSpectrumDebugHelper::ComputeMagnitude(probeHeight),
-                    probeSample.directionalWeight);
-            }
-        }
+        // デバッグ計測（CVar オプトイン。無効時は全メソッドが即 return）
+        debugProbe_.FlushPendingLogs(settings_.resolution);
+        debugProbe_.LogDispatchSummary(
+            timeSeconds,
+            settings_.amplitudeScale,
+            settings_.windSpeed,
+            settings_.choppiness,
+            (std::min)(settings_.activeComponentCount, kMaxSpectrumComponents),
+            MappedSpectrumSamples(0),
+            settings_.resolution);
 
         // 出力配列テクスチャ（全スライス）をUAVへ遷移する。
-        ResourceBarrierHelper::Transition(cmdList, displacementTexture_.Get(), displacementState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, normalTexture_.Get(), normalState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, jacobianTexture_.Get(), jacobianState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(cmdList, displacementMap_.Get(), displacementMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(cmdList, normalMap_.Get(), normalMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(cmdList, jacobianMap_.Get(), jacobianMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         ID3D12DescriptorHeap* descriptorHeaps[] = { descriptorManager_->GetSRVHeap() };
         cmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
@@ -255,74 +214,48 @@ namespace CoreEngine
             DispatchEvolutionPass(cmdList, c);
 
             if (c == 0) {
-                static uint32_t sEvolutionReadbackCounter = 0;
-                if ((sEvolutionReadbackCounter++ % 120) == 0) {
-                    ScheduleEvolutionDebugReadback(cmdList);
-                }
+                debugProbe_.ScheduleEvolutionReadback(
+                    cmdList,
+                    spectrumPingPongA_[0].Get(), spectrumPingPongA_[0].state,
+                    spectrumPingPongB_[0].Get(), spectrumPingPongB_[0].state);
             }
 
-            const uint32_t finalSpectrumAIndex = DispatchIFFTForTexture(
-                cmdList,
-                spectrumTextureA_,
-                spectrumAState_,
-                spectrumASrvHandle_,
-                spectrumAUavHandle_,
-                0);
-
-            const uint32_t finalSpectrumBIndex = DispatchIFFTForTexture(
-                cmdList,
-                spectrumTextureB_,
-                spectrumBState_,
-                spectrumBSrvHandle_,
-                spectrumBUavHandle_,
-                0);
+            const uint32_t finalSpectrumAIndex = DispatchIFFTForTexture(cmdList, spectrumPingPongA_, 0);
+            const uint32_t finalSpectrumBIndex = DispatchIFFTForTexture(cmdList, spectrumPingPongB_, 0);
+            FFTOceanGpuTexture& finalSpectrumA = spectrumPingPongA_[finalSpectrumAIndex];
+            FFTOceanGpuTexture& finalSpectrumB = spectrumPingPongB_[finalSpectrumBIndex];
 
             if (c == 0) {
-                static uint32_t sIfftLogCounter = 0;
-                if ((sIfftLogCounter++ % 120) == 0) {
-                    FFTOceanManagerLogHelper::LogIFFTCompleted(
-                        finalSpectrumAIndex,
-                        finalSpectrumBIndex,
-                        settings_.resolution,
-                        GetLog2Resolution());
-
-                    ScheduleIFFTDebugReadback(
-                        cmdList,
-                        spectrumTextureA_[finalSpectrumAIndex].Get(),
-                        spectrumAState_[finalSpectrumAIndex],
-                        spectrumTextureB_[finalSpectrumBIndex].Get(),
-                        spectrumBState_[finalSpectrumBIndex]);
-                }
+                debugProbe_.OnIFFTCompleted(
+                    cmdList,
+                    finalSpectrumAIndex,
+                    finalSpectrumBIndex,
+                    settings_.resolution,
+                    GetLog2Resolution(),
+                    finalSpectrumA.Get(), finalSpectrumA.state,
+                    finalSpectrumB.Get(), finalSpectrumB.state);
             }
 
-            DispatchFinalizePass(
-                cmdList,
-                c,
-                spectrumTextureA_[finalSpectrumAIndex].Get(),
-                spectrumAState_[finalSpectrumAIndex],
-                spectrumASrvHandle_[finalSpectrumAIndex],
-                spectrumTextureB_[finalSpectrumBIndex].Get(),
-                spectrumBState_[finalSpectrumBIndex],
-                spectrumBSrvHandle_[finalSpectrumBIndex]);
+            DispatchFinalizePass(cmdList, c, finalSpectrumA, finalSpectrumB);
 
             // 次カスケードが中間ピンポンを書き換える前に、Finalizeの読み取り完了を保証する。
-            ResourceBarrierHelper::UAV(cmdList, displacementTexture_.Get());
-            ResourceBarrierHelper::UAV(cmdList, normalTexture_.Get());
-            ResourceBarrierHelper::UAV(cmdList, jacobianTexture_.Get());
+            ResourceBarrierHelper::UAV(cmdList, displacementMap_.Get());
+            ResourceBarrierHelper::UAV(cmdList, normalMap_.Get());
+            ResourceBarrierHelper::UAV(cmdList, jacobianMap_.Get());
         }
 
         // 後段シェーダー参照用にSRV状態へ戻す（法線ミップ連鎖は廃止済み）。
-        ResourceBarrierHelper::Transition(cmdList, displacementTexture_.Get(), displacementState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, normalTexture_.Get(), normalState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, jacobianTexture_.Get(), jacobianState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, displacementMap_.Get(), displacementMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, normalMap_.Get(), normalMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, jacobianMap_.Get(), jacobianMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // 泡の蓄積・減衰（ヤコビアンが SRV 状態になった後に実行する）
         DispatchFoamPass(cmdList, timeSeconds);
 
-        static uint32_t sDebugReadbackCounter = 0;
-        if ((sDebugReadbackCounter++ % 120) == 0) {
-            ScheduleDebugReadback(cmdList);
-        }
+        debugProbe_.ScheduleSurfaceReadback(
+            cmdList,
+            displacementMap_.Get(), displacementMap_.state,
+            normalMap_.Get(), normalMap_.state);
     }
 
     bool FFTOceanManager::CreateFoamResources()
@@ -348,7 +281,7 @@ namespace CoreEngine
 
         try {
             for (uint32_t i = 0; i < kPingPongCount; ++i) {
-                foamTexture_[i] = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                foam_[i].resource = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
         }
         catch (const std::exception&) {
@@ -368,7 +301,7 @@ namespace CoreEngine
             s.Texture2DArray.MipLevels = 1;
             s.Texture2DArray.FirstArraySlice = 0;
             s.Texture2DArray.ArraySize = kCascadeCount;
-            descriptorManager_->CreateSRV(foamTexture_[i].Get(), s, foamSrvCpuHandle_[i], foamSrvHandle_[i], "FFTOceanFoamSRV_" + idx);
+            descriptorManager_->CreateSRV(foam_[i].Get(), s, foam_[i].srvCpu, foam_[i].srv, "FFTOceanFoamSRV_" + idx);
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
             u.Format = format;
@@ -376,9 +309,9 @@ namespace CoreEngine
             u.Texture2DArray.MipSlice = 0;
             u.Texture2DArray.FirstArraySlice = 0;
             u.Texture2DArray.ArraySize = kCascadeCount;
-            descriptorManager_->CreateUAV(foamTexture_[i].Get(), u, foamUavCpuHandle_[i], foamUavHandle_[i], "FFTOceanFoamUAV_" + idx);
+            descriptorManager_->CreateUAV(foam_[i].Get(), u, foam_[i].uavCpu, foam_[i].uav, "FFTOceanFoamUAV_" + idx);
 
-            foamState_[i] = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            foam_[i].state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         }
 
         // 定数は 1 スロットのみ（毎フレーム上書き。simulationConstants と同じ運用）。
@@ -432,9 +365,9 @@ namespace CoreEngine
         // read 側は本パスの gFoamPrev（CS）に加えて、同一フレームの水面描画（PS の t21）
         // からも読まれるため、PIXEL を含む読み取り状態にする。
         ResourceBarrierHelper::Transition(
-            cmdList, foamTexture_[writeIndex].Get(), foamState_[writeIndex], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            cmdList, foam_[writeIndex].Get(), foam_[writeIndex].state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         ResourceBarrierHelper::Transition(
-            cmdList, foamTexture_[readIndex].Get(), foamState_[readIndex],
+            cmdList, foam_[readIndex].Get(), foam_[readIndex].state,
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         cmdList->SetPipelineState(foamPipeline_.GetComputePSO());
@@ -442,15 +375,15 @@ namespace CoreEngine
 
         const int jacobianSlot = foamPipeline_.GetComputeRootParamIndex("gJacobian");
         if (jacobianSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(jacobianSlot), jacobianSrvHandle_);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(jacobianSlot), jacobianMap_.srv);
         }
         const int prevSlot = foamPipeline_.GetComputeRootParamIndex("gFoamPrev");
         if (prevSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(prevSlot), foamSrvHandle_[readIndex]);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(prevSlot), foam_[readIndex].srv);
         }
         const int outputSlot = foamPipeline_.GetComputeRootParamIndex("gFoamOutput");
         if (outputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), foamUavHandle_[writeIndex]);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), foam_[writeIndex].uav);
         }
         const int constantsSlot = foamPipeline_.GetComputeRootParamIndex("FFTOceanFoamConstants");
         if (constantsSlot >= 0) {
@@ -465,7 +398,7 @@ namespace CoreEngine
         // 書き込んだ側は Water.PS（ピクセルシェーダー）が t21 で読むため、
         // PIXEL を含む読み取り状態へ遷移させる（来フレームは CS の gFoamPrev としても読む）。
         ResourceBarrierHelper::Transition(
-            cmdList, foamTexture_[writeIndex].Get(), foamState_[writeIndex],
+            cmdList, foam_[writeIndex].Get(), foam_[writeIndex].state,
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         ++foamFrameIndex_;
@@ -549,18 +482,17 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        try {
-            displacementTexture_ = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            normalTexture_ = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            jacobianTexture_ = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
-            return false;
-        }
+        // 出力 1 本分の生成（リソース＋配列SRV＋スライスUAV）。
+        // 配列SRVは全スライスを1ビューで見せる（名前ベースのバインドで水面/RTが参照）。
+        // スライスUAVは Finalize が各カスケードのスライスへ書き込むために使う。
+        auto createOutput = [&](CascadeOutputTexture& out, const std::string& name) -> bool {
+            try {
+                out.resource = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            }
+            catch (const std::exception&) {
+                return false;
+            }
 
-        // 配列SRV（全スライスを1ビューで見せる。名前ベースのバインドで水面/RTが参照）。
-        auto createArraySrv = [&](ID3D12Resource* tex,
-            D3D12_CPU_DESCRIPTOR_HANDLE& cpu, D3D12_GPU_DESCRIPTOR_HANDLE& gpu, const std::string& name) {
             D3D12_SHADER_RESOURCE_VIEW_DESC s{};
             s.Format = format;
             s.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
@@ -569,58 +501,27 @@ namespace CoreEngine
             s.Texture2DArray.MipLevels = 1;
             s.Texture2DArray.FirstArraySlice = 0;
             s.Texture2DArray.ArraySize = kCascadeCount;
-            descriptorManager_->CreateSRV(tex, s, cpu, gpu, name);
-        };
-        createArraySrv(displacementTexture_.Get(), displacementSrvCpuHandle_, displacementSrvHandle_, "FFTOceanDisplacementArraySRV");
-        createArraySrv(normalTexture_.Get(), normalSrvCpuHandle_, normalSrvHandle_, "FFTOceanNormalArraySRV");
-        createArraySrv(jacobianTexture_.Get(), jacobianSrvCpuHandle_, jacobianSrvHandle_, "FFTOceanJacobianArraySRV");
+            descriptorManager_->CreateSRV(out.Get(), s, out.srvCpu, out.srv, "FFTOcean" + name + "ArraySRV");
 
-        // スライス単位のUAV（Finalizeが各カスケードのスライスへ書き込む）。
-        auto createSliceUav = [&](ID3D12Resource* tex, uint32_t slice,
-            D3D12_CPU_DESCRIPTOR_HANDLE& cpu, D3D12_GPU_DESCRIPTOR_HANDLE& gpu, const std::string& name) {
-            D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
-            u.Format = format;
-            u.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-            u.Texture2DArray.MipSlice = 0;
-            u.Texture2DArray.FirstArraySlice = slice;
-            u.Texture2DArray.ArraySize = 1;
-            descriptorManager_->CreateUAV(tex, u, cpu, gpu, name);
-        };
-        for (uint32_t c = 0; c < kCascadeCount; ++c) {
-            const std::string idx = std::to_string(c);
-            createSliceUav(displacementTexture_.Get(), c, displacementUavCpuHandle_[c], displacementUavHandle_[c], "FFTOceanDisplacementUAV_" + idx);
-            createSliceUav(normalTexture_.Get(), c, normalUavCpuHandle_[c], normalUavHandle_[c], "FFTOceanNormalUAV_" + idx);
-            createSliceUav(jacobianTexture_.Get(), c, jacobianUavCpuHandle_[c], jacobianUavHandle_[c], "FFTOceanJacobianUAV_" + idx);
-        }
-
-        displacementState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        normalState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        jacobianState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        return true;
-    }
-
-    bool FFTOceanManager::CreateDebugReadbackBuffers()
-    {
-        if (!dxCommon_ || !dxCommon_->GetDevice() || !displacementTexture_ || !normalTexture_) {
-            return false;
-        }
-
-        const FFTOceanReadbackTextureCreateRequest requests[] = {
-            { dxCommon_->GetDevice(), displacementTexture_.Get(), "displacement", &displacementReadbackBuffer_, &displacementReadbackLayout_, &displacementReadbackBytes_ },
-            { dxCommon_->GetDevice(), normalTexture_.Get(), "normal", &normalReadbackBuffer_, &normalReadbackLayout_, &normalReadbackBytes_ },
-            { dxCommon_->GetDevice(), spectrumTextureA_[0].Get(), "evolutionA", &evolutionAReadbackBuffer_, &evolutionAReadbackLayout_, &evolutionAReadbackBytes_ },
-            { dxCommon_->GetDevice(), spectrumTextureB_[0].Get(), "evolutionB", &evolutionBReadbackBuffer_, &evolutionBReadbackLayout_, &evolutionBReadbackBytes_ },
-            { dxCommon_->GetDevice(), spectrumTextureA_[0].Get(), "ifftA", &ifftAReadbackBuffer_, &ifftAReadbackLayout_, &ifftAReadbackBytes_ },
-            { dxCommon_->GetDevice(), spectrumTextureB_[0].Get(), "ifftB", &ifftBReadbackBuffer_, &ifftBReadbackLayout_, &ifftBReadbackBytes_ },
-        };
-
-        for (const FFTOceanReadbackTextureCreateRequest& request : requests) {
-            if (!FFTOceanReadbackHelper::CreateTextureReadbackBuffer(request)) {
-                return false;
+            for (uint32_t c = 0; c < kCascadeCount; ++c) {
+                D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
+                u.Format = format;
+                u.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                u.Texture2DArray.MipSlice = 0;
+                u.Texture2DArray.FirstArraySlice = c;
+                u.Texture2DArray.ArraySize = 1;
+                descriptorManager_->CreateUAV(
+                    out.Get(), u, out.sliceUavCpu[c], out.sliceUav[c],
+                    "FFTOcean" + name + "UAV_" + std::to_string(c));
             }
-        }
 
-        return true;
+            out.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            return true;
+        };
+
+        return createOutput(displacementMap_, "Displacement")
+            && createOutput(normalMap_, "Normal")
+            && createOutput(jacobianMap_, "Jacobian");
     }
 
     bool FFTOceanManager::CreateIntermediateTextures()
@@ -629,42 +530,22 @@ namespace CoreEngine
             dxCommon_->GetDevice(),
             descriptorManager_,
             settings_.resolution,
-            spectrumTextureA_,
-            spectrumTextureB_,
-            spectrumASrvCpuHandle_,
-            spectrumASrvHandle_,
-            spectrumAUavCpuHandle_,
-            spectrumAUavHandle_,
-            spectrumBSrvCpuHandle_,
-            spectrumBSrvHandle_,
-            spectrumBUavCpuHandle_,
-            spectrumBUavHandle_,
-            spectrumAState_,
-            spectrumBState_);
+            spectrumPingPongA_,
+            spectrumPingPongB_);
     }
 
     bool FFTOceanManager::CreateSpectrumBuffer()
     {
         // 初期スペクトル（h0）はパッチ長依存のため、カスケードごとに独立したバッファを作る。
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
-            void* mappedSpectrumSamples = nullptr;
-            bool dirty = false;
-            const bool created = FFTOceanResourceFactory::CreateSpectrumBuffers(
-                dxCommon_->GetDevice(),
-                descriptorManager_,
-                settings_.resolution,
-                sizeof(SpectrumSample),
-                spectrumBuffer_[c],
-                spectrumUploadBuffer_[c],
-                mappedSpectrumSamples,
-                spectrumSrvCpuHandle_[c],
-                spectrumSrvHandle_[c],
-                spectrumBufferState_[c],
-                dirty);
-            if (!created) {
+            if (!FFTOceanResourceFactory::CreateSpectrumBuffers(
+                    dxCommon_->GetDevice(),
+                    descriptorManager_,
+                    settings_.resolution,
+                    sizeof(SpectrumSample),
+                    spectrumBuffers_[c])) {
                 return false;
             }
-            mappedSpectrumSamples_[c] = reinterpret_cast<SpectrumSample*>(mappedSpectrumSamples);
         }
         spectrumBufferDirty_ = true;
         return true;
@@ -697,7 +578,9 @@ namespace CoreEngine
     {
         FFTOceanSpectrumBuilder::Settings builderSettings{};
         builderSettings.resolution = settings.resolution;
-        builderSettings.patchLength = settings.patchLength;
+        // パッチ長は Manager 設定から撤去済み（実値はカスケード定数）。
+        // Builder のサニタイズには有効な代表値を渡す。
+        builderSettings.patchLength = kCascadePatchLength[0];
         builderSettings.amplitudeScale = settings.amplitudeScale;
         builderSettings.windDirection[0] = settings.windDirection[0];
         builderSettings.windDirection[1] = settings.windDirection[1];
@@ -709,7 +592,6 @@ namespace CoreEngine
         FFTOceanSpectrumBuilder::SanitizeSettings(builderSettings, kMaxSpectrumComponents);
 
         settings.resolution = builderSettings.resolution;
-        settings.patchLength = builderSettings.patchLength;
         settings.amplitudeScale = builderSettings.amplitudeScale;
         settings.windDirection[0] = builderSettings.windDirection[0];
         settings.windDirection[1] = builderSettings.windDirection[1];
@@ -734,7 +616,7 @@ namespace CoreEngine
         const float baseTargetRms = significantWaveHeight * 0.25f;
 
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
-            if (!mappedSpectrumSamples_[c]) {
+            if (!MappedSpectrumSamples(c)) {
                 continue;
             }
 
@@ -758,7 +640,7 @@ namespace CoreEngine
 
             FFTOceanSpectrumBuilder::BuildStats stats = FFTOceanSpectrumBuilder::BuildSpectrum(
                 builderSettings,
-                mappedSpectrumSamples_[c],
+                MappedSpectrumSamples(c),
                 static_cast<size_t>(sampleCount));
 
             Logger::GetInstance().Infof(
@@ -851,92 +733,57 @@ namespace CoreEngine
             spectrumBufferDirty_ = false;
             uint64_t copiedBytes = 0;
             for (uint32_t c = 0; c < kCascadeCount; ++c) {
-                if (!spectrumBuffer_[c] || !spectrumUploadBuffer_[c]) {
+                FFTOceanSpectrumBufferSet& buffers = spectrumBuffers_[c];
+                if (!buffers.defaultBuffer || !buffers.uploadBuffer) {
                     continue;
                 }
                 ResourceBarrierHelper::Transition(
-                    cmdList, spectrumBuffer_[c].Get(), spectrumBufferState_[c],
+                    cmdList, buffers.defaultBuffer.Get(), buffers.state,
                     D3D12_RESOURCE_STATE_COPY_DEST);
-                cmdList->CopyResource(spectrumBuffer_[c].Get(), spectrumUploadBuffer_[c].Get());
+                cmdList->CopyResource(buffers.defaultBuffer.Get(), buffers.uploadBuffer.Get());
                 ResourceBarrierHelper::Transition(
-                    cmdList, spectrumBuffer_[c].Get(), spectrumBufferState_[c],
+                    cmdList, buffers.defaultBuffer.Get(), buffers.state,
                     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                copiedBytes += spectrumUploadBuffer_[c]->GetDesc().Width;
+                copiedBytes += buffers.uploadBuffer->GetDesc().Width;
             }
             FFTOceanManagerLogHelper::LogSpectrumUpload(copiedBytes);
         }
 
         FFTOceanDispatchHelper::DispatchEvolutionPass(
             cmdList,
-            spectrumTextureA_,
-            spectrumAState_,
-            spectrumTextureB_,
-            spectrumBState_,
+            spectrumPingPongA_,
+            spectrumPingPongB_,
             evolutionPipeline_,
-            spectrumSrvHandle_[cascadeIndex],
-            spectrumAUavHandle_[0],
-            spectrumBUavHandle_[0],
+            spectrumBuffers_[cascadeIndex].srv,
             GetSimulationConstantsAddress(cascadeIndex),
-            settings_.resolution);
-    }
-
-    void FFTOceanManager::DispatchIFFTPass(
-        ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* inputResource,
-        D3D12_RESOURCE_STATES& inputState,
-        CustomShaderPipeline& pipeline,
-        D3D12_GPU_DESCRIPTOR_HANDLE inputSrv,
-        ID3D12Resource* outputResource,
-        D3D12_RESOURCE_STATES& outputState,
-        D3D12_GPU_DESCRIPTOR_HANDLE outputUav,
-        uint32_t stageIndex,
-        bool isHorizontal,
-        float normalizationScale)
-    {
-        const D3D12_GPU_VIRTUAL_ADDRESS ifftConstantsGpuAddress =
-            UpdateIFFTConstants(stageIndex, isHorizontal, normalizationScale);
-
-        FFTOceanDispatchHelper::DispatchIFFTPass(
-            cmdList,
-            inputResource,
-            inputState,
-            pipeline,
-            inputSrv,
-            outputResource,
-            outputState,
-            outputUav,
-            ifftConstantsGpuAddress,
             settings_.resolution);
     }
 
     uint32_t FFTOceanManager::DispatchIFFTForTexture(
         ID3D12GraphicsCommandList* cmdList,
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPingPongCount>& resources,
-        std::array<D3D12_RESOURCE_STATES, kPingPongCount>& resourceStates,
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount>& srvHandles,
-        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount>& uavHandles,
+        FFTOceanPingPong& textures,
         uint32_t initialIndex)
     {
         uint32_t readIndex = initialIndex;
         uint32_t writeIndex = (initialIndex + 1) % kPingPongCount;
         const uint32_t log2Resolution = GetLog2Resolution();
 
+        auto dispatchStage = [&](uint32_t stageIndex, bool isHorizontal, float normalizationScale) {
+            const D3D12_GPU_VIRTUAL_ADDRESS constantsAddress =
+                UpdateIFFTConstants(stageIndex, isHorizontal, normalizationScale);
+            FFTOceanDispatchHelper::DispatchIFFTPass(
+                cmdList,
+                textures[readIndex],
+                textures[writeIndex],
+                ifftPipeline_,
+                constantsAddress,
+                settings_.resolution);
+            std::swap(readIndex, writeIndex);
+        };
+
         // 横方向IFFT。
         for (uint32_t stageIndex = 0; stageIndex < log2Resolution; ++stageIndex) {
-            const float normalizationScale = 1.0f;
-            DispatchIFFTPass(
-                cmdList,
-                resources[readIndex].Get(),
-                resourceStates[readIndex],
-                ifftPipeline_,
-                srvHandles[readIndex],
-                resources[writeIndex].Get(),
-                resourceStates[writeIndex],
-                uavHandles[writeIndex],
-                stageIndex,
-                true,
-                normalizationScale);
-            std::swap(readIndex, writeIndex);
+            dispatchStage(stageIndex, true, 1.0f);
         }
 
         // 縦方向IFFT。最終ステージのみ1/N正規化を適用する。
@@ -944,19 +791,7 @@ namespace CoreEngine
             const float normalizationScale = (stageIndex + 1 == log2Resolution)
                 ? 1.0f / static_cast<float>(settings_.resolution)
                 : 1.0f;
-            DispatchIFFTPass(
-                cmdList,
-                resources[readIndex].Get(),
-                resourceStates[readIndex],
-                ifftPipeline_,
-                srvHandles[readIndex],
-                resources[writeIndex].Get(),
-                resourceStates[writeIndex],
-                uavHandles[writeIndex],
-                stageIndex,
-                false,
-                normalizationScale);
-            std::swap(readIndex, writeIndex);
+            dispatchStage(stageIndex, false, normalizationScale);
         }
 
         return readIndex;
@@ -965,12 +800,8 @@ namespace CoreEngine
     void FFTOceanManager::DispatchFinalizePass(
         ID3D12GraphicsCommandList* cmdList,
         uint32_t cascadeIndex,
-        ID3D12Resource* spectrumAResource,
-        D3D12_RESOURCE_STATES& spectrumAState,
-        D3D12_GPU_DESCRIPTOR_HANDLE spectrumASrv,
-        ID3D12Resource* spectrumBResource,
-        D3D12_RESOURCE_STATES& spectrumBState,
-        D3D12_GPU_DESCRIPTOR_HANDLE spectrumBSrv)
+        FFTOceanGpuTexture& spectrumA,
+        FFTOceanGpuTexture& spectrumB)
     {
         if (cascadeIndex >= kCascadeCount) {
             return;
@@ -978,202 +809,14 @@ namespace CoreEngine
 
         FFTOceanDispatchHelper::DispatchFinalizePass(
             cmdList,
-            spectrumAResource,
-            spectrumAState,
-            spectrumASrv,
-            spectrumBResource,
-            spectrumBState,
-            spectrumBSrv,
+            spectrumA,
+            spectrumB,
             finalizePipeline_,
-            displacementUavHandle_[cascadeIndex],
-            normalUavHandle_[cascadeIndex],
-            jacobianUavHandle_[cascadeIndex],
+            displacementMap_.sliceUav[cascadeIndex],
+            normalMap_.sliceUav[cascadeIndex],
+            jacobianMap_.sliceUav[cascadeIndex],
             GetSimulationConstantsAddress(cascadeIndex),
             settings_.resolution);
-    }
-
-    void FFTOceanManager::LogPendingDebugReadback()
-    {
-        if (!debugReadbackPending_ || !displacementReadbackBuffer_ || !normalReadbackBuffer_) {
-            return;
-        }
-
-        const FFTOceanReadbackHelper::SurfaceReadbackRequest request{
-            displacementReadbackBuffer_.Get(),
-            normalReadbackBuffer_.Get(),
-            displacementReadbackBytes_,
-            normalReadbackBytes_,
-            displacementReadbackLayout_,
-            normalReadbackLayout_,
-            settings_.resolution,
-            debugReadbackSequence_ };
-
-        if (FFTOceanReadbackHelper::TryLogSurfaceReadback(request)) {
-            debugReadbackPending_ = false;
-        }
-    }
-
-    void FFTOceanManager::LogPendingEvolutionDebugReadback()
-    {
-        if (!evolutionDebugReadbackPending_ || !evolutionAReadbackBuffer_ || !evolutionBReadbackBuffer_) {
-            return;
-        }
-
-        const FFTOceanReadbackHelper::SpectrumReadbackRequest request{
-            evolutionAReadbackBuffer_.Get(),
-            evolutionBReadbackBuffer_.Get(),
-            evolutionAReadbackBytes_,
-            evolutionBReadbackBytes_,
-            evolutionAReadbackLayout_,
-            evolutionBReadbackLayout_,
-            settings_.resolution,
-            evolutionDebugReadbackSequence_,
-            false };
-
-        if (FFTOceanReadbackHelper::TryLogSpectrumReadback(request)) {
-            evolutionDebugReadbackPending_ = false;
-        }
-    }
-
-    void FFTOceanManager::LogPendingIFFTDebugReadback()
-    {
-        if (!ifftDebugReadbackPending_ || !ifftAReadbackBuffer_ || !ifftBReadbackBuffer_) {
-            return;
-        }
-
-        const FFTOceanReadbackHelper::SpectrumReadbackRequest request{
-            ifftAReadbackBuffer_.Get(),
-            ifftBReadbackBuffer_.Get(),
-            ifftAReadbackBytes_,
-            ifftBReadbackBytes_,
-            ifftAReadbackLayout_,
-            ifftBReadbackLayout_,
-            settings_.resolution,
-            ifftDebugReadbackSequence_,
-            true };
-
-        if (FFTOceanReadbackHelper::TryLogSpectrumReadback(request)) {
-            ifftDebugReadbackPending_ = false;
-        }
-    }
-
-    void FFTOceanManager::ScheduleIFFTDebugReadback(
-        ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* spectrumAResource,
-        D3D12_RESOURCE_STATES& spectrumAState,
-        ID3D12Resource* spectrumBResource,
-        D3D12_RESOURCE_STATES& spectrumBState)
-    {
-        if (!cmdList || !ifftAReadbackBuffer_ || !ifftBReadbackBuffer_ || !spectrumAResource || !spectrumBResource) {
-            return;
-        }
-
-        // IFFT完了後のスペクトルをReadbackバッファへコピーして次フレームで解析する。
-        D3D12_TEXTURE_COPY_LOCATION srcA{};
-        srcA.pResource = spectrumAResource;
-        srcA.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        srcA.SubresourceIndex = 0;
-
-        D3D12_TEXTURE_COPY_LOCATION dstA{};
-        dstA.pResource = ifftAReadbackBuffer_.Get();
-        dstA.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        dstA.PlacedFootprint = ifftAReadbackLayout_;
-
-        D3D12_TEXTURE_COPY_LOCATION srcB{};
-        srcB.pResource = spectrumBResource;
-        srcB.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        srcB.SubresourceIndex = 0;
-
-        D3D12_TEXTURE_COPY_LOCATION dstB{};
-        dstB.pResource = ifftBReadbackBuffer_.Get();
-        dstB.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        dstB.PlacedFootprint = ifftBReadbackLayout_;
-
-        ResourceBarrierHelper::Transition(cmdList, spectrumAResource, spectrumAState, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        ResourceBarrierHelper::Transition(cmdList, spectrumBResource, spectrumBState, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmdList->CopyTextureRegion(&dstA, 0, 0, 0, &srcA, nullptr);
-        cmdList->CopyTextureRegion(&dstB, 0, 0, 0, &srcB, nullptr);
-        ResourceBarrierHelper::Transition(cmdList, spectrumAResource, spectrumAState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, spectrumBResource, spectrumBState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-        ifftDebugReadbackPending_ = true;
-        ++ifftDebugReadbackSequence_;
-    }
-
-    void FFTOceanManager::ScheduleEvolutionDebugReadback(ID3D12GraphicsCommandList* cmdList)
-    {
-        if (!cmdList || !evolutionAReadbackBuffer_ || !evolutionBReadbackBuffer_) {
-            return;
-        }
-
-        // 時間発展直後の中間スペクトルをReadbackする。
-        D3D12_TEXTURE_COPY_LOCATION srcA{};
-        srcA.pResource = spectrumTextureA_[0].Get();
-        srcA.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        srcA.SubresourceIndex = 0;
-
-        D3D12_TEXTURE_COPY_LOCATION dstA{};
-        dstA.pResource = evolutionAReadbackBuffer_.Get();
-        dstA.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        dstA.PlacedFootprint = evolutionAReadbackLayout_;
-
-        D3D12_TEXTURE_COPY_LOCATION srcB{};
-        srcB.pResource = spectrumTextureB_[0].Get();
-        srcB.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        srcB.SubresourceIndex = 0;
-
-        D3D12_TEXTURE_COPY_LOCATION dstB{};
-        dstB.pResource = evolutionBReadbackBuffer_.Get();
-        dstB.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        dstB.PlacedFootprint = evolutionBReadbackLayout_;
-
-        ResourceBarrierHelper::Transition(cmdList, spectrumTextureA_[0].Get(), spectrumAState_[0], D3D12_RESOURCE_STATE_COPY_SOURCE);
-        ResourceBarrierHelper::Transition(cmdList, spectrumTextureB_[0].Get(), spectrumBState_[0], D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmdList->CopyTextureRegion(&dstA, 0, 0, 0, &srcA, nullptr);
-        cmdList->CopyTextureRegion(&dstB, 0, 0, 0, &srcB, nullptr);
-        ResourceBarrierHelper::Transition(cmdList, spectrumTextureA_[0].Get(), spectrumAState_[0], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, spectrumTextureB_[0].Get(), spectrumBState_[0], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        evolutionDebugReadbackPending_ = true;
-        ++evolutionDebugReadbackSequence_;
-    }
-
-    void FFTOceanManager::ScheduleDebugReadback(ID3D12GraphicsCommandList* cmdList)
-    {
-        if (!cmdList || !displacementReadbackBuffer_ || !normalReadbackBuffer_) {
-            return;
-        }
-
-        // 最終出力(変位/法線)をReadbackして統計ログに利用する。
-        D3D12_TEXTURE_COPY_LOCATION displacementSrc{};
-        displacementSrc.pResource = displacementTexture_.Get();
-        displacementSrc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        displacementSrc.SubresourceIndex = 0;
-
-        D3D12_TEXTURE_COPY_LOCATION displacementDst{};
-        displacementDst.pResource = displacementReadbackBuffer_.Get();
-        displacementDst.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        displacementDst.PlacedFootprint = displacementReadbackLayout_;
-
-        D3D12_TEXTURE_COPY_LOCATION normalSrc{};
-        normalSrc.pResource = normalTexture_.Get();
-        normalSrc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        normalSrc.SubresourceIndex = 0;
-
-        D3D12_TEXTURE_COPY_LOCATION normalDst{};
-        normalDst.pResource = normalReadbackBuffer_.Get();
-        normalDst.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        normalDst.PlacedFootprint = normalReadbackLayout_;
-
-        ResourceBarrierHelper::Transition(cmdList, displacementTexture_.Get(), displacementState_, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        ResourceBarrierHelper::Transition(cmdList, normalTexture_.Get(), normalState_, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmdList->CopyTextureRegion(&displacementDst, 0, 0, 0, &displacementSrc, nullptr);
-        cmdList->CopyTextureRegion(&normalDst, 0, 0, 0, &normalSrc, nullptr);
-        ResourceBarrierHelper::Transition(cmdList, displacementTexture_.Get(), displacementState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, normalTexture_.Get(), normalState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-        debugReadbackPending_ = true;
-        ++debugReadbackSequence_;
     }
 
     uint32_t FFTOceanManager::GetLog2Resolution() const

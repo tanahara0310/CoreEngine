@@ -17,7 +17,6 @@ struct WaterEditorFFTSettings {
     bool managerAvailable = false;
     bool initialized = false;
     int resolution = 256;
-    float patchLength = 96.0f;
     float amplitudeScale = 1.0f;
     float windDirection[2] = { 0.92f, 0.38f };
     float windSpeed = 24.0f;

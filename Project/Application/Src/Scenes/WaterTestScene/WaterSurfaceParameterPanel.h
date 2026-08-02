@@ -93,7 +93,6 @@ private:
 	struct FFTOceanParameters {
 		int preset = 0;
 		bool enabled = true;
-		float patchLength = 96.0f;
 		float amplitudeScale = 1.0f;
 		float windDirection[2] = { 0.92f, 0.38f };
 		float windSpeed = 24.0f;

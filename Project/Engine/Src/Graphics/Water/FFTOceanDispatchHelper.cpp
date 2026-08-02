@@ -7,29 +7,21 @@ namespace CoreEngine
 {
     void FFTOceanDispatchHelper::DispatchEvolutionPass(
         ID3D12GraphicsCommandList* cmdList,
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2>& spectrumTextureA,
-        std::array<D3D12_RESOURCE_STATES, 2>& spectrumAState,
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, 2>& spectrumTextureB,
-        std::array<D3D12_RESOURCE_STATES, 2>& spectrumBState,
+        FFTOceanPingPong& spectrumA,
+        FFTOceanPingPong& spectrumB,
         CustomShaderPipeline& evolutionPipeline,
         D3D12_GPU_DESCRIPTOR_HANDLE spectrumSrvHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE spectrumAUavHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE spectrumBUavHandle,
         D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
         uint32_t resolution)
     {
-        for (uint32_t i = 0; i < 2; ++i) {
-            ResourceBarrierHelper::Transition(
-                cmdList,
-                spectrumTextureA[i].Get(),
-                spectrumAState[i],
-                i == 0 ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS : D3D12_RESOURCE_STATE_COMMON);
-            ResourceBarrierHelper::Transition(
-                cmdList,
-                spectrumTextureB[i].Get(),
-                spectrumBState[i],
-                i == 0 ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS : D3D12_RESOURCE_STATE_COMMON);
-        }
+        // 時間発展が書くのは ping-pong の index 0 のみ。index 1 は後続の IFFT が
+        // 追跡ステートから必要な状態へ遷移させるため、ここでは触らない
+        // （以前は index 1 を毎回 COMMON へ落としており、カスケード×フレームごとに
+        //   無意味なバリアを発行していた）。
+        ResourceBarrierHelper::Transition(
+            cmdList, spectrumA[0].Get(), spectrumA[0].state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(
+            cmdList, spectrumB[0].Get(), spectrumB[0].state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(evolutionPipeline.GetComputePSO());
         cmdList->SetComputeRootSignature(evolutionPipeline.GetComputeRootSignature());
@@ -41,12 +33,12 @@ namespace CoreEngine
 
         const int spectrumAOutputSlot = evolutionPipeline.GetComputeRootParamIndex("gHeightDisplacementXOutput");
         if (spectrumAOutputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumAOutputSlot), spectrumAUavHandle);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumAOutputSlot), spectrumA[0].uav);
         }
 
         const int spectrumBOutputSlot = evolutionPipeline.GetComputeRootParamIndex("gDisplacementZOutput");
         if (spectrumBOutputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBOutputSlot), spectrumBUavHandle);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBOutputSlot), spectrumB[0].uav);
         }
 
         const int constantsSlot = evolutionPipeline.GetComputeRootParamIndex("FFTOceanSimulationConstants");
@@ -60,36 +52,32 @@ namespace CoreEngine
         const UINT dispatchY = (resolution + 7) / 8;
         cmdList->Dispatch(dispatchX, dispatchY, 1);
 
-        ResourceBarrierHelper::UAV(cmdList, spectrumTextureA[0].Get());
-        ResourceBarrierHelper::UAV(cmdList, spectrumTextureB[0].Get());
+        ResourceBarrierHelper::UAV(cmdList, spectrumA[0].Get());
+        ResourceBarrierHelper::UAV(cmdList, spectrumB[0].Get());
     }
 
     void FFTOceanDispatchHelper::DispatchIFFTPass(
         ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* inputResource,
-        D3D12_RESOURCE_STATES& inputState,
+        FFTOceanGpuTexture& input,
+        FFTOceanGpuTexture& output,
         CustomShaderPipeline& pipeline,
-        D3D12_GPU_DESCRIPTOR_HANDLE inputSrv,
-        ID3D12Resource* outputResource,
-        D3D12_RESOURCE_STATES& outputState,
-        D3D12_GPU_DESCRIPTOR_HANDLE outputUav,
         D3D12_GPU_VIRTUAL_ADDRESS ifftConstantsGpuAddress,
         uint32_t resolution)
     {
-        ResourceBarrierHelper::Transition(cmdList, inputResource, inputState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, outputResource, outputState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(cmdList, input.Get(), input.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, output.Get(), output.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(pipeline.GetComputePSO());
         cmdList->SetComputeRootSignature(pipeline.GetComputeRootSignature());
 
         const int inputSlot = pipeline.GetComputeRootParamIndex("gInputSpectrum");
         if (inputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(inputSlot), inputSrv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(inputSlot), input.srv);
         }
 
         const int outputSlot = pipeline.GetComputeRootParamIndex("gOutputSpectrum");
         if (outputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), outputUav);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), output.uav);
         }
 
         const int constantsSlot = pipeline.GetComputeRootParamIndex("FFTOceanIFFTConstants");
@@ -102,17 +90,13 @@ namespace CoreEngine
         const UINT dispatchX = (resolution + 7) / 8;
         const UINT dispatchY = (resolution + 7) / 8;
         cmdList->Dispatch(dispatchX, dispatchY, 1);
-        ResourceBarrierHelper::UAV(cmdList, outputResource);
+        ResourceBarrierHelper::UAV(cmdList, output.Get());
     }
 
     void FFTOceanDispatchHelper::DispatchFinalizePass(
         ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* spectrumAResource,
-        D3D12_RESOURCE_STATES& spectrumAState,
-        D3D12_GPU_DESCRIPTOR_HANDLE spectrumASrv,
-        ID3D12Resource* spectrumBResource,
-        D3D12_RESOURCE_STATES& spectrumBState,
-        D3D12_GPU_DESCRIPTOR_HANDLE spectrumBSrv,
+        FFTOceanGpuTexture& spectrumA,
+        FFTOceanGpuTexture& spectrumB,
         CustomShaderPipeline& finalizePipeline,
         D3D12_GPU_DESCRIPTOR_HANDLE displacementUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE normalUavHandle,
@@ -120,20 +104,20 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
         uint32_t resolution)
     {
-        ResourceBarrierHelper::Transition(cmdList, spectrumAResource, spectrumAState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, spectrumBResource, spectrumBState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, spectrumA.Get(), spectrumA.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        ResourceBarrierHelper::Transition(cmdList, spectrumB.Get(), spectrumB.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         cmdList->SetPipelineState(finalizePipeline.GetComputePSO());
         cmdList->SetComputeRootSignature(finalizePipeline.GetComputeRootSignature());
 
         const int spectrumASlot = finalizePipeline.GetComputeRootParamIndex("gHeightDisplacementXSpectrum");
         if (spectrumASlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumASlot), spectrumASrv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumASlot), spectrumA.srv);
         }
 
         const int spectrumBSlot = finalizePipeline.GetComputeRootParamIndex("gDisplacementZSpectrum");
         if (spectrumBSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBSlot), spectrumBSrv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBSlot), spectrumB.srv);
         }
 
         const int displacementOutputSlot = finalizePipeline.GetComputeRootParamIndex("gDisplacementOutput");
