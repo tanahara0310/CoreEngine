@@ -115,7 +115,28 @@ Development クリーンビルド成功、25秒起動スモークテスト通過
 
 検証: debugViewMode=4 の水面線連続性（緑判定）、日没時のコースティクス輝度前後比較、フルビルド成功。
 
-### Phase 1: 単一ソース化（リスク: 中、効果: 事故再発防止の本丸)
+### Phase 1: 単一ソース化（リスク: 中、効果: 事故再発防止の本丸) ✅ 完了 2026-08-03
+
+実施内容:
+1. `Water/Common/WaterFrameConstants.hlsli` を新設し、b5 cbuffer を Water.PS / Water.VS / FFTWater.VS の
+   3 本から include 参照へ（VS 2本のフィールド名食い違い gDebugPadding も解消）。C++ 側とは
+   WaterSurfaceTypes.h の static_assert 5 本で 2 箇所一致を維持
+2. Water.VS.hlsl の独自 CalcGerstnerWave を削除し GerstnerWave.hlsli
+   （EvaluateGerstnerWaveOffset / AccumulateGerstnerWaveDerivatives / BuildGerstnerNormal）へ一本化。
+   b4 の波構造体も GerstnerWave 型を直接使用
+3. WaterWaveParam を `using WaterWaveParam = ::WaveParams` に統合（32B 同一レイアウトの重複定義を解消、
+   GerstnerWaterSimulator のフィールド単位変換も削除）
+4. FFTOceanManager::SpectrumSample を SpectrumBuilder の型へ一本化（reinterpret_cast 削除）。
+   SpectrumSample(40B)/SimulationConstants(32B)/FoamConstants(48B・cascadeWeights offset16) に
+   static_assert 追加 — **導入時に「32B と思い込んでいたが実際は 40B」を即検出し、コピーログの
+   7,864,320 bytes = 256²×40×3 とも整合確認**
+5. デバッグビュー名テーブルを WaterDebugViewMode.h（Engine 側）の kWaterDebugViewModeNames へ移設、
+   enum に Count を追加して個数 static_assert（Application 側の手動同期テーブルを削除）
+6. 既定値の一本化: WaterRenderFeature のマテリアル/スクロール/タイリング初期値を
+   GetWaterPresetData(Lake) 参照へ（roughness 0.04 vs 0.03 の食い違いはプリセット側 0.03 に統一）
+
+検証: dxc で 3 シェーダー単体コンパイル成功・Development 増分ビルド成功・起動 30 秒＋
+PrintWindow キャプチャで水面描画正常（色化け・帯なし）・spectrum copy ログ正常。
 1. **WaterFrameConstants.hlsli 抽出**: cbuffer 宣言を Water/Common/ へ置き PS/VS/FFTWater.VS の3本で include（HLSL側を物理的に1箇所へ）。C++ とは既存 static_assert 5本で2箇所一致を維持（WaterRefractionEncoding.hlsli / FFTOceanCascadeValues.hlsli で実証済みパターン）。WaterConstants(b4) も同様
 2. **Water.VS.hlsl の独自 Gerstner 実装を削除**し GerstnerWave.hlsli の EvaluateGerstnerWaveOffset / AccumulateGerstnerWaveDerivatives へ置換（乗算順序注意: GerstnerWave.hlsli:65-67）
 3. WaveParams 系 C++ 2型（WaterSurfaceTypes.h / WaterSurfaceData.h）の統合

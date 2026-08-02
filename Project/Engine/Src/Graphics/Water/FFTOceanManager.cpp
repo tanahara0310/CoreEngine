@@ -758,7 +758,7 @@ namespace CoreEngine
 
             FFTOceanSpectrumBuilder::BuildStats stats = FFTOceanSpectrumBuilder::BuildSpectrum(
                 builderSettings,
-                reinterpret_cast<FFTOceanSpectrumBuilder::SpectrumSample*>(mappedSpectrumSamples_[c]),
+                mappedSpectrumSamples_[c],
                 static_cast<size_t>(sampleCount));
 
             Logger::GetInstance().Infof(

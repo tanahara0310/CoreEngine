@@ -2,8 +2,10 @@
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
+#include "Graphics/Water/FFTOceanSpectrumBuilder.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 #include <wrl.h>
@@ -99,14 +101,10 @@ namespace CoreEngine
         // （2 * log2(最大解像度512=9) * 2系統 = 36）× kCascadeCount 分を余裕を持って確保する。
         static constexpr uint32_t kMaxIFFTPassCount = 36 * kCascadeCount + 8;
 
-        struct SpectrumSample {
-            float h0[2] = {};
-            float h0Minus[2] = {};
-            float waveVector[2] = {};
-            float angularFrequency = 0.0f;
-            float directionalWeight = 0.0f;
-            float padding[2] = {};
-        };
+        // スペクトルサンプルの型は SpectrumBuilder に一本化した
+        // （以前は同一レイアウト 32B の重複定義＋無検証 reinterpret_cast だった）。
+        // HLSL 側 FFTOceanTimeEvolution.CS.hlsl の SpectrumSample と一致必須。
+        using SpectrumSample = FFTOceanSpectrumBuilder::SpectrumSample;
 
         struct SimulationConstants {
             uint32_t resolution = 0;
@@ -138,6 +136,18 @@ namespace CoreEngine
             uint32_t resetFoam = 0;
             float padding[3] = {};
         };
+
+        // GPU へそのまま転送する構造体のレイアウト検証（HLSL 側との一致は目視だが、
+        // C++ 側の不用意なフィールド追加・並び替えはここで検出する。
+        // RTシャドウの cbuffer 配列ずれ事故と同型の予防）。
+        static_assert(sizeof(SpectrumSample) == 40,
+            "SpectrumSample must be 40 bytes (StructuredBuffer stride in FFTOceanTimeEvolution.CS.hlsl)");
+        static_assert(sizeof(SimulationConstants) == 32,
+            "SimulationConstants layout mismatch with FFTOceanSimulationConstants cbuffer");
+        static_assert(sizeof(FoamConstants) == 48,
+            "FoamConstants layout mismatch with FFTOceanFoamAccumulate.CS.hlsl cbuffer");
+        static_assert(offsetof(FoamConstants, cascadeWeights) == 16,
+            "FoamConstants::cascadeWeights must start on a 16-byte boundary (HLSL float3 packing)");
 
         /// @brief 時間発展パス用Compute Shaderのパスを提供する
         struct TimeEvolutionShaderProvider final : ICustomShaderProvider {

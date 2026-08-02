@@ -209,8 +209,11 @@ namespace CoreEngine
         waterPlane_->GetTransform().translate = config_.translate;
         waterPlane_->GetTransform().scale = config_.scale;
         waterPlane_->SetBlendMode(BlendMode::kBlendModeNormal);
-        waterPlane_->SetScrollSpeed({ 0.03f, 0.01f });
-        waterPlane_->SetUVTiling({ 4.0f, 4.0f });
+        // 既定のスクロール/タイリングは Lake プリセットを単一情報源とする
+        // （以前はここと WaterPlaneObject コンストラクタに同値のハードコードが重複していた）
+        const WaterPresetData& defaultPreset = GetWaterPresetData(WaterPresetType::Lake);
+        waterPlane_->SetScrollSpeed(defaultPreset.scrollSpeed);
+        waterPlane_->SetUVTiling(defaultPreset.uvTiling);
         waterPlane_->SetActive(true);
         ConfigureDefaultMaterial();
     }
@@ -224,10 +227,12 @@ namespace CoreEngine
             return;
         }
 
-        // 水面らしい鏡面的な PBR 初期値
-        material->SetColor({ 0.04f, 0.18f, 0.28f, 0.85f });
-        material->SetMetallic(0.0f);
-        material->SetRoughness(0.04f);
+        // 水面らしい鏡面的な PBR 初期値。Lake プリセット（WaterSurfaceTypes.h）が
+        // 単一情報源（以前はここに複製があり roughness が 0.04 vs 0.03 で食い違っていた）
+        const WaterPresetData& preset = GetWaterPresetData(WaterPresetType::Lake);
+        material->SetColor(preset.baseColor);
+        material->SetMetallic(preset.metallic);
+        material->SetRoughness(preset.roughness);
         material->SetLightingEnabled(true);
         // 鏡面反射は RTWaterReflectionPass と空環境キューブマップで賄う。
         // ここで静的環境マップの IBL を効かせると大気の空と映り込みが食い違う。

@@ -3,7 +3,7 @@
 // ------------------------------------------------------------
 // 本体の合成ロジック（main）から診断コードを切り離すためのファイル。
 // 表示モードの番号は C++ 側 WaterDebugViewMode と
-// WaterSurfaceDebugPanel.cpp の kWaterDebugViewNames に対応させること。
+// kWaterDebugViewModeNames（WaterDebugViewMode.h）に対応させること。
 //
 // 【include 位置の契約】
 // このファイルは Water.PS.hlsl の main() 直前で include すること。

@@ -13,33 +13,8 @@
 using namespace CoreEngine;
 
 namespace {
-// Water.PS.hlsl のデバッグ表示モード名を ImGui へそのまま提示する。
-const char* const kWaterDebugViewNames[] = {
-	"なし",
-	"生の深度",
-	"線形深度",
-	"深度差",
-	"スクリーンUV",
-	"シーンカラー",
-	"反射",
-	"フレネル",
-	"RT屈折",
-	"RT屈折理由",
-	"RT屈折とシーン比較",
-	"透過光",
-	"波長別透過率",
-	"反射率",
-	"最終合成",
-	"RT屈折成功マスク",
-	"FFT Jacobian",
-	"平面反射(生・雲なし)",
-	"雲キューブマップ色",
-	"雲上書き強度",
-	"合成:透過のみ(Fresnel=0)",
-	"合成:反射のみ(Fresnel=1)",
-	"反射-透過の差分",
-	"FFT 泡マスク",
-};
+// 水面デバッグ表示モード名は WaterDebugViewMode.h（Engine 側）の
+// kWaterDebugViewModeNames が単一情報源（enum との個数一致を static_assert 済み）。
 
 const char* const kRTRefractionDebugViewNames[] = {
 	"なし",
@@ -100,7 +75,7 @@ void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterRenderFeature& runtimeC
 	bool debugChanged = false;
 	debugChanged |= ImGui::Checkbox("Depth Fade デバッグを有効にする", &depthFadeDebugEnabled_);
 	debugChanged |= ImGui::SliderFloat("デバッグ表示倍率", &depthFadeDebugScale_, 0.1f, 8.0f, "%.2f");
-	debugChanged |= ImGui::Combo("可視化モード", &depthDebugViewMode_, kWaterDebugViewNames, IM_ARRAYSIZE(kWaterDebugViewNames));
+	debugChanged |= ImGui::Combo("可視化モード", &depthDebugViewMode_, kWaterDebugViewModeNames, IM_ARRAYSIZE(kWaterDebugViewModeNames));
 	if (debugChanged) {
 		waterPlane->SetDepthFadeDebug(depthFadeDebugEnabled_, depthFadeDebugScale_);
 		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(depthDebugViewMode_));
