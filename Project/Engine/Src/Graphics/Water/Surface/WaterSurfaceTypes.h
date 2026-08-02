@@ -88,15 +88,29 @@ struct WaterFrameConstants {
 	float cameraNearZ = 0.1f;
 	float cameraFarZ = 1000.0f;
 	float cameraClipPadding[2] = {};
+	// ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たないため無効）----
+	// foamBias: 発生しきい値。合成ヤコビアン detJ がこれを下回ると泡が立つ
+	// foamGain: しきい値からの立ち上がり勾配
+	// foamCascadeWeights: カスケード別の勾配寄与の重み。勾配は波数 k に比例するため、
+	//   無重みだと最小カスケード（31m）が支配して detJ が広範囲で飽和する（Phase 0 実測）
+	int foamEnabled = 1;
+	float foamBias = 0.85f;
+	float foamGain = 4.0f;
+	float foamOpacity = 0.9f;
+	float foamCascadeWeights[3] = { 1.0f, 0.5f, 0.2f };
+	// 泡の寿命 τ [s]（e^-1 減衰時間）。PS 未使用だが単一情報源としてここに持ち、
+	// WaterRenderFeature が毎フレーム FFTOceanManager::SetFoamSettings へ転送する
+	float foamDecaySeconds = 3.0f;
 };
 
 // HLSL の cbuffer packing 規則（float3 は 16B 境界をまたげない）と C++ のレイアウトが
 // 一致していることを検証する。ずれると水柱厚さ・光学係数が別のフィールドを読み、
 // 波打ち際の段差として現れる（RTシャドウの cbuffer 配列ずれ事故と同型）。
-static_assert(sizeof(WaterFrameConstants) == 96, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(sizeof(WaterFrameConstants) == 128, "WaterFrameConstants size mismatch with HLSL cbuffer");
 static_assert(offsetof(WaterFrameConstants, absorptionCoeff) % 16 == 0, "absorptionCoeff must start on a 16-byte boundary");
 static_assert(offsetof(WaterFrameConstants, scatteringCoeff) % 16 == 0, "scatteringCoeff must start on a 16-byte boundary");
 static_assert(offsetof(WaterFrameConstants, cameraNearZ) == 80, "cameraNearZ offset mismatch with HLSL cbuffer");
+static_assert(offsetof(WaterFrameConstants, foamCascadeWeights) % 16 == 0, "foamCascadeWeights must start on a 16-byte boundary");
 
 enum class WaterPresetType : int {
 	Lake = 0,

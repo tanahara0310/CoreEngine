@@ -6,6 +6,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Utility/CVar/CVar.h"
 
 
 namespace CoreEngine {
@@ -55,13 +56,34 @@ namespace CoreEngine {
         virtual void Update(float /*deltaTime*/) {}
 
         /// @brief エフェクトの有効/無効を設定
-        virtual void SetEnabled(bool enabled) { enabled_ = enabled; }
+        virtual void SetEnabled(bool enabled)
+        {
+            if (CVar<bool>* cvar = GetEnabledCVar()) {
+                cvar->Set(enabled);
+                return;
+            }
+            enabled_ = enabled;
+        }
 
         /// @brief エフェクトが有効かどうかを取得
-        bool IsEnabled() const { return enabled_; }
+        bool IsEnabled() const
+        {
+            if (const CVar<bool>* cvar = GetEnabledCVar()) {
+                return cvar->Get();
+            }
+            return enabled_;
+        }
 
         /// @brief 常時有効なエフェクトかどうかを取得（無効化不可）
         virtual bool IsAlwaysEnabled() const { return false; }
+
+        /// @brief 有効/無効を保持する CVar を返す
+        /// @return CVar（"r.<Effect>.Enabled"）。持たないエフェクトは nullptr
+        /// @details 派生クラスが自分のファイルスコープ CVar を返すことで、
+        ///          有効状態が自動的に UI・CVars.json・コンソールへ載る。
+        ///          常時有効なエフェクト（FullScreen / ToneMapping）は nullptr のままでよい。
+        ///          設計: Docs/Engine/Editor/CVar_Design.md
+        virtual CVar<bool>* GetEnabledCVar() const { return nullptr; }
 
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得
         int GetRootParamIndex(const std::string& resourceName) const;

@@ -3,11 +3,44 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<Vector4> cvOutlineColor{
+            "r.Outline.Color", Vector4{ 0.0f, 0.0f, 0.0f, 1.0f },
+            "アウトラインの色（RGBA）" };
+
+        CVar<float> cvDepthThreshold{
+            "r.Outline.DepthThreshold", 0.5f,
+            "エッジと判定する深度差（m）。小さいほど細かい線が出る",
+            CVarRange{ 0.01f, 10.0f } };
+
+        CVar<float> cvDepthStrength{
+            "r.Outline.DepthStrength", 1.0f,
+            "エッジ強度の乗数",
+            CVarRange{ 0.1f, 20.0f } };
+
+        CVar<float> cvOutlineWidth{
+            "r.Outline.Width", 1.0f,
+            "線の太さ（ピクセル）",
+            CVarRange{ 1.0f, 4.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.Outline.Enabled", false,
+            "アウトラインを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.Outline";
+    }
+
     void Outline::OnCreateConstantBuffers()
     {
         // アウトラインパラメータ用定数バッファ
@@ -26,7 +59,21 @@ namespace CoreEngine
 
     void Outline::UpdateConstantBuffer()
     {
-        if (mappedOutlineParams_) { *mappedOutlineParams_ = params_; }
+        if (!mappedOutlineParams_) {
+            return;
+        }
+        const Vector4& color = cvOutlineColor.Get();
+        mappedOutlineParams_->outlineColor[0] = color.x;
+        mappedOutlineParams_->outlineColor[1] = color.y;
+        mappedOutlineParams_->outlineColor[2] = color.z;
+        mappedOutlineParams_->outlineColor[3] = color.w;
+
+        mappedOutlineParams_->depthThreshold = cvDepthThreshold.Get();
+        mappedOutlineParams_->depthStrength  = cvDepthStrength.Get();
+        mappedOutlineParams_->outlineWidth   = cvOutlineWidth.Get();
+        // クリップ距離はカメラから設定される実行時値
+        mappedOutlineParams_->nearPlane = nearPlane_;
+        mappedOutlineParams_->farPlane  = farPlane_;
     }
 
     void Outline::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -37,18 +84,12 @@ namespace CoreEngine
         }
     }
 
-    void Outline::SetParams(const OutlineParams& params)
-    {
-        params_ = params;
-        UpdateConstantBuffer();
-    }
-
     void Outline::SetCameraClipPlanes(float nearPlane, float farPlane)
     {
         // near/farが変わった場合のみ更新してGPU転送コストを抑える
-        if (params_.nearPlane != nearPlane || params_.farPlane != farPlane) {
-            params_.nearPlane = nearPlane;
-            params_.farPlane  = farPlane;
+        if (nearPlane_ != nearPlane || farPlane_ != farPlane) {
+            nearPlane_ = nearPlane;
+            farPlane_  = farPlane;
             UpdateConstantBuffer();
         }
     }
@@ -59,6 +100,7 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
+        UpdateConstantBuffer();
         UpdateScreenConstantBuffer(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
@@ -106,34 +148,22 @@ namespace CoreEngine
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            // アウトライン色
-            changed |= ImGui::ColorEdit4("アウトライン色", params_.outlineColor);
+        CVarUI::DrawTree(kCVarPrefix);
 
-            // 深度閾値（線形深度の差分量、単位：m）
-            changed |= UI::SliderFloat("深度閾値 (m)", params_.depthThreshold, 0.01f, 10.0f);
-
-            // エッジ強度
-            changed |= UI::SliderFloat("エッジ強度", params_.depthStrength, 0.1f, 20.0f);
-
-            // アウトライン太さ
-            changed |= UI::SliderFloat("アウトライン太さ", params_.outlineWidth, 1.0f, 4.0f);
-
-            // カメラクリップ距離（シェーダーの線形化に使用）
-            changed |= UI::SliderFloat("ニアクリップ", params_.nearPlane, 0.01f, 10.0f);
-            changed |= UI::SliderFloat("ファークリップ", params_.farPlane, 10.0f, 5000.0f);
-
-            ImGui::TreePop();
-        }
-        if (changed) { UpdateConstantBuffer(); }
+        // クリップ距離はカメラが毎フレーム上書きするため、表示のみ
+        ImGui::TextDisabled("クリップ距離（カメラから自動設定）: near %.2f / far %.1f",
+                            nearPlane_, farPlane_);
 
         UI::Separator();
         if (ImGui::Button("デフォルトに戻す")) {
-            params_ = OutlineParams{};
-            UpdateConstantBuffer();
+            CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* Outline::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

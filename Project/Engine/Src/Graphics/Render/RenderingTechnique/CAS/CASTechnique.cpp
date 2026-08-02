@@ -1,4 +1,6 @@
 #include "pch.h"
+#include "Utility/CVar/CVar.h"
+#include "Editor/ImGui/CVarPanel.h"
 #include "CASTechnique.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
@@ -14,6 +16,21 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvEnabled{
+            "r.CAS.Enabled", true,
+            "CAS（コントラスト適応シャープ）を有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        CVar<float> cvSharpness{
+            "r.CAS.Sharpness", 0.5f,
+            "シャープの強さ。0 = 最弱 / 1 = 最強",
+            CVarRange{ 0.0f, 1.0f } };
+
+        constexpr const char* kCVarPrefix = "r.CAS";
+    }
+
     void CASTechnique::Initialize(DirectXCommon* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
@@ -23,6 +40,9 @@ namespace CoreEngine
     void CASTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
     {
         outputSrvHandle = {};
+
+        // 調整値は CVar が保持する。UI・設定復元のどの経路で変わってもここで取り込む
+        params_.sharpness = cvSharpness.Get();
 
         if (!IsEnabled() || !context.renderTargetManager || !context.frameBlackboard
             || !context.gBufferManager || !context.dxCommon) {
@@ -81,17 +101,12 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         ImGui::PushID("CASParams");
 
-        bool changed = false;
-        if (UI::SliderFloat("シャープ強度", params_.sharpness, 0.0f, 1.0f)) { changed = true; }
+        // パラメータ UI は CVar から自動生成される（値は毎フレーム Execute で取り込まれる）
+        CVarUI::DrawTree(kCVarPrefix);
         ImGui::TextWrapped("TAA でぼけた分を戻す。上げすぎると輪郭が硬くなる（0.5 前後が標準）");
 
         if (ImGui::Button("デフォルトに戻す")) {
-            params_.sharpness = 0.5f;
-            changed = true;
-        }
-
-        if (changed) {
-            UpdateConstantBuffer();
+            CVarUI::ResetTree(kCVarPrefix);
         }
 
         ImGui::PopID();
@@ -125,5 +140,10 @@ namespace CoreEngine
         [[maybe_unused]] HRESULT hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
+    }
+
+    CVar<bool>* CASTechnique::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

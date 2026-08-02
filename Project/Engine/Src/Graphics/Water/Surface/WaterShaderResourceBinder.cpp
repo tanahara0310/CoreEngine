@@ -100,6 +100,15 @@ void WaterShaderResourceBinder::Bind(
         }
     }
 
+    if (renderResources.fftFoamSRV.ptr != 0) {
+        const int fftFoamSlot = pipeline->GetRootParamIndex("gFFTOceanFoam");
+        if (fftFoamSlot >= 0) {
+            cmdList->SetGraphicsRootDescriptorTable(
+                static_cast<UINT>(fftFoamSlot),
+                renderResources.fftFoamSRV);
+        }
+    }
+
     // 大気散乱（Aerial Perspective）のリソース群をバインドする
     // （未接続のフレームはシェーダー側フラグ gAerialPerspectiveEnabled=0 で参照されない）
     if (renderResources.HasAtmosphere()) {

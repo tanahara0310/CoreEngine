@@ -64,6 +64,9 @@ namespace CoreEngine
         void SetParams(const TAAParams& params) { params_ = params; }
 
     protected:
+    /// @brief 有効/無効は CVar "r.TAA.Enabled" が保持する
+    CVar<bool>* GetEnabledCVar() const override;
+
         std::string GetTechniqueName() const override { return "TAA"; }
         const std::wstring& GetPixelShaderPath() const override;
 

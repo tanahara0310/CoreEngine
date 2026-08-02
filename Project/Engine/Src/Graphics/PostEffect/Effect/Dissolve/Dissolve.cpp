@@ -4,11 +4,40 @@
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<float> cvThreshold{
+            "r.Dissolve.Threshold", 0.0f,
+            "消滅の進行度。1 で完全に消える",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvEdgeWidth{
+            "r.Dissolve.EdgeWidth", 0.1f,
+            "消滅境界に出る発光エッジの幅",
+            CVarRange{ 0.0f, 0.5f } };
+
+        CVar<Vector3> cvEdgeColor{
+            "r.Dissolve.EdgeColor", Vector3{ 1.0f, 0.5f, 0.0f },
+            "エッジの発光色（RGB）",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.Dissolve.Enabled", false,
+            "ディゾルブを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.Dissolve";
+    }
+
     void Dissolve::OnCreateConstantBuffers()
     {
         UINT dissolveSize = (sizeof(DissolveParams) + 255) & ~255;
@@ -30,7 +59,16 @@ namespace CoreEngine
 
     void Dissolve::UpdateConstantBuffer()
     {
-        if (mappedDissolveParams_) { *mappedDissolveParams_ = params_; }
+        if (!mappedDissolveParams_) {
+            return;
+        }
+        mappedDissolveParams_->threshold = cvThreshold.Get();
+        mappedDissolveParams_->edgeWidth = cvEdgeWidth.Get();
+
+        const Vector3& edgeColor = cvEdgeColor.Get();
+        mappedDissolveParams_->edgeColorR = edgeColor.x;
+        mappedDissolveParams_->edgeColorG = edgeColor.y;
+        mappedDissolveParams_->edgeColorB = edgeColor.z;
     }
 
     void Dissolve::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -41,38 +79,13 @@ namespace CoreEngine
         }
     }
 
-    void Dissolve::SetParams(const DissolveParams& params)
-    {
-        params_ = params;
-        UpdateConstantBuffer();
-    }
-
-    void Dissolve::SetThreshold(float threshold)
-    {
-        params_.threshold = threshold;
-        UpdateConstantBuffer();
-    }
-
-    void Dissolve::SetEdgeWidth(float width)
-    {
-        params_.edgeWidth = width;
-        UpdateConstantBuffer();
-    }
-
-    void Dissolve::SetEdgeColor(float r, float g, float b)
-    {
-        params_.edgeColorR = r;
-        params_.edgeColorG = g;
-        params_.edgeColorB = b;
-        UpdateConstantBuffer();
-    }
-
     void Dissolve::Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
         uint32_t width,
         uint32_t height)
     {
+        UpdateConstantBuffer();
         UpdateScreenConstantBuffer(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
@@ -104,31 +117,21 @@ namespace CoreEngine
         ImGui::Text("ノイズテクスチャを使用してディゾルブ効果を作成します");
         UI::Separator();
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            changed |= UI::SliderFloat("閾値", params_.threshold, 0.0f, 1.0f);
-            changed |= UI::SliderFloat("エッジ幅", params_.edgeWidth, 0.0f, 0.5f);
-
-            float edgeColor[3] = { params_.edgeColorR, params_.edgeColorG, params_.edgeColorB };
-            if (ImGui::ColorEdit3("エッジカラー", edgeColor)) {
-                params_.edgeColorR = edgeColor[0];
-                params_.edgeColorG = edgeColor[1];
-                params_.edgeColorB = edgeColor[2];
-                changed = true;
-            }
-            ImGui::TreePop();
-        }
-        if (changed) { UpdateConstantBuffer(); }
+        CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
         if (ImGui::Button("デフォルトに戻す")) {
-            params_ = DissolveParams{};
-            UpdateConstantBuffer();
+            CVarUI::ResetTree(kCVarPrefix);
         }
         if (!IsEnabled()) {
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* Dissolve::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

@@ -42,6 +42,9 @@ namespace CoreEngine
         void UpdateConstantBuffer();
 
     protected:
+    /// @brief 有効/無効は CVar "r.CAS.Enabled" が保持する
+    CVar<bool>* GetEnabledCVar() const override;
+
         std::string GetTechniqueName() const override { return "CAS"; }
         const std::wstring& GetPixelShaderPath() const override;
 

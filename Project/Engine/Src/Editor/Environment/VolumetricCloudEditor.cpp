@@ -7,6 +7,8 @@
 #include "Math/MathCore.h"
 
 #ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#include "Utility/CVar/CVarRegistry.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
 #endif
@@ -71,10 +73,13 @@ namespace CoreEngine {
         };
         constexpr int kCloudPresetCount = static_cast<int>(std::size(kCloudPresets));
 
+        /// @brief 雲パラメータの CVar 接頭辞（定義は VolumetricCloudManager.cpp）
+        constexpr const char* kCloudCVarPrefix = "r.Cloud";
+
         /// @brief プリセットの「見た目」パラメータを適用する（マーチング予算などは維持）
         void ApplyCloudPreset(VolumetricCloudManager& manager, const CloudPreset& preset)
         {
-            auto& params = manager.GetParametersMutable();
+            VolumetricCloudParameters params = manager.GetParameters();
             params.globalCoverage = preset.coverage;
             params.densityScale = preset.density;
             params.detailErosionStrength = preset.erosion;
@@ -84,6 +89,8 @@ namespace CoreEngine {
             params.windSpeedMPerS = preset.windSpeedMPerS;
             params.ambientIntensity = preset.ambientIntensity;
             params.sunLightScale = preset.sunLightScale;
+            // CVar へ書き戻して UI 表示・自動保存に反映する
+            manager.SetParametersFromEditor(params);
         }
 #endif
     }
@@ -169,102 +176,14 @@ namespace CoreEngine {
         DrawPresetSelector(*cloudManager);
         ImGui::Spacing();
 
-        auto& params = cloudManager->GetParametersMutable();
-        bool lookChanged = false;        // プリセット由来の値が手動変更されたか（→カスタム表示）
-        bool noiseScaleChanged = false;
-
-        // ===== 基本（よく触る主要パラメータのみ） =====
-        if (ImGui::CollapsingHeader("基本", ImGuiTreeNodeFlags_DefaultOpen)) {
-            lookChanged |= ImGui::SliderFloat("カバレッジ", &params.globalCoverage, 0.0f, 1.0f, "%.2f");
-            HelpMarker("空を雲が覆う割合。0=快晴、1=全天曇り。\n"
-                "低くしすぎると雲が孤立した粒に崩れるため、\nその場合は「縁の侵食」も下げてください。");
-
-            lookChanged |= ImGui::SliderFloat("密度", &params.densityScale, 0.01f, 0.5f, "%.3f");
-            HelpMarker("雲の濃さ [1/m]。低いと霧のように薄く透け、\n高いと輪郭の固い入道雲のようになります。");
-
-            lookChanged |= ImGui::SliderFloat("縁の侵食", &params.detailErosionStrength, 0.0f, 1.0f, "%.2f");
-            HelpMarker("雲の縁を削るディテールの強さ。\n"
-                "0.2 前後でカリフラワー状の凹凸、0.12〜0.18 で柔らかい縁。\n"
-                "カバレッジに対して強すぎると内部まで穴が開き斑点状になります。");
-
-            ImGui::Spacing();
-            lookChanged |= ImGui::DragFloat("雲底高度 [m]", &params.layerBottomAltitudeM, 10.0f, 200.0f, 10000.0f, "%.0f");
-            HelpMarker("雲層の下端の高度。低いほど雲が近く大きく見えます。");
-            lookChanged |= ImGui::DragFloat("層の厚さ [m]", &params.layerThicknessM, 10.0f, 500.0f, 10000.0f, "%.0f");
-            HelpMarker("雲層の縦の厚み。厚いほど背の高いもくもくした雲になります。");
-        }
-
-        // ===== 風 =====
-        if (ImGui::CollapsingHeader("風", ImGuiTreeNodeFlags_DefaultOpen)) {
-            // 内部表現は正規化 XZ ベクトルだが、UI は方位角 1 本のほうが直感的
-            float windAzimuthDeg = std::atan2(params.windDirX, params.windDirZ) / kDegToRad;
-            if (ImGui::SliderFloat("風向 [deg]", &windAzimuthDeg, -180.0f, 180.0f, "%.0f")) {
-                params.windDirX = std::sin(windAzimuthDeg * kDegToRad);
-                params.windDirZ = std::cos(windAzimuthDeg * kDegToRad);
-            }
-            HelpMarker("雲が流れていく方角（0°=+Z、90°=+X。太陽の方位角と同じ規約）");
-            lookChanged |= ImGui::DragFloat("風速 [m/s]", &params.windSpeedMPerS, 0.5f, 0.0f, 50.0f, "%.1f");
-        }
-
-        // ===== ライティング（上級） =====
-        if (ImGui::CollapsingHeader("ライティング（上級）")) {
-            ImGui::TextDisabled("陰影と散乱の物理パラメータ。通常はプリセットのままで十分です");
-            lookChanged |= ImGui::DragFloat("太陽散乱スケール", &params.sunLightScale, 0.05f, 0.1f, 10.0f, "%.2f");
-            HelpMarker("雲の明るさの全体スケール。上げすぎると白飛びして陰影が消えます。");
-            lookChanged |= ImGui::DragFloat("アンビエント強度", &params.ambientIntensity, 0.02f, 0.0f, 3.0f, "%.2f");
-            HelpMarker("空からの環境光。雲の暗部（雲底など）の持ち上げ量。\n密度を上げたときは連動して上げると暗部が黒く沈みません。");
-            ImGui::SliderFloat("Powder 効果", &params.beerPowderStrength, 0.0f, 1.0f, "%.2f");
-            HelpMarker("照射面の外殻を暗くする効果。強すぎると順光の雲面全体が沈みます。");
-
-            ImGui::SeparatorText("位相関数（散乱の方向性）");
-            ImGui::SliderFloat("前方散乱 g0", &params.phaseG0, 0.0f, 0.99f, "%.2f");
-            ImGui::SliderFloat("後方散乱 g1", &params.phaseG1, -0.99f, 0.0f, "%.2f");
-            ImGui::SliderFloat("ブレンド", &params.phaseBlend, 0.0f, 1.0f, "%.2f");
-
-            ImGui::SeparatorText("多重散乱オクターブ");
-            ImGui::SliderFloat("消散減衰", &params.msAttenuation, 0.1f, 0.9f, "%.2f");
-            ImGui::SliderFloat("寄与減衰", &params.msContribution, 0.1f, 0.9f, "%.2f");
-            ImGui::SliderFloat("位相非対称度減衰", &params.msEccentricity, 0.1f, 0.9f, "%.2f");
-
-            ImGui::DragFloat("サンライトマーチ基準ステップ [m]", &params.lightMarchStepM, 5.0f, 20.0f, 1000.0f, "%.0f");
-        }
-
-        // ===== 形状ノイズ（上級） =====
-        if (ImGui::CollapsingHeader("形状ノイズ（上級）")) {
-            ImGui::TextDisabled("雲塊のスケール感。値はサンプル実寸で、ノイズ自体の再生成は不要です");
-            noiseScaleChanged |= ImGui::DragFloat("ベースノイズ実寸 [m]", &params.baseNoiseScaleM, 100.0f, 1000.0f, 40000.0f, "%.0f");
-            HelpMarker("雲塊 1 個の大きさの目安（幅はこの約半分）。\n層の厚さの 2〜2.5 倍で積雲らしい形になります。");
-            noiseScaleChanged |= ImGui::DragFloat("ディテールノイズ実寸 [m]", &params.detailNoiseScaleM, 10.0f, 50.0f, 5000.0f, "%.0f");
-            noiseScaleChanged |= ImGui::DragFloat("天候マップ実寸 [m]", &params.weatherMapScaleM, 1000.0f, 5000.0f, 200000.0f, "%.0f");
-            HelpMarker("晴れ間と雲域の分布パターンの繰り返し実寸。");
-        }
-
-        // ===== ゴッドレイ =====
-        if (ImGui::CollapsingHeader("ゴッドレイ")) {
-            ImGui::Checkbox("ゴッドレイを有効にする", &params.godRayEnabled);
-            ImGui::DragFloat("遮蔽差分の強度（物理項）", &params.godRayIntensity, 0.05f, 0.0f, 3.0f, "%.2f");
-            ImGui::DragFloat("ミー散乱ブースト（演出）", &params.godRayMieBoost, 0.05f, 0.0f, 2.0f, "%.2f");
-            ImGui::DragFloat("マーチ最大距離 [m]##godray", &params.godRayMaxDistanceM, 500.0f, 5000.0f, 60000.0f, "%.0f");
-            int godRaySteps = static_cast<int>(params.godRayStepCount);
-            if (ImGui::SliderInt("ステップ数##godray", &godRaySteps, 8, 64)) {
-                params.godRayStepCount = static_cast<uint32_t>(godRaySteps);
-            }
-            ImGui::DragFloat("雲シャドウ範囲 [m]", &params.cloudShadowRegionSizeM, 1000.0f, 20000.0f, 200000.0f, "%.0f");
-        }
-
-        // ===== パフォーマンス =====
-        if (ImGui::CollapsingHeader("パフォーマンス")) {
-            int maxSteps = static_cast<int>(params.maxSteps);
-            if (ImGui::SliderInt("ステップ数予算", &maxSteps, 16, 256)) {
-                params.maxSteps = static_cast<uint32_t>(maxSteps);
-            }
-            ImGui::DragFloat("マーチ最大距離 [m]", &params.maxMarchDistanceM, 500.0f, 5000.0f, 100000.0f, "%.0f");
-            ImGui::DragFloat("早期終了しきい値", &params.earlyExitTransmittance, 0.001f, 0.0001f, 0.05f, "%.4f");
-
-            int divisor = static_cast<int>(params.resolutionDivisor);
-            if (ImGui::SliderInt("解像度分割数（1=フル, 2=半解像度）", &divisor, 1, 4)) {
-                params.resolutionDivisor = static_cast<uint32_t>(divisor);
-            }
+        // パラメータ UI は CVar から自動生成される（値は Update が毎フレーム取り込む）。
+        // ノイズ実寸を変えたときはノイズテクスチャの再生成が要るため、変更を検知して通知する
+        const uint32_t cvarRevisionBefore = CVarRegistry::Get().GetGlobalRevision();
+        CVarUI::DrawTree(kCloudCVarPrefix);
+        if (CVarRegistry::Get().GetGlobalRevision() != cvarRevisionBefore) {
+            cloudManager->MarkNoiseDirty();
+            // プリセット適用後に手動調整されたので「カスタム」表示へ切り替える
+            activePresetIndex_ = -1;
         }
 
         // ===== 診断情報 =====
@@ -273,18 +192,10 @@ namespace CoreEngine {
             ImGui::Text("ノイズテクスチャ生成済み: %s", cloudManager->AreNoiseTexturesReady() ? "true" : "false");
         }
 
-        if (noiseScaleChanged) {
-            cloudManager->MarkNoiseDirty();
-            lookChanged = true;
-        }
-        if (lookChanged) {
-            // プリセット適用後に手動調整されたので「カスタム」表示へ切り替える
-            activePresetIndex_ = -1;
-        }
 
         ImGui::Spacing();
         if (ImGui::Button("パラメータを既定値にリセット")) {
-            params = VolumetricCloudParameters{};
+            CVarUI::ResetTree(kCloudCVarPrefix);
             cloudManager->MarkNoiseDirty();
             activePresetIndex_ = 1; // 既定値 = 「部分的な曇り（既定）」
         }

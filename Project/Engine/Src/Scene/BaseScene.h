@@ -11,16 +11,14 @@
 
 #include "Scene/SceneSaveSystem.h"
 
-#ifdef USE_IMGUI
-#include "Camera/Debug/DebugCameraSettingsSection.h"
-#endif
-
 // 前方宣言
 class SkyBoxObject;
 
 namespace CoreEngine {
     class EngineSystem;
+    class Camera;
     class CameraManager;
+    class OrbitFlyController;
     class DirectXCommon;
     class RenderManager;
     class ResourceFactory;
@@ -210,11 +208,9 @@ namespace CoreEngine
         // シーン保存/読み込み
         std::unique_ptr<SceneSaveSystem> sceneSaveSystem_;
 
-#ifdef USE_IMGUI
-        // デバッグカメラのエディタ設定自動保存セクション
-        // （登録は SetupCamera、解除は Finalize。対象カメラは cameraManager_ が所有）
-        std::unique_ptr<DebugCameraSettingsSection> debugCameraSettingsSection_;
-#endif
-
+        // エディタ視点カメラの CVar ミラー対象（所有は cameraManager_）。
+        // 設定・姿勢を毎フレーム CVar へ写して自動保存に載せる
+        Camera* sceneCamera_ = nullptr;
+        OrbitFlyController* orbitController_ = nullptr;
     };
 }

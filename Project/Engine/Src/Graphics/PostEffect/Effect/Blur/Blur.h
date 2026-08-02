@@ -7,9 +7,11 @@
 namespace CoreEngine
 {
     /// @brief ガウシアンブラー
+    /// @details パラメータは CVar（"r.Blur.*"）が唯一の保持者。
+    ///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
     class Blur : public PostEffectComputeBase {
     public:
-        /// @brief ブラーパラメータ構造体
+        /// @brief ブラーパラメータ構造体（GPU 定数バッファのレイアウト）
         struct BlurParams {
             float intensity = 1.0f;         // ブラー強度 (0.0-5.0)
             float kernelSize = 1.0f;         // カーネルサイズ (0.5-3.0)
@@ -37,13 +39,10 @@ namespace CoreEngine
         /// @brief ImGuiでパラメータを調整
         void DrawImGui() override;
 
-        /// @brief パラメータを取得
-        const BlurParams& GetParams() const { return params_; }
-
-        /// @brief パラメータを設定して定数バッファを更新
-        void SetParams(const BlurParams& params);
-
     protected:
+        /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
+        CVar<bool>* GetEnabledCVar() const override;
+
         std::string  GetEffectName()        const override { return "Blur"; }
         std::wstring GetComputeShaderPath() const override { return L"Blur.CS.hlsl"; }
         void OnCreateConstantBuffers() override;
@@ -53,9 +52,6 @@ namespace CoreEngine
         void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
     private:
-        BlurParams params_;
-        ScreenParams screenParams_;
-
         Microsoft::WRL::ComPtr<ID3D12Resource> blurParamsCB_;
         BlurParams* mappedBlurParams_ = nullptr;
 

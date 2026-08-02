@@ -3,11 +3,35 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<float> cvIntensity{
+            "r.Blur.Intensity", 1.0f,
+            "ブラーの強度",
+            CVarRange{ 0.0f, 5.0f } };
+
+        CVar<float> cvKernelSize{
+            "r.Blur.KernelSize", 1.0f,
+            "サンプリング範囲の広さ。大きいほど広くぼける",
+            CVarRange{ 0.5f, 3.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.Blur.Enabled", false,
+            "ガウシアンブラーを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.Blur";
+    }
+
     void Blur::OnCreateConstantBuffers()
     {
         UINT blurSize = (sizeof(BlurParams) + 255) & ~255;
@@ -24,9 +48,11 @@ namespace CoreEngine
 
     void Blur::UpdateBlurConstantBuffer()
     {
-        if (mappedBlurParams_) {
-            *mappedBlurParams_ = params_;
+        if (!mappedBlurParams_) {
+            return;
         }
+        mappedBlurParams_->intensity  = cvIntensity.Get();
+        mappedBlurParams_->kernelSize = cvKernelSize.Get();
     }
 
     void Blur::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -43,7 +69,8 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        // 画面サイズ定数バッファを更新
+        // CVar の現在値を取り込む（UI・コンソール・設定復元のいずれの変更もここで反映される）
+        UpdateBlurConstantBuffer();
         UpdateScreenConstantBuffer(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
@@ -76,12 +103,6 @@ namespace CoreEngine
         cmdList->Dispatch(groupX, groupY, 1);
     }
 
-    void Blur::SetParams(const BlurParams& params)
-    {
-        params_ = params;
-        UpdateBlurConstantBuffer();
-    }
-
     void Blur::DrawImGui()
     {
 #ifdef USE_IMGUI
@@ -90,24 +111,12 @@ namespace CoreEngine
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
 
-        bool paramsChanged = false;
-
-        if (ImGui::TreeNode("パラメータ")) {
-            paramsChanged |= UI::SliderFloat("強度", params_.intensity, 0.0f, 5.0f);
-            paramsChanged |= UI::SliderFloat("カーネルサイズ", params_.kernelSize, 0.5f, 3.0f);
-            ImGui::TreePop();
-        }
-
-        if (paramsChanged) {
-            UpdateBlurConstantBuffer();
-        }
+        CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
 
         if (ImGui::Button("デフォルトに戻す")) {
-            params_.intensity  = 1.0f;
-            params_.kernelSize = 1.0f;
-            UpdateBlurConstantBuffer();
+            CVarUI::ResetTree(kCVarPrefix);
         }
 
         if (!IsEnabled()) {
@@ -117,5 +126,9 @@ namespace CoreEngine
         ImGui::PopID();
 #endif // USE_IMGUI
     }
-}
 
+    CVar<bool>* Blur::GetEnabledCVar() const
+    {
+        return &cvEnabled;
+    }
+}

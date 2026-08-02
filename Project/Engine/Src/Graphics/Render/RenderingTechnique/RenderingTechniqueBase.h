@@ -10,6 +10,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Utility/CVar/CVar.h"
 
 namespace CoreEngine
 {
@@ -76,15 +77,35 @@ public:
 
     /// @brief 技術の有効/無効を設定
     /// @param enabled 有効にするかどうか
-    virtual void SetEnabled(bool enabled) { enabled_ = enabled; }
+    virtual void SetEnabled(bool enabled)
+    {
+        if (CVar<bool>* cvar = GetEnabledCVar()) {
+            cvar->Set(enabled);
+            return;
+        }
+        enabled_ = enabled;
+    }
 
     /// @brief 技術が有効かどうかを取得
     /// @return 有効ならtrue
-    bool IsEnabled() const { return enabled_; }
+    bool IsEnabled() const
+    {
+        if (const CVar<bool>* cvar = GetEnabledCVar()) {
+            return cvar->Get();
+        }
+        return enabled_;
+    }
 
     /// @brief 常時有効な技術かどうかを取得（無効化不可）
     /// @return 常時有効ならtrue
     virtual bool IsAlwaysEnabled() const { return false; }
+
+    /// @brief 有効/無効を保持する CVar を返す
+    /// @return CVar（"r.<Technique>.Enabled"）。持たない技術は nullptr
+    /// @details 派生が自分のファイルスコープ CVar を返すことで、有効状態が
+    ///          自動的に CVars.json へ保存される。常時有効な技術は nullptr のままでよい。
+    ///          設計: Docs/Engine/Editor/CVar_Design.md
+    virtual CVar<bool>* GetEnabledCVar() const { return nullptr; }
 
     /// @brief シェーダーリソース名からルートパラメータインデックスを取得
     int GetRootParamIndex(const std::string& resourceName) const;

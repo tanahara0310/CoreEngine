@@ -32,6 +32,9 @@ public:
     void DrawImGui() override;
 
 protected:
+        /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
+        CVar<bool>* GetEnabledCVar() const override;
+
     std::string  GetEffectName()        const override { return "GrayScale"; }
     std::wstring GetComputeShaderPath() const override { return L"GrayScale.CS.hlsl"; }
 

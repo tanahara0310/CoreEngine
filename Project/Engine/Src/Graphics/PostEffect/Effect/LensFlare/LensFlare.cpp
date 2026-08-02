@@ -6,6 +6,10 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <algorithm>
 #include <cassert>
 
@@ -21,6 +25,103 @@ namespace CoreEngine
         {
             return (size + kGroupSize - 1) / kGroupSize;
         }
+
+        // 既定値の根拠は LensFlare.h の LensFlareConstants のコメントを参照
+        CVar<float> cvIntensity{
+            "r.LensFlare.Intensity", 0.6f,
+            "フレア全体の強度",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<float> cvThreshold{
+            "r.LensFlare.Threshold", 28.0f,
+            "フレア源とする輝度の閾値（HDR）。下げすぎると太陽以外にも反応する",
+            CVarRange{ 0.0f, 100.0f } };
+
+        CVar<float> cvSoftKnee{
+            "r.LensFlare.SoftKnee", 0.5f,
+            "閾値付近のなめらかさ",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvMaxBrightness{
+            "r.LensFlare.MaxBrightness", 64.0f,
+            "抽出輝度のクランプ上限",
+            CVarRange{ 1.0f, 256.0f } };
+
+        CVar<Vector4> cvTint{
+            "r.LensFlare.Tint", Vector4{ 1.0f, 0.95f, 0.9f, 1.0f },
+            "フレア全体のティント（RGBA）" };
+
+        CVar<float> cvSunMaskRadius{
+            "r.LensFlare.SunMaskRadius", 0.12f,
+            "抽出を許可する太陽周辺の半径。広げるとミー散乱オーラまで源になる",
+            CVarRange{ 0.02f, 0.4f } };
+
+        CVar<int> cvGhostCount{
+            "r.LensFlare.GhostCount", 6,
+            "ゴーストの個数",
+            CVarRange{ 0.0f, 8.0f } };
+
+        CVar<float> cvGhostDispersal{
+            "r.LensFlare.GhostDispersal", 0.6f,
+            "ゴーストの間隔",
+            CVarRange{ 0.1f, 1.2f } };
+
+        CVar<float> cvGhostIntensity{
+            "r.LensFlare.GhostIntensity", 2.0f,
+            "ゴーストの強度",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<float> cvChromaDistortion{
+            "r.LensFlare.ChromaDistortion", 1.5f,
+            "ゴーストの色収差",
+            CVarRange{ 0.0f, 5.0f } };
+
+        CVar<float> cvGhostRadius{
+            "r.LensFlare.GhostRadius", 0.12f,
+            "ゴーストの半径。小さすぎると多角形の角が潰れる",
+            CVarRange{ 0.01f, 0.2f } };
+
+        CVar<int> cvApertureBladeCount{
+            "r.LensFlare.ApertureBladeCount", 6,
+            "絞り羽根の枚数（多角形ゴーストの角数）",
+            CVarRange{ 3.0f, 10.0f } };
+
+        CVar<float> cvApertureRotationRad{
+            "r.LensFlare.ApertureRotation", 0.3f,
+            "絞りの回転角 [rad]",
+            CVarRange{ 0.0f, 1.047f } };
+
+        CVar<float> cvGhostPolygonMix{
+            "r.LensFlare.GhostPolygonMix", 0.85f,
+            "多角形ゴーストの混在比率。0=全て円形、1=全て多角形",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvHaloWidth{
+            "r.LensFlare.HaloWidth", 0.45f,
+            "ハローの半径",
+            CVarRange{ 0.05f, 0.8f } };
+
+        CVar<float> cvHaloIntensity{
+            "r.LensFlare.HaloIntensity", 1.0f,
+            "ハローの強度",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<float> cvStarburstIntensity{
+            "r.LensFlare.StarburstIntensity", 0.5f,
+            "スターバースト変調の強さ",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvBlurSigma{
+            "r.LensFlare.BlurSigma", 1.0f,
+            "ガウスブラー σ。大きすぎると絞り羽根の角が潰れて円形に戻る",
+            CVarRange{ 0.5f, 6.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.LensFlare.Enabled", true,
+            "レンズフレアを有効にする（大気の太陽で自動発生）",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.LensFlare";
     }
 
     void LensFlare::OnConfigureRootSignature(RootSignatureConfig& config)
@@ -37,7 +138,7 @@ namespace CoreEngine
         paramsCB_ = ResourceFactory::CreateBufferResource(device, paramsSize);
         HRESULT hr = paramsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedParams_));
         assert(SUCCEEDED(hr));
-        *mappedParams_ = params_;
+        *mappedParams_ = BuildConstants(0, 0, 0, 0);
 
         // ブラー方向 CB（水平/垂直。内容は不変なので初期化時に書いて以後更新しない）
         const UINT dirSize = (sizeof(BlurDirection) + 255) & ~255u;
@@ -212,17 +313,52 @@ namespace CoreEngine
         return true;
     }
 
+    LensFlare::LensFlareConstants LensFlare::BuildConstants(
+        uint32_t width, uint32_t height, uint32_t flareWidth, uint32_t flareHeight) const
+    {
+        LensFlareConstants c{};
+        c.threshold          = cvThreshold.Get();
+        c.softKnee           = cvSoftKnee.Get();
+        c.ghostDispersal     = cvGhostDispersal.Get();
+        c.ghostIntensity     = cvGhostIntensity.Get();
+        c.haloWidth          = cvHaloWidth.Get();
+        c.haloIntensity      = cvHaloIntensity.Get();
+        c.chromaDistortion   = cvChromaDistortion.Get();
+        c.starburstIntensity = cvStarburstIntensity.Get();
+        c.intensity          = cvIntensity.Get();
+        c.ghostCount         = static_cast<uint32_t>(cvGhostCount.Get());
+        c.maxBrightness      = cvMaxBrightness.Get();
+        c.blurSigma          = cvBlurSigma.Get();
+
+        const Vector4& tint = cvTint.Get();
+        c.tint[0] = tint.x;
+        c.tint[1] = tint.y;
+        c.tint[2] = tint.z;
+        c.tint[3] = tint.w;
+
+        c.apertureBladeCount  = static_cast<float>(cvApertureBladeCount.Get());
+        c.apertureRotationRad = cvApertureRotationRad.Get();
+        c.ghostRadius         = cvGhostRadius.Get();
+        c.ghostPolygonMix     = cvGhostPolygonMix.Get();
+        c.sunMaskRadius       = cvSunMaskRadius.Get();
+
+        // ここから下は実行時値
+        c.sunUv[0]     = sunUv_[0];
+        c.sunUv[1]     = sunUv_[1];
+        c.sunValid     = sunValid_;
+        c.flareWidth   = flareWidth;
+        c.flareHeight  = flareHeight;
+        c.screenWidth  = width;
+        c.screenHeight = height;
+        return c;
+    }
+
     void LensFlare::UploadConstants(uint32_t width, uint32_t height)
     {
         if (!mappedParams_) {
             return;
         }
-        LensFlareConstants c = params_;
-        c.flareWidth = targetsWidth_;
-        c.flareHeight = targetsHeight_;
-        c.screenWidth = width;
-        c.screenHeight = height;
-        *mappedParams_ = c;
+        *mappedParams_ = BuildConstants(width, height, targetsWidth_, targetsHeight_);
     }
 
     void LensFlare::Dispatch(
@@ -238,12 +374,11 @@ namespace CoreEngine
         if (!flareReady) {
             // フォールバック: フレア強度 0 で合成 CS のみ実行し、入力をそのまま出力する
             // （出力を書かないとチェーン後段が未初期化テクスチャを読むため）
-            LensFlareConstants c = params_;
+            LensFlareConstants c = BuildConstants(
+                width, height,
+                std::max(width / kFlareResolutionDivisor, 1u),
+                std::max(height / kFlareResolutionDivisor, 1u));
             c.intensity = 0.0f;
-            c.screenWidth = width;
-            c.screenHeight = height;
-            c.flareWidth = std::max(width / kFlareResolutionDivisor, 1u);
-            c.flareHeight = std::max(height / kFlareResolutionDivisor, 1u);
             if (mappedParams_) { *mappedParams_ = c; }
 
             cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
@@ -401,59 +536,25 @@ namespace CoreEngine
         }
         UI::Separator();
 
-        if (ImGui::TreeNode("全体")) {
-            UI::SliderFloat("強度", params_.intensity, 0.0f, 3.0f);
-            UI::SliderFloat("輝度閾値", params_.threshold, 0.0f, 100.0f);
-            UI::SliderFloat("ソフトニー", params_.softKnee, 0.0f, 1.0f);
-            UI::SliderFloat("最大輝度クランプ", params_.maxBrightness, 1.0f, 256.0f);
-            ImGui::ColorEdit3("ティント", params_.tint);
-            UI::SliderFloat("太陽マスク半径", params_.sunMaskRadius, 0.02f, 0.4f);
-            ImGui::TextWrapped(
-                "フレア源は太陽スクリーン位置の周辺のみ（太陽限定）。"
-                "パーティクル等の高輝度オブジェクトはフレアを起こさない。");
-            ImGui::Text("太陽UV: (%.3f, %.3f) %s", params_.sunUv[0], params_.sunUv[1],
-                params_.sunValid > 0.5f ? "有効" : "無効(後方/情報なし)");
-            ImGui::TreePop();
-        }
-        if (ImGui::TreeNode("ゴースト")) {
-            int ghostCount = static_cast<int>(params_.ghostCount);
-            if (ImGui::SliderInt("ゴースト数", &ghostCount, 0, 8)) {
-                params_.ghostCount = static_cast<uint32_t>(ghostCount);
-            }
-            UI::SliderFloat("間隔", params_.ghostDispersal, 0.1f, 1.2f);
-            UI::SliderFloat("強度##ghost", params_.ghostIntensity, 0.0f, 3.0f);
-            UI::SliderFloat("色収差", params_.chromaDistortion, 0.0f, 5.0f);
-            UI::SliderFloat("半径", params_.ghostRadius, 0.01f, 0.2f);
-            ImGui::TreePop();
-        }
-        if (ImGui::TreeNode("絞り（多角形ゴースト）")) {
-            ImGui::TextWrapped(
-                "実カメラは絞り羽根の像がそのまま映り込んで多角形ゴーストになる。"
-                "羽根枚数と回転、円形とのブレンド比率を調整できる。");
-            int blades = static_cast<int>(params_.apertureBladeCount);
-            if (ImGui::SliderInt("絞り羽根枚数", &blades, 3, 10)) {
-                params_.apertureBladeCount = static_cast<float>(blades);
-            }
-            UI::SliderFloat("絞り回転", params_.apertureRotationRad, 0.0f, 1.047f);
-            UI::SliderFloat("多角形混在比率", params_.ghostPolygonMix, 0.0f, 1.0f);
-            ImGui::TreePop();
-        }
-        if (ImGui::TreeNode("ハロー")) {
-            UI::SliderFloat("半径", params_.haloWidth, 0.05f, 0.8f);
-            UI::SliderFloat("強度##halo", params_.haloIntensity, 0.0f, 3.0f);
-            ImGui::TreePop();
-        }
-        if (ImGui::TreeNode("仕上げ")) {
-            UI::SliderFloat("スターバースト", params_.starburstIntensity, 0.0f, 1.0f);
-            UI::SliderFloat("ブラー σ", params_.blurSigma, 0.5f, 6.0f);
-            ImGui::TreePop();
-        }
+        ImGui::TextWrapped(
+            "フレア源は太陽スクリーン位置の周辺のみ（太陽限定）。"
+            "パーティクル等の高輝度オブジェクトはフレアを起こさない。");
+        ImGui::Text("太陽UV: (%.3f, %.3f) %s", sunUv_[0], sunUv_[1],
+            sunValid_ > 0.5f ? "有効" : "無効(後方/情報なし)");
+        UI::Separator();
+
+        CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
         if (ImGui::Button("デフォルトに戻す")) {
-            params_ = LensFlareConstants{};
+            CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* LensFlare::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

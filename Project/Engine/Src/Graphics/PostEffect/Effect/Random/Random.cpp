@@ -3,11 +3,55 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+	namespace
+	{
+		CVar<float> cvIntensity{
+			"r.Random.Intensity", 0.15f,
+			"ノイズの強度",
+			CVarRange{ 0.0f, 1.0f } };
+
+		CVar<float> cvBlend{
+			"r.Random.Blend", 0.35f,
+			"元画像とのブレンド率",
+			CVarRange{ 0.0f, 1.0f } };
+
+		CVar<float> cvSpeed{
+			"r.Random.Speed", 1.0f,
+			"ノイズが変化する速さ",
+			CVarRange{ 0.0f, 10.0f } };
+
+		CVar<float> cvGrainScale{
+			"r.Random.GrainScale", 1.0f,
+			"粒の細かさ。大きいほど細かい",
+			CVarRange{ 0.1f, 8.0f } };
+
+		CVar<float> cvLuminanceInfluence{
+			"r.Random.LuminanceInfluence", 0.25f,
+			"元画像の明るさに応じてノイズ量を変える度合い",
+			CVarRange{ 0.0f, 1.0f } };
+
+		CVar<float> cvChromaAmount{
+			"r.Random.ChromaAmount", 0.15f,
+			"色ノイズの量。0 でモノクロノイズ",
+			CVarRange{ 0.0f, 1.0f } };
+
+		CVar<bool> cvEnabled{
+		    "r.Random.Enabled", false,
+		    "ランダムノイズを有効にする",
+		    CVarRange{}, CVarFlags::NoUI };
+
+		constexpr const char* kCVarPrefix = "r.Random";
+	}
+
 	void Random::OnCreateConstantBuffers()
 	{
 		UINT randomSize = (sizeof(RandomParams) + 255) & ~255;
@@ -24,9 +68,16 @@ namespace CoreEngine
 
 	void Random::UpdateConstantBuffer()
 	{
-		if (mappedRandomParams_) {
-			*mappedRandomParams_ = params_;
+		if (!mappedRandomParams_) {
+			return;
 		}
+		mappedRandomParams_->intensity = cvIntensity.Get();
+		mappedRandomParams_->blend = cvBlend.Get();
+		mappedRandomParams_->speed = cvSpeed.Get();
+		mappedRandomParams_->time = accumulatedTime_;  // 実行時に累積される値
+		mappedRandomParams_->grainScale = cvGrainScale.Get();
+		mappedRandomParams_->luminanceInfluence = cvLuminanceInfluence.Get();
+		mappedRandomParams_->chromaAmount = cvChromaAmount.Get();
 	}
 
 	void Random::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -37,16 +88,9 @@ namespace CoreEngine
 		}
 	}
 
-	void Random::SetParams(const RandomParams& params)
-	{
-		params_ = params;
-		UpdateConstantBuffer();
-	}
-
 	void Random::Update(float deltaTime)
 	{
-		accumulatedTime_ += deltaTime * params_.speed;
-		params_.time = accumulatedTime_;
+		accumulatedTime_ += deltaTime * cvSpeed.Get();
 		UpdateConstantBuffer();
 	}
 
@@ -56,6 +100,7 @@ namespace CoreEngine
 		uint32_t width,
 		uint32_t height)
 	{
+		UpdateConstantBuffer();
 		UpdateScreenConstantBuffer(width, height);
 
 		auto* cmdList = directXCommon_->GetCommandList();
@@ -84,27 +129,19 @@ namespace CoreEngine
 		ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
 		UI::Separator();
 
-		bool changed = false;
-		if (ImGui::TreeNode("パラメータ")) {
-			changed |= UI::SliderFloat("ノイズ強度", params_.intensity, 0.0f, 1.0f);
-			changed |= UI::SliderFloat("ブレンド", params_.blend, 0.0f, 1.0f);
-			changed |= UI::SliderFloat("速度", params_.speed, 0.0f, 10.0f);
-			changed |= UI::SliderFloat("粒度", params_.grainScale, 0.1f, 8.0f);
-			changed |= UI::SliderFloat("輝度影響", params_.luminanceInfluence, 0.0f, 1.0f);
-			changed |= UI::SliderFloat("色ノイズ量", params_.chromaAmount, 0.0f, 1.0f);
-			ImGui::TreePop();
-		}
-		if (changed) {
-			UpdateConstantBuffer();
-		}
+		CVarUI::DrawTree(kCVarPrefix);
 
 		UI::Separator();
 		if (ImGui::Button("デフォルトに戻す")) {
-			params_ = RandomParams{};
+			CVarUI::ResetTree(kCVarPrefix);
 			accumulatedTime_ = 0.0f;
-			UpdateConstantBuffer();
 		}
 		ImGui::PopID();
 #endif // USE_IMGUI
+	}
+
+	CVar<bool>* Random::GetEnabledCVar() const
+	{
+		return &cvEnabled;
 	}
 }

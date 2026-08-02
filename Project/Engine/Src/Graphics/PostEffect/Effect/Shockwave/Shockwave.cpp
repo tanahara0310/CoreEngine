@@ -3,11 +3,40 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<float> cvStrength{
+            "r.Shockwave.Strength", 0.1f,
+            "衝撃波による歪みの強さ",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvThickness{
+            "r.Shockwave.Thickness", 0.1f,
+            "波のリングの厚み",
+            CVarRange{ 0.01f, 0.5f } };
+
+        CVar<float> cvSpeed{
+            "r.Shockwave.Speed", 1.0f,
+            "波が広がる速さ",
+            CVarRange{ 0.1f, 5.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.Shockwave.Enabled", false,
+            "ショックウェーブを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.Shockwave";
+    }
+
     void Shockwave::OnCreateConstantBuffers()
     {
         UINT swSize = (sizeof(ShockwaveParams) + 255) & ~255;
@@ -24,7 +53,16 @@ namespace CoreEngine
 
     void Shockwave::UpdateConstantBuffer()
     {
-        if (mappedShockwaveParams_) { *mappedShockwaveParams_ = params_; }
+        if (!mappedShockwaveParams_) {
+            return;
+        }
+        mappedShockwaveParams_->strength  = cvStrength.Get();
+        mappedShockwaveParams_->thickness = cvThickness.Get();
+        mappedShockwaveParams_->speed     = cvSpeed.Get();
+        // 発動状態は実行時の値
+        mappedShockwaveParams_->center[0] = centerX_;
+        mappedShockwaveParams_->center[1] = centerY_;
+        mappedShockwaveParams_->time      = time_;
     }
 
     void Shockwave::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -35,18 +73,12 @@ namespace CoreEngine
         }
     }
 
-    void Shockwave::SetParams(const ShockwaveParams& params)
-    {
-        params_ = params;
-        UpdateConstantBuffer();
-    }
-
     void Shockwave::StartShockwave(float centerX, float centerY)
     {
-        params_.center[0] = centerX;
-        params_.center[1] = centerY;
-        params_.time      = 0.0f;
-        isActive_         = true;
+        centerX_  = centerX;
+        centerY_  = centerY;
+        time_     = 0.0f;
+        isActive_ = true;
         UpdateConstantBuffer();
     }
 
@@ -54,10 +86,10 @@ namespace CoreEngine
     {
         if (!isActive_) { return; }
 
-        params_.time += deltaTime * params_.speed;
-        if (params_.time >= maxRadius_) {
-            isActive_    = false;
-            params_.time = 0.0f;
+        time_ += deltaTime * cvSpeed.Get();
+        if (time_ >= maxRadius_) {
+            isActive_ = false;
+            time_     = 0.0f;
         }
         UpdateConstantBuffer();
     }
@@ -68,6 +100,7 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
+        UpdateConstantBuffer();
         UpdateScreenConstantBuffer(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
@@ -97,20 +130,22 @@ namespace CoreEngine
         ImGui::Text("アクティブ: %s", isActive_ ? "true" : "false");
         UI::Separator();
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            changed |= UI::SliderFloat("強度", params_.strength, 0.0f, 1.0f);
-            changed |= UI::SliderFloat("波の厚さ", params_.thickness, 0.01f, 0.5f);
-            changed |= UI::SliderFloat("速度", params_.speed, 0.1f, 5.0f);
-            ImGui::TreePop();
-        }
-        if (changed) { UpdateConstantBuffer(); }
+        CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
         if (ImGui::Button("ショックウェーブ発動")) {
             StartShockwave(0.5f, 0.5f);
         }
+        ImGui::SameLine();
+        if (ImGui::Button("デフォルトに戻す")) {
+            CVarUI::ResetTree(kCVarPrefix);
+        }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* Shockwave::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

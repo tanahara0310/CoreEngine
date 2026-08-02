@@ -91,6 +91,7 @@ namespace CoreEngine
         // 実行に必要なパイプライン/リソースを順番に構築する。
         if (!CreatePipelines()
             || !CreateOutputTextures()
+            || !CreateFoamResources()
             || !CreateIntermediateTextures()
             || !CreateDebugReadbackBuffers()
             || !CreateSpectrumBuffer()
@@ -144,6 +145,9 @@ namespace CoreEngine
 
         settings_ = sanitized;
 
+        // 波面が不連続に変わるため、蓄積済みの泡は次の泡パスで破棄する。
+        foamResetPending_ = true;
+
         // 現在時刻を保ったままスペクトルと全カスケードの定数を作り直す。
         const float currentTime = mappedSimulationConstants_
             ? reinterpret_cast<const SimulationConstants*>(mappedSimulationConstants_)->timeSeconds
@@ -162,6 +166,15 @@ namespace CoreEngine
             settings_.choppiness,
             settings_.activeComponentCount,
             settings_.gravity);
+    }
+
+    void FFTOceanManager::SetFoamSettings(const FoamSettings& settings)
+    {
+        // 無効 → 有効の遷移では古い蓄積が残らないよう破棄してから再開する
+        if (!foamSettings_.enabled && settings.enabled) {
+            foamResetPending_ = true;
+        }
+        foamSettings_ = settings;
     }
 
     void FFTOceanManager::Dispatch(ID3D12GraphicsCommandList* cmdList, float timeSeconds)
@@ -303,10 +316,159 @@ namespace CoreEngine
         ResourceBarrierHelper::Transition(cmdList, normalTexture_.Get(), normalState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         ResourceBarrierHelper::Transition(cmdList, jacobianTexture_.Get(), jacobianState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+        // 泡の蓄積・減衰（ヤコビアンが SRV 状態になった後に実行する）
+        DispatchFoamPass(cmdList, timeSeconds);
+
         static uint32_t sDebugReadbackCounter = 0;
         if ((sDebugReadbackCounter++ % 120) == 0) {
             ScheduleDebugReadback(cmdList);
         }
+    }
+
+    bool FFTOceanManager::CreateFoamResources()
+    {
+        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorManager_) {
+            return false;
+        }
+
+        Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
+        // 泡はスカラー被覆率のみなので R16_FLOAT で足りる（帯域は RGBA16 の 1/4）
+        const DXGI_FORMAT format = DXGI_FORMAT_R16_FLOAT;
+
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        desc.Width = settings_.resolution;
+        desc.Height = settings_.resolution;
+        desc.DepthOrArraySize = static_cast<UINT16>(kCascadeCount);
+        desc.MipLevels = 1;
+        desc.Format = format;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        try {
+            for (uint32_t i = 0; i < kPingPongCount; ++i) {
+                foamTexture_[i] = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            }
+        }
+        catch (const std::exception&) {
+            return false;
+        }
+
+        for (uint32_t i = 0; i < kPingPongCount; ++i) {
+            const std::string idx = std::to_string(i);
+
+            // SRV / UAV とも全スライスを 1 ビューで見せる
+            // （泡パスは Dispatch z = カスケードで全スライスを一括処理する）。
+            D3D12_SHADER_RESOURCE_VIEW_DESC s{};
+            s.Format = format;
+            s.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+            s.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            s.Texture2DArray.MostDetailedMip = 0;
+            s.Texture2DArray.MipLevels = 1;
+            s.Texture2DArray.FirstArraySlice = 0;
+            s.Texture2DArray.ArraySize = kCascadeCount;
+            descriptorManager_->CreateSRV(foamTexture_[i].Get(), s, foamSrvCpuHandle_[i], foamSrvHandle_[i], "FFTOceanFoamSRV_" + idx);
+
+            D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
+            u.Format = format;
+            u.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+            u.Texture2DArray.MipSlice = 0;
+            u.Texture2DArray.FirstArraySlice = 0;
+            u.Texture2DArray.ArraySize = kCascadeCount;
+            descriptorManager_->CreateUAV(foamTexture_[i].Get(), u, foamUavCpuHandle_[i], foamUavHandle_[i], "FFTOceanFoamUAV_" + idx);
+
+            foamState_[i] = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        }
+
+        // 定数は 1 スロットのみ（毎フレーム上書き。simulationConstants と同じ運用）。
+        void* mappedFoamConstants = nullptr;
+        const bool created = FFTOceanResourceFactory::CreateSimulationConstantBuffer(
+            dxCommon_->GetDevice(),
+            Align256(sizeof(FoamConstants)),
+            foamConstantsBuffer_,
+            mappedFoamConstants);
+        mappedFoamConstants_ = reinterpret_cast<uint8_t*>(mappedFoamConstants);
+
+        foamResetPending_ = true;
+        return created;
+    }
+
+    void FFTOceanManager::DispatchFoamPass(ID3D12GraphicsCommandList* cmdList, float timeSeconds)
+    {
+        if (!foamPipeline_.HasComputePSO() || !mappedFoamConstants_) {
+            return;
+        }
+
+        // 無効時はパス自体をスキップする（PS 側も gFoamEnabled=0 で読まない）。
+        // 再有効化時に古い泡が残らないよう SetFoamSettings がリセットを積む。
+        if (!foamSettings_.enabled) {
+            foamPreviousTimeSeconds_ = timeSeconds;
+            return;
+        }
+
+        // シミュレーション時刻から dt を得る（ポーズ中は 0 = 泡凍結。
+        // シーン切替やスペクトル再構築直後の巨大な dt は上限で丸める）。
+        const float rawDelta = timeSeconds - foamPreviousTimeSeconds_;
+        const float deltaSeconds = (std::clamp)(rawDelta, 0.0f, 0.1f);
+        foamPreviousTimeSeconds_ = timeSeconds;
+
+        FoamConstants* slot = reinterpret_cast<FoamConstants*>(mappedFoamConstants_);
+        slot->resolution = settings_.resolution;
+        slot->deltaSeconds = deltaSeconds;
+        slot->foamBias = foamSettings_.bias;
+        slot->foamGain = foamSettings_.gain;
+        slot->cascadeWeights[0] = foamSettings_.cascadeWeights[0];
+        slot->cascadeWeights[1] = foamSettings_.cascadeWeights[1];
+        slot->cascadeWeights[2] = foamSettings_.cascadeWeights[2];
+        slot->decaySeconds = foamSettings_.decaySeconds;
+        slot->resetFoam = foamResetPending_ ? 1u : 0u;
+        foamResetPending_ = false;
+
+        // 書き込み先はフレームカウンタの偶奇で決める（純粋関数。トグル変数は持たない）。
+        const uint32_t writeIndex = foamFrameIndex_ & 1u;
+        const uint32_t readIndex = writeIndex ^ 1u;
+
+        // read 側は本パスの gFoamPrev（CS）に加えて、同一フレームの水面描画（PS の t21）
+        // からも読まれるため、PIXEL を含む読み取り状態にする。
+        ResourceBarrierHelper::Transition(
+            cmdList, foamTexture_[writeIndex].Get(), foamState_[writeIndex], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        ResourceBarrierHelper::Transition(
+            cmdList, foamTexture_[readIndex].Get(), foamState_[readIndex],
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+        cmdList->SetPipelineState(foamPipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(foamPipeline_.GetComputeRootSignature());
+
+        const int jacobianSlot = foamPipeline_.GetComputeRootParamIndex("gJacobian");
+        if (jacobianSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(jacobianSlot), jacobianSrvHandle_);
+        }
+        const int prevSlot = foamPipeline_.GetComputeRootParamIndex("gFoamPrev");
+        if (prevSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(prevSlot), foamSrvHandle_[readIndex]);
+        }
+        const int outputSlot = foamPipeline_.GetComputeRootParamIndex("gFoamOutput");
+        if (outputSlot >= 0) {
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), foamUavHandle_[writeIndex]);
+        }
+        const int constantsSlot = foamPipeline_.GetComputeRootParamIndex("FFTOceanFoamConstants");
+        if (constantsSlot >= 0) {
+            cmdList->SetComputeRootConstantBufferView(
+                static_cast<UINT>(constantsSlot), foamConstantsBuffer_->GetGPUVirtualAddress());
+        }
+
+        const UINT dispatchX = (settings_.resolution + 7) / 8;
+        const UINT dispatchY = (settings_.resolution + 7) / 8;
+        cmdList->Dispatch(dispatchX, dispatchY, kCascadeCount);
+
+        // 書き込んだ側は Water.PS（ピクセルシェーダー）が t21 で読むため、
+        // PIXEL を含む読み取り状態へ遷移させる（来フレームは CS の gFoamPrev としても読む）。
+        ResourceBarrierHelper::Transition(
+            cmdList, foamTexture_[writeIndex].Get(), foamState_[writeIndex],
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+        ++foamFrameIndex_;
     }
 
     bool FFTOceanManager::CreatePipelines()
@@ -337,6 +499,11 @@ namespace CoreEngine
             shaderCompiler,
             reflectionBuilder,
             normalMipGenShaderProvider_);
+        const bool foamBuilt = foamPipeline_.Build(
+            dxCommon_->GetDevice(),
+            shaderCompiler,
+            reflectionBuilder,
+            foamShaderProvider_);
 
         if (!evolutionBuilt || !evolutionPipeline_.HasComputePSO()) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
@@ -359,6 +526,12 @@ namespace CoreEngine
         if (!normalMipGenBuilt || !normalMipGenPipeline_.HasComputePSO()) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "FFTOceanManager: failed to build normal mip gen compute pipeline.");
+            return false;
+        }
+
+        if (!foamBuilt || !foamPipeline_.HasComputePSO()) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "FFTOceanManager: failed to build foam accumulate compute pipeline.");
             return false;
         }
 

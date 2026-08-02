@@ -140,10 +140,16 @@ namespace CoreEngine
         const AtmosphereParameters& GetParameters() const { return parameters_; }
 
         /// @brief パラメータを適用（LUT 再計算のダーティフラグを立てる）
+        /// @note groundLevelY 以外の実体は CVar（"r.Atmosphere.*"）が保持する。
+        ///       外部から編集する場合は SetParametersFromEditor を使うこと（CVar へ書き戻される）
         void SetParameters(const AtmosphereParameters& params) {
             parameters_ = params;
             MarkLUTDirty();
         }
+
+        /// @brief エディタ等からパラメータを編集する（CVar へ書き戻して自動保存に載せる）
+        /// @param params 適用するパラメータ
+        void SetParametersFromEditor(const AtmosphereParameters& params);
 
         /// @brief 大気パラメータ由来の LUT 再計算を要求する
         /// @details Transmittance / Multi-Scattering / Sky-View の全 LUT を再生成する。
@@ -197,7 +203,7 @@ namespace CoreEngine
 
         /// @brief 太陽直接光への透過率適用（Transmittance on Light）の有効/無効
         /// @details 無効時は LightManager へ {1,1,1} を渡す（＝従来動作）。既定は有効。
-        void SetTransmittanceOnLightEnabled(bool enabled) { transmittanceOnLight_ = enabled; }
+        void SetTransmittanceOnLightEnabled(bool enabled);
         bool IsTransmittanceOnLightEnabled() const { return transmittanceOnLight_; }
 
         /// @brief カメラの地表からの高度 [m]
@@ -247,17 +253,17 @@ namespace CoreEngine
         bool IsSkyAmbientReady() const { return skyIrradianceGenerated_; }
 
         /// @brief 空アンビエント（大気からの環境光）の有効/無効
-        void SetSkyAmbientEnabled(bool enabled) { skyAmbientEnabled_ = enabled; }
+        void SetSkyAmbientEnabled(bool enabled);
         bool IsSkyAmbientEnabled() const { return skyAmbientEnabled_; }
 
         /// @brief 空アンビエントの強度スケール（空の輝度単位 → サーフェス光単位の変換係数）
-        void SetSkyAmbientScale(float scale) { skyAmbientScale_ = scale; }
+        void SetSkyAmbientScale(float scale);
         float GetSkyAmbientScale() const { return skyAmbientScale_; }
 
         // ===== 空スペキュラIBL（Phase 3b: Sky Light のスペキュラ成分相当） =====
 
         /// @brief 空スペキュラIBL（空＋雲キューブマップの環境反射）の有効/無効
-        void SetSkySpecularEnabled(bool enabled) { skySpecularEnabled_ = enabled; }
+        void SetSkySpecularEnabled(bool enabled);
         bool IsSkySpecularEnabled() const { return skySpecularEnabled_; }
 
         /// @brief プリフィルタ済み空スペキュラキューブマップの SRV ハンドルを取得
@@ -398,6 +404,14 @@ namespace CoreEngine
         float cameraHeightAboveGround_ = 0.0f;
         float distanceFromPlanetCenter_ = 6360000.0f;
         Vector3 sunTransmittance_ = { 1.0f, 1.0f, 1.0f }; ///< 地表→太陽の大気透過率（惑星遮蔽込み）
+        /// @brief CVar（"r.Atmosphere.*"）の現在値を取り込む
+        /// @details SetParameters は LUT 再計算のダーティフラグを立てるため、
+        ///          CVar の変更通番が動いたときだけ反映する（毎フレーム呼ぶと LUT を作り直し続ける）
+        void SyncParametersFromCVars();
+
+        /// @brief 最後に CVar を取り込んだ時点の変更通番
+        uint32_t lastCVarRevision_ = 0;
+
         bool transmittanceOnLight_ = true; ///< 直接光へ透過率を適用するか（Transmittance on Light。太陽・月共通）
 
         // 月（第2大気ライト）。isAtmosphereMoon のライトが無ければ hasMoonLight_=false のまま

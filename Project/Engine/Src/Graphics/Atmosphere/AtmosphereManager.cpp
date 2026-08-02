@@ -9,12 +9,133 @@
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Utility/Logger/Logger.h"
 #include "Math/MathCore.h"
+#include "Utility/CVar/CVar.h"
+#include "Utility/CVar/CVarRegistry.h"
 
 #include <algorithm>
 #include <cmath>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        // 大気の物理パラメータ。既定値・単位は AtmosphereParameters の宣言と一致させること
+        // （長さは [m]、散乱/吸収係数は [1/m]）
+        CVar<float> cvPlanetRadius{
+            "r.Atmosphere.PlanetRadius", 6360000.0f,
+            "惑星（地表）半径 [m]",
+            CVarRange{ 1000000.0f, 12000000.0f } };
+
+        CVar<float> cvAtmosphereTopRadius{
+            "r.Atmosphere.TopRadius", 6460000.0f,
+            "大気圏上端の惑星中心からの半径 [m]",
+            CVarRange{ 1000000.0f, 12000000.0f } };
+
+        CVar<Vector3> cvRayleighScattering{
+            "r.Atmosphere.RayleighScattering", Vector3{ 5.802e-6f, 13.558e-6f, 33.1e-6f },
+            "レイリー散乱係数 [1/m]（RGB）。空の青さを決める" };
+
+        CVar<float> cvRayleighScaleHeight{
+            "r.Atmosphere.RayleighScaleHeight", 8000.0f,
+            "レイリー密度が 1/e になる高度スケール [m]",
+            CVarRange{ 100.0f, 30000.0f } };
+
+        CVar<float> cvMieScattering{
+            "r.Atmosphere.MieScattering", 3.996e-6f,
+            "ミー散乱係数 [1/m]（波長非依存）。エアロゾルによる白いヘイズ" };
+
+        CVar<float> cvMieAbsorption{
+            "r.Atmosphere.MieAbsorption", 4.4e-6f,
+            "ミー吸収係数 [1/m]" };
+
+        CVar<float> cvMieScaleHeight{
+            "r.Atmosphere.MieScaleHeight", 1200.0f,
+            "ミー密度のスケールハイト [m]",
+            CVarRange{ 100.0f, 10000.0f } };
+
+        CVar<float> cvMiePhaseG{
+            "r.Atmosphere.MiePhaseG", 0.8f,
+            "Henyey-Greenstein 位相関数の非対称度。大きいほど前方散乱が強い",
+            CVarRange{ -0.99f, 0.99f } };
+
+        CVar<Vector3> cvOzoneAbsorption{
+            "r.Atmosphere.OzoneAbsorption", Vector3{ 0.650e-6f, 1.881e-6f, 0.085e-6f },
+            "オゾン吸収係数 [1/m]（RGB）。薄暮の青紫を作る" };
+
+        CVar<float> cvOzoneLayerCenter{
+            "r.Atmosphere.OzoneLayerCenter", 25000.0f,
+            "オゾン層の中心高度 [m]（テント型分布）",
+            CVarRange{ 0.0f, 60000.0f } };
+
+        CVar<float> cvOzoneLayerHalfWidth{
+            "r.Atmosphere.OzoneLayerHalfWidth", 15000.0f,
+            "オゾン層の半幅 [m]",
+            CVarRange{ 100.0f, 40000.0f } };
+
+        CVar<Vector3> cvGroundAlbedo{
+            "r.Atmosphere.GroundAlbedo", Vector3{ 0.3f, 0.3f, 0.3f },
+            "地表アルベド（多重散乱の地面反射寄与）",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvSunDiskAngularRadiusDeg{
+            "r.Atmosphere.SunDiskAngularRadius", 0.265f,
+            "太陽の視半径 [deg]（実際の太陽は約 0.265）",
+            CVarRange{ 0.0f, 5.0f } };
+
+        CVar<float> cvSunDiskLuminanceScale{
+            "r.Atmosphere.SunDiskLuminanceScale", 50.0f,
+            "太陽ディスクの輝度スケール（空の散乱輝度に対する倍率。レンズフレアの源になる）",
+            CVarRange{ 0.0f, 500.0f } };
+
+        CVar<float> cvMoonDiskAngularRadiusDeg{
+            "r.Atmosphere.MoonDiskAngularRadius", 0.259f,
+            "月の視半径 [deg]（実際の月の平均視半径）",
+            CVarRange{ 0.0f, 5.0f } };
+
+        CVar<float> cvMoonDiskLuminanceScale{
+            "r.Atmosphere.MoonDiskLuminanceScale", 25.0f,
+            "月ディスクの輝度スケール。既定 25 は満月面輝度（昼空の約1/3）に合わせた美術値",
+            CVarRange{ 0.0f, 200.0f } };
+
+        CVar<bool> cvMoonPhaseFromSun{
+            "r.Atmosphere.MoonPhaseFromSun", false,
+            "月の満ち欠けを太陽方向から計算する。false（既定）= 常に満月。"
+            "実位相だと配置次第で意図せず新月になるため固定満月が既定" };
+
+        CVar<float> cvStarIntensity{
+            "r.Atmosphere.StarIntensity", 1.0f,
+            "星空の強度スケール（0=無効）。空の輝度による暗さマスクが掛かるため常時 ON で害はない",
+            CVarRange{ 0.0f, 10.0f } };
+
+        CVar<float> cvMultiScatteringFactor{
+            "r.Atmosphere.MultiScatteringFactor", 1.0f,
+            "多重散乱寄与のスケール（1=近似そのまま）。薄明時に空全体を過大に持ち上げる傾向の補正用",
+            CVarRange{ 0.0f, 4.0f } };
+
+        CVar<float> cvApKmPerSlice{
+            "r.Atmosphere.AerialPerspectiveKmPerSlice", 4.0f,
+            "Aerial Perspective の 1 スライスあたり距離 [km]（既定 4 = 最大 32x4 = 128km）。"
+            "大きいほど霞が遠距離まで届くが近距離の分解能が落ちる",
+            CVarRange{ 0.05f, 20.0f } };
+
+        CVar<bool> cvTransmittanceOnLight{
+            "r.Atmosphere.TransmittanceOnLight", true,
+            "直接光へ大気の透過率を適用する（夕焼けで光が赤くなる。太陽・月共通）" };
+
+        CVar<bool> cvSkyAmbientEnabled{
+            "r.Atmosphere.SkyAmbientEnabled", true,
+            "空アンビエント（SH 環境光）を有効にする" };
+
+        CVar<float> cvSkyAmbientScale{
+            "r.Atmosphere.SkyAmbientScale", 0.3f,
+            "空の輝度単位 → サーフェス光単位の変換係数（美術値）",
+            CVarRange{ 0.0f, 4.0f } };
+
+        CVar<bool> cvSkySpecularEnabled{
+            "r.Atmosphere.SkySpecularEnabled", true,
+            "空スペキュラ IBL（プリフィルタ環境マップ）を有効にする" };
+    }
+
     namespace {
         constexpr float kMetersToKm = 1.0f / 1000.0f;
         constexpr float kPerMeterToPerKm = 1000.0f;
@@ -839,12 +960,106 @@ namespace CoreEngine
             apResultState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 
+    void AtmosphereManager::SetParametersFromEditor(const AtmosphereParameters& params)
+    {
+        // CVar が唯一の保持者。書き戻すことで UI 表示・自動保存にも反映される
+        cvPlanetRadius.Set(params.planetRadius);
+        cvAtmosphereTopRadius.Set(params.atmosphereTopRadius);
+        cvRayleighScattering.Set(params.rayleighScattering);
+        cvRayleighScaleHeight.Set(params.rayleighScaleHeight);
+        cvMieScattering.Set(params.mieScattering);
+        cvMieAbsorption.Set(params.mieAbsorption);
+        cvMieScaleHeight.Set(params.mieScaleHeight);
+        cvMiePhaseG.Set(params.miePhaseG);
+        cvOzoneAbsorption.Set(params.ozoneAbsorption);
+        cvOzoneLayerCenter.Set(params.ozoneLayerCenter);
+        cvOzoneLayerHalfWidth.Set(params.ozoneLayerHalfWidth);
+        cvGroundAlbedo.Set(params.groundAlbedo);
+        cvSunDiskAngularRadiusDeg.Set(params.sunDiskAngularRadiusDeg);
+        cvSunDiskLuminanceScale.Set(params.sunDiskLuminanceScale);
+        cvMoonDiskAngularRadiusDeg.Set(params.moonDiskAngularRadiusDeg);
+        cvMoonDiskLuminanceScale.Set(params.moonDiskLuminanceScale);
+        cvMoonPhaseFromSun.Set(params.moonPhaseFromSun);
+        cvStarIntensity.Set(params.starIntensity);
+        cvMultiScatteringFactor.Set(params.multiScatteringFactor);
+        cvApKmPerSlice.Set(params.apKmPerSlice);
+        // groundLevelY はシーン所有なので CVar 化していない。そのまま反映する
+        SetParameters(params);
+    }
+
+    // 設定の実体は CVar が保持する。ここへ書くと UI 表示・自動保存にも反映される
+    void AtmosphereManager::SetTransmittanceOnLightEnabled(bool enabled)
+    {
+        cvTransmittanceOnLight.Set(enabled);
+        transmittanceOnLight_ = enabled;
+    }
+
+    void AtmosphereManager::SetSkyAmbientEnabled(bool enabled)
+    {
+        cvSkyAmbientEnabled.Set(enabled);
+        skyAmbientEnabled_ = enabled;
+    }
+
+    void AtmosphereManager::SetSkyAmbientScale(float scale)
+    {
+        cvSkyAmbientScale.Set(scale);
+        skyAmbientScale_ = scale;
+    }
+
+    void AtmosphereManager::SetSkySpecularEnabled(bool enabled)
+    {
+        cvSkySpecularEnabled.Set(enabled);
+        skySpecularEnabled_ = enabled;
+    }
+
+    void AtmosphereManager::SyncParametersFromCVars()
+    {
+        const uint32_t revision = CVarRegistry::Get().GetGlobalRevision();
+        if (revision == lastCVarRevision_) {
+            return;
+        }
+        lastCVarRevision_ = revision;
+
+        AtmosphereParameters p = parameters_;
+        p.planetRadius             = cvPlanetRadius.Get();
+        p.atmosphereTopRadius      = cvAtmosphereTopRadius.Get();
+        p.rayleighScattering       = cvRayleighScattering.Get();
+        p.rayleighScaleHeight      = cvRayleighScaleHeight.Get();
+        p.mieScattering            = cvMieScattering.Get();
+        p.mieAbsorption            = cvMieAbsorption.Get();
+        p.mieScaleHeight           = cvMieScaleHeight.Get();
+        p.miePhaseG                = cvMiePhaseG.Get();
+        p.ozoneAbsorption          = cvOzoneAbsorption.Get();
+        p.ozoneLayerCenter         = cvOzoneLayerCenter.Get();
+        p.ozoneLayerHalfWidth      = cvOzoneLayerHalfWidth.Get();
+        p.groundAlbedo             = cvGroundAlbedo.Get();
+        p.sunDiskAngularRadiusDeg  = cvSunDiskAngularRadiusDeg.Get();
+        p.sunDiskLuminanceScale    = cvSunDiskLuminanceScale.Get();
+        p.moonDiskAngularRadiusDeg = cvMoonDiskAngularRadiusDeg.Get();
+        p.moonDiskLuminanceScale   = cvMoonDiskLuminanceScale.Get();
+        p.moonPhaseFromSun         = cvMoonPhaseFromSun.Get();
+        p.starIntensity            = cvStarIntensity.Get();
+        p.multiScatteringFactor    = cvMultiScatteringFactor.Get();
+        p.apKmPerSlice             = cvApKmPerSlice.Get();
+        // groundLevelY はシーン所有の値なので CVar 化していない（上書きしない）
+        SetParameters(p);
+
+        transmittanceOnLight_ = cvTransmittanceOnLight.Get();
+        skyAmbientEnabled_    = cvSkyAmbientEnabled.Get();
+        skyAmbientScale_      = cvSkyAmbientScale.Get();
+        skySpecularEnabled_   = cvSkySpecularEnabled.Get();
+    }
+
     void AtmosphereManager::Update(const Vector3& cameraWorldPosition,
                                    const Matrix4x4& viewMatrix, const Matrix4x4& projMatrix,
                                    LightManager* lightManager)
     {
         // Update() を呼ぶのは大気を使うシーンのみ。このフレームは大気合成を有効にする。
         atmosphereActive_ = true;
+
+        // 設定は CVar が保持する。SetParameters は LUT 再計算のダーティフラグを立てるため、
+        // 毎フレーム呼ぶと LUT を作り直し続けてしまう。CVar の変更通番が動いたときだけ反映する
+        SyncParametersFromCVars();
 
         // ===== Aerial Perspective 用カメラ情報 =====
         cameraWorldPos_ = cameraWorldPosition;

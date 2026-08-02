@@ -4,8 +4,7 @@
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
 #ifdef USE_IMGUI
-#include "Camera/Debug/DebugCameraSettingsSection.h"
-#include "EngineSystem/Settings/EditorSettingsSubsystem.h"
+#include "Camera/Debug/DebugCameraCVars.h"
 #endif
 #include "Editor/Camera/EditorCameraInput.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -97,6 +96,11 @@ namespace CoreEngine
                 deltaTime = frameRate->GetDeltaTime();
             }
             cameraManager_->Update(EditorCameraInput::Collect(engine_), deltaTime);
+
+            // 更新後の設定・姿勢を CVar へ写す（カメラ UI・マウス操作のどちらの変更も拾う）
+            if (sceneCamera_ && orbitController_) {
+                DebugCameraCVars::MirrorFrom(*sceneCamera_, *orbitController_);
+            }
         }
 
         // フレーム前処理（ライト/影・グリッド・デバッグエディタ）
@@ -165,15 +169,13 @@ namespace CoreEngine
 
     void BaseScene::Finalize()
     {
-#ifdef USE_IMGUI
-        // エディタ設定セクションの解除（解除時に最終保存が走る）。カメラ破棄より先に行うこと
-        if (debugCameraSettingsSection_) {
-            if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
-                editorSettings->UnregisterSections(this);
-            }
-            debugCameraSettingsSection_.reset();
+        // 最後の設定・姿勢を CVar へ写しておく（最終フレームの Update 以降の変更を取りこぼさない）。
+        // カメラの破棄より先に行うこと
+        if (sceneCamera_ && orbitController_) {
+            DebugCameraCVars::MirrorFrom(*sceneCamera_, *orbitController_);
         }
-#endif
+        sceneCamera_ = nullptr;
+        orbitController_ = nullptr;
 
         // 派生クラス固有の解放
         OnFinalize();
@@ -307,17 +309,13 @@ namespace CoreEngine
         // 起動時はゲーム視点で覗く（エディタ視点への切り替えはキー 1 / カメラUI）
         cameraManager_->SetUseSceneCamera(false);
 
-#ifdef USE_IMGUI
-        // エディタ設定の自動保存: 登録時に前回終了時の姿勢・設定が復元され、以降の変更が
-        // 自動保存される
-        if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
-            debugCameraSettingsSection_ = std::make_unique<DebugCameraSettingsSection>(
-                cameraManager_->GetCamera(CameraNames::Scene), orbitController);
-            editorSettings->RegisterSection(debugCameraSettingsSection_.get(), this);
+        // エディタ視点カメラの設定・姿勢を CVar 経由で永続化する。
+        // 生成直後のこの時点で前回終了時の状態を復元し、以降は毎フレーム CVar へ写す
+        sceneCamera_ = cameraManager_->GetCamera(CameraNames::Scene);
+        orbitController_ = orbitController;
+        if (sceneCamera_ && orbitController_) {
+            DebugCameraCVars::RestoreTo(*sceneCamera_, *orbitController_);
         }
-#else
-        (void)orbitController;
-#endif
 
         // ===== 2Dカメラの設定 =====
 

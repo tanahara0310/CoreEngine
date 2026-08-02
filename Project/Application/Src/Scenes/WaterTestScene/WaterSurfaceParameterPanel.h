@@ -53,6 +53,8 @@ private:
 	void DrawIndividualWaveEditor(CoreEngine::WaterRenderFeature& runtimeController);
 	/// @brief ベース光学係数と濁度から実効 σa/σs を計算して水面へ反映する
 	void ApplyEffectiveOpticalCoefficients(CoreEngine::WaterPlaneObject* waterPlane) const;
+	/// @brief 泡パラメータの UI キャッシュを水面へ反映する
+	void ApplyFoamParameters(CoreEngine::WaterPlaneObject* waterPlane) const;
 
 	/// @brief 水面の見た目に関する UI キャッシュ
 	struct AppearanceParameters {
@@ -100,6 +102,23 @@ private:
 		float gravity = 9.81f;
 		int resolution = 256;
 	} fftOceanParameters_{};
+
+	/// @brief 泡（whitecap）調整 UI のキャッシュ（FFTOcean 専用）
+	/// @note 既定値は WaterFrameConstants の初期値と一致させること
+	struct FoamParameters {
+		bool enabled = true;
+		// 発生しきい値。合成ヤコビアン detJ がこれを下回ると泡が立つ
+		float bias = 0.85f;
+		// しきい値からの立ち上がり勾配
+		float gain = 4.0f;
+		// 泡レイヤの不透明度（白ベタ回避のため 1.0 未満を推奨）
+		float opacity = 0.9f;
+		// カスケード別の勾配寄与。勾配は波数に比例するため小パッチほど小さくする
+		// （無重みだと 31m カスケードが支配して detJ が飽和する: Phase 0 実測）
+		float cascadeWeights[3] = { 1.0f, 0.5f, 0.2f };
+		// 泡の寿命 τ [s]。砕けた後に白い筋が e^-1 に減衰するまでの時間
+		float decaySeconds = 3.0f;
+	} foamParameters_{};
 
 	/// @brief DXR 屈折の最大スクリーンずれ量（px）
 	float rtRefractionOffsetPixels_ = 8.0f;

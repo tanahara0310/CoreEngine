@@ -3,11 +3,50 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<float> cvScrollSpeed{
+            "r.RasterScroll.ScrollSpeed", 1.0f,
+            "走査線が流れる速さ",
+            CVarRange{ 0.0f, 10.0f } };
+
+        CVar<float> cvLineHeight{
+            "r.RasterScroll.LineHeight", 10.0f,
+            "1 本の走査線の高さ（ピクセル）",
+            CVarRange{ 1.0f, 20.0f } };
+
+        CVar<float> cvAmplitude{
+            "r.RasterScroll.Amplitude", 0.02f,
+            "横方向のずれ幅",
+            CVarRange{ 0.0f, 0.2f } };
+
+        CVar<float> cvFrequency{
+            "r.RasterScroll.Frequency", 1.5f,
+            "波の細かさ",
+            CVarRange{ 0.1f, 5.0f } };
+
+        CVar<float> cvDistortionStrength{
+            "r.RasterScroll.DistortionStrength", 1.0f,
+            "歪みの強度",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.RasterScroll.Enabled", false,
+            "ラスタースクロールを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.RasterScroll";
+    }
+
     void RasterScroll::OnCreateConstantBuffers()
     {
         UINT rsSize = (sizeof(RasterScrollParams) + 255) & ~255;
@@ -24,7 +63,17 @@ namespace CoreEngine
 
     void RasterScroll::UpdateConstantBuffer()
     {
-        if (mappedRasterScrollParams_) { *mappedRasterScrollParams_ = params_; }
+        if (!mappedRasterScrollParams_) {
+            return;
+        }
+        mappedRasterScrollParams_->scrollSpeed        = cvScrollSpeed.Get();
+        mappedRasterScrollParams_->lineHeight         = cvLineHeight.Get();
+        mappedRasterScrollParams_->amplitude          = cvAmplitude.Get();
+        mappedRasterScrollParams_->frequency          = cvFrequency.Get();
+        mappedRasterScrollParams_->distortionStrength = cvDistortionStrength.Get();
+        // time / lineOffset は Update が計算した実行時値
+        mappedRasterScrollParams_->time       = accumulatedTime_;
+        mappedRasterScrollParams_->lineOffset = accumulatedTime_ * cvScrollSpeed.Get();
     }
 
     void RasterScroll::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -35,17 +84,9 @@ namespace CoreEngine
         }
     }
 
-    void RasterScroll::SetParams(const RasterScrollParams& params)
-    {
-        params_ = params;
-        UpdateConstantBuffer();
-    }
-
     void RasterScroll::Update(float deltaTime)
     {
-        accumulatedTime_  += deltaTime;
-        params_.time       = accumulatedTime_;
-        params_.lineOffset = accumulatedTime_ * params_.scrollSpeed;
+        accumulatedTime_ += deltaTime;
         UpdateConstantBuffer();
     }
 
@@ -55,6 +96,7 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
+        UpdateConstantBuffer();
         UpdateScreenConstantBuffer(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
@@ -83,24 +125,19 @@ namespace CoreEngine
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            changed |= UI::SliderFloat("スクロール速度", params_.scrollSpeed, 0.0f, 10.0f);
-            changed |= UI::SliderFloat("ライン高さ", params_.lineHeight, 1.0f, 20.0f);
-            changed |= UI::SliderFloat("振幅", params_.amplitude, 0.0f, 0.2f);
-            changed |= UI::SliderFloat("周波数", params_.frequency, 0.1f, 5.0f);
-            changed |= UI::SliderFloat("歪み強度", params_.distortionStrength, 0.0f, 3.0f);
-            ImGui::TreePop();
-        }
-        if (changed) { UpdateConstantBuffer(); }
+        CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
         if (ImGui::Button("デフォルトに戻す")) {
-            params_ = RasterScrollParams{};
+            CVarUI::ResetTree(kCVarPrefix);
             accumulatedTime_ = 0.0f;
-            UpdateConstantBuffer();
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* RasterScroll::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

@@ -3,11 +3,42 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        // ヴィネットの調整パラメータ。ここで 1 行定義するだけで、
+        // ImGui のスライダー・エディタ設定への自動保存・コンソールからの操作がすべて有効になる
+        CVar<float> cvIntensity{
+            "r.Vignette.Intensity", 0.8f,
+            "ヴィネットの強さ。0 で無効、大きいほど四隅が暗くなる",
+            CVarRange{ 0.0f, 2.0f } };
+
+        CVar<float> cvSmoothness{
+            "r.Vignette.Smoothness", 0.8f,
+            "明暗の境界のなめらかさ。小さいほど境界がはっきりする",
+            CVarRange{ 0.1f, 2.0f } };
+
+        CVar<float> cvSize{
+            "r.Vignette.Size", 16.0f,
+            "効果のかかり始める半径。大きいほど画面中央の明るい領域が広がる",
+            CVarRange{ 1.0f, 50.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.Vignette.Enabled", false,
+            "ヴィネットを有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.Vignette";
+    }
+
     void Vignette::OnCreateConstantBuffers()
     {
         UINT vignetteSize = (sizeof(VignetteParams) + 255) & ~255;
@@ -24,7 +55,15 @@ namespace CoreEngine
 
     void Vignette::UpdateConstantBuffer()
     {
-        if (mappedVignetteParams_) { *mappedVignetteParams_ = params_; }
+        if (!mappedVignetteParams_) {
+            return;
+        }
+        // CVar が唯一のソース。差分検知を持たず毎フレーム書き込むが、
+        // 16 バイトの書き込みなので比較コストを掛ける意味がない
+        mappedVignetteParams_->intensity  = cvIntensity.Get();
+        mappedVignetteParams_->smoothness = cvSmoothness.Get();
+        mappedVignetteParams_->size       = cvSize.Get();
+        mappedVignetteParams_->padding    = 0.0f;
     }
 
     void Vignette::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -35,9 +74,20 @@ namespace CoreEngine
         }
     }
 
+    Vignette::VignetteParams Vignette::GetParams() const
+    {
+        VignetteParams params;
+        params.intensity  = cvIntensity.Get();
+        params.smoothness = cvSmoothness.Get();
+        params.size       = cvSize.Get();
+        return params;
+    }
+
     void Vignette::SetParams(const VignetteParams& params)
     {
-        params_ = params;
+        cvIntensity.Set(params.intensity);
+        cvSmoothness.Set(params.smoothness);
+        cvSize.Set(params.size);
         UpdateConstantBuffer();
     }
 
@@ -47,6 +97,8 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
+        // UI・コンソール・設定復元のいずれで値が変わっても、ここで毎フレーム取り込む
+        UpdateConstantBuffer();
         UpdateScreenConstantBuffer(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
@@ -75,21 +127,20 @@ namespace CoreEngine
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            changed |= UI::SliderFloat("強度", params_.intensity, 0.0f, 2.0f);
-            changed |= UI::SliderFloat("スムースネス", params_.smoothness, 0.1f, 2.0f);
-            changed |= UI::SliderFloat("サイズ", params_.size, 1.0f, 50.0f);
-            ImGui::TreePop();
-        }
-        if (changed) { UpdateConstantBuffer(); }
+        // パラメータ UI は CVar から自動生成される。
+        // 項目を増やすときは Vignette.cpp 冒頭に CVar を 1 行足すだけでよい
+        CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
         if (ImGui::Button("デフォルトに戻す")) {
-            params_ = VignetteParams{};
-            UpdateConstantBuffer();
+            CVarUI::ResetTree(kCVarPrefix);
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* Vignette::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

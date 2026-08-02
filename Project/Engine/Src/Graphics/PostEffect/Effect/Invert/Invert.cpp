@@ -3,11 +3,20 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvEnabled{
+            "r.Invert.Enabled", false,
+            "色反転を有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+    }
+
     void Invert::OnCreateConstantBuffers()
     {
         UINT size = (sizeof(ScreenParams) + 255) & ~255;
@@ -67,4 +76,9 @@ void Invert::DrawImGui()
     ImGui::PopID();
 #endif // USE_IMGUI
 }
+
+    CVar<bool>* Invert::GetEnabledCVar() const
+    {
+        return &cvEnabled;
+    }
 }

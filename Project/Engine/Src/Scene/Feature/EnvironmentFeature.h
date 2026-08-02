@@ -1,8 +1,6 @@
 #pragma once
 
 #include "ISceneFeature.h"
-#include "Editor/Environment/AtmosphereLightsSettingsSection.h"
-#include <memory>
 
 // 前方宣言
 class SkyBoxObject;
@@ -40,6 +38,16 @@ namespace CoreEngine
         /// @brief 既定の無限地面をカメラ XZ に追従させる（毎フレーム）
         void UpdateGroundPlane(SceneContext& ctx);
 
+        /// @brief 保存済みの太陽・月ライト設定（CVar）をシーンのライトへ復元する
+        /// @details ライトはシーン寿命・CVar はエンジン寿命のため、ライト生成後の
+        ///          PostSceneInitialize でこの向きに一度だけ流し込む。
+        void RestoreAtmosphereLightsFromCVars(SceneContext& ctx);
+
+        /// @brief 現在の太陽・月ライトの状態を CVar へ写す（毎フレーム）
+        /// @details ライトが実体で CVar は鏡。エディタ・ギズモ・シーンコードの
+        ///          どこから書き換えられても、ここを通ることで保存対象に載る。
+        void MirrorAtmosphereLightsToCVars(SceneContext& ctx);
+
         /// @brief 大気散乱システム（と雲）の毎フレーム更新
         /// @details SkyBox が大気散乱モードの場合のみ AtmosphereManager へ太陽情報と
         ///          カメラ情報を反映する（LUT 生成・Aerial Perspective の有効化トリガ）。
@@ -52,10 +60,5 @@ namespace CoreEngine
         InfiniteGroundObject* groundPlane_ = nullptr;
 
         bool wantsDefaultGround_ = true;
-
-        // 太陽・月ライトのエディタ設定自動保存セクション（ライトはシーン寿命のため、
-        // ライト生成後の PostSceneInitialize で登録し Finalize で解除する。
-        // EditorSettingsSubsystem が無いビルド（USE_IMGUI 無効）では未登録のまま）
-        std::unique_ptr<AtmosphereLightsSettingsSection> atmosphereLightsSection_;
     };
 }

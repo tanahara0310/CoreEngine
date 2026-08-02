@@ -34,6 +34,9 @@ public:
     void SetInputTargetName(const std::string& name) { inputTargetName_ = name; }
 
 protected:
+    /// @brief 有効/無効は CVar "r.SSAOBlur.Enabled" が保持する
+    CVar<bool>* GetEnabledCVar() const override;
+
     std::string GetTechniqueName() const override { return "SSAOBlur"; }
     const std::wstring& GetPixelShaderPath() const override;
 

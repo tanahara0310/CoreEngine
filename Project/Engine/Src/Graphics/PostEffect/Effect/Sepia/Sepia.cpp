@@ -3,11 +3,35 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 #include <cassert>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        CVar<bool> cvEnabled{
+            "r.Sepia.Enabled", false,
+            "セピア調変換を有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        CVar<float> cvIntensity{
+            "r.Sepia.Intensity", 1.0f,
+            "セピア効果の強度。0 で元の色",
+            CVarRange{ 0.0f, 2.0f } };
+
+        CVar<Vector3> cvTone{
+            "r.Sepia.Tone", Vector3{ 1.0f, 0.8f, 0.6f },
+            "セピアの色味（RGB 個別の倍率）",
+            CVarRange{ 0.5f, 1.5f } };
+
+        constexpr const char* kCVarPrefix = "r.Sepia";
+    }
+
     void Sepia::OnCreateConstantBuffers()
     {
         // SepiaParams 定数バッファ
@@ -26,9 +50,15 @@ namespace CoreEngine
 
     void Sepia::UpdateConstantBuffer()
     {
-        if (mappedSepiaParams_) {
-            *mappedSepiaParams_ = params_;
+        if (!mappedSepiaParams_) {
+            return;
         }
+        mappedSepiaParams_->intensity = cvIntensity.Get();
+
+        const Vector3& tone = cvTone.Get();
+        mappedSepiaParams_->toneRed   = tone.x;
+        mappedSepiaParams_->toneGreen = tone.y;
+        mappedSepiaParams_->toneBlue  = tone.z;
     }
 
     void Sepia::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
@@ -39,18 +69,13 @@ namespace CoreEngine
         }
     }
 
-    void Sepia::SetParams(const SepiaParams& params)
-    {
-        params_ = params;
-        UpdateConstantBuffer();
-    }
-
     void Sepia::Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
         uint32_t width,
         uint32_t height)
     {
+        UpdateConstantBuffer();
         UpdateScreenConstantBuffer(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
@@ -79,25 +104,21 @@ namespace CoreEngine
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
         UI::Separator();
 
-        bool changed = false;
-        if (ImGui::TreeNode("パラメータ")) {
-            changed |= UI::SliderFloat("強度", params_.intensity, 0.0f, 2.0f);
-            changed |= UI::SliderFloat("赤色調整", params_.toneRed, 0.5f, 1.5f);
-            changed |= UI::SliderFloat("緑色調整", params_.toneGreen, 0.5f, 1.5f);
-            changed |= UI::SliderFloat("青色調整", params_.toneBlue, 0.5f, 1.5f);
-            ImGui::TreePop();
-        }
-        if (changed) { UpdateConstantBuffer(); }
+        CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
         if (ImGui::Button("デフォルトに戻す")) {
-            params_ = SepiaParams{};
-            UpdateConstantBuffer();
+            CVarUI::ResetTree(kCVarPrefix);
         }
         if (!IsEnabled()) {
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
         }
         ImGui::PopID();
 #endif // USE_IMGUI
+    }
+
+    CVar<bool>* Sepia::GetEnabledCVar() const
+    {
+        return &cvEnabled;
     }
 }

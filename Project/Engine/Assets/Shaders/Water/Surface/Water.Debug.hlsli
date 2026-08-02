@@ -49,7 +49,12 @@ struct WaterDebugContext
     float3 geomNormal;
     float3 viewDir;
     float cosTheta;
-    float4 jacobianData;
+    // FFT ヤコビアン可視化（モード 16）用のワールド XZ。
+    // ヤコビアンは VS 経由の補間値ではなく、PS が gFFTOceanJacobian を
+    // ここから直接サンプルして全カスケード合成で評価する。
+    float2 worldXZ;
+    // 泡マスク（モード 23）。本体の合成と同じ値（ComputeFoamMask の結果）
+    float foamMask;
 };
 
 /// @brief 現在のデバッグ表示モードに対応する色を返す
@@ -166,10 +171,10 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
         return lerp(float3(1.0f, 0.0f, 0.0f), float3(0.0f, 1.0f, 0.0f), rtSuccess);
     }
 
-    // 16: FFT ヤコビアン（砕波候補・圧縮・折り返し）
+    // 16: FFT ヤコビアン（全カスケード合成 detJ。R=圧縮/引き伸ばし, G=砕波候補, B=折り返し）
     if (gDepthDebugViewMode == 16)
     {
-        return VisualizeJacobian(ctx.jacobianData);
+        return VisualizeJacobian(ctx.worldXZ);
     }
 
     // ---- 17〜19: 反射色の構成要素を単独表示（まだらの切り分け用）----
@@ -232,6 +237,13 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
     if (gDepthDebugViewMode == 22)
     {
         return abs(ctx.reflectColor - ctx.transmissionColor) * 3.0f;
+    }
+
+    // 23: FFT 泡マスク（グレースケール）。foamBias / foamGain / カスケード重みの較正用。
+    //     本体の合成に使われる値そのもの（不透明度 gFoamOpacity は掛けない生マスク）。
+    if (gDepthDebugViewMode == 23)
+    {
+        return VisualizeDepthValue(ctx.foamMask);
     }
 
     // 未知のモード（黄色）

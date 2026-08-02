@@ -32,6 +32,17 @@ Texture2D<float4> gRTWaterRefractionColor : register(t17);
 // カスケード（マルチスケールFFT）は Texture2DArray のスライスに格納される。
 Texture2DArray<float4> gFFTOceanNormal : register(t19);
 
+// ===== FFT Ocean ヤコビアン（FFTOceanFinalize.CS.hlsl 出力）=====
+// 各スライス = (Jxx, Jzz, Jxy, detJ_cascade)。泡/砕波の発生判定と可視化に使う。
+// 合成 detJ の評価は FFTOceanCascade.hlsli の ComputeFFTCombinedDetJ を必ず通すこと
+// （カスケード単体の detJ は和に分配されないため、勝手に足すと誤る）。
+Texture2DArray<float4> gFFTOceanJacobian : register(t20);
+
+// ===== FFT Ocean 蓄積泡（FFTOceanFoamAccumulate.CS.hlsl 出力）=====
+// カスケード毎の格子空間で時間発展（発生 → 指数減衰）した泡 [0,1]。
+// ping-pong の「前フレームで書き終わった側」が毎フレームバインドされる。
+Texture2DArray<float> gFFTOceanFoam : register(t21);
+
 // ===== 空の放射照度 SH9 係数（SkyIrradianceSH.CS.hlsl 出力）=====
 // WaterPlaneObject::BindCustomResources() が t24 にバインドする。
 // 係数には太陽色・強度が焼き込み済みで、Σ c_i・Y_i(N) がそのまま
@@ -48,7 +59,6 @@ struct WaterPSInput
 {
     float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD0;
-    float4 jacobianData : TEXCOORD1;
     float3 normal : NORMAL0;
     float3 worldPosition : POSITION0;
     float4 lightSpacePos : POSITION1;
@@ -98,6 +108,16 @@ cbuffer WaterFrameConstants : register(b5)
     float gCameraNearZ;
     float gCameraFarZ;
     float2 gCameraClipPadding;
+
+    // ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たない）----
+    int gFoamEnabled;      // 1 = 泡合成を行う
+    float gFoamBias;       // 発生しきい値（合成 detJ がこれ未満で泡）
+    float gFoamGain;       // しきい値からの立ち上がり勾配
+    float gFoamOpacity;    // 泡レイヤの不透明度（1.0 の白ベタは禁止・水面下の情報を残す）
+    float3 gFoamCascadeWeights; // カスケード別の勾配寄与（無重みは31mカスケードが支配して飽和する）
+    // 泡の寿命 τ [s]。PS では未使用（FFTOceanFoamAccumulate.CS が使う）。
+    // WaterRenderFeature が毎フレーム FFTOceanManager::SetFoamSettings へ転送する。
+    float gFoamDecaySeconds;
 };
 
 /// @brief NDC 深度値をビュー空間線形深度（メートル単位）に変換する
@@ -226,15 +246,20 @@ float3 VisualizeDepthValue(float value)
     return float3(value, value, value);
 }
 
-float3 VisualizeJacobian(float4 jacobianData)
+/// @brief 合成ヤコビアン（全カスケード＋エンベロープ込みの detJ）の可視化
+/// @details R: detJ を 0.5 中心にマップ（0.5=無変形 / 白=圧縮 / 黒=引き伸ばし）
+///          G: 砕波候補 saturate(1 - detJ)（泡しきい値 foamBias の較正に使う）
+///          B: 折り返し detJ < 0（波面が自己交差した砕波確定域）
+///          泡と同じカスケード重み（gFoamCascadeWeights）で評価する。
+float3 VisualizeJacobian(float2 worldXZ)
 {
-    const float detJ = jacobianData.x;
-    const float breakingCandidate = saturate(jacobianData.y);
-    const float compression = saturate(jacobianData.z);
-    const float foldover = saturate(jacobianData.w);
+    const float detJ = ComputeFFTCombinedDetJ(
+        worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights);
 
     const float detVisualization = saturate((1.0f - detJ) * 0.5f + 0.5f);
-    return saturate(float3(detVisualization, breakingCandidate, max(compression, foldover)));
+    const float breakingCandidate = saturate(1.0f - detJ);
+    const float foldover = detJ < 0.0f ? 1.0f : 0.0f;
+    return saturate(float3(detVisualization, breakingCandidate, foldover));
 }
 
 // 背景深度が取得できない（水面の背後が far plane = 外洋の水平線など）場合に
@@ -313,6 +338,187 @@ float3 ComputeUnderwaterAmbientLight()
     // フレネルの振れに応じて青/黒のうねりスケールのまだらを生む原因になったため撤去。
     // 水中に入る光と水面に映る空は同じ空なので、両者の明るさは常に整合させる。
     return sunAmbient + skyAmbient;
+}
+
+// ===== 泡（whitecap）シェーディング =====
+// 泡は水そのものの色ではなく、砕波で空気が混入した「白い散乱層」。ほぼ Lambert な
+// 拡散面として扱い、フレネル反射・鏡面はほぼ持たないため、合成時に
+// reflectanceWeight とサングリッターを (1 - 泡被覆) 倍へ抑制する。
+// アルベドはわずかに青白い（気泡層の多重散乱による短波長優位）。
+static const float3 kFoamAlbedo = float3(0.90f, 0.93f, 0.95f);
+
+// ---- 泡の描画方式: dissolve（しきい値カット）----
+// 泡マスクは「被覆率」の滑らかな場として持ち、表示時に高周波の泡パターンへ
+// しきい値カットを掛けて「泡がある/ない」のレース状の形へ変換する。
+// 被覆率をそのまま明度にすると（旧方式）、泡が「ぼかしたノイズテクスチャ」に
+// 見えてしまう — 実際の泡はレースの穴・筋・粒という鋭い微細構造を持つため。
+// dissolve のしきい値の柔らかさ（上側だけ滑らか。下端は硬い＝縁が鋭い）
+static const float kFoamLaceSoftness = 0.18f;
+// 白濁（haze）: 泡レースの穴の間と縁の外側に出る気泡層。パターンで粒状に変調し、
+// 「均一な白いもや」に見えないようにする
+static const float kFoamHazeTint = 0.55f;      // 泡色に対する輝度比（水越しの気泡層）
+static const float kFoamHazeOpacity = 0.35f;   // 最大ブレンド率（旧 0.5 から抑制）
+static const float kFoamHazePatternMin = 0.25f; // パターン変調の下限（0=完全に粒状）
+// 泡内部の粒状の明度変調（気泡の粒感。周期 ≈ 8cm）
+static const float kFoamGrainScale = 13.0f;
+static const float kFoamGrainMin = 0.82f;
+// 蓄積泡へ掛ける波群エンベロープの写像（瞬時項は合成 detJ 内で適用済み）。
+// envelope² × この係数で、波群の強い所ほど泡が濃く、弱い所は薄くなる
+static const float kFoamEnvelopeScale = 0.7f;
+// 泡域でのグリッター用ラフネス（泡は微細気泡でハイライトが大きく柔らかくなる）
+static const float kFoamGlintRoughness = 0.45f;
+
+// ---- 岸際泡（shore foam）----
+// 泡帯が消える水深 [m]。解析的鉛直水深は波の変位を含むため、
+// 波が寄せる/引くのに合わせて帯が自然に脈動する
+static const float kShoreFoamDepthMeters = 0.6f;
+// 汀線エッジ（この水深以浅）は被覆率満量＝ほぼ連続した白いシートになる
+static const float kShoreFoamEdgeMeters = 0.15f;
+// 外側の泡帯の最大被覆率。dissolve が形状を作るため 1 未満でもレース状に割れる
+static const float kShoreFoamStrength = 0.9f;
+
+/// @brief 泡分断用の 2D ハッシュ（[0,1]）
+float FoamHash(float2 p)
+{
+    return frac(sin(dot(p, float2(127.1f, 311.7f))) * 43758.5453f);
+}
+
+/// @brief 泡分断用の value noise（[0,1]・C1 連続）
+float FoamValueNoise(float2 p)
+{
+    const float2 i = floor(p);
+    float2 f = frac(p);
+    f = f * f * (3.0f - 2.0f * f);
+    const float a = FoamHash(i);
+    const float b = FoamHash(i + float2(1.0f, 0.0f));
+    const float c = FoamHash(i + float2(0.0f, 1.0f));
+    const float d = FoamHash(i + float2(1.0f, 1.0f));
+    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+}
+
+/// @brief 泡の内部パターン [0,1]（dissolve のしきい値場）
+/// @details fbm 4 オクターブ（周期 ≈ 1.5m / 0.6m / 0.25m / 0.1m）＋ ridged 成分
+///          （筋・網目）の合成。蓄積泡テクスチャは最大 2m/テクセルしかないため、
+///          近景の泡ディテールはすべてこのパターンが担う（テクスチャ資産は不要）。
+///          泡マスク自体が波と一緒に動くため、パターンはワールド固定でも
+///          「泡の中の模様」として自然に見える。
+float FoamPattern(float2 worldXZ)
+{
+    const float fbm = FoamValueNoise(worldXZ * 0.65f) * 0.40f
+                    + FoamValueNoise(worldXZ * 1.7f) * 0.25f
+                    + FoamValueNoise(worldXZ * 4.1f) * 0.20f
+                    + FoamValueNoise(worldXZ * 9.7f) * 0.15f;
+    // ridged: 谷折りの筋（1-|2n-1|）を二乗して鋭く。レースの網目構造を作る
+    float ridge = 1.0f - abs(FoamValueNoise(worldXZ * 1.1f) * 2.0f - 1.0f);
+    ridge *= ridge;
+    return saturate(fbm * 0.65f + ridge * 0.35f);
+}
+
+/// @brief 被覆率マスク → レース状の泡形状 [0,1]（dissolve カット）
+/// @details パターンがしきい値 (1-mask) を超えた場所が泡になる。
+///          mask=0 でしきい値 1（泡なし）、mask=1 でしきい値 0（全て埋まる）。
+///          下端が硬い smoothstep なので縁は常に鋭いレース状になり、
+///          被覆率が上がるとパターンの高い所から順に泡が「埋まって」いく。
+float ComputeFoamLace(float mask, float pattern)
+{
+    return smoothstep(1.0f - mask, 1.0f - mask + kFoamLaceSoftness, pattern);
+}
+
+/// @brief 泡マスク [0,1] を求める（FFTOcean 専用）
+/// @details 2 つの項の max で構成する:
+///          - 瞬時項: 合成ヤコビアン detJ < gFoamBias（波頭の圧縮）。カスケード間の
+///            強め合いを含む正確な砕波判定で、砕けている「今」を捉える。
+///          - 蓄積項: FFTOceanFoamAccumulate.CS が時間発展させた泡。波が通過した
+///            後に白い筋が数秒残る（発生時は瞬時項と同源なので max で二重計上しない）。
+///          Gerstner 経路はヤコビアンを持たないため常に 0
+///          （gUseFFTOceanNormalMap は FFT 使用フラグと同値で更新される）。
+float ComputeFoamMask(float2 worldXZ)
+{
+    if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
+    {
+        return 0.0f;
+    }
+    const float detJ = ComputeFFTCombinedDetJ(
+        worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights);
+    const float instant = saturate((gFoamBias - detJ) * gFoamGain);
+
+    // 蓄積泡（カスケード毎の格子空間）。重みは発生時に織り込み済みなのでそのまま max。
+    float accumulated = 0.0f;
+    [unroll]
+    for (int ci = 0; ci < kFFTCascadeCount; ++ci)
+    {
+        const float2 cuv = ComputeFFTCascadeUV(worldXZ, ci);
+        accumulated = max(accumulated, gFFTOceanFoam.SampleLevel(gSampler, float3(cuv, (float)ci), 0.0f));
+    }
+
+    // 蓄積泡へ波群エンベロープを掛け、泡の濃淡を波のセット（うねりの群）と同期させる。
+    // 瞬時項は合成 detJ の勾配へ適用済みなのでここでは掛けない（二重適用禁止）。
+    // 蓄積パスは格子空間で走るためワールド位置を知らず、表示側で変調するしかない。
+    const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ);
+    accumulated = saturate(accumulated * envelope * envelope * kFoamEnvelopeScale);
+
+    // 返り値は滑らかな「被覆率」の場。レース状の形への変換（dissolve）は
+    // 表示側の ComputeFoamLace が行うため、ここではノイズを掛けない。
+    return max(instant, accumulated);
+}
+
+/// @brief 岸際泡（shore foam）の被覆率 [0,1] を求める
+/// @param analyticColumn 解析的な鉛直水深 [m]（ResolveWaterColumn の連続場）
+/// @details ★入力は解析的鉛直水深のみ★
+///          過去の「波打ち際の線」10 連発の教訓により、岸際に新しい 2 値切替を
+///          持ち込まない。RT の成功/失敗・スクリーン空間の深度分岐などの離散量は
+///          一切使わず、分岐のない連続場（解析水深）だけから作る。
+///          水深は波の変位を含むため、波の寄せ引きで帯が自然に脈動し、
+///          追加の時間変調は不要。
+///          2 段構造: 汀線エッジ（〜0.15m）は被覆率満量＝連続した白いシート、
+///          外側（〜0.6m）は被覆率 0.9→0 のフェード＝dissolve でレース状に割れる。
+float ComputeShoreFoamMask(float analyticColumn)
+{
+    if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
+    {
+        return 0.0f;
+    }
+
+    // 外側の泡帯: 水深 0 → kShoreFoamDepthMeters の連続フェード
+    const float band = 1.0f - smoothstep(0.0f, kShoreFoamDepthMeters, analyticColumn);
+    // 汀線エッジ: ごく浅い所は満量（レースの穴が埋まり白いシートになる）
+    const float edge = 1.0f - smoothstep(0.0f, kShoreFoamEdgeMeters, analyticColumn);
+
+    return max(band * kShoreFoamStrength, edge);
+}
+
+/// @brief 泡レイヤの表面色（Lambert 白 × 太陽直達 + 天空光）
+/// @details 天空光は水中インスキャッタ（ComputeUnderwaterAmbientLight）と同じ
+///          ソース・同じスケールを使い、空との明るさを常に整合させる。
+///          太陽ライトの色には大気の Transmittance 減衰が乗算済みなので、
+///          日没時は泡も自動的に赤みを帯びて暗くなる。
+float3 ComputeFoamColor(float3 normal)
+{
+    // 平行光源（太陽・月）の直達成分: E·NdotL / π
+    float3 lighting = float3(0.0f, 0.0f, 0.0f);
+    for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
+    {
+        if (gDirectionalLights[i].enabled == 0)
+        {
+            continue;
+        }
+        float3 lightVec = -normalize(gDirectionalLights[i].direction);
+        lighting += gDirectionalLights[i].color.rgb * gDirectionalLights[i].intensity
+            * saturate(dot(normal, lightVec)) / PI;
+    }
+
+    // 天空光（大気アクティブ時は Sky Irradiance SH、なければ静的 IBL へフォールバック）
+    if (gSkyAmbientEnabled != 0)
+    {
+        lighting += EvaluateWaterSkyIrradiance(normal) * gSkyAmbientScale;
+    }
+    else if (gIBLParams.sceneIBLEnabled != 0)
+    {
+        lighting += gIrradianceMap.SampleLevel(gSampler, normal, 0.0f).rgb
+            * gIBLParams.environmentIntensity;
+    }
+
+    return kFoamAlbedo * lighting;
 }
 
 // ★太陽の下り光路（太陽→海底）の吸収はこのシェーダーの責務ではない★（2026-07-27 撤去）
@@ -574,13 +780,16 @@ float ReflectionGeometricOcclusion(float cosTheta)
 // フレネル合成後に加算で復元する。空・環境光は平面反射側にのみ含まれるので
 // エネルギーの二重計上はない（太陽ディスク分の平面反射側エネルギーは
 // ぼかし・圧縮で実質失われているため、加算しても過大にならない）。
-float3 ComputeSunGlintSpecular(float3 normal, float3 viewDir)
+float3 ComputeSunGlintSpecular(float3 normal, float3 viewDir, float foamCoverage)
 {
     // 水の垂直入射反射率 F0 ≈ 0.02
     const float3 kWaterF0 = float3(0.02f, 0.02f, 0.02f);
     // グリッターの広がり。マテリアルのラフネスと連動させる
-    // （小さいほど鋭く狭いきらめき、大きいほど広く柔らかい光の帯）
-    const float glintRoughness = max(gMaterial.roughness, 0.04f);
+    // （小さいほど鋭く狭いきらめき、大きいほど広く柔らかい光の帯）。
+    // 泡域は微細気泡の散乱でハイライトが大きく柔らかくなるためラフネスを引き上げる
+    // （泡被覆による輝度の抑制は呼び出し側の (1-coverage) 倍が担当する）。
+    const float glintRoughness = max(
+        lerp(gMaterial.roughness, kFoamGlintRoughness, saturate(foamCoverage)), 0.04f);
 
     float3 totalGlint = float3(0.0f, 0.0f, 0.0f);
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
@@ -670,6 +879,10 @@ struct WaterColumnResult
     float sceneDepthNDC;  ///< 背景の NDC 深度
     float sceneDepthView; ///< 背景のビュー空間線形深度 [m]
     float waterDepthView; ///< 水面自身のビュー空間線形深度 [m]
+    /// 解析的な鉛直水深 [m]（分岐のない連続場）。岸際泡の唯一の入力。
+    /// 背景ジオメトリが無い（far plane）/ Depth Fade 無効時は「十分深い」として
+    /// kInfiniteWaterColumnMeters が入る（岸泡ゼロ側へ倒す保守的既定）
+    float analyticColumn;
     bool hasValidDepth;   ///< 水柱厚さが有効に求まったか
 };
 
@@ -697,6 +910,7 @@ WaterColumnResult ResolveWaterColumn(
     result.sceneDepthNDC = 1.0f;
     result.sceneDepthView = 0.0f;
     result.waterDepthView = 0.0f;
+    result.analyticColumn = kInfiniteWaterColumnMeters;
     result.hasValidDepth = false;
 
     if (!gDepthFadeEnabled)
@@ -730,6 +944,7 @@ WaterColumnResult ResolveWaterColumn(
         // (D) 解析的な鉛直水深（分岐なしの連続場）
         analyticColumn = ComputeAnalyticWaterColumn(
             input.worldPosition, result.sceneDepthView, result.waterDepthView, refractedView);
+        result.analyticColumn = analyticColumn;
 
         if (result.sceneDepthView > result.waterDepthView + 1.0e-4f)
         {
@@ -843,6 +1058,25 @@ PixelShaderOutput main(WaterPSInput input)
     // ハードな明暗の斑（水色/青のまだら）を和らげる。
     float reflectanceWeight = saturate(fresnel * ReflectionGeometricOcclusion(cosTheta) * gFresnelReflectanceScale);
 
+    // ---- 5.5. 泡マスク（dissolve 方式）----
+    // 泡は拡散層でフレネル反射を持たないため、泡の被覆分だけ反射の混合比を抑える。
+    // （泡レイヤ自体の色は最終合成後に重ねる。サングリッターも同様に抑制する）
+    // foamMask は滑らかな「被覆率」の場（砕波泡と岸際泡の max）。表示形状は
+    // 高周波パターンへのしきい値カット（ComputeFoamLace）でレース状に変換する:
+    //   lace ＝ 表面の白い泡そのもの（縁が鋭いレース・筋・粒）
+    //   haze ＝ レースの穴の間と縁の外側の白濁（パターンで粒状に変調し霧化を防ぐ）
+    const float foamMask = max(
+        ComputeFoamMask(input.worldPosition.xz),
+        ComputeShoreFoamMask(waterColumnResult.analyticColumn));
+    const float foamPattern = FoamPattern(input.worldPosition.xz);
+    const float foamLace = ComputeFoamLace(foamMask, foamPattern);
+    const float foamHaze = saturate(foamMask * 1.2f) * (1.0f - foamLace)
+        * lerp(kFoamHazePatternMin, 1.0f, foamPattern);
+    // フレネル・グリッター抑制に使う実効被覆率（白濁は水面がまだ見えるので弱く）
+    const float foamCoverage =
+        saturate(foamLace + 0.4f * foamHaze) * saturate(gFoamOpacity);
+    reflectanceWeight *= (1.0f - foamCoverage);
+
     float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);
     float3 underwaterAmbient = ComputeUnderwaterAmbientLight();
     // refractionColor には既に太陽の下り光路の減衰が織り込まれている（上のコメント参照）。
@@ -917,6 +1151,23 @@ PixelShaderOutput main(WaterPSInput input)
     float surfaceCoverage = saturate(baseCoverage);
     float3 finalWaterComposite = lerp(transmissionColor, desiredWaterView, surfaceCoverage);
 
+    // 泡レイヤを重ねる（白ベタ禁止: gFoamOpacity < 1 で水面下の情報を残す）
+    if (foamCoverage > 0.0f)
+    {
+        // 気泡の粒感: 泡内部の明度を高周波ノイズで揺らす（周期 ≈ 8cm）
+        const float grain = lerp(
+            kFoamGrainMin, 1.0f,
+            FoamValueNoise(input.worldPosition.xz * kFoamGrainScale));
+        const float3 foamColor = ComputeFoamColor(surfaceNormal) * grain;
+        // 白濁（haze）: レースの穴の間の気泡層。泡色より暗く、粒状に変調済み
+        finalWaterComposite = lerp(
+            finalWaterComposite,
+            foamColor * kFoamHazeTint,
+            foamHaze * saturate(gFoamOpacity) * kFoamHazeOpacity);
+        // レース: 表面の白い泡そのもの
+        finalWaterComposite = lerp(finalWaterComposite, foamColor, foamLace * saturate(gFoamOpacity));
+    }
+
     if (gDepthFadeDebugEnabled != 0)
     {
         // 診断表示は Water.Debug.hlsli へ分離している。
@@ -939,7 +1190,8 @@ PixelShaderOutput main(WaterPSInput input)
         debugContext.geomNormal = geomNormal;
         debugContext.viewDir = viewDir;
         debugContext.cosTheta = cosTheta;
-        debugContext.jacobianData = input.jacobianData;
+        debugContext.worldXZ = input.worldPosition.xz;
+        debugContext.foamMask = foamMask;
 
         output.color = float4(ResolveWaterDebugColor(debugContext), 1.0f);
         return output;
@@ -950,9 +1202,11 @@ PixelShaderOutput main(WaterPSInput input)
     // 太陽グリッター（きらめき）を加算で復元する（ComputeSunGlintSpecular 参照）。
     // 反射無効時は WaterForwardMain の PBR 出力（太陽スペキュラ入り）が reflectColor
     // 端点として生きているため、加算すると二重計上になる。反射有効時のみ。
+    // 泡は拡散層で鏡面のきらめきを持たない: 被覆分の輝度抑制＋ラフネス引き上げの両方。
     if (gReflectionEnabled)
     {
-        output.color.rgb += ComputeSunGlintSpecular(geomNormal, viewDir);
+        output.color.rgb +=
+            ComputeSunGlintSpecular(geomNormal, viewDir, foamCoverage) * (1.0f - foamCoverage);
     }
 
     // ---- 5. 空気遠近感（Aerial Perspective）----

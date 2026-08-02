@@ -8,12 +8,176 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/CVar/CVar.h"
 
 #include <algorithm>
 #include <cmath>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        // 雲パラメータ。既定値・単位は VolumetricCloudParameters の宣言と一致させること
+        CVar<bool> cvEnabled{
+            "r.Cloud.Enabled", true,
+            "ボリュメトリック雲を有効にする",
+            CVarRange{}, CVarFlags::NoUI };
+
+        CVar<float> cvLayerBottomAltitudeM{
+            "r.Cloud.LayerBottomAltitude", 1500.0f,
+            "雲底の高度 [m]",
+            CVarRange{ 0.0f, 20000.0f } };
+
+        CVar<float> cvLayerThicknessM{
+            "r.Cloud.LayerThickness", 4000.0f,
+            "雲層の厚み [m]",
+            CVarRange{ 100.0f, 20000.0f } };
+
+        CVar<float> cvGlobalCoverage{
+            "r.Cloud.GlobalCoverage", 0.62f,
+            "全体の雲量。大きいほど空を覆う",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvDensityScale{
+            "r.Cloud.DensityScale", 0.12f,
+            "雲の密度スケール",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvBaseNoiseScaleM{
+            "r.Cloud.BaseNoiseScale", 9000.0f,
+            "ベース形状ノイズ 1 タイルの実寸 [m]",
+            CVarRange{ 500.0f, 50000.0f } };
+
+        CVar<float> cvDetailNoiseScaleM{
+            "r.Cloud.DetailNoiseScale", 600.0f,
+            "ディテールノイズ 1 タイルの実寸 [m]",
+            CVarRange{ 50.0f, 5000.0f } };
+
+        CVar<float> cvDetailErosionStrength{
+            "r.Cloud.DetailErosionStrength", 0.22f,
+            "ディテールノイズによる輪郭の削り込み量",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvWeatherMapScaleM{
+            "r.Cloud.WeatherMapScale", 60000.0f,
+            "天候マップ 1 タイルの実寸 [m]",
+            CVarRange{ 5000.0f, 200000.0f } };
+
+        CVar<float> cvWindDirX{
+            "r.Cloud.WindDirX", 1.0f,
+            "風向 X（XZ 平面。内部で正規化される）",
+            CVarRange{ -1.0f, 1.0f } };
+
+        CVar<float> cvWindDirZ{
+            "r.Cloud.WindDirZ", 0.0f,
+            "風向 Z（XZ 平面。内部で正規化される）",
+            CVarRange{ -1.0f, 1.0f } };
+
+        CVar<float> cvWindSpeedMPerS{
+            "r.Cloud.WindSpeed", 8.0f,
+            "風速 [m/s]。雲の流れる速さ",
+            CVarRange{ 0.0f, 100.0f } };
+
+        CVar<float> cvPhaseG0{
+            "r.Cloud.PhaseG0", 0.8f,
+            "HG 位相関数の前方散乱ローブ",
+            CVarRange{ -0.99f, 0.99f } };
+
+        CVar<float> cvPhaseG1{
+            "r.Cloud.PhaseG1", -0.3f,
+            "HG 位相関数の後方散乱ローブ",
+            CVarRange{ -0.99f, 0.99f } };
+
+        CVar<float> cvPhaseBlend{
+            "r.Cloud.PhaseBlend", 0.5f,
+            "2 つの位相ローブのブレンド率",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvAmbientIntensity{
+            "r.Cloud.AmbientIntensity", 1.15f,
+            "雲に当たる環境光の強さ",
+            CVarRange{ 0.0f, 5.0f } };
+
+        CVar<float> cvBeerPowderStrength{
+            "r.Cloud.BeerPowderStrength", 0.5f,
+            "Beer-Powder 効果の強さ（雲の縁の暗さ）",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvLightMarchStepM{
+            "r.Cloud.LightMarchStep", 200.0f,
+            "サンライトマーチの 1 歩 [m]。小さいほど高品質だが重い",
+            CVarRange{ 10.0f, 2000.0f } };
+
+        CVar<float> cvSunLightScale{
+            "r.Cloud.SunLightScale", 3.5f,
+            "雲に当たる太陽光の倍率",
+            CVarRange{ 0.0f, 20.0f } };
+
+        CVar<float> cvMsAttenuation{
+            "r.Cloud.MultiScatterAttenuation", 0.6f,
+            "多重散乱オクターブごとの減衰",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvMsContribution{
+            "r.Cloud.MultiScatterContribution", 0.5f,
+            "多重散乱の寄与率",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvMsEccentricity{
+            "r.Cloud.MultiScatterEccentricity", 0.5f,
+            "オクターブごとの位相非対称度の減衰",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvEarlyExitTransmittance{
+            "r.Cloud.EarlyExitTransmittance", 0.005f,
+            "レイマーチを打ち切る透過率のしきい値",
+            CVarRange{ 0.0f, 0.1f } };
+
+        CVar<float> cvMaxMarchDistanceM{
+            "r.Cloud.MaxMarchDistance", 120000.0f,
+            "ビューレイマーチの最大距離 [m]",
+            CVarRange{ 1000.0f, 500000.0f } };
+
+        CVar<int> cvMaxSteps{
+            "r.Cloud.MaxSteps", 160,
+            "レイマーチの最大ステップ数。多いほど高品質だが重い",
+            CVarRange{ 8.0f, 512.0f } };
+
+        CVar<int> cvResolutionDivisor{
+            "r.Cloud.ResolutionDivisor", 2,
+            "雲バッファの解像度分割数。2 = 1/2 解像度",
+            CVarRange{ 1.0f, 4.0f } };
+
+        CVar<bool> cvGodRayEnabled{
+            "r.Cloud.GodRayEnabled", true,
+            "ゴッドレイ（雲の切れ間から差す光芒）を有効にする" };
+
+        CVar<float> cvGodRayIntensity{
+            "r.Cloud.GodRayIntensity", 1.0f,
+            "遮蔽差分（物理項）のスケール。1 が物理値",
+            CVarRange{ 0.0f, 5.0f } };
+
+        CVar<float> cvGodRayMieBoost{
+            "r.Cloud.GodRayMieBoost", 0.8f,
+            "加算ミー項（演出）。0 で完全物理",
+            CVarRange{ 0.0f, 5.0f } };
+
+        CVar<float> cvGodRayMaxDistanceM{
+            "r.Cloud.GodRayMaxDistance", 25000.0f,
+            "ゴッドレイのビューレイマーチ最大距離 [m]",
+            CVarRange{ 1000.0f, 100000.0f } };
+
+        CVar<int> cvGodRayStepCount{
+            "r.Cloud.GodRayStepCount", 32,
+            "ゴッドレイのレイマーチステップ数",
+            CVarRange{ 4.0f, 128.0f } };
+
+        CVar<float> cvCloudShadowRegionSizeM{
+            "r.Cloud.ShadowRegionSize", 60000.0f,
+            "雲シャドウマップのカバー範囲（一辺）[m]",
+            CVarRange{ 5000.0f, 200000.0f } };
+    }
+
     namespace {
         /// @brief UAV 対応テクスチャ（2D/3D）の Desc を作る
         D3D12_RESOURCE_DESC MakeNoiseTextureDesc(uint32_t size, bool is3D)
@@ -64,11 +228,88 @@ namespace CoreEngine
             godRayPipelinesReady_ ? "OK" : "無効");
     }
 
+    void VolumetricCloudManager::SetEnabled(bool enabled)
+    {
+        // 実体は CVar が保持する。書き戻すことで UI 表示・自動保存にも反映される
+        cvEnabled.Set(enabled);
+        enabled_ = enabled;
+    }
+
+    void VolumetricCloudManager::SetParametersFromEditor(const VolumetricCloudParameters& params)
+    {
+        cvLayerBottomAltitudeM.Set(params.layerBottomAltitudeM);
+        cvLayerThicknessM.Set(params.layerThicknessM);
+        cvGlobalCoverage.Set(params.globalCoverage);
+        cvDensityScale.Set(params.densityScale);
+        cvBaseNoiseScaleM.Set(params.baseNoiseScaleM);
+        cvDetailNoiseScaleM.Set(params.detailNoiseScaleM);
+        cvDetailErosionStrength.Set(params.detailErosionStrength);
+        cvWeatherMapScaleM.Set(params.weatherMapScaleM);
+        cvWindDirX.Set(params.windDirX);
+        cvWindDirZ.Set(params.windDirZ);
+        cvWindSpeedMPerS.Set(params.windSpeedMPerS);
+        cvPhaseG0.Set(params.phaseG0);
+        cvPhaseG1.Set(params.phaseG1);
+        cvPhaseBlend.Set(params.phaseBlend);
+        cvAmbientIntensity.Set(params.ambientIntensity);
+        cvBeerPowderStrength.Set(params.beerPowderStrength);
+        cvLightMarchStepM.Set(params.lightMarchStepM);
+        cvSunLightScale.Set(params.sunLightScale);
+        cvMsAttenuation.Set(params.msAttenuation);
+        cvMsContribution.Set(params.msContribution);
+        cvMsEccentricity.Set(params.msEccentricity);
+        cvEarlyExitTransmittance.Set(params.earlyExitTransmittance);
+        cvMaxMarchDistanceM.Set(params.maxMarchDistanceM);
+        cvMaxSteps.Set(static_cast<int>(params.maxSteps));
+        cvResolutionDivisor.Set(static_cast<int>(params.resolutionDivisor));
+        cvGodRayEnabled.Set(params.godRayEnabled);
+        cvGodRayIntensity.Set(params.godRayIntensity);
+        cvGodRayMieBoost.Set(params.godRayMieBoost);
+        cvGodRayMaxDistanceM.Set(params.godRayMaxDistanceM);
+        cvGodRayStepCount.Set(static_cast<int>(params.godRayStepCount));
+        cvCloudShadowRegionSizeM.Set(params.cloudShadowRegionSizeM);
+        parameters_ = params;
+    }
+
     void VolumetricCloudManager::Update(const Vector3& cameraWorldPosition,
         const Matrix4x4& viewMatrix, const Matrix4x4& projMatrix,
         const AtmosphereManager* atmosphereManager,
         float deltaTimeSec)
     {
+        // 設定は CVar が保持する。UI・設定復元のどの経路で変わってもここで取り込む
+        parameters_.layerBottomAltitudeM   = cvLayerBottomAltitudeM.Get();
+        parameters_.layerThicknessM        = cvLayerThicknessM.Get();
+        parameters_.globalCoverage         = cvGlobalCoverage.Get();
+        parameters_.densityScale           = cvDensityScale.Get();
+        parameters_.baseNoiseScaleM        = cvBaseNoiseScaleM.Get();
+        parameters_.detailNoiseScaleM      = cvDetailNoiseScaleM.Get();
+        parameters_.detailErosionStrength  = cvDetailErosionStrength.Get();
+        parameters_.weatherMapScaleM       = cvWeatherMapScaleM.Get();
+        parameters_.windDirX               = cvWindDirX.Get();
+        parameters_.windDirZ               = cvWindDirZ.Get();
+        parameters_.windSpeedMPerS         = cvWindSpeedMPerS.Get();
+        parameters_.phaseG0                = cvPhaseG0.Get();
+        parameters_.phaseG1                = cvPhaseG1.Get();
+        parameters_.phaseBlend             = cvPhaseBlend.Get();
+        parameters_.ambientIntensity       = cvAmbientIntensity.Get();
+        parameters_.beerPowderStrength     = cvBeerPowderStrength.Get();
+        parameters_.lightMarchStepM        = cvLightMarchStepM.Get();
+        parameters_.sunLightScale          = cvSunLightScale.Get();
+        parameters_.msAttenuation          = cvMsAttenuation.Get();
+        parameters_.msContribution         = cvMsContribution.Get();
+        parameters_.msEccentricity         = cvMsEccentricity.Get();
+        parameters_.earlyExitTransmittance = cvEarlyExitTransmittance.Get();
+        parameters_.maxMarchDistanceM      = cvMaxMarchDistanceM.Get();
+        parameters_.maxSteps               = static_cast<uint32_t>(cvMaxSteps.Get());
+        parameters_.resolutionDivisor      = static_cast<uint32_t>(cvResolutionDivisor.Get());
+        parameters_.godRayEnabled          = cvGodRayEnabled.Get();
+        parameters_.godRayIntensity        = cvGodRayIntensity.Get();
+        parameters_.godRayMieBoost         = cvGodRayMieBoost.Get();
+        parameters_.godRayMaxDistanceM     = cvGodRayMaxDistanceM.Get();
+        parameters_.godRayStepCount        = static_cast<uint32_t>(cvGodRayStepCount.Get());
+        parameters_.cloudShadowRegionSizeM = cvCloudShadowRegionSizeM.Get();
+        enabled_                           = cvEnabled.Get();
+
         // Update() を呼ぶのは雲を使うシーンのみ。このフレームは雲を有効にする。
         cloudsActive_ = true;
 

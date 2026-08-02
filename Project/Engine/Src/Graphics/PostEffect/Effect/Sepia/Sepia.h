@@ -39,16 +39,15 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    /// @brief パラメータを取得
-    const SepiaParams& GetParams() const { return params_; }
 
-    /// @brief パラメータを設定して定数バッファを更新
-    void SetParams(const SepiaParams& params);
 
     /// @brief 定数バッファを更新
     void UpdateConstantBuffer();
 
 protected:
+    /// @brief 有効/無効は CVar "r.Sepia.Enabled" が保持する
+    CVar<bool>* GetEnabledCVar() const override;
+
     std::string  GetEffectName()        const override { return "Sepia"; }
     std::wstring GetComputeShaderPath() const override { return L"Sepia.CS.hlsl"; }
     void OnCreateConstantBuffers() override;
@@ -57,7 +56,6 @@ private:
     void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
-    SepiaParams params_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> sepiaParamsCB_;
     SepiaParams* mappedSepiaParams_ = nullptr;

@@ -184,6 +184,9 @@ void WaterSurfaceParameterPanel::Initialize(WaterRenderFeature& runtimeControlle
 
 	// 既定プリセットを適用して UI と水面状態を同期する
 	ApplyWaterPreset(runtimeController, static_cast<WaterPresetType>(waveToolState_.preset));
+
+	// 泡パラメータの UI キャッシュを水面へ同期する（既定値は WaterFrameConstants と一致）
+	ApplyFoamParameters(runtimeController.GetWaterPlane());
 }
 
 void WaterSurfaceParameterPanel::Draw(WaterRenderFeature& runtimeController, WaterEditorFacade& editorFacade) {
@@ -265,6 +268,22 @@ void WaterSurfaceParameterPanel::ApplyEffectiveOpticalCoefficients(WaterPlaneObj
 		{ effectiveScattering[0], effectiveScattering[1], effectiveScattering[2] });
 }
 
+void WaterSurfaceParameterPanel::ApplyFoamParameters(WaterPlaneObject* waterPlane) const {
+	if (!waterPlane) {
+		return;
+	}
+
+	waterPlane->SetFoamParameters(
+		foamParameters_.enabled,
+		foamParameters_.bias,
+		foamParameters_.gain,
+		foamParameters_.opacity,
+		{ foamParameters_.cascadeWeights[0],
+		  foamParameters_.cascadeWeights[1],
+		  foamParameters_.cascadeWeights[2] },
+		foamParameters_.decaySeconds);
+}
+
 void WaterSurfaceParameterPanel::DrawCommonParameterSection(
 	WaterRenderFeature& runtimeController,
 	WaterEditorFacade& editorFacade) {
@@ -307,6 +326,22 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(
 		WaterEditorRayTracingSettings settings = editorFacade.GetRayTracingSettings();
 		settings.maxRefractionOffsetPixels = rtRefractionOffsetPixels_;
 		editorFacade.ApplyRayTracingSettings(settings);
+	}
+
+	ImGui::Spacing();
+	ImGui::SeparatorText("泡 / Whitecap（FFTOcean 専用）");
+	bool foamChanged = false;
+	foamChanged |= ImGui::Checkbox("泡を有効にする", &foamParameters_.enabled);
+	foamChanged |= ImGui::SliderFloat("発生しきい値 detJ", &foamParameters_.bias, 0.0f, 1.5f, "%.3f");
+	foamChanged |= ImGui::SliderFloat("立ち上がり勾配", &foamParameters_.gain, 0.5f, 16.0f, "%.2f");
+	foamChanged |= ImGui::SliderFloat("泡の不透明度", &foamParameters_.opacity, 0.0f, 1.0f, "%.3f");
+	foamChanged |= ImGui::SliderFloat3("カスケード重み (大/中/小)", foamParameters_.cascadeWeights, 0.0f, 1.0f, "%.3f");
+	foamChanged |= ImGui::SliderFloat("泡の寿命 [秒]", &foamParameters_.decaySeconds, 0.2f, 10.0f, "%.2f");
+	ImGui::TextDisabled(
+		"detJ（波頭の圧縮率）がしきい値を下回ると泡。可視化は水面デバッグの\n"
+		"『FFT Jacobian』『FFT 泡マスク』を使用。小パッチの重みを上げすぎると海面全体が白くなります");
+	if (foamChanged) {
+		ApplyFoamParameters(waterPlane);
 	}
 
 	ImGui::Spacing();

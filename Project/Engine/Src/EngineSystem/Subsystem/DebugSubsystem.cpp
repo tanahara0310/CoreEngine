@@ -8,6 +8,7 @@
 #include "../EngineConfig.h"
 #include "../Settings/EditorSettingsSubsystem.h"
 #include "Editor/ImGui/EditorSettingsPanel.h"
+#include "Utility/CVar/CVarRegistry.h"
 
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
@@ -165,19 +166,17 @@ namespace CoreEngine
         // エディタ設定の自動保存セクション（登録時に保存済み JSON から前回状態が復元される）。
         // 大気の太陽/月ライトはシーン寿命のため EnvironmentFeature 側の別セクションが扱う
         if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
-            atmosphereSettingsSection_ = std::make_unique<AtmosphereSettingsSection>(engine_);
-            editorSettings->RegisterSection(atmosphereSettingsSection_.get(), this);
-            cloudSettingsSection_ = std::make_unique<VolumetricCloudSettingsSection>(engine_, cloudEditor_.get());
-            editorSettings->RegisterSection(cloudSettingsSection_.get(), this);
-            postEffectSettingsSection_ = std::make_unique<PostEffectSettingsSection>(engine_);
-            editorSettings->RegisterSection(postEffectSettingsSection_.get(), this);
-            renderingTechniqueSettingsSection_ = std::make_unique<RenderingTechniqueSettingsSection>(engine_);
-            editorSettings->RegisterSection(renderingTechniqueSettingsSection_.get(), this);
-            // RT シャドウのチューニング値（Stage 0: それまで設定は到達不能だった）
-            rayTracingSettingsSection_ = std::make_unique<RayTracingSettingsSection>(engine_);
-            editorSettings->RegisterSection(rayTracingSettingsSection_.get(), this);
+            // 全 CVar を 1 ファイルへ保存する。個別セクションと違い、CVar が増えても
+            // ここへの追記は不要（レジストリを走査するため）
+            cvarSettingsSection_ = std::make_unique<CVarSettingsSection>();
+            editorSettings->RegisterSection(cvarSettingsSection_.get(), this);
         }
 
+        // 静的初期化中（main より前）に溜まった CVar の警告をログへ流す。
+        // 登録数もここで出るので、想定より少なければ定義漏れに気づける
+        CVarRegistry::Get().FlushPendingWarnings();
+
+        // 全 CVar の一覧・検索パネル（機能別パネルとは別に、横断的に触るための入口）
         // Engine Settings ウィンドウの「Editor Settings」管理パネル
         // （自動保存セクションの一覧・最終保存時刻・リセット / バックアップ復元）
         gameDebugUI_->RegisterEnginePanel("Editor Settings", [this]() {
@@ -302,11 +301,7 @@ namespace CoreEngine
                 editorSettings->UnregisterSections(this);
             }
         }
-        atmosphereSettingsSection_.reset();
-        cloudSettingsSection_.reset();
-        postEffectSettingsSection_.reset();
-        renderingTechniqueSettingsSection_.reset();
-        rayTracingSettingsSection_.reset();
+        cvarSettingsSection_.reset();
 
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();

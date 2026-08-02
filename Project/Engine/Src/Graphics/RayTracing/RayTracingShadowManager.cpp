@@ -7,6 +7,7 @@
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/CVar/CVar.h"
 
 #include <d3d12.h>
 #include <algorithm>
@@ -17,6 +18,103 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        // RT シャドウのチューニング値。既定値の根拠は RayTracingShadowSettings のコメントを参照
+        CVar<int> cvSoftShadowSamples{
+            "r.RTShadow.SoftShadowSamples", 1,
+            "1 ピクセルあたりのシャドウレイ本数。コストはほぼ本数に比例する（1spp = 約1.14ms @1920x1080）。"
+            "A-Trous デノイザーで補完するため 1 で十分",
+            CVarRange{ 1.0f, 16.0f } };
+
+        CVar<float> cvLightRadius{
+            "r.RTShadow.LightRadius", 0.02f,
+            "光源の角半径 [rad]。ペナンブラ幅を決める。実際の太陽は約 0.0046。"
+            "0.15 以上はペナンブラが広すぎてゴーストが出るため非推奨",
+            CVarRange{ 0.0f, 0.2f } };
+
+        CVar<float> cvShadowBias{
+            "r.RTShadow.ShadowBias", 0.05f,
+            "セルフシャドウ防止バイアス",
+            CVarRange{ 0.0f, 0.5f } };
+
+        CVar<float> cvMaxRayDistance{
+            "r.RTShadow.MaxRayDistance", 1000.0f,
+            "シャドウレイの基準射程距離。これより遠い遮蔽物は影を落とさない",
+            CVarRange{ 10.0f, 20000.0f } };
+
+        CVar<bool> cvScaleRayDistanceBySunElevation{
+            "r.RTShadow.ScaleRayDistanceBySunElevation", true,
+            "射程を太陽高度でスケールする。光源が低いほどレイは水平に走るため、"
+            "固定距離だと遠くの遮蔽物へ届かない（有効時は 基準距離/sin(高度)、最大10倍）" };
+
+        CVar<float> cvHistoryAlpha{
+            "r.RTShadow.HistoryAlpha", 0.15f,
+            "テンポラル蓄積のブレンド係数。小さいほど履歴を重視（0.15 = 履歴 85%）。1.0 で履歴を使わない",
+            CVarRange{ 0.01f, 1.0f } };
+
+        CVar<int> cvAtrousPassCount{
+            "r.RTShadow.AtrousPassCount", 2,
+            "A-Trous デノイズのパス数。0 = デノイズ無効。1 パスごとにステップ幅が 1→2→4→8 と倍になる。"
+            "1spp のシャドウに step=8（実効31x31）まで広げる必要は無い",
+            CVarRange{ 0.0f, 4.0f } };
+
+        CVar<float> cvDenoisePhiDepth{
+            "r.RTShadow.DenoisePhiDepth", 1.0f,
+            "A-Trous / テンポラルの深度エッジ重み。大きいほどエッジ検出が厳しく影の輪郭が保たれる"
+            "（ぼけにくい）。小さいほど深度差を跨いで広くぼける",
+            CVarRange{ 0.05f, 8.0f } };
+
+        CVar<bool> cvHalfResolutionTrace{
+            "r.RTShadow.HalfResolutionTrace", true,
+            "トレース〜デノイズを 1/2 解像度で行い、最後にバイラテラルアップサンプルする。"
+            "レイ本数もデノイズ帯域も 1/4 になる（最終マスクはフル解像度のまま）" };
+
+        CVar<float> cvUpsamplePhiDepth{
+            "r.RTShadow.UpsamplePhiDepth", 8.0f,
+            "アップサンプル時の深度エッジ重み（ハーフ解像度時のみ有効）。"
+            "大きいほど深度が近い結果しか採用しない（輪郭はシャープだがエイリアスが出る）",
+            CVarRange{ 0.5f, 40.0f } };
+
+        // 残像・ゴーストの切り分け用トグル。ON のまま保存されると品質低下に気づけないため保存しない
+        CVar<bool> cvDisableHistory{
+            "r.RTShadow.DisableHistory", false,
+            "テンポラル蓄積の履歴参照を強制的に無効化する（デバッグ用）。"
+            "ON にすると毎フレーム現フレームの空間前処理結果のみを使う",
+            CVarRange{}, CVarFlags::NoSave };
+    }
+
+    void RayTracingShadowManager::SyncSettingsFromCVars()
+    {
+        settings_.softShadowSamples = cvSoftShadowSamples.Get();
+        settings_.lightRadius = cvLightRadius.Get();
+        settings_.shadowBias = cvShadowBias.Get();
+        settings_.maxRayDistance = cvMaxRayDistance.Get();
+        settings_.scaleRayDistanceBySunElevation = cvScaleRayDistanceBySunElevation.Get();
+        settings_.historyAlpha = cvHistoryAlpha.Get();
+        settings_.atrousPassCount = cvAtrousPassCount.Get();
+        settings_.denoisePhiDepth = cvDenoisePhiDepth.Get();
+        settings_.halfResolutionTrace = cvHalfResolutionTrace.Get();
+        settings_.upsamplePhiDepth = cvUpsamplePhiDepth.Get();
+        settings_.disableHistory = cvDisableHistory.Get();
+    }
+
+    void RayTracingShadowManager::SetSettings(const RayTracingShadowSettings& settings)
+    {
+        // CVar が唯一の保持者。書き戻すことで UI・自動保存にも反映される
+        cvSoftShadowSamples.Set(settings.softShadowSamples);
+        cvLightRadius.Set(settings.lightRadius);
+        cvShadowBias.Set(settings.shadowBias);
+        cvMaxRayDistance.Set(settings.maxRayDistance);
+        cvScaleRayDistanceBySunElevation.Set(settings.scaleRayDistanceBySunElevation);
+        cvHistoryAlpha.Set(settings.historyAlpha);
+        cvAtrousPassCount.Set(settings.atrousPassCount);
+        cvDenoisePhiDepth.Set(settings.denoisePhiDepth);
+        cvHalfResolutionTrace.Set(settings.halfResolutionTrace);
+        cvUpsamplePhiDepth.Set(settings.upsamplePhiDepth);
+        cvDisableHistory.Set(settings.disableHistory);
+        SyncSettingsFromCVars();
+    }
     // =========================================================================
     // HLSL 側の cbuffer とレイアウトを共有する構造体
     //
@@ -544,6 +642,9 @@ namespace CoreEngine
         ViewID viewId,
         uint32_t lightIndex)
     {
+        // 設定は CVar が保持する。UI・設定復元・コンソールのどの経路で変わってもここで取り込む
+        SyncSettingsFromCVars();
+
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
         const uint32_t vi = static_cast<uint32_t>(viewId);
         auto& view = views_[vi][lightIndex];
