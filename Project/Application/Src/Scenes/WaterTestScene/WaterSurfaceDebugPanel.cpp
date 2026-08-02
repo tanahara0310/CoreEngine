@@ -38,6 +38,7 @@ const char* const kWaterDebugViewNames[] = {
 	"合成:透過のみ(Fresnel=0)",
 	"合成:反射のみ(Fresnel=1)",
 	"反射-透過の差分",
+	"FFT 泡マスク",
 };
 
 const char* const kRTRefractionDebugViewNames[] = {

@@ -94,12 +94,20 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     // 波の折り返し（foldover, detJ < 0）で面が裏返った場合も上向きを保つ
     normal = (normal.y < 0.0f) ? -normal : normal;
 
+    // ヤコビアンは「勾配テンソル成分」で出力する（泡/砕波判定の唯一の情報源）。
+    // 実際に描画される水面は全カスケードの変位の和なので、正しい砕波判定は
+    // det(I + ΣJᵢ) だが、行列式は和に分配されないため detJ の最終値だけを
+    // カスケード毎に持っても合成できない。そこで成分 (Jxx, Jzz, Jxy) を格納し、
+    // サンプリング側（FFTOceanCascade.hlsli の ComputeFFTCombinedDetJ）が
+    // 回転共役 Rᵀ·J·R でワールド系へ揃えてから合算して det を取る。
+    // FFT 変位は同一スカラーポテンシャル由来なので ∂Dx/∂z ≡ ∂Dz/∂x（対称）となり
+    // 3 成分で完全（数値誤差の分離を平均で吸収する）。
+    // .w にはこのカスケード単体の detJ を残す（泡蓄積パスの発生判定・デバッグ用。
+    // 単体 detJ は回転不変なので回転補正なしでそのまま読める）。
+    const float jacobianXY = 0.5f * (dDx_dz + dDz_dx);
     const float detJ = (1.0f + dDx_dx) * (1.0f + dDz_dz) - dDx_dz * dDz_dx;
-    const float compression = max(1.0f - detJ, 0.0f);
-    const float foldover = detJ < 0.0f ? 1.0f : 0.0f;
-    const float breakingCandidate = saturate(compression * 2.0f + foldover);
 
     gDisplacementOutput[uint3(coord, 0)] = float4(displacementX, height, displacementZ, 1.0f);
     gNormalOutput[uint3(coord, 0)] = float4(normalize(normal) * 0.5f + 0.5f, 1.0f);
-    gJacobianOutput[uint3(coord, 0)] = float4(detJ, breakingCandidate, compression, foldover);
+    gJacobianOutput[uint3(coord, 0)] = float4(dDx_dx, dDz_dz, jacobianXY, detJ);
 }

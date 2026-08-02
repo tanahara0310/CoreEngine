@@ -3,6 +3,111 @@
 作成日: 2026-08-02
 関連: [Step7_Foam.md](../../../JobHuntingWorksDoc/Step7_Foam.md)（要件定義）/ FFTカスケード海面 / TAA・CAS実装（ping-pong規約）
 
+## 進捗
+- **Phase 0: 完了（2026-08-02）** — ヤコビアン出力を `(Jxx, Jzz, Jxy, detJ)` へ再定義し、
+  `ComputeFFTCombinedDetJ`（回転共役＋エンベロープ込みのワールド合成）を
+  `FFTOceanCascade.hlsli` へ追加。VS 経由の interpolant（TEXCOORD1 jacobianData）は
+  FFTWater.VS / Water.VS / Water.PS / Water.Debug.hlsli から全廃し、
+  デバッグモード 16 は PS が t20 を直接サンプルする方式へ変更。
+  全 87 シェーダーの dxc オフライン検証＋実機（WaterTestScene）で
+  ランタイムコンパイル・描画・デバッグビュー動作をエラー 0 件で確認済み。
+  - **検証で得た知見（Phase 1 の入力）**: 無重みの全カスケード合成 detJ は
+    最小カスケード（31m・高波数）の勾配が支配して広範囲で detJ ≤ 0 に飽和する
+    （勾配は k に比例するため波高配分が小さくても傾き寄与は最大）。
+    §7 の cascadeWeight（1.0/1.0/0.5 起点、実測ではさらに小さい値が要りそう）を
+    Phase 1 で必ず導入し、foamBias の較正は重み適用後に行うこと。
+- **Phase 1: 完了（2026-08-02）** — 瞬時泡マスクの合成を実装。
+  - `WaterFrameConstants` へ泡パラメータを追加（96→128B、**4箇所一致を同時更新**:
+    `WaterSurfaceTypes.h` / `Water.VS` / `Water.PS` / `FFTWater.VS`。static_assert で検証）:
+    `foamEnabled=1 / foamBias=0.85 / foamGain=4.0 / foamOpacity=0.9 / foamCascadeWeights=(1.0, 0.5, 0.2)`
+  - `ComputeFFTCombinedDetJ` に cascadeWeights 引数を追加（勾配テンソルへ乗算）。
+    デバッグモード 16（FFT Jacobian）も同じ重みで評価するよう統一。
+  - `Water.PS`: `ComputeFoamMask`（合成 detJ → しきい値）＋ `ComputeFoamColor`
+    （Lambert 白 kFoamAlbedo=(0.90,0.93,0.95) × 太陽直達/π + 天空光SH。
+    水中インスキャッタと同じ光源ソースで空との明るさが整合）。
+    合成: `reflectanceWeight ×= (1-foamBlend)` → 最終合成後に `lerp(色, foamColor, foamBlend)`
+    → サングリッター `×(1-foamBlend)`。
+  - デバッグモード 23「FFT 泡マスク」（`WaterDebugViewMode::FFTOceanFoam`）追加。
+    enum + `Water.Debug.hlsli` + `WaterSurfaceDebugPanel` の名前配列（手動リスト）の 3 点セット。
+  - UI: `WaterSurfaceParameterPanel` 共通設定タブに「泡 / Whitecap」セクション、
+    JSON 永続化（Serialize/Deserialize + 復元時 `ApplyFoamParameters`）も実装済み
+    （Phase 5 の残りは Step7 ドキュメント更新程度）。
+  - 実機検証: 泡マスクは波頭に沿ったスパースな白パッチ（重み効果で飽和解消）、
+    通常描画でも自然な白波。全ログエラー 0、fps 影響は誤差レベル（±1fps）。
+  - **ビルドの注意**: CB サイズ変更のクリーンビルドで `-t:Rebuild` を使うと
+    DirectXTex の .inc が消えて壊れる（3度目の再発）。正手順は
+    「`generated\CoreEngine\obj\<Config>` 削除 → `-t:Build -p:BuildProjectReferences=false`」
+    （詳細はメモリ build-system-gotchas）。
+- **Phase 2: 完了（2026-08-02）** — 泡の蓄積・減衰パスを実装。
+  - 新規 CS `FFTOceanFoamAccumulate.CS.hlsl`: `foam = max(prev·exp(-dt/τ), injection)`。
+    Dispatch z=カスケードで全スライス一括処理。専用 cbuffer `FFTOceanFoamConstants`
+    （共有の FFTOceanSimulationConstants には触れない＝一致箇所を増やさない）。
+  - リソース: ping-pong Texture2DArray ×2（R16_FLOAT・3スライス・シミュ解像度）。
+    書き込み先は `foamFrameIndex_ & 1` の純粋関数（TAA規約）。read 側は同フレームの
+    Water.PS(t21) も読むため NON_PIXEL|PIXEL の複合状態へ遷移。
+  - 設定同期: 単一情報源は WaterFrameConstants（foamDecaySeconds を追加、サイズ不変）。
+    `WaterRenderFeature::SyncFoamSettings` が毎フレーム `FFTOceanManager::SetFoamSettings`
+    へ転送。スペクトル再構築・無効→有効の遷移で蓄積をリセット（resetFoam フラグ）。
+  - PS 合成: `foamMask = max(瞬時項(合成detJ), max_ci(蓄積スライス))`。
+  - **実装中に２つの飽和問題を実測で解決**:
+    1. 線形注入だと波峰が参照格子上を位相速度で掃引しながら毎フレーム注入するため、
+       数周期で海面全体が泡の包絡に埋まり真っ白になる → **注入を二乗特性**にして
+       弱い圧縮を非線形に抑圧（強く砕けた峰だけが持続泡を残す）。
+    2. それでも最小カスケード（31m）は単体 detJ のレンジが極端（勾配∝k で ±数倍）
+       ＋波周期約4.5秒の頻繁な再注入で飽和する → **蓄積参加率 kAccumulationShare =
+       {1.0, 0.4, 0.0}** を導入。持続泡は「うねりの砕波」の現象で、小カスケードの
+       砕波は瞬時項が既に表現しているため蓄積には参加させない。
+  - 検証: マスクは黒ベース＋ソフトな減衰グラデーション付き白パッチ、時間発展を確認。
+    通常描画で泡がマスクと一致。全ログエラー0・55fps（コスト増なし）。
+- **Phase 3: 完了（2026-08-02）** — 見た目の品質向上（Water.PS のみ・C++ 変更なし）。
+  - **ノイズ分断**: 手続き value noise 2 オクターブ（ワールド固定・周期約 2m/0.6m、
+    テクスチャ資産不要）。`mask - noise·強さ·(1-mask)` で薄い縁ほど強く削れ、
+    濃い芯は残る → しきい値等高線の単調な縁取りがフラクタル状に割れる。
+  - **2 層構造**: 濃い層（surface, smoothstep 0.40→0.95, Lambert 白）＋
+    薄い層（subsurface, smoothstep 0.05→0.55, 泡色×0.55 を弱ブレンド ＝
+    水面下の気泡による白濁。水の情報を残す）。フレネル/グリッター抑制は
+    実効被覆率 `surface + 0.5·subsurface` で行う。
+  - **ラフネス連動**: 泡域は ComputeSunGlintSpecular のラフネスを 0.45 へ lerp
+    （輝度は従来通り (1-被覆) 倍も併用）。
+  - **波群エンベロープ同期**: 蓄積泡へ envelope²×0.7 を表示時に乗算
+    （蓄積 CS は格子空間でワールド位置を知らないため表示側で変調。
+    瞬時項は合成 detJ 内で適用済みなので二重適用しない）。
+  - 検証: マスクの縁がノイズで分断され、被覆率は風速 12m/s の whitecap として
+    物理的に妥当な数%へ低下（Phase 2 時点はやや過剰だった）。波群の通過で
+    泡の量が時間変動する。全ログエラー 0・55fps。
+  - チューニング定数（kFoam* 系）は Water.PS 冒頭の static const に集約。
+- **Phase 4: 完了（2026-08-02）** — 岸際泡（shore foam）。Water.PS のみ・C++ 変更なし。
+  - `WaterColumnResult` に解析的鉛直水深 `analyticColumn` を追加
+    （far plane / Depth Fade 無効時は kInfiniteWaterColumnMeters ＝ 泡ゼロ側の保守既定）。
+  - `ComputeShoreFoamMask`: `1 - smoothstep(0, 0.6m, analyticColumn)` × ノイズ分断
+    × 最大強度 0.85（surface しきい値 0.95 未満 ＝ 汀線がベタ白にならず白濁主体）。
+    ★入力は解析水深の連続場のみ★ — 「波打ち際の線」10 連発の教訓により、
+    RT 成功/失敗・深度分岐などの離散量は一切使わない。
+  - 時間変調は追加不要: 解析水深は波の変位を含むため、波の寄せ引きで帯が自然に脈動する。
+  - 合成: crest 泡と max で foamMask へ（2 層化・フレネル/グリッター抑制は共通経路）。
+  - 検証: 汀線に沿ってノイズで分断された泡帯が波と同期して脈動、深場には出ない、
+    1px の硬い線は発生せず。全ログエラー 0・53fps。
+- **Phase 4.5: 完了（2026-08-02）** — 泡の見た目の作り直し（dissolve 方式）。
+  - **動機（ユーザー指摘）**: 「泡がノイズテクスチャみたいで違和感」「岸側の泡が弱い」。
+    真因は泡を「被覆率の明度グラデーション」でそのまま描いていたこと。実際の泡は
+    レースの穴・筋・粒という鋭い微細構造を持つ。さらに旧 value noise 2 オクターブ
+    （周期 2.2m/0.6m）は近景で雲状ブロブにしかならず、蓄積テクスチャの
+    2m/テクセル解像度を隠せていなかった。
+  - **dissolve（しきい値カット）方式へ変更**: マスクは滑らかな「被覆率」の場に純化
+    （ノイズ減算を撤去）し、表示時に高周波泡パターン `FoamPattern`（fbm 4 オクターブ
+    1.5m〜0.1m ＋ ridged 網目）へ `smoothstep(1-mask, 1-mask+0.18, pattern)` で
+    カット（`ComputeFoamLace`）。被覆率が上がるとパターンの高い所から順に埋まり、
+    縁は常に鋭いレース状になる。
+  - **白濁（haze）の再定義**: レースの穴の間 `(1-lace)×mask` に限定し、パターンで
+    粒状に変調（均一な白もや＝霧化を解消）。強度 0.5→0.35。
+  - **粒感**: 泡内部のアルベドを周期 8cm のノイズで 0.82〜1.0 に変調。
+  - **岸泡の 2 段構造**: 汀線エッジ（水深 0.15m 以浅）は被覆率満量の白いシート、
+    外側 0.6m は被覆率 0.9→0 のフェードでレース状に割れる。
+  - 検証: 汀線はシート＋レースの構造、砕波泡は穴と筋を持つ割れた形状になり
+    ブロブ感が解消。全ログエラー 0。パターンはワールド固定なので、動きで
+    違和感が出る場合は将来スクロール（風向へ低速移流）を検討。
+- Phase 5（Step7 ドキュメント更新）: 未着手
+
 ---
 
 ## 1. 泡の物理と実装の定石

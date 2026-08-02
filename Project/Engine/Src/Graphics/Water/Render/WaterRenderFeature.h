@@ -96,6 +96,9 @@ namespace CoreEngine
         /// @brief 水面描画と同じ σa を RT コースティクスへ同期する
         void SyncCausticsAbsorption(RenderDomainContext& domain) const;
 
+        /// @brief 泡パラメータ（WaterFrameConstants が単一情報源）を泡蓄積パスへ同期する
+        void SyncFoamSettings(RenderDomainContext& domain) const;
+
         /// @brief 結線結果の診断ログ（デバッグ表示中のみ・低頻度）
         /// @details 以前は WaterPlaneObject の setter 6 個と BindCustomResources に
         ///          散っていたログをここへ集約した。

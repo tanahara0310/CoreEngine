@@ -221,6 +221,19 @@ namespace CoreEngine
             frameCB_.depthFadeDebugScale);
     }
 
+    void WaterPlaneObject::SetFoamParameters(
+        bool enabled, float bias, float gain, float opacity,
+        const Vector3& cascadeWeights, float decaySeconds) {
+        frameCB_.foamEnabled = enabled ? 1 : 0;
+        frameCB_.foamBias = bias;
+        frameCB_.foamGain = gain;
+        frameCB_.foamOpacity = opacity;
+        frameCB_.foamCascadeWeights[0] = cascadeWeights.x;
+        frameCB_.foamCascadeWeights[1] = cascadeWeights.y;
+        frameCB_.foamCascadeWeights[2] = cascadeWeights.z;
+        frameCB_.foamDecaySeconds = decaySeconds;
+    }
+
     void WaterPlaneObject::SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff) {
         frameCB_.absorptionCoeff[0] = absorptionCoeff.x;
         frameCB_.absorptionCoeff[1] = absorptionCoeff.y;

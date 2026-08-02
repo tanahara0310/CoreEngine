@@ -30,10 +30,12 @@ namespace CoreEngine
     void WaterRenderResources::SetFFTOceanTextureSRVs(
         D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle) {
-        // FFT Ocean の描画に必要な 3 種の SRV を一括で更新する
+        D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE foamSrvHandle) {
+        // FFT Ocean の描画に必要な 4 種の SRV を一括で更新する
         fftDisplacementSRV = displacementSrvHandle;
         fftNormalSRV = normalSrvHandle;
         fftJacobianSRV = jacobianSrvHandle;
+        fftFoamSRV = foamSrvHandle;
     }
 }

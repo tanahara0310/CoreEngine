@@ -31,6 +31,17 @@ namespace CoreEngine
             float gravity = 9.81f;
         };
 
+        /// @brief 泡（whitecap）蓄積パスの設定
+        /// @details 値の単一情報源は WaterFrameConstants（UI / 永続化も同経路）。
+        ///          WaterRenderFeature が毎フレーム SetFoamSettings で転送する。
+        struct FoamSettings {
+            bool enabled = true;
+            float bias = 0.85f;
+            float gain = 4.0f;
+            float cascadeWeights[3] = { 1.0f, 0.5f, 0.2f };
+            float decaySeconds = 3.0f;
+        };
+
         /// @brief 必要なGPUリソースとComputeパイプラインを初期化する
         bool Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager);
 
@@ -39,6 +50,9 @@ namespace CoreEngine
 
         /// @brief シミュレーション設定を更新し、必要に応じてスペクトルを再構築する
         void SetSettings(const Settings& settings);
+
+        /// @brief 泡蓄積パスの設定を更新する（毎フレーム呼んでよい。無効→有効でリセット）
+        void SetFoamSettings(const FoamSettings& settings);
 
         /// @brief 初期化済みかどうかを返す
         /// @return 初期化済みの場合 true
@@ -55,6 +69,15 @@ namespace CoreEngine
         /// @brief ヤコビアンテクスチャのSRVハンドルを返す
         /// @return ヤコビアンSRVのGPUディスクリプタハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetJacobianSRVHandle() const { return jacobianSrvHandle_; }
+
+        /// @brief 蓄積泡テクスチャのSRVハンドルを返す
+        /// @details ping-pong の「直近で書き終わった側」= (foamFrameIndex_ + 1) & 1。
+        ///          フレーム内の呼び出し順は 結線(PostLogic) → 泡Dispatch(描画記録) なので、
+        ///          この式は常に「今フレームの書き込み先ではない方」を指し、
+        ///          読み書きハザードが起きない。
+        D3D12_GPU_DESCRIPTOR_HANDLE GetFoamSRVHandle() const {
+            return foamSrvHandle_[(foamFrameIndex_ + 1u) & 1u];
+        }
 
         /// @brief 現在のシミュレーション設定を返す
         /// @return 設定参照
@@ -104,6 +127,18 @@ namespace CoreEngine
             float padding[3] = {};
         };
 
+        /// @brief 泡蓄積パスの定数（HLSL 側 FFTOceanFoamAccumulate.CS.hlsl と一致必須）
+        struct FoamConstants {
+            uint32_t resolution = 0;
+            float deltaSeconds = 0.0f;
+            float foamBias = 0.85f;
+            float foamGain = 4.0f;
+            float cascadeWeights[3] = { 1.0f, 0.5f, 0.2f };
+            float decaySeconds = 3.0f;
+            uint32_t resetFoam = 0;
+            float padding[3] = {};
+        };
+
         /// @brief 時間発展パス用Compute Shaderのパスを提供する
         struct TimeEvolutionShaderProvider final : ICustomShaderProvider {
             /// @brief 時間発展CSのファイルパスを返す
@@ -128,11 +163,23 @@ namespace CoreEngine
             std::wstring GetComputeShaderPath() const override { return L"FFTOceanNormalMipGen.CS.hlsl"; }
         };
 
+        /// @brief 泡蓄積パス用Compute Shaderのパスを提供する
+        struct FoamAccumulateShaderProvider final : ICustomShaderProvider {
+            /// @brief 泡蓄積CSのファイルパスを返す
+            std::wstring GetComputeShaderPath() const override { return L"FFTOceanFoamAccumulate.CS.hlsl"; }
+        };
+
         /// @brief Computeパイプライン群を作成する
         bool CreatePipelines();
 
         /// @brief 最終出力テクスチャ(変位/法線/ヤコビアン)を作成する
         bool CreateOutputTextures();
+
+        /// @brief 泡蓄積用の ping-pong テクスチャと定数バッファを作成する
+        bool CreateFoamResources();
+
+        /// @brief 泡の蓄積・減衰パスをDispatchする（Finalize 完了後・SRV遷移後に呼ぶ）
+        void DispatchFoamPass(ID3D12GraphicsCommandList* cmdList, float timeSeconds);
 
         /// @brief デバッグ用Readbackバッファを作成する
         bool CreateDebugReadbackBuffers();
@@ -243,12 +290,33 @@ namespace CoreEngine
         CustomShaderPipeline ifftPipeline_{};
         CustomShaderPipeline finalizePipeline_{};
         CustomShaderPipeline normalMipGenPipeline_{};
+        CustomShaderPipeline foamPipeline_{};
         TimeEvolutionShaderProvider timeEvolutionShaderProvider_{};
         IFFTShaderProvider ifftShaderProvider_{};
         FinalizeShaderProvider finalizeShaderProvider_{};
         NormalMipGenShaderProvider normalMipGenShaderProvider_{};
+        FoamAccumulateShaderProvider foamShaderProvider_{};
         Settings settings_{};
+        FoamSettings foamSettings_{};
         bool isInitialized_ = false;
+
+        // ──────────────────────────────────────────────────────────
+        // 泡蓄積の ping-pong テクスチャ・定数・状態
+        // ──────────────────────────────────────────────────────────
+        // 書き込み先 = foamFrameIndex_ & 1（フレームカウンタの純粋関数。TAA の規約に合わせ、
+        // トグル変数を持たない）。SRV/UAV とも全スライスを 1 ビューで見せる。
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kPingPongCount> foamTexture_;
+        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kPingPongCount> foamSrvCpuHandle_{};
+        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount> foamSrvHandle_{};
+        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kPingPongCount> foamUavCpuHandle_{};
+        std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kPingPongCount> foamUavHandle_{};
+        std::array<D3D12_RESOURCE_STATES, kPingPongCount> foamState_{};
+        Microsoft::WRL::ComPtr<ID3D12Resource> foamConstantsBuffer_;
+        uint8_t* mappedFoamConstants_ = nullptr;
+        uint32_t foamFrameIndex_ = 0;
+        // 生成直後・スペクトル再構築後・無効→有効の遷移で 1 フレームだけ前回値を捨てる
+        bool foamResetPending_ = true;
+        float foamPreviousTimeSeconds_ = 0.0f;
 
         // ──────────────────────────────────────────────────────────
         // 最終出力テクスチャとReadbackリソース

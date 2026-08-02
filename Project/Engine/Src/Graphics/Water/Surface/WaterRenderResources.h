@@ -14,6 +14,8 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV = { 0 };
         D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV = { 0 };
         D3D12_GPU_DESCRIPTOR_HANDLE fftJacobianSRV = { 0 };
+        // 蓄積泡（FFTOceanFoamAccumulate.CS 出力の ping-pong 直近書き込み側）
+        D3D12_GPU_DESCRIPTOR_HANDLE fftFoamSRV = { 0 };
 
         // ---- 大気散乱（Aerial Perspective）----
         D3D12_GPU_VIRTUAL_ADDRESS atmosphereCB = 0;
@@ -44,11 +46,12 @@ namespace CoreEngine
         /// @brief 大気散乱（Aerial Perspective）リソース一式が接続済みか返す
         bool HasAtmosphere() const;
 
-        /// @brief FFT Ocean 用の変位・法線・Jacobian SRV をまとめて設定する
+        /// @brief FFT Ocean 用の変位・法線・Jacobian・蓄積泡 SRV をまとめて設定する
         void SetFFTOceanTextureSRVs(
             D3D12_GPU_DESCRIPTOR_HANDLE displacementSrvHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE normalSrvHandle,
-            D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle);
+            D3D12_GPU_DESCRIPTOR_HANDLE jacobianSrvHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE foamSrvHandle);
     };
 
     /// @brief 「毎フレーム Engine 側が決める」水面描画の外部結線一式

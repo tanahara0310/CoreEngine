@@ -137,6 +137,7 @@ namespace CoreEngine
             }
 
             SyncCausticsAbsorption(*domain);
+            SyncFoamSettings(*domain);
 
             const WaterFrameBinding binding = BuildFrameBinding(ctx, *domain);
             waterPlane_->ApplyFrameBinding(binding);
@@ -300,7 +301,8 @@ namespace CoreEngine
             binding.resources.SetFFTOceanTextureSRVs(
                 fftOcean->GetDisplacementSRVHandle(),
                 fftOcean->GetNormalSRVHandle(),
-                fftOcean->GetJacobianSRVHandle());
+                fftOcean->GetJacobianSRVHandle(),
+                fftOcean->GetFoamSRVHandle());
         }
 
         // 大気散乱（Aerial Perspective）・空アンビエント・空スペキュラの接続
@@ -331,6 +333,27 @@ namespace CoreEngine
         }
 
         return binding;
+    }
+
+    void WaterRenderFeature::SyncFoamSettings(RenderDomainContext& domain) const
+    {
+        // 泡パラメータの単一情報源は WaterFrameConstants（UI / 永続化と同経路）。
+        // 蓄積パス（FFTOceanFoamAccumulate.CS）が使う分を毎フレーム転送する。
+        auto* fftOcean = domain.GetFFTOceanManager();
+        if (!fftOcean || !waterPlane_) {
+            return;
+        }
+
+        const WaterFrameConstants& frameConstants = waterPlane_->GetFrameConstants();
+        FFTOceanManager::FoamSettings foamSettings{};
+        foamSettings.enabled = frameConstants.foamEnabled != 0 && waterPlane_->IsUsingFFTOcean();
+        foamSettings.bias = frameConstants.foamBias;
+        foamSettings.gain = frameConstants.foamGain;
+        foamSettings.cascadeWeights[0] = frameConstants.foamCascadeWeights[0];
+        foamSettings.cascadeWeights[1] = frameConstants.foamCascadeWeights[1];
+        foamSettings.cascadeWeights[2] = frameConstants.foamCascadeWeights[2];
+        foamSettings.decaySeconds = frameConstants.foamDecaySeconds;
+        fftOcean->SetFoamSettings(foamSettings);
     }
 
     void WaterRenderFeature::SyncCausticsAbsorption(RenderDomainContext& domain) const

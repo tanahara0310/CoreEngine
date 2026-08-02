@@ -36,6 +36,15 @@ void WaterSurfaceParameterPanel::SerializeSettings(json& out, const WaterEditorF
 	out["jerlovPreset"] = surfaceParameters_.jerlovPreset;
 	out["turbidity"] = surfaceParameters_.turbidity;
 
+	// ===== 泡（whitecap） =====
+	out["foamEnabled"] = foamParameters_.enabled;
+	out["foamBias"] = foamParameters_.bias;
+	out["foamGain"] = foamParameters_.gain;
+	out["foamOpacity"] = foamParameters_.opacity;
+	out["foamCascadeWeights"] = json::array({
+		foamParameters_.cascadeWeights[0], foamParameters_.cascadeWeights[1], foamParameters_.cascadeWeights[2] });
+	out["foamDecaySeconds"] = foamParameters_.decaySeconds;
+
 	// ===== DXR 屈折 =====
 	out["rtRefractionOffsetPixels"] = rtRefractionOffsetPixels_;
 
@@ -104,6 +113,17 @@ void WaterSurfaceParameterPanel::DeserializeSettings(const json& in,
 	surfaceParameters_.jerlovPreset = JsonManager::SafeGet(in, "jerlovPreset", surfaceParameters_.jerlovPreset);
 	surfaceParameters_.turbidity = JsonManager::SafeGet(in, "turbidity", surfaceParameters_.turbidity);
 
+	foamParameters_.enabled = JsonManager::SafeGet(in, "foamEnabled", foamParameters_.enabled);
+	foamParameters_.bias = JsonManager::SafeGet(in, "foamBias", foamParameters_.bias);
+	foamParameters_.gain = JsonManager::SafeGet(in, "foamGain", foamParameters_.gain);
+	foamParameters_.opacity = JsonManager::SafeGet(in, "foamOpacity", foamParameters_.opacity);
+	const Vector3 foamWeights = JsonManager::SafeGetVector3(in, "foamCascadeWeights", {
+		foamParameters_.cascadeWeights[0], foamParameters_.cascadeWeights[1], foamParameters_.cascadeWeights[2] });
+	foamParameters_.cascadeWeights[0] = foamWeights.x;
+	foamParameters_.cascadeWeights[1] = foamWeights.y;
+	foamParameters_.cascadeWeights[2] = foamWeights.z;
+	foamParameters_.decaySeconds = JsonManager::SafeGet(in, "foamDecaySeconds", foamParameters_.decaySeconds);
+
 	rtRefractionOffsetPixels_ = JsonManager::SafeGet(in, "rtRefractionOffsetPixels", rtRefractionOffsetPixels_);
 
 	// ===== 水面へ適用（Draw の各ウィジェットと同じ経路） =====
@@ -121,6 +141,7 @@ void WaterSurfaceParameterPanel::DeserializeSettings(const json& in,
 		waterPlane->SetScrollSpeed({ surfaceParameters_.scrollSpeed[0], surfaceParameters_.scrollSpeed[1] });
 		waterPlane->SetUVTiling({ surfaceParameters_.uvTiling[0], surfaceParameters_.uvTiling[1] });
 		ApplyEffectiveOpticalCoefficients(waterPlane);
+		ApplyFoamParameters(waterPlane);
 	}
 
 	// ===== FFT Ocean（Apply が解像度変更時の再初期化まで面倒を見る） =====

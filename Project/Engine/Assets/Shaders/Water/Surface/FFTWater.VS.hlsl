@@ -3,8 +3,9 @@
 #include "../Common/FFTOceanCascade.hlsli"
 
 // カスケード（マルチスケールFFT）は Texture2DArray のスライスに格納される。
+// ヤコビアン（t20）は頂点解像度に依存しないよう Water.PS 側で直接サンプルする
+// （以前ここでカスケード0のみを頂点サンプルして渡していた経路は廃止）。
 Texture2DArray<float4> gFFTOceanDisplacement : register(t18);
-Texture2DArray<float4> gFFTOceanJacobian : register(t20);
 SamplerState gLinearClamp : register(s2);
 // WRAP サンプラ（カスケードのワールドタイリング用）。gSampler は Anisotropic=WRAP。
 SamplerState gSampler : register(s0);
@@ -31,13 +32,20 @@ cbuffer WaterFrameConstants : register(b5)
     float gCameraNearZ;
     float gCameraFarZ;
     float2 gCameraClipPadding;
+
+    // ---- 泡（whitecap）。VS 未使用、PS とのレイアウト一致のため保持 ----
+    int gFoamEnabled;
+    float gFoamBias;
+    float gFoamGain;
+    float gFoamOpacity;
+    float3 gFoamCascadeWeights;
+    float gFoamDecaySeconds;
 };
 
 struct FFTWaterVSOutput
 {
     float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD0;
-    float4 jacobianData : TEXCOORD1;
     float3 normal : NORMAL0;
     float3 worldPosition : POSITION0;
     float4 lightSpacePos : POSITION1;
@@ -89,8 +97,6 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // PS 側はワールドXZから各カスケードの法線を直接再サンプルするため、texcoord は
     // FFT サンプリングには使わない（生の UV をそのまま渡すのみ）。
     output.texcoord = input.texcoord;
-    // ヤコビアン（フォーム/砕波の可視化）は最大カスケード（低周波の大波）を代表として使う。
-    output.jacobianData = gFFTOceanJacobian.SampleLevel(gSampler, float3(baseWorldPos.xz / kFFTCascadePatch[0], 0.0f), 0.0f);
 
     float4 baseClip = mul(input.position, mtx.WVP);
     float3x3 invWorld3 = transpose((float3x3)mtx.WorldInversTranspose);

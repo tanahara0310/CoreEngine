@@ -104,6 +104,17 @@ namespace CoreEngine
         /// @param scatteringCoeff 散乱係数 σs [1/m]（RGB 波長別。深瀬のインスキャッタ色を決める）
         void SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff);
 
+        /// @brief 泡（whitecap）パラメータを設定する（FFTOcean 専用）
+        /// @param enabled        泡合成を行うか
+        /// @param bias           発生しきい値（合成ヤコビアン detJ がこれを下回ると泡が立つ）
+        /// @param gain           しきい値からの立ち上がり勾配
+        /// @param opacity        泡レイヤの不透明度（白ベタ回避のため 1.0 未満を推奨）
+        /// @param cascadeWeights カスケード別の勾配寄与の重み（無重みは最小カスケードが支配して飽和する）
+        /// @param decaySeconds   泡の寿命 τ [s]（蓄積パスの指数減衰時間）
+        void SetFoamParameters(
+            bool enabled, float bias, float gain, float opacity,
+            const Vector3& cascadeWeights, float decaySeconds);
+
         /// @brief FFT Ocean 描画経路を切り替える
         void SetUseFFTOcean(bool useFFTOcean);
 
