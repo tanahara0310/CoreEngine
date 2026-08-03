@@ -7,7 +7,6 @@
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "EngineSystem/Settings/EditorSettingsSubsystem.h"
 #endif
 
 using namespace CoreEngine;

@@ -203,21 +203,9 @@ void WaterSurfaceDebugPanel::DrawCausticsDebugSection(WaterEditorFacade& editorF
 
 	bool changed = false;
 
-	// 生成方式（合成されるのは選んだ側だけ。もう一方のパスは実行自体をスキップする）
-	static const char* kCausticsBackends[] = {
-		"レイトレーシング (DXR)",
-		"スクリーンスペース",
-	};
-	changed |= ImGui::Combo("生成方式", &settings.backend, kCausticsBackends, IM_ARRAYSIZE(kCausticsBackends));
-
-	// コースティクス計算に影響する主要パラメータを調整する
-	changed |= ImGui::SliderFloat("強度", &settings.intensity, 0.0f, 8.0f, "%.3f");
-	changed |= ImGui::SliderFloat("深度減衰", &settings.depthAttenuation, 0.0f, 4.0f, "%.3f");
-	changed |= ImGui::SliderFloat("曲率スケール", &settings.curvatureScale, 0.0f, 30.0f, "%.3f");
-	changed |= ImGui::SliderFloat("水面サンプル半径", &settings.surfaceSampleRadius, 0.05f, 2.0f, "%.3f");
-	changed |= ImGui::SliderFloat("屈折率", &settings.refractiveIndex, 1.0f, 1.6f, "%.4f");
-	changed |= ImGui::SliderFloat("受光面法線強度", &settings.receiverNormalStrength, 0.0f, 2.0f, "%.3f");
-	changed |= ImGui::SliderFloat("フォーカス強度", &settings.alignmentPower, 1.0f, 64.0f, "%.3f");
+	// 見た目パラメータ（強度・生成方式など）は Phase 5 で WaterCVars 化し、
+	// 水面パラメータパネルの「コースティクス」セクションへ移設した。
+	// ここに残るのはデバッグ表示・ログ（非永続のランタイム状態）のみ。
 
 	// デバッグ描画モードとログ出力の切り替えを提供する
 	ImGui::SeparatorText("デバッグ表示");

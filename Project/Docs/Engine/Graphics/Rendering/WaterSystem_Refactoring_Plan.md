@@ -244,6 +244,41 @@ WaterColumn → WaterVolume → WaterFoam（Volume の SH を使う）→ WaterN
 検証: dxc 単体コンパイル成功・Development ビルド成功・実機で WaterTestScene へ切替し
 泡（whitecap/岸際シート）・汀線連続性・濡れ暗色化が分割前と同一の見た目・エラー0。
 
+### Phase 5a: CVar 移行 + Water.json 廃止 ✅ 完了 2026-08-03
+
+実施内容:
+1. **CVar<Vector2> 型を追加**（CVar.h/.cpp・CVarSerialization・CVarPanel の 4 箇所）
+2. **WaterCVars（35 個）を新設**（Engine/Src/Graphics/Water/WaterCVars.h/.cpp）:
+   見た目 9・水質 4・泡 6・FFT 7・コースティクス 8・DXR屈折 1。命名は "r.Water.*"、
+   既定値は旧 Water.json の調整値を引き継ぎ（＝移行後も見た目が変わらない）。
+   濁度ゲイン定数と実効 σa/σs の合成（EffectiveAbsorption/Scattering）も
+   パネルから WaterCVars へ移設（永続化はベース値のみ、の不変条件を維持）
+3. **WaterRenderFeature::ApplySettingsFromCVars**（毎フレーム・PostLogic）が唯一の適用点:
+   見た目/水質/泡 → WaterPlaneObject、FFT → FFTOceanManager（**revision 合計の変化時のみ
+   SetSettings**。サニタイズの風向正規化で CVar と保持値が恒常不一致→毎フレーム再構築、
+   という事故を防ぐ）、コースティクス → Technique＋RT設定（屈折率の真実の源を CVar に一本化）、
+   DXR屈折 → RT設定
+4. **UI パネルを CVar 直結へ全面書き換え**: UI キャッシュ構造体 4 つ・facade の Apply 経路・
+   IsAnyItemActive のプル同期を廃止。ImGui は CVar のストレージを直接編集し
+   NotifyChanged で通番を進める。プリセット（水面 4 種 / FFT 海況 5 種 / Jerlov 7 種）は
+   CVar への一括 Set。コースティクス見た目パラメータはデバッグパネルから
+   パラメータパネルの専用セクションへ移設（デバッグ表示系のみデバッグパネルに残置）
+5. **削除**: WaterSettingsSection（.h/.cpp）・WaterSurfaceParameterPanelSerialization.cpp（182行）・
+   Water.json への保存経路。永続化は CVars.json（CVarSettingsSection）へ一本化され、
+   復元順序問題（プリセット適用→Deserialize 上書き）も CVar の静的寿命により消滅
+6. Gerstner の波生成ツール・個別波編集はワークフロー状態のため CVar 化せず非永続のまま
+
+検証: Development ビルド一発成功・実機で WaterTestScene 切替時に
+「settings updated. windSpeed=18.000 choppiness=1.800 components=48」＝CVar 値での
+スペクトル再構築（revision 検知で 1 回だけ）をログ確認・調整済みの海況（whitecap 豊富）が
+再現・エラー 0・CVars.json への冗長保存なし（既定値＝調整値のため）。
+
+### Phase 5b: エンジン常駐化（未実施・次のフェーズ）
+WaterEditor（パネル 5 ファイル＋facade）を Engine/Src/Editor/Environment へ移し、
+AtmosphereEditor と同様に DebugSubsystem でエンジン寿命登録する。
+CVar 化により設定の復元はシーン非依存になったため、残る動機は
+「UI そのものを他シーンでも出す」ことのみ。旧計画の全文:
+
 ### Phase 5: パラメータ系統合 — CVar 移行 + エンジン常駐化（リスク: 中、効果: UI層の大幅削減）
 1. 水面パラメータ約30個を CVar 化（見た目6・水質7・泡6・FFT8・コースティクス8・DXR屈折1）。壁は3つ:
    - Vector2 型追加（scrollSpeed / uvTiling / fftWindDirection の3つ。UI/シリアライズ/レジストリの3ファイル改修）
