@@ -7,7 +7,6 @@
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
-#include "EngineSystem/Settings/EditorSettingsSubsystem.h"
 #endif
 
 using namespace CoreEngine;
@@ -26,21 +25,16 @@ void WaterSceneController::Shutdown() {
 	waterFeature_ = nullptr;
 #ifdef USE_IMGUI
 	// シーン破棄後にドロワーがダングリングしないよう登録を解除する
+	// （パラメータの永続化は CVars.json が担うため、ここで保存処理は不要）
 	if (engine_) {
-		// エディタ設定セクションの解除（解除時に最終保存が走る。パネル・facade はまだ生存中）
-		if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
-			editorSettings->UnregisterSections(this);
-		}
 		if (auto* debug = engine_->GetDebugSubsystem()) {
 			if (auto* ui = debug->GetGameDebugUI()) {
 				ui->UnregisterEnvironmentEditor(kEditorLabel, this);
 			}
 		}
-		// 解除済みなので、保険で呼ばれるデストラクタ側では何もしない（最終保存の二重実行を防ぐ）
+		// 解除済みなので、保険で呼ばれるデストラクタ側では何もしない
 		engine_ = nullptr;
 	}
-	// 設定セクションが保持している Feature 参照も切る
-	settingsSection_.Initialize(&parameterPanel_, nullptr, &editorFacade_);
 #endif
 }
 
@@ -67,12 +61,8 @@ void WaterSceneController::Initialize(
 		}
 	}
 
-	// エディタ設定の自動保存（登録時に前回状態が復元される）。
-	// parameterPanel_.Initialize の既定プリセット適用より後に登録することで復元値が起点になる
-	settingsSection_.Initialize(&parameterPanel_, waterFeature_, &editorFacade_);
-	if (auto* editorSettings = engine.GetSubsystem<EditorSettingsSubsystem>()) {
-		editorSettings->RegisterSection(&settingsSection_, this);
-	}
+	// パラメータの復元・保存は WaterCVars（CVars.json / CVarSettingsSection）が担う。
+	// 旧 WaterSettingsSection（Water.json）は Phase 5 で廃止した
 #endif
 }
 

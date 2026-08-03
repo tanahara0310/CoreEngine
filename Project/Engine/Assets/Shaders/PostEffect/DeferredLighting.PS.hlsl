@@ -3,6 +3,8 @@
 #include "../Include/PBR/PBR.hlsli"
 #include "../Include/Common/DepthReconstruction.hlsli"
 #include "../Include/Common/ColorSpace.hlsli" // Luminance / ACESFilm
+// 水中ライティング置換の関数群（PI / Luminance に依存するため PBR / ColorSpace の後）
+#include "../Include/Lighting/UnderwaterLighting.hlsli"
 
 // ============================================================
 // G-Buffer テクスチャ
@@ -319,50 +321,34 @@ PixelShaderOutput main(PixelShaderInput input)
     // それは RT コースティクスが全量を計算している。ここで通常の直接光も加算すると
     // 同じ光を二重に計上することになるため、水中ピクセルではメインライトの直接光を
     // コースティクスへクロスフェードで置換する。
-    //
-    // ★置換率は自前で計算せず、コースティクス出力の α をそのまま使う★（2026-07-27）
-    // 旧実装はここで平坦な waterHeight による深度判定をしていたが、実際の水面
-    // （Water.PS の着色開始線）は波変位後の汀線なので、平坦等高線との間に
-    // 「水は被っているのに置換もコースティクスも効かない帯」が生じ、汀線と平行な
-    // 薄い層が二重に見えていた。RTWaterCaustics.hlsl は全画面ピクセルで波を評価し、
-    // 波込みの被覆率（crossFade × regionFade）を α に書いてくるため、それを使えば
-    // 置換率とコースティクス放射がピクセル単位で必ず一致する（帯が構造的に出ない）。
-    //   underwaterFactor: 0 = 水上（通常ライティング）、1 = 水中（コースティクスが直接光を代替）
-    //   underwaterAmbientT: アンビエント用の Beer–Lambert 透過率（鉛直水深の平坦近似。
-    //                       低周波成分なので平坦基準のままで視覚差は出ない）
-    float underwaterFactor = 0.0f;
-    float underwaterSubmergedDepth = 0.0f;
-    float3 underwaterAmbientT = 1.0f.xxx;
+    // 判定・濡れ暗色化・合成の詳細は Include/Lighting/UnderwaterLighting.hlsli を参照。
+    // gWaterCaustics のサンプルはここで 1 回だけ行い、以降（合成・デバッグ）で再利用する。
     float4 waterCausticsSample = 0.0f.xxxx;
+    bool hasWaterCaustics = false;
     {
         float causticsW, causticsH;
         gWaterCaustics.GetDimensions(causticsW, causticsH);
         if (causticsW > 1.0f && causticsH > 1.0f)
         {
+            hasWaterCaustics = true;
             float2 causticsUV = (input.position.xy + 0.5f.xx) / float2(causticsW, causticsH);
             waterCausticsSample = gWaterCaustics.SampleLevel(gSampler, causticsUV, 0.0f);
         }
     }
+
+    const UnderwaterContext underwater = BuildUnderwaterContext(
+        waterCausticsSample,
+        gWaterCausticsDebug.waterVolumeEnabled,
+        gWaterCausticsDebug.waterHeight,
+        gWaterCausticsDebug.absorptionCoeff,
+        worldPos);
+    const float underwaterFactor = underwater.factor;
+    const float3 underwaterAmbientT = underwater.ambientTransmittance;
+
+    // 濡れ暗色化（★F0 計算の後・albedo を使うすべてのライティングの前★）
     if (gWaterCausticsDebug.waterVolumeEnabled != 0)
     {
-        underwaterFactor = saturate(waterCausticsSample.a);
-        underwaterSubmergedDepth = gWaterCausticsDebug.waterHeight - worldPos.y;
-        underwaterAmbientT = lerp(
-            1.0f.xxx,
-            exp(-gWaterCausticsDebug.absorptionCoeff * max(underwaterSubmergedDepth, 0.0f)),
-            underwaterFactor);
-
-        // ===== 濡れ暗色化（wet surface darkening）=====
-        // 水柱が数 cm の極浅域は 透過率 ≈ 1・集光率 ≈ 1 で、乾いた砂のアルベドのまま
-        // 描かれてしまう。その上に水面のフレネル照り返しだけが薄く乗るため、
-        // 「明るい砂の上に青白い膜が浮いた層」に見える（波線と平行な薄い層の最後の正体）。
-        // 実際の濡れた多孔質面（砂・岩）は、隙間が水で満たされて屈折率差が減り、
-        // 内部全反射と前方散乱の増加で拡散反射率が乾燥時の 0.5〜0.7 倍へ落ちる。
-        // これを水中アルベドへ適用すると、汀線は「濡れ砂の自然な暗色化」として読め、
-        // 膜のような見え方が消える。F0（鏡面反射率）は濡れても変わらないので触らない
-        // （この行は F0 計算より後に置くこと）。
-        const float kWetAlbedoFactor = 0.62f;
-        albedo *= lerp(1.0f, kWetAlbedoFactor, underwaterFactor);
+        albedo = ApplyWetDarkening(albedo, underwaterFactor);
     }
 
     float3 Lo = float3(0.0f, 0.0f, 0.0f);
@@ -593,99 +579,44 @@ PixelShaderOutput main(PixelShaderInput input)
     }
 
     // HDR値をそのまま出力（トーンマッピングはポストエフェクトチェーンで適用）
+    // 合成式の物理的根拠（×kD×albedo/PI・水上影の引き継ぎ）は UnderwaterLighting.hlsli を参照。
     float3 waterCaustics = 0.0f.xxx;
+    if (hasWaterCaustics)
     {
-        float causticsW, causticsH;
-        gWaterCaustics.GetDimensions(causticsW, causticsH);
-        if (causticsW > 1.0f && causticsH > 1.0f)
+        if (gWaterCausticsDebug.waterVolumeEnabled != 0)
         {
-            // 上（水中判定）でサンプル済みの値を再利用する
-            waterCaustics = waterCausticsSample.rgb;
-            if (gWaterCausticsDebug.waterVolumeEnabled != 0)
+            float causticsShadow = 1.0f;
+            if (useRTShadow)
             {
-                // 物理合成: RT コースティクス＝水中の透過直接光（放射照度 E）そのもの。
-                // 直接光と同じ拡散応答を適用して放射輝度へ変換する。
-                //
-                // ★ここは「/ PI」を必ず入れること★
-                // 置換前のメインライト直接光は CalculatePBRLighting() →
-                // DiffuseLambertPBR() を通っており、その中身は kD * albedo / PI
-                // （ランバート面の BRDF）である。放射照度 E に albedo を掛けただけでは
-                // PI ≈ 3.14 倍（+1.65EV）の過大評価になり、水面線をまたいだ瞬間に
-                // 砂が 3 倍明るくなる。水柱が薄い波打ち際ほど吸収で減衰しないため、
-                // これが「岸に張り付いた白い線」として最も強く出る（2026-07-26 の回帰）。
-                // kD も直接光と同じく (1 - F) * (1 - metallic) で揃える。屈折後の
-                // 光線はほぼ鉛直なので Fresnel は法線入射の F0 で近似する。
-                const float3 causticsKD = (1.0f.xxx - F0) * (1.0f - metallic);
-                waterCaustics *= causticsKD * albedo / PI;
-
-                // ===== 水上区間（太陽→水面）の遮蔽 =====
-                // コースティクスのレイトレースは水中区間（入射点→受光点）しか
-                // 遮蔽判定していないため、水上のヤシ・岩・島の影が落ちない。
-                // 直接光を置換した以上、その影も引き継ぐ必要がある。
-                // メインライトの RT シャドウマスク（置換前の直接光が使っていたものと
-                // 同一・同じ 0.3 フロア）を掛けることで、水面をまたいでも影の濃さが
-                // 連続する。水中区間の遮蔽はコースティクス側が 0 を返すため二重には
-                // ならない（0 に何を掛けても 0）。
-                float causticsShadow = 1.0f;
-                if (useRTShadow)
-                {
-                    causticsShadow = gRTShadowMask0.Load(loadCoord).r;
-                }
-                waterCaustics *= lerp(0.3f, 1.0f, causticsShadow);
+                causticsShadow = gRTShadowMask0.Load(loadCoord).r;
             }
-            else
-            {
-                // レガシー合成（スクリーンスペース版バックエンド等、置換モード外）
-                float3 causticsAlbedoScale = lerp(0.35f.xxx, albedo, 0.65f);
-                float causticsAOScale = lerp(0.45f, 1.0f, ao);
-                float causticsMetallicScale = lerp(1.0f, 0.25f, metallic);
-                static const float kWaterCausticsCompositeScale = 4.5f;
-                waterCaustics *= causticsAlbedoScale * causticsAOScale * causticsMetallicScale * kWaterCausticsCompositeScale;
-            }
+            waterCaustics = CompositeUnderwaterCaustics(
+                waterCausticsSample.rgb, albedo, F0, metallic, causticsShadow);
+        }
+        else
+        {
+            // レガシー合成（スクリーンスペース版バックエンド等、置換モード外）
+            waterCaustics = CompositeLegacyCaustics(waterCausticsSample.rgb, albedo, ao, metallic);
         }
     }
 
-    // ===== 波打ち際アーティファクトの切り分け用可視化 =====
-    // 3/4 は「水中ライティング置換」が絡む値なので、GBuffer が揃った最後で評価する
+    // ===== 波打ち際アーティファクトの切り分け用可視化（モード 3/4）=====
+    // 「水中ライティング置換」が絡む値なので、GBuffer が揃った最後で評価する
     // （モード 1/2 は生のコースティクス入力なのでシェーダー冒頭で処理している）。
-    // 出力はトーンマッパ＋自動露出を通るため、飽和した原色だけで符号化する
-    // （0-1 のグレースケールや虹色は明るいシーンで白飛びして読めない）。
-    if (gWaterCausticsDebug.debugViewMode == 3)
     {
-        // 水中判定マップ。R = underwaterFactor（メインライト直接光を消した割合）、
-        // G = 水面矩形フェード、B = 基準水面より 30cm 以上深い領域。
-        // 画像の白線がこの R の帯と重なるなら、犯人は「平坦な基準水面高で
-        // 直接光を置換している」側で確定する（実際の水面は波で上下するため、
-        // 波の谷では水に覆われていない砂まで水中扱いになる）。
-        output.color = float4(
-            underwaterFactor,
-            saturate(waterCausticsSample.a),
-            saturate(underwaterSubmergedDepth / 0.3f),
-            1.0f);
-        return output;
-    }
-
-    if (gWaterCausticsDebug.debugViewMode == 4)
-    {
-        // 水面線での明るさ連続性チェック。
-        // 「合成したコースティクス」÷「置換で消したメインライト直接光」の輝度比を EV で表示する。
-        //   緑   = 比 1.0（連続。水面線で明るさが跳ねない）
-        //   赤   = コースティクスが明るすぎる（+2EV で真っ赤）→ 白線の原因
-        //   青   = コースティクスが暗すぎる（-2EV で真っ青）→ 黒い縁の原因
-        //   マゼンタ = 水中判定ゼロ（置換していない領域）
-        const float replacedLuma = Luminance(replacedMainLight);
-        const float causticsLuma = Luminance(waterCaustics);
-        if (underwaterFactor < 0.01f || replacedLuma < 1.0e-6f)
+        bool debugHandled = false;
+        const float4 debugColor = BuildUnderwaterDebugColor(
+            gWaterCausticsDebug.debugViewMode,
+            underwater,
+            waterCausticsSample,
+            replacedMainLight,
+            waterCaustics,
+            debugHandled);
+        if (debugHandled)
         {
-            output.color = float4(1.0f, 0.0f, 1.0f, 1.0f);
+            output.color = debugColor;
             return output;
         }
-        const float ev = log2(max(causticsLuma, 1.0e-6f) / replacedLuma);
-        const float3 ratioColor = (ev >= 0.0f)
-            ? lerp(float3(0.0f, 1.0f, 0.0f), float3(1.0f, 0.0f, 0.0f), saturate(ev * 0.5f))
-            : lerp(float3(0.0f, 1.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), saturate(-ev * 0.5f));
-        output.color = float4(ratioColor, 1.0f);
-        return output;
     }
 
     float3 color = Lo + ambient + emissive + waterCaustics;

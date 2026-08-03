@@ -51,6 +51,11 @@ namespace CoreEngine
         bool CVarValueEquals(int a, int b) noexcept { return a == b; }
         bool CVarValueEquals(float a, float b) noexcept { return a == b; }
 
+        bool CVarValueEquals(const Vector2& a, const Vector2& b) noexcept
+        {
+            return a.x == b.x && a.y == b.y;
+        }
+
         bool CVarValueEquals(const Vector3& a, const Vector3& b) noexcept
         {
             return a.x == b.x && a.y == b.y && a.z == b.z;

@@ -138,6 +138,14 @@ namespace CoreEngine
             }
             break;
 
+        case CVarType::Vector2:
+            if (range.valid) {
+                changed = ImGui::SliderFloat2(label.c_str(), &cvar->AsVector2()->x, range.min, range.max, "%.3f");
+            } else {
+                changed = ImGui::DragFloat2(label.c_str(), &cvar->AsVector2()->x, kDefaultDragSpeed);
+            }
+            break;
+
         case CVarType::Vector3:
             if (range.valid) {
                 changed = ImGui::SliderFloat3(label.c_str(), &cvar->AsVector3()->x, range.min, range.max, "%.3f");

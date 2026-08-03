@@ -26,9 +26,10 @@ cbuffer WaterCausticsConstants : register(b0)
     float3 gLightDirection;
     float gScreenWidth;
     float gScreenHeight;
-    uint gFFTOceanEnabled;
-    float gFFTOceanPatchLength;
-    uint gFFTOceanResolution;
+    // 旧 FFT 有効情報 3 スロット。実体は b1（RTWaterSurfaceCommon.hlsli）へ一本化済み。
+    uint gFFTOceanPad1;
+    float gFFTOceanPad0;
+    uint gFFTOceanPad2;
     float gRefractiveIndex;
     float gDebugDisplayScale;
     uint gDebugViewMode;
@@ -57,12 +58,7 @@ static const uint kRTCausticsDebugReceiverFacing = 4;
 static const uint kRTCausticsDebugFinalIntensity = 5;
 static const uint kRTCausticsDebugConcentration = 6;
 
-// ヒット距離と有無だけを運ぶ（旧 ndotL / receiverDepth は誰も読んでいなかったため削除）
-struct CausticsPayload
-{
-    float hitT;
-    float hitFlag;
-};
+// ペイロード（RTWaterPayload）・失敗理由コード・波面評価は RTWaterSurfaceCommon.hlsli（共通）。
 
 #ifdef __INTELLISENSE__
 void TraceRay(
@@ -73,13 +69,12 @@ void TraceRay(
     uint multiplierForGeometryContributionToHitGroupIndex,
     uint missShaderIndex,
     RayDesc ray,
-    inout CausticsPayload payload);
+    inout RTWaterPayload payload);
 #endif
 
 float3 VisualizeScalar(float value)
 {
-    const float scaled = 1.0f - exp(-max(value, 0.0f) * max(gDebugDisplayScale, 1.0e-4f));
-    return scaled.xxx;
+    return VisualizeRTScalar(value, gDebugDisplayScale);
 }
 
 float3 BuildCausticsDebugColor(
@@ -124,22 +119,12 @@ float3 BuildCausticsDebugColor(
     return 0.0f.xxx;
 }
 
-bool UseFFTOceanSurface()
-{
-    return gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean
-        && gFFTOceanEnabled != 0
-        && gFFTOceanResolution > 0
-        && gFFTOceanPatchLength > 1.0e-4f;
-}
+// UseFFTOceanSurface / 波面評価は RTWaterSurfaceCommon.hlsli の共通実装
+// （b1 の gSurfaceFFTOceanEnabled / gSurfaceFFTOceanResolution で判定）を使う。
 
 float3 EvaluateCausticsWaterOffset(float2 worldXZ)
 {
-    if (!UseFFTOceanSurface())
-    {
-        return EvaluateWaterOffsetGerstner(worldXZ);
-    }
-
-    return SampleFFTOceanCascadeDisplacement(gFFTOceanDisplacement, worldXZ, gFFTOceanResolution);
+    return EvaluateWaterOffset(gFFTOceanDisplacement, worldXZ);
 }
 
 // ★水中判定（coverage）は「実際にラスタライザが描く面」そのものを評価する★（2026-07-27 第2ラウンド）
@@ -165,8 +150,8 @@ float3 EvaluateCausticsWaterOffset(float2 worldXZ)
 //   頂点 local = (-size/2 + x*step, 0, -size/2 + z*step),  world = local * scale + translate
 //   → 原点 = gRegionCenterXZ - gRegionHalfExtentXZ、セル = 2*gRegionHalfExtentXZ / 分割数
 // 三角形分割は (topLeft, bottomLeft, topRight) / (topRight, bottomLeft, bottomRight)。
-// 分割数は WaterSceneSetup.cpp の WaterPlaneObject(100.0f, 256, true) と**一致必須**。
-static const float kWaterMeshSubdivisions = 256.0f;
+// 分割数は b1 の gSurfaceMeshSubdivisions（WaterRenderFeature が実際のメッシュ解像度を
+// 毎フレーム供給。以前はここに 256 がハードコードされ、シーン側の変更で静かに壊れた）。
 
 /// @brief 水面メッシュ頂点 1 点分の変位（FFTWater.VS と同一式: 先頭2カスケード＋波群エンベロープ）
 float3 SampleMeshVertexDisplacement(float2 baseXZ)
@@ -178,7 +163,7 @@ float3 SampleMeshVertexDisplacement(float2 baseXZ)
     {
         const float2 gridXZ = RotateToFFTCascadeGrid(baseXZ, c);
         const float3 d = SampleFFTOceanArraySlice(
-            gFFTOceanDisplacement, gridXZ, kFFTCascadePatch[c], (uint)c, gFFTOceanResolution).xyz;
+            gFFTOceanDisplacement, gridXZ, kFFTCascadePatch[c], (uint)c, gSurfaceFFTOceanResolution).xyz;
         const float2 horizontal = RotateFromFFTCascadeGrid(float2(d.x, d.z), c);
         disp += float3(horizontal.x, d.y, horizontal.y);
     }
@@ -203,7 +188,7 @@ float EvaluateDrawnSurfaceHeight(float2 worldXZ)
     const float2 baseXZ = worldXZ - SampleMeshVertexDisplacement(worldXZ).xz;
 
     const float2 gridOrigin = gRegionCenterXZ - gRegionHalfExtentXZ;
-    const float2 cellSize = max((2.0f * gRegionHalfExtentXZ) / kWaterMeshSubdivisions, 1.0e-4f.xx);
+    const float2 cellSize = max((2.0f * gRegionHalfExtentXZ) / max(gSurfaceMeshSubdivisions, 1.0f), 1.0e-4f.xx);
     const float2 gridCoord = (baseXZ - gridOrigin) / cellSize;
     const float2 cellIndex = floor(gridCoord);
     const float2 cellFrac = gridCoord - cellIndex;
@@ -224,12 +209,7 @@ float EvaluateDrawnSurfaceHeight(float2 worldXZ)
 
 float3 EvaluateCausticsWaterNormal(float2 worldXZ)
 {
-    if (!UseFFTOceanSurface())
-    {
-        return EvaluateWaterNormalGerstner(worldXZ);
-    }
-
-    return SampleFFTOceanCascadeNormal(gFFTOceanNormal, worldXZ, gFFTOceanResolution);
+    return EvaluateWaterNormal(gFFTOceanNormal, worldXZ);
 }
 
 /// @brief Schlick 近似のフレネル透過率 (1 - F) を返す
@@ -490,7 +470,7 @@ void RTWaterCausticsRayGen()
 
     ray.TMax = min(gMaxTraceDistance, receiverRayT + receiverMatchRadius * 2.0f);
 
-    CausticsPayload payload;
+    RTWaterPayload payload;
     payload.hitT = 0.0f;
     payload.hitFlag = 0.0f;
 
@@ -628,7 +608,7 @@ void RTWaterCausticsRayGen()
 }
 
 [shader("miss")]
-void RTWaterCausticsMiss(inout CausticsPayload payload)
+void RTWaterCausticsMiss(inout RTWaterPayload payload)
 {
     payload.hitT = 0.0f;
     payload.hitFlag = 0.0f;
@@ -636,7 +616,7 @@ void RTWaterCausticsMiss(inout CausticsPayload payload)
 
 [shader("closesthit")]
 void RTWaterCausticsClosestHit(
-    inout CausticsPayload payload,
+    inout RTWaterPayload payload,
     in BuiltInTriangleIntersectionAttributes attr)
 {
     payload.hitT = RayTCurrent();

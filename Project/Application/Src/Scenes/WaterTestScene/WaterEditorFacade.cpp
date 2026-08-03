@@ -27,7 +27,6 @@ WaterEditorFFTSettings WaterEditorFacade::GetFFTSettings() const {
         settings.managerAvailable = true;
         settings.initialized = fftOceanManager->IsInitialized();
         settings.resolution = static_cast<int>(managerSettings.resolution);
-        settings.patchLength = managerSettings.patchLength;
         settings.amplitudeScale = managerSettings.amplitudeScale;
         settings.windDirection[0] = managerSettings.windDirection[0];
         settings.windDirection[1] = managerSettings.windDirection[1];
@@ -47,7 +46,6 @@ void WaterEditorFacade::ApplyFFTSettings(const WaterEditorFFTSettings& settings)
 
     if (auto* fftOceanManager = GetFFTOceanManager()) {
         FFTOceanManager::Settings managerSettings = fftOceanManager->GetSettings();
-        managerSettings.patchLength = settings.patchLength;
         managerSettings.amplitudeScale = settings.amplitudeScale;
         managerSettings.windDirection[0] = settings.windDirection[0];
         managerSettings.windDirection[1] = settings.windDirection[1];

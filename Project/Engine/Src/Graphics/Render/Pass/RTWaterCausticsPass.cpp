@@ -69,10 +69,10 @@ namespace CoreEngine
             return;
         }
 
+        // IsEnabledForView が GameView 限定のため、ここに来るのは常に GameView。
+        // 反射ビュー対応を追加する場合は IsEnabledForView 側と同時に見直すこと。
         const WaterCausticsRayTracingManager::ViewID viewId =
-            (context.currentRTShadowViewId == static_cast<uint32_t>(WaterCausticsRayTracingManager::ViewID::ReflectionView))
-            ? WaterCausticsRayTracingManager::ViewID::ReflectionView
-            : WaterCausticsRayTracingManager::ViewID::GameView;
+            WaterCausticsRayTracingManager::ViewID::GameView;
 
         const WaterSurfaceData& dispatchSurfaceData = *context.waterSurfaceState;
 

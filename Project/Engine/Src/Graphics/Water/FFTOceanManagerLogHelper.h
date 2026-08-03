@@ -7,9 +7,8 @@ namespace CoreEngine
     /// @brief FFTOceanManager の診断ログ出力を担当するヘルパー
     class FFTOceanManagerLogHelper {
     public:
-        static void LogInitialize(uint32_t resolution, float patchLength, float windSpeed);
+        static void LogInitialize(uint32_t resolution, float windSpeed);
         static void LogSettingsUpdated(
-            float patchLength,
             float amplitudeScale,
             float windDirX,
             float windDirY,

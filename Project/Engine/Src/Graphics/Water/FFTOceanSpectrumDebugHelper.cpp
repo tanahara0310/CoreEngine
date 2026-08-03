@@ -24,9 +24,11 @@ namespace CoreEngine
         const float cosPhase = std::cos(angularPhase);
         const float sinPhase = std::sin(angularPhase);
 
+        // h0Minus 側は共役回転 e^{-iωt} を掛ける: 実部 = x·cos + y·sin
+        // （FFTOceanTimeEvolution.CS.hlsl の negativeRotation と一致させること）
         value.real =
             (h0[0] * cosPhase - h0[1] * sinPhase)
-            + (h0Minus[0] * cosPhase - h0Minus[1] * sinPhase);
+            + (h0Minus[0] * cosPhase + h0Minus[1] * sinPhase);
         value.imag =
             (h0[0] * sinPhase + h0[1] * cosPhase)
             + (-h0Minus[0] * sinPhase + h0Minus[1] * cosPhase);

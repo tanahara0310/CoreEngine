@@ -13,33 +13,8 @@
 using namespace CoreEngine;
 
 namespace {
-// Water.PS.hlsl のデバッグ表示モード名を ImGui へそのまま提示する。
-const char* const kWaterDebugViewNames[] = {
-	"なし",
-	"生の深度",
-	"線形深度",
-	"深度差",
-	"スクリーンUV",
-	"シーンカラー",
-	"反射",
-	"フレネル",
-	"RT屈折",
-	"RT屈折理由",
-	"RT屈折とシーン比較",
-	"透過光",
-	"波長別透過率",
-	"反射率",
-	"最終合成",
-	"RT屈折成功マスク",
-	"FFT Jacobian",
-	"平面反射(生・雲なし)",
-	"雲キューブマップ色",
-	"雲上書き強度",
-	"合成:透過のみ(Fresnel=0)",
-	"合成:反射のみ(Fresnel=1)",
-	"反射-透過の差分",
-	"FFT 泡マスク",
-};
+// 水面デバッグ表示モード名は WaterDebugViewMode.h（Engine 側）の
+// kWaterDebugViewModeNames が単一情報源（enum との個数一致を static_assert 済み）。
 
 const char* const kRTRefractionDebugViewNames[] = {
 	"なし",
@@ -100,7 +75,7 @@ void WaterSurfaceDebugPanel::DrawCommonDebugSection(WaterRenderFeature& runtimeC
 	bool debugChanged = false;
 	debugChanged |= ImGui::Checkbox("Depth Fade デバッグを有効にする", &depthFadeDebugEnabled_);
 	debugChanged |= ImGui::SliderFloat("デバッグ表示倍率", &depthFadeDebugScale_, 0.1f, 8.0f, "%.2f");
-	debugChanged |= ImGui::Combo("可視化モード", &depthDebugViewMode_, kWaterDebugViewNames, IM_ARRAYSIZE(kWaterDebugViewNames));
+	debugChanged |= ImGui::Combo("可視化モード", &depthDebugViewMode_, kWaterDebugViewModeNames, IM_ARRAYSIZE(kWaterDebugViewModeNames));
 	if (debugChanged) {
 		waterPlane->SetDepthFadeDebug(depthFadeDebugEnabled_, depthFadeDebugScale_);
 		waterPlane->SetDepthDebugViewMode(static_cast<WaterDebugViewMode>(depthDebugViewMode_));
@@ -146,7 +121,7 @@ void WaterSurfaceDebugPanel::DrawFFTOceanDebugSection(
 
 	ImGui::Text("初期化状態: %s", settings.initialized ? "完了" : "未初期化");
 	ImGui::Text("解像度: %d", settings.resolution);
-	ImGui::Text("パッチ長: %.2f", settings.patchLength);
+	ImGui::Text("パッチ長: 521/127/31 m (カスケード固定)");
 	ImGui::Text("振幅スケール: %.3f", settings.amplitudeScale);
 	ImGui::Text("風向: (%.3f, %.3f)", settings.windDirection[0], settings.windDirection[1]);
 	ImGui::Text("風速: %.3f", settings.windSpeed);
@@ -228,21 +203,9 @@ void WaterSurfaceDebugPanel::DrawCausticsDebugSection(WaterEditorFacade& editorF
 
 	bool changed = false;
 
-	// 生成方式（合成されるのは選んだ側だけ。もう一方のパスは実行自体をスキップする）
-	static const char* kCausticsBackends[] = {
-		"レイトレーシング (DXR)",
-		"スクリーンスペース",
-	};
-	changed |= ImGui::Combo("生成方式", &settings.backend, kCausticsBackends, IM_ARRAYSIZE(kCausticsBackends));
-
-	// コースティクス計算に影響する主要パラメータを調整する
-	changed |= ImGui::SliderFloat("強度", &settings.intensity, 0.0f, 8.0f, "%.3f");
-	changed |= ImGui::SliderFloat("深度減衰", &settings.depthAttenuation, 0.0f, 4.0f, "%.3f");
-	changed |= ImGui::SliderFloat("曲率スケール", &settings.curvatureScale, 0.0f, 30.0f, "%.3f");
-	changed |= ImGui::SliderFloat("水面サンプル半径", &settings.surfaceSampleRadius, 0.05f, 2.0f, "%.3f");
-	changed |= ImGui::SliderFloat("屈折率", &settings.refractiveIndex, 1.0f, 1.6f, "%.4f");
-	changed |= ImGui::SliderFloat("受光面法線強度", &settings.receiverNormalStrength, 0.0f, 2.0f, "%.3f");
-	changed |= ImGui::SliderFloat("フォーカス強度", &settings.alignmentPower, 1.0f, 64.0f, "%.3f");
+	// 見た目パラメータ（強度・生成方式など）は Phase 5 で WaterCVars 化し、
+	// 水面パラメータパネルの「コースティクス」セクションへ移設した。
+	// ここに残るのはデバッグ表示・ログ（非永続のランタイム状態）のみ。
 
 	// デバッグ描画モードとログ出力の切り替えを提供する
 	ImGui::SeparatorText("デバッグ表示");

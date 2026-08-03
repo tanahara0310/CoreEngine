@@ -29,9 +29,10 @@ cbuffer WaterRefractionConstants : register(b0)
     float gScreenWidth;
     float gScreenHeight;
     float gMaxRefractionOffsetPixels;
-    uint gFFTOceanEnabled;
-    float gFFTOceanPatchLength;
-    uint gFFTOceanResolution;
+    // 旧 FFT 有効情報 3 スロット。実体は b1（RTWaterSurfaceCommon.hlsli）へ一本化済み。
+    uint gFFTOceanPad1;
+    float gFFTOceanPad0;
+    uint gFFTOceanPad2;
     float gDebugDisplayScale;
     uint gDebugViewMode;
 };
@@ -41,12 +42,6 @@ static const uint kRTRefractionDebugUVOffsetPixels = 1;
 static const uint kRTRefractionDebugDepthMismatch = 2;
 static const uint kRTRefractionDebugWaterNormal = 3;
 static const uint kRTRefractionDebugRefractedDirection = 4;
-
-struct RefractionPayload
-{
-    float hitT;
-    float hitFlag;
-};
 
 #ifdef __INTELLISENSE__
 #define RAY_FLAG_NONE 0x0
@@ -59,18 +54,10 @@ void TraceRay(
     uint multiplierForGeometryContributionToHitGroupIndex,
     uint missShaderIndex,
     RayDesc ray,
-    inout RefractionPayload payload);
+    inout RTWaterPayload payload);
 #endif
 
-static const float kRTReasonNoWorldPosition = 1.0f / 255.0f;
-static const float kRTReasonNearZeroSceneDistance = 2.0f / 255.0f;
-static const float kRTReasonParallelToWater = 3.0f / 255.0f;
-static const float kRTReasonInvalidPlaneIntersection = 4.0f / 255.0f;
-static const float kRTReasonInvalidRefractionVector = 5.0f / 255.0f;
-static const float kRTReasonTraceMiss = 6.0f / 255.0f;
-static const float kRTReasonInvalidClip = 7.0f / 255.0f;
-static const float kRTReasonDepthMismatch = 9.0f / 255.0f;
-
+// ペイロード・失敗理由コード・画面端フェード・波面評価は RTWaterSurfaceCommon.hlsli（共通）。
 // アルファのエンコード規約（kRTSuccessRangeMin / kRTMaxOpticalPathMeters /
 // kRTColorInvalidOffset / EncodeHitAlpha）は Common/WaterRefractionEncoding.hlsli が
 // 唯一の情報源。読み手の Water.PS.hlsl も同じヘッダーを include する。
@@ -92,12 +79,6 @@ float3 EncodeSignedVector(float3 vectorValue)
     return normalize(vectorValue) * 0.5f + 0.5f;
 }
 
-float3 VisualizeScalar(float value, float displayScale)
-{
-    const float scaled = 1.0f - exp(-max(value, 0.0f) * max(displayScale, 1.0e-4f));
-    return scaled.xxx;
-}
-
 float3 BuildRefractionDebugColor(
     uint debugViewMode,
     float uvOffsetPixels,
@@ -107,12 +88,12 @@ float3 BuildRefractionDebugColor(
 {
     if (debugViewMode == kRTRefractionDebugUVOffsetPixels)
     {
-        return VisualizeScalar(uvOffsetPixels, gDebugDisplayScale);
+        return VisualizeRTScalar(uvOffsetPixels, gDebugDisplayScale);
     }
 
     if (debugViewMode == kRTRefractionDebugDepthMismatch)
     {
-        return VisualizeScalar(depthMismatch, gDebugDisplayScale);
+        return VisualizeRTScalar(depthMismatch, gDebugDisplayScale);
     }
 
     if (debugViewMode == kRTRefractionDebugWaterNormal)
@@ -128,46 +109,6 @@ float3 BuildRefractionDebugColor(
     return 0.0f.xxx;
 }
 
-float ComputeScreenBoundsFade(float2 uv)
-{
-    // 画面内では減衰させず、画面外へはみ出した距離に応じて対称にフェードする。
-    // 以前の実装は下端だけ広い固定マージンを持っており、uv.y が 1 に近づくだけで
-    // 実際には画面内にある屈折まで早期にフォールバックしていた。
-    const float2 screenSize = float2(gScreenWidth, gScreenHeight);
-    const float2 outsideDistancePixels = abs(uv - saturate(uv)) * screenSize;
-    const float outsidePixels = max(outsideDistancePixels.x, outsideDistancePixels.y);
-    const float fadeMarginPixels = 32.0f;
-    return 1.0f - smoothstep(0.0f, fadeMarginPixels, outsidePixels);
-}
-
-bool UseFFTOceanSurface()
-{
-    return gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean
-        && gFFTOceanEnabled != 0
-        && gFFTOceanResolution > 0
-        && gFFTOceanPatchLength > 1.0e-4f;
-}
-
-float3 EvaluateRefractionWaterOffset(float2 worldXZ)
-{
-    if (!UseFFTOceanSurface())
-    {
-        return EvaluateWaterOffsetGerstner(worldXZ);
-    }
-
-    return SampleFFTOceanCascadeDisplacement(gFFTOceanDisplacement, worldXZ, gFFTOceanResolution);
-}
-
-float3 EvaluateRefractionWaterNormal(float2 worldXZ)
-{
-    if (!UseFFTOceanSurface())
-    {
-        return EvaluateWaterNormalGerstner(worldXZ);
-    }
-
-    return SampleFFTOceanCascadeNormal(gFFTOceanNormal, worldXZ, gFFTOceanResolution);
-}
-
 [shader("raygeneration")]
 void RTWaterRefractionRayGen()
 {
@@ -177,7 +118,7 @@ void RTWaterRefractionRayGen()
 
     if (IsBackgroundDepth(ndcDepth))
     {
-        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonNoWorldPosition);
+        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonBackground);
         return;
     }
 
@@ -200,36 +141,15 @@ void RTWaterRefractionRayGen()
         return;
     }
 
-    // フラット平面（波なし）での交点は、あくまで反復解法の初期値（シード）に過ぎない。
-    // 実際の水面は波で上下するため、フラット高さでの交点が sceneDistance の近く/外側に
-    // あっても、波を反映した本当の交点は有効範囲内に収まることがある。
-    // 以前はこの「シード」段階で 0 < t < sceneDistance を厳密に要求していたため、
-    // カメラを水面へ近づけるとカメラ直下の近い/浅いジオメトリ（sceneDistance が小さい）
-    // でフラット高さの誤差が相対的に大きくなり、本来は有効なはずの交点まで誤って
-    // 弾かれ、その領域だけ屈折がフォールバックしていた
-    // （＝「カメラを近づけるとカメラ下側のエリアの屈折が消える」不具合の原因）。
-    // ここではシード自体の妥当性判定を行わず、波を反映した精密化後に判定し直す。
-    float tSurfaceSeed = (gSurfaceWaterHeight - gCameraPosition.y) / denom;
-    if (!isfinite(tSurfaceSeed))
+    // フラット平面シード→波反映の固定点反復（詳細は RefineWaterSurfaceIntersection）。
+    // シード段階の 0 < t < sceneDistance 判定は行わず、精密化後に判定し直す
+    // （「カメラを近づけるとカメラ下側の屈折が消える」既知バグの恒久対策）。
+    float3 waterPos;
+    if (!RefineWaterSurfaceIntersection(
+            gFFTOceanDisplacement, gCameraPosition, primaryDir, sceneDistance, waterPos))
     {
         gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidPlaneIntersection);
         return;
-    }
-    float tSeedClamped = clamp(tSurfaceSeed, 0.0f, sceneDistance);
-
-    float3 waterPos = gCameraPosition + primaryDir * tSeedClamped;
-    float safeDenom = denom;
-    if (abs(safeDenom) < 1.0e-4f)
-    {
-        safeDenom = (safeDenom < 0.0f) ? -1.0e-4f : 1.0e-4f;
-    }
-    [unroll]
-    for (int iteration = 0; iteration < 3; ++iteration)
-    {
-        float3 waveOffset = EvaluateRefractionWaterOffset(waterPos.xz);
-        float surfaceY = gSurfaceWaterHeight + waveOffset.y;
-        float deltaY = waterPos.y - surfaceY;
-        waterPos -= primaryDir * (deltaY / safeDenom);
     }
 
     // 波を反映した精密化後の実際の交点までの距離で改めて有効性を判定する。
@@ -251,11 +171,11 @@ void RTWaterRefractionRayGen()
         return;
     }
 
-    float3 waterNormal = EvaluateRefractionWaterNormal(waterPos.xz);
+    float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz);
     float3 refractedDir = refract(primaryDir, waterNormal, gRefractionEta);
     if (dot(refractedDir, refractedDir) <= 1.0e-6f)
     {
-        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidRefractionVector);
+        gRefractionOutput[launchIndex] = MakeFallbackOutput(fallbackSample.rgb, kRTReasonInvalidBounceVector);
         return;
     }
 
@@ -269,7 +189,7 @@ void RTWaterRefractionRayGen()
     ray.TMin = 0.001f;
     ray.TMax = gMaxRayDistance;
 
-    RefractionPayload payload;
+    RTWaterPayload payload;
     payload.hitT = 0.0f;
     payload.hitFlag = 0.0f;
 
@@ -317,7 +237,7 @@ void RTWaterRefractionRayGen()
     // ただし画面端に近いだけの有効な屈折まで減衰させると、特定方向だけ
     // 不自然に途切れて見える。そこでフェードは「画面外へ実際にはみ出した距離」に対してのみ
     // 適用し、画面内に留まっている屈折は上下左右で等しく保持する。
-    float edgeFade = ComputeScreenBoundsFade(uv);
+    float edgeFade = ComputeRTScreenBoundsFade(uv, float2(gScreenWidth, gScreenHeight));
 
     if (edgeFade <= 1.0e-4f)
     {
@@ -403,7 +323,7 @@ void RTWaterRefractionRayGen()
 }
 
 [shader("miss")]
-void RTWaterRefractionMiss(inout RefractionPayload payload)
+void RTWaterRefractionMiss(inout RTWaterPayload payload)
 {
     payload.hitT = 0.0f;
     payload.hitFlag = 0.0f;
@@ -411,7 +331,7 @@ void RTWaterRefractionMiss(inout RefractionPayload payload)
 
 [shader("closesthit")]
 void RTWaterRefractionClosestHit(
-    inout RefractionPayload payload,
+    inout RTWaterPayload payload,
     in BuiltInTriangleIntersectionAttributes attr)
 {
     payload.hitT = RayTCurrent();

@@ -11,36 +11,7 @@ SamplerState gLinearClamp : register(s2);
 SamplerState gSampler : register(s0);
 
 // VS では実際には使用しないが、PS（Water.PS.hlsl）と同一レイアウトを保つために宣言する。
-cbuffer WaterFrameConstants : register(b5)
-{
-    int gReflectionEnabled;
-    float gFresnelReflectanceScale;
-    float gFresnelBaseReflectance;
-    int gDepthFadeEnabled;
-    int gDepthFadeDebugEnabled;
-    float gDepthFadeDebugScale;
-    float gSkyAmbientScale;
-    int gSkyAmbientEnabled;
-    float3 gAbsorptionCoeff;
-    float gAbsorptionPad;
-    float3 gScatteringCoeff;
-    float gScatteringPad;
-    uint gDepthDebugViewMode;
-    int gUseFFTOceanNormalMap;
-    float2 gDebugPadding;
-    // 描画カメラのクリップ距離（PS と共有、VS では未使用、レイアウト一致のため保持）
-    float gCameraNearZ;
-    float gCameraFarZ;
-    float2 gCameraClipPadding;
-
-    // ---- 泡（whitecap）。VS 未使用、PS とのレイアウト一致のため保持 ----
-    int gFoamEnabled;
-    float gFoamBias;
-    float gFoamGain;
-    float gFoamOpacity;
-    float3 gFoamCascadeWeights;
-    float gFoamDecaySeconds;
-};
+#include "../Common/WaterFrameConstants.hlsli"
 
 struct FFTWaterVSOutput
 {

@@ -3,11 +3,8 @@
 
 #include <algorithm>
 
-#include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
-#include "Graphics/Shader/ShaderCompiler.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
@@ -26,9 +23,11 @@ namespace CoreEngine
             float screenWidth;
             float screenHeight;
             float maxReflectionOffsetPixels;
-            uint32_t fftOceanEnabled;
-            float fftOceanPatchLength;
-            uint32_t fftOceanResolution;
+            // 旧 FFT 有効情報 3 スロット。実体は b1（WaterSurfaceConstants）へ一本化済み。
+            // レイアウト維持のためスロットだけ残す
+            uint32_t fftOceanPad1;
+            float fftOceanPad0;
+            uint32_t fftOceanPad2;
             float debugDisplayScale;
             uint32_t debugViewMode;
         };
@@ -42,70 +41,19 @@ namespace CoreEngine
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr)
     {
-        Logger& log = Logger::GetInstance();
-
-        if (!InitializeBase(dxCommon, descriptorManager, asMgr,
-            "WaterReflectionRayTracingManager", "RTWaterReflection")) {
-            log.Log("WaterReflectionRayTracingManager: DXR not supported, skipping",
-                LogLevel::Warn,
-                LogCategory::Graphics);
-            return false;
-        }
-
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-        shaderBlob_.Attach(shaderCompiler.CompileShaderLibrary(L"Engine/Assets/Shaders/Water/RayTracing/RTWaterReflection.hlsl"));
-        if (!shaderBlob_) {
-            log.Log("WaterReflectionRayTracingManager: Shader compile failed",
-                LogLevel::Error, LogCategory::Graphics);
-            return false;
-        }
-
-        globalRootSigMgr_
-            .AddUAVTable("gReflectionOutput", 0)
-            .AddSRVTable("gScene", 0)
-            .AddSRVTable("gSceneDepth", 1)
-            .AddSRVTable("gSceneColor", 2)
-            .AddSRVTable("gFFTOceanDisplacement", 3)
-            .AddSRVTable("gFFTOceanNormal", 4)
-            .AddCBV("gWaterSurfaceData", 1)
-            .AddRootConstants("WaterReflectionConstants", 0,
-                sizeof(WaterReflectionConstants) / sizeof(uint32_t));
-        if (!globalRootSigMgr_.Build(dxCommon_->GetDevice())) {
-            log.Log("WaterReflectionRayTracingManager: Global root signature build failed",
-                LogLevel::Error, LogCategory::Graphics);
-            return false;
-        }
-
-        RayTracingPipelineBuilder pipelineBuilder;
-        pipelineBuilder
-            .SetDXILLibrary(shaderBlob_.Get())
-            .AddHitGroup({ L"RTWaterReflectionHitGroup", L"RTWaterReflectionClosestHit" })
-            .SetShaderConfig(sizeof(float) * 2)
-            .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
-            .SetMaxRecursionDepth(1);
-        if (!pipelineBuilder.Build(dxCommon_->GetDevice(), stateObject_, stateObjectProperties_)) {
-            log.Log("WaterReflectionRayTracingManager: State object build failed",
-                LogLevel::Error, LogCategory::Graphics);
-            return false;
-        }
-
-        shaderTableBuilder_
-            .SetRayGenShader(L"RTWaterReflectionRayGen")
-            .AddMissShader(L"RTWaterReflectionMiss")
-            .AddHitGroup(L"RTWaterReflectionHitGroup");
-        if (!shaderTableBuilder_.Build(dxCommon_->GetDevice(), stateObjectProperties_.Get())) {
-            log.Log("WaterReflectionRayTracingManager: Shader table build failed",
-                LogLevel::Error, LogCategory::Graphics);
-            return false;
-        }
-
-        isInitialized_ = true;
-        shaderBlob_.Reset();
-
-        log.Log("WaterReflectionRayTracingManager: Initialized successfully",
-            LogLevel::Info, LogCategory::Graphics);
-        return true;
+        RTWaterPipelineDesc desc{};
+        desc.ownerName = "WaterReflectionRayTracingManager";
+        desc.outputDebugName = "RTWaterReflection";
+        desc.shaderPath = L"Engine/Assets/Shaders/Water/RayTracing/RTWaterReflection.hlsl";
+        desc.rayGenName = L"RTWaterReflectionRayGen";
+        desc.missName = L"RTWaterReflectionMiss";
+        desc.hitGroupName = L"RTWaterReflectionHitGroup";
+        desc.closestHitName = L"RTWaterReflectionClosestHit";
+        desc.outputUavName = "gReflectionOutput";
+        desc.srvTableNames = { "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal" };
+        desc.constantsName = "WaterReflectionConstants";
+        desc.constantsBytes = sizeof(WaterReflectionConstants);
+        return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);
     }
 
     void WaterReflectionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)
@@ -166,9 +114,6 @@ namespace CoreEngine
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
         constants.maxReflectionOffsetPixels = settings_.maxReflectionOffsetPixels;
-        constants.fftOceanEnabled = fftOceanInput.enabled;
-        constants.fftOceanPatchLength = fftOceanInput.patchLength;
-        constants.fftOceanResolution = fftOceanInput.resolution;
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
 
@@ -177,48 +122,20 @@ namespace CoreEngine
         const D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV =
             (fftOceanInput.normalSRV.ptr != 0) ? fftOceanInput.normalSRV : sceneColorSRV;
 
-        UploadSurfaceDataForDispatch(dispatchSurfaceData);
+        UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
 
-        resources.cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
-        resources.cmdList4->SetPipelineState1(stateObject_.Get());
-
-        BeginOutputWrite(cmdList, resources.outputResource, *resources.outputCurrentState);
-
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gReflectionOutput")),
-            resources.outputUavHandle);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene")),
-            asMgr_->GetTLASSRVHandle());
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneDepth")),
-            sceneDepthSRV);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneColor")),
-            sceneColorSRV);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gFFTOceanDisplacement")),
-            fftDisplacementSRV);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gFFTOceanNormal")),
-            fftNormalSRV);
-        cmdList->SetComputeRootConstantBufferView(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gWaterSurfaceData")),
-            constantBuffer_->GetGPUVirtualAddress());
-        cmdList->SetComputeRoot32BitConstants(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("WaterReflectionConstants")),
-            sizeof(WaterReflectionConstants) / sizeof(uint32_t),
-            &constants,
-            0);
-
-        auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
-        resources.cmdList4->DispatchRays(&dispatchDesc);
-        lastDispatchInfo_.status = RayTracingDispatchStatus::Dispatched;
-
-        EndOutputWrite(
+        BindAndDispatchRays(
             cmdList,
-            resources.outputResource,
-            *resources.outputCurrentState,
+            resources,
+            {
+                { "gSceneDepth", sceneDepthSRV },
+                { "gSceneColor", sceneColorSRV },
+                { "gFFTOceanDisplacement", fftDisplacementSRV },
+                { "gFFTOceanNormal", fftNormalSRV },
+            },
+            &constants,
+            width,
+            height,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 }

@@ -277,7 +277,6 @@ namespace CoreEngine
             outDispatchContext.fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
             outDispatchContext.fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
             outDispatchContext.fftOceanInput.resolution = fftSettings.resolution;
-            outDispatchContext.fftOceanInput.patchLength = fftSettings.patchLength;
             outDispatchContext.fftOceanInput.enabled = 1;
         }
 
@@ -371,7 +370,11 @@ namespace CoreEngine
             if (Light* mainLight = context.lightManager->GetDirectionalLight(0);
                 mainLight && mainLight->enabled) {
                 lightInput.direction = MathCore::Vector::Normalize(mainLight->direction);
-                lightInput.color = { mainLight->color.x, mainLight->color.y, mainLight->color.z };
+                // 大気透過率適用済みの実効色（DeferredLighting・SS版コースティクスと同一基準）。
+                // 生の color を渡すと日没時に置換前後で輝度が食い違い水面線が不連続になる
+                const Vector3 effectiveColor =
+                    context.lightManager->GetEffectiveLightColorRGB(*mainLight);
+                lightInput.color = { effectiveColor.x, effectiveColor.y, effectiveColor.z };
                 // オーサリングは照度 [lx]。シェーダーが期待する従来単位へ換算する
                 lightInput.intensity = LightUnits::LuxToShader(mainLight->intensity);
                 lightInput.enabled = true;

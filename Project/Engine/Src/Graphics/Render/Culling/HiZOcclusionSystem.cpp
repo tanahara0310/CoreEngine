@@ -521,7 +521,7 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(buildRootSignatureMg_->GetRootSignature());
 
         // ミップ単位の遷移はリソース単位追跡の ResourceBarrierHelper では扱えないため、
-        // FFTOceanManager::DispatchNormalMipGenPass と同様にここで直接発行する。
+        // ここで直接バリアを発行する。
         // 関数の入口で全ミップ UNORDERED_ACCESS、出口で全ミップ NON_PIXEL_SHADER_RESOURCE。
         auto transitionMip = [&](uint32_t mip,
             D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {

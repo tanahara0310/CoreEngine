@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "WaterRenderFeature.h"
 
+#include <algorithm>
+
 #include "Camera/CameraStructs.h"
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
@@ -13,10 +15,14 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+#include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
+#include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
 #include "Graphics/Water/FFTOceanManager.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Water/WaterCVars.h"
 #include "Graphics/Water/Simulation/FFTOceanSurfaceSimulator.h"
 #include "Graphics/Water/Simulation/GerstnerWaterSimulator.h"
 #include "Graphics/Water/Surface/WaterPlaneObject.h"
@@ -136,6 +142,10 @@ namespace CoreEngine
                 break;
             }
 
+            // WaterCVars（単一情報源）→ 各所への反映。Sync* より前に行い、
+            // Sync* が読む WaterFrameConstants を最新化しておく
+            ApplySettingsFromCVars(ctx, *domain);
+
             SyncCausticsAbsorption(*domain);
             SyncFoamSettings(*domain);
 
@@ -209,8 +219,11 @@ namespace CoreEngine
         waterPlane_->GetTransform().translate = config_.translate;
         waterPlane_->GetTransform().scale = config_.scale;
         waterPlane_->SetBlendMode(BlendMode::kBlendModeNormal);
-        waterPlane_->SetScrollSpeed({ 0.03f, 0.01f });
-        waterPlane_->SetUVTiling({ 4.0f, 4.0f });
+        // 既定のスクロール/タイリングは Lake プリセットを単一情報源とする
+        // （以前はここと WaterPlaneObject コンストラクタに同値のハードコードが重複していた）
+        const WaterPresetData& defaultPreset = GetWaterPresetData(WaterPresetType::Lake);
+        waterPlane_->SetScrollSpeed(defaultPreset.scrollSpeed);
+        waterPlane_->SetUVTiling(defaultPreset.uvTiling);
         waterPlane_->SetActive(true);
         ConfigureDefaultMaterial();
     }
@@ -224,10 +237,12 @@ namespace CoreEngine
             return;
         }
 
-        // 水面らしい鏡面的な PBR 初期値
-        material->SetColor({ 0.04f, 0.18f, 0.28f, 0.85f });
-        material->SetMetallic(0.0f);
-        material->SetRoughness(0.04f);
+        // 水面らしい鏡面的な PBR 初期値。Lake プリセット（WaterSurfaceTypes.h）が
+        // 単一情報源（以前はここに複製があり roughness が 0.04 vs 0.03 で食い違っていた）
+        const WaterPresetData& preset = GetWaterPresetData(WaterPresetType::Lake);
+        material->SetColor(preset.baseColor);
+        material->SetMetallic(preset.metallic);
+        material->SetRoughness(preset.roughness);
         material->SetLightingEnabled(true);
         // 鏡面反射は RTWaterReflectionPass と空環境キューブマップで賄う。
         // ここで静的環境マップの IBL を効かせると大気の空と映り込みが食い違う。
@@ -335,6 +350,99 @@ namespace CoreEngine
         return binding;
     }
 
+    void WaterRenderFeature::ApplySettingsFromCVars(SceneContext& ctx, RenderDomainContext& domain)
+    {
+        if (!waterPlane_) {
+            return;
+        }
+
+        // ---- 見た目・水質・泡 → WaterPlaneObject ----
+        // setter は CPU 側ミラーの更新のみで安価なため毎フレーム呼んでよい
+        // （cbuffer 転送は描画時に一括で行われる）。
+        waterPlane_->SetBaseColor(WaterCVars::BaseColor.Get());
+        waterPlane_->SetRoughness(WaterCVars::Roughness.Get());
+        waterPlane_->SetMetallic(WaterCVars::Metallic.Get());
+        waterPlane_->SetIBLEnabled(WaterCVars::IBLEnabled.Get());
+        waterPlane_->SetFresnelParameters(WaterCVars::FresnelScale.Get(), WaterCVars::FresnelF0.Get());
+        waterPlane_->SetScrollSpeed(WaterCVars::ScrollSpeed.Get());
+        waterPlane_->SetUVTiling(WaterCVars::UVTiling.Get());
+        waterPlane_->SetDepthFade(WaterCVars::DepthFadeEnabled.Get());
+        // 実効 σa/σs = ベース + 濁度ゲイン（合成は WaterCVars 側。永続化はベース値のみ）
+        waterPlane_->SetWaterOpticalCoefficients(
+            WaterCVars::EffectiveAbsorption(), WaterCVars::EffectiveScattering());
+        waterPlane_->SetFoamParameters(
+            WaterCVars::FoamEnabled.Get(),
+            WaterCVars::FoamBias.Get(),
+            WaterCVars::FoamGain.Get(),
+            WaterCVars::FoamOpacity.Get(),
+            WaterCVars::FoamCascadeWeights.Get(),
+            WaterCVars::FoamDecaySeconds.Get());
+
+        // ---- FFT Ocean 経路の有効/無効（変化時のみ。PSO 再構築を伴う）----
+        const bool fftEnabled = WaterCVars::FFTEnabled.Get();
+        if (waterPlane_->IsUsingFFTOcean() != fftEnabled) {
+            waterPlane_->SetUseFFTOcean(fftEnabled);
+        }
+
+        // ---- FFT シミュレーション設定（revision 変化時のみ）----
+        if (auto* fftOcean = domain.GetFFTOceanManager()) {
+            const uint32_t fftRevision =
+                WaterCVars::FFTAmplitudeScale.GetRevision()
+                + WaterCVars::FFTWindDirection.GetRevision()
+                + WaterCVars::FFTWindSpeed.GetRevision()
+                + WaterCVars::FFTChoppiness.GetRevision()
+                + WaterCVars::FFTActiveComponentCount.GetRevision()
+                + WaterCVars::FFTGravity.GetRevision();
+            if (fftRevision != lastFFTCVarRevisionSum_) {
+                lastFFTCVarRevisionSum_ = fftRevision;
+                FFTOceanManager::Settings settings = fftOcean->GetSettings();
+                settings.amplitudeScale = WaterCVars::FFTAmplitudeScale.Get();
+                settings.windDirection[0] = WaterCVars::FFTWindDirection.Get().x;
+                settings.windDirection[1] = WaterCVars::FFTWindDirection.Get().y;
+                settings.windSpeed = WaterCVars::FFTWindSpeed.Get();
+                settings.choppiness = WaterCVars::FFTChoppiness.Get();
+                settings.activeComponentCount =
+                    static_cast<uint32_t>((std::max)(WaterCVars::FFTActiveComponentCount.Get(), 1));
+                settings.gravity = WaterCVars::FFTGravity.Get();
+                // 変更検知・サニタイズ・WaitForPreviousFrame・スペクトル再構築は SetSettings が担う
+                fftOcean->SetSettings(settings);
+            }
+        }
+
+        // ---- コースティクス（見た目パラメータ。debug 系フィールドは UI 側の担当を維持）----
+        if (auto* techniqueManager = ctx.engine ? ctx.engine->GetComponent<RenderingTechniqueManager>() : nullptr) {
+            if (auto* caustics = techniqueManager->GetTechnique<WaterCausticsTechnique>(
+                    RenderingTechniqueNames::WaterCaustics)) {
+                WaterCausticsTechnique::Params params = caustics->GetParams();
+                params.intensity = WaterCVars::CausticsIntensity.Get();
+                params.depthAttenuation = WaterCVars::CausticsDepthAttenuation.Get();
+                params.curvatureScale = WaterCVars::CausticsCurvatureScale.Get();
+                params.surfaceSampleRadius = WaterCVars::CausticsSurfaceSampleRadius.Get();
+                params.refractiveIndex = WaterCVars::CausticsRefractiveIndex.Get();
+                params.receiverNormalStrength = WaterCVars::CausticsReceiverNormalStrength.Get();
+                params.alignmentPower = WaterCVars::CausticsAlignmentPower.Get();
+                caustics->SetParams(params);
+                caustics->SetBackend(WaterCVars::CausticsBackend.Get() == 1
+                    ? WaterCausticsTechnique::Backend::ScreenSpace
+                    : WaterCausticsTechnique::Backend::RayTracing);
+            }
+        }
+        if (auto* rtCaustics = domain.GetWaterCausticsRayTracingManager()) {
+            // 屈折率の真実の源は CVar（以前は technique と RT の 2 箇所が食い違い得た）。
+            // absorptionCoeff は SyncCausticsAbsorption が WaterFrameConstants から同期する
+            WaterCausticsRayTracingSettings settings = rtCaustics->GetSettings();
+            settings.refractiveIndex = WaterCVars::CausticsRefractiveIndex.Get();
+            rtCaustics->SetSettings(settings);
+        }
+
+        // ---- DXR 屈折 ----
+        if (auto* rtRefraction = domain.GetWaterRefractionRayTracingManager()) {
+            WaterRefractionRayTracingSettings settings = rtRefraction->GetSettings();
+            settings.maxRefractionOffsetPixels = WaterCVars::RefractionMaxOffsetPixels.Get();
+            rtRefraction->SetSettings(settings);
+        }
+    }
+
     void WaterRenderFeature::SyncFoamSettings(RenderDomainContext& domain) const
     {
         // 泡パラメータの単一情報源は WaterFrameConstants（UI / 永続化と同経路）。
@@ -422,6 +530,8 @@ namespace CoreEngine
             waterSurfaceState_.regionHalfExtentXZ[1] = 0.5f * localSize * transform.scale.z;
             waterSurfaceState_.regionValid = 1;
         }
+        // coverage 判定のメッシュ同一基準化に使う実際の頂点グリッド分割数
+        waterSurfaceState_.meshSubdivisions = static_cast<float>(waterPlane_->GetResolution());
 
         if (surfaceModelProvider_) {
             surfaceModelProvider_->SetSurfaceData(
