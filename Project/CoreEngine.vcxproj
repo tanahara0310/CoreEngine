@@ -186,9 +186,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSettingsSection.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanelSerialization.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Primitive\CubeObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.cpp" />
@@ -229,6 +227,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\RenderGraph.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\WaterCVars.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.cpp" />
@@ -527,7 +526,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSettingsSection.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h" />
     <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.h" />
     <ClInclude Include="Application\Src\GameObjects\AnimatedModel\BrainStemObject.h" />
@@ -767,6 +765,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterCVars.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanGpuResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />

@@ -223,10 +223,26 @@ BuildSpectrum 較正値がリファクタ前と完全一致・spectrum copy 正�
 
 検証: 不変条件リスト §4-C を全項目チェック。RTシェーダー変更後は必ず Trace 時間を前後計測（未参照宣言事故の検出）。水面線 debugViewMode=4、夜間の明暗斑、波打ち際の各既知バグ再現手順を一巡。
 
-### Phase 4: Water.PS.hlsl 分割（リスク: 低〜中）
-①WaterColumn.hlsli（光路長・解析水柱・ResolveWaterColumn ≒ 「線を出さない」中核）②WaterFoam.hlsli（約180行、自己完結度高）③WaterNormals.hlsli ④デバッグ専用関数は Phase 0 で移動済み。main＋合成＋反射＋グリッターで本体400行程度へ。
+### Phase 4: Water.PS.hlsl 分割（リスク: 低〜中）✅ 完了 2026-08-03
 
-検証: コンパイル後のバイナリ同一性 or 全デバッグビュー＋昼夜スクリーンショット比較。
+実施内容: 1098 行 → 本体 448 行＋責務別 hlsli 4 本（コードは無変更の移動。コメントも保全）:
+- **WaterColumn.hlsli**（260行）: LinearizeDepth・屈折換算・解析水柱・
+  WaterColumnResult/ResolveWaterColumn。「線を出さない」中核で、4 供給源の連続合成と
+  ブレンド定数（1m/4m）はここが単一の置き場所
+- **WaterVolume.hlsli**（147行）: 天空光 SH 評価・水中インスキャッタ環境光・
+  Beer-Lambert＋単一散乱の体積色・RT 屈折の透過色解決（IsRTColorValid 2値切替禁止の
+  コメントごと移動）
+- **WaterFoam.hlsli**（201行）: 泡定数一式・ノイズ/パターン/レース・瞬時＋蓄積マスク・
+  岸際泡・泡色（飽和対策の「エンベロープは蓄積項のみ」規約ごと移動）
+- **WaterNormals.hlsli**（128行）: 面法線（3カスケード合成＋距離フェードAA）・
+  フレネル用低周波法線（kFresnelNormalFlatten=0.35 のまだら対策）
+本体に残るのは リソース宣言・FresnelSchlick・反射幾何遮蔽・サングリッター・
+フォワード PBR・main の合成のみ。include 順は
+WaterColumn → WaterVolume → WaterFoam（Volume の SH を使う）→ WaterNormals → Water.Debug。
+各ファイル冒頭に暗黙依存（資源/cbuffer/関数）を明記（Water.Debug.hlsli と同じ契約形式）。
+
+検証: dxc 単体コンパイル成功・Development ビルド成功・実機で WaterTestScene へ切替し
+泡（whitecap/岸際シート）・汀線連続性・濡れ暗色化が分割前と同一の見た目・エラー0。
 
 ### Phase 5: パラメータ系統合 — CVar 移行 + エンジン常駐化（リスク: 中、効果: UI層の大幅削減）
 1. 水面パラメータ約30個を CVar 化（見た目6・水質7・泡6・FFT8・コースティクス8・DXR屈折1）。壁は3つ:

@@ -4,7 +4,6 @@
 #include "WaterEditorFacade.h"
 #include "WaterSurfaceDebugPanel.h"
 #include "WaterSurfaceParameterPanel.h"
-#include "WaterSettingsSection.h"
 #endif
 
 namespace CoreEngine {
@@ -44,8 +43,8 @@ private:
 	/// @brief 環境エディタの登録解除に使うエンジン参照（非所有）
 	CoreEngine::EngineSystem* engine_ = nullptr;
 
-	/// @brief 水面エディタ設定の自動保存セクション（登録は Initialize、解除はデストラクタ）
-	WaterSettingsSection settingsSection_{};
+	// 旧 WaterSettingsSection（Water.json への専用シリアライズ）は Phase 5 で廃止。
+	// 全パラメータは WaterCVars として CVars.json（CVarSettingsSection）に保存される
 #endif
 
 	/// @brief UI の操作対象（所有権は BaseScene の Feature 一覧）

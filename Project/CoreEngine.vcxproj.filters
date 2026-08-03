@@ -10,13 +10,7 @@
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSettingsSection.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanelSerialization.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
@@ -137,6 +131,9 @@
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.cpp">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\WaterCVars.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp">
@@ -990,9 +987,6 @@
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSettingsSection.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
@@ -1693,6 +1687,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterCVars.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">

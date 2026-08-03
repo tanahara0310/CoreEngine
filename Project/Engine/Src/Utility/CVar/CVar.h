@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
 #include <cstdint>
@@ -31,6 +32,7 @@ namespace CoreEngine
         Bool,
         Int,
         Float,
+        Vector2, ///< スクロール速度・UVタイリング・風向など（Phase 5 水面 CVar 化で追加）
         Vector3,
         Color,   ///< Vector4（RGBA として ColorEdit4 で編集する）
     };
@@ -117,12 +119,14 @@ namespace CoreEngine
         bool*    AsBool()    noexcept { return type_ == CVarType::Bool    ? static_cast<bool*>(storage_)    : nullptr; }
         int*     AsInt()     noexcept { return type_ == CVarType::Int     ? static_cast<int*>(storage_)     : nullptr; }
         float*   AsFloat()   noexcept { return type_ == CVarType::Float   ? static_cast<float*>(storage_)   : nullptr; }
+        Vector2* AsVector2() noexcept { return type_ == CVarType::Vector2 ? static_cast<Vector2*>(storage_) : nullptr; }
         Vector3* AsVector3() noexcept { return type_ == CVarType::Vector3 ? static_cast<Vector3*>(storage_) : nullptr; }
         Vector4* AsColor()   noexcept { return type_ == CVarType::Color   ? static_cast<Vector4*>(storage_) : nullptr; }
 
         const bool*    AsBool()    const noexcept { return type_ == CVarType::Bool    ? static_cast<const bool*>(storage_)    : nullptr; }
         const int*     AsInt()     const noexcept { return type_ == CVarType::Int     ? static_cast<const int*>(storage_)     : nullptr; }
         const float*   AsFloat()   const noexcept { return type_ == CVarType::Float   ? static_cast<const float*>(storage_)   : nullptr; }
+        const Vector2* AsVector2() const noexcept { return type_ == CVarType::Vector2 ? static_cast<const Vector2*>(storage_) : nullptr; }
         const Vector3* AsVector3() const noexcept { return type_ == CVarType::Vector3 ? static_cast<const Vector3*>(storage_) : nullptr; }
         const Vector4* AsColor()   const noexcept { return type_ == CVarType::Color   ? static_cast<const Vector4*>(storage_) : nullptr; }
 
@@ -155,12 +159,14 @@ namespace CoreEngine
         template<> struct CVarTypeTraits<bool>    { static constexpr CVarType kType = CVarType::Bool; };
         template<> struct CVarTypeTraits<int>     { static constexpr CVarType kType = CVarType::Int; };
         template<> struct CVarTypeTraits<float>   { static constexpr CVarType kType = CVarType::Float; };
+        template<> struct CVarTypeTraits<Vector2> { static constexpr CVarType kType = CVarType::Vector2; };
         template<> struct CVarTypeTraits<Vector3> { static constexpr CVarType kType = CVarType::Vector3; };
         template<> struct CVarTypeTraits<Vector4> { static constexpr CVarType kType = CVarType::Color; };
 
         bool CVarValueEquals(bool a, bool b) noexcept;
         bool CVarValueEquals(int a, int b) noexcept;
         bool CVarValueEquals(float a, float b) noexcept;
+        bool CVarValueEquals(const Vector2& a, const Vector2& b) noexcept;
         bool CVarValueEquals(const Vector3& a, const Vector3& b) noexcept;
         bool CVarValueEquals(const Vector4& a, const Vector4& b) noexcept;
     }

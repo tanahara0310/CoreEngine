@@ -29,6 +29,11 @@ namespace CoreEngine
             case CVarType::Float:
                 out[key] = *cvar->AsFloat();
                 break;
+            case CVarType::Vector2: {
+                const Vector2& v = *cvar->AsVector2();
+                out[key] = nlohmann::json::array({ v.x, v.y });
+                break;
+            }
             case CVarType::Vector3: {
                 const Vector3& v = *cvar->AsVector3();
                 out[key] = nlohmann::json::array({ v.x, v.y, v.z });
@@ -75,6 +80,14 @@ namespace CoreEngine
                 float* p = cvar->AsFloat();
                 const float v = JsonManager::SafeGet(in, key, *p);
                 if (*p != v) { *p = v; cvar->NotifyChanged(); }
+                break;
+            }
+            case CVarType::Vector2: {
+                Vector2* p = cvar->AsVector2();
+                const auto& node = in[key];
+                if (!node.is_array() || node.size() < 2) { break; }
+                const Vector2 v{ node[0].get<float>(), node[1].get<float>() };
+                if (p->x != v.x || p->y != v.y) { *p = v; cvar->NotifyChanged(); }
                 break;
             }
             case CVarType::Vector3: {

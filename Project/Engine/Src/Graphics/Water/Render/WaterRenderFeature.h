@@ -91,6 +91,12 @@ namespace CoreEngine
         void ConnectSurfaceModelProvider(RenderDomainContext& domain) const;
 
         /// @brief このフレームの外部リソース結線を組み立てる
+        /// @brief WaterCVars（単一情報源）から全水面設定を各所へ反映する（毎フレーム）
+        /// @details 見た目/水質/泡 → WaterPlaneObject、FFT → FFTOceanManager（revision 変化時のみ）、
+        ///          コースティクス → Technique + RT設定、DXR屈折 → RT設定。
+        ///          UI（CVarツリー / 水面パネル）はストレージを書くだけで、適用は必ずここを通る。
+        void ApplySettingsFromCVars(SceneContext& ctx, RenderDomainContext& domain);
+
         WaterFrameBinding BuildFrameBinding(SceneContext& ctx, RenderDomainContext& domain) const;
 
         /// @brief 水面描画と同じ σa を RT コースティクスへ同期する
@@ -126,5 +132,11 @@ namespace CoreEngine
 
         /// @brief publish 先（Finalize で publish を取り消すために保持。非所有）
         RenderDomainContext* publishTarget_ = nullptr;
+
+        // FFT 関連 CVar の revision 合計。変化したときだけ FFTOceanManager::SetSettings を
+        // 呼ぶ（SetSettings は WaitForPreviousFrame＋スペクトル再構築を伴うため毎フレーム
+        // 無条件で呼んではいけない。サニタイズ（風向正規化）で CVar 値と保持値が
+        // 恒常的に食い違い、毎フレーム再構築になる事故も防ぐ）。~0u は初回強制適用。
+        uint32_t lastFFTCVarRevisionSum_ = ~0u;
     };
 }
