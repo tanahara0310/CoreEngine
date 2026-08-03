@@ -59,7 +59,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(ProjectDir)\;$(IncludePath);$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem;$(SolutionDir)imgui</IncludePath>
+    <IncludePath>$(ProjectDir)\;$(IncludePath);$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem</IncludePath>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
@@ -67,13 +67,13 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem;$(SolutionDir)imgui</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem</IncludePath>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem;$(SolutionDir)imgui</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem</IncludePath>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
@@ -103,8 +103,8 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\imgui\outputs\$(Configuration)\;$(ProjectDir)externals\assimp\lib\Debug;$(ProjectDir)externals\freetype\lib\x64\Debug</AdditionalLibraryDirectories>
-      <AdditionalDependencies>imgui.lib;assimp-vc143-mtd.lib;freetype.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug;$(ProjectDir)externals\freetype\lib\x64\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mtd.lib;freetype.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
@@ -137,8 +137,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\imgui\outputs\$(Configuration)\;$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
-      <AdditionalDependencies>imgui.lib;assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
@@ -171,8 +171,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\imgui\outputs\Release;$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
-      <AdditionalDependencies>imgui.lib;assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
       <LinkTimeCodeGeneration />
     </Link>
     <PostBuildEvent>
@@ -442,6 +442,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\PixCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneManagerTab.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp" />
@@ -503,6 +504,30 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
+    <ClCompile Include="Externals\imgui\imgui.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_draw.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_tables.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_impl_dx12.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_impl_win32.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\ImGuizmo.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imnodes.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -719,6 +744,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterSurfacePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderDomainContext.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderGraph.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderGraphSnapshot.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.h" />
@@ -860,6 +886,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\PixCapture.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneManagerTab.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ScreenCapture.h" />
@@ -931,6 +958,17 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h" />
+    <ClInclude Include="Externals\imgui\imconfig.h" />
+    <ClInclude Include="Externals\imgui\imgui.h" />
+    <ClInclude Include="Externals\imgui\imgui_internal.h" />
+    <ClInclude Include="Externals\imgui\imgui_impl_dx12.h" />
+    <ClInclude Include="Externals\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="Externals\imgui\ImGuizmo.h" />
+    <ClInclude Include="Externals\imgui\imnodes.h" />
+    <ClInclude Include="Externals\imgui\imnodes_internal.h" />
+    <ClInclude Include="Externals\imgui\imstb_rectpack.h" />
+    <ClInclude Include="Externals\imgui\imstb_textedit.h" />
+    <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h" />
   </ItemGroup>
   <ItemGroup>

@@ -269,6 +269,14 @@ namespace CoreEngine
                 }, EnginePanelCategory::Tools);
         }
 
+        // RenderGraph ノードエディタ（imnodes）。
+        // パスの依存・実行順・GPU 時間・バリアを 1 枚のグラフとして見せ、
+        // ノードから直接パスの有効/無効を切り替えられるようにする。
+        renderGraphEditorPanel_.Initialize(engine_, &gpuProfiler_);
+        gameDebugUI_->RegisterEnginePanel("Render Graph", [this]() {
+            renderGraphEditorPanel_.Draw();
+            }, EnginePanelCategory::Tools);
+
         // レイトレーシング専用デバッグパネル（Debug メニュー > Ray Tracing）
         // 加速構造の統計・RTシャドウのステージ別内訳・中間バッファ・設定をまとめる。
         rayTracingDebugPanel_.Initialize(engine_, &gpuProfiler_);
@@ -306,6 +314,10 @@ namespace CoreEngine
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();
 
+        // RenderGraph エディタの終了処理（imnodes コンテキストは ImGui より先に解放する）。
+        // パスの有効状態を上書きしたまま終わらないよう、ここで元へ戻す。
+        renderGraphEditorPanel_.Finalize();
+
         // プロファイラーの終了処理（ImGui より先に解放）
         gpuProfiler_.Finalize();
 
@@ -323,6 +335,10 @@ namespace CoreEngine
 
         // フレーム開始時にレンダリング統計をリセット
         EngineStats::GetInstance().BeginFrame();
+
+        // RenderGraph エディタが閉じられていればスナップショット複製を止める
+        //（Draw() はウィンドウが開いている間しか呼ばれないため、止める判断はここでしかできない）
+        renderGraphEditorPanel_.SyncCaptureState();
 
         // ImGuiの開始（PostEffectManagerとGameDebugUIを渡す）
         if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {

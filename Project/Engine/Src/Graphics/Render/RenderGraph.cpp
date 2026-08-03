@@ -79,14 +79,31 @@ namespace CoreEngine
         pass.writes = builder.GetWrites();
         pass.timingCategory = timingCategory;
 
-        std::vector<uint32_t> dependencies;
+        std::vector<RenderGraphDependency> dependencies;
+
+        // 依存は「どのリソースが理由で張られたか」まで残す。実行順は宣言から導出されるため、
+        // 原因を捨てるとエディタもログも「なぜこの順番なのか」を説明できなくなる。
+        auto addDependency = [&dependencies, passIndex](
+            uint32_t dependencyIndex,
+            const std::string& resourceName,
+            RenderGraphDependencyKind kind) {
+                if (dependencyIndex == passIndex) {
+                    return; // 自己依存は順序に意味を持たない
+                }
+                const RenderGraphDependency candidate{ dependencyIndex, resourceName, kind };
+                if (std::find(dependencies.begin(), dependencies.end(), candidate) != dependencies.end()) {
+                    return;
+                }
+                dependencies.push_back(candidate);
+            };
 
         // Read (RAW): 現行バージョンのライターへ依存し、自身をそのバージョンの読者として登録する。
         for (const RenderGraphResourceAccess& readAccess : pass.reads) {
             RenderGraphResource& resource = resources_[readAccess.resourceName];
             resource.name = readAccess.resourceName;
             if (resource.hasWriter) {
-                dependencies.push_back(resource.lastWriterIndex);
+                addDependency(resource.lastWriterIndex, readAccess.resourceName,
+                    RenderGraphDependencyKind::ReadAfterWrite);
             }
             if (std::find(resource.readers.begin(), resource.readers.end(), passIndex)
                 == resource.readers.end()) {
@@ -100,10 +117,12 @@ namespace CoreEngine
             RenderGraphResource& resource = resources_[writeAccess.resourceName];
             resource.name = writeAccess.resourceName;
             if (resource.hasWriter) {
-                dependencies.push_back(resource.lastWriterIndex);
+                addDependency(resource.lastWriterIndex, writeAccess.resourceName,
+                    RenderGraphDependencyKind::WriteAfterWrite);
             }
             for (uint32_t reader : resource.readers) {
-                dependencies.push_back(reader);
+                addDependency(reader, writeAccess.resourceName,
+                    RenderGraphDependencyKind::WriteAfterRead);
             }
             resource.lastWriterIndex = passIndex;
             resource.hasWriter = true;
@@ -111,14 +130,15 @@ namespace CoreEngine
             ++resource.version;
         }
 
-        // 自己依存を除去し、重複をまとめる。
-        dependencies.erase(
-            std::remove(dependencies.begin(), dependencies.end(), passIndex),
-            dependencies.end());
-        std::sort(dependencies.begin(), dependencies.end());
-        dependencies.erase(
-            std::unique(dependencies.begin(), dependencies.end()),
-            dependencies.end());
+        // 実行順の決定に使うのはパスインデックスのみ。同じ相手への複数エッジ（別リソース由来）は
+        // トポロジカルソートでは同義なので、ここでは畳まずに理由ごと残しておく。
+        std::sort(dependencies.begin(), dependencies.end(),
+            [](const RenderGraphDependency& lhs, const RenderGraphDependency& rhs) {
+                if (lhs.passIndex != rhs.passIndex) {
+                    return lhs.passIndex < rhs.passIndex;
+                }
+                return lhs.resourceName < rhs.resourceName;
+            });
         pass.dependencies = std::move(dependencies);
 
         passes_.push_back(std::move(pass));
@@ -139,11 +159,13 @@ namespace CoreEngine
         std::vector<std::vector<uint32_t>> edges(passes_.size());
 
         for (uint32_t passIndex = 0; passIndex < passes_.size(); ++passIndex) {
-            for (uint32_t dependency : passes_[passIndex].dependencies) {
-                if (dependency >= passes_.size() || dependency == passIndex) {
+            for (const RenderGraphDependency& dependency : passes_[passIndex].dependencies) {
+                if (dependency.passIndex >= passes_.size() || dependency.passIndex == passIndex) {
                     continue;
                 }
-                edges[dependency].push_back(passIndex);
+                // 同じ相手へ複数リソース由来のエッジが張られることがあるが、
+                // 入次数と辺リストの両方を同じ回数だけ積むため打ち消し合い、実行順は変わらない。
+                edges[dependency.passIndex].push_back(passIndex);
                 ++indegree[passIndex];
             }
         }
@@ -193,6 +215,16 @@ namespace CoreEngine
             return;
         }
 
+        // 計装データはフレーム（View）ごとに作り直す。前フレームの記録が混ざると
+        // 「今このパスは走ったのか」がエディタ上で判別できなくなる。
+        if (instrumentationEnabled_) {
+            for (RenderGraphPass& graphPass : passes_) {
+                graphPass.executed = false;
+                graphPass.barriers.clear();
+                graphPass.unresolvedResources.clear();
+            }
+        }
+
         // 実行順に従って、必要バリアを張ってから各パスを実行する。
         for (uint32_t passIndex : executionOrder_) {
             if (passIndex >= passes_.size()) {
@@ -203,6 +235,10 @@ namespace CoreEngine
             RenderPass* renderPass = graphPass.renderPass;
             if (!renderPass || !renderPass->IsEnabled()) {
                 continue;
+            }
+
+            if (instrumentationEnabled_) {
+                graphPass.executed = true;
             }
 
             // 補助 View（平面反射など）はメイン View と同じパス名で実行されるため、
@@ -264,7 +300,7 @@ namespace CoreEngine
         }
     }
 
-    void RenderGraph::ApplyTransitionsForPass(const RenderGraphPass& pass, const RenderContext& context)
+    void RenderGraph::ApplyTransitionsForPass(RenderGraphPass& pass, const RenderContext& context)
     {
         // 各ノードの要求状態に合わせて、実行前に自動バリアをバッチ発行する。
         if (!context.dxCommon) {
@@ -323,6 +359,11 @@ namespace CoreEngine
             }
 
             if (!resource.resource || !resource.currentState) {
+                // 未解決 = バリアを張れないまま先へ進む状態。過去に何度も踏んでいる事故の芽なので、
+                // ログだけでなくエディタから見える形でも残す。
+                if (instrumentationEnabled_) {
+                    pass.unresolvedResources.push_back(*access.resourceName);
+                }
 #ifdef _DEBUG
                 Logger::GetInstance().Logf(
                     LogLevel::Debug,
@@ -353,9 +394,20 @@ namespace CoreEngine
 
             // UNORDERED_ACCESS のまま連続書き込みする場合は遷移が発生しないため、
             // UAV バリアで書き込みの直列化を保証する。
-            if (access.isWrite
+            const bool isUavBarrier = access.isWrite
                 && access.requiredState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS
-                && *resource.currentState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
+                && *resource.currentState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+            if (instrumentationEnabled_) {
+                pass.barriers.push_back({
+                    *access.resourceName,
+                    *resource.currentState,
+                    access.requiredState,
+                    isUavBarrier,
+                    access.isWrite });
+            }
+
+            if (isUavBarrier) {
                 barrierBatch.AddUAV(resource.resource);
             } else {
                 barrierBatch.Add(resource.resource, *resource.currentState, access.requiredState);

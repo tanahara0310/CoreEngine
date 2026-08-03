@@ -13,6 +13,7 @@
 #include "Editor/ImGui/KeyConfigUI.h"
 #include "Editor/ImGui/EngineStatsWindow.h"
 #include "Editor/ImGui/RenderPassDebugPanel.h"
+#include "Editor/ImGui/RenderGraphEditorPanel.h"
 #include "Editor/ImGui/RayTracingDebugPanel.h"
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Editor/Environment/VolumetricCloudEditor.h"
@@ -92,6 +93,7 @@ namespace CoreEngine
         std::unique_ptr<EngineStatsWindow> engineStatsWindow_;
         KeyConfigUI keyConfigUI_;
         RenderPassDebugPanel renderPassDebugPanel_;
+        RenderGraphEditorPanel renderGraphEditorPanel_;
         RayTracingDebugPanel rayTracingDebugPanel_;
 
         // 環境エディタ（大気・雲はエンジン既定機能のため、シーンに依存せずエンジン寿命で保持する）
