@@ -34,11 +34,8 @@ namespace CoreEngine
 
     class WaterRefractionRayTracingManager : public WaterRayTracingPassBase {
     public:
-        enum class ViewID : uint32_t {
-            GameView = 0,
-            ReflectionView = 1,
-            Count
-        };
+        // ビュー識別子は 3 マネージャ共通（WaterRayTracingPassBase.h の RTWaterViewID）
+        using ViewID = RTWaterViewID;
 
         static constexpr uint32_t kViewCount = static_cast<uint32_t>(ViewID::Count);
         static_assert(kViewCount <= RayTracingOutputViewSet::kMaxSlotCount,
@@ -71,7 +68,6 @@ namespace CoreEngine
         const WaterRefractionRayTracingSettings& GetSettings() const { return settings_; }
 
     private:
-        Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob_;
         WaterRefractionRayTracingSettings settings_{};
     };
 }

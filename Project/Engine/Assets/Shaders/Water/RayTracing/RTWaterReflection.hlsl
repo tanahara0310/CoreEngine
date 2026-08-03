@@ -30,17 +30,12 @@ cbuffer WaterReflectionConstants : register(b0)
     float gScreenWidth;
     float gScreenHeight;
     float gMaxReflectionOffsetPixels;
-    uint gFFTOceanEnabled;
-    float gFFTOceanPad0; // 旧 patchLength（形骸）。C++ 側とレイアウト一致のため残す
-    uint gFFTOceanResolution;
+    // 旧 FFT 有効情報 3 スロット。実体は b1（RTWaterSurfaceCommon.hlsli）へ一本化済み。
+    uint gFFTOceanPad1;
+    float gFFTOceanPad0;
+    uint gFFTOceanPad2;
     float gDebugDisplayScale;
     uint gDebugViewMode;
-};
-
-struct ReflectionPayload
-{
-    float hitT;
-    float hitFlag;
 };
 
 #ifdef __INTELLISENSE__
@@ -53,18 +48,11 @@ void TraceRay(
     uint multiplierForGeometryContributionToHitGroupIndex,
     uint missShaderIndex,
     RayDesc ray,
-    inout ReflectionPayload payload);
+    inout RTWaterPayload payload);
 #endif
 
-// 失敗理由コード（[0, 0.5) の範囲）。Water.PS 側は alpha >= 0.5 を成功と判定する。
-static const float kRTReasonBackground = 1.0f / 255.0f;
-static const float kRTReasonNearZeroSceneDistance = 2.0f / 255.0f;
-static const float kRTReasonParallelToWater = 3.0f / 255.0f;
-static const float kRTReasonInvalidPlaneIntersection = 4.0f / 255.0f;
-static const float kRTReasonInvalidReflectVector = 5.0f / 255.0f;
-static const float kRTReasonTraceMiss = 6.0f / 255.0f;
-static const float kRTReasonInvalidClip = 7.0f / 255.0f;
-static const float kRTReasonDepthMismatch = 9.0f / 255.0f;
+// ペイロード・失敗理由コード（kRTReason*）・画面端フェード・波面評価は
+// RTWaterSurfaceCommon.hlsli（3 シェーダー共通）。
 
 // 成功アルファ。反射は水柱の光路長を持たないため単純に 1.0 を返す
 // （画面端フェードは Water.PS 側でなく、ここで色に織り込む）。
@@ -74,40 +62,6 @@ float4 MakeFallbackOutput(float reasonCode)
 {
     // 失敗時 RGB は使われない（Water.PS が空環境マップで置き換える）。0 で埋める。
     return float4(0.0f, 0.0f, 0.0f, reasonCode);
-}
-
-float ComputeScreenBoundsFade(float2 uv)
-{
-    const float2 screenSize = float2(gScreenWidth, gScreenHeight);
-    const float2 outsideDistancePixels = abs(uv - saturate(uv)) * screenSize;
-    const float outsidePixels = max(outsideDistancePixels.x, outsideDistancePixels.y);
-    const float fadeMarginPixels = 32.0f;
-    return 1.0f - smoothstep(0.0f, fadeMarginPixels, outsidePixels);
-}
-
-bool UseFFTOceanSurface()
-{
-    return gSurfaceSimulationType == kWaterSurfaceModelTypeFFTOcean
-        && gFFTOceanEnabled != 0
-        && gFFTOceanResolution > 0;
-}
-
-float3 EvaluateReflectionWaterOffset(float2 worldXZ)
-{
-    if (!UseFFTOceanSurface())
-    {
-        return EvaluateWaterOffsetGerstner(worldXZ);
-    }
-    return SampleFFTOceanCascadeDisplacement(gFFTOceanDisplacement, worldXZ, gFFTOceanResolution);
-}
-
-float3 EvaluateReflectionWaterNormal(float2 worldXZ)
-{
-    if (!UseFFTOceanSurface())
-    {
-        return EvaluateWaterNormalGerstner(worldXZ);
-    }
-    return SampleFFTOceanCascadeNormal(gFFTOceanNormal, worldXZ, gFFTOceanResolution);
 }
 
 [shader("raygeneration")]
@@ -142,29 +96,14 @@ void RTWaterReflectionRayGen()
         return;
     }
 
-    // フラット平面での交点をシード初期値とし、波を反映して反復精密化する
-    // （RTWaterRefraction.hlsl と同じロジック）。
-    float tSurfaceSeed = (gSurfaceWaterHeight - gCameraPosition.y) / denom;
-    if (!isfinite(tSurfaceSeed))
+    // フラット平面シード→波反映の固定点反復（RTWaterRefraction と共通の
+    // RefineWaterSurfaceIntersection。詳細コメントは RTWaterSurfaceCommon.hlsli）。
+    float3 waterPos;
+    if (!RefineWaterSurfaceIntersection(
+            gFFTOceanDisplacement, gCameraPosition, primaryDir, sceneDistance, waterPos))
     {
         gReflectionOutput[launchIndex] = MakeFallbackOutput(kRTReasonInvalidPlaneIntersection);
         return;
-    }
-    float tSeedClamped = clamp(tSurfaceSeed, 0.0f, sceneDistance);
-
-    float3 waterPos = gCameraPosition + primaryDir * tSeedClamped;
-    float safeDenom = denom;
-    if (abs(safeDenom) < 1.0e-4f)
-    {
-        safeDenom = (safeDenom < 0.0f) ? -1.0e-4f : 1.0e-4f;
-    }
-    [unroll]
-    for (int iteration = 0; iteration < 3; ++iteration)
-    {
-        float3 waveOffset = EvaluateReflectionWaterOffset(waterPos.xz);
-        float surfaceY = gSurfaceWaterHeight + waveOffset.y;
-        float deltaY = waterPos.y - surfaceY;
-        waterPos -= primaryDir * (deltaY / safeDenom);
     }
 
     // 水面が opaque シーン点より手前にあるピクセルだけ反射する（＝水面が見えている領域）。
@@ -175,13 +114,13 @@ void RTWaterReflectionRayGen()
         return;
     }
 
-    float3 waterNormal = EvaluateReflectionWaterNormal(waterPos.xz);
+    float3 waterNormal = EvaluateWaterNormal(gFFTOceanNormal, waterPos.xz);
     // 視線（primaryDir）を水面法線で鏡面反射。カメラは水面を上から見下ろすため
     // primaryDir は下向き、reflectedDir は上向き（空・水上ジオメトリ方向）になる。
     float3 reflectedDir = reflect(primaryDir, waterNormal);
     if (dot(reflectedDir, reflectedDir) <= 1.0e-6f)
     {
-        gReflectionOutput[launchIndex] = MakeFallbackOutput(kRTReasonInvalidReflectVector);
+        gReflectionOutput[launchIndex] = MakeFallbackOutput(kRTReasonInvalidBounceVector);
         return;
     }
 
@@ -192,7 +131,7 @@ void RTWaterReflectionRayGen()
     ray.TMin = 0.001f;
     ray.TMax = gMaxRayDistance;
 
-    ReflectionPayload payload;
+    RTWaterPayload payload;
     payload.hitT = 0.0f;
     payload.hitFlag = 0.0f;
 
@@ -217,7 +156,7 @@ void RTWaterReflectionRayGen()
     float3 ndc = clip.xyz / clip.w;
     float2 uv = ndc.xy * float2(0.5f, -0.5f) + 0.5f;
 
-    float edgeFade = ComputeScreenBoundsFade(uv);
+    float edgeFade = ComputeRTScreenBoundsFade(uv, float2(gScreenWidth, gScreenHeight));
     if (edgeFade <= 1.0e-4f)
     {
         gReflectionOutput[launchIndex] = MakeFallbackOutput(kRTReasonInvalidClip);
@@ -265,7 +204,7 @@ void RTWaterReflectionRayGen()
 }
 
 [shader("miss")]
-void RTWaterReflectionMiss(inout ReflectionPayload payload)
+void RTWaterReflectionMiss(inout RTWaterPayload payload)
 {
     payload.hitT = 0.0f;
     payload.hitFlag = 0.0f;
@@ -273,7 +212,7 @@ void RTWaterReflectionMiss(inout ReflectionPayload payload)
 
 [shader("closesthit")]
 void RTWaterReflectionClosestHit(
-    inout ReflectionPayload payload,
+    inout RTWaterPayload payload,
     in BuiltInTriangleIntersectionAttributes attr)
 {
     payload.hitT = RayTCurrent();

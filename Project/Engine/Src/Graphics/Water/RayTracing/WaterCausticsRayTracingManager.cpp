@@ -1,11 +1,8 @@
 #include "pch.h"
 #include "WaterCausticsRayTracingManager.h"
 
-#include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
-#include "Graphics/Shader/ShaderCompiler.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
@@ -22,9 +19,11 @@ namespace CoreEngine
             float lightDirection[3];
             float screenWidth;
             float screenHeight;
-            uint32_t fftOceanEnabled;
-            float fftOceanPad0; // 旧 patchLength（形骸）。HLSL 側とレイアウト一致のため残す
-            uint32_t fftOceanResolution;
+            // 旧 FFT 有効情報 3 スロット。実体は b1（WaterSurfaceConstants）へ一本化済み。
+            // 後続の float3 の 16B 境界を守るためレイアウトだけ残す
+            uint32_t fftOceanPad1;
+            float fftOceanPad0;
+            uint32_t fftOceanPad2;
             float refractiveIndex;
             float debugDisplayScale;
             uint32_t debugViewMode;
@@ -58,79 +57,22 @@ namespace CoreEngine
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr)
     {
-        if (!InitializeBase(dxCommon, descriptorManager, asMgr,
-            "WaterCausticsRayTracingManager", "RTWaterCaustics")) {
-            Logger::GetInstance().Warnf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "WaterCausticsRayTracingManager: DXR unsupported. initialization skipped.");
-            return false;
-        }
-
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-        shaderBlob_.Attach(shaderCompiler.CompileShaderLibrary(L"Engine/Assets/Shaders/Water/RayTracing/RTWaterCaustics.hlsl"));
-        if (!shaderBlob_) {
-            Logger::GetInstance().Errorf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "WaterCausticsRayTracingManager: shader compile failed.");
-            return false;
-        }
-
-        globalRootSigMgr_
-            .AddUAVTable("gCausticsOutput", 0)
-            .AddSRVTable("gScene", 0)
-            .AddSRVTable("gSceneDepth", 1)
-            .AddSRVTable("gNormalRoughness", 2)
-            .AddSRVTable("gFFTOceanDisplacement", 3)
-            .AddSRVTable("gFFTOceanNormal", 4)
-            .AddCBV("gWaterSurfaceData", 1)
-            .AddRootConstants("WaterCausticsConstants", 0,
-                sizeof(WaterCausticsConstants) / sizeof(uint32_t));
-        if (!globalRootSigMgr_.Build(dxCommon_->GetDevice())) {
-            Logger::GetInstance().Errorf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "WaterCausticsRayTracingManager: global root signature build failed.");
-            return false;
-        }
-
-        RayTracingPipelineBuilder pipelineBuilder;
-        pipelineBuilder
-            .SetDXILLibrary(shaderBlob_.Get())
-            .AddHitGroup({ L"RTWaterCausticsHitGroup", L"RTWaterCausticsClosestHit" })
-            // CausticsPayload は float 2 個（hitT, hitFlag）。RTWaterCaustics.hlsl と一致させること
-            .SetShaderConfig(sizeof(float) * 2)
-            .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
-            .SetMaxRecursionDepth(1);
-        if (!pipelineBuilder.Build(dxCommon_->GetDevice(), stateObject_, stateObjectProperties_)) {
-            Logger::GetInstance().Errorf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "WaterCausticsRayTracingManager: state object build failed.");
-            return false;
-        }
-
-        shaderTableBuilder_
-            .SetRayGenShader(L"RTWaterCausticsRayGen")
-            .AddMissShader(L"RTWaterCausticsMiss")
-            .AddHitGroup(L"RTWaterCausticsHitGroup");
-        if (!shaderTableBuilder_.Build(dxCommon_->GetDevice(), stateObjectProperties_.Get())) {
-            Logger::GetInstance().Errorf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "WaterCausticsRayTracingManager: shader table build failed.");
-            return false;
-        }
-
-        isInitialized_ = true;
-        shaderBlob_.Reset();
-        Logger::GetInstance().Infof(
-            LogCategory::Graphics,
-            LogSubCategory::Pipeline,
-            "WaterCausticsRayTracingManager: initialized successfully.");
-        return true;
+        // パイプラインの差分（シェーダー・エントリ名・SRV 名・定数サイズ）だけを記述する。
+        // ルートシグネチャ構築〜シェーダーテーブルまでの手順は 3 マネージャ共通で
+        // InitializeFromDesc（WaterRayTracingPassBase）が担う。
+        RTWaterPipelineDesc desc{};
+        desc.ownerName = "WaterCausticsRayTracingManager";
+        desc.outputDebugName = "RTWaterCaustics";
+        desc.shaderPath = L"Engine/Assets/Shaders/Water/RayTracing/RTWaterCaustics.hlsl";
+        desc.rayGenName = L"RTWaterCausticsRayGen";
+        desc.missName = L"RTWaterCausticsMiss";
+        desc.hitGroupName = L"RTWaterCausticsHitGroup";
+        desc.closestHitName = L"RTWaterCausticsClosestHit";
+        desc.outputUavName = "gCausticsOutput";
+        desc.srvTableNames = { "gSceneDepth", "gNormalRoughness", "gFFTOceanDisplacement", "gFFTOceanNormal" };
+        desc.constantsName = "WaterCausticsConstants";
+        desc.constantsBytes = sizeof(WaterCausticsConstants);
+        return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);
     }
 
 
@@ -167,9 +109,6 @@ namespace CoreEngine
         constants.lightDirection[2] = lightInput.direction.z;
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
-        constants.fftOceanEnabled = fftOceanInput.enabled;
-        constants.fftOceanPad0 = 0.0f;
-        constants.fftOceanResolution = fftOceanInput.resolution;
         constants.debugDisplayScale = settings_.debugDisplayScale;
         constants.debugViewMode = settings_.debugViewMode;
         constants.refractiveIndex = settings_.refractiveIndex;
@@ -204,48 +143,20 @@ namespace CoreEngine
                 settings_.refractiveIndex);
         }
 
-        UploadSurfaceDataForDispatch(dispatchSurfaceData);
+        UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
 
-        resources.cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
-        resources.cmdList4->SetPipelineState1(stateObject_.Get());
-
-        BeginOutputWrite(cmdList, resources.outputResource, *resources.outputCurrentState);
-
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gCausticsOutput")),
-            resources.outputUavHandle);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene")),
-            asMgr_->GetTLASSRVHandle());
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneDepth")),
-            sceneDepthSRV);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness")),
-            normalRoughnessSRV);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gFFTOceanDisplacement")),
-            fftDisplacementSRV);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gFFTOceanNormal")),
-            fftNormalSRV);
-        cmdList->SetComputeRootConstantBufferView(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gWaterSurfaceData")),
-            constantBuffer_->GetGPUVirtualAddress());
-        cmdList->SetComputeRoot32BitConstants(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("WaterCausticsConstants")),
-            sizeof(WaterCausticsConstants) / sizeof(uint32_t),
-            &constants,
-            0);
-
-        auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
-        resources.cmdList4->DispatchRays(&dispatchDesc);
-        lastDispatchInfo_.status = RayTracingDispatchStatus::Dispatched;
-
-        EndOutputWrite(
+        BindAndDispatchRays(
             cmdList,
-            resources.outputResource,
-            *resources.outputCurrentState,
+            resources,
+            {
+                { "gSceneDepth", sceneDepthSRV },
+                { "gNormalRoughness", normalRoughnessSRV },
+                { "gFFTOceanDisplacement", fftDisplacementSRV },
+                { "gFFTOceanNormal", fftNormalSRV },
+            },
+            &constants,
+            width,
+            height,
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // 完了ログは UI の「RTログを有効にする」でのみ出す（以前は毎フレーム無条件だった）

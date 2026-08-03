@@ -427,6 +427,8 @@ namespace CoreEngine
             waterSurfaceState_.regionHalfExtentXZ[1] = 0.5f * localSize * transform.scale.z;
             waterSurfaceState_.regionValid = 1;
         }
+        // coverage 判定のメッシュ同一基準化に使う実際の頂点グリッド分割数
+        waterSurfaceState_.meshSubdivisions = static_cast<float>(waterPlane_->GetResolution());
 
         if (surfaceModelProvider_) {
             surfaceModelProvider_->SetSurfaceData(

@@ -180,7 +180,38 @@ BuildSpectrum 較正値がリファクタ前と完全一致・spectrum copy 正�
 
 検証: FFT 海面の見た目不変（波高・泡・カスケード境界）、ODR 事故防止のためクリーンビルド必須。
 
-### Phase 3: RT層統合（リスク: 中〜高）
+### Phase 3: RT層統合（リスク: 中〜高）✅ 完了 2026-08-03
+
+実施内容:
+1. **構成データ駆動化**: WaterRayTracingPassBase に `RTWaterPipelineDesc`（シェーダーパス・
+   エントリ名・SRVテーブル名・定数サイズだけの差分記述）と `InitializeFromDesc()` /
+   `BindAndDispatchRays()` を追加。3 マネージャの Initialize（各80行）は desc 構築14行に、
+   Dispatch 末尾のバインド40行は 1 呼び出しに置換（85-90% コピペの解消）。
+   shaderBlob_ メンバも各マネージャから削除（InitializeFromDesc ローカル化）
+2. **ViewID の 3 重定義を RTWaterViewID へ一本化**（各マネージャは using エイリアスで API 互換維持）
+3. **FFT 定数を b1（WaterSurfaceConstants）へ一本化**: fftOceanEnabled / fftOceanResolution を
+   b1 へ追加（+static_assert）。3 シェーダーの b0 の同フィールドはレイアウト維持のためパディング化。
+   UploadSurfaceDataForDispatch は FFTOceanInput を受け取る形へ
+4. **kWaterMeshSubdivisions=256 のハードコード撤廃**: WaterSurfaceData に meshSubdivisions を追加し
+   WaterRenderFeature が実メッシュ解像度を毎フレーム供給 → b1 経由でシェーダーへ
+   （シーン側のメッシュ変更で coverage 判定が静かに壊れる構造を解消）
+5. **共通 hlsli 第2弾（RTWaterSurfaceCommon.hlsli へ集約）**: UseFFTOceanSurface / 
+   EvaluateWaterOffset / EvaluateWaterNormal（旧 3+6 個の複製ラッパー）・RTWaterPayload
+   （旧 3 個の同型ペイロード）・kRTReason* 失敗コード表（値は不変＝デバッグ色対応維持）・
+   ComputeRTScreenBoundsFade・VisualizeRTScalar・RefineWaterSurfaceIntersection
+   （フラット平面シード→3回固定点反復。屈折/反射の完全同一ループを統合）。
+   **リソース宣言は共通ヘッダーに置かず引数渡し**（lib_6_6 未参照宣言の Trace 2倍問題の回避）
+6. **UnderwaterLighting.hlsli 抽出**（Include/Lighting/）: BuildUnderwaterContext / 
+   ApplyWetDarkening / CompositeUnderwaterCaustics / CompositeLegacyCaustics / 
+   BuildUnderwaterDebugColor（モード3/4）。DeferredLighting.PS.hlsl の水中処理 約130行を関数化し、
+   gWaterCaustics のサンプルを 1 回に統合。ライトループ内の置換（albedo/F0 が要る）のみ本体に残置
+
+検証: dxc で RT 3本(lib_6_6)＋DeferredLighting(ps_6_0) コンパイル成功・Development ビルド成功・
+起動して WaterTestScene で全 RT 水面パス実行を Frame Timing で確認・
+水面線の連続性/濡れ暗色化/岸泡が Phase 2 基準と同一の見た目・3 マネージャ初期化ログ正常・エラー0。
+
+未実施（任意項目として次回以降へ）: 行列2本の root constants → CBV 移動（予算緩和）、
+反射の深度不一致 2 値棄却の連続ブレンド化（見た目が変わるため単独で検証すべき）。
 1. **構成データ駆動化**: `RTWaterPipelineDesc { shaderPath, entryNames, payloadBytes, srvTableNames, rootConstantsBytes }` を WaterRayTracingPassBase の InitializeFromDesc() に渡す。Dispatch は BindAndDispatch(resources, srvBindings, constantsBlob) ヘルパーへ（テンプレート不要）
 2. **FFT定数を b1 (WaterSurfaceData) へ移動** → UseFFTOceanSurface() ×3 と EvaluateXxxWaterOffset/Normal ×6 を RTWaterSurfaceCommon.hlsli の1組へ統合
 3. 共通 hlsli 第2弾（ペイロード/miss/closesthit・ComputeScreenBoundsFade・失敗コード表・精密化ループ・VisualizeScalar）。**ただしリソース宣言は絶対に共通ヘッダーへ置かない**（lib_6_6 未参照宣言で Trace 2倍の既知問題）— 関数＋引数渡しを維持
