@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <optional>
 #include <string>
 #include <functional>
 
@@ -24,11 +25,15 @@ namespace CoreEngine
         /// @param pass 追加するレンダーパス
         /// @param phase 挿入フェーズ
         /// @param priority フェーズ内優先度
+        /// @param timingCategoryOverride タイミング表示カテゴリの上書き（nullptr = phase から機械的に決定）
+        ///        実行順の都合で置いたフェーズと、計測上の分類が食い違うパス
+        ///        （例: 波形生成は PostLighting に置くが、コストの分類としては Water）に使う。
         /// @return 追加したパスへのポインタ（RemovePass 用ハンドル）
         RenderPass* AddPass(
             std::unique_ptr<RenderPass> pass,
             RenderPassPhase phase,
-            int priority = 0);
+            int priority = 0,
+            std::optional<GpuTimingCategory> timingCategoryOverride = std::nullopt);
 
         /// @brief レンダーパスを削除
         /// @param pass AddPass が返したパスポインタ
@@ -138,6 +143,7 @@ namespace CoreEngine
             int priority = 0;
             uint64_t sequence = 0;     ///< 登録順（同フェーズ・同 priority の安定ソート用）
             const void* owner = nullptr; ///< nullptr = エンジン所有。シーン所有パスの一括除去に使う
+            std::optional<GpuTimingCategory> timingCategoryOverride; ///< 未設定なら phase から決定
         };
 
         std::vector<std::unique_ptr<PostEffectPass>> postEffectSubpasses_;

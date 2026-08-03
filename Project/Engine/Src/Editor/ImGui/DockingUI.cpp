@@ -440,8 +440,13 @@ namespace CoreEngine
 
                                 ImGui::TableNextRow();
 
-                                const ImVec4 gpuColor =
-                                    (slot.gpuMs > 8.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
+                                // 今フレーム実行されなかったパスも行位置を保つ（行の出入りで
+                                // 下の全パスがずれると内訳が読めなくなる）。淡色で区別する。
+                                const bool idle = IsIdleTimingSlot(slot);
+                                const ImVec4 kIdle = ImVec4(0.45f, 0.45f, 0.45f, 1.0f);
+
+                                const ImVec4 gpuColor = idle ? kIdle
+                                    : (slot.gpuMs > 8.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
                                     : (slot.gpuMs > 4.0f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)
                                     : ImVec4(0.45f, 0.90f, 0.45f, 1.0f);
 
@@ -460,8 +465,8 @@ namespace CoreEngine
 
                                 ImGui::TableSetColumnIndex(1);
                                 {
-                                    const ImVec4 cpuColor =
-                                        (slot.cpuMs > 2.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
+                                    const ImVec4 cpuColor = idle ? kIdle
+                                        : (slot.cpuMs > 2.0f) ? ImVec4(1.0f, 0.35f, 0.35f, 1.0f)
                                         : (slot.cpuMs > 0.5f) ? ImVec4(1.0f, 0.80f, 0.20f, 1.0f)
                                         : ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
                                     ImGui::TextColored(cpuColor, "%.3f", slot.cpuMs);

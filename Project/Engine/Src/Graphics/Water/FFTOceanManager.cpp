@@ -8,6 +8,8 @@
 
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/GpuMarker.h"
+#include "Graphics/Common/GpuTimestampProfiler.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -32,6 +34,68 @@ namespace CoreEngine
         {
             return (value + 255) & ~255;
         }
+
+        /// @brief PIX マーカーと GPU/CPU タイムスタンプを同じ範囲で積むスコープ
+        /// @details FFT の内訳（時間発展 / IFFT / 合成 / 泡）は RenderGraph から見ると
+        ///          FFTOceanPass 1 パスの中身なので、パス単位の自動計測では分解できない。
+        ///          ここで名前付きスロットを直接取り、PIX 側にも同名のイベントを出す。
+        class FFTStageScope
+        {
+        public:
+            FFTStageScope(
+                ID3D12GraphicsCommandList* cmdList,
+                GpuTimestampProfiler* profiler,
+                const char* name)
+                : cmdList_(cmdList)
+                , profiler_(profiler)
+            {
+                BeginGpuMarker(cmdList_, name);
+                if (profiler_ && cmdList_) {
+                    slot_ = profiler_->GetOrCreateNamedSlot(name, GpuTimingCategory::WaterSimulation);
+                    if (slot_ != UINT32_MAX) {
+                        profiler_->BeginCpuTimestamp(slot_);
+                        profiler_->BeginGpuTimestamp(slot_, cmdList_);
+                    }
+                }
+            }
+            ~FFTStageScope()
+            {
+                if (profiler_ && slot_ != UINT32_MAX) {
+                    profiler_->EndGpuTimestamp(slot_, cmdList_);
+                    profiler_->EndCpuTimestamp(slot_);
+                }
+                EndGpuMarker(cmdList_);
+            }
+            FFTStageScope(const FFTStageScope&) = delete;
+            FFTStageScope& operator=(const FFTStageScope&) = delete;
+
+        private:
+            ID3D12GraphicsCommandList* cmdList_ = nullptr;
+            GpuTimestampProfiler* profiler_ = nullptr;
+            uint32_t slot_ = UINT32_MAX;
+        };
+
+        // 計測スロット名。カスケードごとに別スロットにする必要がある
+        // （同一スロットへ Begin/End を複数回積むと、最後の 1 回だけが残り
+        //   他カスケード分の時間が計測から消えるため）。
+        constexpr const char* kEvolutionStageNames[FFTOceanManager::kCascadeCount] = {
+            "FFT C0 Evolution", "FFT C1 Evolution", "FFT C2 Evolution",
+        };
+        constexpr const char* kIFFTStageNames[FFTOceanManager::kCascadeCount] = {
+            "FFT C0 IFFT", "FFT C1 IFFT", "FFT C2 IFFT",
+        };
+        constexpr const char* kFinalizeStageNames[FFTOceanManager::kCascadeCount] = {
+            "FFT C0 Finalize", "FFT C1 Finalize", "FFT C2 Finalize",
+        };
+        constexpr const char* kFoamStageName = "FFT Foam";
+        // Readback は 1 フレームに 3 箇所ある。同一スロットへまとめると
+        // 最後の 1 回で上書きされてしまうため、箇所ごとに別スロットにする。
+        constexpr const char* kEvolutionReadbackStageName = "FFT Debug Readback (Evolution)";
+        constexpr const char* kIFFTReadbackStageName = "FFT Debug Readback (IFFT)";
+        constexpr const char* kSurfaceReadbackStageName = "FFT Debug Readback (Surface)";
+
+        static_assert(FFTOceanManager::kCascadeCount == 3,
+            "計測スロット名テーブルはカスケード 3 本前提。カスケード数を変えたら名前も追加すること");
 
         // ---- カスケードの幾何定数（値は FFTOceanCascadeValues.hlsli が唯一の情報源）----
         // 以前はこれらの数値がシェーダー 3 本とここの計 4 箇所へ手コピーされ、
@@ -172,7 +236,10 @@ namespace CoreEngine
         foamSettings_ = settings;
     }
 
-    void FFTOceanManager::Dispatch(ID3D12GraphicsCommandList* cmdList, float timeSeconds)
+    void FFTOceanManager::Dispatch(
+        ID3D12GraphicsCommandList* cmdList,
+        float timeSeconds,
+        GpuTimestampProfiler* profiler)
     {
         if (!isInitialized_ || !cmdList) {
             return;
@@ -211,21 +278,34 @@ namespace CoreEngine
         // カスケードごとに 時間発展 -> IFFT(2系統) -> 最終合成（スライスc へ書き込み）を実行する。
         // 中間ピンポンテクスチャ／IFFT定数リングはカスケード間で共有する（逐次実行）。
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
-            DispatchEvolutionPass(cmdList, c);
+            {
+                FFTStageScope stage(cmdList, profiler, kEvolutionStageNames[c]);
+                DispatchEvolutionPass(cmdList, c);
+            }
 
+            // デバッグ用 Readback は本来の波形生成コストではないため、
+            // 各ステージのスコープ外へ出して別スロットで計測する
+            // （オプトイン機能のコストを本体の数値へ混ぜないため）。
             if (c == 0) {
+                FFTStageScope stage(cmdList, profiler, kEvolutionReadbackStageName);
                 debugProbe_.ScheduleEvolutionReadback(
                     cmdList,
                     spectrumPingPongA_[0].Get(), spectrumPingPongA_[0].state,
                     spectrumPingPongB_[0].Get(), spectrumPingPongB_[0].state);
             }
 
-            const uint32_t finalSpectrumAIndex = DispatchIFFTForTexture(cmdList, spectrumPingPongA_, 0);
-            const uint32_t finalSpectrumBIndex = DispatchIFFTForTexture(cmdList, spectrumPingPongB_, 0);
+            uint32_t finalSpectrumAIndex = 0;
+            uint32_t finalSpectrumBIndex = 0;
+            {
+                FFTStageScope stage(cmdList, profiler, kIFFTStageNames[c]);
+                finalSpectrumAIndex = DispatchIFFTForTexture(cmdList, spectrumPingPongA_, 0);
+                finalSpectrumBIndex = DispatchIFFTForTexture(cmdList, spectrumPingPongB_, 0);
+            }
             FFTOceanGpuTexture& finalSpectrumA = spectrumPingPongA_[finalSpectrumAIndex];
             FFTOceanGpuTexture& finalSpectrumB = spectrumPingPongB_[finalSpectrumBIndex];
 
             if (c == 0) {
+                FFTStageScope stage(cmdList, profiler, kIFFTReadbackStageName);
                 debugProbe_.OnIFFTCompleted(
                     cmdList,
                     finalSpectrumAIndex,
@@ -236,7 +316,10 @@ namespace CoreEngine
                     finalSpectrumB.Get(), finalSpectrumB.state);
             }
 
-            DispatchFinalizePass(cmdList, c, finalSpectrumA, finalSpectrumB);
+            {
+                FFTStageScope stage(cmdList, profiler, kFinalizeStageNames[c]);
+                DispatchFinalizePass(cmdList, c, finalSpectrumA, finalSpectrumB);
+            }
 
             // 次カスケードが中間ピンポンを書き換える前に、Finalizeの読み取り完了を保証する。
             ResourceBarrierHelper::UAV(cmdList, displacementMap_.Get());
@@ -250,12 +333,18 @@ namespace CoreEngine
         ResourceBarrierHelper::Transition(cmdList, jacobianMap_.Get(), jacobianMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // 泡の蓄積・減衰（ヤコビアンが SRV 状態になった後に実行する）
-        DispatchFoamPass(cmdList, timeSeconds);
+        {
+            FFTStageScope stage(cmdList, profiler, kFoamStageName);
+            DispatchFoamPass(cmdList, timeSeconds);
+        }
 
-        debugProbe_.ScheduleSurfaceReadback(
-            cmdList,
-            displacementMap_.Get(), displacementMap_.state,
-            normalMap_.Get(), normalMap_.state);
+        {
+            FFTStageScope stage(cmdList, profiler, kSurfaceReadbackStageName);
+            debugProbe_.ScheduleSurfaceReadback(
+                cmdList,
+                displacementMap_.Get(), displacementMap_.state,
+                normalMap_.Get(), normalMap_.state);
+        }
     }
 
     bool FFTOceanManager::CreateFoamResources()

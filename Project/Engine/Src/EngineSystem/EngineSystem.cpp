@@ -495,14 +495,24 @@ namespace CoreEngine
         renderPipeline_->AddPass(std::make_unique<RTShadowPass>(), RenderPassPhase::PreLighting, 10);
         renderPipeline_->AddPass(std::make_unique<RTShadowTemporalPass>(), RenderPassPhase::PreLighting, 11);
         renderPipeline_->AddPass(std::make_unique<RTShadowDenoisePass>(), RenderPassPhase::PreLighting, 12);
-        renderPipeline_->AddPass(std::make_unique<RTWaterCausticsPass>(), RenderPassPhase::PreLighting, 20);
-        renderPipeline_->AddPass(std::make_unique<WaterCausticsPass>(), RenderPassPhase::PreLighting, 30);
+        // コースティクスは実行順の都合で PreLighting だが、コストの分類は水面。
+        // ここを Water へ寄せないと「水面がフレームに占める割合」から集光分が抜け落ちる。
+        renderPipeline_->AddPass(
+            std::make_unique<RTWaterCausticsPass>(), RenderPassPhase::PreLighting, 20,
+            GpuTimingCategory::Water);
+        renderPipeline_->AddPass(
+            std::make_unique<WaterCausticsPass>(), RenderPassPhase::PreLighting, 30,
+            GpuTimingCategory::Water);
 
         // Deferred ライティング: G-Buffer を読み取り SceneColor を生成
         renderPipeline_->AddPass(std::make_unique<DeferredLightingPass>(), RenderPassPhase::Lighting);
 
         // ライティング後: FFT 波面更新と空気遠近感の合成（GameView のみ）
-        renderPipeline_->AddPass(std::make_unique<FFTOceanPass>(), RenderPassPhase::PostLighting, 0);
+        // 波面生成は実行順の都合で PostLighting に置いているが、コストの分類としては水面。
+        // 計測カテゴリを Water へ寄せないと「水面がフレームに占める割合」を数え漏らす。
+        renderPipeline_->AddPass(
+            std::make_unique<FFTOceanPass>(), RenderPassPhase::PostLighting, 0,
+            GpuTimingCategory::Water);
         renderPipeline_->AddPass(std::make_unique<AerialPerspectivePass>(), RenderPassPhase::PostLighting, 10);
 
         // Forward 合成（従来の大箱 GeometryPass をキュー単位の 3 パスへ分割）

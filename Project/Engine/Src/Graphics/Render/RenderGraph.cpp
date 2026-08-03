@@ -6,6 +6,7 @@
 #include <queue>
 
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/GpuMarker.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -204,32 +205,42 @@ namespace CoreEngine
                 continue;
             }
 
+            // 補助 View（平面反射など）はメイン View と同じパス名で実行されるため、
+            // View 名をプレフィックスして識別名を分離する。計測スロットを共有すると
+            // 同じクエリインデックスへ二重に EndQuery され、後から実行される View の
+            // タイムスタンプが先の View を上書きして補助 View 分の時間が消えてしまう。
+            // PIX キャプチャ側も同じ名前で見えるよう、この名前をマーカーへも使う。
+            const std::string& viewName = context.renderContext->viewSettings.viewName;
+            const std::string passLabel = viewName.empty()
+                ? graphPass.name
+                : viewName + "/" + graphPass.name;
+
+            ID3D12GraphicsCommandList* cmdList =
+                context.renderContext->dxCommon ? context.renderContext->dxCommon->GetCommandList() : nullptr;
+
             // パス名から動的タイミングスロットを解決し、Setup～Cleanup 全体を計測する。
             // これにより新規パスは登録するだけで自動的にタイミング表示へ現れる。
             GpuTimestampProfiler* profiler = context.renderContext->gpuProfiler;
-            ID3D12GraphicsCommandList* profileCmdList =
-                (profiler && context.renderContext->dxCommon) ? context.renderContext->dxCommon->GetCommandList() : nullptr;
+            ID3D12GraphicsCommandList* profileCmdList = profiler ? cmdList : nullptr;
             uint32_t timingSlot = UINT32_MAX;
             if (profiler && profileCmdList) {
-                // 補助 View（平面反射など）はメイン View と同じパス名で実行されるため、
-                // View 名をプレフィックスしてスロットを分離する。同一スロットを共有すると
-                // 同じクエリインデックスへ二重に EndQuery され、後から実行される View の
-                // タイムスタンプが先の View を上書きして補助 View 分の時間が消えてしまう。
-                const std::string& viewName = context.renderContext->viewSettings.viewName;
-                const std::string slotName = viewName.empty()
-                    ? graphPass.name
-                    : viewName + "/" + graphPass.name;
-                timingSlot = profiler->GetOrCreateNamedSlot(slotName, graphPass.timingCategory);
+                timingSlot = profiler->GetOrCreateNamedSlot(passLabel, graphPass.timingCategory);
                 if (timingSlot != UINT32_MAX) {
                     profiler->BeginCpuTimestamp(timingSlot);
                     profiler->BeginGpuTimestamp(timingSlot, profileCmdList);
                 }
             }
 
-            ApplyTransitionsForPass(graphPass, *context.renderContext);
-            renderPass->Setup(*context.renderContext);
-            renderPass->Execute(*context.renderContext);
-            renderPass->Cleanup(*context.renderContext);
+            {
+                // バリア発行もパスのコストなので、マーカー範囲へ含める
+                // （タイムスタンプの範囲と一致させ、PIX と数値がずれないようにする）。
+                GpuMarkerScope marker(cmdList, passLabel.c_str());
+
+                ApplyTransitionsForPass(graphPass, *context.renderContext);
+                renderPass->Setup(*context.renderContext);
+                renderPass->Execute(*context.renderContext);
+                renderPass->Cleanup(*context.renderContext);
+            }
 
             if (timingSlot != UINT32_MAX) {
                 profiler->EndGpuTimestamp(timingSlot, profileCmdList);

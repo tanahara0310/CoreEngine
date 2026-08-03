@@ -142,6 +142,14 @@ namespace CoreEngine
             } else {
                 lastResults_[i].gpuMs = 0.0f;
             }
+
+            // 表示行の採否に使う単調フラグ。フレームごとの値で採否を決めると、
+            // 計測値が閾値付近で揺れるパス（ほぼ空のパス）の行が出入りして
+            // 表全体が上下にずれるため、一度でも有意な時間が出たら以後は出し続ける。
+            if (lastResults_[i].gpuMs >= kTimingActiveThresholdMs ||
+                lastResults_[i].cpuMs >= kTimingActiveThresholdMs) {
+                lastResults_[i].everActive = true;
+            }
         }
 
         const D3D12_RANGE writeRange = { 0, 0 };

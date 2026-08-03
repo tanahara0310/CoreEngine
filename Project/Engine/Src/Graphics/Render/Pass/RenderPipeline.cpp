@@ -308,7 +308,8 @@ namespace CoreEngine
     RenderPass* RenderPipeline::AddPass(
         std::unique_ptr<RenderPass> pass,
         RenderPassPhase phase,
-        int priority)
+        int priority,
+        std::optional<GpuTimingCategory> timingCategoryOverride)
     {
         if (!pass) {
             return nullptr;
@@ -318,6 +319,7 @@ namespace CoreEngine
         entry.pass = std::move(pass);
         entry.phase = phase;
         entry.priority = priority;
+        entry.timingCategoryOverride = timingCategoryOverride;
         entry.sequence = nextSequence_++;
         entry.owner = activeOwner_;
         RenderPass* passPtr = entry.pass.get();
@@ -666,7 +668,7 @@ namespace CoreEngine
             RenderPass* passPtr = entry.pass.get();
             renderGraph_.AddPass(passPtr->GetName(), passPtr, [passPtr, &context](RenderGraphBuilder& builder) {
                 passPtr->DeclareResources(builder, context);
-                }, ToGpuTimingCategory(entry.phase));
+                }, entry.timingCategoryOverride.value_or(ToGpuTimingCategory(entry.phase)));
         }
 
         renderGraph_.Compile(context);

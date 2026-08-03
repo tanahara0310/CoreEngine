@@ -40,6 +40,7 @@ namespace CoreEngine
         // FFT の時刻は水面サーフェス状態から独立している。
         // 以前は surface data の time を流用していたため、水面を非表示にした
         // フレームで 0 秒へ巻き戻り、再表示時に波形が飛んでいた。
-        context.fftOceanManager->Dispatch(cmdList, context.fftOceanSimulationTime);
+        // プロファイラを渡すと、FFT 内部の各 Compute ステージが個別スロットで計測される。
+        context.fftOceanManager->Dispatch(cmdList, context.fftOceanSimulationTime, context.gpuProfiler);
     }
 }

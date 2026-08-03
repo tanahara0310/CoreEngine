@@ -37,6 +37,7 @@ namespace CoreEngine
         Sky,            ///< SkyBox / 大気 / ボリューメトリック雲 / ゴッドレイ
         Transparent,    ///< 透明オブジェクト
         Water,          ///< 水面
+        WaterSimulation,///< 水面シミュレーション（FFT Ocean の内訳。Water との二重計上を避けるため別カテゴリ）
         PostProcess,    ///< ポストエフェクト
         Overlay,        ///< Sprite / UI / デバッグ描画
         Final,          ///< BackBuffer への最終出力
@@ -51,6 +52,11 @@ namespace CoreEngine
         float cpuMs = 0.0f;
         float gpuMs = 0.0f;
         GpuTimingCategory category = GpuTimingCategory::Setup;
+        /// @brief このセッションで一度でも有意な時間を計上したか（単調フラグ）
+        /// @details 表示行の採否をこのフラグで決めるための状態。フレームごとの値で
+        ///          採否を決めると、計測値が閾値付近で揺れるパスの行が出入りして
+        ///          表全体が上下にずれてしまう（VolumetricCloudNoise で発生）。
+        bool everActive = false;
     };
 
     /// @brief DirectX12 タイムスタンプクエリを用いた GPU プロファイラー
@@ -66,14 +72,14 @@ namespace CoreEngine
     {
     public:
         static constexpr uint32_t kFixedSlotCount = static_cast<uint32_t>(GpuTimestampSlot::Count);
-        static constexpr uint32_t kMaxDynamicSlots = 96; ///< RenderGraph パス + PostEffect の名前付きスロット上限（補助 View はビュー名プレフィックス付きで別スロットを消費する）
+        static constexpr uint32_t kMaxDynamicSlots = 128; ///< RenderGraph パス + PostEffect + FFT 内訳の名前付きスロット上限（補助 View はビュー名プレフィックス付きで別スロットを消費する）
         static constexpr uint32_t kSlotCount = kFixedSlotCount + kMaxDynamicSlots;
         static constexpr uint32_t kFrameCount = 2;
         static constexpr uint32_t kQueriesPerSlot = 2; // begin + end
         static constexpr uint32_t kQueriesPerFrame = kSlotCount * kQueriesPerSlot;
 
         /// @brief UI がグルーピング表示に使うカテゴリの表示順（Frame は Total 専用行として別扱い）
-        static constexpr std::array<GpuTimingCategory, 13> kCategoryDisplayOrder = {
+        static constexpr std::array<GpuTimingCategory, 14> kCategoryDisplayOrder = {
             GpuTimingCategory::Setup,
             GpuTimingCategory::Shadow,
             GpuTimingCategory::GBuffer,
@@ -83,6 +89,7 @@ namespace CoreEngine
             GpuTimingCategory::Sky,
             GpuTimingCategory::Transparent,
             GpuTimingCategory::Water,
+            GpuTimingCategory::WaterSimulation,
             GpuTimingCategory::PostProcess,
             GpuTimingCategory::Overlay,
             GpuTimingCategory::Final,
@@ -172,6 +179,7 @@ namespace CoreEngine
             case GpuTimingCategory::Sky:          return "Sky / Atmosphere";
             case GpuTimingCategory::Transparent:  return "Transparent";
             case GpuTimingCategory::Water:        return "Water";
+            case GpuTimingCategory::WaterSimulation: return "Water Sim (FFT 内訳)";
             case GpuTimingCategory::PostProcess:  return "Post Process";
             case GpuTimingCategory::Overlay:      return "Overlay";
             case GpuTimingCategory::Final:        return "Final";
@@ -227,16 +235,41 @@ namespace CoreEngine
         uint32_t dynamicSlotCount_ = 0;
     };
 
+    /// @brief 有意な時間を計上したとみなす下限（ms）
+    inline constexpr float kTimingActiveThresholdMs = 0.001f;
+
+    /// @brief 表示対象の行か（一度でも実測値が出たスロット）
+    /// @details 「毎フレームの値」ではなく単調フラグで判定するため、行の集合が
+    ///          フレームごとに変化しない。一度も動いていないスロット
+    ///          （補助 View で常に早期 return するパスなど）は最後まで出さない。
+    inline bool IsVisibleTimingSlot(const GpuTimingResult& result) noexcept
+    {
+        return result.everActive;
+    }
+
+    /// @brief 今フレームは実質的に何も積まなかった行か（表示を淡くする判定）
+    inline bool IsIdleTimingSlot(const GpuTimingResult& result) noexcept
+    {
+        return result.gpuMs < kTimingActiveThresholdMs && result.cpuMs < kTimingActiveThresholdMs;
+    }
+
     /// @brief カテゴリごとにグルーピングされたタイミング表示行
     struct GpuTimingGroup
     {
         GpuTimingCategory category;
-        std::vector<uint32_t> slotIndices; ///< results 内の非ゼロ・当該カテゴリのインデックス
+        std::vector<uint32_t> slotIndices; ///< 当該カテゴリの登録済みスロットのインデックス
     };
 
     /// @brief GetResults() の結果をカテゴリ別（表示順）にグルーピングする
     /// @details DockingUI / EngineStatsWindow が同じ分類・順序でタイミング表を描画するための共通ヘルパー。
     ///          Frame（Total）は専用行として別扱いするためここには含めない。
+    ///
+    ///          行の採否は単調フラグ everActive で決める。以前は毎フレームの値が
+    ///          0.001ms 未満の行を落としていたが、ほぼ空のパス
+    ///          （例: VolumetricCloudNoise は非ダーティ時 SetDescriptorHeaps だけを積む）は
+    ///          計測値がちょうど閾値付近で揺れるため、行が毎フレーム出入りして
+    ///          下の全パスが上下にずれ、表が読めなくなっていた。
+    ///          走らなかったフレームは 0.000 の行として残し、表示側で淡色にする。
     inline std::vector<GpuTimingGroup> BuildGpuTimingGroups(
         const std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount>& results)
     {
@@ -248,7 +281,7 @@ namespace CoreEngine
             {
                 const GpuTimingResult& r = results[i];
                 if (r.category != category) continue;
-                if (r.gpuMs < 0.001f && r.cpuMs < 0.001f) continue;
+                if (!IsVisibleTimingSlot(r)) continue;
                 group.slotIndices.push_back(i);
             }
             if (!group.slotIndices.empty()) {

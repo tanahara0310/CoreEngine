@@ -283,7 +283,13 @@
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Common\GpuMarker.cpp">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.cpp">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Common\GpuTimingStatsCollector.cpp">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.cpp">
@@ -1158,7 +1164,13 @@
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorHandle.h">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\GpuMarker.h">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\GpuTimingStatsCollector.h">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\IResizable.h">
