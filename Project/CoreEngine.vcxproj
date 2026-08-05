@@ -443,6 +443,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Window\GameOutputWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneManagerTab.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp" />
@@ -887,6 +888,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\Window\GameOutputWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneManagerTab.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ScreenCapture.h" />

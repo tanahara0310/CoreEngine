@@ -207,6 +207,9 @@ namespace CoreEngine
         }
 
         // 入力の更新
+        //（Esc による終了は WinApp::WindowProc / GameOutputWindow::WindowProc が
+        //  ウィンドウメッセージとして処理する。DirectInput は DISCL_FOREGROUND で
+        //  本体ウィンドウに結び付いており、別ウィンドウにフォーカスがある間は拾えないため）
         if (auto* inputManager = GetComponent<InputManager>()) {
             inputManager->Update();
         }
@@ -404,6 +407,11 @@ namespace CoreEngine
 
 #ifdef USE_IMGUI
         if (debug) debug->DrawImGuiWithProfiling(cmdList);
+
+        // ゲーム映像専用ウィンドウへの転写。ImGui を描いた後に別のレンダーターゲットへ
+        // 積むだけなので、メインバックバッファの内容には影響しない。
+        if (debug) debug->RecordGameOutputWindow();
+
         if (debug) debug->EndRenderPipeline(cmdList, currentFrameIndex);
 #endif // USE_IMGUI
 
@@ -415,6 +423,11 @@ namespace CoreEngine
         if (render) {
             render->FinalizeFrame();
         }
+
+#ifdef USE_IMGUI
+        // 転写コマンドの実行が済んだこの位置で専用ウィンドウを Present する
+        if (debug) debug->PresentGameOutputWindow();
+#endif // USE_IMGUI
 
         // GPU 実行完了を確認してから DXR 退避リソースを解放
         if (auto* asMgr = context.accelerationStructureManager) {

@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace CoreEngine
@@ -19,11 +20,45 @@ namespace CoreEngine
     class SceneManager; // 前方宣言
     class SceneDebugEditor;
 
-    /// @brief エンジンパネルのカテゴリ（表示先の分類）
+    /// @brief エンジンパネルのカテゴリ（＝どこに描画されるか）
     enum class EnginePanelCategory {
         Settings, ///< Engine Settings ウィンドウ内のセクション（設定系）
-        Tools,    ///< Toolsメニューから開く独立ウィンドウ（作業用ツール。フローティング）
+        Tools,    ///< 単独ウィンドウとして開くパネル（フローティング / ドック可能）
     };
+
+    /// @brief メニュー上での分類（＝どこから開くか）
+    /// @details Unity の Window メニューと同じく、パネルが増えても一覧が伸び続けないよう
+    ///          用途ごとのサブメニューへ振り分けるための分類。
+    ///          Category（描画先）とは独立した軸なので、両方を指定する。
+    enum class EnginePanelGroup {
+        General,   ///< 常設パネル（Hierarchy / Inspector / Console など）
+        Rendering, ///< 描画結果の確認・レンダリング設定
+        Analysis,  ///< 計測・統計・プロファイリング
+        Editor,    ///< エディタ自身の設定・操作
+    };
+
+    /// @brief グループの表示順と表示名
+    /// @details Window メニューと Engine Settings の一覧で同じ順序・同じ名前を使うため、
+    ///          並びをここ 1 か所に持たせる。グループを増やしたらここへ追記する。
+    inline constexpr std::pair<EnginePanelGroup, const char*> kEnginePanelGroupOrder[] = {
+        { EnginePanelGroup::General,   "General"   },
+        { EnginePanelGroup::Rendering, "Rendering" },
+        { EnginePanelGroup::Analysis,  "Analysis"  },
+        { EnginePanelGroup::Editor,    "Editor"    },
+    };
+
+    /// @brief グループの表示名を返す
+    /// @param group 対象グループ
+    /// @return 表示名
+    inline const char* ToDisplayName(EnginePanelGroup group)
+    {
+        for (const auto& [value, label] : kEnginePanelGroupOrder) {
+            if (value == group) {
+                return label;
+            }
+        }
+        return "Other";
+    }
 
     /// @brief ゲームデバッグUIクラス
     class GameDebugUI {
@@ -59,9 +94,11 @@ namespace CoreEngine
         /// @brief エンジン専用デバッグパネルを登録
         /// @param label セクション / ウィンドウタイトルに表示する名前
         /// @param drawer コンテンツドロワー
-        /// @param category Settings=Engine Settingsウィンドウのセクション / Tools=Toolsメニューから開くフローティングウィンドウ
+        /// @param category Settings=Engine Settingsウィンドウのセクション / Tools=単独ウィンドウ
+        /// @param group Window メニューのどのサブメニューへ載せるか（Tools のときのみ使用）
         void RegisterEnginePanel(const std::string& label, std::function<void()> drawer,
-            EnginePanelCategory category = EnginePanelCategory::Settings);
+            EnginePanelCategory category = EnginePanelCategory::Settings,
+            EnginePanelGroup group = EnginePanelGroup::General);
 
         /// @brief 環境エディタを登録（HierarchyのEnvironmentツリーに表示し、選択時にInspectorで編集）
         /// @param label Environmentツリーに表示する名前
@@ -79,10 +116,12 @@ namespace CoreEngine
         /// @param owner 登録時に渡したowner
         void UnregisterEnvironmentEditor(const std::string& label, const void* owner);
 
-        /// @brief EngineDebug メニュー専用パネルを登録（デバッグ情報カテゴリ用）
+        /// @brief デバッグ情報パネルを登録（単独ウィンドウ）
         /// @param label メニュー / ウィンドウタイトルに表示する名前
         /// @param drawer ウィンドウ内に描画するコンテンツドロワー
-        void RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer);
+        /// @param group Window メニューのどのサブメニューへ載せるか
+        void RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer,
+            EnginePanelGroup group = EnginePanelGroup::Analysis);
 
         /// @brief 指定ラベルのエンジンパネルの表示状態を設定する（Toolsカテゴリの独立ウィンドウ用）
         /// @param label パネルのラベル
@@ -111,6 +150,14 @@ namespace CoreEngine
 
         /// @brief Gameビュー用のSceneDebugEditorを取得
         SceneDebugEditor* GetSceneDebugEditor() const { return sceneDebugEditor_; }
+
+        /// @brief ゲーム画面のみを表示する独立ウィンドウを開いているか
+        /// @details エディタUIを一切含まない、Release ビルド相当の見た目を確認するためのウィンドウ。
+        bool IsStandaloneGameWindowVisible() const { return showStandaloneGameWindow_; }
+
+        /// @brief ゲーム画面のみの独立ウィンドウの表示状態を設定する
+        /// @param visible 表示するなら true
+        void SetStandaloneGameWindowVisible(bool visible) { showStandaloneGameWindow_ = visible; }
 
     private:
         EngineSystem* engine_ = nullptr;
@@ -141,6 +188,7 @@ namespace CoreEngine
             std::function<void()> drawer;
             bool visible = false;
             EnginePanelCategory category = EnginePanelCategory::Settings;
+            EnginePanelGroup group = EnginePanelGroup::General;
         };
         std::vector<EnginePanelEntry> enginePanels_;
 
@@ -161,6 +209,7 @@ namespace CoreEngine
         bool showHierarchy_ = true;
         bool showInspector_ = true;
         bool showConsole_ = true;
+        bool showStandaloneGameWindow_ = false; ///< ゲーム画面のみの独立ウィンドウ
         bool showEngineSettings_ = false;   ///< Engine Settings ウィンドウの表示状態
         std::string selectedSettingsLabel_; ///< Engine Settings で選択中のセクション（空=未選択）
         char settingsFilter_[64] = {};      ///< Engine Settings のセクション検索文字列
@@ -174,6 +223,16 @@ namespace CoreEngine
 
     private:
         void ShowConsoleUI();
+
+        /// @brief Window メニュー内の 1 グループをサブメニューとして描画する
+        /// @details 対象は「単独ウィンドウとして開くパネル」＝ Tools カテゴリのエンジンパネルと
+        ///          デバッグ情報パネル。該当が 1 件も無いグループは項目自体を出さない。
+        /// @param group 描画するグループ
+        /// @param label サブメニューの表示名
+        /// @param extraContent 省略可。グループ固有の追加項目（区切り線の後に描画される）
+        void DrawPanelGroupMenu(EnginePanelGroup group, const char* label,
+            const std::function<void()>& extraContent = nullptr);
+
         void DrawHierarchyPanel();
         void DrawEnvironmentTree();
         const EnvironmentEntry* FindSelectedEnvironmentEntry() const;

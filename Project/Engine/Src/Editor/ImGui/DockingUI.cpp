@@ -65,6 +65,11 @@ namespace CoreEngine
         ImGui::Begin("##DockSpaceHost", nullptr, hostFlags);
         ImGui::PopStyleVar(3);
 
+        // レイアウト構築は必ず DockSpace() の提出より前に行うこと。
+        // 提出後に DockBuilderRemoveNode すると、そのフレームのドックスペースと
+        // ノードの対応が失われ、ドック中の全ウィンドウが表示されなくなる。
+        SetupDockSpace();
+
         // ドッキングスペースを作成（中央透過）
         ImGuiID dockId = ImGui::GetID("MyDockSpace");
         ImGui::DockSpace(dockId, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -117,7 +122,10 @@ namespace CoreEngine
 
         ImGuiID dockMain = ImGui::GetID("MyDockSpace");
         ImGui::DockBuilderRemoveNode(dockMain);
-        ImGui::DockBuilderAddNode(dockMain, ImGuiDockNodeFlags_None);
+        // ホストウィンドウ内に埋め込むノードなので DockSpace フラグを立てる。
+        // 立てないと「自前のウィンドウを持つ浮遊ノード」として作られ、
+        // 直後の DockSpace() と種別が食い違う。
+        ImGui::DockBuilderAddNode(dockMain, ImGuiDockNodeFlags_DockSpace);
         ImGui::DockBuilderSetNodeSize(dockMain, dockSpaceSize);
 
         for (ImGuiID& nodeId : nodeIds_) {
@@ -152,7 +160,15 @@ namespace CoreEngine
         nodeIds_[static_cast<int>(DockArea::Bottom)] = idBottom;
         nodeIds_[static_cast<int>(DockArea::Hierarchy)] = idLeftTop;
 
-        // 登録されているウィンドウを各ノードにドッキング
+        // 登録されているウィンドウを各ノードへ必ずドッキングする。
+        //
+        // 【この無条件ドックを条件付きにしないこと】
+        // 以前「前回 DockId==0 だったウィンドウは触らない」判定を入れたことがあるが、
+        // imgui.ini の DockId 欠落は「ユーザーが意図して引き出した」ことを意味しない
+        //（一度でも浮いた状態で保存されれば同じ形になる）。その結果 Hierarchy や Console が
+        // 毎起動フローティングのまま復帰しなくなる不可逆な状態に陥った。
+        // 引き出した配置を保持したい場合は、DockId を推測するのではなく
+        // 「ユーザーが引き出した」という意図そのものを別途保存すること。
         for (const auto& [windowName, area] : registeredWindows_) {
             ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
             if (nodeId != 0) {
@@ -239,7 +255,8 @@ namespace CoreEngine
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 4.0f));
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+        // メニューバー（bgPanel）と同じ面に揃える。値はリニア（画面上は #2C2C30 相当）
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0251f, 0.0251f, 0.0296f, 1.0f));
 
         if (auto toolbar = UI::Scope::WindowScope("##PlaybackToolbar", nullptr, toolbarFlags)) {
             if (playbackIconsLoaded_) {
@@ -253,14 +270,16 @@ namespace CoreEngine
                 if (sceneDebugEditor_) {
                     const auto drawGizmoButton = [&](const char* id, D3D12_GPU_DESCRIPTOR_HANDLE icon, Gizmo::Mode mode, const char* tooltip) {
                         const bool isActive = (sceneDebugEditor_->GetGizmoMode() == mode);
+                        // 値はリニア（sRGB RTV に描かれるため画面上では約2倍明るく見える）
                         if (isActive) {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.48f, 0.48f, 0.48f, 1.00f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.58f, 0.58f, 0.58f, 1.00f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.40f, 0.40f, 0.40f, 1.00f));
+                            // 選択中のモードはアクセント青の面で示す（画面上 #3D7EC8 相当）
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.047f, 0.208f, 0.578f, 1.00f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.090f, 0.300f, 0.708f, 1.00f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.035f, 0.160f, 0.470f, 1.00f));
                         } else {
-                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.22f, 0.22f, 0.55f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.35f, 0.35f, 0.85f));
-                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 0.90f));
+                            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.048f, 0.048f, 0.054f, 0.60f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.095f, 0.098f, 0.110f, 0.90f));
+                            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.030f, 0.030f, 0.034f, 0.95f));
                         }
 
                         if (ImGui::ImageButton(id, (ImTextureID)icon.ptr, ImVec2(kIconSize, kIconSize))) {
@@ -333,17 +352,21 @@ namespace CoreEngine
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 0.0f));
 
-        // FPSに応じてステータスバー背景色を変化させる
+        // 背景は他のパネルと同じ落ち着いた面にする。
+        // 画面幅いっぱいの帯を状態色で塗ると、そこだけ彩度が突出して安っぽく見えるため、
+        // フレームレートの状態は「小さなインジケータと文字色」だけで示す。
         constexpr float kTargetFPS = 60.0f;
-        ImVec4 barBgColor;
+        ImVec4 statusColor;
         if (fps >= kTargetFPS * 0.90f) {
-            barBgColor = ImVec4(0.05f, 0.28f, 0.08f, 1.0f);  // 暗い緑
+            statusColor = ImVec4(0.42f, 0.78f, 0.47f, 1.0f);  // 良好
         } else if (fps >= kTargetFPS * 0.80f) {
-            barBgColor = ImVec4(0.28f, 0.22f, 0.03f, 1.0f);  // 暗い黄
+            statusColor = ImVec4(0.93f, 0.76f, 0.35f, 1.0f);  // 注意
         } else {
-            barBgColor = ImVec4(0.28f, 0.05f, 0.05f, 1.0f);  // 暗い赤
+            statusColor = ImVec4(0.90f, 0.44f, 0.42f, 1.0f);  // 低下
         }
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, barBgColor);
+        // テーマの bgPanel（メニューバー）と同じ面にして、上下のバーの色を揃える。
+        // 値はリニア（sRGB RTV へ描かれるため、画面上では #2C2C30 相当になる）
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0251f, 0.0251f, 0.0296f, 1.0f));
 
         if (auto statusBar = UI::Scope::WindowScope("##StatusBar", nullptr, flags)) {
             constexpr float kFpsIconSize = 16.0f;
@@ -352,6 +375,18 @@ namespace CoreEngine
             const float windowHeight = ImGui::GetWindowHeight();
             const float textCenterY = (windowHeight - ImGui::GetTextLineHeight()) * 0.5f;
 
+            // フレームレートの状態インジケータ（小さな丸）
+            {
+                const float dotRadius = 4.0f;
+                ImGui::SetCursorPosY((windowHeight - dotRadius * 2.0f) * 0.5f);
+                const ImVec2 dotPos = ImGui::GetCursorScreenPos();
+                ImGui::GetWindowDrawList()->AddCircleFilled(
+                    ImVec2(dotPos.x + dotRadius, dotPos.y + dotRadius),
+                    dotRadius, ImGui::GetColorU32(statusColor));
+                ImGui::Dummy(ImVec2(dotRadius * 2.0f, dotRadius * 2.0f));
+                UI::SameLine(0.0f, 8.0f);
+            }
+
             // FPS アイコン
             if (fpsIconLoaded_) {
                 ImGui::SetCursorPosY((windowHeight - kFpsIconSize) * 0.5f);
@@ -359,9 +394,12 @@ namespace CoreEngine
                 UI::SameLine(0.0f, 6.0f);
             }
 
-            // FPS テキスト
+            // FPS テキスト（数値だけ状態色を乗せる）
             ImGui::SetCursorPosY(textCenterY);
-            ImGui::Text("[frame per second]: %.1f fps", fps);
+            ImGui::TextDisabled("FPS");
+            UI::SameLine(0.0f, 6.0f);
+            ImGui::SetCursorPosY(textCenterY);
+            ImGui::TextColored(statusColor, "%.1f", fps);
 
             // セパレーター
             UI::SameLine(0.0f, kSeparatorSpacing);
@@ -380,9 +418,10 @@ namespace CoreEngine
 
             // デルタタイムテキスト
             ImGui::SetCursorPosY(textCenterY);
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.85f, 1.0f, 1.0f));
-            ImGui::Text("[exec speed / frame]: %.4f sec", deltaTimeMs * 0.001f);
-            ImGui::PopStyleColor();
+            ImGui::TextDisabled("Frame");
+            UI::SameLine(0.0f, 6.0f);
+            ImGui::SetCursorPosY(textCenterY);
+            ImGui::Text("%.2f ms", deltaTimeMs);
 
             // ── ホバー時に CPU / GPU タイムスタンプを表示 ─────────
             const bool hasTimingData = timingData_[static_cast<uint32_t>(GpuTimestampSlot::Total)].gpuMs > 0.0f

@@ -772,6 +772,9 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Window\GameOutputWindow.cpp">
+      <Filter>Engine\Src\Editor\Window</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
@@ -2007,6 +2010,9 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Window\GameOutputWindow.h">
+      <Filter>Engine\Src\Editor\Window</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -2478,6 +2484,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Scene">
       <UniqueIdentifier>{8EEC7EC7-38CE-4B25-84B4-1C1FD0F26A22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Window">
+      <UniqueIdentifier>{0ED5B9B7-469F-40E4-89F7-0AE0CE44302A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\EngineSystem">
       <UniqueIdentifier>{25A76813-6EF1-43E7-8910-74FA30780B0C}</UniqueIdentifier>

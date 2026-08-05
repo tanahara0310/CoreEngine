@@ -56,9 +56,22 @@ void Finalize();
 /// @param postEffectManager PostEffectManagerへのポインタ
 void DrawGameViewport(DirectXCommon* dxCommon, PostEffectManager* postEffectManager, GameDebugUI* gameDebugUI = nullptr);
 
+/// @brief 副ビューポート（メインウィンドウ外へ出した ImGui ウィンドウ）を描画する
+/// @details メインビューポートの Present 完了後に呼ぶこと。副ウィンドウは
+///          imgui のプラットフォーム層が自前のスワップチェーンとコマンドキューで描画するため、
+///          エンジンのコマンドリスト記録中に呼んではいけない。
+void RenderPlatformWindows();
+
 /// @brief ドッキングUIへのアクセッサ
 /// @return ドッキングUIへのポインタ
 DockingUI* GetDockingUI() const { return dockingUI_.get(); }
+
+/// @brief エディタUI（メニューバー・ドックスペース・各パネル）を表示中か
+/// @details false のとき Game ビューをウィンドウ全面に描く。絵だけ確認したいときの一時退避用。
+bool IsEditorUiVisible() const { return editorUiVisible_; }
+
+/// @brief エディタUIの表示/非表示を切り替える
+void ToggleEditorUi() { editorUiVisible_ = !editorUiVisible_; }
 
 #ifdef USE_IMGUI
 /// @brief Canvasプレビュービューポートへのアクセッサ
@@ -85,7 +98,14 @@ private:
     std::unique_ptr<ProjectView> projectView_ = std::make_unique<ProjectView>();
 #endif
 
+    bool editorUiVisible_ = true; ///< false = Game のみ全面表示（F11 で切り替え）
+
 private: // メンバ関数
+    /// @brief Game ビューをメインビューポート全面へ描く（エディタUI非表示時）
+    /// @param textureHandle 表示するテクスチャの SRV
+    void DrawFullscreenGameViewport(D3D12_GPU_DESCRIPTOR_HANDLE textureHandle);
+
+
     /// @brief レイアウトや見た目を変更
     void ApplyCustomTheme();
 

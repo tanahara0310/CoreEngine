@@ -33,6 +33,25 @@ namespace CoreEngine
         // ドッキング
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // ドッキングを有効化
 
+        // マルチビューポート: ImGui ウィンドウをエンジンウィンドウの外（別モニタ等）へ出せるようにする。
+        // これが無いとエディタは必ずエンジンウィンドウ内に収まり、パネルを開くほど Game ビューが覆われる。
+        //
+        // 【重要】このフラグは ImGui_ImplDX12_Init / ImGui_ImplWin32_Init より前に立てること。
+        //         バックエンドは Init 時にフラグを見てプラットフォームインターフェースを差し込むため、
+        //         後から立てても副ウィンドウが生成されない。
+        io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+        // DPI 追従（io.ConfigDpiScaleViewports）は有効にしない。
+        // 拡大率の違うモニタ間では ImGui 側のウィンドウだけが DPI 比で縮み、
+        // パネルの中身が小さく描かれてしまう（実測: 1280x720 の窓に 1024x576）。
+        // 無効のままだと逆に OS ウィンドウが少し大きくなるが、内容は原寸で読める。
+        // なおゲーム映像の確認は ImGui を経由しない GameOutputWindow が担当するので、
+        // このズレが映像の見た目に影響することはない。
+        //
+        // 注意: 旧 ImGuiConfigFlags_DpiEnableScaleViewports は 1.92 で
+        //       「この bool を false にする」後方互換処理に置き換わっており、
+        //       立てても有効にはならない（imgui.cpp の同名フラグ分岐を参照）。
+
         io.ConfigWindowsMoveFromTitleBarOnly = false; // ウィンドウ全体からドラッグ移動を可能にする
 
         // imgui.ini の保存先を Cache フォルダに変更
@@ -42,6 +61,13 @@ namespace CoreEngine
 
         ImGui::StyleColorsDark();
         ApplyCustomTheme();
+
+        // 副ウィンドウは OS ウィンドウとして描かれるため、角丸と半透明背景は見た目が崩れる
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+            ImGuiStyle& style = ImGui::GetStyle();
+            style.WindowRounding = 0.0f;
+            style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+        }
 
         // DPIスケールを取得してフォントサイズに反映
         float dpiScale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
@@ -109,9 +135,21 @@ namespace CoreEngine
         // フレームの開始
         StartNewFrame();
 
+        // F11 でエディタUIを丸ごと退避し、Game だけを全面表示する。
+        // テキスト入力中は名前の編集などを妨げないよう無視する。
+        if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F11, false)) {
+            ToggleEditorUi();
+        }
+
+        // 非表示中はドックスペースも作らない。Game は DrawGameViewport が
+        // ドックとは無関係の全面ウィンドウとして描く。
+        if (!editorUiVisible_) {
+            return;
+        }
+
         // ドッキングUIの開始（メニューバーの高さを考慮してドッキングスペースを配置）
+        // レイアウト構築は BeginDockSpaceHostWindow が DockSpace 提出前に内部で行う
         dockingUI_->BeginDockSpaceHostWindow();
-        dockingUI_->SetupDockSpace();
 
         // Game ビューポートは PostEffectPass 完了後に別経路で描画する。
 #ifdef USE_IMGUI
@@ -133,6 +171,18 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};
         if (postEffectManager) {
             textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
+        }
+
+        // 「ゲーム画面のみのウィンドウ」は ImGui ではなく専用の Win32 ウィンドウ
+        //（GameOutputWindow）が担当する。ImGui のビューポートは混在 DPI 環境で
+        // OS ウィンドウと描画サイズがずれるため、映像確認用途には使わない。
+
+        // エディタUI退避中は、ドッキング状態を一切共有しない別ウィンドウとして全面描画する。
+        // 同じ "Game" ウィンドウを使い回すと、ドックスペース未提出のフレームで
+        // ドックノードの解決先が無くなり表示が壊れる。
+        if (!editorUiVisible_) {
+            DrawFullscreenGameViewport(textureHandle);
+            return;
         }
 
         if (!ImGui::Begin("Game", nullptr,
@@ -181,6 +231,60 @@ namespace CoreEngine
 #endif
     }
 
+    void ImGuiManager::DrawFullscreenGameViewport([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE textureHandle)
+    {
+#ifdef USE_IMGUI
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowSize(viewport->Size);
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        constexpr ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoDecoration
+            | ImGuiWindowFlags_NoDocking
+            | ImGuiWindowFlags_NoMove
+            | ImGuiWindowFlags_NoSavedSettings
+            | ImGuiWindowFlags_NoBringToFrontOnFocus
+            | ImGuiWindowFlags_NoNavFocus;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+        const bool opened = ImGui::Begin("##GameFullscreen", nullptr, flags);
+
+        ImGui::PopStyleVar(3);
+
+        if (opened) {
+            const ImVec2 available = ImGui::GetContentRegionAvail();
+            const float aspect = static_cast<float>(WinApp::GetCurrentClientWidthStatic()) /
+                static_cast<float>(WinApp::GetCurrentClientHeightStatic());
+
+            // アスペクト比を保ったまま最大化（余白は黒帯）
+            float drawW = available.x;
+            float drawH = drawW / aspect;
+            if (drawH > available.y) {
+                drawH = available.y;
+                drawW = drawH * aspect;
+            }
+
+            const ImVec2 origin = ImGui::GetCursorScreenPos();
+            ImGui::SetCursorScreenPos(ImVec2(
+                origin.x + (available.x - drawW) * 0.5f,
+                origin.y + (available.y - drawH) * 0.5f));
+            ImGui::Image((ImTextureID)textureHandle.ptr, ImVec2(drawW, drawH));
+
+            // 戻し方が分からなくならないよう、復帰キーだけ隅に出しておく
+            ImGui::SetCursorScreenPos(ImVec2(origin.x + 8.0f, origin.y + 6.0f));
+            ImGui::TextDisabled("F11: エディタUIを表示");
+        }
+
+        ImGui::End();
+        ImGui::PopStyleColor();
+#endif
+    }
+
     void ImGuiManager::End()
     {
     }
@@ -189,6 +293,19 @@ namespace CoreEngine
     {
         ImGui::Render();
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon_->GetCommandList());
+    }
+
+    void ImGuiManager::RenderPlatformWindows()
+    {
+        if ((ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable) == 0) {
+            return;
+        }
+
+        // メインビューポートの Present 後に、メインウィンドウ外へ出されたウィンドウを描画・Present する。
+        // 副ウィンドウは imgui が用意した専用のコマンドキューで走るため、
+        // エンジン側のコマンドリスト記録中に呼ぶと記録の入れ子になり壊れる。
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
     }
 
     void ImGuiManager::Finalize()
@@ -206,151 +323,178 @@ namespace CoreEngine
         ImGuiStyle& style = ImGui::GetStyle();
         ImVec4* colors = style.Colors;
 
-        // ===== より濃いUnity風スタイル設定 =====
+        // ===== 配色 =====
+        // 設計方針（Unity / UE のダークテーマに倣う）:
+        //  1. 背景に明度の段差を作る。以前は WindowBg も ChildBg もほぼ同じ黒で、
+        //     どこからどこまでが1つのパネルなのか読み取れなかった。
+        //  2. アクセント色は「選択・操作中」だけに使う。以前はタブ・ボタン・ヘッダ・
+        //     スクロールバーまで彩度の高いオレンジで塗っていて画面が騒がしかった。
+        //  3. 面の区切りは枠線ではなく明度差で行う（FrameBorderSize = 0）。
+        //     全ウィジェットに黒枠が付くと安っぽく見える最大の要因だった。
 
-        // 角丸やサイズ（Unityに近い設定）
-        style.WindowRounding = 2.0f;
+        // 【重要】ImGui は sRGB の RTV（バックバッファ）へ描画されるため、
+        // ここで指定したリニア値は書き込み時に sRGB エンコードされて明るく持ち上がる
+        //（例: 0.092 を指定すると画面では #555 相当になる。実測で確認済み）。
+        // そのため配色は「画面に出したい色（普段目にする sRGB の 0-255 値）」で記述し、
+        // このヘルパでリニアへ逆変換してから ImGui へ渡す。
+        // 数値を直接いじるときも必ずこのヘルパ経由で書くこと。
+        const auto srgb = [](int r, int g, int b, float a = 1.0f) -> ImVec4 {
+            const auto toLinear = [](int v8) {
+                const float c = static_cast<float>(v8) / 255.0f;
+                return (c <= 0.04045f) ? c / 12.92f : powf((c + 0.055f) / 1.055f, 2.4f);
+            };
+            return ImVec4(toLinear(r), toLinear(g), toLinear(b), a);
+        };
+
+        // 背景の階調（暗 → 明）。Unity ダークテーマの実測値に近い並び
+        const ImVec4 bgDeepest = srgb(20, 20, 21);    // 最奥（スクロールバー溝など）
+        const ImVec4 bgField = srgb(26, 26, 28);    // 入力欄（一段沈める）
+        const ImVec4 bgChild = srgb(30, 30, 33);    // 子パネル（少し沈める）
+        const ImVec4 bgWindow = srgb(36, 36, 40);    // ウィンドウ
+        const ImVec4 bgPanel = srgb(44, 44, 48);    // メニューバー・タイトル・ポップアップ
+        const ImVec4 bgControl = srgb(58, 58, 64);    // ボタン・タブ選択
+        const ImVec4 bgHover = srgb(74, 74, 82);    // ホバー
+        const ImVec4 bgActive = srgb(90, 90, 100);   // 押下
+
+        // アクセント（青。選択・操作中の要素だけに使う）
+        const ImVec4 accent = srgb(61, 126, 200);
+        const ImVec4 accentHover = srgb(85, 150, 222);
+        const ImVec4 accentMuted = srgb(42, 63, 85);   // 選択行の下地
+        const ImVec4 accentWarm = srgb(242, 156, 49); // 差し色（少量だけ使う）
+
+        // テキスト
+        const ImVec4 textPrimary = srgb(238, 238, 242);
+        const ImVec4 textDisabled = srgb(128, 128, 138);
+
+        const ImVec4 borderColor = srgb(15, 15, 16);
+        const ImVec4 transparent = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+        // ===== 面 =====
+        colors[ImGuiCol_WindowBg] = bgWindow;
+        colors[ImGuiCol_ChildBg] = bgChild;
+        colors[ImGuiCol_PopupBg] = bgPanel;
+        colors[ImGuiCol_MenuBarBg] = bgPanel;
+        colors[ImGuiCol_Border] = borderColor;
+        colors[ImGuiCol_BorderShadow] = transparent;
+
+        // ===== 文字 =====
+        colors[ImGuiCol_Text] = textPrimary;
+        colors[ImGuiCol_TextDisabled] = textDisabled;
+        colors[ImGuiCol_TextSelectedBg] = ImVec4(accent.x, accent.y, accent.z, 0.45f);
+        colors[ImGuiCol_TextLink] = accentHover;
+        colors[ImGuiCol_InputTextCursor] = textPrimary;
+
+        // ===== タイトルバー =====
+        colors[ImGuiCol_TitleBg] = bgPanel;
+        colors[ImGuiCol_TitleBgActive] = bgPanel;
+        colors[ImGuiCol_TitleBgCollapsed] = bgWindow;
+
+        // ===== タブ =====
+        // 選択タブは「明るい面 ＋ 上端の細いアクセント線」で示す。
+        // 面全体をアクセント色で塗り潰さないのが現代的なエディタの作法。
+        colors[ImGuiCol_Tab] = bgPanel;
+        colors[ImGuiCol_TabHovered] = bgHover;
+        colors[ImGuiCol_TabSelected] = bgControl;
+        colors[ImGuiCol_TabSelectedOverline] = accentHover;
+        colors[ImGuiCol_TabDimmed] = bgChild;
+        colors[ImGuiCol_TabDimmedSelected] = bgPanel;
+        colors[ImGuiCol_TabDimmedSelectedOverline] = accentMuted;
+
+        // ===== ヘッダ（Selectable / TreeNode / CollapsingHeader 共用） =====
+        // 選択行としても折りたたみ見出しとしても破綻しないよう、
+        // 彩度を落とした青灰色を使う。
+        colors[ImGuiCol_Header] = accentMuted;
+        colors[ImGuiCol_HeaderHovered] = bgHover;
+        colors[ImGuiCol_HeaderActive] = accent;
+
+        // ===== 入力欄 =====
+        colors[ImGuiCol_FrameBg] = bgField;
+        colors[ImGuiCol_FrameBgHovered] = srgb(32, 32, 36);
+        colors[ImGuiCol_FrameBgActive] = srgb(38, 38, 43);
+
+        // ===== ボタン =====
+        colors[ImGuiCol_Button] = bgControl;
+        colors[ImGuiCol_ButtonHovered] = bgHover;
+        colors[ImGuiCol_ButtonActive] = bgActive;
+
+        // ===== 操作子 =====
+        colors[ImGuiCol_CheckMark] = accentHover;
+        colors[ImGuiCol_SliderGrab] = accent;
+        colors[ImGuiCol_SliderGrabActive] = accentHover;
+
+        colors[ImGuiCol_ScrollbarBg] = bgDeepest;
+        colors[ImGuiCol_ScrollbarGrab] = srgb(63, 63, 70);
+        colors[ImGuiCol_ScrollbarGrabHovered] = bgHover;
+        colors[ImGuiCol_ScrollbarGrabActive] = bgActive;
+
+        colors[ImGuiCol_Separator] = srgb(56, 56, 62);
+        colors[ImGuiCol_SeparatorHovered] = accent;
+        colors[ImGuiCol_SeparatorActive] = accentHover;
+
+        // リサイズグリップは掴むまで見せない
+        colors[ImGuiCol_ResizeGrip] = transparent;
+        colors[ImGuiCol_ResizeGripHovered] = ImVec4(accent.x, accent.y, accent.z, 0.50f);
+        colors[ImGuiCol_ResizeGripActive] = accent;
+
+        // ===== グラフ =====
+        colors[ImGuiCol_PlotLines] = accentHover;
+        colors[ImGuiCol_PlotLinesHovered] = accentWarm;
+        colors[ImGuiCol_PlotHistogram] = accentWarm;
+        colors[ImGuiCol_PlotHistogramHovered] = srgb(255, 204, 120);
+
+        // ===== テーブル =====
+        colors[ImGuiCol_TableHeaderBg] = bgPanel;
+        colors[ImGuiCol_TableBorderStrong] = srgb(60, 60, 66);
+        colors[ImGuiCol_TableBorderLight] = srgb(42, 42, 47);
+        colors[ImGuiCol_TableRowBg] = transparent;
+        colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.0f, 1.0f, 1.0f, 0.022f);
+
+        // ===== その他 =====
+        colors[ImGuiCol_DragDropTarget] = accentWarm;
+        colors[ImGuiCol_NavCursor] = accentHover;
+        colors[ImGuiCol_NavWindowingHighlight] = accentHover;
+        colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.45f);
+        colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.60f);
+        colors[ImGuiCol_DockingPreview] = ImVec4(accent.x, accent.y, accent.z, 0.55f);
+        colors[ImGuiCol_DockingEmptyBg] = bgDeepest;
+
+        // ===== 形状・余白 =====
+        // 余白を広げるのが「安っぽさ」を消す一番効く調整。
+        // 以前は FramePadding(4,3) / ItemSpacing(4,4) で要素が詰まりすぎていた。
+        style.WindowPadding = ImVec2(10.0f, 8.0f);
+        style.FramePadding = ImVec2(8.0f, 4.0f);
+        style.ItemSpacing = ImVec2(8.0f, 5.0f);
+        style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
+        style.CellPadding = ImVec2(6.0f, 4.0f);
+        style.IndentSpacing = 18.0f;
+        style.ScrollbarSize = 12.0f;
+        style.GrabMinSize = 10.0f;
+
+        style.WindowRounding = 4.0f;
+        style.ChildRounding = 4.0f;
         style.FrameRounding = 3.0f;
-        style.GrabRounding = 2.0f;
-        style.TabRounding = 2.0f;
-        style.ScrollbarRounding = 2.0f;
-        style.ScrollbarSize = 14.0f;
+        style.PopupRounding = 4.0f;
+        style.GrabRounding = 3.0f;
+        style.TabRounding = 4.0f;
+        style.ScrollbarRounding = 6.0f;
 
-        // パディングとスペーシング（Unity風）
-        style.WindowPadding = ImVec2(8.0f, 8.0f);
-        style.FramePadding = ImVec2(4.0f, 3.0f);
-        style.ItemSpacing = ImVec2(4.0f, 4.0f);
-        style.ItemInnerSpacing = ImVec2(4.0f, 4.0f);
-
-        // ===== 非常に暗いUnity風カラーパレット（プロ仕様） =====
-
-        // ベースカラー（Unity Pro版のダークテーマ）
-        ImVec4 blackish = ImVec4(0.08f, 0.08f, 0.08f, 1.0f);          // ほぼ黒（最暗BG）
-        ImVec4 veryDarkGray = ImVec4(0.11f, 0.11f, 0.11f, 1.0f);      // 非常に濃いグレー（メインBG）
-        ImVec4 darkGray = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);          // 濃いグレー（パネル）
-        ImVec4 mediumDarkGray = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);    // 中間の暗いグレー（ホバー）
-        ImVec4 lightGray = ImVec4(0.28f, 0.28f, 0.28f, 1.0f);         // 明るめグレー（アクティブ）
-
-        // Unityの強調色（より鮮やかに）
-        ImVec4 unityOrange = ImVec4(1.0f, 0.65f, 0.0f, 1.0f);         // 鮮やかなUnityオレンジ
-        ImVec4 unityOrangeHover = ImVec4(1.0f, 0.75f, 0.2f, 1.0f);    // ホバー時のオレンジ
-        ImVec4 unityBlue = ImVec4(0.2f, 0.6f, 1.0f, 1.0f);            // Unity風ブルー（情報表示用）
-
-        // 重要な要素のアクセント色
-        ImVec4 enabledGreen = ImVec4(0.0f, 0.8f, 0.2f, 1.0f);         // 有効状態（緑）
-        ImVec4 warningYellow = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);        // 警告（黄色）
-        ImVec4 errorRed = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);             // エラー（赤）
-
-        // テキストカラー（高コントラスト）
-        ImVec4 textBrightWhite = ImVec4(0.95f, 0.95f, 0.95f, 1.0f);   // 非常に明るいメインテキスト
-        ImVec4 textLightGray = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);     // サブテキスト
-        ImVec4 textMediumGray = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);       // 無効テキスト
-
-        // 境界線とセパレーター（さらにシャープに）
-        ImVec4 borderVeryDark = ImVec4(0.05f, 0.05f, 0.05f, 1.0f);    // 極暗境界線
-        ImVec4 separatorMedium = ImVec4(0.4f, 0.4f, 0.4f, 1.0f);      // セパレーター
-
-        // ===== ImGuiカラー設定（Unity Proライク） =====
-
-        // ウィンドウとパネル（非常にダーク）
-        colors[ImGuiCol_WindowBg] = blackish;               // 最も暗い背景
-        colors[ImGuiCol_ChildBg] = blackish;                // 子ウィンドウも最暗
-        colors[ImGuiCol_PopupBg] = veryDarkGray;            // ポップアップは少し明るく
-        colors[ImGuiCol_MenuBarBg] = veryDarkGray;          // メニューバー
-
-        // 枠線（極シャープ）
-        colors[ImGuiCol_Border] = borderVeryDark;
-        colors[ImGuiCol_BorderShadow] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-
-        // テキスト（最高コントラスト）
-        colors[ImGuiCol_Text] = textBrightWhite;
-        colors[ImGuiCol_TextDisabled] = textMediumGray;
-        colors[ImGuiCol_TextSelectedBg] = unityOrange;
-
-        // タイトルバー（非常にダーク）
-        colors[ImGuiCol_TitleBg] = veryDarkGray;
-        colors[ImGuiCol_TitleBgActive] = darkGray;
-        colors[ImGuiCol_TitleBgCollapsed] = blackish;
-
-        // タブ（Unity風強調）
-        colors[ImGuiCol_Tab] = veryDarkGray;                // 非アクティブタブは暗く
-        colors[ImGuiCol_TabHovered] = mediumDarkGray;       // ホバー時
-        colors[ImGuiCol_TabActive] = unityOrange;           // アクティブタブは鮮やかなオレンジ
-        colors[ImGuiCol_TabUnfocused] = blackish;           // フォーカス外
-        colors[ImGuiCol_TabUnfocusedActive] = darkGray;     // フォーカス外アクティブ
-
-        // ヘッダー（CollapsibleHeaderなど - より目立つように）
-        colors[ImGuiCol_Header] = darkGray;
-        colors[ImGuiCol_HeaderHovered] = mediumDarkGray;
-        colors[ImGuiCol_HeaderActive] = unityOrange;
-
-        // フレーム（入力欄など）
-        colors[ImGuiCol_FrameBg] = veryDarkGray;            // より暗い入力欄
-        colors[ImGuiCol_FrameBgHovered] = darkGray;         // ホバー時
-        colors[ImGuiCol_FrameBgActive] = mediumDarkGray;    // アクティブ時
-
-        // ボタン（重要な要素として強調）
-        colors[ImGuiCol_Button] = darkGray;                 // 通常ボタン
-        colors[ImGuiCol_ButtonHovered] = lightGray;         // ホバー時はより明るく
-        colors[ImGuiCol_ButtonActive] = unityOrange;        // クリック時は鮮やかなオレンジ
-
-        // チェックボックス・ラジオボタン（有効時は緑、通常時はオレンジ）
-        colors[ImGuiCol_CheckMark] = enabledGreen;          // チェックマークは緑
-
-        // スライダー（重要な操作として強調）
-        colors[ImGuiCol_SliderGrab] = unityOrange;          // スライダーハンドル
-        colors[ImGuiCol_SliderGrabActive] = unityOrangeHover; // アクティブ時
-
-        // スクロールバー（非常にダーク）
-        colors[ImGuiCol_ScrollbarBg] = blackish;
-        colors[ImGuiCol_ScrollbarGrab] = veryDarkGray;
-        colors[ImGuiCol_ScrollbarGrabHovered] = darkGray;
-        colors[ImGuiCol_ScrollbarGrabActive] = unityOrange;
-
-        // セパレーター（はっきりと見えるように）
-        colors[ImGuiCol_Separator] = separatorMedium;
-        colors[ImGuiCol_SeparatorHovered] = unityOrange;
-        colors[ImGuiCol_SeparatorActive] = unityOrangeHover;
-
-        // リサイズグリップ
-        colors[ImGuiCol_ResizeGrip] = veryDarkGray;
-        colors[ImGuiCol_ResizeGripHovered] = darkGray;
-        colors[ImGuiCol_ResizeGripActive] = unityOrange;
-
-        // プロットとプログレスバー（状態に応じて色分け）
-        colors[ImGuiCol_PlotLines] = unityBlue;             // ライン系は青
-        colors[ImGuiCol_PlotLinesHovered] = unityOrange;
-        colors[ImGuiCol_PlotHistogram] = enabledGreen;      // ヒストグラムは緑
-        colors[ImGuiCol_PlotHistogramHovered] = unityOrangeHover;
-
-        // テーブル（非常にダーク）
-        colors[ImGuiCol_TableHeaderBg] = veryDarkGray;
-        colors[ImGuiCol_TableBorderStrong] = borderVeryDark;
-        colors[ImGuiCol_TableBorderLight] = ImVec4(0.15f, 0.15f, 0.15f, 1.0f);
-        colors[ImGuiCol_TableRowBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
-        colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.0f, 1.0f, 1.0f, 0.02f);
-
-        // ドラッグ＆ドロップ
-        colors[ImGuiCol_DragDropTarget] = unityOrange;
-
-        // ナビゲーション
-        colors[ImGuiCol_NavHighlight] = unityOrange;
-        colors[ImGuiCol_NavWindowingHighlight] = unityOrangeHover;
-        colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.8f, 0.8f, 0.8f, 0.2f);
-
-        // モーダルウィンドウ背景
-        colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.8f);
-
-        // ドッキング関連（非常にダーク）
-        colors[ImGuiCol_DockingPreview] = unityOrange;
-        colors[ImGuiCol_DockingEmptyBg] = blackish;
-
-        // フレーム枠線（Unity風に明確に）
-        style.FrameBorderSize = 1.0f;
         style.WindowBorderSize = 1.0f;
+        style.ChildBorderSize = 1.0f;
+        style.PopupBorderSize = 1.0f;
+        style.FrameBorderSize = 0.0f;  // 全ウィジェットの黒枠をやめる
+        style.TabBarBorderSize = 1.0f;
+        style.TabBarOverlineSize = 2.0f;
+        style.DockingSeparatorSize = 2.0f;
 
-        // より良い視認性のため、コントラストを強化
-        style.Alpha = 1.0f;  // 完全に不透明に
+        // 見出し（SeparatorText）を左寄せの太線にして、セクションの区切りを読みやすくする
+        style.SeparatorTextBorderSize = 2.0f;
+        style.SeparatorTextAlign = ImVec2(0.0f, 0.5f);
+        style.SeparatorTextPadding = ImVec2(16.0f, 6.0f);
+
+        style.WindowTitleAlign = ImVec2(0.0f, 0.5f);
+        style.WindowMenuButtonPosition = ImGuiDir_None; // タイトル左の折りたたみ矢印を消す
+
+        style.Alpha = 1.0f;
     }
 
     void ImGuiManager::StartNewFrame()
