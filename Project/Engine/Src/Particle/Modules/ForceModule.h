@@ -2,7 +2,7 @@
 
 #include "ParticleModule.h"
 #include "Math/MathCore.h"
-#include "Utility/Collision/CollisionUtils.h"
+#include "Math/Geometry/Shapes.h"
 
 struct Particle;
 

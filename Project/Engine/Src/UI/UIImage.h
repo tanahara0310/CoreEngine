@@ -35,6 +35,12 @@ namespace CoreEngine
         const char* GetObjectName() const override { return "UIImage"; }
         void Draw(const Camera* camera) override;
 
+        /// @brief ワールド空間での位置を返す（UI はアンカー相対のスクリーン座標を XY に載せる）
+        /// @note 3D の当たり判定に使う想定は無い。座標系が違うので混ぜないこと。
+        Vector3 GetWorldPosition() const override {
+            return { layout_.anchoredPos.x, layout_.anchoredPos.y, 0.0f };
+        }
+
         // ===== UILayout アクセサ =====
         void SetAnchor(UIAnchor anchor) { layout_.anchor = anchor; }
         UIAnchor GetAnchor() const { return layout_.anchor; }

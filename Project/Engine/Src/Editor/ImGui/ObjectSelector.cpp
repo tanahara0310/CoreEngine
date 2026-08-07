@@ -12,6 +12,9 @@
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/ModelData.h"
 #include "Graphics/Render/RenderPassType.h"
+#include "Math/MathCore.h"
+#include "Math/Geometry/Shapes.h"
+#include "Math/Geometry/RayCast.h"
 #include <algorithm>
 #include <limits>
 #include <cmath>
@@ -284,107 +287,26 @@ namespace CoreEngine
         }
     }
 
-    bool ObjectSelector::RayIntersectsSphere(const Vector3& rayOrigin, const Vector3& rayDirection,
-        const Vector3& sphereCenter, float sphereRadius, float& distance)
+    bool ObjectSelector::RayIntersectsFallbackSphere(const Vector3& rayOrigin, const Vector3& rayDirection,
+        GameObject* object, float radius, float& distance)
     {
-        // レイの始点からスフィアの中心へのベクトル
-        Vector3 oc = Vector3(
-            rayOrigin.x - sphereCenter.x,
-            rayOrigin.y - sphereCenter.y,
-            rayOrigin.z - sphereCenter.z
-        );
-
-        // 二次方程式の係数を計算
-        float a = rayDirection.x * rayDirection.x +
-            rayDirection.y * rayDirection.y +
-            rayDirection.z * rayDirection.z;
-
-        float b = 2.0f * (oc.x * rayDirection.x +
-            oc.y * rayDirection.y +
-            oc.z * rayDirection.z);
-
-        float c = oc.x * oc.x + oc.y * oc.y + oc.z * oc.z - sphereRadius * sphereRadius;
-
-        // 判別式
-        float discriminant = b * b - 4.0f * a * c;
-
-        if (discriminant < 0.0f) {
-            return false;  // 交差していない
+        Geometry::RayHit hit{};
+        if (!Geometry::Raycast(Geometry::Ray{ rayOrigin, rayDirection },
+                               Geometry::Sphere{ object->GetWorldPosition(), radius }, &hit)) {
+            return false;
         }
-
-        // 2つの解を計算（レイとスフィアの交点）
-        float sqrtDiscriminant = std::sqrt(discriminant);
-        float t1 = (-b - sqrtDiscriminant) / (2.0f * a);
-        float t2 = (-b + sqrtDiscriminant) / (2.0f * a);
-
-        // より近い交点を選択（ただし、負の値は無視）
-        if (t1 > 0.0f) {
-            distance = t1;
-            return true;
-        } else if (t2 > 0.0f) {
-            distance = t2;
-            return true;
-        }
-
-        return false;  // レイの後方にある
+        distance = hit.distance;
+        return true;
     }
 
-    bool ObjectSelector::RayIntersectsTriangle(const Vector3& rayOrigin, const Vector3& rayDirection,
-        const Vector3& v0, const Vector3& v1, const Vector3& v2,
-        float& distance)
+    Vector3 ObjectSelector::TransformDirection(const Vector3& direction, const Matrix4x4& matrix)
     {
-        const float kEpsilon = 0.0000001f;
-
-        // エッジベクトル
-        Vector3 edge1 = Vector3(v1.x - v0.x, v1.y - v0.y, v1.z - v0.z);
-        Vector3 edge2 = Vector3(v2.x - v0.x, v2.y - v0.y, v2.z - v0.z);
-
-        // 外積: rayDirection × edge2
-        Vector3 h = Vector3(
-            rayDirection.y * edge2.z - rayDirection.z * edge2.y,
-            rayDirection.z * edge2.x - rayDirection.x * edge2.z,
-            rayDirection.x * edge2.y - rayDirection.y * edge2.x
+        // 平行移動を除いた 3x3 部分のみを適用する（方向ベクトル用・非正規化のまま返す）
+        return Vector3(
+            direction.x * matrix.m[0][0] + direction.y * matrix.m[1][0] + direction.z * matrix.m[2][0],
+            direction.x * matrix.m[0][1] + direction.y * matrix.m[1][1] + direction.z * matrix.m[2][1],
+            direction.x * matrix.m[0][2] + direction.y * matrix.m[1][2] + direction.z * matrix.m[2][2]
         );
-
-        // 内積: edge1 · h
-        float a = edge1.x * h.x + edge1.y * h.y + edge1.z * h.z;
-
-        // レイが三角形の平面に平行な場合
-        if (a > -kEpsilon && a < kEpsilon) {
-            return false;
-        }
-
-        float f = 1.0f / a;
-        Vector3 s = Vector3(rayOrigin.x - v0.x, rayOrigin.y - v0.y, rayOrigin.z - v0.z);
-
-        // u座標を計算
-        float u = f * (s.x * h.x + s.y * h.y + s.z * h.z);
-        if (u < 0.0f || u > 1.0f) {
-            return false;
-        }
-
-        // 外積: s × edge1
-        Vector3 q = Vector3(
-            s.y * edge1.z - s.z * edge1.y,
-            s.z * edge1.x - s.x * edge1.z,
-            s.x * edge1.y - s.y * edge1.x
-        );
-
-        // v座標を計算
-        float v = f * (rayDirection.x * q.x + rayDirection.y * q.y + rayDirection.z * q.z);
-        if (v < 0.0f || u + v > 1.0f) {
-            return false;
-        }
-
-        // 交点までの距離を計算
-        float t = f * (edge2.x * q.x + edge2.y * q.y + edge2.z * q.z);
-
-        if (t > kEpsilon) {
-            distance = t;
-            return true;
-        }
-
-        return false;
     }
 
     bool ObjectSelector::RayIntersectsMesh(const Vector3& rayOrigin, const Vector3& rayDirection,
@@ -392,23 +314,21 @@ namespace CoreEngine
     {
         auto* modelObj = DebugAccess::AsModelObject(object);
 
+        // メッシュを持たない場合の代替半径（スケールの最大成分。最低 1.0）
+        auto fallbackRadius = [](const ModelGameObject* obj) {
+            if (!obj) return 1.0f;
+            const WorldTransform& t = obj->GetTransform();
+            return (std::max)({ t.scale.x, t.scale.y, t.scale.z, 1.0f });
+            };
+
         Model* model = modelObj ? modelObj->GetModel() : nullptr;
         if (!model || !model->IsInitialized()) {
-            if (modelObj) {
-                const WorldTransform& transform = modelObj->GetTransform();
-                float radius = (std::max)({ transform.scale.x, transform.scale.y, transform.scale.z });
-                radius = (std::max)(radius, 1.0f);
-                return RayIntersectsSphere(rayOrigin, rayDirection, object->GetWorldPosition(), radius, distance);
-            }
-            return RayIntersectsSphere(rayOrigin, rayDirection, object->GetWorldPosition(), 1.0f, distance);
+            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(modelObj), distance);
         }
 
         const ModelResource* modelResource = model->GetModelResource();
         if (!modelResource || !modelResource->IsLoaded()) {
-            const WorldTransform& transform = modelObj->GetTransform();
-            float radius = (std::max)({ transform.scale.x, transform.scale.y, transform.scale.z });
-            radius = (std::max)(radius, 1.0f);
-            return RayIntersectsSphere(rayOrigin, rayDirection, object->GetWorldPosition(), radius, distance);
+            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(modelObj), distance);
         }
 
         const ModelData& modelData = modelResource->GetModelData();
@@ -416,19 +336,40 @@ namespace CoreEngine
         const std::vector<int32_t>& indices = modelData.indices;
 
         if (vertices.empty() || indices.empty()) {
-            const WorldTransform& transform = modelObj->GetTransform();
-            float radius = (std::max)({ transform.scale.x, transform.scale.y, transform.scale.z });
-            radius = (std::max)(radius, 1.0f);
-            return RayIntersectsSphere(rayOrigin, rayDirection, object->GetWorldPosition(), radius, distance);
+            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(modelObj), distance);
         }
 
         const WorldTransform& transform = modelObj->GetTransform();
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 
-        float closestDistance = (std::numeric_limits<float>::max)();
+        // 頂点を毎回ワールド変換する代わりに、レイをローカル空間へ 1 回だけ変換する。
+        // ローカルの t はスケールで歪むため、距離比較はワールド空間へ戻してから行う。
+        Matrix4x4 invWorldMatrix = MathCore::Matrix::Inverse(worldMatrix);
+        const Vector3 localOrigin = TransformPoint(rayOrigin, invWorldMatrix);
+        const Vector3 localDirection = TransformDirection(rayDirection, invWorldMatrix);
+
+        const float localDirLengthSq =
+            localDirection.x * localDirection.x +
+            localDirection.y * localDirection.y +
+            localDirection.z * localDirection.z;
+        if (!(localDirLengthSq > 0.0f) || !std::isfinite(localDirLengthSq)) {
+            // 特異行列（スケール0等）は逆変換できないのでスフィア判定へフォールバック
+            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(modelObj), distance);
+        }
+
+        // ローカル空間のレイ（方向は非正規化のまま。t の大小関係は保たれる）
+        const Geometry::Ray localRay{ localOrigin, localDirection };
+
+        // ローカルAABBで事前棄却（大半のオブジェクトはここで終わる）
+        const BoundingBox& localAABB = modelResource->GetLocalBoundingBox();
+        if (localAABB.IsValid() && !Geometry::Raycast(localRay, localAABB)) {
+            return false;
+        }
+
+        float closestT = (std::numeric_limits<float>::max)();
         bool hit = false;
 
-        // 全ての三角形をチェック
+        // 全ての三角形をチェック（ローカル空間のまま判定するので頂点変換は不要）
         for (size_t i = 0; i + 2 < indices.size(); i += 3) {
             // インデックスから頂点を取得
             int32_t idx0 = indices[i];
@@ -442,40 +383,45 @@ namespace CoreEngine
                 continue;
             }
 
-            // ローカル空間の頂点座標を取得（Vector4からVector3に変換）
-            Vector3 v0Local = Vector3(
+            const Vector3 v0Local = Vector3(
                 vertices[idx0].position.x,
                 vertices[idx0].position.y,
                 vertices[idx0].position.z
             );
-            Vector3 v1Local = Vector3(
+            const Vector3 v1Local = Vector3(
                 vertices[idx1].position.x,
                 vertices[idx1].position.y,
                 vertices[idx1].position.z
             );
-            Vector3 v2Local = Vector3(
+            const Vector3 v2Local = Vector3(
                 vertices[idx2].position.x,
                 vertices[idx2].position.y,
                 vertices[idx2].position.z
             );
 
-            // ワールド空間に変換
-            Vector3 v0World = TransformPoint(v0Local, worldMatrix);
-            Vector3 v1World = TransformPoint(v1Local, worldMatrix);
-            Vector3 v2World = TransformPoint(v2Local, worldMatrix);
-
-            // レイと三角形の交差判定
-            float t;
-            if (RayIntersectsTriangle(rayOrigin, rayDirection, v0World, v1World, v2World, t)) {
-                if (t < closestDistance) {
-                    closestDistance = t;
-                    hit = true;
-                }
+            // レイと三角形の交差判定（方向は非正規化でも t の大小関係は保たれる）
+            Geometry::RayHit triangleHit{};
+            if (Geometry::RaycastTriangle(localRay, v0Local, v1Local, v2Local, &triangleHit,
+                                          0.0f, closestT)) {
+                closestT = triangleHit.distance;
+                hit = true;
             }
         }
 
         if (hit) {
-            distance = closestDistance;
+            // ローカル空間の交点をワールドへ戻し、オブジェクト間で比較可能な距離にする
+            const Vector3 localHit = Vector3(
+                localOrigin.x + localDirection.x * closestT,
+                localOrigin.y + localDirection.y * closestT,
+                localOrigin.z + localDirection.z * closestT
+            );
+            const Vector3 worldHit = TransformPoint(localHit, worldMatrix);
+            const Vector3 toHit = Vector3(
+                worldHit.x - rayOrigin.x,
+                worldHit.y - rayOrigin.y,
+                worldHit.z - rayOrigin.z
+            );
+            distance = std::sqrt(toHit.x * toHit.x + toHit.y * toHit.y + toHit.z * toHit.z);
             return true;
         }
 

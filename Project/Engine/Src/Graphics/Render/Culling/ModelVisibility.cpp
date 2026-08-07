@@ -6,7 +6,7 @@
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Common/EngineStats.h"
 #include "Camera/Camera.h"
-#include "Math/BoundingBox.h"
+#include "Math/Geometry/Shapes.h"
 
 #include <algorithm>
 #include <cassert>

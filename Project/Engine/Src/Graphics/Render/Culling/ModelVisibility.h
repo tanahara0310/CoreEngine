@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "Math/Matrix/Matrix4x4.h"
+#include "Math/Geometry/Shapes.h"   // BoundingBox（= Geometry::AABB）の実体
 
 /// @brief モデル1インスタンス分の可視性評価（LOD選択・Hi-Zオクルージョン判定）
 /// @details Model からレンダリング最適化の実装詳細（Hi-Zのスロット管理・
@@ -15,7 +16,6 @@ namespace CoreEngine
     class Camera;
     class ModelResource;
     class HiZOcclusionSystem;
-    struct BoundingBox;
     struct Frustum;
 
     class ModelVisibility {

@@ -5,13 +5,14 @@
 #include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Vector/Vector3.h"
-#include "Collider/Collider.h"
+#include "Collision/ColliderComponent.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include <functional>
 #include <d3d12.h>
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "GameObject/IObjectSpawner.h"
 
@@ -29,6 +30,11 @@ namespace CoreEngine
 {
     class GameObject {
     public:
+        /// @brief コンストラクタ
+        /// @note コライダー集合へ自分を所有者として登録する。GetColliders() から
+        ///       直接 Add しても owner が設定済みになる。
+        GameObject() { colliders_.SetOwner(this); }
+
         virtual ~GameObject() = default;
 
         // ===== ライフサイクル =====
@@ -132,39 +138,85 @@ namespace CoreEngine
         /// @param other 衝突相手のゲームオブジェクト
         virtual void OnCollisionExit(GameObject* other);
 
+        // ----- 接触情報つきの衝突イベント -----
+        /// @details 判定システムはこちらを呼ぶ。既定実装は上の `GameObject*` 版へ転送するので、
+        ///          相手だけ分かればよい場合は従来どおり `GameObject*` 版を override すればよい。
+        ///          法線・貫通深度・どのコライダーが当たったかが要る場合はこちらを override する。
+        /// @note 両方 override する場合は、こちらから明示的に基底実装
+        ///       （`GameObject::OnCollisionEnter(info)`）を呼ぶと `GameObject*` 版へも流れる。
+
+        virtual void OnCollisionEnter(const CollisionInfo& info);
+        virtual void OnCollisionStay(const CollisionInfo& info);
+        virtual void OnCollisionExit(const CollisionInfo& info);
+
+        // ===== 押し出し =====
+
+        /// @brief 衝突解決による移動を受け入れる
+        /// @param delta ワールド空間の移動量
+        /// @return 実際に動かせたら true。false を返すと解決側は「動かせない相手」として扱い、
+        ///         もう一方を全量押し出す。
+        /// @note 既定は false（位置を持たないオブジェクトは押せない）。
+        ///       トランスフォームを持つ派生クラスがオーバーライドする。
+        ///       親を持つオブジェクトの場合、delta はワールド量なので親の回転・スケールは
+        ///       考慮していない（Phase 4 時点の制限）。
+        virtual bool TryApplyCollisionPush(const Vector3& delta) { (void)delta; return false; }
+
         /// @brief ワールド空間での位置を返す
-        /// @return コライダーシステムが参照する位置。
-        ///         ModelGameObject は transform_ の位置を返す。基底クラスは {} を返す。
-        virtual Vector3 GetWorldPosition() const;
+        /// @return コライダーシステムが参照する位置
+        /// @note 純粋仮想。以前は基底が {}（原点）を返していたため、オーバーライドを
+        ///       忘れた派生クラスにコライダーを付けると全員が原点で重なるという
+        ///       無音のバグになっていた。位置を持たないオブジェクトは
+        ///       「{} を返す」と明示的に書くこと。
+        virtual Vector3 GetWorldPosition() const = 0;
 
-        // ===== コライダー簡易設定 API =====
+        /// @brief ワールド空間でのスケールを返す
+        /// @return 各軸のスケール。コライダーのサイズ／半径に乗る。
+        /// @note 既定は等倍。トランスフォームを持つ派生クラスはオーバーライドすること。
+        virtual Vector3 GetWorldScale() const { return { 1.0f, 1.0f, 1.0f }; }
 
-        /// @brief 球体コライダーを生成してアタッチする
-        /// @param radius 球の半径（ワールド空間単位）
+        // ===== コライダー =====
+
+        /// @brief コライダー集合を取得する（複数アタッチ・オフセット指定はこちら）
+        /// @details 本体判定と攻撃判定を別レイヤーで持つ、部位別の判定を置く、といった
+        ///          使い方はこの経由で行う。
+        ColliderComponent& GetColliders() { return colliders_; }
+        const ColliderComponent& GetColliders() const { return colliders_; }
+
+        // ===== コライダー簡易設定 API（1 本だけで足りる場合の入口） =====
+
+        /// @brief 球体コライダーを追加する
+        /// @param radius 球の半径（ローカル。判定時にオーナーのスケールが乗る）
         /// @param layer 衝突判定に使うレイヤー。デフォルトは CollisionLayer::Default。
-        /// @return アタッチされたコライダーへの参照（メソッドチェーン用）
+        /// @return 追加されたコライダーへの参照（以後の追加でも無効化されない）
+        /// @note **複数回呼ぶと本数が増える**（以前は毎回置き換えだった）。
+        ///       置き換えたい場合は RemoveCollider() してから呼ぶこと。
         Collider& AddSphereCollider(float radius, CollisionLayer layer = CollisionLayer::Default);
 
-        /// @brief AABB コライダーを生成してアタッチする
-        /// @param size 各軸のサイズ（幅・高さ・奥行き）
+        /// @brief AABB コライダーを追加する
+        /// @param size 各軸のサイズ（ローカル。判定時にオーナーのスケールが乗る）
         /// @param layer 衝突判定に使うレイヤー。デフォルトは CollisionLayer::Default。
-        /// @return アタッチされたコライダーへの参照（メソッドチェーン用）
+        /// @return 追加されたコライダーへの参照
         Collider& AddAABBCollider(const Vector3& size, CollisionLayer layer = CollisionLayer::Default);
 
-        /// @brief コライダーが設定されているか確認する
-        /// @return true: コライダーがアタッチ済み
+        /// @brief コライダーが 1 本以上あるか
         bool HasCollider() const;
 
-        /// @brief アタッチされたコライダーへのポインタを返す
-        /// @return コライダーへのポインタ。未設定の場合は nullptr。
+        /// @brief 先頭のコライダーを返す
+        /// @return コライダーへのポインタ。1 本も無ければ nullptr。
         Collider* GetCollider();
 
-        /// @brief アタッチされたコライダーへの const ポインタを返す
-        /// @return コライダーへの const ポインタ。未設定の場合は nullptr。
+        /// @brief 先頭のコライダーを返す（const版）
         const Collider* GetCollider() const;
 
-        /// @brief コライダーを取り外して破棄する
+        /// @brief すべてのコライダーを取り外す
+        /// @note 実体の破棄はフレーム末（GameObjectManager::CleanupDestroyed）まで遅延する。
+        ///       衝突コールバックの中から呼んでも、判定ループが保持している生ポインタが
+        ///       宙に浮かない。
         void RemoveCollider();
+
+        /// @brief 取り外し済みコライダーの実体を解放する
+        /// @note GameObjectManager がフレーム末（衝突判定の後）に呼ぶ。
+        void ReleaseRetiredColliders();
 
         // ===== 名前 / シリアライズ =====
 
@@ -288,7 +340,8 @@ namespace CoreEngine
 #endif
 
     protected:
-        std::unique_ptr<Collider> collider_;     ///< アタッチされたコライダー
+        ColliderComponent colliders_;   ///< アタッチされたコライダー群（0 本以上）
+
         std::string               name_;          ///< オブジェクト表示名（ユーザー編集可能）
         std::string               serializeKey_;  ///< シリアライズ用安定キー（初回 SetName で固定）
 

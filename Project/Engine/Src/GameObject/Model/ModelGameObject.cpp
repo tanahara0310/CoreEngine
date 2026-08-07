@@ -10,9 +10,11 @@
 #include "Camera/Camera.h"
 #include "Camera/View/ViewBuilder.h"
 #include "Utility/JsonManager/JsonManager.h"
+#include <cmath>
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Collision/Debug/ColliderInspector.h"
 #endif
 
 namespace CoreEngine
@@ -99,6 +101,23 @@ namespace CoreEngine
 
         model_->Draw(transform_, view, texture_.gpuHandle);
         OnDraw(view.GetCamera());
+    }
+
+    Vector3 ModelGameObject::GetWorldScale() const {
+        // 行ベクトル規約（p' = p * M）なので、各行が基底ベクトル。その長さがスケール。
+        // transform_.scale を直接返すと親の階層スケールを取りこぼす。
+        const auto& m = transform_.GetWorldMatrix().m;
+        auto axisLength = [&m](int row) {
+            return std::sqrt(m[row][0] * m[row][0] + m[row][1] * m[row][1] + m[row][2] * m[row][2]);
+            };
+        return { axisLength(0), axisLength(1), axisLength(2) };
+    }
+
+    bool ModelGameObject::TryApplyCollisionPush(const Vector3& delta) {
+        transform_.translate = transform_.translate + delta;
+        // 同一フレーム内の後続ペアが新しい位置で判定されるようワールド行列を更新する
+        transform_.TransferMatrix();
+        return true;
     }
 
     BoundingBox ModelGameObject::GetWorldBoundingBox() const {
@@ -202,12 +221,13 @@ namespace CoreEngine
     }
 
     int ModelGameObject::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
-        if (maxTabs < 4) return 0;
+        if (maxTabs < 5) return 0;
         outTabs[0] = { "scene.png",      "描画設定",     {0.34f,0.67f,0.88f,1.0f}, {0.34f,0.67f,0.88f,0.25f} };
         outTabs[1] = { "object_data.png", "トランスフォーム", {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
         outTabs[2] = { "material.png",    "マテリアル",   {0.90f,0.30f,0.40f,1.0f}, {0.90f,0.30f,0.40f,0.25f} };
         outTabs[3] = { "imagePlane.png",  "テクスチャ",   {0.60f,0.40f,0.80f,1.0f}, {0.60f,0.40f,0.80f,0.25f} };
-        return 4;
+        outTabs[4] = { "obj.png",         "コライダー",   {0.35f,0.85f,0.45f,1.0f}, {0.35f,0.85f,0.45f,0.25f} };
+        return 5;
     }
 
     bool ModelGameObject::DrawInspectorTabContent(int tabIndex) {
@@ -216,6 +236,7 @@ namespace CoreEngine
         case 1: return DrawTransformSection();
         case 2: return DrawMaterialImGui();
         case 3: return DrawTextureSection();
+        case 4: return ColliderInspector::Draw(*this);
         default: return false;
         }
     }

@@ -4,7 +4,7 @@
 #include "Graphics/Light/Light.h"
 #include "GameObject/GameObjectManager.h"
 #include "Audio/SoundManager.h"
-#include "Collider/CollisionConfig.h"
+#include "Collision/CollisionConfig.h"
 #include "Scene/Feature/ISceneFeature.h"
 #include <memory>
 #include <vector>
@@ -26,6 +26,7 @@ namespace CoreEngine {
     class LightingFeature;
     class EnvironmentFeature;
     class CollisionFeature;
+    class CollisionWorld;
     class SceneBGMFeature;
     enum class ParticleBackend;
 }
@@ -160,6 +161,12 @@ namespace CoreEngine
         /// @param b レイヤーB
         /// @param enable true:衝突判定有効 / false:衝突判定無効
         void SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable = true);
+
+        /// @brief 衝突ワールドを取得する（レイキャスト・オーバーラップの問い合わせ用）
+        /// @return Feature 未登録なら nullptr
+        /// @note 問い合わせは直近の判定フェーズ（PostObjectUpdate）時点の登録内容を見る。
+        ///       OnUpdate から呼ぶと 1 フレーム前の状態になる。
+        CollisionWorld* GetCollisionWorld();
 
         /// @brief シーン名を設定（JSON ファイルパスに使用）
         /// @note 派生クラスの Initialize()内、BaseScene::Initialize() の後に呼ぶ

@@ -6,6 +6,7 @@
 #include "Math/Matrix/Matrix4x4.h"
 #include "Quaternion/Quaternion.h"
 #include "EulerTransform.h"
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 
@@ -39,6 +40,40 @@ namespace CoreEngine
         }
 
         //================================================
+        // スカラー / ベクトル共通のユーティリティ
+        //================================================
+        /// @details 以前は CollisionUtils（当たり判定モジュール）に置かれており、
+        ///          幾何と無関係なコードが当たり判定ヘッダを include する原因になっていた。
+
+        /// @brief 値を [min, max] に収める
+        inline float Clamp(float value, float min, float max) {
+            return (std::max)(min, (std::min)(max, value));
+        }
+
+        /// @brief 各成分を [min, max] に収める
+        inline Vector3 Clamp(const Vector3& value, const Vector3& min, const Vector3& max) {
+            return {
+                Clamp(value.x, min.x, max.x),
+                Clamp(value.y, min.y, max.y),
+                Clamp(value.z, min.z, max.z)
+            };
+        }
+
+        /// @brief 線形補間
+        inline float Lerp(float start, float end, float t) {
+            return start + t * (end - start);
+        }
+
+        /// @brief 線形補間（成分ごと）
+        inline Vector3 Lerp(const Vector3& start, const Vector3& end, float t) {
+            return {
+                Lerp(start.x, end.x, t),
+                Lerp(start.y, end.y, t),
+                Lerp(start.z, end.z, t)
+            };
+        }
+
+        //================================================
         // ベクトル演算
         //================================================
         namespace Vector {
@@ -67,6 +102,14 @@ namespace CoreEngine
 
             // ベクトル投影
             Vector3 Project(const Vector3& v, const Vector3& n);
+
+            /// @brief 単位ベクトル同士の球面線形補間
+            /// @param start 開始方向（正規化済み）
+            /// @param end   終了方向（正規化済み）
+            /// @param t     補間係数
+            /// @return 単位ベクトル
+            /// @note 平行・反平行（回転面が決まらない縮退）でも単位長を保つ。
+            Vector3 Slerp(const Vector3& start, const Vector3& end, float t);
         }
 
         //================================================

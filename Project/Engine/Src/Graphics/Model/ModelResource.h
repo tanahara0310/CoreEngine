@@ -12,7 +12,7 @@
 #include "Graphics/Material/MaterialInstance.h"
 #include "Animation/Animation.h"
 #include "Skeleton/Skeleton.h"
-#include "Math/BoundingBox.h"
+#include "Math/Geometry/Shapes.h"
 #include <memory>
 #include <vector>
 

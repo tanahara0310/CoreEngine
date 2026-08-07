@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "GameObjectManager.h"
 #include "Graphics/Render/RenderManager.h"
-#include "Collider/CollisionManager.h"
+#include "Collision/CollisionWorld.h"
 #include <algorithm>
 
 #ifdef USE_IMGUI
@@ -77,6 +77,13 @@ namespace CoreEngine
         // 前フレームの削除キューをクリア（デストラクタ呼び出し）
         destroyQueue_.clear();
 
+        // 取り外し済みコライダーの実体を解放する。
+        // 衝突判定（PostObjectUpdate）より後のこのタイミングでしか解放してはいけない
+        // ——判定ループが colliders_ に生ポインタを保持しているため。
+        for (auto& obj : objects_) {
+            if (obj) obj->ReleaseRetiredColliders();
+        }
+
         objects_.erase(
             std::remove_if(objects_.begin(), objects_.end(),
                 [this](auto& obj) {
@@ -103,16 +110,17 @@ namespace CoreEngine
         nameCounters_.clear();
     }
 
-    void GameObjectManager::RegisterAllColliders(CollisionManager* collisionManager) {
-        if (!collisionManager) return;
+    void GameObjectManager::RegisterAllColliders(CollisionWorld* collisionWorld) {
+        if (!collisionWorld) return;
 
         for (auto& obj : objects_) {
-            if (obj && obj->IsActive() && !obj->IsMarkedForDestroy() && obj->HasCollider()) {
-                Collider* collider = obj->GetCollider();
-                if (collider && collider->IsEnabled()) {
-                    collisionManager->RegisterCollider(collider);
-                }
+            if (!obj || !obj->IsActive() || obj->IsMarkedForDestroy()) {
+                continue;
             }
+            // 1 オブジェクトが複数のコライダーを持てる（本体判定 + 攻撃判定など）
+            obj->GetColliders().ForEachEnabled([collisionWorld](Collider& collider) {
+                collisionWorld->RegisterCollider(&collider);
+                });
         }
     }
 

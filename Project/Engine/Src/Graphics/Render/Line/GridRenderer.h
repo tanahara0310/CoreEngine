@@ -35,6 +35,10 @@ public:
     /// @brief ブレンドモードを取得
     BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
 
+    /// @brief ワールド空間での位置を返す
+    /// @return 常に原点。グリッドは原点基準の無限平面なので位置を持たない（コライダー非対応）。
+    Vector3 GetWorldPosition() const override { return {}; }
+
 #ifdef USE_IMGUI
     /// @brief インスペクタータブ定義を返す
     int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "TileCollider.h"
+#include "Math/Geometry/Intersect.h"
 #include <algorithm>
 #include <cmath>
 
@@ -73,19 +74,18 @@ namespace CoreEngine
                     // X方向に重なっているか
                     if (charRight <= tileLeft  || charLeft  >= tileRight) { continue; }
 
-                    float overlapRight = charRight - tileLeft;  // 右へのめり込み量
-                    float overlapLeft  = tileRight - charLeft;  // 左へのめり込み量
+                    // 押し出し量の計算式は Geometry と共有する（2 箇所に散らさない）
+                    Geometry::AxisOverlap overlap{};
+                    if (!Geometry::OverlapOnAxis(charLeft, charRight, tileLeft, tileRight, overlap)) {
+                        continue;
+                    }
 
-                    if (overlapRight < overlapLeft) {
-                        // 右壁に当たった → 左へ押し出し
-                        result.resolvedPosition.x -= overlapRight;
-                        result.hitWallRight = true;
-                        result.velocity.x = 0.0f;
+                    result.resolvedPosition.x += overlap.depth * overlap.direction;
+                    result.velocity.x = 0.0f;
+                    if (overlap.direction < 0.0f) {
+                        result.hitWallRight = true;   // 左へ押し出された = 右壁に当たった
                     } else {
-                        // 左壁に当たった → 右へ押し出し
-                        result.resolvedPosition.x += overlapLeft;
                         result.hitWallLeft = true;
-                        result.velocity.x = 0.0f;
                     }
                 }
             }
@@ -119,19 +119,18 @@ namespace CoreEngine
                     // Y方向に重なっているか
                     if (charTop  <= tileBottom || charBottom >= tileTop)  { continue; }
 
-                    float overlapUp   = charTop    - tileBottom; // 下からのめり込み量
-                    float overlapDown = tileTop    - charBottom; // 上からのめり込み量
+                    // 押し出し量の計算式は Geometry と共有する（2 箇所に散らさない）
+                    Geometry::AxisOverlap overlap{};
+                    if (!Geometry::OverlapOnAxis(charBottom, charTop, tileBottom, tileTop, overlap)) {
+                        continue;
+                    }
 
-                    if (overlapDown < overlapUp) {
-                        // 上から踏んでいる → 上へ押し出し（接地）
-                        result.resolvedPosition.y += overlapDown;
-                        result.isOnGround = true;
-                        result.velocity.y = 0.0f;
+                    result.resolvedPosition.y += overlap.depth * overlap.direction;
+                    result.velocity.y = 0.0f;
+                    if (overlap.direction > 0.0f) {
+                        result.isOnGround = true;   // 上へ押し出された = 上から踏んでいる
                     } else {
-                        // 下から当たっている → 下へ押し出し（天井）
-                        result.resolvedPosition.y -= overlapUp;
                         result.hitCeiling = true;
-                        result.velocity.y = 0.0f;
                     }
                 }
             }

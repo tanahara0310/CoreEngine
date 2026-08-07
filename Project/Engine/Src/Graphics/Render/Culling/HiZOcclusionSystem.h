@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-#include "Math/BoundingBox.h"
+#include "Math/Geometry/Shapes.h"
 #include "Math/Matrix/Matrix4x4.h"
 
 namespace CoreEngine

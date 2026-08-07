@@ -13,7 +13,7 @@
 #include "Editor/ImGui/Gizmo.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "GameObject/Sprite/SpriteObject.h"
-#include "Utility/Collision/CollisionUtils.h"
+#include "Math/Geometry/RayCast.h"
 #include "Utility/Logger/Logger.h"
 #include <cctype>
 #include <filesystem>
@@ -576,10 +576,11 @@ namespace CoreEngine
                     1.0f);
                 const Vector3 forward = MathCore::Vector::Normalize(farPoint - nearPoint);
 
-                const CollisionUtils::Ray ray{ camera3D->GetPosition(), forward };
-                const CollisionUtils::Plane groundPlane{ { 0.0f, 1.0f, 0.0f }, 0.0f };
-                if (const auto hit = CollisionUtils::RayIntersectPlane(ray, groundPlane)) {
-                    spawnPosition = *hit;
+                const Geometry::Ray ray{ camera3D->GetPosition(), forward };
+                const Geometry::Plane groundPlane{ { 0.0f, 1.0f, 0.0f }, 0.0f };   // y = 0
+                Geometry::RayHit hit{};
+                if (Geometry::Raycast(ray, groundPlane, &hit)) {
+                    spawnPosition = hit.point;
                 } else {
                     spawnPosition = camera3D->GetPosition() + forward * 5.0f;
                     if (spawnPosition.y < 0.5f) {

@@ -53,6 +53,12 @@ public:
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "Sprite"; }
 
+    /// @brief ワールド空間での位置を取得（スクリーン座標を XY に載せた 3D 位置）
+    Vector3 GetWorldPosition() const override { return transform_.translate; }
+
+    /// @brief ワールド空間でのスケールを取得
+    Vector3 GetWorldScale() const override { return transform_.scale; }
+
     /// @brief このオブジェクトの描画パスタイプを取得
     /// @return 描画パスタイプ（Sprite）
     RenderPassType GetRenderPassType() const override { return RenderPassType::Sprite; }
