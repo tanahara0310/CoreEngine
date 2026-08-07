@@ -32,7 +32,8 @@
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObject/Model/ModelGameObject.h"
+#include "GameObject/Component/MeshRendererComponent.h"
+#include "GameObject/GameObjectManager.h"
 #include <imgui.h>
 
 namespace CoreEngine
@@ -49,7 +50,7 @@ namespace CoreEngine
     {
         engine_ = engine;
 
-        auto* dx = engine_->GetComponent<DirectXCommon>();
+        auto* dx = engine_->GetService<DirectXCommon>();
 
         // ImGuiマネージャークラスの初期化
         imGui_->Initialize(engine_->GetWinApp()->GetHwnd(), dx);
@@ -95,7 +96,7 @@ namespace CoreEngine
         threadProfilerUI_->RegisterPool("TextureLoader",
             []() { return TextureManager::GetInstance().GetThreadPool(); });
         threadProfilerUI_->RegisterPool("ModelLoader", [this]() -> ThreadPool* {
-            if (auto* mm = engine_->GetComponent<ModelManager>()) { return mm->GetThreadPool(); }
+            if (auto* mm = engine_->GetService<ModelManager>()) { return mm->GetThreadPool(); }
             return nullptr;
             });
         gameDebugUI_->RegisterEnginePanel("Thread Profiler", [this]() {
@@ -104,7 +105,7 @@ namespace CoreEngine
 
         // キーコンフィグUIの登録
         gameDebugUI_->RegisterEnginePanel("Key Config", [this]() {
-            if (auto* inputManager = engine_->GetComponent<InputManager>()) {
+            if (auto* inputManager = engine_->GetService<InputManager>()) {
                 keyConfigUI_.Draw(inputManager->GetQuery());
             }
             }, EnginePanelCategory::Tools, EnginePanelGroup::Editor);
@@ -113,7 +114,7 @@ namespace CoreEngine
         engineStatsWindow_ = std::make_unique<EngineStatsWindow>();
         engineStatsWindow_->SetEngineSystem(engine_);
         engineStatsWindow_->SetGpuProfiler(&gpuProfiler_);
-        if (auto* mm = engine_->GetComponent<ModelManager>()) {
+        if (auto* mm = engine_->GetService<ModelManager>()) {
             engineStatsWindow_->SetModelManager(mm);
         }
 
@@ -140,18 +141,18 @@ namespace CoreEngine
         // 配下に各ライトを子行として列挙し、選択したライトを Inspector に表示する（Unity 風）
         gameDebugUI_->RegisterEnvironmentEditor("Lighting", this,
             [this]() {
-                if (auto* lightManager = engine_->GetComponent<LightManager>()) {
+                if (auto* lightManager = engine_->GetService<LightManager>()) {
                     lightManager->DrawAllImGui();
                 }
             },
             [this]() -> bool {
-                if (auto* lightManager = engine_->GetComponent<LightManager>()) {
+                if (auto* lightManager = engine_->GetService<LightManager>()) {
                     return lightManager->DrawLightTreeImGui();
                 }
                 return false;
             },
             [this]() {
-                if (auto* lightManager = engine_->GetComponent<LightManager>()) {
+                if (auto* lightManager = engine_->GetService<LightManager>()) {
                     lightManager->ClearLightUISelection();
                 }
             });
@@ -196,15 +197,15 @@ namespace CoreEngine
 
             ImGui::BeginDisabled(objManager == nullptr);
             if (ImGui::Button("シーン全体に適用", ImVec2(-1.0f, 0.0f))) {
-                for (auto& obj : objManager->GetAllObjects()) {
-                    auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
-                    if (!modelObj) continue;
-                    auto* model = modelObj->GetModel();
-                    if (!model) continue;
-                    model->ForEachMaterial([](MaterialInstance* mat) {
-                        mat->SetIBLIntensity(sceneWideIBLIntensity);
+                // メッシュを持つものだけを回る（具象クラスへのダウンキャストは不要）
+                objManager->ForEachComponent<MeshRendererComponent>(
+                    [](MeshRendererComponent& renderer) {
+                        auto* model = renderer.GetModel();
+                        if (!model) return;
+                        model->ForEachMaterial([](MaterialInstance* mat) {
+                            mat->SetIBLIntensity(sceneWideIBLIntensity);
+                        });
                     });
-                }
             }
             ImGui::EndDisabled();
             if (objManager == nullptr) {
@@ -216,26 +217,25 @@ namespace CoreEngine
 
             if (objManager) {
                 int modelIndex = 0;
-                for (auto& obj : objManager->GetAllObjects()) {
-                    auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
-                    if (!modelObj) continue;
-                    auto* model = modelObj->GetModel();
-                    if (!model) continue;
-                    auto* mat = model->GetMaterial();
-                    if (!mat) continue;
+                objManager->ForEachComponent<MeshRendererComponent>(
+                    [&modelIndex](MeshRendererComponent& renderer, GameObject& owner) {
+                        auto* model = renderer.GetModel();
+                        if (!model) return;
+                        auto* mat = model->GetMaterial();
+                        if (!mat) return;
 
-                    ImGui::PushID(modelIndex++);
-                    const char* name = modelObj->GetObjectName();
-                    ImGui::SetNextItemWidth(170.0f);
-                    float intensity = mat->GetIBLIntensity();
-                    if (ImGui::SliderFloat(name, &intensity, 0.0f, 2.0f)) {
-                        // スロット0の値を代表値として全スロットへ反映する
-                        model->ForEachMaterial([intensity](MaterialInstance* m) {
-                            m->SetIBLIntensity(intensity);
-                        });
-                    }
-                    ImGui::PopID();
-                }
+                        ImGui::PushID(modelIndex++);
+                        const char* name = owner.GetObjectName();
+                        ImGui::SetNextItemWidth(170.0f);
+                        float intensity = mat->GetIBLIntensity();
+                        if (ImGui::SliderFloat(name, &intensity, 0.0f, 2.0f)) {
+                            // スロット0の値を代表値として全スロットへ反映する
+                            model->ForEachMaterial([intensity](MaterialInstance* m) {
+                                m->SetIBLIntensity(intensity);
+                            });
+                        }
+                        ImGui::PopID();
+                    });
             } else {
                 ImGui::TextDisabled("(シーンが存在しません)");
             }
@@ -243,22 +243,22 @@ namespace CoreEngine
 
         // Post Effects セクション（Engine Settings 内）
         gameDebugUI_->RegisterEnginePanel("Post Effects", [this]() {
-            if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
+            if (auto* postEffect = engine_->GetService<PostEffectManager>()) {
                 postEffect->DrawImGuiContent();
             }
             }, EnginePanelCategory::Settings, EnginePanelGroup::Rendering);
 
         // Rendering Techniques パネル（SSAO, TAA等のレンダリング技術）
         gameDebugUI_->RegisterEnginePanel("Rendering Techniques", [this]() {
-            if (auto* renderingTechniqueManager = engine_->GetComponent<RenderingTechniqueManager>()) {
+            if (auto* renderingTechniqueManager = engine_->GetService<RenderingTechniqueManager>()) {
                 renderingTechniqueManager->DrawImGui();
             }
             }, EnginePanelCategory::Settings, EnginePanelGroup::Rendering);
 
         // Render Pass デバッグパネル（各パスの中間バッファを可視化）
         {
-            auto* renderDx = engine_->GetComponent<DirectXCommon>();
-            auto* renderComp = engine_->GetComponent<Render>();
+            auto* renderDx = engine_->GetService<DirectXCommon>();
+            auto* renderComp = engine_->GetService<Render>();
             renderPassDebugPanel_.Initialize(renderDx);
             renderPassDebugPanel_.SetRenderDomainContext(engine_->GetRenderDomainContext());
             if (renderComp) {
@@ -270,7 +270,7 @@ namespace CoreEngine
         }
 
         // ゲーム映像だけを映す専用ウィンドウ（ImGui を経由しない自前の HWND＋スワップチェーン）
-        gameOutputWindow_.Initialize(dx, engine_->GetComponent<PostEffectManager>(),
+        gameOutputWindow_.Initialize(dx, engine_->GetService<PostEffectManager>(),
             engine_->GetWinApp() ? engine_->GetWinApp()->GetHwnd() : nullptr);
 
         // RenderGraph ノードエディタ（imnodes）。
@@ -358,7 +358,7 @@ namespace CoreEngine
         gameOutputWindow_.ApplyPendingRequests();
 
         // ImGuiの開始（PostEffectManagerとGameDebugUIを渡す）
-        if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
+        if (auto* postEffect = engine_->GetService<PostEffectManager>()) {
             imGui_->Begin(postEffect, gameDebugUI_.get());
         }
 
@@ -397,8 +397,8 @@ namespace CoreEngine
         EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, cmdList);
         if (imGui_) {
             // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
-            auto* dx = engine_->GetComponent<DirectXCommon>();
-            auto* postEffect = engine_->GetComponent<PostEffectManager>();
+            auto* dx = engine_->GetService<DirectXCommon>();
+            auto* postEffect = engine_->GetService<PostEffectManager>();
             imGui_->DrawGameViewport(dx, postEffect, gameDebugUI_.get());
             imGui_->Draw();
         }

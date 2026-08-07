@@ -95,7 +95,7 @@ namespace CoreEngine
         switch (phase) {
         case SceneUpdatePhase::PreObjectUpdate:
         {
-            auto* frameRate = ctx.engine ? ctx.engine->GetComponent<FrameRateController>() : nullptr;
+            auto* frameRate = ctx.engine ? ctx.engine->GetService<FrameRateController>() : nullptr;
             const float deltaTime = frameRate ? frameRate->GetDeltaTime() : (1.0f / 60.0f);
 
             // FFT の時刻は水面の表示状態と独立に進める。
@@ -273,7 +273,7 @@ namespace CoreEngine
         WaterFrameBinding binding{};
 
         // 水越しの背景色として使用するシーンカラー SRV
-        if (auto* render = ctx.engine->GetComponent<Render>()) {
+        if (auto* render = ctx.engine->GetService<Render>()) {
             if (auto* renderTargetManager = render->GetRenderTargetManager()) {
                 RenderTarget* sceneColorTarget =
                     renderTargetManager->GetRenderTarget(RenderTargetNames::SceneColorSnapshot);
@@ -287,7 +287,7 @@ namespace CoreEngine
         }
 
         // Depth Fade 用のシーン深度 SRV
-        if (auto* dxCommon = ctx.engine->GetComponent<DirectXCommon>()) {
+        if (auto* dxCommon = ctx.engine->GetService<DirectXCommon>()) {
             binding.resources.sceneDepthSRV = dxCommon->GetDepthStencilSRV();
         }
 
@@ -410,7 +410,7 @@ namespace CoreEngine
         }
 
         // ---- コースティクス（見た目パラメータ。debug 系フィールドは UI 側の担当を維持）----
-        if (auto* techniqueManager = ctx.engine ? ctx.engine->GetComponent<RenderingTechniqueManager>() : nullptr) {
+        if (auto* techniqueManager = ctx.engine ? ctx.engine->GetService<RenderingTechniqueManager>() : nullptr) {
             if (auto* caustics = techniqueManager->GetTechnique<WaterCausticsTechnique>(
                     RenderingTechniqueNames::WaterCaustics)) {
                 WaterCausticsTechnique::Params params = caustics->GetParams();

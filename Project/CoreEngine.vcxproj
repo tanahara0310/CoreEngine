@@ -402,6 +402,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Input\InputConfig.cpp" />
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Model\AnimatedModelObject.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\ComponentHost.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\AnimatorComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\MeshRendererComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\SkeletonSocketComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\TransformComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObjectManager.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Model\ModelGameObject.cpp" />
@@ -849,6 +854,14 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Math\Vector\Vector3.h" />
     <ClInclude Include="Engine\Src\Math\Vector\Vector4.h" />
     <ClInclude Include="Engine\Src\GameObject\Model\AnimatedModelObject.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\ComponentHost.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\AnimatorComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\EulerTransformComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\IComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\SkeletonSocketComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\ITransformSource.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\MeshRendererComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\TransformComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObject.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObjectManager.h" />
     <ClInclude Include="Engine\Src\GameObject\IObjectSpawner.h" />

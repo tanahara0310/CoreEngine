@@ -120,7 +120,7 @@ namespace CoreEngine
         // FPS 履歴更新
         if (engine_)
         {
-            if (auto* fc = engine_->GetComponent<FrameRateController>())
+            if (auto* fc = engine_->GetService<FrameRateController>())
             {
                 snapshotFps_ = fc->GetCurrentFPS();
                 snapshotDeltaTimeMs_ = fc->GetDeltaTime() * 1000.0f;
@@ -605,7 +605,7 @@ namespace CoreEngine
 #endif
             if (engine_)
             {
-                if (auto* dx = engine_->GetComponent<DirectXCommon>())
+                if (auto* dx = engine_->GetService<DirectXCommon>())
                 {
                     meta.widthPixels = static_cast<uint32_t>(dx->GetClientWidth());
                     meta.heightPixels = static_cast<uint32_t>(dx->GetClientHeight());
@@ -863,7 +863,7 @@ namespace CoreEngine
         // GPU メモリ：DXGI Adapter3 経由
         if (engine_)
         {
-            if (auto* dx = engine_->GetComponent<DirectXCommon>())
+            if (auto* dx = engine_->GetService<DirectXCommon>())
             {
                 if (auto* device = dx->GetDevice())
                 {

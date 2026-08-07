@@ -649,6 +649,21 @@
     <ClCompile Include="Engine\Src\GameObject\Model\AnimatedModelObject.cpp">
       <Filter>Engine\Src\GameObject\Model</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\ComponentHost.cpp">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\AnimatorComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\MeshRendererComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\SkeletonSocketComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\TransformComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp">
       <Filter>Engine\Src\GameObject</Filter>
     </ClCompile>
@@ -1893,6 +1908,30 @@
     <ClInclude Include="Engine\Src\GameObject\Model\AnimatedModelObject.h">
       <Filter>Engine\Src\GameObject\Model</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\ComponentHost.h">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\AnimatorComponent.h">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\EulerTransformComponent.h">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\IComponent.h">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\SkeletonSocketComponent.h">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\ITransformSource.h">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\MeshRendererComponent.h">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\TransformComponent.h">
+      <Filter>Engine\Src\GameObject\Component</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\GameObject.h">
       <Filter>Engine\Src\GameObject</Filter>
     </ClInclude>
@@ -2536,14 +2575,14 @@
     <Filter Include="Engine\Src\Camera\View">
       <UniqueIdentifier>{F5ABBF85-A32B-4EA0-9D89-C0AD772A11EC}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Collision\Debug">
-      <UniqueIdentifier>{A17F62D3-9B08-4C5E-8F31-2E7A64B0C915}</UniqueIdentifier>
+    <Filter Include="Engine\Src\Collision">
+      <UniqueIdentifier>{FE7CD193-3AA7-4398-A7A5-43C789EB47D3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Collision\BroadPhase">
       <UniqueIdentifier>{5D2A9C48-7E13-4B6F-A925-8C41D3E07B62}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Collision">
-      <UniqueIdentifier>{FE7CD193-3AA7-4398-A7A5-43C789EB47D3}</UniqueIdentifier>
+    <Filter Include="Engine\Src\Collision\Debug">
+      <UniqueIdentifier>{A17F62D3-9B08-4C5E-8F31-2E7A64B0C915}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor">
       <UniqueIdentifier>{4F213A62-6BC7-417B-B623-E04C7DF0A552}</UniqueIdentifier>
@@ -2586,6 +2625,9 @@
     </Filter>
     <Filter Include="Engine\Src\GameObject">
       <UniqueIdentifier>{163063F0-5EB7-423C-A5E1-CC768A795780}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component">
+      <UniqueIdentifier>{C41333E8-90C5-4D94-A22E-EC45318597CA}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\GameObject\Ground">
       <UniqueIdentifier>{1FBD7D93-99C2-4ECF-8071-0A44FA223198}</UniqueIdentifier>

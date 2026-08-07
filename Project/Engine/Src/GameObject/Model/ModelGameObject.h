@@ -1,6 +1,8 @@
 #pragma once
 
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/TransformComponent.h"
+#include "GameObject/Component/MeshRendererComponent.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/Model.h"
@@ -35,6 +37,25 @@ namespace CoreEngine {
     /// @endcode
     class ModelGameObject : public GameObject {
     public:
+        /// @brief コンストラクタ
+        /// @note トランスフォームとメッシュ描画は `TransformComponent` /
+        ///       `MeshRendererComponent` が実体を持つ。ここでアタッチし、
+        ///       `transform_` / `model_` / `texture_` / `textureName_` / `blendMode_` を
+        ///       その中の実体への**参照**として束縛する。これにより派生クラス・
+        ///       呼び出し側の `transform_.xxx` / `model_->xxx` / `GetTransform().xxx`
+        ///       という記述（合計 100 箇所超）が 1 行も変わらない。
+        ///
+        ///       **この 2 つのコンポーネントは取り外してはいけない**（参照が宙に浮く）。
+        ///       アタッチ順は Transform が先（MeshRenderer が Start で兄弟として引く）。
+        ModelGameObject()
+            : transformComponent_(AddComponent<TransformComponent>())
+            , meshRenderer_(AddComponent<MeshRendererComponent>())
+            , transform_(transformComponent_->Get())
+            , model_(meshRenderer_->ModelPtr())
+            , texture_(meshRenderer_->TextureRef())
+            , textureName_(meshRenderer_->TextureNameRef())
+            , blendMode_(meshRenderer_->BlendModeRef()) {}
+
         /// @brief 初期化処理（モデル・テクスチャ・トランスフォームのロードを自動実行）
         virtual void Initialize();
 
@@ -66,9 +87,11 @@ namespace CoreEngine {
         ///          コライダーのサイズ／半径に乗る。
         Vector3 GetWorldScale() const override;
 
-        /// @brief 衝突解決による移動を受け入れる（translate を動かしてワールド行列を更新）
-        /// @note 親を持つ場合、delta をローカル translate にそのまま足すため
-        ///       親の回転・スケールは考慮していない（Phase 4 時点の制限）。
+        /// @brief 衝突解決による移動を受け入れる
+        /// @note `TransformComponent::ApplyWorldDelta()` へ委譲する。
+        ///       **親を持つ場合もワールド量として正しく動く**（以前はワールド量を
+        ///       ローカル translate へ素で加算していたため、親の回転・スケールを
+        ///       無視していた ―― Phase 4 時点の制限。①で解消済み）。
         bool TryApplyCollisionPush(const Vector3& delta) override;
 
         /// @brief ワールド空間のAABBを取得（視錐台カリング用）
@@ -116,26 +139,41 @@ namespace CoreEngine {
         /// @param provider ICustomShaderProvider を実装したオブジェクト（所有権は移さない）
         void SetCustomShaderProvider(ICustomShaderProvider* provider) { customShaderProvider_ = provider; }
 
-        // === 共通描画リソース ===
+        // === コンポーネント（実体の所有者。コンストラクタでアタッチ済み・必ず非 nullptr） ===
 
-        /// @brief 3Dモデル
-        std::unique_ptr<Model> model_;
+        /// @brief トランスフォームを持つコンポーネント
+        TransformComponent* transformComponent_ = nullptr;
 
-        /// @brief ワールドトランスフォーム
-        WorldTransform transform_;
+        /// @brief メッシュ描画を持つコンポーネント
+        MeshRendererComponent* meshRenderer_ = nullptr;
+
+        // === 以下はすべて上のコンポーネントが持つ実体への「参照」 ===
+        // 参照なのは移行のため（既存の `transform_.xxx` / `model_->xxx` を書き換えずに
+        // 実体だけコンポーネント側へ移すため）。`ComponentHost` がコンポーネントを
+        // 個別ヒープへ確保しているのでオブジェクトの寿命の間ずっと有効。
+
+        /// @brief ワールドトランスフォーム（`transformComponent_` が持つ実体への参照）
+        WorldTransform& transform_;
+
+        /// @brief 3Dモデル（`meshRenderer_` が持つ実体への参照）
+        std::unique_ptr<Model>& model_;
 
         /// @brief テクスチャハンドル（空の場合はモデル組み込みテクスチャを使用）
-        TextureManager::LoadedTexture texture_;
+        TextureManager::LoadedTexture& texture_;
 
         /// @brief 現在適用中のテクスチャファイル名（表示・シリアライズ用）
-        std::string textureName_;
+        std::string& textureName_;
 
         /// @brief ブレンドモード（Render Properties タブで変更可能）
-        BlendMode blendMode_ = BlendMode::kBlendModeNone;
+        BlendMode& blendMode_;
 
     public:
         BlendMode GetBlendMode() const override { return blendMode_; }
         void SetBlendMode(BlendMode blendMode) override { blendMode_ = blendMode; }
+
+        /// @brief メッシュ描画コンポーネントを取得する
+        /// @note 新しいコードはこちらを使う（`GetModel()` は移行用の互換 API）。
+        MeshRendererComponent* GetMeshRenderer() const { return meshRenderer_; }
 
     protected:
 

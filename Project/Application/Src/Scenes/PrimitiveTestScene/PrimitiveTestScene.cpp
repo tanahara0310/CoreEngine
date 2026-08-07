@@ -126,7 +126,7 @@ void PrimitiveTestScene::OnInitialize()
 
 void PrimitiveTestScene::OnUpdate()
 {
-    auto keyboard = engine_->GetComponent<KeyboardInput>();
+    auto keyboard = engine_->GetService<KeyboardInput>();
     if (!keyboard) {
         return;
     }

@@ -23,7 +23,7 @@ namespace CoreEngine
         }
 
         auto* engine = GetEngineSystem();
-        auto* renderManager = engine->GetComponent<RenderManager>();
+        auto* renderManager = engine->GetService<RenderManager>();
         renderer_ = dynamic_cast<UIRenderer*>(renderManager->GetRenderer(RenderPassType::UI));
 
         textureHandle_ = TextureManager::GetInstance().Load(textureFilePath);

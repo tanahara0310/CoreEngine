@@ -197,12 +197,12 @@ namespace CoreEngine
     void EngineSystem::BeginFrame()
     {
         // フレームレート制御の開始
-        if (auto* frameRate = GetComponent<FrameRateController>()) {
+        if (auto* frameRate = GetService<FrameRateController>()) {
             frameRate->BeginFrame();
         }
 
         // RenderManagerの描画キューをクリア（前フレームのコマンドを削除）
-        if (auto* renderManager = GetComponent<RenderManager>()) {
+        if (auto* renderManager = GetService<RenderManager>()) {
             renderManager->ClearQueue();
         }
 
@@ -210,13 +210,13 @@ namespace CoreEngine
         //（Esc による終了は WinApp::WindowProc / GameOutputWindow::WindowProc が
         //  ウィンドウメッセージとして処理する。DirectInput は DISCL_FOREGROUND で
         //  本体ウィンドウに結び付いており、別ウィンドウにフォーカスがある間は拾えないため）
-        if (auto* inputManager = GetComponent<InputManager>()) {
+        if (auto* inputManager = GetService<InputManager>()) {
             inputManager->Update();
         }
 
         // ポストエフェクトの更新（フレームレートコントローラーからデルタタイムを取得）
-        if (auto* postEffect = GetComponent<PostEffectManager>()) {
-            if (auto* frameRate = GetComponent<FrameRateController>()) {
+        if (auto* postEffect = GetService<PostEffectManager>()) {
+            if (auto* frameRate = GetService<FrameRateController>()) {
                 postEffect->Update(frameRate->GetDeltaTime());
             }
         }
@@ -250,10 +250,10 @@ namespace CoreEngine
         auto* debug = GetSubsystem<DebugSubsystem>();
 #endif
 
-        auto* dx = GetComponent<DirectXCommon>();
-        auto* renderManager = GetComponent<RenderManager>();
-        auto* render = GetComponent<Render>();
-        auto* sceneManager = GetComponent<SceneManager>();
+        auto* dx = GetService<DirectXCommon>();
+        auto* renderManager = GetService<RenderManager>();
+        auto* render = GetService<Render>();
+        auto* sceneManager = GetService<SceneManager>();
 
         // コマンドリストを設定
         if (renderManager && dx) {
@@ -267,9 +267,9 @@ namespace CoreEngine
         context.renderManager = renderManager;
         context.rayTracingSubsystem = rayTracing;
         context.sceneManager = sceneManager;
-        context.postEffectManager = GetComponent<PostEffectManager>();
-        context.renderingTechniqueManager = GetComponent<RenderingTechniqueManager>();
-        context.lightManager = GetComponent<LightManager>();
+        context.postEffectManager = GetService<PostEffectManager>();
+        context.renderingTechniqueManager = GetService<RenderingTechniqueManager>();
+        context.lightManager = GetService<LightManager>();
         context.gBufferManager = renderDomainContext_ ? renderDomainContext_->GetGBufferManager() : nullptr;
         context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
         context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
@@ -281,7 +281,7 @@ namespace CoreEngine
         context.volumetricCloudManager = renderDomainContext_ ? renderDomainContext_->GetVolumetricCloudManager() : nullptr;
         context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
         context.frameBlackboard = &frameBlackboard;
-        context.modelManager = GetComponent<ModelManager>();
+        context.modelManager = GetService<ModelManager>();
         // 水面状態は WaterRenderFeature が RenderDomainContext へ publish する
         // （シーンに水面用の仮想関数を持たせない）
         context.waterSurfaceState = renderDomainContext_ ? renderDomainContext_->GetWaterSurfaceState() : nullptr;

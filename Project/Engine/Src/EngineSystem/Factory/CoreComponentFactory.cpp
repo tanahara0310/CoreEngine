@@ -37,8 +37,8 @@ namespace CoreEngine
 
     void CoreComponentFactory::SetupLight(EngineSystem& engine)
     {
-        auto* dxCommon = engine.GetComponent<DirectXCommon>();
-        auto* resourceFactory = engine.GetComponent<ResourceFactory>();
+        auto* dxCommon = engine.GetService<DirectXCommon>();
+        auto* resourceFactory = engine.GetService<ResourceFactory>();
         auto* descriptorManager = dxCommon->GetDescriptorManager();
 
         auto lightManager = std::make_unique<LightManager>();
@@ -50,7 +50,7 @@ namespace CoreEngine
         engine.RegisterComponent(std::move(lightManager));
 
         // Model / SkinnedModel の両レンダラーに LightManager を一括設定
-        if (auto* renderManager = engine.GetComponent<RenderManager>()) {
+        if (auto* renderManager = engine.GetService<RenderManager>()) {
             for (auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
                 if (auto* r = dynamic_cast<BaseModelRenderer*>(renderManager->GetRenderer(passType))) {
                     r->SetLightManager(lightManagerPtr);

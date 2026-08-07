@@ -10,8 +10,8 @@ namespace CoreEngine
     void PrimitiveGameObject::Initialize()
     {
         auto* engine   = GetEngineSystem();
-        auto* dxCommon = engine->GetComponent<DirectXCommon>();
-        auto* modelMgr = engine->GetComponent<ModelManager>();
+        auto* dxCommon = engine->GetService<DirectXCommon>();
+        auto* modelMgr = engine->GetService<ModelManager>();
 
         if (dxCommon) {
             transform_.Initialize(dxCommon->GetDevice());

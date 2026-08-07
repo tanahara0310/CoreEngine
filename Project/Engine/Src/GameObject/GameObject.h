@@ -6,6 +6,7 @@
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Vector/Vector3.h"
 #include "Collision/ColliderComponent.h"
+#include "GameObject/Component/ComponentHost.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include <functional>
 #include <d3d12.h>
@@ -28,12 +29,23 @@ namespace CoreEngine {
 
 namespace CoreEngine
 {
-    class GameObject {
+    /// @brief すべてのゲームオブジェクトの共通基底
+    /// @details `ComponentHost` を継承しているので `AddComponent<T>()` /
+    ///          `GetComponent<T>()` が使える。機能は継承で積むのではなく
+    ///          コンポーネントで載せるのが今後の方針。
+    ///
+    ///          **`EngineSystem::GetService<T>()` とは別物**。あちらはエンジン常駐
+    ///          サービス（DirectXCommon 等）のロケータで、こちらはこのオブジェクトに
+    ///          アタッチされた機能単位を引く。混同を避けるため 2026-08-07 に
+    ///          エンジン側を `GetComponent` → `GetService` へ改名した。
+    class GameObject : public ComponentHost {
     public:
         /// @brief コンストラクタ
-        /// @note コライダー集合へ自分を所有者として登録する。GetColliders() から
-        ///       直接 Add しても owner が設定済みになる。
-        GameObject() { colliders_.SetOwner(this); }
+        /// @note コンポーネント基盤へ自分を所有者として登録する。以降 `AddComponent<T>()`
+        ///       で載せたコンポーネントには `GetOwner()` からここへ辿れる。
+        GameObject() {
+            SetOwnerObject(this);
+        }
 
         virtual ~GameObject() = default;
 
@@ -175,12 +187,29 @@ namespace CoreEngine
         virtual Vector3 GetWorldScale() const { return { 1.0f, 1.0f, 1.0f }; }
 
         // ===== コライダー =====
+        // 実体は `ColliderComponent`（IComponent 派生）で、必要なオブジェクトにだけ載る。
+        // 以下は移行期の互換 API で、内部は AddComponent / GetComponent へ転送している。
 
-        /// @brief コライダー集合を取得する（複数アタッチ・オフセット指定はこちら）
+        /// @brief コライダー集合を取得する（**無ければ生成する**）
         /// @details 本体判定と攻撃判定を別レイヤーで持つ、部位別の判定を置く、といった
         ///          使い方はこの経由で行う。
-        ColliderComponent& GetColliders() { return colliders_; }
-        const ColliderComponent& GetColliders() const { return colliders_; }
+        /// @note **副作用あり**: 呼ぶだけで ColliderComponent がアタッチされる。
+        ///       「持っているか調べたいだけ」のときは `TryGetColliders()` を使うこと
+        ///       （毎フレーム走る収集ループやインスペクタの表示で呼ぶと、
+        ///       全オブジェクトに空のコライダー集合が生えてしまう）。
+        ColliderComponent& GetColliders() {
+            return *GetOrAddComponent<ColliderComponent>();
+        }
+
+        /// @brief コライダー集合を取得する（**無ければ nullptr。生成しない**）
+        ColliderComponent* TryGetColliders() {
+            return GetComponent<ColliderComponent>();
+        }
+
+        /// @brief コライダー集合を取得する（const 版。生成しない）
+        const ColliderComponent* TryGetColliders() const {
+            return GetComponent<ColliderComponent>();
+        }
 
         // ===== コライダー簡易設定 API（1 本だけで足りる場合の入口） =====
 
@@ -340,8 +369,6 @@ namespace CoreEngine
 #endif
 
     protected:
-        ColliderComponent colliders_;   ///< アタッチされたコライダー群（0 本以上）
-
         std::string               name_;          ///< オブジェクト表示名（ユーザー編集可能）
         std::string               serializeKey_;  ///< シリアライズ用安定キー（初回 SetName で固定）
 
@@ -373,4 +400,12 @@ namespace CoreEngine
 
         friend class GameObjectManager;  ///< spawner_ への書き込みを許可
     };
+
+    // ===== IComponent のインライン定義 =====
+    // GameObject が完全型になってから定義する必要があるものをここに置く。
+
+    template <typename T>
+    T* IComponent::Sibling() const {
+        return owner_ ? owner_->GetComponent<T>() : nullptr;
+    }
 }

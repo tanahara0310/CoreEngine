@@ -54,7 +54,7 @@ namespace CoreEngine
 
         auto* engine = GetEngineSystem();
         if (!engine) { return; }
-        auto* renderManager = engine->GetComponent<RenderManager>();
+        auto* renderManager = engine->GetService<RenderManager>();
         if (!renderManager) { return; }
 
         auto* pipeline = static_cast<LineRendererPipeline*>(

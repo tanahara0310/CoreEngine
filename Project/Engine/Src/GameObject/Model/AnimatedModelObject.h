@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Model/ModelGameObject.h"
+#include "GameObject/Component/AnimatorComponent.h"
 #include "Graphics/Model/Skeleton/Skeleton.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
@@ -23,8 +24,15 @@ namespace CoreEngine {
 
     /// @brief スケルトンアニメーション付き 3D モデルの中間基底クラス
     ///
-    /// ModelGameObject をさらに特化し、アニメーションのロード・更新を自動化する。
-    /// 派生クラスは GetModelPath() / GetAnimationName() をオーバーライドするだけでよい。
+    /// @details **実体は `AnimatorComponent` が持つ**。このクラスはアセットのロード手順
+    ///          （クリップ登録 → スケルトンモデル生成）をテンプレートメソッドで
+    ///          まとめているだけの薄いシムで、アニメーション操作 API はすべて
+    ///          コンポーネントへ転送している。
+    ///
+    ///          新しく書くコードは継承ではなく
+    ///          `AddComponent<AnimatorComponent>()` を使う。このクラスは
+    ///          既存の `WalkModelObject` / `FoxObject` / `BrainStemObject` を
+    ///          動かし続けるために残してある。
     ///
     /// 使用例:
     /// @code
@@ -38,6 +46,12 @@ namespace CoreEngine {
     /// @endcode
     class AnimatedModelObject : public ModelGameObject {
     public:
+        /// @brief コンストラクタ（アニメーションコンポーネントをアタッチする）
+        /// @note `ModelGameObject` が Transform → MeshRenderer をアタッチした後に走るので、
+        ///       `AnimatorComponent` は 3 番目。`Sibling<MeshRendererComponent>()` が引ける。
+        AnimatedModelObject()
+            : animator_(AddComponent<AnimatorComponent>()) {}
+
         /// @brief 初期化処理（アニメーションロード → スケルトンモデル生成）
         /// @note ModelGameObject::Initialize() の代わりに呼ばれる
         void Initialize() override;
@@ -45,57 +59,48 @@ namespace CoreEngine {
         /// @brief スキニングモデル用の描画パスタイプを返す
         RenderPassType GetRenderPassType() const override { return RenderPassType::SkinnedModel; }
 
-        // ========== ジョイント参照 ==========
-        // 骨のデバッグ表示・武器のソケットアタッチ・ジョイント追従パーティクルは
-        // すべてこの 3 つの API を土台にしている。
+        /// @brief アニメーションコンポーネントを取得する
+        /// @note ソケット追従（`SkeletonSocketComponent::Attach`）に渡すのはこれ。
+        AnimatorComponent* GetAnimator() const { return animator_; }
+
+        // ========== ジョイント参照（AnimatorComponent への転送） ==========
 
         /// @brief 再生中のスケルトンを取得する
-        /// @return スケルトンへのポインタ（アニメーションを持たない場合は nullptr）
-        /// @note 実体はアニメーションコントローラーが所有しており、毎フレーム更新される。
-        const Skeleton* GetSkeleton() const;
+        const Skeleton* GetSkeleton() const { return animator_->GetSkeleton(); }
 
         /// @brief ジョイントのワールド行列を取得する
         /// @param jointName ジョイント名（例: "mixamorig:RightHand"）
-        /// @return ワールド行列。スケルトンが無い／名前が見つからない場合は std::nullopt
-        /// @details ジョイントが持つのはモデルローカルな「スケルトン空間行列」なので、
-        ///          オブジェクトのワールド行列を掛けてワールド空間へ持ち上げる。
-        std::optional<Matrix4x4> GetJointWorldMatrix(const std::string& jointName) const;
+        std::optional<Matrix4x4> GetJointWorldMatrix(const std::string& jointName) const {
+            return animator_->GetJointWorldMatrix(jointName);
+        }
 
         /// @brief ジョイントのワールド座標を取得する
-        /// @param jointName ジョイント名
-        /// @return ワールド座標。見つからない場合は std::nullopt
-        std::optional<Vector3> GetJointWorldPosition(const std::string& jointName) const;
+        std::optional<Vector3> GetJointWorldPosition(const std::string& jointName) const {
+            return animator_->GetJointWorldPosition(jointName);
+        }
 
-        // ========== アニメーション切り替え ==========
+        // ========== アニメーション切り替え（AnimatorComponent への転送） ==========
 
         /// @brief アニメーションを即座に切り替える
-        /// @param clipName GetAnimationName() / GetAdditionalAnimationClips() で登録した識別名
-        /// @param loop ループ再生するか
-        /// @return 成功したら true
-        bool SwitchAnimation(const std::string& clipName, bool loop = true);
+        bool SwitchAnimation(const std::string& clipName, bool loop = true) {
+            return animator_->Switch(clipName, loop);
+        }
 
         /// @brief アニメーションをブレンドしながら切り替える
-        /// @param clipName 切り替え先の識別名
-        /// @param blendDuration ブレンド時間（秒）
-        /// @param loop ループ再生するか
-        /// @return 成功したら true
-        /// @details 内部では AnimationBlender が現在姿勢と切り替え先姿勢を
-        ///          ジョイント単位で補間する（平行移動・スケールは Lerp、回転は Slerp）。
-        bool SwitchAnimationWithBlend(const std::string& clipName, float blendDuration = 0.3f, bool loop = true);
+        bool SwitchAnimationWithBlend(const std::string& clipName, float blendDuration = 0.3f, bool loop = true) {
+            return animator_->SwitchWithBlend(clipName, blendDuration, loop);
+        }
 
         /// @brief 現在再生中のクリップ識別名を取得する
-        const std::string& GetCurrentClipName() const { return currentClipName_; }
+        const std::string& GetCurrentClipName() const { return animator_->GetCurrentClipName(); }
 
         /// @brief 登録済みクリップの識別名を列挙する
-        std::vector<std::string> GetAnimationClipNames() const;
+        std::vector<std::string> GetAnimationClipNames() const { return animator_->GetClipNames(); }
 
-        // ========== 骨のデバッグ表示 ==========
+        // ========== 骨のデバッグ表示（AnimatorComponent への転送） ==========
 
-        /// @brief 骨（スケルトン）のデバッグ表示を切り替える
-        void SetSkeletonDebugDrawEnabled(bool enabled) { skeletonDebugDrawEnabled_ = enabled; }
-
-        /// @brief 骨のデバッグ表示が有効か
-        bool IsSkeletonDebugDrawEnabled() const { return skeletonDebugDrawEnabled_; }
+        void SetSkeletonDebugDrawEnabled(bool enabled) { animator_->SetSkeletonDebugDrawEnabled(enabled); }
+        bool IsSkeletonDebugDrawEnabled() const { return animator_->IsSkeletonDebugDrawEnabled(); }
 
 #ifdef USE_IMGUI
         /// @brief インスペクタータブ定義を返す（基底のタブ＋「アニメーション」タブ）
@@ -122,30 +127,29 @@ namespace CoreEngine {
         ///       複数クリップを登録すると SwitchAnimationWithBlend() で切り替えられる。
         virtual std::vector<AnimationClipDesc> GetAdditionalAnimationClips() const { return {}; }
 
-        /// @brief Update() 内で TransferMatrix() の後に呼ばれる（アニメーション更新を含む）
+        /// @brief Update() 内で呼ばれる
+        /// @note アニメーションの前進は `AnimatorComponent::Update()` が行い、それは
+        ///       `GameObject::Update()` より前に走る。したがってここに来た時点で
+        ///       スケルトンは今フレームの姿勢になっている。
         void OnUpdate() override;
 
         /// @brief アニメーション更新後に呼ばれる（派生クラスのジョイント追従処理用）
         /// @note この時点でスケルトンは最新の姿勢に更新されているため、
         ///       GetJointWorldMatrix() が今フレームの正しい値を返す。
+        ///
+        ///       **他オブジェクトのジョイントへ追従させたい場合は
+        ///       `SkeletonSocketComponent` を使うこと**。あちらは `LateUpdate()` で動くので
+        ///       追従元の生成順に依存しない。
         virtual void OnAnimationUpdated() {}
 
     private:
-        /// @brief スケルトンの親子関係を線で描画する
-        void DrawSkeletonDebugLines() const;
+        /// アニメーションの実体を持つコンポーネント（コンストラクタでアタッチ済み・非 nullptr）
+        AnimatorComponent* animator_ = nullptr;
 
 #ifdef USE_IMGUI
         /// @brief 「アニメーション」タブの中身を描画する
         bool DrawAnimationSection();
-#endif
 
-        /// 骨のデバッグ表示フラグ
-        bool skeletonDebugDrawEnabled_ = false;
-
-        /// 現在再生中のクリップ識別名
-        std::string currentClipName_;
-
-#ifdef USE_IMGUI
         /// インスペクターのブレンド時間スライダーの値 [秒]
         float imguiBlendDuration_ = 0.3f;
 #endif

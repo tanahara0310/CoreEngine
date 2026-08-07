@@ -6,6 +6,8 @@
 #include "Camera/CameraManager.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
+#include "GameObject/Component/MeshRendererComponent.h"
+#include "GameObject/Component/TransformComponent.h"
 #include "Editor/ImGui/GameObjectDebugAccess.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Editor/ImGui/ObjectSelector.h"
@@ -196,7 +198,7 @@ namespace CoreEngine
     void SceneDebugEditor::Update()
     {
         // デバッグ / リリースカメラの切り替え
-        if (auto* inputManager = engine_->GetComponent<InputManager>()) {
+        if (auto* inputManager = engine_->GetService<InputManager>()) {
             auto& input = inputManager->GetQuery();
             // 「どちらの視点で覗くか」はフラグ 1 つ。以前は アクティブカメラ名 と
             // Gameビュー上書き名 の 2 状態を両方更新する必要があり、片方だけ変える UI が
@@ -461,10 +463,9 @@ namespace CoreEngine
             return false;
         }
 
-        // ModelGameObject 派生かどうか確認する（DynamicModel 以外の既存モデルも対象）
-        auto* modelObj = dynamic_cast<ModelGameObject*>(selected);
-        if (!modelObj) {
-            Logger::GetInstance().Log("選択オブジェクトはModelGameObjectではないためコピーできません", LogLevel::Warn, LogCategory::System);
+        // メッシュを持つオブジェクトかどうか確認する（具象クラスではなくコンポーネントで判定）
+        if (!selected->HasComponent<MeshRendererComponent>()) {
+            Logger::GetInstance().Log("選択オブジェクトはメッシュを持たないためコピーできません", LogLevel::Warn, LogCategory::System);
             return false;
         }
 

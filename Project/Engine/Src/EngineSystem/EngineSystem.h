@@ -15,10 +15,10 @@
 class WinApp;
 
 // ──────────────────────────────────────────────────────────
-// コンポーネントアクセス利便インクルード
-// GetComponent<T>()呼び出し元のこトを考慮し、
-// 主要コンポーネント型の完全型を提供するためのインクルードです。
-// 废止: 各呼び出し元ファイルで必要な型を直接インクルードすることを推奨。
+// サービスアクセス利便インクルード
+// GetService<T>() の呼び出し元が完全型を必要とするため、
+// 主要サービス型のヘッダをここでまとめて提供している。
+// 非推奨: 各呼び出し元ファイルで必要な型を直接インクルードすることを推奨。
 // ──────────────────────────────────────────────────────────
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Render/RenderManager.h"
@@ -83,32 +83,37 @@ public:
     // コンポーネントアクセッサ
     // ──────────────────────────────────────────────────────────
 
-    /// @brief コンポーネントを取得（型安全）
-    /// @tparam T コンポーネントの型
-    /// 
-    /// 代表的なコンポーネント例:
-    /// 
+    /// @brief エンジンサービスを取得（型安全）
+    /// @tparam T サービスの型
+    ///
+    /// 代表的なサービス例:
+    ///
     /// - DirectXCommon: DirectX12の基本機能
-    /// 
+    ///
     /// - TextureManager: テクスチャ管理
-    /// 
+    ///
     /// - ModelManager: 3Dモデル管理
-    /// 
+    ///
     /// - InputManager: 入力管理（InputQuery経由でアクセス）
     ///
     /// - Audio / Light / FrameRate など
-    /// 
-    /// @return コンポーネントへのポインタ（登録されていない場合nullptr）
+    ///
+    /// @return サービスへのポインタ（登録されていない場合nullptr）
+    /// @note **`GameObject::GetComponent<T>()` とは別物**。こちらはエンジン全体で
+    ///       1 個ずつ存在する常駐サービスのロケータで、ゲームオブジェクトに
+    ///       アタッチするコンポーネントとは無関係。混同を避けるため
+    ///       `GetComponent` から `GetService` へ改名した（2026-08-07）。
+    ///       サブシステム（`IEngineSubsystem` 派生）の取得は `GetSubsystem<T>()`。
     template<typename T>
-    T* GetComponent() {
+    T* GetService() {
         return componentManager_.Get<T>();
     }
 
-    /// @brief コンポーネントが登録されているか確認
-    /// @tparam T コンポーネントの型（GetComponentと同じ型を指定可能）
+    /// @brief エンジンサービスが登録されているか確認
+    /// @tparam T サービスの型（GetServiceと同じ型を指定可能）
     /// @return 登録されている場合true
     template<typename T>
-    bool HasComponent() const {
+    bool HasService() const {
         return componentManager_.Has<T>();
     }
 

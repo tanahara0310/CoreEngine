@@ -28,7 +28,7 @@ namespace CoreEngine
     {
         SetSceneName("AssignmentScene");
 
-        auto modelManager = engine_->GetComponent<ModelManager>();
+        auto modelManager = engine_->GetService<ModelManager>();
         if (!modelManager) {
             return; // 必須コンポーネントがない場合は何も生成しない
         }
@@ -63,9 +63,10 @@ namespace CoreEngine
         character_->SetSkeletonDebugDrawEnabled(true);
 
         // ===== 武器を右手に持たせる（ジョイントソケットアタッチ） =====
-        // キャラクターより後に生成することで、Update 順が
-        //   キャラクター（スケルトン更新） → 武器（ジョイント追従）
-        // になり、追従が 1 フレーム遅れない。
+        // 追従は SkeletonSocketComponent が LateUpdate で行う。GameObjectManager は
+        // 全オブジェクトの Update が終わってから LateUpdate をまとめて回すので、
+        // **生成順は問わない**（以前は「キャラクターより後に生成すること」という
+        // 制約があり、守らないと 1 フレーム前の姿勢を参照していた）。
         weapon_ = CreateObject<WeaponObject>();
         weapon_->AttachToJoint(character_, kRightHandJointName);
         // 刃は自分のローカル Y 軸方向に伸びる。手ジョイントの +Y は指先側を向いているので、
@@ -160,9 +161,9 @@ namespace CoreEngine
     void AssignmentScene::OnUpdate()
     {
         // KeyboardInput は InputManager が内部で所有しており、エンジンコンポーネントとしては
-        // 登録されていない。GetComponent<KeyboardInput>() は必ず nullptr を返すので、
+        // 登録されていない。GetService<KeyboardInput>() は必ず nullptr を返すので、
         // 入力は InputManager のクエリ経由で取ること。
-        auto inputManager = engine_->GetComponent<InputManager>();
+        auto inputManager = engine_->GetService<InputManager>();
         if (!inputManager) {
             return;
         }

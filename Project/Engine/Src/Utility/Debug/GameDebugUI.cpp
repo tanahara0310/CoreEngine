@@ -349,7 +349,7 @@ namespace CoreEngine
         if (dockingUI_) {
             float fps = 0.0f;
             float deltaTimeMs = 0.0f;
-            if (auto* frameRate = engine_->GetComponent<FrameRateController>()) {
+            if (auto* frameRate = engine_->GetService<FrameRateController>()) {
                 fps = frameRate->GetCurrentFPS();
                 deltaTimeMs = frameRate->GetDeltaTime() * 1000.0f;
             }

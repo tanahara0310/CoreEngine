@@ -208,7 +208,7 @@ void ParticleSystem::Draw(const Camera* camera)
     if (shapeModule_ && shapeModule_->IsDebugDrawEnabled()) {
         auto engineSystem = GetEngineSystem();
         if (engineSystem) {
-            auto renderManager = engineSystem->GetComponent<RenderManager>();
+            auto renderManager = engineSystem->GetService<RenderManager>();
             if (renderManager) {
                 auto pipeline = static_cast<LineRendererPipeline*>(
                     renderManager->GetRenderer(RenderPassType::Line));

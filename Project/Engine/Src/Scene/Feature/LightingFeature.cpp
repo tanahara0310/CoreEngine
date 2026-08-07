@@ -9,7 +9,7 @@ namespace CoreEngine
     void LightingFeature::Initialize(SceneContext& ctx)
     {
         // デフォルトのディレクショナルライトを設定
-        lightManager_ = ctx.engine->GetComponent<LightManager>();
+        lightManager_ = ctx.engine->GetService<LightManager>();
         if (lightManager_) {
             directionalLightHandle_ = lightManager_->CreateLight(LightType::Directional, "Sun");
             if (Light* light = lightManager_->GetLight(directionalLightHandle_)) {
@@ -41,7 +41,7 @@ namespace CoreEngine
             return;
         }
 
-        auto lightManager = ctx.engine->GetComponent<LightManager>();
+        auto lightManager = ctx.engine->GetService<LightManager>();
         if (lightManager) {
             lightManager->UpdateAll();
         }

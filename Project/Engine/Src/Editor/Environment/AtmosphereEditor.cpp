@@ -540,7 +540,7 @@ namespace CoreEngine {
         if (!engine_) {
             return nullptr;
         }
-        return engine_->GetComponent<LightManager>();
+        return engine_->GetService<LightManager>();
     }
 
     ToneMapping* AtmosphereEditor::GetToneMapping() const
@@ -548,7 +548,7 @@ namespace CoreEngine {
         if (!engine_) {
             return nullptr;
         }
-        auto* postEffect = engine_->GetComponent<PostEffectManager>();
+        auto* postEffect = engine_->GetService<PostEffectManager>();
         if (!postEffect) {
             return nullptr;
         }

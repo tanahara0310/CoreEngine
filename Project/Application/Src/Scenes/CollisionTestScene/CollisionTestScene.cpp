@@ -237,7 +237,7 @@ namespace CollisionTest
 
         // リスタート要求（パネルのボタン / Tab キー）
         bool restart = Report::Get().ConsumeRestartRequest();
-        if (auto* keyboard = engine_->GetComponent<KeyboardInput>()) {
+        if (auto* keyboard = engine_->GetService<KeyboardInput>()) {
             if (keyboard->IsKeyTriggered(DIK_TAB)) { restart = true; }
         }
         if (restart && sceneManager_) {

@@ -7,7 +7,9 @@ namespace CoreEngine
 {
     Collider& ColliderComponent::Add(const CollisionShape& shape, CollisionLayer layer)
     {
-        colliders_.push_back(std::make_unique<Collider>(owner_, shape, layer));
+        // オーナーは IComponent が AddComponent 時に注入済み（Awake より前）。
+        // Collider は owner の GetWorldPosition()/GetWorldScale() を位置ソースにする。
+        colliders_.push_back(std::make_unique<Collider>(GetOwner(), shape, layer));
         return *colliders_.back();
     }
 

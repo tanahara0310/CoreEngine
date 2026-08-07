@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/EulerTransformComponent.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -21,8 +22,14 @@ namespace CoreEngine
 class SpriteObject : public GameObject {
 public:
     /// @brief コンストラクタ
-    SpriteObject() = default;
-    
+    /// @note トランスフォームの実体は `EulerTransformComponent` が持つ。ここでアタッチし、
+    ///       `transform_` をその中の `EulerTransform` への参照として束縛するので、
+    ///       既存の `transform_.xxx` / `GetSpriteTransform().xxx` は 1 行も変わらない。
+    ///       コンポーネント化の効果は「ギズモ・インスペクタが具象型を知らずに引ける」こと。
+    SpriteObject()
+        : transformComponent_(AddComponent<EulerTransformComponent>())
+        , transform_(transformComponent_->Get()) {}
+
     /// @brief デストラクタ
     ~SpriteObject() override = default;
     
@@ -166,9 +173,12 @@ private:
     void ChangeAnchorKeepingPosition(const Vector2& newAnchor);
     
 private:
-    /// @brief トランスフォーム
-    EulerTransform transform_;
-    
+    /// @brief トランスフォームの実体を持つコンポーネント（コンストラクタでアタッチ済み）
+    EulerTransformComponent* transformComponent_ = nullptr;
+
+    /// @brief トランスフォーム（`transformComponent_` が持つ実体への参照）
+    EulerTransform& transform_;
+
     /// @brief スプライトレンダラー
     SpriteRenderer* spriteRenderer_ = nullptr;
     

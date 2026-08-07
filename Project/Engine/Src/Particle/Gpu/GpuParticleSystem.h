@@ -10,6 +10,7 @@
 
 // GameObject基底クラス
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/EulerTransformComponent.h"
 
 // テクスチャ
 #include "Graphics/Texture/TextureManager.h"
@@ -181,7 +182,12 @@ public:
     static constexpr uint64_t kInitCountersOffset = 16; // {kMaxParticles, 0, 0, 0}
     static constexpr uint64_t kInitFreeListOffset = 32; // {0, 1, ..., kMaxParticles-1}
 
-    GpuParticleSystem() = default;
+    /// @brief コンストラクタ
+    /// @note エミッタ位置の実体は `EulerTransformComponent` が持つ。
+    ///       `emitterPosition_` はその translate への参照なので既存コードは変わらない。
+    GpuParticleSystem()
+        : emitterTransformComponent_(AddComponent<EulerTransformComponent>())
+        , emitterPosition_(emitterTransformComponent_->Translate()) {}
     ~GpuParticleSystem() override = default;
 
     /// @brief 初期化（GPUバッファ・UAV/SRV・モジュールの生成）
@@ -383,7 +389,14 @@ private:
     // エミッター設定・再生状態
     // ──────────────────────────────────────────────────────────
 
-    Vector3 emitterPosition_ = { 0.0f, 0.0f, 0.0f };
+    /// トランスフォームの実体を持つコンポーネント（コンストラクタでアタッチ済み）
+    /// @note GPU 版はエミッタ位置しか使わないが、コンポーネント化することで
+    ///       ギズモ・インスペクタが具象型を知らずにエミッタを動かせるようになる。
+    EulerTransformComponent* emitterTransformComponent_ = nullptr;
+
+    /// エミッタ位置（`emitterTransformComponent_` が持つ translate への参照）
+    Vector3& emitterPosition_;
+
     BillboardType billboardType_ = BillboardType::ViewFacing;
     BlendMode blendMode_ = BlendMode::kBlendModeAdd;
 

@@ -44,7 +44,7 @@ void GridRenderer::Draw(const Camera* camera)
     auto engineSystem = GetEngineSystem();
     if (!engineSystem) return;
 
-    auto renderManager = engineSystem->GetComponent<RenderManager>();
+    auto renderManager = engineSystem->GetService<RenderManager>();
     if (!renderManager) return;
 
     auto pipeline = static_cast<LineRendererPipeline*>(

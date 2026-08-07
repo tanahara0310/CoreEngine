@@ -30,7 +30,7 @@ namespace CoreEngine
         }
 
         // SpriteRendererを取得
-        auto* renderManager = engine->GetComponent<RenderManager>();
+        auto* renderManager = engine->GetService<RenderManager>();
         spriteRenderer_ = dynamic_cast<SpriteRenderer*>(renderManager->GetRenderer(RenderPassType::Sprite));
 
         // テクスチャの読み込み
@@ -148,7 +148,7 @@ namespace CoreEngine
         // アニメーターの更新
         if (animator_ && animator_->IsPlaying()) {
             float deltaTime = 0.0f;
-            if (auto* fr = GetEngineSystem()->GetComponent<FrameRateController>()) {
+            if (auto* fr = GetEngineSystem()->GetService<FrameRateController>()) {
                 deltaTime = fr->GetDeltaTime();
             }
             animator_->Update(deltaTime, this);

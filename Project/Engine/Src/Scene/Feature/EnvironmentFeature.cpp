@@ -166,7 +166,7 @@ namespace CoreEngine
 
     void EnvironmentFeature::RestoreAtmosphereLightsFromCVars(SceneContext& ctx)
     {
-        auto* lightManager = ctx.engine ? ctx.engine->GetComponent<LightManager>() : nullptr;
+        auto* lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
         if (!lightManager) {
             return;
         }
@@ -208,7 +208,7 @@ namespace CoreEngine
 
     void EnvironmentFeature::MirrorAtmosphereLightsToCVars(SceneContext& ctx)
     {
-        auto* lightManager = ctx.engine ? ctx.engine->GetComponent<LightManager>() : nullptr;
+        auto* lightManager = ctx.engine ? ctx.engine->GetService<LightManager>() : nullptr;
         if (!lightManager) {
             return;
         }
@@ -256,12 +256,12 @@ namespace CoreEngine
             projMatrix = camera->GetProjectionMatrix();
         }
         atmosphereManager->Update(cameraPosition, viewMatrix, projMatrix,
-                                  ctx.engine->GetComponent<LightManager>());
+                                  ctx.engine->GetService<LightManager>());
 
         // 照明駆動露出: 大気が解析した「シーン照明の代表輝度」を ToneMapping へ毎フレーム供給する。
         // カメラの向き（画面の構図）に露出が影響されなくなる（供給が無いシーンは画面平均測光へ
         // 自動フォールバックするため、大気非対応シーンではこの呼び出し自体が無くてよい）
-        if (auto* postEffect = ctx.engine->GetComponent<PostEffectManager>()) {
+        if (auto* postEffect = ctx.engine->GetService<PostEffectManager>()) {
             if (auto* toneMapping = postEffect->GetEffect<ToneMapping>(PostEffectNames::ToneMapping)) {
                 toneMapping->SetSceneIlluminationLuminance(
                     atmosphereManager->GetSceneIlluminationLuminance());
@@ -271,7 +271,7 @@ namespace CoreEngine
         // 大気散乱の直後に雲を更新する（大気モード時のみ、という既存ガードの内側なので追加ガード不要）。
         // 雲は太陽情報・カメラ高度を AtmosphereManager から取得するため、大気 Update の後に呼ぶ。
         if (auto* cloudManager = domainContext->GetVolumetricCloudManager()) {
-            auto* frameRate = ctx.engine->GetComponent<FrameRateController>();
+            auto* frameRate = ctx.engine->GetService<FrameRateController>();
             const float deltaTime = frameRate ? frameRate->GetDeltaTime() : 0.016f;
             cloudManager->Update(cameraPosition, viewMatrix, projMatrix,
                                  atmosphereManager, deltaTime);

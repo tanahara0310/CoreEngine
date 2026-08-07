@@ -3,6 +3,8 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/Sprite/SpriteObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "GameObject/Component/MeshRendererComponent.h"
+#include "GameObject/Component/TransformComponent.h"
 #include "Editor/ImGui/GameObjectDebugAccess.h"
 #include "Camera/Camera.h"
 #include "WinApp/WinApp.h"
@@ -69,11 +71,12 @@ namespace CoreEngine
     void ObjectSelector::DrawGizmo(const Camera* camera)
     {
         if (selectedObject_ && camera) {
-            auto* modelObj = DebugAccess::AsModelObject(selectedObject_);
-            if (!Gizmo::IsUsing() && modelObj) {
-                beforeGizmoTranslate_ = modelObj->GetTransform().translate;
-                beforeGizmoRotate_ = modelObj->GetTransform().rotate;
-                beforeGizmoScale_ = modelObj->GetTransform().scale;
+            auto* transformComponent = selectedObject_->GetComponent<TransformComponent>();
+            if (!Gizmo::IsUsing() && transformComponent) {
+                const WorldTransform& transform = transformComponent->Get();
+                beforeGizmoTranslate_ = transform.translate;
+                beforeGizmoRotate_ = transform.rotate;
+                beforeGizmoScale_ = transform.scale;
                 beforeGizmoActive_ = selectedObject_->IsActive();
             }
 
@@ -312,23 +315,25 @@ namespace CoreEngine
     bool ObjectSelector::RayIntersectsMesh(const Vector3& rayOrigin, const Vector3& rayDirection,
         GameObject* object, float& distance)
     {
-        auto* modelObj = DebugAccess::AsModelObject(object);
+        // 具象クラスへのダウンキャストではなくコンポーネントで引く。
+        auto* renderer = object->GetComponent<MeshRendererComponent>();
+        auto* transformComponent = object->GetComponent<TransformComponent>();
 
         // メッシュを持たない場合の代替半径（スケールの最大成分。最低 1.0）
-        auto fallbackRadius = [](const ModelGameObject* obj) {
-            if (!obj) return 1.0f;
-            const WorldTransform& t = obj->GetTransform();
+        auto fallbackRadius = [](const TransformComponent* tc) {
+            if (!tc) return 1.0f;
+            const WorldTransform& t = tc->Get();
             return (std::max)({ t.scale.x, t.scale.y, t.scale.z, 1.0f });
             };
 
-        Model* model = modelObj ? modelObj->GetModel() : nullptr;
-        if (!model || !model->IsInitialized()) {
-            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(modelObj), distance);
+        Model* model = renderer ? renderer->GetModel() : nullptr;
+        if (!model || !model->IsInitialized() || !transformComponent) {
+            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(transformComponent), distance);
         }
 
         const ModelResource* modelResource = model->GetModelResource();
         if (!modelResource || !modelResource->IsLoaded()) {
-            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(modelObj), distance);
+            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(transformComponent), distance);
         }
 
         const ModelData& modelData = modelResource->GetModelData();
@@ -336,10 +341,10 @@ namespace CoreEngine
         const std::vector<int32_t>& indices = modelData.indices;
 
         if (vertices.empty() || indices.empty()) {
-            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(modelObj), distance);
+            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(transformComponent), distance);
         }
 
-        const WorldTransform& transform = modelObj->GetTransform();
+        const WorldTransform& transform = transformComponent->Get();
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 
         // 頂点を毎回ワールド変換する代わりに、レイをローカル空間へ 1 回だけ変換する。
@@ -354,7 +359,7 @@ namespace CoreEngine
             localDirection.z * localDirection.z;
         if (!(localDirLengthSq > 0.0f) || !std::isfinite(localDirLengthSq)) {
             // 特異行列（スケール0等）は逆変換できないのでスフィア判定へフォールバック
-            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(modelObj), distance);
+            return RayIntersectsFallbackSphere(rayOrigin, rayDirection, object, fallbackRadius(transformComponent), distance);
         }
 
         // ローカル空間のレイ（方向は非正規化のまま。t の大小関係は保たれる）

@@ -29,7 +29,7 @@ namespace CoreEngine
         ///========================================================
 
         // コンポーネントを直接取得
-        auto modelManager = engine_->GetComponent<ModelManager>();
+        auto modelManager = engine_->GetService<ModelManager>();
 
         if (!modelManager) {
             return; // 必須コンポーネントがない場合は終了
@@ -103,7 +103,7 @@ namespace CoreEngine
 
     void TestScene::OnUpdate()
     {
-        auto inputManager = engine_->GetComponent<InputManager>();
+        auto inputManager = engine_->GetService<InputManager>();
         if (!inputManager) {
             return;
         }

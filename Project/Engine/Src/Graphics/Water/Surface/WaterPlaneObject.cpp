@@ -70,7 +70,7 @@ namespace CoreEngine
 
         // 定数バッファを作成する
         auto* engine = GetEngineSystem();
-        auto* dxCommon = engine ? engine->GetComponent<DirectXCommon>() : nullptr;
+        auto* dxCommon = engine ? engine->GetService<DirectXCommon>() : nullptr;
         if (dxCommon) {
             constantBuffers_.Initialize(dxCommon->GetDevice());
             constantBuffers_.UpdateWaterConstants(waterCB_);
@@ -80,8 +80,8 @@ namespace CoreEngine
 
     void WaterPlaneObject::RebuildWaterShaderPipeline() {
         auto* engine = GetEngineSystem();
-        auto* dxCommon = engine ? engine->GetComponent<DirectXCommon>() : nullptr;
-        auto* modelManager = engine ? engine->GetComponent<ModelManager>() : nullptr;
+        auto* dxCommon = engine ? engine->GetService<DirectXCommon>() : nullptr;
+        auto* modelManager = engine ? engine->GetService<ModelManager>() : nullptr;
         if (!dxCommon || !modelManager) {
             return;
         }

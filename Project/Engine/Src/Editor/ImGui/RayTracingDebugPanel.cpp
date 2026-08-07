@@ -200,7 +200,7 @@ namespace CoreEngine
 
         // ---- ライトごとのディスパッチ状況 ----
         ImGui::Spacing();
-        auto* lightManager = engine_ ? engine_->GetComponent<LightManager>() : nullptr;
+        auto* lightManager = engine_ ? engine_->GetService<LightManager>() : nullptr;
 
         if (ImGui::BeginTable("##ShadowDispatch", 6,
             ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {

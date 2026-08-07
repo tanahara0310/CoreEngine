@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Collider.h"
+#include "GameObject/Component/IComponent.h"
 
 #include <memory>
 #include <vector>
@@ -22,10 +23,20 @@ class GameObject;
 ///          衝突コールバックの中から着脱されても、判定ループが持っている生ポインタが
 ///          宙に浮かない。実体の解放はフレーム末の ReleaseRetired()（GameObjectManager
 ///          が衝突判定より後に呼ぶ）で行う。
-class ColliderComponent {
+///
+///          **2026-08-07: `IComponent` 派生になった**。以前は GameObject の
+///          `protected` 固定メンバだったため、コライダーを 1 本も使わないオブジェクト
+///          （スカイボックス・UI・デバッグ線など）にも必ず同居していた。今は
+///          `AddComponent<ColliderComponent>()`（または `GameObject::GetColliders()` の
+///          オンデマンド生成）で必要なオブジェクトにだけ載る。
+///          オーナーは `IComponent::GetOwner()` から引くので `SetOwner()` は廃止した。
+class ColliderComponent : public IComponent {
 public:
-    /// @brief 所有者を設定する（GameObject の初期化時に一度だけ）
-    void SetOwner(GameObject* owner) { owner_ = owner; }
+    const char* GetTypeName() const override { return "Collider"; }
+
+#ifdef USE_IMGUI
+    const char* GetInspectorName() const override { return "コライダー"; }
+#endif
 
     // ===== 追加 =====
 
@@ -79,8 +90,6 @@ public:
     }
 
 private:
-    GameObject* owner_ = nullptr;
-
     /// 生きているコライダー（実体は個別確保 = 参照が安定）
     std::vector<std::unique_ptr<Collider>> colliders_;
 

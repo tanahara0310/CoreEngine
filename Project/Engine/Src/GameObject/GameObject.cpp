@@ -86,20 +86,44 @@ namespace CoreEngine
 
     // ===== コライダー =====
 
-    bool GameObject::HasCollider() const { return !colliders_.IsEmpty(); }
-    Collider* GameObject::GetCollider() { return colliders_.GetFirst(); }
-    const Collider* GameObject::GetCollider() const { return colliders_.GetFirst(); }
+    // 問い合わせ系は TryGetColliders()（生成しない）を使う。GetColliders() を使うと
+    // 「持っているか調べただけ」で空のコライダー集合が生えてしまう。
 
-    void GameObject::RemoveCollider() { colliders_.RemoveAll(); }
+    bool GameObject::HasCollider() const {
+        const ColliderComponent* colliders = TryGetColliders();
+        return colliders && !colliders->IsEmpty();
+    }
 
-    void GameObject::ReleaseRetiredColliders() { colliders_.ReleaseRetired(); }
+    Collider* GameObject::GetCollider() {
+        ColliderComponent* colliders = TryGetColliders();
+        return colliders ? colliders->GetFirst() : nullptr;
+    }
+
+    const Collider* GameObject::GetCollider() const {
+        const ColliderComponent* colliders = TryGetColliders();
+        return colliders ? colliders->GetFirst() : nullptr;
+    }
+
+    void GameObject::RemoveCollider() {
+        if (ColliderComponent* colliders = TryGetColliders()) {
+            colliders->RemoveAll();
+        }
+    }
+
+    void GameObject::ReleaseRetiredColliders() {
+        if (ColliderComponent* colliders = TryGetColliders()) {
+            colliders->ReleaseRetired();
+        }
+    }
+
+    // 追加系はオンデマンド生成でよい（呼んだ時点でコライダーが要ると確定している）
 
     Collider& GameObject::AddSphereCollider(float radius, CollisionLayer layer) {
-        return colliders_.AddSphere(radius, layer);
+        return GetColliders().AddSphere(radius, layer);
     }
 
     Collider& GameObject::AddAABBCollider(const Vector3& size, CollisionLayer layer) {
-        return colliders_.AddBox(size, layer);
+        return GetColliders().AddBox(size, layer);
     }
 
     // ===== 名前 / シリアライズ =====

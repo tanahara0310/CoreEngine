@@ -7,6 +7,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <type_traits>
 
 // Forward declaration
 namespace CoreEngine {
@@ -65,6 +66,42 @@ namespace CoreEngine
         /// @brief 全オブジェクトのリストを取得（読み取り専用）
         /// @return オブジェクトリストの const 参照
         const std::deque<std::unique_ptr<GameObject>>& GetAllObjects() const { return objects_; }
+
+        // ===== コンポーネント横断イテレーション =====
+
+        /// @brief シーン内の指定型コンポーネントすべてに処理を適用する
+        /// @tparam T コンポーネント型（基底型でも引ける）
+        /// @tparam Fn `void(T&)` または `void(T&, GameObject&)` を受け取る呼び出し可能オブジェクト
+        /// @note **`dynamic_cast<派生GameObject*>` の置き換え先**。
+        ///       「シーン内でメッシュを持つものを全部集める」「特定の型を探す」といった
+        ///       用途は、具象クラスへのダウンキャストではなくこちらを使う。
+        ///
+        ///       非アクティブ／削除マーク済みのオブジェクトはスキップする（従来の
+        ///       `dynamic_cast` ループが全部そうしていたのと同じ条件）。
+        ///
+        ///       計算量はオブジェクト数 × そのオブジェクトのコンポーネント数。
+        ///       従来のダウンキャストループ（オブジェクト数 × 1）と同じオーダーで、
+        ///       係数がコンポーネント数（実測で 1〜5）倍になるだけ。件数が増えて
+        ///       問題になったら型別インデックスを足す（同期漏れのバグ源になるので
+        ///       必要になるまで作らない）。
+        template <typename T, typename Fn>
+        void ForEachComponent(Fn&& fn) {
+            for (auto& obj : objects_) {
+                if (!obj || !obj->IsActive() || obj->IsMarkedForDestroy()) {
+                    continue;
+                }
+                for (auto* component : obj->GetComponents<T>()) {
+                    if (!component || !component->IsEnabled()) {
+                        continue;
+                    }
+                    if constexpr (std::is_invocable_v<Fn, T&, GameObject&>) {
+                        fn(*component, *obj);
+                    } else {
+                        fn(*component);
+                    }
+                }
+            }
+        }
 
         /// @brief コライダーを持つ全オブジェクトのコライダーを CollisionWorld に登録
         /// @param collisionWorld 登録先の CollisionWorld

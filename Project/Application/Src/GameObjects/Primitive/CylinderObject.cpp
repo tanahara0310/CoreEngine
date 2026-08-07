@@ -77,7 +77,7 @@ void CylinderObject::OnInitialize() {
 
 void CylinderObject::OnUpdate() {
     auto* frameRateController =
-        GetEngineSystem() ? GetEngineSystem()->GetComponent<CoreEngine::FrameRateController>() : nullptr;
+        GetEngineSystem() ? GetEngineSystem()->GetService<CoreEngine::FrameRateController>() : nullptr;
     const float deltaTime = frameRateController ? frameRateController->GetDeltaTime() : 0.0f;
 
     uvOffset_.x = std::fmod(uvOffset_.x + uvScrollSpeed_.x * deltaTime, 1.0f);
