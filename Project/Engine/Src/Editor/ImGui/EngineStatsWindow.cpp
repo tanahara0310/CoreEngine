@@ -35,6 +35,7 @@ namespace CoreEngine
         static constexpr ImVec4 kLabelColor = ImVec4(0.90f, 0.90f, 0.90f, 1.0f); // 明るいグレー（ラベル）
         static constexpr ImVec4 kValueColor = ImVec4(1.00f, 1.00f, 1.00f, 1.0f); // 白（値）
         static constexpr ImVec4 kSubLabel = ImVec4(0.78f, 0.78f, 0.78f, 1.0f); // サブ項目ラベル
+        static constexpr ImVec4 kIdleColor = ImVec4(0.45f, 0.45f, 0.45f, 1.0f); // 今フレーム実行されなかった行
         static constexpr ImVec4 kHeaderColor = ImVec4(1.0f, 0.65f, 0.0f, 1.0f); // Unityオレンジ（ヘッダ）
 
         // 通常行：ラベル左、値右寄せ
@@ -151,6 +152,9 @@ namespace CoreEngine
                 timingAccumTime_ = 0.0f;
                 frozenGpu_ = snapshotGpu_;
             }
+
+            // 統計計測へは表示用に間引いた frozenGpu_ ではなく毎フレームの生値を渡す。
+            timingCapture_.Tick(snapshotGpu_, snapshotDeltaTimeMs_, snapshotFps_);
         }
     }
 
@@ -207,6 +211,9 @@ namespace CoreEngine
 
         // GPU フレーム内訳セクション
         DrawGpuTimingsSection();
+
+        // 統計計測・CSV 出力セクション
+        DrawMeasurementSection();
     }
 
     void EngineStatsWindow::DrawRenderingTab()
@@ -417,6 +424,10 @@ namespace CoreEngine
                 {
                     const auto& r = frozenGpu_[idx];
 
+                    // 今フレーム走らなかったパスも行は残す（行の出入りで表全体がずれないように）。
+                    // 走っていないことは淡色で示す。
+                    const bool idle = IsIdleTimingSlot(r);
+
                     float ratio = r.gpuMs / barMaxMs;
                     ImVec4 barColor = ratio < 0.3f ? ImVec4(0.25f, 0.75f, 0.35f, 0.85f) :
                         ratio < 0.6f ? ImVec4(0.85f, 0.70f, 0.15f, 0.85f) :
@@ -425,10 +436,10 @@ namespace CoreEngine
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Indent(12.0f);
-                    ImGui::TextColored(kLabelColor, "%s", r.name);
+                    ImGui::TextColored(idle ? kIdleColor : kLabelColor, "%s", r.name);
                     ImGui::Unindent(12.0f);
                     ImGui::TableSetColumnIndex(1);
-                    ImGui::TextColored(kValueColor, "%.3f", r.gpuMs);
+                    ImGui::TextColored(idle ? kIdleColor : kValueColor, "%.3f", r.gpuMs);
                     ImGui::TableSetColumnIndex(2);
                     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, barColor);
                     ImGui::ProgressBar(ratio, ImVec2(-1.0f, 0.0f), "");
@@ -446,6 +457,178 @@ namespace CoreEngine
             ImGui::EndTable();
         }
         ImGui::PopStyleColor(2);
+    }
+
+    void EngineStatsWindow::DrawMeasurementSection()
+    {
+        if (!gpuProfiler_ || !gpuProfiler_->IsInitialized()) return;
+
+        ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  計測キャプチャ（統計 / CSV 出力）");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::TextColored(kSubLabel,
+            "N フレーム収集して中央値・p95 を出す。瞬間値ではなく、この値を資料へ載せる。");
+        ImGui::Spacing();
+
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::InputInt("ウォームアップ frames##cap_warmup", &captureWarmupFrames_, 10, 60);
+        captureWarmupFrames_ = (std::max)(0, captureWarmupFrames_);
+
+        ImGui::SetNextItemWidth(120.0f);
+        ImGui::InputInt("収集 frames##cap_frames", &captureFrameCount_, 30, 120);
+        captureFrameCount_ = std::clamp(captureFrameCount_, 1,
+            static_cast<int>(GpuTimingStatsCollector::kMaxCaptureFrames));
+
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##cap_label", "条件名（例: FFT_N256_CausticsRT）",
+            captureLabel_, sizeof(captureLabel_));
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##cap_note", "備考（風速・太陽高度・カメラ構図など）",
+            captureNote_, sizeof(captureNote_));
+
+        ImGui::Spacing();
+
+        if (timingCapture_.IsCapturing())
+        {
+            char overlay[64];
+            if (timingCapture_.IsWarmingUp())
+            {
+                snprintf(overlay, sizeof(overlay), "ウォームアップ中 残り %u",
+                    timingCapture_.GetRemainingWarmupFrames());
+            }
+            else
+            {
+                snprintf(overlay, sizeof(overlay), "収集中 %u / %u",
+                    timingCapture_.GetCapturedFrameCount(), timingCapture_.GetTargetFrameCount());
+            }
+            ImGui::ProgressBar(timingCapture_.GetProgress01(), ImVec2(-1.0f, 0.0f), overlay);
+            if (ImGui::Button("中断##cap_cancel"))
+            {
+                timingCapture_.Cancel();
+            }
+        }
+        else
+        {
+            if (ImGui::Button("計測開始##cap_start", ImVec2(120.0f, 0.0f)))
+            {
+                timingCapture_.Start(
+                    static_cast<uint32_t>(captureWarmupFrames_),
+                    static_cast<uint32_t>(captureFrameCount_));
+                lastExportPath_.clear();
+            }
+            ImGui::SameLine();
+            ImGui::TextColored(kSubLabel, "※ 計測中はカメラ・設定を触らないこと");
+        }
+
+        if (!timingCapture_.HasResult())
+        {
+            return;
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(kHeaderColor, "  計測結果");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // フレーム全体・カテゴリ合計・パス別を 1 つの表にまとめる。
+        // 「中央値 / p95」の 2 列で、代表値とばらつきを同時に読めるようにする。
+        auto drawSummaryRow = [](const GpuTimingSummary& s, bool indent, const char* unit) {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            if (indent) ImGui::Indent(12.0f);
+            ImGui::TextColored(indent ? kSubLabel : kLabelColor, "%s", s.name.c_str());
+            if (indent) ImGui::Unindent(12.0f);
+            ImGui::TableSetColumnIndex(1);
+            ImGui::TextColored(kValueColor, "%.3f %s", s.gpuMedianMs, unit);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::TextColored(kSubLabel, "%.3f", s.gpuP95Ms);
+            ImGui::TableSetColumnIndex(3);
+            ImGui::TextColored(kSubLabel, "%.3f", s.gpuMeanMs);
+        };
+
+        ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.13f, 0.13f, 0.13f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.16f, 1.0f));
+        if (ImGui::BeginTable("capture_result_table", 4,
+            ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg |
+            ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersOuter))
+        {
+            ImGui::TableSetupColumn("項目", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("中央値", ImGuiTableColumnFlags_WidthFixed, 78.0f);
+            ImGui::TableSetupColumn("p95", ImGuiTableColumnFlags_WidthFixed, 58.0f);
+            ImGui::TableSetupColumn("平均", ImGuiTableColumnFlags_WidthFixed, 58.0f);
+            ImGui::TableHeadersRow();
+
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(kHeaderColor, "フレーム");
+            drawSummaryRow(timingCapture_.GetFrameGpuSummary(), true, "ms");
+            drawSummaryRow(timingCapture_.GetFrameCpuSummary(), true, "ms");
+            drawSummaryRow(timingCapture_.GetFpsSummary(), true, "fps");
+            drawSummaryRow(timingCapture_.GetWaterSharePercent(), true, "%");
+            drawSummaryRow(timingCapture_.GetAuxViewSummary(), true, "ms");
+
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(kHeaderColor, "カテゴリ合計");
+            for (const auto& s : timingCapture_.GetCategorySummaries())
+            {
+                drawSummaryRow(s, true, "ms");
+            }
+
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextColored(kHeaderColor, "パス別（中央値の降順）");
+            for (const auto& s : timingCapture_.GetSummaries())
+            {
+                drawSummaryRow(s, true, "ms");
+            }
+
+            ImGui::EndTable();
+        }
+        ImGui::PopStyleColor(2);
+
+        ImGui::Spacing();
+        if (ImGui::Button("CSV 出力##cap_export", ImVec2(120.0f, 0.0f)))
+        {
+            GpuTimingCaptureMeta meta;
+            meta.label = captureLabel_;
+            meta.note = captureNote_;
+            meta.gpuName = gpuName_;
+#if defined(_DEBUG)
+            meta.buildConfig = "Debug";
+#elif defined(NDEBUG)
+            meta.buildConfig = "Release";
+#else
+            meta.buildConfig = "Development";
+#endif
+            if (engine_)
+            {
+                if (auto* dx = engine_->GetComponent<DirectXCommon>())
+                {
+                    meta.widthPixels = static_cast<uint32_t>(dx->GetClientWidth());
+                    meta.heightPixels = static_cast<uint32_t>(dx->GetClientHeight());
+                }
+            }
+
+            std::string exported;
+            if (timingCapture_.ExportCsv("Captures\\Profiling", meta, exported))
+            {
+                lastExportPath_ = exported;
+            }
+        }
+        if (!lastExportPath_.empty())
+        {
+            ImGui::SameLine();
+            ImGui::TextColored(kSubLabel, "出力: %s", lastExportPath_.c_str());
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(kSubLabel,
+            "※ Water 占有率は Water カテゴリ / フレーム合計。FFT 内訳（Water Sim）は");
+        ImGui::TextColored(kSubLabel,
+            "   FFTOceanPass の内側なので、二重に足さないこと。");
     }
 
     void EngineStatsWindow::DrawPassTimingsSection()
@@ -483,21 +666,24 @@ namespace CoreEngine
                 for (uint32_t idx : group.slotIndices)
                 {
                     const auto& r = frozenGpu_[idx];
+                    const bool idle = IsIdleTimingSlot(r);
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Indent(12.0f);
-                    ImGui::TextColored(kLabelColor, "%s", r.name);
+                    ImGui::TextColored(idle ? kIdleColor : kLabelColor, "%s", r.name);
                     ImGui::Unindent(12.0f);
 
                     ImGui::TableSetColumnIndex(1);
-                    ImVec4 gpuColor = r.gpuMs > 5.0f ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) :
+                    ImVec4 gpuColor = idle ? kIdleColor :
+                        r.gpuMs > 5.0f ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) :
                         r.gpuMs > 2.0f ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) :
                         kValueColor;
                     ImGui::TextColored(gpuColor, "%.3f", r.gpuMs);
 
                     ImGui::TableSetColumnIndex(2);
-                    ImVec4 cpuColor = r.cpuMs > 3.0f ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) :
+                    ImVec4 cpuColor = idle ? kIdleColor :
+                        r.cpuMs > 3.0f ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) :
                         r.cpuMs > 1.0f ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) :
                         kSubLabel;
                     ImGui::TextColored(cpuColor, "%.3f", r.cpuMs);
@@ -509,6 +695,7 @@ namespace CoreEngine
 
         ImGui::Spacing();
         ImGui::TextColored(kSubLabel, "※ GPU 値は 1 フレーム遅延あり / 表示は %.1f 秒間隔で更新", kTimingUpdateInterval);
+        ImGui::TextColored(kSubLabel, "※ 淡色の行は、そのフレームで実質的に実行されなかったパス（行は固定して表示）");
     }
 
     void EngineStatsWindow::DrawSceneTab()
@@ -687,6 +874,25 @@ namespace CoreEngine
                         Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter1;
                         if (SUCCEEDED(factory->EnumAdapterByLuid(luid, IID_PPV_ARGS(&adapter1))))
                         {
+                            // GPU 名は計測 CSV のメタ情報として一度だけ拾っておく
+                            // （どの GPU で測った数値かを数値と同じファイルへ残すため）。
+                            if (gpuName_.empty())
+                            {
+                                DXGI_ADAPTER_DESC1 adapterDesc{};
+                                if (SUCCEEDED(adapter1->GetDesc1(&adapterDesc)))
+                                {
+                                    const int needed = WideCharToMultiByte(
+                                        CP_UTF8, 0, adapterDesc.Description, -1, nullptr, 0, nullptr, nullptr);
+                                    if (needed > 1)
+                                    {
+                                        std::string utf8(static_cast<size_t>(needed - 1), '\0');
+                                        WideCharToMultiByte(CP_UTF8, 0, adapterDesc.Description, -1,
+                                            utf8.data(), needed, nullptr, nullptr);
+                                        gpuName_ = utf8;
+                                    }
+                                }
+                            }
+
                             Microsoft::WRL::ComPtr<IDXGIAdapter3> adapter3;
                             if (SUCCEEDED(adapter1.As(&adapter3)))
                             {

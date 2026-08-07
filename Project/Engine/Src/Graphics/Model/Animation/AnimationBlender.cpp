@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "AnimationBlender.h"
 #include "Math/MathCore.h"
-#include "Utility/Collision/CollisionUtils.h"
+#include "Math/MathCore.h"
 #include <algorithm>
 
 
@@ -114,7 +114,7 @@ Skeleton AnimationBlender::BlendSkeletons(const Skeleton& skeleton1, const Skele
         const Joint& joint2 = skeleton2.joints[i];
 
         // 平行移動の線形補間
-        joint.transform.translate = CollisionUtils::Lerp(
+        joint.transform.translate = MathCore::Lerp(
             joint.transform.translate,
             joint2.transform.translate,
             weight
@@ -128,7 +128,7 @@ Skeleton AnimationBlender::BlendSkeletons(const Skeleton& skeleton1, const Skele
         );
 
         // スケールの線形補間
-        joint.transform.scale = CollisionUtils::Lerp(
+        joint.transform.scale = MathCore::Lerp(
             joint.transform.scale,
             joint2.transform.scale,
             weight

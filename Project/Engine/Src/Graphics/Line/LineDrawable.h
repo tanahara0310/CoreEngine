@@ -29,6 +29,11 @@ public:
     void Draw(const CoreEngine::Camera* camera) override;
     RenderPassType GetRenderPassType() const override { return RenderPassType::Line; }
 
+    /// @brief ワールド空間での位置を返す
+    /// @return 常に原点。ラインは各頂点がワールド座標を持つため、
+    ///         オブジェクト自体の位置という概念を持たない（コライダー非対応）。
+    Vector3 GetWorldPosition() const override { return {}; }
+
 #ifdef _DEBUG
     bool DrawImGuiExtended() override { return false; }
     const char* GetObjectName() const override { return "LineDrawable"; }

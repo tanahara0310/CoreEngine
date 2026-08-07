@@ -6,7 +6,7 @@
 #include "Graphics/Model/Model.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
-#include "Math/BoundingBox.h"
+#include "Math/Geometry/Shapes.h"
 #include <string>
 #include <memory>
 
@@ -60,6 +60,16 @@ namespace CoreEngine {
 
         /// @brief ワールド座標での位置を取得
         Vector3 GetWorldPosition() const override { return transform_.GetWorldPosition(); }
+
+        /// @brief ワールド空間でのスケールを取得
+        /// @details ワールド行列の基底ベクトル長から求めるため、親の階層スケールも含む。
+        ///          コライダーのサイズ／半径に乗る。
+        Vector3 GetWorldScale() const override;
+
+        /// @brief 衝突解決による移動を受け入れる（translate を動かしてワールド行列を更新）
+        /// @note 親を持つ場合、delta をローカル translate にそのまま足すため
+        ///       親の回転・スケールは考慮していない（Phase 4 時点の制限）。
+        bool TryApplyCollisionPush(const Vector3& delta) override;
 
         /// @brief ワールド空間のAABBを取得（視錐台カリング用）
         /// @return ワールド変換後のバウンディングボックス

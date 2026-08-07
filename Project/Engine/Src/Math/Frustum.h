@@ -1,6 +1,6 @@
 #pragma once
 #include "Math/MathCore.h"
-#include "Math/BoundingBox.h"
+#include "Math/Geometry/Shapes.h"
 #include <array>
 
 /// @brief 視錐台（Frustum）構造体 - カメラの可視領域を6平面で表現
@@ -9,17 +9,11 @@ namespace CoreEngine
 {
 
 /// @brief 平面（法線 + 距離）
-struct Plane {
-    Vector3 normal; ///< 平面の法線（内側を向く）
-    float d;        ///< 原点からの符号付き距離
-
-    /// @brief 点と平面の符号付き距離を計算
-    /// @param point 判定する点
-    /// @return 正なら法線側（内側）、負なら反対側（外側）
-    float DistanceTo(const Vector3& point) const {
-        return Dot(normal, point) + d;
-    }
-};
+/// @note 実体は Geometry::Plane。以前はここと CollisionUtils に符号規約の違う Plane が
+///       2 つあり、取り違えると符号が反転するバグになっていたので一本化した。
+///       規約: dot(normal, p) + d = 0 が平面上。DistanceTo() が正なら法線側。
+///       視錐台では法線が内側を向くので、正 = 内側。
+using Plane = Geometry::Plane;
 
 /// @brief 視錐台の平面インデックス
 enum class FrustumPlane {

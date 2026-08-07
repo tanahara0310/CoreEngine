@@ -24,6 +24,34 @@ namespace CoreEngine
                 float scalar = dotProduct / nLengthSq;
                 return scalar * n;
             }
+
+            Vector3 Slerp(const Vector3& start, const Vector3& end, float t) {
+                const float dot = Clamp(CoreEngine::Dot(start, end), -1.0f, 1.0f);
+
+                // start と直交する成分。これが回転面を決める。
+                Vector3 relative = end - dot * start;
+                const float relativeLength = CoreEngine::Length(relative);
+
+                if (relativeLength < 1e-6f) {
+                    // 平行 or 反平行 → 直交成分が消えて回転面が決まらない。
+                    // ここを Normalize(0) に任せると結果が単位長でなくなる（長さ 0 になる）。
+                    if (dot > 0.0f) {
+                        return start;   // 平行: 補間しても start のまま
+                    }
+                    // 反平行: 180 度回転。どの面を通るかは決まらないので
+                    // start と直交する任意の軸を選ぶ（結果は必ず単位ベクトルになる）
+                    const Vector3 helper = (std::abs(start.x) < 0.9f)
+                        ? Vector3{ 1.0f, 0.0f, 0.0f }
+                        : Vector3{ 0.0f, 1.0f, 0.0f };
+                    relative = CoreEngine::Normalize(helper - CoreEngine::Dot(helper, start) * start);
+                }
+                else {
+                    relative = relative * (1.0f / relativeLength);
+                }
+
+                const float theta = std::acos(dot) * t;
+                return std::cos(theta) * start + std::sin(theta) * relative;
+            }
         }
 
         //================================================

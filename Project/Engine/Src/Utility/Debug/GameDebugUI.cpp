@@ -7,6 +7,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/EngineConfig.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "WinApp/WinApp.h"
 #include <imgui.h>
 
 #include <algorithm>
@@ -56,8 +57,9 @@ namespace CoreEngine
                 return;
             }
         }
-        // Camera Editorを作業用ツールとして登録（Toolsメニューから開くフローティングウィンドウ）
-        RegisterEnginePanel("Camera Editor", std::move(callback), EnginePanelCategory::Tools);
+        // Camera Editor は単独ウィンドウ。エディタ視点カメラの設定なので Editor グループへ。
+        RegisterEnginePanel("Camera Editor", std::move(callback),
+            EnginePanelCategory::Tools, EnginePanelGroup::Editor);
     }
 
     void GameDebugUI::RegisterAppEditor(const std::string& label, std::function<void()> drawer)
@@ -77,14 +79,25 @@ namespace CoreEngine
     }
 
     void GameDebugUI::RegisterEnginePanel(const std::string& label, std::function<void()> drawer,
-        EnginePanelCategory category)
+        EnginePanelCategory category, EnginePanelGroup group)
     {
         for (auto& p : enginePanels_) {
-            if (p.label == label) { p.drawer = std::move(drawer); p.category = category; return; }
+            if (p.label == label) {
+                p.drawer = std::move(drawer);
+                p.category = category;
+                p.group = group;
+                return;
+            }
         }
-        enginePanels_.push_back({ label, std::move(drawer), false, category });
-        // Settings は Engine Settings ウィンドウ内のセクション、Tools はフローティングで開くため
-        // どちらもドッキングシステムへは登録しない
+        enginePanels_.push_back({ label, std::move(drawer), false, category, group });
+
+        // Settings は Engine Settings ウィンドウ内のセクションなので独立ウィンドウを持たない。
+        // Tools は独立ウィンドウとして開くため、既定のドッキング先を与えておく。
+        // これが無いと Game ビューの真上に浮き、パネルを開くほど画面が覆われる。
+        // （マルチビューポートが有効なので、広いパネルはここから別モニタへ引き出せばよい）
+        if (category == EnginePanelCategory::Tools && dockingUI_) {
+            dockingUI_->RegisterWindow(label, DockArea::Right);
+        }
     }
 
     void GameDebugUI::RegisterEnvironmentEditor(const std::string& label, const void* owner,
@@ -117,12 +130,18 @@ namespace CoreEngine
         }
     }
 
-    void GameDebugUI::RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer)
+    void GameDebugUI::RegisterEngineDebugPanel(const std::string& label, std::function<void()> drawer,
+        EnginePanelGroup group)
     {
         for (auto& p : engineDebugPanels_) {
-            if (p.label == label) { p.drawer = std::move(drawer); return; }
+            if (p.label == label) { p.drawer = std::move(drawer); p.group = group; return; }
         }
-        engineDebugPanels_.push_back({ label, std::move(drawer), false });
+        engineDebugPanels_.push_back({ label, std::move(drawer), false, EnginePanelCategory::Tools, group });
+
+        // Tools パネルと同じ理由で、デバッグ情報パネルにも既定のドッキング先を与える
+        if (dockingUI_) {
+            dockingUI_->RegisterWindow(label, DockArea::Right);
+        }
     }
 
     void GameDebugUI::SetPanelVisible(const std::string& label, bool visible)
@@ -146,44 +165,89 @@ namespace CoreEngine
         pixCapture_.ProcessPendingCapture();
 
         if (ImGui::BeginMainMenuBar()) {
-            // Window メニュー：常設パネルの表示トグルと Engine Settings
+            // Window メニュー：すべてのパネルを用途別サブメニューへ振り分ける。
+            // パネルが増えても一覧が縦に伸び続けないようにするため、
+            // 直下に並べるのは「常に使うもの」だけに絞る。
             if (ImGui::BeginMenu("Window")) {
-                ImGui::MenuItem("Hierarchy", nullptr, &showHierarchy_);
-                ImGui::MenuItem("Inspector", nullptr, &showInspector_);
-                ImGui::MenuItem("Console", nullptr, &showConsole_);
 
-                ImGui::Separator();
-                ImGui::MenuItem("Engine Settings", nullptr, &showEngineSettings_);
-
-                if (!appEditors_.empty()) {
-                    ImGui::Separator();
-                    for (auto& entry : appEditors_) {
-                        ImGui::MenuItem(entry.label.c_str(), nullptr, &entry.visible);
+                // グループごとの追加項目（そのグループにしか無いもの）
+                const auto drawExtra = [this](EnginePanelGroup group) -> std::function<void()> {
+                    switch (group) {
+                    case EnginePanelGroup::General:
+                        return [this]() {
+                            ImGui::MenuItem("Hierarchy", nullptr, &showHierarchy_);
+                            ImGui::MenuItem("Inspector", nullptr, &showInspector_);
+                            ImGui::MenuItem("Console", nullptr, &showConsole_);
+                            };
+                    case EnginePanelGroup::Analysis:
+                        return [this]() {
+                            if (!engineEditors_.empty() && ImGui::BeginMenu("Engine Stats")) {
+                                for (auto& entry : engineEditors_) {
+                                    ImGui::MenuItem(entry.label.c_str(), nullptr, &entry.visible);
+                                }
+                                ImGui::EndMenu();
+                            }
+                            };
+                    case EnginePanelGroup::Editor:
+                        return [this]() {
+                            ImGui::MenuItem("Engine Settings", nullptr, &showEngineSettings_);
+                            };
+                    default:
+                        return nullptr;
                     }
-                }
-                ImGui::EndMenu();
-            }
+                    };
 
-            // Tools メニュー：作業用ツールウィンドウ（フローティング）
-            if (ImGui::BeginMenu("Tools")) {
-                for (auto& p : enginePanels_) {
-                    if (p.category != EnginePanelCategory::Tools) continue;
-                    ImGui::MenuItem(p.label.c_str(), nullptr, &p.visible);
+                // 並び順は kEnginePanelGroupOrder に一本化（Engine Settings の一覧と同じ順序になる）
+                for (const auto& [group, groupLabel] : kEnginePanelGroupOrder) {
+                    DrawPanelGroupMenu(group, groupLabel, drawExtra(group));
                 }
-                ImGui::EndMenu();
-            }
 
-            // Debug メニュー：エンジン統計（Inspectorタブ）とデバッグパネル
-            if (ImGui::BeginMenu("Debug")) {
-                if (ImGui::BeginMenu("Engine Stats")) {
-                    for (auto& entry : engineEditors_) {
+                // ── アプリ固有のエディタ ──
+                if (!appEditors_.empty() && ImGui::BeginMenu("Application")) {
+                    for (auto& entry : appEditors_) {
                         ImGui::MenuItem(entry.label.c_str(), nullptr, &entry.visible);
                     }
                     ImGui::EndMenu();
                 }
-                for (auto& p : engineDebugPanels_) {
-                    ImGui::MenuItem(p.label.c_str(), nullptr, &p.visible);
+
+                ImGui::Separator();
+
+                // ── 画面・レイアウト操作 ──
+                if (ImGui::BeginMenu("Layout")) {
+                    if (auto* winApp = engine_ ? engine_->GetWinApp() : nullptr) {
+                        bool fullscreen = winApp->IsFullscreen();
+                        if (ImGui::MenuItem("全画面表示", "Alt+Enter", &fullscreen)) {
+                            winApp->SetFullscreen(fullscreen);
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("タイトルバーとタスクバーを隠して画面全体に表示します");
+                        }
+                    }
+
+                    ImGui::MenuItem("エディタUIを隠す", "F11", false, false);
+
+                    ImGui::Separator();
+
+                    ImGui::MenuItem("ゲーム画面のみのウィンドウ", nullptr, &showStandaloneGameWindow_);
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip(
+                            "エディタUIを一切含まない独立ウィンドウを開きます。\n"
+                            "Release ビルドと同じ見た目を Development のまま確認できます。");
+                    }
+
+                    ImGui::Separator();
+
+                    if (ImGui::MenuItem("レイアウトを初期化")) {
+                        if (dockingUI_) {
+                            dockingUI_->RequestResetLayout();
+                        }
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("すべてのパネルを既定位置へ戻します");
+                    }
+                    ImGui::EndMenu();
                 }
+
                 ImGui::EndMenu();
             }
 
@@ -221,6 +285,55 @@ namespace CoreEngine
 
             ImGui::EndMainMenuBar();
         }
+    }
+
+    void GameDebugUI::DrawPanelGroupMenu(EnginePanelGroup group, const char* label,
+        const std::function<void()>& extraContent)
+    {
+        // 単独ウィンドウとして開けるものだけを集める
+        //（Settings カテゴリは Engine Settings ウィンドウ内のセクションなのでここには出さない）
+        const auto hasToolPanel = [this, group] {
+            return std::any_of(enginePanels_.begin(), enginePanels_.end(),
+                [group](const EnginePanelEntry& entry) {
+                    return entry.category == EnginePanelCategory::Tools && entry.group == group;
+                });
+            };
+        const auto hasDebugPanel = [this, group] {
+            return std::any_of(engineDebugPanels_.begin(), engineDebugPanels_.end(),
+                [group](const EnginePanelEntry& entry) { return entry.group == group; });
+            };
+
+        // 中身が何も無いグループはメニュー項目自体を出さない（空のサブメニューを作らない）
+        if (!extraContent && !hasToolPanel() && !hasDebugPanel()) {
+            return;
+        }
+
+        if (!ImGui::BeginMenu(label)) {
+            return;
+        }
+
+        if (extraContent) {
+            extraContent();
+            if (hasToolPanel() || hasDebugPanel()) {
+                ImGui::Separator();
+            }
+        }
+
+        for (auto& panel : enginePanels_) {
+            if (panel.category != EnginePanelCategory::Tools || panel.group != group) {
+                continue;
+            }
+            ImGui::MenuItem(panel.label.c_str(), nullptr, &panel.visible);
+        }
+
+        for (auto& panel : engineDebugPanels_) {
+            if (panel.group != group) {
+                continue;
+            }
+            ImGui::MenuItem(panel.label.c_str(), nullptr, &panel.visible);
+        }
+
+        ImGui::EndMenu();
     }
 
     void GameDebugUI::UpdateDebugPanels()
@@ -412,11 +525,6 @@ namespace CoreEngine
             return;
         }
 
-        // ── 検索ボックス ──
-        ImGui::SetNextItemWidth(220.0f);
-        ImGui::InputTextWithHint("##settings_filter", "検索...", settingsFilter_, sizeof(settingsFilter_));
-        ImGui::Separator();
-
         // 大文字小文字を無視した部分一致
         auto matchesFilter = [this](const std::string& label) {
             if (settingsFilter_[0] == '\0') return true;
@@ -429,27 +537,55 @@ namespace CoreEngine
             return target.find(query) != std::string::npos;
         };
 
-        const float leftPaneW = 180.0f;
+        const float leftPaneW = 210.0f;
 
-        // ── 左ペイン：セクション一覧 ──
-        ImGui::BeginChild("##settings_left", ImVec2(leftPaneW, 0.0f), true);
+        // ── 左ペイン：カテゴリ別のセクション一覧 ──
+        ImGui::BeginChild("##settings_left", ImVec2(leftPaneW, 0.0f), ImGuiChildFlags_Borders);
         {
+            // 検索ボックスは一覧の上に置く（絞り込み対象が一覧であることを明示する）
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            ImGui::InputTextWithHint("##settings_filter", "検索...", settingsFilter_, sizeof(settingsFilter_));
+            ImGui::Spacing();
+
             EnginePanelEntry* firstVisible = nullptr;
             bool selectionVisible = false;
-            for (auto& p : enginePanels_) {
-                if (p.category != EnginePanelCategory::Settings) continue;
-                if (!matchesFilter(p.label)) continue;
-                if (!firstVisible) firstVisible = &p;
 
-                const bool selected = (p.label == selectedSettingsLabel_);
-                selectionVisible |= selected;
-                if (ImGui::Selectable(p.label.c_str(), selected)) {
-                    selectedSettingsLabel_ = p.label;
-                    selectionVisible = true;
+            for (const auto& [group, groupLabel] : kEnginePanelGroupOrder) {
+                // このカテゴリに表示対象があるかを先に調べ、無ければ見出しごと出さない
+                const bool hasAny = std::any_of(enginePanels_.begin(), enginePanels_.end(),
+                    [&](const EnginePanelEntry& entry) {
+                        return entry.category == EnginePanelCategory::Settings
+                            && entry.group == group && matchesFilter(entry.label);
+                    });
+                if (!hasAny) {
+                    continue;
+                }
+
+                ImGui::SeparatorText(groupLabel);
+
+                for (auto& panel : enginePanels_) {
+                    if (panel.category != EnginePanelCategory::Settings) continue;
+                    if (panel.group != group) continue;
+                    if (!matchesFilter(panel.label)) continue;
+                    if (!firstVisible) firstVisible = &panel;
+
+                    const bool selected = (panel.label == selectedSettingsLabel_);
+                    selectionVisible |= selected;
+
+                    ImGui::Indent(6.0f);
+                    if (ImGui::Selectable(panel.label.c_str(), selected)) {
+                        selectedSettingsLabel_ = panel.label;
+                        selectionVisible = true;
+                    }
+                    ImGui::Unindent(6.0f);
                 }
             }
+
+            if (!firstVisible) {
+                ImGui::TextDisabled("該当なし");
+            }
             // 未選択・選択セクションが絞り込みで消えた場合は先頭を選ぶ
-            if (!selectionVisible && firstVisible) {
+            else if (!selectionVisible) {
                 selectedSettingsLabel_ = firstVisible->label;
             }
         }
@@ -458,7 +594,7 @@ namespace CoreEngine
         ImGui::SameLine();
 
         // ── 右ペイン：選択セクションの内容 ──
-        ImGui::BeginChild("##settings_right", ImVec2(0.0f, 0.0f), false);
+        ImGui::BeginChild("##settings_right", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders);
         {
             EnginePanelEntry* selectedEntry = nullptr;
             for (auto& p : enginePanels_) {
@@ -467,7 +603,15 @@ namespace CoreEngine
             }
 
             if (selectedEntry && selectedEntry->drawer) {
-                ImGui::SeparatorText(selectedEntry->label.c_str());
+                // 見出しは「カテゴリ / セクション名」のパンくずにして、今どこを見ているか分かるようにする
+                ImGui::TextDisabled("%s", ToDisplayName(selectedEntry->group));
+                ImGui::SameLine(0.0f, 6.0f);
+                ImGui::TextDisabled("/");
+                ImGui::SameLine(0.0f, 6.0f);
+                ImGui::TextUnformatted(selectedEntry->label.c_str());
+                ImGui::Separator();
+                ImGui::Spacing();
+
                 selectedEntry->drawer();
             } else {
                 ImGui::TextDisabled("セクションがありません");

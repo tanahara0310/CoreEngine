@@ -190,6 +190,18 @@ public:
     CoreEngine::RenderPassType GetRenderPassType() const override {
         return CoreEngine::RenderPassType::Model; // 適切なパスを選択
     }
+
+    // GetWorldPosition() は純粋仮想なので実装が必須。
+    // 当たり判定はこの値だけを位置ソースにするため、位置を持たないオブジェクトは
+    // 「{} を返す（コライダー非対応）」と明示的に書くこと。
+    CoreEngine::Vector3 GetWorldPosition() const override { return position_; }
+
+    // スケールをコライダーへ反映したい場合は GetWorldScale() も実装する（既定は等倍）。
+    CoreEngine::Vector3 GetWorldScale() const override { return scale_; }
+
+private:
+    CoreEngine::Vector3 position_{};
+    CoreEngine::Vector3 scale_{ 1.0f, 1.0f, 1.0f };
 };
 ```
 

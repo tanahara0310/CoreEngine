@@ -1,17 +1,17 @@
 {
-    "window": {
-        "title": "CoreEngine",
-        "width": 1280,
-        "height": 720
-    },
     "debug": {
         "enableDebugLayer": false,
         "enableGPUBasedValidation": false,
-        "enablePixRuntime": false
+        "enablePixRuntime": true
     },
     "descriptors": {
-        "maxSRVDescriptors": 256,
+        "maxDSVDescriptors": 10,
         "maxRTVDescriptors": 256,
-        "maxDSVDescriptors": 10
+        "maxSRVDescriptors": 256
+    },
+    "window": {
+        "height": 720,
+        "title": "CoreEngine",
+        "width": 1280
     }
 }

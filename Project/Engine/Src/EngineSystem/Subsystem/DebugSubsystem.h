@@ -13,7 +13,9 @@
 #include "Editor/ImGui/KeyConfigUI.h"
 #include "Editor/ImGui/EngineStatsWindow.h"
 #include "Editor/ImGui/RenderPassDebugPanel.h"
+#include "Editor/ImGui/RenderGraphEditorPanel.h"
 #include "Editor/ImGui/RayTracingDebugPanel.h"
+#include "Editor/Window/GameOutputWindow.h"
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Editor/Environment/VolumetricCloudEditor.h"
 #include "EngineSystem/Settings/CVarSettingsSection.h"
@@ -71,6 +73,14 @@ namespace CoreEngine
         /// @param dx DirectXCommon（コマンドキュー・フレームインデックス取得用）
         void PostFinalizeFrame(DirectXCommon* dx);
 
+        /// @brief ゲーム映像専用ウィンドウへの転写コマンドを積む
+        /// @details メインのコマンドリストを Close する直前に呼ぶこと。
+        void RecordGameOutputWindow();
+
+        /// @brief ゲーム映像専用ウィンドウを Present する
+        /// @details メインの ExecuteCommandLists / Present が済んだ後に呼ぶこと。
+        void PresentGameOutputWindow();
+
         // ──────────────────────────────────────────────────────────
         // アクセサ
         // ──────────────────────────────────────────────────────────
@@ -92,7 +102,11 @@ namespace CoreEngine
         std::unique_ptr<EngineStatsWindow> engineStatsWindow_;
         KeyConfigUI keyConfigUI_;
         RenderPassDebugPanel renderPassDebugPanel_;
+        RenderGraphEditorPanel renderGraphEditorPanel_;
         RayTracingDebugPanel rayTracingDebugPanel_;
+
+        /// @brief ゲーム映像だけを映す専用 Win32 ウィンドウ（ImGui を経由しない）
+        GameOutputWindow gameOutputWindow_;
 
         // 環境エディタ（大気・雲はエンジン既定機能のため、シーンに依存せずエンジン寿命で保持する）
         // gameDebugUI_ より後に宣言し、デストラクタでの登録解除が UI 解放前に走るようにする

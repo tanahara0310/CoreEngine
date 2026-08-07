@@ -308,7 +308,8 @@ namespace CoreEngine
     RenderPass* RenderPipeline::AddPass(
         std::unique_ptr<RenderPass> pass,
         RenderPassPhase phase,
-        int priority)
+        int priority,
+        std::optional<GpuTimingCategory> timingCategoryOverride)
     {
         if (!pass) {
             return nullptr;
@@ -318,6 +319,7 @@ namespace CoreEngine
         entry.pass = std::move(pass);
         entry.phase = phase;
         entry.priority = priority;
+        entry.timingCategoryOverride = timingCategoryOverride;
         entry.sequence = nextSequence_++;
         entry.owner = activeOwner_;
         RenderPass* passPtr = entry.pass.get();
@@ -346,6 +348,8 @@ namespace CoreEngine
             std::remove_if(passes_.begin(), passes_.end(),
                 [pass](const RenderPassEntry& entry) { return entry.pass.get() == pass; }),
             passes_.end());
+
+        InvalidateGraphSnapshots();
     }
 
     void RenderPipeline::RemovePassesByOwner(const void* owner)
@@ -358,6 +362,8 @@ namespace CoreEngine
             std::remove_if(passes_.begin(), passes_.end(),
                 [owner](const RenderPassEntry& entry) { return entry.owner == owner; }),
             passes_.end());
+
+        InvalidateGraphSnapshots();
     }
 
     RenderPass* RenderPipeline::GetPass(const std::string& name)
@@ -666,7 +672,7 @@ namespace CoreEngine
             RenderPass* passPtr = entry.pass.get();
             renderGraph_.AddPass(passPtr->GetName(), passPtr, [passPtr, &context](RenderGraphBuilder& builder) {
                 passPtr->DeclareResources(builder, context);
-                }, ToGpuTimingCategory(entry.phase));
+                }, entry.timingCategoryOverride.value_or(ToGpuTimingCategory(entry.phase)));
         }
 
         renderGraph_.Compile(context);
@@ -764,6 +770,11 @@ namespace CoreEngine
 
         ExecuteRenderGraph(context);
 
+        // 実行後に取る。実行フラグ・発行済みバリア・未解決リソースまで含めるため。
+        if (graphCaptureEnabled_ && !graphCapturePaused_) {
+            CaptureGraphSnapshot(context);
+        }
+
         if (afterExecute) {
             afterExecute();
         }
@@ -812,5 +823,81 @@ namespace CoreEngine
     void RenderPipeline::Clear()
     {
         passes_.clear();
+        InvalidateGraphSnapshots();
+    }
+
+    void RenderPipeline::CaptureGraphSnapshot(const RenderContext& context)
+    {
+        // フレームが変わった最初の View で溜め直す。単純に毎回クリアすると
+        // 1 フレーム内で順に走る補助 View 分が消え、最後の View しか残らない。
+        if (graphSnapshotFrameNumber_ != context.frameNumber) {
+            graphSnapshots_.clear();
+            graphSnapshotFrameNumber_ = context.frameNumber;
+        }
+
+        RenderGraphSnapshot snapshot;
+        snapshot.viewType = context.viewSettings.viewType;
+        snapshot.viewName = context.viewSettings.viewName;
+        snapshot.displayName = snapshot.viewName.empty() ? std::string("GameView") : snapshot.viewName;
+        snapshot.frameNumber = context.frameNumber;
+        snapshot.executionOrder = renderGraph_.GetExecutionOrder();
+
+        const std::vector<RenderGraphPass>& graphPasses = renderGraph_.GetPasses();
+        snapshot.passes.reserve(graphPasses.size());
+
+        for (const RenderGraphPass& graphPass : graphPasses) {
+            RenderGraphSnapshotPass snapshotPass;
+            static_cast<RenderGraphPass&>(snapshotPass) = graphPass;
+
+            // PostEffect の分解ノードは BuildRenderGraph のたびに作り直されるため、
+            // 次フレーム以降に触れると解放済みメモリになる。ポインタを持ち越さない。
+            const bool isTransient = std::any_of(
+                postEffectSubpasses_.begin(), postEffectSubpasses_.end(),
+                [&graphPass](const std::unique_ptr<PostEffectPass>& subpass) {
+                    return subpass.get() == graphPass.renderPass;
+                });
+            if (isTransient) {
+                snapshotPass.transient = true;
+                snapshotPass.renderPass = nullptr;
+            }
+
+            snapshot.passes.push_back(std::move(snapshotPass));
+        }
+
+        // 論理リソースは Graph 側の状態（版番号・解決可否）と Blackboard 側の SRV を突き合わせる。
+        // SRV はここで拾っておかないと、ポーズ中にプレビューが引けなくなる。
+        const std::unordered_map<std::string, RenderGraphResource>& graphResources = renderGraph_.GetResources();
+        snapshot.resources.reserve(graphResources.size());
+
+        for (const auto& [resourceName, graphResource] : graphResources) {
+            RenderGraphSnapshotResource entry;
+            entry.name = resourceName;
+            entry.version = graphResource.version;
+            entry.resolved = (graphResource.resource != nullptr && graphResource.currentState != nullptr);
+            if (graphResource.currentState) {
+                entry.stateAtCapture = *graphResource.currentState;
+            }
+            if (context.frameBlackboard) {
+                context.frameBlackboard->TryGetSrvHandle(resourceName, entry.srvHandle);
+            }
+
+            for (const RenderGraphSnapshotPass& snapshotPass : snapshot.passes) {
+                for (const RenderGraphResourceAccess& access : snapshotPass.reads) {
+                    if (access.resourceName == resourceName) { ++entry.readerCount; break; }
+                }
+                for (const RenderGraphResourceAccess& access : snapshotPass.writes) {
+                    if (access.resourceName == resourceName) { ++entry.writerCount; break; }
+                }
+            }
+
+            snapshot.resources.push_back(std::move(entry));
+        }
+
+        std::sort(snapshot.resources.begin(), snapshot.resources.end(),
+            [](const RenderGraphSnapshotResource& lhs, const RenderGraphSnapshotResource& rhs) {
+                return lhs.name < rhs.name;
+            });
+
+        graphSnapshots_.push_back(std::move(snapshot));
     }
 }

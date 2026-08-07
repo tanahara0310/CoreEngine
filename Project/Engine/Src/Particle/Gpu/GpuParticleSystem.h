@@ -190,6 +190,9 @@ public:
     /// @brief 更新処理（再生時間・放出数の管理のみ。粒子更新はGPU）
     void Update() override;
 
+    /// @brief ワールド空間での位置を取得（エミッタ位置）
+    Vector3 GetWorldPosition() const override { return emitterPosition_; }
+
     /// @brief 描画前処理（定数バッファへの書き込み。ディスパッチはレンダラーが行う）
     void Draw(const Camera* camera) override;
 

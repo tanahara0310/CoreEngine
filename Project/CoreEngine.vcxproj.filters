@@ -181,6 +181,18 @@
     <ClCompile Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.cpp">
       <Filter>Application\Src\Scenes\AssignmentScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionProbeObject.cpp">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp">
       <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
     </ClCompile>
@@ -235,20 +247,35 @@
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collider\AABBCollider.cpp">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClCompile Include="Engine\Src\Collision\Collider.cpp">
+      <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collider\Collider.cpp">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClCompile Include="Engine\Src\Collision\ColliderComponent.cpp">
+      <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collider\CollisionConfig.cpp">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClCompile Include="Engine\Src\Collision\CollisionResolver.cpp">
+      <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collider\CollisionManager.cpp">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClCompile Include="Engine\Src\Collision\BroadPhase\BruteForceBroadPhase.cpp">
+      <Filter>Engine\Src\Collision\BroadPhase</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Collider\SphereCollider.cpp">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClCompile Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.cpp">
+      <Filter>Engine\Src\Collision\BroadPhase</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.cpp">
+      <Filter>Engine\Src\Collision\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Collision\Debug\ColliderInspector.cpp">
+      <Filter>Engine\Src\Collision\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.cpp">
+      <Filter>Engine\Src\Collision\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp">
+      <Filter>Engine\Src\Collision</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp">
+      <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
@@ -264,6 +291,21 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.cpp">
       <Filter>Engine\Src\EngineSystem\Subsystem</Filter>
@@ -283,7 +325,13 @@
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Common\GpuMarker.cpp">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.cpp">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Common\GpuTimingStatsCollector.cpp">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.cpp">
@@ -715,8 +763,14 @@
     <ClCompile Include="Engine\Src\UI\UIImage.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\Collision\CollisionUtils.cpp">
-      <Filter>Engine\Src\Utility\Collision</Filter>
+    <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Math\Geometry\Intersect.cpp">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp">
+      <Filter>Engine\Src\Math\Geometry</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
@@ -747,6 +801,12 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Window\GameOutputWindow.cpp">
+      <Filter>Engine\Src\Editor\Window</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -922,6 +982,30 @@
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_draw.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_tables.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_impl_dx12.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_impl_win32.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\ImGuizmo.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imnodes.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
     <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClCompile>
@@ -940,43 +1024,25 @@
     <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp">
-      <Filter>Engine\Src\Utility\CVar</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp">
-      <Filter>Engine\Src\Utility\CVar</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp">
-      <Filter>Engine\Src\Utility\CVar</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp">
-      <Filter>Engine\Src\EngineSystem\Settings</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Engine\Src\Utility\CVar\CVar.h">
-      <Filter>Engine\Src\Utility\CVar</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h">
-      <Filter>Engine\Src\Utility\CVar</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h">
-      <Filter>Engine\Src\Utility\CVar</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h">
-      <Filter>Engine\Src\EngineSystem\Settings</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h">
       <Filter>Application\Src\Scenes\PrimitiveTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.h">
       <Filter>Application\Src\Scenes\AssignmentScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionProbeObject.h">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
@@ -1089,23 +1155,47 @@
     <ClInclude Include="Engine\Src\Editor\Camera\Module\ICameraEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collider\AABBCollider.h">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClInclude Include="Engine\Src\Collision\Collider.h">
+      <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collider\Collider.h">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClInclude Include="Engine\Src\Collision\ColliderComponent.h">
+      <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collider\CollisionConfig.h">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClInclude Include="Engine\Src\Collision\CollisionShape.h">
+      <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collider\CollisionLayer.h">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClInclude Include="Engine\Src\Collision\CollisionInfo.h">
+      <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collider\CollisionManager.h">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClInclude Include="Engine\Src\Collision\CollisionResolver.h">
+      <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Collider\SphereCollider.h">
-      <Filter>Engine\Src\Collider</Filter>
+    <ClInclude Include="Engine\Src\Collision\BroadPhase\IBroadPhase.h">
+      <Filter>Engine\Src\Collision\BroadPhase</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Collision\BroadPhase\BruteForceBroadPhase.h">
+      <Filter>Engine\Src\Collision\BroadPhase</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.h">
+      <Filter>Engine\Src\Collision\BroadPhase</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.h">
+      <Filter>Engine\Src\Collision\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Collision\Debug\ColliderInspector.h">
+      <Filter>Engine\Src\Collision\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.h">
+      <Filter>Engine\Src\Collision\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Collision\CollisionConfig.h">
+      <Filter>Engine\Src\Collision</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Collision\CollisionLayer.h">
+      <Filter>Engine\Src\Collision</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Collision\CollisionWorld.h">
+      <Filter>Engine\Src\Collision</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\ComponentManager.h">
       <Filter>Engine\Src\EngineSystem</Filter>
@@ -1127,6 +1217,21 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Settings\IEditorSettingsSection.h">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVar.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.h">
       <Filter>Engine\Src\EngineSystem\Subsystem</Filter>
@@ -1158,7 +1263,13 @@
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorHandle.h">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\GpuMarker.h">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h">
+      <Filter>Engine\Src\Graphics\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\GpuTimingStatsCollector.h">
       <Filter>Engine\Src\Graphics\Common</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\IResizable.h">
@@ -1539,6 +1650,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\RenderGraph.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderGraphSnapshot.h">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
     </ClInclude>
@@ -1890,9 +2004,6 @@
     <ClInclude Include="Engine\Src\Graphics\Model\ModelResource.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Math\BoundingBox.h">
-      <Filter>Engine\Src\Math</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Math\Quaternion\Quaternion.h">
       <Filter>Engine\Src\Math\Quaternion</Filter>
     </ClInclude>
@@ -1923,8 +2034,17 @@
     <ClInclude Include="Engine\Src\UI\UIImage.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Utility\Collision\CollisionUtils.h">
-      <Filter>Engine\Src\Utility\Collision</Filter>
+    <ClInclude Include="Engine\Src\Math\Geometry\Distance.h">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Geometry\Intersect.h">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Geometry\RayCast.h">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Geometry\Shapes.h">
+      <Filter>Engine\Src\Math\Geometry</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h">
       <Filter>Engine\Src\Utility\Debug</Filter>
@@ -1961,6 +2081,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Window\GameOutputWindow.h">
+      <Filter>Engine\Src\Editor\Window</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -2175,6 +2301,39 @@
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Externals\imgui\imconfig.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\imgui.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\imgui_internal.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\imgui_impl_dx12.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\imgui_impl_win32.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\ImGuizmo.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\imnodes.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\imnodes_internal.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\imstb_rectpack.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\imstb_textedit.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\imstb_truetype.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClInclude>
@@ -2296,6 +2455,9 @@
     <Filter Include="Application\Src\Scenes\AssignmentScene">
       <UniqueIdentifier>{7B3C1F42-9D6E-4C58-8A21-3F5E0B7D4C19}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Scenes\CollisionTestScene">
+      <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Scenes\PrimitiveTestScene">
       <UniqueIdentifier>{D473AE08-3695-412C-B895-5704EB4C75C5}</UniqueIdentifier>
     </Filter>
@@ -2374,7 +2536,13 @@
     <Filter Include="Engine\Src\Camera\View">
       <UniqueIdentifier>{F5ABBF85-A32B-4EA0-9D89-C0AD772A11EC}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Collider">
+    <Filter Include="Engine\Src\Collision\Debug">
+      <UniqueIdentifier>{A17F62D3-9B08-4C5E-8F31-2E7A64B0C915}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Collision\BroadPhase">
+      <UniqueIdentifier>{5D2A9C48-7E13-4B6F-A925-8C41D3E07B62}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Collision">
       <UniqueIdentifier>{FE7CD193-3AA7-4398-A7A5-43C789EB47D3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor">
@@ -2400,6 +2568,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Scene">
       <UniqueIdentifier>{8EEC7EC7-38CE-4B25-84B4-1C1FD0F26A22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Window">
+      <UniqueIdentifier>{0ED5B9B7-469F-40E4-89F7-0AE0CE44302A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\EngineSystem">
       <UniqueIdentifier>{25A76813-6EF1-43E7-8910-74FA30780B0C}</UniqueIdentifier>
@@ -2641,6 +2812,9 @@
     <Filter Include="Engine\Src\Math\Easing">
       <UniqueIdentifier>{A2BDB9FB-5057-4612-9EB0-B98B55503128}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Math\Geometry">
+      <UniqueIdentifier>{9E5C3B71-4A28-4F6D-B0C3-5D71E8A24F93}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Math\Matrix">
       <UniqueIdentifier>{7E9FDCBB-E068-4AAC-9C82-55B03FBAE9ED}</UniqueIdentifier>
     </Filter>
@@ -2686,8 +2860,8 @@
     <Filter Include="Engine\Src\Utility">
       <UniqueIdentifier>{46B344B6-CF7F-4BA4-AD45-446450F55874}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Utility\Collision">
-      <UniqueIdentifier>{46D9E200-5141-4E38-9D2C-F07F8BB5EBB5}</UniqueIdentifier>
+    <Filter Include="Engine\Src\Utility\CVar">
+      <UniqueIdentifier>{3C1F7A62-5D48-4B0E-9E21-7A6C0B4D8F13}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Debug">
       <UniqueIdentifier>{8A2D5BE0-0975-4A68-995C-266173813571}</UniqueIdentifier>
@@ -2700,9 +2874,6 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\JsonManager">
       <UniqueIdentifier>{DDF59094-F412-4879-A350-D360A6435BCD}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Utility\CVar">
-      <UniqueIdentifier>{3C1F7A62-5D48-4B0E-9E21-7A6C0B4D8F13}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>
@@ -2721,6 +2892,9 @@
     </Filter>
     <Filter Include="Externals">
       <UniqueIdentifier>{b3f1c8a2-6d47-4e0b-9a15-3c88e51f0d21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\imgui">
+      <UniqueIdentifier>{31C3741B-D9E0-41B2-B9F0-1E40D59C0319}</UniqueIdentifier>
     </Filter>
     <Filter Include="Externals\meshoptimizer">
       <UniqueIdentifier>{c7a92e14-8b53-49d6-b2f0-51d4ae67c832}</UniqueIdentifier>

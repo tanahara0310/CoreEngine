@@ -49,6 +49,11 @@ namespace CoreEngine
         /// @brief ドッキングのセットアップ
         void SetupDockSpace();
 
+        /// @brief 次のフレームで標準レイアウトを組み直す
+        /// @details 配置を散らかしてしまったときの復帰手段。
+        ///          登録済みウィンドウはすべて既定位置へ戻る。
+        void RequestResetLayout() { layoutDirty_ = true; }
+
         /// @brief レイアウトプリセットを設定
         void SetLayoutPreset(DockLayoutPreset preset);
 

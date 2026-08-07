@@ -1022,6 +1022,33 @@ void ImGui_ImplDX12_NewFrame()
 // If you are new to dear imgui or creating a new binding for dear imgui, it is recommended that you completely ignore this section first..
 //--------------------------------------------------------------------------------------------------------
 
+// [CoreEngine 独自パッチ] sRGB な RTV フォーマットに対応する非 sRGB フォーマットを返す。
+// DXGI_SWAP_EFFECT_FLIP_* のスワップチェーンは _SRGB フォーマットを受け付けず
+// CreateSwapChainForHwnd が E_INVALIDARG で失敗する。バッファは非 sRGB で作り、
+// sRGB 変換は RTV 側で掛けるのが正しい（アプリ本体のスワップチェーンも同じ構成）。
+// imgui 更新時はこのパッチを再適用すること。
+static DXGI_FORMAT ImGui_ImplDX12_GetSwapChainFormat(DXGI_FORMAT rtv_format)
+{
+    switch (rtv_format)
+    {
+    case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: return DXGI_FORMAT_R8G8B8A8_UNORM;
+    case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: return DXGI_FORMAT_B8G8R8A8_UNORM;
+    case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB: return DXGI_FORMAT_B8G8R8X8_UNORM;
+    default:                              return rtv_format;
+    }
+}
+
+// [CoreEngine 独自パッチ] 副ビューポートのバックバッファへ RTV を張る。
+// スワップチェーンを非 sRGB で作るため、RTV は明示的に bd->RTVFormat（sRGB）で作らないと
+// PSO の RTVFormats と食い違う。
+static void ImGui_ImplDX12_CreateViewportRtv(ImGui_ImplDX12_Data* bd, ID3D12Resource* back_buffer, D3D12_CPU_DESCRIPTOR_HANDLE handle)
+{
+    D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+    rtv_desc.Format = bd->RTVFormat;
+    rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+    bd->pd3dDevice->CreateRenderTargetView(back_buffer, &rtv_desc, handle);
+}
+
 static void ImGui_ImplDX12_CreateWindow(ImGuiViewport* viewport)
 {
     ImGui_ImplDX12_Data* bd = ImGui_ImplDX12_GetBackendData();
@@ -1070,7 +1097,7 @@ static void ImGui_ImplDX12_CreateWindow(ImGuiViewport* viewport)
     sd1.BufferCount = bd->numFramesInFlight;
     sd1.Width = (UINT)viewport->Size.x;
     sd1.Height = (UINT)viewport->Size.y;
-    sd1.Format = bd->RTVFormat;
+    sd1.Format = ImGui_ImplDX12_GetSwapChainFormat(bd->RTVFormat); // [CoreEngine 独自パッチ]
     sd1.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     sd1.SampleDesc.Count = 1;
     sd1.SampleDesc.Quality = 0;
@@ -1121,7 +1148,7 @@ static void ImGui_ImplDX12_CreateWindow(ImGuiViewport* viewport)
         {
             IM_ASSERT(vd->FrameCtx[i].RenderTarget == nullptr);
             vd->SwapChain->GetBuffer(i, IID_PPV_ARGS(&back_buffer));
-            bd->pd3dDevice->CreateRenderTargetView(back_buffer, nullptr, vd->FrameCtx[i].RenderTargetCpuDescriptors);
+            ImGui_ImplDX12_CreateViewportRtv(bd, back_buffer, vd->FrameCtx[i].RenderTargetCpuDescriptors); // [CoreEngine 独自パッチ]
             vd->FrameCtx[i].RenderTarget = back_buffer;
         }
     }
@@ -1188,7 +1215,7 @@ static void ImGui_ImplDX12_SetWindowSize(ImGuiViewport* viewport, ImVec2 size)
         for (UINT i = 0; i < bd->numFramesInFlight; i++)
         {
             vd->SwapChain->GetBuffer(i, IID_PPV_ARGS(&back_buffer));
-            bd->pd3dDevice->CreateRenderTargetView(back_buffer, nullptr, vd->FrameCtx[i].RenderTargetCpuDescriptors);
+            ImGui_ImplDX12_CreateViewportRtv(bd, back_buffer, vd->FrameCtx[i].RenderTargetCpuDescriptors); // [CoreEngine 独自パッチ]
             vd->FrameCtx[i].RenderTarget = back_buffer;
         }
     }

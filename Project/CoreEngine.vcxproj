@@ -59,7 +59,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(ProjectDir)\;$(IncludePath);$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem;$(SolutionDir)imgui</IncludePath>
+    <IncludePath>$(ProjectDir)\;$(IncludePath);$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem</IncludePath>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
@@ -67,13 +67,13 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem;$(SolutionDir)imgui</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem</IncludePath>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem;$(SolutionDir)imgui</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);;$(ProjectDir)\;$(ProjectDir)\Engine\Graphics;$(projectDir)\Engine\Math;$(ProjectDir)\Engine\Math;$(ProjectDir)\DirectX\Engine;$(ProjectDir)DirectX/Engine/;$(ProjectDir)Engine\;$(ProjectDir)Engine\EngineSystem</IncludePath>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <IntDir>$(SolutionDir)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)..\generated\$(ProjectName)\outputs\$(Configuration)\</OutDir>
@@ -103,8 +103,8 @@
       <EnableCOMDATFolding>false</EnableCOMDATFolding>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\imgui\outputs\$(Configuration)\;$(ProjectDir)externals\assimp\lib\Debug;$(ProjectDir)externals\freetype\lib\x64\Debug</AdditionalLibraryDirectories>
-      <AdditionalDependencies>imgui.lib;assimp-vc143-mtd.lib;freetype.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug;$(ProjectDir)externals\freetype\lib\x64\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mtd.lib;freetype.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
@@ -137,8 +137,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\imgui\outputs\$(Configuration)\;$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
-      <AdditionalDependencies>imgui.lib;assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
@@ -171,8 +171,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalOptions>/ignore:4099 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\generated\imgui\outputs\Release;$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
-      <AdditionalDependencies>imgui.lib;assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release;$(ProjectDir)externals\freetype\lib\x64\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>assimp-vc143-mt.lib;freetype.lib</AdditionalDependencies>
       <LinkTimeCodeGeneration />
     </Link>
     <PostBuildEvent>
@@ -246,6 +246,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp" />
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionProbeObject.cpp" />
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp" />
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
@@ -264,11 +268,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Collider\AABBCollider.cpp" />
-    <ClCompile Include="Engine\Src\Collider\Collider.cpp" />
-    <ClCompile Include="Engine\Src\Collider\CollisionConfig.cpp" />
-    <ClCompile Include="Engine\Src\Collider\CollisionManager.cpp" />
-    <ClCompile Include="Engine\Src\Collider\SphereCollider.cpp" />
+    <ClCompile Include="Engine\Src\Collision\Collider.cpp" />
+    <ClCompile Include="Engine\Src\Collision\ColliderComponent.cpp" />
+    <ClCompile Include="Engine\Src\Collision\CollisionResolver.cpp" />
+    <ClCompile Include="Engine\Src\Collision\BroadPhase\BruteForceBroadPhase.cpp" />
+    <ClCompile Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.cpp" />
+    <ClCompile Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.cpp" />
+    <ClCompile Include="Engine\Src\Collision\Debug\ColliderInspector.cpp" />
+    <ClCompile Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.cpp" />
+    <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp" />
+    <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineConfig.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\EngineSystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.cpp" />
@@ -285,7 +294,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\EngineSystem\Framework.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Common\GpuMarker.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Common\GpuTimingStatsCollector.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp" />
@@ -429,7 +440,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\TileMap\TileMap.cpp" />
     <ClCompile Include="Engine\Src\UI\UICanvas.cpp" />
     <ClCompile Include="Engine\Src\UI\UIImage.cpp" />
-    <ClCompile Include="Engine\Src\Utility\Collision\CollisionUtils.cpp" />
+    <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
+    <ClCompile Include="Engine\Src\Math\Geometry\Intersect.cpp" />
+    <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\ConsoleUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\CanvasViewport.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\EditorSettingsPanel.cpp" />
@@ -440,6 +453,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\PixCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Window\GameOutputWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneManagerTab.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp" />
@@ -501,6 +516,30 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Particle\ParticleSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
+    <ClCompile Include="Externals\imgui\imgui.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_draw.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_tables.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_impl_dx12.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_impl_win32.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\ImGuizmo.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imnodes.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -523,6 +562,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   <ItemGroup>
     <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h" />
     <ClInclude Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.h" />
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h" />
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h" />
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionProbeObject.h" />
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
@@ -560,12 +603,20 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\ICameraEditorModule.h" />
-    <ClInclude Include="Engine\Src\Collider\AABBCollider.h" />
-    <ClInclude Include="Engine\Src\Collider\Collider.h" />
-    <ClInclude Include="Engine\Src\Collider\CollisionConfig.h" />
-    <ClInclude Include="Engine\Src\Collider\CollisionLayer.h" />
-    <ClInclude Include="Engine\Src\Collider\CollisionManager.h" />
-    <ClInclude Include="Engine\Src\Collider\SphereCollider.h" />
+    <ClInclude Include="Engine\Src\Collision\Collider.h" />
+    <ClInclude Include="Engine\Src\Collision\ColliderComponent.h" />
+    <ClInclude Include="Engine\Src\Collision\CollisionShape.h" />
+    <ClInclude Include="Engine\Src\Collision\CollisionInfo.h" />
+    <ClInclude Include="Engine\Src\Collision\CollisionResolver.h" />
+    <ClInclude Include="Engine\Src\Collision\BroadPhase\IBroadPhase.h" />
+    <ClInclude Include="Engine\Src\Collision\BroadPhase\BruteForceBroadPhase.h" />
+    <ClInclude Include="Engine\Src\Collision\BroadPhase\UniformGridBroadPhase.h" />
+    <ClInclude Include="Engine\Src\Collision\Debug\ColliderDebugRenderer.h" />
+    <ClInclude Include="Engine\Src\Collision\Debug\ColliderInspector.h" />
+    <ClInclude Include="Engine\Src\Collision\Debug\CollisionMatrixPanel.h" />
+    <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
+    <ClInclude Include="Engine\Src\Collision\CollisionLayer.h" />
+    <ClInclude Include="Engine\Src\Collision\CollisionWorld.h" />
     <ClInclude Include="Engine\Src\EngineSystem\ComponentManager.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineConfig.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Factory\CoreComponentFactory.h" />
@@ -588,7 +639,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetMetadata.h" />
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorHandle.h" />
+    <ClInclude Include="Engine\Src\Graphics\Common\GpuMarker.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\GpuTimestampProfiler.h" />
+    <ClInclude Include="Engine\Src\Graphics\Common\GpuTimingStatsCollector.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\IResizable.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\ResourceBarrierHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\EngineStats.h" />
@@ -715,6 +768,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterSurfacePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderDomainContext.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderGraph.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderGraphSnapshot.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\RenderingTechniqueBase.h" />
@@ -832,7 +886,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\Model.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelResource.h" />
-    <ClInclude Include="Engine\Src\Math\BoundingBox.h" />
     <ClInclude Include="Engine\Src\Math\Quaternion\Quaternion.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\UndoRedoHistory.h" />
     <ClInclude Include="Engine\Src\Threading\ThreadPool.h" />
@@ -843,7 +896,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\UI\UICanvas.h" />
     <ClInclude Include="Engine\Src\UI\UIElement.h" />
     <ClInclude Include="Engine\Src\UI\UIImage.h" />
-    <ClInclude Include="Engine\Src\Utility\Collision\CollisionUtils.h" />
+    <ClInclude Include="Engine\Src\Math\Geometry\Distance.h" />
+    <ClInclude Include="Engine\Src\Math\Geometry\Intersect.h" />
+    <ClInclude Include="Engine\Src\Math\Geometry\RayCast.h" />
+    <ClInclude Include="Engine\Src\Math\Geometry\Shapes.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\ConsoleUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\CanvasViewport.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorSettingsPanel.h" />
@@ -856,6 +912,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\PixCapture.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\Window\GameOutputWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneManagerTab.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ScreenCapture.h" />
@@ -927,6 +985,17 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h" />
+    <ClInclude Include="Externals\imgui\imconfig.h" />
+    <ClInclude Include="Externals\imgui\imgui.h" />
+    <ClInclude Include="Externals\imgui\imgui_internal.h" />
+    <ClInclude Include="Externals\imgui\imgui_impl_dx12.h" />
+    <ClInclude Include="Externals\imgui\imgui_impl_win32.h" />
+    <ClInclude Include="Externals\imgui\ImGuizmo.h" />
+    <ClInclude Include="Externals\imgui\imnodes.h" />
+    <ClInclude Include="Externals\imgui\imnodes_internal.h" />
+    <ClInclude Include="Externals\imgui\imstb_rectpack.h" />
+    <ClInclude Include="Externals\imgui\imstb_textedit.h" />
+    <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h" />
   </ItemGroup>
   <ItemGroup>

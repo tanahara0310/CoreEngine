@@ -98,6 +98,12 @@ public:
         return renderMode_ == ParticleRenderMode::Model ? RenderPassType::ModelParticle : RenderPassType::Particle;
     }
 
+    /// @brief ワールド空間での位置を取得（エミッタ位置）
+    Vector3 GetWorldPosition() const override { return emitterTransform_.translate; }
+
+    /// @brief ワールド空間でのスケールを取得（エミッタのスケール）
+    Vector3 GetWorldScale() const override { return emitterTransform_.scale; }
+
 #ifdef USE_IMGUI
     /// @brief オブジェクト名を取得
     const char* GetObjectName() const override { return "ParticleSystem"; }

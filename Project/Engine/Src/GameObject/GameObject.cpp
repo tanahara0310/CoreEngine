@@ -1,7 +1,5 @@
 #include "pch.h"
 #include "GameObject.h"
-#include "Collider/SphereCollider.h"
-#include "Collider/AABBCollider.h"
 #include <cstdio>
 
 #ifdef USE_IMGUI
@@ -80,25 +78,28 @@ namespace CoreEngine
     void GameObject::OnCollisionStay(GameObject* other) { (void)other; }
     void GameObject::OnCollisionExit(GameObject* other) { (void)other; }
 
-    Vector3 GameObject::GetWorldPosition() const { return {}; }
+    // 接触情報つき版の既定実装は「相手だけ」を渡す旧 API へ転送する。
+    // これにより GameObject* 版だけを override した既存コードがそのまま動く。
+    void GameObject::OnCollisionEnter(const CollisionInfo& info) { OnCollisionEnter(info.other); }
+    void GameObject::OnCollisionStay(const CollisionInfo& info) { OnCollisionStay(info.other); }
+    void GameObject::OnCollisionExit(const CollisionInfo& info) { OnCollisionExit(info.other); }
 
     // ===== コライダー =====
 
-    bool GameObject::HasCollider() const { return collider_ != nullptr; }
-    Collider* GameObject::GetCollider() { return collider_.get(); }
-    const Collider* GameObject::GetCollider() const { return collider_.get(); }
-    void GameObject::RemoveCollider() { collider_.reset(); }
+    bool GameObject::HasCollider() const { return !colliders_.IsEmpty(); }
+    Collider* GameObject::GetCollider() { return colliders_.GetFirst(); }
+    const Collider* GameObject::GetCollider() const { return colliders_.GetFirst(); }
+
+    void GameObject::RemoveCollider() { colliders_.RemoveAll(); }
+
+    void GameObject::ReleaseRetiredColliders() { colliders_.ReleaseRetired(); }
 
     Collider& GameObject::AddSphereCollider(float radius, CollisionLayer layer) {
-        collider_ = std::make_unique<SphereCollider>(this, radius);
-        collider_->SetLayer(layer);
-        return *collider_;
+        return colliders_.AddSphere(radius, layer);
     }
 
     Collider& GameObject::AddAABBCollider(const Vector3& size, CollisionLayer layer) {
-        collider_ = std::make_unique<AABBCollider>(this, size);
-        collider_->SetLayer(layer);
-        return *collider_;
+        return colliders_.AddBox(size, layer);
     }
 
     // ===== 名前 / シリアライズ =====

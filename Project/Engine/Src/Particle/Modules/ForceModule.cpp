@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ForceModule.h"
 #include "../ParticleSystem.h"
+#include "Math/Geometry/Intersect.h"
 #include <algorithm>
 #include "Editor/ImGui/ImGuiAll.h"
 
@@ -44,7 +45,7 @@ namespace CoreEngine
 
         // 加速度フィールドを適用
         if (forceData_.useAccelerationField) {
-            if (CollisionUtils::IsColliding(particle.transform.translate, forceData_.area)) {
+            if (Geometry::Contains(forceData_.area, particle.transform.translate)) {
                 particle.velocity.x += forceData_.acceleration.x * deltaTime;
                 particle.velocity.y += forceData_.acceleration.y * deltaTime;
                 particle.velocity.z += forceData_.acceleration.z * deltaTime;

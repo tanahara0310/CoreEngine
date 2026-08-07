@@ -71,8 +71,56 @@ void WinApp::CreateAppWindow(const wchar_t* title)
         wc_.hInstance,                 // インスタンスハンドル
         nullptr);                      // その他のパラメータ
 
-    // ウィンドウを最大化表示
+    // 起動時はボーダーレス全画面で表示する。
+    // SW_SHOWMAXIMIZED（最大化）ではタイトルバーが残り、タスクバーの分だけ
+    // 作業領域が削られるため「全画面」にはならない。
+    // 通常ウィンドウへ戻すときの復元先として、先に配置を控えておく。
     ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
+    SetFullscreen(true);
+}
+
+void WinApp::SetFullscreen(bool fullscreen)
+{
+    if (!hwnd_ || isFullscreen_ == fullscreen) {
+        return;
+    }
+
+    if (fullscreen) {
+        // 戻り先（スタイルと配置）を退避
+        windowedStyle_ = GetWindowLongPtr(hwnd_, GWL_STYLE);
+        windowedPlacement_.length = sizeof(WINDOWPLACEMENT);
+        GetWindowPlacement(hwnd_, &windowedPlacement_);
+
+        HMONITOR monitor = MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST);
+        MONITORINFO monitorInfo{};
+        monitorInfo.cbSize = sizeof(MONITORINFO);
+        if (!GetMonitorInfo(monitor, &monitorInfo)) {
+            return;
+        }
+        const RECT& monitorRect = monitorInfo.rcMonitor;
+
+        // 枠と各種ボタンを外す（タイトルバーが消える）
+        SetWindowLongPtr(hwnd_, GWL_STYLE,
+            (windowedStyle_ & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU))
+            | WS_POPUP);
+
+        // rcWorkArea ではなく rcMonitor を使うこと。
+        // rcWorkArea はタスクバーを除いた領域なので、そこに合わせるとタスクバーが残る。
+        SetWindowPos(hwnd_, HWND_TOP,
+            monitorRect.left, monitorRect.top,
+            monitorRect.right - monitorRect.left,
+            monitorRect.bottom - monitorRect.top,
+            SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+
+        ShowWindow(hwnd_, SW_SHOW);
+        isFullscreen_ = true;
+    } else {
+        SetWindowLongPtr(hwnd_, GWL_STYLE, windowedStyle_);
+        SetWindowPlacement(hwnd_, &windowedPlacement_);
+        SetWindowPos(hwnd_, nullptr, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+        isFullscreen_ = false;
+    }
 }
 
 // ウィンドウプロシージャ
@@ -89,6 +137,33 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
 
     // メッセージに応じて固有の処理を行う
     switch (msg) {
+        // Alt+Enter で全画面 / 通常ウィンドウを切り替える
+    case WM_SYSKEYDOWN:
+        if (wparam == VK_RETURN && instance_ != nullptr) {
+            constexpr LPARAM kAltDownBit = 1LL << 29;
+            if (lparam & kAltDownBit) {
+                instance_->ToggleFullscreen();
+                return 0;
+            }
+        }
+        break;
+
+        // Esc でアプリケーションを終了する
+    case WM_KEYDOWN:
+        if (wparam == VK_ESCAPE) {
+#ifdef USE_IMGUI
+            // 名前入力などの最中に消えてしまわないよう、
+            // ImGui がテキスト入力を受け取っている間は無視する
+            if (ImGui::GetCurrentContext() && ImGui::GetIO().WantTextInput) {
+                break;
+            }
+#endif
+            // × ボタンと同じ経路を通す
+            PostMessage(hwnd, WM_CLOSE, 0, 0);
+            return 0;
+        }
+        break;
+
         // ウィンドウが破棄された時
     case WM_DESTROY:
         // OSに対して、アプリの終了を伝える
@@ -142,6 +217,13 @@ bool WinApp::ProcessMessage()
     }
 
     return false;
+}
+
+void WinApp::RequestQuit()
+{
+    if (hwnd_) {
+        PostMessage(hwnd_, WM_CLOSE, 0, 0);
+    }
 }
 
 // ウィンドウの破棄

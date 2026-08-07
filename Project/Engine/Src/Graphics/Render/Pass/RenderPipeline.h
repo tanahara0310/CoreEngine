@@ -2,9 +2,11 @@
 #include "RenderPass.h"
 #include "PostEffectPass.h"
 #include "Graphics/Render/RenderGraph.h"
+#include "Graphics/Render/RenderGraphSnapshot.h"
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <optional>
 #include <string>
 #include <functional>
 
@@ -24,11 +26,15 @@ namespace CoreEngine
         /// @param pass 追加するレンダーパス
         /// @param phase 挿入フェーズ
         /// @param priority フェーズ内優先度
+        /// @param timingCategoryOverride タイミング表示カテゴリの上書き（nullptr = phase から機械的に決定）
+        ///        実行順の都合で置いたフェーズと、計測上の分類が食い違うパス
+        ///        （例: 波形生成は PostLighting に置くが、コストの分類としては Water）に使う。
         /// @return 追加したパスへのポインタ（RemovePass 用ハンドル）
         RenderPass* AddPass(
             std::unique_ptr<RenderPass> pass,
             RenderPassPhase phase,
-            int priority = 0);
+            int priority = 0,
+            std::optional<GpuTimingCategory> timingCategoryOverride = std::nullopt);
 
         /// @brief レンダーパスを削除
         /// @param pass AddPass が返したパスポインタ
@@ -109,7 +115,50 @@ namespace CoreEngine
         /// @return パスの数
         size_t GetPassCount() const { return passes_.size(); }
 
+        // ── RenderGraph エディタ向けスナップショット ──────────────────────────────
+
+        /// @brief Graph の構築・実行結果をフレームごとに複製するかを設定する
+        /// @details 無効時は RenderGraph の計装も切れ、記録コストはゼロになる。
+        ///          エディタ側がウィンドウの表示状態に合わせて毎フレーム設定する想定。
+        /// @param enabled 複製する場合 true
+        void SetGraphCaptureEnabled(bool enabled)
+        {
+            graphCaptureEnabled_ = enabled;
+            renderGraph_.SetInstrumentationEnabled(enabled);
+            if (!enabled) {
+                graphSnapshots_.clear();
+            }
+        }
+
+        /// @brief スナップショット複製が有効かを返す
+        bool IsGraphCaptureEnabled() const { return graphCaptureEnabled_; }
+
+        /// @brief スナップショットの更新を止める（今の内容を保持したまま眺めるため）
+        /// @param paused 停止する場合 true
+        void SetGraphCapturePaused(bool paused) { graphCapturePaused_ = paused; }
+
+        /// @brief スナップショット更新が停止中かを返す
+        bool IsGraphCapturePaused() const { return graphCapturePaused_; }
+
+        /// @brief 直近フレームの View 別スナップショットを取得する
+        /// @return 実行順に並んだ View 別スナップショット（補助 View → GameView の順）
+        const std::vector<RenderGraphSnapshot>& GetGraphSnapshots() const { return graphSnapshots_; }
+
     private:
+        /// @brief 現在の Graph 構築・実行結果を 1 View 分スナップショットへ複製する
+        /// @param context この View の実行に使ったレンダリングコンテキスト
+        void CaptureGraphSnapshot(const RenderContext& context);
+
+        /// @brief 保持中のスナップショットを破棄する
+        /// @details パス実体が消える操作（RemovePass 等）の直後に必ず呼ぶこと。
+        ///          スナップショットは RenderPass* を握っており、放置すると
+        ///          ポーズ中の参照が解放済みメモリを指す。
+        void InvalidateGraphSnapshots()
+        {
+            graphSnapshots_.clear();
+            graphSnapshotFrameNumber_ = UINT64_MAX;
+        }
+
         /// @brief RenderGraph 構築前に主要リソースを Blackboard へ登録する
         /// @param context レンダリングコンテキスト
         void RegisterFrameResources(const RenderContext& context);
@@ -138,6 +187,7 @@ namespace CoreEngine
             int priority = 0;
             uint64_t sequence = 0;     ///< 登録順（同フェーズ・同 priority の安定ソート用）
             const void* owner = nullptr; ///< nullptr = エンジン所有。シーン所有パスの一括除去に使う
+            std::optional<GpuTimingCategory> timingCategoryOverride; ///< 未設定なら phase から決定
         };
 
         std::vector<std::unique_ptr<PostEffectPass>> postEffectSubpasses_;
@@ -149,5 +199,10 @@ namespace CoreEngine
         uint64_t nextSequence_ = 0;
         const void* activeOwner_ = nullptr;
         RenderGraph renderGraph_{};
+
+        std::vector<RenderGraphSnapshot> graphSnapshots_;
+        uint64_t graphSnapshotFrameNumber_ = UINT64_MAX; ///< 今 graphSnapshots_ に溜めているフレーム
+        bool graphCaptureEnabled_ = false;
+        bool graphCapturePaused_ = false;
     };
 }

@@ -6,6 +6,7 @@
 #include "Scenes/PrimitiveTestScene/PrimitiveTestScene.h"
 #include "Scenes/WaterTestScene/WaterTestScene.h"
 #include "Scenes/AssignmentScene/AssignmentScene.h"
+#include "Scenes/CollisionTestScene/CollisionTestScene.h"
 
 using namespace CoreEngine;
 
@@ -26,9 +27,11 @@ void MyGame::Initialize()
     sceneManager_->RegisterScene<PrimitiveTestScene>("PrimitiveTestScene");
     sceneManager_->RegisterScene<WaterTestScene>("WaterTestScene");
     sceneManager_->RegisterScene<AssignmentScene>("AssignmentScene");
+    // 当たり判定の回帰テストシーン（Scene Manager タブから切り替えて使う）
+    sceneManager_->RegisterScene<CollisionTest::CollisionTestScene>("CollisionTestScene");
 
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene("AssignmentScene");
+    sceneManager_->SetInitialScene("WaterTestScene");
 
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
 #ifdef USE_IMGUI

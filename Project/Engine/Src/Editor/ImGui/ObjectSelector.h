@@ -106,16 +106,6 @@ namespace CoreEngine
         /// @return ワールド座標
         Vector2 ScreenToWorld2D(const Vector2& mousePos, const Camera* camera);
 
-        /// @brief レイとスフィアの交差判定
-        /// @param rayOrigin レイの始点
-        /// @param rayDirection レイの方向（正規化済み）
-        /// @param sphereCenter スフィアの中心座標
-        /// @param sphereRadius スフィアの半径
-        /// @param distance 交差点までの距離（出力）
-        /// @return 交差している場合true
-        bool RayIntersectsSphere(const Vector3& rayOrigin, const Vector3& rayDirection,
-            const Vector3& sphereCenter, float sphereRadius, float& distance);
-
         /// @brief スクリーン座標からワールド空間のレイを生成
         /// @param mousePos マウス座標（0.0〜1.0の正規化座標）
         /// @param camera カメラ
@@ -124,26 +114,31 @@ namespace CoreEngine
         void ScreenToWorldRay(const Vector2& mousePos, const Camera* camera,
             Vector3& rayOrigin, Vector3& rayDirection);
 
-        /// @brief レイと三角形の交差判定（Möller–Trumbore アルゴリズム）
-        /// @param rayOrigin レイの始点
-        /// @param rayDirection レイの方向（正規化済み）
-        /// @param v0 三角形の頂点0
-        /// @param v1 三角形の頂点1
-        /// @param v2 三角形の頂点2
-        /// @param distance 交差点までの距離（出力）
-        /// @return 交差している場合true
-        bool RayIntersectsTriangle(const Vector3& rayOrigin, const Vector3& rayDirection,
-            const Vector3& v0, const Vector3& v1, const Vector3& v2,
-            float& distance);
-
         /// @brief レイとメッシュの交差判定
         /// @param rayOrigin レイの始点
         /// @param rayDirection レイの方向（正規化済み）
         /// @param object 判定対象のゲームオブジェクト
-        /// @param distance 交差点までの距離（出力）
+        /// @param distance 交差点までの距離（出力・ワールド空間）
         /// @return 交差している場合true
+        /// @note 形状ごとの交差判定は Math/Geometry/RayCast.h に一本化されている。
+        ///       ここはピッキング固有の手順（ローカルAABBで事前棄却 → ローカル空間の
+        ///       レイで全三角形 → 最近ヒットをワールド距離へ戻す）だけを持つ。
         bool RayIntersectsMesh(const Vector3& rayOrigin, const Vector3& rayDirection,
             GameObject* object, float& distance);
+
+        /// @brief モデルを持たないオブジェクト向けの代替球判定
+        /// @param object 判定対象
+        /// @param rayOrigin レイの始点 / @param rayDirection レイの方向
+        /// @param radius 代替球の半径
+        /// @param distance 交差点までの距離（出力）
+        bool RayIntersectsFallbackSphere(const Vector3& rayOrigin, const Vector3& rayDirection,
+            GameObject* object, float radius, float& distance);
+
+        /// @brief 方向ベクトルを行列で変換（平行移動を無視・非正規化のまま返す）
+        /// @param direction 変換する方向ベクトル
+        /// @param matrix 変換行列
+        /// @return 変換後の方向ベクトル
+        Vector3 TransformDirection(const Vector3& direction, const Matrix4x4& matrix);
 
         /// @brief 点を行列で変換
         /// @param point 変換する点

@@ -16,6 +16,7 @@ namespace CoreEngine
 {
     class DirectXCommon;
     class DescriptorManager;
+    class GpuTimestampProfiler;
 
     /// @brief FFTベースの海面シミュレーションを実行し、変位/法線/ヤコビアンを生成する管理クラス
     class FFTOceanManager
@@ -53,7 +54,16 @@ namespace CoreEngine
         bool Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager);
 
         /// @brief 1フレーム分の海面シミュレーションをDispatchし、出力テクスチャを更新する
-        void Dispatch(ID3D12GraphicsCommandList* cmdList, float timeSeconds);
+        /// @param cmdList コマンドリスト
+        /// @param timeSeconds シミュレーション時刻（秒）
+        /// @param profiler 内訳計測用プロファイラ（nullptr なら計測しない）。
+        ///                 時間発展 / IFFT / 合成 / 泡 をカスケードごとに別スロットで計測する。
+        ///                 RenderGraph のパス単位計測では FFTOceanPass 1 本にまとまってしまい、
+        ///                 どの Compute パスが支配的かを分解できないため、ここで直接取る。
+        void Dispatch(
+            ID3D12GraphicsCommandList* cmdList,
+            float timeSeconds,
+            GpuTimestampProfiler* profiler = nullptr);
 
         /// @brief シミュレーション設定を更新し、必要に応じてスペクトルを再構築する
         void SetSettings(const Settings& settings);

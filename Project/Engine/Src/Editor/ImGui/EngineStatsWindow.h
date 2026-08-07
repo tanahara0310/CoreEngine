@@ -1,7 +1,9 @@
 #pragma once
 #include "Graphics/Common/EngineStats.h"
 #include "Graphics/Common/GpuTimestampProfiler.h"
+#include "Graphics/Common/GpuTimingStatsCollector.h"
 #include <array>
+#include <string>
 
 namespace CoreEngine
 {
@@ -36,6 +38,8 @@ namespace CoreEngine
         void DrawGpuTimingsSection();
         // パス別コスト描画（レンダリングタブ内部）
         void DrawPassTimingsSection();
+        // 統計計測・CSV 出力（パフォーマンスタブ内部）
+        void DrawMeasurementSection();
 
     private:
         EngineSystem* engine_ = nullptr;
@@ -65,5 +69,14 @@ namespace CoreEngine
         static constexpr float kTimingUpdateInterval = 0.5f; // 秒
         float timingAccumTime_ = 0.0f;
         std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount> frozenGpu_ = {};
+
+        // ── 統計計測（N フレーム収集して中央値 / p95 を出し CSV へ書き出す）──
+        GpuTimingStatsCollector timingCapture_;
+        int captureWarmupFrames_ = static_cast<int>(GpuTimingStatsCollector::kDefaultWarmupFrames);
+        int captureFrameCount_ = static_cast<int>(GpuTimingStatsCollector::kDefaultCaptureFrames);
+        char captureLabel_[96] = {};  ///< 条件名（A/B の識別に使う）
+        char captureNote_[192] = {};  ///< 風速・太陽高度・構図などの自由記入
+        std::string lastExportPath_;  ///< 直近に書き出した CSV のパス（UI 表示用）
+        std::string gpuName_;         ///< DXGI アダプタ名（CSV のメタ情報）
     };
 }

@@ -26,6 +26,50 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES requiredState = D3D12_RESOURCE_STATE_COMMON;
     };
 
+    /// @brief パス間依存が生まれた理由
+    /// @details 実行順は「宣言から導出される」ため、順番の根拠はコードのどこにも書かれていない。
+    ///          原因を保持しておくと「なぜこのパスがこの位置なのか」を後から説明できる。
+    enum class RenderGraphDependencyKind : uint8_t {
+        ReadAfterWrite = 0, ///< RAW: 先行パスの書き込み結果を読む
+        WriteAfterWrite,    ///< WAW: 同じリソースへ上書きする
+        WriteAfterRead,     ///< WAR: 先行パスが読み終わる前に上書きしない
+    };
+
+    /// @brief 依存エッジ 1 本（依存先パスと、その依存を生んだ論理リソース）
+    struct RenderGraphDependency {
+        uint32_t passIndex = 0;
+        std::string resourceName;
+        RenderGraphDependencyKind kind = RenderGraphDependencyKind::ReadAfterWrite;
+
+        bool operator==(const RenderGraphDependency& other) const {
+            return passIndex == other.passIndex
+                && kind == other.kind
+                && resourceName == other.resourceName;
+        }
+    };
+
+    /// @brief 実行時に発行したバリア 1 件の記録（計装が有効なときのみ積まれる）
+    struct RenderGraphBarrierRecord {
+        std::string resourceName;
+        D3D12_RESOURCE_STATES beforeState = D3D12_RESOURCE_STATE_COMMON;
+        D3D12_RESOURCE_STATES afterState = D3D12_RESOURCE_STATE_COMMON;
+        bool isUavBarrier = false;
+        bool isWrite = false;
+    };
+
+    /// @brief 依存の種別を表示用文字列へ変換する
+    /// @param kind 依存種別
+    /// @return "RAW" / "WAW" / "WAR"
+    constexpr const char* ToString(RenderGraphDependencyKind kind) noexcept
+    {
+        switch (kind) {
+        case RenderGraphDependencyKind::ReadAfterWrite:  return "RAW";
+        case RenderGraphDependencyKind::WriteAfterWrite: return "WAW";
+        case RenderGraphDependencyKind::WriteAfterRead:  return "WAR";
+        default:                                         return "?";
+        }
+    }
+
     class RenderGraphBuilder {
     public:
         /// @brief 読み取りリソースを登録する
@@ -68,8 +112,13 @@ namespace CoreEngine
         RenderPass* renderPass = nullptr;
         std::vector<RenderGraphResourceAccess> reads;
         std::vector<RenderGraphResourceAccess> writes;
-        std::vector<uint32_t> dependencies;
+        std::vector<RenderGraphDependency> dependencies;
         GpuTimingCategory timingCategory = GpuTimingCategory::Setup; ///< タイミング表示のグルーピングカテゴリ
+
+        // ── 以下は Execute 中に埋まる計装データ（RenderGraph::SetInstrumentationEnabled が真のときのみ）──
+        bool executed = false;                                 ///< 今フレームこの View で実際に実行されたか
+        std::vector<RenderGraphBarrierRecord> barriers;        ///< 実行直前に発行したバリア
+        std::vector<std::string> unresolvedResources;          ///< 実体を解決できずバリアを飛ばしたリソース
     };
 
     struct RenderGraphContext {
@@ -103,6 +152,16 @@ namespace CoreEngine
 
         const std::vector<RenderGraphPass>& GetPasses() const { return passes_; }
         const std::vector<uint32_t>& GetExecutionOrder() const { return executionOrder_; }
+        const std::unordered_map<std::string, RenderGraphResource>& GetResources() const { return resources_; }
+
+        /// @brief 計装（実行フラグ・バリア記録・未解決リソース記録）の有効/無効を切り替える
+        /// @details エディタが Graph を覗いていないフレームでは記録コストをゼロにするためのスイッチ。
+        ///          無効時は Execute 中の記録用 vector へ一切触れない。
+        /// @param enabled 記録する場合 true
+        void SetInstrumentationEnabled(bool enabled) { instrumentationEnabled_ = enabled; }
+
+        /// @brief 計装が有効かを返す
+        bool IsInstrumentationEnabled() const { return instrumentationEnabled_; }
 
     private:
         /// @brief Blackboard と既存 Manager から主要リソースの実体と状態参照を解決する
@@ -114,10 +173,11 @@ namespace CoreEngine
         ///          Compile 時に未解決だったリソースは実行時に Blackboard から再解決を試みる。
         /// @param pass 実行対象 Graph パス
         /// @param context 実行時コンテキスト
-        void ApplyTransitionsForPass(const RenderGraphPass& pass, const RenderContext& context);
+        void ApplyTransitionsForPass(RenderGraphPass& pass, const RenderContext& context);
 
         std::vector<RenderGraphPass> passes_;
         std::unordered_map<std::string, RenderGraphResource> resources_;
         std::vector<uint32_t> executionOrder_;
+        bool instrumentationEnabled_ = false;
     };
 }

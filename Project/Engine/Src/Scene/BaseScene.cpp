@@ -347,6 +347,11 @@ namespace CoreEngine
         }
     }
 
+    CollisionWorld* BaseScene::GetCollisionWorld()
+    {
+        return collisionFeature_ ? &collisionFeature_->GetWorld() : nullptr;
+    }
+
     SkyBoxObject* BaseScene::GetSkyBox() const
     {
         return environmentFeature_ ? environmentFeature_->GetSkyBox() : nullptr;

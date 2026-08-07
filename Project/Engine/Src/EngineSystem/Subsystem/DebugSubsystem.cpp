@@ -100,14 +100,14 @@ namespace CoreEngine
             });
         gameDebugUI_->RegisterEnginePanel("Thread Profiler", [this]() {
             threadProfilerUI_->Draw();
-            }, EnginePanelCategory::Tools);
+            }, EnginePanelCategory::Tools, EnginePanelGroup::Analysis);
 
         // キーコンフィグUIの登録
         gameDebugUI_->RegisterEnginePanel("Key Config", [this]() {
             if (auto* inputManager = engine_->GetComponent<InputManager>()) {
                 keyConfigUI_.Draw(inputManager->GetQuery());
             }
-            }, EnginePanelCategory::Tools);
+            }, EnginePanelCategory::Tools, EnginePanelGroup::Editor);
 
         // エンジン統計ウィンドウ（EngineDebug メニュー：カテゴリ別個別ウィンドウ）
         engineStatsWindow_ = std::make_unique<EngineStatsWindow>();
@@ -181,7 +181,7 @@ namespace CoreEngine
         // （自動保存セクションの一覧・最終保存時刻・リセット / バックアップ復元）
         gameDebugUI_->RegisterEnginePanel("Editor Settings", [this]() {
             EditorSettingsPanel::Draw(engine_ ? engine_->GetSubsystem<EditorSettingsSubsystem>() : nullptr);
-        });
+        }, EnginePanelCategory::Settings, EnginePanelGroup::Editor);
 
         // Shading パネル（IBL はシーン側で有効化され、マテリアルは強度のみ持つ）
         gameDebugUI_->RegisterEnginePanel("Shading", [this]() {
@@ -239,21 +239,21 @@ namespace CoreEngine
             } else {
                 ImGui::TextDisabled("(シーンが存在しません)");
             }
-            });
+            }, EnginePanelCategory::Settings, EnginePanelGroup::Rendering);
 
         // Post Effects セクション（Engine Settings 内）
         gameDebugUI_->RegisterEnginePanel("Post Effects", [this]() {
             if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
                 postEffect->DrawImGuiContent();
             }
-            });
+            }, EnginePanelCategory::Settings, EnginePanelGroup::Rendering);
 
         // Rendering Techniques パネル（SSAO, TAA等のレンダリング技術）
         gameDebugUI_->RegisterEnginePanel("Rendering Techniques", [this]() {
             if (auto* renderingTechniqueManager = engine_->GetComponent<RenderingTechniqueManager>()) {
                 renderingTechniqueManager->DrawImGui();
             }
-            });
+            }, EnginePanelCategory::Settings, EnginePanelGroup::Rendering);
 
         // Render Pass デバッグパネル（各パスの中間バッファを可視化）
         {
@@ -266,15 +266,27 @@ namespace CoreEngine
             }
             gameDebugUI_->RegisterEnginePanel("Render Pass", [this]() {
                 renderPassDebugPanel_.Draw();
-                }, EnginePanelCategory::Tools);
+                }, EnginePanelCategory::Tools, EnginePanelGroup::Rendering);
         }
+
+        // ゲーム映像だけを映す専用ウィンドウ（ImGui を経由しない自前の HWND＋スワップチェーン）
+        gameOutputWindow_.Initialize(dx, engine_->GetComponent<PostEffectManager>(),
+            engine_->GetWinApp() ? engine_->GetWinApp()->GetHwnd() : nullptr);
+
+        // RenderGraph ノードエディタ（imnodes）。
+        // パスの依存・実行順・GPU 時間・バリアを 1 枚のグラフとして見せ、
+        // ノードから直接パスの有効/無効を切り替えられるようにする。
+        renderGraphEditorPanel_.Initialize(engine_, &gpuProfiler_);
+        gameDebugUI_->RegisterEnginePanel("Render Graph", [this]() {
+            renderGraphEditorPanel_.Draw();
+            }, EnginePanelCategory::Tools, EnginePanelGroup::Rendering);
 
         // レイトレーシング専用デバッグパネル（Debug メニュー > Ray Tracing）
         // 加速構造の統計・RTシャドウのステージ別内訳・中間バッファ・設定をまとめる。
         rayTracingDebugPanel_.Initialize(engine_, &gpuProfiler_);
         gameDebugUI_->RegisterEngineDebugPanel("Ray Tracing", [this]() {
             rayTracingDebugPanel_.Draw();
-            });
+            }, EnginePanelGroup::Rendering);
 
         // その他の固定ウィンドウをドッキングシステムに登録
         DockingUI* dockingUI = imGui_->GetDockingUI();
@@ -306,6 +318,13 @@ namespace CoreEngine
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();
 
+        // ゲーム映像専用ウィンドウ（GPU 待ちを含むので ImGui / プロファイラより先に畳む）
+        gameOutputWindow_.Finalize();
+
+        // RenderGraph エディタの終了処理（imnodes コンテキストは ImGui より先に解放する）。
+        // パスの有効状態を上書きしたまま終わらないよう、ここで元へ戻す。
+        renderGraphEditorPanel_.Finalize();
+
         // プロファイラーの終了処理（ImGui より先に解放）
         gpuProfiler_.Finalize();
 
@@ -324,17 +343,34 @@ namespace CoreEngine
         // フレーム開始時にレンダリング統計をリセット
         EngineStats::GetInstance().BeginFrame();
 
+        // RenderGraph エディタが閉じられていればスナップショット複製を止める
+        //（Draw() はウィンドウが開いている間しか呼ばれないため、止める判断はここでしかできない）
+        renderGraphEditorPanel_.SyncCaptureState();
+
+        // ゲーム映像専用ウィンドウの生成・破棄・リサイズはここで確定させる。
+        // GPU 待ちを伴うため、コマンドリストへの記録が始まる前でなければならない。
+        if (gameDebugUI_) {
+            if (gameOutputWindow_.ConsumeCloseRequest()) {
+                gameDebugUI_->SetStandaloneGameWindowVisible(false);
+            }
+            gameOutputWindow_.RequestVisible(gameDebugUI_->IsStandaloneGameWindowVisible());
+        }
+        gameOutputWindow_.ApplyPendingRequests();
+
         // ImGuiの開始（PostEffectManagerとGameDebugUIを渡す）
         if (auto* postEffect = engine_->GetComponent<PostEffectManager>()) {
             imGui_->Begin(postEffect, gameDebugUI_.get());
         }
 
-        //メニューバーを最初に描画（ドッキングスペースより前）
-        gameDebugUI_->ShowMainMenuBar();
+        // F11 でエディタUIを退避している間はメニューバーもパネルも出さない
+        //（表示状態の判定は ImGuiManager::Begin がキー入力を処理した後に行うこと）
+        if (imGui_->IsEditorUiVisible()) {
+            //メニューバーを最初に描画（ドッキングスペースより前）
+            gameDebugUI_->ShowMainMenuBar();
 
-        // その他のデバッグUIの更新（メニューバー以外）
-        gameDebugUI_->UpdateDebugPanels();
-
+            // その他のデバッグUIの更新（メニューバー以外）
+            gameDebugUI_->UpdateDebugPanels();
+        }
     }
 
     void DebugSubsystem::EndFrame()
@@ -375,6 +411,16 @@ namespace CoreEngine
         gpuProfiler_.ResolveAll(cmdList, frameIndex);
     }
 
+    void DebugSubsystem::RecordGameOutputWindow()
+    {
+        gameOutputWindow_.RecordDrawCommands();
+    }
+
+    void DebugSubsystem::PresentGameOutputWindow()
+    {
+        gameOutputWindow_.Present();
+    }
+
     void DebugSubsystem::PostFinalizeFrame(DirectXCommon* dx)
     {
         if (!dx) {
@@ -389,6 +435,12 @@ namespace CoreEngine
 
         if (auto* dockingUI = GetDockingUI()) {
             dockingUI->SetTimingData(gpuProfiler_.GetResults());
+        }
+
+        // メインウィンドウの Present が済んだこの位置で、外へ出された ImGui ウィンドウを描く。
+        // エンジンのコマンドリスト記録中（DrawImGuiWithProfiling など）では呼べない。
+        if (imGui_) {
+            imGui_->RenderPlatformWindows();
         }
     }
 

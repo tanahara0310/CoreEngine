@@ -12,7 +12,7 @@
 namespace CoreEngine {
     class RenderManager;
     class Camera;
-    class CollisionManager;
+    class CollisionWorld;
 }
 
 /// @brief すべてのGameObjectを一元管理するマネージャー
@@ -66,9 +66,9 @@ namespace CoreEngine
         /// @return オブジェクトリストの const 参照
         const std::deque<std::unique_ptr<GameObject>>& GetAllObjects() const { return objects_; }
 
-        /// @brief コライダーを持つ全オブジェクトのコライダーを CollisionManager に登録
-        /// @param collisionManager 登録先の CollisionManager
-        void RegisterAllColliders(CollisionManager* collisionManager);
+        /// @brief コライダーを持つ全オブジェクトのコライダーを CollisionWorld に登録
+        /// @param collisionWorld 登録先の CollisionWorld
+        void RegisterAllColliders(CollisionWorld* collisionWorld);
 
 #ifdef USE_IMGUI
         /// @brief 指定オブジェクトのImGuiデバッグUI表示（Inspector埋め込み用）
