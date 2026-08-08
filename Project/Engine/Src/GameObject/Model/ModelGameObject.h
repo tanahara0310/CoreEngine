@@ -1,8 +1,8 @@
 #pragma once
 
 #include "GameObject/GameObject.h"
-#include "GameObject/Component/TransformComponent.h"
-#include "GameObject/Component/MeshRendererComponent.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/Model.h"
@@ -20,33 +20,13 @@ namespace CoreEngine {
 
     class ModelManager;
 
-    /// @brief 3Dモデルを持つゲームオブジェクトの中間基底クラス
-    ///
-    /// Initialize / Update / Draw のボイラープレートを集約する。
-    /// 派生クラスは GetModelPath() 等のフックをオーバーライドするだけでよい。
-    ///
-    /// 使用例:
-    /// @code
-    /// class FenceObject : public CoreEngine::ModelGameObject {
-    /// protected:
-    ///     std::string GetModelPath()   const override { return "fence.obj"; }
-    ///     std::string GetTexturePath() const override { return "fence.png"; }
-    /// public:
-    ///     const char* GetObjectName()  const override { return "Fence"; }
-    /// };
-    /// @endcode
+    /// @brief 3D モデルを持つゲームオブジェクトの中間基底（移行用の薄いシム）。
+    /// @details 実体は `TransformComponent` / `MeshRendererComponent` が持ち、`transform_` /
+    ///          `model_` 等はその参照。ロードのボイラープレートと GetModelPath() 等のフックを提供する。
     class ModelGameObject : public GameObject {
     public:
-        /// @brief コンストラクタ
-        /// @note トランスフォームとメッシュ描画は `TransformComponent` /
-        ///       `MeshRendererComponent` が実体を持つ。ここでアタッチし、
-        ///       `transform_` / `model_` / `texture_` / `textureName_` / `blendMode_` を
-        ///       その中の実体への**参照**として束縛する。これにより派生クラス・
-        ///       呼び出し側の `transform_.xxx` / `model_->xxx` / `GetTransform().xxx`
-        ///       という記述（合計 100 箇所超）が 1 行も変わらない。
-        ///
-        ///       **この 2 つのコンポーネントは取り外してはいけない**（参照が宙に浮く）。
-        ///       アタッチ順は Transform が先（MeshRenderer が Start で兄弟として引く）。
+        /// @brief コンストラクタ（コンポーネントをアタッチし、参照メンバを束縛する）
+        /// @note **この 2 つのコンポーネントは取り外し禁止**（参照が宙に浮く）。
         ModelGameObject()
             : transformComponent_(AddComponent<TransformComponent>())
             , meshRenderer_(AddComponent<MeshRendererComponent>())
@@ -134,10 +114,12 @@ namespace CoreEngine {
         /// @brief Draw() 内で model_->Draw() の後に呼ばれる
         virtual void OnDraw(const Camera* camera) { (void)camera; }
 
-        /// @brief カスタムシェーダープロバイダーを登録する
-        /// OnInitialize() 内で this を渡すことで Initialize() 完了後にカスタム PSO が構築される。
+        /// @brief カスタムシェーダープロバイダーを登録する（`MeshRendererComponent` へ委譲）
         /// @param provider ICustomShaderProvider を実装したオブジェクト（所有権は移さない）
-        void SetCustomShaderProvider(ICustomShaderProvider* provider) { customShaderProvider_ = provider; }
+        /// @note OnInitialize() 内で this を渡すと Initialize() 完了時にカスタム PSO が構築される。
+        void SetCustomShaderProvider(ICustomShaderProvider* provider) {
+            meshRenderer_->SetCustomShaderProvider(provider);
+        }
 
         // === コンポーネント（実体の所有者。コンストラクタでアタッチ済み・必ず非 nullptr） ===
 
@@ -177,10 +159,10 @@ namespace CoreEngine {
 
     protected:
 
-        /// @brief カスタムシェーダープロバイダーが設定されている場合に PSO を構築する
-        /// ModelGameObject::Initialize() および PrimitiveGameObject::Initialize() の
-        /// OnInitialize() 呼び出し直後に実行される共通処理。
-        void BuildCustomShaderPipelineIfNeeded(ID3D12Device* device, ModelManager* modelMgr);
+        /// @brief カスタムシェーダー PSO を作り直す（シェーダー切替時に呼ぶ）
+        /// @note 引数は互換のため受けるだけで使わない（コンポーネントが自分で引く）。
+        void BuildCustomShaderPipelineIfNeeded(ID3D12Device* device = nullptr,
+                                               ModelManager* modelMgr = nullptr);
 
 
 #ifdef USE_IMGUI
@@ -209,14 +191,7 @@ namespace CoreEngine {
         void OnImGuiActiveChanged(bool prevActive) override;
 #endif
 
-    private:
-
-        /// @brief カスタムシェーダープロバイダー（nullptr = 既定シェーダーを使用）
-        ICustomShaderProvider* customShaderProvider_ = nullptr;
-
-        /// @brief カスタムシェーダー用 PSO を管理するコンポーネント
-        std::unique_ptr<CustomShaderPipeline> customShaderPipeline_;
-
+        // カスタムシェーダーの実体（プロバイダと PSO）は MeshRendererComponent が持つ
     };
 
 }  // namespace CoreEngine

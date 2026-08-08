@@ -7,7 +7,7 @@
 #include "GameObject/Model/DynamicModelObject.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Material/MaterialInstance.h"
-#include "Editor/ImGui/GameObjectDebugAccess.h"
+#include "GameObject/Component/Transform/ITransformSource.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -116,11 +116,10 @@ namespace CoreEngine
                             material->SetNormalMapEnabled(false);
                         });
                     }
-                    DebugAccess::TransformAccess access;
-                    if (DebugAccess::TryGetTransformAccess(raw, access)) {
-                        *access.translate = e.translate;
-                        *access.rotate    = e.rotate;
-                        *access.scale     = e.scale;
+                    if (auto* src = raw->GetComponent<ITransformSource>()) {
+                        src->Translate() = e.translate;
+                        src->Rotate()    = e.rotate;
+                        src->Scale()     = e.scale;
                     }
                     Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
                         "Redo: オブジェクトを再生成しました: {}", e.objectName);
@@ -146,11 +145,10 @@ namespace CoreEngine
 
         for (const auto& obj : manager->GetAllObjects()) {
             if (obj && obj->GetName() == name) {
-                DebugAccess::TransformAccess access;
-                if (DebugAccess::TryGetTransformAccess(obj.get(), access)) {
-                    *access.translate = translate;
-                    *access.rotate = rotate;
-                    *access.scale = scale;
+                if (auto* src = obj->GetComponent<ITransformSource>()) {
+                    src->Translate() = translate;
+                    src->Rotate() = rotate;
+                    src->Scale() = scale;
                 }
                 obj->SetActive(active);
                 break;

@@ -14,7 +14,7 @@
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Water/FFTOceanManager.h"
-#include "GameObject/Component/MeshRendererComponent.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/GameObjectManager.h"
 #include "Camera/View/ViewInfo.h"

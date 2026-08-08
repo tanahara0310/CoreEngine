@@ -20,58 +20,32 @@
 namespace CoreEngine
 {
     void ModelGameObject::Initialize() {
-        auto* engine = GetEngineSystem();
-        auto* dxCommon = engine->GetService<DirectXCommon>();
-        auto* modelMgr = engine->GetService<ModelManager>();
-
-        if (dxCommon) {
-            transform_.Initialize(dxCommon->GetDevice());
-        }
-
+        // トランスフォームの GPU バッファは TransformComponent::Awake() が確保済み。
+        // ここではフック（GetModelPath / GetTexturePath）の内容をコンポーネントへ流し込む。
         const std::string modelPath = GetModelPath();
-        if (!modelPath.empty() && modelMgr) {
-            model_ = modelMgr->CreateStaticModel(modelPath);
+        if (!modelPath.empty()) {
+            meshRenderer_->SetModelFile(modelPath);
         }
 
         const std::string texPath = GetTexturePath();
         if (!texPath.empty()) {
-            texture_ = TextureManager::GetInstance().Load(texPath);
-            textureName_ = texPath;
+            meshRenderer_->SetTexture(texPath);
         }
 
         OnInitialize();
 
-        // OnInitialize() で SetCustomShaderProvider() が呼ばれた場合、カスタム PSO を構築する
-        BuildCustomShaderPipelineIfNeeded(dxCommon ? dxCommon->GetDevice() : nullptr, modelMgr);
+        // OnInitialize() で SetCustomShaderProvider() が呼ばれた場合も含めてロードする
+        meshRenderer_->ReloadFromSpec();
 
         SetActive(true);
     }
 
     void ModelGameObject::BuildCustomShaderPipelineIfNeeded(ID3D12Device* device, ModelManager* modelMgr)
     {
-        if (!customShaderProvider_ || !model_ || !modelMgr || !device) {
-            return;
-        }
-        const ModelRenderContext& ctx = modelMgr->GetRenderContext();
-        if (!ctx.IsValid()) {
-            return;
-        }
-        customShaderPipeline_ = std::make_unique<CustomShaderPipeline>();
-        BaseModelRenderer* renderer = ctx.modelRenderer;
-        const bool built = customShaderPipeline_->Build(
-            device,
-            *renderer->GetShaderCompiler(),
-            *renderer->GetReflectionBuilder(),
-            *customShaderProvider_);
-
-        if (built && customShaderPipeline_->HasForwardPSO()) {
-            model_->SetCustomForwardPSO(
-                customShaderPipeline_->GetForwardPSO(blendMode_));
-            model_->SetCustomRootSignature(
-                customShaderPipeline_->GetForwardRootSignature());
-            model_->SetCustomPipeline(customShaderPipeline_.get());
-            model_->SetCustomShaderProvider(customShaderProvider_);
-        }
+        // 実体は MeshRendererComponent が持つ（device / modelMgr はそちらが自分で引く）
+        (void)device;
+        (void)modelMgr;
+        meshRenderer_->RebuildCustomShaderPipeline();
     }
 
     void ModelGameObject::Update() {

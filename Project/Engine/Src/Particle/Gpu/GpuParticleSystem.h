@@ -10,7 +10,7 @@
 
 // GameObject基底クラス
 #include "GameObject/GameObject.h"
-#include "GameObject/Component/EulerTransformComponent.h"
+#include "GameObject/Component/Transform/EulerTransformComponent.h"
 
 // テクスチャ
 #include "Graphics/Texture/TextureManager.h"

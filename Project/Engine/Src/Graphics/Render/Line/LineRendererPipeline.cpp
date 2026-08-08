@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "LineRendererPipeline.h"
+#include "ILineSource.h"
 #include "Camera/Camera.h"
+#include <algorithm>
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -95,6 +97,15 @@ namespace CoreEngine
     }
 
     void LineRendererPipeline::EndPass() {
+        // 登録済みラインソース（グリッド・コライダーワイヤ等）からラインを回収する。
+        // ここで呼ぶことで「Line パスのカメラで・パスの実行回数だけ」生成される
+        // （GameObject の Draw で提出していた頃と同じタイミング・同じカメラ）。
+        for (ILineSource* source : lineSources_) {
+            if (source) {
+                source->SubmitLines(*this, camera_);
+            }
+        }
+
         // バッチに溜まっているラインを描画
         FlushBatch();
 
@@ -161,6 +172,19 @@ namespace CoreEngine
 
     void LineRendererPipeline::AddLines(const std::vector<Line>& lines) {
         lineBatch_.insert(lineBatch_.end(), lines.begin(), lines.end());
+    }
+
+    void LineRendererPipeline::RegisterLineSource(ILineSource* source) {
+        if (!source) { return; }
+        if (std::find(lineSources_.begin(), lineSources_.end(), source) == lineSources_.end()) {
+            lineSources_.push_back(source);
+        }
+    }
+
+    void LineRendererPipeline::UnregisterLineSource(ILineSource* source) {
+        lineSources_.erase(
+            std::remove(lineSources_.begin(), lineSources_.end(), source),
+            lineSources_.end());
     }
 
     void LineRendererPipeline::FlushBatch() {

@@ -3,7 +3,8 @@
 #include "Scene/BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
 
-#include "CollisionProbeObject.h"
+#include "ProbeComponent.h"
+#include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
 
 namespace CollisionTest
 {
@@ -55,12 +56,20 @@ namespace CollisionTest
 
         // ===== 構築ヘルパー =====
 
+        /// @brief プローブ 1 個をコンポーネント合成で組む（mesh が nullptr なら見た目なし）
+        ProbeComponent* MakeProbe(const std::string& label, const CoreEngine::Vector3& position,
+            std::unique_ptr<CoreEngine::IPrimitiveMeshGenerator> mesh,
+            const CoreEngine::Vector4& baseColor);
+
+        /// @brief 見た目を持たないプローブ（描画コンポーネント無しでも判定が効くことの確認用）
+        ProbeComponent* MakeHeadlessProbe(const std::string& label, const CoreEngine::Vector3& position);
+
         /// @brief 球プローブを生成（半径・レイヤー・色をまとめて設定）
-        SphereProbe* MakeSphereProbe(const std::string& label, const CoreEngine::Vector3& position,
+        ProbeComponent* MakeSphereProbe(const std::string& label, const CoreEngine::Vector3& position,
             float radius, CoreEngine::CollisionLayer layer, const CoreEngine::Vector4& baseColor);
 
         /// @brief 箱プローブを生成
-        BoxProbe* MakeBoxProbe(const std::string& label, const CoreEngine::Vector3& position,
+        ProbeComponent* MakeBoxProbe(const std::string& label, const CoreEngine::Vector3& position,
             float size, CoreEngine::CollisionLayer layer, const CoreEngine::Vector4& baseColor);
 
         /// @brief 通過テストの現在 X 座標を求める
@@ -83,45 +92,45 @@ namespace CollisionTest
         // ===== 状態 =====
         int frame_ = 0;
 
-        SphereProbe* t1Static_ = nullptr;  ///< T1: 球×球
-        SphereProbe* t1Mover_  = nullptr;
+        ProbeComponent* t1Static_ = nullptr;  ///< T1: 球×球
+        ProbeComponent* t1Mover_  = nullptr;
 
-        SphereProbe* t2Mover_ = nullptr;   ///< T2: 球→箱（球を先に登録）
-        BoxProbe*    t2Box_   = nullptr;
+        ProbeComponent* t2Mover_ = nullptr;   ///< T2: 球→箱（球を先に登録）
+        ProbeComponent*    t2Box_   = nullptr;
 
-        BoxProbe*    t3Box_   = nullptr;   ///< T3: 箱→球（箱を先に登録）
-        SphereProbe* t3Mover_ = nullptr;
+        ProbeComponent*    t3Box_   = nullptr;   ///< T3: 箱→球（箱を先に登録）
+        ProbeComponent* t3Mover_ = nullptr;
 
-        SphereProbe* t4Item_  = nullptr;   ///< T4: レイヤーフィルタ
-        SphereProbe* t4Mover_ = nullptr;
+        ProbeComponent* t4Item_  = nullptr;   ///< T4: レイヤーフィルタ
+        ProbeComponent* t4Mover_ = nullptr;
 
-        SphereProbe* t5A_ = nullptr;       ///< T5: Default×Default
-        SphereProbe* t5B_ = nullptr;
+        ProbeComponent* t5A_ = nullptr;       ///< T5: Default×Default
+        ProbeComponent* t5B_ = nullptr;
 
-        SphereProbe* t6Survivor_ = nullptr;  ///< T6: 破棄時の Exit
-        SphereProbe* t6Victim_   = nullptr;
+        ProbeComponent* t6Survivor_ = nullptr;  ///< T6: 破棄時の Exit
+        ProbeComponent* t6Victim_   = nullptr;
 
-        SphereProbe* t7Static_  = nullptr;  ///< T7: 生成/破棄の繰り返し（アドレス再利用）
-        SphereProbe* t7Spawned_ = nullptr;
+        ProbeComponent* t7Static_  = nullptr;  ///< T7: 生成/破棄の繰り返し（アドレス再利用）
+        ProbeComponent* t7Spawned_ = nullptr;
         int t7SpawnCount_ = 0;
 
-        SphereProbe* t8A_ = nullptr;       ///< T8: スケール反映
-        SphereProbe* t8B_ = nullptr;
+        ProbeComponent* t8A_ = nullptr;       ///< T8: スケール反映
+        ProbeComponent* t8B_ = nullptr;
 
-        HeadlessProbe* t9Far_  = nullptr;  ///< T9: GetWorldPosition 未オーバーライド
-        HeadlessProbe* t9Near_ = nullptr;
+        ProbeComponent* t9Far_  = nullptr;  ///< T9: GetWorldPosition 未オーバーライド
+        ProbeComponent* t9Near_ = nullptr;
 
-        SphereProbe* t10Static_  = nullptr;  ///< T10: コールバック中の RemoveCollider
-        SphereProbe* t10Remover_ = nullptr;
+        ProbeComponent* t10Static_  = nullptr;  ///< T10: コールバック中の RemoveCollider
+        ProbeComponent* t10Remover_ = nullptr;
 
-        SphereProbe* t11Body_    = nullptr;  ///< T11: 1 オブジェクトに 2 本のコライダー
-        SphereProbe* t11BodyHit_ = nullptr;
-        SphereProbe* t11AtkHit_  = nullptr;
+        ProbeComponent* t11Body_    = nullptr;  ///< T11: 1 オブジェクトに 2 本のコライダー
+        ProbeComponent* t11BodyHit_ = nullptr;
+        ProbeComponent* t11AtkHit_  = nullptr;
 
-        BoxProbe*    t12Wall_   = nullptr;   ///< T12: 壁にぶつかって止まる（押し出し）
-        SphereProbe* t12Pusher_ = nullptr;
+        ProbeComponent*    t12Wall_   = nullptr;   ///< T12: 壁にぶつかって止まる（押し出し）
+        ProbeComponent* t12Pusher_ = nullptr;
 
-        SphereProbe* t14Near_ = nullptr;     ///< T14: レイキャスト問い合わせ
-        SphereProbe* t14Far_  = nullptr;
+        ProbeComponent* t14Near_ = nullptr;     ///< T14: レイキャスト問い合わせ
+        ProbeComponent* t14Far_  = nullptr;
     };
 }

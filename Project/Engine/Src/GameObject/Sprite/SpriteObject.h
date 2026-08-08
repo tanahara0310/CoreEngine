@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GameObject/GameObject.h"
-#include "GameObject/Component/EulerTransformComponent.h"
+#include "GameObject/Component/Transform/EulerTransformComponent.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -21,11 +21,8 @@ namespace CoreEngine
 {
 class SpriteObject : public GameObject {
 public:
-    /// @brief コンストラクタ
-    /// @note トランスフォームの実体は `EulerTransformComponent` が持つ。ここでアタッチし、
-    ///       `transform_` をその中の `EulerTransform` への参照として束縛するので、
-    ///       既存の `transform_.xxx` / `GetSpriteTransform().xxx` は 1 行も変わらない。
-    ///       コンポーネント化の効果は「ギズモ・インスペクタが具象型を知らずに引ける」こと。
+    /// @brief コンストラクタ（トランスフォームの実体は `EulerTransformComponent` が持ち、
+    ///        `transform_` はその参照。取り外し禁止）
     SpriteObject()
         : transformComponent_(AddComponent<EulerTransformComponent>())
         , transform_(transformComponent_->Get()) {}

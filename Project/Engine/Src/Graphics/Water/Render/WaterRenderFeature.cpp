@@ -82,11 +82,9 @@ namespace CoreEngine
         if (!ctx.gameObjectManager) {
             return;
         }
-        for (const auto& obj : ctx.gameObjectManager->GetAllObjects()) {
-            if (auto* sceneSkyBox = dynamic_cast<SkyBoxObject*>(obj.get())) {
-                skyBox_ = sceneSkyBox;
-                break;
-            }
+        // 具象型のダウンキャストではなく SceneTag で探す
+        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<SkyBoxObject>>()) {
+            skyBox_ = tag->Get();
         }
     }
 
@@ -202,12 +200,11 @@ namespace CoreEngine
             return;
         }
 
-        // シーン側が既に水面を生成していればそれを採用する（EnvironmentFeature と同じ規約）
-        for (const auto& obj : ctx.gameObjectManager->GetAllObjects()) {
-            if (auto* scenePlane = dynamic_cast<WaterPlaneObject*>(obj.get())) {
-                waterPlane_ = scenePlane;
-                return;
-            }
+        // シーン側が既に水面を生成していればそれを採用する（EnvironmentFeature と同じ規約。
+        // 具象型のダウンキャストではなく SceneTag で探す）
+        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<WaterPlaneObject>>()) {
+            waterPlane_ = tag->Get();
+            return;
         }
 
         waterPlane_ = ctx.gameObjectManager->AddObject(

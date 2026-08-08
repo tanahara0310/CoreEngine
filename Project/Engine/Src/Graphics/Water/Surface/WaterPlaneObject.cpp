@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WaterPlaneObject.h"
 
+#include "GameObject/Component/Scene/SceneTagComponent.h"
 #include "Graphics/Primitive/PlaneMeshGenerator.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/ModelManager.h"
@@ -22,6 +23,9 @@ namespace CoreEngine
         , scrollSpeed_({ 0.03f, 0.01f })
         , uvTiling_({ 4.0f, 4.0f })
         , uvOffset_({ 0.0f, 0.0f }) {
+        // 「シーンの水面」タグ（WaterRenderFeature が具象型を知らずに見つけるため）
+        AddComponent<SceneTagComponent<WaterPlaneObject>>(this);
+
         waterCB_.activeWaveCount = kMaxWaterWaveCount;
         frameCB_.useFFTOceanNormalMap = useFFTOcean_ ? 1 : 0;
 

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
@@ -16,20 +16,8 @@
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Primitive\CubeObject.cpp">
-      <Filter>Application\Src\GameObjects\Primitive</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.cpp">
       <Filter>Engine\Src\GameObject\Ground</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Primitive\CylinderObject.cpp">
-      <Filter>Application\Src\GameObjects\Primitive</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Primitive\PlaneObject.cpp">
-      <Filter>Application\Src\GameObjects\Primitive</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Primitive\RingObject.cpp">
-      <Filter>Application\Src\GameObjects\Primitive</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
@@ -175,41 +163,17 @@
     <ClCompile Include="Engine\Src\pch.cpp">
       <Filter>Engine\Src</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.cpp">
-      <Filter>Application\Src\Scenes\PrimitiveTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.cpp">
-      <Filter>Application\Src\Scenes\AssignmentScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp">
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp">
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionProbeObject.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp">
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp">
-      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.cpp">
-      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp">
       <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Model\ModelObject.cpp">
-      <Filter>Application\Src\GameObjects\Model</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Model\PlaneModelObject.cpp">
-      <Filter>Application\Src\GameObjects\Model</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\GameObjects\Model\SphereObject.cpp">
-      <Filter>Application\Src\GameObjects\Model</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
@@ -457,9 +421,6 @@
     <ClCompile Include="Engine\Src\Graphics\Light\LightManager.cpp">
       <Filter>Engine\Src\Graphics\Light</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Line\LineDrawable.cpp">
-      <Filter>Engine\Src\Graphics\Line</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Line\LineManager.cpp">
       <Filter>Engine\Src\Graphics\Line</Filter>
     </ClCompile>
@@ -646,23 +607,29 @@
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Model\AnimatedModelObject.cpp">
-      <Filter>Engine\Src\GameObject\Model</Filter>
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Component\ComponentHost.cpp">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Component\AnimatorComponent.cpp">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Component\MeshRendererComponent.cpp">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Component\SkeletonSocketComponent.cpp">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Component\TransformComponent.cpp">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp">
       <Filter>Engine\Src\GameObject</Filter>
@@ -1041,19 +1008,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h">
-      <Filter>Application\Src\Scenes\PrimitiveTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.h">
-      <Filter>Application\Src\Scenes\AssignmentScene</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionProbeObject.h">
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h">
@@ -1071,47 +1029,11 @@
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.h">
-      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\BrainStemObject.h">
-      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.h">
-      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\FoxObject.h">
-      <Filter>Application\Src\GameObjects\AnimatedModel</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Model\ModelObject.h">
-      <Filter>Application\Src\GameObjects\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Model\PlaneModelObject.h">
-      <Filter>Application\Src\GameObjects\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Model\SphereObject.h">
-      <Filter>Application\Src\GameObjects\Model</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Primitive\CubeObject.h">
-      <Filter>Application\Src\GameObjects\Primitive</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.h">
       <Filter>Engine\Src\GameObject\Ground</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Primitive\CylinderObject.h">
-      <Filter>Application\Src\GameObjects\Primitive</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Primitive\PlaneObject.h">
-      <Filter>Application\Src\GameObjects\Primitive</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Primitive\PrimitiveSphereObject.h">
-      <Filter>Application\Src\GameObjects\Primitive</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\GameObjects\Primitive\RingObject.h">
-      <Filter>Application\Src\GameObjects\Primitive</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
@@ -1495,9 +1417,6 @@
       <Filter>Engine\Src\Graphics\Light</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Line\Line.h">
-      <Filter>Engine\Src\Graphics\Line</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Line\LineDrawable.h">
       <Filter>Engine\Src\Graphics\Line</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Line\LineManager.h">
@@ -1905,32 +1824,41 @@
     <ClInclude Include="Engine\Src\Math\Vector\Vector4.h">
       <Filter>Engine\Src\Math\Vector</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Model\AnimatedModelObject.h">
-      <Filter>Engine\Src\GameObject\Model</Filter>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\ComponentHost.h">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\AnimatorComponent.h">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClInclude Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\EulerTransformComponent.h">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\IComponent.h">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\SkeletonSocketComponent.h">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.h">
+      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\ITransformSource.h">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\MeshRendererComponent.h">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClInclude Include="Engine\Src\GameObject\Component\Transform\ITransformSource.h">
+      <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Component\TransformComponent.h">
-      <Filter>Engine\Src\GameObject\Component</Filter>
+    <ClInclude Include="Engine\Src\GameObject\Component\Scene\SceneTagComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Line\ILineSource.h">
+      <Filter>Engine\Src\Graphics\Render\Line</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Transform\TransformComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Transform</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\GameObject.h">
       <Filter>Engine\Src\GameObject</Filter>
@@ -2095,9 +2023,6 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\EngineStatsWindow.h">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\ImGui\GameObjectDebugAccess.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\Gizmo.h">
@@ -2444,9 +2369,6 @@
     <None Include="Docs\Engine\Utility\Utility.md">
       <Filter>Docs\Engine\Utility</Filter>
     </None>
-    <None Include="Engine\Src\GameObject\README.md">
-      <Filter>Engine\Src\GameObject</Filter>
-    </None>
     <None Include="Build\Scripts\SyncFilters.ps1">
       <Filter>Build\Scripts</Filter>
     </None>
@@ -2473,17 +2395,8 @@
     <Filter Include="Application\Src\GameObjects">
       <UniqueIdentifier>{2762868A-A4D7-448F-BAAD-024F9AF8F891}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src\GameObjects\AnimatedModel">
-      <UniqueIdentifier>{3DDB07A2-FC21-4C6D-8D51-FB8746620D38}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application\Src\GameObjects\Effect">
       <UniqueIdentifier>{884EAFBE-0EB1-4661-AFC6-20135218E67B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\GameObjects\Model">
-      <UniqueIdentifier>{B132A8CE-5B0A-40D0-A872-D143AF152F5C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\GameObjects\Primitive">
-      <UniqueIdentifier>{B9948F99-A640-47E6-A1F3-A3B096737E4D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\GameObjects\SkyBox">
       <UniqueIdentifier>{FF839B3D-8C16-469D-91A5-1E40A85FE4CB}</UniqueIdentifier>
@@ -2491,14 +2404,8 @@
     <Filter Include="Application\Src\Scenes">
       <UniqueIdentifier>{E0897678-58CC-4A82-AA9F-47042D9CD67B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src\Scenes\AssignmentScene">
-      <UniqueIdentifier>{7B3C1F42-9D6E-4C58-8A21-3F5E0B7D4C19}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application\Src\Scenes\CollisionTestScene">
       <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\PrimitiveTestScene">
-      <UniqueIdentifier>{D473AE08-3695-412C-B895-5704EB4C75C5}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
@@ -2628,6 +2535,21 @@
     </Filter>
     <Filter Include="Engine\Src\GameObject\Component">
       <UniqueIdentifier>{C41333E8-90C5-4D94-A22E-EC45318597CA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Animation">
+      <UniqueIdentifier>{889403D9-E46B-4A3C-B734-5D261DF9944D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Core">
+      <UniqueIdentifier>{74B1A113-B811-40A6-A9D1-A7192BC8431C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Render">
+      <UniqueIdentifier>{91995376-8555-4326-8BF2-AE823BABD219}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Scene">
+      <UniqueIdentifier>{AED89F0C-58A7-4CAE-825D-330886315211}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Component\Transform">
+      <UniqueIdentifier>{D038A3B9-7746-4B74-9597-0D06389C3908}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\GameObject\Ground">
       <UniqueIdentifier>{1FBD7D93-99C2-4ECF-8071-0A44FA223198}</UniqueIdentifier>

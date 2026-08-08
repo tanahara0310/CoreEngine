@@ -69,38 +69,47 @@ namespace CoreEngine
 
         // ===== コンポーネント横断イテレーション =====
 
-        /// @brief シーン内の指定型コンポーネントすべてに処理を適用する
+        /// @brief シーン内の指定型コンポーネントすべてに処理を適用する（dynamic_cast 走査の置き換え先）
         /// @tparam T コンポーネント型（基底型でも引ける）
         /// @tparam Fn `void(T&)` または `void(T&, GameObject&)` を受け取る呼び出し可能オブジェクト
-        /// @note **`dynamic_cast<派生GameObject*>` の置き換え先**。
-        ///       「シーン内でメッシュを持つものを全部集める」「特定の型を探す」といった
-        ///       用途は、具象クラスへのダウンキャストではなくこちらを使う。
-        ///
-        ///       非アクティブ／削除マーク済みのオブジェクトはスキップする（従来の
-        ///       `dynamic_cast` ループが全部そうしていたのと同じ条件）。
-        ///
-        ///       計算量はオブジェクト数 × そのオブジェクトのコンポーネント数。
-        ///       従来のダウンキャストループ（オブジェクト数 × 1）と同じオーダーで、
-        ///       係数がコンポーネント数（実測で 1〜5）倍になるだけ。件数が増えて
-        ///       問題になったら型別インデックスを足す（同期漏れのバグ源になるので
-        ///       必要になるまで作らない）。
+        /// @note 非アクティブ／削除マーク済みはスキップ。線形走査（型別インデックスは
+        ///       同期漏れのバグ源になるので、実測で問題になるまで作らない）。
         template <typename T, typename Fn>
         void ForEachComponent(Fn&& fn) {
             for (auto& obj : objects_) {
                 if (!obj || !obj->IsActive() || obj->IsMarkedForDestroy()) {
                     continue;
                 }
-                for (auto* component : obj->GetComponents<T>()) {
-                    if (!component || !component->IsEnabled()) {
+                // GetComponents<T>() は vector を確保するので使わない（毎フレームの
+                // ホットパスから呼ばれるため、スロットを直接走査する）
+                for (const auto& slot : obj->GetAllComponents()) {
+                    if (!slot || !slot->IsEnabled()) {
                         continue;
                     }
-                    if constexpr (std::is_invocable_v<Fn, T&, GameObject&>) {
-                        fn(*component, *obj);
-                    } else {
-                        fn(*component);
+                    if (auto* component = dynamic_cast<T*>(slot.get())) {
+                        if constexpr (std::is_invocable_v<Fn, T&, GameObject&>) {
+                            fn(*component, *obj);
+                        } else {
+                            fn(*component);
+                        }
                     }
                 }
             }
+        }
+
+        /// @brief シーン内で最初に見つかった指定型コンポーネントを返す
+        /// @return 見つからなければ nullptr
+        /// @note アクティブ状態は問わない（「シーンに存在するか」の問い合わせ用。
+        ///       SceneTagComponent と組み合わせて具象型のシーン走査を置き換える）。
+        template <typename T>
+        T* FindFirstComponent() {
+            for (auto& obj : objects_) {
+                if (!obj) { continue; }
+                if (auto* component = obj->GetComponent<T>()) {
+                    return component;
+                }
+            }
+            return nullptr;
         }
 
         /// @brief コライダーを持つ全オブジェクトのコライダーを CollisionWorld に登録

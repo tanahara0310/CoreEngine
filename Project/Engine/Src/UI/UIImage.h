@@ -36,12 +36,9 @@ namespace CoreEngine
         void Draw(const Camera* camera) override;
 
         /// @brief ワールド空間での位置を返す（UI はアンカー相対のスクリーン座標を XY に載せる）
-        /// @note 3D の当たり判定に使う想定は無い。座標系が違うので混ぜないこと。
-        /// @note **UI は意図的に `ITransformSource` コンポーネント化していない**。
-        ///       `UILayout` はアンカー・ピボット・サイズ（いずれも Vector2）で位置が決まり、
-        ///       3D の translate/rotate/scale（Vector3）とは意味論が違う。無理に載せると
-        ///       Vector2 ↔ Vector3 のミラーを同期し続ける必要があり同期漏れバグの温床になる。
-        ///       UI の編集は専用の `CanvasViewport`（2D エディタ）が担当する。
+        /// @note 3D の当たり判定に使う想定は無い。UI は意図的に `ITransformSource` 化して
+        ///       いない（UILayout は Vector2 のアンカー座標系で、3D の SRT とは別物。
+        ///       編集は CanvasViewport が担当）。
         Vector3 GetWorldPosition() const override {
             return { layout_.anchoredPos.x, layout_.anchoredPos.y, 0.0f };
         }

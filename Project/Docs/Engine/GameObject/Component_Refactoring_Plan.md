@@ -1,6 +1,7 @@
 # GameObject コンポーネント化 — 調査結果と改修計画（改訂版）
 
-> **実装状況（2026-08-07）**: ③⑦①②⑤⑧⑨ 実装完了。⑥⑩④ 未着手。
+> **実装状況（2026-08-08）**: ③⑦①②⑤⑥⑧⑨ ＋ 真のコンポーネント化（§10）
+> ＋ 検証用シーンの整理（§11）完了。⑩④ 未着手。
 > 実施記録は **§9「実施結果」** を参照。各ステップでビルド成功 → 起動 → 描画確認 →
 > `CollisionTestScene` の PASS 29 / FAIL 0 を確認しながら進めた。
 
@@ -938,3 +939,294 @@ Engine/Src/GameObject/Component/
 | **`perl -i -pe 's/...$/.../'` が CRLF ファイルで空振り**する（`$` が `\r` の前に来る）。行末アンカーを使う置換は Edit ツールで行う |
 | **spdlog は 2 秒間隔フラッシュ**なので、実行中にログを読むと途中で切れる。`CloseMainWindow()` で正常終了させてから読む |
 | **`python` / `python3` は Store スタブ**で使えない。JSON 加工は PowerShell の `ConvertFrom-Json` を使う |
+
+### 9.12 ⑥ エンジン内部の GameObject 継承の解消（2026-08-08 実施）
+
+**デバッグ描画物 → `ILineSource` 化（GameObject 廃止）**
+
+パス実行はレンダーアイテム駆動のため、単純に GameObject をやめると「Line アイテム 0 の
+フレームで Line パス自体が走らず、LineManager 経由の線（スケルトン表示等）が溜まり続ける」
+問題がある。解決は 2 段構え:
+
+1. `LineRendererPipeline` に `RegisterLineSource / UnregisterLineSource` を追加。
+   `EndPass()` のフラッシュ直前に登録済みソースの `SubmitLines(pipeline, camera)` を呼ぶ
+   （＝GameObject の Draw と同じタイミング・同じパスカメラ・ビューごと）。
+2. `RenderManager::ClearQueue()` が毎フレーム **Line パス起動用の合成アイテム**
+   （`object == nullptr`）を 1 個積む。`RenderNormalPassQueue` は null オブジェクトを
+   「パス Begin/End だけ駆動して Draw は呼ばない」アイテムとして許容する。
+   sortKey は旧 GridRenderer と同じ（Line=500 + Normal ブレンド +10000）なので描画順は不変。
+
+| 対象 | Before | After |
+|---|---|---|
+| `GridRenderer` | GameObject（Hierarchy に GridRenderer_0） | `ILineSource`。GridFeature が所有・登録。設定 UI は Engine Settings の「Grid」パネルへ移設（`s_activeGrid` 方式） |
+| `ColliderDebugRenderer` | GameObject（Hierarchy に ColliderDebug_0） | `ILineSource`。CollisionFeature が所有・登録 |
+| `LineDrawable` | GameObject | **削除**（生成箇所ゼロの死コードだった） |
+
+**環境オブジェクト → `SceneTagComponent<T>` でシーン走査を置き換え**
+
+SkyBox / InfiniteGround / WaterPlane は「シーンに置かれる実体」なので GameObject のまま。
+問題だったのは Feature 側の `dynamic_cast<具象型*>` によるシーン走査だけなので、
+各クラスがコンストラクタで `AddComponent<SceneTagComponent<自分>>(this)` を付け、
+Feature は `GameObjectManager::FindFirstComponent<SceneTagComponent<T>>()` で引く形にした。
+タグは型付きポインタを保持するので `static_cast` も不要。
+**水面の描画登録経路・反射ビュー条件には一切触れていない**（既知バグ密集地帯のため）。
+
+**削除したファイル・クラス**
+- `Graphics/Line/LineDrawable.h/.cpp`（未使用の死コード）
+- `Editor/ImGui/GameObjectDebugAccess.h`（`TryGetTransformAccess` は各呼び出し側で
+  `GetComponent<ITransformSource>()` 直呼びに置換。`DebugAccess` 名前空間ごと消滅）
+
+**dynamic_cast census（GameObject 系）**: 13 → **2**
+残る 2 箇所は `CanvasViewport`（UI 専用 2D エディタ経路）と `ObjectSelector`（2D スプライト
+選択経路）で、3D の汎用経路からは全廃。
+
+**併せて実施**: 全コンポーネントヘッダのクラス説明コメントを 2〜3 行へ短縮
+（歴史的経緯・移行理由の長文を削除し、役割＋重要な注意 1 点に圧縮）。
+
+**検証**: ビルド成功 / WaterTestScene 描画無変化・Hierarchy から GridRenderer_0 と
+ColliderDebug_0 が消失（60 FPS）/ CollisionTestScene **PASS 29 / FAIL 0** ＋
+グリッド線とコライダーワイヤが ILineSource 経由で描画されることを画面キャプチャで確認。
+
+---
+
+## 10. 真のコンポーネント化（2026-08-08）
+
+§9 の時点では「コンポーネントは在るが、使い方は専用クラスを作って `CreateObject<T>()`」という
+状態で、コンポーネント化の本来の目的（クラスを増やさずに機能を組む）が達成できていなかった。
+ここでそれを解消した。
+
+### 10.1 素の GameObject を実体化できるようにした
+
+これを塞いでいた 4 つの障害を全部外した。
+
+| 障害 | 対応 |
+|---|---|
+| `GetWorldPosition()` が**純粋仮想**（＝ `GameObject` を new できない） | 既定実装を `ITransformSource` から読む形にした。`GetWorldScale()` / `TryApplyCollisionPush()` も `TransformComponent` へ委譲 |
+| `GetRenderPassType()` / `GetBlendMode()` が virtual（描画パスが型で決まる） | `IRenderableComponent` を新設し、`GameObject` はそれに問い合わせる |
+| `Draw(view)` が virtual（描画が型で決まる） | 既定実装が `IRenderableComponent` を持つコンポーネント全部へ `Render(view)` を配る |
+| メッシュのロードがテンプレートメソッド（`GetModelPath()` の override が必須） | `MeshRendererComponent` がコンストラクタ引数でメッシュの出どころを受け取り、`Awake()` で自分でロードする |
+
+**無音バグの防止は維持**した。純粋仮想を外すと「位置ソースを持たないオブジェクトにコライダーを
+付けて全員が原点で重なる」バグが復活しうるが、`ColliderComponent::Add()` に
+「オーナーが `ITransformSource` を持つこと」の assert を置いて構造的に検出する形へ移した。
+純粋仮想（＝何か書けば通る）より強い保証になっている。
+
+### 10.2 書き方の Before / After
+
+```cpp
+// Before: アセット 1 種につきクラス 1 個（ModelObject.h / .cpp が必要）
+auto sphere = CreateObject<ModelObject>("sphere.obj");
+sphere->GetTransform().translate = { 0, 1, 0 };
+sphere->SetPBRParameters(metallic, roughness, 1.0f);
+
+// After: クラス定義なし
+auto* sphere = CreateObject("Sphere");
+sphere->AddComponent<MeshRendererComponent>("sphere.obj");
+sphere->GetComponent<TransformComponent>()->Get().translate = { 0, 1, 0 };
+sphere->AddComponent<MaterialComponent>()->SetPBR(metallic, roughness, 1.0f);
+```
+
+`MeshRendererComponent` は 3 通りのメッシュ源を受ける。
+- `MeshRendererComponent("sphere.obj")` … 静的モデル
+- `MeshRendererComponent(std::make_unique<CubeMeshGenerator>(1.2f))` … 手続き的メッシュ
+- `SetSkinnedModelFile(path, clip)` … スケルトン付き（`AnimatorComponent` と併用）
+
+`TransformComponent` は無ければ自動で足される（Unity の `RequireComponent` 相当）。
+
+### 10.3 CRTP ミックスインの廃止（証拠①の解消）
+
+`template<class Base> class ModelProbe : public Base`（見た目クラスごとに実体化していた
+衝突カウンタ）を `ProbeComponent` に置き換えた。`ColliderComponent` に
+イベント購読 API（`SetOnEnter/Stay/Exit`）を足したので、**継承なしで衝突に反応できる**。
+
+```cpp
+// Before: 見た目クラスを型引数で受ける CRTP
+using SphereProbe = ModelProbe<PrimitiveSphereObject>;
+using BoxProbe    = ModelProbe<CubeObject>;
+
+// After: 見た目に関係なく同じ 1 行
+object->AddComponent<ProbeComponent>();
+```
+
+見た目を持たない `HeadlessProbe` も専用クラスをやめ、「描画コンポーネントを載せない
+GameObject」で表現した（＝描画コンポーネント無しでも判定が効くことの確認にそのまま使える）。
+
+### 10.4 削除したクラス・ファイル
+
+| 削除 | 置き換え |
+|---|---|
+| `ModelObject` / `SphereObject` / `PlaneModelObject` | `MeshRendererComponent("x.obj")` + `MaterialComponent` |
+| `PlaneObject` / `RingObject` / `CylinderObject` | `MeshRendererComponent(generator)` + `MaterialComponent` |
+| `CollisionProbeObject.h`（`ModelProbe<Base>` / `HeadlessProbe`） | `ProbeComponent`（`ProbeEvents` は `ProbeEvents.cpp` へ改名） |
+
+`CubeObject` / `PrimitiveSphereObject` は残置（他から参照が無くなり次第削除可）。
+
+### 10.5 新設コンポーネント
+
+| コンポーネント | 役割 |
+|---|---|
+| `IRenderableComponent` | 「どう描くか」をコンポーネントが答えるためのインターフェース |
+| `MaterialComponent` | 兄弟 MeshRenderer のマテリアルを一括操作（PBR / 色 / IBL / ライティング）。α<1 で自動アルファブレンド |
+| `ProbeComponent`（App 側） | 衝突イベントの集計と接触色（CRTP の置き換え） |
+
+### 10.6 フォルダ再編（役割別）
+
+```
+Engine/Src/GameObject/Component/
+  Core/       IComponent.h, ComponentHost.h/.cpp
+  Transform/  ITransformSource.h, TransformComponent.h/.cpp, EulerTransformComponent.h
+  Render/     IRenderableComponent.h, MeshRendererComponent.h/.cpp, MaterialComponent.h/.cpp
+  Animation/  AnimatorComponent.h/.cpp, SkeletonSocketComponent.h/.cpp
+  Scene/      SceneTagComponent.h
+```
+
+### 10.7 検証
+
+| 対象 | 結果 |
+|---|---|
+| `CollisionTestScene`（プローブ全部を ProbeComponent 化） | **PASS 29 / FAIL 0**・新規ダンプなし |
+| `PrimitiveTestScene`（専用クラス全廃） | Ring / Cylinder / Sphere×5 / Cube×4 が全て描画・60 FPS |
+| `TestScene`（PBR グリッド 49 個を MaterialComponent 化） | ビルド通過 |
+| `WaterTestScene` | 描画無変化・60 FPS |
+
+### 10.8 残っている継承（意図的）
+
+| クラス | 残す理由 |
+|---|---|
+| `ModelGameObject` / `PrimitiveGameObject` | `WaterPlaneObject`・`InfiniteGroundObject` がまだ使っている。**中身は既にコンポーネントへ委譲済みの薄いシム**で、新規コードからは使わない（`AnimatedModelObject` は §11 で削除済み） |
+| `WaterPlaneObject` | 208 行 + カスタムシェーダー + 専用 CB。反射ビュー条件など既知バグが密集しており、独立したセッションで扱うべき |
+| `SpriteObject` / `UIImage` / `ParticleSystem` | 2D / パーティクルは独自の描画経路を持ち、`IRenderableComponent` 化の費用対効果が現時点で低い |
+
+### 10.9 まだコンポーネント化できるシステム（未着手・優先度順）
+
+| 対象 | 内容 | 現状 |
+|---|---|---|
+| **BehaviorComponent（スクリプト）** | ゲームロジックを `OnUpdate()` の override ではなくコンポーネントで書く。これが無いと「動くオブジェクト」を作るのに依然クラスが必要 | 最優先。基盤は既にある（`IComponent::Update`）ので薄いラッパで済む |
+| **LightComponent** | `LightManager` は既にハンドル方式（`CreateLight` / `LightHandle`）。オブジェクトに載せて Transform と連動させるだけ | 容易・効果大 |
+| **AudioSourceComponent** | `SoundManager` は `SoundHandle` + `Play()` を持つ。3D 位置は Transform から取る | 容易 |
+| **CameraComponent** | `Camera` は `final` + Controller 分離済み。Transform を Camera へ流す薄い橋 | 容易（⑩として計画済み） |
+| **SkyBox / InfiniteGround / WaterSurface** | 現在 `SceneTagComponent` でタグ付けして探しているだけ。中身をコンポーネントへ移せば環境物も合成で組める | 中〜高リスク（水面は特に） |
+| **TileMap / TileCollider** | 2D タイル。`TileColliderComponent` にすれば `ColliderComponent` と同じ枠に載る | 中 |
+| **HitEffect** | 現在は素のクラス。`ParticleEmitterComponent` + プリセットで表現できる | 容易 |
+| **ModelVisibility / Hi-Z** | オブジェクト単位のカリング設定を `MeshRendererComponent` のフラグへ集約 | 小 |
+
+---
+
+## 11. 検証用シーンの整理と `AnimatedModelObject` の撤去（2026-08-08）
+
+課題提出用の `AssignmentScene` と、専用クラス廃止の実証が終わった `PrimitiveTestScene` を
+削除し、それらだけが参照していたクラスを併せて撤去した。
+
+### 11.1 削除したもの
+
+| 分類 | 削除対象 |
+|---|---|
+| シーン | `Application/Src/Scenes/AssignmentScene/`・`Application/Src/Scenes/PrimitiveTestScene/` |
+| シーンのアセット | `Application/Assets/Scenes/AssignmentScene/`（4 オブジェクト JSON）・`.../PrimitiveTestScene/`（9 オブジェクト JSON） |
+| アプリ側オブジェクト | `WalkModelObject` / `BrainStemObject` / `FoxObject` / `WeaponObject`（AssignmentScene 専用）<br>`CubeObject` / `PrimitiveSphereObject`（§10 で参照ゼロになっていた残置分） |
+| エンジン側シム | **`AnimatedModelObject`**（§10.8 で「AssignmentScene のキャラが使っている」ことだけが残す理由だった） |
+| 登録 | `MyGame.cpp` の `RegisterScene` 2 行・`#include` 2 行、`CoreEngine.vcxproj` / `.filters` の 15 エントリ、空になったフィルタフォルダ 4 個 |
+
+`Application/Src/GameObjects/` に残るのは `SkyBox/SkyBoxObject`（独自描画）と
+`Effect/HitEffect` のみになった。**`HitEffect` はどこからも参照されていない死コード**で、
+削除対象シーンとは無関係だったため今回は残置した（§10.9 のコンポーネント化候補）。
+
+### 11.2 スキニングの機能はコンポーネント側へ移した
+
+`AnimatedModelObject` が持っていた固有の役割は「クリップのロード順の担保」だけだった。
+これを `AnimatorComponent` のコンストラクタ＋`Awake()` へ移設したので、
+**継承なしでスキニングキャラクターが組める**ようになった。
+
+```cpp
+// Before: クラスを 1 個書いて、フックを 3 つ override する
+class WalkModelObject : public AnimatedModelObject {
+    std::string GetModelPath()     const override { return "walk.gltf"; }
+    std::string GetAnimationName() const override { return "walkAnimation"; }
+    std::string GetTexturePath()   const override { return "white.png"; }
+};
+auto* chara = CreateObject<WalkModelObject>();
+
+// After: クラス定義なし
+auto* chara = CreateObject("Character");
+chara->AddComponent<AnimatorComponent>("walk.gltf", "walkAnimation");
+chara->GetComponent<MeshRendererComponent>()->SetTexture("white.png");
+
+// 複数クリップ（アニメーションブレンド）は先頭が初期クリップ
+auto* fox = CreateObject("Fox");
+fox->AddComponent<AnimatorComponent>("Fox.gltf",
+    std::vector<AnimationClipDesc>{ {"Survey","Survey",""}, {"Walk","Walk",""}, {"Run","Run",""} });
+
+// 武器を手に持たせる（追従は LateUpdate なので生成順は問わない）
+auto* weapon = CreateObject("Weapon");
+weapon->AddComponent<MeshRendererComponent>(std::make_unique<CubeMeshGenerator>(0.1f));
+weapon->AddComponent<SkeletonSocketComponent>()
+      ->Attach(chara->GetComponent<AnimatorComponent>(), "mixamorig:RightHand");
+```
+
+`AnimatorComponent::Awake()` が担うのは次の一続きで、**クリップは必ずスケルトン生成より前に読む**
+（後から読んでも既に作られた `AnimationPlayer` の選択肢に入らない）。
+
+1. 指定された全クリップを `ModelManager::LoadAnimation()` で読む
+2. 兄弟の `MeshRendererComponent`（無ければ `GetOrAddComponent` で足す）へ
+   `SetSkinnedModelFile()` → `ReloadFromSpec()`
+3. 初期クリップ名を自分に記録する
+
+追加順を問わないのは 2 で必ず作り直させているため。`MeshRendererComponent` を先に付けても
+`AnimatorComponent` を先に付けても同じ結果になる。
+
+### 11.3 失ったもの（明記）
+
+`AnimatedModelObject` が持っていた **Inspector の「アニメーション」タブ**（クリップ切替ボタン・
+ブレンド時間スライダー・骨デバッグ表示チェックボックス）は一緒に消えた。
+
+これは `IComponent::DrawInspector()` が**宣言されているだけで誰も呼んでいない**ためで、
+コンポーネントへ移しても表示されない。Inspector のタブは `GameObject::GetInspectorTabs()` /
+`DrawInspectorTabContent()` という GameObject 側の仕組みしか無い。
+
+> **次にやるべきこと**: `GameObject::GetInspectorTabs()` を「自分のタブ ＋ 全コンポーネントの
+> `GetInspectorName()` / `DrawInspector()`」を合成する形にする。そうすれば Animator に限らず
+> Collider・Material・SkeletonSocket まで一斉に Inspector へ出る。**これは §10.9 の
+> BehaviorComponent と並ぶ、コンポーネント化の残り穴**（`OnSerialize()` も同じく未配線）。
+
+### 11.4 残ったシーン
+
+| シーン | 役割 |
+|---|---|
+| `WaterTestScene` | 既定の起動シーン。水面・大気・雲・島の総合確認 |
+| `TestScene` | PBR グリッド（球 49 個）。`MeshRendererComponent` + `MaterialComponent` で構成 |
+| `CollisionTestScene` | 当たり判定の回帰スイート（PASS 29 / FAIL 0 が基準線）。`ProbeComponent` で構成 |
+
+### 11.5 検証
+
+| 対象 | 結果 |
+|---|---|
+| ビルド（Development） | 0 エラー / 0 警告 |
+| `WaterTestScene` | 描画無変化（水面・岸際の泡・植生・岩）60 FPS |
+| `TestScene` | 球 49 個の PBR グラデーションと IBL 反射が正常 |
+| `CollisionTestScene` | **PASS 29 / FAIL 0 / 進行中 1**（`Physics_20260808_021837.log`）・新規ダンプなし |
+
+> **スキニング経路は実行時検証ができていない**。`AnimatorComponent` の新しいロード経路を
+> 通すシーンが残っていないため、確認できたのはビルドが通ることまで。次にスキニングを
+> 使うときは §11.2 のコードで動作確認すること。
+
+### 11.6 作業上の罠（プロジェクトファイルの手編集）
+
+**`.vcxproj.filters` は手で編集しなくてよい**。pre-build の `Build/Scripts/SyncFilters.ps1` が
+
+1. vcxproj から**ディスクに存在しないファイル参照を削除**し
+2. `.filters` を vcxproj に合わせて**再生成**する
+
+ので、ファイルを削除したら**ビルドを 1 回回すだけで両方が揃う**（新規ファイルの
+**追加**はしてくれないので、そこだけは手で登録する ―― [[build-system-gotchas]] の既知仕様）。
+
+今回はこれを忘れて手で消しに行き、次の事故を踏んだ。
+
+- `.filters` のエントリは**複数行**（`<ClCompile Include="...">` / `<Filter>…</Filter>` /
+  `</ClCompile>`）なので、**パスを含む行だけを消すと `<Filter>` が孤児になって XML が壊れる**
+- その修復として「孤児の `<Filter>` 行を消す」処理を書いたら、
+  `<None Include=…>` の `<Filter>` 子要素 24 個を巻き込んで消してしまった
+  （`<None>` にも `<Filter>` 子がある）
+
+**教訓**: プロジェクトファイルを機械的に編集するなら行単位ではなく
+**XML の要素単位**（PowerShell の `[xml]` ＋ `RemoveChild`）で消す。
+そして削除だけなら SyncFilters に任せる。

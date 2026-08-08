@@ -23,7 +23,7 @@
 
 // GameObject基底クラス
 #include "GameObject/GameObject.h"
-#include "GameObject/Component/EulerTransformComponent.h"
+#include "GameObject/Component/Transform/EulerTransformComponent.h"
 
 // モジュール関連
 #include "Modules/MainModule.h"
@@ -74,11 +74,8 @@ public:
     // 実際の最大パーティクル数はMainModule.maxParticlesで制御
     static constexpr uint32_t kNumMaxInstance = 1028; // パーティクルの最大数
 
-    /// @brief コンストラクタ
-    /// @note エミッタのトランスフォーム実体は `EulerTransformComponent` が持つ。
-    ///       `emitterTransform_` はその参照なので既存コードは変わらない。
-    ///       コンポーネント化により **ギズモ・インスペクタがエミッタを引けるようになる**
-    ///       （以前は `GameObjectDebugAccess` の dynamic_cast 分岐から漏れていて効かなかった）。
+    /// @brief コンストラクタ（エミッタの実体は `EulerTransformComponent` が持ち、
+    ///        `emitterTransform_` はその参照。取り外し禁止。ギズモはこの経由で効く）
     ParticleSystem()
         : emitterTransformComponent_(AddComponent<EulerTransformComponent>())
         , emitterTransform_(emitterTransformComponent_->Get()) {}

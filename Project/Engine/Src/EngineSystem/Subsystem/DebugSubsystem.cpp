@@ -32,7 +32,7 @@
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
 #include "GameObject/GameObjectManager.h"
-#include "GameObject/Component/MeshRendererComponent.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
 #include <imgui.h>
 

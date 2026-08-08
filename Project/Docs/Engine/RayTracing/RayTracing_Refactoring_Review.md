@@ -612,8 +612,11 @@ Stage 1 開始時点の 2.409ms からは **-86%**。フレーム比 22.8% → *
    → 半透明の草木が影を落とせるようになる（4.1 穴②）。
 2. **BLAS のライフサイクル API**: 破棄・再構築（`ALLOW_UPDATE` + `PERFORM_UPDATE`）。
 3. **TLAS の差分更新**（静止フレームは `PERFORM_UPDATE`）。現状 0.054ms なので後回しで正しい。
-4. **スキンメッシュを TLAS へ**: `AnimatedModelObject` を収集ループに入れ、
+4. **スキンメッシュを TLAS へ**: スキニング対象を収集ループに入れ、
    スキニング結果を UAV 頂点バッファへ出して BLAS を更新（2 が前提）。
+   > 2026-08-08: `AnimatedModelObject` は削除済み。判定は
+   > 「`AnimatorComponent` を持つ ＝ `MeshRendererComponent` の描画パスが
+   > `RenderPassType::SkinnedModel`」で行う。
 
 **検証ゲート**: キャラクター・草木が影を落とす。ASBuild が許容内。
 

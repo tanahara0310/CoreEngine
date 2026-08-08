@@ -44,21 +44,10 @@ namespace CoreEngine
         // アクティブで削除マークされておらず、自動更新が有効なオブジェクトのみ更新
         // 削除はCleanupDestroyed()で行われるため、直接ループで問題ない
         //
-        // コンポーネントの呼び出し順（IComponent.h の契約）:
-        //   [パス1] 全オブジェクト: Start() → Update() → GameObject::Update()（従来の派生クラス処理）
-        //   [パス2] 全オブジェクト: LateUpdate()
-        //
-        // Update() を派生クラスより前に置くのは、従来 OnUpdate() が
-        // TransferMatrix() の結果を上書きする前提で書かれているコードを壊さないため。
-        //
-        // **LateUpdate を別パスにしているのが重要**。1 オブジェクトずつ
-        // 「Update → LateUpdate」と回すと、LateUpdate から他のオブジェクトを参照したとき
-        // 相手がまだ Update されていない可能性が残り、**生成順への依存が消えない**。
-        // 実例: 武器のジョイント追従（SkeletonSocketComponent）は追従元キャラクターの
-        // アニメーション更新が終わっている必要があり、以前は
-        // 「キャラクターより後に生成すること」というコメントで人間が担保していた。
-        // 全 Update 完了後に LateUpdate をまとめて回せば、生成順に関係なく必ず
-        // 最新の姿勢を読める。
+        // 呼び出し順: [パス1] Start → コンポーネント Update → GameObject::Update を全員分
+        //             → [パス2] LateUpdate を全員分。
+        // LateUpdate を別パスにするのが要: 全オブジェクトの Update 完了後に回すことで、
+        // 他オブジェクトを参照する処理（ジョイント追従等）が生成順に依存しなくなる。
         for (auto& obj : objects_) {
             if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
                 obj->DispatchComponentStart();

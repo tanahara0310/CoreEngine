@@ -57,6 +57,17 @@ namespace CoreEngine
         /// @param lines ライン配列
         void AddLines(const std::vector<Line>& lines);
 
+        // ===== ラインソース =====
+        // グリッドやコライダーワイヤのような「毎フレーム生成する線」の供給元。
+        // EndPass のフラッシュ直前に SubmitLines が呼ばれる（ビューごと・パスのカメラ付き）。
+        // 登録した側は寿命が尽きる前に必ず Unregister すること。
+
+        /// @brief ラインソースを登録する
+        void RegisterLineSource(class ILineSource* source);
+
+        /// @brief ラインソースの登録を解除する
+        void UnregisterLineSource(class ILineSource* source);
+
         /// @brief バッチをフラッシュして描画
         void FlushBatch();
 
@@ -107,6 +118,9 @@ namespace CoreEngine
 
         // カメラ
         const Camera* camera_ = nullptr;
+
+        // 登録されたラインソース（所有権は持たない。登録側が Unregister する契約）
+        std::vector<class ILineSource*> lineSources_;
 
         // 頂点バッファ
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;

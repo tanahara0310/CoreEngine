@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "GameObject.h"
+#include "GameObject/Component/Render/IRenderableComponent.h"
+#include "GameObject/Component/Transform/ITransformSource.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
 #include <cstdio>
 
 #ifdef USE_IMGUI
@@ -31,6 +34,51 @@ namespace CoreEngine
         (void)camera;
     }
 
+    void GameObject::Draw(const DrawViewInfo& view) {
+        // 描画はコンポーネントが答える（継承で Draw を override する必要はない）。
+        // 1 つも無ければ旧経路（Draw(カメラ)）へフォールバックする。
+        bool rendered = false;
+        for (const auto& slot : GetAllComponents()) {
+            if (!slot || !slot->IsEnabled()) { continue; }
+            if (auto* renderable = dynamic_cast<IRenderableComponent*>(slot.get())) {
+                renderable->Render(view);
+                rendered = true;
+            }
+        }
+        if (!rendered) {
+            Draw(view.GetCamera());
+        }
+    }
+
+    // ===== トランスフォーム（コンポーネントへの委譲） =====
+
+    Vector3 GameObject::GetWorldPosition() const {
+        if (auto* transform = GetComponent<TransformComponent>()) {
+            return transform->GetWorldPosition();   // 親の階層を含むワールド位置
+        }
+        if (auto* source = GetComponent<ITransformSource>()) {
+            return const_cast<ITransformSource*>(source)->Translate();
+        }
+        return {};
+    }
+
+    Vector3 GameObject::GetWorldScale() const {
+        if (auto* transform = GetComponent<TransformComponent>()) {
+            return transform->GetWorldScale();      // 親の階層スケールを含む
+        }
+        if (auto* source = GetComponent<ITransformSource>()) {
+            return const_cast<ITransformSource*>(source)->Scale();
+        }
+        return { 1.0f, 1.0f, 1.0f };
+    }
+
+    bool GameObject::TryApplyCollisionPush(const Vector3& delta) {
+        if (auto* transform = GetComponent<TransformComponent>()) {
+            return transform->ApplyWorldDelta(delta);
+        }
+        return false;
+    }
+
     // ===== アクティブ =====
 
     void GameObject::SetActive(bool active) { isActive_ = active; }
@@ -47,11 +95,26 @@ namespace CoreEngine
     std::optional<int> GameObject::GetRenderOrder() const { return renderOrder_; }
     void GameObject::ResetRenderOrder() { renderOrder_ = std::nullopt; }
 
-    RenderPassType GameObject::GetRenderPassType() const { return RenderPassType::Model; }
-    BlendMode GameObject::GetBlendMode() const { return BlendMode::kBlendModeNone; }
+    // 描画パス・ブレンドは描画コンポーネントが答える（無ければ既定値）
+
+    RenderPassType GameObject::GetRenderPassType() const {
+        if (auto* renderable = GetComponent<IRenderableComponent>()) {
+            return renderable->GetRenderPassType();
+        }
+        return RenderPassType::Model;
+    }
+
+    BlendMode GameObject::GetBlendMode() const {
+        if (auto* renderable = GetComponent<IRenderableComponent>()) {
+            return renderable->GetBlendMode();
+        }
+        return BlendMode::kBlendModeNone;
+    }
 
     void GameObject::SetBlendMode(BlendMode blendMode) {
-        (void)blendMode;
+        if (auto* renderable = GetComponent<IRenderableComponent>()) {
+            renderable->SetBlendMode(blendMode);
+        }
     }
 
     RenderItem GameObject::BuildRenderItem() const {
@@ -61,12 +124,19 @@ namespace CoreEngine
         item.blendMode = GetBlendMode();
         item.renderOrderOverride = GetRenderOrder();
 
-        if (item.passType == RenderPassType::SkyBox) {
-            item.kind = RenderItemKind::SkyBox;
-        } else if (item.passType == RenderPassType::WaterSurface) {
-            item.kind = RenderItemKind::WaterSurface;
-        } else if (item.blendMode != BlendMode::kBlendModeNone) {
-            item.kind = RenderItemKind::Transparent;
+        // 描画コンポーネントが種別を明示していればそれを尊重する
+        if (auto* renderable = GetComponent<IRenderableComponent>()) {
+            item.kind = renderable->GetRenderItemKind();
+        }
+
+        if (item.kind == RenderItemKind::Default) {
+            if (item.passType == RenderPassType::SkyBox) {
+                item.kind = RenderItemKind::SkyBox;
+            } else if (item.passType == RenderPassType::WaterSurface) {
+                item.kind = RenderItemKind::WaterSurface;
+            } else if (item.blendMode != BlendMode::kBlendModeNone) {
+                item.kind = RenderItemKind::Transparent;
+            }
         }
 
         return item;
@@ -78,11 +148,23 @@ namespace CoreEngine
     void GameObject::OnCollisionStay(GameObject* other) { (void)other; }
     void GameObject::OnCollisionExit(GameObject* other) { (void)other; }
 
-    // 接触情報つき版の既定実装は「相手だけ」を渡す旧 API へ転送する。
-    // これにより GameObject* 版だけを override した既存コードがそのまま動く。
-    void GameObject::OnCollisionEnter(const CollisionInfo& info) { OnCollisionEnter(info.other); }
-    void GameObject::OnCollisionStay(const CollisionInfo& info) { OnCollisionStay(info.other); }
-    void GameObject::OnCollisionExit(const CollisionInfo& info) { OnCollisionExit(info.other); }
+    // 接触情報つき版の既定実装は ①ColliderComponent の購読者へ配り
+    // ②「相手だけ」を渡す旧 API へ転送する。これにより
+    //   - コンポーネントで購読する新しい書き方（継承不要）
+    //   - GameObject* 版を override した既存コード
+    // の両方が同時に動く。
+    void GameObject::OnCollisionEnter(const CollisionInfo& info) {
+        if (auto* colliders = TryGetColliders()) { colliders->DispatchEnter(info); }
+        OnCollisionEnter(info.other);
+    }
+    void GameObject::OnCollisionStay(const CollisionInfo& info) {
+        if (auto* colliders = TryGetColliders()) { colliders->DispatchStay(info); }
+        OnCollisionStay(info.other);
+    }
+    void GameObject::OnCollisionExit(const CollisionInfo& info) {
+        if (auto* colliders = TryGetColliders()) { colliders->DispatchExit(info); }
+        OnCollisionExit(info.other);
+    }
 
     // ===== コライダー =====
 

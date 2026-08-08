@@ -112,13 +112,12 @@ namespace CoreEngine
     void EnvironmentFeature::SetupDefaultSky(SceneContext& ctx)
     {
         // シーン側（OnInitialize）で生成済みの SkyBox があればそれを採用する
-        for (const auto& obj : ctx.gameObjectManager->GetAllObjects()) {
-            if (auto* sceneSkyBox = dynamic_cast<SkyBoxObject*>(obj.get())) {
-                skyBox_ = sceneSkyBox;
-                Logger::GetInstance().Infof(LogCategory::System,
-                    "BaseScene: シーン生成の SkyBox を採用");
-                return;
-            }
+        // （具象型のダウンキャストではなく SceneTag で探す）
+        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<SkyBoxObject>>()) {
+            skyBox_ = tag->Get();
+            Logger::GetInstance().Infof(LogCategory::System,
+                "BaseScene: シーン生成の SkyBox を採用");
+            return;
         }
 
         // 未生成なら既定の背景として大気散乱モードの SkyBox を自動生成する
@@ -131,13 +130,12 @@ namespace CoreEngine
     void EnvironmentFeature::SetupDefaultGround(SceneContext& ctx)
     {
         // シーン側（OnInitialize）で生成済みの無限地面があればそれを採用する
-        for (const auto& obj : ctx.gameObjectManager->GetAllObjects()) {
-            if (auto* sceneGround = dynamic_cast<InfiniteGroundObject*>(obj.get())) {
-                groundPlane_ = sceneGround;
-                Logger::GetInstance().Infof(LogCategory::System,
-                    "BaseScene: シーン生成の無限地面を採用");
-                return;
-            }
+        // （具象型のダウンキャストではなく SceneTag で探す）
+        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<InfiniteGroundObject>>()) {
+            groundPlane_ = tag->Get();
+            Logger::GetInstance().Infof(LogCategory::System,
+                "BaseScene: シーン生成の無限地面を採用");
+            return;
         }
 
         // シーンがオプトアウトしている場合は生成しない（独自地形・水面・2D シーン等）

@@ -5,6 +5,11 @@
 #include "GeometrySelfTest.h"
 
 #include "Collision/CollisionWorld.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Render/MaterialComponent.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
+#include "Graphics/Primitive/CubeMeshGenerator.h"
+#include "Graphics/Primitive/SphereMeshGenerator.h"
 #include "Editor/Environment/AtmosphereEditor.h"
 #include "Input/KeyboardInput.h"
 #include "Scene/SceneManager.h"
@@ -121,21 +126,15 @@ namespace CollisionTest
             1.0f, CollisionLayer::Player, kColorTarget);
         t8B_ = MakeSphereProbe("T8_ScaledB", { 1.5f, kProbeY, RowZ(7) },
             1.0f, CollisionLayer::Enemy, kColorVictim);
-        t8A_->GetTransform().scale = { 2.0f, 2.0f, 2.0f };
-        t8B_->GetTransform().scale = { 2.0f, 2.0f, 2.0f };
+        t8A_->Transform().scale = { 2.0f, 2.0f, 2.0f };
+        t8B_->Transform().scale = { 2.0f, 2.0f, 2.0f };
 
         // ===== T9: GetWorldPosition を持たないオブジェクト =====
-        t9Far_ = CreateObject<HeadlessProbe>();
-        t9Far_->SetLabel("T9_Far");
-        t9Far_->SetSerializeEnabled(false);
-        t9Far_->SetLogicalPosition({ 0.0f, kProbeY, 100.0f });
-        t9Far_->AddSphereCollider(1.0f, CollisionLayer::Boss);
+        t9Far_ = MakeHeadlessProbe("T9_Far", { 0.0f, kProbeY, 100.0f });
+        t9Far_->Object()->AddSphereCollider(1.0f, CollisionLayer::Boss);
 
-        t9Near_ = CreateObject<HeadlessProbe>();
-        t9Near_->SetLabel("T9_Near");
-        t9Near_->SetSerializeEnabled(false);
-        t9Near_->SetLogicalPosition({ 0.0f, kProbeY, -100.0f });
-        t9Near_->AddSphereCollider(1.0f, CollisionLayer::BossBullet);
+        t9Near_ = MakeHeadlessProbe("T9_Near", { 0.0f, kProbeY, -100.0f });
+        t9Near_->Object()->AddSphereCollider(1.0f, CollisionLayer::BossBullet);
 
         // ===== T10: コールバック中の RemoveCollider（オプトイン） =====
         t10Static_ = MakeSphereProbe("T10_Static", { -0.5f, kProbeY, RowZ(8) },
@@ -152,7 +151,7 @@ namespace CollisionTest
         t11Body_ = MakeSphereProbe("T11_Boss", { 0.0f, kProbeY, RowZ(9) },
             1.0f, CollisionLayer::Boss, kColorTarget);
         // 2 本目: 右へ 2.5 ずらした攻撃判定（オフセット付き）
-        t11Body_->GetColliders().AddSphere(1.0f, CollisionLayer::BossAttack,
+        t11Body_->Colliders().AddSphere(1.0f, CollisionLayer::BossAttack,
             { 2.5f, 0.0f, 0.0f });
 
         // 本体だけに触れる位置と、攻撃判定だけに触れる位置に相手を置く
@@ -165,14 +164,14 @@ namespace CollisionTest
         // ここだけトリガーを外す。他の行は通知専用のままなので押し出しは起きない。
         t12Wall_ = MakeBoxProbe("T12_Wall", { 0.0f, kProbeY, RowZ(10) },
             2.0f, CollisionLayer::Environment, kColorTarget);
-        if (auto* wallCollider = t12Wall_->GetCollider()) {
+        if (auto* wallCollider = t12Wall_->FirstCollider()) {
             wallCollider->SetTrigger(false);
             wallCollider->SetStatic(true);   // 壁は押し返されない
         }
 
         t12Pusher_ = MakeSphereProbe("T12_Pusher", { kPushStartX, kProbeY, RowZ(10) },
             1.0f, CollisionLayer::Player, kColorMover);
-        if (auto* pusherCollider = t12Pusher_->GetCollider()) {
+        if (auto* pusherCollider = t12Pusher_->FirstCollider()) {
             pusherCollider->SetTrigger(false);
         }
 
@@ -191,30 +190,56 @@ namespace CollisionTest
     // ─────────────────────────────────────────────────────────────────────
     // 生成ヘルパー
     // ─────────────────────────────────────────────────────────────────────
-    SphereProbe* CollisionTestScene::MakeSphereProbe(const std::string& label, const Vector3& position,
-        float radius, CollisionLayer layer, const Vector4& baseColor)
+    ProbeComponent* CollisionTestScene::MakeProbe(const std::string& label, const Vector3& position,
+        std::unique_ptr<IPrimitiveMeshGenerator> mesh, const Vector4& baseColor)
     {
-        auto* probe = CreateObject<SphereProbe>(radius, 24u, 12u);
+        // 専用クラスは無い。素の GameObject にコンポーネントを載せて組む。
+        GameObject* object = CreateObject(label);
+        object->SetSerializeEnabled(false);   // シーン JSON でテスト条件が変わらないようにする
+
+        if (mesh) {
+            object->AddComponent<MeshRendererComponent>(std::move(mesh));
+            object->AddComponent<MaterialComponent>();
+        } else {
+            // 見た目を持たないプローブ（描画コンポーネント無しでも判定が効くことの確認）。
+            // トランスフォームは位置ソースとして必須なので明示的に載せる。
+            object->AddComponent<TransformComponent>();
+        }
+
+        auto* probe = object->AddComponent<ProbeComponent>();
         probe->SetLabel(label);
-        probe->SetSerializeEnabled(false);   // シーン JSON でテスト条件が変わらないようにする
-        probe->GetTransform().translate = position;
         probe->SetBaseColor(baseColor);
-        probe->AddSphereCollider(radius, layer);
-        probe->SetActive(true);
+
+        // Start() を先に走らせてコライダーの購読とマテリアル参照を確定させる
+        // （この後すぐコライダーを足すので、購読の登録が済んでいる必要がある）
+        object->DispatchComponentStart();
+
+        probe->Transform().translate = position;
+        object->SetActive(true);
         return probe;
     }
 
-    BoxProbe* CollisionTestScene::MakeBoxProbe(const std::string& label, const Vector3& position,
+    ProbeComponent* CollisionTestScene::MakeSphereProbe(const std::string& label, const Vector3& position,
+        float radius, CollisionLayer layer, const Vector4& baseColor)
+    {
+        auto* probe = MakeProbe(label, position,
+            std::make_unique<SphereMeshGenerator>(radius, 24u, 12u), baseColor);
+        probe->Object()->AddSphereCollider(radius, layer);
+        return probe;
+    }
+
+    ProbeComponent* CollisionTestScene::MakeBoxProbe(const std::string& label, const Vector3& position,
         float size, CollisionLayer layer, const Vector4& baseColor)
     {
-        auto* probe = CreateObject<BoxProbe>(size);
-        probe->SetLabel(label);
-        probe->SetSerializeEnabled(false);
-        probe->GetTransform().translate = position;
-        probe->SetBaseColor(baseColor);
-        probe->AddAABBCollider({ size, size, size }, layer);
-        probe->SetActive(true);
+        auto* probe = MakeProbe(label, position,
+            std::make_unique<CubeMeshGenerator>(size), baseColor);
+        probe->Object()->AddAABBCollider({ size, size, size }, layer);
         return probe;
+    }
+
+    ProbeComponent* CollisionTestScene::MakeHeadlessProbe(const std::string& label, const Vector3& position)
+    {
+        return MakeProbe(label, position, nullptr, kColorNeutral);
     }
 
     float CollisionTestScene::TraverseX() const
@@ -247,41 +272,41 @@ namespace CollisionTest
 
         // ===== 通過テストのムーバー位置（毎フレーム再指定＝JSON 復元に影響されない） =====
         const float x = TraverseX();
-        if (t1Mover_) { t1Mover_->GetTransform().translate = { x, kProbeY, RowZ(0) }; }
-        if (t2Mover_) { t2Mover_->GetTransform().translate = { x, kProbeY, RowZ(1) }; }
-        if (t3Mover_) { t3Mover_->GetTransform().translate = { x, kProbeY, RowZ(2) }; }
-        if (t4Mover_) { t4Mover_->GetTransform().translate = { x, kProbeY, RowZ(3) }; }
+        if (t1Mover_) { t1Mover_->Transform().translate = { x, kProbeY, RowZ(0) }; }
+        if (t2Mover_) { t2Mover_->Transform().translate = { x, kProbeY, RowZ(1) }; }
+        if (t3Mover_) { t3Mover_->Transform().translate = { x, kProbeY, RowZ(2) }; }
+        if (t4Mover_) { t4Mover_->Transform().translate = { x, kProbeY, RowZ(3) }; }
 
         // ===== 静止プローブの位置も固定し続ける =====
-        if (t1Static_)   { t1Static_->GetTransform().translate   = { 0.0f, kProbeY, RowZ(0) }; }
-        if (t2Box_)      { t2Box_->GetTransform().translate      = { 0.0f, kProbeY, RowZ(1) }; }
-        if (t3Box_)      { t3Box_->GetTransform().translate      = { 0.0f, kProbeY, RowZ(2) }; }
-        if (t4Item_)     { t4Item_->GetTransform().translate     = { 0.0f, kProbeY, RowZ(3) }; }
-        if (t5A_)        { t5A_->GetTransform().translate        = { -0.6f, kProbeY, RowZ(4) }; }
-        if (t5B_)        { t5B_->GetTransform().translate        = { 0.6f, kProbeY, RowZ(4) }; }
-        if (t6Survivor_) { t6Survivor_->GetTransform().translate = { -0.5f, kProbeY, RowZ(5) }; }
-        if (t7Static_)   { t7Static_->GetTransform().translate   = { -0.5f, kProbeY, RowZ(6) }; }
-        if (t8A_)        { t8A_->GetTransform().translate        = { -1.5f, kProbeY, RowZ(7) }; }
-        if (t8B_)        { t8B_->GetTransform().translate        = { 1.5f, kProbeY, RowZ(7) }; }
-        if (t10Static_)  { t10Static_->GetTransform().translate  = { -0.5f, kProbeY, RowZ(8) }; }
-        if (t10Remover_) { t10Remover_->GetTransform().translate = { 0.5f, kProbeY, RowZ(8) }; }
-        if (t11Body_)    { t11Body_->GetTransform().translate    = { 0.0f, kProbeY, RowZ(9) }; }
-        if (t11BodyHit_) { t11BodyHit_->GetTransform().translate = { -1.2f, kProbeY, RowZ(9) }; }
-        if (t11AtkHit_)  { t11AtkHit_->GetTransform().translate  = { 3.7f, kProbeY, RowZ(9) }; }
-        if (t12Wall_)    { t12Wall_->GetTransform().translate    = { 0.0f, kProbeY, RowZ(10) }; }
-        if (t14Near_)    { t14Near_->GetTransform().translate    = { -2.0f, kProbeY, RowZ(11) }; }
-        if (t14Far_)     { t14Far_->GetTransform().translate     = { 3.0f, kProbeY, RowZ(11) }; }
+        if (t1Static_)   { t1Static_->Transform().translate   = { 0.0f, kProbeY, RowZ(0) }; }
+        if (t2Box_)      { t2Box_->Transform().translate      = { 0.0f, kProbeY, RowZ(1) }; }
+        if (t3Box_)      { t3Box_->Transform().translate      = { 0.0f, kProbeY, RowZ(2) }; }
+        if (t4Item_)     { t4Item_->Transform().translate     = { 0.0f, kProbeY, RowZ(3) }; }
+        if (t5A_)        { t5A_->Transform().translate        = { -0.6f, kProbeY, RowZ(4) }; }
+        if (t5B_)        { t5B_->Transform().translate        = { 0.6f, kProbeY, RowZ(4) }; }
+        if (t6Survivor_) { t6Survivor_->Transform().translate = { -0.5f, kProbeY, RowZ(5) }; }
+        if (t7Static_)   { t7Static_->Transform().translate   = { -0.5f, kProbeY, RowZ(6) }; }
+        if (t8A_)        { t8A_->Transform().translate        = { -1.5f, kProbeY, RowZ(7) }; }
+        if (t8B_)        { t8B_->Transform().translate        = { 1.5f, kProbeY, RowZ(7) }; }
+        if (t10Static_)  { t10Static_->Transform().translate  = { -0.5f, kProbeY, RowZ(8) }; }
+        if (t10Remover_) { t10Remover_->Transform().translate = { 0.5f, kProbeY, RowZ(8) }; }
+        if (t11Body_)    { t11Body_->Transform().translate    = { 0.0f, kProbeY, RowZ(9) }; }
+        if (t11BodyHit_) { t11BodyHit_->Transform().translate = { -1.2f, kProbeY, RowZ(9) }; }
+        if (t11AtkHit_)  { t11AtkHit_->Transform().translate  = { 3.7f, kProbeY, RowZ(9) }; }
+        if (t12Wall_)    { t12Wall_->Transform().translate    = { 0.0f, kProbeY, RowZ(10) }; }
+        if (t14Near_)    { t14Near_->Transform().translate    = { -2.0f, kProbeY, RowZ(11) }; }
+        if (t14Far_)     { t14Far_->Transform().translate     = { 3.0f, kProbeY, RowZ(11) }; }
 
         // T12 のプッシャーだけは位置を「代入」せず「加算」する。
         // 毎フレーム代入すると押し出された結果を上書きしてしまい、テストにならない。
         if (t12Pusher_ && frame_ > kTraverseStart) {
-            t12Pusher_->GetTransform().translate.x += kPushSpeed;
+            t12Pusher_->Transform().translate.x += kPushSpeed;
         }
 
         // ===== T6: 重なったまま victim を破棄 =====
         if (frame_ == kDestroyFrame && t6Victim_) {
             LogEvent("T6: 重なったまま T6_Victim を Destroy()");
-            t6Victim_->Destroy();
+            t6Victim_->Object()->Destroy();
             t6Victim_ = nullptr;   // 破棄後は触らない
         }
     }
@@ -470,7 +495,7 @@ namespace CollisionTest
             // 破棄を先に判定する。スポーン側と同じガードに入れると最後のサイクルの
             // 破棄が丸ごとスキップされる（実際にそれで誤 FAIL を出した）。
             if (t7Spawned_ && cycleFrame == kAbaCycleFrames / 2) {
-                t7Spawned_->Destroy();
+                t7Spawned_->Object()->Destroy();
                 t7Spawned_ = nullptr;
             }
             else if (cycleFrame == 0 && cycleIndex == t7SpawnCount_ && t7SpawnCount_ < kAbaCycles) {
@@ -538,7 +563,7 @@ namespace CollisionTest
 
         const bool decided = (frame_ >= kStaticJudge);
 
-        const size_t colliderCount = t11Body_->GetColliders().Count();
+        const size_t colliderCount = t11Body_->Colliders().Count();
         const auto&  bodyHit = t11BodyHit_->Stats();
         const auto&  atkHit  = t11AtkHit_->Stats();
 
@@ -569,7 +594,7 @@ namespace CollisionTest
         if (!t12Pusher_ || !t12Wall_) { return; }
 
         const bool decided = (frame_ >= kPushJudge);
-        const float x = t12Pusher_->GetTransform().translate.x;
+        const float x = t12Pusher_->Transform().translate.x;
 
         char actual[96];
         std::snprintf(actual, sizeof(actual), "x = %.3f（期待 %.3f）", x, kPushExpectedX);
@@ -642,7 +667,7 @@ namespace CollisionTest
         RaycastHit hit{};
         const bool found = world->Raycast(ray, 100.0f, CollisionWorld::kAllLayers, &hit);
 
-        const bool hitNear = found && hit.object == t14Near_;
+        const bool hitNear = found && hit.object == t14Near_->Object();
         const bool distanceOk = found && std::abs(hit.distance - 5.0f) < 1e-2f;
 
         char actual[128];

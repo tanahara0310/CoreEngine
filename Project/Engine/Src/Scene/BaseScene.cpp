@@ -199,6 +199,13 @@ namespace CoreEngine
         directionalLight_ = nullptr;
     }
 
+    GameObject* BaseScene::CreateObject(const std::string& name)
+    {
+        auto obj = std::make_unique<GameObject>();
+        obj->SetName(name);
+        return gameObjectManager_.AddObject(std::move(obj));
+    }
+
     ISceneFeature* BaseScene::AddFeature(std::unique_ptr<ISceneFeature> feature, int priority)
     {
         if (!feature) {
