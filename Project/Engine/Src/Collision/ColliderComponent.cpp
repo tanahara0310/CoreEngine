@@ -1,13 +1,27 @@
 #include "pch.h"
 #include "ColliderComponent.h"
 
+#include "GameObject/GameObject.h"
+#include "GameObject/Component/Transform/ITransformSource.h"
+
 #include <algorithm>
+#include <cassert>
 
 namespace CoreEngine
 {
     Collider& ColliderComponent::Add(const CollisionShape& shape, CollisionLayer layer)
     {
-        colliders_.push_back(std::make_unique<Collider>(owner_, shape, layer));
+        // オーナーは IComponent が AddComponent 時に注入済み（Awake より前）。
+        // Collider は owner の GetWorldPosition()/GetWorldScale() を位置ソースにする。
+        //
+        // 位置ソースが無いままコライダーを付けると、全員が原点で重なるという無音のバグに
+        // なる（当たり判定リファクタリングで純粋仮想化して潰した問題）。今はトランスフォーム
+        // コンポーネントの有無で構造的に検出できるので、ここで弾く。
+        assert(GetOwner() && GetOwner()->GetComponent<ITransformSource>() &&
+            "コライダーを付けるオブジェクトはトランスフォームコンポーネントを持つこと"
+            "（TransformComponent / EulerTransformComponent のいずれか）");
+
+        colliders_.push_back(std::make_unique<Collider>(GetOwner(), shape, layer));
         return *colliders_.back();
     }
 

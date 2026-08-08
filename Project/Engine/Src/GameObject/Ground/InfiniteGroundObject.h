@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Primitive/PrimitiveGameObject.h"
+#include "GameObject/Component/Scene/SceneTagComponent.h"
 #include "Math/MathCore.h"
 
 /// @brief y=0 に広がる無限遠グレータイル床（全シーン共通の既定床）
@@ -15,6 +16,11 @@
 /// 「ローカル座標 / kTileWorldSize」として焼き込む（平面中心が UV 原点）。
 class InfiniteGroundObject : public CoreEngine::PrimitiveGameObject {
 public:
+    /// @brief コンストラクタ（「シーンの床」タグを付ける。Feature が具象型を知らずに見つけるため）
+    InfiniteGroundObject() {
+        AddComponent<CoreEngine::SceneTagComponent<InfiniteGroundObject>>(this);
+    }
+
     const char* GetObjectName() const override;
 
     /// @brief カメラの XZ に追従して床を移動する

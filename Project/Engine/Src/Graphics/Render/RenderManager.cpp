@@ -285,7 +285,9 @@ namespace CoreEngine
         for (const auto& cmd : queue) {
             // GameObjectManagerで事前フィルタリング済み
             // 削除マークのみチェック（更新中に削除マークされた可能性があるため）
-            if (!cmd.object || cmd.object->IsMarkedForDestroy()) {
+            // object == nullptr は「パス起動専用アイテム」（Line パスの合成アイテム。
+            // ClearQueue 参照）で、パスの Begin/End だけを駆動し Draw は呼ばない。
+            if (cmd.object && cmd.object->IsMarkedForDestroy()) {
                 continue;
             }
 
@@ -330,8 +332,8 @@ namespace CoreEngine
                 currentRenderer->BeginPass(cmdList_, cmd.blendMode);
             }
 
-            // オブジェクトを描画
-            if (currentRenderer) {
+            // オブジェクトを描画（パス起動専用アイテムは object を持たない）
+            if (currentRenderer && cmd.object) {
                 DrawViewInfo view{};
                 view.view = currentView;
                 view.viewType = viewType;
@@ -373,6 +375,15 @@ namespace CoreEngine
         opaqueDrawQueue_.clear();
         skyDrawQueue_.clear();
         transparentDrawQueue_.clear();
+
+        // Line パス起動用の合成アイテム。パス実行はアイテム駆動なので、これが無いと
+        // Line アイテム 0 のフレームで EndPass（ラインソース回収とフラッシュ）が走らず、
+        // LineManager 経由の線（スケルトン表示等）が描かれず溜まり続ける。
+        RenderItem lineKick{};
+        lineKick.object = nullptr;   // Draw は呼ばれない（RenderNormalPassQueue が null を許容）
+        lineKick.passType = RenderPassType::Line;
+        lineKick.blendMode = BlendMode::kBlendModeNormal;
+        AddRenderItem(lineKick);
         waterDrawQueue_.clear();
         registrationCounter_ = 0;
         isQueueSorted_ = false;

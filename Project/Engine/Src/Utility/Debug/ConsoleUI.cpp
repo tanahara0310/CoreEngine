@@ -389,7 +389,7 @@ void ConsoleUI::ShowFPSInfo()
     }
 
     // 【Phase 4】新方式でコンポーネントを取得
-    auto frameRate = engine_->GetComponent<FrameRateController>();
+    auto frameRate = engine_->GetService<FrameRateController>();
     if (!frameRate) {
         AddLog("エラー: フレームレートコントローラーが利用できません", ConsoleLogLevel::Error);
         return;
@@ -426,11 +426,11 @@ void ConsoleUI::ShowSystemStatus()
     AddLog("=== システム状態 ===", ConsoleLogLevel::Info);
 
     // 【Phase 4】コンポーネントの状態チェック
-    auto directXCommon = engine_->GetComponent<DirectXCommon>();
-    auto inputManager = engine_->GetComponent<InputManager>();
-    auto soundManager = engine_->GetComponent<SoundManager>();
-    auto lightManager = engine_->GetComponent<LightManager>();
-    auto particleSystem = engine_->GetComponent<ParticleSystem>();
+    auto directXCommon = engine_->GetService<DirectXCommon>();
+    auto inputManager = engine_->GetService<InputManager>();
+    auto soundManager = engine_->GetService<SoundManager>();
+    auto lightManager = engine_->GetService<LightManager>();
+    auto particleSystem = engine_->GetService<ParticleSystem>();
 
     AddLog("グラフィックスシステム: " + std::string(directXCommon ? "初期化済み" : "未初期化"), 
            directXCommon ? ConsoleLogLevel::Info : ConsoleLogLevel::Error);

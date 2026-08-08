@@ -1,7 +1,10 @@
 #pragma once
 
 #include "Collider.h"
+#include "CollisionInfo.h"
+#include "GameObject/Component/Core/IComponent.h"
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -9,23 +12,17 @@ namespace CoreEngine
 {
 class GameObject;
 
-/// @brief 1 つの GameObject が持つコライダーの集合
-/// @details 以前は GameObject が `unique_ptr<Collider>` を 1 本だけ持っていたため、
-///          本体判定と攻撃判定を別レイヤーで同時に持つことができなかった
-///          （CollisionLayer に Boss と BossAttack が両方あるのに片方しか使えない状態）。
-///
-///          **参照の安定性**: Collider は個別にヒープへ確保するので、要素を追加しても
-///          既存の Collider& / Collider* は無効化されない。Add() が参照を返す API を
-///          安全に保つための要件。
-///
-///          **解放の遅延**: Remove 系は実体を即 delete せず retired_ へ退避する。
-///          衝突コールバックの中から着脱されても、判定ループが持っている生ポインタが
-///          宙に浮かない。実体の解放はフレーム末の ReleaseRetired()（GameObjectManager
-///          が衝突判定より後に呼ぶ）で行う。
-class ColliderComponent {
+/// @brief 1 つの GameObject が持つコライダーの集合（0 本以上・レイヤー別に複数可）。
+/// @details Collider は個別ヒープ確保なので Add() が返す参照は以後も無効化されない。
+///          Remove 系は実体を即 delete せず retired_ へ退避し、フレーム末に解放する
+///          （衝突コールバック中の着脱で判定ループの生ポインタが宙に浮かないため）。
+class ColliderComponent : public IComponent {
 public:
-    /// @brief 所有者を設定する（GameObject の初期化時に一度だけ）
-    void SetOwner(GameObject* owner) { owner_ = owner; }
+    const char* GetTypeName() const override { return "Collider"; }
+
+#ifdef USE_IMGUI
+    const char* GetInspectorName() const override { return "コライダー"; }
+#endif
 
     // ===== 追加 =====
 
@@ -40,6 +37,21 @@ public:
     /// @brief ボックスコライダーを追加する
     Collider& AddBox(const Vector3& size, CollisionLayer layer = CollisionLayer::Default,
                      const Vector3& offset = {});
+
+    // ===== 衝突イベントの購読 =====
+    // 継承（GameObject::OnCollisionEnter の override）なしで衝突に反応するための入口。
+    // `CollisionWorld` はオーナーの仮想関数を呼び、その既定実装がここへ配る。
+
+    using CollisionCallback = std::function<void(const CollisionInfo&)>;
+
+    void SetOnEnter(CollisionCallback callback) { onEnter_ = std::move(callback); }
+    void SetOnStay(CollisionCallback callback) { onStay_ = std::move(callback); }
+    void SetOnExit(CollisionCallback callback) { onExit_ = std::move(callback); }
+
+    /// @brief 購読者へイベントを配る（`GameObject` の既定実装から呼ばれる）
+    void DispatchEnter(const CollisionInfo& info) const { if (onEnter_) onEnter_(info); }
+    void DispatchStay(const CollisionInfo& info) const { if (onStay_) onStay_(info); }
+    void DispatchExit(const CollisionInfo& info) const { if (onExit_) onExit_(info); }
 
     // ===== 削除 =====
 
@@ -79,7 +91,9 @@ public:
     }
 
 private:
-    GameObject* owner_ = nullptr;
+    CollisionCallback onEnter_;
+    CollisionCallback onStay_;
+    CollisionCallback onExit_;
 
     /// 生きているコライダー（実体は個別確保 = 参照が安定）
     std::vector<std::unique_ptr<Collider>> colliders_;

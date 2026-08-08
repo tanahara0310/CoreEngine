@@ -160,7 +160,7 @@ namespace CoreEngine
         modelCtx.modelRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::Model));
         modelCtx.skinnedRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::SkinnedModel));
         modelCtx.hiZOcclusion = engine.hiZOcclusionSystem_.get();
-        engine.GetComponent<ModelManager>()->SetRenderContext(modelCtx);
+        engine.GetService<ModelManager>()->SetRenderContext(modelCtx);
 
         // IBLGeneratorの作成と初期化
         auto iblGenerator = std::make_unique<IBLGenerator>();

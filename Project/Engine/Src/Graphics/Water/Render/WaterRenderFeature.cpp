@@ -82,11 +82,9 @@ namespace CoreEngine
         if (!ctx.gameObjectManager) {
             return;
         }
-        for (const auto& obj : ctx.gameObjectManager->GetAllObjects()) {
-            if (auto* sceneSkyBox = dynamic_cast<SkyBoxObject*>(obj.get())) {
-                skyBox_ = sceneSkyBox;
-                break;
-            }
+        // 具象型のダウンキャストではなく SceneTag で探す
+        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<SkyBoxObject>>()) {
+            skyBox_ = tag->Get();
         }
     }
 
@@ -95,7 +93,7 @@ namespace CoreEngine
         switch (phase) {
         case SceneUpdatePhase::PreObjectUpdate:
         {
-            auto* frameRate = ctx.engine ? ctx.engine->GetComponent<FrameRateController>() : nullptr;
+            auto* frameRate = ctx.engine ? ctx.engine->GetService<FrameRateController>() : nullptr;
             const float deltaTime = frameRate ? frameRate->GetDeltaTime() : (1.0f / 60.0f);
 
             // FFT の時刻は水面の表示状態と独立に進める。
@@ -202,12 +200,11 @@ namespace CoreEngine
             return;
         }
 
-        // シーン側が既に水面を生成していればそれを採用する（EnvironmentFeature と同じ規約）
-        for (const auto& obj : ctx.gameObjectManager->GetAllObjects()) {
-            if (auto* scenePlane = dynamic_cast<WaterPlaneObject*>(obj.get())) {
-                waterPlane_ = scenePlane;
-                return;
-            }
+        // シーン側が既に水面を生成していればそれを採用する（EnvironmentFeature と同じ規約。
+        // 具象型のダウンキャストではなく SceneTag で探す）
+        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<WaterPlaneObject>>()) {
+            waterPlane_ = tag->Get();
+            return;
         }
 
         waterPlane_ = ctx.gameObjectManager->AddObject(
@@ -273,7 +270,7 @@ namespace CoreEngine
         WaterFrameBinding binding{};
 
         // 水越しの背景色として使用するシーンカラー SRV
-        if (auto* render = ctx.engine->GetComponent<Render>()) {
+        if (auto* render = ctx.engine->GetService<Render>()) {
             if (auto* renderTargetManager = render->GetRenderTargetManager()) {
                 RenderTarget* sceneColorTarget =
                     renderTargetManager->GetRenderTarget(RenderTargetNames::SceneColorSnapshot);
@@ -287,7 +284,7 @@ namespace CoreEngine
         }
 
         // Depth Fade 用のシーン深度 SRV
-        if (auto* dxCommon = ctx.engine->GetComponent<DirectXCommon>()) {
+        if (auto* dxCommon = ctx.engine->GetService<DirectXCommon>()) {
             binding.resources.sceneDepthSRV = dxCommon->GetDepthStencilSRV();
         }
 
@@ -410,7 +407,7 @@ namespace CoreEngine
         }
 
         // ---- コースティクス（見た目パラメータ。debug 系フィールドは UI 側の担当を維持）----
-        if (auto* techniqueManager = ctx.engine ? ctx.engine->GetComponent<RenderingTechniqueManager>() : nullptr) {
+        if (auto* techniqueManager = ctx.engine ? ctx.engine->GetService<RenderingTechniqueManager>() : nullptr) {
             if (auto* caustics = techniqueManager->GetTechnique<WaterCausticsTechnique>(
                     RenderingTechniqueNames::WaterCaustics)) {
                 WaterCausticsTechnique::Params params = caustics->GetParams();

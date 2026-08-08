@@ -3,9 +3,7 @@
 #include <EngineSystem/EngineSystem.h>
 #include "WinApp/WinApp.h"
 #include "Scenes/TestScene/TestScene.h"
-#include "Scenes/PrimitiveTestScene/PrimitiveTestScene.h"
 #include "Scenes/WaterTestScene/WaterTestScene.h"
-#include "Scenes/AssignmentScene/AssignmentScene.h"
 #include "Scenes/CollisionTestScene/CollisionTestScene.h"
 
 using namespace CoreEngine;
@@ -24,9 +22,7 @@ void MyGame::Initialize()
 
     // 全シーンを登録（アプリ層で実装）
     sceneManager_->RegisterScene<TestScene>("TestScene");
-    sceneManager_->RegisterScene<PrimitiveTestScene>("PrimitiveTestScene");
     sceneManager_->RegisterScene<WaterTestScene>("WaterTestScene");
-    sceneManager_->RegisterScene<AssignmentScene>("AssignmentScene");
     // 当たり判定の回帰テストシーン（Scene Manager タブから切り替えて使う）
     sceneManager_->RegisterScene<CollisionTest::CollisionTestScene>("CollisionTestScene");
 
@@ -46,7 +42,7 @@ void MyGame::Initialize()
     auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
     if (console) {
         console->LogInfo("MyGame: ゲーム初期化が完了しました");
-        console->LogInfo("MyGame: 初期シーン 'AssignmentScene' を読み込みました");
+        console->LogInfo("MyGame: 初期シーン 'WaterTestScene' を読み込みました");
     }
 #endif
 }

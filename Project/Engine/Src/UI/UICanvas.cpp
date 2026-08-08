@@ -11,7 +11,7 @@ namespace CoreEngine
         engine_ = engine;
         referenceResolution_ = referenceResolution;
 
-        auto* renderManager = engine_->GetComponent<RenderManager>();
+        auto* renderManager = engine_->GetService<RenderManager>();
         if (renderManager) {
             renderer_ = dynamic_cast<UIRenderer*>(renderManager->GetRenderer(RenderPassType::UI));
         }

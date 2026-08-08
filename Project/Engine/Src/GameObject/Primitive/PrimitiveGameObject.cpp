@@ -9,29 +9,19 @@ namespace CoreEngine
 {
     void PrimitiveGameObject::Initialize()
     {
-        auto* engine   = GetEngineSystem();
-        auto* dxCommon = engine->GetComponent<DirectXCommon>();
-        auto* modelMgr = engine->GetComponent<ModelManager>();
-
-        if (dxCommon) {
-            transform_.Initialize(dxCommon->GetDevice());
-        }
-
-        auto generator = CreateMeshGenerator();
-        if (generator && modelMgr) {
-            model_ = modelMgr->CreatePrimitiveModel(generator->GetCacheKey(), *generator);
+        // フックで得たメッシュジェネレーターをコンポーネントへ流し込む
+        if (auto generator = CreateMeshGenerator()) {
+            meshRenderer_->SetPrimitive(std::move(generator));
         }
 
         const std::string texPath = GetTexturePath();
         if (!texPath.empty()) {
-            texture_     = TextureManager::GetInstance().Load(texPath);
-            textureName_ = texPath;
+            meshRenderer_->SetTexture(texPath);
         }
 
         OnInitialize();
 
-        // OnInitialize() で SetCustomShaderProvider() が呼ばれた場合、カスタム PSO を構築する
-        BuildCustomShaderPipelineIfNeeded(dxCommon ? dxCommon->GetDevice() : nullptr, modelMgr);
+        meshRenderer_->ReloadFromSpec();
 
         SetActive(true);
     }

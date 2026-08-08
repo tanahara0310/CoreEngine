@@ -6,6 +6,7 @@
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Math/Vector/Vector3.h"
 #include "Collision/ColliderComponent.h"
+#include "GameObject/Component/Core/ComponentHost.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include <functional>
 #include <d3d12.h>
@@ -22,18 +23,19 @@ namespace CoreEngine {
     class EngineSystem;
 }
 
-/// @brief ゲームワールドに存在するすべてのオブジェクトの共通基底クラス
-/// @note モデルを持つオブジェクトは ModelGameObject を経由して継承する。
-///       スプライトは SpriteObject を経由して継承する。
-
 namespace CoreEngine
 {
-    class GameObject {
+    /// @brief すべてのゲームオブジェクトの共通基底（`ComponentHost` 継承）。
+    /// @details 機能は継承ではなく `AddComponent<T>()` で載せるのが方針。
+    ///          エンジン常駐サービスを引く `EngineSystem::GetService<T>()` とは別物。
+    class GameObject : public ComponentHost {
     public:
         /// @brief コンストラクタ
-        /// @note コライダー集合へ自分を所有者として登録する。GetColliders() から
-        ///       直接 Add しても owner が設定済みになる。
-        GameObject() { colliders_.SetOwner(this); }
+        /// @note コンポーネント基盤へ自分を所有者として登録する。以降 `AddComponent<T>()`
+        ///       で載せたコンポーネントには `GetOwner()` からここへ辿れる。
+        GameObject() {
+            SetOwnerObject(this);
+        }
 
         virtual ~GameObject() = default;
 
@@ -62,9 +64,9 @@ namespace CoreEngine
 
         /// @brief ビュー/パス情報つきの描画処理（RenderManager からの本経路）
         /// @param view カメラ・ビュー種別・パス種別をまとめた描画コンテキスト
-        /// @note 既定実装は Draw(カメラ) へ委譲する。パス/ビュー種別で挙動を
-        ///       変えるオブジェクト（ModelGameObject 等）のみオーバーライドする。
-        virtual void Draw(const DrawViewInfo& view) { Draw(view.GetCamera()); }
+        /// @note 既定実装は `IRenderableComponent` を持つコンポーネントへ委譲する。
+        ///       コンポーネントが 1 つも無ければ Draw(カメラ) へフォールバックする。
+        virtual void Draw(const DrawViewInfo& view);
 
         // ===== アクティブ =====
 
@@ -155,32 +157,41 @@ namespace CoreEngine
         /// @param delta ワールド空間の移動量
         /// @return 実際に動かせたら true。false を返すと解決側は「動かせない相手」として扱い、
         ///         もう一方を全量押し出す。
-        /// @note 既定は false（位置を持たないオブジェクトは押せない）。
-        ///       トランスフォームを持つ派生クラスがオーバーライドする。
-        ///       親を持つオブジェクトの場合、delta はワールド量なので親の回転・スケールは
-        ///       考慮していない（Phase 4 時点の制限）。
-        virtual bool TryApplyCollisionPush(const Vector3& delta) { (void)delta; return false; }
+        /// @note 既定実装は `TransformComponent` があればそこへ委譲し、無ければ false。
+        virtual bool TryApplyCollisionPush(const Vector3& delta);
 
-        /// @brief ワールド空間での位置を返す
-        /// @return コライダーシステムが参照する位置
-        /// @note 純粋仮想。以前は基底が {}（原点）を返していたため、オーバーライドを
-        ///       忘れた派生クラスにコライダーを付けると全員が原点で重なるという
-        ///       無音のバグになっていた。位置を持たないオブジェクトは
-        ///       「{} を返す」と明示的に書くこと。
-        virtual Vector3 GetWorldPosition() const = 0;
+        /// @brief ワールド空間での位置を返す（コライダー・ピッキングが参照する位置）
+        /// @note 既定実装は `ITransformSource` コンポーネントから読み、無ければ原点。
+        ///       **コライダーを付けるオブジェクトは必ずトランスフォームを持つこと**
+        ///       （`ColliderComponent::Add()` が assert で検出する。持たせ忘れると
+        ///       全員が原点で重なるという無音のバグになる）。
+        virtual Vector3 GetWorldPosition() const;
 
-        /// @brief ワールド空間でのスケールを返す
-        /// @return 各軸のスケール。コライダーのサイズ／半径に乗る。
-        /// @note 既定は等倍。トランスフォームを持つ派生クラスはオーバーライドすること。
-        virtual Vector3 GetWorldScale() const { return { 1.0f, 1.0f, 1.0f }; }
+        /// @brief ワールド空間でのスケールを返す（コライダーのサイズ／半径に乗る）
+        /// @note 既定実装は `TransformComponent`（階層スケール込み）→ `ITransformSource` の
+        ///       順に読み、どちらも無ければ等倍。
+        virtual Vector3 GetWorldScale() const;
 
         // ===== コライダー =====
+        // 実体は `ColliderComponent`（IComponent 派生）で、必要なオブジェクトにだけ載る。
+        // 以下は移行期の互換 API で、内部は AddComponent / GetComponent へ転送している。
 
-        /// @brief コライダー集合を取得する（複数アタッチ・オフセット指定はこちら）
-        /// @details 本体判定と攻撃判定を別レイヤーで持つ、部位別の判定を置く、といった
-        ///          使い方はこの経由で行う。
-        ColliderComponent& GetColliders() { return colliders_; }
-        const ColliderComponent& GetColliders() const { return colliders_; }
+        /// @brief コライダー集合を取得する（**無ければ生成する副作用あり**）
+        /// @note 「持っているか調べたいだけ」なら `TryGetColliders()` を使うこと
+        ///       （収集ループや表示で呼ぶと全オブジェクトに空の集合が生える）。
+        ColliderComponent& GetColliders() {
+            return *GetOrAddComponent<ColliderComponent>();
+        }
+
+        /// @brief コライダー集合を取得する（**無ければ nullptr。生成しない**）
+        ColliderComponent* TryGetColliders() {
+            return GetComponent<ColliderComponent>();
+        }
+
+        /// @brief コライダー集合を取得する（const 版。生成しない）
+        const ColliderComponent* TryGetColliders() const {
+            return GetComponent<ColliderComponent>();
+        }
 
         // ===== コライダー簡易設定 API（1 本だけで足りる場合の入口） =====
 
@@ -340,8 +351,6 @@ namespace CoreEngine
 #endif
 
     protected:
-        ColliderComponent colliders_;   ///< アタッチされたコライダー群（0 本以上）
-
         std::string               name_;          ///< オブジェクト表示名（ユーザー編集可能）
         std::string               serializeKey_;  ///< シリアライズ用安定キー（初回 SetName で固定）
 
@@ -373,4 +382,12 @@ namespace CoreEngine
 
         friend class GameObjectManager;  ///< spawner_ への書き込みを許可
     };
+
+    // ===== IComponent のインライン定義 =====
+    // GameObject が完全型になってから定義する必要があるものをここに置く。
+
+    template <typename T>
+    T* IComponent::Sibling() const {
+        return owner_ ? owner_->GetComponent<T>() : nullptr;
+    }
 }

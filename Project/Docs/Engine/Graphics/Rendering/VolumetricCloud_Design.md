@@ -795,7 +795,7 @@ struct CloudRayMarchShaderProvider final : ICustomShaderProvider {
 - 合格条件:
   - VolumetricCloudTestScene で ImGui からリアルタイムに雲を編集できる
   - **WaterTestScene**: 雲が出る・水面や既存表現（反射・コースティクス）が壊れていない
-  - **PrimitiveTestScene 等キューブマップ空のシーン**: 雲もノイズ生成も一切動かない
+  - **キューブマップ空を使わないシーン**: 雲もノイズ生成も一切動かない
     （見た目不変・ログにも雲関連が出ない）
   - `Docs/Engine/Graphics/Rendering/VolumetricCloud_Design.md`（本書）の
     実装状況チェックリスト更新（本章末尾に [x] を付ける）

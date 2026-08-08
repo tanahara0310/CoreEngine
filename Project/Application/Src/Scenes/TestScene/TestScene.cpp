@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Model/ModelManager.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Render/MaterialComponent.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
 
 #ifdef _DEBUG
 #include "Editor/Camera/CameraDebugUI.h"
@@ -29,7 +32,7 @@ namespace CoreEngine
         ///========================================================
 
         // コンポーネントを直接取得
-        auto modelManager = engine_->GetComponent<ModelManager>();
+        auto modelManager = engine_->GetService<ModelManager>();
 
         if (!modelManager) {
             return; // 必須コンポーネントがない場合は終了
@@ -82,16 +85,22 @@ namespace CoreEngine
             {
                 const float roughness = static_cast<float>(col) / static_cast<float>(kRoughnessSteps - 1);
 
-                auto sphere = CreateObject<ModelObject>("sphere.obj");
-                sphere->GetTransform().translate = {
+                // コンポーネント合成で組む（専用クラスは不要）
+                auto* sphere = CreateObject("Sphere");
+                sphere->AddComponent<MeshRendererComponent>("sphere.obj");
+
+                auto& transform = sphere->GetComponent<TransformComponent>()->Get();
+                transform.translate = {
                     originX + col * kSpacing,
                     originY + row * kSpacing,
                     0.0f
                 };
-                sphere->GetTransform().scale = { 1.0f, 1.0f, 1.0f };
-                sphere->SetPBRParameters(metallic, roughness, 1.0f);
-                sphere->SetIBLEnabled(true);
-                sphere->SetIBLIntensity(1.0f);
+                transform.scale = { 1.0f, 1.0f, 1.0f };
+
+                auto* material = sphere->AddComponent<MaterialComponent>();
+                material->SetPBR(metallic, roughness, 1.0f);
+                material->SetIBLIntensity(1.0f);
+
                 sphere->SetActive(true);
             }
         }
@@ -103,7 +112,7 @@ namespace CoreEngine
 
     void TestScene::OnUpdate()
     {
-        auto inputManager = engine_->GetComponent<InputManager>();
+        auto inputManager = engine_->GetService<InputManager>();
         if (!inputManager) {
             return;
         }

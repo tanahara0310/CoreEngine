@@ -23,6 +23,7 @@
 
 // GameObject基底クラス
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/Transform/EulerTransformComponent.h"
 
 // モジュール関連
 #include "Modules/MainModule.h"
@@ -73,7 +74,11 @@ public:
     // 実際の最大パーティクル数はMainModule.maxParticlesで制御
     static constexpr uint32_t kNumMaxInstance = 1028; // パーティクルの最大数
 
-    ParticleSystem() = default;
+    /// @brief コンストラクタ（エミッタの実体は `EulerTransformComponent` が持ち、
+    ///        `emitterTransform_` はその参照。取り外し禁止。ギズモはこの経由で効く）
+    ParticleSystem()
+        : emitterTransformComponent_(AddComponent<EulerTransformComponent>())
+        , emitterTransform_(emitterTransformComponent_->Get()) {}
     ~ParticleSystem() override = default;
 
     /// @brief 初期化
@@ -293,7 +298,10 @@ private:
     uint32_t instanceCount_ = 0;
 
     // エミッター設定
-    EulerTransform emitterTransform_;
+    /// トランスフォームの実体を持つコンポーネント（コンストラクタでアタッチ済み）
+    EulerTransformComponent* emitterTransformComponent_ = nullptr;
+    /// エミッタのトランスフォーム（`emitterTransformComponent_` が持つ実体への参照）
+    EulerTransform& emitterTransform_;
     BillboardType billboardType_ = BillboardType::ViewFacing;
     BlendMode blendMode_ = BlendMode::kBlendModeAdd;
 

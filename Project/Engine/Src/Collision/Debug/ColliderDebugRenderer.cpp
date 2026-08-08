@@ -2,10 +2,8 @@
 #include "ColliderDebugRenderer.h"
 
 #include "Collision/CollisionWorld.h"
-#include "EngineSystem/EngineSystem.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
-#include "Graphics/Render/RenderManager.h"
 #include "Utility/CVar/CVar.h"
 
 #include <vector>
@@ -44,22 +42,13 @@ namespace CoreEngine
             "球コライダーの分割数", CVarRange{ 4.0f, 48.0f } };
     }
 
-    void ColliderDebugRenderer::Draw(const Camera* camera)
+    void ColliderDebugRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* camera)
     {
         (void)camera;
 
         if (!cvDebugDraw.Get() || !world_) {
             return;
         }
-
-        auto* engine = GetEngineSystem();
-        if (!engine) { return; }
-        auto* renderManager = engine->GetComponent<RenderManager>();
-        if (!renderManager) { return; }
-
-        auto* pipeline = static_cast<LineRendererPipeline*>(
-            renderManager->GetRenderer(RenderPassType::Line));
-        if (!pipeline) { return; }
 
         const float alpha = cvLineAlpha.Get();
         const int   segments = cvSphereSegments.Get();
@@ -90,7 +79,7 @@ namespace CoreEngine
         }
 
         if (!lines.empty()) {
-            pipeline->AddLines(lines);
+            pipeline.AddLines(lines);
         }
     }
 }

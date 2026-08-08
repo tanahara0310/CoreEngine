@@ -1,59 +1,39 @@
 #include "pch.h"
 #include "GridRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
-#include "Graphics/Render/RenderManager.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Camera/Camera.h"
 #include "Math/MathCore.h"
 #include <cmath>
 
 #ifdef USE_IMGUI
+#include "EngineSystem/Subsystem/DebugSubsystem.h"
+#include "Utility/Debug/GameDebugUI.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #endif
 
 
 namespace CoreEngine
 {
-void GridRenderer::Initialize()
-{
-    SetActive(true);
+#ifdef USE_IMGUI
+namespace {
+    /// 設定パネルの編集対象（シーンの寿命に縛られるポインタをラムダに持たせないための
+    /// ファイルスコープ変数。CollisionMatrixPanel と同じ流儀）
+    GridRenderer* s_activeGrid = nullptr;
 }
+#endif
 
-void GridRenderer::Update()
-{
-    // グリッドは静的なので特に更新処理なし
-}
-
-void GridRenderer::Draw(const Camera* camera)
+void GridRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* camera)
 {
     if (!visible_ || !camera) {
         return;
     }
 
-    // カメラ位置を取得
-    Vector3 cameraPos = camera->GetPosition();
-
-    // グリッドラインを生成
-    auto lines = GenerateGridLines(cameraPos);
-
-    if (lines.empty()) {
-        return;
+    // カメラ位置に応じてグリッドラインを生成してバッチへ追加
+    auto lines = GenerateGridLines(camera->GetPosition());
+    if (!lines.empty()) {
+        pipeline.AddLines(lines);
     }
-
-    // LineRendererPipelineを取得
-    auto engineSystem = GetEngineSystem();
-    if (!engineSystem) return;
-
-    auto renderManager = engineSystem->GetComponent<RenderManager>();
-    if (!renderManager) return;
-
-    auto pipeline = static_cast<LineRendererPipeline*>(
-        renderManager->GetRenderer(RenderPassType::Line));
-
-    if (!pipeline) return;
-
-    // バッチに追加（パス内で自動的に描画される）
-    pipeline->AddLines(lines);
 }
 
 std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
@@ -178,15 +158,38 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
 }
 
 #ifdef USE_IMGUI
-int GridRenderer::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const {
-    if (maxTabs < 1) return 0;
-    outTabs[0] = { "obj.png", "グリッド設定", {0.40f,0.80f,0.40f,1.0f}, {0.40f,0.80f,0.40f,0.25f} };
-    return 1;
+void GridRenderer::EnsureSettingsPanelRegistered(EngineSystem* engine)
+{
+    static bool registered = false;
+    if (registered || !engine) {
+        return;
+    }
+
+    auto* debug = engine->GetDebugSubsystem();
+    auto* gameDebugUI = debug ? debug->GetGameDebugUI() : nullptr;
+    if (!gameDebugUI) {
+        return;
+    }
+
+    // ドロワーは何もキャプチャしない（ファイルスコープの s_activeGrid を読むだけ）
+    gameDebugUI->RegisterEnginePanel("Grid", [] {
+        if (s_activeGrid) {
+            s_activeGrid->DrawSettingsImGui();
+        } else {
+            ImGui::TextDisabled("(グリッドがありません)");
+        }
+    });
+
+    registered = true;
 }
 
-bool GridRenderer::DrawInspectorTabContent(int tabIndex)
+void GridRenderer::SetActiveForSettingsPanel(GridRenderer* grid)
 {
-    if (tabIndex != 0) return false;
+    s_activeGrid = grid;
+}
+
+bool GridRenderer::DrawSettingsImGui()
+{
     bool changed = false;
 
     UI::SectionHeader("表示");

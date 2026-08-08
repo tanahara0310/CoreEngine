@@ -193,7 +193,7 @@ WaterCausticsTechnique* WaterEditorFacade::GetWaterCausticsTechnique() const {
         return nullptr;
     }
 
-    auto* techniqueManager = engine_->GetComponent<RenderingTechniqueManager>();
+    auto* techniqueManager = engine_->GetService<RenderingTechniqueManager>();
     if (!techniqueManager) {
         return nullptr;
     }

@@ -1,82 +1,53 @@
 #pragma once
 
-#include "GameObject/GameObject.h"
+#include "Graphics/Render/Line/ILineSource.h"
 #include "Graphics/Line/Line.h"
 #include "Math/Vector/Vector3.h"
 #include <vector>
 
-// 前方宣言
-class LineRendererPipeline;
-class Camera;
-
-/// @brief 無限遠グリッドレンダラー（Unity風）
-/// @details XZ平面に無限に広がるグリッドを描画
-
 namespace CoreEngine
 {
-class GridRenderer : public GameObject {
+class EngineSystem;
+
+/// @brief XZ 平面に無限に広がるエディタ用グリッド（Unity 風）。
+/// @details GameObject ではなく `ILineSource`。GridFeature が所有し、Line パスの
+///          フラッシュ時に `SubmitLines` でライン群を供給する。設定 UI は Engine Settings 側。
+class GridRenderer : public ILineSource {
 public:
     GridRenderer() = default;
     ~GridRenderer() override = default;
 
-    /// @brief 初期化
-    void Initialize();
-
-    /// @brief 更新処理
-    void Update() override;
-
-    /// @brief 描画処理
-    /// @param camera カメラ
-    void Draw(const Camera* camera) override;
-
-    /// @brief 描画パスタイプを取得
-    RenderPassType GetRenderPassType() const override { return RenderPassType::Line; }
-
-    /// @brief ブレンドモードを取得
-    BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
-
-    /// @brief ワールド空間での位置を返す
-    /// @return 常に原点。グリッドは原点基準の無限平面なので位置を持たない（コライダー非対応）。
-    Vector3 GetWorldPosition() const override { return {}; }
+    /// @brief Line パスから呼ばれ、カメラ位置に応じたグリッドラインを供給する
+    void SubmitLines(LineRendererPipeline& pipeline, const Camera* camera) override;
 
 #ifdef USE_IMGUI
-    /// @brief インスペクタータブ定義を返す
-    int GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
+    /// @brief Engine Settings に「Grid」パネルを登録する（プロセスで一度だけ）
+    /// @details パネルはファイルスコープの「現在アクティブなグリッド」を読むだけで
+    ///          何もキャプチャしない（GameDebugUI に登録解除 API が無いため）。
+    static void EnsureSettingsPanelRegistered(EngineSystem* engine);
 
-    /// @brief 指定タブのコンテンツを描画する
-    bool DrawInspectorTabContent(int tabIndex) override;
+    /// @brief このグリッドをパネルの編集対象にする（nullptr で解除）
+    static void SetActiveForSettingsPanel(GridRenderer* grid);
 #endif
 
-    /// @brief オブジェクト名を取得
-    const char* GetObjectName() const override { return "GridRenderer"; }
-
-    /// @brief グリッドサイズを設定
-    /// @param size グリッドのサイズ（カメラからの距離）
+    /// @brief グリッドサイズを設定（カメラからの距離）
     void SetGridSize(float size) { gridSize_ = size; }
 
     /// @brief グリッド間隔を設定
-    /// @param spacing グリッドの間隔
     void SetSpacing(float spacing) { spacing_ = spacing; }
 
     /// @brief グリッドの表示/非表示を設定
-    /// @param visible 表示する場合true
     void SetVisible(bool visible) { visible_ = visible; }
-
-    /// @brief 軸の色を設定（Blender風）
-    /// @param xColor X軸の色（赤系）
-    /// @param yColor Y軸の色（青系）
-    /// @param zColor Z軸の色（緑系）
-    void SetAxisColors(const Vector3& xColor, const Vector3& yColor, const Vector3& zColor) {
-        xAxisColor_ = xColor;
-        yAxisColor_ = yColor;
-        zAxisColor_ = zColor;
-    }
 
 private:
     /// @brief グリッドラインを生成
     /// @param cameraPosition カメラ位置
-    /// @return 生成されたライン配列
     std::vector<Line> GenerateGridLines(const Vector3& cameraPosition);
+
+#ifdef USE_IMGUI
+    /// @brief 設定パネルの中身を描画する
+    bool DrawSettingsImGui();
+#endif
 
     float gridSize_ = 100.0f;      // グリッドサイズ（カメラからの距離）
     float spacing_ = 1.0f;         // グリッド間隔
@@ -84,7 +55,7 @@ private:
     int majorLineInterval_ = 10;   // 太いラインの間隔
 
     // フェード設定
-    bool enableDistanceFade_ = false;    // 距離フェード有効フラグ
+    bool enableDistanceFade_ = false;  // 距離フェード有効フラグ
     float fadeStartDistance_ = 30.0f;  // フェード開始距離
     float fadeEndDistance_ = 80.0f;    // フェード終了距離（完全に透明）
 
@@ -93,7 +64,7 @@ private:
     Vector3 yAxisColor_ = { 0.0f, 0.0f, 0.85f };   // Y軸の色（青）
     Vector3 zAxisColor_ = { 0.0f, 0.85f, 0.0f };   // Z軸の色（緑）
     Vector3 normalColor_ = { 0.4f, 0.35f, 0.25f }; // 通常のグリッド色（オレンジっぽいグレー）
-    
+
     // 透明度設定（統一）
     static constexpr float kAxisAlpha = 1.0f;    // 軸ライン透明度
     static constexpr float kMajorAlpha = 1.0f;   // 太いライン透明度（10本ごと）

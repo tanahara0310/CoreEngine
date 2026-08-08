@@ -3,14 +3,15 @@
 #include "ISceneFeature.h"
 #include "Collision/CollisionWorld.h"
 #include "Collision/CollisionConfig.h"
+#include "Collision/Debug/ColliderDebugRenderer.h"
+
+#include <memory>
 
 namespace CoreEngine
 {
-    /// @brief シーンのコリジョン判定を管理する Feature
-    /// @details PostObjectUpdate（GameObject 更新後）で毎フレーム
-    ///          収集 → 判定 を実行する。
-    class ColliderDebugRenderer;
-
+    /// @brief シーンのコリジョン判定を管理する Feature。
+    /// @details PostObjectUpdate（GameObject 更新後）で毎フレーム 収集 → 判定 を実行する。
+    ///          コライダーのワイヤ表示（ILineSource）もここが所有する。
     class CollisionFeature : public ISceneFeature {
     public:
         const char* GetName() const override { return "Collision"; }
@@ -44,7 +45,7 @@ namespace CoreEngine
         CollisionConfig collisionConfig_;
         CollisionWorld  collisionWorld_{ &collisionConfig_ };
 
-        /// コライダーのワイヤ表示（所有権は GameObjectManager）
-        ColliderDebugRenderer* debugRenderer_ = nullptr;
+        /// コライダーのワイヤ表示（この Feature が所有。Line パスにはポインタ登録するだけ）
+        std::unique_ptr<ColliderDebugRenderer> debugRenderer_;
     };
 }

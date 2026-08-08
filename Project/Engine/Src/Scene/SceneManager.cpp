@@ -39,7 +39,7 @@ namespace CoreEngine
 
     void SceneManager::Update() {
         // フレームレート取得
-        auto frameRateController = engine_->GetComponent<FrameRateController>();
+        auto frameRateController = engine_->GetService<FrameRateController>();
         float deltaTime = frameRateController ? frameRateController->GetDeltaTime() : 0.016f;
 
         // トランジション更新
@@ -81,7 +81,7 @@ namespace CoreEngine
             return;
         }
 
-        if (auto* renderManager = engine_->GetComponent<RenderManager>()) {
+        if (auto* renderManager = engine_->GetService<RenderManager>()) {
             renderManager->ClearQueue();
         }
 
@@ -92,7 +92,7 @@ namespace CoreEngine
 
     void SceneManager::Finalize() {
         // GPUの処理完了を待機してからシーンを解放
-        auto dxCommon = engine_->GetComponent<DirectXCommon>();
+        auto dxCommon = engine_->GetService<DirectXCommon>();
         if (dxCommon) {
             dxCommon->WaitForPreviousFrame();
         }
@@ -176,7 +176,7 @@ namespace CoreEngine
         }
 
         // GPUの処理完了を待機してから古いシーンを解放
-        auto dxCommon = engine_->GetComponent<DirectXCommon>();
+        auto dxCommon = engine_->GetService<DirectXCommon>();
         if (dxCommon) {
             dxCommon->WaitForPreviousFrame();
         }
@@ -199,13 +199,13 @@ namespace CoreEngine
         currentScene_.reset();
 
         // シーン切り替え時にライトをクリア
-        auto lightManager = engine_->GetComponent<LightManager>();
+        auto lightManager = engine_->GetService<LightManager>();
         if (lightManager) {
             lightManager->ClearAllLights();
         }
 
         // FPS計測をリセット（シーン切り替え時の異常値を防ぐ）
-        auto frameRateController = engine_->GetComponent<FrameRateController>();
+        auto frameRateController = engine_->GetService<FrameRateController>();
         if (frameRateController) {
             frameRateController->ResetFPSMeasurement();
         }

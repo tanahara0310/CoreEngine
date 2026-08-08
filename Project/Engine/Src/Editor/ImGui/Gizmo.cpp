@@ -2,7 +2,10 @@
 #include "Gizmo.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Sprite/SpriteObject.h"
-#include "Editor/ImGui/GameObjectDebugAccess.h"
+#include "GameObject/Component/Transform/ITransformSource.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
+#include "Math/MathCore.h"
 #include "Camera/Camera.h"
 #include "WorldTransform/WorldTransform.h"
 #include <numbers>
@@ -52,16 +55,26 @@ namespace CoreEngine
             break;
         }
 
-        auto* modelObj = DebugAccess::AsModelObject(object);
-        if (!modelObj) return false;
+        // 具象クラス（ModelGameObject）ではなく `ITransformSource` で引く。
+        // 実体が WorldTransform（3D モデル）でも EulerTransform（パーティクルエミッタ等）でも
+        // 同じ経路で通るので、**以前ダウンキャストの分岐から漏れてギズモが効かなかった
+        // ParticleSystem / GpuParticleSystem でも効く**。
+        // トランスフォームを持たないオブジェクト（デバッグ線など）はギズモの対象外。
+        auto* source = object->GetComponent<ITransformSource>();
+        if (!source) return false;
 
         Matrix4x4 viewMatrix       = camera->GetViewMatrix();
         Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
-        WorldTransform* transformPtr = modelObj ? &modelObj->GetTransform() : nullptr;
-        if (!transformPtr) return false;
-        WorldTransform& transform = *transformPtr;
-        Matrix4x4 worldMatrix = transform.GetWorldMatrix();
+        // ワールド行列は、階層（親）を持ちうる TransformComponent があればそれを使う。
+        // 無い場合（EulerTransformComponent）は SRT から組み立てる。
+        Matrix4x4 worldMatrix;
+        if (auto* transformComponent = object->GetComponent<TransformComponent>()) {
+            worldMatrix = transformComponent->Get().GetWorldMatrix();
+        } else {
+            worldMatrix = MathCore::Matrix::MakeAffine(
+                source->Scale(), source->Rotate(), source->Translate());
+        }
 
         // ImGuizmoで操作
         ImGuizmo::SetOrthographic(false);
@@ -86,17 +99,17 @@ namespace CoreEngine
                 &scale.x
             );
 
-            // オブジェクトのトランスフォームを更新
-            transform.translate = translation;
-            
+            // オブジェクトのトランスフォームを更新（実体の型を問わず ITransformSource 経由）
+            source->Translate() = translation;
+
             // 回転は度数からラジアンに変換
-            transform.rotate = Vector3(
+            source->Rotate() = Vector3(
                 rotationDegrees.x * kDegToRad,
                 rotationDegrees.y * kDegToRad,
                 rotationDegrees.z * kDegToRad
             );
-            
-            transform.scale = scale;
+
+            source->Scale() = scale;
         }
 
         return changed;

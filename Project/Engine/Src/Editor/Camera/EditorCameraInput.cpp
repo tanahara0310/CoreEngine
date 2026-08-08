@@ -56,7 +56,7 @@ namespace CoreEngine
             return state;
         }
 
-        auto* inputManager = engine->GetComponent<InputManager>();
+        auto* inputManager = engine->GetService<InputManager>();
         if (!inputManager) {
             hasLastCursor_ = false;
             return state;

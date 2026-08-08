@@ -20,63 +20,39 @@
 namespace CoreEngine
 {
     void ModelGameObject::Initialize() {
-        auto* engine = GetEngineSystem();
-        auto* dxCommon = engine->GetComponent<DirectXCommon>();
-        auto* modelMgr = engine->GetComponent<ModelManager>();
-
-        if (dxCommon) {
-            transform_.Initialize(dxCommon->GetDevice());
-        }
-
+        // トランスフォームの GPU バッファは TransformComponent::Awake() が確保済み。
+        // ここではフック（GetModelPath / GetTexturePath）の内容をコンポーネントへ流し込む。
         const std::string modelPath = GetModelPath();
-        if (!modelPath.empty() && modelMgr) {
-            model_ = modelMgr->CreateStaticModel(modelPath);
+        if (!modelPath.empty()) {
+            meshRenderer_->SetModelFile(modelPath);
         }
 
         const std::string texPath = GetTexturePath();
         if (!texPath.empty()) {
-            texture_ = TextureManager::GetInstance().Load(texPath);
-            textureName_ = texPath;
+            meshRenderer_->SetTexture(texPath);
         }
 
         OnInitialize();
 
-        // OnInitialize() で SetCustomShaderProvider() が呼ばれた場合、カスタム PSO を構築する
-        BuildCustomShaderPipelineIfNeeded(dxCommon ? dxCommon->GetDevice() : nullptr, modelMgr);
+        // OnInitialize() で SetCustomShaderProvider() が呼ばれた場合も含めてロードする
+        meshRenderer_->ReloadFromSpec();
 
         SetActive(true);
     }
 
     void ModelGameObject::BuildCustomShaderPipelineIfNeeded(ID3D12Device* device, ModelManager* modelMgr)
     {
-        if (!customShaderProvider_ || !model_ || !modelMgr || !device) {
-            return;
-        }
-        const ModelRenderContext& ctx = modelMgr->GetRenderContext();
-        if (!ctx.IsValid()) {
-            return;
-        }
-        customShaderPipeline_ = std::make_unique<CustomShaderPipeline>();
-        BaseModelRenderer* renderer = ctx.modelRenderer;
-        const bool built = customShaderPipeline_->Build(
-            device,
-            *renderer->GetShaderCompiler(),
-            *renderer->GetReflectionBuilder(),
-            *customShaderProvider_);
-
-        if (built && customShaderPipeline_->HasForwardPSO()) {
-            model_->SetCustomForwardPSO(
-                customShaderPipeline_->GetForwardPSO(blendMode_));
-            model_->SetCustomRootSignature(
-                customShaderPipeline_->GetForwardRootSignature());
-            model_->SetCustomPipeline(customShaderPipeline_.get());
-            model_->SetCustomShaderProvider(customShaderProvider_);
-        }
+        // 実体は MeshRendererComponent が持つ（device / modelMgr はそちらが自分で引く）
+        (void)device;
+        (void)modelMgr;
+        meshRenderer_->RebuildCustomShaderPipeline();
     }
 
     void ModelGameObject::Update() {
         if (!IsActive()) return;
-        transform_.TransferMatrix();
+        // TransferMatrix() は TransformComponent::Update() が行う。
+        // GameObjectManager が「コンポーネントの Update → GameObject::Update」の順で
+        // 呼ぶので、従来の `TransferMatrix() → OnUpdate()` と同じ順序が保たれる。
         OnUpdate();
     }
 
@@ -91,42 +67,24 @@ namespace CoreEngine
     }
 
     void ModelGameObject::Draw(const DrawViewInfo& view) {
-        if (!model_ || !view.view || !view.view->isValid) return;
-
-        // 視錐台カリング: 判定内容とデバッグトグルは ModelVisibility（Culling層）が持つ。
-        // 視錐台は ViewInfo 構築時に 1 回だけ抽出済み（以前はモデルごとに抽出し直していた）。
-        if (!ModelVisibility::IsModelInView(view.view->frustum, GetWorldBoundingBox())) {
+        // カリング判定 → model_->Draw までは MeshRendererComponent が持つ。
+        // カリングで落ちた場合は OnDraw も呼ばない（従来と同じ）。
+        if (!meshRenderer_->DrawIfVisible(view)) {
             return;
         }
-
-        model_->Draw(transform_, view, texture_.gpuHandle);
         OnDraw(view.GetCamera());
     }
 
     Vector3 ModelGameObject::GetWorldScale() const {
-        // 行ベクトル規約（p' = p * M）なので、各行が基底ベクトル。その長さがスケール。
-        // transform_.scale を直接返すと親の階層スケールを取りこぼす。
-        const auto& m = transform_.GetWorldMatrix().m;
-        auto axisLength = [&m](int row) {
-            return std::sqrt(m[row][0] * m[row][0] + m[row][1] * m[row][1] + m[row][2] * m[row][2]);
-            };
-        return { axisLength(0), axisLength(1), axisLength(2) };
+        return transformComponent_->GetWorldScale();
     }
 
     bool ModelGameObject::TryApplyCollisionPush(const Vector3& delta) {
-        transform_.translate = transform_.translate + delta;
-        // 同一フレーム内の後続ペアが新しい位置で判定されるようワールド行列を更新する
-        transform_.TransferMatrix();
-        return true;
+        return transformComponent_->ApplyWorldDelta(delta);
     }
 
     BoundingBox ModelGameObject::GetWorldBoundingBox() const {
-        if (!model_ || !model_->GetModelResource()) {
-            return BoundingBox(); // 無効なAABBを返す
-        }
-
-        const BoundingBox& localAABB = model_->GetModelResource()->GetLocalBoundingBox();
-        return localAABB.TransformBy(transform_.GetWorldMatrix());
+        return meshRenderer_->GetWorldBoundingBox();
     }
 
     json ModelGameObject::OnSerialize() const {

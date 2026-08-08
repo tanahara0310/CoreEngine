@@ -28,8 +28,8 @@ namespace CoreEngine
 {
     IParticleSystem* BaseScene::CreateParticleSystem(ParticleBackend backend, const std::string& name)
     {
-        auto dxCommon = engine_->GetComponent<DirectXCommon>();
-        auto resourceFactory = engine_->GetComponent<ResourceFactory>();
+        auto dxCommon = engine_->GetService<DirectXCommon>();
+        auto resourceFactory = engine_->GetService<ResourceFactory>();
         if (!dxCommon || !resourceFactory) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::General,
                 "BaseScene::CreateParticleSystem: DirectXCommon / ResourceFactory が未登録のため生成できません");
@@ -92,7 +92,7 @@ namespace CoreEngine
         // コントローラは CameraInputState しか見ない。
         if (cameraManager_) {
             float deltaTime = 1.0f / 60.0f;
-            if (auto* frameRate = engine_->GetComponent<FrameRateController>()) {
+            if (auto* frameRate = engine_->GetService<FrameRateController>()) {
                 deltaTime = frameRate->GetDeltaTime();
             }
             cameraManager_->Update(EditorCameraInput::Collect(engine_), deltaTime);
@@ -127,7 +127,7 @@ namespace CoreEngine
 
     void BaseScene::PrepareRender()
     {
-        auto renderManager = engine_->GetComponent<RenderManager>();
+        auto renderManager = engine_->GetService<RenderManager>();
         Camera* activeCamera3D = cameraManager_->GetActiveCamera(CameraType::Camera3D);
 
         if (!renderManager || !activeCamera3D) {
@@ -140,8 +140,8 @@ namespace CoreEngine
 
     void BaseScene::Draw()
     {
-        auto* renderManager = engine_->GetComponent<RenderManager>();
-        auto* dxCommon = engine_->GetComponent<DirectXCommon>();
+        auto* renderManager = engine_->GetService<RenderManager>();
+        auto* dxCommon = engine_->GetService<DirectXCommon>();
         if (!renderManager || !dxCommon) {
             return;
         }
@@ -197,6 +197,13 @@ namespace CoreEngine
         collisionFeature_ = nullptr;
         bgmFeature_ = nullptr;
         directionalLight_ = nullptr;
+    }
+
+    GameObject* BaseScene::CreateObject(const std::string& name)
+    {
+        auto obj = std::make_unique<GameObject>();
+        obj->SetName(name);
+        return gameObjectManager_.AddObject(std::move(obj));
     }
 
     ISceneFeature* BaseScene::AddFeature(std::unique_ptr<ISceneFeature> feature, int priority)
@@ -273,7 +280,7 @@ namespace CoreEngine
 
     void BaseScene::SetupCamera()
     {
-        auto dxCommon = engine_->GetComponent<DirectXCommon>();
+        auto dxCommon = engine_->GetService<DirectXCommon>();
         if (!dxCommon) {
             return;
         }

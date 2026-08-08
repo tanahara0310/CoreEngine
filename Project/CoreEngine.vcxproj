@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -188,11 +188,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Primitive\CubeObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Primitive\CylinderObject.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Primitive\PlaneObject.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Primitive\RingObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
@@ -244,18 +240,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionProbeObject.cpp" />
     <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Model\ModelObject.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Model\PlaneModelObject.cpp" />
-    <ClCompile Include="Application\Src\GameObjects\Model\SphereObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
@@ -338,7 +326,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Light\LightBufferManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Light\LightDebugVisualizer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Light\LightManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Line\LineDrawable.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Line\LineManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.cpp" />
@@ -401,7 +388,14 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Input\InputBinding.cpp" />
     <ClCompile Include="Engine\Src\Input\InputConfig.cpp" />
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
-    <ClCompile Include="Engine\Src\GameObject\Model\AnimatedModelObject.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp" />
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp" />
+    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObjectManager.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Model\ModelGameObject.cpp" />
@@ -560,30 +554,15 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Scenes\PrimitiveTestScene\PrimitiveTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\AssignmentScene\AssignmentScene.h" />
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h" />
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionProbeObject.h" />
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h" />
-    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WalkModelObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\BrainStemObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\WeaponObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\AnimatedModel\FoxObject.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
-    <ClInclude Include="Application\Src\GameObjects\Model\ModelObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\Model\PlaneModelObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\Model\SphereObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\Primitive\CubeObject.h" />
     <ClInclude Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\Primitive\CylinderObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\Primitive\PlaneObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\Primitive\PrimitiveSphereObject.h" />
-    <ClInclude Include="Application\Src\GameObjects\Primitive\RingObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.h" />
@@ -712,7 +691,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Light\LightData.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightDebugVisualizer.h" />
     <ClInclude Include="Engine\Src\Graphics\Line\Line.h" />
-    <ClInclude Include="Engine\Src\Graphics\Line\LineDrawable.h" />
     <ClInclude Include="Engine\Src\Graphics\Line\LineManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\Animation.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationBlender.h" />
@@ -848,7 +826,18 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Math\Vector\Vector2.h" />
     <ClInclude Include="Engine\Src\Math\Vector\Vector3.h" />
     <ClInclude Include="Engine\Src\Math\Vector\Vector4.h" />
-    <ClInclude Include="Engine\Src\GameObject\Model\AnimatedModelObject.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h" />
+    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Transform\ITransformSource.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Scene\SceneTagComponent.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Line\ILineSource.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Transform\TransformComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObject.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObjectManager.h" />
     <ClInclude Include="Engine\Src\GameObject\IObjectSpawner.h" />
@@ -904,7 +893,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\CanvasViewport.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorSettingsPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EngineStatsWindow.h" />
-    <ClInclude Include="Engine\Src\Editor\ImGui\GameObjectDebugAccess.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Gizmo.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ImGuiAll.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\KeyConfigUI.h" />
@@ -1025,13 +1013,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Docs\Engine\README.md" />
     <None Include="Docs\Engine\Scene\SceneManager.md" />
     <None Include="Docs\Engine\Utility\Utility.md" />
-    <None Include="Engine\Src\GameObject\README.md" />
     <ClInclude Include="Engine\Src\pch.h" />
     <None Include="Build\Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->
-  </ItemGroup>
-  <ItemGroup>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

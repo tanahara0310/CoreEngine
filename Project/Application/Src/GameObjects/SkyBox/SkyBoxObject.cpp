@@ -47,7 +47,7 @@ void SkyBoxObject::Initialize() {
 
 void SkyBoxObject::CreateBoxVertices() {
     auto engine = GetEngineSystem();
-    auto dxCommon = engine->GetComponent<DirectXCommon>();
+    auto dxCommon = engine->GetService<DirectXCommon>();
     assert(dxCommon != nullptr);
 
     // 原点を中心として、幅2m、高さ2mの箱を作る（x,y,zそれぞれ、-1～1ということ）
@@ -153,7 +153,7 @@ void SkyBoxObject::Update() {
     if (!IsActive()) return;
     // スカイボックスのXYZ回転をIBL回転としてシーン全体へ伝播
     auto engine = GetEngineSystem();
-    if (auto* renderManager = engine->GetComponent<RenderManager>()) {
+    if (auto* renderManager = engine->GetService<RenderManager>()) {
         renderManager->SetIBLRotation(transform_.rotate);
         // SkyBox 輝度スケールを IBL に伝播（環境マップの映り込みも連動）
         renderManager->SetEnvironmentIntensity(environmentIntensity_);
@@ -162,7 +162,7 @@ void SkyBoxObject::Update() {
 
 void SkyBoxObject::CreateTransformBuffer() {
     auto engine = GetEngineSystem();
-    auto* dxCommon = engine->GetComponent<DirectXCommon>();
+    auto* dxCommon = engine->GetService<DirectXCommon>();
     assert(dxCommon != nullptr);
 
     // SceneView と GameView が同一フレーム内で SkyBox を描画するため、
@@ -177,8 +177,8 @@ void SkyBoxObject::CreateTransformBuffer() {
 void SkyBoxObject::Draw(const CoreEngine::Camera* camera) {
     if (!camera) return;
     auto engine = GetEngineSystem();
-    auto* dxCommon = engine->GetComponent<DirectXCommon>();
-    auto* renderManager = engine->GetComponent<RenderManager>();
+    auto* dxCommon = engine->GetService<DirectXCommon>();
+    auto* renderManager = engine->GetService<RenderManager>();
     assert(dxCommon != nullptr);
     assert(renderManager != nullptr);
 

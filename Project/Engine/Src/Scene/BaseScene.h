@@ -138,11 +138,21 @@ namespace CoreEngine
         /// @return 登録した Feature へのポインタ
         ISceneFeature* AddFeature(std::unique_ptr<ISceneFeature> feature, int priority = 0);
 
-        /// @brief GameObjectを生成して登録
-        /// @tparam T GameObjectの派生クラス
-        /// @tparam Args コンストラクタ引数の型
-        /// @param args コンストラクタ引数
+        /// @brief 空の GameObject を生成して登録する（**コンポーネント化の標準的な入口**）
+        /// @param name オブジェクト名（Hierarchy 表示・シーン保存のキー）
         /// @return 生成されたオブジェクトへのポインタ
+        /// @note 機能はここから `AddComponent<T>()` で載せる。専用クラスは要らない。
+        /// @code
+        /// auto* sphere = CreateObject("Sphere");
+        /// sphere->AddComponent<MeshRendererComponent>("sphere.obj");
+        /// sphere->GetComponent<TransformComponent>()->Translate() = { 0, 1, 0 };
+        /// @endcode
+        GameObject* CreateObject(const std::string& name);
+
+        /// @brief 特定の派生クラスを生成して登録する（レガシー経路）
+        /// @tparam T GameObjectの派生クラス
+        /// @note 新しいコードは `CreateObject(name)` + `AddComponent<T>()` を使うこと。
+        ///       これは水面など、まだコンポーネント化していないクラス専用。
         template<typename T, typename... Args>
         T* CreateObject(Args&&... args) {
             auto obj = std::make_unique<T>(std::forward<Args>(args)...);

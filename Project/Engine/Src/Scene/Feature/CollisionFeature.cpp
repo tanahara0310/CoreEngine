@@ -1,7 +1,9 @@
 #include "pch.h"
 #include "CollisionFeature.h"
-#include "Collision/Debug/ColliderDebugRenderer.h"
+#include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObjectManager.h"
+#include "Graphics/Render/Line/LineRendererPipeline.h"
+#include "Graphics/Render/RenderManager.h"
 #include "Utility/CVar/CVar.h"
 
 #ifdef USE_IMGUI
@@ -24,13 +26,26 @@ namespace CoreEngine
             CVarRange{ 0.5f, 64.0f } };
     }
 
+    namespace {
+        /// Line パスのパイプラインを取得する（無ければ nullptr）
+        LineRendererPipeline* GetLinePipeline(SceneContext& ctx)
+        {
+            auto* renderManager = ctx.engine ? ctx.engine->GetService<RenderManager>() : nullptr;
+            if (!renderManager) { return nullptr; }
+            return static_cast<LineRendererPipeline*>(
+                renderManager->GetRenderer(RenderPassType::Line));
+        }
+    }
+
     void CollisionFeature::Initialize(SceneContext& ctx)
     {
         // コライダーのワイヤ表示。Collider 側はレンダラを知らず、描く側が見に行く。
-        debugRenderer_ = ctx.gameObjectManager->AddObject(std::make_unique<ColliderDebugRenderer>());
+        // GameObject ではなく ILineSource として Line パスへ登録する（Hierarchy には出ない）。
+        debugRenderer_ = std::make_unique<ColliderDebugRenderer>();
         debugRenderer_->SetWorld(&collisionWorld_);
-        debugRenderer_->SetSerializeEnabled(false);   // シーンデータには保存しない
-        debugRenderer_->SetActive(true);
+        if (auto* pipeline = GetLinePipeline(ctx)) {
+            pipeline->RegisterLineSource(debugRenderer_.get());
+        }
 
 #ifdef USE_IMGUI
         // コリジョンマトリクス編集ウィンドウ（Engine Settings）。編集対象を現在のシーンへ向ける。
@@ -68,13 +83,15 @@ namespace CoreEngine
 
     void CollisionFeature::Finalize(SceneContext& ctx)
     {
-        (void)ctx;
 #ifdef USE_IMGUI
         // シーンと一緒に消える CollisionConfig を UI が指したままにしない
         CollisionMatrixPanel::SetActiveConfig(nullptr);
 #endif
-        // 所有権は GameObjectManager にあるためポインタのみクリア
-        debugRenderer_ = nullptr;
+        // 破棄前に Line パスの登録を外す（登録したまま消すとダングリング）
+        if (auto* pipeline = GetLinePipeline(ctx)) {
+            pipeline->UnregisterLineSource(debugRenderer_.get());
+        }
+        debugRenderer_.reset();
         collisionWorld_.Clear();
     }
 }

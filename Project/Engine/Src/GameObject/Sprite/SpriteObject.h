@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/Transform/EulerTransformComponent.h"
 #include "WorldTransform/WorldTransform.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -20,9 +21,12 @@ namespace CoreEngine
 {
 class SpriteObject : public GameObject {
 public:
-    /// @brief コンストラクタ
-    SpriteObject() = default;
-    
+    /// @brief コンストラクタ（トランスフォームの実体は `EulerTransformComponent` が持ち、
+    ///        `transform_` はその参照。取り外し禁止）
+    SpriteObject()
+        : transformComponent_(AddComponent<EulerTransformComponent>())
+        , transform_(transformComponent_->Get()) {}
+
     /// @brief デストラクタ
     ~SpriteObject() override = default;
     
@@ -166,9 +170,12 @@ private:
     void ChangeAnchorKeepingPosition(const Vector2& newAnchor);
     
 private:
-    /// @brief トランスフォーム
-    EulerTransform transform_;
-    
+    /// @brief トランスフォームの実体を持つコンポーネント（コンストラクタでアタッチ済み）
+    EulerTransformComponent* transformComponent_ = nullptr;
+
+    /// @brief トランスフォーム（`transformComponent_` が持つ実体への参照）
+    EulerTransform& transform_;
+
     /// @brief スプライトレンダラー
     SpriteRenderer* spriteRenderer_ = nullptr;
     

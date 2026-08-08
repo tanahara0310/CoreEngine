@@ -6,7 +6,9 @@
 #include "Camera/CameraManager.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
-#include "Editor/ImGui/GameObjectDebugAccess.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
+#include "GameObject/Component/Transform/ITransformSource.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Editor/ImGui/ObjectSelector.h"
 #include "Editor/ImGui/ImGuiAll.h"
@@ -127,11 +129,10 @@ namespace CoreEngine
                 record.rotateBefore = rBefore;
                 record.scaleBefore = sBefore;
                 record.activeBefore = aBefore;
-                DebugAccess::TransformAccess access;
-                if (DebugAccess::TryGetTransformAccess(obj, access)) {
-                    record.translateAfter = *access.translate;
-                    record.rotateAfter = *access.rotate;
-                    record.scaleAfter = *access.scale;
+                if (auto* src = obj->GetComponent<ITransformSource>()) {
+                    record.translateAfter = src->Translate();
+                    record.rotateAfter = src->Rotate();
+                    record.scaleAfter = src->Scale();
                 }
                 record.activeAfter = obj->IsActive();
                 undoRedoHistory_.Push(record);
@@ -149,11 +150,10 @@ namespace CoreEngine
                 record.rotateBefore = rBefore;
                 record.scaleBefore = sBefore;
                 record.activeBefore = aBefore;
-                DebugAccess::TransformAccess access;
-                if (DebugAccess::TryGetTransformAccess(obj, access)) {
-                    record.translateAfter = *access.translate;
-                    record.rotateAfter = *access.rotate;
-                    record.scaleAfter = *access.scale;
+                if (auto* src = obj->GetComponent<ITransformSource>()) {
+                    record.translateAfter = src->Translate();
+                    record.rotateAfter = src->Rotate();
+                    record.scaleAfter = src->Scale();
                 }
                 record.activeAfter = obj->IsActive();
                 undoRedoHistory_.Push(record);
@@ -196,7 +196,7 @@ namespace CoreEngine
     void SceneDebugEditor::Update()
     {
         // デバッグ / リリースカメラの切り替え
-        if (auto* inputManager = engine_->GetComponent<InputManager>()) {
+        if (auto* inputManager = engine_->GetService<InputManager>()) {
             auto& input = inputManager->GetQuery();
             // 「どちらの視点で覗くか」はフラグ 1 つ。以前は アクティブカメラ名 と
             // Gameビュー上書き名 の 2 状態を両方更新する必要があり、片方だけ変える UI が
@@ -461,10 +461,9 @@ namespace CoreEngine
             return false;
         }
 
-        // ModelGameObject 派生かどうか確認する（DynamicModel 以外の既存モデルも対象）
-        auto* modelObj = dynamic_cast<ModelGameObject*>(selected);
-        if (!modelObj) {
-            Logger::GetInstance().Log("選択オブジェクトはModelGameObjectではないためコピーできません", LogLevel::Warn, LogCategory::System);
+        // メッシュを持つオブジェクトかどうか確認する（具象クラスではなくコンポーネントで判定）
+        if (!selected->HasComponent<MeshRendererComponent>()) {
+            Logger::GetInstance().Log("選択オブジェクトはメッシュを持たないためコピーできません", LogLevel::Warn, LogCategory::System);
             return false;
         }
 
@@ -504,21 +503,18 @@ namespace CoreEngine
         ApplyDynamicModelMaterialOverrides(raw->GetModel());
 
         // 少しオフセットを加えて重ならないようにする
-        DebugAccess::TransformAccess access;
-        if (DebugAccess::TryGetTransformAccess(raw, access)) {
-            if (access.translate) {
-                access.translate->x += 1.0f;
-            }
+        if (auto* src = raw->GetComponent<ITransformSource>()) {
+            src->Translate().x += 1.0f;
         }
 
         // コピー操作を Undo 履歴に記録する
         ObjectSpawnRecord spawnRecord;
         spawnRecord.objectName = raw->GetName(); // GameObjectManager で確定した名前を使う
         spawnRecord.modelPath  = modelPath;
-        if (DebugAccess::TryGetTransformAccess(raw, access)) {
-            spawnRecord.translate = *access.translate;
-            spawnRecord.rotate    = *access.rotate;
-            spawnRecord.scale     = *access.scale;
+        if (auto* src = raw->GetComponent<ITransformSource>()) {
+            spawnRecord.translate = src->Translate();
+            spawnRecord.rotate    = src->Rotate();
+            spawnRecord.scale     = src->Scale();
         }
         undoRedoHistory_.Push(spawnRecord);
 
@@ -550,8 +546,7 @@ namespace CoreEngine
         // 動的スポーン時は PBR テクスチャを活かしつつ、問題のある法線マップのみ無効化する
         ApplyDynamicModelMaterialOverrides(raw->GetModel());
 
-        DebugAccess::TransformAccess access;
-        if (DebugAccess::TryGetTransformAccess(raw, access) && access.translate) {
+        if (auto* src = raw->GetComponent<ITransformSource>()) {
             Vector3 spawnPosition = { 0.0f, 1.0f, 0.0f };
 
             if (const Camera* camera3D = cameraManager_ ? cameraManager_->GetActiveCamera(CameraType::Camera3D) : nullptr) {
@@ -589,7 +584,7 @@ namespace CoreEngine
                 }
             }
 
-            *access.translate = spawnPosition;
+            src->Translate() = spawnPosition;
         }
 
         // スポーンしたオブジェクトを選択状態にする
@@ -599,10 +594,10 @@ namespace CoreEngine
         ObjectSpawnRecord spawnRecord;
         spawnRecord.objectName = raw->GetName();
         spawnRecord.modelPath  = modelFileName;
-        if (DebugAccess::TryGetTransformAccess(raw, access)) {
-            spawnRecord.translate = *access.translate;
-            spawnRecord.rotate    = *access.rotate;
-            spawnRecord.scale     = *access.scale;
+        if (auto* src = raw->GetComponent<ITransformSource>()) {
+            spawnRecord.translate = src->Translate();
+            spawnRecord.rotate    = src->Rotate();
+            spawnRecord.scale     = src->Scale();
         }
         undoRedoHistory_.Push(spawnRecord);
     }

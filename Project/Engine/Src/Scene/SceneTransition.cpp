@@ -14,13 +14,13 @@ void SceneTransition::Initialize(EngineSystem* engine) {
 engine_ = engine;
 
 // PostEffectManagerを取得
-postEffectManager_ = engine_->GetComponent<PostEffectManager>();
+postEffectManager_ = engine_->GetService<PostEffectManager>();
 
 // FadeEffectを取得
 fadeEffect_ = postEffectManager_->GetEffect<FadeEffect>(PostEffectNames::FadeEffect);
 
 // SoundManagerを取得
-soundManager_ = engine_->GetComponent<SoundManager>();
+soundManager_ = engine_->GetService<SoundManager>();
 
 // 初期状態：完全に透明（フェードなし）
 fadeEffect_->SetFadeAlpha(0.0f);

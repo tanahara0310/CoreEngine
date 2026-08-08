@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/GameObject.h"
+#include "GameObject/Component/Scene/SceneTagComponent.h"
 #include "Math/MathCore.h"
 #include <wrl/client.h>
 #include <d3d12.h>
@@ -17,7 +18,10 @@ namespace CoreEngine {
 ///       背景は常に大気散乱（SkyAtmosphere.PS.hlsl）で描く。静的 HDR キューブマップ経路は廃止済み。
 class SkyBoxObject : public CoreEngine::GameObject {
 public:
-    SkyBoxObject() = default;
+    /// @brief コンストラクタ（「シーンの空」タグを付ける。Feature が具象型を知らずに見つけるため）
+    SkyBoxObject() {
+        AddComponent<CoreEngine::SceneTagComponent<SkyBoxObject>>(this);
+    }
     ~SkyBoxObject() override = default;
 
     /// @brief SkyBoxRendererを設定（ルートパラメータインデックス取得用）

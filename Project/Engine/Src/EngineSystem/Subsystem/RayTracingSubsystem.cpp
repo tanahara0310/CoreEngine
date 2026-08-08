@@ -14,7 +14,8 @@
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Water/FFTOceanManager.h"
-#include "GameObject/Model/ModelGameObject.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/GameObjectManager.h"
 #include "GameObject/GameObjectManager.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
@@ -47,7 +48,7 @@ namespace CoreEngine
                 });
         }
 
-        // DXR TLAS 構築（シーン内の全 ModelGameObject からインスタンスを収集）
+        // DXR TLAS 構築（シーン内のメッシュを持つコンポーネントからインスタンスを収集）
         if (!sceneManager) {
             return;
         }
@@ -59,27 +60,28 @@ namespace CoreEngine
 
         std::vector<AccelerationStructureManager::InstanceDesc> tlasInstances;
 
-        for (auto& obj : objMgr->GetAllObjects()) {
-            if (!obj || !obj->IsActive()) continue;
+        // 以前は全オブジェクトを `dynamic_cast<ModelGameObject*>` していた。
+        // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
+        // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
+        objMgr->ForEachComponent<MeshRendererComponent>(
+            [&tlasInstances](MeshRendererComponent& renderer) {
+                // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
+                if (renderer.GetBlendMode() != BlendMode::kBlendModeNone) return;
 
-            // ModelGameObject にダウンキャスト
-            auto* modelObj = dynamic_cast<ModelGameObject*>(obj.get());
-            if (!modelObj) continue;
+                auto* model = renderer.GetModel();
+                if (!model) return;
 
-            // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
-            if (modelObj->GetBlendMode() != BlendMode::kBlendModeNone) continue;
+                auto* resource = model->GetModelResource();
+                if (!resource || !resource->HasBLAS()) return;
 
-            auto* model = modelObj->GetModel();
-            if (!model) continue;
+                auto* transform = renderer.GetTransformComponent();
+                if (!transform) return;
 
-            auto* resource = model->GetModelResource();
-            if (!resource || !resource->HasBLAS()) continue;
-
-            AccelerationStructureManager::InstanceDesc inst;
-            inst.blasIndex = resource->GetBLASIndex();
-            inst.SetTransform(modelObj->GetTransform().GetWorldMatrix());
-            tlasInstances.push_back(inst);
-        }
+                AccelerationStructureManager::InstanceDesc inst;
+                inst.blasIndex = resource->GetBLASIndex();
+                inst.SetTransform(transform->Get().GetWorldMatrix());
+                tlasInstances.push_back(inst);
+            });
 
         if (!tlasInstances.empty()) {
             asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);

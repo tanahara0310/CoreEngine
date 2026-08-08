@@ -122,15 +122,18 @@ namespace ColliderInspector
     bool Draw(GameObject& object)
     {
         bool changed = false;
-        ColliderComponent& colliders = object.GetColliders();
+
+        // 表示は TryGetColliders()（生成しない）で行う。GetColliders() を使うと
+        // インスペクタを開いただけで全オブジェクトに ColliderComponent が生える。
+        ColliderComponent* colliders = object.TryGetColliders();
 
         UI::SectionHeader("コライダー");
 
-        if (colliders.IsEmpty()) {
+        if (!colliders || colliders->IsEmpty()) {
             UI::Hint("コライダーがありません");
         } else {
-            for (size_t i = 0; i < colliders.Count(); ++i) {
-                if (Collider* collider = colliders.Get(i)) {
+            for (size_t i = 0; i < colliders->Count(); ++i) {
+                if (Collider* collider = colliders->Get(i)) {
                     changed |= DrawOne(*collider, static_cast<int>(i));
                 }
             }
@@ -138,18 +141,21 @@ namespace ColliderInspector
 
         UI::Separator();
 
+        // 追加ボタンだけはオンデマンド生成でよい（押した時点で要ると確定している）
         if (ImGui::Button("球を追加")) {
-            colliders.AddSphere(0.5f);
+            object.GetColliders().AddSphere(0.5f);
             changed = true;
         }
         ImGui::SameLine();
         if (ImGui::Button("箱を追加")) {
-            colliders.AddBox({ 1.0f, 1.0f, 1.0f });
+            object.GetColliders().AddBox({ 1.0f, 1.0f, 1.0f });
             changed = true;
         }
         ImGui::SameLine();
         if (ImGui::Button("すべて削除")) {
-            colliders.RemoveAll();
+            if (colliders) {
+                colliders->RemoveAll();
+            }
             changed = true;
         }
 

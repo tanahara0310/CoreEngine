@@ -7,6 +7,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <type_traits>
 
 // Forward declaration
 namespace CoreEngine {
@@ -65,6 +66,51 @@ namespace CoreEngine
         /// @brief 全オブジェクトのリストを取得（読み取り専用）
         /// @return オブジェクトリストの const 参照
         const std::deque<std::unique_ptr<GameObject>>& GetAllObjects() const { return objects_; }
+
+        // ===== コンポーネント横断イテレーション =====
+
+        /// @brief シーン内の指定型コンポーネントすべてに処理を適用する（dynamic_cast 走査の置き換え先）
+        /// @tparam T コンポーネント型（基底型でも引ける）
+        /// @tparam Fn `void(T&)` または `void(T&, GameObject&)` を受け取る呼び出し可能オブジェクト
+        /// @note 非アクティブ／削除マーク済みはスキップ。線形走査（型別インデックスは
+        ///       同期漏れのバグ源になるので、実測で問題になるまで作らない）。
+        template <typename T, typename Fn>
+        void ForEachComponent(Fn&& fn) {
+            for (auto& obj : objects_) {
+                if (!obj || !obj->IsActive() || obj->IsMarkedForDestroy()) {
+                    continue;
+                }
+                // GetComponents<T>() は vector を確保するので使わない（毎フレームの
+                // ホットパスから呼ばれるため、スロットを直接走査する）
+                for (const auto& slot : obj->GetAllComponents()) {
+                    if (!slot || !slot->IsEnabled()) {
+                        continue;
+                    }
+                    if (auto* component = dynamic_cast<T*>(slot.get())) {
+                        if constexpr (std::is_invocable_v<Fn, T&, GameObject&>) {
+                            fn(*component, *obj);
+                        } else {
+                            fn(*component);
+                        }
+                    }
+                }
+            }
+        }
+
+        /// @brief シーン内で最初に見つかった指定型コンポーネントを返す
+        /// @return 見つからなければ nullptr
+        /// @note アクティブ状態は問わない（「シーンに存在するか」の問い合わせ用。
+        ///       SceneTagComponent と組み合わせて具象型のシーン走査を置き換える）。
+        template <typename T>
+        T* FindFirstComponent() {
+            for (auto& obj : objects_) {
+                if (!obj) { continue; }
+                if (auto* component = obj->GetComponent<T>()) {
+                    return component;
+                }
+            }
+            return nullptr;
+        }
 
         /// @brief コライダーを持つ全オブジェクトのコライダーを CollisionWorld に登録
         /// @param collisionWorld 登録先の CollisionWorld
