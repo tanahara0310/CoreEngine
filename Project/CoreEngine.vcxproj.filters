@@ -16,9 +16,6 @@
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.cpp">
-      <Filter>Engine\Src\GameObject\Ground</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
     </ClCompile>
@@ -1031,9 +1028,6 @@
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.h">
-      <Filter>Engine\Src\GameObject\Ground</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
@@ -2553,9 +2547,6 @@
     </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Transform">
       <UniqueIdentifier>{D038A3B9-7746-4B74-9597-0D06389C3908}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\GameObject\Ground">
-      <UniqueIdentifier>{1FBD7D93-99C2-4ECF-8071-0A44FA223198}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\GameObject\Model">
       <UniqueIdentifier>{3BDA1622-442D-4473-9600-3317565D72B4}</UniqueIdentifier>

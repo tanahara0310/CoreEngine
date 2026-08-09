@@ -72,10 +72,7 @@ namespace CoreEngine
         OnInitialize();
 
         // OnInitialize() 完了後の Feature フック
-        // （シーン生成済みオブジェクトを見る SkyBox / 無限床の採用判定など）
-        if (environmentFeature_) {
-            environmentFeature_->SetWantsDefaultGround(WantsDefaultGround());
-        }
+        // （シーン生成済みオブジェクトを見る SkyBox の採用判定など）
         RefreshFeatureContext();
         for (auto& entry : features_) {
             entry.feature->PostSceneInitialize(featureContext_);

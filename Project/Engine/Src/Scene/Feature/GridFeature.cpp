@@ -31,8 +31,9 @@ namespace CoreEngine
         // GridRenderer は GameObject ではなく ILineSource。
         // Feature が所有し、Line パスへ供給元として登録する（Hierarchy には出ない）。
         gridRenderer_ = std::make_unique<GridRenderer>();
-        gridRenderer_->SetGridSize(100.0f);
-        gridRenderer_->SetSpacing(1.0f);
+        // 最細 1m 格子。カメラ高度 5m でこの段になり、以降は高度 10 倍ごとに 1 段粗くなる
+        gridRenderer_->SetBaseSpacing(1.0f);
+        gridRenderer_->SetHeightAtBaseSpacing(5.0f);
         gridRenderer_->SetVisible(true);
 
         if (auto* pipeline = GetLinePipeline(ctx)) {

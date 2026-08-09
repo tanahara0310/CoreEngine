@@ -188,7 +188,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp" />
-    <ClCompile Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
@@ -562,7 +561,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
-    <ClInclude Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.h" />
