@@ -24,7 +24,8 @@ namespace
     /// これらはエンジン寿命の「鏡」として振る舞う（毎フレーム実体から写す）。
     /// 編集 UI は Environment ツリーの Atmosphere エディタ（高度角・方位角・
     /// スカイマップのドラッグ）が担当するので、自動生成 UI には出さない。
-    constexpr CVarFlags kMirrorFlags = CVarFlags::NoUI;
+    /// Mirrored により Undo の対象からも外れる（戻しても次フレームに巻き戻るため）
+    constexpr CVarFlags kMirrorFlags = CVarFlags::NoUI | CVarFlags::Mirrored;
 
     CVar<Vector3> cvSunDirection{
         "r.AtmosphereLights.SunDirection", { 0.0f, -1.0f, 0.0f },

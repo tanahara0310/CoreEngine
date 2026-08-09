@@ -274,6 +274,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp" />
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarUndoStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.cpp" />
@@ -605,6 +606,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h" />
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarUndoStack.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.h" />

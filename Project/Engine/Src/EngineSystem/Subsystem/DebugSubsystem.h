@@ -117,8 +117,11 @@ namespace CoreEngine
         // EnvironmentFeature 側が別セクションで扱う）。cloudEditor_ を参照するため
         // エディタより後に宣言し、先に破棄されるようにする
 
-        // 全 CVar をまとめて保存するセクション（CVar を増やしてもここへの追記は不要）
-        std::unique_ptr<CVarSettingsSection> cvarSettingsSection_;
+        // 全 CVar をまとめて保存するセクション（CVar を増やしてもここへの追記は不要）。
+        // 保存先 2 層化により「プロジェクト設定（r./sys. → Config/）」と
+        // 「個人の作業状態（d. → Saved/）」の 2 パートに分かれる
+        std::unique_ptr<CVarSettingsSection> cvarConfigSection_;
+        std::unique_ptr<CVarSettingsSection> cvarStateSection_;
     };
 }
 

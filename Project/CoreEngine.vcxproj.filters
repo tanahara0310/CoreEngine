@@ -265,6 +265,9 @@
     <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarUndoStack.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
@@ -1159,6 +1162,9 @@
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarUndoStack.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h">

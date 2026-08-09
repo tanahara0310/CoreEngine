@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "CVar.h"
 #include "CVarRegistry.h"
+#include <cstdio>
 
 namespace CoreEngine
 {
@@ -9,11 +10,12 @@ namespace CoreEngine
     // ──────────────────────────────────────────────────────────────
 
     ICVar::ICVar(const char* name, const char* description, CVarType type,
-                 void* storage, CVarRange range, CVarFlags flags)
+                 void* storage, const void* defaultStorage, CVarRange range, CVarFlags flags)
         : name_(name ? name : "")
         , description_(description ? description : "")
         , type_(type)
         , storage_(storage)
+        , defaultStorage_(defaultStorage)
         , range_(range)
         , flags_(flags)
     {
@@ -39,6 +41,62 @@ namespace CoreEngine
         if (onChanged_) {
             onChanged_();
         }
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // 値の文字列化（起動時の上書き一覧ログなどに使う）
+    // ──────────────────────────────────────────────────────────────
+
+    namespace
+    {
+        /// @brief float を "1.35" のような最短表現にする（%g。末尾ゼロを引きずらない）
+        std::string FormatFloat(float v)
+        {
+            char buffer[32]{};
+            std::snprintf(buffer, sizeof(buffer), "%g", v);
+            return buffer;
+        }
+
+        /// @brief 型消去された値を文字列化する
+        std::string FormatValue(CVarType type, const void* p)
+        {
+            if (!p) {
+                return "(null)";
+            }
+            switch (type)
+            {
+            case CVarType::Bool:
+                return *static_cast<const bool*>(p) ? "true" : "false";
+            case CVarType::Int:
+                return std::to_string(*static_cast<const int*>(p));
+            case CVarType::Float:
+                return FormatFloat(*static_cast<const float*>(p));
+            case CVarType::Vector2: {
+                const auto& v = *static_cast<const Vector2*>(p);
+                return "[" + FormatFloat(v.x) + ", " + FormatFloat(v.y) + "]";
+            }
+            case CVarType::Vector3: {
+                const auto& v = *static_cast<const Vector3*>(p);
+                return "[" + FormatFloat(v.x) + ", " + FormatFloat(v.y) + ", " + FormatFloat(v.z) + "]";
+            }
+            case CVarType::Color: {
+                const auto& v = *static_cast<const Vector4*>(p);
+                return "[" + FormatFloat(v.x) + ", " + FormatFloat(v.y) + ", "
+                     + FormatFloat(v.z) + ", " + FormatFloat(v.w) + "]";
+            }
+            }
+            return "(unknown)";
+        }
+    }
+
+    std::string ICVar::ValueToString() const
+    {
+        return FormatValue(type_, storage_);
+    }
+
+    std::string ICVar::DefaultToString() const
+    {
+        return FormatValue(type_, defaultStorage_);
     }
 
     // ──────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -48,6 +49,19 @@ namespace CoreEngine
         ///          自動保存の差分検知や、まとめて定数バッファを更新する用途向け。
         uint32_t GetGlobalRevision() const noexcept { return globalRevision_; }
 
+        /// @brief 編集が「確定」するたびに増える通番
+        /// @details 確定＝スライダーを離した・Enter を押した・チェックボックスをクリックした等。
+        ///          ドラッグ中の毎フレーム変更（GetGlobalRevision が進む）と区別し、
+        ///          自動保存が「確定した瞬間に書き込む」ために使う。
+        ///          設計書: Docs/Engine/Editor/InstantSettingsSave_Design.md
+        uint64_t GetCommitRevision() const noexcept { return commitRevision_; }
+
+        /// @brief 編集の確定を通知する（UI の確定イベントから呼ぶ）
+        /// @details CVarPanel は ImGui::IsItemDeactivatedAfterEdit で自動的に呼ぶ。
+        ///          CVar を書き換える専用 UI（水面パネル等の手書きウィジェット）も確定時に
+        ///          呼ぶと即時保存になる。呼ばなくてもデバウンス保存（0.3 秒後）が働く。
+        void NotifyCommit() noexcept { ++commitRevision_; }
+
         /// @brief 変更通知（ICVar::NotifyChanged から呼ばれる）
         void OnCVarChanged(ICVar* cvar);
 
@@ -65,5 +79,6 @@ namespace CoreEngine
         std::unordered_map<std::string, ICVar*> lookup_;        ///< 名前 → CVar
         std::vector<std::string> pendingWarnings_;              ///< 静的初期化中に出た警告
         uint32_t globalRevision_ = 0;
+        uint64_t commitRevision_ = 0;
     };
 }

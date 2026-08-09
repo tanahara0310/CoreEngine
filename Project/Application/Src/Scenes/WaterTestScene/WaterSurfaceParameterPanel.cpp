@@ -22,6 +22,23 @@ using namespace CoreEngine;
 namespace {
 constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
 
+/// @brief CVar 編集の共通形: ローカルコピーをウィジェットへ渡し、編集されたら
+///        Set（唯一の書き込み経路）で書き戻す
+/// @details ストレージの生ポインタを ImGui へ直接渡す旧方式は、通番が進まない
+///          「見えない変更」の温床のため廃止した（InstantSettingsSave_Design.md Phase 3。
+///          非 const の AsXxx() 自体が削除されている）。Set は等価判定つきなので
+///          ドラッグ中に毎フレーム呼んでも通番は実変更時しか進まない
+/// @return ウィジェットが編集された場合 true
+template <class T, class WidgetFn>
+bool EditCVar(CVar<T>& cvar, WidgetFn&& widget) {
+	T value = cvar.Get();
+	if (widget(&value)) {
+		cvar.Set(value);
+		return true;
+	}
+	return false;
+}
+
 /// @brief Jerlov 水型に基づく水質プリセット（σa/σs はアート調整済みの近似値 [1/m]）
 /// @details Jerlov 分類は外洋 I〜III、沿岸 1C〜9C の順に濁っていく。
 ///          濁るほど CDOM（溶存有機物）が短波長（青）を強く吸収するため、
@@ -215,44 +232,38 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(WaterRenderFeature& 
 		return;
 	}
 
-	// CVar のストレージを ImGui へ直接渡し、変更時は NotifyChanged で通番を進める。
+	// 編集は EditCVar（ローカルコピー→Set）経由。
 	// 実際の水面への適用は WaterRenderFeature::ApplySettingsFromCVars（毎フレーム）が行う。
-	auto notify = [](CoreEngine::ICVar& cvar, bool changed) {
-		if (changed) {
-			cvar.NotifyChanged();
-		}
-	};
-
 	ImGui::Spacing();
 	ImGui::SeparatorText("共通の見た目");
-	notify(WaterCVars::BaseColor, ImGui::ColorEdit4("ベースカラー", &WaterCVars::BaseColor.AsColor()->x));
-	notify(WaterCVars::Roughness, ImGui::SliderFloat("ラフネス", WaterCVars::Roughness.AsFloat(), 0.0f, 1.0f));
-	notify(WaterCVars::Metallic, ImGui::SliderFloat("メタリック", WaterCVars::Metallic.AsFloat(), 0.0f, 1.0f));
-	notify(WaterCVars::IBLEnabled, ImGui::Checkbox("IBLを有効にする", WaterCVars::IBLEnabled.AsBool()));
+	EditCVar(WaterCVars::BaseColor, [](Vector4* v) { return ImGui::ColorEdit4("ベースカラー", &v->x); });
+	EditCVar(WaterCVars::Roughness, [](float* v) { return ImGui::SliderFloat("ラフネス", v, 0.0f, 1.0f); });
+	EditCVar(WaterCVars::Metallic, [](float* v) { return ImGui::SliderFloat("メタリック", v, 0.0f, 1.0f); });
+	EditCVar(WaterCVars::IBLEnabled, [](bool* v) { return ImGui::Checkbox("IBLを有効にする", v); });
 
 	ImGui::Spacing();
 	ImGui::SeparatorText("反射 / 屈折");
-	notify(WaterCVars::FresnelScale, ImGui::SliderFloat("フレネル反射スケール", WaterCVars::FresnelScale.AsFloat(), 0.0f, 2.0f, "%.3f"));
-	notify(WaterCVars::FresnelF0, ImGui::SliderFloat("正面反射率 F0", WaterCVars::FresnelF0.AsFloat(), 0.0f, 0.10f, "%.4f"));
-	notify(WaterCVars::RefractionMaxOffsetPixels,
-		ImGui::SliderFloat("DXR屈折 最大ずれ量 (px, 0=無制限)", WaterCVars::RefractionMaxOffsetPixels.AsFloat(), 0.0f, 64.0f, "%.2f"));
+	EditCVar(WaterCVars::FresnelScale, [](float* v) { return ImGui::SliderFloat("フレネル反射スケール", v, 0.0f, 2.0f, "%.3f"); });
+	EditCVar(WaterCVars::FresnelF0, [](float* v) { return ImGui::SliderFloat("正面反射率 F0", v, 0.0f, 0.10f, "%.4f"); });
+	EditCVar(WaterCVars::RefractionMaxOffsetPixels,
+		[](float* v) { return ImGui::SliderFloat("DXR屈折 最大ずれ量 (px, 0=無制限)", v, 0.0f, 64.0f, "%.2f"); });
 
 	ImGui::Spacing();
 	ImGui::SeparatorText("泡 / Whitecap（FFTOcean 専用）");
-	notify(WaterCVars::FoamEnabled, ImGui::Checkbox("泡を有効にする", WaterCVars::FoamEnabled.AsBool()));
-	notify(WaterCVars::FoamBias, ImGui::SliderFloat("発生しきい値 detJ", WaterCVars::FoamBias.AsFloat(), 0.0f, 1.5f, "%.3f"));
-	notify(WaterCVars::FoamGain, ImGui::SliderFloat("立ち上がり勾配", WaterCVars::FoamGain.AsFloat(), 0.5f, 16.0f, "%.2f"));
-	notify(WaterCVars::FoamOpacity, ImGui::SliderFloat("泡の不透明度", WaterCVars::FoamOpacity.AsFloat(), 0.0f, 1.0f, "%.3f"));
-	notify(WaterCVars::FoamCascadeWeights,
-		ImGui::SliderFloat3("カスケード重み (大/中/小)", &WaterCVars::FoamCascadeWeights.AsVector3()->x, 0.0f, 1.0f, "%.3f"));
-	notify(WaterCVars::FoamDecaySeconds, ImGui::SliderFloat("泡の寿命 [秒]", WaterCVars::FoamDecaySeconds.AsFloat(), 0.2f, 10.0f, "%.2f"));
+	EditCVar(WaterCVars::FoamEnabled, [](bool* v) { return ImGui::Checkbox("泡を有効にする", v); });
+	EditCVar(WaterCVars::FoamBias, [](float* v) { return ImGui::SliderFloat("発生しきい値 detJ", v, 0.0f, 1.5f, "%.3f"); });
+	EditCVar(WaterCVars::FoamGain, [](float* v) { return ImGui::SliderFloat("立ち上がり勾配", v, 0.5f, 16.0f, "%.2f"); });
+	EditCVar(WaterCVars::FoamOpacity, [](float* v) { return ImGui::SliderFloat("泡の不透明度", v, 0.0f, 1.0f, "%.3f"); });
+	EditCVar(WaterCVars::FoamCascadeWeights,
+		[](Vector3* v) { return ImGui::SliderFloat3("カスケード重み (大/中/小)", &v->x, 0.0f, 1.0f, "%.3f"); });
+	EditCVar(WaterCVars::FoamDecaySeconds, [](float* v) { return ImGui::SliderFloat("泡の寿命 [秒]", v, 0.2f, 10.0f, "%.2f"); });
 	ImGui::TextDisabled(
 		"detJ（波頭の圧縮率）がしきい値を下回ると泡。可視化は水面デバッグの\n"
 		"『FFT Jacobian』『FFT 泡マスク』を使用。小パッチの重みを上げすぎると海面全体が白くなります");
 
 	ImGui::Spacing();
 	ImGui::SeparatorText("透過 / 水質（光学特性）");
-	notify(WaterCVars::DepthFadeEnabled, ImGui::Checkbox("Depth Fade を有効にする", WaterCVars::DepthFadeEnabled.AsBool()));
+	EditCVar(WaterCVars::DepthFadeEnabled, [](bool* v) { return ImGui::Checkbox("Depth Fade を有効にする", v); });
 
 	// Jerlov 水型プリセット: ベース係数を一括設定し、濁度をリセットする
 	// （復元値が範囲外でも安全に表示できるよう、使用直前にクランプする）
@@ -281,19 +292,19 @@ void WaterSurfaceParameterPanel::DrawCommonParameterSection(WaterRenderFeature& 
 
 	// 水の色は直接指定せず、波長依存の吸収・散乱係数（＝水質）から光源と合わせて導出する。
 	// 永続化は必ずベース値（実効係数から逆算不能なため）。実効値の合成は WaterCVars 側。
-	notify(WaterCVars::AbsorptionBase,
-		ImGui::DragFloat3("吸収係数 σa (R, G, B) [1/m]", &WaterCVars::AbsorptionBase.AsVector3()->x, 0.005f, 0.0f, 4.0f, "%.4f"));
-	notify(WaterCVars::ScatteringBase,
-		ImGui::DragFloat3("散乱係数 σs (R, G, B) [1/m]", &WaterCVars::ScatteringBase.AsVector3()->x, 0.001f, 0.0f, 2.0f, "%.4f"));
-	notify(WaterCVars::Turbidity, ImGui::SliderFloat("濁度", WaterCVars::Turbidity.AsFloat(), 0.0f, 1.0f, "%.3f"));
+	EditCVar(WaterCVars::AbsorptionBase,
+		[](Vector3* v) { return ImGui::DragFloat3("吸収係数 σa (R, G, B) [1/m]", &v->x, 0.005f, 0.0f, 4.0f, "%.4f"); });
+	EditCVar(WaterCVars::ScatteringBase,
+		[](Vector3* v) { return ImGui::DragFloat3("散乱係数 σs (R, G, B) [1/m]", &v->x, 0.001f, 0.0f, 2.0f, "%.4f"); });
+	EditCVar(WaterCVars::Turbidity, [](float* v) { return ImGui::SliderFloat("濁度", v, 0.0f, 1.0f, "%.3f"); });
 	ImGui::TextDisabled("自然な水は 吸収: 赤 > 緑 > 青。濁度は青の吸収と粒子散乱を加算（緑濁り方向）");
 
 	ImGui::Spacing();
 	ImGui::SeparatorText("共通 UV アニメーション");
-	notify(WaterCVars::ScrollSpeed,
-		ImGui::DragFloat2("スクロール速度 (U, V)", &WaterCVars::ScrollSpeed.AsVector2()->x, 0.001f, -1.0f, 1.0f, "%.4f"));
-	notify(WaterCVars::UVTiling,
-		ImGui::DragFloat2("UVタイリング (U, V)", &WaterCVars::UVTiling.AsVector2()->x, 0.1f, 0.1f, 32.0f, "%.2f"));
+	EditCVar(WaterCVars::ScrollSpeed,
+		[](Vector2* v) { return ImGui::DragFloat2("スクロール速度 (U, V)", &v->x, 0.001f, -1.0f, 1.0f, "%.4f"); });
+	EditCVar(WaterCVars::UVTiling,
+		[](Vector2* v) { return ImGui::DragFloat2("UVタイリング (U, V)", &v->x, 0.1f, 0.1f, 32.0f, "%.2f"); });
 }
 
 void WaterSurfaceParameterPanel::DrawCausticsSection(WaterEditorFacade& editorFacade) {
@@ -306,12 +317,6 @@ void WaterSurfaceParameterPanel::DrawCausticsSection(WaterEditorFacade& editorFa
 		return;
 	}
 
-	auto notify = [](CoreEngine::ICVar& cvar, bool changed) {
-		if (changed) {
-			cvar.NotifyChanged();
-		}
-	};
-
 	// 生成方式（合成されるのは選んだ側だけ。もう一方のパスは実行自体をスキップする）。
 	// スクリーンスペース版は Gerstner 専用（FFT シーンでは何も出ない）
 	static const char* kCausticsBackends[] = {
@@ -323,13 +328,13 @@ void WaterSurfaceParameterPanel::DrawCausticsSection(WaterEditorFacade& editorFa
 		WaterCVars::CausticsBackend.Set(backend);
 	}
 
-	notify(WaterCVars::CausticsIntensity, ImGui::SliderFloat("強度", WaterCVars::CausticsIntensity.AsFloat(), 0.0f, 8.0f, "%.3f"));
-	notify(WaterCVars::CausticsDepthAttenuation, ImGui::SliderFloat("深度減衰", WaterCVars::CausticsDepthAttenuation.AsFloat(), 0.0f, 4.0f, "%.3f"));
-	notify(WaterCVars::CausticsCurvatureScale, ImGui::SliderFloat("曲率スケール", WaterCVars::CausticsCurvatureScale.AsFloat(), 0.0f, 30.0f, "%.3f"));
-	notify(WaterCVars::CausticsSurfaceSampleRadius, ImGui::SliderFloat("水面サンプル半径", WaterCVars::CausticsSurfaceSampleRadius.AsFloat(), 0.05f, 2.0f, "%.3f"));
-	notify(WaterCVars::CausticsRefractiveIndex, ImGui::SliderFloat("屈折率", WaterCVars::CausticsRefractiveIndex.AsFloat(), 1.0f, 1.6f, "%.4f"));
-	notify(WaterCVars::CausticsReceiverNormalStrength, ImGui::SliderFloat("受光面法線強度", WaterCVars::CausticsReceiverNormalStrength.AsFloat(), 0.0f, 2.0f, "%.3f"));
-	notify(WaterCVars::CausticsAlignmentPower, ImGui::SliderFloat("フォーカス強度", WaterCVars::CausticsAlignmentPower.AsFloat(), 1.0f, 64.0f, "%.3f"));
+	EditCVar(WaterCVars::CausticsIntensity, [](float* v) { return ImGui::SliderFloat("強度", v, 0.0f, 8.0f, "%.3f"); });
+	EditCVar(WaterCVars::CausticsDepthAttenuation, [](float* v) { return ImGui::SliderFloat("深度減衰", v, 0.0f, 4.0f, "%.3f"); });
+	EditCVar(WaterCVars::CausticsCurvatureScale, [](float* v) { return ImGui::SliderFloat("曲率スケール", v, 0.0f, 30.0f, "%.3f"); });
+	EditCVar(WaterCVars::CausticsSurfaceSampleRadius, [](float* v) { return ImGui::SliderFloat("水面サンプル半径", v, 0.05f, 2.0f, "%.3f"); });
+	EditCVar(WaterCVars::CausticsRefractiveIndex, [](float* v) { return ImGui::SliderFloat("屈折率", v, 1.0f, 1.6f, "%.4f"); });
+	EditCVar(WaterCVars::CausticsReceiverNormalStrength, [](float* v) { return ImGui::SliderFloat("受光面法線強度", v, 0.0f, 2.0f, "%.3f"); });
+	EditCVar(WaterCVars::CausticsAlignmentPower, [](float* v) { return ImGui::SliderFloat("フォーカス強度", v, 1.0f, 64.0f, "%.3f"); });
 	ImGui::TextDisabled("デバッグ表示・可視化モードは下の『デバッグ / 診断』にあります。");
 }
 
@@ -390,19 +395,12 @@ void WaterSurfaceParameterPanel::DrawFFTOceanSection(
 	ImGui::Text("解像度: %d (再生成が必要なため表示のみ)", status.resolution);
 
 	bool fftChanged = false;
-	auto trackFFTEdit = [&](CoreEngine::ICVar& cvar, bool changed) {
-		if (changed) {
-			cvar.NotifyChanged();
-			fftChanged = true;
-		}
-	};
-
-	trackFFTEdit(WaterCVars::FFTAmplitudeScale, ImGui::SliderFloat("振幅スケール", WaterCVars::FFTAmplitudeScale.AsFloat(), 0.0f, 4.0f, "%.3f"));
-	trackFFTEdit(WaterCVars::FFTWindDirection, ImGui::DragFloat2("風向", &WaterCVars::FFTWindDirection.AsVector2()->x, 0.01f, -1.0f, 1.0f, "%.3f"));
-	trackFFTEdit(WaterCVars::FFTWindSpeed, ImGui::SliderFloat("風速", WaterCVars::FFTWindSpeed.AsFloat(), 0.0f, 64.0f, "%.2f"));
-	trackFFTEdit(WaterCVars::FFTChoppiness, ImGui::SliderFloat("Choppiness", WaterCVars::FFTChoppiness.AsFloat(), 0.0f, 4.0f, "%.3f"));
-	trackFFTEdit(WaterCVars::FFTActiveComponentCount, ImGui::SliderInt("スペクトル成分数", WaterCVars::FFTActiveComponentCount.AsInt(), 1, 64));
-	trackFFTEdit(WaterCVars::FFTGravity, ImGui::SliderFloat("重力", WaterCVars::FFTGravity.AsFloat(), 0.1f, 20.0f, "%.3f"));
+	fftChanged |= EditCVar(WaterCVars::FFTAmplitudeScale, [](float* v) { return ImGui::SliderFloat("振幅スケール", v, 0.0f, 4.0f, "%.3f"); });
+	fftChanged |= EditCVar(WaterCVars::FFTWindDirection, [](Vector2* v) { return ImGui::DragFloat2("風向", &v->x, 0.01f, -1.0f, 1.0f, "%.3f"); });
+	fftChanged |= EditCVar(WaterCVars::FFTWindSpeed, [](float* v) { return ImGui::SliderFloat("風速", v, 0.0f, 64.0f, "%.2f"); });
+	fftChanged |= EditCVar(WaterCVars::FFTChoppiness, [](float* v) { return ImGui::SliderFloat("Choppiness", v, 0.0f, 4.0f, "%.3f"); });
+	fftChanged |= EditCVar(WaterCVars::FFTActiveComponentCount, [](int* v) { return ImGui::SliderInt("スペクトル成分数", v, 1, 64); });
+	fftChanged |= EditCVar(WaterCVars::FFTGravity, [](float* v) { return ImGui::SliderFloat("重力", v, 0.1f, 20.0f, "%.3f"); });
 
 	if (fftChanged) {
 		// 手動調整はカスタム扱い（値がプリセットへ偶然一致すれば表示は自動で戻る）

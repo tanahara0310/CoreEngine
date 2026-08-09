@@ -4,6 +4,7 @@
 #include "EngineSystem/Settings/IEditorSettingsSection.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 #include <chrono>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -12,11 +13,15 @@
 namespace CoreEngine
 {
     /// @brief エディタ設定（大気・雲・水・デバッグカメラ等）を変更のたびに自動保存するサブシステム
-    /// @details 登録された IEditorSettingsSection を一定間隔でシリアライズし、前回保存分と
-    ///          差分があるセクションだけをアトミック書き込み（tmp → rename）で保存する。
+    /// @details 登録された IEditorSettingsSection を変更検知方式（ChangeSignal）別に保存する。
+    ///          - Revision 方式: 毎フレーム通番を比較し、変更は 0.3 秒デバウンス後、
+    ///            確定（スライダーを離す等）は同フレームで即時保存（商用エンジンの瞬間保存）
+    ///          - Polling 方式: 従来通り 1 秒間隔で全量シリアライズ差分比較（ミラー系用）
+    ///          どちらもアトミック書き込み（tmp → rename）で保存する。
     ///          保存先はセクション単位のファイル分割: Application/Saved/EditorSettings/{Section}.json。
     ///          シーン/GameObject の明示保存フローには一切関与しない。
     ///          設計書: Docs/Engine/Editor/EditorSettingsAutoSave_Design.md
+    ///                 Docs/Engine/Editor/InstantSettingsSave_Design.md（瞬間保存化）
     class EditorSettingsSubsystem : public IEngineSubsystem
     {
     public:
@@ -28,7 +33,7 @@ namespace CoreEngine
         /// @brief 終了処理（全セクションの最終保存）
         void Finalize() override;
 
-        /// @brief フレーム終了処理（一定間隔で差分検知＋保存）
+        /// @brief フレーム終了処理（Revision 方式は毎フレーム検知、Polling 方式は 1 秒間隔）
         void EndFrame() override;
 
         // ──────────────────────────────────────────────────────────
@@ -80,7 +85,11 @@ namespace CoreEngine
         std::vector<SectionStatus> GetSectionStatuses() const;
 
         /// @brief 保存ディレクトリのパスを取得する（管理パネルの表示用）
-        std::string GetSettingsDirForDisplay() const { return GetSettingsDir(); }
+        std::string GetSettingsDirForDisplay() const
+        {
+            return GetSettingsDir(IEditorSettingsSection::StorageArea::ProjectConfig)
+                 + " ／ " + GetSettingsDir(IEditorSettingsSection::StorageArea::UserSaved);
+        }
 
     private:
         /// @brief 登録済みセクションのエントリ
@@ -90,28 +99,38 @@ namespace CoreEngine
             nlohmann::json defaultSnapshot;  // 登録時（Deserialize 前）のコードデフォルト
             nlohmann::json lastSaved;        // 最後に保存（または復元）した内容。差分比較の基準
             std::string lastSaveTime;        // このセッションで最後に書き込んだ時刻（表示用）
+
+            // ---- Revision 方式（イベント駆動）の状態 ----
+            uint64_t lastSeenRevision = 0;        // 前フレームまでに観測した変更通番
+            uint64_t lastSeenCommitRevision = 0;  // 前フレームまでに観測した確定通番
+            std::chrono::steady_clock::time_point lastChangeTime{};  // 最後に変更を観測した時刻
+            bool dirty = false;                   // 変更を観測してからまだ保存していない
         };
 
-        // ===== パスヘルパー =====
-        std::string GetSettingsDir() const;
-        std::string GetFilePath(const std::string& sectionName) const;
-        std::string GetTempPath(const std::string& sectionName) const;
-        std::string GetBackupPath(const std::string& sectionName) const;
+        // ===== パスヘルパー（保存先はセクションの StorageArea で決まる） =====
+        std::string GetSettingsDir(IEditorSettingsSection::StorageArea area) const;
+        std::string GetFilePath(const IEditorSettingsSection* section) const;
+        std::string GetTempPath(const IEditorSettingsSection* section) const;
+        std::string GetBackupPath(const IEditorSettingsSection* section) const;
 
         /// @brief エントリをシリアライズし、前回保存分と差分があればアトミック書き込みする
-        /// @return 書き込みを行った場合 true
+        /// @return 現在の状態が永続化されている場合 true（書き込み成功、または差分なし）。
+        ///         false は書き込み失敗のみ（呼び出し側は dirty を維持して次フレーム再試行する）
         bool SaveIfChanged(Entry& entry);
 
         /// @brief tmp 書き込み → 旧ファイルを .bak へ退避 → rename で置換
-        bool WriteAtomic(const std::string& sectionName, const nlohmann::json& data);
+        bool WriteAtomic(const IEditorSettingsSection* section, const nlohmann::json& data);
 
         /// @brief セクション名でエントリを検索
         Entry* FindEntry(const std::string& sectionName);
 
         std::vector<Entry> entries_;
 
-        // ポーリング間隔管理
+        // Polling 方式の間隔（ミラー系。カメラ移動中などに書き込みすぎないための下限）
         static constexpr double kCheckIntervalSec = 1.0;
+        // Revision 方式のデバウンス: 最後の変更からこれだけ静かになったら書く。
+        // ドラッグ中の毎フレーム変更やプリセット読込の一括変更を 1 回の書き込みに合流させる
+        static constexpr double kDebounceSec = 0.3;
         std::chrono::steady_clock::time_point lastCheckTime_{};
     };
 }

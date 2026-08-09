@@ -5,6 +5,7 @@
 
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
+#include "Utility/CVar/CVarUndoStack.h"
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "Editor/ImGui/Wrappers/ImGuiLayout.h"
 #include <algorithm>
@@ -64,7 +65,7 @@ namespace CoreEngine
             return name;
         }
 
-        /// @brief 説明とフルネームのツールチップを直前の項目に付ける
+        /// @brief 説明・フルネーム・既定値のツールチップを直前の項目に付ける
         void DrawTooltip(const ICVar* cvar)
         {
             if (!ImGui::IsItemHovered()) {
@@ -76,6 +77,13 @@ namespace CoreEngine
                 ImGui::Separator();
                 ImGui::TextUnformatted(cvar->GetDescription());
             }
+            // 差分保存（CVars.json は触った項目だけ）では「本来の値」がファイルから
+            // 分からないため、既定値をここで常に確認できるようにする
+            ImGui::Separator();
+            ImGui::TextDisabled("既定値: %s", cvar->DefaultToString().c_str());
+            if (HasFlag(cvar->GetFlags(), CVarFlags::Mirrored)) {
+                ImGui::TextDisabled("ミラー値（実体が毎フレーム上書き。Undo 対象外）");
+            }
             ImGui::EndTooltip();
         }
 
@@ -86,12 +94,45 @@ namespace CoreEngine
             bool changed = false;
             if (ImGui::BeginPopupContextItem(popupId)) {
                 if (ImGui::MenuItem("デフォルトに戻す", nullptr, false, cvar->IsModified())) {
+                    auto& undoStack = CVarUndoStack::Get();
+                    undoStack.BeginEdit(cvar);
                     cvar->ResetToDefault();
+                    undoStack.CommitEdit(cvar);
                     changed = true;
                 }
                 ImGui::EndPopup();
             }
             return changed;
+        }
+
+        /// @brief Ctrl+Z / Ctrl+Y による CVar の Undo / Redo
+        /// @details CVar ツリーを含むウィンドウにフォーカスがあるときだけ反応する
+        ///          （シーン編集など他系統の Undo と衝突させないためのスコープ）。
+        ///          同一フレームに複数の DrawTree が呼ばれても 1 回しか実行しない
+        void HandleUndoShortcuts()
+        {
+            static int lastHandledFrame = -1;
+            const int frame = ImGui::GetFrameCount();
+            if (frame == lastHandledFrame) {
+                return;
+            }
+            if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) {
+                return;
+            }
+            // テキスト入力中は ImGui 自身の入力 Undo（Ctrl+Z）に譲る
+            if (ImGui::GetIO().WantTextInput) {
+                return;
+            }
+            if (!ImGui::GetIO().KeyCtrl) {
+                return;
+            }
+            if (ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
+                lastHandledFrame = frame;
+                CVarUndoStack::Get().Undo();
+            } else if (ImGui::IsKeyPressed(ImGuiKey_Y, false)) {
+                lastHandledFrame = frame;
+                CVarUndoStack::Get().Redo();
+            }
         }
     }
 
@@ -114,62 +155,103 @@ namespace CoreEngine
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.85f, 0.4f, 1.0f));
         }
 
+        // ローカルコピーを編集し、変化していたら Set（唯一の書き込み経路）で書き戻す。
+        // ImGui にストレージの生ポインタを渡すと通番の進まない「見えない変更」になるため禁止。
+        // BeginEdit は最初の Set の直前（＝CVar がまだ旧値のうち）に呼び、Undo の旧値を控える
+        auto& undoStack = CVarUndoStack::Get();
         bool changed = false;
         switch (cvar->GetType())
         {
-        case CVarType::Bool:
-            changed = ImGui::Checkbox(label.c_str(), cvar->AsBool());
-            break;
-
-        case CVarType::Int:
-            if (range.valid) {
-                changed = ImGui::SliderInt(label.c_str(), cvar->AsInt(),
-                                           static_cast<int>(range.min), static_cast<int>(range.max));
-            } else {
-                changed = ImGui::DragInt(label.c_str(), cvar->AsInt());
+        case CVarType::Bool: {
+            bool v = *cvar->AsBool();
+            if (ImGui::Checkbox(label.c_str(), &v)) {
+                undoStack.BeginEdit(cvar);
+                cvar->SetFromPointer(&v);
+                changed = true;
             }
             break;
-
-        case CVarType::Float:
-            if (range.valid) {
-                changed = ImGui::SliderFloat(label.c_str(), cvar->AsFloat(), range.min, range.max, "%.3f");
-            } else {
-                changed = ImGui::DragFloat(label.c_str(), cvar->AsFloat(), kDefaultDragSpeed);
+        }
+        case CVarType::Int: {
+            int v = *cvar->AsInt();
+            const bool edited = range.valid
+                ? ImGui::SliderInt(label.c_str(), &v,
+                                   static_cast<int>(range.min), static_cast<int>(range.max))
+                : ImGui::DragInt(label.c_str(), &v);
+            if (edited) {
+                undoStack.BeginEdit(cvar);
+                cvar->SetFromPointer(&v);
+                changed = true;
             }
             break;
-
-        case CVarType::Vector2:
-            if (range.valid) {
-                changed = ImGui::SliderFloat2(label.c_str(), &cvar->AsVector2()->x, range.min, range.max, "%.3f");
-            } else {
-                changed = ImGui::DragFloat2(label.c_str(), &cvar->AsVector2()->x, kDefaultDragSpeed);
+        }
+        case CVarType::Float: {
+            float v = *cvar->AsFloat();
+            const bool edited = range.valid
+                ? ImGui::SliderFloat(label.c_str(), &v, range.min, range.max, "%.3f")
+                : ImGui::DragFloat(label.c_str(), &v, kDefaultDragSpeed);
+            if (edited) {
+                undoStack.BeginEdit(cvar);
+                cvar->SetFromPointer(&v);
+                changed = true;
             }
             break;
-
-        case CVarType::Vector3:
-            if (range.valid) {
-                changed = ImGui::SliderFloat3(label.c_str(), &cvar->AsVector3()->x, range.min, range.max, "%.3f");
-            } else {
-                changed = ImGui::DragFloat3(label.c_str(), &cvar->AsVector3()->x, kDefaultDragSpeed);
+        }
+        case CVarType::Vector2: {
+            Vector2 v = *cvar->AsVector2();
+            const bool edited = range.valid
+                ? ImGui::SliderFloat2(label.c_str(), &v.x, range.min, range.max, "%.3f")
+                : ImGui::DragFloat2(label.c_str(), &v.x, kDefaultDragSpeed);
+            if (edited) {
+                undoStack.BeginEdit(cvar);
+                cvar->SetFromPointer(&v);
+                changed = true;
             }
             break;
-
-        case CVarType::Color:
-            changed = UI::ColorEdit(label.c_str(), *cvar->AsColor());
+        }
+        case CVarType::Vector3: {
+            Vector3 v = *cvar->AsVector3();
+            const bool edited = range.valid
+                ? ImGui::SliderFloat3(label.c_str(), &v.x, range.min, range.max, "%.3f")
+                : ImGui::DragFloat3(label.c_str(), &v.x, kDefaultDragSpeed);
+            if (edited) {
+                undoStack.BeginEdit(cvar);
+                cvar->SetFromPointer(&v);
+                changed = true;
+            }
             break;
+        }
+        case CVarType::Color: {
+            Vector4 v = *cvar->AsColor();
+            if (UI::ColorEdit(label.c_str(), v)) {
+                undoStack.BeginEdit(cvar);
+                cvar->SetFromPointer(&v);
+                changed = true;
+            }
+            break;
+        }
         }
 
         if (modified) {
             ImGui::PopStyleColor();
         }
 
+        // 確定（スライダーを離した・Enter を押した・クリックした等）の検知。
+        // 「直前の項目」を参照する API のため、ウィジェットの直後で取得しておく
+        const bool committed = ImGui::IsItemDeactivatedAfterEdit();
+
         DrawTooltip(cvar);
         // ウィジェットと同じ ID でコンテキストメニューを開く
-        changed |= DrawContextMenu(cvar, label.c_str());
+        // （リセットの Undo 記録は DrawContextMenu 内で行われる）
+        const bool resetClicked = DrawContextMenu(cvar, label.c_str());
+        changed |= resetClicked;
 
-        if (changed) {
-            // ImGui はストレージを直接書き換えるため、通番の更新と通知はここで行う
-            cvar->NotifyChanged();
+        // 確定＝編集セッションの終端。Undo レコードを積み、
+        // デバウンスを待たず同フレームで自動保存を走らせる
+        if (committed) {
+            undoStack.CommitEdit(cvar);
+        }
+        if (committed || resetClicked) {
+            CVarRegistry::Get().NotifyCommit();
         }
         return changed;
     }
@@ -220,6 +302,9 @@ namespace CoreEngine
 
     bool CVarUI::DrawTree(std::string_view prefix)
     {
+        // このツリーを含むウィンドウがフォーカス中なら Ctrl+Z / Ctrl+Y を処理する
+        HandleUndoShortcuts();
+
         std::vector<ICVar*> items = CVarRegistry::Get().GetByPrefix(prefix);
 
         // NoUI（別の UI が担当する項目・コンソール専用）を除外
@@ -240,9 +325,17 @@ namespace CoreEngine
 
     void CVarUI::ResetTree(std::string_view prefix)
     {
+        // 一括リセットは 1 回の Ctrl+Z でまとめて戻せるようバッチ記録にする
+        auto& undoStack = CVarUndoStack::Get();
+        undoStack.BeginBatch();
         for (ICVar* cvar : CVarRegistry::Get().GetByPrefix(prefix)) {
+            undoStack.BeginEdit(cvar);
             cvar->ResetToDefault();
+            undoStack.CommitEdit(cvar);
         }
+        undoStack.EndBatch();
+        // ボタン操作＝確定。一括リセットを即時保存する
+        CVarRegistry::Get().NotifyCommit();
     }
 
 }

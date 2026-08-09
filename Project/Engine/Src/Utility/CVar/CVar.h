@@ -5,6 +5,7 @@
 #include "Math/Vector/Vector4.h"
 #include <cstdint>
 #include <functional>
+#include <string>
 #include <type_traits>
 
 /// @brief コンソール変数（CVar）
@@ -60,6 +61,11 @@ namespace CoreEngine
         ///          "r.<Effect>.Enabled" は Post Effects タブのトグルスイッチが担当するため、
         ///          これを付けないと同じ値を操作する UI が 2 つ並んでしまう
         NoUI   = 1 << 1,
+        /// @brief 実体（Light / カメラ等）が毎フレームこの CVar へ写し込むミラー値
+        /// @details CVar へ直接書いても次フレームに実体の値で上書きされるため、
+        ///          Undo の対象外にする（戻しても即座に巻き戻り、無意味なため）。
+        ///          ツールチップにもミラー値であることを表示する
+        Mirrored = 1 << 2,
     };
 
     constexpr CVarFlags operator|(CVarFlags a, CVarFlags b) noexcept
@@ -110,19 +116,27 @@ namespace CoreEngine
         /// @brief 起動時のコードデフォルト値へ戻す
         virtual void ResetToDefault() = 0;
 
+        /// @brief 型消去された書き込み口（値の唯一の変更経路）
+        /// @param value GetType() と同じ型の値へのポインタ
+        /// @details 実装は派生の Set() に委譲する（等価判定＋変更通知つき）。
+        ///          UI・シリアライズ・Undo はすべてここ（または型付き Set）経由で書くこと。
+        ///          ストレージへの直接書き込みは通番が進まず、自動保存もキャッシュ無効化も
+        ///          走らない「見えない変更」になるため、書き込み可能な生ポインタは公開しない
+        virtual void SetFromPointer(const void* value) = 0;
+
         /// @brief コードデフォルトから変更されているか
         /// @details UI で「触った項目」を強調表示するために使う
         virtual bool IsModified() const = 0;
 
-        // ---- 型安全な生ポインタ取得（型が一致しない場合 nullptr） ----
-        // ImGui へそのまま渡せるようにポインタで返す
-        bool*    AsBool()    noexcept { return type_ == CVarType::Bool    ? static_cast<bool*>(storage_)    : nullptr; }
-        int*     AsInt()     noexcept { return type_ == CVarType::Int     ? static_cast<int*>(storage_)     : nullptr; }
-        float*   AsFloat()   noexcept { return type_ == CVarType::Float   ? static_cast<float*>(storage_)   : nullptr; }
-        Vector2* AsVector2() noexcept { return type_ == CVarType::Vector2 ? static_cast<Vector2*>(storage_) : nullptr; }
-        Vector3* AsVector3() noexcept { return type_ == CVarType::Vector3 ? static_cast<Vector3*>(storage_) : nullptr; }
-        Vector4* AsColor()   noexcept { return type_ == CVarType::Color   ? static_cast<Vector4*>(storage_) : nullptr; }
+        /// @brief 現在値を "1.35" / "[1, 0.5, 0.2]" 形式の文字列にする（ログ・ツールチップ用）
+        std::string ValueToString() const;
 
+        /// @brief コードデフォルト値を ValueToString と同形式の文字列にする
+        std::string DefaultToString() const;
+
+        // ---- 型安全な読み取り専用ポインタ（型が一致しない場合 nullptr） ----
+        // 書き込みは SetFromPointer / 型付き Set のみ（Phase 3 で書き込み可能版を廃止。
+        // UI はローカルコピーを編集して Set で書き戻す）
         const bool*    AsBool()    const noexcept { return type_ == CVarType::Bool    ? static_cast<const bool*>(storage_)    : nullptr; }
         const int*     AsInt()     const noexcept { return type_ == CVarType::Int     ? static_cast<const int*>(storage_)     : nullptr; }
         const float*   AsFloat()   const noexcept { return type_ == CVarType::Float   ? static_cast<const float*>(storage_)   : nullptr; }
@@ -132,7 +146,7 @@ namespace CoreEngine
 
     protected:
         ICVar(const char* name, const char* description, CVarType type,
-              void* storage, CVarRange range, CVarFlags flags);
+              void* storage, const void* defaultStorage, CVarRange range, CVarFlags flags);
 
         /// @brief レジストリへ登録する（派生の値が初期化された後に呼ぶこと）
         void RegisterSelf();
@@ -142,6 +156,7 @@ namespace CoreEngine
         const char* description_ = "";
         CVarType    type_ = CVarType::Float;
         void*       storage_ = nullptr;
+        const void* defaultStorage_ = nullptr;  ///< コードデフォルト値（派生の default_ を指す）
         CVarRange   range_{};
         CVarFlags   flags_ = CVarFlags::None;
         uint32_t    revision_ = 0;
@@ -189,7 +204,7 @@ namespace CoreEngine
              CVarRange range = {},
              CVarFlags flags = CVarFlags::None)
             : ICVar(name, description, detail::CVarTypeTraits<T>::kType,
-                    &value_, range, flags)
+                    &value_, &default_, range, flags)
             , value_(defaultValue)
             , default_(defaultValue)
         {
@@ -215,6 +230,13 @@ namespace CoreEngine
         const T& GetDefault() const noexcept { return default_; }
 
         void ResetToDefault() override { Set(default_); }
+
+        void SetFromPointer(const void* value) override
+        {
+            if (value) {
+                Set(*static_cast<const T*>(value));
+            }
+        }
 
         bool IsModified() const override { return !detail::CVarValueEquals(value_, default_); }
 
