@@ -17,6 +17,15 @@ struct FFTWaterVSOutput
 {
     float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD0;
+    // 変位を加える「前」の参照格子ワールドXZ（＝FFT テクスチャの引数 x0）。
+    // FFT の変位・法線・ヤコビアンはすべて x0 の関数であり、描画点
+    // x = x0 + D(x0) で引いてはいけない（水平変位ぶんズレる）。
+    // PS 側は worldPosition.xz ではなく必ずこの値でカスケードをサンプルする。
+    float2 baseWorldXZ : TEXCOORD1;
+    // 静止水面からの波の高さ [m]（＝頂点変位の鉛直成分）。
+    // 波峰のサブサーフェス透過が「どこが薄い水か」を知るために使う。
+    // cbuffer を増やさずに済むよう補間値で運ぶ（VS が正確な値を持っている）。
+    float waveHeight : TEXCOORD2;
     float3 normal : NORMAL0;
     float3 worldPosition : POSITION0;
     float4 lightSpacePos : POSITION1;
@@ -68,6 +77,10 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // PS 側はワールドXZから各カスケードの法線を直接再サンプルするため、texcoord は
     // FFT サンプリングには使わない（生の UV をそのまま渡すのみ）。
     output.texcoord = input.texcoord;
+    // 変位前の参照格子座標。上の displacement サンプリングと同一の引数であること。
+    output.baseWorldXZ = baseWorldPos.xz;
+    // 波群エンベロープ適用後の鉛直変位＝静止水面からの高さ
+    output.waveHeight = displacement.y;
 
     float4 baseClip = mul(input.position, mtx.WVP);
     float3x3 invWorld3 = transpose((float3x3)mtx.WorldInversTranspose);
@@ -81,6 +94,14 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     output.worldPosition = worldPos;
     output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);
     output.clipPosCurrent = output.position;
-    output.clipPosPrev = mul(input.position, mtx.PrevWVP);
+    // ★前フレーム位置にも同じ変位を載せる★
+    // 変位を載せないと「今フレームだけ波の分だけ動いた」ことになり、モーションベクターが
+    // 波高ぶんの偽の動きを含む。TAA はそれで履歴を引くので水面が常にぶれる。
+    // ここでは現フレームの変位を流用している（前フレームの変位テクスチャは保持していない）。
+    // カメラ運動は厳密に正しくなり、残るのは波自身の 1 フレーム分の動き（軌道速度 ~1m/s ＝
+    // 16ms で 0.02m）だけで、これはサブピクセルなので無視できる。
+    float4 basePrevClip = mul(input.position, mtx.PrevWVP);
+    float4 offsetPrevClip = mul(float4(offsetLS, 0.0f), mtx.PrevWVP);
+    output.clipPosPrev = basePrevClip + offsetPrevClip;
     return output;
 }

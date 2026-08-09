@@ -59,6 +59,15 @@ struct WaterPSInput
 {
     float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD0;
+    // ★FFT カスケードを引くときは必ずこれを使う（worldPosition.xz ではない）★
+    // FFT の変位・法線・ヤコビアン・蓄積泡はすべて「変位前の参照格子座標 x0」の
+    // 関数として書き出されている。描画点は x = x0 + D(x0) なので、worldPosition.xz で
+    // 引くと水平変位ぶん（choppiness 2.5・風速12m/s で数 m）ズレた場所を読むことになり、
+    // 法線が幾何と一致せず、泡が波頭から外れて出る。
+    // VS 側（FFTWater.VS / Water.VS）が変位を足す前の値をここへ渡す。
+    float2 baseWorldXZ : TEXCOORD1;
+    // 静止水面からの波の高さ [m]。波峰のサブサーフェス透過が使う（WaterSubsurface.hlsli）
+    float waveHeight : TEXCOORD2;
     float3 normal : NORMAL0;
     float3 worldPosition : POSITION0;
     float4 lightSpacePos : POSITION1;
@@ -80,6 +89,7 @@ struct WaterPSInput
 #include "WaterVolume.hlsli"
 #include "WaterFoam.hlsli"
 #include "WaterNormals.hlsli"
+#include "WaterSubsurface.hlsli"
 
 /// @brief Schlick 近似による Fresnel 係数を計算する
 /// @param cosTheta  視線と法線のなす角の余弦（saturate 済み推奨）
@@ -103,6 +113,58 @@ float FresnelSchlick(float cosTheta, float f0)
 // 幾何遮蔽で半減し、水面の輝き・透明感を大きく損なっていたため緩和
 // （まだらの真因＝反射ビューへの水面自己描画は修正済み）。
 static const float kWaterReflectionMicroRoughness = 0.20f; // 未解像さざ波の実効ラフネス
+
+// ===== グロッシー反射サンプリング（本体の合成で必ず通す）=====
+// ★水面すれすれで出る黒いギザギザの本命対策★（2026-08-09 本体へ接続）
+// DXR 反射は 1 ピクセル 1 レイで、しかも反射方向をフルディテールの波法線から
+// 求めている（RT 側にはフットプリントの概念が無い）。隣接ピクセルが空・木・遠方の
+// 水と全く別のものに当たるため、点サンプルするとピクセル単位の硬いノイズになる。
+// 実際の水面も微細ラフネスで反射はにじみ、かすめ角ほど鉛直方向へ伸びるので、
+// にじませるのは AA の都合ではなく物理的にも正しい。
+// （この関数自体は以前から存在したが、可視化モード 19 からしか呼ばれていなかった）
+static const float kWaterReflectionBlurTexels = 3.0f; // にじみ半径（テクセル基準）
+
+/// @brief 反射テクスチャをラフネス相当でにじませて取得する（rgb=色 / a=信頼度）
+/// @param screenUV スクリーンUV
+/// @param grazing  かすめ具合 = 1 - cosθ（大きいほど反射が伸び・ぼける）
+/// @details 信頼度（a）も一緒に平均する。成功/失敗の境界も滑らかになり、
+///          空環境マップへのフォールバックが段差にならない。
+float4 SampleGlossyReflectionRGBA(float2 screenUV, float grazing)
+{
+    uint reflWidth = 1;
+    uint reflHeight = 1;
+    gReflectionTexture.GetDimensions(reflWidth, reflHeight);
+    const float2 texel = 1.0f / float2(reflWidth, reflHeight);
+
+    // 反射像は面が寝るほど鉛直方向へ伸びるため縦を強めに、かすめ角ほど広くぼかす。
+    const float2 radius = kWaterReflectionBlurTexels * texel * float2(1.0f, 2.0f) * (1.0f + grazing * 2.0f);
+
+    const float2 kOffsets[9] = {
+        float2( 0.0f,  0.0f),
+        float2(-1.0f, -1.0f), float2( 1.0f, -1.0f),
+        float2(-1.0f,  1.0f), float2( 1.0f,  1.0f),
+        float2( 0.0f, -1.0f), float2( 0.0f,  1.0f),
+        float2(-1.0f,  0.0f), float2( 1.0f,  0.0f)
+    };
+    const float kWeights[9] = { 4.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f };
+
+    float4 sum = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float weightSum = 0.0f;
+    [unroll]
+    for (int i = 0; i < 9; ++i)
+    {
+        const float2 uv = saturate(screenUV + kOffsets[i] * radius);
+        sum += gReflectionTexture.Sample(gLinearClamp, uv) * kWeights[i];
+        weightSum += kWeights[i];
+    }
+    return sum / weightSum;
+}
+
+/// @brief 可視化モード 19 用の rgb だけのラッパー
+float3 SampleGlossyReflection(float2 screenUV, float grazing)
+{
+    return SampleGlossyReflectionRGBA(screenUV, grazing).rgb;
+}
 
 /// @brief かすめ角の反射スパイクを微細さざ波の幾何遮蔽で抑える係数
 /// @details Schlick-GGX の視線側幾何項に相当。cosθ→0（かすめ角）で 0 に近づき、
@@ -214,8 +276,34 @@ PixelShaderOutput WaterForwardMain(WaterPSInput input, float3 surfaceNormal)
 // （依存の一覧は Water.Debug.hlsli の冒頭に明記）。
 #include "Water.Debug.hlsli"
 
-PixelShaderOutput main(WaterPSInput input)
+// ===== 水面の出力（SceneColor ＋ モーションベクター）=====
+// ★水面もモーションベクターを書かなければならない★
+// 水面は GBuffer より後のフォワードパスなので、書かないと TAA は水面ピクセルに対して
+// 「水の背後にある地形」のモーションベクターで履歴を再投影してしまう。水面（y≈5.8m）と
+// 海底（y=0）は視差が違うため、カメラが動いた瞬間だけ履歴が別の場所から引かれ、
+// 泡のような高周波の模様が溶けたようにぼける（2026-08-08 実測: カメラ静止時
+// meanLaplacian 14.4 に対し移動中 8.7 まで低下。TAA を切ると移動中でも 16.1）。
+struct WaterPixelOutput
 {
+    float4 color : SV_TARGET0;
+    float2 motionVector : SV_TARGET1; ///< NDC 差分（GBuffer.PS と同一規約）
+};
+
+/// @brief NDC 空間のモーションベクターを求める（GBuffer.PS.hlsl と同じ式）
+/// @details TAA 側でジッタ差分を引く前提なので、ここではジッタ込みのクリップ座標から
+///          そのまま差を取る（GBuffer と規約を揃えること）。
+float2 ComputeWaterMotionVector(WaterPSInput input)
+{
+    const float2 ndcCurrent = input.clipPosCurrent.xy / max(input.clipPosCurrent.w, 1.0e-6f);
+    const float2 ndcPrevious = input.clipPosPrev.xy / max(input.clipPosPrev.w, 1.0e-6f);
+    return ndcCurrent - ndcPrevious;
+}
+
+WaterPixelOutput main(WaterPSInput input)
+{
+    WaterPixelOutput waterOutput;
+    waterOutput.motionVector = ComputeWaterMotionVector(input);
+
     // ---- 1. 水面法線を 1 度だけ解決する ----
     // FFT 経路では 3 カスケード分のテクスチャサンプルを伴うため、
     // 以降の PBR・水柱厚さ・フレネル・グリッターで使い回す。
@@ -288,10 +376,14 @@ PixelShaderOutput main(WaterPSInput input)
     // 高周波パターンへのしきい値カット（ComputeFoamLace）でレース状に変換する:
     //   lace ＝ 表面の白い泡そのもの（縁が鋭いレース・筋・粒）
     //   haze ＝ レースの穴の間と縁の外側の白濁（パターンで粒状に変調し霧化を防ぐ）
+    // 泡マスク・泡パターンはどちらも参照格子座標で評価する。
+    // マスクは FFT ヤコビアン／蓄積泡テクスチャの読み出しなので x0 が必須。
+    // パターン（dissolve のしきい値場）も x0 に揃えることで、泡の模様が泡の塊と
+    // 一緒に運ばれる（実際の泡は水に乗って運ばれるので、こちらが正しい）。
     const float foamMask = max(
-        ComputeFoamMask(input.worldPosition.xz),
+        ComputeFoamMask(input.baseWorldXZ),
         ComputeShoreFoamMask(waterColumnResult.analyticColumn));
-    const float foamPattern = FoamPattern(input.worldPosition.xz);
+    const float foamPattern = FoamPattern(input.baseWorldXZ);
     const float foamLace = ComputeFoamLace(foamMask, foamPattern);
     const float foamHaze = saturate(foamMask * 1.2f) * (1.0f - foamLace)
         * lerp(kFoamHazePatternMin, 1.0f, foamPattern);
@@ -322,10 +414,19 @@ PixelShaderOutput main(WaterPSInput input)
         // gReflectionTexture は RTWaterReflectionPass の出力（スクリーン空間・
         // 水面ピクセルごとの反射シーン色）。RT レイが既に波法線で反射方向を
         // 計算済みなので、鏡像方式のような screenUV 歪みは不要。自分の screenUV で
-        // そのまま引く。alpha >= 0.5 が成功（反射シーン色）、< 0.5 はミス
-        // （反射レイが空へ抜けた／画面外／遮蔽）で、空環境マップへフォールバックする。
-        float4 rtReflection = gReflectionTexture.SampleLevel(gLinearClamp, screenUV, 0);
-        bool rtHit = rtReflection.a >= 0.5f;
+        // そのまま引く。alpha は「反射色の信頼度」を連続値で運ぶ:
+        //   alpha ∈ (0.5, 1.0] … 成功。confidence = (alpha - 0.5) * 2
+        //   alpha < 0.5        … 失敗（空へ抜けた／遮蔽）→ confidence 0
+        // ★ここを 2 値（rtHit ? rt : sky）で切り替えてはいけない★
+        // 反射シーン色と空環境マップは輝度が大きく違うため、切り替えの境界が
+        // そのままピクセル単位のギザギザになる。かすめ角では再投影先が画面外へ
+        // 出るピクセルが増え、成功/失敗が細かく入り混じるので特に目立つ
+        // （水面すれすれの視点で出ていた黒いギザギザの正体。2026-08-09 修正）。
+        // 点サンプルではなくグロッシーサンプルを通す（上の関数のコメント参照）。
+        // かすめ角ほど半径が広がるので、まさに問題が出る領域で強く効く。
+        const float4 rtReflection =
+            SampleGlossyReflectionRGBA(screenUV, saturate(1.0f - cosTheta));
+        const float rtConfidence = saturate((rtReflection.a - 0.5f) * 2.0f);
 
         // 空環境マップによる反射フォールバック（空＋雲を含む TextureCube）。
         // 反射方向は波法線ではなくフラット面法線で計算し、波の斜面ごとの
@@ -339,8 +440,9 @@ PixelShaderOutput main(WaterPSInput input)
             skyReflectColor = gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, kEnvMip).rgb;
         }
 
-        // RT ヒット時は反射シーン色、ミス時は空環境マップ。
-        reflectColor = rtHit ? rtReflection.rgb : skyReflectColor;
+        // 信頼度で空環境マップへ連続ブレンドする（2 値切替をしない）。
+        // 画面端フェードも RT 側で色を黒く沈めるのをやめ、この信頼度に載せてある。
+        reflectColor = lerp(skyReflectColor, rtReflection.rgb, rtConfidence);
 
         // ---- 反射の輝度圧縮（白飛び端点の除去）----
         // 反射ソース（SceneColorSnapshot）は水面合成前のライティング済み HDR 色。
@@ -380,7 +482,7 @@ PixelShaderOutput main(WaterPSInput input)
         // 気泡の粒感: 泡内部の明度を高周波ノイズで揺らす（周期 ≈ 8cm）
         const float grain = lerp(
             kFoamGrainMin, 1.0f,
-            FoamValueNoise(input.worldPosition.xz * kFoamGrainScale));
+            FoamValueNoise(input.baseWorldXZ * kFoamGrainScale));
         const float3 foamColor = ComputeFoamColor(surfaceNormal) * grain;
         // 白濁（haze）: レースの穴の間の気泡層。泡色より暗く、粒状に変調済み
         finalWaterComposite = lerp(
@@ -413,11 +515,12 @@ PixelShaderOutput main(WaterPSInput input)
         debugContext.geomNormal = geomNormal;
         debugContext.viewDir = viewDir;
         debugContext.cosTheta = cosTheta;
-        debugContext.worldXZ = input.worldPosition.xz;
+        // ヤコビアン可視化は FFT テクスチャを引くので参照格子座標を渡す
+        debugContext.worldXZ = input.baseWorldXZ;
         debugContext.foamMask = foamMask;
 
-        output.color = float4(ResolveWaterDebugColor(debugContext), 1.0f);
-        return output;
+        waterOutput.color = float4(ResolveWaterDebugColor(debugContext), 1.0f);
+        return waterOutput;
     }
 
     output.color.rgb = finalWaterComposite;
@@ -432,6 +535,13 @@ PixelShaderOutput main(WaterPSInput input)
             ComputeSunGlintSpecular(geomNormal, viewDir, foamCoverage) * (1.0f - foamCoverage);
     }
 
+    // ---- 波峰のサブサーフェス透過（逆光で波の背が緑に光る）----
+    // 波を透過して視点へ出てくる光なので、水面で反射されずに「抜けてきた」分だけ、
+    // つまり (1 - フレネル反射率) を掛けて加算する。
+    output.color.rgb += ComputeWaterSubsurfaceScattering(
+        surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, foamCoverage)
+        * (1.0f - reflectanceWeight);
+
     // ---- 5. 空気遠近感（Aerial Perspective）----
     // 不透明パスへの合成（AerialPerspective.CS）は水面より前に終わっているため、
     // 水面自身の距離で同じ霞をここで適用する。屈折成分（背景）には背景自身の距離の
@@ -444,5 +554,6 @@ PixelShaderOutput main(WaterPSInput input)
 
     output.color.a = 1.0f;
 
-    return output;
+    waterOutput.color = output.color;
+    return waterOutput;
 }

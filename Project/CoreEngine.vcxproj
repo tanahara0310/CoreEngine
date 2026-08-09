@@ -806,6 +806,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterFoamDefaults.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.h" />

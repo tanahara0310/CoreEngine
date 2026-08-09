@@ -52,7 +52,10 @@ cbuffer WaterFrameConstants : register(b5)
     // 既定 1000 と食い違うと水柱厚さが数十%狂う）。
     float gCameraNearZ;
     float gCameraFarZ;
-    float2 gCameraClipPadding;
+    // 白波被覆率の風速追従係数（Monahan W ∝ U^3.41 の基準風速比）。
+    // C++ 側 WaterFrameConstants::foamWindCoverageScale と一致必須。
+    float gFoamWindCoverageScale;
+    float gCameraClipPadding;
 
     // ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たない）----
     int gFoamEnabled;      // 1 = 泡合成を行う

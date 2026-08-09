@@ -54,9 +54,19 @@ void TraceRay(
 // ペイロード・失敗理由コード（kRTReason*）・画面端フェード・波面評価は
 // RTWaterSurfaceCommon.hlsli（3 シェーダー共通）。
 
-// 成功アルファ。反射は水柱の光路長を持たないため単純に 1.0 を返す
-// （画面端フェードは Water.PS 側でなく、ここで色に織り込む）。
-static const float kRTSuccessAlpha = 1.0f;
+// ===== 成功アルファ ＝ 反射色の「信頼度」を連続値で運ぶ =====
+// ★以前は画面端フェードを色へ乗算していた（旧コメント: 「ここで色に織り込む」）★
+// これは「反射情報が無い」を「黒い反射」にすり替える実装で、
+// かすめ角ほど反射レイの再投影先が画面外へ出るため、水面すれすれの視点で
+// 黒いギザギザの帯として現れていた（2026-08-09 修正）。
+// フェードは色ではなく信頼度として渡し、Water.PS 側で空環境マップへ
+// 連続ブレンドさせるのが正しい（過去の「線＝2値切替」の教訓と同じ構図）。
+//   alpha ∈ (0.5, 1.0] … 成功。confidence = (alpha - 0.5) * 2
+//   alpha < 0.5        … 失敗（kRTReason* の理由コード）
+float MakeSuccessAlpha(float confidence)
+{
+    return 0.5f + 0.5f * saturate(confidence);
+}
 
 float4 MakeFallbackOutput(float reasonCode)
 {
@@ -183,7 +193,8 @@ void RTWaterReflectionRayGen()
     {
         // 再投影先が空（背景）＝反射先は空。SceneColor の空をそのまま使える。
         float3 skyColor = gSceneColor.Load(int3(sampleCoord, 0)).rgb;
-        gReflectionOutput[launchIndex] = float4(skyColor * edgeFade, kRTSuccessAlpha);
+        // 色は素のまま。画面端フェードは信頼度へ（黒く沈めない）
+        gReflectionOutput[launchIndex] = float4(skyColor, MakeSuccessAlpha(edgeFade));
         return;
     }
 
@@ -200,7 +211,8 @@ void RTWaterReflectionRayGen()
     }
 
     float3 reflectedColor = gSceneColor.Load(int3(sampleCoord, 0)).rgb;
-    gReflectionOutput[launchIndex] = float4(reflectedColor * edgeFade, kRTSuccessAlpha);
+    // 色は素のまま。画面端フェードは信頼度へ（黒く沈めない）
+    gReflectionOutput[launchIndex] = float4(reflectedColor, MakeSuccessAlpha(edgeFade));
 }
 
 [shader("miss")]

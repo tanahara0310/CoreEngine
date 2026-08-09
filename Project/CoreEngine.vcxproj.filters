@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
@@ -1762,6 +1762,9 @@
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterFoamDefaults.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h">

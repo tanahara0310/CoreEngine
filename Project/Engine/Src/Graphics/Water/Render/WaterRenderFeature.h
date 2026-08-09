@@ -138,5 +138,8 @@ namespace CoreEngine
         // 無条件で呼んではいけない。サニタイズ（風向正規化）で CVar 値と保持値が
         // 恒常的に食い違い、毎フレーム再構築になる事故も防ぐ）。~0u は初回強制適用。
         uint32_t lastFFTCVarRevisionSum_ = ~0u;
+
+        /// @brief 直近にログした白波被覆率の風速追従係数（変化時のみログするため）
+        float lastFoamWindCoverageScale_ = -1.0f;
     };
 }

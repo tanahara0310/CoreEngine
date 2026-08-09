@@ -367,13 +367,28 @@ namespace CoreEngine
         // 実効 σa/σs = ベース + 濁度ゲイン（合成は WaterCVars 側。永続化はベース値のみ）
         waterPlane_->SetWaterOpticalCoefficients(
             WaterCVars::EffectiveAbsorption(), WaterCVars::EffectiveScattering());
+        // 白波被覆率の風速追従係数。変化したときだけログして、
+        // 「風速を変えたのに泡が追従していない」を目視でなく数値で追えるようにする。
+        const float foamWindCoverageScale =
+            WaterPlaneObject::ComputeFoamWindCoverageScale(WaterCVars::FFTWindSpeed.Get());
+        if (std::abs(foamWindCoverageScale - lastFoamWindCoverageScale_) > 1.0e-4f) {
+            lastFoamWindCoverageScale_ = foamWindCoverageScale;
+            Logger::GetInstance().Infof(
+                LogCategory::Graphics, LogSubCategory::Pipeline,
+                "WaterRenderFeature: foam wind coverage scale = {:.5f} (windSpeed={:.2f}, Monahan U^3.41 / ref 18m/s)",
+                foamWindCoverageScale, WaterCVars::FFTWindSpeed.Get());
+        }
+
         waterPlane_->SetFoamParameters(
             WaterCVars::FoamEnabled.Get(),
             WaterCVars::FoamBias.Get(),
             WaterCVars::FoamGain.Get(),
             WaterCVars::FoamOpacity.Get(),
             WaterCVars::FoamCascadeWeights.Get(),
-            WaterCVars::FoamDecaySeconds.Get());
+            WaterCVars::FoamDecaySeconds.Get(),
+            // 白波の量は風速へ自動追従させる（FoamBias は触らない）。
+            // これが無いと、ある風速で合わせた Bias が別の風速で必ず破綻する。
+            foamWindCoverageScale);
 
         // ---- FFT Ocean 経路の有効/無効（変化時のみ。PSO 再構築を伴う）----
         const bool fftEnabled = WaterCVars::FFTEnabled.Get();
@@ -387,9 +402,16 @@ namespace CoreEngine
                 WaterCVars::FFTAmplitudeScale.GetRevision()
                 + WaterCVars::FFTWindDirection.GetRevision()
                 + WaterCVars::FFTWindSpeed.GetRevision()
+                + WaterCVars::FFTFetchKilometers.GetRevision()
                 + WaterCVars::FFTChoppiness.GetRevision()
                 + WaterCVars::FFTActiveComponentCount.GetRevision()
-                + WaterCVars::FFTGravity.GetRevision();
+                + WaterCVars::FFTGravity.GetRevision()
+                + WaterCVars::SwellEnabled.GetRevision()
+                + WaterCVars::SwellHeight.GetRevision()
+                + WaterCVars::SwellPeriod.GetRevision()
+                + WaterCVars::SwellDirection.GetRevision()
+                + WaterCVars::SwellRelativeWidth.GetRevision()
+                + WaterCVars::SwellSpread.GetRevision();
             if (fftRevision != lastFFTCVarRevisionSum_) {
                 lastFFTCVarRevisionSum_ = fftRevision;
                 FFTOceanManager::Settings settings = fftOcean->GetSettings();
@@ -397,10 +419,18 @@ namespace CoreEngine
                 settings.windDirection[0] = WaterCVars::FFTWindDirection.Get().x;
                 settings.windDirection[1] = WaterCVars::FFTWindDirection.Get().y;
                 settings.windSpeed = WaterCVars::FFTWindSpeed.Get();
+                settings.fetchMeters = WaterCVars::FFTFetchKilometers.Get() * 1000.0f;
                 settings.choppiness = WaterCVars::FFTChoppiness.Get();
                 settings.activeComponentCount =
                     static_cast<uint32_t>((std::max)(WaterCVars::FFTActiveComponentCount.Get(), 1));
                 settings.gravity = WaterCVars::FFTGravity.Get();
+                settings.swellEnabled = WaterCVars::SwellEnabled.Get();
+                settings.swellHeightMeters = WaterCVars::SwellHeight.Get();
+                settings.swellPeriodSeconds = WaterCVars::SwellPeriod.Get();
+                settings.swellDirection[0] = WaterCVars::SwellDirection.Get().x;
+                settings.swellDirection[1] = WaterCVars::SwellDirection.Get().y;
+                settings.swellRelativeWidth = WaterCVars::SwellRelativeWidth.Get();
+                settings.swellSpreadExponent = WaterCVars::SwellSpread.Get();
                 // 変更検知・サニタイズ・WaitForPreviousFrame・スペクトル再構築は SetSettings が担う
                 fftOcean->SetSettings(settings);
             }
