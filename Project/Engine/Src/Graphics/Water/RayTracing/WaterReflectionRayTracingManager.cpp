@@ -18,7 +18,10 @@ namespace CoreEngine
             float waterHeight;
             float surfaceBias;
             float maxRayDistance;
-            float unused0;
+            // 旧 unused0 の転用。1 = 空キューブマップが有効。
+            // RT パス側が「トレースしたレイの向き」で空を解決するのに使う
+            // （Water.PS が平面法線で空を引いて二重像になる問題の対策）。
+            float skyEnvReflectionEnabled;
             float unused1;
             float screenWidth;
             float screenHeight;
@@ -50,7 +53,10 @@ namespace CoreEngine
         desc.hitGroupName = L"RTWaterReflectionHitGroup";
         desc.closestHitName = L"RTWaterReflectionClosestHit";
         desc.outputUavName = "gReflectionOutput";
-        desc.srvTableNames = { "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal" };
+        // gSkyEnvironmentMap は t5。空をこのパス内で解決するために追加した
+        // （Water.PS 側で平面法線の空と混ぜると二重像になるため）。
+        desc.srvTableNames = {
+            "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal", "gSkyEnvironmentMap" };
         desc.constantsName = "WaterReflectionConstants";
         desc.constantsBytes = sizeof(WaterReflectionConstants);
         return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);
@@ -84,6 +90,7 @@ namespace CoreEngine
         const Vector3& cameraPosition,
         const WaterSurfaceData& surfaceData,
         const FFTOceanInput& fftOceanInput,
+        D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSRV,
         UINT width,
         UINT height,
         ViewID viewId)
@@ -109,7 +116,10 @@ namespace CoreEngine
         constants.waterHeight = dispatchSurfaceData.waterHeight;
         constants.surfaceBias = settings_.surfaceBias;
         constants.maxRayDistance = settings_.maxRayDistance;
-        constants.unused0 = 0.0f;
+        // 空キューブが渡っていないフレームはシェーダー側が理由コードへ落とし、
+        // Water.PS の保険フォールバック（波法線で引く空 / PBR 出力）が動く。
+        const bool hasSkyEnvironment = (skyEnvironmentSRV.ptr != 0);
+        constants.skyEnvReflectionEnabled = hasSkyEnvironment ? 1.0f : 0.0f;
         constants.unused1 = 0.0f;
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
@@ -121,6 +131,10 @@ namespace CoreEngine
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : sceneColorSRV;
         const D3D12_GPU_DESCRIPTOR_HANDLE fftNormalSRV =
             (fftOceanInput.normalSRV.ptr != 0) ? fftOceanInput.normalSRV : sceneColorSRV;
+        // 未取得のときはダミーを差す（FFT と同じ規約）。実際に読むかは
+        // skyEnvReflectionEnabled でシェーダー側が判断する。
+        const D3D12_GPU_DESCRIPTOR_HANDLE skyEnvSRV =
+            hasSkyEnvironment ? skyEnvironmentSRV : sceneColorSRV;
 
         UploadSurfaceDataForDispatch(dispatchSurfaceData, fftOceanInput);
 
@@ -132,6 +146,7 @@ namespace CoreEngine
                 { "gSceneColor", sceneColorSRV },
                 { "gFFTOceanDisplacement", fftDisplacementSRV },
                 { "gFFTOceanNormal", fftNormalSRV },
+                { "gSkyEnvironmentMap", skyEnvSRV },
             },
             &constants,
             width,

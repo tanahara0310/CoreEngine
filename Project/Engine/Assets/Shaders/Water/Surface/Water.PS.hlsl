@@ -428,21 +428,28 @@ WaterPixelOutput main(WaterPSInput input)
             SampleGlossyReflectionRGBA(screenUV, saturate(1.0f - cosTheta));
         const float rtConfidence = saturate((rtReflection.a - 0.5f) * 2.0f);
 
-        // 空環境マップによる反射フォールバック（空＋雲を含む TextureCube）。
-        // 反射方向は波法線ではなくフラット面法線で計算し、波の斜面ごとの
-        // まだら混入を避ける（鏡像時代の知見を踏襲）。
-        float3 skyReflectColor = reflectColor;
+        // ★空は RT パス側が「実際にトレースしたレイの向き」で解決済み★
+        // ここで受け取るのは 1 枚に解決された反射色なので、原則そのまま使う。
+        //
+        // 以前はここで空キューブを **完全な平面法線 float3(0,1,0)** で引き、
+        // RT 反射と lerp していた。RT 側は波法線に沿って動く像、空側は波に
+        // 一切追従しない像なので、成否が細かく入り混じるかすめ角では
+        // 「幾何的に食い違う 2 枚が重なる」＝水面際で反射が二重に見える
+        // 状態になっていた（2026-08-09 実測で確定・修正）。
+        //
+        // 以下のフォールバックは「RT パスへ空キューブが渡っていないフレーム」
+        // だけの保険。そのときも **波法線** で引き、RT と面を食い違わせない。
+        float3 fallbackReflectColor = reflectColor;
         if (gSkyEnvReflectionEnabled != 0)
         {
-            float3 envReflectDir = reflect(-viewDir, float3(0.0f, 1.0f, 0.0f));
             const float kEnvMipCount = 5.0f;
             const float kEnvMip = kWaterReflectionMicroRoughness * (kEnvMipCount - 1.0f);
-            skyReflectColor = gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, kEnvMip).rgb;
+            float3 envReflectDir = reflect(-viewDir, geomNormal);
+            fallbackReflectColor =
+                gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, kEnvMip).rgb;
         }
 
-        // 信頼度で空環境マップへ連続ブレンドする（2 値切替をしない）。
-        // 画面端フェードも RT 側で色を黒く沈めるのをやめ、この信頼度に載せてある。
-        reflectColor = lerp(skyReflectColor, rtReflection.rgb, rtConfidence);
+        reflectColor = lerp(fallbackReflectColor, rtReflection.rgb, rtConfidence);
 
         // ---- 反射の輝度圧縮（白飛び端点の除去）----
         // 反射ソース（SceneColorSnapshot）は水面合成前のライティング済み HDR 色。
