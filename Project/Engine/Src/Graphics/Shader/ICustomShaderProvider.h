@@ -34,6 +34,15 @@ namespace CoreEngine
         ///       オブジェクトは false（DepthWriteMask::ZERO 相当）をオーバーライドする。
         virtual bool GetDepthWriteEnable() const { return true; }
 
+        /// @brief フォワード描画時に SV_TARGET1 へモーションベクターを書くか返す
+        /// @details true を返すと PSO が MRT 2 枚（SceneColor + GBuffer MotionVector）で
+        ///          構築される。描画パス側も同じ 2 枚を OMSetRenderTargets すること
+        ///          （枚数が食い違うと D3D12 のバリデーションエラーになる）。
+        ///          GBuffer より後のフォワードで描かれる不透明相当のサーフェス
+        ///          （水面など）は、書かないと TAA が背後のジオメトリのモーションベクターで
+        ///          履歴を再投影してしまい、カメラ移動中だけ絵がぼける。
+        virtual bool WritesMotionVector() const { return false; }
+
         /// @brief カスタムルートパラメータをバインドする（エンジン既定バインド完了後に呼ばれる）
         /// @param cmdList 現在のコマンドリスト
         /// @param pipeline 構築済みカスタムパイプライン（GetRootParamIndex() でスロット番号を取得できる）

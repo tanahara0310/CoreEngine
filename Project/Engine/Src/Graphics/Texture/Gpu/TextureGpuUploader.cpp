@@ -2,6 +2,7 @@
 #include "TextureGpuUploader.h"
 
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/Core/UploadContext.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
@@ -21,7 +22,8 @@ namespace CoreEngine
         const DirectX::ScratchImage& mipImages,
         const std::string& resolvedPath)
     {
-        // コマンドリストとディスクリプタ確保はスレッドセーフでないため直列化する。
+        // ディスクリプタ確保・リソース生成はスレッドセーフでないため直列化する。
+        // （コマンドリストへの記録は UploadContext 側のロックが守る）
         std::lock_guard<std::mutex> lock(gpuUploadMutex_);
 
         // 生成済みミップチェーンからGPUリソース記述子を構築する。
@@ -47,14 +49,30 @@ namespace CoreEngine
         DirectX::PrepareUpload(dxCommon->GetDevice(), mipImages.GetImages(), mipImages.GetImageCount(), texMetadata, subResources);
 
         uint64_t intermediateSize = GetRequiredIntermediateSize(result.texture.Get(), 0, UINT(subResources.size()));
-        result.intermediate = ResourceFactory::CreateBufferResource(dxCommon->GetDevice(), intermediateSize);
+        Microsoft::WRL::ComPtr<ID3D12Resource> intermediate =
+            ResourceFactory::CreateBufferResource(dxCommon->GetDevice(), intermediateSize);
 
-        UpdateSubresources(dxCommon->GetCommandList(), result.texture.Get(), result.intermediate.Get(), 0, 0, UINT(subResources.size()), subResources.data());
+        // フレームの描画用コマンドリストではなく専用コンテキストへ積む。
+        // この関数はワーカースレッドから呼ばれるため、描画用リストへ書くと
+        // メインスレッドの記録と同時アクセスになる（D3D12 のコマンドリストは非スレッドセーフ）。
+        {
+            UploadContext::ScopedRecording recording = dxCommon->GetUploadContext()->BeginRecording();
+            if (!recording.IsValid()) {
+                throw std::runtime_error("TextureGpuUploader: failed to begin an upload recording");
+            }
 
-        D3D12_RESOURCE_STATES texState = D3D12_RESOURCE_STATE_COPY_DEST;
-        ResourceBarrierHelper::Transition(
-            dxCommon->GetCommandList(), result.texture.Get(),
-            texState, D3D12_RESOURCE_STATE_GENERIC_READ);
+            UpdateSubresources(recording.List(), result.texture.Get(), intermediate.Get(),
+                0, 0, UINT(subResources.size()), subResources.data());
+
+            D3D12_RESOURCE_STATES texState = D3D12_RESOURCE_STATE_COPY_DEST;
+            ResourceBarrierHelper::Transition(
+                recording.List(), result.texture.Get(),
+                texState, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+            // 中間バッファは GPU コピー完了まで生きていればよい。
+            // 呼び出し側が永久に握る必要はなく、フェンス通過後に自動解放される。
+            recording.KeepAlive(std::move(intermediate));
+        } // ここで Close → ExecuteCommandLists → Signal
 
         // 作成したテクスチャに対してビューを構築し、描画で利用できる状態にする。
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};

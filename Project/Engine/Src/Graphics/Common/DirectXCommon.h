@@ -16,6 +16,7 @@
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/Core/SwapChainManager.h"
 #include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/Common/Core/UploadContext.h"
 #include "Graphics/Common/IResizable.h"
 
 using namespace Microsoft::WRL;
@@ -63,6 +64,13 @@ public:
     ID3D12GraphicsCommandList* GetCommandList() { return commandManager_->GetCommandList(); }
     CommandManager* GetCommandManager() { return commandManager_.get(); } // CommandManager自体へのアクセス
 
+    /// @brief フレーム描画とは独立したアップロード／オフライン生成用コンテキストを取得
+    /// @details テクスチャ・VB/IB のアップロードや IBL 生成は必ずこちらへ積むこと。
+    ///          GetCommandList()（＝フレームの描画用リスト）へ積むと、ワーカースレッドからの
+    ///          記録がメインスレッドの描画記録と競合し、フレーム外の Close/Execute が
+    ///          記録途中のフレームを巻き添えで submit する。
+    UploadContext* GetUploadContext() { return uploadContext_.get(); }
+
     // スワップチェーン関連のアクセッサ
     IDXGISwapChain4* GetSwapChain() { return swapChainManager_->GetSwapChain(); }
     ID3D12Resource* GetSwapChainBackBuffer(UINT index) { return swapChainManager_->GetSwapChainBackBuffer(index); }
@@ -87,8 +95,9 @@ public:
     // DXR対応状況のアクセッサ
     bool IsDXRSupported() const { return deviceManager_->IsDXRSupported(); }
     D3D12_RAYTRACING_TIER GetDXRTier() const { return deviceManager_->GetDXRTier(); }
-    // フェンスを待機
-    void WaitForPreviousFrame() { commandManager_->WaitForPreviousFrame(); }
+    /// @brief 投入済みの全 GPU 作業の完了を待つ（完全同期）
+    /// @details リソースの作り直し・破棄の直前にだけ使うこと。
+    void WaitForGpuIdle() { commandManager_->WaitForGpuIdle(); }
 
     int32_t GetClientWidth() const { return winApp_ ? winApp_->GetClientWidth() : WinApp::kClientWidth; }
     int32_t GetClientHeight() const { return winApp_ ? winApp_->GetClientHeight() : WinApp::kClientHeight; }
@@ -105,6 +114,7 @@ private:
     std::unique_ptr<DescriptorManager> descriptorManager_ = std::make_unique<DescriptorManager>();
     std::unique_ptr<SwapChainManager> swapChainManager_ = std::make_unique<SwapChainManager>();
     std::unique_ptr<DepthStencilManager> depthStencilManager_ = std::make_unique<DepthStencilManager>();
+    std::unique_ptr<UploadContext> uploadContext_ = std::make_unique<UploadContext>();
 
     std::vector<IResizable*> resizables_;
 };

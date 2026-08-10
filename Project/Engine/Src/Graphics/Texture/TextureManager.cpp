@@ -175,7 +175,6 @@ namespace CoreEngine
 
             // 結果をLoadedTexture形式へ詰め替えて、既存インターフェースを維持する。
             result.texture = executionResult.uploadResult.texture;
-            result.intermediate = executionResult.uploadResult.intermediate;
             result.cpuHandle = executionResult.uploadResult.cpuHandle;
             result.gpuHandle = executionResult.uploadResult.gpuHandle;
 

@@ -121,10 +121,19 @@ namespace CoreEngine
         constexpr uint32_t kCascadeRandomSeed[FFTOceanManager::kCascadeCount] = {
             20260626u, 20260626u + 7919u, 20260626u + 2u * 7919u };
 
-        // 各カスケードへ配分する波高RMSの比率。海洋の波高エネルギーは長波長側に
-        // 集中するため、大パッチが全体波高を支配し、小パッチはさざ波の傾き
-        // （きらめき・法線ディテール）として効く程度に抑える。
-        constexpr float kCascadeRmsShare[FFTOceanManager::kCascadeCount] = { 1.0f, 0.35f, 0.12f };
+        // ★旧 kCascadeRmsShare {1.0, 0.35, 0.12} は撤去した（2026-08-08）★
+        // 帯域制限の導入前は 3 カスケードすべてが同じ完全な Phillips スペクトルを
+        // 生成していたため、カスケード間の相対エネルギーに物理的な根拠が無く、
+        // この 3 つの手調整定数が実質的に「合成スペクトルの形」を決めていた
+        // （生RMS 6.66m を 0.116 倍に割り戻す、といった辻褄合わせが必要だった）。
+        // 帯域制限後は各カスケードが担当する波数帯だけを持つので、相対エネルギーは
+        // Phillips スペクトル自身が決める。較正は全カスケード共通の 1 スケールだけでよい。
+
+        // 帯域境界（波長 m → 波数 rad/m）。数値の情報源は FFTOceanCascadeValues.hlsli。
+        constexpr float kTwoPiValue = 6.28318530718f;
+        constexpr float kBandBoundaryLowK = kTwoPiValue / FFT_OCEAN_BAND_LAMBDA_01;
+        constexpr float kBandBoundaryHighK = kTwoPiValue / FFT_OCEAN_BAND_LAMBDA_12;
+        constexpr float kBandLogHalfWidth = FFT_OCEAN_BAND_LOG_HALFWIDTH;
 
         // 波高計算に使う実効風速の範囲 [m/s]。Pierson-Moskowitz の Hs ≈ 0.21 v²/g は
         // v² で成長するため、プリセットの強風（52m/s 等）をそのまま入れると
@@ -200,7 +209,7 @@ namespace CoreEngine
 
         // GPU参照中のリソース更新を避けるため、フレーム完了を待機する。
         if (dxCommon_) {
-            dxCommon_->WaitForPreviousFrame();
+            dxCommon_->WaitForGpuIdle();
         }
 
         settings_ = sanitized;
@@ -674,6 +683,7 @@ namespace CoreEngine
         builderSettings.windDirection[0] = settings.windDirection[0];
         builderSettings.windDirection[1] = settings.windDirection[1];
         builderSettings.windSpeed = settings.windSpeed;
+        builderSettings.fetchMeters = settings.fetchMeters;
         builderSettings.choppiness = settings.choppiness;
         builderSettings.activeComponentCount = settings.activeComponentCount;
         builderSettings.gravity = settings.gravity;
@@ -685,6 +695,23 @@ namespace CoreEngine
         settings.windDirection[0] = builderSettings.windDirection[0];
         settings.windDirection[1] = builderSettings.windDirection[1];
         settings.windSpeed = builderSettings.windSpeed;
+        settings.fetchMeters = builderSettings.fetchMeters;
+
+        // うねりのサニタイズ（ビルダーは方向が正規化済みである前提で走る）
+        settings.swellHeightMeters = (std::clamp)(settings.swellHeightMeters, 0.0f, 20.0f);
+        settings.swellPeriodSeconds = (std::clamp)(settings.swellPeriodSeconds, 2.0f, 30.0f);
+        settings.swellRelativeWidth = (std::clamp)(settings.swellRelativeWidth, 0.01f, 0.5f);
+        settings.swellSpreadExponent = (std::clamp)(settings.swellSpreadExponent, 1.0f, 60.0f);
+        const float swellDirLength = std::sqrt(
+            settings.swellDirection[0] * settings.swellDirection[0]
+            + settings.swellDirection[1] * settings.swellDirection[1]);
+        if (swellDirLength <= 1.0e-4f) {
+            settings.swellDirection[0] = 1.0f;
+            settings.swellDirection[1] = 0.0f;
+        } else {
+            settings.swellDirection[0] /= swellDirLength;
+            settings.swellDirection[1] /= swellDirLength;
+        }
         settings.choppiness = builderSettings.choppiness;
         settings.activeComponentCount = builderSettings.activeComponentCount;
         settings.gravity = builderSettings.gravity;
@@ -692,59 +719,153 @@ namespace CoreEngine
 
     void FFTOceanManager::BuildSpectrum()
     {
-        // カスケードごとに固有のパッチ長で Phillips スペクトルを生成する。
+        // カスケードごとに固有のパッチ長で、帯域制限した JONSWAP スペクトルを生成する。
+        // 海面は「風波（wind sea）＋ うねり（swell）」の重ね合わせで作る。
         const uint32_t resolution = settings_.resolution;
         const uint32_t sampleCount = resolution * resolution;
 
-        // 波高の物理較正: Pierson-Moskowitz の有義波高 Hs ≈ 0.21 v²/g から
-        // 目標RMS = Hs/4 を求め、カスケードごとの配分比で分ける。
-        // これにより波高は「風速だけ」で決まり、パッチ長には依存しない
-        // （素の Phillips 離散和は波高が patchLength × v² で発散する）。
+        // 風波の波高較正: JONSWAP のフェッチ制限成長則から有義波高 Hs を求め、
+        // 目標RMS = Hs/4 とする。カスケード間の配分はスペクトル自身が決めるので
+        // 手調整の配分比は要らない（帯域制限 + Δk² 正規化が前提）。
         const float heightWindSpeed = (std::clamp)(settings_.windSpeed, kMinHeightWindSpeed, kMaxHeightWindSpeed);
-        const float significantWaveHeight = 0.21f * heightWindSpeed * heightWindSpeed / (std::max)(settings_.gravity, 0.1f);
-        const float baseTargetRms = significantWaveHeight * 0.25f;
+        const float gravityValue = (std::max)(settings_.gravity, 0.1f);
+        // JONSWAP のフェッチ制限成長則（無次元量）:
+        //   F* = gF/U²,  Hs* = gHs/U² = 0.0016·√F*
+        // 完全発達（Pierson-Moskowitz）の Hs* = 0.21 を上限にクランプする。
+        // ピーク周波数側のクランプ（ComputePeakAngularFrequency）と同じフェッチで
+        // 両者が同時に飽和するので、波高とピーク波長の整合が保たれる。
+        const float dimensionlessFetch =
+            gravityValue * settings_.fetchMeters / (heightWindSpeed * heightWindSpeed);
+        const float dimensionlessWaveHeight =
+            (std::min)(0.0016f * std::sqrt(dimensionlessFetch), 0.21f);
+        const float significantWaveHeight =
+            dimensionlessWaveHeight * heightWindSpeed * heightWindSpeed / gravityValue;
+        const float windSeaTargetRms = significantWaveHeight * 0.25f;
 
-        for (uint32_t c = 0; c < kCascadeCount; ++c) {
-            if (!MappedSpectrumSamples(c)) {
-                continue;
-            }
+        // うねりの目標 RMS（Hs/4）とピーク角周波数（周期から）。
+        // 風波と違い、うねりは「遠方で作られて到達したもの」なので、その場の風速では
+        // なくユーザー指定の波高・周期・方向で与える。
+        const bool swellActive =
+            settings_.swellEnabled && settings_.swellHeightMeters > 1.0e-3f
+            && settings_.swellPeriodSeconds > 0.1f;
+        const float swellTargetRms = swellActive ? settings_.swellHeightMeters * 0.25f : 0.0f;
+        const float swellPeakAngularFrequency =
+            swellActive ? (kTwoPiValue / settings_.swellPeriodSeconds) : 0.0f;
+        const float swellWaveLength = swellActive
+            ? kTwoPiValue * gravityValue / (swellPeakAngularFrequency * swellPeakAngularFrequency)
+            : 0.0f;
 
-            FFTOceanSpectrumBuilder::Settings builderSettings{};
-            builderSettings.resolution = settings_.resolution;
-            builderSettings.patchLength = kCascadePatchLength[c];
-            builderSettings.amplitudeScale = settings_.amplitudeScale;
-            // サンプリング格子がカスケードごとに回転しているため、スペクトルの風向は
-            // テクスチャ座標系（＝回転後の格子系）へ順回転して渡す。シェーダ側で
-            // 変位・法線を逆回転してワールドへ戻すので、波の進行方向は全カスケードで一致する。
-            builderSettings.windDirection[0] =
-                kCascadeRotCos[c] * settings_.windDirection[0] - kCascadeRotSin[c] * settings_.windDirection[1];
-            builderSettings.windDirection[1] =
-                kCascadeRotSin[c] * settings_.windDirection[0] + kCascadeRotCos[c] * settings_.windDirection[1];
-            builderSettings.windSpeed = settings_.windSpeed;
-            builderSettings.choppiness = settings_.choppiness;
-            builderSettings.activeComponentCount = settings_.activeComponentCount;
-            builderSettings.gravity = settings_.gravity;
-            builderSettings.randomSeed = kCascadeRandomSeed[c];
-            builderSettings.targetRmsHeight = baseTargetRms * kCascadeRmsShare[c];
+        // カスケード c 用のビルダー設定を組む（成分重みだけを差し替えて 3 回使う）
+        const auto makeBuilderSettings =
+            [&](uint32_t c, float windWeight, float swellWeight) {
+                FFTOceanSpectrumBuilder::Settings s{};
+                s.resolution = settings_.resolution;
+                s.patchLength = kCascadePatchLength[c];
+                s.amplitudeScale = settings_.amplitudeScale;
+                // サンプリング格子がカスケードごとに回転しているため、スペクトルの向きは
+                // テクスチャ座標系（＝回転後の格子系）へ順回転して渡す。シェーダ側で
+                // 変位・法線を逆回転してワールドへ戻すので、波の進行方向はワールドで一致する。
+                // ★うねりの向きも必ず同じ回転を掛けること★（片方だけだと風波とうねりの
+                //   相対角度がカスケードごとに変わり、交差角がバラバラになる）
+                s.windDirection[0] =
+                    kCascadeRotCos[c] * settings_.windDirection[0] - kCascadeRotSin[c] * settings_.windDirection[1];
+                s.windDirection[1] =
+                    kCascadeRotSin[c] * settings_.windDirection[0] + kCascadeRotCos[c] * settings_.windDirection[1];
+                s.swellDirection[0] =
+                    kCascadeRotCos[c] * settings_.swellDirection[0] - kCascadeRotSin[c] * settings_.swellDirection[1];
+                s.swellDirection[1] =
+                    kCascadeRotSin[c] * settings_.swellDirection[0] + kCascadeRotCos[c] * settings_.swellDirection[1];
+                s.windSpeed = settings_.windSpeed;
+                s.fetchMeters = settings_.fetchMeters;
+                s.choppiness = settings_.choppiness;
+                s.activeComponentCount = settings_.activeComponentCount;
+                s.gravity = settings_.gravity;
+                s.randomSeed = kCascadeRandomSeed[c];
+                // 帯域制限（相補窓）。境界は全カスケード共通で、担当帯は index で決まる。
+                s.cascadeIndex = c;
+                s.bandBoundaryLowK = kBandBoundaryLowK;
+                s.bandBoundaryHighK = kBandBoundaryHighK;
+                s.bandLogHalfWidth = kBandLogHalfWidth;
+                s.swellPeakAngularFrequency = swellPeakAngularFrequency;
+                s.swellRelativeWidth = settings_.swellRelativeWidth;
+                s.swellSpreadExponent = settings_.swellSpreadExponent;
+                s.windSeaVarianceWeight = windWeight;
+                s.swellVarianceWeight = swellWeight;
+                // 較正は呼び出し側で行うのでビルダー内の正規化は使わない
+                s.targetRmsHeight = 0.0f;
+                return s;
+            };
 
-            FFTOceanSpectrumBuilder::BuildStats stats = FFTOceanSpectrumBuilder::BuildSpectrum(
-                builderSettings,
-                MappedSpectrumSamples(c),
-                static_cast<size_t>(sampleCount));
+        // 全カスケードを一度生成して総RMS（二乗和平方根）を返す。
+        // カスケードは互いに素な波数帯 × 独立位相なので分散が加算される。
+        const auto buildAndMeasure =
+            [&](float windWeight, float swellWeight, float* outPerCascadeRms) {
+                double sumOfSquares = 0.0;
+                for (uint32_t c = 0; c < kCascadeCount; ++c) {
+                    if (!MappedSpectrumSamples(c)) {
+                        continue;
+                    }
+                    const FFTOceanSpectrumBuilder::Settings s =
+                        makeBuilderSettings(c, windWeight, swellWeight);
+                    const FFTOceanSpectrumBuilder::BuildStats stats =
+                        FFTOceanSpectrumBuilder::BuildSpectrum(
+                            s, MappedSpectrumSamples(c), static_cast<size_t>(sampleCount));
+                    if (outPerCascadeRms) {
+                        outPerCascadeRms[c] = stats.measuredRmsHeight;
+                    }
+                    sumOfSquares +=
+                        static_cast<double>(stats.measuredRmsHeight) * stats.measuredRmsHeight;
+                }
+                return static_cast<float>(std::sqrt(sumOfSquares));
+            };
 
-            Logger::GetInstance().Infof(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "FFTOceanManager: BuildSpectrum cascade={} patchLength={:.1f} resolution={} activeSamples={} targetRms={:.3f} rawRms={:.3f} heightScale={:.6f} maxAmp={:.4f}",
-                c,
-                kCascadePatchLength[c],
-                resolution,
-                stats.activeSpectrumSampleCount,
-                builderSettings.targetRmsHeight,
-                stats.measuredRmsHeight,
-                stats.appliedHeightScale,
-                stats.maxSpectralAmplitude);
-        }
+        // ---- パス1: 風波のみの生RMS ----
+        const float rawWindSeaRms = buildAndMeasure(1.0f, 0.0f, nullptr);
+        // ---- パス2: うねりのみの生RMS ----
+        const float rawSwellRms = swellActive ? buildAndMeasure(0.0f, 1.0f, nullptr) : 0.0f;
+
+        // 成分ごとの分散重み。密度に掛かるので (目標RMS / 生RMS)² になる。
+        // これで合成後の総RMSが sqrt(windTarget² + swellTarget²) に厳密に一致する。
+        const float windSeaWeight = (rawWindSeaRms > 1.0e-9f)
+            ? (windSeaTargetRms / rawWindSeaRms) * (windSeaTargetRms / rawWindSeaRms) : 0.0f;
+        const float swellWeight = (rawSwellRms > 1.0e-9f)
+            ? (swellTargetRms / rawSwellRms) * (swellTargetRms / rawSwellRms) : 0.0f;
+
+        // ---- パス3: 較正済みの重みで本生成 ----
+        float finalRmsHeight[kCascadeCount] = {};
+        const float finalTotalRms = buildAndMeasure(windSeaWeight, swellWeight, finalRmsHeight);
+
+        // 診断用のピーク波長 λp = 2πg/ωp²。ビルダーと同じ式でピーク角周波数を求める
+        // （ここが帯 [60,521]m の中に入っていないと、支配波がカスケード0 から外れる）。
+        const float peakAngularFrequency = (std::max)(
+            22.0f * std::pow(
+                gravityValue * gravityValue / (heightWindSpeed * settings_.fetchMeters), 1.0f / 3.0f),
+            0.877f * gravityValue / heightWindSpeed);
+        const float peakWaveLength =
+            kTwoPiValue * gravityValue / (peakAngularFrequency * peakAngularFrequency);
+
+        Logger::GetInstance().Infof(
+            LogCategory::Graphics,
+            LogSubCategory::Pipeline,
+            "FFTOceanManager: spectrum calibrated (JONSWAP). windSpeed={:.2f} fetch={:.0f}km windSeaLambda={:.1f}m windSeaHs={:.2f} | "
+            "swell={} swellHs={:.2f} swellPeriod={:.1f}s swellLambda={:.1f}m | totalRms={:.3f} (target {:.3f}) "
+            "cascadeRms=[{:.3f}, {:.3f}, {:.3f}] share=[{:.1f}%, {:.1f}%, {:.1f}%]",
+            heightWindSpeed,
+            settings_.fetchMeters / 1000.0f,
+            peakWaveLength,
+            significantWaveHeight,
+            swellActive ? "on" : "off",
+            settings_.swellHeightMeters,
+            settings_.swellPeriodSeconds,
+            swellWaveLength,
+            finalTotalRms,
+            std::sqrt(windSeaTargetRms * windSeaTargetRms + swellTargetRms * swellTargetRms),
+            finalRmsHeight[0],
+            finalRmsHeight[1],
+            finalRmsHeight[2],
+            100.0f * finalRmsHeight[0] / (std::max)(finalTotalRms, 1.0e-6f),
+            100.0f * finalRmsHeight[1] / (std::max)(finalTotalRms, 1.0e-6f),
+            100.0f * finalRmsHeight[2] / (std::max)(finalTotalRms, 1.0e-6f));
 
         spectrumBufferDirty_ = true;
     }

@@ -30,7 +30,7 @@ cbuffer TAAParams : register(b0)
     float gBlendAlpha;     // 現フレームの寄与率（0.1 = 履歴 90%）
     float gClampScale;     // 近傍 AABB の拡張率（大きいほどゴースト寄り・小さいほどちらつき寄り）
     float gDisableHistory; // 1.0 で履歴を完全無効化（初回フレーム・リサイズ直後）
-    float gPad0_;
+    float gBlendAlphaMax;  // 履歴が現フレームと食い違う画素で使う寄与率の上限
 };
 
 struct PixelShaderInput
@@ -147,14 +147,29 @@ PixelShaderOutput main(PixelShaderInput input)
     const float3 historyRaw = gHistoryColor.SampleLevel(gSampler, historyUV, 0.0f).rgb;
 
     // ===== 履歴のクリップ =====
-    const float3 historyClipped = YCoCgToRGB(
-        ClipToAABB(neighborMin, neighborMax, RGBToYCoCg(historyRaw)));
+    const float3 currentYCoCg = RGBToYCoCg(current);
+    const float3 historyClippedYCoCg = ClipToAABB(neighborMin, neighborMax, RGBToYCoCg(historyRaw));
+    const float3 historyClipped = YCoCgToRGB(historyClippedYCoCg);
+
+    // ===== 時間的な食い違いに応じて寄与率を上げる =====
+    // ★水面がぼける問題の対策★
+    // AABB クリップは「箱の外」の履歴しか弾けない。水面のように毎フレーム表面自体が
+    // 変わるサーフェスでは、履歴（前フレームの泡）が現在の近傍の箱（水〜泡のレンジ）に
+    // すっぽり収まってしまうため一切弾かれず、そのまま 90% の重みで混ざって高周波が
+    // 溶ける（実測: TAA 無効 16.3 に対し有効 8.3 まで低下。カメラ静止でも同じ）。
+    // ここでは「履歴と現フレームの輝度差」を近傍のコントラストで正規化し、
+    // 食い違うほど現フレーム寄りにする。静止した不透明面は差が出ないので
+    // 従来どおり gBlendAlpha のまま収束し、AA 品質は落ちない。
+    const float neighborLumaExtent = max(neighborMax.x - neighborMin.x, 1.0e-4f);
+    const float temporalDisagreement =
+        saturate(abs(currentYCoCg.x - historyClippedYCoCg.x) / neighborLumaExtent);
+    const float blendAlpha = lerp(gBlendAlpha, gBlendAlphaMax, temporalDisagreement);
 
     // ===== 蓄積 =====
     // 明るさで重み付けした加重平均にすることで、
     // 1 フレームだけ現れた極端に明るい点が履歴に残り続けるのを防ぐ。
-    const float weightCurrent = gBlendAlpha * TonemapWeight(current);
-    const float weightHistory = (1.0f - gBlendAlpha) * TonemapWeight(historyClipped);
+    const float weightCurrent = blendAlpha * TonemapWeight(current);
+    const float weightHistory = (1.0f - blendAlpha) * TonemapWeight(historyClipped);
     const float weightSum = max(weightCurrent + weightHistory, 1e-5f);
 
     const float3 resolved = (current * weightCurrent + historyClipped * weightHistory) / weightSum;

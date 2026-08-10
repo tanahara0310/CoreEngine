@@ -67,44 +67,8 @@ float3 VisualizeRTRefractionReason(float reasonCode)
     return float3(0.15f, 0.15f, 0.15f);
 }
 
-static const float kWaterReflectionBlurTexels = 3.0f; // 反射のにじみ半径（テクセル基準。5→3: 反射のシャープさを回復）
-
-/// @brief 反射テクスチャをラフネス相当でにじませてサンプリングする（グロッシー反射）
-/// @param screenUV スクリーンUV
-/// @param grazing  かすめ具合 = 1 - cosθ（大きいほど反射が伸び・ぼける）
-/// @note 呼ぶのは可視化モード 19 だけ。本体の合成は DXR 反射
-///       （RT レイが波法線で反射方向を計算済み）を screenUV でそのまま引くため、
-///       にじませ処理を通していない。
-float3 SampleGlossyReflection(float2 screenUV, float grazing)
-{
-    uint reflWidth = 1;
-    uint reflHeight = 1;
-    gReflectionTexture.GetDimensions(reflWidth, reflHeight);
-    const float2 texel = 1.0f / float2(reflWidth, reflHeight);
-
-    // 反射像は面が寝るほど鉛直方向へ伸びるため縦を強めに、かすめ角ほど広くぼかす。
-    const float2 radius = kWaterReflectionBlurTexels * texel * float2(1.0f, 2.0f) * (1.0f + grazing * 2.0f);
-
-    const float2 kOffsets[9] = {
-        float2( 0.0f,  0.0f),
-        float2(-1.0f, -1.0f), float2( 1.0f, -1.0f),
-        float2(-1.0f,  1.0f), float2( 1.0f,  1.0f),
-        float2( 0.0f, -1.0f), float2( 0.0f,  1.0f),
-        float2(-1.0f,  0.0f), float2( 1.0f,  0.0f)
-    };
-    const float kWeights[9] = { 4.0f, 1.0f, 1.0f, 1.0f, 1.0f, 2.0f, 2.0f, 2.0f, 2.0f };
-
-    float3 sum = float3(0.0f, 0.0f, 0.0f);
-    float weightSum = 0.0f;
-    [unroll]
-    for (int i = 0; i < 9; ++i)
-    {
-        const float2 uv = saturate(screenUV + kOffsets[i] * radius);
-        sum += gReflectionTexture.Sample(gLinearClamp, uv).rgb * kWeights[i];
-        weightSum += kWeights[i];
-    }
-    return sum / weightSum;
-}
+// SampleGlossyReflection / SampleGlossyReflectionRGB は本体（Water.PS.hlsl）へ移動した。
+// 可視化モード 19 からも引き続き呼べる（この hlsli は本体の後に include される）。
 
 /// @brief デバッグ表示が参照する、本体の合成過程で求まった値一式
 struct WaterDebugContext

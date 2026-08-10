@@ -23,7 +23,13 @@ namespace CoreEngine
             float blendAlpha = 0.1f;               ///< 現フレームの寄与率（小さいほど滑らかで残像寄り）
             float clampScale = 1.0f;               ///< 近傍 AABB の拡張率
             float disableHistory = 1.0f;           ///< 1.0 で履歴無効（初回フレーム・リサイズ直後）
-            float pad0 = 0.0f;
+            /// @brief 履歴と現フレームが食い違う画素で使う寄与率の上限
+            /// @details 水面のように「カメラが止まっていても表面自体が毎フレーム変わる」
+            ///          サーフェスは、モーションベクターが完璧でも履歴が本質的に古い。
+            ///          固定の blendAlpha=0.1（履歴90%）だと泡のような高周波が
+            ///          時間平均されて溶ける。食い違いの大きさで blendAlpha 〜 これの間を
+            ///          補間し、静止した不透明面のAA品質は保ったまま動く面だけ現フレーム寄りにする。
+            float blendAlphaMax = 0.9f;
         };
 
     public:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Water/Surface/WaterDebugViewMode.h"
+#include "Graphics/Water/WaterFoamDefaults.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
@@ -87,20 +88,29 @@ struct WaterFrameConstants {
 	// RT屈折の実測光路長との差が波打ち際の段差（白線の二重）として見えていた。
 	float cameraNearZ = 0.1f;
 	float cameraFarZ = 1000.0f;
-	float cameraClipPadding[2] = {};
+	// 白波被覆率の風速追従係数（既存パディングを 1 枠転用。構造体サイズは 128B のまま）。
+	// FoamBias は「detJ がいくつを下回ったら砕波か」という固定しきい値なので、
+	// 風速を変えると被覆率が実海の風速依存（Monahan: W ∝ U^3.41）から外れる。
+	// 高風速で合わせると低風速で出すぎ、低風速で合わせると高風速で出なくなる。
+	// そこで基準風速での較正はそのまま活かし、Monahan 比を白波マスクへ掛けて追従させる。
+	float foamWindCoverageScale = 1.0f;
+	float cameraClipPadding = 0.0f;
 	// ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たないため無効）----
-	// foamBias: 発生しきい値。合成ヤコビアン detJ がこれを下回ると泡が立つ
-	// foamGain: しきい値からの立ち上がり勾配
-	// foamCascadeWeights: カスケード別の勾配寄与の重み。勾配は波数 k に比例するため、
-	//   無重みだと最小カスケード（31m）が支配して detJ が広範囲で飽和する（Phase 0 実測）
-	int foamEnabled = 1;
-	float foamBias = 0.85f;
-	float foamGain = 4.0f;
-	float foamOpacity = 0.9f;
-	float foamCascadeWeights[3] = { 1.0f, 0.5f, 0.2f };
-	// 泡の寿命 τ [s]（e^-1 減衰時間）。PS 未使用だが単一情報源としてここに持ち、
+	// 既定値は WaterFoamDefaults が唯一の情報源。CVar / FoamSettings / FoamConstants と
+	// 同じ定数を参照するので、片側だけ直して割れることが構造上ない。
+	// 各パラメータの意味と較正根拠は WaterFoamDefaults.h を参照。
+	int foamEnabled = CoreEngine::WaterFoamDefaults::kEnabled ? 1 : 0;
+	float foamBias = CoreEngine::WaterFoamDefaults::kBias;
+	float foamGain = CoreEngine::WaterFoamDefaults::kGain;
+	float foamOpacity = CoreEngine::WaterFoamDefaults::kOpacity;
+	float foamCascadeWeights[3] = {
+		CoreEngine::WaterFoamDefaults::kCascadeWeights[0],
+		CoreEngine::WaterFoamDefaults::kCascadeWeights[1],
+		CoreEngine::WaterFoamDefaults::kCascadeWeights[2],
+	};
+	// 泡の寿命 τ [s]。PS 未使用だが実行時の値の単一情報源としてここに持ち、
 	// WaterRenderFeature が毎フレーム FFTOceanManager::SetFoamSettings へ転送する
-	float foamDecaySeconds = 3.0f;
+	float foamDecaySeconds = CoreEngine::WaterFoamDefaults::kDecaySeconds;
 };
 
 // HLSL の cbuffer packing 規則（float3 は 16B 境界をまたげない）と C++ のレイアウトが
@@ -110,6 +120,10 @@ static_assert(sizeof(WaterFrameConstants) == 128, "WaterFrameConstants size mism
 static_assert(offsetof(WaterFrameConstants, absorptionCoeff) % 16 == 0, "absorptionCoeff must start on a 16-byte boundary");
 static_assert(offsetof(WaterFrameConstants, scatteringCoeff) % 16 == 0, "scatteringCoeff must start on a 16-byte boundary");
 static_assert(offsetof(WaterFrameConstants, cameraNearZ) == 80, "cameraNearZ offset mismatch with HLSL cbuffer");
+// 既存パディングを転用したフィールドなので、HLSL 側（WaterFrameConstants.hlsli の
+// gFoamWindCoverageScale）と同じ位置に居ることを機械的に保証する。
+// ずれると泡が「カメラ near/far」を係数として読み、風速と無関係に消えるか飽和する。
+static_assert(offsetof(WaterFrameConstants, foamWindCoverageScale) == 88, "foamWindCoverageScale offset mismatch with HLSL cbuffer");
 static_assert(offsetof(WaterFrameConstants, foamCascadeWeights) % 16 == 0, "foamCascadeWeights must start on a 16-byte boundary");
 
 enum class WaterPresetType : int {

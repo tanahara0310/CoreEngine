@@ -15,6 +15,10 @@ namespace CoreEngine
             float amplitudeScale = 1.0f;
             float windDirection[2] = { 0.92f, 0.38f };
             float windSpeed = 24.0f;
+            // 吹送距離（フェッチ）[m]。風が同じ向きに吹き続けた距離で、風速と並んで
+            // JONSWAP のピーク周波数と有義波高を決める。短い＝若く尖った風波、
+            // 長い＝完全発達したうねり。完全発達を超えては育たないのでクランプされる。
+            float fetchMeters = 200000.0f;
             float choppiness = 1.35f;
             uint32_t activeComponentCount = 32;
             float gravity = 9.81f;
@@ -32,6 +36,34 @@ namespace CoreEngine
             // 呼び出し側が物理的に妥当な目標RMS（例: Pierson-Moskowitz の Hs/4）を
             // 渡すことで、パッチ長に依存しない現実的な波高に較正する。
             float targetRmsHeight = 0.0f;
+
+            // ---- 帯域制限（カスケードごとの担当波数帯）----
+            // 境界は全カスケード共通の 2 値で、cascadeIndex に応じて相補的な窓
+            // （パワーの分割・和は厳密に 1）を作る。数値の情報源は
+            // Shaders/Water/Common/FFTOceanCascadeValues.hlsli。
+            // bandBoundaryLowK <= 0 のときは帯域制限なし（従来動作）。
+            float bandBoundaryLowK = 0.0f;   ///< カスケード 0|1 の境界 k1 [rad/m]
+            float bandBoundaryHighK = 0.0f;  ///< カスケード 1|2 の境界 k2 [rad/m]
+            float bandLogHalfWidth = 0.35f;  ///< 境界のクロスフェード半値幅（ln k 上）
+            uint32_t cascadeIndex = 0;       ///< このカスケードの番号（0 が最大パッチ）
+
+            // ---- うねり（swell）成分 ----
+            // 実海は「今の風が立てる風波（wind sea）」と「遠方の低気圧から到達した
+            // 長周期のうねり」の重ね合わせで、両者は向きも周期も別。単一スペクトルでは
+            // 「一様な風波」にしかならず、斜交する波列（クロスシー）も
+            // 「凪でもうねりだけ残る」状態も表現できない。
+            // うねりは発生源から離れて分散した結果なので、周波数・方向ともに狭帯域。
+            float swellPeakAngularFrequency = 0.0f; ///< うねりのピーク角周波数 [rad/s]（0 で無効）
+            float swellDirection[2] = { 1.0f, 0.0f }; ///< うねりの進行方向（正規化済み）
+            float swellRelativeWidth = 0.06f;       ///< 周波数の相対バンド幅（ωs に対する比）
+            float swellSpreadExponent = 24.0f;      ///< 指向の鋭さ s（大きいほど一方向）
+
+            // ---- 成分別の分散重み（呼び出し側の較正が設定する）----
+            // 密度に掛かる（＝分散の重み）。振幅は sqrt が掛かる。
+            // 風波だけ / うねりだけ の生RMSを測ってから、両者の目標波高比になるよう
+            // 重みを決めて本生成する 3 パス方式で使う。
+            float windSeaVarianceWeight = 1.0f;
+            float swellVarianceWeight = 0.0f;
         };
 
         struct SpectrumSample {
@@ -68,5 +100,16 @@ namespace CoreEngine
             const Settings& settings,
             SpectrumSample* outSpectrumSamples,
             size_t outSampleCount);
+
+        /// @brief 生成済みスペクトルの複素振幅を一様スケールする
+        /// @details 波高の較正を「カスケードごとの独立正規化」から
+        ///          「全カスケード共通の 1 スケール」へ変えるために使う。
+        ///          帯域制限を入れた後はカスケード間の相対エネルギーが
+        ///          スペクトル自身で決まるため、配分比の手調整が不要になる。
+        ///          h0 と h0Minus の両方に掛けること（時間発展が両者を使う）。
+        static void ScaleSpectrum(
+            SpectrumSample* spectrumSamples,
+            size_t sampleCount,
+            float scale);
     };
 }

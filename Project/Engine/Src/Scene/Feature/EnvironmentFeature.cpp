@@ -4,7 +4,6 @@
 #include "Camera/Camera.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObjects/SkyBox/SkyBoxObject.h"
-#include "GameObject/Ground/InfiniteGroundObject.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Light/LightManager.h"
@@ -25,7 +24,8 @@ namespace
     /// これらはエンジン寿命の「鏡」として振る舞う（毎フレーム実体から写す）。
     /// 編集 UI は Environment ツリーの Atmosphere エディタ（高度角・方位角・
     /// スカイマップのドラッグ）が担当するので、自動生成 UI には出さない。
-    constexpr CVarFlags kMirrorFlags = CVarFlags::NoUI;
+    /// Mirrored により Undo の対象からも外れる（戻しても次フレームに巻き戻るため）
+    constexpr CVarFlags kMirrorFlags = CVarFlags::NoUI | CVarFlags::Mirrored;
 
     CVar<Vector3> cvSunDirection{
         "r.AtmosphereLights.SunDirection", { 0.0f, -1.0f, 0.0f },
@@ -70,9 +70,6 @@ namespace CoreEngine
         // シーンが SkyBox を生成していない場合のみ自動生成するため OnInitialize() の後に行う
         SetupDefaultSky(ctx);
 
-        // 既定の無限地面（y=0 のグレータイル床）のセットアップ
-        SetupDefaultGround(ctx);
-
         // 保存済みの太陽・月設定を復元する。ライト（LightingFeature 生成）と
         // シーン OnInitialize の両方より後のこの時点で流し込むことで、
         // 復元値が最終的な起点になる
@@ -82,10 +79,6 @@ namespace CoreEngine
     void EnvironmentFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
     {
         switch (phase) {
-        case SceneUpdatePhase::PreObjectUpdate:
-            // 既定の無限地面をカメラ XZ に追従させる（GameObject 更新前に位置を確定する）
-            UpdateGroundPlane(ctx);
-            break;
         case SceneUpdatePhase::PostLogic:
             // 太陽・月ライトの現在値を保存用 CVar へ写す（エディタ・ギズモ・
             // シーンコードのどこから変更されても拾えるよう、実体側から毎フレーム）
@@ -104,9 +97,8 @@ namespace CoreEngine
         // ライトのクリア（SceneManager::DoChangeScene の ClearAllLights）より前に行う
         MirrorAtmosphereLightsToCVars(ctx);
 
-        // SkyBox / 無限地面は GameObjectManager が所有しているためポインタのみクリア
+        // SkyBox は GameObjectManager が所有しているためポインタのみクリア
         skyBox_ = nullptr;
-        groundPlane_ = nullptr;
     }
 
     void EnvironmentFeature::SetupDefaultSky(SceneContext& ctx)
@@ -125,41 +117,6 @@ namespace CoreEngine
         skyBox_->SetActive(true);
         Logger::GetInstance().Infof(LogCategory::System,
             "BaseScene: 既定背景として大気散乱モードの SkyBox を自動生成");
-    }
-
-    void EnvironmentFeature::SetupDefaultGround(SceneContext& ctx)
-    {
-        // シーン側（OnInitialize）で生成済みの無限地面があればそれを採用する
-        // （具象型のダウンキャストではなく SceneTag で探す）
-        if (auto* tag = ctx.gameObjectManager->FindFirstComponent<SceneTagComponent<InfiniteGroundObject>>()) {
-            groundPlane_ = tag->Get();
-            Logger::GetInstance().Infof(LogCategory::System,
-                "BaseScene: シーン生成の無限地面を採用");
-            return;
-        }
-
-        // シーンがオプトアウトしている場合は生成しない（独自地形・水面・2D シーン等）
-        if (!wantsDefaultGround_) {
-            return;
-        }
-
-        // 未生成なら既定の床として無限地面を自動生成する
-        groundPlane_ = ctx.gameObjectManager->AddObject(std::make_unique<InfiniteGroundObject>());
-        groundPlane_->SetActive(true);
-        Logger::GetInstance().Infof(LogCategory::System,
-            "BaseScene: 既定の床として無限地面を自動生成");
-    }
-
-    void EnvironmentFeature::UpdateGroundPlane(SceneContext& ctx)
-    {
-        if (!groundPlane_) {
-            return;
-        }
-
-        // ゲームビューカメラの XZ に追従させる（タイルはワールド固定）
-        if (const Camera* camera = ctx.gameViewCamera3D) {
-            groundPlane_->FollowCamera(camera->GetPosition());
-        }
     }
 
     void EnvironmentFeature::RestoreAtmosphereLightsFromCVars(SceneContext& ctx)

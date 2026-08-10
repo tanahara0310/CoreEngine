@@ -33,7 +33,12 @@ namespace CoreEngine
         RenderPassType GetRenderPassType() const override { return RenderPassType::UI; }
         BlendMode GetBlendMode() const override { return BlendMode::kBlendModeNormal; }
         const char* GetObjectName() const override { return "UIImage"; }
+        /// @brief 描画処理（レガシー経路。DrawViewInfo を組み立てて本経路へ合流する）
         void Draw(const Camera* camera) override;
+
+        /// @brief 描画処理（RenderManager からの本経路）
+        /// @param view コマンドリスト・カメラ・ビュー種別をまとめた描画コンテキスト
+        void Draw(const DrawViewInfo& view) override;
 
         /// @brief ワールド空間での位置を返す（UI はアンカー相対のスクリーン座標を XY に載せる）
         /// @note 3D の当たり判定に使う想定は無い。UI は意図的に `ITransformSource` 化して

@@ -81,6 +81,12 @@ namespace CoreEngine
         /// @brief 外部 DSV の使用を解除する
         void ResetDepthStencilHandle() { useCustomDsvHandle_ = false; }
 
+        /// @brief 直近の Begin() で実際にバインドした DSV ハンドルを返す
+        /// @details MRT へ張り替えたいパス（WaterSurfacePass）が、Begin() の
+        ///          カスタム DSV 選択ロジックを二重実装せずに済むようにするための入口。
+        ///          Begin() を呼ぶ前の値は不定。
+        D3D12_CPU_DESCRIPTOR_HANDLE GetBoundDSVHandle() const { return dsvHandle_; }
+
         /// @brief 現在のリソース状態を外部から強制設定する
         /// @note 複数 View 実行後など、実際の状態が外部で変更された場合に使用
         void SetCurrentState(D3D12_RESOURCE_STATES state);

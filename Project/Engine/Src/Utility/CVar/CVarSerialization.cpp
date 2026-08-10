@@ -7,13 +7,18 @@
 
 namespace CoreEngine
 {
-    void CVarSerialization::Save(nlohmann::json& out, std::string_view prefix, bool skipDefaults)
+    void CVarSerialization::Save(nlohmann::json& out, std::string_view prefix, bool skipDefaults,
+                                 std::string_view excludePrefix)
     {
         for (const ICVar* cvar : CVarRegistry::Get().GetByPrefix(prefix)) {
             if (HasFlag(cvar->GetFlags(), CVarFlags::NoSave)) {
                 continue;
             }
             if (skipDefaults && !cvar->IsModified()) {
+                continue;
+            }
+            if (!excludePrefix.empty()
+                && std::string_view(cvar->GetName()).starts_with(excludePrefix)) {
                 continue;
             }
 
@@ -60,53 +65,47 @@ namespace CoreEngine
                 continue;  // 保存されていないキーは現在値（コードデフォルト）を維持する
             }
 
-            // 値を直接書き込み、実際に変化した場合のみ通知する。
-            // 保存後に CVar の型を変えた場合は SafeGet が現在値を返すため壊れない
+            // 書き込みは SetFromPointer（唯一の変更経路）経由。等価判定と変更通知は
+            // Set() 側が行う。保存後に CVar の型を変えた場合は SafeGet が現在値を返すため壊れない
             switch (cvar->GetType())
             {
             case CVarType::Bool: {
-                bool* p = cvar->AsBool();
-                const bool v = JsonManager::SafeGet(in, key, *p);
-                if (*p != v) { *p = v; cvar->NotifyChanged(); }
+                const bool v = JsonManager::SafeGet(in, key, *cvar->AsBool());
+                cvar->SetFromPointer(&v);
                 break;
             }
             case CVarType::Int: {
-                int* p = cvar->AsInt();
-                const int v = JsonManager::SafeGet(in, key, *p);
-                if (*p != v) { *p = v; cvar->NotifyChanged(); }
+                const int v = JsonManager::SafeGet(in, key, *cvar->AsInt());
+                cvar->SetFromPointer(&v);
                 break;
             }
             case CVarType::Float: {
-                float* p = cvar->AsFloat();
-                const float v = JsonManager::SafeGet(in, key, *p);
-                if (*p != v) { *p = v; cvar->NotifyChanged(); }
+                const float v = JsonManager::SafeGet(in, key, *cvar->AsFloat());
+                cvar->SetFromPointer(&v);
                 break;
             }
             case CVarType::Vector2: {
-                Vector2* p = cvar->AsVector2();
                 const auto& node = in[key];
                 if (!node.is_array() || node.size() < 2) { break; }
                 const Vector2 v{ node[0].get<float>(), node[1].get<float>() };
-                if (p->x != v.x || p->y != v.y) { *p = v; cvar->NotifyChanged(); }
+                cvar->SetFromPointer(&v);
                 break;
             }
             case CVarType::Vector3: {
-                Vector3* p = cvar->AsVector3();
                 const auto& node = in[key];
                 if (!node.is_array() || node.size() < 3) { break; }
                 const Vector3 v{
                     node[0].get<float>(), node[1].get<float>(), node[2].get<float>() };
-                if (p->x != v.x || p->y != v.y || p->z != v.z) { *p = v; cvar->NotifyChanged(); }
+                cvar->SetFromPointer(&v);
                 break;
             }
             case CVarType::Color: {
-                Vector4* p = cvar->AsColor();
                 const auto& node = in[key];
                 if (!node.is_array() || node.size() < 4) { break; }
                 const Vector4 v{
                     node[0].get<float>(), node[1].get<float>(),
                     node[2].get<float>(), node[3].get<float>() };
-                if (p->x != v.x || p->y != v.y || p->z != v.z || p->w != v.w) { *p = v; cvar->NotifyChanged(); }
+                cvar->SetFromPointer(&v);
                 break;
             }
             }

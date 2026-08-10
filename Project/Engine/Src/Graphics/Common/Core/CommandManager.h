@@ -20,8 +20,12 @@ public:
     /// @brief デストラクタ
     ~CommandManager();
 
-    /// @brief フェンスを待機（GPU同期）
-    void WaitForPreviousFrame();
+    /// @brief 投入済みの全 GPU 作業が完了するまでブロックする
+    /// @details 「前フレームを待つ」のではなく、このキューへ submit された全作業を待つ完全同期。
+    ///          旧名は WaitForPreviousFrame だったが、実挙動と食い違っていたため改名した。
+    ///          GPU が参照中のリソースを作り直す／破棄する直前にだけ使うこと
+    ///          （毎フレーム呼ぶとパイプラインが空になり性能が出ない）。
+    void WaitForGpuIdle();
 
     /// @brief 特定のフレームの完了を待つ（ダブルバッファリング用）
     /// @param frameIndex フレームインデックス

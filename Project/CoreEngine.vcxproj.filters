@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
@@ -15,9 +15,6 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.cpp">
-      <Filter>Engine\Src\GameObject\Ground</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
@@ -266,6 +263,9 @@
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarUndoStack.cpp">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp">
@@ -814,6 +814,9 @@
     <ClCompile Include="Engine\Src\Graphics\Common\Core\CommandManager.cpp">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Common\Core\UploadContext.cpp">
+      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DescriptorManager.cpp">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClCompile>
@@ -1032,9 +1035,6 @@
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.h">
-      <Filter>Engine\Src\GameObject\Ground</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
     </ClInclude>
@@ -1165,6 +1165,9 @@
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarUndoStack.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h">
@@ -1764,6 +1767,9 @@
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterFoamDefaults.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClInclude>
@@ -2092,6 +2098,9 @@
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\Core\CommandManager.h">
+      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\Core\UploadContext.h">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorManager.h">
@@ -2550,9 +2559,6 @@
     </Filter>
     <Filter Include="Engine\Src\GameObject\Component\Transform">
       <UniqueIdentifier>{D038A3B9-7746-4B74-9597-0D06389C3908}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\GameObject\Ground">
-      <UniqueIdentifier>{1FBD7D93-99C2-4ECF-8071-0A44FA223198}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\GameObject\Model">
       <UniqueIdentifier>{3BDA1622-442D-4473-9600-3317565D72B4}</UniqueIdentifier>

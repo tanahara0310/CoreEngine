@@ -59,6 +59,9 @@ namespace CoreEngine
     void ModelGameObject::Draw(const Camera* camera) {
         // RenderGraph を経由しない直接呼び出し（レガシー経路）。
         // ViewInfo を持たないため、その場で 1 つ組み立てて本経路へ合流させる。
+        // 注意: cmdList は埋められない（ここから記録先を知る手段が無い）。現状この経路には
+        //       呼び出し元が 1 つも無く、Model::Draw の assert で気づけるようにしてある。
+        //       復活させるなら DrawViewInfo::cmdList を渡せる形へ直すこと。
         if (!camera) return;
         const ViewInfo legacyView = ViewBuilder::Build(camera, RenderViewType::GameView);
         DrawViewInfo view{};

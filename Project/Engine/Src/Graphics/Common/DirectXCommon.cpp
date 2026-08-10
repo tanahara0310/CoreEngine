@@ -15,12 +15,17 @@ namespace CoreEngine
             return;
         }
         // 全GPUコマンドの完了を待ってからリソースを解放する
-        commandManager_->WaitForPreviousFrame();
+        commandManager_->WaitForGpuIdle();
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "DirectXCommon::Shutdown: GPU同期完了。全マネージャーを解放します\n");
 
         // unique_ptr を明示的にリセットして破棄順序を制御する
         // （デストラクタ任せにすると宣言逆順になるため意図を明示）
+        // UploadContext はコマンドキューを参照しているため CommandManager より先に落とす。
+        if (uploadContext_) {
+            uploadContext_->Shutdown();
+        }
+        uploadContext_.reset();
         depthStencilManager_.reset();
         swapChainManager_.reset();
         descriptorManager_.reset();
@@ -42,6 +47,11 @@ namespace CoreEngine
         commandManager_->Initialize(deviceManager_->GetDevice(), config.frameCount);
         descriptorManager_->Initialize(deviceManager_->GetDevice(),
             config.maxSRVDescriptors, config.maxRTVDescriptors, config.maxDSVDescriptors);
+
+        // アップロード／オフライン生成用の独立コンテキスト。
+        // キューはフレームと共有（submit 順 = 実行順を保つため）だが、
+        // アロケータ・コマンドリスト・フェンスは完全に別物。
+        uploadContext_->Initialize(deviceManager_->GetDevice(), commandManager_->GetCommandQueue());
 
         // スワップチェーンの初期化（バックバッファ取得とRTV作成まで含む）
         swapChainManager_->Initialize(
@@ -72,7 +82,7 @@ namespace CoreEngine
     {
 
         // コマンドの実行を待つ（リソースが使用中でないことを保証）
-        commandManager_->WaitForPreviousFrame();
+        commandManager_->WaitForGpuIdle();
 
         // スワップチェーンのリサイズ
         swapChainManager_->Resize(width, height);

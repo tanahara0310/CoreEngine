@@ -23,6 +23,7 @@ namespace CoreEngine
         extern CVar<Vector2> ScrollSpeed;
         extern CVar<Vector2> UVTiling;
         extern CVar<bool>    DepthFadeEnabled;
+        extern CVar<bool>    WriteMotionVector;
 
         // ---- 水質（ベース値。実効値は Effective* で濁度と合成）----
         extern CVar<Vector3> AbsorptionBase;
@@ -43,9 +44,18 @@ namespace CoreEngine
         extern CVar<float>   FFTAmplitudeScale;
         extern CVar<Vector2> FFTWindDirection;
         extern CVar<float>   FFTWindSpeed;
+        extern CVar<float>   FFTFetchKilometers;
         extern CVar<float>   FFTChoppiness;
         extern CVar<int>     FFTActiveComponentCount;
         extern CVar<float>   FFTGravity;
+
+        // ---- うねり（swell）。風波とは独立な、遠方由来の長周期成分 ----
+        extern CVar<bool>    SwellEnabled;
+        extern CVar<float>   SwellHeight;
+        extern CVar<float>   SwellPeriod;
+        extern CVar<Vector2> SwellDirection;
+        extern CVar<float>   SwellRelativeWidth;
+        extern CVar<float>   SwellSpread;
 
         // ---- コースティクス（RT / SS 共通の見た目パラメータ）----
         extern CVar<int>     CausticsBackend; // 0=RT / 1=ScreenSpace（コンボは水面パネル。NoUI）

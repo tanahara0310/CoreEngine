@@ -30,7 +30,7 @@ CommandManager::~CommandManager()
     }
 }
 
-void CommandManager::WaitForPreviousFrame()
+void CommandManager::WaitForGpuIdle()
 {
     // フェンスのシグナル待ち
     fenceVal_++;

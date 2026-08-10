@@ -165,17 +165,25 @@ namespace CoreEngine
         cloudEditor_->Initialize(*engine_);
 
         // エディタ設定の自動保存セクション（登録時に保存済み JSON から前回状態が復元される）。
-        // 大気の太陽/月ライトはシーン寿命のため EnvironmentFeature 側の別セクションが扱う
+        // CVar が増えてもここへの追記は不要（レジストリを走査するため）。
+        // プロジェクト設定（r./sys. → Config/EngineSettings/CVars.json）と
+        // 個人の作業状態（d. → Saved/EditorSettings/EditorState.json）の 2 セクションに分ける
         if (auto* editorSettings = engine_->GetSubsystem<EditorSettingsSubsystem>()) {
-            // 全 CVar を 1 ファイルへ保存する。個別セクションと違い、CVar が増えても
-            // ここへの追記は不要（レジストリを走査するため）
-            cvarSettingsSection_ = std::make_unique<CVarSettingsSection>();
-            editorSettings->RegisterSection(cvarSettingsSection_.get(), this);
+            // 旧形式（Saved/EditorSettings/CVars.json 全部入り）があれば先に 2 層へ移行する
+            CVarSettingsSection::MigrateLegacyFile();
+
+            cvarConfigSection_ = std::make_unique<CVarSettingsSection>(/*userStatePart=*/false);
+            editorSettings->RegisterSection(cvarConfigSection_.get(), this);
+            cvarStateSection_ = std::make_unique<CVarSettingsSection>(/*userStatePart=*/true);
+            editorSettings->RegisterSection(cvarStateSection_.get(), this);
         }
 
         // 静的初期化中（main より前）に溜まった CVar の警告をログへ流す。
         // 登録数もここで出るので、想定より少なければ定義漏れに気づける
         CVarRegistry::Get().FlushPendingWarnings();
+
+        // 保存値で既定値から上書きされている CVar の一覧（両セクションの復元後に 1 回）
+        CVarSettingsSection::LogOverriddenCVars();
 
         // 全 CVar の一覧・検索パネル（機能別パネルとは別に、横断的に触るための入口）
         // Engine Settings ウィンドウの「Editor Settings」管理パネル
@@ -313,7 +321,8 @@ namespace CoreEngine
                 editorSettings->UnregisterSections(this);
             }
         }
-        cvarSettingsSection_.reset();
+        cvarConfigSection_.reset();
+        cvarStateSection_.reset();
 
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）
         Logger::GetInstance().ClearConsoleCallback();

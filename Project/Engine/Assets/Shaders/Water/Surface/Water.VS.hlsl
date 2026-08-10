@@ -23,6 +23,11 @@ struct WaterVSOutput
 {
     float4 position         : SV_POSITION;
     float2 texcoord         : TEXCOORD0;
+    // 変位前の静止ワールドXZ。FFT 経路（FFTWater.VS）と PS の入力レイアウトを
+    // 揃えるために Gerstner 経路でも出力する（Gerstner は FFT テクスチャを
+    // 引かないので値自体は法線計算に使われない）。
+    float2 baseWorldXZ      : TEXCOORD1;
+    float  waveHeight       : TEXCOORD2; ///< 静止水面からの波の高さ [m]
     float3 normal           : NORMAL0;
     float3 worldPosition    : POSITION0;
     float4 lightSpacePos    : POSITION1;
@@ -69,6 +74,9 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     // ---- 4. 出力組み立て ----
     WaterVSOutput output;
     output.texcoord = input.texcoord;
+    // 変位前の静止位置（Gerstner の偏微分評価に使っているものと同じ）
+    output.baseWorldXZ = restPos.xz;
+    output.waveHeight = totalOffset.y;
 
     float4 baseClip = mul(input.position, mtx.WVP);
     // WorldInversTranspose = (World^-1)^T なので transpose すると World^-1 になる
@@ -87,7 +95,10 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     output.worldPosition = worldPos;
     output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);
     output.clipPosCurrent = output.position;
-    output.clipPosPrev = mul(input.position, mtx.PrevWVP);
+    // 前フレーム位置にも同じ変位を載せる（理由は FFTWater.VS.hlsl の同じ箇所を参照）
+    float4 basePrevClip = mul(input.position, mtx.PrevWVP);
+    float4 offsetPrevClip = mul(float4(offsetLS, 0.0f), mtx.PrevWVP);
+    output.clipPosPrev = basePrevClip + offsetPrevClip;
 
     return output;
 }

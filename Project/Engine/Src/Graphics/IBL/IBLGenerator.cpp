@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "IBLGenerator.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/Core/UploadContext.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -293,42 +294,42 @@ namespace CoreEngine
             &uavDesc,
             uavHeap->GetCPUDescriptorHandleForHeapStart());
 
-        // コマンドリスト取得
-        auto commandList = dxCommon_->GetCommandList();
-
-        // Compute Shaderを実行
-        commandList->SetPipelineState(brdfLutPSO_.Get());
-        commandList->SetComputeRootSignature(brdfLutRootSignature_.Get());
-
-        ID3D12DescriptorHeap* heaps[] = { uavHeap.Get() };
-        commandList->SetDescriptorHeaps(1, heaps);
-        commandList->SetComputeRootDescriptorTable(0, uavHeap->GetGPUDescriptorHandleForHeapStart());
-
-        // ディスパッチ（8x8スレッドグループ）
-        uint32_t dispatchX = (size + 7) / 8;
-        uint32_t dispatchY = (size + 7) / 8;
-        commandList->Dispatch(dispatchX, dispatchY, 1);
-
-        // UAV→SRVバリア（全サブリソース）
-        D3D12_RESOURCE_STATES brdfState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        ResourceBarrierHelper::Transition(commandList, brdfLUT.Get(), brdfState,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-        // コマンドリストをClose
-        HRESULT hr = commandList->Close();
-        if (FAILED(hr))
+        // 記録はフレームの描画用コマンドリストではなく専用コンテキストへ行う。
+        // 以前はここでフレームのリストを Close / Execute / Reset していたため、
+        // 描画中に呼ばれると記録途中のフレームコマンドごと submit してしまう構造だった。
         {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("GenerateBRDFLUT: Failed to close command list: 0x{:08X}", static_cast<unsigned int>(hr)));
-            return nullptr;
-        }
+            UploadContext::ScopedRecording recording = dxCommon_->GetUploadContext()->BeginRecording();
+            if (!recording.IsValid())
+            {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                    "GenerateBRDFLUT: Failed to begin an upload recording");
+                return nullptr;
+            }
+            ID3D12GraphicsCommandList* commandList = recording.List();
 
-        // コマンドを実行
-        ID3D12CommandList* commandLists[] = { commandList };
-        dxCommon_->GetCommandQueue()->ExecuteCommandLists(1, commandLists);
+            // Compute Shaderを実行
+            commandList->SetPipelineState(brdfLutPSO_.Get());
+            commandList->SetComputeRootSignature(brdfLutRootSignature_.Get());
 
-        // GPU完了を待機
-        dxCommon_->WaitForPreviousFrame();
+            ID3D12DescriptorHeap* heaps[] = { uavHeap.Get() };
+            commandList->SetDescriptorHeaps(1, heaps);
+            commandList->SetComputeRootDescriptorTable(0, uavHeap->GetGPUDescriptorHandleForHeapStart());
+
+            // ディスパッチ（8x8スレッドグループ）
+            uint32_t dispatchX = (size + 7) / 8;
+            uint32_t dispatchY = (size + 7) / 8;
+            commandList->Dispatch(dispatchX, dispatchY, 1);
+
+            // UAV→SRVバリア（全サブリソース）
+            D3D12_RESOURCE_STATES brdfState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            ResourceBarrierHelper::Transition(commandList, brdfLUT.Get(), brdfState,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        } // ここで Close → ExecuteCommandLists → Signal
+        // uavHeap はこの関数のローカル。直後の WaitForIdle で GPU 完了を待つため、
+        // 関数を抜けるまで生存していれば足りる。
+
+        // 生成結果を直後に使うため、このコンテキストの GPU 完了だけを待つ
+        dxCommon_->GetUploadContext()->WaitForIdle();
 
         // デバイス削除チェック（GPU実行中にTDR等で削除された場合を検出）
         HRESULT removedReason = dxCommon_->GetDevice()->GetDeviceRemovedReason();
@@ -336,22 +337,6 @@ namespace CoreEngine
         {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
                 std::format("GenerateBRDFLUT: Device removed after GPU execution. Reason: 0x{:08X}", static_cast<unsigned int>(removedReason)));
-            return nullptr;
-        }
-
-        // コマンドリストをリセット（他のシステムが使用できるように）
-        hr = dxCommon_->GetCommandAllocator()->Reset();
-        if (FAILED(hr))
-        {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("GenerateBRDFLUT: Failed to reset command allocator: 0x{:08X}", static_cast<unsigned int>(hr)));
-            return nullptr;
-        }
-        hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
-        if (FAILED(hr))
-        {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("GenerateBRDFLUT: Failed to reset command list: 0x{:08X}", static_cast<unsigned int>(hr)));
             return nullptr;
         }
 
@@ -386,49 +371,41 @@ namespace CoreEngine
         if (!readbackBuffer)
             return false;
 
-        // コピーコマンド
-        auto commandList = dxCommon_->GetCommandList();
-        HRESULT hr = S_OK;
+        // コピーコマンド（フレームの描画用リストではなく専用コンテキストへ積む）
+        {
+            UploadContext::ScopedRecording recording = dxCommon_->GetUploadContext()->BeginRecording();
+            if (!recording.IsValid())
+            {
+                return false;
+            }
+            ID3D12GraphicsCommandList* commandList = recording.List();
 
-        D3D12_RESOURCE_STATES copyState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        ResourceBarrierHelper::Transition(commandList, brdfLUT, copyState,
-            D3D12_RESOURCE_STATE_COPY_SOURCE);
+            D3D12_RESOURCE_STATES copyState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            ResourceBarrierHelper::Transition(commandList, brdfLUT, copyState,
+                D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-        D3D12_TEXTURE_COPY_LOCATION src = {};
-        src.pResource = brdfLUT;
-        src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        src.SubresourceIndex = 0;
+            D3D12_TEXTURE_COPY_LOCATION src = {};
+            src.pResource = brdfLUT;
+            src.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            src.SubresourceIndex = 0;
 
-        D3D12_TEXTURE_COPY_LOCATION dst = {};
-        dst.pResource = readbackBuffer.Get();
-        dst.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        dst.PlacedFootprint = layout;
+            D3D12_TEXTURE_COPY_LOCATION dst = {};
+            dst.pResource = readbackBuffer.Get();
+            dst.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+            dst.PlacedFootprint = layout;
 
-        commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+            commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 
-        ResourceBarrierHelper::Transition(commandList, brdfLUT, copyState,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            ResourceBarrierHelper::Transition(commandList, brdfLUT, copyState,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        } // ここで Close → ExecuteCommandLists → Signal
 
-        // コマンドリストをClose
-        hr = commandList->Close();
-        assert(SUCCEEDED(hr));
-
-        // コマンドを実行
-        ID3D12CommandList* commandLists[] = { commandList };
-        dxCommon_->GetCommandQueue()->ExecuteCommandLists(1, commandLists);
-
-        // GPU完了を待機
-        dxCommon_->WaitForPreviousFrame();
-
-        // コマンドリストをリセット（他のシステムが使用できるように）
-        hr = dxCommon_->GetCommandAllocator()->Reset();
-        assert(SUCCEEDED(hr));
-        hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
-        assert(SUCCEEDED(hr));
+        // Readback を読むので GPU 完了を待つ
+        dxCommon_->GetUploadContext()->WaitForIdle();
 
         // データ読み込み
         void* mappedData = nullptr;
-        hr = readbackBuffer->Map(0, nullptr, &mappedData);
+        HRESULT hr = readbackBuffer->Map(0, nullptr, &mappedData);
         if (FAILED(hr))
             return false;
 
@@ -580,50 +557,46 @@ namespace CoreEngine
         gpuHandle.ptr += descriptorSize;
         device->CreateUnorderedAccessView(irradianceMap.Get(), nullptr, &uavDesc, cpuHandle);
 
-        // コマンドリスト取得
-        auto commandList = dxCommon_->GetCommandList();
-
-        // Compute Shaderを実行
-        commandList->SetPipelineState(irradiancePSO_.Get());
-        commandList->SetComputeRootSignature(irradianceRootSignature_.Get());
-
-        ID3D12DescriptorHeap* heaps[] = { heap.Get() };
-        commandList->SetDescriptorHeaps(1, heaps);
-
-        // ルートパラメータ設定
-        D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle = heap->GetGPUDescriptorHandleForHeapStart();
-        D3D12_GPU_DESCRIPTOR_HANDLE uavGpuHandle = srvGpuHandle;
-        uavGpuHandle.ptr += descriptorSize;
-
-        commandList->SetComputeRootDescriptorTable(0, srvGpuHandle); // SRV
-        commandList->SetComputeRootDescriptorTable(1, uavGpuHandle); // UAV
-
-        // ディスパッチ（8x8スレッドグループ、6面分）
-        uint32_t dispatchX = (size + 7) / 8;
-        uint32_t dispatchY = (size + 7) / 8;
-        uint32_t dispatchZ = 6; // キューブマップの6面
-        commandList->Dispatch(dispatchX, dispatchY, dispatchZ);
-
-        // UAV→SRVバリア（全サブリソース = 6面すべて）
-        D3D12_RESOURCE_STATES irradState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        ResourceBarrierHelper::Transition(commandList, irradianceMap.Get(), irradState,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-        // コマンドリストをClose
-        HRESULT hr = commandList->Close();
-        if (FAILED(hr))
+        // 記録はフレームの描画用コマンドリストではなく専用コンテキストへ行う。
         {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("GenerateIrradianceMap: Failed to close command list: 0x{:08X}", static_cast<unsigned int>(hr)));
-            return nullptr;
-        }
+            UploadContext::ScopedRecording recording = dxCommon_->GetUploadContext()->BeginRecording();
+            if (!recording.IsValid())
+            {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                    "GenerateIrradianceMap: Failed to begin an upload recording");
+                return nullptr;
+            }
+            ID3D12GraphicsCommandList* commandList = recording.List();
 
-        // コマンドを実行
-        ID3D12CommandList* commandLists[] = { commandList };
-        dxCommon_->GetCommandQueue()->ExecuteCommandLists(1, commandLists);
+            // Compute Shaderを実行
+            commandList->SetPipelineState(irradiancePSO_.Get());
+            commandList->SetComputeRootSignature(irradianceRootSignature_.Get());
 
-        // GPU完了を待機
-        dxCommon_->WaitForPreviousFrame();
+            ID3D12DescriptorHeap* heaps[] = { heap.Get() };
+            commandList->SetDescriptorHeaps(1, heaps);
+
+            // ルートパラメータ設定
+            D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle = heap->GetGPUDescriptorHandleForHeapStart();
+            D3D12_GPU_DESCRIPTOR_HANDLE uavGpuHandle = srvGpuHandle;
+            uavGpuHandle.ptr += descriptorSize;
+
+            commandList->SetComputeRootDescriptorTable(0, srvGpuHandle); // SRV
+            commandList->SetComputeRootDescriptorTable(1, uavGpuHandle); // UAV
+
+            // ディスパッチ（8x8スレッドグループ、6面分）
+            uint32_t dispatchX = (size + 7) / 8;
+            uint32_t dispatchY = (size + 7) / 8;
+            uint32_t dispatchZ = 6; // キューブマップの6面
+            commandList->Dispatch(dispatchX, dispatchY, dispatchZ);
+
+            // UAV→SRVバリア（全サブリソース = 6面すべて）
+            D3D12_RESOURCE_STATES irradState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            ResourceBarrierHelper::Transition(commandList, irradianceMap.Get(), irradState,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        } // ここで Close → ExecuteCommandLists → Signal
+
+        // 生成結果を直後に使うため、このコンテキストの GPU 完了だけを待つ
+        dxCommon_->GetUploadContext()->WaitForIdle();
 
         // デバイス削除チェック（GPU実行中にTDR等で削除された場合を検出）
         HRESULT removedReason = dxCommon_->GetDevice()->GetDeviceRemovedReason();
@@ -631,22 +604,6 @@ namespace CoreEngine
         {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
                 std::format("GenerateIrradianceMap: Device removed after GPU execution. Reason: 0x{:08X}", static_cast<unsigned int>(removedReason)));
-            return nullptr;
-        }
-
-        // コマンドリストをリセット（他のシステムが使用できるように）
-        hr = dxCommon_->GetCommandAllocator()->Reset();
-        if (FAILED(hr))
-        {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("GenerateIrradianceMap: Failed to reset command allocator: 0x{:08X}", static_cast<unsigned int>(hr)));
-            return nullptr;
-        }
-        hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
-        if (FAILED(hr))
-        {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("GenerateIrradianceMap: Failed to reset command list: 0x{:08X}", static_cast<unsigned int>(hr)));
             return nullptr;
         }
 
@@ -809,7 +766,6 @@ namespace CoreEngine
         }
 
         auto device = dxCommon_->GetDevice();
-        auto commandList = dxCommon_->GetCommandList();
 
         // ディスクリプタヒープ作成（SRV + UAV x 5ミップレベル）
         auto heap = CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 6);
@@ -836,78 +792,79 @@ namespace CoreEngine
 
         device->CreateShaderResourceView(environmentMap, &srvDesc, cpuHandle);
 
-        // 各ミップレベルでプリフィルタリング
-        for (uint32_t mip = 0; mip < mipLevels; ++mip)
+        // 記録はフレームの描画用コマンドリストではなく専用コンテキストへ行う。
+        // 全ミップ分のディスパッチを 1 回の submit にまとめる。
         {
-            uint32_t mipSize = size >> mip; // ミップサイズ = size / 2^mip
-            float roughness = static_cast<float>(mip) / static_cast<float>(mipLevels - 1);
+            UploadContext::ScopedRecording recording = dxCommon_->GetUploadContext()->BeginRecording();
+            if (!recording.IsValid())
+            {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                    "GeneratePrefilteredEnvironmentMap: Failed to begin an upload recording");
+                return nullptr;
+            }
+            ID3D12GraphicsCommandList* commandList = recording.List();
 
-            // UAVビュー作成（特定のミップレベル）
-            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-            uavDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
-            uavDesc.Texture2DArray.MipSlice = mip;
-            uavDesc.Texture2DArray.FirstArraySlice = 0;
-            uavDesc.Texture2DArray.ArraySize = 6; // 6面
+            // 各ミップレベルでプリフィルタリング
+            for (uint32_t mip = 0; mip < mipLevels; ++mip)
+            {
+                uint32_t mipSize = size >> mip; // ミップサイズ = size / 2^mip
+                float roughness = static_cast<float>(mip) / static_cast<float>(mipLevels - 1);
 
-            D3D12_CPU_DESCRIPTOR_HANDLE uavCpuHandle = cpuHandle;
-            uavCpuHandle.ptr += descriptorSize * (1 + mip);
-            device->CreateUnorderedAccessView(prefilteredMap.Get(), nullptr, &uavDesc, uavCpuHandle);
+                // UAVビュー作成（特定のミップレベル）
+                D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+                uavDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+                uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+                uavDesc.Texture2DArray.MipSlice = mip;
+                uavDesc.Texture2DArray.FirstArraySlice = 0;
+                uavDesc.Texture2DArray.ArraySize = 6; // 6面
 
-            // Compute Shader実行
-            commandList->SetPipelineState(prefilteredPSO_.Get());
-            commandList->SetComputeRootSignature(prefilteredRootSignature_.Get());
+                D3D12_CPU_DESCRIPTOR_HANDLE uavCpuHandle = cpuHandle;
+                uavCpuHandle.ptr += descriptorSize * (1 + mip);
+                device->CreateUnorderedAccessView(prefilteredMap.Get(), nullptr, &uavDesc, uavCpuHandle);
 
-            ID3D12DescriptorHeap* heaps[] = { heap.Get() };
-            commandList->SetDescriptorHeaps(1, heaps);
+                // Compute Shader実行
+                commandList->SetPipelineState(prefilteredPSO_.Get());
+                commandList->SetComputeRootSignature(prefilteredRootSignature_.Get());
 
-            // ルートパラメータ設定
-            D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle = gpuHandle;
-            D3D12_GPU_DESCRIPTOR_HANDLE uavGpuHandle = gpuHandle;
-            uavGpuHandle.ptr += descriptorSize * (1 + mip);
+                ID3D12DescriptorHeap* heaps[] = { heap.Get() };
+                commandList->SetDescriptorHeaps(1, heaps);
 
-            commandList->SetComputeRootDescriptorTable(0, srvGpuHandle); // SRV
-            commandList->SetComputeRootDescriptorTable(1, uavGpuHandle); // UAV
+                // ルートパラメータ設定
+                D3D12_GPU_DESCRIPTOR_HANDLE srvGpuHandle = gpuHandle;
+                D3D12_GPU_DESCRIPTOR_HANDLE uavGpuHandle = gpuHandle;
+                uavGpuHandle.ptr += descriptorSize * (1 + mip);
 
-            // Constants: roughness, mipLevel, outputSize.x, outputSize.y
-            uint32_t constants[4] = {
-                *reinterpret_cast<uint32_t*>(&roughness),
-                mip,
-                mipSize,
-                mipSize
-            };
-            commandList->SetComputeRoot32BitConstants(2, 4, constants, 0);
+                commandList->SetComputeRootDescriptorTable(0, srvGpuHandle); // SRV
+                commandList->SetComputeRootDescriptorTable(1, uavGpuHandle); // UAV
 
-            // ディスパッチ（8x8スレッドグループ、6面分）
-            uint32_t dispatchX = (mipSize + 7) / 8;
-            uint32_t dispatchY = (mipSize + 7) / 8;
-            uint32_t dispatchZ = 6; // キューブマップの6面
-            commandList->Dispatch(dispatchX, dispatchY, dispatchZ);
+                // Constants: roughness, mipLevel, outputSize.x, outputSize.y
+                uint32_t constants[4] = {
+                    *reinterpret_cast<uint32_t*>(&roughness),
+                    mip,
+                    mipSize,
+                    mipSize
+                };
+                commandList->SetComputeRoot32BitConstants(2, 4, constants, 0);
 
-            // UAVバリア（次のミップレベルの前に同期）
-            ResourceBarrierHelper::UAV(commandList, prefilteredMap.Get());
-        }
+                // ディスパッチ（8x8スレッドグループ、6面分）
+                uint32_t dispatchX = (mipSize + 7) / 8;
+                uint32_t dispatchY = (mipSize + 7) / 8;
+                uint32_t dispatchZ = 6; // キューブマップの6面
+                commandList->Dispatch(dispatchX, dispatchY, dispatchZ);
 
-        // UAV→SRVバリア（全サブリソース）
-        D3D12_RESOURCE_STATES prefState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        ResourceBarrierHelper::Transition(commandList, prefilteredMap.Get(), prefState,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                // UAVバリア（次のミップレベルの前に同期）
+                ResourceBarrierHelper::UAV(commandList, prefilteredMap.Get());
+            }
 
-        // コマンドリストをClose
-        HRESULT hr = commandList->Close();
-        if (FAILED(hr))
-        {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("GeneratePrefilteredEnvironmentMap: Failed to close command list: 0x{:08X}", static_cast<unsigned int>(hr)));
-            return nullptr;
-        }
+            // UAV→SRVバリア（全サブリソース）
+            D3D12_RESOURCE_STATES prefState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            ResourceBarrierHelper::Transition(commandList, prefilteredMap.Get(), prefState,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        // コマンドを実行
-        ID3D12CommandList* commandLists[] = { commandList };
-        dxCommon_->GetCommandQueue()->ExecuteCommandLists(1, commandLists);
+        } // ここで Close → ExecuteCommandLists → Signal
 
-        // GPU完了を待機
-        dxCommon_->WaitForPreviousFrame();
+        // 生成結果を直後に使うため、このコンテキストの GPU 完了だけを待つ
+        dxCommon_->GetUploadContext()->WaitForIdle();
 
         // デバイス削除チェック（GPU実行中にTDR等で削除された場合を検出）
         HRESULT removedReason = dxCommon_->GetDevice()->GetDeviceRemovedReason();
@@ -915,22 +872,6 @@ namespace CoreEngine
         {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
                 std::format("GeneratePrefilteredEnvironmentMap: Device removed after GPU execution. Reason: 0x{:08X}", static_cast<unsigned int>(removedReason)));
-            return nullptr;
-        }
-
-        // コマンドリストをリセット
-        hr = dxCommon_->GetCommandAllocator()->Reset();
-        if (FAILED(hr))
-        {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("GeneratePrefilteredEnvironmentMap: Failed to reset command allocator: 0x{:08X}", static_cast<unsigned int>(hr)));
-            return nullptr;
-        }
-        hr = commandList->Reset(dxCommon_->GetCommandAllocator(), nullptr);
-        if (FAILED(hr))
-        {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("GeneratePrefilteredEnvironmentMap: Failed to reset command list: 0x{:08X}", static_cast<unsigned int>(hr)));
             return nullptr;
         }
 

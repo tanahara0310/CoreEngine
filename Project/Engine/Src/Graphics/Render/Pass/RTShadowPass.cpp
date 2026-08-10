@@ -26,7 +26,7 @@ namespace CoreEngine
             if (!context.rtShadowManager->IsInitialized()) {
                 return nullptr;
             }
-            return context.dxCommon->GetCommandList();
+            return context.cmdList;
         }
     }
 

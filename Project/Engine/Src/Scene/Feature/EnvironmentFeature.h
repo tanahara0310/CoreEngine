@@ -4,14 +4,16 @@
 
 // 前方宣言
 class SkyBoxObject;
-class InfiniteGroundObject;
 
 namespace CoreEngine
 {
-    /// @brief 既定の環境（空・無限床・大気散乱・雲）を管理する Feature
-    /// @details PostSceneInitialize でシーン生成済みの SkyBox / 無限床を採用
-    ///          （未生成なら自動生成）し、PreObjectUpdate で床のカメラ追従、
+    /// @brief 既定の環境（空・大気散乱・雲）を管理する Feature
+    /// @details PostSceneInitialize でシーン生成済みの SkyBox を採用（未生成なら自動生成）し、
     ///          PostLogic で大気散乱→雲の順に毎フレーム反映する。
+    /// @note 地平線より下の地面は「オブジェクト」ではなく大気散乱そのものが描く
+    ///       （Sky-View LUT が地表のランバート反射を積分している）。かつてここが
+    ///       持っていた既定床 InfiniteGroundObject は廃止した。開発時の空間把握用の
+    ///       グリッドは GridFeature（エディタ専用）の担当。
     class EnvironmentFeature : public ISceneFeature {
     public:
         const char* GetName() const override { return "Environment"; }
@@ -20,23 +22,12 @@ namespace CoreEngine
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
         void Finalize(SceneContext& ctx) override;
 
-        /// @brief 既定の無限地面（y=0 のグレータイル床）を自動生成するかどうか
-        /// @note PostSceneInitialize より前に設定すること（BaseScene が
-        ///       WantsDefaultGround() の値を反映する）
-        void SetWantsDefaultGround(bool wants) { wantsDefaultGround_ = wants; }
-
         /// @brief シーンの SkyBox（大気散乱で描く空）を取得
         SkyBoxObject* GetSkyBox() const { return skyBox_; }
 
     private:
         /// @brief 既定の空（大気散乱モードの SkyBox）のセットアップ
         void SetupDefaultSky(SceneContext& ctx);
-
-        /// @brief 既定の無限地面（y=0 のグレータイル床）のセットアップ
-        void SetupDefaultGround(SceneContext& ctx);
-
-        /// @brief 既定の無限地面をカメラ XZ に追従させる（毎フレーム）
-        void UpdateGroundPlane(SceneContext& ctx);
 
         /// @brief 保存済みの太陽・月ライト設定（CVar）をシーンのライトへ復元する
         /// @details ライトはシーン寿命・CVar はエンジン寿命のため、ライト生成後の
@@ -55,10 +46,5 @@ namespace CoreEngine
 
         // 既定背景の SkyBox（所有権は GameObjectManager。Finalize でポインタをクリアする）
         SkyBoxObject* skyBox_ = nullptr;
-
-        // 既定の無限地面（所有権は GameObjectManager。Finalize でポインタをクリアする）
-        InfiniteGroundObject* groundPlane_ = nullptr;
-
-        bool wantsDefaultGround_ = true;
     };
 }

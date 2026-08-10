@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ModelResource.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/Core/UploadContext.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Model/ModelLoader.h"
@@ -225,37 +226,43 @@ namespace CoreEngine
         const size_t vertexBytes = sizeof(VertexData) * modelData_.vertices.size();
         const size_t indexBytes = sizeof(uint32_t) * modelData_.indices.size();
         ID3D12Device* device = dxCommon_->GetDevice();
-        ID3D12GraphicsCommandList* cmdList = dxCommon_->GetCommandList();
 
         vertexBuffer_ = ResourceFactory::CreateBufferResource(
             device, vertexBytes, D3D12_HEAP_TYPE_DEFAULT);
-        vertexUploadBuffer_ = ResourceFactory::CreateBufferResource(device, vertexBytes);
+        Microsoft::WRL::ComPtr<ID3D12Resource> vertexUploadBuffer =
+            ResourceFactory::CreateBufferResource(device, vertexBytes);
 
         vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
         vertexBufferView_.SizeInBytes = static_cast<UINT>(vertexBytes);
         vertexBufferView_.StrideInBytes = sizeof(VertexData);
 
         void* mapped = nullptr;
-        vertexUploadBuffer_->Map(0, nullptr, &mapped);
+        vertexUploadBuffer->Map(0, nullptr, &mapped);
         memcpy(mapped, modelData_.vertices.data(), vertexBytes);
-        vertexUploadBuffer_->Unmap(0, nullptr);
+        vertexUploadBuffer->Unmap(0, nullptr);
 
         indexBuffer_ = ResourceFactory::CreateBufferResource(
             device, indexBytes, D3D12_HEAP_TYPE_DEFAULT);
-        indexUploadBuffer_ = ResourceFactory::CreateBufferResource(device, indexBytes);
+        Microsoft::WRL::ComPtr<ID3D12Resource> indexUploadBuffer =
+            ResourceFactory::CreateBufferResource(device, indexBytes);
 
         indexBufferView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
         indexBufferView_.SizeInBytes = static_cast<UINT>(indexBytes);
         indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
 
         void* mappedIndex = nullptr;
-        indexUploadBuffer_->Map(0, nullptr, &mappedIndex);
+        indexUploadBuffer->Map(0, nullptr, &mappedIndex);
         memcpy(mappedIndex, modelData_.indices.data(), indexBytes);
-        indexUploadBuffer_->Unmap(0, nullptr);
+        indexUploadBuffer->Unmap(0, nullptr);
 
         // GENERIC_READ で作られた DEFAULT ヒープバッファを COPY_DEST へ落としてコピーし、
         // 読み側（IA / DXR BLAS 構築 / スキニング SRV）が使える GENERIC_READ へ戻す。
+        // 積み先はフレームの描画用リストではなく専用のアップロードコンテキスト。
         {
+            UploadContext::ScopedRecording recording = dxCommon_->GetUploadContext()->BeginRecording();
+            assert(recording.IsValid() && "ModelResource: failed to begin an upload recording");
+            ID3D12GraphicsCommandList* cmdList = recording.List();
+
             D3D12_RESOURCE_BARRIER toCopy[2]{};
             for (uint32_t i = 0; i < 2; ++i) {
                 toCopy[i].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -266,8 +273,8 @@ namespace CoreEngine
             }
             cmdList->ResourceBarrier(2, toCopy);
 
-            cmdList->CopyBufferRegion(vertexBuffer_.Get(), 0, vertexUploadBuffer_.Get(), 0, vertexBytes);
-            cmdList->CopyBufferRegion(indexBuffer_.Get(), 0, indexUploadBuffer_.Get(), 0, indexBytes);
+            cmdList->CopyBufferRegion(vertexBuffer_.Get(), 0, vertexUploadBuffer.Get(), 0, vertexBytes);
+            cmdList->CopyBufferRegion(indexBuffer_.Get(), 0, indexUploadBuffer.Get(), 0, indexBytes);
 
             D3D12_RESOURCE_BARRIER toRead[2]{};
             for (uint32_t i = 0; i < 2; ++i) {
@@ -276,7 +283,11 @@ namespace CoreEngine
                 toRead[i].Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
             }
             cmdList->ResourceBarrier(2, toRead);
-        }
+
+            // 中間バッファはコピー完了まで生きていればよい。メンバで抱え続けない。
+            recording.KeepAlive(std::move(vertexUploadBuffer));
+            recording.KeepAlive(std::move(indexUploadBuffer));
+        } // ここで Close → ExecuteCommandLists → Signal
 
         // ===== ローカル空間AABBを頂点データから算出 =====
         localBoundingBox_ = BoundingBox(); // 無効値で初期化

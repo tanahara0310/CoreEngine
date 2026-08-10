@@ -134,9 +134,18 @@ float ComputeFoamMask(float2 worldXZ)
     const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ);
     accumulated = saturate(accumulated * envelope * envelope * kFoamEnvelopeScale);
 
+    // ★白波の量を風速へ追従させる★
+    // detJ のしきい値は固定なので、これだけでは実海の風速依存
+    // （Monahan: 白波被覆率 W ∝ U^3.41）に全く足りない。実測でも、高風速で
+    // 合わせた設定のまま風速 4m/s にすると被覆率が実海推定の約 40 倍出ていた。
+    // 被覆率へ Monahan 比を掛けることで、しきい値を触らずに風速追従させる
+    // （dissolve のしきい値カットが効くため、マスクを下げると面積も減る）。
+    // 岸際泡は砕波ではなく地形起因なので、ここでは掛けない（呼び出し側で max）。
+    const float windScaledMask = max(instant, accumulated) * gFoamWindCoverageScale;
+
     // 返り値は滑らかな「被覆率」の場。レース状の形への変換（dissolve）は
     // 表示側の ComputeFoamLace が行うため、ここではノイズを掛けない。
-    return max(instant, accumulated);
+    return saturate(windScaledMask);
 }
 
 /// @brief 岸際泡（shore foam）の被覆率 [0,1] を求める

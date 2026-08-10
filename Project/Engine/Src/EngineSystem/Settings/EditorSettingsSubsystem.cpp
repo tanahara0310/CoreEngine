@@ -36,29 +36,36 @@ namespace CoreEngine
 
     // ===== パスヘルパー =====
 
-    std::string EditorSettingsSubsystem::GetSettingsDir() const {
+    std::string EditorSettingsSubsystem::GetSettingsDir(IEditorSettingsSection::StorageArea area) const {
         // SceneSaveSystem の "Application/Assets/Scenes" と同じく実行時カレント基準。
-        // アセット（シーンデータ）ではなくエディタ状態のため Saved/ 配下に分離する
-        return "Application/Saved/EditorSettings";
+        // 2 層化（UE の Config/ と Saved/Config/ の分離に相当）:
+        // - ProjectConfig: 較正値などプロジェクト資産。git にコミットして共有
+        // - UserSaved: カメラ位置など個人の作業状態。git 管理外
+        return area == IEditorSettingsSection::StorageArea::ProjectConfig
+            ? "Application/Config/EngineSettings"
+            : "Application/Saved/EditorSettings";
     }
 
-    std::string EditorSettingsSubsystem::GetFilePath(const std::string& sectionName) const {
-        return GetSettingsDir() + "/" + sectionName + ".json";
+    std::string EditorSettingsSubsystem::GetFilePath(const IEditorSettingsSection* section) const {
+        return GetSettingsDir(section->GetStorageArea()) + "/" + section->GetSectionName() + ".json";
     }
 
-    std::string EditorSettingsSubsystem::GetTempPath(const std::string& sectionName) const {
-        return GetFilePath(sectionName) + ".tmp";
+    std::string EditorSettingsSubsystem::GetTempPath(const IEditorSettingsSection* section) const {
+        return GetFilePath(section) + ".tmp";
     }
 
-    std::string EditorSettingsSubsystem::GetBackupPath(const std::string& sectionName) const {
-        return GetSettingsDir() + "/_backup/" + sectionName + ".json.bak";
+    std::string EditorSettingsSubsystem::GetBackupPath(const IEditorSettingsSection* section) const {
+        return GetSettingsDir(section->GetStorageArea()) + "/_backup/"
+             + std::string(section->GetSectionName()) + ".json.bak";
     }
 
     // ===== ライフサイクル =====
 
     void EditorSettingsSubsystem::Initialize(EngineSystem* /*engine*/, const EngineConfig& /*config*/)
     {
-        JsonManager::GetInstance().CreateJsonDirectory(GetSettingsDir());
+        auto& jm = JsonManager::GetInstance();
+        jm.CreateJsonDirectory(GetSettingsDir(IEditorSettingsSection::StorageArea::UserSaved));
+        jm.CreateJsonDirectory(GetSettingsDir(IEditorSettingsSection::StorageArea::ProjectConfig));
         lastCheckTime_ = std::chrono::steady_clock::now();
     }
 
@@ -76,14 +83,44 @@ namespace CoreEngine
     void EditorSettingsSubsystem::EndFrame()
     {
         const auto now = std::chrono::steady_clock::now();
-        const double elapsed = std::chrono::duration<double>(now - lastCheckTime_).count();
-        if (elapsed < kCheckIntervalSec) {
-            return;
+
+        // Polling 方式のセクションを見るのは 1 秒に 1 回だけ（従来動作）
+        const bool pollNow =
+            std::chrono::duration<double>(now - lastCheckTime_).count() >= kCheckIntervalSec;
+        if (pollNow) {
+            lastCheckTime_ = now;
         }
-        lastCheckTime_ = now;
 
         for (auto& entry : entries_) {
-            SaveIfChanged(entry);
+            if (entry.section->GetChangeSignal() != IEditorSettingsSection::ChangeSignal::Revision) {
+                if (pollNow) {
+                    SaveIfChanged(entry);
+                }
+                continue;
+            }
+
+            // ---- Revision 方式（イベント駆動）。毎フレーム整数比較 2 回だけ ----
+            const uint64_t revision = entry.section->GetChangeRevision();
+            if (revision != entry.lastSeenRevision) {
+                entry.lastSeenRevision = revision;
+                entry.lastChangeTime = now;  // 変更を観測 → デバウンス計時を開始/延長
+                entry.dirty = true;
+            }
+
+            // 確定（スライダーを離す等）はデバウンスを待たず同フレームで書く
+            const uint64_t commit = entry.section->GetCommitRevision();
+            const bool committed = (commit != entry.lastSeenCommitRevision);
+            entry.lastSeenCommitRevision = commit;
+
+            if (!entry.dirty) {
+                continue;
+            }
+            const bool quiet =
+                std::chrono::duration<double>(now - entry.lastChangeTime).count() >= kDebounceSec;
+            if (committed || quiet) {
+                // 書き込み失敗時のみ dirty を維持して次フレーム再試行する
+                entry.dirty = !SaveIfChanged(entry);
+            }
         }
     }
 
@@ -109,7 +146,7 @@ namespace CoreEngine
 
         // 保存済みファイルがあれば即復元
         auto& jm = JsonManager::GetInstance();
-        const std::string filePath = GetFilePath(section->GetSectionName());
+        const std::string filePath = GetFilePath(section);
         if (jm.FileExists(filePath)) {
             const json loaded = jm.LoadJson(filePath);
             if (!loaded.is_null() && !loaded.empty()) {
@@ -119,6 +156,12 @@ namespace CoreEngine
 
         // 復元後の状態を差分比較の基準にする（次に実際の変更が起きるまで書き込まない）
         section->Serialize(entry.lastSaved);
+
+        // Revision 方式の基準通番も復元後の値で初期化する。
+        // Deserialize が復元で通番を進めるため、ここで揃えないと起動直後に
+        // 「変更あり」と誤検知して無意味な保存が走る
+        entry.lastSeenRevision = section->GetChangeRevision();
+        entry.lastSeenCommitRevision = section->GetCommitRevision();
 
         section->registeredStore_ = this;
         entries_.push_back(std::move(entry));
@@ -178,7 +221,7 @@ namespace CoreEngine
         }
 
         auto& jm = JsonManager::GetInstance();
-        const std::string backupPath = GetBackupPath(sectionName);
+        const std::string backupPath = GetBackupPath(entry->section);
         if (!jm.FileExists(backupPath)) {
             return false;
         }
@@ -208,11 +251,11 @@ namespace CoreEngine
         json current;
         entry.section->Serialize(current);
         if (current == entry.lastSaved) {
-            return false;
+            return true;  // 差分なし＝既に永続化されている（値が往復して元に戻った場合を含む）
         }
 
-        if (!WriteAtomic(entry.section->GetSectionName(), current)) {
-            return false;
+        if (!WriteAtomic(entry.section, current)) {
+            return false;  // 書き込み失敗。呼び出し側が再試行を判断する
         }
         entry.lastSaved = std::move(current);
         entry.lastSaveTime = FormatNowTime();
@@ -227,27 +270,28 @@ namespace CoreEngine
         for (const auto& entry : entries_) {
             SectionStatus status;
             status.name = entry.section->GetSectionName();
-            status.fileExists = jm.FileExists(GetFilePath(status.name));
-            status.backupExists = jm.FileExists(GetBackupPath(status.name));
+            status.fileExists = jm.FileExists(GetFilePath(entry.section));
+            status.backupExists = jm.FileExists(GetBackupPath(entry.section));
             status.lastSaveTime = entry.lastSaveTime;
             statuses.push_back(std::move(status));
         }
         return statuses;
     }
 
-    bool EditorSettingsSubsystem::WriteAtomic(const std::string& sectionName, const json& data)
+    bool EditorSettingsSubsystem::WriteAtomic(const IEditorSettingsSection* section, const json& data)
     {
         namespace fs = std::filesystem;
 
-        const std::string filePath = GetFilePath(sectionName);
-        const std::string tempPath = GetTempPath(sectionName);
-        const std::string backupPath = GetBackupPath(sectionName);
+        const std::string settingsDir = GetSettingsDir(section->GetStorageArea());
+        const std::string filePath = GetFilePath(section);
+        const std::string tempPath = GetTempPath(section);
+        const std::string backupPath = GetBackupPath(section);
 
         json out = data;
         out["version"] = kSettingsVersion;
 
         try {
-            fs::create_directories(GetSettingsDir());
+            fs::create_directories(settingsDir);
 
             // 1. 一時ファイルへ全量書き込み（本体は書き込み途中のクラッシュから守る）
             {
@@ -266,7 +310,7 @@ namespace CoreEngine
             // 2. 旧ファイルを 1 世代バックアップへ退避（誤変更の復元用）
             std::error_code ec;
             if (fs::exists(filePath, ec)) {
-                fs::create_directories(GetSettingsDir() + "/_backup", ec);
+                fs::create_directories(settingsDir + "/_backup", ec);
                 fs::copy_file(filePath, backupPath, fs::copy_options::overwrite_existing, ec);
                 // バックアップ失敗は本保存を妨げない（初回起動や読み取り専用時など）
             }
@@ -276,7 +320,7 @@ namespace CoreEngine
             return true;
         }
         catch (const std::exception& e) {
-            std::cerr << "[EditorSettings] Error saving section '" << sectionName
+            std::cerr << "[EditorSettings] Error saving section '" << section->GetSectionName()
                       << "': " << e.what() << std::endl;
             return false;
         }

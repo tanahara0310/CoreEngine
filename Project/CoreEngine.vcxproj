@@ -188,7 +188,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp" />
-    <ClCompile Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
@@ -275,6 +274,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarRegistry.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarSerialization.cpp" />
+    <ClCompile Include="Engine\Src\Utility\CVar\CVarUndoStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\CVarPanel.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.cpp" />
@@ -457,6 +457,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DepthStencilManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\CommandManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Common\Core\UploadContext.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DescriptorManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DeviceManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Common\Core\SwapChainManager.cpp" />
@@ -562,7 +563,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
-    <ClInclude Include="Engine\Src\GameObject\Ground\InfiniteGroundObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.h" />
@@ -607,6 +607,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarSerialization.h" />
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarUndoStack.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\CVarPanel.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.h" />
@@ -806,6 +807,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterFoamDefaults.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\GerstnerWaterSimulator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\WaterSurfaceModelProvider.h" />
@@ -916,6 +918,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DepthStencilManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\CommandManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Common\Core\UploadContext.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DeviceManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Common\Core\SwapChainManager.h" />

@@ -62,7 +62,8 @@ namespace CoreEngine
                 vsPath,
                 psPath,
                 provider.GetCullMode(),
-                provider.GetDepthWriteEnable())) {
+                provider.GetDepthWriteEnable(),
+                provider.WritesMotionVector())) {
                 return false;
             }
         }
@@ -82,7 +83,8 @@ namespace CoreEngine
         const std::wstring& vsPath,
         const std::wstring& psPath,
         D3D12_CULL_MODE cullMode,
-        bool depthWriteEnable)
+        bool depthWriteEnable,
+        bool writesMotionVector)
     {
         IDxcBlob* vsBlob = compiler.CompileShader(vsPath, L"vs_6_0");
         if (!vsBlob) {
@@ -115,13 +117,30 @@ namespace CoreEngine
             return false;
         }
 
-        // 独自 RootSignature で PSO を構築する
-        const bool psoResult = forwardPsoMg_.CreateBuilder()
-            .SetInputLayoutFromReflection(*reflectionData)
+        // 独自 RootSignature で PSO を構築する。
+        // ★ビルダーは SetInputLayoutFromReflection() の後にコピーしてはいけない★
+        // inputElementDescs_[i].SemanticName が semanticNameStorage_ の std::string を
+        // 指しているため、コピーすると新しい方の desc が「コピー元の文字列」を指したままになり、
+        // 元が破棄された瞬間にダングリングして PSO 生成が失敗する。
+        // そのためビルダーは先に実体として受け取り、以降は参照のまま操作する。
+        PipelineStateBuilder builder = forwardPsoMg_.CreateBuilder();
+        builder.SetInputLayoutFromReflection(*reflectionData)
             .SetRasterizer(cullMode, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, depthWriteEnable)
-            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vsBlob, psBlob, forwardRootSignatureMg_->GetRootSignature());
+            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+
+        if (writesMotionVector) {
+            // SceneColor（オフスクリーン HDR）＋ GBuffer の MotionVector の 2 枚。
+            // フォーマットは GBufferManager::kRenderTargetFormats と一致させること。
+            const DXGI_FORMAT formats[2] = {
+                DXGI_FORMAT_R16G16B16A16_FLOAT, // SceneColor
+                DXGI_FORMAT_R16G16_FLOAT,       // MotionVector
+            };
+            builder.SetRenderTargetFormats(formats, 2);
+        }
+
+        const bool psoResult =
+            builder.BuildAllBlendModes(device, vsBlob, psBlob, forwardRootSignatureMg_->GetRootSignature());
 
         if (!psoResult) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,

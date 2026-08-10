@@ -46,7 +46,7 @@ namespace CoreEngine
 
         auto* renderTargetManager = context.renderTargetManager;
         auto* gBufferManager = context.gBufferManager;
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
         if (!cmdList) {
             return;
         }

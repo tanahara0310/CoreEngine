@@ -28,6 +28,12 @@ namespace CoreEngine
             "現フレームの寄与率。小さいほど滑らかだが残像寄りになる",
             CVarRange{ 0.01f, 1.0f } };
 
+        CVar<float> cvBlendAlphaMax{
+            "r.TAA.BlendAlphaMax", 0.9f,
+            "履歴と現フレームが食い違う画素で使う寄与率の上限"
+            "（水面など毎フレーム表面が変わる面のぼけ対策。blendAlpha と同値にすると従来動作）",
+            CVarRange{ 0.01f, 1.0f } };
+
         CVar<float> cvClampScale{
             "r.TAA.ClampScale", 1.0f,
             "近傍 AABB の拡張率。大きいほどゴーストが出やすく、小さいほどちらつく",
@@ -53,6 +59,7 @@ namespace CoreEngine
 
         // 調整値は CVar が保持する。UI・設定復元のどの経路で変わってもここで取り込む
         params_.blendAlpha = cvBlendAlpha.Get();
+        params_.blendAlphaMax = (std::max)(cvBlendAlphaMax.Get(), params_.blendAlpha);
         params_.clampScale = cvClampScale.Get();
 
         if (!IsEnabled() || !context.renderTargetManager || !context.frameBlackboard
@@ -61,7 +68,7 @@ namespace CoreEngine
         }
 
         auto* renderTargetManager = context.renderTargetManager;
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
 
         // 書き込み先は frameNumber の偶奇だけで決まる（RenderPipeline の論理名登録と同じ基準）
         const uint32_t writeIndex = GetWriteHistoryIndex(context.frameNumber);

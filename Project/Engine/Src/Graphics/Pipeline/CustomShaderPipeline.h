@@ -73,7 +73,8 @@ namespace CoreEngine
             const std::wstring& vsPath,
             const std::wstring& psPath,
             D3D12_CULL_MODE cullMode,
-            bool depthWriteEnable);
+            bool depthWriteEnable,
+            bool writesMotionVector);
 
         /// @brief コンピュートパイプラインステートを構築する
         /// @param device D3D12 デバイス

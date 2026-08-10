@@ -62,7 +62,7 @@ namespace CoreEngine
             return;
         }
 
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
 
         // バックバッファへのレンダリング開始（自動でRTV/DSV/ビューポート/シザー設定）
         targetToUse->Begin(cmdList);

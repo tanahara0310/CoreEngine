@@ -9,6 +9,7 @@
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Model/ModelManager.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
@@ -333,6 +334,16 @@ namespace CoreEngine
             return;
         }
 
+        // 空キューブマップ（空＋雲）を反射パスへ渡す。
+        // レイが空へ抜けたときの色を「実際にトレースした向き」でこのパス内で
+        // 解決するために必要（Water.PS 側で平面法線の空と混ぜると二重像になる）。
+        D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSRV{};
+        if (auto* atmosphere = context.atmosphereManager) {
+            if (atmosphere->IsSkySpecularEnabled() && atmosphere->IsSkyEnvironmentReady()) {
+                skyEnvironmentSRV = atmosphere->GetSkySpecularSRVHandle();
+            }
+        }
+
         rtWaterReflection->Dispatch(
             cmdList,
             dispatchContext.sceneDepthSRV,
@@ -341,6 +352,7 @@ namespace CoreEngine
             dispatchContext.cameraPosition,
             surfaceData,
             dispatchContext.fftOceanInput,
+            skyEnvironmentSRV,
             dispatchContext.width,
             dispatchContext.height,
             viewId);

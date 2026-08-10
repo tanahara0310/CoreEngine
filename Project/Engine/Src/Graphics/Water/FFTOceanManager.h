@@ -5,6 +5,7 @@
 #include "Graphics/Water/FFTOceanDebugProbe.h"
 #include "Graphics/Water/FFTOceanGpuResources.h"
 #include "Graphics/Water/FFTOceanSpectrumBuilder.h"
+#include "Graphics/Water/WaterFoamDefaults.h"
 
 #include <array>
 #include <cstddef>
@@ -31,23 +32,44 @@ namespace CoreEngine
             uint32_t resolution = 256;
             float amplitudeScale = 1.0f;
             float windDirection[2] = { 0.92f, 0.38f };
-            // 波高は Pierson-Moskowitz 較正（Hs ≈ 0.21 v²/g）で風速から決まる。
+            // 波高とピーク波長は JONSWAP のフェッチ制限成長則で「風速 × 吹送距離」から
+            // 決まる（完全発達 = Pierson-Moskowitz でクランプ）。
             // 12 m/s → 有義波高約 3m の「うねりのある外洋」相当を既定とする。
             float windSpeed = 12.0f;
+            /// @brief 吹送距離 [m]。短い＝若く尖った風波、長い＝完全発達したうねり
+            float fetchMeters = 200000.0f;
             float choppiness = 1.35f;
             uint32_t activeComponentCount = 32;
             float gravity = 9.81f;
+
+            // ---- うねり（swell）成分 ----
+            // 遠方の低気圧で発生し、分散しながら到達した長周期波。その場の風とは
+            // 独立なので、風速ではなく波高・周期・向きで直接与える。
+            // 風波と別方向にすると斜交する波列（クロスシー）になり、風速を落としても
+            // うねりだけが残る（＝凪の海のうねり）。
+            bool swellEnabled = true;
+            float swellHeightMeters = 1.2f;    ///< うねりの有義波高 Hs [m]
+            float swellPeriodSeconds = 12.0f;  ///< うねりのピーク周期 [s]（λ = gT²/2π）
+            float swellDirection[2] = { 0.34f, -0.94f }; ///< 進行方向（XZ・適用時に正規化）
+            float swellRelativeWidth = 0.06f;  ///< 周波数の狭さ（小さいほど周期が揃う）
+            float swellSpreadExponent = 24.0f; ///< 指向の鋭さ（大きいほど一方向）
         };
 
         /// @brief 泡（whitecap）蓄積パスの設定
-        /// @details 値の単一情報源は WaterFrameConstants（UI / 永続化も同経路）。
+        /// @details 実行時の値の単一情報源は WaterFrameConstants（UI / 永続化も同経路）。
         ///          WaterRenderFeature が毎フレーム SetFoamSettings で転送する。
+        ///          転送前に読まれることは無いが、既定値は WaterFoamDefaults を参照して
+        ///          他段（CVar / WaterFrameConstants / FoamConstants）と割れないようにする。
         struct FoamSettings {
-            bool enabled = true;
-            float bias = 0.85f;
-            float gain = 4.0f;
-            float cascadeWeights[3] = { 1.0f, 0.5f, 0.2f };
-            float decaySeconds = 3.0f;
+            bool enabled = WaterFoamDefaults::kEnabled;
+            float bias = WaterFoamDefaults::kBias;
+            float gain = WaterFoamDefaults::kGain;
+            float cascadeWeights[3] = {
+                WaterFoamDefaults::kCascadeWeights[0],
+                WaterFoamDefaults::kCascadeWeights[1],
+                WaterFoamDefaults::kCascadeWeights[2],
+            };
+            float decaySeconds = WaterFoamDefaults::kDecaySeconds;
         };
 
         /// @brief 必要なGPUリソースとComputeパイプラインを初期化する
@@ -141,13 +163,18 @@ namespace CoreEngine
         };
 
         /// @brief 泡蓄積パスの定数（HLSL 側 FFTOceanFoamAccumulate.CS.hlsl と一致必須）
+        /// @note 既定値は WaterFoamDefaults 参照（Dispatch 時に FoamSettings で上書きされる）
         struct FoamConstants {
             uint32_t resolution = 0;
             float deltaSeconds = 0.0f;
-            float foamBias = 0.85f;
-            float foamGain = 4.0f;
-            float cascadeWeights[3] = { 1.0f, 0.5f, 0.2f };
-            float decaySeconds = 3.0f;
+            float foamBias = WaterFoamDefaults::kBias;
+            float foamGain = WaterFoamDefaults::kGain;
+            float cascadeWeights[3] = {
+                WaterFoamDefaults::kCascadeWeights[0],
+                WaterFoamDefaults::kCascadeWeights[1],
+                WaterFoamDefaults::kCascadeWeights[2],
+            };
+            float decaySeconds = WaterFoamDefaults::kDecaySeconds;
             uint32_t resetFoam = 0;
             float padding[3] = {};
         };

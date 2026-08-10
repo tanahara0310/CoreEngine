@@ -60,7 +60,7 @@ namespace CoreEngine
             return;
         }
 
-        ID3D12GraphicsCommandList* cmdList = context.dxCommon->GetCommandList();
+        ID3D12GraphicsCommandList* cmdList = context.cmdList;
         if (!cmdList) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,

@@ -12,8 +12,9 @@ namespace
     using namespace CoreEngine;
 
     /// 実体（コントローラ・カメラ）を鏡写しにするだけなので、自動生成 UI には出さない。
-    /// 出してしまうと毎フレームのミラーに即上書きされ、触れるのに効かない UI になる
-    constexpr CVarFlags kMirrorFlags = CVarFlags::NoUI;
+    /// 出してしまうと毎フレームのミラーに即上書きされ、触れるのに効かない UI になる。
+    /// Mirrored により Undo の対象からも外れる（戻しても次フレームに巻き戻るため）
+    constexpr CVarFlags kMirrorFlags = CVarFlags::NoUI | CVarFlags::Mirrored;
 
     // ===== 操作設定（OrbitFlyController::Settings と既定値を一致させること） =====
     CVar<float> cvRotationSensitivity{

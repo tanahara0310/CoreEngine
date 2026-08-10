@@ -49,7 +49,7 @@ namespace CoreEngine
             return;
         }
 
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
 
         RenderTarget* casTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::CASOutput);
         if (!casTarget) {

@@ -72,10 +72,7 @@ namespace CoreEngine
         OnInitialize();
 
         // OnInitialize() 完了後の Feature フック
-        // （シーン生成済みオブジェクトを見る SkyBox / 無限床の採用判定など）
-        if (environmentFeature_) {
-            environmentFeature_->SetWantsDefaultGround(WantsDefaultGround());
-        }
+        // （シーン生成済みオブジェクトを見る SkyBox の採用判定など）
         RefreshFeatureContext();
         for (auto& entry : features_) {
             entry.feature->PostSceneInitialize(featureContext_);
@@ -150,9 +147,10 @@ namespace CoreEngine
         // 以前はここでアクティブカメラを一時的に差し替えて描き、元へ戻していたが、
         // その間だけ「アクティブカメラ」の意味が変わるため、ギズモ／ピッキングが
         // 描画とは別のカメラを見てズレる原因になっていた。
+        // RenderGraph を経由しないレガシー描画経路。ここは RenderContext が無いため、
+        // このシーン描画自体がコマンドリストの供給点になる（パス側は context.cmdList を使う）。
         renderManager->SetDebugLineRenderingEnabled(true);
-        renderManager->SetCommandList(dxCommon->GetCommandList());
-        renderManager->DrawGeometryPass();
+        renderManager->DrawGeometryPass(dxCommon->GetCommandList());
     }
 
     Camera* BaseScene::GetGameViewCamera3D() const

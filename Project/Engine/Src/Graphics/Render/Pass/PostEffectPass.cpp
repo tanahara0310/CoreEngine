@@ -119,7 +119,7 @@ namespace CoreEngine
                 return;
             }
 
-            auto* cmdList = context.dxCommon->GetCommandList();
+            auto* cmdList = context.cmdList;
             offscreen->BeginCS(cmdList);
             effect_->Dispatch(
                 inputSrv,
@@ -149,7 +149,7 @@ namespace CoreEngine
             return;
         }
 
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
         outputTarget->Begin(cmdList);
         effect_->Draw(inputSrv);
         outputTarget->End(cmdList);

@@ -40,7 +40,7 @@ struct AtmosphereConstants
     float4x4 invViewProj;         // 逆ビュープロジェクション行列（Aerial Perspective 用）
 
     float3 cameraWorldPos;        // カメラのワールド座標 [m]
-    float groundLevelY;           // 地表とみなすワールドY座標 [m]（InfiniteGroundObject 等の実床と揃える）
+    float groundLevelY;           // 地表とみなすワールドY座標 [m]（カメラ高度の基準。雲・ゴッドレイも参照）
 
     float multiScatteringFactor;  // 多重散乱寄与のスケール（1=近似そのまま。等方Psi_ms近似は薄明時に過大評価するため抑制用）
     float apKmPerSlice;           // Camera Volume の1スライスあたり距離 [km]（UE の AP View Distance Scale 相当。最大距離 = 32×この値）
@@ -435,6 +435,24 @@ float3 IntegrateScatteredLuminance(
 
         luminance += throughput * Sint;
         throughput *= stepTransmittance;
+    }
+
+    // ===== 地表の反射（ランバート） =====
+    // 視線が惑星に当たる場合、積分はそこで打ち切られる。地表そのものの放射輝度を
+    // 足さないと地平線下が「ほぼ真っ黒」になる（＝実床メッシュや解析フィルで
+    // 埋めるしかなくなる）。ここで足せば地平線下も物理的に照らされ、大気の内散乱・
+    // 透過率が自動で乗るため空との接合も連続になる。
+    // throughput はループ終了時点で「カメラ→地表」の透過率になっている。
+    // MultiScatteringLUT.CS.hlsl の地表バウンス項と同一形（あちらは既に実装済みで、
+    // Sky-View 側だけがこの項を欠いていた）。
+    if (tGround >= 0.0f)
+    {
+        float3 groundPoint = rayOrigin + rayDir * tGround;
+        float3 groundNormal = normalize(groundPoint); // 惑星中心基準なので位置＝法線方向
+        float NdotL = saturate(dot(groundNormal, toSun));
+        float3 transmittanceToSun = SampleTransmittanceToSun(
+            transmittanceLUT, lutSampler, groundPoint, toSun, atm);
+        luminance += throughput * transmittanceToSun * NdotL * atm.groundAlbedo / PI;
     }
 
     return luminance;

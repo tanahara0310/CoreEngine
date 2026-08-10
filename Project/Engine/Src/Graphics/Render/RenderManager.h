@@ -59,35 +59,36 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE prefilteredHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTHandle);
 
-        /// @brief コマンドリストを設定（フレームごとに1回）
-        /// @param cmdList コマンドリスト
-        void SetCommandList(ID3D12GraphicsCommandList* cmdList);
-
         /// @brief 描画項目をキューに追加
         /// @param item 描画する RenderItem
         void AddRenderItem(RenderItem item);
 
-    // 各 Draw*Pass の viewType はパスが context.viewSettings.viewType から明示的に渡す。
-    // 描画オブジェクトへは DrawViewInfo（カメラ・ビュー種別・パス種別）として届く。
+    // 各 Draw*Pass は記録先コマンドリストを引数で受け取る。
+    // 以前はフレーム先頭で SetCommandList() したものをメンバに保持していたが、
+    // 「設定し忘れ／古いリストが残る」を型で防げず、コマンドリストを複数化すると
+    // 破綻するため撤去した。呼び出し元（パス）は context.cmdList をそのまま渡すこと。
+    //
+    // viewType はパスが context.viewSettings.viewType から明示的に渡す。
+    // 描画オブジェクトへは DrawViewInfo（コマンドリスト・カメラ・ビュー種別・パス種別）として届く。
     // 省略時は GameView（RenderGraph を経由しないレガシー呼び出し向け）。
 
     /// @brief G-Bufferパスのみ描画（不透明 Model / SkinnedModel を蓄積）
-    void DrawGBufferPass(RenderViewType viewType = RenderViewType::GameView);
+    void DrawGBufferPass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief 通常ジオメトリパスのみ描画（描画キュー必須）
-    void DrawGeometryPass(RenderViewType viewType = RenderViewType::GameView);
+    void DrawGeometryPass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief 通常 RenderItem キューのみ描画する
-    void DrawMainQueuePass(RenderViewType viewType = RenderViewType::GameView);
+    void DrawMainQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief 水面 RenderItem キューのみ描画する
-    void DrawWaterQueuePass(RenderViewType viewType = RenderViewType::GameView);
+    void DrawWaterQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief Sky RenderItem キューのみ描画する
-    void DrawSkyQueuePass(RenderViewType viewType = RenderViewType::GameView);
+    void DrawSkyQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief Transparent RenderItem キューのみ描画する
-    void DrawTransparentQueuePass(RenderViewType viewType = RenderViewType::GameView);
+    void DrawTransparentQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType = RenderViewType::GameView);
 
     /// @brief 描画パスタイプの描画順序優先度を設定（小さいほど先に描画）
     /// @param type 描画パスタイプ
@@ -148,7 +149,6 @@ namespace CoreEngine
         bool isQueueSorted_ = false;
 
     // フレームごとに設定されるコンテキスト
-    ID3D12GraphicsCommandList* cmdList_ = nullptr;
     const CoreEngine::FrameViews* frameViews_ = nullptr;
 
     bool renderDebugLines_ = true;
@@ -179,8 +179,12 @@ namespace CoreEngine
     const CoreEngine::ViewInfo* GetViewForPass(RenderPassType passType, RenderViewType viewType) const;
 
     /// @brief 指定キューに対する通常（Forward 系）描画パス
+    /// @param cmdList 記録先コマンドリスト
     /// @param viewType 実行中のビュー種別（DrawViewInfo として各オブジェクトへ渡す）
-    void RenderNormalPassQueue(const std::vector<RenderItem>& queue, RenderViewType viewType);
+    void RenderNormalPassQueue(
+        ID3D12GraphicsCommandList* cmdList,
+        const std::vector<RenderItem>& queue,
+        RenderViewType viewType);
 
     /// @brief 指定キューを sortKey 順にソートする
     void SortRenderQueue(std::vector<RenderItem>& queue);

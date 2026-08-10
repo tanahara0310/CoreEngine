@@ -109,12 +109,31 @@ namespace CoreEngine
             params.push_back(param);
         }
 
+        // 静的サンプラ s0（線形・Clamp）。
+        // DXR の全パスが共有するが、宣言しないシェーダーには何の影響も無い（追加のみ）。
+        // 用途: RTWaterReflection が空キューブマップ（TextureCube）を SampleLevel する。
+        // Texture2D 系は従来どおり Load による手動バイリニアなのでサンプラ不要。
+        D3D12_STATIC_SAMPLER_DESC staticSampler{};
+        staticSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        staticSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        staticSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        staticSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+        staticSampler.MipLODBias = 0.0f;
+        staticSampler.MaxAnisotropy = 1;
+        staticSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+        staticSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+        staticSampler.MinLOD = 0.0f;
+        staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
+        staticSampler.ShaderRegister = 0;
+        staticSampler.RegisterSpace = 0;
+        staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
         // ルートシグネチャ記述子
         D3D12_ROOT_SIGNATURE_DESC desc{};
         desc.NumParameters = static_cast<UINT>(params.size());
         desc.pParameters = params.data();
-        desc.NumStaticSamplers = 0;
-        desc.pStaticSamplers = nullptr;
+        desc.NumStaticSamplers = 1;
+        desc.pStaticSamplers = &staticSampler;
         desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
         Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;

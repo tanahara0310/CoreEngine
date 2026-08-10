@@ -1,5 +1,7 @@
 #pragma once
 
+#include <d3d12.h>
+
 #include "Graphics/Render/RenderViewType.h"
 
 namespace CoreEngine
@@ -18,6 +20,14 @@ namespace CoreEngine
         /// @details 描画側は必ずここから view/proj/frustum を取ること。カメラを直接
         ///          読み直すとパスごとに違う行列を使う事故が起きる。
         const ViewInfo* view = nullptr;
+
+        /// @brief この描画を記録するコマンドリスト
+        /// @details 描画側は必ずここから取ること。GameObject が自分で
+        ///          GetDirectXCommon()->GetCommandList() を呼ぶと、「どのリストへ積むか」の
+        ///          判断がオブジェクトの数だけ増え、キュー実行側が積み先を制御できなくなる。
+        ///          RenderManager がキュー実行時に、パスから受け取ったリストをそのまま入れる。
+        ID3D12GraphicsCommandList* cmdList = nullptr;
+
         RenderViewType viewType = RenderViewType::GameView; ///< 実行中のビュー種別
         bool isGBufferPass = false;                    ///< true: GBuffer 蓄積パス / false: Forward 系パス
 

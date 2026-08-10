@@ -15,10 +15,10 @@ namespace CoreEngine
     {
     public:
         /// @brief GPUアップロード後に呼び出し側へ返す結果データ
+        /// @note 中間バッファは UploadContext がフェンス完了まで生存させるため返さない。
         struct UploadResult
         {
             Microsoft::WRL::ComPtr<ID3D12Resource> texture;
-            Microsoft::WRL::ComPtr<ID3D12Resource> intermediate;
             D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
             D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{};
         };
@@ -34,7 +34,9 @@ namespace CoreEngine
             const std::string& resolvedPath);
 
     private:
-        // コマンドリスト・ディスクリプタヒープへの同時アクセスを防ぐ排他ロック
+        // ディスクリプタヒープ確保とリソース生成への同時アクセスを防ぐ排他ロック。
+        // コマンドリストへの記録は UploadContext が自前のロックで直列化するため、
+        // ここで守っているのはそれ以外（DescriptorManager::CreateSRV 等）。
         static std::mutex gpuUploadMutex_;
     };
 }

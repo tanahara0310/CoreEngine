@@ -38,13 +38,18 @@ public:
     /// @brief 更新
     void Update() override;
     
-    /// @brief 描画処理
+    /// @brief 描画処理（レガシー経路。DrawViewInfo を組み立てて本経路へ合流する）
     /// @param camera カメラ
     void Draw(const Camera* camera) override;
-    
+
+    /// @brief 描画処理（RenderManager からの本経路）
+    /// @param view コマンドリスト・カメラ・ビュー種別をまとめた描画コンテキスト
+    void Draw(const DrawViewInfo& view) override;
+
     /// @brief 2D専用描画（内部実装）
     /// @param camera 2D用カメラ
-    void Draw2D(const Camera* camera);
+    /// @param cmdList 記録先コマンドリスト（呼び出し元が明示的に渡す）
+    void Draw2D(const Camera* camera, ID3D12GraphicsCommandList* cmdList);
     
 #ifdef USE_IMGUI
     /// @brief インスペクタータブ定義を返す

@@ -83,17 +83,15 @@ namespace CoreEngine
         /// @note Feature の解放・GameObject のクリアより前に呼ばれる
         virtual void OnFinalize() {}
 
-        /// @brief 既定の無限地面（y=0 のグレータイル床）を自動生成するかどうか
-        /// @return true で自動生成（既定）。床が不要／邪魔になるシーンだけ false を返す。
-        virtual bool WantsDefaultGround() const { return true; }
-
         /// @brief ゲーム視点カメラ（CameraNames::Game）の位置・回転を上書きする
-        /// @param translate ワールド座標（無限床より上＝y > 0 にすること）
+        /// @param translate ワールド座標（地表 y=0 より上＝y > 0 にすること）
         /// @param rotate    オイラー角（ラジアン）
         /// @note OnInitialize() から呼ぶ。シーン固有の構図に合わせて使う。
         void SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate = { 0.0f, 0.0f, 0.0f });
 
-        /// 既定 GameView カメラの高さ（無限床 y=0 より上）
+        /// 既定 GameView カメラの高さ。
+        /// 大気散乱は「カメラ高度 - groundLevelY」を惑星中心距離へ変換するため、
+        /// 地表 y=0 と同じ高さに置くと地平線が特異点に近づく。必ず y > 0 に保つこと。
         static constexpr float kDefaultCameraHeight = 3.0f;
 
         /// @brief 大気散乱シーンでサーフェスの直接光に使う太陽照度 [lx]
