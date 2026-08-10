@@ -121,13 +121,25 @@ namespace CoreEngine
 
     void UIImage::Draw(const Camera* /*camera*/)
     {
+        // RenderGraph を経由しない直接呼び出し（レガシー経路）。
+        // DrawViewInfo を持たないため、ここだけがコマンドリストの供給点になる。
+        DrawViewInfo view{};
+        view.cmdList = renderer_ ? renderer_->GetDirectXCommon()->GetCommandList() : nullptr;
+        Draw(view);
+    }
+
+    void UIImage::Draw(const DrawViewInfo& view)
+    {
         if (!IsActive() || !renderer_ || !material_) { return; }
+
+        // 積み先はキュー実行側が DrawViewInfo で渡す。自分で取りに行かない。
+        auto* commandList = view.cmdList;
+        if (!commandList) { return; }
 
         if (rebuildVertex_) { UpdateVertexData(); }
 
         Vector2 screenPos = layout_.CalculateScreenPosition(renderer_->GetScreenSize());
 
-        auto* commandList = renderer_->GetDirectXCommon()->GetCommandList();
         size_t bufferIndex = renderer_->GetAvailableConstantBuffer();
 
         Vector3 position = { screenPos.x, screenPos.y, 0.0f };

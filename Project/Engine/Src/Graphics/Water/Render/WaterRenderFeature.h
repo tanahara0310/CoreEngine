@@ -134,7 +134,7 @@ namespace CoreEngine
         RenderDomainContext* publishTarget_ = nullptr;
 
         // FFT 関連 CVar の revision 合計。変化したときだけ FFTOceanManager::SetSettings を
-        // 呼ぶ（SetSettings は WaitForPreviousFrame＋スペクトル再構築を伴うため毎フレーム
+        // 呼ぶ（SetSettings は WaitForGpuIdle＋スペクトル再構築を伴うため毎フレーム
         // 無条件で呼んではいけない。サニタイズ（風向正規化）で CVar 値と保持値が
         // 恒常的に食い違い、毎フレーム再構築になる事故も防ぐ）。~0u は初回強制適用。
         uint32_t lastFFTCVarRevisionSum_ = ~0u;

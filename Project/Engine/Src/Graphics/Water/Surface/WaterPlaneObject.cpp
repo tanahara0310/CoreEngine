@@ -103,7 +103,7 @@ namespace CoreEngine
             LogSubCategory::Pipeline,
             "WaterPlane: begin shader pipeline rebuild. wait for GPU before PSO replacement. useFFTOcean={}",
             useFFTOcean_);
-        dxCommon->WaitForPreviousFrame();
+        dxCommon->WaitForGpuIdle();
 
         SetCustomShaderProvider(this);
         BuildCustomShaderPipelineIfNeeded(dxCommon->GetDevice(), modelManager);

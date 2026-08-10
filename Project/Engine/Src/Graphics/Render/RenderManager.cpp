@@ -74,10 +74,6 @@ namespace CoreEngine
         ApplyEnvironmentLightingToRenderers();
     }
 
-    void RenderManager::SetCommandList(ID3D12GraphicsCommandList* cmdList) {
-        cmdList_ = cmdList;
-    }
-
     void RenderManager::AddRenderItem(RenderItem item) {
         item.registrationOrder = registrationCounter_++;
         item.sortKey = ResolveRenderOrder(item);
@@ -121,8 +117,8 @@ namespace CoreEngine
         return view.isValid ? &view : nullptr;
     }
 
-    void RenderManager::DrawGBufferPass(RenderViewType viewType) {
-        if (opaqueDrawQueue_.empty() || !cmdList_) {
+    void RenderManager::DrawGBufferPass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
+        if (opaqueDrawQueue_.empty() || !cmdList) {
             return;
         }
 
@@ -161,10 +157,10 @@ namespace CoreEngine
                 activeRenderer = nullptr;
 
                 if (cmd.passType == RenderPassType::Model && modelGBuffer) {
-                    modelGBuffer->BeginGBufferPass(cmdList_);
+                    modelGBuffer->BeginGBufferPass(cmdList);
                     activeRenderer = modelRenderer;
                 } else if (cmd.passType == RenderPassType::SkinnedModel && skinnedGBuffer) {
-                    skinnedGBuffer->BeginGBufferPass(cmdList_);
+                    skinnedGBuffer->BeginGBufferPass(cmdList);
                     activeRenderer = skinnedRenderer;
                 }
             }
@@ -172,6 +168,7 @@ namespace CoreEngine
             if (activeRenderer) {
                 DrawViewInfo view{};
                 view.view = currentView;
+                view.cmdList = cmdList;
                 view.viewType = viewType;
                 view.isGBufferPass = true;
                 cmd.object->Draw(view);
@@ -183,21 +180,21 @@ namespace CoreEngine
         }
     }
 
-    void RenderManager::DrawGeometryPass(RenderViewType viewType) {
-        if ((drawQueue_.empty() && skyDrawQueue_.empty() && transparentDrawQueue_.empty() && waterDrawQueue_.empty()) || !cmdList_) {
+    void RenderManager::DrawGeometryPass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
+        if ((drawQueue_.empty() && skyDrawQueue_.empty() && transparentDrawQueue_.empty() && waterDrawQueue_.empty()) || !cmdList) {
             return;
         }
 
         EnsureQueueSorted();
 
-        DrawMainQueuePass(viewType);
-        DrawSkyQueuePass(viewType);
-        DrawTransparentQueuePass(viewType);
-        DrawWaterQueuePass(viewType);
+        DrawMainQueuePass(cmdList, viewType);
+        DrawSkyQueuePass(cmdList, viewType);
+        DrawTransparentQueuePass(cmdList, viewType);
+        DrawWaterQueuePass(cmdList, viewType);
     }
 
-    void RenderManager::DrawMainQueuePass(RenderViewType viewType) {
-        if ((drawQueue_.empty() && (deferredLightingActive_ || opaqueDrawQueue_.empty())) || !cmdList_) {
+    void RenderManager::DrawMainQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
+        if ((drawQueue_.empty() && (deferredLightingActive_ || opaqueDrawQueue_.empty())) || !cmdList) {
             return;
         }
 
@@ -205,13 +202,13 @@ namespace CoreEngine
 
         // Deferred 経路が無効な場合のみ、不透明キューを Forward でフォールバック描画する。
         if (!deferredLightingActive_ && !opaqueDrawQueue_.empty()) {
-            RenderNormalPassQueue(opaqueDrawQueue_, viewType);
+            RenderNormalPassQueue(cmdList, opaqueDrawQueue_, viewType);
         }
 
-        RenderNormalPassQueue(drawQueue_, viewType);
+        RenderNormalPassQueue(cmdList, drawQueue_, viewType);
     }
 
-    void RenderManager::DrawWaterQueuePass(RenderViewType viewType) {
+    void RenderManager::DrawWaterQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
         // 水面は GameView 限定。反射ビューで描くと水面が自分の平面反射に
         // 描き込まれる（夜の大きな明暗斑バグの原因）。WaterSurfacePass 側の
         // IsEnabledForView と同じ制約をキュー層でも二重に守る
@@ -219,30 +216,30 @@ namespace CoreEngine
         if (viewType != RenderViewType::GameView) {
             return;
         }
-        if (waterDrawQueue_.empty() || !cmdList_) {
+        if (waterDrawQueue_.empty() || !cmdList) {
             return;
         }
 
         EnsureQueueSorted();
-        RenderNormalPassQueue(waterDrawQueue_, viewType);
+        RenderNormalPassQueue(cmdList, waterDrawQueue_, viewType);
     }
 
-    void RenderManager::DrawSkyQueuePass(RenderViewType viewType) {
-        if (skyDrawQueue_.empty() || !cmdList_) {
+    void RenderManager::DrawSkyQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
+        if (skyDrawQueue_.empty() || !cmdList) {
             return;
         }
 
         EnsureQueueSorted();
-        RenderNormalPassQueue(skyDrawQueue_, viewType);
+        RenderNormalPassQueue(cmdList, skyDrawQueue_, viewType);
     }
 
-    void RenderManager::DrawTransparentQueuePass(RenderViewType viewType) {
-        if (transparentDrawQueue_.empty() || !cmdList_) {
+    void RenderManager::DrawTransparentQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
+        if (transparentDrawQueue_.empty() || !cmdList) {
             return;
         }
 
         EnsureQueueSorted();
-        RenderNormalPassQueue(transparentDrawQueue_, viewType);
+        RenderNormalPassQueue(cmdList, transparentDrawQueue_, viewType);
     }
 
     void RenderManager::ApplyEnvironmentLightingToRenderers() {
@@ -276,7 +273,10 @@ namespace CoreEngine
         return nullptr;
     }
 
-    void RenderManager::RenderNormalPassQueue(const std::vector<RenderItem>& queue, RenderViewType viewType) {
+    void RenderManager::RenderNormalPassQueue(
+        ID3D12GraphicsCommandList* cmdList,
+        const std::vector<RenderItem>& queue,
+        RenderViewType viewType) {
         RenderPassType currentPass = RenderPassType::Invalid;
         BlendMode currentBlendMode = BlendMode::kBlendModeNone;
         IRenderer* currentRenderer = nullptr;
@@ -318,7 +318,7 @@ namespace CoreEngine
                     currentView = GetViewForPass(currentPass, viewType);
                     currentRenderer->SetCamera(currentView ? currentView->camera : nullptr);
 
-                    currentRenderer->BeginPass(cmdList_, cmd.blendMode);
+                    currentRenderer->BeginPass(cmdList, cmd.blendMode);
                 } else {
 #ifdef _DEBUG
                     OutputDebugStringA("WARNING: Renderer not found for pass type!\n");
@@ -329,13 +329,14 @@ namespace CoreEngine
             } else if (blendChanged && currentRenderer) {
                 // 同一パス内でブレンドモードが変わった場合はPSOを切り替え
                 currentBlendMode = cmd.blendMode;
-                currentRenderer->BeginPass(cmdList_, cmd.blendMode);
+                currentRenderer->BeginPass(cmdList, cmd.blendMode);
             }
 
             // オブジェクトを描画（パス起動専用アイテムは object を持たない）
             if (currentRenderer && cmd.object) {
                 DrawViewInfo view{};
                 view.view = currentView;
+                view.cmdList = cmdList;
                 view.viewType = viewType;
                 view.isGBufferPass = false;
                 cmd.object->Draw(view);

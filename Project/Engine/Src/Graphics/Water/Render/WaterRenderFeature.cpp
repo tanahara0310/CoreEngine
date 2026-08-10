@@ -431,7 +431,7 @@ namespace CoreEngine
                 settings.swellDirection[1] = WaterCVars::SwellDirection.Get().y;
                 settings.swellRelativeWidth = WaterCVars::SwellRelativeWidth.Get();
                 settings.swellSpreadExponent = WaterCVars::SwellSpread.Get();
-                // 変更検知・サニタイズ・WaitForPreviousFrame・スペクトル再構築は SetSettings が担う
+                // 変更検知・サニタイズ・WaitForGpuIdle・スペクトル再構築は SetSettings が担う
                 fftOcean->SetSettings(settings);
             }
         }

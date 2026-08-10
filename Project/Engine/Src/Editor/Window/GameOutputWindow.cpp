@@ -208,7 +208,7 @@ namespace CoreEngine
 
         // スワップチェーンのリソースを手放す前に、GPU がそれらを使い終わっているのを保証する
         if (dxCommon_ && dxCommon_->GetCommandManager()) {
-            dxCommon_->GetCommandManager()->WaitForPreviousFrame();
+            dxCommon_->GetCommandManager()->WaitForGpuIdle();
         }
 
         ReleaseSwapChainResources();
@@ -312,7 +312,7 @@ namespace CoreEngine
         // ResizeBuffers はバックバッファへの参照が残っていると失敗する。
         // 本体のリサイズ経路（DirectXCommon::OnWindowResize）と同じ作法で GPU を待ってから行う。
         if (dxCommon_ && dxCommon_->GetCommandManager()) {
-            dxCommon_->GetCommandManager()->WaitForPreviousFrame();
+            dxCommon_->GetCommandManager()->WaitForGpuIdle();
         }
 
         ReleaseSwapChainResources();

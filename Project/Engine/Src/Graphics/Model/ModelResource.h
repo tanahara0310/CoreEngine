@@ -191,11 +191,8 @@ namespace CoreEngine
         D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
         UINT indexCount_ = 0;
 
-        // VRAM（DEFAULT ヒープ）へコピーするための中間バッファ。
-        // コピーコマンドは記録中のコマンドリストへ積まれるため、GPU 実行が完了するまで
-        // 生存させる必要がある（TextureLoadedResource::intermediate と同じ扱い）。
-        Microsoft::WRL::ComPtr<ID3D12Resource> vertexUploadBuffer_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> indexUploadBuffer_;
+        // VRAM（DEFAULT ヒープ）へコピーするための中間バッファはここでは持たない。
+        // UploadContext がフェンス完了を検知して解放する（KeepAlive）。
 
         ModelData modelData_;
         Node rootNode_;

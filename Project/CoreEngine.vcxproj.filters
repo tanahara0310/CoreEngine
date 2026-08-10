@@ -814,6 +814,9 @@
     <ClCompile Include="Engine\Src\Graphics\Common\Core\CommandManager.cpp">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Common\Core\UploadContext.cpp">
+      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Common\Core\DescriptorManager.cpp">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClCompile>
@@ -2095,6 +2098,9 @@
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\Core\CommandManager.h">
+      <Filter>Engine\Src\Graphics\Common\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Common\Core\UploadContext.h">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DescriptorManager.h">

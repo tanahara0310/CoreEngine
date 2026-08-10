@@ -168,7 +168,7 @@ namespace CoreEngine
         return *animator_;
     }
 
-    void SpriteObject::Draw2D(const Camera* camera) {
+    void SpriteObject::Draw2D(const Camera* camera, ID3D12GraphicsCommandList* commandList) {
         if (!spriteRenderer_) {
 #ifdef _DEBUG
             OutputDebugStringA("ERROR: SpriteRenderer is null in SpriteObject::Draw2D!\n");
@@ -176,7 +176,14 @@ namespace CoreEngine
             return;
         }
 
-        auto* commandList = spriteRenderer_->GetDirectXCommon()->GetCommandList();
+        // 積み先はキュー実行側が DrawViewInfo で渡す。ここで自分から取りに行くと、
+        // 呼び出し元が「どのコマンドリストへ積むか」を制御できなくなる。
+        if (!commandList) {
+#ifdef _DEBUG
+            OutputDebugStringA("ERROR: commandList is null in SpriteObject::Draw2D!\n");
+#endif
+            return;
+        }
 
         size_t bufferIndex = spriteRenderer_->GetAvailableConstantBuffer();
 
@@ -489,6 +496,13 @@ namespace CoreEngine
     }
 
     void SpriteObject::Draw(const Camera* camera) {
-        Draw2D(camera);
+        // RenderGraph を経由しない直接呼び出し（レガシー経路）。
+        // DrawViewInfo を持たないため、ここだけがコマンドリストの供給点になる。
+        Draw2D(camera,
+            spriteRenderer_ ? spriteRenderer_->GetDirectXCommon()->GetCommandList() : nullptr);
+    }
+
+    void SpriteObject::Draw(const DrawViewInfo& view) {
+        Draw2D(view.GetCamera(), view.cmdList);
     }
 }

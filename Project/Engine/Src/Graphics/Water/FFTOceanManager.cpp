@@ -209,7 +209,7 @@ namespace CoreEngine
 
         // GPU参照中のリソース更新を避けるため、フレーム完了を待機する。
         if (dxCommon_) {
-            dxCommon_->WaitForPreviousFrame();
+            dxCommon_->WaitForGpuIdle();
         }
 
         settings_ = sanitized;

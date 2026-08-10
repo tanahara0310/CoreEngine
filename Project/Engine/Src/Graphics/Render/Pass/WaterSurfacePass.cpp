@@ -63,7 +63,7 @@ namespace CoreEngine
             return;
         }
 
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
         targetToUse->SetClearEnabled(false);
         targetToUse->Begin(cmdList);
 
@@ -99,7 +99,7 @@ namespace CoreEngine
         if (context.renderManager) {
             // 描画に使うビューは FrameViews として RenderManager が保持済み
             context.renderManager->SetDebugLineRenderingEnabled(true);
-            context.renderManager->DrawWaterQueuePass(context.viewSettings.viewType);
+            context.renderManager->DrawWaterQueuePass(cmdList, context.viewSettings.viewType);
         }
         targetToUse->End(cmdList);
 

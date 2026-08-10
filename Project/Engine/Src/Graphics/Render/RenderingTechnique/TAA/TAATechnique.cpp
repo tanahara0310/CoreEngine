@@ -68,7 +68,7 @@ namespace CoreEngine
         }
 
         auto* renderTargetManager = context.renderTargetManager;
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
 
         // 書き込み先は frameNumber の偶奇だけで決まる（RenderPipeline の論理名登録と同じ基準）
         const uint32_t writeIndex = GetWriteHistoryIndex(context.frameNumber);

@@ -251,8 +251,7 @@ namespace CoreEngine
                 ? graphPass.name
                 : viewName + "/" + graphPass.name;
 
-            ID3D12GraphicsCommandList* cmdList =
-                context.renderContext->dxCommon ? context.renderContext->dxCommon->GetCommandList() : nullptr;
+            ID3D12GraphicsCommandList* cmdList = context.renderContext->cmdList;
 
             // パス名から動的タイミングスロットを解決し、Setup～Cleanup 全体を計測する。
             // これにより新規パスは登録するだけで自動的にタイミング表示へ現れる。
@@ -303,11 +302,7 @@ namespace CoreEngine
     void RenderGraph::ApplyTransitionsForPass(RenderGraphPass& pass, const RenderContext& context)
     {
         // 各ノードの要求状態に合わせて、実行前に自動バリアをバッチ発行する。
-        if (!context.dxCommon) {
-            return;
-        }
-
-        ID3D12GraphicsCommandList* cmdList = context.dxCommon->GetCommandList();
+        ID3D12GraphicsCommandList* cmdList = context.cmdList;
         if (!cmdList) {
             return;
         }

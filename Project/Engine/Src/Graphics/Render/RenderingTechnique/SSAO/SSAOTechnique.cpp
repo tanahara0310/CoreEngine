@@ -78,7 +78,7 @@ namespace CoreEngine
 
         auto* gBufferManager = context.gBufferManager;
         auto* renderTargetManager = context.renderTargetManager;
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
 
         // スクリーンサイズの更新
         const float w = static_cast<float>(gBufferManager->GetWidth());

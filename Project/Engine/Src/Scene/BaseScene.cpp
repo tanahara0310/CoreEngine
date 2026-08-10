@@ -147,9 +147,10 @@ namespace CoreEngine
         // 以前はここでアクティブカメラを一時的に差し替えて描き、元へ戻していたが、
         // その間だけ「アクティブカメラ」の意味が変わるため、ギズモ／ピッキングが
         // 描画とは別のカメラを見てズレる原因になっていた。
+        // RenderGraph を経由しないレガシー描画経路。ここは RenderContext が無いため、
+        // このシーン描画自体がコマンドリストの供給点になる（パス側は context.cmdList を使う）。
         renderManager->SetDebugLineRenderingEnabled(true);
-        renderManager->SetCommandList(dxCommon->GetCommandList());
-        renderManager->DrawGeometryPass();
+        renderManager->DrawGeometryPass(dxCommon->GetCommandList());
     }
 
     Camera* BaseScene::GetGameViewCamera3D() const

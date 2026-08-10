@@ -63,7 +63,7 @@ namespace CoreEngine
 
         EnsureHistoryTargets(context);
 
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
 
         const uint32_t writeIndex = GetWriteHistoryIndex(context.frameNumber);
         const uint32_t readIndex = 1u - writeIndex;

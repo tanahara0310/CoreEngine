@@ -50,7 +50,7 @@ namespace CoreEngine
             return;
         }
 
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
 
         // DeferredLightingPass が先に書き込んでいる場合はクリアしない
         targetToUse->SetClearEnabled(ShouldClear());
@@ -74,16 +74,16 @@ namespace CoreEngine
 
     void GeometryPass::DrawQueue(const RenderContext& context)
     {
-        context.renderManager->DrawMainQueuePass(context.viewSettings.viewType);
+        context.renderManager->DrawMainQueuePass(context.cmdList, context.viewSettings.viewType);
     }
 
     void SkyBoxQueuePass::DrawQueue(const RenderContext& context)
     {
-        context.renderManager->DrawSkyQueuePass(context.viewSettings.viewType);
+        context.renderManager->DrawSkyQueuePass(context.cmdList, context.viewSettings.viewType);
     }
 
     void TransparentQueuePass::DrawQueue(const RenderContext& context)
     {
-        context.renderManager->DrawTransparentQueuePass(context.viewSettings.viewType);
+        context.renderManager->DrawTransparentQueuePass(context.cmdList, context.viewSettings.viewType);
     }
 }

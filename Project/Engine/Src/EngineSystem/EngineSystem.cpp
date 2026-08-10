@@ -255,15 +255,23 @@ namespace CoreEngine
         auto* render = GetService<Render>();
         auto* sceneManager = GetService<SceneManager>();
 
-        // コマンドリストを設定
-        if (renderManager && dx) {
-            renderManager->SetCommandList(dx->GetCommandList());
+        // 今フレームの記録先コマンドリストを 1 回だけ解決する。
+        // これがフレーム内の唯一の供給点で、以降は RenderContext::cmdList を経由して配る。
+        // 各パス／レンダラーが dxCommon->GetCommandList() を呼ぶと供給点がその数だけ増え、
+        // コマンドリストを複数化したときに全箇所を直す羽目になる。
+        ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
+
+        // アップロードコンテキストの中間バッファを回収する（GPU 完了済みのぶんだけ）。
+        // これを呼ばないと UPLOAD ヒープ（システムメモリ）が解放されず溜まり続ける。
+        if (dx && dx->GetUploadContext()) {
+            dx->GetUploadContext()->ReleaseCompletedResources();
         }
 
         // レンダリングコンテキストの構築
         FrameBlackboard frameBlackboard;
         RenderContext context;
         context.dxCommon = dx;
+        context.cmdList = cmdList;
         context.renderManager = renderManager;
         context.rayTracingSubsystem = rayTracing;
         context.sceneManager = sceneManager;
@@ -315,11 +323,6 @@ namespace CoreEngine
                 dx->GetDepthStencilResource(),
                 context.depthStencilManager ? &context.depthStencilManager->GetCurrentState() : nullptr);
         }
-
-        // コマンドリストは debug->BeginRenderPipeline 等へ渡すため USE_IMGUI 外で宣言する。
-        // USE_IMGUI 無効（Release）ではこれらの呼び出し自体が消えて未使用になるため、
-        // maybe_unused を付ける（Release は TreatWarningAsError なので C4189 でビルドが止まる）。
-        [[maybe_unused]] ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
 
 #ifdef USE_IMGUI
         // プロファイラのリングスロットは記録中フレームインデックスに合わせる

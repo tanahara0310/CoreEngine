@@ -8,16 +8,16 @@
     "r.AtmosphereLights.MoonEnabled": true,
     "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
     "r.AtmosphereLights.SunDirection": [
-        -0.27633413672447205,
-        -0.5351250171661377,
-        -0.7982986569404602
+        0.7739054560661316,
+        -0.011574904434382915,
+        -0.6331953406333923
     ],
     "r.AutoExposure.Enabled": true,
     "r.Bloom.BlurRadius": 3.0179998874664307,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
     "r.Blur.Intensity": 2.5290000438690186,
-    "r.Cloud.Enabled": false,
+    "r.CAS.Enabled": false,
     "r.LensFlare.Enabled": false,
     "r.RTShadow.AtrousPassCount": 3,
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,

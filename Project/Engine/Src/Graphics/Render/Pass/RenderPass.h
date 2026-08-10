@@ -44,6 +44,13 @@ namespace CoreEngine
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
         DirectXCommon* dxCommon = nullptr;
+        /// @brief 今フレームの記録先コマンドリスト
+        /// @details パスは必ずこれを使うこと。dxCommon->GetCommandList() を各自で呼ぶと
+        ///          「どのコマンドリストへ積むか」の決定がパスの数だけ分散し、
+        ///          将来コマンドリストを複数化（アップロード分離・並列記録・async compute）
+        ///          した瞬間に全パスが誤ったリストへ積む。供給側を一箇所に固定するための入口。
+        ///          代入は EngineSystem::ExecuteRenderPipeline のコンテキスト構築で 1 回だけ。
+        ID3D12GraphicsCommandList* cmdList = nullptr;
         RenderManager* renderManager = nullptr;
         RayTracingSubsystem* rayTracingSubsystem = nullptr;
         SceneManager* sceneManager = nullptr;

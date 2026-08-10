@@ -141,8 +141,10 @@ namespace CoreEngine
         assert(view.view && view.view->isValid);
         const Camera* camera = view.GetCamera();
 
-        ID3D12GraphicsCommandList* cmdList = renderContext_.dxCommon->GetCommandList();
-        assert(cmdList);
+        // 積み先はキュー実行側（RenderManager）が DrawViewInfo で明示的に渡す。
+        // 自分で dxCommon->GetCommandList() を引くと、呼び出し元が積み先を制御できない。
+        ID3D12GraphicsCommandList* cmdList = view.cmdList;
+        assert(cmdList && "DrawViewInfo::cmdList must be supplied by the caller");
 
         const auto& subMeshes = resource_->GetSubMeshes();
         assert(!subMeshes.empty() && "Model must have at least one submesh");

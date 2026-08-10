@@ -166,7 +166,7 @@ namespace CoreEngine
 
         auto* renderTargetManager = context.renderTargetManager;
         auto* gBufferManager = context.gBufferManager;
-        auto* cmdList = context.dxCommon->GetCommandList();
+        auto* cmdList = context.cmdList;
 
         // 出力先 RenderTarget を名前で取得
         auto* target = renderTargetManager->GetRenderTarget(targetName_);
