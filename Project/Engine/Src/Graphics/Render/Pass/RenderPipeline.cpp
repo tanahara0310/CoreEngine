@@ -405,12 +405,15 @@ namespace CoreEngine
             const std::vector<PostEffectBase*>* enabledEffects = context.postEffectManager
                 ? &context.postEffectManager->GetEnabledEffects()
                 : nullptr;
+            // エフェクトは直前の出力しか読まないので、交互に使う 2 枚で足りる。
+            // 以前は「有効エフェクト数 - 1」枚を確保していた
             const size_t intermediateCount = (enabledEffects && enabledEffects->size() > 1)
-                ? (enabledEffects->size() - 1)
+                ? RenderTargetManager::kPostEffectPingPongCount
                 : 0;
 
             context.renderTargetManager->EnsurePostEffectIntermediateTargets(intermediateCount);
             context.renderTargetManager->EnsurePostEffectFinalTarget();
+            context.renderTargetManager->LogAllocationIfChanged();
 
             if (RenderTarget* sceneColorTarget = context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName)) {
                 D3D12_RESOURCE_STATES* sceneColorState = nullptr;
@@ -709,9 +712,12 @@ namespace CoreEngine
 
         for (const ChainEntry& entry : chain) {
             const bool isLastEffect = (effectIndex + 1 >= chain.size());
+            // 中間は 2 枚を交互に使う。入力と出力が必ず別実体になるので、
+            // 同一リソースを読みながら書く事故が起きない
             const std::string outputResource = isLastEffect
                 ? std::string(FrameBlackboard::PostEffectFinal)
-                : FrameBlackboard::MakePostEffectIntermediateName(effectIndex);
+                : FrameBlackboard::MakePostEffectIntermediateName(
+                    effectIndex % RenderTargetManager::kPostEffectPingPongCount);
 
             // エフェクト自身にパス列を積ませる。単一パスのエフェクトは基底の既定実装が
             // 従来どおり 1 パスだけ積むので、ここでの扱いは多段エフェクトと同じで済む。

@@ -46,12 +46,6 @@ public:
     template<typename T>
     const T* GetEffect(const std::string& name) const;
 
-    /// @brief バックバッファ(_SRGB)への最終描画用にエフェクトを実行
-    /// @note 有効/無効チェックなし。必要な場合はIsEffectEnabled()で事前に確認すること
-    /// @param name エフェクト名
-    /// @param inputSrvHandle 入力テクスチャのSRVハンドル
-    void ExecuteEffectToBackBuffer(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
-
     /// @brief エフェクトの有効/無効を設定
     /// @param effectName エフェクト名
     /// @param enabled 有効にするかどうか

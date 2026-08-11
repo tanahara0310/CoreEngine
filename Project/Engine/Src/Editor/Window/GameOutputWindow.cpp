@@ -7,6 +7,7 @@
 #include "Graphics/Common/Core/CommandManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
+#include "Graphics/PostEffect/FullScreen.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
 
@@ -440,7 +441,9 @@ namespace CoreEngine
 
         // バックバッファ用 PSO（RTV フォーマットが _SRGB）でフルスクリーン三角形を描く。
         // 本体の BackBufferPass と同じ経路なので、色の扱いも完全に一致する。
-        postEffectManager_->ExecuteEffectToBackBuffer(PostEffectNames::FullScreen, sourceSrv);
+        if (auto* fullScreen = postEffectManager_->GetEffect<FullScreen>(PostEffectNames::FullScreen)) {
+            fullScreen->DrawToBackBuffer(sourceSrv);
+        }
 
         // RENDER_TARGET → PRESENT
         D3D12_RESOURCE_BARRIER barrier{};

@@ -163,14 +163,6 @@ const PostEffectBase* PostEffectManager::GetEffectInternal(const std::string& na
     return nullptr;
 }
 
-void PostEffectManager::ExecuteEffectToBackBuffer(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
-{
-    auto* effect = GetEffectInternal(name);
-    if (effect) {
-        effect->DrawToBackBuffer(inputSrvHandle);
-    }
-}
-
 void PostEffectManager::SetEffectEnabled(const std::string& effectName, bool enabled)
 {
     auto* effect = GetEffectInternal(effectName);

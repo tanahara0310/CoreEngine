@@ -4,6 +4,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
+#include "Graphics/PostEffect/FullScreen.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderGraph.h"
@@ -68,8 +69,12 @@ namespace CoreEngine
         // バックバッファへのレンダリング開始（自動でRTV/DSV/ビューポート/シザー設定）
         targetToUse->Begin(cmdList);
 
-        // 最終結果をバックバッファに描画（_SRGB用PSOを使用）
-        context.postEffectManager->ExecuteEffectToBackBuffer(PostEffectNames::FullScreen, finalInput);
+        // 最終結果をバックバッファに描画（_SRGB用PSOを使用）。
+        // 名前で引いて Draw させる汎用 API は撤去した。ここは「FullScreen をバックバッファへ」の
+        // 一点しか用がないので、型付きで直接呼ぶ
+        if (auto* fullScreen = context.postEffectManager->GetEffect<FullScreen>(PostEffectNames::FullScreen)) {
+            fullScreen->DrawToBackBuffer(finalInput);
+        }
 
         // NOTE: End()はここでは呼ばない
         // ImGuiの描画が終わった後、Render::FinalizeFrame()で呼ばれる

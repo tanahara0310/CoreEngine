@@ -2,6 +2,7 @@
 #include "RenderTargetManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "RenderTargetNames.h"
+#include "Utility/Logger/Logger.h"
 #include <algorithm>
 #include <cassert>
 
@@ -92,8 +93,98 @@ namespace CoreEngine
             }
 
             RenderTargetDescriptor desc(name);
+            // ポストエフェクトの中間に深度は要らない。既定のままだと 1 枚ごとに
+            // 一度も使われない D32 が付いてくる（1080p で 8.3MB/枚）
+            desc.needsDepthStencil = false;
             CreateRenderTarget(desc);
         }
+    }
+
+    size_t RenderTargetManager::CalcTotalAllocatedBytes() const
+    {
+        // 使用中のフォーマットだけ分かればよい。未知のものは 4 バイトとみなす
+        auto bytesPerPixel = [](DXGI_FORMAT format) -> size_t {
+            switch (format) {
+            case DXGI_FORMAT_R32G32B32A32_FLOAT: return 16;
+            case DXGI_FORMAT_R16G16B16A16_FLOAT: return 8;
+            case DXGI_FORMAT_R32G32_FLOAT:       return 8;
+            case DXGI_FORMAT_R11G11B10_FLOAT:    return 4;
+            case DXGI_FORMAT_R8G8B8A8_UNORM:
+            case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+            case DXGI_FORMAT_R16G16_FLOAT:
+            case DXGI_FORMAT_D32_FLOAT:
+            case DXGI_FORMAT_R32_FLOAT:          return 4;
+            case DXGI_FORMAT_R8G8_UNORM:         return 2;
+            case DXGI_FORMAT_R8_UNORM:           return 1;
+            default:                             return 4;
+            }
+        };
+
+        size_t total = 0;
+        for (const auto& [name, target] : targets_) {
+            if (!target) {
+                continue;
+            }
+            const size_t pixels = static_cast<size_t>(target->GetWidth()) * static_cast<size_t>(target->GetHeight());
+            if (pixels == 0) {
+                continue;
+            }
+
+            auto descIt = descriptors_.find(name);
+            if (descIt == descriptors_.end()) {
+                continue; // バックバッファ等、記述子を持たないものは対象外
+            }
+
+            total += pixels * bytesPerPixel(descIt->second.format);
+            if (descIt->second.needsDepthStencil) {
+                total += pixels * bytesPerPixel(descIt->second.depthFormat);
+            }
+        }
+        return total;
+    }
+
+    void RenderTargetManager::LogAllocationIfChanged()
+    {
+        const size_t total = CalcTotalAllocatedBytes();
+        if (total == lastLoggedBytes_) {
+            return;
+        }
+        lastLoggedBytes_ = total;
+
+        // ポストエフェクト分（中間・最終・一時）を別建てで出す。
+        // 全体には GBuffer や水面の RT も含まれるため、内訳が無いと
+        // ポストエフェクト側の最適化が効いたか判定できない
+        size_t postEffectBytes = 0;
+        size_t postEffectCount = 0;
+        std::string postEffectDetail;
+        for (const auto& [name, target] : targets_) {
+            const bool isPostEffect =
+                name.rfind(RenderTargetNames::PostEffectIntermediatePrefix, 0) == 0
+                || name == RenderTargetNames::PostEffectFinal
+                || name.rfind("PostEffectTransient", 0) == 0;
+            if (!isPostEffect || !target) {
+                continue;
+            }
+
+            auto descIt = descriptors_.find(name);
+            const size_t pixels = static_cast<size_t>(target->GetWidth()) * static_cast<size_t>(target->GetHeight());
+            const size_t bytes = (descIt != descriptors_.end() && descIt->second.format == DXGI_FORMAT_R16G16B16A16_FLOAT)
+                ? pixels * 8 : pixels * 4;
+            postEffectBytes += bytes;
+            ++postEffectCount;
+
+            if (postEffectDetail.size() < 400) {
+                postEffectDetail += " " + name + "(" + std::to_string(target->GetWidth())
+                    + "x" + std::to_string(target->GetHeight()) + ")";
+            }
+        }
+
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "[RenderTarget] 全体 {} 枚 / {:.1f} MB   うちポストエフェクト {} 枚 / {:.1f} MB",
+            targets_.size(), static_cast<double>(total) / (1024.0 * 1024.0),
+            postEffectCount, static_cast<double>(postEffectBytes) / (1024.0 * 1024.0));
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "[RenderTarget] ポストエフェクト内訳:{}", postEffectDetail);
     }
 
     RenderTarget* RenderTargetManager::GetPostEffectIntermediateTarget(size_t index)
@@ -108,6 +199,8 @@ namespace CoreEngine
         }
 
         RenderTargetDescriptor desc(RenderTargetNames::PostEffectFinal);
+        // 最終出力もバックバッファへ転送するだけなので深度は不要
+        desc.needsDepthStencil = false;
         CreateRenderTarget(desc);
     }
 
