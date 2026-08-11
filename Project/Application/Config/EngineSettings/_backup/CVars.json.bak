@@ -8,9 +8,9 @@
     "r.AtmosphereLights.MoonEnabled": true,
     "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
     "r.AtmosphereLights.SunDirection": [
-        0.7739054560661316,
-        -0.011574904434382915,
-        -0.6331953406333923
+        0.7467598915100098,
+        -0.00376876350492239,
+        -0.6650830507278442
     ],
     "r.AutoExposure.Enabled": true,
     "r.Bloom.BlurRadius": 3.0179998874664307,
@@ -31,12 +31,12 @@
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
     "r.Water.FFT.ActiveComponentCount": 32,
-    "r.Water.FFT.Choppiness": 1.0,
+    "r.Water.FFT.Choppiness": 1.350000023841858,
     "r.Water.FFT.WindDirection": [
-        -0.3100000023841858,
+        0.9242613911628723,
         0.3817601501941681
     ],
-    "r.Water.FFT.WindSpeed": 8.0,
+    "r.Water.FFT.WindSpeed": 12.0,
     "r.Water.Foam.CascadeWeights": [
         1.0,
         1.0,

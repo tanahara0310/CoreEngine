@@ -40,10 +40,6 @@ namespace CoreEngine
         assert(SUCCEEDED(hr));
         UpdateBlurConstantBuffer();
 
-        UINT screenSize = (sizeof(ScreenParams) + 255) & ~255;
-        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), screenSize);
-        hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
-        assert(SUCCEEDED(hr));
     }
 
     void Blur::UpdateBlurConstantBuffer()
@@ -55,14 +51,6 @@ namespace CoreEngine
         mappedBlurParams_->kernelSize = cvKernelSize.Get();
     }
 
-    void Blur::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
-    {
-        if (mappedScreenParams_) {
-            mappedScreenParams_->screenWidth  = width;
-            mappedScreenParams_->screenHeight = height;
-        }
-    }
-
     void Blur::Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
@@ -71,7 +59,7 @@ namespace CoreEngine
     {
         // CVar の現在値を取り込む（UI・コンソール・設定復元のいずれの変更もここで反映される）
         UpdateBlurConstantBuffer();
-        UpdateScreenConstantBuffer(width, height);
+        UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
 
@@ -94,7 +82,7 @@ namespace CoreEngine
             cmdList->SetComputeRootConstantBufferView(blurParamsIdx, blurParamsCB_->GetGPUVirtualAddress());
         }
         if (screenParamsIdx >= 0) {
-            cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParamsCB_->GetGPUVirtualAddress());
+            cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
         }
 
         // スレッドグループ数 = ceil(解像度 / 8)

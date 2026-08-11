@@ -26,13 +26,6 @@ public:
         float padding            = 0.0f;
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
-    };
-
 public:
     RasterScroll() = default;
     ~RasterScroll() = default;
@@ -45,7 +38,7 @@ public:
         uint32_t height) override;
 
     /// @brief 更新処理
-    void Update(float deltaTime);
+    void PrepareFrame(const PostEffectFrameContext& ctx) override;
 
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
@@ -60,14 +53,10 @@ protected:
 
 private:
     void UpdateConstantBuffer();
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> rasterScrollParamsCB_;
     RasterScrollParams* mappedRasterScrollParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
 
     float accumulatedTime_ = 0.0f;
 };

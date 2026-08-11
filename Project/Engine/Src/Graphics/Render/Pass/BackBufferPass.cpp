@@ -3,6 +3,7 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderGraph.h"
@@ -68,7 +69,7 @@ namespace CoreEngine
         targetToUse->Begin(cmdList);
 
         // 最終結果をバックバッファに描画（_SRGB用PSOを使用）
-        context.postEffectManager->ExecuteEffectToBackBuffer("FullScreen", finalInput);
+        context.postEffectManager->ExecuteEffectToBackBuffer(PostEffectNames::FullScreen, finalInput);
 
         // NOTE: End()はここでは呼ばない
         // ImGuiの描画が終わった後、Render::FinalizeFrame()で呼ばれる

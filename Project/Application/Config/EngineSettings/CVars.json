@@ -30,13 +30,14 @@
     "r.TAA.Enabled": false,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
-    "r.Water.FFT.ActiveComponentCount": 32,
-    "r.Water.FFT.Choppiness": 1.0,
+    "r.Water.FFT.ActiveComponentCount": 16,
+    "r.Water.FFT.AmplitudeScale": 0.5,
+    "r.Water.FFT.Choppiness": 0.3499999940395355,
     "r.Water.FFT.WindDirection": [
-        -0.3100000023841858,
-        0.3817601501941681
+        0.9835471510887146,
+        0.18065153062343597
     ],
-    "r.Water.FFT.WindSpeed": 8.0,
+    "r.Water.FFT.WindSpeed": 7.5,
     "r.Water.Foam.CascadeWeights": [
         1.0,
         1.0,

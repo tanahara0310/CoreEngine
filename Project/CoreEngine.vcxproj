@@ -465,6 +465,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\FullScreen.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectTransientPool.cpp" />
     <ClCompile Include="Engine\Src\Math\MathCore.cpp" />
     <ClCompile Include="Engine\Src\Math\Spline\Spline.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\ColorModule.cpp" />
@@ -925,6 +927,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\ModelLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\FullScreen.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectBase.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectStage.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectFrameContext.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectTransientPool.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.h" />
     <ClInclude Include="Engine\Src\Math\MathCore.h" />
     <ClInclude Include="Engine\Src\Math\Spline\Spline.h" />

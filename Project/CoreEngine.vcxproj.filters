@@ -838,6 +838,12 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Graph</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectTransientPool.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Graph</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Math\MathCore.cpp">
       <Filter>Engine\Src\Math</Filter>
     </ClCompile>
@@ -2121,6 +2127,18 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectBase.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectStage.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectFrameContext.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Graph</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectTransientPool.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Graph</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
@@ -2670,6 +2688,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Vignette">
       <UniqueIdentifier>{43286C64-BEC4-499A-B7AC-FF2EFBA50B15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Graph">
+      <UniqueIdentifier>{6E78D292-E699-48D5-BD03-0AA37DBC6E16}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Primitive">
       <UniqueIdentifier>{CF5EB9C5-8E42-47AF-9F51-CF4CA4F532E4}</UniqueIdentifier>

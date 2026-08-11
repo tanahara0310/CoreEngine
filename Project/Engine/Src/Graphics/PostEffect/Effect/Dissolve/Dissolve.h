@@ -23,13 +23,6 @@ public:
         float padding[3] = { 0.0f, 0.0f, 0.0f };
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
-    };
-
 public:
     Dissolve() = default;
     ~Dissolve() = default;
@@ -58,14 +51,10 @@ protected:
     void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> dissolveParamsCB_;
     DissolveParams* mappedDissolveParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
 
     D3D12_GPU_DESCRIPTOR_HANDLE noiseTextureHandle_ = {};
 };

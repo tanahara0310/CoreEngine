@@ -31,13 +31,6 @@ public:
         float padding          = 0.0f;
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
-    };
-
 public:
     ColorGrading() = default;
     ~ColorGrading() = default;
@@ -52,6 +45,11 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
+    /// @brief グレーディングはトーンカーブ通過前の色に対して行う（UE と同じ順序）ため SceneHDR 段
+    /// @note この段で動かすには ColorGrading.CS.hlsl が HDR 対応済みである必要がある
+    ///       （最終 saturate の除去・ピボットの中間グレー化）
+    PostEffectStage GetStage() const override { return PostEffectStage::SceneHDR; }
+
 protected:
     /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
     CVar<bool>* GetEnabledCVar() const override;
@@ -62,13 +60,9 @@ protected:
 
 private:
     void UpdateConstantBuffer();
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> colorGradingParamsCB_;
     ColorGradingParams* mappedColorGradingParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
 };
 }

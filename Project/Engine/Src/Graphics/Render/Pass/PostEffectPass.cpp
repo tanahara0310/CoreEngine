@@ -1,25 +1,24 @@
 #include "pch.h"
 #include "PostEffectPass.h"
 #include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/PostEffect\Effect\PostEffectBase.h"
-#include "Graphics/PostEffect/Effect/PostEffectManager.h"
-#include "Graphics/PostEffect/Effect/PostEffectNames.h"
-#include "Graphics/PostEffect/Effect/Outline/Outline.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
-#include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/RenderGraph.h"
+#include "Utility/Logger/Logger.h"
+#include <unordered_set>
 
 namespace CoreEngine
 {
     namespace {
-        constexpr const char* kPostEffectIntermediatePrefix = "PostEffectIntermediate";
-
+        /// @brief 論理リソース名から書き込み先の実ターゲットを引く
+        /// @details SceneColor だけは View ごとに実体が変わるため別扱い。
+        ///          それ以外（PostEffectFinal / PostEffectIntermediateN / PostEffectTransientN）は
+        ///          論理名と登録名が一致しているのでそのまま引ける。
         RenderTarget* ResolvePostEffectOutputTarget(const RenderContext& context, const std::string& outputResourceName)
         {
-            if (!context.renderTargetManager) {
+            if (!context.renderTargetManager || outputResourceName.empty()) {
                 return nullptr;
             }
 
@@ -27,46 +26,26 @@ namespace CoreEngine
                 return context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName);
             }
 
-            if (outputResourceName == FrameBlackboard::PostEffectFinal) {
-                return context.renderTargetManager->GetPostEffectFinalTarget();
-            }
-
-            if (outputResourceName.rfind(kPostEffectIntermediatePrefix, 0) == 0) {
-                const std::string indexText = outputResourceName.substr(std::strlen(kPostEffectIntermediatePrefix));
-                if (!indexText.empty()) {
-                    const size_t index = static_cast<size_t>(std::stoul(indexText));
-                    return context.renderTargetManager->GetPostEffectIntermediateTarget(index);
-                }
-            }
-
-            return nullptr;
+            return context.renderTargetManager->GetRenderTarget(outputResourceName);
         }
     }
 
-    void PostEffectPass::SetEffect(PostEffectBase* effect, const std::string& effectName)
+    void PostEffectPass::SetStep(PostEffectBase* effect, const std::string& effectName, const PostEffectStep& step)
     {
-        effect_ = effect;
+        effect_     = effect;
         effectName_ = effectName;
-    }
-
-    void PostEffectPass::SetInputResourceName(const std::string& resourceName)
-    {
-        inputResourceName_ = resourceName;
-    }
-
-    void PostEffectPass::SetOutputResourceName(const std::string& resourceName)
-    {
-        outputResourceName_ = resourceName;
+        step_       = step;
+        primaryInputName_ = step.reads.empty() ? std::string() : step.reads.front();
     }
 
     void PostEffectPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
-        // effect 未割り当ての placeholder は Graph へ直接登録されないため宣言しない。
-        if (!effect_) {
+        // step 未設定の placeholder は Graph へ直接登録されないため宣言しない。
+        if (!effect_ || step_.write.empty()) {
             return;
         }
 
-        const bool isCompute = (effect_->GetExecutionType() == PostEffectExecutionType::Compute);
+        const bool isCompute = (step_.executionType == PostEffectExecutionType::Compute);
         const D3D12_RESOURCE_STATES inputState = isCompute
             ? D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE
             : D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
@@ -74,97 +53,108 @@ namespace CoreEngine
             ? D3D12_RESOURCE_STATE_UNORDERED_ACCESS
             : D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-        builder.Read(inputResourceName_, inputState);
-        builder.Write(outputResourceName_, outputState);
+        for (const std::string& readName : step_.reads) {
+            builder.Read(readName, inputState);
+        }
+        builder.Write(step_.write, outputState);
+    }
+
+    bool PostEffectPass::ResolveExtraInputs(const RenderContext& context)
+    {
+        effect_->ClearResolvedExtraInputs();
+
+        std::vector<PostEffectInputBinding> bindings;
+        effect_->DeclareExtraInputs(bindings);
+
+        for (const PostEffectInputBinding& binding : bindings) {
+            D3D12_GPU_DESCRIPTOR_HANDLE srv{};
+            if (binding.logicalName && context.frameBlackboard) {
+                context.frameBlackboard->TryGetSrvHandle(binding.logicalName, srv);
+            }
+
+            if (srv.ptr == 0 && binding.required) {
+                // ここへ来るのは異常系。必須入力の有無は RenderPipeline::AppendPostEffectPasses が
+                // パス生成前に判定しており、無いエフェクトはチェーンから外れているはず。
+                // 到達した場合は「グラフ構築後に Blackboard が変わった」ことを意味する。
+                static std::unordered_set<std::string> warned;
+                std::string key = effectName_ + "/" + (binding.logicalName ? binding.logicalName : "(null)");
+                if (warned.insert(key).second) {
+                    Logger::GetInstance().Errorf(LogCategory::Graphics,
+                        "[PostEffect] {} の入力 {} がグラフ構築後に失われました（チェーン構築時の判定と不整合）",
+                        effectName_, binding.logicalName ? binding.logicalName : "(null)");
+                }
+                return false;
+            }
+
+            effect_->SetResolvedExtraInput(binding.slot, srv);
+        }
+        return true;
     }
 
     void PostEffectPass::Execute(const RenderContext& context)
     {
-        if (!context.postEffectManager || !effect_) {
+        if (!effect_ || step_.write.empty() || !step_.record || !context.renderTargetManager) {
             return;
         }
 
-        D3D12_GPU_DESCRIPTOR_HANDLE inputSrv{};
-        if (context.frameBlackboard) {
-            context.frameBlackboard->TryGetSrvHandle(inputResourceName_, inputSrv);
-        }
+        PostEffectPassContext passContext;
+        passContext.cmdList = context.cmdList;
+        passContext.reads.reserve(step_.reads.size());
 
-        if (inputSrv.ptr == 0) {
-#ifdef _DEBUG
-            OutputDebugStringA("[PostEffectPass] WARNING: 入力リソースが未解決のためポストエフェクト実行を中断します。\n");
-#endif
-            return;
-        }
-
-        // 注: 以前は context.cameraManager を見ていたが、この項はどこからも代入されておらず
-        //     常に nullptr だったため、Outline のクリップ面が一度も更新されていなかった。
-        if (effectName_ == PostEffectNames::Outline && context.frameViews) {
-            if (auto* outline = dynamic_cast<Outline*>(effect_)) {
-                const ViewInfo& view = context.frameViews->GameView();
-                if (view.isValid) {
-                    outline->SetCameraClipPlanes(view.nearZ, view.farZ);
-                }
-            }
-        }
-
-        if (effect_->GetExecutionType() == PostEffectExecutionType::Compute) {
-            if (!context.renderTargetManager) {
-                return;
-            }
-
-            RenderTarget* outputTarget = ResolvePostEffectOutputTarget(context, outputResourceName_);
-
-            auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(outputTarget);
-            if (!offscreen || !context.dxCommon) {
-                return;
-            }
-
-            auto* cmdList = context.cmdList;
-            offscreen->BeginCS(cmdList);
-            effect_->Dispatch(
-                inputSrv,
-                offscreen->GetUAVHandle(),
-                static_cast<uint32_t>(offscreen->GetWidth()),
-                static_cast<uint32_t>(offscreen->GetHeight()));
-            offscreen->EndCS(cmdList);
-
+        for (const std::string& readName : step_.reads) {
+            D3D12_GPU_DESCRIPTOR_HANDLE srv{};
             if (context.frameBlackboard) {
-                context.frameBlackboard->SetResource(
-                    outputResourceName_,
-                    offscreen->GetSRVHandle(),
-                    offscreen->GetResource(),
-                    &offscreen->GetCurrentState());
+                context.frameBlackboard->TryGetSrvHandle(readName, srv);
             }
+            if (srv.ptr == 0) {
+#ifdef _DEBUG
+                OutputDebugStringA("[PostEffectPass] WARNING: 入力リソースが未解決のためポストエフェクト実行を中断します。\n");
+#endif
+                return;
+            }
+            passContext.reads.push_back(srv);
+        }
 
+        if (!ResolveExtraInputs(context)) {
             return;
         }
 
-        if (!context.renderTargetManager || !context.dxCommon) {
-            return;
-        }
-
-        RenderTarget* outputTarget = ResolvePostEffectOutputTarget(context, outputResourceName_);
-
+        RenderTarget* outputTarget = ResolvePostEffectOutputTarget(context, step_.write);
         if (!outputTarget) {
             return;
         }
 
         auto* cmdList = context.cmdList;
-        outputTarget->Begin(cmdList);
-        effect_->Draw(inputSrv);
-        outputTarget->End(cmdList);
+
+        if (step_.executionType == PostEffectExecutionType::Compute) {
+            auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(outputTarget);
+            if (!offscreen) {
+                return;
+            }
+
+            passContext.output = offscreen->GetUAVHandle();
+            passContext.width  = static_cast<uint32_t>(offscreen->GetWidth());
+            passContext.height = static_cast<uint32_t>(offscreen->GetHeight());
+
+            offscreen->BeginCS(cmdList);
+            step_.record(passContext);
+            offscreen->EndCS(cmdList);
+        } else {
+            passContext.width  = static_cast<uint32_t>(outputTarget->GetWidth());
+            passContext.height = static_cast<uint32_t>(outputTarget->GetHeight());
+
+            outputTarget->Begin(cmdList);
+            step_.record(passContext);
+            outputTarget->End(cmdList);
+        }
 
         if (context.frameBlackboard) {
             D3D12_RESOURCE_STATES* stateRef = nullptr;
             if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(outputTarget)) {
                 stateRef = &offscreen->GetCurrentState();
             }
-
             context.frameBlackboard->SetResource(
-                outputResourceName_,
-                outputTarget->GetSRVHandle(),
-                outputTarget->GetResource(),
-                stateRef);
+                step_.write, outputTarget->GetSRVHandle(), outputTarget->GetResource(), stateRef);
         }
     }
 }

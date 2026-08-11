@@ -6,6 +6,7 @@
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Camera/View/ViewInfo.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/CVarPanel.h"
@@ -16,6 +17,35 @@
 
 namespace CoreEngine
 {
+    void LensFlare::PrepareFrame(const PostEffectFrameContext& ctx)
+    {
+        // 太陽が特定できないフレームは画面中央・無効扱いにしてフレアを止める
+        if (!ctx.view || !ctx.view->isValid || !ctx.sunDirectionValid) {
+            SetSunScreenPosition(0.5f, 0.5f, false);
+            return;
+        }
+
+        // sunDirection は光の進行方向。太陽の見える方向はその逆。
+        const Vector3& sunDir = ctx.sunDirection;
+        const Vector3 toSun = { -sunDir.x, -sunDir.y, -sunDir.z };
+
+        // 無限遠の方向ベクトルとして投影する（w=0 の行ベクトル変換 = 平行移動行を無視）。
+        // 描画に使われたビューと同じ行列を使わないとマスク位置がずれ、
+        // 太陽を直視してもフレアが出なくなる。
+        const Matrix4x4& vp = ctx.view->viewProjection;
+        const float clipX = toSun.x * vp.m[0][0] + toSun.y * vp.m[1][0] + toSun.z * vp.m[2][0];
+        const float clipY = toSun.x * vp.m[0][1] + toSun.y * vp.m[1][1] + toSun.z * vp.m[2][1];
+        const float clipW = toSun.x * vp.m[0][3] + toSun.y * vp.m[1][3] + toSun.z * vp.m[2][3];
+
+        if (clipW <= 1e-5f) {
+            // 太陽がカメラ後方にある
+            SetSunScreenPosition(0.5f, 0.5f, false);
+            return;
+        }
+
+        SetSunScreenPosition(clipX / clipW * 0.5f + 0.5f, -clipY / clipW * 0.5f + 0.5f, true);
+    }
+
     namespace {
         // フレアバッファの解像度分割数（1/4 解像度。ゴーストはブラーで滲ませるため十分）
         constexpr uint32_t kFlareResolutionDivisor = 4;

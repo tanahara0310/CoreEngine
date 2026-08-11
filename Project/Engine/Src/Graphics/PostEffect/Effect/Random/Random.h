@@ -26,13 +26,6 @@ namespace CoreEngine
             float padding = 0.0f;
         };
 
-        /// @brief 画面サイズ定数バッファ構造体
-        struct ScreenParams {
-            uint32_t screenWidth = 1280;
-            uint32_t screenHeight = 720;
-            float    pad[2] = { 0.0f, 0.0f };
-        };
-
     public:
         Random() = default;
         ~Random() = default;
@@ -43,7 +36,7 @@ namespace CoreEngine
             uint32_t width,
             uint32_t height) override;
 
-        void Update(float deltaTime) override;
+        void PrepareFrame(const PostEffectFrameContext& ctx) override;
         void DrawImGui() override;
 
     protected:
@@ -56,14 +49,10 @@ namespace CoreEngine
 
     private:
         void UpdateConstantBuffer();
-        void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
     private:
         Microsoft::WRL::ComPtr<ID3D12Resource> randomParamsCB_;
         RandomParams* mappedRandomParams_ = nullptr;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-        ScreenParams* mappedScreenParams_ = nullptr;
 
         float accumulatedTime_ = 0.0f;
     };

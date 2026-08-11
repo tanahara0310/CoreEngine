@@ -20,13 +20,6 @@ public:
         float centerY      = 0.5f; // ブラー中心のY座標 (0.0-1.0)
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
-    };
-
 public:
     RadialBlur() = default;
     ~RadialBlur() = default;
@@ -51,13 +44,9 @@ protected:
 
 private:
     void UpdateConstantBuffer();
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> radialBlurParamsCB_;
     RadialBlurParams* mappedRadialBlurParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
 };
 }

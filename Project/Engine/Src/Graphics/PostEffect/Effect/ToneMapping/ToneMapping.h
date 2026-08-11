@@ -10,7 +10,8 @@
 namespace CoreEngine
 {
     /// @brief ACESトーンマッピングポストエフェクト（CS方式）
-    /// @details HDR→LDR変換をポストエフェクトチェーンの最終段で適用する。
+    /// @details HDR→LDR変換を担う「段の境界」。チェーン上でこれより前が SceneHDR 段
+    ///          （光学現象・露出・グレーディング）、後ろが PostTonemap 段（記録・演出）になる。
     ///          自動露出（Auto Exposure）を有効にすると、入力のリニアHDR輝度の
     ///          対数平均から露出を毎フレーム計算し、目の明暗順応のように時間追従する。
     ///          手動の露出補正 [EV] は自動露出への加算オフセットとして機能する。
@@ -44,6 +45,9 @@ namespace CoreEngine
         /// @brief 常時有効なエフェクト
         bool IsAlwaysEnabled() const override { return true; }
 
+        /// @brief HDR→LDR の境界そのもの。チェーン中ちょうど 1 つだけ存在する
+        PostEffectStage GetStage() const override { return PostEffectStage::Tonemap; }
+
         /// @brief 自動露出の有効/無効を設定する
         /// @note AtmosphereEditor が夜間プリセットで一時的に切り替えるため公開している
         void SetAutoExposureEnabled(bool enabled);
@@ -66,8 +70,8 @@ namespace CoreEngine
         /// @brief 現在の順応輝度を基準輝度に設定する（「今の明るさを 0EV にする」操作）
         void CalibrateReferenceToCurrent();
 
-        /// @brief 時間順応の更新用にデルタタイムを受け取る（PostEffectManager から毎フレーム呼ばれる）
-        void Update(float deltaTime) override { deltaTime_ = deltaTime; }
+        /// @brief 時間順応に使うデルタタイムを取り込む
+        void PrepareFrame(const PostEffectFrameContext& ctx) override { deltaTime_ = ctx.deltaTime; }
 
     protected:
         std::string  GetEffectName() const override { return "ToneMapping"; }

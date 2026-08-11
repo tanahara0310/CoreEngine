@@ -22,7 +22,8 @@
 #include "Graphics/PostEffect/Effect/PostEffectBase.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
-#include "Graphics/PostEffect/Effect/LensFlare/LensFlare.h"
+#include "Utility/Logger/Logger.h"
+#include <unordered_set>
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
 #include "Graphics/Render/RenderingTechnique/TAA/TAATechnique.h"
@@ -82,55 +83,6 @@ namespace CoreEngine
             case RenderPassPhase::Final:         return GpuTimingCategory::Final;
             default:                             return GpuTimingCategory::Setup;
             }
-        }
-
-        // 太陽（無限遠の方向光源）のスクリーン UV を計算し、LensFlare へ渡す。
-        // レンズフレアの光源を太陽に限定するため（パーティクル等の高輝度オブジェクトを
-        // フレア源にしない）、毎フレームここで太陽の投影位置を更新する。
-        void UpdateLensFlareSunPosition(const RenderContext& context)
-        {
-            if (!context.postEffectManager) {
-                return;
-            }
-            auto* lensFlare = context.postEffectManager->GetEffect<LensFlare>(PostEffectNames::LensFlare);
-            if (!lensFlare) {
-                return;
-            }
-
-            // 実際に描画へ使われたビューと同じ行列を使うこと。別のカメラで太陽を投影すると
-            // マスク位置がずれ、太陽を直視してもフレアが出なくなる。
-            // FrameViews はフレーム先頭で確定した唯一のスナップショットなので、
-            // 描画側とここで行列が食い違うことは構造上ありえない。
-            if (!context.frameViews || !context.atmosphereManager) {
-                lensFlare->SetSunScreenPosition(0.5f, 0.5f, false);
-                return;
-            }
-            const ViewInfo& view = context.frameViews->GameView();
-            if (!view.isValid) {
-                lensFlare->SetSunScreenPosition(0.5f, 0.5f, false);
-                return;
-            }
-
-            // AtmosphereManager の sunDirection は光の進行方向。太陽の見える方向はその逆。
-            const Vector3 sunDir = context.atmosphereManager->GetSunDirection();
-            const Vector3 toSun = { -sunDir.x, -sunDir.y, -sunDir.z };
-
-            const Matrix4x4& vp = view.viewProjection;
-
-            // 無限遠の方向ベクトルとして投影（w=0 の行ベクトル変換 = 平行移動行を無視）
-            const float clipX = toSun.x * vp.m[0][0] + toSun.y * vp.m[1][0] + toSun.z * vp.m[2][0];
-            const float clipY = toSun.x * vp.m[0][1] + toSun.y * vp.m[1][1] + toSun.z * vp.m[2][1];
-            const float clipW = toSun.x * vp.m[0][3] + toSun.y * vp.m[1][3] + toSun.z * vp.m[2][3];
-
-            if (clipW <= 1e-5f) {
-                // 太陽がカメラ後方にある場合はフレアを出さない
-                lensFlare->SetSunScreenPosition(0.5f, 0.5f, false);
-                return;
-            }
-
-            const float u = clipX / clipW * 0.5f + 0.5f;
-            const float v = -clipY / clipW * 0.5f + 0.5f;
-            lensFlare->SetSunScreenPosition(u, v, true);
         }
 
         void EnsureSceneColorTarget(const RenderContext& context)
@@ -401,9 +353,6 @@ namespace CoreEngine
     void RenderPipeline::PrepareFrame(const RenderContext& context)
     {
         RegisterFrameResources(context);
-
-        // レンズフレアの光源を太陽に限定するため、太陽のスクリーン位置を毎フレーム更新
-        UpdateLensFlareSunPosition(context);
 
         // 各パス自身の View 依存設定（出力先ターゲット名など）を反映する。
         for (auto& entry : passes_) {
@@ -690,35 +639,110 @@ namespace CoreEngine
             return;
         }
 
-        std::string currentInput = sceneImageResourceName_;
-        size_t effectIndex = 0;
+        // 必須の追加入力が今フレームの Blackboard に無いエフェクトは、パス自体を作らずチェーンから外す。
+        // Execute の時点で飛ばすと「出力リソースが書かれないまま次段がそれを読む」ことになり、
+        // 画面が丸ごと消える（不変条件「必須入力が欠けてもクラッシュも黒画面も出さない」に反する）。
+        struct ChainEntry { PostEffectBase* effect; std::string name; };
+        std::vector<ChainEntry> chain;
+        chain.reserve(enabledEffects.size());
 
-        for (PostEffectBase* effect : enabledEffects) {
+        std::vector<PostEffectInputBinding> declaredInputs;
+        for (size_t index = 0; index < enabledEffects.size(); ++index) {
+            PostEffectBase* effect = enabledEffects[index];
             if (!effect) {
                 continue;
             }
 
-            const bool isLastEffect = (effectIndex + 1 >= enabledEffects.size());
+            const std::string effectName = (index < enabledEffectNames.size())
+                ? enabledEffectNames[index]
+                : (std::string("PostEffect_") + std::to_string(index));
+
+            declaredInputs.clear();
+            effect->DeclareExtraInputs(declaredInputs);
+
+            bool inputsAvailable = true;
+            for (const PostEffectInputBinding& binding : declaredInputs) {
+                if (!binding.required) {
+                    continue;
+                }
+                const bool resolvable = binding.logicalName && context.frameBlackboard
+                    && context.frameBlackboard->HasResource(binding.logicalName);
+                if (!resolvable) {
+                    // 毎フレーム出すとログが埋まるので組み合わせごとに 1 回だけ警告する
+                    static std::unordered_set<std::string> warnedMissingInputs;
+                    std::string key = effectName + "/" + (binding.logicalName ? binding.logicalName : "(null)");
+                    if (warnedMissingInputs.insert(key).second) {
+                        Logger::GetInstance().Warnf(LogCategory::Graphics,
+                            "[PostEffect] {} が要求する入力 {} が今フレームに無いため、チェーンから除外します",
+                            effectName, binding.logicalName ? binding.logicalName : "(null)");
+                    }
+                    inputsAvailable = false;
+                    break;
+                }
+            }
+
+            if (inputsAvailable) {
+                chain.push_back({ effect, effectName });
+            }
+        }
+
+        if (chain.empty()) {
+            // 全て外れた場合はポストエフェクトを挟まずシーン画像をそのまま最終出力にする
+            ConfigureBackBufferInput(sceneImageResourceName_);
+            return;
+        }
+
+        // 一時ターゲットの払い出しはフレーム単位。ここでカーソルを戻す
+        postEffectTransientPool_.BeginFrame();
+
+        // 一時ターゲットの解像度スケールの基準になるフル解像度
+        uint32_t baseWidth = 0;
+        uint32_t baseHeight = 0;
+        if (RenderTarget* sceneColorTarget =
+                context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName)) {
+            baseWidth  = static_cast<uint32_t>(sceneColorTarget->GetWidth());
+            baseHeight = static_cast<uint32_t>(sceneColorTarget->GetHeight());
+        }
+
+        std::string currentInput = sceneImageResourceName_;
+        size_t effectIndex = 0;
+
+        for (const ChainEntry& entry : chain) {
+            const bool isLastEffect = (effectIndex + 1 >= chain.size());
             const std::string outputResource = isLastEffect
                 ? std::string(FrameBlackboard::PostEffectFinal)
                 : FrameBlackboard::MakePostEffectIntermediateName(effectIndex);
 
-            // 登録名（"LensFlare"/"Bloom"/"Outline" 等）をそのままパス名として使う。
-            // タイミング表示やデバッグログでエフェクトを個別に識別できるようにするため。
-            const std::string effectName = (effectIndex < enabledEffectNames.size())
-                ? enabledEffectNames[effectIndex]
-                : (std::string("PostEffect_") + std::to_string(effectIndex));
+            // エフェクト自身にパス列を積ませる。単一パスのエフェクトは基底の既定実装が
+            // 従来どおり 1 パスだけ積むので、ここでの扱いは多段エフェクトと同じで済む。
+            PostEffectGraphBuilder builder(
+                context, postEffectTransientPool_, currentInput, outputResource, baseWidth, baseHeight);
+            entry.effect->BuildPasses(builder);
 
-            auto postEffectPass = std::make_unique<PostEffectPass>();
-            postEffectPass->SetEffect(effect, effectName);
-            postEffectPass->SetInputResourceName(currentInput);
-            postEffectPass->SetOutputResourceName(outputResource);
-            PostEffectPass* passPtr = postEffectPass.get();
-            postEffectSubpasses_.push_back(std::move(postEffectPass));
+            const std::vector<PostEffectStep>& steps = builder.Steps();
+            if (steps.empty()) {
+                // パスを 1 つも積まなかったエフェクトは出力を書かない。currentInput を進めないので
+                // 次段は前段の出力をそのまま読み、画像は途切れない
+                Logger::GetInstance().Errorf(LogCategory::Graphics,
+                    "[PostEffect] {} が 1 つもパスを積みませんでした。このエフェクトは無視されます", entry.name);
+                ++effectIndex;
+                continue;
+            }
 
-            renderGraph_.AddPass(effectName, passPtr, [passPtr, &context](RenderGraphBuilder& builder) {
-                passPtr->DeclareResources(builder, context);
-                }, GpuTimingCategory::PostProcess);
+            for (const PostEffectStep& step : steps) {
+                // 単一パスのエフェクトは登録名をそのままノード名にする（従来の表示を保つ）。
+                // 多段のときは step 名を使い、ノードエディタで個別に識別できるようにする
+                const std::string passName = (steps.size() == 1) ? entry.name : step.name;
+
+                auto postEffectPass = std::make_unique<PostEffectPass>();
+                postEffectPass->SetStep(entry.effect, entry.name, step);
+                PostEffectPass* passPtr = postEffectPass.get();
+                postEffectSubpasses_.push_back(std::move(postEffectPass));
+
+                renderGraph_.AddPass(passName, passPtr, [passPtr, &context](RenderGraphBuilder& graphBuilder) {
+                    passPtr->DeclareResources(graphBuilder, context);
+                    }, GpuTimingCategory::PostProcess);
+            }
 
             currentInput = outputResource;
             ++effectIndex;

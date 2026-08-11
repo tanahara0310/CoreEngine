@@ -1,6 +1,7 @@
 #pragma once
 #include "RenderPass.h"
 #include "PostEffectPass.h"
+#include "Graphics/PostEffect/Graph/PostEffectTransientPool.h"
 #include "Graphics/Render/RenderGraph.h"
 #include "Graphics/Render/RenderGraphSnapshot.h"
 #include <cstdint>
@@ -191,6 +192,10 @@ namespace CoreEngine
         };
 
         std::vector<std::unique_ptr<PostEffectPass>> postEffectSubpasses_;
+
+        /// @brief エフェクトが多段処理で使う一時ターゲットのプール
+        /// @details フレームをまたいで再利用するため、パイプラインが所有する
+        PostEffectTransientPool postEffectTransientPool_;
         /// @brief ポストエフェクト列へ渡す「シーンの画」の論理名（TAA / CAS 適用後）
         std::string sceneImageResourceName_ = FrameBlackboard::SceneColor;
         std::string finalDisplayResourceName_ = FrameBlackboard::SceneColor;

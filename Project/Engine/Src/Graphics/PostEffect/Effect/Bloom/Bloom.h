@@ -1,65 +1,114 @@
 #pragma once
 
 #include "../PostEffectComputeBase.h"
+#include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h" // PostEffectPassContext
+#include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/Shader/ICustomShaderProvider.h"
 #include <wrl.h>
 #include <d3d12.h>
+#include <array>
 
 
 namespace CoreEngine
 {
-/// @brief ブルームエフェクト（CS方式）
-/// @details パラメータは CVar（"r.Bloom.*"）が唯一の保持者。
-///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+/// @brief ブルームエフェクト（ミップチェーン方式）
+/// @details ダウンサンプル 6 段 → アップサンプル 5 段 → 合成の多段処理。
+///          以前は「半径 5 テクセルまでのガウシアンを 1 パス」で、閾値を超えた画素だけが
+///          狭くにじむだけだった。ミップチェーンにすると 1/64 解像度まで畳んでから戻すので、
+///          画面の 1/2 に届く広がりが出る（実カメラの散乱に近い）。
+///          パラメータは CVar（"r.Bloom.*"）が唯一の保持者。
+///          設計: Docs/Engine/Graphics/PostProcess/PostEffect_Refactoring_Plan.md
 class Bloom : public PostEffectComputeBase {
 public:
-    /// @brief ブルームパラメータ構造体（GPU 定数バッファのレイアウト）
-    struct BloomParams {
-        float threshold  = 0.8f; // 輝度閾値 (0.0-2.0)
-        float intensity  = 1.0f; // ブルーム強度 (0.0-3.0)
-        float blurRadius = 2.0f; // ブラー半径 (0.5-5.0)
-        float softKnee   = 0.5f; // ソフトニー (0.0-1.0)
+    /// @brief ミップチェーンの段数。1/2 から 1/64 まで
+    static constexpr int kMipCount = 6;
+
+    /// @brief ダウンサンプル 1 段分の定数（GPU レイアウト）
+    struct DownsampleParams {
+        uint32_t outputSize[2]   = { 1, 1 };
+        uint32_t sourceSize[2]   = { 1, 1 };
+        float    threshold       = 0.8f;
+        float    softKnee        = 0.5f;
+        uint32_t applyPrefilter  = 0;
+        float    padding         = 0.0f;
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
+    /// @brief アップサンプル 1 段分の定数（GPU レイアウト）
+    struct UpsampleParams {
+        uint32_t outputSize[2] = { 1, 1 };
+        uint32_t lowerSize[2]  = { 1, 1 };
+    };
+
+    /// @brief 合成パスの定数（GPU レイアウト）
+    struct CompositeParams {
+        uint32_t outputSize[2] = { 1, 1 };
+        uint32_t bloomSize[2]  = { 1, 1 };
+        float    intensity     = 1.0f;
+        float    padding[3]    = {};
     };
 
 public:
     Bloom() = default;
     ~Bloom() = default;
 
-    /// @brief CSエフェクト実行
-    void Dispatch(
-        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
-        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
-        uint32_t width,
-        uint32_t height) override;
-
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    /// @brief CVar の現在値を定数バッファへ書き込む
-    void UpdateConstantBuffer();
+    /// @brief 光の散乱はトーンマップ前の物理量に対して起きるため SceneHDR 段
+    PostEffectStage GetStage() const override { return PostEffectStage::SceneHDR; }
+
+    /// @brief ダウン 6 段 → アップ 5 段 → 合成 をグラフへ積む
+    void BuildPasses(PostEffectGraphBuilder& builder) override;
 
 protected:
     /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
     CVar<bool>* GetEnabledCVar() const override;
 
     std::string  GetEffectName()        const override { return "Bloom"; }
-    std::wstring GetComputeShaderPath() const override { return L"Bloom.CS.hlsl"; }
+    /// @note 基底が要求する 1 本目の CS。合成パスとして使う
+    std::wstring GetComputeShaderPath() const override { return L"BloomComposite.CS.hlsl"; }
     void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
+    /// @brief ダウンサンプル／アップサンプル用の追加パイプラインを構築する
+    bool CreateInternalPipelines();
 
-private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> bloomParamsCB_;
-    BloomParams* mappedBloomParams_ = nullptr;
+    /// @brief 1 パス分の記録処理（ダウンサンプル）
+    void RecordDownsample(const PostEffectPassContext& context, int mipIndex);
+    /// @brief 1 パス分の記録処理（アップサンプル）
+    void RecordUpsample(const PostEffectPassContext& context, int upIndex);
+    /// @brief 1 パス分の記録処理（合成）
+    void RecordComposite(const PostEffectPassContext& context);
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
+    /// @brief シェーダーパスだけを差し替える最小のプロバイダ
+    class ShaderProvider : public ICustomShaderProvider {
+    public:
+        explicit ShaderProvider(std::wstring path) : path_(std::move(path)) {}
+        std::wstring GetComputeShaderPath() const override { return path_; }
+    private:
+        std::wstring path_;
+    };
+
+    ShaderProvider downsampleProvider_{ L"BloomDownsample.CS.hlsl" };
+    ShaderProvider upsampleProvider_{ L"BloomUpsample.CS.hlsl" };
+    CustomShaderPipeline downsamplePipeline_;
+    CustomShaderPipeline upsamplePipeline_;
+    bool internalPipelinesReady_ = false;
+
+    // 定数バッファはパスごとに別実体が要る（GPU が読むのは記録より後なので使い回せない）
+    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMipCount> downParamsCB_;
+    std::array<DownsampleParams*, kMipCount> mappedDownParams_{};
+
+    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMipCount - 1> upParamsCB_;
+    std::array<UpsampleParams*, kMipCount - 1> mappedUpParams_{};
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> compositeParamsCB_;
+    CompositeParams* mappedCompositeParams_ = nullptr;
+
+    /// @brief BuildPasses が計算した各段の解像度（record から参照する）
+    std::array<uint32_t, kMipCount> mipWidth_{};
+    std::array<uint32_t, kMipCount> mipHeight_{};
+    uint32_t baseWidth_ = 0;
+    uint32_t baseHeight_ = 0;
 };
 }

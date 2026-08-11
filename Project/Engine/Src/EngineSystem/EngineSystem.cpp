@@ -58,6 +58,7 @@
 
 // レイトレーシング
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
@@ -214,13 +215,6 @@ namespace CoreEngine
             inputManager->Update();
         }
 
-        // ポストエフェクトの更新（フレームレートコントローラーからデルタタイムを取得）
-        if (auto* postEffect = GetService<PostEffectManager>()) {
-            if (auto* frameRate = GetService<FrameRateController>()) {
-                postEffect->Update(frameRate->GetDeltaTime());
-            }
-        }
-
         // 全サブシステムのフレーム開始処理
         for (auto& sys : subsystems_) {
             sys->BeginFrame();
@@ -314,6 +308,22 @@ namespace CoreEngine
         context.frameViews = &frameViews;
         if (renderManager) {
             renderManager->SetFrameViews(&frameViews);
+        }
+
+        // ポストエフェクトへ今フレームの文脈を配る。
+        // ビュー確定後・View ループ前のここが唯一の呼び出し点（View ごとに呼ぶと
+        // 補助ビューの行列でエフェクトの状態が上書きされる）。
+        if (context.postEffectManager) {
+            PostEffectFrameContext postEffectContext;
+            postEffectContext.view = &frameViews.GameView();
+            if (auto* frameRate = GetService<FrameRateController>()) {
+                postEffectContext.deltaTime = frameRate->GetDeltaTime();
+            }
+            if (context.atmosphereManager) {
+                postEffectContext.sunDirection = context.atmosphereManager->GetSunDirection();
+                postEffectContext.sunDirectionValid = true;
+            }
+            context.postEffectManager->PrepareFrame(postEffectContext);
         }
 
         if (dx) {

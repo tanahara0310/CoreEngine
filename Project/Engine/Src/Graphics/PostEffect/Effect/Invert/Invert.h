@@ -10,13 +10,6 @@ namespace CoreEngine
     /// @brief 色反転エフェクト（CS方式）
     class Invert : public PostEffectComputeBase {
     public:
-        /// @brief 画面サイズ定数バッファ構造体
-        struct ScreenParams {
-            uint32_t screenWidth = 1280;
-            uint32_t screenHeight = 720;
-            float    pad[2] = { 0.0f, 0.0f };
-        };
-
     public:
         Invert() = default;
         ~Invert() = default;
@@ -37,13 +30,9 @@ namespace CoreEngine
 
         std::string  GetEffectName() const override { return "Invert"; }
         std::wstring GetComputeShaderPath() const override { return L"Invert.CS.hlsl"; }
-        void OnCreateConstantBuffers() override;
 
     private:
-        void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
     private:
-        Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-        ScreenParams* mappedScreenParams_ = nullptr;
     };
 }

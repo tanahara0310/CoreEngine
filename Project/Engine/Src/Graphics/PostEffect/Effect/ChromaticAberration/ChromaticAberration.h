@@ -25,13 +25,6 @@ public:
         float padding         = 0.0f;
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
-    };
-
 public:
     ChromaticAberration() = default;
     ~ChromaticAberration() = default;
@@ -46,6 +39,9 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
+    /// @brief レンズの分散はトーンマップ前の光学現象なので SceneHDR 段
+    PostEffectStage GetStage() const override { return PostEffectStage::SceneHDR; }
+
 protected:
     /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
     CVar<bool>* GetEnabledCVar() const override;
@@ -56,13 +52,9 @@ protected:
 
 private:
     void UpdateConstantBuffer();
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> caParamsCB_;
     ChromaticAberrationParams* mappedCAParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
 };
 }

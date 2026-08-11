@@ -1,6 +1,16 @@
 // ColorGrading.CS.hlsl - カラーグレーディング コンピュートシェーダー
+//
+// 【重要】このシェーダーは SceneHDR 段（トーンマッピングの前）で動く。
+//  入力はリニア HDR で 1.0 を大きく超える値が来るため、以下の 3 点を守ること。
+//   ・出力を saturate しない（ハイライトのレンジを潰すとトーンカーブが仕事をしなくなる）
+//   ・0.5 を基準にした演算をしない。基準はリニア中間グレー kMiddleGrey
+//   ・輝度で帯を切るときは正規化してから（HDR 輝度は容易に 1 を超え、全画素がハイライト扱いになる）
+//  段の定義: Docs/Engine/Graphics/PostProcess/PostEffect_Refactoring_Plan.md
 
 #include "ColorSpace.hlsli" // LuminanceRec601
+
+/// リニア空間の中間グレー。LDR の 0.5 に相当する「真ん中」の基準値
+static const float kMiddleGrey = 0.18f;
 
 Texture2D<float4> gTexture : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
@@ -85,8 +95,12 @@ float3 ApplyTemperature(float3 col, float temp, float tintValue)
 float3 ApplySMH(float3 col, float3 shadowLiftRGB, float3 midtoneGammaRGB, float3 highlightGainRGB)
 {
     float lum = LuminanceRec601(col);
-    float shadowW = 1.0f - smoothstep(0.0f, 0.5f, lum);
-    float highlightW = smoothstep(0.5f, 1.0f, lum);
+    // HDR 輝度をそのまま閾値に掛けると 1 を超えた画素が全てハイライト帯に入ってしまう。
+    // Reinhard 正規化で単調に 0〜1 へ写してから帯を切る（中間グレー 0.18 → 約 0.153、
+    // 輝度 1.0 が境界の 0.5 に乗り、それ以上がハイライト帯になる）
+    float lumNorm = lum / (lum + 1.0f);
+    float shadowW = 1.0f - smoothstep(0.0f, 0.5f, lumNorm);
+    float highlightW = smoothstep(0.5f, 1.0f, lumNorm);
     float3 shadowAdj = col + shadowLiftRGB * shadowW;
     float3 midtoneAdj = pow(abs(shadowAdj), 1.0f / midtoneGammaRGB) * sign(shadowAdj);
     float3 highlightAdj = midtoneAdj * (highlightGainRGB * highlightW + (1.0f - highlightW));
@@ -116,15 +130,18 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     hsv.z = hsv.z * value;
     col = HSVtoRGB(hsv);
 
-    // コントラスト
-    col = (col - 0.5f) * contrast + 0.5f;
+    // コントラスト（リニア中間グレーを軸に伸縮させる。0.5 軸だと HDR で破綻する）
+    col = (col - kMiddleGrey) * contrast + kMiddleGrey;
 
     // ガンマ補正
     col = pow(abs(col), 1.0f / gamma) * sign(col);
 
     // SMH 調整
     col = ApplySMH(col, shadowLift, midtoneGamma, highlightGain);
-    col = saturate(col);
+
+    // 上限クランプはしない。ハイライトの圧縮はトーンマッパの仕事なので、
+    // ここで saturate するとレンジが消えて絵が平坦になる。負値だけ落とす
+    col = max(col, 0.0f);
 
     gOutput[dispatchId.xy] = float4(col, 1.0f);
 }
