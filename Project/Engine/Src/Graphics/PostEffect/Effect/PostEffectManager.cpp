@@ -23,6 +23,7 @@
 #include "LensFlare/LensFlare.h"
 #include "Dissolve/Dissolve.h"
 #include "ToneMapping/ToneMapping.h"
+#include "FilmGrain/FilmGrain.h"
 #include "Outline/Outline.h"
 #include "PostEffectPresetManager.h"
 #include "Editor/ImGui/ImguiManager.h"
@@ -78,6 +79,7 @@ void PostEffectManager::RegisterAllEffects()
     RegisterEffect<LensFlare>(PostEffectNames::LensFlare);
     RegisterEffect<Dissolve>(PostEffectNames::Dissolve);
     RegisterEffect<Outline>(PostEffectNames::Outline);
+    RegisterEffect<FilmGrain>(PostEffectNames::FilmGrain);
     RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping);
 
     // エフェクトチェーンの順序を登録と同じ場所で定義（二重管理を防ぐ）
@@ -102,6 +104,8 @@ void PostEffectManager::RegisterAllEffects()
         PostEffectNames::Sepia,
         PostEffectNames::Invert,
         PostEffectNames::GrayScale,
+        // グレインは色をいじる演出（セピア・モノクロ）より後。先に乗せると粒まで脱色される
+        PostEffectNames::FilmGrain,
         PostEffectNames::Outline,
         PostEffectNames::Dissolve,
     };

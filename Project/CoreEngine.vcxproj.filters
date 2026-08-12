@@ -838,6 +838,9 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FilmGrain\FilmGrain.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\FilmGrain</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Graph</Filter>
     </ClCompile>
@@ -2133,6 +2136,9 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectFrameContext.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FilmGrain\FilmGrain.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\FilmGrain</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.h">
       <Filter>Engine\Src\Graphics\PostEffect\Graph</Filter>
     </ClInclude>
@@ -2655,6 +2661,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect">
       <UniqueIdentifier>{BF331545-0D4D-411C-ACE0-9E362E7629FC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\FilmGrain">
+      <UniqueIdentifier>{BBB3E6E2-0276-47CF-B3A1-718539BB721A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale">
       <UniqueIdentifier>{7C43970B-DF69-4A63-9299-3B3D883B7DA6}</UniqueIdentifier>

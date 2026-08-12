@@ -23,6 +23,7 @@ namespace PostEffectNames {
     constexpr const char* LensFlare = "LensFlare";
     constexpr const char* Dissolve = "Dissolve";
     constexpr const char* ToneMapping = "ToneMapping";
+    constexpr const char* FilmGrain = "FilmGrain";
     constexpr const char* Outline = "Outline";
 }
 }
