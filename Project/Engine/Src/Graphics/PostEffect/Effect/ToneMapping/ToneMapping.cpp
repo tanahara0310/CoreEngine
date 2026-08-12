@@ -37,11 +37,29 @@ namespace CoreEngine
             "明暗の絶対感を保持する（Krawczyk 自動キー）。"
             "OFF だと全シーンが中間グレーへ正規化され、薄暮の空が昼のように明るくなる" };
 
-        CVar<float> cvAdaptationSpeed{
-            "r.AutoExposure.AdaptationSpeed", 8.0f,
-            "明暗順応の速さ [1/s]。8.0 で 95% 到達 ≈0.4s。"
-            "小さいとカメラを振るたび明るさが遅れて追従する",
+        CVar<float> cvAdaptationSpeedUp{
+            "r.AutoExposure.SpeedUp", 8.0f,
+            "シーンが明るくなったときの順応の速さ [1/s]。8.0 で 95% 到達 ≈0.4s。"
+            "目は眩しさに素早く順応するので暗くなる側より速くする",
             CVarRange{ 0.1f, 20.0f } };
+
+        CVar<float> cvAdaptationSpeedDown{
+            "r.AutoExposure.SpeedDown", 3.0f,
+            "シーンが暗くなったときの順応の速さ [1/s]。目の暗順応は遅いので明るい側より小さく。"
+            "トンネルへ入った直後にしばらく暗いままになる効果が出る",
+            CVarRange{ 0.1f, 20.0f } };
+
+        CVar<float> cvLowPercentile{
+            "r.AutoExposure.LowPercentile", 0.5f,
+            "測光ヒストグラムの下側カット。この割合より暗いサンプルは露出計算から除外する。"
+            "大面積の暗部（影の地面）が露出を持ち上げすぎるのを防ぐ",
+            CVarRange{ 0.0f, 0.95f } };
+
+        CVar<float> cvHighPercentile{
+            "r.AutoExposure.HighPercentile", 0.9f,
+            "測光ヒストグラムの上側カット。この割合より明るいサンプルは露出計算から除外する。"
+            "太陽や水面グリッターが画面へ入った瞬間に全体が沈む「呼吸」を防ぐ",
+            CVarRange{ 0.05f, 1.0f } };
 
         CVar<float> cvKeyValue{
             "r.AutoExposure.KeyValue", 0.18f,
@@ -64,7 +82,15 @@ namespace CoreEngine
             "絶対露出ではなくこの基準からの相対補正として働かせる（既定 2.0 は晴天正午の実測値）",
             CVarRange{ 0.05f, 10.0f } };
 
+        CVar<int> cvToneMapOperator{
+            "r.ToneMapping.Operator", 0,
+            "トーンカーブ。0=ACES（コントラスト強め・従来） 1=GT（中間調が素直・グランツーリスモ方式） "
+            "2=AgX（高彩度の光源が色相を回さず白へ抜ける・Blender 4.x 既定）。"
+            "切り替えたら r.AutoExposure.ReferenceLuminance の再較正を推奨",
+            CVarRange{ 0.0f, 2.0f } };
+
         constexpr const char* kCVarPrefix = "r.AutoExposure";
+        constexpr const char* kToneMapCVarPrefix = "r.ToneMapping";
     }
 
     void ToneMapping::SetAutoExposureEnabled(bool enabled)
@@ -142,7 +168,17 @@ namespace CoreEngine
             return;
         }
 
-        // ===== 平均対数輝度の出力バッファ（DEFAULT ヒープ・UAV） =====
+        // ===== ヒストグラム測光の設定バッファ（b1・永続マップ） =====
+        {
+            const UINT size = (sizeof(HistogramMeteringParams) + 255) & ~255u;
+            histogramParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), size);
+            if (!histogramParamsCB_ ||
+                FAILED(histogramParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedHistogramParams_)))) {
+                return;
+            }
+        }
+
+        // ===== 測光結果の出力バッファ（DEFAULT ヒープ・UAV） =====
         {
             D3D12_HEAP_PROPERTIES heapProps{};
             heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -206,8 +242,12 @@ namespace CoreEngine
             adaptedLuminance_ = targetLuminance;
             adaptationInitialized_ = true;
         } else {
-            // 目の明暗順応: 目標輝度へ指数的に追従する
-            const float blend = 1.0f - std::exp(-deltaTime_ * cvAdaptationSpeed.Get());
+            // 目の明暗順応: 目標輝度へ指数的に追従する。
+            // 明るくなる側は速く（眩しさへの防御）、暗くなる側は遅く（暗順応）
+            const float speed = (targetLuminance > adaptedLuminance_)
+                ? cvAdaptationSpeedUp.Get()
+                : cvAdaptationSpeedDown.Get();
+            const float blend = 1.0f - std::exp(-deltaTime_ * speed);
             adaptedLuminance_ += (targetLuminance - adaptedLuminance_) * blend;
         }
 
@@ -253,14 +293,23 @@ namespace CoreEngine
     void ToneMapping::RecordLuminanceReduction(
         ID3D12GraphicsCommandList* cmdList, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
     {
+        // 百分位カットの設定を書き込む（low >= high の設定ミスは境界を離して救済する）
+        if (mappedHistogramParams_) {
+            const float high = cvHighPercentile.Get();
+            mappedHistogramParams_->lowPercentile = std::min(cvLowPercentile.Get(), high - 0.01f);
+            mappedHistogramParams_->highPercentile = high;
+        }
+
         cmdList->SetComputeRootSignature(reductionRootSignature_->GetRootSignature());
         cmdList->SetPipelineState(reductionPso_.Get());
 
         const int texIdx = reductionReflection_->GetRootParameterIndexByName("gTexture");
         const int cbIdx = reductionReflection_->GetRootParameterIndexByName("ScreenParams");
+        const int histIdx = reductionReflection_->GetRootParameterIndexByName("HistogramParams");
         const int uavIdx = reductionReflection_->GetRootParameterIndexByName("gAvgLuminance");
         if (texIdx >= 0) cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
         if (cbIdx >= 0) cmdList->SetComputeRootConstantBufferView(cbIdx, screenParamsCB_->GetGPUVirtualAddress());
+        if (histIdx >= 0) cmdList->SetComputeRootConstantBufferView(histIdx, histogramParamsCB_->GetGPUVirtualAddress());
         if (uavIdx >= 0) cmdList->SetComputeRootUnorderedAccessView(uavIdx, avgLogLumBuffer_->GetGPUVirtualAddress());
 
         // 1グループのみ（シェーダー側が 64x64 グリッドを分担して groupshared で縮約する）
@@ -300,6 +349,8 @@ namespace CoreEngine
             // 自動露出有効時: 自動EV + 手動EV（補正オフセット）。無効時: 手動EVのみ（従来動作）
             const bool useAuto = cvAutoExposureEnabled.Get() && autoExposureReady_;
             mappedScreenParams_->exposureEV = cvExposureEV.Get() + (useAuto ? autoEV_ : 0.0f);
+            mappedScreenParams_->toneMapOperator =
+                static_cast<uint32_t>(std::clamp(cvToneMapOperator.Get(), 0, 2));
         }
     }
 
@@ -352,7 +403,9 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         ImGui::PushID("ToneMapping");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        ImGui::Text("ACES トーンマッピング（HDR→LDR変換）");
+        static const char* kOperatorNames[] = { "ACES", "GT", "AgX" };
+        const int op = std::clamp(cvToneMapOperator.Get(), 0, 2);
+        ImGui::Text("%s トーンマッピング（HDR→LDR変換）", kOperatorNames[op]);
         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "このエフェクトは常に有効です。");
 
         // 自動露出が有効なときだけ意味を持つ診断情報（計測結果なので CVar ではない）
@@ -382,10 +435,12 @@ namespace CoreEngine
             UI::Separator();
         }
 
+        CVarUI::DrawTree(kToneMapCVarPrefix);
         CVarUI::DrawTree(kCVarPrefix);
 
         UI::Separator();
         if (ImGui::Button("デフォルトに戻す")) {
+            CVarUI::ResetTree(kToneMapCVarPrefix);
             CVarUI::ResetTree(kCVarPrefix);
         }
         UI::Separator();

@@ -24,6 +24,10 @@
 #include "Dissolve/Dissolve.h"
 #include "ToneMapping/ToneMapping.h"
 #include "FilmGrain/FilmGrain.h"
+#include "MotionBlur/MotionBlur.h"
+#include "LocalExposure/LocalExposure.h"
+#include "ColorLUT/ColorLUT.h"
+#include "DepthOfField/DepthOfField.h"
 #include "Outline/Outline.h"
 #include "PostEffectPresetManager.h"
 #include "Editor/ImGui/ImguiManager.h"
@@ -80,6 +84,10 @@ void PostEffectManager::RegisterAllEffects()
     RegisterEffect<Dissolve>(PostEffectNames::Dissolve);
     RegisterEffect<Outline>(PostEffectNames::Outline);
     RegisterEffect<FilmGrain>(PostEffectNames::FilmGrain);
+    RegisterEffect<MotionBlur>(PostEffectNames::MotionBlur);
+    RegisterEffect<LocalExposure>(PostEffectNames::LocalExposure);
+    RegisterEffect<ColorLUT>(PostEffectNames::ColorLUT);
+    RegisterEffect<DepthOfField>(PostEffectNames::DepthOfField);
     RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping);
 
     // エフェクトチェーンの順序を登録と同じ場所で定義（二重管理を防ぐ）
@@ -87,14 +95,23 @@ void PostEffectManager::RegisterAllEffects()
     // 原則: 光学現象と露出・グレーディングはトーンマップ前、記録と演出はトーンマップ後。
     effectChain_ = {
         // ---- SceneHDR: トーンカーブを通る前の物理量に対して効くもの ----
+        // モーションブラーは露光中の積分そのものなので最初。ブラー後の画像に Bloom が乗る
+        PostEffectNames::MotionBlur,
+        // DoF はレンズの結像なので Bloom（レンズ内散乱）より前
+        PostEffectNames::DepthOfField,
         PostEffectNames::Bloom,
         PostEffectNames::LensFlare,
+        // ローカル露出は光学現象（Bloom/LensFlare）の後、色調整の前。
+        // 露出の一種なのでトーンマップへ渡る直前の輝度分布に対して効かせる
+        PostEffectNames::LocalExposure,
         PostEffectNames::ChromaticAberration,
         PostEffectNames::Vignette,
         PostEffectNames::ColorGrading,
         // ---- Tonemap: HDR→LDR の境界。常時有効・ちょうど 1 つ ----
         PostEffectNames::ToneMapping,
         // ---- PostTonemap: 表示色に対して効く演出系 ----
+        // LUT はトーンマップ直後の表示色に対するルック。演出系より前に置く
+        PostEffectNames::ColorLUT,
         PostEffectNames::FadeEffect,
         PostEffectNames::Shockwave,
         PostEffectNames::Blur,

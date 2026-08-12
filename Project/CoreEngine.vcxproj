@@ -466,6 +466,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FilmGrain\FilmGrain.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\MotionBlur\MotionBlur.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure\LocalExposure.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ColorLUT\ColorLUT.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DepthOfField\DepthOfField.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectTransientPool.cpp" />
     <ClCompile Include="Engine\Src\Math\MathCore.cpp" />
@@ -931,6 +935,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectStage.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectFrameContext.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FilmGrain\FilmGrain.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\MotionBlur\MotionBlur.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure\LocalExposure.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ColorLUT\ColorLUT.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DepthOfField\DepthOfField.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectTransientPool.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.h" />

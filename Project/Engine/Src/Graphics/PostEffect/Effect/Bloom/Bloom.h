@@ -44,8 +44,19 @@ public:
         uint32_t outputSize[2] = { 1, 1 };
         uint32_t bloomSize[2]  = { 1, 1 };
         float    intensity     = 1.0f;
-        float    padding[3]    = {};
+        float    dirtIntensity = 0.0f;
+        uint32_t dirtSize      = 512;
+        float    padding       = 0.0f;
     };
+
+    /// @brief ダート生成パスの定数（GPU レイアウト）
+    struct DirtGenParams {
+        uint32_t textureSize = 512;
+        float    padding[3]  = {};
+    };
+
+    /// @brief ダートマスクの一辺
+    static constexpr uint32_t kDirtTextureSize = 512;
 
 public:
     Bloom() = default;
@@ -91,9 +102,23 @@ private:
 
     ShaderProvider downsampleProvider_{ L"BloomDownsample.CS.hlsl" };
     ShaderProvider upsampleProvider_{ L"BloomUpsample.CS.hlsl" };
+    ShaderProvider dirtGenProvider_{ L"BloomDirtGen.CS.hlsl" };
     CustomShaderPipeline downsamplePipeline_;
     CustomShaderPipeline upsamplePipeline_;
+    CustomShaderPipeline dirtGenPipeline_;
     bool internalPipelinesReady_ = false;
+
+    /// @brief レンズダートマスク（起動後の初回合成時に CS で手続き生成する）
+    bool CreateDirtResources();
+    void RecordDirtGenerationIfNeeded(ID3D12GraphicsCommandList* cmdList);
+    Microsoft::WRL::ComPtr<ID3D12Resource> dirtTexture_;
+    D3D12_RESOURCE_STATES dirtTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    D3D12_GPU_DESCRIPTOR_HANDLE dirtSrvHandle_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE dirtUavHandle_{};
+    Microsoft::WRL::ComPtr<ID3D12Resource> dirtGenParamsCB_;
+    DirtGenParams* mappedDirtGenParams_ = nullptr;
+    bool dirtResourcesReady_ = false;
+    bool dirtGenerated_ = false;
 
     // 定数バッファはパスごとに別実体が要る（GPU が読むのは記録より後なので使い回せない）
     std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMipCount> downParamsCB_;

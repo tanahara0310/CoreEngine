@@ -15,6 +15,7 @@ static const float kMiddleGrey = 0.18f;
 Texture2D<float4> gTexture : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
+// 全フィールド 16B 整列。float3 を詰めて並べる旧レイアウトは C++ 側とずれていた
 cbuffer ColorGradingParams : register(b0)
 {
     float hue;          // 色相調整
@@ -23,14 +24,17 @@ cbuffer ColorGradingParams : register(b0)
     float contrast;     // コントラスト
 
     float gamma;        // ガンマ補正
-    float temperature;  // 色温度
-    float tint;         // ティント
     float exposure;     // 露出調整
+    float2 padding0;
 
-    float3 shadowLift;     // Shadow Lift (RGB)
-    float3 midtoneGamma;   // Midtone Gamma (RGB)
-    float3 highlightGain;  // Highlight Gain (RGB)
-    float padding;
+    // ホワイトバランス（Bradford 色順応）。CPU が Kelvin/Tint から計算済み
+    float4 whiteBalanceRow0;
+    float4 whiteBalanceRow1;
+    float4 whiteBalanceRow2;
+
+    float4 shadowLift;     // Shadow Lift (RGB, w未使用)
+    float4 midtoneGamma;   // Midtone Gamma (RGB, w未使用)
+    float4 highlightGain;  // Highlight Gain (RGB, w未使用)
 };
 
 cbuffer ScreenParams : register(b1)
@@ -59,36 +63,6 @@ float3 HSVtoRGB(float3 hsv)
     float4 K = float4(1.0f, 2.0f / 3.0f, 1.0f / 3.0f, 3.0f);
     float3 p = abs(frac(hsv.xxx + K.xyz) * 6.0f - K.www);
     return hsv.z * lerp(K.xxx, clamp(p - K.xxx, 0.0f, 1.0f), hsv.y);
-}
-
-// 色温度調整
-float3 ApplyTemperature(float3 col, float temp, float tintValue)
-{
-    float3x3 tempMatrix;
-    if (temp > 0.0f)
-    {
-        tempMatrix = float3x3(
-            1.0f + temp * 0.3f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 1.0f - temp * 0.2f
-        );
-    }
-    else
-    {
-        tempMatrix = float3x3(
-            1.0f + temp * 0.2f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f,
-            0.0f, 0.0f, 1.0f - temp * 0.3f
-        );
-    }
-    float3x3 tintMatrix = float3x3(
-        1.0f, 0.0f, 0.0f,
-        tintValue * 0.2f, 1.0f, 0.0f,
-        0.0f, tintValue * -0.2f, 1.0f
-    );
-    col = mul(tempMatrix, col);
-    col = mul(tintMatrix, col);
-    return col;
 }
 
 // Shadow/Midtone/Highlight 調整
@@ -120,8 +94,10 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     // 露出調整
     col *= pow(2.0f, exposure);
 
-    // 色温度・ティント
-    col = ApplyTemperature(col, temperature, tint);
+    // ホワイトバランス（Bradford 色順応行列。恒等行列なら無補正）
+    const float3x3 whiteBalance = float3x3(
+        whiteBalanceRow0.xyz, whiteBalanceRow1.xyz, whiteBalanceRow2.xyz);
+    col = mul(whiteBalance, col);
 
     // HSV 調整
     float3 hsv = RGBtoHSV(col);
@@ -137,7 +113,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     col = pow(abs(col), 1.0f / gamma) * sign(col);
 
     // SMH 調整
-    col = ApplySMH(col, shadowLift, midtoneGamma, highlightGain);
+    col = ApplySMH(col, shadowLift.xyz, midtoneGamma.xyz, highlightGain.xyz);
 
     // 上限クランプはしない。ハイライトの圧縮はトーンマッパの仕事なので、
     // ここで saturate するとレンジが消えて絵が平坦になる。負値だけ落とす

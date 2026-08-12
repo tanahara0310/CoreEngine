@@ -1,19 +1,18 @@
 {
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        -0.4244930148124695,
-        -0.9026629328727722,
-        0.07074877619743347
+        -0.5285417437553406,
+        -0.6374949812889099,
+        0.5605745315551758
     ],
     "r.AtmosphereLights.MoonEnabled": true,
     "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
     "r.AtmosphereLights.SunDirection": [
-        0.7467598915100098,
-        -0.00376876350492239,
-        -0.6650830507278442
+        0.9945219159126282,
+        -0.0856245756149292,
+        0.059955041855573654
     ],
     "r.AutoExposure.Enabled": true,
-    "r.Bloom.BlurRadius": 3.0179998874664307,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
     "r.Blur.Intensity": 2.5290000438690186,
@@ -30,13 +29,14 @@
     "r.TAA.Enabled": false,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
-    "r.Water.FFT.ActiveComponentCount": 32,
-    "r.Water.FFT.Choppiness": 1.350000023841858,
+    "r.Water.FFT.ActiveComponentCount": 16,
+    "r.Water.FFT.AmplitudeScale": 0.5,
+    "r.Water.FFT.Choppiness": 0.3499999940395355,
     "r.Water.FFT.WindDirection": [
-        0.9242613911628723,
-        0.3817601501941681
+        0.9835471510887146,
+        0.18065153062343597
     ],
-    "r.Water.FFT.WindSpeed": 12.0,
+    "r.Water.FFT.WindSpeed": 7.5,
     "r.Water.Foam.CascadeWeights": [
         1.0,
         1.0,

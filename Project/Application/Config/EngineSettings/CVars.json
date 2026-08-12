@@ -1,19 +1,18 @@
 {
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        -0.4244930148124695,
-        -0.9026629328727722,
-        0.07074877619743347
+        6.696973997577516e-08,
+        -0.6427876353263855,
+        0.7660444974899292
     ],
     "r.AtmosphereLights.MoonEnabled": true,
     "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
     "r.AtmosphereLights.SunDirection": [
-        0.7467598915100098,
-        -0.00376876350492239,
-        -0.6650830507278442
+        -0.0,
+        0.3420201539993286,
+        -0.9396926760673523
     ],
     "r.AutoExposure.Enabled": true,
-    "r.Bloom.BlurRadius": 3.0179998874664307,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
     "r.Blur.Intensity": 2.5290000438690186,

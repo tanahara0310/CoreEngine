@@ -18,11 +18,19 @@ namespace CoreEngine
     class ToneMapping : public PostEffectComputeBase {
     public:
         /// @brief 画面サイズ定数バッファ構造体
+        /// @note サイズを変えるとクリーンビルドが要る（ODR 事故の前科）。pad を使い切っている
         struct ScreenParams {
             uint32_t screenWidth = 1280;
             uint32_t screenHeight = 720;
-            float exposureEV = 0.0f;   ///< 露出補正 [EV]。ACES 適用前に exp2(EV) を乗算（0 = 従来動作）
-            float pad = 0.0f;
+            float exposureEV = 0.0f;      ///< 露出補正 [EV]。トーンカーブ適用前に exp2(EV) を乗算（0 = 従来動作）
+            uint32_t toneMapOperator = 0; ///< 0=ACES / 1=GT / 2=AgX
+        };
+
+        /// @brief ヒストグラム測光の定数バッファ構造体（LuminanceReduction.CS の b1）
+        struct HistogramMeteringParams {
+            float lowPercentile = 0.5f;  ///< この割合より暗いサンプルを捨てる
+            float highPercentile = 0.9f; ///< この割合より明るいサンプルを捨てる
+            float pad[2] = {};
         };
 
     public:
@@ -110,7 +118,9 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12PipelineState> reductionPso_;
 
         // ----- 自動露出: 計測バッファ -----
-        Microsoft::WRL::ComPtr<ID3D12Resource> avgLogLumBuffer_; ///< 平均対数輝度（DEFAULT/UAV・1要素）
+        Microsoft::WRL::ComPtr<ID3D12Resource> histogramParamsCB_; ///< 百分位カット設定（b1）
+        HistogramMeteringParams* mappedHistogramParams_ = nullptr;
+        Microsoft::WRL::ComPtr<ID3D12Resource> avgLogLumBuffer_; ///< 測光結果の輝度（DEFAULT/UAV・1要素）
         static constexpr uint32_t kReadbackCount = 3; ///< リードバックリング数（GPU遅延2フレームまで安全）
         Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffers_[kReadbackCount];
         const float* mappedReadback_[kReadbackCount] = {};

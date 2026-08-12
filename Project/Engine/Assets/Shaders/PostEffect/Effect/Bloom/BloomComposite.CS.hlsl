@@ -4,14 +4,17 @@
 
 Texture2D<float4>   gScene  : register(t0); // フル解像度のシーン
 Texture2D<float4>   gBloom  : register(t1); // 1/2 解像度のブルーム
+Texture2D<float>    gDirt   : register(t2); // レンズダートマスク（正方形・手続き生成）
 RWTexture2D<float4> gOutput : register(u0);
 
 cbuffer BloomCompositeParams : register(b0)
 {
-    uint2 outputSize; // フル解像度
-    uint2 bloomSize;  // gBloom の解像度
-    float intensity;  // ブルーム強度
-    float3 padding;
+    uint2 outputSize;    // フル解像度
+    uint2 bloomSize;     // gBloom の解像度
+    float intensity;     // ブルーム強度
+    float dirtIntensity; // ダートの寄与倍率（0 で無効）
+    uint  dirtSize;      // gDirt の一辺
+    float padding;
 };
 
 static const uint kGroupSize = 8;
@@ -44,5 +47,14 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     float2 uv = ((float2)dispatchId.xy + 0.5f) / (float2)outputSize;
     float3 bloom = SampleBloomBilinear(uv);
 
-    gOutput[dispatchId.xy] = float4(scene.rgb + bloom * intensity, scene.a);
+    // レンズダート: レンズの汚れがブルーム光を散乱して光る。
+    // ブルーム自体に乗算するので、光源が無い場所では汚れは見えない（実カメラと同じ）
+    float dirt = 0.0f;
+    if (dirtIntensity > 0.0f)
+    {
+        const uint2 dirtCoord = min(uint2(uv * float(dirtSize)), dirtSize - 1);
+        dirt = gDirt.Load(int3(dirtCoord, 0));
+    }
+
+    gOutput[dispatchId.xy] = float4(scene.rgb + bloom * (intensity + dirt * dirtIntensity), scene.a);
 }

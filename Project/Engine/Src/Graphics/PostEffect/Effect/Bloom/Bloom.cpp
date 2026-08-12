@@ -3,6 +3,7 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
@@ -35,6 +36,12 @@ namespace CoreEngine
             "r.Bloom.SoftKnee", 0.5f,
             "閾値付近のなめらかさ。0 で硬い切り替わり",
             CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvDirtIntensity{
+            "r.Bloom.DirtIntensity", 0.0f,
+            "レンズダート（レンズの汚れがブルーム光で光る）の強さ。0 で無効。"
+            "逆光や太陽グリッターの強いカットで実写的なディテールになる",
+            CVarRange{ 0.0f, 4.0f } };
 
         CVar<bool> cvEnabled{
             "r.Bloom.Enabled", false,
@@ -72,12 +79,97 @@ namespace CoreEngine
             CreateMappedCB(device, upParamsCB_[i], mappedUpParams_[i]);
         }
         CreateMappedCB(device, compositeParamsCB_, mappedCompositeParams_);
+        CreateMappedCB(device, dirtGenParamsCB_, mappedDirtGenParams_);
 
         internalPipelinesReady_ = CreateInternalPipelines();
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "Bloom: ダウン/アップサンプルのパイプライン構築に失敗（ブルームは無効）");
         }
+
+        // ダートは失敗してもブルーム本体は動かす（DirtIntensity=0 相当になるだけ）
+        dirtResourcesReady_ = internalPipelinesReady_ && CreateDirtResources();
+        if (!dirtResourcesReady_) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "Bloom: ダートマスクリソースの構築に失敗（レンズダートは無効）");
+        }
+    }
+
+    bool Bloom::CreateDirtResources()
+    {
+        auto* device = directXCommon_->GetDevice();
+        DescriptorManager* descriptorManager = directXCommon_->GetDescriptorManager();
+        if (!descriptorManager) {
+            return false;
+        }
+
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        desc.Width = kDirtTextureSize;
+        desc.Height = kDirtTextureSize;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.Format = DXGI_FORMAT_R16_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        dirtTexture_ = ResourceFactory::CreateTextureResource(
+            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        if (!dirtTexture_) {
+            return false;
+        }
+        dirtTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = desc.Format;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+        uavDesc.Format = desc.Format;
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
+        descriptorManager->CreateSRV(dirtTexture_.Get(), srvDesc, cpuHandle, dirtSrvHandle_, "BloomDirt_SRV");
+        descriptorManager->CreateUAV(dirtTexture_.Get(), uavDesc, cpuHandle, dirtUavHandle_, "BloomDirt_UAV");
+        return true;
+    }
+
+    void Bloom::RecordDirtGenerationIfNeeded(ID3D12GraphicsCommandList* cmdList)
+    {
+        if (dirtGenerated_ || !dirtResourcesReady_) {
+            return;
+        }
+
+        mappedDirtGenParams_->textureSize = kDirtTextureSize;
+
+        cmdList->SetComputeRootSignature(dirtGenPipeline_.GetComputeRootSignature());
+        cmdList->SetPipelineState(dirtGenPipeline_.GetComputePSO());
+
+        const int outputIdx = dirtGenPipeline_.GetComputeRootParamIndex("gOutput");
+        const int paramsIdx = dirtGenPipeline_.GetComputeRootParamIndex("DirtGenParams");
+        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, dirtUavHandle_);
+        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, dirtGenParamsCB_->GetGPUVirtualAddress());
+
+        cmdList->Dispatch(DispatchCount(kDirtTextureSize), DispatchCount(kDirtTextureSize), 1);
+
+        D3D12_RESOURCE_BARRIER uavBarrier{};
+        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        uavBarrier.UAV.pResource = dirtTexture_.Get();
+        cmdList->ResourceBarrier(1, &uavBarrier);
+
+        D3D12_RESOURCE_BARRIER toSrv{};
+        toSrv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        toSrv.Transition.pResource = dirtTexture_.Get();
+        toSrv.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        toSrv.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        toSrv.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        cmdList->ResourceBarrier(1, &toSrv);
+        dirtTextureState_ = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+
+        dirtGenerated_ = true;
     }
 
     bool Bloom::CreateInternalPipelines()
@@ -98,6 +190,7 @@ namespace CoreEngine
         Entry entries[] = {
             { downsamplePipeline_, downsampleProvider_, "Downsample" },
             { upsamplePipeline_,   upsampleProvider_,   "Upsample" },
+            { dirtGenPipeline_,    dirtGenProvider_,    "DirtGen" },
         };
 
         for (Entry& entry : entries) {
@@ -241,19 +334,27 @@ namespace CoreEngine
         mappedCompositeParams_->bloomSize[0]  = mipWidth_[0];
         mappedCompositeParams_->bloomSize[1]  = mipHeight_[0];
         mappedCompositeParams_->intensity     = cvIntensity.Get();
+        mappedCompositeParams_->dirtIntensity = dirtResourcesReady_ ? cvDirtIntensity.Get() : 0.0f;
+        mappedCompositeParams_->dirtSize      = kDirtTextureSize;
+
+        auto* cmdList = context.cmdList;
+
+        // ダートマスクは初回だけ手続き生成する（エフェクト私有リソースなのでグラフ外・手動バリア）
+        RecordDirtGenerationIfNeeded(cmdList);
 
         // 合成は基底が構築した PSO（GetComputeShaderPath が返す BloomComposite.CS.hlsl）を使う
-        auto* cmdList = context.cmdList;
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
 
         const int sceneIdx  = GetRootParamIndex("gScene");
         const int bloomIdx  = GetRootParamIndex("gBloom");
+        const int dirtIdx   = GetRootParamIndex("gDirt");
         const int outputIdx = GetRootParamIndex("gOutput");
         const int paramsIdx = GetRootParamIndex("BloomCompositeParams");
 
         if (sceneIdx >= 0)  cmdList->SetComputeRootDescriptorTable(sceneIdx, context.reads[0]);
         if (bloomIdx >= 0)  cmdList->SetComputeRootDescriptorTable(bloomIdx, context.reads[1]);
+        if (dirtIdx >= 0 && dirtResourcesReady_) cmdList->SetComputeRootDescriptorTable(dirtIdx, dirtSrvHandle_);
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, compositeParamsCB_->GetGPUVirtualAddress());
 

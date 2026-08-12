@@ -841,6 +841,18 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FilmGrain\FilmGrain.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\FilmGrain</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\MotionBlur\MotionBlur.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\MotionBlur</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure\LocalExposure.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LocalExposure</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ColorLUT\ColorLUT.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ColorLUT</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DepthOfField\DepthOfField.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\DepthOfField</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Graph</Filter>
     </ClCompile>
@@ -2139,6 +2151,18 @@
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FilmGrain\FilmGrain.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\FilmGrain</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\MotionBlur\MotionBlur.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\MotionBlur</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure\LocalExposure.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\LocalExposure</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ColorLUT\ColorLUT.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\ColorLUT</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DepthOfField\DepthOfField.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\DepthOfField</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.h">
       <Filter>Engine\Src\Graphics\PostEffect\Graph</Filter>
     </ClInclude>
@@ -2656,6 +2680,12 @@
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ColorGrading">
       <UniqueIdentifier>{AF9F41C2-D6A0-4D98-9847-92F63CB3A308}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ColorLUT">
+      <UniqueIdentifier>{22094D6B-284C-4293-A4CD-7769C9156C8E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\DepthOfField">
+      <UniqueIdentifier>{9A880005-3F0E-445D-8A37-57E2B657438B}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve">
       <UniqueIdentifier>{CC9C05D6-09E7-41C2-AEB7-52615AA10655}</UniqueIdentifier>
     </Filter>
@@ -2673,6 +2703,12 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare">
       <UniqueIdentifier>{A7C3E9D1-4B26-4F8E-9C05-6D1B2E8F3A47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure">
+      <UniqueIdentifier>{C50EA85E-4E02-42E4-886D-F92DE8DDDAB0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\MotionBlur">
+      <UniqueIdentifier>{141FBD8C-C7BC-40C1-86D5-EB1FC1635ADA}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Outline">
       <UniqueIdentifier>{368C55FA-8D75-45DF-AF6B-A64755A00EAC}</UniqueIdentifier>

@@ -13,6 +13,9 @@ namespace CoreEngine
 class ColorGrading : public PostEffectComputeBase {
 public:
     /// @brief カラーグレーディングパラメータ構造体（GPU 定数バッファのレイアウト）
+    /// @note 全フィールドを 16B 境界へ明示的に揃えている。旧レイアウトは float[3] を
+    ///       詰めて並べており、HLSL の「float3 は 16B 境界を跨げない」規則と食い違って
+    ///       midtoneGamma 以降が 4B ずれていた（既定 OFF のため未発覚だった実バグ）
     struct ColorGradingParams {
         float hue         = 0.0f; // 色相調整 (-1.0 to 1.0)
         float saturation  = 1.0f; // 彩度調整 (0.0 to 3.0)
@@ -20,15 +23,18 @@ public:
         float contrast    = 1.0f; // コントラスト (0.0 to 3.0)
 
         float gamma       = 1.0f; // ガンマ補正 (0.1 to 3.0)
-        float temperature = 0.0f; // 色温度 (-1.0 to 1.0)
-        float tint        = 0.0f; // ティント (-1.0 to 1.0)
         float exposure    = 0.0f; // 露出調整 (-3.0 to 3.0)
+        float padding0[2] = {};
 
-        // Shadow, Midtone, Highlight 調整
-        float shadowLift[3]    = { 0.0f, 0.0f, 0.0f };
-        float midtoneGamma[3]  = { 1.0f, 1.0f, 1.0f };
-        float highlightGain[3] = { 1.0f, 1.0f, 1.0f };
-        float padding          = 0.0f;
+        // ホワイトバランス（Bradford 色順応）行列。CPU で Kelvin/Tint から計算する
+        float whiteBalanceRow0[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
+        float whiteBalanceRow1[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
+        float whiteBalanceRow2[4] = { 0.0f, 0.0f, 1.0f, 0.0f };
+
+        // Shadow, Midtone, Highlight 調整（xyz 使用・w はパディング）
+        float shadowLift[4]    = { 0.0f, 0.0f, 0.0f, 0.0f };
+        float midtoneGamma[4]  = { 1.0f, 1.0f, 1.0f, 0.0f };
+        float highlightGain[4] = { 1.0f, 1.0f, 1.0f, 0.0f };
     };
 
 public:
@@ -64,5 +70,9 @@ private:
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> colorGradingParamsCB_;
     ColorGradingParams* mappedColorGradingParams_ = nullptr;
+
+    /// @brief WB 行列の再計算判定用（0 初期値は必ず初回計算を走らせる）
+    float lastKelvin_ = 0.0f;
+    float lastTint_   = -1000.0f;
 };
 }
