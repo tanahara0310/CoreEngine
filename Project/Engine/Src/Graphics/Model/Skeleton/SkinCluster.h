@@ -5,6 +5,7 @@
 #include <d3d12.h>
 #include <wrl.h>
 
+#include "Graphics/Shader/CBufferLayout.h"
 #include "Math/Matrix/Matrix4x4.h"
 
 ///  頂点に影響を与えるジョイントの最大数
@@ -20,12 +21,23 @@ struct VertexInfluence {
     std::array<int32_t, kNumMaxInfluence> jointIndices; // 影響を与えるジョイントのインデックス
 };
 
+// 頂点バッファ / StructuredBuffer 要素なので詰め込み規則で検証する
+static constexpr Cb::Field kVertexInfluenceFields[] = {
+    CB_FIELD(VertexInfluence, weights), CB_FIELD(VertexInfluence, jointIndices),
+};
+CB_VERIFY_STRIDE(VertexInfluence, kVertexInfluenceFields);
+
 /// @brief MatrixPaletteの各要素（Well）に格納する行列
 /// スケルトン空間での変換行列を保持
 struct WellForGPU {
     Matrix4x4 skeletonSpaceMatrix;              // スケルトン空間行列（位置用）
     Matrix4x4 skeletonSpaceInverseTransposeMatrix; // スケルトン空間逆転置行列（法線用）
 };
+
+static constexpr Cb::Field kWellForGPUFields[] = {
+    CB_FIELD(WellForGPU, skeletonSpaceMatrix), CB_FIELD(WellForGPU, skeletonSpaceInverseTransposeMatrix),
+};
+CB_VERIFY_STRIDE(WellForGPU, kWellForGPUFields);
 
 /// @brief スキンクラスター
 /// CPUで作られた諸々のデータをGPUで扱えるようにするための構造体

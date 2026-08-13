@@ -26,12 +26,24 @@ namespace CoreEngine
             uint32_t toneMapOperator = 0; ///< 0=ACES / 1=GT / 2=AgX
         };
 
+        static constexpr Cb::Field kScreenParamsFields[] = {
+            CB_FIELD(ScreenParams, screenWidth), CB_FIELD(ScreenParams, screenHeight),
+            CB_FIELD(ScreenParams, exposureEV), CB_FIELD(ScreenParams, toneMapOperator),
+        };
+        CB_VERIFY_LAYOUT(ScreenParams, kScreenParamsFields);
+
         /// @brief ヒストグラム測光の定数バッファ構造体（LuminanceReduction.CS の b1）
         struct HistogramMeteringParams {
             float lowPercentile = 0.5f;  ///< この割合より暗いサンプルを捨てる
             float highPercentile = 0.9f; ///< この割合より明るいサンプルを捨てる
             float pad[2] = {};
         };
+
+        static constexpr Cb::Field kHistogramMeteringParamsFields[] = {
+            CB_FIELD(HistogramMeteringParams, lowPercentile), CB_FIELD(HistogramMeteringParams, highPercentile),
+            CB_FIELD(HistogramMeteringParams, pad),
+        };
+        CB_VERIFY_LAYOUT(HistogramMeteringParams, kHistogramMeteringParamsFields);
 
     public:
         ToneMapping() = default;

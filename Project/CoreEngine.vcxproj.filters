@@ -562,6 +562,9 @@
     <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.cpp">
       <Filter>Engine\Src\Graphics\RootSignature</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\CBufferReflectionCheck.cpp">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
@@ -1694,6 +1697,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h">
       <Filter>Engine\Src\Graphics\RootSignature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\CBufferLayout.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\CBufferReflectionCheck.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ICustomShaderProvider.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>

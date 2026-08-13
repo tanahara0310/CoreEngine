@@ -22,6 +22,13 @@ public:
         float padding    = 0.0f;
     };
 
+    static constexpr Cb::Field kVignetteParamsFields[] = {
+        CB_FIELD(VignetteParams, intensity), CB_FIELD(VignetteParams, smoothness), CB_FIELD(VignetteParams, size),
+        CB_FIELD(VignetteParams, padding),
+    };
+    CB_VERIFY_LAYOUT(VignetteParams, kVignetteParamsFields);
+    CB_BIND_HLSL(VignetteParams, kVignetteParamsFields, "VignetteParams");
+
 public:
     Vignette() = default;
     ~Vignette() = default;

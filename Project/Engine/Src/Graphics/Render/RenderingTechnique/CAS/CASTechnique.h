@@ -1,6 +1,8 @@
 #pragma once
 #include "../RenderingTechniqueBase.h"
 #include "Graphics/Render/FrameBlackboard.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <string>
@@ -22,6 +24,12 @@ namespace CoreEngine
             float sharpness = 0.5f; ///< 0 = 最弱 / 1 = 最強
             float pad0 = 0.0f;
         };
+
+        static constexpr Cb::Field kCASParamsFields[] = {
+            CB_FIELD(CASParams, screenSize), CB_FIELD(CASParams, sharpness), CB_FIELD(CASParams, pad0),
+        };
+        CB_VERIFY_LAYOUT(CASParams, kCASParamsFields);
+        CB_BIND_HLSL(CASParams, kCASParamsFields, "CASParams");
 
     public:
         CASTechnique() = default;

@@ -33,11 +33,25 @@ public:
         float    padding         = 0.0f;
     };
 
+    static constexpr Cb::Field kBloomDownsampleParamsFields[] = {
+        CB_FIELD(DownsampleParams, outputSize), CB_FIELD(DownsampleParams, sourceSize),
+        CB_FIELD(DownsampleParams, threshold), CB_FIELD(DownsampleParams, softKnee),
+        CB_FIELD(DownsampleParams, applyPrefilter), CB_FIELD(DownsampleParams, padding),
+    };
+    CB_VERIFY_LAYOUT(DownsampleParams, kBloomDownsampleParamsFields);
+    CB_BIND_HLSL(DownsampleParams, kBloomDownsampleParamsFields, "BloomDownsampleParams");
+
     /// @brief アップサンプル 1 段分の定数（GPU レイアウト）
     struct UpsampleParams {
         uint32_t outputSize[2] = { 1, 1 };
         uint32_t lowerSize[2]  = { 1, 1 };
     };
+
+    static constexpr Cb::Field kBloomUpsampleParamsFields[] = {
+        CB_FIELD(UpsampleParams, outputSize), CB_FIELD(UpsampleParams, lowerSize),
+    };
+    CB_VERIFY_LAYOUT(UpsampleParams, kBloomUpsampleParamsFields);
+    CB_BIND_HLSL(UpsampleParams, kBloomUpsampleParamsFields, "BloomUpsampleParams");
 
     /// @brief 合成パスの定数（GPU レイアウト）
     struct CompositeParams {
@@ -49,11 +63,25 @@ public:
         float    padding       = 0.0f;
     };
 
+    static constexpr Cb::Field kBloomCompositeParamsFields[] = {
+        CB_FIELD(CompositeParams, outputSize), CB_FIELD(CompositeParams, bloomSize),
+        CB_FIELD(CompositeParams, intensity), CB_FIELD(CompositeParams, dirtIntensity),
+        CB_FIELD(CompositeParams, dirtSize), CB_FIELD(CompositeParams, padding),
+    };
+    CB_VERIFY_LAYOUT(CompositeParams, kBloomCompositeParamsFields);
+    CB_BIND_HLSL(CompositeParams, kBloomCompositeParamsFields, "BloomCompositeParams");
+
     /// @brief ダート生成パスの定数（GPU レイアウト）
     struct DirtGenParams {
         uint32_t textureSize = 512;
         float    padding[3]  = {};
     };
+
+    static constexpr Cb::Field kBloomDirtGenParamsFields[] = {
+        CB_FIELD(DirtGenParams, textureSize), CB_FIELD(DirtGenParams, padding),
+    };
+    CB_VERIFY_LAYOUT(DirtGenParams, kBloomDirtGenParamsFields);
+    CB_BIND_HLSL(DirtGenParams, kBloomDirtGenParamsFields, "DirtGenParams");
 
     /// @brief ダートマスクの一辺
     static constexpr uint32_t kDirtTextureSize = 512;

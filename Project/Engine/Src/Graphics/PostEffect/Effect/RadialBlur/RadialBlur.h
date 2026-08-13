@@ -20,6 +20,13 @@ public:
         float centerY      = 0.5f; // ブラー中心のY座標 (0.0-1.0)
     };
 
+    static constexpr Cb::Field kRadialBlurParamsFields[] = {
+        CB_FIELD(RadialBlurParams, intensity), CB_FIELD(RadialBlurParams, sampleCount),
+        CB_FIELD(RadialBlurParams, centerX), CB_FIELD(RadialBlurParams, centerY),
+    };
+    CB_VERIFY_LAYOUT(RadialBlurParams, kRadialBlurParamsFields);
+    CB_BIND_HLSL(RadialBlurParams, kRadialBlurParamsFields, "RadialBlurParams");
+
 public:
     RadialBlur() = default;
     ~RadialBlur() = default;

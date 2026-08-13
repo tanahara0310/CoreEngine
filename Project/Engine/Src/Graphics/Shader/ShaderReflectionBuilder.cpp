@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ShaderReflectionBuilder.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 
@@ -153,6 +154,12 @@ namespace CoreEngine
             if (isStructuredBuffer) {
                 continue;
             }
+
+#if CB_REFLECTION_CHECK_ENABLED
+            // シェーダーが実際に持っている cbuffer レイアウトと、C++ 側のフィールド表を突き合わせる。
+            // C++ 側だけの static_assert では「HLSL でメンバを増やした／並べ替えた」を検出できない。
+            Cb::CheckAgainstReflection(cbuffer, bufferDesc, outData.GetShaderName());
+#endif
 
 #ifdef _DEBUG
             if (!found) {

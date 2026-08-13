@@ -1,5 +1,7 @@
 #pragma once
 #include "../RenderingTechniqueBase.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <string>
@@ -17,6 +19,14 @@ public:
         float depthThreshold = 0.5f;
         float _pad0          = 0.0f;
     };
+
+    static constexpr Cb::Field kSSAOBlurParamsFields[] = {
+        CB_FIELD_AS(SSAOBlurParams, invViewProjMatrix, Cb::Float4x4), CB_FIELD(SSAOBlurParams, screenWidth),
+        CB_FIELD(SSAOBlurParams, screenHeight), CB_FIELD(SSAOBlurParams, depthThreshold),
+        CB_FIELD(SSAOBlurParams, _pad0),
+    };
+    CB_VERIFY_LAYOUT(SSAOBlurParams, kSSAOBlurParamsFields);
+    CB_BIND_HLSL(SSAOBlurParams, kSSAOBlurParamsFields, "SSAOBlurParams");
 
 public:
     SSAOBlurTechnique() = default;

@@ -33,6 +33,15 @@ public:
         float padding      = 0.0f;
     };
 
+    static constexpr Cb::Field kFilmGrainParamsFields[] = {
+        CB_FIELD(FilmGrainParams, intensity), CB_FIELD(FilmGrainParams, intensityShadows),
+        CB_FIELD(FilmGrainParams, intensityMidtones), CB_FIELD(FilmGrainParams, intensityHighlights),
+        CB_FIELD(FilmGrainParams, grainSize), CB_FIELD(FilmGrainParams, chromaAmount),
+        CB_FIELD(FilmGrainParams, time), CB_FIELD(FilmGrainParams, padding),
+    };
+    CB_VERIFY_LAYOUT(FilmGrainParams, kFilmGrainParamsFields);
+    CB_BIND_HLSL(FilmGrainParams, kFilmGrainParamsFields, "FilmGrainParams");
+
 public:
     FilmGrain() = default;
     ~FilmGrain() = default;

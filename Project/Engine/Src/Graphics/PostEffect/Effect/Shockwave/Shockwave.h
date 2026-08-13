@@ -23,6 +23,13 @@ public:
         float padding[2]= { 0.0f, 0.0f };
     };
 
+    static constexpr Cb::Field kShockwaveParamsFields[] = {
+        CB_FIELD(ShockwaveParams, center), CB_FIELD(ShockwaveParams, time), CB_FIELD(ShockwaveParams, strength),
+        CB_FIELD(ShockwaveParams, thickness), CB_FIELD(ShockwaveParams, speed), CB_FIELD(ShockwaveParams, padding),
+    };
+    CB_VERIFY_LAYOUT(ShockwaveParams, kShockwaveParamsFields);
+    CB_BIND_HLSL(ShockwaveParams, kShockwaveParamsFields, "ShockwaveParams");
+
 public:
     Shockwave() = default;
     ~Shockwave() = default;

@@ -13,15 +13,26 @@ namespace CoreEngine
 ///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
 class Dissolve : public PostEffectComputeBase {
 public:
-    /// @brief ディゾルブパラメータ構造体（GPU 定数バッファのレイアウト）
+    /// @brief ディゾルブパラメータ構造体
+    /// @note パディングを 1 つも持たない。GPU へは Cb::Upload がフィールド表を見て
+    ///       HLSL のオフセットへ配置するため、C++ 側は素直に並べてよい
+    ///       （padding の手打ちが不要 = 置き場所を間違えようがない）。
     struct DissolveParams {
-        float threshold  = 0.0f;                  // ディゾルブ閾値 (0.0-1.0)
-        float edgeWidth  = 0.1f;                  // エッジ幅 (0.0-0.5)
-        float edgeColorR = 1.0f;                  // エッジカラー R
-        float edgeColorG = 0.5f;                  // エッジカラー G
-        float edgeColorB = 0.0f;                  // エッジカラー B
-        float padding[3] = { 0.0f, 0.0f, 0.0f };
+        float threshold  = 0.0f; // ディゾルブ閾値 (0.0-1.0)
+        float edgeWidth  = 0.1f; // エッジ幅 (0.0-0.5)
+        float edgeColorR = 1.0f; // エッジカラー R
+        float edgeColorG = 0.5f; // エッジカラー G
+        float edgeColorB = 0.0f; // エッジカラー B
     };
+
+    static constexpr Cb::Field kDissolveParamsFields[] = {
+        CB_FIELD(DissolveParams, threshold), CB_FIELD(DissolveParams, edgeWidth),
+        CB_FIELD(DissolveParams, edgeColorR), CB_FIELD(DissolveParams, edgeColorG),
+        CB_FIELD(DissolveParams, edgeColorB),
+    };
+    // 転送でオフセットを合わせるので、C++ 側のレイアウト一致は要求しない（型だけ検査する）
+    CB_VERIFY_TYPES(DissolveParams, kDissolveParamsFields);
+    CB_BIND_HLSL(DissolveParams, kDissolveParamsFields, "DissolveParams");
 
 public:
     Dissolve() = default;
@@ -54,7 +65,8 @@ private:
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> dissolveParamsCB_;
-    DissolveParams* mappedDissolveParams_ = nullptr;
+    /// @brief マップ先。構造体ポインタではなく生アドレスで持つ（レイアウトが HLSL 側だけのものなので）
+    void* mappedDissolveParams_ = nullptr;
 
     D3D12_GPU_DESCRIPTOR_HANDLE noiseTextureHandle_ = {};
 };

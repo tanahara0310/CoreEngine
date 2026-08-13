@@ -36,11 +36,24 @@ public:
         float    blend        = 1.0f;
     };
 
+    static constexpr Cb::Field kColorLUTParamsFields[] = {
+        CB_FIELD(ColorLUTParams, screenWidth), CB_FIELD(ColorLUTParams, screenHeight),
+        CB_FIELD(ColorLUTParams, lutSize), CB_FIELD(ColorLUTParams, blend),
+    };
+    CB_VERIFY_LAYOUT(ColorLUTParams, kColorLUTParamsFields);
+    CB_BIND_HLSL(ColorLUTParams, kColorLUTParamsFields, "ColorLUTParams");
+
     /// @brief 書き込みパスの定数（GPU レイアウト）
     struct FillParams {
         uint32_t lutSize = 33;
         float    pad[3]  = {};
     };
+
+    static constexpr Cb::Field kColorLUTFillParamsFields[] = {
+        CB_FIELD(FillParams, lutSize), CB_FIELD(FillParams, pad),
+    };
+    CB_VERIFY_LAYOUT(FillParams, kColorLUTFillParamsFields);
+    CB_BIND_HLSL(FillParams, kColorLUTFillParamsFields, "FillParams");
 
 public:
     ColorLUT() = default;
@@ -103,6 +116,11 @@ private:
     struct LutTexel {
         float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
     };
+
+    static constexpr Cb::Field kLutTexelFields[] = {
+        CB_FIELD(LutTexel, r), CB_FIELD(LutTexel, g), CB_FIELD(LutTexel, b), CB_FIELD(LutTexel, a),
+    };
+    CB_VERIFY_STRIDE(LutTexel, kLutTexelFields);
 
     ShaderProvider fillProvider_{ L"ColorLUTFill.CS.hlsl" };
     CustomShaderPipeline fillPipeline_;

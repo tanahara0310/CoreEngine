@@ -18,6 +18,13 @@ public:
         float toneBlue  = 0.6f; // 青色調整 (0.5-1.5)
     };
 
+    static constexpr Cb::Field kSepiaParamsFields[] = {
+        CB_FIELD(SepiaParams, intensity), CB_FIELD(SepiaParams, toneRed), CB_FIELD(SepiaParams, toneGreen),
+        CB_FIELD(SepiaParams, toneBlue),
+    };
+    CB_VERIFY_LAYOUT(SepiaParams, kSepiaParamsFields);
+    CB_BIND_HLSL(SepiaParams, kSepiaParamsFields, "SepiaParams");
+
 public:
     Sepia() = default;
     ~Sepia() = default;

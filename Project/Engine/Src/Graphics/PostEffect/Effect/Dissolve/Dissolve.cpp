@@ -40,9 +40,11 @@ namespace CoreEngine
 
     void Dissolve::OnCreateConstantBuffers()
     {
-        UINT dissolveSize = (sizeof(DissolveParams) + 255) & ~255;
+        // 確保サイズは C++ の sizeof ではなく「HLSL 上のサイズ」から取る
+        // （C++ 側はパディングを持たないので sizeof の方が小さい）
+        UINT dissolveSize = (static_cast<UINT>(Cb::HlslSizeOf(kDissolveParamsFields)) + 255) & ~255;
         dissolveParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), dissolveSize);
-        HRESULT hr = dissolveParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedDissolveParams_));
+        HRESULT hr = dissolveParamsCB_->Map(0, nullptr, &mappedDissolveParams_);
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 
@@ -58,13 +60,18 @@ namespace CoreEngine
         if (!mappedDissolveParams_) {
             return;
         }
-        mappedDissolveParams_->threshold = cvThreshold.Get();
-        mappedDissolveParams_->edgeWidth = cvEdgeWidth.Get();
+
+        DissolveParams params{};
+        params.threshold = cvThreshold.Get();
+        params.edgeWidth = cvEdgeWidth.Get();
 
         const Vector3& edgeColor = cvEdgeColor.Get();
-        mappedDissolveParams_->edgeColorR = edgeColor.x;
-        mappedDissolveParams_->edgeColorG = edgeColor.y;
-        mappedDissolveParams_->edgeColorB = edgeColor.z;
+        params.edgeColorR = edgeColor.x;
+        params.edgeColorG = edgeColor.y;
+        params.edgeColorB = edgeColor.z;
+
+        // フィールド表を見て HLSL のオフセットへ配置する
+        Cb::Upload(mappedDissolveParams_, params, kDissolveParamsFields);
     }
 
     void Dissolve::Dispatch(

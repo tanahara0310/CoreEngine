@@ -76,6 +76,23 @@ public:
         /// 太陽ディスク＋芯グレアを覆う程度。大きくしすぎるとミー散乱オーラまで源になる。
         float sunMaskRadius = 0.12f;
     };
+
+    static constexpr Cb::Field kLensFlareConstantsFields[] = {
+        CB_FIELD(LensFlareConstants, threshold), CB_FIELD(LensFlareConstants, softKnee),
+        CB_FIELD(LensFlareConstants, ghostDispersal), CB_FIELD(LensFlareConstants, ghostIntensity),
+        CB_FIELD(LensFlareConstants, haloWidth), CB_FIELD(LensFlareConstants, haloIntensity),
+        CB_FIELD(LensFlareConstants, chromaDistortion), CB_FIELD(LensFlareConstants, starburstIntensity),
+        CB_FIELD(LensFlareConstants, intensity), CB_FIELD(LensFlareConstants, ghostCount),
+        CB_FIELD(LensFlareConstants, flareWidth), CB_FIELD(LensFlareConstants, flareHeight),
+        CB_FIELD(LensFlareConstants, screenWidth), CB_FIELD(LensFlareConstants, screenHeight),
+        CB_FIELD(LensFlareConstants, maxBrightness), CB_FIELD(LensFlareConstants, blurSigma),
+        CB_FIELD(LensFlareConstants, tint), CB_FIELD(LensFlareConstants, apertureBladeCount),
+        CB_FIELD(LensFlareConstants, apertureRotationRad), CB_FIELD(LensFlareConstants, ghostRadius),
+        CB_FIELD(LensFlareConstants, ghostPolygonMix), CB_FIELD(LensFlareConstants, sunUv),
+        CB_FIELD(LensFlareConstants, sunValid), CB_FIELD(LensFlareConstants, sunMaskRadius),
+    };
+    CB_VERIFY_LAYOUT(LensFlareConstants, kLensFlareConstantsFields);
+    CB_BIND_HLSL(LensFlareConstants, kLensFlareConstantsFields, "LensFlareParams");
     static_assert(sizeof(LensFlareConstants) == 112,
         "LensFlareConstants は HLSL 側 LensFlareParams の 112 バイトレイアウトと一致させること");
 

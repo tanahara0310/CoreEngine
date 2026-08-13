@@ -3,6 +3,7 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/Shader/CBufferLayout.h"
 #include "Math/MathCore.h"
 #include <d3d12.h>
 #include <wrl.h>
@@ -24,6 +25,11 @@ namespace CoreEngine
             Matrix4x4 WVP;
             Matrix4x4 world;
         };
+
+        static constexpr Cb::Field kTransformationMatrixFields[] = {
+            CB_FIELD(TransformationMatrix, WVP), CB_FIELD(TransformationMatrix, world),
+        };
+        CB_VERIFY_LAYOUT(TransformationMatrix, kTransformationMatrixFields);
 
         /// @brief 最大スプライト数
         static constexpr size_t kMaxSpriteCount = 1024;

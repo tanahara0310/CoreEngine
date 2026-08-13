@@ -39,11 +39,25 @@ public:
         float    padding         = 0.0f;
     };
 
+    static constexpr Cb::Field kTileMaxParamsFields[] = {
+        CB_FIELD(TileMaxParams, screenSize), CB_FIELD(TileMaxParams, tileCount),
+        CB_FIELD(TileMaxParams, shutterFraction), CB_FIELD(TileMaxParams, maxBlurPixels),
+        CB_FIELD(TileMaxParams, tileSize), CB_FIELD(TileMaxParams, padding),
+    };
+    CB_VERIFY_LAYOUT(TileMaxParams, kTileMaxParamsFields);
+    CB_BIND_HLSL(TileMaxParams, kTileMaxParamsFields, "TileMaxParams");
+
     /// @brief NeighborMax パスの定数（GPU レイアウト）
     struct NeighborMaxParams {
         uint32_t tileCount[2] = { 1, 1 };
         float    padding[2]   = {};
     };
+
+    static constexpr Cb::Field kNeighborMaxParamsFields[] = {
+        CB_FIELD(NeighborMaxParams, tileCount), CB_FIELD(NeighborMaxParams, padding),
+    };
+    CB_VERIFY_LAYOUT(NeighborMaxParams, kNeighborMaxParamsFields);
+    CB_BIND_HLSL(NeighborMaxParams, kNeighborMaxParamsFields, "NeighborMaxParams");
 
     /// @brief ギャザーパスの定数（GPU レイアウト）
     struct GatherParams {
@@ -58,6 +72,15 @@ public:
         float    depthExtent     = 1.0f;
         float    padding         = 0.0f;
     };
+
+    static constexpr Cb::Field kMotionBlurGatherParamsFields[] = {
+        CB_FIELD(GatherParams, screenSize), CB_FIELD(GatherParams, tileCount),
+        CB_FIELD(GatherParams, shutterFraction), CB_FIELD(GatherParams, maxBlurPixels),
+        CB_FIELD(GatherParams, sampleCount), CB_FIELD(GatherParams, tileSize), CB_FIELD(GatherParams, nearPlane),
+        CB_FIELD(GatherParams, farPlane), CB_FIELD(GatherParams, depthExtent), CB_FIELD(GatherParams, padding),
+    };
+    CB_VERIFY_LAYOUT(GatherParams, kMotionBlurGatherParamsFields);
+    CB_BIND_HLSL(GatherParams, kMotionBlurGatherParamsFields, "MotionBlurParams");
 
 public:
     MotionBlur() = default;

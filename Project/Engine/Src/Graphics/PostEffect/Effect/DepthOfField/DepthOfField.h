@@ -35,12 +35,28 @@ public:
         float    padding[3]    = {};
     };
 
+    static constexpr Cb::Field kPrefilterParamsFields[] = {
+        CB_FIELD(PrefilterParams, outputSize), CB_FIELD(PrefilterParams, fullSize),
+        CB_FIELD(PrefilterParams, focusDistance), CB_FIELD(PrefilterParams, cocScalePx),
+        CB_FIELD(PrefilterParams, maxCocPx), CB_FIELD(PrefilterParams, nearPlane),
+        CB_FIELD(PrefilterParams, farPlane), CB_FIELD(PrefilterParams, padding),
+    };
+    CB_VERIFY_LAYOUT(PrefilterParams, kPrefilterParamsFields);
+    CB_BIND_HLSL(PrefilterParams, kPrefilterParamsFields, "DoFPrefilterParams");
+
     /// @brief Gather パスの定数（GPU レイアウト）
     struct GatherParams {
         uint32_t textureSize[2] = { 1, 1 };
         float    maxCocHalfPx   = 8.0f;
         uint32_t sampleCount    = 48;
     };
+
+    static constexpr Cb::Field kDofGatherParamsFields[] = {
+        CB_FIELD(GatherParams, textureSize), CB_FIELD(GatherParams, maxCocHalfPx),
+        CB_FIELD(GatherParams, sampleCount),
+    };
+    CB_VERIFY_LAYOUT(GatherParams, kDofGatherParamsFields);
+    CB_BIND_HLSL(GatherParams, kDofGatherParamsFields, "DoFGatherParams");
 
     /// @brief Composite パスの定数（GPU レイアウト）
     struct CompositeParams {
@@ -53,6 +69,15 @@ public:
         float    farPlane      = 1000.0f;
         float    padding[3]    = {};
     };
+
+    static constexpr Cb::Field kDofCompositeParamsFields[] = {
+        CB_FIELD(CompositeParams, fullSize), CB_FIELD(CompositeParams, halfSize),
+        CB_FIELD(CompositeParams, focusDistance), CB_FIELD(CompositeParams, cocScalePx),
+        CB_FIELD(CompositeParams, maxCocPx), CB_FIELD(CompositeParams, nearPlane),
+        CB_FIELD(CompositeParams, farPlane), CB_FIELD(CompositeParams, padding),
+    };
+    CB_VERIFY_LAYOUT(CompositeParams, kDofCompositeParamsFields);
+    CB_BIND_HLSL(CompositeParams, kDofCompositeParamsFields, "DoFCompositeParams");
 
 public:
     DepthOfField() = default;

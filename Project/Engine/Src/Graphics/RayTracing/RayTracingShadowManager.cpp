@@ -5,6 +5,8 @@
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
 #include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/CVar/CVar.h"
@@ -144,6 +146,19 @@ namespace CoreEngine
         Matrix4x4 invViewProj;       // offset 64  深度復元用 → 128
     };
     static_assert(sizeof(ShadowRayConstants) == 128, "ShadowRayConstants size mismatch with HLSL cbuffer");
+
+    static constexpr Cb::Field kShadowRayConstantsFields[] = {
+        CB_FIELD(ShadowRayConstants, lightDir), CB_FIELD(ShadowRayConstants, shadowBias),
+        CB_FIELD(ShadowRayConstants, maxRayDistance), CB_FIELD(ShadowRayConstants, lightRadius),
+        CB_FIELD(ShadowRayConstants, softShadowSamples), CB_FIELD(ShadowRayConstants, frameIndex),
+        CB_FIELD(ShadowRayConstants, screenWidth), CB_FIELD(ShadowRayConstants, screenHeight),
+        CB_FIELD(ShadowRayConstants, traceOffsetX), CB_FIELD(ShadowRayConstants, traceOffsetY),
+        CB_FIELD(ShadowRayConstants, traceScale), CB_FIELD(ShadowRayConstants, pad0),
+        CB_FIELD(ShadowRayConstants, pad1), CB_FIELD(ShadowRayConstants, pad2),
+        CB_FIELD(ShadowRayConstants, invViewProj),
+    };
+    CB_VERIFY_LAYOUT(ShadowRayConstants, kShadowRayConstantsFields);
+    CB_BIND_HLSL(ShadowRayConstants, kShadowRayConstantsFields, "ShadowRayConstants");
     static constexpr UINT kShadowRayConstantCount = sizeof(ShadowRayConstants) / sizeof(uint32_t);
 
     /// @brief A-Trous デノイズ（RTShadowDenoise.hlsl）の DenoiseConstants
@@ -166,6 +181,19 @@ namespace CoreEngine
         int   pad2;          // offset 60 → row4 終了(64)
     };
     static_assert(sizeof(DenoiseConstants) == 64, "DenoiseConstants size mismatch with HLSL cbuffer");
+
+    static constexpr Cb::Field kDenoiseConstantsFields[] = {
+        CB_FIELD(DenoiseConstants, stepSize), CB_FIELD(DenoiseConstants, phiShadow),
+        CB_FIELD(DenoiseConstants, phiNormal), CB_FIELD(DenoiseConstants, phiDepth),
+        CB_FIELD(DenoiseConstants, traceWidth), CB_FIELD(DenoiseConstants, traceHeight),
+        CB_FIELD(DenoiseConstants, projM33), CB_FIELD(DenoiseConstants, projM43),
+        CB_FIELD(DenoiseConstants, traceScale), CB_FIELD(DenoiseConstants, traceOffsetX),
+        CB_FIELD(DenoiseConstants, traceOffsetY), CB_FIELD(DenoiseConstants, fullWidth),
+        CB_FIELD(DenoiseConstants, fullHeight), CB_FIELD(DenoiseConstants, pad0), CB_FIELD(DenoiseConstants, pad1),
+        CB_FIELD(DenoiseConstants, pad2),
+    };
+    CB_VERIFY_LAYOUT(DenoiseConstants, kDenoiseConstantsFields);
+    CB_BIND_HLSL(DenoiseConstants, kDenoiseConstantsFields, "DenoiseConstants");
     static constexpr UINT kDenoiseConstantCount = sizeof(DenoiseConstants) / sizeof(uint32_t);
 
     /// @brief テンポラル蓄積（RTShadowTemporal.CS.hlsl）の TemporalConstants
@@ -184,6 +212,17 @@ namespace CoreEngine
         int   pad0;           // offset 44 → row3 終了(48)
     };
     static_assert(sizeof(TemporalConstants) == 48, "TemporalConstants size mismatch with HLSL cbuffer");
+
+    static constexpr Cb::Field kTemporalConstantsFields[] = {
+        CB_FIELD(TemporalConstants, traceWidth), CB_FIELD(TemporalConstants, traceHeight),
+        CB_FIELD(TemporalConstants, maxHistoryFrames), CB_FIELD(TemporalConstants, disableHistory),
+        CB_FIELD(TemporalConstants, projM33), CB_FIELD(TemporalConstants, projM43),
+        CB_FIELD(TemporalConstants, traceScale), CB_FIELD(TemporalConstants, traceOffsetX),
+        CB_FIELD(TemporalConstants, traceOffsetY), CB_FIELD(TemporalConstants, fullWidth),
+        CB_FIELD(TemporalConstants, fullHeight), CB_FIELD(TemporalConstants, pad0),
+    };
+    CB_VERIFY_LAYOUT(TemporalConstants, kTemporalConstantsFields);
+    CB_BIND_HLSL(TemporalConstants, kTemporalConstantsFields, "TemporalConstants");
     static constexpr UINT kTemporalConstantCount = sizeof(TemporalConstants) / sizeof(uint32_t);
 
     /// @brief 解決＝バイラテラルアップサンプル（RTShadowResolve.CS.hlsl）の ResolveConstants
@@ -202,6 +241,17 @@ namespace CoreEngine
         int   pad1;           // offset 44 → row3 終了(48)
     };
     static_assert(sizeof(ResolveConstants) == 48, "ResolveConstants size mismatch with HLSL cbuffer");
+
+    static constexpr Cb::Field kResolveConstantsFields[] = {
+        CB_FIELD(ResolveConstants, fullWidth), CB_FIELD(ResolveConstants, fullHeight),
+        CB_FIELD(ResolveConstants, traceWidth), CB_FIELD(ResolveConstants, traceHeight),
+        CB_FIELD(ResolveConstants, projM33), CB_FIELD(ResolveConstants, projM43),
+        CB_FIELD(ResolveConstants, traceScale), CB_FIELD(ResolveConstants, traceOffsetX),
+        CB_FIELD(ResolveConstants, traceOffsetY), CB_FIELD(ResolveConstants, phiDepth),
+        CB_FIELD(ResolveConstants, pad0), CB_FIELD(ResolveConstants, pad1),
+    };
+    CB_VERIFY_LAYOUT(ResolveConstants, kResolveConstantsFields);
+    CB_BIND_HLSL(ResolveConstants, kResolveConstantsFields, "ResolveConstants");
     static constexpr UINT kResolveConstantCount = sizeof(ResolveConstants) / sizeof(uint32_t);
 
     namespace {

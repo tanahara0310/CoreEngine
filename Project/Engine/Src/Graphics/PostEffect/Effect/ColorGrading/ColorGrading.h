@@ -37,6 +37,20 @@ public:
         float highlightGain[4] = { 1.0f, 1.0f, 1.0f, 0.0f };
     };
 
+// float3 パッキングずれで色調整が別の値を読む事故を起こした構造体。
+// 以後は 16 メンバ全部のオフセットを HLSL 規則から機械検証する。
+    static constexpr Cb::Field kColorGradingParamsFields[] = {
+        CB_FIELD(ColorGradingParams, hue), CB_FIELD(ColorGradingParams, saturation),
+        CB_FIELD(ColorGradingParams, value), CB_FIELD(ColorGradingParams, contrast),
+        CB_FIELD(ColorGradingParams, gamma), CB_FIELD(ColorGradingParams, exposure),
+        CB_FIELD(ColorGradingParams, padding0), CB_FIELD(ColorGradingParams, whiteBalanceRow0),
+        CB_FIELD(ColorGradingParams, whiteBalanceRow1), CB_FIELD(ColorGradingParams, whiteBalanceRow2),
+        CB_FIELD(ColorGradingParams, shadowLift), CB_FIELD(ColorGradingParams, midtoneGamma),
+        CB_FIELD(ColorGradingParams, highlightGain),
+    };
+    CB_VERIFY_LAYOUT(ColorGradingParams, kColorGradingParamsFields);
+    CB_BIND_HLSL(ColorGradingParams, kColorGradingParamsFields, "ColorGradingParams");
+
 public:
     ColorGrading() = default;
     ~ColorGrading() = default;

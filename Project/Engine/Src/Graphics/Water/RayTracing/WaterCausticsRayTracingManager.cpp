@@ -3,6 +3,8 @@
 
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
@@ -41,16 +43,28 @@ namespace CoreEngine
             Matrix4x4 invViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
         };
 
+        static constexpr Cb::Field kWaterCausticsConstantsFields[] = {
+            CB_FIELD(WaterCausticsConstants, maxTraceDistance), CB_FIELD(WaterCausticsConstants, surfaceBias),
+            CB_FIELD(WaterCausticsConstants, intensityScale), CB_FIELD(WaterCausticsConstants, padding0),
+            CB_FIELD(WaterCausticsConstants, lightDirection), CB_FIELD(WaterCausticsConstants, screenWidth),
+            CB_FIELD(WaterCausticsConstants, screenHeight), CB_FIELD(WaterCausticsConstants, fftOceanPad1),
+            CB_FIELD(WaterCausticsConstants, fftOceanPad0), CB_FIELD(WaterCausticsConstants, fftOceanPad2),
+            CB_FIELD(WaterCausticsConstants, refractiveIndex), CB_FIELD(WaterCausticsConstants, debugDisplayScale),
+            CB_FIELD(WaterCausticsConstants, debugViewMode), CB_FIELD(WaterCausticsConstants, lightEnabled),
+            CB_FIELD(WaterCausticsConstants, lightColor), CB_FIELD(WaterCausticsConstants, lightIntensity),
+            CB_FIELD(WaterCausticsConstants, regionCenterXZ), CB_FIELD(WaterCausticsConstants, regionHalfExtentXZ),
+            CB_FIELD(WaterCausticsConstants, regionValid), CB_FIELD(WaterCausticsConstants, absorptionCoeff),
+            CB_FIELD(WaterCausticsConstants, invViewProj),
+        };
+        CB_VERIFY_LAYOUT(WaterCausticsConstants, kWaterCausticsConstantsFields);
+        CB_BIND_HLSL(WaterCausticsConstants, kWaterCausticsConstantsFields, "WaterCausticsConstants");
     }
 
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
     static_assert(sizeof(WaterCausticsConstants) == 176,
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
-    static_assert(offsetof(WaterCausticsConstants, absorptionCoeff) / 16 == (offsetof(WaterCausticsConstants, absorptionCoeff) + 11) / 16,
-        "absorptionCoeff (float3) must not straddle a 16-byte boundary");
-    static_assert(offsetof(WaterCausticsConstants, invViewProj) % 16 == 0,
-        "invViewProj must start on a 16-byte boundary");
+    // 個別フィールドの境界チェックはフィールド表（下）が全フィールド分やるので不要
 
     bool WaterCausticsRayTracingManager::Initialize(
         DirectXCommon* dxCommon,

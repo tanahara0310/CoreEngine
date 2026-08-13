@@ -26,6 +26,15 @@ public:
         float padding            = 0.0f;
     };
 
+    static constexpr Cb::Field kRasterScrollParamsFields[] = {
+        CB_FIELD(RasterScrollParams, scrollSpeed), CB_FIELD(RasterScrollParams, lineHeight),
+        CB_FIELD(RasterScrollParams, amplitude), CB_FIELD(RasterScrollParams, frequency),
+        CB_FIELD(RasterScrollParams, time), CB_FIELD(RasterScrollParams, lineOffset),
+        CB_FIELD(RasterScrollParams, distortionStrength), CB_FIELD(RasterScrollParams, padding),
+    };
+    CB_VERIFY_LAYOUT(RasterScrollParams, kRasterScrollParamsFields);
+    CB_BIND_HLSL(RasterScrollParams, kRasterScrollParamsFields, "RasterScrollParams");
+
 public:
     RasterScroll() = default;
     ~RasterScroll() = default;

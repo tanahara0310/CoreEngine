@@ -7,6 +7,8 @@
 #include <memory>
 #include <vector>
 
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/Geometry/Shapes.h"
 #include "Math/Matrix/Matrix4x4.h"
 
@@ -111,6 +113,13 @@ namespace CoreEngine
             float maxX, maxY, maxZ, pad1;
         };
 
+        static constexpr Cb::Field kBoundsGPUFields[] = {
+            CB_FIELD(BoundsGPU, minX), CB_FIELD(BoundsGPU, minY), CB_FIELD(BoundsGPU, minZ),
+            CB_FIELD(BoundsGPU, pad0), CB_FIELD(BoundsGPU, maxX), CB_FIELD(BoundsGPU, maxY),
+            CB_FIELD(BoundsGPU, maxZ), CB_FIELD(BoundsGPU, pad1),
+        };
+        CB_VERIFY_STRIDE(BoundsGPU, kBoundsGPUFields);
+
         /// @brief 判定 CS の定数（HiZOcclusionCull.CS.hlsl の HiZCullParams と一致必須）
         struct CullParamsGPU {
             Matrix4x4 viewProj;
@@ -121,10 +130,26 @@ namespace CoreEngine
             float pad[2];
         };
 
+        static constexpr Cb::Field kCullParamsGPUFields[] = {
+            CB_FIELD(CullParamsGPU, viewProj), CB_FIELD(CullParamsGPU, hiZWidth),
+            CB_FIELD(CullParamsGPU, hiZHeight), CB_FIELD(CullParamsGPU, mipCount),
+            CB_FIELD(CullParamsGPU, queryCount), CB_FIELD(CullParamsGPU, depthBias),
+            CB_FIELD(CullParamsGPU, minRectTexels), CB_FIELD(CullParamsGPU, pad),
+        };
+        CB_VERIFY_LAYOUT(CullParamsGPU, kCullParamsGPUFields);
+        CB_BIND_HLSL(CullParamsGPU, kCullParamsGPUFields, "HiZCullParams");
+
         /// @brief 構築 CS の定数（HiZBuild.CS.hlsl の HiZBuildParams と一致必須）
         struct BuildParamsGPU {
             uint32_t destW, destH, srcW, srcH;
         };
+
+        static constexpr Cb::Field kBuildParamsGPUFields[] = {
+            CB_FIELD(BuildParamsGPU, destW), CB_FIELD(BuildParamsGPU, destH), CB_FIELD(BuildParamsGPU, srcW),
+            CB_FIELD(BuildParamsGPU, srcH),
+        };
+        CB_VERIFY_LAYOUT(BuildParamsGPU, kBuildParamsGPUFields);
+        CB_BIND_HLSL(BuildParamsGPU, kBuildParamsGPUFields, "HiZBuildParams");
 
         struct TargetSlot {
             bool allocated = false;

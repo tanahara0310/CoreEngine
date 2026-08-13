@@ -7,6 +7,8 @@
 #include <memory>
 #include <string>
 
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Graphics/Water/Simulation/WaterSurfaceModelProvider.h"
 #include "Graphics/RayTracing/RayTracingPassBase.h"
@@ -114,8 +116,16 @@ namespace CoreEngine
 
         static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 16,
             "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
-        static_assert(offsetof(WaterSurfaceConstants, fftOceanEnabled) % 16 == 0,
-            "fftOceanEnabled must start on a 16-byte boundary (HLSL cbuffer packing)");
+
+        static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
+            CB_FIELD(WaterSurfaceConstants, waterHeight), CB_FIELD(WaterSurfaceConstants, activeWaveCount),
+            CB_FIELD(WaterSurfaceConstants, time), CB_FIELD(WaterSurfaceConstants, simulationType),
+            CB_FIELD(WaterSurfaceConstants, waves), CB_FIELD(WaterSurfaceConstants, fftOceanEnabled),
+            CB_FIELD(WaterSurfaceConstants, fftOceanResolution), CB_FIELD(WaterSurfaceConstants, meshSubdivisions),
+            CB_FIELD(WaterSurfaceConstants, pad0),
+        };
+        CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
+        CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");
 
         /// @brief ディスパッチ前の共通処理（RayTracingPassBase::BeginDispatchBase の水面版）
         /// @details 水面サーフェス定数バッファのサイズを自動で渡す。

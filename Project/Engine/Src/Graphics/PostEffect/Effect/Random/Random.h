@@ -26,6 +26,15 @@ namespace CoreEngine
             float padding = 0.0f;
         };
 
+        static constexpr Cb::Field kRandomParamsFields[] = {
+            CB_FIELD(RandomParams, intensity), CB_FIELD(RandomParams, blend), CB_FIELD(RandomParams, speed),
+            CB_FIELD(RandomParams, time), CB_FIELD(RandomParams, grainScale),
+            CB_FIELD(RandomParams, luminanceInfluence), CB_FIELD(RandomParams, chromaAmount),
+            CB_FIELD(RandomParams, padding),
+        };
+        CB_VERIFY_LAYOUT(RandomParams, kRandomParamsFields);
+        CB_BIND_HLSL(RandomParams, kRandomParamsFields, "RandomParams");
+
     public:
         Random() = default;
         ~Random() = default;

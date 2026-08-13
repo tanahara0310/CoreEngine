@@ -1,5 +1,7 @@
 #pragma once
 #include "../RenderingTechniqueBase.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <cstdint>
@@ -31,6 +33,14 @@ namespace CoreEngine
             ///          補間し、静止した不透明面のAA品質は保ったまま動く面だけ現フレーム寄りにする。
             float blendAlphaMax = 0.9f;
         };
+
+        static constexpr Cb::Field kTAAParamsFields[] = {
+            CB_FIELD(TAAParams, screenSize), CB_FIELD(TAAParams, jitterDelta), CB_FIELD(TAAParams, blendAlpha),
+            CB_FIELD(TAAParams, clampScale), CB_FIELD(TAAParams, disableHistory),
+            CB_FIELD(TAAParams, blendAlphaMax),
+        };
+        CB_VERIFY_LAYOUT(TAAParams, kTAAParamsFields);
+        CB_BIND_HLSL(TAAParams, kTAAParamsFields, "TAAParams");
 
     public:
         TAATechnique() = default;

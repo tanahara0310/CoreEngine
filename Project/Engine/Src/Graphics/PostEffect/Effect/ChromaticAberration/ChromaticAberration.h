@@ -25,6 +25,15 @@ public:
         float padding         = 0.0f;
     };
 
+    static constexpr Cb::Field kChromaticAberrationParamsFields[] = {
+        CB_FIELD(ChromaticAberrationParams, intensity), CB_FIELD(ChromaticAberrationParams, radialFactor),
+        CB_FIELD(ChromaticAberrationParams, centerX), CB_FIELD(ChromaticAberrationParams, centerY),
+        CB_FIELD(ChromaticAberrationParams, distortionScale), CB_FIELD(ChromaticAberrationParams, falloff),
+        CB_FIELD(ChromaticAberrationParams, samples), CB_FIELD(ChromaticAberrationParams, padding),
+    };
+    CB_VERIFY_LAYOUT(ChromaticAberrationParams, kChromaticAberrationParamsFields);
+    CB_BIND_HLSL(ChromaticAberrationParams, kChromaticAberrationParamsFields, "ChromaticAberrationParams");
+
 public:
     ChromaticAberration() = default;
     ~ChromaticAberration() = default;

@@ -25,6 +25,14 @@ public:
 		float pad[3]          = {};
 	};
 
+	static constexpr Cb::Field kOutlineParamsFields[] = {
+	    CB_FIELD(OutlineParams, outlineColor), CB_FIELD(OutlineParams, depthThreshold),
+	    CB_FIELD(OutlineParams, depthStrength), CB_FIELD(OutlineParams, outlineWidth),
+	    CB_FIELD(OutlineParams, nearPlane), CB_FIELD(OutlineParams, farPlane), CB_FIELD(OutlineParams, pad),
+	};
+	CB_VERIFY_LAYOUT(OutlineParams, kOutlineParamsFields);
+	CB_BIND_HLSL(OutlineParams, kOutlineParamsFields, "OutlineParams");
+
 public:
 	Outline() = default;
 	~Outline() = default;

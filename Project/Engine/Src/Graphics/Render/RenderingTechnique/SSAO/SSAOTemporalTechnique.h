@@ -1,5 +1,7 @@
 #pragma once
 #include "../RenderingTechniqueBase.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <cstdint>
@@ -22,6 +24,13 @@ namespace CoreEngine
             float blendAlpha = 0.1f;     ///< 現フレームの寄与率（小さいほど滑らかで遅延大）
             float disableHistory = 1.0f; ///< 1.0 で履歴無効（初回フレーム・リサイズ直後）
         };
+
+        static constexpr Cb::Field kSSAOTemporalParamsFields[] = {
+            CB_FIELD(SSAOTemporalParams, screenSize), CB_FIELD(SSAOTemporalParams, blendAlpha),
+            CB_FIELD(SSAOTemporalParams, disableHistory),
+        };
+        CB_VERIFY_LAYOUT(SSAOTemporalParams, kSSAOTemporalParamsFields);
+        CB_BIND_HLSL(SSAOTemporalParams, kSSAOTemporalParamsFields, "SSAOTemporalParams");
 
     public:
         SSAOTemporalTechnique() = default;

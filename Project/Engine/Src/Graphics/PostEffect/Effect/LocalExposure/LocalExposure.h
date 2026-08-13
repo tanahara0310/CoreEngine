@@ -31,11 +31,21 @@ public:
         uint32_t sourceSize[2] = { 1, 1 };
     };
 
+    static constexpr Cb::Field kLocalExposureDownsampleParamsFields[] = {
+        CB_FIELD(DownsampleParams, outputSize), CB_FIELD(DownsampleParams, sourceSize),
+    };
+    CB_VERIFY_LAYOUT(DownsampleParams, kLocalExposureDownsampleParamsFields);
+
     /// @brief ブラーパスの定数（GPU レイアウト）
     struct BlurParams {
         uint32_t textureSize[2] = { 1, 1 };
         uint32_t direction[2]   = { 1, 0 };
     };
+
+    static constexpr Cb::Field kLocalExposureBlurParamsFields[] = {
+        CB_FIELD(BlurParams, textureSize), CB_FIELD(BlurParams, direction),
+    };
+    CB_VERIFY_LAYOUT(BlurParams, kLocalExposureBlurParamsFields);
 
     /// @brief 適用パスの定数（GPU レイアウト）
     struct ApplyParams {
@@ -48,6 +58,15 @@ public:
         float    rangeSigma        = 1.0f;
         float    padding[3]        = {};
     };
+
+    static constexpr Cb::Field kLocalExposureApplyParamsFields[] = {
+        CB_FIELD(ApplyParams, screenSize), CB_FIELD(ApplyParams, baseSize),
+        CB_FIELD(ApplyParams, highlightContrast), CB_FIELD(ApplyParams, shadowContrast),
+        CB_FIELD(ApplyParams, detailStrength), CB_FIELD(ApplyParams, middleGreyBias),
+        CB_FIELD(ApplyParams, rangeSigma), CB_FIELD(ApplyParams, padding),
+    };
+    CB_VERIFY_LAYOUT(ApplyParams, kLocalExposureApplyParamsFields);
+    CB_BIND_HLSL(ApplyParams, kLocalExposureApplyParamsFields, "LocalExposureParams");
 
 public:
     LocalExposure() = default;

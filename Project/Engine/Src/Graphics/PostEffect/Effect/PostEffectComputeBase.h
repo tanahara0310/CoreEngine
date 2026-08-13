@@ -1,4 +1,6 @@
 #pragma once
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include <wrl.h>
 #include <dxcapi.h>
 #include <d3d12.h>
@@ -30,6 +32,12 @@ namespace CoreEngine {
             uint32_t screenHeight = 720;
             float    pad[2]       = { 0.0f, 0.0f };
         };
+
+        static constexpr Cb::Field kScreenSizeConstantsFields[] = {
+            CB_FIELD(ScreenSizeConstants, screenWidth), CB_FIELD(ScreenSizeConstants, screenHeight),
+            CB_FIELD(ScreenSizeConstants, pad),
+        };
+        CB_VERIFY_LAYOUT(ScreenSizeConstants, kScreenSizeConstantsFields);
 
     protected:
         /// @brief CS シェーダーのファイルパスを返す（派生クラスで必ずオーバーライドする）
