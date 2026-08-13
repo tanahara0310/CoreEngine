@@ -5,6 +5,8 @@
 
 #include "Graphics/Common/Core/DescriptorManager.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
@@ -34,6 +36,23 @@ namespace CoreEngine
             float debugDisplayScale;
             uint32_t debugViewMode;
         };
+
+        static constexpr Cb::Field kWaterReflectionConstantsFields[] = {
+            CB_FIELD(WaterReflectionConstants, viewProjection),
+            CB_FIELD(WaterReflectionConstants, invViewProjection),
+            CB_FIELD(WaterReflectionConstants, cameraPosition), CB_FIELD(WaterReflectionConstants, waterHeight),
+            CB_FIELD(WaterReflectionConstants, surfaceBias), CB_FIELD(WaterReflectionConstants, maxRayDistance),
+            CB_FIELD(WaterReflectionConstants, skyEnvReflectionEnabled),
+            CB_FIELD(WaterReflectionConstants, unused1), CB_FIELD(WaterReflectionConstants, screenWidth),
+            CB_FIELD(WaterReflectionConstants, screenHeight),
+            CB_FIELD(WaterReflectionConstants, maxReflectionOffsetPixels),
+            CB_FIELD(WaterReflectionConstants, fftOceanPad1), CB_FIELD(WaterReflectionConstants, fftOceanPad0),
+            CB_FIELD(WaterReflectionConstants, fftOceanPad2),
+            CB_FIELD(WaterReflectionConstants, debugDisplayScale),
+            CB_FIELD(WaterReflectionConstants, debugViewMode),
+        };
+        CB_VERIFY_LAYOUT(WaterReflectionConstants, kWaterReflectionConstantsFields);
+        CB_BIND_HLSL(WaterReflectionConstants, kWaterReflectionConstantsFields, "WaterReflectionConstants");
     }
 
     static_assert(sizeof(WaterReflectionConstants) == 192,

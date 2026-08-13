@@ -3,6 +3,8 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
+#include "Camera/View/ViewInfo.h"
+#include "Graphics/Render/FrameBlackboard.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/CVarPanel.h"
@@ -51,10 +53,6 @@ namespace CoreEngine
         UpdateConstantBuffer();
 
         // 画面サイズ用定数バッファ
-        UINT screenSize = (sizeof(ScreenParams) + 255) & ~255;
-        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), screenSize);
-        hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
-        assert(SUCCEEDED(hr));
     }
 
     void Outline::UpdateConstantBuffer()
@@ -76,12 +74,20 @@ namespace CoreEngine
         mappedOutlineParams_->farPlane  = farPlane_;
     }
 
-    void Outline::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
+    void Outline::PrepareFrame(const PostEffectFrameContext& ctx)
     {
-        if (mappedScreenParams_) {
-            mappedScreenParams_->screenWidth  = width;
-            mappedScreenParams_->screenHeight = height;
+        // 線形深度への復元には描画に使われたカメラと同じ near/far が要る。
+        // ビューが未確定のフレームは前回値を維持する（0 で割る事故を避ける）。
+        if (ctx.view && ctx.view->isValid) {
+            SetCameraClipPlanes(ctx.view->nearZ, ctx.view->farZ);
         }
+    }
+
+    void Outline::DeclareExtraInputs(std::vector<PostEffectInputBinding>& out) const
+    {
+        // 以前は directXCommon_->GetDepthStencilSRV() を直接読んでいた。それでは
+        // RenderGraph から見えない依存になり、深度の状態遷移も実行順も保証されない。
+        out.push_back({ "gDepth", FrameBlackboard::SceneDepth, /*required*/ true });
     }
 
     void Outline::SetCameraClipPlanes(float nearPlane, float farPlane)
@@ -101,7 +107,7 @@ namespace CoreEngine
         uint32_t height)
     {
         UpdateConstantBuffer();
-        UpdateScreenConstantBuffer(width, height);
+        UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
@@ -118,9 +124,9 @@ namespace CoreEngine
         if (textureIdx >= 0) {
             cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         }
-        // 深度テクスチャ (t1) - 深度ステンシルバッファのSRV
+        // 深度テクスチャ (t1) - DeclareExtraInputs で申告し、パスが解決したもの
         if (depthIdx >= 0) {
-            cmdList->SetComputeRootDescriptorTable(depthIdx, directXCommon_->GetDepthStencilSRV());
+            cmdList->SetComputeRootDescriptorTable(depthIdx, GetExtraInput("gDepth"));
         }
         // 出力テクスチャ (u0)
         if (outputIdx >= 0) {
@@ -132,7 +138,7 @@ namespace CoreEngine
         }
         // 画面サイズパラメータ (b1)
         if (screenParamsIdx >= 0) {
-            cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParamsCB_->GetGPUVirtualAddress());
+            cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
         }
 
         // ディスパッチ（8x8スレッドグループ）

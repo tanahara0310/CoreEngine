@@ -18,12 +18,12 @@ public:
         float toneBlue  = 0.6f; // 青色調整 (0.5-1.5)
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
+    static constexpr Cb::Field kSepiaParamsFields[] = {
+        CB_FIELD(SepiaParams, intensity), CB_FIELD(SepiaParams, toneRed), CB_FIELD(SepiaParams, toneGreen),
+        CB_FIELD(SepiaParams, toneBlue),
     };
+    CB_VERIFY_LAYOUT(SepiaParams, kSepiaParamsFields);
+    CB_BIND_HLSL(SepiaParams, kSepiaParamsFields, "SepiaParams");
 
 public:
     Sepia() = default;
@@ -53,14 +53,10 @@ protected:
     void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> sepiaParamsCB_;
     SepiaParams* mappedSepiaParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
 };
 }

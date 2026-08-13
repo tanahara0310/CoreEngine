@@ -92,9 +92,23 @@ namespace CoreEngine
         /// @return 物理ターゲット名
         static std::string MakePostEffectIntermediateTargetName(size_t index);
 
+        /// @brief PostEffect チェーンの中間ターゲット枚数
+        /// @details エフェクトは「直前の出力」しか読まないので、交互に使う 2 枚で足りる。
+        ///          以前は「有効エフェクト数 - 1」枚を確保しており、17 個全部有効にすると
+        ///          フル解像度 HDR が 16 枚（1080p で約 400MB）並んでいた。
+        static constexpr size_t kPostEffectPingPongCount = 2;
+
         /// @brief PostEffect intermediate 用ターゲットを必要数ぶん確保する
         /// @param count 必要な intermediate 数
         void EnsurePostEffectIntermediateTargets(size_t count);
+
+        /// @brief 確保済みレンダーターゲットの合計バイト数を返す（付随する深度も含む）
+        size_t CalcTotalAllocatedBytes() const;
+
+        /// @brief 合計サイズが前回と変わったときだけログへ出す
+        /// @details 毎フレーム呼んでよい。増減したときだけ 1 行出るので、
+        ///          チェーン構成やウィンドウサイズを変えたときの使用量が追える。
+        void LogAllocationIfChanged();
 
         /// @brief PostEffect intermediate 用ターゲットを取得する
         /// @param index intermediate インデックス
@@ -109,6 +123,9 @@ namespace CoreEngine
         RenderTarget* GetPostEffectFinalTarget();
 
     private:
+        /// @brief 直近にログへ出した合計バイト数（変化検出用）
+        size_t lastLoggedBytes_ = 0;
+
         // DirectXCommonへの参照
         DirectXCommon* dxCommon_ = nullptr;
 

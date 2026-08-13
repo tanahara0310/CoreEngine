@@ -1,4 +1,5 @@
 #pragma once
+#include "Graphics/Shader/CBufferLayout.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector4.h"
 
@@ -12,4 +13,9 @@ namespace CoreEngine
         Vector4   color;
         Matrix4x4 uvTransform;
     };
+
+    static constexpr Cb::Field kUIMaterialFields[] = {
+        CB_FIELD(UIMaterial, color), CB_FIELD(UIMaterial, uvTransform),
+    };
+    CB_VERIFY_LAYOUT(UIMaterial, kUIMaterialFields);
 }

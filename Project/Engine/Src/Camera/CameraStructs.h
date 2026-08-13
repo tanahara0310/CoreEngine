@@ -1,4 +1,6 @@
 #pragma once
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include <Math/MathCore.h>
 #include <string>
 
@@ -26,9 +28,18 @@ namespace CameraNames {
 }
 
 /// @brief カメラのGPU用構造体
+/// @note HLSL 側は ConstantBuffer<Camera>（float3 worldPosition）。cbuffer は 16B 単位に
+///       切り上げられるので、C++ 側も明示パディングで 16B にして cbuffer 全体を覆う
 struct CameraForGPU {
     Vector3 worldPosition; // ワールド座標
+    float padding = 0.0f;
 };
+
+static constexpr Cb::Field kCameraForGPUFields[] = {
+    CB_FIELD(CameraForGPU, worldPosition), CB_FIELD(CameraForGPU, padding),
+};
+CB_VERIFY_LAYOUT(CameraForGPU, kCameraForGPUFields);
+CB_BIND_HLSL(CameraForGPU, kCameraForGPUFields, "gCamera");
 
 /// @brief 投影方式
 enum class CameraProjectionType {

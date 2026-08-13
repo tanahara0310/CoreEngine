@@ -10,13 +10,6 @@ namespace CoreEngine
 /// @brief グレースケール変換エフェクト（CS方式）
 class GrayScale : public PostEffectComputeBase {
 public:
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
-    };
-
 public:
     GrayScale() = default;
     ~GrayScale() = default;
@@ -38,14 +31,9 @@ protected:
     std::string  GetEffectName()        const override { return "GrayScale"; }
     std::wstring GetComputeShaderPath() const override { return L"GrayScale.CS.hlsl"; }
 
-    /// @brief 定数バッファ生成（基底の InitializeComputeCore から呼ばれる）
-    void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
 };
 }

@@ -11,7 +11,7 @@ cbuffer DissolveParams : register(b0)
     float edgeColorR; // エッジカラー R
     float edgeColorG; // エッジカラー G
     float edgeColorB; // エッジカラー B
-    float3 padding;
+    // C++ 側は Cb::Upload がフィールド表を見て配置するため、両側ともパディング宣言は不要
 };
 
 cbuffer ScreenParams : register(b1)

@@ -373,6 +373,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\UIRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Shader\CBufferReflectionCheck.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionData.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.cpp" />
@@ -465,6 +466,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\FullScreen.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FilmGrain\FilmGrain.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\MotionBlur\MotionBlur.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure\LocalExposure.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\ColorLUT\ColorLUT.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\DepthOfField\DepthOfField.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectTransientPool.cpp" />
     <ClCompile Include="Engine\Src\Math\MathCore.cpp" />
     <ClCompile Include="Engine\Src\Math\Spline\Spline.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\ColorModule.cpp" />
@@ -776,6 +784,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\UI\UIRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h" />
+    <ClInclude Include="Engine\Src\Graphics\Shader\CBufferLayout.h" />
+    <ClInclude Include="Engine\Src\Graphics\Shader\CBufferReflectionCheck.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ICustomShaderProvider.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderReflectionData.h" />
@@ -925,6 +935,15 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\ModelLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\FullScreen.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectBase.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectStage.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectFrameContext.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FilmGrain\FilmGrain.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\MotionBlur\MotionBlur.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure\LocalExposure.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ColorLUT\ColorLUT.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\DepthOfField\DepthOfField.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectGraphBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Graph\PostEffectTransientPool.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectManager.h" />
     <ClInclude Include="Engine\Src\Math\MathCore.h" />
     <ClInclude Include="Engine\Src\Math\Spline\Spline.h" />

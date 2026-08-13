@@ -26,12 +26,14 @@ namespace CoreEngine
             float padding = 0.0f;
         };
 
-        /// @brief 画面サイズ定数バッファ構造体
-        struct ScreenParams {
-            uint32_t screenWidth = 1280;
-            uint32_t screenHeight = 720;
-            float    pad[2] = { 0.0f, 0.0f };
+        static constexpr Cb::Field kRandomParamsFields[] = {
+            CB_FIELD(RandomParams, intensity), CB_FIELD(RandomParams, blend), CB_FIELD(RandomParams, speed),
+            CB_FIELD(RandomParams, time), CB_FIELD(RandomParams, grainScale),
+            CB_FIELD(RandomParams, luminanceInfluence), CB_FIELD(RandomParams, chromaAmount),
+            CB_FIELD(RandomParams, padding),
         };
+        CB_VERIFY_LAYOUT(RandomParams, kRandomParamsFields);
+        CB_BIND_HLSL(RandomParams, kRandomParamsFields, "RandomParams");
 
     public:
         Random() = default;
@@ -43,7 +45,7 @@ namespace CoreEngine
             uint32_t width,
             uint32_t height) override;
 
-        void Update(float deltaTime) override;
+        void PrepareFrame(const PostEffectFrameContext& ctx) override;
         void DrawImGui() override;
 
     protected:
@@ -56,14 +58,10 @@ namespace CoreEngine
 
     private:
         void UpdateConstantBuffer();
-        void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
     private:
         Microsoft::WRL::ComPtr<ID3D12Resource> randomParamsCB_;
         RandomParams* mappedRandomParams_ = nullptr;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-        ScreenParams* mappedScreenParams_ = nullptr;
 
         float accumulatedTime_ = 0.0f;
     };

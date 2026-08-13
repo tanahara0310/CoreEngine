@@ -23,12 +23,12 @@ public:
         float padding[2]= { 0.0f, 0.0f };
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
+    static constexpr Cb::Field kShockwaveParamsFields[] = {
+        CB_FIELD(ShockwaveParams, center), CB_FIELD(ShockwaveParams, time), CB_FIELD(ShockwaveParams, strength),
+        CB_FIELD(ShockwaveParams, thickness), CB_FIELD(ShockwaveParams, speed), CB_FIELD(ShockwaveParams, padding),
     };
+    CB_VERIFY_LAYOUT(ShockwaveParams, kShockwaveParamsFields);
+    CB_BIND_HLSL(ShockwaveParams, kShockwaveParamsFields, "ShockwaveParams");
 
 public:
     Shockwave() = default;
@@ -45,7 +45,7 @@ public:
     void StartShockwave(float centerX, float centerY);
 
     /// @brief 更新処理
-    void Update(float deltaTime);
+    void PrepareFrame(const PostEffectFrameContext& ctx) override;
 
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
@@ -62,14 +62,10 @@ protected:
 
 private:
     void UpdateConstantBuffer();
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> shockwaveParamsCB_;
     ShockwaveParams* mappedShockwaveParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
 
     // 発動状態（実行時のみ。保存対象ではない）
     float centerX_   = 0.5f;

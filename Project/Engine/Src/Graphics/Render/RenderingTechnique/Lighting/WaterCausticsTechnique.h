@@ -2,6 +2,8 @@
 
 #include "../RenderingTechniqueBase.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 #include <wrl.h>
 #include <d3d12.h>
@@ -27,6 +29,16 @@ namespace CoreEngine
 			float padding[2] = {};
 			float invViewProjMatrix[16] = {}; // WorldPosition ターゲット廃止に伴う深度復元用
 		};
+
+		static constexpr Cb::Field kParamsFields[] = {
+		    CB_FIELD(Params, intensity), CB_FIELD(Params, depthAttenuation), CB_FIELD(Params, curvatureScale),
+		    CB_FIELD(Params, surfaceSampleRadius), CB_FIELD(Params, refractiveIndex),
+		    CB_FIELD(Params, receiverNormalStrength), CB_FIELD(Params, alignmentPower),
+		    CB_FIELD(Params, debugDisplayScale), CB_FIELD(Params, debugViewMode), CB_FIELD(Params, debugLogEnabled),
+		    CB_FIELD(Params, padding), CB_FIELD_AS(Params, invViewProjMatrix, Cb::Float4x4),
+		};
+		CB_VERIFY_LAYOUT(Params, kParamsFields);
+		CB_BIND_HLSL(Params, kParamsFields, "WaterCausticsParams");
 
 		struct Diagnostics {
 			uint32_t activeWaveCount = 0;
@@ -87,6 +99,23 @@ namespace CoreEngine
 			uint32_t regionValid = 0;
 			float regionPadding[3] = {};
 		};
+
+		static constexpr Cb::Field kMainLightConstantsFields[] = {
+		    CB_FIELD(MainLightConstants, color), CB_FIELD(MainLightConstants, intensity),
+		    CB_FIELD(MainLightConstants, direction), CB_FIELD(MainLightConstants, enabled),
+		};
+		CB_VERIFY_LAYOUT(MainLightConstants, kMainLightConstantsFields);
+		CB_BIND_HLSL(MainLightConstants, kMainLightConstantsFields, "gMainLight");
+
+		static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
+		    CB_FIELD(WaterSurfaceConstants, waterHeight), CB_FIELD(WaterSurfaceConstants, activeWaveCount),
+		    CB_FIELD(WaterSurfaceConstants, time), CB_FIELD(WaterSurfaceConstants, padding),
+		    CB_FIELD(WaterSurfaceConstants, waves), CB_FIELD(WaterSurfaceConstants, regionCenterXZ),
+		    CB_FIELD(WaterSurfaceConstants, regionHalfExtentXZ), CB_FIELD(WaterSurfaceConstants, regionValid),
+		    CB_FIELD(WaterSurfaceConstants, regionPadding),
+		};
+		CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
+		CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "gWaterSurfaceData");
 
 		void CreateConstantBuffers();
 		void UpdateMainLightBuffer(LightManager* lightManager);

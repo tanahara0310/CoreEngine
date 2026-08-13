@@ -10,19 +10,40 @@
 namespace CoreEngine
 {
     /// @brief ACESトーンマッピングポストエフェクト（CS方式）
-    /// @details HDR→LDR変換をポストエフェクトチェーンの最終段で適用する。
+    /// @details HDR→LDR変換を担う「段の境界」。チェーン上でこれより前が SceneHDR 段
+    ///          （光学現象・露出・グレーディング）、後ろが PostTonemap 段（記録・演出）になる。
     ///          自動露出（Auto Exposure）を有効にすると、入力のリニアHDR輝度の
     ///          対数平均から露出を毎フレーム計算し、目の明暗順応のように時間追従する。
     ///          手動の露出補正 [EV] は自動露出への加算オフセットとして機能する。
     class ToneMapping : public PostEffectComputeBase {
     public:
         /// @brief 画面サイズ定数バッファ構造体
+        /// @note サイズを変えるとクリーンビルドが要る（ODR 事故の前科）。pad を使い切っている
         struct ScreenParams {
             uint32_t screenWidth = 1280;
             uint32_t screenHeight = 720;
-            float exposureEV = 0.0f;   ///< 露出補正 [EV]。ACES 適用前に exp2(EV) を乗算（0 = 従来動作）
-            float pad = 0.0f;
+            float exposureEV = 0.0f;      ///< 露出補正 [EV]。トーンカーブ適用前に exp2(EV) を乗算（0 = 従来動作）
+            uint32_t toneMapOperator = 0; ///< 0=ACES / 1=GT / 2=AgX
         };
+
+        static constexpr Cb::Field kScreenParamsFields[] = {
+            CB_FIELD(ScreenParams, screenWidth), CB_FIELD(ScreenParams, screenHeight),
+            CB_FIELD(ScreenParams, exposureEV), CB_FIELD(ScreenParams, toneMapOperator),
+        };
+        CB_VERIFY_LAYOUT(ScreenParams, kScreenParamsFields);
+
+        /// @brief ヒストグラム測光の定数バッファ構造体（LuminanceReduction.CS の b1）
+        struct HistogramMeteringParams {
+            float lowPercentile = 0.5f;  ///< この割合より暗いサンプルを捨てる
+            float highPercentile = 0.9f; ///< この割合より明るいサンプルを捨てる
+            float pad[2] = {};
+        };
+
+        static constexpr Cb::Field kHistogramMeteringParamsFields[] = {
+            CB_FIELD(HistogramMeteringParams, lowPercentile), CB_FIELD(HistogramMeteringParams, highPercentile),
+            CB_FIELD(HistogramMeteringParams, pad),
+        };
+        CB_VERIFY_LAYOUT(HistogramMeteringParams, kHistogramMeteringParamsFields);
 
     public:
         ToneMapping() = default;
@@ -43,6 +64,9 @@ namespace CoreEngine
 
         /// @brief 常時有効なエフェクト
         bool IsAlwaysEnabled() const override { return true; }
+
+        /// @brief HDR→LDR の境界そのもの。チェーン中ちょうど 1 つだけ存在する
+        PostEffectStage GetStage() const override { return PostEffectStage::Tonemap; }
 
         /// @brief 自動露出の有効/無効を設定する
         /// @note AtmosphereEditor が夜間プリセットで一時的に切り替えるため公開している
@@ -66,8 +90,8 @@ namespace CoreEngine
         /// @brief 現在の順応輝度を基準輝度に設定する（「今の明るさを 0EV にする」操作）
         void CalibrateReferenceToCurrent();
 
-        /// @brief 時間順応の更新用にデルタタイムを受け取る（PostEffectManager から毎フレーム呼ばれる）
-        void Update(float deltaTime) override { deltaTime_ = deltaTime; }
+        /// @brief 時間順応に使うデルタタイムを取り込む
+        void PrepareFrame(const PostEffectFrameContext& ctx) override { deltaTime_ = ctx.deltaTime; }
 
     protected:
         std::string  GetEffectName() const override { return "ToneMapping"; }
@@ -106,7 +130,9 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12PipelineState> reductionPso_;
 
         // ----- 自動露出: 計測バッファ -----
-        Microsoft::WRL::ComPtr<ID3D12Resource> avgLogLumBuffer_; ///< 平均対数輝度（DEFAULT/UAV・1要素）
+        Microsoft::WRL::ComPtr<ID3D12Resource> histogramParamsCB_; ///< 百分位カット設定（b1）
+        HistogramMeteringParams* mappedHistogramParams_ = nullptr;
+        Microsoft::WRL::ComPtr<ID3D12Resource> avgLogLumBuffer_; ///< 測光結果の輝度（DEFAULT/UAV・1要素）
         static constexpr uint32_t kReadbackCount = 3; ///< リードバックリング数（GPU遅延2フレームまで安全）
         Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffers_[kReadbackCount];
         const float* mappedReadback_[kReadbackCount] = {};

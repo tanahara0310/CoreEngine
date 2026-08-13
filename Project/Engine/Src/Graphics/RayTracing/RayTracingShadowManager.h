@@ -40,8 +40,14 @@ namespace CoreEngine
         int   softShadowSamples = 1;       ///< ソフトシャドウのサンプル数（A-Trousデノイザーで補完するため1で十分）
         ///< A-Trous 3パスデノイザー適用済みのため 1 で十分な品質が得られる
         ///< 高品質なソフトシャドウが必要な場合は 2〜4 程度まで増やす（GPUコストはサンプル数に比例）
-        float historyAlpha = 0.15f;        ///< テンポラル蓄積ブレンド係数
-        ///< Variance Clampingと組み合わせて使用する固定値
+        /// @brief テンポラル蓄積フレーム数の上限
+        /// @details ピクセルごとの蓄積カウント N による適応ブレンド（α = 1/N）を行い、
+        ///          静止時は α = 1/この値 まで収束する。旧実装の固定 α（historyAlpha）は
+        ///          定常状態でも入力ノイズの sqrt(α/(2-α)) が残り続け、静止カメラでも
+        ///          影のペナンブラが毎フレームちらつく主因だったため廃止した。
+        ///          影の変化（ライト移動等）への追従は Variance Clamping の棄却で
+        ///          カウントがリセットされることで担保される。
+        int   maxHistoryFrames = 32;
 
         /// @brief A-Trous デノイズのパス数（0 = デノイズ無効）
         /// @details Stage 3 で専用の ping/pong スクラッチを 2 枚持たせたため、
@@ -280,6 +286,13 @@ namespace CoreEngine
             bool dispatchedThisFrame = false;
             bool isHistoryValid = false;   ///< 履歴テクスチャが初回フレーム書き込み済みか
             uint32_t historyParity = 0;    ///< 今フレームの書き込み先（0 = HistoryA / 1 = HistoryB）
+
+            /// @brief この view × light のディスパッチ回数（2x2 サンプル位相・レイジッターの種）
+            /// @details 以前はマネージャ共有の frameIndex_ を使っていたが、1 フレームに
+            ///          複数回 Dispatch される構成（GameView + ReflectionView や複数ライト）では
+            ///          各ビューの位相が 2 や 4 ずつ進み、2x2 サンプル位置の一部しか
+            ///          巡回しなくなっていた。
+            uint32_t frameCount = 0;
             RayTracingDispatchInfo dispatchInfo{}; ///< デバッグ表示用（Dispatch のたびに更新）
 
             /// @brief 今フレームのテンポラル出力先（次フレームの履歴）
@@ -316,6 +329,12 @@ namespace CoreEngine
         ///          テンポラル蓄積の量子化が気になる場合はここを R16_FLOAT へ変えるだけでよい。
         static constexpr DXGI_FORMAT kShadowTextureFormat = DXGI_FORMAT_R8_UNORM;
 
+        /// @brief テンポラル履歴（HistoryA/B）専用フォーマット
+        /// @details R = シャドウ値, G = 蓄積フレーム数 N/255。適応ブレンド α=1/N の
+        ///          カウントをピクセル単位で持ち歩く。後段（A-Trous / Resolve）は
+        ///          Texture2D<float> で R だけ読むので変更不要。
+        static constexpr DXGI_FORMAT kShadowHistoryFormat = DXGI_FORMAT_R8G8_UNORM;
+
         /// @brief 太陽高度による射程距離の最大倍率（高度 ~5.7° 相当で頭打ち）
         /// @details 際限なく伸ばすと地平線近くでトラバースが爆発するため上限を設ける。
         static constexpr float kMaxRayDistanceScale = 10.0f;
@@ -331,7 +350,6 @@ namespace CoreEngine
         // パラメータ
         RayTracingShadowSettings settings_;
 
-        uint32_t frameIndex_ = 0;
         uint32_t dispatchLogCount_ = 0;
         // isInitialized_ は基底 RayTracingPassBase が持つ。ここで再宣言すると基底のものを
         // 隠してしまい、Initialize() が派生側を true にする一方で

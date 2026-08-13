@@ -1,5 +1,7 @@
 #pragma once
 #include "../RenderingTechniqueBase.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -22,6 +24,17 @@ namespace CoreEngine
             float power = 1.5f;
             float _pad0 = 0.0f;
         };
+
+        static constexpr Cb::Field kSSAOParamsFields[] = {
+            CB_FIELD_AS(SSAOParams, viewMatrix, Cb::Float4x4),
+            CB_FIELD_AS(SSAOParams, projectionMatrix, Cb::Float4x4),
+            CB_FIELD_AS(SSAOParams, invViewProjMatrix, Cb::Float4x4), CB_FIELD(SSAOParams, radius),
+            CB_FIELD(SSAOParams, bias), CB_FIELD(SSAOParams, intensity), CB_FIELD(SSAOParams, sampleCount),
+            CB_FIELD(SSAOParams, screenWidth), CB_FIELD(SSAOParams, screenHeight), CB_FIELD(SSAOParams, power),
+            CB_FIELD(SSAOParams, _pad0),
+        };
+        CB_VERIFY_LAYOUT(SSAOParams, kSSAOParamsFields);
+        CB_BIND_HLSL(SSAOParams, kSSAOParamsFields, "SSAOParams");
 
     public:
         SSAOTechnique() = default;

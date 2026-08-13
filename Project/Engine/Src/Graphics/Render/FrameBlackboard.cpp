@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "FrameBlackboard.h"
+#include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 
 namespace CoreEngine
 {
@@ -27,7 +28,9 @@ namespace CoreEngine
 
     std::string FrameBlackboard::MakePostEffectIntermediateName(size_t index)
     {
-        return "PostEffectIntermediate" + std::to_string(index);
+        // 接頭辞の実体は RenderTargetNames が唯一持つ。ここで文字列リテラルを再掲すると、
+        // 名前を変えたときに論理名と物理ターゲット名が静かに食い違う。
+        return std::string(RenderTargetNames::PostEffectIntermediatePrefix) + std::to_string(index);
     }
 
     void FrameBlackboardResource::Reset()

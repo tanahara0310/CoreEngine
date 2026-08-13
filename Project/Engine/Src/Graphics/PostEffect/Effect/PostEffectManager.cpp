@@ -23,10 +23,17 @@
 #include "LensFlare/LensFlare.h"
 #include "Dissolve/Dissolve.h"
 #include "ToneMapping/ToneMapping.h"
+#include "FilmGrain/FilmGrain.h"
+#include "MotionBlur/MotionBlur.h"
+#include "LocalExposure/LocalExposure.h"
+#include "ColorLUT/ColorLUT.h"
+#include "DepthOfField/DepthOfField.h"
 #include "Outline/Outline.h"
 #include "PostEffectPresetManager.h"
 #include "Editor/ImGui/ImguiManager.h"
+#include "Utility/Logger/Logger.h"
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <unordered_set>
 
@@ -76,42 +83,80 @@ void PostEffectManager::RegisterAllEffects()
     RegisterEffect<LensFlare>(PostEffectNames::LensFlare);
     RegisterEffect<Dissolve>(PostEffectNames::Dissolve);
     RegisterEffect<Outline>(PostEffectNames::Outline);
+    RegisterEffect<FilmGrain>(PostEffectNames::FilmGrain);
+    RegisterEffect<MotionBlur>(PostEffectNames::MotionBlur);
+    RegisterEffect<LocalExposure>(PostEffectNames::LocalExposure);
+    RegisterEffect<ColorLUT>(PostEffectNames::ColorLUT);
+    RegisterEffect<DepthOfField>(PostEffectNames::DepthOfField);
     RegisterEffect<ToneMapping>(PostEffectNames::ToneMapping);
 
     // エフェクトチェーンの順序を登録と同じ場所で定義（二重管理を防ぐ）
+    // 並びは PostEffectStage の昇順でなければならない（ValidateChain が検証する）。
+    // 原則: 光学現象と露出・グレーディングはトーンマップ前、記録と演出はトーンマップ後。
     effectChain_ = {
+        // ---- SceneHDR: トーンカーブを通る前の物理量に対して効くもの ----
+        // モーションブラーは露光中の積分そのものなので最初。ブラー後の画像に Bloom が乗る
+        PostEffectNames::MotionBlur,
+        // DoF はレンズの結像なので Bloom（レンズ内散乱）より前
+        PostEffectNames::DepthOfField,
         PostEffectNames::Bloom,
-        PostEffectNames::LensFlare, // HDR 空間で合成するため ToneMapping より前
+        PostEffectNames::LensFlare,
+        // ローカル露出は光学現象（Bloom/LensFlare）の後、色調整の前。
+        // 露出の一種なのでトーンマップへ渡る直前の輝度分布に対して効かせる
+        PostEffectNames::LocalExposure,
+        PostEffectNames::ChromaticAberration,
+        PostEffectNames::Vignette,
+        PostEffectNames::ColorGrading,
+        // ---- Tonemap: HDR→LDR の境界。常時有効・ちょうど 1 つ ----
         PostEffectNames::ToneMapping,
+        // ---- PostTonemap: 表示色に対して効く演出系 ----
+        // LUT はトーンマップ直後の表示色に対するルック。演出系より前に置く
+        PostEffectNames::ColorLUT,
         PostEffectNames::FadeEffect,
         PostEffectNames::Shockwave,
         PostEffectNames::Blur,
         PostEffectNames::Random,
         PostEffectNames::RadialBlur,
         PostEffectNames::RasterScroll,
-        PostEffectNames::ColorGrading,
-        PostEffectNames::ChromaticAberration,
         PostEffectNames::Sepia,
         PostEffectNames::Invert,
         PostEffectNames::GrayScale,
-        PostEffectNames::Vignette,
+        // グレインは色をいじる演出（セピア・モノクロ）より後。先に乗せると粒まで脱色される
+        PostEffectNames::FilmGrain,
         PostEffectNames::Outline,
         PostEffectNames::Dissolve,
     };
 
+    ValidateChain();
     RebuildEffectPtrCache();
 }
 
 void PostEffectManager::RebuildEffectPtrCache()
 {
     effectPtrCache_.clear();
-    effectPtrCache_.reserve(effectChain_.size());
     effectNameCache_.clear();
+    prepareCache_.clear();
+    effectPtrCache_.reserve(effectChain_.size());
     effectNameCache_.reserve(effectChain_.size());
+    prepareCache_.reserve(effects_.size());
+
+    std::unordered_set<std::string> chainMembers;
+    chainMembers.reserve(effectChain_.size());
+
     for (const auto& name : effectChain_) {
+        chainMembers.insert(name);
         if (auto* effect = GetEffectInternal(name); effect && effect->IsEnabled()) {
             effectPtrCache_.push_back(effect);
             effectNameCache_.push_back(name);
+            prepareCache_.push_back(effect);
+        }
+    }
+
+    // チェーン外に登録されたエフェクト（FullScreen 等）も文脈は受け取る必要がある。
+    // ここで一度だけ集めておき、毎フレームの線形探索（旧 Update の O(n*m)）を無くす。
+    for (auto& [name, effect] : effects_) {
+        if (effect->IsEnabled() && !chainMembers.contains(name)) {
+            prepareCache_.push_back(effect.get());
         }
     }
 }
@@ -137,22 +182,6 @@ const PostEffectBase* PostEffectManager::GetEffectInternal(const std::string& na
         return it->second.get();
     }
     return nullptr;
-}
-
-void PostEffectManager::ExecuteEffect(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
-{
-    auto* effect = GetEffectInternal(name);
-    if (effect) {
-        effect->Draw(inputSrvHandle);
-    }
-}
-
-void PostEffectManager::ExecuteEffectToBackBuffer(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle)
-{
-    auto* effect = GetEffectInternal(name);
-    if (effect) {
-        effect->DrawToBackBuffer(inputSrvHandle);
-    }
 }
 
 void PostEffectManager::SetEffectEnabled(const std::string& effectName, bool enabled)
@@ -181,10 +210,61 @@ void PostEffectManager::SetEffectChain(const std::vector<std::string>& effectNam
     }
 #endif
     effectChain_ = effectNames;
+    ValidateChain();
     RebuildEffectPtrCache();
 }
 
-void PostEffectManager::Update(float deltaTime)
+bool PostEffectManager::ValidateChain() const
+{
+    std::array<int, kPostEffectStageCount> stageCounts{};
+    PostEffectStage previousStage = PostEffectStage::SceneHDR;
+    std::string previousName;
+    bool valid = true;
+
+    for (const auto& name : effectChain_) {
+        const PostEffectBase* effect = GetEffectInternal(name);
+        if (!effect) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics,
+                "[PostEffect] チェーンに未登録のエフェクトが含まれています: {}", name);
+            valid = false;
+            continue;
+        }
+
+        const PostEffectStage stage = effect->GetStage();
+        ++stageCounts[static_cast<size_t>(stage)];
+
+        // 段は昇順にしか進めない。逆行は「トーンマップ後に光学現象を掛ける」等の設計崩れを意味する
+        if (static_cast<uint8_t>(stage) < static_cast<uint8_t>(previousStage)) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics,
+                "[PostEffect] 段が逆行しています: {} は {} ですが直前の {} は {} でした",
+                name, ToString(stage), previousName, ToString(previousStage));
+            valid = false;
+        }
+
+        previousStage = stage;
+        previousName = name;
+    }
+
+    const int tonemapCount = stageCounts[static_cast<size_t>(PostEffectStage::Tonemap)];
+    if (tonemapCount != 1) {
+        Logger::GetInstance().Errorf(LogCategory::Graphics,
+            "[PostEffect] Tonemap 段はちょうど 1 つでなければなりません（現在 {} 個）", tonemapCount);
+        valid = false;
+    }
+
+    if (valid) {
+        Logger::GetInstance().Infof(LogCategory::Graphics,
+            "[PostEffect] chain validated: SceneHDR={} Tonemap={} PostTonemap={}",
+            stageCounts[static_cast<size_t>(PostEffectStage::SceneHDR)],
+            stageCounts[static_cast<size_t>(PostEffectStage::Tonemap)],
+            stageCounts[static_cast<size_t>(PostEffectStage::PostTonemap)]);
+    }
+
+    assert(valid && "PostEffect チェーンの段が不正です（詳細は Graphics カテゴリのログ）");
+    return valid;
+}
+
+void PostEffectManager::PrepareFrame(const PostEffectFrameContext& ctx)
 {
     // 有効/無効は CVar（"r.<Effect>.Enabled"）が持つため、SetEffectEnabled を通らない経路でも
     // 変化しうる（CVars.json からの復元、コンソール入力、プリセット適用など）。
@@ -196,24 +276,9 @@ void PostEffectManager::Update(float deltaTime)
         RebuildEffectPtrCache();
     }
 
-    // effectChain_順に有効エフェクトを更新（実行順と一致させ、毎回同じ順序を保証）
-    for (const auto& name : effectChain_) {
-        auto* effect = GetEffectInternal(name);
-        if (effect && effect->IsEnabled()) {
-            effect->Update(deltaTime);
-        }
-    }
-    // チェーン外に登録されたエフェクト（DeferredLighting、FullScreen等）も更新
-    for (auto& [name, effect] : effects_) {
-        if (effect->IsEnabled()) {
-            bool inChain = false;
-            for (const auto& chainName : effectChain_) {
-                if (chainName == name) { inChain = true; break; }
-            }
-            if (!inChain) {
-                effect->Update(deltaTime);
-            }
-        }
+    // 実行順（チェーン順）→ チェーン外、の決まった順序で配る
+    for (PostEffectBase* effect : prepareCache_) {
+        effect->PrepareFrame(ctx);
     }
 }
 

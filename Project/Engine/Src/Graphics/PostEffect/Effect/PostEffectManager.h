@@ -46,18 +46,6 @@ public:
     template<typename T>
     const T* GetEffect(const std::string& name) const;
 
-    /// @brief 特定のポストエフェクトを実行
-    /// @note 有効/無効チェックなし。必要な場合はIsEffectEnabled()で事前に確認すること
-    /// @param name エフェクト名
-    /// @param inputSrvHandle 入力テクスチャのSRVハンドル
-    void ExecuteEffect(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
-
-    /// @brief バックバッファ(_SRGB)への最終描画用にエフェクトを実行
-    /// @note 有効/無効チェックなし。必要な場合はIsEffectEnabled()で事前に確認すること
-    /// @param name エフェクト名
-    /// @param inputSrvHandle 入力テクスチャのSRVハンドル
-    void ExecuteEffectToBackBuffer(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle);
-
     /// @brief エフェクトの有効/無効を設定
     /// @param effectName エフェクト名
     /// @param enabled 有効にするかどうか
@@ -72,9 +60,20 @@ public:
     /// @param effectNames エフェクト名のリスト
     void SetEffectChain(const std::vector<std::string>& effectNames);
 
-    /// @brief 更新処理
-    /// @param deltaTime フレーム時間
-    void Update(float deltaTime);
+    /// @brief チェーンの段（PostEffectStage）が規約を満たすか検証する
+    /// @details 検証内容は 2 つ。
+    ///          ① 段が SceneHDR → Tonemap → PostTonemap の順に単調であること
+    ///          ② Tonemap 段がちょうど 1 つであること
+    ///          違反は Error ログへ理由付きで出したうえで assert する。
+    ///          「並べ間違えても何も起きない」状態を無くすのが目的。
+    /// @return 規約を満たしていれば true
+    bool ValidateChain() const;
+
+    /// @brief 今フレームの文脈を全エフェクトへ配る（毎フレーム 1 回）
+    /// @details 有効なエフェクトはチェーン内外を問わず全て受け取る。
+    ///          エフェクト固有の値注入はこの経路だけを使うこと。
+    /// @param ctx 今フレームの文脈
+    void PrepareFrame(const PostEffectFrameContext& ctx);
 
     /// @brief ImGuiでポストエフェクトのパラメータを調整（独自ウィンドウ付き）
     void DrawImGui();
@@ -143,6 +142,11 @@ public:
 
     std::vector<PostEffectBase*> effectPtrCache_;
     std::vector<std::string> effectNameCache_; ///< effectPtrCache_ と同順の登録名キャッシュ
+
+    /// @brief PrepareFrame を配る対象（チェーン内の有効エフェクト＋チェーン外の有効エフェクト）
+    /// @details 毎フレームの探索を無くすため effectPtrCache_ と同時に作り直す。
+    ///          チェーン外（FullScreen 等）も文脈は受け取る必要がある。
+    std::vector<PostEffectBase*> prepareCache_;
 
     std::unique_ptr<PostEffectPresetManager> presetManager_;
 

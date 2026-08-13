@@ -1,13 +1,18 @@
 #pragma once
 #include "RenderPass.h"
+#include "Graphics/PostEffect/Effect/PostEffectBase.h"
+#include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include <d3d12.h>
 #include <string>
+#include <vector>
 
 namespace CoreEngine
 {
-    class PostEffectBase;
-
-    /// @brief ポストエフェクト適用パス
+    /// @brief ポストエフェクトの 1 パスを実行するグラフノード
+    /// @details 「どのエフェクトか」は知らない。エフェクトが PostEffectGraphBuilder へ積んだ
+    ///          PostEffectStep を 1 つ受け取り、宣言どおりに読み書きして record を呼ぶだけ。
+    ///          エフェクト固有の分岐をここへ書きたくなったら、それは
+    ///          PrepareFrame か DeclareExtraInputs の設計漏れである。
     class PostEffectPass : public RenderPass {
     public:
         PostEffectPass() = default;
@@ -15,14 +20,19 @@ namespace CoreEngine
 
         const char* GetName() const override { return "PostEffect"; }
 
-        void SetEffect(PostEffectBase* effect, const std::string& effectName);
-        void SetInputResourceName(const std::string& resourceName);
-        void SetOutputResourceName(const std::string& resourceName);
-        const std::string& GetInputResourceName() const { return inputResourceName_; }
-        const std::string& GetOutputResourceName() const { return outputResourceName_; }
+        /// @brief 実行対象のステップを設定する
+        /// @param effect      ステップの持ち主（追加入力の解決先）
+        /// @param effectName  ログ表示用のエフェクト登録名
+        /// @param step        実行するステップ（コピーして保持する）
+        /// @note ステップは**コピーして持つ**。呼び出し側のコンテナが再確保されると
+        ///       ポインタ保持では実行時にダングリングするため
+        void SetStep(PostEffectBase* effect, const std::string& effectName, const PostEffectStep& step);
 
-        /// @brief エフェクト実行種別に応じた入出力リソースを宣言する
-        /// @note effect 未割り当ての placeholder インスタンスは何も宣言しない
+        const std::string& GetInputResourceName() const { return primaryInputName_; }
+        const std::string& GetOutputResourceName() const { return step_.write; }
+
+        /// @brief ステップの宣言どおりに入出力を Graph へ登録する
+        /// @note step 未設定の placeholder インスタンスは何も宣言しない
         void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
 
         bool IsEnabledForView(const RenderViewSettings& view) const override { return view.enablePostEffect; }
@@ -30,9 +40,15 @@ namespace CoreEngine
         void Execute(const RenderContext& context) override;
 
     private:
+        /// @brief 申告された追加入力を Blackboard から解決してエフェクトへ渡す
+        /// @return 必須入力が全て揃っていれば true
+        bool ResolveExtraInputs(const RenderContext& context);
+
         PostEffectBase* effect_ = nullptr;
-        std::string effectName_;
-        std::string inputResourceName_ = FrameBlackboard::SceneColor;
-        std::string outputResourceName_ = FrameBlackboard::SceneColor;
+        std::string     effectName_;
+        PostEffectStep  step_;
+
+        /// @brief ステップの先頭 read（デバッグ表示・従来 API 互換のため保持）
+        std::string primaryInputName_;
     };
 }

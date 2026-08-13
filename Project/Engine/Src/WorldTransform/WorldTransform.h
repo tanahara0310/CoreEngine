@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/Shader/CBufferLayout.h"
 #include "Math/MathCore.h"
 #include <d3d12.h>
 #include <wrl.h>
@@ -12,6 +13,11 @@ namespace CoreEngine
 struct ConstantBufferDataWorldTransform {
     Matrix4x4 matWorld; // ワールド変換行列
 };
+
+static constexpr Cb::Field kWorldTransformFields[] = {
+    CB_FIELD(ConstantBufferDataWorldTransform, matWorld),
+};
+CB_VERIFY_LAYOUT(ConstantBufferDataWorldTransform, kWorldTransformFields);
 
 /// <summary>
 /// ワールドトランスフォームクラス

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
 #include <cstdint>
 
@@ -22,6 +24,13 @@ namespace CoreEngine
     static_assert(sizeof(DirectionalLightData) == 48,
         "DirectionalLightData は HLSL 側 LightStructures.hlsli の 48 バイトストライドと一致させること");
 
+    static constexpr Cb::Field kDirectionalLightDataFields[] = {
+        CB_FIELD(DirectionalLightData, color), CB_FIELD(DirectionalLightData, direction),
+        CB_FIELD(DirectionalLightData, intensity), CB_FIELD(DirectionalLightData, enabled),
+        CB_FIELD(DirectionalLightData, padding),
+    };
+    CB_VERIFY_STRIDE(DirectionalLightData, kDirectionalLightDataFields);
+
     /// @brief ポイントライトのデータ構造体（StructuredBuffer用）
     struct PointLightData {
         Vector4 color;        // 光源の色
@@ -34,6 +43,13 @@ namespace CoreEngine
     };
     static_assert(sizeof(PointLightData) == 48,
         "PointLightData は HLSL 側 LightStructures.hlsli の 48 バイトストライドと一致させること");
+
+    static constexpr Cb::Field kPointLightDataFields[] = {
+        CB_FIELD(PointLightData, color), CB_FIELD(PointLightData, position), CB_FIELD(PointLightData, intensity),
+        CB_FIELD(PointLightData, radius), CB_FIELD(PointLightData, decay), CB_FIELD(PointLightData, enabled),
+        CB_FIELD(PointLightData, padding),
+    };
+    CB_VERIFY_STRIDE(PointLightData, kPointLightDataFields);
 
     /// @brief スポットライトのデータ構造体（StructuredBuffer用）
     struct SpotLightData {
@@ -49,6 +65,14 @@ namespace CoreEngine
     };
     static_assert(sizeof(SpotLightData) == 64,
         "SpotLightData は HLSL 側 LightStructures.hlsli の 64 バイトストライドと一致させること");
+
+    static constexpr Cb::Field kSpotLightDataFields[] = {
+        CB_FIELD(SpotLightData, color), CB_FIELD(SpotLightData, position), CB_FIELD(SpotLightData, intensity),
+        CB_FIELD(SpotLightData, direction), CB_FIELD(SpotLightData, distance), CB_FIELD(SpotLightData, decay),
+        CB_FIELD(SpotLightData, cosAngle), CB_FIELD(SpotLightData, cosFalloffStart),
+        CB_FIELD(SpotLightData, enabled),
+    };
+    CB_VERIFY_STRIDE(SpotLightData, kSpotLightDataFields);
 
     /// @brief エリアライトのデータ構造体（StructuredBuffer用）
     struct AreaLightData {
@@ -67,6 +91,14 @@ namespace CoreEngine
     static_assert(sizeof(AreaLightData) == 96,
         "AreaLightData は HLSL 側 LightStructures.hlsli の 96 バイトストライドと一致させること");
 
+    static constexpr Cb::Field kAreaLightDataFields[] = {
+        CB_FIELD(AreaLightData, color), CB_FIELD(AreaLightData, position), CB_FIELD(AreaLightData, intensity),
+        CB_FIELD(AreaLightData, normal), CB_FIELD(AreaLightData, width), CB_FIELD(AreaLightData, right),
+        CB_FIELD(AreaLightData, height), CB_FIELD(AreaLightData, up), CB_FIELD(AreaLightData, range),
+        CB_FIELD(AreaLightData, enabled), CB_FIELD(AreaLightData, padding),
+    };
+    CB_VERIFY_STRIDE(AreaLightData, kAreaLightDataFields);
+
     /// @brief ライトカウント用の定数バッファ構造体
     struct LightCounts {
         uint32_t directionalLightCount;
@@ -74,4 +106,11 @@ namespace CoreEngine
         uint32_t spotLightCount;
         uint32_t areaLightCount;
     };
+
+    static constexpr Cb::Field kLightCountsFields[] = {
+        CB_FIELD(LightCounts, directionalLightCount), CB_FIELD(LightCounts, pointLightCount),
+        CB_FIELD(LightCounts, spotLightCount), CB_FIELD(LightCounts, areaLightCount),
+    };
+    CB_VERIFY_LAYOUT(LightCounts, kLightCountsFields);
+    CB_BIND_HLSL(LightCounts, kLightCountsFields, "gLightCounts");
 }

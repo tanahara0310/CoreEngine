@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/Surface/WaterDebugViewMode.h"
 #include "Graphics/Water/WaterFoamDefaults.h"
 #include "Math/Vector/Vector2.h"
@@ -43,6 +45,13 @@ struct WaveParams {
 	float padding = 0.0f;
 };
 
+static constexpr Cb::Field kWaveParamsFields[] = {
+    CB_FIELD(WaveParams, direction), CB_FIELD(WaveParams, amplitude), CB_FIELD(WaveParams, wavelength),
+    CB_FIELD(WaveParams, speed), CB_FIELD(WaveParams, steepness), CB_FIELD(WaveParams, phaseOffset),
+    CB_FIELD(WaveParams, padding),
+};
+CB_VERIFY_LAYOUT(WaveParams, kWaveParamsFields);
+
 /// @brief 水面 Gerstner Wave の定数バッファ全体
 /// @note HLSL 側の WaterConstants cbuffer とメモリレイアウトを一致させること
 struct WaterConstants {
@@ -53,6 +62,13 @@ struct WaterConstants {
 
 	static_assert(sizeof(WaveParams) == 32, "WaveParams must be 32 bytes");
 };
+
+static constexpr Cb::Field kWaterConstantsFields[] = {
+    CB_FIELD(WaterConstants, waves), CB_FIELD(WaterConstants, activeWaveCount), CB_FIELD(WaterConstants, time),
+    CB_FIELD(WaterConstants, padding),
+};
+CB_VERIFY_LAYOUT(WaterConstants, kWaterConstantsFields);
+CB_BIND_HLSL(WaterConstants, kWaterConstantsFields, "WaterConstants");
 
 /// @brief 毎フレーム更新する水面用フレーム定数バッファ
 /// @note HLSL 側の WaterFrameConstants（Water.PS / Water.VS / FFTWater.VS の 3 本）と
@@ -113,18 +129,30 @@ struct WaterFrameConstants {
 	float foamDecaySeconds = CoreEngine::WaterFoamDefaults::kDecaySeconds;
 };
 
-// HLSL の cbuffer packing 規則（float3 は 16B 境界をまたげない）と C++ のレイアウトが
-// 一致していることを検証する。ずれると水柱厚さ・光学係数が別のフィールドを読み、
-// 波打ち際の段差として現れる（RTシャドウの cbuffer 配列ずれ事故と同型）。
+// 全 26 フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
+// ずれると水柱厚さ・光学係数が別のフィールドを読み、波打ち際の段差として現れる
+// （RTシャドウの cbuffer 配列ずれ事故と同型）。
+// 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
+// 人手で並べていたが、下の表が全フィールドを検査するので不要になった。
 static_assert(sizeof(WaterFrameConstants) == 128, "WaterFrameConstants size mismatch with HLSL cbuffer");
-static_assert(offsetof(WaterFrameConstants, absorptionCoeff) % 16 == 0, "absorptionCoeff must start on a 16-byte boundary");
-static_assert(offsetof(WaterFrameConstants, scatteringCoeff) % 16 == 0, "scatteringCoeff must start on a 16-byte boundary");
-static_assert(offsetof(WaterFrameConstants, cameraNearZ) == 80, "cameraNearZ offset mismatch with HLSL cbuffer");
-// 既存パディングを転用したフィールドなので、HLSL 側（WaterFrameConstants.hlsli の
-// gFoamWindCoverageScale）と同じ位置に居ることを機械的に保証する。
-// ずれると泡が「カメラ near/far」を係数として読み、風速と無関係に消えるか飽和する。
-static_assert(offsetof(WaterFrameConstants, foamWindCoverageScale) == 88, "foamWindCoverageScale offset mismatch with HLSL cbuffer");
-static_assert(offsetof(WaterFrameConstants, foamCascadeWeights) % 16 == 0, "foamCascadeWeights must start on a 16-byte boundary");
+static constexpr Cb::Field kWaterFrameConstantsFields[] = {
+    CB_FIELD(WaterFrameConstants, reflectionEnabled), CB_FIELD(WaterFrameConstants, fresnelReflectanceScale),
+    CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
+    CB_FIELD(WaterFrameConstants, depthFadeDebugEnabled), CB_FIELD(WaterFrameConstants, depthFadeDebugScale),
+    CB_FIELD(WaterFrameConstants, skyAmbientScale), CB_FIELD(WaterFrameConstants, skyAmbientEnabled),
+    CB_FIELD(WaterFrameConstants, absorptionCoeff), CB_FIELD(WaterFrameConstants, absorptionPad),
+    CB_FIELD(WaterFrameConstants, scatteringCoeff), CB_FIELD(WaterFrameConstants, scatteringPad),
+    CB_FIELD(WaterFrameConstants, depthDebugViewMode), CB_FIELD(WaterFrameConstants, useFFTOceanNormalMap),
+    CB_FIELD(WaterFrameConstants, aerialPerspectiveEnabled),
+    CB_FIELD(WaterFrameConstants, skyEnvReflectionEnabled), CB_FIELD(WaterFrameConstants, cameraNearZ),
+    CB_FIELD(WaterFrameConstants, cameraFarZ), CB_FIELD(WaterFrameConstants, foamWindCoverageScale),
+    CB_FIELD(WaterFrameConstants, cameraClipPadding), CB_FIELD(WaterFrameConstants, foamEnabled),
+    CB_FIELD(WaterFrameConstants, foamBias), CB_FIELD(WaterFrameConstants, foamGain),
+    CB_FIELD(WaterFrameConstants, foamOpacity), CB_FIELD(WaterFrameConstants, foamCascadeWeights),
+    CB_FIELD(WaterFrameConstants, foamDecaySeconds),
+};
+CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
+CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");
 
 enum class WaterPresetType : int {
 	Lake = 0,

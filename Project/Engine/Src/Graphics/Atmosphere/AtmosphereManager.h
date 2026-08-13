@@ -4,6 +4,8 @@
 #include <wrl.h>
 #include "Math/MathCore.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 
 namespace CoreEngine
@@ -36,6 +38,33 @@ namespace CoreEngine
     };
     static_assert(sizeof(AtmosphereShaderConstants) == 256,
         "AtmosphereShaderConstants は HLSL 側 AtmosphereConstants の 256 バイトレイアウトと一致させること");
+
+    static constexpr Cb::Field kAtmosphereShaderConstantsFields[] = {
+        CB_FIELD(AtmosphereShaderConstants, sunDirection), CB_FIELD(AtmosphereShaderConstants, sunIntensity),
+        CB_FIELD(AtmosphereShaderConstants, sunColor), CB_FIELD(AtmosphereShaderConstants, planetRadiusKm),
+        CB_FIELD(AtmosphereShaderConstants, rayleighScattering),
+        CB_FIELD(AtmosphereShaderConstants, rayleighScaleHeightKm),
+        CB_FIELD(AtmosphereShaderConstants, ozoneAbsorption),
+        CB_FIELD(AtmosphereShaderConstants, atmosphereTopRadiusKm),
+        CB_FIELD(AtmosphereShaderConstants, mieScattering), CB_FIELD(AtmosphereShaderConstants, mieAbsorption),
+        CB_FIELD(AtmosphereShaderConstants, mieScaleHeightKm), CB_FIELD(AtmosphereShaderConstants, miePhaseG),
+        CB_FIELD(AtmosphereShaderConstants, ozoneLayerCenterKm),
+        CB_FIELD(AtmosphereShaderConstants, ozoneLayerHalfWidthKm),
+        CB_FIELD(AtmosphereShaderConstants, cameraRadiusKm),
+        CB_FIELD(AtmosphereShaderConstants, sunDiskHalfAngleRad),
+        CB_FIELD(AtmosphereShaderConstants, groundAlbedo),
+        CB_FIELD(AtmosphereShaderConstants, sunDiskLuminanceScale),
+        CB_FIELD(AtmosphereShaderConstants, invViewProj), CB_FIELD(AtmosphereShaderConstants, cameraWorldPos),
+        CB_FIELD(AtmosphereShaderConstants, groundLevelY),
+        CB_FIELD(AtmosphereShaderConstants, multiScatteringFactor),
+        CB_FIELD(AtmosphereShaderConstants, apKmPerSlice), CB_FIELD(AtmosphereShaderConstants, constantsPad),
+        CB_FIELD(AtmosphereShaderConstants, moonDirection), CB_FIELD(AtmosphereShaderConstants, moonIntensity),
+        CB_FIELD(AtmosphereShaderConstants, moonColor), CB_FIELD(AtmosphereShaderConstants, moonDiskHalfAngleRad),
+        CB_FIELD(AtmosphereShaderConstants, moonDiskLuminanceScale), CB_FIELD(AtmosphereShaderConstants, hasMoon),
+        CB_FIELD(AtmosphereShaderConstants, moonPhaseFromSun), CB_FIELD(AtmosphereShaderConstants, starIntensity),
+    };
+    CB_VERIFY_LAYOUT(AtmosphereShaderConstants, kAtmosphereShaderConstantsFields);
+    CB_BIND_HLSL(AtmosphereShaderConstants, kAtmosphereShaderConstantsFields, "gAtmosphere");
 
     /// @brief 大気散乱の物理パラメータ
     /// @details 単位はメートル基準（散乱・吸収係数は 1/m）。

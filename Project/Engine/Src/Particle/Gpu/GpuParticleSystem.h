@@ -5,6 +5,9 @@
 #include <string>
 #include <memory>
 
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
+
 // Math
 #include "Math/MathCore.h"
 
@@ -142,6 +145,48 @@ struct GpuParticleParams {
 static_assert(sizeof(GpuParticleParams) == 576,
     "GpuParticleParams は HLSL 側 GpuParticleParams の 576 バイトレイアウトと一致させること");
 
+static constexpr Cb::Field kGpuParticleParamsFields[] = {
+    CB_FIELD(GpuParticleParams, billboardMatrix), CB_FIELD(GpuParticleParams, viewProjection),
+    CB_FIELD(GpuParticleParams, emitterPosition), CB_FIELD(GpuParticleParams, deltaTime),
+    CB_FIELD(GpuParticleParams, emitCount), CB_FIELD(GpuParticleParams, bufferCapacity),
+    CB_FIELD(GpuParticleParams, effectiveCapacity), CB_FIELD(GpuParticleParams, frameSeed),
+    CB_FIELD(GpuParticleParams, reset), CB_FIELD(GpuParticleParams, gravityModifier),
+    CB_FIELD(GpuParticleParams, pad0), CB_FIELD(GpuParticleParams, pad1), CB_FIELD(GpuParticleParams, startColor),
+    CB_FIELD(GpuParticleParams, startSize), CB_FIELD(GpuParticleParams, startSizeRandomness),
+    CB_FIELD(GpuParticleParams, startRotation), CB_FIELD(GpuParticleParams, startRotationRandomness),
+    CB_FIELD(GpuParticleParams, startLifetime), CB_FIELD(GpuParticleParams, startLifetimeRandomness),
+    CB_FIELD(GpuParticleParams, startSpeed), CB_FIELD(GpuParticleParams, startSpeedRandomness),
+    CB_FIELD(GpuParticleParams, startColorRandomness), CB_FIELD(GpuParticleParams, shapeEnabled),
+    CB_FIELD(GpuParticleParams, velocityEnabled), CB_FIELD(GpuParticleParams, velocityUseRandomDir),
+    CB_FIELD(GpuParticleParams, shapeScale), CB_FIELD(GpuParticleParams, shapeType),
+    CB_FIELD(GpuParticleParams, shapeRadius), CB_FIELD(GpuParticleParams, shapeInnerRadius),
+    CB_FIELD(GpuParticleParams, shapeHeight), CB_FIELD(GpuParticleParams, shapeAngleRad),
+    CB_FIELD(GpuParticleParams, shapeEmissionDirection), CB_FIELD(GpuParticleParams, shapeRandomPositionRange),
+    CB_FIELD(GpuParticleParams, shapeCirclePlane), CB_FIELD(GpuParticleParams, shapeEmitFromSurface),
+    CB_FIELD(GpuParticleParams, pad2), CB_FIELD(GpuParticleParams, pad3),
+    CB_FIELD(GpuParticleParams, velocityDirection), CB_FIELD(GpuParticleParams, pad4),
+    CB_FIELD(GpuParticleParams, velocityRandomRange), CB_FIELD(GpuParticleParams, pad5),
+    CB_FIELD(GpuParticleParams, gravity), CB_FIELD(GpuParticleParams, drag), CB_FIELD(GpuParticleParams, wind),
+    CB_FIELD(GpuParticleParams, forceEnabled), CB_FIELD(GpuParticleParams, fieldAcceleration),
+    CB_FIELD(GpuParticleParams, useAccelerationField), CB_FIELD(GpuParticleParams, fieldMin),
+    CB_FIELD(GpuParticleParams, pad6), CB_FIELD(GpuParticleParams, fieldMax), CB_FIELD(GpuParticleParams, pad7),
+    CB_FIELD(GpuParticleParams, endColor), CB_FIELD(GpuParticleParams, colorEnabled),
+    CB_FIELD(GpuParticleParams, sizeEnabled), CB_FIELD(GpuParticleParams, sizeUse3D),
+    CB_FIELD(GpuParticleParams, sizeCurve), CB_FIELD(GpuParticleParams, endSize3D),
+    CB_FIELD(GpuParticleParams, endSize), CB_FIELD(GpuParticleParams, sizeMin),
+    CB_FIELD(GpuParticleParams, sizeMax), CB_FIELD(GpuParticleParams, rotationEnabled),
+    CB_FIELD(GpuParticleParams, rotationUse2D), CB_FIELD(GpuParticleParams, rotationSpeed3D),
+    CB_FIELD(GpuParticleParams, rotation2DSpeed), CB_FIELD(GpuParticleParams, rotationSpeedRandomness3D),
+    CB_FIELD(GpuParticleParams, rotation2DSpeedRandomness), CB_FIELD(GpuParticleParams, rotationDirectionMode),
+    CB_FIELD(GpuParticleParams, rotationOverLifetime), CB_FIELD(GpuParticleParams, rotStartMul),
+    CB_FIELD(GpuParticleParams, rotEndMul), CB_FIELD(GpuParticleParams, noisePositionAmount),
+    CB_FIELD(GpuParticleParams, noiseEnabled), CB_FIELD(GpuParticleParams, noiseStrength),
+    CB_FIELD(GpuParticleParams, noiseFrequency), CB_FIELD(GpuParticleParams, noiseScrollSpeed),
+    CB_FIELD(GpuParticleParams, noiseDamping),
+};
+CB_VERIFY_LAYOUT(GpuParticleParams, kGpuParticleParamsFields);
+CB_BIND_HLSL(GpuParticleParams, kGpuParticleParamsFields, "GpuParticleParams");
+
 /// @brief GPUパーティクル1個分の状態（GpuParticle.hlsli の GpuParticle と一致・96バイト、サイズ確認用）
 struct GpuParticleData {
     Vector3 position;
@@ -158,6 +203,15 @@ struct GpuParticleData {
 };
 static_assert(sizeof(GpuParticleData) == 96,
     "GpuParticleData は HLSL 側 GpuParticle の 96 バイトレイアウトと一致させること");
+
+static constexpr Cb::Field kGpuParticleDataFields[] = {
+    CB_FIELD(GpuParticleData, position), CB_FIELD(GpuParticleData, lifeTime), CB_FIELD(GpuParticleData, velocity),
+    CB_FIELD(GpuParticleData, currentTime), CB_FIELD(GpuParticleData, rotation), CB_FIELD(GpuParticleData, pad0),
+    CB_FIELD(GpuParticleData, rotationSpeed), CB_FIELD(GpuParticleData, pad1),
+    CB_FIELD(GpuParticleData, initialScale), CB_FIELD(GpuParticleData, pad2),
+    CB_FIELD(GpuParticleData, initialColor),
+};
+CB_VERIFY_STRIDE(GpuParticleData, kGpuParticleDataFields);
 
 /// @brief GPUパーティクルシステム（Phase 3: フリーリスト + ExecuteIndirect + リードバック）
 /// 放出・更新・生存管理・描画データ生成をすべてComputeShaderで行う。

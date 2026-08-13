@@ -435,6 +435,11 @@ namespace CoreEngine
                 uint32_t outputWidth;
                 uint32_t outputHeight;
             };
+            static constexpr Cb::Field kSkyPrefilterParamsFields[] = {
+                CB_FIELD(SkyPrefilterParams, roughness), CB_FIELD(SkyPrefilterParams, pad0),
+                CB_FIELD(SkyPrefilterParams, outputWidth), CB_FIELD(SkyPrefilterParams, outputHeight),
+            };
+            CB_VERIFY_LAYOUT(SkyPrefilterParams, kSkyPrefilterParamsFields);
             constexpr uint32_t kSlotSize = 256; // CBV アライメント
             skyPrefilterParamsCB_ = ResourceFactory::CreateBufferResource(
                 device, kSlotSize * kSkySpecularMipCount);

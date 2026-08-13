@@ -1,6 +1,8 @@
 #pragma once
 #include "../RenderingTechniqueBase.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
@@ -142,5 +144,12 @@ namespace CoreEngine
             uint32_t specularEnabled = 0; ///< 1 = 空スペキュラIBL（空＋雲キューブマップの環境反射）有効
             float padding = 0.0f;
         };
+
+        static constexpr Cb::Field kSkyAmbientParamsFields[] = {
+            CB_FIELD(SkyAmbientParams, enabled), CB_FIELD(SkyAmbientParams, scale),
+            CB_FIELD(SkyAmbientParams, specularEnabled), CB_FIELD(SkyAmbientParams, padding),
+        };
+        CB_VERIFY_LAYOUT(SkyAmbientParams, kSkyAmbientParamsFields);
+        CB_BIND_HLSL(SkyAmbientParams, kSkyAmbientParamsFields, "gSkyAmbient");
     };
 }

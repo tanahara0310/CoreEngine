@@ -76,6 +76,23 @@ public:
         /// 太陽ディスク＋芯グレアを覆う程度。大きくしすぎるとミー散乱オーラまで源になる。
         float sunMaskRadius = 0.12f;
     };
+
+    static constexpr Cb::Field kLensFlareConstantsFields[] = {
+        CB_FIELD(LensFlareConstants, threshold), CB_FIELD(LensFlareConstants, softKnee),
+        CB_FIELD(LensFlareConstants, ghostDispersal), CB_FIELD(LensFlareConstants, ghostIntensity),
+        CB_FIELD(LensFlareConstants, haloWidth), CB_FIELD(LensFlareConstants, haloIntensity),
+        CB_FIELD(LensFlareConstants, chromaDistortion), CB_FIELD(LensFlareConstants, starburstIntensity),
+        CB_FIELD(LensFlareConstants, intensity), CB_FIELD(LensFlareConstants, ghostCount),
+        CB_FIELD(LensFlareConstants, flareWidth), CB_FIELD(LensFlareConstants, flareHeight),
+        CB_FIELD(LensFlareConstants, screenWidth), CB_FIELD(LensFlareConstants, screenHeight),
+        CB_FIELD(LensFlareConstants, maxBrightness), CB_FIELD(LensFlareConstants, blurSigma),
+        CB_FIELD(LensFlareConstants, tint), CB_FIELD(LensFlareConstants, apertureBladeCount),
+        CB_FIELD(LensFlareConstants, apertureRotationRad), CB_FIELD(LensFlareConstants, ghostRadius),
+        CB_FIELD(LensFlareConstants, ghostPolygonMix), CB_FIELD(LensFlareConstants, sunUv),
+        CB_FIELD(LensFlareConstants, sunValid), CB_FIELD(LensFlareConstants, sunMaskRadius),
+    };
+    CB_VERIFY_LAYOUT(LensFlareConstants, kLensFlareConstantsFields);
+    CB_BIND_HLSL(LensFlareConstants, kLensFlareConstantsFields, "LensFlareParams");
     static_assert(sizeof(LensFlareConstants) == 112,
         "LensFlareConstants は HLSL 側 LensFlareParams の 112 バイトレイアウトと一致させること");
 
@@ -93,15 +110,13 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
-    /// @brief 太陽のスクリーン位置を設定（毎フレーム、描画パイプラインから呼ばれる）
-    /// @param u 太陽のスクリーン UV.x
-    /// @param v 太陽のスクリーン UV.y
-    /// @param valid 太陽がカメラ前方にある場合 true（false でフレア無効）
-    void SetSunScreenPosition(float u, float v, bool valid) {
-        sunUv_[0] = u;
-        sunUv_[1] = v;
-        sunValid_ = valid ? 1.0f : 0.0f;
-    }
+    /// @brief レンズ内反射は HDR 輝度に対して起きる（threshold=28 も HDR 前提）ため SceneHDR 段
+    PostEffectStage GetStage() const override { return PostEffectStage::SceneHDR; }
+
+    /// @brief 今フレームのビューと太陽方向から、太陽のスクリーン位置を求める
+    /// @details 輝度抽出を太陽周辺に限定するために使う（加算パーティクル等の高輝度
+    ///          オブジェクトがフレア源になるのを防ぐ）。
+    void PrepareFrame(const PostEffectFrameContext& ctx) override;
 
 protected:
     /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
@@ -113,6 +128,16 @@ protected:
     void OnCreateConstantBuffers() override;
 
 private:
+    /// @brief 太陽のスクリーン位置を設定する
+    /// @param u 太陽のスクリーン UV.x
+    /// @param v 太陽のスクリーン UV.y
+    /// @param valid 太陽がカメラ前方にある場合 true（false でフレア無効）
+    void SetSunScreenPosition(float u, float v, bool valid) {
+        sunUv_[0] = u;
+        sunUv_[1] = v;
+        sunValid_ = valid ? 1.0f : 0.0f;
+    }
+
     /// @brief 輝度抽出・ゴースト・ブラー用の内部パイプラインを構築する
     bool CreateInternalPipelines();
 

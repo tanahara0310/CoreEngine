@@ -45,10 +45,6 @@ namespace CoreEngine
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 
-        UINT screenSize = (sizeof(ScreenParams) + 255) & ~255;
-        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), screenSize);
-        hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
-        assert(SUCCEEDED(hr));
     }
 
     void Shockwave::UpdateConstantBuffer()
@@ -65,14 +61,6 @@ namespace CoreEngine
         mappedShockwaveParams_->time      = time_;
     }
 
-    void Shockwave::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
-    {
-        if (mappedScreenParams_) {
-            mappedScreenParams_->screenWidth  = width;
-            mappedScreenParams_->screenHeight = height;
-        }
-    }
-
     void Shockwave::StartShockwave(float centerX, float centerY)
     {
         centerX_  = centerX;
@@ -82,11 +70,11 @@ namespace CoreEngine
         UpdateConstantBuffer();
     }
 
-    void Shockwave::Update(float deltaTime)
+    void Shockwave::PrepareFrame(const PostEffectFrameContext& ctx)
     {
         if (!isActive_) { return; }
 
-        time_ += deltaTime * cvSpeed.Get();
+        time_ += ctx.deltaTime * cvSpeed.Get();
         if (time_ >= maxRadius_) {
             isActive_ = false;
             time_     = 0.0f;
@@ -101,7 +89,7 @@ namespace CoreEngine
         uint32_t height)
     {
         UpdateConstantBuffer();
-        UpdateScreenConstantBuffer(width, height);
+        UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
@@ -115,7 +103,7 @@ namespace CoreEngine
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
         if (swIdx >= 0)      cmdList->SetComputeRootConstantBufferView(swIdx, shockwaveParamsCB_->GetGPUVirtualAddress());
-        if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, screenParamsCB_->GetGPUVirtualAddress());
+        if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;
         uint32_t groupY = (height + 7) / 8;

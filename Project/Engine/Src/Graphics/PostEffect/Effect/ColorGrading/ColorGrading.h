@@ -13,6 +13,9 @@ namespace CoreEngine
 class ColorGrading : public PostEffectComputeBase {
 public:
     /// @brief カラーグレーディングパラメータ構造体（GPU 定数バッファのレイアウト）
+    /// @note 全フィールドを 16B 境界へ明示的に揃えている。旧レイアウトは float[3] を
+    ///       詰めて並べており、HLSL の「float3 は 16B 境界を跨げない」規則と食い違って
+    ///       midtoneGamma 以降が 4B ずれていた（既定 OFF のため未発覚だった実バグ）
     struct ColorGradingParams {
         float hue         = 0.0f; // 色相調整 (-1.0 to 1.0)
         float saturation  = 1.0f; // 彩度調整 (0.0 to 3.0)
@@ -20,23 +23,33 @@ public:
         float contrast    = 1.0f; // コントラスト (0.0 to 3.0)
 
         float gamma       = 1.0f; // ガンマ補正 (0.1 to 3.0)
-        float temperature = 0.0f; // 色温度 (-1.0 to 1.0)
-        float tint        = 0.0f; // ティント (-1.0 to 1.0)
         float exposure    = 0.0f; // 露出調整 (-3.0 to 3.0)
+        float padding0[2] = {};
 
-        // Shadow, Midtone, Highlight 調整
-        float shadowLift[3]    = { 0.0f, 0.0f, 0.0f };
-        float midtoneGamma[3]  = { 1.0f, 1.0f, 1.0f };
-        float highlightGain[3] = { 1.0f, 1.0f, 1.0f };
-        float padding          = 0.0f;
+        // ホワイトバランス（Bradford 色順応）行列。CPU で Kelvin/Tint から計算する
+        float whiteBalanceRow0[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
+        float whiteBalanceRow1[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
+        float whiteBalanceRow2[4] = { 0.0f, 0.0f, 1.0f, 0.0f };
+
+        // Shadow, Midtone, Highlight 調整（xyz 使用・w はパディング）
+        float shadowLift[4]    = { 0.0f, 0.0f, 0.0f, 0.0f };
+        float midtoneGamma[4]  = { 1.0f, 1.0f, 1.0f, 0.0f };
+        float highlightGain[4] = { 1.0f, 1.0f, 1.0f, 0.0f };
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
+// float3 パッキングずれで色調整が別の値を読む事故を起こした構造体。
+// 以後は 16 メンバ全部のオフセットを HLSL 規則から機械検証する。
+    static constexpr Cb::Field kColorGradingParamsFields[] = {
+        CB_FIELD(ColorGradingParams, hue), CB_FIELD(ColorGradingParams, saturation),
+        CB_FIELD(ColorGradingParams, value), CB_FIELD(ColorGradingParams, contrast),
+        CB_FIELD(ColorGradingParams, gamma), CB_FIELD(ColorGradingParams, exposure),
+        CB_FIELD(ColorGradingParams, padding0), CB_FIELD(ColorGradingParams, whiteBalanceRow0),
+        CB_FIELD(ColorGradingParams, whiteBalanceRow1), CB_FIELD(ColorGradingParams, whiteBalanceRow2),
+        CB_FIELD(ColorGradingParams, shadowLift), CB_FIELD(ColorGradingParams, midtoneGamma),
+        CB_FIELD(ColorGradingParams, highlightGain),
     };
+    CB_VERIFY_LAYOUT(ColorGradingParams, kColorGradingParamsFields);
+    CB_BIND_HLSL(ColorGradingParams, kColorGradingParamsFields, "ColorGradingParams");
 
 public:
     ColorGrading() = default;
@@ -52,6 +65,11 @@ public:
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
 
+    /// @brief グレーディングはトーンカーブ通過前の色に対して行う（UE と同じ順序）ため SceneHDR 段
+    /// @note この段で動かすには ColorGrading.CS.hlsl が HDR 対応済みである必要がある
+    ///       （最終 saturate の除去・ピボットの中間グレー化）
+    PostEffectStage GetStage() const override { return PostEffectStage::SceneHDR; }
+
 protected:
     /// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
     CVar<bool>* GetEnabledCVar() const override;
@@ -62,13 +80,13 @@ protected:
 
 private:
     void UpdateConstantBuffer();
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> colorGradingParamsCB_;
     ColorGradingParams* mappedColorGradingParams_ = nullptr;
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
+    /// @brief WB 行列の再計算判定用（0 初期値は必ず初回計算を走らせる）
+    float lastKelvin_ = 0.0f;
+    float lastTint_   = -1000.0f;
 };
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MaterialBase.h"
+#include "Graphics/Shader/CBufferLayout.h"
 #include "Math/MathCore.h"
 
 namespace CoreEngine
@@ -10,6 +11,11 @@ namespace CoreEngine
         Vector4 color;
         Matrix4x4 uvTransform;
     };
+
+    static constexpr Cb::Field kSpriteMaterialDataFields[] = {
+        CB_FIELD(SpriteMaterialData, color), CB_FIELD(SpriteMaterialData, uvTransform),
+    };
+    CB_VERIFY_LAYOUT(SpriteMaterialData, kSpriteMaterialDataFields);
 
     /// @brief Sprite専用マテリアルクラス
     /// @details スプライト描画に必要なGPU定数バッファ（color + uvTransform）を管理します。

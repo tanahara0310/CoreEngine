@@ -34,15 +34,21 @@ namespace CoreEngine
             float glitchIntensity = 0.5f; // グリッチの強さ
             float portalSize = 0.3f; // ポータルサイズ
             float colorShift = 0.0f; // 色相シフト
-            float padding[2] = { 0.0f, 0.0f };
+            // HLSL 側 FadeEffect.CS.hlsl の cbuffer は float2 padding で終わるが、
+            // cbuffer 全体は 16B 単位に切り上げられて 48B になる。
+            // C++ 側が float[2]（= 40B）のままだと構造体が cbuffer より 8B 小さく、
+            // 「シェーダーが読む領域を C++ の構造体が覆っていない」状態になるので float[4] にする。
+            float padding[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
         };
 
-        /// @brief 画面サイズ定数バッファ構造体
-        struct ScreenParams {
-            uint32_t screenWidth = 1280;
-            uint32_t screenHeight = 720;
-            float    pad[2] = { 0.0f, 0.0f };
+        static constexpr Cb::Field kFadeParamsFields[] = {
+            CB_FIELD(FadeParams, fadeAlpha), CB_FIELD(FadeParams, fadeType), CB_FIELD(FadeParams, time),
+            CB_FIELD(FadeParams, spiralPower), CB_FIELD(FadeParams, rippleFreq),
+            CB_FIELD(FadeParams, glitchIntensity), CB_FIELD(FadeParams, portalSize),
+            CB_FIELD(FadeParams, colorShift), CB_FIELD(FadeParams, padding),
         };
+        CB_VERIFY_LAYOUT(FadeParams, kFadeParamsFields);
+        CB_BIND_HLSL(FadeParams, kFadeParamsFields, "FadeParams");
 
     public:
         FadeEffect() = default;
@@ -56,7 +62,7 @@ namespace CoreEngine
             uint32_t height) override;
 
         /// @brief 更新処理
-        void Update(float deltaTime);
+        void PrepareFrame(const PostEffectFrameContext& ctx) override;
 
         /// @brief ImGuiでパラメータを調整
         void DrawImGui() override;
@@ -77,14 +83,10 @@ namespace CoreEngine
 
     private:
         void UpdateConstantBuffer();
-        void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
     private:
         Microsoft::WRL::ComPtr<ID3D12Resource> fadeParamsCB_;
         FadeParams* mappedFadeParams_ = nullptr;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-        ScreenParams* mappedScreenParams_ = nullptr;
 
         // 実行時状態（保存対象ではない）
         float fadeAlpha_ = 0.0f;

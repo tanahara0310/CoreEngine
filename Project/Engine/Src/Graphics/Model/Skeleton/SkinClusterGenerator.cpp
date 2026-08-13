@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Graphics/Shader/CBufferLayout.h"
 #include "SkinClusterGenerator.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
@@ -120,6 +121,10 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
             uint32_t vertexCount;
             uint32_t pad[3];
         };
+        static constexpr Cb::Field kSkinningParamsFields[] = {
+            CB_FIELD(SkinningParamsCB, vertexCount), CB_FIELD(SkinningParamsCB, pad),
+        };
+        CB_VERIFY_LAYOUT(SkinningParamsCB, kSkinningParamsFields);
         skinCluster.skinningParamsCB = ResourceFactory::CreateBufferResource(device, sizeof(SkinningParamsCB));
         SkinningParamsCB* mapped = nullptr;
         skinCluster.skinningParamsCB->Map(0, nullptr, reinterpret_cast<void**>(&mapped));

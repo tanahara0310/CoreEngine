@@ -42,10 +42,6 @@ namespace CoreEngine
         UpdateConstantBuffer();
 
         // ScreenParams 定数バッファ
-        UINT screenSize = (sizeof(ScreenParams) + 255) & ~255;
-        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), screenSize);
-        hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
-        assert(SUCCEEDED(hr));
     }
 
     void Sepia::UpdateConstantBuffer()
@@ -61,14 +57,6 @@ namespace CoreEngine
         mappedSepiaParams_->toneBlue  = tone.z;
     }
 
-    void Sepia::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
-    {
-        if (mappedScreenParams_) {
-            mappedScreenParams_->screenWidth  = width;
-            mappedScreenParams_->screenHeight = height;
-        }
-    }
-
     void Sepia::Dispatch(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
@@ -76,7 +64,7 @@ namespace CoreEngine
         uint32_t height)
     {
         UpdateConstantBuffer();
-        UpdateScreenConstantBuffer(width, height);
+        UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
@@ -90,7 +78,7 @@ namespace CoreEngine
         if (textureIdx >= 0)      cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
         if (outputIdx >= 0)       cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
         if (sepiaParamsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(sepiaParamsIdx, sepiaParamsCB_->GetGPUVirtualAddress());
-        if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParamsCB_->GetGPUVirtualAddress());
+        if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;
         uint32_t groupY = (height + 7) / 8;

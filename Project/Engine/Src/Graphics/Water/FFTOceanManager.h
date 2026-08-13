@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Water/FFTOceanDebugProbe.h"
 #include "Graphics/Water/FFTOceanGpuResources.h"
@@ -154,12 +156,14 @@ namespace CoreEngine
             float padding = 0.0f;
         };
 
+        /// @note HLSL 側 FFTOceanIFFT.CS.hlsl の cbuffer FFTOceanIFFTConstants は
+        ///       この 4 メンバのみ（16B）。以前ここに float padding[3] が付いていて
+        ///       C++ 側だけ 28B（16 の倍数ですらない）になっていたので削除した。
         struct IFFTConstants {
             uint32_t resolution = 0;
             uint32_t stageIndex = 0;
             uint32_t isHorizontal = 0;
             float normalizationScale = 1.0f;
-            float padding[3] = {};
         };
 
         /// @brief 泡蓄積パスの定数（HLSL 側 FFTOceanFoamAccumulate.CS.hlsl と一致必須）
@@ -188,8 +192,38 @@ namespace CoreEngine
             "SimulationConstants layout mismatch with FFTOceanSimulationConstants cbuffer");
         static_assert(sizeof(FoamConstants) == 48,
             "FoamConstants layout mismatch with FFTOceanFoamAccumulate.CS.hlsl cbuffer");
-        static_assert(offsetof(FoamConstants, cascadeWeights) == 16,
-            "FoamConstants::cascadeWeights must start on a 16-byte boundary (HLSL float3 packing)");
+
+        static constexpr Cb::Field kSpectrumSampleFields[] = {
+            CB_FIELD(SpectrumSample, h0), CB_FIELD(SpectrumSample, h0Minus), CB_FIELD(SpectrumSample, waveVector),
+            CB_FIELD(SpectrumSample, angularFrequency), CB_FIELD(SpectrumSample, directionalWeight),
+            CB_FIELD(SpectrumSample, padding),
+        };
+        CB_VERIFY_STRIDE(SpectrumSample, kSpectrumSampleFields);
+
+        static constexpr Cb::Field kSimulationConstantsFields[] = {
+            CB_FIELD(SimulationConstants, resolution), CB_FIELD(SimulationConstants, activeComponentCount),
+            CB_FIELD(SimulationConstants, patchLength), CB_FIELD(SimulationConstants, timeSeconds),
+            CB_FIELD(SimulationConstants, choppiness), CB_FIELD(SimulationConstants, gravity),
+            CB_FIELD(SimulationConstants, amplitudeScale), CB_FIELD(SimulationConstants, padding),
+        };
+        CB_VERIFY_LAYOUT(SimulationConstants, kSimulationConstantsFields);
+        CB_BIND_HLSL(SimulationConstants, kSimulationConstantsFields, "FFTOceanSimulationConstants");
+
+        static constexpr Cb::Field kIFFTConstantsFields[] = {
+            CB_FIELD(IFFTConstants, resolution), CB_FIELD(IFFTConstants, stageIndex),
+            CB_FIELD(IFFTConstants, isHorizontal), CB_FIELD(IFFTConstants, normalizationScale),
+        };
+        CB_VERIFY_LAYOUT(IFFTConstants, kIFFTConstantsFields);
+        CB_BIND_HLSL(IFFTConstants, kIFFTConstantsFields, "FFTOceanIFFTConstants");
+
+        static constexpr Cb::Field kFoamConstantsFields[] = {
+            CB_FIELD(FoamConstants, resolution), CB_FIELD(FoamConstants, deltaSeconds),
+            CB_FIELD(FoamConstants, foamBias), CB_FIELD(FoamConstants, foamGain),
+            CB_FIELD(FoamConstants, cascadeWeights), CB_FIELD(FoamConstants, decaySeconds),
+            CB_FIELD(FoamConstants, resetFoam), CB_FIELD(FoamConstants, padding),
+        };
+        CB_VERIFY_LAYOUT(FoamConstants, kFoamConstantsFields);
+        CB_BIND_HLSL(FoamConstants, kFoamConstantsFields, "FFTOceanFoamConstants");
 
         /// @brief 時間発展パス用Compute Shaderのパスを提供する
         struct TimeEvolutionShaderProvider final : ICustomShaderProvider {

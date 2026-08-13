@@ -22,12 +22,12 @@ public:
         float padding    = 0.0f;
     };
 
-    /// @brief 画面サイズ定数バッファ構造体
-    struct ScreenParams {
-        uint32_t screenWidth  = 1280;
-        uint32_t screenHeight = 720;
-        float    pad[2]       = { 0.0f, 0.0f };
+    static constexpr Cb::Field kVignetteParamsFields[] = {
+        CB_FIELD(VignetteParams, intensity), CB_FIELD(VignetteParams, smoothness), CB_FIELD(VignetteParams, size),
+        CB_FIELD(VignetteParams, padding),
     };
+    CB_VERIFY_LAYOUT(VignetteParams, kVignetteParamsFields);
+    CB_BIND_HLSL(VignetteParams, kVignetteParamsFields, "VignetteParams");
 
 public:
     Vignette() = default;
@@ -42,6 +42,9 @@ public:
 
     /// @brief ImGuiでパラメータを調整
     void DrawImGui() override;
+
+    /// @brief 口径食は露光量そのものの減衰なので SceneHDR 段
+    PostEffectStage GetStage() const override { return PostEffectStage::SceneHDR; }
 
     /// @brief 現在のパラメータを取得する（CVar から構築して返す）
     /// @note CVar が唯一のソースでキャッシュを持たないため、参照ではなく値を返す
@@ -63,13 +66,9 @@ protected:
     void OnCreateConstantBuffers() override;
 
 private:
-    void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> vignetteParamsCB_;
     VignetteParams* mappedVignetteParams_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-    ScreenParams* mappedScreenParams_ = nullptr;
 };
 }

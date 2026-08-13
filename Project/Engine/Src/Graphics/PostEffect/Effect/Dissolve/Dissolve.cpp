@@ -40,16 +40,14 @@ namespace CoreEngine
 
     void Dissolve::OnCreateConstantBuffers()
     {
-        UINT dissolveSize = (sizeof(DissolveParams) + 255) & ~255;
+        // 確保サイズは C++ の sizeof ではなく「HLSL 上のサイズ」から取る
+        // （C++ 側はパディングを持たないので sizeof の方が小さい）
+        UINT dissolveSize = (static_cast<UINT>(Cb::HlslSizeOf(kDissolveParamsFields)) + 255) & ~255;
         dissolveParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), dissolveSize);
-        HRESULT hr = dissolveParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedDissolveParams_));
+        HRESULT hr = dissolveParamsCB_->Map(0, nullptr, &mappedDissolveParams_);
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 
-        UINT screenSize = (sizeof(ScreenParams) + 255) & ~255;
-        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), screenSize);
-        hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
-        assert(SUCCEEDED(hr));
 
         // ノイズテクスチャ読み込み
         auto& textureManager = TextureManager::GetInstance();
@@ -62,21 +60,18 @@ namespace CoreEngine
         if (!mappedDissolveParams_) {
             return;
         }
-        mappedDissolveParams_->threshold = cvThreshold.Get();
-        mappedDissolveParams_->edgeWidth = cvEdgeWidth.Get();
+
+        DissolveParams params{};
+        params.threshold = cvThreshold.Get();
+        params.edgeWidth = cvEdgeWidth.Get();
 
         const Vector3& edgeColor = cvEdgeColor.Get();
-        mappedDissolveParams_->edgeColorR = edgeColor.x;
-        mappedDissolveParams_->edgeColorG = edgeColor.y;
-        mappedDissolveParams_->edgeColorB = edgeColor.z;
-    }
+        params.edgeColorR = edgeColor.x;
+        params.edgeColorG = edgeColor.y;
+        params.edgeColorB = edgeColor.z;
 
-    void Dissolve::UpdateScreenConstantBuffer(uint32_t width, uint32_t height)
-    {
-        if (mappedScreenParams_) {
-            mappedScreenParams_->screenWidth  = width;
-            mappedScreenParams_->screenHeight = height;
-        }
+        // フィールド表を見て HLSL のオフセットへ配置する
+        Cb::Upload(mappedDissolveParams_, params, kDissolveParamsFields);
     }
 
     void Dissolve::Dispatch(
@@ -86,7 +81,7 @@ namespace CoreEngine
         uint32_t height)
     {
         UpdateConstantBuffer();
-        UpdateScreenConstantBuffer(width, height);
+        UpdateScreenSizeConstants(width, height);
 
         auto* cmdList = directXCommon_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
@@ -102,7 +97,7 @@ namespace CoreEngine
         if (noiseTextureIdx >= 0)   cmdList->SetComputeRootDescriptorTable(noiseTextureIdx, noiseTextureHandle_);
         if (outputIdx >= 0)         cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
         if (dissolveParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(dissolveParamsIdx, dissolveParamsCB_->GetGPUVirtualAddress());
-        if (screenParamsIdx >= 0)   cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParamsCB_->GetGPUVirtualAddress());
+        if (screenParamsIdx >= 0)   cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
 
         uint32_t groupX = (width  + 7) / 8;
         uint32_t groupY = (height + 7) / 8;

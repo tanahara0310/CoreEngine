@@ -18,12 +18,14 @@ namespace CoreEngine
             float padding[2] = { 0.0f, 0.0f };
         };
 
-        /// @brief 画面サイズ定数バッファ構造体
-        struct ScreenParams {
-            uint32_t screenWidth = 1280;
-            uint32_t screenHeight = 720;
-            float    pad[2] = { 0.0f, 0.0f };
+        static constexpr Cb::Field kBlurParamsFields[] = {
+            CB_FIELD(BlurParams, intensity), CB_FIELD(BlurParams, kernelSize), CB_FIELD(BlurParams, padding),
         };
+        CB_VERIFY_LAYOUT(BlurParams, kBlurParamsFields);
+        // HLSL 側の照合（CB_BIND_HLSL）は入れていない。"BlurParams" という cbuffer 名を
+        // Blur.CS.hlsl（本構造体）と LocalExposureBlur.CS.hlsl（uint2 textureSize / uint2 direction）が
+        // 別レイアウトで共用しており、名前だけではどちらを指すか決められないため。
+        // 照合を有効にしたい場合は HLSL 側の cbuffer 名を分けること。
 
     public:
         Blur() = default;
@@ -49,13 +51,9 @@ namespace CoreEngine
 
     private:
         void UpdateBlurConstantBuffer();
-        void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
 
     private:
         Microsoft::WRL::ComPtr<ID3D12Resource> blurParamsCB_;
         BlurParams* mappedBlurParams_ = nullptr;
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-        ScreenParams* mappedScreenParams_ = nullptr;
     };
 }

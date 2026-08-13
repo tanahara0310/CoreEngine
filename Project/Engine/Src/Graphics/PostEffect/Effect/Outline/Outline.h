@@ -25,12 +25,13 @@ public:
 		float pad[3]          = {};
 	};
 
-	/// @brief 画面サイズ定数バッファ構造体
-	struct ScreenParams {
-		uint32_t screenWidth  = 1280;
-		uint32_t screenHeight = 720;
-		float    pad[2]       = { 0.0f, 0.0f };
+	static constexpr Cb::Field kOutlineParamsFields[] = {
+	    CB_FIELD(OutlineParams, outlineColor), CB_FIELD(OutlineParams, depthThreshold),
+	    CB_FIELD(OutlineParams, depthStrength), CB_FIELD(OutlineParams, outlineWidth),
+	    CB_FIELD(OutlineParams, nearPlane), CB_FIELD(OutlineParams, farPlane), CB_FIELD(OutlineParams, pad),
 	};
+	CB_VERIFY_LAYOUT(OutlineParams, kOutlineParamsFields);
+	CB_BIND_HLSL(OutlineParams, kOutlineParamsFields, "OutlineParams");
 
 public:
 	Outline() = default;
@@ -53,10 +54,11 @@ public:
 	/// @brief CVar の現在値を定数バッファへ書き込む
 	void UpdateConstantBuffer();
 
-	/// @brief カメラのクリップ距離を毎フレーム更新する（線形深度変換に使用）
-	/// @param nearPlane ニアクリップ距離
-	/// @param farPlane ファークリップ距離
-	void SetCameraClipPlanes(float nearPlane, float farPlane);
+	/// @brief 今フレームのカメラからクリップ距離を取り込む（線形深度変換に使用）
+	void PrepareFrame(const PostEffectFrameContext& ctx) override;
+
+	/// @brief Sobel フィルタの入力として深度を要求する
+	void DeclareExtraInputs(std::vector<PostEffectInputBinding>& out) const override;
 
 protected:
 	/// @brief 有効/無効は CVar "r.<Effect>.Enabled" が保持する
@@ -67,14 +69,13 @@ protected:
 	void OnCreateConstantBuffers() override;
 
 private:
-	void UpdateScreenConstantBuffer(uint32_t width, uint32_t height);
+	/// @brief クリップ距離を更新する（変化したときだけ定数バッファへ転送する）
+	void SetCameraClipPlanes(float nearPlane, float farPlane);
+
 
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> outlineParamsCB_;
 	OutlineParams* mappedOutlineParams_ = nullptr;
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> screenParamsCB_;
-	ScreenParams* mappedScreenParams_ = nullptr;
 
 	// カメラから毎フレーム設定される実行時値（保存対象ではない）
 	float nearPlane_ = 0.1f;
