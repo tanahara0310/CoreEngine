@@ -1,16 +1,16 @@
 {
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        -0.5285417437553406,
-        -0.6374949812889099,
-        0.5605745315551758
+        6.696973997577516e-08,
+        -0.6427876353263855,
+        0.7660444974899292
     ],
     "r.AtmosphereLights.MoonEnabled": true,
     "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
     "r.AtmosphereLights.SunDirection": [
-        0.9945219159126282,
-        -0.0856245756149292,
-        0.059955041855573654
+        5.014364390376613e-08,
+        -0.8191521167755127,
+        0.5735764503479004
     ],
     "r.AutoExposure.Enabled": true,
     "r.Bloom.Intensity": 0.9480000138282776,
@@ -20,8 +20,6 @@
     "r.LensFlare.Enabled": false,
     "r.RTShadow.AtrousPassCount": 3,
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
-    "r.RTShadow.HistoryAlpha": 0.3070000112056732,
-    "r.RTShadow.LightRadius": 0.0,
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,
     "r.SSAOTemporal.Enabled": false,
@@ -29,18 +27,37 @@
     "r.TAA.Enabled": false,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
-    "r.Water.FFT.ActiveComponentCount": 16,
-    "r.Water.FFT.AmplitudeScale": 0.5,
-    "r.Water.FFT.Choppiness": 0.3499999940395355,
-    "r.Water.FFT.WindDirection": [
-        0.9835471510887146,
-        0.18065153062343597
+    "r.Water.AbsorptionBase": [
+        0.3499999940395355,
+        0.07000000029802322,
+        0.019999999552965164
     ],
-    "r.Water.FFT.WindSpeed": 7.5,
+    "r.Water.Caustics.DepthAttenuation": 1.5169999599456787,
+    "r.Water.Caustics.Intensity": 1.128000020980835,
+    "r.Water.FFT.ActiveComponentCount": 32,
+    "r.Water.FFT.Choppiness": 1.350000023841858,
+    "r.Water.FFT.WindDirection": [
+        0.9242613911628723,
+        0.3817601501941681
+    ],
+    "r.Water.FFT.WindSpeed": 12.0,
     "r.Water.Foam.CascadeWeights": [
         1.0,
         1.0,
         1.0
+    ],
+    "r.Water.ScatteringBase": [
+        0.003000000026077032,
+        0.00800000037997961,
+        0.01600000075995922
+    ],
+    "r.Water.ScrollSpeed": [
+        -0.04100000113248825,
+        0.009999999776482582
+    ],
+    "r.Water.UVTiling": [
+        1.0,
+        4.0
     ],
     "version": 1
 }

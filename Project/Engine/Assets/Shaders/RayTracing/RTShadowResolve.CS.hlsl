@@ -41,9 +41,13 @@ cbuffer ResolveConstants : register(b0)
 };
 
 /// @brief トレース座標 → そのテクセルが代表するフル解像度ピクセル座標
+/// @details 2x2 の固定代表点を使う。巡回オフセット（gTraceOffset）を使うと
+///          バイラテラル重みが毎フレーム変わり、輪郭近くのピクセルが採用サンプルの
+///          切り替わりで静止シーンでもちらつく。テンポラル蓄積後の値は 2x2 の
+///          平均を代表しているので、ガイドも固定の中央代表点で取るのが整合する。
 int2 TraceToFull(int2 traceCoord)
 {
-    int2 full = traceCoord * gTraceScale + int2(gTraceOffsetX, gTraceOffsetY);
+    int2 full = traceCoord * gTraceScale + (gTraceScale >> 1);
     return min(full, int2(gFullWidth - 1, gFullHeight - 1));
 }
 

@@ -48,10 +48,12 @@ namespace CoreEngine
             "射程を太陽高度でスケールする。光源が低いほどレイは水平に走るため、"
             "固定距離だと遠くの遮蔽物へ届かない（有効時は 基準距離/sin(高度)、最大10倍）" };
 
-        CVar<float> cvHistoryAlpha{
-            "r.RTShadow.HistoryAlpha", 0.15f,
-            "テンポラル蓄積のブレンド係数。小さいほど履歴を重視（0.15 = 履歴 85%）。1.0 で履歴を使わない",
-            CVarRange{ 0.01f, 1.0f } };
+        CVar<int> cvMaxHistoryFrames{
+            "r.RTShadow.MaxHistoryFrames", 32,
+            "テンポラル蓄積フレーム数の上限。ピクセルごとの蓄積カウント N で α=1/N の適応ブレンドを行い、"
+            "静止時は 1/この値 まで収束する（旧 HistoryAlpha の固定 α は定常ノイズが残るため廃止）。"
+            "大きいほど滑らかだが、影の変化への追従はクランプ棄却頼みになる",
+            CVarRange{ 1.0f, 255.0f } };
 
         CVar<int> cvAtrousPassCount{
             "r.RTShadow.AtrousPassCount", 2,
@@ -91,7 +93,7 @@ namespace CoreEngine
         settings_.shadowBias = cvShadowBias.Get();
         settings_.maxRayDistance = cvMaxRayDistance.Get();
         settings_.scaleRayDistanceBySunElevation = cvScaleRayDistanceBySunElevation.Get();
-        settings_.historyAlpha = cvHistoryAlpha.Get();
+        settings_.maxHistoryFrames = cvMaxHistoryFrames.Get();
         settings_.atrousPassCount = cvAtrousPassCount.Get();
         settings_.denoisePhiDepth = cvDenoisePhiDepth.Get();
         settings_.halfResolutionTrace = cvHalfResolutionTrace.Get();
@@ -107,7 +109,7 @@ namespace CoreEngine
         cvShadowBias.Set(settings.shadowBias);
         cvMaxRayDistance.Set(settings.maxRayDistance);
         cvScaleRayDistanceBySunElevation.Set(settings.scaleRayDistanceBySunElevation);
-        cvHistoryAlpha.Set(settings.historyAlpha);
+        cvMaxHistoryFrames.Set(settings.maxHistoryFrames);
         cvAtrousPassCount.Set(settings.atrousPassCount);
         cvDenoisePhiDepth.Set(settings.denoisePhiDepth);
         cvHalfResolutionTrace.Set(settings.halfResolutionTrace);
@@ -170,7 +172,7 @@ namespace CoreEngine
     struct TemporalConstants {
         int   traceWidth;     // offset  0
         int   traceHeight;    // offset  4
-        float historyAlpha;   // offset  8
+        float maxHistoryFrames; // offset 8  適応ブレンドの蓄積上限（α の下限 = 1/この値）
         float disableHistory; // offset 12 → row1 終了(16)
         float projM33;        // offset 16
         float projM43;        // offset 20
@@ -441,15 +443,18 @@ namespace CoreEngine
         }
 
         // 残りはすべてトレース解像度
-        struct TraceSlot { TextureSlot slot; const char* name; };
+        // 履歴だけは R8G8（R=シャドウ値, G=蓄積フレーム数 N/255）。
+        // 適応ブレンド α=1/N のカウントを持ち歩くため（詳細は RTShadowTemporal.CS.hlsl）。
+        struct TraceSlot { TextureSlot slot; const char* name; DXGI_FORMAT format; };
         static constexpr TraceSlot kTraceSlots[] = {
-            { TextureSlot::Raw,      "RTShadow_Raw" },
-            { TextureSlot::DenoiseA, "RTShadow_DenoiseA" },
-            { TextureSlot::DenoiseB, "RTShadow_DenoiseB" },
-            { TextureSlot::HistoryA, "RTShadow_HistoryA" },
-            { TextureSlot::HistoryB, "RTShadow_HistoryB" },
+            { TextureSlot::Raw,      "RTShadow_Raw",      kShadowTextureFormat },
+            { TextureSlot::DenoiseA, "RTShadow_DenoiseA", kShadowTextureFormat },
+            { TextureSlot::DenoiseB, "RTShadow_DenoiseB", kShadowTextureFormat },
+            { TextureSlot::HistoryA, "RTShadow_HistoryA", kShadowHistoryFormat },
+            { TextureSlot::HistoryB, "RTShadow_HistoryB", kShadowHistoryFormat },
         };
         for (const TraceSlot& traceSlot : kTraceSlots) {
+            options.format = traceSlot.format;
             if (!outputViews_.EnsureTexture(dxCommon_, descriptorManager_, traceWidth, traceHeight,
                 MakeSlotIndex(viewIndex, lightIndex, traceSlot.slot),
                 "RayTracingShadowManager", traceSlot.name + suffix, options)) {
@@ -699,9 +704,10 @@ namespace CoreEngine
         view.dispatchInfo.outputSrvPtr = SlotSRV(vi, lightIndex, TextureSlot::Mask).ptr;
 
         // フレームを 1 つ進める（履歴の書き込み先を入れ替え、サンプル位置を巡回させる）
+        // カウンタは view × light ごと（共有だと 2x2 巡回が欠ける。ShadowView 側コメント参照）
         view.historyParity ^= 1u;
         if (traceScale > 1) {
-            const UINT phase = frameIndex_ & 3u;
+            const UINT phase = view.frameCount & 3u;
             view.traceOffsetX = kTraceOffsetTable[phase][0];
             view.traceOffsetY = kTraceOffsetTable[phase][1];
         } else {
@@ -718,7 +724,7 @@ namespace CoreEngine
         constants.maxRayDistance = effectiveRayDistance;
         constants.lightRadius = settings_.lightRadius;
         constants.softShadowSamples = numSamples;
-        constants.frameIndex = frameIndex_++;
+        constants.frameIndex = view.frameCount++;
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
         constants.traceOffsetX = static_cast<int>(view.traceOffsetX);
@@ -833,7 +839,7 @@ namespace CoreEngine
         TemporalConstants tc{};
         tc.traceWidth = static_cast<int>(view.traceWidth);
         tc.traceHeight = static_cast<int>(view.traceHeight);
-        tc.historyAlpha = settings_.historyAlpha;
+        tc.maxHistoryFrames = static_cast<float>(settings_.maxHistoryFrames);
         // 初回フレーム（履歴未生成）か、デバッグトグルで明示的に無効化された場合は履歴を使わない
         tc.disableHistory = (view.isHistoryValid && !settings_.disableHistory) ? 0.0f : 1.0f;
         ExtractProjectionZW(projection, tc.projM33, tc.projM43);

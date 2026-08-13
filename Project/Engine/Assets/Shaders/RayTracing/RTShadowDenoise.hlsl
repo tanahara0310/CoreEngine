@@ -47,9 +47,11 @@ cbuffer DenoiseConstants : register(b0)
 };
 
 /// @brief トレース座標 → 対応するフル解像度ピクセル座標（G-Buffer 参照用）
+/// @details 2x2 の固定代表点を使う。巡回オフセット（gTraceOffset）を使うと
+///          ガイドが毎フレーム別ピクセルになり、静止シーンでも重みが揺れてちらつく。
 int2 TraceToFull(int2 traceCoord)
 {
-    int2 full = traceCoord * gTraceScale + int2(gTraceOffsetX, gTraceOffsetY);
+    int2 full = traceCoord * gTraceScale + (gTraceScale >> 1);
     return min(full, int2(gFullWidth - 1, gFullHeight - 1));
 }
 
@@ -109,7 +111,14 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
             float w = kKernel[dy + 1][dx + 1];
 
             // 深度重み（物体境界保護）
-            float wDepth = exp(-abs(centerDepth - sampleDepth) * gPhiDepth);
+            // 相対差をステップ幅で正規化して見る。絶対差 [m] のままだと遠景や
+            // かすめ角の平面で全タップの重みが消え、デノイズが実質停止して
+            // 1spp の粒がそのまま残る（Resolve が相対差なのと同じ理由）。
+            // ステップ幅で割るのは、平面上では隣接差がステップに比例して増えるため
+            // （割らないと後段パスほど平面がぼけなくなる）。
+            float relDepthDiff = abs(centerDepth - sampleDepth)
+                               / (max(centerDepth, 1e-3f) * float(gStepSize));
+            float wDepth = exp(-relDepthDiff * 16.0f * gPhiDepth);
 
             // 法線重み（パスが進むほど強く適用）
             float wNormal = pow(max(0.0f, dot(centerNormal, sampleNormal)), gPhiNormal);
