@@ -25,6 +25,7 @@ namespace CoreEngine {
     class IParticleSystem;
     class LightingFeature;
     class EnvironmentFeature;
+    class GroundFeature;
     class CollisionFeature;
     class CollisionWorld;
     class SceneBGMFeature;
@@ -197,6 +198,13 @@ namespace CoreEngine
         /// @brief シーンの SkyBox（大気散乱で描く空）を取得
         SkyBoxObject* GetSkyBox() const;
 
+        /// @brief 既定の床（GroundFeature が作るベース地面）を使うかどうかを設定する
+        /// @param enabled false にすると床オブジェクトを生成しない
+        /// @note **OnInitialize() から呼ぶこと**（床の生成は OnInitialize 完了直後のため）。
+        ///       独自の地形や水面を y=0 付近に持つシーンで、二重の床になるのを避けるために使う。
+        ///       全シーン一律の ON/OFF は CVar "r.Ground.Enable" 側。
+        void SetDefaultGroundEnabled(bool enabled);
+
         /// @brief シーンBGMを登録し、トランジション時の自動フェードを有効化
         /// @param bgm BGMのSoundResourceポインタ（現在のSetVolume()で設定した音量が使用されます）
         void RegisterSceneBGM(std::unique_ptr<SoundManager::SoundResource>* bgm);
@@ -217,6 +225,7 @@ namespace CoreEngine
         // 既定 Feature への型付き参照（所有権は features_。派生シーン互換 API の委譲先）
         LightingFeature* lightingFeature_ = nullptr;
         EnvironmentFeature* environmentFeature_ = nullptr;
+        GroundFeature* groundFeature_ = nullptr;
         CollisionFeature* collisionFeature_ = nullptr;
         SceneBGMFeature* bgmFeature_ = nullptr;
 

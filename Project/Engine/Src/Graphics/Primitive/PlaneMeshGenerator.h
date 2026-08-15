@@ -11,8 +11,13 @@ namespace CoreEngine
         /// @param depth Z軸方向のサイズ
         /// @param subdivisionsX X方向の分割数
         /// @param subdivisionsZ Z方向の分割数
+        /// @param uvTiling UV の繰り返し数（1.0 で端から端まで 0..1）
+        /// @note uvTiling はサンプラーが WRAP 前提。既定床のように 1 枚の板を
+        ///       スケールで巨大化して使う場合、テクスチャを引き伸ばさずに
+        ///       タイル状に敷くために使う。
         PlaneMeshGenerator(float width = 1.0f, float depth = 1.0f,
-                           uint32_t subdivisionsX = 1, uint32_t subdivisionsZ = 1);
+                           uint32_t subdivisionsX = 1, uint32_t subdivisionsZ = 1,
+                           float uvTiling = 1.0f);
 
         ModelData Generate() const override;
         std::string GetCacheKey() const override;
@@ -22,5 +27,6 @@ namespace CoreEngine
         float depth_;
         uint32_t subdivisionsX_;
         uint32_t subdivisionsZ_;
+        float uvTiling_;
     };
 }

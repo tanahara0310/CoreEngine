@@ -16,6 +16,7 @@
 #include "Scene/SceneManager.h"
 #include "Scene/Feature/LightingFeature.h"
 #include "Scene/Feature/EnvironmentFeature.h"
+#include "Scene/Feature/GroundFeature.h"
 #include "Scene/Feature/CollisionFeature.h"
 #include "Scene/Feature/GridFeature.h"
 #include "Scene/Feature/DebugEditorFeature.h"
@@ -192,6 +193,7 @@ namespace CoreEngine
         featuresInitialized_ = false;
         lightingFeature_ = nullptr;
         environmentFeature_ = nullptr;
+        groundFeature_ = nullptr;
         collisionFeature_ = nullptr;
         bgmFeature_ = nullptr;
         directionalLight_ = nullptr;
@@ -252,6 +254,12 @@ namespace CoreEngine
         auto environment = std::make_unique<EnvironmentFeature>();
         environmentFeature_ = environment.get();
         AddFeature(std::move(environment));
+
+        // 既定の床。空（Environment）と対になる「必ずある地面」で、
+        // 生成はシーンの OnInitialize 完了後（PostSceneInitialize）に行われる
+        auto ground = std::make_unique<GroundFeature>();
+        groundFeature_ = ground.get();
+        AddFeature(std::move(ground));
 
         auto bgm = std::make_unique<SceneBGMFeature>();
         bgmFeature_ = bgm.get();
@@ -360,6 +368,13 @@ namespace CoreEngine
     SkyBoxObject* BaseScene::GetSkyBox() const
     {
         return environmentFeature_ ? environmentFeature_->GetSkyBox() : nullptr;
+    }
+
+    void BaseScene::SetDefaultGroundEnabled(bool enabled)
+    {
+        if (groundFeature_) {
+            groundFeature_->SetSuppressed(!enabled);
+        }
     }
 
     void BaseScene::RegisterSceneBGM(std::unique_ptr<SoundManager::SoundResource>* bgm)

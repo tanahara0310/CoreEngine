@@ -1,9 +1,9 @@
 {
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        6.696973997577516e-08,
-        -0.6427876353263855,
-        0.7660444974899292
+        8.735889878153102e-08,
+        0.03822169452905655,
+        0.9992693066596985
     ],
     "r.AtmosphereLights.MoonEnabled": true,
     "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
@@ -17,6 +17,7 @@
     "r.Bloom.SoftKnee": 0.35100001096725464,
     "r.Blur.Intensity": 2.5290000438690186,
     "r.CAS.Enabled": false,
+    "r.Ground.Checker": true,
     "r.LensFlare.Enabled": false,
     "r.RTShadow.AtrousPassCount": 3,
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
