@@ -140,13 +140,6 @@ namespace CoreEngine
         constexpr float kMetersToKm = 1.0f / 1000.0f;
         constexpr float kPerMeterToPerKm = 1000.0f;
 
-        /// @brief HLSL の smoothstep と同じ（エルミート補間）
-        float SmoothStep(float edge0, float edge1, float x)
-        {
-            const float t = std::clamp((x - edge0) / std::max(edge1 - edge0, 1e-6f), 0.0f, 1.0f);
-            return t * t * (3.0f - 2.0f * t);
-        }
-
         D3D12_RESOURCE_DESC MakeLUTTexture2DDesc(uint32_t width, uint32_t height, DXGI_FORMAT format)
         {
             D3D12_RESOURCE_DESC desc{};
@@ -1069,7 +1062,7 @@ namespace CoreEngine
         // ===== Aerial Perspective 用カメラ情報 =====
         cameraWorldPos_ = cameraWorldPosition;
         invViewProj_ = MathCore::Matrix::Inverse(
-            MathCore::Matrix::Multiply(viewMatrix, projMatrix));
+            viewMatrix * projMatrix);
 
         // カメラ姿勢が変わった場合のみ Camera Volume を再生成する
         if (std::memcmp(&invViewProj_, &lastInvViewProj_, sizeof(Matrix4x4)) != 0) {
@@ -1081,7 +1074,7 @@ namespace CoreEngine
         hasSunLight_ = false;
         if (lightManager) {
             if (Light* sun = lightManager->GetAtmosphereSunLight()) {
-                sunDirection_ = MathCore::Vector::Normalize(sun->direction);
+                sunDirection_ = CoreEngine::Normalize(sun->direction);
                 sunColor_ = { sun->color.x, sun->color.y, sun->color.z, 1.0f };
                 // 空の輝度スケールは atmosphereIntensity（サーフェス直接光の照度 [lx] とは単位系が別）。
                 // 0（未設定）の場合は照度をシェーダー単位へ換算した値にフォールバックする
@@ -1096,7 +1089,7 @@ namespace CoreEngine
         hasMoonLight_ = false;
         if (lightManager) {
             if (Light* moon = lightManager->GetAtmosphereMoonLight()) {
-                moonDirection_ = MathCore::Vector::Normalize(moon->direction);
+                moonDirection_ = CoreEngine::Normalize(moon->direction);
                 moonColor_ = { moon->color.x, moon->color.y, moon->color.z, 1.0f };
                 moonIntensity_ = (moon->atmosphereIntensity > 0.0f)
                     ? moon->atmosphereIntensity : LightUnits::LuxToShader(moon->intensity);
@@ -1239,7 +1232,7 @@ namespace CoreEngine
             1.0f - (planetRadiusKm * planetRadiusKm) / (radiusKm * radiusKm)));
         const float softness = std::max(
             parameters_.sunDiskAngularRadiusDeg * MathCore::Constants::kDegToRad, 1e-4f);
-        const float visibility = SmoothStep(cosHorizon - softness, cosHorizon + softness, mu);
+        const float visibility = MathCore::SmoothStep(cosHorizon - softness, cosHorizon + softness, mu);
         if (visibility <= 0.0f) {
             return { 0.0f, 0.0f, 0.0f };
         }

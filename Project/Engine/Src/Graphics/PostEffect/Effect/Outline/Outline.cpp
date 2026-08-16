@@ -48,7 +48,7 @@ namespace CoreEngine
         // アウトラインパラメータ用定数バッファ
         UINT outlineSize = (sizeof(OutlineParams) + 255) & ~255;
         outlineParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), outlineSize);
-        HRESULT hr = outlineParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedOutlineParams_));
+        [[maybe_unused]] HRESULT hr = outlineParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedOutlineParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 

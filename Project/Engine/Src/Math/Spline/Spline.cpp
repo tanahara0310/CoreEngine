@@ -72,15 +72,15 @@ Vector3 Spline::GetTangent(float t) const
     const float epsilon = 0.001f;
     Vector3 p1 = GetPosition(t - epsilon);
     Vector3 p2 = GetPosition(t + epsilon);
-    Vector3 tangent = Vector::Subtract(p2, p1);
-    return Vector::Normalize(tangent);
+    Vector3 tangent = p2 - p1;
+    return Normalize(tangent);
 }
 
 Vector3 Spline::GetNormal(float t, const Vector3& upVector) const
 {
     Vector3 tangent = GetTangent(t);
-    Vector3 binormal = Vector::Normalize(Vector::Cross(tangent, upVector));
-    return Vector::Normalize(Vector::Cross(binormal, tangent));
+    Vector3 binormal = CoreEngine::Normalize(CoreEngine::Cross(tangent, upVector));
+    return CoreEngine::Normalize(CoreEngine::Cross(binormal, tangent));
 }
 
 float Spline::GetLength(int segments) const
@@ -96,7 +96,7 @@ float Spline::GetLength(int segments) const
     for (int i = 1; i <= segments; ++i) {
         float t = static_cast<float>(i) * step;
         Vector3 currentPos = GetPosition(t);
-        length += Vector::Length(Vector::Subtract(currentPos, prevPos));
+        length += Distance(prevPos, currentPos);
         prevPos = currentPos;
     }
 
@@ -116,7 +116,7 @@ float Spline::GetParameterByDistance(float distance, int segments) const
     for (int i = 1; i <= segments; ++i) {
         float t = static_cast<float>(i) * step;
         Vector3 currentPos = GetPosition(t);
-        float segmentDistance = Vector::Length(Vector::Subtract(currentPos, prevPos));
+        float segmentDistance = Distance(prevPos, currentPos);
         
         if (totalDistance + segmentDistance >= distance) {
             // 線形補間で正確な位置を計算
@@ -206,9 +206,7 @@ Vector3 Spline::CalculateLinearPosition(float t) const
     // 線形補間
     Vector3 pos0 = controlPoints_[index0].position;
     Vector3 pos1 = controlPoints_[index1].position;
-    Vector3 diff = Vector::Subtract(pos1, pos0);
-    Vector3 scaled = { diff.x * localT, diff.y * localT, diff.z * localT };
-    return Vector::Add(pos0, scaled);
+    return Lerp(pos0, pos1, localT);
 }
 
 Vector3 Spline::CalculateCatmullRomPosition(float t) const
@@ -266,12 +264,10 @@ Vector3 Spline::CalculateBezierPosition(float t) const
     float mt2 = mt * mt;
     float mt3 = mt2 * mt;
 
-    Vector3 result0 = { p0.x * mt3, p0.y * mt3, p0.z * mt3 };
-    Vector3 result1 = { p1.x * (3.0f * mt2 * t), p1.y * (3.0f * mt2 * t), p1.z * (3.0f * mt2 * t) };
-    Vector3 result2 = { p2.x * (3.0f * mt * t2), p2.y * (3.0f * mt * t2), p2.z * (3.0f * mt * t2) };
-    Vector3 result3 = { p3.x * t3, p3.y * t3, p3.z * t3 };
-
-    return Vector::Add(Vector::Add(Vector::Add(result0, result1), result2), result3);
+    return p0 * mt3
+         + p1 * (3.0f * mt2 * t)
+         + p2 * (3.0f * mt * t2)
+         + p3 * t3;
 }
 
 Vector3 Spline::CalculateHermitePosition(float t) const
@@ -300,12 +296,7 @@ Vector3 Spline::CalculateHermitePosition(float t) const
     float h3 = t3 - 2.0f * t2 + localT;
     float h4 = t3 - t2;
 
-    Vector3 result0 = { p0.x * h1, p0.y * h1, p0.z * h1 };
-    Vector3 result1 = { p1.x * h2, p1.y * h2, p1.z * h2 };
-    Vector3 result2 = { t0.x * h3, t0.y * h3, t0.z * h3 };
-    Vector3 result3 = { t1.x * h4, t1.y * h4, t1.z * h4 };
-
-    return Vector::Add(Vector::Add(Vector::Add(result0, result1), result2), result3);
+    return p0 * h1 + p1 * h2 + t0 * h3 + t1 * h4;
 }
 
 Vector3 Spline::CatmullRomInterpolation(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) const
@@ -319,12 +310,7 @@ Vector3 Spline::CatmullRomInterpolation(const Vector3& p0, const Vector3& p1, co
     float b2 = -1.5f * t3 + 2.0f * t2 + 0.5f * t;
     float b3 = 0.5f * t3 - 0.5f * t2;
 
-    Vector3 result0 = { p0.x * b0, p0.y * b0, p0.z * b0 };
-    Vector3 result1 = { p1.x * b1, p1.y * b1, p1.z * b1 };
-    Vector3 result2 = { p2.x * b2, p2.y * b2, p2.z * b2 };
-    Vector3 result3 = { p3.x * b3, p3.y * b3, p3.z * b3 };
-
-    return Vector::Add(Vector::Add(Vector::Add(result0, result1), result2), result3);
+    return p0 * b0 + p1 * b1 + p2 * b2 + p3 * b3;
 }
 
 float Spline::NormalizeParameter(float t) const

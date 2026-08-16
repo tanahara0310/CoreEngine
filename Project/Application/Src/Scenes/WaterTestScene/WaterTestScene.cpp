@@ -21,12 +21,16 @@ namespace {
             std::sin(elevation),
             std::cos(elevation) * std::cos(azimuth),
         };
-        return MathCore::Vector::Normalize({ -toSun.x, -toSun.y, -toSun.z });
+        return CoreEngine::Normalize(-toSun);
     }
 }
 
 void WaterTestScene::OnInitialize() {
     SetSceneName("WaterTestScene");
+
+    // 既定床は使わない。このシーンは海面（y≈0）と島の地形を自前で持っているため、
+    // y=0 に平らな床を置くと水面と Z 争いを起こし、海底の地形とも二重になる。
+    SetDefaultGroundEnabled(false);
 
     // ===== 太陽ライト =====
     // BaseScene::SetupLight() の既定値（天頂・intensity=1）は通常の直接光用の目安であり、

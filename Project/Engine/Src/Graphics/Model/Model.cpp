@@ -102,10 +102,7 @@ namespace CoreEngine
 
         // 行列計算。VP は ViewInfo で確定済みなので毎モデルで掛け直さない。
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
-        Matrix4x4 worldViewProjectionMatrix = MathCore::Matrix::Multiply(
-            worldMatrix,
-            view.view->viewProjection
-        );
+        Matrix4x4 worldViewProjectionMatrix = worldMatrix * view.view->viewProjection;
 
         // 従来型シャドウマップ廃止（2026-07-25）: lightViewProjection は cbuffer レイアウト
         // 維持のためフィールドだけ残し、単位行列を書き込む（シェーダ側に読者はいない）
@@ -184,7 +181,7 @@ namespace CoreEngine
         // ===== LOD 選択（AABB の画面投影サイズベース、詳細は ModelVisibility 側） =====
         const uint32_t lodIndex = ModelVisibility::SelectLod(*resource_, worldMatrix, camera);
 
-        Matrix4x4 wvp = MathCore::Matrix::Multiply(worldMatrix, view.view->viewProjection);
+        Matrix4x4 wvp = worldMatrix * view.view->viewProjection;
         // 従来型シャドウマップ廃止に伴い lightViewProjection はレイアウト維持のみ（単位行列）
         Matrix4x4 lightVP = MathCore::Matrix::Identity();
 

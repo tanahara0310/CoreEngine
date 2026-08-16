@@ -84,11 +84,11 @@ Vector2 NormalizeDirection(const Vector2& direction);
 // 波方向のゼロ長入力を吸収しつつ正規化する。
 Vector2 NormalizeDirection(const Vector2& direction) {
 	const Vector3 direction3 = { direction.x, direction.y, 0.0f };
-	if (MathCore::Vector::Length(direction3) <= 1.0e-5f) {
+	if (CoreEngine::Length(direction3) <= 1.0e-5f) {
 		return { 1.0f, 0.0f };
 	}
 
-	const Vector3 normalizedDirection = MathCore::Vector::Normalize(direction3);
+	const Vector3 normalizedDirection = CoreEngine::Normalize(direction3);
 	return { normalizedDirection.x, normalizedDirection.y };
 }
 

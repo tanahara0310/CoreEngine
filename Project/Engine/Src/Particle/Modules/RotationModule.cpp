@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "RotationModule.h"
 #include "../ParticleSystem.h"
+#include "Math/MathCore.h"
 #include <numbers>
 #include <algorithm>
 
@@ -94,21 +95,21 @@ void RotationModule::UpdateRotation(Particle& particle, float deltaTime)
     
     // 角度制限を適用
     if (rotationData_.limitRotationRange) {
-        float minX = DegreesToRadians(rotationData_.minRotation.x);
-        float maxX = DegreesToRadians(rotationData_.maxRotation.x);
-        float minY = DegreesToRadians(rotationData_.minRotation.y);
-        float maxY = DegreesToRadians(rotationData_.maxRotation.y);
-        float minZ = DegreesToRadians(rotationData_.minRotation.z);
-        float maxZ = DegreesToRadians(rotationData_.maxRotation.z);
+        float minX = MathCore::Constants::ToRadians(rotationData_.minRotation.x);
+        float maxX = MathCore::Constants::ToRadians(rotationData_.maxRotation.x);
+        float minY = MathCore::Constants::ToRadians(rotationData_.minRotation.y);
+        float maxY = MathCore::Constants::ToRadians(rotationData_.maxRotation.y);
+        float minZ = MathCore::Constants::ToRadians(rotationData_.minRotation.z);
+        float maxZ = MathCore::Constants::ToRadians(rotationData_.maxRotation.z);
         
         particle.transform.rotate.x = std::clamp(particle.transform.rotate.x, minX, maxX);
         particle.transform.rotate.y = std::clamp(particle.transform.rotate.y, minY, maxY);
         particle.transform.rotate.z = std::clamp(particle.transform.rotate.z, minZ, maxZ);
     } else {
         // 角度を正規化（-π〜πの範囲に）
-        particle.transform.rotate.x = NormalizeAngle(particle.transform.rotate.x);
-        particle.transform.rotate.y = NormalizeAngle(particle.transform.rotate.y);
-        particle.transform.rotate.z = NormalizeAngle(particle.transform.rotate.z);
+        particle.transform.rotate.x = MathCore::NormalizeAngle(particle.transform.rotate.x);
+        particle.transform.rotate.y = MathCore::NormalizeAngle(particle.transform.rotate.y);
+        particle.transform.rotate.z = MathCore::NormalizeAngle(particle.transform.rotate.z);
     }
 }
 
@@ -198,22 +199,6 @@ float RotationModule::GetRotationDirectionFactor(RotationData::RotationDirection
         default:
             return 1.0f;
     }
-}
-
-float RotationModule::DegreesToRadians(float degrees)
-{
-    return degrees * std::numbers::pi_v<float> / 180.0f;
-}
-
-float RotationModule::NormalizeAngle(float angle)
-{
-    while (angle > std::numbers::pi_v<float>) {
-        angle -= 2.0f * std::numbers::pi_v<float>;
-    }
-    while (angle < -std::numbers::pi_v<float>) {
-        angle += 2.0f * std::numbers::pi_v<float>;
-    }
-    return angle;
 }
 
 Vector3 RotationModule::CalculateVelocityAlignment(const Particle& particle)

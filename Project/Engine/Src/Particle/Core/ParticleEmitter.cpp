@@ -69,7 +69,7 @@ Particle ParticleEmitter::CreateParticle(const EulerTransform& emitterTransform)
 
         // 正規化された方向ベクトルに速度の大きさを掛ける
              // （VelocityModuleが既に正規化済みのため、直接スカラー倍）
-        particle.velocity = CoreEngine::MathCore::Vector::Multiply(startSpeed, particle.velocity);
+        particle.velocity = particle.velocity * startSpeed;
     }
 
     // === 回転速度の設定 ===

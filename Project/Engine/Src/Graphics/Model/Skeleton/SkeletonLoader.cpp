@@ -27,10 +27,7 @@ Skeleton SkeletonLoader::CreateSkeleton(const Node& rootNode) {
 
         // 親がいれば親の行列を掛ける
         if (joint.parent) {
-            joint.skeletonSpaceMatrix = MathCore::Matrix::Multiply(
-                joint.localMatrix,
-                skeleton.joints[*joint.parent].skeletonSpaceMatrix
-            );
+            joint.skeletonSpaceMatrix = joint.localMatrix * skeleton.joints[*joint.parent].skeletonSpaceMatrix;
         } else {
             // 親がいないのでlocalMatrixとskeletonSpaceMatrixは一致する
             joint.skeletonSpaceMatrix = joint.localMatrix;

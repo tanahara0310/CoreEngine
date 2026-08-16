@@ -91,9 +91,6 @@ namespace CoreEngine
         /// @brief 操作中かどうか
         bool IsControlling() const { return orbiting_ || panning_; }
 
-        /// @brief 角度を -π〜π へ正規化する
-        static float NormalizeAngle(float angle);
-
     private:
         /// @brief 軌道状態から視点ワールド座標を求める
         Vector3 ComputeEyePosition() const;

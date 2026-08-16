@@ -15,6 +15,12 @@
 #include <dxgi1_6.h>
 #include <dxcapi.h>
 
+// ─── DirectXMath ─────────────────────────────────────────────
+// 数学ライブラリ（Matrix4x4.h / MathCore.cpp）の実体が使う。
+// Matrix4x4.h 経由で 113 ファイルへ推移的に届くため、
+// ここでプリコンパイルして各 TU の展開コストを消す。
+#include <DirectXMath.h>
+
 // ─── WRL ─────────────────────────────────────────────────────
 #include <wrl.h>
 

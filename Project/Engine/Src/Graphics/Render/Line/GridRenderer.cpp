@@ -22,13 +22,6 @@ namespace {
     /// ファイルスコープ変数。CollisionMatrixPanel と同じ流儀）
     GridRenderer* s_activeGrid = nullptr;
 #endif
-
-    /// エルミート補間（0..1 を滑らかに 0..1 へ）
-    float SmoothStep01(float t)
-    {
-        t = std::clamp(t, 0.0f, 1.0f);
-        return t * t * (3.0f - 2.0f * t);
-    }
 }
 
 void GridRenderer::SetBaseSpacing(float spacing)
@@ -92,7 +85,7 @@ namespace {
             // セグメント中点のカメラからの距離でフェードを決める
             const float distance = std::sqrt(perpendicular * perpendicular + tMid * tMid);
             const float ratio = distance / radius;
-            const float fade = 1.0f - SmoothStep01((ratio - fadeStartRatio) / fadeSpan);
+            const float fade = 1.0f - MathCore::SmoothStep((ratio - fadeStartRatio) / fadeSpan);
             const float segmentAlpha = alpha * fade;
             if (segmentAlpha <= minAlpha) {
                 continue;
@@ -204,7 +197,7 @@ void GridRenderer::AppendAxes(std::vector<Line>& out, const Vector3& cameraPosit
     const float dx = cameraPosition.x;
     const float dz = cameraPosition.z;
     const float originDistance = std::sqrt(dx * dx + dz * dz);
-    const float originFade = 1.0f - SmoothStep01(originDistance / std::max(radius, 1e-3f));
+    const float originFade = 1.0f - MathCore::SmoothStep(originDistance / std::max(radius, 1e-3f));
     const float yAlpha = axisAlpha * originFade;
     if (yAlpha > kMinVisibleAlpha) {
         out.push_back({ { 0.0f, kGridPlaneYOffset - yAxisHalfHeight, 0.0f },

@@ -59,9 +59,22 @@ namespace CoreEngine
             };
         }
 
+        /// @brief 値を [0, 1] に収める
+        inline float Saturate(float value) {
+            return Clamp(value, 0.0f, 1.0f);
+        }
+
         /// @brief 線形補間
         inline float Lerp(float start, float end, float t) {
             return start + t * (end - start);
+        }
+
+        /// @brief 線形補間（成分ごと）
+        inline Vector2 Lerp(const Vector2& start, const Vector2& end, float t) {
+            return {
+                Lerp(start.x, end.x, t),
+                Lerp(start.y, end.y, t)
+            };
         }
 
         /// @brief 線形補間（成分ごと）
@@ -73,96 +86,55 @@ namespace CoreEngine
             };
         }
 
-        //================================================
-        // ベクトル演算
-        //================================================
-        namespace Vector {
-            // Vector3 演算（Vector3.hのグローバル関数を呼ぶラッパー）
-            inline Vector3 Add(const Vector3& v1, const Vector3& v2) {
-                return v1 + v2;
-            }
-            inline Vector3 Subtract(const Vector3& v1, const Vector3& v2) {
-                return v1 - v2;
-            }
-            inline Vector3 Multiply(float scalar, const Vector3& v) {
-                return scalar * v;
-            }
-            inline float Dot(const Vector3& v1, const Vector3& v2) {
-                return CoreEngine::Dot(v1, v2);
-            }
-            inline float Length(const Vector3& v) {
-                return CoreEngine::Length(v);
-            }
-            inline Vector3 Normalize(const Vector3& v) {
-                return CoreEngine::Normalize(v);
-            }
-            inline Vector3 Cross(const Vector3& v1, const Vector3& v2) {
-                return CoreEngine::Cross(v1, v2);
-            }
+        /// @brief 線形補間（成分ごと）。色の補間もこれを使う
+        inline Vector4 Lerp(const Vector4& start, const Vector4& end, float t) {
+            return {
+                Lerp(start.x, end.x, t),
+                Lerp(start.y, end.y, t),
+                Lerp(start.z, end.z, t),
+                Lerp(start.w, end.w, t)
+            };
+        }
 
-            // ベクトル投影
-            Vector3 Project(const Vector3& v, const Vector3& n);
+        /// @brief エルミート補間。0..1 を滑らかな 0..1 へ（3t² - 2t³）
+        /// @details 入力は [0,1] にクランプされる。
+        ///          以前は同じ式が GridRenderer / AtmosphereManager /
+        ///          FFTOceanSpectrumBuilder / ProjectView に個別定義されていた。
+        inline float SmoothStep(float t) {
+            t = Saturate(t);
+            return t * t * (3.0f - 2.0f * t);
+        }
 
-            /// @brief 単位ベクトル同士の球面線形補間
-            /// @param start 開始方向（正規化済み）
-            /// @param end   終了方向（正規化済み）
-            /// @param t     補間係数
-            /// @return 単位ベクトル
-            /// @note 平行・反平行（回転面が決まらない縮退）でも単位長を保つ。
-            Vector3 Slerp(const Vector3& start, const Vector3& end, float t);
+        /// @brief HLSL の smoothstep と同じ。edge0 → edge1 の区間を滑らかに 0 → 1 へ
+        /// @note edge0 == edge1 でもゼロ除算しないよう分母に下限を敷いている
+        inline float SmoothStep(float edge0, float edge1, float x) {
+            return SmoothStep((x - edge0) / (std::max)(edge1 - edge0, 1e-6f));
+        }
+
+        /// @brief 角度を (-π, π] の範囲へ折り返す
+        /// @details 差分角の最短経路を取るときに使う。
+        ///          std::remainder は 1 回の演算で丸めるので、
+        ///          ループで 2π を足し引きする実装と違って
+        ///          巨大な角度でも誤差が積まれず、inf でも停止しない。
+        inline float NormalizeAngle(float radians) {
+            return std::remainder(radians, Constants::kTwoPi);
         }
 
         //================================================
-        // 行列演算
+        // 型をまたぐ変換（行列 ⇔ クォータニオン）
         //================================================
+        /// @details 行列だけで閉じる演算は Matrix4x4.h、
+        ///          クォータニオンだけで閉じる演算は Quaternion.h にある
+        ///          （どちらもこのヘッダが include 済み）。
+        ///          ここに残すのは両方の型を必要とするものだけ。
         namespace Matrix {
-            // 基本演算
-            Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2);
-            Matrix4x4 Subtract(const Matrix4x4& m1, const Matrix4x4& m2);
-            Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2);
-            Matrix4x4 Inverse(const Matrix4x4& m);
-            Matrix4x4 Transpose(const Matrix4x4& m);
-            Matrix4x4 Identity();
-
-            // 変換行列生成
-            Matrix4x4 Translation(const Vector3& translate);
-            Matrix4x4 Scale(const Vector3& scale);
-            Matrix4x4 RotationX(float radian);
-            Matrix4x4 RotationY(float radian);
-            Matrix4x4 RotationZ(float radian);
-            Matrix4x4 MakeAffine(const Vector3& scale, const Vector3& rotate, const Vector3& translate);
+            /// @brief スケール・回転（クォータニオン）・平行移動からアフィン行列を作る
             Matrix4x4 MakeAffine(const Vector3& scale, const Quaternion& rotate, const Vector3& translate);
-            Matrix4x4 LookAt(const Vector3& eye, const Vector3& target, const Vector3& up);
-
-            // 任意軸回転行列
-            Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float radian);
-
-            // 方向から方向への回転行列
-            Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to);
-
-            // 分解
-            void DecomposeToSRT(const Matrix4x4& matrix, Vector3& scale, Vector3& rotate, Vector3& translate);
         }
 
-        //================================================
-        // クォータニオン演算
-        //================================================
         namespace QuaternionMath {
-            // 基本演算
-            Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs);
-            Quaternion Identity();
-            Quaternion Conjugate(const Quaternion& q);
-            float Norm(const Quaternion& q);
-            Quaternion Normalize(const Quaternion& q);
-            Quaternion Inverse(const Quaternion& q);
-
-            // 回転関連
-            Quaternion MakeRotateAxisAngle(const Vector3& axis, float radian);
-            Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion);
+            /// @brief クォータニオンを回転行列へ変換する
             Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion);
-
-            // 補間
-            Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t);
         }
 
         //================================================

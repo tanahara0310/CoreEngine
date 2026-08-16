@@ -36,7 +36,7 @@ namespace CoreEngine
     {
         UINT blurSize = (sizeof(BlurParams) + 255) & ~255;
         blurParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), blurSize);
-        HRESULT hr = blurParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedBlurParams_));
+        [[maybe_unused]] HRESULT hr = blurParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedBlurParams_));
         assert(SUCCEEDED(hr));
         UpdateBlurConstantBuffer();
 

@@ -51,7 +51,7 @@ namespace CoreEngine
     {
         UINT rsSize = (sizeof(RasterScrollParams) + 255) & ~255;
         rasterScrollParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), rsSize);
-        HRESULT hr = rasterScrollParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRasterScrollParams_));
+        [[maybe_unused]] HRESULT hr = rasterScrollParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRasterScrollParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 

@@ -41,12 +41,5 @@ public:
 
 private:
     ColorOverLifetime colorData_;
-
-    /// @brief 2つの色を線形補間
-    /// @param color1 開始色
-    /// @param color2 終了色
-    /// @param t 補間係数 (0.0f - 1.0f)
-    /// @return 補間された色
-    Vector4 LerpColor(const Vector4& color1, const Vector4& color2, float t);
 };
 }

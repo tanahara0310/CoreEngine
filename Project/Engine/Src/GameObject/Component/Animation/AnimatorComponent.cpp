@@ -153,7 +153,7 @@ namespace CoreEngine
 
         // skeletonSpaceMatrix はモデルローカル。オブジェクトのワールド行列を掛けて
         // ワールド空間へ変換する（行ベクトル規約なので子 → 親の順で掛ける）。
-        return MathCore::Matrix::Multiply(joint.skeletonSpaceMatrix, transform_->Get().GetWorldMatrix());
+        return joint.skeletonSpaceMatrix * transform_->Get().GetWorldMatrix();
     }
 
     std::optional<Vector3> AnimatorComponent::GetJointWorldPosition(const std::string& jointName) const
@@ -179,7 +179,7 @@ namespace CoreEngine
         std::vector<Vector3> jointPositions;
         jointPositions.reserve(skeleton->joints.size());
         for (const Joint& joint : skeleton->joints) {
-            const Matrix4x4 jointWorld = MathCore::Matrix::Multiply(joint.skeletonSpaceMatrix, objectWorld);
+            const Matrix4x4 jointWorld = joint.skeletonSpaceMatrix * objectWorld;
             jointPositions.push_back(
                 MathCore::CoordinateTransform::TransformCoord(Vector3{ 0.0f, 0.0f, 0.0f }, jointWorld));
         }

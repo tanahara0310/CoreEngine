@@ -14,7 +14,7 @@ namespace CoreEngine
             directionalLightHandle_ = lightManager_->CreateLight(LightType::Directional, "Sun");
             if (Light* light = lightManager_->GetLight(directionalLightHandle_)) {
                 light->color = { 1.0f, 1.0f, 1.0f };
-                light->direction = MathCore::Vector::Normalize({ 0.0f, -1.0f, 0.0f });
+                light->direction = CoreEngine::Normalize(Vector3{ 0.0f, -1.0f, 0.0f });
                 // 旧既定（シェーダー単位 intensity=1.0）と同輝度の照度（≈ 57,143 lx）。
                 // 大気シーンは LightUnits::kSunIlluminanceLux（100,000 lx）へ上書きする。
                 light->intensity = 1.0f / LightUnits::kShaderUnitsPerLux;

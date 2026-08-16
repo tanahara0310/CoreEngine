@@ -290,13 +290,13 @@ namespace CoreEngine
 
     void LightManager::ComputeAreaLightBasis(const Vector3& normal, Vector3& outRight, Vector3& outUp)
     {
-        Vector3 n = MathCore::Vector::Normalize(normal);
+        Vector3 n = CoreEngine::Normalize(normal);
         Vector3 ref = { 0.0f, 1.0f, 0.0f };
-        if (std::abs(MathCore::Vector::Dot(n, ref)) > 0.99f) {
+        if (std::abs(CoreEngine::Dot(n, ref)) > 0.99f) {
             ref = { 1.0f, 0.0f, 0.0f };
         }
-        outRight = MathCore::Vector::Normalize(MathCore::Vector::Cross(ref, n));
-        outUp = MathCore::Vector::Cross(n, outRight);
+        outRight = CoreEngine::Normalize(CoreEngine::Cross(ref, n));
+        outUp = CoreEngine::Cross(n, outRight);
     }
 
     void LightManager::UpdateAll()
@@ -309,7 +309,7 @@ namespace CoreEngine
 
             DirectionalLightData gpu{};
             gpu.color = { color.x, color.y, color.z, 1.0f };
-            gpu.direction = MathCore::Vector::Normalize(light.direction);
+            gpu.direction = CoreEngine::Normalize(light.direction);
             gpu.intensity = LightUnits::LuxToShader(light.intensity);
             gpu.enabled = light.enabled ? 1u : 0u;
             gpuDirectionals.push_back(gpu);
@@ -346,7 +346,7 @@ namespace CoreEngine
                 gpu.color = { light.color.x, light.color.y, light.color.z, 1.0f };
                 gpu.position = light.position;
                 gpu.intensity = LightUnits::CandelaToShader(light.intensity);
-                gpu.direction = MathCore::Vector::Normalize(light.direction);
+                gpu.direction = CoreEngine::Normalize(light.direction);
                 gpu.distance = light.range;
                 gpu.decay = 1.0f;
                 gpu.cosAngle = std::cos(outerDeg * kDegToRad);
@@ -361,7 +361,7 @@ namespace CoreEngine
                 gpu.position = light.position;
                 gpu.intensity = LightUnits::NitToShader(
                     light.intensity, light.areaWidth * light.areaHeight);
-                gpu.normal = MathCore::Vector::Normalize(light.direction);
+                gpu.normal = CoreEngine::Normalize(light.direction);
                 gpu.width = light.areaWidth;
                 gpu.height = light.areaHeight;
                 ComputeAreaLightBasis(light.direction, gpu.right, gpu.up);

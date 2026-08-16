@@ -172,7 +172,7 @@ namespace CoreEngine
     {
         UINT cgSize = (sizeof(ColorGradingParams) + 255) & ~255;
         colorGradingParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), cgSize);
-        HRESULT hr = colorGradingParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedColorGradingParams_));
+        [[maybe_unused]] HRESULT hr = colorGradingParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedColorGradingParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 

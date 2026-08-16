@@ -40,11 +40,11 @@ namespace CoreEngine
         void MakePerpBasis(const Vector3& dir, Vector3& outP1, Vector3& outP2)
         {
             Vector3 up = { 0.0f, 1.0f, 0.0f };
-            if (std::abs(MathCore::Vector::Dot(dir, up)) > 0.99f) {
+            if (std::abs(CoreEngine::Dot(dir, up)) > 0.99f) {
                 up = { 1.0f, 0.0f, 0.0f };
             }
-            outP1 = MathCore::Vector::Normalize(MathCore::Vector::Cross(dir, up));
-            outP2 = MathCore::Vector::Cross(dir, outP1);
+            outP1 = CoreEngine::Normalize(CoreEngine::Cross(dir, up));
+            outP2 = CoreEngine::Cross(dir, outP1);
         }
 
         /// @brief 矢じり付きの矢印を描く（UE のライト方向表示風）
@@ -52,7 +52,7 @@ namespace CoreEngine
                        const Vector3& color, float alpha)
         {
             const Vector3 delta = to - from;
-            const float len = std::sqrt(MathCore::Vector::Dot(delta, delta));
+            const float len = std::sqrt(CoreEngine::Dot(delta, delta));
             if (len < 1e-4f) return;
             const Vector3 dir = delta * (1.0f / len);
 
@@ -286,7 +286,7 @@ namespace CoreEngine
             UI::DragVec3("位置（ギズモ表示用）", light.position, 0.1f, -50.0f, 50.0f);
             UI::Hint("平行光なので位置は明るさに影響しません（ギズモの表示位置のみ）");
             if (ImGui::SmallButton("方向を正規化")) {
-                light.direction = MathCore::Vector::Normalize(light.direction);
+                light.direction = CoreEngine::Normalize(light.direction);
             }
             ImGui::Checkbox("大気の太陽", &light.isAtmosphereSun);
             UI::SameLine();
@@ -327,7 +327,7 @@ namespace CoreEngine
             }
             UI::HintF("参考: 3m 先の照度 %.0f lx（快晴の太陽 = 100,000 lx）", light.intensity / 9.0f);
             if (ImGui::SmallButton("方向を正規化")) {
-                light.direction = MathCore::Vector::Normalize(light.direction);
+                light.direction = CoreEngine::Normalize(light.direction);
             }
             break;
 
@@ -343,7 +343,7 @@ namespace CoreEngine
             UI::DragFloat("高さ [m]", light.areaHeight, 0.1f, 0.1f, 20.0f);
             UI::DragFloat("到達距離 [m]", light.range, 0.1f, 0.1f, 100.0f);
             if (ImGui::SmallButton("法線を正規化")) {
-                light.direction = MathCore::Vector::Normalize(light.direction);
+                light.direction = CoreEngine::Normalize(light.direction);
             }
             break;
         }
@@ -386,7 +386,7 @@ namespace CoreEngine
 
         // 太陽アイコン: position をアンカーに小さなワイヤ球＋放射状の短い光線
         const Vector3 anchor = light.position;
-        const Vector3 dir = MathCore::Vector::Normalize(light.direction);
+        const Vector3 dir = CoreEngine::Normalize(light.direction);
 
         DrawBulbMarker(lm, anchor, 0.35f, color, alpha);
 
@@ -445,7 +445,7 @@ namespace CoreEngine
         const Vector3 color = light.color;
         const float alpha = selected ? 1.0f : 0.45f;
 
-        const Vector3 dir = MathCore::Vector::Normalize(light.direction);
+        const Vector3 dir = CoreEngine::Normalize(light.direction);
 
         // 光源本体＋方向矢印
         DrawBulbMarker(lm, light.position, 0.2f, color, alpha);
@@ -485,7 +485,7 @@ namespace CoreEngine
         const float alpha = selected ? 1.0f : 0.45f;
 
         // GPU 転送と同じ規則で発光面の基底を導出する
-        const Vector3 normal = MathCore::Vector::Normalize(light.direction);
+        const Vector3 normal = CoreEngine::Normalize(light.direction);
         Vector3 right{}, up{};
         LightManager::ComputeAreaLightBasis(light.direction, right, up);
 

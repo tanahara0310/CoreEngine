@@ -153,7 +153,7 @@ namespace CoreEngine
             static_cast<float>(WinApp::GetCurrentClientHeightStatic()),
             0.0f, 100.0f);
 
-        return MathCore::Matrix::Multiply(worldMatrix, MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
+        return worldMatrix * viewMatrix * projectionMatrix;
     }
 
     Matrix4x4 SpriteRenderer::CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation, const Camera* camera) const {
@@ -164,7 +164,7 @@ namespace CoreEngine
             // カメラのビュー・プロジェクション行列を使用
             Matrix4x4 viewMatrix = camera->GetViewMatrix();
             Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
-            return MathCore::Matrix::Multiply(worldMatrix, MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
+            return worldMatrix * viewMatrix * projectionMatrix;
         } else {
             // カメラがない場合は従来の方式（スクリーン座標固定）
             Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
@@ -173,7 +173,7 @@ namespace CoreEngine
                 static_cast<float>(WinApp::GetCurrentClientWidthStatic()),
                 static_cast<float>(WinApp::GetCurrentClientHeightStatic()),
                 0.0f, 100.0f);
-            return MathCore::Matrix::Multiply(worldMatrix, MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
+            return worldMatrix * viewMatrix * projectionMatrix;
         }
     }
 }

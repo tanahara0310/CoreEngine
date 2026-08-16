@@ -41,7 +41,7 @@ namespace CoreEngine
     {
         UINT swSize = (sizeof(ShockwaveParams) + 255) & ~255;
         shockwaveParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), swSize);
-        HRESULT hr = shockwaveParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedShockwaveParams_));
+        [[maybe_unused]] HRESULT hr = shockwaveParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedShockwaveParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 

@@ -6,9 +6,11 @@
 namespace CoreEngine
 {
     PlaneMeshGenerator::PlaneMeshGenerator(float width, float depth,
-                                           uint32_t subdivisionsX, uint32_t subdivisionsZ)
+                                           uint32_t subdivisionsX, uint32_t subdivisionsZ,
+                                           float uvTiling)
         : width_(width), depth_(depth)
         , subdivisionsX_(subdivisionsX), subdivisionsZ_(subdivisionsZ)
+        , uvTiling_(uvTiling)
     {
     }
 
@@ -30,7 +32,7 @@ namespace CoreEngine
 
                 VertexData vertex{};
                 vertex.position = { -halfW + u * width_, 0.0f, -halfD + v * depth_, 1.0f };
-                vertex.texcoord = { u, 1.0f - v };
+                vertex.texcoord = { u * uvTiling_, (1.0f - v) * uvTiling_ };
                 vertex.normal   = { 0.0f, 1.0f, 0.0f };
                 vertex.tangent  = { 1.0f, 0.0f, 0.0f };
                 data.vertices.push_back(vertex);
@@ -80,8 +82,9 @@ namespace CoreEngine
     std::string PlaneMeshGenerator::GetCacheKey() const
     {
         char buf[128];
-        snprintf(buf, sizeof(buf), "Primitive::Plane_%.2f_%.2f_%u_%u",
-                 width_, depth_, subdivisionsX_, subdivisionsZ_);
+        // uvTiling もキーに含める（同寸法でもタイリング違いは別メッシュ）
+        snprintf(buf, sizeof(buf), "Primitive::Plane_%.2f_%.2f_%u_%u_%.2f",
+                 width_, depth_, subdivisionsX_, subdivisionsZ_, uvTiling_);
         return buf;
     }
 }

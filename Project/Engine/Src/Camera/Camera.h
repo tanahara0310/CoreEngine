@@ -55,7 +55,7 @@ namespace CoreEngine {
         /// @note 毎フレーム多数回呼ぶ用途では ViewInfo::frustum（構築時に 1 回抽出）を使うこと
         Frustum GetFrustum() const {
             Frustum frustum;
-            frustum.ExtractFromMatrix(MathCore::Matrix::Multiply(GetViewMatrix(), GetProjectionMatrix()));
+            frustum.ExtractFromMatrix(GetViewMatrix() * GetProjectionMatrix());
             return frustum;
         }
 

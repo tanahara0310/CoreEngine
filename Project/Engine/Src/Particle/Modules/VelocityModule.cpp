@@ -45,7 +45,7 @@ void VelocityModule::ApplyInitialVelocity(Particle& particle) {
     }
 
     // 方向ベクトルを正規化（MathCore関数を使用）
-    direction = Vector::Normalize(direction);
+    direction = CoreEngine::Normalize(direction);
 
     // 方向ベクトルを設定（大きさは1.0に正規化済み）
     // MainModuleのstartSpeedが後で掛けられるので、ここでは方向のみを設定
@@ -86,7 +86,7 @@ bool VelocityModule::ShowImGui() {
         UI::SameLine();
         UI::HelpMarker("全パーティクルがこの方向へ飛びます。\n長さは自動的に1に正規化されるため、比率だけが意味を持ちます。");
 
-        Vector3 normalized = Vector::Normalize(velocityData_.startSpeed);
+        Vector3 normalized = CoreEngine::Normalize(velocityData_.startSpeed);
         UI::HintF("正規化後: (%.2f, %.2f, %.2f)", normalized.x, normalized.y, normalized.z);
     }
 
@@ -102,6 +102,6 @@ Vector3 VelocityModule::GenerateRandomDirection() {
     };
 
     // 正規化（MathCore関数を使用）
-    return Vector::Normalize(direction);
+    return CoreEngine::Normalize(direction);
 }
 }

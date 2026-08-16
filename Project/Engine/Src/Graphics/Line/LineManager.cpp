@@ -377,10 +377,10 @@ std::vector<Line> LineManager::GenerateCircleLines(const Vector3& center, float 
     if (std::abs(normal.y) > 0.999f) {
         right = { 1.0f, 0.0f, 0.0f };
     } else {
-        right = MathCore::Vector::Normalize(MathCore::Vector::Cross(up, normal));
+        right = CoreEngine::Normalize(CoreEngine::Cross(up, normal));
     }
 
-    up = MathCore::Vector::Normalize(MathCore::Vector::Cross(normal, right));
+    up = CoreEngine::Normalize(CoreEngine::Cross(normal, right));
 
     for (int i = 0; i < segments; ++i) {
         float angle1 = (static_cast<float>(i) / segments) * 2.0f * std::numbers::pi_v<float>;
@@ -411,7 +411,7 @@ std::vector<Line> LineManager::GenerateConeLines(const Vector3& apex, const Vect
     float angleRad = angle * std::numbers::pi_v<float> / 180.0f;
     float baseRadius = height * std::tan(angleRad);
 
-    Vector3 normalizedDir = MathCore::Vector::Normalize(direction);
+    Vector3 normalizedDir = CoreEngine::Normalize(direction);
     Vector3 baseCenter = {
         apex.x + normalizedDir.x * height,
         apex.y + normalizedDir.y * height,
@@ -424,9 +424,9 @@ std::vector<Line> LineManager::GenerateConeLines(const Vector3& apex, const Vect
     if (std::abs(normalizedDir.y) > 0.999f) {
         right = { 1.0f, 0.0f, 0.0f };
     } else {
-        right = MathCore::Vector::Normalize(MathCore::Vector::Cross(up, normalizedDir));
+        right = CoreEngine::Normalize(CoreEngine::Cross(up, normalizedDir));
     }
-    up = MathCore::Vector::Normalize(MathCore::Vector::Cross(normalizedDir, right));
+    up = CoreEngine::Normalize(CoreEngine::Cross(normalizedDir, right));
 
     for (int i = 0; i < segments; ++i) {
         float angle1 = (static_cast<float>(i) / segments) * 2.0f * std::numbers::pi_v<float>;
@@ -458,7 +458,7 @@ std::vector<Line> LineManager::GenerateCylinderLines(const Vector3& center, floa
     float height, const Vector3& direction, const Vector3& color, float alpha, int segments) {
     std::vector<Line> lines;
 
-    Vector3 normalizedDir = MathCore::Vector::Normalize(direction);
+    Vector3 normalizedDir = CoreEngine::Normalize(direction);
     float halfHeight = height * 0.5f;
 
     Vector3 topCenter = {
@@ -479,9 +479,9 @@ std::vector<Line> LineManager::GenerateCylinderLines(const Vector3& center, floa
     if (std::abs(normalizedDir.y) > 0.999f) {
         right = { 1.0f, 0.0f, 0.0f };
     } else {
-        right = MathCore::Vector::Normalize(MathCore::Vector::Cross(up, normalizedDir));
+        right = CoreEngine::Normalize(CoreEngine::Cross(up, normalizedDir));
     }
-    up = MathCore::Vector::Normalize(MathCore::Vector::Cross(normalizedDir, right));
+    up = CoreEngine::Normalize(CoreEngine::Cross(normalizedDir, right));
 
     for (int i = 0; i < segments; ++i) {
         float angle1 = (static_cast<float>(i) / segments) * 2.0f * std::numbers::pi_v<float>;

@@ -202,9 +202,7 @@ Vector3 LerpVector3(const Vector3& start, const Vector3& end, float t, Type type
     
     // ★★★ MathCoreを使用したベクトル補間 ★★★
     // start + (end - start) * easedT の計算をMathCore関数で実行
-    Vector3 diff = MathCore::Vector::Subtract(end, start);
-    Vector3 scaledDiff = MathCore::Vector::Multiply(easedT, diff);
-    return MathCore::Vector::Add(start, scaledDiff);
+    return MathCore::Lerp(start, end, easedT);
 }
 
 float LerpAngle(float startAngle, float endAngle, float t, Type type) {

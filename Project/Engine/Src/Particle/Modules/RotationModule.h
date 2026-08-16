@@ -83,16 +83,6 @@ private:
     /// @return 回転方向係数（1.0f: 正方向, -1.0f: 逆方向）
     float GetRotationDirectionFactor(RotationData::RotationDirection direction);
 
-    /// @brief 角度をラジアンに変換
-    /// @param degrees 度
-    /// @return ラジアン
-    float DegreesToRadians(float degrees);
-
-    /// @brief 角度を正規化（-π〜πの範囲に）
-    /// @param angle ラジアン
-    /// @return 正規化された角度
-    float NormalizeAngle(float angle);
-
     /// @brief 移動方向に基づく回転を計算
     /// @param particle パーティクル
     /// @return 移動方向ベースの回転角度

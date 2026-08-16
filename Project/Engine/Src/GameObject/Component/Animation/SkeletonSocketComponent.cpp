@@ -39,6 +39,6 @@ namespace CoreEngine
         // TransformComponent::Update() が計算したワールド行列を上書きする。
         // LateUpdate は全オブジェクトの Update 完了後に走るので、追従元の
         // アニメーションは必ず今フレームの姿勢になっている（生成順に依存しない）。
-        transform_->Get().SetWorldMatrix(MathCore::Matrix::Multiply(socketLocal, jointNoScale));
+        transform_->Get().SetWorldMatrix(socketLocal * jointNoScale);
     }
 }
