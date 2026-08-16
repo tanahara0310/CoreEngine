@@ -3,6 +3,8 @@
 
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "Math/MathCore.h"
+#include "Scene/SceneManager.h"
+#include "Utility/FrameRate/FrameRateController.h"
 #include <cmath>
 #include <memory>
 
@@ -52,9 +54,38 @@ void WaterTestScene::OnInitialize() {
         AddFeature(std::make_unique<WaterRenderFeature>()));
     waterController_.Initialize(waterFeature, *engine_);
 
-    // 起動時のリリースカメラはシーン全体（水面・地形・配置物）を俯瞰する構図にする。
-    // 位置 (0, 60, -90) から約 35° 見下ろすと、原点付近（海面 y≈0）が画角中央に入る。
-    SetReleaseCameraTransform({ 0.0f, 60.0f, -90.0f }, { 35.0f * kDegToRad, 0.0f, 0.0f });
+    // 起動時のリリースカメラは「1 カット見せる → 黒へフェード → 暗転中に構図を差し替える」を巡回する。
+    // 構図を 1 つに固定すると、水面すれすれの視点では大気散乱の白いもやが画面の半分を占め、
+    // 逆に高い俯瞰では水の表情が見えない——どれか 1 つを選ぶ必要をなくすための演出。
+    // 各カットの数値は実機のスクリーンショットで決めた（カメラが埋まる方角・
+    // 海底メッシュの切れ目が正面に来る方角は候補から外してある）。
+    // 既定の画角 0.45rad(≒25.8°) は風景には狭く、既定のファークリップ 1000m では
+    // 水面メッシュ（4000m 四方）が水平線の手前で切れるため、カットごとにレンズも与える。
+    cameraShowcase_.Initialize(
+        engine_,
+        {
+            // ① 礁湖から外洋へ抜ける水路。手前は浅瀬（コースティクス・砕波泡）、左右を岩と椰子が締める
+            { { 55.0f, 15.0f, -180.0f }, { 0.0166f, 0.0942f, 0.0f }, 50.0f, 20000.0f },
+            // ② 南から主島を正面に。島の全景と外洋のうねりが同時に入る
+            { { 60.0f, 14.0f, -160.0f }, { 0.0342f, -0.3488f, 0.0f }, 55.0f, 20000.0f },
+            // ③ 北側の浅瀬から順光で。水の透明感とコースティクスが最も出る向き
+            { { 8.0f, 20.0f, 143.0f }, { 0.0798f, -3.1416f, 0.0f }, 55.0f, 20000.0f },
+            // ④ 島々に囲まれた内側の礁湖。椰子が両側からフレームになる
+            { { 170.0f, 30.0f, 130.0f }, { 0.0708f, -2.5454f, 0.0f }, 55.0f, 20000.0f },
+            // ⑤ 高所からの俯瞰。島の連なりと雲の広がりでスケールを見せる
+            { { 10.0f, 35.0f, 190.0f }, { 0.1155f, -3.1216f, 0.0f }, 55.0f, 20000.0f },
+            // ⑥ 外洋から島影を望む。手前は深場のうねりと白波だけの構図
+            { { -30.0f, 10.0f, -230.0f }, { -0.0187f, 0.1882f, 0.0f }, 60.0f, 20000.0f },
+        },
+        [this](const CameraShowcase::Shot& shot) {
+            SetReleaseCameraTransform(shot.translate, shot.rotate);
+            SetReleaseCameraLens(shot.fovDegrees, shot.farClip);
+        });
+}
+
+void WaterTestScene::OnUpdate() {
+    auto* frameRate = engine_ ? engine_->GetService<FrameRateController>() : nullptr;
+    cameraShowcase_.Update(frameRate ? frameRate->GetDeltaTime() : 0.016f);
 }
 
 void WaterTestScene::Draw() {
@@ -62,6 +93,11 @@ void WaterTestScene::Draw() {
 }
 
 void WaterTestScene::OnFinalize() {
+    // シーン遷移中はフェードの主導権が SceneTransition にあるので触らない
+    // （暗転しているはずの画が 1 フレーム戻ってしまう）
+    auto* sceneManager = engine_ ? engine_->GetSceneManager() : nullptr;
+    cameraShowcase_.Shutdown(sceneManager && sceneManager->IsTransitioning());
+
     // WaterRenderFeature の所有者は BaseScene（この直後に features_ が破棄される）。
     // UI が Feature ポインタを持ったままにならないよう、ここで先に切る。
     waterController_.Shutdown();

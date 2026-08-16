@@ -351,6 +351,20 @@ namespace CoreEngine
         }
     }
 
+    void BaseScene::SetReleaseCameraLens(float fovDegrees, float farClip, float nearClip)
+    {
+        if (!cameraManager_) {
+            return;
+        }
+        if (auto* releaseCamera = cameraManager_->GetCamera(CameraNames::Game)) {
+            CameraParameters params = releaseCamera->GetParameters();
+            params.SetFovDegrees(fovDegrees);
+            params.nearClip = nearClip;
+            params.farClip = farClip;
+            releaseCamera->SetParameters(params);
+        }
+    }
+
     void BaseScene::SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable)
     {
         if (collisionFeature_) {
