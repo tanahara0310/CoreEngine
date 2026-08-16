@@ -74,8 +74,9 @@ namespace CoreEngine
         desc.outputUavName = "gReflectionOutput";
         // gSkyEnvironmentMap は t5。空をこのパス内で解決するために追加した
         // （Water.PS 側で平面法線の空と混ぜると二重像になるため）。
-        desc.srvTableNames = {
+        static constexpr const char* kSrvTableNames[] = {
             "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal", "gSkyEnvironmentMap" };
+        desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterReflectionConstants";
         desc.constantsBytes = sizeof(WaterReflectionConstants);
         return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);

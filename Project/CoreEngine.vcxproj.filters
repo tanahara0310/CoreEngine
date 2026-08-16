@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
+    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp">
+    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp">
@@ -1050,10 +1050,10 @@
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h">
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
+    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.h">
+    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h">
@@ -2387,66 +2387,6 @@
     <None Include="Application\Assets\Models\human\walk.bin">
       <Filter>Application\Assets\Models\human</Filter>
     </None>
-    <None Include="Docs\Engine\Audio\SoundManager.md">
-      <Filter>Docs\Engine\Audio</Filter>
-    </None>
-    <None Include="Docs\Engine\Camera\CameraManager.md">
-      <Filter>Docs\Engine\Camera</Filter>
-    </None>
-    <None Include="Docs\Engine\Collision\Collision.md">
-      <Filter>Docs\Engine\Collision</Filter>
-    </None>
-    <None Include="Docs\Engine\Core\EngineSystem.md">
-      <Filter>Docs\Engine\Core</Filter>
-    </None>
-    <None Include="Docs\Engine\Core\Framework.md">
-      <Filter>Docs\Engine\Core</Filter>
-    </None>
-    <None Include="Docs\Engine\GameObject\GameObject.md">
-      <Filter>Docs\Engine\GameObject</Filter>
-    </None>
-    <None Include="Docs\Engine\GameObject\ModelGameObject.md">
-      <Filter>Docs\Engine\GameObject</Filter>
-    </None>
-    <None Include="Docs\Engine\GameObject\SpriteObject.md">
-      <Filter>Docs\Engine\GameObject</Filter>
-    </None>
-    <None Include="Docs\Engine\GameObject\WorldTransform.md">
-      <Filter>Docs\Engine\GameObject</Filter>
-    </None>
-    <None Include="Docs\Engine\Graphics\Lighting.md">
-      <Filter>Docs\Engine\Graphics</Filter>
-    </None>
-    <None Include="Docs\Engine\Graphics\ModelManager.md">
-      <Filter>Docs\Engine\Graphics</Filter>
-    </None>
-    <None Include="Docs\Engine\Graphics\README.md">
-      <Filter>Docs\Engine\Graphics</Filter>
-    </None>
-    <None Include="Docs\Engine\Graphics\Rendering\PBR_RoadMap.md">
-      <Filter>Docs\Engine\Graphics\Rendering</Filter>
-    </None>
-    <None Include="Docs\Engine\Graphics\TextureManager.md">
-      <Filter>Docs\Engine\Graphics</Filter>
-    </None>
-    <None Include="Docs\Engine\Input\Input.md">
-      <Filter>Docs\Engine\Input</Filter>
-    </None>
-    <None Include="Docs\Engine\Math\MathCore.md">
-      <Filter>Docs\Engine\Math</Filter>
-    </None>
-    <None Include="Docs\Engine\Particle\ParticleSystem.md">
-      <Filter>Docs\Engine\Particle</Filter>
-    </None>
-    <None Include="Docs\Engine\README.md">
-      <Filter>Docs\Engine</Filter>
-    </None>
-    <None Include="Docs\Engine\Scene\SceneManager.md">
-      <Filter>Docs\Engine\Scene</Filter>
-    </None>
-    <None Include="Docs\Engine\Utility\Utility.md">
-      <Filter>Docs\Engine\Utility</Filter>
-    </None>
     <None Include="Build\Scripts\SyncFilters.ps1">
       <Filter>Build\Scripts</Filter>
     </None>
@@ -2496,48 +2436,6 @@
     </Filter>
     <Filter Include="Build\Scripts">
       <UniqueIdentifier>{4EB8E661-AD4D-4FDB-AE80-36E0F81C78A8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs">
-      <UniqueIdentifier>{43DD00BA-76AE-43FF-95E2-E05262653932}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine">
-      <UniqueIdentifier>{4A657136-8EB1-4078-B6F2-F15DF6040D2C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Audio">
-      <UniqueIdentifier>{1158C336-3743-478D-94A5-642D55E56242}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Camera">
-      <UniqueIdentifier>{4E925CDE-247A-47BE-B29B-7A50F07F1B1A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Collision">
-      <UniqueIdentifier>{5841777E-71E4-4FE6-961B-CFDCECE3AEEF}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Core">
-      <UniqueIdentifier>{63D4A1CA-E6CF-4816-9B2C-A3718F45EE2E}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\GameObject">
-      <UniqueIdentifier>{8D1E7EE2-862C-46C0-BD87-4AAA6B385BA6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Graphics">
-      <UniqueIdentifier>{1586DD78-EB9C-481B-876D-D8ED4A3D13EE}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Graphics\Rendering">
-      <UniqueIdentifier>{87DFF4B0-CBEC-48F9-A479-C6FF3A8DE3A1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Input">
-      <UniqueIdentifier>{3B66814D-569A-4C35-92EB-9AAAAA048B2B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Math">
-      <UniqueIdentifier>{D5518375-9EA2-435A-B773-4A8439F30056}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Particle">
-      <UniqueIdentifier>{4D90B60B-54E1-4217-A746-3979F28DCDCA}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Scene">
-      <UniqueIdentifier>{34E788E0-5B25-43E0-8212-E71C182B35F7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Docs\Engine\Utility">
-      <UniqueIdentifier>{0FA29CFD-660E-4053-9501-B303826B2E13}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine">
       <UniqueIdentifier>{f6f7eb83-ae86-4048-be21-0fc749f83aa2}</UniqueIdentifier>

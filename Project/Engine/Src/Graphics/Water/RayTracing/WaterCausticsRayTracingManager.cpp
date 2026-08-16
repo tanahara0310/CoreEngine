@@ -83,7 +83,9 @@ namespace CoreEngine
         desc.hitGroupName = L"RTWaterCausticsHitGroup";
         desc.closestHitName = L"RTWaterCausticsClosestHit";
         desc.outputUavName = "gCausticsOutput";
-        desc.srvTableNames = { "gSceneDepth", "gNormalRoughness", "gFFTOceanDisplacement", "gFFTOceanNormal" };
+        static constexpr const char* kSrvTableNames[] = {
+            "gSceneDepth", "gNormalRoughness", "gFFTOceanDisplacement", "gFFTOceanNormal" };
+        desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterCausticsConstants";
         desc.constantsBytes = sizeof(WaterCausticsConstants);
         return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);

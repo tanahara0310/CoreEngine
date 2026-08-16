@@ -70,7 +70,9 @@ namespace CoreEngine
         desc.hitGroupName = L"RTWaterRefractionHitGroup";
         desc.closestHitName = L"RTWaterRefractionClosestHit";
         desc.outputUavName = "gRefractionOutput";
-        desc.srvTableNames = { "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal" };
+        static constexpr const char* kSrvTableNames[] = {
+            "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal" };
+        desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterRefractionConstants";
         desc.constantsBytes = sizeof(WaterRefractionConstants);
         return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
+#include <span>
 #include <string>
 
 #include "Graphics/Shader/CBufferLayout.h"
@@ -54,7 +55,13 @@ namespace CoreEngine
 
     protected:
         /// @brief パイプライン 1 本分の構成（差分はこれだけ。残りは全パス同型）
-        /// @details 文字列はすべて静的リテラルを前提にポインタで保持する。
+        /// @details 文字列・配列とも静的記憶域のものを前提にポインタで保持する。
+        ///          srvTableNames を std::initializer_list にしていたときは
+        ///          `desc.srvTableNames = { "a", "b" };` の裏側の一時配列が
+        ///          その行の末尾で寿命を終え、以後ダングリングだった
+        ///          （Debug ではスタックが残っていて動き、Release でのみ落ちた）。
+        ///          span なら同じ書き方はコンパイルエラーになり、呼び出し側は
+        ///          static constexpr 配列を渡すしかなくなる。
         struct RTWaterPipelineDesc {
             const char* ownerName = nullptr;         ///< ログ・診断に出す所有者名
             const char* outputDebugName = nullptr;   ///< 出力テクスチャのデバッグ名接頭辞
@@ -64,7 +71,7 @@ namespace CoreEngine
             const wchar_t* hitGroupName = nullptr;
             const wchar_t* closestHitName = nullptr;
             const char* outputUavName = nullptr;     ///< u0 の UAV テーブル名
-            std::initializer_list<const char*> srvTableNames; ///< t1〜 の SRV テーブル名（t0 は常に gScene）
+            std::span<const char* const> srvTableNames; ///< t1〜 の SRV テーブル名（t0 は常に gScene・静的配列を渡すこと）
             const char* constantsName = nullptr;     ///< 32bit root constants の名前
             uint32_t constantsBytes = 0;             ///< root constants のサイズ（4 の倍数）
             uint32_t payloadBytes = sizeof(float) * 2; ///< RTWaterPayload {hitT, hitFlag}
