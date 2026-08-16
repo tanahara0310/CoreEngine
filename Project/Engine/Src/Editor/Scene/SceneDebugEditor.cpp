@@ -569,7 +569,7 @@ namespace CoreEngine
                     camera3D->GetProjectionMatrix(),
                     1.0f,
                     1.0f);
-                const Vector3 forward = MathCore::Vector::Normalize(farPoint - nearPoint);
+                const Vector3 forward = CoreEngine::Normalize(farPoint - nearPoint);
 
                 const Geometry::Ray ray{ camera3D->GetPosition(), forward };
                 const Geometry::Plane groundPlane{ { 0.0f, 1.0f, 0.0f }, 0.0f };   // y = 0

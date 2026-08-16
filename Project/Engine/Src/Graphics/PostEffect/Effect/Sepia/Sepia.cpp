@@ -37,7 +37,7 @@ namespace CoreEngine
         // SepiaParams 定数バッファ
         UINT sepiaSize = (sizeof(SepiaParams) + 255) & ~255;
         sepiaParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), sepiaSize);
-        HRESULT hr = sepiaParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedSepiaParams_));
+        [[maybe_unused]] HRESULT hr = sepiaParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedSepiaParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 

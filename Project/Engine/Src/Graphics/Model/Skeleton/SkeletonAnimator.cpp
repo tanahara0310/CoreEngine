@@ -85,10 +85,7 @@ void SkeletonAnimator::ApplyAnimationAndUpdateMatrices() {
 
         // 親がいれば親の行列を掛ける
         if (joint.parent) {
-            joint.skeletonSpaceMatrix = MathCore::Matrix::Multiply(
-                joint.localMatrix,
-                skeleton_.joints[*joint.parent].skeletonSpaceMatrix
-            );
+            joint.skeletonSpaceMatrix = joint.localMatrix * skeleton_.joints[*joint.parent].skeletonSpaceMatrix;
         } else {
             // 親がいないのでlocalMatrixとskeletonSpaceMatrixは一致する
             joint.skeletonSpaceMatrix = joint.localMatrix;

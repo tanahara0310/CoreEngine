@@ -148,6 +148,6 @@ namespace CoreEngine
             screen.x, screen.y,
             0.0f, 100.0f);
 
-        return MathCore::Matrix::Multiply(worldMatrix, MathCore::Matrix::Multiply(viewMatrix, projectionMatrix));
+        return worldMatrix * viewMatrix * projectionMatrix;
     }
 }

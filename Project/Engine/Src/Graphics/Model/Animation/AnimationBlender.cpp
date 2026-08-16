@@ -143,10 +143,7 @@ Skeleton AnimationBlender::BlendSkeletons(const Skeleton& skeleton1, const Skele
 
         // 親がいれば親の行列を掛ける
         if (joint.parent) {
-            joint.skeletonSpaceMatrix = MathCore::Matrix::Multiply(
-                joint.localMatrix,
-                result.joints[*joint.parent].skeletonSpaceMatrix
-            );
+            joint.skeletonSpaceMatrix = joint.localMatrix * result.joints[*joint.parent].skeletonSpaceMatrix;
         } else {
             joint.skeletonSpaceMatrix = joint.localMatrix;
         }

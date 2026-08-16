@@ -155,24 +155,20 @@ float NoiseModule::PerlinNoise3D(float x, float y, float z) {
     float gradBB1 = Gradient(permutation[BB + 1], x - 1.0f, y - 1.0f, z - 1.0f);
 
     // 補間を実行
-    float x1 = Lerp(gradAA, gradBA, u);
-    float x2 = Lerp(gradAB, gradBB, u);
-    float y1 = Lerp(x1, x2, v);
+    float x1 = MathCore::Lerp(gradAA, gradBA, u);
+    float x2 = MathCore::Lerp(gradAB, gradBB, u);
+    float y1 = MathCore::Lerp(x1, x2, v);
 
-    float x3 = Lerp(gradAA1, gradBA1, u);
-    float x4 = Lerp(gradAB1, gradBB1, u);
-    float y2 = Lerp(x3, x4, v);
+    float x3 = MathCore::Lerp(gradAA1, gradBA1, u);
+    float x4 = MathCore::Lerp(gradAB1, gradBB1, u);
+    float y2 = MathCore::Lerp(x3, x4, v);
 
-    return Lerp(y1, y2, w);
+    return MathCore::Lerp(y1, y2, w);
 }
 
 float NoiseModule::Fade(float t) {
     // 6t^5 - 15t^4 + 10t^3
     return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
-}
-
-float NoiseModule::Lerp(float a, float b, float t) {
-    return a + t * (b - a);
 }
 
 float NoiseModule::Gradient(int hash, float x, float y, float z) {

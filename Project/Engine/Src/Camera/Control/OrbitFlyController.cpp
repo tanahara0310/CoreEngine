@@ -19,17 +19,6 @@ namespace CoreEngine
         constexpr int kMaxStepsPerFrame = 3;
     }
 
-    float OrbitFlyController::NormalizeAngle(float angle)
-    {
-        while (angle > std::numbers::pi_v<float>) {
-            angle -= 2.0f * std::numbers::pi_v<float>;
-        }
-        while (angle < -std::numbers::pi_v<float>) {
-            angle += 2.0f * std::numbers::pi_v<float>;
-        }
-        return angle;
-    }
-
     Vector3 OrbitFlyController::ComputeEyePosition() const
     {
         const OrbitState& s = settings_.smoothMovement ? smooth_ : state_;
@@ -52,7 +41,7 @@ namespace CoreEngine
         // これは Matrix::LookAt(eye, target, +Y) と厳密に同じビュー行列を与える
         // （pitch は ±0.49π にクランプされるため cos(pitch) > 0 が保証される）。
         camera.SetScale({ 1.0f, 1.0f, 1.0f });
-        camera.SetRotate({ s.pitch, NormalizeAngle(s.yaw + std::numbers::pi_v<float>), 0.0f });
+        camera.SetRotate({ s.pitch, MathCore::NormalizeAngle(s.yaw + std::numbers::pi_v<float>), 0.0f });
     }
 
     void OrbitFlyController::Update(const CameraInputState& input, float deltaTime, Camera& camera)
@@ -104,7 +93,7 @@ namespace CoreEngine
             if (settings_.invertY) {
                 pitchDelta = -pitchDelta;
             }
-            state_.yaw = NormalizeAngle(state_.yaw + input.mouseDelta.x * settings_.rotationSensitivity);
+            state_.yaw = MathCore::NormalizeAngle(state_.yaw + input.mouseDelta.x * settings_.rotationSensitivity);
             state_.pitch = std::clamp(state_.pitch + pitchDelta, -kMaxPitch, kMaxPitch);
         }
 
@@ -114,12 +103,12 @@ namespace CoreEngine
                 std::sinf(state_.pitch),
                 std::cosf(state_.pitch) * std::cosf(state_.yaw)
             };
-            const Vector3 right = Vector::Normalize(Vector::Cross({ 0.0f, 1.0f, 0.0f }, outward));
-            const Vector3 up = Vector::Normalize(Vector::Cross(outward, right));
+            const Vector3 right = CoreEngine::Normalize(CoreEngine::Cross({ 0.0f, 1.0f, 0.0f }, outward));
+            const Vector3 up = CoreEngine::Normalize(CoreEngine::Cross(outward, right));
 
             const float speed = settings_.panSensitivity;
-            state_.target = Vector::Add(state_.target, Vector::Multiply(input.mouseDelta.x * speed, right));
-            state_.target = Vector::Add(state_.target, Vector::Multiply(input.mouseDelta.y * speed, up));
+            state_.target += right * (input.mouseDelta.x * speed);
+            state_.target += up * (input.mouseDelta.y * speed);
             ClampTargetToWorldBounds();
         }
     }
@@ -148,7 +137,7 @@ namespace CoreEngine
             -std::sinf(state_.pitch),
             -std::cosf(state_.pitch) * std::cosf(state_.yaw)
         };
-        state_.target = Vector::Add(state_.target, Vector::Multiply(dolly, forward));
+        state_.target += forward * dolly;
         ClampTargetToWorldBounds();
 
         // 持ち越しで連続ジャンプしないよう処理後はリセット
@@ -162,29 +151,28 @@ namespace CoreEngine
             std::sinf(state_.pitch),
             std::cosf(state_.pitch) * std::cosf(state_.yaw)
         };
-        const Vector3 forward = Vector::Multiply(-1.0f, outward);
-        const Vector3 right = Vector::Normalize(Vector::Cross({ 0.0f, 1.0f, 0.0f }, outward));
+        const Vector3 forward = -outward;
+        const Vector3 right = Normalize(Cross({ 0.0f, 1.0f, 0.0f }, outward));
         const Vector3 worldUp = { 0.0f, 1.0f, 0.0f };
 
         Vector3 move = { 0.0f, 0.0f, 0.0f };
-        if (input.forward) move = Vector::Add(move, forward);
-        if (input.back)    move = Vector::Add(move, Vector::Multiply(-1.0f, forward));
-        if (input.right)   move = Vector::Add(move, right);
-        if (input.left)    move = Vector::Add(move, Vector::Multiply(-1.0f, right));
-        if (input.up)      move = Vector::Add(move, worldUp);
-        if (input.down)    move = Vector::Add(move, Vector::Multiply(-1.0f, worldUp));
+        if (input.forward) move += forward;
+        if (input.back)    move -= forward;
+        if (input.right)   move += right;
+        if (input.left)    move -= right;
+        if (input.up)      move += worldUp;
+        if (input.down)    move -= worldUp;
 
-        const float moveLenSq = move.x * move.x + move.y * move.y + move.z * move.z;
-        if (moveLenSq <= 1e-10f) {
+        if (LengthSquared(move) <= 1e-10f) {
             return;
         }
-        move = Vector::Normalize(move);
+        move = Normalize(move);
 
         const float speed = settings_.flySpeed * (input.boost ? settings_.flySpeedBoost : 1.0f) * deltaTime;
 
         // target（= 回転中心）を直接動かす。distance はそのままなので、カメラは
         // 注視点との相対位置を保ったままワールド上を自由に平行移動する。
-        state_.target = Vector::Add(state_.target, Vector::Multiply(speed, move));
+        state_.target += move * speed;
         ClampTargetToWorldBounds();
     }
 
@@ -200,8 +188,8 @@ namespace CoreEngine
         smooth_.pitch += (state_.pitch - smooth_.pitch) * factor;
 
         // ヨーは角度の周期性を考慮して補間する
-        const float yawDiff = NormalizeAngle(state_.yaw - smooth_.yaw);
-        smooth_.yaw = NormalizeAngle(smooth_.yaw + yawDiff * factor);
+        const float yawDiff = MathCore::NormalizeAngle(state_.yaw - smooth_.yaw);
+        smooth_.yaw = MathCore::NormalizeAngle(smooth_.yaw + yawDiff * factor);
     }
 
     void OrbitFlyController::Reset()

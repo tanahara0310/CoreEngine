@@ -62,13 +62,6 @@ private:
     /// @return フェード値
     float Fade(float t);
 
-    /// @brief 線形補間
-    /// @param a 開始値
-    /// @param b 終了値
-    /// @param t 補間係数
-    /// @return 補間値
-    float Lerp(float a, float b, float t);
-
     /// @brief グラディエント関数
     /// @param hash ハッシュ値
     /// @param x X座標

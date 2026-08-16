@@ -322,7 +322,7 @@ namespace CoreEngine
         Matrix4x4 scaleMatrix = Matrix::Scale(uvTransform.scale);
         Matrix4x4 rotateMatrix = Matrix::RotationZ(uvTransform.rotate.z);
         Matrix4x4 translateMatrix = Matrix::Translation(uvTransform.translate);
-        material_->SetUVTransform(Matrix::Multiply(Matrix::Multiply(scaleMatrix, rotateMatrix), translateMatrix));
+        material_->SetUVTransform(scaleMatrix * rotateMatrix * translateMatrix);
     }
 
     void SpriteObject::ChangeAnchorKeepingPosition(const Vector2& newAnchor) {

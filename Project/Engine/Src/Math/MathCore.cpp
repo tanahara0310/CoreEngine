@@ -67,65 +67,10 @@ namespace CoreEngine
         }
 
         //================================================
-        // ベクトル演算の実装（Vector3.hに移動済み）
-        //================================================
-        // Vector::Add, Subtract, Multiply は演算子オーバーロードで実装
-        // Vector::Dot, Length, Normalize, Cross は Vector3.h のグローバル関数として実装
-
-        // Project関数のみこちらに残す（特殊な用途のため）
-        namespace Vector {
-            Vector3 Project(const Vector3& v, const Vector3& n) {
-                float dotProduct = CoreEngine::Dot(v, n);
-                float nLengthSq = CoreEngine::Dot(n, n);
-                assert(nLengthSq != 0.0f);
-                float scalar = dotProduct / nLengthSq;
-                return scalar * n;
-            }
-
-            Vector3 Slerp(const Vector3& start, const Vector3& end, float t) {
-                const float dot = Clamp(CoreEngine::Dot(start, end), -1.0f, 1.0f);
-
-                // start と直交する成分。これが回転面を決める。
-                Vector3 relative = end - dot * start;
-                const float relativeLength = CoreEngine::Length(relative);
-
-                if (relativeLength < 1e-6f) {
-                    // 平行 or 反平行 → 直交成分が消えて回転面が決まらない。
-                    // ここを Normalize(0) に任せると結果が単位長でなくなる（長さ 0 になる）。
-                    if (dot > 0.0f) {
-                        return start;   // 平行: 補間しても start のまま
-                    }
-                    // 反平行: 180 度回転。どの面を通るかは決まらないので
-                    // start と直交する任意の軸を選ぶ（結果は必ず単位ベクトルになる）
-                    const Vector3 helper = (std::abs(start.x) < 0.9f)
-                        ? Vector3{ 1.0f, 0.0f, 0.0f }
-                        : Vector3{ 0.0f, 1.0f, 0.0f };
-                    relative = CoreEngine::Normalize(helper - CoreEngine::Dot(helper, start) * start);
-                }
-                else {
-                    relative = relative * (1.0f / relativeLength);
-                }
-
-                const float theta = std::acos(dot) * t;
-                return std::cos(theta) * start + std::sin(theta) * relative;
-            }
-        }
-
-        //================================================
         // 行列演算の実装
         //================================================
         namespace Matrix {
-            Matrix4x4 Add(const Matrix4x4& m1, const Matrix4x4& m2) {
-                return StoreM(LoadM(m1) + LoadM(m2));
-            }
-
-            Matrix4x4 Subtract(const Matrix4x4& m1, const Matrix4x4& m2) {
-                return StoreM(LoadM(m1) - LoadM(m2));
-            }
-
-            Matrix4x4 Multiply(const Matrix4x4& m1, const Matrix4x4& m2) {
-                return StoreM(DirectX::XMMatrixMultiply(LoadM(m1), LoadM(m2)));
-            }
+            // 加算・減算・乗算は Matrix4x4 の演算子（+ - *）にある
 
             Matrix4x4 Inverse(const Matrix4x4& m) {
                 DirectX::XMVECTOR det;
@@ -247,11 +192,11 @@ namespace CoreEngine
             void DecomposeToSRT(const Matrix4x4& matrix, Vector3& scale, Vector3& rotate, Vector3& translate) {
                 // XMMatrixDecompose は回転をクォータニオンで返すため、
                 // オイラー角(XYZ)へ落とすここの仕様は手実装のまま維持する
-                translate = { matrix.m[3][0], matrix.m[3][1], matrix.m[3][2] };
+                translate = matrix.GetTranslation();
 
-                scale.x = Length({ matrix.m[0][0], matrix.m[0][1], matrix.m[0][2] });
-                scale.y = Length({ matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] });
-                scale.z = Length({ matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] });
+                scale.x = Length(matrix.GetAxisX());
+                scale.y = Length(matrix.GetAxisY());
+                scale.z = Length(matrix.GetAxisZ());
 
                 rotate.y = std::atan2(matrix.m[0][2], matrix.m[2][2]);
                 rotate.x = std::atan2(-matrix.m[1][2], std::sqrt(matrix.m[1][0] * matrix.m[1][0] + matrix.m[1][1] * matrix.m[1][1]));
@@ -264,11 +209,7 @@ namespace CoreEngine
         // クォータニオン演算の実装
         //================================================
         namespace QuaternionMath {
-            Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs) {
-                // XMQuaternionMultiply(Q1, Q2) は Q2*Q1 を返すので、
-                // ハミルトン積 lhs*rhs を得るには (rhs, lhs) の順で渡す
-                return StoreQ(DirectX::XMQuaternionMultiply(LoadQ(rhs), LoadQ(lhs)));
-            }
+            // 積は Quaternion::operator* にある（ハミルトン積 lhs * rhs）
 
             Quaternion Identity() {
                 return StoreQ(DirectX::XMQuaternionIdentity());
@@ -365,8 +306,7 @@ namespace CoreEngine
         namespace Coordinate {
             Vector2 WorldToNormalizedScreen(const Vector3& worldPos, const Matrix4x4& viewMatrix,
                 const Matrix4x4& projectionMatrix, float screenWidth, float screenHeight) {
-                Matrix4x4 matVPV = Matrix::Multiply(Matrix::Multiply(viewMatrix, projectionMatrix),
-                    Rendering::Viewport(0, 0, screenWidth, screenHeight, 0.0f, 1.0f));
+                Matrix4x4 matVPV = viewMatrix * projectionMatrix * Rendering::Viewport(0, 0, screenWidth, screenHeight, 0.0f, 1.0f);
 
                 Vector3 screenPos = CoordinateTransform::TransformCoord(worldPos, matVPV);
 
@@ -385,8 +325,7 @@ namespace CoreEngine
 
                 Vector3 screenCoord = { screenX, screenY, depth };
 
-                Matrix4x4 matVPV = Matrix::Multiply(Matrix::Multiply(viewMatrix, projectionMatrix),
-                    Rendering::Viewport(0, 0, screenWidth, screenHeight, 0.0f, 1.0f));
+                Matrix4x4 matVPV = viewMatrix * projectionMatrix * Rendering::Viewport(0, 0, screenWidth, screenHeight, 0.0f, 1.0f);
                 Matrix4x4 matInvVPV = Matrix::Inverse(matVPV);
 
                 return CoordinateTransform::TransformCoord(screenCoord, matInvVPV);
@@ -398,8 +337,7 @@ namespace CoreEngine
                 float screenX = (normalizedScreenPos.x + 1.0f) * 0.5f * screenWidth;
                 float screenY = (-normalizedScreenPos.y + 1.0f) * 0.5f * screenHeight;
 
-                Matrix4x4 matVPV = Matrix::Multiply(Matrix::Multiply(viewMatrix, projectionMatrix),
-                    Rendering::Viewport(0, 0, screenWidth, screenHeight, 0.0f, 1.0f));
+                Matrix4x4 matVPV = viewMatrix * projectionMatrix * Rendering::Viewport(0, 0, screenWidth, screenHeight, 0.0f, 1.0f);
                 Vector3 originalScreenPos = CoordinateTransform::TransformCoord(originalWorldPos, matVPV);
 
                 Vector3 targetScreenPos = { screenX, screenY, originalScreenPos.z };

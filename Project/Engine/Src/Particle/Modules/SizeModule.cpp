@@ -33,7 +33,7 @@ void SizeModule::UpdateSize(Particle& particle)
         // 3Dサイズでの補間
         // MainModuleで設定された初期サイズを使用
         Vector3 startSize = particle.initialScale;
-        Vector3 currentSize = LerpVector3(startSize, sizeData_.endSize3D, curveValue);
+        Vector3 currentSize = MathCore::Lerp(startSize, sizeData_.endSize3D, curveValue);
         
       // サイズ制限を適用
         currentSize.x = std::clamp(currentSize.x, sizeData_.minSize, sizeData_.maxSize);
@@ -125,15 +125,6 @@ float SizeModule::ApplyCurve(float t, SizeData::SizeCurve curve)
         default:
             return t;
     }
-}
-
-Vector3 SizeModule::LerpVector3(const Vector3& start, const Vector3& end, float t)
-{
-    return {
-        start.x + (end.x - start.x) * t,
-        start.y + (end.y - start.y) * t,
-        start.z + (end.z - start.z) * t
-    };
 }
 
 float SizeModule::ApplyRandomness(float baseSize, float randomness)

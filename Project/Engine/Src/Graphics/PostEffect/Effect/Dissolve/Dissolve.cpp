@@ -44,7 +44,7 @@ namespace CoreEngine
         // （C++ 側はパディングを持たないので sizeof の方が小さい）
         UINT dissolveSize = (static_cast<UINT>(Cb::HlslSizeOf(kDissolveParamsFields)) + 255) & ~255;
         dissolveParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), dissolveSize);
-        HRESULT hr = dissolveParamsCB_->Map(0, nullptr, &mappedDissolveParams_);
+        [[maybe_unused]] HRESULT hr = dissolveParamsCB_->Map(0, nullptr, &mappedDissolveParams_);
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 

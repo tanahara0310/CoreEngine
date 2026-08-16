@@ -58,24 +58,20 @@ namespace CoreEngine
         const Vector3 right = camera.GetRight();
 
         Vector3 move = { 0.0f, 0.0f, 0.0f };
-        if (input.forward) move = Vector::Subtract(move, forward);
-        if (input.back)    move = Vector::Add(move, forward);
-        if (input.right)   move = Vector::Add(move, right);
-        if (input.left)    move = Vector::Subtract(move, right);
+        if (input.forward) move -= forward;
+        if (input.back)    move += forward;
+        if (input.right)   move += right;
+        if (input.left)    move -= right;
         if (input.up)      move.y += 1.0f;   // ワールドY軸上昇
         if (input.down)    move.y -= 1.0f;   // ワールドY軸下降
 
-        const float len = std::sqrtf(move.x * move.x + move.y * move.y + move.z * move.z);
+        const float len = Length(move);
         if (len <= 0.0001f) {
             return;
         }
 
         const float speed = settings_.moveSpeed * (input.boost ? settings_.boostMultiplier : 1.0f) * deltaTime;
-        Vector3 pos = camera.GetTranslate();
-        pos.x += (move.x / len) * speed;
-        pos.y += (move.y / len) * speed;
-        pos.z += (move.z / len) * speed;
-        camera.SetTranslate(pos);
+        camera.SetTranslate(camera.GetTranslate() + (move / len) * speed);
     }
 
     void FreeLookController::ApplyTo(Camera& camera) const

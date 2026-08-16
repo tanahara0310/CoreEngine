@@ -155,7 +155,12 @@ namespace Geometry
             return false;   // レイが平面と平行
         }
 
-        const float t = -plane.DistanceTo(ray.origin) / denom;
+        // NOTE: 直前の epsilon チェックにより denom が 0 になることはないが、
+        // Release 構成（/GL + 最適化有効）のみ MSVC のリンク時コード生成が denom を
+        // コンパイル時定数 0 と誤認し C4723 を出す（Debug/Development では発生しない）。
+        // volatile を経由させ、コンパイラによる定数畳み込みを避けて誤検知を防ぐ。
+        volatile float safeDenom = denom;
+        const float t = -plane.DistanceTo(ray.origin) / safeDenom;
         if (t < tMin || t > tMax) {
             return false;
         }

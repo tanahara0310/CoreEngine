@@ -21,7 +21,7 @@ namespace {
             std::sin(elevation),
             std::cos(elevation) * std::cos(azimuth),
         };
-        return MathCore::Vector::Normalize({ -toSun.x, -toSun.y, -toSun.z });
+        return CoreEngine::Normalize(-toSun);
     }
 }
 

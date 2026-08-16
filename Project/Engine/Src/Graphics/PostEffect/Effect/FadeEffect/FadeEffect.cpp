@@ -54,7 +54,7 @@ namespace CoreEngine
     {
         UINT fadeSize = (sizeof(FadeParams) + 255) & ~255;
         fadeParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), fadeSize);
-        HRESULT hr = fadeParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedFadeParams_));
+        [[maybe_unused]] HRESULT hr = fadeParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedFadeParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 

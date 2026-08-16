@@ -111,7 +111,7 @@ namespace CoreEngine
         };
 
         // 正規化
-        float length = Vector::Length(direction);
+        float length = CoreEngine::Length(direction);
         if (length > 0.0f) {
             direction.x /= length;
             direction.y /= length;
@@ -188,10 +188,10 @@ namespace CoreEngine
            std::abs(random_.GetFloatSigned()), // Y成分は常に正（上半球）
              random_.GetFloatSigned()
             };
-        } while (Vector::Length(direction) > 1.0f);
+        } while (CoreEngine::Length(direction) > 1.0f);
 
         // 正規化
-        float length = Vector::Length(direction);
+        float length = CoreEngine::Length(direction);
         if (length > 0.0f) {
             direction.x /= length;
             direction.y /= length;
@@ -249,7 +249,7 @@ namespace CoreEngine
 
     Vector3 ShapeModule::GenerateLinePosition(const Vector3& emitterPosition) {
         Vector3 direction = shapeData_.emissionDirection;
-        float length = Vector::Length(direction);
+        float length = CoreEngine::Length(direction);
         if (length > 0.0f) {
             direction.x /= length;
             direction.y /= length;
@@ -297,7 +297,7 @@ namespace CoreEngine
           random_.GetFloatSigned()
         };
 
-        float length = Vector::Length(direction);
+        float length = CoreEngine::Length(direction);
         if (length > 0.0f) {
             direction.x /= length;
             direction.y /= length;
@@ -468,7 +468,7 @@ namespace CoreEngine
         case ShapeType::Line:
         {
             Vector3 direction = shapeData_.emissionDirection;
-            float length = Vector::Length(direction);
+            float length = CoreEngine::Length(direction);
             if (length > 0.0f) {
                 direction.x /= length;
                 direction.y /= length;

@@ -320,7 +320,7 @@ namespace CoreEngine
         // カメラ情報
         cameraWorldPos_ = cameraWorldPosition;
         invViewProj_ = MathCore::Matrix::Inverse(
-            MathCore::Matrix::Multiply(viewMatrix, projMatrix));
+            viewMatrix * projMatrix);
 
         // 太陽・月情報・カメラ高度は AtmosphereManager から取得（単一情報源）。
         if (atmosphereManager) {

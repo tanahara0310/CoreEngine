@@ -52,7 +52,7 @@ namespace CoreEngine
                     target.z + distance * std::cosf(pitch) * std::cosf(yaw)
                 };
                 // 注視点を向くオイラー角（OrbitFlyController::ApplyTo と同じ変換）
-                snapshot.rotation = { pitch, OrbitFlyController::NormalizeAngle(yaw + MathCore::Constants::kPi), 0.0f };
+                snapshot.rotation = { pitch, MathCore::NormalizeAngle(yaw + MathCore::Constants::kPi), 0.0f };
                 snapshot.scale = { 1.0f, 1.0f, 1.0f };
             } else {
                 snapshot.position = JsonManager::JsonToVector3(jsonData["position"]);

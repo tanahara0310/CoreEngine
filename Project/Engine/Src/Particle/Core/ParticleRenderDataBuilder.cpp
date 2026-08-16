@@ -27,7 +27,7 @@ uint32_t ParticleRenderDataBuilder::BuildRenderData(
     // カメラから行列を取得
     Matrix4x4 viewMatrix = camera->GetViewMatrix();
     Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
-    Matrix4x4 viewProjectionMatrix = Matrix::Multiply(viewMatrix, projectionMatrix);
+    Matrix4x4 viewProjectionMatrix = viewMatrix * projectionMatrix;
 
     // ビルボード行列を作成
     Matrix4x4 billboardMatrix = CreateBillboardMatrix(viewMatrix, billboardType);
@@ -41,7 +41,7 @@ uint32_t ParticleRenderDataBuilder::BuildRenderData(
         Matrix4x4 worldMatrix = CalculateWorldMatrix(particle, billboardType, billboardMatrix);
 
         // WVP行列を計算
-        Matrix4x4 worldViewProjection = Matrix::Multiply(worldMatrix, viewProjectionMatrix);
+        Matrix4x4 worldViewProjection = worldMatrix * viewProjectionMatrix;
 
         // GPU送信データに格納
         instancingData[instanceCount].WVP = worldViewProjection;
@@ -68,7 +68,7 @@ Matrix4x4 ParticleRenderDataBuilder::CalculateWorldMatrix(
         );
 
         // ビルボード変換を適用（回転とスケールのみ）
-        Matrix4x4 billboardedMatrix = Matrix::Multiply(scaleRotateMatrix, billboardMatrix);
+        Matrix4x4 billboardedMatrix = scaleRotateMatrix * billboardMatrix;
 
         // 最後に位置を適用
         billboardedMatrix.m[3][0] = particle.transform.translate.x;

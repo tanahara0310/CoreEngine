@@ -71,7 +71,7 @@ namespace CoreEngine {
         };
 
         // ライト方向は光の進行方向（太陽 → 地表）なので逆ベクトル
-        return MathCore::Vector::Normalize({ -toSun.x, -toSun.y, -toSun.z });
+        return Normalize(-toSun);
     }
 
     void AtmosphereEditor::ApplySunSettings(const AtmosphereEditorSunSettings& settings)
@@ -131,8 +131,7 @@ namespace CoreEngine {
         }
 
         if (const Light* sun = lightManager->GetAtmosphereSunLight()) {
-            const Vector3 toSun = MathCore::Vector::Normalize(
-                { -sun->direction.x, -sun->direction.y, -sun->direction.z });
+            const Vector3 toSun = Normalize(-sun->direction);
             sunSettings_.elevationDeg = std::asin(std::clamp(toSun.y, -1.0f, 1.0f)) / kDegToRad;
             // 真上（天頂）付近では方位が不定になるため、直前の UI 値を維持する
             if (std::abs(toSun.x) > 1e-5f || std::abs(toSun.z) > 1e-5f) {
@@ -143,8 +142,7 @@ namespace CoreEngine {
 
         if (const Light* moon = lightManager->GetAtmosphereMoonLight()) {
             moonSettings_.enabled = moon->enabled;
-            const Vector3 toMoon = MathCore::Vector::Normalize(
-                { -moon->direction.x, -moon->direction.y, -moon->direction.z });
+            const Vector3 toMoon = Normalize(-moon->direction);
             moonSettings_.elevationDeg = std::asin(std::clamp(toMoon.y, -1.0f, 1.0f)) / kDegToRad;
             if (std::abs(toMoon.x) > 1e-5f || std::abs(toMoon.z) > 1e-5f) {
                 moonSettings_.azimuthDeg = std::atan2(toMoon.x, toMoon.z) / kDegToRad;

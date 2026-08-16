@@ -43,7 +43,7 @@ namespace CoreEngine
     {
         UINT vignetteSize = (sizeof(VignetteParams) + 255) & ~255;
         vignetteParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), vignetteSize);
-        HRESULT hr = vignetteParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedVignetteParams_));
+        [[maybe_unused]] HRESULT hr = vignetteParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedVignetteParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 

@@ -52,9 +52,7 @@ void Camera::RebuildMatrices()
         const Matrix4x4 rotationMatrix = Matrix::RotationZ(rotate_.z);
         const Matrix4x4 translationMatrix = Matrix::Translation({ -translate_.x, -translate_.y, 0.0f });
 
-        viewMatrix_ = Matrix::Multiply(
-            translationMatrix,
-            Matrix::Multiply(rotationMatrix, scaleMatrix));
+        viewMatrix_ = translationMatrix * rotationMatrix * scaleMatrix;
 
         // カメラ行列は 3D 用の派生（GetForward 等）のためだけに保持する
         cameraMatrix_ = Matrix::Inverse(viewMatrix_);
@@ -110,7 +108,7 @@ void Camera::SetProjectionJitter(float ndcX, float ndcY)
 
 void Camera::LookAt(const Vector3& target)
 {
-    const Vector3 forward = Vector::Normalize(Vector::Subtract(target, translate_));
+    const Vector3 forward = Normalize(target - translate_);
 
     // MakeAffine の回転は Rx * Ry * Rz（行ベクトル規約）。roll = 0 のとき
     // 第 3 行（前方軸）は (cosX sinY, -sinX, cosX cosY) になるので、
@@ -121,7 +119,7 @@ void Camera::LookAt(const Vector3& target)
 Vector3 Camera::GetForward() const
 {
     // 従来通り「カメラ行列の Z 軸の逆」を返す（呼び出し側がこの符号前提で組まれている）
-    return Vector::Normalize(Vector3{
+    return CoreEngine::Normalize(Vector3{
         -cameraMatrix_.m[2][0],
         -cameraMatrix_.m[2][1],
         -cameraMatrix_.m[2][2]
@@ -130,7 +128,7 @@ Vector3 Camera::GetForward() const
 
 Vector3 Camera::GetRight() const
 {
-    return Vector::Normalize(Vector3{
+    return CoreEngine::Normalize(Vector3{
         cameraMatrix_.m[0][0],
         cameraMatrix_.m[0][1],
         cameraMatrix_.m[0][2]
@@ -139,7 +137,7 @@ Vector3 Camera::GetRight() const
 
 Vector3 Camera::GetUp() const
 {
-    return Vector::Normalize(Vector3{
+    return CoreEngine::Normalize(Vector3{
         cameraMatrix_.m[1][0],
         cameraMatrix_.m[1][1],
         cameraMatrix_.m[1][2]

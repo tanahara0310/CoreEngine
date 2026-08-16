@@ -59,7 +59,7 @@ namespace
         if (lengthSq < 1e-8f) {
             return fallback;
         }
-        return MathCore::Vector::Normalize(dir);
+        return CoreEngine::Normalize(dir);
     }
 }
 

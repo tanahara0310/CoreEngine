@@ -20,7 +20,7 @@ namespace CoreEngine
         view.camera = camera;
         view.viewMatrix = camera->GetViewMatrix();
         view.projection = camera->GetProjectionMatrix();
-        view.viewProjection = Matrix::Multiply(view.viewMatrix, view.projection);
+        view.viewProjection = view.viewMatrix * view.projection;
         view.invViewProjection = Matrix::Inverse(view.viewProjection);
         view.position = camera->GetPosition();
 

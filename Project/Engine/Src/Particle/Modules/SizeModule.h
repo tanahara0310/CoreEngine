@@ -67,13 +67,6 @@ private:
     /// @return 補間された値（0.0f - 1.0f）
     float ApplyCurve(float t, SizeData::SizeCurve curve);
 
-    /// @brief 2つのベクトルを線形補間
-    /// @param start 開始ベクトル
-    /// @param end 終了ベクトル
-    /// @param t 補間係数（0.0f - 1.0f）
-    /// @return 補間されたベクトル
-    Vector3 LerpVector3(const Vector3& start, const Vector3& end, float t);
-
     /// @brief サイズにランダム性を適用
     /// @param baseSize ベースサイズ
     /// @param randomness ランダム性（0.0f-1.0f）

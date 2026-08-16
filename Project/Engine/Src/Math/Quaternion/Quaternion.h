@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "Math/Vector/Vector3.h"
+
 /// <summary>
 /// クォータニオン構造体
 /// </summary>
@@ -136,5 +138,28 @@ inline Quaternion operator-(const Quaternion& q)
 inline Quaternion operator+(const Quaternion& q)
 {
     return q; // 単項プラスは値をそのまま返す
+}
+
+namespace MathCore
+{
+    /// @brief クォータニオンだけで閉じる演算
+    /// @details 行列を返す MakeRotateMatrix は型をまたぐので MathCore.h 側にある。
+    ///          実装はすべて MathCore.cpp（DirectXMath へ委譲）。
+    namespace QuaternionMath {
+        // 基本演算
+        /// @note 積は Quaternion の operator* を使うこと（ハミルトン積 lhs * rhs）。
+        Quaternion Identity();
+        Quaternion Conjugate(const Quaternion& q);
+        float Norm(const Quaternion& q);
+        Quaternion Normalize(const Quaternion& q);
+        Quaternion Inverse(const Quaternion& q);
+
+        // 回転関連
+        Quaternion MakeRotateAxisAngle(const Vector3& axis, float radian);
+        Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion);
+
+        // 補間
+        Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t);
+    }
 }
 }

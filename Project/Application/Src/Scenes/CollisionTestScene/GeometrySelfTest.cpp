@@ -175,7 +175,7 @@ namespace CollisionTest
 
         // 反平行ベクトルの Slerp は単位長を保つべき
         {
-            const Vector3 result = MathCore::Vector::Slerp({ 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, -1.0f }, 0.5f);
+            const Vector3 result = CoreEngine::Slerp({ 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f, -1.0f }, 0.5f);
             const float length = Length(result);
             Record("U13", "Slerp: 反平行ベクトルの中間",
                 "結果の長さ = 1.000",

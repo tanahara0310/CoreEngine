@@ -327,7 +327,7 @@ void GpuParticleSystem::Draw(const Camera* camera)
     GpuParticleParams& p = *paramsData_;
 
     p.billboardMatrix = billboardMatrix;
-    p.viewProjection = Matrix::Multiply(viewMatrix, projectionMatrix);
+    p.viewProjection = viewMatrix * projectionMatrix;
 
     // ===== フレーム情報 =====
     p.emitterPosition = emitterPosition_;

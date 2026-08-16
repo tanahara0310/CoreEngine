@@ -21,12 +21,13 @@ namespace CoreEngine
         }
 
         /// @brief ln k 上の smoothstep（境界 kBoundary の下で 0、上で 1）
+        /// @note 遷移域を対数波数で取るのがここ固有の事情。
+        ///       補間そのものは MathCore::SmoothStep と同じエルミート。
         float LogSmoothStep(float waveNumber, float boundaryWaveNumber, float logHalfWidth)
         {
             const float halfWidth = (std::max)(logHalfWidth, 1.0e-3f);
             const float t = 0.5f + (std::log(waveNumber) - std::log(boundaryWaveNumber)) / (2.0f * halfWidth);
-            const float clamped = (std::clamp)(t, 0.0f, 1.0f);
-            return clamped * clamped * (3.0f - 2.0f * clamped);
+            return MathCore::SmoothStep(t);
         }
 
         /// @brief このカスケードが担当するパワー比 [0,1]

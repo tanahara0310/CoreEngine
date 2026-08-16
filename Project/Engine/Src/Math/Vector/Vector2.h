@@ -49,25 +49,86 @@ struct Vector2 {
         return *this;
     }
 
-    Vector2 Normalize() const {
-        float length = std::sqrtf(x * x + y * y);
-        if (length == 0.0f) {
-            return { 0.0f, 0.0f };
-        }
-        return { x / length, y / length };
+    // 成分ごとの乗算(Vector2 * Vector2) — アダマール積
+    Vector2 operator*(const Vector2& v) const {
+        return { x * v.x, y * v.y };
     }
 
-    float Length() const {
-        return std::sqrtf(x * x + y * y);
+    Vector2& operator*=(const Vector2& v) {
+        x *= v.x;
+        y *= v.y;
+        return *this;
     }
 
-    float Dot(const Vector2& v) const {
-        return x * v.x + y * v.y;
+    //========================================
+    // 　比較演算子
+    //========================================
+
+    /// @note 浮動小数点の厳密比較。値が書き換わったかを見る用途のみ。
+    bool operator==(const Vector2& v) const {
+        return x == v.x && y == v.y;
+    }
+
+    bool operator!=(const Vector2& v) const {
+        return !(*this == v);
     }
 };
 
 // スカラーとベクトルの乗算 (float * Vector2)
 inline Vector2 operator*(float scalar, const Vector2& v) {
     return { scalar * v.x, scalar * v.y };
+}
+
+//========================================
+// 　単項演算子
+//========================================
+
+inline Vector2 operator-(const Vector2& v) {
+    return { -v.x, -v.y };
+}
+
+inline Vector2 operator+(const Vector2& v) {
+    return v; // 単項プラスは値をそのまま返す
+}
+
+//========================================
+// 　汎用関数
+//========================================
+/// @note Vector3 / Vector4 と同じ綴りで揃えるためフリー関数にしてある。
+///       以前はここだけメンバ関数（v.Length() など）だったが、
+///       エンジン・アプリ側からの呼び出しは 1 件も無かった。
+
+// 内積
+inline float Dot(const Vector2& a, const Vector2& b) {
+    return a.x * b.x + a.y * b.y;
+}
+
+// 長さの二乗
+inline float LengthSquared(const Vector2& v) {
+    return v.x * v.x + v.y * v.y;
+}
+
+// 長さ（大きさ）
+inline float Length(const Vector2& v) {
+    return std::sqrtf(LengthSquared(v));
+}
+
+// 2点間の距離
+inline float Distance(const Vector2& a, const Vector2& b) {
+    return Length(b - a);
+}
+
+// 正規化
+inline Vector2 Normalize(const Vector2& v) {
+    float length = Length(v);
+    if (length == 0.0f) {
+        return { 0.0f, 0.0f };
+    }
+    return { v.x / length, v.y / length };
+}
+
+// 外積のZ成分（2Dでは擬似外積＝符号付き面積）
+inline float Cross(const Vector2& a, const Vector2& b) {
+    return a.x * b.y - a.y * b.x;
 }
 }

@@ -162,7 +162,7 @@ namespace CoreEngine
 
     void LineRendererPipeline::SetWVPMatrix(const Matrix4x4& view, const Matrix4x4& proj) {
         if (wvpData_) {
-            *wvpData_ = CoreEngine::MathCore::Matrix::Multiply(view, proj);
+            *wvpData_ = view * proj;
         }
     }
 

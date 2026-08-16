@@ -205,13 +205,10 @@ void SkyBoxObject::Draw(const CoreEngine::Camera* camera) {
     viewNoTranslation.m[3][1] = 0.0f;
     viewNoTranslation.m[3][2] = 0.0f;
 
-    Matrix4x4 viewProjectionMatrix = MathCore::Matrix::Multiply(
-        viewNoTranslation,
-        camera->GetProjectionMatrix()
-    );
+    Matrix4x4 viewProjectionMatrix = viewNoTranslation * camera->GetProjectionMatrix();
 
     transformBufferIndex_ = (transformBufferIndex_ + 1) % kTransformBufferCount;
-    transformData_[transformBufferIndex_]->WVP = MathCore::Matrix::Multiply(worldMatrix, viewProjectionMatrix);
+    transformData_[transformBufferIndex_]->WVP = worldMatrix * viewProjectionMatrix;
 
     assert(sSkyBoxRenderer_ != nullptr);
 

@@ -41,7 +41,7 @@ void WorldTransform::TransferMatrix()
 
     // 親がいる場合は親の行列と合成
     if (parent_) {
-        matWorld_ = Matrix::Multiply(localMatrix, parent_->GetWorldMatrix());
+        matWorld_ = localMatrix * parent_->GetWorldMatrix();
     } else {
         matWorld_ = localMatrix;
     }
@@ -82,7 +82,7 @@ void WorldTransform::EulerToQuaternion()
     Quaternion qz = QuaternionMath::MakeRotateAxisAngle({0.0f, 0.0f, 1.0f}, rotate.z);
     
     // 回転の合成（Z * X * Y の順）
-    quaternionRotate = QuaternionMath::Multiply(QuaternionMath::Multiply(qz, qx), qy);
+    quaternionRotate = qz * qx * qy;
 }
 
 void WorldTransform::QuaternionToEuler()

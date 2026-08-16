@@ -46,7 +46,7 @@ namespace CoreEngine
     {
         UINT rbSize = (sizeof(RadialBlurParams) + 255) & ~255;
         radialBlurParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), rbSize);
-        HRESULT hr = radialBlurParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRadialBlurParams_));
+        [[maybe_unused]] HRESULT hr = radialBlurParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRadialBlurParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 

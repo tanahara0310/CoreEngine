@@ -56,7 +56,7 @@ namespace CoreEngine
 	{
 		UINT randomSize = (sizeof(RandomParams) + 255) & ~255;
 		randomParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), randomSize);
-		HRESULT hr = randomParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRandomParams_));
+		[[maybe_unused]] HRESULT hr = randomParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedRandomParams_));
 		assert(SUCCEEDED(hr));
 		UpdateConstantBuffer();
 

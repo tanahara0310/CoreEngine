@@ -56,7 +56,7 @@ namespace CoreEngine
     {
         UINT caSize = (sizeof(ChromaticAberrationParams) + 255) & ~255;
         caParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), caSize);
-        HRESULT hr = caParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedCAParams_));
+        [[maybe_unused]] HRESULT hr = caParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedCAParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
 
