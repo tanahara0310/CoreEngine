@@ -4,6 +4,9 @@
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp">
+      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClCompile>
@@ -1048,6 +1051,9 @@
       <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
+      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.h">
       <Filter>Application\Src\Scenes\WaterTestScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h">

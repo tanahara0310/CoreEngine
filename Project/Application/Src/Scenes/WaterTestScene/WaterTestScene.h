@@ -6,6 +6,7 @@
 //エンジンシステム
 #include "EngineSystem/EngineSystem.h"
 
+#include "CameraShowcase.h"
 #include "WaterSceneController.h"
 
 class WaterTestScene : public CoreEngine::BaseScene {
@@ -13,6 +14,9 @@ public:
 
     /// @brief シーン固有の初期化
     void OnInitialize() override;
+
+    /// @brief シーン固有の更新（カット巡回演出の進行）
+    void OnUpdate() override;
 
     /// @brief 描画処理
     void Draw() override;
@@ -28,4 +32,7 @@ private:
     /// @details 水面本体・波シミュレーション・リソース結線は WaterRenderFeature が持つ。
     ///          シーンは Feature を登録し、UI を Hierarchy へ出すだけになる。
     WaterSceneController waterController_{};
+
+    /// @brief 起動カメラの構図を巡回させる演出（ワンカット → 黒フェード → 次の構図）
+    CameraShowcase cameraShowcase_{};
 };

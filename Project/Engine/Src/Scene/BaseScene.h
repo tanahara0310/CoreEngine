@@ -90,6 +90,13 @@ namespace CoreEngine
         /// @note OnInitialize() から呼ぶ。シーン固有の構図に合わせて使う。
         void SetReleaseCameraTransform(const Vector3& translate, const Vector3& rotate = { 0.0f, 0.0f, 0.0f });
 
+        /// @brief ゲーム視点カメラ（CameraNames::Game）のレンズを上書きする
+        /// @param fovDegrees 垂直画角 [度]（既定 0.45rad ≒ 25.8° は望遠寄りで風景には狭い）
+        /// @param farClip    ファークリップ [m]（水平線まで見せるなら水面メッシュの端まで届く値にする）
+        /// @param nearClip   ニアクリップ [m]
+        /// @note OnInitialize() から呼ぶ。位置・回転と対で構図を決めるための入口。
+        void SetReleaseCameraLens(float fovDegrees, float farClip, float nearClip = 0.1f);
+
         /// 既定 GameView カメラの高さ。
         /// 大気散乱は「カメラ高度 - groundLevelY」を惑星中心距離へ変換するため、
         /// 地表 y=0 と同じ高さに置くと地平線が特異点に近づく。必ず y > 0 に保つこと。
