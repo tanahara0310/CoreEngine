@@ -51,10 +51,11 @@ namespace CoreEngine
             fsPath = std::filesystem::absolute(fsPath);
         }
         if (!std::filesystem::exists(fsPath)) {
-            std::string fileName = std::filesystem::path(filePath).filename().string();
-            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
+            // 検索キーは UTF-8 のテキストとして渡す（AssetDatabase の登録名も UTF-8）
+            std::string fileName = Logger::GetInstance().PathToUtf8(std::filesystem::path(filePath).filename());
+            std::filesystem::path assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
             if (!assetPath.empty()) {
-                resolvedPath = std::filesystem::path(assetPath).wstring();
+                resolvedPath = assetPath.wstring();
             }
         } else {
             resolvedPath = fsPath.wstring();
@@ -145,10 +146,11 @@ namespace CoreEngine
             fsPath = std::filesystem::absolute(fsPath);
         }
         if (!std::filesystem::exists(fsPath)) {
-            std::string fileName = std::filesystem::path(filePath).filename().string();
-            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
+            // 検索キーは UTF-8 のテキストとして渡す（AssetDatabase の登録名も UTF-8）
+            std::string fileName = Logger::GetInstance().PathToUtf8(std::filesystem::path(filePath).filename());
+            std::filesystem::path assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
             if (!assetPath.empty()) {
-                resolvedPath = std::filesystem::path(assetPath).wstring();
+                resolvedPath = assetPath.wstring();
             }
         } else {
             resolvedPath = fsPath.wstring();

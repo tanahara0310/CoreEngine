@@ -4,22 +4,28 @@
 #include "Utility/Logger/Logger.h"
 
 #include <externals/DirectXTex/DirectXTex.h>
+#include <filesystem>
 #include <format>
 #include <exception>
 
 namespace CoreEngine
 {
-    bool TextureDdsCacheGenerator::GenerateCache(const std::string& sourcePath, const std::string& ddsPath,
-        TextureColorSpace colorSpace) const
+    bool TextureDdsCacheGenerator::GenerateCache(const std::filesystem::path& sourcePath,
+        const std::filesystem::path& ddsPath, TextureColorSpace colorSpace) const
     {
+        Logger& log = Logger::GetInstance();
+
+        // ログに出すのは表示用の UTF-8 文字列。ファイルI/Oには path をそのまま使う。
+        const std::string sourceForDisplay = log.PathToUtf8(sourcePath);
+        const std::string ddsForDisplay = log.PathToUtf8(ddsPath);
+
         try {
             // 入力画像を読み込み、形式に応じたローダーはImageProcessorへ委譲する。
             DirectX::ScratchImage sourceImage;
-            std::wstring sourcePathW = Logger::GetInstance().ConvertString(sourcePath);
-            HRESULT hr = TextureImageProcessor::LoadTextureImage(sourcePathW, sourceImage, colorSpace);
+            HRESULT hr = TextureImageProcessor::LoadTextureImage(sourcePath.wstring(), sourceImage, colorSpace);
 
             if (FAILED(hr)) {
-                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to load source for DDS generation: {}", sourcePath);
+                log.Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to load source for DDS generation: {}", sourceForDisplay);
                 return false;
             }
 
@@ -27,7 +33,7 @@ namespace CoreEngine
             DirectX::ScratchImage mipChain;
             hr = TextureImageProcessor::BuildMipChain(sourceImage, mipChain);
             if (FAILED(hr)) {
-                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to generate mipmaps for DDS: {}", sourcePath);
+                log.Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to generate mipmaps for DDS: {}", sourceForDisplay);
                 mipChain = std::move(sourceImage);
             }
 
@@ -50,30 +56,28 @@ namespace CoreEngine
             if (SUCCEEDED(hr)) {
                 imageToSave = &compressedImage;
             } else {
-                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to compress texture, saving uncompressed DDS: {}", sourcePath);
+                log.Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to compress texture, saving uncompressed DDS: {}", sourceForDisplay);
             }
 
             // 最終的にDDSとして保存し、結果をログに出力する。
-            std::wstring ddsPathW = Logger::GetInstance().ConvertString(ddsPath);
             hr = DirectX::SaveToDDSFile(
                 imageToSave->GetImages(),
                 imageToSave->GetImageCount(),
                 imageToSave->GetMetadata(),
                 DirectX::DDS_FLAGS_NONE,
-                ddsPathW.c_str());
+                ddsPath.wstring().c_str());
 
             if (SUCCEEDED(hr)) {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "  DDS cache generated: {}", ddsPath);
+                log.Logf(LogLevel::INFO, LogCategory::Resource, "  DDS cache generated: {}", ddsForDisplay);
                 return true;
             }
 
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to save DDS cache: {}", ddsPath);
+            log.Logf(LogLevel::WARNING, LogCategory::Resource, "Failed to save DDS cache: {}", ddsForDisplay);
             return false;
         }
         catch (const std::exception& e) {
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "Exception during DDS generation: {}", e.what());
+            log.Logf(LogLevel::WARNING, LogCategory::Resource, "Exception during DDS generation: {}", e.what());
             return false;
         }
     }
 }
-

@@ -4,7 +4,7 @@
 #include "Graphics/Texture/TextureColorSpace.h"
 #include <externals/DirectXTex/DirectXTex.h>
 
-#include <string>
+#include <filesystem>
 #include <functional>
 
 namespace CoreEngine
@@ -32,10 +32,10 @@ namespace CoreEngine
         /// @return アップロード結果とメタデータ
         static ExecutionResult Execute(
             CoreEngine::DirectXCommon* dxCommon,
-            const std::string& resolvedPath,
+            const std::filesystem::path& resolvedPath,
             bool ddsGenerationEnabled,
-            const std::string& ddsPath,
-            const std::function<bool(const std::string&, const std::string&)>& ddsCacheGenerator,
+            const std::filesystem::path& ddsPath,
+            const std::function<bool(const std::filesystem::path&, const std::filesystem::path&)>& ddsCacheGenerator,
             TextureColorSpace colorSpace = TextureColorSpace::SRGB);
     };
 }

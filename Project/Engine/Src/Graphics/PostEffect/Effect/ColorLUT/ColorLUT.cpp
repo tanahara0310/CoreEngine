@@ -183,19 +183,21 @@ namespace CoreEngine
         }
 
         // フルパス優先。見つからなければアセット名として AssetDatabase で解決を試みる
-        std::string path = pathOrName;
+        // 入力・エラーメッセージは UTF-8 のテキスト、ファイルアクセスは path で扱う。
+        Logger& log = Logger::GetInstance();
+        std::filesystem::path path = log.Utf8ToPath(pathOrName);
         if (!std::filesystem::exists(path)) {
-            path = AssetDatabase::GetInstance().FindAssetPath(
-                std::filesystem::path(pathOrName).filename().string());
+            path = AssetDatabase::GetInstance().FindAssetPath(log.PathToUtf8(path.filename()));
             if (path.empty() || !std::filesystem::exists(path)) {
                 lastError_ = "ファイルが見つかりません: " + pathOrName;
                 return false;
             }
         }
 
+        // path を渡すと ifstream はワイド API で開くので、非 ASCII のパスでも通る。
         std::ifstream file(path);
         if (!file) {
-            lastError_ = "ファイルを開けません: " + path;
+            lastError_ = "ファイルを開けません: " + log.PathToUtf8(path);
             return false;
         }
 

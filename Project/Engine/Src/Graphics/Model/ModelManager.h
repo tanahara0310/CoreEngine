@@ -144,8 +144,10 @@ private:
     void EnsureThreadPool();
 
     /// @brief フルパスを解決（Assetsフォルダを自動的に追加）
-    /// @param filePath 入力パス
-    /// @return 解決されたフルパス
+    /// @param filePath 入力パス（UTF-8）
+    /// @return 解決されたフルパス（UTF-8）
+    /// @details ここから下流のモデル読み込みが扱う std::string は一貫して UTF-8。
+    ///          Assimp が UTF-8 のパスを要求するため、この鎖を ANSI で汚さないこと。
     std::string ResolveFilePath(const std::string& filePath) const;
 
     /// @brief モデルリソースを読み込む（内部使用・キャッシュあり）

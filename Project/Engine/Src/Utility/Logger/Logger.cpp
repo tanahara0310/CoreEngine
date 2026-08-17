@@ -224,7 +224,7 @@ namespace CoreEngine
 
     void Logger::Log(const std::wstring& message, LogLevel level, LogCategory category, SubCategory subCategory)
     {
-        Log(ConvertString(message), level, category, subCategory);
+        Log(WideToUtf8(message), level, category, subCategory);
     }
 
     void Logger::Log(const std::string& message, LogLevel level, LogCategory category, SubCategory subCategory)
@@ -438,7 +438,7 @@ namespace CoreEngine
         }
     }
 
-    std::wstring Logger::ConvertString(const std::string& str)
+    std::wstring Logger::Utf8ToWide(const std::string& str)
     {
         if (str.empty()) {
             return std::wstring();
@@ -453,7 +453,7 @@ namespace CoreEngine
         return result;
     }
 
-    std::string Logger::ConvertString(const std::wstring& str)
+    std::string Logger::WideToUtf8(const std::wstring& str)
     {
         if (str.empty()) {
             return std::string();
@@ -466,5 +466,19 @@ namespace CoreEngine
         std::string result(sizeNeeded, 0);
         WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), result.data(), sizeNeeded, NULL, NULL);
         return result;
+    }
+
+    std::string Logger::PathToUtf8(const std::filesystem::path& path)
+    {
+        // path の内部表現はワイドなので、UTF-8 へ直接変換する。
+        // 区切りは読みやすさとキーの安定のため '/' に正規化する。
+        return WideToUtf8(path.generic_wstring());
+    }
+
+    std::filesystem::path Logger::Utf8ToPath(const std::string& utf8Path)
+    {
+        // UTF-8 のままワイドへ起こしてから path にする。
+        // std::filesystem::path(std::string) は ANSI として解釈するので使わない。
+        return std::filesystem::path(Utf8ToWide(utf8Path));
     }
 }

@@ -299,21 +299,22 @@ namespace CoreEngine
         }
         fullPath += filename;
 
-        // パスを正規化
-        std::filesystem::path path(fullPath);
-        std::string normalized = path.lexically_normal().string();
-
-        // バックスラッシュをスラッシュに統一
-        std::replace(normalized.begin(), normalized.end(), '\\', '/');
-
-        return normalized;
+        // パスを正規化する。UTF-8 の文字列と path の往復は必ず Logger の
+        // Utf8ToPath / PathToUtf8 を通す。std::filesystem::path(std::string) と
+        // path::string() は ANSI コードページで変換するため、UTF-8 のバイト列を
+        // 通すと不正なシーケンスが置換されて元に戻らない（非 ASCII のファイル名で
+        // モデルが読めなくなる）。PathToUtf8 は区切りも '/' に正規化する。
+        Logger& log = Logger::GetInstance();
+        return log.PathToUtf8(log.Utf8ToPath(fullPath).lexically_normal());
     }
 
     void ModelManager::SplitPath(const std::string& filePath, std::string& outDirectory, std::string& outFilename) const
     {
-        std::filesystem::path path(filePath);
-        outDirectory = path.parent_path().string();
-        outFilename = path.filename().string();
+        // 入出力とも UTF-8。往復は MakeNormalizedPath と同じ理由で Logger を通す。
+        Logger& log = Logger::GetInstance();
+        const std::filesystem::path path = log.Utf8ToPath(filePath);
+        outDirectory = log.PathToUtf8(path.parent_path());
+        outFilename = log.PathToUtf8(path.filename());
     }
 
     ModelResource* ModelManager::GetModelResource(const std::string& filePath)
@@ -341,19 +342,22 @@ namespace CoreEngine
         std::replace(normalized.begin(), normalized.end(), '\\', '/');
 
         // まずAssetDatabaseで名前解決（移動・リネーム耐性）
-        std::filesystem::path inputPath(normalized);
-        std::string searchName = inputPath.filename().string();
+        // この関数が扱う std::string は一貫して UTF-8。path との往復は Logger の
+        // Utf8ToPath / PathToUtf8 を通し、ANSI コードページを混入させない。
+        Logger& log = Logger::GetInstance();
+        std::filesystem::path inputPath = log.Utf8ToPath(normalized);
+        std::string searchName = log.PathToUtf8(inputPath.filename());
         if (searchName.empty()) {
             searchName = normalized;
         }
 
         auto& assetDB = AssetDatabase::GetInstance();
-        std::string assetPath = assetDB.FindAssetPath(searchName);
+        std::filesystem::path assetPath = assetDB.FindAssetPath(searchName);
         if (assetPath.empty() && inputPath.has_stem()) {
-            assetPath = assetDB.FindAssetPath(inputPath.stem().string());
+            assetPath = assetDB.FindAssetPath(log.PathToUtf8(inputPath.stem()));
         }
         if (!assetPath.empty()) {
-            return assetPath;
+            return log.PathToUtf8(assetPath);
         }
 
         // Application/Assets または Engine/Assets で始まる場合はそのまま返す

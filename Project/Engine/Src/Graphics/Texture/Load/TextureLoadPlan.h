@@ -4,6 +4,7 @@
 #include "Graphics/Texture/TextureColorSpace.h"
 
 #include <string>
+#include <filesystem>
 #include <functional>
 
 namespace CoreEngine
@@ -15,9 +16,9 @@ namespace CoreEngine
         /// @brief 実際にどのファイルを読むかを表す計画結果
         struct PlanResult
         {
-            std::string resolvedPath;      // 実際に読み込む最終パス
-            bool isDDS = false;            // DDSとして読み込むか
-            std::string ddsPathToGenerate; // WIC読み込み後に生成するDDSパス（WIC以外は空）
+            std::filesystem::path resolvedPath;      // 実際に読み込む最終パス
+            bool isDDS = false;                      // DDSとして読み込むか
+            std::filesystem::path ddsPathToGenerate; // WIC読み込み後に生成するDDSパス（WIC以外は空）
         };
 
         /// @brief ファイル形式とキャッシュ状態から読み込み計画を構築する
@@ -28,10 +29,10 @@ namespace CoreEngine
         /// @param colorSpace 色空間（DDSキャッシュパスの分離に使用）
         /// @return 実行に使う読み込み計画
         PlanResult BuildPlan(
-            const std::string& resolvedPath,
+            const std::filesystem::path& resolvedPath,
             bool ddsGenerationEnabled,
             const TexturePathResolver& pathResolver,
-            const std::function<bool(const std::string&, const std::string&)>& cubemapGenerator,
+            const std::function<bool(const std::filesystem::path&, const std::filesystem::path&)>& cubemapGenerator,
             TextureColorSpace colorSpace = TextureColorSpace::SRGB) const;
     };
 }

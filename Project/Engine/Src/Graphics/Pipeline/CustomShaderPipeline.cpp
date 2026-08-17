@@ -18,12 +18,13 @@ namespace CoreEngine
             if (fileName.empty()) {
                 return {};
             }
-            const std::string nameStr = std::filesystem::path(fileName).string();
-            const std::string resolved = AssetDatabase::GetInstance().FindAssetPath(nameStr);
+            // 検索キーは UTF-8 のテキストとして渡す（AssetDatabase の登録名も UTF-8）
+            const std::string nameStr = Logger::GetInstance().PathToUtf8(std::filesystem::path(fileName));
+            const std::filesystem::path resolved = AssetDatabase::GetInstance().FindAssetPath(nameStr);
             if (resolved.empty()) {
                 return {};
             }
-            return std::filesystem::path(resolved).wstring();
+            return resolved.wstring();
         }
 
         /// @brief カスタムシェーダー向けの RootSignatureConfig を生成する

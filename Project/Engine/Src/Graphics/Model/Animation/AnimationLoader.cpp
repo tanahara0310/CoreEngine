@@ -14,7 +14,8 @@ Animation AnimationLoader::LoadAnimationFile(const std::string& directoryPath, c
     // ファイルパスを構築
     std::string filePath = directoryPath + "/" + filename;
 
-    // Assimpでシーンを読み込む（モデルロードと同じフラグを使用）
+    // Assimp はパスを UTF-8 とみなす。ModelManager::ResolveFilePath から
+    // 渡ってくる文字列は UTF-8 で統一してあるのでそのまま渡す。
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
         filePath.c_str(),

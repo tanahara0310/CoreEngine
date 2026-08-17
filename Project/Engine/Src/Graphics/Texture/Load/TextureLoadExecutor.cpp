@@ -6,6 +6,7 @@
 #include "Graphics/Texture/Gpu/TextureGpuUploader.h"
 #include "Utility/Logger/Logger.h"
 
+#include <filesystem>
 #include <format>
 #include <stdexcept>
 
@@ -13,21 +14,24 @@ namespace CoreEngine
 {
     TextureLoadExecutor::ExecutionResult TextureLoadExecutor::Execute(
         CoreEngine::DirectXCommon* dxCommon,
-        const std::string& resolvedPath,
+        const std::filesystem::path& resolvedPath,
         bool ddsGenerationEnabled,
-        const std::string& ddsPath,
-        const std::function<bool(const std::string&, const std::string&)>& ddsCacheGenerator,
+        const std::filesystem::path& ddsPath,
+        const std::function<bool(const std::filesystem::path&, const std::filesystem::path&)>& ddsCacheGenerator,
         TextureColorSpace colorSpace)
     {
-        // 読み込み対象パスをワイド文字列化し、DirectXTexのI/Oに渡す。
-        std::wstring filePathW = Logger::GetInstance().ConvertString(resolvedPath);
+        Logger& log = Logger::GetInstance();
+
+        // DirectXTex はワイド文字列の API なので、ここで初めてワイドへ変換する。
+        // ログ・SRV 名として使う表示用文字列は UTF-8 に変換した別物として扱う。
+        const std::string pathForDisplay = log.PathToUtf8(resolvedPath);
 
         // 画像データを読み込み、必要であれば後続でDDS生成も実行する。
         DirectX::ScratchImage image;
-        HRESULT hr = TextureImageProcessor::LoadTextureImage(filePathW, image, colorSpace);
+        HRESULT hr = TextureImageProcessor::LoadTextureImage(resolvedPath.wstring(), image, colorSpace);
 
         // ddsPathToGenerate はBuildPlan内でWICファイルのみ設定される。
-        // DDS/HDRの場合は空文字列になるため isDDS/isHDR の重複チェックは不要。
+        // DDS/HDRの場合は空になるため isDDS/isHDR の重複チェックは不要。
         if (ddsGenerationEnabled && !ddsPath.empty() && SUCCEEDED(hr)) {
             ddsCacheGenerator(resolvedPath, ddsPath);
         }
@@ -35,9 +39,9 @@ namespace CoreEngine
         if (FAILED(hr)) {
             std::string errorMsg = std::format(
                 "Failed to load texture file: {}\nHRESULT: 0x{:08X}\nPlease check if the file exists and the path is correct.",
-                resolvedPath,
+                pathForDisplay,
                 static_cast<unsigned int>(hr));
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
+            log.Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
             throw std::runtime_error(errorMsg);
         }
 
@@ -48,18 +52,16 @@ namespace CoreEngine
         if (FAILED(hr)) {
             std::string errorMsg = std::format(
                 "Failed to generate mipmaps for texture: {}\nHRESULT: 0x{:08X}",
-                resolvedPath,
+                pathForDisplay,
                 static_cast<unsigned int>(hr));
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
+            log.Logf(LogLevel::Error, LogCategory::Graphics, "{}", errorMsg);
             throw std::runtime_error(errorMsg);
         }
 
         // ミップ作成済み画像をGPUへ転送し、SRVまで作成する。
         ExecutionResult result{};
         result.metadata = mipImages.GetMetadata();
-        result.uploadResult = TextureGpuUploader::UploadAndCreateSrv(dxCommon, mipImages, resolvedPath);
+        result.uploadResult = TextureGpuUploader::UploadAndCreateSrv(dxCommon, mipImages, pathForDisplay);
         return result;
     }
 }
-
-

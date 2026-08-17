@@ -50,6 +50,9 @@ namespace CoreEngine
     {
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Loading model file: {}", filepath));
 
+        // Assimp の DefaultIOSystem は Windows でパスを UTF-8 とみなしてワイド化する。
+        // ModelManager::ResolveFilePath から下流の std::string は UTF-8 で統一して
+        // あるので、ここでは変換せずそのまま渡す。
         // スキニング有無に依存しない共通フラグで1回だけフルパースする。
         // aiProcess_LimitBoneWeightsはボーンが無いメッシュに対しては単なる無処理。
         const aiScene* scene = importer.ReadFile(
@@ -338,12 +341,12 @@ namespace CoreEngine
             return rawPath;
         }
 
-        // directoryPath と結合し、".." などを含む場合に lexically_normal() で正規化する
-        std::filesystem::path combined = std::filesystem::path(directoryPath) / rawPath;
-        std::string normalized = combined.lexically_normal().string();
-        std::replace(normalized.begin(), normalized.end(), '\\', '/');
-
-        return normalized;
+        // directoryPath と結合し、".." などを含む場合に lexically_normal() で正規化する。
+        // directoryPath も Assimp が返す rawPath も UTF-8 なので、path との往復は
+        // Logger の Utf8ToPath / PathToUtf8 を通す（ANSI 変換を挟むと非 ASCII が壊れる）。
+        Logger& log = Logger::GetInstance();
+        std::filesystem::path combined = log.Utf8ToPath(directoryPath) / log.Utf8ToPath(rawPath);
+        return log.PathToUtf8(combined.lexically_normal());
     }
 
     Matrix4x4 ModelLoader::CalculateBindPoseMatrix(const aiMatrix4x4& offsetMatrix)

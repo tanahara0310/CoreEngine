@@ -422,7 +422,8 @@ namespace CoreEngine
         hr = scratchImage.InitializeFromImage(image);
         if (SUCCEEDED(hr))
         {
-            std::wstring wOutputPath = Logger::GetInstance().ConvertString(outputPath);
+            // outputPath は UTF-8。DirectXTex はワイド API なので path 経由で変換する。
+            std::wstring wOutputPath = Logger::GetInstance().Utf8ToPath(outputPath).wstring();
             hr = DirectX::SaveToDDSFile(
                 scratchImage.GetImages(),
                 scratchImage.GetImageCount(),
@@ -448,7 +449,7 @@ namespace CoreEngine
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
             std::format("Loading BRDF LUT from: {}", filePath));
 
-        std::wstring wFilePath = Logger::GetInstance().ConvertString(filePath);
+        std::wstring wFilePath = Logger::GetInstance().Utf8ToPath(filePath).wstring();
 
         DirectX::ScratchImage image;
         HRESULT hr = DirectX::LoadFromDDSFile(wFilePath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);

@@ -24,7 +24,12 @@ namespace CoreEngine
         void Finalize();
 
         /// @brief ファイル名でアセットパスを検索
-        std::string FindAssetPath(const std::string& name);
+        /// @param name 検索キー（ファイル名・ステム。パスではなく照合用の名前）
+        /// @return 見つかった絶対パス。見つからなければ空の path
+        /// @details 戻り値を narrow 文字列に落とさないこと。path のまま運べば
+        ///          エンコーディングを決めるのは OS API へ渡す直前の1箇所だけになり、
+        ///          ANSI と UTF-8 の取り違えが起こらない。
+        std::filesystem::path FindAssetPath(const std::string& name);
 
         /// @brief ファイルパスから GUID を取得
         std::string GetGUID(const std::filesystem::path& assetPath);

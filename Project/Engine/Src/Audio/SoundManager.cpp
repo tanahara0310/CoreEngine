@@ -276,7 +276,9 @@ namespace CoreEngine
         // ファイル入力ストリームのインスタンス
         std::ifstream file;
         // .wavファイルをバイナリモードで開く
-        file.open(filename, std::ios_base::binary);
+        // filename は UTF-8 なので path へ起こしてから開く（narrow のまま渡すと
+        // ANSI として解釈され、非 ASCII を含むパスで開けない）。
+        file.open(Logger::GetInstance().Utf8ToPath(filename), std::ios_base::binary);
         // ファイルが開けなかったらエラー
         if (!file.is_open()) {
             std::string errorMsg = std::format("Failed to open audio file: {}\nPlease check if the file exists and the path is correct.", filename);
@@ -356,7 +358,8 @@ namespace CoreEngine
             return false;
         }
 
-        std::wstring wFilename = Logger::GetInstance().ConvertString(filename);
+        // filename は UTF-8。Media Foundation はワイド API なので path 経由で変換する。
+        std::wstring wFilename = Logger::GetInstance().Utf8ToPath(filename).wstring();
 
         // SourceReaderを作成
         Microsoft::WRL::ComPtr<IMFSourceReader> sourceReader;

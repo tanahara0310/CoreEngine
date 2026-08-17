@@ -10,18 +10,19 @@
 namespace CoreEngine
 {
     TextureLoadPlan::PlanResult TextureLoadPlan::BuildPlan(
-        const std::string& resolvedPath,
+        const std::filesystem::path& resolvedPath,
         bool ddsGenerationEnabled,
         const TexturePathResolver& pathResolver,
-        const std::function<bool(const std::string&, const std::string&)>& cubemapGenerator,
+        const std::function<bool(const std::filesystem::path&, const std::filesystem::path&)>& cubemapGenerator,
         TextureColorSpace colorSpace) const
     {
         // 初期状態は入力パスをそのまま読み込む計画にする。
         PlanResult plan{};
         plan.resolvedPath = resolvedPath;
 
-        std::wstring currentPathW = Logger::GetInstance().ConvertString(plan.resolvedPath);
-        auto fileType = TextureImageProcessor::DetectFileType(currentPathW);
+        Logger& log = Logger::GetInstance();
+
+        auto fileType = TextureImageProcessor::DetectFileType(plan.resolvedPath.wstring());
         plan.isDDS = (fileType == TextureImageProcessor::FileType::DDS);
         const bool isHDR = (fileType == TextureImageProcessor::FileType::HDR);
 
@@ -34,52 +35,50 @@ namespace CoreEngine
         if (isHDR) {
             // 優先度1:HDRファイルと同じディレクトリにある事前生成済みDDSを確認
             // （排出ビルドでデプロイする場合に対応）
-            const std::string suffix = pathResolver.GetCubemapSuffix();
-            std::filesystem::path hdrFsPath(plan.resolvedPath);
-            std::string adjacentDDSPath = (hdrFsPath.parent_path() / (hdrFsPath.stem().string() + suffix)).string();
-            const std::wstring adjacentDDSPathW = Logger::GetInstance().ConvertString(adjacentDDSPath);
+            std::filesystem::path adjacentFileName = plan.resolvedPath.stem();
+            adjacentFileName += pathResolver.GetCubemapSuffix();
+            const std::filesystem::path adjacentDDSPath = plan.resolvedPath.parent_path() / adjacentFileName;
 
-            if (std::filesystem::exists(adjacentDDSPathW)) {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
-                    std::format("Loading from pre-generated cubemap DDS (adjacent to HDR): {}", adjacentDDSPath));
+            if (std::filesystem::exists(adjacentDDSPath)) {
+                log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
+                    std::format("Loading from pre-generated cubemap DDS (adjacent to HDR): {}", log.PathToUtf8(adjacentDDSPath)));
                 plan.resolvedPath = adjacentDDSPath;
                 plan.isDDS = true;
                 return plan;
             }
 
             // 優先度2: GUIDベースのキャッシュを確認
-            const std::string cubemapDDSPath = pathResolver.GetCubemapDDSPath(plan.resolvedPath);
-            const std::wstring cubemapDDSPathW = Logger::GetInstance().ConvertString(cubemapDDSPath);
+            const std::filesystem::path cubemapDDSPath = pathResolver.GetCubemapDDSPath(plan.resolvedPath);
 
             bool needsRegeneration = false;
-            if (!std::filesystem::exists(cubemapDDSPathW)) {
+            if (!std::filesystem::exists(cubemapDDSPath)) {
                 needsRegeneration = true;
             } else {
-                const auto sourceTime = std::filesystem::last_write_time(currentPathW);
-                const auto ddsTime = std::filesystem::last_write_time(cubemapDDSPathW);
+                const auto sourceTime = std::filesystem::last_write_time(resolvedPath);
+                const auto ddsTime = std::filesystem::last_write_time(cubemapDDSPath);
 
                 if (sourceTime > ddsTime) {
-                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
-                        std::format("HDR source file is newer than cubemap DDS, regenerating: {}", plan.resolvedPath));
+                    log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
+                        std::format("HDR source file is newer than cubemap DDS, regenerating: {}", log.PathToUtf8(plan.resolvedPath)));
                     needsRegeneration = true;
-                    std::filesystem::remove(cubemapDDSPathW);
+                    std::filesystem::remove(cubemapDDSPath);
                 }
             }
 
             if (needsRegeneration) {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
-                    std::format("Generating cubemap DDS from HDR: {}", plan.resolvedPath));
+                log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
+                    std::format("Generating cubemap DDS from HDR: {}", log.PathToUtf8(plan.resolvedPath)));
 
                 if (cubemapGenerator(plan.resolvedPath, cubemapDDSPath)) {
                     plan.resolvedPath = cubemapDDSPath;
                     plan.isDDS = true;
                 } else {
-                    Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}", 
-                        std::format("Failed to generate cubemap, loading HDR as 2D texture: {}", plan.resolvedPath));
+                    log.Logf(LogLevel::WARNING, LogCategory::Graphics, "{}",
+                        std::format("Failed to generate cubemap, loading HDR as 2D texture: {}", log.PathToUtf8(plan.resolvedPath)));
                 }
             } else {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
-                    std::format("Loading from cubemap DDS cache: {}", cubemapDDSPath));
+                log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
+                    std::format("Loading from cubemap DDS cache: {}", log.PathToUtf8(cubemapDDSPath)));
 
                 plan.resolvedPath = cubemapDDSPath;
                 plan.isDDS = true;
@@ -91,19 +90,18 @@ namespace CoreEngine
         // 非DDS/非HDR入力の場合は通常DDSキャッシュを確認する。
         if (!plan.isDDS && !isHDR) {
             plan.ddsPathToGenerate = pathResolver.GetDDSCachePath(plan.resolvedPath, colorSpace);
-            const std::wstring ddsPathW = Logger::GetInstance().ConvertString(plan.ddsPathToGenerate);
 
-            if (std::filesystem::exists(ddsPathW)) {
-                const auto sourceTime = std::filesystem::last_write_time(currentPathW);
-                const auto ddsTime = std::filesystem::last_write_time(ddsPathW);
+            if (std::filesystem::exists(plan.ddsPathToGenerate)) {
+                const auto sourceTime = std::filesystem::last_write_time(resolvedPath);
+                const auto ddsTime = std::filesystem::last_write_time(plan.ddsPathToGenerate);
 
                 if (sourceTime > ddsTime) {
-                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
-                        std::format("Source file is newer than DDS cache, regenerating: {}", plan.resolvedPath));
-                    std::filesystem::remove(ddsPathW);
+                    log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
+                        std::format("Source file is newer than DDS cache, regenerating: {}", log.PathToUtf8(plan.resolvedPath)));
+                    std::filesystem::remove(plan.ddsPathToGenerate);
                 } else {
-                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
-                        std::format("Loading from DDS cache: {}", plan.ddsPathToGenerate));
+                    log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
+                        std::format("Loading from DDS cache: {}", log.PathToUtf8(plan.ddsPathToGenerate)));
 
                     plan.resolvedPath = plan.ddsPathToGenerate;
                     plan.isDDS = true;
@@ -114,5 +112,3 @@ namespace CoreEngine
         return plan;
     }
 }
-
-
