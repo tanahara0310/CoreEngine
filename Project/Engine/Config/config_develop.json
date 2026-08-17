@@ -2,7 +2,7 @@
     "debug": {
         "enableDebugLayer": false,
         "enableGPUBasedValidation": false,
-        "enablePixRuntime": true
+        "enablePixRuntime": false
     },
     "descriptors": {
         "maxDSVDescriptors": 10,

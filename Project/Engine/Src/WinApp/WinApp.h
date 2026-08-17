@@ -31,7 +31,17 @@ namespace CoreEngine
         /// @param width ウィンドウの幅
         /// @param height ウィンドウの高さ
         /// @param title ウィンドウのタイトル
+        /// @note ここではウィンドウを**表示しない**。表示は起動シーケンス完了後の
+        ///       ShowMainWindow() で行う（理由は同関数のコメント参照）。
         void Initialize(int32_t width, int32_t height, const wchar_t* title);
+
+        /// @brief メインウィンドウを表示する
+        /// @details ウィンドウ生成時はあえて非表示のままにしてある。
+        ///          表示してから初期化を続けると、メッセージポンプが一度も回らない
+        ///          全画面ウィンドウが十数秒居座り、Windows から「応答なし」と
+        ///          判定される（＝初見の人が「ハングした」と感じる直接の原因）。
+        ///          起動シーケンスが終わって最初のフレームを描ける状態になってから呼ぶ。
+        void ShowMainWindow();
 
         /// @brief メッセージ処理
         /// @return 終了ならtrue
@@ -99,6 +109,10 @@ namespace CoreEngine
 
         // リサイズコールバック
         std::function<void(int32_t, int32_t)> resizeCallback_;
+
+        // メインウィンドウを ShowMainWindow() で表示済みか。
+        // 起動シーケンス中は false で、この間 SetFullscreen は ShowWindow を呼ばない
+        bool isMainWindowShown_ = false;
 
         // 全画面表示の状態と、通常ウィンドウへ戻すための退避情報
         bool isFullscreen_ = false;

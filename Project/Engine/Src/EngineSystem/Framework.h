@@ -12,6 +12,8 @@
 
 namespace CoreEngine
 {
+class StartupSequence;
+
 class Framework {
 public:
     Framework() = default;
@@ -27,6 +29,13 @@ protected:
 
     /// @brief 初期化処理（ゲーム固有のリソース読み込み等）
     virtual void Initialize() = 0;
+
+    /// @brief ゲーム固有の初期化を起動シーケンスへステップとして積む
+    /// @details 既定では Initialize() 全体を 1 ステップとして積む。
+    ///          シーン構築のように数秒かかる処理を持つゲームは、
+    ///          これをオーバーライドして細かく割ること。1 ステップの実行時間が
+    ///          そのままローディング画面の固まる時間になる。
+    virtual void BuildStartupTasks(StartupSequence& sequence);
 
     /// @brief 終了処理（ゲーム固有のリソース解放等）
     virtual void Finalize() = 0;
@@ -49,6 +58,11 @@ protected:
     EngineSystem* GetEngineSystem() { return engineSystem_.get(); }
 
 private:
+    /// @brief ローディング画面を出しながら起動シーケンスを最後まで進める
+    /// @param sequence 実行する起動シーケンス
+    /// @param config   エンジン設定（ローディング画面の見出しに使う）
+    void RunStartupSequence(StartupSequence& sequence, const EngineConfig& config);
+
     // ──────────────────────────────────────────────────────────
     // エンジン層の汎用データ（どのゲームでも使う）
     // ──────────────────────────────────────────────────────────

@@ -105,6 +105,12 @@ namespace CoreEngine
 
                     plan.resolvedPath = plan.ddsPathToGenerate;
                     plan.isDDS = true;
+
+                    // キャッシュを採用したので生成要求は取り下げる。
+                    // ここを残すと TextureLoadExecutor が「非空なら生成する」の判定で
+                    // 毎起動 DDS を読み直して再圧縮し、同じ内容を書き戻してしまう
+                    // （ヒットしているのに生成コストを払い続ける状態になる）。
+                    plan.ddsPathToGenerate.clear();
                 }
             }
         }

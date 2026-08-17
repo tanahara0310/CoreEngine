@@ -30,8 +30,9 @@ namespace CoreEngine
         DirectX::ScratchImage image;
         HRESULT hr = TextureImageProcessor::LoadTextureImage(resolvedPath.wstring(), image, colorSpace);
 
-        // ddsPathToGenerate はBuildPlan内でWICファイルのみ設定される。
-        // DDS/HDRの場合は空になるため isDDS/isHDR の重複チェックは不要。
+        // ddsPathToGenerate が非空 ＝「まだキャッシュが無い WIC ファイル」だけ。
+        // DDS/HDR 入力と、キャッシュヒットした場合は BuildPlan 側で空にしてあるので、
+        // ここで isDDS/isHDR やヒット有無を再判定する必要はない。
         if (ddsGenerationEnabled && !ddsPath.empty() && SUCCEEDED(hr)) {
             ddsCacheGenerator(resolvedPath, ddsPath);
         }

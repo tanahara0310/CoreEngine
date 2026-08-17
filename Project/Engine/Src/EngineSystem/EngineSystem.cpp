@@ -6,6 +6,7 @@
 #endif
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
+#include "Startup/StartupSequence.h"
 #include <cstring>
 
 // ユーティリティ
@@ -86,70 +87,98 @@ namespace CoreEngine
 
     void EngineSystem::Initialize(WinApp* winApp, const EngineConfig& config)
     {
+        StartupSequence sequence;
+        BuildStartupTasks(sequence, winApp, config);
+        while (sequence.HasNext()) {
+            sequence.Step();
+        }
+    }
 
-        // COMの初期化
-        CoInitializeEx(0, COINIT_MULTITHREADED);
+    void EngineSystem::BuildStartupTasks(
+        StartupSequence& sequence, WinApp* winApp, const EngineConfig& config)
+    {
+        sequence.Add("基盤: COM / ログ / アセットデータベース", [this, winApp] {
+            // COMの初期化
+            CoInitializeEx(0, COINIT_MULTITHREADED);
 
-        // ログシステムの初期化（最初に実行）
-        Logger::GetInstance().Initialize();
+            // ログシステムの初期化（最初に実行）
+            // ここが済むまで StartupSequence もログを出せないので、
+            // このステップは必ず先頭に置くこと
+            Logger::GetInstance().Initialize();
 
-        // WinAppのインスタンスを保持
-        winApp_ = winApp;
+            // WinAppのインスタンスを保持
+            winApp_ = winApp;
 
-        // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
-        AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
-
-        // ===== コンポーネントの作成と初期化 =====
+            // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
+            AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
+        });
 
         // フレームレート制御（最初に初期化）
-        CreateFrameRateController();
+        sequence.Add("フレームレート制御", [this] { CreateFrameRateController(); });
 
 #if defined(USE_IMGUI) && defined(USE_PIX)
         // PIX GPU キャプチャ DLL をロード（D3D12 デバイス作成より前に必要）
         // DLL がロードされると全 D3D12 API がフックされ ~33% のオーバーヘッドが発生するため、
         // コンフィグで明示的に有効化された場合のみロードする
         if (config.enablePixRuntime) {
-            PixCapture::LoadPixRuntime();
+            sequence.Add("PIX ランタイム", [] { PixCapture::LoadPixRuntime(); });
         }
 #endif
 
-        // グラフィックス関連
-        CreateGraphicsComponents(config);
+        // グラフィックス関連（起動時間の大半。ファクトリ側でさらに細かく割る）
+        GraphicsComponentFactory::BuildStartupTasks(sequence, *this, config);
 
-        // 入力関連
-        CreateInputComponents();
-
-        // オーディオ関連
-        CreateAudioComponents();
+        sequence.Add("入力", [this] { CreateInputComponents(); });
+        sequence.Add("オーディオ", [this] { CreateAudioComponents(); });
 
         // ライト関連（GraphicsComponents 後に初期化）
-        CreateLightComponents();
+        sequence.Add("ライト", [this] { CreateLightComponents(); });
 
-        // 統一乱数生成器の初期化
-        RandomGenerator::GetInstance().Initialize();
+        sequence.Add("乱数生成器", [this] { RandomGenerator::GetInstance().Initialize(); });
 
         // ──────────────────────────────────────────────────────────
-        // サブシステム登録 + 一括初期化
+        // サブシステム登録 + 1 個ずつ初期化
         // ──────────────────────────────────────────────────────────
-        {
+        // 「全部生成してから初期化」の順序は崩さないこと。
+        // RayTracingSubsystem::Initialize が EditorSettingsSubsystem を
+        // GetSubsystem<> で引くように、初期化時点で全サブシステムが
+        // 生成済みである前提のコードがある
+        sequence.Add("サブシステム生成", [this] {
             subsystems_.push_back(std::make_unique<RayTracingSubsystem>());
-        }
 #ifdef USE_IMGUI
-        {
             // エディタ設定の自動保存（セクション登録元より先に生成しておく）
             subsystems_.push_back(std::make_unique<EditorSettingsSubsystem>());
             subsystems_.push_back(std::make_unique<DebugSubsystem>());
-        }
 #endif // USE_IMGUI
+        });
 
-        for (auto& sys : subsystems_) {
-            sys->Initialize(this, config);
+        // 生成ステップが積む個数は静的に決まるので、インデックス指定で
+        // 1 サブシステム 1 ステップに切り出せる。
+        // （実行中にステップを追加すると StartupSequence の内部 vector が
+        //   再確保され、実行中エントリの参照が壊れるので絶対にやらない）
+#ifdef USE_IMGUI
+        constexpr size_t kSubsystemCount = 3;
+#else
+        constexpr size_t kSubsystemCount = 1;
+#endif
+        for (size_t i = 0; i < kSubsystemCount; ++i) {
+            sequence.Add(
+                // 表示名は実行直前に問い合わせられるので、生成ステップ後なら実名が出る
+                [this, i]() -> std::string {
+                    return std::string("サブシステム: ")
+                        + (i < subsystems_.size() ? subsystems_[i]->GetName() : "?");
+                },
+                [this, i, config] {
+                    if (i < subsystems_.size()) {
+                        subsystems_[i]->Initialize(this, config);
+                    }
+                });
         }
 
-        GameObject::SetEngine(this);
+        sequence.Add("GameObject へのエンジン参照", [this] { GameObject::SetEngine(this); });
 
         // デフォルトレンダーパイプラインの構築
-        BuildDefaultRenderPipeline();
+        sequence.Add("レンダーパイプライン構築", [this] { BuildDefaultRenderPipeline(); });
     }
 
     void EngineSystem::Finalize()
@@ -467,11 +496,6 @@ namespace CoreEngine
     void EngineSystem::CreateFrameRateController()
     {
         CoreComponentFactory::SetupFrameRate(*this);
-    }
-
-    void EngineSystem::CreateGraphicsComponents(const EngineConfig& config)
-    {
-        GraphicsComponentFactory::Setup(*this, config);
     }
 
     void EngineSystem::CreateInputComponents()

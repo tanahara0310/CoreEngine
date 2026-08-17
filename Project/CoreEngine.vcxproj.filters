@@ -286,6 +286,15 @@
     <ClCompile Include="Engine\Src\EngineSystem\Framework.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Startup\SplashScreen.cpp">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Startup\StartupProgress.cpp">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Startup\StartupSequence.cpp">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClCompile>
@@ -2136,6 +2145,18 @@
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Startup\IStartupTask.h">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Startup\SplashScreen.h">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Startup\StartupProgress.h">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Startup\StartupSequence.h">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DepthStencilManager.h">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
     </ClInclude>
@@ -2502,6 +2523,9 @@
     </Filter>
     <Filter Include="Engine\Src\EngineSystem\Settings">
       <UniqueIdentifier>{3D9F5A1C-8B47-4E62-9A0D-6C21E4B7F853}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\EngineSystem\Startup">
+      <UniqueIdentifier>{3CE3C496-316E-4D0E-9026-D8B9F2628BCA}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\EngineSystem\Subsystem">
       <UniqueIdentifier>{F7C65E0B-77E7-404D-AF2F-F65303EC33B6}</UniqueIdentifier>

@@ -8,6 +8,7 @@
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
 #include "Threading/ThreadPool.h"
+#include "EngineSystem/Startup/StartupProgress.h"
 
 #include <cassert>
 #include <format>
@@ -148,6 +149,13 @@ namespace CoreEngine
         // ロード開始ログ
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
             std::format("Loading texture: {}", Logger::GetInstance().PathToUtf8(resolvedPath)));
+
+        // シーン構築ステップは 50 枚のテクスチャで数秒かかる。ローディング画面を刻む
+        //（ワーカースレッドからの呼び出しは StartupProgress 側で無視される）
+        if (StartupProgress::IsActive()) {
+            StartupProgress::Tick(
+                Logger::GetInstance().PathToUtf8(resolvedPath.filename()).c_str());
+        }
 
         try {
             // 読み込み対象の実パスを事前に計画し、変換やキャッシュ判定を一箇所に集約する。

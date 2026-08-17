@@ -8,6 +8,7 @@
 #include "Graphics/Model/Skeleton/SkeletonLoader.h"
 #include "Graphics/Model/VertexData.h"
 #include "Utility/Logger/Logger.h"
+#include "EngineSystem/Startup/StartupProgress.h"
 
 #include "externals/meshoptimizer/src/meshoptimizer.h"
 
@@ -360,6 +361,11 @@ namespace CoreEngine
     void ModelResource::LoadFromFile(const std::string& directoryPath, const std::string& filename)
     {
         assert(dxCommon_ && resourceFactory_ && textureManager_);
+
+        // Assimp のパースは重いモデルで数百 ms かかる。起動中はローディング画面を刻む
+        if (StartupProgress::IsActive()) {
+            StartupProgress::Tick(filename.c_str());
+        }
 
         // ModelLoaderを使用してモデルデータを読み込む
         ModelData modelData = ModelLoader::LoadModelFile(directoryPath, filename);

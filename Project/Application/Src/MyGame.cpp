@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "MyGame.h"
 #include <EngineSystem/EngineSystem.h>
+#include <EngineSystem/Startup/StartupSequence.h>
 #include "WinApp/WinApp.h"
 #include "Scenes/TestScene/TestScene.h"
 #include "Scenes/WaterTestScene/WaterTestScene.h"
@@ -11,6 +12,20 @@ using namespace CoreEngine;
 MyGame::~MyGame() = default;
 
 void MyGame::Initialize()
+{
+    CreateSceneManager();
+    LoadInitialScene();
+    ConnectDebugUI();
+}
+
+void MyGame::BuildStartupTasks(CoreEngine::StartupSequence& sequence)
+{
+    sequence.Add("シーン管理システム", [this] { CreateSceneManager(); });
+    sequence.Add(std::string("シーン構築: ") + kInitialSceneName, [this] { LoadInitialScene(); });
+    sequence.Add("デバッグUI 接続", [this] { ConnectDebugUI(); });
+}
+
+void MyGame::CreateSceneManager()
 {
     // ──────────────────────────────────────────────────────────
     // シーン管理システムの初期化
@@ -25,10 +40,16 @@ void MyGame::Initialize()
     sceneManager_->RegisterScene<WaterTestScene>("WaterTestScene");
     // 当たり判定の回帰テストシーン（Scene Manager タブから切り替えて使う）
     sceneManager_->RegisterScene<CollisionTest::CollisionTestScene>("CollisionTestScene");
+}
 
+void MyGame::LoadInitialScene()
+{
     // 初期シーンを設定（トランジション無し）
-    sceneManager_->SetInitialScene("WaterTestScene");
+    sceneManager_->SetInitialScene(kInitialSceneName);
+}
 
+void MyGame::ConnectDebugUI()
+{
     // ===== コンソールログ出力とシーンマネージャーの設定 =====
 #ifdef USE_IMGUI
     // GameDebugUIにSceneManagerを設定
@@ -36,13 +57,11 @@ void MyGame::Initialize()
     if (gameDebugUI) {
         gameDebugUI->SetSceneManager(sceneManager_.get());
     }
-#endif
 
-#ifdef USE_IMGUI
     auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
     if (console) {
         console->LogInfo("MyGame: ゲーム初期化が完了しました");
-        console->LogInfo("MyGame: 初期シーン 'WaterTestScene' を読み込みました");
+        console->LogInfo(std::string("MyGame: 初期シーン '") + kInitialSceneName + "' を読み込みました");
     }
 #endif
 }

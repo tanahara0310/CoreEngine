@@ -42,14 +42,28 @@ class RenderPipeline;
 class RenderingTechniqueManager;
 class RenderDomainContext;
 class HiZOcclusionSystem;
+class StartupSequence;
 
 class EngineSystem {
 public:
     EngineSystem(); // 前方宣言型の unique_ptr メンバがあるため .cpp で定義する
     ~EngineSystem();
-    /// @brief エンジンシステムの初期化
+
+    /// @brief エンジンの初期化処理を起動シーケンスへステップとして積む
+    /// @param sequence 積み先の起動シーケンス
+    /// @param winApp   ウィンドウアプリケーション
+    /// @param config   エンジン設定
+    /// @details 初期化を一息に実行すると、その間ウィンドウメッセージが 1 度も
+    ///          処理されず「応答なし」になる。ステップに割っておくと、
+    ///          呼び出し側が Step() の合間にメッセージ処理とローディング表示を挟める。
+    /// @warning ステップは全部積んでから回すこと（StartupSequence の warning 参照）。
+    void BuildStartupTasks(StartupSequence& sequence, WinApp* winApp, const EngineConfig& config);
+
+    /// @brief エンジンシステムの初期化（一括実行）
     /// @param winApp ウィンドウアプリケーション
     /// @param config エンジン設定
+    /// @note BuildStartupTasks を組み立てて最後まで回すだけの薄いラッパー。
+    ///       Framework::Run はローディング表示のため自前でシーケンスを回すので通らない。
     void Initialize(WinApp* winApp, const EngineConfig& config);
 
     /// @brief エンジンシステムの終了処理
@@ -174,7 +188,6 @@ private:
     // ──────────────────────────────────────────────────────────
     // コンポーネント作成ヘルパーメソッド
     // ──────────────────────────────────────────────────────────
-    void CreateGraphicsComponents(const EngineConfig& config);
     void CreateInputComponents();
     void CreateAudioComponents();
     void CreateLightComponents();

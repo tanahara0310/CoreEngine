@@ -6,6 +6,7 @@
 
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Asset/AssetDatabase.h"
+#include "EngineSystem/Startup/StartupProgress.h"
 
 
 #pragma comment(lib, "dxcompiler.lib")
@@ -66,6 +67,13 @@ namespace CoreEngine
             std::format(L"Begin CompileShader, path:{}, profile:{}", resolvedPath, profile),
             LogLevel::INFO,
             LogCategory::Shader);
+
+        // 起動中はここが最大の滞留点（119 本で十数秒）。ローディング画面を刻んで
+        // 「応答なし」を避ける。起動シーケンス外では空判定 1 回で戻る
+        if (StartupProgress::IsActive()) {
+            StartupProgress::Tick(
+                Logger::GetInstance().PathToUtf8(std::filesystem::path(resolvedPath).filename()).c_str());
+        }
 
         // hlslファイルを読み込む
         IDxcBlobEncoding* shaderSource = nullptr;
@@ -161,6 +169,12 @@ namespace CoreEngine
             std::format(L"Begin CompileShaderLibrary, path:{}", resolvedPath),
             LogLevel::INFO,
             LogCategory::Shader);
+
+        // CompileShader と同じ理由でローディング画面を刻む
+        if (StartupProgress::IsActive()) {
+            StartupProgress::Tick(
+                Logger::GetInstance().PathToUtf8(std::filesystem::path(resolvedPath).filename()).c_str());
+        }
 
         // hlslファイルを読み込む
         IDxcBlobEncoding* shaderSource = nullptr;
