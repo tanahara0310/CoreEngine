@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RayTracingShadowManager.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "AccelerationStructureManager.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/Core/DescriptorManager.h"
@@ -341,13 +342,10 @@ namespace CoreEngine
             return false;
         }
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
-        psoDesc.pRootSignature = outRootSignature.Get();
-        psoDesc.CS.pShaderBytecode = csBlob->GetBufferPointer();
-        psoDesc.CS.BytecodeLength = csBlob->GetBufferSize();
-        if (FAILED(dxCommon_->GetDevice()->CreateComputePipelineState(&psoDesc, IID_PPV_ARGS(&outPipelineState)))) {
-            log.Logf(LogLevel::Error, LogCategory::Graphics,
-                "RayTracingShadowManager: {} PSO creation failed", debugLabel);
+        outPipelineState = ComputePipelineUtil::Create(
+            dxCommon_->GetDevice(), outRootSignature.Get(), csBlob.Get(),
+            std::string("RTShadow_") + debugLabel);
+        if (!outPipelineState) {
             return false;
         }
 

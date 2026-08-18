@@ -7,6 +7,7 @@
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
+#include "Graphics/Pipeline/CustomShaderPipelineCache.h"
 #include "Graphics/Common/EngineStats.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/AnimationPlayer.h"
@@ -34,6 +35,7 @@ namespace CoreEngine
         assert(dxCommon && factory);
         dxCommon_ = dxCommon;
         resourceFactory_ = factory;
+        customShaderPipelineCache_ = std::make_unique<CustomShaderPipelineCache>();
     }
 
     void ModelManager::SetRenderContext(const ModelRenderContext& ctx)

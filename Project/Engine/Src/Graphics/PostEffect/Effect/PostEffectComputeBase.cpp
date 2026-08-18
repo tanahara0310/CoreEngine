@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "PostEffectComputeBase.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Resource/ResourceFactory.h"
@@ -39,13 +40,10 @@ namespace CoreEngine
         }
 
         // Compute PSO 構築
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {};
-        desc.pRootSignature = rootSignatureManager_->GetRootSignature();
-        desc.CS = { computeShaderBlob_->GetBufferPointer(), computeShaderBlob_->GetBufferSize() };
-
-        HRESULT hr = directXCommon_->GetDevice()->CreateComputePipelineState(
-            &desc, IID_PPV_ARGS(&computePso_));
-        if (FAILED(hr)) {
+        computePso_ = ComputePipelineUtil::Create(
+            directXCommon_->GetDevice(), rootSignatureManager_->GetRootSignature(),
+            computeShaderBlob_.Get(), GetEffectName() + "_CS");
+        if (!computePso_) {
             throw std::runtime_error(GetEffectName() + ": Failed to create Compute PSO");
         }
 

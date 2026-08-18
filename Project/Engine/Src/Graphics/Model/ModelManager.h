@@ -19,6 +19,7 @@ namespace CoreEngine { class ThreadPool; }
 namespace CoreEngine { class IPrimitiveMeshGenerator; }
 namespace CoreEngine { class InstanceBatchManager; }
 namespace CoreEngine { class SkinningComputeDispatcher; }
+namespace CoreEngine { class CustomShaderPipelineCache; }
 
 namespace CoreEngine
 {
@@ -57,6 +58,10 @@ public:
 
     /// @brief 描画依存コンテキストを取得する（カスタムシェーダー構築に使用）
     const ModelRenderContext& GetRenderContext() const { return renderContext_; }
+
+    /// @brief カスタムシェーダーパイプラインの共有キャッシュを取得する
+    /// @details 同一シェーダー＋同一設定のオブジェクトが複数あっても構築は1回で済む。
+    CustomShaderPipelineCache* GetCustomShaderPipelineCache() { return customShaderPipelineCache_.get(); }
 
     /// @brief 静的モデルを作成（アニメーションなし）
     /// @param filePath ファイルパス（Assetsフォルダを省略可能）
@@ -140,6 +145,9 @@ private:
 
     // GPUスキニング(CS)ディスパッチャー（スキニングモデル用）
     std::unique_ptr<SkinningComputeDispatcher> skinningDispatcher_;
+
+    // カスタムシェーダーパイプラインの共有キャッシュ（シェーダーパス＋設定がキー）
+    std::unique_ptr<CustomShaderPipelineCache> customShaderPipelineCache_;
 
     // デフォルトのベースパス
     const std::string basePath_ = "Application/Assets/";

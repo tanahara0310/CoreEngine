@@ -115,6 +115,7 @@ namespace CoreEngine
 
                 // Graphics PSO作成（HDR用: R16G16B16A16_FLOAT）
                 bool result = pipelineStateManager_.CreateBuilder()
+                    .SetDebugName(GetTechniqueName())
                     .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
                     .SetDepthStencil(false, false) // レンダリング技術は深度書き込み不要
                     .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "HiZOcclusionSystem.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
 
 #include <algorithm>
 #include <cassert>
@@ -236,13 +237,10 @@ namespace CoreEngine
         if (!buildRootSignatureMg_->Build(device, *buildReflectionData_, config).success) {
             return false;
         }
-        {
-            D3D12_COMPUTE_PIPELINE_STATE_DESC desc{};
-            desc.pRootSignature = buildRootSignatureMg_->GetRootSignature();
-            desc.CS = { buildBlob->GetBufferPointer(), buildBlob->GetBufferSize() };
-            if (FAILED(device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&buildPso_)))) {
-                return false;
-            }
+        buildPso_ = ComputePipelineUtil::Create(
+            device, buildRootSignatureMg_->GetRootSignature(), buildBlob, "HiZ_Build");
+        if (!buildPso_) {
+            return false;
         }
         buildSourceIdx_ = buildReflectionData_->GetRootParameterIndexByName("gSourceDepth");
         buildDestIdx_ = buildReflectionData_->GetRootParameterIndexByName("gDestHiZ");
@@ -264,13 +262,10 @@ namespace CoreEngine
         if (!cullRootSignatureMg_->Build(device, *cullReflectionData_, config).success) {
             return false;
         }
-        {
-            D3D12_COMPUTE_PIPELINE_STATE_DESC desc{};
-            desc.pRootSignature = cullRootSignatureMg_->GetRootSignature();
-            desc.CS = { cullBlob->GetBufferPointer(), cullBlob->GetBufferSize() };
-            if (FAILED(device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&cullPso_)))) {
-                return false;
-            }
+        cullPso_ = ComputePipelineUtil::Create(
+            device, cullRootSignatureMg_->GetRootSignature(), cullBlob, "HiZ_OcclusionCull");
+        if (!cullPso_) {
+            return false;
         }
         cullBoundsIdx_ = cullReflectionData_->GetRootParameterIndexByName("gBounds");
         cullHiZIdx_ = cullReflectionData_->GetRootParameterIndexByName("gHiZ");

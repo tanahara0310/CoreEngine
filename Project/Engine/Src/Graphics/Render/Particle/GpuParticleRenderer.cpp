@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "GpuParticleRenderer.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
 
 #include "Particle/Gpu/GpuParticleSystem.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
@@ -69,12 +70,10 @@ namespace CoreEngine
             throw std::runtime_error(std::string("Failed to create RootSignature: ") + debugName + ": " + buildResult.errorMessage);
         }
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc{};
-        desc.pRootSignature = pass.rootSignatureMg->GetRootSignature();
-        desc.CS = { csBlob->GetBufferPointer(), csBlob->GetBufferSize() };
-
-        HRESULT hr = device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&pass.pso));
-        if (FAILED(hr)) {
+        pass.pso = ComputePipelineUtil::Create(
+            device, pass.rootSignatureMg->GetRootSignature(), csBlob,
+            std::string("GpuParticle_") + debugName);
+        if (!pass.pso) {
             throw std::runtime_error(std::string("Failed to create Compute PSO: ") + debugName);
         }
     }

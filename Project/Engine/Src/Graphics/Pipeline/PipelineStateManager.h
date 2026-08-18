@@ -2,7 +2,7 @@
 
 #include <d3d12.h>
 #include <dxcapi.h>
-#include <map>
+#include <array>
 #include <vector>
 #include <string>
 #include <wrl.h>
@@ -24,6 +24,9 @@ enum class BlendMode {
     kBlendModeScreen, // スクリーンブレンド
 };
 
+/// @brief BlendMode の要素数（PipelineStateManager の固定長配列用）
+inline constexpr size_t kBlendModeCount = 6;
+
 // 前方宣言
 class PipelineStateManager;
 
@@ -31,6 +34,22 @@ class PipelineStateManager;
 class PipelineStateBuilder {
 public:
     explicit PipelineStateBuilder(PipelineStateManager* manager);
+
+    // inputElementDescs_ の SemanticName が semanticNameStorage_ 内の文字列を
+    // 指しているため、コピーすると新しい方がコピー元の文字列を指したままになり
+    // ダングリングする（過去に実際に発生したバグ）。コピーは型レベルで禁止する。
+    // move は vector のバッファ所有権移動で要素アドレスが変わらないため安全。
+    PipelineStateBuilder(const PipelineStateBuilder&) = delete;
+    PipelineStateBuilder& operator=(const PipelineStateBuilder&) = delete;
+    PipelineStateBuilder(PipelineStateBuilder&&) = default;
+    PipelineStateBuilder& operator=(PipelineStateBuilder&&) = default;
+
+    /// @brief デバッグ名の設定
+    /// @note PSO の SetName と、生成失敗時のエラーログに使用される。
+    ///       PIX やデバッグレイヤーのメッセージで PSO を識別できるようになる。
+    /// @param name デバッグ名（例: "SkyBox", "ModelForward"）
+    /// @return ビルダー自身(メソッドチェーン用)
+    PipelineStateBuilder& SetDebugName(const std::string& name);
 
     /// @brief 入力エレメントを追加
     /// @param semanticName セマンティック名
@@ -167,6 +186,7 @@ private:
 friend class PipelineStateManager;
 
 PipelineStateManager* manager_;
+std::string debugName_;  // SetName・エラーログ用のデバッグ名
 std::vector<D3D12_INPUT_ELEMENT_DESC> inputElementDescs_;
 std::vector<std::string> semanticNameStorage_;  // セマンティック名の永続化用
 D3D12_RASTERIZER_DESC rasterizerDesc_;
@@ -201,8 +221,10 @@ public:
     ~PipelineStateManager() = default;
 
     /// @brief psoの取得
+    /// @note 要求されたモードが未生成の場合は kBlendModeNone へフォールバックする
+    ///       （モードごとに初回のみ警告ログを出す）。kBlendModeNone も無い場合は nullptr。
     /// @param mode ブレンドモード
-    /// @return パイプラインステート(存在しない場合はnullptr)
+    /// @return パイプラインステート
     ID3D12PipelineState* GetPipelineState(BlendMode mode = BlendMode::kBlendModeNone);
 
     /// @brief ビルダーを取得
@@ -215,8 +237,12 @@ public:
 private:
     friend class PipelineStateBuilder;
 
-    // パイプラインステート
-    std::map<BlendMode, ComPtr<ID3D12PipelineState>> pipelineStates_;
+    // パイプラインステート（BlendMode を添字にした固定長配列。未生成スロットは nullptr）
+    // GetPipelineState は毎ドロー呼ばれるため、map の探索ではなく配列添字にしている
+    std::array<ComPtr<ID3D12PipelineState>, kBlendModeCount> pipelineStates_;
+
+    // 未生成モードのフォールバック警告を出したモードのビットマスク（ログスパム防止）
+    uint32_t warnedMissingModes_ = 0;
 
     /// @brief PSOを登録
     void RegisterPipelineState(BlendMode mode, ComPtr<ID3D12PipelineState> pso);

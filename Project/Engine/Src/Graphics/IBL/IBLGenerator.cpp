@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "IBLGenerator.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/Core/UploadContext.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
@@ -90,15 +91,9 @@ namespace CoreEngine
 
         assert(computeShader != nullptr);
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.pRootSignature = brdfLutRootSignature_.Get();
-        psoDesc.CS = { computeShader->GetBufferPointer(), computeShader->GetBufferSize() };
-
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
-            &psoDesc,
-            IID_PPV_ARGS(&brdfLutPSO_));
-
-        assert(SUCCEEDED(hr));
+        brdfLutPSO_ = ComputePipelineUtil::Create(
+            dxCommon_->GetDevice(), brdfLutRootSignature_.Get(), computeShader, "IBL_BRDFLUT");
+        assert(brdfLutPSO_);
 
         computeShader->Release();
     }
@@ -169,15 +164,9 @@ namespace CoreEngine
 
         assert(computeShader != nullptr);
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.pRootSignature = irradianceRootSignature_.Get();
-        psoDesc.CS = { computeShader->GetBufferPointer(), computeShader->GetBufferSize() };
-
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
-            &psoDesc,
-            IID_PPV_ARGS(&irradiancePSO_));
-
-        assert(SUCCEEDED(hr));
+        irradiancePSO_ = ComputePipelineUtil::Create(
+            dxCommon_->GetDevice(), irradianceRootSignature_.Get(), computeShader, "IBL_Irradiance");
+        assert(irradiancePSO_);
 
         computeShader->Release();
     }
@@ -685,15 +674,9 @@ namespace CoreEngine
 
         assert(computeShader != nullptr);
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.pRootSignature = prefilteredRootSignature_.Get();
-        psoDesc.CS = { computeShader->GetBufferPointer(), computeShader->GetBufferSize() };
-
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
-            &psoDesc,
-            IID_PPV_ARGS(&prefilteredPSO_));
-
-        assert(SUCCEEDED(hr));
+        prefilteredPSO_ = ComputePipelineUtil::Create(
+            dxCommon_->GetDevice(), prefilteredRootSignature_.Get(), computeShader, "IBL_PrefilterEnv");
+        assert(prefilteredPSO_);
 
         computeShader->Release();
     }

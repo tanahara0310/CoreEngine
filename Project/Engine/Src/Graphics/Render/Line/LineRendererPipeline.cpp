@@ -32,6 +32,7 @@ namespace CoreEngine
         }
 
         bool result = psoMg_->CreateBuilder()
+            .SetDebugName("Line")
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
@@ -44,6 +45,7 @@ namespace CoreEngine
 
         // 深度テスト・深度書き込みを切った PSO も用意しておく（オーバーレイ描画用）
         const bool overlayResult = overlayPsoMg_->CreateBuilder()
+            .SetDebugName("LineOverlay")
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)

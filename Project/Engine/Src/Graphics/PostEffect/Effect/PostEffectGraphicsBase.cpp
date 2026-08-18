@@ -42,6 +42,7 @@ namespace CoreEngine
 
         // オフスクリーン RT 用 PSO (R16G16B16A16_FLOAT)
         bool result = pipelineStateManager_.CreateBuilder()
+            .SetDebugName(GetEffectName())
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
@@ -54,6 +55,7 @@ namespace CoreEngine
 
         // バックバッファ用 PSO (_SRGB フォーマット)
         bool bbResult = backBufferPipelineStateManager_.CreateBuilder()
+            .SetDebugName(GetEffectName() + "_BackBuffer")
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)

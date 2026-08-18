@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ToneMapping.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Resource/ResourceFactory.h"
 #include "Graphics/Common/DirectXCommon.h"
@@ -160,11 +161,10 @@ namespace CoreEngine
             return;
         }
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc{};
-        psoDesc.pRootSignature = reductionRootSignature_->GetRootSignature();
-        psoDesc.CS = { reductionShaderBlob_->GetBufferPointer(), reductionShaderBlob_->GetBufferSize() };
-        if (FAILED(directXCommon_->GetDevice()->CreateComputePipelineState(
-                &psoDesc, IID_PPV_ARGS(&reductionPso_)))) {
+        reductionPso_ = ComputePipelineUtil::Create(
+            directXCommon_->GetDevice(), reductionRootSignature_->GetRootSignature(),
+            reductionShaderBlob_.Get(), "ToneMapping_LuminanceReduction");
+        if (!reductionPso_) {
             return;
         }
 

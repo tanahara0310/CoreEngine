@@ -32,6 +32,7 @@ namespace CoreEngine
         }
 
         bool result = psoMg_->CreateBuilder()
+            .SetDebugName("UI")
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)

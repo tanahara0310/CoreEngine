@@ -517,6 +517,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\WinApp\WinApp.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.cpp" />
     <ClCompile Include="Engine\Src\Audio\SoundManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Resource\ResourceFactory.cpp" />
@@ -992,6 +994,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Math\Easing\EasingUtil.h" />
     <ClInclude Include="Engine\Src\Utility\Timer\GameTimer.h" />
     <ClInclude Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.h" />
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Render.h" />
     <ClInclude Include="Engine\Src\Input\InputManager.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ImGuiManager.h" />

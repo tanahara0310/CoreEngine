@@ -991,6 +991,12 @@
     <ClCompile Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.cpp">
       <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.cpp">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.cpp">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Audio\SoundManager.cpp">
       <Filter>Engine\Src\Audio</Filter>
     </ClCompile>
@@ -2326,6 +2332,12 @@
       <Filter>Engine\Src\Utility\Timer</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.h">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.h">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.h">
       <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Render.h">

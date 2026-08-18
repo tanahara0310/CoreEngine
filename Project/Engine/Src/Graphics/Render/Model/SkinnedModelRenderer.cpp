@@ -67,6 +67,7 @@ namespace CoreEngine
 
         // フォワードパス PSO: WEIGHT/INDEX は自動検出でスロット 1 に割り当て、全ブレンドモード分を生成
         bool skinningResult = forwardPsoMg_->CreateBuilder()
+            .SetDebugName("SkinnedForward")
             .SetInputLayoutFromReflection(*forwardReflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
@@ -75,6 +76,7 @@ namespace CoreEngine
 
         // GBuffer パス PSO: マルチレンダーターゲットフォーマットを指定して生成
         bool gBufferResult = gBufferPsoMg_->CreateBuilder()
+            .SetDebugName("SkinnedGBuffer")
             .SetInputLayoutFromReflection(*gBufferReflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)

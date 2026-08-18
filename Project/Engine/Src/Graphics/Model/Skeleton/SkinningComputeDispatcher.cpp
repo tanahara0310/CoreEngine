@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "SkinningComputeDispatcher.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "SkinCluster.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -30,12 +31,9 @@ namespace CoreEngine
             throw std::runtime_error("Failed to create Skinning Compute RootSignature: " + buildResult.errorMessage);
         }
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc{};
-        desc.pRootSignature = rootSignatureMg_->GetRootSignature();
-        desc.CS = { csBlob->GetBufferPointer(), csBlob->GetBufferSize() };
-
-        HRESULT hr = device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&computePso_));
-        if (FAILED(hr)) {
+        computePso_ = ComputePipelineUtil::Create(
+            device, rootSignatureMg_->GetRootSignature(), csBlob, "SkinningCompute");
+        if (!computePso_) {
             throw std::runtime_error("Failed to create Skinning Compute PSO");
         }
 

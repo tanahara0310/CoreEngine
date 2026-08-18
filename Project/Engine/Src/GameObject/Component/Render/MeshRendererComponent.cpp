@@ -8,6 +8,7 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/Pipeline/CustomShaderPipelineCache.h"
 #include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
@@ -134,15 +135,16 @@ namespace CoreEngine
         const ModelRenderContext& ctx = modelMgr->GetRenderContext();
         if (!ctx.IsValid()) { return; }
 
-        customShaderPipeline_ = std::make_unique<CustomShaderPipeline>();
+        // 同一シェーダー＋同一設定なら既存パイプラインを共有する
+        // （同じカスタムシェーダーをN個配置してもコンパイル・PSO構築は1回）
         BaseModelRenderer* renderer = ctx.modelRenderer;
-        const bool built = customShaderPipeline_->Build(
+        customShaderPipeline_ = modelMgr->GetCustomShaderPipelineCache()->GetOrBuild(
             dxCommon->GetDevice(),
             *renderer->GetShaderCompiler(),
             *renderer->GetReflectionBuilder(),
             *customShaderProvider_);
 
-        if (built && customShaderPipeline_->HasForwardPSO()) {
+        if (customShaderPipeline_ && customShaderPipeline_->HasForwardPSO()) {
             model_->SetCustomForwardPSO(customShaderPipeline_->GetForwardPSO(blendMode_));
             model_->SetCustomRootSignature(customShaderPipeline_->GetForwardRootSignature());
             model_->SetCustomPipeline(customShaderPipeline_.get());
