@@ -5,6 +5,7 @@
 #include "Startup/StartupProgress.h"
 #include "Startup/SplashScreen.h"
 #include "Graphics/Shader/Cache/ShaderCacheStore.h"
+#include "Utility/Profiler/CpuProfiler.h"
 
 
 namespace CoreEngine
@@ -56,6 +57,10 @@ namespace CoreEngine
 
         // シェーダキャッシュのヒット率。期待どおり無効化されたかはここで見る
         ShaderCacheStore::GetInstance().LogSummary();
+
+        // ネストしたスコープ（CORE_CPU_SCOPE）まで含めたツリー。
+        // どこが「重い」でどこが「待ち」かはここで切り分ける
+        CpuProfiler::GetInstance().LogReport("起動シーケンス");
 
         splash.Close();
     }

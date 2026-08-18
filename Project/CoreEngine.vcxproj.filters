@@ -289,6 +289,9 @@
     <ClCompile Include="Engine\Src\EngineSystem\Startup\SplashScreen.cpp">
       <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Profiler\CpuProfiler.cpp">
+      <Filter>Engine\Src\Utility\Profiler</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.cpp">
       <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
     </ClCompile>
@@ -2157,6 +2160,9 @@
     <ClInclude Include="Engine\Src\EngineSystem\Startup\IStartupTask.h">
       <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Profiler\CpuProfiler.h">
+      <Filter>Engine\Src\Utility\Profiler</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.h">
       <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
     </ClInclude>
@@ -2877,6 +2883,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Profiler">
+      <UniqueIdentifier>{EB718086-7172-4261-9E65-2364207C9F96}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Random">
       <UniqueIdentifier>{CE13D7F5-57F4-4CDF-BDA2-D844D244356B}</UniqueIdentifier>

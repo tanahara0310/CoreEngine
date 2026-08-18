@@ -47,8 +47,11 @@ namespace CoreEngine
         size_t GetCompletedCount() const { return cursor_; }
         size_t GetTotalCount() const { return tasks_.size(); }
 
-        /// @brief 全ステップの合計 CPU 時間（秒）
+        /// @brief 全ステップの合計壁時計時間（秒）
         double GetTotalSeconds() const { return totalSeconds_; }
+
+        /// @brief 全ステップの合計 CPU 時間（秒）。壁時計との差が「待ち」
+        double GetTotalCpuSeconds() const { return totalCpuSeconds_; }
 
         /// @brief 遅い順の内訳と合計をログへ出す（起動完了時に 1 回）
         void LogSummary() const;
@@ -57,11 +60,13 @@ namespace CoreEngine
         struct Entry {
             std::unique_ptr<IStartupTask> task;
             std::string executedLabel;   // 実行時点で確定した表示名（サマリ用）
-            double seconds = 0.0;
+            double seconds = 0.0;      // 壁時計
+            double cpuSeconds = 0.0;   // 実行スレッドが実際に CPU を使った時間
         };
 
         std::vector<Entry> tasks_;
         size_t cursor_ = 0;
         double totalSeconds_ = 0.0;
+        double totalCpuSeconds_ = 0.0;
     };
 }

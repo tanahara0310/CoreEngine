@@ -36,32 +36,30 @@
 
 namespace CoreEngine
 {
-    namespace
-    {
-        /// @brief ステップ間で受け渡す中間ポインタ
-        /// @details 元は 1 関数のローカル変数だったもの。ステップに切り分けると
-        ///          関数をまたぐので、shared_ptr で全ステップに持たせる。
-        ///          所有権はあくまで EngineSystem 側（RegisterComponent 済み）にあり、
-        ///          ここが持つのは生ポインタだけ。
-        struct GraphicsSetupState {
-            DirectXCommon* dx = nullptr;
-            ResourceFactory* resourceFactory = nullptr;
-            Render* render = nullptr;
-            RenderManager* renderManager = nullptr;
-            LineRendererPipeline* lineRenderer = nullptr;
-            IBLGenerator* iblGenerator = nullptr;
-            ShaderCompiler* shaderCompiler = nullptr;
+    /// @brief ステップ間で受け渡す中間ポインタ
+    /// @details 元は 1 関数のローカル変数だったもの。ステップに切り分けると
+    ///          関数をまたぐので、shared_ptr で全ステップに持たせる。
+    ///          所有権はあくまで EngineSystem 側（RegisterComponent 済み）にあり、
+    ///          ここが持つのは生ポインタだけ。
+    ///          ヘッダでは前方宣言のみ（呼び出し側は Foundation の戻り値を
+    ///          Renderer へ渡すだけで、中身に触らない）。
+    struct GraphicsSetupState {
+        DirectXCommon* dx = nullptr;
+        ResourceFactory* resourceFactory = nullptr;
+        Render* render = nullptr;
+        RenderManager* renderManager = nullptr;
+        LineRendererPipeline* lineRenderer = nullptr;
+        IBLGenerator* iblGenerator = nullptr;
+        ShaderCompiler* shaderCompiler = nullptr;
 
-            // フォワード受影用 RT シャドウマスクの初期値（white1x1 = 影なし）
-            D3D12_GPU_DESCRIPTOR_HANDLE whiteFallback{};
-        };
-    }
+        // フォワード受影用 RT シャドウマスクの初期値（white1x1 = 影なし）
+        D3D12_GPU_DESCRIPTOR_HANDLE whiteFallback{};
+    };
 
-    void GraphicsComponentFactory::BuildStartupTasks(
+    std::shared_ptr<GraphicsSetupState> GraphicsComponentFactory::BuildFoundationTasks(
         StartupSequence& sequence,
         EngineSystem& engine,
-        const EngineConfig& config,
-        const std::function<void(StartupSequence&)>& buildPreloadTasks)
+        const EngineConfig& config)
     {
         auto state = std::make_shared<GraphicsSetupState>();
         EngineSystem* enginePtr = &engine;
@@ -102,12 +100,15 @@ namespace CoreEngine
             enginePtr->RegisterComponent(std::move(modelManager));
         });
 
-        // ゲーム側のアセット先読みをここへ差し込む。
-        // 積まれるのは「ワーカーへ投げて即座に戻る」ステップで、実処理は
-        // 以降のシェーダコンパイル中に裏で進む
-        if (buildPreloadTasks) {
-            buildPreloadTasks(sequence);
-        }
+        return state;
+    }
+
+    void GraphicsComponentFactory::BuildRendererTasks(
+        StartupSequence& sequence,
+        EngineSystem& engine,
+        std::shared_ptr<GraphicsSetupState> state)
+    {
+        EngineSystem* enginePtr = &engine;
 
         sequence.Add("レンダードメイン（GBuffer / シャドウ / RT）", [enginePtr, state] {
             enginePtr->renderDomainContext_ = std::make_unique<RenderDomainContext>();

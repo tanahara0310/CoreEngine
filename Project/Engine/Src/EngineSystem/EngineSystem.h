@@ -67,12 +67,6 @@ public:
         const EngineConfig& config,
         const std::function<void(StartupSequence&)>& buildPreloadTasks = {});
 
-    /// @brief エンジンシステムの初期化（一括実行）
-    /// @param winApp ウィンドウアプリケーション
-    /// @param config エンジン設定
-    /// @note BuildStartupTasks を組み立てて最後まで回すだけの薄いラッパー。
-    ///       Framework::Run はローディング表示のため自前でシーケンスを回すので通らない。
-    void Initialize(WinApp* winApp, const EngineConfig& config);
 
     /// @brief エンジンシステムの終了処理
     void Finalize();

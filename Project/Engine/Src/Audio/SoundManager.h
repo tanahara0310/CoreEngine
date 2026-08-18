@@ -1,4 +1,6 @@
 #pragma once
+#include <future>
+#include <mutex>
 #include <xaudio2.h>
 #include <mfapi.h>
 #include <mfidl.h>
@@ -168,6 +170,19 @@ public:
     std::unique_ptr<SoundResource> CreateSoundResource(const std::string& filename);
 
     // マスター音量制御
+
+    /// @brief 初期化をワーカースレッドで開始する（完了を待たずに戻る）
+    /// @details `XAudio2Create` → `CreateMasteringVoice` → `MFStartup` はいずれも
+    ///          オーディオドライバや Media Foundation の DLL 群を叩く**ブロッキング呼び出し**で、
+    ///          実測で 0.676 秒かかるが **CPU は 0.000 秒**（100% が待ち）。
+    ///          起動シーケンス上でこれを待つ理由が無いので、裏で流してしまう。
+    /// @note 実際に音を使う入口（LoadSound / PlaySound / SetMasterVolume / Shutdown）が
+    ///       EnsureInitialized() で合流するので、呼び出し側は完了を管理しなくてよい。
+    void BeginInitializeAsync();
+
+    /// @brief 初期化の完了を保証する（未開始なら同期実行、進行中なら待つ。冪等）
+    /// @return 初期化に成功していれば true
+    bool EnsureInitialized();
     void SetMasterVolume(float volume);
     float GetMasterVolume() const;
 
@@ -194,6 +209,15 @@ private:
     float masterVolume_;
 
     // ヘルパーメソッド
+
+    // 非同期初期化の状態（BeginInitializeAsync / EnsureInitialized）
+    std::future<bool> initFuture_;
+    mutable std::mutex initMutex_;
+    bool initCompleted_ = false;
+    bool initSucceeded_ = false;
+
+    /// @brief 実際の初期化本体（XAudio2 + Media Foundation）
+    bool InitializeInternal();
     bool InitializeMediaFoundation();
     void ShutdownMediaFoundation();
     std::string GetFileExtension(const std::string& filename) const;

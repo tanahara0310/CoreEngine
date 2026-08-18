@@ -104,6 +104,10 @@ namespace CoreEngine
         /// @details 同じ `.hlsli` が何十本ものシェーダから include されるので、
         ///          毎回ディスクを読むと検証だけで無視できない時間になる。
         ///          起動中にシェーダファイルが書き換わることは無い前提。
+        /// @warning **シェーダのホットリロードを実装する場合、この前提が崩れる。**
+        ///          編集後のファイルに対して古いハッシュを返し、変更済みの `.hlsli` でも
+        ///          依存検証が通ってしまう（＝編集が反映されないキャッシュヒット）。
+        ///          その際は fileHashCache_ をクリアする無効化 API を必ずセットで入れること。
         std::string GetFileHashCached(const std::filesystem::path& path);
 
         std::filesystem::path cacheDirectory_;

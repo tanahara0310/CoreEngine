@@ -49,11 +49,8 @@ namespace CoreEngine
         }
 
     private:
-        // パス組み立ては CollectModelPaths（static）からも使うので実体を static 側に置き、
-        // インスタンス版は sceneName_ を渡すだけの薄い包みにする
-        static std::string MakeSceneDir(const std::string& sceneName);
-        static std::string MakeManifestPath(const std::string& sceneName);
-        static std::string MakeObjectPath(const std::string& sceneName, const std::string& key);
+        // パス組み立てとマニフェスト走査の実体は .cpp の無名名前空間にある
+        //（Load と CollectModelPaths が同じスキーマ解析を共有するため）
 
         /// @brief シーンフォルダのパスを返す  (例: "Application/Assets/Scenes/TestScene")
         std::string GetSceneDir() const;

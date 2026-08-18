@@ -86,15 +86,6 @@ namespace CoreEngine
         return componentManager_.Get<SceneManager>();
     }
 
-    void EngineSystem::Initialize(WinApp* winApp, const EngineConfig& config)
-    {
-        StartupSequence sequence;
-        BuildStartupTasks(sequence, winApp, config);
-        while (sequence.HasNext()) {
-            sequence.Step();
-        }
-    }
-
     void EngineSystem::BuildStartupTasks(
         StartupSequence& sequence,
         WinApp* winApp,
@@ -127,6 +118,10 @@ namespace CoreEngine
         // フレームレート制御（最初に初期化）
         sequence.Add("フレームレート制御", [this] { CreateFrameRateController(); });
 
+        // オーディオはグラフィックスに一切依存しないので、ここで裏の初期化を始めてしまう。
+        // 以降のシェーダコンパイル数秒の裏に隠れる（このステップ自体は即座に戻る）
+        sequence.Add("オーディオ（非同期開始）", [this] { CreateAudioComponents(); });
+
 #if defined(USE_IMGUI) && defined(USE_PIX)
         // PIX GPU キャプチャ DLL をロード（D3D12 デバイス作成より前に必要）
         // DLL がロードされると全 D3D12 API がフックされ ~33% のオーバーヘッドが発生するため、
@@ -136,12 +131,17 @@ namespace CoreEngine
         }
 #endif
 
-        // グラフィックス関連（起動時間の大半。ファクトリ側でさらに細かく割る）
-        // 先読みの差し込み口はファクトリ内の ModelManager 生成直後へ渡される
-        GraphicsComponentFactory::BuildStartupTasks(sequence, *this, config, buildPreloadTasks);
+        // グラフィックス関連（起動時間の大半。ファクトリ側でさらに細かく割る）。
+        // 「デバイス + アセット土台 → ゲームの先読み → レンダラー群」の順に並べる。
+        // 先読みをレンダラー群（シェーダコンパイル数秒）より前に置くことで、
+        // 実処理（ワーカーでのモデルロード）がコンパイルの裏に隠れる
+        auto graphicsState = GraphicsComponentFactory::BuildFoundationTasks(sequence, *this, config);
+        if (buildPreloadTasks) {
+            buildPreloadTasks(sequence);
+        }
+        GraphicsComponentFactory::BuildRendererTasks(sequence, *this, std::move(graphicsState));
 
         sequence.Add("入力", [this] { CreateInputComponents(); });
-        sequence.Add("オーディオ", [this] { CreateAudioComponents(); });
 
         // ライト関連（GraphicsComponents 後に初期化）
         sequence.Add("ライト", [this] { CreateLightComponents(); });

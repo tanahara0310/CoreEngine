@@ -280,6 +280,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\RayTracingSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Framework.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Startup\SplashScreen.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Profiler\CpuProfiler.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheKey.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheStore.cpp" />
@@ -935,6 +936,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Startup\IStartupTask.h" />
+    <ClInclude Include="Engine\Src\Utility\Profiler\CpuProfiler.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheKey.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheStore.h" />

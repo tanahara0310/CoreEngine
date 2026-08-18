@@ -195,7 +195,49 @@ namespace CoreEngine
         Shutdown();
     }
 
+    void SoundManager::BeginInitializeAsync()
+    {
+        std::lock_guard<std::mutex> lock(initMutex_);
+        if (initCompleted_ || initFuture_.valid()) {
+            return;
+        }
+
+        initFuture_ = std::async(std::launch::async, [this]() {
+            // XAudio2 と Media Foundation はどちらも COM を要求する。
+            // メインスレッドの CoInitializeEx はこのスレッドには効かないので自分で初期化する。
+            // CoUninitialize は呼ばない: MFStartup が握った参照をこのスレッドの終了時に
+            // 落とすと、以降に別スレッドから MF を使う経路が壊れうる
+            CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+            return InitializeInternal();
+            });
+    }
+
+    bool SoundManager::EnsureInitialized()
+    {
+        std::lock_guard<std::mutex> lock(initMutex_);
+        if (initCompleted_) {
+            return initSucceeded_;
+        }
+
+        if (initFuture_.valid()) {
+            // 非同期初期化が進行中／完了済み。ここで合流する
+            initSucceeded_ = initFuture_.get();
+        } else {
+            // BeginInitializeAsync を経ずに使われた経路（テスト等）は同期で初期化する
+            initSucceeded_ = InitializeInternal();
+        }
+
+        initCompleted_ = true;
+        return initSucceeded_;
+    }
+
     bool SoundManager::Initialize()
+    {
+        // 旧来の同期 API。非同期開始済みならその完了を待つだけになる
+        return EnsureInitialized();
+    }
+
+    bool SoundManager::InitializeInternal()
     {
         HRESULT result = S_OK;
 
@@ -239,6 +281,11 @@ namespace CoreEngine
 
     SoundHandle SoundManager::LoadSound(const std::string& filename)
     {
+        // Media Foundation でデコードするので初期化完了が要る
+        if (!EnsureInitialized()) {
+            return 0;
+        }
+
         // パスを解決
         std::string resolvedPath = ResolveFilePath(filename);
 
@@ -475,6 +522,11 @@ namespace CoreEngine
 
     bool SoundManager::PlaySound(SoundHandle handle, bool loop)
     {
+        // ソースボイス生成に XAudio2 が要る
+        if (!EnsureInitialized()) {
+            return false;
+        }
+
         auto dataIt = soundDataMap_.find(handle);
         if (dataIt == soundDataMap_.end()) {
             return false;
@@ -593,6 +645,9 @@ namespace CoreEngine
 
     void SoundManager::SetMasterVolume(float volume)
     {
+        // マスタリングボイスへ触るので初期化完了が要る
+        EnsureInitialized();
+
         masterVolume_ = std::clamp(volume, 0.0f, 1.0f);
         if (masteringVoice_) {
             masteringVoice_->SetVolume(masterVolume_);
@@ -638,6 +693,19 @@ namespace CoreEngine
 
     void SoundManager::Shutdown()
     {
+        // 非同期初期化が走っている最中に壊すと、XAudio2 / Media Foundation が
+        // 中途半端な状態のまま残るので、進行中なら合流する。
+        // ただし EnsureInitialized() は使わない: あちらは「未開始なら同期実行」まで
+        // やるので、一度も使われなかった SoundManager の破棄時に
+        // わざわざ XAudio2 を初期化して即壊すという無意味な仕事が発生する
+        {
+            std::lock_guard<std::mutex> lock(initMutex_);
+            if (!initCompleted_ && initFuture_.valid()) {
+                initSucceeded_ = initFuture_.get();
+                initCompleted_ = true;
+            }
+        }
+
         // 全てのサウンドを停止
         StopAllSounds();
 
