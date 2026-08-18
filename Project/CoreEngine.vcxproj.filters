@@ -289,6 +289,15 @@
     <ClCompile Include="Engine\Src\EngineSystem\Startup\SplashScreen.cpp">
       <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheKey.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheStore.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Startup\StartupProgress.cpp">
       <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClCompile>
@@ -2148,6 +2157,15 @@
     <ClInclude Include="Engine\Src\EngineSystem\Startup\IStartupTask.h">
       <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheKey.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheStore.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Startup\SplashScreen.h">
       <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClInclude>
@@ -2745,6 +2763,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Shader">
       <UniqueIdentifier>{249A8CEB-EC05-4796-9F5E-6D0441BFE8B1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Shader\Cache">
+      <UniqueIdentifier>{7837FD8D-2387-4B4D-B348-1A785DF6CDAB}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Texture">
       <UniqueIdentifier>{95DC8CAB-0112-41D4-9C1B-1D5308D6FCE6}</UniqueIdentifier>

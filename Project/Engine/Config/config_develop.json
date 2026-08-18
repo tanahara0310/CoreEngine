@@ -1,4 +1,7 @@
 {
+    "shader": {
+        "enableCache": true
+    },
     "debug": {
         "enableDebugLayer": false,
         "enableGPUBasedValidation": false,

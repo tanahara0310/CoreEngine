@@ -4,6 +4,7 @@
 #include "Startup/StartupSequence.h"
 #include "Startup/StartupProgress.h"
 #include "Startup/SplashScreen.h"
+#include "Graphics/Shader/Cache/ShaderCacheStore.h"
 
 
 namespace CoreEngine
@@ -52,6 +53,9 @@ namespace CoreEngine
 
         // 各ステップの CPU 時間を残す。起動時間の回帰はこのログの差分で追う
         sequence.LogSummary();
+
+        // シェーダキャッシュのヒット率。期待どおり無効化されたかはここで見る
+        ShaderCacheStore::GetInstance().LogSummary();
 
         splash.Close();
     }

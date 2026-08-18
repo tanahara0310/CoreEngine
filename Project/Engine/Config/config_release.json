@@ -1,4 +1,7 @@
 {
+    "shader": {
+        "enableCache": true
+    },
     "window": {
         "title": "CoreEngine",
         "width": 1280,

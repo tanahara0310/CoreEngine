@@ -7,6 +7,7 @@
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
 #include "Startup/StartupSequence.h"
+#include "Graphics/Shader/Cache/ShaderCacheStore.h"
 #include <cstring>
 
 // ユーティリティ
@@ -100,7 +101,7 @@ namespace CoreEngine
         const EngineConfig& config,
         const std::function<void(StartupSequence&)>& buildPreloadTasks)
     {
-        sequence.Add("基盤: COM / ログ / アセットデータベース", [this, winApp] {
+        sequence.Add("基盤: COM / ログ / アセットデータベース", [this, winApp, config] {
             // COMの初期化
             CoInitializeEx(0, COINIT_MULTITHREADED);
 
@@ -114,6 +115,13 @@ namespace CoreEngine
 
             // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
             AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
+
+            // コンパイル済み DXIL のディスクキャッシュ。
+            // 最初のシェーダコンパイル（レンダードメインのステップ）より前に
+            // 用意しておく必要がある
+            ShaderCacheStore::GetInstance().Initialize(
+                std::filesystem::current_path() / "Cache" / "ShaderCache",
+                config.enableShaderCache);
         });
 
         // フレームレート制御（最初に初期化）
