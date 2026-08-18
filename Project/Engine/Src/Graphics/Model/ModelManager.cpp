@@ -22,7 +22,12 @@
 namespace CoreEngine
 {
     ModelManager::ModelManager() = default;
-    ModelManager::~ModelManager() = default;
+    ModelManager::~ModelManager()
+    {
+        // 走行中のワーカーが dxCommon_ / TextureManager を触っている可能性があるので、
+        // メンバ（threadPool_ 含む）を壊す前に必ず合流させる
+        WaitForPreload();
+    }
 
     void ModelManager::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory)
     {
@@ -148,6 +153,10 @@ namespace CoreEngine
 
     void ModelManager::ClearCache()
     {
+        // 先読み中のリソースをキャッシュから消すと、完了したワーカーが
+        // 消えた後のエントリへ書き戻して迷子になる。先に合流させる
+        WaitForPreload();
+
         std::lock_guard<std::mutex> lock(cacheMutex_);
         resourceCache_.clear();
     }
@@ -261,24 +270,56 @@ namespace CoreEngine
 
     void ModelManager::PreloadModels(const std::vector<std::string>& filePaths)
     {
+        BeginPreload(filePaths);
+        WaitForPreload();
+    }
+
+    void ModelManager::BeginPreload(const std::vector<std::string>& filePaths)
+    {
         if (filePaths.empty()) return;
 
         EnsureThreadPool();
 
-        std::vector<std::future<void>> futures;
-        futures.reserve(filePaths.size());
+        std::lock_guard<std::mutex> lock(preloadMutex_);
+        preloadFutures_.reserve(preloadFutures_.size() + filePaths.size());
 
         for (const auto& path : filePaths) {
-            futures.push_back(threadPool_->Submit([this, path]() {
-                std::string resolved = ResolveFilePath(path);
-                std::string dir, file;
-                SplitPath(resolved, dir, file);
-                LoadModelResourceInternal(dir, file);
+            preloadFutures_.push_back(threadPool_->Submit([this, path]() {
+                // 例外はここで止める。future に載せて後で get() の場所まで運ぶと、
+                // 起動シーケンスと無関係な地点で飛んで原因が分からなくなる。
+                // 先読みはあくまで最適化なので、失敗しても本番のロードに任せればよい。
+                try {
+                    std::string resolved = ResolveFilePath(path);
+                    std::string dir, file;
+                    SplitPath(resolved, dir, file);
+                    LoadModelResourceInternal(dir, file);
+                }
+                catch (const std::exception& e) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                        "モデル先読みに失敗（本番ロードで再試行されます）: {} ({})", path, e.what());
+                }
+                catch (...) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                        "モデル先読みに失敗（本番ロードで再試行されます）: {}", path);
+                }
                 }));
+        }
+    }
+
+    void ModelManager::WaitForPreload()
+    {
+        // ワーカーが完了報告のために preloadMutex_ を取ることは無いが、
+        // 待っている間に BeginPreload が追加できるよう、ロックは取り出しの間だけにする
+        std::vector<std::future<void>> futures;
+        {
+            std::lock_guard<std::mutex> lock(preloadMutex_);
+            futures.swap(preloadFutures_);
         }
 
         for (auto& f : futures) {
-            f.get();
+            if (f.valid()) {
+                f.get();
+            }
         }
     }
 

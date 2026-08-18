@@ -2,6 +2,7 @@
 
 #include <string>
 #include <functional>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -28,6 +29,14 @@ namespace CoreEngine
         /// @brief シーンのオブジェクトデータを JSON から読み込んで登録済みオブジェクトに適用
         void Load(GameObjectManager* mgr);
 
+        /// @brief シーン JSON から modelPath だけを列挙する（オブジェクトは一切生成しない）
+        /// @param sceneName シーン名
+        /// @return 重複を除いた modelPath のリスト
+        /// @details 起動シーケンスの早い段階でモデルの先読みを始めるための入口。
+        ///          Load() と同じマニフェスト構造を読むが、GameObjectManager を必要としないので
+        ///          シーン構築より前（＝シェーダコンパイル中）に呼べる。
+        static std::vector<std::string> CollectModelPaths(const std::string& sceneName);
+
         /// @brief シーン全体を保存（マニフェスト + 全オブジェクトの個別ファイル）
         void SaveScene(GameObjectManager* mgr);
 
@@ -40,6 +49,12 @@ namespace CoreEngine
         }
 
     private:
+        // パス組み立ては CollectModelPaths（static）からも使うので実体を static 側に置き、
+        // インスタンス版は sceneName_ を渡すだけの薄い包みにする
+        static std::string MakeSceneDir(const std::string& sceneName);
+        static std::string MakeManifestPath(const std::string& sceneName);
+        static std::string MakeObjectPath(const std::string& sceneName, const std::string& key);
+
         /// @brief シーンフォルダのパスを返す  (例: "Application/Assets/Scenes/TestScene")
         std::string GetSceneDir() const;
 

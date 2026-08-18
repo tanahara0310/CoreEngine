@@ -95,7 +95,10 @@ namespace CoreEngine
     }
 
     void EngineSystem::BuildStartupTasks(
-        StartupSequence& sequence, WinApp* winApp, const EngineConfig& config)
+        StartupSequence& sequence,
+        WinApp* winApp,
+        const EngineConfig& config,
+        const std::function<void(StartupSequence&)>& buildPreloadTasks)
     {
         sequence.Add("基盤: COM / ログ / アセットデータベース", [this, winApp] {
             // COMの初期化
@@ -126,7 +129,8 @@ namespace CoreEngine
 #endif
 
         // グラフィックス関連（起動時間の大半。ファクトリ側でさらに細かく割る）
-        GraphicsComponentFactory::BuildStartupTasks(sequence, *this, config);
+        // 先読みの差し込み口はファクトリ内の ModelManager 生成直後へ渡される
+        GraphicsComponentFactory::BuildStartupTasks(sequence, *this, config, buildPreloadTasks);
 
         sequence.Add("入力", [this] { CreateInputComponents(); });
         sequence.Add("オーディオ", [this] { CreateAudioComponents(); });
@@ -188,6 +192,12 @@ namespace CoreEngine
             (*it)->Finalize();
         }
         subsystems_.clear();
+
+        // 起動時に仕掛けたモデル先読みがまだ走っている可能性があるので、
+        // TextureManager / DirectXCommon を壊す前に必ず合流させる
+        if (auto* modelManager = GetService<ModelManager>()) {
+            modelManager->WaitForPreload();
+        }
 
         // TextureManager
         TextureManager::GetInstance().Clear();

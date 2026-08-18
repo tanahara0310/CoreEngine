@@ -37,6 +37,14 @@ protected:
     ///          そのままローディング画面の固まる時間になる。
     virtual void BuildStartupTasks(StartupSequence& sequence);
 
+    /// @brief アセットの非同期先読みを起動シーケンスへ積む（省略可）
+    /// @details エンジンの ModelManager 生成直後、**シェーダコンパイル群より前**の位置に
+    ///          挿入される。ここで積むステップは「ワーカーへ投げて即座に戻る」ものにすること。
+    ///          実処理は以降のシェーダコンパイル（数秒）の裏で進み、
+    ///          シーン構築の時点では読み終わっている状態を狙う。
+    /// @note ここで同期的に待つと単に順番が前に来るだけで何も速くならない。
+    virtual void BuildPreloadTasks(StartupSequence& /*sequence*/) {}
+
     /// @brief 終了処理（ゲーム固有のリソース解放等）
     virtual void Finalize() = 0;
 

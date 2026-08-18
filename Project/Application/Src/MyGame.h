@@ -24,6 +24,12 @@ protected:
     ///          そこで止まって見える。
     void BuildStartupTasks(CoreEngine::StartupSequence& sequence) override;
 
+    /// @brief 初期シーンのモデルをシェーダコンパイル中に裏で読み込ませる
+    /// @details シーン構築ステップの実測 4.0 秒のうち、Assimp パースと LOD 生成で 2.7 秒。
+    ///          どちらもシェーダコンパイルと依存関係が無いので、
+    ///          先に走らせておけばクリティカルパスから消せる。
+    void BuildPreloadTasks(CoreEngine::StartupSequence& sequence) override;
+
     /// @brief ゲーム固有の終了処理
     void Finalize() override;
 

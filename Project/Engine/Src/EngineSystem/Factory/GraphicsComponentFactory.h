@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 namespace CoreEngine
 {
     class EngineSystem;
@@ -14,12 +16,20 @@ namespace CoreEngine
     {
     public:
         /// @brief グラフィックス関連コンポーネントの生成を起動シーケンスへステップとして積む
-        /// @param sequence 積み先の起動シーケンス
-        /// @param engine   登録対象の EngineSystem（シーケンス実行まで生存が必要）
-        /// @param config   エンジン設定
-        /// @note ここが起動時間の大半（シェーダ 119 本のコンパイル）を占めるので、
+        /// @param sequence          積み先の起動シーケンス
+        /// @param engine            登録対象の EngineSystem（シーケンス実行まで生存が必要）
+        /// @param config            エンジン設定
+        /// @param buildPreloadTasks ModelManager 生成直後に呼ばれる差し込み口（アセット先読み用）
+        /// @note ここが起動時間の大半（シェーダ 100 本超のコンパイル）を占めるので、
         ///       スプラッシュが固まらないよう細かく切ってある。
         ///       ステップ間で受け渡す中間ポインタは共有状態として保持する。
-        static void BuildStartupTasks(StartupSequence& sequence, EngineSystem& engine, const EngineConfig& config);
+        /// @note buildPreloadTasks は**シーケンスの組み立て時**に呼ばれる（実行時ではない）。
+        ///       ここで積まれたステップはシェーダコンパイル群より前に実行されるので、
+        ///       非同期の先読みを始めておけばコンパイル時間の裏に隠せる。
+        static void BuildStartupTasks(
+            StartupSequence& sequence,
+            EngineSystem& engine,
+            const EngineConfig& config,
+            const std::function<void(StartupSequence&)>& buildPreloadTasks = {});
     };
 }

@@ -50,14 +50,22 @@ public:
     ~EngineSystem();
 
     /// @brief エンジンの初期化処理を起動シーケンスへステップとして積む
-    /// @param sequence 積み先の起動シーケンス
-    /// @param winApp   ウィンドウアプリケーション
-    /// @param config   エンジン設定
+    /// @param sequence          積み先の起動シーケンス
+    /// @param winApp            ウィンドウアプリケーション
+    /// @param config            エンジン設定
+    /// @param buildPreloadTasks アセット先読み用の差し込み口（省略可）
     /// @details 初期化を一息に実行すると、その間ウィンドウメッセージが 1 度も
     ///          処理されず「応答なし」になる。ステップに割っておくと、
     ///          呼び出し側が Step() の合間にメッセージ処理とローディング表示を挟める。
+    /// @details buildPreloadTasks は ModelManager 生成直後（シェーダコンパイル群より前）に
+    ///          呼ばれる。ゲーム側がここで非同期ロードを仕掛けると、
+    ///          コンパイル時間の裏にアセットロードを隠せる。
     /// @warning ステップは全部積んでから回すこと（StartupSequence の warning 参照）。
-    void BuildStartupTasks(StartupSequence& sequence, WinApp* winApp, const EngineConfig& config);
+    void BuildStartupTasks(
+        StartupSequence& sequence,
+        WinApp* winApp,
+        const EngineConfig& config,
+        const std::function<void(StartupSequence&)>& buildPreloadTasks = {});
 
     /// @brief エンジンシステムの初期化（一括実行）
     /// @param winApp ウィンドウアプリケーション

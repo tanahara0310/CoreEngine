@@ -58,7 +58,10 @@ namespace CoreEngine
     }
 
     void GraphicsComponentFactory::BuildStartupTasks(
-        StartupSequence& sequence, EngineSystem& engine, const EngineConfig& config)
+        StartupSequence& sequence,
+        EngineSystem& engine,
+        const EngineConfig& config,
+        const std::function<void(StartupSequence&)>& buildPreloadTasks)
     {
         auto state = std::make_shared<GraphicsSetupState>();
         EngineSystem* enginePtr = &engine;
@@ -73,6 +76,39 @@ namespace CoreEngine
             enginePtr->RegisterComponent(std::move(directXCommon));
         });
 
+        // ──────────────────────────────────────────────────────────
+        // アセットロードの土台（デバイス直後・シェーダコンパイルより前）
+        // ──────────────────────────────────────────────────────────
+        // TextureManager / ResourceFactory / ModelManager はどれも中身がほぼ空の
+        // 初期化しかしないが、**アセット先読みを始めるにはこの 3 つが揃っている必要がある**。
+        // 以前はレンダラー群の後（＝シェーダコンパイルを全部終えた後）に置いていたため、
+        // 先読みを仕掛けても裏に隠せる時間が 1 秒しか残らなかった。
+        // ここへ前倒しすることで、シェーダコンパイル約 6 秒の裏にモデルロードを隠せる。
+        // RenderDomainContext はこの 3 つに一切触らないので、順序を入れ替えても安全。
+        sequence.Add("テクスチャ管理 / リソースファクトリ / モデル管理", [enginePtr, state] {
+            // TextureManager の初期化（シングルトン）
+            TextureManager::GetInstance().Initialize(state->dx);
+
+            // ResourceFactory の作成（コンストラクタで初期化済み）
+            auto resourceFactory = std::make_unique<ResourceFactory>();
+            state->resourceFactory = resourceFactory.get();
+            enginePtr->RegisterComponent(std::move(resourceFactory));
+
+            // ModelManager の生成。描画依存コンテキスト（SetRenderContext）は
+            // 全レンダラーの登録後でないと作れないので、後段の別ステップで行う。
+            // リソースのロード自体はここまでで足りる
+            auto modelManager = std::make_unique<ModelManager>();
+            modelManager->Initialize(state->dx, state->resourceFactory);
+            enginePtr->RegisterComponent(std::move(modelManager));
+        });
+
+        // ゲーム側のアセット先読みをここへ差し込む。
+        // 積まれるのは「ワーカーへ投げて即座に戻る」ステップで、実処理は
+        // 以降のシェーダコンパイル中に裏で進む
+        if (buildPreloadTasks) {
+            buildPreloadTasks(sequence);
+        }
+
         sequence.Add("レンダードメイン（GBuffer / シャドウ / RT）", [enginePtr, state] {
             enginePtr->renderDomainContext_ = std::make_unique<RenderDomainContext>();
             enginePtr->renderDomainContext_->Initialize(
@@ -86,16 +122,6 @@ namespace CoreEngine
             //（GPU リソースは初回 ExecuteCulling で遅延生成。
             //  解放タイミングは EngineSystem::Finalize 参照）
             enginePtr->hiZOcclusionSystem_ = std::make_unique<HiZOcclusionSystem>();
-        });
-
-        sequence.Add("テクスチャ管理 / リソースファクトリ", [enginePtr, state] {
-            // TextureManager の初期化（シングルトン）
-            TextureManager::GetInstance().Initialize(state->dx);
-
-            // ResourceFactory の作成（コンストラクタで初期化済み）
-            auto resourceFactory = std::make_unique<ResourceFactory>();
-            state->resourceFactory = resourceFactory.get();
-            enginePtr->RegisterComponent(std::move(resourceFactory));
         });
 
         sequence.Add("Render（RTV / DSV）", [enginePtr, state] {
@@ -195,12 +221,9 @@ namespace CoreEngine
             enginePtr->RegisterComponent(std::move(renderingTechniqueManager));
         });
 
-        sequence.Add("モデル管理", [enginePtr, state] {
-            auto modelManager = std::make_unique<ModelManager>();
-            modelManager->Initialize(state->dx, state->resourceFactory);
-            enginePtr->RegisterComponent(std::move(modelManager));
-
-            // 全レンダラー登録完了後、ModelManager に描画依存コンテキストを設定
+        sequence.Add("モデル描画コンテキスト", [enginePtr, state] {
+            // ModelManager の生成自体はデバイス直後に済ませてある（先読みのため）。
+            // ここでは全レンダラー登録完了後にしか作れない描画依存コンテキストを設定する
             //（Model インスタンス生成時に各 Model へ注入される）
             ModelRenderContext modelCtx;
             modelCtx.dxCommon = state->dx;

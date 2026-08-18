@@ -89,7 +89,10 @@ namespace CoreEngine
         engineSystem_ = std::make_unique<EngineSystem>();
 
         StartupSequence sequence;
-        engineSystem_->BuildStartupTasks(sequence, winApp_.get(), config);
+        engineSystem_->BuildStartupTasks(sequence, winApp_.get(), config,
+            // ゲーム固有のアセット先読み。エンジン側の都合の良い位置
+            //（ModelManager 生成直後・シェーダコンパイル前）へ差し込まれる
+            [this](StartupSequence& s) { BuildPreloadTasks(s); });
         BuildStartupTasks(sequence);   // ゲーム固有の初期化（派生クラスで実装）
 
         RunStartupSequence(sequence, config);

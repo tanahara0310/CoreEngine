@@ -5,6 +5,7 @@
 #include <set>
 #include <condition_variable>
 #include <functional>
+#include <future>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -94,6 +95,20 @@ public:
     /// @param filePaths プリロードするファイルパスのリスト
     void PreloadModels(const std::vector<std::string>& filePaths);
 
+    /// @brief 複数モデルの並列プリロードを開始する（完了を待たずに即座に戻る）
+    /// @param filePaths プリロードするファイルパスのリスト
+    /// @details 起動シーケンスのシェーダコンパイル中に、裏でモデルを読み込ませるための入口。
+    ///          後から CreateStaticModel が同じパスを要求すると、
+    ///          LoadModelResourceInternal のロード権待ちで自動的に合流するので、
+    ///          呼び出し側が完了を管理する必要はない。
+    /// @note 先読みの失敗は握り潰してログに残すだけにする。あくまで最適化であり、
+    ///       本番の CreateStaticModel が改めて読み直して正規のエラー処理に乗るため。
+    void BeginPreload(const std::vector<std::string>& filePaths);
+
+    /// @brief 進行中のプリロードが全て終わるまで待つ
+    /// @details 終了処理で TextureManager や DirectXCommon を壊す前に必ず呼ぶこと。
+    void WaitForPreload();
+
     /// @brief プリミティブメッシュジェネレーターからモデルを作成する
     /// @param key キャッシュキー（例: "Primitive::Plane_10x10"）
     /// @param generator メッシュ生成インターフェース
@@ -139,6 +154,10 @@ private:
 
     // 並列プリロード用スレッドプール
     std::unique_ptr<ThreadPool> threadPool_;
+
+    // 進行中のプリロード（BeginPreload で積み、WaitForPreload で回収する）
+    std::vector<std::future<void>> preloadFutures_;
+    std::mutex preloadMutex_;
 
     /// @brief スレッドプールの遅延初期化
     void EnsureThreadPool();
