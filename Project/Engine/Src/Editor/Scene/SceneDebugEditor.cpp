@@ -22,6 +22,7 @@
 
 namespace
 {
+    /// @brief 名前が " (n)" のコピー接尾辞で終わるか調べ、基底名を返す
     bool EndsWithUnityCopySuffix(const std::string& name, std::string* outBaseName)
     {
         if (name.size() < 4 || name.back() != ')') {
@@ -45,6 +46,7 @@ namespace
         return true;
     }
 
+    /// @brief 同名のオブジェクトが既に登録されているか
     bool HasObjectName(const CoreEngine::GameObjectManager* manager, const std::string& name)
     {
         if (!manager) {
@@ -60,6 +62,7 @@ namespace
         return false;
     }
 
+    /// @brief Unity 風の重複しないコピー名（"Name (1)"）を作る
     std::string GenerateUnityStyleCopyName(const CoreEngine::GameObjectManager* manager, const std::string& sourceName)
     {
         std::string baseName = sourceName;
@@ -73,6 +76,7 @@ namespace
         }
     }
 
+    /// @brief 動的生成モデルへ既定のマテリアル上書きを適用する
     void ApplyDynamicModelMaterialOverrides(CoreEngine::Model* model)
     {
         if (!model) {

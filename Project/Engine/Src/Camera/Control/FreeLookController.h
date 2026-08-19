@@ -3,6 +3,7 @@
 #include "Camera/Control/ICameraController.h"
 #include "Math/MathCore.h"
 
+/// @file
 /// @brief 一人称視点の自由移動コントローラ（右ドラッグで視点回転 + WASD 移動）
 
 namespace CoreEngine
@@ -16,6 +17,7 @@ namespace CoreEngine
     ///          操作をコントローラとして切り出したことで、UI 側は設定の表示だけになる。
     class FreeLookController final : public ICameraController {
     public:
+        /// @brief 操作感の設定
         struct Settings {
             float moveSpeed = 10.0f;          ///< 移動速度 [m/s]
             float boostMultiplier = 4.0f;     ///< Shift 押下時の倍率

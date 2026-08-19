@@ -7,6 +7,7 @@
 
 namespace CoreEngine
 {
+    /// @brief 読み込んだ画像に対するミップ生成・圧縮・形式変換を行う
     class TextureImageProcessor
     {
     public:

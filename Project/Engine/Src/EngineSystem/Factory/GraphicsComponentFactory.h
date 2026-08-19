@@ -14,24 +14,14 @@ namespace CoreEngine
     struct GraphicsSetupState;
 
     /// @brief グラフィックス関連コンポーネントの生成・初期化を担当するファクトリー
-    /// @details EngineSystem::CreateGraphicsComponents の実装を分離し、
-    ///　EngineSystem.h からグラフィックス系ヘッダーのインクルードを排除する。
-    ///　EngineSystem の friend クラスとして RegisterComponent へアクセスする。
-    ///
-    /// @details 2 関数に分かれているのは、**間にアセット先読みを挟むため**。
-    ///          呼び出し側（EngineSystem::BuildStartupTasks）が
-    ///          「土台 → ゲームの先読み → レンダラー群」と一列に並べる。
-    ///          以前は先読みフックを std::function でこの中へ差し込んでいたが、
-    ///          挿入位置が factory の実装を読まないと分からなかったため分割した。
+    /// @details EngineSystem.h からグラフィックス系ヘッダーの include を排除するために分離した。
+    /// @note 2 関数に分かれているのは、間にゲーム側のアセット先読みを挟むため。
     class GraphicsComponentFactory
     {
     public:
-        /// @brief デバイスとアセットロード土台の生成ステップを積む
-        /// @details 内訳: DirectX12 デバイス → TextureManager / ResourceFactory / ModelManager。
-        ///          ここまで実行されればモデル・テクスチャの先読みを開始できる
-        ///          （＝この直後に積んだ先読みステップは、後続のレンダラー群の
-        ///          シェーダコンパイル数秒の裏に実処理を隠せる）。
+        /// @brief デバイスとアセットロード土台（TextureManager / ResourceFactory / ModelManager）の生成ステップを積む
         /// @return BuildRendererTasks へ渡す共有状態
+        /// @note ここまで実行されればモデル・テクスチャの先読みを開始できる
         static std::shared_ptr<GraphicsSetupState> BuildFoundationTasks(
             StartupSequence& sequence, EngineSystem& engine, const EngineConfig& config);
 

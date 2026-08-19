@@ -39,22 +39,9 @@ namespace CoreEngine
     };
 
     /// @brief 汎用スレッドプール — Submit で任意のタスクをワーカーへ投入し、future で結果を受け取る
-    ///
-    /// @details **タスクに必ずラベルを付ける設計にしてある。** ラベル無しだと
-    ///          プロファイラ UI が「W3 が緑」までしか言えず、
-    ///          「何が」「どれだけ」走ったのかが分からない。並列化の効果測定は
-    ///          タスク単位の実行時間と待ち時間が取れて初めて可能になる。
-    ///
-    /// @warning **ネストした待ちに注意。** ワーカーの中から同じプールへ Submit して
-    ///          その future を素の `get()` で待つと、全ワーカーが待ちに入った瞬間に
-    ///          デッドロックする（キューにあるタスクを実行する者が居なくなる）。
-    ///          この形が避けられない場合は `Wait()` を使うこと。待っている間に
-    ///          キューのタスクを自分で引き受けるので詰まらない。
-    ///
-    /// @warning **このクラスはタスクが触るデータの排他を一切見ていない。**
-    ///          特に `AssetDatabase::FindAssetPath` は `unordered_map::operator[]` で
-    ///          挿入するため、読み取りに見えて書き込みであり、ワーカーから
-    ///          呼ぶとレースする。ワーカーに渡す前にメインスレッドで解決しておくこと。
+    /// @warning ワーカー内から同じプールへ Submit して素の `get()` で待つとデッドロックする。
+    ///          その形が必要なら `Wait()` を使うこと。
+    /// @warning タスクが触るデータの排他は見ていない（`AssetDatabase::FindAssetPath` は要注意）。
     class ThreadPool
     {
     public:
@@ -79,13 +66,8 @@ namespace CoreEngine
 
         /// @brief タスクをキューに投入し、結果の future を返す
         /// @param label プロファイラ UI に出す名前。短く、何をしているかが分かる文字列
-        /// @param func  実行する関数
-        /// @param args  関数の引数
-        /// @return タスクの結果を受け取る future
-        /// @note Shutdown 済みのプールへ投入した場合は**呼び出しスレッドで同期実行**して
-        ///       完了済み future を返す。以前は例外を投げていたが、終了処理中に
-        ///       非同期ロードが飛んでくる経路（シーン破棄など）で捕まえ手が居らず
-        ///       プロセスが落ちるため、同期実行への劣化に変更した。
+        /// @note Shutdown 済みのプールへ投入した場合は呼び出しスレッドで同期実行し、
+        ///       完了済み future を返す（終了処理中の非同期ロードで落とさないため）。
         template<typename F, typename... Args>
         auto Submit(std::string_view label, F&& func, Args&&... args)
             -> std::future<std::invoke_result_t<F, Args...>>;
@@ -155,14 +137,7 @@ namespace CoreEngine
             std::array<WorkerState, kMaxWorkers> workers{};
 
             /// @brief 占有率 = 全ワーカー実行時間 / (稼働区間 × ワーカー数)
-            /// @details 1.0 に近ければワーカーを遊ばせていない。低い場合は
-            ///          タスクの粒度が細かすぎるか、そもそも投入量が足りていない。
-            ///
-            /// @note **分母が「計測開始からの経過」ではなく「稼働区間」なのが要点。**
-            ///       ロード系のプールは起動時に一気に働いて以降ずっと暇なので、
-            ///       経過時間で割ると必ず 0% 近くになり、
-            ///       「並列化が効いていない」という誤読を生む。
-            ///       実際に仕事があった区間で割らないとこの数字は意味を持たない。
+            /// @note 分母は「計測開始からの経過」ではなく「稼働区間」。経過で割ると常に 0% 近くになる。
             double GetOccupancy() const
             {
                 const double denominator = activeSpanMs * static_cast<double>(workerCount);
@@ -170,12 +145,7 @@ namespace CoreEngine
             }
 
             /// @brief 直列実行との比 = 全ワーカー実行時間 / 稼働区間
-            /// @details 「何本ぶんの仕事を並列でこなしたか」。8 ワーカーで 6.0 なら
-            ///          直列比 6 倍。**並列化の効果はこの数字で語ること。**
-            ///
-            /// @warning フルロード時は 1 スレッドあたりのスループットが落ちる
-            ///          （物理コアの共有・クロック低下）ので、この値は実際の
-            ///          短縮率より大きく出る。最終的な効果は壁時計の A/B で語ること。
+            /// @warning フルロード時はスループット低下ぶん大きく出る。最終評価は壁時計の A/B で。
             double GetParallelSpeedup() const
             {
                 return activeSpanMs > 0.0 ? totalBusyMs / activeSpanMs : 0.0;
@@ -194,6 +164,7 @@ namespace CoreEngine
         void ResetStats();
 
     private:
+        /// @brief キューに積まれたタスク 1 件（本体・ラベル・投入時刻）
         struct Task
         {
             std::function<void()> fn;

@@ -14,6 +14,7 @@ namespace CoreEngine
     class IBLGenerator;
     class RenderManager;
 
+    /// @brief 環境マップから IBL テクスチャ一式を生成・キャッシュする窓口
     class IBLSystem
     {
     public:

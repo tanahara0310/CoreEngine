@@ -37,12 +37,9 @@ namespace CoreEngine
         Entry& entry = tasks_[cursor_];
         entry.executedLabel = entry.task->GetLabel();
 
-        // 計測は CpuProfiler の一本だけ。ここで自前のストップウォッチを持つと、
-        // [Startup] 行と [CpuProfile] レポートが別経路の数字になり、
-        // 片方だけ直したときに食い違う（実際に初期実装は二重に測っていた）。
-        // ステップ内でさらに CORE_CPU_SCOPE を切ると、このスコープの子として
-        // ツリーに並ぶ（起動完了時に CpuProfiler::LogReport が出す）。
-        // 例外時に EndScope が漏れるが、起動タスクの例外＝起動失敗なので追わない
+        // 計測は CpuProfiler の一本だけ。自前のストップウォッチを持つと [Startup] 行と
+        // [CpuProfile] レポートが別経路の数字になり、片方だけ直したときに食い違う。
+        // 例外時に EndScope が漏れるが、起動タスクの例外＝起動失敗なので追わない。
         auto& profiler = CpuProfiler::GetInstance();
         profiler.BeginScope(entry.executedLabel.c_str());
         entry.task->Execute();

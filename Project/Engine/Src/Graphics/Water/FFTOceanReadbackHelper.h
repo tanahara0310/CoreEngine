@@ -6,6 +6,7 @@
 
 namespace CoreEngine
 {
+    /// @brief リードバック用バッファの生成要求（対象テクスチャと出力先）
     struct FFTOceanReadbackTextureCreateRequest {
         ID3D12Device* device = nullptr;
         ID3D12Resource* texture = nullptr;
@@ -18,6 +19,7 @@ namespace CoreEngine
     /// @brief FFT Ocean のGPU readback解析を担当するヘルパー
     class FFTOceanReadbackHelper {
     public:
+        /// @brief 波面（変位・法線）テクスチャのリードバック要求
         struct SurfaceReadbackRequest {
             ID3D12Resource* displacementReadbackBuffer = nullptr;
             ID3D12Resource* normalReadbackBuffer = nullptr;
@@ -29,6 +31,7 @@ namespace CoreEngine
             uint64_t sequence = 0;
         };
 
+        /// @brief スペクトルテクスチャのリードバック要求
         struct SpectrumReadbackRequest {
             ID3D12Resource* spectrumAReadbackBuffer = nullptr;
             ID3D12Resource* spectrumBReadbackBuffer = nullptr;

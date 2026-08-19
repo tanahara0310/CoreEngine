@@ -14,9 +14,11 @@ namespace CoreEngine
 {
 class StartupSequence;
 
+/// @brief ゲーム側が継承するアプリケーションの骨格（初期化・ゲームループ・終了処理）
 class Framework {
 public:
     Framework() = default;
+    /// @brief デストラクタ（派生シーンより先にエンジンを壊さないよう .cpp で定義する）
     virtual ~Framework();
 
     /// @brief フレームワークの実行（ゲームループ）
@@ -38,11 +40,9 @@ protected:
     virtual void BuildStartupTasks(StartupSequence& sequence);
 
     /// @brief アセットの非同期先読みを起動シーケンスへ積む（省略可）
-    /// @details エンジンの ModelManager 生成直後、**シェーダコンパイル群より前**の位置に
-    ///          挿入される。ここで積むステップは「ワーカーへ投げて即座に戻る」ものにすること。
-    ///          実処理は以降のシェーダコンパイル（数秒）の裏で進み、
-    ///          シーン構築の時点では読み終わっている状態を狙う。
-    /// @note ここで同期的に待つと単に順番が前に来るだけで何も速くならない。
+    /// @details ModelManager 生成直後・シェーダコンパイル群より前に挿入される。
+    /// @note 積むステップは「ワーカーへ投げて即座に戻る」ものにすること。
+    ///       ここで同期的に待つと順番が前に来るだけで何も速くならない。
     virtual void BuildPreloadTasks(StartupSequence& /*sequence*/) {}
 
     /// @brief 終了処理（ゲーム固有のリソース解放等）

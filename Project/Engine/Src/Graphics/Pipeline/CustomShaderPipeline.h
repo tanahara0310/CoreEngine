@@ -19,12 +19,7 @@ namespace CoreEngine
     /// @brief アプリ側から渡されたカスタムシェーダーで PSO を構築・保持するコンポーネント
     class CustomShaderPipeline {
     public:
-        /// @brief カスタムシェーダーをコンパイルし、リフレクションから独自 RootSignature と PSO を構築する
-        /// @param device D3D12 デバイス
-        /// @param compiler 既存の ShaderCompiler インスタンス
-        /// @param reflectionBuilder 既存の ShaderReflectionBuilder インスタンス
-        /// @param provider シェーダーパスを提供するオブジェクト
-        /// @return 構築に成功したか
+        /// @brief カスタムシェーダーをコンパイルし、リフレクションから RootSignature と PSO を構築する
         bool Build(
             ID3D12Device* device,
             ShaderCompiler& compiler,

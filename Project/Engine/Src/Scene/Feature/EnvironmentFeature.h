@@ -8,12 +8,9 @@ class SkyBoxObject;
 namespace CoreEngine
 {
     /// @brief 既定の環境（空・大気散乱・雲）を管理する Feature
-    /// @details PostSceneInitialize でシーン生成済みの SkyBox を採用（未生成なら自動生成）し、
-    ///          PostLogic で大気散乱→雲の順に毎フレーム反映する。
-    /// @note 地平線より下の地面は「オブジェクト」ではなく大気散乱そのものが描く
-    ///       （Sky-View LUT が地表のランバート反射を積分している）。かつてここが
-    ///       持っていた既定床 InfiniteGroundObject は廃止した。開発時の空間把握用の
-    ///       グリッドは GridFeature（エディタ専用）の担当。
+    /// @details PostSceneInitialize で SkyBox を採用（未生成なら自動生成）し、
+    ///          PostLogic で大気散乱 → 雲の順に毎フレーム反映する。
+    /// @note 地平線より下の地面は大気散乱そのものが描く（Sky-View LUT の地表反射項）。
     class EnvironmentFeature : public ISceneFeature {
     public:
         const char* GetName() const override { return "Environment"; }

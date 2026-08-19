@@ -13,21 +13,20 @@ namespace CoreEngine
     {
         // ──────────────────────────────────────────────────────────
         // シーンフォルダのスキーマ（_scene.json の "objects" 配列 → <key>.json）を
-        // 読む処理はこの無名名前空間に集約する。
-        // Load（オブジェクト生成）と CollectModelPaths（先読み）の 2 経路が
-        // それぞれ自前でマニフェストを解析していた時期があり、スキーマを変えると
-        // 片方だけ直って先読みが静かに空振りする（先読みは失敗しても本番ロードが
-        // 拾うため、エラーにならず「ただ遅くなる」＝気づけない）事故の芽だった。
+        // 読む処理はここに集約する。Load と CollectModelPaths が別々に解析していると、
+        // スキーマ変更で先読みだけが静かに空振りする（遅くなるだけで気づけない）。
         // ──────────────────────────────────────────────────────────
 
         std::string MakeSceneDir(const std::string& sceneName) {
             return "Application/Assets/Scenes/" + sceneName;
         }
 
+        /// @brief シーンマニフェスト（_scene.json）のパス
         std::string MakeManifestPath(const std::string& sceneName) {
             return MakeSceneDir(sceneName) + "/_scene.json";
         }
 
+        /// @brief オブジェクト個別ファイルのパス
         std::string MakeObjectPath(const std::string& sceneName, const std::string& key) {
             return MakeSceneDir(sceneName) + "/" + key + ".json";
         }

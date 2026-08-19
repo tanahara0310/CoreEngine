@@ -15,10 +15,9 @@
 
 using Microsoft::WRL::ComPtr;
 
-/// @brief スプライトオブジェクト - GameObject基底クラスを継承してRenderManager対応
-
 namespace CoreEngine
 {
+/// @brief スプライトオブジェクト - GameObject基底クラスを継承してRenderManager対応
 class SpriteObject : public GameObject {
 public:
     /// @brief コンストラクタ（トランスフォームの実体は `EulerTransformComponent` が持ち、

@@ -11,6 +11,7 @@
 
 namespace CoreEngine
 {
+    /// @brief グラフが追跡する論理リソース 1 つ分の状態（版番号・直近の書き手・読み手）
     struct RenderGraphResource {
         std::string name;
         uint32_t lastWriterIndex = 0;
@@ -21,6 +22,7 @@ namespace CoreEngine
         D3D12_RESOURCE_STATES* currentState = nullptr;
     };
 
+    /// @brief 1 リソースへのアクセス宣言（論理名と必要な D3D12 ステート）
     struct RenderGraphResourceAccess {
         std::string resourceName;
         D3D12_RESOURCE_STATES requiredState = D3D12_RESOURCE_STATE_COMMON;
@@ -70,6 +72,7 @@ namespace CoreEngine
         }
     }
 
+    /// @brief パスが自分の読み書きを宣言するための入口
     class RenderGraphBuilder {
     public:
         /// @brief 読み取りリソースを登録する
@@ -107,6 +110,7 @@ namespace CoreEngine
         std::vector<RenderGraphResourceAccess> writes_;
     };
 
+    /// @brief グラフのノード 1 つ（パスとその読み書き宣言・導出された依存）
     struct RenderGraphPass {
         std::string name;
         RenderPass* renderPass = nullptr;
@@ -121,10 +125,12 @@ namespace CoreEngine
         std::vector<std::string> unresolvedResources;          ///< 実体を解決できずバリアを飛ばしたリソース
     };
 
+    /// @brief グラフ実行時にパスへ渡す文脈
     struct RenderGraphContext {
         const RenderContext* renderContext = nullptr;
     };
 
+    /// @brief 宣言された読み書きから実行順とバリアを導出し、パスを実行するグラフ
     class RenderGraph {
     public:
         /// @brief グラフ内の全ノードと状態追跡情報をクリアする

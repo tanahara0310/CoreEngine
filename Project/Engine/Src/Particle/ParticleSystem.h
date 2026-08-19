@@ -52,10 +52,9 @@
 class Camera;
 namespace CoreEngine { class ModelResource; }
 
-// パーティクルのパラメータ
-
 namespace CoreEngine
 {
+// パーティクルのパラメータ
 struct Particle {
     EulerTransform transform;
     Vector3 velocity;
@@ -268,6 +267,7 @@ public:
         return (std::min)(maxParticles, kNumMaxInstance);
     }
 
+    /// @brief 稼働統計（デバッグ UI 表示用）
     struct Statistics {
         uint32_t totalParticlesCreated = 0;
         uint32_t totalParticlesDestroyed = 0;

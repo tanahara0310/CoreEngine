@@ -4,6 +4,7 @@
 #include <Math/MathCore.h>
 #include <string>
 
+/// @file
 /// @brief カメラのデータ型（投影パラメータ・GPU 構造体・スナップショット）
 
 namespace CoreEngine
@@ -103,11 +104,8 @@ struct CameraParameters {
 };
 
 /// @brief カメラスナップショット（プリセット・キーフレーム保存用）
-/// @details 以前は Camera 用と DebugCamera 用のフィールドを両方持ち isDebugCamera で
-///          分岐する手書きタグ付きユニオンだったが、カメラが 1 種類になったため
-///          「Transform + 投影パラメータ」だけになった。
-///          軌道操作（注視点・距離・ピッチ・ヨー）はカメラの状態ではなく
-///          OrbitFlyController の内部状態なので、こことは別に保存する。
+/// @note 軌道操作（注視点・距離・ピッチ・ヨー）はカメラではなく
+///       OrbitFlyController の状態なので、ここには含めない。
 struct CameraSnapshot {
     std::string name;                   // プリセット名
 

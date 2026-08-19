@@ -77,13 +77,9 @@ namespace CoreEngine
         /// @brief 必要なGPUリソースとComputeパイプラインを初期化する
         bool Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager);
 
-        /// @brief 1フレーム分の海面シミュレーションをDispatchし、出力テクスチャを更新する
-        /// @param cmdList コマンドリスト
-        /// @param timeSeconds シミュレーション時刻（秒）
+        /// @brief 1 フレーム分の海面シミュレーションを Dispatch し、出力テクスチャを更新する
         /// @param profiler 内訳計測用プロファイラ（nullptr なら計測しない）。
-        ///                 時間発展 / IFFT / 合成 / 泡 をカスケードごとに別スロットで計測する。
-        ///                 RenderGraph のパス単位計測では FFTOceanPass 1 本にまとまってしまい、
-        ///                 どの Compute パスが支配的かを分解できないため、ここで直接取る。
+        ///                 パス単位計測では FFTOceanPass 1 本にまとまるので、ここで直接取る。
         void Dispatch(
             ID3D12GraphicsCommandList* cmdList,
             float timeSeconds,
@@ -145,6 +141,7 @@ namespace CoreEngine
         // HLSL 側 FFTOceanTimeEvolution.CS.hlsl の SpectrumSample と一致必須。
         using SpectrumSample = FFTOceanSpectrumBuilder::SpectrumSample;
 
+        /// @brief シェーダー側 cbuffer と一致させる海面シミュレーションの定数
         struct SimulationConstants {
             uint32_t resolution = 0;
             uint32_t activeComponentCount = 0;

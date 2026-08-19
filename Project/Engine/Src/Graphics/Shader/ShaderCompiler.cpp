@@ -244,12 +244,9 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource;
         HRESULT hr = dxcUtils->LoadFile(resolvedPath.c_str(), nullptr, &shaderSource);
 
-        // 読めなかったら nullptr を返す。
-        // Development 構成は assert が無効なので、ここで抜けないと直後の
-        // GetBufferPointer() が null 参照で落ちる。原因の分からないクラッシュより、
-        // 「どのシェーダが読めなかったか」を残して呼び出し元に nullptr を返すほうがよい
-        //（呼び出し元は元から失敗時 nullptr の契約になっている）。
-        // 事前コンパイルは古くなった一覧を読むことがあるので、この経路は実際に通る
+        // 読めなかったら nullptr を返す。Development 構成は assert が無効なので、
+        // ここで抜けないと直後の GetBufferPointer() が null 参照で落ちる。
+        // 事前コンパイルは古くなった一覧を読むことがあるので、この経路は実際に通る。
         if (FAILED(hr) || !shaderSource) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
                 "シェーダファイルを読み込めませんでした: {} (hr=0x{:08X})",

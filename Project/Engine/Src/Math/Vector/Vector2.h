@@ -4,6 +4,7 @@
 
 namespace CoreEngine
 {
+/// @brief 2 成分ベクトル
 struct Vector2 {
     float x, y;
 
@@ -94,9 +95,7 @@ inline Vector2 operator+(const Vector2& v) {
 //========================================
 // 　汎用関数
 //========================================
-/// @note Vector3 / Vector4 と同じ綴りで揃えるためフリー関数にしてある。
-///       以前はここだけメンバ関数（v.Length() など）だったが、
-///       エンジン・アプリ側からの呼び出しは 1 件も無かった。
+/// @note Vector3 / Vector4 と綴りを揃えるためフリー関数にしてある。
 
 // 内積
 inline float Dot(const Vector2& a, const Vector2& b) {

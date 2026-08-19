@@ -8,12 +8,9 @@
 
 namespace CoreEngine
 {
-    /// @brief FFT 海面のデバッグ計測（120フレーム周期のサマリログ・GPUリードバック統計・スペクトルCPUプローブ）
-    /// @details CVar "d.FFTOcean.DebugProbe"（既定 off）によるオプトイン。無効時は
-    ///          リードバックバッファも確保せず、コピー・バリア・CPU 走査を一切行わない。
-    ///          以前はこの一式が FFTOceanManager::Dispatch へ常時混入しており（Release でも動作）、
-    ///          120 フレームごとに全解像度テクスチャコピー最大 6 本＋65k テクセルの CPU ループを
-    ///          払っていた。リードバックバッファは有効化後の初回使用時に遅延生成する。
+    /// @brief FFT 海面のデバッグ計測（サマリログ・GPU リードバック統計・スペクトル CPU プローブ）
+    /// @details CVar "d.FFTOcean.DebugProbe"（既定 off）でオプトイン。
+    ///          無効時はリードバックバッファも確保せず、コピー・バリア・CPU 走査を一切行わない。
     class FFTOceanDebugProbe
     {
     public:

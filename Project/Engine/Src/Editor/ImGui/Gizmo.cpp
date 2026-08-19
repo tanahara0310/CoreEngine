@@ -55,11 +55,9 @@ namespace CoreEngine
             break;
         }
 
-        // 具象クラス（ModelGameObject）ではなく `ITransformSource` で引く。
-        // 実体が WorldTransform（3D モデル）でも EulerTransform（パーティクルエミッタ等）でも
-        // 同じ経路で通るので、**以前ダウンキャストの分岐から漏れてギズモが効かなかった
-        // ParticleSystem / GpuParticleSystem でも効く**。
-        // トランスフォームを持たないオブジェクト（デバッグ線など）はギズモの対象外。
+        // 具象クラスではなく `ITransformSource` で引く。実体が WorldTransform でも
+        // EulerTransform でも同じ経路で通るので、ParticleSystem 等でもギズモが効く。
+        // トランスフォームを持たないオブジェクト（デバッグ線など）は対象外。
         auto* source = object->GetComponent<ITransformSource>();
         if (!source) return false;
 

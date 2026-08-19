@@ -3,11 +3,10 @@
 #include "ParticleModule.h"
 #include "Math/MathCore.h"
 
-/// @brief パーティクル放出モジュール（Unity Emission Module相当）
-/// パーティクルの放出タイミングと数を制御します
-
 namespace CoreEngine
 {
+/// @brief パーティクル放出モジュール（Unity Emission Module相当）
+/// パーティクルの放出タイミングと数を制御します
 class EmissionModule : public ParticleModule {
 public:
     /// @brief 放出データ

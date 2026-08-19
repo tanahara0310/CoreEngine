@@ -2,10 +2,9 @@
 #include "IInputDevice.h"
 #include <Xinput.h>
 
-/// @brief ゲームパッドのボタンを表す列挙型
-
 namespace CoreEngine
 {
+    /// @brief ゲームパッドのボタン（値は XInput の定義に一致させてある）
     enum class GamepadButton {
         A = XINPUT_GAMEPAD_A,
         B = XINPUT_GAMEPAD_B,
@@ -39,10 +38,14 @@ namespace CoreEngine
         /// @brief ゲームパッドの状態を更新
         void Update() override;
 
+        /// @brief コントローラが接続されているか
         bool IsConnected() const;
 
+        /// @brief ボタンが押され続けているか
         bool  IsButtonPressed(GamepadButton button) const;
+        /// @brief ボタンが押された瞬間か
         bool  IsButtonTriggered(GamepadButton button) const;
+        /// @brief ボタンが離された瞬間か
         bool  IsButtonReleased(GamepadButton button) const;
 
         /// @brief 左スティックの状態を取得
@@ -54,7 +57,9 @@ namespace CoreEngine
         /// @brief 振動を設定（0.0〜1.0）
         void SetVibration(float leftMotorRatio, float rightMotorRatio);
 
+        /// @brief 左トリガーの踏み込み量（0.0〜1.0）
         float GetLeftTrigger() const;
+        /// @brief 右トリガーの踏み込み量（0.0〜1.0）
         float GetRightTrigger() const;
 
     private:

@@ -17,11 +17,10 @@ namespace CoreEngine
     class DescriptorManager;
 
     /// @brief ライトマネージャー（ライトの管理と制御を担当）
-    /// @details オーサリングは統一 Light 構造体（物理単位）＋世代付き LightHandle で行い、
-    ///          UpdateAll() が GPU 転送用の型別構造体（LightData.h）へ変換する。
-    ///          ディレクショナルライトの GPU 転送順は「大気の太陽（メイン）を先頭にした正準順」で、
-    ///          GetDirectionalLight(index) もこの順を返す（RT シャドウマスクの
-    ///          インデックスとシェーダー側配列の対応を保証する）。
+    /// @details オーサリングは統一 Light 構造体＋世代付き LightHandle で行い、
+    ///          UpdateAll() が GPU 転送用の型別構造体へ変換する。
+    /// @note ディレクショナルライトの転送順は大気の太陽を先頭にした正準順
+    ///       （RT シャドウマスクとシェーダー側配列の対応を保証するため）。
     class LightManager {
     public:
         static constexpr uint32_t MAX_DIRECTIONAL_LIGHTS = 4;
@@ -67,6 +66,7 @@ namespace CoreEngine
         /// @return ライトへのポインタ（破棄済み・無効ハンドルの場合は nullptr）。
         ///         ポインタの保持は不可。ハンドルを保持し、フレームごとに引き直すこと。
         Light* GetLight(LightHandle handle);
+        /// @brief ハンドルからライトを引く（世代が古ければ nullptr）
         const Light* GetLight(LightHandle handle) const;
 
         /// @brief 名前でライトを検索する（同名がある場合は最初の1つ）

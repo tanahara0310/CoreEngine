@@ -8,19 +8,10 @@
 
 namespace CoreEngine
 {
-    /// @brief 起動処理を「1 ステップずつ進められる列」として保持する。
-    ///
-    /// @details 従来は EngineSystem::Initialize が全部を一息に実行していたため、
-    ///          その間メッセージポンプが一度も回らず、表示済みの全画面ウィンドウが
-    ///          Windows から「応答なし」と判定されていた（起動が何秒でも起きる）。
-    ///          呼び出し側は Step() の合間に ProcessMessage とスプラッシュ描画を挟む。
-    ///
-    ///          各ステップの CPU 時間を計測してログへ残すので、
-    ///          「どのステップが何秒か」を毎起動そのまま追える（起動時間の回帰検知）。
-    ///
-    /// @warning 実行を始めた後にステップを追加してはいけない。内部 vector が
-    ///          再確保されると、Step() が保持している実行中エントリの参照が壊れる。
-    ///          ステップは全部積んでから回すこと。
+    /// @brief 起動処理を「1 ステップずつ進められる列」として保持する
+    /// @details 呼び出し側が Step() の合間にメッセージポンプとスプラッシュ描画を挟めるようにする。
+    ///          各ステップの CPU 時間はログへ残すので、起動時間の回帰を毎起動そのまま追える。
+    /// @warning 実行開始後にステップを追加しないこと（内部 vector の再確保で実行中の参照が壊れる）。
     class StartupSequence {
     public:
         /// @brief ラムダをステップとして末尾に積む
@@ -57,6 +48,7 @@ namespace CoreEngine
         void LogSummary() const;
 
     private:
+        /// @brief ステップ 1 つ分（タスク本体と実測時間）
         struct Entry {
             std::unique_ptr<IStartupTask> task;
             std::string executedLabel;   // 実行時点で確定した表示名（サマリ用）

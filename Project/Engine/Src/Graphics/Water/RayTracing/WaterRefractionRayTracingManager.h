@@ -18,6 +18,7 @@ namespace CoreEngine
     class DescriptorManager;
     class AccelerationStructureManager;
 
+    /// @brief RT 屈折の設定
     struct WaterRefractionRayTracingSettings {
         float maxRayDistance = 500.0f;
         float waterRefractiveIndex = 1.333f;
@@ -32,6 +33,7 @@ namespace CoreEngine
         uint32_t debugLogEnabled = 0;
     };
 
+    /// @brief 水面の屈折をレイトレーシングで生成するマネージャ
     class WaterRefractionRayTracingManager : public WaterRayTracingPassBase {
     public:
         // ビュー識別子は 3 マネージャ共通（WaterRayTracingPassBase.h の RTWaterViewID）
@@ -58,10 +60,14 @@ namespace CoreEngine
             UINT height,
             ViewID viewId = ViewID::GameView);
 
+        /// @brief 出力テクスチャを指定サイズで作り直す
         void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView);
 
+        /// @brief 屈折出力テクスチャの SRV ハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetRefractionSRVHandle(ViewID viewId = ViewID::GameView) const;
+        /// @brief 屈折出力テクスチャのリソース
         ID3D12Resource* GetRefractionResource(ViewID viewId = ViewID::GameView) const;
+        /// @brief 屈折出力の現在ステートへの参照（バリア時に更新される）
         D3D12_RESOURCE_STATES& GetRefractionCurrentState(ViewID viewId = ViewID::GameView);
 
         void SetSettings(const WaterRefractionRayTracingSettings& settings) { settings_ = settings; }

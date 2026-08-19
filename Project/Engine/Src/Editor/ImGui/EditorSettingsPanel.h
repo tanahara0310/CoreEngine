@@ -2,6 +2,7 @@
 
 #ifdef USE_IMGUI
 
+/// @file
 /// @brief Engine Settings ウィンドウの「Editor Settings」パネル描画
 
 namespace CoreEngine

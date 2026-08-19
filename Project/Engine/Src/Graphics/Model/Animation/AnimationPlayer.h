@@ -14,10 +14,7 @@ namespace CoreEngine
 
     /// @brief モデルのアニメーション再生を制御するクラス
     /// @details 再生・リセット・切り替え・ブレンドの責務を Model から分離したもの。
-    ///          ModelResource が保持するアニメーションを名前で参照し、
-    ///          コントローラー（SkeletonAnimator / AnimationBlender）の生成は
-    ///          IAnimationControllerFactory へ委譲する。
-    ///          スケルトンの所有者はコントローラーであり、本クラスも Model もコピーを持たない。
+    /// @note スケルトンの所有者はコントローラーであり、本クラスも Model もコピーを持たない。
     class AnimationPlayer {
     public:
         /// @brief コンストラクタ

@@ -7,6 +7,7 @@
 #include "Math/Frustum.h"
 #include "Graphics/Render/RenderViewType.h"
 
+/// @file
 /// @brief 1 ビュー分の描画パラメータ（フレーム内不変のスナップショット）
 
 namespace CoreEngine
@@ -14,14 +15,9 @@ namespace CoreEngine
     class Camera;
 
     /// @brief 描画・カリング・RT が参照するビュー情報
-    /// @details フレーム先頭で 1 回だけ構築し、以降は誰も書き換えない「値」。
-    ///          カメラという可変オブジェクトを描画側が読みに行くと、読み取り時刻によって
-    ///          答えが変わる（過去に SSAO の黒斑・ギズモずれを生んだ）。行列を一度確定させて
-    ///          配ることで、フレーム内の整合が構造として保証される。
-    ///
-    ///          ジッタは projection に既に注入済み。viewProjection / invViewProjection /
-    ///          frustum はすべてこの projection から導出されるため、モデルの WVP・
-    ///          深度復元・カリングが同じ行列に揃う。
+    /// @details フレーム先頭で 1 回だけ構築し、以降は書き換えない「値」。
+    ///          カメラを描画側が直接読むと読み取り時刻で答えが変わるため、行列を確定させて配る。
+    /// @note ジッタは projection に注入済み。派生する行列とフラスタムはすべてこれから導出する。
     struct ViewInfo {
         /// @brief 移行期の互換用カメラポインタ
         /// @details GameObject::Draw(const Camera*) 系のレガシー描画経路がまだ Camera を

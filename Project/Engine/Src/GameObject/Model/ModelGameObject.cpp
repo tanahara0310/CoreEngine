@@ -59,8 +59,7 @@ namespace CoreEngine
     void ModelGameObject::Draw(const Camera* camera) {
         // RenderGraph を経由しない直接呼び出し（レガシー経路）。
         // ViewInfo を持たないため、その場で 1 つ組み立てて本経路へ合流させる。
-        // 注意: cmdList は埋められない（ここから記録先を知る手段が無い）。現状この経路には
-        //       呼び出し元が 1 つも無く、Model::Draw の assert で気づけるようにしてある。
+        // 注意: cmdList は埋められない。現状この経路には呼び出し元が 1 つも無く、
         //       復活させるなら DrawViewInfo::cmdList を渡せる形へ直すこと。
         if (!camera) return;
         const ViewInfo legacyView = ViewBuilder::Build(camera, RenderViewType::GameView);
@@ -145,10 +144,9 @@ namespace CoreEngine
         }
         if (model_) {
             if (j.contains("materials") && j["materials"].is_array()) {
-                // 新フォーマット: マテリアルスロットごとの配列
-                // 保存済みシーンは全モデルが毎回フルの materials 配列を書き出すため、
-                // 素朴に FromJson すると未オーバーライドのモデルまで毎回 materialize してしまい
-                // ModelResource 側の Copy-on-Write（同一モデル複数配置のバッチ統合）が意味を失う。
+                // 新フォーマット: マテリアルスロットごとの配列。
+                // 保存済みシーンは毎回フルの materials 配列を書き出すため、素朴に FromJson すると
+                // 未オーバーライドのモデルまで materialize して Copy-on-Write が意味を失う。
                 // リソース既定値と一致する場合はスキップして共有デフォルトのままにする。
                 const json& materials = j["materials"];
                 const ModelResource* modelRes = model_->GetModelResource();

@@ -6,16 +6,9 @@ namespace CoreEngine {
     struct ViewInfo;
 
     /// @brief 毎フレーム全ポストエフェクトへ配られる文脈
-    /// @details エフェクト固有の値注入（Outline のクリップ距離、LensFlare の太陽位置など）を
-    ///          この 1 経路に集約するための入れ物。これが無かった頃は PostEffectPass と
-    ///          RenderPipeline にエフェクト名ごとの分岐が生えており、エフェクトを追加するたびに
-    ///          フレームワーク側を編集する必要があった。
-    ///
-    ///          【設計方針】ここにはサービス（Manager のポインタ）ではなく **データ** を載せる。
-    ///          AtmosphereManager* を載せるとポストエフェクト層が大気システムへ依存してしまうため、
-    ///          必要なのが太陽の向きなら太陽の向きだけを渡す。
-    ///
-    ///          設計: Docs/Engine/Graphics/PostProcess/PostEffect_Refactoring_Plan.md
+    /// @details エフェクト固有の値注入をこの 1 経路に集約し、フレームワーク側の分岐をなくす。
+    /// @note 載せるのはサービス（Manager のポインタ）ではなくデータ。
+    ///       太陽の向きが要るなら太陽の向きだけを渡す。
     struct PostEffectFrameContext {
         /// @brief 実際に描画へ使われたビュー（フレーム先頭で確定したスナップショット）
         /// @details 別のカメラの行列を使うと投影位置がずれるため、必ずこれを使うこと

@@ -22,11 +22,8 @@ namespace CoreEngine
     class RootSignatureManager;
 
     /// @brief Hi-Z（階層深度）オクルージョンカリングシステム
-    /// @details G-Buffer 完成後の SceneDepth から max リダクションの深度ピラミッドを構築し、
-    ///          収集したワールド AABB を CS で遮蔽判定 → Readback で CPU へ戻す。
-    ///          結果はフレームリングが一巡した後（2 フレーム後）の Model::Draw で
-    ///          Submit スキップに使う。判定・適用はメイン GameView のみ。
-    ///          設計書: Docs/Engine/Graphics/Optimization/HiZOcclusionCulling_Design.md
+    /// @details SceneDepth から深度ピラミッドを作り、ワールド AABB を CS で遮蔽判定して Readback する。
+    ///          結果は 2 フレーム後の Model::Draw で Submit スキップに使う。判定・適用は GameView のみ。
     class HiZOcclusionSystem {
     public:
         static constexpr uint32_t kInvalidId = 0xFFFFFFFFu;
@@ -70,7 +67,6 @@ namespace CoreEngine
         // ---------------------------------------------------------------
 
         /// @brief Hi-Z ピラミッド構築 → 遮蔽判定 CS → Readback コピーを記録する
-        /// @param depthResource メインビューの深度リソース（サイズ取得用）
         /// @param depthSRV 深度 SRV（NON_PIXEL_SHADER_RESOURCE 状態で渡すこと）
         void ExecuteCulling(
             ID3D12GraphicsCommandList* cmdList,
@@ -151,12 +147,14 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(BuildParamsGPU, kBuildParamsGPUFields);
         CB_BIND_HLSL(BuildParamsGPU, kBuildParamsGPUFields, "HiZBuildParams");
 
+        /// @brief 判定スロット 1 つ分の状態（可視判定と、その結果が何フレーム目のものか）
         struct TargetSlot {
             bool allocated = false;
             bool visible = true;
             uint64_t lastResultFrame = 0; // 0 = 未測定
         };
 
+        /// @brief 今フレームに判定を投げる AABB（GPU へ転送する前の待ち行列）
         struct PendingQuery {
             uint32_t id;
             BoundsGPU bounds;

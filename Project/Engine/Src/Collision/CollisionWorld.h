@@ -32,6 +32,7 @@ struct RaycastHit {
 ///       生ポインタを借用するだけ。
 class CollisionWorld {
 public:
+    /// @brief レイヤー間の衝突マトリクスを指定して構築する（config は寿命を保証すること）
     explicit CollisionWorld(CollisionConfig* config);
     ~CollisionWorld();
 
@@ -76,11 +77,8 @@ public:
     ///       OnUpdate（判定フェーズより前）から呼ぶと 1 フレーム前の状態になる。
 
     /// @brief レイを飛ばして最も近いヒットを返す
-    /// @param ray         レイ（direction は正規化しておくこと）
-    /// @param maxDistance 最大距離
-    /// @param layerMask   対象レイヤーのビット集合（既定は全レイヤー）
-    /// @param outHit      省略可
-    /// @return 当たったら true
+    /// @param ray       レイ（direction は正規化しておくこと）
+    /// @param layerMask 対象レイヤーのビット集合（既定は全レイヤー）
     bool Raycast(const Geometry::Ray& ray, float maxDistance,
                  uint64_t layerMask = ~uint64_t{ 0 }, RaycastHit* outHit = nullptr) const;
 
@@ -117,6 +115,7 @@ private:
         }
     };
 
+    /// @brief PairKey を unordered_map のキーにするためのハッシュ
     struct PairKeyHash {
         size_t operator()(const PairKey& key) const noexcept;
     };

@@ -11,10 +11,7 @@ namespace CoreEngine
 
     /// @brief 1 回の描画呼び出しに対するビュー/パス情報
     /// @details RenderManager が描画キュー実行時に組み立てて GameObject::Draw へ明示的に渡す。
-    ///          以前はレンダラー常駐フラグ（BaseModelRenderer::IsInGBufferPass）を Model が
-    ///          読み取る暗黙状態だったものを、引数として流すための値オブジェクト。
-    ///          ビュー依存の判定（Hi-Z 適用可否・モーションベクター履歴の更新可否など）は
-    ///          この情報だけから決められること（呼び出し順への依存を作らない）。
+    /// @note ビュー依存の判定はこの情報だけから決めること（呼び出し順への依存を作らない）。
     struct DrawViewInfo {
         /// @brief このビューの行列一式（フレーム先頭で確定した不変スナップショット）
         /// @details 描画側は必ずここから view/proj/frustum を取ること。カメラを直接

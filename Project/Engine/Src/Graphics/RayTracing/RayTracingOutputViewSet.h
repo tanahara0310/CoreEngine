@@ -11,13 +11,9 @@ namespace CoreEngine
     class DescriptorManager;
 
     /// @brief DXR パスが使う UAV/SRV 出力テクスチャをスロット単位でまとめて管理するクラス
-    /// @details EnsureTexture() はサイズ・フォーマット変更時のみテクスチャを再確保し、UAV/SRV を再生成する。
-    ///          各スロットの現在ステートも保持し、ResourceBarrierHelper と組み合わせて使用する。
-    ///
-    ///          **スロットの意味は呼び出し元が決める。** 平坦な添字なので、
-    ///          水面パスのように「view ごとに 1 枚」でも、
-    ///          RT シャドウのように「view × ライト × 用途（マスク/履歴/中間）」でも表現できる
-    ///          （Stage 2b で view 固定から一般化した）。
+    /// @details EnsureTexture() はサイズ・フォーマット変更時のみ再確保し、UAV/SRV を作り直す。
+    ///          各スロットの現在ステートも保持する。
+    /// @note スロットの意味は呼び出し元が決める（平坦な添字なので view 単位でも view×ライト×用途でもよい）。
     class RayTracingOutputViewSet {
     public:
         /// @brief 管理可能なスロット数の上限
@@ -63,6 +59,7 @@ namespace CoreEngine
         void ReleaseIfSizeMismatch(UINT width, UINT height, uint32_t slotIndex);
 
     private:
+        /// @brief 出力テクスチャ 1 枚分（実体・UAV/SRV・寸法・現在ステート）
         struct Slot {
             Microsoft::WRL::ComPtr<ID3D12Resource> texture;
             D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};

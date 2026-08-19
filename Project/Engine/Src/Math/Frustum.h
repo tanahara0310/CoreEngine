@@ -3,6 +3,7 @@
 #include "Math/Geometry/Shapes.h"
 #include <array>
 
+/// @file
 /// @brief 視錐台（Frustum）構造体 - カメラの可視領域を6平面で表現
 
 namespace CoreEngine

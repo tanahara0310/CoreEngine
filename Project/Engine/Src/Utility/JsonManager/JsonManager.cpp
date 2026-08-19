@@ -11,6 +11,8 @@ namespace CoreEngine
         return instance;
     }
 
+    // 読み込み失敗（ファイル無し・パースエラー）は空の json を返す。
+    // 呼び出し側は empty() で判定し、既定値へフォールバックする契約
     json JsonManager::LoadJson(const std::string& filePath) {
         try {
             std::ifstream file(filePath);
@@ -29,6 +31,7 @@ namespace CoreEngine
         }
     }
 
+    // 保存先の親ディレクトリが無ければ作ってから書く
     bool JsonManager::SaveJson(const std::string& filePath, const json& jsonData) {
         try {
             // ディレクトリの作成
@@ -65,6 +68,10 @@ namespace CoreEngine
     bool JsonManager::FileExists(const std::string& filePath) {
         return std::filesystem::exists(filePath);
     }
+
+    // ───────────────── 値型 ⇔ JSON の変換 ─────────────────
+    // どれも「配列 [x, y, z, ...]」形式。要素数が足りない JSON は既定値で埋めて読む
+    // （手書き・旧バージョンのシーンファイルでも落ちないようにするため）。
 
     json JsonManager::Vector3ToJson(const Vector3& vec) {
         return json::array({ vec.x, vec.y, vec.z });

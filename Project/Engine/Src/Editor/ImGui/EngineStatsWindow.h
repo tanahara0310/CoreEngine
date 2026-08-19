@@ -10,6 +10,7 @@ namespace CoreEngine
     class ModelManager;
     class EngineSystem;
 
+    /// @brief FPS・GPU タイミング・メモリなどの統計をまとめて表示するウィンドウ
     class EngineStatsWindow
     {
     public:

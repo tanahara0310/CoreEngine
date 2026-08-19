@@ -43,9 +43,7 @@ namespace CoreEngine
         // Vector3, Vector4, Transform等の変換ヘルパー関数
         // ──────────────────────────────────────────────────────────
 
-        /// @brief Vector3をJSONに変換
-        /// @param vec Vector3オブジェクト
-        /// @return JSON配列
+        /// @brief Vector3 を JSON 配列に変換
         static json Vector3ToJson(const Vector3& vec);
 
         /// @brief JSONからVector3に変換
@@ -93,12 +91,7 @@ namespace CoreEngine
         /// @return QuaternionTransformオブジェクト
         static QuaternionTransform JsonToQuaternionTransform(const json& j);
 
-        /// @brief JSONの値を安全に取得（デフォルト値付き）
-        /// @tparam T 取得する値の型
-        /// @param j JSONオブジェクト
-        /// @param key キー名
-        /// @param defaultValue デフォルト値
-        /// @return 取得した値またはデフォルト値
+        /// @brief JSON の値を安全に取得（キーが無い／null なら defaultValue）
         template<typename T>
         static T SafeGet(const json& j, const std::string& key, const T& defaultValue) {
             if (j.contains(key) && !j[key].is_null()) {

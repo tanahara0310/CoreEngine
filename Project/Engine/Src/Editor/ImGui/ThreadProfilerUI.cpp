@@ -232,6 +232,7 @@ namespace CoreEngine
     // ─────────────────────────────────────────────────────────────────
     void ThreadProfilerUI::DrawWorkerTable(const ThreadPool& pool)
     {
+        // ワーカー 1 本ごとの稼働状況。占有率と直近タスク名で「遊んでいないか」を見る
         const auto stats = pool.GetStats();
 
         constexpr ImGuiTableFlags flags =
@@ -286,6 +287,8 @@ namespace CoreEngine
     // ─────────────────────────────────────────────────────────────────
     void ThreadProfilerUI::DrawGroupTable(const ThreadPool& pool)
     {
+        // タスクラベルの接頭辞でグルーピングして「どの種類が重いか」を出す。
+        // 個々のタスク行だけでは合計が見えず、粒度の判断ができない
         const auto records = pool.GetRecentTasks();
         if (records.empty()) {
             ImGui::TextColored(kColDim, "  記録されたタスクがありません");

@@ -8,6 +8,7 @@
 namespace CoreEngine
 {
     namespace {
+    /// @brief 同じレジスタ・スペースへ既に登録されたバインドを探す（無ければ nullptr）
         ShaderResourceBinding* FindMergeableBinding(
             std::vector<ShaderResourceBinding>& bindings,
             const ShaderResourceBinding& incoming)
@@ -22,6 +23,7 @@ namespace CoreEngine
             return it != bindings.end() ? &(*it) : nullptr;
         }
 
+    /// @brief 同じレジスタのバインドがあれば可視性をマージし、無ければ追加する
         void AddOrMergeBinding(
             std::vector<ShaderResourceBinding>& bindings,
             const ShaderResourceBinding& incoming)

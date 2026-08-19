@@ -10,6 +10,7 @@
 #include <cmath>
 #include <numbers>
 
+/// @file
 /// @brief 数学ライブラリの中核機能を提供する名前空間
 
 namespace CoreEngine
@@ -19,8 +20,7 @@ namespace CoreEngine
         //================================================
         // 数学定数
         //================================================
-        /// @details 円周率を各ファイルで書き写すと桁数がばらつく（3.14159f / 3.14159265f /
-        ///          3.14159265358979323846f が混在していた）。ここに一本化する。
+        /// @details 各ファイルで書き写すと桁数がばらつくため一本化している。
         ///          シェーダー側の対応物は Assets/Shaders/Include/Common/ShaderMath.hlsli。
         namespace Constants {
             inline constexpr float kPi = std::numbers::pi_v<float>;
@@ -42,8 +42,7 @@ namespace CoreEngine
         //================================================
         // スカラー / ベクトル共通のユーティリティ
         //================================================
-        /// @details 以前は CollisionUtils（当たり判定モジュール）に置かれており、
-        ///          幾何と無関係なコードが当たり判定ヘッダを include する原因になっていた。
+        /// @note 幾何と無関係なコードが当たり判定ヘッダを include しないよう、ここへ置いている。
 
         /// @brief 値を [min, max] に収める
         inline float Clamp(float value, float min, float max) {
@@ -123,10 +122,8 @@ namespace CoreEngine
         //================================================
         // 型をまたぐ変換（行列 ⇔ クォータニオン）
         //================================================
-        /// @details 行列だけで閉じる演算は Matrix4x4.h、
-        ///          クォータニオンだけで閉じる演算は Quaternion.h にある
-        ///          （どちらもこのヘッダが include 済み）。
-        ///          ここに残すのは両方の型を必要とするものだけ。
+        /// @details 両方の型を必要とするものだけをここに置く
+        ///          （単独で閉じる演算は Matrix4x4.h / Quaternion.h にある）。
         namespace Matrix {
             /// @brief スケール・回転（クォータニオン）・平行移動からアフィン行列を作る
             Matrix4x4 MakeAffine(const Vector3& scale, const Quaternion& rotate, const Vector3& translate);

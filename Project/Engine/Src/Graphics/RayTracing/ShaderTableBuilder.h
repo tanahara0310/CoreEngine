@@ -7,20 +7,8 @@
 namespace CoreEngine
 {
     /// @brief DXR シェーダーテーブルビルダー
-    /// @details RayGen / Miss / HitGroup のシェーダー名を登録し Build() で GPU バッファを生成する。
-    ///          Build() 後は BuildDispatchDesc() で DispatchRays 記述子を取得できる。
-    ///
-    /// @code
-    ///   ShaderTableBuilder stb;
-    ///   stb.SetRayGenShader(L"MyRayGen")
-    ///      .AddMissShader  (L"MyMiss")
-    ///      .AddHitGroup    (L"MyHitGroup");
-    ///   stb.Build(device, stateObjectProps);
-    ///
-    ///   // 毎フレーム
-    ///   auto desc = stb.BuildDispatchDesc(width, height);
-    ///   cmdList4->DispatchRays(&desc);
-    /// @endcode
+    /// @details RayGen / Miss / HitGroup を登録して Build() で GPU バッファを生成し、
+    ///          以降は BuildDispatchDesc() で DispatchRays 記述子を得る。
     class ShaderTableBuilder {
     public:
         /// @brief RayGen シェーダーを設定する（1 パスにつき 1 つ）

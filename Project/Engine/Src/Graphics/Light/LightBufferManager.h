@@ -16,14 +16,7 @@ namespace CoreEngine
     class LightBufferManager
     {
     public:
-        /// @brief 初期化
-        /// @param device D3D12デバイス
-        /// @param resourceFactory リソースファクトリ
-        /// @param descriptorManager ディスクリプタマネージャー
-        /// @param maxDirectionalLights ディレクショナルライトの最大数
-        /// @param maxPointLights ポイントライトの最大数
-        /// @param maxSpotLights スポットライトの最大数
-        /// @param maxAreaLights エリアライトの最大数
+        /// @brief 初期化（max* は種別ごとのライト最大数）
         void Initialize(
             ID3D12Device* device,
             DescriptorManager* descriptorManager,
@@ -35,10 +28,6 @@ namespace CoreEngine
         );
 
         /// @brief ライトバッファを更新
-        /// @param directionalLights ディレクショナルライトデータ
-        /// @param pointLights ポイントライトデータ
-        /// @param spotLights スポットライトデータ
-        /// @param areaLights エリアライトデータ
         void UpdateBuffers(
             const std::vector<DirectionalLightData>& directionalLights,
             const std::vector<PointLightData>& pointLights,
@@ -47,12 +36,6 @@ namespace CoreEngine
         );
 
         /// @brief コマンドリストにライトをセット
-        /// @param commandList コマンドリスト
-        /// @param lightCountsRootParameterIndex ライトカウント用のルートパラメータインデックス
-        /// @param directionalLightsRootParameterIndex ディレクショナルライト用のルートパラメータインデックス
-        /// @param pointLightsRootParameterIndex ポイントライト用のルートパラメータインデックス
-        /// @param spotLightsRootParameterIndex スポットライト用のルートパラメータインデックス
-        /// @param areaLightsRootParameterIndex エリアライト用のルートパラメータインデックス
         void SetToCommandList(
             ID3D12GraphicsCommandList* commandList,
             int lightCountsRootParameterIndex,

@@ -2,12 +2,9 @@
 
 #include "Math/Vector/Vector3.h"
 
-/// <summary>
-/// クォータニオン構造体
-/// </summary>
-
 namespace CoreEngine
 {
+/// @brief クォータニオン構造体
 struct Quaternion {
     float x, y, z, w;
 

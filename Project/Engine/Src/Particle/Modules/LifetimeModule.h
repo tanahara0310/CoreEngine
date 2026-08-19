@@ -4,12 +4,12 @@
 
 struct Particle;
 
-/// @brief パーティクルのライフタイムモジュール
-
 namespace CoreEngine
 {
+/// @brief パーティクルのライフタイムモジュール
 class LifetimeModule : public ParticleModule {
 public:
+    /// @brief 寿命の設定
     struct LifetimeData {
         float startLifetime = 5.0f;         // 開始ライフタイム
         float lifetimeRandomness = 0.0f;    // ライフタイムのランダム性 (0.0f - 1.0f)

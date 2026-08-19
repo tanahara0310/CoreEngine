@@ -17,18 +17,8 @@ namespace CoreEngine
     };
 
     /// @brief DXR レイトレーシングパイプライン（State Object）ビルダー
-    /// @details DXIL Library / Hit Group / Shader Config / Global Root Signature / Pipeline Config
-    ///          の各サブオブジェクトを宣言的に追加し Build() で ID3D12StateObject を生成する。
-    ///
-    /// @code
-    ///   RayTracingPipelineBuilder builder;
-    ///   builder.SetDXILLibrary(shaderBlob)
-    ///          .AddHitGroup({ L"HitGroup", L"ClosestHit" })
-    ///          .SetShaderConfig(sizeof(MyPayload))
-    ///          .SetGlobalRootSignature(rootSig)
-    ///          .SetMaxRecursionDepth(1);
-    ///   builder.Build(device, stateObject, stateObjectProps);
-    /// @endcode
+    /// @details DXIL Library / Hit Group / Shader Config / Root Signature / Pipeline Config を
+    ///          宣言的に追加し、Build() で ID3D12StateObject を生成する。
     class RayTracingPipelineBuilder {
     public:
         /// @brief DXILライブラリ（コンパイル済みシェーダーバイトコード）を設定する

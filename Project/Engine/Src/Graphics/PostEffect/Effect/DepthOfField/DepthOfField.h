@@ -11,16 +11,9 @@
 namespace CoreEngine
 {
 /// @brief 被写界深度（DoF・薄レンズモデル）
-/// @details 実カメラは焦点面以外を錯乱円としてボカす。パラメータも実カメラ単位
-///          （焦点距離[m]・F値・レンズ焦点距離[mm]）で持ち、フルサイズセンサー(36mm)を仮定する。
-///          Prefilter(1/2解像度+CoC) → Gather(Vogel螺旋ディスク) → Composite(フル解像度合成)。
-///          常時オンではなくカットシーン/スクリーンショット演出用（既定 OFF）。
-///
-///          【既知の制限】単層ギャザーなので、強い前ボケが背景を覆うケースの
-///          半透明な輪郭は物理的に正確ではない（近/遠レイヤ分離は将来課題）。
-///
-///          パラメータは CVar（"r.DoF.*"）が唯一の保持者。
-///          設計: Docs/Engine/Graphics/PostProcess/Cinematic_PostEffect_Plan.md
+/// @details パラメータは実カメラ単位（焦点距離[m]・F 値・レンズ焦点距離[mm]／フルサイズ 36mm 前提）。
+///          Prefilter → Gather → Composite の 3 パス。CVar "r.DoF.*"。既定 OFF。
+/// @note 単層ギャザーのため、強い前ボケの半透明な輪郭は物理的に正確ではない。
 class DepthOfField : public PostEffectComputeBase {
 public:
     /// @brief Prefilter パスの定数（GPU レイアウト）

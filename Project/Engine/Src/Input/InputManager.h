@@ -17,10 +17,9 @@ namespace CoreEngine {
     class GamepadInput;
 }
 
-/// @brief 入力管理クラス
-
 namespace CoreEngine
 {
+/// @brief 入力管理クラス
 class InputManager {
 public:
     InputManager();

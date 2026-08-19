@@ -18,6 +18,8 @@ namespace CoreEngine
     {
     }
 
+    // 側面 → 上フタ → 下フタの順に三角形を積む。
+    // フタは側面と法線が違うので頂点を共有せず、分割ごとに専用の頂点を作る
     ModelData CylinderMeshGenerator::Generate() const
     {
         ModelData data;

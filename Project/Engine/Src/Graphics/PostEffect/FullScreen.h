@@ -4,6 +4,7 @@
 
 namespace CoreEngine
 {
+/// @brief 入力をそのまま出力へ転写するだけのパススルーエフェクト（チェーンの終端用）
 class FullScreen : public PostEffectGraphicsBase {
 public:
     FullScreen() = default;

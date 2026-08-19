@@ -7,13 +7,9 @@ namespace CoreEngine
 class EngineSystem;
 class CollisionConfig;
 
-/// @brief レイヤー間の衝突マトリクス編集ウィンドウ
-/// @details Unity のコリジョンマトリクスに相当する格子状のチェックボックス。
-///
-///          **永続化しない**。マトリクスはシーンごとに `OnInitialize()` の
-///          `SetCollisionEnabled()` で組み立てるものなので、保存した設定で上書きすると
-///          「コードに書いてあるのに違う挙動になる」状態を作ってしまう。
-///          このパネルは実行中の調整用で、確定した内容はシーンのコードへ書き戻す。
+/// @brief レイヤー間の衝突マトリクス編集ウィンドウ（Unity のコリジョンマトリクス相当）
+/// @note 永続化しない。マトリクスはシーンの `OnInitialize()` で組み立てるものなので、
+///       保存値で上書きすると「コードと違う挙動」になる。確定内容はシーンのコードへ書き戻す。
 namespace CollisionMatrixPanel
 {
     /// @brief Engine Settings へパネルを登録する（プロセス中 1 回だけ実行される）

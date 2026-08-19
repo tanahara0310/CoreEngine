@@ -15,12 +15,8 @@ namespace CoreEngine
     class UIImage;
 
     /// @brief UI（UIImage）のみをプレビューする ImGui ウィンドウ
-    /// @details
-    ///  Engine の描画パイプラインには一切介入せず、ImGui の DrawList を使って
-    ///  GameObjectManager から UIImage を抽出し、ウィンドウ内に直接描画する。
-    ///  背景には専用テクスチャ（tile_black.png）を全面に敷き、
-    ///  UI を見やすくするためのプレビュー領域として機能する。
-    ///  Edit モードでは選択中 UIImage に対して移動・リサイズのギズモ操作が可能。
+    /// @details 描画パイプラインには介入せず、GameObjectManager から UIImage を抽出して
+    ///          ImGui の DrawList へ直接描く。Edit モードでは移動・リサイズのギズモを操作できる。
     class CanvasViewport
     {
     public:

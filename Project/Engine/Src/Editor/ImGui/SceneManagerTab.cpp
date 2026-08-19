@@ -89,6 +89,8 @@ namespace CoreEngine
 
     void SceneManagerTab::DrawSceneChangeControl()
     {
+        // 選択とシーン切り替えは分ける。コンボで選んだだけでは切り替えず、
+        // ボタンを押したときだけ SceneManager へ要求を出す
         std::vector<std::string> sceneNames = sceneManager_->GetAllSceneNames();
 
         if (sceneNames.empty()) {

@@ -28,11 +28,8 @@ namespace CoreEngine
         bool TryGetMetadata(const std::string& cacheKey, DirectX::TexMetadata& outMetadata) const;
 
         /// @brief まだ未登録ならテクスチャとメタデータを同時保存する
-        /// @param cacheKey キャッシュキー
-        /// @param texture 保存対象テクスチャ
-        /// @param metadata 保存対象メタデータ
         /// @param outStored 実際に採用されたテクスチャ（既存または新規）
-        /// @return 新規保存時true、既存採用時false
+        /// @return 新規保存時 true、既存採用時 false
         bool StoreIfAbsent(
             const std::string& cacheKey,
             const TextureLoadedResource& texture,

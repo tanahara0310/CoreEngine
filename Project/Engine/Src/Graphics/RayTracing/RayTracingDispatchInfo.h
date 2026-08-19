@@ -30,11 +30,7 @@ namespace CoreEngine
     };
 
     /// @brief RT ディスパッチ 1 回分の診断情報（全 RT パス共通の型）
-    /// @details Stage 0 の目的はこの「共通の型」を先に決めることにある。
-    ///          デバッグ UI がこの型だけを読むようにしておけば、Stage 2 で
-    ///          RayTracingShadowManager を共通基盤（RayTracingPassBase）へ載せ替えても
-    ///          UI 側を書き直す必要が無い。
-    ///          設計書: Docs/Engine/RayTracing/RayTracing_Refactoring_Review.md
+    /// @note デバッグ UI はこの型だけを読む。パス側の実装が変わっても UI を書き直さずに済む。
     struct RayTracingDispatchInfo {
         /// @brief extras に格納できる最大数
         static constexpr uint32_t kMaxExtras = 6;

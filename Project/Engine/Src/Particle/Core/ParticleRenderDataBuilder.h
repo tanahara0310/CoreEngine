@@ -34,12 +34,7 @@ public:
     ~ParticleRenderDataBuilder() = default;
 
     /// @brief 描画データを準備
-    /// @param particles パーティクルリスト
-    /// @param camera カメラ
-    /// @param billboardType ビルボードタイプ
-    /// @param renderMode 描画モード
-    /// @param instancingData GPU送信データ（出力）
-    /// @param maxInstances 最大インスタンス数
+    /// @param instancingData GPU 送信データ（出力）
     /// @return 準備したインスタンス数
     uint32_t BuildRenderData(
         const std::vector<Particle>& particles,

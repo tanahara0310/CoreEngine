@@ -11,11 +11,10 @@ namespace CoreEngine {
     class SoundManager;
 }
 
-/// @brief シーントランジション管理クラス
-/// @details シーン遷移時のフェードイン・フェードアウトなどの演出を管理（ポストエフェクトベース）
-
 namespace CoreEngine
 {
+/// @brief シーントランジション管理クラス
+/// @details シーン遷移時のフェードイン・フェードアウトなどの演出を管理（ポストエフェクトベース）
 class SceneTransition {
 public:
     /// @brief トランジションタイプ

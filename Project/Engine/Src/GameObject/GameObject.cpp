@@ -148,11 +148,8 @@ namespace CoreEngine
     void GameObject::OnCollisionStay(GameObject* other) { (void)other; }
     void GameObject::OnCollisionExit(GameObject* other) { (void)other; }
 
-    // 接触情報つき版の既定実装は ①ColliderComponent の購読者へ配り
-    // ②「相手だけ」を渡す旧 API へ転送する。これにより
-    //   - コンポーネントで購読する新しい書き方（継承不要）
-    //   - GameObject* 版を override した既存コード
-    // の両方が同時に動く。
+    // 接触情報つき版の既定実装は ①ColliderComponent の購読者へ配り ②旧 API へ転送する。
+    // これでコンポーネント購読（継承不要）と GameObject* 版の override が同時に動く。
     void GameObject::OnCollisionEnter(const CollisionInfo& info) {
         if (auto* colliders = TryGetColliders()) { colliders->DispatchEnter(info); }
         OnCollisionEnter(info.other);

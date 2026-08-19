@@ -6,11 +6,8 @@ namespace CoreEngine {
     class GameDebugUI;
 
     /// @brief ボリューメトリック雲のエンジン常駐エディタ
-    /// @details 雲は全シーン既定の機能のため、シーン所有の facade ではなく DebugSubsystem が
-    ///          エンジン寿命で 1 個所有し、どのシーンでも Hierarchy の Environment ツリーから
-    ///          常に編集できるようにする。
-    ///          UE の Volumetric Cloud を参考に「プリセット → 基本（少数の主要パラメータ）→
-    ///          詳細（折りたたみ）」の3段構成で、開発時によく触る項目だけを前面に出す。
+    /// @details DebugSubsystem がエンジン寿命で 1 個所有し、どのシーンでも Environment ツリーから編集できる。
+    ///          UI は「プリセット → 基本 → 詳細（折りたたみ）」の 3 段構成。
     class VolumetricCloudEditor {
     public:
         /// @brief 環境エディタの登録を解除する

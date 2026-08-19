@@ -693,11 +693,9 @@ namespace CoreEngine
 
     void SoundManager::Shutdown()
     {
-        // 非同期初期化が走っている最中に壊すと、XAudio2 / Media Foundation が
-        // 中途半端な状態のまま残るので、進行中なら合流する。
-        // ただし EnsureInitialized() は使わない: あちらは「未開始なら同期実行」まで
-        // やるので、一度も使われなかった SoundManager の破棄時に
-        // わざわざ XAudio2 を初期化して即壊すという無意味な仕事が発生する
+        // 非同期初期化の最中に壊すと XAudio2 / Media Foundation が中途半端に残るので合流する。
+        // EnsureInitialized() は使わない（未開始なら同期実行してしまい、
+        // 一度も使われなかった SoundManager の破棄時に無意味な初期化が走る）。
         {
             std::lock_guard<std::mutex> lock(initMutex_);
             if (!initCompleted_ && initFuture_.valid()) {

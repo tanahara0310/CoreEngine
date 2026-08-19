@@ -17,12 +17,9 @@
 namespace
 {
     /// @brief スレッドごとの ShaderCompiler
-    ///
-    /// @details DXC の IDxcCompiler3 はスレッドセーフとして文書化されていない。
-    ///          加えて RecordingIncludeHandler は「直前のコンパイルで開いた include」
-    ///          というインスタンス状態を持つので、共有すると依存マニフェスト（.deps）が
-    ///          別シェーダのものと混ざる。混ざると「.hlsli を直したのに反映されない」
-    ///          という最も追いにくいバグになるため、インスタンスはスレッドごとに分ける。
+    /// @details IDxcCompiler3 はスレッドセーフとして文書化されておらず、
+    ///          RecordingIncludeHandler も「直前に開いた include」という状態を持つため、
+    ///          共有すると依存マニフェスト（.deps）が別シェーダのものと混ざる。
     CoreEngine::ShaderCompiler& GetThreadLocalCompiler()
     {
         thread_local std::unique_ptr<CoreEngine::ShaderCompiler> compiler;
@@ -144,9 +141,7 @@ namespace CoreEngine::ShaderPrewarm
 
             // ===== 合流 =====
             // メインスレッドは待つ代わりにタスクを引き受ける。手伝えるものが無い間だけ
-            // 短く待って StartupProgress を叩く（スプラッシュの再描画と
-            // ウィンドウメッセージ処理はメインスレッドしかできない。
-            // これを怠ると Windows のハング検出に引っかかる）
+            // 短く待って StartupProgress を叩く（再描画とメッセージ処理はメインスレッドしかできない）。
             size_t completed = 0;
             for (auto& future : futures) {
                 while (future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {

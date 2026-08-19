@@ -19,6 +19,7 @@ namespace
     thread_local uint32_t t_currentWorkerIndex = 0;
 
 #ifdef _WIN32
+    /// @brief デバッガに出るスレッド名（"<プール名> Worker N"）を設定する
     void ApplyThreadName(std::thread& thread, const std::string& poolName, uint32_t index)
     {
         // OS スレッド名を付けないと VS のパフォーマンスプロファイラや WPA で
@@ -31,6 +32,7 @@ namespace
         SetThreadDescription(static_cast<HANDLE>(thread.native_handle()), name.c_str());
     }
 
+    /// @brief ワーカースレッドの優先度を OS へ設定する
     void ApplyThreadPriority(std::thread& thread, CoreEngine::WorkerPriority priority)
     {
         const int osPriority = (priority == CoreEngine::WorkerPriority::BelowNormal)

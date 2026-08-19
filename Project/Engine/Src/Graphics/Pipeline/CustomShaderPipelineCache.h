@@ -20,11 +20,7 @@ namespace CoreEngine
     class CustomShaderPipelineCache {
     public:
         /// @brief キャッシュにあれば共有パイプラインを返し、無ければ構築して登録する
-        /// @param device D3D12 デバイス
-        /// @param compiler 既存の ShaderCompiler インスタンス
-        /// @param reflectionBuilder 既存の ShaderReflectionBuilder インスタンス
-        /// @param provider シェーダーパスと PSO 設定を提供するオブジェクト
-        /// @return 共有パイプライン（構築失敗時は nullptr。失敗はキャッシュせず次回再試行する）
+        /// @return 共有パイプライン（失敗時は nullptr。失敗はキャッシュせず次回再試行する）
         std::shared_ptr<CustomShaderPipeline> GetOrBuild(
             ID3D12Device* device,
             ShaderCompiler& compiler,

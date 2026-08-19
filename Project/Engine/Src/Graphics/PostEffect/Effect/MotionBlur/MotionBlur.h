@@ -11,17 +11,9 @@
 namespace CoreEngine
 {
 /// @brief モーションブラー（McGuire 方式・タイルベース）
-/// @details 実カメラはシャッターが開いている間の光を積分するため、動くものは必ずブレる。
-///          これが無い映像は 1 フレームごとに完全静止した「紙芝居」に見える。
-///          TileMax（タイル最大速度）→ NeighborMax（隣接 3x3 の max）→ Gather（本体）の
-///          3 パス構成。速度は G-Buffer MotionVector、前後判定はシーン深度を使う。
-///
-///          【既知の制限】MotionVector は G-Buffer を書くジオメトリだけが持つ。
-///          空（大気）と水面はフォワード描画で MV=0 のため自身の動きではブレない
-///          （手前のジオメトリのブラーが上に被さる分は正しく出る）。
-///
-///          パラメータは CVar（"r.MotionBlur.*"）が唯一の保持者。
-///          設計: Docs/Engine/Graphics/PostProcess/Cinematic_PostEffect_Plan.md
+/// @details TileMax → NeighborMax → Gather の 3 パス。速度は G-Buffer の MotionVector、
+///          前後判定はシーン深度を使う。パラメータは CVar "r.MotionBlur.*"。
+/// @note 空と水面はフォワード描画で MV=0 のため、自身の動きではブレない。
 class MotionBlur : public PostEffectComputeBase {
 public:
     /// @brief タイル一辺[px]。ブラー最大距離の上限でもある

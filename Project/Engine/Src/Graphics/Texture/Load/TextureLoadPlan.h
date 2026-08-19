@@ -22,12 +22,7 @@ namespace CoreEngine
         };
 
         /// @brief ファイル形式とキャッシュ状態から読み込み計画を構築する
-        /// @param resolvedPath 入力時に解決済みのパス
-        /// @param ddsGenerationEnabled DDS生成の有効/無効
-        /// @param pathResolver パス解決ヘルパー
-        /// @param cubemapGenerator HDR->Cubemap DDS生成関数
-        /// @param colorSpace 色空間（DDSキャッシュパスの分離に使用）
-        /// @return 実行に使う読み込み計画
+        /// @param colorSpace 色空間（DDS キャッシュパスの分離に使う）
         PlanResult BuildPlan(
             const std::filesystem::path& resolvedPath,
             bool ddsGenerationEnabled,

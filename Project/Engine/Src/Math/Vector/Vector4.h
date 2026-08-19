@@ -1,15 +1,10 @@
 #pragma once
 #include <cmath>
 
-/// <summary>
-/// 4成分ベクトル構造体
-/// </summary>
-/// @note 演算面は Vector3 / Quaternion と同じ綴りで揃えてある。
-///       以前はこの型が「x,y,z,w を持つだけ」で演算子が 1 つも無く、
-///       色の Lerp や等価判定が呼び出し側で成分ごとに手書きされていた。
-
 namespace CoreEngine
 {
+    /// @brief 4 成分ベクトル
+    /// @note 演算面は Vector3 / Quaternion と同じ綴りで揃えてある。
     struct Vector4 {
         float x, y, z, w;
 
@@ -101,9 +96,8 @@ namespace CoreEngine
         // 　比較演算子
         //========================================
 
-        /// @note 浮動小数点の厳密比較。CVar の変更検出のように
-        ///       「値が書き換わったか」を見る用途を想定している。
-        ///       計算結果同士の比較には誤差があるので使わないこと。
+        /// @note 浮動小数点の厳密比較。CVar の変更検出のような「書き換わったか」の用途向け
+        ///       （計算結果同士の比較には使わないこと）。
         bool operator==(const Vector4& v) const
         {
             return x == v.x && y == v.y && z == v.z && w == v.w;

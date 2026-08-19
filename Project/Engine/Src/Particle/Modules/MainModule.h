@@ -3,11 +3,10 @@
 #include "ParticleModule.h"
 #include "Math/MathCore.h"
 
-/// @brief パーティクルシステムのメインモジュール
-/// Unityの「Main Module」に相当
-
 namespace CoreEngine
 {
+/// @brief パーティクルシステムのメインモジュール
+/// Unityの「Main Module」に相当
 class MainModule : public ParticleModule {
 public:
     /// @brief シミュレーション空間
@@ -68,7 +67,9 @@ public:
 
     /// @brief システムの再生制御
     void Play();
+    /// @brief 放出を止める
     void Stop();
+    /// @brief 生存中のパーティクルを消して先頭から再生し直す
     void Restart();
 
     /// @brief 再生中かどうか

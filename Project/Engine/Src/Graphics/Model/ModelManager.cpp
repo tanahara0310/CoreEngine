@@ -353,11 +353,9 @@ namespace CoreEngine
         }
         fullPath += filename;
 
-        // パスを正規化する。UTF-8 の文字列と path の往復は必ず Logger の
-        // Utf8ToPath / PathToUtf8 を通す。std::filesystem::path(std::string) と
-        // path::string() は ANSI コードページで変換するため、UTF-8 のバイト列を
-        // 通すと不正なシーケンスが置換されて元に戻らない（非 ASCII のファイル名で
-        // モデルが読めなくなる）。PathToUtf8 は区切りも '/' に正規化する。
+        // UTF-8 の文字列と path の往復は必ず Logger の Utf8ToPath / PathToUtf8 を通す。
+        // path(std::string) と path::string() は ANSI 変換なので、非 ASCII のファイル名が壊れる。
+        // PathToUtf8 は区切りも '/' に正規化する。
         Logger& log = Logger::GetInstance();
         return log.PathToUtf8(log.Utf8ToPath(fullPath).lexically_normal());
     }

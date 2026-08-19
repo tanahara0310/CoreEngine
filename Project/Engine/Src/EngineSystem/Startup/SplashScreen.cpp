@@ -42,11 +42,13 @@ namespace CoreEngine
             return result;
         }
 
+    /// @brief 96dpi 基準の値を実 DPI へスケールする
         int32_t Scale(int32_t value, uint32_t dpi)
         {
             return MulDiv(value, static_cast<int32_t>(dpi), 96);
         }
 
+    /// @brief DPI に合わせたサイズの UI フォントを作る
         HFONT CreateUiFont(int32_t pointSize, int32_t weight, uint32_t dpi)
         {
             return CreateFontW(

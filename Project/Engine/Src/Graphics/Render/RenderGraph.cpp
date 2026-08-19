@@ -243,9 +243,7 @@ namespace CoreEngine
 
             // 補助 View（平面反射など）はメイン View と同じパス名で実行されるため、
             // View 名をプレフィックスして識別名を分離する。計測スロットを共有すると
-            // 同じクエリインデックスへ二重に EndQuery され、後から実行される View の
-            // タイムスタンプが先の View を上書きして補助 View 分の時間が消えてしまう。
-            // PIX キャプチャ側も同じ名前で見えるよう、この名前をマーカーへも使う。
+            // 同じクエリへ二重に EndQuery され、補助 View 分の時間が消えてしまう。
             const std::string& viewName = context.renderContext->viewSettings.viewName;
             const std::string passLabel = viewName.empty()
                 ? graphPass.name

@@ -25,12 +25,9 @@ namespace CoreEngine
         SplashScreen splash;
         splash.Show(winApp_->GetInstance(), config.GetWindowTitleWide());
 
-        // 1 ステップが長い処理（シェーダ 119 本のコンパイルなど）の内側からも
-        // 再描画とメッセージ処理が走るようにする。これが無いと、ステップ 1 つで
-        // 5 秒を超えた時点でローディング画面まで「応答なし」になる。
-        //
-        // sink はローカルの splash を参照で掴むので、初期化中に例外が飛んでも
-        // splash より先に必ず外す（外し忘れるとダングリング参照が残る）
+        // 1 ステップが長い処理（シェーダのコンパイルなど）の内側からも再描画とメッセージ処理を走らせる。
+        // 無いとステップ 1 つで 5 秒を超えた時点でローディング画面まで「応答なし」になる。
+        // sink はローカルの splash を参照で掴むので、例外が飛んでも splash より先に必ず外す。
         struct SinkGuard {
             ~SinkGuard() { StartupProgress::ClearSink(); }
         } sinkGuard;

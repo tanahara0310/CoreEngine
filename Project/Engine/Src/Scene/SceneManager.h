@@ -18,9 +18,11 @@ class EngineSystem;
 class Camera;
 class GameObjectManager;
 
+/// @brief シーンの登録・切り替え・遷移演出を管理する
 class SceneManager {
 public:
 
+    /// @brief 管理対象のエンジンを紐づける（シーン登録より前に呼ぶこと）
     void Initialize(EngineSystem* engine);
 
     /// @brief シーンを登録する

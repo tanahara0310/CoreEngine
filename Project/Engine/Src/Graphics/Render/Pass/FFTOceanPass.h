@@ -4,6 +4,7 @@
 
 namespace CoreEngine
 {
+	/// @brief FFT 海面のシミュレーションを 1 フレーム進めるパス
 	class FFTOceanPass final : public RenderPass
 	{
 	public:

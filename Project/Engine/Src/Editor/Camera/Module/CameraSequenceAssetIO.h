@@ -26,6 +26,7 @@ namespace CoreEngine
 
     /// @brief シーケンスアセット1件分の保存データ
     struct CameraSequenceAsset {
+        /// @brief 保存される 1 キーフレーム（時刻とカメラ姿勢）
         struct Keyframe {
             float time = 0.0f;
             CameraSnapshot snapshot{};

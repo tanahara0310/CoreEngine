@@ -55,14 +55,10 @@ namespace CoreEngine
         VolumetricCloudManager* GetVolumetricCloudManager() { return volumetricCloudManager_.get(); }
 
         // ===== 水面サーフェス状態の publish =====
-        // 以前は IScene::GetWaterRefractionSurfaceData() の仮想関数として
-        // 「シーンが水面データを知っている」前提で引き回していたが、水面は
-        // Engine 側の WaterRenderFeature が所有するようになったのでここで受ける。
-        // シーン側に水面用の仮想関数を持たせる必要がなくなる。
 
         /// @brief 水面サーフェス状態を publish する（WaterRenderFeature が毎フレーム呼ぶ）
-        /// @param state 水面データ。**所有者は WaterRenderFeature**。
-        ///        Feature の Finalize で必ず nullptr へ戻すこと（ダングリング防止）。
+        /// @param state 水面データ。所有者は WaterRenderFeature
+        /// @warning Feature の Finalize で必ず nullptr へ戻すこと（ダングリング防止）
         void PublishWaterSurfaceState(const WaterSurfaceData* state) { waterSurfaceState_ = state; }
 
         /// @brief publish 済みの水面サーフェス状態を返す（水面不在なら nullptr）

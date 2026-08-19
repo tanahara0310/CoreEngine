@@ -21,11 +21,7 @@ namespace CoreEngine
         const char* GetName() const override { return "PostEffect"; }
 
         /// @brief 実行対象のステップを設定する
-        /// @param effect      ステップの持ち主（追加入力の解決先）
-        /// @param effectName  ログ表示用のエフェクト登録名
-        /// @param step        実行するステップ（コピーして保持する）
-        /// @note ステップは**コピーして持つ**。呼び出し側のコンテナが再確保されると
-        ///       ポインタ保持では実行時にダングリングするため
+        /// @note ステップはコピーして持つ（呼び出し側のコンテナ再確保でダングリングしないため）
         void SetStep(PostEffectBase* effect, const std::string& effectName, const PostEffectStep& step);
 
         const std::string& GetInputResourceName() const { return primaryInputName_; }

@@ -197,20 +197,11 @@ namespace CoreEngine
 
 
         //========================================
-           // 文字列変換ユーティリティ
-           //========================================
-
-        // これらは「ログ本文の UTF-8 変換」であって、汎用の文字列変換ではない。
-        // ログファイルは spdlog が UTF-8 で書くため、この2つは UTF-8 固定である。
-        //
-        // ファイルパスをここへ通してはいけない。
-        // std::filesystem::path::string() が返す narrow 文字列は ANSI コードページ
-        // （日本語環境では CP932）なので、UTF-8 として解釈すると非 ASCII を含む
-        // パスが壊れ、ファイルを開けなくなる。パスは std::filesystem::path のまま
-        // 運び、OS API へ渡す直前に path::wstring() / path::string() で必要な形に
-        // 変換すること。UTF-8 のパス文字列を要求するライブラリ（Assimp）に限り
-        // WideToUtf8(path.wstring()) を使う。
-        // 旧名は ConvertString で、パス変換への流用が実際にクラッシュを起こした。
+        // 文字列変換ユーティリティ
+        //========================================
+        // ログ本文の UTF-8 変換専用。ファイルパスをここへ通してはいけない
+        // （path::string() は ANSI なので非 ASCII パスが壊れる）。
+        // UTF-8 パスを要求するライブラリ（Assimp）へ渡すときだけ WideToUtf8(path.wstring()) を使う。
 
         /// @brief UTF-8 の narrow 文字列を wstring へ変換する（ログ本文用）
         std::wstring Utf8ToWide(const std::string& str);
@@ -221,13 +212,8 @@ namespace CoreEngine
         //========================================
         // パス ⇄ 文字列 の変換
         //========================================
-        //
-        // エンジン内の取り決めは次の2つだけ。
-        //   ・ファイルシステムのパスは std::filesystem::path で運ぶ（エンコーディングを持たない）
-        //   ・std::string は UTF-8 のテキスト（ログ・アセット要求名・キャッシュキー）
-        // この2つの世界をまたぐときは必ず下の2関数を通す。
-        // path::string() / std::filesystem::path(std::string) を直接使うと
-        // ANSI コードページで変換されてしまい、UTF-8 の世界と食い違う。
+        // パスは std::filesystem::path で運び、std::string は UTF-8 テキストとして扱う。
+        // 直接 path::string() を使うと ANSI コードページで変換され UTF-8 の世界と食い違う。
 
         /// @brief パスを UTF-8 文字列にする（ログ・キー・アセット要求名用）
         std::string PathToUtf8(const std::filesystem::path& path);
@@ -289,11 +275,6 @@ namespace CoreEngine
         std::string BuildLoggerKey(LogCategory category, SubCategory subCategory) const;
 
         /// @brief ロガーを作成する（キー・ファイルパスはサブカテゴリを考慮）
-        /// @param key ロガーキー（"Category" or "Category/SubCategory"）
-        /// @param loggerName spdlog に登録するロガー名
-        /// @param logFilePath ログファイルのフルパス
-        /// @param defaultLevel 既定のログレベル
-        /// @return 作成されたロガー
         std::shared_ptr<spdlog::logger> CreateLogger(
             const std::string& loggerName,
             const std::string& logFilePath,

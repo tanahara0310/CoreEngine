@@ -13,6 +13,7 @@ namespace CoreEngine
     {
         constexpr float kDegToRad = MathCore::Constants::kDegToRad;
 
+    /// @brief ライト種別のログ表示名
         const char* GetLightTypeName(LightType type)
         {
             switch (type) {

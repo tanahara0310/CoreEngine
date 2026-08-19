@@ -10,13 +10,12 @@ namespace CoreEngine {
     class GpuParticleSystem;
 }
 
+namespace CoreEngine
+{
 /// @brief GPUパーティクル専用レンダラー
 /// ParticleRenderer の描画基盤（Particle.VS/PS・PSO・共有頂点バッファ）を継承し、
 /// 描画前に Emit / Update の ComputeShader をディスパッチする。
 /// 設計は Docs/Engine/Particle/GpuParticleSystem.md 参照。
-
-namespace CoreEngine
-{
 class GpuParticleRenderer : public ParticleRenderer {
 public:
     GpuParticleRenderer() = default;

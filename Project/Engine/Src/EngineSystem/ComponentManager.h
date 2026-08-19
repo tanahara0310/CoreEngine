@@ -4,11 +4,10 @@
 #include <memory>
 #include <cassert>
 
-/// @brief コンポーネント管理クラス
-/// テンプレートを使用して型安全なコンポーネント登録・取得を提供
-
 namespace CoreEngine
 {
+/// @brief コンポーネント管理クラス
+/// テンプレートを使用して型安全なコンポーネント登録・取得を提供
 class ComponentManager {
 public:
     /// @brief コンポーネントを登録

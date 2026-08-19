@@ -25,11 +25,9 @@ namespace CoreEngine {
     class PostEffectGraphBuilder;
 
     /// @brief エフェクトが要求する追加入力 1 件
-    /// @details 「このエフェクトは深度が要る」という依存を、パイプライン側の分岐ではなく
-    ///          エフェクト自身の宣言として表現するための記述子。
-    ///          宣言されたものは PostEffectPass が RenderGraph へ Read として登録するので、
-    ///          バリアと実行順が自動で保証される。宣言せずにリソースを直接読むと
-    ///          グラフから見えない依存になり、状態遷移が保証されない。
+    /// @details 依存をエフェクト自身の宣言として表現するための記述子。
+    ///          宣言分は PostEffectPass が RenderGraph へ Read 登録するのでバリアと実行順が保証される。
+    /// @warning 宣言せずに直接読むとグラフから見えない依存になり、状態遷移が保証されない
     struct PostEffectInputBinding {
         const char* slot        = nullptr; ///< シェーダー側リソース名（例 "gDepth"）
         const char* logicalName = nullptr; ///< Blackboard 論理名（FrameBlackboard::SceneDepth 等）
@@ -83,11 +81,8 @@ namespace CoreEngine {
         virtual void PrepareFrame(const PostEffectFrameContext& /*ctx*/) {}
 
         /// @brief 入力色以外に読みたい論理リソースを申告する
-        /// @details 申告したものは RenderGraph へ Read として登録され、実行直前に
-        ///          SRV が解決されて GetExtraInput() から取れるようになる。
-        ///          必須（required=true）が解決できないフレームは、このエフェクトは
-        ///          実行されずスキップされる（クラッシュも黒画面も起こさない）。
-        /// @param out 追加入力の並び（呼び出し側が空で渡す）
+        /// @details 申告分は RenderGraph へ Read として登録され、GetExtraInput() から取れる。
+        /// @note required=true が解決できないフレームは、このエフェクトごとスキップされる
         virtual void DeclareExtraInputs(std::vector<PostEffectInputBinding>& /*out*/) const {}
 
         /// @brief 解決済みの追加入力を登録する
@@ -127,12 +122,9 @@ namespace CoreEngine {
         /// @brief 常時有効なエフェクトかどうかを取得（無効化不可）
         virtual bool IsAlwaysEnabled() const { return false; }
 
-        /// @brief 有効/無効を保持する CVar を返す
-        /// @return CVar（"r.<Effect>.Enabled"）。持たないエフェクトは nullptr
-        /// @details 派生クラスが自分のファイルスコープ CVar を返すことで、
-        ///          有効状態が自動的に UI・CVars.json・コンソールへ載る。
-        ///          常時有効なエフェクト（FullScreen / ToneMapping）は nullptr のままでよい。
-        ///          設計: Docs/Engine/Editor/CVar_Design.md
+        /// @brief 有効/無効を保持する CVar（"r.<Effect>.Enabled"）を返す
+        /// @details 派生が自分のファイルスコープ CVar を返すと、有効状態が UI・保存・コンソールに載る。
+        /// @note 常時有効なエフェクトは nullptr のままでよい
         virtual CVar<bool>* GetEnabledCVar() const { return nullptr; }
 
         /// @brief シェーダーリソース名からルートパラメータインデックスを取得

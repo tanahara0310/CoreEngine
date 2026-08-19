@@ -735,12 +735,7 @@ namespace CoreEngine
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
             std::format("Generating Prefiltered Environment Map ({}x{}, 5 mips)...", size, size));
 
-        // ミップマップ5レベルのキューブマップ作成
-        // mip0: 128x128 (roughness=0.0)
-        // mip1: 64x64   (roughness=0.25)
-        // mip2: 32x32   (roughness=0.5)
-        // mip3: 16x16   (roughness=0.75)
-        // mip4: 8x8     (roughness=1.0)
+        // ミップ 5 レベルのキューブマップ（mip0=128px/roughness 0.0 〜 mip4=8px/roughness 1.0）
         const uint32_t mipLevels = 5;
         auto prefilteredMap = CreateUAVCubemapWithMips(size, mipLevels, DXGI_FORMAT_R16G16B16A16_FLOAT);
         if (!prefilteredMap)

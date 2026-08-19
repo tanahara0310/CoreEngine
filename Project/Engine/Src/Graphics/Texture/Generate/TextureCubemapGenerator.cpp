@@ -15,6 +15,7 @@ namespace CoreEngine
     static constexpr float kPI = std::numbers::pi_v<float>;
     static constexpr float kTwoPI = kPI * 2.0f;
 
+    /// @brief 方向ベクトルを正距円筒図法（equirectangular）の UV へ変換する
     static void DirToEquirectUV(float dx, float dy, float dz, float& u, float& v)
     {
         float len = std::sqrt(dx * dx + dy * dy + dz * dz);
@@ -25,6 +26,7 @@ namespace CoreEngine
         v = 1.0f - (theta + kPI * 0.5f) / kPI;
     }
 
+    /// @brief キューブマップの面と面内 UV から方向ベクトルを求める
     static void FaceUVToDir(uint32_t face, float u, float v, float& dx, float& dy, float& dz)
     {
         float cu = u * 2.0f - 1.0f;
@@ -41,6 +43,7 @@ namespace CoreEngine
         }
     }
 
+    /// @brief 正距円筒図法の画像をバイリニアでサンプルする
     static void SampleBilinear(
         const DirectX::Image* srcImg,
         uint32_t srcW, uint32_t srcH,

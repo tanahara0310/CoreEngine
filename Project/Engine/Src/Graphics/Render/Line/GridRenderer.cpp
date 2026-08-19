@@ -49,11 +49,9 @@ void GridRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* cam
 
 namespace {
     /// @brief カメラを中心とする半径 radius の円で線を切り、縁へ向かって α を落としながら積む
-    /// @param alongZ    true なら Z 方向に伸びる線（X が fixedCoord で固定）
+    /// @param alongZ     true なら Z 方向に伸びる線（X が fixedCoord で固定）
     /// @param fixedCoord 線が固定される座標（alongZ なら X、そうでなければ Z）
-    /// @details Line は 1 本に 1 つの α しか持てないため、滑らかなフェードには分割が要る。
-    ///          セグメントの端点は必ず円周上に来るので、縁は自然に α 0 へ落ちる。
-    ///          円で切ることで「板の縁」が直線として見えなくなり、無限に見える。
+    /// @note Line は 1 本に 1 つの α しか持てないため、滑らかなフェードには分割が要る。
     void AppendFadedChord(std::vector<Line>& out, const Vector3& cameraPosition,
                           bool alongZ, float fixedCoord, float radius, float alpha,
                           const Vector3& color, float planeY,
@@ -116,12 +114,9 @@ std::vector<Line> GridRenderer::GenerateGridLines(const Vector3& cameraPosition)
 
     const float finestSpacing = baseSpacing_ * std::pow(10.0f, levelFloor);
 
-    // 段の α。最細は f で消え、最粗は f で現れる。段が繰り上がる瞬間に
-    // 「消えた段」と「現れた段」がちょうど入れ替わるので、見た目は連続になる。
-    //
-    // 段ごとに濃さを変えることはしない（変えると繰り上がりで階調が飛ぶ）。
-    // 10 の倍数の位置は 1 つ粗い段が同じ場所へ重ねて描くため、階層感は
-    // 重なりから自動的に生まれる（100 の倍数なら 3 段が重なってさらに濃くなる）。
+    // 段の α。最細は f で消え、最粗は f で現れるので、繰り上がりの瞬間に入れ替わって連続に見える。
+    // 段ごとに濃さは変えない（変えると繰り上がりで階調が飛ぶ）。
+    // 10 の倍数の位置は 1 つ粗い段が重ねて描くため、階層感は重なりから自動的に生まれる。
     const float levelAlphas[kLevelCount] = { 1.0f - levelFrac, 1.0f, levelFrac };
 
     const float finestRadius = finestSpacing * static_cast<float>(kHalfLines);

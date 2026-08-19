@@ -19,11 +19,8 @@ class ShaderReflectionData;
 struct RenderContext;
 
 /// @brief フレームオーバーラップ対応の定数バッファリング
-/// @details このエンジンはフレーム N の GPU 実行中に CPU がフレーム N+1 を記録する。
-///          Map しっぱなしの単一バッファを毎フレーム上書きすると、GPU が実行中フレームの
-///          値を CPU が先に書き潰す（TAA ジッタ入り行列のように毎フレーム値が変わる
-///          定数で実害が出る。SSAO は深度バッファと行列が食い違い AO がちらつく）。
-///          Model の transformBuffers_[3] と同じ考え方の汎用小型版で、
+/// @details 単一バッファを毎フレーム上書きすると、GPU が実行中フレームの値を CPU が先に書き潰す
+///          （SSAO なら深度と行列が食い違って AO がちらつく）。
 ///          フレームバッファリング数ぶんのスライスを持ち、記録中フレームのスライスへ書く。
 class FrameRingConstantBuffer {
 public:

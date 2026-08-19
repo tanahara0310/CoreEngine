@@ -406,6 +406,7 @@ std::vector<Line> LineManager::GenerateCircleLines(const Vector3& center, float 
 
 std::vector<Line> LineManager::GenerateConeLines(const Vector3& apex, const Vector3& direction,
     float height, float angle, const Vector3& color, float alpha, int segments) {
+    // 頂点から底面へ向かう円錐のワイヤー。底面半径は height * tan(半頂角) で決まる
     std::vector<Line> lines;
 
     float angleRad = angle * std::numbers::pi_v<float> / 180.0f;
@@ -457,6 +458,7 @@ std::vector<Line> LineManager::GenerateConeLines(const Vector3& apex, const Vect
 std::vector<Line> LineManager::GenerateCylinderLines(const Vector3& center, float radius,
     float height, const Vector3& direction, const Vector3& color, float alpha, int segments) {
     std::vector<Line> lines;
+    // 上下の円と、それを結ぶ側面の線で円柱のワイヤーを作る
 
     Vector3 normalizedDir = CoreEngine::Normalize(direction);
     float halfHeight = height * 0.5f;
@@ -473,6 +475,8 @@ std::vector<Line> LineManager::GenerateCylinderLines(const Vector3& center, floa
         center.z - normalizedDir.z * halfHeight
     };
 
+    // 軸が真上（または真下）に近いと up と平行になり外積がゼロになるので、
+    // その場合だけ基準軸を X へ差し替える
     Vector3 up = { 0.0f, 1.0f, 0.0f };
     Vector3 right;
 

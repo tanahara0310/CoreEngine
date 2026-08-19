@@ -7,6 +7,7 @@
 
 namespace CoreEngine
 {
+/// @brief 頂点バッファ 1 要素分のレイアウト（シェーダー側の入力と一致させること）
 struct VertexData {
     Vector4 position; // 頂点の位置
     Vector2 texcoord; // UV座標

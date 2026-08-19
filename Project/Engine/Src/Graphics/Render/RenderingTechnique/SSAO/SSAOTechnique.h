@@ -11,6 +11,7 @@ namespace CoreEngine
     /// @details GBufferから法線・深度・ワールド座標を使用してAOを計算
     class SSAOTechnique : public RenderingTechniqueBase {
     public:
+        /// @brief シェーダー側 cbuffer SSAOParams と一致させること
         struct SSAOParams {
             float viewMatrix[16] = {};
             float projectionMatrix[16] = {};

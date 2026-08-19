@@ -19,13 +19,9 @@ namespace CoreEngine
     class RenderPipeline;
     struct RenderGraphSnapshot;
 
-    /// @brief RenderGraph ノードエディタ（imnodes）
-    /// @details RenderPipeline が View ごとに複製したスナップショットを、
-    ///          パス＝ノード / 論理リソース＝ピン のノードグラフとして描画する。
-    ///          ノードの座標は「依存の最長経路 = レイヤ」から毎回自動算出するため、
-    ///          手で並べる必要はない（ドラッグで動かした位置は再レイアウトまで保持される）。
-    ///
-    ///          "Tools > Render Graph" として RegisterEnginePanel から登録して使う。
+    /// @brief RenderGraph ノードエディタ（imnodes・"Tools > Render Graph"）
+    /// @details View ごとのスナップショットを、パス＝ノード / 論理リソース＝ピンとして描画する。
+    /// @note ノード座標は依存の最長経路から毎回自動算出するので、手で並べる必要はない。
     class RenderGraphEditorPanel
     {
     public:

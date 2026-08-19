@@ -48,15 +48,10 @@ namespace CoreEngine
         static std::string HashFile(const std::filesystem::path& path);
 
         /// @brief 一次キーを計算する
-        /// @param sourceData      .hlsl 本体のバイト列（DXC へ渡すのと同じもの）
-        /// @param sourceSize      その長さ
-        /// @param arguments       DXC へ渡すコンパイル引数一式（-I 群を含む）
         /// @param compilerVersion DXC のバージョン識別子
         /// @return 64 桁の 16 進文字列（失敗時は空文字＝キャッシュを使わない）
-        /// @note **`#include` したファイルの中身はここには入らない。**
-        ///       include 一覧はコンパイルしてみるまで分からないため、
-        ///       別途「依存マニフェスト（.deps）」で二段階に検証する。
-        ///       ShaderCacheStore の説明を参照。
+        /// @note `#include` したファイルの中身は入らない。
+        ///       include 一覧は別途「依存マニフェスト（.deps）」で二段階に検証する。
         static std::string ComputePrimaryKey(
             const void* sourceData,
             size_t sourceSize,

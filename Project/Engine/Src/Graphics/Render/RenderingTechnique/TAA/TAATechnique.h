@@ -10,12 +10,9 @@
 namespace CoreEngine
 {
     /// @brief TAA (Temporal Anti-Aliasing) レンダリング技術
-    /// @details ジッタ付きで描画された SceneColor を、モーションベクターで再投影した
-    ///          前フレームの結果と蓄積し、実効サンプル数を増やす。
-    ///
-    ///          履歴は RenderTargetNames::TAAHistoryA / TAAHistoryB の ping-pong で保持する。
-    ///          どちらが今フレームの書き込み先かは frameNumber の偶奇のみから決まるため、
-    ///          RenderPipeline 側の論理リソース登録と必ず一致する（GetWriteHistoryIndex）。
+    /// @details ジッタ付きの SceneColor を、モーションベクターで再投影した前フレームと蓄積する。
+    /// @note 履歴は TAAHistoryA / B の ping-pong。書き込み先は frameNumber の偶奇のみで決まる
+    ///       （RenderPipeline 側の論理リソース登録と必ず一致する）。
     class TAATechnique : public RenderingTechniqueBase {
     public:
         /// @brief シェーダー側 cbuffer TAAParams と一致させること
@@ -64,13 +61,9 @@ namespace CoreEngine
         static const char* GetHistoryTargetName(uint32_t index);
 
         /// @brief 今フレームのジッタを通知し、シェーダーへ渡す差分を更新する
-        /// @details モーションベクターはジッタ付きのクリップ座標から作られるため、
-        ///          「現フレームのジッタ - 前フレームのジッタ」を引かないと
-        ///          静止していても毎フレーム再投影がぶれる。その差分をここで作る。
-        ///          同一フレーム内で複数回呼ばれても前回値は進めない。
-        /// @param ndcX 今フレームのジッタ X（NDC）
-        /// @param ndcY 今フレームのジッタ Y（NDC）
-        /// @param frameNumber フレーム通し番号
+        /// @details モーションベクターはジッタ付きクリップ座標から作られるため、
+        ///          前フレームとの差分を引かないと静止していても再投影がぶれる。
+        /// @note 同一フレーム内で複数回呼ばれても前回値は進めない
         void SetJitter(float ndcX, float ndcY, uint64_t frameNumber);
 
         /// @brief 次フレームの履歴を破棄する（シーン切り替え・カメラ瞬間移動時）

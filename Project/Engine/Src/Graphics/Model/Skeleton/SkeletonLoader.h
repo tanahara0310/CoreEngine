@@ -2,10 +2,9 @@
 #include "Skeleton.h"
 #include "Graphics/Model/Node.h"
 
-/// @brief Skeletonローダークラス
-
 namespace CoreEngine
 {
+/// @brief Skeletonローダークラス
 class SkeletonLoader {
 public:
     /// @brief NodeからSkeletonを作成

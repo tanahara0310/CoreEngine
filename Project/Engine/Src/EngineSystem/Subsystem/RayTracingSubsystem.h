@@ -123,6 +123,7 @@ namespace CoreEngine
             const RenderContext& context,
             const std::function<void(uint32_t lightIndex, const Light& light)>& body);
 
+        /// @brief 水面 RT パス 3 種へ共通で渡すフレーム情報
         struct WaterDispatchContext {
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV{};
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV{};

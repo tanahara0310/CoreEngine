@@ -75,6 +75,7 @@ namespace CoreEngine
         BuildCustomShaderPipelineIfNeeded();
     }
 
+    // 指定が変わったときに、メッシュとマテリアルを作り直す
     void MeshRendererComponent::ReloadFromSpec()
     {
         if (source_ == Source::None) { return; }
@@ -89,6 +90,7 @@ namespace CoreEngine
         BuildCustomShaderPipelineIfNeeded();
     }
 
+    // 指定（モデルファイル / スキニング / プリミティブ）に応じて実体を作る
     void MeshRendererComponent::LoadMesh()
     {
         if (source_ == Source::None) { return; }
@@ -122,6 +124,7 @@ namespace CoreEngine
         }
     }
 
+    // カスタムシェーダー指定があるときだけ専用パイプラインを組む（共有キャッシュ経由）
     void MeshRendererComponent::BuildCustomShaderPipelineIfNeeded()
     {
         if (!customShaderProvider_ || !model_) { return; }
@@ -160,6 +163,7 @@ namespace CoreEngine
         return transform_;
     }
 
+    // ローカル AABB をワールドへ変換したもの（カリングの判定単位）
     BoundingBox MeshRendererComponent::GetWorldBoundingBox() const
     {
         const TransformComponent* transform = ResolveTransform();
@@ -171,6 +175,7 @@ namespace CoreEngine
         return localAABB.TransformBy(transform->Get().GetWorldMatrix());
     }
 
+    // 視錐台 → Hi-Z の順に棄却してから Submit する。判定は DrawViewInfo だけで完結させる
     bool MeshRendererComponent::DrawIfVisible(const DrawViewInfo& view)
     {
         if (!model_ || !view.view || !view.view->isValid) {

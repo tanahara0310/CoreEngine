@@ -9,22 +9,11 @@
 #include <type_traits>
 
 /// @brief コンソール変数（CVar）
-/// @details 「値の入れ物」を 1 箇所で宣言するだけで、ImGui のウィジェット・JSON への
-///          自動保存・コンソールからの操作がすべて自動的に付いてくる仕組み。
-///          仕掛けは単純で、コンストラクタが CVarRegistry へ自分を登録し、
-///          UI 側とシリアライズ側がそのリストを走査しているだけ。
-///
-///          使い方（パラメータを定義したい場所に 1 行書く）:
-///          @code
-///          static CVar<float> cvIntensity{ "r.Vignette.Intensity", 0.8f,
-///                                          "ヴィネット強度", CVarRange{0.0f, 2.0f} };
-///          ...
-///          float v = cvIntensity.Get();
-///          @endcode
-///
-///          命名は "カテゴリ.グループ.名前" のドット区切り（UI がツリー化に使う）。
-///          描画系は "r."、デバッグ表示は "d."、システムは "sys." を接頭辞にする。
-
+/// @details 値の入れ物を 1 箇所で宣言するだけで、ImGui ウィジェット・JSON 自動保存・
+///          コンソール操作が付いてくる。コンストラクタが CVarRegistry へ自分を登録し、
+///          UI 側とシリアライズ側がそのリストを走査しているだけの仕掛け。
+/// @note 命名は "カテゴリ.グループ.名前" のドット区切り（UI がツリー化に使う）。
+///       描画系は "r."、デバッグ表示は "d."、システムは "sys." を接頭辞にする。
 namespace CoreEngine
 {
     /// @brief CVar が保持する値の型
@@ -77,13 +66,8 @@ namespace CoreEngine
         return (static_cast<uint32_t>(value) & static_cast<uint32_t>(flag)) != 0;
     }
 
-    // ──────────────────────────────────────────────────────────────
-    // ICVar : 型を消した共通インターフェース
-    // ──────────────────────────────────────────────────────────────
-
     /// @brief CVar の型非依存インターフェース
-    /// @details UI とシリアライズはこの型だけを見て動くため、対応型を増やしても
-    ///          呼び出し側（パネル・セクション）の構造は変わらない。
+    /// @details UI とシリアライズはこの型だけを見て動くので、対応型を増やしても呼び出し側は変わらない。
     class ICVar
     {
     public:
@@ -116,12 +100,9 @@ namespace CoreEngine
         /// @brief 起動時のコードデフォルト値へ戻す
         virtual void ResetToDefault() = 0;
 
-        /// @brief 型消去された書き込み口（値の唯一の変更経路）
-        /// @param value GetType() と同じ型の値へのポインタ
-        /// @details 実装は派生の Set() に委譲する（等価判定＋変更通知つき）。
-        ///          UI・シリアライズ・Undo はすべてここ（または型付き Set）経由で書くこと。
-        ///          ストレージへの直接書き込みは通番が進まず、自動保存もキャッシュ無効化も
-        ///          走らない「見えない変更」になるため、書き込み可能な生ポインタは公開しない
+        /// @brief 型消去された書き込み口（値の唯一の変更経路。value は GetType() と同じ型）
+        /// @note ストレージへの直接書き込みは通番が進まず自動保存も走らない「見えない変更」に
+        ///       なるため、書き込み可能な生ポインタは公開しない。
         virtual void SetFromPointer(const void* value) = 0;
 
         /// @brief コードデフォルトから変更されているか
@@ -193,11 +174,8 @@ namespace CoreEngine
     {
     public:
         /// @brief CVar を定義し、同時にレジストリへ登録する
-        /// @param name        ドット区切りの一意な名前（例 "r.Vignette.Intensity"）
-        /// @param defaultValue 初期値。ここがコードデフォルトになる
-        /// @param description UI のツールチップに出る説明
-        /// @param range       数値型の編集範囲（省略時はドラッグ入力）
-        /// @param flags       保存/UI の抑止フラグ
+        /// @param name  ドット区切りの一意な名前（例 "r.Vignette.Intensity"）
+        /// @param range 数値型の編集範囲（省略時はドラッグ入力）
         CVar(const char* name,
              const T& defaultValue,
              const char* description = "",

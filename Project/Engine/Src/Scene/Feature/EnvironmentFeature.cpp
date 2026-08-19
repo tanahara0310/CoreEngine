@@ -19,12 +19,9 @@ namespace
 {
     using namespace CoreEngine;
 
-    /// 太陽・月ライトの保存用 CVar。
-    /// 値の実体は LightManager が持つ Light（シーン寿命）側にあるため、
-    /// これらはエンジン寿命の「鏡」として振る舞う（毎フレーム実体から写す）。
-    /// 編集 UI は Environment ツリーの Atmosphere エディタ（高度角・方位角・
-    /// スカイマップのドラッグ）が担当するので、自動生成 UI には出さない。
-    /// Mirrored により Undo の対象からも外れる（戻しても次フレームに巻き戻るため）
+    /// 太陽・月ライトの保存用 CVar。値の実体は LightManager の Light（シーン寿命）側にあり、
+    /// これらはエンジン寿命の「鏡」として毎フレーム実体から写す。
+    /// 編集 UI は Atmosphere エディタが担当するので自動生成 UI には出さず、Undo からも外す。
     constexpr CVarFlags kMirrorFlags = CVarFlags::NoUI | CVarFlags::Mirrored;
 
     CVar<Vector3> cvSunDirection{

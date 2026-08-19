@@ -8,20 +8,15 @@
 #include <string>
 #include <vector>
 
+/// @file
 /// @brief エディタ設定の自動保存サブシステム
 
 namespace CoreEngine
 {
     /// @brief エディタ設定（大気・雲・水・デバッグカメラ等）を変更のたびに自動保存するサブシステム
-    /// @details 登録された IEditorSettingsSection を変更検知方式（ChangeSignal）別に保存する。
-    ///          - Revision 方式: 毎フレーム通番を比較し、変更は 0.3 秒デバウンス後、
-    ///            確定（スライダーを離す等）は同フレームで即時保存（商用エンジンの瞬間保存）
-    ///          - Polling 方式: 従来通り 1 秒間隔で全量シリアライズ差分比較（ミラー系用）
-    ///          どちらもアトミック書き込み（tmp → rename）で保存する。
-    ///          保存先はセクション単位のファイル分割: Application/Saved/EditorSettings/{Section}.json。
-    ///          シーン/GameObject の明示保存フローには一切関与しない。
-    ///          設計書: Docs/Engine/Editor/EditorSettingsAutoSave_Design.md
-    ///                 Docs/Engine/Editor/InstantSettingsSave_Design.md（瞬間保存化）
+    /// @details 登録された IEditorSettingsSection を ChangeSignal 別に保存する。
+    ///          Revision 方式は 0.3 秒デバウンス＋確定時は即時、Polling 方式は 1 秒間隔の差分比較。
+    ///          いずれもアトミック書き込み（tmp → rename）で、セクション単位にファイルを分ける。
     class EditorSettingsSubsystem : public IEngineSubsystem
     {
     public:
@@ -41,11 +36,9 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
 
         /// @brief セクションを登録する
-        /// @details 登録時に「コードデフォルト」スナップショットを取得した後、保存済みファイルが
-        ///          あれば即 Deserialize が走る（＝前回状態の復元）。シーン寿命のオブジェクトは
-        ///          シーン初期化時に登録すればよい。
         /// @param section セクション（所有権は呼び出し側。Unregister まで生存させること）
-        /// @param owner 登録元の識別子（UnregisterSections での一括解除に使用）
+        /// @param owner   登録元の識別子（UnregisterSections での一括解除に使う）
+        /// @note 登録時にコードデフォルトを控えたうえで、保存済みファイルがあれば即 Deserialize が走る
         void RegisterSection(IEditorSettingsSection* section, const void* owner);
 
         /// @brief owner が登録した全セクションを解除する（解除前に最終保存を行う）

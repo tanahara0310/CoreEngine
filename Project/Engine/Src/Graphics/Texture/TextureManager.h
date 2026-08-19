@@ -25,6 +25,7 @@ namespace CoreEngine {
 
 namespace CoreEngine {
 
+    /// @brief テクスチャの読み込み・キャッシュ・SRV 発行を一元管理するシングルトン
     class TextureManager {
     public:
         using LoadedTexture = TextureLoadedResource;

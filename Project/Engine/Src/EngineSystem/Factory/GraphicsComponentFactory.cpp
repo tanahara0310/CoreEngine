@@ -37,12 +37,7 @@
 namespace CoreEngine
 {
     /// @brief ステップ間で受け渡す中間ポインタ
-    /// @details 元は 1 関数のローカル変数だったもの。ステップに切り分けると
-    ///          関数をまたぐので、shared_ptr で全ステップに持たせる。
-    ///          所有権はあくまで EngineSystem 側（RegisterComponent 済み）にあり、
-    ///          ここが持つのは生ポインタだけ。
-    ///          ヘッダでは前方宣言のみ（呼び出し側は Foundation の戻り値を
-    ///          Renderer へ渡すだけで、中身に触らない）。
+    /// @note 所有権は EngineSystem 側（RegisterComponent 済み）。ここが持つのは生ポインタだけ。
     struct GraphicsSetupState {
         DirectXCommon* dx = nullptr;
         ResourceFactory* resourceFactory = nullptr;
@@ -77,12 +72,8 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         // アセットロードの土台（デバイス直後・シェーダコンパイルより前）
         // ──────────────────────────────────────────────────────────
-        // TextureManager / ResourceFactory / ModelManager はどれも中身がほぼ空の
-        // 初期化しかしないが、**アセット先読みを始めるにはこの 3 つが揃っている必要がある**。
-        // 以前はレンダラー群の後（＝シェーダコンパイルを全部終えた後）に置いていたため、
-        // 先読みを仕掛けても裏に隠せる時間が 1 秒しか残らなかった。
-        // ここへ前倒しすることで、シェーダコンパイル約 6 秒の裏にモデルロードを隠せる。
-        // RenderDomainContext はこの 3 つに一切触らないので、順序を入れ替えても安全。
+        // この 3 つが揃わないとアセット先読みを始められない。ここへ前倒しすることで、
+        // シェーダコンパイル約 6 秒の裏にモデルロードを隠せる。
         sequence.Add("テクスチャ管理 / リソースファクトリ / モデル管理", [enginePtr, state] {
             // TextureManager の初期化（シングルトン）
             TextureManager::GetInstance().Initialize(state->dx);

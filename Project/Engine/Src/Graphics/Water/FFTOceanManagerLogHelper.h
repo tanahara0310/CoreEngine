@@ -7,6 +7,7 @@ namespace CoreEngine
     /// @brief FFTOceanManager の診断ログ出力を担当するヘルパー
     class FFTOceanManagerLogHelper {
     public:
+        /// @brief 初期化時の解像度と風速をログへ出す
         static void LogInitialize(uint32_t resolution, float windSpeed);
         static void LogSettingsUpdated(
             float amplitudeScale,
@@ -38,6 +39,7 @@ namespace CoreEngine
             uint32_t finalSpectrumBIndex,
             uint32_t resolution,
             uint32_t log2Resolution);
+        /// @brief スペクトルのアップロード量をログへ出す
         static void LogSpectrumUpload(uint64_t uploadBytes);
     };
 }

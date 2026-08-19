@@ -9,10 +9,9 @@ namespace CoreEngine {
     class PostEffectManager;
 }
 
-/// @brief ポストエフェクトプリセット管理クラス
-
 namespace CoreEngine
 {
+/// @brief ポストエフェクトプリセット管理クラス
 class PostEffectPresetManager {
 public:
     PostEffectPresetManager() = default;

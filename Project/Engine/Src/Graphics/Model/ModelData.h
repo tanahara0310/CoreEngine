@@ -9,11 +9,13 @@
 
 namespace CoreEngine
 {
+/// @brief スキニングで 1 頂点に掛かるウェイト
 struct VertexWeightData {
     float weight;
     uint32_t vertexIndex;
 };
 
+/// @brief 1 ジョイントが影響する頂点ウェイトの集合とバインドポーズ逆行列
 struct JointWeightData {
     Matrix4x4 inverseBindPoseMatrix;
     std::vector<VertexWeightData> vertexWeights;

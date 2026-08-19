@@ -13,10 +13,9 @@
 #include "Graphics/Model/VertexData.h"
 #include "Math/Matrix/Matrix4x4.h"
 
-/// @brief モデルファイル読み込みクラス
-
 namespace CoreEngine
 {
+    /// @brief モデルファイル読み込みクラス
     class ModelLoader {
     public:
         /// @brief モデルファイルを読み込む
@@ -66,12 +65,7 @@ namespace CoreEngine
         /// @return 変換された頂点データ
         static VertexData ConvertVertex(const aiMesh* mesh, uint32_t vertexIndex);
         
-        /// @brief マテリアルからテクスチャパスを抽出
-        /// @param material Assimpマテリアル
-        /// @param type テクスチャタイプ
-        /// @param index テクスチャインデックス
-        /// @param directoryPath ディレクトリパス
-        /// @return テクスチャパス（存在しない場合は空文字列）
+        /// @brief マテリアルからテクスチャパスを抽出（存在しなければ空文字列）
         static std::string ExtractTexturePath(
             const aiMaterial* material,
             aiTextureType type,

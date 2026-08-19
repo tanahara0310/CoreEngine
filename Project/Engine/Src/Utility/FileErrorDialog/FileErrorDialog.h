@@ -3,6 +3,7 @@
 #include <format>
 #include <Windows.h>
 
+/// @file
 /// @brief ファイル読み込みエラーをメッセージボックスで表示するユーティリティ
 
 namespace CoreEngine

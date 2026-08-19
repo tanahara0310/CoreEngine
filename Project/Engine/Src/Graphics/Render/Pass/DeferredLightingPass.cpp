@@ -154,12 +154,10 @@ namespace CoreEngine
         auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(
             RenderingTechniqueNames::WaterCaustics);
 
-        // コースティクスの合成入力を決める。
-        // - テクニックが無効なら合成しない（トグルが見た目に効くようにする）
-        // - 生成方式（RT / スクリーンスペース）は Backend で明示的に選ぶ。
-        //   以前は RT 出力が存在する限り無条件で優先していたため、RT が
-        //   1ピクセルも出さない状況（斜め太陽など）でスクリーンスペース版へ
-        //   フォールバックできず、コースティクスが完全に消えていた。
+        // コースティクスの合成入力を決める。テクニックが無効なら合成しない。
+        // 生成方式（RT / スクリーンスペース）は Backend で明示的に選ぶ
+        // （RT 出力があるだけで無条件優先すると、RT が 1 ピクセルも出さない状況で
+        //  スクリーンスペース版へフォールバックできず完全に消える）。
         const bool causticsEnabled = (caustics == nullptr) || caustics->IsEnabled();
         const bool preferRayTracing =
             (caustics == nullptr) || caustics->GetBackend() == WaterCausticsTechnique::Backend::RayTracing;
@@ -190,10 +188,9 @@ namespace CoreEngine
             }
 
             // ===== 水中ライティング（直接光の二重計上排除） =====
-            // RT コースティクス（＝完全な透過直接光）が今フレーム合成される場合のみ、
-            // 水中ピクセルのメインライト直接光をコースティクスへ置換し、
-            // アンビエントを Beer–Lambert で減衰させる。スクリーンスペース版は
-            // 透過直接光の全量を持たない（模様のみ）ため置換しない。
+            // RT コースティクス（＝完全な透過直接光）が合成されるフレームのみ、
+            // 水中ピクセルのメインライト直接光を置換しアンビエントを Beer–Lambert で減衰させる。
+            // スクリーンスペース版は透過直接光の全量を持たない（模様のみ）ため置換しない。
             const WaterSurfaceData* surface = context.waterSurfaceState;
             if (usingRT && surface && surface->regionValid != 0 && context.rtWaterCausticsManager) {
                 const WaterCausticsRayTracingSettings& rtSettings =

@@ -9,6 +9,7 @@ namespace CoreEngine
     /// @details 設定のサニタイズ、Phillips Spectrum 生成、統計情報算出を分離して管理する。
     class FFTOceanSpectrumBuilder {
     public:
+        /// @brief スペクトル生成のパラメータ（解像度・パッチ長・風・うねり）
         struct Settings {
             uint32_t resolution = 256;
             float patchLength = 96.0f;
@@ -66,6 +67,7 @@ namespace CoreEngine
             float swellVarianceWeight = 0.0f;
         };
 
+        /// @brief 波数 1 本分のスペクトル（複素振幅 h0 / h0Minus と波数ベクトル・角周波数）
         struct SpectrumSample {
             float h0[2] = {};
             float h0Minus[2] = {};
@@ -75,6 +77,7 @@ namespace CoreEngine
             float padding[2] = {};
         };
 
+        /// @brief 生成結果の統計（較正とデバッグ表示に使う）
         struct BuildStats {
             uint32_t activeSpectrumSampleCount = 0;
             float averageSpectralAmplitude = 0.0f;
@@ -102,11 +105,8 @@ namespace CoreEngine
             size_t outSampleCount);
 
         /// @brief 生成済みスペクトルの複素振幅を一様スケールする
-        /// @details 波高の較正を「カスケードごとの独立正規化」から
-        ///          「全カスケード共通の 1 スケール」へ変えるために使う。
-        ///          帯域制限を入れた後はカスケード間の相対エネルギーが
-        ///          スペクトル自身で決まるため、配分比の手調整が不要になる。
-        ///          h0 と h0Minus の両方に掛けること（時間発展が両者を使う）。
+        /// @details 波高の較正を全カスケード共通の 1 スケールで行うために使う。
+        /// @note h0 と h0Minus の両方に掛けること（時間発展が両者を使う）
         static void ScaleSpectrum(
             SpectrumSample* spectrumSamples,
             size_t sampleCount,

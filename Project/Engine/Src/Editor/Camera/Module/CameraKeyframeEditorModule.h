@@ -24,6 +24,7 @@ namespace CoreEngine
         void Draw(const CameraEditorContext& context) override;
 
     private:
+        /// @brief タイムライン上の 1 キーフレーム（時刻とカメラ姿勢）
         struct Keyframe {
             float time = 0.0f;
             CameraSnapshot snapshot{};
@@ -45,6 +46,7 @@ namespace CoreEngine
             float blendDuration = 0.2f;
         };
 
+        /// @brief タイムライン編集中の状態（キーフレーム列・再生位置・選択）
         struct EditorState {
             std::vector<Keyframe> keyframes;
             std::vector<Shot> shots;

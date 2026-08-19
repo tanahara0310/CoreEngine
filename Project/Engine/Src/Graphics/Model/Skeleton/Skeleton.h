@@ -3,10 +3,9 @@
 #include <map>
 #include <string>
 
-/// @brief Skeleton構造体
-
 namespace CoreEngine
 {
+/// @brief Skeleton構造体
 struct Skeleton {
     int32_t root;      // RootJointのIndex
     std::map<std::string, int32_t> jointMap;   // Joint名とIndexの辞書

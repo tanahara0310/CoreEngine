@@ -7,20 +7,15 @@
 struct aiScene;
 struct aiNodeAnim;
 
-/// @brief アニメーションファイル読み込み専用クラス
-/// Assimpを使用してglTFなどからアニメーションデータを解析
-
 namespace CoreEngine
 {
+/// @brief アニメーションファイル読み込み専用クラス
+/// Assimpを使用してglTFなどからアニメーションデータを解析
 class AnimationLoader {
 public:
     /// @brief アニメーションファイルを読み込む
-    /// @param directoryPath ディレクトリパス
-    /// @param filename ファイル名
     /// @param sourceAnimationName ファイル内のアニメーション名（空 = 先頭の 1 本）
-    /// @return 読み込んだアニメーションデータ
-    /// @note 1 つのファイルに複数のアニメーションが入っている場合があるため、
-    ///       名前で選べるようにしている（例: Fox.gltf の Survey / Walk / Run）。
+    /// @note 1 ファイルに複数のアニメーションが入るため名前で選べるようにしてある
     static Animation LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
         const std::string& sourceAnimationName = "");
 

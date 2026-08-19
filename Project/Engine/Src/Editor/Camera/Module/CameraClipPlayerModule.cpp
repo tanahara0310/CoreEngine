@@ -44,6 +44,7 @@ namespace CoreEngine
         constexpr int kEasingOptionCount = static_cast<int>(sizeof(kEasingOptions) / sizeof(kEasingOptions[0]));
     }
 
+    // 再生中だけ playhead を進め、補間したカメラ姿勢をゲームカメラへ書き込む
     void CameraClipPlayerModule::Update(const CameraEditorContext& context)
     {
         if (!context.cameraManager || !isPlaying_ || clipKeyframes_.empty()) {
@@ -74,6 +75,7 @@ namespace CoreEngine
             return;
         }
 
+        // ファイル一覧はディスク走査なので、要求があったフレームだけ取り直す
         if (needRefreshClipFileList_) {
             RefreshClipFileList();
         }
@@ -166,6 +168,7 @@ namespace CoreEngine
 
     bool CameraClipPlayerModule::LoadClipFromFile(const std::string& filePath)
     {
+        // 読み込み成功時だけ内部状態を差し替える。失敗しても再生中のクリップは壊さない
         CameraSequenceAsset asset{};
         if (!CameraSequenceAssetIO::Load(filePath, asset)) {
             return false;
@@ -210,6 +213,7 @@ namespace CoreEngine
         return !clipKeyframes_.empty();
     }
 
+    // 指定時刻のカメラ姿勢を求める。ショット境界ではカット（補間なし）になる
     bool CameraClipPlayerModule::EvaluateSnapshotAt(float time, CameraSnapshot& outSnapshot) const
     {
         if (!EvaluateSnapshotRaw(time, outSnapshot)) {
@@ -272,6 +276,7 @@ namespace CoreEngine
         return true;
     }
 
+    // ショット境界を無視してキーフレーム列だけで補間する（プレビューのスクラブ用）
     bool CameraClipPlayerModule::EvaluateSnapshotRaw(float time, CameraSnapshot& outSnapshot) const
     {
         if (clipKeyframes_.empty()) {
@@ -317,6 +322,8 @@ namespace CoreEngine
         return true;
     }
 
+    // 2 つのスナップショットを補間する。回転だけは LerpAngle で最短経路を通す
+    // （素直に線形補間すると 359°→1° で 1 周してしまう）
     CameraSnapshot CameraClipPlayerModule::InterpolateSnapshot(const CameraSnapshot& from, const CameraSnapshot& to, float t) const
     {
         CameraSnapshot result{};
@@ -346,6 +353,7 @@ namespace CoreEngine
         return kEasingOptions[easingTypeIndex_].type;
     }
 
+    // 時刻が属するショット番号を返す（どのショットにも属さなければ -1）
     int CameraClipPlayerModule::FindShotIndexAt(float time) const
     {
         int found = -1;
@@ -364,6 +372,8 @@ namespace CoreEngine
         return found;
     }
 
+    // 補間した姿勢をゲームカメラへ書き込む。コントローラが付いていると
+    // 次フレームで上書きされるので、再生中はコントローラを止めておくこと
     bool CameraClipPlayerModule::ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot) const
     {
         Camera* active3D = context.cameraManager->GetActiveCamera(CameraType::Camera3D);

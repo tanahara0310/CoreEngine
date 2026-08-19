@@ -7,10 +7,9 @@
 // 前方宣言
 class ParticleSystem;
 
-/// @brief モデルパーティクル専用レンダラー
-
 namespace CoreEngine
 {
+/// @brief モデルパーティクル専用レンダラー
 class ModelParticleRenderer : public BaseParticleRenderer {
 public:
     ModelParticleRenderer() = default;

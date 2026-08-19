@@ -3,11 +3,10 @@
 #include "ParticleModule.h"
 #include "Math/MathCore.h"
 
-/// @brief パーティクルの形状モジュール（Unity Shape Module相当）
-/// エミッターの形状からパーティクルの生成位置を決定します
-
 namespace CoreEngine
 {
+/// @brief パーティクルの形状モジュール（Unity Shape Module相当）
+/// エミッターの形状からパーティクルの生成位置を決定します
 class ShapeModule : public ParticleModule {
 public:
     /// @brief 形状タイプ

@@ -11,6 +11,7 @@
 
 namespace CoreEngine
 {
+    // 派生から呼ぶ共通初期化。デバイス・出力ビュー集合・デバッグ名だけを受け取る
     bool RayTracingPassBase::InitializeBase(
         DirectXCommon* dxCommon,
         DescriptorManager* descriptorManager,
@@ -39,6 +40,7 @@ namespace CoreEngine
 
     bool RayTracingPassBase::EnsureConstantBuffer(UINT bufferSize)
     {
+        // 1 度作ったら使い回す。UPLOAD ヒープなので毎フレーム CPU から直接書き換えられる
         if (constantBuffer_) {
             return true;
         }
@@ -90,6 +92,7 @@ namespace CoreEngine
         return true;
     }
 
+    // view ごとの出力テクスチャを必要サイズで用意する（サイズ据え置きなら何もしない）
     bool RayTracingPassBase::EnsureOutputTextureBase(
         UINT width,
         UINT height,
@@ -112,6 +115,7 @@ namespace CoreEngine
             options);
     }
 
+    // 画面サイズが変わったときだけ出力テクスチャを捨てる（次の Ensure で作り直される）
     void RayTracingPassBase::ReleaseOutputIfSizeMismatchBase(UINT width, UINT height, uint32_t viewIndex)
     {
         outputViews_.ReleaseIfSizeMismatch(width, height, viewIndex);
@@ -132,6 +136,8 @@ namespace CoreEngine
         return outputViews_.GetCurrentState(viewIndex);
     }
 
+    // ディスパッチ可能かを判定する。DXR オブジェクト・出力テクスチャ・
+    // TLAS のどれが欠けているかを DispatchGuardStatus で返す
     RayTracingPassBase::DispatchGuardStatus RayTracingPassBase::ValidateDispatchPreconditions(
         ID3D12GraphicsCommandList* cmdList) const
     {
@@ -170,6 +176,8 @@ namespace CoreEngine
         return true;
     }
 
+    // ガード失敗の理由を 1 度だけ警告ログへ出す
+    // （毎フレーム同じ警告が流れると本当のエラーが埋もれるため、状態変化時のみ）
     void RayTracingPassBase::ReportDispatchGuardFailure(
         DispatchGuardStatus guardStatus,
         ID3D12GraphicsCommandList* cmdList)
@@ -208,6 +216,7 @@ namespace CoreEngine
             asMgr_ ? asMgr_->IsSupported() : false);
     }
 
+    // 今回のディスパッチ内容を診断情報へ記録する（デバッグ UI が読む）
     void RayTracingPassBase::BeginDiagnosticsBase(uint32_t viewIndex, UINT width, UINT height)
     {
         lastDispatchInfo_ = {};
@@ -218,6 +227,8 @@ namespace CoreEngine
         lastDispatchInfo_.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
     }
 
+    // ディスパッチ前の共通処理をまとめて行う入口。
+    // ここが false を返したら、派生側は何もせず即 return してよい（ログは出し済み）
     bool RayTracingPassBase::BeginDispatchBase(
         ID3D12GraphicsCommandList* cmdList,
         UINT width,
@@ -251,6 +262,7 @@ namespace CoreEngine
         return true;
     }
 
+    // 出力テクスチャを UNORDERED_ACCESS へ遷移させる（DispatchRays の直前に呼ぶ）
     void RayTracingPassBase::BeginOutputWrite(
         ID3D12GraphicsCommandList* cmdList,
         ID3D12Resource* outputResource,

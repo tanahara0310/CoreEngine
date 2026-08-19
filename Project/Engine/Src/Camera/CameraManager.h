@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+/// @file
 /// @brief カメラマネージャー - 複数のカメラを管理して動的に切り替えるクラス
 
 namespace CoreEngine
@@ -21,6 +22,7 @@ namespace CoreEngine
 #endif
     class EngineSystem;
 
+    /// @brief 名前付きカメラとそのコントローラを保持し、Scene / Game のどちらを覗くかを決める
     class CameraManager {
     public:
         /// @brief コンストラクタ
@@ -38,11 +40,7 @@ namespace CoreEngine
         /// @param name カメラの名前
         void UnregisterCamera(const std::string& name);
 
-        /// @brief カメラへコントローラを取り付ける（1 カメラにつき 1 つ）
-        /// @details カメラ本体は操作方法を持たない。「Blender 風に動かす」「一人称で飛ぶ」は
-        ///          コントローラを付け替えるだけで切り替わる。
-        ///          既にコントローラが付いている場合は置き換える。1 つに限定することで、
-        ///          複数の操作系が同じカメラを奪い合う事故が構造的に起きない。
+        /// @brief カメラへコントローラを取り付ける（1 カメラにつき 1 つ・既存があれば置き換え）
         /// @tparam T ICameraController の派生型
         /// @param name 対象カメラ名（未登録なら何もしない）
         /// @return 取り付けたコントローラ（失敗時 nullptr）
@@ -88,15 +86,9 @@ namespace CoreEngine
         }
 
         // ===== カメラの役割（Scene / Game）=====
-        //
-        // 以前は「アクティブカメラ名」と「Gameビュー上書き名」という 2 つの状態で
-        // Debug / Release を切り替えており、片方だけ変える UI があったために
-        // 「一覧で選んでも画は変わらないのにギズモだけズレる」状態が起きていた。
-        //
-        // 役割を 2 つに固定し、「どちらを覗いているか」をフラグ 1 つで表す。
-        //   Scene カメラ … エディタ視点。シーンの構図とは無関係に自由に動かす
-        //   Game  カメラ … ゲーム視点。シーンが構図を決める
-        // 描画・ギズモ・ピッキングはすべて GetViewCamera() を見るため食い違わない。
+        // Scene カメラ … エディタ視点。シーンの構図とは無関係に自由に動かす
+        // Game  カメラ … ゲーム視点。シーンが構図を決める
+        // 描画・ギズモ・ピッキングはすべて GetViewCamera() を見るので食い違わない。
 
         /// @brief エディタ視点カメラの名前を設定
         void SetSceneCameraName(const std::string& name) { sceneCameraName_ = name; }

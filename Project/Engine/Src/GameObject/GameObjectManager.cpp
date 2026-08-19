@@ -41,13 +41,10 @@ namespace CoreEngine
 
     void GameObjectManager::UpdateAll() {
         isUpdating_ = true;
-        // アクティブで削除マークされておらず、自動更新が有効なオブジェクトのみ更新
-        // 削除はCleanupDestroyed()で行われるため、直接ループで問題ない
-        //
-        // 呼び出し順: [パス1] Start → コンポーネント Update → GameObject::Update を全員分
-        //             → [パス2] LateUpdate を全員分。
-        // LateUpdate を別パスにするのが要: 全オブジェクトの Update 完了後に回すことで、
-        // 他オブジェクトを参照する処理（ジョイント追従等）が生成順に依存しなくなる。
+        // アクティブかつ削除マークが無く、自動更新が有効なオブジェクトのみ更新する。
+        // 呼び出し順は [パス1] Start → コンポーネント Update → GameObject::Update を全員分、
+        // [パス2] LateUpdate を全員分。別パスにすることで、他オブジェクトを参照する処理
+        // （ジョイント追従など）が生成順に依存しなくなる。
         for (auto& obj : objects_) {
             if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
                 obj->DispatchComponentStart();
@@ -137,12 +134,9 @@ namespace CoreEngine
     void GameObjectManager::RegisterAllColliders(CollisionWorld* collisionWorld) {
         if (!collisionWorld) return;
 
-        // ColliderComponent を持つオブジェクトだけを走る。
-        // 以前は全オブジェクトの固定メンバ colliders_ を無条件に舐めていたので、
-        // コライダーを 1 本も持たないオブジェクト（スカイボックス・UI・デバッグ線）も
-        // 毎フレーム空振りしていた。
-        //
-        // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う（従来と同条件）。
+        // ColliderComponent を持つオブジェクトだけを走る
+        // （全オブジェクトを舐めると、コライダーを持たない大半が毎フレーム空振りする）。
+        // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
         ForEachComponent<ColliderComponent>(
             [collisionWorld](ColliderComponent& colliders) {
                 // 1 オブジェクトが複数のコライダーを持てる（本体判定 + 攻撃判定など）

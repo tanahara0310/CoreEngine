@@ -1,16 +1,11 @@
 #pragma once
 #include <cstdint>
 
-/// @brief 描画パスタイプ
-
 namespace CoreEngine
 {
     /// @brief 描画パスタイプ
-    /// @details
-    ///  - エンジン組み込みパスは固定値（0..kBuiltInCount）として安定
-    ///  - 値 100..999 はユーザー定義パス用に予約
-    ///  - 新しい組み込みパスを追加する場合は kBuiltInCount を超えないこと
-    /// @note ユーザー拡張パスを追加する際に、本ヘッダの編集を不要にする設計。
+    /// @details 組み込みパスは 0..kBuiltInCount の固定値、100..999 はユーザー定義パス用の予約。
+    /// @note ユーザー拡張パスの追加で本ヘッダを編集しなくてよいようにするための設計
     enum class RenderPassType : int32_t {
         Invalid = -1,        ///< 無効
 

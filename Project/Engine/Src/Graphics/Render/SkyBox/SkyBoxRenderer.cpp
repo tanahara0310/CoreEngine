@@ -35,11 +35,9 @@ namespace CoreEngine
             throw std::runtime_error("Failed to create SkyBox Root Signature: " + buildResult.errorMessage);
         }
 
-        // SkyBox は背景として最初に描画し、共有 DSV の内容に依存させない。
-        // 複数 View が同一フレームで共有 DSV を使い回すため、深度テストありだと
-        // 前後のパスの深度値によって背景だけが不安定に落ちる場合がある。
-        // SkyBox は背景描画で kBlendModeNone しか使わないため、
-        // 全ブレンドモードではなく None のみ生成する（起動時の無駄なPSO生成を削減）
+        // SkyBox は背景として最初に描画し、共有 DSV の内容に依存させない
+        // （複数 View が DSV を使い回すため、深度テストありだと背景が不安定に落ちる）。
+        // ブレンドは kBlendModeNone しか使わないので None のみ生成する。
         bool result = psoMg_->CreateBuilder()
             .SetDebugName("SkyBox")
             .SetInputLayoutFromReflection(*reflectionData_)

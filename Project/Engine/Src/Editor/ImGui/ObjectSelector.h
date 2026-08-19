@@ -114,15 +114,10 @@ namespace CoreEngine
         void ScreenToWorldRay(const Vector2& mousePos, const Camera* camera,
             Vector3& rayOrigin, Vector3& rayDirection);
 
-        /// @brief レイとメッシュの交差判定
-        /// @param rayOrigin レイの始点
-        /// @param rayDirection レイの方向（正規化済み）
-        /// @param object 判定対象のゲームオブジェクト
-        /// @param distance 交差点までの距離（出力・ワールド空間）
-        /// @return 交差している場合true
-        /// @note 形状ごとの交差判定は Math/Geometry/RayCast.h に一本化されている。
-        ///       ここはピッキング固有の手順（ローカルAABBで事前棄却 → ローカル空間の
-        ///       レイで全三角形 → 最近ヒットをワールド距離へ戻す）だけを持つ。
+        /// @brief レイとメッシュの交差判定（distance はワールド空間の出力）
+        /// @details ピッキング固有の手順（ローカル AABB で事前棄却 → ローカル空間のレイで
+        ///          全三角形 → 最近ヒットをワールド距離へ戻す）だけを持つ。
+        /// @note 形状ごとの交差判定は Math/Geometry/RayCast.h に一本化されている
         bool RayIntersectsMesh(const Vector3& rayOrigin, const Vector3& rayDirection,
             GameObject* object, float& distance);
 

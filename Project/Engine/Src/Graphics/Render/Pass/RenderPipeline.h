@@ -21,15 +21,10 @@ namespace CoreEngine
         RenderPipeline() = default;
         ~RenderPipeline() = default;
 
-        /// @brief レンダーパスを指定フェーズへ追加
+        /// @brief レンダーパスを指定フェーズへ追加（エンジンを編集せずにパスを挿す唯一の入口）
         /// @details 同一フェーズ内は priority（小さいほど先）、同 priority は登録順。
-        ///          エンジンコードを編集せずにユーザーパスを挿入する唯一の入口。
-        /// @param pass 追加するレンダーパス
-        /// @param phase 挿入フェーズ
-        /// @param priority フェーズ内優先度
-        /// @param timingCategoryOverride タイミング表示カテゴリの上書き（nullptr = phase から機械的に決定）
-        ///        実行順の都合で置いたフェーズと、計測上の分類が食い違うパス
-        ///        （例: 波形生成は PostLighting に置くが、コストの分類としては Water）に使う。
+        /// @param timingCategoryOverride タイミング表示カテゴリの上書き（nullptr = phase から決定）。
+        ///        実行順の都合で置いたフェーズと計測上の分類が食い違うパスに使う。
         /// @return 追加したパスへのポインタ（RemovePass 用ハンドル）
         RenderPass* AddPass(
             std::unique_ptr<RenderPass> pass,
@@ -71,11 +66,8 @@ namespace CoreEngine
         }
 
         /// @brief 今フレームのビュー（ViewInfo）を確定する
-        /// @details 「どのカメラで描くか」を解決する唯一の場所。TAA の射影ジッタを注入してから
-        ///          スナップショットするため、これ以降フレーム内の全パス・全描画が同じ行列を使う。
-        ///          RenderGraph 構築より前、かつ RenderContext::frameViews を差す前に呼ぶこと。
-        /// @param context レンダリングコンテキスト（frameViews はまだ未設定でよい）
-        /// @param outViews 構築先
+        /// @details 「どのカメラで描くか」を解決する唯一の場所。TAA の射影ジッタ注入後にスナップショットする。
+        /// @warning RenderGraph 構築より前、かつ RenderContext::frameViews を差す前に呼ぶこと
         void PrepareFrameViews(const RenderContext& context, FrameViews& outViews);
 
         /// @brief フレーム実行前のパス設定を行う

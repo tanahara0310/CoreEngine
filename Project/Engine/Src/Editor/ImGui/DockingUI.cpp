@@ -161,14 +161,9 @@ namespace CoreEngine
         nodeIds_[static_cast<int>(DockArea::Hierarchy)] = idLeftTop;
 
         // 登録されているウィンドウを各ノードへ必ずドッキングする。
-        //
-        // 【この無条件ドックを条件付きにしないこと】
-        // 以前「前回 DockId==0 だったウィンドウは触らない」判定を入れたことがあるが、
-        // imgui.ini の DockId 欠落は「ユーザーが意図して引き出した」ことを意味しない
-        //（一度でも浮いた状態で保存されれば同じ形になる）。その結果 Hierarchy や Console が
-        // 毎起動フローティングのまま復帰しなくなる不可逆な状態に陥った。
-        // 引き出した配置を保持したい場合は、DockId を推測するのではなく
-        // 「ユーザーが引き出した」という意図そのものを別途保存すること。
+        // 【この無条件ドックを条件付きにしないこと】imgui.ini の DockId 欠落は
+        // 「ユーザーが意図して引き出した」ことを意味しないため、判定を入れると
+        // Hierarchy や Console が毎起動フローティングのまま復帰しなくなる。
         for (const auto& [windowName, area] : registeredWindows_) {
             ImGuiID nodeId = ResolveNodeIdForWindow(windowName, area);
             if (nodeId != 0) {

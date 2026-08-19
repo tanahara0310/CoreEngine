@@ -50,11 +50,9 @@ namespace CoreEngine
     {
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Loading model file: {}", filepath));
 
-        // Assimp の DefaultIOSystem は Windows でパスを UTF-8 とみなしてワイド化する。
-        // ModelManager::ResolveFilePath から下流の std::string は UTF-8 で統一して
-        // あるので、ここでは変換せずそのまま渡す。
-        // スキニング有無に依存しない共通フラグで1回だけフルパースする。
-        // aiProcess_LimitBoneWeightsはボーンが無いメッシュに対しては単なる無処理。
+        // Assimp の DefaultIOSystem は Windows でパスを UTF-8 とみなすので、
+        // UTF-8 で統一してある文字列をそのまま渡す。
+        // スキニング有無に依存しない共通フラグで 1 回だけフルパースする。
         const aiScene* scene = importer.ReadFile(
             filepath.c_str(),
             aiProcess_Triangulate |
@@ -273,12 +271,10 @@ namespace CoreEngine
             // バインドポーズ行列を計算
             jointWeightData.inverseBindPoseMatrix = CalculateBindPoseMatrix(bone->mOffsetMatrix);
 
-            // 頂点ウェイト情報を格納
             // aiBone の mVertexId はメッシュ内ローカルのインデックス。
-            // ModelData::vertices は全メッシュを 1 本の頂点バッファへ連結しているため、
-            // このメッシュの開始位置 baseVertexIndex を足してグローバルなインデックスへ直す。
-            // （マルチメッシュのスキニングモデルで、別メッシュの頂点にウェイトが
-            //   乗ってしまう不具合を防ぐ）
+            // ModelData::vertices は全メッシュを 1 本に連結しているため、
+            // 開始位置 baseVertexIndex を足してグローバルなインデックスへ直す
+            // （マルチメッシュで別メッシュの頂点にウェイトが乗る不具合を防ぐ）。
             for (uint32_t weightIndex = 0; weightIndex < bone->mNumWeights; ++weightIndex) {
                 jointWeightData.vertexWeights.push_back({
                     bone->mWeights[weightIndex].mWeight,

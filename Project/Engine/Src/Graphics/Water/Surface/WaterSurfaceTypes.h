@@ -20,6 +20,7 @@ enum class WaterWaveLayerType : uint32_t {
 	Small = 2,
 };
 
+/// @brief Gerstner 波を 1 レイヤ生成するための範囲指定（この範囲から count 本を乱数で作る）
 struct WaterWaveLayerConfig {
 	uint32_t count = 0;
 	float amplitudeMin = 0.0f;
@@ -161,6 +162,7 @@ enum class WaterPresetType : int {
 	Rain = 3,
 };
 
+/// @brief 水面プリセット 1 件分（見た目と水質のパラメータ一式）
 struct WaterPresetData {
 	const char* name;
 	uint32_t recommendedWaveCount;

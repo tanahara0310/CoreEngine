@@ -10,11 +10,7 @@ namespace CoreEngine
 namespace AnimationUtils {
 
 namespace {
-    /// @brief 2つのキーフレーム間の補間係数を計算
-    /// @param t1 開始時刻
-    /// @param t2 終了時刻
-    /// @param currentTime 現在時刻
-    /// @return 補間係数（0.0 ~ 1.0）
+    /// @brief 2 つのキーフレーム間の補間係数（0.0 ~ 1.0）を計算
     inline float CalculateInterpolationFactor(float t1, float t2, float currentTime) {
         return (currentTime - t1) / (t2 - t1);
     }

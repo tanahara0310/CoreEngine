@@ -155,16 +155,9 @@ namespace CoreEngine
         }
 
         // ── 接触が切れたペアへ Exit を配る ─────────────────────────────
-        // 「離れた」場合と「登録から外れた（破棄・非アクティブ化・無効化・取り外し）」場合を
-        // 同じループで扱う。外れたコライダーは候補にも上がらないので、自動的にここへ落ちる。
-        //
-        // 参照の安全性: 登録から外れる 4 経路すべてで実体はこのフレーム中は生きている。
-        //  - GameObject::Destroy()  … 破棄はフレーム末の CleanupDestroyed で遅延実行
-        //  - SetActive(false)       … オブジェクトは生存
-        //  - Collider::SetEnabled(false) … 同上
-        //  - GameObject::RemoveCollider() … 実体はフレーム末まで retired_ が保持
-        // 外れたペアは「外れた最初のフレーム」で履歴から消えるので、実体が解放される
-        // 次フレーム以降に previousCollisions_ が触ることはない。
+        // 「離れた」場合と「登録から外れた」場合を同じループで扱う（外れたものは候補に上がらない）。
+        // 参照の安全性: 外れる 4 経路（Destroy / SetActive(false) / SetEnabled(false) /
+        // RemoveCollider）すべてで実体はフレーム末まで生きており、履歴はその前に消える。
         for (const auto& entry : previousCollisions_) {
             if (currentCollisions_.find(entry.first) != currentCollisions_.end()) { continue; }
 

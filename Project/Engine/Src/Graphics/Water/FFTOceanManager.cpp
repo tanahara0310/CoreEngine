@@ -109,10 +109,8 @@ namespace CoreEngine
         constexpr float kCascadePatchLength[FFTOceanManager::kCascadeCount] = FFT_OCEAN_CASCADE_PATCH_LENGTHS;
 
         // サンプリング格子回転（cos/sin）。0° / +26° / -49°。
-        // 全カスケードの格子軸が揃っていると、各カスケード固有のタイル周期が
-        // 同じ向き・同じ位置で強め合い「格子状の同じパターン」として知覚される。
-        // 格子を互いに回転させると残存周期が空間的に整列しなくなり視認できなくなる。
-        // スペクトルの風向は逆回転で補正するため、波の進行方向はワールドで全カスケード共通のまま。
+        // 格子軸が揃っていると各カスケードのタイル周期が同じ向きで強め合い、格子模様として見える。
+        // 風向はスペクトル側の逆回転で補正するので、波の進行方向はワールドで共通のまま。
         constexpr float kCascadeRotCos[FFTOceanManager::kCascadeCount] = FFT_OCEAN_CASCADE_ROT_COS;
         constexpr float kCascadeRotSin[FFTOceanManager::kCascadeCount] = FFT_OCEAN_CASCADE_ROT_SIN;
 
@@ -121,13 +119,8 @@ namespace CoreEngine
         constexpr uint32_t kCascadeRandomSeed[FFTOceanManager::kCascadeCount] = {
             20260626u, 20260626u + 7919u, 20260626u + 2u * 7919u };
 
-        // ★旧 kCascadeRmsShare {1.0, 0.35, 0.12} は撤去した（2026-08-08）★
-        // 帯域制限の導入前は 3 カスケードすべてが同じ完全な Phillips スペクトルを
-        // 生成していたため、カスケード間の相対エネルギーに物理的な根拠が無く、
-        // この 3 つの手調整定数が実質的に「合成スペクトルの形」を決めていた
-        // （生RMS 6.66m を 0.116 倍に割り戻す、といった辻褄合わせが必要だった）。
-        // 帯域制限後は各カスケードが担当する波数帯だけを持つので、相対エネルギーは
-        // Phillips スペクトル自身が決める。較正は全カスケード共通の 1 スケールだけでよい。
+        // カスケード間の相対エネルギーは帯域制限後の Phillips スペクトル自身が決めるので、
+        // 配分比の手調整定数は持たない（較正は全カスケード共通の 1 スケールだけ）。
 
         // 帯域境界（波長 m → 波数 rad/m）。数値の情報源は FFTOceanCascadeValues.hlsli。
         constexpr float kTwoPiValue = 6.28318530718f;
@@ -729,11 +722,9 @@ namespace CoreEngine
         // 手調整の配分比は要らない（帯域制限 + Δk² 正規化が前提）。
         const float heightWindSpeed = (std::clamp)(settings_.windSpeed, kMinHeightWindSpeed, kMaxHeightWindSpeed);
         const float gravityValue = (std::max)(settings_.gravity, 0.1f);
-        // JONSWAP のフェッチ制限成長則（無次元量）:
-        //   F* = gF/U²,  Hs* = gHs/U² = 0.0016·√F*
+        // JONSWAP のフェッチ制限成長則（無次元量）: F* = gF/U², Hs* = 0.0016·√F*。
         // 完全発達（Pierson-Moskowitz）の Hs* = 0.21 を上限にクランプする。
-        // ピーク周波数側のクランプ（ComputePeakAngularFrequency）と同じフェッチで
-        // 両者が同時に飽和するので、波高とピーク波長の整合が保たれる。
+        // ピーク周波数側と同じフェッチで同時に飽和するので、波高とピーク波長の整合が保たれる。
         const float dimensionlessFetch =
             gravityValue * settings_.fetchMeters / (heightWindSpeed * heightWindSpeed);
         const float dimensionlessWaveHeight =
@@ -763,10 +754,9 @@ namespace CoreEngine
                 s.patchLength = kCascadePatchLength[c];
                 s.amplitudeScale = settings_.amplitudeScale;
                 // サンプリング格子がカスケードごとに回転しているため、スペクトルの向きは
-                // テクスチャ座標系（＝回転後の格子系）へ順回転して渡す。シェーダ側で
-                // 変位・法線を逆回転してワールドへ戻すので、波の進行方向はワールドで一致する。
-                // ★うねりの向きも必ず同じ回転を掛けること★（片方だけだと風波とうねりの
-                //   相対角度がカスケードごとに変わり、交差角がバラバラになる）
+                // テクスチャ座標系（＝回転後の格子系）へ順回転して渡す。
+                // ★うねりの向きも必ず同じ回転を掛けること★
+                //   （片方だけだと風波とうねりの相対角度がカスケードごとに変わる）
                 s.windDirection[0] =
                     kCascadeRotCos[c] * settings_.windDirection[0] - kCascadeRotSin[c] * settings_.windDirection[1];
                 s.windDirection[1] =

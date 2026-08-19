@@ -87,6 +87,7 @@ namespace CoreEngine
             float m[3][3];
         };
 
+    /// @brief 3x3 行列の積（色空間変換行列の合成用）
         Mat3 Mul(const Mat3& a, const Mat3& b)
         {
             Mat3 r{};

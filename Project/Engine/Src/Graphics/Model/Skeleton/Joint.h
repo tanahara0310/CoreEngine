@@ -5,10 +5,9 @@
 #include <vector>
 #include <optional>
 
-/// @brief Joint構造体
-
 namespace CoreEngine
 {
+/// @brief Joint構造体
 struct Joint {
     QuaternionTransform transform;        // Transform情報
     Matrix4x4 localMatrix;         // localMatrix

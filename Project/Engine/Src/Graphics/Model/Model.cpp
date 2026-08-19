@@ -202,10 +202,8 @@ namespace CoreEngine
         const bool isGBufferPass = view.isGBufferPass;
 
         // ===== Hi-Z オクルージョンカリング（メイン GameView の GBuffer 構築時のみ） =====
-        // サブメッシュ単位で前々フレームの遮蔽判定結果を参照し、遮蔽中の範囲だけ Submit を
-        // スキップする。スロット管理・AABB登録などの詳細は ModelVisibility 側が持つ。
+        // サブメッシュ単位で前々フレームの判定結果を参照し、遮蔽中の範囲だけ Submit をスキップする。
         // 適用可否は DrawViewInfo だけから決まる（呼び出し順やレンダラー状態に依存しない）。
-        // prevGameWVP_ は上で更新済みのため、再可視化フレームのモーションベクターは正しい。
         const bool occlusionEligible = isGBufferPass && isGameView;
         visibility_.BeginOcclusionQuery(renderContext_.hiZOcclusion, *resource_, worldMatrix,
             view.view->viewProjection, occlusionEligible);

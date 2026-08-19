@@ -6,12 +6,12 @@
 
 struct Particle;
 
-/// @brief パーティクルの力場モジュール
-
 namespace CoreEngine
 {
+/// @brief パーティクルの力場モジュール
 class ForceModule : public ParticleModule {
 public:
+    /// @brief パーティクルへ加える力の設定（重力・風・抵抗・加速度フィールド）
     struct ForceData {
         Vector3 gravity = { 0.0f, -9.8f, 0.0f };    // 重力
         Vector3 wind = { 0.0f, 0.0f, 0.0f };        // 風力

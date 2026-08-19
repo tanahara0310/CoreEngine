@@ -97,11 +97,8 @@ namespace CoreEngine
         const BoundingBox& GetLocalBoundingBox() const { return localBoundingBox_; }
 
         /// @brief サブメッシュ単位のローカル AABB を取得（Hi-Z オクルージョンカリングの判定単位）
-        /// @details LOD0 のインデックス範囲から算出。簡略化 LOD は同一頂点の部分集合のため
-        ///          LOD0 の AABB で保守的に覆える。
-        ///          範囲外はサブメッシュとの対応ズレ（バグ）なので Debug では assert で停止し、
-        ///          Release ではモデル全体の AABB へフォールバック（初回のみ警告ログ）する。
-        /// @param subMeshIndex サブメッシュインデックス
+        /// @details LOD0 のインデックス範囲から算出する（簡略化 LOD は部分集合なので保守的に覆える）。
+        /// @note 範囲外は対応ズレのバグ。Debug では assert、Release では全体 AABB へフォールバックする。
         const BoundingBox& GetSubMeshLocalBounds(uint32_t subMeshIndex) const;
 
         /// @brief サブメッシュ情報を取得
@@ -128,14 +125,13 @@ namespace CoreEngine
             bool hasOcclusion = false;
             bool hasEmissive = false;
         };
+        /// @brief マテリアルスロットに対応する PBR テクスチャ一式を取得
         const PBRTextureHandles& GetMaterialTextures(uint32_t materialIndex) const;
 
         /// @brief 全 Model インスタンスで共有するデフォルトマテリアル（アセット既定値）を取得
-        /// @details Model はオーバーライドが発生するまで自前の MaterialInstance を持たず、
-        ///          このリソース共有インスタンスの GPU アドレスをそのまま使う（Copy-on-Write）。
-        ///          同一モデルの複数配置がインスタンシングバッチとして統合される前提条件になる。
-        /// @param materialIndex マテリアルインデックス（範囲外はスロット0にクランプ）
-        /// @return 共有 MaterialInstance へのポインタ（未ロードなら nullptr）
+        /// @details Model はオーバーライドが起きるまでこの共有インスタンスの GPU アドレスを使う。
+        ///          複数配置がインスタンシングバッチへ統合される前提条件になる。
+        /// @param materialIndex 範囲外はスロット 0 にクランプ（未ロードなら nullptr）
         const MaterialInstance* GetDefaultMaterial(uint32_t materialIndex) const;
 
         /// @brief 頂点バッファビューを取得

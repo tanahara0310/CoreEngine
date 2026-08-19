@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 
+/// @file
 /// @brief CVar 編集の Undo / Redo スタック
 
 namespace CoreEngine
@@ -42,6 +43,7 @@ namespace CoreEngine
         /// 値は最大 16 バイト（Vector4）の固定バッファへコピーする（json 等への依存を避ける）
         static constexpr size_t kValueSize = 16;
 
+        /// @brief Undo 1 件分（対象 CVar と変更前後の値）
         struct Record {
             ICVar*   cvar = nullptr;
             uint32_t batchId = 0;                    ///< 同じ ID のレコードはまとめて Undo/Redo される

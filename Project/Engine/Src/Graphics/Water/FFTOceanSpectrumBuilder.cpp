@@ -59,14 +59,9 @@ namespace CoreEngine
         }
 
         // ===== JONSWAP スペクトル =====
-        // 旧 Phillips（Tessendorf 1985 系）からの置き換え。狙いは 3 つ:
-        //  1. ピークが「風速だけ」ではなくフェッチ（吹送距離）でも決まる
-        //  2. γ による峰の尖り = うねりが波群として揃う
-        //  3. 低波数側の裾が exp(-1.25(ωp/ω)⁴) の物理形になる
-        //     （Phillips の exp(-1/(kL)²) はピーク位置が甘く、裾の切れ方も恣意的だった）
-        // 高波数側の裾は ω^-5 ＝ 波数空間で k^-3 となり、Phillips と同じ平衡則になる。
-        // 振幅の絶対値（α 等の定数倍）は呼び出し側の RMS 較正が吸収するため、
-        // ここでは「形」だけを正しく作ればよい。
+        // ピークが風速とフェッチ（吹送距離）の両方で決まり、γ で峰が尖る（＝うねりが波群として揃う）。
+        // 高波数側の裾は ω^-5 ＝ 波数空間で k^-3 の平衡則。
+        // 振幅の絶対値は呼び出し側の RMS 較正が吸収するので、ここでは「形」だけを作る。
 
         constexpr float kJonswapGamma = 3.3f;
 
@@ -106,10 +101,8 @@ namespace CoreEngine
         }
 
         /// @brief 指向拡がりの鋭さ s（Mitsuyasu / Hasselmann）
-        /// @details ★これが旧 cos²θ 固定との最大の違い★
-        ///          実海では「ピーク付近の波は風向に鋭く揃い、ピークから離れた波ほど
-        ///          横に広がる」。旧実装は全周波数で同じ cos²θ だったため、短波まで
-        ///          風向に張り付いて筋状に見えていた。
+        /// @details 実海ではピーク付近の波が風向に鋭く揃い、離れた波ほど横に広がる。
+        ///          cos²θ 固定だと短波まで風向に張り付いて筋状に見えてしまう。
         float ComputeSpreadExponent(float angularFrequency, float peakAngularFrequency)
         {
             const float ratio = angularFrequency / (std::max)(peakAngularFrequency, 1.0e-4f);
@@ -137,10 +130,8 @@ namespace CoreEngine
         }
 
         /// @brief うねり成分の周波数スペクトル形状（ωs 周りの狭いガウス）
-        /// @details うねりは発生源から遠く離れて分散した結果なので、風波のような
-        ///          広い平衡裾を持たず、周期がほぼ揃った狭帯域になる。
-        ///          JONSWAP の γ を極端に上げるより、素直にガウスで書いた方が
-        ///          「周期と鋭さ」を直接操作できて調整しやすい。
+        /// @details うねりは発生源から遠く離れて分散した結果なので、周期がほぼ揃った狭帯域になる。
+        ///          ガウスで書くと「周期と鋭さ」を直接操作できて調整しやすい。
         float ComputeSwellShape(
             float angularFrequency, float peakAngularFrequency, float relativeWidth)
         {
@@ -224,12 +215,8 @@ namespace CoreEngine
             ComputePeakAngularFrequency(windSpeed, settings.fetchMeters, gravity);
 
         // ★カスケード間の相対エネルギーを正しくするための離散化正規化★
-        // スペクトル密度 Ψ(k) は「単位波数面積あたりの分散」なので、離散和で分散を
-        // 得るにはセル面積 Δk² を掛けなければならない。Δk = 2π/patchLength は
-        // カスケードごとに違う（521/127/31m → 282 倍の開き）ため、これを掛けないと
-        // 大パッチのカスケードだけが (L/2π)² 倍に膨れる。
-        // 旧実装はこれが無く、その歪みをカスケード別の手調整 RMS 配分で相殺していた。
-        // ここで正しく正規化することで、配分をスペクトル自身に任せられる。
+        // スペクトル密度 Ψ(k) は単位波数面積あたりの分散なので、離散和にはセル面積 Δk² が要る。
+        // Δk = 2π/patchLength はカスケードごとに違うため、掛けないと大パッチだけ (L/2π)² 倍に膨れる。
         const float deltaWaveNumber = kTwoPi / patchLength;
         const float cellArea = deltaWaveNumber * deltaWaveNumber;
 
@@ -345,11 +332,9 @@ namespace CoreEngine
         }
 
         // ---- 波高の物理較正 ----
-        // 実装の高さ場は h(x) = (1/N)Σ h̃(k)e^{ikx}、h̃ = h0 e^{iωt} + h0m* e^{-iωt}。
-        // 各 h0 の実部/虚部が N(0, sa²) なので Var(h) ≈ (4/N²)·Σ sa² となり、
+        // h(x) = (1/N)Σ h̃(k)e^{ikx} で各 h0 の実部/虚部が N(0, sa²) なので、
         // RMS = 2·sqrt(Σ sa²)/N が生成スペクトルから決定論的に見積もれる。
-        // targetRmsHeight が指定されたら全モードを一様スケールして目標RMSへ合わせる
-        // （時間発展・choppiness 変位も同じ h̃ から導出されるため整合が保たれる）。
+        // targetRmsHeight が指定されたら全モードを一様スケールして目標 RMS へ合わせる。
         stats.measuredRmsHeight = static_cast<float>(
             2.0 * std::sqrt(accumulatedAmplitudeSquared) / static_cast<double>(resolution));
         if (settings.targetRmsHeight > 0.0f && stats.measuredRmsHeight > 1.0e-6f) {

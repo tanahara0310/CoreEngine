@@ -12,6 +12,7 @@ namespace CoreEngine
 /// @details SSAOの出力にバイラテラルブラーをかけてノイズを除去
 class SSAOBlurTechnique : public RenderingTechniqueBase {
 public:
+    /// @brief シェーダー側 cbuffer SSAOBlurParams と一致させること
     struct SSAOBlurParams {
         float invViewProjMatrix[16] = {}; // WorldPosition ターゲット廃止に伴う深度復元用
         float screenWidth   = 1280.0f;

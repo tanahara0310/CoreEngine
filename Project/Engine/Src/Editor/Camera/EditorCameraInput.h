@@ -2,6 +2,7 @@
 
 #include "Camera/Control/CameraInputState.h"
 
+/// @file
 /// @brief エディタのビューポート入力を CameraInputState へ正規化する
 
 namespace CoreEngine

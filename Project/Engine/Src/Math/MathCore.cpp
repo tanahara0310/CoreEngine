@@ -6,13 +6,10 @@
 
 /// @file
 /// @details 行列・クォータニオン演算の実体は DirectXMath（SIMD）へ委譲する。
-///          API（Matrix4x4 / Quaternion / MathCore 名前空間）は自作のまま維持し、
-///          このファイル内だけで Load/Store 変換する方針。
-///          規約の対応は scratchpad の等価性テストで数値検証済み（1000 回 x 15 演算）:
-///          - 本エンジンは行ベクトル規約・左手系 → XM も同じ（LookAtLH / PerspectiveFovLH が一致）
-///          - MakeAffine のオイラー角は Rx*Ry*Rz 合成。XMMatrixRotationRollPitchYaw は
-///            Rz*Rx*Ry 順で一致しないため使用禁止
-///          - XMQuaternionMultiply(Q1, Q2) は Q2*Q1 を返すため、lhs*rhs は引数を逆順で渡す
+///          API は自作のまま維持し、Load/Store 変換はこのファイル内だけで行う。
+/// @warning 規約が一致しないもの:
+///          - MakeAffine のオイラー角は Rx*Ry*Rz 合成。XMMatrixRotationRollPitchYaw は Rz*Rx*Ry で使用禁止
+///          - XMQuaternionMultiply(Q1, Q2) は Q2*Q1 を返すので、lhs*rhs は引数を逆順で渡す
 
 namespace CoreEngine
 {

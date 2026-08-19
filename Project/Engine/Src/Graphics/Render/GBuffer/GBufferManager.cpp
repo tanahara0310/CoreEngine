@@ -28,6 +28,7 @@ namespace
         std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 0.0f },  // MotionVector
     };
 
+        /// @brief ターゲット種別を PIX / デバッグレイヤー用の名前へ変換する
     const char* ToDebugName(GBufferManager::Target target)
     {
         switch (target) {
@@ -43,6 +44,7 @@ namespace
 
 namespace CoreEngine
 {
+    // G-Buffer 一式を作る。フォーマットは kGBufferFormats 固定で、実行時には変えない
     void GBufferManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, int32_t width, int32_t height)
     {
         device_ = device;
@@ -69,6 +71,7 @@ namespace CoreEngine
 #endif
     }
 
+    // 画面サイズが変わったら全ターゲットを作り直す（RTV / SRV も張り直す）
     void GBufferManager::Resize(int32_t width, int32_t height)
     {
         if (!isInitialized_ || width <= 0 || height <= 0) {
@@ -88,6 +91,7 @@ namespace CoreEngine
         DepthStencilManager* depthStencilManager,
         ID3D12DescriptorHeap* srvHeap)
     {
+        // 全 RT を一括で OMSetRenderTargets する。深度は共有 DSV を使う
         assert(cmdList);
         assert(depthStencilManager);
         ValidateState();
@@ -161,6 +165,8 @@ namespace CoreEngine
 
     void GBufferManager::CreateOrResizeTarget(Target target)
     {
+        // フォーマットはターゲットごとに固定（kGBufferFormats）。
+        // 既存があれば作り直しになるので、RTV / SRV も同じスロットへ張り直す
         ValidateState();
 
         const uint32_t index = ToIndex(target);

@@ -56,6 +56,7 @@ namespace CoreEngine
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
 
+    // 屈折固有の構成（シェーダーパス・バインド名・出力フォーマット）を基盤へ渡す
     bool WaterRefractionRayTracingManager::Initialize(
         DirectXCommon* dxCommon,
         DescriptorManager* descriptorManager,
@@ -98,6 +99,8 @@ namespace CoreEngine
         return GetOutputCurrentStateBase(static_cast<uint32_t>(viewId));
     }
 
+    // 水面から下向きに屈折レイを飛ばし、水中のシーン色を屈折テクスチャへ書く。
+    // 結果を消費するのは WaterSurfacePass（GameView のみ）
     void WaterRefractionRayTracingManager::Dispatch(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,

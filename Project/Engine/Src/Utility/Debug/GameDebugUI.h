@@ -100,14 +100,10 @@ namespace CoreEngine
             EnginePanelCategory category = EnginePanelCategory::Settings,
             EnginePanelGroup group = EnginePanelGroup::General);
 
-        /// @brief 環境エディタを登録（HierarchyのEnvironmentツリーに表示し、選択時にInspectorで編集）
-        /// @param label Environmentツリーに表示する名前
+        /// @brief 環境エディタを登録（Hierarchy の Environment ツリーに表示し、Inspector で編集）
         /// @param owner 登録元の識別子（登録元の破棄時に自分の登録だけを解除するために使う）
-        /// @param drawer Inspector内に描画するコンテンツドロワー
-        /// @param childTree 省略可。エントリ配下の子ツリー行を描画するドロワー（Lightingの各ライト等）。
-        ///                  子行がクリックされたら true を返すこと（Inspector をこのエントリへルーティングする）
+        /// @param childTree 省略可。子ツリー行のドロワー（クリックされたら true を返すこと）
         /// @param onParentSelected 省略可。親エントリ自体が選択されたときに呼ばれる
-        ///                  （子側の選択状態をクリアして概要表示へ戻す等に使う）
         void RegisterEnvironmentEditor(const std::string& label, const void* owner, std::function<void()> drawer,
             std::function<bool()> childTree = nullptr, std::function<void()> onParentSelected = nullptr);
 
@@ -225,11 +221,8 @@ namespace CoreEngine
         void ShowConsoleUI();
 
         /// @brief Window メニュー内の 1 グループをサブメニューとして描画する
-        /// @details 対象は「単独ウィンドウとして開くパネル」＝ Tools カテゴリのエンジンパネルと
-        ///          デバッグ情報パネル。該当が 1 件も無いグループは項目自体を出さない。
-        /// @param group 描画するグループ
-        /// @param label サブメニューの表示名
         /// @param extraContent 省略可。グループ固有の追加項目（区切り線の後に描画される）
+        /// @note 該当が 1 件も無いグループは項目自体を出さない
         void DrawPanelGroupMenu(EnginePanelGroup group, const char* label,
             const std::function<void()>& extraContent = nullptr);
 

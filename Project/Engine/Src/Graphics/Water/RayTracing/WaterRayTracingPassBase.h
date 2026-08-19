@@ -26,12 +26,7 @@ namespace CoreEngine
     };
 
     /// @brief DXR 水面パス（屈折・反射・コースティクス）の共通基盤
-    /// @details 出力ビュー管理・ディスパッチ前のガード判定・診断情報といった
-    ///          「水面に限らない」部分は RayTracingPassBase へ移した（Stage 2a）。
-    ///          ここに残るのは水面固有の要素:
-    ///            - 水面サーフェス定数（波・水面高さ・シミュレーション種別・FFT有効情報）の転送
-    ///            - IWaterSurfaceModelProvider によるサーフェスデータ解決
-    ///            - 構成データ駆動の初期化/ディスパッチ（3 マネージャの 85% コピペを吸収。Phase 3）
+    /// @details 水面固有の要素だけを持つ。水面に限らない部分は RayTracingPassBase 側にある。
     class WaterRayTracingPassBase : public RayTracingPassBase {
     public:
         /// @brief FFT Ocean の波面テクスチャ入力（3 パス共通）
@@ -45,6 +40,7 @@ namespace CoreEngine
 
         /// @brief RT 側が参照する水面モデルの供給元を差し替える
         void SetSurfaceModelProvider(const std::shared_ptr<const IWaterSurfaceModelProvider>& provider);
+        /// @brief 現在の水面モデル供給元を取得
         std::shared_ptr<const IWaterSurfaceModelProvider> GetSurfaceModelProvider() const;
 
         /// @brief 直近ディスパッチ時の水面高さ（診断ログ用）
@@ -55,13 +51,8 @@ namespace CoreEngine
 
     protected:
         /// @brief パイプライン 1 本分の構成（差分はこれだけ。残りは全パス同型）
-        /// @details 文字列・配列とも静的記憶域のものを前提にポインタで保持する。
-        ///          srvTableNames を std::initializer_list にしていたときは
-        ///          `desc.srvTableNames = { "a", "b" };` の裏側の一時配列が
-        ///          その行の末尾で寿命を終え、以後ダングリングだった
-        ///          （Debug ではスタックが残っていて動き、Release でのみ落ちた）。
-        ///          span なら同じ書き方はコンパイルエラーになり、呼び出し側は
-        ///          static constexpr 配列を渡すしかなくなる。
+        /// @warning 文字列・配列とも静的記憶域のものを渡すこと。
+        ///          initializer_list だと一時配列がその行で寿命を終えてダングリングになる。
         struct RTWaterPipelineDesc {
             const char* ownerName = nullptr;         ///< ログ・診断に出す所有者名
             const char* outputDebugName = nullptr;   ///< 出力テクスチャのデバッグ名接頭辞

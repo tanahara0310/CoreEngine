@@ -6,6 +6,7 @@
 namespace CoreEngine
 {
 template<typename tValue>
+/// @brief アニメーションカーブ上の 1 キーフレーム（時刻と値）
 struct Keyframe {
 
     float time;      //!< キーフレームの時刻(単位は秒)

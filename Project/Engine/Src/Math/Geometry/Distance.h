@@ -28,12 +28,7 @@ namespace CoreEngine
         /// @note 点が中心と一致する場合は +X 方向の表面上の点を返す
         Vector3 ClosestPointOnSphere(const Vector3& point, const Sphere& sphere);
 
-        /// @brief 2 線分間の最近接点ペア
-        /// @param a         線分 A
-        /// @param b         線分 B
-        /// @param outPointA A 上の最近接点
-        /// @param outPointB B 上の最近接点
-        /// @note 縮退（長さ 0）にも対応する。カプセル同士の判定はこれを土台にする。
+        /// @brief 2 線分間の最近接点ペア（縮退にも対応。カプセル同士の判定の土台）
         void ClosestPointsBetweenSegments(const LineSegment& a, const LineSegment& b,
             Vector3& outPointA, Vector3& outPointB);
 

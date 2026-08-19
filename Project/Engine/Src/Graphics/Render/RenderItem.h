@@ -16,6 +16,7 @@ namespace CoreEngine
         WaterSurface,
     };
 
+    /// @brief 描画キューへ積む 1 件（対象オブジェクトと、どのパス・ブレンド・順序で描くか）
     struct RenderItem {
         GameObject* object = nullptr;
         RenderItemKind kind = RenderItemKind::Default;

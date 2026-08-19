@@ -5,6 +5,7 @@
 #include <vector>
 #include "NodeAnimation.h"
 
+/// @file
 /// @brief アニメーション補間ユーティリティ
 
 namespace CoreEngine

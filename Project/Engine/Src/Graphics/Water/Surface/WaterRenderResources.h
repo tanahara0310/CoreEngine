@@ -55,12 +55,8 @@ namespace CoreEngine
     };
 
     /// @brief 「毎フレーム Engine 側が決める」水面描画の外部結線一式
-    /// @details WaterFrameConstants のフィールドは所有者が 2 種類に分かれる。
-    ///          - UI が決め、フレームをまたいで保持する値
-    ///            （フレネル / Depth Fade / 光学係数 / デバッグモード / FFT 経路フラグ）
-    ///          - Engine のリソース状態から毎フレーム導出する値 ← **この構造体が運ぶ分**
-    ///          両者が混ざっていたため「誰がいつ書くのか」が 12 個の setter に
-    ///          散っていた。境界をここで明示する。
+    /// @details WaterFrameConstants のうち、UI が保持する値ではなく
+    ///          Engine のリソース状態から毎フレーム導出する分だけをここが運ぶ。
     struct WaterFrameBinding {
         /// @brief 描画で参照する SRV / CBV 一式
         WaterRenderResources resources{};

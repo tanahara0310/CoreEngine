@@ -24,6 +24,7 @@ namespace CoreEngine
         void Draw(const CameraEditorContext& context) override;
 
     private:
+        /// @brief クリップ内の 1 キーフレーム（時刻とカメラ姿勢）
         struct ClipKeyframe {
             float time = 0.0f;
             CameraSnapshot snapshot{};

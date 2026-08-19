@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+/// @file
 /// @brief CVar のグローバルレジストリ
 
 namespace CoreEngine
@@ -13,13 +14,9 @@ namespace CoreEngine
     class ICVar;
 
     /// @brief 全 CVar を一元管理するレジストリ
-    /// @details CVar のコンストラクタが自動的に自分を登録する。UI（CVarPanel）と
-    ///          自動保存（CVarSettingsSection）は、このリストを走査するだけで動く。
-    ///          「機能を追加したのに UI/保存へ足し忘れる」事故を構造的に防ぐのが目的。
-    ///
-    ///          静的初期化中（main より前）に登録が走るため、Meyers シングルトンで
-    ///          初期化順序問題を回避している。この時点では Logger が未初期化の可能性が
-    ///          あるので、警告は溜めておき FlushPendingWarnings() でまとめて出力する。
+    /// @details CVar のコンストラクタが自分を登録するので、UI と自動保存はこのリストを走査するだけで動く。
+    /// @note 静的初期化中に登録が走るため Meyers シングルトン。
+    ///       この時点では Logger が未初期化なので、警告は FlushPendingWarnings() でまとめて出す。
     class CVarRegistry
     {
     public:

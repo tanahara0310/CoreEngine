@@ -8,34 +8,13 @@ namespace CoreEngine {
     class Camera;
 }
 
-/// @brief 描画オブジェクト種別ごとのレンダラー基底インターフェース
-///
-/// @details
-///  ## 役割
-///  IRenderer は「描画オブジェクトの種類」ごとに PSO・RootSignature を
-///  保持し、描画コマンドのバインドを担う **単一描画ユニット** を表現する。
-///  （例: ModelRenderer / SpriteRenderer / UIRenderer / ParticleRenderer ...）
-///
-///  ## RenderPass との違い
-///  - IRenderer  : 「何を描くか」を担当する低レベル描画器
-///                 （PSO/RootSignature/DrawCall の所有・発行）
-///  - RenderPass : 「いつ・どこに描くか」を担当する高レベルパイプラインノード
-///                 （RenderTarget 切替・バリア・複数 IRenderer の呼び分け）
-///
-///  RenderPass は内部で複数の IRenderer を呼び出してフレーム全体を構築する。
-///  IRenderer は RenderPass に依存しない（疎結合）。
-///
-///  ## ライフサイクル
-///   1. Initialize(device)        - 起動時 1 回
-///   2. SetCamera(camera)         - フレーム開始時
-///   3. BeginPass(cmdList, blend) - パス開始時に PSO/RootSignature を設定
-///   4. (描画コマンドの発行)
-///   5. EndPass()                 - パス終了時
-///
-///  ## オプション機能
-///  - GBuffer 描画をサポートする場合は IGBufferRenderer を併せて実装する。
 namespace CoreEngine
 {
+/// @brief 描画オブジェクト種別ごとのレンダラー基底インターフェース
+/// @details PSO / RootSignature を保持し、描画コマンドのバインドまでを担う単一描画ユニット。
+///          「いつ・どこに描くか」は RenderPass の担当で、IRenderer は RenderPass に依存しない。
+/// @note 使用順は Initialize → SetCamera → BeginPass → 描画 → EndPass。
+///       G-Buffer 描画に対応する場合は IGBufferRenderer も併せて実装する。
 class IRenderer {
 public:
     virtual ~IRenderer() = default;

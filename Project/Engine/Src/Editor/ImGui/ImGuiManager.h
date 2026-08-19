@@ -23,10 +23,9 @@ namespace CoreEngine {
     class GameDebugUI;
 }
 
-/// @brief ImGui管理クラス
-
 namespace CoreEngine
 {
+/// @brief ImGui管理クラス
 class ImGuiManager {
 public:
 /// @brief 初期化

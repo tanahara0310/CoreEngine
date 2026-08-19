@@ -45,6 +45,7 @@ namespace CoreEngine
         return "";
     }
 
+    // アセット本体の隣に .meta を書く（Unity と同じ流儀）。GUID は 1 度作ったら変えない
     void AssetMetadata::SaveMetaFile(const std::filesystem::path& assetPath, const std::string& guid, AssetType type)
     {
         std::filesystem::path metaPath = GetMetaFilePath(assetPath);

@@ -93,6 +93,7 @@ namespace CoreEngine
         /// @brief 現在のリソース状態参照を取得する
         /// @return 外部の自動バリア処理が更新する状態変数への参照
         D3D12_RESOURCE_STATES& GetCurrentState();
+        /// @brief 現在のリソースステート（バリア発行時の判定に使う）
         D3D12_RESOURCE_STATES GetCurrentState() const;
 
     private:

@@ -50,22 +50,14 @@ namespace CoreEngine
     };
 
     /// @brief エフェクトが自分のパス群と一時リソースを RenderGraph へ積むためのファサード
-    /// @details これがあるとエフェクトは「入力1・出力1・単一ディスパッチ」の制約から外れ、
-    ///          ミップチェーンやピラミッド分解のような多段処理を表現できる。
-    ///          バリアと実行順は宣言から RenderGraph が導出するので、エフェクト側は書かない。
-    ///
-    ///          【重要】AddComputePass / AddGraphicsPass は**宣言だけ**を行う。
-    ///          GPU コマンドを積むのは record ラムダの中だけにすること
-    ///          （BuildPasses はバリア導出より前に走るため）。
-    ///          設計: Docs/Engine/Graphics/PostProcess/PostEffect_Refactoring_Plan.md
+    /// @details 「入力1・出力1・単一ディスパッチ」の制約から外れ、多段処理を表現できる。
+    ///          バリアと実行順は宣言から RenderGraph が導出する。
+    /// @warning AddComputePass / AddGraphicsPass は宣言のみ。GPU コマンドは record ラムダの中で積むこと。
     class PostEffectGraphBuilder {
     public:
-        /// @param context           今フレームの描画コンテキスト
-        /// @param pool              一時ターゲットのプール
-        /// @param inputResource     チェーン上でこのエフェクトへ入ってくる色
-        /// @param chainOutput       このエフェクトが最終的に書くべき出力
-        /// @param baseWidth         フル解像度の幅（一時ターゲットのスケール基準）
-        /// @param baseHeight        フル解像度の高さ
+        /// @param inputResource チェーン上でこのエフェクトへ入ってくる色
+        /// @param chainOutput   このエフェクトが最終的に書くべき出力
+        /// @param baseWidth     フル解像度の幅（一時ターゲットのスケール基準）
         PostEffectGraphBuilder(
             const RenderContext& context,
             PostEffectTransientPool& pool,
@@ -86,12 +78,10 @@ namespace CoreEngine
             return PostEffectResourceRef(logicalName ? std::string(logicalName) : std::string());
         }
 
-        /// @brief 一時リソースを確保する
+        /// @brief 一時リソースを確保する（失敗時は無効な参照）
         /// @param resolutionScale 1.0 でフル解像度、0.5 で 1/2
         /// @param format DXGI_FORMAT_UNKNOWN のときはフル解像度と同じ既定フォーマット
-        /// @return 確保したリソースへの参照。失敗時は無効な参照
-        /// @note 同一フレーム内でのみ有効。次フレームへ持ち越すものは
-        ///       Blackboard の名前付きリソースにすること（TAA 履歴と同じ扱い）
+        /// @note 同一フレーム内でのみ有効。持ち越すものは Blackboard の名前付きリソースにすること
         PostEffectResourceRef CreateTransient(float resolutionScale = 1.0f,
                                               DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN);
 

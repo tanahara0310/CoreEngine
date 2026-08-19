@@ -153,6 +153,7 @@ namespace CoreEngine
         ID3D12Resource* spectrumB,
         D3D12_RESOURCE_STATES& spectrumBState)
     {
+        // スペクトル（時間発展後）のリードバックを積む。毎フレームは重いので間引く
         if (!IsEnabled() || !cmdList || !spectrumA || !spectrumB) {
             return;
         }
@@ -204,6 +205,7 @@ namespace CoreEngine
         ID3D12Resource* spectrumB,
         D3D12_RESOURCE_STATES& spectrumBState)
     {
+        // 毎フレーム全解像度をコピーすると重いので、kLogIntervalFrames ごとに 1 回だけ拾う
         if (!IsEnabled() || !cmdList || !spectrumA || !spectrumB) {
             return;
         }
@@ -255,6 +257,7 @@ namespace CoreEngine
         ID3D12Resource* normal,
         D3D12_RESOURCE_STATES& normalState)
     {
+        // 波面（変位・法線）のリードバックを積む。毎フレームは重いので間引く
         if (!IsEnabled() || !cmdList || !displacement || !normal) {
             return;
         }

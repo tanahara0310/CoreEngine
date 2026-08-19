@@ -122,10 +122,8 @@ namespace CoreEngine
     }
     // =========================================================================
     // HLSL 側の cbuffer とレイアウトを共有する構造体
-    //
-    // どれもスカラーのみで構成する。cbuffer 内で float2/float3 や配列を使うと
-    // 16 バイト境界への切り上げが入り、C++ 側とオフセットが食い違う
-    // （2026-07-25 に影が全消失した原因がこれ）。
+    // どれもスカラーのみで構成する。float2/float3 や配列を使うと 16 バイト境界への
+    // 切り上げが入り、C++ 側とオフセットが食い違う（影が全消失した原因）。
     // =========================================================================
 
     /// @brief RayGen（RTShadow.hlsl）の ShadowRayConstants
@@ -835,8 +833,7 @@ namespace CoreEngine
 
     // =========================================================================
     // テンポラル蓄積パス（RayGen の直後、Denoise の前に呼び出す）
-    //   Raw + 前フレーム履歴 → 今フレーム履歴。
-    //   Stage 3 で履歴を 2 枚の ping-pong にしたため、全画面 CopyResource は不要になった。
+    //   Raw + 前フレーム履歴 → 今フレーム履歴（履歴は 2 枚の ping-pong）。
     // =========================================================================
     void RayTracingShadowManager::ApplyTemporal(
         ID3D12GraphicsCommandList* cmdList,
@@ -911,9 +908,7 @@ namespace CoreEngine
 
     // =========================================================================
     // A-Trous デノイズ ＋ フル解像度への解決（ApplyTemporal の直後に呼ぶ）
-    //   入力はテンポラル出力（＝今フレームの履歴）。
-    //   ping/pong は DenoiseA / DenoiseB 専用スロットで行うので、
-    //   Stage 2 までの「パス数は偶数」という制約は無くなった。
+    //   入力はテンポラル出力（＝今フレームの履歴）。ping/pong は専用スロットで行う。
     // =========================================================================
     void RayTracingShadowManager::Denoise(
         ID3D12GraphicsCommandList* cmdList,
@@ -1025,6 +1020,7 @@ namespace CoreEngine
         uint32_t lightIndex,
         TextureSlot sourceSlot)
     {
+        // ハーフ解像度で解いた影を、法線と深度をガイドにフル解像度へバイラテラルアップサンプルする
         if (!resolveInitialized_) return;
 
         auto& view = views_[viewIndex][lightIndex];

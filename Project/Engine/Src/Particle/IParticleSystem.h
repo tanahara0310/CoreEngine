@@ -39,30 +39,49 @@ public:
     virtual void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, const std::string& name) = 0;
 
     // ===== 再生制御 =====
+    /// @brief 再生を開始する
     virtual void Play() = 0;
+    /// @brief 再生を停止する（生存中のパーティクルも消える）
     virtual void Stop() = 0;
+    /// @brief 再生中か
     virtual bool IsPlaying() const = 0;
 
     // ===== 見た目 =====
+    /// @brief パーティクルに貼るテクスチャを設定
     virtual void SetTexture(const std::string& texturePath) = 0;
+    /// @brief ビルボードの向き方を設定
     virtual void SetBillboardType(BillboardType type) = 0;
+    /// @brief ビルボードの向き方を取得
     virtual BillboardType GetBillboardType() const = 0;
+    /// @brief ブレンドモードを設定
     virtual void SetBlendMode(BlendMode mode) = 0;
+    /// @brief ブレンドモードを取得
     virtual BlendMode GetBlendMode() const = 0;
 
     // ===== エミッター =====
+    /// @brief エミッターのワールド座標を設定
     virtual void SetEmitterPosition(const Vector3& position) = 0;
+    /// @brief エミッターのワールド座標を取得
     virtual Vector3 GetEmitterPosition() const = 0;
 
     // ===== モジュール（パラメータはここから編集する） =====
+    /// @brief 寿命・初期色などの基本モジュールを取得
     virtual MainModule& GetMainModule() = 0;
+    /// @brief 放出レートモジュールを取得
     virtual EmissionModule& GetEmissionModule() = 0;
+    /// @brief 放出形状モジュールを取得
     virtual ShapeModule& GetShapeModule() = 0;
+    /// @brief 初速モジュールを取得
     virtual VelocityModule& GetVelocityModule() = 0;
+    /// @brief 色モジュールを取得
     virtual ColorModule& GetColorModule() = 0;
+    /// @brief 力場モジュールを取得
     virtual ForceModule& GetForceModule() = 0;
+    /// @brief サイズモジュールを取得
     virtual SizeModule& GetSizeModule() = 0;
+    /// @brief 回転モジュールを取得
     virtual RotationModule& GetRotationModule() = 0;
+    /// @brief ノイズ（乱流）モジュールを取得
     virtual NoiseModule& GetNoiseModule() = 0;
 };
 }

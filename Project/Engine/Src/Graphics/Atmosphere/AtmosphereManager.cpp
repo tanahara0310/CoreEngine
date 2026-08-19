@@ -140,6 +140,7 @@ namespace CoreEngine
         constexpr float kMetersToKm = 1.0f / 1000.0f;
         constexpr float kPerMeterToPerKm = 1000.0f;
 
+    /// @brief 大気 LUT 用の 2D リソース記述を作る（UAV 兼 SRV）
         D3D12_RESOURCE_DESC MakeLUTTexture2DDesc(uint32_t width, uint32_t height, DXGI_FORMAT format)
         {
             D3D12_RESOURCE_DESC desc{};
@@ -454,6 +455,8 @@ namespace CoreEngine
 
     bool AtmosphereManager::CreateLUTPipelines(ID3D12Device* device)
     {
+        // LUT ごとに CS を 1 本ずつ構築する。1 本でも欠けると空が描けないので、
+        // 失敗した時点で即 false を返し、どの LUT で落ちたかをログに残す
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();
 
@@ -1110,10 +1113,9 @@ namespace CoreEngine
             minRadius, maxRadius);
 
         // ===== Sky-View LUT の変化検知 =====
-        // 太陽方向・色・強度・カメラ高度が変わった場合のみ Sky-View を再生成する
-        // （Transmittance / Multi-Scattering は太陽に依存しないため再生成しない）。
-        // 色・強度が対象なのは、Sky-View / CameraVolume LUT にライト色を前乗算して
-        // 格納しているため（サンプル時乗算だった旧方式では方向のみで足りた）
+        // 太陽方向・色・強度・カメラ高度が変わった場合のみ再生成する
+        // （Transmittance / Multi-Scattering は太陽に依存しない）。
+        // 色・強度が対象なのは、LUT へライト色を前乗算して格納しているため。
         constexpr float kDirEpsilon = 1e-5f;
         constexpr float kRadiusEpsilonMeters = 0.5f;
         constexpr float kColorEpsilon = 1e-5f;
@@ -1153,9 +1155,7 @@ namespace CoreEngine
         // ===== 直接光の大気透過率（Transmittance on Light。太陽・月共通） =====
         // 地表→光源の透過率でライトの実効色を変調する（UE の Atmosphere Sun Light 相当）。
         // authored なライトデータは書き換えず、LightManager が GPU 転送時のコピーへ適用する
-        // （直接書き換えると翌フレームに減衰済みの色を再度読み、フィードバックで光が消えていく）。
-        // ライトの GPU 転送（FrameStart）は本 Update（PostLogic）より先に走るため反映は
-        // 1 フレーム遅延だが、光源方向は連続的にしか変化しないため知覚できない。
+        // （直接書き換えると減衰済みの色を再度読み、フィードバックで光が消えていく）。
         sunTransmittance_ = hasSunLight_
             ? ComputeLightTransmittanceCPU(sunDirection_) : Vector3{ 1.0f, 1.0f, 1.0f };
         moonTransmittance_ = hasMoonLight_
@@ -1176,11 +1176,9 @@ namespace CoreEngine
 
     float AtmosphereManager::ComputeSceneIlluminationLuminance() const
     {
-        // 光源1灯（intensity=1）あたりの相対地表照度。
-        //  - 高度 >= 0: 地平線で 0.1（直達が水平でも空の散乱光がある）→ 天頂で 1.0 の線形。
-        //  - 高度 < 0（薄明）: 実測の薄明照度カーブに合わせた指数減衰
-        //    （太陽高度1°につき約10^0.36倍。市民薄明-6°で日没時の約1/150、
-        //     天文薄明-18°で実質ゼロ。文献値の log-linear 近似）。
+        // 光源 1 灯（intensity=1）あたりの相対地表照度。
+        // 高度 >= 0 は地平線 0.1 → 天頂 1.0 の線形。高度 < 0（薄明）は実測カーブに合わせた指数減衰
+        // （太陽高度 1°につき約 10^0.36 倍。天文薄明 -18°で実質ゼロ）。
         auto relativeIlluminance = [](float sinElevation) {
             if (sinElevation >= 0.0f) {
                 return 0.1f + 0.9f * sinElevation;

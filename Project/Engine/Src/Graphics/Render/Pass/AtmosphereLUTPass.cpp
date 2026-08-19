@@ -35,11 +35,10 @@ namespace CoreEngine
         // ダーティフラグが立っている場合のみ内部で再計算される
         context.atmosphereManager->GenerateLUTsIfNeeded(cmdList);
 
-        // ===== 空キューブマップ（Phase 3b: スペキュラIBL / 空・雲の映り込み） =====
-        // Sky-View LUT 再生成時、および雲が動いている間は毎フレーム、
+        // ===== 空キューブマップ（スペキュラ IBL / 空・雲の映り込み） =====
+        // Sky-View LUT 再生成時と雲が動いている間は毎フレーム、
         // 「空の焼き込み → 雲の前乗算合成 → GGX プリフィルタ」を実行する。
-        // 雲ノイズは VolumetricCloudNoisePass（priority 20 = 本パスの後）で生成されるため、
-        // 初回フレームのみ雲なしで焼かれ、次フレームから雲込みになる。
+        // 雲ノイズは本パスの後で生成されるため、初回フレームだけ雲なしで焼かれる。
         auto* cloudManager = context.volumetricCloudManager;
         const bool cloudsReady = cloudManager
             && cloudManager->AreCloudsActive()

@@ -33,6 +33,7 @@ class PipelineStateManager;
 /// @brief PSOの構築を行うビルダークラス
 class PipelineStateBuilder {
 public:
+    /// @brief 生成した PSO の登録先マネージャを指定して構築する
     explicit PipelineStateBuilder(PipelineStateManager* manager);
 
     // inputElementDescs_ の SemanticName が semanticNameStorage_ 内の文字列を
@@ -52,12 +53,6 @@ public:
     PipelineStateBuilder& SetDebugName(const std::string& name);
 
     /// @brief 入力エレメントを追加
-    /// @param semanticName セマンティック名
-    /// @param semanticIndex インデックス
-    /// @param format フォーマット
-    /// @param alignedByteOffset アライメントされたバイトオフセット
-    /// @param inputSlot 入力スロット(デフォルトは0)
-    /// @return ビルダー自身(メソッドチェーン用)
     PipelineStateBuilder& AddInputElement(
         const char* semanticName,
         UINT semanticIndex,
@@ -113,12 +108,8 @@ public:
         DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
         UINT index = 0);
 
-    /// @brief [MRT] 複数レンダーターゲットのフォーマットを一括設定（G-Buffer向け）
-    /// @note 単一RTの場合は SetRenderTargetFormat() で十分です。
-    ///       G-BufferパスなどMRTを使用する場合はこちらを使用してください。
-    /// @param formats フォーマット配列（要素数は count 個）
-    /// @param count レンダーターゲット数（最大8）
-    /// @return ビルダー自身
+    /// @brief [MRT] 複数レンダーターゲットのフォーマットを一括設定（G-Buffer 向け）
+    /// @note 単一 RT なら SetRenderTargetFormat() で足りる。count は最大 8
     PipelineStateBuilder& SetRenderTargetFormats(const DXGI_FORMAT* formats, UINT count);
 
     /// @brief 深度ステンシルフォーマットの設定
@@ -141,13 +132,8 @@ public:
         D3D12_COLOR_WRITE_ENABLE writeMask = D3D12_COLOR_WRITE_ENABLE_ALL,
         bool enableAlpha = true);
 
-    /// @brief ブレンドモードを指定してPSOを構築
-    /// @param device デバイス
-    /// @param vs 頂点シェーダー
-    /// @param ps ピクセルシェーダー
-    /// @param rootSignature ルートシグネチャ
-    /// @param modes 生成するブレンドモード(空の場合はkBlendModeNoneのみ)
-    /// @return 構築に成功したか
+    /// @brief ブレンドモードを指定して PSO を構築
+    /// @param modes 生成するブレンドモード（空なら kBlendModeNone のみ）
     bool Build(
         ID3D12Device* device,
         IDxcBlob* vs,
@@ -155,27 +141,16 @@ public:
         ID3D12RootSignature* rootSignature,
         const std::vector<BlendMode>& modes = {});
 
-    /// @brief 全ブレンドモードでPSOを構築（単一RT・フォワードパス向け）
-    /// @note G-BufferパスのPSOはブレンドが不要なため BuildGBuffer() を使用してください。
-    ///       MRT（numRenderTargets > 1）でこの関数を呼び出した場合は警告を出力します。
-    /// @param device デバイス
-    /// @param vs 頂点シェーダー
-    /// @param ps ピクセルシェーダー
-    /// @param rootSignature ルートシグネチャ
-    /// @return 構築に成功したか
+    /// @brief 全ブレンドモードで PSO を構築（単一 RT・フォワードパス向け）
+    /// @note G-Buffer パスは BuildGBuffer() を使うこと。MRT で呼ぶと警告を出す
     bool BuildAllBlendModes(
         ID3D12Device* device,
         IDxcBlob* vs,
         IDxcBlob* ps,
         ID3D12RootSignature* rootSignature);
 
-    /// @brief G-Buffer専用PSO構築（kBlendModeNone のみ、全RTスロットのブレンド設定済み）
-    /// @note G-Buffer書き出しパスのPSOは透過が不要なため BuildAllBlendModes() は使用しないでください。
-    /// @param device デバイス
-    /// @param vs 頂点シェーダー
-    /// @param ps ピクセルシェーダー
-    /// @param rootSignature ルートシグネチャ
-    /// @return 構築に成功したか
+    /// @brief G-Buffer 専用 PSO 構築（kBlendModeNone のみ・全 RT スロットのブレンド設定済み）
+    /// @note G-Buffer は透過が不要なので BuildAllBlendModes() は使わないこと
     bool BuildGBuffer(
         ID3D12Device* device,
         IDxcBlob* vs,

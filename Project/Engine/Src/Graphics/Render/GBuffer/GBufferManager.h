@@ -45,6 +45,7 @@ namespace CoreEngine
         /// @param width 初期幅
         /// @param height 初期高さ
         void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, int32_t width, int32_t height);
+        /// @brief 画面サイズ変更に合わせて全ターゲットを作り直す
         void Resize(int32_t width, int32_t height);
 
         /// @brief ジオメトリパスの描画セットアップを行う
@@ -56,11 +57,17 @@ namespace CoreEngine
             DepthStencilManager* depthStencilManager,
             ID3D12DescriptorHeap* srvHeap);
 
+        /// @brief 指定ターゲットのリソース
         ID3D12Resource* GetResource(Target target) const;
+        /// @brief 指定ターゲットの RTV ハンドル
         D3D12_CPU_DESCRIPTOR_HANDLE GetRTVHandle(Target target) const;
+        /// @brief 指定ターゲットの SRV ハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle(Target target) const;
+        /// @brief 指定ターゲットのフォーマット
         DXGI_FORMAT GetFormat(Target target) const;
+        /// @brief 全ターゲットのフォーマット配列（PSO の RTV 設定に渡す）
         const DXGI_FORMAT* GetFormats() const;
+        /// @brief 指定ターゲットの現在ステートへの参照（バリア時に更新される）
         D3D12_RESOURCE_STATES& GetCurrentState(Target target);
 
         uint32_t GetTargetCount() const { return kTargetCount; }
@@ -69,6 +76,7 @@ namespace CoreEngine
         bool IsInitialized() const { return isInitialized_; }
 
     private:
+        /// @brief G-Buffer の 1 枚分（実体・RTV/SRV・現在ステート）
         struct TargetResource {
             Microsoft::WRL::ComPtr<ID3D12Resource> resource;
             D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};

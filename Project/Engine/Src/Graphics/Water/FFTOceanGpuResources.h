@@ -7,11 +7,7 @@
 namespace CoreEngine
 {
     /// @brief リソース本体・追跡ステート・SRV/UAV ビューをひとまとめにした束
-    /// @details 以前は FFTOceanManager がこれらを 5〜6 本の並列メンバ配列
-    ///          （resource / state / srvCpu / srv / uavCpu / uav が別配列）で持ち、
-    ///          Helper へ 10〜15 引数で受け渡していた（引数爆発の根因）。
-    ///          「1 テクスチャ = 1 構造体」に畳むことで、Helper は本物の部品として
-    ///          この束だけを受け取れる。
+    /// @details 「1 テクスチャ = 1 構造体」に畳むことで、Helper 群が引数爆発せずに済む。
     struct FFTOceanGpuTexture {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
         D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;

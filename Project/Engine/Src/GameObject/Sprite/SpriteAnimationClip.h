@@ -19,12 +19,7 @@ namespace CoreEngine
     class SpriteAnimationClip
     {
     public:
-        /// @brief フレームを1枚追加
-        /// @param texLeft   テクスチャ上のピクセル X 座標
-        /// @param texTop    テクスチャ上のピクセル Y 座標
-        /// @param texWidth  フレームのピクセル幅
-        /// @param texHeight フレームのピクセル高さ
-        /// @param duration  このフレームの表示時間（秒）
+        /// @brief フレームを 1 枚追加（tex* はテクスチャ上のピクセル座標・サイズ、duration は秒）
         void AddFrame(float texLeft, float texTop, float texWidth, float texHeight, float duration);
 
         /// @brief 各フレームにテクスチャパスを指定してフレームを追加
@@ -42,15 +37,9 @@ namespace CoreEngine
             bool  loop = true);
 
         /// @brief 均等グリッドのスプライトシートからクリップを一括生成
-        /// @param frameWidth  1フレームのピクセル幅
-        /// @param frameHeight 1フレームのピクセル高さ
-        /// @param frameCount  フレーム総数
-        /// @param columns     シート1行あたりのフレーム数
-        /// @param fps         再生速度（フレーム毎秒）
-        /// @param loop        ループ再生するか
-        /// @param startX      シート上の開始ピクセル X
-        /// @param startY      シート上の開始ピクセル Y
-        /// @return 生成されたクリップ
+        /// @param columns シート 1 行あたりのフレーム数
+        /// @param startX  シート上の開始ピクセル X
+        /// @param startY  シート上の開始ピクセル Y
         static SpriteAnimationClip CreateUniform(
             float frameWidth, float frameHeight,
             int   frameCount, int   columns,

@@ -141,30 +141,24 @@ namespace CoreEngine
         virtual void OnCollisionExit(GameObject* other);
 
         // ----- 接触情報つきの衝突イベント -----
-        /// @details 判定システムはこちらを呼ぶ。既定実装は上の `GameObject*` 版へ転送するので、
-        ///          相手だけ分かればよい場合は従来どおり `GameObject*` 版を override すればよい。
-        ///          法線・貫通深度・どのコライダーが当たったかが要る場合はこちらを override する。
-        /// @note 両方 override する場合は、こちらから明示的に基底実装
-        ///       （`GameObject::OnCollisionEnter(info)`）を呼ぶと `GameObject*` 版へも流れる。
-
+        /// @details 判定システムはこちらを呼ぶ。既定実装は上の `GameObject*` 版へ転送する。
+        ///          法線・貫通深度・当たったコライダーが要る場合だけこちらを override する。
         virtual void OnCollisionEnter(const CollisionInfo& info);
+        /// @brief 接触が続いている間、毎フレーム呼ばれる
         virtual void OnCollisionStay(const CollisionInfo& info);
+        /// @brief 接触が切れたフレームに 1 回だけ呼ばれる
         virtual void OnCollisionExit(const CollisionInfo& info);
 
         // ===== 押し出し =====
 
         /// @brief 衝突解決による移動を受け入れる
-        /// @param delta ワールド空間の移動量
-        /// @return 実際に動かせたら true。false を返すと解決側は「動かせない相手」として扱い、
-        ///         もう一方を全量押し出す。
-        /// @note 既定実装は `TransformComponent` があればそこへ委譲し、無ければ false。
+        /// @return 実際に動かせたら true。false なら解決側はもう一方を全量押し出す
+        /// @note 既定実装は `TransformComponent` があればそこへ委譲し、無ければ false
         virtual bool TryApplyCollisionPush(const Vector3& delta);
 
         /// @brief ワールド空間での位置を返す（コライダー・ピッキングが参照する位置）
-        /// @note 既定実装は `ITransformSource` コンポーネントから読み、無ければ原点。
-        ///       **コライダーを付けるオブジェクトは必ずトランスフォームを持つこと**
-        ///       （`ColliderComponent::Add()` が assert で検出する。持たせ忘れると
-        ///       全員が原点で重なるという無音のバグになる）。
+        /// @note 既定実装は `ITransformSource` から読み、無ければ原点。
+        ///       コライダーを付けるオブジェクトは必ずトランスフォームを持つこと
         virtual Vector3 GetWorldPosition() const;
 
         /// @brief ワールド空間でのスケールを返す（コライダーのサイズ／半径に乗る）
@@ -176,9 +170,8 @@ namespace CoreEngine
         // 実体は `ColliderComponent`（IComponent 派生）で、必要なオブジェクトにだけ載る。
         // 以下は移行期の互換 API で、内部は AddComponent / GetComponent へ転送している。
 
-        /// @brief コライダー集合を取得する（**無ければ生成する副作用あり**）
-        /// @note 「持っているか調べたいだけ」なら `TryGetColliders()` を使うこと
-        ///       （収集ループや表示で呼ぶと全オブジェクトに空の集合が生える）。
+        /// @brief コライダー集合を取得する（無ければ生成する副作用あり）
+        /// @note 有無を調べたいだけなら `TryGetColliders()` を使うこと
         ColliderComponent& GetColliders() {
             return *GetOrAddComponent<ColliderComponent>();
         }
@@ -195,12 +188,8 @@ namespace CoreEngine
 
         // ===== コライダー簡易設定 API（1 本だけで足りる場合の入口） =====
 
-        /// @brief 球体コライダーを追加する
-        /// @param radius 球の半径（ローカル。判定時にオーナーのスケールが乗る）
-        /// @param layer 衝突判定に使うレイヤー。デフォルトは CollisionLayer::Default。
-        /// @return 追加されたコライダーへの参照（以後の追加でも無効化されない）
-        /// @note **複数回呼ぶと本数が増える**（以前は毎回置き換えだった）。
-        ///       置き換えたい場合は RemoveCollider() してから呼ぶこと。
+    /// @brief 球体コライダーを追加する（radius はローカル。判定時にオーナーのスケールが乗る）
+    /// @note 複数回呼ぶと本数が増える。置き換えたいなら RemoveCollider() してから呼ぶこと
         Collider& AddSphereCollider(float radius, CollisionLayer layer = CollisionLayer::Default);
 
         /// @brief AABB コライダーを追加する
@@ -276,12 +265,8 @@ namespace CoreEngine
 
         // ===== スポーン =====
 
-        /// @brief 同じシーンに新しいオブジェクトをスポーンする
-        /// @tparam T GameObject 派生クラス
-        /// @tparam Args T のコンストラクタ引数の型パック
-        /// @param args T のコンストラクタに転送する引数
-        /// @return 生成・登録されたオブジェクトへのポインタ（所有権は GameObjectManager が持つ）
-        /// @note GameObjectManager::AddObject() で登録済みのオブジェクトからのみ呼び出せる。
+        /// @brief 同じシーンに新しいオブジェクトをスポーンする（所有権は GameObjectManager）
+        /// @note GameObjectManager へ登録済みのオブジェクトからのみ呼べる。
         ///       Update() 中に呼んでも安全（pending キューに積まれ次フレームから有効になる）。
         template<typename T, typename... Args>
         T* Spawn(Args&&... args) {

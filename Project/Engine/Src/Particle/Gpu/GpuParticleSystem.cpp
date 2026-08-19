@@ -99,12 +99,9 @@ void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* res
         }
     }
 
-    // 初期化用アップロードバッファ（CopyBufferRegion のコピー元。ヘッダのオフセット定数参照）
-    // [0..15]  間接引数 {VertexCountPerInstance=6, InstanceCount=0, 0, 0}
-    //          （offset 4 は 0 なので drawCount の毎フレーム0クリアのコピー元としても使う）
-    // [16..31] カウンタ初期値 {freeTop=kMaxParticles, alive=0, draw=0, 0}
-    // [32..]   フリーリスト初期値 {0, 1, ..., kMaxParticles-1}
-    // パーティクルバッファ自体はコミットリソースのOSゼロ初期化（lifeTime=0=死亡）に依存する
+    // 初期化用アップロードバッファ（CopyBufferRegion のコピー元。オフセット定数はヘッダ参照）
+    //   [0..15] 間接引数 / [16..31] カウンタ初期値 / [32..] フリーリスト初期値
+    // パーティクルバッファ自体はコミットリソースの OS ゼロ初期化（lifeTime=0=死亡）に依存する。
     uploadInitResource_ = ResourceFactory::CreateBufferResource(
         device, kInitFreeListOffset + sizeof(uint32_t) * kMaxParticles);
     {

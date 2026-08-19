@@ -3,10 +3,9 @@
 #include <wrl/client.h>
 #include <cstdint>
 
-/// @brief キーボード入力クラス
-
 namespace CoreEngine
 {
+/// @brief キーボード入力クラス
 class KeyboardInput : public IDirectInputDevice {
 public:
     /// @brief 初期化

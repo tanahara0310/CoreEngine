@@ -6,6 +6,7 @@
 
 namespace CoreEngine
 {
+    /// @brief UI 要素の配置（アンカー・ピボット・サイズ・回転）
     struct UILayout
     {
         UIAnchor anchor      = UIAnchor::Center;

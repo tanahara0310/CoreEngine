@@ -4,6 +4,7 @@
 
 namespace CoreEngine
 {
+	/// @brief 水面の屈折をレイトレーシングで生成するパス
 	class RTWaterRefractionPass : public RenderPass
 	{
 	public:

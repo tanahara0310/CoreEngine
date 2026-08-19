@@ -60,14 +60,9 @@ namespace CoreEngine
     };
 
     /// @brief DirectX12 タイムスタンプクエリを用いた GPU プロファイラー
-    ///
-    /// 使い方:
-    ///   1. Initialize(device)
-    ///   2. 毎フレーム NewFrame(currentBackBufferIndex)
-    ///   3. コマンドリスト記録中に BeginGpuTimestamp / EndGpuTimestamp
-    ///      （RenderGraph に登録されたパスは RenderGraph::Execute が自動で計測する）
-    ///   4. Close() 前に ResolveAll(cmdList, currentBackBufferIndex)
-    ///   5. FinalizeFrame() 完了後に ReadResults(commandQueue, nextBackBufferIndex)
+    /// @details 毎フレーム NewFrame → Begin/EndGpuTimestamp → Close 前に ResolveAll →
+    ///          FinalizeFrame 後に ReadResults の順で回す。
+    /// @note RenderGraph に登録されたパスは RenderGraph::Execute が自動で計測する。
     class GpuTimestampProfiler
     {
     public:
@@ -261,15 +256,9 @@ namespace CoreEngine
     };
 
     /// @brief GetResults() の結果をカテゴリ別（表示順）にグルーピングする
-    /// @details DockingUI / EngineStatsWindow が同じ分類・順序でタイミング表を描画するための共通ヘルパー。
-    ///          Frame（Total）は専用行として別扱いするためここには含めない。
-    ///
-    ///          行の採否は単調フラグ everActive で決める。以前は毎フレームの値が
-    ///          0.001ms 未満の行を落としていたが、ほぼ空のパス
-    ///          （例: VolumetricCloudNoise は非ダーティ時 SetDescriptorHeaps だけを積む）は
-    ///          計測値がちょうど閾値付近で揺れるため、行が毎フレーム出入りして
-    ///          下の全パスが上下にずれ、表が読めなくなっていた。
-    ///          走らなかったフレームは 0.000 の行として残し、表示側で淡色にする。
+    /// @details 行の採否は単調フラグ everActive で決める。値の閾値で切ると、
+    ///          ほぼ空のパスが毎フレーム出入りして表が上下にずれるため。
+    /// @note Frame（Total）は専用行として別扱いするのでここには含めない。
     inline std::vector<GpuTimingGroup> BuildGpuTimingGroups(
         const std::array<GpuTimingResult, GpuTimestampProfiler::kSlotCount>& results)
     {

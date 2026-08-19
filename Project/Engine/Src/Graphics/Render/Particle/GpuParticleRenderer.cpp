@@ -105,6 +105,7 @@ namespace CoreEngine
     }
 
     namespace {
+    /// @brief バッファの状態遷移バリアを積む（同一ステートならスキップ）
         void TransitionBuffer(
             ID3D12GraphicsCommandList* cmdList,
             ID3D12Resource* resource,

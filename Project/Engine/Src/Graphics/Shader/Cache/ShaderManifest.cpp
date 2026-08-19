@@ -37,6 +37,7 @@ namespace CoreEngine
         std::filesystem::create_directories(path_.parent_path(), errorCode);
     }
 
+    // コンパイル要求を 1 件記録する（重複は set が吸収する）
     void ShaderManifest::Record(const std::wstring& filePath,
         const wchar_t* profile,
         const wchar_t* entryPoint)
@@ -54,6 +55,8 @@ namespace CoreEngine
         recorded_.insert(std::move(entry));
     }
 
+    // 前回の実行で記録した一覧を読む。壊れた行は黙って捨てる
+    // （事前コンパイルの入力にすぎず、失敗しても直列コンパイルに落ちるだけ）
     std::vector<ShaderManifest::Entry> ShaderManifest::Load() const
     {
         std::vector<Entry> entries;
@@ -98,6 +101,8 @@ namespace CoreEngine
         return entries;
     }
 
+    // 記録済みエントリを "profile|entryPoint|filePath" のテキストで書き出す。
+    // 起動のたびに全量を書き直すので、消えたシェーダは自然に一覧から落ちる
     void ShaderManifest::Save()
     {
         if (!enabled_) {

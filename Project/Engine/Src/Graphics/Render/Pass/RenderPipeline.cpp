@@ -2,10 +2,8 @@
 #include "RenderPipeline.h"
 
 // 各パスのリソース宣言は RenderPass::DeclareResources へ移設済み。
-// ここに残る具象パス include は以下の理由による暫定依存（Phase C/F で削除予定）:
-//  - BackBufferPass:      最終入力論理リソース名の接続（ConfigureBackBufferInput）
-//  - PostEffectPass:      有効エフェクト列のノード分解（AppendPostEffectPasses）
-//  - GeometryPass/DeferredLightingPass: Deferred/Forward 境界のクリア制御ハック
+// ここに残る具象パス include は暫定依存（BackBufferPass = 最終入力名の接続、
+// PostEffectPass = 有効エフェクト列のノード分解、Geometry/DeferredLighting = クリア制御）。
 #include "BackBufferPass.h"
 #include "DeferredLightingPass.h"
 #include "GeometryPass.h"
@@ -40,6 +38,7 @@
 namespace CoreEngine
 {
     namespace {
+    /// @brief 論理名から SceneColor 系ターゲットの SRV を解決する
         D3D12_GPU_DESCRIPTOR_HANDLE ResolveSceneColorHandle(const RenderContext& context, const std::string& resourceName)
         {
             if (resourceName.empty()) {
@@ -85,6 +84,7 @@ namespace CoreEngine
             }
         }
 
+    /// @brief SceneColor を画面サイズに合わせて用意する（サイズ変更時は作り直す）
         void EnsureSceneColorTarget(const RenderContext& context)
         {
             if (!context.renderTargetManager || context.viewSettings.sceneColorTargetName.empty()) {
@@ -131,6 +131,7 @@ namespace CoreEngine
             return cas && cas->IsEnabled();
         }
 
+    /// @brief CAS 出力用ターゲットを画面サイズに合わせて用意する
         void EnsureCASTarget(const RenderContext& context)
         {
             if (!context.renderTargetManager
@@ -170,11 +171,8 @@ namespace CoreEngine
         constexpr uint64_t kJitterSampleCount = 8;
 
         // カメラの射影行列へ今フレームのサブピクセルジッタを入れる。
-        // 「実際にサンプル位置をずらして描く」のが TAA の本体で、
-        // これが無いと履歴を混ぜても情報が増えずぼけるだけになる。
-        //
+        // 実際にサンプル位置をずらして描くのが TAA の本体で、無いと履歴を混ぜてもぼけるだけ。
         // 呼び出しは PrepareFrameViews から「ViewInfo を作る直前」に 1 回だけ。
-        // ここで入れたジッタがスナップショットされ、以降フレーム内の全パスが同じ射影を使う。
         void UpdateCameraJitter(const RenderContext& context, Camera* camera)
         {
             if (!camera) {
@@ -213,6 +211,7 @@ namespace CoreEngine
             }
         }
 
+    /// @brief TAA 履歴 ping-pong 用の 2 枚を画面サイズに合わせて用意する
         void EnsureTAATargets(const RenderContext& context)
         {
             if (!context.renderTargetManager) {
@@ -237,6 +236,7 @@ namespace CoreEngine
             }
         }
 
+    /// @brief コースティクス用ターゲットを画面サイズに合わせて用意する
         void EnsureWaterCausticsTarget(const RenderContext& context)
         {
             if (!context.renderTargetManager) {

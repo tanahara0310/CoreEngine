@@ -51,6 +51,7 @@ namespace CoreEngine
         constexpr uint32_t kFlareResolutionDivisor = 4;
         constexpr uint32_t kGroupSize = 8;
 
+    /// @brief スレッドグループ数（8x8 スレッドで size を覆う）
         constexpr uint32_t DispatchCount(uint32_t size)
         {
             return (size + kGroupSize - 1) / kGroupSize;
@@ -193,6 +194,8 @@ namespace CoreEngine
 
     bool LensFlare::EnsureSourcePosTarget()
     {
+        // 支配的な光源の UV を書き戻すだけの 1x1 バッファ。
+        // CS 側が最大輝度テクセルの座標を 1 つ書き、次のパスがそれを読む
         DescriptorManager* descriptorManager = directXCommon_->GetDescriptorManager();
         if (!descriptorManager) {
             return false;
@@ -451,10 +454,8 @@ namespace CoreEngine
             brightBufferState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // ===== Pass 1.5: 支配的な光源の UV 位置を検出（brightBuffer_ → sourcePosBuffer_） =====
-        // 単一スレッドグループでフレアバッファ全体を走査し最大輝度テクセルを求める。
-        // ゴースト/ハローの絞り羽根形状マスクを正しい位置へ合わせるために必要
-        // （テクスチャ空間の反射・スケールによる位置決め自体は光源位置を知らなくても
-        // 正しく動くが、形状マスクは「このゴーストの中心がどこか」を知る必要がある）。
+        // 単一スレッドグループで全体を走査し最大輝度テクセルを求める。
+        // ゴースト／ハローの絞り羽根形状マスクは「このゴーストの中心がどこか」を必要とするため。
         ResourceBarrierHelper::Transition(cmdList, sourcePosBuffer_.Get(),
             sourcePosBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 

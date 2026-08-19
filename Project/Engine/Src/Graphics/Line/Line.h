@@ -2,10 +2,9 @@
 
 #include "Math/Vector/Vector3.h"
 
-/// @brief ライン構造体（汎用的なライン表現）
-
 namespace CoreEngine
 {
+/// @brief ライン構造体（汎用的なライン表現）
 struct Line {
     Vector3 start;   // 開始点
     Vector3 end;     // 終了点

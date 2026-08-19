@@ -19,6 +19,7 @@ namespace
 {
     constexpr const char* kFallbackTexturePath = "error.png";
 
+    /// @brief パスからファイル名だけを取り出す
     std::string ExtractFileName(const std::string& path)
     {
         const size_t pos = path.find_last_of("/\\");
@@ -28,6 +29,7 @@ namespace
         return path.substr(pos + 1);
     }
 
+    /// @brief 解決結果がフォールバックテクスチャに落ちたか（＝要求パスが見つからなかったか）
     bool IsFallbackTextureRequest(const std::string& requestPath, const std::filesystem::path& resolvedPath)
     {
         auto& assetDatabase = CoreEngine::AssetDatabase::GetInstance();

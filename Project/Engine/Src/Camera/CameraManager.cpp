@@ -84,6 +84,7 @@ namespace CoreEngine
         return empty;
     }
 
+    // 描画・ギズモ・ピッキングが見るカメラ。Scene / Game のどちらを覗いているかで決まる
     Camera* CameraManager::GetViewCamera() const
     {
         const std::string& name = GetViewCameraName();
@@ -137,6 +138,8 @@ namespace CoreEngine
         return empty;
     }
 
+    // コントローラ → Transform → 行列の順に一方向で流す。
+    // 入力は全カメラへ渡るが、実際に動くのは操作中（input.active）のものだけ
     void CameraManager::Update(const CameraInputState& input, float deltaTime)
     {
         for (auto& [name, camera] : cameras_) {
@@ -146,9 +149,7 @@ namespace CoreEngine
 
             // コントローラ（付いていれば）が先に Transform を書き、そのあと行列を作る。
             // この順序が「操作 → 姿勢 → 行列」の一方向の流れを保証する。
-            //
-            // 入力は非アクティブなカメラにも同じものが渡るが、実際に操作されるのは
-            // input.active（ビューポート上で操作中）のときだけ。
+            // 入力は非アクティブなカメラにも渡るが、実際に操作されるのは input.active のときだけ。
             if (auto it = controllers_.find(name); it != controllers_.end() && it->second) {
                 it->second->Update(input, deltaTime, *camera);
             }
@@ -177,6 +178,7 @@ namespace CoreEngine
         debugUI_->Draw();
     }
 
+    // デバッグ用モジュール（追従・シーケンス再生）を毎フレーム回す
     void CameraManager::UpdateDebugModules()
     {
         if (!debugUI_) {

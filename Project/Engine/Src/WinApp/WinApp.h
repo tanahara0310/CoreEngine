@@ -15,6 +15,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 namespace CoreEngine
 {
 
+    /// @brief メインウィンドウの生成・表示・メッセージ処理を担う
     class WinApp {
     public:
         // ウィンドウの大きさ（スタティック定数）
@@ -28,19 +29,12 @@ namespace CoreEngine
         static int32_t GetCurrentClientHeightStatic() { return currentClientHeightStatic_; }
 
         /// @brief 指定された幅、高さ、タイトルで初期化
-        /// @param width ウィンドウの幅
-        /// @param height ウィンドウの高さ
-        /// @param title ウィンドウのタイトル
-        /// @note ここではウィンドウを**表示しない**。表示は起動シーケンス完了後の
-        ///       ShowMainWindow() で行う（理由は同関数のコメント参照）。
+        /// @note ここではウィンドウを表示しない。表示は起動シーケンス完了後の ShowMainWindow()
         void Initialize(int32_t width, int32_t height, const wchar_t* title);
 
         /// @brief メインウィンドウを表示する
-        /// @details ウィンドウ生成時はあえて非表示のままにしてある。
-        ///          表示してから初期化を続けると、メッセージポンプが一度も回らない
-        ///          全画面ウィンドウが十数秒居座り、Windows から「応答なし」と
-        ///          判定される（＝初見の人が「ハングした」と感じる直接の原因）。
-        ///          起動シーケンスが終わって最初のフレームを描ける状態になってから呼ぶ。
+        /// @details 生成時はあえて非表示のままにしてある。表示してから初期化を続けると、
+        ///          メッセージポンプが回らない全画面ウィンドウが「応答なし」と判定されるため。
         void ShowMainWindow();
 
         /// @brief メッセージ処理

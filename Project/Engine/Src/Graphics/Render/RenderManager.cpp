@@ -433,11 +433,8 @@ namespace CoreEngine
     }
 
     void RenderManager::SortRenderQueue(std::vector<RenderItem>& queue) {
-        // 優先順位:
-        //   1. sortKey      : RenderItem に確定済みの描画順キー（小さいほど先に描画）
-        //   2. passType     : 同一 sortKey 内でレンダラー切り替えを最小化
-        //   3. blendMode    : 同一パス内でブレンドステート切り替えを最小化
-        //   4. registrationOrder : 同一条件内では登録順序を維持
+        // ソート優先順位: ①sortKey（小さいほど先） ②passType（レンダラー切り替えの最小化）
+        //                 ③blendMode（ブレンドステート切り替えの最小化） ④登録順
         std::stable_sort(queue.begin(), queue.end(),
             [](const RenderItem& a, const RenderItem& b) {
                 if (a.sortKey != b.sortKey) {

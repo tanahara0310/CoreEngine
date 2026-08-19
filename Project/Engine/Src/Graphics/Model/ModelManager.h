@@ -101,13 +101,9 @@ public:
     void PreloadModels(const std::vector<std::string>& filePaths);
 
     /// @brief 複数モデルの並列プリロードを開始する（完了を待たずに即座に戻る）
-    /// @param filePaths プリロードするファイルパスのリスト
-    /// @details 起動シーケンスのシェーダコンパイル中に、裏でモデルを読み込ませるための入口。
-    ///          後から CreateStaticModel が同じパスを要求すると、
-    ///          LoadModelResourceInternal のロード権待ちで自動的に合流するので、
+    /// @details 後から CreateStaticModel が同じパスを要求するとロード権待ちで自動的に合流するので、
     ///          呼び出し側が完了を管理する必要はない。
-    /// @note 先読みの失敗は握り潰してログに残すだけにする。あくまで最適化であり、
-    ///       本番の CreateStaticModel が改めて読み直して正規のエラー処理に乗るため。
+    /// @note 先読みの失敗は握り潰してログに残すだけ（本番の CreateStaticModel が読み直す）。
     void BeginPreload(const std::vector<std::string>& filePaths);
 
     /// @brief 進行中のプリロードが全て終わるまで待つ

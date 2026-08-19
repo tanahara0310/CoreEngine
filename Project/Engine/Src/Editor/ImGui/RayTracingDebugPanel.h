@@ -13,15 +13,9 @@ namespace CoreEngine
     class RayTracingShadowManager;
     struct RayTracingDispatchInfo;
 
-    /// @brief レイトレーシング専用デバッグパネル
-    /// @details 加速構造の統計・RTシャドウのディスパッチ内訳・中間バッファの可視化・
-    ///          RTシャドウ設定の調整をまとめた、"Debug > Ray Tracing" ウィンドウ。
-    ///          DebugSubsystem が GameDebugUI::RegisterEngineDebugPanel から登録する。
-    ///
-    ///          全 RT パスの診断は RayTracingDispatchInfo（共通型）経由でのみ読む。
-    ///          Stage 2 で RayTracingShadowManager を共通基盤へ載せ替えても
-    ///          このパネルを書き直さずに済むようにするため。
-    ///          設計書: Docs/Engine/RayTracing/RayTracing_Refactoring_Review.md
+    /// @brief レイトレーシング専用デバッグパネル（"Debug > Ray Tracing" ウィンドウ）
+    /// @details 加速構造の統計・RT シャドウの内訳・中間バッファの可視化・設定調整をまとめる。
+    /// @note 全 RT パスの診断は共通型 RayTracingDispatchInfo 経由でのみ読む。
     class RayTracingDebugPanel
     {
     public:
