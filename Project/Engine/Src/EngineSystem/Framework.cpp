@@ -5,6 +5,8 @@
 #include "Startup/StartupProgress.h"
 #include "Startup/SplashScreen.h"
 #include "Graphics/Shader/Cache/ShaderCacheStore.h"
+#include "Graphics/Shader/Cache/ShaderBlobCache.h"
+#include "Graphics/Shader/Cache/ShaderManifest.h"
 #include "Utility/Profiler/CpuProfiler.h"
 
 
@@ -57,6 +59,16 @@ namespace CoreEngine
 
         // シェーダキャッシュのヒット率。期待どおり無効化されたかはここで見る
         ShaderCacheStore::GetInstance().LogSummary();
+
+        // この起動で実際に要求されたシェーダの一覧を残す。
+        // 次回のコールド起動はこれを使って並列に事前コンパイルできる
+        ShaderManifest::GetInstance().Save();
+
+        // 事前コンパイルが持っていた DXIL のメモリキャッシュを解放する。
+        // ゲーム中に同じシェーダを要求する経路は無いので、持ち続けても
+        // 数 MB を無駄に占有するだけ
+        ShaderBlobCache::GetInstance().Clear();
+        ShaderBlobCache::GetInstance().SetEnabled(false);
 
         // ネストしたスコープ（CORE_CPU_SCOPE）まで含めたツリー。
         // どこが「重い」でどこが「待ち」かはここで切り分ける

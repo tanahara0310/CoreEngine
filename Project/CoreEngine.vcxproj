@@ -437,6 +437,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp" />
+    <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
     <ClCompile Include="Engine\Src\TileMap\TileCollider.cpp" />
     <ClCompile Include="Engine\Src\TileMap\TileMap.cpp" />
@@ -520,7 +521,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.cpp" />
     <ClCompile Include="Engine\Src\Audio\SoundManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Resource\ResourceFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp" />
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
@@ -900,6 +904,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Model\ModelResource.h" />
     <ClInclude Include="Engine\Src\Math\Quaternion\Quaternion.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\UndoRedoHistory.h" />
+    <ClInclude Include="Engine\Src\Threading\ThreadBudget.h" />
     <ClInclude Include="Engine\Src\Threading\ThreadPool.h" />
     <ClInclude Include="Engine\Src\TileMap\TileAttribute.h" />
     <ClInclude Include="Engine\Src\TileMap\TileCollider.h" />
@@ -1010,7 +1015,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\TextureManager.h" />
     <ClInclude Include="Engine\Src\Audio\SoundManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.h" />
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h" />
+    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderPrewarm.h" />
     <ClInclude Include="Engine\Src\Graphics\Resource\ResourceFactory.h" />
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />

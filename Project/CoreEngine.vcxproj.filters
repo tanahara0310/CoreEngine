@@ -760,6 +760,9 @@
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp">
+      <Filter>Engine\Src\Threading</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp">
       <Filter>Engine\Src\Threading</Filter>
     </ClCompile>
@@ -1000,7 +1003,16 @@
     <ClCompile Include="Engine\Src\Audio\SoundManager.cpp">
       <Filter>Engine\Src\Audio</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Resource\ResourceFactory.cpp">
@@ -2052,6 +2064,9 @@
     <ClInclude Include="Engine\Src\Editor\Scene\UndoRedoHistory.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Threading\ThreadBudget.h">
+      <Filter>Engine\Src\Threading</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Threading\ThreadPool.h">
       <Filter>Engine\Src\Threading</Filter>
     </ClInclude>
@@ -2382,7 +2397,16 @@
     <ClInclude Include="Engine\Src\Audio\SoundManager.h">
       <Filter>Engine\Src\Audio</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderPrewarm.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Resource\ResourceFactory.h">

@@ -329,13 +329,16 @@ namespace CoreEngine
     {
         // 初回の非同期リクエスト時にスレッドプールを生成する。
         if (!threadPool_) {
-            uint32_t count = workerThreadCount_;
-            if (count == 0) {
-                count = (std::max)(1u, std::thread::hardware_concurrency() / 2);
-            }
-            threadPool_ = std::make_unique<ThreadPool>(count);
+            // 希望数 0 は ThreadBudget に決めさせる意味。プールが 3 つ独立に
+            // hardware_concurrency/2 を取ってコア数を超えるのを防ぐ
+            ThreadPoolDesc poolDesc;
+            poolDesc.name = "TextureLoad";
+            poolDesc.threadCount = workerThreadCount_;
+            poolDesc.priority = WorkerPriority::Normal;
+            threadPool_ = std::make_unique<ThreadPool>(poolDesc);
             Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
-                std::format("TextureManager: thread pool created with {} workers", count));
+                std::format("TextureManager: thread pool created with {} workers",
+                    threadPool_->GetThreadCount()));
         }
     }
 
@@ -355,9 +358,11 @@ namespace CoreEngine
 
         // ワーカースレッドで Load を実行し、結果を future で返す。
         std::string pathCopy = filePath;
-        auto future = threadPool_->Submit([this, pathCopy, colorSpace]() -> LoadedTexture {
-            return Load(pathCopy, colorSpace);
-        });
+        auto future = threadPool_->Submit(
+            "Texture: " + std::filesystem::path(pathCopy).filename().string(),
+            [this, pathCopy, colorSpace]() -> LoadedTexture {
+                return Load(pathCopy, colorSpace);
+            });
 
         auto sharedFuture = future.share();
 
@@ -401,7 +406,15 @@ namespace CoreEngine
 
         for (auto& f : futures) {
             if (f.valid()) {
-                f.wait();
+                // 素の wait ではなく Wait を使う。待っている間キューのタスクを
+                // 引き受けるので、ワーカーの中から呼ばれてもデッドロックしない
+                //（モデルロードがテクスチャロードを待つ形が同一プールに乗ると詰む）。
+                // メインスレッドから呼んだ場合も手伝うぶんだけ速くなる。
+                if (threadPool_) {
+                    threadPool_->Wait(f);
+                } else {
+                    f.wait();
+                }
             }
         }
     }

@@ -9,6 +9,8 @@
 #include "EngineSystem/Startup/StartupProgress.h"
 #include "Cache/ShaderCacheKey.h"
 #include "Cache/ShaderCacheStore.h"
+#include "Cache/ShaderBlobCache.h"
+#include "Cache/ShaderManifest.h"
 
 
 #pragma comment(lib, "dxcompiler.lib")
@@ -136,6 +138,47 @@ namespace CoreEngine
         return blob.Detach();
     }
 
+    std::vector<std::wstring> ShaderCompiler::BuildArgumentStrings(
+        const std::wstring& resolvedPath,
+        const std::wstring& profile,
+        const std::wstring& entryPoint,
+        const std::vector<std::wstring>& includeArgs)
+    {
+        // キャッシュキーの材料にするため、まず所有権のある wstring で作る
+        //（ポインタだけ持つとキーが取れない）
+        std::vector<std::wstring> argumentStrings;
+        argumentStrings.push_back(resolvedPath);   // コンパイル対象のhlslファイル
+        if (!entryPoint.empty()) {
+            argumentStrings.push_back(L"-E");
+            argumentStrings.push_back(entryPoint); // エントリーポイント
+        }
+        argumentStrings.push_back(L"-T");
+        argumentStrings.push_back(profile);        // ShaderProfileの設定
+        argumentStrings.push_back(L"-Zi");         // デバッグ情報を埋め込む
+        argumentStrings.push_back(L"-Od");         // 最適化を外す
+        argumentStrings.push_back(L"-Zpr");        // メモリレイアウトは行優先
+
+        for (const std::wstring& includeArg : includeArgs) {
+            argumentStrings.push_back(includeArg);
+        }
+
+        return argumentStrings;
+    }
+
+    PreparedShaderCompile ShaderCompiler::Prepare(
+        const std::wstring& filePath,
+        const wchar_t* profile,
+        const wchar_t* entryPoint) const
+    {
+        PreparedShaderCompile prepared;
+        prepared.resolvedPath = ResolveShaderPath(filePath);
+        prepared.profile = profile ? profile : L"";
+        prepared.entryPoint = entryPoint ? entryPoint : L"";
+        prepared.argumentStrings = BuildArgumentStrings(
+            prepared.resolvedPath, prepared.profile, prepared.entryPoint, BuildIncludeArgs());
+        return prepared;
+    }
+
     IDxcBlob* ShaderCompiler::CompileShader(const std::wstring& filePath, const wchar_t* profile)
     {
         return CompileInternal(filePath, profile, L"main");
@@ -152,7 +195,36 @@ namespace CoreEngine
         const wchar_t* profile,
         const wchar_t* entryPoint)
     {
-        const std::wstring resolvedPath = ResolveShaderPath(filePath);
+        // 次回のコールド起動で並列に事前コンパイルできるよう、要求を記録しておく。
+        // 事前コンパイル側（ShaderPrewarm）は CompilePrepared を直接呼ぶので、
+        // ここに記録が二重に入ることはない
+        ShaderManifest::GetInstance().Record(filePath, profile, entryPoint);
+
+        return CompilePrepared(Prepare(filePath, profile, entryPoint));
+    }
+
+    IDxcBlob* ShaderCompiler::CompilePrepared(const PreparedShaderCompile& prepared)
+    {
+        if (!prepared.IsValid()) {
+            return nullptr;
+        }
+
+        const std::wstring& resolvedPath = prepared.resolvedPath;
+        const std::wstring& profile = prepared.profile;
+
+        // ===== メモリキャッシュ照会 =====
+        // 事前コンパイルが同じ要求を既に処理していれば、ファイル I/O もハッシュ計算も
+        // 一切せずに返せる。これが無いと事前コンパイルは
+        // 「同じ検証コストを 2 回払う」だけの遅延要因になる
+        {
+            std::vector<uint8_t> memoryBytes;
+            if (ShaderBlobCache::GetInstance().TryGet(
+                resolvedPath, profile, prepared.entryPoint, memoryBytes)) {
+                if (IDxcBlob* blob = CreateBlobFromBytes(memoryBytes)) {
+                    return blob;
+                }
+            }
+        }
 
         // これからシェーダーを用意する旨をログ出力
         Logger::GetInstance().Log(
@@ -161,7 +233,8 @@ namespace CoreEngine
             LogCategory::Shader);
 
         // 起動中はここが最大の滞留点。ローディング画面を刻んで
-        // 「応答なし」を避ける。起動シーケンス外では空判定 1 回で戻る
+        // 「応答なし」を避ける。起動シーケンス外では空判定 1 回で戻る。
+        // ワーカースレッドからの Tick は StartupProgress 側で捨てられる
         if (StartupProgress::IsActive()) {
             StartupProgress::Tick(
                 Logger::GetInstance().PathToUtf8(std::filesystem::path(resolvedPath).filename()).c_str());
@@ -170,8 +243,21 @@ namespace CoreEngine
         // hlslファイルを読み込む
         Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource;
         HRESULT hr = dxcUtils->LoadFile(resolvedPath.c_str(), nullptr, &shaderSource);
-        // 読めなかったら落とす
-        assert(SUCCEEDED(hr));
+
+        // 読めなかったら nullptr を返す。
+        // Development 構成は assert が無効なので、ここで抜けないと直後の
+        // GetBufferPointer() が null 参照で落ちる。原因の分からないクラッシュより、
+        // 「どのシェーダが読めなかったか」を残して呼び出し元に nullptr を返すほうがよい
+        //（呼び出し元は元から失敗時 nullptr の契約になっている）。
+        // 事前コンパイルは古くなった一覧を読むことがあるので、この経路は実際に通る
+        if (FAILED(hr) || !shaderSource) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
+                "シェーダファイルを読み込めませんでした: {} (hr=0x{:08X})",
+                Logger::GetInstance().PathToUtf8(resolvedPath), static_cast<uint32_t>(hr));
+            assert(false && "シェーダファイルが読み込めない");
+            return nullptr;
+        }
+
         // 読み込んだファイルの内容を設定する
         DxcBuffer shaderSourceBuffer;
         shaderSourceBuffer.Ptr = shaderSource->GetBufferPointer();
@@ -179,24 +265,7 @@ namespace CoreEngine
         // UTF-8の文字コード
         shaderSourceBuffer.Encoding = DXC_CP_UTF8;
 
-        // ===== コンパイル引数の組み立て =====
-        // キャッシュキーの材料にするため、まず所有権のある wstring で作ってから
-        // LPCWSTR の配列へ落とす（ポインタだけ持つとキーが取れない）
-        std::vector<std::wstring> argumentStrings;
-        argumentStrings.push_back(resolvedPath);   // コンパイル対象のhlslファイル
-        if (entryPoint) {
-            argumentStrings.push_back(L"-E");
-            argumentStrings.push_back(entryPoint); // エントリーポイント
-        }
-        argumentStrings.push_back(L"-T");
-        argumentStrings.push_back(profile);        // ShaderProfileの設定
-        argumentStrings.push_back(L"-Zi");         // デバッグ情報を埋め込む
-        argumentStrings.push_back(L"-Od");         // 最適化を外す
-        argumentStrings.push_back(L"-Zpr");        // メモリレイアウトは行優先
-
-        for (const std::wstring& includeArg : BuildIncludeArgs()) {
-            argumentStrings.push_back(includeArg);
-        }
+        const std::vector<std::wstring>& argumentStrings = prepared.argumentStrings;
 
         std::vector<LPCWSTR> arguments;
         arguments.reserve(argumentStrings.size());
@@ -218,6 +287,12 @@ namespace CoreEngine
             std::vector<uint8_t> cachedBytes;
             if (cacheStore.TryLoad(cacheEntry, cachedBytes)) {
                 if (IDxcBlob* cachedBlob = CreateBlobFromBytes(cachedBytes)) {
+                    // 同じ要求が同一プロセス内で再度来たときに、ここまでの
+                    // 読み込み + SHA-256 + .deps 照合を省けるようメモリへ載せる
+                    ShaderBlobCache::GetInstance().Store(
+                        resolvedPath, profile, prepared.entryPoint,
+                        cachedBytes.data(), cachedBytes.size());
+
                     Logger::GetInstance().Log(
                         std::format(L"Compile Cached, path:{}, profile:{}", resolvedPath, profile),
                         LogLevel::INFO,
@@ -267,6 +342,14 @@ namespace CoreEngine
                 shaderBlob->GetBufferPointer(),
                 shaderBlob->GetBufferSize(),
                 recordingIncludeHandler_.GetOpenedFiles());
+        }
+
+        // 事前コンパイルの結果を本来の PSO 生成コードへ渡す経路。
+        // ディスクキャッシュ経由でも動くが、それだと検証コストを二度払う
+        if (shaderBlob) {
+            ShaderBlobCache::GetInstance().Store(
+                resolvedPath, profile, prepared.entryPoint,
+                shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize());
         }
 
         // コンパイル成功ログ

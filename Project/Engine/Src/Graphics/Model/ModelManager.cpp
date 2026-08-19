@@ -286,7 +286,9 @@ namespace CoreEngine
         preloadFutures_.reserve(preloadFutures_.size() + filePaths.size());
 
         for (const auto& path : filePaths) {
-            preloadFutures_.push_back(threadPool_->Submit([this, path]() {
+            preloadFutures_.push_back(threadPool_->Submit(
+                "Model: " + std::filesystem::path(path).filename().string(),
+                [this, path]() {
                 // 例外はここで止める。future に載せて後で get() の場所まで運ぶと、
                 // 起動シーケンスと無関係な地点で飛んで原因が分からなくなる。
                 // 先読みはあくまで最適化なので、失敗しても本番のロードに任せればよい。
@@ -320,6 +322,12 @@ namespace CoreEngine
 
         for (auto& f : futures) {
             if (f.valid()) {
+                // Wait は待つ代わりにキューのタスクを引き受ける。
+                // モデルロードは内部でテクスチャロードを待つので、この待ちが
+                // ワーカー上で起きるとプールが自分自身を待って詰まりうる
+                if (threadPool_) {
+                    threadPool_->Wait(f);
+                }
                 f.get();
             }
         }
@@ -328,8 +336,11 @@ namespace CoreEngine
     void ModelManager::EnsureThreadPool()
     {
         if (!threadPool_) {
-            const uint32_t count = (std::max)(1u, std::thread::hardware_concurrency() / 2);
-            threadPool_ = std::make_unique<ThreadPool>(count);
+            // ワーカー数は ThreadBudget が決める（プール乱立の抑制）
+            ThreadPoolDesc poolDesc;
+            poolDesc.name = "ModelLoad";
+            poolDesc.priority = WorkerPriority::Normal;
+            threadPool_ = std::make_unique<ThreadPool>(poolDesc);
         }
     }
 

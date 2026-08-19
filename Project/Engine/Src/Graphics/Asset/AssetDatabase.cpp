@@ -55,8 +55,12 @@ namespace CoreEngine
             return;
         }
 
-        threadPool_ = std::make_unique<ThreadPool>(
-            static_cast<uint32_t>((std::max)(1u, std::thread::hardware_concurrency() / 2)));
+        // ワーカー数は ThreadBudget に決めさせる（プール乱立でコア数を超えないため）。
+        // このプールはスキャン完了後に解放するので、枠は他のプールへ返る。
+        ThreadPoolDesc poolDesc;
+        poolDesc.name = "AssetScan";
+        poolDesc.priority = WorkerPriority::Normal;   // 起動をブロックするので譲らない
+        threadPool_ = std::make_unique<ThreadPool>(poolDesc);
 
         // フェーズ1: 全ディレクトリのファイル列挙を並列に実行する。
         struct FileEntry {
@@ -69,6 +73,7 @@ namespace CoreEngine
 
         for (const auto& target : targets) {
             scanFutures.push_back(threadPool_->Submit(
+                "Scan: " + target.category,
                 [target]() -> std::vector<FileEntry> {
                     std::vector<FileEntry> files;
                     try {
@@ -90,6 +95,9 @@ namespace CoreEngine
         // 全ディレクトリの結果を統合する。
         std::vector<FileEntry> allFiles;
         for (auto& future : scanFutures) {
+            // Wait はブロックする代わりにキューのタスクを引き受ける。
+            // メインスレッドを遊ばせず fan-out の一部を肩代わりする
+            threadPool_->Wait(future);
             auto files = future.get();
             allFiles.insert(allFiles.end(),
                 std::make_move_iterator(files.begin()),
@@ -102,6 +110,7 @@ namespace CoreEngine
 
         for (const auto& file : allFiles) {
             buildFutures.push_back(threadPool_->Submit(
+                "AssetInfo: " + Logger::GetInstance().PathToUtf8(file.filePath.filename()),
                 [this, file]() -> std::optional<AssetInfo> {
                     return BuildAssetInfo(file.filePath, file.category);
                 }
@@ -110,6 +119,7 @@ namespace CoreEngine
 
         // フェーズ3: 全結果をメインスレッドでインデックスに登録する。
         for (auto& future : buildFutures) {
+            threadPool_->Wait(future);
             auto result = future.get();
             if (result.has_value()) {
                 MergeAssetInfo(std::move(result.value()));

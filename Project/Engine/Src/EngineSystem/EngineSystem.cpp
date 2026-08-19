@@ -8,6 +8,8 @@
 #include "Factory/CoreComponentFactory.h"
 #include "Startup/StartupSequence.h"
 #include "Graphics/Shader/Cache/ShaderCacheStore.h"
+#include "Graphics/Shader/Cache/ShaderManifest.h"
+#include "Graphics/Shader/ShaderPrewarm.h"
 #include <cstring>
 
 // ユーティリティ
@@ -113,6 +115,14 @@ namespace CoreEngine
             ShaderCacheStore::GetInstance().Initialize(
                 std::filesystem::current_path() / "Cache" / "ShaderCache",
                 config.enableShaderCache);
+
+            // 「実際にコンパイルされるシェーダ」の一覧。次回の起動で並列に
+            // 事前コンパイルするために使う。DXIL キャッシュとは別の場所に置く
+            //（キャッシュを消して再コンパイルさせる操作で一覧まで消えると、
+            //  一番効いてほしい場面で事前コンパイルが効かなくなる）
+            ShaderManifest::GetInstance().Initialize(
+                std::filesystem::current_path() / "Cache" / "ShaderManifest.txt",
+                config.enableShaderCache);
         });
 
         // フレームレート制御（最初に初期化）
@@ -132,10 +142,23 @@ namespace CoreEngine
 #endif
 
         // グラフィックス関連（起動時間の大半。ファクトリ側でさらに細かく割る）。
-        // 「デバイス + アセット土台 → ゲームの先読み → レンダラー群」の順に並べる。
-        // 先読みをレンダラー群（シェーダコンパイル数秒）より前に置くことで、
-        // 実処理（ワーカーでのモデルロード）がコンパイルの裏に隠れる
+        // 「デバイス + アセット土台 → シェーダ事前コンパイル → ゲームの先読み
+        //   → レンダラー群」の順に並べる。
         auto graphicsState = GraphicsComponentFactory::BuildFoundationTasks(sequence, *this, config);
+
+        // シェーダを全部まとめて並列にコンパイルし、DXIL を用意しておく。
+        // 以降のレンダラー群（PSO 生成 20 箇所以上）はキャッシュヒットで済む。
+        //
+        // モデル先読みより**前**に置いている。先読みと並べると両方が CPU を
+        // 食い合い、どちらのワーカーも半分の幅しか使えなくなる。
+        // 2026-08-18 に「起動ステップが 2.2 秒」の正体が非同期プリロードとの
+        // 競合による待ちだった件と同じ構図なので、意図的に直列の phase に分けた。
+        // 先読みは後続のレンダラー構築（PSO 生成と D3D12 のオブジェクト生成）の
+        // 裏で進むので、重ねる相手が変わるだけで隠れる時間は残る
+        sequence.Add("シェーダ事前コンパイル（並列）", [] {
+            ShaderPrewarm::Run();
+        });
+
         if (buildPreloadTasks) {
             buildPreloadTasks(sequence);
         }
