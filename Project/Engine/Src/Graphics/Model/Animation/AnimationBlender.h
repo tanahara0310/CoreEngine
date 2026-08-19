@@ -6,10 +6,9 @@
 #include <memory>
 #include <optional>
 
-/// @brief 2つのアニメーションをブレンドするコントローラー
-
 namespace CoreEngine
 {
+/// @brief 2つのアニメーションをブレンドするコントローラー
 class AnimationBlender : public IAnimationController {
 public:
     /// @brief コンストラクタ

@@ -16,20 +16,9 @@ namespace CoreEngine
         RootConstants,  ///< Root Constants（32bit 値をコマンドストリームに直接埋め込み）
     };
 
-    /// @brief DXRグローバルルートシグネチャ管理クラス
-    /// @details エントリを宣言的に追加し Build() でルートシグネチャを生成する。
-    ///          全エントリは D3D12_SHADER_VISIBILITY_ALL で登録される（DXR要件）。
-    ///          追加順がそのままルートパラメータインデックスになる。
-    ///
-    /// @code
-    ///   GlobalRootSignatureManager mgr;
-    ///   mgr.AddUAVTable("gShadowOutput",    0)
-    ///      .AddSRVTable("gScene",            0)
-    ///      .AddSRVTable("gSceneDepth",       1)
-    ///      .AddSRVTable("gNormalRoughness",  2)
-    ///      .AddCBV    ("ShadowRayConstants", 0);
-    ///   mgr.Build(device);
-    /// @endcode
+    /// @brief DXR グローバルルートシグネチャ管理クラス
+    /// @details エントリを宣言的に追加して Build() で生成する。追加順がルートパラメータ番号になる。
+    /// @note 全エントリは DXR 要件により D3D12_SHADER_VISIBILITY_ALL で登録される。
     class GlobalRootSignatureManager {
     public:
         /// @brief UAV デスクリプタテーブルエントリを追加
@@ -80,6 +69,7 @@ namespace CoreEngine
         void Clear();
 
     private:
+        /// @brief ルートパラメータ 1 個分の宣言（追加順がそのままパラメータ番号になる）
         struct Entry {
             std::string name;
             DXRRootEntryType type;

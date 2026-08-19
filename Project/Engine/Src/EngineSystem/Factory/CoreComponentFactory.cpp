@@ -31,7 +31,13 @@ namespace CoreEngine
     void CoreComponentFactory::SetupAudio(EngineSystem& engine)
     {
         auto soundManager = std::make_unique<SoundManager>();
-        soundManager->Initialize();
+
+        // 初期化（XAudio2 デバイス開通 + MFStartup）は実測 0.676 秒すべてが待ちで、
+        // CPU を 1 ミリ秒も使わない。起動シーケンス上で待つ理由が無いので裏で流す。
+        // 実際に音を使う入口（LoadSound / PlaySound / SetMasterVolume / Shutdown）が
+        // EnsureInitialized() で合流するので、呼び出し側の変更は要らない
+        soundManager->BeginInitializeAsync();
+
         engine.RegisterComponent(std::move(soundManager));
     }
 

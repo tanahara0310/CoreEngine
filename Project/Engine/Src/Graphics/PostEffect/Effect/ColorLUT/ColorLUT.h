@@ -13,16 +13,8 @@ namespace CoreEngine
 class PostEffectGraphBuilder;
 
 /// @brief 3D LUT カラーグレーディング（.cube ファイル対応）
-/// @details パラメトリックな ColorGrading では作れない非線形・選択的なルック
-///          （ティール&オレンジ等）を、DaVinci Resolve 等の外部ツールで作った
-///          LUT として持ち込むための最終段グレーディング。
-///          トーンマップ直後（PostTonemap 先頭）で、sRGB 表示空間の色に対して適用する。
-///
-///          LUT データはアップロードバッファ → CS で Texture3D へ書き込む
-///          （雲ノイズ生成と同じ流儀。Texture3D の CPU 直接アップロードを避ける）。
-///          未ロード時は恒等 LUT（見た目無変化）。
-///          パラメータは CVar（"r.ColorLUT.*"）が唯一の保持者。
-///          設計: Docs/Engine/Graphics/PostProcess/Cinematic_PostEffect_Plan.md
+/// @details 外部ツールで作った LUT を最終段で適用する。トーンマップ直後の sRGB 表示空間が対象。
+///          未ロード時は恒等 LUT。パラメータは CVar "r.ColorLUT.*"。
 class ColorLUT : public PostEffectComputeBase {
 public:
     /// @brief 対応する LUT 一辺の上限（.cube の一般値は 17/32/33/64）

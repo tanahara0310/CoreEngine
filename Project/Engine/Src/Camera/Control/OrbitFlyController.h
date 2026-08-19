@@ -4,6 +4,7 @@
 #include "Math/MathCore.h"
 #include <numbers>
 
+/// @file
 /// @brief 注視点まわりの軌道操作 + 自由飛行でカメラを動かすコントローラ（Blender 風）
 
 namespace CoreEngine
@@ -74,11 +75,13 @@ namespace CoreEngine
 
         // ===== 軌道状態 =====
         const OrbitState& GetState() const { return state_; }
+        /// @brief 軌道状態（注視点・距離・ピッチ・ヨー）をまとめて設定する
         void SetState(const OrbitState& state);
 
         void SetTarget(const Vector3& target) { state_.target = target; ClampTargetToWorldBounds(); }
         Vector3 GetTarget() const { return state_.target; }
 
+        /// @brief 注視点までの距離を設定する（ドリー相当）
         void SetDistance(float distance);
         float GetDistance() const { return state_.distance; }
 

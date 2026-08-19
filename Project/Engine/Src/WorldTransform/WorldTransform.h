@@ -6,10 +6,9 @@
 #include <wrl.h>
 #include <string>
 
-// 定数バッファ用データ
-
 namespace CoreEngine
 {
+// 定数バッファ用データ
 struct ConstantBufferDataWorldTransform {
     Matrix4x4 matWorld; // ワールド変換行列
 };

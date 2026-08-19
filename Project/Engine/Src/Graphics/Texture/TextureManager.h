@@ -25,6 +25,7 @@ namespace CoreEngine {
 
 namespace CoreEngine {
 
+    /// @brief テクスチャの読み込み・キャッシュ・SRV 発行を一元管理するシングルトン
     class TextureManager {
     public:
         using LoadedTexture = TextureLoadedResource;
@@ -142,7 +143,9 @@ namespace CoreEngine {
             TextureColorSpace colorSpace = TextureColorSpace::SRGB);
 
         /// @brief 色空間を含めたキャッシュキーを構築する
-        static std::string MakeCacheKey(const std::string& resolvedPath, TextureColorSpace colorSpace);
+        /// @details キーは path から必ずここで生成する。パスを別々の場所で文字列化すると
+        ///          同じファイルが別キーになり、キャッシュが二重に載る。
+        static std::string MakeCacheKey(const std::filesystem::path& resolvedPath, TextureColorSpace colorSpace);
 
         /// @brief 未完了の非同期ロードを全て待機する内部ヘルパー
         void WaitForAllPendingLoads();

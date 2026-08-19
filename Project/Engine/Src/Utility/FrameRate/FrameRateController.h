@@ -2,11 +2,10 @@
 
 #include <chrono>
 
-/// @brief フレームレート管理クラス（VSync 60FPS固定）
-/// @details VSyncによる60FPS固定を前提とし、デルタタイムとFPS計測のみを行う
-
 namespace CoreEngine
 {
+/// @brief フレームレート管理クラス（VSync 60FPS固定）
+/// @details VSyncによる60FPS固定を前提とし、デルタタイムとFPS計測のみを行う
 class FrameRateController {
 public:
     /// @brief 初期化

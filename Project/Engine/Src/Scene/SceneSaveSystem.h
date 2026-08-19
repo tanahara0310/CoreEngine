@@ -2,21 +2,16 @@
 
 #include <string>
 #include <functional>
+#include <vector>
 
 namespace CoreEngine
 {
     class GameObjectManager;
     class GameObject;
 
-    /// @brief シーンのオブジェクトデータ JSON 保存/読み込みを担当するクラス
-    ///
-    /// データはオブジェクト単位でファイル分割し、1つのシーンフォルダにまとめて管理する。
-    /// @code
-    /// Application/Assets/Scenes/
-    ///   {sceneName}/                  ← シーンフォルダ
-    ///     _scene.json                  ← マニフェスト（version + オブジェクトキー一覧）
-    ///     {serializeKey}.json          ← 個別オブジェクトデータ
-    /// @endcode
+    /// @brief シーンのオブジェクトデータ JSON 保存 / 読み込みを担当するクラス
+    /// @details `Assets/Scenes/{sceneName}/` にマニフェスト `_scene.json` と
+    ///          オブジェクト単位の `{serializeKey}.json` を分けて置く。
     class SceneSaveSystem {
     public:
         /// @brief シーン名を設定（JSON ファイルパスに使用）
@@ -27,6 +22,11 @@ namespace CoreEngine
 
         /// @brief シーンのオブジェクトデータを JSON から読み込んで登録済みオブジェクトに適用
         void Load(GameObjectManager* mgr);
+
+        /// @brief シーン JSON から modelPath だけを列挙する（オブジェクトは一切生成しない）
+        /// @return 重複を除いた modelPath のリスト
+        /// @note GameObjectManager が要らないので、シーン構築より前（シェーダコンパイル中）に呼べる
+        static std::vector<std::string> CollectModelPaths(const std::string& sceneName);
 
         /// @brief シーン全体を保存（マニフェスト + 全オブジェクトの個別ファイル）
         void SaveScene(GameObjectManager* mgr);
@@ -40,6 +40,9 @@ namespace CoreEngine
         }
 
     private:
+        // パス組み立てとマニフェスト走査の実体は .cpp の無名名前空間にある
+        //（Load と CollectModelPaths が同じスキーマ解析を共有するため）
+
         /// @brief シーンフォルダのパスを返す  (例: "Application/Assets/Scenes/TestScene")
         std::string GetSceneDir() const;
 

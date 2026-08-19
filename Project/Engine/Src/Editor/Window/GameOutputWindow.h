@@ -12,15 +12,9 @@ namespace CoreEngine
     class PostEffectManager;
 
     /// @brief ゲーム映像だけを表示する専用 Win32 ウィンドウ
-    /// @details エンジン本体のクライアント領域と同じ構成（自前の HWND ＋ 自前のスワップチェーン）を
-    ///          もう一組持ち、ポストエフェクト適用後の最終出力をそこへ転写する。
-    ///          ImGui を一切経由しないため、エディタ UI が写り込まず、
-    ///          Development ビルドのまま Release ビルドと同じ見た目を確認できる。
-    ///
-    ///          フレーム内の呼び出し順（この順序でないと壊れる）:
-    ///            1. ApplyPendingRequests()  … 生成・破棄・リサイズ（コマンド記録の外で行う）
-    ///            2. RecordDrawCommands()    … メインのコマンドリスト記録中
-    ///            3. Present()               … メインの Present 後（＝コマンド実行後）
+    /// @details 自前の HWND とスワップチェーンを持ち、ポストエフェクト後の最終出力を転写する。
+    ///          ImGui を経由しないので Development ビルドのまま Release と同じ見た目を確認できる。
+    /// @warning フレーム内の呼び出し順は ApplyPendingRequests → RecordDrawCommands → Present。
     class GameOutputWindow{
     public:
         GameOutputWindow() = default;

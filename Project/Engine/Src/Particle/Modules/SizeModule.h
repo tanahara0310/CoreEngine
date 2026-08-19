@@ -2,14 +2,15 @@
 
 #include "ParticleModule.h"
 #include "Math/MathCore.h"
-/// @brief パーティクルのサイズ制御モジュール
-/// 注意: 初期サイズの設定はMainModuleで行います
-/// このモジュールはサイズの変化（Over Lifetime）のみを担当します
 
 namespace CoreEngine
 {
+/// @brief パーティクルのサイズ制御モジュール
+/// 注意: 初期サイズの設定はMainModuleで行います
+/// このモジュールはサイズの変化（Over Lifetime）のみを担当します
 class SizeModule : public ParticleModule {
 public:
+    /// @brief サイズ変化の設定
     struct SizeData {
    float endSize = 0.0f;  // 終了サイズ（ライフタイムで線形補間）
         bool sizeOverLifetime = true;      // ライフタイムでサイズ変化させるか

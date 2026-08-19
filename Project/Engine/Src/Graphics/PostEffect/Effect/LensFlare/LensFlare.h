@@ -9,14 +9,9 @@
 
 namespace CoreEngine
 {
-/// @brief レンズフレアエフェクト（CS方式・イメージベース）
-/// @details UE の Image-based Lens Flare 相当。HDR シーンから輝度抽出（1/4 解像度）→
-///          画面中心対称のゴースト列＋ハロー生成（色収差付き）→ 分離ガウスブラー →
-///          スターバースト変調付き加算合成の 4 パス構成。
-///          Bloom の後・ToneMapping の前（HDR 空間）で実行することを前提とする。
-///          調整パラメータは CVar（"r.LensFlare.*"）が唯一の保持者。太陽スクリーン位置と
-///          解像度は毎フレーム設定される実行時値なので CVar 化していない。
-///          ImGui と保存は CVar 側で自動生成される（Docs/Engine/Editor/CVar_Design.md）
+/// @brief レンズフレアエフェクト（CS 方式・イメージベース）
+/// @details 輝度抽出 → ゴースト列とハロー生成 → 分離ガウスブラー → 加算合成の 4 パス。
+///          Bloom の後・ToneMapping の前（HDR 空間）で実行する前提。CVar "r.LensFlare.*"。
 class LensFlare : public PostEffectComputeBase {
 public:
     /// @brief フレアパラメータ（HLSL 側 LensFlareParams と 80 バイトレイアウトを一致させること）
@@ -162,12 +157,15 @@ private:
     struct DownsampleShaderProvider final : ICustomShaderProvider {
         std::wstring GetComputeShaderPath() const override { return L"LensFlareDownsample.CS.hlsl"; }
     };
+    /// @brief 支配的な光源位置の検出 CS のシェーダ供給
     struct FindSourceShaderProvider final : ICustomShaderProvider {
         std::wstring GetComputeShaderPath() const override { return L"LensFlareFindSource.CS.hlsl"; }
     };
+    /// @brief ゴースト／ハロー生成 CS のシェーダ供給
     struct GhostsShaderProvider final : ICustomShaderProvider {
         std::wstring GetComputeShaderPath() const override { return L"LensFlareGhosts.CS.hlsl"; }
     };
+    /// @brief 分離ガウスブラー CS のシェーダ供給
     struct BlurShaderProvider final : ICustomShaderProvider {
         std::wstring GetComputeShaderPath() const override { return L"LensFlareBlur.CS.hlsl"; }
     };

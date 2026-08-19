@@ -6,6 +6,7 @@
 
 namespace CoreEngine
 {
+/// @brief D3D12 のバッファ・テクスチャリソース生成をまとめた静的ヘルパー
 class ResourceFactory {
 public:
     // バッファリソースを生成する（定数バッファ・頂点バッファ等はUPLOAD、リードバックはREADBACK）

@@ -49,13 +49,8 @@ namespace CoreEngine
         void SetCameraCBVAddress(D3D12_GPU_VIRTUAL_ADDRESS address) { cameraCBVAddress_ = address; }
 
         /// @brief 深度復元用の View*Projection 逆行列を更新する（ビューごとに毎回呼び出し）
-        /// @details gCamera（cameraCBVAddress_）はインフライトのフリッカー防止のため
-        ///          フレーム更新時に 1 回しか書かれない（Camera::TransferMatrix 参照）ため、
-        ///          こちらは専用 CBV として毎ビュー確実に更新する。
-        /// @note DeferredLighting は GameView/ReflectionView の両方で同一フレーム内に実行されるため、
-        ///       単一バッファだと後勝ちで両ビューが同じ（間違った）行列を参照してしまう
-        ///       （CPU の Map/Unmap は GPU 実行を待たず即座に上書きするため）。
-        ///       ビュー種別ごとに別バッファを持つことで両ビューが自分の行列を正しく参照できるようにする。
+        /// @details gCamera はフレーム更新時に 1 回しか書かれないので、こちらを専用 CBV として毎ビュー更新する。
+        /// @note ビュー種別ごとに別バッファを持つ。単一バッファだと後勝ちで両ビューが同じ行列を見てしまう。
         void UpdateDepthReconstruction(RenderViewType viewType, const Matrix4x4& invViewProj);
 
         // ===== IBL セッター =====
@@ -138,6 +133,7 @@ namespace CoreEngine
         // 有効フラグ・スケールは AtmosphereManager が持ち、Execute で毎フレーム CB へ反映する
         Microsoft::WRL::ComPtr<ID3D12Resource> skyAmbientBuffer_;
         D3D12_GPU_VIRTUAL_ADDRESS skyAmbientCBVAddress_ = 0;
+        /// @brief 空アンビエント（Sky Irradiance SH / 空スペキュラ IBL）の有効状態と強度
         struct SkyAmbientParams {
             uint32_t enabled = 0;
             float scale = 0.0f;

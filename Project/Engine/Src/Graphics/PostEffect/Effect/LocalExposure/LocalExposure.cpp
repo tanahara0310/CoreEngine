@@ -57,6 +57,7 @@ namespace CoreEngine
 
         /// @brief 定数バッファを 1 本作って永続マップする
         template <typename T>
+    /// @brief 定数バッファを確保して常時 Map したまま保持する
         void CreateMappedCB(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12Resource>& buffer, T*& mapped)
         {
             const UINT size = (sizeof(T) + 255) & ~255u;
@@ -82,6 +83,7 @@ namespace CoreEngine
         }
     }
 
+    // 4 パスぶんの Compute PSO をまとめて作る。1 本でも欠けたら無効化して素通しにする
     bool LocalExposure::CreateInternalPipelines()
     {
         auto* device = directXCommon_->GetDevice();
@@ -113,6 +115,8 @@ namespace CoreEngine
         return true;
     }
 
+    // Downsample → BlurH → BlurV → Apply の 4 パスを宣言する。
+    // 中間 2 枚は一時リソースなので、フレームをまたいで持ち越さない
     void LocalExposure::BuildPasses(PostEffectGraphBuilder& builder)
     {
         // パイプラインが無いフレームは何もせず素通し（積まなければ前段の出力がそのまま次段へ行く）
@@ -151,6 +155,7 @@ namespace CoreEngine
             [this](const PostEffectPassContext& passContext) { RecordApply(passContext); });
     }
 
+    // ベース層の生成。1/8 解像度の対数輝度へ落とす
     void LocalExposure::RecordDownsample(const PostEffectPassContext& context)
     {
         if (!mappedDownsampleParams_ || context.reads.empty()) {
@@ -181,6 +186,7 @@ namespace CoreEngine
         cmdList->Dispatch(DispatchCount(lowResWidth_), DispatchCount(lowResHeight_), 1);
     }
 
+    // 分離ガウス。横 → 縦の 2 回に分けることで、サンプル数が O(n^2) から O(n) になる
     void LocalExposure::RecordBlur(const PostEffectPassContext& context, bool horizontal)
     {
         BlurParams* params = horizontal ? mappedBlurHParams_ : mappedBlurVParams_;
@@ -209,6 +215,8 @@ namespace CoreEngine
         cmdList->Dispatch(DispatchCount(lowResWidth_), DispatchCount(lowResHeight_), 1);
     }
 
+    // 適用パス。ぼかしたベース層をフル解像度輝度をガイドに再構成してからトーンを圧縮する
+    // （素直に拡大するとエッジでハロー（縁の光り）が出る）
     void LocalExposure::RecordApply(const PostEffectPassContext& context)
     {
         if (!mappedApplyParams_ || context.reads.size() < 2) {

@@ -42,6 +42,7 @@ namespace CoreEngine
             "RTWaterReflectionPass",
         };
 
+    /// @brief GPU 時間のセルを、しきい値に応じて色分けして描く
         void DrawGpuMsCell(float gpuMs)
         {
             if (gpuMs < 0.0f) {

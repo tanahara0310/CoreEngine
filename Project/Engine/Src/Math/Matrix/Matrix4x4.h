@@ -73,10 +73,7 @@ struct Matrix4x4 {
     //========================================
     // 　行の取り出し / 差し替え
     //========================================
-    /// @details 行ベクトル規約なので、第 0〜2 行がそれぞれ基底軸（スケール込み）、
-    ///          第 3 行が平行移動になる。以前はこれを呼び出し側で
-    ///          `{ m.m[3][0], m.m[3][1], m.m[3][2] }` と手書きしており、
-    ///          同じ式が engine 全体に散らばっていた。
+    /// @details 行ベクトル規約なので、第 0〜2 行が基底軸（スケール込み）、第 3 行が平行移動。
 
     /// @brief 平行移動成分（第 3 行）を取り出す
     Vector3 GetTranslation() const {
@@ -118,12 +115,8 @@ static_assert(sizeof(Matrix4x4) == sizeof(DirectX::XMFLOAT4X4),
 
 namespace MathCore
 {
-    /// @brief 行列だけで閉じる演算
-    /// @details 「引数と戻り値が Matrix4x4 と Vector3（＋float）で閉じるか」で
-    ///          この置き場所を決めている。Quaternion が絡むもの
-    ///          （MakeAffine のクォータニオン版・MakeRotateMatrix）は
-    ///          型をまたぐので MathCore.h 側にある。
-    ///          実装はすべて MathCore.cpp（DirectXMath へ委譲）。
+    /// @brief 行列だけで閉じる演算（実装は MathCore.cpp。DirectXMath へ委譲）
+    /// @note Quaternion が絡むもの（MakeAffine のクォータニオン版など）は型をまたぐので MathCore.h 側。
     namespace Matrix {
         // 基本演算
         /// @note 加算・減算・乗算は Matrix4x4 の演算子（+ - *）を使うこと。

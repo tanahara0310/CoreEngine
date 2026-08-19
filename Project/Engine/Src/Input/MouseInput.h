@@ -44,6 +44,7 @@ public:
     /// @brief マウスドラッグ量のY成分を取得
     int GetDragY() const;
 
+        /// @brief カーソルのスクリーン座標
     POINT GetCursorPosition() const;
 
 private:

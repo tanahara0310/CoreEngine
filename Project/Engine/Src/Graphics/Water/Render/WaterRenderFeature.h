@@ -17,22 +17,8 @@ namespace CoreEngine
     class RenderDomainContext;
 
     /// @brief 水面描画一式（水面オブジェクト・波シミュレーション・外部リソース結線）を持つ Feature
-    /// @details 以前は Application 側の `WaterSurfaceRuntimeController` が
-    ///          「シーン → EngineSystem → 各マネージャ」を毎フレーム手で結線していた。
-    ///          水面の実装は全て Engine 側（RT マネージャ / FFTOceanManager / simulator /
-    ///          シェーダー）にあるのに、その配線だけがシーン固有コードにあったため
-    ///          「水面を使いたいシーン」がその 120 行をコピーする必要があった。
-    ///
-    ///          この Feature を `AddFeature()` するだけで水面が成立する。
-    ///
-    ///          **フェーズ割り当て**
-    ///          - `Initialize`           : 水面オブジェクトの生成（採用）と simulator 準備
-    ///          - `PostSceneInitialize`  : SkyBox の解決（空気遠近感の適用可否判定に使う）
-    ///          - `PreObjectUpdate`      : シミュレーション時間の進行と UV アニメーション
-    ///          - `PostLogic`            : 水面状態の再構築 → 外部リソース結線 → publish
-    ///
-    ///          `PostLogic` を使うのは、大気散乱（EnvironmentFeature）の更新後でないと
-    ///          LUT / SH / キューブマップの準備完了が確定しないため。
+    /// @details AddFeature() するだけで水面が成立する。結線を PostLogic で行うのは、
+    ///          大気散乱（EnvironmentFeature）の更新後でないと LUT / SH の準備完了が確定しないため。
     class WaterRenderFeature : public ISceneFeature {
     public:
         /// @brief 水面オブジェクトの生成パラメータ

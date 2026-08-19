@@ -9,14 +9,10 @@
 
 namespace CoreEngine
 {
-    /// @brief GPU定数バッファに送信するマテリアルパラメータ（PBR専用）
+    /// @brief GPU 定数バッファに送信するマテリアルパラメータ（PBR 専用）
     /// @note glTF 準拠の「ファクター × テクスチャ」乗算方式。
-    ///       テクスチャが無いマテリアルは白1x1フォールバックがバインドされるため、
-    ///       ファクター値がそのまま最終値になる。
-    /// @note IBL の有効/無効はシーン側（IBLマップの有無）で決まる。
-    ///       マテリアルは iblIntensity のみ保持し、0 で個別オプトアウトできる。
-    /// @note シェーダー側定義は Shaders/Include/Object/ObjectMaterial.hlsli と
-    ///       メモリレイアウトを一致させること。
+    ///       テクスチャが無い場合は白 1x1 がバインドされるのでファクターがそのまま最終値になる。
+    /// @warning Shaders/Include/Object/ObjectMaterial.hlsli とメモリレイアウトを一致させること
     struct MaterialConstants {
         Vector4 color;              ///< ベースカラーファクター (RGBA)。ベースカラーテクスチャと乗算
         Matrix4x4 uvTransform;      ///< UVトランスフォーム行列

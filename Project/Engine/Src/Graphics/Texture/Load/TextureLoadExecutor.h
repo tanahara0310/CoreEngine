@@ -4,7 +4,7 @@
 #include "Graphics/Texture/TextureColorSpace.h"
 #include <externals/DirectXTex/DirectXTex.h>
 
-#include <string>
+#include <filesystem>
 #include <functional>
 
 namespace CoreEngine
@@ -23,19 +23,13 @@ namespace CoreEngine
         };
 
         /// @brief 読み込み計画に基づいてテクスチャロードを実行する
-        /// @param dxCommon DirectX共通管理
-        /// @param resolvedPath 実際に読み込むファイルパス
-        /// @param ddsGenerationEnabled DDS生成有効フラグ
-        /// @param ddsPath DDS生成先パス
-        /// @param ddsCacheGenerator DDS生成処理コールバック
-        /// @param colorSpace 色空間（WIC読み込み時のsRGB/Linear切り替え）
-        /// @return アップロード結果とメタデータ
+        /// @param colorSpace 色空間（WIC 読み込み時の sRGB / Linear 切り替え）
         static ExecutionResult Execute(
             CoreEngine::DirectXCommon* dxCommon,
-            const std::string& resolvedPath,
+            const std::filesystem::path& resolvedPath,
             bool ddsGenerationEnabled,
-            const std::string& ddsPath,
-            const std::function<bool(const std::string&, const std::string&)>& ddsCacheGenerator,
+            const std::filesystem::path& ddsPath,
+            const std::function<bool(const std::filesystem::path&, const std::filesystem::path&)>& ddsCacheGenerator,
             TextureColorSpace colorSpace = TextureColorSpace::SRGB);
     };
 }

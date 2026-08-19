@@ -10,16 +10,16 @@
 #include <array>
 #include <unordered_map>
 
-/// @brief ドッキングエリアの定義
-
 namespace CoreEngine
 {
     class SceneDebugEditor;
 
+    /// @brief 既定のドッキングレイアウト
     enum class DockLayoutPreset {
         Standard
     };
 
+    /// @brief ドッキング先の領域
     enum class DockArea {
         LeftTop,        // 左上（エンジン情報など）
         LeftBottom,     // 左下（カメラ情報など）

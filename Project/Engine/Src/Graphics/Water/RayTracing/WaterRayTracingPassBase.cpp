@@ -14,6 +14,8 @@
 
 namespace CoreEngine
 {
+    // 構成データ 1 つから DXR パイプライン・シェーダーテーブル・出力ビューを丸ごと組む。
+    // 屈折・反射・コースティクスの 3 マネージャはこの関数への引数だけが違う
     bool WaterRayTracingPassBase::InitializeFromDesc(
         DirectXCommon* dxCommon,
         DescriptorManager* descriptorManager,
@@ -105,6 +107,8 @@ namespace CoreEngine
         return true;
     }
 
+    // ルートシグネチャへ SRV / UAV / CBV を順に差して DispatchRays する。
+    // バインド順は RTWaterPipelineDesc の宣言順と 1 対 1（ずれるとシェーダーが別リソースを読む）
     void WaterRayTracingPassBase::BindAndDispatchRays(
         ID3D12GraphicsCommandList* cmdList,
         DispatchResources& resources,
@@ -146,6 +150,7 @@ namespace CoreEngine
         EndOutputWrite(cmdList, resources.outputResource, *resources.outputCurrentState, finalState);
     }
 
+    // 共通基盤のガード判定に、水面固有の前提（供給元の有無）を足したもの
     bool WaterRayTracingPassBase::BeginDispatch(
         ID3D12GraphicsCommandList* cmdList,
         UINT width,
@@ -158,6 +163,7 @@ namespace CoreEngine
             cmdList, width, height, viewIndex, outResources, format, GetSurfaceConstantBufferSize());
     }
 
+    // 水面固有の診断情報（水面高さ・有効波数）を記録する
     void WaterRayTracingPassBase::BeginDiagnostics(
         uint32_t viewIndex,
         UINT width,
@@ -178,6 +184,7 @@ namespace CoreEngine
         lastDispatchInfo_.AddExtra("sceneColorSrv", sceneColorSRV.ptr != 0 ? 1.0f : 0.0f);
     }
 
+    // 供給元の水面データを、シェーダー側 cbuffer のレイアウトへ詰め替える
     WaterRayTracingPassBase::WaterSurfaceConstants WaterRayTracingPassBase::BuildSurfaceConstants(
         const WaterSurfaceData& surfaceData,
         const FFTOceanInput& fftOceanInput) const
@@ -196,6 +203,7 @@ namespace CoreEngine
         return surfaceConstants;
     }
 
+    // 水面定数を GPU へ転送する（バッファ未確保なら警告して何もしない）
     void WaterRayTracingPassBase::UploadSurfaceConstants(const WaterSurfaceConstants& surfaceConstants) const
     {
         if (!constantBufferMapped_) {
@@ -210,6 +218,7 @@ namespace CoreEngine
         std::memcpy(constantBufferMapped_, &surfaceConstants, sizeof(surfaceConstants));
     }
 
+    // 供給元から水面状態を取り出して定数バッファへ載せ、載せた内容を返す
     WaterRayTracingPassBase::WaterSurfaceConstants WaterRayTracingPassBase::UploadSurfaceDataForDispatch(
         const WaterSurfaceData& surfaceData,
         const FFTOceanInput& fftOceanInput) const

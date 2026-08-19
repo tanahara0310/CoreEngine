@@ -38,6 +38,7 @@ namespace CoreEngine {
             { DIK_PRIOR,    "PageUp"    }, { DIK_NEXT,     "PageDown" },
         };
 
+        /// @brief DirectInput のキーコードを保存用の文字列へ
         const char* KeyCodeToName(uint8_t code) {
             for (const auto& e : kKeyTable) {
                 if (e.code == code) return e.name;
@@ -45,6 +46,7 @@ namespace CoreEngine {
             return nullptr;
         }
 
+        /// @brief 文字列から DirectInput のキーコードへ
         uint8_t KeyNameToCode(std::string_view name) {
             for (const auto& e : kKeyTable) {
                 if (name == e.name) return e.code;
@@ -62,6 +64,7 @@ namespace CoreEngine {
             { MouseButton::XButton2, "XButton2" },
         };
 
+        /// @brief マウスボタンを保存用の文字列へ
         const char* MouseButtonToName(MouseButton btn) {
             for (const auto& e : kMouseButtonTable) {
                 if (e.btn == btn) return e.name;
@@ -69,6 +72,7 @@ namespace CoreEngine {
             return nullptr;
         }
 
+        /// @brief 文字列からマウスボタンへ
         MouseButton MouseButtonFromName(std::string_view name) {
             for (const auto& e : kMouseButtonTable) {
                 if (name == e.name) return e.btn;
@@ -95,6 +99,7 @@ namespace CoreEngine {
             { GamepadButton::RightShoulder, "RightShoulder" },
         };
 
+        /// @brief ゲームパッドボタンを保存用の文字列へ
         const char* GamepadButtonToName(GamepadButton btn) {
             for (const auto& e : kGamepadButtonTable) {
                 if (e.btn == btn) return e.name;
@@ -102,6 +107,7 @@ namespace CoreEngine {
             return nullptr;
         }
 
+        /// @brief 文字列からゲームパッドボタンへ
         GamepadButton GamepadButtonFromName(std::string_view name) {
             for (const auto& e : kGamepadButtonTable) {
                 if (name == e.name) return e.btn;
@@ -120,6 +126,7 @@ namespace CoreEngine {
             { GamepadAxis::RightTrigger,"RightTrigger"},
         };
 
+        /// @brief ゲームパッド軸を保存用の文字列へ
         const char* GamepadAxisToName(GamepadAxis axis) {
             for (const auto& e : kGamepadAxisTable) {
                 if (e.axis == axis) return e.name;
@@ -127,6 +134,7 @@ namespace CoreEngine {
             return nullptr;
         }
 
+        /// @brief 文字列からゲームパッド軸へ
         GamepadAxis GamepadAxisFromName(std::string_view name) {
             for (const auto& e : kGamepadAxisTable) {
                 if (name == e.name) return e.axis;

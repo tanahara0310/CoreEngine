@@ -4,11 +4,10 @@
 #include "Math/Vector/Vector3.h"
 #include "Graphics/Line/Line.h"
 
-/// @brief 3Dスプライン曲線クラス
-/// 3Dレールシューティングゲーム用のスプライン曲線を扱う汎用クラス
-
 namespace CoreEngine
 {
+/// @brief 3Dスプライン曲線クラス
+/// 3Dレールシューティングゲーム用のスプライン曲線を扱う汎用クラス
 class Spline {
 public:
     /// @brief コントロールポイント構造体
@@ -131,13 +130,7 @@ private:
     /// @return 位置
     Vector3 CalculateHermitePosition(float t) const;
 
-    /// @brief セグメント内での補間計算
-    /// @param p0 点0
-    /// @param p1 点1
-    /// @param p2 点2
-    /// @param p3 点3
-    /// @param t パラメータ（0.0f〜1.0f）
-    /// @return 補間された位置
+    /// @brief セグメント内での補間計算（p0〜p3 は制御点、t は 0.0f〜1.0f）
     Vector3 CatmullRomInterpolation(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) const;
 
     /// @brief パラメータの正規化（ループ対応）

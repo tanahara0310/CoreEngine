@@ -323,11 +323,7 @@ namespace CoreEngine
         // ===== Aerial Perspective =====
 
         /// @brief SceneColor へ空気遠近感を合成する（AerialPerspectivePass から呼ばれる）
-        /// @param cmdList 記録先コマンドリスト
-        /// @param sceneColor SceneColor リソース
         /// @param sceneColorState SceneColor の現在状態（追跡参照）
-        /// @param sceneColorSrvHandle SceneColor の SRV ハンドル
-        /// @param depthSrvHandle SceneDepth の SRV ハンドル
         void ApplyAerialPerspective(
             ID3D12GraphicsCommandList* cmdList,
             ID3D12Resource* sceneColor,

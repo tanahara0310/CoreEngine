@@ -9,13 +9,9 @@
 namespace CoreEngine
 {
     /// @brief SSAO テンポラル蓄積レンダリング技術
-    /// @details TAA のジッタで SSAO 入力（深度・法線）が毎フレーム半ピクセル揺れるため、
-    ///          SSAO の 2 値遮蔽判定はカメラ静止時でも毎フレーム別の値を出す（＝ちらつき）。
-    ///          RTShadowTemporal と同じく、モーションベクター再投影＋近傍クランプ付きの
-    ///          指数移動平均で時間方向に安定させる。
-    ///
-    ///          SSAO 生成 → 本パス → SSAOBlur の順に実行し、
-    ///          履歴は RenderTargetNames::SSAOHistoryA / B の ping-pong で保持する。
+    /// @details TAA のジッタで SSAO 入力が毎フレーム揺れるため、モーションベクター再投影＋
+    ///          近傍クランプ付きの指数移動平均で時間方向に安定させる。
+    /// @note SSAO 生成 → 本パス → SSAOBlur の順。履歴は SSAOHistoryA / B の ping-pong。
     class SSAOTemporalTechnique : public RenderingTechniqueBase {
     public:
         /// @brief シェーダー側 cbuffer SSAOTemporalParams と一致させること

@@ -71,12 +71,26 @@ void WinApp::CreateAppWindow(const wchar_t* title)
         wc_.hInstance,                 // インスタンスハンドル
         nullptr);                      // その他のパラメータ
 
-    // 起動時はボーダーレス全画面で表示する。
-    // SW_SHOWMAXIMIZED（最大化）ではタイトルバーが残り、タスクバーの分だけ
-    // 作業領域が削られるため「全画面」にはならない。
-    // 通常ウィンドウへ戻すときの復元先として、先に配置を控えておく。
-    ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
+    // 起動時はボーダーレス全画面。ただしこの時点では表示しない。
+    // SW_SHOWMAXIMIZED ではタイトルバーとタスクバーが残るので「全画面」にはならない。
+    // ここでジオメトリだけ先に適用するのはクライアントサイズを確定させるため
+    // （遅らせると RT を 1280x720 で作った直後にモニタ解像度で作り直すことになる）。
     SetFullscreen(true);
+}
+
+void WinApp::ShowMainWindow()
+{
+    if (!hwnd_ || isMainWindowShown_) {
+        return;
+    }
+
+    // このフラグを立ててから ShowWindow する。以降の SetFullscreen（Alt+Enter）は
+    // 通常どおり ShowWindow を伴う
+    isMainWindowShown_ = true;
+
+    ShowWindow(hwnd_, SW_SHOW);
+    SetForegroundWindow(hwnd_);
+    SetFocus(hwnd_);
 }
 
 void WinApp::SetFullscreen(bool fullscreen)
@@ -90,6 +104,13 @@ void WinApp::SetFullscreen(bool fullscreen)
         windowedStyle_ = GetWindowLongPtr(hwnd_, GWL_STYLE);
         windowedPlacement_.length = sizeof(WINDOWPLACEMENT);
         GetWindowPlacement(hwnd_, &windowedPlacement_);
+
+        // 起動時（非表示のまま全画面化する経路）では showCmd が SW_HIDE になる。
+        // そのまま復元すると Alt+Enter でウィンドウモードへ戻した瞬間に消えるので、
+        // 従来と同じ「最大化ウィンドウ」へ矯正しておく
+        if (windowedPlacement_.showCmd == SW_HIDE) {
+            windowedPlacement_.showCmd = SW_SHOWMAXIMIZED;
+        }
 
         HMONITOR monitor = MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST);
         MONITORINFO monitorInfo{};
@@ -112,7 +133,11 @@ void WinApp::SetFullscreen(bool fullscreen)
             monitorRect.bottom - monitorRect.top,
             SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
 
-        ShowWindow(hwnd_, SW_SHOW);
+        // 起動シーケンス中（ShowMainWindow 前）はここで表示してはいけない。
+        // 表示した瞬間から「メッセージを処理しない全画面ウィンドウ」になる
+        if (isMainWindowShown_) {
+            ShowWindow(hwnd_, SW_SHOW);
+        }
         isFullscreen_ = true;
     } else {
         SetWindowLongPtr(hwnd_, GWL_STYLE, windowedStyle_);

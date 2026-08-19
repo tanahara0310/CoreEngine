@@ -13,20 +13,13 @@ namespace CoreEngine {
     class DescriptorManager;
 }
 
-/// @brief スキンクラスターを生成するクラス
-
 namespace CoreEngine
 {
+/// @brief スキンクラスターを生成するクラス
 class SkinClusterGenerator {
 public:
     /// @brief スキンクラスターを生成
-    /// @param device デバイス
-    /// @param skeleton スケルトン
-    /// @param modelData モデルデータ
-    /// @param descriptorManager ディスクリプタマネージャー
-    /// @param sourceVertexBuffer GPUスキニング（CS）が読み取る元頂点バッファ（ModelResourceが保持するもの）
-    /// @param vertexCount 頂点数（sourceVertexBufferの要素数）
-    /// @return 生成されたスキンクラスター
+    /// @param sourceVertexBuffer GPU スキニング（CS）が読み取る元頂点バッファ
     static CoreEngine::SkinCluster CreateSkinCluster(
         const Microsoft::WRL::ComPtr<ID3D12Device>& device,
         const Skeleton& skeleton,

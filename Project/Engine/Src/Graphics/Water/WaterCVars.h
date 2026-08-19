@@ -4,13 +4,10 @@
 
 namespace CoreEngine
 {
-    /// @brief 水面パラメータの CVar 群（単一情報源。Phase 5 で Water.json / UI キャッシュから移行）
-    /// @details 定義は WaterCVars.cpp。永続化は CVars.json（CVarSettingsSection）に一本化され、
-    ///          エンジン側は WaterRenderFeature::ApplySettingsFromCVars が毎フレームここから
-    ///          プルして各所（WaterPlaneObject / FFTOceanManager / コースティクス / RT屈折）へ
-    ///          反映する。UI は CVar ツリー（Engine Settings）と水面パネルの両方から編集できる
-    ///          （どちらも同じストレージを書くため食い違いは起きない）。
-    ///          既定値は 2026-08 時点の調整値（旧 Water.json）を引き継いでいる。
+    /// @brief 水面パラメータの CVar 群（単一情報源）
+    /// @details 定義は WaterCVars.cpp。永続化は CVars.json（CVarSettingsSection）へ一本化し、
+    ///          WaterRenderFeature::ApplySettingsFromCVars が毎フレームここから各所へ反映する。
+    /// @note UI は CVar ツリーと水面パネルの両方から編集できる（同じストレージを書くので食い違わない）。
     namespace WaterCVars
     {
         // ---- 見た目 ----

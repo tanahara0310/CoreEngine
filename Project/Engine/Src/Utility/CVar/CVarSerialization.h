@@ -3,6 +3,7 @@
 #include "externals/nlohmann/single_include/nlohmann/json_fwd.hpp"
 #include <string_view>
 
+/// @file
 /// @brief CVar の JSON シリアライズ
 
 namespace CoreEngine
@@ -15,14 +16,9 @@ namespace CoreEngine
     namespace CVarSerialization
     {
         /// @brief CVar を JSON へ書き出す
-        /// @param out           書き出し先
-        /// @param prefix        対象の接頭辞（空文字なら全件）
-        /// @param skipDefaults  true でコードデフォルトのままの項目を書かない
-        /// @param excludePrefix この接頭辞に一致する項目を除外する（空文字なら除外なし）。
-        ///                      保存先 2 層化で「"d."（個人状態）以外の全件」を書くために使う
-        /// @details 自動保存では skipDefaults=true にして「触った項目だけ」を残す。
-        ///          プリセットは完全なスナップショットが必要なので false にする。
-        ///          CVarFlags::NoSave が付いた変数は常に対象外
+        /// @param skipDefaults  true でコードデフォルトのままの項目を書かない（自動保存はこちら）
+        /// @param excludePrefix この接頭辞に一致する項目を除外する（空文字なら除外なし）
+        /// @note CVarFlags::NoSave が付いた変数は常に対象外
         void Save(nlohmann::json& out, std::string_view prefix = "", bool skipDefaults = false,
                   std::string_view excludePrefix = {});
 

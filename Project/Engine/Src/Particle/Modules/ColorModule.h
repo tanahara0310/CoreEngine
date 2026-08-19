@@ -5,14 +5,14 @@
 
 struct Particle;
 
+namespace CoreEngine
+{
 /// @brief パーティクルの色モジュール
 /// 注意: 初期色の設定はMainModuleで行います
 /// このモジュールは色の変化（グラデーション）のみを担当します
-
-namespace CoreEngine
-{
 class ColorModule : public ParticleModule {
 public:
+    /// @brief ライフタイムに沿った色変化の設定
     struct ColorOverLifetime {
         Vector4 endColor = { 1.0f, 1.0f, 1.0f, 0.0f };   // 終了色
         bool useGradient = true;   // グラデーションを使用するか

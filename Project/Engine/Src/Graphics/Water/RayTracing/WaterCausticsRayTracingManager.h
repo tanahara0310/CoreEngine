@@ -18,6 +18,7 @@ namespace CoreEngine
     class DescriptorManager;
     class AccelerationStructureManager;
 
+    /// @brief RT コースティクスの設定
     struct WaterCausticsRayTracingSettings {
         float maxTraceDistance = 500.0f;
         float surfaceBias = 0.02f;
@@ -34,6 +35,7 @@ namespace CoreEngine
         uint32_t debugLogEnabled = 0;
     };
 
+    /// @brief 水面のコースティクスをレイトレーシングで生成するマネージャ
     class WaterCausticsRayTracingManager : public WaterRayTracingPassBase {
     public:
         // シーンの実際のディレクショナルライト情報。
@@ -73,10 +75,14 @@ namespace CoreEngine
             UINT height,
             ViewID viewId = ViewID::GameView);
 
+        /// @brief 出力テクスチャを指定サイズで作り直す
         void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView);
 
+        /// @brief コースティクス出力テクスチャの SRV ハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetCausticsSRVHandle(ViewID viewId = ViewID::GameView) const;
+        /// @brief コースティクス出力テクスチャのリソース
         ID3D12Resource* GetCausticsResource(ViewID viewId = ViewID::GameView) const;
+        /// @brief コースティクス出力の現在ステートへの参照（バリア時に更新される）
         D3D12_RESOURCE_STATES& GetCausticsCurrentState(ViewID viewId = ViewID::GameView);
 
         void SetSettings(const WaterCausticsRayTracingSettings& settings) { settings_ = settings; }

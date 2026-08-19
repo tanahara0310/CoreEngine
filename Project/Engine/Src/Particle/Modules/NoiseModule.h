@@ -5,11 +5,10 @@
 
 struct Particle;
 
-/// @brief パーティクルのノイズモジュール（Unity Noise Module相当）
-/// パーリンノイズによる位置の揺らぎを追加します
-
 namespace CoreEngine
 {
+/// @brief パーティクルのノイズモジュール（Unity Noise Module相当）
+/// パーリンノイズによる位置の揺らぎを追加します
 class NoiseModule : public ParticleModule {
 public:
     /// @brief ノイズデータ構造体
@@ -63,11 +62,6 @@ private:
     float Fade(float t);
 
     /// @brief グラディエント関数
-    /// @param hash ハッシュ値
-    /// @param x X座標
-    /// @param y Y座標
-    /// @param z Z座標
-    /// @return グラディエント値
     float Gradient(int hash, float x, float y, float z);
 };
 }

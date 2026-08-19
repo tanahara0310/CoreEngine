@@ -73,10 +73,12 @@ public:
 
     /// @brief 先頭のコライダー（無ければ nullptr）
     Collider* GetFirst();
+    /// @brief 先頭のコライダーを取得する（1 本も無ければ nullptr）
     const Collider* GetFirst() const;
 
     /// @brief インデックス指定（範囲外なら nullptr）
     Collider* Get(size_t index);
+    /// @brief index 番目のコライダーを取得する（範囲外は nullptr）
     const Collider* Get(size_t index) const;
 
     /// @brief 有効なコライダーを順に処理する

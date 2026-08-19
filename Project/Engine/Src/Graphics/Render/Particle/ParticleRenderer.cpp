@@ -46,6 +46,7 @@ namespace CoreEngine
 
         // ビルダーパターンでPSOを構築
         bool result = psoMg_->CreateBuilder()
+            .SetDebugName("Particle")
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, false)

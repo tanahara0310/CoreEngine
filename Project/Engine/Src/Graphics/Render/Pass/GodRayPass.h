@@ -5,11 +5,8 @@
 namespace CoreEngine
 {
     /// @brief ゴッドレイ（雲の隙間の光芒）パス（Compute）
-    /// @details 雲シャドウマップを生成し、ビューレイに沿った内散乱の遮蔽差分を
-    ///          半解像度でレイマーチして SceneColor へ合成する。
-    ///          Sky フェーズの VolumetricCloudPass（20）の後（30）に実行される。
-    ///          GameView のみで有効（ReflectionView は対象外）。
-    ///          設計書: Docs/Engine/Graphics/Rendering/GodRay_Design.md
+    /// @details 雲シャドウマップを作り、内散乱の遮蔽差分を半解像度でレイマーチして SceneColor へ合成する。
+    /// @note Sky フェーズの VolumetricCloudPass の後に実行。GameView のみで有効。
     class GodRayPass : public RenderPass {
     public:
         GodRayPass() = default;

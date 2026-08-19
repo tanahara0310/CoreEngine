@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "CustomShaderPipeline.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Asset/AssetDatabase.h"
@@ -18,12 +19,13 @@ namespace CoreEngine
             if (fileName.empty()) {
                 return {};
             }
-            const std::string nameStr = std::filesystem::path(fileName).string();
-            const std::string resolved = AssetDatabase::GetInstance().FindAssetPath(nameStr);
+            // 検索キーは UTF-8 のテキストとして渡す（AssetDatabase の登録名も UTF-8）
+            const std::string nameStr = Logger::GetInstance().PathToUtf8(std::filesystem::path(fileName));
+            const std::filesystem::path resolved = AssetDatabase::GetInstance().FindAssetPath(nameStr);
             if (resolved.empty()) {
                 return {};
             }
-            return std::filesystem::path(resolved).wstring();
+            return resolved.wstring();
         }
 
         /// @brief カスタムシェーダー向けの RootSignatureConfig を生成する
@@ -118,13 +120,11 @@ namespace CoreEngine
         }
 
         // 独自 RootSignature で PSO を構築する。
-        // ★ビルダーは SetInputLayoutFromReflection() の後にコピーしてはいけない★
-        // inputElementDescs_[i].SemanticName が semanticNameStorage_ の std::string を
-        // 指しているため、コピーすると新しい方の desc が「コピー元の文字列」を指したままになり、
-        // 元が破棄された瞬間にダングリングして PSO 生成が失敗する。
-        // そのためビルダーは先に実体として受け取り、以降は参照のまま操作する。
+        // ビルダーは自己参照（SemanticName が内部ストレージを指す）のため
+        // コピー禁止（型レベルで delete 済み）。実体1つを参照のまま操作する。
         PipelineStateBuilder builder = forwardPsoMg_.CreateBuilder();
-        builder.SetInputLayoutFromReflection(*reflectionData)
+        builder.SetDebugName("CustomShader")
+            .SetInputLayoutFromReflection(*reflectionData)
             .SetRasterizer(cullMode, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, depthWriteEnable)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
@@ -192,15 +192,10 @@ namespace CoreEngine
         }
 
         // コンピュートパイプラインステートを構築する
-        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {};
-        desc.pRootSignature = computeRootSignatureMg_->GetRootSignature();
-        desc.CS = { csBlob->GetBufferPointer(), csBlob->GetBufferSize() };
-
-        const HRESULT hr = device->CreateComputePipelineState(&desc, IID_PPV_ARGS(&computePSO_));
-        if (FAILED(hr)) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
-                "CustomShaderPipeline: CreateComputePipelineState failed. HRESULT={:#x}",
-                static_cast<uint32_t>(hr));
+        computePSO_ = ComputePipelineUtil::Create(
+            device, computeRootSignatureMg_->GetRootSignature(), csBlob,
+            "CustomShaderCS_" + std::filesystem::path(csPath).filename().string());
+        if (!computePSO_) {
             computeRootSignatureMg_.reset();
             return;
         }

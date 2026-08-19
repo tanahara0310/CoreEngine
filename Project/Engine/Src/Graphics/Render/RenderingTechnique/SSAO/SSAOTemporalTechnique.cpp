@@ -33,6 +33,7 @@ namespace CoreEngine
         return (index == 0) ? RenderTargetNames::SSAOHistoryA : RenderTargetNames::SSAOHistoryB;
     }
 
+    // 履歴 2 枚を画面サイズで用意する。書き込み先は frameNumber の偶奇で決まる
     void SSAOTemporalTechnique::EnsureHistoryTargets(const RenderContext& context)
     {
         for (uint32_t index = 0; index < 2; ++index) {
@@ -52,6 +53,8 @@ namespace CoreEngine
         }
     }
 
+    // 前フレームの AO をモーションベクターで再投影し、近傍でクランプしてから混ぜる。
+    // クランプが無いと、遮蔽が切り替わる境界で古い AO が尾を引く
     void SSAOTemporalTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
     {
         outputSrvHandle = {};
@@ -125,6 +128,7 @@ namespace CoreEngine
         outputSrvHandle = writeTarget->GetSRVHandle();
     }
 
+    // 解像度が変わると履歴の再投影先が合わなくなるので、次フレームは履歴なしで始める
     void SSAOTemporalTechnique::OnResize(uint32_t width, uint32_t height)
     {
         params_.screenSize[0] = static_cast<float>(width);

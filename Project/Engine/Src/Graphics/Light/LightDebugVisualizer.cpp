@@ -19,6 +19,7 @@ namespace CoreEngine
     {
         constexpr float kPi = MathCore::Constants::kPi;
 
+    /// @brief ライト種別のギズモ表示名
         const char* GetTypeLabel(LightType type)
         {
             switch (type) {
@@ -32,9 +33,7 @@ namespace CoreEngine
 
 #ifdef _DEBUG
         // ==================== ギズモ描画ヘルパー ====================
-        // 注意: LineManager::DrawLine の第4引数は「太さ」ではなく「透明度(alpha)」。
-        // 旧実装は太さのつもりで 0.2〜0.3 を渡しており、ギズモの大半が
-        // ほぼ透明で描かれて視認できなかった（見づらさの根本原因）。
+        // 注意: LineManager::DrawLine の第 4 引数は「太さ」ではなく「透明度(alpha)」。
 
         /// @brief 方向ベクトルに直交する正規直交基底を作る
         void MakePerpBasis(const Vector3& dir, Vector3& outP1, Vector3& outP2)

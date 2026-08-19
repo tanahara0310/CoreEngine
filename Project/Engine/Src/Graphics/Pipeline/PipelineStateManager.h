@@ -2,7 +2,7 @@
 
 #include <d3d12.h>
 #include <dxcapi.h>
-#include <map>
+#include <array>
 #include <vector>
 #include <string>
 #include <wrl.h>
@@ -24,21 +24,35 @@ enum class BlendMode {
     kBlendModeScreen, // スクリーンブレンド
 };
 
+/// @brief BlendMode の要素数（PipelineStateManager の固定長配列用）
+inline constexpr size_t kBlendModeCount = 6;
+
 // 前方宣言
 class PipelineStateManager;
 
 /// @brief PSOの構築を行うビルダークラス
 class PipelineStateBuilder {
 public:
+    /// @brief 生成した PSO の登録先マネージャを指定して構築する
     explicit PipelineStateBuilder(PipelineStateManager* manager);
 
-    /// @brief 入力エレメントを追加
-    /// @param semanticName セマンティック名
-    /// @param semanticIndex インデックス
-    /// @param format フォーマット
-    /// @param alignedByteOffset アライメントされたバイトオフセット
-    /// @param inputSlot 入力スロット(デフォルトは0)
+    // inputElementDescs_ の SemanticName が semanticNameStorage_ 内の文字列を
+    // 指しているため、コピーすると新しい方がコピー元の文字列を指したままになり
+    // ダングリングする（過去に実際に発生したバグ）。コピーは型レベルで禁止する。
+    // move は vector のバッファ所有権移動で要素アドレスが変わらないため安全。
+    PipelineStateBuilder(const PipelineStateBuilder&) = delete;
+    PipelineStateBuilder& operator=(const PipelineStateBuilder&) = delete;
+    PipelineStateBuilder(PipelineStateBuilder&&) = default;
+    PipelineStateBuilder& operator=(PipelineStateBuilder&&) = default;
+
+    /// @brief デバッグ名の設定
+    /// @note PSO の SetName と、生成失敗時のエラーログに使用される。
+    ///       PIX やデバッグレイヤーのメッセージで PSO を識別できるようになる。
+    /// @param name デバッグ名（例: "SkyBox", "ModelForward"）
     /// @return ビルダー自身(メソッドチェーン用)
+    PipelineStateBuilder& SetDebugName(const std::string& name);
+
+    /// @brief 入力エレメントを追加
     PipelineStateBuilder& AddInputElement(
         const char* semanticName,
         UINT semanticIndex,
@@ -94,12 +108,8 @@ public:
         DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
         UINT index = 0);
 
-    /// @brief [MRT] 複数レンダーターゲットのフォーマットを一括設定（G-Buffer向け）
-    /// @note 単一RTの場合は SetRenderTargetFormat() で十分です。
-    ///       G-BufferパスなどMRTを使用する場合はこちらを使用してください。
-    /// @param formats フォーマット配列（要素数は count 個）
-    /// @param count レンダーターゲット数（最大8）
-    /// @return ビルダー自身
+    /// @brief [MRT] 複数レンダーターゲットのフォーマットを一括設定（G-Buffer 向け）
+    /// @note 単一 RT なら SetRenderTargetFormat() で足りる。count は最大 8
     PipelineStateBuilder& SetRenderTargetFormats(const DXGI_FORMAT* formats, UINT count);
 
     /// @brief 深度ステンシルフォーマットの設定
@@ -122,13 +132,8 @@ public:
         D3D12_COLOR_WRITE_ENABLE writeMask = D3D12_COLOR_WRITE_ENABLE_ALL,
         bool enableAlpha = true);
 
-    /// @brief ブレンドモードを指定してPSOを構築
-    /// @param device デバイス
-    /// @param vs 頂点シェーダー
-    /// @param ps ピクセルシェーダー
-    /// @param rootSignature ルートシグネチャ
-    /// @param modes 生成するブレンドモード(空の場合はkBlendModeNoneのみ)
-    /// @return 構築に成功したか
+    /// @brief ブレンドモードを指定して PSO を構築
+    /// @param modes 生成するブレンドモード（空なら kBlendModeNone のみ）
     bool Build(
         ID3D12Device* device,
         IDxcBlob* vs,
@@ -136,27 +141,16 @@ public:
         ID3D12RootSignature* rootSignature,
         const std::vector<BlendMode>& modes = {});
 
-    /// @brief 全ブレンドモードでPSOを構築（単一RT・フォワードパス向け）
-    /// @note G-BufferパスのPSOはブレンドが不要なため BuildGBuffer() を使用してください。
-    ///       MRT（numRenderTargets > 1）でこの関数を呼び出した場合は警告を出力します。
-    /// @param device デバイス
-    /// @param vs 頂点シェーダー
-    /// @param ps ピクセルシェーダー
-    /// @param rootSignature ルートシグネチャ
-    /// @return 構築に成功したか
+    /// @brief 全ブレンドモードで PSO を構築（単一 RT・フォワードパス向け）
+    /// @note G-Buffer パスは BuildGBuffer() を使うこと。MRT で呼ぶと警告を出す
     bool BuildAllBlendModes(
         ID3D12Device* device,
         IDxcBlob* vs,
         IDxcBlob* ps,
         ID3D12RootSignature* rootSignature);
 
-    /// @brief G-Buffer専用PSO構築（kBlendModeNone のみ、全RTスロットのブレンド設定済み）
-    /// @note G-Buffer書き出しパスのPSOは透過が不要なため BuildAllBlendModes() は使用しないでください。
-    /// @param device デバイス
-    /// @param vs 頂点シェーダー
-    /// @param ps ピクセルシェーダー
-    /// @param rootSignature ルートシグネチャ
-    /// @return 構築に成功したか
+    /// @brief G-Buffer 専用 PSO 構築（kBlendModeNone のみ・全 RT スロットのブレンド設定済み）
+    /// @note G-Buffer は透過が不要なので BuildAllBlendModes() は使わないこと
     bool BuildGBuffer(
         ID3D12Device* device,
         IDxcBlob* vs,
@@ -167,6 +161,7 @@ private:
 friend class PipelineStateManager;
 
 PipelineStateManager* manager_;
+std::string debugName_;  // SetName・エラーログ用のデバッグ名
 std::vector<D3D12_INPUT_ELEMENT_DESC> inputElementDescs_;
 std::vector<std::string> semanticNameStorage_;  // セマンティック名の永続化用
 D3D12_RASTERIZER_DESC rasterizerDesc_;
@@ -201,8 +196,10 @@ public:
     ~PipelineStateManager() = default;
 
     /// @brief psoの取得
+    /// @note 要求されたモードが未生成の場合は kBlendModeNone へフォールバックする
+    ///       （モードごとに初回のみ警告ログを出す）。kBlendModeNone も無い場合は nullptr。
     /// @param mode ブレンドモード
-    /// @return パイプラインステート(存在しない場合はnullptr)
+    /// @return パイプラインステート
     ID3D12PipelineState* GetPipelineState(BlendMode mode = BlendMode::kBlendModeNone);
 
     /// @brief ビルダーを取得
@@ -215,8 +212,12 @@ public:
 private:
     friend class PipelineStateBuilder;
 
-    // パイプラインステート
-    std::map<BlendMode, ComPtr<ID3D12PipelineState>> pipelineStates_;
+    // パイプラインステート（BlendMode を添字にした固定長配列。未生成スロットは nullptr）
+    // GetPipelineState は毎ドロー呼ばれるため、map の探索ではなく配列添字にしている
+    std::array<ComPtr<ID3D12PipelineState>, kBlendModeCount> pipelineStates_;
+
+    // 未生成モードのフォールバック警告を出したモードのビットマスク（ログスパム防止）
+    uint32_t warnedMissingModes_ = 0;
 
     /// @brief PSOを登録
     void RegisterPipelineState(BlendMode mode, ComPtr<ID3D12PipelineState> pso);

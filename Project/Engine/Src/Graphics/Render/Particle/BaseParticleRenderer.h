@@ -14,11 +14,10 @@ namespace CoreEngine {
     class ShaderReflectionData;
 }
 
-/// @brief パーティクルレンダラーの基底クラス
-/// 共通の処理をまとめ、派生クラスで描画方法のみを実装
-
 namespace CoreEngine
 {
+/// @brief パーティクルレンダラーの基底クラス
+/// 共通の処理をまとめ、派生クラスで描画方法のみを実装
 class BaseParticleRenderer : public BaseRenderer {
 public:
     BaseParticleRenderer() = default;

@@ -34,7 +34,6 @@ public:
     // ---------------------------------------------------------------
 
     /// @brief DEPTH_WRITE 状態へ遷移し、深度バッファをクリアする
-    /// @param cmdList コマンドリスト
     /// @note フレーム先頭や GBuffer パス開始前に呼ぶ
     void BeginDepthWrite(ID3D12GraphicsCommandList* cmdList);
 

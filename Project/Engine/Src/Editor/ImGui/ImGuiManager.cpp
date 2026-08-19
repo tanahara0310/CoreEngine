@@ -34,23 +34,14 @@ namespace CoreEngine
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // ドッキングを有効化
 
         // マルチビューポート: ImGui ウィンドウをエンジンウィンドウの外（別モニタ等）へ出せるようにする。
-        // これが無いとエディタは必ずエンジンウィンドウ内に収まり、パネルを開くほど Game ビューが覆われる。
-        //
-        // 【重要】このフラグは ImGui_ImplDX12_Init / ImGui_ImplWin32_Init より前に立てること。
-        //         バックエンドは Init 時にフラグを見てプラットフォームインターフェースを差し込むため、
-        //         後から立てても副ウィンドウが生成されない。
+        // 【重要】このフラグは ImGui_ImplDX12_Init / ImGui_ImplWin32_Init より前に立てること
+        //         （バックエンドが Init 時にフラグを見るので、後から立てても副ウィンドウが出ない）。
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
         // DPI 追従（io.ConfigDpiScaleViewports）は有効にしない。
-        // 拡大率の違うモニタ間では ImGui 側のウィンドウだけが DPI 比で縮み、
-        // パネルの中身が小さく描かれてしまう（実測: 1280x720 の窓に 1024x576）。
-        // 無効のままだと逆に OS ウィンドウが少し大きくなるが、内容は原寸で読める。
-        // なおゲーム映像の確認は ImGui を経由しない GameOutputWindow が担当するので、
-        // このズレが映像の見た目に影響することはない。
-        //
-        // 注意: 旧 ImGuiConfigFlags_DpiEnableScaleViewports は 1.92 で
-        //       「この bool を false にする」後方互換処理に置き換わっており、
-        //       立てても有効にはならない（imgui.cpp の同名フラグ分岐を参照）。
+        // 拡大率の違うモニタ間では ImGui のウィンドウだけが DPI 比で縮み、中身が小さく描かれる。
+        // 無効なら OS ウィンドウが少し大きくなる代わりに内容は原寸で読める。
+        // なお旧 ImGuiConfigFlags_DpiEnableScaleViewports は 1.92 で無効化されており立てても効かない。
 
         io.ConfigWindowsMoveFromTitleBarOnly = false; // ウィンドウ全体からドラッグ移動を可能にする
 
@@ -173,13 +164,11 @@ namespace CoreEngine
             textureHandle = postEffectManager->GetFinalDisplayTextureHandle();
         }
 
-        // 「ゲーム画面のみのウィンドウ」は ImGui ではなく専用の Win32 ウィンドウ
-        //（GameOutputWindow）が担当する。ImGui のビューポートは混在 DPI 環境で
-        // OS ウィンドウと描画サイズがずれるため、映像確認用途には使わない。
+        // 「ゲーム画面のみのウィンドウ」は専用の Win32 ウィンドウ（GameOutputWindow）が担当する。
+        // ImGui のビューポートは混在 DPI 環境でサイズがずれるため、映像確認用途には使わない。
 
-        // エディタUI退避中は、ドッキング状態を一切共有しない別ウィンドウとして全面描画する。
-        // 同じ "Game" ウィンドウを使い回すと、ドックスペース未提出のフレームで
-        // ドックノードの解決先が無くなり表示が壊れる。
+        // エディタ UI 退避中は、ドッキング状態を共有しない別ウィンドウとして全面描画する。
+        // 同じ "Game" ウィンドウを使い回すとドックノードの解決先が無くなり表示が壊れる。
         if (!editorUiVisible_) {
             DrawFullscreenGameViewport(textureHandle);
             return;
@@ -324,20 +313,11 @@ namespace CoreEngine
         ImVec4* colors = style.Colors;
 
         // ===== 配色 =====
-        // 設計方針（Unity / UE のダークテーマに倣う）:
-        //  1. 背景に明度の段差を作る。以前は WindowBg も ChildBg もほぼ同じ黒で、
-        //     どこからどこまでが1つのパネルなのか読み取れなかった。
-        //  2. アクセント色は「選択・操作中」だけに使う。以前はタブ・ボタン・ヘッダ・
-        //     スクロールバーまで彩度の高いオレンジで塗っていて画面が騒がしかった。
-        //  3. 面の区切りは枠線ではなく明度差で行う（FrameBorderSize = 0）。
-        //     全ウィジェットに黒枠が付くと安っぽく見える最大の要因だった。
-
-        // 【重要】ImGui は sRGB の RTV（バックバッファ）へ描画されるため、
-        // ここで指定したリニア値は書き込み時に sRGB エンコードされて明るく持ち上がる
-        //（例: 0.092 を指定すると画面では #555 相当になる。実測で確認済み）。
-        // そのため配色は「画面に出したい色（普段目にする sRGB の 0-255 値）」で記述し、
-        // このヘルパでリニアへ逆変換してから ImGui へ渡す。
-        // 数値を直接いじるときも必ずこのヘルパ経由で書くこと。
+        // 方針: ①背景に明度の段差を作る ②アクセント色は「選択・操作中」だけに使う
+        //       ③面の区切りは枠線ではなく明度差で行う（FrameBorderSize = 0）
+        //
+        // 【重要】ImGui は sRGB の RTV へ描くので、リニア値を渡すと書き込み時に持ち上がる。
+        // 配色は「画面に出したい sRGB の 0-255 値」で書き、下の srgb ヘルパでリニアへ逆変換する。
         const auto srgb = [](int r, int g, int b, float a = 1.0f) -> ImVec4 {
             const auto toLinear = [](int v8) {
                 const float c = static_cast<float>(v8) / 255.0f;

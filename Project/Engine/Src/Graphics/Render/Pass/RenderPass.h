@@ -106,12 +106,9 @@ namespace CoreEngine
     };
 
     /// @brief レンダリングパスの基底クラス
-    /// @details パス分離契約（新規パスが既存描画へ影響しないための不変条件）:
-    ///  1. GPU 上では DeclareResources で宣言したリソース以外に触れない
-    ///  2. RenderManager 等の残留グローバル状態を変更しない
-    ///     （カメラ・トランスフォームスロット等、描画に必要な状態はパス自身が毎回設定する）
-    ///  3. FrameBlackboard への登録は Graph 構築前のみ（実行中は読み取り専用）
-    ///  4. 他パスとの実行順に関する仮定を書かない（順序は宣言した依存からのみ導出される）
+    /// @details パス分離契約: ①DeclareResources で宣言したリソース以外に触れない
+    ///          ②残留グローバル状態を変更しない ③FrameBlackboard への登録は Graph 構築前のみ
+    ///          ④他パスとの実行順に関する仮定を書かない（順序は宣言した依存からのみ導出される）
     class RenderPass {
     public:
         virtual ~RenderPass() = default;

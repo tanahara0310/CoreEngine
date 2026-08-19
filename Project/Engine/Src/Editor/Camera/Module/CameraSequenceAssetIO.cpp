@@ -148,6 +148,7 @@ namespace CoreEngine
 
     bool CameraSequenceAssetIO::Load(const std::string& filePath, CameraSequenceAsset& outAsset)
     {
+        // 欠けたキーは SafeGet の既定値で補う。古いバージョンのファイルも読めるようにするため
         if (!JsonManager::GetInstance().FileExists(filePath)) {
             return false;
         }

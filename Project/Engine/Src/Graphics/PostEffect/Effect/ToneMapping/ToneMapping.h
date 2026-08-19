@@ -9,12 +9,9 @@
 
 namespace CoreEngine
 {
-    /// @brief ACESトーンマッピングポストエフェクト（CS方式）
-    /// @details HDR→LDR変換を担う「段の境界」。チェーン上でこれより前が SceneHDR 段
-    ///          （光学現象・露出・グレーディング）、後ろが PostTonemap 段（記録・演出）になる。
-    ///          自動露出（Auto Exposure）を有効にすると、入力のリニアHDR輝度の
-    ///          対数平均から露出を毎フレーム計算し、目の明暗順応のように時間追従する。
-    ///          手動の露出補正 [EV] は自動露出への加算オフセットとして機能する。
+    /// @brief ACES トーンマッピングポストエフェクト（CS 方式）
+    /// @details HDR → LDR 変換を担う「段の境界」。これより前が SceneHDR 段、後ろが PostTonemap 段。
+    /// @note 自動露出は対数平均輝度から毎フレーム計算し、手動の露出補正 [EV] はその加算オフセット。
     class ToneMapping : public PostEffectComputeBase {
     public:
         /// @brief 画面サイズ定数バッファ構造体

@@ -43,6 +43,7 @@ namespace CoreEngine
         initialized_ = false;
     }
 
+    // フレーム開始。前フレームのクエリを踏まないよう、書き込み先をバックバッファ番号で切り替える
     void GpuTimestampProfiler::NewFrame(uint32_t frameIndex)
     {
         currentFrameIndex_ = frameIndex % kFrameCount;
@@ -53,6 +54,7 @@ namespace CoreEngine
         }
     }
 
+    // 名前付きスロットを引く。無ければ動的スロットを 1 つ払い出して以後は同じ番号を返す
     uint32_t GpuTimestampProfiler::GetOrCreateNamedSlot(const std::string& name, GpuTimingCategory category)
     {
         if (auto it = namedSlotIndex_.find(name); it != namedSlotIndex_.end()) {
@@ -91,6 +93,7 @@ namespace CoreEngine
         cmdList->EndQuery(queryHeap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, base + index);
     }
 
+    // 全スロットのクエリをリードバックバッファへ解決する（コマンドリストの Close 前に呼ぶ）
     void GpuTimestampProfiler::ResolveAll(ID3D12GraphicsCommandList* cmdList, uint32_t frameIndex)
     {
         if (!initialized_ || !cmdList) return;
@@ -113,6 +116,8 @@ namespace CoreEngine
         }
     }
 
+    // リードバックは 1 フレーム遅れて読む（GPU の書き込み完了を待たないため）。
+    // タイムスタンプ周波数はキューから取り、tick 差を ms へ直す
     void GpuTimestampProfiler::ReadResults(ID3D12CommandQueue* commandQueue, uint32_t readFrameIndex)
     {
         if (!initialized_ || !commandQueue) return;

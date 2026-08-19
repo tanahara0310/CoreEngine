@@ -32,6 +32,7 @@ namespace CoreEngine
         }
 
         bool result = psoMg_->CreateBuilder()
+            .SetDebugName("Line")
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
@@ -44,6 +45,7 @@ namespace CoreEngine
 
         // 深度テスト・深度書き込みを切った PSO も用意しておく（オーバーレイ描画用）
         const bool overlayResult = overlayPsoMg_->CreateBuilder()
+            .SetDebugName("LineOverlay")
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
@@ -203,10 +205,9 @@ namespace CoreEngine
         SetWVPMatrix(view, proj);
 
         // 深度テストの有無で PSO が変わるので 2 グループに分ける。
-        // ただし頂点バッファは 1 本しかないため、途中で作り直すと
-        // GPU がまだ最初のドローを実行する前に CPU が上書きしてしまう。
-        // そこで「深度あり → 深度なし」の順に 1 本の配列へ詰めて 1 回だけ転送し、
-        // 開始頂点をずらした 2 回のドローに分ける。
+        // ただし頂点バッファは 1 本なので、途中で作り直すと GPU が最初のドローを
+        // 実行する前に CPU が上書きしてしまう。そこで「深度あり → 深度なし」の順に
+        // 1 本の配列へ詰めて 1 回だけ転送し、開始頂点をずらした 2 回のドローに分ける。
         std::vector<LineVertex> vertices;
         vertices.reserve(lineBatch_.size() * 2);
 

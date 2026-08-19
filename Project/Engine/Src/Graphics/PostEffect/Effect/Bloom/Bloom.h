@@ -12,12 +12,8 @@
 namespace CoreEngine
 {
 /// @brief ブルームエフェクト（ミップチェーン方式）
-/// @details ダウンサンプル 6 段 → アップサンプル 5 段 → 合成の多段処理。
-///          以前は「半径 5 テクセルまでのガウシアンを 1 パス」で、閾値を超えた画素だけが
-///          狭くにじむだけだった。ミップチェーンにすると 1/64 解像度まで畳んでから戻すので、
-///          画面の 1/2 に届く広がりが出る（実カメラの散乱に近い）。
-///          パラメータは CVar（"r.Bloom.*"）が唯一の保持者。
-///          設計: Docs/Engine/Graphics/PostProcess/PostEffect_Refactoring_Plan.md
+/// @details ダウンサンプル 6 段 → アップサンプル 5 段 → 合成。1/64 解像度まで畳んで戻すので
+///          画面の 1/2 に届く広がりが出る。CVar "r.Bloom.*"。
 class Bloom : public PostEffectComputeBase {
 public:
     /// @brief ミップチェーンの段数。1/2 から 1/64 まで

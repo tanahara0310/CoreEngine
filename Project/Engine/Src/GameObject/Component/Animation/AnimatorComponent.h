@@ -62,11 +62,8 @@ public:
     void Start() override;
 
     /// @brief アニメーションを 1 フレーム進める
-    /// @note `GameObject::Update()`（派生クラスの `OnUpdate()`）より**前**に走る。
-    ///       ジョイント追従のような「更新後の姿勢を読む」処理は
-    ///       `SkeletonSocketComponent` のように `LateUpdate()` で行うこと
-    ///       （`GameObjectManager` が全オブジェクトの Update 完了後にまとめて回すので、
-    ///       生成順に依存せず最新の姿勢が読める）。
+    /// @note `GameObject::Update()` より前に走る。更新後の姿勢を読む処理は
+    ///       `SkeletonSocketComponent` のように `LateUpdate()` で行うこと。
     void Update() override;
 
     // ===== クリップ切り替え =====

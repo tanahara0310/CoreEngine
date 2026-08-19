@@ -30,11 +30,10 @@ namespace CoreEngine {
     struct Skeleton;
 }
 
-/// @brief 配置された3Dモデルのインスタンスクラス
-/// ModelResourceへの参照と、個別のトランスフォーム・マテリアルを持つ
-
 namespace CoreEngine
 {
+    /// @brief 配置された3Dモデルのインスタンスクラス
+    /// ModelResourceへの参照と、個別のトランスフォーム・マテリアルを持つ
     class Model {
     public:
         /// @brief デフォルトコンストラクタ
@@ -71,12 +70,9 @@ namespace CoreEngine
         /// @return 初期化済みならtrue
         bool IsInitialized() const;
 
-        /// @brief マテリアルインスタンスを取得（パラメータの直接操作用）
-        /// @details Copy-on-Write: 未オーバーライドのスロットは初回呼び出し時に
-        ///          ModelResource の共有デフォルトマテリアルから複製して確保する。
-        ///          同一モデルを複数配置してもオーバーライドしない限り追加GPU確保は発生しない。
-        /// @param materialIndex マテリアルスロットインデックス（サブメッシュの materialIndex に対応）
-        /// @return MaterialInstance へのポインタ（範囲外は nullptr）
+        /// @brief マテリアルインスタンスを取得（パラメータの直接操作用。範囲外は nullptr）
+        /// @details Copy-on-Write。未オーバーライドのスロットは初回呼び出し時に
+        ///          ModelResource の共有デフォルトから複製する。
         MaterialInstance* GetMaterial(size_t materialIndex = 0);
 
         /// @brief マテリアルインスタンスを取得（読み取り専用。未オーバーライドならリソース共有のデフォルトを返す）

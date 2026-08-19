@@ -35,10 +35,8 @@ namespace CoreEngine {
         }
 
         /// @brief 天候プリセット 1 件分の「見た目」パラメータ
-        /// @details パフォーマンス系（ステップ数・解像度分割）とライティングの物理定数
-        ///          （位相関数・多重散乱オクターブ）はプリセットでは触らない。
-        ///          coverage と erosion は必ずセットで調整すること（coverage が低いのに
-        ///          erosion が強いと雲が孤立した粒＝ポップコーン状に崩れる既知の不具合がある）。
+        /// @note パフォーマンス系とライティングの物理定数はプリセットでは触らない。
+        ///       coverage と erosion は必ずセットで調整すること（片方だけだと雲が粒状に崩れる）。
         struct CloudPreset {
             const char* name;
             const char* description;
@@ -114,11 +112,8 @@ namespace CoreEngine {
     {
 #ifdef USE_IMGUI
         // エンジン終了時にドロワーがダングリングしないよう登録を解除する。
-        // ここで engine_->GetDebugSubsystem() を呼び直してはいけない: 本エディタは
-        // DebugSubsystem が所有するため、この呼び出しは EngineSystem::Finalize() の
-        // サブシステム一括破棄中（DebugSubsystem 自身のデストラクタの最中）に発生し、
-        // 破棄済みの他サブシステムへの dynamic_cast がアクセス違反を起こす
-        // （RTTI 読み取り不可 → std::terminate で abort）。キャッシュ済みポインタのみ使う
+        // engine_->GetDebugSubsystem() を呼び直さないこと（サブシステム一括破棄中に走るため、
+        // 破棄済みサブシステムへの dynamic_cast でアクセス違反になる）。キャッシュ済みポインタのみ使う。
         if (gameDebugUI_) {
             gameDebugUI_->UnregisterEnvironmentEditor(kEditorLabel, this);
         }

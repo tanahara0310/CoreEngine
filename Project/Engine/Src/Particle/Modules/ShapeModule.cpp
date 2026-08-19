@@ -312,6 +312,8 @@ namespace CoreEngine
     }
 
     Vector3 ShapeModule::GenerateCircleHalfPosition(const Vector3& emitterPosition) {
+        // 円の左右どちらかの「端 30°ぶん」だけに放出する形状。
+        // 上側は 150°〜210°、下側は 330°〜360° と 0°〜30° の 2 区間に割れる
         constexpr float PI = Constants::kPi;
         bool top = random_.GetBool();
 

@@ -98,6 +98,7 @@ namespace CoreEngine
 
         // フォワードパス PSO: 全ブレンドモード分を事前生成
         bool result = forwardPsoMg_->CreateBuilder()
+            .SetDebugName("ModelForward")
             .SetInputLayoutFromReflection(*forwardReflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
@@ -106,6 +107,7 @@ namespace CoreEngine
 
         // GBuffer パス PSO: マルチレンダーターゲットフォーマットを指定して生成
         bool gBufferResult = gBufferPsoMg_->CreateBuilder()
+            .SetDebugName("ModelGBuffer")
             .SetInputLayoutFromReflection(*gBufferReflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)

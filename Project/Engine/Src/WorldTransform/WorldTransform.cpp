@@ -112,6 +112,7 @@ bool WorldTransform::DrawImGui(const std::string& label)
 {
     bool changed = false;
 
+        // 回転モードを切り替えるときは、見た目が飛ばないよう現在の姿勢を相互変換してから差し替える
     if (auto s = UI::Scope::CollapsingScope((label + " Transform").c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
         const char* rotationModes[] = { "オイラー角", "クォータニオン" };
         int currentMode = static_cast<int>(rotationMode_);

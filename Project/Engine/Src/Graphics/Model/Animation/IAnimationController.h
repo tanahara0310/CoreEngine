@@ -6,11 +6,10 @@
 
 namespace CoreEngine { struct Skeleton; }
 
-/// @brief アニメーション制御インターフェース
-/// Animator と SkeletonAnimator を統一的に扱うための基底クラス
-
 namespace CoreEngine
 {
+/// @brief アニメーション制御インターフェース
+/// Animator と SkeletonAnimator を統一的に扱うための基底クラス
 class IAnimationController {
 public:
     virtual ~IAnimationController() = default;

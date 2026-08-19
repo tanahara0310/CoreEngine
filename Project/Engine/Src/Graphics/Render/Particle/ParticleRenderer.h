@@ -8,10 +8,9 @@
 // 前方宣言
 class ParticleSystem;
 
-/// @brief ビルボードパーティクル専用レンダラー
-
 namespace CoreEngine
 {
+/// @brief ビルボードパーティクル専用レンダラー
 class ParticleRenderer : public BaseParticleRenderer {
 public:
     ParticleRenderer() = default;

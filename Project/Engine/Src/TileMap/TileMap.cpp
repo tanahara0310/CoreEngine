@@ -97,15 +97,9 @@ namespace CoreEngine
         return &layers_[layerIndex];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // 座標変換（Camera2D 準拠: 中央原点・Y軸上正）
-    //
-    //  タイル行 0 がマップ上端（Y 最大）
-    //  タイル行 (rows_-1) がマップ下端（Y 最小）
-    //
-    //  world.x = origin_.x + col * tileSize_  （左 → 右）
-    //  world.y = origin_.y - row * tileSize_  （上 → 下）
-    // ─────────────────────────────────────────────────────────────────────
+    // 座標変換（Camera2D 準拠: 中央原点・Y 軸上正）
+    //   タイル行 0 がマップ上端（Y 最大）、行 (rows_-1) が下端（Y 最小）
+    //   world.x = origin_.x + col * tileSize_ ／ world.y = origin_.y - row * tileSize_
     std::optional<std::pair<int,int>> TileMap::WorldToTile(Vector2 worldPos) const
     {
         if (tileSize_ <= 0.0f) { return std::nullopt; }

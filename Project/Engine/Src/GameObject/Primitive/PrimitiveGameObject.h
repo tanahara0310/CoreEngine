@@ -8,21 +8,8 @@
 namespace CoreEngine
 {
     /// @brief プリミティブメッシュを持つゲームオブジェクトの基底クラス
-    ///
-    /// ModelGameObject と同じプロパティ（Transform, Material, Texture, BlendMode）を
-    /// そのまま使用できる。モデルファイルの代わりにメッシュジェネレーターから形状を生成する。
-    ///
-    /// 使用例:
-    /// @code
-    /// class FloorObject : public CoreEngine::PrimitiveGameObject {
-    /// protected:
-    ///     std::unique_ptr<IPrimitiveMeshGenerator> CreateMeshGenerator() const override {
-    ///         return std::make_unique<PlaneMeshGenerator>(10.0f, 10.0f, 10, 10);
-    ///     }
-    /// public:
-    ///     const char* GetObjectName() const override { return "Floor"; }
-    /// };
-    /// @endcode
+    /// @details 派生側で CreateMeshGenerator() を実装すると、モデルファイルの代わりに
+    ///          そのジェネレーターから形状を生成する。他は ModelGameObject と同じ。
     class PrimitiveGameObject : public ModelGameObject {
     public:
         /// @brief 初期化処理（メッシュ生成・トランスフォーム・マテリアルの自動セットアップ）

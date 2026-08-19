@@ -5,14 +5,14 @@
 
 struct Particle;
 
+namespace CoreEngine
+{
 /// @brief パーティクルの速度モジュール
 /// 注意: 初期速度の大きさはMainModuleで設定します
 /// このモジュールは速度の方向のみを決定します
-
-namespace CoreEngine
-{
 class VelocityModule : public ParticleModule {
 public:
+    /// @brief 初速の設定（方向とランダム範囲）
     struct VelocityData {
         // 速度の方向（自動的に正規化されます）
         Vector3 startSpeed = { 0.0f, 1.0f, 0.0f };

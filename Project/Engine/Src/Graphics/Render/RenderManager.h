@@ -20,10 +20,9 @@ namespace CoreEngine {
     struct ViewInfo;
 }
 
-/// @brief レンダリング全体を自動管理するマネージャー
-
 namespace CoreEngine
 {
+    /// @brief レンダリング全体を自動管理するマネージャー
     class RenderManager {
     public:
         /// @brief 初期化
@@ -63,13 +62,8 @@ namespace CoreEngine
         /// @param item 描画する RenderItem
         void AddRenderItem(RenderItem item);
 
-    // 各 Draw*Pass は記録先コマンドリストを引数で受け取る。
-    // 以前はフレーム先頭で SetCommandList() したものをメンバに保持していたが、
-    // 「設定し忘れ／古いリストが残る」を型で防げず、コマンドリストを複数化すると
-    // 破綻するため撤去した。呼び出し元（パス）は context.cmdList をそのまま渡すこと。
-    //
-    // viewType はパスが context.viewSettings.viewType から明示的に渡す。
-    // 描画オブジェクトへは DrawViewInfo（コマンドリスト・カメラ・ビュー種別・パス種別）として届く。
+    // 各 Draw*Pass は記録先コマンドリストを引数で受け取る（呼び出し元は context.cmdList を渡す）。
+    // viewType もパスが context.viewSettings.viewType から明示的に渡す。
     // 省略時は GameView（RenderGraph を経由しないレガシー呼び出し向け）。
 
     /// @brief G-Bufferパスのみ描画（不透明 Model / SkinnedModel を蓄積）

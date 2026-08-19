@@ -6,10 +6,9 @@
 #include <chrono>
 #include <vector>
 
-/// @brief DirectX12コマンド関連の管理クラス
-
 namespace CoreEngine
 {
+/// @brief DirectX12コマンド関連の管理クラス
 class CommandManager {
 public:
     /// @brief 初期化

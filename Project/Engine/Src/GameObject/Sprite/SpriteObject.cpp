@@ -350,9 +350,12 @@ namespace CoreEngine
 
     bool SpriteObject::DrawInspectorTabContent(int tabIndex) {
         bool changed = false;
+        // タブ番号は Inspector 側の並びと 1 対 1（0=トランスフォーム / 1=マテリアル / 2=スプライト）
 
         switch (tabIndex) {
         case 0: { // ── トランスフォーム ───────────────
+            // ドラッグ開始時の値を控え、確定時に 1 回だけ Undo へ積む
+            // （ドラッグ中の毎フレーム変化を積むと Undo が 1 ピクセルずつ戻る）
             auto snapAndCommit = [&](auto editFn) {
                 editFn();
                 if (ImGui::IsItemActivated()) {

@@ -7,6 +7,7 @@
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
+#include "Graphics/Pipeline/CustomShaderPipelineCache.h"
 #include "Graphics/Common/EngineStats.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/AnimationPlayer.h"
@@ -22,13 +23,19 @@
 namespace CoreEngine
 {
     ModelManager::ModelManager() = default;
-    ModelManager::~ModelManager() = default;
+    ModelManager::~ModelManager()
+    {
+        // 走行中のワーカーが dxCommon_ / TextureManager を触っている可能性があるので、
+        // メンバ（threadPool_ 含む）を壊す前に必ず合流させる
+        WaitForPreload();
+    }
 
     void ModelManager::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory)
     {
         assert(dxCommon && factory);
         dxCommon_ = dxCommon;
         resourceFactory_ = factory;
+        customShaderPipelineCache_ = std::make_unique<CustomShaderPipelineCache>();
     }
 
     void ModelManager::SetRenderContext(const ModelRenderContext& ctx)
@@ -148,6 +155,10 @@ namespace CoreEngine
 
     void ModelManager::ClearCache()
     {
+        // 先読み中のリソースをキャッシュから消すと、完了したワーカーが
+        // 消えた後のエントリへ書き戻して迷子になる。先に合流させる
+        WaitForPreload();
+
         std::lock_guard<std::mutex> lock(cacheMutex_);
         resourceCache_.clear();
     }
@@ -261,32 +272,75 @@ namespace CoreEngine
 
     void ModelManager::PreloadModels(const std::vector<std::string>& filePaths)
     {
+        BeginPreload(filePaths);
+        WaitForPreload();
+    }
+
+    void ModelManager::BeginPreload(const std::vector<std::string>& filePaths)
+    {
         if (filePaths.empty()) return;
 
         EnsureThreadPool();
 
-        std::vector<std::future<void>> futures;
-        futures.reserve(filePaths.size());
+        std::lock_guard<std::mutex> lock(preloadMutex_);
+        preloadFutures_.reserve(preloadFutures_.size() + filePaths.size());
 
         for (const auto& path : filePaths) {
-            futures.push_back(threadPool_->Submit([this, path]() {
-                std::string resolved = ResolveFilePath(path);
-                std::string dir, file;
-                SplitPath(resolved, dir, file);
-                LoadModelResourceInternal(dir, file);
+            preloadFutures_.push_back(threadPool_->Submit(
+                "Model: " + std::filesystem::path(path).filename().string(),
+                [this, path]() {
+                // 例外はここで止める。future に載せて後で get() の場所まで運ぶと、
+                // 起動シーケンスと無関係な地点で飛んで原因が分からなくなる。
+                // 先読みはあくまで最適化なので、失敗しても本番のロードに任せればよい。
+                try {
+                    std::string resolved = ResolveFilePath(path);
+                    std::string dir, file;
+                    SplitPath(resolved, dir, file);
+                    LoadModelResourceInternal(dir, file);
+                }
+                catch (const std::exception& e) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                        "モデル先読みに失敗（本番ロードで再試行されます）: {} ({})", path, e.what());
+                }
+                catch (...) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                        "モデル先読みに失敗（本番ロードで再試行されます）: {}", path);
+                }
                 }));
+        }
+    }
+
+    void ModelManager::WaitForPreload()
+    {
+        // ワーカーが完了報告のために preloadMutex_ を取ることは無いが、
+        // 待っている間に BeginPreload が追加できるよう、ロックは取り出しの間だけにする
+        std::vector<std::future<void>> futures;
+        {
+            std::lock_guard<std::mutex> lock(preloadMutex_);
+            futures.swap(preloadFutures_);
         }
 
         for (auto& f : futures) {
-            f.get();
+            if (f.valid()) {
+                // Wait は待つ代わりにキューのタスクを引き受ける。
+                // モデルロードは内部でテクスチャロードを待つので、この待ちが
+                // ワーカー上で起きるとプールが自分自身を待って詰まりうる
+                if (threadPool_) {
+                    threadPool_->Wait(f);
+                }
+                f.get();
+            }
         }
     }
 
     void ModelManager::EnsureThreadPool()
     {
         if (!threadPool_) {
-            const uint32_t count = (std::max)(1u, std::thread::hardware_concurrency() / 2);
-            threadPool_ = std::make_unique<ThreadPool>(count);
+            // ワーカー数は ThreadBudget が決める（プール乱立の抑制）
+            ThreadPoolDesc poolDesc;
+            poolDesc.name = "ModelLoad";
+            poolDesc.priority = WorkerPriority::Normal;
+            threadPool_ = std::make_unique<ThreadPool>(poolDesc);
         }
     }
 
@@ -299,21 +353,20 @@ namespace CoreEngine
         }
         fullPath += filename;
 
-        // パスを正規化
-        std::filesystem::path path(fullPath);
-        std::string normalized = path.lexically_normal().string();
-
-        // バックスラッシュをスラッシュに統一
-        std::replace(normalized.begin(), normalized.end(), '\\', '/');
-
-        return normalized;
+        // UTF-8 の文字列と path の往復は必ず Logger の Utf8ToPath / PathToUtf8 を通す。
+        // path(std::string) と path::string() は ANSI 変換なので、非 ASCII のファイル名が壊れる。
+        // PathToUtf8 は区切りも '/' に正規化する。
+        Logger& log = Logger::GetInstance();
+        return log.PathToUtf8(log.Utf8ToPath(fullPath).lexically_normal());
     }
 
     void ModelManager::SplitPath(const std::string& filePath, std::string& outDirectory, std::string& outFilename) const
     {
-        std::filesystem::path path(filePath);
-        outDirectory = path.parent_path().string();
-        outFilename = path.filename().string();
+        // 入出力とも UTF-8。往復は MakeNormalizedPath と同じ理由で Logger を通す。
+        Logger& log = Logger::GetInstance();
+        const std::filesystem::path path = log.Utf8ToPath(filePath);
+        outDirectory = log.PathToUtf8(path.parent_path());
+        outFilename = log.PathToUtf8(path.filename());
     }
 
     ModelResource* ModelManager::GetModelResource(const std::string& filePath)
@@ -341,19 +394,22 @@ namespace CoreEngine
         std::replace(normalized.begin(), normalized.end(), '\\', '/');
 
         // まずAssetDatabaseで名前解決（移動・リネーム耐性）
-        std::filesystem::path inputPath(normalized);
-        std::string searchName = inputPath.filename().string();
+        // この関数が扱う std::string は一貫して UTF-8。path との往復は Logger の
+        // Utf8ToPath / PathToUtf8 を通し、ANSI コードページを混入させない。
+        Logger& log = Logger::GetInstance();
+        std::filesystem::path inputPath = log.Utf8ToPath(normalized);
+        std::string searchName = log.PathToUtf8(inputPath.filename());
         if (searchName.empty()) {
             searchName = normalized;
         }
 
         auto& assetDB = AssetDatabase::GetInstance();
-        std::string assetPath = assetDB.FindAssetPath(searchName);
+        std::filesystem::path assetPath = assetDB.FindAssetPath(searchName);
         if (assetPath.empty() && inputPath.has_stem()) {
-            assetPath = assetDB.FindAssetPath(inputPath.stem().string());
+            assetPath = assetDB.FindAssetPath(log.PathToUtf8(inputPath.stem()));
         }
         if (!assetPath.empty()) {
-            return assetPath;
+            return log.PathToUtf8(assetPath);
         }
 
         // Application/Assets または Engine/Assets で始まる場合はそのまま返す

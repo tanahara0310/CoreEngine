@@ -13,21 +13,10 @@ namespace CoreEngine
     class Camera;
     class EngineSystem;
 
-    /// @brief どのシーンにも必ず存在する既定の床（ベース地面）を提供する Feature。
-    ///
-    /// 新規シーンを作っただけの状態では地面が 1 枚も無く、真下が無限の穴になる。
-    /// UE の Basic レベルの Floor / Unity の Plane に相当する「最初からある床」を
-    /// エンジン側で用意して、当たり判定・影・SSAO の受け皿を常に保証する。
-    ///
-    /// @note **地平線より遠方の地面は今も大気散乱が描く**（Sky-View LUT の地表反射項）。
-    ///       この Feature が受け持つのは近〜中景（カメラのファークリップまで）だけで、
-    ///       その外側は従来どおり大気の担当。両者の色を一致させるために既定では
-    ///       床のアルベドを `AtmosphereParameters::groundAlbedo` に追従させる
-    ///       （`r.Ground.UseAtmosphereAlbedo`）。ここを別々にチューニングすると、
-    ///       かつて廃止した無限床と同じ「色合わせの往復」に戻るので注意。
-    ///
-    /// 生成した床は `SetSerializeEnabled(false)` でシーン JSON の対象外にしてある
-    /// （エンジンが毎回作るオブジェクトなので、保存すると全シーンで増殖する）。
+    /// @brief どのシーンにも必ず存在する既定の床（ベース地面）を提供する Feature
+    /// @details 受け持つのは近〜中景のみで、地平線より遠方は今も大気散乱が描く。
+    ///          既定では床のアルベドを `AtmosphereParameters::groundAlbedo` に追従させて色を合わせる。
+    /// @note 生成した床は SetSerializeEnabled(false)（保存すると全シーンで増殖するため）。
     class GroundFeature : public ISceneFeature {
     public:
         const char* GetName() const override { return "Ground"; }

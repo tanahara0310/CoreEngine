@@ -32,10 +32,9 @@ namespace CoreEngine {
     enum class ParticleBackend;
 }
 
-/// @brief シーンの基底クラス（共通処理を実装）
-
 namespace CoreEngine
 {
+    /// @brief シーンの基底クラス（共通処理を実装）
     class BaseScene : public IScene {
     public:
 
@@ -134,25 +133,15 @@ namespace CoreEngine
 
         // === 派生クラス用ヘルパーメソッド ===
 
-        /// @brief シーン横断機能（Feature）を追加登録する
-        /// @details 各フックは priority 昇順（小さいほど先）・同 priority は登録順で呼ばれる。
-        ///          シーン初期化後（OnInitialize() 内など）に追加した場合は即座に
-        ///          Initialize が実行される。エンジン機能のシーン組み込みは
-        ///          BaseScene を編集せず Feature の追加で行うこと。
-        /// @param feature 登録する Feature（所有権は BaseScene へ移動）
-        /// @param priority フェーズ内優先度
-        /// @return 登録した Feature へのポインタ
+        /// @brief シーン横断機能（Feature）を追加登録する（所有権は BaseScene へ移動）
+        /// @details 各フックは priority 昇順・同 priority は登録順で呼ばれる。
+        ///          シーン初期化後に追加した場合は即座に Initialize が実行される。
+        /// @note エンジン機能のシーン組み込みは BaseScene を編集せず Feature の追加で行うこと
         ISceneFeature* AddFeature(std::unique_ptr<ISceneFeature> feature, int priority = 0);
 
-        /// @brief 空の GameObject を生成して登録する（**コンポーネント化の標準的な入口**）
+        /// @brief 空の GameObject を生成して登録する（コンポーネント化の標準的な入口）
         /// @param name オブジェクト名（Hierarchy 表示・シーン保存のキー）
-        /// @return 生成されたオブジェクトへのポインタ
         /// @note 機能はここから `AddComponent<T>()` で載せる。専用クラスは要らない。
-        /// @code
-        /// auto* sphere = CreateObject("Sphere");
-        /// sphere->AddComponent<MeshRendererComponent>("sphere.obj");
-        /// sphere->GetComponent<TransformComponent>()->Translate() = { 0, 1, 0 };
-        /// @endcode
         GameObject* CreateObject(const std::string& name);
 
         /// @brief 特定の派生クラスを生成して登録する（レガシー経路）

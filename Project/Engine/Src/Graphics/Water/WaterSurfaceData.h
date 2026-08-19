@@ -12,6 +12,8 @@ namespace CoreEngine
     // 以前はここに同一レイアウト 32B の WaterWaveParam が重複定義されていた。
     using WaterWaveParam = ::WaveParams;
 
+    /// @brief 水面の形状を再現するのに必要な状態（水面高さ・時刻・波パラメータ）
+    /// @note 水面パスと RT パス・水中判定が同じ波面を見るための単一の情報源
     struct WaterSurfaceData {
         float waterHeight = 0.0f;
         uint32_t activeWaveCount = 0;
@@ -34,6 +36,7 @@ namespace CoreEngine
         float meshSubdivisions = 256.0f;
     };
 
+    /// @brief 水の光学特性（屈折率・吸収・散乱）
     struct WaterOpticalProperties {
         float refractiveIndex = 1.333f;
         float absorptionCoeff = 0.3f;

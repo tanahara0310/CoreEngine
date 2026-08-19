@@ -1,4 +1,6 @@
 #pragma once
+#include <future>
+#include <mutex>
 #include <xaudio2.h>
 #include <mfapi.h>
 #include <mfidl.h>
@@ -13,10 +15,9 @@
 #include <memory>
 #include <string>
 
-// チャンクヘッダ（WAV用）
-
 namespace CoreEngine
 {
+// チャンクヘッダ（WAV用）
 struct ChunkHeader {
     char id[4]; // チャンクID
     int32_t size; // チャンクサイズ
@@ -59,23 +60,33 @@ struct SoundData {
 
 // サウンドハンドル（管理用）
 using SoundHandle = size_t;
-
-// ボイス管理クラス
+/// @brief 1 音分の再生を担当する XAudio2 ソースボイスのラッパー
 class SoundVoice {
 public:
     SoundVoice();
     ~SoundVoice();
 
+    /// @brief 波形データからソースボイスを作る
     bool Initialize(IXAudio2* xAudio2, const SoundData& soundData);
+    /// @brief 再生を開始する（loop = true でループ）
     void Play(bool loop = false);
+    /// @brief 再生を停止して先頭へ戻す
     void Stop();
+    /// @brief 再生位置を保ったまま一時停止する
     void Pause();
+    /// @brief 一時停止した位置から再開する
     void Resume();
+    /// @brief 音量（0.0〜1.0）を設定
     void SetVolume(float volume);
+    /// @brief 音量（0.0〜1.0）を取得
     float GetVolume() const;
+    /// @brief ピッチ（再生速度倍率）を設定
     void SetPitch(float pitch);
+    /// @brief ピッチ（再生速度倍率）を取得
     float GetPitch() const;
+    /// @brief 再生中か
     bool IsPlaying() const;
+    /// @brief 一時停止中か
     bool IsPaused() const;
 
 private:
@@ -89,6 +100,7 @@ private:
     void CleanupVoice();
 };
 
+/// @brief XAudio2 + Media Foundation による音声の読み込み・再生管理
 class SoundManager {
 public:
     SoundManager();
@@ -168,6 +180,15 @@ public:
     std::unique_ptr<SoundResource> CreateSoundResource(const std::string& filename);
 
     // マスター音量制御
+
+    /// @brief 初期化をワーカースレッドで開始する（完了を待たずに戻る）
+    /// @details XAudio2 と Media Foundation の初期化は 0.676 秒かかるが CPU は 0 秒（全部待ち）。
+    /// @note 音を使う入口が EnsureInitialized() で合流するので、呼び出し側は完了を管理しなくてよい。
+    void BeginInitializeAsync();
+
+    /// @brief 初期化の完了を保証する（未開始なら同期実行、進行中なら待つ。冪等）
+    /// @return 初期化に成功していれば true
+    bool EnsureInitialized();
     void SetMasterVolume(float volume);
     float GetMasterVolume() const;
 
@@ -194,6 +215,15 @@ private:
     float masterVolume_;
 
     // ヘルパーメソッド
+
+    // 非同期初期化の状態（BeginInitializeAsync / EnsureInitialized）
+    std::future<bool> initFuture_;
+    mutable std::mutex initMutex_;
+    bool initCompleted_ = false;
+    bool initSucceeded_ = false;
+
+    /// @brief 実際の初期化本体（XAudio2 + Media Foundation）
+    bool InitializeInternal();
     bool InitializeMediaFoundation();
     void ShutdownMediaFoundation();
     std::string GetFileExtension(const std::string& filename) const;

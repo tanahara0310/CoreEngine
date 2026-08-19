@@ -68,10 +68,8 @@ namespace
         "床の端から端までのタイル数（大きいほど細かい）", CVarRange{ 1.0f, 512.0f } };
 
     /// 床メッシュの分割数。
-    /// 2 三角形（=1）のまま数 km へ引き伸ばすと、1 枚の三角形が画面全体を覆う。
-    /// ラスタライザの深度・属性補間は頂点から離れるほど精度が落ちるため、
-    /// 深度に依存する後段（SSAO・RT シャドウ・Aerial Perspective）が
-    /// 頂点から最も遠いカメラ足元＝画面下側で暴れやすくなる。
+    /// 2 三角形のまま数 km へ引き伸ばすと、頂点から遠いほど深度・属性の補間精度が落ち、
+    /// 深度に依存する後段（SSAO・RT シャドウ・Aerial Perspective）が画面下側で暴れる。
     CVar<int> cvSubdivisions{
         "r.Ground.Subdivisions", 32,
         "床メッシュの分割数（1 で 2 三角形。小さいと足元の深度精度が落ちてちらつく）",
@@ -228,10 +226,8 @@ namespace CoreEngine
         ground_->DispatchComponentStart();
 
         // コライダーの実効サイズ = shape.size × オーナーのワールドスケール。
-        // XZ に 1 を渡すことで床の全幅に一致し、Y は scale.y = 1 固定なので
-        // shape.size.y がそのままワールドの厚みになる（UpdateTransform で更新）。
-        // レイヤーは Default。既定の衝突マトリクスでは Default だけが全レイヤーと
-        // 当たるため、Environment にすると Player 等とすり抜ける。
+        // XZ に 1 を渡すと床の全幅に一致し、Y は scale.y = 1 固定なので shape.size.y が厚みになる。
+        // レイヤーは Default（既定の衝突マトリクスでは Default だけが全レイヤーと当たる）。
         collider_ = &ground_->GetColliders().AddBox({ 1.0f, 1.0f, 1.0f }, CollisionLayer::Default);
         collider_->SetTrigger(false);  // 通知だけでなく押し出す（＝床の上に立てる）
         collider_->SetStatic(true);    // 床自身は押し返されない（相手を全量押し出す）
@@ -246,11 +242,8 @@ namespace CoreEngine
     float GroundFeature::ComputeHalfSize(const Camera* camera)
     {
         // 床はカメラのファークリップより先には描かれないので、広さの基準はファークリップ。
-        // 「地平線まで床で埋める」ことは far=1000m の既定では原理的に不可能で
-        // （高度 3m でも地平線は約 6.2km 先）、床の縁より遠方は大気散乱の地表項が
-        // 受け持つ。両者の色を合わせてあるので、そこに段差は出ない。
-        // 上限は必須。エディタカメラのファークリップは保存値で 50km まで伸びることがあり、
-        // そのまま掛けると 60km 四方の床になって深度精度とレイトレの AS が無駄に太る。
+        // 縁より遠方は大気散乱の地表項が受け持つ（色を合わせてあるので段差は出ない）。
+        // 上限は必須。保存値で 50km まで伸びることがあり、そのままだと 60km 四方の床になる。
         const float farClip = camera ? camera->GetParameters().farClip : kFallbackFarClip;
         const float minHalf = (std::max)(cvMinHalfSize.Get(), 1.0f);
         const float maxHalf = (std::max)(cvMaxHalfSize.Get(), minHalf);
@@ -278,12 +271,9 @@ namespace CoreEngine
             // 動かなくなり、床の上を滑っているように見えるため。
             const float tile = fullSize / (std::max)(meshUvTiling_, kMinUvTiling);
 
-            // ただし毎フレーム最近傍へスナップしてはいけない。タイル境界を跨ぐたびに
-            // 床が 1 タイル分ジャンプし、モーションベクタ（prevWVP 由来）が
-            // 「床全体が瞬間移動した」と報告する。柄は一致するので画は変わらないのに
-            // TAA・RT シャドウのテンポラル蓄積・モーションブラーだけが嘘の速度を見て
-            // 履歴を壊す。カメラが床の中心から十分離れたときだけ置き直せば、
-            // 移動が続く間もジャンプは半幅の 25% 進むごと（既定 300m 級）に減る。
+            // ただし毎フレーム最近傍へスナップしてはいけない。タイル境界を跨ぐたびに床が
+            // 1 タイル分ジャンプし、モーションベクタが「床全体が瞬間移動した」と報告する。
+            // 画は変わらないのに TAA・RT シャドウ・モーションブラーだけが嘘の速度を見る。
             const float slack = (std::max)(fullSize * 0.125f, tile);
             const bool needsRecenter =
                 !recentered_ ||

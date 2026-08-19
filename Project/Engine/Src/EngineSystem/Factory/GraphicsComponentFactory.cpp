@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "GraphicsComponentFactory.h"
 #include "../EngineSystem.h"
+#include "../Startup/StartupSequence.h"
 #include "WinApp/WinApp.h"
 #include "Threading/ThreadPool.h"
 
@@ -31,150 +32,219 @@
 #include "Graphics/IBL/IBLSystem.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 
+#include <memory>
+
 namespace CoreEngine
 {
-    void GraphicsComponentFactory::Setup(EngineSystem& engine, const EngineConfig& config)
+    /// @brief ステップ間で受け渡す中間ポインタ
+    /// @note 所有権は EngineSystem 側（RegisterComponent 済み）。ここが持つのは生ポインタだけ。
+    struct GraphicsSetupState {
+        DirectXCommon* dx = nullptr;
+        ResourceFactory* resourceFactory = nullptr;
+        Render* render = nullptr;
+        RenderManager* renderManager = nullptr;
+        LineRendererPipeline* lineRenderer = nullptr;
+        IBLGenerator* iblGenerator = nullptr;
+        ShaderCompiler* shaderCompiler = nullptr;
+
+        // フォワード受影用 RT シャドウマスクの初期値（white1x1 = 影なし）
+        D3D12_GPU_DESCRIPTOR_HANDLE whiteFallback{};
+    };
+
+    std::shared_ptr<GraphicsSetupState> GraphicsComponentFactory::BuildFoundationTasks(
+        StartupSequence& sequence,
+        EngineSystem& engine,
+        const EngineConfig& config)
     {
-        // DirectXCommonの作成と初期化
-        auto directXCommon = std::make_unique<DirectXCommon>();
-        directXCommon->Initialize(engine.GetWinApp(), config);
-        DirectXCommon* dxPtr = directXCommon.get();
-        engine.RegisterComponent(std::move(directXCommon));
+        auto state = std::make_shared<GraphicsSetupState>();
+        EngineSystem* enginePtr = &engine;
 
-        // RenderDomainContextの作成と初期化（GBuffer / シャドウ / レイトレーシング）
-        engine.renderDomainContext_ = std::make_unique<RenderDomainContext>();
-        engine.renderDomainContext_->Initialize(
-            dxPtr,
-            engine.GetWinApp()->GetClientWidth(),
-            engine.GetWinApp()->GetClientHeight());
+        // ──────────────────────────────────────────────────────────
+        // デバイスとフレーム基盤
+        // ──────────────────────────────────────────────────────────
+        sequence.Add("DirectX12 デバイス", [enginePtr, state, config] {
+            auto directXCommon = std::make_unique<DirectXCommon>();
+            directXCommon->Initialize(enginePtr->GetWinApp(), config);
+            state->dx = directXCommon.get();
+            enginePtr->RegisterComponent(std::move(directXCommon));
+        });
 
-        dxPtr->RegisterResizable(engine.renderDomainContext_.get());
+        // ──────────────────────────────────────────────────────────
+        // アセットロードの土台（デバイス直後・シェーダコンパイルより前）
+        // ──────────────────────────────────────────────────────────
+        // この 3 つが揃わないとアセット先読みを始められない。ここへ前倒しすることで、
+        // シェーダコンパイル約 6 秒の裏にモデルロードを隠せる。
+        sequence.Add("テクスチャ管理 / リソースファクトリ / モデル管理", [enginePtr, state] {
+            // TextureManager の初期化（シングルトン）
+            TextureManager::GetInstance().Initialize(state->dx);
 
-        // Hi-Zオクルージョンカリングシステムの作成
-        // （GPUリソースは初回 ExecuteCulling で遅延生成。解放タイミングは EngineSystem::Finalize 参照）
-        engine.hiZOcclusionSystem_ = std::make_unique<HiZOcclusionSystem>();
+            // ResourceFactory の作成（コンストラクタで初期化済み）
+            auto resourceFactory = std::make_unique<ResourceFactory>();
+            state->resourceFactory = resourceFactory.get();
+            enginePtr->RegisterComponent(std::move(resourceFactory));
 
-        // TextureManagerの初期化（シングルトン）
-        TextureManager::GetInstance().Initialize(dxPtr);
+            // ModelManager の生成。描画依存コンテキスト（SetRenderContext）は
+            // 全レンダラーの登録後でないと作れないので、後段の別ステップで行う。
+            // リソースのロード自体はここまでで足りる
+            auto modelManager = std::make_unique<ModelManager>();
+            modelManager->Initialize(state->dx, state->resourceFactory);
+            enginePtr->RegisterComponent(std::move(modelManager));
+        });
 
-        // ResourceFactoryの作成（コンストラクタで初期化済み）
-        auto resourceFactory = std::make_unique<ResourceFactory>();
-        ResourceFactory* resourcePtr = resourceFactory.get();
-        engine.RegisterComponent(std::move(resourceFactory));
+        return state;
+    }
 
-        // Renderの作成と初期化（DSVヒープが必要）
-        auto render = std::make_unique<Render>();
-        render->Initialize(dxPtr, dxPtr->GetDSVHeap());
-        Render* renderPtr = render.get();
-        engine.RegisterComponent(std::move(render));
+    void GraphicsComponentFactory::BuildRendererTasks(
+        StartupSequence& sequence,
+        EngineSystem& engine,
+        std::shared_ptr<GraphicsSetupState> state)
+    {
+        EngineSystem* enginePtr = &engine;
 
-        dxPtr->RegisterResizable(renderPtr);
+        sequence.Add("レンダードメイン（GBuffer / シャドウ / RT）", [enginePtr, state] {
+            enginePtr->renderDomainContext_ = std::make_unique<RenderDomainContext>();
+            enginePtr->renderDomainContext_->Initialize(
+                state->dx,
+                enginePtr->GetWinApp()->GetClientWidth(),
+                enginePtr->GetWinApp()->GetClientHeight());
 
-        // RenderManagerの作成と初期化
-        auto renderManager = std::make_unique<RenderManager>();
-        renderManager->Initialize(dxPtr->GetDevice());
-        RenderManager* renderManagerPtr = renderManager.get();
+            state->dx->RegisterResizable(enginePtr->renderDomainContext_.get());
 
-        // フォワード受影用RTシャドウマスクの初期値: white1x1（=影なし）。
-        // 実マスクは毎フレーム DeferredLightingPass::Setup が供給する。
-        // t6が未バインドのままシェーダのGetDimensionsが走るのを防ぐためのフォールバック。
-        const D3D12_GPU_DESCRIPTOR_HANDLE whiteFallback =
-            TextureManager::GetInstance().Load("white1x1.png").gpuHandle;
+            // Hi-Z オクルージョンカリングシステムの作成
+            //（GPU リソースは初回 ExecuteCulling で遅延生成。
+            //  解放タイミングは EngineSystem::Finalize 参照）
+            enginePtr->hiZOcclusionSystem_ = std::make_unique<HiZOcclusionSystem>();
+        });
 
-        // ModelRendererの作成と登録
-        auto modelRenderer = std::make_unique<ModelRenderer>();
-        modelRenderer->Initialize(dxPtr->GetDevice());
-        modelRenderer->SetRTShadowMask(whiteFallback);
-        renderManager->RegisterRenderer(RenderPassType::Model, std::move(modelRenderer));
+        sequence.Add("Render（RTV / DSV）", [enginePtr, state] {
+            // Render の作成と初期化（DSV ヒープが必要）
+            auto render = std::make_unique<Render>();
+            render->Initialize(state->dx, state->dx->GetDSVHeap());
+            state->render = render.get();
+            enginePtr->RegisterComponent(std::move(render));
 
-        // SkinnedModelRendererの作成と登録
-        auto skinnedRenderer = std::make_unique<SkinnedModelRenderer>();
-        skinnedRenderer->Initialize(dxPtr->GetDevice());
-        skinnedRenderer->SetRTShadowMask(whiteFallback);
-        renderManager->RegisterRenderer(RenderPassType::SkinnedModel, std::move(skinnedRenderer));
+            state->dx->RegisterResizable(state->render);
+        });
 
-        // SkyBoxRendererの作成と登録
-        auto skyBoxRenderer = std::make_unique<SkyBoxRenderer>();
-        skyBoxRenderer->Initialize(dxPtr->GetDevice());
-        renderManager->RegisterRenderer(RenderPassType::SkyBox, std::move(skyBoxRenderer));
+        // ──────────────────────────────────────────────────────────
+        // 描画キューとレンダラー群
+        // ──────────────────────────────────────────────────────────
+        sequence.Add("RenderManager", [enginePtr, state] {
+            auto renderManager = std::make_unique<RenderManager>();
+            renderManager->Initialize(state->dx->GetDevice());
+            state->renderManager = renderManager.get();
+            // 元は全レンダラー登録後にまとめて登録していたが、ステップをまたいで
+            // unique_ptr を持ち回すのを避けるためここで先に登録する。
+            // 間で RenderManager を読む処理は無いので順序上の影響はない
+            enginePtr->RegisterComponent(std::move(renderManager));
 
-        // SpriteRendererの作成と登録
-        auto spriteRenderer = std::make_unique<SpriteRenderer>();
-        spriteRenderer->Initialize(dxPtr, resourcePtr);
-        renderManager->RegisterRenderer(RenderPassType::Sprite, std::move(spriteRenderer));
+            // フォワード受影用 RT シャドウマスクの初期値: white1x1（= 影なし）。
+            // 実マスクは毎フレーム DeferredLightingPass::Setup が供給する。
+            // t6 が未バインドのままシェーダの GetDimensions が走るのを防ぐフォールバック
+            state->whiteFallback = TextureManager::GetInstance().Load("white1x1.png").gpuHandle;
+        });
 
-        // UIRendererの作成と登録（UIパスは最前面・スクリーン固定座標）
-        auto uiRenderer = std::make_unique<UIRenderer>();
-        uiRenderer->Initialize(dxPtr, resourcePtr);
-        renderManager->RegisterRenderer(RenderPassType::UI, std::move(uiRenderer));
+        sequence.Add("レンダラー: モデル / スキンモデル", [state] {
+            auto modelRenderer = std::make_unique<ModelRenderer>();
+            modelRenderer->Initialize(state->dx->GetDevice());
+            modelRenderer->SetRTShadowMask(state->whiteFallback);
+            state->renderManager->RegisterRenderer(RenderPassType::Model, std::move(modelRenderer));
 
-        // ParticleRendererの作成と登録
-        auto particleRenderer = std::make_unique<ParticleRenderer>();
-        particleRenderer->SetResourceFactory(resourcePtr);
-        particleRenderer->Initialize(dxPtr->GetDevice());
-        renderManager->RegisterRenderer(RenderPassType::Particle, std::move(particleRenderer));
+            auto skinnedRenderer = std::make_unique<SkinnedModelRenderer>();
+            skinnedRenderer->Initialize(state->dx->GetDevice());
+            skinnedRenderer->SetRTShadowMask(state->whiteFallback);
+            state->renderManager->RegisterRenderer(RenderPassType::SkinnedModel, std::move(skinnedRenderer));
+        });
 
-        // ModelParticleRendererの作成と登録
-        auto modelParticleRenderer = std::make_unique<ModelParticleRenderer>();
-        modelParticleRenderer->SetResourceFactory(resourcePtr);
-        modelParticleRenderer->Initialize(dxPtr->GetDevice());
-        renderManager->RegisterRenderer(RenderPassType::ModelParticle, std::move(modelParticleRenderer));
+        sequence.Add("レンダラー: スカイボックス / スプライト / UI", [state] {
+            auto skyBoxRenderer = std::make_unique<SkyBoxRenderer>();
+            skyBoxRenderer->Initialize(state->dx->GetDevice());
+            state->renderManager->RegisterRenderer(RenderPassType::SkyBox, std::move(skyBoxRenderer));
 
-        // GpuParticleRendererの作成と登録
-        auto gpuParticleRenderer = std::make_unique<GpuParticleRenderer>();
-        gpuParticleRenderer->SetResourceFactory(resourcePtr);
-        gpuParticleRenderer->Initialize(dxPtr->GetDevice());
-        renderManager->RegisterRenderer(RenderPassType::GpuParticle, std::move(gpuParticleRenderer));
+            auto spriteRenderer = std::make_unique<SpriteRenderer>();
+            spriteRenderer->Initialize(state->dx, state->resourceFactory);
+            state->renderManager->RegisterRenderer(RenderPassType::Sprite, std::move(spriteRenderer));
 
-        // LineRendererPipelineの作成と登録
-        auto lineRendererPipeline = std::make_unique<LineRendererPipeline>();
-        lineRendererPipeline->Initialize(dxPtr, resourcePtr);
-        LineRendererPipeline* lineRendererPtr = lineRendererPipeline.get();
-        renderManager->RegisterRenderer(RenderPassType::Line, std::move(lineRendererPipeline));
+            // UI パスは最前面・スクリーン固定座標
+            auto uiRenderer = std::make_unique<UIRenderer>();
+            uiRenderer->Initialize(state->dx, state->resourceFactory);
+            state->renderManager->RegisterRenderer(RenderPassType::UI, std::move(uiRenderer));
+        });
 
-        // RenderManagerを登録
-        engine.RegisterComponent(std::move(renderManager));
+        sequence.Add("レンダラー: パーティクル", [state] {
+            auto particleRenderer = std::make_unique<ParticleRenderer>();
+            particleRenderer->SetResourceFactory(state->resourceFactory);
+            particleRenderer->Initialize(state->dx->GetDevice());
+            state->renderManager->RegisterRenderer(RenderPassType::Particle, std::move(particleRenderer));
 
-        // LineManagerの初期化（シングルトン、RenderManager登録後に実行）
-        LineManager::GetInstance().Initialize(lineRendererPtr);
+            auto modelParticleRenderer = std::make_unique<ModelParticleRenderer>();
+            modelParticleRenderer->SetResourceFactory(state->resourceFactory);
+            modelParticleRenderer->Initialize(state->dx->GetDevice());
+            state->renderManager->RegisterRenderer(RenderPassType::ModelParticle, std::move(modelParticleRenderer));
 
-        // PostEffectManagerの作成と初期化
-        auto postEffectManager = std::make_unique<PostEffectManager>();
-        postEffectManager->Initialize(dxPtr, renderPtr);
-        engine.RegisterComponent(std::move(postEffectManager));
+            auto gpuParticleRenderer = std::make_unique<GpuParticleRenderer>();
+            gpuParticleRenderer->SetResourceFactory(state->resourceFactory);
+            gpuParticleRenderer->Initialize(state->dx->GetDevice());
+            state->renderManager->RegisterRenderer(RenderPassType::GpuParticle, std::move(gpuParticleRenderer));
+        });
 
-        // RenderingTechniqueManagerの作成と初期化
-        auto renderingTechniqueManager = std::make_unique<RenderingTechniqueManager>();
-        renderingTechniqueManager->Initialize(dxPtr);
-        engine.RegisterComponent(std::move(renderingTechniqueManager));
+        sequence.Add("レンダラー: ライン", [state] {
+            auto lineRendererPipeline = std::make_unique<LineRendererPipeline>();
+            lineRendererPipeline->Initialize(state->dx, state->resourceFactory);
+            state->lineRenderer = lineRendererPipeline.get();
+            state->renderManager->RegisterRenderer(RenderPassType::Line, std::move(lineRendererPipeline));
 
-        // ModelManagerの作成と初期化
-        auto modelManager = std::make_unique<ModelManager>();
-        modelManager->Initialize(dxPtr, resourcePtr);
-        engine.RegisterComponent(std::move(modelManager));
+            // LineManager の初期化（シングルトン、RenderManager 登録後に実行）
+            LineManager::GetInstance().Initialize(state->lineRenderer);
+        });
 
-        // 全レンダラー登録完了後、ModelManager に描画依存コンテキストを設定
-        // （Model インスタンス生成時に各 Model へ注入される）
-        ModelRenderContext modelCtx;
-        modelCtx.dxCommon = dxPtr;
-        modelCtx.modelRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::Model));
-        modelCtx.skinnedRenderer = dynamic_cast<BaseModelRenderer*>(renderManagerPtr->GetRenderer(RenderPassType::SkinnedModel));
-        modelCtx.hiZOcclusion = engine.hiZOcclusionSystem_.get();
-        engine.GetService<ModelManager>()->SetRenderContext(modelCtx);
+        // ──────────────────────────────────────────────────────────
+        // ポストエフェクト・レンダリング技術・モデル・IBL
+        // ──────────────────────────────────────────────────────────
+        sequence.Add("ポストエフェクト", [enginePtr, state] {
+            auto postEffectManager = std::make_unique<PostEffectManager>();
+            postEffectManager->Initialize(state->dx, state->render);
+            enginePtr->RegisterComponent(std::move(postEffectManager));
+        });
 
-        // IBLGeneratorの作成と初期化
-        auto iblGenerator = std::make_unique<IBLGenerator>();
-        IBLGenerator* iblGeneratorPtr = iblGenerator.get();
-        auto shaderCompiler = std::make_unique<ShaderCompiler>();
-        shaderCompiler->Initialize();
-        iblGenerator->Initialize(dxPtr, shaderCompiler.get());
-        engine.RegisterComponent(std::move(iblGenerator));
-        engine.RegisterComponent(std::move(shaderCompiler));
+        sequence.Add("レンダリング技術", [enginePtr, state] {
+            auto renderingTechniqueManager = std::make_unique<RenderingTechniqueManager>();
+            renderingTechniqueManager->Initialize(state->dx);
+            enginePtr->RegisterComponent(std::move(renderingTechniqueManager));
+        });
 
-        auto iblSystem = std::make_unique<IBLSystem>();
-        if (!iblSystem->Initialize(dxPtr, iblGeneratorPtr, renderManagerPtr)) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBLSystem");
-        }
-        engine.RegisterComponent(std::move(iblSystem));
+        sequence.Add("モデル描画コンテキスト", [enginePtr, state] {
+            // ModelManager の生成自体はデバイス直後に済ませてある（先読みのため）。
+            // ここでは全レンダラー登録完了後にしか作れない描画依存コンテキストを設定する
+            //（Model インスタンス生成時に各 Model へ注入される）
+            ModelRenderContext modelCtx;
+            modelCtx.dxCommon = state->dx;
+            modelCtx.modelRenderer =
+                dynamic_cast<BaseModelRenderer*>(state->renderManager->GetRenderer(RenderPassType::Model));
+            modelCtx.skinnedRenderer =
+                dynamic_cast<BaseModelRenderer*>(state->renderManager->GetRenderer(RenderPassType::SkinnedModel));
+            modelCtx.hiZOcclusion = enginePtr->hiZOcclusionSystem_.get();
+            enginePtr->GetService<ModelManager>()->SetRenderContext(modelCtx);
+        });
+
+        sequence.Add("IBL（環境ライティング）", [enginePtr, state] {
+            auto iblGenerator = std::make_unique<IBLGenerator>();
+            state->iblGenerator = iblGenerator.get();
+
+            auto shaderCompiler = std::make_unique<ShaderCompiler>();
+            shaderCompiler->Initialize();
+            state->shaderCompiler = shaderCompiler.get();
+
+            iblGenerator->Initialize(state->dx, state->shaderCompiler);
+            enginePtr->RegisterComponent(std::move(iblGenerator));
+            enginePtr->RegisterComponent(std::move(shaderCompiler));
+
+            auto iblSystem = std::make_unique<IBLSystem>();
+            if (!iblSystem->Initialize(state->dx, state->iblGenerator, state->renderManager)) {
+                Logger::GetInstance().Logf(
+                    LogLevel::Error, LogCategory::Graphics, "{}", "Failed to initialize IBLSystem");
+            }
+            enginePtr->RegisterComponent(std::move(iblSystem));
+        });
     }
 }

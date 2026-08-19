@@ -4,20 +4,110 @@
 #include "GameObject/Model/DynamicModelObject.h"
 #include "Utility/JsonManager/JsonManager.h"
 
+#include <algorithm>
+#include <functional>
+
 namespace CoreEngine
 {
+    namespace
+    {
+        // ──────────────────────────────────────────────────────────
+        // シーンフォルダのスキーマ（_scene.json の "objects" 配列 → <key>.json）を
+        // 読む処理はここに集約する。Load と CollectModelPaths が別々に解析していると、
+        // スキーマ変更で先読みだけが静かに空振りする（遅くなるだけで気づけない）。
+        // ──────────────────────────────────────────────────────────
+
+        std::string MakeSceneDir(const std::string& sceneName) {
+            return "Application/Assets/Scenes/" + sceneName;
+        }
+
+        /// @brief シーンマニフェスト（_scene.json）のパス
+        std::string MakeManifestPath(const std::string& sceneName) {
+            return MakeSceneDir(sceneName) + "/_scene.json";
+        }
+
+        /// @brief オブジェクト個別ファイルのパス
+        std::string MakeObjectPath(const std::string& sceneName, const std::string& key) {
+            return MakeSceneDir(sceneName) + "/" + key + ".json";
+        }
+
+        /// @brief マニフェストに列挙された各オブジェクトの JSON を順に訪問する
+        /// @param sceneName シーン名
+        /// @param visitor   (キー, 読み込んだ JSON) を受け取る。読めなかった項目は来ない
+        void ForEachManifestObject(
+            const std::string& sceneName,
+            const std::function<void(const std::string& key, const json& data)>& visitor)
+        {
+            auto& jm = JsonManager::GetInstance();
+
+            const std::string manifestPath = MakeManifestPath(sceneName);
+            if (!jm.FileExists(manifestPath)) {
+                return;
+            }
+
+            json manifest = jm.LoadJson(manifestPath);
+            if (!manifest.contains("objects") || !manifest["objects"].is_array()) {
+                return;
+            }
+
+            for (const auto& entry : manifest["objects"]) {
+                if (!entry.is_string()) continue;
+
+                const std::string key = entry.get<std::string>();
+                if (key.empty()) continue;
+
+                const std::string objPath = MakeObjectPath(sceneName, key);
+                if (!jm.FileExists(objPath)) continue;
+
+                json data = jm.LoadJson(objPath);
+                if (data.is_null()) continue;
+
+                visitor(key, data);
+            }
+        }
+    }
+
     // ===== パスヘルパー =====
 
     std::string SceneSaveSystem::GetSceneDir() const {
-        return "Application/Assets/Scenes/" + sceneName_;
+        return MakeSceneDir(sceneName_);
     }
 
     std::string SceneSaveSystem::GetManifestPath() const {
-        return GetSceneDir() + "/_scene.json";
+        return MakeManifestPath(sceneName_);
     }
 
     std::string SceneSaveSystem::GetObjectPath(const std::string& key) const {
-        return GetSceneDir() + "/" + key + ".json";
+        return MakeObjectPath(sceneName_, key);
+    }
+
+    // ===== 先読み用のパス列挙 =====
+
+    std::vector<std::string> SceneSaveSystem::CollectModelPaths(const std::string& sceneName)
+    {
+        std::vector<std::string> modelPaths;
+        if (sceneName.empty()) {
+            return modelPaths;
+        }
+
+        ForEachManifestObject(sceneName, [&modelPaths](const std::string&, const json& data) {
+            if (!data.contains("modelPath") || !data["modelPath"].is_string()) {
+                return;
+            }
+            std::string modelPath = data["modelPath"].get<std::string>();
+            if (modelPath.empty()) {
+                return;
+            }
+
+            // 同じモデルを複数オブジェクトが共有するのが普通なので重複を潰す。
+            // ここで潰さなくても ModelManager 側のロード権で 1 回に収束するが、
+            // 無駄なタスクをスレッドプールへ積まない
+            if (std::find(modelPaths.begin(), modelPaths.end(), modelPath) == modelPaths.end()) {
+                modelPaths.push_back(std::move(modelPath));
+            }
+        });
+
+        return modelPaths;
     }
 
     // ===== Load =====
@@ -37,37 +127,20 @@ namespace CoreEngine
             return nullptr;
         };
 
-        const std::string manifestPath = GetManifestPath();
-        if (jm.FileExists(manifestPath)) {
-            json manifest = jm.LoadJson(manifestPath);
-            if (manifest.contains("objects") && manifest["objects"].is_array()) {
-                for (const auto& entry : manifest["objects"]) {
-                    if (!entry.is_string()) continue;
-
-                    const std::string key = entry.get<std::string>();
-                    if (key.empty() || findObjectBySerializeKey(key)) {
-                        continue;
-                    }
-
-                    const std::string objPath = GetObjectPath(key);
-                    if (!jm.FileExists(objPath)) {
-                        continue;
-                    }
-
-                    json data = jm.LoadJson(objPath);
-                    if (data.is_null()) {
-                        continue;
-                    }
-
-                    if (data.contains("modelPath") && data["modelPath"].is_string()) {
-                        auto obj = std::make_unique<DynamicModelObject>();
-                        obj->SetModelPath(data["modelPath"].get<std::string>());
-                        obj->SetName(key);
-                        mgr->AddObject(std::move(obj));
-                    }
+        ForEachManifestObject(sceneName_,
+            [mgr, &findObjectBySerializeKey](const std::string& key, const json& data) {
+                // 既にシーン側が同じキーで生成済みならマニフェストからは作らない
+                if (findObjectBySerializeKey(key)) {
+                    return;
                 }
-            }
-        }
+
+                if (data.contains("modelPath") && data["modelPath"].is_string()) {
+                    auto obj = std::make_unique<DynamicModelObject>();
+                    obj->SetModelPath(data["modelPath"].get<std::string>());
+                    obj->SetName(key);
+                    mgr->AddObject(std::move(obj));
+                }
+            });
 
         // オブジェクトごとに個別ファイルからデシリアライズ
         for (const auto& obj : mgr->GetAllObjects()) {

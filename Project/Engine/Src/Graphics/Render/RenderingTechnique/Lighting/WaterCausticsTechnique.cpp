@@ -31,12 +31,15 @@ namespace CoreEngine
             CVarRange{}, CVarFlags::NoUI };
     }
 
+    // 定数バッファと PSO は基底が用意する。ここでは水面固有の初期値だけを入れる
     void WaterCausticsTechnique::Initialize(DirectXCommon* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
         CreateConstantBuffers();
     }
 
+    // 水面の法線から屈折方向を求め、集光の度合いをスクリーンスペースで求める。
+    // 深度からワールド座標を復元するので、行列は必ず G-Buffer を描いたビューのものを使う
     void WaterCausticsTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
     {
         outputSrvHandle = {};

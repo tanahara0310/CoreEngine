@@ -10,12 +10,8 @@
 namespace CoreEngine
 {
     /// @brief CAS (Contrast Adaptive Sharpening) レンダリング技術
-    /// @details TAA 直後に置き、履歴ブレンドで落ちた解像感を戻す。
-    ///          局所コントラストからシャープ量を適応的に決めるため、
-    ///          単純なアンシャープマスクと違って輪郭にリンギングが出にくい。
-    ///
-    ///          入力は「TAA が有効なら TAA 出力 / 無効なら SceneColor」と可変なので、
-    ///          論理リソース名は CASPass から注入される（SetInputResourceName）。
+    /// @details 局所コントラストからシャープ量を適応的に決めるので、輪郭にリンギングが出にくい。
+    /// @note 入力は可変（TAA 出力 / SceneColor）なので、論理リソース名は CASPass から注入される。
     class CASTechnique : public RenderingTechniqueBase {
     public:
         /// @brief シェーダー側 cbuffer CASParams と一致させること
@@ -46,7 +42,9 @@ namespace CoreEngine
         void SetInputResourceName(const std::string& name) { inputResourceName_ = name; }
 
         const CASParams& GetParams() const { return params_; }
+        /// @brief シャープ量などのパラメータを設定する
         void SetParams(const CASParams& params);
+        /// @brief 設定済みパラメータを GPU 定数バッファへ転送する
         void UpdateConstantBuffer();
 
     protected:

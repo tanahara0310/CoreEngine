@@ -7,6 +7,7 @@
 
 namespace CoreEngine
 {
+    // バッファ確保と SRV 作成をまとめて行う。最大数は起動時に決め打ちで、以後変えない
     void LightBufferManager::Initialize(
         ID3D12Device* device,
         DescriptorManager* descriptorManager,
@@ -32,6 +33,8 @@ namespace CoreEngine
         const std::vector<AreaLightData>& areaLights
     )
     {
+        // 種別ごとに StructuredBuffer を持つ。空の種別は Map ごと省く
+        // （0 バイトの memcpy を避けるためと、未使用バッファを触らないため）
         if (!directionalLights.empty())
         {
             DirectionalLightData* mappedData = nullptr;
@@ -82,6 +85,7 @@ namespace CoreEngine
         int areaLightsRootParameterIndex
     )
     {
+        // ルートパラメータ番号が負なら「このシェーダーはその種別を参照しない」ので飛ばす
         if (!commandList)
         {
             return;
@@ -133,6 +137,7 @@ namespace CoreEngine
         return lightCountsBuffer_ ? lightCountsBuffer_->GetGPUVirtualAddress() : 0;
     }
 
+    // 種別ごとの StructuredBuffer を最大数ぶん確保する（実際の使用数は毎フレーム変わる）
     void LightBufferManager::CreateBufferResources(
         ID3D12Device* device,
         uint32_t maxDirectionalLights,

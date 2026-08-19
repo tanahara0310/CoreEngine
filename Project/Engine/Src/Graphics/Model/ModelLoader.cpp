@@ -50,8 +50,9 @@ namespace CoreEngine
     {
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", std::format("Loading model file: {}", filepath));
 
-        // スキニング有無に依存しない共通フラグで1回だけフルパースする。
-        // aiProcess_LimitBoneWeightsはボーンが無いメッシュに対しては単なる無処理。
+        // Assimp の DefaultIOSystem は Windows でパスを UTF-8 とみなすので、
+        // UTF-8 で統一してある文字列をそのまま渡す。
+        // スキニング有無に依存しない共通フラグで 1 回だけフルパースする。
         const aiScene* scene = importer.ReadFile(
             filepath.c_str(),
             aiProcess_Triangulate |
@@ -270,12 +271,10 @@ namespace CoreEngine
             // バインドポーズ行列を計算
             jointWeightData.inverseBindPoseMatrix = CalculateBindPoseMatrix(bone->mOffsetMatrix);
 
-            // 頂点ウェイト情報を格納
             // aiBone の mVertexId はメッシュ内ローカルのインデックス。
-            // ModelData::vertices は全メッシュを 1 本の頂点バッファへ連結しているため、
-            // このメッシュの開始位置 baseVertexIndex を足してグローバルなインデックスへ直す。
-            // （マルチメッシュのスキニングモデルで、別メッシュの頂点にウェイトが
-            //   乗ってしまう不具合を防ぐ）
+            // ModelData::vertices は全メッシュを 1 本に連結しているため、
+            // 開始位置 baseVertexIndex を足してグローバルなインデックスへ直す
+            // （マルチメッシュで別メッシュの頂点にウェイトが乗る不具合を防ぐ）。
             for (uint32_t weightIndex = 0; weightIndex < bone->mNumWeights; ++weightIndex) {
                 jointWeightData.vertexWeights.push_back({
                     bone->mWeights[weightIndex].mWeight,
@@ -338,12 +337,12 @@ namespace CoreEngine
             return rawPath;
         }
 
-        // directoryPath と結合し、".." などを含む場合に lexically_normal() で正規化する
-        std::filesystem::path combined = std::filesystem::path(directoryPath) / rawPath;
-        std::string normalized = combined.lexically_normal().string();
-        std::replace(normalized.begin(), normalized.end(), '\\', '/');
-
-        return normalized;
+        // directoryPath と結合し、".." などを含む場合に lexically_normal() で正規化する。
+        // directoryPath も Assimp が返す rawPath も UTF-8 なので、path との往復は
+        // Logger の Utf8ToPath / PathToUtf8 を通す（ANSI 変換を挟むと非 ASCII が壊れる）。
+        Logger& log = Logger::GetInstance();
+        std::filesystem::path combined = log.Utf8ToPath(directoryPath) / log.Utf8ToPath(rawPath);
+        return log.PathToUtf8(combined.lexically_normal());
     }
 
     Matrix4x4 ModelLoader::CalculateBindPoseMatrix(const aiMatrix4x4& offsetMatrix)

@@ -3,11 +3,10 @@
 #include "Graphics/Model/Animation/Animation.h"
 #include "Graphics/Model/Animation/IAnimationController.h"
 
-/// @brief スケルトンアニメーションコントローラー
-/// スケルトン（ボーン）アニメーションを制御する
-
 namespace CoreEngine
 {
+/// @brief スケルトンアニメーションコントローラー
+/// スケルトン（ボーン）アニメーションを制御する
 class SkeletonAnimator : public IAnimationController {
 public:
     /// @brief コンストラクタ

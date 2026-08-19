@@ -51,6 +51,7 @@ namespace CoreEngine
 
         /// @brief 定数バッファを 1 本作って永続マップする
         template <typename T>
+    /// @brief 定数バッファを確保して常時 Map したまま保持する
         void CreateMappedCB(ID3D12Device* device, Microsoft::WRL::ComPtr<ID3D12Resource>& buffer, T*& mapped)
         {
             const UINT size = (sizeof(T) + 255) & ~255u;

@@ -14,6 +14,7 @@ namespace CoreEngine
 {
     namespace
     {
+    /// @brief 平均値（空なら 0）
         float Mean(const std::vector<float>& values)
         {
             if (values.empty()) return 0.0f;
@@ -69,6 +70,7 @@ namespace CoreEngine
             return name.find('/') != std::string::npos;
         }
 
+    /// @brief CSV のファイル名に使う日時文字列を作る
         std::string MakeTimestampString()
         {
             const auto now = std::chrono::system_clock::now();

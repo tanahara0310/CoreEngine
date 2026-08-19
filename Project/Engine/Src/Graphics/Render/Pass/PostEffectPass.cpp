@@ -93,6 +93,8 @@ namespace CoreEngine
 
     void PostEffectPass::Execute(const RenderContext& context)
     {
+        // ステップの中身（record ラムダ）はエフェクト側が組み立て済み。
+        // ここは入力 SRV と出力ターゲットを解決して渡すだけに徹する
         if (!effect_ || step_.write.empty() || !step_.record || !context.renderTargetManager) {
             return;
         }
@@ -101,6 +103,7 @@ namespace CoreEngine
         passContext.cmdList = context.cmdList;
         passContext.reads.reserve(step_.reads.size());
 
+        // 入力 SRV が 1 つでも未解決なら、黒画面やクラッシュを出す前にこのパスごと諦める
         for (const std::string& readName : step_.reads) {
             D3D12_GPU_DESCRIPTOR_HANDLE srv{};
             if (context.frameBlackboard) {

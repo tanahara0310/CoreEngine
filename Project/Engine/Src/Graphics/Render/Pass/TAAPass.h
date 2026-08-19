@@ -4,16 +4,9 @@
 namespace CoreEngine
 {
     /// @brief TAA（テンポラルアンチエイリアス）解決パス
-    /// @details 水面合成まで終わった SceneColor を入力に、モーションベクターで再投影した
-    ///          前フレームの結果と蓄積する。出力はそのまま次フレームの履歴になる。
-    ///
-    ///          配置は PostProcess フェーズの先頭（ポストエフェクト列より前）。
-    ///          トーンマップ前の HDR 空間で解決するのが TAA の正しい位置で、
-    ///          Bloom / LensFlare もアンチエイリアス済みの画を入力にできる。
-    ///
-    ///          出力先は履歴 ping-pong の片側なので SceneColor へは書き戻さない。
-    ///          後続（ポストエフェクト列 / BackBuffer）の入力名は
-    ///          RenderPipeline が TAAOutput へ差し替える。
+    /// @details トーンマップ前の HDR 空間で解決するため PostProcess フェーズの先頭に置く。
+    /// @note 出力は履歴 ping-pong の片側。SceneColor へは書き戻さず、
+    ///       後続の入力名を RenderPipeline が TAAOutput へ差し替える。
     class TAAPass : public RenderPass {
     public:
         TAAPass() = default;

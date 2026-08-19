@@ -4,10 +4,7 @@
 
 /// @file
 /// @brief 形状同士の交差判定
-/// @details **1 つの形状ペアにつき実装は 1 箇所だけ**。対称なペア（AABB×Sphere など）は
-///          引数を入れ替えて転送し、法線だけ反転する。以前は球×AABB の判定が
-///          SphereCollider と AABBCollider の両方に書かれており、片方だけ直す事故が
-///          起きる構造だった。
+/// @note 1 つの形状ペアにつき実装は 1 箇所だけ。対称なペアは引数を入れ替えて転送し、法線だけ反転する。
 
 namespace CoreEngine
 {
@@ -30,11 +27,8 @@ namespace Geometry
     };
 
     /// @brief 1 軸上で 2 区間の重なりを求める
-    /// @param aMin,aMax 区間 A / @param bMin,bMax 区間 B
     /// @param out a を direction 方向へ depth 動かすと分離する
     /// @return 重なっていれば true（接しているだけなら depth = 0 で true）
-    /// @details AABB×AABB の接触情報と、2D タイルの軸別押し出し（TileCollider）が
-    ///          同じ式を使うための共通土台。押し出し量の計算を 2 箇所に散らさない。
     bool OverlapOnAxis(float aMin, float aMax, float bMin, float bMax, AxisOverlap& out);
 
     //================================================

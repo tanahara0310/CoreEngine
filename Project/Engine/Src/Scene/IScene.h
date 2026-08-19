@@ -17,10 +17,9 @@ namespace CoreEngine {
     class RenderPipeline;
 }
 
-/// @brief シーンインターフェース
-
 namespace CoreEngine
 {
+/// @brief 補助ビューの描画結果（出力先の名前と参照用 SRV）
 struct RenderViewResult {
     std::string name;
     std::string outputTargetName;
@@ -30,6 +29,7 @@ struct RenderViewResult {
     bool isValid = false;
 };
 
+/// @brief 1 フレーム内で追加実行してほしい補助ビュー（平面反射など）の要求
 struct RenderViewRequest {
     bool isEnabled = false;
     std::string name;
@@ -39,14 +39,19 @@ struct RenderViewRequest {
     std::function<void(const RenderViewResult&)> completionCallback;
 };
 
+/// @brief シーンのインターフェース。SceneManager はこの型だけを介してシーンを回す
 class IScene {
 public:
     virtual ~IScene() = default;
 
+    /// @brief シーン開始時の初期化
     virtual void Initialize(CoreEngine::EngineSystem* engine) = 0;
+    /// @brief 毎フレームのロジック更新
     virtual void Update() = 0;
     virtual void PrepareRender() {}
+    /// @brief 描画コマンドの発行
     virtual void Draw() = 0;
+    /// @brief シーン終了時の後始末
     virtual void Finalize() = 0;
 
     virtual Camera* GetGameViewCamera3D() const { return nullptr; }

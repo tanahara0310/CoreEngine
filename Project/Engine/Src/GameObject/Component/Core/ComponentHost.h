@@ -17,6 +17,7 @@ class GameObject;
 class ComponentHost {
 public:
     ComponentHost() = default;
+    /// @brief デストラクタ（保持しているコンポーネントを追加の逆順で破棄する）
     virtual ~ComponentHost();
 
     ComponentHost(const ComponentHost&) = delete;
@@ -24,12 +25,8 @@ public:
 
     // ===== 追加 =====
 
-    /// @brief コンポーネントを生成してアタッチする
-    /// @tparam T IComponent 派生の型
-    /// @tparam Args T のコンストラクタ引数
-    /// @return アタッチされたコンポーネント（以後の追加でも無効化されない）
-    /// @note `Awake()` はこの中で即座に呼ばれる。兄弟コンポーネントを見る初期化は
-    ///       `Start()` に書くこと（この時点では自分しか居ない可能性がある）。
+    /// @brief コンポーネントを生成してアタッチする（以後の追加でも戻り値は無効化されない）
+    /// @note `Awake()` はこの中で即座に呼ばれる。兄弟コンポーネントを見る初期化は `Start()` に書くこと。
     template <typename T, typename... Args>
     T* AddComponent(Args&&... args) {
         static_assert(std::is_base_of_v<IComponent, T>,
@@ -45,14 +42,9 @@ public:
 
     // ===== 取得 =====
 
-    /// @brief 指定型のコンポーネントを 1 個取得する
-    /// @tparam T 取得したい型。**具象型でも基底型でもよい**（`dynamic_cast` で解決する）。
-    ///           `IComponent` を継承していない**ミックスインのインターフェース**
-    ///           （`ITransformSource` など）も指定できる ―― `IComponent` が多態なので
-    ///           兄弟インターフェースへのクロスキャストが成立する。
-    ///           そのため問い合わせ系には `is_base_of<IComponent, T>` の制約を掛けていない
-    ///           （制約があるのは実体を作る `AddComponent` / `GetOrAddComponent` だけ）。
-    /// @return 見つからなければ nullptr
+    /// @brief 指定型のコンポーネントを 1 個取得する（見つからなければ nullptr）
+    /// @tparam T 具象型でも基底型でもよい。`IComponent` を継承していないミックスイン
+    ///           （`ITransformSource` など）も `dynamic_cast` のクロスキャストで引ける。
     template <typename T>
     T* GetComponent() const {
         for (const auto& component : components_) {

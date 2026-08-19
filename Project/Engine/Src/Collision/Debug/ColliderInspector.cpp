@@ -19,6 +19,7 @@ namespace ColliderInspector
             "Default", "Player", "Enemy", "PlayerBullet", "EnemyBullet",
             "Boss", "BossBullet", "BossAttack", "Item", "Environment",
         };
+        // 列挙子を増やしたのに表示名を足し忘れると、ここでコンパイルエラーになる
         static_assert(
             static_cast<int>(CollisionLayer::Count) == static_cast<int>(std::size(kLayerNames)),
             "CollisionLayer を増減したら kLayerNames も更新すること");

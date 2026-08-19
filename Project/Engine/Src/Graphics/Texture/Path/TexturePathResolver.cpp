@@ -9,16 +9,16 @@
 
 namespace CoreEngine
 {
-    std::string TexturePathResolver::ResolveAssetPath(const std::string& filePath, bool writeLog) const
+    std::filesystem::path TexturePathResolver::ResolveAssetPath(const std::string& filePath, bool writeLog) const
     {
         auto& assetDB = AssetDatabase::GetInstance();
 
         // まずフルパス文字列でそのまま検索する
-        std::string assetPath = assetDB.FindAssetPath(filePath);
+        std::filesystem::path assetPath = assetDB.FindAssetPath(filePath);
         if (!assetPath.empty()) {
             if (writeLog) {
-                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", 
-                    std::format("  Resolved: '{}' -> '{}'", filePath, assetPath));
+                Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
+                    std::format("  Resolved: '{}' -> '{}'", filePath, Logger::GetInstance().PathToUtf8(assetPath)));
             }
             return assetPath;
         }
@@ -26,26 +26,26 @@ namespace CoreEngine
         // フルパス検索が失敗した場合、ファイル名部分だけで再検索する。
         // MTLなどの相対テクスチャ参照 (例: "uvChecker.png") がモデルディレクトリに
         // 結合されたパスとして渡されるケースに対応するためのフォールバック。
-        std::filesystem::path fsPath(filePath);
-        std::string fileName = fsPath.filename().string();
+        std::filesystem::path fsPath = Logger::GetInstance().Utf8ToPath(filePath);
+        std::string fileName = Logger::GetInstance().PathToUtf8(fsPath.filename());
         if (!fileName.empty() && fileName != filePath) {
             assetPath = assetDB.FindAssetPath(fileName);
             if (!assetPath.empty()) {
                 if (writeLog) {
-                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}", 
-                        std::format("  Resolved by filename fallback: '{}' -> '{}'", filePath, assetPath));
+                    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource, "{}",
+                        std::format("  Resolved by filename fallback: '{}' -> '{}'", filePath, Logger::GetInstance().PathToUtf8(assetPath)));
                 }
                 return assetPath;
             }
         }
 
-        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "{}", 
+        Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource, "{}",
             std::format("  Asset not found in database, using path as-is: '{}'", filePath));
 
         return ResolveFilePath(filePath);
     }
 
-    std::string TexturePathResolver::GetDDSCachePath(const std::string& originalPath,
+    std::filesystem::path TexturePathResolver::GetDDSCachePath(const std::filesystem::path& originalPath,
         TextureColorSpace colorSpace) const
     {
         // 色空間ごとにキャッシュを分離する（同一ソースでも sRGB / Linear で内容が異なるため）
@@ -58,23 +58,14 @@ namespace CoreEngine
         std::string guid = assetDB.GetGUID(absPath);
 
         if (!guid.empty()) {
-            std::filesystem::path cachePath = assetDB.GetCachedTexturePath(guid, suffix);
-            return cachePath.string();
+            return assetDB.GetCachedTexturePath(guid, suffix);
         }
 
-        std::filesystem::path path(originalPath);
-        std::filesystem::path parentPath = path.parent_path();
-        std::string fileName = path.stem().string();
-
-        std::string result;
-        if (parentPath.empty()) {
-            result = fileName + suffix;
-        } else {
-            result = (parentPath / (fileName + suffix)).string();
-        }
-
-        std::replace(result.begin(), result.end(), '\\', '/');
-        return result;
+        // GUID が無い場合は元ファイルの隣に置く。stem はパスの一部なので
+        // narrow 文字列に落とさず path の連結で組み立てる。
+        std::filesystem::path fileName = originalPath.stem();
+        fileName += suffix;
+        return originalPath.parent_path() / fileName;
     }
 
     std::string TexturePathResolver::GetCubemapSuffix() const
@@ -84,7 +75,7 @@ namespace CoreEngine
             : "_cubemap.dds";
     }
 
-    std::string TexturePathResolver::GetCubemapDDSPath(const std::string& originalPath) const
+    std::filesystem::path TexturePathResolver::GetCubemapDDSPath(const std::filesystem::path& originalPath) const
     {
         // フェイスサイズが設定されている場合はサフィックスに含める(例: _cubemap_512.dds)
         // サイズが変わるとパスが変わり、旧キャッシュを自動的に無効化できる。
@@ -95,38 +86,27 @@ namespace CoreEngine
         std::string guid = assetDB.GetGUID(absPath);
 
         if (!guid.empty()) {
-            std::filesystem::path cachePath = assetDB.GetCachedTexturePath(guid, suffix);
-            return cachePath.string();
+            return assetDB.GetCachedTexturePath(guid, suffix);
         }
 
-        std::filesystem::path path(originalPath);
-        std::filesystem::path parentPath = path.parent_path();
-        std::string fileName = path.stem().string();
-
-        if (parentPath.empty()) {
-            return fileName + suffix;
-        }
-
-        return (parentPath / (fileName + suffix)).string();
+        std::filesystem::path fileName = originalPath.stem();
+        fileName += suffix;
+        return originalPath.parent_path() / fileName;
     }
 
-    std::string TexturePathResolver::ResolveFilePath(const std::string& filePath) const
+    std::filesystem::path TexturePathResolver::ResolveFilePath(const std::string& filePath) const
     {
+        // 入力は AssetDatabase に登録が無かった UTF-8 の要求文字列。
+        // 区切りだけ正規化して path へ持ち上げ、以降はエンコーディングを意識しない。
         std::string normalized = filePath;
         std::replace(normalized.begin(), normalized.end(), '\\', '/');
 
-        if (normalized.starts_with("Application/Assets/")) {
-            return normalized;
-        }
-        if (normalized.starts_with("Engine/Assets/")) {
-            return normalized;
-        }
-        if (normalized.length() >= 2 && normalized[1] == ':') {
-            return normalized;
+        if (!normalized.starts_with("Application/Assets/") &&
+            !normalized.starts_with("Engine/Assets/") &&
+            !(normalized.length() >= 2 && normalized[1] == ':')) {
+            normalized = basePath_ + normalized;
         }
 
-        return basePath_ + normalized;
+        return Logger::GetInstance().Utf8ToPath(normalized);
     }
 }
-
-

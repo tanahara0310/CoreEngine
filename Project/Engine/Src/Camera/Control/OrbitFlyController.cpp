@@ -35,11 +35,9 @@ namespace CoreEngine
 
         camera.SetTranslate(ComputeEyePosition());
 
-        // 注視点を向く姿勢をオイラー角で表す。
-        // 視点→注視点の方向は outward の逆なので、MakeAffine（Rx*Ry*Rz）の前方軸
-        // (cosX sinY, -sinX, cosX cosY) と一致させると pitch はそのまま、yaw は +π になる。
-        // これは Matrix::LookAt(eye, target, +Y) と厳密に同じビュー行列を与える
-        // （pitch は ±0.49π にクランプされるため cos(pitch) > 0 が保証される）。
+        // 注視点を向く姿勢をオイラー角で表す。視点→注視点は outward の逆なので、
+        // MakeAffine（Rx*Ry*Rz）の前方軸と一致させると pitch はそのまま、yaw は +π になる。
+        // 結果は Matrix::LookAt(eye, target, +Y) と厳密に同じビュー行列。
         camera.SetScale({ 1.0f, 1.0f, 1.0f });
         camera.SetRotate({ s.pitch, MathCore::NormalizeAngle(s.yaw + std::numbers::pi_v<float>), 0.0f });
     }

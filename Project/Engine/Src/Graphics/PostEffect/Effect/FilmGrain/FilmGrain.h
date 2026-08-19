@@ -7,16 +7,9 @@
 
 namespace CoreEngine
 {
-/// @brief フィルムグレイン（CS方式・常時薄く乗せる）
-/// @details 実写には必ず粒子かセンサーノイズがあり、それが無い画像は「作り物」に見える。
-///          平坦な面に質感を与えるのが役目。
-///
-///          演出用の `Random` エフェクトとは別物として分けている。あちらは
-///          グリッチ等で強くノイズを乗せる用途で、寿命も調整軸も違うため、
-///          共有すると片方の既定値を変えたときにもう片方が壊れる。
-///
-///          パラメータは CVar（"r.FilmGrain.*"）が唯一の保持者。
-///          設計: Docs/Engine/Graphics/PostProcess/PostEffect_Refactoring_Plan.md
+/// @brief フィルムグレイン（CS 方式・常時薄く乗せる）
+/// @details 平坦な面に質感を与えるのが役目。CVar "r.FilmGrain.*"。
+/// @note 演出用の `Random` エフェクトとは調整軸が違うため別物として分けている。
 class FilmGrain : public PostEffectComputeBase {
 public:
     /// @brief グレインパラメータ構造体（GPU 定数バッファのレイアウト）

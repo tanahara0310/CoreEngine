@@ -15,6 +15,7 @@ namespace CoreEngine
     static constexpr float kPI = std::numbers::pi_v<float>;
     static constexpr float kTwoPI = kPI * 2.0f;
 
+    /// @brief 方向ベクトルを正距円筒図法（equirectangular）の UV へ変換する
     static void DirToEquirectUV(float dx, float dy, float dz, float& u, float& v)
     {
         float len = std::sqrt(dx * dx + dy * dy + dz * dz);
@@ -25,6 +26,7 @@ namespace CoreEngine
         v = 1.0f - (theta + kPI * 0.5f) / kPI;
     }
 
+    /// @brief キューブマップの面と面内 UV から方向ベクトルを求める
     static void FaceUVToDir(uint32_t face, float u, float v, float& dx, float& dy, float& dz)
     {
         float cu = u * 2.0f - 1.0f;
@@ -41,6 +43,7 @@ namespace CoreEngine
         }
     }
 
+    /// @brief 正距円筒図法の画像をバイリニアでサンプルする
     static void SampleBilinear(
         const DirectX::Image* srcImg,
         uint32_t srcW, uint32_t srcH,
@@ -81,19 +84,25 @@ namespace CoreEngine
 
     // ===== 公開メソッド =====
 
-    bool TextureCubemapGenerator::GenerateFromHDR(const std::string& hdrPath, const std::string& cubemapDDSPath) const
+    bool TextureCubemapGenerator::GenerateFromHDR(const std::filesystem::path& hdrPath,
+        const std::filesystem::path& cubemapDDSPath) const
     {
-        Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
-            std::format("Equirectangular to cubemap conversion: {} -> {}", hdrPath, cubemapDDSPath));
+        Logger& log = Logger::GetInstance();
 
-        // HDR ファイルを読み込む
-        std::wstring hdrPathW = Logger::GetInstance().ConvertString(hdrPath);
+        // ログに出すのは表示用の UTF-8 文字列。ファイルI/Oには path をそのまま使う。
+        const std::string hdrForDisplay = log.PathToUtf8(hdrPath);
+        const std::string ddsForDisplay = log.PathToUtf8(cubemapDDSPath);
+
+        log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
+            std::format("Equirectangular to cubemap conversion: {} -> {}", hdrForDisplay, ddsForDisplay));
+
+        // HDR ファイルを読み込む（DirectXTex はワイド API なのでここで初めて変換する）
         DirectX::ScratchImage hdrImage;
-        HRESULT hr = DirectX::LoadFromHDRFile(hdrPathW.c_str(), nullptr, hdrImage);
+        HRESULT hr = DirectX::LoadFromHDRFile(hdrPath.wstring().c_str(), nullptr, hdrImage);
         if (FAILED(hr))
         {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("Failed to load HDR file: {} (HRESULT=0x{:08X})", hdrPath, static_cast<unsigned int>(hr)));
+            log.Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("Failed to load HDR file: {} (HRESULT=0x{:08X})", hdrForDisplay, static_cast<unsigned int>(hr)));
             return false;
         }
 
@@ -165,41 +174,42 @@ namespace CoreEngine
         }
 
         // 出力ディレクトリを作成して DDS 保存
-        std::filesystem::path outPath(cubemapDDSPath);
-        std::filesystem::create_directories(outPath.parent_path());
+        std::filesystem::create_directories(cubemapDDSPath.parent_path());
 
-        std::wstring outPathW = Logger::GetInstance().ConvertString(cubemapDDSPath);
         hr = DirectX::SaveToDDSFile(
             cubemap.GetImages(), cubemap.GetImageCount(),
-            cubemap.GetMetadata(), DirectX::DDS_FLAGS_NONE, outPathW.c_str());
+            cubemap.GetMetadata(), DirectX::DDS_FLAGS_NONE, cubemapDDSPath.wstring().c_str());
 
         if (FAILED(hr))
         {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics, "{}",
-                std::format("Failed to save cubemap DDS: {} (HRESULT=0x{:08X})", cubemapDDSPath, static_cast<unsigned int>(hr)));
+            log.Logf(LogLevel::Error, LogCategory::Graphics, "{}",
+                std::format("Failed to save cubemap DDS: {} (HRESULT=0x{:08X})", ddsForDisplay, static_cast<unsigned int>(hr)));
             return false;
         }
 
         return ValidateGeneratedCubemap(cubemapDDSPath);
     }
 
-    bool TextureCubemapGenerator::ValidateGeneratedCubemap(const std::string& filePath) const
+    bool TextureCubemapGenerator::ValidateGeneratedCubemap(const std::filesystem::path& filePath) const
     {
         if (!std::filesystem::exists(filePath))
             return false;
+
+        Logger& log = Logger::GetInstance();
+        const std::string pathForDisplay = log.PathToUtf8(filePath);
 
         try
         {
             auto fileSize = std::filesystem::file_size(filePath);
             if (fileSize == 0)
             {
-                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}",
-                    std::format("Cubemap file is empty: {}", filePath));
+                log.Logf(LogLevel::WARNING, LogCategory::Graphics, "{}",
+                    std::format("Cubemap file is empty: {}", pathForDisplay));
                 return false;
             }
 
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
-                std::format("Cubemap DDS generated: {} (size: {} bytes)", filePath, fileSize));
+            log.Logf(LogLevel::INFO, LogCategory::Graphics, "{}",
+                std::format("Cubemap DDS generated: {} (size: {} bytes)", pathForDisplay, fileSize));
             return true;
         }
         catch (const std::filesystem::filesystem_error& e)

@@ -6,6 +6,11 @@
 
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Asset/AssetDatabase.h"
+#include "EngineSystem/Startup/StartupProgress.h"
+#include "Cache/ShaderCacheKey.h"
+#include "Cache/ShaderCacheStore.h"
+#include "Cache/ShaderBlobCache.h"
+#include "Cache/ShaderManifest.h"
 
 
 #pragma comment(lib, "dxcompiler.lib")
@@ -29,6 +34,79 @@ namespace CoreEngine
         // 現時点でincludeしない為、includeに対応する為の設定を行う
         hr = dxcUtils->CreateDefaultIncludeHandler(&includeHandler);
         assert(SUCCEEDED(hr));
+
+        // 既定ハンドラを包んで「実際に開いたファイル」を記録できるようにする。
+        // この記録がキャッシュの依存マニフェスト（.deps）になる
+        recordingIncludeHandler_.SetInner(includeHandler.Get());
+
+        compilerVersion_ = QueryCompilerVersion();
+    }
+
+    std::string ShaderCompiler::QueryCompilerVersion() const
+    {
+        std::string version;
+
+        Microsoft::WRL::ComPtr<IDxcVersionInfo> versionInfo;
+        if (SUCCEEDED(dxcCompiler.As(&versionInfo)) && versionInfo) {
+            UINT32 major = 0;
+            UINT32 minor = 0;
+            if (SUCCEEDED(versionInfo->GetVersion(&major, &minor))) {
+                version = std::to_string(major) + "." + std::to_string(minor);
+            }
+
+            Microsoft::WRL::ComPtr<IDxcVersionInfo2> versionInfo2;
+            if (SUCCEEDED(versionInfo.As(&versionInfo2)) && versionInfo2) {
+                UINT32 commitCount = 0;
+                char* commitHash = nullptr;
+                if (SUCCEEDED(versionInfo2->GetCommitInfo(&commitCount, &commitHash)) && commitHash) {
+                    version += "-";
+                    version += commitHash;
+                    CoTaskMemFree(commitHash);
+                }
+            }
+        }
+
+        if (version.empty()) {
+            // バージョン情報を取れないビルドでも DLL の差し替えは検出したいので、
+            // dxcompiler.dll のサイズと更新時刻で代用する
+            HMODULE module = GetModuleHandleW(L"dxcompiler.dll");
+            wchar_t modulePath[MAX_PATH] = {};
+            if (module && GetModuleFileNameW(module, modulePath, MAX_PATH)) {
+                std::error_code errorCode;
+                const std::filesystem::path path(modulePath);
+                const auto fileSize = std::filesystem::file_size(path, errorCode);
+                if (!errorCode) {
+                    const auto writeTime = std::filesystem::last_write_time(path, errorCode);
+                    if (!errorCode) {
+                        version = "dll:" + std::to_string(fileSize) + ":" +
+                            std::to_string(writeTime.time_since_epoch().count());
+                    }
+                }
+            }
+        }
+
+        return version.empty() ? std::string("unknown") : version;
+    }
+
+    std::wstring ShaderCompiler::ResolveShaderPath(const std::wstring& filePath) const
+    {
+        // AssetDatabaseでパス解決を試みる
+        std::wstring resolvedPath = filePath;
+        std::filesystem::path fsPath(filePath);
+        if (fsPath.is_relative()) {
+            fsPath = std::filesystem::absolute(fsPath);
+        }
+        if (!std::filesystem::exists(fsPath)) {
+            // 検索キーは UTF-8 のテキストとして渡す（AssetDatabase の登録名も UTF-8）
+            std::string fileName = Logger::GetInstance().PathToUtf8(std::filesystem::path(filePath).filename());
+            std::filesystem::path assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
+            if (!assetPath.empty()) {
+                resolvedPath = assetPath.wstring();
+            }
+        } else {
+            resolvedPath = fsPath.wstring();
+        }
+        return resolvedPath;
     }
 
     std::vector<std::wstring> ShaderCompiler::BuildIncludeArgs() const
@@ -42,35 +120,141 @@ namespace CoreEngine
         return includeArgs;
     }
 
-    IDxcBlob* ShaderCompiler::CompileShader(const std::wstring& filePath, const wchar_t* profile)
+    IDxcBlob* ShaderCompiler::CreateBlobFromBytes(const std::vector<uint8_t>& bytes) const
     {
-        // AssetDatabaseでパス解決を試みる
-        std::wstring resolvedPath = filePath;
-        std::filesystem::path fsPath(filePath);
-        if (fsPath.is_relative()) {
-            fsPath = std::filesystem::absolute(fsPath);
-        }
-        if (!std::filesystem::exists(fsPath)) {
-            std::string fileName = std::filesystem::path(filePath).filename().string();
-            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
-            if (!assetPath.empty()) {
-                resolvedPath = std::filesystem::path(assetPath).wstring();
-            }
-        } else {
-            resolvedPath = fsPath.wstring();
+        if (bytes.empty() || !dxcUtils) {
+            return nullptr;
         }
 
-        // これからシェーダーをコンパイルする旨をログ出力
+        Microsoft::WRL::ComPtr<IDxcBlobEncoding> blob;
+        const HRESULT hr = dxcUtils->CreateBlob(
+            bytes.data(), static_cast<UINT32>(bytes.size()), DXC_CP_ACP, &blob);
+        if (FAILED(hr) || !blob) {
+            return nullptr;
+        }
+
+        // IDxcBlobEncoding は IDxcBlob を継承しているので、そのまま返せる。
+        // 呼び出し元から見た型・所有権はコンパイル経路とまったく同じ
+        return blob.Detach();
+    }
+
+    std::vector<std::wstring> ShaderCompiler::BuildArgumentStrings(
+        const std::wstring& resolvedPath,
+        const std::wstring& profile,
+        const std::wstring& entryPoint,
+        const std::vector<std::wstring>& includeArgs)
+    {
+        // キャッシュキーの材料にするため、まず所有権のある wstring で作る
+        //（ポインタだけ持つとキーが取れない）
+        std::vector<std::wstring> argumentStrings;
+        argumentStrings.push_back(resolvedPath);   // コンパイル対象のhlslファイル
+        if (!entryPoint.empty()) {
+            argumentStrings.push_back(L"-E");
+            argumentStrings.push_back(entryPoint); // エントリーポイント
+        }
+        argumentStrings.push_back(L"-T");
+        argumentStrings.push_back(profile);        // ShaderProfileの設定
+        argumentStrings.push_back(L"-Zi");         // デバッグ情報を埋め込む
+        argumentStrings.push_back(L"-Od");         // 最適化を外す
+        argumentStrings.push_back(L"-Zpr");        // メモリレイアウトは行優先
+
+        for (const std::wstring& includeArg : includeArgs) {
+            argumentStrings.push_back(includeArg);
+        }
+
+        return argumentStrings;
+    }
+
+    PreparedShaderCompile ShaderCompiler::Prepare(
+        const std::wstring& filePath,
+        const wchar_t* profile,
+        const wchar_t* entryPoint) const
+    {
+        PreparedShaderCompile prepared;
+        prepared.resolvedPath = ResolveShaderPath(filePath);
+        prepared.profile = profile ? profile : L"";
+        prepared.entryPoint = entryPoint ? entryPoint : L"";
+        prepared.argumentStrings = BuildArgumentStrings(
+            prepared.resolvedPath, prepared.profile, prepared.entryPoint, BuildIncludeArgs());
+        return prepared;
+    }
+
+    IDxcBlob* ShaderCompiler::CompileShader(const std::wstring& filePath, const wchar_t* profile)
+    {
+        return CompileInternal(filePath, profile, L"main");
+    }
+
+    IDxcBlob* ShaderCompiler::CompileShaderLibrary(const std::wstring& filePath)
+    {
+        // DXRライブラリはlib_6_6でコンパイル（-Eによるエントリーポイント指定なし）
+        return CompileInternal(filePath, L"lib_6_6", nullptr);
+    }
+
+    IDxcBlob* ShaderCompiler::CompileInternal(
+        const std::wstring& filePath,
+        const wchar_t* profile,
+        const wchar_t* entryPoint)
+    {
+        // 次回のコールド起動で並列に事前コンパイルできるよう、要求を記録しておく。
+        // 事前コンパイル側（ShaderPrewarm）は CompilePrepared を直接呼ぶので、
+        // ここに記録が二重に入ることはない
+        ShaderManifest::GetInstance().Record(filePath, profile, entryPoint);
+
+        return CompilePrepared(Prepare(filePath, profile, entryPoint));
+    }
+
+    IDxcBlob* ShaderCompiler::CompilePrepared(const PreparedShaderCompile& prepared)
+    {
+        if (!prepared.IsValid()) {
+            return nullptr;
+        }
+
+        const std::wstring& resolvedPath = prepared.resolvedPath;
+        const std::wstring& profile = prepared.profile;
+
+        // ===== メモリキャッシュ照会 =====
+        // 事前コンパイルが同じ要求を既に処理していれば、ファイル I/O もハッシュ計算も
+        // 一切せずに返せる。これが無いと事前コンパイルは
+        // 「同じ検証コストを 2 回払う」だけの遅延要因になる
+        {
+            std::vector<uint8_t> memoryBytes;
+            if (ShaderBlobCache::GetInstance().TryGet(
+                resolvedPath, profile, prepared.entryPoint, memoryBytes)) {
+                if (IDxcBlob* blob = CreateBlobFromBytes(memoryBytes)) {
+                    return blob;
+                }
+            }
+        }
+
+        // これからシェーダーを用意する旨をログ出力
         Logger::GetInstance().Log(
             std::format(L"Begin CompileShader, path:{}, profile:{}", resolvedPath, profile),
             LogLevel::INFO,
             LogCategory::Shader);
 
+        // 起動中はここが最大の滞留点。ローディング画面を刻んで
+        // 「応答なし」を避ける。起動シーケンス外では空判定 1 回で戻る。
+        // ワーカースレッドからの Tick は StartupProgress 側で捨てられる
+        if (StartupProgress::IsActive()) {
+            StartupProgress::Tick(
+                Logger::GetInstance().PathToUtf8(std::filesystem::path(resolvedPath).filename()).c_str());
+        }
+
         // hlslファイルを読み込む
-        IDxcBlobEncoding* shaderSource = nullptr;
+        Microsoft::WRL::ComPtr<IDxcBlobEncoding> shaderSource;
         HRESULT hr = dxcUtils->LoadFile(resolvedPath.c_str(), nullptr, &shaderSource);
-        // 読めなかったら落とす
-        assert(SUCCEEDED(hr));
+
+        // 読めなかったら nullptr を返す。Development 構成は assert が無効なので、
+        // ここで抜けないと直後の GetBufferPointer() が null 参照で落ちる。
+        // 事前コンパイルは古くなった一覧を読むことがあるので、この経路は実際に通る。
+        if (FAILED(hr) || !shaderSource) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
+                "シェーダファイルを読み込めませんでした: {} (hr=0x{:08X})",
+                Logger::GetInstance().PathToUtf8(resolvedPath), static_cast<uint32_t>(hr));
+            assert(false && "シェーダファイルが読み込めない");
+            return nullptr;
+        }
+
         // 読み込んだファイルの内容を設定する
         DxcBuffer shaderSourceBuffer;
         shaderSourceBuffer.Ptr = shaderSource->GetBufferPointer();
@@ -78,120 +262,53 @@ namespace CoreEngine
         // UTF-8の文字コード
         shaderSourceBuffer.Encoding = DXC_CP_UTF8;
 
-        // コンパイルする
-        std::vector<std::wstring> includeArgs = BuildIncludeArgs();
-        std::vector<LPCWSTR> arguments = {
-            resolvedPath.c_str(), // コンパイル対象のhlslファイル
-            L"-E",
-            L"main", // エントリーポイント
-            L"-T",
-            profile, // ShaderProfileの設定
-            L"-Zi",  // デバッグ情報を埋め込む
-            L"-Od",  // 最適化を外す
-            L"-Zpr", // メモリレイアウトは行優先
-        };
-        for (const auto& arg : includeArgs)
-        {
-            arguments.push_back(arg.c_str());
+        const std::vector<std::wstring>& argumentStrings = prepared.argumentStrings;
+
+        std::vector<LPCWSTR> arguments;
+        arguments.reserve(argumentStrings.size());
+        for (const std::wstring& argument : argumentStrings) {
+            arguments.push_back(argument.c_str());
         }
 
-        // 実際にshaderをcompileする
-        IDxcResult* shaderResult = nullptr;
-        hr = dxcCompiler->Compile(&shaderSourceBuffer, // 読み込んだファイル
-            arguments.data(),                  // コンパイルオプション
-            static_cast<UINT32>(arguments.size()), // コンパイルオプションの数
-            includeHandler.Get(), // includeの設定
-            IID_PPV_ARGS(&shaderResult) // 結果
-        );
+        // ===== キャッシュ照会 =====
+        // 一次キーは「本体のバイト列 + 引数一式 + DXCバージョン」。
+        // include の中身は .deps 側で二段階に検証される（ShaderCacheStore 参照）
+        ShaderCacheStore& cacheStore = ShaderCacheStore::GetInstance();
+        ShaderCacheStore::EntryInfo cacheEntry;
+        if (cacheStore.IsEnabled()) {
+            cacheEntry.primaryKey = ShaderCacheKey::ComputePrimaryKey(
+                shaderSourceBuffer.Ptr, shaderSourceBuffer.Size, argumentStrings, compilerVersion_);
+            cacheEntry.sourcePathUtf8 = Logger::GetInstance().PathToUtf8(resolvedPath);
+            cacheEntry.profile = Logger::GetInstance().WideToUtf8(profile);
 
-        // コンパイルが上手く行かなかったら落とす
-        assert(SUCCEEDED(hr));
+            std::vector<uint8_t> cachedBytes;
+            if (cacheStore.TryLoad(cacheEntry, cachedBytes)) {
+                if (IDxcBlob* cachedBlob = CreateBlobFromBytes(cachedBytes)) {
+                    // 同じ要求が同一プロセス内で再度来たときに、ここまでの
+                    // 読み込み + SHA-256 + .deps 照合を省けるようメモリへ載せる
+                    ShaderBlobCache::GetInstance().Store(
+                        resolvedPath, profile, prepared.entryPoint,
+                        cachedBytes.data(), cachedBytes.size());
 
-        // 警告・エラーが出たらログ出力
-        IDxcBlobUtf8* shaderError = nullptr;
-        shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
-        if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
-            std::string errorMessage(shaderError->GetStringPointer());
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", errorMessage);
-            assert(false);
-        }
-
-        // コンパイル結果から実行用のバイナリを取得
-        IDxcBlob* shaderBlob = nullptr;
-        hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
-        // バイナリが取得できなかったら落とす
-        assert(SUCCEEDED(hr));
-
-        // コンパイル成功ログ
-        Logger::GetInstance().Log(
-            std::format(L"Compile Succeeded, path:{}, profile:{}", resolvedPath, profile),
-            LogLevel::INFO,
-            LogCategory::Shader);
-
-        // 使わないリソースを解放
-        shaderResult->Release();
-        shaderSource->Release();
-
-        // 生成したバイナリを返す
-        return shaderBlob;
-    }
-
-    IDxcBlob* ShaderCompiler::CompileShaderLibrary(const std::wstring& filePath)
-    {
-        // AssetDatabaseでパス解決を試みる
-        std::wstring resolvedPath = filePath;
-        std::filesystem::path fsPath(filePath);
-        if (fsPath.is_relative()) {
-            fsPath = std::filesystem::absolute(fsPath);
-        }
-        if (!std::filesystem::exists(fsPath)) {
-            std::string fileName = std::filesystem::path(filePath).filename().string();
-            std::string assetPath = AssetDatabase::GetInstance().FindAssetPath(fileName);
-            if (!assetPath.empty()) {
-                resolvedPath = std::filesystem::path(assetPath).wstring();
+                    Logger::GetInstance().Log(
+                        std::format(L"Compile Cached, path:{}, profile:{}", resolvedPath, profile),
+                        LogLevel::INFO,
+                        LogCategory::Shader);
+                    return cachedBlob;
+                }
+                // 包めなかった場合はキャッシュを無かったことにして通常コンパイルへ落ちる
             }
-        } else {
-            resolvedPath = fsPath.wstring();
         }
 
-        // これからシェーダーをコンパイルする旨をログ出力
-        Logger::GetInstance().Log(
-            std::format(L"Begin CompileShaderLibrary, path:{}", resolvedPath),
-            LogLevel::INFO,
-            LogCategory::Shader);
+        // ===== 実際にshaderをcompileする =====
+        // 依存追跡のため、既定ハンドラではなく記録付きハンドラを渡す
+        recordingIncludeHandler_.Reset();
 
-        // hlslファイルを読み込む
-        IDxcBlobEncoding* shaderSource = nullptr;
-        HRESULT hr = dxcUtils->LoadFile(resolvedPath.c_str(), nullptr, &shaderSource);
-        // 読めなかったら落とす
-        assert(SUCCEEDED(hr));
-        // 読み込んだファイルの内容を設定する
-        DxcBuffer shaderSourceBuffer;
-        shaderSourceBuffer.Ptr = shaderSource->GetBufferPointer();
-        shaderSourceBuffer.Size = shaderSource->GetBufferSize();
-        // UTF-8の文字コード
-        shaderSourceBuffer.Encoding = DXC_CP_UTF8;
-
-        // DXRライブラリはlib_6_6でコンパイル（-Eによるエントリーポイント指定なし）
-        std::vector<std::wstring> includeArgs = BuildIncludeArgs();
-        std::vector<LPCWSTR> arguments = {
-            resolvedPath.c_str(), // コンパイル対象のhlslファイル
-            L"-T", L"lib_6_6",   // DXRライブラリプロファイル
-            L"-Zi",              // デバッグ情報を埋め込む
-            L"-Od",              // 最適化を外す
-            L"-Zpr",             // メモリレイアウトは行優先
-        };
-        for (const auto& arg : includeArgs)
-        {
-            arguments.push_back(arg.c_str());
-        }
-
-        // 実際にshaderをcompileする
-        IDxcResult* shaderResult = nullptr;
+        Microsoft::WRL::ComPtr<IDxcResult> shaderResult;
         hr = dxcCompiler->Compile(&shaderSourceBuffer, // 読み込んだファイル
             arguments.data(),                      // コンパイルオプション
             static_cast<UINT32>(arguments.size()), // コンパイルオプションの数
-            includeHandler.Get(),                  // includeの設定
+            &recordingIncludeHandler_,             // includeの設定（開いたファイルを記録する）
             IID_PPV_ARGS(&shaderResult)            // 結果
         );
 
@@ -199,7 +316,7 @@ namespace CoreEngine
         assert(SUCCEEDED(hr));
 
         // 警告・エラーが出たらログ出力
-        IDxcBlobUtf8* shaderError = nullptr;
+        Microsoft::WRL::ComPtr<IDxcBlobUtf8> shaderError;
         shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
         if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
             std::string errorMessage(shaderError->GetStringPointer());
@@ -213,19 +330,32 @@ namespace CoreEngine
         // バイナリが取得できなかったら落とす
         assert(SUCCEEDED(hr));
 
+        // ===== キャッシュへ保存 =====
+        // 実際に開いた include を依存として記録する。自前の #include スキャンでは
+        // 条件付きインクルードや検索パス解決を取りこぼす
+        if (cacheStore.IsEnabled() && shaderBlob) {
+            cacheStore.Save(
+                cacheEntry,
+                shaderBlob->GetBufferPointer(),
+                shaderBlob->GetBufferSize(),
+                recordingIncludeHandler_.GetOpenedFiles());
+        }
+
+        // 事前コンパイルの結果を本来の PSO 生成コードへ渡す経路。
+        // ディスクキャッシュ経由でも動くが、それだと検証コストを二度払う
+        if (shaderBlob) {
+            ShaderBlobCache::GetInstance().Store(
+                resolvedPath, profile, prepared.entryPoint,
+                shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize());
+        }
+
         // コンパイル成功ログ
         Logger::GetInstance().Log(
-            std::format(L"Compile Succeeded, path:{}, profile:lib_6_6", resolvedPath),
+            std::format(L"Compile Succeeded, path:{}, profile:{}", resolvedPath, profile),
             LogLevel::INFO,
             LogCategory::Shader);
-
-        // 使わないリソースを解放
-        shaderResult->Release();
-        shaderSource->Release();
 
         // 生成したバイナリを返す
         return shaderBlob;
     }
 }
-
-

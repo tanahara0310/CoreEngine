@@ -15,11 +15,10 @@ namespace CoreEngine {
     class Camera;
     class CollisionWorld;
 }
-
-/// @brief すべてのGameObjectを一元管理するマネージャー
-/// @note 更新、描画、削除を自動化し、使用者は登録とDestroyのみを意識する
 namespace CoreEngine
 {
+    /// @brief すべてのGameObjectを一元管理するマネージャー
+    /// @note 更新、描画、削除を自動化し、使用者は登録とDestroyのみを意識する
     class GameObjectManager : public IObjectSpawner {
     public:
         /// @brief オブジェクトを登録（所有権を移動）
@@ -70,10 +69,9 @@ namespace CoreEngine
         // ===== コンポーネント横断イテレーション =====
 
         /// @brief シーン内の指定型コンポーネントすべてに処理を適用する（dynamic_cast 走査の置き換え先）
-        /// @tparam T コンポーネント型（基底型でも引ける）
-        /// @tparam Fn `void(T&)` または `void(T&, GameObject&)` を受け取る呼び出し可能オブジェクト
-        /// @note 非アクティブ／削除マーク済みはスキップ。線形走査（型別インデックスは
-        ///       同期漏れのバグ源になるので、実測で問題になるまで作らない）。
+        /// @tparam T  コンポーネント型（基底型でも引ける）
+        /// @tparam Fn `void(T&)` または `void(T&, GameObject&)`
+        /// @note 非アクティブ／削除マーク済みはスキップ。走査は線形（型別インデックスは作らない）。
         template <typename T, typename Fn>
         void ForEachComponent(Fn&& fn) {
             for (auto& obj : objects_) {

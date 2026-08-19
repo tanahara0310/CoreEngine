@@ -6,6 +6,7 @@
 
 namespace CoreEngine
 {
+    /// @brief 水面のコースティクスをスクリーンスペースで生成するパス
     class WaterCausticsPass : public RenderPass
     {
     public:

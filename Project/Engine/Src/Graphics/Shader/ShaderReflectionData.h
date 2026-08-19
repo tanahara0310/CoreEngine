@@ -50,10 +50,14 @@ namespace CoreEngine
         ShaderReflectionData() = default;
         ~ShaderReflectionData() = default;
 
+        /// @brief CBV のバインド情報を登録する
         // リソースバインディングの追加（重複チェック付き）
         void AddCBV(const ShaderResourceBinding& binding);
+        /// @brief SRV のバインド情報を登録する
         void AddSRV(const ShaderResourceBinding& binding);
+        /// @brief UAV のバインド情報を登録する
         void AddUAV(const ShaderResourceBinding& binding);
+        /// @brief サンプラーのバインド情報を登録する
         void AddSampler(const ShaderResourceBinding& binding);
         void AddInputElement(const InputElementInfo& element) { inputElements_.push_back(element); }
 
@@ -67,10 +71,14 @@ namespace CoreEngine
         // 全リソースバインディングの取得（ソート済み）
         std::vector<ShaderResourceBinding> GetAllBindingsSorted() const;
 
+        /// @brief 名前で CBV のバインド情報を引く（無ければ nullptr）
         // 特定のリソースを検索
         const ShaderResourceBinding* FindCBV(const std::string& name) const;
+        /// @brief 名前で SRV のバインド情報を引く（無ければ nullptr）
         const ShaderResourceBinding* FindSRV(const std::string& name) const;
+        /// @brief 名前で UAV のバインド情報を引く（無ければ nullptr）
         const ShaderResourceBinding* FindUAV(const std::string& name) const;
+        /// @brief 名前でサンプラーのバインド情報を引く（無ければ nullptr）
         const ShaderResourceBinding* FindSampler(const std::string& name) const;
 
         // デバッグ用：リフレクション結果を文字列で出力

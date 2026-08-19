@@ -2,27 +2,15 @@
 
 #include "EngineSystem/Settings/IEditorSettingsSection.h"
 
+/// @file
 /// @brief CVar の自動保存セクション
 
 namespace CoreEngine
 {
     /// @brief 登録済み CVar をまとめて自動保存するセクション
-    /// @details 機能ごとに IEditorSettingsSection を実装する必要をなくすのが目的。
-    ///          CVar を 1 つ定義すれば、ここへ何も追記しなくても保存・復元される。
-    ///
-    ///          保存先は 2 層（Phase 4。UE の Config/ と Saved/Config/ の分離に相当）:
-    ///          - プロジェクト設定（"d." 以外 = r./sys.）
-    ///            → Application/Config/EngineSettings/CVars.json（git にコミットして共有）
-    ///          - 個人の作業状態（"d." = カメラ等）
-    ///            → Application/Saved/EditorSettings/EditorState.json（git 管理外）
-    ///          区分は接頭辞のみで決まる（命名規則 r./d./sys. がそのまま分類になる）。
-    ///
-    ///          キーは CVar のフルネーム（"r.Vignette.Intensity"）をそのまま使うフラット形式。
-    ///          CVarFlags::NoSave が付いた変数は対象外。
-    ///
-    /// @note このセクションが登録される時点で存在する CVar だけが復元対象になる。
-    ///       CVar は静的初期化で構築されるため通常は全て揃っているが、関数内 static や
-    ///       動的生成した CVar は復元されないので、必ずファイルスコープで定義すること。
+    /// @details 保存先は接頭辞で 2 分される。"d." は個人状態（Saved 配下）、
+    ///          それ以外はプロジェクト設定（Config 配下）。CVarFlags::NoSave は対象外。
+    /// @note 復元対象は登録時点で存在する CVar だけ。CVar は必ずファイルスコープで定義すること。
     class CVarSettingsSection : public IEditorSettingsSection
     {
     public:

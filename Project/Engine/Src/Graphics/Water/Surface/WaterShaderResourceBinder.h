@@ -14,11 +14,6 @@ namespace CoreEngine
 class WaterShaderResourceBinder {
 public:
     /// @brief 水面描画に必要な定数バッファと SRV をコマンドリストへバインドする
-    /// @param cmdList 描画コマンドリスト
-    /// @param pipeline カスタムシェーダーパイプライン
-    /// @param waterCBGpuAddress WaterConstants 用 CBV アドレス
-    /// @param frameCBGpuAddress WaterFrameConstants 用 CBV アドレス
-    /// @param renderResources 水面描画で参照するテクスチャ群
     static void Bind(
         ID3D12GraphicsCommandList* cmdList,
         const CustomShaderPipeline* pipeline,

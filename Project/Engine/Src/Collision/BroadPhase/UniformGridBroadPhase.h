@@ -9,15 +9,11 @@ namespace CoreEngine
 namespace BroadPhase
 {
     /// @brief 一様グリッド（ハッシュ空間分割）
-    /// @details AABB が重なるセルすべてに proxy を登録し、セル単位でペアを列挙する。
-    ///          セル境界をまたぐ物体は複数セルに入るため、同じペアが複数回出る。
-    ///          重複は列挙後にまとめて除去する。
-    ///
-    ///          **セルサイズの目安**: よくある物体サイズの 1〜2 倍。小さすぎると
-    ///          1 物体が多数のセルに入って登録コストが跳ね、大きすぎると
-    ///          1 セルに集中して総当たりに近づく。
+    /// @details AABB が重なるセルすべてに proxy を登録する。同じペアが複数回出るので列挙後に重複除去する。
+    /// @note セルサイズの目安はよくある物体サイズの 1〜2 倍。
     class UniformGridBroadPhase : public IBroadPhase {
     public:
+        /// @brief セル一辺の長さ [m] を指定して構築する
         explicit UniformGridBroadPhase(float cellSize = 8.0f);
 
         const char* GetName() const override { return "UniformGrid"; }
@@ -36,6 +32,7 @@ namespace BroadPhase
         static constexpr uint32_t kMaxCellsPerProxy = 512;
 
     private:
+        /// @brief グリッドのセル添字
         struct CellCoord {
             int x, y, z;
             bool operator==(const CellCoord& rhs) const {
@@ -43,6 +40,7 @@ namespace BroadPhase
             }
         };
 
+        /// @brief CellCoord を unordered_map のキーにするためのハッシュ
         struct CellHash {
             size_t operator()(const CellCoord& c) const noexcept;
         };

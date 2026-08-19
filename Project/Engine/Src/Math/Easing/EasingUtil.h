@@ -79,85 +79,39 @@ namespace EasingUtil {
 
     };
 
-    /// @brief イージング関数を適用
-    /// @param t 進行状況（0.0～1.0）
-    /// @param type イージングタイプ
-    /// @return イージング適用済み値（0.0～1.0）
+    /// @brief イージング関数を適用（t・戻り値ともに 0.0～1.0）
     float Apply(float t, Type type);
 
-    /// @brief 2つの値の間を補間
-    /// @param start 開始値
-    /// @param end 終了値
-    /// @param t 進行状況（0.0～1.0）
-    /// @param type イージングタイプ
-    /// @return 補間された値
+    /// @brief 2 つの値の間を補間
     float Lerp(float start, float end, float t, Type type = Type::Linear);
 
-    /// @brief Vector3の補間
-    /// @param start 開始ベクトル
-    /// @param end 終了ベクトル
-    /// @param t 進行状況（0.0～1.0）
-    /// @param type イージングタイプ
-    /// @return 補間されたベクトル
+    /// @brief Vector3 の補間
     Vector3 LerpVector3(const Vector3& start, const Vector3& end, float t, Type type = Type::Linear);
 
-    /// @brief 角度の補間（最短経路、ラジアン）
-    /// @param startAngle 開始角度
-    /// @param endAngle 終了角度
-    /// @param t 進行状況（0.0～1.0）
-    /// @param type イージングタイプ
-    /// @return 補間された角度
+    /// @brief 角度の補間（最短経路・ラジアン）
     float LerpAngle(float startAngle, float endAngle, float t, Type type = Type::Linear);
 
-    /// @brief カラー値の補間（0.0～1.0）
-    /// @param startR 開始赤成分
-    /// @param startG 開始緑成分
-    /// @param startB 開始青成分
-    /// @param startA 開始アルファ成分
-    /// @param endR 終了赤成分
-    /// @param endG 終了緑成分
-    /// @param endB 終了青成分
-    /// @param endA 終了アルファ成分
-    /// @param t 進行状況（0.0～1.0）
-    /// @param type イージングタイプ
-    /// @return 補間されたカラー値（RGBA）
+    /// @brief RGBA カラー値（各成分 0.0～1.0）
     struct Color { float r, g, b, a; };
+
+    /// @brief RGBA 各成分をまとめて補間
     Color LerpColor(float startR, float startG, float startB, float startA,
                    float endR, float endG, float endB, float endA,
                    float t, Type type = Type::Linear);
 
-    
-    /// @brief 複合イージング（2つの異なるイージングを組み合わせ）
-    /// @param t 進行状況（0.0～1.0）
-    /// @param firstType 前半のイージングタイプ
-    /// @param secondType 後半のイージングタイプ
-    /// @param switchPoint 切り替え点（0.0～1.0、デフォルト0.5）
-    /// @return イージング適用済み値
+    /// @brief 複合イージング（switchPoint を境に 2 つのイージングを切り替える）
     float ApplyComposite(float t, Type firstType, Type secondType, float switchPoint = 0.5f);
 
     /// @brief カスタムカーブイージング（ベジェ曲線ベース）
-    /// @param t 進行状況（0.0～1.0）
-    /// @param controlPoint1 制御点1（0.0～1.0）
-    /// @param controlPoint2 制御点2（0.0～1.0）
-    /// @return イージング適用済み値
     float ApplyCustomCurve(float t, float controlPoint1, float controlPoint2);
 
     /// @brief 振動を伴うイージング（カーブ弾の爽快感演出用）
-    /// @param t 進行状況（0.0～1.0）
-    /// @param baseType ベースとなるイージングタイプ
-    /// @param oscillationFrequency 振動の周波数
-    /// @param oscillationAmplitude 振動の振幅
-    /// @return イージング適用済み値
     float ApplyOscillating(float t, Type baseType, float oscillationFrequency = 2.0f, float oscillationAmplitude = 0.1f);
 
     /// @brief イージングタイプ名を文字列で取得（デバッグ用）
-    /// @param type イージングタイプ
-    /// @return タイプ名文字列
     const char* GetTypeName(Type type);
 
-    /// @brief イージングタイプの説明を取得（UI表示用）
-    /// @param type イージングタイプ
-    /// @return タイプの説明文字列
+    /// @brief イージングタイプの説明を取得（UI 表示用）
     const char* GetTypeDescription(Type type);
 
 }

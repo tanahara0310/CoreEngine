@@ -2,17 +2,14 @@
 
 #include "Math/MathCore.h"
 
+/// @file
 /// @brief カメラ操作用に正規化した入力状態
 
 namespace CoreEngine
 {
     /// @brief カメラコントローラへ渡す入力（正規化済み）
-    /// @details 「どのデバイスから来たか」「ImGui が入力を掴んでいるか」「ギズモ操作中か」
-    ///          といった判断はすべて収集側（EditorCameraInput）で済ませ、
-    ///          コントローラはこの値だけを見る。
-    ///
-    ///          これによりコントローラから ImGui / ImGuizmo / InputManager / WinApp への
-    ///          依存が消え、エディタ非搭載ビルドでも同じコードパスが動く。
+    /// @details デバイス種別や ImGui / ギズモが入力を掴んでいるかの判断は収集側で済ませてある。
+    ///          おかげでコントローラは ImGui / InputManager / WinApp に依存しない。
     struct CameraInputState {
         /// @brief 前フレームからのマウス移動量 [ピクセル]
         Vector2 mouseDelta{ 0.0f, 0.0f };

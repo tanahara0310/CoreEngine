@@ -10,6 +10,20 @@
 
 namespace
 {
+    // BlendModeを文字列に変換するヘルパー関数（SetName・エラーログ用）
+    const char* BlendModeToString(CoreEngine::BlendMode mode)
+    {
+        switch (mode) {
+            case CoreEngine::BlendMode::kBlendModeNone:     return "None";
+            case CoreEngine::BlendMode::kBlendModeNormal:   return "Normal";
+            case CoreEngine::BlendMode::kBlendModeAdd:      return "Add";
+            case CoreEngine::BlendMode::kBlendModeSubtract: return "Subtract";
+            case CoreEngine::BlendMode::kBlendModeMultiply: return "Multiply";
+            case CoreEngine::BlendMode::kBlendModeScreen:   return "Screen";
+            default:                                        return "Unknown";
+        }
+    }
+
     // DXGI_FORMATを文字列に変換するヘルパー関数
     std::string FormatToString(DXGI_FORMAT format)
     {
@@ -259,6 +273,12 @@ PipelineStateBuilder& PipelineStateBuilder::SetColorWriteMask(D3D12_COLOR_WRITE_
     return *this;
 }
 
+PipelineStateBuilder& PipelineStateBuilder::SetDebugName(const std::string& name)
+{
+    debugName_ = name;
+    return *this;
+}
+
 bool PipelineStateBuilder::Build(
     ID3D12Device* device,
     IDxcBlob* vs,
@@ -270,6 +290,11 @@ bool PipelineStateBuilder::Build(
     if (targetModes.empty()) {
         targetModes.push_back(BlendMode::kBlendModeNone);
     }
+
+    // 途中のモードで失敗したとき半端な登録を残さないよう、
+    // 全モードの生成に成功してからまとめてマネージャへ登録する。
+    std::vector<std::pair<BlendMode, ComPtr<ID3D12PipelineState>>> built;
+    built.reserve(targetModes.size());
 
     for (BlendMode mode : targetModes) {
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = CreatePipelineStateDesc(vs, ps, rootSignature, mode);
@@ -286,10 +311,26 @@ bool PipelineStateBuilder::Build(
         HRESULT result = device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&pipelineState));
 
         if (FAILED(result)) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
+                "PSO生成失敗: name={} blendMode={} HRESULT={:#010x} DeviceRemovedReason={:#010x}",
+                debugName_.empty() ? "(unnamed)" : debugName_,
+                BlendModeToString(mode),
+                static_cast<uint32_t>(result),
+                static_cast<uint32_t>(device->GetDeviceRemovedReason()));
             return false;
         }
 
-        manager_->RegisterPipelineState(mode, pipelineState);
+        // PIX・デバッグレイヤーのメッセージで PSO を識別できるよう名前を付ける
+        const std::string psoName =
+            (debugName_.empty() ? std::string("PSO") : debugName_)
+            + "_" + BlendModeToString(mode);
+        pipelineState->SetName(Logger::GetInstance().Utf8ToWide(psoName).c_str());
+
+        built.emplace_back(mode, std::move(pipelineState));
+    }
+
+    for (auto& [mode, pipelineState] : built) {
+        manager_->RegisterPipelineState(mode, std::move(pipelineState));
     }
 
     return true;
@@ -352,20 +393,36 @@ D3D12_BLEND_DESC PipelineStateBuilder::CreateBlendDesc(BlendMode mode) const
 {
     D3D12_BLEND_DESC desc{};
 
+    // MRT時はRTごとに独立したブレンド設定にする。
+    // IndependentBlendEnable=FALSE のままだと D3D12 の仕様で RT[0] の設定が
+    // 全RTへ複製され、半透明モードのとき MotionVector 等のデータ用RTまで
+    // アルファブレンドされてしまう（実バグ）。
+    desc.IndependentBlendEnable = (numRenderTargets_ > 1) ? TRUE : FALSE;
+
     // カラーライトマスクの設定
     UINT8 writeMask = static_cast<UINT8>(colorWriteMask_);
     if (!enableAlphaWrite_) {
         writeMask &= ~D3D12_COLOR_WRITE_ENABLE_ALPHA;
     }
 
-    // MRT対応: 全アクティブスロットにライトマスクを設定する
-    // G-Bufferパスでは全スロットが BlendEnable = FALSE（ブレンドなし）になる
-    // 単一RTの場合は numRenderTargets_ = 1 のため従来と同じ動作
+    // 全アクティブスロットを「ブレンド無し・不透明書き込み」で初期化する。
+    // ゼロ初期化のままだと SrcBlend 等が不正な列挙値(0)になるため、
+    // BlendEnable=FALSE でも有効な既定値を明示的に入れておく。
     for (UINT i = 0; i < numRenderTargets_; ++i) {
-        desc.RenderTarget[i].RenderTargetWriteMask = writeMask;
+        auto& rt = desc.RenderTarget[i];
+        rt.BlendEnable = FALSE;
+        rt.LogicOpEnable = FALSE;
+        rt.SrcBlend = D3D12_BLEND_ONE;
+        rt.DestBlend = D3D12_BLEND_ZERO;
+        rt.BlendOp = D3D12_BLEND_OP_ADD;
+        rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+        rt.DestBlendAlpha = D3D12_BLEND_ZERO;
+        rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        rt.LogicOp = D3D12_LOGIC_OP_NOOP;
+        rt.RenderTargetWriteMask = writeMask;
     }
 
-    // ブレンド設定は RT[0] にのみ適用する（MRT時もRT[0]のみがブレンド対象）
+    // ブレンドは RT[0] にのみ設定する（RT[1]以降は常に不透明書き込みのまま）
     switch (mode) {
     case BlendMode::kBlendModeNone:
         desc.RenderTarget[0].BlendEnable = FALSE;
@@ -470,7 +527,9 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC PipelineStateBuilder::CreatePipelineStateDesc
     }
 
     // 深度ステンシルフォーマット
-    desc.DSVFormat = dsvFormat_;
+    // 深度無効のPSOでDSVFormatを指定するとデバッグレイヤー警告になるため
+    // 自動で UNKNOWN にする（ポストエフェクト等の深度なしパス向け）
+    desc.DSVFormat = depthStencilDesc_.DepthEnable ? dsvFormat_ : DXGI_FORMAT_UNKNOWN;
 
     // サンプル設定
     desc.SampleDesc = sampleDesc_;
@@ -484,11 +543,30 @@ D3D12_GRAPHICS_PIPELINE_STATE_DESC PipelineStateBuilder::CreatePipelineStateDesc
 
 ID3D12PipelineState* PipelineStateManager::GetPipelineState(BlendMode mode)
 {
-    auto it = pipelineStates_.find(mode);
-    if (it != pipelineStates_.end()) {
-        return it->second.Get();
+    const size_t index = static_cast<size_t>(mode);
+    if (index < kBlendModeCount && pipelineStates_[index]) {
+        return pipelineStates_[index].Get();
     }
-    return nullptr;
+
+    // kBlendModeNone 自体が無い場合はビルド失敗済み（エラーログ出力済み）なので
+    // 静かに nullptr を返す
+    if (mode == BlendMode::kBlendModeNone) {
+        return nullptr;
+    }
+
+    // 未生成モードの要求はブレンド無しへフォールバックする。
+    // SetPipelineState(nullptr) による無言の描画欠落を防ぐ。
+    // 警告はモードごとに初回のみ（毎フレーム呼ばれるためスパム防止）。
+    const uint32_t bit = 1u << static_cast<uint32_t>(mode);
+    if ((warnedMissingModes_ & bit) == 0) {
+        warnedMissingModes_ |= bit;
+        Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
+            "PipelineStateManager: 未生成のブレンドモード {} が要求されました。"
+            "kBlendModeNone にフォールバックします。",
+            static_cast<int>(mode));
+    }
+
+    return pipelineStates_[static_cast<size_t>(BlendMode::kBlendModeNone)].Get();
 }
 
 PipelineStateBuilder PipelineStateManager::CreateBuilder()
@@ -498,12 +576,18 @@ PipelineStateBuilder PipelineStateManager::CreateBuilder()
 
 void PipelineStateManager::Clear()
 {
-    pipelineStates_.clear();
+    for (auto& pso : pipelineStates_) {
+        pso.Reset();
+    }
+    warnedMissingModes_ = 0;
 }
 
 void PipelineStateManager::RegisterPipelineState(BlendMode mode, ComPtr<ID3D12PipelineState> pso)
 {
-    pipelineStates_[mode] = pso;
+    const size_t index = static_cast<size_t>(mode);
+    if (index < kBlendModeCount) {
+        pipelineStates_[index] = std::move(pso);
+    }
 }
 }
 

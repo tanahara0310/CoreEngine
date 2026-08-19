@@ -2,12 +2,9 @@
 #include <cassert>
 #include <cmath>
 
-/// <summary>
-/// ベクトル構造体
-/// </summary>
-
 namespace CoreEngine
 {
+    /// @brief ベクトル構造体
     struct Vector3 {
         float x, y, z;
 
@@ -99,9 +96,8 @@ namespace CoreEngine
         // 　比較演算子
         //========================================
 
-        /// @note 浮動小数点の厳密比較。CVar の変更検出のように
-        ///       「値が書き換わったか」を見る用途を想定している。
-        ///       計算結果同士の比較には誤差があるので使わないこと。
+        /// @note 浮動小数点の厳密比較。CVar の変更検出のような「書き換わったか」の用途向け
+        ///       （計算結果同士の比較には使わないこと）。
         bool operator==(const Vector3& v) const
         {
             return x == v.x && y == v.y && z == v.z;
@@ -200,12 +196,8 @@ namespace CoreEngine
         return n * (Dot(v, n) / nLengthSq);
     }
 
-    /// @brief 単位ベクトル同士の球面線形補間
-    /// @param start 開始方向（正規化済み）
-    /// @param end   終了方向（正規化済み）
-    /// @param t     補間係数
-    /// @return 単位ベクトル
-    /// @note 平行・反平行（回転面が決まらない縮退）でも単位長を保つ。
+    /// @brief 単位ベクトル同士の球面線形補間（start / end は正規化済みであること）
+    /// @note 平行・反平行（回転面が決まらない縮退）でも単位長を保つ
     inline Vector3 Slerp(const Vector3& start, const Vector3& end, float t)
     {
         float dot = Dot(start, end);

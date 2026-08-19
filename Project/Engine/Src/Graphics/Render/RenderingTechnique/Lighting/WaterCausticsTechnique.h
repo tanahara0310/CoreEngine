@@ -12,9 +12,11 @@ namespace CoreEngine
 {
 	class LightManager;
 
+	/// @brief 水面のコースティクス（集光模様）をスクリーンスペースで生成するレンダリング技術
 	class WaterCausticsTechnique : public RenderingTechniqueBase
 	{
 	public:
+		/// @brief シェーダー側 cbuffer WaterCausticsParams と一致させること
 		struct Params {
 			float intensity = 0.35f;
 			float depthAttenuation = 1.5f;
@@ -40,6 +42,7 @@ namespace CoreEngine
 		CB_VERIFY_LAYOUT(Params, kParamsFields);
 		CB_BIND_HLSL(Params, kParamsFields, "WaterCausticsParams");
 
+		/// @brief 直近ディスパッチの診断情報（デバッグ UI 表示用）
 		struct Diagnostics {
 			uint32_t activeWaveCount = 0;
 			uint32_t mainLightEnabled = 0;

@@ -13,8 +13,6 @@ namespace Geometry
         constexpr float kCoincidentEpsilon = 1e-6f;
 
         /// @brief 2 つの球状（中心 + 半径）の接触情報を組み立てる
-        /// @param centerA A の中心 / @param radiusA A の半径
-        /// @param centerB B の中心 / @param radiusB B の半径
         /// @param fallbackNormal 中心が一致して向きが決まらないときに使う法線
         /// @return 接触していれば true（outContact は接触時のみ書き込む）
         bool BuildRadialContact(const Vector3& centerA, float radiusA,

@@ -14,6 +14,7 @@
 
 namespace CoreEngine
 {
+    // 追従対象の Transform からカメラ位置・注視点を毎フレーム作り直す
     void CameraFollowEditorModule::Update(const CameraEditorContext& context)
     {
         // 機能OFFまたは依存不足時は追従/注視更新を行わない。

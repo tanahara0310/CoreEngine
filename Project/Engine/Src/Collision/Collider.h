@@ -11,24 +11,16 @@ namespace CoreEngine
 {
 class GameObject;
 
-/// @brief 衝突判定の 1 単位
-/// @details **仮想関数を持たないデータクラス**。以前は形状ごとに派生クラスを作り
-///          `CheckCollision` 内で相手の型を if/else で分岐していたため、
-///          球×AABB の判定が 2 箇所に重複していた。今は形状を CollisionShape の
-///          タグで持ち、判定は Math/Geometry の実装へディスパッチ表経由で委譲する。
-///
-///          所有権は GameObject（ColliderComponent）にある。CollisionWorld は借用するだけ。
+/// @brief 衝突判定の 1 単位（仮想関数を持たないデータクラス）
+/// @details 形状は CollisionShape のタグで持ち、判定は Math/Geometry へディスパッチ表経由で委譲する。
+/// @note 所有権は GameObject（ColliderComponent）側。CollisionWorld は借用するだけ。
 class Collider {
 public:
     Collider();
     Collider(GameObject* owner, const CollisionShape& shape, CollisionLayer layer);
 
     /// @brief このコライダーの一意 ID
-    /// @details 生成順に振られ、**再利用されない**。衝突履歴のキーに使うことで、
-    ///          解放されたコライダーと同じアドレスに新しいコライダーが載っても
-    ///          古いペアと取り違えない（ABA 問題の構造的な排除）。
-    ///          index+generation 方式のハンドルにしないのは、O(1) 配列参照が要らず
-    ///          レジストリを持つ必要がないため。
+    /// @details 生成順に振られ再利用されない。衝突履歴のキーに使っても ABA 問題が起きない。
     uint64_t GetId() const { return id_; }
 
     // ===== 判定 =====
@@ -90,6 +82,7 @@ public:
 
     /// @param contact 接触情報。normal は this から other へ向かう向き。
     void OnCollisionEnter(Collider* other, const Geometry::Contact& contact);
+    /// @brief 接触が続いている間、毎フレーム呼ばれる
     void OnCollisionStay(Collider* other, const Geometry::Contact& contact);
 
     /// @note Exit は接触が切れた後なので接触情報を持たない

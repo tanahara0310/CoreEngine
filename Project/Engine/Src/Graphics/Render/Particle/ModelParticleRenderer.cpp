@@ -63,6 +63,7 @@ namespace CoreEngine
 
         // ビルダーパターンでPSOを構築（入力レイアウト自動化）
         bool result = psoMg_->CreateBuilder()
+            .SetDebugName("ModelParticle")
             .SetInputLayoutFromReflection(*modelParticleReflection)
             .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)  // 深度テストと深度書き込みを有効化

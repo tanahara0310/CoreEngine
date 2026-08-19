@@ -10,10 +10,9 @@
 #include <atomic>
 #include "DescriptorHandle.h"
 
-/// @brief ディスクリプタヒープ管理クラス
-
 namespace CoreEngine
 {
+/// @brief ディスクリプタヒープ管理クラス
 class DescriptorManager {
 public:
     // ディスクリプタヒープのデフォルト最大サイズ
@@ -39,50 +38,28 @@ public:
         UINT maxRTV = kDefaultMaxRTVDescriptors,
         UINT maxDSV = kDefaultMaxDSVDescriptors);
 
-    /// @brief SRVの作成
-    /// @param resource リソース
-    /// @param desc SRV設定
-    /// @param outCpuDesc CPUディスクリプタハンドル出力
-    /// @param outGpuDesc GPUディスクリプタハンドル出力
-    /// @param debugName デバッグ用名前
+    /// @brief SRV の作成
     void CreateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc,
         D3D12_CPU_DESCRIPTOR_HANDLE& outCpuDesc,
         D3D12_GPU_DESCRIPTOR_HANDLE& outGpuDesc,
         const std::string& debugName = "Unknown");
 
-    /// @brief UAVの作成
-    /// @param resource リソース
-    /// @param desc UAV設定
-    /// @param outCpuDesc CPUディスクリプタハンドル出力
-    /// @param outGpuDesc GPUディスクリプタハンドル出力
-    /// @param debugName デバッグ用名前
+    /// @brief UAV の作成
     void CreateUAV(ID3D12Resource* resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc,
         D3D12_CPU_DESCRIPTOR_HANDLE& outCpuDesc,
         D3D12_GPU_DESCRIPTOR_HANDLE& outGpuDesc,
         const std::string& debugName = "Unknown");
 
-    /// @brief SRVの作成または更新
-    /// @details ioCpuDesc が未確保（ptr==0）なら新規スロットを確保し、確保済みなら
-    ///          同じスロットへビューを書き直す。リサイズ等でリソースを再作成する
-    ///          呼び出し元がスロットをリークさせないためのAPI
-    /// @param resource リソース
-    /// @param desc SRV設定
-    /// @param ioCpuDesc CPUディスクリプタハンドル（入出力）
-    /// @param ioGpuDesc GPUディスクリプタハンドル（入出力）
-    /// @param debugName デバッグ用名前
+    /// @brief SRV の作成または更新
+    /// @details ioCpuDesc が未確保（ptr==0）なら新規スロットを確保し、確保済みなら同じスロットへ書き直す。
+    ///          リサイズ等でリソースを再作成する側がスロットをリークさせないための API
     void CreateOrUpdateSRV(ID3D12Resource* resource, const D3D12_SHADER_RESOURCE_VIEW_DESC& desc,
         D3D12_CPU_DESCRIPTOR_HANDLE& ioCpuDesc,
         D3D12_GPU_DESCRIPTOR_HANDLE& ioGpuDesc,
         const std::string& debugName = "Unknown");
 
-    /// @brief UAVの作成または更新
-    /// @details ioCpuDesc が未確保（ptr==0）なら新規スロットを確保し、確保済みなら
-    ///          同じスロットへビューを書き直す
-    /// @param resource リソース
-    /// @param desc UAV設定
-    /// @param ioCpuDesc CPUディスクリプタハンドル（入出力）
-    /// @param ioGpuDesc GPUディスクリプタハンドル（入出力）
-    /// @param debugName デバッグ用名前
+    /// @brief UAV の作成または更新
+    /// @details ioCpuDesc が未確保（ptr==0）なら新規スロットを確保し、確保済みなら同じスロットへ書き直す
     void CreateOrUpdateUAV(ID3D12Resource* resource, const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc,
         D3D12_CPU_DESCRIPTOR_HANDLE& ioCpuDesc,
         D3D12_GPU_DESCRIPTOR_HANDLE& ioGpuDesc,

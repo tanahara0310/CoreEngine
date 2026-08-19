@@ -5,6 +5,7 @@
 #include <set>
 #include <condition_variable>
 #include <functional>
+#include <future>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -18,6 +19,7 @@ namespace CoreEngine { class ThreadPool; }
 namespace CoreEngine { class IPrimitiveMeshGenerator; }
 namespace CoreEngine { class InstanceBatchManager; }
 namespace CoreEngine { class SkinningComputeDispatcher; }
+namespace CoreEngine { class CustomShaderPipelineCache; }
 
 namespace CoreEngine
 {
@@ -57,6 +59,10 @@ public:
     /// @brief 描画依存コンテキストを取得する（カスタムシェーダー構築に使用）
     const ModelRenderContext& GetRenderContext() const { return renderContext_; }
 
+    /// @brief カスタムシェーダーパイプラインの共有キャッシュを取得する
+    /// @details 同一シェーダー＋同一設定のオブジェクトが複数あっても構築は1回で済む。
+    CustomShaderPipelineCache* GetCustomShaderPipelineCache() { return customShaderPipelineCache_.get(); }
+
     /// @brief 静的モデルを作成（アニメーションなし）
     /// @param filePath ファイルパス（Assetsフォルダを省略可能）
     /// @return 作成されたModelのユニークポインタ
@@ -94,6 +100,16 @@ public:
     /// @param filePaths プリロードするファイルパスのリスト
     void PreloadModels(const std::vector<std::string>& filePaths);
 
+    /// @brief 複数モデルの並列プリロードを開始する（完了を待たずに即座に戻る）
+    /// @details 後から CreateStaticModel が同じパスを要求するとロード権待ちで自動的に合流するので、
+    ///          呼び出し側が完了を管理する必要はない。
+    /// @note 先読みの失敗は握り潰してログに残すだけ（本番の CreateStaticModel が読み直す）。
+    void BeginPreload(const std::vector<std::string>& filePaths);
+
+    /// @brief 進行中のプリロードが全て終わるまで待つ
+    /// @details 終了処理で TextureManager や DirectXCommon を壊す前に必ず呼ぶこと。
+    void WaitForPreload();
+
     /// @brief プリミティブメッシュジェネレーターからモデルを作成する
     /// @param key キャッシュキー（例: "Primitive::Plane_10x10"）
     /// @param generator メッシュ生成インターフェース
@@ -126,6 +142,9 @@ private:
     // GPUスキニング(CS)ディスパッチャー（スキニングモデル用）
     std::unique_ptr<SkinningComputeDispatcher> skinningDispatcher_;
 
+    // カスタムシェーダーパイプラインの共有キャッシュ（シェーダーパス＋設定がキー）
+    std::unique_ptr<CustomShaderPipelineCache> customShaderPipelineCache_;
+
     // デフォルトのベースパス
     const std::string basePath_ = "Application/Assets/";
     
@@ -140,12 +159,18 @@ private:
     // 並列プリロード用スレッドプール
     std::unique_ptr<ThreadPool> threadPool_;
 
+    // 進行中のプリロード（BeginPreload で積み、WaitForPreload で回収する）
+    std::vector<std::future<void>> preloadFutures_;
+    std::mutex preloadMutex_;
+
     /// @brief スレッドプールの遅延初期化
     void EnsureThreadPool();
 
     /// @brief フルパスを解決（Assetsフォルダを自動的に追加）
-    /// @param filePath 入力パス
-    /// @return 解決されたフルパス
+    /// @param filePath 入力パス（UTF-8）
+    /// @return 解決されたフルパス（UTF-8）
+    /// @details ここから下流のモデル読み込みが扱う std::string は一貫して UTF-8。
+    ///          Assimp が UTF-8 のパスを要求するため、この鎖を ANSI で汚さないこと。
     std::string ResolveFilePath(const std::string& filePath) const;
 
     /// @brief モデルリソースを読み込む（内部使用・キャッシュあり）

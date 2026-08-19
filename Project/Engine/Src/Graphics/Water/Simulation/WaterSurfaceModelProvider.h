@@ -9,8 +9,11 @@ namespace CoreEngine
 	class IWaterSurfaceModelProvider {
 	public:
 		virtual ~IWaterSurfaceModelProvider() = default;
+        /// @brief 現在の水面状態を取り出す（未準備なら false を返し outSurfaceData は触らない）
 		virtual bool TryGetSurfaceData(WaterSurfaceData& outSurfaceData) const = 0;
+        /// @brief この供給元が扱う波の方式（Gerstner / FFT）
 		virtual WaterSurfaceSimulationType GetSimulationType() const = 0;
+        /// @brief 診断ログ・デバッグ UI に出す供給元名
 		virtual const char* GetProviderName() const = 0;
 	};
 
@@ -21,6 +24,7 @@ namespace CoreEngine
 	///          スナップショット）にすることで、供給元の寿命から完全に切り離す。
 	class StaticWaterSurfaceModelProvider final : public IWaterSurfaceModelProvider {
 	public:
+        /// @brief 診断ログに出す供給元名を指定して構築する
 		explicit StaticWaterSurfaceModelProvider(const char* providerName);
 
 		/// @brief このフレームの surface data を差し替える

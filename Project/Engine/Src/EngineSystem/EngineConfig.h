@@ -35,6 +35,16 @@ namespace CoreEngine
         uint32_t maxRTVDescriptors = 256;
         uint32_t maxDSVDescriptors = 10;
 
+        // ──────────────────────────────────────────────────────────
+        // シェーダ設定
+        // ──────────────────────────────────────────────────────────
+        // コンパイル済み DXIL のディスクキャッシュを使うか。
+        // CVar ではなくここに置くのは、**CVar の保存値が復元されるのは
+        // DebugSubsystem の初期化時＝起動時のシェーダコンパイルより後**で、
+        // 起動時のコンパイルには間に合わないため。
+        // 「シェーダを直したのに反映されない」と感じたら、まずこれを false にして切り分ける。
+        bool enableShaderCache = true;
+
         /// @brief ビルド構成に応じたコンフィグファイルを読み込み
         /// @return 読み込んだEngineConfig
         static EngineConfig Load();

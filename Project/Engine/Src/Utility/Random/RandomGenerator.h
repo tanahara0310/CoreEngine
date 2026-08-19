@@ -4,10 +4,9 @@
 #include <array>
 #include <memory>
 
-/// @brief エンジン内で統一された乱数生成クラス
-
 namespace CoreEngine
 {
+/// @brief エンジン内で統一された乱数生成クラス
 class RandomGenerator {
 public:
     /// @brief インスタンスを取得（シングルトンパターン）

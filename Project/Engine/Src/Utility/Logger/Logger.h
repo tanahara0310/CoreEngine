@@ -197,14 +197,29 @@ namespace CoreEngine
 
 
         //========================================
-           // 文字列変換ユーティリティ
-           //========================================
+        // 文字列変換ユーティリティ
+        //========================================
+        // ログ本文の UTF-8 変換専用。ファイルパスをここへ通してはいけない
+        // （path::string() は ANSI なので非 ASCII パスが壊れる）。
+        // UTF-8 パスを要求するライブラリ（Assimp）へ渡すときだけ WideToUtf8(path.wstring()) を使う。
 
-         /// @brief stringからwstringへ変換
-        std::wstring ConvertString(const std::string& str);
+        /// @brief UTF-8 の narrow 文字列を wstring へ変換する（ログ本文用）
+        std::wstring Utf8ToWide(const std::string& str);
 
-        /// @brief wstringからstringへ変換
-        std::string ConvertString(const std::wstring& str);
+        /// @brief wstring を UTF-8 の narrow 文字列へ変換する（ログ本文用）
+        std::string WideToUtf8(const std::wstring& str);
+
+        //========================================
+        // パス ⇄ 文字列 の変換
+        //========================================
+        // パスは std::filesystem::path で運び、std::string は UTF-8 テキストとして扱う。
+        // 直接 path::string() を使うと ANSI コードページで変換され UTF-8 の世界と食い違う。
+
+        /// @brief パスを UTF-8 文字列にする（ログ・キー・アセット要求名用）
+        std::string PathToUtf8(const std::filesystem::path& path);
+
+        /// @brief UTF-8 文字列をパスにする
+        std::filesystem::path Utf8ToPath(const std::string& utf8Path);
 
         /// @brief コンソールUI転送用コールバックを設定
         /// @param callback ログレベルとメッセージを受け取るコールバック
@@ -260,11 +275,6 @@ namespace CoreEngine
         std::string BuildLoggerKey(LogCategory category, SubCategory subCategory) const;
 
         /// @brief ロガーを作成する（キー・ファイルパスはサブカテゴリを考慮）
-        /// @param key ロガーキー（"Category" or "Category/SubCategory"）
-        /// @param loggerName spdlog に登録するロガー名
-        /// @param logFilePath ログファイルのフルパス
-        /// @param defaultLevel 既定のログレベル
-        /// @return 作成されたロガー
         std::shared_ptr<spdlog::logger> CreateLogger(
             const std::string& loggerName,
             const std::string& logFilePath,

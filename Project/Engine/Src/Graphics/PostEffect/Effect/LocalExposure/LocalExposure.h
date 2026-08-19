@@ -11,15 +11,8 @@
 namespace CoreEngine
 {
 /// @brief ローカル露出（局所トーンマッピング）
-/// @details グローバル露出では「明るい空」と「影の地形・水面」を同時に見せられない。
-///          対数輝度をベース層（1/8 解像度の大きなガウシアン）とディテール層に分離し、
-///          ベース層だけを中間グレーへ向けて圧縮する。UE5 の Local Exposure と同じ考え方。
-///          ハロ対策として、適用時にフル解像度輝度をガイドにした
-///          ジョイントバイラテラルアップサンプルでベース層を再構成する。
-///
-///          Downsample(1/8 logLum) → BlurH → BlurV → Apply の 4 パス構成。
-///          パラメータは CVar（"r.LocalExposure.*"）が唯一の保持者。
-///          設計: Docs/Engine/Graphics/PostProcess/Cinematic_PostEffect_Plan.md
+/// @details 対数輝度をベース層とディテール層に分け、ベース層だけを中間グレーへ圧縮する。
+///          ハロ対策にジョイントバイラテラルアップサンプルを使う。CVar "r.LocalExposure.*"。
 class LocalExposure : public PostEffectComputeBase {
 public:
     /// @brief ベース層の縮小率（1/8 解像度）

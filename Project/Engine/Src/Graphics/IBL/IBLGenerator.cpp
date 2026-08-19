@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "IBLGenerator.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/Common/DirectXCommon.h"
 #include "Graphics/Common/Core/UploadContext.h"
 #include "Graphics/Common/ResourceBarrierHelper.h"
@@ -90,15 +91,9 @@ namespace CoreEngine
 
         assert(computeShader != nullptr);
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.pRootSignature = brdfLutRootSignature_.Get();
-        psoDesc.CS = { computeShader->GetBufferPointer(), computeShader->GetBufferSize() };
-
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
-            &psoDesc,
-            IID_PPV_ARGS(&brdfLutPSO_));
-
-        assert(SUCCEEDED(hr));
+        brdfLutPSO_ = ComputePipelineUtil::Create(
+            dxCommon_->GetDevice(), brdfLutRootSignature_.Get(), computeShader, "IBL_BRDFLUT");
+        assert(brdfLutPSO_);
 
         computeShader->Release();
     }
@@ -169,15 +164,9 @@ namespace CoreEngine
 
         assert(computeShader != nullptr);
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.pRootSignature = irradianceRootSignature_.Get();
-        psoDesc.CS = { computeShader->GetBufferPointer(), computeShader->GetBufferSize() };
-
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
-            &psoDesc,
-            IID_PPV_ARGS(&irradiancePSO_));
-
-        assert(SUCCEEDED(hr));
+        irradiancePSO_ = ComputePipelineUtil::Create(
+            dxCommon_->GetDevice(), irradianceRootSignature_.Get(), computeShader, "IBL_Irradiance");
+        assert(irradiancePSO_);
 
         computeShader->Release();
     }
@@ -422,7 +411,8 @@ namespace CoreEngine
         hr = scratchImage.InitializeFromImage(image);
         if (SUCCEEDED(hr))
         {
-            std::wstring wOutputPath = Logger::GetInstance().ConvertString(outputPath);
+            // outputPath は UTF-8。DirectXTex はワイド API なので path 経由で変換する。
+            std::wstring wOutputPath = Logger::GetInstance().Utf8ToPath(outputPath).wstring();
             hr = DirectX::SaveToDDSFile(
                 scratchImage.GetImages(),
                 scratchImage.GetImageCount(),
@@ -448,7 +438,7 @@ namespace CoreEngine
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
             std::format("Loading BRDF LUT from: {}", filePath));
 
-        std::wstring wFilePath = Logger::GetInstance().ConvertString(filePath);
+        std::wstring wFilePath = Logger::GetInstance().Utf8ToPath(filePath).wstring();
 
         DirectX::ScratchImage image;
         HRESULT hr = DirectX::LoadFromDDSFile(wFilePath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image);
@@ -684,15 +674,9 @@ namespace CoreEngine
 
         assert(computeShader != nullptr);
 
-        D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
-        psoDesc.pRootSignature = prefilteredRootSignature_.Get();
-        psoDesc.CS = { computeShader->GetBufferPointer(), computeShader->GetBufferSize() };
-
-        [[maybe_unused]] HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
-            &psoDesc,
-            IID_PPV_ARGS(&prefilteredPSO_));
-
-        assert(SUCCEEDED(hr));
+        prefilteredPSO_ = ComputePipelineUtil::Create(
+            dxCommon_->GetDevice(), prefilteredRootSignature_.Get(), computeShader, "IBL_PrefilterEnv");
+        assert(prefilteredPSO_);
 
         computeShader->Release();
     }
@@ -751,12 +735,7 @@ namespace CoreEngine
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Graphics, "{}", 
             std::format("Generating Prefiltered Environment Map ({}x{}, 5 mips)...", size, size));
 
-        // ミップマップ5レベルのキューブマップ作成
-        // mip0: 128x128 (roughness=0.0)
-        // mip1: 64x64   (roughness=0.25)
-        // mip2: 32x32   (roughness=0.5)
-        // mip3: 16x16   (roughness=0.75)
-        // mip4: 8x8     (roughness=1.0)
+        // ミップ 5 レベルのキューブマップ（mip0=128px/roughness 0.0 〜 mip4=8px/roughness 1.0）
         const uint32_t mipLevels = 5;
         auto prefilteredMap = CreateUAVCubemapWithMips(size, mipLevels, DXGI_FORMAT_R16G16B16A16_FLOAT);
         if (!prefilteredMap)

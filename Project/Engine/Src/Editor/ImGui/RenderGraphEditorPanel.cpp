@@ -138,11 +138,13 @@ namespace CoreEngine
             return lowerHaystack.find(lowerNeedle) != std::string::npos;
         }
 
+    /// @brief パス番号から imnodes のノード ID を作る
         int MakeNodeId(uint32_t passIndex)
         {
             return static_cast<int>(passIndex) + 1;
         }
 
+    /// @brief パス番号とスロット番号から imnodes の属性 ID を作る
         int MakeAttributeId(uint32_t passIndex, int slot)
         {
             return MakeNodeId(passIndex) * 128 + slot;
@@ -632,6 +634,7 @@ namespace CoreEngine
 
     void RenderGraphEditorPanel::DrawNodeContextMenu(const RenderGraphSnapshot& snapshot)
     {
+        // 右クリックしたノードに対する操作（有効/無効・依存のハイライト・出力プレビュー）
         if (!ImGui::BeginPopup("##rg_node_context")) {
             return;
         }
@@ -695,8 +698,11 @@ namespace CoreEngine
 
     void RenderGraphEditorPanel::DrawDetailPanel(const RenderGraphSnapshot& snapshot)
     {
+        // グラフ本体は imnodes が描くので、ここは選択中ノードの内訳に徹する
         if (ImGui::BeginTabBar("##rg_detail_tabs")) {
 
+            // Pass タブ: 選択ノードの計測値・入出力・依存・発行バリアを並べる。
+            // 「なぜこの順番か」を依存の一覧で示すのがこのパネルの主目的
             if (ImGui::BeginTabItem("Pass")) {
                 if (selectedPassIndex_ < 0
                     || selectedPassIndex_ >= static_cast<int>(snapshot.passes.size())) {
@@ -800,6 +806,7 @@ namespace CoreEngine
                 ImGui::EndTabItem();
             }
 
+            // Resources タブ: 論理リソースごとの生存区間と解決状況
             if (ImGui::BeginTabItem("Resources")) {
                 ImGui::Text("論理リソース %zu 件", snapshot.resources.size());
                 if (ImGui::BeginTable("##rg_resources", 4,
@@ -834,6 +841,7 @@ namespace CoreEngine
                 ImGui::EndTabItem();
             }
 
+            // Order タブ: RenderGraph が導出した実行順を、選択と連動する表で出す
             if (ImGui::BeginTabItem("Order")) {
                 ImGui::TextDisabled("依存を満たす範囲で登録順に近い実行順");
                 if (ImGui::BeginTable("##rg_order", 3,

@@ -55,8 +55,12 @@ namespace CoreEngine
             return;
         }
 
-        threadPool_ = std::make_unique<ThreadPool>(
-            static_cast<uint32_t>((std::max)(1u, std::thread::hardware_concurrency() / 2)));
+        // ワーカー数は ThreadBudget に決めさせる（プール乱立でコア数を超えないため）。
+        // このプールはスキャン完了後に解放するので、枠は他のプールへ返る。
+        ThreadPoolDesc poolDesc;
+        poolDesc.name = "AssetScan";
+        poolDesc.priority = WorkerPriority::Normal;   // 起動をブロックするので譲らない
+        threadPool_ = std::make_unique<ThreadPool>(poolDesc);
 
         // フェーズ1: 全ディレクトリのファイル列挙を並列に実行する。
         struct FileEntry {
@@ -69,6 +73,7 @@ namespace CoreEngine
 
         for (const auto& target : targets) {
             scanFutures.push_back(threadPool_->Submit(
+                "Scan: " + target.category,
                 [target]() -> std::vector<FileEntry> {
                     std::vector<FileEntry> files;
                     try {
@@ -90,6 +95,9 @@ namespace CoreEngine
         // 全ディレクトリの結果を統合する。
         std::vector<FileEntry> allFiles;
         for (auto& future : scanFutures) {
+            // Wait はブロックする代わりにキューのタスクを引き受ける。
+            // メインスレッドを遊ばせず fan-out の一部を肩代わりする
+            threadPool_->Wait(future);
             auto files = future.get();
             allFiles.insert(allFiles.end(),
                 std::make_move_iterator(files.begin()),
@@ -102,6 +110,7 @@ namespace CoreEngine
 
         for (const auto& file : allFiles) {
             buildFutures.push_back(threadPool_->Submit(
+                "AssetInfo: " + Logger::GetInstance().PathToUtf8(file.filePath.filename()),
                 [this, file]() -> std::optional<AssetInfo> {
                     return BuildAssetInfo(file.filePath, file.category);
                 }
@@ -110,6 +119,7 @@ namespace CoreEngine
 
         // フェーズ3: 全結果をメインスレッドでインデックスに登録する。
         for (auto& future : buildFutures) {
+            threadPool_->Wait(future);
             auto result = future.get();
             if (result.has_value()) {
                 MergeAssetInfo(std::move(result.value()));
@@ -136,7 +146,7 @@ namespace CoreEngine
             "AssetDatabase finalized");
     }
 
-    std::string AssetDatabase::FindAssetPath(const std::string& name)
+    std::filesystem::path AssetDatabase::FindAssetPath(const std::string& name)
     {
         // まず完全一致で検索
         auto it = assetsByName_.find(name);
@@ -145,7 +155,7 @@ namespace CoreEngine
             // 複数ある場合は優先順位の高いものを返す
             if (it->second.size() == 1)
             {
-                return assetsByGUID_[it->second[0]].fullPath.generic_string();
+                return assetsByGUID_[it->second[0]].fullPath;
             } else
             {
                 // 優先順位でソート
@@ -163,7 +173,7 @@ namespace CoreEngine
                     }
                 }
 
-                return assetsByGUID_[bestGuid].fullPath.generic_string();
+                return assetsByGUID_[bestGuid].fullPath;
             }
         }
 
@@ -178,11 +188,11 @@ namespace CoreEngine
         it = assetsByName_.find(nameWithoutExt);
         if (it != assetsByName_.end() && !it->second.empty())
         {
-            return assetsByGUID_[it->second[0]].fullPath.generic_string();
+            return assetsByGUID_[it->second[0]].fullPath;
         }
 
-        // 見つからない場合は空文字列を返す
-        return "";
+        // 見つからない場合は空の path を返す
+        return {};
     }
 
     std::string AssetDatabase::GetGUID(const std::filesystem::path& assetPath)
@@ -236,6 +246,10 @@ namespace CoreEngine
 
         AssetInfo info;
         info.guid = guid;
+        // 検索キーになる name / fileName は UTF-8 で登録する。
+        // 呼び出し側の検索名も UTF-8 に統一してあり、path::string()（ANSI）で
+        // 登録すると非 ASCII のファイル名で一致しなくなる。
+        Logger& log = Logger::GetInstance();
         // 複合拡張子（例: GrayScale.CS.hlsl）に対してもベース名（GrayScale）で検索できるよう
         // stem を繰り返し適用して最初のドットより前の名前を取得する。
         {
@@ -243,9 +257,9 @@ namespace CoreEngine
             while (stem.has_extension()) {
                 stem = stem.stem();
             }
-            info.name = stem.string();
+            info.name = log.PathToUtf8(stem);
         }
-        info.fileName = assetPath.filename().string();
+        info.fileName = log.PathToUtf8(assetPath.filename());
         info.fullPath = assetPath;
         info.relativePath = std::filesystem::relative(assetPath, projectRoot_);
         info.type = type;
@@ -270,9 +284,10 @@ namespace CoreEngine
         assetsByName_[fileName].push_back(guid);
 
         // 中間 stem（例: GrayScale.CS）でも検索できるよう全 stem を登録
-        std::filesystem::path stem = std::filesystem::path(fileName).stem();
+        Logger& log = Logger::GetInstance();
+        std::filesystem::path stem = log.Utf8ToPath(fileName).stem();
         while (stem.has_extension()) {
-            assetsByName_[stem.string()].push_back(guid);
+            assetsByName_[log.PathToUtf8(stem)].push_back(guid);
             stem = stem.stem();
         }
     }

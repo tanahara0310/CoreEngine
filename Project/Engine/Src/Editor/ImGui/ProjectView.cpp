@@ -432,8 +432,10 @@ namespace CoreEngine
 
     void ProjectView::DrawFolderTree(const std::filesystem::path& path, int depth)
     {
+        // ツリーの枝線は ImGui が描かないので、DrawList へ自前で引く
         const ImU32 treeLineColor = ImGui::GetColorU32(ImVec4(0.40f, 0.40f, 0.40f, 1.0f));
 
+        // 開閉アニメーションの α を進めて返す。終わったら状態を捨てる
         auto updateExpandAlpha = [this](const std::filesystem::path& nodePath) {
             std::string key = nodePath.generic_string();
 
@@ -518,6 +520,7 @@ namespace CoreEngine
                 float branchX = cursorBeforeNode.x - indentSpacing * 0.5f;
                 float textStartX = itemMin.x - 4.0f;
                 drawList->AddLine(ImVec2(branchX, centerY), ImVec2(textStartX, centerY), treeLineColor, 1.0f);
+            // 開閉が切り替わった瞬間にアニメーションの起点を記録する
             }
             if (ImGui::IsItemToggledOpen()) {
                 treeExpandAnimTime_[nodeKey] = 0.0f;
@@ -542,6 +545,8 @@ namespace CoreEngine
             bool showChildren = hasChildren && (nodeOpenRaw || pendingClose);
             if (!showChildren) {
                 return;
+            // 閉じるアニメーション中は子を描き続ける必要があるので、
+            // ImGui の開閉状態（nodeOpenRaw）とは別に pendingClose を見る
             }
 
             float childrenAlpha = updateExpandAlpha(nodePath);
@@ -585,6 +590,7 @@ namespace CoreEngine
                 });
                 treeDirCache_[cacheKey] = std::move(dirs);
                 cacheIt = treeDirCache_.find(cacheKey);
+            // 兄弟ノードを縦線でつなぐため、描画中に上下端を集めておく
             }
             const std::vector<std::filesystem::path>& directories = cacheIt->second;
 

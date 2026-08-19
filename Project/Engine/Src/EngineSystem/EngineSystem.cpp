@@ -6,6 +6,10 @@
 #endif
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
+#include "Startup/StartupSequence.h"
+#include "Graphics/Shader/Cache/ShaderCacheStore.h"
+#include "Graphics/Shader/Cache/ShaderManifest.h"
+#include "Graphics/Shader/ShaderPrewarm.h"
 #include <cstring>
 
 // ユーティリティ
@@ -84,72 +88,125 @@ namespace CoreEngine
         return componentManager_.Get<SceneManager>();
     }
 
-    void EngineSystem::Initialize(WinApp* winApp, const EngineConfig& config)
+    void EngineSystem::BuildStartupTasks(
+        StartupSequence& sequence,
+        WinApp* winApp,
+        const EngineConfig& config,
+        const std::function<void(StartupSequence&)>& buildPreloadTasks)
     {
+        sequence.Add("基盤: COM / ログ / アセットデータベース", [this, winApp, config] {
+            // COMの初期化
+            CoInitializeEx(0, COINIT_MULTITHREADED);
 
-        // COMの初期化
-        CoInitializeEx(0, COINIT_MULTITHREADED);
+            // ログシステムの初期化（最初に実行）
+            // ここが済むまで StartupSequence もログを出せないので、
+            // このステップは必ず先頭に置くこと
+            Logger::GetInstance().Initialize();
 
-        // ログシステムの初期化（最初に実行）
-        Logger::GetInstance().Initialize();
+            // WinAppのインスタンスを保持
+            winApp_ = winApp;
 
-        // WinAppのインスタンスを保持
-        winApp_ = winApp;
+            // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
+            AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
 
-        // アセットデータベースの初期化（テクスチャ読み込みより先に必要）
-        AssetDatabase::GetInstance().Initialize(std::filesystem::current_path());
+            // コンパイル済み DXIL のディスクキャッシュ。
+            // 最初のシェーダコンパイル（レンダードメインのステップ）より前に
+            // 用意しておく必要がある
+            ShaderCacheStore::GetInstance().Initialize(
+                std::filesystem::current_path() / "Cache" / "ShaderCache",
+                config.enableShaderCache);
 
-        // ===== コンポーネントの作成と初期化 =====
+            // 「実際にコンパイルされるシェーダ」の一覧。次回の起動で並列に
+            // 事前コンパイルするために使う。DXIL キャッシュとは別の場所に置く
+            //（キャッシュを消して再コンパイルさせる操作で一覧まで消えると、
+            //  一番効いてほしい場面で事前コンパイルが効かなくなる）
+            ShaderManifest::GetInstance().Initialize(
+                std::filesystem::current_path() / "Cache" / "ShaderManifest.txt",
+                config.enableShaderCache);
+        });
 
         // フレームレート制御（最初に初期化）
-        CreateFrameRateController();
+        sequence.Add("フレームレート制御", [this] { CreateFrameRateController(); });
+
+        // オーディオはグラフィックスに一切依存しないので、ここで裏の初期化を始めてしまう。
+        // 以降のシェーダコンパイル数秒の裏に隠れる（このステップ自体は即座に戻る）
+        sequence.Add("オーディオ（非同期開始）", [this] { CreateAudioComponents(); });
 
 #if defined(USE_IMGUI) && defined(USE_PIX)
         // PIX GPU キャプチャ DLL をロード（D3D12 デバイス作成より前に必要）
         // DLL がロードされると全 D3D12 API がフックされ ~33% のオーバーヘッドが発生するため、
         // コンフィグで明示的に有効化された場合のみロードする
         if (config.enablePixRuntime) {
-            PixCapture::LoadPixRuntime();
+            sequence.Add("PIX ランタイム", [] { PixCapture::LoadPixRuntime(); });
         }
 #endif
 
-        // グラフィックス関連
-        CreateGraphicsComponents(config);
+        // グラフィックス関連（起動時間の大半。ファクトリ側でさらに細かく割る）。
+        // 「デバイス + アセット土台 → シェーダ事前コンパイル → ゲームの先読み
+        //   → レンダラー群」の順に並べる。
+        auto graphicsState = GraphicsComponentFactory::BuildFoundationTasks(sequence, *this, config);
 
-        // 入力関連
-        CreateInputComponents();
+        // シェーダを全部まとめて並列にコンパイルし、DXIL を用意しておく。
+        // 以降のレンダラー群（PSO 生成 20 箇所以上）はキャッシュヒットで済む。
+        // モデル先読みより前に置くのは、並べると両方が CPU を食い合って
+        // どちらのワーカーも半分の幅しか使えなくなるため（意図的に直列の phase へ分けた）。
+        sequence.Add("シェーダ事前コンパイル（並列）", [] {
+            ShaderPrewarm::Run();
+        });
 
-        // オーディオ関連
-        CreateAudioComponents();
+        if (buildPreloadTasks) {
+            buildPreloadTasks(sequence);
+        }
+        GraphicsComponentFactory::BuildRendererTasks(sequence, *this, std::move(graphicsState));
+
+        sequence.Add("入力", [this] { CreateInputComponents(); });
 
         // ライト関連（GraphicsComponents 後に初期化）
-        CreateLightComponents();
+        sequence.Add("ライト", [this] { CreateLightComponents(); });
 
-        // 統一乱数生成器の初期化
-        RandomGenerator::GetInstance().Initialize();
+        sequence.Add("乱数生成器", [this] { RandomGenerator::GetInstance().Initialize(); });
 
         // ──────────────────────────────────────────────────────────
-        // サブシステム登録 + 一括初期化
+        // サブシステム登録 + 1 個ずつ初期化
         // ──────────────────────────────────────────────────────────
-        {
+        // 「全部生成してから初期化」の順序は崩さないこと。
+        // 初期化時点で全サブシステムが生成済みである前提のコードがある。
+        sequence.Add("サブシステム生成", [this] {
             subsystems_.push_back(std::make_unique<RayTracingSubsystem>());
-        }
 #ifdef USE_IMGUI
-        {
             // エディタ設定の自動保存（セクション登録元より先に生成しておく）
             subsystems_.push_back(std::make_unique<EditorSettingsSubsystem>());
             subsystems_.push_back(std::make_unique<DebugSubsystem>());
-        }
 #endif // USE_IMGUI
+        });
 
-        for (auto& sys : subsystems_) {
-            sys->Initialize(this, config);
+        // 生成ステップが積む個数は静的に決まるので、インデックス指定で
+        // 1 サブシステム 1 ステップに切り出せる。
+        // （実行中にステップを追加すると StartupSequence の内部 vector が
+        //   再確保され、実行中エントリの参照が壊れるので絶対にやらない）
+#ifdef USE_IMGUI
+        constexpr size_t kSubsystemCount = 3;
+#else
+        constexpr size_t kSubsystemCount = 1;
+#endif
+        for (size_t i = 0; i < kSubsystemCount; ++i) {
+            sequence.Add(
+                // 表示名は実行直前に問い合わせられるので、生成ステップ後なら実名が出る
+                [this, i]() -> std::string {
+                    return std::string("サブシステム: ")
+                        + (i < subsystems_.size() ? subsystems_[i]->GetName() : "?");
+                },
+                [this, i, config] {
+                    if (i < subsystems_.size()) {
+                        subsystems_[i]->Initialize(this, config);
+                    }
+                });
         }
 
-        GameObject::SetEngine(this);
+        sequence.Add("GameObject へのエンジン参照", [this] { GameObject::SetEngine(this); });
 
         // デフォルトレンダーパイプラインの構築
-        BuildDefaultRenderPipeline();
+        sequence.Add("レンダーパイプライン構築", [this] { BuildDefaultRenderPipeline(); });
     }
 
     void EngineSystem::Finalize()
@@ -159,6 +216,12 @@ namespace CoreEngine
             (*it)->Finalize();
         }
         subsystems_.clear();
+
+        // 起動時に仕掛けたモデル先読みがまだ走っている可能性があるので、
+        // TextureManager / DirectXCommon を壊す前に必ず合流させる
+        if (auto* modelManager = GetService<ModelManager>()) {
+            modelManager->WaitForPreload();
+        }
 
         // TextureManager
         TextureManager::GetInstance().Clear();
@@ -467,11 +530,6 @@ namespace CoreEngine
     void EngineSystem::CreateFrameRateController()
     {
         CoreComponentFactory::SetupFrameRate(*this);
-    }
-
-    void EngineSystem::CreateGraphicsComponents(const EngineConfig& config)
-    {
-        GraphicsComponentFactory::Setup(*this, config);
     }
 
     void EngineSystem::CreateInputComponents()

@@ -13,11 +13,8 @@
 namespace CoreEngine
 {
     /// @brief UI 描画専用レンダラー（カメラ非依存・スクリーン固定座標）
-    /// @details
-    ///  - Camera2D を使わず、画面ピクセル座標（左上原点・Y軸下正）の正射影で描画する
-    ///  - UI パスは描画パイプラインの最後に呼び出され、常に最前面となる
-    ///  - 内部実装は SpriteRenderer と類似しているが、PSO/RootSignature/定数バッファプールを
-    ///    完全に独立させている
+    /// @details 画面ピクセル座標（左上原点・Y 軸下正）の正射影で描き、パイプラインの最後に呼ばれる。
+    /// @note 実装は SpriteRenderer に似ているが、PSO / RootSignature / 定数バッファプールは独立。
     class UIRenderer : public BaseRenderer {
     public:
         /// @brief トランスフォーム行列（HLSL 側 cbuffer と一致）

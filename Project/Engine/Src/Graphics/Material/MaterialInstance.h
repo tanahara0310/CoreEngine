@@ -13,6 +13,7 @@ namespace CoreEngine
     /// @note IBL の有効/無効はシーン側で決まる。iblIntensity=0 で個別オプトアウト。
     class MaterialInstance : public MaterialBase<MaterialConstants> {
     public:
+        /// @brief GPU 定数バッファを確保して常時 Map する
         void Initialize(ID3D12Device* device);
 
         // ===== Base Color =====

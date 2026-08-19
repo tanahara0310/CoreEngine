@@ -168,13 +168,9 @@ namespace CoreEngine::Cb {
         }
 
         // 2) HLSL の各メンバの開始位置が、C++ 側のいずれかのフィールドの開始位置と一致するか
-        //
-        //    メンバを 1 対 1 で突き合わせないのは、HLSL 側がスカラーをまとめて
-        //    ベクトルで宣言することがあるため（C++ の float screenWidth; float screenHeight; が
-        //    HLSL では float2 gScreenSize; の 1 個になる）。この 2 つはレイアウトとしては同一で、
-        //    個数や並び順で比べると誤検出になる。
-        //    一方、HLSL 側にメンバが挿入された・並び替えられた場合は開始位置が
-        //    C++ のどのフィールドの境界とも一致しなくなるので、こちらで確実に捕まる。
+        //    1 対 1 で突き合わせないのは、HLSL 側がスカラーをまとめてベクトルで宣言しうるため
+        //    （C++ の float x; float y; が HLSL では float2 の 1 個になる）。
+        //    メンバの挿入・並び替えは開始位置が境界と一致しなくなるので、この方式でも捕まる。
         std::vector<size_t> boundaries;
         boundaries.reserve(binding.fieldCount);
         for (size_t i = 0; i < binding.fieldCount; ++i) {

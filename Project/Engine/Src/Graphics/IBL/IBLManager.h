@@ -14,6 +14,7 @@ namespace CoreEngine
     class IBLManager
     {
     public:
+        /// @brief シェーダーへ渡す IBL テクスチャ 3 種の SRV
         struct IBLSRVHandles
         {
             D3D12_GPU_DESCRIPTOR_HANDLE irradiance = {};

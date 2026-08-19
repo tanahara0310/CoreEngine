@@ -4,6 +4,7 @@
 
 namespace CoreEngine
 {
+    /// @brief 水面のコースティクスをレイトレーシングで生成するパス
     class RTWaterCausticsPass : public RenderPass
     {
     public:

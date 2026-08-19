@@ -21,21 +21,10 @@ namespace CoreEngine
         halfH_ = halfHeight;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     // 衝突解決
-    //
-    //  X軸・Y軸を完全に独立して処理することでコーナー誤判定を防ぐ
-    //
-    //  処理順:
-    //   1. X軸のみ移動 → X方向のSolidタイルとの重なりを解決
-    //   2. Y軸のみ移動 → Y方向のSolidタイルとの重なりを解決
-    //
-    //  Camera2D 座標系（Y軸上正）:
-    //   接地  = キャラ底面がタイル上面に接触 (isOnGround)
-    //   天井  = キャラ上面がタイル底面に接触 (hitCeiling)
-    //   左壁  = キャラ左面がタイル右面に接触 (hitWallLeft)
-    //   右壁  = キャラ右面がタイル左面に接触 (hitWallRight)
-    // ─────────────────────────────────────────────────────────────────────
+    //   X 軸・Y 軸を完全に独立して処理することでコーナー誤判定を防ぐ
+    //   （X のみ移動 → X 方向の Solid を解決 → Y のみ移動 → Y 方向の Solid を解決）
+    //   Camera2D 座標系（Y 軸上正）なので、接地はキャラ底面 × タイル上面の接触。
     TileCollisionResult TileCollider::Resolve(Vector2 oldPosition, Vector2 velocity) const
     {
         TileCollisionResult result;

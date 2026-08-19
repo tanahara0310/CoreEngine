@@ -52,6 +52,7 @@ void MainModule::Restart() {
     isPlaying_ = true;
 }
 
+// 経過時間を進める。ループ指定なら duration で巻き戻し、そうでなければ停止させる
 void MainModule::UpdateTime(float deltaTime) {
     if (!enabled_) {
         return;

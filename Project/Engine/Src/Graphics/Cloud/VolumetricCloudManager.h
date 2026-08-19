@@ -228,12 +228,7 @@ namespace CoreEngine
 
         /// @brief フレーム更新（雲を使うシーンの BaseScene::UpdateAtmosphere から呼ばれる）
         /// @details cloudsActive_ を立て、カメラ・時刻・太陽情報を CB へ反映する。
-        ///          太陽情報は atmosphereManager から取得する（AtmosphereManager と同一の値）。
-        /// @param cameraWorldPosition カメラのワールド座標 [m]
-        /// @param viewMatrix カメラのビュー行列
-        /// @param projMatrix カメラのプロジェクション行列
-        /// @param atmosphereManager 太陽情報・カメラ高度の取得元
-        /// @param deltaTimeSec 前フレームからの経過秒（内部で timeSec_ へ積算）
+        /// @param atmosphereManager 太陽情報・カメラ高度の取得元（AtmosphereManager と同一の値）
         void Update(const Vector3& cameraWorldPosition,
             const Matrix4x4& viewMatrix, const Matrix4x4& projMatrix,
             const AtmosphereManager* atmosphereManager,
@@ -276,12 +271,7 @@ namespace CoreEngine
         // ===== 雲描画（VolumetricCloudPass から呼ばれる） =====
 
         /// @brief 雲をレイマーチして SceneColor へ合成する
-        /// @param cmdList 記録先コマンドリスト
-        /// @param sceneColor SceneColor リソース
         /// @param sceneColorState SceneColor の現在状態（追跡参照）
-        /// @param sceneColorSrvHandle SceneColor の SRV ハンドル
-        /// @param depthSrvHandle SceneDepth の SRV ハンドル
-        /// @param atmosphereManager LUT SRV と大気 CB アドレスの取得元
         void RenderClouds(
             ID3D12GraphicsCommandList* cmdList,
             ID3D12Resource* sceneColor,
@@ -292,11 +282,9 @@ namespace CoreEngine
 
         // ===== 空キューブマップへの雲焼き込み（AtmosphereLUTPass から呼ばれる） =====
 
-        /// @brief 空キューブマップへ雲を前乗算合成する（Phase 3b: スペキュラIBL / 水面の雲反射）
-        /// @param cmdList 記録先コマンドリスト
-        /// @param atmosphereManager 大気 CB / LUT SRV / キューブマップ UAV の取得元
-        /// @details AtmosphereManager::CaptureSkyEnvironment（空の焼き込み）の直後・
-        ///          PrefilterSkyEnvironment の前に呼ぶこと。キューブマップは UAV 状態前提。
+        /// @brief 空キューブマップへ雲を前乗算合成する（スペキュラ IBL / 水面の雲反射用）
+        /// @warning CaptureSkyEnvironment の直後・PrefilterSkyEnvironment の前に呼ぶこと
+        ///          （キューブマップは UAV 状態が前提）
         void RenderCloudsToSkyCubemap(
             ID3D12GraphicsCommandList* cmdList,
             const AtmosphereManager* atmosphereManager);
@@ -344,27 +332,35 @@ namespace CoreEngine
         struct BaseShapeNoiseShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudBaseShapeNoise.CS.hlsl"; }
         };
+        /// @brief ディテールノイズ生成 CS のシェーダ供給
         struct DetailNoiseShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudDetailNoise.CS.hlsl"; }
         };
+        /// @brief 天候マップ生成 CS のシェーダ供給
         struct WeatherMapShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudWeatherMap.CS.hlsl"; }
         };
+        /// @brief 雲本体のレイマーチ CS のシェーダ供給
         struct RayMarchShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudRayMarch.CS.hlsl"; }
         };
+        /// @brief 雲を SceneColor へ合成する CS のシェーダ供給
         struct CompositeShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudComposite.CS.hlsl"; }
         };
+        /// @brief 空キューブマップへの雲焼き込み CS のシェーダ供給
         struct CloudCubemapCaptureShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudCubemapCapture.CS.hlsl"; }
         };
+        /// @brief 雲シャドウマップ生成 CS のシェーダ供給
         struct CloudShadowMapShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"CloudShadowMap.CS.hlsl"; }
         };
+        /// @brief ゴッドレイのレイマーチ CS のシェーダ供給
         struct GodRayMarchShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"GodRayMarch.CS.hlsl"; }
         };
+        /// @brief ゴッドレイ合成 CS のシェーダ供給
         struct GodRayCompositeShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"GodRayComposite.CS.hlsl"; }
         };

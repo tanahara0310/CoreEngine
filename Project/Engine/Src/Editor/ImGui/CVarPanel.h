@@ -4,6 +4,7 @@
 
 #include <string_view>
 
+/// @file
 /// @brief CVar の自動生成 ImGui パネル
 
 namespace CoreEngine
@@ -11,12 +12,8 @@ namespace CoreEngine
     class ICVar;
 
     /// @brief CVarRegistry の内容から ImGui ウィジェットを自動生成する
-    /// @details 各機能クラスが個別に ImGui コードを書く代わりに、ここが代表して
-    ///          レジストリを走査し、型に応じたウィジェットを描画する。
-    ///
-    ///          UI の入口は「機能ごとのパネル」に一本化している（Post Effects タブなど）。
-    ///          全 CVar を一覧する横断パネルは、同じ値を触れる場所が 2 つできて
-    ///          どちらを使うのか曖昧になるため設けない。
+    /// @note UI の入口は機能ごとのパネルへ一本化している。
+    ///       全 CVar を一覧する横断パネルは、同じ値を触れる場所が 2 つできるので設けない。
     namespace CVarUI
     {
         /// @brief CVar 1 つ分のウィジェットを描画する

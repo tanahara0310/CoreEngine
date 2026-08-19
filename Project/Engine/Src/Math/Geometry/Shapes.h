@@ -7,12 +7,9 @@
 #include <cstddef>
 
 /// @file
-/// @brief 幾何形状の値型
-/// @details 純粋幾何レイヤ。GameObject・レンダラ・ImGui に依存しない。
-///          交差判定は Intersect.h、距離・最近接点は Distance.h、
-///          レイ判定は RayCast.h にある。
-///          **形状の定義はすべてこのファイルに集約する**（以前は AABB だけ
-///          Math/BoundingBox.h に独立していて置き場所が不揃いだった）。
+/// @brief 幾何形状の値型（GameObject・レンダラ・ImGui に依存しない純粋幾何レイヤ）
+/// @note 形状の定義はすべてこのファイルに集約する。
+///       交差判定は Intersect.h、距離・最近接点は Distance.h、レイ判定は RayCast.h。
 
 namespace CoreEngine
 {

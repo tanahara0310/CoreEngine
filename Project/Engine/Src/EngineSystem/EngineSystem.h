@@ -30,6 +30,7 @@ class WinApp;
 #include "Utility/FrameRate/FrameRateController.h"
 
 
+/// @file
 /// @brief エンジンシステム中核システム管理クラス
 
 namespace CoreEngine
@@ -42,15 +43,25 @@ class RenderPipeline;
 class RenderingTechniqueManager;
 class RenderDomainContext;
 class HiZOcclusionSystem;
+class StartupSequence;
 
+/// @brief エンジンの常駐サービスとサブシステムを所有し、フレームを駆動する中核クラス
 class EngineSystem {
 public:
     EngineSystem(); // 前方宣言型の unique_ptr メンバがあるため .cpp で定義する
     ~EngineSystem();
-    /// @brief エンジンシステムの初期化
-    /// @param winApp ウィンドウアプリケーション
-    /// @param config エンジン設定
-    void Initialize(WinApp* winApp, const EngineConfig& config);
+
+    /// @brief エンジンの初期化処理を起動シーケンスへステップとして積む
+    /// @param buildPreloadTasks アセット先読み用の差し込み口（ModelManager 生成直後に呼ばれる）
+    /// @details ステップに割るのは、呼び出し側が Step() の合間にメッセージ処理と
+    ///          ローディング表示を挟めるようにするため。
+    /// @warning ステップは全部積んでから回すこと（StartupSequence の warning 参照）
+    void BuildStartupTasks(
+        StartupSequence& sequence,
+        WinApp* winApp,
+        const EngineConfig& config,
+        const std::function<void(StartupSequence&)>& buildPreloadTasks = {});
+
 
     /// @brief エンジンシステムの終了処理
     void Finalize();
@@ -83,27 +94,10 @@ public:
     // コンポーネントアクセッサ
     // ──────────────────────────────────────────────────────────
 
-    /// @brief エンジンサービスを取得（型安全）
-    /// @tparam T サービスの型
-    ///
-    /// 代表的なサービス例:
-    ///
-    /// - DirectXCommon: DirectX12の基本機能
-    ///
-    /// - TextureManager: テクスチャ管理
-    ///
-    /// - ModelManager: 3Dモデル管理
-    ///
-    /// - InputManager: 入力管理（InputQuery経由でアクセス）
-    ///
-    /// - Audio / Light / FrameRate など
-    ///
-    /// @return サービスへのポインタ（登録されていない場合nullptr）
-    /// @note **`GameObject::GetComponent<T>()` とは別物**。こちらはエンジン全体で
-    ///       1 個ずつ存在する常駐サービスのロケータで、ゲームオブジェクトに
-    ///       アタッチするコンポーネントとは無関係。混同を避けるため
-    ///       `GetComponent` から `GetService` へ改名した（2026-08-07）。
-    ///       サブシステム（`IEngineSubsystem` 派生）の取得は `GetSubsystem<T>()`。
+    /// @brief エンジンサービスを取得（型安全。未登録なら nullptr）
+    /// @tparam T サービスの型（DirectXCommon / TextureManager / ModelManager / InputManager など）
+    /// @note `GameObject::GetComponent<T>()` とは別物。こちらはエンジン全体で 1 個ずつ存在する
+    ///       常駐サービスのロケータ。サブシステムの取得は `GetSubsystem<T>()`。
     template<typename T>
     T* GetService() {
         return componentManager_.Get<T>();
@@ -174,7 +168,6 @@ private:
     // ──────────────────────────────────────────────────────────
     // コンポーネント作成ヘルパーメソッド
     // ──────────────────────────────────────────────────────────
-    void CreateGraphicsComponents(const EngineConfig& config);
     void CreateInputComponents();
     void CreateAudioComponents();
     void CreateLightComponents();

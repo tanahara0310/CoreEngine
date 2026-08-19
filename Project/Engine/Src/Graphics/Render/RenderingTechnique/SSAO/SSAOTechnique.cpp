@@ -86,12 +86,9 @@ namespace CoreEngine
         params_.screenWidth = w;
         params_.screenHeight = h;
 
-        // カメラ行列の設定
-        //
-        // 実際に G-Buffer を描いたビューから取ること。単位行列や別カメラの行列で深度から
-        // ワールド座標を復元すると座標が全く合わず、AO がノイズと黒斑（隣接面のちらつき）になる。
-        // frameViews はフレーム先頭で確定した唯一のスナップショットで、TAA のジッタも
-        // 織り込み済みなので G-Buffer と完全に整合する。
+        // カメラ行列は実際に G-Buffer を描いたビューから取ること。
+        // 別カメラの行列で深度からワールド座標を復元すると、AO がノイズと黒斑になる。
+        // frameViews はフレーム先頭で確定した唯一のスナップショットで、TAA のジッタも織り込み済み。
         if (!context.frameViews) {
             outputSrvHandle = {};
             return;

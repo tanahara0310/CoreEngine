@@ -5,13 +5,8 @@ struct ID3D12GraphicsCommandList;
 namespace CoreEngine
 {
     /// @brief PIX / GPU デバッガ向けのイベントマーカー
-    ///
-    /// @details PIX キャプチャは既定では名前のない Dispatch / Draw の羅列になり、
-    ///          どのパスの命令かを読み取れない。RenderGraph とコンピュートパスの
-    ///          要所へマーカーを積むことで、キャプチャ側でパス名の階層として見える。
-    ///
-    ///          実装は .cpp 側に閉じており、pix3.h をヘッダーへ波及させない。
-    ///          USE_PIX 未定義のビルド（Release）では全て空関数になる。
+    /// @details 積んでおくとキャプチャ側でパス名の階層として見える。
+    /// @note 実装は .cpp に閉じており、USE_PIX 未定義のビルドでは全て空関数になる。
     void BeginGpuMarker(ID3D12GraphicsCommandList* cmdList, const char* name);
 
     /// @brief BeginGpuMarker と対で呼ぶ

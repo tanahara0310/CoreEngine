@@ -12,11 +12,13 @@ namespace CoreEngine
 {
     namespace
     {
+        /// @brief 定数バッファ要件の 256 バイト境界へ切り上げる
         constexpr UINT Align256(UINT value)
         {
             return (value + 255) & ~255;
         }
 
+        /// @brief FFT 中間テクスチャ用の 2D リソース記述を作る（UAV 兼 SRV）
         D3D12_RESOURCE_DESC MakeTexture2DDesc(uint32_t resolution, DXGI_FORMAT format, uint32_t mipLevels = 1)
         {
             D3D12_RESOURCE_DESC desc{};
@@ -40,6 +42,8 @@ namespace CoreEngine
         FFTOceanPingPong& spectrumA,
         FFTOceanPingPong& spectrumB)
     {
+        // ping-pong の 2 枚（A/B）を同一記述で作り、SRV と UAV を両方張る。
+        // IFFT はバタフライ段ごとに読み書きを入れ替えるので、どちらの向きでも使える必要がある
         if (!device || !descriptorManager) {
             return false;
         }
@@ -88,6 +92,8 @@ namespace CoreEngine
         return true;
     }
 
+    // 初期スペクトル h0 を置く StructuredBuffer と、その転送用アップロードバッファを作る。
+    // 中身は CPU 側（FFTOceanSpectrumBuilder）が作って 1 度だけ流し込む
     bool FFTOceanResourceFactory::CreateSpectrumBuffers(
         ID3D12Device* device,
         DescriptorManager* descriptorManager,
@@ -167,6 +173,7 @@ namespace CoreEngine
         return true;
     }
 
+    // シミュレーション定数バッファ。UPLOAD ヒープで常時 Map したまま毎フレーム書き換える
     bool FFTOceanResourceFactory::CreateSimulationConstantBuffer(
         ID3D12Device* device,
         uint32_t constantSize,

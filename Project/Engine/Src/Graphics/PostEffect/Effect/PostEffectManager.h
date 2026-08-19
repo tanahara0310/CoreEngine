@@ -61,12 +61,8 @@ public:
     void SetEffectChain(const std::vector<std::string>& effectNames);
 
     /// @brief チェーンの段（PostEffectStage）が規約を満たすか検証する
-    /// @details 検証内容は 2 つ。
-    ///          ① 段が SceneHDR → Tonemap → PostTonemap の順に単調であること
-    ///          ② Tonemap 段がちょうど 1 つであること
-    ///          違反は Error ログへ理由付きで出したうえで assert する。
-    ///          「並べ間違えても何も起きない」状態を無くすのが目的。
-    /// @return 規約を満たしていれば true
+    /// @details 段が SceneHDR → Tonemap → PostTonemap の順に単調で、Tonemap がちょうど 1 つあること。
+    /// @note 違反は Error ログへ理由付きで出したうえで assert する
     bool ValidateChain() const;
 
     /// @brief 今フレームの文脈を全エフェクトへ配る（毎フレーム 1 回）

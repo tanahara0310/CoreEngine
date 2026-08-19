@@ -22,12 +22,7 @@ public:
     ParticleEmitter() = default;
     ~ParticleEmitter() = default;
 
-    /// @brief 初期化（モジュールへの参照を設定）
-    /// @param mainModule メインモジュール
-    /// @param emissionModule 放出モジュール
-    /// @param shapeModule 形状モジュール
-    /// @param velocityModule 速度モジュール
-    /// @param rotationModule 回転モジュール
+    /// @brief 初期化（各モジュールへの参照を設定）
     void Initialize(
         MainModule* mainModule,
         EmissionModule* emissionModule,
@@ -37,10 +32,6 @@ public:
     );
 
     /// @brief パーティクルを放出
-    /// @param count 放出数
-    /// @param emitterTransform エミッターのトランスフォーム
-    /// @param maxParticles 最大パーティクル数
-    /// @param outParticles 出力先のパーティクルリスト
     /// @return 実際に放出されたパーティクル数
     uint32_t EmitParticles(
         uint32_t count,

@@ -17,14 +17,8 @@ namespace CoreEngine
     class AccelerationStructureManager;
 
     /// @brief DXR パス（シャドウ・水面屈折/反射/コースティクス等）の共通基盤
-    /// @details 「TLAS へレイを飛ばして 1 枚以上の出力テクスチャを作る」パスは全て同型なので、
-    ///          出力テクスチャ管理・ディスパッチ前のガード判定・状態遷移・診断情報をここへ集約する。
-    ///          派生側に残るのは「シェーダー・ルートシグネチャ・固有の定数バッファ」だけ。
-    ///
-    ///          元は Water 配下の WaterRayTracingPassBase だったが、実態は水面固有ではないため
-    ///          RayTracing 配下へ引き上げた（Stage 2a）。水面固有の部分は
-    ///          WaterRayTracingPassBase が本クラスを継承して持つ。
-    ///          設計書: Docs/Engine/RayTracing/RayTracing_Refactoring_Review.md
+    /// @details 出力テクスチャ管理・ディスパッチ前のガード判定・状態遷移・診断情報を集約する。
+    ///          派生側に残るのはシェーダー・ルートシグネチャ・固有の定数バッファだけ。
     class RayTracingPassBase {
     public:
         bool IsInitialized() const { return isInitialized_; }
@@ -62,12 +56,9 @@ namespace CoreEngine
             const char* ownerName,
             const char* outputDebugName);
 
-        /// @brief ディスパッチ前の共通処理をまとめて行う
-        /// @details ガード判定 → 出力テクスチャ／定数バッファの確保 → CommandList4 取得。
-        ///          失敗時は lastDispatchInfo_.status を埋めて警告ログまで出すので、
-        ///          呼び出し側は false なら即 return してよい。
+        /// @brief ディスパッチ前の共通処理（ガード判定 → 出力・定数バッファの確保 → CommandList4 取得）
         /// @param constantBufferSize 0 以外なら、そのサイズのアップロード定数バッファを確保する
-        /// @return 成功したか
+        /// @note 失敗時は lastDispatchInfo_ と警告ログまで済ませるので、false なら即 return してよい
         bool BeginDispatchBase(
             ID3D12GraphicsCommandList* cmdList,
             UINT width,

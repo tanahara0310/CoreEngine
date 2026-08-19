@@ -21,6 +21,7 @@
 
 using namespace Microsoft::WRL;
 
+/// @file
 /// @brief DirectX12の初期化・管理を行うメインクラス
 
 namespace CoreEngine
@@ -28,6 +29,7 @@ namespace CoreEngine
 
 struct EngineConfig;
 
+/// @brief DirectX12 の基盤（デバイス・コマンド・スワップチェーン・各種マネージャ）を束ねるファサード
 class DirectXCommon {
 public:
     /// @brief 初期化
@@ -47,11 +49,8 @@ public:
     void OnWindowResize(int32_t width, int32_t height);
 
     /// @brief ウィンドウリサイズ通知を受け取るクラスを登録する
-    /// @details スワップチェーン/深度バッファの再作成が終わった後に OnWindowResize() が呼ばれる。
-    ///          呼び出し元は登録したオブジェクトを DirectXCommon より先に破棄してはならない
-    ///          （生存期間の管理は呼び出し元の責務。エンジン構成上、常に DirectXCommon より
-    ///          先に破棄されることはない）
-    /// @param resizable 登録するインスタンス
+    /// @details スワップチェーン / 深度バッファの再作成後に OnWindowResize() が呼ばれる。
+    /// @warning 登録したオブジェクトを DirectXCommon より先に破棄してはならない
     void RegisterResizable(IResizable* resizable) { resizables_.push_back(resizable); }
 
     // デバイス関連のアクセッサ

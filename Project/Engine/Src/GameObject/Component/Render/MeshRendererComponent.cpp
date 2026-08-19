@@ -8,6 +8,7 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/Pipeline/CustomShaderPipelineCache.h"
 #include "Graphics/Render/Culling/ModelVisibility.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
@@ -74,6 +75,7 @@ namespace CoreEngine
         BuildCustomShaderPipelineIfNeeded();
     }
 
+    // 指定が変わったときに、メッシュとマテリアルを作り直す
     void MeshRendererComponent::ReloadFromSpec()
     {
         if (source_ == Source::None) { return; }
@@ -88,6 +90,7 @@ namespace CoreEngine
         BuildCustomShaderPipelineIfNeeded();
     }
 
+    // 指定（モデルファイル / スキニング / プリミティブ）に応じて実体を作る
     void MeshRendererComponent::LoadMesh()
     {
         if (source_ == Source::None) { return; }
@@ -121,6 +124,7 @@ namespace CoreEngine
         }
     }
 
+    // カスタムシェーダー指定があるときだけ専用パイプラインを組む（共有キャッシュ経由）
     void MeshRendererComponent::BuildCustomShaderPipelineIfNeeded()
     {
         if (!customShaderProvider_ || !model_) { return; }
@@ -134,15 +138,16 @@ namespace CoreEngine
         const ModelRenderContext& ctx = modelMgr->GetRenderContext();
         if (!ctx.IsValid()) { return; }
 
-        customShaderPipeline_ = std::make_unique<CustomShaderPipeline>();
+        // 同一シェーダー＋同一設定なら既存パイプラインを共有する
+        // （同じカスタムシェーダーをN個配置してもコンパイル・PSO構築は1回）
         BaseModelRenderer* renderer = ctx.modelRenderer;
-        const bool built = customShaderPipeline_->Build(
+        customShaderPipeline_ = modelMgr->GetCustomShaderPipelineCache()->GetOrBuild(
             dxCommon->GetDevice(),
             *renderer->GetShaderCompiler(),
             *renderer->GetReflectionBuilder(),
             *customShaderProvider_);
 
-        if (built && customShaderPipeline_->HasForwardPSO()) {
+        if (customShaderPipeline_ && customShaderPipeline_->HasForwardPSO()) {
             model_->SetCustomForwardPSO(customShaderPipeline_->GetForwardPSO(blendMode_));
             model_->SetCustomRootSignature(customShaderPipeline_->GetForwardRootSignature());
             model_->SetCustomPipeline(customShaderPipeline_.get());
@@ -158,6 +163,7 @@ namespace CoreEngine
         return transform_;
     }
 
+    // ローカル AABB をワールドへ変換したもの（カリングの判定単位）
     BoundingBox MeshRendererComponent::GetWorldBoundingBox() const
     {
         const TransformComponent* transform = ResolveTransform();
@@ -169,6 +175,7 @@ namespace CoreEngine
         return localAABB.TransformBy(transform->Get().GetWorldMatrix());
     }
 
+    // 視錐台 → Hi-Z の順に棄却してから Submit する。判定は DrawViewInfo だけで完結させる
     bool MeshRendererComponent::DrawIfVisible(const DrawViewInfo& view)
     {
         if (!model_ || !view.view || !view.view->isValid) {

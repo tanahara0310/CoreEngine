@@ -108,6 +108,7 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Device5> device5_;
         DescriptorManager* descriptorManager_ = nullptr;
 
+        /// @brief BLAS 1 本分の GPU リソース
         struct BLASEntry {
             Microsoft::WRL::ComPtr<ID3D12Resource> result;
         };

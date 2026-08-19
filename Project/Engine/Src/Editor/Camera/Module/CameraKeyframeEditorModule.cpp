@@ -764,6 +764,9 @@ namespace CoreEngine
 
     void CameraKeyframeEditorModule::UpdateAutoKey(const CameraEditorContext& context)
     {
+        // オートキー: カメラを動かした「あと」に自動でキーを打つ。
+        // 直前のスナップショットと比べて差が出た時だけ反応させ、
+        // 再生中や、こちらがカメラへ書き込んだ直後（ignoreNextAutoKey_）は無視する
         if (!context.cameraManager || !autoKeyEnabled_ || isPlaying_) {
             autoKeyEditing_ = false;
             return;
@@ -963,6 +966,7 @@ namespace CoreEngine
 
     bool CameraKeyframeEditorModule::LoadClipFromFile(const std::string& filePath)
     {
+        // 読み込み成功時だけ内部状態を差し替える。失敗しても編集中のタイムラインは壊さない
         CameraSequenceAsset asset{};
         if (!CameraSequenceAssetIO::Load(filePath, asset)) {
             return false;

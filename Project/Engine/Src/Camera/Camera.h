@@ -7,19 +7,14 @@
 #include "Math/Frustum.h"
 #include "Camera/CameraStructs.h"
 
+/// @file
 /// @brief カメラ（エンジン唯一の具象カメラ）
 
 namespace CoreEngine {
 
-    /// @brief カメラ
-    /// @details 継承階層を持たない「データ + 行列導出」だけのクラス。
-    ///          以前は ICamera / Camera / DebugCamera / Camera2D の 4 型があり、
-    ///          姿勢の表現（SRT vs 軌道）も投影方式もクラスの違いとして持っていたため、
-    ///          具象型への dynamic_cast が 21 箇所に散っていた。
-    ///
-    ///          - 投影方式は CameraParameters::projectionType で表す（2D は正射影）
-    ///          - 操作方法（Blender 風の軌道操作・追従など）はカメラではなく
-    ///            コントローラ（OrbitFlyController 等）が持ち、結果を Transform へ書き込む
+    /// @brief カメラ（継承階層を持たない「データ + 行列導出」だけのクラス）
+    /// @details 投影方式は CameraParameters::projectionType で表す（2D は正射影）。
+    ///          操作方法はコントローラ（OrbitFlyController 等）が持ち、結果を Transform へ書き込む。
     class Camera final {
     public:
         Camera() = default;
@@ -119,12 +114,8 @@ namespace CoreEngine {
 
         // ====== TAA ジッタ ======
 
-        /// @brief TAA 用のサブピクセルジッタ（NDC 単位）を設定する
-        /// @details 射影行列へジッタを加えた写しを内部に作り、以降 GetProjectionMatrix() が
-        ///          そちらを返す。ViewBuilder がこの後にスナップショットを取ることで、
-        ///          モデルの WVP・深度復元の invViewProj・視錐台がすべて同じ行列から導かれる。
-        /// @param ndcX NDC の X オフセット（1 ピクセル = 2 / 画面幅）
-        /// @param ndcY NDC の Y オフセット
+        /// @brief TAA 用のサブピクセルジッタ（NDC 単位。1 ピクセル = 2 / 画面幅）を設定する
+        /// @details 射影行列へジッタを加えた写しを内部に作り、以降 GetProjectionMatrix() がそちらを返す。
         void SetProjectionJitter(float ndcX, float ndcY);
 
         float GetProjectionJitterX() const { return projectionJitterX_; }

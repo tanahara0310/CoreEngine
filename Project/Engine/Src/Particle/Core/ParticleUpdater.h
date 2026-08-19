@@ -20,12 +20,7 @@ public:
     ParticleUpdater() = default;
     ~ParticleUpdater() = default;
 
-    /// @brief 初期化（モジュールへの参照を設定）
-    /// @param forceModule 力場モジュール
- /// @param colorModule 色モジュール
-    /// @param sizeModule サイズモジュール
-    /// @param rotationModule 回転モジュール
-    /// @param noiseModule ノイズモジュール
+    /// @brief 初期化（各モジュールへの参照を設定）
     void Initialize(
         ForceModule* forceModule,
         ColorModule* colorModule,

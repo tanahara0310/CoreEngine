@@ -15,14 +15,9 @@
 namespace CoreEngine
 {
     /// @brief 水面表現用のグリッドメッシュオブジェクト
-    /// @details PlaneMeshGenerator で N×N 分割の平面メッシュを生成し、水面専用シェーダー
-    ///          （Water.VS / FFTWater.VS + Water.PS）で描画する。
-    ///
-    ///          **責務は「メッシュ・トランスフォーム・マテリアル・水そのもののパラメータ」に限る。**
-    ///          シーンカラー / 深度 / RT 屈折・反射 / FFT / 大気といった外部リソースの結線は
+    /// @details 責務はメッシュ・トランスフォーム・マテリアルと水そのもののパラメータまで。
+    ///          シーンカラーや RT 屈折・FFT・大気といった外部リソースの結線は
     ///          WaterRenderFeature が組み立て、ApplyFrameBinding() で 1 度に渡す。
-    ///          以前はこれが 12 個の setter に分かれており、「どのフレーム定数を誰がいつ書くのか」が
-    ///          追えなくなっていた。
     class WaterPlaneObject : public PrimitiveGameObject
         , public ICustomShaderProvider {
     public:
@@ -58,10 +53,7 @@ namespace CoreEngine
         // ===== Engine 側からのフレーム結線（唯一の入口）=====
 
         /// @brief このフレームの外部リソース結線をまとめて適用し、GPU へ転送する
-        /// @param binding WaterRenderFeature が組み立てた SRV / CBV と導出フラグ一式
-        /// @details 個別 setter を置き換える単一入口。SRV の有無からシェーダー側の
-        ///          参照フラグ（reflectionEnabled 等）を導出し、WaterFrameConstants を
-        ///          GPU へ 1 度だけ転送する。
+        /// @details 個別 setter を置き換える単一入口。SRV の有無からシェーダー側の参照フラグを導出する。
         void ApplyFrameBinding(const WaterFrameBinding& binding);
 
         // ===== simulation 層からの入力 =====
@@ -112,12 +104,8 @@ namespace CoreEngine
         void SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff);
 
         /// @brief 泡（whitecap）パラメータを設定する（FFTOcean 専用）
-        /// @param enabled        泡合成を行うか
         /// @param bias           発生しきい値（合成ヤコビアン detJ がこれを下回ると泡が立つ）
-        /// @param gain           しきい値からの立ち上がり勾配
-        /// @param opacity        泡レイヤの不透明度（白ベタ回避のため 1.0 未満を推奨）
-        /// @param cascadeWeights カスケード別の勾配寄与の重み（無重みは最小カスケードが支配して飽和する）
-        /// @param decaySeconds   泡の寿命 τ [s]（蓄積パスの指数減衰時間）
+        /// @param cascadeWeights カスケード別の勾配寄与の重み（無重みだと最小カスケードが支配して飽和する）
         /// @param windCoverageScale 白波被覆率の風速追従係数（Monahan 比。1.0 = 基準風速）
         void SetFoamParameters(
             bool enabled, float bias, float gain, float opacity,

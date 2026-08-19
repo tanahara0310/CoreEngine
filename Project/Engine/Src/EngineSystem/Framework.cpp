@@ -1,11 +1,78 @@
 #include "pch.h"
 #include "Framework.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
+#include "Startup/StartupSequence.h"
+#include "Startup/StartupProgress.h"
+#include "Startup/SplashScreen.h"
+#include "Graphics/Shader/Cache/ShaderCacheStore.h"
+#include "Graphics/Shader/Cache/ShaderBlobCache.h"
+#include "Graphics/Shader/Cache/ShaderManifest.h"
+#include "Utility/Profiler/CpuProfiler.h"
 
 
 namespace CoreEngine
 {
     Framework::~Framework() = default;
+
+    void Framework::BuildStartupTasks(StartupSequence& sequence)
+    {
+        sequence.Add("ゲーム初期化", [this] { Initialize(); });
+    }
+
+    void Framework::RunStartupSequence(StartupSequence& sequence, const EngineConfig& config)
+    {
+        // メインウィンドウはまだ非表示。この小さなウィンドウだけがメッセージを処理する
+        SplashScreen splash;
+        splash.Show(winApp_->GetInstance(), config.GetWindowTitleWide());
+
+        // 1 ステップが長い処理（シェーダのコンパイルなど）の内側からも再描画とメッセージ処理を走らせる。
+        // 無いとステップ 1 つで 5 秒を超えた時点でローディング画面まで「応答なし」になる。
+        // sink はローカルの splash を参照で掴むので、例外が飛んでも splash より先に必ず外す。
+        struct SinkGuard {
+            ~SinkGuard() { StartupProgress::ClearSink(); }
+        } sinkGuard;
+
+        StartupProgress::SetSink([&splash](const char* detail) {
+            splash.SetDetail(detail ? detail : "");
+            splash.Pump();
+            });
+
+        while (sequence.HasNext()) {
+            // 「これから実行するステップ」を先に表示してから走らせる
+            splash.SetStatus(sequence.GetProgress(), sequence.GetNextLabel());
+            splash.Pump(true);
+
+            // 非表示のメインウィンドウにもメッセージを溜めない
+            winApp_->ProcessMessage();
+
+            sequence.Step();
+        }
+
+        splash.SetStatus(1.0f, "起動完了");
+        splash.Pump(true);
+
+        // 各ステップの CPU 時間を残す。起動時間の回帰はこのログの差分で追う
+        sequence.LogSummary();
+
+        // シェーダキャッシュのヒット率。期待どおり無効化されたかはここで見る
+        ShaderCacheStore::GetInstance().LogSummary();
+
+        // この起動で実際に要求されたシェーダの一覧を残す。
+        // 次回のコールド起動はこれを使って並列に事前コンパイルできる
+        ShaderManifest::GetInstance().Save();
+
+        // 事前コンパイルが持っていた DXIL のメモリキャッシュを解放する。
+        // ゲーム中に同じシェーダを要求する経路は無いので、持ち続けても
+        // 数 MB を無駄に占有するだけ
+        ShaderBlobCache::GetInstance().Clear();
+        ShaderBlobCache::GetInstance().SetEnabled(false);
+
+        // ネストしたスコープ（CORE_CPU_SCOPE）まで含めたツリー。
+        // どこが「重い」でどこが「待ち」かはここで切り分ける
+        CpuProfiler::GetInstance().LogReport("起動シーケンス");
+
+        splash.Close();
+    }
 
     void Framework::Run()
     {
@@ -30,16 +97,26 @@ namespace CoreEngine
         // 初期化フェーズ
         // ──────────────────────────────────────────────────────────
 
-        // ウィンドウアプリケーションの生成・初期化
+        // ウィンドウアプリケーションの生成。
+        // この時点ではウィンドウを表示しない（WinApp::ShowMainWindow のコメント参照）
         winApp_ = std::make_unique<WinApp>();
         winApp_->Initialize(config.windowWidth, config.windowHeight, config.GetWindowTitleWide().c_str());
 
-        // エンジンシステムの生成・初期化
+        // エンジンとゲームの初期化を「1 ステップずつ進められる列」に組み立ててから回す。
+        // 一息に実行するとその間メッセージポンプが回らず「応答なし」になるため
         engineSystem_ = std::make_unique<EngineSystem>();
-        engineSystem_->Initialize(winApp_.get(), config);
 
-        // ゲーム固有の初期化（派生クラスで実装）
-        Initialize();
+        StartupSequence sequence;
+        engineSystem_->BuildStartupTasks(sequence, winApp_.get(), config,
+            // ゲーム固有のアセット先読み。エンジン側の都合の良い位置
+            //（ModelManager 生成直後・シェーダコンパイル前）へ差し込まれる
+            [this](StartupSequence& s) { BuildPreloadTasks(s); });
+        BuildStartupTasks(sequence);   // ゲーム固有の初期化（派生クラスで実装）
+
+        RunStartupSequence(sequence, config);
+
+        // 最初のフレームを描ける状態になったのでメインウィンドウを表示する
+        winApp_->ShowMainWindow();
 
         // ──────────────────────────────────────────────────────────
         // ゲームループ

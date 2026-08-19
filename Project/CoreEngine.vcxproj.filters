@@ -286,6 +286,27 @@
     <ClCompile Include="Engine\Src\EngineSystem\Framework.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Startup\SplashScreen.cpp">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Profiler\CpuProfiler.cpp">
+      <Filter>Engine\Src\Utility\Profiler</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheKey.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheStore.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Startup\StartupProgress.cpp">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Startup\StartupSequence.cpp">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetDatabase.cpp">
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClCompile>
@@ -739,6 +760,9 @@
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp">
+      <Filter>Engine\Src\Threading</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp">
       <Filter>Engine\Src\Threading</Filter>
     </ClCompile>
@@ -970,10 +994,25 @@
     <ClCompile Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.cpp">
       <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.cpp">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.cpp">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Audio\SoundManager.cpp">
       <Filter>Engine\Src\Audio</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.cpp">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Resource\ResourceFactory.cpp">
@@ -2025,6 +2064,9 @@
     <ClInclude Include="Engine\Src\Editor\Scene\UndoRedoHistory.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Threading\ThreadBudget.h">
+      <Filter>Engine\Src\Threading</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Threading\ThreadPool.h">
       <Filter>Engine\Src\Threading</Filter>
     </ClInclude>
@@ -2135,6 +2177,30 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h">
       <Filter>Engine\Src\EngineSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Startup\IStartupTask.h">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Profiler\CpuProfiler.h">
+      <Filter>Engine\Src\Utility\Profiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheKey.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheStore.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Startup\SplashScreen.h">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Startup\StartupProgress.h">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Startup\StartupSequence.h">
+      <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Common\Core\DepthStencilManager.h">
       <Filter>Engine\Src\Graphics\Common\Core</Filter>
@@ -2283,6 +2349,12 @@
     <ClInclude Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.h">
       <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.h">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.h">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Render.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
@@ -2325,7 +2397,16 @@
     <ClInclude Include="Engine\Src\Audio\SoundManager.h">
       <Filter>Engine\Src\Audio</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.h">
+      <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderPrewarm.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Resource\ResourceFactory.h">
@@ -2502,6 +2583,9 @@
     </Filter>
     <Filter Include="Engine\Src\EngineSystem\Settings">
       <UniqueIdentifier>{3D9F5A1C-8B47-4E62-9A0D-6C21E4B7F853}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\EngineSystem\Startup">
+      <UniqueIdentifier>{3CE3C496-316E-4D0E-9026-D8B9F2628BCA}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\EngineSystem\Subsystem">
       <UniqueIdentifier>{F7C65E0B-77E7-404D-AF2F-F65303EC33B6}</UniqueIdentifier>
@@ -2722,6 +2806,9 @@
     <Filter Include="Engine\Src\Graphics\Shader">
       <UniqueIdentifier>{249A8CEB-EC05-4796-9F5E-6D0441BFE8B1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Graphics\Shader\Cache">
+      <UniqueIdentifier>{7837FD8D-2387-4B4D-B348-1A785DF6CDAB}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Graphics\Texture">
       <UniqueIdentifier>{95DC8CAB-0112-41D4-9C1B-1D5308D6FCE6}</UniqueIdentifier>
     </Filter>
@@ -2832,6 +2919,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Logger">
       <UniqueIdentifier>{AE65377C-9875-46C2-ACEB-A5583C82DCD3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Profiler">
+      <UniqueIdentifier>{EB718086-7172-4261-9E65-2364207C9F96}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Random">
       <UniqueIdentifier>{CE13D7F5-57F4-4CDF-BDA2-D844D244356B}</UniqueIdentifier>

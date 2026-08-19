@@ -60,6 +60,7 @@ namespace CoreEngine
 
     }
 
+    // CVar ではなく実行時値（fadeAlpha_）を送る。演出中は毎フレーム変わるため
     void FadeEffect::UpdateConstantBuffer()
     {
         if (!mappedFadeParams_) {
@@ -76,6 +77,7 @@ namespace CoreEngine
         mappedFadeParams_->time      = timeAccumulator_;
     }
 
+    // フェード量は演出側（シーン遷移）が毎フレーム決めるので、ここで文脈から拾う
     void FadeEffect::PrepareFrame(const PostEffectFrameContext& ctx)
     {
         timeAccumulator_ += ctx.deltaTime;

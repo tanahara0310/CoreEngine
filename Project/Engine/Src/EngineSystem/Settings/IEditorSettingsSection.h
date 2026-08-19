@@ -3,6 +3,7 @@
 #include "externals/nlohmann/single_include/nlohmann/json_fwd.hpp"
 #include <cstdint>
 
+/// @file
 /// @brief エディタ設定自動保存のセクションインターフェース
 
 namespace CoreEngine

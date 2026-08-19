@@ -11,12 +11,7 @@ namespace CoreEngine
     class ResourceBarrierHelper {
     public:
         /// @brief リソースを targetState に遷移させる
-        /// @details currentState == targetState の場合はバリアをスキップする。
-        ///          バリア発行後に currentState を targetState に自動更新する。
-        /// @param cmdList      コマンドリスト
-        /// @param resource     対象リソース
-        /// @param currentState 現在のリソースステート（バリア後に自動更新される）
-        /// @param targetState  遷移先ステート
+        /// @param currentState 現在のリソースステート（同一ならスキップし、遷移後は自動更新される）
         static void Transition(
             ID3D12GraphicsCommandList* cmdList,
             ID3D12Resource* resource,

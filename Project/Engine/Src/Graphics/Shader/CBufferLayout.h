@@ -109,12 +109,9 @@ namespace CoreEngine::Cb {
     //========================================================================================
     // C++ の型 → HLSL の型の推論
     //
-    // レイアウト上、HLSL の float3 / int3 / uint3 はすべて「12 バイト・4B 境界・16B またぎ押し出し」で
-    // 同一なので、成分の型を書き分ける必要が無い。つまり C++ のメンバ型だけで HLSL 型が決まる。
-    // そのため CB_FIELD は型を書かせない。
-    //
-    // 推論できない型（float[16] を float4x4 として使う等）はコンパイルエラーになるので、
-    // その場合だけ CB_FIELD_AS で明示する。
+    // HLSL の float3 / int3 / uint3 はレイアウト上すべて同一（12B・4B 境界・16B またぎ押し出し）
+    // なので、C++ のメンバ型だけで HLSL 型が決まる。だから CB_FIELD は型を書かせない。
+    // 推論できない型（float[16] を float4x4 として使う等）は CB_FIELD_AS で明示する。
     //========================================================================================
 
     /// @brief 配列メンバの推論
@@ -272,12 +269,9 @@ namespace CoreEngine::Cb {
     }
 
     /// @brief C++ 構造体を HLSL の cbuffer レイアウトへ詰め替えて書き込む
-    /// @details パディング無しの素直な構造体のまま GPU へ送れる（手打ちパディングが不要になる）。
-    ///          代償はフィールド単位の memcpy なので、オブジェクトごとに毎フレーム何千回も書く
-    ///          バッファ（TransformationMatrix 等）は 1:1 レイアウト＋一括コピーのままにすること。
-    /// @param dst    マップ済みの定数バッファ先頭
-    /// @param src    C++ 構造体の先頭
-    /// @param fields フィールド表
+    /// @details パディング無しの素直な構造体のまま GPU へ送れる。
+    /// @note 代償はフィールド単位の memcpy。毎フレーム何千回も書くバッファは
+    ///       1:1 レイアウト＋一括コピーのままにすること。
     inline void Upload(void* dst, const void* src, const Field* fields, size_t count, bool tight = false) {
         auto* destination = static_cast<std::byte*>(dst);
         const auto* source = static_cast<const std::byte*>(src);
@@ -320,6 +314,7 @@ namespace CoreEngine::Cb {
     };
 
     template<size_t FieldIndex, size_t ActualSize, size_t ExpectedSize>
+    /// @brief フィールドのサイズ不一致を検出する（失敗時はテンプレート実引数に実値が出る）
     struct FieldSizeMismatch {
         static_assert(ActualSize == ExpectedSize,
             "[CBufferLayout] サイズ不一致。実引数は <フィールド番号, C++ の実サイズ, HLSL 型が要求するサイズ>。"
@@ -328,6 +323,7 @@ namespace CoreEngine::Cb {
     };
 
     template<size_t ActualSize, size_t ExpectedSize>
+    /// @brief 構造体全体のサイズ不一致を検出する（失敗時はテンプレート実引数に実値が出る）
     struct TotalSizeMismatch {
         static_assert(ActualSize == ExpectedSize,
             "[CBufferLayout] 全体サイズ不一致。実引数は <構造体の実サイズ, HLSL 側のサイズ>。"
@@ -336,6 +332,7 @@ namespace CoreEngine::Cb {
     };
 
     template<Report R>
+    /// @brief 3 種の不一致検査をまとめて回す入口
     struct Verify {
         static constexpr bool kOk =
             FieldOffsetMismatch<R.badFieldIndex, R.actualOffset, R.expectedOffset>::kOk &&
@@ -353,8 +350,6 @@ namespace Cb = CoreEngine::Cb;
 //========================================================================================
 
 /// @brief フィールド表の 1 行を作る（HLSL 型は C++ のメンバ型から推論する）
-/// @param TYPE   構造体の型
-/// @param MEMBER メンバ名
 #define CB_FIELD(TYPE, MEMBER)                                              \
     ::CoreEngine::Cb::Field{                                                \
         ::CoreEngine::Cb::HlslTypeOf<decltype(TYPE::MEMBER)>::kType,        \

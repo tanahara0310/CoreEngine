@@ -7,6 +7,8 @@
 namespace CoreEngine
 {
 
+// 環境マップから IBL 3 点セット（Irradiance / Prefiltered / BRDF LUT）を順に焼く。
+// 1 つでも失敗したら以降は作らず false を返す（中途半端な IBL で描くと色が破綻するため）
 bool IBLManager::Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator, const InitParams& params)
 {
     if (!dxCommon || !iblGenerator)

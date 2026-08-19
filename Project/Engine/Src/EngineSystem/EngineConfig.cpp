@@ -36,6 +36,7 @@ namespace CoreEngine
             j["debug"]["enableDebugLayer"] = config.enableDebugLayer;
             j["debug"]["enableGPUBasedValidation"] = config.enableGPUBasedValidation;
             j["debug"]["enablePixRuntime"] = config.enablePixRuntime;
+            j["shader"]["enableCache"] = config.enableShaderCache;
             j["descriptors"]["maxSRVDescriptors"] = config.maxSRVDescriptors;
             j["descriptors"]["maxRTVDescriptors"] = config.maxRTVDescriptors;
             j["descriptors"]["maxDSVDescriptors"] = config.maxDSVDescriptors;
@@ -68,6 +69,12 @@ namespace CoreEngine
             if (desc.contains("maxSRVDescriptors")) config.maxSRVDescriptors = desc["maxSRVDescriptors"].get<uint32_t>();
             if (desc.contains("maxRTVDescriptors")) config.maxRTVDescriptors = desc["maxRTVDescriptors"].get<uint32_t>();
             if (desc.contains("maxDSVDescriptors")) config.maxDSVDescriptors = desc["maxDSVDescriptors"].get<uint32_t>();
+        }
+
+        // シェーダ設定
+        if (j.contains("shader")) {
+            auto& s = j["shader"];
+            if (s.contains("enableCache")) config.enableShaderCache = s["enableCache"].get<bool>();
         }
 
         return config;

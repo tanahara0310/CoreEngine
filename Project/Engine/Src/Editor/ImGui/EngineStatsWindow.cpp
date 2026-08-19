@@ -85,6 +85,7 @@ namespace CoreEngine
             ImGuiTableFlags_BordersInnerH |
             ImGuiTableFlags_PadOuterX;
 
+    /// @brief バイト数を KB / MB / GB の読みやすい文字列にする
         const char* FormatBytes(uint64_t bytes, char* buf, size_t bufSize)
         {
             const double KB = 1024.0;

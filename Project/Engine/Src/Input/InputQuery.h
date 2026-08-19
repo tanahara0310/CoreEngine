@@ -33,26 +33,41 @@ namespace CoreEngine {
 
         // ─── キーボード直接アクセス ───────────────────────────────
 
+        /// @brief キーが押され続けているか
         bool IsKeyPressed(uint8_t dikCode) const;
+        /// @brief キーが押された瞬間か
         bool IsKeyTriggered(uint8_t dikCode) const;
+        /// @brief キーが離された瞬間か
         bool IsKeyReleased(uint8_t dikCode) const;
 
         // ─── マウス直接アクセス ───────────────────────────────────
 
+        /// @brief マウスボタンが押され続けているか
         bool IsMouseButtonPressed(MouseButton button) const;
+        /// @brief マウスボタンが押された瞬間か
         bool IsMouseButtonTriggered(MouseButton button) const;
+        /// @brief マウスボタンが離された瞬間か
         bool IsMouseButtonReleased(MouseButton button) const;
+        /// @brief 前フレームからのマウス X 移動量 [px]
         int  GetMouseDragX() const;
+        /// @brief 前フレームからのマウス Y 移動量 [px]
         int  GetMouseDragY() const;
+        /// @brief ホイールの移動量（1 ノッチ = 120）
         int  GetWheelDelta() const;
+        /// @brief カーソルのスクリーン座標
         POINT GetCursorPosition() const;
 
         // ─── ゲームパッド直接アクセス ─────────────────────────────
 
+        /// @brief ゲームパッドが接続されているか
         bool  IsGamepadConnected() const;
+        /// @brief 左スティックの傾き
         Stick GetLeftStick() const;
+        /// @brief 右スティックの傾き
         Stick GetRightStick() const;
+        /// @brief 左トリガーの踏み込み量（0.0〜1.0）
         float GetLeftTrigger() const;
+        /// @brief 右トリガーの踏み込み量（0.0〜1.0）
         float GetRightTrigger() const;
 
         // ─── キーコンフィグ用 ─────────────────────────────────────

@@ -7,6 +7,7 @@ namespace CoreEngine
     /// @brief FFT Spectrum のデバッグ評価を担当するヘルパー
     class FFTOceanSpectrumDebugHelper {
     public:
+        /// @brief 複素数（デバッグ表示用）
         struct ComplexValue {
             float real = 0.0f;
             float imag = 0.0f;

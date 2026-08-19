@@ -373,6 +373,8 @@ DescriptorHandle DescriptorManager::AllocateDSVHandle(const std::string& debugNa
 
 void DescriptorManager::Free(DescriptorHandle& handle)
 {
+    // 解放は「インデックスをフリーリストへ戻す」だけ。ヒープ自体は縮めない。
+    // GPU がまだ参照しているスロットを再利用しないよう、呼び出しは必ずフェンス完了後に行うこと
     if (!handle.IsValid()) {
         logger.Warnf(LogCategory::Graphics, LogSubCategory::Heap,
             "Free: 無効なハンドルを解放しようとしました（すでに解放済みか未確保）\n");

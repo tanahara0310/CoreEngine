@@ -40,12 +40,8 @@ namespace CoreEngine
     };
 
     /// @brief GpuTimestampProfiler の毎フレーム結果を貯めて統計と CSV を出す収集器
-    ///
-    /// @details 使い方:
-    ///   1. Start(warmupFrames, captureFrames)
-    ///   2. 毎フレーム Tick(profiler->GetResults(), cpuFrameMs, fps)
-    ///      （warmup 中のフレームは捨てられる。GPU クロックが上がりきる前の値を混ぜないため）
-    ///   3. HasResult() が true になったら GetSummaries() / ExportCsv()
+    /// @details Start() → 毎フレーム Tick() → HasResult() が true になったら GetSummaries() / ExportCsv()。
+    /// @note warmup 中のフレームは捨てる（GPU クロックが上がりきる前の値を混ぜないため）。
     class GpuTimingStatsCollector
     {
     public:
@@ -108,6 +104,7 @@ namespace CoreEngine
     private:
         enum class State : uint8_t { Idle, Warmup, Capturing, Finished };
 
+        /// @brief 1 スロット分の収集結果（キャプチャ期間の全フレームぶん）
         struct SlotSamples
         {
             std::string name;

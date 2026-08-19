@@ -517,10 +517,8 @@ namespace CoreEngine
         }
 
         // 水面オブジェクトが非表示のフレームは「水なし」として扱う。
-        // ここで regionValid=0 のゼロ値を publish しないと、RT コースティクスの
-        // ディスパッチと DeferredLighting の水中ライティング（直接光のコースティクス置換・
-        // アンビエントの Beer–Lambert 減衰）が動き続け、非表示のはずの水の光学効果
-        // （薄い青色）が床に乗り続ける。
+        // regionValid=0 を publish しないと RT コースティクスと水中ライティングが動き続け、
+        // 非表示のはずの水の光学効果（薄い青色）が床に乗り続ける。
         if (!waterPlane_->IsActive()) {
             if (surfaceModelProvider_) {
                 surfaceModelProvider_->ClearSurfaceData();

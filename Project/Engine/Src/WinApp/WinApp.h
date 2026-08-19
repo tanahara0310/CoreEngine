@@ -15,6 +15,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 namespace CoreEngine
 {
 
+    /// @brief メインウィンドウの生成・表示・メッセージ処理を担う
     class WinApp {
     public:
         // ウィンドウの大きさ（スタティック定数）
@@ -28,10 +29,13 @@ namespace CoreEngine
         static int32_t GetCurrentClientHeightStatic() { return currentClientHeightStatic_; }
 
         /// @brief 指定された幅、高さ、タイトルで初期化
-        /// @param width ウィンドウの幅
-        /// @param height ウィンドウの高さ
-        /// @param title ウィンドウのタイトル
+        /// @note ここではウィンドウを表示しない。表示は起動シーケンス完了後の ShowMainWindow()
         void Initialize(int32_t width, int32_t height, const wchar_t* title);
+
+        /// @brief メインウィンドウを表示する
+        /// @details 生成時はあえて非表示のままにしてある。表示してから初期化を続けると、
+        ///          メッセージポンプが回らない全画面ウィンドウが「応答なし」と判定されるため。
+        void ShowMainWindow();
 
         /// @brief メッセージ処理
         /// @return 終了ならtrue
@@ -99,6 +103,10 @@ namespace CoreEngine
 
         // リサイズコールバック
         std::function<void(int32_t, int32_t)> resizeCallback_;
+
+        // メインウィンドウを ShowMainWindow() で表示済みか。
+        // 起動シーケンス中は false で、この間 SetFullscreen は ShowWindow を呼ばない
+        bool isMainWindowShown_ = false;
 
         // 全画面表示の状態と、通常ウィンドウへ戻すための退避情報
         bool isFullscreen_ = false;

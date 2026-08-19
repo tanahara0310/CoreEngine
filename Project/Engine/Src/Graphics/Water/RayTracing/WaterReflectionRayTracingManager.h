@@ -18,6 +18,7 @@ namespace CoreEngine
     class DescriptorManager;
     class AccelerationStructureManager;
 
+    /// @brief RT 反射の設定
     struct WaterReflectionRayTracingSettings {
         float maxRayDistance = 2000.0f;
         float surfaceBias = 0.05f;
@@ -63,10 +64,14 @@ namespace CoreEngine
             UINT height,
             ViewID viewId = ViewID::GameView);
 
+        /// @brief 出力テクスチャを指定サイズで作り直す
         void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView);
 
+        /// @brief 反射出力テクスチャの SRV ハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetReflectionSRVHandle(ViewID viewId = ViewID::GameView) const;
+        /// @brief 反射出力テクスチャのリソース
         ID3D12Resource* GetReflectionResource(ViewID viewId = ViewID::GameView) const;
+        /// @brief 反射出力の現在ステートへの参照（バリア時に更新される）
         D3D12_RESOURCE_STATES& GetReflectionCurrentState(ViewID viewId = ViewID::GameView);
 
         void SetSettings(const WaterReflectionRayTracingSettings& settings) { settings_ = settings; }

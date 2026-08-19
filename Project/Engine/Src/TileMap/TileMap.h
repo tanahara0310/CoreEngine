@@ -19,12 +19,8 @@ namespace CoreEngine
     };
 
     /// @brief タイルマップデータの管理クラス
-    /// @details
-    ///  - 座標系: Camera2D 準拠（中央原点・Y軸上正）
-    ///  - マップ左上ワールド座標を origin_ で指定
-    ///  - タイルサイズはデフォルト 32px、実行時に変更可能
-    ///  - レイヤーを複数持てる（当たり判定 / 描画 を分離）
-    ///  - JSON 入出力対応
+    /// @details 座標系は Camera2D 準拠（中央原点・Y 軸上正）で、左上ワールド座標を origin_ に持つ。
+    ///          当たり判定用と描画用でレイヤーを分けられる。JSON 入出力対応。
     class TileMap
     {
     public:
@@ -33,10 +29,7 @@ namespace CoreEngine
         // ===== 初期化 =====
 
         /// @brief 指定サイズで空のタイルマップを生成
-        /// @param cols      列数
-        /// @param rows      行数
-        /// @param tileSize  タイル1辺のピクセルサイズ（デフォルト 32）
-        /// @param origin    マップ左上のワールド座標（Camera2D 中央原点系）
+        /// @param origin マップ左上のワールド座標（Camera2D 中央原点系）
         void Initialize(int cols, int rows,
             float tileSize = kDefaultTileSize,
             Vector2 origin = { 0.0f, 0.0f });
@@ -67,10 +60,7 @@ namespace CoreEngine
         // ===== タイルの読み書き =====
 
         /// @brief タイル値を設定
-        /// @param layerIndex レイヤーインデックス
-        /// @param col        列
-        /// @param row        行
-        /// @param tileId     タイルID（TileAttribute の値 or ユーザー定義）
+        /// @param tileId タイル ID（TileAttribute の値 or ユーザー定義）
         void SetTile(int layerIndex, int col, int row, uint8_t tileId);
 
         /// @brief タイル値を取得（範囲外は 0 を返す）

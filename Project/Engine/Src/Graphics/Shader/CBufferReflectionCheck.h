@@ -44,6 +44,7 @@ namespace CoreEngine::Cb {
 
     /// @brief 対応表へ登録する。フィールド表の隣に static inline で置く（CB_BIND_HLSL 経由）
     struct Registrar {
+        /// @brief 静的初期化時にバインド情報をレジストリへ登録する
         explicit Registrar(const HlslBinding& binding);
     };
 

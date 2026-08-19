@@ -4,11 +4,8 @@
 namespace CoreEngine {
 
     /// @brief ポストエフェクトが属するパイプライン段
-    /// @details チェーンは SceneHDR → Tonemap → PostTonemap の順に単調でなければならない。
-    ///          「光学現象・露出・グレーディングはトーンマップ前、記録と演出はトーンマップ後」
-    ///          という原則を型で表現し、並び順の事故を起動時に検出できるようにする。
-    ///          この規約は PostEffectManager::ValidateChain() が検証する。
-    ///          設計: Docs/Engine/Graphics/PostProcess/PostEffect_Refactoring_Plan.md
+    /// @details 「光学現象・露出・グレーディングはトーンマップ前、記録と演出は後」という原則を型で表す。
+    ///          単調性は PostEffectManager::ValidateChain() が検証する。
     enum class PostEffectStage : uint8_t {
         SceneHDR = 0,   ///< トーンマップ前。ブルーム・レンズフレア・色収差・口径食・グレーディング
         Tonemap,        ///< トーンマッパ本体。チェーン中ちょうど 1 つだけ存在する

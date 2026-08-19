@@ -80,11 +80,8 @@ namespace CoreEngine
     };
 
     /// @brief DXR レイトレーシングシャドウ
-    /// @details Stage 2c で共通基盤 RayTracingPassBase の上に載せ替えた。
-    ///          出力テクスチャ・ガード判定・DXR オブジェクト（State Object / Shader Table /
-    ///          グローバルルートシグネチャ）は基盤側が持つ。
-    ///          ここに残るのは「シャドウ固有」＝ RayGen / テンポラル / A-Trous の 3 ステージと、
-    ///          view × ライトごとの履歴有効フラグ・診断情報だけ。
+    /// @details 出力テクスチャ・ガード判定・DXR オブジェクトは基盤 RayTracingPassBase 側が持つ。
+    ///          ここに残るのは RayGen / テンポラル / A-Trous の 3 ステージと、view × ライトの状態だけ。
     class RayTracingShadowManager : public RayTracingPassBase {
     public:
         /// @brief ビュー識別子
@@ -165,13 +162,9 @@ namespace CoreEngine
         UINT GetTraceScale() const;
 
         /// @brief 中間バッファ（生マスク・履歴）を ImGui で表示することを要求する
-        /// @details Raw はパス終了時 UNORDERED_ACCESS、履歴テクスチャは
-        ///          NON_PIXEL_SHADER_RESOURCE で残るため、そのまま ImGui::Image に渡すと
-        ///          ピクセルシェーダから不正な状態で読むことになる。
-        ///          表示したいフレームに本関数を呼ぶと、PrepareDebugViews が
-        ///          PIXEL_SHADER_RESOURCE へ遷移させる。
-        /// @note 1 フレーム限りの要求。PrepareDebugViews が消費してクリアする
-        ///       （パネルを閉じたら自動的にバリアが消える）。
+        /// @details そのままでは UAV / NON_PIXEL_SHADER_RESOURCE のままなので、
+        ///          要求すると PrepareDebugViews が PIXEL_SHADER_RESOURCE へ遷移させる。
+        /// @note 1 フレーム限りの要求（PrepareDebugViews が消費してクリアする）
         void RequestDebugViewTransition() { debugViewRequested_ = true; }
 
         /// @brief RequestDebugViewTransition の要求を消費し、中間バッファを表示可能状態へ遷移させる
@@ -383,11 +376,9 @@ namespace CoreEngine
             TextureSlot sourceSlot);
 
         /// @brief コンピュートパイプライン（RS + PSO）をまとめて構築する共通ヘルパー
-        /// @param srvCount  連続する t0..t(srvCount-1) のディスクリプタテーブル数
+        /// @param srvCount 連続する t0..t(srvCount-1) のディスクリプタテーブル数
         /// @param constantDwordCount b0 のルート定数の dword 数
-        /// @details デノイズ / テンポラル / 解決の 3 本が「SRV テーブル n 個 + UAV テーブル 1 個
-        ///          + ルート定数 1 個」という完全に同じ形をしていたので 1 か所へまとめた。
-        ///          ルートパラメータ番号は t0..=0..n-1 / u0=n / b0=n+1 で固定される。
+        /// @note ルートパラメータ番号は t0..=0..n-1 / u0=n / b0=n+1 で固定される
         bool CreateComputePass(
             const wchar_t* shaderPath,
             UINT srvCount,

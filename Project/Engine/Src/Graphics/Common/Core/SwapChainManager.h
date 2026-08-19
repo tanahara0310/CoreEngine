@@ -17,11 +17,7 @@ namespace CoreEngine
 class SwapChainManager {
 public:
     /// @brief 初期化
-    /// @param device D3D12デバイス
-    /// @param dxgiFactory DXGIファクトリ
-    /// @param commandQueue コマンドキュー
-    /// @param descriptorManager ディスクリプタマネージャー（RTVスロット確保に使用）
-    /// @param winApp ウィンドウアプリケーション
+    /// @param descriptorManager RTV スロットの確保に使う
     void Initialize(ID3D12Device* device, IDXGIFactory7* dxgiFactory, ID3D12CommandQueue* commandQueue,
         DescriptorManager* descriptorManager, CoreEngine::WinApp* winApp);
 

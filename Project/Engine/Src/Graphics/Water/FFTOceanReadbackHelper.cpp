@@ -20,6 +20,7 @@ namespace CoreEngine
             float w = 0.0f;
         };
 
+        /// @brief 半精度浮動小数（IEEE 754 binary16）を float へ展開する
         float HalfToFloat(uint16_t value)
         {
             const uint32_t sign = (static_cast<uint32_t>(value) >> 15) & 0x1;
@@ -52,6 +53,7 @@ namespace CoreEngine
             return result;
         }
 
+        /// @brief FLOAT16x4 テクスチャの 1 テクセルを読む
         Float4DebugValue LoadHalf4(const uint8_t* baseAddress, uint32_t x, uint32_t y, uint32_t rowPitch)
         {
             const uint8_t* texelAddress = baseAddress + static_cast<size_t>(y) * rowPitch + static_cast<size_t>(x) * sizeof(uint16_t) * 4;
@@ -64,6 +66,7 @@ namespace CoreEngine
             return value;
         }
 
+        /// @brief FLOAT32x4 テクスチャの 1 テクセルを読む
         Float4DebugValue LoadFloat4(const uint8_t* baseAddress, uint32_t x, uint32_t y, uint32_t rowPitch)
         {
             const uint8_t* texelAddress = baseAddress + static_cast<size_t>(y) * rowPitch + static_cast<size_t>(x) * sizeof(float) * 4;
@@ -134,6 +137,7 @@ namespace CoreEngine
 
     bool FFTOceanReadbackHelper::TryLogSurfaceReadback(const SurfaceReadbackRequest& request)
     {
+        // 診断ログ専用。Map に失敗しても描画は続けたいので警告だけ出して false を返す
         if (!request.displacementReadbackBuffer || !request.normalReadbackBuffer || request.resolution == 0) {
             return false;
         }
@@ -214,6 +218,8 @@ namespace CoreEngine
 
     bool FFTOceanReadbackHelper::TryLogSpectrumReadback(const SpectrumReadbackRequest& request)
     {
+        // 診断ログ専用。Map に失敗しても呼び出し側の描画は続けたいので、
+        // 例外にせず警告を出して false を返す
         if (!request.spectrumAReadbackBuffer || !request.spectrumBReadbackBuffer || request.resolution == 0) {
             return false;
         }
@@ -243,6 +249,7 @@ namespace CoreEngine
             return false;
         }
 
+        // 中心テクセル（k=0 付近）は値の目視確認に使うので個別に取り出す
         const uint32_t centerX = request.resolution / 2;
         const uint32_t centerY = request.resolution / 2;
         const Float4DebugValue centerA = LoadFloat4(
@@ -266,6 +273,8 @@ namespace CoreEngine
         float maxAbsB3 = 0.0f;
         const uint8_t* spectrumABase = static_cast<const uint8_t*>(spectrumAMapped);
         const uint8_t* spectrumBBase = static_cast<const uint8_t*>(spectrumBMapped);
+        // 全テクセルを走査して成分ごとの最大振幅を取る。
+        // 中心値だけだと「スペクトルが全部ゼロ」と「中心だけゼロ」を区別できない
         for (uint32_t y = 0; y < request.resolution; ++y) {
             for (uint32_t x = 0; x < request.resolution; ++x) {
                 const Float4DebugValue valueA = LoadFloat4(spectrumABase, x, y, request.spectrumALayout.Footprint.RowPitch);

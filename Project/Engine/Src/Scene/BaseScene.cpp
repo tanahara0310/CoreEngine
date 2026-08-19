@@ -142,12 +142,10 @@ namespace CoreEngine
             return;
         }
 
-        // 描画に使うビューは EngineSystem がフレーム先頭で確定済み（FrameViews）。
-        // 以前はここでアクティブカメラを一時的に差し替えて描き、元へ戻していたが、
-        // その間だけ「アクティブカメラ」の意味が変わるため、ギズモ／ピッキングが
-        // 描画とは別のカメラを見てズレる原因になっていた。
-        // RenderGraph を経由しないレガシー描画経路。ここは RenderContext が無いため、
-        // このシーン描画自体がコマンドリストの供給点になる（パス側は context.cmdList を使う）。
+        // RenderGraph を経由しないレガシー描画経路。
+        // 描画に使うビューは EngineSystem がフレーム先頭で確定済み（FrameViews）なので、
+        // ここでアクティブカメラを差し替えない（ギズモ／ピッキングが別カメラを見てズレるため）。
+        // RenderContext が無いので、このシーン描画自体がコマンドリストの供給点になる。
         renderManager->SetDebugLineRenderingEnabled(true);
         renderManager->DrawGeometryPass(dxCommon->GetCommandList());
     }

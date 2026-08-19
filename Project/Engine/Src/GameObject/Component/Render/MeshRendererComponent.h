@@ -136,7 +136,9 @@ private:
     std::optional<RenderPassType> passTypeOverride_;
 
     ICustomShaderProvider* customShaderProvider_ = nullptr;
-    std::unique_ptr<CustomShaderPipeline> customShaderPipeline_;
+    // CustomShaderPipelineCache から得る共有パイプライン
+    // （同一シェーダー＋同一設定の他コンポーネントと共有される）
+    std::shared_ptr<CustomShaderPipeline> customShaderPipeline_;
 
     mutable TransformComponent* transform_ = nullptr;
 };
