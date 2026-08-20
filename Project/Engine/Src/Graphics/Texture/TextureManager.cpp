@@ -359,9 +359,14 @@ namespace CoreEngine
         EnsureThreadPool();
 
         // ワーカースレッドで Load を実行し、結果を future で返す。
+        Logger& log = Logger::GetInstance();
         std::string pathCopy = filePath;
         auto future = threadPool_->Submit(
-            "Texture: " + std::filesystem::path(pathCopy).filename().string(),
+            // ラベル生成でも UTF-8 の文字列を path へ直接渡さない。
+            // std::filesystem::path(std::string) は ANSI コードページ解釈なので、
+            // 日本語を含むパスでは変換に失敗して例外が飛ぶ（Submit の引数評価中に
+            // 投げるためラムダ側の try/catch にも掛からず、起動ごと落ちる）
+            "Texture: " + log.PathToUtf8(log.Utf8ToPath(pathCopy).filename()),
             [this, pathCopy, colorSpace]() -> LoadedTexture {
                 return Load(pathCopy, colorSpace);
             });

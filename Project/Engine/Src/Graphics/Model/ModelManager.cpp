@@ -282,12 +282,15 @@ namespace CoreEngine
 
         EnsureThreadPool();
 
+        Logger& log = Logger::GetInstance();
         std::lock_guard<std::mutex> lock(preloadMutex_);
         preloadFutures_.reserve(preloadFutures_.size() + filePaths.size());
 
         for (const auto& path : filePaths) {
             preloadFutures_.push_back(threadPool_->Submit(
-                "Model: " + std::filesystem::path(path).filename().string(),
+                // path は UTF-8。std::filesystem::path(std::string) は ANSI コードページ
+                // 解釈なので、日本語を含むパスを渡すと変換に失敗して例外が飛ぶ
+                "Model: " + log.PathToUtf8(log.Utf8ToPath(path).filename()),
                 [this, path]() {
                 // 例外はここで止める。future に載せて後で get() の場所まで運ぶと、
                 // 起動シーケンスと無関係な地点で飛んで原因が分からなくなる。
