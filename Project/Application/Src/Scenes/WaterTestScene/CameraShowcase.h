@@ -16,6 +16,8 @@ namespace CoreEngine {
 ///          どの高さを選んでも一長一短になる。複数のカットを回すことで、それぞれの構図の良いところ
 ///          （浅瀬のコースティクス／外洋のうねり／俯瞰の島々）だけを見せる。
 ///          カメラの切り替えは必ず完全暗転中に行うため、視点がワープする瞬間は画に出ない。
+///          演出はリリース（ゲーム視点）カメラのためのものなので、デバッグ（エディタ）視点へ
+///          切り替えている間はフェードを畳んで進行も止める。リリースカメラへ戻すと続きから再開する。
 class CameraShowcase {
 public:
     /// @brief 1 カット分の構図
@@ -29,10 +31,17 @@ public:
     /// @brief 構図をカメラへ適用する処理（シーン側が BaseScene の API を呼ぶ）
     using ApplyShotFunc = std::function<void(const Shot&)>;
 
+    /// @brief リリース（ゲーム視点）カメラで覗いているかを返す処理
+    /// @details カメラの役割を持つのは CameraManager（BaseScene が所有）なので、
+    ///          この演出クラスからは直接引かずにシーン側から渡してもらう。
+    using IsReleaseCameraActiveFunc = std::function<bool()>;
+
     /// @param engine    FadeEffect（ポストエフェクト）を引くために使う
     /// @param shots     巡回する構図（空なら何もしない）
     /// @param applyShot 構図の適用処理
-    void Initialize(CoreEngine::EngineSystem* engine, std::vector<Shot> shots, ApplyShotFunc applyShot);
+    /// @param isReleaseCameraActive リリースカメラで覗いているかの判定（未設定なら常に有効として扱う）
+    void Initialize(CoreEngine::EngineSystem* engine, std::vector<Shot> shots, ApplyShotFunc applyShot,
+        IsReleaseCameraActiveFunc isReleaseCameraActive = {});
 
     /// @brief 毎フレーム更新（フェード進行とカット切り替え）
     void Update(float deltaTime);
@@ -53,11 +62,19 @@ private:
     void ApplyCurrentShot();
     void ApplyFadeAlpha(float alpha);
 
+    /// @brief 今の phase_ / timer_ が示すフェードの濃さ
+    /// @details 中断から復帰したときに、止めた時点の濃さへ戻すために使う
+    float CurrentPhaseAlpha() const;
+
+    /// @brief リリースカメラで覗いているか（判定が未設定なら true）
+    bool IsReleaseCameraActive() const;
+
     CoreEngine::EngineSystem* engine_ = nullptr;
     CoreEngine::FadeEffect* fadeEffect_ = nullptr;
 
     std::vector<Shot> shots_{};
     ApplyShotFunc applyShot_{};
+    IsReleaseCameraActiveFunc isReleaseCameraActive_{};
 
     std::size_t currentIndex_ = 0;
     Phase phase_ = Phase::FadeIn;
@@ -65,4 +82,7 @@ private:
 
     /// 直前フレームで演出が有効だったか（CVar で切ったときにフェードを畳むため）
     bool wasEnabled_ = true;
+
+    /// デバッグカメラへ切り替えたことで演出を止めているか（phase_ / timer_ は保持する）
+    bool suspended_ = false;
 };

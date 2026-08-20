@@ -28,17 +28,20 @@ namespace {
         "カットの切れ目で完全暗転を保つ時間 [秒]", CVarRange{ 0.0f, 5.0f } };
 }
 
-void CameraShowcase::Initialize(EngineSystem* engine, std::vector<Shot> shots, ApplyShotFunc applyShot)
+void CameraShowcase::Initialize(EngineSystem* engine, std::vector<Shot> shots, ApplyShotFunc applyShot,
+    IsReleaseCameraActiveFunc isReleaseCameraActive)
 {
     engine_ = engine;
     shots_ = std::move(shots);
     applyShot_ = std::move(applyShot);
+    isReleaseCameraActive_ = std::move(isReleaseCameraActive);
     currentIndex_ = 0;
     timer_ = 0.0f;
     // 起動直後は黒から明ける。1 カット目もフェードインで始めることで、
     // ループ中のどのカットとも同じ入り方になる
     phase_ = Phase::FadeIn;
     wasEnabled_ = cvEnabled.Get();
+    suspended_ = !IsReleaseCameraActive();
 
     if (auto* postEffectManager = engine_ ? engine_->GetService<PostEffectManager>() : nullptr) {
         fadeEffect_ = postEffectManager->GetEffect<FadeEffect>(PostEffectNames::FadeEffect);
@@ -48,7 +51,8 @@ void CameraShowcase::Initialize(EngineSystem* engine, std::vector<Shot> shots, A
     }
 
     ApplyCurrentShot();
-    ApplyFadeAlpha(1.0f);
+    // デバッグ視点で開始した場合まで黒を置くと、エディタの画が理由もなく暗転する
+    ApplyFadeAlpha(suspended_ ? 0.0f : 1.0f);
 }
 
 void CameraShowcase::Update(float deltaTime)
@@ -70,6 +74,22 @@ void CameraShowcase::Update(float deltaTime)
         phase_ = Phase::FadeIn;
         timer_ = 0.0f;
         wasEnabled_ = true;
+    }
+
+    // デバッグ（エディタ）視点で覗いている間は演出を止める。
+    // フェードはリリースカメラの見せ方であって、自由に見回している視界を暗くする理由がない。
+    // phase_ / timer_ には手を付けないので、リリースカメラへ戻せば止めた続きから再開する。
+    if (!IsReleaseCameraActive()) {
+        if (!suspended_) {
+            ApplyFadeAlpha(0.0f);
+            suspended_ = true;
+        }
+        return;
+    }
+    if (suspended_) {
+        // 中断のあいだ畳んでいたフェードを、止めた時点の濃さへ戻してから進行を再開する
+        suspended_ = false;
+        ApplyFadeAlpha(CurrentPhaseAlpha());
     }
 
     const float fadeDuration = std::max(cvFadeSeconds.Get(), 0.01f);
@@ -134,6 +154,8 @@ void CameraShowcase::Shutdown(bool keepFade)
     fadeEffect_ = nullptr;
     engine_ = nullptr;
     applyShot_ = nullptr;
+    isReleaseCameraActive_ = nullptr;
+    suspended_ = false;
     shots_.clear();
 }
 
@@ -154,4 +176,26 @@ void CameraShowcase::ApplyFadeAlpha(float alpha)
     const bool needsFade = alpha > 0.001f;
     fadeEffect_->SetEnabled(needsFade);
     fadeEffect_->SetFadeAlpha(alpha);
+}
+
+float CameraShowcase::CurrentPhaseAlpha() const
+{
+    const float fadeDuration = std::max(cvFadeSeconds.Get(), 0.01f);
+    switch (phase_) {
+    case Phase::FadeIn:
+        return 1.0f - std::clamp(timer_ / fadeDuration, 0.0f, 1.0f);
+    case Phase::FadeOut:
+        return std::clamp(timer_ / fadeDuration, 0.0f, 1.0f);
+    case Phase::Black:
+        return 1.0f;
+    case Phase::Hold:
+    default:
+        return 0.0f;
+    }
+}
+
+bool CameraShowcase::IsReleaseCameraActive() const
+{
+    // 判定が渡されていないシーンでは、従来どおり常に演出を回す
+    return !isReleaseCameraActive_ || isReleaseCameraActive_();
 }

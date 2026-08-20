@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WaterTestScene.h"
 
+#include "Camera/CameraManager.h"
 #include "Graphics/Water/Render/WaterRenderFeature.h"
 #include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
@@ -80,7 +81,10 @@ void WaterTestScene::OnInitialize() {
         [this](const CameraShowcase::Shot& shot) {
             SetReleaseCameraTransform(shot.translate, shot.rotate);
             SetReleaseCameraLens(shot.fovDegrees, shot.farClip);
-        });
+        },
+        // デバッグ（エディタ）カメラで覗いている間は演出を止めるための判定。
+        // フェードも構図の巡回もリリースカメラの見せ方なので、視点を借りている間は動かさない。
+        [this] { return cameraManager_ && !cameraManager_->IsUsingSceneCamera(); });
 }
 
 void WaterTestScene::OnUpdate() {
