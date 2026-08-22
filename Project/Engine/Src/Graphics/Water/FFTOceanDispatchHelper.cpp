@@ -10,7 +10,7 @@ namespace CoreEngine
         FFTOceanPingPong& spectrumA,
         FFTOceanPingPong& spectrumB,
         CustomShaderPipeline& evolutionPipeline,
-        D3D12_GPU_DESCRIPTOR_HANDLE spectrumSrvHandle,
+        const DescriptorHandle& spectrumSrvHandle,
         D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
         uint32_t resolution)
     {
@@ -28,17 +28,17 @@ namespace CoreEngine
 
         const int spectrumSlot = evolutionPipeline.GetComputeRootParamIndex("gSpectrumSamples");
         if (spectrumSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumSlot), spectrumSrvHandle);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumSlot), spectrumSrvHandle.gpuHandle);
         }
 
         const int spectrumAOutputSlot = evolutionPipeline.GetComputeRootParamIndex("gHeightDisplacementXOutput");
         if (spectrumAOutputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumAOutputSlot), spectrumA[0].uav);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumAOutputSlot), spectrumA[0].uav.gpuHandle);
         }
 
         const int spectrumBOutputSlot = evolutionPipeline.GetComputeRootParamIndex("gDisplacementZOutput");
         if (spectrumBOutputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBOutputSlot), spectrumB[0].uav);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBOutputSlot), spectrumB[0].uav.gpuHandle);
         }
 
         const int constantsSlot = evolutionPipeline.GetComputeRootParamIndex("FFTOceanSimulationConstants");
@@ -72,12 +72,12 @@ namespace CoreEngine
 
         const int inputSlot = pipeline.GetComputeRootParamIndex("gInputSpectrum");
         if (inputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(inputSlot), input.srv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(inputSlot), input.srv.gpuHandle);
         }
 
         const int outputSlot = pipeline.GetComputeRootParamIndex("gOutputSpectrum");
         if (outputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), output.uav);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), output.uav.gpuHandle);
         }
 
         const int constantsSlot = pipeline.GetComputeRootParamIndex("FFTOceanIFFTConstants");
@@ -112,12 +112,12 @@ namespace CoreEngine
 
         const int spectrumASlot = finalizePipeline.GetComputeRootParamIndex("gHeightDisplacementXSpectrum");
         if (spectrumASlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumASlot), spectrumA.srv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumASlot), spectrumA.srv.gpuHandle);
         }
 
         const int spectrumBSlot = finalizePipeline.GetComputeRootParamIndex("gDisplacementZSpectrum");
         if (spectrumBSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBSlot), spectrumB.srv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBSlot), spectrumB.srv.gpuHandle);
         }
 
         const int displacementOutputSlot = finalizePipeline.GetComputeRootParamIndex("gDisplacementOutput");

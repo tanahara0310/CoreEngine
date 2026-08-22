@@ -21,7 +21,7 @@ namespace CoreEngine
     class CommandQueue;
     class CommandContext;
     class DeferredReleaseQueue;
-    class DescriptorManager;
+    class DescriptorAllocator;
     class SwapChainManager;
     class DepthStencilManager;
     class UploadContext;
@@ -112,7 +112,7 @@ namespace CoreEngine
         const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTVHandle(UINT index) const;
 
         // ── ディスクリプタ ──────────────────────────────────────
-        DescriptorManager* GetDescriptorManager() const;
+        DescriptorAllocator* GetDescriptorAllocator() const;
         ID3D12DescriptorHeap* GetSRVHeap() const;
         ID3D12DescriptorHeap* GetDSVHeap() const;
 
@@ -137,7 +137,7 @@ namespace CoreEngine
         std::unique_ptr<FrameSync> frameSync_;
         std::unique_ptr<CommandContext> commandContext_;
         std::unique_ptr<DeferredReleaseQueue> deferredRelease_;
-        std::unique_ptr<DescriptorManager> descriptorManager_;
+        std::unique_ptr<DescriptorAllocator> descriptorAllocator_;
         std::unique_ptr<SwapChainManager> swapChainManager_;
         std::unique_ptr<DepthStencilManager> depthStencilManager_;
         std::unique_ptr<UploadContext> uploadContext_;

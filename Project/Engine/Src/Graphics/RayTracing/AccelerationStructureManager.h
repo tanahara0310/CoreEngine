@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include <vector>
 #include <cstdint>
@@ -8,7 +9,7 @@
 
 namespace CoreEngine
 {
-    class DescriptorManager;
+    class DescriptorAllocator;
     class ModelResource;
     class DeferredReleaseQueue;
 
@@ -49,7 +50,7 @@ namespace CoreEngine
 
         /// @brief 初期化（DXR サポート確認を含む）
         /// @return DXR 非対応の場合 false
-        bool Initialize(ID3D12Device* device, DescriptorManager* descriptorManager);
+        bool Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
 
         /// @brief BLAS を構築して登録する
         /// @return BLAS インデックス（BuildTLAS の InstanceDesc::blasIndex で使う）
@@ -64,7 +65,7 @@ namespace CoreEngine
         bool BuildBLASFromModelResource(ID3D12GraphicsCommandList* cmdList, ModelResource* resource);
 
         /// @brief TLAS の SRV GPU ハンドルを取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetTLASSRVHandle() const { return tlasSRVHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetTLASSRVHandle() const { return tlasSRVDescriptor_.gpuHandle; }
 
         /// @brief DXR がサポートされているか
         bool IsSupported() const { return isSupported_; }
@@ -112,7 +113,7 @@ namespace CoreEngine
         void EnsureScratchBuffer(UINT64 requiredSize);
 
         Microsoft::WRL::ComPtr<ID3D12Device5> device5_;
-        DescriptorManager* descriptorManager_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
 
         /// @brief BLAS 1 本分の GPU リソース
         struct BLASEntry {
@@ -124,8 +125,7 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> tlasResult_;
         Microsoft::WRL::ComPtr<ID3D12Resource> tlasInstanceDescBuffer_;
         Microsoft::WRL::ComPtr<ID3D12Resource> tlasScratch_;
-        D3D12_GPU_DESCRIPTOR_HANDLE tlasSRVHandle_{};
-        D3D12_CPU_DESCRIPTOR_HANDLE tlasSRVCpuHandle_{};
+        DescriptorHandle tlasSRVDescriptor_{};
 
         // BLAS 構築用スクラッチ（再利用）
         Microsoft::WRL::ComPtr<ID3D12Resource> blasScratch_;

@@ -81,11 +81,17 @@ namespace CoreEngine
             return;
         }
 
-        // シェーダ可視ヒープはフレーム先頭で 1 回バインドすれば足りる。
-        // （各パスが個別に SetDescriptorHeaps を呼ぶのは Phase 3 で撤去する）
-        if (srvHeap) {
-            ID3D12DescriptorHeap* heaps[] = { srvHeap };
-            list_->SetDescriptorHeaps(1, heaps);
+        // シェーダ可視ヒープはフレーム先頭で 1 回バインドすれば足りる
+        // （各パスが個別に SetDescriptorHeaps を呼ぶ必要はない）
+        BindDescriptorHeap(srvHeap);
+    }
+
+    void CommandContext::BindDescriptorHeap(ID3D12DescriptorHeap* srvHeap)
+    {
+        if (!list_ || !srvHeap) {
+            return;
         }
+        ID3D12DescriptorHeap* heaps[] = { srvHeap };
+        list_->SetDescriptorHeaps(1, heaps);
     }
 }

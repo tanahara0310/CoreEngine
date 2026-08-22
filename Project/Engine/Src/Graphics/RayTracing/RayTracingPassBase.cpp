@@ -4,7 +4,7 @@
 #include <cstring>
 
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Utility/Logger/Logger.h"
@@ -14,7 +14,7 @@ namespace CoreEngine
     // 派生から呼ぶ共通初期化。デバイス・出力ビュー集合・デバッグ名だけを受け取る
     bool RayTracingPassBase::InitializeBase(
         GraphicsCore* dxCommon,
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         AccelerationStructureManager* asMgr,
         const char* ownerName,
         const char* outputDebugName)
@@ -23,10 +23,10 @@ namespace CoreEngine
         outputDebugName_ = outputDebugName ? outputDebugName : "RTOutput";
 
         dxCommon_ = dxCommon;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
         asMgr_ = asMgr;
 
-        if (!dxCommon_ || !descriptorManager_ || !asMgr_ || !asMgr_->IsSupported()) {
+        if (!dxCommon_ || !descriptorAllocator_ || !asMgr_ || !asMgr_->IsSupported()) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
@@ -106,7 +106,7 @@ namespace CoreEngine
 
         return outputViews_.EnsureTexture(
             dxCommon_,
-            descriptorManager_,
+            descriptorAllocator_,
             width,
             height,
             viewIndex,

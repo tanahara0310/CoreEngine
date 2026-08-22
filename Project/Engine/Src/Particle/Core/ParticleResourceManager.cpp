@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "ParticleResourceManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Particle/ParticleSystem.h" // ParticleForGPU定義のため
 
@@ -40,12 +40,7 @@ void ParticleResourceManager::CreateSRV(uint32_t maxInstances) {
     srvDesc.Buffer.StructureByteStride = sizeof(ParticleForGPU);
 
     // SRVの作成
-    dxCommon_->GetDescriptorManager()->CreateSRV(
-        instancingResource_.Get(),
-        srvDesc,
-        srvHandleCPU_,
-        srvHandleGPU_,
-        "ParticleInstancingSRV"
-    );
+    srvHandleGPU_ = dxCommon_->GetDescriptorAllocator()->CreateSRV(
+        instancingResource_.Get(), srvDesc, "ParticleInstancingSRV");
 }
 }

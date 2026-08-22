@@ -57,7 +57,7 @@ namespace CoreEngine
                     renderContext_.dxCommon->GetDevice(),
                     *resource_->GetSkeleton(),
                     modelData,
-                    renderContext_.dxCommon->GetDescriptorManager(),
+                    renderContext_.dxCommon->GetDescriptorAllocator(),
                     resource_->GetVertexBuffer(),
                     resource_->GetVertexCount()
                 );

@@ -4,10 +4,12 @@
 #include <wrl.h>
 #include <cstdint>
 
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+
 namespace CoreEngine
 {
 // 前方宣言
-class DescriptorManager;
+class DescriptorAllocator;
 
 /// @brief 深度ステンシル管理クラス
 /// リソース管理・バリア遷移・クリア・SRVアクセスをすべて一か所で担う
@@ -18,10 +20,10 @@ public:
 
     /// @brief 初期化
     /// @param device D3D12デバイス
-    /// @param descriptorManager ディスクリプタマネージャー
+    /// @param descriptorAllocator ディスクリプタマネージャー
     /// @param width 幅
     /// @param height 高さ
-    void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager,
+    void Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator,
         std::int32_t width, std::int32_t height);
 
     /// @brief リソースのみ再作成（DSVは再利用）
@@ -41,9 +43,9 @@ public:
     // アクセッサ
     // ---------------------------------------------------------------
     ID3D12Resource* GetDepthStencilResource() const { return depthStencilResource_.Get(); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const { return dsvHandle_; }
+    D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const { return dsvDescriptor_.cpuHandle; }
     /// @brief 深度テクスチャの SRV GPU ハンドルを返す（シェーダーからサンプリングするために使用）
-    D3D12_GPU_DESCRIPTOR_HANDLE GetDepthSRVHandle() const { return depthSRVGpuHandle_; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetDepthSRVHandle() const { return depthSRVDescriptor_.gpuHandle; }
     /// @brief 現在のリソースステートへの参照を返す（ResourceBarrierHelper で使用）
     D3D12_RESOURCE_STATES& GetCurrentState() { return currentState_; }
 
@@ -64,25 +66,20 @@ private:
     // 深度ステンシルリソース
     Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_;
 
-    // DSVハンドル
-    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle_{};
-
-    // 深度 SRV ハンドル（Water Depth Fade 等でシェーダーからサンプリングするために使用）
-    D3D12_CPU_DESCRIPTOR_HANDLE depthSRVCpuHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE depthSRVGpuHandle_{};
+    // DSV / SRV スロット。DescriptorHandle が「どのスロットを所有しているか」まで表すので、
+    // CPU/GPU ハンドルとインデックスを別々に持つ必要がない（旧実装は 5 変数に分かれていた）。
+    DescriptorHandle dsvDescriptor_{};
+    // 深度 SRV（Water Depth Fade 等でシェーダーからサンプリングするために使用）
+    DescriptorHandle depthSRVDescriptor_{};
 
     // リソースステート追跟（ResourceBarrierHelper で利用）
     D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
     // 初期化パラメータ
     ID3D12Device* device_ = nullptr;
-    DescriptorManager* descriptorManager_ = nullptr;
+    DescriptorAllocator* descriptorAllocator_ = nullptr;
     std::int32_t width_ = 0;
     std::int32_t height_ = 0;
-
-    // フリーリスト解放用スロットインデックス（UINT_MAX = 未割り当て）
-    UINT dsvSlotIndex_ = UINT_MAX;
-    UINT depthSRVSlotIndex_ = UINT_MAX;
 
     // 初回初期化フラグ
     bool isInitialized_ = false;

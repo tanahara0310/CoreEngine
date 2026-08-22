@@ -34,6 +34,13 @@ namespace CoreEngine
         /// @param srvHeap フレーム先頭で 1 回だけバインドするシェーダ可視ヒープ（nullptr 可）
         void Begin(uint32_t frameIndex, ID3D12DescriptorHeap* srvHeap);
 
+        /// @brief シェーダ可視ヒープを今のリストへバインドする
+        /// @details **フレーム 0 用**。Initialize 直後のコマンドリストは Begin() を通らずに
+        ///          そのまま記録されるため、ここで一度バインドしておかないと
+        ///          最初のフレームだけディスクリプタヒープ未設定のまま
+        ///          SetGraphicsRootDescriptorTable が呼ばれる（D3D12 ERROR）。
+        void BindDescriptorHeap(ID3D12DescriptorHeap* srvHeap);
+
     private:
         std::array<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>, kMaxFramesInFlight> allocators_{};
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> list_;

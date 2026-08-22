@@ -15,7 +15,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
-    class DescriptorManager;
+    class DescriptorAllocator;
     class AccelerationStructureManager;
 
     /// @brief RT コースティクスの設定
@@ -58,7 +58,7 @@ namespace CoreEngine
 
         bool Initialize(
             GraphicsCore* dxCommon,
-            DescriptorManager* descriptorManager,
+            DescriptorAllocator* descriptorAllocator,
             AccelerationStructureManager* asMgr);
 
         /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する

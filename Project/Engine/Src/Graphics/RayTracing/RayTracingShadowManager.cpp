@@ -3,7 +3,7 @@
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "AccelerationStructureManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/CBufferLayout.h"
@@ -357,13 +357,13 @@ namespace CoreEngine
     // =========================================================================
     bool RayTracingShadowManager::Initialize(
         GraphicsCore* dxCommon,
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         AccelerationStructureManager* asMgr)
     {
         Logger& log = Logger::GetInstance();
 
         // 共通基盤へ委譲（ポインタ保持と DXR サポート判定・警告ログまで面倒を見る）
-        if (!InitializeBase(dxCommon, descriptorManager, asMgr,
+        if (!InitializeBase(dxCommon, descriptorAllocator, asMgr,
             "RayTracingShadowManager", "RTShadow")) {
             return false;
         }
@@ -483,7 +483,7 @@ namespace CoreEngine
         options.initialState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         // 最終シャドウマスク（フル解像度。DeferredLighting がフル解像度座標で Load する）
-        if (!outputViews_.EnsureTexture(dxCommon_, descriptorManager_, width, height,
+        if (!outputViews_.EnsureTexture(dxCommon_, descriptorAllocator_, width, height,
             maskSlot, "RayTracingShadowManager", "RTShadow_Mask" + suffix, options)) {
             return false;
         }
@@ -501,7 +501,7 @@ namespace CoreEngine
         };
         for (const TraceSlot& traceSlot : kTraceSlots) {
             options.format = traceSlot.format;
-            if (!outputViews_.EnsureTexture(dxCommon_, descriptorManager_, traceWidth, traceHeight,
+            if (!outputViews_.EnsureTexture(dxCommon_, descriptorAllocator_, traceWidth, traceHeight,
                 MakeSlotIndex(viewIndex, lightIndex, traceSlot.slot),
                 "RayTracingShadowManager", traceSlot.name + suffix, options)) {
                 return false;

@@ -4,7 +4,7 @@
 #include "Utility/Logger/Logger.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Camera/View/ViewInfo.h"
 #include "Utility/CVar/CVar.h"
@@ -196,8 +196,8 @@ namespace CoreEngine
     {
         // 支配的な光源の UV を書き戻すだけの 1x1 バッファ。
         // CS 側が最大輝度テクセルの座標を 1 つ書き、次のパスがそれを読む
-        DescriptorManager* descriptorManager = graphicsCore_->GetDescriptorManager();
-        if (!descriptorManager) {
+        DescriptorAllocator* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
+        if (!descriptorAllocator) {
             return false;
         }
         Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = graphicsCore_->GetDevice();
@@ -233,8 +233,8 @@ namespace CoreEngine
         uavDesc.Format = desc.Format;
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        descriptorManager->CreateSRV(sourcePosBuffer_.Get(), srvDesc, cpuHandle, sourcePosSrvHandle_, "LensFlareSourcePosSRV");
-        descriptorManager->CreateUAV(sourcePosBuffer_.Get(), uavDesc, cpuHandle, sourcePosUavHandle_, "LensFlareSourcePosUAV");
+        sourcePosSrvHandle_ = descriptorAllocator->CreateSRV(sourcePosBuffer_.Get(), srvDesc, "LensFlareSourcePosSRV");
+        sourcePosUavHandle_ = descriptorAllocator->CreateUAV(sourcePosBuffer_.Get(), uavDesc, "LensFlareSourcePosUAV");
         return true;
     }
 
@@ -285,8 +285,8 @@ namespace CoreEngine
         }
 
         Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = graphicsCore_->GetDevice();
-        DescriptorManager* descriptorManager = graphicsCore_->GetDescriptorManager();
-        if (!descriptorManager) {
+        DescriptorAllocator* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
+        if (!descriptorAllocator) {
             return false;
         }
 
@@ -301,19 +301,19 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
+        // DescriptorHandle が CPU/GPU ハンドルとスロット番号をまとめて持つので、
+        // 旧実装のように CPU ハンドルを別メンバで抱える必要がない（6 → 4 フィールド）
         struct Target {
             Microsoft::WRL::ComPtr<ID3D12Resource>& tex;
             D3D12_RESOURCE_STATES& state;
-            D3D12_GPU_DESCRIPTOR_HANDLE& srv;
-            D3D12_GPU_DESCRIPTOR_HANDLE& uav;
-            D3D12_CPU_DESCRIPTOR_HANDLE& srvCpu;
-            D3D12_CPU_DESCRIPTOR_HANDLE& uavCpu;
+            DescriptorHandle& srv;
+            DescriptorHandle& uav;
             const char* name;
         };
         Target targets[] = {
-            { brightBuffer_,  brightBufferState_,  brightSrvHandle_,  brightUavHandle_,  brightSrvCpuHandle_,  brightUavCpuHandle_,  "LensFlareBright" },
-            { featureBuffer_, featureBufferState_, featureSrvHandle_, featureUavHandle_, featureSrvCpuHandle_, featureUavCpuHandle_, "LensFlareFeature" },
-            { blurBuffer_,    blurBufferState_,    blurSrvHandle_,    blurUavHandle_,    blurSrvCpuHandle_,    blurUavCpuHandle_,    "LensFlareBlur" },
+            { brightBuffer_,  brightBufferState_,  brightSrvHandle_,  brightUavHandle_,  "LensFlareBright" },
+            { featureBuffer_, featureBufferState_, featureSrvHandle_, featureUavHandle_, "LensFlareFeature" },
+            { blurBuffer_,    blurBufferState_,    blurSrvHandle_,    blurUavHandle_,    "LensFlareBlur" },
         };
 
         for (Target& t : targets) {
@@ -337,8 +337,8 @@ namespace CoreEngine
             uavDesc.Format = desc.Format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
             // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
-            descriptorManager->CreateOrUpdateSRV(t.tex.Get(), srvDesc, t.srvCpu, t.srv, (std::string(t.name) + "SRV").c_str());
-            descriptorManager->CreateOrUpdateUAV(t.tex.Get(), uavDesc, t.uavCpu, t.uav, (std::string(t.name) + "UAV").c_str());
+            descriptorAllocator->EnsureSRV(t.srv, t.tex.Get(), srvDesc, std::string(t.name) + "SRV");
+            descriptorAllocator->EnsureUAV(t.uav, t.tex.Get(), uavDesc, std::string(t.name) + "UAV");
         }
 
         targetsWidth_ = flareW;
@@ -445,7 +445,7 @@ namespace CoreEngine
             const int inSlot = downsamplePipeline_.GetComputeRootParamIndex("gSceneColor");
             if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, inputSrvHandle);
             const int outSlot = downsamplePipeline_.GetComputeRootParamIndex("gBright");
-            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, brightUavHandle_);
+            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, brightUavHandle_.gpuHandle);
         }
         cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
 
@@ -465,9 +465,9 @@ namespace CoreEngine
             const int cbSlot = findSourcePipeline_.GetComputeRootParamIndex("LensFlareParams");
             if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsCB_->GetGPUVirtualAddress());
             const int inSlot = findSourcePipeline_.GetComputeRootParamIndex("gBright");
-            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_);
+            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_.gpuHandle);
             const int outSlot = findSourcePipeline_.GetComputeRootParamIndex("gSourcePos");
-            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, sourcePosUavHandle_);
+            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, sourcePosUavHandle_.gpuHandle);
         }
         cmdList->Dispatch(1, 1, 1);
 
@@ -485,11 +485,11 @@ namespace CoreEngine
             const int cbSlot = ghostsPipeline_.GetComputeRootParamIndex("LensFlareParams");
             if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsCB_->GetGPUVirtualAddress());
             const int inSlot = ghostsPipeline_.GetComputeRootParamIndex("gBright");
-            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_);
+            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_.gpuHandle);
             const int srcPosSlot = ghostsPipeline_.GetComputeRootParamIndex("gSourcePos");
-            if (srcPosSlot >= 0) cmdList->SetComputeRootDescriptorTable(srcPosSlot, sourcePosSrvHandle_);
+            if (srcPosSlot >= 0) cmdList->SetComputeRootDescriptorTable(srcPosSlot, sourcePosSrvHandle_.gpuHandle);
             const int outSlot = ghostsPipeline_.GetComputeRootParamIndex("gFeatures");
-            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, featureUavHandle_);
+            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, featureUavHandle_.gpuHandle);
         }
         cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
 
@@ -511,8 +511,8 @@ namespace CoreEngine
             blurBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         if (blurCbSlot >= 0)  cmdList->SetComputeRootConstantBufferView(blurCbSlot, paramsCB_->GetGPUVirtualAddress());
         if (blurDirSlot >= 0) cmdList->SetComputeRootConstantBufferView(blurDirSlot, blurDirHCB_->GetGPUVirtualAddress());
-        if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, featureSrvHandle_);
-        if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, blurUavHandle_);
+        if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, featureSrvHandle_.gpuHandle);
+        if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, blurUavHandle_.gpuHandle);
         cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
 
         ResourceBarrierHelper::UAV(cmdList, blurBuffer_.Get());
@@ -523,8 +523,8 @@ namespace CoreEngine
         ResourceBarrierHelper::Transition(cmdList, featureBuffer_.Get(),
             featureBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         if (blurDirSlot >= 0) cmdList->SetComputeRootConstantBufferView(blurDirSlot, blurDirVCB_->GetGPUVirtualAddress());
-        if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, blurSrvHandle_);
-        if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, featureUavHandle_);
+        if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, blurSrvHandle_.gpuHandle);
+        if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, featureUavHandle_.gpuHandle);
         cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
 
         ResourceBarrierHelper::UAV(cmdList, featureBuffer_.Get());
@@ -540,7 +540,7 @@ namespace CoreEngine
             const int outIdx = GetRootParamIndex("gOutput");
             const int cbIdx = GetRootParamIndex("LensFlareParams");
             if (texIdx >= 0)   cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
-            if (flareIdx >= 0) cmdList->SetComputeRootDescriptorTable(flareIdx, featureSrvHandle_);
+            if (flareIdx >= 0) cmdList->SetComputeRootDescriptorTable(flareIdx, featureSrvHandle_.gpuHandle);
             if (outIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outIdx, outputUavHandle);
             if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, paramsCB_->GetGPUVirtualAddress());
         }

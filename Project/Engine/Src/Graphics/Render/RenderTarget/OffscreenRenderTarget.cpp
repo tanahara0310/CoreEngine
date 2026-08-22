@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "OffscreenRenderTarget.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 
@@ -16,14 +16,14 @@ namespace CoreEngine
         ReleaseDescriptorHandles();
     }
 
-    void OffscreenRenderTarget::Initialize(GraphicsCore* dx, DescriptorManager* descriptorManager, const RenderTargetDescriptor& desc, int index)
+    void OffscreenRenderTarget::Initialize(GraphicsCore* dx, DescriptorAllocator* descriptorAllocator, const RenderTargetDescriptor& desc, int index)
     {
         assert(dx);
-        assert(descriptorManager);
+        assert(descriptorAllocator);
         assert(index >= 0);
 
         dxCommon_ = dx;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
         index_ = index;
         format_ = desc.format;
         useDepthBuffer_ = desc.needsDepthStencil;
@@ -89,12 +89,12 @@ namespace CoreEngine
     void OffscreenRenderTarget::CreateViews()
     {
         assert(dxCommon_);
-        assert(descriptorManager_);
+        assert(descriptorAllocator_);
         assert(resource_);
 
-        rtvDescriptor_ = descriptorManager_->AllocateRTVHandle(std::format("RenderTarget{}RTV", index_));
-        srvDescriptor_ = descriptorManager_->AllocateSRVHandle(std::format("RenderTarget{}SRV", index_));
-        uavDescriptor_ = descriptorManager_->AllocateSRVHandle(std::format("RenderTarget{}UAV", index_));
+        rtvDescriptor_ = descriptorAllocator_->AllocateRTVHandle(std::format("RenderTarget{}RTV", index_));
+        srvDescriptor_ = descriptorAllocator_->AllocateSRVHandle(std::format("RenderTarget{}SRV", index_));
+        uavDescriptor_ = descriptorAllocator_->AllocateSRVHandle(std::format("RenderTarget{}UAV", index_));
 
         UpdateViews();
     }
@@ -128,18 +128,18 @@ namespace CoreEngine
 
     void OffscreenRenderTarget::ReleaseDescriptorHandles()
     {
-        if (!descriptorManager_) {
+        if (!descriptorAllocator_) {
             return;
         }
 
         if (rtvDescriptor_.IsValid()) {
-            descriptorManager_->Free(rtvDescriptor_);
+            descriptorAllocator_->Free(rtvDescriptor_);
         }
         if (srvDescriptor_.IsValid()) {
-            descriptorManager_->Free(srvDescriptor_);
+            descriptorAllocator_->Free(srvDescriptor_);
         }
         if (uavDescriptor_.IsValid()) {
-            descriptorManager_->Free(uavDescriptor_);
+            descriptorAllocator_->Free(uavDescriptor_);
         }
     }
 
@@ -195,9 +195,7 @@ namespace CoreEngine
         scissor.bottom = height_;
         cmdList->RSSetScissorRects(1, &scissor);
 
-        // SRVヒープ設定
-        ID3D12DescriptorHeap* heaps[] = { dxCommon_->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
     }
 
     void OffscreenRenderTarget::End(ID3D12GraphicsCommandList* cmdList)
@@ -231,9 +229,7 @@ namespace CoreEngine
             currentState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         }
 
-        // SRVヒープ設定（CS用バインドに必要）
-        ID3D12DescriptorHeap* heaps[] = { dxCommon_->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
     }
 
     void OffscreenRenderTarget::EndCS(ID3D12GraphicsCommandList* cmdList)

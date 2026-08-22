@@ -2,7 +2,7 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "SkinClusterGenerator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Math/MathCore.h"
 #include <algorithm>
 #include <cassert>
@@ -21,7 +21,7 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
     const Microsoft::WRL::ComPtr<ID3D12Device>& device,
     const Skeleton& skeleton,
     const ModelData& modelData,
-    DescriptorManager* descriptorManager,
+    DescriptorAllocator* descriptorAllocator,
     ID3D12Resource* sourceVertexBuffer,
     UINT vertexCount) {
 
@@ -42,8 +42,7 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
     paletteSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     paletteSrvDesc.Buffer.NumElements = UINT(skeleton.joints.size());
     paletteSrvDesc.Buffer.StructureByteStride = sizeof(WellForGPU);
-    descriptorManager->CreateSRV(skinCluster.paletteResource.Get(), paletteSrvDesc,
-        skinCluster.paletteSrvHandle.first, skinCluster.paletteSrvHandle.second, "SkinCluster Palette");
+    skinCluster.paletteSrvHandle = descriptorAllocator->CreateSRV(skinCluster.paletteResource.Get(), paletteSrvDesc, "SkinCluster Palette");
 
     // influence用のResourceを確保。頂点ごとにinfluence情報を追加できるようにする
     skinCluster.influenceResource = ResourceFactory::CreateBufferResource(device, sizeof(VertexInfluence) * modelData.vertices.size());
@@ -66,8 +65,7 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
     influenceSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     influenceSrvDesc.Buffer.NumElements = UINT(modelData.vertices.size());
     influenceSrvDesc.Buffer.StructureByteStride = UINT(kInfluenceStride);
-    descriptorManager->CreateSRV(skinCluster.influenceResource.Get(), influenceSrvDesc,
-        skinCluster.influenceSrvHandle.first, skinCluster.influenceSrvHandle.second, "SkinCluster InfluenceSRV");
+    skinCluster.influenceSrvHandle = descriptorAllocator->CreateSRV(skinCluster.influenceResource.Get(), influenceSrvDesc, "SkinCluster InfluenceSRV");
 
     // 元頂点バッファのSRVを作成（GPUスキニング(CS)が読み取るため）
     D3D12_SHADER_RESOURCE_VIEW_DESC sourceVertexSrvDesc{};
@@ -78,8 +76,7 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
     sourceVertexSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
     sourceVertexSrvDesc.Buffer.NumElements = vertexCount;
     sourceVertexSrvDesc.Buffer.StructureByteStride = UINT(kSkinnedVertexStride);
-    descriptorManager->CreateSRV(sourceVertexBuffer, sourceVertexSrvDesc,
-        skinCluster.sourceVertexSrvHandle.first, skinCluster.sourceVertexSrvHandle.second, "SkinCluster SourceVertexSRV");
+    skinCluster.sourceVertexSrvHandle = descriptorAllocator->CreateSRV(sourceVertexBuffer, sourceVertexSrvDesc, "SkinCluster SourceVertexSRV");
 
     // GPUスキニング出力バッファ（UAV）を作成し、そのままVBVとしても使えるようにする
     {
@@ -107,8 +104,7 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
         outputUavDesc.Buffer.NumElements = vertexCount;
         outputUavDesc.Buffer.StructureByteStride = UINT(kSkinnedVertexStride);
         outputUavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
-        descriptorManager->CreateUAV(skinCluster.outputVertexResource.Get(), outputUavDesc,
-            skinCluster.outputUavHandle.first, skinCluster.outputUavHandle.second, "SkinCluster OutputVertexUAV");
+        skinCluster.outputUavHandle = descriptorAllocator->CreateUAV(skinCluster.outputVertexResource.Get(), outputUavDesc, "SkinCluster OutputVertexUAV");
 
         skinCluster.outputVertexBufferView.BufferLocation = skinCluster.outputVertexResource->GetGPUVirtualAddress();
         skinCluster.outputVertexBufferView.SizeInBytes = UINT(outputSizeInBytes);

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "ImGuiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
@@ -103,13 +104,20 @@ namespace CoreEngine
         }
 
         ImGui_ImplWin32_Init(hwnd_);
+
+        // ImGui のフォント用スロットは DescriptorAllocator から正規に確保する。
+        // 旧実装はヒープ先頭（slot 0）を直接使い、DescriptorAllocator 側は
+        // kUserSRVStart=1 という定数で「slot 0 は ImGui のもの」と暗黙に予約していた。
+        // 予約定数を廃止した際、この暗黙の前提だけが残って深度 SRV と衝突し、
+        // フォント生成が深度 SRV を上書きして描画が壊れた。
+        fontDescriptor_ = dxCommon_->GetDescriptorAllocator()->AllocateSRVHandle("ImGuiFont");
         ImGui_ImplDX12_Init(
             dxCommon_->GetDevice(),
             swapChainDesc.BufferCount,
             dxCommon_->GetRTVDesc().Format,
             dxCommon_->GetSRVHeap(),
-            dxCommon_->GetSRVHeap()->GetCPUDescriptorHandleForHeapStart(),
-            dxCommon_->GetSRVHeap()->GetGPUDescriptorHandleForHeapStart());
+            fontDescriptor_.cpuHandle,
+            fontDescriptor_.gpuHandle);
 
         ImGui::GetIO().Fonts->GetTexDataAsRGBA32(nullptr, nullptr, nullptr);
         ImGui_ImplDX12_CreateDeviceObjects(); // これがないとアクセス違反が起きる

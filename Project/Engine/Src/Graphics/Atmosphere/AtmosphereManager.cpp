@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "AtmosphereManager.h"
 
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
@@ -157,10 +157,10 @@ namespace CoreEngine
         }
     }
 
-    void AtmosphereManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager)
+    void AtmosphereManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
     {
         device_ = device;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
 
         // 大気散乱定数バッファ（永続マップ）
         constantBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(AtmosphereShaderConstants));
@@ -168,7 +168,7 @@ namespace CoreEngine
         UploadConstants();
 
         // LUT リソースとコンピュートパイプライン
-        const bool lutResourcesReady = CreateLUTResources(device, descriptorManager);
+        const bool lutResourcesReady = CreateLUTResources(device, descriptorAllocator);
         pipelinesReady_ = lutResourcesReady && CreateLUTPipelines(device);
 
         Logger::GetInstance().Infof(LogCategory::Graphics,
@@ -177,9 +177,9 @@ namespace CoreEngine
             pipelinesReady_ ? "OK" : "無効");
     }
 
-    bool AtmosphereManager::CreateLUTResources(ID3D12Device* device, DescriptorManager* descriptorManager)
+    bool AtmosphereManager::CreateLUTResources(ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
     {
-        if (!device || !descriptorManager) {
+        if (!device || !descriptorAllocator) {
             return false;
         }
 
@@ -210,8 +210,8 @@ namespace CoreEngine
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        descriptorManager->CreateSRV(transmittanceLUT_.Get(), srvDesc, cpuHandle, transmittanceSrvHandle_, "AtmosphereTransmittanceSRV");
-        descriptorManager->CreateUAV(transmittanceLUT_.Get(), uavDesc, cpuHandle, transmittanceUavHandle_, "AtmosphereTransmittanceUAV");
+        transmittanceSrvHandle_ = descriptorAllocator->CreateSRV(transmittanceLUT_.Get(), srvDesc, "AtmosphereTransmittanceSRV");
+        transmittanceUavHandle_ = descriptorAllocator->CreateUAV(transmittanceLUT_.Get(), uavDesc, "AtmosphereTransmittanceUAV");
 
         // ===== Multi-Scattering LUT =====
         const D3D12_RESOURCE_DESC multiScatteringDesc = MakeLUTTexture2DDesc(
@@ -230,8 +230,8 @@ namespace CoreEngine
 
         srvDesc.Format = multiScatteringDesc.Format;
         uavDesc.Format = multiScatteringDesc.Format;
-        descriptorManager->CreateSRV(multiScatteringLUT_.Get(), srvDesc, cpuHandle, multiScatteringSrvHandle_, "AtmosphereMultiScatteringSRV");
-        descriptorManager->CreateUAV(multiScatteringLUT_.Get(), uavDesc, cpuHandle, multiScatteringUavHandle_, "AtmosphereMultiScatteringUAV");
+        multiScatteringSrvHandle_ = descriptorAllocator->CreateSRV(multiScatteringLUT_.Get(), srvDesc, "AtmosphereMultiScatteringSRV");
+        multiScatteringUavHandle_ = descriptorAllocator->CreateUAV(multiScatteringLUT_.Get(), uavDesc, "AtmosphereMultiScatteringUAV");
 
         // ===== Sky-View LUT =====
         const D3D12_RESOURCE_DESC skyViewDesc = MakeLUTTexture2DDesc(
@@ -250,8 +250,8 @@ namespace CoreEngine
 
         srvDesc.Format = skyViewDesc.Format;
         uavDesc.Format = skyViewDesc.Format;
-        descriptorManager->CreateSRV(skyViewLUT_.Get(), srvDesc, cpuHandle, skyViewSrvHandle_, "AtmosphereSkyViewSRV");
-        descriptorManager->CreateUAV(skyViewLUT_.Get(), uavDesc, cpuHandle, skyViewUavHandle_, "AtmosphereSkyViewUAV");
+        skyViewSrvHandle_ = descriptorAllocator->CreateSRV(skyViewLUT_.Get(), srvDesc, "AtmosphereSkyViewSRV");
+        skyViewUavHandle_ = descriptorAllocator->CreateUAV(skyViewLUT_.Get(), uavDesc, "AtmosphereSkyViewUAV");
 
         // ===== Camera Volume LUT（froxel 3D テクスチャ） =====
         D3D12_RESOURCE_DESC volumeDesc{};
@@ -287,8 +287,8 @@ namespace CoreEngine
         volumeUavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
         volumeUavDesc.Texture3D.WSize = kCameraVolumeSize;
 
-        descriptorManager->CreateSRV(cameraVolumeLUT_.Get(), volumeSrvDesc, cpuHandle, cameraVolumeSrvHandle_, "AtmosphereCameraVolumeSRV");
-        descriptorManager->CreateUAV(cameraVolumeLUT_.Get(), volumeUavDesc, cpuHandle, cameraVolumeUavHandle_, "AtmosphereCameraVolumeUAV");
+        cameraVolumeSrvHandle_ = descriptorAllocator->CreateSRV(cameraVolumeLUT_.Get(), volumeSrvDesc, "AtmosphereCameraVolumeSRV");
+        cameraVolumeUavHandle_ = descriptorAllocator->CreateUAV(cameraVolumeLUT_.Get(), volumeUavDesc, "AtmosphereCameraVolumeUAV");
 
         // ===== 空アンビエント SH9 係数バッファ（StructuredBuffer<float4> × 9） =====
         {
@@ -332,8 +332,8 @@ namespace CoreEngine
             shUavDesc.Buffer.NumElements = kSkyIrradianceSHCoeffCount;
             shUavDesc.Buffer.StructureByteStride = kCoeffStride;
 
-            descriptorManager->CreateSRV(skyIrradianceSHBuffer_.Get(), shSrvDesc, cpuHandle, skyIrradianceSrvHandle_, "AtmosphereSkyIrradianceSHSRV");
-            descriptorManager->CreateUAV(skyIrradianceSHBuffer_.Get(), shUavDesc, cpuHandle, skyIrradianceUavHandle_, "AtmosphereSkyIrradianceSHUAV");
+            skyIrradianceSrvHandle_ = descriptorAllocator->CreateSRV(skyIrradianceSHBuffer_.Get(), shSrvDesc, "AtmosphereSkyIrradianceSHSRV");
+            skyIrradianceUavHandle_ = descriptorAllocator->CreateUAV(skyIrradianceSHBuffer_.Get(), shUavDesc, "AtmosphereSkyIrradianceSHUAV");
         }
 
         // ===== 空キューブマップ（空＋雲の作業面。Phase 3b スペキュラIBL） =====
@@ -373,8 +373,8 @@ namespace CoreEngine
             cubeUavDesc.Texture2DArray.FirstArraySlice = 0;
             cubeUavDesc.Texture2DArray.ArraySize = 6;
 
-            descriptorManager->CreateSRV(skyCubemap_.Get(), cubeSrvDesc, cpuHandle, skyCubemapSrvHandle_, "AtmosphereSkyCubemapSRV");
-            descriptorManager->CreateUAV(skyCubemap_.Get(), cubeUavDesc, cpuHandle, skyCubemapUavHandle_, "AtmosphereSkyCubemapUAV");
+            skyCubemapSrvHandle_ = descriptorAllocator->CreateSRV(skyCubemap_.Get(), cubeSrvDesc, "AtmosphereSkyCubemapSRV");
+            skyCubemapUavHandle_ = descriptorAllocator->CreateUAV(skyCubemap_.Get(), cubeUavDesc, "AtmosphereSkyCubemapUAV");
         }
 
         // ===== プリフィルタ済み空スペキュラキューブマップ =====
@@ -407,7 +407,7 @@ namespace CoreEngine
             specSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             specSrvDesc.TextureCube.MipLevels = kSkySpecularMipCount;
 
-            descriptorManager->CreateSRV(skySpecularMap_.Get(), specSrvDesc, cpuHandle, skySpecularSrvHandle_, "AtmosphereSkySpecularSRV");
+            skySpecularSrvHandle_ = descriptorAllocator->CreateSRV(skySpecularMap_.Get(), specSrvDesc, "AtmosphereSkySpecularSRV");
 
             for (uint32_t mip = 0; mip < kSkySpecularMipCount; ++mip) {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC specUavDesc{};
@@ -416,8 +416,7 @@ namespace CoreEngine
                 specUavDesc.Texture2DArray.MipSlice = mip;
                 specUavDesc.Texture2DArray.FirstArraySlice = 0;
                 specUavDesc.Texture2DArray.ArraySize = 6;
-                descriptorManager->CreateUAV(skySpecularMap_.Get(), specUavDesc, cpuHandle,
-                    skySpecularUavHandles_[mip], "AtmosphereSkySpecularUAV");
+                skySpecularUavHandles_[mip] = descriptorAllocator->CreateUAV(skySpecularMap_.Get(), specUavDesc, "AtmosphereSkySpecularUAV");
             }
         }
 
@@ -585,7 +584,7 @@ namespace CoreEngine
         const int uavSlot = transmittancePipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
         if (uavSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), transmittanceUavHandle_);
+                static_cast<UINT>(uavSlot), transmittanceUavHandle_.gpuHandle);
         }
 
         cmdList->Dispatch(
@@ -613,12 +612,12 @@ namespace CoreEngine
         const int msSrvSlot = multiScatteringPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
         if (msSrvSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(msSrvSlot), transmittanceSrvHandle_);
+                static_cast<UINT>(msSrvSlot), transmittanceSrvHandle_.gpuHandle);
         }
         const int msUavSlot = multiScatteringPipeline_.GetComputeRootParamIndex("gMultiScatteringLUT");
         if (msUavSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(msUavSlot), multiScatteringUavHandle_);
+                static_cast<UINT>(msUavSlot), multiScatteringUavHandle_.gpuHandle);
         }
 
         cmdList->Dispatch(
@@ -648,17 +647,17 @@ namespace CoreEngine
         const int transmittanceSlot = skyViewPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
         if (transmittanceSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(transmittanceSlot), transmittanceSrvHandle_);
+                static_cast<UINT>(transmittanceSlot), transmittanceSrvHandle_.gpuHandle);
         }
         const int multiScatteringSlot = skyViewPipeline_.GetComputeRootParamIndex("gMultiScatteringLUT");
         if (multiScatteringSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(multiScatteringSlot), multiScatteringSrvHandle_);
+                static_cast<UINT>(multiScatteringSlot), multiScatteringSrvHandle_.gpuHandle);
         }
         const int uavSlot = skyViewPipeline_.GetComputeRootParamIndex("gSkyViewLUT");
         if (uavSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), skyViewUavHandle_);
+                static_cast<UINT>(uavSlot), skyViewUavHandle_.gpuHandle);
         }
 
         cmdList->Dispatch(
@@ -692,12 +691,12 @@ namespace CoreEngine
         const int skyViewSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
         if (skyViewSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(skyViewSlot), skyViewSrvHandle_);
+                static_cast<UINT>(skyViewSlot), skyViewSrvHandle_.gpuHandle);
         }
         const int uavSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gSkyIrradianceSH");
         if (uavSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), skyIrradianceUavHandle_);
+                static_cast<UINT>(uavSlot), skyIrradianceUavHandle_.gpuHandle);
         }
 
         // シェーダー側が 1 グループで全方向を分担する
@@ -749,12 +748,12 @@ namespace CoreEngine
         const int skyViewSlot = skyEnvironmentCapturePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
         if (skyViewSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(skyViewSlot), skyViewSrvHandle_);
+                static_cast<UINT>(skyViewSlot), skyViewSrvHandle_.gpuHandle);
         }
         const int uavSlot = skyEnvironmentCapturePipeline_.GetComputeRootParamIndex("gSkyCubemap");
         if (uavSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), skyCubemapUavHandle_);
+                static_cast<UINT>(uavSlot), skyCubemapUavHandle_.gpuHandle);
         }
 
         cmdList->Dispatch(
@@ -787,7 +786,7 @@ namespace CoreEngine
 
         if (srvSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(srvSlot), skyCubemapSrvHandle_);
+                static_cast<UINT>(srvSlot), skyCubemapSrvHandle_.gpuHandle);
         }
 
         constexpr uint32_t kSlotSize = 256;
@@ -799,7 +798,7 @@ namespace CoreEngine
             }
             if (uavSlot >= 0) {
                 cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(uavSlot), skySpecularUavHandles_[mip]);
+                    static_cast<UINT>(uavSlot), skySpecularUavHandles_[mip].gpuHandle);
             }
             const uint32_t mipSize = kSkyCubemapSize >> mip;
             cmdList->Dispatch((mipSize + 7) / 8, (mipSize + 7) / 8, 6);
@@ -829,17 +828,17 @@ namespace CoreEngine
         const int transmittanceSlot = cameraVolumePipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
         if (transmittanceSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(transmittanceSlot), transmittanceSrvHandle_);
+                static_cast<UINT>(transmittanceSlot), transmittanceSrvHandle_.gpuHandle);
         }
         const int multiScatteringSlot = cameraVolumePipeline_.GetComputeRootParamIndex("gMultiScatteringLUT");
         if (multiScatteringSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(multiScatteringSlot), multiScatteringSrvHandle_);
+                static_cast<UINT>(multiScatteringSlot), multiScatteringSrvHandle_.gpuHandle);
         }
         const int uavSlot = cameraVolumePipeline_.GetComputeRootParamIndex("gCameraVolumeLUT");
         if (uavSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), cameraVolumeUavHandle_);
+                static_cast<UINT>(uavSlot), cameraVolumeUavHandle_.gpuHandle);
         }
 
         cmdList->Dispatch(
@@ -854,7 +853,7 @@ namespace CoreEngine
 
     bool AtmosphereManager::EnsureAerialPerspectiveTarget(ID3D12Resource* sceneColor)
     {
-        if (!sceneColor || !device_ || !descriptorManager_) {
+        if (!sceneColor || !device_ || !descriptorAllocator_) {
             return false;
         }
 
@@ -886,7 +885,7 @@ namespace CoreEngine
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
         // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
-        descriptorManager_->CreateOrUpdateUAV(apResult_.Get(), uavDesc, apResultUavCpuHandle_, apResultUavHandle_, "AtmosphereAerialPerspectiveUAV");
+        descriptorAllocator_->EnsureUAV(apResultUavHandle_, apResult_.Get(), uavDesc, "AtmosphereAerialPerspectiveUAV");
 
         return true;
     }
@@ -932,12 +931,12 @@ namespace CoreEngine
         const int volumeSlot = aerialPerspectivePipeline_.GetComputeRootParamIndex("gCameraVolumeLUT");
         if (volumeSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(volumeSlot), cameraVolumeSrvHandle_);
+                static_cast<UINT>(volumeSlot), cameraVolumeSrvHandle_.gpuHandle);
         }
         const int outputSlot = aerialPerspectivePipeline_.GetComputeRootParamIndex("gOutput");
         if (outputSlot >= 0) {
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(outputSlot), apResultUavHandle_);
+                static_cast<UINT>(outputSlot), apResultUavHandle_.gpuHandle);
         }
 
         cmdList->Dispatch(

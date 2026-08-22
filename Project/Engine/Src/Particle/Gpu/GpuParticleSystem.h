@@ -1,6 +1,7 @@
 #pragma once
 
 #include <wrl.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <d3d12.h>
 #include <string>
 #include <memory>
@@ -352,11 +353,11 @@ public:
     ID3D12Resource* GetUploadInitResource() const { return uploadInitResource_.Get(); }
     ID3D12Resource* GetReadbackResource() const { return readbackResource_.Get(); }
 
-    D3D12_GPU_DESCRIPTOR_HANDLE GetParticleUavHandleGPU() const { return particleUavGPU_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetCounterUavHandleGPU() const { return counterUavGPU_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetFreeListUavHandleGPU() const { return freeListUavGPU_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingUavHandleGPU() const { return instancingUavGPU_; }
-    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingSrvHandleGPU() const { return instancingSrvGPU_; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetParticleUavHandleGPU() const { return particleUavGPU_.gpuHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetCounterUavHandleGPU() const { return counterUavGPU_.gpuHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetFreeListUavHandleGPU() const { return freeListUavGPU_.gpuHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingUavHandleGPU() const { return instancingUavGPU_.gpuHandle; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetInstancingSrvHandleGPU() const { return instancingSrvGPU_.gpuHandle; }
 
     /// @brief インスタンシングバッファの現在状態（レンダラーが遷移管理に使う）
     D3D12_RESOURCE_STATES GetInstancingState() const { return instancingState_; }
@@ -412,11 +413,11 @@ private:
     GpuParticleParams* paramsData_ = nullptr;
     uint32_t* readbackData_ = nullptr;                          // readbackResource_ の永続Map
 
-    D3D12_GPU_DESCRIPTOR_HANDLE particleUavGPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE counterUavGPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE freeListUavGPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE instancingUavGPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE instancingSrvGPU_ = {};
+    DescriptorHandle particleUavGPU_ = {};
+    DescriptorHandle counterUavGPU_ = {};
+    DescriptorHandle freeListUavGPU_ = {};
+    DescriptorHandle instancingUavGPU_ = {};
+    DescriptorHandle instancingSrvGPU_ = {};
 
     D3D12_RESOURCE_STATES instancingState_ = D3D12_RESOURCE_STATE_COMMON;
     D3D12_RESOURCE_STATES counterState_ = D3D12_RESOURCE_STATE_COMMON;

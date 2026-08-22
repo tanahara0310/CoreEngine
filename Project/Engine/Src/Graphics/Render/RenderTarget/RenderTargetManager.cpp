@@ -66,7 +66,7 @@ namespace CoreEngine
         }
         
         // 初期化
-        offscreenTarget->Initialize(dxCommon_, dxCommon_->GetDescriptorManager(), desc, targetIndex);
+        offscreenTarget->Initialize(dxCommon_, dxCommon_->GetDescriptorAllocator(), desc, targetIndex);
 
         // ターゲットをマップに登録
         RenderTarget* targetPtr = offscreenTarget.get();

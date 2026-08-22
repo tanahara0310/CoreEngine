@@ -55,9 +55,8 @@ namespace CoreEngine
             return;
         }
 
-        // 単体Compute呼び出しでもディスクリプタヒープが確実にバインドされているようにする
-        ID3D12DescriptorHeap* heaps[] = { srvHeap };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
+        (void)srvHeap;
 
         // 出力バッファを前フレームの状態からUAVへ戻す（初回はUNORDERED_ACCESSのまま）
         if (skinCluster.outputBufferState != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
@@ -75,16 +74,16 @@ namespace CoreEngine
         cmdList->SetPipelineState(computePso_.Get());
 
         if (sourceVerticesIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(sourceVerticesIdx_, skinCluster.sourceVertexSrvHandle.second);
+            cmdList->SetComputeRootDescriptorTable(sourceVerticesIdx_, skinCluster.sourceVertexSrvHandle.gpuHandle);
         }
         if (influencesIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(influencesIdx_, skinCluster.influenceSrvHandle.second);
+            cmdList->SetComputeRootDescriptorTable(influencesIdx_, skinCluster.influenceSrvHandle.gpuHandle);
         }
         if (matrixPaletteIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(matrixPaletteIdx_, skinCluster.paletteSrvHandle.second);
+            cmdList->SetComputeRootDescriptorTable(matrixPaletteIdx_, skinCluster.paletteSrvHandle.gpuHandle);
         }
         if (outputVerticesIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(outputVerticesIdx_, skinCluster.outputUavHandle.second);
+            cmdList->SetComputeRootDescriptorTable(outputVerticesIdx_, skinCluster.outputUavHandle.gpuHandle);
         }
         if (skinningParamsIdx_ >= 0) {
             cmdList->SetComputeRootConstantBufferView(skinningParamsIdx_, skinCluster.skinningParamsCB->GetGPUVirtualAddress());

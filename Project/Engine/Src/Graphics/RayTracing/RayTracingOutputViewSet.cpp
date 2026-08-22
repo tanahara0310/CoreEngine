@@ -3,7 +3,7 @@
 
 #include <cassert>
 
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/Logger/Logger.h"
 
@@ -11,7 +11,7 @@ namespace CoreEngine
 {
     bool RayTracingOutputViewSet::EnsureTexture(
         GraphicsCore* dxCommon,
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         UINT width,
         UINT height,
         uint32_t slotIndex,
@@ -73,12 +73,7 @@ namespace CoreEngine
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = options.format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            descriptorManager->CreateOrUpdateUAV(
-                slot.texture.Get(),
-                uavDesc,
-                slot.uavCpuHandle,
-                slot.uavHandle,
-                debugName + "_UAV");
+            descriptorAllocator->EnsureUAV(slot.uavHandle, slot.texture.Get(), uavDesc, debugName + "_UAV");
         }
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -86,12 +81,7 @@ namespace CoreEngine
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.Texture2D.MipLevels = 1;
-        descriptorManager->CreateOrUpdateSRV(
-            slot.texture.Get(),
-            srvDesc,
-            slot.srvCpuHandle,
-            slot.srvHandle,
-            debugName + "_SRV");
+        descriptorAllocator->EnsureSRV(slot.srvHandle, slot.texture.Get(), srvDesc, debugName + "_SRV");
 
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
@@ -101,8 +91,8 @@ namespace CoreEngine
             slotIndex,
             width,
             height,
-            slot.uavHandle.ptr,
-            slot.srvHandle.ptr);
+            slot.uavHandle.gpuHandle.ptr,
+            slot.srvHandle.gpuHandle.ptr);
 
         return true;
     }

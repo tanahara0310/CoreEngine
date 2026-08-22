@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include <string>
 
@@ -65,7 +66,7 @@ namespace CoreEngine
 
         /// @brief IBL SRVハンドルを取得
         /// @return Irradiance / Prefiltered / BRDF LUT のSRVハンドル
-        IBLSRVHandles GetSRVHandles() const { return { irradianceSRV_, prefilteredSRV_, brdfLUTSRV_ }; }
+        IBLSRVHandles GetSRVHandles() const { return { irradianceSRV_.gpuHandle, prefilteredSRV_.gpuHandle, brdfLUTSRV_.gpuHandle }; }
 
     private:
         GraphicsCore* dxCommon_ = nullptr;
@@ -76,9 +77,9 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> brdfLUT_;
 
         // SRVハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE irradianceSRV_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE prefilteredSRV_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE brdfLUTSRV_ = {};
+        DescriptorHandle irradianceSRV_ = {};
+        DescriptorHandle prefilteredSRV_ = {};
+        DescriptorHandle brdfLUTSRV_ = {};
 
         bool isInitialized_ = false;
 

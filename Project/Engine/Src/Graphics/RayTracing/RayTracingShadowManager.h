@@ -16,7 +16,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
-    class DescriptorManager;
+    class DescriptorAllocator;
     class AccelerationStructureManager;
 
     /// @brief DXR レイトレーシングシャドウを管理するクラス
@@ -96,7 +96,7 @@ namespace CoreEngine
 
         /// @brief 初期化（State Object / Shader Table / UAV テクスチャの構築）
         /// @return 成功した場合 true
-        bool Initialize(GraphicsCore* dxCommon, DescriptorManager* descriptorManager,
+        bool Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator,
             AccelerationStructureManager* asMgr);
 
         /// @brief シャドウレイをディスパッチする（3 ステージの最初。ここで解像度が確定する）
@@ -222,7 +222,7 @@ namespace CoreEngine
         bool EnsureOutputTexture(UINT width, UINT height, UINT traceWidth, UINT traceHeight,
             UINT traceScale, uint32_t viewIndex, uint32_t lightIndex);
 
-        // dxCommon_ / descriptorManager_ / asMgr_ / globalRootSigMgr_ / stateObject_ /
+        // dxCommon_ / descriptorAllocator_ / asMgr_ / globalRootSigMgr_ / stateObject_ /
         // stateObjectProperties_ / shaderTableBuilder_ / outputViews_ / isInitialized_ は
         // 全て RayTracingPassBase が持つ（Stage 2c で重複を削除した）。
 

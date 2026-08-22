@@ -296,8 +296,13 @@ $descApis = @(
     'FreeSRVIndex', 'FreeRTVIndex', 'FreeDSVIndex',
     'GetSRVIndexFromCpuHandle', 'GetRTVIndexFromCpuHandle', 'GetDSVIndexFromCpuHandle'
 )
-$oldDescApis = @('CreateSRV', 'CreateUAV', 'CreateCBV', 'CreateRTV', 'CreateDSV', 'CreateOrUpdateSRV', 'CreateOrUpdateUAV')
-$newDescApis = @('AllocateSRVHandle', 'AllocateRTVHandle', 'AllocateDSVHandle')
+# "old" = the removed out-param API (CreateOrUpdate*). The Create* names survived the
+# Phase 3 rewrite but now RETURN a DescriptorHandle, so counting them as "old" would
+# permanently misreport progress.
+$oldDescApis = @('CreateOrUpdateSRV', 'CreateOrUpdateUAV')
+$newDescApis = @('CreateSRV', 'CreateUAV', 'CreateCBV', 'CreateRTV', 'CreateDSV',
+                 'AllocateSRVHandle', 'AllocateRTVHandle', 'AllocateDSVHandle',
+                 'EnsureSRV', 'EnsureUAV', 'WriteSRV', 'WriteUAV', 'WriteRTV', 'WriteDSV')
 $oldDescTotal = 0
 $newDescTotal = 0
 foreach ($a in $descApis) {
@@ -311,8 +316,8 @@ $heapStart = Measure-Pattern -Pattern '(?:->|\.)\s*Get(?:CPU|GPU)DescriptorHandl
 Emit ("| ``SetDescriptorHeaps`` | {0} | {1} |" -f $setHeaps.Calls, $setHeaps.Files)
 Emit ("| ``Get(CPU\|GPU)DescriptorHandleForHeapStart`` (heap poking) | {0} | {1} |" -f $heapStart.Calls, $heapStart.Files)
 Emit ""
-$key['Old out-param descriptor API calls'] = $oldDescTotal
-$key['Handle-returning descriptor API calls'] = $newDescTotal
+$key['Removed out-param API calls (CreateOrUpdate*)'] = $oldDescTotal
+$key['Handle-based descriptor API calls'] = $newDescTotal
 $key['SetDescriptorHeaps call sites'] = $setHeaps.Calls
 $key['Descriptor heap poked directly'] = $heapStart.Calls
 

@@ -3,7 +3,7 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/CVar/CVar.h"
@@ -66,8 +66,8 @@ namespace CoreEngine
     bool ColorLUT::CreateLutResources()
     {
         auto* device = graphicsCore_->GetDevice();
-        DescriptorManager* descriptorManager = graphicsCore_->GetDescriptorManager();
-        if (!descriptorManager) {
+        DescriptorAllocator* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
+        if (!descriptorAllocator) {
             return false;
         }
 
@@ -102,8 +102,8 @@ namespace CoreEngine
         uavDesc.Texture3D.WSize = kMaxLutSize;
 
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        descriptorManager->CreateSRV(lutTexture_.Get(), srvDesc, cpuHandle, lutSrvHandle_, "ColorLUT_SRV");
-        descriptorManager->CreateUAV(lutTexture_.Get(), uavDesc, cpuHandle, lutUavHandle_, "ColorLUT_UAV");
+        lutSrvHandle_ = descriptorAllocator->CreateSRV(lutTexture_.Get(), srvDesc, "ColorLUT_SRV");
+        lutUavHandle_ = descriptorAllocator->CreateUAV(lutTexture_.Get(), uavDesc, "ColorLUT_UAV");
 
         // ---- LUT データのアップロードバッファ（StructuredBuffer として CS から読む） ----
         const size_t maxTexels = static_cast<size_t>(kMaxLutSize) * kMaxLutSize * kMaxLutSize;
@@ -119,7 +119,7 @@ namespace CoreEngine
         bufferSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
         bufferSrvDesc.Buffer.NumElements = static_cast<UINT>(maxTexels);
         bufferSrvDesc.Buffer.StructureByteStride = sizeof(LutTexel);
-        descriptorManager->CreateSRV(lutDataBuffer_.Get(), bufferSrvDesc, cpuHandle, lutDataSrvHandle_, "ColorLUT_DataSRV");
+        lutDataSrvHandle_ = descriptorAllocator->CreateSRV(lutDataBuffer_.Get(), bufferSrvDesc, "ColorLUT_DataSRV");
 
         return true;
     }
@@ -296,8 +296,8 @@ namespace CoreEngine
         const int dataIdx   = fillPipeline_.GetComputeRootParamIndex("gLutData");
         const int outputIdx = fillPipeline_.GetComputeRootParamIndex("gLutTexture");
         const int paramsIdx = fillPipeline_.GetComputeRootParamIndex("FillParams");
-        if (dataIdx >= 0)   cmdList->SetComputeRootDescriptorTable(dataIdx, lutDataSrvHandle_);
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, lutUavHandle_);
+        if (dataIdx >= 0)   cmdList->SetComputeRootDescriptorTable(dataIdx, lutDataSrvHandle_.gpuHandle);
+        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, lutUavHandle_.gpuHandle);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, fillParamsCB_->GetGPUVirtualAddress());
 
         const uint32_t groups = (lutSizeLoaded_ + 3) / 4;
@@ -350,7 +350,7 @@ namespace CoreEngine
         const int paramsIdx  = GetRootParamIndex("ColorLUTParams");
 
         if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        if (lutIdx >= 0)     cmdList->SetComputeRootDescriptorTable(lutIdx, lutSrvHandle_);
+        if (lutIdx >= 0)     cmdList->SetComputeRootDescriptorTable(lutIdx, lutSrvHandle_.gpuHandle);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
         if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, colorLutParamsCB_->GetGPUVirtualAddress());
 

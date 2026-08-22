@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "WaterCausticsRayTracingManager.h"
 
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
@@ -68,7 +68,7 @@ namespace CoreEngine
 
     bool WaterCausticsRayTracingManager::Initialize(
         GraphicsCore* dxCommon,
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         AccelerationStructureManager* asMgr)
     {
         // パイプラインの差分（シェーダー・エントリ名・SRV 名・定数サイズ）だけを記述する。
@@ -88,7 +88,7 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterCausticsConstants";
         desc.constantsBytes = sizeof(WaterCausticsConstants);
-        return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);
+        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, desc);
     }
 
 

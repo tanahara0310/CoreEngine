@@ -8,7 +8,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
-    class DescriptorManager;
+    class DescriptorAllocator;
     class GBufferManager;
     class AccelerationStructureManager;
     class RayTracingShadowManager;
@@ -29,7 +29,7 @@ namespace CoreEngine
         ~RenderDomainContext() override; // 前方宣言型の unique_ptr デストラクタは .cpp に実装
 
         /// @brief 初期化
-        /// @param dxCommon GraphicsCore（デバイス・DescriptorManager 取得用）
+        /// @param dxCommon GraphicsCore（デバイス・DescriptorAllocator 取得用）
         /// @param width 初期ウィンドウ幅
         /// @param height 初期ウィンドウ高さ
         void Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height);

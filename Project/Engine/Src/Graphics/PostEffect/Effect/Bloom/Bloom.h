@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../PostEffectComputeBase.h"
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h" // PostEffectPassContext
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
@@ -137,8 +138,8 @@ private:
     void RecordDirtGenerationIfNeeded(ID3D12GraphicsCommandList* cmdList);
     Microsoft::WRL::ComPtr<ID3D12Resource> dirtTexture_;
     D3D12_RESOURCE_STATES dirtTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    D3D12_GPU_DESCRIPTOR_HANDLE dirtSrvHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE dirtUavHandle_{};
+    DescriptorHandle dirtSrvHandle_{};
+    DescriptorHandle dirtUavHandle_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> dirtGenParamsCB_;
     DirtGenParams* mappedDirtGenParams_ = nullptr;
     bool dirtResourcesReady_ = false;

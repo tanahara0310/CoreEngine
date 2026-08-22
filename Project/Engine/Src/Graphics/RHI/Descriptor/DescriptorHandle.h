@@ -15,7 +15,7 @@ namespace CoreEngine
         Invalid,
     };
 
-    /// @brief DescriptorManager が確保したスロットを表す値型
+    /// @brief DescriptorAllocator が確保したスロットを表す値型
     ///
     /// - インデックス・ヒープ種別・CPU/GPU ハンドルを一体化する
     /// - `Free()` に渡した後は `IsValid()` が false になる

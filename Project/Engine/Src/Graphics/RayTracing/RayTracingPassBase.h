@@ -13,7 +13,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
-    class DescriptorManager;
+    class DescriptorAllocator;
     class AccelerationStructureManager;
 
     /// @brief DXR パス（シャドウ・水面屈折/反射/コースティクス等）の共通基盤
@@ -51,7 +51,7 @@ namespace CoreEngine
         /// @param outputDebugName  出力テクスチャのデバッグ名の接頭辞
         bool InitializeBase(
             GraphicsCore* dxCommon,
-            DescriptorManager* descriptorManager,
+            DescriptorAllocator* descriptorAllocator,
             AccelerationStructureManager* asMgr,
             const char* ownerName,
             const char* outputDebugName);
@@ -93,7 +93,7 @@ namespace CoreEngine
         const char* GetOwnerName() const { return ownerName_; }
 
         GraphicsCore* dxCommon_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
         AccelerationStructureManager* asMgr_ = nullptr;
 
         Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;

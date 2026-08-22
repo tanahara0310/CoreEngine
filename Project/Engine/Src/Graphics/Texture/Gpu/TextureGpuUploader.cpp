@@ -2,7 +2,7 @@
 #include "TextureGpuUploader.h"
 
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
@@ -90,12 +90,7 @@ namespace CoreEngine
             srvDesc.Texture2D.MipLevels = UINT(texMetadata.mipLevels);
         }
 
-        dxCommon->GetDescriptorManager()->CreateSRV(
-            result.texture.Get(),
-            srvDesc,
-            result.cpuHandle,
-            result.gpuHandle,
-            resolvedPath);
+        result.descriptor = dxCommon->GetDescriptorAllocator()->CreateSRV(result.texture.Get(), srvDesc, resolvedPath);
 
         return result;
     }

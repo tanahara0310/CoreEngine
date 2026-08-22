@@ -14,7 +14,7 @@
 namespace CoreEngine
 {
     class ResourceFactory;
-    class DescriptorManager;
+    class DescriptorAllocator;
 
     /// @brief ライトマネージャー（ライトの管理と制御を担当）
     /// @details オーサリングは統一 Light 構造体＋世代付き LightHandle で行い、
@@ -34,8 +34,8 @@ namespace CoreEngine
         /// @brief 初期化
         /// @param device D3D12デバイス
         /// @param resourceFactory リソースファクトリ
-        /// @param descriptorManager ディスクリプタマネージャー
-        void Initialize(ID3D12Device* device, ResourceFactory* resourceFactory, DescriptorManager* descriptorManager);
+        /// @param descriptorAllocator ディスクリプタマネージャー
+        void Initialize(ID3D12Device* device, ResourceFactory* resourceFactory, DescriptorAllocator* descriptorAllocator);
 
         /// @brief 全てのライトを更新（オーサリング表現 → GPU バッファへの変換・転送）
         void UpdateAll();

@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "AccelerationStructureManager.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/Model/ModelResource.h"
@@ -11,9 +11,9 @@
 namespace CoreEngine
 {
     bool AccelerationStructureManager::Initialize(
-        ID3D12Device* device, DescriptorManager* descriptorManager)
+        ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
     {
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
         Logger& logger = Logger::GetInstance();
 
         // ID3D12Device5 の取得（DXR API に必須）
@@ -311,16 +311,14 @@ namespace CoreEngine
         srvDesc.RaytracingAccelerationStructure.Location =
             tlasResult_->GetGPUVirtualAddress();
 
-        if (tlasSRVHandle_.ptr == 0) {
-            // 初回: DescriptorManager から SRV スロットを確保
-            descriptorManager_->CreateSRV(nullptr, srvDesc,
-                tlasSRVCpuHandle_, tlasSRVHandle_, "TLAS");
-
+        // 初回はスロット確保、2回目以降は同じスロットへ書き直す
+        // （TLAS は毎フレーム作り直すが、シェーダ側のバインド位置は変えない）
+        if (!tlasSRVDescriptor_.IsValid()) {
+            tlasSRVDescriptor_ = descriptorAllocator_->CreateSRV(nullptr, srvDesc, "TLAS");
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
                 "TLAS built ({} instances, SRV allocated)", instances.size());
         } else {
-            // 2回目以降: CPU ハンドルを使って SRV を上書き更新
-            device5_->CreateShaderResourceView(nullptr, &srvDesc, tlasSRVCpuHandle_);
+            descriptorAllocator_->WriteSRV(tlasSRVDescriptor_, nullptr, srvDesc);
         }
     }
 

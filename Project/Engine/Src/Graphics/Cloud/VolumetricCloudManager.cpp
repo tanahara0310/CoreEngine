@@ -2,7 +2,7 @@
 #include "VolumetricCloudManager.h"
 
 #include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -196,10 +196,10 @@ namespace CoreEngine
             return desc;
         }
     }
-    void VolumetricCloudManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager)
+    void VolumetricCloudManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
     {
         device_ = device;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
 
         // 雲定数バッファ（永続マップ）
         constantBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(VolumetricCloudShaderConstants));
@@ -212,12 +212,12 @@ namespace CoreEngine
 
         // ノイズリソースと生成パイプライン（Phase 1）。
         // レイマーチ/合成パイプライン（Phase 2）は CreateRenderPipelines で別途構築する。
-        const bool noiseResourcesReady = CreateNoiseResources(device, descriptorManager);
+        const bool noiseResourcesReady = CreateNoiseResources(device, descriptorAllocator);
         noisePipelinesReady_ = noiseResourcesReady && CreateNoisePipelines(device);
         pipelinesReady_ = CreateRenderPipelines(device);
 
         // ゴッドレイ（失敗しても雲本体は無効化しない）
-        const bool godRayResourcesReady = CreateGodRayResources(device, descriptorManager);
+        const bool godRayResourcesReady = CreateGodRayResources(device, descriptorAllocator);
         godRayPipelinesReady_ = godRayResourcesReady && CreateGodRayPipelines(device);
 
         Logger::GetInstance().Infof(LogCategory::Graphics,
@@ -427,15 +427,15 @@ namespace CoreEngine
 
         const UINT baseGroups = kBaseShapeNoiseSize / 4;   // numthreads(4,4,4)
         dispatchNoise(baseShapeNoisePipeline_, baseShapeNoise_.Get(), baseShapeNoiseState_,
-            baseShapeNoiseUavHandle_, baseGroups, baseGroups, baseGroups);
+            baseShapeNoiseUavHandle_.gpuHandle, baseGroups, baseGroups, baseGroups);
 
         const UINT detailGroups = kDetailNoiseSize / 4;    // numthreads(4,4,4)
         dispatchNoise(detailNoisePipeline_, detailNoise_.Get(), detailNoiseState_,
-            detailNoiseUavHandle_, detailGroups, detailGroups, detailGroups);
+            detailNoiseUavHandle_.gpuHandle, detailGroups, detailGroups, detailGroups);
 
         const UINT weatherGroups = kWeatherMapSize / 8;    // numthreads(8,8,1)
         dispatchNoise(weatherMapPipeline_, weatherMap_.Get(), weatherMapState_,
-            weatherMapUavHandle_, weatherGroups, weatherGroups, 1);
+            weatherMapUavHandle_.gpuHandle, weatherGroups, weatherGroups, 1);
 
         noiseDirty_ = false;
         noiseGenerated_ = true;
@@ -477,15 +477,15 @@ namespace CoreEngine
             }
             const int baseSlot = rayMarchPipeline_.GetComputeRootParamIndex("gBaseShapeNoise");
             if (baseSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_.gpuHandle);
             }
             const int detailSlot = rayMarchPipeline_.GetComputeRootParamIndex("gDetailNoise");
             if (detailSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_.gpuHandle);
             }
             const int weatherSlot = rayMarchPipeline_.GetComputeRootParamIndex("gWeatherMap");
             if (weatherSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_.gpuHandle);
             }
             const int depthSlot = rayMarchPipeline_.GetComputeRootParamIndex("gSceneDepth");
             if (depthSlot >= 0) {
@@ -509,7 +509,7 @@ namespace CoreEngine
             }
             const int outSlot = rayMarchPipeline_.GetComputeRootParamIndex("gCloudOutput");
             if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), cloudBufferUavHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), cloudBufferUavHandle_.gpuHandle);
             }
         }
 
@@ -544,7 +544,7 @@ namespace CoreEngine
             }
             const int cloudSlot = compositePipeline_.GetComputeRootParamIndex("gCloudBuffer");
             if (cloudSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(cloudSlot), cloudBufferSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(cloudSlot), cloudBufferSrvHandle_.gpuHandle);
             }
             const int depthSlot = compositePipeline_.GetComputeRootParamIndex("gSceneDepth");
             if (depthSlot >= 0) {
@@ -552,7 +552,7 @@ namespace CoreEngine
             }
             const int outSlot = compositePipeline_.GetComputeRootParamIndex("gOutput");
             if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), compositeResultUavHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), compositeResultUavHandle_.gpuHandle);
             }
         }
 
@@ -579,9 +579,9 @@ namespace CoreEngine
             cloudBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 
-    bool VolumetricCloudManager::CreateNoiseResources(ID3D12Device* device, DescriptorManager* descriptorManager)
+    bool VolumetricCloudManager::CreateNoiseResources(ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
     {
-        if (!device || !descriptorManager) {
+        if (!device || !descriptorAllocator) {
             return false;
         }
 
@@ -590,8 +590,8 @@ namespace CoreEngine
         // (tex, state, srvOut, uavOut, size, is3D, name) を確保するローカル関数
         auto createNoiseTexture = [&](Microsoft::WRL::ComPtr<ID3D12Resource>& tex,
                                       D3D12_RESOURCE_STATES& state,
-                                      D3D12_GPU_DESCRIPTOR_HANDLE& srvHandle,
-                                      D3D12_GPU_DESCRIPTOR_HANDLE& uavHandle,
+                                      DescriptorHandle& srvHandle,
+                                      DescriptorHandle& uavHandle,
                                       uint32_t size, bool is3D, const char* name) -> bool
         {
             const D3D12_RESOURCE_DESC desc = MakeNoiseTextureDesc(size, is3D);
@@ -622,9 +622,8 @@ namespace CoreEngine
                 uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
             }
 
-            D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-            descriptorManager->CreateSRV(tex.Get(), srvDesc, cpuHandle, srvHandle, (std::string(name) + "SRV").c_str());
-            descriptorManager->CreateUAV(tex.Get(), uavDesc, cpuHandle, uavHandle, (std::string(name) + "UAV").c_str());
+            srvHandle = descriptorAllocator->CreateSRV(tex.Get(), srvDesc, (std::string(name) + "SRV").c_str());
+            uavHandle = descriptorAllocator->CreateUAV(tex.Get(), uavDesc, (std::string(name) + "UAV").c_str());
             return true;
         };
 
@@ -739,15 +738,15 @@ namespace CoreEngine
         }
         const int baseSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gBaseShapeNoise");
         if (baseSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_.gpuHandle);
         }
         const int detailSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gDetailNoise");
         if (detailSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_.gpuHandle);
         }
         const int weatherSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gWeatherMap");
         if (weatherSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_.gpuHandle);
         }
         const int transmittanceSlot = cubemapCapturePipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
         if (transmittanceSlot >= 0) {
@@ -772,7 +771,7 @@ namespace CoreEngine
 
     bool VolumetricCloudManager::EnsureCloudTargets(ID3D12Resource* sceneColor)
     {
-        if (!sceneColor || !device_ || !descriptorManager_) {
+        if (!sceneColor || !device_ || !descriptorAllocator_) {
             return false;
         }
 
@@ -829,8 +828,8 @@ namespace CoreEngine
             uavDesc.Format = cloudDesc.Format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
             // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
-            descriptorManager_->CreateOrUpdateSRV(cloudBuffer_.Get(), srvDesc, cloudBufferSrvCpuHandle_, cloudBufferSrvHandle_, "CloudBufferSRV");
-            descriptorManager_->CreateOrUpdateUAV(cloudBuffer_.Get(), uavDesc, cloudBufferUavCpuHandle_, cloudBufferUavHandle_, "CloudBufferUAV");
+            descriptorAllocator_->EnsureSRV(cloudBufferSrvHandle_, cloudBuffer_.Get(), srvDesc, "CloudBufferSRV");
+            descriptorAllocator_->EnsureUAV(cloudBufferUavHandle_, cloudBuffer_.Get(), uavDesc, "CloudBufferUAV");
         }
 
         // ===== 半解像度ゴッドレイバッファ（CloudBuffer と同サイズ・同フォーマット） =====
@@ -854,8 +853,8 @@ namespace CoreEngine
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = cloudDesc.Format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            descriptorManager_->CreateOrUpdateSRV(godRayBuffer_.Get(), srvDesc, godRayBufferSrvCpuHandle_, godRayBufferSrvHandle_, "GodRayBufferSRV");
-            descriptorManager_->CreateOrUpdateUAV(godRayBuffer_.Get(), uavDesc, godRayBufferUavCpuHandle_, godRayBufferUavHandle_, "GodRayBufferUAV");
+            descriptorAllocator_->EnsureSRV(godRayBufferSrvHandle_, godRayBuffer_.Get(), srvDesc, "GodRayBufferSRV");
+            descriptorAllocator_->EnsureUAV(godRayBufferUavHandle_, godRayBuffer_.Get(), uavDesc, "GodRayBufferUAV");
         }
 
         // ===== 合成用中間テクスチャ（SceneColor と同サイズ・同フォーマット, UAV） =====
@@ -876,7 +875,7 @@ namespace CoreEngine
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = compositeDesc.Format;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            descriptorManager_->CreateOrUpdateUAV(compositeResult_.Get(), uavDesc, compositeResultUavCpuHandle_, compositeResultUavHandle_, "CloudCompositeUAV");
+            descriptorAllocator_->EnsureUAV(compositeResultUavHandle_, compositeResult_.Get(), uavDesc, "CloudCompositeUAV");
         }
 
         targetsWidth_ = halfW;
@@ -884,9 +883,9 @@ namespace CoreEngine
         return true;
     }
 
-    bool VolumetricCloudManager::CreateGodRayResources(ID3D12Device* device, DescriptorManager* descriptorManager)
+    bool VolumetricCloudManager::CreateGodRayResources(ID3D12Device* device, DescriptorAllocator* descriptorAllocator)
     {
-        if (!device || !descriptorManager) {
+        if (!device || !descriptorAllocator) {
             return false;
         }
 
@@ -924,9 +923,8 @@ namespace CoreEngine
         uavDesc.Format = desc.Format;
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        descriptorManager->CreateSRV(cloudShadowMap_.Get(), srvDesc, cpuHandle, cloudShadowMapSrvHandle_, "CloudShadowMapSRV");
-        descriptorManager->CreateUAV(cloudShadowMap_.Get(), uavDesc, cpuHandle, cloudShadowMapUavHandle_, "CloudShadowMapUAV");
+        cloudShadowMapSrvHandle_ = descriptorAllocator->CreateSRV(cloudShadowMap_.Get(), srvDesc, "CloudShadowMapSRV");
+        cloudShadowMapUavHandle_ = descriptorAllocator->CreateUAV(cloudShadowMap_.Get(), uavDesc, "CloudShadowMapUAV");
 
         return true;
     }
@@ -1042,19 +1040,19 @@ namespace CoreEngine
             }
             const int baseSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gBaseShapeNoise");
             if (baseSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(baseSlot), baseShapeNoiseSrvHandle_.gpuHandle);
             }
             const int detailSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gDetailNoise");
             if (detailSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(detailSlot), detailNoiseSrvHandle_.gpuHandle);
             }
             const int weatherSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gWeatherMap");
             if (weatherSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(weatherSlot), weatherMapSrvHandle_.gpuHandle);
             }
             const int outSlot = cloudShadowPipeline_.GetComputeRootParamIndex("gCloudShadowMap");
             if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), cloudShadowMapUavHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), cloudShadowMapUavHandle_.gpuHandle);
             }
         }
 
@@ -1092,7 +1090,7 @@ namespace CoreEngine
             }
             const int shadowSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gCloudShadowMap");
             if (shadowSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(shadowSlot), cloudShadowMapSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(shadowSlot), cloudShadowMapSrvHandle_.gpuHandle);
             }
             const int transmittanceSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
             if (transmittanceSlot >= 0) {
@@ -1105,11 +1103,11 @@ namespace CoreEngine
             }
             const int cloudBufSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gCloudBuffer");
             if (cloudBufSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(cloudBufSlot), cloudBufferSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(cloudBufSlot), cloudBufferSrvHandle_.gpuHandle);
             }
             const int outSlot = godRayMarchPipeline_.GetComputeRootParamIndex("gGodRayOutput");
             if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), godRayBufferUavHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), godRayBufferUavHandle_.gpuHandle);
             }
         }
 
@@ -1144,11 +1142,11 @@ namespace CoreEngine
             }
             const int bufSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gGodRayBuffer");
             if (bufSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(bufSlot), godRayBufferSrvHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(bufSlot), godRayBufferSrvHandle_.gpuHandle);
             }
             const int outSlot = godRayCompositePipeline_.GetComputeRootParamIndex("gOutput");
             if (outSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), compositeResultUavHandle_);
+                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outSlot), compositeResultUavHandle_.gpuHandle);
             }
         }
 

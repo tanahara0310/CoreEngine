@@ -47,9 +47,7 @@ namespace CoreEngine
             return;
         }
 
-        // 合成 compute はディスクリプタテーブルを使うためパス自身が SRV ヒープをバインドする。
-        ID3D12DescriptorHeap* descriptorHeaps[] = { context.dxCommon->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, descriptorHeaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
         auto* sceneColorTarget = dynamic_cast<OffscreenRenderTarget*>(
             context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName));

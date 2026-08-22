@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <dxgi1_6.h>
 #include <memory>
 #include <wrl.h>
@@ -89,6 +90,10 @@ HWND GetHwnd() const { return hwnd_; }
 private:
     HWND hwnd_ = nullptr; // ウィンドウハンドル
     GraphicsCore* dxCommon_ = nullptr; // DirectX共通クラスへのポインタ
+
+    /// @brief ImGui のフォントテクスチャ用に確保した SRV スロット
+    /// @note ヒープ先頭を決め打ちで使うと他の SRV と衝突する（実際に事故った）
+    DescriptorHandle fontDescriptor_{};
 
     // サブモジュール
     std::unique_ptr<DockingUI> dockingUI_ = std::make_unique<DockingUI>();

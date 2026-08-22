@@ -8,7 +8,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
-    class DescriptorManager;
+    class DescriptorAllocator;
 
     /// @brief オフスクリーンレンダーターゲット
     /// ポストエフェクトやマルチパスレンダリングで使用
@@ -19,10 +19,10 @@ namespace CoreEngine
 
         /// @brief 初期化
         /// @param dx GraphicsCore
-        /// @param descriptorManager ディスクリプタマネージャー
+        /// @param descriptorAllocator ディスクリプタマネージャー
         /// @param desc レンダーターゲット記述子
         /// @param index 内部識別用インデックス
-        void Initialize(GraphicsCore* dx, DescriptorManager* descriptorManager, const RenderTargetDescriptor& desc, int index);
+        void Initialize(GraphicsCore* dx, DescriptorAllocator* descriptorAllocator, const RenderTargetDescriptor& desc, int index);
 
         /// @brief リサイズ
         /// @param width 新しい幅
@@ -103,7 +103,7 @@ namespace CoreEngine
         void ReleaseDescriptorHandles();
 
         GraphicsCore* dxCommon_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
         DescriptorHandle rtvDescriptor_{};
         DescriptorHandle srvDescriptor_{};

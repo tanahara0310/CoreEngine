@@ -5,9 +5,11 @@
 #include <wrl.h>
 #include <cstdint>
 
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+
 // 前方宣言
 namespace CoreEngine {
-    class DescriptorManager;
+    class DescriptorAllocator;
 }
 
 namespace CoreEngine
@@ -17,12 +19,12 @@ namespace CoreEngine
 class SwapChainManager {
 public:
     /// @brief 初期化
-    /// @param descriptorManager RTV スロットの確保に使う
+    /// @param descriptorAllocator RTV スロットの確保に使う
     /// @param hwnd 出力先ウィンドウ
     /// @param width  初期幅
     /// @param height 初期高さ
     void Initialize(ID3D12Device* device, IDXGIFactory7* dxgiFactory, ID3D12CommandQueue* commandQueue,
-        DescriptorManager* descriptorManager, HWND hwnd, std::int32_t width, std::int32_t height);
+        DescriptorAllocator* descriptorAllocator, HWND hwnd, std::int32_t width, std::int32_t height);
 
     /// @brief スワップチェーンのリサイズ
     /// @param width 新しい幅
@@ -32,7 +34,7 @@ public:
     // アクセッサ
     IDXGISwapChain4* GetSwapChain() const { return swapChain_.Get(); }
     ID3D12Resource* GetSwapChainBackBuffer(UINT index) const { return swapChainResources_[index].Get(); }
-    const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTVHandle(UINT index) const { return rtvHandles_[index]; }
+    const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTVHandle(UINT index) const { return rtvDescriptors_[index].cpuHandle; }
     D3D12_RENDER_TARGET_VIEW_DESC GetRTVDesc() const { return rtvDesc_; }
 
 private:
@@ -50,8 +52,8 @@ private:
     Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain_;
     Microsoft::WRL::ComPtr<ID3D12Resource> swapChainResources_[2];
 
-    // バックバッファのリソース
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles_[2];
+    // バックバッファの RTV スロット（DescriptorAllocator から確保。リサイズ時は同じスロットへ書き直す）
+    DescriptorHandle rtvDescriptors_[2]{};
     D3D12_RENDER_TARGET_VIEW_DESC rtvDesc_;
 
     // 依存関係
@@ -61,8 +63,8 @@ private:
     std::int32_t width_ = 0;
     std::int32_t height_ = 0;
 
-    // DescriptorManager の参照（RTVスロット管理・ダングリングポインタ防止）
-    DescriptorManager* descriptorManager_ = nullptr;
+    // DescriptorAllocator の参照（RTVスロット管理・ダングリングポインタ防止）
+    DescriptorAllocator* descriptorAllocator_ = nullptr;
     ID3D12Device* device_ = nullptr;
 
     // 初回初期化フラグ

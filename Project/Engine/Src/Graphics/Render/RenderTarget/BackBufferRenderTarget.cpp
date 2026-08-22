@@ -56,9 +56,7 @@ namespace CoreEngine
         scissor.bottom = height;
         cmdList->RSSetScissorRects(1, &scissor);
 
-        // SRVヒープ設定
-        ID3D12DescriptorHeap* heaps[] = { dxCommon_->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
     }
 
     void BackBufferRenderTarget::End(ID3D12GraphicsCommandList* cmdList)

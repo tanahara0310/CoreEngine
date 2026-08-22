@@ -469,7 +469,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\CommandContext.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\FrameSync.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\DeferredReleaseQueue.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\SwapChain\SwapChainManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelLoader.cpp" />
@@ -958,7 +959,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RHI\Command\CommandContext.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Command\FrameSync.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Command\DeferredReleaseQueue.h" />
-    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\SwapChain\SwapChainManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelLoader.h" />

@@ -3,7 +3,7 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
@@ -100,8 +100,8 @@ namespace CoreEngine
     {
         // レンズダート（汚れ）テクスチャ。未指定でも既定の手続き的パターンを焼くので必ず作る
         auto* device = graphicsCore_->GetDevice();
-        DescriptorManager* descriptorManager = graphicsCore_->GetDescriptorManager();
-        if (!descriptorManager) {
+        DescriptorAllocator* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
+        if (!descriptorAllocator) {
             return false;
         }
 
@@ -134,8 +134,8 @@ namespace CoreEngine
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
         D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        descriptorManager->CreateSRV(dirtTexture_.Get(), srvDesc, cpuHandle, dirtSrvHandle_, "BloomDirt_SRV");
-        descriptorManager->CreateUAV(dirtTexture_.Get(), uavDesc, cpuHandle, dirtUavHandle_, "BloomDirt_UAV");
+        dirtSrvHandle_ = descriptorAllocator->CreateSRV(dirtTexture_.Get(), srvDesc, "BloomDirt_SRV");
+        dirtUavHandle_ = descriptorAllocator->CreateUAV(dirtTexture_.Get(), uavDesc, "BloomDirt_UAV");
         return true;
     }
 
@@ -152,7 +152,7 @@ namespace CoreEngine
 
         const int outputIdx = dirtGenPipeline_.GetComputeRootParamIndex("gOutput");
         const int paramsIdx = dirtGenPipeline_.GetComputeRootParamIndex("DirtGenParams");
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, dirtUavHandle_);
+        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, dirtUavHandle_.gpuHandle);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, dirtGenParamsCB_->GetGPUVirtualAddress());
 
         cmdList->Dispatch(DispatchCount(kDirtTextureSize), DispatchCount(kDirtTextureSize), 1);
@@ -356,7 +356,7 @@ namespace CoreEngine
 
         if (sceneIdx >= 0)  cmdList->SetComputeRootDescriptorTable(sceneIdx, context.reads[0]);
         if (bloomIdx >= 0)  cmdList->SetComputeRootDescriptorTable(bloomIdx, context.reads[1]);
-        if (dirtIdx >= 0 && dirtResourcesReady_) cmdList->SetComputeRootDescriptorTable(dirtIdx, dirtSrvHandle_);
+        if (dirtIdx >= 0 && dirtResourcesReady_) cmdList->SetComputeRootDescriptorTable(dirtIdx, dirtSrvHandle_.gpuHandle);
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, compositeParamsCB_->GetGPUVirtualAddress());
 

@@ -45,10 +45,10 @@ namespace CoreEngine
     {
         auto* dxCommon = engine.GetService<GraphicsCore>();
         auto* resourceFactory = engine.GetService<ResourceFactory>();
-        auto* descriptorManager = dxCommon->GetDescriptorManager();
+        auto* descriptorAllocator = dxCommon->GetDescriptorAllocator();
 
         auto lightManager = std::make_unique<LightManager>();
-        lightManager->Initialize(dxCommon->GetDevice(), resourceFactory, descriptorManager);
+        lightManager->Initialize(dxCommon->GetDevice(), resourceFactory, descriptorAllocator);
 
         // デフォルトライトは作成しない（各シーンで個別に作成する）
 

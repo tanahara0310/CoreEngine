@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Graphics/RHI/Resource/DepthStencilManager.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Utility/Logger/Logger.h"
@@ -21,25 +21,22 @@ namespace CoreEngine
 
     DepthStencilManager::~DepthStencilManager()
     {
-        if (!descriptorManager_) {
+        if (!descriptorAllocator_) {
             return;
         }
-        if (dsvSlotIndex_ != UINT_MAX) {
-            descriptorManager_->FreeDSVIndex(dsvSlotIndex_);
-        }
-        if (depthSRVSlotIndex_ != UINT_MAX) {
-            descriptorManager_->FreeSRVIndex(depthSRVSlotIndex_);
-        }
+        // ハンドルが所有スロットを知っているので、種別の指定も未確保チェックも要らない
+        descriptorAllocator_->Free(dsvDescriptor_);
+        descriptorAllocator_->Free(depthSRVDescriptor_);
     }
 
-    void DepthStencilManager::Initialize(ID3D12Device* device, DescriptorManager* descriptorManager,
+    void DepthStencilManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator,
         std::int32_t width, std::int32_t height)
     {
         assert(device != nullptr && "Device must not be null");
-        assert(descriptorManager != nullptr && "DescriptorManager must not be null");
+        assert(descriptorAllocator != nullptr && "DescriptorAllocator must not be null");
 
         device_ = device;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
         width_ = width;
         height_ = height;
 
@@ -92,7 +89,7 @@ namespace CoreEngine
             D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
         // 深度バッファをクリア
-        cmdList->ClearDepthStencilView(dsvHandle_, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        cmdList->ClearDepthStencilView(dsvDescriptor_.cpuHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 #ifdef _DEBUG
         logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
@@ -137,14 +134,9 @@ namespace CoreEngine
         dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
-        // DescriptorManagerを使ってDSVを作成（初回のみ）
-        descriptorManager_->CreateDSV(
-            depthStencilResource_.Get(),
-            dsvDesc,
-            dsvHandle_,
-            "MainDepthStencil"
-        );
-        dsvSlotIndex_ = descriptorManager_->GetDSVIndexFromCpuHandle(dsvHandle_);
+        // DSV を作成（初回のみ）。戻り値のハンドルがスロットの所有権を表す
+        dsvDescriptor_ = descriptorAllocator_->CreateDSV(
+            depthStencilResource_.Get(), dsvDesc, "MainDepthStencil");
 
         // 深度リソースの SRV を作成（初回のみ）
         CreateDepthShaderResourceView();
@@ -156,20 +148,16 @@ namespace CoreEngine
         dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
         dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 
-        // 既存のハンドルに直接DSVを更新
-        device_->CreateDepthStencilView(
-            depthStencilResource_.Get(),
-            &dsvDesc,
-            dsvHandle_);
+        // 既存スロットへビューだけ書き直す（スロット番号は変えない＝シェーダ側のバインドを保つ）
+        descriptorAllocator_->WriteDSV(dsvDescriptor_, depthStencilResource_.Get(), dsvDesc);
 
-        // SRV も既存の CPU ハンドルに更新
-        if (depthSRVCpuHandle_.ptr != 0) {
+        if (depthSRVDescriptor_.IsValid()) {
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
             srvDesc.Format                    = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
             srvDesc.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
             srvDesc.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Texture2D.MipLevels       = 1;
-            device_->CreateShaderResourceView(depthStencilResource_.Get(), &srvDesc, depthSRVCpuHandle_);
+            descriptorAllocator_->WriteSRV(depthSRVDescriptor_, depthStencilResource_.Get(), srvDesc);
         }
 
 #ifdef _DEBUG
@@ -187,13 +175,7 @@ namespace CoreEngine
         srvDesc.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.Texture2D.MipLevels       = 1;
 
-        descriptorManager_->CreateSRV(
-            depthStencilResource_.Get(),
-            srvDesc,
-            depthSRVCpuHandle_,
-            depthSRVGpuHandle_,
-            "MainDepthStencilSRV"
-        );
-        depthSRVSlotIndex_ = descriptorManager_->GetSRVIndexFromCpuHandle(depthSRVCpuHandle_);
+        depthSRVDescriptor_ = descriptorAllocator_->CreateSRV(
+            depthStencilResource_.Get(), srvDesc, "MainDepthStencilSRV");
     }
 }

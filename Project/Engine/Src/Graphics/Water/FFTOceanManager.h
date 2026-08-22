@@ -18,7 +18,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
-    class DescriptorManager;
+    class DescriptorAllocator;
     class GpuTimestampProfiler;
 
     /// @brief FFTベースの海面シミュレーションを実行し、変位/法線/ヤコビアンを生成する管理クラス
@@ -75,7 +75,7 @@ namespace CoreEngine
         };
 
         /// @brief 必要なGPUリソースとComputeパイプラインを初期化する
-        bool Initialize(GraphicsCore* dxCommon, DescriptorManager* descriptorManager);
+        bool Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator);
 
         /// @brief 1 フレーム分の海面シミュレーションを Dispatch し、出力テクスチャを更新する
         /// @param profiler 内訳計測用プロファイラ（nullptr なら計測しない）。
@@ -97,15 +97,15 @@ namespace CoreEngine
 
         /// @brief 変位テクスチャのSRVハンドルを返す
         /// @return 変位SRVのGPUディスクリプタハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE GetDisplacementSRVHandle() const { return displacementMap_.srv; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetDisplacementSRVHandle() const { return displacementMap_.srv.gpuHandle; }
 
         /// @brief 法線テクスチャのSRVハンドルを返す
         /// @return 法線SRVのGPUディスクリプタハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE GetNormalSRVHandle() const { return normalMap_.srv; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetNormalSRVHandle() const { return normalMap_.srv.gpuHandle; }
 
         /// @brief ヤコビアンテクスチャのSRVハンドルを返す
         /// @return ヤコビアンSRVのGPUディスクリプタハンドル
-        D3D12_GPU_DESCRIPTOR_HANDLE GetJacobianSRVHandle() const { return jacobianMap_.srv; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetJacobianSRVHandle() const { return jacobianMap_.srv.gpuHandle; }
 
         /// @brief 蓄積泡テクスチャのSRVハンドルを返す
         /// @details ping-pong の「直近で書き終わった側」= (foamFrameIndex_ + 1) & 1。
@@ -113,7 +113,7 @@ namespace CoreEngine
         ///          この式は常に「今フレームの書き込み先ではない方」を指し、
         ///          読み書きハザードが起きない。
         D3D12_GPU_DESCRIPTOR_HANDLE GetFoamSRVHandle() const {
-            return foam_[(foamFrameIndex_ + 1u) & 1u].srv;
+            return foam_[(foamFrameIndex_ + 1u) & 1u].srv.gpuHandle;
         }
 
         /// @brief 現在のシミュレーション設定を返す
@@ -310,7 +310,7 @@ namespace CoreEngine
         // 基本依存とパイプライン状態
         // ──────────────────────────────────────────────────────────
         GraphicsCore* dxCommon_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
         CustomShaderPipeline evolutionPipeline_{};
         CustomShaderPipeline ifftPipeline_{};
         CustomShaderPipeline finalizePipeline_{};
@@ -332,10 +332,8 @@ namespace CoreEngine
         struct CascadeOutputTexture {
             Microsoft::WRL::ComPtr<ID3D12Resource> resource;
             D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            D3D12_CPU_DESCRIPTOR_HANDLE srvCpu{};
-            D3D12_GPU_DESCRIPTOR_HANDLE srv{};
-            std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kCascadeCount> sliceUavCpu{};
-            std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kCascadeCount> sliceUav{};
+            DescriptorHandle srv{};
+            std::array<DescriptorHandle, kCascadeCount> sliceUav{};
 
             ID3D12Resource* Get() const { return resource.Get(); }
         };

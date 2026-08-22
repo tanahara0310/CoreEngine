@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../PostEffectComputeBase.h"
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include <wrl.h>
@@ -188,31 +189,25 @@ private:
     // ===== 1/4 解像度中間テクスチャ =====
     Microsoft::WRL::ComPtr<ID3D12Resource> brightBuffer_;   ///< 輝度抽出結果
     D3D12_RESOURCE_STATES brightBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    D3D12_GPU_DESCRIPTOR_HANDLE brightSrvHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE brightUavHandle_{};
-    D3D12_CPU_DESCRIPTOR_HANDLE brightSrvCpuHandle_{};
-    D3D12_CPU_DESCRIPTOR_HANDLE brightUavCpuHandle_{};
+    DescriptorHandle brightSrvHandle_{};
+    DescriptorHandle brightUavHandle_{};
 
     Microsoft::WRL::ComPtr<ID3D12Resource> featureBuffer_;  ///< ゴースト/ハロー（最終フレア）
     D3D12_RESOURCE_STATES featureBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    D3D12_GPU_DESCRIPTOR_HANDLE featureSrvHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE featureUavHandle_{};
-    D3D12_CPU_DESCRIPTOR_HANDLE featureSrvCpuHandle_{};
-    D3D12_CPU_DESCRIPTOR_HANDLE featureUavCpuHandle_{};
+    DescriptorHandle featureSrvHandle_{};
+    DescriptorHandle featureUavHandle_{};
 
     Microsoft::WRL::ComPtr<ID3D12Resource> blurBuffer_;     ///< ブラー中間（水平パス結果）
     D3D12_RESOURCE_STATES blurBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    D3D12_GPU_DESCRIPTOR_HANDLE blurSrvHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE blurUavHandle_{};
-    D3D12_CPU_DESCRIPTOR_HANDLE blurSrvCpuHandle_{};
-    D3D12_CPU_DESCRIPTOR_HANDLE blurUavCpuHandle_{};
+    DescriptorHandle blurSrvHandle_{};
+    DescriptorHandle blurUavHandle_{};
 
     /// 支配的な光源の UV 位置（1x1・R32G32_FLOAT）。ゴーストへ絞り羽根形状の
     /// マスクを正しい位置に合わせて重ねるための前段検出結果。
     Microsoft::WRL::ComPtr<ID3D12Resource> sourcePosBuffer_;
     D3D12_RESOURCE_STATES sourcePosBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    D3D12_GPU_DESCRIPTOR_HANDLE sourcePosSrvHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE sourcePosUavHandle_{};
+    DescriptorHandle sourcePosSrvHandle_{};
+    DescriptorHandle sourcePosUavHandle_{};
 
     uint32_t targetsWidth_ = 0;   ///< 確保済みフレアバッファの幅
     uint32_t targetsHeight_ = 0;  ///< 確保済みフレアバッファの高さ

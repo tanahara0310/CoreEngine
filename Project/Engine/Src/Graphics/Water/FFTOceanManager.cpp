@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Debug/GpuMarker.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
@@ -135,20 +135,20 @@ namespace CoreEngine
         constexpr float kMaxHeightWindSpeed = 32.0f;
     }
 
-    bool FFTOceanManager::Initialize(GraphicsCore* dxCommon, DescriptorManager* descriptorManager)
+    bool FFTOceanManager::Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator)
     {
         // 外部依存を保持し、設定をGPU向けに正規化してから初期化を開始する。
         dxCommon_ = dxCommon;
-        descriptorManager_ = descriptorManager;
+        descriptorAllocator_ = descriptorAllocator;
         SanitizeSettings(settings_);
 
-        if (!dxCommon_ || !descriptorManager_) {
+        if (!dxCommon_ || !descriptorAllocator_) {
             Logger::GetInstance().Errorf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "FFTOceanManager: initialization failed. dxCommon={} descriptorManager={}",
+                "FFTOceanManager: initialization failed. dxCommon={} descriptorAllocator={}",
                 dxCommon_ != nullptr,
-                descriptorManager_ != nullptr);
+                descriptorAllocator_ != nullptr);
             return false;
         }
 
@@ -274,8 +274,7 @@ namespace CoreEngine
         ResourceBarrierHelper::Transition(cmdList, normalMap_.Get(), normalMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         ResourceBarrierHelper::Transition(cmdList, jacobianMap_.Get(), jacobianMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        ID3D12DescriptorHeap* descriptorHeaps[] = { descriptorManager_->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
         // カスケードごとに 時間発展 -> IFFT(2系統) -> 最終合成（スライスc へ書き込み）を実行する。
         // 中間ピンポンテクスチャ／IFFT定数リングはカスケード間で共有する（逐次実行）。
@@ -351,7 +350,7 @@ namespace CoreEngine
 
     bool FFTOceanManager::CreateFoamResources()
     {
-        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorManager_) {
+        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorAllocator_) {
             return false;
         }
 
@@ -392,7 +391,7 @@ namespace CoreEngine
             s.Texture2DArray.MipLevels = 1;
             s.Texture2DArray.FirstArraySlice = 0;
             s.Texture2DArray.ArraySize = kCascadeCount;
-            descriptorManager_->CreateSRV(foam_[i].Get(), s, foam_[i].srvCpu, foam_[i].srv, "FFTOceanFoamSRV_" + idx);
+            foam_[i].srv = descriptorAllocator_->CreateSRV(foam_[i].Get(), s, "FFTOceanFoamSRV_" + idx);
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
             u.Format = format;
@@ -400,7 +399,7 @@ namespace CoreEngine
             u.Texture2DArray.MipSlice = 0;
             u.Texture2DArray.FirstArraySlice = 0;
             u.Texture2DArray.ArraySize = kCascadeCount;
-            descriptorManager_->CreateUAV(foam_[i].Get(), u, foam_[i].uavCpu, foam_[i].uav, "FFTOceanFoamUAV_" + idx);
+            foam_[i].uav = descriptorAllocator_->CreateUAV(foam_[i].Get(), u, "FFTOceanFoamUAV_" + idx);
 
             foam_[i].state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         }
@@ -466,15 +465,15 @@ namespace CoreEngine
 
         const int jacobianSlot = foamPipeline_.GetComputeRootParamIndex("gJacobian");
         if (jacobianSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(jacobianSlot), jacobianMap_.srv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(jacobianSlot), jacobianMap_.srv.gpuHandle);
         }
         const int prevSlot = foamPipeline_.GetComputeRootParamIndex("gFoamPrev");
         if (prevSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(prevSlot), foam_[readIndex].srv);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(prevSlot), foam_[readIndex].srv.gpuHandle);
         }
         const int outputSlot = foamPipeline_.GetComputeRootParamIndex("gFoamOutput");
         if (outputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), foam_[writeIndex].uav);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), foam_[writeIndex].uav.gpuHandle);
         }
         const int constantsSlot = foamPipeline_.GetComputeRootParamIndex("FFTOceanFoamConstants");
         if (constantsSlot >= 0) {
@@ -553,7 +552,7 @@ namespace CoreEngine
 
     bool FFTOceanManager::CreateOutputTextures()
     {
-        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorManager_) {
+        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorAllocator_) {
             return false;
         }
 
@@ -592,7 +591,7 @@ namespace CoreEngine
             s.Texture2DArray.MipLevels = 1;
             s.Texture2DArray.FirstArraySlice = 0;
             s.Texture2DArray.ArraySize = kCascadeCount;
-            descriptorManager_->CreateSRV(out.Get(), s, out.srvCpu, out.srv, "FFTOcean" + name + "ArraySRV");
+            out.srv = descriptorAllocator_->CreateSRV(out.Get(), s, "FFTOcean" + name + "ArraySRV");
 
             for (uint32_t c = 0; c < kCascadeCount; ++c) {
                 D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
@@ -601,9 +600,8 @@ namespace CoreEngine
                 u.Texture2DArray.MipSlice = 0;
                 u.Texture2DArray.FirstArraySlice = c;
                 u.Texture2DArray.ArraySize = 1;
-                descriptorManager_->CreateUAV(
-                    out.Get(), u, out.sliceUavCpu[c], out.sliceUav[c],
-                    "FFTOcean" + name + "UAV_" + std::to_string(c));
+                out.sliceUav[c] = descriptorAllocator_->CreateUAV(
+                    out.Get(), u, "FFTOcean" + name + "UAV_" + std::to_string(c));
             }
 
             out.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
@@ -619,7 +617,7 @@ namespace CoreEngine
     {
         return FFTOceanResourceFactory::CreateIntermediateTextures(
             dxCommon_->GetDevice(),
-            descriptorManager_,
+            descriptorAllocator_,
             settings_.resolution,
             spectrumPingPongA_,
             spectrumPingPongB_);
@@ -631,7 +629,7 @@ namespace CoreEngine
         for (uint32_t c = 0; c < kCascadeCount; ++c) {
             if (!FFTOceanResourceFactory::CreateSpectrumBuffers(
                     dxCommon_->GetDevice(),
-                    descriptorManager_,
+                    descriptorAllocator_,
                     settings_.resolution,
                     sizeof(SpectrumSample),
                     spectrumBuffers_[c])) {
@@ -1012,9 +1010,9 @@ namespace CoreEngine
             spectrumA,
             spectrumB,
             finalizePipeline_,
-            displacementMap_.sliceUav[cascadeIndex],
-            normalMap_.sliceUav[cascadeIndex],
-            jacobianMap_.sliceUav[cascadeIndex],
+            displacementMap_.sliceUav[cascadeIndex].gpuHandle,
+            normalMap_.sliceUav[cascadeIndex].gpuHandle,
+            jacobianMap_.sliceUav[cascadeIndex].gpuHandle,
             GetSimulationConstantsAddress(cascadeIndex),
             settings_.resolution);
     }

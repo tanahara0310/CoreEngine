@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include "Math/MathCore.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
@@ -11,7 +12,7 @@
 namespace CoreEngine
 {
     class AtmosphereManager;
-    class DescriptorManager;
+    class DescriptorAllocator;
 
     /// @brief 雲シェーダーへ渡す定数バッファレイアウト
     /// @details HLSL 側 CloudCommon.hlsli の CloudConstants と一致させること（256 バイト）。
@@ -223,8 +224,8 @@ namespace CoreEngine
 
         /// @brief 初期化
         /// @param device D3D12 デバイス
-        /// @param descriptorManager ノイズ SRV/UAV 登録先（メインのシェーダー可視ヒープ）
-        void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager);
+        /// @param descriptorAllocator ノイズ SRV/UAV 登録先（メインのシェーダー可視ヒープ）
+        void Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
 
         /// @brief フレーム更新（雲を使うシーンの BaseScene::UpdateAtmosphere から呼ばれる）
         /// @details cloudsActive_ を立て、カメラ・時刻・太陽情報を CB へ反映する。
@@ -308,7 +309,7 @@ namespace CoreEngine
         void UploadConstants();
 
         /// @brief ノイズテクスチャと SRV/UAV を生成する
-        bool CreateNoiseResources(ID3D12Device* device, DescriptorManager* descriptorManager);
+        bool CreateNoiseResources(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
 
         /// @brief ノイズ生成用コンピュートパイプライン（BaseShape/Detail/Weather）を構築する
         bool CreateNoisePipelines(ID3D12Device* device);
@@ -320,7 +321,7 @@ namespace CoreEngine
         bool EnsureCloudTargets(ID3D12Resource* sceneColor);
 
         /// @brief 雲シャドウマップテクスチャと CB を生成する（ゴッドレイ用）
-        bool CreateGodRayResources(ID3D12Device* device, DescriptorManager* descriptorManager);
+        bool CreateGodRayResources(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
 
         /// @brief ゴッドレイ用コンピュートパイプライン群を構築する
         bool CreateGodRayPipelines(ID3D12Device* device);
@@ -390,7 +391,7 @@ namespace CoreEngine
         bool pipelinesReady_ = false;   ///< レイマーチ/合成パイプライン構築済みか（Phase 2）
 
         ID3D12Device* device_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
 
         // GPU リソース
         Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
@@ -399,31 +400,31 @@ namespace CoreEngine
         // ノイズテクスチャ（Phase 1 で生成）
         Microsoft::WRL::ComPtr<ID3D12Resource> baseShapeNoise_;
         D3D12_RESOURCE_STATES baseShapeNoiseState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE baseShapeNoiseSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE baseShapeNoiseUavHandle_{};
+        DescriptorHandle baseShapeNoiseSrvHandle_{};
+        DescriptorHandle baseShapeNoiseUavHandle_{};
 
         Microsoft::WRL::ComPtr<ID3D12Resource> detailNoise_;
         D3D12_RESOURCE_STATES detailNoiseState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE detailNoiseSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE detailNoiseUavHandle_{};
+        DescriptorHandle detailNoiseSrvHandle_{};
+        DescriptorHandle detailNoiseUavHandle_{};
 
         Microsoft::WRL::ComPtr<ID3D12Resource> weatherMap_;
         D3D12_RESOURCE_STATES weatherMapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE weatherMapSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE weatherMapUavHandle_{};
+        DescriptorHandle weatherMapSrvHandle_{};
+        DescriptorHandle weatherMapUavHandle_{};
 
         // 半解像度レイマーチ結果（Phase 2 で確保）
         Microsoft::WRL::ComPtr<ID3D12Resource> cloudBuffer_;
         D3D12_RESOURCE_STATES cloudBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE cloudBufferSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE cloudBufferUavHandle_{};
+        DescriptorHandle cloudBufferSrvHandle_{};
+        DescriptorHandle cloudBufferUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE cloudBufferSrvCpuHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE cloudBufferUavCpuHandle_{};
 
         // 合成用中間テクスチャ（SceneColor と同サイズ・Phase 2 で確保）
         Microsoft::WRL::ComPtr<ID3D12Resource> compositeResult_;
         D3D12_RESOURCE_STATES compositeResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE compositeResultUavHandle_{};
+        DescriptorHandle compositeResultUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE compositeResultUavCpuHandle_{};
         uint64_t targetsWidth_ = 0;
         uint32_t targetsHeight_ = 0;
@@ -432,14 +433,14 @@ namespace CoreEngine
         // 雲シャドウマップ（1024² R16_FLOAT。太陽方向の雲透過率の上面図）
         Microsoft::WRL::ComPtr<ID3D12Resource> cloudShadowMap_;
         D3D12_RESOURCE_STATES cloudShadowMapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMapSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMapUavHandle_{};
+        DescriptorHandle cloudShadowMapSrvHandle_{};
+        DescriptorHandle cloudShadowMapUavHandle_{};
 
         // 半解像度ゴッドレイバッファ（EnsureCloudTargets で cloudBuffer_ と同サイズ確保）
         Microsoft::WRL::ComPtr<ID3D12Resource> godRayBuffer_;
         D3D12_RESOURCE_STATES godRayBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE godRayBufferSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE godRayBufferUavHandle_{};
+        DescriptorHandle godRayBufferSrvHandle_{};
+        DescriptorHandle godRayBufferUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE godRayBufferSrvCpuHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE godRayBufferUavCpuHandle_{};
 

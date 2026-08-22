@@ -6,7 +6,7 @@
 #include "Graphics/RHI/Command/CommandContext.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Command/UploadContext.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/SwapChain/SwapChainManager.h"
 #include "Graphics/RHI/Resource/DepthStencilManager.h"
 #include "Graphics/RHI/IResizable.h"
@@ -30,7 +30,7 @@ namespace CoreEngine
         , frameSync_(std::make_unique<FrameSync>())
         , commandContext_(std::make_unique<CommandContext>())
         , deferredRelease_(std::make_unique<DeferredReleaseQueue>())
-        , descriptorManager_(std::make_unique<DescriptorManager>())
+        , descriptorAllocator_(std::make_unique<DescriptorAllocator>())
         , swapChainManager_(std::make_unique<SwapChainManager>())
         , depthStencilManager_(std::make_unique<DepthStencilManager>())
         , uploadContext_(std::make_unique<UploadContext>())
@@ -55,8 +55,13 @@ namespace CoreEngine
         frameSync_->Initialize(device, commandQueue_->Get(), config.frameCount);
         commandContext_->Initialize(device, frameSync_->FramesInFlight());
 
-        descriptorManager_->Initialize(device,
+        descriptorAllocator_->Initialize(device,
             config.maxSRVDescriptors, config.maxRTVDescriptors, config.maxDSVDescriptors);
+
+        // フレーム 0 のコマンドリストは EndFrame を経ずにそのまま記録が始まるので、
+        // ここでシェーダ可視ヒープをバインドしておく。
+        // （これが無いと最初のフレームだけディスクリプタヒープ未設定で描画される）
+        commandContext_->BindDescriptorHeap(descriptorAllocator_->GetSRVHeap());
 
         // アップロード／オフライン生成用の独立コンテキスト。
         // キューはフレームと共有（submit 順 = 実行順を保つため）だが、
@@ -68,7 +73,7 @@ namespace CoreEngine
             device,
             deviceManager_->GetDXGIFactory(),
             commandQueue_->Get(),
-            descriptorManager_.get(),
+            descriptorAllocator_.get(),
             winApp_->GetHwnd(),
             winApp_->GetClientWidth(),
             winApp_->GetClientHeight());
@@ -76,7 +81,7 @@ namespace CoreEngine
         // 深度ステンシルの初期化（DescriptorManagerを渡す）
         depthStencilManager_->Initialize(
             device,
-            descriptorManager_.get(),
+            descriptorAllocator_.get(),
             winApp_->GetClientWidth(),
             winApp_->GetClientHeight());
 
@@ -109,7 +114,7 @@ namespace CoreEngine
         deferredRelease_.reset();
         depthStencilManager_.reset();
         swapChainManager_.reset();
-        descriptorManager_.reset();
+        descriptorAllocator_.reset();
         if (commandContext_) {
             commandContext_->Shutdown();
         }
@@ -209,7 +214,7 @@ namespace CoreEngine
         // リセットされるため、アロケータ選択に使うと実行中アロケータを Reset して
         // しまう（D3D12 ERROR #552）。
         frameSync_->AdvanceToNextFrame();
-        commandContext_->Begin(frameSync_->FrameIndex(), descriptorManager_->GetSRVHeap());
+        commandContext_->Begin(frameSync_->FrameIndex(), descriptorAllocator_->GetSRVHeap());
     }
 
     FrameSync& GraphicsCore::Frame() const { return *frameSync_; }
@@ -234,9 +239,9 @@ namespace CoreEngine
     D3D12_RENDER_TARGET_VIEW_DESC GraphicsCore::GetRTVDesc() const { return swapChainManager_->GetRTVDesc(); }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GraphicsCore::GetRTVHandle(UINT index) const { return swapChainManager_->GetRTVHandle(index); }
 
-    DescriptorManager* GraphicsCore::GetDescriptorManager() const { return descriptorManager_.get(); }
-    ID3D12DescriptorHeap* GraphicsCore::GetSRVHeap() const { return descriptorManager_->GetSRVHeap(); }
-    ID3D12DescriptorHeap* GraphicsCore::GetDSVHeap() const { return descriptorManager_->GetDSVHeap(); }
+    DescriptorAllocator* GraphicsCore::GetDescriptorAllocator() const { return descriptorAllocator_.get(); }
+    ID3D12DescriptorHeap* GraphicsCore::GetSRVHeap() const { return descriptorAllocator_->GetSRVHeap(); }
+    ID3D12DescriptorHeap* GraphicsCore::GetDSVHeap() const { return descriptorAllocator_->GetDSVHeap(); }
 
     DepthStencilManager* GraphicsCore::GetDepthStencilManager() const { return depthStencilManager_.get(); }
     ID3D12Resource* GraphicsCore::GetDepthStencilResource() const { return depthStencilManager_->GetDepthStencilResource(); }

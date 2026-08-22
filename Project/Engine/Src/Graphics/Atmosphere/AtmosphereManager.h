@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include "Math/MathCore.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
@@ -11,7 +12,7 @@
 namespace CoreEngine
 {
     class LightManager;
-    class DescriptorManager;
+    class DescriptorAllocator;
 
     /// @brief 大気散乱シェーダーへ渡す定数バッファレイアウト
     /// @details HLSL 側 AtmosphereCommon.hlsli の AtmosphereConstants と一致させること。
@@ -151,8 +152,8 @@ namespace CoreEngine
 
         /// @brief 初期化
         /// @param device D3D12デバイス
-        /// @param descriptorManager LUT の SRV/UAV 登録先（メインのシェーダー可視ヒープ）
-        void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager);
+        /// @param descriptorAllocator LUT の SRV/UAV 登録先（メインのシェーダー可視ヒープ）
+        void Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
 
         /// @brief フレーム更新
         /// @param cameraWorldPosition カメラのワールド座標 [m]
@@ -259,23 +260,23 @@ namespace CoreEngine
         void GenerateLUTsIfNeeded(ID3D12GraphicsCommandList* cmdList);
 
         /// @brief Transmittance LUT の SRV ハンドルを取得（描画シェーダーのバインド用）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetTransmittanceLUTSRVHandle() const { return transmittanceSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetTransmittanceLUTSRVHandle() const { return transmittanceSrvHandle_.gpuHandle; }
 
         /// @brief Multi-Scattering LUT の SRV ハンドルを取得（描画シェーダーのバインド用）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetMultiScatteringLUTSRVHandle() const { return multiScatteringSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetMultiScatteringLUTSRVHandle() const { return multiScatteringSrvHandle_.gpuHandle; }
 
         /// @brief Sky-View LUT の SRV ハンドルを取得（描画シェーダーのバインド用）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSkyViewLUTSRVHandle() const { return skyViewSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSkyViewLUTSRVHandle() const { return skyViewSrvHandle_.gpuHandle; }
 
         /// @brief CameraVolume（Aerial Perspective froxel）LUT の SRV ハンドルを取得
         /// @details 半透明パス（水面等）が自前で空気遠近感を適用する際に使う。
         ///          生成後は PIXEL_SHADER_RESOURCE 込みの状態のためピクセルシェーダーから直接サンプル可能
-        D3D12_GPU_DESCRIPTOR_HANDLE GetCameraVolumeLUTSRVHandle() const { return cameraVolumeSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetCameraVolumeLUTSRVHandle() const { return cameraVolumeSrvHandle_.gpuHandle; }
 
         // ===== 空アンビエント（Sky Light 相当） =====
 
         /// @brief 空の放射照度 SH9 係数バッファの SRV ハンドルを取得（DeferredLighting 用）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSkyIrradianceSHSRVHandle() const { return skyIrradianceSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSkyIrradianceSHSRVHandle() const { return skyIrradianceSrvHandle_.gpuHandle; }
 
         /// @brief 空アンビエントの SH バッファが一度でも生成されたか
         /// @details false の間は内容が未定義のため、DeferredLighting 側で無効扱いにすること
@@ -298,11 +299,11 @@ namespace CoreEngine
         /// @brief プリフィルタ済み空スペキュラキューブマップの SRV ハンドルを取得
         /// @details TextureCube・kSkySpecularMipCount ミップ。mip = roughness×(ミップ数-1) で評価する。
         ///          α には雲の透過率が入っている（水面が平面反射との合成不透明度に使う）。
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSkySpecularSRVHandle() const { return skySpecularSrvHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSkySpecularSRVHandle() const { return skySpecularSrvHandle_.gpuHandle; }
 
         /// @brief 空キューブマップ（mip0・雲合成前後の作業面）の UAV ハンドルを取得
         /// @details VolumetricCloudManager が雲を前乗算合成する際のバインド先。
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSkyCubemapUAVHandle() const { return skyCubemapUavHandle_; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSkyCubemapUAVHandle() const { return skyCubemapUavHandle_.gpuHandle; }
 
         /// @brief 空スペキュラキューブマップが一度でも生成されたか
         bool IsSkyEnvironmentReady() const { return skyEnvironmentGenerated_; }
@@ -360,7 +361,7 @@ namespace CoreEngine
         Vector3 ComputeLightTransmittanceCPU(const Vector3& lightDirection) const;
 
         /// @brief LUT テクスチャと SRV/UAV を生成する
-        bool CreateLUTResources(ID3D12Device* device, DescriptorManager* descriptorManager);
+        bool CreateLUTResources(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
 
         /// @brief Transmittance / Multi-Scattering LUT を再生成する（パラメータ変更時のみ）
         void GenerateBaseLUTs(ID3D12GraphicsCommandList* cmdList);
@@ -478,32 +479,32 @@ namespace CoreEngine
         // Transmittance LUT
         Microsoft::WRL::ComPtr<ID3D12Resource> transmittanceLUT_;
         D3D12_RESOURCE_STATES transmittanceState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE transmittanceSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE transmittanceUavHandle_{};
+        DescriptorHandle transmittanceSrvHandle_{};
+        DescriptorHandle transmittanceUavHandle_{};
 
         // Multi-Scattering LUT
         Microsoft::WRL::ComPtr<ID3D12Resource> multiScatteringLUT_;
         D3D12_RESOURCE_STATES multiScatteringState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE multiScatteringSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE multiScatteringUavHandle_{};
+        DescriptorHandle multiScatteringSrvHandle_{};
+        DescriptorHandle multiScatteringUavHandle_{};
 
         // Sky-View LUT
         Microsoft::WRL::ComPtr<ID3D12Resource> skyViewLUT_;
         D3D12_RESOURCE_STATES skyViewState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE skyViewSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE skyViewUavHandle_{};
+        DescriptorHandle skyViewSrvHandle_{};
+        DescriptorHandle skyViewUavHandle_{};
 
         // Camera Volume LUT（froxel 3D テクスチャ）
         Microsoft::WRL::ComPtr<ID3D12Resource> cameraVolumeLUT_;
         D3D12_RESOURCE_STATES cameraVolumeState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE cameraVolumeUavHandle_{};
+        DescriptorHandle cameraVolumeSrvHandle_{};
+        DescriptorHandle cameraVolumeUavHandle_{};
 
         // 空アンビエント SH9 係数バッファ（9 要素の StructuredBuffer<float4>）
         Microsoft::WRL::ComPtr<ID3D12Resource> skyIrradianceSHBuffer_;
         D3D12_RESOURCE_STATES skyIrradianceState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceUavHandle_{};
+        DescriptorHandle skyIrradianceSrvHandle_{};
+        DescriptorHandle skyIrradianceUavHandle_{};
         bool skyIrradianceGenerated_ = false; ///< 一度でも SH が書き込まれたか
         bool skyAmbientEnabled_ = true;       ///< 空アンビエント（大気アクティブなシーンのみ効く）
         float skyAmbientScale_ = 0.3f;        ///< 空の輝度単位 → サーフェス光単位の変換係数（美術値。昼の従来アンビエントと概ね揃う値）
@@ -511,14 +512,14 @@ namespace CoreEngine
         // 空キューブマップ（空＋雲の作業面。mip0 のみ。α=雲透過率）
         Microsoft::WRL::ComPtr<ID3D12Resource> skyCubemap_;
         D3D12_RESOURCE_STATES skyCubemapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE skyCubemapSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE skyCubemapUavHandle_{};
+        DescriptorHandle skyCubemapSrvHandle_{};
+        DescriptorHandle skyCubemapUavHandle_{};
 
         // プリフィルタ済み空スペキュラキューブマップ（kSkySpecularMipCount ミップ）
         Microsoft::WRL::ComPtr<ID3D12Resource> skySpecularMap_;
         D3D12_RESOURCE_STATES skySpecularState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE skySpecularSrvHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE skySpecularUavHandles_[kSkySpecularMipCount]{};
+        DescriptorHandle skySpecularSrvHandle_{};
+        DescriptorHandle skySpecularUavHandles_[kSkySpecularMipCount]{};
 
         // プリフィルタのミップ別パラメータ CB（kSkySpecularMipCount × 256B スロット）
         Microsoft::WRL::ComPtr<ID3D12Resource> skyPrefilterParamsCB_;
@@ -531,11 +532,11 @@ namespace CoreEngine
         // Aerial Perspective 合成用中間テクスチャ（SceneColor と同サイズ）
         Microsoft::WRL::ComPtr<ID3D12Resource> apResult_;
         D3D12_RESOURCE_STATES apResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_GPU_DESCRIPTOR_HANDLE apResultUavHandle_{};
+        DescriptorHandle apResultUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE apResultUavCpuHandle_{};
         uint64_t apResultWidth_ = 0;
         uint32_t apResultHeight_ = 0;
-        DescriptorManager* descriptorManager_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
 
         // LUT 生成パイプライン
         CustomShaderPipeline transmittancePipeline_{};

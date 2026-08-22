@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../PostEffectComputeBase.h"
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include <wrl.h>
@@ -119,12 +120,12 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> lutTexture_;
     D3D12_RESOURCE_STATES lutTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-    D3D12_GPU_DESCRIPTOR_HANDLE lutSrvHandle_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE lutUavHandle_{};
+    DescriptorHandle lutSrvHandle_{};
+    DescriptorHandle lutUavHandle_{};
 
     Microsoft::WRL::ComPtr<ID3D12Resource> lutDataBuffer_; ///< アップロードヒープ（永続マップ）
     LutTexel* mappedLutData_ = nullptr;
-    D3D12_GPU_DESCRIPTOR_HANDLE lutDataSrvHandle_{};
+    DescriptorHandle lutDataSrvHandle_{};
 
     Microsoft::WRL::ComPtr<ID3D12Resource> colorLutParamsCB_;
     ColorLUTParams* mappedColorLutParams_ = nullptr;

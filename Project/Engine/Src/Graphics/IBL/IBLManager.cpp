@@ -2,7 +2,7 @@
 #include "IBLManager.h"
 #include "IBLGenerator.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -87,11 +87,10 @@ bool IBLManager::Initialize(GraphicsCore* dxCommon, IBLGenerator* iblGenerator, 
 
 bool IBLManager::CreateIrradianceSRV()
 {
-    auto* descriptorManager = dxCommon_->GetDescriptorManager();
-    if (!descriptorManager)
+    auto* descriptorAllocator = dxCommon_->GetDescriptorAllocator();
+    if (!descriptorAllocator)
         return false;
 
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
@@ -99,23 +98,19 @@ bool IBLManager::CreateIrradianceSRV()
     srvDesc.TextureCube.MipLevels = 1;
     srvDesc.TextureCube.MostDetailedMip = 0;
 
-    descriptorManager->CreateSRV(
+    irradianceSRV_ = descriptorAllocator->CreateSRV(
         irradianceMap_.Get(),
-        srvDesc,
-        cpuHandle,
-        irradianceSRV_,
-        "IBL_IrradianceMap");
+        srvDesc, "IBL_IrradianceMap");
 
-    return irradianceSRV_.ptr != 0;
+    return irradianceSRV_.IsValid();
 }
 
 bool IBLManager::CreatePrefilteredSRV()
 {
-    auto* descriptorManager = dxCommon_->GetDescriptorManager();
-    if (!descriptorManager)
+    auto* descriptorAllocator = dxCommon_->GetDescriptorAllocator();
+    if (!descriptorAllocator)
         return false;
 
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
@@ -124,23 +119,19 @@ bool IBLManager::CreatePrefilteredSRV()
     srvDesc.TextureCube.MipLevels = PREFILTERED_MIP_LEVELS;
     srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
 
-    descriptorManager->CreateSRV(
+    prefilteredSRV_ = descriptorAllocator->CreateSRV(
         prefilteredMap_.Get(),
-        srvDesc,
-        cpuHandle,
-        prefilteredSRV_,
-        "IBL_PrefilteredMap");
+        srvDesc, "IBL_PrefilteredMap");
 
-    return prefilteredSRV_.ptr != 0;
+    return prefilteredSRV_.IsValid();
 }
 
 bool IBLManager::CreateBRDFLUTSRV()
 {
-    auto* descriptorManager = dxCommon_->GetDescriptorManager();
-    if (!descriptorManager)
+    auto* descriptorAllocator = dxCommon_->GetDescriptorAllocator();
+    if (!descriptorAllocator)
         return false;
 
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
     srvDesc.Format = DXGI_FORMAT_R16G16_FLOAT;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -148,14 +139,11 @@ bool IBLManager::CreateBRDFLUTSRV()
     srvDesc.Texture2D.MostDetailedMip = 0;
     srvDesc.Texture2D.MipLevels = 1;
 
-    descriptorManager->CreateSRV(
+    brdfLUTSRV_ = descriptorAllocator->CreateSRV(
         brdfLUT_.Get(),
-        srvDesc,
-        cpuHandle,
-        brdfLUTSRV_,
-        "IBL_BRDF_LUT");
+        srvDesc, "IBL_BRDF_LUT");
 
-    return brdfLUTSRV_.ptr != 0;
+    return brdfLUTSRV_.IsValid();
 }
 
 } // namespace CoreEngine

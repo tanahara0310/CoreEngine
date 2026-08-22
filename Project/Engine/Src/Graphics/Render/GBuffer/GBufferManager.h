@@ -1,13 +1,14 @@
 #pragma once
 
 #include <array>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <cstdint>
 #include <d3d12.h>
 #include <wrl.h>
 
 namespace CoreEngine
 {
-    class DescriptorManager;
+    class DescriptorAllocator;
     class DepthStencilManager;
 
     /// @brief G-Buffer管理クラス
@@ -41,10 +42,10 @@ namespace CoreEngine
 
         /// @brief 初期化
         /// @param device D3D12デバイス 
-        /// @param descriptorManager DescriptorManager（RTV/SRVの作成に使用）
+        /// @param descriptorAllocator DescriptorManager（RTV/SRVの作成に使用）
         /// @param width 初期幅
         /// @param height 初期高さ
-        void Initialize(ID3D12Device* device, DescriptorManager* descriptorManager, int32_t width, int32_t height);
+        void Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator, int32_t width, int32_t height);
         /// @brief 画面サイズ変更に合わせて全ターゲットを作り直す
         void Resize(int32_t width, int32_t height);
 
@@ -79,9 +80,8 @@ namespace CoreEngine
         /// @brief G-Buffer の 1 枚分（実体・RTV/SRV・現在ステート）
         struct TargetResource {
             Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle{};
-            D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
-            D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
+            DescriptorHandle rtvHandle{};
+            DescriptorHandle srvHandle{};
             D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         };
 
@@ -93,7 +93,7 @@ namespace CoreEngine
     private:
         std::array<TargetResource, kTargetCount> targets_{};
         ID3D12Device* device_ = nullptr;
-        DescriptorManager* descriptorManager_ = nullptr;
+        DescriptorAllocator* descriptorAllocator_ = nullptr;
         bool isInitialized_ = false;
         int32_t currentWidth_ = 0;
         int32_t currentHeight_ = 0;

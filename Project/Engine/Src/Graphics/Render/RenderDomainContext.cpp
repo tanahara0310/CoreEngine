@@ -20,21 +20,21 @@ namespace CoreEngine
     void RenderDomainContext::Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height)
     {
         auto* device = dxCommon->GetDevice();
-        auto* descriptorManager = dxCommon->GetDescriptorManager();
+        auto* descriptorAllocator = dxCommon->GetDescriptorAllocator();
 
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext::Initialize: ドメインマネージャーを初期化します\n");
 
         // G-Bufferの初期化
         gBufferManager_ = std::make_unique<GBufferManager>();
-        gBufferManager_->Initialize(device, descriptorManager, width, height);
+        gBufferManager_->Initialize(device, descriptorAllocator, width, height);
         Logger::GetInstance().Infof(LogCategory::Graphics, "RenderDomainContext: GBufferManager 初期化完了\n");
 
         // 従来型シャドウマップは全面廃止（2026-07-25）: 影はDXRのRTShadowPassが担い、
         // フォワード描画物の受影も gRTShadowMask(t6) 参照へ統一した。
         // 加速構造マネージャーの初期化（DXR 非対応の場合は内部でスキップ）
         accelerationStructureManager_ = std::make_unique<AccelerationStructureManager>();
-        accelerationStructureManager_->Initialize(device, descriptorManager);
+        accelerationStructureManager_->Initialize(device, descriptorAllocator);
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext: AccelerationStructureManager 初期化完了 (DXR対応: %s)\n",
             accelerationStructureManager_->IsSupported() ? "true" : "false");
@@ -42,7 +42,7 @@ namespace CoreEngine
         // レイトレーシングシャドウマネージャーの初期化（DXR対応時のみ）
         rtShadowManager_ = std::make_unique<RayTracingShadowManager>();
         if (accelerationStructureManager_->IsSupported()) {
-            rtShadowManager_->Initialize(dxCommon, descriptorManager,
+            rtShadowManager_->Initialize(dxCommon, descriptorAllocator,
                 accelerationStructureManager_.get());
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: RayTracingShadowManager 初期化完了\n");
@@ -50,7 +50,7 @@ namespace CoreEngine
 
         rtWaterRefractionManager_ = std::make_unique<WaterRefractionRayTracingManager>();
         if (accelerationStructureManager_->IsSupported()) {
-            rtWaterRefractionManager_->Initialize(dxCommon, descriptorManager,
+            rtWaterRefractionManager_->Initialize(dxCommon, descriptorAllocator,
                 accelerationStructureManager_.get());
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: WaterRefractionRayTracingManager 初期化完了\n");
@@ -58,7 +58,7 @@ namespace CoreEngine
 
         rtWaterReflectionManager_ = std::make_unique<WaterReflectionRayTracingManager>();
         if (accelerationStructureManager_->IsSupported()) {
-            rtWaterReflectionManager_->Initialize(dxCommon, descriptorManager,
+            rtWaterReflectionManager_->Initialize(dxCommon, descriptorAllocator,
                 accelerationStructureManager_.get());
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: WaterReflectionRayTracingManager 初期化完了\n");
@@ -66,25 +66,25 @@ namespace CoreEngine
 
         rtWaterCausticsManager_ = std::make_unique<WaterCausticsRayTracingManager>();
         if (accelerationStructureManager_->IsSupported()) {
-            rtWaterCausticsManager_->Initialize(dxCommon, descriptorManager,
+            rtWaterCausticsManager_->Initialize(dxCommon, descriptorAllocator,
                 accelerationStructureManager_.get());
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: WaterCausticsRayTracingManager 初期化完了\n");
         }
 
         fftOceanManager_ = std::make_unique<FFTOceanManager>();
-        if (fftOceanManager_->Initialize(dxCommon, descriptorManager)) {
+        if (fftOceanManager_->Initialize(dxCommon, descriptorAllocator)) {
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: FFTOceanManager 初期化完了\n");
         }
 
         atmosphereManager_ = std::make_unique<AtmosphereManager>();
-        atmosphereManager_->Initialize(device, descriptorManager);
+        atmosphereManager_->Initialize(device, descriptorAllocator);
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext: AtmosphereManager 初期化完了\n");
 
         volumetricCloudManager_ = std::make_unique<VolumetricCloudManager>();
-        volumetricCloudManager_->Initialize(device, descriptorManager);
+        volumetricCloudManager_->Initialize(device, descriptorAllocator);
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext: VolumetricCloudManager 初期化完了\n");
 

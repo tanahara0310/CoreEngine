@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include <cstdint>
 #include <string>
@@ -8,7 +9,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
-    class DescriptorManager;
+    class DescriptorAllocator;
 
     /// @brief DXR パスが使う UAV/SRV 出力テクスチャをスロット単位でまとめて管理するクラス
     /// @details EnsureTexture() はサイズ・フォーマット変更時のみ再確保し、UAV/SRV を作り直す。
@@ -38,7 +39,7 @@ namespace CoreEngine
         /// @return 確保に成功した場合 true
         bool EnsureTexture(
             GraphicsCore* dxCommon,
-            DescriptorManager* descriptorManager,
+            DescriptorAllocator* descriptorAllocator,
             UINT width,
             UINT height,
             uint32_t slotIndex,
@@ -46,8 +47,8 @@ namespace CoreEngine
             const std::string& debugName,
             const TextureOptions& options);
 
-        D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle(uint32_t slotIndex) const { return slots_[slotIndex].srvHandle; }
-        D3D12_GPU_DESCRIPTOR_HANDLE GetUAVHandle(uint32_t slotIndex) const { return slots_[slotIndex].uavHandle; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle(uint32_t slotIndex) const { return slots_[slotIndex].srvHandle.gpuHandle; }
+        D3D12_GPU_DESCRIPTOR_HANDLE GetUAVHandle(uint32_t slotIndex) const { return slots_[slotIndex].uavHandle.gpuHandle; }
         ID3D12Resource* GetResource(uint32_t slotIndex) const { return slots_[slotIndex].texture.Get(); }
         D3D12_RESOURCE_STATES& GetCurrentState(uint32_t slotIndex) { return slots_[slotIndex].currentState; }
         bool HasTexture(uint32_t slotIndex) const { return slots_[slotIndex].texture != nullptr; }
@@ -62,10 +63,8 @@ namespace CoreEngine
         /// @brief 出力テクスチャ 1 枚分（実体・UAV/SRV・寸法・現在ステート）
         struct Slot {
             Microsoft::WRL::ComPtr<ID3D12Resource> texture;
-            D3D12_GPU_DESCRIPTOR_HANDLE uavHandle{};
-            D3D12_CPU_DESCRIPTOR_HANDLE uavCpuHandle{};
-            D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
-            D3D12_CPU_DESCRIPTOR_HANDLE srvCpuHandle{};
+            DescriptorHandle uavHandle{};
+            DescriptorHandle srvHandle{};
             UINT width = 0;
             UINT height = 0;
             DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;

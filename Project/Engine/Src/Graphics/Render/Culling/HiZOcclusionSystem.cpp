@@ -8,7 +8,7 @@
 #include <cstring>
 
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Diagnostics/EngineStats.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
@@ -163,7 +163,7 @@ namespace CoreEngine
         slots_.clear();
         freeIds_.clear();
         pendingQueries_.clear();
-        descriptorManager_ = nullptr;
+        descriptorAllocator_ = nullptr;
         dxCommon_ = nullptr;
         hiZWidth_ = hiZHeight_ = hiZMipCount_ = 0;
         depthWidth_ = depthHeight_ = 0;
@@ -186,9 +186,9 @@ namespace CoreEngine
         }
 
         dxCommon_ = dxCommon;
-        descriptorManager_ = dxCommon->GetDescriptorManager();
+        descriptorAllocator_ = dxCommon->GetDescriptorAllocator();
         ID3D12Device* device = dxCommon->GetDevice();
-        if (!device || !descriptorManager_) {
+        if (!device || !descriptorAllocator_) {
             initializeFailed_ = true;
             return false;
         }
@@ -313,8 +313,7 @@ namespace CoreEngine
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
             uavDesc.Buffer.NumElements = kMaxQueries;
             uavDesc.Buffer.StructureByteStride = sizeof(uint32_t);
-            descriptorManager_->CreateUAV(visibilityBuffer_.Get(), uavDesc,
-                visibilityUavCpu_, visibilityUavGpu_, "HiZOcclusionVisibility");
+            visibilityUavGpu_ = descriptorAllocator_->CreateUAV(visibilityBuffer_.Get(), uavDesc, "HiZOcclusionVisibility");
         }
 
         // フレームリング: AABB アップロード + 判定 CS 定数 + Readback
@@ -332,8 +331,7 @@ namespace CoreEngine
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Buffer.NumElements = kMaxQueries;
             srvDesc.Buffer.StructureByteStride = sizeof(BoundsGPU);
-            descriptorManager_->CreateSRV(boundsUpload_[i].Get(), srvDesc,
-                boundsSrvCpu_[i], boundsSrvGpu_[i], "HiZOcclusionBounds");
+            boundsSrvGpu_[i] = descriptorAllocator_->CreateSRV(boundsUpload_[i].Get(), srvDesc, "HiZOcclusionBounds");
 
             cullParamsUpload_[i] = ResourceFactory::CreateBufferResource(
                 device, sizeof(CullParamsGPU));
@@ -396,15 +394,13 @@ namespace CoreEngine
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Texture2D.MostDetailedMip = mip;
             srvDesc.Texture2D.MipLevels = 1;
-            descriptorManager_->CreateOrUpdateSRV(hiZTexture_.Get(), srvDesc,
-                hiZMipSrvCpu_[mip], hiZMipSrvGpu_[mip], "HiZPyramidMipSRV");
+            descriptorAllocator_->EnsureSRV(hiZMipSrvGpu_[mip], hiZTexture_.Get(), srvDesc, "HiZPyramidMipSRV");
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
             uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
             uavDesc.Texture2D.MipSlice = mip;
-            descriptorManager_->CreateOrUpdateUAV(hiZTexture_.Get(), uavDesc,
-                hiZMipUavCpu_[mip], hiZMipUavGpu_[mip], "HiZPyramidMipUAV");
+            descriptorAllocator_->EnsureUAV(hiZMipUavGpu_[mip], hiZTexture_.Get(), uavDesc, "HiZPyramidMipUAV");
         }
 
         // 判定 CS 用フルチェーン SRV
@@ -415,8 +411,7 @@ namespace CoreEngine
             srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             srvDesc.Texture2D.MostDetailedMip = 0;
             srvDesc.Texture2D.MipLevels = hiZMipCount_;
-            descriptorManager_->CreateOrUpdateSRV(hiZTexture_.Get(), srvDesc,
-                hiZFullSrvCpu_, hiZFullSrvGpu_, "HiZPyramidFullSRV");
+            descriptorAllocator_->EnsureSRV(hiZFullSrvGpu_, hiZTexture_.Get(), srvDesc, "HiZPyramidFullSRV");
         }
 
         // 構築 CS 定数を再充填（dispatch d: mip(d) を書く。d=0 のソースはフル解像度深度）
@@ -491,9 +486,7 @@ namespace CoreEngine
         cullParams.minRectTexels = kMinRectTexels;
         *cullParamsMapped_[frameIndex] = cullParams;
 
-        // ディスクリプタヒープはパス実行順に依存しないよう自前でバインドする（パス分離契約 2）
-        ID3D12DescriptorHeap* heaps[] = { dxCommon->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
         // 2) Hi-Z ピラミッド構築（深度 → mip0 → … → 最終ミップ）
         BuildHiZPyramid(cmdList, depthSRV);
@@ -535,10 +528,10 @@ namespace CoreEngine
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(buildSourceIdx_), hiZMipSrvGpu_[mip - 1]);
+                    static_cast<UINT>(buildSourceIdx_), hiZMipSrvGpu_[mip - 1].gpuHandle);
             }
             cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(buildDestIdx_), hiZMipUavGpu_[mip]);
+                static_cast<UINT>(buildDestIdx_), hiZMipUavGpu_[mip].gpuHandle);
             cmdList->SetComputeRootConstantBufferView(
                 static_cast<UINT>(buildParamsIdx_),
                 buildParamsBuffer_->GetGPUVirtualAddress() + kCbSlotSize * mip);
@@ -566,11 +559,11 @@ namespace CoreEngine
         cmdList->SetPipelineState(cullPso_.Get());
         cmdList->SetComputeRootSignature(cullRootSignatureMg_->GetRootSignature());
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullBoundsIdx_), boundsSrvGpu_[frameIndex]);
+            static_cast<UINT>(cullBoundsIdx_), boundsSrvGpu_[frameIndex].gpuHandle);
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullHiZIdx_), hiZFullSrvGpu_);
+            static_cast<UINT>(cullHiZIdx_), hiZFullSrvGpu_.gpuHandle);
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullVisibilityIdx_), visibilityUavGpu_);
+            static_cast<UINT>(cullVisibilityIdx_), visibilityUavGpu_.gpuHandle);
         cmdList->SetComputeRootConstantBufferView(
             static_cast<UINT>(cullParamsIdx_),
             cullParamsUpload_[frameIndex]->GetGPUVirtualAddress());

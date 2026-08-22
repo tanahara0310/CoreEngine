@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
 #include <cstdint>
 #include "Math/MathCore.h"
@@ -37,11 +38,11 @@ public:
 
     /// @brief SRVのGPUハンドルを取得
     /// @return SRVのGPUディスクリプタハンドル
-    D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU() const { return srvHandleGPU_; }
+    D3D12_GPU_DESCRIPTOR_HANDLE GetSrvHandleGPU() const { return srvHandleGPU_.gpuHandle; }
 
     /// @brief SRVのCPUハンドルを取得
     /// @return SRVのCPUディスクリプタハンドル
-  D3D12_CPU_DESCRIPTOR_HANDLE GetSrvHandleCPU() const { return srvHandleCPU_; }
+  D3D12_CPU_DESCRIPTOR_HANDLE GetSrvHandleCPU() const { return srvHandleGPU_.cpuHandle; }
 
 private:
     /// @brief インスタンシングリソースを作成
@@ -58,8 +59,7 @@ private:
 
     // GPUリソース
   Microsoft::WRL::ComPtr<ID3D12Resource> instancingResource_;
-    D3D12_CPU_DESCRIPTOR_HANDLE srvHandleCPU_ = {};
-    D3D12_GPU_DESCRIPTOR_HANDLE srvHandleGPU_ = {};
+    DescriptorHandle srvHandleGPU_{};
     ParticleForGPU* instancingData_ = nullptr;
 };
 

@@ -434,9 +434,7 @@ namespace CoreEngine
         scissor.bottom = static_cast<LONG>(viewport.TopLeftY + drawHeight);
         cmdList->RSSetScissorRects(1, &scissor);
 
-        // ルートデスクリプタテーブルを使うので SRV ヒープを明示的に張り直す
-        ID3D12DescriptorHeap* heaps[] = { dxCommon_->GetSRVHeap() };
-        cmdList->SetDescriptorHeaps(1, heaps);
+        // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
         // バックバッファ用 PSO（RTV フォーマットが _SRGB）でフルスクリーン三角形を描く。
         // 本体の BackBufferPass と同じ経路なので、色の扱いも完全に一致する。

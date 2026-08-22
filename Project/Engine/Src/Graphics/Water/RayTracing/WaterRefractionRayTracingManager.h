@@ -15,7 +15,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
-    class DescriptorManager;
+    class DescriptorAllocator;
     class AccelerationStructureManager;
 
     /// @brief RT 屈折の設定
@@ -45,7 +45,7 @@ namespace CoreEngine
 
         bool Initialize(
             GraphicsCore* dxCommon,
-            DescriptorManager* descriptorManager,
+            DescriptorAllocator* descriptorAllocator,
             AccelerationStructureManager* asMgr);
 
         void Dispatch(

@@ -10,7 +10,7 @@
 // 前方宣言
 namespace CoreEngine {
     class GraphicsCore;
-    class DescriptorManager;
+    class DescriptorAllocator;
 }
 
 namespace CoreEngine
@@ -24,7 +24,7 @@ public:
         const Microsoft::WRL::ComPtr<ID3D12Device>& device,
         const Skeleton& skeleton,
         const ModelData& modelData,
-        CoreEngine::DescriptorManager* descriptorManager,
+        CoreEngine::DescriptorAllocator* descriptorAllocator,
         ID3D12Resource* sourceVertexBuffer,
         UINT vertexCount);
     

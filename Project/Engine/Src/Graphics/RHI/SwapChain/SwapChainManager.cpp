@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Graphics/RHI/SwapChain/SwapChainManager.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
@@ -14,13 +14,13 @@ namespace{
 }
 
 void SwapChainManager::Initialize(ID3D12Device* device, IDXGIFactory7* dxgiFactory,
-    ID3D12CommandQueue* commandQueue, DescriptorManager* descriptorManager,
+    ID3D12CommandQueue* commandQueue, DescriptorAllocator* descriptorAllocator,
     HWND hwnd, std::int32_t width, std::int32_t height)
 {
     device_ = device;
     dxgiFactory_ = dxgiFactory;
     commandQueue_ = commandQueue;
-    descriptorManager_ = descriptorManager;
+    descriptorAllocator_ = descriptorAllocator;
     hwnd_ = hwnd;
     width_ = width;
     height_ = height;
@@ -57,25 +57,27 @@ void SwapChainManager::CreateRTVs()
     rtvDesc_.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     rtvDesc_.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
-    // DescriptorManager 経由でRTVヒープを取得し、予約スロット[0],[1]に直接書き込む
-    // kReservedRTVStart(=0) から2スロットをスワップチェーン用として使用する
-    ID3D12DescriptorHeap* rtvHeap = descriptorManager_->GetRTVHeap();
-    const UINT rtvSize = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvStart = rtvHeap->GetCPUDescriptorHandleForHeapStart();
-
-    rtvHandles_[0].ptr = rtvStart.ptr + DescriptorManager::kReservedRTVStart * rtvSize;
-    rtvHandles_[1].ptr = rtvStart.ptr + (DescriptorManager::kReservedRTVStart + 1) * rtvSize;
-
-    device_->CreateRenderTargetView(swapChainResources_[0].Get(), &rtvDesc_, rtvHandles_[0]);
-    device_->CreateRenderTargetView(swapChainResources_[1].Get(), &rtvDesc_, rtvHandles_[1]);
+    // 旧実装はヒープ先頭から手計算で「予約スロット[0][1]」へ直接書き込んでいた
+    // （DescriptorAllocator を素通りするため、確保状況にも載らなかった）。
+    // 今は普通に確保する。ハンドルがスロット番号を持つので予約という概念自体が要らない。
+    for (UINT i = 0; i < 2; ++i) {
+        if (rtvDescriptors_[i].IsValid()) {
+            // リサイズ経路：同じスロットへ書き直す（RTV の位置を変えない）
+            descriptorAllocator_->WriteRTV(rtvDescriptors_[i], swapChainResources_[i].Get(), rtvDesc_);
+        } else {
+            rtvDescriptors_[i] = descriptorAllocator_->CreateRTV(
+                swapChainResources_[i].Get(), rtvDesc_,
+                i == 0 ? "SwapChainBackBuffer0" : "SwapChainBackBuffer1");
+        }
+    }
 
     logger.Log(
         std::format("スワップチェーンRTV作成完了:\n"
                     "  RTV[{}] = バックバッファ0 (handle={:#x})\n"
                     "  RTV[{}] = バックバッファ1 (handle={:#x})\n"
                     "  フォーマット: DXGI_FORMAT_R8G8B8A8_UNORM_SRGB\n",
-            DescriptorManager::kReservedRTVStart, rtvHandles_[0].ptr,
-            DescriptorManager::kReservedRTVStart + 1, rtvHandles_[1].ptr),
+            rtvDescriptors_[0].index, rtvDescriptors_[0].cpuHandle.ptr,
+            rtvDescriptors_[1].index, rtvDescriptors_[1].cpuHandle.ptr),
         LogLevel::INFO, LogCategory::Graphics);
 }
 

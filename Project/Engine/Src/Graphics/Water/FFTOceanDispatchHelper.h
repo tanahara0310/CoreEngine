@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/Water/FFTOceanGpuResources.h"
 
 #include <cstdint>
@@ -18,7 +19,7 @@ namespace CoreEngine
             FFTOceanPingPong& spectrumA,
             FFTOceanPingPong& spectrumB,
             CustomShaderPipeline& evolutionPipeline,
-            D3D12_GPU_DESCRIPTOR_HANDLE spectrumSrvHandle,
+            const DescriptorHandle& spectrumSrvHandle,
             D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
             uint32_t resolution);
 

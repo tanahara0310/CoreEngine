@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <externals/DirectXTex/DirectXTex.h>
 #include <wrl.h>
 #include <string>
@@ -19,8 +20,7 @@ namespace CoreEngine
         struct UploadResult
         {
             Microsoft::WRL::ComPtr<ID3D12Resource> texture;
-            D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-            D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{};
+            DescriptorHandle descriptor{}; ///< ???? SRV ????(???????????????)
         };
 
         /// @brief ミップ済み画像をGPUへ転送し、SRVを作成する
@@ -36,7 +36,7 @@ namespace CoreEngine
     private:
         // ディスクリプタヒープ確保とリソース生成への同時アクセスを防ぐ排他ロック。
         // コマンドリストへの記録は UploadContext が自前のロックで直列化するため、
-        // ここで守っているのはそれ以外（DescriptorManager::CreateSRV 等）。
+        // ここで守っているのはそれ以外（DescriptorAllocator::CreateSRV 等）。
         static std::mutex gpuUploadMutex_;
     };
 }

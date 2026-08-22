@@ -2,7 +2,7 @@
 #include "LightBufferManager.h"
 
 #include "Graphics/RHI/Resource/ResourceFactory.h"
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include <cstring>
 
 namespace CoreEngine
@@ -10,7 +10,7 @@ namespace CoreEngine
     // バッファ確保と SRV 作成をまとめて行う。最大数は起動時に決め打ちで、以後変えない
     void LightBufferManager::Initialize(
         ID3D12Device* device,
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         [[maybe_unused]] ResourceFactory* resourceFactory,
         uint32_t maxDirectionalLights,
         uint32_t maxPointLights,
@@ -20,9 +20,9 @@ namespace CoreEngine
     {
         CreateBufferResources(device, maxDirectionalLights, maxPointLights, maxSpotLights, maxAreaLights);
 
-        if (descriptorManager)
+        if (descriptorAllocator)
         {
-            CreateBufferSRVs(descriptorManager, maxDirectionalLights, maxPointLights, maxSpotLights, maxAreaLights);
+            CreateBufferSRVs(descriptorAllocator, maxDirectionalLights, maxPointLights, maxSpotLights, maxAreaLights);
         }
     }
 
@@ -99,35 +99,35 @@ namespace CoreEngine
             );
         }
 
-        if (directionalLightsRootParameterIndex >= 0 && directionalLightsSRVHandle_.ptr != 0)
+        if (directionalLightsRootParameterIndex >= 0 && directionalLightsSRVHandle_.gpuHandle.ptr != 0)
         {
             commandList->SetGraphicsRootDescriptorTable(
                 static_cast<UINT>(directionalLightsRootParameterIndex),
-                directionalLightsSRVHandle_
+                directionalLightsSRVHandle_.gpuHandle
             );
         }
 
-        if (pointLightsRootParameterIndex >= 0 && pointLightsSRVHandle_.ptr != 0)
+        if (pointLightsRootParameterIndex >= 0 && pointLightsSRVHandle_.gpuHandle.ptr != 0)
         {
             commandList->SetGraphicsRootDescriptorTable(
                 static_cast<UINT>(pointLightsRootParameterIndex),
-                pointLightsSRVHandle_
+                pointLightsSRVHandle_.gpuHandle
             );
         }
 
-        if (spotLightsRootParameterIndex >= 0 && spotLightsSRVHandle_.ptr != 0)
+        if (spotLightsRootParameterIndex >= 0 && spotLightsSRVHandle_.gpuHandle.ptr != 0)
         {
             commandList->SetGraphicsRootDescriptorTable(
                 static_cast<UINT>(spotLightsRootParameterIndex),
-                spotLightsSRVHandle_
+                spotLightsSRVHandle_.gpuHandle
             );
         }
 
-        if (areaLightsRootParameterIndex >= 0 && areaLightsSRVHandle_.ptr != 0)
+        if (areaLightsRootParameterIndex >= 0 && areaLightsSRVHandle_.gpuHandle.ptr != 0)
         {
             commandList->SetGraphicsRootDescriptorTable(
                 static_cast<UINT>(areaLightsRootParameterIndex),
-                areaLightsSRVHandle_
+                areaLightsSRVHandle_.gpuHandle
             );
         }
     }
@@ -175,7 +175,7 @@ namespace CoreEngine
     }
 
     void LightBufferManager::CreateBufferSRVs(
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         uint32_t maxDirectionalLights,
         uint32_t maxPointLights,
         uint32_t maxSpotLights,
@@ -189,27 +189,20 @@ namespace CoreEngine
         srvDesc.Buffer.FirstElement = 0;
         srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle;
-        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle;
-
         srvDesc.Buffer.NumElements = maxDirectionalLights;
         srvDesc.Buffer.StructureByteStride = sizeof(DirectionalLightData);
-        descriptorManager->CreateSRV(directionalLightsBuffer_.Get(), srvDesc, cpuHandle, gpuHandle, "DirectionalLights");
-        directionalLightsSRVHandle_ = gpuHandle;
+        directionalLightsSRVHandle_ = descriptorAllocator->CreateSRV(directionalLightsBuffer_.Get(), srvDesc, "DirectionalLights");
 
         srvDesc.Buffer.NumElements = maxPointLights;
         srvDesc.Buffer.StructureByteStride = sizeof(PointLightData);
-        descriptorManager->CreateSRV(pointLightsBuffer_.Get(), srvDesc, cpuHandle, gpuHandle, "PointLights");
-        pointLightsSRVHandle_ = gpuHandle;
+        pointLightsSRVHandle_ = descriptorAllocator->CreateSRV(pointLightsBuffer_.Get(), srvDesc, "PointLights");
 
         srvDesc.Buffer.NumElements = maxSpotLights;
         srvDesc.Buffer.StructureByteStride = sizeof(SpotLightData);
-        descriptorManager->CreateSRV(spotLightsBuffer_.Get(), srvDesc, cpuHandle, gpuHandle, "SpotLights");
-        spotLightsSRVHandle_ = gpuHandle;
+        spotLightsSRVHandle_ = descriptorAllocator->CreateSRV(spotLightsBuffer_.Get(), srvDesc, "SpotLights");
 
         srvDesc.Buffer.NumElements = maxAreaLights;
         srvDesc.Buffer.StructureByteStride = sizeof(AreaLightData);
-        descriptorManager->CreateSRV(areaLightsBuffer_.Get(), srvDesc, cpuHandle, gpuHandle, "AreaLights");
-        areaLightsSRVHandle_ = gpuHandle;
+        areaLightsSRVHandle_ = descriptorAllocator->CreateSRV(areaLightsBuffer_.Get(), srvDesc, "AreaLights");
     }
 }

@@ -859,7 +859,10 @@
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\DeferredReleaseQueue.cpp">
       <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorManager.cpp">
+    <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.cpp">
       <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceManager.cpp">
@@ -2229,7 +2232,10 @@
     <ClInclude Include="Engine\Src\Graphics\RHI\Command\DeferredReleaseQueue.h">
       <Filter>Engine\Src\Graphics\RHI\Command</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorManager.h">
+    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.h">
+      <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.h">
       <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceManager.h">

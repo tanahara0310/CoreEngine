@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <d3d12.h>
 #include <wrl.h>
 
@@ -11,10 +12,8 @@ namespace CoreEngine
     struct FFTOceanGpuTexture {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
         D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        D3D12_CPU_DESCRIPTOR_HANDLE srvCpu{};
-        D3D12_GPU_DESCRIPTOR_HANDLE srv{};
-        D3D12_CPU_DESCRIPTOR_HANDLE uavCpu{};
-        D3D12_GPU_DESCRIPTOR_HANDLE uav{};
+        DescriptorHandle srv{};
+        DescriptorHandle uav{};
 
         ID3D12Resource* Get() const { return resource.Get(); }
     };
@@ -30,8 +29,7 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> defaultBuffer;
         Microsoft::WRL::ComPtr<ID3D12Resource> uploadBuffer;
         void* mapped = nullptr; // UPLOAD 側の常時マップ先（要素型は Manager が知る）
-        D3D12_CPU_DESCRIPTOR_HANDLE srvCpu{};
-        D3D12_GPU_DESCRIPTOR_HANDLE srv{};
+        DescriptorHandle srv{};
         D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COPY_DEST;
     };
 }

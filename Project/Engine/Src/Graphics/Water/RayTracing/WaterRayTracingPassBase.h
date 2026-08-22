@@ -78,7 +78,7 @@ namespace CoreEngine
         /// @details 失敗時はエラーログ済み。成功時は isInitialized_ = true。
         bool InitializeFromDesc(
             GraphicsCore* dxCommon,
-            DescriptorManager* descriptorManager,
+            DescriptorAllocator* descriptorAllocator,
             AccelerationStructureManager* asMgr,
             const RTWaterPipelineDesc& desc);
 

@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
@@ -59,7 +59,7 @@ namespace CoreEngine
     // 屈折固有の構成（シェーダーパス・バインド名・出力フォーマット）を基盤へ渡す
     bool WaterRefractionRayTracingManager::Initialize(
         GraphicsCore* dxCommon,
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         AccelerationStructureManager* asMgr)
     {
         RTWaterPipelineDesc desc{};
@@ -76,7 +76,7 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterRefractionConstants";
         desc.constantsBytes = sizeof(WaterRefractionConstants);
-        return InitializeFromDesc(dxCommon, descriptorManager, asMgr, desc);
+        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, desc);
     }
 
     void WaterRefractionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)

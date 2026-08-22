@@ -18,13 +18,13 @@ namespace CoreEngine
     // 屈折・反射・コースティクスの 3 マネージャはこの関数への引数だけが違う
     bool WaterRayTracingPassBase::InitializeFromDesc(
         GraphicsCore* dxCommon,
-        DescriptorManager* descriptorManager,
+        DescriptorAllocator* descriptorAllocator,
         AccelerationStructureManager* asMgr,
         const RTWaterPipelineDesc& desc)
     {
         Logger& log = Logger::GetInstance();
 
-        if (!InitializeBase(dxCommon, descriptorManager, asMgr, desc.ownerName, desc.outputDebugName)) {
+        if (!InitializeBase(dxCommon, descriptorAllocator, asMgr, desc.ownerName, desc.outputDebugName)) {
             log.Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
