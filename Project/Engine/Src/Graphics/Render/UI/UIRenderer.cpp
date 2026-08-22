@@ -84,7 +84,9 @@ namespace CoreEngine
     }
 
     void UIRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
-        UINT frameIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
+        // per-frame リソースの添字は FrameSync のスロット番号を使う
+        // （スワップチェーンのインデックスは ResizeBuffers で 0 に戻るため使わない）
+        UINT frameIndex = dxCommon_->Frame().FrameIndex();
 
         // フレーム切り替え時のみバッファインデックスをリセット
         if (frameIndex != currentFrameIndex_) {

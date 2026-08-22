@@ -18,7 +18,6 @@
 #include "Graphics/Asset/AssetDatabase.h"
 
 // EngineSystem が直接使う型
-#include "Graphics/RHI/Command/CommandManager.h"
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/RHI/Resource/DepthStencilManager.h"
 #include "Graphics/Render/Render.h"
@@ -315,17 +314,13 @@ namespace CoreEngine
         auto* render = GetService<Render>();
         auto* sceneManager = GetService<SceneManager>();
 
-        // 今フレームの記録先コマンドリストを 1 回だけ解決する。
-        // これがフレーム内の唯一の供給点で、以降は RenderContext::cmdList を経由して配る。
+        // ===== フレーム開始 =====
+        // フレーム番号・記録先コマンドリスト・前フレームの後始末はすべてここで確定する。
+        // これがフレーム内の唯一の供給点で、以降は RenderContext 経由で配る。
         // 各パス／レンダラーが dxCommon->GetCommandList() を呼ぶと供給点がその数だけ増え、
         // コマンドリストを複数化したときに全箇所を直す羽目になる。
-        ID3D12GraphicsCommandList* cmdList = dx ? dx->GetCommandList() : nullptr;
-
-        // アップロードコンテキストの中間バッファを回収する（GPU 完了済みのぶんだけ）。
-        // これを呼ばないと UPLOAD ヒープ（システムメモリ）が解放されず溜まり続ける。
-        if (dx && dx->GetUploadContext()) {
-            dx->GetUploadContext()->ReleaseCompletedResources();
-        }
+        const FrameContext frame = dx ? dx->BeginFrame() : FrameContext{};
+        ID3D12GraphicsCommandList* cmdList = frame.cmdList;
 
         // レンダリングコンテキストの構築
         FrameBlackboard frameBlackboard;
@@ -354,7 +349,8 @@ namespace CoreEngine
         // （シーンに水面用の仮想関数を持たせない）
         context.waterSurfaceState = renderDomainContext_ ? renderDomainContext_->GetWaterSurfaceState() : nullptr;
         context.fftOceanSimulationTime = renderDomainContext_ ? renderDomainContext_->GetFFTOceanSimulationTime() : 0.0f;
-        context.frameNumber = ++renderFrameNumber_;
+        // フレーム番号は FrameSync が単一ソース（EngineSystem 側で別に数えない）
+        context.frameNumber = frame.frameNumber;
 #ifdef USE_IMGUI
         // RenderGraph 内の各パスが自動でタイミング計測できるようプロファイラを渡す
         // （nullptr の場合 RenderGraph::Execute は計測をスキップする）
@@ -401,10 +397,8 @@ namespace CoreEngine
         }
 
 #ifdef USE_IMGUI
-        // プロファイラのリングスロットは記録中フレームインデックスに合わせる
-        // （スワップチェーンのインデックスはリサイズで 0 にリセットされるため使わない）
-        const UINT currentFrameIndex =
-            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0;
+        // プロファイラのリングスロットは今フレームのスロット番号に合わせる
+        const UINT currentFrameIndex = frame.frameIndex;
         if (debug) debug->BeginRenderPipeline(cmdList, currentFrameIndex);
 #endif
 
@@ -413,8 +407,7 @@ namespace CoreEngine
         // （補助ビュー・反射ビューはカメラが異なり、メインカメラ基準の判定は誤カリングになる）。
         HiZOcclusionSystem* hiZOcclusion = hiZOcclusionSystem_.get();
         assert(hiZOcclusion && "HiZOcclusionSystem must be created by GraphicsComponentFactory");
-        hiZOcclusion->BeginFrame(
-            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0u);
+        hiZOcclusion->BeginFrame(frame.frameIndex);
         hiZOcclusion->SetCollectEnabled(false);
 
         // DXR BLAS / TLAS 構築は ASBuildPass（FrameSetup フェーズ）として
@@ -494,13 +487,14 @@ namespace CoreEngine
         if (debug) debug->EndRenderPipeline(cmdList, currentFrameIndex);
 #endif // USE_IMGUI
 
-        // フレームの最終処理（バックバッファ終了、コマンド実行、Present）
-        // FinalizeFrame 内で SignalFrame されるフレームインデックスを事前に取得する
-        const UINT currentFrameIndexForFlush =
-            (dx && dx->GetCommandManager()) ? dx->GetCommandManager()->GetRecordingFrameIndex() : 0;
-
+        // ===== フレーム終了 =====
+        // バックバッファを PRESENT 状態へ戻し（Render）、
+        // Close / Execute / Signal / Present / 次フレームの準備（GraphicsCore）を行う。
         if (render) {
             render->FinalizeFrame();
+        }
+        if (dx) {
+            dx->EndFrame();
         }
 
 #ifdef USE_IMGUI
@@ -508,10 +502,11 @@ namespace CoreEngine
         if (debug) debug->PresentGameOutputWindow();
 #endif // USE_IMGUI
 
-        // GPU 実行完了を確認してから DXR 退避リソースを解放
-        if (auto* asMgr = context.accelerationStructureManager) {
-            auto* commandManager = dx ? dx->GetCommandManager() : nullptr;
-            asMgr->FlushRetiredResources(commandManager, currentFrameIndexForFlush);
+        // DXR の退避リソースを遅延解放キューへ預ける。
+        // EndFrame() で今フレームを Signal した「後」に呼ぶこと（フェンス値がずれる）。
+        // 旧実装はここで WaitForFrame して GPU を止めていた。
+        if (auto* asMgr = context.accelerationStructureManager; asMgr && dx) {
+            asMgr->MoveRetiredResourcesTo(dx->DeferredRelease(), dx->Frame().LastSignaledValue());
         }
 
 #ifdef USE_IMGUI

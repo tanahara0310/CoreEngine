@@ -26,8 +26,10 @@ namespace CoreEngine
         /// @brief 最大 UI 要素数
         static constexpr size_t kMaxUICount = 1024;
 
-        /// @brief フレーム数（ダブルバッファリング）
-        static constexpr UINT kFrameCount = 2;
+        /// @brief per-frame リソースのリング段数
+        /// @details FrameSync のスロット数上限に合わせる。添字は実行時の
+        ///          GraphicsCore::Frame().FrameIndex() を使うこと。
+        static constexpr UINT kFrameCount = kMaxFramesInFlight;
 
         // ===== IRenderer インターフェース =====
         void Initialize(ID3D12Device* device) override;

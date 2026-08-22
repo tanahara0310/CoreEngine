@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "AccelerationStructureManager.h"
 #include "Graphics/RHI/Descriptor/DescriptorManager.h"
-#include "Graphics/RHI/Command/CommandManager.h"
+#include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/VertexData.h"
@@ -378,18 +378,18 @@ namespace CoreEngine
             nullptr, IID_PPV_ARGS(&blasScratch_));
     }
 
-    void AccelerationStructureManager::FlushRetiredResources(
-        CommandManager* commandManager, UINT frameIndex)
+    void AccelerationStructureManager::MoveRetiredResourcesTo(
+        DeferredReleaseQueue& queue, std::uint64_t fenceValue)
     {
         if (retiredResources_.empty()) {
             return;
         }
 
-        // 退避リソースを参照しているGPUフレームの完了を待ってから解放する
-        if (commandManager) {
-            commandManager->WaitForFrame(frameIndex);
+        // 「GPU 完了を待ってから解放」ではなく「フェンス値つきで解放予約」に変える。
+        // 待たないのでパイプラインが空にならない。
+        for (auto& resource : retiredResources_) {
+            queue.Push(std::move(resource), fenceValue);
         }
-
         retiredResources_.clear();
     }
 }

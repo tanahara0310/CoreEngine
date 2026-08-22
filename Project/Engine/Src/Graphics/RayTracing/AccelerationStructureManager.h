@@ -10,7 +10,7 @@ namespace CoreEngine
 {
     class DescriptorManager;
     class ModelResource;
-    class CommandManager;
+    class DeferredReleaseQueue;
 
     /// @brief BLAS/TLAS を管理するクラス（DXR レイトレーシング用）
     /// @note ID3D12Device5 が必須。非対応 GPU では Initialize() が false を返す
@@ -69,10 +69,16 @@ namespace CoreEngine
         /// @brief DXR がサポートされているか
         bool IsSupported() const { return isSupported_; }
 
-        /// @brief フレーム終了後に退避リソースを解放する
-        /// @param commandManager 現在フレームのGPU完了を待機するために使用する
-        /// @param frameIndex SignalFrame で記録したフレームインデックス
-        void FlushRetiredResources(CommandManager* commandManager, UINT frameIndex);
+        /// @brief 退避リソースを遅延解放キューへ引き渡す
+        /// @details 旧実装は「その場で GPU 完了を待って解放」だったため、
+        ///          加速構造を作り直したフレームで毎回パイプラインが空になっていた。
+        ///          解放予約に変えることでストールしない。
+        /// @param queue 引き渡し先
+        /// @param fenceValue この値まで GPU が進めば解放してよい
+        /// @warning **フレームを Signal した後**（GraphicsCore::EndFrame の後）に呼ぶこと。
+        ///          先に呼ぶと、退避リソースを参照している今フレームの作業より前の
+        ///          フェンス値が入ってしまい、GPU 使用中に解放されうる。
+        void MoveRetiredResourcesTo(DeferredReleaseQueue& queue, std::uint64_t fenceValue);
 
         /// @brief 退避リソースがあるか
         bool HasRetiredResources() const { return !retiredResources_.empty(); }

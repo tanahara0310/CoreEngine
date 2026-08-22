@@ -8,6 +8,7 @@
 #include <vector>
 #include <optional>
 
+#include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight
 #include "ModelResource.h"
 #include "ModelRenderContext.h"
 #include "WorldTransform/WorldTransform.h"
@@ -142,9 +143,9 @@ namespace CoreEngine
         // インスタンス固有のマテリアル（マテリアルスロット数分。サブメッシュの materialIndex で参照）
         std::vector<std::unique_ptr<MaterialInstance>> materialInstances_;
 
-        // WVP バッファのリングサイズ（スワップチェーンのバックバッファ数と一致させる。
-        // ModelManager が InstanceBatchManager に渡すフレーム数と同じ値）
-        static constexpr size_t kFrameBufferCount = 3;
+        // WVP バッファのリングサイズ。FrameSync のスロット数上限に合わせる
+        // （添字は実行時の GraphicsCore::Frame().FrameIndex()）
+        static constexpr size_t kFrameBufferCount = kMaxFramesInFlight;
 
         // スキニングモデルの即時描画（Draw）用 WVP バッファ。
         // フレームインデックスでリングバッファ化し、CPU が複数フレーム先行して

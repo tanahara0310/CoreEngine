@@ -191,8 +191,7 @@ private:
     // レンダーパイプライン
     std::unique_ptr<RenderPipeline> renderPipeline_;
 
-    // レンダリングフレーム通し番号（RenderContext::frameNumber の供給元）
-    uint64_t renderFrameNumber_ = 0;
+    // フレーム通し番号は FrameSync が単一ソース（EngineSystem 側では数えない）
 
     // ドメイン管理コンテキスト（GBuffer / シャドウ / レイトレーシング）
     std::unique_ptr<RenderDomainContext> renderDomainContext_;

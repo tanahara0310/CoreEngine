@@ -40,6 +40,7 @@ namespace CoreEngine
             j["descriptors"]["maxSRVDescriptors"] = config.maxSRVDescriptors;
             j["descriptors"]["maxRTVDescriptors"] = config.maxRTVDescriptors;
             j["descriptors"]["maxDSVDescriptors"] = config.maxDSVDescriptors;
+            j["command"]["frameCount"] = config.frameCount;
 
             jsonManager.SaveJson(kEngineConfigPath, j);
             return config;
@@ -69,6 +70,13 @@ namespace CoreEngine
             if (desc.contains("maxSRVDescriptors")) config.maxSRVDescriptors = desc["maxSRVDescriptors"].get<uint32_t>();
             if (desc.contains("maxRTVDescriptors")) config.maxRTVDescriptors = desc["maxRTVDescriptors"].get<uint32_t>();
             if (desc.contains("maxDSVDescriptors")) config.maxDSVDescriptors = desc["maxDSVDescriptors"].get<uint32_t>();
+        }
+
+        // コマンド / バッファリング設定
+        // （EngineConfig にフィールドはあったが JSON から読まれておらず、事実上 2 固定だった）
+        if (j.contains("command")) {
+            auto& cmd = j["command"];
+            if (cmd.contains("frameCount")) config.frameCount = cmd["frameCount"].get<uint32_t>();
         }
 
         // シェーダ設定

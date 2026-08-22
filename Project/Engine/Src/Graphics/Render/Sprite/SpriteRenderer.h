@@ -34,8 +34,11 @@ namespace CoreEngine
         /// @brief 最大スプライト数
         static constexpr size_t kMaxSpriteCount = 1024;
 
-        /// @brief フレーム数（ダブルバッファリング）
-        static constexpr UINT kFrameCount = 2;
+        /// @brief per-frame リソースのリング段数
+        /// @details FrameSync のスロット数上限に合わせる。添字は実行時の
+        ///          GraphicsCore::Frame().FrameIndex() を使うこと（ここで 2 を直書きすると
+        ///          設定の frameCount と食い違う）。
+        static constexpr UINT kFrameCount = kMaxFramesInFlight;
 
         // IRendererインターフェースの実装
         void BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) override;

@@ -2,7 +2,9 @@
 #include "Graphics/RHI/GraphicsCore.h"
 
 #include "Graphics/RHI/Device/DeviceManager.h"
-#include "Graphics/RHI/Command/CommandManager.h"
+#include "Graphics/RHI/Command/CommandQueue.h"
+#include "Graphics/RHI/Command/CommandContext.h"
+#include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/RHI/Descriptor/DescriptorManager.h"
 #include "Graphics/RHI/SwapChain/SwapChainManager.h"
@@ -24,7 +26,10 @@ namespace CoreEngine
 
     GraphicsCore::GraphicsCore()
         : deviceManager_(std::make_unique<DeviceManager>())
-        , commandManager_(std::make_unique<CommandManager>())
+        , commandQueue_(std::make_unique<CommandQueue>())
+        , frameSync_(std::make_unique<FrameSync>())
+        , commandContext_(std::make_unique<CommandContext>())
+        , deferredRelease_(std::make_unique<DeferredReleaseQueue>())
         , descriptorManager_(std::make_unique<DescriptorManager>())
         , swapChainManager_(std::make_unique<SwapChainManager>())
         , depthStencilManager_(std::make_unique<DepthStencilManager>())
@@ -44,20 +49,25 @@ namespace CoreEngine
 
         // 初期化順序を守って各管理クラスを初期化
         deviceManager_->Initialize(config.enableDebugLayer, config.enableGPUBasedValidation);
-        commandManager_->Initialize(deviceManager_->GetDevice(), config.frameCount);
-        descriptorManager_->Initialize(deviceManager_->GetDevice(),
+
+        ID3D12Device* device = deviceManager_->GetDevice();
+        commandQueue_->Initialize(device);
+        frameSync_->Initialize(device, commandQueue_->Get(), config.frameCount);
+        commandContext_->Initialize(device, frameSync_->FramesInFlight());
+
+        descriptorManager_->Initialize(device,
             config.maxSRVDescriptors, config.maxRTVDescriptors, config.maxDSVDescriptors);
 
         // アップロード／オフライン生成用の独立コンテキスト。
         // キューはフレームと共有（submit 順 = 実行順を保つため）だが、
         // アロケータ・コマンドリスト・フェンスは完全に別物。
-        uploadContext_->Initialize(deviceManager_->GetDevice(), commandManager_->GetCommandQueue());
+        uploadContext_->Initialize(device, commandQueue_->Get());
 
         // スワップチェーンの初期化（バックバッファ取得とRTV作成まで含む）
         swapChainManager_->Initialize(
-            deviceManager_->GetDevice(),
+            device,
             deviceManager_->GetDXGIFactory(),
-            commandManager_->GetCommandQueue(),
+            commandQueue_->Get(),
             descriptorManager_.get(),
             winApp_->GetHwnd(),
             winApp_->GetClientWidth(),
@@ -65,7 +75,7 @@ namespace CoreEngine
 
         // 深度ステンシルの初期化（DescriptorManagerを渡す）
         depthStencilManager_->Initialize(
-            deviceManager_->GetDevice(),
+            device,
             descriptorManager_.get(),
             winApp_->GetClientWidth(),
             winApp_->GetClientHeight());
@@ -78,32 +88,48 @@ namespace CoreEngine
 
     void GraphicsCore::Shutdown()
     {
-        if (!commandManager_) {
+        if (!frameSync_) {
             return;
         }
         // 全GPUコマンドの完了を待ってからリソースを解放する
-        commandManager_->WaitForGpuIdle();
+        frameSync_->WaitForGpuIdle();
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "GraphicsCore::Shutdown: GPU同期完了。全マネージャーを解放します\n");
 
         // unique_ptr を明示的にリセットして破棄順序を制御する
         // （デストラクタ任せにすると宣言逆順になるため意図を明示）
-        // UploadContext はコマンドキューを参照しているため CommandManager より先に落とす。
+        // UploadContext / DeferredReleaseQueue はコマンドキューの作業に紐づくため先に落とす。
         if (uploadContext_) {
             uploadContext_->Shutdown();
         }
         uploadContext_.reset();
+        if (deferredRelease_) {
+            deferredRelease_->ReleaseAll(); // GPU 待ち済みなのでここで捨ててよい
+        }
+        deferredRelease_.reset();
         depthStencilManager_.reset();
         swapChainManager_.reset();
         descriptorManager_.reset();
-        commandManager_.reset();
+        if (commandContext_) {
+            commandContext_->Shutdown();
+        }
+        commandContext_.reset();
+        frameSync_->Shutdown();
+        frameSync_.reset();
+        if (commandQueue_) {
+            commandQueue_->Shutdown();
+        }
+        commandQueue_.reset();
         deviceManager_.reset();
     }
 
     void GraphicsCore::OnWindowResize(int32_t width, int32_t height)
     {
         // コマンドの実行を待つ（リソースが使用中でないことを保証）
-        commandManager_->WaitForGpuIdle();
+        frameSync_->WaitForGpuIdle();
+
+        // GPU が空になったので、解放待ちのリソースはここで確実に落とせる
+        deferredRelease_->Collect(frameSync_->CompletedValue());
 
         // スワップチェーンのリサイズ
         swapChainManager_->Resize(width, height);
@@ -129,6 +155,67 @@ namespace CoreEngine
     }
 
     // ================================================================
+    // フレームのライフサイクル
+    // ================================================================
+
+    FrameContext GraphicsCore::BeginFrame()
+    {
+        frameSync_->BeginFrame();
+
+        // 前フレームまでに解放予約されたものを回収する。
+        // GPU が到達済みのフェンス値だけを見るのでブロックしない。
+        const size_t released = deferredRelease_->Collect(frameSync_->CompletedValue());
+#ifdef _DEBUG
+        if (released > 0) {
+            Logger::GetInstance().Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Command,
+                "DeferredRelease: {} 件解放（残 {} 件・completedFence={}）",
+                released, deferredRelease_->PendingCount(), frameSync_->CompletedValue());
+        }
+#else
+        (void)released;
+#endif
+
+        // アップロードコンテキストの中間バッファを回収する（GPU 完了済みのぶんだけ）。
+        // これを呼ばないと UPLOAD ヒープ（システムメモリ）が解放されず溜まり続ける。
+        uploadContext_->ReleaseCompletedResources();
+
+        FrameContext frame;
+        frame.frameIndex = frameSync_->FrameIndex();
+        frame.frameNumber = frameSync_->FrameNumber();
+        frame.cmdList = commandContext_->List();
+        return frame;
+    }
+
+    void GraphicsCore::EndFrame(UINT syncInterval)
+    {
+        // 記録終了 → 投入
+        if (!commandContext_->Close()) {
+            return;
+        }
+        commandQueue_->Execute(commandContext_->List());
+
+        // 現在のフレームの完了をシグナル（非ブロッキング）
+        frameSync_->SignalCurrentFrame();
+
+        // Present（画面に反映）
+        static constexpr UINT kPresentFlags = 0;
+        swapChainManager_->GetSwapChain()->Present(syncInterval, kPresentFlags);
+
+        // ── 次フレームの準備 ──────────────────────────────────
+        // ここで Reset まで済ませることで、フレーム外（Update 中など）でも
+        // コマンドリストが常に記録可能な状態に保たれる。
+        // アロケータ／フェンスのローテーションは FrameSync が持つスロット番号を使う。
+        // スワップチェーンの GetCurrentBackBufferIndex() は ResizeBuffers で 0 に
+        // リセットされるため、アロケータ選択に使うと実行中アロケータを Reset して
+        // しまう（D3D12 ERROR #552）。
+        frameSync_->AdvanceToNextFrame();
+        commandContext_->Begin(frameSync_->FrameIndex(), descriptorManager_->GetSRVHeap());
+    }
+
+    FrameSync& GraphicsCore::Frame() const { return *frameSync_; }
+    DeferredReleaseQueue& GraphicsCore::DeferredRelease() const { return *deferredRelease_; }
+
+    // ================================================================
     // アクセッサ
     // ================================================================
     // ヘッダを軽く保つために実装をここへ置いている（inline にはしない）。
@@ -137,11 +224,10 @@ namespace CoreEngine
     ID3D12Device* GraphicsCore::GetDevice() const { return deviceManager_->GetDevice(); }
     IDXGIFactory7* GraphicsCore::GetDXGIFactory() const { return deviceManager_->GetDXGIFactory(); }
 
-    ID3D12CommandQueue* GraphicsCore::GetCommandQueue() const { return commandManager_->GetCommandQueue(); }
-    ID3D12GraphicsCommandList* GraphicsCore::GetCommandList() const { return commandManager_->GetCommandList(); }
-    CommandManager* GraphicsCore::GetCommandManager() const { return commandManager_.get(); }
+    ID3D12CommandQueue* GraphicsCore::GetCommandQueue() const { return commandQueue_->Get(); }
+    ID3D12GraphicsCommandList* GraphicsCore::GetCommandList() const { return commandContext_->List(); }
     UploadContext* GraphicsCore::GetUploadContext() const { return uploadContext_.get(); }
-    void GraphicsCore::WaitForGpuIdle() { commandManager_->WaitForGpuIdle(); }
+    void GraphicsCore::WaitForGpuIdle() { frameSync_->WaitForGpuIdle(); }
 
     IDXGISwapChain4* GraphicsCore::GetSwapChain() const { return swapChainManager_->GetSwapChain(); }
     ID3D12Resource* GraphicsCore::GetSwapChainBackBuffer(UINT index) const { return swapChainManager_->GetSwapChainBackBuffer(index); }

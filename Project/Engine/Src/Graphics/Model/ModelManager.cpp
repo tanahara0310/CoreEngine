@@ -44,7 +44,9 @@ namespace CoreEngine
         renderContext_ = ctx;
 
         // InstanceBatchManager を生成（フレーム数は3、最大インスタンス数は10000と仮定）
-        constexpr uint32_t kFrameCount = 3;
+        // per-frame リングの段数は FrameSync のスロット数上限に合わせる
+        // （ここに 3 を直書きすると設定の frameCount と食い違う）
+        constexpr uint32_t kFrameCount = kMaxFramesInFlight;
         constexpr uint32_t kMaxInstancesPerFrame = 10000;
         instanceBatchManager_ = std::make_unique<InstanceBatchManager>();
         instanceBatchManager_->Initialize(dxCommon_, kFrameCount, kMaxInstancesPerFrame);

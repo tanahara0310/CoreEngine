@@ -60,8 +60,9 @@ namespace CoreEngine
 
     void InstanceBatchManager::UpdateFrameIndex()
     {
-        // SwapChain の現在のバックバッファインデックスを取得
-        const uint32_t newFrameIndex = dxCommon_->GetSwapChain()->GetCurrentBackBufferIndex();
+        // per-frame リソースの添字は FrameSync のスロット番号を使う
+        // （スワップチェーンのインデックスは ResizeBuffers で 0 に戻るため使わない）
+        const uint32_t newFrameIndex = dxCommon_->Frame().FrameIndex();
         if (newFrameIndex != currentFrameIndex_) {
             // フレームが切り替わった場合、新しいフレームのリソースをリセット
             currentFrameIndex_ = newFrameIndex;

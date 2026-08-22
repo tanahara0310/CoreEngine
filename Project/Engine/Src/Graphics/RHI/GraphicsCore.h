@@ -6,6 +6,8 @@
 #include <memory>
 #include <vector>
 
+#include "Graphics/RHI/Command/FrameSync.h" // FrameContext / kMaxFramesInFlight（値で返すため実体が要る）
+
 /// @file
 /// @brief DirectX12 基盤（RHI 層）のファサード
 
@@ -16,7 +18,9 @@ namespace CoreEngine
     struct EngineConfig;
 
     class DeviceManager;
-    class CommandManager;
+    class CommandQueue;
+    class CommandContext;
+    class DeferredReleaseQueue;
     class DescriptorManager;
     class SwapChainManager;
     class DepthStencilManager;
@@ -63,10 +67,32 @@ namespace CoreEngine
         ID3D12Device* GetDevice() const;
         IDXGIFactory7* GetDXGIFactory() const;
 
+        // ── フレームのライフサイクル ────────────────────────────
+        // 1 フレームは BeginFrame() で始まり EndFrame() で終わる。
+        // 「どのフレームか」を各所が別々の方法で求めないよう、入口をここに閉じている。
+
+        /// @brief フレーム開始。フレーム番号を進め、前フレームの後始末を回収する
+        /// @return 今フレームの frameIndex / frameNumber / cmdList
+        /// @note コマンドリストの Reset は EndFrame() の末尾（次フレームの準備）で行うため、
+        ///       コマンドリストは常に「記録可能」な状態で保たれる。
+        FrameContext BeginFrame();
+
+        /// @brief フレーム終了。Close → Execute → Signal → Present → 次フレームの準備まで行う
+        /// @param syncInterval Present の垂直同期間隔（1 = VSync 有効）
+        void EndFrame(UINT syncInterval = 1);
+
+        /// @brief フレーム同期の単一ソース
+        /// @details per-frame リソースの添字は必ず `Frame().FrameIndex()` から取ること。
+        ///          スワップチェーンの GetCurrentBackBufferIndex() を代用してはならない。
+        FrameSync& Frame() const;
+
+        /// @brief GPU 完了後にリソースを解放する予約キュー
+        /// @details その場で GPU を待つ代わりにここへ預けるとストールしない。
+        DeferredReleaseQueue& DeferredRelease() const;
+
         // ── コマンド ────────────────────────────────────────────
         ID3D12CommandQueue* GetCommandQueue() const;
         ID3D12GraphicsCommandList* GetCommandList() const;
-        CommandManager* GetCommandManager() const;
 
         /// @brief フレーム描画とは独立したアップロード／オフライン生成用コンテキストを取得
         /// @details テクスチャ・VB/IB のアップロードや IBL 生成は必ずこちらへ積むこと。
@@ -107,7 +133,10 @@ namespace CoreEngine
 
         // 管理クラス（生成は .cpp のコンストラクタ。破棄順序は Shutdown で明示的に制御する）
         std::unique_ptr<DeviceManager> deviceManager_;
-        std::unique_ptr<CommandManager> commandManager_;
+        std::unique_ptr<CommandQueue> commandQueue_;
+        std::unique_ptr<FrameSync> frameSync_;
+        std::unique_ptr<CommandContext> commandContext_;
+        std::unique_ptr<DeferredReleaseQueue> deferredRelease_;
         std::unique_ptr<DescriptorManager> descriptorManager_;
         std::unique_ptr<SwapChainManager> swapChainManager_;
         std::unique_ptr<DepthStencilManager> depthStencilManager_;

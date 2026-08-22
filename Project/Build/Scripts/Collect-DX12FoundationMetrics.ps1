@@ -73,12 +73,19 @@ $files = @()
 foreach ($r in $srcRoots) {
     Get-ChildItem -Path $r -Recurse -File -Include *.h, *.hpp, *.cpp | ForEach-Object {
         $rel = $_.FullName.Substring($Root.Length).TrimStart('\')
+        $raw = [System.IO.File]::ReadAllText($_.FullName)
+        # Call-count metrics run against comment-stripped source: a comment that
+        # warns "do not call GetCurrentBackBufferIndex() here" must not be counted
+        # as a call. Include analysis still uses the raw text.
+        $code = [regex]::Replace($raw, '/\*[\s\S]*?\*/', '')
+        $code = [regex]::Replace($code, '(?m)//.*$', '')
         $files += [pscustomobject]@{
             Rel     = $rel
             Name    = $_.Name
             Ext     = $_.Extension
             InLayer = $rel.StartsWith($layerRel, [StringComparison]::OrdinalIgnoreCase)
-            Text    = [System.IO.File]::ReadAllText($_.FullName)
+            Text    = $code
+            Raw     = $raw
         }
     }
 }
@@ -148,7 +155,7 @@ $summaryAnchor = $lines.Count
 
 # --- 1. Layer inventory ------------------------------------------------------
 $layerLines = 0
-foreach ($f in $inLayer) { $layerLines += ($f.Text -split "`n").Count }
+foreach ($f in $inLayer) { $layerLines += ($f.Raw -split "`n").Count }
 Emit "## 1. Layer inventory"
 Emit ""
 Emit "| Metric | Value |"

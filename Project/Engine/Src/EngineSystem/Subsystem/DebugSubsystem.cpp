@@ -21,7 +21,6 @@
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Command/CommandManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Render.h"
@@ -436,11 +435,9 @@ namespace CoreEngine
         if (!dx) {
             return;
         }
-        // FinalizeFrame でローテーション済みの記録中フレームインデックスを使う
+        // EndFrame でローテーション済みの次フレームスロットを使う
         // （スワップチェーンのインデックスはリサイズで 0 にリセットされるため使わない）
-        const UINT nextFrameIndex = dx->GetCommandManager()
-            ? dx->GetCommandManager()->GetRecordingFrameIndex()
-            : dx->GetSwapChain()->GetCurrentBackBufferIndex();
+        const UINT nextFrameIndex = dx->Frame().FrameIndex();
         gpuProfiler_.ReadResults(dx->GetCommandQueue(), nextFrameIndex);
 
         if (auto* dockingUI = GetDockingUI()) {

@@ -8,7 +8,6 @@
 #include <cstring>
 
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Command/CommandManager.h"
 #include "Graphics/RHI/Descriptor/DescriptorManager.h"
 #include "Diagnostics/EngineStats.h"
 #include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
@@ -454,11 +453,7 @@ namespace CoreEngine
             return;
         }
 
-        CommandManager* commandManager = dxCommon->GetCommandManager();
-        if (!commandManager) {
-            return;
-        }
-        const uint32_t frameIndex = commandManager->GetRecordingFrameIndex();
+        const uint32_t frameIndex = dxCommon->Frame().FrameIndex();
         if (frameIndex >= kFrameRing) {
             return;
         }

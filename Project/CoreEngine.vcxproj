@@ -464,8 +464,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\DepthStencilManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\RHI\Command\CommandManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\UploadContext.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Command\CommandQueue.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Command\CommandContext.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Command\FrameSync.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Command\DeferredReleaseQueue.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\SwapChain\SwapChainManager.cpp" />
@@ -950,8 +953,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\EngineSystem\Startup\StartupProgress.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Startup\StartupSequence.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\DepthStencilManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\RHI\Command\CommandManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Command\UploadContext.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Command\CommandQueue.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Command\CommandContext.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Command\FrameSync.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Command\DeferredReleaseQueue.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\SwapChain\SwapChainManager.h" />

@@ -39,7 +39,7 @@ namespace CoreEngine
         // ---------------------------------------------------------------
 
         /// @brief フレーム先頭で呼ぶ。完了済みフレームの可視性 Readback を反映する
-        /// @param recordingFrameIndex CommandManager::GetRecordingFrameIndex() の値
+        /// @param recordingFrameIndex 今フレームのスロット番号（FrameContext::frameIndex）
         void BeginFrame(uint32_t recordingFrameIndex);
 
         /// @brief AABB 収集と可視判定適用の有効化（メイン GameView の描画構築中のみ true にする）

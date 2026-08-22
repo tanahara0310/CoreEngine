@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight
+
 namespace CoreEngine
 {
     /// @brief GPU タイムスタンプ計測スロット
@@ -69,7 +71,9 @@ namespace CoreEngine
         static constexpr uint32_t kFixedSlotCount = static_cast<uint32_t>(GpuTimestampSlot::Count);
         static constexpr uint32_t kMaxDynamicSlots = 128; ///< RenderGraph パス + PostEffect + FFT 内訳の名前付きスロット上限（補助 View はビュー名プレフィックス付きで別スロットを消費する）
         static constexpr uint32_t kSlotCount = kFixedSlotCount + kMaxDynamicSlots;
-        static constexpr uint32_t kFrameCount = 2;
+        /// @brief クエリのリング段数（FrameSync のスロット数上限に合わせる）
+        /// @note 添字には GraphicsCore::Frame().FrameIndex() が渡される
+        static constexpr uint32_t kFrameCount = kMaxFramesInFlight;
         static constexpr uint32_t kQueriesPerSlot = 2; // begin + end
         static constexpr uint32_t kQueriesPerFrame = kSlotCount * kQueriesPerSlot;
 

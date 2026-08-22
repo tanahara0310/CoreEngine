@@ -2,7 +2,6 @@
 #include "RenderingTechniqueBase.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/RHI/Command/CommandManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include <cassert>
 #include <cstring>
@@ -16,10 +15,7 @@ namespace CoreEngine
         assert(dxCommon);
         alignedSize_ = (paramsSize + 255u) & ~255u;
 
-        sliceCount_ = 1;
-        if (auto* commandManager = dxCommon->GetCommandManager()) {
-            sliceCount_ = (std::max)(1u, static_cast<uint32_t>(commandManager->GetFrameCount()));
-        }
+        sliceCount_ = (std::max)(1u, dxCommon->Frame().FramesInFlight());
 
         buffer_ = ResourceFactory::CreateBufferResource(
             dxCommon->GetDevice(), alignedSize_ * sliceCount_);
@@ -37,10 +33,7 @@ namespace CoreEngine
             return 0;
         }
 
-        uint32_t slice = 0;
-        if (auto* commandManager = dxCommon->GetCommandManager()) {
-            slice = static_cast<uint32_t>(commandManager->GetRecordingFrameIndex()) % sliceCount_;
-        }
+        const uint32_t slice = dxCommon->Frame().FrameIndex() % sliceCount_;
 
         std::memcpy(mappedBase_ + static_cast<size_t>(slice) * alignedSize_, src, size);
         return buffer_->GetGPUVirtualAddress() + static_cast<uint64_t>(slice) * alignedSize_;
