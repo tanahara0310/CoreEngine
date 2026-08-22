@@ -2,7 +2,7 @@
 #include "ASBuildPass.h"
 
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 
 namespace CoreEngine
 {

@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "RenderingTechniqueManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "RenderingTechniqueNames.h"
 #include "SSAO/SSAOTechnique.h"
 #include "SSAO/SSAOTemporalTechnique.h"
@@ -17,10 +17,10 @@
 
 namespace CoreEngine
 {
-    void RenderingTechniqueManager::Initialize(DirectXCommon* dxCommon)
+    void RenderingTechniqueManager::Initialize(GraphicsCore* dxCommon)
     {
         assert(dxCommon);
-        directXCommon_ = dxCommon;
+        graphicsCore_ = dxCommon;
 
         RegisterAllTechniques();
     }

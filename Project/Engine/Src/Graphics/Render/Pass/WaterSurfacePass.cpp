@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "WaterSurfacePass.h"
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
@@ -55,9 +55,9 @@ namespace CoreEngine
 
         if (!context.dxCommon) {
 #ifdef _DEBUG
-            OutputDebugStringA("ERROR: WaterSurfacePass: DirectXCommon is null in RenderContext!\n");
+            OutputDebugStringA("ERROR: WaterSurfacePass: GraphicsCore is null in RenderContext!\n");
 #endif
-            assert(false && "WaterSurfacePass requires DirectXCommon in RenderContext");
+            assert(false && "WaterSurfacePass requires GraphicsCore in RenderContext");
             return;
         }
 

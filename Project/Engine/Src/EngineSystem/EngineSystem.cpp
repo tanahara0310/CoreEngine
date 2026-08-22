@@ -18,6 +18,9 @@
 #include "Graphics/Asset/AssetDatabase.h"
 
 // EngineSystem が直接使う型
+#include "Graphics/RHI/Command/CommandManager.h"
+#include "Graphics/RHI/Command/UploadContext.h"
+#include "Graphics/RHI/Resource/DepthStencilManager.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
@@ -218,7 +221,7 @@ namespace CoreEngine
         subsystems_.clear();
 
         // 起動時に仕掛けたモデル先読みがまだ走っている可能性があるので、
-        // TextureManager / DirectXCommon を壊す前に必ず合流させる
+        // TextureManager / GraphicsCore を壊す前に必ず合流させる
         if (auto* modelManager = GetService<ModelManager>()) {
             modelManager->WaitForPreload();
         }
@@ -230,14 +233,14 @@ namespace CoreEngine
         AssetDatabase::GetInstance().Finalize();
 
         // Hi-Z オクルージョンカリングの GPU リソースを解放する
-        // （DirectXCommon 破棄前に明示解放しないと LeakChecker の ReportLiveObjects に報告される。
+        // （GraphicsCore 破棄前に明示解放しないと LeakChecker の ReportLiveObjects に報告される。
         //   インスタンス自体は ~ModelVisibility の UnregisterTarget が空振りできるよう
         //   ここでは reset せず、EngineSystem のデストラクタまで生存させる）
         if (hiZOcclusionSystem_) {
             hiZOcclusionSystem_->Shutdown();
         }
 
-        // RenderDomainContext を先にシャットダウンしてから DirectXCommon を解放する
+        // RenderDomainContext を先にシャットダウンしてから GraphicsCore を解放する
         if (renderDomainContext_) {
             renderDomainContext_->Shutdown();
             renderDomainContext_.reset();
@@ -307,7 +310,7 @@ namespace CoreEngine
         auto* debug = GetSubsystem<DebugSubsystem>();
 #endif
 
-        auto* dx = GetService<DirectXCommon>();
+        auto* dx = GetService<GraphicsCore>();
         auto* renderManager = GetService<RenderManager>();
         auto* render = GetService<Render>();
         auto* sceneManager = GetService<SceneManager>();

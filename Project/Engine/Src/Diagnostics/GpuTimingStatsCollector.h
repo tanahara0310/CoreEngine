@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics/Common/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 
 #include <array>
 #include <cstdint>

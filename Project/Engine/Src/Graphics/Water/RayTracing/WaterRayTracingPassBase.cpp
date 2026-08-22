@@ -6,7 +6,7 @@
 
 #include <dxcapi.h>
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -17,7 +17,7 @@ namespace CoreEngine
     // 構成データ 1 つから DXR パイプライン・シェーダーテーブル・出力ビューを丸ごと組む。
     // 屈折・反射・コースティクスの 3 マネージャはこの関数への引数だけが違う
     bool WaterRayTracingPassBase::InitializeFromDesc(
-        DirectXCommon* dxCommon,
+        GraphicsCore* dxCommon,
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr,
         const RTWaterPipelineDesc& desc)

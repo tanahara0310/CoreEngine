@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "ModelResource.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/UploadContext.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Model/ModelLoader.h"
 #include "Graphics/Model/Skeleton/SkeletonLoader.h"
 #include "Graphics/Model/VertexData.h"
@@ -20,7 +20,7 @@
 
 namespace CoreEngine
 {
-    void ModelResource::Initialize(DirectXCommon* dxCommon, ResourceFactory* factory, TextureManager* textureMg)
+    void ModelResource::Initialize(GraphicsCore* dxCommon, ResourceFactory* factory, TextureManager* textureMg)
     {
         dxCommon_ = dxCommon;
         resourceFactory_ = factory;

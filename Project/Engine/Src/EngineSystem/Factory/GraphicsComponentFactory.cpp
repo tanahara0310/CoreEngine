@@ -6,11 +6,11 @@
 #include "Threading/ThreadPool.h"
 
 #include "Utility/Logger/Logger.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/Culling/HiZOcclusionSystem.h"
 #include "Graphics/Texture/TextureManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Model/ModelRenderer.h"
@@ -39,7 +39,7 @@ namespace CoreEngine
     /// @brief ステップ間で受け渡す中間ポインタ
     /// @note 所有権は EngineSystem 側（RegisterComponent 済み）。ここが持つのは生ポインタだけ。
     struct GraphicsSetupState {
-        DirectXCommon* dx = nullptr;
+        GraphicsCore* dx = nullptr;
         ResourceFactory* resourceFactory = nullptr;
         Render* render = nullptr;
         RenderManager* renderManager = nullptr;
@@ -63,10 +63,10 @@ namespace CoreEngine
         // デバイスとフレーム基盤
         // ──────────────────────────────────────────────────────────
         sequence.Add("DirectX12 デバイス", [enginePtr, state, config] {
-            auto directXCommon = std::make_unique<DirectXCommon>();
-            directXCommon->Initialize(enginePtr->GetWinApp(), config);
-            state->dx = directXCommon.get();
-            enginePtr->RegisterComponent(std::move(directXCommon));
+            auto graphicsCore = std::make_unique<GraphicsCore>();
+            graphicsCore->Initialize(enginePtr->GetWinApp(), config);
+            state->dx = graphicsCore.get();
+            enginePtr->RegisterComponent(std::move(graphicsCore));
         });
 
         // ──────────────────────────────────────────────────────────

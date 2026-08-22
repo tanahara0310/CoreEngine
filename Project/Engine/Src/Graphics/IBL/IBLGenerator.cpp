@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "IBLGenerator.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/UploadContext.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Command/UploadContext.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 #include "externals/DirectXTex/d3dx12.h"
@@ -16,7 +16,7 @@
 namespace CoreEngine
 {
 
-    void IBLGenerator::Initialize(DirectXCommon* dxCommon, ShaderCompiler* shaderCompiler)
+    void IBLGenerator::Initialize(GraphicsCore* dxCommon, ShaderCompiler* shaderCompiler)
     {
         // パラメータのnullptrチェック
         if (!dxCommon || !shaderCompiler)

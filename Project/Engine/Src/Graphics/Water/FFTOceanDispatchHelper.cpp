@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "FFTOceanDispatchHelper.h"
 
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 
 namespace CoreEngine
 {

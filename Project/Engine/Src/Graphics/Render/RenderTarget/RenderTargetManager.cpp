@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "RenderTargetManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "RenderTargetNames.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
@@ -22,9 +22,9 @@ namespace CoreEngine
         return std::string(RenderTargetNames::PostEffectIntermediatePrefix) + std::to_string(index);
     }
 
-    void RenderTargetManager::Initialize(DirectXCommon* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap)
+    void RenderTargetManager::Initialize(GraphicsCore* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap)
     {
-        assert(dxCommon != nullptr && "DirectXCommon must not be null");
+        assert(dxCommon != nullptr && "GraphicsCore must not be null");
 
         dxCommon_ = dxCommon;
         dsvHeap_ = dsvHeap;

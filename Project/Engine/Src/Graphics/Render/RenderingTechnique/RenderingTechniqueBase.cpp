@@ -2,8 +2,8 @@
 #include "RenderingTechniqueBase.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/Common/Core/CommandManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Command/CommandManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include <cassert>
 #include <cstring>
 
@@ -11,7 +11,7 @@ namespace CoreEngine
 {
     std::wstring RenderingTechniqueBase::emptyPath_ = L"";
 
-    void FrameRingConstantBuffer::Initialize(DirectXCommon* dxCommon, uint32_t paramsSize)
+    void FrameRingConstantBuffer::Initialize(GraphicsCore* dxCommon, uint32_t paramsSize)
     {
         assert(dxCommon);
         alignedSize_ = (paramsSize + 255u) & ~255u;
@@ -31,7 +31,7 @@ namespace CoreEngine
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS FrameRingConstantBuffer::Upload(
-        DirectXCommon* dxCommon, const void* src, uint32_t size)
+        GraphicsCore* dxCommon, const void* src, uint32_t size)
     {
         if (!mappedBase_ || !dxCommon || size > alignedSize_) {
             return 0;
@@ -46,10 +46,10 @@ namespace CoreEngine
         return buffer_->GetGPUVirtualAddress() + static_cast<uint64_t>(slice) * alignedSize_;
     }
 
-    void RenderingTechniqueBase::Initialize(DirectXCommon* dxCommon)
+    void RenderingTechniqueBase::Initialize(GraphicsCore* dxCommon)
     {
         assert(dxCommon);
-        directXCommon_ = dxCommon;
+        graphicsCore_ = dxCommon;
 
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();

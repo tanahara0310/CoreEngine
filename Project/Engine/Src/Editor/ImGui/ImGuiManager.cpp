@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ImGuiManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
 #include "Editor/Scene/SceneDebugEditor.h"
@@ -14,7 +14,7 @@ namespace CoreEngine
 
     namespace fs = std::filesystem;
 
-    void ImGuiManager::Initialize(HWND hwnd, DirectXCommon* dxCommon)
+    void ImGuiManager::Initialize(HWND hwnd, GraphicsCore* dxCommon)
     {
 
         // クラス情報をメンバ変数に代入
@@ -156,7 +156,7 @@ namespace CoreEngine
         ImGui::End();
     }
 
-    void ImGuiManager::DrawGameViewport([[maybe_unused]] DirectXCommon* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)
+    void ImGuiManager::DrawGameViewport([[maybe_unused]] GraphicsCore* dxCommon, [[maybe_unused]] PostEffectManager* postEffectManager, [[maybe_unused]] GameDebugUI* gameDebugUI)
     {
 #ifdef USE_IMGUI
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle{};

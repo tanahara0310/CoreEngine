@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Render.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Command/CommandManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
@@ -10,7 +11,7 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
-    void Render::Initialize(DirectXCommon* dxCommon, ComPtr<ID3D12DescriptorHeap> dsvHeap)
+    void Render::Initialize(GraphicsCore* dxCommon, ComPtr<ID3D12DescriptorHeap> dsvHeap)
     {
         dxCommon_ = dxCommon;
         dsvHeap_ = dsvHeap;

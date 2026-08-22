@@ -5,8 +5,8 @@
 #include <cassert>
 #include <queue>
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/GpuMarker.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Debug/GpuMarker.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine

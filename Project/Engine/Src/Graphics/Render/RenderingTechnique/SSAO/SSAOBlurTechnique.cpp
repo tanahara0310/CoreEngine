@@ -2,7 +2,7 @@
 #include "Utility/CVar/CVar.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "SSAOBlurTechnique.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
@@ -32,7 +32,7 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.SSAOBlur";
     }
 
-    void SSAOBlurTechnique::Initialize(DirectXCommon* dxCommon)
+    void SSAOBlurTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
         cbRing_.Initialize(dxCommon, sizeof(SSAOBlurParams));

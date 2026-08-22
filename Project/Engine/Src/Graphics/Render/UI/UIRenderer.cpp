@@ -53,7 +53,7 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    void UIRenderer::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory) {
+    void UIRenderer::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory) {
         dxCommon_ = dxCommon;
         resourceFactory_ = resourceFactory;
 

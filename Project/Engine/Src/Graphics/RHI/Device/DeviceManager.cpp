@@ -1,6 +1,5 @@
 #include "pch.h"
-#include "DeviceManager.h"
-#include "WinApp/WinApp.h"
+#include "Graphics/RHI/Device/DeviceManager.h"
 #include "Utility/Logger/Logger.h"
 
 #include <iostream>
@@ -13,9 +12,8 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
-void DeviceManager::Initialize(WinApp* winApp, bool enableDebugLayer, bool enableGPUBasedValidation)
+void DeviceManager::Initialize(bool enableDebugLayer, bool enableGPUBasedValidation)
 {
-    winApp_ = winApp;
     enableDebugLayer_ = enableDebugLayer;
     enableGPUBasedValidation_ = enableGPUBasedValidation;
     InitializeDXGIDevice();

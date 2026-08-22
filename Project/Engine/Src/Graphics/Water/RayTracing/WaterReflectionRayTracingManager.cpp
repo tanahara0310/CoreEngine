@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
@@ -59,7 +59,7 @@ namespace CoreEngine
         "WaterReflectionConstants size mismatch with HLSL cbuffer");
 
     bool WaterReflectionRayTracingManager::Initialize(
-        DirectXCommon* dxCommon,
+        GraphicsCore* dxCommon,
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr)
     {

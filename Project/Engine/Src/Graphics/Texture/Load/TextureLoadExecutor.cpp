@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "TextureLoadExecutor.h"
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Graphics/Texture/Gpu/TextureGpuUploader.h"
 #include "Utility/Logger/Logger.h"
@@ -13,7 +13,7 @@
 namespace CoreEngine
 {
     TextureLoadExecutor::ExecutionResult TextureLoadExecutor::Execute(
-        CoreEngine::DirectXCommon* dxCommon,
+        CoreEngine::GraphicsCore* dxCommon,
         const std::filesystem::path& resolvedPath,
         bool ddsGenerationEnabled,
         const std::filesystem::path& ddsPath,

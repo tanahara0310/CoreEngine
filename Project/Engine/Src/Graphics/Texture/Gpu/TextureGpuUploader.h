@@ -8,7 +8,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
 
     /// @brief GPUリソースへのアップロードとSRV作成を担当するクラス
     class TextureGpuUploader
@@ -29,7 +29,7 @@ namespace CoreEngine
         /// @param resolvedPath ログ・SRV識別用のパス
         /// @return 作成されたGPUリソースとSRVハンドル
         static UploadResult UploadAndCreateSrv(
-            CoreEngine::DirectXCommon* dxCommon,
+            CoreEngine::GraphicsCore* dxCommon,
             const DirectX::ScratchImage& mipImages,
             const std::string& resolvedPath);
 

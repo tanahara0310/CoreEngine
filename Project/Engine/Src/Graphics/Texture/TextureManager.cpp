@@ -62,12 +62,12 @@ namespace CoreEngine
     }
 
     // 初期化
-    void TextureManager::Initialize(CoreEngine::DirectXCommon* dxCommon)
+    void TextureManager::Initialize(CoreEngine::GraphicsCore* dxCommon)
     {
         std::lock_guard<std::mutex> lock(cacheMutex_);
 
         if (dxCommon == nullptr) {
-            throw std::invalid_argument("TextureManager::Initialize received null DirectXCommon");
+            throw std::invalid_argument("TextureManager::Initialize received null GraphicsCore");
         }
 
         dxCommon_ = dxCommon;
@@ -143,7 +143,7 @@ namespace CoreEngine
 
         // 初期化状態と実行設定の取得を共通化して処理の重複を避ける。
         LoadContext loadContext = AcquireLoadContext();
-        CoreEngine::DirectXCommon* dxCommon = loadContext.dxCommon;
+        CoreEngine::GraphicsCore* dxCommon = loadContext.dxCommon;
         bool ddsGenerationEnabled = loadContext.ddsGenerationEnabled;
 
         assert(dxCommon != nullptr);

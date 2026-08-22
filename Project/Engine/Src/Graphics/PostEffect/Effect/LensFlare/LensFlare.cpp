@@ -2,10 +2,10 @@
 #include "LensFlare.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Utility/Logger/Logger.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Camera/View/ViewInfo.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
@@ -163,7 +163,7 @@ namespace CoreEngine
 
     void LensFlare::OnCreateConstantBuffers()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         const UINT paramsSize = (sizeof(LensFlareConstants) + 255) & ~255u;
         paramsCB_ = ResourceFactory::CreateBufferResource(device, paramsSize);
@@ -196,11 +196,11 @@ namespace CoreEngine
     {
         // 支配的な光源の UV を書き戻すだけの 1x1 バッファ。
         // CS 側が最大輝度テクセルの座標を 1 つ書き、次のパスがそれを読む
-        DescriptorManager* descriptorManager = directXCommon_->GetDescriptorManager();
+        DescriptorManager* descriptorManager = graphicsCore_->GetDescriptorManager();
         if (!descriptorManager) {
             return false;
         }
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = directXCommon_->GetDevice();
+        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = graphicsCore_->GetDevice();
 
         D3D12_RESOURCE_DESC desc{};
         desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -240,7 +240,7 @@ namespace CoreEngine
 
     bool LensFlare::CreateInternalPipelines()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();
@@ -273,7 +273,7 @@ namespace CoreEngine
 
     bool LensFlare::EnsureTargets(uint32_t width, uint32_t height)
     {
-        if (!directXCommon_ || width == 0 || height == 0) {
+        if (!graphicsCore_ || width == 0 || height == 0) {
             return false;
         }
 
@@ -284,8 +284,8 @@ namespace CoreEngine
             return true;
         }
 
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = directXCommon_->GetDevice();
-        DescriptorManager* descriptorManager = directXCommon_->GetDescriptorManager();
+        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = graphicsCore_->GetDevice();
+        DescriptorManager* descriptorManager = graphicsCore_->GetDescriptorManager();
         if (!descriptorManager) {
             return false;
         }
@@ -400,7 +400,7 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
 
         const bool flareReady = internalPipelinesReady_ && EnsureTargets(width, height);
 

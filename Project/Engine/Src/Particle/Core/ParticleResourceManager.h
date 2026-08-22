@@ -8,7 +8,7 @@
 namespace CoreEngine
 {
 // 前方宣言
-class DirectXCommon;
+class GraphicsCore;
 class ResourceFactory;
 
 /// @brief GPU送信用パーティクルデータ
@@ -26,10 +26,10 @@ public:
     ~ParticleResourceManager() = default;
 
     /// @brief 初期化
-    /// @param dxCommon DirectXCommon
+    /// @param dxCommon GraphicsCore
     /// @param resourceFactory リソースファクトリ
     /// @param maxInstances 最大インスタンス数
-    void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances);
+    void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances);
 
     /// @brief インスタンシングデータへのポインタを取得
     /// @return インスタンシングデータのポインタ
@@ -53,7 +53,7 @@ private:
     void CreateSRV(uint32_t maxInstances);
 
     // DirectX関連
-    DirectXCommon* dxCommon_ = nullptr;
+    GraphicsCore* dxCommon_ = nullptr;
     ResourceFactory* resourceFactory_ = nullptr;
 
     // GPUリソース

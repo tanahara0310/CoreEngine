@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "HiZOcclusionPass.h"
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/Culling/HiZOcclusionSystem.h"
 #include "Graphics/Render/RenderGraph.h"
 

@@ -3,17 +3,17 @@
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include <cassert>
 #include <stdexcept>
 
 
 namespace CoreEngine
 {
-    void PostEffectComputeBase::Initialize(DirectXCommon* dxCommon)
+    void PostEffectComputeBase::Initialize(GraphicsCore* dxCommon)
     {
         assert(dxCommon);
-        directXCommon_ = dxCommon;
+        graphicsCore_ = dxCommon;
 
         //CS シェーダーをコンパイル
         ShaderCompiler compiler;
@@ -33,7 +33,7 @@ namespace CoreEngine
 
         rootSignatureManager_ = std::make_unique<RootSignatureManager>();
         auto buildResult = rootSignatureManager_->Build(
-            directXCommon_->GetDevice(), *reflectionData_, config);
+            graphicsCore_->GetDevice(), *reflectionData_, config);
         if (!buildResult.success) {
             throw std::runtime_error(
                 GetEffectName() + ": Failed to create RootSignature: " + buildResult.errorMessage);
@@ -41,7 +41,7 @@ namespace CoreEngine
 
         // Compute PSO 構築
         computePso_ = ComputePipelineUtil::Create(
-            directXCommon_->GetDevice(), rootSignatureManager_->GetRootSignature(),
+            graphicsCore_->GetDevice(), rootSignatureManager_->GetRootSignature(),
             computeShaderBlob_.Get(), GetEffectName() + "_CS");
         if (!computePso_) {
             throw std::runtime_error(GetEffectName() + ": Failed to create Compute PSO");
@@ -51,7 +51,7 @@ namespace CoreEngine
         // 派生の OnCreateConstantBuffers より先に作ること（派生が中で使うため）
         {
             const UINT size = (sizeof(ScreenSizeConstants) + 255) & ~255u;
-            screenSizeCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), size);
+            screenSizeCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
             HRESULT mapResult = screenSizeCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenSize_));
             if (FAILED(mapResult)) {
                 throw std::runtime_error(GetEffectName() + ": Failed to map ScreenSize constant buffer");

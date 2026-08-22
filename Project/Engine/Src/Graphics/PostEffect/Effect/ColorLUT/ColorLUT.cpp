@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "ColorLUT.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/CVar/CVar.h"
@@ -37,7 +37,7 @@ namespace CoreEngine
 
     void ColorLUT::OnCreateConstantBuffers()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         {
             const UINT size = (sizeof(ColorLUTParams) + 255) & ~255u;
@@ -65,8 +65,8 @@ namespace CoreEngine
 
     bool ColorLUT::CreateLutResources()
     {
-        auto* device = directXCommon_->GetDevice();
-        DescriptorManager* descriptorManager = directXCommon_->GetDescriptorManager();
+        auto* device = graphicsCore_->GetDevice();
+        DescriptorManager* descriptorManager = graphicsCore_->GetDescriptorManager();
         if (!descriptorManager) {
             return false;
         }
@@ -126,7 +126,7 @@ namespace CoreEngine
 
     bool ColorLUT::CreateFillPipeline()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();
@@ -336,7 +336,7 @@ namespace CoreEngine
         mappedColorLutParams_->lutSize      = lutSizeLoaded_;
         mappedColorLutParams_->blend        = cvBlend.Get();
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
 
         // LUT の差し替え直後だけ Texture3D への書き込みが走る
         RecordFillIfDirty(cmdList);

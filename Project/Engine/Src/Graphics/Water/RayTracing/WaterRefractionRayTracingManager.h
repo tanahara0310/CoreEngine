@@ -14,7 +14,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class DescriptorManager;
     class AccelerationStructureManager;
 
@@ -44,7 +44,7 @@ namespace CoreEngine
             "WaterRefractionRayTracingManager: ViewID::Count exceeds RayTracingOutputViewSet::kMaxSlotCount");
 
         bool Initialize(
-            DirectXCommon* dxCommon,
+            GraphicsCore* dxCommon,
             DescriptorManager* descriptorManager,
             AccelerationStructureManager* asMgr);
 

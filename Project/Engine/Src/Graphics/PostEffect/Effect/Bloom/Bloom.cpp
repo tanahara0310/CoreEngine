@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "Bloom.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
@@ -69,7 +69,7 @@ namespace CoreEngine
 
     void Bloom::OnCreateConstantBuffers()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         // パスごとに解像度と役割が違うので、定数バッファもパスの数だけ要る。
         // 1 本を使い回すと、GPU が読むのは記録より後なので最後のパスの値で全段が実行される
@@ -99,8 +99,8 @@ namespace CoreEngine
     bool Bloom::CreateDirtResources()
     {
         // レンズダート（汚れ）テクスチャ。未指定でも既定の手続き的パターンを焼くので必ず作る
-        auto* device = directXCommon_->GetDevice();
-        DescriptorManager* descriptorManager = directXCommon_->GetDescriptorManager();
+        auto* device = graphicsCore_->GetDevice();
+        DescriptorManager* descriptorManager = graphicsCore_->GetDescriptorManager();
         if (!descriptorManager) {
             return false;
         }
@@ -176,7 +176,7 @@ namespace CoreEngine
 
     bool Bloom::CreateInternalPipelines()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();

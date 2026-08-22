@@ -9,7 +9,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class DirectXCommon;
+    class GraphicsCore;
     class DescriptorManager;
 }
 

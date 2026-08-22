@@ -20,12 +20,13 @@
 #include "Graphics/Render/Pass/GBufferPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Command/CommandManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
-#include "Graphics/Common/EngineStats.h"
+#include "Diagnostics/EngineStats.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Material/MaterialConstants.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -50,7 +51,7 @@ namespace CoreEngine
     {
         engine_ = engine;
 
-        auto* dx = engine_->GetService<DirectXCommon>();
+        auto* dx = engine_->GetService<GraphicsCore>();
 
         // ImGuiマネージャークラスの初期化
         imGui_->Initialize(engine_->GetWinApp()->GetHwnd(), dx);
@@ -265,7 +266,7 @@ namespace CoreEngine
 
         // Render Pass デバッグパネル（各パスの中間バッファを可視化）
         {
-            auto* renderDx = engine_->GetService<DirectXCommon>();
+            auto* renderDx = engine_->GetService<GraphicsCore>();
             auto* renderComp = engine_->GetService<Render>();
             renderPassDebugPanel_.Initialize(renderDx);
             renderPassDebugPanel_.SetRenderDomainContext(engine_->GetRenderDomainContext());
@@ -406,7 +407,7 @@ namespace CoreEngine
         EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, cmdList);
         if (imGui_) {
             // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
-            auto* dx = engine_->GetService<DirectXCommon>();
+            auto* dx = engine_->GetService<GraphicsCore>();
             auto* postEffect = engine_->GetService<PostEffectManager>();
             imGui_->DrawGameViewport(dx, postEffect, gameDebugUI_.get());
             imGui_->Draw();
@@ -430,7 +431,7 @@ namespace CoreEngine
         gameOutputWindow_.Present();
     }
 
-    void DebugSubsystem::PostFinalizeFrame(DirectXCommon* dx)
+    void DebugSubsystem::PostFinalizeFrame(GraphicsCore* dx)
     {
         if (!dx) {
             return;

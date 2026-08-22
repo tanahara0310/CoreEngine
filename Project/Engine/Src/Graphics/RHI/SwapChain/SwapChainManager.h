@@ -7,19 +7,22 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class WinApp;
     class DescriptorManager;
 }
 
 namespace CoreEngine
 {
 /// @brief スワップチェーン管理クラス
+/// @note WinApp には依存しない（HWND とサイズを値で受け取る）。
 class SwapChainManager {
 public:
     /// @brief 初期化
     /// @param descriptorManager RTV スロットの確保に使う
+    /// @param hwnd 出力先ウィンドウ
+    /// @param width  初期幅
+    /// @param height 初期高さ
     void Initialize(ID3D12Device* device, IDXGIFactory7* dxgiFactory, ID3D12CommandQueue* commandQueue,
-        DescriptorManager* descriptorManager, CoreEngine::WinApp* winApp);
+        DescriptorManager* descriptorManager, HWND hwnd, std::int32_t width, std::int32_t height);
 
     /// @brief スワップチェーンのリサイズ
     /// @param width 新しい幅
@@ -54,7 +57,9 @@ private:
     // 依存関係
     IDXGIFactory7* dxgiFactory_ = nullptr;
     ID3D12CommandQueue* commandQueue_ = nullptr;
-    CoreEngine::WinApp* winApp_ = nullptr;
+    HWND hwnd_ = nullptr;
+    std::int32_t width_ = 0;
+    std::int32_t height_ = 0;
 
     // DescriptorManager の参照（RTVスロット管理・ダングリングポインタ防止）
     DescriptorManager* descriptorManager_ = nullptr;

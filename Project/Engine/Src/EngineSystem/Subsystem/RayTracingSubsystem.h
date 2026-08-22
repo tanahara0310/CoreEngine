@@ -18,7 +18,7 @@ namespace CoreEngine
 {
     struct RenderContext;
     struct Light;
-    class DirectXCommon;
+    class GraphicsCore;
     class ModelManager;
     class SceneManager;
     class Camera;
@@ -42,7 +42,7 @@ namespace CoreEngine
         ///　TLAS 構築を行う。RT シャドウマネージャのフレーム状態リセットも実施。
         void BuildAccelerationStructures(
             const RenderContext& context,
-            DirectXCommon* dx,
+            GraphicsCore* dx,
             ModelManager* modelManager,
             SceneManager* sceneManager);
 
@@ -51,7 +51,7 @@ namespace CoreEngine
         ///　ライト別の内部リソースバリアはマネージャ内で処理する。
         void DispatchRTShadowTrace(
             const RenderContext& context,
-            DirectXCommon* dx,
+            GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
             RayTracingShadowManager::ViewID viewId);
 
@@ -59,7 +59,7 @@ namespace CoreEngine
         /// @details RenderGraph 上では RTShadowTemporalPass として実行される。
         void DispatchRTShadowTemporal(
             const RenderContext& context,
-            DirectXCommon* dx,
+            GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
             RayTracingShadowManager::ViewID viewId);
 
@@ -67,14 +67,14 @@ namespace CoreEngine
         /// @details RenderGraph 上では RTShadowDenoisePass として実行される。
         void DispatchRTShadowDenoise(
             const RenderContext& context,
-            DirectXCommon* dx,
+            GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
             RayTracingShadowManager::ViewID viewId);
 
         /// @brief DXR 水面屈折のディスパッチ
         void DispatchWaterRefraction(
             const RenderContext& context,
-            DirectXCommon* dx,
+            GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
             WaterRefractionRayTracingManager::ViewID viewId,
             const WaterSurfaceData& surfaceData);
@@ -82,7 +82,7 @@ namespace CoreEngine
         /// @brief DXR 水面反射のディスパッチ（鏡像カメラ平面反射の置き換え）
         void DispatchWaterReflection(
             const RenderContext& context,
-            DirectXCommon* dx,
+            GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
             WaterReflectionRayTracingManager::ViewID viewId,
             const WaterSurfaceData& surfaceData);
@@ -90,7 +90,7 @@ namespace CoreEngine
         /// @brief DXR 水面コースティクスのディスパッチ
         void DispatchWaterCaustics(
             const RenderContext& context,
-            DirectXCommon* dx,
+            GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
             WaterCausticsRayTracingManager::ViewID viewId,
             const WaterSurfaceData& surfaceData);
@@ -114,7 +114,7 @@ namespace CoreEngine
         /// @return 前提が揃ったか。false のときはディスパッチしてはいけない。
         static bool BuildShadowStageContext(
             const RenderContext& context,
-            DirectXCommon* dx,
+            GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
             ShadowStageContext& outStageContext);
 
@@ -140,7 +140,7 @@ namespace CoreEngine
         /// @return 前提が揃ったか。false のときはディスパッチしてはいけない。
         static bool BuildWaterDispatchContext(
             const RenderContext& context,
-            DirectXCommon* dx,
+            GraphicsCore* dx,
             ID3D12GraphicsCommandList* cmdList,
             const WaterSurfaceData& surfaceData,
             const char* debugLabel,

@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "SceneColorCopyPass.h"
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -42,9 +42,9 @@ namespace CoreEngine
 
         if (!context.dxCommon) {
 #ifdef _DEBUG
-            OutputDebugStringA("ERROR: SceneColorCopyPass: DirectXCommon is null in RenderContext!\n");
+            OutputDebugStringA("ERROR: SceneColorCopyPass: GraphicsCore is null in RenderContext!\n");
 #endif
-            assert(false && "SceneColorCopyPass requires DirectXCommon in RenderContext");
+            assert(false && "SceneColorCopyPass requires GraphicsCore in RenderContext");
             return;
         }
 

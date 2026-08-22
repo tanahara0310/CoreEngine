@@ -7,7 +7,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class DescriptorManager;
 
     /// @brief DXR パスが使う UAV/SRV 出力テクスチャをスロット単位でまとめて管理するクラス
@@ -37,7 +37,7 @@ namespace CoreEngine
         /// @param debugName   ディスクリプタのデバッグ名の接頭辞（"_UAV" / "_SRV" が付く）
         /// @return 確保に成功した場合 true
         bool EnsureTexture(
-            DirectXCommon* dxCommon,
+            GraphicsCore* dxCommon,
             DescriptorManager* descriptorManager,
             UINT width,
             UINT height,

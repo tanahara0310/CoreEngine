@@ -5,7 +5,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
 
     /// @brief レンダーターゲットの抽象基底クラス
     /// オフスクリーン/バックバッファの共通インターフェースを提供

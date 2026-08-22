@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>

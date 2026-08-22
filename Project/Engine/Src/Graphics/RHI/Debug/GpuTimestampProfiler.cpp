@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "GpuTimestampProfiler.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 
 #include <cassert>
 

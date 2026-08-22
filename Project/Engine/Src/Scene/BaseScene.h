@@ -19,7 +19,7 @@ namespace CoreEngine {
     class Camera;
     class CameraManager;
     class OrbitFlyController;
-    class DirectXCommon;
+    class GraphicsCore;
     class RenderManager;
     class ResourceFactory;
     class IParticleSystem;
@@ -158,7 +158,7 @@ namespace CoreEngine
         /// @param backend ParticleBackend::CPU（ParticleSystem）/ GPU（GpuParticleSystem）
         /// @param name オブジェクト名（ImGui表示用、省略可）
         /// @return 共通インターフェース（モジュール編集・再生制御・プリセットは同じAPI）
-        /// @note DirectXCommon / ResourceFactory は engine_ から自動取得して Initialize まで行う
+        /// @note GraphicsCore / ResourceFactory は engine_ から自動取得して Initialize まで行う
         IParticleSystem* CreateParticleSystem(ParticleBackend backend, const std::string& name = "");
 
         /// @brief レイヤー間の衝突判定を有効/無効に設定

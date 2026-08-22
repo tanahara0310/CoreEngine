@@ -3,11 +3,11 @@
 #include <cstdint>
 #include <memory>
 
-#include "Graphics/Common/IResizable.h"
+#include "Graphics/RHI/IResizable.h"
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class DescriptorManager;
     class GBufferManager;
     class AccelerationStructureManager;
@@ -22,17 +22,17 @@ namespace CoreEngine
 
     /// @brief 描画ドメイン固有マネージャーの所有・初期化クラス
     /// @note GBuffer / シャドウマップ / レイトレーシング等、
-    /// DirectXCommon（D3D12インフラ層）から分離したレンダリングドメイン管理。
+    /// GraphicsCore（D3D12インフラ層）から分離したレンダリングドメイン管理。
     class RenderDomainContext : public IResizable {
     public:
         RenderDomainContext();
         ~RenderDomainContext() override; // 前方宣言型の unique_ptr デストラクタは .cpp に実装
 
         /// @brief 初期化
-        /// @param dxCommon DirectXCommon（デバイス・DescriptorManager 取得用）
+        /// @param dxCommon GraphicsCore（デバイス・DescriptorManager 取得用）
         /// @param width 初期ウィンドウ幅
         /// @param height 初期ウィンドウ高さ
-        void Initialize(DirectXCommon* dxCommon, int32_t width, int32_t height);
+        void Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height);
 
         /// @brief シャットダウン（GPU完了後に呼ぶこと）
         void Shutdown();

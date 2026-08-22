@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "DescriptorManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>

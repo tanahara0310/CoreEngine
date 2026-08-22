@@ -17,7 +17,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class DescriptorManager;
     class GpuTimestampProfiler;
 
@@ -75,7 +75,7 @@ namespace CoreEngine
         };
 
         /// @brief 必要なGPUリソースとComputeパイプラインを初期化する
-        bool Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager);
+        bool Initialize(GraphicsCore* dxCommon, DescriptorManager* descriptorManager);
 
         /// @brief 1 フレーム分の海面シミュレーションを Dispatch し、出力テクスチャを更新する
         /// @param profiler 内訳計測用プロファイラ（nullptr なら計測しない）。
@@ -309,7 +309,7 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         // 基本依存とパイプライン状態
         // ──────────────────────────────────────────────────────────
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
         DescriptorManager* descriptorManager_ = nullptr;
         CustomShaderPipeline evolutionPipeline_{};
         CustomShaderPipeline ifftPipeline_{};

@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "BackBufferRenderTarget.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include <cassert>
 
 namespace CoreEngine
 {
-    void BackBufferRenderTarget::Initialize(DirectXCommon* dx)
+    void BackBufferRenderTarget::Initialize(GraphicsCore* dx)
     {
         assert(dx);
         dxCommon_ = dx;

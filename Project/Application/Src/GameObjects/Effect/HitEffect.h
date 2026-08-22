@@ -6,7 +6,7 @@
 
 namespace CoreEngine
 {
-class DirectXCommon;
+class GraphicsCore;
 class ResourceFactory;
 
 /// @brief circle.png を使ったヒットエフェクト
@@ -18,11 +18,11 @@ public:
 
     /// @brief 初期化
     /// @param particleSystem 呼び出し元シーンで生成済みの ParticleSystem（所有権は持たない）
-    /// @param dxCommon       DirectXCommon
+    /// @param dxCommon       GraphicsCore
     /// @param factory        ResourceFactory
     /// @param texturePath    circle.png などのテクスチャパス
     void Initialize(ParticleSystem* particleSystem,
-                    DirectXCommon* dxCommon,
+                    GraphicsCore* dxCommon,
                     ResourceFactory* factory,
                     const std::string& texturePath = "Application/Assets/Textures/circle.png");
 

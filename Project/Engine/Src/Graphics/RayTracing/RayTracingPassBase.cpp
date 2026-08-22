@@ -4,16 +4,16 @@
 #include <cstring>
 
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
     // 派生から呼ぶ共通初期化。デバイス・出力ビュー集合・デバッグ名だけを受け取る
     bool RayTracingPassBase::InitializeBase(
-        DirectXCommon* dxCommon,
+        GraphicsCore* dxCommon,
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr,
         const char* ownerName,

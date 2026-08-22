@@ -5,8 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Graphics/Common/GpuTimestampProfiler.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Pass/RenderPass.h"
 
 namespace CoreEngine

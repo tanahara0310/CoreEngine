@@ -8,7 +8,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class PostEffectManager;
 
     /// @brief ゲーム映像だけを表示する専用 Win32 ウィンドウ
@@ -28,7 +28,7 @@ namespace CoreEngine
         /// @param postEffectManager 最終出力テクスチャと転写用エフェクトの供給元
         /// @param mainHwnd エンジン本体のウィンドウ。表示先モニタの決定と、
         ///                 このウィンドウで Esc が押されたときの終了要求先に使う
-        void Initialize(DirectXCommon* dxCommon, PostEffectManager* postEffectManager, HWND mainHwnd);
+        void Initialize(GraphicsCore* dxCommon, PostEffectManager* postEffectManager, HWND mainHwnd);
 
         /// @brief 終了処理（ウィンドウとスワップチェーンを破棄する）
         void Finalize();
@@ -72,7 +72,7 @@ namespace CoreEngine
         /// @brief 保留中のリサイズを適用する（GPU 待ちを含む）
         void ResizeIfRequested();
 
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
         PostEffectManager* postEffectManager_ = nullptr;
 
         HWND hwnd_ = nullptr;

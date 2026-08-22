@@ -2,10 +2,10 @@
 #include "RayTracingShadowManager.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "AccelerationStructureManager.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -356,7 +356,7 @@ namespace CoreEngine
     // Initialize
     // =========================================================================
     bool RayTracingShadowManager::Initialize(
-        DirectXCommon* dxCommon,
+        GraphicsCore* dxCommon,
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr)
     {

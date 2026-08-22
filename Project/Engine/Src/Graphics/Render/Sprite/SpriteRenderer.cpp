@@ -51,7 +51,7 @@ namespace CoreEngine
     }
 
     void SpriteRenderer::Initialize(ID3D12Device* /*device*/) {
-        assert(false && "SpriteRenderer: Use Initialize(DirectXCommon*, ResourceFactory*) instead of Initialize(ID3D12Device*).");
+        assert(false && "SpriteRenderer: Use Initialize(GraphicsCore*, ResourceFactory*) instead of Initialize(ID3D12Device*).");
     }
 
     int SpriteRenderer::GetRootParamIndex(const std::string& resourceName) const {
@@ -61,7 +61,7 @@ namespace CoreEngine
         return reflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    void SpriteRenderer::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory) {
+    void SpriteRenderer::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory) {
         dxCommon_ = dxCommon;
         resourceFactory_ = resourceFactory;
 

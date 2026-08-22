@@ -1,9 +1,9 @@
 #include "pch.h"
 #include "OffscreenRenderTarget.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 
 #include <algorithm>
 #include <format>
@@ -16,7 +16,7 @@ namespace CoreEngine
         ReleaseDescriptorHandles();
     }
 
-    void OffscreenRenderTarget::Initialize(DirectXCommon* dx, DescriptorManager* descriptorManager, const RenderTargetDescriptor& desc, int index)
+    void OffscreenRenderTarget::Initialize(GraphicsCore* dx, DescriptorManager* descriptorManager, const RenderTargetDescriptor& desc, int index)
     {
         assert(dx);
         assert(descriptorManager);

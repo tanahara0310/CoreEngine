@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "GpuTimingStatsCollector.h"
+#include "Diagnostics/GpuTimingStatsCollector.h"
 
 #include "Utility/Logger/Logger.h"
 

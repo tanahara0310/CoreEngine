@@ -14,7 +14,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
 
     /// @brief レンダーターゲット管理クラス
     /// レンダーターゲットを名前で管理し、動的な作成・取得を可能にする
@@ -24,9 +24,9 @@ namespace CoreEngine
         ~RenderTargetManager();
 
         /// @brief 初期化
-        /// @param dxCommon DirectXCommon
+        /// @param dxCommon GraphicsCore
         /// @param dsvHeap DSVヒープ
-        void Initialize(DirectXCommon* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap);
+        void Initialize(GraphicsCore* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap);
 
         // ===== レンダーターゲットの作成 =====
 
@@ -83,9 +83,9 @@ namespace CoreEngine
         /// @return ターゲット数
         size_t GetRenderTargetCount() const { return targets_.size(); }
 
-        /// @brief DirectXCommonを取得
-        /// @return DirectXCommon
-        DirectXCommon* GetDirectXCommon() const { return dxCommon_; }
+        /// @brief GraphicsCoreを取得
+        /// @return GraphicsCore
+        GraphicsCore* GetGraphicsCore() const { return dxCommon_; }
 
         /// @brief PostEffect intermediate 用ターゲット名を取得する
         /// @param index intermediate インデックス
@@ -126,8 +126,8 @@ namespace CoreEngine
         /// @brief 直近にログへ出した合計バイト数（変化検出用）
         size_t lastLoggedBytes_ = 0;
 
-        // DirectXCommonへの参照
-        DirectXCommon* dxCommon_ = nullptr;
+        // GraphicsCoreへの参照
+        GraphicsCore* dxCommon_ = nullptr;
 
         // DSVヒープ
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap_;

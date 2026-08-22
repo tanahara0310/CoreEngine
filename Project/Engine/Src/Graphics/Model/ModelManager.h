@@ -24,7 +24,7 @@ namespace CoreEngine { class CustomShaderPipelineCache; }
 namespace CoreEngine
 {
 // 前方宣言
-class DirectXCommon;
+class GraphicsCore;
 class ResourceFactory;
 
 /// @brief アニメーション読み込み情報
@@ -48,9 +48,9 @@ public:
     ~ModelManager();
 
     /// @brief 初期化
-    /// @param dxCommon DirectXCommonのポインタ
+    /// @param dxCommon GraphicsCoreのポインタ
     /// @param factory リソースファクトリのポインタ
-    void Initialize(DirectXCommon* dxCommon, ResourceFactory* factory);
+    void Initialize(GraphicsCore* dxCommon, ResourceFactory* factory);
 
     /// @brief 描画依存コンテキストを設定（全レンダラー登録後に一度呼び出す）
     /// @param ctx レンダラー・デバイス等の固定依存コンテキスト
@@ -107,7 +107,7 @@ public:
     void BeginPreload(const std::vector<std::string>& filePaths);
 
     /// @brief 進行中のプリロードが全て終わるまで待つ
-    /// @details 終了処理で TextureManager や DirectXCommon を壊す前に必ず呼ぶこと。
+    /// @details 終了処理で TextureManager や GraphicsCore を壊す前に必ず呼ぶこと。
     void WaitForPreload();
 
     /// @brief プリミティブメッシュジェネレーターからモデルを作成する
@@ -127,8 +127,8 @@ public:
     void UpdateResourceCacheStats();
 
 private:
-    // DirectXCommon
-    DirectXCommon* dxCommon_ = nullptr;
+    // GraphicsCore
+    GraphicsCore* dxCommon_ = nullptr;
 
     // リソースファクトリ
     ResourceFactory* resourceFactory_ = nullptr;

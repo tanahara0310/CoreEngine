@@ -8,7 +8,7 @@
 #include "IEngineSubsystem.h"
 #include "Editor/ImGui/ImGuiManager.h"
 #include "Utility/Debug/GameDebugUI.h"
-#include "Graphics/Common/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include "Editor/ImGui/ThreadProfilerUI.h"
 #include "Editor/ImGui/KeyConfigUI.h"
 #include "Editor/ImGui/EngineStatsWindow.h"
@@ -27,7 +27,7 @@ namespace CoreEngine
     class EngineSystem;
     struct EngineConfig;
     class Render;
-    class DirectXCommon;
+    class GraphicsCore;
 
     /// @brief デバッグ機能（ImGui / プロファイラ / デバッグUI）の管理サブシステム
     /// @details EngineSystem からデバッグ関連の責務を分離し、肥大化を抑える。
@@ -70,8 +70,8 @@ namespace CoreEngine
         void EndRenderPipeline(ID3D12GraphicsCommandList* cmdList, UINT frameIndex);
 
         /// @brief FinalizeFrame 完了後にGPU計測結果を読み取り、DockingUI へ反映する
-        /// @param dx DirectXCommon（コマンドキュー・フレームインデックス取得用）
-        void PostFinalizeFrame(DirectXCommon* dx);
+        /// @param dx GraphicsCore（コマンドキュー・フレームインデックス取得用）
+        void PostFinalizeFrame(GraphicsCore* dx);
 
         /// @brief ゲーム映像専用ウィンドウへの転写コマンドを積む
         /// @details メインのコマンドリストを Close する直前に呼ぶこと。

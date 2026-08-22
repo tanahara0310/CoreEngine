@@ -22,7 +22,7 @@
 // 前方宣言
 namespace CoreEngine {
     class Camera;
-    class DirectXCommon;
+    class GraphicsCore;
     class ResourceFactory;
     class LightBase;
     class ICustomShaderProvider;

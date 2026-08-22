@@ -6,7 +6,7 @@
 
 namespace CoreEngine
 {
-    bool IBLSystem::Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator, RenderManager* renderManager)
+    bool IBLSystem::Initialize(GraphicsCore* dxCommon, IBLGenerator* iblGenerator, RenderManager* renderManager)
     {
         if (!dxCommon || !iblGenerator || !renderManager)
         {

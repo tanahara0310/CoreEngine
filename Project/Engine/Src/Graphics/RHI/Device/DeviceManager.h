@@ -6,17 +6,14 @@
 
 namespace CoreEngine
 {
-    // 前方宣言
-    class WinApp;
-
     /// @brief DirectX12デバイスとDXGIファクトリの管理クラス
+    /// @note ウィンドウには依存しない（デバイス生成に HWND は不要）。
     class DeviceManager {
     public:
         /// @brief 初期化
-        /// @param winApp ウィンドウアプリケーション
         /// @param enableDebugLayer デバッグレイヤーを有効にするか
         /// @param enableGPUBasedValidation GPU-Based Validationを有効にするか
-        void Initialize(WinApp* winApp, bool enableDebugLayer, bool enableGPUBasedValidation);
+        void Initialize(bool enableDebugLayer, bool enableGPUBasedValidation);
 
         // アクセッサ
         ID3D12Device* GetDevice() const { return device_.Get(); }
@@ -43,8 +40,6 @@ namespace CoreEngine
         // DXRサポート情報
         bool isDXRSupported_ = false;
         D3D12_RAYTRACING_TIER dxrTier_ = D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
-
-        WinApp* winApp_ = nullptr;
 
         // デバッグ設定（コンフィグから取得）
         bool enableDebugLayer_ = false;

@@ -22,7 +22,7 @@ namespace CoreEngine
             CVarRange{}, CVarFlags::NoUI };
     }
 
-    void SSAOTemporalTechnique::Initialize(DirectXCommon* dxCommon)
+    void SSAOTemporalTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
         cbRing_.Initialize(dxCommon, sizeof(SSAOTemporalParams));

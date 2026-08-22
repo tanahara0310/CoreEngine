@@ -19,7 +19,7 @@
 namespace CoreEngine
 {
     // 前方宣言
-    class DirectXCommon;
+    class GraphicsCore;
     class ResourceFactory;
     class TextureManager;
 
@@ -35,10 +35,10 @@ namespace CoreEngine
         ~ModelResource() = default;
 
         /// @brief 初期化
-        /// @param dxCommon DirectXCommonのポインタ
+        /// @param dxCommon GraphicsCoreのポインタ
         /// @param factory リソースファクトリのポインタ
         /// @param textureMg テクスチャマネージャーのポインタ
-        void Initialize(DirectXCommon* dxCommon, ResourceFactory* factory, TextureManager* textureMg);
+        void Initialize(GraphicsCore* dxCommon, ResourceFactory* factory, TextureManager* textureMg);
 
         /// @brief モデルファイルの読み込みとGPU転送（OBJ、glTF、FBXなど対応）
         /// @param directoryPath ディレクトリパス
@@ -194,7 +194,7 @@ namespace CoreEngine
         Node rootNode_;
         std::optional<Skeleton> skeleton_;
 
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
         ResourceFactory* resourceFactory_ = nullptr;
         TextureManager* textureManager_ = nullptr;
 

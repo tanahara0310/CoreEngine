@@ -8,7 +8,7 @@
 namespace CoreEngine
 {
 // 前方宣言
-class DirectXCommon;
+class GraphicsCore;
 class ResourceFactory;
 class MainModule;
 class EmissionModule;
@@ -36,7 +36,7 @@ public:
     virtual ~IParticleSystem() = default;
 
     /// @brief 初期化
-    virtual void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, const std::string& name) = 0;
+    virtual void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, const std::string& name) = 0;
 
     // ===== 再生制御 =====
     /// @brief 再生を開始する

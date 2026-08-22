@@ -1,10 +1,11 @@
 #include "pch.h"
 #include "TextureGpuUploader.h"
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/UploadContext.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Command/UploadContext.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FileErrorDialog/FileErrorDialog.h"
 #include "externals/DirectXTex/d3dx12.h"
@@ -18,7 +19,7 @@ namespace CoreEngine
     std::mutex TextureGpuUploader::gpuUploadMutex_;
 
     TextureGpuUploader::UploadResult TextureGpuUploader::UploadAndCreateSrv(
-        CoreEngine::DirectXCommon* dxCommon,
+        CoreEngine::GraphicsCore* dxCommon,
         const DirectX::ScratchImage& mipImages,
         const std::string& resolvedPath)
     {

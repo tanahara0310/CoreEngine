@@ -5,7 +5,7 @@
 #include <algorithm>
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include <cassert>
 
 
@@ -71,7 +71,7 @@ namespace CoreEngine
         wvpBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
     }
 
-    void LineRendererPipeline::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory) {
+    void LineRendererPipeline::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory) {
         dxCommon_ = dxCommon;
         resourceFactory_ = resourceFactory;
         Initialize(dxCommon->GetDevice());

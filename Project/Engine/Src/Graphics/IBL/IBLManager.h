@@ -6,7 +6,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class IBLGenerator;
 
     /// @brief IBLシステム管理クラス
@@ -41,11 +41,11 @@ namespace CoreEngine
         ~IBLManager() = default;
 
         /// @brief IBLシステムを初期化
-        /// @param dxCommon DirectXCommonポインタ
+        /// @param dxCommon GraphicsCoreポインタ
         /// @param iblGenerator IBLGeneratorポインタ
         /// @param params 初期化パラメータ
         /// @return 成功したらtrue
-        bool Initialize(DirectXCommon* dxCommon, IBLGenerator* iblGenerator, const InitParams& params);
+        bool Initialize(GraphicsCore* dxCommon, IBLGenerator* iblGenerator, const InitParams& params);
 
         /// @brief Irradiance Mapを取得
         /// @return Irradiance Mapリソース
@@ -68,7 +68,7 @@ namespace CoreEngine
         IBLSRVHandles GetSRVHandles() const { return { irradianceSRV_, prefilteredSRV_, brdfLUTSRV_ }; }
 
     private:
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
 
         // IBLリソース
         Microsoft::WRL::ComPtr<ID3D12Resource> irradianceMap_;

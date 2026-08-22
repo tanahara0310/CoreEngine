@@ -3,14 +3,14 @@
 
 #include <cassert>
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
     bool RayTracingOutputViewSet::EnsureTexture(
-        DirectXCommon* dxCommon,
+        GraphicsCore* dxCommon,
         DescriptorManager* descriptorManager,
         UINT width,
         UINT height,

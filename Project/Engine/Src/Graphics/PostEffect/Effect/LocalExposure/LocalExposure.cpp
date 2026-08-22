@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "LocalExposure.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
@@ -69,7 +69,7 @@ namespace CoreEngine
 
     void LocalExposure::OnCreateConstantBuffers()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         CreateMappedCB(device, downsampleParamsCB_, mappedDownsampleParams_);
         CreateMappedCB(device, blurHParamsCB_, mappedBlurHParams_);
@@ -86,7 +86,7 @@ namespace CoreEngine
     // 4 パスぶんの Compute PSO をまとめて作る。1 本でも欠けたら無効化して素通しにする
     bool LocalExposure::CreateInternalPipelines()
     {
-        auto* device = directXCommon_->GetDevice();
+        auto* device = graphicsCore_->GetDevice();
 
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();

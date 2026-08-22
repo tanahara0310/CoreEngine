@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "BackBufferPass.h"
 #include "Graphics/Render/Render.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/FullScreen.h"
@@ -50,9 +50,9 @@ namespace CoreEngine
         // 必須コンポーネントのチェック
         if (!context.dxCommon) {
 #ifdef _DEBUG
-            OutputDebugStringA("ERROR: BackBufferPass: DirectXCommon is null in RenderContext!\n");
+            OutputDebugStringA("ERROR: BackBufferPass: GraphicsCore is null in RenderContext!\n");
 #endif
-            assert(false && "BackBufferPass requires DirectXCommon");
+            assert(false && "BackBufferPass requires GraphicsCore");
             return;
         }
 

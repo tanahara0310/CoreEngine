@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include <cassert>
 #include <format>
 #include <stdexcept>

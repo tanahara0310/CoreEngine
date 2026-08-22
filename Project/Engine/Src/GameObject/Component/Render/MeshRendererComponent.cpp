@@ -4,7 +4,7 @@
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
@@ -131,7 +131,7 @@ namespace CoreEngine
 
         GameObject* owner = GetOwner();
         EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* dxCommon = engine ? engine->GetService<DirectXCommon>() : nullptr;
+        auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
         auto* modelMgr = engine ? engine->GetService<ModelManager>() : nullptr;
         if (!dxCommon || !modelMgr) { return; }
 

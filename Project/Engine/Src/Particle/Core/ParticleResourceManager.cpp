@@ -1,13 +1,14 @@
 #include "pch.h"
 #include "ParticleResourceManager.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Particle/ParticleSystem.h" // ParticleForGPU定義のため
 
 
 namespace CoreEngine
 {
-void ParticleResourceManager::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances) {
+void ParticleResourceManager::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, uint32_t maxInstances) {
     dxCommon_ = dxCommon;
     resourceFactory_ = resourceFactory;
 

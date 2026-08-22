@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "SSAOTechnique.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -56,7 +56,7 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.SSAO";
     }
 
-    void SSAOTechnique::Initialize(DirectXCommon* dxCommon)
+    void SSAOTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
         cbRing_.Initialize(dxCommon, sizeof(SSAOParams));

@@ -2,8 +2,8 @@
 #include "Graphics/Render/BaseRenderer.h"
 #include "Graphics/Render/UI/UIMaterial.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Math/MathCore.h"
 #include <d3d12.h>
 #include <wrl.h>
@@ -36,8 +36,8 @@ namespace CoreEngine
         RenderPassType GetRenderPassType() const override { return RenderPassType::UI; }
         void SetCamera(const Camera* camera) override;
 
-        /// @brief 初期化（DirectXCommon と ResourceFactory 付き）
-        void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory);
+        /// @brief 初期化（GraphicsCore と ResourceFactory 付き）
+        void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory);
 
         /// @brief ルートシグネチャを取得
         ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
@@ -58,8 +58,8 @@ namespace CoreEngine
         /// @brief 現在使用中のスクリーンサイズを取得
         Vector2 GetScreenSize() const;
 
-        /// @brief DirectXCommon を取得
-        DirectXCommon* GetDirectXCommon() { return dxCommon_; }
+        /// @brief GraphicsCore を取得
+        GraphicsCore* GetGraphicsCore() { return dxCommon_; }
 
         /// @brief ResourceFactory を取得
         ResourceFactory* GetResourceFactory() { return resourceFactory_; }
@@ -82,8 +82,8 @@ namespace CoreEngine
     private:
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
-        // DirectXCommonとResourceFactory
-        DirectXCommon* dxCommon_ = nullptr;
+        // GraphicsCoreとResourceFactory
+        GraphicsCore* dxCommon_ = nullptr;
         ResourceFactory* resourceFactory_ = nullptr;
 
         // 定数バッファプール（フレームごとに分離）

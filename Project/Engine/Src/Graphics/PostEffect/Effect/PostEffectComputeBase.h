@@ -17,7 +17,7 @@ namespace CoreEngine {
     class PostEffectComputeBase : public PostEffectBase {
     public:
         /// @brief CS パイプラインによる初期化
-        void Initialize(DirectXCommon* dxCommon) override;
+        void Initialize(GraphicsCore* dxCommon) override;
 
         PostEffectExecutionType GetExecutionType() const override {
             return PostEffectExecutionType::Compute;

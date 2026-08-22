@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "BaseParticleRenderer.h"
 #include "Particle/ParticleSystem.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Camera/Camera.h"

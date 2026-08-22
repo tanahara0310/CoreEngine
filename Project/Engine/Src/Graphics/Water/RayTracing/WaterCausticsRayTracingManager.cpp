@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "WaterCausticsRayTracingManager.h"
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
@@ -67,7 +67,7 @@ namespace CoreEngine
     // 個別フィールドの境界チェックはフィールド表（下）が全フィールド分やるので不要
 
     bool WaterCausticsRayTracingManager::Initialize(
-        DirectXCommon* dxCommon,
+        GraphicsCore* dxCommon,
         DescriptorManager* descriptorManager,
         AccelerationStructureManager* asMgr)
     {

@@ -15,7 +15,7 @@ namespace CoreEngine {
     class PostEffectGraphicsBase : public PostEffectBase {
     public:
         /// @brief VS+PS パイプラインによる初期化
-        void Initialize(DirectXCommon* dxCommon) override;
+        void Initialize(GraphicsCore* dxCommon) override;
 
         /// @brief オフスクリーン RT への描画
         void Draw(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle) override;

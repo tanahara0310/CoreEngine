@@ -1,7 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include <wrl.h>
 
 namespace CoreEngine

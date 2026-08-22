@@ -3,8 +3,8 @@
 
 #include <algorithm>
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/CommandManager.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Command/CommandManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/FullScreen.h"
@@ -26,7 +26,7 @@ namespace CoreEngine
         Finalize();
     }
 
-    void GameOutputWindow::Initialize(DirectXCommon* dxCommon, PostEffectManager* postEffectManager, HWND mainHwnd){
+    void GameOutputWindow::Initialize(GraphicsCore* dxCommon, PostEffectManager* postEffectManager, HWND mainHwnd){
         dxCommon_ = dxCommon;
         postEffectManager_ = postEffectManager;
         mainHwnd_ = mainHwnd;
@@ -311,7 +311,7 @@ namespace CoreEngine
         }
 
         // ResizeBuffers はバックバッファへの参照が残っていると失敗する。
-        // 本体のリサイズ経路（DirectXCommon::OnWindowResize）と同じ作法で GPU を待ってから行う。
+        // 本体のリサイズ経路（GraphicsCore::OnWindowResize）と同じ作法で GPU を待ってから行う。
         if (dxCommon_ && dxCommon_->GetCommandManager()) {
             dxCommon_->GetCommandManager()->WaitForGpuIdle();
         }

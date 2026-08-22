@@ -15,7 +15,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class DescriptorManager;
     class AccelerationStructureManager;
 
@@ -96,7 +96,7 @@ namespace CoreEngine
 
         /// @brief 初期化（State Object / Shader Table / UAV テクスチャの構築）
         /// @return 成功した場合 true
-        bool Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager,
+        bool Initialize(GraphicsCore* dxCommon, DescriptorManager* descriptorManager,
             AccelerationStructureManager* asMgr);
 
         /// @brief シャドウレイをディスパッチする（3 ステージの最初。ここで解像度が確定する）

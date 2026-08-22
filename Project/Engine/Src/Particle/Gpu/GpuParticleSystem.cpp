@@ -1,8 +1,9 @@
 #include "pch.h"
 #include "GpuParticleSystem.h"
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Camera/Camera.h"
 #include "Particle/Core/ParticleResourceManager.h" // ParticleForGPU（インスタンスデータレイアウト共有）
 #include "Math/MathCore.h"
@@ -25,7 +26,7 @@ namespace {
     constexpr float kDegToRad = MathCore::Constants::kDegToRad;
 }
 
-void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, const std::string& name)
+void GpuParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, const std::string& name)
 {
     if (!name.empty()) {
         name_ = name;

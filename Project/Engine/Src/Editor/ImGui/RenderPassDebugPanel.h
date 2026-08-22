@@ -9,7 +9,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class GBufferManager;
     class RenderTargetManager;
     class RenderDomainContext;
@@ -25,7 +25,7 @@ namespace CoreEngine
         ~RenderPassDebugPanel() = default;
 
         /// @brief 初期化
-        void Initialize(DirectXCommon* dxCommon);
+        void Initialize(GraphicsCore* dxCommon);
 
         /// @brief RenderTargetManager を設定（SSAO / Offscreen ターゲット取得用）
         void SetRenderTargetManager(RenderTargetManager* rtm) { renderTargetManager_ = rtm; }
@@ -58,7 +58,7 @@ namespace CoreEngine
         static void SectionHeader(const char* label);
 
         // ---- 状態 ----
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
         RenderDomainContext* renderDomainContext_ = nullptr;
         RenderTargetManager* renderTargetManager_ = nullptr;
         std::string enlargedTitle_;                        ///< 拡大ポップアップのウィンドウタイトル

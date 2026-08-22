@@ -5,7 +5,7 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
-#include "Graphics/Common/EngineStats.h"
+#include "Diagnostics/EngineStats.h"
 #include "Utility/Logger/Logger.h"
 #include <cstring>
 

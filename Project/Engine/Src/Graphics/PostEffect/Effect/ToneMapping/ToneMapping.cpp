@@ -2,8 +2,8 @@
 #include "ToneMapping.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Utility/Logger/Logger.h"
@@ -117,7 +117,7 @@ namespace CoreEngine
     void ToneMapping::OnCreateConstantBuffers()
     {
         UINT size = (sizeof(ScreenParams) + 255) & ~255;
-        screenParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), size);
+        screenParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
         [[maybe_unused]] HRESULT hr = screenParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenParams_));
         assert(SUCCEEDED(hr));
 
@@ -154,7 +154,7 @@ namespace CoreEngine
 
         reductionRootSignature_ = std::make_unique<RootSignatureManager>();
         auto buildResult = reductionRootSignature_->Build(
-            directXCommon_->GetDevice(), *reductionReflection_, config);
+            graphicsCore_->GetDevice(), *reductionReflection_, config);
         if (!buildResult.success) {
             Logger::GetInstance().Errorf(LogCategory::Shader,
                 "ToneMapping: 輝度計測 RootSignature の構築に失敗: {}", buildResult.errorMessage);
@@ -162,7 +162,7 @@ namespace CoreEngine
         }
 
         reductionPso_ = ComputePipelineUtil::Create(
-            directXCommon_->GetDevice(), reductionRootSignature_->GetRootSignature(),
+            graphicsCore_->GetDevice(), reductionRootSignature_->GetRootSignature(),
             reductionShaderBlob_.Get(), "ToneMapping_LuminanceReduction");
         if (!reductionPso_) {
             return;
@@ -171,7 +171,7 @@ namespace CoreEngine
         // ===== ヒストグラム測光の設定バッファ（b1・永続マップ） =====
         {
             const UINT size = (sizeof(HistogramMeteringParams) + 255) & ~255u;
-            histogramParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), size);
+            histogramParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
             if (!histogramParamsCB_ ||
                 FAILED(histogramParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedHistogramParams_)))) {
                 return;
@@ -192,7 +192,7 @@ namespace CoreEngine
             desc.SampleDesc.Count = 1;
             desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-            if (FAILED(directXCommon_->GetDevice()->CreateCommittedResource(
+            if (FAILED(graphicsCore_->GetDevice()->CreateCommittedResource(
                     &heapProps, D3D12_HEAP_FLAG_NONE, &desc,
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
                     IID_PPV_ARGS(&avgLogLumBuffer_)))) {
@@ -203,7 +203,7 @@ namespace CoreEngine
         // ===== リードバックリング（GPU が最大2フレーム遅延しても読み書きが重ならない） =====
         for (uint32_t i = 0; i < kReadbackCount; ++i) {
             readbackBuffers_[i] = ResourceFactory::CreateBufferResource(
-                directXCommon_->GetDevice(), 256, D3D12_HEAP_TYPE_READBACK);
+                graphicsCore_->GetDevice(), 256, D3D12_HEAP_TYPE_READBACK);
             if (!readbackBuffers_[i]) {
                 return;
             }
@@ -359,7 +359,7 @@ namespace CoreEngine
         }
         UpdateScreenConstantBuffer(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
 
         // 今フレームの入力輝度を計測する（結果は2フレーム後の順応更新で使われる）。
         // 照明駆動測光が有効な間は GPU 計測が不要なのでスキップする

@@ -40,7 +40,7 @@ namespace CoreEngine
         DeferredLightingTechnique() = default;
         ~DeferredLightingTechnique() override = default;
 
-        void Initialize(DirectXCommon* dxCommon) override;
+        void Initialize(GraphicsCore* dxCommon) override;
         void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
 
         // ===== カメラ・ライティングリソース セッター =====

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Editor/ImGui/ImGuiAll.h"
-#include "Graphics/Common/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include <imgui_internal.h>
 #include <d3d12.h>
 #include <span>

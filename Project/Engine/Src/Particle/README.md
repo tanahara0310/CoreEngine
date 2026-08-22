@@ -36,7 +36,7 @@ std::unique_ptr<ParticleSubSystem> particle_ = std::make_unique<ParticleSubSyste
 // 初期化
 particle_->Initialize();
 particle_->SetInitializeParams(
-    graphics->GetDirectXCommon(),
+    graphics->GetGraphicsCore(),
     graphics->GetResourceFactory()
 );
 ```
@@ -71,7 +71,7 @@ if (particle_) {
 // Draw関数内
 if (particle_) {
     particle_->Draw(
-        graphics->GetDirectXCommon()->GetCommandList(),
+        graphics->GetGraphicsCore()->GetCommandList(),
         textureHandle.gpuHandle
     );
 }

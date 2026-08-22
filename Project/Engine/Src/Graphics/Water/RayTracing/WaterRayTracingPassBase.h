@@ -77,7 +77,7 @@ namespace CoreEngine
         /// @brief 構成データからルートシグネチャ・ステートオブジェクト・シェーダーテーブルを構築する
         /// @details 失敗時はエラーログ済み。成功時は isInitialized_ = true。
         bool InitializeFromDesc(
-            DirectXCommon* dxCommon,
+            GraphicsCore* dxCommon,
             DescriptorManager* descriptorManager,
             AccelerationStructureManager* asMgr,
             const RTWaterPipelineDesc& desc);

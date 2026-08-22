@@ -4,7 +4,7 @@
 #include <wrl.h>
 #include <memory>
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -25,16 +25,16 @@ struct RenderContext;
 class FrameRingConstantBuffer {
 public:
     /// @brief バッファを確保して常時 Map する
-    /// @param dxCommon DirectXCommon（フレームバッファリング数の取得に使う）
+    /// @param dxCommon GraphicsCore（フレームバッファリング数の取得に使う）
     /// @param paramsSize 1 スライスに書く構造体のサイズ（256B 境界へ内部で切り上げる）
-    void Initialize(DirectXCommon* dxCommon, uint32_t paramsSize);
+    void Initialize(GraphicsCore* dxCommon, uint32_t paramsSize);
 
     /// @brief 記録中フレームのスライスへ書き込み、その GPU アドレスを返す
-    /// @param dxCommon DirectXCommon（記録中フレームインデックスの取得に使う）
+    /// @param dxCommon GraphicsCore（記録中フレームインデックスの取得に使う）
     /// @param src 書き込む構造体
     /// @param size 構造体サイズ（Initialize の paramsSize 以下であること）
     /// @return バインドすべき GPU 仮想アドレス。未初期化なら 0
-    D3D12_GPU_VIRTUAL_ADDRESS Upload(DirectXCommon* dxCommon, const void* src, uint32_t size);
+    D3D12_GPU_VIRTUAL_ADDRESS Upload(GraphicsCore* dxCommon, const void* src, uint32_t size);
 
 private:
     Microsoft::WRL::ComPtr<ID3D12Resource> buffer_;
@@ -52,8 +52,8 @@ public:
     virtual ~RenderingTechniqueBase() = default;
 
     /// @brief 初期化
-    /// @param dxCommon DirectXCommon
-    virtual void Initialize(DirectXCommon* dxCommon);
+    /// @param dxCommon GraphicsCore
+    virtual void Initialize(GraphicsCore* dxCommon);
 
     /// @brief レンダリング技術の実行
     /// @param context レンダリングコンテキスト（GBuffer、深度、カメラなどへのアクセス）
@@ -137,7 +137,7 @@ protected:
     void DrawFullscreenQuad(ID3D12GraphicsCommandList* commandList);
 
 protected:
-    DirectXCommon* directXCommon_ = nullptr;
+    GraphicsCore* graphicsCore_ = nullptr;
 
     // Graphics Shader用
     Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob_;

@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "FFTOceanDebugProbe.h"
 
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Graphics/Water/FFTOceanManagerLogHelper.h"
 #include "Graphics/Water/FFTOceanReadbackHelper.h"
 #include "Graphics/Water/FFTOceanSpectrumDebugHelper.h"

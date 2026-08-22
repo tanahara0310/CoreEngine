@@ -37,7 +37,7 @@
 
 // 前方宣言
 namespace CoreEngine {
-    class DirectXCommon;
+    class GraphicsCore;
     class ResourceFactory;
     class Camera;
 }
@@ -245,7 +245,7 @@ public:
     ~GpuParticleSystem() override = default;
 
     /// @brief 初期化（GPUバッファ・UAV/SRV・モジュールの生成）
-    void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory, const std::string& name = "") override;
+    void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory, const std::string& name = "") override;
 
     /// @brief 更新処理（再生時間・放出数の管理のみ。粒子更新はGPU）
     void Update() override;
@@ -393,7 +393,7 @@ private:
     /// @brief UAV付きDEFAULTヒープバッファを作成
     Microsoft::WRL::ComPtr<ID3D12Resource> CreateUavBuffer(size_t sizeInBytes);
 
-    DirectXCommon* dxCommon_ = nullptr;
+    GraphicsCore* dxCommon_ = nullptr;
     ResourceFactory* resourceFactory_ = nullptr;
 
     // ──────────────────────────────────────────────────────────

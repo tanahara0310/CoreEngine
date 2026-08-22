@@ -14,7 +14,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class DescriptorManager;
     class ShaderCompiler;
     class ShaderReflectionBuilder;
@@ -70,7 +70,7 @@ namespace CoreEngine
         /// @param depthSRV 深度 SRV（NON_PIXEL_SHADER_RESOURCE 状態で渡すこと）
         void ExecuteCulling(
             ID3D12GraphicsCommandList* cmdList,
-            DirectXCommon* dxCommon,
+            GraphicsCore* dxCommon,
             ID3D12Resource* depthResource,
             D3D12_GPU_DESCRIPTOR_HANDLE depthSRV);
 
@@ -160,7 +160,7 @@ namespace CoreEngine
             BoundsGPU bounds;
         };
 
-        bool InitializeIfNeeded(DirectXCommon* dxCommon);
+        bool InitializeIfNeeded(GraphicsCore* dxCommon);
         bool BuildPipelines(ID3D12Device* device);
         bool CreateBuffers(ID3D12Device* device);
         bool EnsureHiZResources(ID3D12Device* device, uint32_t depthWidth, uint32_t depthHeight);
@@ -197,7 +197,7 @@ namespace CoreEngine
         int cullParamsIdx_ = -1;
 
         // ---- GPU リソース ----
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
         DescriptorManager* descriptorManager_ = nullptr;
 
         // Hi-Z ピラミッド（R32_FLOAT、フルミップチェーン。フレーム間は全ミップ UAV 状態で均一化）

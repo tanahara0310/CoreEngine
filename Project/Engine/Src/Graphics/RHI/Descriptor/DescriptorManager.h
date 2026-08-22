@@ -8,7 +8,7 @@
 #include <vector>
 #include <mutex>
 #include <atomic>
-#include "DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 
 namespace CoreEngine
 {

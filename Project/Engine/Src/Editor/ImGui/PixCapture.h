@@ -6,7 +6,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
 
     /// @brief PIX (PIX on Windows) によるプログラム的 GPU キャプチャ機能
     /// USE_PIX 定義時に常時有効。ボタン押下時に次の1フレームだけをキャプチャする

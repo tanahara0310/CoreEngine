@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "SkinClusterGenerator.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
 #include "Math/MathCore.h"
 #include <algorithm>
 #include <cassert>

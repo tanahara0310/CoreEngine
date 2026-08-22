@@ -12,7 +12,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class DescriptorManager;
     class AccelerationStructureManager;
 
@@ -50,7 +50,7 @@ namespace CoreEngine
         /// @param ownerName        ログ・診断に出す所有者名（以後 ownerName_ として使い回す）
         /// @param outputDebugName  出力テクスチャのデバッグ名の接頭辞
         bool InitializeBase(
-            DirectXCommon* dxCommon,
+            GraphicsCore* dxCommon,
             DescriptorManager* descriptorManager,
             AccelerationStructureManager* asMgr,
             const char* ownerName,
@@ -92,7 +92,7 @@ namespace CoreEngine
 
         const char* GetOwnerName() const { return ownerName_; }
 
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
         DescriptorManager* descriptorManager_ = nullptr;
         AccelerationStructureManager* asMgr_ = nullptr;
 

@@ -1,7 +1,6 @@
 #include "pch.h"
-#include "SwapChainManager.h"
-#include "DescriptorManager.h"
-#include "WinApp/WinApp.h"
+#include "Graphics/RHI/SwapChain/SwapChainManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
@@ -15,13 +14,16 @@ namespace{
 }
 
 void SwapChainManager::Initialize(ID3D12Device* device, IDXGIFactory7* dxgiFactory,
-    ID3D12CommandQueue* commandQueue, DescriptorManager* descriptorManager, CoreEngine::WinApp* winApp)
+    ID3D12CommandQueue* commandQueue, DescriptorManager* descriptorManager,
+    HWND hwnd, std::int32_t width, std::int32_t height)
 {
     device_ = device;
     dxgiFactory_ = dxgiFactory;
     commandQueue_ = commandQueue;
     descriptorManager_ = descriptorManager;
-    winApp_ = winApp;
+    hwnd_ = hwnd;
+    width_ = width;
+    height_ = height;
 
     logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain, "SwapChainManager: 初期化開始\n");
 
@@ -119,12 +121,12 @@ void SwapChainManager::CreateSwapChain()
 {
     logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
         "スワップチェーン作成開始: 解像度={}x{}, フォーマット=DXGI_FORMAT_R8G8B8A8_UNORM, バッファ数=2\n",
-        winApp_->GetClientWidth(), winApp_->GetClientHeight());
+        width_, height_);
 
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc_{};
     swapChainDesc_ = {};
-    swapChainDesc_.Width = static_cast<UINT>(winApp_->GetClientWidth());
-    swapChainDesc_.Height = static_cast<UINT>(winApp_->GetClientHeight());
+    swapChainDesc_.Width = static_cast<UINT>(width_);
+    swapChainDesc_.Height = static_cast<UINT>(height_);
     swapChainDesc_.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     swapChainDesc_.SampleDesc.Count = 1;
     swapChainDesc_.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -133,7 +135,7 @@ void SwapChainManager::CreateSwapChain()
 
     ComPtr<IDXGISwapChain1> swapChain1;
     HRESULT result = dxgiFactory_->CreateSwapChainForHwnd(commandQueue_,
-        winApp_->GetHwnd(),
+        hwnd_,
         &swapChainDesc_,
         nullptr, nullptr,
         &swapChain1);

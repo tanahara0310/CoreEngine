@@ -1,8 +1,8 @@
 #pragma once
 #include "Graphics/Render/BaseRenderer.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Math/MathCore.h"
 #include <d3d12.h>
@@ -43,10 +43,10 @@ namespace CoreEngine
         RenderPassType GetRenderPassType() const override { return RenderPassType::Sprite; }
         void SetCamera(const Camera* camera) override;
 
-        /// @brief 初期化（DirectXCommonとResourceFactory付き）
-        /// @param dxCommon DirectXCommon
+        /// @brief 初期化（GraphicsCoreとResourceFactory付き）
+        /// @param dxCommon GraphicsCore
         /// @param resourceFactory ResourceFactory
-        void Initialize(DirectXCommon* dxCommon, ResourceFactory* resourceFactory);
+        void Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory);
 
         /// @brief ルートシグネチャを取得
         ID3D12RootSignature* GetRootSignature() const { return rootSignatureMg_->GetRootSignature(); }
@@ -65,8 +65,8 @@ namespace CoreEngine
         /// @brief WVP 行列を計算（カメラ使用版）
         Matrix4x4 CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation, const Camera* camera) const;
 
-        /// @brief DirectXCommonを取得
-        DirectXCommon* GetDirectXCommon() { return dxCommon_; }
+        /// @brief GraphicsCoreを取得
+        GraphicsCore* GetGraphicsCore() { return dxCommon_; }
 
         /// @brief ResourceFactoryを取得
         ResourceFactory* GetResourceFactory() { return resourceFactory_; }
@@ -89,8 +89,8 @@ namespace CoreEngine
     private:
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
-        // DirectXCommonとResourceFactory
-        DirectXCommon* dxCommon_ = nullptr;
+        // GraphicsCoreとResourceFactory
+        GraphicsCore* dxCommon_ = nullptr;
         ResourceFactory* resourceFactory_ = nullptr;
 
         // 定数バッファプール（フレームごとに分離）
@@ -106,7 +106,7 @@ namespace CoreEngine
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> reflectionData_;
 
-        /// @brief パイプラインのみを初期化（Initialize(DirectXCommon*, ResourceFactory*) から呼び出す）
+        /// @brief パイプラインのみを初期化（Initialize(GraphicsCore*, ResourceFactory*) から呼び出す）
         void InitializePipeline(ID3D12Device* device);
 
         /// @brief IRenderer::Initialize(ID3D12Device*) のオーバーライド（直接呼び出し禁止）

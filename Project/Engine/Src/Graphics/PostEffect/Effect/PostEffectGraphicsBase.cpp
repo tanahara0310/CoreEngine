@@ -9,10 +9,10 @@
 
 namespace CoreEngine
 {
-    void PostEffectGraphicsBase::Initialize(DirectXCommon* dxCommon)
+    void PostEffectGraphicsBase::Initialize(GraphicsCore* dxCommon)
     {
         assert(dxCommon);
-        directXCommon_ = dxCommon;
+        graphicsCore_ = dxCommon;
 
         ShaderCompiler shaderCompiler;
         shaderCompiler.Initialize();
@@ -71,7 +71,7 @@ namespace CoreEngine
     void PostEffectGraphicsBase::DrawInternal(
         D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle, PipelineStateManager& psm)
     {
-        auto* commandList = directXCommon_->GetCommandList();
+        auto* commandList = graphicsCore_->GetCommandList();
 
         commandList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
         commandList->SetPipelineState(psm.GetPipelineState(BlendMode::kBlendModeNone));

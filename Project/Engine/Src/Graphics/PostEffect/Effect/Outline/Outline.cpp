@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Outline.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Utility/CVar/CVar.h"
@@ -47,7 +47,7 @@ namespace CoreEngine
     {
         // アウトラインパラメータ用定数バッファ
         UINT outlineSize = (sizeof(OutlineParams) + 255) & ~255;
-        outlineParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), outlineSize);
+        outlineParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), outlineSize);
         [[maybe_unused]] HRESULT hr = outlineParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedOutlineParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
@@ -85,7 +85,7 @@ namespace CoreEngine
 
     void Outline::DeclareExtraInputs(std::vector<PostEffectInputBinding>& out) const
     {
-        // 以前は directXCommon_->GetDepthStencilSRV() を直接読んでいた。それでは
+        // 以前は graphicsCore_->GetDepthStencilSRV() を直接読んでいた。それでは
         // RenderGraph から見えない依存になり、深度の状態遷移も実行順も保証されない。
         out.push_back({ "gDepth", FrameBlackboard::SceneDepth, /*required*/ true });
     }
@@ -109,7 +109,7 @@ namespace CoreEngine
         UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
 

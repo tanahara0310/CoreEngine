@@ -5,9 +5,9 @@
 namespace CoreEngine
 {
     /// @brief ウィンドウリサイズ通知を受け取るクラスが実装するインターフェース
-    /// @details DirectXCommon::RegisterResizable() で登録すると、
+    /// @details GraphicsCore::RegisterResizable() で登録すると、
     ///          スワップチェーン/深度バッファの再作成が完了した後、
-    ///          DirectXCommon::OnWindowResize() から呼ばれる。
+    ///          GraphicsCore::OnWindowResize() から呼ばれる。
     class IResizable {
     public:
         virtual ~IResizable() = default;

@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/PostEffect/Effect/PostEffectStage.h"
@@ -41,7 +41,7 @@ namespace CoreEngine {
         virtual ~PostEffectBase() = default;
 
         /// @brief 初期化
-        virtual void Initialize(DirectXCommon* dxCommon) = 0;
+        virtual void Initialize(GraphicsCore* dxCommon) = 0;
 
         /// @brief グラフィクスパイプラインによる描画（PS派生クラスで実装）
         virtual void Draw(D3D12_GPU_DESCRIPTOR_HANDLE /*inputSrvHandle*/) {}
@@ -141,7 +141,7 @@ namespace CoreEngine {
         /// @return 解決済み SRV。未解決なら ptr == 0
         D3D12_GPU_DESCRIPTOR_HANDLE GetExtraInput(const char* slot) const;
 
-        DirectXCommon* directXCommon_ = nullptr;
+        GraphicsCore* graphicsCore_ = nullptr;
         std::unique_ptr<RootSignatureManager> rootSignatureManager_;
         std::unique_ptr<ShaderReflectionData> reflectionData_; ///< シェーダーリフレクションデータ
         bool enabled_ = true;

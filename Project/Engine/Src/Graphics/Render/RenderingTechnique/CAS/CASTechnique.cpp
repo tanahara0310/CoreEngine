@@ -2,7 +2,7 @@
 #include "Utility/CVar/CVar.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "CASTechnique.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
@@ -31,7 +31,7 @@ namespace CoreEngine
         constexpr const char* kCVarPrefix = "r.CAS";
     }
 
-    void CASTechnique::Initialize(DirectXCommon* dxCommon)
+    void CASTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
         CreateConstantBuffer();
@@ -134,9 +134,9 @@ namespace CoreEngine
 
     void CASTechnique::CreateConstantBuffer()
     {
-        assert(directXCommon_);
+        assert(graphicsCore_);
         const UINT bufferSize = (sizeof(CASParams) + 255) & ~255;
-        constantBuffer_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), bufferSize);
+        constantBuffer_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), bufferSize);
         [[maybe_unused]] HRESULT hr = constantBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();

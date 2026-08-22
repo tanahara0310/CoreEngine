@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ProjectView.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -14,7 +14,7 @@
 #ifdef USE_IMGUI
 namespace CoreEngine
 {
-    void ProjectView::Initialize(DirectXCommon* dxCommon)
+    void ProjectView::Initialize(GraphicsCore* dxCommon)
     {
         dxCommon_ = dxCommon;
 

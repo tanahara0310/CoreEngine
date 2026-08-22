@@ -10,7 +10,7 @@
 #include <numeric>
 
 #include "EngineSystem/EngineSystem.h"
-#include "Graphics/Common/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Graphics/Render/RenderGraphSnapshot.h"

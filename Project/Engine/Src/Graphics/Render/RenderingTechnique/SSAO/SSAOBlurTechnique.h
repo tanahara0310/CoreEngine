@@ -33,7 +33,7 @@ public:
     SSAOBlurTechnique() = default;
     ~SSAOBlurTechnique() = default;
 
-    void Initialize(DirectXCommon* dxCommon) override;
+    void Initialize(GraphicsCore* dxCommon) override;
     void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
     void OnResize(uint32_t width, uint32_t height) override;
 

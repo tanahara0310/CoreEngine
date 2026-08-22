@@ -6,12 +6,12 @@
 
 #include <string>
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/GpuMarker.h"
-#include "Graphics/Common/GpuTimestampProfiler.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Debug/GpuMarker.h"
+#include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Water/FFTOceanDispatchHelper.h"
@@ -135,7 +135,7 @@ namespace CoreEngine
         constexpr float kMaxHeightWindSpeed = 32.0f;
     }
 
-    bool FFTOceanManager::Initialize(DirectXCommon* dxCommon, DescriptorManager* descriptorManager)
+    bool FFTOceanManager::Initialize(GraphicsCore* dxCommon, DescriptorManager* descriptorManager)
     {
         // 外部依存を保持し、設定をGPU向けに正規化してから初期化を開始する。
         dxCommon_ = dxCommon;

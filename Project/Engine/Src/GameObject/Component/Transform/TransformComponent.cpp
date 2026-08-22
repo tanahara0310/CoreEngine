@@ -3,7 +3,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Math/MathCore.h"
 
 #include <cmath>
@@ -14,7 +14,7 @@ namespace CoreEngine
     {
         GameObject* owner = GetOwner();
         EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        if (auto* dxCommon = engine ? engine->GetService<DirectXCommon>() : nullptr) {
+        if (auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr) {
             transform_.Initialize(dxCommon->GetDevice());
         }
     }

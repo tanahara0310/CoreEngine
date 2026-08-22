@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "LightBufferManager.h"
 
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
 #include <cstring>
 
 namespace CoreEngine

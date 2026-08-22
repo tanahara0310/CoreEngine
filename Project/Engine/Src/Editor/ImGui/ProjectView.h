@@ -9,7 +9,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
 
     /// @brief Unityスタイルのプロジェクトビュー
     /// Assetsフォルダ以下の階層を表示し、ファイルとフォルダを管理する
@@ -17,7 +17,7 @@ namespace CoreEngine
     public:
         /// @brief 初期化
         /// @param dxCommon DirectX共通クラスへのポインタ
-        void Initialize(DirectXCommon* dxCommon);
+        void Initialize(GraphicsCore* dxCommon);
 
         /// @brief 更新（ImGuiウィンドウの描画）
         void Update();
@@ -93,7 +93,7 @@ namespace CoreEngine
         void OpenFile(const std::filesystem::path& filePath);
 
     private:
-        DirectXCommon* dxCommon_ = nullptr;     // DirectX共通クラスへのポインタ
+        GraphicsCore* dxCommon_ = nullptr;     // DirectX共通クラスへのポインタ
 
         std::filesystem::path rootPath_;        // 仮想ルート（プロジェクトルート）
         std::filesystem::path appAssetsPath_;   // Application/Assets パス

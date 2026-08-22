@@ -4,8 +4,8 @@
 #include <stdexcept>
 #include <string>
 
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine

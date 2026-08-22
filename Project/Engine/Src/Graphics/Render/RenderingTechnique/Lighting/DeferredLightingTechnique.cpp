@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "DeferredLightingTechnique.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
@@ -39,7 +39,7 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     // 初期化
     // -------------------------------------------------------------------------
-    void DeferredLightingTechnique::Initialize(DirectXCommon* dxCommon)
+    void DeferredLightingTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
         CreateConstantBuffers();
@@ -50,7 +50,7 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     void DeferredLightingTechnique::CreateConstantBuffers()
     {
-        assert(directXCommon_);
+        assert(graphicsCore_);
 
         // 単位行列（各定数バッファの初期値）
         const float identity[16] = {
@@ -63,7 +63,7 @@ namespace CoreEngine
         // 深度復元用 View*Projection 逆行列専用の定数バッファをビュー種別ごとに作成（64 バイト = float4x4）
         for (size_t vi = 0; vi < kViewTypeCount; ++vi) {
             depthReconstructionBuffers_[vi] = ResourceFactory::CreateBufferResource(
-                directXCommon_->GetDevice(), sizeof(float) * 16);
+                graphicsCore_->GetDevice(), sizeof(float) * 16);
             depthReconstructionCBVAddresses_[vi] = depthReconstructionBuffers_[vi]->GetGPUVirtualAddress();
             float* drMapped = nullptr;
             depthReconstructionBuffers_[vi]->Map(0, nullptr, reinterpret_cast<void**>(&drMapped));
@@ -73,7 +73,7 @@ namespace CoreEngine
 
         // IBL パラメータ定数バッファを作成（float x 4 = 16 バイト）
         iblParamsBuffer_ = ResourceFactory::CreateBufferResource(
-            directXCommon_->GetDevice(), sizeof(float) * 4);
+            graphicsCore_->GetDevice(), sizeof(float) * 4);
         iblParamsCBVAddress_ = iblParamsBuffer_->GetGPUVirtualAddress();
 
         // デフォルト値で初期化 (rotation=0, intensity=1)
@@ -84,13 +84,13 @@ namespace CoreEngine
         iblParamsBuffer_->Unmap(0, nullptr);
 
         waterCausticsDebugBuffer_ = ResourceFactory::CreateBufferResource(
-            directXCommon_->GetDevice(), sizeof(WaterCausticsDebugSettings));
+            graphicsCore_->GetDevice(), sizeof(WaterCausticsDebugSettings));
         waterCausticsDebugCBVAddress_ = waterCausticsDebugBuffer_->GetGPUVirtualAddress();
         UpdateWaterCausticsDebugBuffer();
 
         // 空アンビエントパラメータ定数バッファ（既定は無効。Execute で毎フレーム更新）
         skyAmbientBuffer_ = ResourceFactory::CreateBufferResource(
-            directXCommon_->GetDevice(), sizeof(SkyAmbientParams));
+            graphicsCore_->GetDevice(), sizeof(SkyAmbientParams));
         skyAmbientCBVAddress_ = skyAmbientBuffer_->GetGPUVirtualAddress();
         SkyAmbientParams skyDefaults{};
         SkyAmbientParams* skyMapped = nullptr;

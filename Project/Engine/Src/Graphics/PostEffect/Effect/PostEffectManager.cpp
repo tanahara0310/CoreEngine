@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "PostEffectManager.h"
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVarRegistry.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
@@ -43,11 +43,11 @@
 
 namespace CoreEngine
 {
-void PostEffectManager::Initialize(DirectXCommon* dxCommon, Render* render)
+void PostEffectManager::Initialize(GraphicsCore* dxCommon, Render* render)
 {
     assert(dxCommon);
     assert(render);
-    directXCommon_ = dxCommon;
+    graphicsCore_ = dxCommon;
     render_ = render;
 
     // プリセットマネージャーの初期化

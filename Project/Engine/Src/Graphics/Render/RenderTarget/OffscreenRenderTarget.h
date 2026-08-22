@@ -1,13 +1,13 @@
 #pragma once
 #include "RenderTarget.h"
-#include "Graphics/Common/Core/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 
 #include <wrl.h>
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class DescriptorManager;
 
     /// @brief オフスクリーンレンダーターゲット
@@ -18,11 +18,11 @@ namespace CoreEngine
         ~OffscreenRenderTarget() override;
 
         /// @brief 初期化
-        /// @param dx DirectXCommon
+        /// @param dx GraphicsCore
         /// @param descriptorManager ディスクリプタマネージャー
         /// @param desc レンダーターゲット記述子
         /// @param index 内部識別用インデックス
-        void Initialize(DirectXCommon* dx, DescriptorManager* descriptorManager, const RenderTargetDescriptor& desc, int index);
+        void Initialize(GraphicsCore* dx, DescriptorManager* descriptorManager, const RenderTargetDescriptor& desc, int index);
 
         /// @brief リサイズ
         /// @param width 新しい幅
@@ -72,7 +72,7 @@ namespace CoreEngine
 
         /// @brief 外部 DSV を使用するよう設定する
         /// @param dsvHandle 専用深度バッファの DSV ハンドル
-        /// @note 未設定時は従来通り DirectXCommon の共有 DSV を使用する
+        /// @note 未設定時は従来通り GraphicsCore の共有 DSV を使用する
         void SetDepthStencilHandle(D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) {
             customDsvHandle_ = dsvHandle;
             useCustomDsvHandle_ = true;
@@ -102,7 +102,7 @@ namespace CoreEngine
         void UpdateViews() const;
         void ReleaseDescriptorHandles();
 
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
         DescriptorManager* descriptorManager_ = nullptr;
         Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
         DescriptorHandle rtvDescriptor_{};

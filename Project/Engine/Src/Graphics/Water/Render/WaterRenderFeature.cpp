@@ -9,7 +9,7 @@
 #include "GameObject/GameObjectManager.h"
 #include "GameObjects/SkyBox/SkyBoxObject.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Render.h"
@@ -284,7 +284,7 @@ namespace CoreEngine
         }
 
         // Depth Fade 用のシーン深度 SRV
-        if (auto* dxCommon = ctx.engine->GetService<DirectXCommon>()) {
+        if (auto* dxCommon = ctx.engine->GetService<GraphicsCore>()) {
             binding.resources.sceneDepthSRV = dxCommon->GetDepthStencilSRV();
         }
 

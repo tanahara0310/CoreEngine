@@ -8,7 +8,7 @@
 #include "DeferredLightingPass.h"
 #include "GeometryPass.h"
 #include "PostEffectPass.h"
-#include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/RHI/Resource/DepthStencilManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"

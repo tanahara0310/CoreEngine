@@ -10,7 +10,7 @@
 
 namespace CoreEngine
 {
-    class DirectXCommon;
+    class GraphicsCore;
     class BaseModelRenderer;
     struct ModelDrawPacket;
 
@@ -20,10 +20,10 @@ namespace CoreEngine
     class InstanceBatchManager {
     public:
         /// @brief 初期化（フレーム数分の Upload Heap を確保）
-        /// @param dxCommon DirectXCommon
+        /// @param dxCommon GraphicsCore
         /// @param frameCount スワップチェーンのバックバッファ数
         /// @param maxInstancesPerFrame 1 フレームあたりの最大インスタンス数
-        void Initialize(DirectXCommon* dxCommon, uint32_t frameCount,
+        void Initialize(GraphicsCore* dxCommon, uint32_t frameCount,
             uint32_t maxInstancesPerFrame = 8192);
 
         /// @brief 描画リクエストを登録（即時描画はせずバッチに積む）
@@ -48,7 +48,7 @@ namespace CoreEngine
             const std::vector<TransformationMatrix>& instances);
 
     private:
-        DirectXCommon* dxCommon_ = nullptr;
+        GraphicsCore* dxCommon_ = nullptr;
 
         // フレームごとの Upload Heap（CPU 書き込み用）
         struct FrameResource {

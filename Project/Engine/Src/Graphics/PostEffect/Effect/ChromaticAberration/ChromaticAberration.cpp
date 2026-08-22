@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "ChromaticAberration.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
 #include "Editor/ImGui/CVarPanel.h"
@@ -55,7 +55,7 @@ namespace CoreEngine
     void ChromaticAberration::OnCreateConstantBuffers()
     {
         UINT caSize = (sizeof(ChromaticAberrationParams) + 255) & ~255;
-        caParamsCB_ = ResourceFactory::CreateBufferResource(directXCommon_->GetDevice(), caSize);
+        caParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), caSize);
         [[maybe_unused]] HRESULT hr = caParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedCAParams_));
         assert(SUCCEEDED(hr));
         UpdateConstantBuffer();
@@ -86,7 +86,7 @@ namespace CoreEngine
         UpdateConstantBuffer();
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = directXCommon_->GetCommandList();
+        auto* cmdList = graphicsCore_->GetCommandList();
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
 

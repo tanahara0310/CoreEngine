@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "RenderDomainContext.h"
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
@@ -17,7 +17,7 @@ namespace CoreEngine
     RenderDomainContext::RenderDomainContext() = default;
     RenderDomainContext::~RenderDomainContext() = default;
 
-    void RenderDomainContext::Initialize(DirectXCommon* dxCommon, int32_t width, int32_t height)
+    void RenderDomainContext::Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height)
     {
         auto* device = dxCommon->GetDevice();
         auto* descriptorManager = dxCommon->GetDescriptorManager();

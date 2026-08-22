@@ -35,7 +35,7 @@ namespace CoreEngine
         CreateVertexBuffer();
 
         material_ = std::make_unique<UIMaterialInstance>();
-        material_->Initialize(renderer_->GetDirectXCommon()->GetDevice());
+        material_->Initialize(renderer_->GetGraphicsCore()->GetDevice());
     }
 
     void UIImage::SetTexture(const std::string& textureFilePath)
@@ -74,7 +74,7 @@ namespace CoreEngine
     {
         if (!renderer_) { return; }
 
-        DirectXCommon* dxCommon = renderer_->GetDirectXCommon();
+        GraphicsCore* dxCommon = renderer_->GetGraphicsCore();
         ResourceFactory* factory = renderer_->GetResourceFactory();
         if (!dxCommon || !factory) { return; }
 
@@ -124,7 +124,7 @@ namespace CoreEngine
         // RenderGraph を経由しない直接呼び出し（レガシー経路）。
         // DrawViewInfo を持たないため、ここだけがコマンドリストの供給点になる。
         DrawViewInfo view{};
-        view.cmdList = renderer_ ? renderer_->GetDirectXCommon()->GetCommandList() : nullptr;
+        view.cmdList = renderer_ ? renderer_->GetGraphicsCore()->GetCommandList() : nullptr;
         Draw(view);
     }
 

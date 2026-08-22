@@ -1,10 +1,9 @@
 #include "pch.h"
-#include "DepthStencilManager.h"
-#include "DescriptorManager.h"
-#include "Graphics/Resource/ResourceFactory.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Resource/DepthStencilManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
 #include "Utility/Logger/Logger.h"
-#include "WinApp/WinApp.h"
 
 #include <cassert>
 

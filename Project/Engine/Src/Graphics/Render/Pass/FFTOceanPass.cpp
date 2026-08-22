@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "FFTOceanPass.h"
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Water/FFTOceanManager.h"
 #include "Utility/Logger/Logger.h"
 

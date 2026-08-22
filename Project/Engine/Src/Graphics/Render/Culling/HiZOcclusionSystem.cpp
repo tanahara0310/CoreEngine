@@ -7,12 +7,12 @@
 #include <cmath>
 #include <cstring>
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/CommandManager.h"
-#include "Graphics/Common/Core/DescriptorManager.h"
-#include "Graphics/Common/EngineStats.h"
-#include "Graphics/Common/ResourceBarrierHelper.h"
-#include "Graphics/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Command/CommandManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorManager.h"
+#include "Diagnostics/EngineStats.h"
+#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -177,7 +177,7 @@ namespace CoreEngine
     // 初期化
     // ---------------------------------------------------------------
 
-    bool HiZOcclusionSystem::InitializeIfNeeded(DirectXCommon* dxCommon)
+    bool HiZOcclusionSystem::InitializeIfNeeded(GraphicsCore* dxCommon)
     {
         if (initialized_) {
             return true;
@@ -443,7 +443,7 @@ namespace CoreEngine
 
     void HiZOcclusionSystem::ExecuteCulling(
         ID3D12GraphicsCommandList* cmdList,
-        DirectXCommon* dxCommon,
+        GraphicsCore* dxCommon,
         ID3D12Resource* depthResource,
         D3D12_GPU_DESCRIPTOR_HANDLE depthSRV)
     {

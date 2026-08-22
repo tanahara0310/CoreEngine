@@ -20,7 +20,7 @@ namespace CoreEngine
         std::string sceneColorTargetName = RenderTargetNames::SceneColor;
     };
 
-    class DirectXCommon;
+    class GraphicsCore;
     class RenderManager;
     class RayTracingSubsystem;
     class SceneManager;
@@ -43,7 +43,7 @@ namespace CoreEngine
     class GpuTimestampProfiler;
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
-        DirectXCommon* dxCommon = nullptr;
+        GraphicsCore* dxCommon = nullptr;
         /// @brief 今フレームの記録先コマンドリスト
         /// @details パスは必ずこれを使うこと。dxCommon->GetCommandList() を各自で呼ぶと
         ///          「どのコマンドリストへ積むか」の決定がパスの数だけ分散し、

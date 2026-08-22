@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "TAAPass.h"
 
-#include "Graphics/Common/DirectXCommon.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderGraph.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"

@@ -3,8 +3,8 @@
 
 #include <cassert>
 
-#include "Graphics/Common/DirectXCommon.h"
-#include "Graphics/Common/Core/DepthStencilManager.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/DepthStencilManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderGraph.h"

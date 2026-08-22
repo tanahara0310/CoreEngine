@@ -1,5 +1,5 @@
 #pragma once
-#include "Graphics/Common/IResizable.h"
+#include "Graphics/RHI/IResizable.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
@@ -12,7 +12,7 @@
 namespace CoreEngine
 {
 
-class DirectXCommon;
+class GraphicsCore;
 
 /// @brief レンダリング管理クラス
 /// レンダーターゲットの管理とフレーム処理を担当
@@ -22,9 +22,9 @@ public:
     static constexpr float kClearColor[4] = {0.1f, 0.25f, 0.5f, 1.0f};
 
     /// @brief 初期化
-    /// @param dxCommon DirectXCommon
+    /// @param dxCommon GraphicsCore
     /// @param dsvHeap DSVヒープ
-    void Initialize(DirectXCommon* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap);
+    void Initialize(GraphicsCore* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap);
 
     // ===== RenderTargetManager API =====
 
@@ -50,13 +50,13 @@ public:
     /// @details autoResize フラグの立った RenderTarget 群を再作成する
     void OnWindowResize(int32_t width, int32_t height) override;
 
-    /// @brief DirectXCommonを取得
-    /// @return DirectXCommon
-    DirectXCommon* GetDirectXCommon() const { return dxCommon_; }
+    /// @brief GraphicsCoreを取得
+    /// @return GraphicsCore
+    GraphicsCore* GetGraphicsCore() const { return dxCommon_; }
 
 private:
     // クラスをポインタで保持
-    DirectXCommon* dxCommon_ = nullptr;
+    GraphicsCore* dxCommon_ = nullptr;
 
     // DSVヒープ
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap_;
