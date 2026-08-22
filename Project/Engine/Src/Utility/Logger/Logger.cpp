@@ -222,6 +222,30 @@ namespace CoreEngine
         spdlog::shutdown();
     }
 
+    void Logger::Flush()
+    {
+        std::vector<std::shared_ptr<spdlog::logger>> snapshot;
+        {
+            std::lock_guard<std::mutex> lock(loggerMutex_);
+            if (!isInitialized_) {
+                return;
+            }
+            snapshot.reserve(loggers_.size());
+            for (auto& [key, logger] : loggers_) {
+                if (logger) {
+                    snapshot.push_back(logger);
+                }
+            }
+        }
+
+        // flush はロックの外で行う。非同期ロガーの flush はワーカーが
+        // 処理し終えるまで待つので、loggerMutex_ を持ったまま呼ぶと
+        // ログを出そうとした他スレッドを巻き込んで止まる
+        for (auto& logger : snapshot) {
+            logger->flush();
+        }
+    }
+
     void Logger::Log(const std::wstring& message, LogLevel level, LogCategory category, SubCategory subCategory)
     {
         Log(WideToUtf8(message), level, category, subCategory);

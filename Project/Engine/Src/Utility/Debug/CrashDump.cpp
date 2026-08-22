@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "CrashDump.h"
+#include "Utility/Logger/Logger.h"
 
 
 namespace CoreEngine
@@ -29,6 +30,16 @@ LONG WINAPI CrashDump::HandleException(EXCEPTION_POINTERS* exception)
     minidumpInfomation.ClientPointers = FALSE;
     // Dumpを出力。MiniDumpNormalは最低限の情報を出力するフラグ
     MiniDumpWriteDump(GetCurrentProcess(), processId, dumpFileHandle, MiniDumpNormal, &minidumpInfomation, nullptr, nullptr);
+    if (dumpFileHandle != INVALID_HANDLE_VALUE) {
+        CloseHandle(dumpFileHandle);
+    }
+
+    // ★ダンプを書き終えてからログを流す。順序を逆にしてはいけない★
+    // ロガーは非同期なので、キューに残った行はこの flush が無いと消える
+    //（クラッシュ時に Graphics カテゴリのログが 0 バイトのままだった原因）。
+    // ただしヒープ破壊やスタックオーバーフローで壊れた状態から呼ぶと
+    // 止まりうるので、先にダンプを確定させておく
+    Logger::GetInstance().Flush();
 
     // 他に関連づけられているSEH例外ハンドラがあれば実行。通常はプロセスを終了
     return EXCEPTION_EXECUTE_HANDLER;
