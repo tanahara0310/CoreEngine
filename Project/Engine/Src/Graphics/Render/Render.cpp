@@ -10,14 +10,23 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
-    void Render::Initialize(GraphicsCore* dxCommon, ComPtr<ID3D12DescriptorHeap> dsvHeap)
+    Render::~Render()
+    {
+        if (dxCommon_) {
+            dxCommon_->UnregisterResizable(this);
+        }
+    }
+
+    void Render::Initialize(GraphicsCore* dxCommon, SceneDepth* sharedDepth)
     {
         dxCommon_ = dxCommon;
-        dsvHeap_ = dsvHeap;
 
-        // RenderTargetManagerの初期化
+        // RenderTargetManagerの初期化（オフスクリーンターゲットは sharedDepth の DSV を共有する）
         renderTargetManager_ = std::make_unique<RenderTargetManager>();
-        renderTargetManager_->Initialize(dxCommon, dsvHeap);
+        renderTargetManager_->Initialize(dxCommon, sharedDepth);
+
+        // ウィンドウリサイズで autoResize ターゲットを作り直す
+        dxCommon->RegisterResizable(this);
 
         // 現在の SceneColor 既定ターゲットを作成
         RenderTargetDescriptor sceneColorDesc(RenderTargetNames::SceneColor);

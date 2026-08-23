@@ -322,6 +322,12 @@
     <ClCompile Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.cpp">
       <Filter>Engine\Src\Diagnostics</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Barrier</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\GpuResource.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp">
       <Filter>Engine\Src\Graphics\IBL</Filter>
     </ClCompile>
@@ -838,8 +844,8 @@
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp">
       <Filter>Engine\Src\Utility\Random</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\DepthStencilManager.cpp">
-      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\SceneDepth.cpp">
+      <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Command\UploadContext.cpp">
       <Filter>Engine\Src\Graphics\RHI\Command</Filter>
@@ -865,7 +871,7 @@
     <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceManager.cpp">
       <Filter>Engine\Src\Graphics\RHI\Device</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\RHI\SwapChain\SwapChainManager.cpp">
+    <ClCompile Include="Engine\Src\Graphics\RHI\SwapChain\SwapChain.cpp">
       <Filter>Engine\Src\Graphics\RHI\SwapChain</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\ModelLoader.cpp">
@@ -1087,8 +1093,6 @@
     <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\GpuResource.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
@@ -1297,6 +1301,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\IResizable.h">
       <Filter>Engine\Src\Graphics\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.h">
+      <Filter>Engine\Src\Graphics\RHI\Barrier</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\GpuResource.h">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Diagnostics\EngineStats.h">
       <Filter>Engine\Src\Diagnostics</Filter>
@@ -2210,8 +2220,8 @@
     <ClInclude Include="Engine\Src\EngineSystem\Startup\StartupSequence.h">
       <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\DepthStencilManager.h">
-      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\SceneDepth.h">
+      <Filter>Engine\Src\Graphics\Render\RenderTarget</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Command\UploadContext.h">
       <Filter>Engine\Src\Graphics\RHI\Command</Filter>
@@ -2237,7 +2247,7 @@
     <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceManager.h">
       <Filter>Engine\Src\Graphics\RHI\Device</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\RHI\SwapChain\SwapChainManager.h">
+    <ClInclude Include="Engine\Src\Graphics\RHI\SwapChain\SwapChain.h">
       <Filter>Engine\Src\Graphics\RHI\SwapChain</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\ModelLoader.h">
@@ -2346,6 +2356,9 @@
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCore.h">
+      <Filter>Engine\Src\Graphics\RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCoreDesc.h">
       <Filter>Engine\Src\Graphics\RHI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\LeakChecker.h">
@@ -2483,8 +2496,6 @@
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.h" />
-    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\GpuResource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Application\Assets\Models\human\walk.bin">

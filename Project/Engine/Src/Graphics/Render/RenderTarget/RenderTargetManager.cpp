@@ -22,12 +22,12 @@ namespace CoreEngine
         return std::string(RenderTargetNames::PostEffectIntermediatePrefix) + std::to_string(index);
     }
 
-    void RenderTargetManager::Initialize(GraphicsCore* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap)
+    void RenderTargetManager::Initialize(GraphicsCore* dxCommon, SceneDepth* sharedDepth)
     {
         assert(dxCommon != nullptr && "GraphicsCore must not be null");
 
         dxCommon_ = dxCommon;
-        dsvHeap_ = dsvHeap;
+        sharedDepth_ = sharedDepth;
         nextOffscreenIndex_ = 0;
 
 #ifdef _DEBUG
@@ -66,7 +66,7 @@ namespace CoreEngine
         }
         
         // 初期化
-        offscreenTarget->Initialize(dxCommon_, dxCommon_->GetDescriptorAllocator(), desc, targetIndex);
+        offscreenTarget->Initialize(dxCommon_, dxCommon_->GetDescriptorAllocator(), sharedDepth_, desc, targetIndex);
 
         // ターゲットをマップに登録
         RenderTarget* targetPtr = offscreenTarget.get();

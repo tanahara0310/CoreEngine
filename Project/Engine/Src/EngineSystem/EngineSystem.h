@@ -12,7 +12,11 @@
 #include "Subsystem/DebugSubsystem.h"
 #endif
 
-class WinApp;
+// WinApp は CoreEngine 名前空間の型。以前はグローバルスコープで前方宣言しており
+// （= 別物の ::WinApp を宣言していた）、GraphicsCore.h が名前空間内で前方宣言して
+// いたおかげで偶然コンパイルが通っていた。GraphicsCore から WinApp 依存を外した
+// Phase 5 で露見したので、ここで正しい名前空間へ宣言する。
+namespace CoreEngine { class WinApp; }
 
 // ──────────────────────────────────────────────────────────
 // サービスアクセス利便インクルード

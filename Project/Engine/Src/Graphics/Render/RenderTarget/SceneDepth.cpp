@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Graphics/RHI/Resource/DepthStencilManager.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
@@ -15,11 +15,7 @@ namespace CoreEngine
         Logger& logger = Logger::GetInstance();
     }
 
-    // ---------------------------------------------------------------
-    // DepthStencilManager
-    // ---------------------------------------------------------------
-
-    DepthStencilManager::~DepthStencilManager()
+    SceneDepth::~SceneDepth()
     {
         if (!descriptorAllocator_) {
             return;
@@ -29,7 +25,7 @@ namespace CoreEngine
         descriptorAllocator_->Free(depthSRVDescriptor_);
     }
 
-    void DepthStencilManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator,
+    void SceneDepth::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator,
         std::int32_t width, std::int32_t height)
     {
         assert(device != nullptr && "Device must not be null");
@@ -52,9 +48,9 @@ namespace CoreEngine
         }
     }
 
-    void DepthStencilManager::ResizeResource(std::int32_t width, std::int32_t height)
+    void SceneDepth::ResizeResource(std::int32_t width, std::int32_t height)
     {
-        assert(isInitialized_ && "DepthStencilManager must be initialized first");
+        assert(isInitialized_ && "SceneDepth must be initialized first");
 
         width_ = width;
         height_ = height;
@@ -72,14 +68,14 @@ namespace CoreEngine
 
 #ifdef _DEBUG
         logger.Infof(LogCategory::Graphics, LogSubCategory::RenderTarget,
-            "深度ステンシルリソースをリサイズしました ({}x{}) - DSVは再利用\n", width, height);
+            "SceneDepth: リサイズしました ({}x{}) - DSV/SRV は同じスロットへ書き直し\n", width, height);
 #endif
     }
 
-    void DepthStencilManager::BeginDepthWrite(ID3D12GraphicsCommandList* cmdList)
+    void SceneDepth::BeginDepthWrite(ID3D12GraphicsCommandList* cmdList)
     {
         assert(cmdList);
-        assert(isInitialized_ && "DepthStencilManager must be initialized before use");
+        assert(isInitialized_ && "SceneDepth must be initialized before use");
 
         // DEPTH_WRITE 状態へ遷移（既に DEPTH_WRITE なら冗長バリアをスキップ）
         Barrier::Transition(cmdList, depthStencilResource_, D3D12_RESOURCE_STATE_DEPTH_WRITE);
@@ -89,11 +85,11 @@ namespace CoreEngine
 
 #ifdef _DEBUG
         logger.Logf(LogLevel::Debug, LogCategory::Graphics, LogSubCategory::Barrier,
-            "[Depth] BeginDepthWrite: クリア完了");
+            "[SceneDepth] BeginDepthWrite: クリア完了");
 #endif
     }
 
-    void DepthStencilManager::CreateDepthStencilResource()
+    void SceneDepth::CreateDepthStencilResource()
     {
         // Typeless フォーマットで作成することで DSV（D24_UNORM_S8）と SRV（R24_UNORM_X8）の両方を作成できる
         D3D12_RESOURCE_DESC resourceDesc{};
@@ -122,11 +118,11 @@ namespace CoreEngine
 
 #ifdef _DEBUG
         logger.Infof(LogCategory::Graphics, LogSubCategory::RenderTarget,
-            "深度ステンシルリソースを作成しました ({}x{})\n", width_, height_);
+            "SceneDepth: 深度ステンシルリソースを作成しました ({}x{})\n", width_, height_);
 #endif
     }
 
-    void DepthStencilManager::CreateDepthStencilView()
+    void SceneDepth::CreateDepthStencilView()
     {
         D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
         dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -134,13 +130,13 @@ namespace CoreEngine
 
         // DSV を作成（初回のみ）。戻り値のハンドルがスロットの所有権を表す
         dsvDescriptor_ = descriptorAllocator_->CreateDSV(
-            depthStencilResource_.Get(), dsvDesc, "MainDepthStencil");
+            depthStencilResource_.Get(), dsvDesc, "SceneDepth");
 
         // 深度リソースの SRV を作成（初回のみ）
         CreateDepthShaderResourceView();
     }
 
-    void DepthStencilManager::UpdateDepthStencilView()
+    void SceneDepth::UpdateDepthStencilView()
     {
         D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
         dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -157,14 +153,9 @@ namespace CoreEngine
             srvDesc.Texture2D.MipLevels       = 1;
             descriptorAllocator_->WriteSRV(depthSRVDescriptor_, depthStencilResource_.Get(), srvDesc);
         }
-
-#ifdef _DEBUG
-        logger.Infof(LogCategory::Graphics, LogSubCategory::RenderTarget,
-            "DSVを更新しました (既存ハンドルを再利用)\n");
-#endif
     }
 
-    void DepthStencilManager::CreateDepthShaderResourceView()
+    void SceneDepth::CreateDepthShaderResourceView()
     {
         // R24G8_TYPELESS リソースから R24_UNORM_X8_TYPELESS として深度値を読み取る SRV
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -174,6 +165,6 @@ namespace CoreEngine
         srvDesc.Texture2D.MipLevels       = 1;
 
         depthSRVDescriptor_ = descriptorAllocator_->CreateSRV(
-            depthStencilResource_.Get(), srvDesc, "MainDepthStencilSRV");
+            depthStencilResource_.Get(), srvDesc, "SceneDepthSRV");
     }
 }

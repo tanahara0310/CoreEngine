@@ -1,19 +1,20 @@
 #include "pch.h"
 #include "Graphics/RHI/GraphicsCore.h"
 
+#include "Graphics/RHI/GraphicsCoreDesc.h"
 #include "Graphics/RHI/Device/DeviceManager.h"
 #include "Graphics/RHI/Command/CommandQueue.h"
 #include "Graphics/RHI/Command/CommandContext.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
-#include "Graphics/RHI/SwapChain/SwapChainManager.h"
-#include "Graphics/RHI/Resource/DepthStencilManager.h"
+#include "Graphics/RHI/SwapChain/SwapChain.h"
 #include "Graphics/RHI/IResizable.h"
 
-#include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
-#include "EngineSystem/EngineConfig.h"
+
+#include <algorithm>
+#include <stdexcept>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -31,8 +32,7 @@ namespace CoreEngine
         , commandContext_(std::make_unique<CommandContext>())
         , deferredRelease_(std::make_unique<DeferredReleaseQueue>())
         , descriptorAllocator_(std::make_unique<DescriptorAllocator>())
-        , swapChainManager_(std::make_unique<SwapChainManager>())
-        , depthStencilManager_(std::make_unique<DepthStencilManager>())
+        , swapChain_(std::make_unique<SwapChain>())
         , uploadContext_(std::make_unique<UploadContext>())
     {
     }
@@ -42,21 +42,21 @@ namespace CoreEngine
         Shutdown();
     }
 
-    void GraphicsCore::Initialize(WinApp* winApp, const EngineConfig& config)
+    void GraphicsCore::Initialize(const GraphicsCoreDesc& desc)
     {
-        // ウィンドウズアプリケーション管理
-        winApp_ = winApp;
+        clientWidth_ = desc.clientWidth;
+        clientHeight_ = desc.clientHeight;
 
         // 初期化順序を守って各管理クラスを初期化
-        deviceManager_->Initialize(config.enableDebugLayer, config.enableGPUBasedValidation);
+        deviceManager_->Initialize(desc.enableDebugLayer, desc.enableGPUBasedValidation);
 
         ID3D12Device* device = deviceManager_->GetDevice();
         commandQueue_->Initialize(device);
-        frameSync_->Initialize(device, commandQueue_->Get(), config.frameCount);
+        frameSync_->Initialize(device, commandQueue_->Get(), desc.framesInFlight);
         commandContext_->Initialize(device, frameSync_->FramesInFlight());
 
         descriptorAllocator_->Initialize(device,
-            config.maxSRVDescriptors, config.maxRTVDescriptors, config.maxDSVDescriptors);
+            desc.maxSRVDescriptors, desc.maxRTVDescriptors, desc.maxDSVDescriptors);
 
         // フレーム 0 のコマンドリストは EndFrame を経ずにそのまま記録が始まるので、
         // ここでシェーダ可視ヒープをバインドしておく。
@@ -68,27 +68,19 @@ namespace CoreEngine
         // アロケータ・コマンドリスト・フェンスは完全に別物。
         uploadContext_->Initialize(device, commandQueue_->Get());
 
-        // スワップチェーンの初期化（バックバッファ取得とRTV作成まで含む）
-        swapChainManager_->Initialize(
-            device,
-            deviceManager_->GetDXGIFactory(),
-            commandQueue_->Get(),
-            descriptorAllocator_.get(),
-            winApp_->GetHwnd(),
-            winApp_->GetClientWidth(),
-            winApp_->GetClientHeight());
-
-        // 深度ステンシルの初期化（DescriptorManagerを渡す）
-        depthStencilManager_->Initialize(
-            device,
-            descriptorAllocator_.get(),
-            winApp_->GetClientWidth(),
-            winApp_->GetClientHeight());
-
-        // ウィンドウリサイズ時のコールバックを設定
-        winApp_->SetResizeCallback([this](int32_t width, int32_t height) {
-            OnWindowResize(width, height);
-            });
+        // メインウィンドウのスワップチェーン（バックバッファ取得と RTV 作成まで含む）
+        SwapChainDesc swapChainDesc{};
+        swapChainDesc.hwnd = desc.hwnd;
+        swapChainDesc.width = static_cast<uint32_t>(desc.clientWidth);
+        swapChainDesc.height = static_cast<uint32_t>(desc.clientHeight);
+        swapChainDesc.debugName = "MainSwapChain";
+        if (!swapChain_->Initialize(
+                deviceManager_->GetDXGIFactory(),
+                commandQueue_->Get(),
+                descriptorAllocator_.get(),
+                swapChainDesc)) {
+            throw std::runtime_error("GraphicsCore: failed to create the main swap chain");
+        }
     }
 
     void GraphicsCore::Shutdown()
@@ -112,8 +104,11 @@ namespace CoreEngine
             deferredRelease_->ReleaseAll(); // GPU 待ち済みなのでここで捨ててよい
         }
         deferredRelease_.reset();
-        depthStencilManager_.reset();
-        swapChainManager_.reset();
+        // スワップチェーンは RTV を DescriptorAllocator へ返すので、アロケータより先に落とす
+        if (swapChain_) {
+            swapChain_->Shutdown();
+        }
+        swapChain_.reset();
         descriptorAllocator_.reset();
         if (commandContext_) {
             commandContext_->Shutdown();
@@ -130,19 +125,25 @@ namespace CoreEngine
 
     void GraphicsCore::OnWindowResize(int32_t width, int32_t height)
     {
+        // 通知先が GetClientWidth() を読むので、先に更新しておく
+        clientWidth_ = width;
+        clientHeight_ = height;
+
         // コマンドの実行を待つ（リソースが使用中でないことを保証）
         frameSync_->WaitForGpuIdle();
 
         // GPU が空になったので、解放待ちのリソースはここで確実に落とせる
         deferredRelease_->Collect(frameSync_->CompletedValue());
 
-        // スワップチェーンのリサイズ
-        swapChainManager_->Resize(width, height);
+        // メインスワップチェーンのリサイズ（RTV は同じスロットへ書き直される）
+        if (!swapChain_->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height))) {
+            throw std::runtime_error("GraphicsCore: failed to resize the main swap chain");
+        }
 
-        // 深度ステンシルのリサイズ（DSVハンドルは再利用）
-        depthStencilManager_->ResizeResource(width, height);
-
-        for (IResizable* resizable : resizables_) {
+        // 登録順に通知する（シーン深度 / GBuffer → レンダーターゲット群 の順で作り直される）。
+        // 通知先が自分を解除してもよいよう、コピーを回す
+        const std::vector<IResizable*> targets = resizables_;
+        for (IResizable* resizable : targets) {
             if (resizable) {
                 resizable->OnWindowResize(width, height);
             }
@@ -156,7 +157,20 @@ namespace CoreEngine
 
     void GraphicsCore::RegisterResizable(IResizable* resizable)
     {
+        if (!resizable) {
+            return;
+        }
+        if (std::find(resizables_.begin(), resizables_.end(), resizable) != resizables_.end()) {
+            return; // 二重登録すると同じオブジェクトが 2 回リサイズされる
+        }
         resizables_.push_back(resizable);
+    }
+
+    void GraphicsCore::UnregisterResizable(IResizable* resizable)
+    {
+        resizables_.erase(
+            std::remove(resizables_.begin(), resizables_.end(), resizable),
+            resizables_.end());
     }
 
     // ================================================================
@@ -204,13 +218,13 @@ namespace CoreEngine
 
         // Present（画面に反映）
         static constexpr UINT kPresentFlags = 0;
-        swapChainManager_->GetSwapChain()->Present(syncInterval, kPresentFlags);
+        swapChain_->Present(syncInterval, kPresentFlags);
 
         // ── 次フレームの準備 ──────────────────────────────────
         // ここで Reset まで済ませることで、フレーム外（Update 中など）でも
         // コマンドリストが常に記録可能な状態に保たれる。
         // アロケータ／フェンスのローテーションは FrameSync が持つスロット番号を使う。
-        // スワップチェーンの GetCurrentBackBufferIndex() は ResizeBuffers で 0 に
+        // スワップチェーンの CurrentBackBufferIndex() は ResizeBuffers で 0 に
         // リセットされるため、アロケータ選択に使うと実行中アロケータを Reset して
         // しまう（D3D12 ERROR #552）。
         frameSync_->AdvanceToNextFrame();
@@ -234,21 +248,8 @@ namespace CoreEngine
     UploadContext* GraphicsCore::GetUploadContext() const { return uploadContext_.get(); }
     void GraphicsCore::WaitForGpuIdle() { frameSync_->WaitForGpuIdle(); }
 
-    IDXGISwapChain4* GraphicsCore::GetSwapChain() const { return swapChainManager_->GetSwapChain(); }
-    ID3D12Resource* GraphicsCore::GetSwapChainBackBuffer(UINT index) const { return swapChainManager_->GetSwapChainBackBuffer(index); }
-    GpuResource& GraphicsCore::GetBackBufferResource(UINT index) const { return swapChainManager_->BackBuffer(index); }
-    D3D12_RENDER_TARGET_VIEW_DESC GraphicsCore::GetRTVDesc() const { return swapChainManager_->GetRTVDesc(); }
-    const D3D12_CPU_DESCRIPTOR_HANDLE& GraphicsCore::GetRTVHandle(UINT index) const { return swapChainManager_->GetRTVHandle(index); }
+    SwapChain& GraphicsCore::GetSwapChain() const { return *swapChain_; }
 
     DescriptorAllocator* GraphicsCore::GetDescriptorAllocator() const { return descriptorAllocator_.get(); }
     ID3D12DescriptorHeap* GraphicsCore::GetSRVHeap() const { return descriptorAllocator_->GetSRVHeap(); }
-    ID3D12DescriptorHeap* GraphicsCore::GetDSVHeap() const { return descriptorAllocator_->GetDSVHeap(); }
-
-    DepthStencilManager* GraphicsCore::GetDepthStencilManager() const { return depthStencilManager_.get(); }
-    ID3D12Resource* GraphicsCore::GetDepthStencilResource() const { return depthStencilManager_->GetDepthStencilResource(); }
-    D3D12_CPU_DESCRIPTOR_HANDLE GraphicsCore::GetDSVHandle() const { return depthStencilManager_->GetDSVHandle(); }
-    D3D12_GPU_DESCRIPTOR_HANDLE GraphicsCore::GetDepthStencilSRV() const { return depthStencilManager_->GetDepthSRVHandle(); }
-
-    int32_t GraphicsCore::GetClientWidth() const { return winApp_ ? winApp_->GetClientWidth() : WinApp::kClientWidth; }
-    int32_t GraphicsCore::GetClientHeight() const { return winApp_ ? winApp_->GetClientHeight() : WinApp::kClientHeight; }
 }

@@ -15,6 +15,7 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
@@ -283,9 +284,9 @@ namespace CoreEngine
             }
         }
 
-        // Depth Fade 用のシーン深度 SRV
-        if (auto* dxCommon = ctx.engine->GetService<GraphicsCore>()) {
-            binding.resources.sceneDepthSRV = dxCommon->GetDepthStencilSRV();
+        // Depth Fade 用のシーン深度 SRV（所有者は RenderDomainContext）
+        if (auto* sceneDepth = domain.GetSceneDepth()) {
+            binding.resources.sceneDepthSRV = sceneDepth->GetDepthSRVHandle();
         }
 
         // 深度線形化に使うカメラのクリップ距離。エディタ（far=100000 のデバッグカメラ）と

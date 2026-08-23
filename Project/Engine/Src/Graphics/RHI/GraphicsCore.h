@@ -13,25 +13,27 @@
 
 namespace CoreEngine
 {
-    class WinApp;
     class IResizable;
-    struct EngineConfig;
+    struct GraphicsCoreDesc;
 
     class DeviceManager;
     class CommandQueue;
     class CommandContext;
     class DeferredReleaseQueue;
     class DescriptorAllocator;
-    class SwapChainManager;
-    class DepthStencilManager;
+    class SwapChain;
     class UploadContext;
-    class GpuResource;
 
-    /// @brief DirectX12 の基盤（デバイス・コマンド・スワップチェーン・各種マネージャ）を束ねるファサード
+    /// @brief DirectX12 の基盤（デバイス・コマンド・ディスクリプタ・メインスワップチェーン）を束ねるファサード
     ///
     /// @details
     /// ここは **ハブであって実装ではない**。所有・初期化順序・破棄順序だけを持ち、
     /// 実際の仕事は各マネージャが行う。
+    ///
+    /// 上位の型（WinApp / EngineConfig）には依存しない。初期化パラメータは
+    /// GraphicsCoreDesc で値として受け取り、ウィンドウのリサイズ通知は上位が
+    /// OnWindowResize() へ配線する。シーン深度のようなレンダラ都合のリソースも持たない
+    /// （→ Render 層の SceneDepth）。
     ///
     /// @note このヘッダは約 100 ファイルから include されるため、
     ///       **マネージャのヘッダを include してはならない**（前方宣言のみ）。
@@ -49,20 +51,26 @@ namespace CoreEngine
         GraphicsCore& operator=(const GraphicsCore&) = delete;
 
         /// @brief 初期化
-        /// @param winApp ウィンドウアプリケーション
-        /// @param config エンジン設定
-        void Initialize(WinApp* winApp, const EngineConfig& config);
+        /// @param desc 出力先ウィンドウ・サイズ・デバッグ設定・フレーム数・ディスクリプタ数（すべて値）
+        /// @note desc を埋めるのは上位（EngineSystem のファクトリ）の仕事。
+        ///       ウィンドウのリサイズ通知も上位が OnWindowResize() へ配線する。
+        void Initialize(const GraphicsCoreDesc& desc);
 
         /// @brief シャットダウン処理（GPU完了待ちの後、全マネージャーを解放）
         void Shutdown();
 
         /// @brief ウィンドウリサイズ時の処理
+        /// @details GPU を待ち、メインスワップチェーンを作り直し、登録済みの IResizable へ通知する。
+        ///          上位（WinApp のリサイズコールバック）から呼ぶ。
         void OnWindowResize(int32_t width, int32_t height);
 
-        /// @brief ウィンドウリサイズ通知を受け取るクラスを登録する
-        /// @details スワップチェーン / 深度バッファの再作成後に OnWindowResize() が呼ばれる。
-        /// @warning 登録したオブジェクトを GraphicsCore より先に破棄してはならない
+        /// @brief ウィンドウリサイズ通知を受け取るオブジェクトを登録する
+        /// @details スワップチェーンの再作成後に OnWindowResize() が呼ばれる。
+        ///          登録した側は破棄時に UnregisterResizable() で解除すること。
         void RegisterResizable(IResizable* resizable);
+
+        /// @brief ウィンドウリサイズ通知の登録を解除する（未登録なら何もしない）
+        void UnregisterResizable(IResizable* resizable);
 
         // ── デバイス ────────────────────────────────────────────
         ID3D12Device* GetDevice() const;
@@ -84,7 +92,7 @@ namespace CoreEngine
 
         /// @brief フレーム同期の単一ソース
         /// @details per-frame リソースの添字は必ず `Frame().FrameIndex()` から取ること。
-        ///          スワップチェーンの GetCurrentBackBufferIndex() を代用してはならない。
+        ///          スワップチェーンの CurrentBackBufferIndex() を代用してはならない。
         FrameSync& Frame() const;
 
         /// @brief GPU 完了後にリソースを解放する予約キュー
@@ -107,33 +115,22 @@ namespace CoreEngine
         void WaitForGpuIdle();
 
         // ── スワップチェーン ────────────────────────────────────
-        IDXGISwapChain4* GetSwapChain() const;
-        ID3D12Resource* GetSwapChainBackBuffer(UINT index) const;
-        /// @brief バックバッファをステート追跡つきで返す（バリア発行はこれを渡す）
-        GpuResource& GetBackBufferResource(UINT index) const;
-        D3D12_RENDER_TARGET_VIEW_DESC GetRTVDesc() const;
-        const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTVHandle(UINT index) const;
+        /// @brief メインウィンドウのスワップチェーン（バックバッファ・RTV・Present）
+        /// @details バックバッファは GetSwapChain().BackBuffer(i)、RTV は .RTV(i)。
+        ///          同じ SwapChain クラスを GameOutputWindow も使う。
+        SwapChain& GetSwapChain() const;
 
         // ── ディスクリプタ ──────────────────────────────────────
         DescriptorAllocator* GetDescriptorAllocator() const;
         ID3D12DescriptorHeap* GetSRVHeap() const;
-        ID3D12DescriptorHeap* GetDSVHeap() const;
-
-        // ── 深度ステンシル ──────────────────────────────────────
-        DepthStencilManager* GetDepthStencilManager() const;
-        ID3D12Resource* GetDepthStencilResource() const;
-        D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const;
-        /// @brief 深度テクスチャの SRV GPU ハンドルを返す（水面 Depth Fade 等で使用）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetDepthStencilSRV() const;
 
         // ── ウィンドウ ──────────────────────────────────────────
-        int32_t GetClientWidth() const;
-        int32_t GetClientHeight() const;
+        /// @brief 現在のクライアント領域の大きさ（= メインスワップチェーンの大きさ）
+        /// @details Initialize の desc で受け取り、OnWindowResize で更新する。WinApp は見ない。
+        int32_t GetClientWidth() const noexcept { return clientWidth_; }
+        int32_t GetClientHeight() const noexcept { return clientHeight_; }
 
     private:
-        // ウィンドウズアプリケーション管理
-        WinApp* winApp_ = nullptr;
-
         // 管理クラス（生成は .cpp のコンストラクタ。破棄順序は Shutdown で明示的に制御する）
         std::unique_ptr<DeviceManager> deviceManager_;
         std::unique_ptr<CommandQueue> commandQueue_;
@@ -141,10 +138,12 @@ namespace CoreEngine
         std::unique_ptr<CommandContext> commandContext_;
         std::unique_ptr<DeferredReleaseQueue> deferredRelease_;
         std::unique_ptr<DescriptorAllocator> descriptorAllocator_;
-        std::unique_ptr<SwapChainManager> swapChainManager_;
-        std::unique_ptr<DepthStencilManager> depthStencilManager_;
+        std::unique_ptr<SwapChain> swapChain_;
         std::unique_ptr<UploadContext> uploadContext_;
 
         std::vector<IResizable*> resizables_;
+
+        int32_t clientWidth_ = 0;
+        int32_t clientHeight_ = 0;
     };
 }

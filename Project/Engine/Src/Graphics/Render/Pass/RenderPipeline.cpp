@@ -8,7 +8,7 @@
 #include "DeferredLightingPass.h"
 #include "GeometryPass.h"
 #include "PostEffectPass.h"
-#include "Graphics/RHI/Resource/DepthStencilManager.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
@@ -393,11 +393,11 @@ namespace CoreEngine
             EnsureCASTarget(context);
         }
 
-        if (context.depthStencilManager) {
+        if (context.sceneDepth) {
             context.frameBlackboard->SetResource(
                 FrameBlackboard::SceneDepth,
-                context.depthStencilManager->GetDepthSRVHandle(),
-                &context.depthStencilManager->Resource());
+                context.sceneDepth->GetDepthSRVHandle(),
+                &context.sceneDepth->Resource());
         }
 
         if (context.renderTargetManager) {
@@ -786,8 +786,8 @@ namespace CoreEngine
         result.name = context.viewSettings.sceneColorTargetName;
         result.viewSrv = viewTarget->GetSRVHandle();
 
-        if (context.depthStencilManager) {
-            result.sceneDepthSrv = context.depthStencilManager->GetDepthSRVHandle();
+        if (context.sceneDepth) {
+            result.sceneDepthSrv = context.sceneDepth->GetDepthSRVHandle();
         }
 
         result.sceneColorSrv = ResolveSceneColorHandle(context, finalDisplayResourceName_);

@@ -2,6 +2,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "ImGuiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/SwapChain/SwapChain.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/Render.h"
 #include "Editor/Scene/SceneDebugEditor.h"
@@ -22,9 +23,8 @@ namespace CoreEngine
         hwnd_ = hwnd;
         dxCommon_ = dxCommon;
 
-        // SwapChainの情報を取得
-        DXGI_SWAP_CHAIN_DESC swapChainDesc;
-        dxCommon_->GetSwapChain()->GetDesc(&swapChainDesc);
+        // ImGui バックエンドはバックバッファ枚数と RTV フォーマットを要求する
+        const SwapChain& swapChain = dxCommon_->GetSwapChain();
 
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -113,8 +113,8 @@ namespace CoreEngine
         fontDescriptor_ = dxCommon_->GetDescriptorAllocator()->AllocateSRVHandle("ImGuiFont");
         ImGui_ImplDX12_Init(
             dxCommon_->GetDevice(),
-            swapChainDesc.BufferCount,
-            dxCommon_->GetRTVDesc().Format,
+            static_cast<int>(swapChain.BufferCount()),
+            swapChain.RTVFormat(),
             dxCommon_->GetSRVHeap(),
             fontDescriptor_.cpuHandle,
             fontDescriptor_.gpuHandle);

@@ -1,11 +1,9 @@
 #pragma once
 
-#include "Graphics/RHI/Resource/GpuResource.h"
+#include "Graphics/RHI/SwapChain/SwapChain.h"
 
 #include <Windows.h>
 #include <d3d12.h>
-#include <dxgi1_6.h>
-#include <wrl.h>
 #include <cstdint>
 
 namespace CoreEngine
@@ -16,6 +14,8 @@ namespace CoreEngine
     /// @brief ゲーム映像だけを表示する専用 Win32 ウィンドウ
     /// @details 自前の HWND とスワップチェーンを持ち、ポストエフェクト後の最終出力を転写する。
     ///          ImGui を経由しないので Development ビルドのまま Release と同じ見た目を確認できる。
+    ///          スワップチェーンはエンジン本体と同じ SwapChain クラス（RHI 層）を 2 個目として使う。
+    ///          旧実装は CreateSwapChainForHwnd / ResizeBuffers / RTV 作成を丸ごと再実装していた。
     /// @warning フレーム内の呼び出し順は ApplyPendingRequests → RecordDrawCommands → Present。
     class GameOutputWindow{
     public:
@@ -26,7 +26,7 @@ namespace CoreEngine
         GameOutputWindow& operator=(const GameOutputWindow&) = delete;
 
         /// @brief 初期化（ウィンドウはまだ作らない）
-        /// @param dxCommon デバイス・コマンドキュー・SRV ヒープの供給元
+        /// @param dxCommon デバイス・コマンドキュー・ディスクリプタの供給元
         /// @param postEffectManager 最終出力テクスチャと転写用エフェクトの供給元
         /// @param mainHwnd エンジン本体のウィンドウ。表示先モニタの決定と、
         ///                 このウィンドウで Esc が押されたときの終了要求先に使う
@@ -59,7 +59,7 @@ namespace CoreEngine
         void Present();
 
     private:
-        static constexpr UINT kBufferCount = 2;
+        static constexpr uint32_t kBufferCount = 2;
         static constexpr const wchar_t* kWindowClassName = L"CoreEngineGameOutputWindowClass";
 
         /// @brief ウィンドウプロシージャ（インスタンスは GWLP_USERDATA から引く）
@@ -68,8 +68,8 @@ namespace CoreEngine
         bool Open();
         void Close();
 
-        bool CreateSwapChainResources();
-        void ReleaseSwapChainResources();
+        /// @brief このウィンドウ用のスワップチェーンを作る
+        bool CreateSwapChain();
 
         /// @brief 保留中のリサイズを適用する（GPU 待ちを含む）
         void ResizeIfRequested();
@@ -81,14 +81,9 @@ namespace CoreEngine
         HWND mainHwnd_ = nullptr;
         bool windowClassRegistered_ = false;
 
-        Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain_;
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap_;
-        /// @brief バックバッファ（実体＋現在ステート）
-        /// @details 転写のたびに RENDER_TARGET → PRESENT を往復するため、バッファごとに追跡する。
-        GpuResource backBuffers_[kBufferCount];
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles_[kBufferCount] = {};
+        /// @brief 第 2 のスワップチェーン（バックバッファ・RTV・ステート追跡はこの中）
+        SwapChain swapChain_;
 
-        UINT currentBackBufferIndex_ = 0;
         int32_t clientWidth_ = 0;
         int32_t clientHeight_ = 0;
 

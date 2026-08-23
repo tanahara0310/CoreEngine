@@ -4,6 +4,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 
 #include <algorithm>
 #include <format>
@@ -16,7 +17,8 @@ namespace CoreEngine
         ReleaseDescriptorHandles();
     }
 
-    void OffscreenRenderTarget::Initialize(GraphicsCore* dx, DescriptorAllocator* descriptorAllocator, const RenderTargetDescriptor& desc, int index)
+    void OffscreenRenderTarget::Initialize(GraphicsCore* dx, DescriptorAllocator* descriptorAllocator, SceneDepth* sharedDepth,
+                                           const RenderTargetDescriptor& desc, int index)
     {
         assert(dx);
         assert(descriptorAllocator);
@@ -24,6 +26,7 @@ namespace CoreEngine
 
         dxCommon_ = dx;
         descriptorAllocator_ = descriptorAllocator;
+        sharedDepth_ = sharedDepth;
         index_ = index;
         format_ = desc.format;
         useDepthBuffer_ = desc.needsDepthStencil;
@@ -123,7 +126,16 @@ namespace CoreEngine
         uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         device->CreateUnorderedAccessView(resource_.Get(), nullptr, &uavDesc, uavDescriptor_.cpuHandle);
 
-        dsvHandle_ = useCustomDsvHandle_ ? customDsvHandle_ : dxCommon_->GetDSVHandle();
+        dsvHandle_ = ResolveDsvHandle();
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::ResolveDsvHandle() const
+    {
+        if (useCustomDsvHandle_) {
+            return customDsvHandle_;
+        }
+        // 共有シーン深度の DSV スロットはリサイズしても変わらない（同じスロットへ書き直される）
+        return sharedDepth_ ? sharedDepth_->GetDSVHandle() : D3D12_CPU_DESCRIPTOR_HANDLE{};
     }
 
     void OffscreenRenderTarget::ReleaseDescriptorHandles()
@@ -148,7 +160,8 @@ namespace CoreEngine
         assert(cmdList);
         assert(resource_);
 
-        dsvHandle_ = useCustomDsvHandle_ ? customDsvHandle_ : dxCommon_->GetDSVHandle();
+        dsvHandle_ = ResolveDsvHandle();
+        assert((!useDepthBuffer_ || dsvHandle_.ptr != 0) && "OffscreenRenderTarget: 深度を使うのに DSV が無い");
 
         // 実際のリソース状態から RENDER_TARGET へ遷移（状態不一致によるチラつきを防ぐ）
         Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_RENDER_TARGET);

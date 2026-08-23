@@ -10,7 +10,7 @@
 namespace CoreEngine
 {
     class DescriptorAllocator;
-    class DepthStencilManager;
+    class SceneDepth;
 
     /// @brief G-Buffer管理クラス
     /// @note Deferred/Hybrid Rendering への移行基盤。
@@ -52,12 +52,10 @@ namespace CoreEngine
 
         /// @brief ジオメトリパスの描画セットアップを行う
         /// @param cmdList コマンドリスト
-        /// @param depthStencilManager 深度ステンシル管理
-        /// @param srvHeap SRVデスクリプタヒープ
+        /// @param sceneDepth 共有するシーン深度（DSV の供給元）
         void BeginGeometryPass(
             ID3D12GraphicsCommandList* cmdList,
-            DepthStencilManager* depthStencilManager,
-            ID3D12DescriptorHeap* srvHeap);
+            SceneDepth* sceneDepth);
 
         /// @brief 指定ターゲットのリソース
         ID3D12Resource* GetResource(Target target) const;

@@ -9,6 +9,7 @@ namespace CoreEngine
 {
     class GraphicsCore;
     class DescriptorAllocator;
+    class SceneDepth;
 
     /// @brief オフスクリーンレンダーターゲット
     /// ポストエフェクトやマルチパスレンダリングで使用
@@ -20,9 +21,11 @@ namespace CoreEngine
         /// @brief 初期化
         /// @param dx GraphicsCore
         /// @param descriptorAllocator ディスクリプタマネージャー
+        /// @param sharedDepth 共有するシーン深度（DSV の供給元。深度を使わないターゲットでも渡してよい）
         /// @param desc レンダーターゲット記述子
         /// @param index 内部識別用インデックス
-        void Initialize(GraphicsCore* dx, DescriptorAllocator* descriptorAllocator, const RenderTargetDescriptor& desc, int index);
+        void Initialize(GraphicsCore* dx, DescriptorAllocator* descriptorAllocator, SceneDepth* sharedDepth,
+                        const RenderTargetDescriptor& desc, int index);
 
         /// @brief リサイズ
         /// @param width 新しい幅
@@ -72,7 +75,7 @@ namespace CoreEngine
 
         /// @brief 外部 DSV を使用するよう設定する
         /// @param dsvHandle 専用深度バッファの DSV ハンドル
-        /// @note 未設定時は従来通り GraphicsCore の共有 DSV を使用する
+        /// @note 未設定時は共有シーン深度（SceneDepth）の DSV を使用する
         void SetDepthStencilHandle(D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle) {
             customDsvHandle_ = dsvHandle;
             useCustomDsvHandle_ = true;
@@ -97,8 +100,12 @@ namespace CoreEngine
         void UpdateViews() const;
         void ReleaseDescriptorHandles();
 
+        /// @brief Begin() で実際に束縛する DSV（カスタム指定があればそれ、無ければ共有シーン深度）
+        D3D12_CPU_DESCRIPTOR_HANDLE ResolveDsvHandle() const;
+
         GraphicsCore* dxCommon_ = nullptr;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
+        SceneDepth* sharedDepth_ = nullptr;
         GpuResource resource_;
         DescriptorHandle rtvDescriptor_{};
         DescriptorHandle srvDescriptor_{};

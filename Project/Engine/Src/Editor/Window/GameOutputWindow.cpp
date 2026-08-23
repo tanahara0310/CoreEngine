@@ -1,17 +1,16 @@
 #include "pch.h"
-#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "GameOutputWindow.h"
 
 #include <algorithm>
 
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/FullScreen.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
-
-using Microsoft::WRL::ComPtr;
 
 namespace CoreEngine
 {
@@ -186,7 +185,7 @@ namespace CoreEngine
             return false;
         }
 
-        if (!CreateSwapChainResources()) {
+        if (!CreateSwapChain()) {
             Close();
             return false;
         }
@@ -203,7 +202,7 @@ namespace CoreEngine
     }
 
     void GameOutputWindow::Close(){
-        if (!hwnd_ && !swapChain_) {
+        if (!hwnd_ && !swapChain_.IsValid()) {
             return;
         }
 
@@ -212,8 +211,8 @@ namespace CoreEngine
             dxCommon_->WaitForGpuIdle();
         }
 
-        ReleaseSwapChainResources();
-        swapChain_.Reset();
+        // RTV は DescriptorAllocator へ返る（開閉を繰り返してもスロットは漏れない）
+        swapChain_.Shutdown();
 
         if (hwnd_) {
             ::DestroyWindow(hwnd_);
@@ -224,81 +223,33 @@ namespace CoreEngine
         resizeRequested_ = false;
     }
 
-    bool GameOutputWindow::CreateSwapChainResources(){
+    bool GameOutputWindow::CreateSwapChain(){
         if (!dxCommon_ || !hwnd_) {
             return false;
         }
 
-        DXGI_SWAP_CHAIN_DESC1 desc{};
-        desc.Width = static_cast<UINT>(clientWidth_);
-        desc.Height = static_cast<UINT>(clientHeight_);
-        desc.Format = kBufferFormat;
-        desc.SampleDesc.Count = 1;
-        desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        desc.BufferCount = kBufferCount;
-        desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+        SwapChainDesc desc{};
+        desc.hwnd = hwnd_;
+        desc.width = static_cast<uint32_t>(clientWidth_);
+        desc.height = static_cast<uint32_t>(clientHeight_);
+        desc.bufferCount = kBufferCount;
+        desc.bufferFormat = kBufferFormat;
+        desc.rtvFormat = kRtvFormat;
+        desc.debugName = "GameOutputWindow";
 
-        ComPtr<IDXGISwapChain1> swapChain1;
         // エンジン本体と同じコマンドキューへ載せる。別キューにすると
         // 本体の描画完了とこのウィンドウの Present の順序を自前で同期する必要が出る。
-        HRESULT hr = dxCommon_->GetDXGIFactory()->CreateSwapChainForHwnd(
-            dxCommon_->GetCommandQueue(), hwnd_, &desc, nullptr, nullptr, &swapChain1);
-        if (FAILED(hr)) {
-            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::SwapChain,
-                "GameOutputWindow: スワップチェーンの生成に失敗しました HRESULT={:#010x}\n",
-                static_cast<unsigned>(hr));
-            return false;
-        }
-
-        hr = swapChain1.As(&swapChain_);
-        if (FAILED(hr)) {
-            return false;
-        }
-
-        // RTV は本体の予約スロットを使わず、このウィンドウ専用の小さなヒープを持つ
-        if (!rtvHeap_) {
-            D3D12_DESCRIPTOR_HEAP_DESC heapDesc{};
-            heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-            heapDesc.NumDescriptors = kBufferCount;
-            heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-
-            hr = dxCommon_->GetDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&rtvHeap_));
-            if (FAILED(hr)) {
-                return false;
-            }
-        }
-
-        const UINT rtvSize =
-            dxCommon_->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvStart = rtvHeap_->GetCPUDescriptorHandleForHeapStart();
-
-        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-        rtvDesc.Format = kRtvFormat;
-        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-
-        for (UINT i = 0; i < kBufferCount; ++i) {
-            ComPtr<ID3D12Resource> buffer;
-            hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&buffer));
-            if (FAILED(hr)) {
-                return false;
-            }
-            backBuffers_[i].Reset(std::move(buffer), D3D12_RESOURCE_STATE_PRESENT);
-            rtvHandles_[i].ptr = rtvStart.ptr + static_cast<SIZE_T>(i) * rtvSize;
-            dxCommon_->GetDevice()->CreateRenderTargetView(backBuffers_[i].Get(), &rtvDesc, rtvHandles_[i]);
-        }
-
-        currentBackBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
-        return true;
-    }
-
-    void GameOutputWindow::ReleaseSwapChainResources(){
-        for (GpuResource& backBuffer : backBuffers_) {
-            backBuffer.Release();
-        }
+        // RTV は本体と同じ DescriptorAllocator から確保する（Phase 3 で予約スロットが
+        // 無くなったので、旧実装のような専用ミニヒープは要らない）。
+        return swapChain_.Initialize(
+            dxCommon_->GetDXGIFactory(),
+            dxCommon_->GetCommandQueue(),
+            dxCommon_->GetDescriptorAllocator(),
+            desc);
     }
 
     void GameOutputWindow::ResizeIfRequested(){
-        if (!resizeRequested_ || !swapChain_) {
+        if (!resizeRequested_ || !swapChain_.IsValid()) {
             resizeRequested_ = false;
             return;
         }
@@ -317,38 +268,14 @@ namespace CoreEngine
             dxCommon_->WaitForGpuIdle();
         }
 
-        ReleaseSwapChainResources();
-
-        HRESULT hr = swapChain_->ResizeBuffers(
-            kBufferCount, static_cast<UINT>(width), static_cast<UINT>(height), kBufferFormat, 0);
-        if (FAILED(hr)) {
+        if (!swapChain_.Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height))) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::SwapChain,
-                "GameOutputWindow: リサイズに失敗しました {}x{} HRESULT={:#010x}\n",
-                width, height, static_cast<unsigned>(hr));
+                "GameOutputWindow: リサイズに失敗しました {}x{}\n", width, height);
             return;
         }
 
         clientWidth_ = width;
         clientHeight_ = height;
-
-        // バックバッファと RTV を張り直す
-        const UINT rtvSize =
-            dxCommon_->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvStart = rtvHeap_->GetCPUDescriptorHandleForHeapStart();
-
-        D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-        rtvDesc.Format = kRtvFormat;
-        rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-
-        for (UINT i = 0; i < kBufferCount; ++i) {
-            ComPtr<ID3D12Resource> buffer;
-            if (FAILED(swapChain_->GetBuffer(i, IID_PPV_ARGS(&buffer)))) {
-                return;
-            }
-            backBuffers_[i].Reset(std::move(buffer), D3D12_RESOURCE_STATE_PRESENT);
-            rtvHandles_[i].ptr = rtvStart.ptr + static_cast<SIZE_T>(i) * rtvSize;
-            dxCommon_->GetDevice()->CreateRenderTargetView(backBuffers_[i].Get(), &rtvDesc, rtvHandles_[i]);
-        }
     }
 
     void GameOutputWindow::ApplyPendingRequests(){
@@ -366,7 +293,7 @@ namespace CoreEngine
     }
 
     void GameOutputWindow::RecordDrawCommands(){
-        if (!hwnd_ || !swapChain_ || !dxCommon_ || !postEffectManager_) {
+        if (!hwnd_ || !swapChain_.IsValid() || !dxCommon_ || !postEffectManager_) {
             return;
         }
 
@@ -380,21 +307,22 @@ namespace CoreEngine
             return;
         }
 
-        currentBackBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
-        GpuResource& backBuffer = backBuffers_[currentBackBufferIndex_];
+        const uint32_t backBufferIndex = swapChain_.CurrentBackBufferIndex();
+        GpuResource& backBuffer = swapChain_.BackBuffer(backBufferIndex);
         if (!backBuffer) {
             return;
         }
+        const D3D12_CPU_DESCRIPTOR_HANDLE rtv = swapChain_.RTV(backBufferIndex);
 
         // PRESENT → RENDER_TARGET
         Barrier::Transition(cmdList, backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-        cmdList->OMSetRenderTargets(1, &rtvHandles_[currentBackBufferIndex_], FALSE, nullptr);
+        cmdList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
 
         // 描画解像度はエンジン本体のクライアント領域基準。引き伸ばさず、
         // アスペクト比を保った領域だけへ転写し、余白は黒帯として残す。
         constexpr float kClearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        cmdList->ClearRenderTargetView(rtvHandles_[currentBackBufferIndex_], kClearColor, 0, nullptr);
+        cmdList->ClearRenderTargetView(rtv, kClearColor, 0, nullptr);
 
         const float sourceWidth = static_cast<float>(WinApp::GetCurrentClientWidthStatic());
         const float sourceHeight = static_cast<float>(WinApp::GetCurrentClientHeightStatic());
@@ -444,12 +372,12 @@ namespace CoreEngine
 
     void GameOutputWindow::Present()
     {
-        if (!recordedThisFrame_ || !swapChain_) {
+        if (!recordedThisFrame_ || !swapChain_.IsValid()) {
             return;
         }
 
         // 本体は VSync 待ちで Present 済み。ここで待つとフレームが二重に律速されるため待たない。
-        swapChain_->Present(0, 0);
+        swapChain_.Present(0, 0);
         recordedThisFrame_ = false;
     }
 }

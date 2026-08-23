@@ -39,7 +39,7 @@ namespace CoreEngine
     class AtmosphereManager;
     class VolumetricCloudManager;
     class FrameViews;
-    class DepthStencilManager;
+    class SceneDepth;
     class GpuTimestampProfiler;
     /// @brief レンダリングパスのコンテキスト情報
     struct RenderContext {
@@ -72,7 +72,7 @@ namespace CoreEngine
         ///          カメラを直接読みに行くと読み取り時刻で値が変わり、パスごとに
         ///          違う行列を使う事故（SSAO の黒斑）が起きる。
         const FrameViews* frameViews = nullptr;
-        DepthStencilManager* depthStencilManager = nullptr; ///< 深度ステンシル管理（バリア遷移・クリアを一元管理）
+        SceneDepth* sceneDepth = nullptr; ///< メインシーン深度（GBuffer が書き、各パスは Blackboard の SceneDepth 経由で読む）
         FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理
         ModelManager* modelManager = nullptr; ///< モデル資産管理（BLAS 遅延ビルド用）
         GpuTimestampProfiler* gpuProfiler = nullptr; ///< パス別 GPU/CPU タイミング計測（nullptr の場合は計測しない）

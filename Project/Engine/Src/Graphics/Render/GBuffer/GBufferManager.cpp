@@ -5,7 +5,7 @@
 #include <cassert>
 #include <format>
 
-#include "Graphics/RHI/Resource/DepthStencilManager.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
@@ -88,12 +88,11 @@ namespace CoreEngine
 
     void GBufferManager::BeginGeometryPass(
         ID3D12GraphicsCommandList* cmdList,
-        DepthStencilManager* depthStencilManager,
-        ID3D12DescriptorHeap* srvHeap)
+        SceneDepth* sceneDepth)
     {
         // 全 RT を一括で OMSetRenderTargets する。深度は共有 DSV を使う
         assert(cmdList);
-        assert(depthStencilManager);
+        assert(sceneDepth);
         ValidateState();
 
         std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kTargetCount> rtvHandles{};
@@ -104,7 +103,7 @@ namespace CoreEngine
             cmdList->ClearRenderTargetView(target.rtvHandle.cpuHandle, kGBufferClearColors[i].data(), 0, nullptr);
         }
 
-        const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = depthStencilManager->GetDSVHandle();
+        const D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = sceneDepth->GetDSVHandle();
         cmdList->OMSetRenderTargets(kTargetCount, rtvHandles.data(), FALSE, &dsvHandle);
 
         D3D12_VIEWPORT viewport{};
@@ -124,7 +123,6 @@ namespace CoreEngine
         cmdList->RSSetScissorRects(1, &scissor);
 
         // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
-        (void)srvHeap;
     }
 
     ID3D12Resource* GBufferManager::GetResource(Target target) const

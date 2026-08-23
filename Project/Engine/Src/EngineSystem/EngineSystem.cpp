@@ -19,7 +19,7 @@
 
 // EngineSystem が直接使う型
 #include "Graphics/RHI/Command/UploadContext.h"
-#include "Graphics/RHI/Resource/DepthStencilManager.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
@@ -342,7 +342,7 @@ namespace CoreEngine
         context.fftOceanManager = renderDomainContext_ ? renderDomainContext_->GetFFTOceanManager() : nullptr;
         context.atmosphereManager = renderDomainContext_ ? renderDomainContext_->GetAtmosphereManager() : nullptr;
         context.volumetricCloudManager = renderDomainContext_ ? renderDomainContext_->GetVolumetricCloudManager() : nullptr;
-        context.depthStencilManager = dx ? dx->GetDepthStencilManager() : nullptr;
+        context.sceneDepth = renderDomainContext_ ? renderDomainContext_->GetSceneDepth() : nullptr;
         context.frameBlackboard = &frameBlackboard;
         context.modelManager = GetService<ModelManager>();
         // 水面状態は WaterRenderFeature が RenderDomainContext へ publish する
@@ -388,11 +388,11 @@ namespace CoreEngine
             context.postEffectManager->PrepareFrame(postEffectContext);
         }
 
-        if (dx) {
+        if (context.sceneDepth) {
             frameBlackboard.SetResource(
                 FrameBlackboard::SceneDepth,
-                dx->GetDepthStencilSRV(),
-                context.depthStencilManager ? &context.depthStencilManager->Resource() : nullptr);
+                context.sceneDepth->GetDepthSRVHandle(),
+                &context.sceneDepth->Resource());
         }
 
 #ifdef USE_IMGUI

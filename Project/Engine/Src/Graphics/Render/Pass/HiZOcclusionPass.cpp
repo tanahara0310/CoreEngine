@@ -3,6 +3,7 @@
 
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/Culling/HiZOcclusionSystem.h"
+#include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
@@ -32,10 +33,19 @@ namespace CoreEngine
             return;
         }
 
+        // 深度は DeclareResources で Read 宣言した Blackboard の SceneDepth から取る
+        // （GraphicsCore から直接読むと RenderGraph から見えない依存になる）
+        const FrameBlackboardResource* depth = context.frameBlackboard
+            ? context.frameBlackboard->GetResource(FrameBlackboard::SceneDepth)
+            : nullptr;
+        if (!depth || !depth->isValid || !depth->resource) {
+            return;
+        }
+
         system_->ExecuteCulling(
             cmdList,
             context.dxCommon,
-            context.dxCommon->GetDepthStencilResource(),
-            context.dxCommon->GetDepthStencilSRV());
+            depth->resource->Get(),
+            depth->srvHandle);
     }
 }

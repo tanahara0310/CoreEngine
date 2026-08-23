@@ -15,6 +15,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
+    class SceneDepth;
 
     /// @brief レンダーターゲット管理クラス
     /// レンダーターゲットを名前で管理し、動的な作成・取得を可能にする
@@ -25,8 +26,8 @@ namespace CoreEngine
 
         /// @brief 初期化
         /// @param dxCommon GraphicsCore
-        /// @param dsvHeap DSVヒープ
-        void Initialize(GraphicsCore* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap);
+        /// @param sharedDepth オフスクリーンターゲットが共有するシーン深度（DSV の供給元）
+        void Initialize(GraphicsCore* dxCommon, SceneDepth* sharedDepth);
 
         // ===== レンダーターゲットの作成 =====
 
@@ -129,8 +130,8 @@ namespace CoreEngine
         // GraphicsCoreへの参照
         GraphicsCore* dxCommon_ = nullptr;
 
-        // DSVヒープ
-        Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap_;
+        // オフスクリーンターゲットが共有するシーン深度（非所有。所有者は RenderDomainContext）
+        SceneDepth* sharedDepth_ = nullptr;
 
         // レンダーターゲットの管理マップ（名前 -> ターゲット）
         std::unordered_map<std::string, std::unique_ptr<RenderTarget>> targets_;

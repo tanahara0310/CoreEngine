@@ -2,7 +2,6 @@
 #include "GeometryPass.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/DepthStencilManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"

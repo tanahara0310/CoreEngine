@@ -13,18 +13,22 @@ namespace CoreEngine
 {
 
 class GraphicsCore;
+class SceneDepth;
 
 /// @brief レンダリング管理クラス
-/// レンダーターゲットの管理とフレーム処理を担当
+/// レンダーターゲットの管理とフレーム処理を担当。
+/// リサイズ通知は Initialize で自分を GraphicsCore へ登録し、破棄時に解除する
 class Render : public IResizable {
 public:
+    ~Render() override;
+
     // 統一クリアカラー
     static constexpr float kClearColor[4] = {0.1f, 0.25f, 0.5f, 1.0f};
 
     /// @brief 初期化
     /// @param dxCommon GraphicsCore
-    /// @param dsvHeap DSVヒープ
-    void Initialize(GraphicsCore* dxCommon, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap);
+    /// @param sharedDepth オフスクリーンターゲットが共有するシーン深度（DSV の供給元）
+    void Initialize(GraphicsCore* dxCommon, SceneDepth* sharedDepth);
 
     // ===== RenderTargetManager API =====
 
@@ -57,9 +61,6 @@ public:
 private:
     // クラスをポインタで保持
     GraphicsCore* dxCommon_ = nullptr;
-
-    // DSVヒープ
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap_;
 
     // RenderTargetManager
     std::unique_ptr<RenderTargetManager> renderTargetManager_;
