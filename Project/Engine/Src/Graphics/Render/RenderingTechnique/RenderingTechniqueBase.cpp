@@ -29,7 +29,10 @@ namespace CoreEngine
                     computeShaderBlob_.Get(), GetTechniqueName());
 
                 // ルートシグネチャ構築
+                // Compute には入力アセンブラが無いので ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT を落とす
+                // （Simple() の既定はグラフィックス向けに立てたままになっている）
                 RootSignatureConfig config = RootSignatureConfig::Simple();
+                config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
                 OnConfigureRootSignature(config);
 
                 rootSignatureManager_ = std::make_unique<RootSignatureManager>();
@@ -37,7 +40,7 @@ namespace CoreEngine
                     dxCommon->GetDevice(), *reflectionData_, config);
 
                 if (!buildResult.success) {
-                    throw std::runtime_error("Failed to create RenderingTechnique Root Signature (CS): " 
+                    throw std::runtime_error("Failed to create RenderingTechnique Root Signature (CS): "
                         + buildResult.errorMessage);
                 }
 

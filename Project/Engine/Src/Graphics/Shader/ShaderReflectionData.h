@@ -68,9 +68,6 @@ namespace CoreEngine
         const std::vector<ShaderResourceBinding>& GetSamplerBindings() const { return samplerBindings_; }
         const std::vector<InputElementInfo>& GetInputElements() const { return inputElements_; }
 
-        // 全リソースバインディングの取得（ソート済み）
-        std::vector<ShaderResourceBinding> GetAllBindingsSorted() const;
-
         /// @brief 名前で CBV のバインド情報を引く（無ければ nullptr）
         // 特定のリソースを検索
         const ShaderResourceBinding* FindCBV(const std::string& name) const;
@@ -78,8 +75,6 @@ namespace CoreEngine
         const ShaderResourceBinding* FindSRV(const std::string& name) const;
         /// @brief 名前で UAV のバインド情報を引く（無ければ nullptr）
         const ShaderResourceBinding* FindUAV(const std::string& name) const;
-        /// @brief 名前でサンプラーのバインド情報を引く（無ければ nullptr）
-        const ShaderResourceBinding* FindSampler(const std::string& name) const;
 
         // デバッグ用：リフレクション結果を文字列で出力
         std::string ToString() const;
@@ -94,9 +89,6 @@ namespace CoreEngine
         // シェーダー名の設定・取得
         void SetShaderName(const std::string& name) { shaderName_ = name; }
         const std::string& GetShaderName() const { return shaderName_; }
-
-        // データをクリア
-        void Clear();
 
         // 2つのリフレクションデータをマージ（VS + PS）
         void Merge(const ShaderReflectionData& other);
@@ -119,10 +111,6 @@ namespace CoreEngine
         /// @return 全て一致すればtrue
         bool ValidateAllCBVSizes(const std::vector<std::pair<std::string, size_t>>& validations) const;
 
-        /// @brief セマンティック名に基づいて入力スロットを自動検出・設定
-        /// @note WEIGHT/INDEX等のスキニング関連セマンティックはスロット1に自動割り当て
-        void ApplyAutoSlotDetection();
-
         /// @brief 自動スロット検出済みの入力要素を取得
         /// @return スロット自動検出後の入力要素リスト
         std::vector<InputElementInfo> GetInputElementsWithAutoSlots() const;
@@ -137,10 +125,6 @@ namespace CoreEngine
 
         // リソース名 -> ルートパラメータインデックスのマッピング
         std::map<std::string, UINT> rootParameterMapping_;
-
-        // 重複チェック用ヘルパー（visibility考慮版）
-        bool HasBinding(const std::vector<ShaderResourceBinding>& bindings, 
-                       UINT bindPoint, UINT space, D3D12_SHADER_VISIBILITY visibility) const;
 
         // デバッグ用ヘルパー関数
         std::string GetShaderVisibilityString(D3D12_SHADER_VISIBILITY visibility) const;

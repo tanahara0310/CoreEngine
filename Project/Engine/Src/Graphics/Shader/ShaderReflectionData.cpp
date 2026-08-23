@@ -57,26 +57,6 @@ namespace CoreEngine
         AddOrMergeBinding(samplerBindings_, binding);
     }
 
-    std::vector<ShaderResourceBinding> ShaderReflectionData::GetAllBindingsSorted() const {
-        std::vector<ShaderResourceBinding> allBindings;
-
-        // すべてのバインディングを結合
-        allBindings.insert(allBindings.end(), cbvBindings_.begin(), cbvBindings_.end());
-        allBindings.insert(allBindings.end(), srvBindings_.begin(), srvBindings_.end());
-        allBindings.insert(allBindings.end(), uavBindings_.begin(), uavBindings_.end());
-        allBindings.insert(allBindings.end(), samplerBindings_.begin(), samplerBindings_.end());
-
-        // bindPointでソート
-        std::sort(allBindings.begin(), allBindings.end(),
-            [](const ShaderResourceBinding& a, const ShaderResourceBinding& b) {
-                if (a.space != b.space) return a.space < b.space;
-                if (a.type != b.type) return a.type < b.type;
-                return a.bindPoint < b.bindPoint;
-            });
-
-        return allBindings;
-    }
-
     const ShaderResourceBinding* ShaderReflectionData::FindCBV(const std::string& name) const {
         auto it = std::find_if(cbvBindings_.begin(), cbvBindings_.end(),
             [&name](const ShaderResourceBinding& binding) {
@@ -101,14 +81,6 @@ namespace CoreEngine
         return it != uavBindings_.end() ? &(*it) : nullptr;
     }
 
-    const ShaderResourceBinding* ShaderReflectionData::FindSampler(const std::string& name) const {
-        auto it = std::find_if(samplerBindings_.begin(), samplerBindings_.end(),
-            [&name](const ShaderResourceBinding& binding) {
-                return binding.name == name;
-            });
-        return it != samplerBindings_.end() ? &(*it) : nullptr;
-    }
-
     std::string ShaderReflectionData::ToString() const {
         std::stringstream ss;
         
@@ -119,16 +91,21 @@ namespace CoreEngine
         }
         
         // タイトルを中央揃え（最大幅65文字）
+        // 枠幅を超える名前が来ると rightPad の符号なし減算がアンダーフローして
+        // std::string(巨大値, ' ') になるので、先に切り詰めておく
         const size_t boxWidth = 65;
-        size_t padding = (boxWidth > title.length()) ? (boxWidth - title.length()) / 2 : 0;
+        if (title.length() > boxWidth) {
+            title.resize(boxWidth);
+        }
+        const size_t padding = (boxWidth - title.length()) / 2;
         std::string centeredTitle = std::string(padding, ' ') + title;
-        
+
         // ヘッダーライン
         ss << "\n";
         ss << "┌─────────────────────────────────────────────────────────────────┐\n";
         ss << "│" << centeredTitle;
         // 右側のパディング
-        size_t rightPad = boxWidth - centeredTitle.length();
+        const size_t rightPad = boxWidth - centeredTitle.length();
         ss << std::string(rightPad, ' ') << "│\n";
         ss << "├─────────────────────────────────────────────────────────────────┤\n";
 
@@ -200,15 +177,6 @@ namespace CoreEngine
         return ss.str();
     }
 
-    void ShaderReflectionData::Clear() {
-        cbvBindings_.clear();
-        srvBindings_.clear();
-        uavBindings_.clear();
-        samplerBindings_.clear();
-        inputElements_.clear();
-        rootParameterMapping_.clear();
-    }
-
     void ShaderReflectionData::Merge(const ShaderReflectionData& other) {
         // CBVをマージ（同一リソースが複数ステージで使われる場合は visibility を ALL に統合する）
         for (const auto& cbv : other.cbvBindings_) {
@@ -246,16 +214,6 @@ namespace CoreEngine
 
     void ShaderReflectionData::SetRootParameterMapping(const std::map<std::string, UINT>& mapping) {
         rootParameterMapping_ = mapping;
-    }
-
-    bool ShaderReflectionData::HasBinding(const std::vector<ShaderResourceBinding>& bindings,
-        UINT bindPoint, UINT space, D3D12_SHADER_VISIBILITY visibility) const {
-        return std::find_if(bindings.begin(), bindings.end(),
-            [bindPoint, space, visibility](const ShaderResourceBinding& binding) {
-                return binding.bindPoint == bindPoint && 
-                       binding.space == space && 
-                       binding.visibility == visibility;
-            }) != bindings.end();
     }
 
     // ヘルパー関数
@@ -402,40 +360,6 @@ namespace CoreEngine
             
             return 0;  // デフォルトはスロット0
         }
-    }
-
-    void ShaderReflectionData::ApplyAutoSlotDetection() {
-        bool hasSlotChange = false;
-        
-        for (auto& element : inputElements_) {
-            UINT detectedSlot = DetectSlotFromSemantic(element.semanticName);
-            if (detectedSlot != element.inputSlot) {
-                element.inputSlot = detectedSlot;
-                hasSlotChange = true;
-            }
-        }
-        
-#ifdef _DEBUG
-        if (hasSlotChange) {
-            std::ostringstream oss;
-            oss << "\n";
-            oss << "┌─────────────────────────────────────────────────────────────────┐\n";
-            oss << "│  [Auto Slot Detection] " << shaderName_ << "\n";
-            oss << "├─────────────────────────────────────────────────────────────────┤\n";
-            
-            for (const auto& element : inputElements_) {
-                oss << "│    • " << element.semanticName << element.semanticIndex 
-                    << " → Slot " << element.inputSlot;
-                if (element.inputSlot > 0) {
-                    oss << " (auto-detected)";
-                }
-                oss << "\n";
-            }
-            
-            oss << "└─────────────────────────────────────────────────────────────────┘\n";
-            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", oss.str());
-        }
-#endif
     }
 
     std::vector<InputElementInfo> ShaderReflectionData::GetInputElementsWithAutoSlots() const {

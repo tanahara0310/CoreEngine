@@ -81,10 +81,15 @@ namespace CoreEngine
         }
         
         // タイトルを中央揃え（最大幅65文字）
+        // 枠幅を超える名前が来ると rightPad の符号なし減算がアンダーフローして
+        // std::string(巨大値, ' ') になるので、先に切り詰めておく
         const size_t boxWidth = 65;
-        size_t padding = (boxWidth > title.length()) ? (boxWidth - title.length()) / 2 : 0;
+        if (title.length() > boxWidth) {
+            title.resize(boxWidth);
+        }
+        const size_t padding = (boxWidth - title.length()) / 2;
         std::string centeredTitle = std::string(padding, ' ') + title;
-        size_t rightPad = boxWidth - centeredTitle.length();
+        const size_t rightPad = boxWidth - centeredTitle.length();
 
         // ログ出力
         std::stringstream ss;
@@ -106,13 +111,24 @@ namespace CoreEngine
         return result;
     }
 
-    RootSignatureBuildResult RootSignatureBuilder::BuildManual(
-        ID3D12Device* device,
-        const RootSignatureConfig& config) {
+    void RootSignatureBuilder::AssignMapping(
+        std::map<std::string, UINT>& mapping,
+        const std::string& resourceName,
+        UINT rootParamIndex,
+        const std::string& shaderName) const {
 
-        // 空のリフレクションデータで構築（手動設定のみ）
-        ShaderReflectionData emptyReflection;
-        return Build(device, emptyReflection, config);
+        const auto it = mapping.find(resourceName);
+        if (it != mapping.end() && it->second != rootParamIndex) {
+            // 同名リソースが 2 本のルートパラメータに割り当てられた。
+            // 典型は「VS の gMaterial が b0、PS の gMaterial が b1」のように
+            // 同じ名前で別レジスタを使ってしまったケース。名前でしか引けない以上、
+            // 後勝ちの上書きで片方が永久に到達不能になる（＝そのリソースが差されない）。
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
+                "リソース名が重複しています: name={} rootParam {} を {} で上書きします。"
+                "VS と PS で同名リソースに別レジスタを割り当てていないか確認してください: shader={}",
+                resourceName, it->second, rootParamIndex, shaderName);
+        }
+        mapping[resourceName] = rootParamIndex;
     }
 
     void RootSignatureBuilder::ProcessCBVs(
@@ -131,7 +147,7 @@ namespace CoreEngine
                     D3D12_ROOT_PARAMETER_TYPE_CBV,
                     cbv.bindPoint, cbv.space, cbv.visibility);
                 rootParams.push_back(param);
-                mapping[cbv.name] = currentIndex++;
+                AssignMapping(mapping, cbv.name, currentIndex++, reflectionData.GetShaderName());
                 break;
             }
             case BindingStrategy::RootConstants: {
@@ -152,7 +168,7 @@ namespace CoreEngine
                 param.Constants.RegisterSpace = cbv.space;
                 param.Constants.Num32BitValues = num32BitValues;
                 rootParams.push_back(param);
-                mapping[cbv.name] = currentIndex++;
+                AssignMapping(mapping, cbv.name, currentIndex++, reflectionData.GetShaderName());
                 break;
             }
             default:
@@ -161,7 +177,7 @@ namespace CoreEngine
                     D3D12_ROOT_PARAMETER_TYPE_CBV,
                     cbv.bindPoint, cbv.space, cbv.visibility);
                 rootParams.push_back(param);
-                mapping[cbv.name] = currentIndex++;
+                AssignMapping(mapping, cbv.name, currentIndex++, reflectionData.GetShaderName());
                 break;
             }
         }
@@ -198,7 +214,7 @@ namespace CoreEngine
                     ranges.push_back(range);
 
                     // 同一グループ内のリソースは同じルートパラメータを共有
-                    mapping[resourceName] = currentIndex;
+                    AssignMapping(mapping, resourceName, currentIndex, reflectionData.GetShaderName());
                     tableGroups[groupId].push_back(resourceName);
                     processedResources.insert(resourceName);
                     hasAnyResource = true;
@@ -236,7 +252,7 @@ namespace CoreEngine
                     D3D12_ROOT_PARAMETER_TYPE_SRV,
                     srv.bindPoint, srv.space, srv.visibility);
                 rootParams.push_back(param);
-                mapping[srv.name] = currentIndex++;
+                AssignMapping(mapping, srv.name, currentIndex++, reflectionData.GetShaderName());
                 break;
             }
             case BindingStrategy::DescriptorTable:
@@ -259,7 +275,7 @@ namespace CoreEngine
                 param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
                 param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
                 rootParams.push_back(param);
-                mapping[srv.name] = currentIndex++;
+                AssignMapping(mapping, srv.name, currentIndex++, reflectionData.GetShaderName());
                 break;
             }
             }
@@ -294,7 +310,7 @@ namespace CoreEngine
                     range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
                     ranges.push_back(range);
 
-                    mapping[resourceName] = currentIndex;
+                    AssignMapping(mapping, resourceName, currentIndex, reflectionData.GetShaderName());
                     tableGroups[groupId].push_back(resourceName);
                     processedResources.insert(resourceName);
                     hasAnyResource = true;
@@ -331,7 +347,7 @@ namespace CoreEngine
                     D3D12_ROOT_PARAMETER_TYPE_UAV,
                     uav.bindPoint, uav.space, uav.visibility);
                 rootParams.push_back(param);
-                mapping[uav.name] = currentIndex++;
+                AssignMapping(mapping, uav.name, currentIndex++, reflectionData.GetShaderName());
                 break;
             }
             case BindingStrategy::DescriptorTable:
@@ -353,7 +369,7 @@ namespace CoreEngine
                 param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
                 param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
                 rootParams.push_back(param);
-                mapping[uav.name] = currentIndex++;
+                AssignMapping(mapping, uav.name, currentIndex++, reflectionData.GetShaderName());
                 break;
             }
             }
@@ -405,7 +421,7 @@ namespace CoreEngine
                 param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
                 param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
                 rootParams.push_back(param);
-                mapping[sampler.name] = currentIndex++;
+                AssignMapping(mapping, sampler.name, currentIndex++, reflectionData.GetShaderName());
                 break;
             }
             default:
@@ -482,18 +498,6 @@ namespace CoreEngine
         param.ShaderVisibility = visibility;
         param.Descriptor.ShaderRegister = shaderRegister;
         param.Descriptor.RegisterSpace = registerSpace;
-        return param;
-    }
-
-    D3D12_ROOT_PARAMETER RootSignatureBuilder::CreateDescriptorTableParam(
-        const std::vector<D3D12_DESCRIPTOR_RANGE>& ranges,
-        D3D12_SHADER_VISIBILITY visibility) const {
-
-        D3D12_ROOT_PARAMETER param{};
-        param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        param.ShaderVisibility = visibility;
-        param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(ranges.size());
-        param.DescriptorTable.pDescriptorRanges = ranges.data();
         return param;
     }
 }

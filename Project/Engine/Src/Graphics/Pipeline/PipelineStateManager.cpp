@@ -106,26 +106,6 @@ void PipelineStateBuilder::InitializeDefaults()
     sampleDesc_.Quality = 0;
 }
 
-PipelineStateBuilder& PipelineStateBuilder::AddInputElement(
-    const char* semanticName,
-    UINT semanticIndex,
-    DXGI_FORMAT format,
-    UINT alignedByteOffset,
-    UINT inputSlot)
-{
-    D3D12_INPUT_ELEMENT_DESC elementDesc{};
-    elementDesc.SemanticName = semanticName;
-    elementDesc.SemanticIndex = semanticIndex;
-    elementDesc.Format = format;
-    elementDesc.InputSlot = inputSlot;
-    elementDesc.AlignedByteOffset = alignedByteOffset;
-    elementDesc.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
-    elementDesc.InstanceDataStepRate = 0;
-
-    inputElementDescs_.push_back(elementDesc);
-    return *this;
-}
-
 PipelineStateBuilder& PipelineStateBuilder::SetInputLayoutFromReflection(const ShaderReflectionData& reflectionData)
 {
     // 既存の入力レイアウトをクリア
@@ -167,9 +147,12 @@ PipelineStateBuilder& PipelineStateBuilder::SetInputLayoutFromReflection(const S
         
         for (const auto& element : inputElements) {
             std::string formatStr = FormatToString(element.format);
-            oss << "│    • " << element.semanticName << element.semanticIndex 
-                << "  (Slot:" << element.inputSlot << ", " << formatStr << ")" 
-                << std::setw(static_cast<int>(55 - element.semanticName.length() - formatStr.length())) << "│\n";
+            // 符号なし減算のアンダーフローを避ける（長い名前が来ても枠だけ崩れて済むようにする）
+            const size_t used = element.semanticName.length() + formatStr.length();
+            const int pad = (used < 55) ? static_cast<int>(55 - used) : 1;
+            oss << "│    • " << element.semanticName << element.semanticIndex
+                << "  (Slot:" << element.inputSlot << ", " << formatStr << ")"
+                << std::setw(pad) << "│\n";
         }
         
         oss << "└─────────────────────────────────────────────────────────────────┘\n";

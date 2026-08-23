@@ -35,15 +35,16 @@ namespace CoreEngine
             const ShaderReflectionData& reflectionData,
             const RootSignatureConfig& config = RootSignatureConfig());
 
-        /// @brief リフレクションなしで手動設定からRootSignatureを構築
-        /// @param device D3D12デバイス
-        /// @param config 構築設定
-        /// @return 構築結果
-        RootSignatureBuildResult BuildManual(
-            ID3D12Device* device,
-            const RootSignatureConfig& config);
-
     private:
+        /// @brief 名前→ルートパラメータ番号を登録する
+        /// @details 同名が既にある場合は「VS と PS で同名リソースが別レジスタに置かれた」ケースで、
+        ///          後勝ちの上書きにより片方が名前から到達不能になる。無言で壊れるのでログへ出す。
+        void AssignMapping(
+            std::map<std::string, UINT>& mapping,
+            const std::string& resourceName,
+            UINT rootParamIndex,
+            const std::string& shaderName) const;
+
         /// @brief CBVを処理
         void ProcessCBVs(
             const ShaderReflectionData& reflectionData,
@@ -100,11 +101,6 @@ namespace CoreEngine
             D3D12_ROOT_PARAMETER_TYPE type,
             UINT shaderRegister,
             UINT registerSpace,
-            D3D12_SHADER_VISIBILITY visibility) const;
-
-        /// @brief Descriptor Tableパラメータを作成
-        D3D12_ROOT_PARAMETER CreateDescriptorTableParam(
-            const std::vector<D3D12_DESCRIPTOR_RANGE>& ranges,
             D3D12_SHADER_VISIBILITY visibility) const;
     };
 }

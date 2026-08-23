@@ -161,12 +161,16 @@ namespace CoreEngine
             Cb::CheckAgainstReflection(cbuffer, bufferDesc, outData.GetShaderName());
 #endif
 
-#ifdef _DEBUG
+            // BoundResources に無い cbuffer は「宣言はあるがバインドされていない」もの。
+            // ここで登録すると bindPoint が既定値の 0 のまま載り、実在する b0 と衝突する
+            // （＝幻の b0）。バインドされていない以上ルートパラメータも要らないので捨てる。
+            // ConstantBuffer<T> 構文で実際に使われているものは ReflectBoundResources が拾う。
             if (!found) {
-                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader, "{}", 
-                    "[Warning] CBV '" + std::string(bufferDesc.Name) + "' not found in BoundResources");
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader,
+                    "CBV '{}' は BoundResources に無いため登録しません（未使用の宣言）: shader={}",
+                    bufferDesc.Name, outData.GetShaderName());
+                continue;
             }
-#endif
 
             outData.AddCBV(binding);
         }
@@ -196,7 +200,10 @@ namespace CoreEngine
             case D3D_SIT_TEXTURE:
             case D3D_SIT_STRUCTURED:
             case D3D_SIT_BYTEADDRESS:
-                // SRV (Texture, StructuredBuffer, ByteAddressBuffer)
+            case D3D_SIT_TBUFFER:
+            case D3D_SIT_RTACCELERATIONSTRUCTURE:
+                // SRV (Texture, StructuredBuffer, ByteAddressBuffer, tbuffer, TLAS)
+                // TLAS を落とすとインライン RayQuery が黙って壊れるのでここに含める
                 outData.AddSRV(binding);
                 break;
 
@@ -206,6 +213,7 @@ namespace CoreEngine
             case D3D_SIT_UAV_APPEND_STRUCTURED:
             case D3D_SIT_UAV_CONSUME_STRUCTURED:
             case D3D_SIT_UAV_RWSTRUCTURED_WITH_COUNTER:
+            case D3D_SIT_UAV_FEEDBACKTEXTURE:
                 // UAV (RWTexture, RWStructuredBuffer等)
                 outData.AddUAV(binding);
                 break;
@@ -222,6 +230,11 @@ namespace CoreEngine
                 break;
 
             default:
+                // 未知の種別を黙って捨てるとルートシグネチャからリソースが 1 個消えるだけで、
+                // エラーも警告も出ないまま描画が壊れる。必ず気付けるようにログへ出す。
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader,
+                    "未対応のリソース種別のため無視しました: name={} type={} shader={}",
+                    bindDesc.Name, static_cast<int>(bindDesc.Type), outData.GetShaderName());
                 break;
             }
         }
