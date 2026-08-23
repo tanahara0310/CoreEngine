@@ -7,7 +7,9 @@
 #include "Graphics/RHI/Command/CommandContext.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Command/UploadContext.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Device/DeviceRemovedHandler.h"
 #include "Graphics/RHI/SwapChain/SwapChain.h"
 #include "Graphics/RHI/IResizable.h"
 
@@ -34,6 +36,7 @@ namespace CoreEngine
         , descriptorAllocator_(std::make_unique<DescriptorAllocator>())
         , swapChain_(std::make_unique<SwapChain>())
         , uploadContext_(std::make_unique<UploadContext>())
+        , uploadRing_(std::make_unique<UploadRing>())
     {
     }
 
@@ -48,7 +51,7 @@ namespace CoreEngine
         clientHeight_ = desc.clientHeight;
 
         // 初期化順序を守って各管理クラスを初期化
-        deviceManager_->Initialize(desc.enableDebugLayer, desc.enableGPUBasedValidation);
+        deviceManager_->Initialize(desc.enableDebugLayer, desc.enableGPUBasedValidation, desc.enableDRED);
 
         ID3D12Device* device = deviceManager_->GetDevice();
         commandQueue_->Initialize(device);
@@ -67,6 +70,11 @@ namespace CoreEngine
         // キューはフレームと共有（submit 順 = 実行順を保つため）だが、
         // アロケータ・コマンドリスト・フェンスは完全に別物。
         uploadContext_->Initialize(device, commandQueue_->Get());
+
+        // フレーム内で使い捨てる定数バッファ置き場。スロット数はフレーム数と一致させる。
+        // 巻き戻しはコマンドアロケータの Reset と同じ場所で行う（EndFrame 末尾）。
+        uploadRing_->Initialize(device, frameSync_->FramesInFlight());
+        uploadRing_->Reset(frameSync_->FrameIndex());
 
         // メインウィンドウのスワップチェーン（バックバッファ取得と RTV 作成まで含む）
         SwapChainDesc swapChainDesc{};
@@ -88,8 +96,15 @@ namespace CoreEngine
         if (!frameSync_) {
             return;
         }
-        // 全GPUコマンドの完了を待ってからリソースを解放する
-        frameSync_->WaitForGpuIdle();
+        // 全GPUコマンドの完了を待ってからリソースを解放する。
+        // GPU が死んでいる場合はここで例外が飛ぶが、原因は既にログへ出ているので、
+        // 解放処理は最後まで進める（Shutdown はデストラクタからも呼ばれる）
+        try {
+            frameSync_->WaitForGpuIdle();
+        } catch (const std::exception& e) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics,
+                "GraphicsCore::Shutdown: GPU 待ちに失敗しましたが解放を続行します: {}", e.what());
+        }
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "GraphicsCore::Shutdown: GPU同期完了。全マネージャーを解放します\n");
 
@@ -100,6 +115,7 @@ namespace CoreEngine
             uploadContext_->Shutdown();
         }
         uploadContext_.reset();
+        uploadRing_.reset();
         if (deferredRelease_) {
             deferredRelease_->ReleaseAll(); // GPU 待ち済みなのでここで捨ててよい
         }
@@ -217,8 +233,19 @@ namespace CoreEngine
         frameSync_->SignalCurrentFrame();
 
         // Present（画面に反映）
+        // Present は GPU クラッシュを最初に報告してくる場所なので、戻り値を捨てない。
+        // ここを握り潰すと「突然落ちた」以上のことが分からなくなる。
         static constexpr UINT kPresentFlags = 0;
-        swapChain_->Present(syncInterval, kPresentFlags);
+        const HRESULT presentResult = swapChain_->Present(syncInterval, kPresentFlags);
+        if (FAILED(presentResult)) {
+            if (ReportIfDeviceRemoved(deviceManager_->GetDevice(), "GraphicsCore::EndFrame（Present）")) {
+                throw std::runtime_error(
+                    "GPU device removed at Present (詳細は Graphics ログを参照)");
+            }
+            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::SwapChain,
+                "Present に失敗しました hr=0x{:08X}（デバイスは生きています）",
+                static_cast<uint32_t>(presentResult));
+        }
 
         // ── 次フレームの準備 ──────────────────────────────────
         // ここで Reset まで済ませることで、フレーム外（Update 中など）でも
@@ -229,6 +256,9 @@ namespace CoreEngine
         // しまう（D3D12 ERROR #552）。
         frameSync_->AdvanceToNextFrame();
         commandContext_->Begin(frameSync_->FrameIndex(), descriptorAllocator_->GetSRVHeap());
+        // 定数リングの巻き戻しはコマンドアロケータの Reset と同じ条件（このスロットの
+        // GPU 完了待ちが済んでいること）で成立する。2 つを別の場所に書くと片方だけずれる。
+        uploadRing_->Reset(frameSync_->FrameIndex());
     }
 
     FrameSync& GraphicsCore::Frame() const { return *frameSync_; }
@@ -246,6 +276,7 @@ namespace CoreEngine
     ID3D12CommandQueue* GraphicsCore::GetCommandQueue() const { return commandQueue_->Get(); }
     ID3D12GraphicsCommandList* GraphicsCore::GetCommandList() const { return commandContext_->List(); }
     UploadContext* GraphicsCore::GetUploadContext() const { return uploadContext_.get(); }
+    UploadRing& GraphicsCore::GetUploadRing() const { return *uploadRing_; }
     void GraphicsCore::WaitForGpuIdle() { frameSync_->WaitForGpuIdle(); }
 
     SwapChain& GraphicsCore::GetSwapChain() const { return *swapChain_; }

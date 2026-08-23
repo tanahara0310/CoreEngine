@@ -45,7 +45,6 @@ namespace CoreEngine
     void TAATechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
-        cbRing_.Initialize(dxCommon, sizeof(TAAParams));
     }
 
     const char* TAATechnique::GetHistoryTargetName(uint32_t index)
@@ -90,7 +89,7 @@ namespace CoreEngine
 
         // 今フレームのスライスへ書き込む（フレームオーバーラップ対応）
         const D3D12_GPU_VIRTUAL_ADDRESS cbAddress =
-            cbRing_.Upload(context.dxCommon, &params_, sizeof(params_));
+            context.dxCommon->GetUploadRing().AllocateConstants(params_);
 
         writeTarget->Begin(cmdList);
 

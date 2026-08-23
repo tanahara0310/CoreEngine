@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Graphics/RHI/Device/DeviceManager.h"
+#include "Graphics/RHI/Device/DeviceRemovedHandler.h"
 #include "Utility/Logger/Logger.h"
 
 #include <iostream>
@@ -12,10 +13,11 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
-void DeviceManager::Initialize(bool enableDebugLayer, bool enableGPUBasedValidation)
+void DeviceManager::Initialize(bool enableDebugLayer, bool enableGPUBasedValidation, bool enableDRED)
 {
     enableDebugLayer_ = enableDebugLayer;
     enableGPUBasedValidation_ = enableGPUBasedValidation;
+    enableDRED_ = enableDRED;
     InitializeDXGIDevice();
 }
 
@@ -23,8 +25,9 @@ void DeviceManager::InitializeDXGIDevice()
 {
     Logger& logger = Logger::GetInstance();
 
-    // デバッグレイヤーの有効化（コンフィグの設定値に従う）
-#ifdef _DEBUG
+    // デバッグレイヤーの有効化（コンフィグの設定値だけで決まる）。
+    // ここを #ifdef _DEBUG で囲まないのは、計測に使う Development 構成でも
+    // 設定ひとつで検証を効かせられるようにするため（Release では設定が false なだけ）。
     if (enableDebugLayer_) {
         ComPtr<ID3D12Debug1> debugController;
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf())))) {
@@ -46,7 +49,12 @@ void DeviceManager::InitializeDXGIDevice()
             std::cerr << "Direct3D 12 デバッグインターフェースの取得に失敗しました。" << std::endl;
         }
     }
-#endif
+
+    // DRED（GPU クラッシュ時の命令履歴とページフォルト記録）。
+    // **デバイス生成より前** でなければ効かないので、ここで有効化する。
+    if (enableDRED_) {
+        EnableDeviceRemovedExtendedData();
+    }
 
     HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory_));
     assert(SUCCEEDED(hr));
@@ -103,38 +111,39 @@ void DeviceManager::InitializeDXGIDevice()
     // DXRサポートの確認
     CheckDXRSupport();
 
-#ifdef _DEBUG
-    ComPtr<ID3D12InfoQueue> infoQueue;
-    if (SUCCEEDED(device_->QueryInterface(IID_PPV_ARGS(&infoQueue)))) {
+    // 情報キューはデバッグレイヤーが有効なときだけ取得できる（無効なら QueryInterface が失敗する）
+    if (enableDebugLayer_) {
+        ComPtr<ID3D12InfoQueue> infoQueue;
+        if (SUCCEEDED(device_->QueryInterface(IID_PPV_ARGS(&infoQueue)))) {
 
-        // ヤバいエラー時に止まる
-        infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
-        // エラー時に止まる
-        infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-        // 警告時に止まる(コメントアウトすることで解放漏れが詳細にわかる)
-        infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
+            // ヤバいエラー時に止まる
+            infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+            // エラー時に止まる
+            infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+            // 警告時に止まる(コメントアウトすることで解放漏れが詳細にわかる)
+            infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
 
-        // 抑制するメッセージのID
-        D3D12_MESSAGE_ID denyIds[] = {
-            // Windows11でのDXGIデバッグレイヤーとのDX12デバッグレイヤーの相互作用バグによるエラーメッセージ
-            // https://stackoverflow.com/questions/69805245/directx-12-application-is-crashing-in-windows-11
-            D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE,
-            // DXR 加速構造バッファ作成時の InitialState 警告を抑制
-            // バッファは内部的に COMMON で作成されるが、ドライバが暗黙的に正しいステートへ昇格する
-            D3D12_MESSAGE_ID_CREATERESOURCE_STATE_IGNORED
-        };
+            // 抑制するメッセージのID
+            D3D12_MESSAGE_ID denyIds[] = {
+                // Windows11でのDXGIデバッグレイヤーとのDX12デバッグレイヤーの相互作用バグによるエラーメッセージ
+                // https://stackoverflow.com/questions/69805245/directx-12-application-is-crashing-in-windows-11
+                D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE,
+                // DXR 加速構造バッファ作成時の InitialState 警告を抑制
+                // バッファは内部的に COMMON で作成されるが、ドライバが暗黙的に正しいステートへ昇格する
+                D3D12_MESSAGE_ID_CREATERESOURCE_STATE_IGNORED
+            };
 
-        // 抑制するレベル
-        D3D12_MESSAGE_SEVERITY severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
-        D3D12_INFO_QUEUE_FILTER filter {};
-        filter.DenyList.NumIDs = _countof(denyIds);
-        filter.DenyList.pIDList = denyIds;
-        filter.DenyList.NumSeverities = _countof(severities);
-        filter.DenyList.pSeverityList = severities;
-        // 指定したメッセージの表示を抑制する
-        infoQueue->PushStorageFilter(&filter);
+            // 抑制するレベル
+            D3D12_MESSAGE_SEVERITY severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
+            D3D12_INFO_QUEUE_FILTER filter {};
+            filter.DenyList.NumIDs = _countof(denyIds);
+            filter.DenyList.pIDList = denyIds;
+            filter.DenyList.NumSeverities = _countof(severities);
+            filter.DenyList.pSeverityList = severities;
+            // 指定したメッセージの表示を抑制する
+            infoQueue->PushStorageFilter(&filter);
+        }
     }
-#endif
 }
 
 void DeviceManager::CheckDXRSupport()

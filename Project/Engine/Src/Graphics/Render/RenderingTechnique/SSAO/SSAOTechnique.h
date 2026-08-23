@@ -58,9 +58,8 @@ namespace CoreEngine
 
     private:
         SSAOParams params_;
-        // ジッタ入り行列が毎フレーム変わるため、フレームオーバーラップ対応のリングで運ぶ。
+        // 定数は UploadRing（GraphicsCore::GetUploadRing）から毎フレーム確保する。
         // 単一バッファ上書きだと GPU 実行中フレームの行列を CPU が書き潰し、
-        // 深度バッファと行列が食い違って AO が毎フレームちらつく。
-        FrameRingConstantBuffer cbRing_;
+        // 深度バッファと行列が食い違って AO が毎フレームちらついた。
     };
 }

@@ -9,7 +9,8 @@
     },
     "debug": {
         "enableDebugLayer": false,
-        "enableGPUBasedValidation": false
+        "enableGPUBasedValidation": false,
+        "enableDRED": false
     },
     "descriptors": {
         "maxSRVDescriptors": 256,

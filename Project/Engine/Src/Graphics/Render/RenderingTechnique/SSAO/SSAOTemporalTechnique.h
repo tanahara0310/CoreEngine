@@ -61,7 +61,6 @@ namespace CoreEngine
         void EnsureHistoryTargets(const RenderContext& context);
 
         SSAOTemporalParams params_;
-        FrameRingConstantBuffer cbRing_;
 
         bool historyValid_ = false;
         uint64_t lastExecutedFrame_ = 0;

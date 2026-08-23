@@ -21,6 +21,11 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         bool enableDebugLayer = false;
         bool enableGPUBasedValidation = false;
+        // GPU クラッシュ（デバイスロスト）の原因をログへ残す。
+        // 有効にするとドライバが命令ごとに記録を書くのでわずかに遅くなるが、
+        // 「突然落ちた」を「どの Dispatch でどのリソースを踏んだか」に変えられる。
+        // デバイス生成より前にしか有効化できないので CVar ではなくここに置く。
+        bool enableDRED = false;
         bool enablePixRuntime = false;  // PIX GPU キャプチャ DLL を起動時にロードするか（D3D12 全コマンドが計装されフレーム時間に影響）
 
         // ──────────────────────────────────────────────────────────

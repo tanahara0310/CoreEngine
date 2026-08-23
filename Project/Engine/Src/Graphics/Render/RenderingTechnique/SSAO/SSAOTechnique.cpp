@@ -59,7 +59,6 @@ namespace CoreEngine
     void SSAOTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
-        cbRing_.Initialize(dxCommon, sizeof(SSAOParams));
     }
 
     void SSAOTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
@@ -105,7 +104,7 @@ namespace CoreEngine
 
         // 今フレームのスライスへ書き込む（フレームオーバーラップ対応）
         const D3D12_GPU_VIRTUAL_ADDRESS cbAddress =
-            cbRing_.Upload(context.dxCommon, &params_, sizeof(params_));
+            context.dxCommon->GetUploadRing().AllocateConstants(params_);
 
         // SSAO用のレンダーターゲットを取得
         auto* ssaoTarget = renderTargetManager->GetRenderTarget(RenderTargetNames::SSAOBuffer);

@@ -35,6 +35,7 @@ namespace CoreEngine
             j["window"]["height"] = config.windowHeight;
             j["debug"]["enableDebugLayer"] = config.enableDebugLayer;
             j["debug"]["enableGPUBasedValidation"] = config.enableGPUBasedValidation;
+            j["debug"]["enableDRED"] = config.enableDRED;
             j["debug"]["enablePixRuntime"] = config.enablePixRuntime;
             j["shader"]["enableCache"] = config.enableShaderCache;
             j["descriptors"]["maxSRVDescriptors"] = config.maxSRVDescriptors;
@@ -61,6 +62,7 @@ namespace CoreEngine
             auto& d = j["debug"];
             if (d.contains("enableDebugLayer"))          config.enableDebugLayer = d["enableDebugLayer"].get<bool>();
             if (d.contains("enableGPUBasedValidation"))  config.enableGPUBasedValidation = d["enableGPUBasedValidation"].get<bool>();
+            if (d.contains("enableDRED"))               config.enableDRED = d["enableDRED"].get<bool>();
             if (d.contains("enablePixRuntime"))           config.enablePixRuntime = d["enablePixRuntime"].get<bool>();
         }
 

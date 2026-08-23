@@ -6,6 +6,7 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include <cassert>
 
 
@@ -56,19 +57,9 @@ namespace CoreEngine
             throw std::runtime_error("Failed to create overlay pipeline state for LineRendererPipeline.");
         }
 
-        uint32_t bufferSize = sizeof(LineVertex) * kMaxVertexCount;
-
-        // 頂点バッファリソースを生成
-        vertexBuffer_ = ResourceFactory::CreateBufferResource(device, bufferSize);
-
-        vbView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-        vbView_.SizeInBytes = bufferSize;
+        // 頂点バッファ・WVP バッファは持たない（フラッシュのたびに UploadRing から確保する）。
+        // ストライドだけは固定なのでここで決めておく
         vbView_.StrideInBytes = sizeof(LineVertex);
-
-        vertices_.reserve(kMaxVertexCount);
-
-        wvpBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(Matrix4x4));
-        wvpBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&wvpData_));
     }
 
     void LineRendererPipeline::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourceFactory) {
@@ -122,18 +113,25 @@ namespace CoreEngine
     }
 
     void LineRendererPipeline::UpdateVertexBuffer(const std::vector<LineVertex>& vertices) {
-        if (vertices.empty() || vertices.size() > kMaxVertexCount) {
+        vbView_.BufferLocation = 0;
+        vbView_.SizeInBytes = 0;
+
+        if (vertices.empty() || vertices.size() > kMaxVertexCount || !dxCommon_) {
             return;
         }
 
-        // 頂点データをコピー
-        vertices_ = vertices;
+        // このフラッシュ専用の領域を取る。次のパスのフラッシュは別の領域を取るので、
+        // GPU が実行する前に上書きされることがない
+        const uint32_t byteSize = static_cast<uint32_t>(sizeof(LineVertex) * vertices.size());
+        const UploadAllocation allocation = dxCommon_->GetUploadRing().Allocate(byteSize, 16);
+        if (!allocation.IsValid()) {
+            return;
+        }
 
-        // GPUに転送
-        LineVertex* mappedData = nullptr;
-        vertexBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&mappedData));
-        std::memcpy(mappedData, vertices_.data(), sizeof(LineVertex) * vertices_.size());
-        vertexBuffer_->Unmap(0, nullptr);
+        std::memcpy(allocation.cpu, vertices.data(), byteSize);
+
+        vbView_.BufferLocation = allocation.gpuAddress;
+        vbView_.SizeInBytes = byteSize;
     }
 
     int LineRendererPipeline::GetRootParamIndex(const std::string& resourceName) const {
@@ -145,7 +143,8 @@ namespace CoreEngine
 
     void LineRendererPipeline::DrawLines(ID3D12GraphicsCommandList* cmdList, uint32_t vertexCount,
         uint32_t startVertexLocation) {
-        if (vertexCount == 0 || !currentCmdList_) {
+        // 頂点の確保に失敗したフレームは BufferLocation が 0 のままなので描かない
+        if (vertexCount == 0 || !currentCmdList_ || vbView_.BufferLocation == 0) {
             return;
         }
 
@@ -154,18 +153,22 @@ namespace CoreEngine
 
         // WVP行列を設定（リフレクションから取得したインデックスを使用）
         int cameraIdx = GetRootParamIndex("Camera");
-        if (cameraIdx >= 0) {
+        if (cameraIdx >= 0 && wvpAddress_ != 0) {
             cmdList->SetGraphicsRootConstantBufferView(
                 cameraIdx,  // シェーダーリフレクションから自動決定
-                wvpBuffer_->GetGPUVirtualAddress());
+                wvpAddress_);
         }
         cmdList->DrawInstanced(vertexCount, 1, startVertexLocation, 0);
     }
 
     void LineRendererPipeline::SetWVPMatrix(const Matrix4x4& view, const Matrix4x4& proj) {
-        if (wvpData_) {
-            *wvpData_ = view * proj;
+        if (!dxCommon_) {
+            wvpAddress_ = 0;
+            return;
         }
+        // 頂点と同じく、このフラッシュ専用の領域へ書く
+        const Matrix4x4 viewProjection = view * proj;
+        wvpAddress_ = dxCommon_->GetUploadRing().AllocateConstants(viewProjection);
     }
 
     void LineRendererPipeline::AddLine(const Line& line) {

@@ -53,8 +53,7 @@ protected:
 
 private:
     SSAOBlurParams params_;
-    // invViewProj がジッタで毎フレーム変わるため、フレームオーバーラップ対応のリングで運ぶ
-    FrameRingConstantBuffer cbRing_;
+    // invViewProj がジッタで毎フレーム変わるため、定数は UploadRing から毎フレーム確保する
     std::string inputTargetName_; ///< 空ならデフォルト（RenderTargetNames::SSAOBuffer）
 };
 }

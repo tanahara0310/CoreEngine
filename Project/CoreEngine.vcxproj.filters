@@ -871,6 +871,9 @@
     <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceManager.cpp">
       <Filter>Engine\Src\Graphics\RHI\Device</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceRemovedHandler.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Device</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\SwapChain\SwapChain.cpp">
       <Filter>Engine\Src\Graphics\RHI\SwapChain</Filter>
     </ClCompile>
@@ -1031,6 +1034,9 @@
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\UploadRing.cpp">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp">
@@ -2247,6 +2253,9 @@
     <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceManager.h">
       <Filter>Engine\Src\Graphics\RHI\Device</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceRemovedHandler.h">
+      <Filter>Engine\Src\Graphics\RHI\Device</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\SwapChain\SwapChain.h">
       <Filter>Engine\Src\Graphics\RHI\SwapChain</Filter>
     </ClInclude>
@@ -2443,6 +2452,9 @@
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.h">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\UploadRing.h">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h">

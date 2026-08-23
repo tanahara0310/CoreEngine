@@ -13,7 +13,10 @@ namespace CoreEngine
         /// @brief 初期化
         /// @param enableDebugLayer デバッグレイヤーを有効にするか
         /// @param enableGPUBasedValidation GPU-Based Validationを有効にするか
-        void Initialize(bool enableDebugLayer, bool enableGPUBasedValidation);
+        /// @param enableDRED GPU クラッシュ時の詳細記録（DRED）を有効にするか
+        /// @note いずれも **設定値のみ** で決まる（#ifdef _DEBUG では切り替えない）。
+        ///       構成ごとの既定値は Engine/Config/config_*.json が持つ。
+        void Initialize(bool enableDebugLayer, bool enableGPUBasedValidation, bool enableDRED);
 
         // アクセッサ
         ID3D12Device* GetDevice() const { return device_.Get(); }
@@ -44,6 +47,7 @@ namespace CoreEngine
         // デバッグ設定（コンフィグから取得）
         bool enableDebugLayer_ = false;
         bool enableGPUBasedValidation_ = false;
+        bool enableDRED_ = false;
     };
 }
 

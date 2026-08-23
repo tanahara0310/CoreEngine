@@ -3,6 +3,7 @@
         "enableCache": true
     },
     "debug": {
+        "enableDRED": false,
         "enableDebugLayer": false,
         "enableGPUBasedValidation": false,
         "enablePixRuntime": false

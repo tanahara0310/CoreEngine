@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -18,30 +19,11 @@ namespace CoreEngine
 class ShaderReflectionData;
 struct RenderContext;
 
-/// @brief フレームオーバーラップ対応の定数バッファリング
-/// @details 単一バッファを毎フレーム上書きすると、GPU が実行中フレームの値を CPU が先に書き潰す
-///          （SSAO なら深度と行列が食い違って AO がちらつく）。
-///          フレームバッファリング数ぶんのスライスを持ち、記録中フレームのスライスへ書く。
-class FrameRingConstantBuffer {
-public:
-    /// @brief バッファを確保して常時 Map する
-    /// @param dxCommon GraphicsCore（フレームバッファリング数の取得に使う）
-    /// @param paramsSize 1 スライスに書く構造体のサイズ（256B 境界へ内部で切り上げる）
-    void Initialize(GraphicsCore* dxCommon, uint32_t paramsSize);
-
-    /// @brief 記録中フレームのスライスへ書き込み、その GPU アドレスを返す
-    /// @param dxCommon GraphicsCore（記録中フレームインデックスの取得に使う）
-    /// @param src 書き込む構造体
-    /// @param size 構造体サイズ（Initialize の paramsSize 以下であること）
-    /// @return バインドすべき GPU 仮想アドレス。未初期化なら 0
-    D3D12_GPU_VIRTUAL_ADDRESS Upload(GraphicsCore* dxCommon, const void* src, uint32_t size);
-
-private:
-    Microsoft::WRL::ComPtr<ID3D12Resource> buffer_;
-    uint8_t* mappedBase_ = nullptr;
-    uint32_t alignedSize_ = 0;
-    uint32_t sliceCount_ = 1;
-};
+/// @note 「フレームオーバーラップ対応の定数バッファ」はかつて FrameRingConstantBuffer として
+///       このヘッダに置かれていたが、同じ問題（CPU が GPU の 1 フレーム先を走るので
+///       単一バッファを毎フレーム上書きすると実行中の値を書き潰す）はレンダリング技術に
+///       限らないため、基盤層の UploadRing へ一般化した。
+///       使い方: `dxCommon->GetUploadRing().AllocateConstants(params_)`
 
 /// @brief レンダリング技術基底クラス
 /// @details SSAO、TAA、SSRなどの高度なレンダリング技術の基底クラス

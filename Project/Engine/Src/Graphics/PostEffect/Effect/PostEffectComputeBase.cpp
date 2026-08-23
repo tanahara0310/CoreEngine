@@ -3,7 +3,7 @@
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include <cassert>
 #include <stdexcept>
 
@@ -47,16 +47,9 @@ namespace CoreEngine
             throw std::runtime_error(GetEffectName() + ": Failed to create Compute PSO");
         }
 
-        // 画面サイズ定数バッファは全 CS エフェクト共通なので基底が用意する。
-        // 派生の OnCreateConstantBuffers より先に作ること（派生が中で使うため）
-        {
-            const UINT size = (sizeof(ScreenSizeConstants) + 255) & ~255u;
-            screenSizeCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), size);
-            HRESULT mapResult = screenSizeCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedScreenSize_));
-            if (FAILED(mapResult)) {
-                throw std::runtime_error(GetEffectName() + ": Failed to map ScreenSize constant buffer");
-            }
-        }
+        // 画面サイズ定数は全 CS エフェクト共通だが、実体は毎フレーム UploadRing から取る。
+        // （専用バッファを 1 本持って毎フレーム上書きすると、GPU が前フレームの
+        //   ディスパッチを実行する前に CPU が書き潰す）
 
         // 派生クラスの定数バッファ生成
         OnCreateConstantBuffers();
@@ -64,14 +57,9 @@ namespace CoreEngine
 
     void PostEffectComputeBase::UpdateScreenSizeConstants(uint32_t width, uint32_t height)
     {
-        if (mappedScreenSize_) {
-            mappedScreenSize_->screenWidth  = width;
-            mappedScreenSize_->screenHeight = height;
-        }
-    }
-
-    D3D12_GPU_VIRTUAL_ADDRESS PostEffectComputeBase::GetScreenSizeCbAddress() const
-    {
-        return screenSizeCB_ ? screenSizeCB_->GetGPUVirtualAddress() : 0;
+        ScreenSizeConstants constants{};
+        constants.screenWidth  = width;
+        constants.screenHeight = height;
+        screenSizeCbAddress_ = graphicsCore_->GetUploadRing().AllocateConstants(constants);
     }
 }

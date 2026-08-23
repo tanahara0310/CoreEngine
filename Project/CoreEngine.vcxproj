@@ -473,6 +473,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Device\DeviceRemovedHandler.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\SwapChain\SwapChain.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelLoader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\FullScreen.cpp" />
@@ -530,6 +531,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\UploadRing.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp" />
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
     <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystem.cpp" />
@@ -964,6 +966,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorAllocator.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHeapAllocator.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Device\DeviceRemovedHandler.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\SwapChain\SwapChain.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\FullScreen.h" />
@@ -1030,6 +1033,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderPrewarm.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\UploadRing.h" />
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Application\Src\MyGame.h" />

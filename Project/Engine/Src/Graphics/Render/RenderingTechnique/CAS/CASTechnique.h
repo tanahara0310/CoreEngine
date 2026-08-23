@@ -44,8 +44,6 @@ namespace CoreEngine
         const CASParams& GetParams() const { return params_; }
         /// @brief シャープ量などのパラメータを設定する
         void SetParams(const CASParams& params);
-        /// @brief 設定済みパラメータを GPU 定数バッファへ転送する
-        void UpdateConstantBuffer();
 
     protected:
     /// @brief 有効/無効は CVar "r.CAS.Enabled" が保持する
@@ -55,11 +53,8 @@ namespace CoreEngine
         const std::wstring& GetPixelShaderPath() const override;
 
     private:
-        void CreateConstantBuffer();
-
+        /// 定数は Execute のたびに UploadRing から確保する（専用バッファは持たない）
         CASParams params_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
-        CASParams* mappedData_ = nullptr;
 
         std::string inputResourceName_ = FrameBlackboard::SceneColor;
     };

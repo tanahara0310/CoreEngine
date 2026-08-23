@@ -74,6 +74,7 @@ namespace CoreEngine
             desc.clientHeight = winApp->GetClientHeight();
             desc.enableDebugLayer = config.enableDebugLayer;
             desc.enableGPUBasedValidation = config.enableGPUBasedValidation;
+            desc.enableDRED = config.enableDRED;
             desc.framesInFlight = config.frameCount;
             desc.maxSRVDescriptors = config.maxSRVDescriptors;
             desc.maxRTVDescriptors = config.maxRTVDescriptors;

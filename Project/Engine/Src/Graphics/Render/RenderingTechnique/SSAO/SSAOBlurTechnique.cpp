@@ -35,7 +35,6 @@ namespace CoreEngine
     void SSAOBlurTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
-        cbRing_.Initialize(dxCommon, sizeof(SSAOBlurParams));
     }
 
     void SSAOBlurTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
@@ -71,7 +70,7 @@ namespace CoreEngine
 
         // 今フレームのスライスへ書き込む（フレームオーバーラップ対応）
         const D3D12_GPU_VIRTUAL_ADDRESS cbAddress =
-            cbRing_.Upload(context.dxCommon, &params_, sizeof(params_));
+            context.dxCommon->GetUploadRing().AllocateConstants(params_);
 
         // 入力（生 SSAO またはテンポラル蓄積結果）と出力のレンダーターゲットを取得
         const std::string inputName = inputTargetName_.empty()

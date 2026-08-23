@@ -47,20 +47,23 @@ namespace CoreEngine {
         /// @note 画面サイズ用バッファは基底が先に用意するので、派生は自分固有のものだけ作ればよい
         virtual void OnCreateConstantBuffers() {}
 
-        /// @brief 画面サイズ定数バッファへ今回のディスパッチ解像度を書き込む
+        /// @brief 画面サイズ定数を今フレームの UploadRing へ確保する
         /// @param width  出力幅
         /// @param height 出力高さ
+        /// @note Dispatch のたびに新しい領域を取るので、1 フレーム中に解像度の違う
+        ///       ディスパッチを複数回行っても互いを踏まない（1 本の共有バッファだった頃は
+        ///       最後の解像度が全ディスパッチに適用されていた）。
         void UpdateScreenSizeConstants(uint32_t width, uint32_t height);
 
-        /// @brief 画面サイズ定数バッファの GPU アドレス（ルートへ渡す用）
-        D3D12_GPU_VIRTUAL_ADDRESS GetScreenSizeCbAddress() const;
+        /// @brief 直前の UpdateScreenSizeConstants が確保した GPU アドレス（ルートへ渡す用）
+        D3D12_GPU_VIRTUAL_ADDRESS GetScreenSizeCbAddress() const { return screenSizeCbAddress_; }
 
         Microsoft::WRL::ComPtr<IDxcBlob> computeShaderBlob_;     ///< CS用シェーダーブロブ
         Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_; ///< CS用PSO
 
     private:
-        Microsoft::WRL::ComPtr<ID3D12Resource> screenSizeCB_;
-        ScreenSizeConstants* mappedScreenSize_ = nullptr;
+        /// 今フレームぶんの画面サイズ定数（UploadRing 上）。フレームを跨いで持ち越さない
+        D3D12_GPU_VIRTUAL_ADDRESS screenSizeCbAddress_ = 0;
     };
 
 } // namespace CoreEngine

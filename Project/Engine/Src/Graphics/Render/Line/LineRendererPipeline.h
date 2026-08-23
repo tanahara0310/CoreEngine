@@ -122,14 +122,13 @@ namespace CoreEngine
         // 登録されたラインソース（所有権は持たない。登録側が Unregister する契約）
         std::vector<class ILineSource*> lineSources_;
 
-        // 頂点バッファ
-        Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
+        // 頂点バッファと WVP は専用リソースを持たず、フラッシュのたびに
+        // UploadRing から取る。Line パスは 1 フレーム中に複数回（Scene ビュー /
+        // Game ビュー等、パスの実行回数だけ）走るため、1 本を使い回すと
+        // **GPU が最初のパスを実行する前に次のパスが上書きしてしまい、
+        //   全パスが最後のカメラ・最後の頂点で描かれる**。
         D3D12_VERTEX_BUFFER_VIEW vbView_{};
-        std::vector<LineVertex> vertices_;
-
-        // WVP行列バッファ
-        Microsoft::WRL::ComPtr<ID3D12Resource> wvpBuffer_;
-        Matrix4x4* wvpData_ = nullptr;
+        D3D12_GPU_VIRTUAL_ADDRESS wvpAddress_ = 0;
 
         // コマンドリスト（BeginPass/EndPassで使用）
         ID3D12GraphicsCommandList* currentCmdList_ = nullptr;

@@ -23,6 +23,7 @@ namespace CoreEngine
     class DescriptorAllocator;
     class SwapChain;
     class UploadContext;
+    class UploadRing;
 
     /// @brief DirectX12 の基盤（デバイス・コマンド・ディスクリプタ・メインスワップチェーン）を束ねるファサード
     ///
@@ -110,6 +111,20 @@ namespace CoreEngine
         ///          記録途中のフレームを巻き添えで submit する。
         UploadContext* GetUploadContext() const;
 
+        /// @brief 今フレームだけ有効な定数バッファ置き場
+        /// @details 「毎フレーム内容が変わる小さな定数」はここから取ること。
+        ///          自前のバッファを常時 Map して毎フレーム上書きすると、
+        ///          CPU が GPU の 1 フレーム先を走っているぶん、GPU が読んでいる値を
+        ///          書き潰す（実際に SSAO で踏んだ）。ここはフレーム数ぶんのスロットを
+        ///          持ち、GPU 完了済みのスロットだけを使い回すので、その心配が要らない。
+        /// @code
+        ///   const auto cb = dx->GetUploadRing().AllocateConstants(params);
+        ///   cmdList->SetGraphicsRootConstantBufferView(index, cb);
+        /// @endcode
+        /// @note GetUploadContext() とは別物。あちらは「一度書けば変わらないデータを
+        ///       DEFAULT ヒープへ転送する」ためのコマンドコンテキスト。
+        UploadRing& GetUploadRing() const;
+
         /// @brief 投入済みの全 GPU 作業の完了を待つ（完全同期）
         /// @details リソースの作り直し・破棄の直前にだけ使うこと。
         void WaitForGpuIdle();
@@ -140,6 +155,7 @@ namespace CoreEngine
         std::unique_ptr<DescriptorAllocator> descriptorAllocator_;
         std::unique_ptr<SwapChain> swapChain_;
         std::unique_ptr<UploadContext> uploadContext_;
+        std::unique_ptr<UploadRing> uploadRing_;
 
         std::vector<IResizable*> resizables_;
 

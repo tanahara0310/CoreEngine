@@ -82,6 +82,12 @@ namespace CoreEngine
         uint64_t FenceValueOf(uint32_t frameIndex) const;
 
     private:
+        /// @brief フェンスイベントを待つ（GPU ハングを検出できる形で）
+        /// @details INFINITE で待つと GPU が死んだときに **無反応のまま何も分からない** ため、
+        ///          一定時間ごとに区切ってデバイスロストを確認する。
+        ///          デバイスが失われていれば原因をログへ書いてから例外を投げる。
+        void WaitOnFenceEvent(std::uint64_t target);
+
         ID3D12Device* device_ = nullptr;
         ID3D12CommandQueue* queue_ = nullptr;
 

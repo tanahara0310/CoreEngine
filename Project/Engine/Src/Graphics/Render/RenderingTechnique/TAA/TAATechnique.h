@@ -81,8 +81,7 @@ namespace CoreEngine
 
     private:
         TAAParams params_;
-        // jitterDelta が毎フレーム変わるため、フレームオーバーラップ対応のリングで運ぶ
-        FrameRingConstantBuffer cbRing_;
+        // jitterDelta が毎フレーム変わるため、定数は UploadRing から毎フレーム確保する
 
         bool historyValid_ = false;        ///< 有効な履歴を持っているか
         uint64_t lastExecutedFrame_ = 0;   ///< 直前に Execute したフレーム番号（連続性の判定用）
