@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "BackBufferRenderTarget.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include <cassert>
 
 namespace CoreEngine
@@ -10,7 +10,6 @@ namespace CoreEngine
     {
         assert(dx);
         dxCommon_ = dx;
-        currentState_ = D3D12_RESOURCE_STATE_PRESENT;
     }
 
     void BackBufferRenderTarget::Begin(ID3D12GraphicsCommandList* cmdList)
@@ -19,15 +18,11 @@ namespace CoreEngine
         assert(dxCommon_);
 
         UINT backBufferIndex = GetCurrentBackBufferIndex();
-        ID3D12Resource* backBuffer = dxCommon_->GetSwapChainBackBuffer(backBufferIndex);
 
         // 現在状態を基準にして RENDER_TARGET へ遷移する。
-        if (currentState_ != D3D12_RESOURCE_STATE_RENDER_TARGET) {
-            ResourceBarrierHelper::Transition(cmdList, backBuffer,
-                currentState_,
-                D3D12_RESOURCE_STATE_RENDER_TARGET);
-            currentState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        }
+        Barrier::Transition(cmdList,
+            dxCommon_->GetBackBufferResource(backBufferIndex),
+            D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         // 最終合成はフルスクリーン描画のみで深度を使用しないため RTV のみ設定する。
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = dxCommon_->GetRTVHandle(backBufferIndex);
@@ -65,15 +60,11 @@ namespace CoreEngine
         assert(dxCommon_);
 
         UINT backBufferIndex = GetCurrentBackBufferIndex();
-        ID3D12Resource* backBuffer = dxCommon_->GetSwapChainBackBuffer(backBufferIndex);
 
         // 描画完了後に Present 可能状態へ戻す。
-        if (currentState_ != D3D12_RESOURCE_STATE_PRESENT) {
-            ResourceBarrierHelper::Transition(cmdList, backBuffer,
-                currentState_,
-                D3D12_RESOURCE_STATE_PRESENT);
-            currentState_ = D3D12_RESOURCE_STATE_PRESENT;
-        }
+        Barrier::Transition(cmdList,
+            dxCommon_->GetBackBufferResource(backBufferIndex),
+            D3D12_RESOURCE_STATE_PRESENT);
     }
 
     D3D12_CPU_DESCRIPTOR_HANDLE BackBufferRenderTarget::GetRTVHandle() const
@@ -86,6 +77,11 @@ namespace CoreEngine
     {
         UINT index = GetCurrentBackBufferIndex();
         return dxCommon_->GetSwapChainBackBuffer(index);
+    }
+
+    GpuResource& BackBufferRenderTarget::Resource()
+    {
+        return dxCommon_->GetBackBufferResource(GetCurrentBackBufferIndex());
     }
 
     void BackBufferRenderTarget::GetSize(int32_t& width, int32_t& height) const

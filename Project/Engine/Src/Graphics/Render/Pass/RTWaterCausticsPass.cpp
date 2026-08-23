@@ -102,13 +102,10 @@ namespace CoreEngine
 
         if (context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE handle = context.rtWaterCausticsManager->GetCausticsSRVHandle(viewId);
-            ID3D12Resource* resource = context.rtWaterCausticsManager->GetCausticsResource(viewId);
-            D3D12_RESOURCE_STATES& currentState = context.rtWaterCausticsManager->GetCausticsCurrentState(viewId);
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTWaterCaustics,
                 handle,
-                resource,
-                &currentState);
+                &context.rtWaterCausticsManager->GetCausticsResource(viewId));
         }
     }
 }

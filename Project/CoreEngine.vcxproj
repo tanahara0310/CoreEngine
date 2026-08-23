@@ -290,7 +290,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.cpp" />
     <ClCompile Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\ResourceBarrierHelper.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\GpuResource.cpp" />
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\MaterialInstance.cpp" />
@@ -648,7 +649,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.h" />
     <ClInclude Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\IResizable.h" />
-    <ClInclude Include="Engine\Src\Graphics\RHI\Barrier\ResourceBarrierHelper.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\GpuResource.h" />
     <ClInclude Include="Engine\Src\Diagnostics\EngineStats.h" />
     <ClInclude Include="Engine\Src\Graphics\IBL\IBLSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\Debug\MaterialDebugUI.h" />
@@ -1053,8 +1055,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <None Include="Application\Assets\Models\human\walk.bin" />
     <ClInclude Include="Engine\Src\pch.h" />
     <None Include="Build\Scripts\SyncFilters.ps1" />
-    <None Include="Build\Scripts\Collect-DX12FoundationMetrics.ps1" />
-    <None Include="Build\Scripts\Run-EngineSmokeTest.ps1" />
     <None Include="Engine\Src\Particle\README.md" />
     <!-- Shader files (runtime compiled via DXC, not build-time FxCompile) -->
   </ItemGroup>

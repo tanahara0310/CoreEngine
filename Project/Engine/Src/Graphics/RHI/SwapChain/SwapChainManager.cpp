@@ -38,12 +38,16 @@ void SwapChainManager::Initialize(ID3D12Device* device, IDXGIFactory7* dxgiFacto
 void SwapChainManager::RetrieveBackBuffers()
 {
     for (UINT i = 0; i < 2; ++i) {
-        HRESULT hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&swapChainResources_[i]));
+        ComPtr<ID3D12Resource> buffer;
+        HRESULT hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&buffer));
         if (FAILED(hr)) {
             logger.Errorf(LogCategory::Graphics, LogSubCategory::SwapChain,
                 "エラー: スワップチェーンバックバッファ[{}]の取得に失敗しました\n", i);
             throw std::runtime_error("Failed to get swap chain back buffer");
         }
+
+        // GetBuffer 直後のバックバッファは PRESENT（= COMMON）。ここが追跡の起点になる
+        swapChainResources_[i].Reset(std::move(buffer), D3D12_RESOURCE_STATE_PRESENT);
         logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
             "スワップチェーンバックバッファ[{}]取得完了: ptr={:#x}\n",
             i, reinterpret_cast<uintptr_t>(swapChainResources_[i].Get()));
@@ -88,7 +92,7 @@ void SwapChainManager::Resize(std::int32_t width, std::int32_t height)
 
     // バックバッファのリソースを解放
     for (UINT i = 0; i < 2; ++i) {
-        swapChainResources_[i].Reset();
+        swapChainResources_[i].Release();
         logger.Infof(LogCategory::Graphics, LogSubCategory::SwapChain,
             "  バックバッファ[{}]解放完了\n", i);
     }

@@ -1,4 +1,6 @@
 #pragma once
+
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include <vector>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <span>
@@ -58,10 +60,9 @@ struct SkinCluster {
 
     DescriptorHandle sourceVertexSrvHandle; // 元頂点バッファのSRV（CS読み取り用）
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> outputVertexResource; // CSが書き込むスキニング後頂点バッファ（UAV）
-    D3D12_VERTEX_BUFFER_VIEW outputVertexBufferView;             // 上記をそのまま描画時の頂点バッファとして使う
-    DescriptorHandle outputUavHandle; // 出力バッファのUAV
-    D3D12_RESOURCE_STATES outputBufferState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS; // 出力バッファの現在のリソース状態
+    GpuResource outputVertexResource;                // CSが書き込むスキニング後頂点バッファ（UAV・ステート追跡込み）
+    D3D12_VERTEX_BUFFER_VIEW outputVertexBufferView; // 上記をそのまま描画時の頂点バッファとして使う
+    DescriptorHandle outputUavHandle;                // 出力バッファのUAV
 
     Microsoft::WRL::ComPtr<ID3D12Resource> skinningParamsCB; // SkinningParams（頂点数）用定数バッファ
 

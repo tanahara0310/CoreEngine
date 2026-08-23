@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
@@ -272,11 +273,10 @@ namespace CoreEngine
         // ===== 雲描画（VolumetricCloudPass から呼ばれる） =====
 
         /// @brief 雲をレイマーチして SceneColor へ合成する
-        /// @param sceneColorState SceneColor の現在状態（追跡参照）
+        /// @param sceneColor SceneColor（実体＋現在ステート）
         void RenderClouds(
             ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* sceneColor,
-            D3D12_RESOURCE_STATES& sceneColorState,
+            GpuResource& sceneColor,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
             const AtmosphereManager* atmosphereManager);
@@ -298,8 +298,7 @@ namespace CoreEngine
         ///          二重加算を避けつつ、雲影の空気柱を暗くして光芒の明暗対比を作る。
         void RenderGodRays(
             ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* sceneColor,
-            D3D12_RESOURCE_STATES& sceneColorState,
+            GpuResource& sceneColor,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle,
             const AtmosphereManager* atmosphereManager);
@@ -318,7 +317,7 @@ namespace CoreEngine
         bool CreateRenderPipelines(ID3D12Device* device);
 
         /// @brief 半解像度 CloudBuffer と合成用中間テクスチャを SceneColor サイズ追従で確保する（Phase 2 で実装）
-        bool EnsureCloudTargets(ID3D12Resource* sceneColor);
+        bool EnsureCloudTargets(GpuResource& sceneColor);
 
         /// @brief 雲シャドウマップテクスチャと CB を生成する（ゴッドレイ用）
         bool CreateGodRayResources(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
@@ -398,32 +397,27 @@ namespace CoreEngine
         VolumetricCloudShaderConstants* constantData_ = nullptr; // 永続マップ先
 
         // ノイズテクスチャ（Phase 1 で生成）
-        Microsoft::WRL::ComPtr<ID3D12Resource> baseShapeNoise_;
-        D3D12_RESOURCE_STATES baseShapeNoiseState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource baseShapeNoise_;
         DescriptorHandle baseShapeNoiseSrvHandle_{};
         DescriptorHandle baseShapeNoiseUavHandle_{};
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> detailNoise_;
-        D3D12_RESOURCE_STATES detailNoiseState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource detailNoise_;
         DescriptorHandle detailNoiseSrvHandle_{};
         DescriptorHandle detailNoiseUavHandle_{};
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> weatherMap_;
-        D3D12_RESOURCE_STATES weatherMapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource weatherMap_;
         DescriptorHandle weatherMapSrvHandle_{};
         DescriptorHandle weatherMapUavHandle_{};
 
         // 半解像度レイマーチ結果（Phase 2 で確保）
-        Microsoft::WRL::ComPtr<ID3D12Resource> cloudBuffer_;
-        D3D12_RESOURCE_STATES cloudBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource cloudBuffer_;
         DescriptorHandle cloudBufferSrvHandle_{};
         DescriptorHandle cloudBufferUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE cloudBufferSrvCpuHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE cloudBufferUavCpuHandle_{};
 
         // 合成用中間テクスチャ（SceneColor と同サイズ・Phase 2 で確保）
-        Microsoft::WRL::ComPtr<ID3D12Resource> compositeResult_;
-        D3D12_RESOURCE_STATES compositeResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource compositeResult_;
         DescriptorHandle compositeResultUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE compositeResultUavCpuHandle_{};
         uint64_t targetsWidth_ = 0;
@@ -431,14 +425,12 @@ namespace CoreEngine
 
         // ===== ゴッドレイ =====
         // 雲シャドウマップ（1024² R16_FLOAT。太陽方向の雲透過率の上面図）
-        Microsoft::WRL::ComPtr<ID3D12Resource> cloudShadowMap_;
-        D3D12_RESOURCE_STATES cloudShadowMapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource cloudShadowMap_;
         DescriptorHandle cloudShadowMapSrvHandle_{};
         DescriptorHandle cloudShadowMapUavHandle_{};
 
         // 半解像度ゴッドレイバッファ（EnsureCloudTargets で cloudBuffer_ と同サイズ確保）
-        Microsoft::WRL::ComPtr<ID3D12Resource> godRayBuffer_;
-        D3D12_RESOURCE_STATES godRayBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource godRayBuffer_;
         DescriptorHandle godRayBufferSrvHandle_{};
         DescriptorHandle godRayBufferUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE godRayBufferSrvCpuHandle_{};

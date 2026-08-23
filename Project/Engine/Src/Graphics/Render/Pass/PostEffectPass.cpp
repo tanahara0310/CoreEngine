@@ -152,12 +152,8 @@ namespace CoreEngine
         }
 
         if (context.frameBlackboard) {
-            D3D12_RESOURCE_STATES* stateRef = nullptr;
-            if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(outputTarget)) {
-                stateRef = &offscreen->GetCurrentState();
-            }
             context.frameBlackboard->SetResource(
-                step_.write, outputTarget->GetSRVHandle(), outputTarget->GetResource(), stateRef);
+                step_.write, outputTarget->GetSRVHandle(), &outputTarget->Resource());
         }
     }
 }

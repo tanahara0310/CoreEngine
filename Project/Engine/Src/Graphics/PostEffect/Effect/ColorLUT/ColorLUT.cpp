@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "ColorLUT.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
@@ -83,12 +84,11 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        lutTexture_ = ResourceFactory::CreateTextureResource(
-            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        lutTexture_.Reset(ResourceFactory::CreateTextureResource(
+            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         if (!lutTexture_) {
             return false;
         }
-        lutTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = desc.Format;
@@ -278,17 +278,8 @@ namespace CoreEngine
 
         mappedFillParams_->lutSize = lutSizeLoaded_;
 
-        // SRV 状態のままなら UAV へ戻す（初回は生成時から UAV）
-        if (lutTextureState_ != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = lutTexture_.Get();
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            barrier.Transition.StateBefore = lutTextureState_;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            cmdList->ResourceBarrier(1, &barrier);
-            lutTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        }
+        // SRV 状態のままなら UAV へ戻す（初回は生成時から UAV。冗長なら発行されない）
+        Barrier::Transition(cmdList, lutTexture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetComputeRootSignature(fillPipeline_.GetComputeRootSignature());
         cmdList->SetPipelineState(fillPipeline_.GetComputePSO());
@@ -303,20 +294,12 @@ namespace CoreEngine
         const uint32_t groups = (lutSizeLoaded_ + 3) / 4;
         cmdList->Dispatch(groups, groups, groups);
 
-        // 書き込み完了 → SRV で読める状態へ
-        D3D12_RESOURCE_BARRIER uavBarrier{};
-        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        uavBarrier.UAV.pResource = lutTexture_.Get();
-        cmdList->ResourceBarrier(1, &uavBarrier);
-
-        D3D12_RESOURCE_BARRIER toSrv{};
-        toSrv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        toSrv.Transition.pResource = lutTexture_.Get();
-        toSrv.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        toSrv.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        toSrv.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        cmdList->ResourceBarrier(1, &toSrv);
-        lutTextureState_ = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        // 書き込み完了 → SRV で読める状態へ（UAV バリアと遷移を 1 回にまとめる）
+        {
+            BarrierBatch batch(cmdList);
+            batch.UAV(lutTexture_);
+            batch.Transition(lutTexture_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
 
         lutDirty_ = false;
     }

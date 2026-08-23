@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Bloom.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
@@ -116,12 +117,11 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        dirtTexture_ = ResourceFactory::CreateTextureResource(
-            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        dirtTexture_.Reset(ResourceFactory::CreateTextureResource(
+            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         if (!dirtTexture_) {
             return false;
         }
-        dirtTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = desc.Format;
@@ -157,19 +157,11 @@ namespace CoreEngine
 
         cmdList->Dispatch(DispatchCount(kDirtTextureSize), DispatchCount(kDirtTextureSize), 1);
 
-        D3D12_RESOURCE_BARRIER uavBarrier{};
-        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        uavBarrier.UAV.pResource = dirtTexture_.Get();
-        cmdList->ResourceBarrier(1, &uavBarrier);
-
-        D3D12_RESOURCE_BARRIER toSrv{};
-        toSrv.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        toSrv.Transition.pResource = dirtTexture_.Get();
-        toSrv.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        toSrv.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        toSrv.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        cmdList->ResourceBarrier(1, &toSrv);
-        dirtTextureState_ = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+        {
+            BarrierBatch batch(cmdList);
+            batch.UAV(dirtTexture_);
+            batch.Transition(dirtTexture_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
 
         dirtGenerated_ = true;
     }

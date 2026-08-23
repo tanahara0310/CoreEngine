@@ -174,16 +174,8 @@ namespace CoreEngine
         /// @brief 指定ビュー・ライトのシャドウ結果テクスチャを取得する
         /// @param viewId 参照するビュー ID
         /// @param lightIndex 参照するディレクショナルライト番号
-        /// @return シャドウ結果テクスチャ。未確保なら nullptr
-        ID3D12Resource* GetShadowResource(
-            ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0) const;
-
-        /// @brief 指定ビュー・ライトのシャドウ結果リソース状態参照を取得する
-        /// @param viewId 参照するビュー ID
-        /// @param lightIndex 参照するディレクショナルライト番号
-        /// @return 自動遷移処理が共有する状態変数への参照
-        D3D12_RESOURCE_STATES& GetShadowCurrentState(
+        /// @return シャドウ結果テクスチャ（実体＋現在ステート）。未確保なら実体は nullptr
+        GpuResource& GetShadowResource(
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
 
@@ -306,11 +298,9 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE SlotUAV(uint32_t vi, uint32_t li, TextureSlot s) const {
             return outputViews_.GetUAVHandle(MakeSlotIndex(vi, li, s));
         }
-        ID3D12Resource* SlotResource(uint32_t vi, uint32_t li, TextureSlot s) const {
-            return outputViews_.GetResource(MakeSlotIndex(vi, li, s));
-        }
-        D3D12_RESOURCE_STATES& SlotState(uint32_t vi, uint32_t li, TextureSlot s) {
-            return outputViews_.GetCurrentState(MakeSlotIndex(vi, li, s));
+        /// @brief スロットをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& Slot(uint32_t vi, uint32_t li, TextureSlot s) {
+            return outputViews_.Resource(MakeSlotIndex(vi, li, s));
         }
 
         /// @brief A-Trous デノイズの最大パス数（kSteps / kPhi* テーブルの要素数）

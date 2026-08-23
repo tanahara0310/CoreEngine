@@ -206,13 +206,8 @@ namespace CoreEngine
         return GetOutputSRVHandleBase(static_cast<uint32_t>(viewId));
     }
 
-    ID3D12Resource* WaterCausticsRayTracingManager::GetCausticsResource(ViewID viewId) const
+    GpuResource& WaterCausticsRayTracingManager::GetCausticsResource(ViewID viewId)
     {
-        return GetOutputResourceBase(static_cast<uint32_t>(viewId));
-    }
-
-    D3D12_RESOURCE_STATES& WaterCausticsRayTracingManager::GetCausticsCurrentState(ViewID viewId)
-    {
-        return GetOutputCurrentStateBase(static_cast<uint32_t>(viewId));
+        return GetOutputBase(static_cast<uint32_t>(viewId));
     }
 }

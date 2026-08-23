@@ -236,6 +236,7 @@ namespace CoreEngine
 
     IDXGISwapChain4* GraphicsCore::GetSwapChain() const { return swapChainManager_->GetSwapChain(); }
     ID3D12Resource* GraphicsCore::GetSwapChainBackBuffer(UINT index) const { return swapChainManager_->GetSwapChainBackBuffer(index); }
+    GpuResource& GraphicsCore::GetBackBufferResource(UINT index) const { return swapChainManager_->BackBuffer(index); }
     D3D12_RENDER_TARGET_VIEW_DESC GraphicsCore::GetRTVDesc() const { return swapChainManager_->GetRTVDesc(); }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GraphicsCore::GetRTVHandle(UINT index) const { return swapChainManager_->GetRTVHandle(index); }
 

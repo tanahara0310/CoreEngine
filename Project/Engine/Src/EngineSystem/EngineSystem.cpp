@@ -392,8 +392,7 @@ namespace CoreEngine
             frameBlackboard.SetResource(
                 FrameBlackboard::SceneDepth,
                 dx->GetDepthStencilSRV(),
-                dx->GetDepthStencilResource(),
-                context.depthStencilManager ? &context.depthStencilManager->GetCurrentState() : nullptr);
+                context.depthStencilManager ? &context.depthStencilManager->Resource() : nullptr);
         }
 
 #ifdef USE_IMGUI

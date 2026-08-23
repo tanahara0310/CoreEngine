@@ -93,9 +93,10 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
         outputDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         outputDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        skinCluster.outputVertexResource = ResourceFactory::CreateTextureResource(
-            device, outputDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        skinCluster.outputBufferState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        skinCluster.outputVertexResource.Reset(
+            ResourceFactory::CreateTextureResource(
+                device, outputDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC outputUavDesc{};
         outputUavDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -106,7 +107,7 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
         outputUavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
         skinCluster.outputUavHandle = descriptorAllocator->CreateUAV(skinCluster.outputVertexResource.Get(), outputUavDesc, "SkinCluster OutputVertexUAV");
 
-        skinCluster.outputVertexBufferView.BufferLocation = skinCluster.outputVertexResource->GetGPUVirtualAddress();
+        skinCluster.outputVertexBufferView.BufferLocation = skinCluster.outputVertexResource.GpuAddress();
         skinCluster.outputVertexBufferView.SizeInBytes = UINT(outputSizeInBytes);
         skinCluster.outputVertexBufferView.StrideInBytes = UINT(kSkinnedVertexStride);
     }

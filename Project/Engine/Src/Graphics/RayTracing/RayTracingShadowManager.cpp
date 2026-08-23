@@ -4,7 +4,7 @@
 #include "AccelerationStructureManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
@@ -634,33 +634,23 @@ namespace CoreEngine
                 }
 
                 const TextureSlot debugSlots[] = { TextureSlot::Raw, view.CurrentHistorySlot() };
-                ResourceBarrierBatch batch(cmdList);
+                // 未確保スロットは BarrierBatch 側で無視されるので null チェックは要らない
+                BarrierBatch batch(cmdList);
                 for (TextureSlot slot : debugSlots) {
-                    if (auto* resource = SlotResource(viewIndex, lightIndex, slot)) {
-                        batch.Add(resource, SlotState(viewIndex, lightIndex, slot),
-                            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                    }
+                    batch.Transition(Slot(viewIndex, lightIndex, slot),
+                        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 }
             }
         }
     }
 
-    ID3D12Resource* RayTracingShadowManager::GetShadowResource(
-        ViewID viewId,
-        uint32_t lightIndex) const
-    {
-        // 指定ビュー・ライトの現在のシャドウ出力テクスチャを返す。
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return SlotResource(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
-    }
-
-    D3D12_RESOURCE_STATES& RayTracingShadowManager::GetShadowCurrentState(
+    GpuResource& RayTracingShadowManager::GetShadowResource(
         ViewID viewId,
         uint32_t lightIndex)
     {
-        // 自動遷移処理が共有するシャドウ出力の現在状態参照を返す。
+        // 指定ビュー・ライトの現在のシャドウ出力テクスチャを返す。
         lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return SlotState(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
+        return Slot(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
     }
 
     bool RayTracingShadowManager::IsDispatchedThisFrame(
@@ -789,9 +779,7 @@ namespace CoreEngine
         cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         cmdList4->SetPipelineState1(stateObject_.Get());
 
-        ResourceBarrierHelper::Transition(
-            cmdList, SlotResource(vi, lightIndex, TextureSlot::Raw),
-            SlotState(vi, lightIndex, TextureSlot::Raw),
+        Barrier::Transition(cmdList, Slot(vi, lightIndex, TextureSlot::Raw),
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetComputeRootDescriptorTable(
@@ -811,11 +799,11 @@ namespace CoreEngine
         cmdList4->DispatchRays(&dispatchDesc);
 
         // ApplyTemporal の読み取り前に完了を保証してから SRV 状態へ
-        ResourceBarrierHelper::UAV(cmdList, SlotResource(vi, lightIndex, TextureSlot::Raw));
-        ResourceBarrierHelper::Transition(
-            cmdList, SlotResource(vi, lightIndex, TextureSlot::Raw),
-            SlotState(vi, lightIndex, TextureSlot::Raw),
+        BarrierBatch rawToSrv(cmdList);
+        rawToSrv.UAV(Slot(vi, lightIndex, TextureSlot::Raw));
+        rawToSrv.Transition(Slot(vi, lightIndex, TextureSlot::Raw),
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        rawToSrv.Flush();
 
         view.dispatchedThisFrame = true;
         view.dispatchInfo.status = RayTracingDispatchStatus::Dispatched;
@@ -854,20 +842,17 @@ namespace CoreEngine
         const TextureSlot currentHistory = view.CurrentHistorySlot();
         const TextureSlot previousHistory = view.PreviousHistorySlot();
 
-        ID3D12Resource* rawRes = SlotResource(vi, lightIndex, TextureSlot::Raw);
-        ID3D12Resource* prevRes = SlotResource(vi, lightIndex, previousHistory);
-        ID3D12Resource* curRes = SlotResource(vi, lightIndex, currentHistory);
-        if (!rawRes || !prevRes || !curRes) return;
+        GpuResource& rawRes = Slot(vi, lightIndex, TextureSlot::Raw);
+        GpuResource& prevRes = Slot(vi, lightIndex, previousHistory);
+        GpuResource& curRes = Slot(vi, lightIndex, currentHistory);
+        if (!rawRes.IsValid() || !prevRes.IsValid() || !curRes.IsValid()) return;
 
         // 入出力の状態遷移（3リソースを一括バリア）
         {
-            ResourceBarrierBatch batch(cmdList);
-            batch.Add(rawRes, SlotState(vi, lightIndex, TextureSlot::Raw),
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(prevRes, SlotState(vi, lightIndex, previousHistory),
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(curRes, SlotState(vi, lightIndex, currentHistory),
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            BarrierBatch batch(cmdList);
+            batch.Transition(rawRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Transition(prevRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Transition(curRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
         cmdList->SetComputeRootSignature(temporalRootSignature_.Get());
@@ -898,10 +883,10 @@ namespace CoreEngine
         cmdList->Dispatch(DispatchGroupCount(view.traceWidth), DispatchGroupCount(view.traceHeight), 1);
 
         // Denoise が SRV として読むので完了を保証してから遷移
-        ResourceBarrierHelper::UAV(cmdList, curRes);
-        ResourceBarrierHelper::Transition(cmdList, curRes,
-            SlotState(vi, lightIndex, currentHistory),
-            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        BarrierBatch curToSrv(cmdList);
+        curToSrv.UAV(curRes);
+        curToSrv.Transition(curRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        curToSrv.Flush();
 
         view.isHistoryValid = true;
     }
@@ -954,17 +939,15 @@ namespace CoreEngine
                     ? TextureSlot::Mask
                     : ((pass % 2 == 0) ? TextureSlot::DenoiseA : TextureSlot::DenoiseB);
 
-                ID3D12Resource* inputRes = SlotResource(vi, lightIndex, inSlot);
-                ID3D12Resource* outputRes = SlotResource(vi, lightIndex, outSlot);
-                if (!inputRes || !outputRes) return;
+                GpuResource& inputRes = Slot(vi, lightIndex, inSlot);
+                GpuResource& outputRes = Slot(vi, lightIndex, outSlot);
+                if (!inputRes.IsValid() || !outputRes.IsValid()) return;
 
                 // 入力: SRV へ、出力: UAV へ（2リソースを一括バリア）
                 {
-                    ResourceBarrierBatch batch(cmdList);
-                    batch.Add(inputRes, SlotState(vi, lightIndex, inSlot),
-                        D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                    batch.Add(outputRes, SlotState(vi, lightIndex, outSlot),
-                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                    BarrierBatch batch(cmdList);
+                    batch.Transition(inputRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                    batch.Transition(outputRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
                 }
 
                 cmdList->SetComputeRootDescriptorTable(0, SlotSRV(vi, lightIndex, inSlot));   // t0: InputShadow
@@ -991,7 +974,7 @@ namespace CoreEngine
                 // Mask へ直接書く場合もトレース解像度＝フル解像度で寸法は一致する
                 cmdList->Dispatch(groupX, groupY, 1);
 
-                ResourceBarrierHelper::UAV(cmdList, outputRes);
+                Barrier::UAV(cmdList, outputRes);
                 lastSlot = outSlot;
             }
         }
@@ -1004,8 +987,8 @@ namespace CoreEngine
         }
 
         // 後段（DeferredLighting）はピクセルシェーダから読む
-        ResourceBarrierHelper::Transition(cmdList, SlotResource(vi, lightIndex, TextureSlot::Mask),
-            SlotState(vi, lightIndex, TextureSlot::Mask), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, Slot(vi, lightIndex, TextureSlot::Mask),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
     // =========================================================================
@@ -1024,16 +1007,14 @@ namespace CoreEngine
         if (!resolveInitialized_) return;
 
         auto& view = views_[viewIndex][lightIndex];
-        ID3D12Resource* sourceRes = SlotResource(viewIndex, lightIndex, sourceSlot);
-        ID3D12Resource* maskRes = SlotResource(viewIndex, lightIndex, TextureSlot::Mask);
-        if (!sourceRes || !maskRes) return;
+        GpuResource& sourceRes = Slot(viewIndex, lightIndex, sourceSlot);
+        GpuResource& maskRes = Slot(viewIndex, lightIndex, TextureSlot::Mask);
+        if (!sourceRes.IsValid() || !maskRes.IsValid()) return;
 
         {
-            ResourceBarrierBatch batch(cmdList);
-            batch.Add(sourceRes, SlotState(viewIndex, lightIndex, sourceSlot),
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Add(maskRes, SlotState(viewIndex, lightIndex, TextureSlot::Mask),
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            BarrierBatch batch(cmdList);
+            batch.Transition(sourceRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            batch.Transition(maskRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
         cmdList->SetComputeRootSignature(resolveRootSignature_.Get());
@@ -1058,6 +1039,6 @@ namespace CoreEngine
 
         cmdList->Dispatch(DispatchGroupCount(view.width), DispatchGroupCount(view.height), 1);
 
-        ResourceBarrierHelper::UAV(cmdList, maskRes);
+        Barrier::UAV(cmdList, maskRes);
     }
 }

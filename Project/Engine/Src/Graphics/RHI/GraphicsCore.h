@@ -25,6 +25,7 @@ namespace CoreEngine
     class SwapChainManager;
     class DepthStencilManager;
     class UploadContext;
+    class GpuResource;
 
     /// @brief DirectX12 の基盤（デバイス・コマンド・スワップチェーン・各種マネージャ）を束ねるファサード
     ///
@@ -108,6 +109,8 @@ namespace CoreEngine
         // ── スワップチェーン ────────────────────────────────────
         IDXGISwapChain4* GetSwapChain() const;
         ID3D12Resource* GetSwapChainBackBuffer(UINT index) const;
+        /// @brief バックバッファをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& GetBackBufferResource(UINT index) const;
         D3D12_RENDER_TARGET_VIEW_DESC GetRTVDesc() const;
         const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTVHandle(UINT index) const;
 

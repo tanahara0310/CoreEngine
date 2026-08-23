@@ -2,7 +2,7 @@
 #include "Graphics/RHI/Resource/DepthStencilManager.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
@@ -62,10 +62,10 @@ namespace CoreEngine
         // リソースを再作成
         CreateDepthStencilResource();
 
-        // 再作成したリソースの初期状態は DEPTH_WRITE。
         // 旧リソースの追跡状態を引き継ぐと次のバリアで Before 状態不一致
-        // (D3D12 ERROR #527) となりデバッグレイヤーがブレークするため必ずリセットする
-        currentState_ = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+        // (D3D12 ERROR #527) となりデバッグレイヤーがブレークする。
+        // CreateDepthStencilResource() 内の GpuResource::Reset() が
+        // 生成と同時に初期ステートを宣言し直すので、ここでの手当ては要らない
 
         // 既存のハンドルでDSVを更新
         UpdateDepthStencilView();
@@ -82,11 +82,7 @@ namespace CoreEngine
         assert(isInitialized_ && "DepthStencilManager must be initialized before use");
 
         // DEPTH_WRITE 状態へ遷移（既に DEPTH_WRITE なら冗長バリアをスキップ）
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            depthStencilResource_.Get(),
-            currentState_,
-            D3D12_RESOURCE_STATE_DEPTH_WRITE);
+        Barrier::Transition(cmdList, depthStencilResource_, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
         // 深度バッファをクリア
         cmdList->ClearDepthStencilView(dsvDescriptor_.cpuHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -116,11 +112,13 @@ namespace CoreEngine
         clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
         // リソースを作成
-        depthStencilResource_ = ResourceFactory::CreateTextureResource(
-            device_,
-            resourceDesc,
-            D3D12_RESOURCE_STATE_DEPTH_WRITE,
-            &clearValue);
+        depthStencilResource_.Reset(
+            ResourceFactory::CreateTextureResource(
+                device_,
+                resourceDesc,
+                D3D12_RESOURCE_STATE_DEPTH_WRITE,
+                &clearValue),
+            D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 #ifdef _DEBUG
         logger.Infof(LogCategory::Graphics, LogSubCategory::RenderTarget,

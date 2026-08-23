@@ -10,7 +10,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Debug/GpuMarker.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
@@ -270,9 +270,9 @@ namespace CoreEngine
             settings_.resolution);
 
         // 出力配列テクスチャ（全スライス）をUAVへ遷移する。
-        ResourceBarrierHelper::Transition(cmdList, displacementMap_.Get(), displacementMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, normalMap_.Get(), normalMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, jacobianMap_.Get(), jacobianMap_.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, displacementMap_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, normalMap_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, jacobianMap_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
@@ -291,8 +291,7 @@ namespace CoreEngine
                 FFTStageScope stage(cmdList, profiler, kEvolutionReadbackStageName);
                 debugProbe_.ScheduleEvolutionReadback(
                     cmdList,
-                    spectrumPingPongA_[0].Get(), spectrumPingPongA_[0].state,
-                    spectrumPingPongB_[0].Get(), spectrumPingPongB_[0].state);
+                    spectrumPingPongA_[0], spectrumPingPongB_[0]);
             }
 
             uint32_t finalSpectrumAIndex = 0;
@@ -313,8 +312,7 @@ namespace CoreEngine
                     finalSpectrumBIndex,
                     settings_.resolution,
                     GetLog2Resolution(),
-                    finalSpectrumA.Get(), finalSpectrumA.state,
-                    finalSpectrumB.Get(), finalSpectrumB.state);
+                    finalSpectrumA, finalSpectrumB);
             }
 
             {
@@ -323,15 +321,15 @@ namespace CoreEngine
             }
 
             // 次カスケードが中間ピンポンを書き換える前に、Finalizeの読み取り完了を保証する。
-            ResourceBarrierHelper::UAV(cmdList, displacementMap_.Get());
-            ResourceBarrierHelper::UAV(cmdList, normalMap_.Get());
-            ResourceBarrierHelper::UAV(cmdList, jacobianMap_.Get());
+            Barrier::UAV(cmdList, displacementMap_);
+            Barrier::UAV(cmdList, normalMap_);
+            Barrier::UAV(cmdList, jacobianMap_);
         }
 
         // 後段シェーダー参照用にSRV状態へ戻す（法線ミップ連鎖は廃止済み）。
-        ResourceBarrierHelper::Transition(cmdList, displacementMap_.Get(), displacementMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, normalMap_.Get(), normalMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, jacobianMap_.Get(), jacobianMap_.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, displacementMap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, normalMap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, jacobianMap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // 泡の蓄積・減衰（ヤコビアンが SRV 状態になった後に実行する）
         {
@@ -343,8 +341,7 @@ namespace CoreEngine
             FFTStageScope stage(cmdList, profiler, kSurfaceReadbackStageName);
             debugProbe_.ScheduleSurfaceReadback(
                 cmdList,
-                displacementMap_.Get(), displacementMap_.state,
-                normalMap_.Get(), normalMap_.state);
+                displacementMap_, normalMap_);
         }
     }
 
@@ -371,7 +368,9 @@ namespace CoreEngine
 
         try {
             for (uint32_t i = 0; i < kPingPongCount; ++i) {
-                foam_[i].resource = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                foam_[i].Reset(
+                    ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
         }
         catch (const std::exception&) {
@@ -400,8 +399,6 @@ namespace CoreEngine
             u.Texture2DArray.FirstArraySlice = 0;
             u.Texture2DArray.ArraySize = kCascadeCount;
             foam_[i].uav = descriptorAllocator_->CreateUAV(foam_[i].Get(), u, "FFTOceanFoamUAV_" + idx);
-
-            foam_[i].state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         }
 
         // 定数は 1 スロットのみ（毎フレーム上書き。simulationConstants と同じ運用）。
@@ -454,10 +451,10 @@ namespace CoreEngine
 
         // read 側は本パスの gFoamPrev（CS）に加えて、同一フレームの水面描画（PS の t21）
         // からも読まれるため、PIXEL を含む読み取り状態にする。
-        ResourceBarrierHelper::Transition(
-            cmdList, foam_[writeIndex].Get(), foam_[writeIndex].state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(
-            cmdList, foam_[readIndex].Get(), foam_[readIndex].state,
+        Barrier::Transition(
+            cmdList, foam_[writeIndex], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(
+            cmdList, foam_[readIndex],
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         cmdList->SetPipelineState(foamPipeline_.GetComputePSO());
@@ -487,8 +484,8 @@ namespace CoreEngine
 
         // 書き込んだ側は Water.PS（ピクセルシェーダー）が t21 で読むため、
         // PIXEL を含む読み取り状態へ遷移させる（来フレームは CS の gFoamPrev としても読む）。
-        ResourceBarrierHelper::Transition(
-            cmdList, foam_[writeIndex].Get(), foam_[writeIndex].state,
+        Barrier::Transition(
+            cmdList, foam_[writeIndex],
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         ++foamFrameIndex_;
@@ -577,7 +574,9 @@ namespace CoreEngine
         // スライスUAVは Finalize が各カスケードのスライスへ書き込むために使う。
         auto createOutput = [&](CascadeOutputTexture& out, const std::string& name) -> bool {
             try {
-                out.resource = ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                out.Reset(
+                    ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
             catch (const std::exception&) {
                 return false;
@@ -604,7 +603,6 @@ namespace CoreEngine
                     out.Get(), u, "FFTOcean" + name + "UAV_" + std::to_string(c));
             }
 
-            out.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
             return true;
         };
 
@@ -932,15 +930,15 @@ namespace CoreEngine
             uint64_t copiedBytes = 0;
             for (uint32_t c = 0; c < kCascadeCount; ++c) {
                 FFTOceanSpectrumBufferSet& buffers = spectrumBuffers_[c];
-                if (!buffers.defaultBuffer || !buffers.uploadBuffer) {
+                if (!buffers.defaultBuffer.IsValid() || !buffers.uploadBuffer) {
                     continue;
                 }
-                ResourceBarrierHelper::Transition(
-                    cmdList, buffers.defaultBuffer.Get(), buffers.state,
+                Barrier::Transition(
+                    cmdList, buffers.defaultBuffer,
                     D3D12_RESOURCE_STATE_COPY_DEST);
                 cmdList->CopyResource(buffers.defaultBuffer.Get(), buffers.uploadBuffer.Get());
-                ResourceBarrierHelper::Transition(
-                    cmdList, buffers.defaultBuffer.Get(), buffers.state,
+                Barrier::Transition(
+                    cmdList, buffers.defaultBuffer,
                     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 copiedBytes += buffers.uploadBuffer->GetDesc().Width;
             }

@@ -27,11 +27,10 @@ namespace CoreEngine
         }
 
         // ディスクリプタハンドルは保持したまま再利用する（リサイズ毎の確保はスロットリークになる）
-        slot.texture.Reset();
+        slot.texture.Release();
         slot.width = width;
         slot.height = height;
         slot.format = options.format;
-        slot.currentState = options.initialState;
 
         D3D12_HEAP_PROPERTIES heapProps{};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -49,13 +48,14 @@ namespace CoreEngine
             ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
             : D3D12_RESOURCE_FLAG_NONE;
 
+        Microsoft::WRL::ComPtr<ID3D12Resource> texture;
         HRESULT hr = dxCommon->GetDevice()->CreateCommittedResource(
             &heapProps,
             D3D12_HEAP_FLAG_NONE,
             &texDesc,
             options.initialState,
             nullptr,
-            IID_PPV_ARGS(&slot.texture));
+            IID_PPV_ARGS(&texture));
         if (FAILED(hr)) {
             Logger::GetInstance().Errorf(
                 LogCategory::Graphics,
@@ -68,6 +68,8 @@ namespace CoreEngine
                 static_cast<uint32_t>(hr));
             return false;
         }
+
+        slot.texture.Reset(std::move(texture), options.initialState);
 
         if (options.allowUAV) {
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
@@ -107,7 +109,7 @@ namespace CoreEngine
         }
 
         // テクスチャのみ解放し、ディスクリプタハンドルは次回 EnsureTexture() で再利用する
-        slot.texture.Reset();
+        slot.texture.Release();
         slot.width = width;
         slot.height = height;
     }

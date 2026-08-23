@@ -10,7 +10,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Diagnostics/EngineStats.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
@@ -127,8 +127,8 @@ namespace CoreEngine
     {
         // GPU リソースをデバイス破棄前に解放する（LeakChecker 対策）。
         // Shutdown 後に ~Model が UnregisterTarget を呼んでも slots_ が空なので安全。
-        hiZTexture_.Reset();
-        visibilityBuffer_.Reset();
+        hiZTexture_.Release();
+        visibilityBuffer_.Release();
         if (buildParamsBuffer_ && buildParamsMapped_) {
             buildParamsBuffer_->Unmap(0, nullptr);
         }
@@ -300,13 +300,14 @@ namespace CoreEngine
             desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
+            Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
             if (FAILED(device->CreateCommittedResource(
                     &heapProps, D3D12_HEAP_FLAG_NONE, &desc,
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                    IID_PPV_ARGS(&visibilityBuffer_)))) {
+                    IID_PPV_ARGS(&buffer)))) {
                 return false;
             }
-            visibilityState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            visibilityBuffer_.Reset(std::move(buffer), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
             uavDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -379,9 +380,13 @@ namespace CoreEngine
         desc.SampleDesc.Count = 1;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        // フレーム間は全ミップ UNORDERED_ACCESS で均一化する運用
-        hiZTexture_ = ResourceFactory::CreateTextureResource(
-            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        // フレーム間は全ミップ UNORDERED_ACCESS で均一化する運用。
+        // ミップごとに状態が変わるので subresourceCount にミップ数を渡して個別追跡させる
+        hiZTexture_.Reset(
+            ResourceFactory::CreateTextureResource(
+                device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            hiZMipCount_);
         if (!hiZTexture_) {
             return false;
         }
@@ -503,19 +508,9 @@ namespace CoreEngine
         cmdList->SetPipelineState(buildPso_.Get());
         cmdList->SetComputeRootSignature(buildRootSignatureMg_->GetRootSignature());
 
-        // ミップ単位の遷移はリソース単位追跡の ResourceBarrierHelper では扱えないため、
-        // ここで直接バリアを発行する。
         // 関数の入口で全ミップ UNORDERED_ACCESS、出口で全ミップ NON_PIXEL_SHADER_RESOURCE。
-        auto transitionMip = [&](uint32_t mip,
-            D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after) {
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = hiZTexture_.Get();
-            barrier.Transition.Subresource = mip;
-            barrier.Transition.StateBefore = before;
-            barrier.Transition.StateAfter = after;
-            cmdList->ResourceBarrier(1, &barrier);
-        };
+        // ミップ単位の遷移は GpuResource のサブリソース追跡がそのまま扱える
+        // （旧実装は追跡の外で生バリアを組み立てていた）。
 
         for (uint32_t mip = 0; mip < hiZMipCount_; ++mip) {
             if (mip == 0) {
@@ -524,9 +519,8 @@ namespace CoreEngine
                     static_cast<UINT>(buildSourceIdx_), depthSRV);
             } else {
                 // 読み側の 1 段上のミップだけ SRV 状態へ。書き込み先ミップは UAV のまま
-                transitionMip(mip - 1,
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                Barrier::Transition(cmdList, hiZTexture_,
+                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, mip - 1);
                 cmdList->SetComputeRootDescriptorTable(
                     static_cast<UINT>(buildSourceIdx_), hiZMipSrvGpu_[mip - 1].gpuHandle);
             }
@@ -541,20 +535,18 @@ namespace CoreEngine
             cmdList->Dispatch((mipW + 7) / 8, (mipH + 7) / 8, 1);
 
             // 次の段（および判定 CS）がこのミップを読むため書き込み完了を保証する
-            ResourceBarrierHelper::UAV(cmdList, hiZTexture_.Get());
+            Barrier::UAV(cmdList, hiZTexture_);
         }
 
         // 最終ミップも SRV 状態へ揃え、全ミップを判定 CS から読めるようにする
-        transitionMip(hiZMipCount_ - 1,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, hiZTexture_,
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, hiZMipCount_ - 1);
     }
 
     void HiZOcclusionSystem::DispatchCull(
         ID3D12GraphicsCommandList* cmdList, uint32_t frameIndex, uint32_t queryCount)
     {
-        ResourceBarrierHelper::Transition(cmdList, visibilityBuffer_.Get(),
-            visibilityState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, visibilityBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(cullPso_.Get());
         cmdList->SetComputeRootSignature(cullRootSignatureMg_->GetRootSignature());
@@ -571,23 +563,14 @@ namespace CoreEngine
         cmdList->Dispatch((queryCount + 63) / 64, 1, 1);
 
         // 判定結果を Readback バッファへコピー（CPU は同リングインデックスの次回フレームで読む）
-        ResourceBarrierHelper::UAV(cmdList, visibilityBuffer_.Get());
-        ResourceBarrierHelper::Transition(cmdList, visibilityBuffer_.Get(),
-            visibilityState_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::UAV(cmdList, visibilityBuffer_);
+        Barrier::Transition(cmdList, visibilityBuffer_, D3D12_RESOURCE_STATE_COPY_SOURCE);
         cmdList->CopyBufferRegion(readback_[frameIndex].Get(), 0,
             visibilityBuffer_.Get(), 0, sizeof(uint32_t) * queryCount);
-        ResourceBarrierHelper::Transition(cmdList, visibilityBuffer_.Get(),
-            visibilityState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, visibilityBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         // Hi-Z を次フレームの構築に備えて全ミップ UNORDERED_ACCESS へ戻す
-        for (uint32_t mip = 0; mip < hiZMipCount_; ++mip) {
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = hiZTexture_.Get();
-            barrier.Transition.Subresource = mip;
-            barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            cmdList->ResourceBarrier(1, &barrier);
-        }
+        // （全ミップ同一ステートなので ALL_SUBRESOURCES 1 本にまとまる）
+        Barrier::Transition(cmdList, hiZTexture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 }

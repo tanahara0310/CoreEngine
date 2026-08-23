@@ -66,9 +66,10 @@ namespace CoreEngine
         /// @brief 屈折出力テクスチャの SRV ハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetRefractionSRVHandle(ViewID viewId = ViewID::GameView) const;
         /// @brief 屈折出力テクスチャのリソース
-        ID3D12Resource* GetRefractionResource(ViewID viewId = ViewID::GameView) const;
+        /// @brief 出力テクスチャをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& GetRefractionResource(ViewID viewId = ViewID::GameView);
         /// @brief 屈折出力の現在ステートへの参照（バリア時に更新される）
-        D3D12_RESOURCE_STATES& GetRefractionCurrentState(ViewID viewId = ViewID::GameView);
+
 
         void SetSettings(const WaterRefractionRayTracingSettings& settings) { settings_ = settings; }
         const WaterRefractionRayTracingSettings& GetSettings() const { return settings_; }

@@ -6,7 +6,7 @@
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -126,14 +126,9 @@ namespace CoreEngine
         return outputViews_.GetSRVHandle(viewIndex);
     }
 
-    ID3D12Resource* RayTracingPassBase::GetOutputResourceBase(uint32_t viewIndex) const
+    GpuResource& RayTracingPassBase::GetOutputBase(uint32_t viewIndex)
     {
-        return outputViews_.GetResource(viewIndex);
-    }
-
-    D3D12_RESOURCE_STATES& RayTracingPassBase::GetOutputCurrentStateBase(uint32_t viewIndex)
-    {
-        return outputViews_.GetCurrentState(viewIndex);
+        return outputViews_.Resource(viewIndex);
     }
 
     // ディスパッチ可能かを判定する。DXR オブジェクト・出力テクスチャ・
@@ -256,8 +251,7 @@ namespace CoreEngine
 
         outResources.outputSrvHandle = GetOutputSRVHandleBase(viewIndex);
         outResources.outputUavHandle = outputViews_.GetUAVHandle(viewIndex);
-        outResources.outputResource = GetOutputResourceBase(viewIndex);
-        outResources.outputCurrentState = &GetOutputCurrentStateBase(viewIndex);
+        outResources.output = &GetOutputBase(viewIndex);
         lastDispatchInfo_.outputSrvPtr = outResources.outputSrvHandle.ptr;
         return true;
     }
@@ -265,29 +259,18 @@ namespace CoreEngine
     // 出力テクスチャを UNORDERED_ACCESS へ遷移させる（DispatchRays の直前に呼ぶ）
     void RayTracingPassBase::BeginOutputWrite(
         ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* outputResource,
-        D3D12_RESOURCE_STATES& outputCurrentState) const
+        GpuResource& output) const
     {
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            outputResource,
-            outputCurrentState,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        outputCurrentState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        Barrier::Transition(cmdList, output, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 
     void RayTracingPassBase::EndOutputWrite(
         ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* outputResource,
-        D3D12_RESOURCE_STATES& outputCurrentState,
+        GpuResource& output,
         D3D12_RESOURCE_STATES finalState) const
     {
-        ResourceBarrierHelper::UAV(cmdList, outputResource);
-        ResourceBarrierHelper::Transition(
-            cmdList,
-            outputResource,
-            outputCurrentState,
-            finalState);
-        outputCurrentState = finalState;
+        BarrierBatch batch(cmdList);
+        batch.UAV(output);
+        batch.Transition(output, finalState);
     }
 }

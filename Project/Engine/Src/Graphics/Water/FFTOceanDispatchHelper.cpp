@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "FFTOceanDispatchHelper.h"
 
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 
 namespace CoreEngine
 {
@@ -18,10 +18,10 @@ namespace CoreEngine
         // 追跡ステートから必要な状態へ遷移させるため、ここでは触らない
         // （以前は index 1 を毎回 COMMON へ落としており、カスケード×フレームごとに
         //   無意味なバリアを発行していた）。
-        ResourceBarrierHelper::Transition(
-            cmdList, spectrumA[0].Get(), spectrumA[0].state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(
-            cmdList, spectrumB[0].Get(), spectrumB[0].state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(
+            cmdList, spectrumA[0], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(
+            cmdList, spectrumB[0], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(evolutionPipeline.GetComputePSO());
         cmdList->SetComputeRootSignature(evolutionPipeline.GetComputeRootSignature());
@@ -52,8 +52,8 @@ namespace CoreEngine
         const UINT dispatchY = (resolution + 7) / 8;
         cmdList->Dispatch(dispatchX, dispatchY, 1);
 
-        ResourceBarrierHelper::UAV(cmdList, spectrumA[0].Get());
-        ResourceBarrierHelper::UAV(cmdList, spectrumB[0].Get());
+        Barrier::UAV(cmdList, spectrumA[0]);
+        Barrier::UAV(cmdList, spectrumB[0]);
     }
 
     void FFTOceanDispatchHelper::DispatchIFFTPass(
@@ -64,8 +64,8 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS ifftConstantsGpuAddress,
         uint32_t resolution)
     {
-        ResourceBarrierHelper::Transition(cmdList, input.Get(), input.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, output.Get(), output.state, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, input, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, output, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(pipeline.GetComputePSO());
         cmdList->SetComputeRootSignature(pipeline.GetComputeRootSignature());
@@ -90,7 +90,7 @@ namespace CoreEngine
         const UINT dispatchX = (resolution + 7) / 8;
         const UINT dispatchY = (resolution + 7) / 8;
         cmdList->Dispatch(dispatchX, dispatchY, 1);
-        ResourceBarrierHelper::UAV(cmdList, output.Get());
+        Barrier::UAV(cmdList, output);
     }
 
     void FFTOceanDispatchHelper::DispatchFinalizePass(
@@ -104,8 +104,8 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
         uint32_t resolution)
     {
-        ResourceBarrierHelper::Transition(cmdList, spectrumA.Get(), spectrumA.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, spectrumB.Get(), spectrumB.state, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, spectrumA, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, spectrumB, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         cmdList->SetPipelineState(finalizePipeline.GetComputePSO());
         cmdList->SetComputeRootSignature(finalizePipeline.GetComputeRootSignature());

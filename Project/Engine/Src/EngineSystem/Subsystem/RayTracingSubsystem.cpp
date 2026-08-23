@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Light/LightManager.h"

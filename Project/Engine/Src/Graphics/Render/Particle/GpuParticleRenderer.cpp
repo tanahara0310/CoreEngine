@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "GpuParticleRenderer.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 
@@ -104,41 +105,18 @@ namespace CoreEngine
         cmdList_->ExecuteIndirect(commandSignature_.Get(), 1, system->GetArgsResource(), 0, nullptr, 0);
     }
 
-    namespace {
-    /// @brief バッファの状態遷移バリアを積む（同一ステートならスキップ）
-        void TransitionBuffer(
-            ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* resource,
-            D3D12_RESOURCE_STATES before,
-            D3D12_RESOURCE_STATES after)
-        {
-            if (before == after) {
-                return;
-            }
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = resource;
-            barrier.Transition.StateBefore = before;
-            barrier.Transition.StateAfter = after;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            cmdList->ResourceBarrier(1, &barrier);
-        }
-    }
-
     void GpuParticleRenderer::DispatchCompute(GpuParticleSystem* system)
     {
         const uint32_t emitCount = system->GetEmitCount();
         const bool reset = system->IsResetPending();
 
         // ── 1. 前準備: インスタンシング→UAV、カウンタ/間接引数→COPY_DEST ──
-        TransitionBuffer(cmdList_, system->GetInstancingResource(),
-            system->GetInstancingState(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        system->SetInstancingState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        TransitionBuffer(cmdList_, system->GetCounterResource(),
-            system->GetCounterState(), D3D12_RESOURCE_STATE_COPY_DEST);
-        TransitionBuffer(cmdList_, system->GetArgsResource(),
-            system->GetArgsState(), D3D12_RESOURCE_STATE_COPY_DEST);
+        {
+            BarrierBatch batch(cmdList_);
+            batch.Transition(system->Instancing(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            batch.Transition(system->Counter(), D3D12_RESOURCE_STATE_COPY_DEST);
+            batch.Transition(system->Args(), D3D12_RESOURCE_STATE_COPY_DEST);
+        }
 
         // 初回のみGPUバッファをコピーで初期化する
         // （CSのresetフラグ方式はCB1面の毎フレーム上書きと競合して実行されないことがあるため不使用）
@@ -152,22 +130,18 @@ namespace CoreEngine
                 system->GetUploadInitResource(), GpuParticleSystem::kInitCountersOffset,
                 sizeof(uint32_t) * GpuParticleSystem::kCounterCount);
             // フリーリスト {0, 1, ..., kMaxParticles-1}
-            TransitionBuffer(cmdList_, system->GetFreeListResource(),
-                system->GetFreeListState(), D3D12_RESOURCE_STATE_COPY_DEST);
+            Barrier::Transition(cmdList_, system->FreeList(), D3D12_RESOURCE_STATE_COPY_DEST);
             cmdList_->CopyBufferRegion(system->GetFreeListResource(), 0,
                 system->GetUploadInitResource(), GpuParticleSystem::kInitFreeListOffset,
                 sizeof(uint32_t) * GpuParticleSystem::kMaxParticles);
-            TransitionBuffer(cmdList_, system->GetFreeListResource(),
-                D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            system->SetFreeListState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            Barrier::Transition(cmdList_, system->FreeList(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         // drawCount（counter[2]）を毎フレーム0クリア（アップロードバッファの0領域をコピー元に使う）
         cmdList_->CopyBufferRegion(system->GetCounterResource(),
             sizeof(uint32_t) * GpuParticleSystem::kCounterDrawIndex,
             system->GetUploadInitResource(), sizeof(uint32_t), sizeof(uint32_t));
 
-        TransitionBuffer(cmdList_, system->GetCounterResource(),
-            D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList_, system->Counter(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         // ── 2. Emit CS（リセットフレームは放出しない） ──
         if (!reset && emitCount > 0) {
@@ -191,10 +165,7 @@ namespace CoreEngine
             cmdList_->Dispatch(groupCount, 1, 1);
 
             // Emit の書き込み（粒子・カウンタ・フリーリスト）を Update から見えるようにする
-            D3D12_RESOURCE_BARRIER uavBarrier{};
-            uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-            uavBarrier.UAV.pResource = nullptr; // 全UAV
-            cmdList_->ResourceBarrier(1, &uavBarrier);
+            Barrier::UAVAll(cmdList_);
         }
 
         // ── 3. Update CS（全スロット更新 + 死亡回収 + コンパクション書き込み） ──
@@ -221,14 +192,10 @@ namespace CoreEngine
         cmdList_->Dispatch(groupCount, 1, 1);
 
         // Update の書き込み完了待ち
-        D3D12_RESOURCE_BARRIER uavBarrier{};
-        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        uavBarrier.UAV.pResource = nullptr; // 全UAV
-        cmdList_->ResourceBarrier(1, &uavBarrier);
+        Barrier::UAVAll(cmdList_);
 
         // ── 4. カウンタのコピー: 間接引数の InstanceCount 更新 + 統計リードバック ──
-        TransitionBuffer(cmdList_, system->GetCounterResource(),
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::Transition(cmdList_, system->Counter(), D3D12_RESOURCE_STATE_COPY_SOURCE);
 
         cmdList_->CopyBufferRegion(system->GetArgsResource(), sizeof(uint32_t) * 1, // InstanceCount
             system->GetCounterResource(), sizeof(uint32_t) * GpuParticleSystem::kCounterDrawIndex,
@@ -236,18 +203,13 @@ namespace CoreEngine
         cmdList_->CopyBufferRegion(system->GetReadbackResource(), 0,
             system->GetCounterResource(), 0, sizeof(uint32_t) * GpuParticleSystem::kCounterCount);
 
-        TransitionBuffer(cmdList_, system->GetCounterResource(),
-            D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        system->SetCounterState(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-        TransitionBuffer(cmdList_, system->GetArgsResource(),
-            D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-        system->SetArgsState(D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
-
         // ── 5. インスタンシングバッファを頂点シェーダーから読める状態へ ──
-        TransitionBuffer(cmdList_, system->GetInstancingResource(),
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        system->SetInstancingState(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        {
+            BarrierBatch batch(cmdList_);
+            batch.Transition(system->Counter(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            batch.Transition(system->Args(), D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+            batch.Transition(system->Instancing(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        }
 
         if (reset) {
             system->ClearResetPending();

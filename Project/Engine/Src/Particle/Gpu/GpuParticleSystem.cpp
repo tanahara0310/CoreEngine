@@ -72,12 +72,9 @@ void GpuParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* reso
     // ──────────────────────────────────────────────────────────
 
     particleResource_ = CreateUavBuffer(sizeof(GpuParticleData) * kMaxParticles);
-    counterResource_ = CreateUavBuffer(sizeof(uint32_t) * kCounterCount);
-    freeListResource_ = CreateUavBuffer(sizeof(uint32_t) * kMaxParticles);
-    instancingResource_ = CreateUavBuffer(sizeof(ParticleForGPU) * kMaxParticles);
-    instancingState_ = D3D12_RESOURCE_STATE_COMMON;
-    counterState_ = D3D12_RESOURCE_STATE_COMMON;
-    argsState_ = D3D12_RESOURCE_STATE_COMMON;
+    counterResource_.Reset(CreateUavBuffer(sizeof(uint32_t) * kCounterCount), D3D12_RESOURCE_STATE_COMMON);
+    freeListResource_.Reset(CreateUavBuffer(sizeof(uint32_t) * kMaxParticles), D3D12_RESOURCE_STATE_COMMON);
+    instancingResource_.Reset(CreateUavBuffer(sizeof(ParticleForGPU) * kMaxParticles), D3D12_RESOURCE_STATE_COMMON);
 
     // 間接引数バッファ（ExecuteIndirect 用、UAV不要・コピー先/間接引数のみ）
     {
@@ -92,12 +89,14 @@ void GpuParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* reso
         desc.Format = DXGI_FORMAT_UNKNOWN;
         desc.SampleDesc.Count = 1;
         desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        Microsoft::WRL::ComPtr<ID3D12Resource> args;
         HRESULT hr = device->CreateCommittedResource(
             &heapProps, D3D12_HEAP_FLAG_NONE, &desc,
-            D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&argsResource_));
+            D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&args));
         if (FAILED(hr)) {
             throw std::runtime_error("GpuParticleSystem: Failed to create indirect args buffer");
         }
+        argsResource_.Reset(std::move(args), D3D12_RESOURCE_STATE_COMMON);
     }
 
     // 初期化用アップロードバッファ（CopyBufferRegion のコピー元。オフセット定数はヘッダ参照）

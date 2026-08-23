@@ -56,8 +56,7 @@ namespace CoreEngine
 
         context.volumetricCloudManager->RenderGodRays(
             cmdList,
-            sceneColorTarget->GetResource(),
-            sceneColorTarget->GetCurrentState(),
+            sceneColorTarget->Resource(),
             sceneColorTarget->GetSRVHandle(),
             context.dxCommon->GetDepthStencilSRV(),
             context.atmosphereManager);

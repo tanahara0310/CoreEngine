@@ -5,18 +5,22 @@
 #include <string>
 #include <unordered_map>
 
+#include "Graphics/RHI/Resource/GpuResource.h"
+
 namespace CoreEngine
 {
     /// @brief フレーム内で共有する論理リソースの 1 エントリ
+    /// @details 実リソースと現在ステートは `GpuResource` が 1 つで持つ。
+    ///          旧実装は `ID3D12Resource*` と `D3D12_RESOURCE_STATES*` を別々に
+    ///          抱えており、両方揃わないとバリアを張れない構造だった
     struct FrameBlackboardResource {
         std::string name;
         D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
-        ID3D12Resource* resource = nullptr;
-        D3D12_RESOURCE_STATES* currentState = nullptr;
+        GpuResource* resource = nullptr;
         bool isValid = false;
 
         /// @brief Blackboard エントリをリセットする
-        /// @details SRV、リソース、状態参照を無効化し、このフレームで未登録状態へ戻す
+        /// @details SRV とリソース参照を無効化し、このフレームで未登録状態へ戻す
         void Reset();
     };
 
@@ -57,13 +61,11 @@ namespace CoreEngine
         /// @brief 論理名に対応するリソース情報を登録する
         /// @param name 論理リソース名
         /// @param srvHandle リソースを参照する SRV ハンドル
-        /// @param resource 実リソース
-        /// @param currentState 実リソースの現在状態を追跡する参照先
+        /// @param resource 実リソース（ステート追跡込み）。SRV だけ登録するなら nullptr
         void SetResource(
             const std::string& name,
             D3D12_GPU_DESCRIPTOR_HANDLE srvHandle,
-            ID3D12Resource* resource,
-            D3D12_RESOURCE_STATES* currentState = nullptr);
+            GpuResource* resource = nullptr);
 
         /// @brief 指定した論理リソースを無効化する
         /// @param name 無効化する論理リソース名
@@ -80,11 +82,6 @@ namespace CoreEngine
         /// @return 有効な SRV を取得できた場合 true
         bool TryGetSrvHandle(const std::string& name, D3D12_GPU_DESCRIPTOR_HANDLE& outHandle) const;
 
-        /// @brief 論理名からリソース状態参照を取得する
-        /// @param name 取得対象の論理リソース名
-        /// @return 状態参照を保持している場合はそのポインタ。無い場合は nullptr
-        D3D12_RESOURCE_STATES* GetCurrentStateRef(const std::string& name) const;
-
         /// @brief 論理名が有効なリソースを持つか確認する
         /// @param name 確認対象の論理リソース名
         /// @return 有効なリソースが登録済みなら true
@@ -93,12 +90,10 @@ namespace CoreEngine
         /// @brief Blackboard 登録情報を RenderGraph リソースへ反映する
         /// @param name 論理リソース名
         /// @param outResource 実リソースの出力先
-        /// @param outCurrentState 現在状態参照の出力先
         /// @return 有効な登録がある場合 true
         bool TryResolveResource(
             const std::string& name,
-            ID3D12Resource*& outResource,
-            D3D12_RESOURCE_STATES*& outCurrentState) const;
+            GpuResource*& outResource) const;
 
     private:
         std::unordered_map<std::string, FrameBlackboardResource> resources_;

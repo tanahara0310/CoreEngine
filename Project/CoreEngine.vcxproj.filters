@@ -322,9 +322,6 @@
     <ClCompile Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.cpp">
       <Filter>Engine\Src\Diagnostics</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\ResourceBarrierHelper.cpp">
-      <Filter>Engine\Src\Graphics\RHI\Barrier</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\IBL\IBLSystem.cpp">
       <Filter>Engine\Src\Graphics\IBL</Filter>
     </ClCompile>
@@ -1090,6 +1087,8 @@
     <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\GpuResource.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
@@ -1298,9 +1297,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\IResizable.h">
       <Filter>Engine\Src\Graphics\RHI</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\RHI\Barrier\ResourceBarrierHelper.h">
-      <Filter>Engine\Src\Graphics\RHI\Barrier</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Diagnostics\EngineStats.h">
       <Filter>Engine\Src\Diagnostics</Filter>
@@ -2487,18 +2483,14 @@
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\GpuResource.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Application\Assets\Models\human\walk.bin">
       <Filter>Application\Assets\Models\human</Filter>
     </None>
     <None Include="Build\Scripts\SyncFilters.ps1">
-      <Filter>Build\Scripts</Filter>
-    </None>
-    <None Include="Build\Scripts\Collect-DX12FoundationMetrics.ps1">
-      <Filter>Build\Scripts</Filter>
-    </None>
-    <None Include="Build\Scripts\Run-EngineSmokeTest.ps1">
       <Filter>Build\Scripts</Filter>
     </None>
     <None Include="Engine\Src\Particle\README.md">

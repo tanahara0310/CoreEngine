@@ -44,20 +44,15 @@ namespace CoreEngine
         caustics->Execute(context, outputHandle);
 
         if (context.frameBlackboard) {
-            ID3D12Resource* resource = nullptr;
-            D3D12_RESOURCE_STATES* stateRef = nullptr;
+            GpuResource* resource = nullptr;
             if (RenderTarget* target = context.renderTargetManager->GetRenderTarget(targetName_)) {
-                resource = target->GetResource();
-                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
-                    stateRef = &offscreen->GetCurrentState();
-                }
+                resource = &target->Resource();
             }
 
             context.frameBlackboard->SetResource(
                 FrameBlackboard::WaterCaustics,
                 outputHandle,
-                resource,
-                stateRef);
+                resource);
 
             if (caustics->GetParams().debugLogEnabled != 0) {
                 Logger::GetInstance().Infof(
@@ -66,7 +61,7 @@ namespace CoreEngine
                     "WaterCausticsPass: blackboard updated. handle=0x{:X} resource={} state={} waves={} mainLight={} debugViewMode={}",
                     outputHandle.ptr,
                     resource != nullptr,
-                    stateRef ? static_cast<uint32_t>(*stateRef) : 0u,
+                    resource ? static_cast<uint32_t>(resource->State()) : 0u,
                     caustics->GetDiagnostics().activeWaveCount,
                     caustics->GetDiagnostics().mainLightEnabled,
                     caustics->GetParams().debugViewMode);

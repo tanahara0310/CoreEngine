@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
@@ -202,7 +203,8 @@ namespace CoreEngine
         DescriptorAllocator* descriptorAllocator_ = nullptr;
 
         // Hi-Z ピラミッド（R32_FLOAT、フルミップチェーン。フレーム間は全ミップ UAV 状態で均一化）
-        Microsoft::WRL::ComPtr<ID3D12Resource> hiZTexture_;
+        /// @brief Hi-Z ピラミッド。ミップごとに状態が食い違うのでサブリソース単位で追跡する
+        GpuResource hiZTexture_;
         uint32_t hiZWidth_ = 0;   // mip0 の幅（深度の 1/2）
         uint32_t hiZHeight_ = 0;  // mip0 の高さ
         uint32_t hiZMipCount_ = 0;
@@ -228,8 +230,7 @@ namespace CoreEngine
         std::array<CullParamsGPU*, kFrameRing> cullParamsMapped_{};
 
         // 可視フラグ（Default ヒープ UAV）と Readback リング
-        Microsoft::WRL::ComPtr<ID3D12Resource> visibilityBuffer_;
-        D3D12_RESOURCE_STATES visibilityState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource visibilityBuffer_;
         D3D12_CPU_DESCRIPTOR_HANDLE visibilityUavCpu_{};
         DescriptorHandle visibilityUavGpu_{};
         std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameRing> readback_;

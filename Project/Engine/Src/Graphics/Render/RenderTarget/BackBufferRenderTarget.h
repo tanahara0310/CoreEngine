@@ -45,16 +45,12 @@ namespace CoreEngine
         /// @brief 現在のバックバッファインデックスを取得
         UINT GetCurrentBackBufferIndex() const;
 
-        /// @brief 現在のバックバッファリソース状態参照を取得
-        /// @return 自動バリア処理が更新する状態変数への参照
-        D3D12_RESOURCE_STATES& GetCurrentState() { return currentState_; }
-
-        /// @brief 現在のバックバッファリソース状態を取得
-        /// @return 追跡中のバックバッファ状態
-        D3D12_RESOURCE_STATES GetCurrentState() const { return currentState_; }
+        /// @brief 現在のバックバッファをステート追跡つきで返す
+        /// @details ステートはバックバッファ 1 枚ごとに SwapChainManager が持つ。
+        ///          旧実装は「今のバックバッファ」1 つ分の変数で 2 枚を追跡していた
+        GpuResource& Resource() override;
 
     private:
         GraphicsCore* dxCommon_ = nullptr;
-        D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_PRESENT;
     };
 }

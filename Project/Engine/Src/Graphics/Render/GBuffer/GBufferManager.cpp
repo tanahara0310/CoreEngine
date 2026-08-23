@@ -155,10 +155,10 @@ namespace CoreEngine
         return kGBufferFormats.data();
     }
 
-    D3D12_RESOURCE_STATES& GBufferManager::GetCurrentState(Target target)
+    GpuResource& GBufferManager::Resource(Target target)
     {
         ValidateState();
-        return targets_[ToIndex(target)].currentState;
+        return targets_[ToIndex(target)].resource;
     }
 
     void GBufferManager::CreateOrResizeTarget(Target target)
@@ -187,13 +187,14 @@ namespace CoreEngine
             clearValue.Color[i] = kGBufferClearColors[index][i];
         }
 
-        targetResource.resource = ResourceFactory::CreateTextureResource(
-            device_,
-            texDesc,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            &clearValue);
+        targetResource.resource.Reset(
+            ResourceFactory::CreateTextureResource(
+                device_,
+                texDesc,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                &clearValue),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-        targetResource.currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         CreateViews(targetResource, target, !targetResource.rtvHandle.IsValid());
 
 #ifdef _DEBUG

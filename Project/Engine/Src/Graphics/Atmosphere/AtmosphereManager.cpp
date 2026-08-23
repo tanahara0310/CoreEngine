@@ -2,7 +2,7 @@
 #include "AtmosphereManager.h"
 
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -189,15 +189,14 @@ namespace CoreEngine
             kTransmittanceLUTWidth, kTransmittanceLUTHeight, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
         try {
-            transmittanceLUT_ = ResourceFactory::CreateTextureResource(
-                deviceRef, transmittanceDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            transmittanceLUT_.Reset(ResourceFactory::CreateTextureResource(
+                deviceRef, transmittanceDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         catch (const std::exception&) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "AtmosphereManager: Transmittance LUT テクスチャの生成に失敗");
             return false;
         }
-        transmittanceState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = transmittanceDesc.Format;
@@ -218,15 +217,14 @@ namespace CoreEngine
             kMultiScatteringLUTSize, kMultiScatteringLUTSize, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
         try {
-            multiScatteringLUT_ = ResourceFactory::CreateTextureResource(
-                deviceRef, multiScatteringDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            multiScatteringLUT_.Reset(ResourceFactory::CreateTextureResource(
+                deviceRef, multiScatteringDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         catch (const std::exception&) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "AtmosphereManager: Multi-Scattering LUT テクスチャの生成に失敗");
             return false;
         }
-        multiScatteringState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         srvDesc.Format = multiScatteringDesc.Format;
         uavDesc.Format = multiScatteringDesc.Format;
@@ -238,15 +236,14 @@ namespace CoreEngine
             kSkyViewLUTWidth, kSkyViewLUTHeight, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
         try {
-            skyViewLUT_ = ResourceFactory::CreateTextureResource(
-                deviceRef, skyViewDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            skyViewLUT_.Reset(ResourceFactory::CreateTextureResource(
+                deviceRef, skyViewDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         catch (const std::exception&) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "AtmosphereManager: Sky-View LUT テクスチャの生成に失敗");
             return false;
         }
-        skyViewState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         srvDesc.Format = skyViewDesc.Format;
         uavDesc.Format = skyViewDesc.Format;
@@ -266,15 +263,14 @@ namespace CoreEngine
         volumeDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
         try {
-            cameraVolumeLUT_ = ResourceFactory::CreateTextureResource(
-                deviceRef, volumeDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            cameraVolumeLUT_.Reset(ResourceFactory::CreateTextureResource(
+                deviceRef, volumeDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         catch (const std::exception&) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "AtmosphereManager: Camera Volume LUT テクスチャの生成に失敗");
             return false;
         }
-        cameraVolumeState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         D3D12_SHADER_RESOURCE_VIEW_DESC volumeSrvDesc{};
         volumeSrvDesc.Format = volumeDesc.Format;
@@ -307,15 +303,16 @@ namespace CoreEngine
             bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             bufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
+            Microsoft::WRL::ComPtr<ID3D12Resource> shBuffer;
             if (FAILED(device->CreateCommittedResource(
                     &heapProps, D3D12_HEAP_FLAG_NONE, &bufferDesc,
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                    IID_PPV_ARGS(&skyIrradianceSHBuffer_)))) {
+                    IID_PPV_ARGS(&shBuffer)))) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "AtmosphereManager: 空アンビエント SH バッファの生成に失敗");
                 return false;
             }
-            skyIrradianceState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+            skyIrradianceSHBuffer_.Reset(std::move(shBuffer), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
             D3D12_SHADER_RESOURCE_VIEW_DESC shSrvDesc{};
             shSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -350,15 +347,14 @@ namespace CoreEngine
             cubeDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
             try {
-                skyCubemap_ = ResourceFactory::CreateTextureResource(
-                    deviceRef, cubeDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                skyCubemap_.Reset(ResourceFactory::CreateTextureResource(
+                    deviceRef, cubeDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
             catch (const std::exception&) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "AtmosphereManager: 空キューブマップの生成に失敗");
                 return false;
             }
-            skyCubemapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
             D3D12_SHADER_RESOURCE_VIEW_DESC cubeSrvDesc{};
             cubeSrvDesc.Format = cubeDesc.Format;
@@ -391,15 +387,14 @@ namespace CoreEngine
             specDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
             try {
-                skySpecularMap_ = ResourceFactory::CreateTextureResource(
-                    deviceRef, specDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                skySpecularMap_.Reset(ResourceFactory::CreateTextureResource(
+                    deviceRef, specDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
             catch (const std::exception&) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "AtmosphereManager: 空スペキュラキューブマップの生成に失敗");
                 return false;
             }
-            skySpecularState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
             D3D12_SHADER_RESOURCE_VIEW_DESC specSrvDesc{};
             specSrvDesc.Format = specDesc.Format;
@@ -570,8 +565,7 @@ namespace CoreEngine
     void AtmosphereManager::GenerateBaseLUTs(ID3D12GraphicsCommandList* cmdList)
     {
         // ===== Transmittance LUT =====
-        ResourceBarrierHelper::Transition(cmdList, transmittanceLUT_.Get(),
-            transmittanceState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, transmittanceLUT_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(transmittancePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(transmittancePipeline_.GetComputeRootSignature());
@@ -593,13 +587,11 @@ namespace CoreEngine
             1);
 
         // Multi-Scattering パスが SRV として読めるよう遷移
-        ResourceBarrierHelper::UAV(cmdList, transmittanceLUT_.Get());
-        ResourceBarrierHelper::Transition(cmdList, transmittanceLUT_.Get(),
-            transmittanceState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, transmittanceLUT_);
+        Barrier::Transition(cmdList, transmittanceLUT_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // ===== Multi-Scattering LUT（Transmittance LUT を参照） =====
-        ResourceBarrierHelper::Transition(cmdList, multiScatteringLUT_.Get(),
-            multiScatteringState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, multiScatteringLUT_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(multiScatteringPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(multiScatteringPipeline_.GetComputeRootSignature());
@@ -626,15 +618,13 @@ namespace CoreEngine
             1);
 
         // 描画シェーダーから参照できるよう SRV 状態へ遷移
-        ResourceBarrierHelper::UAV(cmdList, multiScatteringLUT_.Get());
-        ResourceBarrierHelper::Transition(cmdList, multiScatteringLUT_.Get(),
-            multiScatteringState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, multiScatteringLUT_);
+        Barrier::Transition(cmdList, multiScatteringLUT_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 
     void AtmosphereManager::GenerateSkyViewLUT(ID3D12GraphicsCommandList* cmdList)
     {
-        ResourceBarrierHelper::Transition(cmdList, skyViewLUT_.Get(),
-            skyViewState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, skyViewLUT_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(skyViewPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(skyViewPipeline_.GetComputeRootSignature());
@@ -665,9 +655,8 @@ namespace CoreEngine
             (kSkyViewLUTHeight + 7) / 8,
             1);
 
-        ResourceBarrierHelper::UAV(cmdList, skyViewLUT_.Get());
-        ResourceBarrierHelper::Transition(cmdList, skyViewLUT_.Get(),
-            skyViewState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, skyViewLUT_);
+        Barrier::Transition(cmdList, skyViewLUT_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 
     void AtmosphereManager::GenerateSkyIrradianceSH(ID3D12GraphicsCommandList* cmdList)
@@ -677,8 +666,7 @@ namespace CoreEngine
         }
 
         // GenerateSkyViewLUT 直後に呼ばれる前提（Sky-View LUT は SRV 状態）
-        ResourceBarrierHelper::Transition(cmdList, skyIrradianceSHBuffer_.Get(),
-            skyIrradianceState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, skyIrradianceSHBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(skyIrradiancePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(skyIrradiancePipeline_.GetComputeRootSignature());
@@ -703,9 +691,8 @@ namespace CoreEngine
         cmdList->Dispatch(1, 1, 1);
 
         // DeferredLighting（ピクセルシェーダー）から読めるよう SRV 状態へ遷移
-        ResourceBarrierHelper::UAV(cmdList, skyIrradianceSHBuffer_.Get());
-        ResourceBarrierHelper::Transition(cmdList, skyIrradianceSHBuffer_.Get(),
-            skyIrradianceState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, skyIrradianceSHBuffer_);
+        Barrier::Transition(cmdList, skyIrradianceSHBuffer_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         skyIrradianceGenerated_ = true;
     }
@@ -734,8 +721,7 @@ namespace CoreEngine
             return;
         }
 
-        ResourceBarrierHelper::Transition(cmdList, skyCubemap_.Get(),
-            skyCubemapState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, skyCubemap_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(skyEnvironmentCapturePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(skyEnvironmentCapturePipeline_.GetComputeRootSignature());
@@ -762,7 +748,7 @@ namespace CoreEngine
             6);
 
         // 直後に雲の前乗算合成（同じ UAV への読み書き）が入るため UAV バリアで区切る
-        ResourceBarrierHelper::UAV(cmdList, skyCubemap_.Get());
+        Barrier::UAV(cmdList, skyCubemap_);
     }
 
     void AtmosphereManager::PrefilterSkyEnvironment(ID3D12GraphicsCommandList* cmdList)
@@ -772,10 +758,8 @@ namespace CoreEngine
         }
 
         // 入力（空＋雲キューブマップ）を SRV、出力ミップ群を UAV へ
-        ResourceBarrierHelper::Transition(cmdList, skyCubemap_.Get(),
-            skyCubemapState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, skySpecularMap_.Get(),
-            skySpecularState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, skyCubemap_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, skySpecularMap_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(skyEnvironmentPrefilterPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(skyEnvironmentPrefilterPipeline_.GetComputeRootSignature());
@@ -805,17 +789,15 @@ namespace CoreEngine
         }
 
         // ピクセルシェーダー（DeferredLighting / Water.PS）から読める状態へ
-        ResourceBarrierHelper::UAV(cmdList, skySpecularMap_.Get());
-        ResourceBarrierHelper::Transition(cmdList, skySpecularMap_.Get(),
-            skySpecularState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, skySpecularMap_);
+        Barrier::Transition(cmdList, skySpecularMap_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         skyEnvironmentGenerated_ = true;
     }
 
     void AtmosphereManager::GenerateCameraVolumeLUT(ID3D12GraphicsCommandList* cmdList)
     {
-        ResourceBarrierHelper::Transition(cmdList, cameraVolumeLUT_.Get(),
-            cameraVolumeState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, cameraVolumeLUT_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(cameraVolumePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(cameraVolumePipeline_.GetComputeRootSignature());
@@ -846,18 +828,17 @@ namespace CoreEngine
             (kCameraVolumeSize + 3) / 4,
             (kCameraVolumeSize + 3) / 4);
 
-        ResourceBarrierHelper::UAV(cmdList, cameraVolumeLUT_.Get());
-        ResourceBarrierHelper::Transition(cmdList, cameraVolumeLUT_.Get(),
-            cameraVolumeState_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, cameraVolumeLUT_);
+        Barrier::Transition(cmdList, cameraVolumeLUT_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 
-    bool AtmosphereManager::EnsureAerialPerspectiveTarget(ID3D12Resource* sceneColor)
+    bool AtmosphereManager::EnsureAerialPerspectiveTarget(GpuResource& sceneColor)
     {
         if (!sceneColor || !device_ || !descriptorAllocator_) {
             return false;
         }
 
-        const D3D12_RESOURCE_DESC sceneDesc = sceneColor->GetDesc();
+        const D3D12_RESOURCE_DESC sceneDesc = sceneColor.Desc();
         if (apResult_ && apResultWidth_ == sceneDesc.Width && apResultHeight_ == sceneDesc.Height) {
             return true;
         }
@@ -868,15 +849,14 @@ namespace CoreEngine
 
         Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device_;
         try {
-            apResult_ = ResourceFactory::CreateTextureResource(
-                deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            apResult_.Reset(ResourceFactory::CreateTextureResource(
+                deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         catch (const std::exception&) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "AtmosphereManager: Aerial Perspective 中間テクスチャの生成に失敗");
             return false;
         }
-        apResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
         apResultWidth_ = sceneDesc.Width;
         apResultHeight_ = sceneDesc.Height;
 
@@ -892,8 +872,7 @@ namespace CoreEngine
 
     void AtmosphereManager::ApplyAerialPerspective(
         ID3D12GraphicsCommandList* cmdList,
-        ID3D12Resource* sceneColor,
-        D3D12_RESOURCE_STATES& sceneColorState,
+        GpuResource& sceneColor,
         D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle)
     {
@@ -905,10 +884,8 @@ namespace CoreEngine
         }
 
         // ===== 合成 CS: SceneColor + SceneDepth + CameraVolume → 中間テクスチャ =====
-        ResourceBarrierHelper::Transition(cmdList, sceneColor,
-            sceneColorState, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, apResult_.Get(),
-            apResultState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, apResult_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(aerialPerspectivePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(aerialPerspectivePipeline_.GetComputeRootSignature());
@@ -945,19 +922,15 @@ namespace CoreEngine
             1);
 
         // ===== 結果を SceneColor へコピーバック =====
-        ResourceBarrierHelper::UAV(cmdList, apResult_.Get());
-        ResourceBarrierHelper::Transition(cmdList, apResult_.Get(),
-            apResultState_, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        ResourceBarrierHelper::Transition(cmdList, sceneColor,
-            sceneColorState, D3D12_RESOURCE_STATE_COPY_DEST);
+        Barrier::UAV(cmdList, apResult_);
+        Barrier::Transition(cmdList, apResult_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_COPY_DEST);
 
-        cmdList->CopyResource(sceneColor, apResult_.Get());
+        cmdList->CopyResource(sceneColor.Get(), apResult_.Get());
 
         // 後続パス（GeometryPass の RT 描画）に備えて元の想定状態へ戻す
-        ResourceBarrierHelper::Transition(cmdList, sceneColor,
-            sceneColorState, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, apResult_.Get(),
-            apResultState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, sceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, apResult_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 
     void AtmosphereManager::SetParametersFromEditor(const AtmosphereParameters& params)

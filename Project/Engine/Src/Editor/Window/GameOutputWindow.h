@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
+
 #include <Windows.h>
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -81,12 +83,10 @@ namespace CoreEngine
 
         Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain_;
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvHeap_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> backBuffers_[kBufferCount];
-        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles_[kBufferCount] = {};
-
-        /// @brief バックバッファの現在状態（バリア発行の基準）
+        /// @brief バックバッファ（実体＋現在ステート）
         /// @details 転写のたびに RENDER_TARGET → PRESENT を往復するため、バッファごとに追跡する。
-        D3D12_RESOURCE_STATES backBufferStates_[kBufferCount] = {};
+        GpuResource backBuffers_[kBufferCount];
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles_[kBufferCount] = {};
 
         UINT currentBackBufferIndex_ = 0;
         int32_t clientWidth_ = 0;

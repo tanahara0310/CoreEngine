@@ -51,8 +51,7 @@ namespace CoreEngine
 
         context.atmosphereManager->ApplyAerialPerspective(
             cmdList,
-            sceneColorTarget->GetResource(),
-            sceneColorTarget->GetCurrentState(),
+            sceneColorTarget->Resource(),
             sceneColorTarget->GetSRVHandle(),
             context.dxCommon->GetDepthStencilSRV());
     }

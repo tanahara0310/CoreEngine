@@ -2,7 +2,7 @@
 #include "OffscreenRenderTarget.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 
 #include <algorithm>
@@ -77,13 +77,13 @@ namespace CoreEngine
         clearValue.Color[3] = clearColor_[3];
 
         Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
-        resource_ = ResourceFactory::CreateTextureResource(
-            device,
-            texDesc,
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-            &clearValue);
-
-        currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        resource_.Reset(
+            ResourceFactory::CreateTextureResource(
+                device,
+                texDesc,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                &clearValue),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
     void OffscreenRenderTarget::CreateViews()
@@ -151,12 +151,7 @@ namespace CoreEngine
         dsvHandle_ = useCustomDsvHandle_ ? customDsvHandle_ : dxCommon_->GetDSVHandle();
 
         // 実際のリソース状態から RENDER_TARGET へ遷移（状態不一致によるチラつきを防ぐ）
-        if (currentState_ != D3D12_RESOURCE_STATE_RENDER_TARGET) {
-            ResourceBarrierHelper::Transition(cmdList, resource_.Get(),
-                currentState_,
-                D3D12_RESOURCE_STATE_RENDER_TARGET);
-            currentState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        }
+        Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         // RTV & DSV設定
         // useDepthBuffer_=false の場合（SSAOなどポストプロセス専用パス）は
@@ -204,12 +199,7 @@ namespace CoreEngine
         assert(resource_);
 
         // 実際のリソース状態から PIXEL_SHADER_RESOURCE へ遷移
-        if (currentState_ != D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) {
-            ResourceBarrierHelper::Transition(cmdList, resource_.Get(),
-                currentState_,
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-            currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        }
+        Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE OffscreenRenderTarget::GetUAVHandle() const
@@ -222,12 +212,7 @@ namespace CoreEngine
         assert(cmdList);
         assert(resource_);
 
-        if (currentState_ != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
-            ResourceBarrierHelper::Transition(cmdList, resource_.Get(),
-                currentState_,
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            currentState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        }
+        Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
     }
@@ -237,12 +222,7 @@ namespace CoreEngine
         assert(cmdList);
         assert(resource_);
 
-        if (currentState_ != D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) {
-            ResourceBarrierHelper::Transition(cmdList, resource_.Get(),
-                currentState_,
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            currentState_ = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-        }
+        Barrier::Transition(cmdList, resource_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 
     void OffscreenRenderTarget::GetSize(int32_t& width, int32_t& height) const
@@ -274,20 +254,5 @@ namespace CoreEngine
     int32_t OffscreenRenderTarget::GetHeight() const
     {
         return height_;
-    }
-
-    void OffscreenRenderTarget::SetCurrentState(D3D12_RESOURCE_STATES state)
-    {
-        currentState_ = state;
-    }
-
-    D3D12_RESOURCE_STATES& OffscreenRenderTarget::GetCurrentState()
-    {
-        return currentState_;
-    }
-
-    D3D12_RESOURCE_STATES OffscreenRenderTarget::GetCurrentState() const
-    {
-        return currentState_;
     }
 }

@@ -3,6 +3,8 @@
 #include <wrl.h>
 #include <cstdint>
 
+#include "Graphics/RHI/Resource/GpuResource.h"
+
 namespace CoreEngine
 {
     class GraphicsCore;
@@ -32,6 +34,11 @@ namespace CoreEngine
         /// @brief リソースを取得
         /// @return リソースポインタ
         virtual ID3D12Resource* GetResource() const = 0;
+
+        /// @brief リソースをステート追跡つきで取得する
+        /// @details バリアを張る側は必ずこちらを使う。
+        ///          呼び出し側が `D3D12_RESOURCE_STATES` を持たないための入口
+        virtual GpuResource& Resource() = 0;
 
         /// @brief サイズを取得
         /// @param width 幅（出力）

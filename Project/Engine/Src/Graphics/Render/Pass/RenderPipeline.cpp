@@ -397,8 +397,7 @@ namespace CoreEngine
             context.frameBlackboard->SetResource(
                 FrameBlackboard::SceneDepth,
                 context.depthStencilManager->GetDepthSRVHandle(),
-                context.depthStencilManager->GetDepthStencilResource(),
-                &context.depthStencilManager->GetCurrentState());
+                &context.depthStencilManager->Resource());
         }
 
         if (context.renderTargetManager) {
@@ -416,83 +415,47 @@ namespace CoreEngine
             context.renderTargetManager->LogAllocationIfChanged();
 
             if (RenderTarget* sceneColorTarget = context.renderTargetManager->GetRenderTarget(context.viewSettings.sceneColorTargetName)) {
-                D3D12_RESOURCE_STATES* sceneColorState = nullptr;
-                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(sceneColorTarget)) {
-                    sceneColorState = &offscreen->GetCurrentState();
-                }
-
                 context.frameBlackboard->SetResource(
                     FrameBlackboard::SceneColor,
                     sceneColorTarget->GetSRVHandle(),
-                    sceneColorTarget->GetResource(),
-                    sceneColorState);
+                    &sceneColorTarget->Resource());
             }
 
             if (RenderTarget* sceneColorSnapshotTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::SceneColorSnapshot)) {
-                D3D12_RESOURCE_STATES* sceneColorSnapshotState = nullptr;
-                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(sceneColorSnapshotTarget)) {
-                    sceneColorSnapshotState = &offscreen->GetCurrentState();
-                }
-
                 context.frameBlackboard->SetResource(
                     FrameBlackboard::SceneColorSnapshot,
                     sceneColorSnapshotTarget->GetSRVHandle(),
-                    sceneColorSnapshotTarget->GetResource(),
-                    sceneColorSnapshotState);
+                    &sceneColorSnapshotTarget->Resource());
             }
 
             for (size_t index = 0; index < intermediateCount; ++index) {
                 if (RenderTarget* postEffectIntermediateTarget = context.renderTargetManager->GetPostEffectIntermediateTarget(index)) {
-                    D3D12_RESOURCE_STATES* stateRef = nullptr;
-                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(postEffectIntermediateTarget)) {
-                        stateRef = &offscreen->GetCurrentState();
-                    }
-
                     context.frameBlackboard->SetResource(
                         FrameBlackboard::MakePostEffectIntermediateName(index),
                         postEffectIntermediateTarget->GetSRVHandle(),
-                        postEffectIntermediateTarget->GetResource(),
-                        stateRef);
+                        &postEffectIntermediateTarget->Resource());
                 }
             }
 
             if (RenderTarget* postEffectFinalTarget = context.renderTargetManager->GetPostEffectFinalTarget()) {
-                D3D12_RESOURCE_STATES* finalState = nullptr;
-                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(postEffectFinalTarget)) {
-                    finalState = &offscreen->GetCurrentState();
-                }
-
                 context.frameBlackboard->SetResource(
                     FrameBlackboard::PostEffectFinal,
                     postEffectFinalTarget->GetSRVHandle(),
-                    postEffectFinalTarget->GetResource(),
-                    finalState);
+                    &postEffectFinalTarget->Resource());
             }
 
             if (RenderTarget* backBufferTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::BackBuffer)) {
-                D3D12_RESOURCE_STATES* backBufferState = nullptr;
-                if (auto* backBuffer = dynamic_cast<BackBufferRenderTarget*>(backBufferTarget)) {
-                    backBufferState = &backBuffer->GetCurrentState();
-                }
-
                 context.frameBlackboard->SetResource(
                     FrameBlackboard::BackBuffer,
                     backBufferTarget->GetSRVHandle(),
-                    backBufferTarget->GetResource(),
-                    backBufferState);
+                    &backBufferTarget->Resource());
             }
 
             if (RenderTarget* waterCausticsTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::WaterCausticsBuffer)) {
-                D3D12_RESOURCE_STATES* waterCausticsState = nullptr;
-                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(waterCausticsTarget)) {
-                    waterCausticsState = &offscreen->GetCurrentState();
-                }
-
                 context.frameBlackboard->SetResource(
                     FrameBlackboard::WaterCaustics,
                     waterCausticsTarget->GetSRVHandle(),
-                    waterCausticsTarget->GetResource(),
-                    waterCausticsState);
+                    &waterCausticsTarget->Resource());
             }
 
             // TAA 履歴の ping-pong を論理名へ束ねる。
@@ -516,31 +479,19 @@ namespace CoreEngine
                         continue;
                     }
 
-                    D3D12_RESOURCE_STATES* taaState = nullptr;
-                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(taaTarget)) {
-                        taaState = &offscreen->GetCurrentState();
-                    }
-
                     context.frameBlackboard->SetResource(
                         entry.logicalName,
                         taaTarget->GetSRVHandle(),
-                        taaTarget->GetResource(),
-                        taaState);
+                        &taaTarget->Resource());
                 }
             }
 
             if (IsCASActive(context)) {
                 if (RenderTarget* casTarget = context.renderTargetManager->GetRenderTarget(RenderTargetNames::CASOutput)) {
-                    D3D12_RESOURCE_STATES* casState = nullptr;
-                    if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(casTarget)) {
-                        casState = &offscreen->GetCurrentState();
-                    }
-
                     context.frameBlackboard->SetResource(
                         FrameBlackboard::CASOutput,
                         casTarget->GetSRVHandle(),
-                        casTarget->GetResource(),
-                        casState);
+                        &casTarget->Resource());
                 }
             }
         }
@@ -555,8 +506,7 @@ namespace CoreEngine
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTShadowMask,
                 context.rtShadowManager->GetShadowSRVHandle(rtShadowViewId, 0),
-                context.rtShadowManager->GetShadowResource(rtShadowViewId, 0),
-                &context.rtShadowManager->GetShadowCurrentState(rtShadowViewId, 0));
+                &context.rtShadowManager->GetShadowResource(rtShadowViewId, 0));
         }
 
         if (context.gBufferManager) {
@@ -574,8 +524,7 @@ namespace CoreEngine
                 context.frameBlackboard->SetResource(
                     entry.logicalName,
                     context.gBufferManager->GetSRVHandle(entry.target),
-                    context.gBufferManager->GetResource(entry.target),
-                    &context.gBufferManager->GetCurrentState(entry.target));
+                    &context.gBufferManager->Resource(entry.target));
             }
         }
     }
@@ -903,9 +852,9 @@ namespace CoreEngine
             RenderGraphSnapshotResource entry;
             entry.name = resourceName;
             entry.version = graphResource.version;
-            entry.resolved = (graphResource.resource != nullptr && graphResource.currentState != nullptr);
-            if (graphResource.currentState) {
-                entry.stateAtCapture = *graphResource.currentState;
+            entry.resolved = (graphResource.resource != nullptr);
+            if (graphResource.resource) {
+                entry.stateAtCapture = graphResource.resource->State();
             }
             if (context.frameBlackboard) {
                 context.frameBlackboard->TryGetSrvHandle(resourceName, entry.srvHandle);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
+
 #include <d3d12.h>
 #include <wrl.h>
 #include <string>
@@ -147,6 +149,10 @@ namespace CoreEngine
 
         /// @brief 頂点バッファリソースを取得（BLAS 構築用）
         ID3D12Resource* GetVertexBuffer() const { return vertexBuffer_.Get(); }
+        /// @brief 頂点バッファをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& VertexBuffer() { return vertexBuffer_; }
+        /// @brief インデックスバッファをステート追跡つきで返す
+        GpuResource& IndexBuffer() { return indexBuffer_; }
 
         /// @brief インデックスバッファリソースを取得（BLAS 構築用）
         ID3D12Resource* GetIndexBuffer() const { return indexBuffer_.Get(); }
@@ -179,11 +185,11 @@ namespace CoreEngine
         /// LoadFromFile/LoadFromModelData の末尾（テクスチャハンドル確定後）で呼ぶ。
         void CreateDefaultMaterials();
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
+        GpuResource vertexBuffer_;
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
         UINT vertexCount_ = 0;
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer_;
+        GpuResource indexBuffer_;
         D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
         UINT indexCount_ = 0;
 

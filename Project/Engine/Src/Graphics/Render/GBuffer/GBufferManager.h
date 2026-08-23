@@ -2,6 +2,7 @@
 
 #include <array>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include <cstdint>
 #include <d3d12.h>
 #include <wrl.h>
@@ -68,8 +69,8 @@ namespace CoreEngine
         DXGI_FORMAT GetFormat(Target target) const;
         /// @brief 全ターゲットのフォーマット配列（PSO の RTV 設定に渡す）
         const DXGI_FORMAT* GetFormats() const;
-        /// @brief 指定ターゲットの現在ステートへの参照（バリア時に更新される）
-        D3D12_RESOURCE_STATES& GetCurrentState(Target target);
+        /// @brief 指定ターゲットをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& Resource(Target target);
 
         uint32_t GetTargetCount() const { return kTargetCount; }
         int32_t GetWidth() const { return currentWidth_; }
@@ -77,12 +78,11 @@ namespace CoreEngine
         bool IsInitialized() const { return isInitialized_; }
 
     private:
-        /// @brief G-Buffer の 1 枚分（実体・RTV/SRV・現在ステート）
+        /// @brief G-Buffer の 1 枚分（実体＋現在ステート・RTV/SRV）
         struct TargetResource {
-            Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+            GpuResource resource;
             DescriptorHandle rtvHandle{};
             DescriptorHandle srvHandle{};
-            D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
         };
 
         void CreateOrResizeTarget(Target target);

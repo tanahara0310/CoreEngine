@@ -246,18 +246,12 @@ namespace CoreEngine
         // 結果を Blackboard に公開する。
         if (outputHandle.ptr != 0) {
             auto* target = context.renderTargetManager->GetRenderTarget(targetName_);
-            ID3D12Resource* outputResource = target ? target->GetResource() : nullptr;
 
             if (context.frameBlackboard) {
-                D3D12_RESOURCE_STATES* stateRef = nullptr;
-                if (auto* offscreen = dynamic_cast<OffscreenRenderTarget*>(target)) {
-                    stateRef = &offscreen->GetCurrentState();
-                }
                 context.frameBlackboard->SetResource(
                     FrameBlackboard::SceneColor,
                     outputHandle,
-                    outputResource,
-                    stateRef);
+                    target ? &target->Resource() : nullptr);
             }
         }
     }

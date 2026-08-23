@@ -2,7 +2,7 @@
 #include "AccelerationStructureManager.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/VertexData.h"
 #include "Utility/Logger/Logger.h"
@@ -151,7 +151,7 @@ namespace CoreEngine
         cmdList4->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
         // UAV バリア（BLAS 構築完了を保証）
-        ResourceBarrierHelper::UAV(cmdList, entry.result.Get());
+        Barrier::UAVRaw(cmdList, entry.result.Get());
 
         UINT blasIndex = static_cast<UINT>(blasList_.size());
         blasList_.push_back(std::move(entry));
@@ -302,7 +302,7 @@ namespace CoreEngine
         cmdList4->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
         // UAV バリア
-        ResourceBarrierHelper::UAV(cmdList, tlasResult_.Get());
+        Barrier::UAVRaw(cmdList, tlasResult_.Get());
 
         // TLAS の SRV を作成（初回のみ確保、以降は更新）
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};

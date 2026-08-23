@@ -70,13 +70,10 @@ namespace CoreEngine
 
         if (context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE handle = context.rtWaterRefractionManager->GetRefractionSRVHandle(viewId);
-            ID3D12Resource* resource = context.rtWaterRefractionManager->GetRefractionResource(viewId);
-            D3D12_RESOURCE_STATES& currentState = context.rtWaterRefractionManager->GetRefractionCurrentState(viewId);
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTWaterRefractionColor,
                 handle,
-                resource,
-                &currentState);
+                &context.rtWaterRefractionManager->GetRefractionResource(viewId));
         }
 
         // 診断ログは UI の「RT屈折ログを有効にする」でのみ出す

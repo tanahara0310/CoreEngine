@@ -87,14 +87,9 @@ namespace CoreEngine
         ///          Begin() を呼ぶ前の値は不定。
         D3D12_CPU_DESCRIPTOR_HANDLE GetBoundDSVHandle() const { return dsvHandle_; }
 
-        /// @brief 現在のリソース状態を外部から強制設定する
-        /// @note 複数 View 実行後など、実際の状態が外部で変更された場合に使用
-        void SetCurrentState(D3D12_RESOURCE_STATES state);
-        /// @brief 現在のリソース状態参照を取得する
-        /// @return 外部の自動バリア処理が更新する状態変数への参照
-        D3D12_RESOURCE_STATES& GetCurrentState();
-        /// @brief 現在のリソースステート（バリア発行時の判定に使う）
-        D3D12_RESOURCE_STATES GetCurrentState() const;
+        /// @brief リソースをステート追跡つきで返す（バリア発行はこれを渡す）
+        /// @note 旧 API の `SetCurrentState()`（＝ステートの真実が外にもあることの自白）は廃止した
+        GpuResource& Resource() override { return resource_; }
 
     private:
         void CreateOrResizeResource(uint32_t width, uint32_t height);
@@ -104,7 +99,7 @@ namespace CoreEngine
 
         GraphicsCore* dxCommon_ = nullptr;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
-        Microsoft::WRL::ComPtr<ID3D12Resource> resource_;
+        GpuResource resource_;
         DescriptorHandle rtvDescriptor_{};
         DescriptorHandle srvDescriptor_{};
         DescriptorHandle uavDescriptor_{};
@@ -117,6 +112,5 @@ namespace CoreEngine
         bool autoResize_ = true;
         bool useCustomDsvHandle_ = false;
         D3D12_CPU_DESCRIPTOR_HANDLE customDsvHandle_{};
-        D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
     };
 }

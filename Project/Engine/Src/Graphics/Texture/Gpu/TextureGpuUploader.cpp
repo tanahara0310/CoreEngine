@@ -4,7 +4,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Command/UploadContext.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FileErrorDialog/FileErrorDialog.h"
@@ -65,10 +65,11 @@ namespace CoreEngine
             UpdateSubresources(recording.List(), result.texture.Get(), intermediate.Get(),
                 0, 0, UINT(subResources.size()), subResources.data());
 
-            D3D12_RESOURCE_STATES texState = D3D12_RESOURCE_STATE_COPY_DEST;
-            ResourceBarrierHelper::Transition(
-                recording.List(), result.texture.Get(),
-                texState, D3D12_RESOURCE_STATE_GENERIC_READ);
+            // テクスチャキャッシュ側は生ハンドルのまま扱うので、ここだけ一時的に追跡する
+            GpuResource uploaded;
+            uploaded.Reset(result.texture, D3D12_RESOURCE_STATE_COPY_DEST);
+            Barrier::Transition(
+                recording.List(), uploaded, D3D12_RESOURCE_STATE_GENERIC_READ);
 
             // 中間バッファは GPU コピー完了まで生きていればよい。
             // 呼び出し側が永久に握る必要はなく、フェンス通過後に自動解放される。

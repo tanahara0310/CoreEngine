@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "SkinningComputeDispatcher.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "SkinCluster.h"
@@ -58,17 +59,9 @@ namespace CoreEngine
         // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
         (void)srvHeap;
 
-        // 出力バッファを前フレームの状態からUAVへ戻す（初回はUNORDERED_ACCESSのまま）
-        if (skinCluster.outputBufferState != D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = skinCluster.outputVertexResource.Get();
-            barrier.Transition.StateBefore = skinCluster.outputBufferState;
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            cmdList->ResourceBarrier(1, &barrier);
-            skinCluster.outputBufferState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        }
+        // 出力バッファを前フレームの状態からUAVへ戻す（初回はUNORDERED_ACCESSのままなので無発行）
+        Barrier::Transition(cmdList, skinCluster.outputVertexResource,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetComputeRootSignature(rootSignatureMg_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
@@ -93,18 +86,9 @@ namespace CoreEngine
         cmdList->Dispatch(groupCount, 1, 1);
 
         // 出力バッファを頂点バッファとして読めるように遷移
-        D3D12_RESOURCE_BARRIER uavBarrier{};
-        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        uavBarrier.UAV.pResource = skinCluster.outputVertexResource.Get();
-        cmdList->ResourceBarrier(1, &uavBarrier);
-
-        D3D12_RESOURCE_BARRIER transitionBarrier{};
-        transitionBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        transitionBarrier.Transition.pResource = skinCluster.outputVertexResource.Get();
-        transitionBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        transitionBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-        transitionBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        cmdList->ResourceBarrier(1, &transitionBarrier);
-        skinCluster.outputBufferState = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+        BarrierBatch batch(cmdList);
+        batch.UAV(skinCluster.outputVertexResource);
+        batch.Transition(skinCluster.outputVertexResource,
+            D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
     }
 }

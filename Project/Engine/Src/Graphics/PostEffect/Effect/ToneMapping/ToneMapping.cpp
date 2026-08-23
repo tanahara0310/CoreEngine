@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "ToneMapping.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Editor/ImGui/ImguiManager.h"
@@ -192,12 +193,14 @@ namespace CoreEngine
             desc.SampleDesc.Count = 1;
             desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
             desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
             if (FAILED(graphicsCore_->GetDevice()->CreateCommittedResource(
                     &heapProps, D3D12_HEAP_FLAG_NONE, &desc,
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS, nullptr,
-                    IID_PPV_ARGS(&avgLogLumBuffer_)))) {
+                    IID_PPV_ARGS(&buffer)))) {
                 return;
             }
+            avgLogLumBuffer_.Reset(std::move(buffer), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
 
         // ===== リードバックリング（GPU が最大2フレーム遅延しても読み書きが重ならない） =====
@@ -300,33 +303,23 @@ namespace CoreEngine
         if (texIdx >= 0) cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
         if (cbIdx >= 0) cmdList->SetComputeRootConstantBufferView(cbIdx, screenParamsCB_->GetGPUVirtualAddress());
         if (histIdx >= 0) cmdList->SetComputeRootConstantBufferView(histIdx, histogramParamsCB_->GetGPUVirtualAddress());
-        if (uavIdx >= 0) cmdList->SetComputeRootUnorderedAccessView(uavIdx, avgLogLumBuffer_->GetGPUVirtualAddress());
+        if (uavIdx >= 0) cmdList->SetComputeRootUnorderedAccessView(uavIdx, avgLogLumBuffer_.GpuAddress());
 
         // 1グループのみ（シェーダー側が 64x64 グリッドを分担して groupshared で縮約する）
         cmdList->Dispatch(1, 1, 1);
 
         // 書き込み完了を待ってリードバックへコピー
-        D3D12_RESOURCE_BARRIER uavBarrier{};
-        uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        uavBarrier.UAV.pResource = avgLogLumBuffer_.Get();
-        cmdList->ResourceBarrier(1, &uavBarrier);
-
-        D3D12_RESOURCE_BARRIER toCopySource{};
-        toCopySource.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        toCopySource.Transition.pResource = avgLogLumBuffer_.Get();
-        toCopySource.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        toCopySource.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        toCopySource.Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_SOURCE;
-        cmdList->ResourceBarrier(1, &toCopySource);
+        {
+            BarrierBatch batch(cmdList);
+            batch.UAV(avgLogLumBuffer_);
+            batch.Transition(avgLogLumBuffer_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        }
 
         const uint32_t writeSlot = static_cast<uint32_t>(reductionFrameCounter_ % kReadbackCount);
         cmdList->CopyBufferRegion(
             readbackBuffers_[writeSlot].Get(), 0, avgLogLumBuffer_.Get(), 0, sizeof(float));
 
-        D3D12_RESOURCE_BARRIER backToUav = toCopySource;
-        backToUav.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
-        backToUav.Transition.StateAfter = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-        cmdList->ResourceBarrier(1, &backToUav);
+        Barrier::Transition(cmdList, avgLogLumBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         ++reductionFrameCounter_;
     }

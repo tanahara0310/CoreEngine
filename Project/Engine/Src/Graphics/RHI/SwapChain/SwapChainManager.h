@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Resource/GpuResource.h"
 
 // 前方宣言
 namespace CoreEngine {
@@ -34,6 +35,11 @@ public:
     // アクセッサ
     IDXGISwapChain4* GetSwapChain() const { return swapChain_.Get(); }
     ID3D12Resource* GetSwapChainBackBuffer(UINT index) const { return swapChainResources_[index].Get(); }
+    /// @brief バックバッファをステート追跡つきで返す
+    /// @details 旧実装は BackBufferRenderTarget が「今のバックバッファ」1 つ分の
+    ///          ステート変数しか持っておらず、2 枚を 1 変数で追跡していた。
+    ///          ここで 1 枚ごとに GpuResource を持たせて解消している
+    GpuResource& BackBuffer(UINT index) { return swapChainResources_[index]; }
     const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTVHandle(UINT index) const { return rtvDescriptors_[index].cpuHandle; }
     D3D12_RENDER_TARGET_VIEW_DESC GetRTVDesc() const { return rtvDesc_; }
 
@@ -50,7 +56,7 @@ private:
 private:
     // スワップチェーン関連
     Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> swapChainResources_[2];
+    GpuResource swapChainResources_[2];
 
     // バックバッファの RTV スロット（DescriptorAllocator から確保。リサイズ時は同じスロットへ書き直す）
     DescriptorHandle rtvDescriptors_[2]{};

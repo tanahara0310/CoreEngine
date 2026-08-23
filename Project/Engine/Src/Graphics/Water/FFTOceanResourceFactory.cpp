@@ -64,9 +64,11 @@ namespace CoreEngine
 
         auto createOne = [&](FFTOceanGpuTexture& tex, const char* label, uint32_t index) -> bool {
             try {
-                tex.resource = ResourceFactory::CreateTextureResource(
-                    deviceRef,
-                    textureDesc,
+                tex.Reset(
+                    ResourceFactory::CreateTextureResource(
+                        deviceRef,
+                        textureDesc,
+                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
                     D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
             catch (const std::exception&) {
@@ -77,7 +79,6 @@ namespace CoreEngine
                 tex.Get(), srvDesc, std::string("FFTOceanSpectrum") + label + "_SRV_" + idx);
             tex.uav = descriptorAllocator->CreateUAV(
                 tex.Get(), uavDesc, std::string("FFTOceanSpectrum") + label + "_UAV_" + idx);
-            tex.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
             return true;
         };
 
@@ -99,11 +100,10 @@ namespace CoreEngine
         uint32_t sampleStride,
         FFTOceanSpectrumBufferSet& outSet)
     {
-        Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumBuffer = outSet.defaultBuffer;
+        GpuResource& spectrumBuffer = outSet.defaultBuffer;
         Microsoft::WRL::ComPtr<ID3D12Resource>& spectrumUploadBuffer = outSet.uploadBuffer;
         void*& mappedSpectrumSamples = outSet.mapped;
         DescriptorHandle& spectrumSrvHandle = outSet.srv;
-        D3D12_RESOURCE_STATES& spectrumBufferState = outSet.state;
 
         if (!device || !descriptorAllocator || sampleStride == 0) {
             return false;
@@ -124,9 +124,11 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
         try {
-            spectrumBuffer = ResourceFactory::CreateTextureResource(
-                deviceRef,
-                desc,
+            spectrumBuffer.Reset(
+                ResourceFactory::CreateTextureResource(
+                    deviceRef,
+                    desc,
+                    D3D12_RESOURCE_STATE_COPY_DEST),
                 D3D12_RESOURCE_STATE_COPY_DEST);
             spectrumUploadBuffer = ResourceFactory::CreateBufferResource(
                 deviceRef,
@@ -161,7 +163,6 @@ namespace CoreEngine
         // CPU が書いた UPLOAD 側は spectrumBufferDirty 経由で次の Dispatch 時にコピーされる。
         spectrumSrvHandle = descriptorAllocator->CreateSRV(spectrumBuffer.Get(), srvDesc, "FFTOceanSpectrumSamplesSRV");
 
-        spectrumBufferState = D3D12_RESOURCE_STATE_COPY_DEST;
         return true;
     }
 

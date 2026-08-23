@@ -81,9 +81,10 @@ namespace CoreEngine
         /// @brief コースティクス出力テクスチャの SRV ハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetCausticsSRVHandle(ViewID viewId = ViewID::GameView) const;
         /// @brief コースティクス出力テクスチャのリソース
-        ID3D12Resource* GetCausticsResource(ViewID viewId = ViewID::GameView) const;
+        /// @brief 出力テクスチャをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& GetCausticsResource(ViewID viewId = ViewID::GameView);
         /// @brief コースティクス出力の現在ステートへの参照（バリア時に更新される）
-        D3D12_RESOURCE_STATES& GetCausticsCurrentState(ViewID viewId = ViewID::GameView);
+
 
         void SetSettings(const WaterCausticsRayTracingSettings& settings) { settings_ = settings; }
         const WaterCausticsRayTracingSettings& GetSettings() const { return settings_; }

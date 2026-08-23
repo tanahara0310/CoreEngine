@@ -57,8 +57,7 @@ namespace CoreEngine
 
         context.volumetricCloudManager->RenderClouds(
             cmdList,
-            sceneColorTarget->GetResource(),
-            sceneColorTarget->GetCurrentState(),
+            sceneColorTarget->Resource(),
             sceneColorTarget->GetSRVHandle(),
             context.dxCommon->GetDepthStencilSRV(),
             context.atmosphereManager);

@@ -89,14 +89,9 @@ namespace CoreEngine
         return GetOutputSRVHandleBase(static_cast<uint32_t>(viewId));
     }
 
-    ID3D12Resource* WaterRefractionRayTracingManager::GetRefractionResource(ViewID viewId) const
+    GpuResource& WaterRefractionRayTracingManager::GetRefractionResource(ViewID viewId)
     {
-        return GetOutputResourceBase(static_cast<uint32_t>(viewId));
-    }
-
-    D3D12_RESOURCE_STATES& WaterRefractionRayTracingManager::GetRefractionCurrentState(ViewID viewId)
-    {
-        return GetOutputCurrentStateBase(static_cast<uint32_t>(viewId));
+        return GetOutputBase(static_cast<uint32_t>(viewId));
     }
 
     // 水面から下向きに屈折レイを飛ばし、水中のシーン色を屈折テクスチャへ書く。

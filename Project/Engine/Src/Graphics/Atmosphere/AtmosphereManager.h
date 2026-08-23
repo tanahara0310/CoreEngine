@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
@@ -324,11 +325,10 @@ namespace CoreEngine
         // ===== Aerial Perspective =====
 
         /// @brief SceneColor へ空気遠近感を合成する（AerialPerspectivePass から呼ばれる）
-        /// @param sceneColorState SceneColor の現在状態（追跡参照）
+        /// @param sceneColor SceneColor（実体＋現在ステート）
         void ApplyAerialPerspective(
             ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* sceneColor,
-            D3D12_RESOURCE_STATES& sceneColorState,
+            GpuResource& sceneColor,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSrvHandle,
             D3D12_GPU_DESCRIPTOR_HANDLE depthSrvHandle);
 
@@ -419,7 +419,7 @@ namespace CoreEngine
         void GenerateCameraVolumeLUT(ID3D12GraphicsCommandList* cmdList);
 
         /// @brief Aerial Perspective 合成用の中間テクスチャを SceneColor と同サイズで確保する
-        bool EnsureAerialPerspectiveTarget(ID3D12Resource* sceneColor);
+        bool EnsureAerialPerspectiveTarget(GpuResource& sceneColor);
         AtmosphereParameters parameters_{};
 
         // フレーム更新で計算される値
@@ -477,32 +477,27 @@ namespace CoreEngine
         AtmosphereShaderConstants* constantData_ = nullptr; // 永続マップ先
 
         // Transmittance LUT
-        Microsoft::WRL::ComPtr<ID3D12Resource> transmittanceLUT_;
-        D3D12_RESOURCE_STATES transmittanceState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource transmittanceLUT_;
         DescriptorHandle transmittanceSrvHandle_{};
         DescriptorHandle transmittanceUavHandle_{};
 
         // Multi-Scattering LUT
-        Microsoft::WRL::ComPtr<ID3D12Resource> multiScatteringLUT_;
-        D3D12_RESOURCE_STATES multiScatteringState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource multiScatteringLUT_;
         DescriptorHandle multiScatteringSrvHandle_{};
         DescriptorHandle multiScatteringUavHandle_{};
 
         // Sky-View LUT
-        Microsoft::WRL::ComPtr<ID3D12Resource> skyViewLUT_;
-        D3D12_RESOURCE_STATES skyViewState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource skyViewLUT_;
         DescriptorHandle skyViewSrvHandle_{};
         DescriptorHandle skyViewUavHandle_{};
 
         // Camera Volume LUT（froxel 3D テクスチャ）
-        Microsoft::WRL::ComPtr<ID3D12Resource> cameraVolumeLUT_;
-        D3D12_RESOURCE_STATES cameraVolumeState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource cameraVolumeLUT_;
         DescriptorHandle cameraVolumeSrvHandle_{};
         DescriptorHandle cameraVolumeUavHandle_{};
 
         // 空アンビエント SH9 係数バッファ（9 要素の StructuredBuffer<float4>）
-        Microsoft::WRL::ComPtr<ID3D12Resource> skyIrradianceSHBuffer_;
-        D3D12_RESOURCE_STATES skyIrradianceState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource skyIrradianceSHBuffer_;
         DescriptorHandle skyIrradianceSrvHandle_{};
         DescriptorHandle skyIrradianceUavHandle_{};
         bool skyIrradianceGenerated_ = false; ///< 一度でも SH が書き込まれたか
@@ -510,14 +505,12 @@ namespace CoreEngine
         float skyAmbientScale_ = 0.3f;        ///< 空の輝度単位 → サーフェス光単位の変換係数（美術値。昼の従来アンビエントと概ね揃う値）
 
         // 空キューブマップ（空＋雲の作業面。mip0 のみ。α=雲透過率）
-        Microsoft::WRL::ComPtr<ID3D12Resource> skyCubemap_;
-        D3D12_RESOURCE_STATES skyCubemapState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource skyCubemap_;
         DescriptorHandle skyCubemapSrvHandle_{};
         DescriptorHandle skyCubemapUavHandle_{};
 
         // プリフィルタ済み空スペキュラキューブマップ（kSkySpecularMipCount ミップ）
-        Microsoft::WRL::ComPtr<ID3D12Resource> skySpecularMap_;
-        D3D12_RESOURCE_STATES skySpecularState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource skySpecularMap_;
         DescriptorHandle skySpecularSrvHandle_{};
         DescriptorHandle skySpecularUavHandles_[kSkySpecularMipCount]{};
 
@@ -530,8 +523,7 @@ namespace CoreEngine
         uint64_t lastSkyEnvironmentFrame_ = UINT64_MAX; ///< View 間の二重実行ガード
 
         // Aerial Perspective 合成用中間テクスチャ（SceneColor と同サイズ）
-        Microsoft::WRL::ComPtr<ID3D12Resource> apResult_;
-        D3D12_RESOURCE_STATES apResultState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        GpuResource apResult_;
         DescriptorHandle apResultUavHandle_{};
         D3D12_CPU_DESCRIPTOR_HANDLE apResultUavCpuHandle_{};
         uint64_t apResultWidth_ = 0;

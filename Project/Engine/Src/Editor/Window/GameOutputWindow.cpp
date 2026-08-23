@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "GameOutputWindow.h"
 
 #include <algorithm>
@@ -276,13 +277,14 @@ namespace CoreEngine
         rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
         for (UINT i = 0; i < kBufferCount; ++i) {
-            hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&backBuffers_[i]));
+            ComPtr<ID3D12Resource> buffer;
+            hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&buffer));
             if (FAILED(hr)) {
                 return false;
             }
+            backBuffers_[i].Reset(std::move(buffer), D3D12_RESOURCE_STATE_PRESENT);
             rtvHandles_[i].ptr = rtvStart.ptr + static_cast<SIZE_T>(i) * rtvSize;
             dxCommon_->GetDevice()->CreateRenderTargetView(backBuffers_[i].Get(), &rtvDesc, rtvHandles_[i]);
-            backBufferStates_[i] = D3D12_RESOURCE_STATE_PRESENT;
         }
 
         currentBackBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
@@ -290,8 +292,8 @@ namespace CoreEngine
     }
 
     void GameOutputWindow::ReleaseSwapChainResources(){
-        for (ComPtr<ID3D12Resource>& backBuffer : backBuffers_) {
-            backBuffer.Reset();
+        for (GpuResource& backBuffer : backBuffers_) {
+            backBuffer.Release();
         }
     }
 
@@ -339,12 +341,13 @@ namespace CoreEngine
         rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
         for (UINT i = 0; i < kBufferCount; ++i) {
-            if (FAILED(swapChain_->GetBuffer(i, IID_PPV_ARGS(&backBuffers_[i])))) {
+            ComPtr<ID3D12Resource> buffer;
+            if (FAILED(swapChain_->GetBuffer(i, IID_PPV_ARGS(&buffer)))) {
                 return;
             }
+            backBuffers_[i].Reset(std::move(buffer), D3D12_RESOURCE_STATE_PRESENT);
             rtvHandles_[i].ptr = rtvStart.ptr + static_cast<SIZE_T>(i) * rtvSize;
             dxCommon_->GetDevice()->CreateRenderTargetView(backBuffers_[i].Get(), &rtvDesc, rtvHandles_[i]);
-            backBufferStates_[i] = D3D12_RESOURCE_STATE_PRESENT;
         }
     }
 
@@ -378,22 +381,13 @@ namespace CoreEngine
         }
 
         currentBackBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
-        ID3D12Resource* backBuffer = backBuffers_[currentBackBufferIndex_].Get();
+        GpuResource& backBuffer = backBuffers_[currentBackBufferIndex_];
         if (!backBuffer) {
             return;
         }
 
         // PRESENT → RENDER_TARGET
-        if (backBufferStates_[currentBackBufferIndex_] != D3D12_RESOURCE_STATE_RENDER_TARGET) {
-            D3D12_RESOURCE_BARRIER barrier{};
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Transition.pResource = backBuffer;
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-            barrier.Transition.StateBefore = backBufferStates_[currentBackBufferIndex_];
-            barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-            cmdList->ResourceBarrier(1, &barrier);
-            backBufferStates_[currentBackBufferIndex_] = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        }
+        Barrier::Transition(cmdList, backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
         cmdList->OMSetRenderTargets(1, &rtvHandles_[currentBackBufferIndex_], FALSE, nullptr);
 
@@ -443,14 +437,7 @@ namespace CoreEngine
         }
 
         // RENDER_TARGET → PRESENT
-        D3D12_RESOURCE_BARRIER barrier{};
-        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        barrier.Transition.pResource = backBuffer;
-        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-        cmdList->ResourceBarrier(1, &barrier);
-        backBufferStates_[currentBackBufferIndex_] = D3D12_RESOURCE_STATE_PRESENT;
+        Barrier::Transition(cmdList, backBuffer, D3D12_RESOURCE_STATE_PRESENT);
 
         recordedThisFrame_ = true;
     }

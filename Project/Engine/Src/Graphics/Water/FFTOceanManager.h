@@ -329,13 +329,9 @@ namespace CoreEngine
         /// @brief 最終出力テクスチャ（配列 SRV ＋ カスケード単位のスライス UAV）
         /// @details SRV は配列全体（全カスケード）を 1 ビューで見せる。UAV は Finalize が
         ///          カスケード単位で書き込むためスライスごとに用意する。
-        struct CascadeOutputTexture {
-            Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-            D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        struct CascadeOutputTexture : GpuResource {
             DescriptorHandle srv{};
             std::array<DescriptorHandle, kCascadeCount> sliceUav{};
-
-            ID3D12Resource* Get() const { return resource.Get(); }
         };
 
         // ──────────────────────────────────────────────────────────

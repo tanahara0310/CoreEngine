@@ -5,7 +5,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
-#include "Graphics/RHI/Barrier/ResourceBarrierHelper.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Camera/View/ViewInfo.h"
 #include "Utility/CVar/CVar.h"
 #ifdef USE_IMGUI
@@ -214,15 +214,14 @@ namespace CoreEngine
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
         try {
-            sourcePosBuffer_ = ResourceFactory::CreateTextureResource(
-                deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            sourcePosBuffer_.Reset(ResourceFactory::CreateTextureResource(
+                deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         catch (const std::exception&) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "LensFlare: 光源位置テクスチャの生成に失敗");
             return false;
         }
-        sourcePosBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = desc.Format;
@@ -304,29 +303,29 @@ namespace CoreEngine
         // DescriptorHandle が CPU/GPU ハンドルとスロット番号をまとめて持つので、
         // 旧実装のように CPU ハンドルを別メンバで抱える必要がない（6 → 4 フィールド）
         struct Target {
-            Microsoft::WRL::ComPtr<ID3D12Resource>& tex;
-            D3D12_RESOURCE_STATES& state;
+            GpuResource& tex;
             DescriptorHandle& srv;
             DescriptorHandle& uav;
             const char* name;
         };
         Target targets[] = {
-            { brightBuffer_,  brightBufferState_,  brightSrvHandle_,  brightUavHandle_,  "LensFlareBright" },
-            { featureBuffer_, featureBufferState_, featureSrvHandle_, featureUavHandle_, "LensFlareFeature" },
-            { blurBuffer_,    blurBufferState_,    blurSrvHandle_,    blurUavHandle_,    "LensFlareBlur" },
+            { brightBuffer_,  brightSrvHandle_,  brightUavHandle_,  "LensFlareBright" },
+            { featureBuffer_, featureSrvHandle_, featureUavHandle_, "LensFlareFeature" },
+            { blurBuffer_,    blurSrvHandle_,    blurUavHandle_,    "LensFlareBlur" },
         };
 
         for (Target& t : targets) {
             try {
-                t.tex = ResourceFactory::CreateTextureResource(
-                    deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                t.tex.Reset(
+                    ResourceFactory::CreateTextureResource(
+                        deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
             catch (const std::exception&) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "LensFlare: 中間テクスチャ {} の生成に失敗", t.name);
                 return false;
             }
-            t.state = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 
             D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
             srvDesc.Format = desc.Format;
@@ -434,8 +433,7 @@ namespace CoreEngine
         const uint32_t flareGroupsY = DispatchCount(targetsHeight_);
 
         // ===== Pass 1: 輝度抽出 + ダウンサンプル（入力 → brightBuffer_） =====
-        ResourceBarrierHelper::Transition(cmdList, brightBuffer_.Get(),
-            brightBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(downsamplePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(downsamplePipeline_.GetComputeRootSignature());
@@ -449,15 +447,13 @@ namespace CoreEngine
         }
         cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
 
-        ResourceBarrierHelper::UAV(cmdList, brightBuffer_.Get());
-        ResourceBarrierHelper::Transition(cmdList, brightBuffer_.Get(),
-            brightBufferState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, brightBuffer_);
+        Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // ===== Pass 1.5: 支配的な光源の UV 位置を検出（brightBuffer_ → sourcePosBuffer_） =====
         // 単一スレッドグループで全体を走査し最大輝度テクセルを求める。
         // ゴースト／ハローの絞り羽根形状マスクは「このゴーストの中心がどこか」を必要とするため。
-        ResourceBarrierHelper::Transition(cmdList, sourcePosBuffer_.Get(),
-            sourcePosBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, sourcePosBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(findSourcePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(findSourcePipeline_.GetComputeRootSignature());
@@ -471,13 +467,11 @@ namespace CoreEngine
         }
         cmdList->Dispatch(1, 1, 1);
 
-        ResourceBarrierHelper::UAV(cmdList, sourcePosBuffer_.Get());
-        ResourceBarrierHelper::Transition(cmdList, sourcePosBuffer_.Get(),
-            sourcePosBufferState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, sourcePosBuffer_);
+        Barrier::Transition(cmdList, sourcePosBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // ===== Pass 2: ゴースト + ハロー生成（brightBuffer_ → featureBuffer_） =====
-        ResourceBarrierHelper::Transition(cmdList, featureBuffer_.Get(),
-            featureBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(ghostsPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(ghostsPipeline_.GetComputeRootSignature());
@@ -493,7 +487,7 @@ namespace CoreEngine
         }
         cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
 
-        ResourceBarrierHelper::UAV(cmdList, featureBuffer_.Get());
+        Barrier::UAV(cmdList, featureBuffer_);
 
         // ===== Pass 3: 分離ガウスブラー（水平: feature → blur、垂直: blur → feature） =====
         cmdList->SetPipelineState(blurPipeline_.GetComputePSO());
@@ -505,31 +499,26 @@ namespace CoreEngine
         const int blurOutSlot = blurPipeline_.GetComputeRootParamIndex("gFlareOutput");
 
         // 水平
-        ResourceBarrierHelper::Transition(cmdList, featureBuffer_.Get(),
-            featureBufferState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, blurBuffer_.Get(),
-            blurBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, blurBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         if (blurCbSlot >= 0)  cmdList->SetComputeRootConstantBufferView(blurCbSlot, paramsCB_->GetGPUVirtualAddress());
         if (blurDirSlot >= 0) cmdList->SetComputeRootConstantBufferView(blurDirSlot, blurDirHCB_->GetGPUVirtualAddress());
         if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, featureSrvHandle_.gpuHandle);
         if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, blurUavHandle_.gpuHandle);
         cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
 
-        ResourceBarrierHelper::UAV(cmdList, blurBuffer_.Get());
+        Barrier::UAV(cmdList, blurBuffer_);
 
         // 垂直
-        ResourceBarrierHelper::Transition(cmdList, blurBuffer_.Get(),
-            blurBufferState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        ResourceBarrierHelper::Transition(cmdList, featureBuffer_.Get(),
-            featureBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, blurBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         if (blurDirSlot >= 0) cmdList->SetComputeRootConstantBufferView(blurDirSlot, blurDirVCB_->GetGPUVirtualAddress());
         if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, blurSrvHandle_.gpuHandle);
         if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, featureUavHandle_.gpuHandle);
         cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
 
-        ResourceBarrierHelper::UAV(cmdList, featureBuffer_.Get());
-        ResourceBarrierHelper::Transition(cmdList, featureBuffer_.Get(),
-            featureBufferState_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, featureBuffer_);
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // ===== Pass 4: 合成（入力 + featureBuffer_ → 出力） =====
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
@@ -547,14 +536,10 @@ namespace CoreEngine
         cmdList->Dispatch(DispatchCount(width), DispatchCount(height), 1);
 
         // 次フレームの Pass 1〜3 に備えて内部バッファを UAV 状態へ戻す
-        ResourceBarrierHelper::Transition(cmdList, brightBuffer_.Get(),
-            brightBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, featureBuffer_.Get(),
-            featureBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, blurBuffer_.Get(),
-            blurBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        ResourceBarrierHelper::Transition(cmdList, sourcePosBuffer_.Get(),
-            sourcePosBufferState_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, blurBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, sourcePosBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     }
 
     void LensFlare::DrawImGui()

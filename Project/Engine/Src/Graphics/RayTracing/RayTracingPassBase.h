@@ -42,8 +42,7 @@ namespace CoreEngine
         struct DispatchResources {
             D3D12_GPU_DESCRIPTOR_HANDLE outputSrvHandle{};
             D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle{};
-            ID3D12Resource* outputResource = nullptr;
-            D3D12_RESOURCE_STATES* outputCurrentState = nullptr;
+            GpuResource* output = nullptr;   ///< 出力テクスチャ（実体＋現在ステート）
             Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
         };
 
@@ -77,17 +76,15 @@ namespace CoreEngine
         void ReleaseOutputIfSizeMismatchBase(UINT width, UINT height, uint32_t viewIndex);
 
         D3D12_GPU_DESCRIPTOR_HANDLE GetOutputSRVHandleBase(uint32_t viewIndex) const;
-        ID3D12Resource* GetOutputResourceBase(uint32_t viewIndex) const;
-        D3D12_RESOURCE_STATES& GetOutputCurrentStateBase(uint32_t viewIndex);
+        /// @brief 出力テクスチャをステート追跡つきで返す（バリア発行はこれを渡す）
+        GpuResource& GetOutputBase(uint32_t viewIndex);
 
         void BeginOutputWrite(
             ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* outputResource,
-            D3D12_RESOURCE_STATES& outputCurrentState) const;
+            GpuResource& output) const;
         void EndOutputWrite(
             ID3D12GraphicsCommandList* cmdList,
-            ID3D12Resource* outputResource,
-            D3D12_RESOURCE_STATES& outputCurrentState,
+            GpuResource& output,
             D3D12_RESOURCE_STATES finalState) const;
 
         const char* GetOwnerName() const { return ownerName_; }

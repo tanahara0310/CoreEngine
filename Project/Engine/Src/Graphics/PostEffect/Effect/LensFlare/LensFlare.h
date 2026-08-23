@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include "../PostEffectComputeBase.h"
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
@@ -187,25 +188,21 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> blurDirVCB_;
 
     // ===== 1/4 解像度中間テクスチャ =====
-    Microsoft::WRL::ComPtr<ID3D12Resource> brightBuffer_;   ///< 輝度抽出結果
-    D3D12_RESOURCE_STATES brightBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    GpuResource brightBuffer_;   ///< 輝度抽出結果
     DescriptorHandle brightSrvHandle_{};
     DescriptorHandle brightUavHandle_{};
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> featureBuffer_;  ///< ゴースト/ハロー（最終フレア）
-    D3D12_RESOURCE_STATES featureBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    GpuResource featureBuffer_;  ///< ゴースト/ハロー（最終フレア）
     DescriptorHandle featureSrvHandle_{};
     DescriptorHandle featureUavHandle_{};
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> blurBuffer_;     ///< ブラー中間（水平パス結果）
-    D3D12_RESOURCE_STATES blurBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    GpuResource blurBuffer_;     ///< ブラー中間（水平パス結果）
     DescriptorHandle blurSrvHandle_{};
     DescriptorHandle blurUavHandle_{};
 
     /// 支配的な光源の UV 位置（1x1・R32G32_FLOAT）。ゴーストへ絞り羽根形状の
     /// マスクを正しい位置に合わせて重ねるための前段検出結果。
-    Microsoft::WRL::ComPtr<ID3D12Resource> sourcePosBuffer_;
-    D3D12_RESOURCE_STATES sourcePosBufferState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    GpuResource sourcePosBuffer_;
     DescriptorHandle sourcePosSrvHandle_{};
     DescriptorHandle sourcePosUavHandle_{};
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include "../PostEffectComputeBase.h"
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h" // PostEffectPassContext
@@ -136,8 +137,7 @@ private:
     /// @brief レンズダートマスク（起動後の初回合成時に CS で手続き生成する）
     bool CreateDirtResources();
     void RecordDirtGenerationIfNeeded(ID3D12GraphicsCommandList* cmdList);
-    Microsoft::WRL::ComPtr<ID3D12Resource> dirtTexture_;
-    D3D12_RESOURCE_STATES dirtTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    GpuResource dirtTexture_;
     DescriptorHandle dirtSrvHandle_{};
     DescriptorHandle dirtUavHandle_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> dirtGenParamsCB_;

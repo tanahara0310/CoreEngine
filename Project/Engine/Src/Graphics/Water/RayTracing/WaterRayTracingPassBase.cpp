@@ -121,7 +121,7 @@ namespace CoreEngine
         resources.cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         resources.cmdList4->SetPipelineState1(stateObject_.Get());
 
-        BeginOutputWrite(cmdList, resources.outputResource, *resources.outputCurrentState);
+        BeginOutputWrite(cmdList, *resources.output);
 
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex(outputUavName_)),
@@ -147,7 +147,7 @@ namespace CoreEngine
         resources.cmdList4->DispatchRays(&dispatchDesc);
         lastDispatchInfo_.status = RayTracingDispatchStatus::Dispatched;
 
-        EndOutputWrite(cmdList, resources.outputResource, *resources.outputCurrentState, finalState);
+        EndOutputWrite(cmdList, *resources.output, finalState);
     }
 
     // 共通基盤のガード判定に、水面固有の前提（供給元の有無）を足したもの

@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Resource/GpuResource.h"
 
 namespace CoreEngine
 {
@@ -46,8 +47,8 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle() const { return dsvDescriptor_.cpuHandle; }
     /// @brief 深度テクスチャの SRV GPU ハンドルを返す（シェーダーからサンプリングするために使用）
     D3D12_GPU_DESCRIPTOR_HANDLE GetDepthSRVHandle() const { return depthSRVDescriptor_.gpuHandle; }
-    /// @brief 現在のリソースステートへの参照を返す（ResourceBarrierHelper で使用）
-    D3D12_RESOURCE_STATES& GetCurrentState() { return currentState_; }
+    /// @brief 深度リソースをステート追跡つきで返す（バリア発行はこれを渡す）
+    GpuResource& Resource() { return depthStencilResource_; }
 
 private:
     /// @brief 深度ステンシルリソースの作成
@@ -63,17 +64,14 @@ private:
     void CreateDepthShaderResourceView();
 
 private:
-    // 深度ステンシルリソース
-    Microsoft::WRL::ComPtr<ID3D12Resource> depthStencilResource_;
+    // 深度ステンシルリソース（現在ステートは GpuResource が内包する）
+    GpuResource depthStencilResource_;
 
     // DSV / SRV スロット。DescriptorHandle が「どのスロットを所有しているか」まで表すので、
     // CPU/GPU ハンドルとインデックスを別々に持つ必要がない（旧実装は 5 変数に分かれていた）。
     DescriptorHandle dsvDescriptor_{};
     // 深度 SRV（Water Depth Fade 等でシェーダーからサンプリングするために使用）
     DescriptorHandle depthSRVDescriptor_{};
-
-    // リソースステート追跟（ResourceBarrierHelper で利用）
-    D3D12_RESOURCE_STATES currentState_ = D3D12_RESOURCE_STATE_DEPTH_WRITE;
 
     // 初期化パラメータ
     ID3D12Device* device_ = nullptr;

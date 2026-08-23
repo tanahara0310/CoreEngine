@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include "../PostEffectComputeBase.h"
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
@@ -118,8 +119,7 @@ private:
     ShaderProvider fillProvider_{ L"ColorLUTFill.CS.hlsl" };
     CustomShaderPipeline fillPipeline_;
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> lutTexture_;
-    D3D12_RESOURCE_STATES lutTextureState_ = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    GpuResource lutTexture_;
     DescriptorHandle lutSrvHandle_{};
     DescriptorHandle lutUavHandle_{};
 
