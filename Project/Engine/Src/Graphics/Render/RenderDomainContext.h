@@ -7,6 +7,8 @@
 
 namespace CoreEngine
 {
+    class ShaderProgramCache;
+
     class GraphicsCore;
     class DescriptorAllocator;
     class SceneDepth;
@@ -34,7 +36,8 @@ namespace CoreEngine
         /// @param dxCommon GraphicsCore（デバイス・DescriptorAllocator 取得用）
         /// @param width 初期ウィンドウ幅
         /// @param height 初期ウィンドウ高さ
-        void Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height);
+        void Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height,
+            ShaderProgramCache* shaderProgramCache);
 
         /// @brief シャットダウン（GPU完了後に呼ぶこと）
         void Shutdown();

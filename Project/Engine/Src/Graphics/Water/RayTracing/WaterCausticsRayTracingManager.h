@@ -59,7 +59,8 @@ namespace CoreEngine
         bool Initialize(
             GraphicsCore* dxCommon,
             DescriptorAllocator* descriptorAllocator,
-            AccelerationStructureManager* asMgr);
+            AccelerationStructureManager* asMgr,
+            ShaderProgramCache* shaderProgramCache);
 
         /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
         /// @param invViewProj 深度復元用 View*Projection の逆行列

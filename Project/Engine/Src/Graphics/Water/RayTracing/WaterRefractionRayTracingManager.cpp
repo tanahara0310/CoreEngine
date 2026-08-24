@@ -60,7 +60,8 @@ namespace CoreEngine
     bool WaterRefractionRayTracingManager::Initialize(
         GraphicsCore* dxCommon,
         DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr)
+        AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache)
     {
         RTWaterPipelineDesc desc{};
         desc.ownerName = "WaterRefractionRayTracingManager";
@@ -76,7 +77,7 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterRefractionConstants";
         desc.constantsBytes = sizeof(WaterRefractionConstants);
-        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, desc);
+        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
     }
 
     void WaterRefractionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)

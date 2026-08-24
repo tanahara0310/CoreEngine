@@ -47,7 +47,8 @@ namespace CoreEngine
         bool Initialize(
             GraphicsCore* dxCommon,
             DescriptorAllocator* descriptorAllocator,
-            AccelerationStructureManager* asMgr);
+            AccelerationStructureManager* asMgr,
+            ShaderProgramCache* shaderProgramCache);
 
         void Dispatch(
             ID3D12GraphicsCommandList* cmdList,

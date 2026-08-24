@@ -409,9 +409,6 @@
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.cpp">
-      <Filter>Engine\Src\Graphics\RayTracing</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
@@ -1458,9 +1455,6 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h">
-      <Filter>Engine\Src\Graphics\RayTracing</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
@@ -2468,6 +2462,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderProgram.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTShadowBindings.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelBindings.h">
       <Filter>Engine\Src\Graphics\Render\Model</Filter>

@@ -127,13 +127,23 @@ namespace CoreEngine
     {
         EngineSystem* enginePtr = &engine;
 
+        sequence.Add("シェーダープログラムキャッシュ", [enginePtr, state] {
+            // DXC（IDxcUtils / IDxcCompiler3）はここで 1 回だけ作る。
+            // 以前はサブシステムごとに ShaderCompiler を生成していた。
+            auto cache = std::make_unique<ShaderProgramCache>();
+            cache->Initialize();
+            state->shaderProgramCache = cache.get();
+            enginePtr->RegisterComponent(std::move(cache));
+        });
+
         sequence.Add("レンダードメイン（GBuffer / シャドウ / RT）", [enginePtr, state] {
             enginePtr->renderDomainContext_ = std::make_unique<RenderDomainContext>();
             // RenderDomainContext は自分で RegisterResizable / UnregisterResizable する
             enginePtr->renderDomainContext_->Initialize(
                 state->dx,
                 enginePtr->GetWinApp()->GetClientWidth(),
-                enginePtr->GetWinApp()->GetClientHeight());
+                enginePtr->GetWinApp()->GetClientHeight(),
+                state->shaderProgramCache);
 
             // Hi-Z オクルージョンカリングシステムの作成
             //（GPU リソースは初回 ExecuteCulling で遅延生成。
@@ -225,15 +235,6 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         // ポストエフェクト・レンダリング技術・モデル・IBL
         // ──────────────────────────────────────────────────────────
-        sequence.Add("シェーダープログラムキャッシュ", [enginePtr, state] {
-            // DXC（IDxcUtils / IDxcCompiler3）はここで 1 回だけ作る。
-            // 以前はサブシステムごとに ShaderCompiler を生成していた。
-            auto cache = std::make_unique<ShaderProgramCache>();
-            cache->Initialize();
-            state->shaderProgramCache = cache.get();
-            enginePtr->RegisterComponent(std::move(cache));
-        });
-
         sequence.Add("ポストエフェクト", [enginePtr, state] {
             auto postEffectManager = std::make_unique<PostEffectManager>();
             postEffectManager->Initialize(state->dx, state->render, state->shaderProgramCache);

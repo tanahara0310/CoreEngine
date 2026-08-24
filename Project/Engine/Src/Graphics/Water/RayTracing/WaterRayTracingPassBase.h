@@ -6,6 +6,7 @@
 #include <initializer_list>
 #include <memory>
 #include <span>
+#include <vector>
 #include <string>
 
 #include "Graphics/Shader/CBufferLayout.h"
@@ -80,6 +81,7 @@ namespace CoreEngine
             GraphicsCore* dxCommon,
             DescriptorAllocator* descriptorAllocator,
             AccelerationStructureManager* asMgr,
+            ShaderProgramCache* shaderProgramCache,
             const RTWaterPipelineDesc& desc);
 
         /// @brief ディスパッチ末尾の共通処理（バインド → DispatchRays → 出力ステート遷移）
@@ -171,6 +173,15 @@ namespace CoreEngine
         // InitializeFromDesc で受けた構成のうち、ディスパッチ時にも要るもの
         const char* outputUavName_ = nullptr;
         const char* constantsName_ = nullptr;
+
+        /// @brief 宣言表の実体（名前は静的記憶域なので BindingTable が指し続けてよい）
+        std::vector<ShaderBindingDecl> declStorage_;
+        /// @brief 宣言表の添字（並びは InitializeFromDesc が決める）
+        size_t slotOutputUav_ = 0;
+        size_t slotScene_ = 0;
+        size_t slotSrvFirst_ = 0;
+        size_t slotSurfaceData_ = 0;
+        size_t slotConstants_ = 0;
         uint32_t constantsBytes_ = 0;
 
         float lastWaterHeight_ = 0.0f;

@@ -2,6 +2,7 @@
 #include "WaterRayTracingPassBase.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstring>
 
 #include <dxcapi.h>
@@ -9,7 +10,9 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
-#include "Graphics/Shader/ShaderCompiler.h"
+#include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -20,11 +23,13 @@ namespace CoreEngine
         GraphicsCore* dxCommon,
         DescriptorAllocator* descriptorAllocator,
         AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache,
         const RTWaterPipelineDesc& desc)
     {
         Logger& log = Logger::GetInstance();
 
-        if (!InitializeBase(dxCommon, descriptorAllocator, asMgr, desc.ownerName, desc.outputDebugName)) {
+        if (!InitializeBase(dxCommon, descriptorAllocator, asMgr, shaderProgramCache,
+            desc.ownerName, desc.outputDebugName)) {
             log.Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
@@ -33,10 +38,10 @@ namespace CoreEngine
             return false;
         }
 
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-        Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob;
-        shaderBlob.Attach(shaderCompiler.CompileShaderLibrary(desc.shaderPath));
+        // lib_6_6 のコンパイルとリフレクションはキャッシュが担当する
+        const ShaderProgram* program =
+            shaderProgramCache_->GetOrCreateLibrary(desc.shaderPath, desc.ownerName);
+        IDxcBlob* shaderBlob = program ? program->GetCS() : nullptr;
         if (!shaderBlob) {
             log.Errorf(
                 LogCategory::Graphics,
@@ -46,28 +51,45 @@ namespace CoreEngine
             return false;
         }
 
-        // ルートシグネチャは全パス同型: 出力 UAV(u0) / TLAS(t0) / 追加 SRV(t1〜) /
-        // 水面サーフェス CBV(b1) / 32bit root constants(b0)。
-        globalRootSigMgr_.AddUAVTable(desc.outputUavName, 0);
-        globalRootSigMgr_.AddSRVTable("gScene", 0);
-        uint32_t srvRegister = 1;
+        // 宣言表を組み立てる。名前はすべて静的記憶域（RTWaterPipelineDesc の契約）なので
+        // BindingTable がポインタを保持しても問題ない。
+        // レジスタ番号は HLSL 側にしか無く、C++ からは消えた（以前はここで t1, t2... と
+        // 配列の並び順で決めていたので、HLSL の 2 行を入れ替えると無言で SRV が入れ替わった）。
+        declStorage_.clear();
+        declStorage_.push_back({ desc.outputUavName, ShaderBindingType::UAV, BindingUsage::Required });
+        declStorage_.push_back({ "gScene",           ShaderBindingType::SRV, BindingUsage::Required });
         for (const char* srvName : desc.srvTableNames) {
-            globalRootSigMgr_.AddSRVTable(srvName, srvRegister++);
+            declStorage_.push_back({ srvName, ShaderBindingType::SRV, BindingUsage::Required });
         }
-        globalRootSigMgr_.AddCBV("gWaterSurfaceData", 1);
-        globalRootSigMgr_.AddRootConstants(desc.constantsName, 0, desc.constantsBytes / sizeof(uint32_t));
-        if (!globalRootSigMgr_.Build(dxCommon_->GetDevice())) {
-            log.Errorf(
-                LogCategory::Graphics,
-                LogSubCategory::Pipeline,
-                "{}: global root signature build failed.",
-                desc.ownerName);
+        // HLSL 側の実名は cbuffer WaterSurfaceData（RTWaterSurfaceCommon.hlsli:16）。
+        // 旧実装の "gWaterSurfaceData" は照合されない自由なラベルだったので食い違っていた
+        declStorage_.push_back({ "WaterSurfaceData", ShaderBindingType::CBV, BindingUsage::Required });
+        declStorage_.push_back({ desc.constantsName,  ShaderBindingType::CBV, BindingUsage::Required });
+
+        // 添字は宣言した順。ディスパッチ側はこれで引く
+        slotOutputUav_ = 0;
+        slotScene_ = 1;
+        slotSrvFirst_ = 2;
+        slotSurfaceData_ = 2 + desc.srvTableNames.size();
+        slotConstants_ = slotSurfaceData_ + 1;
+
+        RootSignatureConfig config;
+        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);  // DXR に入力アセンブラは無い
+        {
+            ResourceBindingConfig rc(desc.constantsName, BindingStrategy::RootConstants);
+            rc.rootConstantsCount = static_cast<UINT>(desc.constantsBytes / sizeof(uint32_t));
+            config.ConfigureResource(rc);
+        }
+        // 空キューブマップの SampleLevel 用。宣言しないシェーダーには影響しない
+        config.ConfigureSampler("gLinearClamp", SamplerConfig::LinearClamp());
+
+        if (!BuildGlobalRootSignature(*program, declStorage_.data(), declStorage_.size(), config)) {
             return false;
         }
 
         RayTracingPipelineBuilder pipelineBuilder;
         pipelineBuilder
-            .SetDXILLibrary(shaderBlob.Get())
+            .SetDXILLibrary(shaderBlob)
             .AddHitGroup({ desc.hitGroupName, desc.closestHitName })
             .SetShaderConfig(desc.payloadBytes)
             .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
@@ -123,25 +145,28 @@ namespace CoreEngine
 
         BeginOutputWrite(cmdList, *resources.output);
 
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex(outputUavName_)),
-            resources.outputUavHandle);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene")),
-            asMgr_->GetTLASSRVHandle());
+        // 差し方は RootSlot の種別から ShaderBinder が決める。
+        // 以前は GetRootParameterIndex() の戻り値（-1 になりうる int）を UINT へキャストして
+        // 渡しており、名前が見つからないと 0xFFFFFFFF を叩いていた。
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(bindings_[slotOutputUav_], resources.outputUavHandle);
+        binder.Set(bindings_[slotScene_], asMgr_->GetTLASSRVHandle());
+
+        // srvBindings は宣言表（desc.srvTableNames）と同じ並びで渡される契約。
+        // 位置で引く以上、並びが食い違うと別のテクスチャが差さる。名前で照合して落とす。
+        size_t srvIndex = slotSrvFirst_;
         for (const RTWaterSrvBinding& binding : srvBindings) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex(binding.name)),
-                binding.handle);
+#if CB_REFLECTION_CHECK_ENABLED
+            assert(srvIndex < slotSurfaceData_ && "SRV バインドの数が宣言表より多い");
+            assert(std::strcmp(declStorage_[srvIndex].name, binding.name) == 0 &&
+                "SRV バインドの並びが srvTableNames と食い違っている");
+#endif
+            binder.Set(bindings_[srvIndex++], binding.handle);
         }
-        cmdList->SetComputeRootConstantBufferView(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gWaterSurfaceData")),
-            constantBuffer_->GetGPUVirtualAddress());
-        cmdList->SetComputeRoot32BitConstants(
-            static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex(constantsName_)),
-            constantsBytes_ / sizeof(uint32_t),
-            constantsBlob,
-            0);
+        binder.Set(bindings_[slotSurfaceData_], constantBuffer_->GetGPUVirtualAddress());
+        binder.SetConstants(
+            bindings_[slotConstants_], constantsBlob, constantsBytes_ / sizeof(uint32_t));
+        binder.ValidateBeforeDraw(bindings_);
 
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
         resources.cmdList4->DispatchRays(&dispatchDesc);

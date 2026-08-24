@@ -26,7 +26,8 @@ namespace CoreEngine
         }
     }
 
-    void RenderDomainContext::Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height)
+    void RenderDomainContext::Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height,
+        ShaderProgramCache* shaderProgramCache)
     {
         dxCommon_ = dxCommon;
         auto* device = dxCommon->GetDevice();
@@ -60,7 +61,7 @@ namespace CoreEngine
         rtShadowManager_ = std::make_unique<RayTracingShadowManager>();
         if (accelerationStructureManager_->IsSupported()) {
             rtShadowManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get());
+                accelerationStructureManager_.get(), shaderProgramCache);
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: RayTracingShadowManager 初期化完了\n");
         }
@@ -68,7 +69,7 @@ namespace CoreEngine
         rtWaterRefractionManager_ = std::make_unique<WaterRefractionRayTracingManager>();
         if (accelerationStructureManager_->IsSupported()) {
             rtWaterRefractionManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get());
+                accelerationStructureManager_.get(), shaderProgramCache);
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: WaterRefractionRayTracingManager 初期化完了\n");
         }
@@ -76,7 +77,7 @@ namespace CoreEngine
         rtWaterReflectionManager_ = std::make_unique<WaterReflectionRayTracingManager>();
         if (accelerationStructureManager_->IsSupported()) {
             rtWaterReflectionManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get());
+                accelerationStructureManager_.get(), shaderProgramCache);
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: WaterReflectionRayTracingManager 初期化完了\n");
         }
@@ -84,7 +85,7 @@ namespace CoreEngine
         rtWaterCausticsManager_ = std::make_unique<WaterCausticsRayTracingManager>();
         if (accelerationStructureManager_->IsSupported()) {
             rtWaterCausticsManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get());
+                accelerationStructureManager_.get(), shaderProgramCache);
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: WaterCausticsRayTracingManager 初期化完了\n");
         }

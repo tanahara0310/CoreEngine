@@ -52,8 +52,14 @@ namespace CoreEngine
         {
             static_assert(std::is_trivially_copyable_v<T>, "ルート定数は trivially copyable であること");
             static_assert(sizeof(T) % 4 == 0, "ルート定数は 4 バイトの倍数であること");
-            SetConstantsRaw(slot, &value, sizeof(T) / 4);
+            SetConstants(slot, &value, sizeof(T) / 4);
         }
+
+        /// @brief ルート定数を差す（型が実行時にしか決まらない経路用）
+        /// @param data            定数ブロックの先頭
+        /// @param num32BitValues  32bit 値の個数
+        /// @note 型が分かるなら上のテンプレート版を使うこと（サイズ検査が効く）
+        void SetConstants(RootSlot slot, const void* data, uint32_t num32BitValues);
 
         /// @brief Draw / Dispatch の直前に呼ぶ。Required 宣言の差し忘れを検出する
         /// @details 「シェーダーは要求しているのに誰も差さなかった」を、GPU が前フレームの
@@ -73,8 +79,6 @@ namespace CoreEngine
 
     private:
         static uint64_t Bit(uint8_t index) { return 1ull << (index & 63); }
-
-        void SetConstantsRaw(RootSlot slot, const void* data, uint32_t num32BitValues);
 
         ID3D12GraphicsCommandList* cmdList_ = nullptr;
         Pipeline pipeline_ = Pipeline::Graphics;

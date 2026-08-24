@@ -6,7 +6,6 @@
 #include <cstdint>
 #include "Math/Vector/Vector3.h"
 #include "Math/Matrix/Matrix4x4.h"
-#include "GlobalRootSignatureManager.h"
 #include "RayTracingDispatchInfo.h"
 #include "RayTracingOutputViewSet.h"
 #include "RayTracingPassBase.h"
@@ -97,7 +96,8 @@ namespace CoreEngine
         /// @brief 初期化（State Object / Shader Table / UAV テクスチャの構築）
         /// @return 成功した場合 true
         bool Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator,
-            AccelerationStructureManager* asMgr);
+            AccelerationStructureManager* asMgr,
+            ShaderProgramCache* shaderProgramCache);
 
         /// @brief シャドウレイをディスパッチする（3 ステージの最初。ここで解像度が確定する）
         /// @param lightIndex ディレクショナルライトのインデックス（0〜kMaxDirectionalLights-1）
@@ -219,20 +219,7 @@ namespace CoreEngine
         // 全て RayTracingPassBase が持つ（Stage 2c で重複を削除した）。
 
         // シェーダーバイトコード（State Object 構築後に解放するのでここに置く）
-        Microsoft::WRL::ComPtr<IDxcBlob> shaderBlob_;
-
-        /// @brief グローバルルートシグネチャのパラメータ番号（Initialize で 1 回だけ解決する）
-        /// @details GetRootParameterIndex は std::map<std::string> 検索で、
-        ///          しかも呼ぶたびに std::string の一時オブジェクトを作る。
-        ///          ディスパッチごとに 6 回叩いていたのでキャッシュした（Stage 2d）。
-        struct RootParamIndices {
-            UINT shadowOutput = 0;
-            UINT scene = 0;
-            UINT sceneDepth = 0;
-            UINT normalRoughness = 0;
-            UINT constants = 0;
-        };
-        RootParamIndices rootParams_{};
+        IDxcBlob* shaderBlob_ = nullptr;  ///< 所有者は ShaderProgramCache
 
         /// @brief 1 つの (view, light) が持つテクスチャの用途
         /// @details 実体は共通基盤の RayTracingOutputViewSet が持ち、

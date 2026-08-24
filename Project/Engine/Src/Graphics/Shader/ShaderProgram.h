@@ -90,6 +90,12 @@ namespace CoreEngine
         const ShaderProgram* GetOrCreateCompute(
             const std::wstring& csPath, const std::string& debugName);
 
+        /// @brief シェーダーライブラリ（lib_6_6 = DXR）のプログラムを取得する
+        /// @return 失敗時は nullptr
+        /// @note blob は GetCS() で取れる（DXR の State Object へ渡す用）
+        const ShaderProgram* GetOrCreateLibrary(
+            const std::wstring& libPath, const std::string& debugName);
+
         /// @brief 生の ShaderCompiler を取得する
         /// @note CustomShaderPipeline::Build() のように ShaderCompiler& を要求する API 用。
         ///       単にコンパイルしたいだけなら GetOrCreate* / GetOrCompile を使うこと。

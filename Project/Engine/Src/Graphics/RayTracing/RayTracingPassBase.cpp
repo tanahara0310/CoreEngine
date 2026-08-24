@@ -16,6 +16,7 @@ namespace CoreEngine
         GraphicsCore* dxCommon,
         DescriptorAllocator* descriptorAllocator,
         AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache,
         const char* ownerName,
         const char* outputDebugName)
     {
@@ -25,6 +26,7 @@ namespace CoreEngine
         dxCommon_ = dxCommon;
         descriptorAllocator_ = descriptorAllocator;
         asMgr_ = asMgr;
+        shaderProgramCache_ = shaderProgramCache;
 
         if (!dxCommon_ || !descriptorAllocator_ || !asMgr_ || !asMgr_->IsSupported()) {
             Logger::GetInstance().Warnf(
@@ -35,6 +37,37 @@ namespace CoreEngine
             return false;
         }
 
+        return true;
+    }
+
+    bool RayTracingPassBase::BuildGlobalRootSignature(
+        const ShaderProgram& program,
+        const ShaderBindingDecl* decls,
+        size_t declCount,
+        const RootSignatureConfig& config)
+    {
+        Logger& log = Logger::GetInstance();
+
+        const auto buildResult = globalRootSigMgr_.Build(
+            dxCommon_->GetDevice(), program.GetReflection(), config);
+        if (!buildResult.success) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "{}: グローバルルートシグネチャの構築に失敗: {}",
+                ownerName_, buildResult.errorMessage);
+            return false;
+        }
+
+        // 宣言表とシェーダー実体を突き合わせる。改名・削除・種別違いはここで throw される。
+        // lib_6_6 は未使用の宣言も残すので、使わないものは Optional にしておくこと。
+        try {
+            bindings_ = BindingTable::Resolve(
+                program.GetReflection(), decls, declCount, ownerName_);
+        }
+        catch (const std::exception& e) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "{}: バインド契約違反: {}", ownerName_, e.what());
+            return false;
+        }
         return true;
     }
 

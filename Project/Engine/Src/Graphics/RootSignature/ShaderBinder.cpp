@@ -95,7 +95,7 @@ namespace CoreEngine
 #endif
     }
 
-    void ShaderBinder::SetConstantsRaw(RootSlot slot, const void* data, uint32_t num32BitValues)
+    void ShaderBinder::SetConstants(RootSlot slot, const void* data, uint32_t num32BitValues)
     {
         if (!slot.IsValid()) {
             return;

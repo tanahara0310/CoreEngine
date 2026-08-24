@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "RayTracingShadowManager.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
+#include "Graphics/RayTracing/RTShadowBindings.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
+#include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "AccelerationStructureManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
@@ -358,55 +361,49 @@ namespace CoreEngine
     bool RayTracingShadowManager::Initialize(
         GraphicsCore* dxCommon,
         DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr)
+        AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache)
     {
         Logger& log = Logger::GetInstance();
 
         // 共通基盤へ委譲（ポインタ保持と DXR サポート判定・警告ログまで面倒を見る）
-        if (!InitializeBase(dxCommon, descriptorAllocator, asMgr,
+        if (!InitializeBase(dxCommon, descriptorAllocator, asMgr, shaderProgramCache,
             "RayTracingShadowManager", "RTShadow")) {
             return false;
         }
 
-        // ShaderCompilerでlib_6_6ライブラリとしてコンパイル
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-        shaderBlob_.Attach(shaderCompiler.CompileShaderLibrary(L"RTShadow.hlsl"));
-        if (!shaderBlob_) {
+        // lib_6_6 のコンパイルとリフレクションはキャッシュが担当する。
+        // レジスタ番号（u0/t0/t1/t2/b0）は HLSL 側にしか書かれていない。
+        const ShaderProgram* program =
+            shaderProgramCache_->GetOrCreateLibrary(L"RTShadow.hlsl", "RTShadow");
+        if (!program) {
             log.Log("RayTracingShadowManager: Shader compile failed",
                 LogLevel::Error, LogCategory::Graphics);
             return false;
         }
-        log.Log("RayTracingShadowManager: Shader compiled",
-            LogLevel::Info, LogCategory::Graphics);
+        shaderBlob_ = program->GetCS();
 
-        // グローバルルートシグネチャを構築
-        // 履歴・モーションベクターは RayGen では読まない（テンポラルパスの仕事）ので張らない。
-        globalRootSigMgr_
-            .AddUAVTable("gShadowOutput", 0)      // u0: シャドウ出力（トレース解像度）
-            .AddSRVTable("gScene", 0)              // t0: TLAS
-            .AddSRVTable("gSceneDepth", 1)         // t1: 深度（ワールド座標復元用）
-            .AddSRVTable("gNormalRoughness", 2)    // t2: G-Buffer 法線（セルフシャドウバイアス用）
-            .AddRootConstants("ShadowRayConstants", 0, kShadowRayConstantCount); // b0
-        if (!globalRootSigMgr_.Build(dxCommon_->GetDevice())) {
-            log.Log("RayTracingShadowManager: Global root signature build failed",
-                LogLevel::Error, LogCategory::Graphics);
+        // グローバルルートシグネチャをリフレクションから構築する。
+        // 既定戦略が UAV/SRV = DescriptorTable、CBV = RootDescriptor なので、
+        // ShadowRayConstants だけ 32bit ルート定数として明示する。
+        RootSignatureConfig config;
+        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);  // DXR に入力アセンブラは無い
+        {
+            ResourceBindingConfig rc("ShadowRayConstants", BindingStrategy::RootConstants);
+            rc.rootConstantsCount = kShadowRayConstantCount;
+            config.ConfigureResource(rc);
+        }
+        if (!BuildGlobalRootSignature(*program, RTShadowBind::kDecls,
+            RTShadowBind::Slot::Count, config)) {
             return false;
         }
         log.Log("RayTracingShadowManager: Global root signature created",
             LogLevel::Info, LogCategory::Graphics);
 
-        // ルートパラメータ番号はここで 1 回だけ解決する（毎ディスパッチの map 検索を避ける）
-        rootParams_.shadowOutput = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gShadowOutput"));
-        rootParams_.scene = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gScene"));
-        rootParams_.sceneDepth = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gSceneDepth"));
-        rootParams_.normalRoughness = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("gNormalRoughness"));
-        rootParams_.constants = static_cast<UINT>(globalRootSigMgr_.GetRootParameterIndex("ShadowRayConstants"));
-
         // State Objectを構築
         RayTracingPipelineBuilder pipelineBuilder;
         pipelineBuilder
-            .SetDXILLibrary(shaderBlob_.Get())
+            .SetDXILLibrary(shaderBlob_)
             .AddHitGroup({ L"RTShadowHitGroup", L"RTShadowClosestHit" })
             .SetShaderConfig(sizeof(float))  // ShadowPayload = float 1個
             .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
@@ -433,7 +430,7 @@ namespace CoreEngine
             LogLevel::Info, LogCategory::Graphics);
 
         isInitialized_ = true;
-        shaderBlob_.Reset();  // State Object構築後は不要
+        shaderBlob_ = nullptr;  // State Object構築後は不要（実体はキャッシュが保持）
 
         // 後段の 3 本はどれも「SRV テーブル n 個 + UAV 1 個 + ルート定数」なので共通構築
         denoiseInitialized_ = CreateComputePass(
@@ -782,17 +779,14 @@ namespace CoreEngine
         Barrier::Transition(cmdList, Slot(vi, lightIndex, TextureSlot::Raw),
             D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        cmdList->SetComputeRootDescriptorTable(
-            rootParams_.shadowOutput, SlotUAV(vi, lightIndex, TextureSlot::Raw));
-        cmdList->SetComputeRootDescriptorTable(
-            rootParams_.scene, asMgr_->GetTLASSRVHandle());
-        cmdList->SetComputeRootDescriptorTable(
-            rootParams_.sceneDepth, sceneDepthSRV);
-        cmdList->SetComputeRootDescriptorTable(
-            rootParams_.normalRoughness, normalRoughnessSRV);
-
-        cmdList->SetComputeRoot32BitConstants(
-            rootParams_.constants, kShadowRayConstantCount, &constants, 0);
+        // 差し方は RootSlot の種別から ShaderBinder が決める（番号を直接触らない）
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(bindings_[RTShadowBind::gShadowOutput], SlotUAV(vi, lightIndex, TextureSlot::Raw));
+        binder.Set(bindings_[RTShadowBind::gScene], asMgr_->GetTLASSRVHandle());
+        binder.Set(bindings_[RTShadowBind::gSceneDepth], sceneDepthSRV);
+        binder.Set(bindings_[RTShadowBind::gNormalRoughness], normalRoughnessSRV);
+        binder.SetConstants(bindings_[RTShadowBind::ShadowRayConstants], constants);
+        binder.ValidateBeforeDraw(bindings_);
 
         // DispatchRays はトレース解像度で行う（ハーフ解像度ならレイ本数は 1/4）
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(traceWidth, traceHeight);

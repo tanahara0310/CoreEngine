@@ -69,7 +69,8 @@ namespace CoreEngine
     bool WaterCausticsRayTracingManager::Initialize(
         GraphicsCore* dxCommon,
         DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr)
+        AccelerationStructureManager* asMgr,
+        ShaderProgramCache* shaderProgramCache)
     {
         // パイプラインの差分（シェーダー・エントリ名・SRV 名・定数サイズ）だけを記述する。
         // ルートシグネチャ構築〜シェーダーテーブルまでの手順は 3 マネージャ共通で
@@ -88,7 +89,7 @@ namespace CoreEngine
         desc.srvTableNames = kSrvTableNames;
         desc.constantsName = "WaterCausticsConstants";
         desc.constantsBytes = sizeof(WaterCausticsConstants);
-        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, desc);
+        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
     }
 
 

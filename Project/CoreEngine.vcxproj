@@ -319,7 +319,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp" />
@@ -701,7 +700,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\RayTracing\GlobalRootSignatureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h" />
@@ -1038,6 +1036,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderBindingContract.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderProgram.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTShadowBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterBindings.h" />

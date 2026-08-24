@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <string>
 
-#include "Graphics/RayTracing/GlobalRootSignatureManager.h"
+#include "Graphics/RootSignature/RootSignatureManager.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
+#include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/RayTracing/RayTracingDispatchInfo.h"
 #include "Graphics/RayTracing/RayTracingOutputViewSet.h"
 #include "Graphics/RayTracing/ShaderTableBuilder.h"
@@ -48,12 +50,28 @@ namespace CoreEngine
 
         /// @param ownerName        ログ・診断に出す所有者名（以後 ownerName_ として使い回す）
         /// @param outputDebugName  出力テクスチャのデバッグ名の接頭辞
+        /// @param shaderProgramCache シェーダーのコンパイルとリフレクションの窓口
         bool InitializeBase(
             GraphicsCore* dxCommon,
             DescriptorAllocator* descriptorAllocator,
             AccelerationStructureManager* asMgr,
+            ShaderProgramCache* shaderProgramCache,
             const char* ownerName,
             const char* outputDebugName);
+
+        /// @brief ライブラリのリフレクションからグローバルルートシグネチャを構築し、宣言表を解決する
+        /// @param program    GetOrCreateLibrary() で得たプログラム
+        /// @param decls      バインド契約（そのパスが差すリソースの宣言表）
+        /// @param declCount  宣言数
+        /// @param config     ルートシグネチャ設定（RootConstants 等はここで明示する）
+        /// @return 成功したら true。失敗・契約違反はログ済み
+        /// @note DXR のグローバルルートシグネチャは全エントリが ALL 可視である必要があるが、
+        ///       ライブラリのリフレクションは可視性を ALL で返すのでそのまま通る。
+        bool BuildGlobalRootSignature(
+            const ShaderProgram& program,
+            const ShaderBindingDecl* decls,
+            size_t declCount,
+            const RootSignatureConfig& config);
 
         /// @brief ディスパッチ前の共通処理（ガード判定 → 出力・定数バッファの確保 → CommandList4 取得）
         /// @param constantBufferSize 0 以外なら、そのサイズのアップロード定数バッファを確保する
@@ -95,7 +113,11 @@ namespace CoreEngine
 
         Microsoft::WRL::ComPtr<ID3D12Resource> constantBuffer_;
         uint8_t* constantBufferMapped_ = nullptr;
-        GlobalRootSignatureManager globalRootSigMgr_;
+        ShaderProgramCache* shaderProgramCache_ = nullptr;
+        /// @brief リフレクションから構築したグローバルルートシグネチャ
+        RootSignatureManager globalRootSigMgr_;
+        /// @brief 解決済みバインド表（添字は派生側の宣言表の並び）
+        BindingTable bindings_;
         Microsoft::WRL::ComPtr<ID3D12StateObject> stateObject_;
         Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> stateObjectProperties_;
         ShaderTableBuilder shaderTableBuilder_;

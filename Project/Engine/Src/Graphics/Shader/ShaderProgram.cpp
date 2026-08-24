@@ -18,6 +18,35 @@ namespace CoreEngine
         initialized_ = true;
     }
 
+    const ShaderProgram* ShaderProgramCache::GetOrCreateLibrary(
+        const std::wstring& libPath, const std::string& debugName)
+    {
+        assert(initialized_ && "ShaderProgramCache::Initialize() を先に呼ぶこと");
+
+        const std::wstring key = MakeKey(libPath, L"lib");
+        if (auto it = programs_.find(key); it != programs_.end()) {
+            ++hitCount_;
+            return it->second.get();
+        }
+
+        // ライブラリはエントリーポイント指定なし（-E を付けない）
+        IDxcBlob* lib = compiler_.CompileShaderLibrary(libPath);
+        if (!lib) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
+                "シェーダーライブラリのコンパイルに失敗しました: name={}", debugName);
+            return nullptr;
+        }
+
+        auto program = std::make_unique<ShaderProgram>();
+        program->cs_ = lib;   // DXR の State Object へ渡す blob はここから取る
+        program->debugName_ = debugName;
+        program->reflection_ = reflectionBuilder_.BuildFromLibrary(lib, debugName);
+
+        const ShaderProgram* result = program.get();
+        programs_.emplace(key, std::move(program));
+        return result;
+    }
+
     void ShaderProgramCache::LogSummary() const
     {
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader,
