@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "LightBufferManager.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
@@ -73,6 +74,33 @@ namespace CoreEngine
             lightCountsData_->pointLightCount = static_cast<uint32_t>(pointLights.size());
             lightCountsData_->spotLightCount = static_cast<uint32_t>(spotLights.size());
             lightCountsData_->areaLightCount = static_cast<uint32_t>(areaLights.size());
+        }
+    }
+
+    void LightBufferManager::SetToCommandList(
+        ShaderBinder& binder,
+        RootSlot lightCounts,
+        RootSlot directionalLights,
+        RootSlot pointLights,
+        RootSlot spotLights,
+        RootSlot areaLights)
+    {
+        // 未解決スロット（そのシェーダーが参照しない種別）は ShaderBinder 側で no-op になる。
+        // ハンドルが 0 のときは差せないので、ここで弾く。
+        if (lightCountsBuffer_) {
+            binder.Set(lightCounts, lightCountsBuffer_->GetGPUVirtualAddress());
+        }
+        if (directionalLightsSRVHandle_.gpuHandle.ptr != 0) {
+            binder.Set(directionalLights, directionalLightsSRVHandle_.gpuHandle);
+        }
+        if (pointLightsSRVHandle_.gpuHandle.ptr != 0) {
+            binder.Set(pointLights, pointLightsSRVHandle_.gpuHandle);
+        }
+        if (spotLightsSRVHandle_.gpuHandle.ptr != 0) {
+            binder.Set(spotLights, spotLightsSRVHandle_.gpuHandle);
+        }
+        if (areaLightsSRVHandle_.gpuHandle.ptr != 0) {
+            binder.Set(areaLights, areaLightsSRVHandle_.gpuHandle);
         }
     }
 

@@ -4,6 +4,7 @@
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Diagnostics/EngineStats.h"
 #include "Utility/Logger/Logger.h"
@@ -30,39 +31,20 @@ namespace CoreEngine
         return gBufferReflectionData_->GetRootParameterIndexByName(resourceName);
     }
 
-    void BaseModelRenderer::CacheRootParamIndices()
+    void BaseModelRenderer::ResolveBindings(
+        const ShaderBindingDecl* forwardDecls,
+        const ShaderBindingDecl* gBufferDecls,
+        size_t count,
+        const std::string& debugName)
     {
-        forwardCache_.camera = GetRootParamIndex("gCamera");
-        forwardCache_.lightCounts = GetRootParamIndex("gLightCounts");
-        forwardCache_.directionalLights = GetRootParamIndex("gDirectionalLights");
-        forwardCache_.pointLights = GetRootParamIndex("gPointLights");
-        forwardCache_.spotLights = GetRootParamIndex("gSpotLights");
-        forwardCache_.areaLights = GetRootParamIndex("gAreaLights");
-        forwardCache_.envTexture = GetRootParamIndex("gEnvironmentTexture");
-        forwardCache_.rtShadowMask = GetRootParamIndex("gRTShadowMask");
-        forwardCache_.irradianceMap = GetRootParamIndex("gIrradianceMap");
-        forwardCache_.prefilteredMap = GetRootParamIndex("gPrefilteredMap");
-        forwardCache_.brdfLUT = GetRootParamIndex("gBRDFLUT");
-        forwardCache_.iblParams = GetRootParamIndex("gIBLParams");
-        forwardCache_.transform = GetRootParamIndex("gTransformationMatrix");
-        forwardCache_.instanceData = GetRootParamIndex("gInstanceData");
-        forwardCache_.material = GetRootParamIndex("gMaterial");
-        forwardCache_.texture = GetRootParamIndex("gTexture");
-        forwardCache_.normalMap = GetRootParamIndex("gNormalMap");
-        forwardCache_.metallicRoughnessMap = GetRootParamIndex("gMetallicRoughnessMap");
-        forwardCache_.emissiveMap = GetRootParamIndex("gEmissiveMap");
-        forwardCache_.aoMap = GetRootParamIndex("gAOMap");
-        forwardCache_.matrixPalette = GetRootParamIndex("gMatrixPalette");
+        assert(forwardReflectionData_ && gBufferReflectionData_ && "RootSignature 構築後に呼ぶこと");
 
-        gBufferCache_.transform = GetGBufferRootParamIndex("gTransformationMatrix");
-        gBufferCache_.instanceData = GetGBufferRootParamIndex("gInstanceData");
-        gBufferCache_.material = GetGBufferRootParamIndex("gMaterial");
-        gBufferCache_.texture = GetGBufferRootParamIndex("gTexture");
-        gBufferCache_.normalMap = GetGBufferRootParamIndex("gNormalMap");
-        gBufferCache_.metallicRoughnessMap = GetGBufferRootParamIndex("gMetallicRoughnessMap");
-        gBufferCache_.emissiveMap = GetGBufferRootParamIndex("gEmissiveMap");
-        gBufferCache_.aoMap = GetGBufferRootParamIndex("gAOMap");
-        gBufferCache_.matrixPalette = GetGBufferRootParamIndex("gMatrixPalette");
+        // 宣言表とシェーダー実体を突き合わせる。必須リソースの改名・削除、種別の
+        // 食い違いはここで throw される（従来は `if (idx >= 0)` で無言に skip されていた）。
+        forwardBindings_ = BindingTable::Resolve(
+            *forwardReflectionData_, forwardDecls, count, debugName);
+        gBufferBindings_ = BindingTable::Resolve(
+            *gBufferReflectionData_, gBufferDecls, count, debugName + "_GBuffer");
     }
 
     void BaseModelRenderer::BindModelDrawPacket(
@@ -72,70 +54,43 @@ namespace CoreEngine
         cmdList->IASetVertexBuffers(0, packet.vertexBufferViewCount, packet.vertexBufferViews.data());
         cmdList->IASetIndexBuffer(&packet.indexBufferView);
 
-        // カスタム RootSignature 使用時はそのリフレクションからインデックスを解決するヘルパーラムダ
-        auto resolveIdx = [&](const std::string& name, int defaultIdx) -> int {
-            if (customPipeline) {
-                return customPipeline->GetRootParamIndex(name);
-            }
-            return defaultIdx;
-        };
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
 
-        const CachedIndices& c = isInGBufferPass_ ? gBufferCache_ : forwardCache_;
+        // カスタム RootSignature 使用時はそのシェーダー側のスロットを使う。
+        // カスタムシェーダーは実行時に差し替わるので、ここだけは名前解決が残る
+        // （エンジン既定パスは forwardBindings_ / gBufferBindings_ で解決済み）。
+        const BindingTable& table = customPipeline
+            ? customPipeline->GetModelBindings()
+            : (isInGBufferPass_ ? gBufferBindings_ : forwardBindings_);
+        auto slotOf = [&table](ModelBind::Slot slot) -> RootSlot { return table[slot]; };
 
         // インスタンシング: 通常モデルは Root SRV、スキニングモデルは従来 CBV を使用
-        if (!packet.isSkinned) {
-            int idx = resolveIdx("gInstanceData", c.instanceData);
-            if (idx >= 0 && packet.instanceDataSRV != 0) {
-                cmdList->SetGraphicsRootShaderResourceView(idx, packet.instanceDataSRV);
-            }
+        // どちらを呼ぶかは RootSlot の種別から ShaderBinder が決める
+        if (packet.instanceDataSRV != 0) {
+            binder.Set(slotOf(packet.isSkinned ? ModelBind::gTransformationMatrix
+                                               : ModelBind::gInstanceData),
+                       packet.instanceDataSRV);
         }
-        else {
-            int idx = resolveIdx("gTransformationMatrix", c.transform);
-            if (idx >= 0 && packet.instanceDataSRV != 0) {
-                cmdList->SetGraphicsRootConstantBufferView(idx, packet.instanceDataSRV);
-            }
+        if (packet.materialCBV != 0) {
+            binder.Set(slotOf(ModelBind::gMaterial), packet.materialCBV);
         }
-        {
-            int idx = resolveIdx("gMaterial", c.material);
-            if (idx >= 0 && packet.materialCBV != 0) {
-                cmdList->SetGraphicsRootConstantBufferView(idx, packet.materialCBV);
-            }
+        if (packet.baseColorSRV.ptr != 0) {
+            binder.Set(slotOf(ModelBind::gTexture), packet.baseColorSRV);
         }
-        {
-            int idx = resolveIdx("gTexture", c.texture);
-            if (idx >= 0 && packet.baseColorSRV.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(idx, packet.baseColorSRV);
-            }
+        if (packet.normalMapSRV.ptr != 0) {
+            binder.Set(slotOf(ModelBind::gNormalMap), packet.normalMapSRV);
         }
-        {
-            int idx = resolveIdx("gNormalMap", c.normalMap);
-            if (idx >= 0 && packet.normalMapSRV.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(idx, packet.normalMapSRV);
-            }
+        if (packet.metallicRoughnessSRV.ptr != 0) {
+            binder.Set(slotOf(ModelBind::gMetallicRoughnessMap), packet.metallicRoughnessSRV);
         }
-        {
-            int idx = resolveIdx("gMetallicRoughnessMap", c.metallicRoughnessMap);
-            if (idx >= 0 && packet.metallicRoughnessSRV.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(idx, packet.metallicRoughnessSRV);
-            }
+        if (packet.emissiveSRV.ptr != 0) {
+            binder.Set(slotOf(ModelBind::gEmissiveMap), packet.emissiveSRV);
         }
-        {
-            int idx = resolveIdx("gEmissiveMap", c.emissiveMap);
-            if (idx >= 0 && packet.emissiveSRV.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(idx, packet.emissiveSRV);
-            }
+        if (packet.occlusionSRV.ptr != 0) {
+            binder.Set(slotOf(ModelBind::gAOMap), packet.occlusionSRV);
         }
-        {
-            int idx = resolveIdx("gAOMap", c.aoMap);
-            if (idx >= 0 && packet.occlusionSRV.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(idx, packet.occlusionSRV);
-            }
-        }
-        if (packet.isSkinned) {
-            int idx = resolveIdx("gMatrixPalette", c.matrixPalette);
-            if (idx >= 0 && packet.matrixPaletteSRV.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(idx, packet.matrixPaletteSRV);
-            }
+        if (packet.isSkinned && packet.matrixPaletteSRV.ptr != 0) {
+            binder.Set(slotOf(ModelBind::gMatrixPalette), packet.matrixPaletteSRV);
         }
         cmdList->DrawIndexedInstanced(packet.indexCount, packet.instanceCount, packet.startIndex, 0, 0);
 
@@ -153,33 +108,39 @@ namespace CoreEngine
 
         // 標準 RS に戻したので、BeginPass で設定したシーンリソースを再バインドする
         // （SetGraphicsRootSignature を呼ぶと全バインドがリセットされるため）
-        if (cameraCBV_ != 0 && forwardCache_.camera >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(forwardCache_.camera, cameraCBV_);
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+        BindForwardSceneResources(binder, forwardBindings_);
+    }
+
+    void BaseModelRenderer::BindForwardSceneResources(
+        ShaderBinder& binder, const BindingTable& table)
+    {
+        if (cameraCBV_ != 0) {
+            binder.Set(table[ModelBind::gCamera], cameraCBV_);
         }
         if (lightManager_) {
             lightManager_->SetLightsToCommandList(
-                cmdList,
-                forwardCache_.lightCounts,
-                forwardCache_.directionalLights,
-                forwardCache_.pointLights,
-                forwardCache_.spotLights,
-                forwardCache_.areaLights
-            );
+                binder,
+                table[ModelBind::gLightCounts],
+                table[ModelBind::gDirectionalLights],
+                table[ModelBind::gPointLights],
+                table[ModelBind::gSpotLights],
+                table[ModelBind::gAreaLights]);
         }
-        if (rtShadowMaskHandle_.ptr != 0 && forwardCache_.rtShadowMask >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.rtShadowMask, rtShadowMaskHandle_);
+        if (rtShadowMaskHandle_.ptr != 0) {
+            binder.Set(table[ModelBind::gRTShadowMask], rtShadowMaskHandle_);
         }
-        if (iblParams_.irradianceMap.ptr != 0 && forwardCache_.irradianceMap >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.irradianceMap, iblParams_.irradianceMap);
+        if (iblParams_.irradianceMap.ptr != 0) {
+            binder.Set(table[ModelBind::gIrradianceMap], iblParams_.irradianceMap);
         }
-        if (iblParams_.prefilteredMap.ptr != 0 && forwardCache_.prefilteredMap >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.prefilteredMap, iblParams_.prefilteredMap);
+        if (iblParams_.prefilteredMap.ptr != 0) {
+            binder.Set(table[ModelBind::gPrefilteredMap], iblParams_.prefilteredMap);
         }
-        if (iblParams_.brdfLUT.ptr != 0 && forwardCache_.brdfLUT >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.brdfLUT, iblParams_.brdfLUT);
+        if (iblParams_.brdfLUT.ptr != 0) {
+            binder.Set(table[ModelBind::gBRDFLUT], iblParams_.brdfLUT);
         }
-        if (iblParamsCBVAddress_ != 0 && forwardCache_.iblParams >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(forwardCache_.iblParams, iblParamsCBVAddress_);
+        if (iblParamsCBVAddress_ != 0) {
+            binder.Set(table[ModelBind::gIBLParams], iblParamsCBVAddress_);
         }
     }
 
@@ -191,53 +152,11 @@ namespace CoreEngine
             return;
         }
 
-        // カスタム RS のインデックスでシーンレベルのリソースを再バインドする
-        auto bind = [&](const std::string& name, auto bindFn) {
-            int idx = customPipeline->GetRootParamIndex(name);
-            if (idx >= 0) {
-                bindFn(idx);
-            }
-        };
-
-        bind("gCamera", [&](int i) {
-            if (cameraCBV_ != 0) {
-                cmdList->SetGraphicsRootConstantBufferView(i, cameraCBV_);
-            }
-        });
-        if (lightManager_) {
-            int lightCounts    = customPipeline->GetRootParamIndex("gLightCounts");
-            int dirLights      = customPipeline->GetRootParamIndex("gDirectionalLights");
-            int pointLights    = customPipeline->GetRootParamIndex("gPointLights");
-            int spotLights     = customPipeline->GetRootParamIndex("gSpotLights");
-            int areaLights     = customPipeline->GetRootParamIndex("gAreaLights");
-            lightManager_->SetLightsToCommandList(
-                cmdList, lightCounts, dirLights, pointLights, spotLights, areaLights);
-        }
-        bind("gRTShadowMask", [&](int i) {
-            if (rtShadowMaskHandle_.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(i, rtShadowMaskHandle_);
-            }
-        });
-        bind("gIrradianceMap", [&](int i) {
-            if (iblParams_.irradianceMap.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(i, iblParams_.irradianceMap);
-            }
-        });
-        bind("gPrefilteredMap", [&](int i) {
-            if (iblParams_.prefilteredMap.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(i, iblParams_.prefilteredMap);
-            }
-        });
-        bind("gBRDFLUT", [&](int i) {
-            if (iblParams_.brdfLUT.ptr != 0) {
-                cmdList->SetGraphicsRootDescriptorTable(i, iblParams_.brdfLUT);
-            }
-        });
-        bind("gIBLParams", [&](int i) {
-            if (iblParamsCBVAddress_ != 0) {
-                cmdList->SetGraphicsRootConstantBufferView(i, iblParamsCBVAddress_);
-            }
-        });
+        // カスタムシェーダー側の解決済み表でシーンレベルのリソースを再バインドする。
+        // 表は構築時に解決済みなので、ここで名前を引くことはもう無い。
+        // 既定パスとまったく同じ処理なので同じヘルパーへ委譲する。
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+        BindForwardSceneResources(binder, customPipeline->GetModelBindings());
     }
 
     void BaseModelRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
@@ -253,33 +172,11 @@ namespace CoreEngine
         cmdList->SetPipelineState(forwardPipelineState_);
         cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        if (cameraCBV_ != 0 && forwardCache_.camera >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(forwardCache_.camera, cameraCBV_);
-        }
-        if (lightManager_) {
-            lightManager_->SetLightsToCommandList(
-                cmdList,
-                forwardCache_.lightCounts,
-                forwardCache_.directionalLights,
-                forwardCache_.pointLights,
-                forwardCache_.spotLights,
-                forwardCache_.areaLights
-            );
-        }
-        if (iblParams_.environmentMap.ptr != 0 && forwardCache_.envTexture >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.envTexture, iblParams_.environmentMap);
-        }
-        if (rtShadowMaskHandle_.ptr != 0 && forwardCache_.rtShadowMask >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.rtShadowMask, rtShadowMaskHandle_);
-        }
-        if (iblParams_.irradianceMap.ptr != 0 && forwardCache_.irradianceMap >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.irradianceMap, iblParams_.irradianceMap);
-        }
-        if (iblParams_.prefilteredMap.ptr != 0 && forwardCache_.prefilteredMap >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.prefilteredMap, iblParams_.prefilteredMap);
-        }
-        if (iblParams_.brdfLUT.ptr != 0 && forwardCache_.brdfLUT >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(forwardCache_.brdfLUT, iblParams_.brdfLUT);
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+        BindForwardSceneResources(binder, forwardBindings_);
+
+        if (iblParams_.environmentMap.ptr != 0) {
+            binder.Set(forwardBindings_[ModelBind::gEnvironmentTexture], iblParams_.environmentMap);
         }
         if (iblParamsBuffer_) {
             IBLSceneParamsCPU params{};
@@ -293,9 +190,7 @@ namespace CoreEngine
             iblParamsBuffer_->Map(0, nullptr, &mapped);
             std::memcpy(mapped, &params, sizeof(params));
             iblParamsBuffer_->Unmap(0, nullptr);
-            if (forwardCache_.iblParams >= 0) {
-                cmdList->SetGraphicsRootConstantBufferView(forwardCache_.iblParams, iblParamsCBVAddress_);
-            }
+            binder.Set(forwardBindings_[ModelBind::gIBLParams], iblParamsCBVAddress_);
         }
     }
     void BaseModelRenderer::BeginGBufferPass(ID3D12GraphicsCommandList* cmdList) {
@@ -308,16 +203,8 @@ namespace CoreEngine
         cmdList->SetPipelineState(gBufferPipelineState_);
         cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-#ifdef _DEBUG
-        // デバッグ時: gTexture が GBuffer シェーダーに存在するか検証
-        int textureIdx = GetGBufferRootParamIndex("gTexture");
-        if (textureIdx < 0) {
-            Logger::GetInstance().Logf(
-                LogLevel::Warn,
-                LogCategory::Graphics,
-                "BaseModelRenderer::BeginGBufferPass() could not find gTexture in GBuffer root signature.");
-        }
-#endif
+        // gTexture の存在検証は ResolveBindings()（起動時の契約照合）に移した。
+        // kGBuffer で Required 宣言されているので、無ければ起動時に throw される。
     }
 
     void BaseModelRenderer::EndPass() {

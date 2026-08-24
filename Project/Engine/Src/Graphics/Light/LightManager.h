@@ -134,7 +134,20 @@ namespace CoreEngine
 
         // ==================== GPU バインディング ====================
 
-        /// @brief コマンドリストにライトをセット
+        /// @brief コマンドリストにライトをセット（ShaderBinder 経由）
+        /// @note 差し方は RootSlot の種別から決まる。差した記録が binder に残るので
+        ///       ShaderBinder::ValidateBeforeDraw() の取りこぼし検出が効く。
+        void SetLightsToCommandList(
+            ShaderBinder& binder,
+            RootSlot lightCounts,
+            RootSlot directionalLights,
+            RootSlot pointLights,
+            RootSlot spotLights,
+            RootSlot areaLights
+        );
+
+        /// @brief コマンドリストにライトをセット（ルートパラメータ番号版）
+        /// @deprecated ShaderBinder 版へ移行すること
         void SetLightsToCommandList(
             ID3D12GraphicsCommandList* commandList,
             int lightCountsRootParameterIndex,

@@ -1,8 +1,11 @@
 #include "pch.h"
 #include "ShaderBinder.h"
+#include "Graphics/Shader/CBufferReflectionCheck.h"   // CB_REFLECTION_CHECK_ENABLED
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
+#include <sstream>
 
 namespace CoreEngine
 {
@@ -68,6 +71,28 @@ namespace CoreEngine
         }
 
         boundMask_ |= Bit(slot.index);
+    }
+
+    void ShaderBinder::ValidateBeforeDraw([[maybe_unused]] const BindingTable& table) const
+    {
+#if CB_REFLECTION_CHECK_ENABLED
+        const uint64_t missing = table.RequiredMask() & ~boundMask_;
+        if (missing == 0) {
+            return;
+        }
+
+        std::ostringstream oss;
+        oss << "必須リソースが差されていません (" << table.ShaderName() << "):";
+        for (uint8_t i = 0; i < 64; ++i) {
+            if ((missing & (1ull << i)) == 0) {
+                continue;
+            }
+            const char* name = table.FindNameByRootParam(i);
+            oss << "\n  - rootParam[" << static_cast<int>(i) << "] "
+                << (name ? name : "(名前不明)");
+        }
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", oss.str());
+#endif
     }
 
     void ShaderBinder::SetConstantsRaw(RootSlot slot, const void* data, uint32_t num32BitValues)

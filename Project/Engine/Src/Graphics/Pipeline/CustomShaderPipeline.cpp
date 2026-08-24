@@ -3,6 +3,7 @@
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Render/Model/ModelBindings.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
 
@@ -149,6 +150,14 @@ namespace CoreEngine
             return false;
         }
 
+        // モデル描画共通リソースを 1 回だけ解決しておく。
+        // これで BaseModelRenderer 側の「1 ドローあたり 8〜9 回の名前検索」が消える。
+        // アプリ側のシェーダーに何かを必須にはできないので kCustom は全て Optional。
+        // 宣言外のリソース（そのシェーダー固有のもの）はエンジンが差さないので警告しない。
+        forwardReflection_ = std::move(reflectionData);
+        modelBindings_ = BindingTable::Resolve(
+            *forwardReflection_, ModelBind::kCustom, "CustomShader", /*warnUndeclared=*/false);
+
         hasForwardPSO_ = true;
         return true;
     }
@@ -232,12 +241,18 @@ namespace CoreEngine
         return const_cast<RootSignatureManager*>(computeRootSignatureMg_.get())->GetRootSignature();
     }
 
-    int CustomShaderPipeline::GetRootParamIndex(const std::string& resourceName) const
+    RootSlot CustomShaderPipeline::GetRootSlot(const std::string& resourceName) const
     {
         if (!forwardRootSignatureMg_) {
-            return -1;
+            return RootSlot{};
         }
-        return forwardRootSignatureMg_->GetRootParameterIndex(resourceName);
+        return forwardRootSignatureMg_->GetRootSlot(resourceName);
+    }
+
+    int CustomShaderPipeline::GetRootParamIndex(const std::string& resourceName) const
+    {
+        const RootSlot slot = GetRootSlot(resourceName);
+        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
     }
 
     int CustomShaderPipeline::GetComputeRootParamIndex(const std::string& resourceName) const

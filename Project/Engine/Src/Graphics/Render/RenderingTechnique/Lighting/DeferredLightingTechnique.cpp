@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "DeferredLightingTechnique.h"
+#include "DeferredLightingBindings.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Light/LightManager.h"
@@ -43,41 +44,18 @@ namespace CoreEngine
     void DeferredLightingTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
-        CacheRootSlots();
+        ResolveBindings();
         CreateConstantBuffers();
     }
 
-    void DeferredLightingTechnique::CacheRootSlots()
+    void DeferredLightingTechnique::ResolveBindings()
     {
-        slots_.albedoAO = GetRootSlot("gAlbedoAO");
-        slots_.normalRoughness = GetRootSlot("gNormalRoughness");
-        slots_.emissiveMetallic = GetRootSlot("gEmissiveMetallic");
-        slots_.sceneDepth = GetRootSlot("gSceneDepth");
-        slots_.camera = GetRootSlot("gCamera");
-        slots_.depthReconstruction = GetRootSlot("gDepthReconstruction");
-        slots_.lightCounts = GetRootSlot("gLightCounts");
-        slots_.directionalLights = GetRootSlot("gDirectionalLights");
-        slots_.pointLights = GetRootSlot("gPointLights");
-        slots_.spotLights = GetRootSlot("gSpotLights");
-        slots_.areaLights = GetRootSlot("gAreaLights");
-        slots_.irradianceMap = GetRootSlot("gIrradianceMap");
-        slots_.prefilteredMap = GetRootSlot("gPrefilteredMap");
-        slots_.brdfLUT = GetRootSlot("gBRDFLUT");
-        slots_.iblParams = GetRootSlot("gIBLParams");
+        assert(reflectionData_ && "RootSignature 構築後に呼ぶこと");
 
-        static const char* kRTShadowNames[kMaxRTShadowLights] = {
-            "gRTShadowMask0", "gRTShadowMask1", "gRTShadowMask2", "gRTShadowMask3"
-        };
-        for (uint32_t li = 0; li < kMaxRTShadowLights; ++li) {
-            slots_.rtShadowMask[li] = GetRootSlot(kRTShadowNames[li]);
-        }
-
-        slots_.ssao = GetRootSlot("gSSAO");
-        slots_.waterCaustics = GetRootSlot("gWaterCaustics");
-        slots_.waterCausticsDebug = GetRootSlot("gWaterCausticsDebug");
-        slots_.skyAmbient = GetRootSlot("gSkyAmbient");
-        slots_.skyIrradianceSH = GetRootSlot("gSkyIrradianceSH");
-        slots_.skySpecularMap = GetRootSlot("gSkySpecularMap");
+        // 宣言表とシェーダー実体を突き合わせる。必須リソースの改名・削除、
+        // 種別の食い違いはここで throw される（無言で描画が壊れるのを防ぐ）。
+        bindings_ = BindingTable::Resolve(
+            *reflectionData_, DeferredLightingBind::kDecls, GetTechniqueName());
     }
 
     // -------------------------------------------------------------------------
@@ -229,91 +207,86 @@ namespace CoreEngine
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
 
         // ===== G-Buffer SRV のバインド =====
-        binder.Set(slots_.albedoAO,
+        binder.Set(bindings_[DeferredLightingBind::gAlbedoAO],
             gBufferManager->GetSRVHandle(GBufferManager::Target::AlbedoAO));
-        binder.Set(slots_.normalRoughness,
+        binder.Set(bindings_[DeferredLightingBind::gNormalRoughness],
             gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
-        binder.Set(slots_.emissiveMetallic,
+        binder.Set(bindings_[DeferredLightingBind::gEmissiveMetallic],
             gBufferManager->GetSRVHandle(GBufferManager::Target::EmissiveMetallic));
 
         // SceneDepth（WorldPosition ターゲット廃止に伴い、深度から復元する）
         if (context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
             if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
-                binder.Set(slots_.sceneDepth, depthHandle);
+                binder.Set(bindings_[DeferredLightingBind::gSceneDepth], depthHandle);
             }
         }
 
         // ===== カメラ CBV =====
         if (cameraCBVAddress_ != 0) {
-            binder.Set(slots_.camera, cameraCBVAddress_);
+            binder.Set(bindings_[DeferredLightingBind::gCamera], cameraCBVAddress_);
         }
 
         // ===== 深度復元用 CBV（ビュー種別ごとに独立したバッファを参照） =====
         {
             const size_t vi = static_cast<size_t>(context.viewSettings.viewType);
             if (vi < kViewTypeCount && depthReconstructionCBVAddresses_[vi] != 0) {
-                binder.Set(slots_.depthReconstruction, depthReconstructionCBVAddresses_[vi]);
+                binder.Set(bindings_[DeferredLightingBind::gDepthReconstruction], depthReconstructionCBVAddresses_[vi]);
             }
         }
 
         // ===== ライトバインド（LightManager 経由） =====
-        // LightManager 側がまだ番号を受け取る API なので、ここだけ index を渡している。
-        // Phase 2 で LightManager を ShaderBinder 対応にしたら解消する。
+        // 未解決スロットは ShaderBinder 側で no-op になるので、ここでの IsValid 判定は不要
         if (context.lightManager) {
-            if (slots_.lightCounts.IsValid() && slots_.directionalLights.IsValid()
-                && slots_.pointLights.IsValid() && slots_.spotLights.IsValid()
-                && slots_.areaLights.IsValid()) {
-                context.lightManager->SetLightsToCommandList(
-                    cmdList,
-                    slots_.lightCounts.index,
-                    slots_.directionalLights.index,
-                    slots_.pointLights.index,
-                    slots_.spotLights.index,
-                    slots_.areaLights.index
-                );
-            }
+            context.lightManager->SetLightsToCommandList(
+                binder,
+                bindings_[DeferredLightingBind::gLightCounts],
+                bindings_[DeferredLightingBind::gDirectionalLights],
+                bindings_[DeferredLightingBind::gPointLights],
+                bindings_[DeferredLightingBind::gSpotLights],
+                bindings_[DeferredLightingBind::gAreaLights]
+            );
         }
 
         // ===== IBL SRV =====
         if (context.renderManager) {
             // Irradiance Map（拡散 IBL）
             if (auto handle = context.renderManager->GetIrradianceMapHandle(); handle.ptr != 0) {
-                binder.Set(slots_.irradianceMap, handle);
+                binder.Set(bindings_[DeferredLightingBind::gIrradianceMap], handle);
             }
             // Prefiltered Map（スペキュラ IBL）
             if (auto handle = context.renderManager->GetPrefilteredMapHandle(); handle.ptr != 0) {
-                binder.Set(slots_.prefilteredMap, handle);
+                binder.Set(bindings_[DeferredLightingBind::gPrefilteredMap], handle);
             }
             // BRDF LUT（スペキュラ IBL 積分）
             if (auto handle = context.renderManager->GetBRDFLUTHandle(); handle.ptr != 0) {
-                binder.Set(slots_.brdfLUT, handle);
+                binder.Set(bindings_[DeferredLightingBind::gBRDFLUT], handle);
             }
         }
 
         // ===== IBL パラメータ CBV =====
         if (iblParamsCBVAddress_ != 0) {
-            binder.Set(slots_.iblParams, iblParamsCBVAddress_);
+            binder.Set(bindings_[DeferredLightingBind::gIBLParams], iblParamsCBVAddress_);
         }
 
         // ===== RT シャドウマスク SRV（ライトごとに個別バインド） =====
         for (uint32_t li = 0; li < kMaxRTShadowLights; ++li) {
             if (rtShadowHandles_[li].ptr != 0) {
-                binder.Set(slots_.rtShadowMask[li], rtShadowHandles_[li]);
+                binder.Set(bindings_[DeferredLightingBind::gRTShadowMask0 + li], rtShadowHandles_[li]);
             }
         }
 
         // ===== SSAO SRV =====
         if (ssaoHandle_.ptr != 0) {
-            binder.Set(slots_.ssao, ssaoHandle_);
+            binder.Set(bindings_[DeferredLightingBind::gSSAO], ssaoHandle_);
         }
 
         if (waterCausticsHandle_.ptr != 0) {
-            binder.Set(slots_.waterCaustics, waterCausticsHandle_);
+            binder.Set(bindings_[DeferredLightingBind::gWaterCaustics], waterCausticsHandle_);
         }
 
         if (waterCausticsDebugCBVAddress_ != 0) {
-            binder.Set(slots_.waterCausticsDebug, waterCausticsDebugCBVAddress_);
+            binder.Set(bindings_[DeferredLightingBind::gWaterCausticsDebug], waterCausticsDebugCBVAddress_);
         }
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
@@ -344,18 +317,22 @@ namespace CoreEngine
             }
 
             if (skyAmbientCBVAddress_ != 0) {
-                binder.Set(slots_.skyAmbient, skyAmbientCBVAddress_);
+                binder.Set(bindings_[DeferredLightingBind::gSkyAmbient], skyAmbientCBVAddress_);
             }
             // SH バッファはバッファ自体が常に存在する（AtmosphereManager 初期化時に生成）。
             // enabled=0 のフレームではシェーダーが読まないため内容は問われない
             if (atmosphere && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0) {
-                binder.Set(slots_.skyIrradianceSH, atmosphere->GetSkyIrradianceSHSRVHandle());
+                binder.Set(bindings_[DeferredLightingBind::gSkyIrradianceSH], atmosphere->GetSkyIrradianceSHSRVHandle());
             }
             // 空スペキュラキューブマップ（specularEnabled=0 のフレームではシェーダーが読まない）
             if (atmosphere && atmosphere->GetSkySpecularSRVHandle().ptr != 0) {
-                binder.Set(slots_.skySpecularMap, atmosphere->GetSkySpecularSRVHandle());
+                binder.Set(bindings_[DeferredLightingBind::gSkySpecularMap], atmosphere->GetSkySpecularSRVHandle());
             }
         }
+
+        // 必須リソースの差し忘れをここで捕まえる（Dev のみ）。
+        // 通り抜けると GPU が前フレームの descriptor を読んだ絵が出る。
+        binder.ValidateBeforeDraw(bindings_);
 
         // フルスクリーンクアッドで描画
         DrawFullscreenQuad(cmdList);

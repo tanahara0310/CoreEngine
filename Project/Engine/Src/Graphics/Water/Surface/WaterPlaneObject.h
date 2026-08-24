@@ -9,6 +9,7 @@
 #include "Graphics/Water/Surface/WaterConstantBufferSet.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
+#include "Graphics/Water/Surface/WaterShaderResourceBinder.h"
 
 #include <d3d12.h>
 
@@ -198,6 +199,10 @@ namespace CoreEngine
         Vector2 uvTiling_;    ///< UV タイリング回数
         Vector2 uvOffset_;    ///< 現在の UV オフセット（内部状態）
         WaterConstantBufferSet constantBuffers_; ///< Water 描画用 GPU 定数バッファ群
+
+        /// @brief 水面固有リソースのバインダ（宣言表の解決結果をキャッシュする）
+        /// @note BindCustomResources() が const なので mutable。キャッシュ更新のみに使う
+        mutable WaterShaderResourceBinder shaderResourceBinder_;
 
         // ---- CPU 側の Water パラメータ保持 ----
         WaterConstants waterCB_{};         ///< 波パラメータと時間の CPU 側コピー

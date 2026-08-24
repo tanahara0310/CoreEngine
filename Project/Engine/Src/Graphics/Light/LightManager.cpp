@@ -411,6 +411,18 @@ namespace CoreEngine
     // ==================== GPU バインディング ====================
 
     void LightManager::SetLightsToCommandList(
+        ShaderBinder& binder,
+        RootSlot lightCounts,
+        RootSlot directionalLights,
+        RootSlot pointLights,
+        RootSlot spotLights,
+        RootSlot areaLights)
+    {
+        bufferManager_.SetToCommandList(
+            binder, lightCounts, directionalLights, pointLights, spotLights, areaLights);
+    }
+
+    void LightManager::SetLightsToCommandList(
         ID3D12GraphicsCommandList* commandList,
         int lightCountsRootParameterIndex,
         int directionalLightsRootParameterIndex,

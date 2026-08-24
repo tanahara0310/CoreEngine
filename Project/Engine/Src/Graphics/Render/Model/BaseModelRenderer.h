@@ -8,6 +8,8 @@
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
+#include "Graphics/Render/Model/ModelBindings.h"
 #include "Math/Vector/Vector3.h"
 #include <d3d12.h>
 #include <wrl.h>
@@ -19,6 +21,7 @@ namespace CoreEngine {
     class ShaderReflectionData;
     class InstanceBatchManager;
     class CustomShaderPipeline;
+    class ShaderBinder;
 }
 
 namespace CoreEngine
@@ -130,39 +133,28 @@ namespace CoreEngine
         // 描画側のパス判定は DrawViewInfo で明示的に渡されるため、外部へは公開しない）
         bool isInGBufferPass_ = false;
 
-        // キャッシュ済みルートパラメータインデックス（Initialize後に一度だけ解決）
-        struct CachedIndices {
-            // BeginPass (Forward/GBuffer 共通名) 用
-            int camera = -1;
-            int lightCounts = -1;
-            int directionalLights = -1;
-            int pointLights = -1;
-            int spotLights = -1;
-            int areaLights = -1;
-            int envTexture = -1;
-            int rtShadowMask = -1; ///< gRTShadowMask (t6) — フォワード受影用RTシャドウマスク
-            int irradianceMap = -1;
-            int prefilteredMap = -1;
-            int brdfLUT = -1;
-            int iblParams = -1;
-            // BindModelDrawPacket 用
-            int transform = -1;        ///< gTransformationMatrix (CBV) — スキニングモデル用
-            int instanceData = -1;     ///< gInstanceData (Root SRV) — 通常モデル用インスタンシング
-            int material = -1;
-            int texture = -1;
-            int normalMap = -1;
-            int metallicRoughnessMap = -1; ///< gMetallicRoughnessMap (G=Roughness, B=Metallic)
-            int emissiveMap = -1;
-            int aoMap = -1;
-            int matrixPalette = -1;
-        };
-        CachedIndices forwardCache_;
-        CachedIndices gBufferCache_;
+        // 解決済みルートパラメータ表（Initialize 後に一度だけ解決。添字は ModelBind::Slot）
+        BindingTable forwardBindings_;
+        BindingTable gBufferBindings_;
 
         InstanceBatchManager* instanceBatchManager_ = nullptr;
         ID3D12GraphicsCommandList* currentCommandList_ = nullptr;
 
-        /// @brief Initialize 完了後に一度だけ呼び、全 Root Param インデックスをキャッシュする
-        void CacheRootParamIndices();
+        /// @brief Initialize 完了後に一度だけ呼び、宣言表をシェーダー実体と突き合わせる
+        /// @param forwardDecls  フォワードパス用の宣言表（ModelBind::kForward 等）
+        /// @param gBufferDecls  G-Buffer パス用の宣言表
+        /// @param debugName     ログ用の識別名
+        /// @throws std::runtime_error 契約違反（必須リソースの不在・種別違い）
+        /// @note 派生クラスが自分のシェーダーに合う宣言表を渡す
+        void ResolveBindings(
+            const ShaderBindingDecl* forwardDecls,
+            const ShaderBindingDecl* gBufferDecls,
+            size_t count,
+            const std::string& debugName);
+
+        /// @brief フォワードパスのシーンレベルリソース（カメラ・ライト・IBL）を差す
+        /// @param table エンジン既定 RS の表、またはカスタムシェーダーの表
+        /// @note 既定パスとカスタムパスで処理が同じなので 1 箇所に集約している
+        void BindForwardSceneResources(ShaderBinder& binder, const BindingTable& table);
     };
 }

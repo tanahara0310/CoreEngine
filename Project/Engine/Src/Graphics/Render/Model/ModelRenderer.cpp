@@ -65,16 +65,10 @@ namespace CoreEngine
             {"gMaterial", sizeof(MaterialConstants)}
             });
 
-        // 必須リソースがシェーダーに存在するか確認（初期化失敗を早期検出）
-        if (GetRootParamIndex("gMaterial") < 0) {
-            throw std::runtime_error("gMaterial constant buffer not found in Object3d.PS.hlsl");
-        }
-        if (GetRootParamIndex("gInstanceData") < 0) {
-            throw std::runtime_error("gInstanceData structured buffer not found in Object3d.VS.hlsl");
-        }
-        if (GetRootParamIndex("gTexture") < 0) {
-            throw std::runtime_error("gTexture resource not found in Object3d.PS.hlsl");
-        }
+        // 必須リソースの存在確認は宣言表（ModelBind::kForward / kGBuffer）へ移した。
+        // 手書きの 3 個だけでなく 21 個すべてが照合され、種別違いも検出される。
+        ResolveBindings(ModelBind::kForward, ModelBind::kGBuffer,
+            ModelBind::Slot::Count, "ModelRenderer");
 
         // IBL 回転パラメータ用の定数バッファを確保し、デフォルト値（回転なし）で初期化
         iblParamsBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(IBLSceneParamsCPU));
@@ -84,17 +78,6 @@ namespace CoreEngine
         iblParamsBuffer_->Map(0, nullptr, &mapped);
         std::memcpy(mapped, &defaults, sizeof(defaults));
         iblParamsBuffer_->Unmap(0, nullptr);
-
-        // GBuffer パスの必須リソースを確認
-        if (GetGBufferRootParamIndex("gMaterial") < 0) {
-            throw std::runtime_error("gMaterial constant buffer not found in GBuffer.PS.hlsl");
-        }
-        if (GetGBufferRootParamIndex("gInstanceData") < 0) {
-            throw std::runtime_error("gInstanceData structured buffer not found in GBuffer.VS.hlsl");
-        }
-        if (GetGBufferRootParamIndex("gTexture") < 0) {
-            throw std::runtime_error("gTexture resource not found in GBuffer.PS.hlsl");
-        }
 
         // フォワードパス PSO: 全ブレンドモード分を事前生成
         bool result = forwardPsoMg_->CreateBuilder()
@@ -123,6 +106,5 @@ namespace CoreEngine
         forwardPipelineState_ = forwardPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
         gBufferPipelineState_ = gBufferPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
 
-        CacheRootParamIndices();
     }
 }

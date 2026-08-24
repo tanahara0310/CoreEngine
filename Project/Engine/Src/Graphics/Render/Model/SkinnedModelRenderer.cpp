@@ -101,6 +101,7 @@ namespace CoreEngine
         std::memcpy(mapped, &defaults, sizeof(defaults));
         iblParamsBuffer_->Unmap(0, nullptr);
 
-        CacheRootParamIndices();
+        ResolveBindings(ModelBind::kSkinnedForward, ModelBind::kSkinnedGBuffer,
+            ModelBind::Slot::Count, "SkinnedModelRenderer");
     }
 }

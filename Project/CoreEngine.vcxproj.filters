@@ -1033,6 +1033,9 @@
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderBindingContract.cpp">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
@@ -2456,6 +2459,18 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderBindingContract.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelBindings.h">
+      <Filter>Engine\Src\Graphics\Render\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingBindings.h">
+      <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterBindings.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderPrewarm.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>

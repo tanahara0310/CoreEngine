@@ -6,9 +6,12 @@
 #include <vector>
 
 #include "LightData.h"
+#include "Graphics/RootSignature/RootSlot.h"
 
 namespace CoreEngine
 {
+    class ShaderBinder;
+
     class ResourceFactory;
     class DescriptorAllocator;
 
@@ -36,7 +39,20 @@ namespace CoreEngine
             const std::vector<AreaLightData>& areaLights
         );
 
-        /// @brief コマンドリストにライトをセット
+        /// @brief コマンドリストにライトをセット（ShaderBinder 経由）
+        /// @details Set* の選択は RootSlot の種別から ShaderBinder が行う。
+        ///          binder が差したことを記録するので、Draw 前の取りこぼし検出が効く。
+        void SetToCommandList(
+            ShaderBinder& binder,
+            RootSlot lightCounts,
+            RootSlot directionalLights,
+            RootSlot pointLights,
+            RootSlot spotLights,
+            RootSlot areaLights
+        );
+
+        /// @brief コマンドリストにライトをセット（ルートパラメータ番号版）
+        /// @deprecated ShaderBinder 版へ移行すること。番号だけでは差し方を検証できない。
         void SetToCommandList(
             ID3D12GraphicsCommandList* commandList,
             int lightCountsRootParameterIndex,

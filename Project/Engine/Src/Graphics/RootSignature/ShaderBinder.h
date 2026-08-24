@@ -26,6 +26,8 @@
 
 namespace CoreEngine
 {
+    class BindingTable;
+
     /// @brief 1 パス分のルートバインドを引き受ける
     /// @note コマンドリストを所有しない。パスのスコープで値として作って捨てる想定。
     class ShaderBinder {
@@ -53,8 +55,14 @@ namespace CoreEngine
             SetConstantsRaw(slot, &value, sizeof(T) / 4);
         }
 
+        /// @brief Draw / Dispatch の直前に呼ぶ。Required 宣言の差し忘れを検出する
+        /// @details 「シェーダーは要求しているのに誰も差さなかった」を、GPU が前フレームの
+        ///          descriptor を読んで絵が壊れる前に捕まえる。検出時は名前つきで [error] ログ。
+        /// @note Release（CB_REFLECTION_CHECK_ENABLED が 0）では何もしない
+        void ValidateBeforeDraw(const BindingTable& table) const;
+
         /// @brief このバインダーで差したルートパラメータのビット集合
-        /// @details bit N = ルートパラメータ N を差した。Phase 2 の取りこぼし検出で使う。
+        /// @details bit N = ルートパラメータ N を差した
         uint64_t GetBoundMask() const { return boundMask_; }
 
         /// @brief 指定スロットを差したか

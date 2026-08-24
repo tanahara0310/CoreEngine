@@ -3,6 +3,7 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
@@ -99,36 +100,12 @@ namespace CoreEngine
         void CreateConstantBuffers();
         void UpdateWaterCausticsDebugBuffer();
 
-        /// @brief ルートパラメータを初期化時に 1 回だけ解決する
-        /// @note 従来は Draw のたびに 22 回 std::map<std::string> を引いていた
-        void CacheRootSlots();
+        /// @brief 宣言表（DeferredLightingBind::kDecls）を初期化時に 1 回だけ解決する
+        /// @note 契約違反（必須リソースの不在・種別違い）はここで throw される
+        void ResolveBindings();
 
-        /// @brief 解決済みルートパラメータ一式
-        struct Slots {
-            RootSlot albedoAO;
-            RootSlot normalRoughness;
-            RootSlot emissiveMetallic;
-            RootSlot sceneDepth;
-            RootSlot camera;
-            RootSlot depthReconstruction;
-            RootSlot lightCounts;
-            RootSlot directionalLights;
-            RootSlot pointLights;
-            RootSlot spotLights;
-            RootSlot areaLights;
-            RootSlot irradianceMap;
-            RootSlot prefilteredMap;
-            RootSlot brdfLUT;
-            RootSlot iblParams;
-            RootSlot rtShadowMask[kMaxRTShadowLights];
-            RootSlot ssao;
-            RootSlot waterCaustics;
-            RootSlot waterCausticsDebug;
-            RootSlot skyAmbient;
-            RootSlot skyIrradianceSH;
-            RootSlot skySpecularMap;
-        };
-        Slots slots_;
+        /// @brief 解決済みルートパラメータ表。描画中は添字でしか触らない
+        BindingTable bindings_;
 
         // ===== 出力設定 =====
         std::string targetName_ = RenderTargetNames::SceneColor;

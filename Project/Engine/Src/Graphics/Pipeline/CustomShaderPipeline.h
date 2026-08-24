@@ -5,6 +5,7 @@
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 
 #include <d3d12.h>
 #include <dxcapi.h>
@@ -43,9 +44,24 @@ namespace CoreEngine
         /// @return 構築済みなら RootSignature ポインタ、未構築なら nullptr
         ID3D12RootSignature* GetComputeRootSignature() const;
 
+        /// @brief リソース名からフォワードパス用ルートパラメータ（番号＋差し方）を取得
+        /// @param resourceName シェーダー内のリソース名（例: "gWave", "gFoamTexture"）
+        /// @return 見つからない場合は kind == None
+        /// @note 描画中に呼ぶと map 検索になる。モデル描画共通リソースは GetModelBindings() を使う
+        RootSlot GetRootSlot(const std::string& resourceName) const;
+
+        /// @brief モデル描画共通リソース（ModelBind::kCustom）の解決済み表
+        /// @details 構築時に 1 回解決済みなので、描画中の名前引きが不要になる
+        const BindingTable& GetModelBindings() const { return modelBindings_; }
+
+        /// @brief フォワードパスのリフレクション結果（シェーダー固有の契約を解決するため）
+        /// @return 未構築なら nullptr
+        const ShaderReflectionData* GetForwardReflection() const { return forwardReflection_.get(); }
+
         /// @brief リソース名からフォワードパス用ルートパラメータインデックスを取得
         /// @param resourceName シェーダー内のリソース名（例: "gWave", "gFoamTexture"）
         /// @return インデックス（未登録の場合は -1）
+        /// @deprecated GetRootSlot() へ移行すること
         int GetRootParamIndex(const std::string& resourceName) const;
 
         /// @brief リソース名からコンピュートパス用ルートパラメータインデックスを取得
@@ -89,6 +105,10 @@ namespace CoreEngine
         // コンピュートパス用
         std::unique_ptr<RootSignatureManager> computeRootSignatureMg_;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> computePSO_;
+
+        // フォワード用リフレクションと、モデル描画共通リソースの解決済み表
+        std::unique_ptr<ShaderReflectionData> forwardReflection_;
+        BindingTable modelBindings_;
 
         bool hasForwardPSO_ = false;
         bool hasComputePSO_ = false;

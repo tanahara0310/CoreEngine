@@ -125,7 +125,9 @@ namespace CoreEngine
         }
 
         // Water 専用のバインダへ委譲して CBV / SRV の接続を行う
-        WaterShaderResourceBinder::Bind(
+        // （バインダは宣言表の解決結果をキャッシュするので mutable。
+        //   BindCustomResources は ICustomShaderProvider の const 契約に縛られている）
+        shaderResourceBinder_.Bind(
             cmdList,
             pipeline,
             waterCBGpuAddress,
