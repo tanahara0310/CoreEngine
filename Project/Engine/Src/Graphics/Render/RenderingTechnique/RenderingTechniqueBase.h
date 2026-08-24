@@ -86,7 +86,12 @@ public:
     ///          設計: Docs/Engine/Editor/CVar_Design.md
     virtual CVar<bool>* GetEnabledCVar() const { return nullptr; }
 
+    /// @brief シェーダーリソース名からルートパラメータ（番号＋差し方）を取得
+    /// @note 初期化時に解決してメンバへ持ち、描画中は名前で引かないこと
+    RootSlot GetRootSlot(const std::string& resourceName) const;
+
     /// @brief シェーダーリソース名からルートパラメータインデックスを取得
+    /// @deprecated GetRootSlot() + ShaderBinder へ移行すること
     int GetRootParamIndex(const std::string& resourceName) const;
 
 protected:

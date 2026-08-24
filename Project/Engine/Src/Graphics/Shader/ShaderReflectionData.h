@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/RootSignature/RootSlot.h"
+
 #include <d3d12.h>
 #include <string>
 #include <vector>
@@ -93,12 +95,19 @@ namespace CoreEngine
         // 2つのリフレクションデータをマージ（VS + PS）
         void Merge(const ShaderReflectionData& other);
 
+        /// @brief リソース名からルートパラメータ（番号＋差し方）を取得
+        /// @return 見つからない場合は kind == None（IsValid() が false）
+        /// @note RootSignature 構築後に使用可能。新規コードはこちらを使い ShaderBinder へ渡すこと。
+        RootSlot GetRootSlot(const std::string& resourceName) const;
+
         // リソース名からルートパラメータインデックスを取得
         // BuildFromReflection後に使用可能
+        /// @deprecated 番号だけでは Set* を選べない。GetRootSlot() + ShaderBinder へ移行すること。
+        ///             Phase 2 で呼び出し側を置き換え終えたら削除する。
         int GetRootParameterIndexByName(const std::string& resourceName) const;
 
-        // ルートパラメータインデックスマッピングを設定（RootSignatureManagerから呼ばれる）
-        void SetRootParameterMapping(const std::map<std::string, UINT>& mapping);
+        // ルートパラメータマッピングを設定（RootSignatureManagerから呼ばれる）
+        void SetRootParameterMapping(const std::map<std::string, RootSlot>& mapping);
 
         /// @brief 定数バッファのサイズを検証
         /// @param cbvName 定数バッファ名
@@ -124,7 +133,7 @@ namespace CoreEngine
         std::vector<InputElementInfo> inputElements_;         // 入力レイアウト
 
         // リソース名 -> ルートパラメータインデックスのマッピング
-        std::map<std::string, UINT> rootParameterMapping_;
+        std::map<std::string, RootSlot> rootParameterMapping_;
 
         // デバッグ用ヘルパー関数
         std::string GetShaderVisibilityString(D3D12_SHADER_VISIBILITY visibility) const;

@@ -204,15 +204,20 @@ namespace CoreEngine
         }
     }
 
-    int ShaderReflectionData::GetRootParameterIndexByName(const std::string& resourceName) const {
+    RootSlot ShaderReflectionData::GetRootSlot(const std::string& resourceName) const {
         auto it = rootParameterMapping_.find(resourceName);
         if (it != rootParameterMapping_.end()) {
-            return static_cast<int>(it->second);
+            return it->second;
         }
-        return -1;  // 見つからない場合は-1を返す
+        return RootSlot{};  // kind == None
     }
 
-    void ShaderReflectionData::SetRootParameterMapping(const std::map<std::string, UINT>& mapping) {
+    int ShaderReflectionData::GetRootParameterIndexByName(const std::string& resourceName) const {
+        const RootSlot slot = GetRootSlot(resourceName);
+        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
+    }
+
+    void ShaderReflectionData::SetRootParameterMapping(const std::map<std::string, RootSlot>& mapping) {
         rootParameterMapping_ = mapping;
     }
 

@@ -99,6 +99,37 @@ namespace CoreEngine
         void CreateConstantBuffers();
         void UpdateWaterCausticsDebugBuffer();
 
+        /// @brief ルートパラメータを初期化時に 1 回だけ解決する
+        /// @note 従来は Draw のたびに 22 回 std::map<std::string> を引いていた
+        void CacheRootSlots();
+
+        /// @brief 解決済みルートパラメータ一式
+        struct Slots {
+            RootSlot albedoAO;
+            RootSlot normalRoughness;
+            RootSlot emissiveMetallic;
+            RootSlot sceneDepth;
+            RootSlot camera;
+            RootSlot depthReconstruction;
+            RootSlot lightCounts;
+            RootSlot directionalLights;
+            RootSlot pointLights;
+            RootSlot spotLights;
+            RootSlot areaLights;
+            RootSlot irradianceMap;
+            RootSlot prefilteredMap;
+            RootSlot brdfLUT;
+            RootSlot iblParams;
+            RootSlot rtShadowMask[kMaxRTShadowLights];
+            RootSlot ssao;
+            RootSlot waterCaustics;
+            RootSlot waterCausticsDebug;
+            RootSlot skyAmbient;
+            RootSlot skyIrradianceSH;
+            RootSlot skySpecularMap;
+        };
+        Slots slots_;
+
         // ===== 出力設定 =====
         std::string targetName_ = RenderTargetNames::SceneColor;
 

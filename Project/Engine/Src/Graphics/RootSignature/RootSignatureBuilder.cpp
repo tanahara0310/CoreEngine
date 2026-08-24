@@ -19,7 +19,7 @@ namespace CoreEngine
         std::vector<D3D12_ROOT_PARAMETER> rootParams;
         std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> rangeStorage;
         std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers;
-        std::map<std::string, UINT> mapping;
+        std::map<std::string, RootSlot> mapping;
         std::map<UINT, std::vector<std::string>> tableGroups;
         UINT currentIndex = 0;
 
@@ -68,7 +68,7 @@ namespace CoreEngine
             return result;
         }
 
-        result.resourceToRootParamIndex = std::move(mapping);
+        result.resourceToRootSlot = std::move(mapping);
         result.tableGroupResources = std::move(tableGroups);
         result.success = true;
 
@@ -101,8 +101,9 @@ namespace CoreEngine
         ss << "    Static Samplers: " << staticSamplers.size() << "\n";
         ss << "├─────────────────────────────────────────────────────────────────┤\n";
         ss << "│  [Resource → RootParam Index Mapping]\n";
-        for (const auto& [name, index] : result.resourceToRootParamIndex) {
-            ss << "│    • " << name << "  →  [" << index << "]\n";
+        for (const auto& [name, slot] : result.resourceToRootSlot) {
+            ss << "│    • " << name << "  →  [" << static_cast<UINT>(slot.index)
+               << "] " << ToString(slot.kind) << "\n";
         }
         ss << "└─────────────────────────────────────────────────────────────────┘\n";
         Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", ss.str());
@@ -112,30 +113,39 @@ namespace CoreEngine
     }
 
     void RootSignatureBuilder::AssignMapping(
-        std::map<std::string, UINT>& mapping,
+        std::map<std::string, RootSlot>& mapping,
         const std::string& resourceName,
         UINT rootParamIndex,
+        RootSlotKind kind,
         const std::string& shaderName) const {
 
+        // D3D12 のルートパラメータ上限は 64。RootSlot::index は uint8_t なので、
+        // ここを超えるとそもそもシリアライズが通らないが、切り詰め事故だけは防いでおく。
+        assert(rootParamIndex <= 0xFF && "ルートパラメータ番号が uint8_t に収まりません");
+
+        const RootSlot slot{ static_cast<uint8_t>(rootParamIndex), kind };
+
         const auto it = mapping.find(resourceName);
-        if (it != mapping.end() && it->second != rootParamIndex) {
+        if (it != mapping.end() && it->second != slot) {
             // 同名リソースが 2 本のルートパラメータに割り当てられた。
             // 典型は「VS の gMaterial が b0、PS の gMaterial が b1」のように
             // 同じ名前で別レジスタを使ってしまったケース。名前でしか引けない以上、
             // 後勝ちの上書きで片方が永久に到達不能になる（＝そのリソースが差されない）。
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
-                "リソース名が重複しています: name={} rootParam {} を {} で上書きします。"
+                "リソース名が重複しています: name={} rootParam [{}]{} を [{}]{} で上書きします。"
                 "VS と PS で同名リソースに別レジスタを割り当てていないか確認してください: shader={}",
-                resourceName, it->second, rootParamIndex, shaderName);
+                resourceName,
+                static_cast<UINT>(it->second.index), ToString(it->second.kind),
+                rootParamIndex, ToString(kind), shaderName);
         }
-        mapping[resourceName] = rootParamIndex;
+        mapping[resourceName] = slot;
     }
 
     void RootSignatureBuilder::ProcessCBVs(
         const ShaderReflectionData& reflectionData,
         const RootSignatureConfig& config,
         std::vector<D3D12_ROOT_PARAMETER>& rootParams,
-        std::map<std::string, UINT>& mapping,
+        std::map<std::string, RootSlot>& mapping,
         UINT& currentIndex) {
 
         for (const auto& cbv : reflectionData.GetCBVBindings()) {
@@ -147,7 +157,7 @@ namespace CoreEngine
                     D3D12_ROOT_PARAMETER_TYPE_CBV,
                     cbv.bindPoint, cbv.space, cbv.visibility);
                 rootParams.push_back(param);
-                AssignMapping(mapping, cbv.name, currentIndex++, reflectionData.GetShaderName());
+                AssignMapping(mapping, cbv.name, currentIndex++, RootSlotKind::RootCBV, reflectionData.GetShaderName());
                 break;
             }
             case BindingStrategy::RootConstants: {
@@ -168,7 +178,7 @@ namespace CoreEngine
                 param.Constants.RegisterSpace = cbv.space;
                 param.Constants.Num32BitValues = num32BitValues;
                 rootParams.push_back(param);
-                AssignMapping(mapping, cbv.name, currentIndex++, reflectionData.GetShaderName());
+                AssignMapping(mapping, cbv.name, currentIndex++, RootSlotKind::RootConstants, reflectionData.GetShaderName());
                 break;
             }
             default:
@@ -177,7 +187,7 @@ namespace CoreEngine
                     D3D12_ROOT_PARAMETER_TYPE_CBV,
                     cbv.bindPoint, cbv.space, cbv.visibility);
                 rootParams.push_back(param);
-                AssignMapping(mapping, cbv.name, currentIndex++, reflectionData.GetShaderName());
+                AssignMapping(mapping, cbv.name, currentIndex++, RootSlotKind::RootCBV, reflectionData.GetShaderName());
                 break;
             }
         }
@@ -188,7 +198,7 @@ namespace CoreEngine
         const RootSignatureConfig& config,
         std::vector<D3D12_ROOT_PARAMETER>& rootParams,
         std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>>& rangeStorage,
-        std::map<std::string, UINT>& mapping,
+        std::map<std::string, RootSlot>& mapping,
         std::map<UINT, std::vector<std::string>>& tableGroups,
         UINT& currentIndex) {
 
@@ -214,7 +224,7 @@ namespace CoreEngine
                     ranges.push_back(range);
 
                     // 同一グループ内のリソースは同じルートパラメータを共有
-                    AssignMapping(mapping, resourceName, currentIndex, reflectionData.GetShaderName());
+                    AssignMapping(mapping, resourceName, currentIndex, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
                     tableGroups[groupId].push_back(resourceName);
                     processedResources.insert(resourceName);
                     hasAnyResource = true;
@@ -252,7 +262,7 @@ namespace CoreEngine
                     D3D12_ROOT_PARAMETER_TYPE_SRV,
                     srv.bindPoint, srv.space, srv.visibility);
                 rootParams.push_back(param);
-                AssignMapping(mapping, srv.name, currentIndex++, reflectionData.GetShaderName());
+                AssignMapping(mapping, srv.name, currentIndex++, RootSlotKind::RootSRV, reflectionData.GetShaderName());
                 break;
             }
             case BindingStrategy::DescriptorTable:
@@ -275,7 +285,7 @@ namespace CoreEngine
                 param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
                 param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
                 rootParams.push_back(param);
-                AssignMapping(mapping, srv.name, currentIndex++, reflectionData.GetShaderName());
+                AssignMapping(mapping, srv.name, currentIndex++, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
                 break;
             }
             }
@@ -287,7 +297,7 @@ namespace CoreEngine
         const RootSignatureConfig& config,
         std::vector<D3D12_ROOT_PARAMETER>& rootParams,
         std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>>& rangeStorage,
-        std::map<std::string, UINT>& mapping,
+        std::map<std::string, RootSlot>& mapping,
         std::map<UINT, std::vector<std::string>>& tableGroups,
         UINT& currentIndex) {
 
@@ -310,7 +320,7 @@ namespace CoreEngine
                     range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
                     ranges.push_back(range);
 
-                    AssignMapping(mapping, resourceName, currentIndex, reflectionData.GetShaderName());
+                    AssignMapping(mapping, resourceName, currentIndex, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
                     tableGroups[groupId].push_back(resourceName);
                     processedResources.insert(resourceName);
                     hasAnyResource = true;
@@ -347,7 +357,7 @@ namespace CoreEngine
                     D3D12_ROOT_PARAMETER_TYPE_UAV,
                     uav.bindPoint, uav.space, uav.visibility);
                 rootParams.push_back(param);
-                AssignMapping(mapping, uav.name, currentIndex++, reflectionData.GetShaderName());
+                AssignMapping(mapping, uav.name, currentIndex++, RootSlotKind::RootUAV, reflectionData.GetShaderName());
                 break;
             }
             case BindingStrategy::DescriptorTable:
@@ -369,7 +379,7 @@ namespace CoreEngine
                 param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
                 param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
                 rootParams.push_back(param);
-                AssignMapping(mapping, uav.name, currentIndex++, reflectionData.GetShaderName());
+                AssignMapping(mapping, uav.name, currentIndex++, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
                 break;
             }
             }
@@ -382,7 +392,7 @@ namespace CoreEngine
         std::vector<D3D12_STATIC_SAMPLER_DESC>& staticSamplers,
         std::vector<D3D12_ROOT_PARAMETER>& rootParams,
         std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>>& rangeStorage,
-        std::map<std::string, UINT>& mapping,
+        std::map<std::string, RootSlot>& mapping,
         UINT& currentIndex) {
 
         for (const auto& sampler : reflectionData.GetSamplerBindings()) {
@@ -421,7 +431,7 @@ namespace CoreEngine
                 param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
                 param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
                 rootParams.push_back(param);
-                AssignMapping(mapping, sampler.name, currentIndex++, reflectionData.GetShaderName());
+                AssignMapping(mapping, sampler.name, currentIndex++, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
                 break;
             }
             default:

@@ -8,6 +8,7 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include <cassert>
 
 #ifdef USE_IMGUI
@@ -75,14 +76,10 @@ namespace CoreEngine
         cmdList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
-        const int sceneColorIdx = GetRootParamIndex("gSceneColor");
-        if (sceneColorIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(sceneColorIdx, inputHandle);
-        }
-
-        const int paramsIdx = GetRootParamIndex("CASParams");
-        if (paramsIdx >= 0 && cbAddress != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(paramsIdx, cbAddress);
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+        binder.Set(GetRootSlot("gSceneColor"), inputHandle);
+        if (cbAddress != 0) {
+            binder.Set(GetRootSlot("CASParams"), cbAddress);
         }
 
         DrawFullscreenQuad(cmdList);

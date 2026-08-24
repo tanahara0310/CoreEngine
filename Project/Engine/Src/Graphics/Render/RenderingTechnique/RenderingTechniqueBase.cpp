@@ -94,11 +94,16 @@ namespace CoreEngine
         }
     }
 
-    int RenderingTechniqueBase::GetRootParamIndex(const std::string& resourceName) const {
+    RootSlot RenderingTechniqueBase::GetRootSlot(const std::string& resourceName) const {
         if (!reflectionData_) {
-            return -1;
+            return RootSlot{};
         }
-        return reflectionData_->GetRootParameterIndexByName(resourceName);
+        return reflectionData_->GetRootSlot(resourceName);
+    }
+
+    int RenderingTechniqueBase::GetRootParamIndex(const std::string& resourceName) const {
+        const RootSlot slot = GetRootSlot(resourceName);
+        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
     }
 
     const std::wstring& RenderingTechniqueBase::GetVertexShaderPath() const

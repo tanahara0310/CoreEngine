@@ -379,6 +379,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\UIRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RootSignature\ShaderBinder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\CBufferReflectionCheck.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderReflectionData.cpp" />
@@ -805,6 +806,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\UI\UIRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h" />
+    <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSlot.h" />
+    <ClInclude Include="Engine\Src\Graphics\RootSignature\ShaderBinder.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\CBufferLayout.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\CBufferReflectionCheck.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ICustomShaderProvider.h" />

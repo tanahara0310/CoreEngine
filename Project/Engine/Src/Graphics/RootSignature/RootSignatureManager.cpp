@@ -17,21 +17,26 @@ namespace CoreEngine
 
         if (lastBuildResult_.success) {
             rootSignature_ = lastBuildResult_.rootSignature;
-            
+
             // ShaderReflectionDataにマッピングを設定
             const_cast<ShaderReflectionData&>(reflectionData).SetRootParameterMapping(
-                lastBuildResult_.resourceToRootParamIndex);
+                lastBuildResult_.resourceToRootSlot);
         }
 
         return lastBuildResult_;
     }
 
-    int RootSignatureManager::GetRootParameterIndex(const std::string& resourceName) const {
-        auto it = lastBuildResult_.resourceToRootParamIndex.find(resourceName);
-        if (it != lastBuildResult_.resourceToRootParamIndex.end()) {
-            return static_cast<int>(it->second);
+    RootSlot RootSignatureManager::GetRootSlot(const std::string& resourceName) const {
+        auto it = lastBuildResult_.resourceToRootSlot.find(resourceName);
+        if (it != lastBuildResult_.resourceToRootSlot.end()) {
+            return it->second;
         }
-        return -1;
+        return RootSlot{};  // kind == None
+    }
+
+    int RootSignatureManager::GetRootParameterIndex(const std::string& resourceName) const {
+        const RootSlot slot = GetRootSlot(resourceName);
+        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
     }
 
     void RootSignatureManager::Clear() {

@@ -6,18 +6,19 @@
 #include "Particle/Gpu/GpuParticleSystem.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 
 #include <cassert>
 #include <stdexcept>
 
 namespace CoreEngine
 {
-    int GpuParticleRenderer::ComputePass::GetRootParamIndex(const std::string& name) const
+    RootSlot GpuParticleRenderer::ComputePass::GetRootSlot(const std::string& name) const
     {
         if (!reflectionData) {
-            return -1;
+            return RootSlot{};
         }
-        return reflectionData->GetRootParameterIndexByName(name);
+        return reflectionData->GetRootSlot(name);
     }
 
     void GpuParticleRenderer::Initialize(ID3D12Device* device)
@@ -29,16 +30,16 @@ namespace CoreEngine
         CreateComputePass(device, emitPass_, L"GpuParticleEmit.CS.hlsl", "GpuParticleEmit");
         CreateComputePass(device, updatePass_, L"GpuParticleUpdate.CS.hlsl", "GpuParticleUpdate");
 
-        emitParticlesIdx_ = emitPass_.GetRootParamIndex("gParticles");
-        emitCounterIdx_ = emitPass_.GetRootParamIndex("gCounters");
-        emitFreeListIdx_ = emitPass_.GetRootParamIndex("gFreeList");
-        emitParamsIdx_ = emitPass_.GetRootParamIndex("GpuParticleParams");
+        emitParticles_ = emitPass_.GetRootSlot("gParticles");
+        emitCounter_ = emitPass_.GetRootSlot("gCounters");
+        emitFreeList_ = emitPass_.GetRootSlot("gFreeList");
+        emitParams_ = emitPass_.GetRootSlot("GpuParticleParams");
 
-        updateParticlesIdx_ = updatePass_.GetRootParamIndex("gParticles");
-        updateInstancingIdx_ = updatePass_.GetRootParamIndex("gInstancing");
-        updateCounterIdx_ = updatePass_.GetRootParamIndex("gCounters");
-        updateFreeListIdx_ = updatePass_.GetRootParamIndex("gFreeList");
-        updateParamsIdx_ = updatePass_.GetRootParamIndex("GpuParticleParams");
+        updateParticles_ = updatePass_.GetRootSlot("gParticles");
+        updateInstancing_ = updatePass_.GetRootSlot("gInstancing");
+        updateCounter_ = updatePass_.GetRootSlot("gCounters");
+        updateFreeList_ = updatePass_.GetRootSlot("gFreeList");
+        updateParams_ = updatePass_.GetRootSlot("GpuParticleParams");
 
         // ExecuteIndirect 用コマンドシグネチャ（描画引数のみ・ルートシグネチャ不要）
         D3D12_INDIRECT_ARGUMENT_DESC argDesc{};
@@ -148,18 +149,14 @@ namespace CoreEngine
             cmdList_->SetComputeRootSignature(emitPass_.rootSignatureMg->GetRootSignature());
             cmdList_->SetPipelineState(emitPass_.pso.Get());
 
-            if (emitParticlesIdx_ >= 0) {
-                cmdList_->SetComputeRootDescriptorTable(emitParticlesIdx_, system->GetParticleUavHandleGPU());
-            }
-            if (emitCounterIdx_ >= 0) {
-                cmdList_->SetComputeRootDescriptorTable(emitCounterIdx_, system->GetCounterUavHandleGPU());
-            }
-            if (emitFreeListIdx_ >= 0) {
-                cmdList_->SetComputeRootDescriptorTable(emitFreeListIdx_, system->GetFreeListUavHandleGPU());
-            }
-            if (emitParamsIdx_ >= 0) {
-                cmdList_->SetComputeRootConstantBufferView(emitParamsIdx_, system->GetParamsGPUAddress());
-            }
+            // Set* の選択は RootSlot の種別から ShaderBinder が行う。
+            // ここで UAV をテーブルとして差すかルートディスクリプタとして差すかを
+            // 呼び出し側が暗記する必要はもう無い。
+            ShaderBinder binder(cmdList_, ShaderBinder::Pipeline::Compute);
+            binder.Set(emitParticles_, system->GetParticleUavHandleGPU());
+            binder.Set(emitCounter_, system->GetCounterUavHandleGPU());
+            binder.Set(emitFreeList_, system->GetFreeListUavHandleGPU());
+            binder.Set(emitParams_, system->GetParamsGPUAddress());
 
             const UINT groupCount = (emitCount + 63) / 64;
             cmdList_->Dispatch(groupCount, 1, 1);
@@ -172,20 +169,13 @@ namespace CoreEngine
         cmdList_->SetComputeRootSignature(updatePass_.rootSignatureMg->GetRootSignature());
         cmdList_->SetPipelineState(updatePass_.pso.Get());
 
-        if (updateParticlesIdx_ >= 0) {
-            cmdList_->SetComputeRootDescriptorTable(updateParticlesIdx_, system->GetParticleUavHandleGPU());
-        }
-        if (updateInstancingIdx_ >= 0) {
-            cmdList_->SetComputeRootDescriptorTable(updateInstancingIdx_, system->GetInstancingUavHandleGPU());
-        }
-        if (updateCounterIdx_ >= 0) {
-            cmdList_->SetComputeRootDescriptorTable(updateCounterIdx_, system->GetCounterUavHandleGPU());
-        }
-        if (updateFreeListIdx_ >= 0) {
-            cmdList_->SetComputeRootDescriptorTable(updateFreeListIdx_, system->GetFreeListUavHandleGPU());
-        }
-        if (updateParamsIdx_ >= 0) {
-            cmdList_->SetComputeRootConstantBufferView(updateParamsIdx_, system->GetParamsGPUAddress());
+        {
+            ShaderBinder binder(cmdList_, ShaderBinder::Pipeline::Compute);
+            binder.Set(updateParticles_, system->GetParticleUavHandleGPU());
+            binder.Set(updateInstancing_, system->GetInstancingUavHandleGPU());
+            binder.Set(updateCounter_, system->GetCounterUavHandleGPU());
+            binder.Set(updateFreeList_, system->GetFreeListUavHandleGPU());
+            binder.Set(updateParams_, system->GetParamsGPUAddress());
         }
 
         const UINT groupCount = (GpuParticleSystem::kMaxParticles + 63) / 64;
