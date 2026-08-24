@@ -25,7 +25,7 @@ namespace CoreEngine
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "LineRenderer");
 
         // 新しいAPIでRootSignatureを構築
-        RootSignatureConfig config = RootSignatureConfig::Simple();
+        RootSignatureConfig config;
         auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
 
         if (!buildResult.success) {

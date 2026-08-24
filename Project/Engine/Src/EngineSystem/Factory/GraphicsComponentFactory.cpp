@@ -33,6 +33,7 @@
 #include "Graphics/IBL/IBLGenerator.h"
 #include "Graphics/IBL/IBLSystem.h"
 #include "Graphics/Shader/ShaderCompiler.h"
+#include "Graphics/Shader/ShaderProgram.h"
 
 #include <memory>
 
@@ -48,6 +49,8 @@ namespace CoreEngine
         LineRendererPipeline* lineRenderer = nullptr;
         IBLGenerator* iblGenerator = nullptr;
         ShaderCompiler* shaderCompiler = nullptr;
+        /// @brief シェーダーのコンパイルとリフレクションを一元化するキャッシュ
+        ShaderProgramCache* shaderProgramCache = nullptr;
 
         // フォワード受影用 RT シャドウマスクの初期値（white1x1 = 影なし）
         D3D12_GPU_DESCRIPTOR_HANDLE whiteFallback{};
@@ -222,16 +225,28 @@ namespace CoreEngine
         // ──────────────────────────────────────────────────────────
         // ポストエフェクト・レンダリング技術・モデル・IBL
         // ──────────────────────────────────────────────────────────
+        sequence.Add("シェーダープログラムキャッシュ", [enginePtr, state] {
+            // DXC（IDxcUtils / IDxcCompiler3）はここで 1 回だけ作る。
+            // 以前はサブシステムごとに ShaderCompiler を生成していた。
+            auto cache = std::make_unique<ShaderProgramCache>();
+            cache->Initialize();
+            state->shaderProgramCache = cache.get();
+            enginePtr->RegisterComponent(std::move(cache));
+        });
+
         sequence.Add("ポストエフェクト", [enginePtr, state] {
             auto postEffectManager = std::make_unique<PostEffectManager>();
-            postEffectManager->Initialize(state->dx, state->render);
+            postEffectManager->Initialize(state->dx, state->render, state->shaderProgramCache);
             enginePtr->RegisterComponent(std::move(postEffectManager));
         });
 
         sequence.Add("レンダリング技術", [enginePtr, state] {
             auto renderingTechniqueManager = std::make_unique<RenderingTechniqueManager>();
-            renderingTechniqueManager->Initialize(state->dx);
+            renderingTechniqueManager->Initialize(state->dx, state->shaderProgramCache);
             enginePtr->RegisterComponent(std::move(renderingTechniqueManager));
+
+            // ポストエフェクトとレンダリング技術を作り終えた時点での効き具合を残す
+            state->shaderProgramCache->LogSummary();
         });
 
         sequence.Add("モデル描画コンテキスト", [enginePtr, state] {

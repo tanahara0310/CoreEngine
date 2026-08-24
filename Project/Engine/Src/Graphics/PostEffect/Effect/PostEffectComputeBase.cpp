@@ -14,17 +14,16 @@ namespace CoreEngine
     {
         assert(dxCommon);
         graphicsCore_ = dxCommon;
+        assert(shaderProgramCache_
+            && "SetShaderProgramCache() を Initialize() の前に呼ぶこと（Manager が行う）");
 
-        //CS シェーダーをコンパイル
-        ShaderCompiler compiler;
-        compiler.Initialize();
-        computeShaderBlob_ = compiler.CompileShader(GetComputeShaderPath(), L"cs_6_0");
-
-        //リフレクション
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(compiler.GetDxcUtils());
-        reflectionData_ = reflectionBuilder.BuildFromComputeShader(
-            computeShaderBlob_.Get(), GetEffectName());
+        // コンパイルとリフレクションはキャッシュが担当する
+        shaderProgram_ = shaderProgramCache_->GetOrCreateCompute(
+            GetComputeShaderPath(), GetEffectName());
+        if (!shaderProgram_) {
+            throw std::runtime_error(GetEffectName() + ": Failed to compile compute shader");
+        }
+        reflectionData_ = &shaderProgram_->GetReflection();
 
         // RootSignature 構築
         RootSignatureConfig config;
@@ -42,7 +41,7 @@ namespace CoreEngine
         // Compute PSO 構築
         computePso_ = ComputePipelineUtil::Create(
             graphicsCore_->GetDevice(), rootSignatureManager_->GetRootSignature(),
-            computeShaderBlob_.Get(), GetEffectName() + "_CS");
+            shaderProgram_->GetCS(), GetEffectName() + "_CS");
         if (!computePso_) {
             throw std::runtime_error(GetEffectName() + ": Failed to create Compute PSO");
         }

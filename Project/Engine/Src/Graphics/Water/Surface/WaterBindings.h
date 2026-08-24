@@ -1,18 +1,5 @@
 #pragma once
 
-//========================================================================================
-// WaterBindings.h
-//
-// 水面シェーダーが要求する「水面固有」リソースの契約。
-// カメラ・ライト・IBL などモデル描画共通のリソースは ModelBindings.h（kCustom）が持つので
-// ここには含めない。分担が違うので表も分けてある。
-//
-// 水面はカスタムシェーダー経路（CustomShaderPipeline）なので、シェーダーは FFT ON/OFF などで
-// 差し替わる。したがってどれも Required にはできず、Conditional / Optional で表す。
-//
-// 詳細: Docs/Engine/Graphics/Shader/ShaderBinding_Design_Review.md §4.4
-//========================================================================================
-
 #include "Graphics/Shader/ShaderBindingContract.h"
 
 #include <cstddef>

@@ -10,6 +10,7 @@
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Utility/CVar/CVar.h"
 
@@ -32,6 +33,11 @@ struct RenderContext;
 class RenderingTechniqueBase {
 public:
     virtual ~RenderingTechniqueBase() = default;
+
+    /// @brief シェーダーのコンパイル／リフレクションを行うキャッシュを注入する
+    /// @note Initialize() の前に呼ぶこと。RenderingTechniqueManager が自動で行うので
+    ///       派生クラス側で意識する必要はない。
+    void SetShaderProgramCache(ShaderProgramCache* cache) { shaderProgramCache_ = cache; }
 
     /// @brief 初期化
     /// @param dxCommon GraphicsCore
@@ -126,18 +132,17 @@ protected:
 protected:
     GraphicsCore* graphicsCore_ = nullptr;
 
-    // Graphics Shader用
-    Microsoft::WRL::ComPtr<IDxcBlob> vertexShaderBlob_;
-    Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob_;
+    /// @brief コンパイルとリフレクションの窓口（マネージャが Initialize 前に注入する）
+    ShaderProgramCache* shaderProgramCache_ = nullptr;
 
-    // Compute Shader用
-    Microsoft::WRL::ComPtr<IDxcBlob> computeShaderBlob_;
+    /// @brief 使っているプログラム（所有者は ShaderProgramCache）
+    const ShaderProgram* shaderProgram_ = nullptr;
 
     std::unique_ptr<RootSignatureManager> rootSignatureManager_;
     PipelineStateManager pipelineStateManager_;
 
-    // シェーダーリフレクションデータ
-    std::unique_ptr<ShaderReflectionData> reflectionData_;
+    /// @brief シェーダーリフレクションデータ（shaderProgram_ が持つ実体への参照）
+    const ShaderReflectionData* reflectionData_ = nullptr;
 
     bool enabled_ = true; // デフォルトで有効
 

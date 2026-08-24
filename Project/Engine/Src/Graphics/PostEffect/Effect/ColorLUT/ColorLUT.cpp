@@ -128,11 +128,10 @@ namespace CoreEngine
     {
         auto* device = graphicsCore_->GetDevice();
 
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
+        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
+        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
+        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
+        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
 
         const bool built = fillPipeline_.Build(device, shaderCompiler, reflectionBuilder, fillProvider_);
         if (!built || !fillPipeline_.HasComputePSO()) {

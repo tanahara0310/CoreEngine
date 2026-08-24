@@ -33,7 +33,7 @@ namespace CoreEngine
         /// CBV は RootDescriptor、テクスチャ SRV / サンプラーは DescriptorTable とする。
         RootSignatureConfig MakeForwardConfig()
         {
-            RootSignatureConfig config = RootSignatureConfig::PerformanceOptimized();
+            RootSignatureConfig config;
             config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
             config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
             config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
@@ -180,7 +180,7 @@ namespace CoreEngine
 
         // コンピュート用 RootSignature を構築する
         computeRootSignatureMg_ = std::make_unique<RootSignatureManager>();
-        RootSignatureConfig csConfig = RootSignatureConfig::PerformanceOptimized();
+        RootSignatureConfig csConfig;
         csConfig.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
         csConfig.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
         // 大気 LUT サンプラー（gLUTSampler）は端をクランプする。既定の WRAP だと LUT の

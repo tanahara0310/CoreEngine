@@ -17,10 +17,12 @@
 
 namespace CoreEngine
 {
-    void RenderingTechniqueManager::Initialize(GraphicsCore* dxCommon)
+    void RenderingTechniqueManager::Initialize(GraphicsCore* dxCommon, ShaderProgramCache* shaderProgramCache)
     {
         assert(dxCommon);
+        assert(shaderProgramCache);
         graphicsCore_ = dxCommon;
+        shaderProgramCache_ = shaderProgramCache;
 
         RegisterAllTechniques();
     }

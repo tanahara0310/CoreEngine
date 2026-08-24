@@ -531,6 +531,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderBindingContract.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderProgram.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\UploadRing.cpp" />
@@ -1036,6 +1037,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderBindingContract.h" />
+    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderProgram.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\DeferredLightingBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterBindings.h" />

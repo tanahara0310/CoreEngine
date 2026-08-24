@@ -21,7 +21,7 @@ namespace CoreEngine
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "UIRenderer");
 
         // SpriteRenderer と同じシンプル構成
-        RootSignatureConfig config = RootSignatureConfig::Simple();
+        RootSignatureConfig config;
 
         // UI はテキスト等で滑らかさが欲しいので Linear サンプラー
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());

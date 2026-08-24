@@ -36,7 +36,7 @@ namespace CoreEngine
 
         // RootSignature 構成: CBV は高速な Root Descriptor、SRV は Descriptor Table
         // ただし gInstanceData のみ Root Descriptor（インスタンシング用バッファは頻繁に変わるため）
-        RootSignatureConfig config = RootSignatureConfig::PerformanceOptimized();
+        RootSignatureConfig config;
         config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
         config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
         config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor); // インスタンスデータは Root SRV

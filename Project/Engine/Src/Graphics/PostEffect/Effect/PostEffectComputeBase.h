@@ -57,8 +57,6 @@ namespace CoreEngine {
 
         /// @brief 直前の UpdateScreenSizeConstants が確保した GPU アドレス（ルートへ渡す用）
         D3D12_GPU_VIRTUAL_ADDRESS GetScreenSizeCbAddress() const { return screenSizeCbAddress_; }
-
-        Microsoft::WRL::ComPtr<IDxcBlob> computeShaderBlob_;     ///< CS用シェーダーブロブ
         Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_; ///< CS用PSO
 
     private:

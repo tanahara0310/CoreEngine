@@ -62,7 +62,7 @@ namespace CoreEngine
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "ParticleRenderer");
 
         // シンプルな設定でRootSignatureを構築
-        RootSignatureConfig config = RootSignatureConfig::Simple();
+        RootSignatureConfig config;
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());
 
         auto buildResult = rootSignatureMg_->Build(device_, *reflectionData_, config);

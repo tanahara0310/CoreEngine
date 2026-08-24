@@ -131,22 +131,16 @@ namespace CoreEngine
         autoExposureReady_ = false;
 
         // ===== 輝度計測 CS のコンパイルとパイプライン構築 =====
-        ShaderCompiler compiler;
-        compiler.Initialize();
-        reductionShaderBlob_ = compiler.CompileShader(L"LuminanceReduction.CS.hlsl", L"cs_6_0");
-        if (!reductionShaderBlob_) {
+        // コンパイルとリフレクションはエンジン共有のキャッシュが担当する
+        const ShaderProgram* reductionProgram = shaderProgramCache_->GetOrCreateCompute(
+            L"LuminanceReduction.CS.hlsl", "ToneMappingLuminanceReduction");
+        if (!reductionProgram) {
             Logger::GetInstance().Errorf(LogCategory::Shader,
                 "ToneMapping: LuminanceReduction.CS.hlsl のコンパイルに失敗（自動露出は無効）");
             return;
         }
-
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(compiler.GetDxcUtils());
-        reductionReflection_ = reflectionBuilder.BuildFromComputeShader(
-            reductionShaderBlob_.Get(), "ToneMappingLuminanceReduction");
-        if (!reductionReflection_) {
-            return;
-        }
+        reductionShaderBlob_ = reductionProgram->GetCS();
+        reductionReflection_ = &reductionProgram->GetReflection();
 
         RootSignatureConfig config;
         config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
@@ -164,7 +158,7 @@ namespace CoreEngine
 
         reductionPso_ = ComputePipelineUtil::Create(
             graphicsCore_->GetDevice(), reductionRootSignature_->GetRootSignature(),
-            reductionShaderBlob_.Get(), "ToneMapping_LuminanceReduction");
+            reductionShaderBlob_, "ToneMapping_LuminanceReduction");
         if (!reductionPso_) {
             return;
         }

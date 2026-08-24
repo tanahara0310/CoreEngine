@@ -35,7 +35,7 @@ namespace CoreEngine
         gBufferReflectionData_ = reflectionBuilder_->BuildFromShaders(gBufferVertexShaderBlob, gBufferPixelShaderBlob, "SkinnedModelRenderer_GBuffer");
 
         // RootSignature 構成: CBV は高速な Root Descriptor、SRV は Descriptor Table
-        RootSignatureConfig config = RootSignatureConfig::PerformanceOptimized();
+        RootSignatureConfig config;
         config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
         config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
         config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());

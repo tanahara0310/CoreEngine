@@ -23,7 +23,7 @@ namespace CoreEngine
         reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "SpriteRenderer");
         
         // シンプルな設定を使用
-        RootSignatureConfig config = RootSignatureConfig::Simple();
+        RootSignatureConfig config;
         
         // スプライト用サンプラー設定（ポイントフィルタリング＋クランプ）
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());

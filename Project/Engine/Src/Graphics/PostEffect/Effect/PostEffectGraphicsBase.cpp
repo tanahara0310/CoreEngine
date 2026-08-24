@@ -13,23 +13,20 @@ namespace CoreEngine
     {
         assert(dxCommon);
         graphicsCore_ = dxCommon;
+        assert(shaderProgramCache_
+            && "SetShaderProgramCache() を Initialize() の前に呼ぶこと（Manager が行う）");
 
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
-
-        fullscreenVertexShaderBlob_ = shaderCompiler.CompileShader(
-            L"FullScreen.VS.hlsl", L"vs_6_0");
-        pixelShaderBlob_ = shaderCompiler.CompileShader(
-            GetPixelShaderPath(), L"ps_6_0");
-
-        // リフレクション
-        ShaderReflectionBuilder reflectionBuilder;
-        reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
-        reflectionData_ = reflectionBuilder.BuildFromShaders(
-            fullscreenVertexShaderBlob_.Get(), pixelShaderBlob_.Get(), GetEffectName());
+        // コンパイルとリフレクションはキャッシュが担当する。
+        // FullScreen.VS.hlsl は全ポストエフェクトが共有するので、ここでキャッシュがよく効く。
+        shaderProgram_ = shaderProgramCache_->GetOrCreateGraphics(
+            L"FullScreen.VS.hlsl", GetPixelShaderPath(), GetEffectName());
+        if (!shaderProgram_) {
+            throw std::runtime_error(GetEffectName() + ": Failed to compile shaders");
+        }
+        reflectionData_ = &shaderProgram_->GetReflection();
 
         // RootSignature 構築
-        RootSignatureConfig config = RootSignatureConfig::Simple();
+        RootSignatureConfig config;
         config.ConfigureSampler("gSampler", SamplerConfig::LinearClamp());
         OnConfigureRootSignature(config);
 
@@ -46,7 +43,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .Build(dxCommon->GetDevice(), fullscreenVertexShaderBlob_.Get(), pixelShaderBlob_.Get(),
+            .Build(dxCommon->GetDevice(), shaderProgram_->GetVS(), shaderProgram_->GetPS(),
                 rootSignatureManager_->GetRootSignature());
 
         if (!result) {
@@ -60,7 +57,7 @@ namespace CoreEngine
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
             .SetRenderTargetFormat(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
-            .Build(dxCommon->GetDevice(), fullscreenVertexShaderBlob_.Get(), pixelShaderBlob_.Get(),
+            .Build(dxCommon->GetDevice(), shaderProgram_->GetVS(), shaderProgram_->GetPS(),
                 rootSignatureManager_->GetRootSignature());
 
         if (!bbResult) {

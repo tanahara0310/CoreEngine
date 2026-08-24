@@ -123,9 +123,9 @@ namespace CoreEngine
         ScreenParams* mappedScreenParams_ = nullptr;
 
         // ----- 自動露出: 輝度計測パイプライン -----
-        Microsoft::WRL::ComPtr<IDxcBlob> reductionShaderBlob_;
+        IDxcBlob* reductionShaderBlob_ = nullptr;  ///< 所有者は ShaderProgramCache
         std::unique_ptr<RootSignatureManager> reductionRootSignature_;
-        std::unique_ptr<ShaderReflectionData> reductionReflection_;
+        const ShaderReflectionData* reductionReflection_ = nullptr;  ///< 所有者は ShaderProgramCache
         Microsoft::WRL::ComPtr<ID3D12PipelineState> reductionPso_;
 
         // ----- 自動露出: 計測バッファ -----

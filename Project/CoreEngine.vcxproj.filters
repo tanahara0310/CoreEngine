@@ -1036,6 +1036,9 @@
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderBindingContract.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Shader\ShaderProgram.cpp">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderPrewarm.cpp">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClCompile>
@@ -2461,6 +2464,9 @@
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderBindingContract.h">
+      <Filter>Engine\Src\Graphics\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Shader\ShaderProgram.h">
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelBindings.h">

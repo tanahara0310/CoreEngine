@@ -12,26 +12,26 @@ namespace CoreEngine
     {
         assert(dxCommon);
         graphicsCore_ = dxCommon;
-
-        ShaderCompiler shaderCompiler;
-        shaderCompiler.Initialize();
+        assert(shaderProgramCache_
+            && "SetShaderProgramCache() を Initialize() の前に呼ぶこと（Manager が行う）");
 
         // Compute Shader を使う場合
         if (IsComputeShader()) {
             const std::wstring& csPath = GetComputeShaderPath();
             if (!csPath.empty()) {
-                computeShaderBlob_ = shaderCompiler.CompileShader(csPath, L"cs_6_0");
-
-                // リフレクション（Compute Shader のみ）
-                ShaderReflectionBuilder reflectionBuilder;
-                reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
-                reflectionData_ = reflectionBuilder.BuildFromComputeShader(
-                    computeShaderBlob_.Get(), GetTechniqueName());
+                // コンパイルとリフレクションはキャッシュが担当する。
+                // 同じシェーダーを使う技術が増えても DXC は 1 回しか走らない。
+                shaderProgram_ = shaderProgramCache_->GetOrCreateCompute(csPath, GetTechniqueName());
+                if (!shaderProgram_) {
+                    throw std::runtime_error(
+                        "Failed to compile compute shader for RenderingTechnique: " + GetTechniqueName());
+                }
+                reflectionData_ = &shaderProgram_->GetReflection();
 
                 // ルートシグネチャ構築
                 // Compute には入力アセンブラが無いので ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT を落とす
-                // （Simple() の既定はグラフィックス向けに立てたままになっている）
-                RootSignatureConfig config = RootSignatureConfig::Simple();
+                // （既定はグラフィックス向けに立てたままになっている）
+                RootSignatureConfig config;
                 config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
                 OnConfigureRootSignature(config);
 
@@ -55,17 +55,17 @@ namespace CoreEngine
             const std::wstring& psPath = GetPixelShaderPath();
 
             if (!vsPath.empty() && !psPath.empty()) {
-                vertexShaderBlob_ = shaderCompiler.CompileShader(vsPath, L"vs_6_0");
-                pixelShaderBlob_ = shaderCompiler.CompileShader(psPath, L"ps_6_0");
-
-                // リフレクション
-                ShaderReflectionBuilder reflectionBuilder;
-                reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
-                reflectionData_ = reflectionBuilder.BuildFromShaders(
-                    vertexShaderBlob_.Get(), pixelShaderBlob_.Get(), GetTechniqueName());
+                // FullScreen.VS.hlsl は多くの技術が共有するので、キャッシュが効く
+                shaderProgram_ = shaderProgramCache_->GetOrCreateGraphics(
+                    vsPath, psPath, GetTechniqueName());
+                if (!shaderProgram_) {
+                    throw std::runtime_error(
+                        "Failed to compile shaders for RenderingTechnique: " + GetTechniqueName());
+                }
+                reflectionData_ = &shaderProgram_->GetReflection();
 
                 // ルートシグネチャ構築
-                RootSignatureConfig config = RootSignatureConfig::Simple();
+                RootSignatureConfig config;
                 config.ConfigureSampler("gSampler", SamplerConfig::LinearClamp());
                 OnConfigureRootSignature(config);
 
@@ -84,7 +84,7 @@ namespace CoreEngine
                     .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
                     .SetDepthStencil(false, false) // レンダリング技術は深度書き込み不要
                     .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-                    .Build(dxCommon->GetDevice(), vertexShaderBlob_.Get(), pixelShaderBlob_.Get(),
+                    .Build(dxCommon->GetDevice(), shaderProgram_->GetVS(), shaderProgram_->GetPS(),
                         rootSignatureManager_->GetRootSignature());
 
                 if (!result) {

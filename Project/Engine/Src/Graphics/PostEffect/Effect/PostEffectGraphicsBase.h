@@ -38,9 +38,6 @@ namespace CoreEngine {
         /// @brief Draw/DrawToBackBuffer の共通処理
         void DrawInternal(D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle, PipelineStateManager& psm);
 
-        Microsoft::WRL::ComPtr<IDxcBlob> fullscreenVertexShaderBlob_;
-        Microsoft::WRL::ComPtr<IDxcBlob> pixelShaderBlob_;
-
         PipelineStateManager pipelineStateManager_;
         PipelineStateManager backBufferPipelineStateManager_; ///< バックバッファ(_SRGB)用PSO
     };

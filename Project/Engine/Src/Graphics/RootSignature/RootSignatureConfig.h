@@ -248,37 +248,24 @@ namespace CoreEngine
             return std::nullopt;
         }
 
-        // ========== プリセット設定 ==========
-
-        /// @brief パフォーマンス重視の設定（CBVはRoot Descriptor、SRVは個別Table）
-        static RootSignatureConfig PerformanceOptimized() {
-            RootSignatureConfig config;
-            config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
-            config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
-            config.SetDefaultUAVStrategy(BindingStrategy::DescriptorTable);
-            config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
-            return config;
-        }
-
-        /// @brief メモリ効率重視の設定（グループ化されたTable）
-        static RootSignatureConfig MemoryOptimized() {
-            RootSignatureConfig config;
-            config.SetDefaultCBVStrategy(BindingStrategy::DescriptorTable);
-            config.SetDefaultSRVStrategy(BindingStrategy::GroupedTable);
-            config.SetDefaultUAVStrategy(BindingStrategy::GroupedTable);
-            config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
-            return config;
-        }
-
-        /// @brief シンプルな設定（すべてRoot Descriptor / 個別Table）
-        static RootSignatureConfig Simple() {
-            RootSignatureConfig config;
-            config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
-            config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
-            config.SetDefaultUAVStrategy(BindingStrategy::RootDescriptor);
-            config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
-            return config;
-        }
+        // ========== 既定戦略について ==========
+        //
+        // プリセットは意図的に用意していない。既定コンストラクタが唯一の既定値である。
+        //
+        // 以前は Simple() / PerformanceOptimized() / MemoryOptimized() の 3 つがあったが、
+        // PerformanceOptimized() は既定コンストラクタと完全に同じ値、MemoryOptimized() は
+        // 利用箇所 0 件、Simple() は UAV だけが RootDescriptor という違いだった。
+        //
+        // 「既定値が 2 種類ある」状態は事故のもとで、実際に GpuParticleRenderer は
+        // 既定コンストラクタ（UAV = DescriptorTable）に依存して SetComputeRootDescriptorTable を
+        // 呼んでいる。整理のつもりで Simple() に揃えるとテーブルハンドルが GPU 仮想アドレスとして
+        // 解釈されて即死する。
+        //
+        // 【2026-08-25 実測】ルートシグネチャ全 83 本のうち RootUAV は 1 つだけで、それは
+        // ToneMapping が ConfigureResource("gAvgLuminance", RootDescriptor) と明示したもの。
+        // つまり既定値の違いはどのシェーダーにも効いていなかったので、統合しても振る舞いは変わらない。
+        //
+        // 個別に変えたいものは SetDefault*Strategy() / ConfigureResource() で明示すること。
 
     private:
         // デフォルト戦略

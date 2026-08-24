@@ -43,8 +43,9 @@
 
 namespace CoreEngine
 {
-void PostEffectManager::Initialize(GraphicsCore* dxCommon, Render* render)
+void PostEffectManager::Initialize(GraphicsCore* dxCommon, Render* render, ShaderProgramCache* shaderProgramCache)
 {
+    shaderProgramCache_ = shaderProgramCache;
     assert(dxCommon);
     assert(render);
     graphicsCore_ = dxCommon;

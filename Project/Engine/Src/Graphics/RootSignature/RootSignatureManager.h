@@ -32,7 +32,7 @@ namespace CoreEngine
         RootSignatureBuildResult Build(
             ID3D12Device* device,
             const ShaderReflectionData& reflectionData,
-            const RootSignatureConfig& config = RootSignatureConfig::Simple());
+            const RootSignatureConfig& config = RootSignatureConfig{});
 
         /// @brief 最後のビルド結果を取得
         const RootSignatureBuildResult& GetLastBuildResult() const { return lastBuildResult_; }
