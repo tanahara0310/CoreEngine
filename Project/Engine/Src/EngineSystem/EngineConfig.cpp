@@ -75,7 +75,6 @@ namespace CoreEngine
         }
 
         // コマンド / バッファリング設定
-        // （EngineConfig にフィールドはあったが JSON から読まれておらず、事実上 2 固定だった）
         if (j.contains("command")) {
             auto& cmd = j["command"];
             if (cmd.contains("frameCount")) config.frameCount = cmd["frameCount"].get<uint32_t>();

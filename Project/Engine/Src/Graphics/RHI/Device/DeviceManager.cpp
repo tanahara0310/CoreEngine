@@ -25,9 +25,7 @@ void DeviceManager::InitializeDXGIDevice()
 {
     Logger& logger = Logger::GetInstance();
 
-    // デバッグレイヤーの有効化（コンフィグの設定値だけで決まる）。
-    // ここを #ifdef _DEBUG で囲まないのは、計測に使う Development 構成でも
-    // 設定ひとつで検証を効かせられるようにするため（Release では設定が false なだけ）。
+    // デバッグレイヤーの有効化（構成ではなくコンフィグの設定値だけで決まる）
     if (enableDebugLayer_) {
         ComPtr<ID3D12Debug1> debugController;
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.GetAddressOf())))) {
@@ -50,8 +48,7 @@ void DeviceManager::InitializeDXGIDevice()
         }
     }
 
-    // DRED（GPU クラッシュ時の命令履歴とページフォルト記録）。
-    // **デバイス生成より前** でなければ効かないので、ここで有効化する。
+    // DRED はデバイス生成より前でなければ効かないので、ここで有効化する
     if (enableDRED_) {
         EnableDeviceRemovedExtendedData();
     }
@@ -128,8 +125,7 @@ void DeviceManager::InitializeDXGIDevice()
                 // Windows11でのDXGIデバッグレイヤーとのDX12デバッグレイヤーの相互作用バグによるエラーメッセージ
                 // https://stackoverflow.com/questions/69805245/directx-12-application-is-crashing-in-windows-11
                 D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE,
-                // DXR 加速構造バッファ作成時の InitialState 警告を抑制
-                // バッファは内部的に COMMON で作成されるが、ドライバが暗黙的に正しいステートへ昇格する
+                // DXR 加速構造バッファ作成時の InitialState 警告を抑制（ドライバが暗黙昇格する）
                 D3D12_MESSAGE_ID_CREATERESOURCE_STATE_IGNORED
             };
 

@@ -299,8 +299,7 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        // DescriptorHandle が CPU/GPU ハンドルとスロット番号をまとめて持つので、
-        // 旧実装のように CPU ハンドルを別メンバで抱える必要がない（6 → 4 フィールド）
+        // DescriptorHandle が CPU/GPU ハンドルとスロット番号をまとめて持つ
         struct Target {
             GpuResource& tex;
             DescriptorHandle& srv;

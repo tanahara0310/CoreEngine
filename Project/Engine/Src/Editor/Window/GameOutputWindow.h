@@ -15,7 +15,6 @@ namespace CoreEngine
     /// @details 自前の HWND とスワップチェーンを持ち、ポストエフェクト後の最終出力を転写する。
     ///          ImGui を経由しないので Development ビルドのまま Release と同じ見た目を確認できる。
     ///          スワップチェーンはエンジン本体と同じ SwapChain クラス（RHI 層）を 2 個目として使う。
-    ///          旧実装は CreateSwapChainForHwnd / ResizeBuffers / RTV 作成を丸ごと再実装していた。
     /// @warning フレーム内の呼び出し順は ApplyPendingRequests → RecordDrawCommands → Present。
     class GameOutputWindow{
     public:

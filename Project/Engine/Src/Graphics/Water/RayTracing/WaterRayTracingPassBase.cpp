@@ -52,17 +52,14 @@ namespace CoreEngine
         }
 
         // 宣言表を組み立てる。名前はすべて静的記憶域（RTWaterPipelineDesc の契約）なので
-        // BindingTable がポインタを保持しても問題ない。
-        // レジスタ番号は HLSL 側にしか無く、C++ からは消えた（以前はここで t1, t2... と
-        // 配列の並び順で決めていたので、HLSL の 2 行を入れ替えると無言で SRV が入れ替わった）。
+        // BindingTable がポインタを保持しても問題ない
         declStorage_.clear();
         declStorage_.push_back({ desc.outputUavName, ShaderBindingType::UAV, BindingUsage::Required });
         declStorage_.push_back({ "gScene",           ShaderBindingType::SRV, BindingUsage::Required });
         for (const char* srvName : desc.srvTableNames) {
             declStorage_.push_back({ srvName, ShaderBindingType::SRV, BindingUsage::Required });
         }
-        // HLSL 側の実名は cbuffer WaterSurfaceData（RTWaterSurfaceCommon.hlsli:16）。
-        // 旧実装の "gWaterSurfaceData" は照合されない自由なラベルだったので食い違っていた
+        // HLSL 側の実名は cbuffer WaterSurfaceData（RTWaterSurfaceCommon.hlsli:16）
         declStorage_.push_back({ "WaterSurfaceData", ShaderBindingType::CBV, BindingUsage::Required });
         declStorage_.push_back({ desc.constantsName,  ShaderBindingType::CBV, BindingUsage::Required });
 
@@ -145,15 +142,13 @@ namespace CoreEngine
 
         BeginOutputWrite(cmdList, *resources.output);
 
-        // 差し方は RootSlot の種別から ShaderBinder が決める。
-        // 以前は GetRootParameterIndex() の戻り値（-1 になりうる int）を UINT へキャストして
-        // 渡しており、名前が見つからないと 0xFFFFFFFF を叩いていた。
+        // 差し方は RootSlot の種別から ShaderBinder が決める
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
         binder.Set(bindings_[slotOutputUav_], resources.outputUavHandle);
         binder.Set(bindings_[slotScene_], asMgr_->GetTLASSRVHandle());
 
         // srvBindings は宣言表（desc.srvTableNames）と同じ並びで渡される契約。
-        // 位置で引く以上、並びが食い違うと別のテクスチャが差さる。名前で照合して落とす。
+        // 並びが食い違うと別のテクスチャが差さるので、名前で照合して落とす
         size_t srvIndex = slotSrvFirst_;
         for (const RTWaterSrvBinding& binding : srvBindings) {
 #if CB_REFLECTION_CHECK_ENABLED

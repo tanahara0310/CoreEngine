@@ -26,20 +26,7 @@ namespace CoreEngine
     class UploadRing;
 
     /// @brief DirectX12 の基盤（デバイス・コマンド・ディスクリプタ・メインスワップチェーン）を束ねるファサード
-    ///
-    /// @details
-    /// ここは **ハブであって実装ではない**。所有・初期化順序・破棄順序だけを持ち、
-    /// 実際の仕事は各マネージャが行う。
-    ///
-    /// 上位の型（WinApp / EngineConfig）には依存しない。初期化パラメータは
-    /// GraphicsCoreDesc で値として受け取り、ウィンドウのリサイズ通知は上位が
-    /// OnWindowResize() へ配線する。シーン深度のようなレンダラ都合のリソースも持たない
-    /// （→ Render 層の SceneDepth）。
-    ///
-    /// @note このヘッダは約 100 ファイルから include されるため、
-    ///       **マネージャのヘッダを include してはならない**（前方宣言のみ）。
-    ///       アクセッサの実装が .cpp にあるのはそのため。
-    ///       マネージャの型が必要な呼び出し側は、自分で該当ヘッダを include すること。
+    /// @note マネージャのヘッダを include しないこと（前方宣言のみ。アクセッサの実装は .cpp）
     class GraphicsCore {
     public:
         GraphicsCore();
@@ -52,22 +39,18 @@ namespace CoreEngine
         GraphicsCore& operator=(const GraphicsCore&) = delete;
 
         /// @brief 初期化
-        /// @param desc 出力先ウィンドウ・サイズ・デバッグ設定・フレーム数・ディスクリプタ数（すべて値）
-        /// @note desc を埋めるのは上位（EngineSystem のファクトリ）の仕事。
-        ///       ウィンドウのリサイズ通知も上位が OnWindowResize() へ配線する。
+        /// @param desc 出力先ウィンドウ・サイズ・デバッグ設定・フレーム数・ディスクリプタ数
         void Initialize(const GraphicsCoreDesc& desc);
 
         /// @brief シャットダウン処理（GPU完了待ちの後、全マネージャーを解放）
         void Shutdown();
 
         /// @brief ウィンドウリサイズ時の処理
-        /// @details GPU を待ち、メインスワップチェーンを作り直し、登録済みの IResizable へ通知する。
-        ///          上位（WinApp のリサイズコールバック）から呼ぶ。
+        /// @details GPU を待ち、メインスワップチェーンを作り直し、登録済みの IResizable へ通知する
         void OnWindowResize(int32_t width, int32_t height);
 
         /// @brief ウィンドウリサイズ通知を受け取るオブジェクトを登録する
-        /// @details スワップチェーンの再作成後に OnWindowResize() が呼ばれる。
-        ///          登録した側は破棄時に UnregisterResizable() で解除すること。
+        /// @details 破棄時に UnregisterResizable() で解除すること
         void RegisterResizable(IResizable* resizable);
 
         /// @brief ウィンドウリサイズ通知の登録を解除する（未登録なら何もしない）
@@ -78,13 +61,10 @@ namespace CoreEngine
         IDXGIFactory7* GetDXGIFactory() const;
 
         // ── フレームのライフサイクル ────────────────────────────
-        // 1 フレームは BeginFrame() で始まり EndFrame() で終わる。
-        // 「どのフレームか」を各所が別々の方法で求めないよう、入口をここに閉じている。
 
         /// @brief フレーム開始。フレーム番号を進め、前フレームの後始末を回収する
         /// @return 今フレームの frameIndex / frameNumber / cmdList
-        /// @note コマンドリストの Reset は EndFrame() の末尾（次フレームの準備）で行うため、
-        ///       コマンドリストは常に「記録可能」な状態で保たれる。
+        /// @note コマンドリストの Reset は EndFrame() の末尾で行う
         FrameContext BeginFrame();
 
         /// @brief フレーム終了。Close → Execute → Signal → Present → 次フレームの準備まで行う
@@ -92,8 +72,7 @@ namespace CoreEngine
         void EndFrame(UINT syncInterval = 1);
 
         /// @brief フレーム同期の単一ソース
-        /// @details per-frame リソースの添字は必ず `Frame().FrameIndex()` から取ること。
-        ///          スワップチェーンの CurrentBackBufferIndex() を代用してはならない。
+        /// @details per-frame リソースの添字は必ずここから取ること（CurrentBackBufferIndex() で代用しない）
         FrameSync& Frame() const;
 
         /// @brief GPU 完了後にリソースを解放する予約キュー
@@ -105,24 +84,13 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* GetCommandList() const;
 
         /// @brief フレーム描画とは独立したアップロード／オフライン生成用コンテキストを取得
-        /// @details テクスチャ・VB/IB のアップロードや IBL 生成は必ずこちらへ積むこと。
-        ///          GetCommandList()（＝フレームの描画用リスト）へ積むと、ワーカースレッドからの
-        ///          記録がメインスレッドの描画記録と競合し、フレーム外の Close/Execute が
-        ///          記録途中のフレームを巻き添えで submit する。
+        /// @details テクスチャ・VB/IB のアップロードや IBL 生成は必ずこちらへ積むこと
+        ///          （描画用リストへ積むとワーカースレッドの記録がフレーム記録と競合する）
         UploadContext* GetUploadContext() const;
 
         /// @brief 今フレームだけ有効な定数バッファ置き場
-        /// @details 「毎フレーム内容が変わる小さな定数」はここから取ること。
-        ///          自前のバッファを常時 Map して毎フレーム上書きすると、
-        ///          CPU が GPU の 1 フレーム先を走っているぶん、GPU が読んでいる値を
-        ///          書き潰す（実際に SSAO で踏んだ）。ここはフレーム数ぶんのスロットを
-        ///          持ち、GPU 完了済みのスロットだけを使い回すので、その心配が要らない。
-        /// @code
-        ///   const auto cb = dx->GetUploadRing().AllocateConstants(params);
-        ///   cmdList->SetGraphicsRootConstantBufferView(index, cb);
-        /// @endcode
-        /// @note GetUploadContext() とは別物。あちらは「一度書けば変わらないデータを
-        ///       DEFAULT ヒープへ転送する」ためのコマンドコンテキスト。
+        /// @details 「毎フレーム内容が変わる小さな定数」はここから取ること
+        ///          （フレーム数ぶんのスロットを持ち、GPU 完了済みのものだけを使い回す）
         UploadRing& GetUploadRing() const;
 
         /// @brief 投入済みの全 GPU 作業の完了を待つ（完全同期）
@@ -131,8 +99,7 @@ namespace CoreEngine
 
         // ── スワップチェーン ────────────────────────────────────
         /// @brief メインウィンドウのスワップチェーン（バックバッファ・RTV・Present）
-        /// @details バックバッファは GetSwapChain().BackBuffer(i)、RTV は .RTV(i)。
-        ///          同じ SwapChain クラスを GameOutputWindow も使う。
+        /// @details バックバッファは BackBuffer(i)、RTV は RTV(i)
         SwapChain& GetSwapChain() const;
 
         // ── ディスクリプタ ──────────────────────────────────────
@@ -141,7 +108,7 @@ namespace CoreEngine
 
         // ── ウィンドウ ──────────────────────────────────────────
         /// @brief 現在のクライアント領域の大きさ（= メインスワップチェーンの大きさ）
-        /// @details Initialize の desc で受け取り、OnWindowResize で更新する。WinApp は見ない。
+        /// @details Initialize の desc で受け取り、OnWindowResize で更新する
         int32_t GetClientWidth() const noexcept { return clientWidth_; }
         int32_t GetClientHeight() const noexcept { return clientHeight_; }
 

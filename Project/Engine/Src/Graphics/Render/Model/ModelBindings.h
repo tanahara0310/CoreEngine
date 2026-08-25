@@ -1,26 +1,5 @@
 #pragma once
 
-//========================================================================================
-// ModelBindings.h
-//
-// モデル描画シェーダー 4 種（通常／スキニング × フォワード／G-Buffer）が要求する
-// リソースの契約。enum は 4 つの表で共有し、そのシェーダーに無いものを Optional にする。
-//
-// Usage の使い分け:
-//   Required    … そのシェーダーに必ず存在する
-//   Conditional … 存在するが、差すかはマテリアル・機能トグル次第
-//   Optional    … そのシェーダーには無い（もしくは無くてよい）
-//
-// 【実測メモ 2026-08-24】
-//   gEnvironmentTexture と gMatrixPalette は 4 種すべてのルートシグネチャに存在しない。
-//   前者は IBL 3 枚（Irradiance / Prefiltered / BRDF LUT）に置き換わり、後者はスキニングが
-//   コンピュートシェーダーへ移った（VS は変換済み頂点を読む）ため。
-//   engine 側のバインドは `if (idx >= 0)` で黙って skip されていた。
-//   カスタムシェーダーが使う可能性があるので Optional として残してある。
-//
-// 詳細: Docs/Engine/Graphics/Shader/ShaderBinding_Design_Review.md §4.4
-//========================================================================================
-
 #include "Graphics/Shader/ShaderBindingContract.h"
 
 #include <cstddef>
@@ -162,11 +141,7 @@ namespace CoreEngine::ModelBind
         { "gMatrixPalette",        kSRV, kOpt  },
     };
 
-    /// @brief カスタムシェーダー用（すべて Optional）
-    /// @details アプリ側が書いたシェーダーに対してエンジンが何かを「必須」にはできない。
-    ///          宣言されているものだけエンジンが差す、という関係を表す表。
-    ///          これを CustomShaderPipeline が構築時に 1 回解決することで、
-    ///          描画中の名前引き（1 ドローあたり 8〜9 回の map 検索）が消える。
+    /// @brief カスタムシェーダー用。宣言されているものだけエンジンが差すのですべて Optional
     inline constexpr ShaderBindingDecl kCustom[] = {
         { "gCamera",               kCBV, kOpt },
         { "gLightCounts",          kCBV, kOpt },

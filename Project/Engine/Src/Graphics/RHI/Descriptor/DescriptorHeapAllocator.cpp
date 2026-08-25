@@ -129,8 +129,7 @@ namespace CoreEngine
             live = nextIndex_ - static_cast<uint32_t>(freeIndices_.size());
         }
 
-        // 使用率の警告は「初めて閾値を超えたとき」だけ出す。
-        // 旧実装は確保のたびに INFO ログと警告を出しており、起動ログが埋まっていた。
+        // 使用率の警告は「初めて閾値を超えたとき」だけ出す
         const float rate = static_cast<float>(live) / static_cast<float>(capacity_);
         if (!warnedHighUsage_ && rate > kHighUsageWarnRate) {
             warnedHighUsage_ = true;

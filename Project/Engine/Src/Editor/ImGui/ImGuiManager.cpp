@@ -105,11 +105,8 @@ namespace CoreEngine
 
         ImGui_ImplWin32_Init(hwnd_);
 
-        // ImGui のフォント用スロットは DescriptorAllocator から正規に確保する。
-        // 旧実装はヒープ先頭（slot 0）を直接使い、DescriptorAllocator 側は
-        // kUserSRVStart=1 という定数で「slot 0 は ImGui のもの」と暗黙に予約していた。
-        // 予約定数を廃止した際、この暗黙の前提だけが残って深度 SRV と衝突し、
-        // フォント生成が深度 SRV を上書きして描画が壊れた。
+        // ImGui のフォント用スロットは DescriptorAllocator から正規に確保する
+        // （ヒープ先頭を決め打ちで使うと他の SRV と衝突する）
         fontDescriptor_ = dxCommon_->GetDescriptorAllocator()->AllocateSRVHandle("ImGuiFont");
         ImGui_ImplDX12_Init(
             dxCommon_->GetDevice(),

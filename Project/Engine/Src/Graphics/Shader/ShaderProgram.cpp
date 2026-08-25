@@ -107,17 +107,21 @@ namespace CoreEngine
     }
 
     const ShaderProgram* ShaderProgramCache::GetOrCreateCompute(
-        const std::wstring& csPath, const std::string& debugName)
+        const std::wstring& csPath, const std::string& debugName,
+        const wchar_t* profile)
     {
         assert(initialized_ && "ShaderProgramCache::Initialize() を先に呼ぶこと");
 
-        const std::wstring key = MakeKey(csPath, L"cs");
+        // プロファイルまでキーに含める。同じ .hlsl を cs_6_0 と cs_6_6 で使い分ける
+        // 呼び出しが実在する（RT シャドウのデノイザ 3 本）ため、
+        // パスだけをキーにすると片方のプログラムがもう片方に化ける。
+        const std::wstring key = MakeKey(csPath, profile);
         if (auto it = programs_.find(key); it != programs_.end()) {
             ++hitCount_;
             return it->second.get();
         }
 
-        IDxcBlob* cs = GetOrCompile(csPath, L"cs_6_0");
+        IDxcBlob* cs = GetOrCompile(csPath, profile);
         if (!cs) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
                 "コンピュートシェーダーのコンパイルに失敗しました: name={}", debugName);

@@ -20,11 +20,8 @@ namespace CoreEngine
 class ShaderReflectionData;
 struct RenderContext;
 
-/// @note 「フレームオーバーラップ対応の定数バッファ」はかつて FrameRingConstantBuffer として
-///       このヘッダに置かれていたが、同じ問題（CPU が GPU の 1 フレーム先を走るので
-///       単一バッファを毎フレーム上書きすると実行中の値を書き潰す）はレンダリング技術に
-///       限らないため、基盤層の UploadRing へ一般化した。
-///       使い方: `dxCommon->GetUploadRing().AllocateConstants(params_)`
+/// @note フレームオーバーラップ対応の定数バッファは UploadRing を使うこと
+///       （`dxCommon->GetUploadRing().AllocateConstants(params_)`）
 
 /// @brief レンダリング技術基底クラス
 /// @details SSAO、TAA、SSRなどの高度なレンダリング技術の基底クラス
@@ -35,8 +32,7 @@ public:
     virtual ~RenderingTechniqueBase() = default;
 
     /// @brief シェーダーのコンパイル／リフレクションを行うキャッシュを注入する
-    /// @note Initialize() の前に呼ぶこと。RenderingTechniqueManager が自動で行うので
-    ///       派生クラス側で意識する必要はない。
+    /// @note Initialize() の前に RenderingTechniqueManager が自動で呼ぶ
     void SetShaderProgramCache(ShaderProgramCache* cache) { shaderProgramCache_ = cache; }
 
     /// @brief 初期化

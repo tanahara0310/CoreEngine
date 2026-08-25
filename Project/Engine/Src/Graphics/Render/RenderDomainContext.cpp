@@ -36,9 +36,8 @@ namespace CoreEngine
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext::Initialize: ドメインマネージャーを初期化します\n");
 
-        // メインシーンの深度（GBuffer / Geometry が書き、各パスが SRV で読む）。
-        // 旧実装は GraphicsCore（RHI 層）が持っていたが、D24S8 固定や BeginDepthWrite の
-        // クリア方針はレンダラの都合なのでここで所有する
+        // メインシーンの深度（GBuffer / Geometry が書き、各パスが SRV で読む）
+        // D24S8 固定やクリア方針はレンダラの都合なのでここで所有する
         sceneDepth_ = std::make_unique<SceneDepth>();
         sceneDepth_->Initialize(device, descriptorAllocator, width, height);
         Logger::GetInstance().Infof(LogCategory::Graphics, "RenderDomainContext: SceneDepth 初期化完了\n");

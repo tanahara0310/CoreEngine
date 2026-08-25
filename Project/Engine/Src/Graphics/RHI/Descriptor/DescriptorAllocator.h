@@ -10,11 +10,7 @@
 namespace CoreEngine
 {
     /// @brief SRV/CBV/UAV・RTV・DSV の 3 ヒープを束ねるディスクリプタ確保器
-    ///
-    /// @details
-    /// **すべての生成 API は `DescriptorHandle` を返す。** これが所有権の表明になる。
-    /// 旧 API は CPU/GPU ハンドルを出力引数で返すだけでスロット番号を渡さなかったため、
-    /// 呼び出し側は確保したスロットを **解放できなかった**（＝作れば作るだけ減る一方だった）。
+    /// @details すべての生成 API は所有権の表明として `DescriptorHandle` を返す。
     ///
     /// 使い分け:
     /// - `CreateXxx()`  … スロットを確保してビューを書く（新規）

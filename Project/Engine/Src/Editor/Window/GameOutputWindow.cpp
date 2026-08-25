@@ -239,8 +239,7 @@ namespace CoreEngine
 
         // エンジン本体と同じコマンドキューへ載せる。別キューにすると
         // 本体の描画完了とこのウィンドウの Present の順序を自前で同期する必要が出る。
-        // RTV は本体と同じ DescriptorAllocator から確保する（Phase 3 で予約スロットが
-        // 無くなったので、旧実装のような専用ミニヒープは要らない）。
+        // RTV は本体と同じ DescriptorAllocator から確保する
         return swapChain_.Initialize(
             dxCommon_->GetDXGIFactory(),
             dxCommon_->GetCommandQueue(),

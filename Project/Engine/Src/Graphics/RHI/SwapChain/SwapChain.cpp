@@ -67,8 +67,7 @@ namespace CoreEngine
             return false;
         }
 
-        // RTV は 1 枚ごとに正規に確保する（Resize 時は同じスロットへ書き直す）。
-        // 旧実装はヒープ先頭からの手計算（メイン）／専用ミニヒープ（第 2 ウィンドウ）だった。
+        // RTV は 1 枚ごとに正規に確保する（Resize 時は同じスロットへ書き直す）
         D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
         rtvDesc.Format = desc_.rtvFormat;
         rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;

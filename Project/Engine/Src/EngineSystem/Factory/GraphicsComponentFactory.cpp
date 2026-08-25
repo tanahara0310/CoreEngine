@@ -128,8 +128,7 @@ namespace CoreEngine
         EngineSystem* enginePtr = &engine;
 
         sequence.Add("シェーダープログラムキャッシュ", [enginePtr, state] {
-            // DXC（IDxcUtils / IDxcCompiler3）はここで 1 回だけ作る。
-            // 以前はサブシステムごとに ShaderCompiler を生成していた。
+            // DXC（IDxcUtils / IDxcCompiler3）はここで 1 回だけ作る
             auto cache = std::make_unique<ShaderProgramCache>();
             cache->Initialize();
             state->shaderProgramCache = cache.get();

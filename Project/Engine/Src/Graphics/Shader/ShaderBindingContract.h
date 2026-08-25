@@ -1,33 +1,5 @@
 #pragma once
 
-//========================================================================================
-// ShaderBindingContract.h
-//
-// 「このシェーダーはどのリソースを要求するか」を C++ 側に宣言し、起動時に
-// シェーダー実体（リフレクション結果）と突き合わせる。
-//
-//   namespace MyBind {
-//       enum Slot : size_t { gCamera, gTexture, gAOMap, Count };
-//       inline constexpr ShaderBindingDecl kDecls[] = {
-//           { "gCamera",  ShaderBindingType::CBV, BindingUsage::Required    },
-//           { "gTexture", ShaderBindingType::SRV, BindingUsage::Required    },
-//           { "gAOMap",   ShaderBindingType::SRV, BindingUsage::Conditional },
-//       };
-//       static_assert(std::size(kDecls) == Count, "kDecls と Slot の並びがずれている");
-//   }
-//
-//   // 初期化時に 1 回
-//   table_ = BindingTable::Resolve(reflection, MyBind::kDecls, "MyPass");
-//   // 描画時（名前は 1 度も触らない）
-//   binder.Set(table_[MyBind::gTexture], handle);
-//
-// これが無いと「HLSL でリソース名を変えた」が無言で通り、前のドローが差した
-// descriptor をそのまま読んだ絵が出る。CBufferLayout が cbuffer の "中身" に対して
-// やっていることを、ルートシグネチャの "入口" に対してやるのが狙い。
-//
-// 詳細: Docs/Engine/Graphics/Shader/ShaderBinding_Design_Review.md §4.4
-//========================================================================================
-
 #include "Graphics/RootSignature/RootSlot.h"
 
 #include <array>
@@ -49,8 +21,7 @@ namespace CoreEngine
         Required,
 
         /// @brief シェーダーには必須だが、差すかどうかはフレームごとの判断
-        /// @note 機能トグルやウォームアップ待ちで差さないフレームがあるもの
-        ///       （RT シャドウマスク・空スペキュラ等）。Draw 前検査の対象外。
+        /// @note Draw 前検査の対象外（RT シャドウマスク・空スペキュラ等）
         Conditional,
 
         /// @brief シェーダーに無くてもよい
@@ -79,9 +50,7 @@ namespace CoreEngine
         /// @param decls           宣言表（静的寿命であること。診断で名前を引くため保持する）
         /// @param count           宣言数
         /// @param shaderName      ログ用の識別名
-        /// @param warnUndeclared  シェーダーにあるのに宣言が無いリソースを警告するか。
-        ///                        シェーダーのバインドを全部そのパスが持つ場合は true。
-        ///                        エンジン側と分担している場合（カスタムシェーダー）は false。
+        /// @param warnUndeclared  シェーダーにあるのに宣言が無いリソースを警告するか
         /// @throws std::runtime_error 契約違反（Required/Conditional が不在、種別違い）
         static BindingTable Resolve(
             const ShaderReflectionData& reflection,

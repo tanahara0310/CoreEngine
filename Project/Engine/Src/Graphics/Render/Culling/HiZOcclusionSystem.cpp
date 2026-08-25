@@ -510,7 +510,6 @@ namespace CoreEngine
 
         // 関数の入口で全ミップ UNORDERED_ACCESS、出口で全ミップ NON_PIXEL_SHADER_RESOURCE。
         // ミップ単位の遷移は GpuResource のサブリソース追跡がそのまま扱える
-        // （旧実装は追跡の外で生バリアを組み立てていた）。
 
         for (uint32_t mip = 0; mip < hiZMipCount_; ++mip) {
             if (mip == 0) {

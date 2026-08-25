@@ -119,18 +119,15 @@ namespace CoreEngine
         RootSlotKind kind,
         const std::string& shaderName) const {
 
-        // D3D12 のルートパラメータ上限は 64。RootSlot::index は uint8_t なので、
-        // ここを超えるとそもそもシリアライズが通らないが、切り詰め事故だけは防いでおく。
+        // D3D12 のルートパラメータ上限は 64（RootSlot::index が uint8_t なのでその範囲に収まる）
         assert(rootParamIndex <= 0xFF && "ルートパラメータ番号が uint8_t に収まりません");
 
         const RootSlot slot{ static_cast<uint8_t>(rootParamIndex), kind };
 
         const auto it = mapping.find(resourceName);
         if (it != mapping.end() && it->second != slot) {
-            // 同名リソースが 2 本のルートパラメータに割り当てられた。
-            // 典型は「VS の gMaterial が b0、PS の gMaterial が b1」のように
-            // 同じ名前で別レジスタを使ってしまったケース。名前でしか引けない以上、
-            // 後勝ちの上書きで片方が永久に到達不能になる（＝そのリソースが差されない）。
+            // 同名リソースが 2 本のルートパラメータに割り当てられた
+            // （名前でしか引けないので、後勝ちの上書きで片方が到達不能になる）
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
                 "リソース名が重複しています: name={} rootParam [{}]{} を [{}]{} で上書きします。"
                 "VS と PS で同名リソースに別レジスタを割り当てていないか確認してください: shader={}",

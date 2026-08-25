@@ -33,10 +33,8 @@ namespace CoreEngine::WaterBind
 
     inline constexpr ShaderBindingDecl kDecls[] = {
         // 水面本体の定数
-        // WaterConstants(b4) は Water.VS.hlsl だけが持つ。FFTWater.VS.hlsl は波を
-        // FFT テクスチャから取るので宣言していない（＝ルートシグネチャに載らない）。
-        // 【2026-08-24 実測】この事実は契約導入で初めて分かった。従来は
-        //   `if (idx >= 0)` で無言に skip されており、どちらの経路か区別できなかった。
+        // WaterConstants(b4) は Water.VS.hlsl だけが持つ
+        // （FFTWater.VS.hlsl は波を FFT テクスチャから取るので宣言していない）
         { "WaterConstants",          kCBV, kOpt  },
         // WaterFrameConstants(b5) は共有の hlsli にあるので全バリアントに存在する
         { "WaterFrameConstants",     kCBV, kCond },

@@ -39,8 +39,7 @@ namespace CoreEngine
     {
         assert(forwardReflectionData_ && gBufferReflectionData_ && "RootSignature 構築後に呼ぶこと");
 
-        // 宣言表とシェーダー実体を突き合わせる。必須リソースの改名・削除、種別の
-        // 食い違いはここで throw される（従来は `if (idx >= 0)` で無言に skip されていた）。
+        // 宣言表とシェーダー実体を突き合わせる（改名・削除・種別違いはここで throw される）
         forwardBindings_ = BindingTable::Resolve(
             *forwardReflectionData_, forwardDecls, count, debugName);
         gBufferBindings_ = BindingTable::Resolve(
@@ -56,9 +55,7 @@ namespace CoreEngine
 
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
 
-        // カスタム RootSignature 使用時はそのシェーダー側のスロットを使う。
-        // カスタムシェーダーは実行時に差し替わるので、ここだけは名前解決が残る
-        // （エンジン既定パスは forwardBindings_ / gBufferBindings_ で解決済み）。
+        // カスタム RootSignature 使用時はそのシェーダー側のスロットを使う
         const BindingTable& table = customPipeline
             ? customPipeline->GetModelBindings()
             : (isInGBufferPass_ ? gBufferBindings_ : forwardBindings_);
@@ -152,9 +149,7 @@ namespace CoreEngine
             return;
         }
 
-        // カスタムシェーダー側の解決済み表でシーンレベルのリソースを再バインドする。
-        // 表は構築時に解決済みなので、ここで名前を引くことはもう無い。
-        // 既定パスとまったく同じ処理なので同じヘルパーへ委譲する。
+        // カスタムシェーダー側の解決済み表でシーンレベルのリソースを再バインドする
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
         BindForwardSceneResources(binder, customPipeline->GetModelBindings());
     }
@@ -203,8 +198,7 @@ namespace CoreEngine
         cmdList->SetPipelineState(gBufferPipelineState_);
         cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        // gTexture の存在検証は ResolveBindings()（起動時の契約照合）に移した。
-        // kGBuffer で Required 宣言されているので、無ければ起動時に throw される。
+        // gTexture の存在検証は起動時の契約照合（kGBuffer で Required 宣言）が行う
     }
 
     void BaseModelRenderer::EndPass() {

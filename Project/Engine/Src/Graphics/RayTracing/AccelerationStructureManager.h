@@ -71,9 +71,7 @@ namespace CoreEngine
         bool IsSupported() const { return isSupported_; }
 
         /// @brief 退避リソースを遅延解放キューへ引き渡す
-        /// @details 旧実装は「その場で GPU 完了を待って解放」だったため、
-        ///          加速構造を作り直したフレームで毎回パイプラインが空になっていた。
-        ///          解放予約に変えることでストールしない。
+        /// @details 解放を予約するだけなのでフレームがストールしない
         /// @param queue 引き渡し先
         /// @param fenceValue この値まで GPU が進めば解放してよい
         /// @warning **フレームを Signal した後**（GraphicsCore::EndFrame の後）に呼ぶこと。

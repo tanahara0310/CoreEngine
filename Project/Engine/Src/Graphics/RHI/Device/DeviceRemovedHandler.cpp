@@ -122,8 +122,7 @@ namespace CoreEngine
         }
 
         /// @brief WCHAR* / char* のどちらかに入っている名前を std::string にする
-        /// @details DRED のノードは名前を ANSI と WIDE の 2 系統で持ち、
-        ///          SetName / SetPrivateData のどちらを使ったかで入る側が変わる。
+        /// @details DRED のノードは ANSI と WIDE の 2 系統で名前を持つ
         std::string PickName(const char* narrow, const wchar_t* wide)
         {
             if (narrow && narrow[0] != '\0') {
@@ -141,9 +140,7 @@ namespace CoreEngine
         }
 
         /// @brief パンくずを 1 ノード分ログへ出す
-        /// @details 完了数（pLastBreadcrumbValue）が「GPU がここまでは終えた」の意味なので、
-        ///          その次の命令が **落ちた命令** の第一候補になる。
-        ///          全部出すと数千行になるので、完了点の前後だけを窓で切って出す。
+        /// @details 完了数の次の命令が落ちた命令の第一候補。完了点の前後だけを窓で切って出す
         void LogBreadcrumbNode(const D3D12_AUTO_BREADCRUMB_NODE1* node, uint32_t nodeIndex)
         {
             Logger& logger = Logger::GetInstance();

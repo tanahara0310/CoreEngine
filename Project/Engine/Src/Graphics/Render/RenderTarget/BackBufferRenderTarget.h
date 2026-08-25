@@ -46,8 +46,7 @@ namespace CoreEngine
         UINT GetCurrentBackBufferIndex() const;
 
         /// @brief 現在のバックバッファをステート追跡つきで返す
-        /// @details ステートはバックバッファ 1 枚ごとに SwapChainManager が持つ。
-        ///          旧実装は「今のバックバッファ」1 つ分の変数で 2 枚を追跡していた
+        /// @details ステートはバックバッファ 1 枚ごとに SwapChain が持つ
         GpuResource& Resource() override;
 
     private:

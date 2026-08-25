@@ -14,14 +14,8 @@ namespace CoreEngine
     inline constexpr uint32_t kAllSubresources = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
     /// @brief ID3D12Resource と「現在のリソースステート」を 1 つにまとめた所有型
-    /// @details **ステートの真実はこのオブジェクトの中だけにある。**
-    ///          遷移は BarrierBatch / Barrier::Transition を通してのみ行い、
-    ///          呼び出し側が `D3D12_RESOURCE_STATES` メンバを持つことを禁じる。
-    ///          （そのメンバが 34 個 15 ヘッダに散っていたのが改修前の状態）
-    ///
-    ///          ミップ別 UAV/SRV のようにサブリソース単位で状態が食い違う使い方にも対応する。
-    ///          `Reset()` の subresourceCount に 2 以上を渡すと個別追跡になり、
-    ///          1（既定）なら常に全体を一括で遷移する。
+    /// @details 遷移は BarrierBatch / Barrier::Transition を通してのみ行う
+    /// @note Reset() の subresourceCount に 2 以上を渡すとサブリソース単位の個別追跡になる
     class GpuResource {
     public:
         GpuResource() = default;
@@ -37,8 +31,7 @@ namespace CoreEngine
         /// @param resource         保持するリソース（nullptr なら Release と同義）
         /// @param initialState     生成直後のステート（CreateCommittedResource に渡した値）
         /// @param subresourceCount 個別に追跡するサブリソース数。1 なら常に全体を一括で遷移する
-        /// @note リサイズ等で作り直すときは必ずこれを通す。ComPtr だけ差し替えると
-        ///       前のリソースのステートを引き継いでしまう
+        /// @note ComPtr だけ差し替えると前のリソースのステートを引き継ぐので必ずこれを通すこと
         void Reset(Microsoft::WRL::ComPtr<ID3D12Resource> resource,
                    D3D12_RESOURCE_STATES initialState,
                    uint32_t subresourceCount = 1);
@@ -67,8 +60,7 @@ namespace CoreEngine
         uint32_t SubresourceCount() const noexcept { return static_cast<uint32_t>(states_.size()); }
 
         /// @brief バリアを介さずステートを宣言し直す
-        /// @details 他所（別のコマンドリスト・Present・初期化コピー）が遷移させた事実を
-        ///          追跡へ反映させるための最終手段。通常の遷移には使わないこと
+        /// @details 他所が遷移させた事実を追跡へ反映するための最終手段。通常の遷移には使わないこと
         void DeclareState(D3D12_RESOURCE_STATES state, uint32_t subresource = kAllSubresources);
 
     private:

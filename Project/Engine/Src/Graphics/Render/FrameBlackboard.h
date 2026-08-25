@@ -10,9 +10,7 @@
 namespace CoreEngine
 {
     /// @brief フレーム内で共有する論理リソースの 1 エントリ
-    /// @details 実リソースと現在ステートは `GpuResource` が 1 つで持つ。
-    ///          旧実装は `ID3D12Resource*` と `D3D12_RESOURCE_STATES*` を別々に
-    ///          抱えており、両方揃わないとバリアを張れない構造だった
+    /// @details 実リソースと現在ステートは `GpuResource` が 1 つで持つ
     struct FrameBlackboardResource {
         std::string name;
         D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};

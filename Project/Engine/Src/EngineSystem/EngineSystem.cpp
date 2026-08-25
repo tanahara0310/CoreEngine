@@ -315,8 +315,8 @@ namespace CoreEngine
         auto* sceneManager = GetService<SceneManager>();
 
         // ===== フレーム開始 =====
-        // フレーム番号・記録先コマンドリスト・前フレームの後始末はすべてここで確定する。
-        // これがフレーム内の唯一の供給点で、以降は RenderContext 経由で配る。
+        // フレーム番号・記録先コマンドリスト・前フレームの後始末をここで確定し、
+        // 以降は RenderContext 経由で配る
         // 各パス／レンダラーが dxCommon->GetCommandList() を呼ぶと供給点がその数だけ増え、
         // コマンドリストを複数化したときに全箇所を直す羽目になる。
         const FrameContext frame = dx ? dx->BeginFrame() : FrameContext{};
@@ -487,8 +487,7 @@ namespace CoreEngine
 #endif // USE_IMGUI
 
         // ===== フレーム終了 =====
-        // バックバッファを PRESENT 状態へ戻し（Render）、
-        // Close / Execute / Signal / Present / 次フレームの準備（GraphicsCore）を行う。
+        // バックバッファを PRESENT へ戻し、Close / Execute / Signal / Present / 次フレーム準備を行う
         if (render) {
             render->FinalizeFrame();
         }
@@ -501,9 +500,8 @@ namespace CoreEngine
         if (debug) debug->PresentGameOutputWindow();
 #endif // USE_IMGUI
 
-        // DXR の退避リソースを遅延解放キューへ預ける。
-        // EndFrame() で今フレームを Signal した「後」に呼ぶこと（フェンス値がずれる）。
-        // 旧実装はここで WaitForFrame して GPU を止めていた。
+        // DXR の退避リソースを遅延解放キューへ預ける
+        // （EndFrame() で今フレームを Signal した後に呼ぶこと。前だとフェンス値がずれる）
         if (auto* asMgr = context.accelerationStructureManager; asMgr && dx) {
             asMgr->MoveRetiredResourcesTo(dx->DeferredRelease(), dx->Frame().LastSignaledValue());
         }

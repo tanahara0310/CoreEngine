@@ -326,20 +326,22 @@ namespace CoreEngine
         // IsInitialized()（基底の実装）が false を返し続ける（Stage 2c で実際に踏んだ）。
         bool debugViewRequested_ = false; ///< 中間バッファの ImGui 表示要求（1 フレーム限り）
 
-        // A-Trous デノイズ用コンピュートパイプライン
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> denoiseRootSignature_;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> denoisePipelineState_;
-        bool denoiseInitialized_ = false;
+        /// @brief レイの後段コンピュートパス 1 本ぶんの実体
+        /// @details ルートシグネチャはシェーダーのリフレクションから作り、bindings で
+        ///          「宣言表の添字 → ルートスロット」を引く。呼び出し側にレジスタ番号も
+        ///          ルートパラメータ番号も出てこないのが要点。
+        struct ComputePass {
+            RootSignatureManager rootSigMgr;                          ///< リフレクション由来の RS
+            Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
+            BindingTable bindings;                                    ///< 解決済みスロット表
+            bool initialized = false;
 
-        // テンポラル蓄積用コンピュートパイプライン
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> temporalRootSignature_;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> temporalPipelineState_;
-        bool temporalInitialized_ = false;
+            ID3D12RootSignature* GetRootSignature() { return rootSigMgr.GetRootSignature(); }
+        };
 
-        // トレース解像度 → フル解像度への解決（バイラテラルアップサンプル）パイプライン
-        Microsoft::WRL::ComPtr<ID3D12RootSignature> resolveRootSignature_;
-        Microsoft::WRL::ComPtr<ID3D12PipelineState> resolvePipelineState_;
-        bool resolveInitialized_ = false;
+        ComputePass denoisePass_;   ///< A-Trous 空間デノイズ
+        ComputePass temporalPass_;  ///< テンポラル蓄積
+        ComputePass resolvePass_;   ///< トレース解像度 → フル解像度のバイラテラルアップサンプル
 
         /// @brief トレース解像度の結果をフル解像度 Mask へ書き出す
         /// @param sourceSlot 解決元（A-Trous の最終出力、またはパス数 0 なら履歴）
@@ -352,16 +354,20 @@ namespace CoreEngine
             uint32_t lightIndex,
             TextureSlot sourceSlot);
 
-        /// @brief コンピュートパイプライン（RS + PSO）をまとめて構築する共通ヘルパー
-        /// @param srvCount 連続する t0..t(srvCount-1) のディスクリプタテーブル数
-        /// @param constantDwordCount b0 のルート定数の dword 数
-        /// @note ルートパラメータ番号は t0..=0..n-1 / u0=n / b0=n+1 で固定される
+        /// @brief コンピュートパス（RS + PSO + 解決済みバインド表）をリフレクションから構築する
+        /// @param shaderPath       CS のパス
+        /// @param decls            バインド契約（そのシェーダーが持つリソースの宣言表）
+        /// @param declCount        宣言数
+        /// @param rootConstantName ルート定数にする cbuffer 名（dword 数はリフレクションが決める）
+        /// @param debugLabel       ログ・PSO 名に使う識別名
+        /// @param outPass          構築先
+        /// @return 成功したら true。コンパイル失敗・契約違反はログ済み
         bool CreateComputePass(
             const wchar_t* shaderPath,
-            UINT srvCount,
-            UINT constantDwordCount,
+            const ShaderBindingDecl* decls,
+            size_t declCount,
+            const char* rootConstantName,
             const char* debugLabel,
-            Microsoft::WRL::ComPtr<ID3D12RootSignature>& outRootSignature,
-            Microsoft::WRL::ComPtr<ID3D12PipelineState>& outPipelineState);
+            ComputePass& outPass);
     };
 }

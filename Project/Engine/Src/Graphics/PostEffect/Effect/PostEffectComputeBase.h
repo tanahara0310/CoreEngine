@@ -51,8 +51,7 @@ namespace CoreEngine {
         /// @param width  出力幅
         /// @param height 出力高さ
         /// @note Dispatch のたびに新しい領域を取るので、1 フレーム中に解像度の違う
-        ///       ディスパッチを複数回行っても互いを踏まない（1 本の共有バッファだった頃は
-        ///       最後の解像度が全ディスパッチに適用されていた）。
+        ///       ディスパッチを複数回行っても互いを踏まない
         void UpdateScreenSizeConstants(uint32_t width, uint32_t height);
 
         /// @brief 直前の UpdateScreenSizeConstants が確保した GPU アドレス（ルートへ渡す用）

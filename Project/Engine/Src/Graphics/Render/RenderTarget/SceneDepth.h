@@ -12,14 +12,8 @@ namespace CoreEngine
     class DescriptorAllocator;
 
     /// @brief メインシーンの深度バッファ（GBuffer / Geometry が書き、各パスが SRV で読む）
-    /// @details リソース・DSV・深度 SRV・現在ステートを 1 箇所で持つ。
-    ///          旧 DepthStencilManager は RHI 層（GraphicsCore の所有）にあったが、
-    ///          「D24S8 固定・BeginDepthWrite＝バリア＋クリアの描画ポリシー」はレンダラの都合なので
-    ///          Render 層へ移した。所有者は RenderDomainContext（GBuffer と同じ寿命・同じリサイズ順）。
-    ///
-    ///          DSV / SRV のスロットはリサイズしても変わらない（同じスロットへ書き直す）。
-    ///          したがって初期化時に取ったハンドル値はずっと有効で、
-    ///          OffscreenRenderTarget はそれを共有 DSV として使う。
+    /// @details リソース・DSV・深度 SRV・現在ステートを 1 箇所で持つ
+    /// @note DSV / SRV のスロットはリサイズしても変わらないので、取得済みハンドルは常に有効
     class SceneDepth {
     public:
         /// @brief デストラクタ（確保したディスクリプタスロットを解放）
@@ -76,8 +70,7 @@ namespace CoreEngine
         // 深度ステンシルリソース（現在ステートは GpuResource が内包する）
         GpuResource depthStencilResource_;
 
-        // DSV / SRV スロット。DescriptorHandle が「どのスロットを所有しているか」まで表すので、
-        // CPU/GPU ハンドルとインデックスを別々に持つ必要がない（旧実装は 5 変数に分かれていた）。
+        // DSV / SRV スロット（DescriptorHandle がハンドルとスロット番号をまとめて持つ）
         DescriptorHandle dsvDescriptor_{};
         // 深度 SRV（Water Depth Fade 等でシェーダーからサンプリングするために使用）
         DescriptorHandle depthSRVDescriptor_{};

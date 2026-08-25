@@ -1,21 +1,5 @@
 #pragma once
 
-//========================================================================================
-// RootSlot.h
-//
-// 「ルートパラメータ番号」と「その差し方」を 1 つの値にまとめた型。
-//
-// 従来は名前からルートパラメータ番号（int）だけを引いていたため、
-// SetGraphicsRootDescriptorTable / SetGraphicsRootConstantBufferView / ... の
-// どれを呼ぶかは呼び出し側が暗記しているしかなかった。RootSignatureBuilder は
-// 戦略（BindingStrategy）を決めた張本人なのに、その情報を捨てて番号だけ返していた。
-//
-// 種別を番号に同梱して返せば、Set* の選択はエンジン側（ShaderBinder）で行える。
-// 「戦略を変えたら全呼び出し側が無言で不正になる」という事故が構造的に起きなくなる。
-//
-// 詳細: Docs/Engine/Graphics/Shader/ShaderBinding_Design_Review.md §4.2
-//========================================================================================
-
 #include <cstdint>
 
 namespace CoreEngine

@@ -85,8 +85,7 @@ namespace CoreEngine
 
     void Outline::DeclareExtraInputs(std::vector<PostEffectInputBinding>& out) const
     {
-        // 以前は graphicsCore_->GetDepthStencilSRV() を直接読んでいた。それでは
-        // RenderGraph から見えない依存になり、深度の状態遷移も実行順も保証されない。
+        // 深度は Blackboard 経由で受け取る（直接読むと RenderGraph から見えない依存になる）
         out.push_back({ "gDepth", FrameBlackboard::SceneDepth, /*required*/ true });
     }
 

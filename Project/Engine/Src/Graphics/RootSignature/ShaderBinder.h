@@ -1,22 +1,5 @@
 #pragma once
 
-//========================================================================================
-// ShaderBinder.h
-//
-// ルートバインドの入口を 1 本に集約する薄いラッパ。
-//
-//   ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
-//   binder.Set(slotCamera,  cameraCbAddress);   // RootCBV なら SetGraphicsRootConstantBufferView
-//   binder.Set(slotTexture, baseColorHandle);   // DescriptorTable なら SetGraphicsRootDescriptorTable
-//
-// 従来との違いは 3 点。
-//   1. Graphics / Compute の Set* 書き分けが呼び出し側から消える
-//   2. RootSlot の種別と引数の型が食い違ったら assert で即死する（従来は GPU が落ちるまで不明）
-//   3. 差したルートパラメータをビットで覚えるので、Draw 直前に取りこぼしを検出できる
-//
-// 詳細: Docs/Engine/Graphics/Shader/ShaderBinding_Design_Review.md §4.3
-//========================================================================================
-
 #include "Graphics/RootSignature/RootSlot.h"
 
 #include <d3d12.h>
@@ -61,9 +44,7 @@ namespace CoreEngine
         /// @note 型が分かるなら上のテンプレート版を使うこと（サイズ検査が効く）
         void SetConstants(RootSlot slot, const void* data, uint32_t num32BitValues);
 
-        /// @brief Draw / Dispatch の直前に呼ぶ。Required 宣言の差し忘れを検出する
-        /// @details 「シェーダーは要求しているのに誰も差さなかった」を、GPU が前フレームの
-        ///          descriptor を読んで絵が壊れる前に捕まえる。検出時は名前つきで [error] ログ。
+        /// @brief Draw / Dispatch の直前に呼ぶ。Required 宣言の差し忘れを [error] ログで検出する
         /// @note Release（CB_REFLECTION_CHECK_ENABLED が 0）では何もしない
         void ValidateBeforeDraw(const BindingTable& table) const;
 

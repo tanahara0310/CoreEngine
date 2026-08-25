@@ -8,21 +8,14 @@
 namespace CoreEngine
 {
     /// @brief CPU が GPU に先行できるフレーム数の上限
-    /// @details per-frame リソースの配列サイズはこの値で確保し、
-    ///          添字には実行時の FrameSync::FrameIndex() を使う。
-    ///          「配列は最大数・添字は実数」に統一することで、
-    ///          クラスごとに 2 や 3 を書く（＝設定と食い違う）のを防ぐ。
+    /// @details per-frame リソースは「配列は最大数・添字は FrameIndex()」で統一する
     inline constexpr uint32_t kMaxFramesInFlight = 3;
 
     /// @brief 1 フレーム分の同一性と記録先
-    /// @details フレーム内はこの構造体を配る。フレーム番号を各所で
-    ///          「別の方法で」求めるのが二重基準の始まりなので、入口をここに閉じる。
     struct FrameContext
     {
         /// @brief per-frame リソースの添字（0 .. FramesInFlight()-1）
-        /// @warning スワップチェーンの GetCurrentBackBufferIndex() を代用してはならない。
-        ///          あちらは ResizeBuffers で 0 にリセットされるため、
-        ///          GPU が読んでいる最中のバッファを CPU が上書きしうる。
+        /// @warning GetCurrentBackBufferIndex() で代用しないこと（ResizeBuffers で 0 に戻る）
         uint32_t frameIndex = 0;
 
         /// @brief 単調増加のフレーム番号（TAA のジッタ位相・履歴 ping-pong 等に使う）
@@ -32,9 +25,7 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList = nullptr;
     };
 
-    /// @brief フレーム同期の単一ソース
-    /// @details フレーム番号・フレーム数・per-frame フェンス値を **ここだけ** が持つ。
-    ///          旧 CommandManager が持っていた recordingFrameIndex_ / fenceValues_ の後継。
+    /// @brief フレーム番号・フレーム数・per-frame フェンス値を持つ単一ソース
     class FrameSync
     {
     public:
@@ -67,7 +58,6 @@ namespace CoreEngine
 
         /// @brief 投入済みの全 GPU 作業の完了を待つ（完全同期）
         /// @details リソースの作り直し・破棄の直前にだけ使うこと
-        ///          （毎フレーム呼ぶとパイプラインが空になり性能が出ない）。
         void WaitForGpuIdle();
 
         // ── フェンス値（遅延解放が使う） ────────────────────────
@@ -83,9 +73,7 @@ namespace CoreEngine
 
     private:
         /// @brief フェンスイベントを待つ（GPU ハングを検出できる形で）
-        /// @details INFINITE で待つと GPU が死んだときに **無反応のまま何も分からない** ため、
-        ///          一定時間ごとに区切ってデバイスロストを確認する。
-        ///          デバイスが失われていれば原因をログへ書いてから例外を投げる。
+        /// @details 一定時間ごとに区切ってデバイスロストを確認し、失われていれば例外を投げる
         void WaitOnFenceEvent(std::uint64_t target);
 
         ID3D12Device* device_ = nullptr;

@@ -91,7 +91,7 @@ namespace CoreEngine
         D3D12_CPU_DESCRIPTOR_HANDLE GetBoundDSVHandle() const { return dsvHandle_; }
 
         /// @brief リソースをステート追跡つきで返す（バリア発行はこれを渡す）
-        /// @note 旧 API の `SetCurrentState()`（＝ステートの真実が外にもあることの自白）は廃止した
+        /// @note ステートの更新は GpuResource 側でのみ行う
         GpuResource& Resource() override { return resource_; }
 
     private:

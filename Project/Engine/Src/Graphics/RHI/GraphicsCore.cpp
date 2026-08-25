@@ -61,14 +61,10 @@ namespace CoreEngine
         descriptorAllocator_->Initialize(device,
             desc.maxSRVDescriptors, desc.maxRTVDescriptors, desc.maxDSVDescriptors);
 
-        // フレーム 0 のコマンドリストは EndFrame を経ずにそのまま記録が始まるので、
-        // ここでシェーダ可視ヒープをバインドしておく。
-        // （これが無いと最初のフレームだけディスクリプタヒープ未設定で描画される）
+        // フレーム 0 は EndFrame を経ずに記録が始まるので、ここでシェーダ可視ヒープをバインドする
         commandContext_->BindDescriptorHeap(descriptorAllocator_->GetSRVHeap());
 
-        // アップロード／オフライン生成用の独立コンテキスト。
-        // キューはフレームと共有（submit 順 = 実行順を保つため）だが、
-        // アロケータ・コマンドリスト・フェンスは完全に別物。
+        // アップロード／オフライン生成用の独立コンテキスト（キューだけフレームと共有）
         uploadContext_->Initialize(device, commandQueue_->Get());
 
         // フレーム内で使い捨てる定数バッファ置き場。スロット数はフレーム数と一致させる。
@@ -96,9 +92,7 @@ namespace CoreEngine
         if (!frameSync_) {
             return;
         }
-        // 全GPUコマンドの完了を待ってからリソースを解放する。
-        // GPU が死んでいる場合はここで例外が飛ぶが、原因は既にログへ出ているので、
-        // 解放処理は最後まで進める（Shutdown はデストラクタからも呼ばれる）
+        // 全 GPU コマンドの完了を待ってから解放する。デバイスロスト時も解放は最後まで進める
         try {
             frameSync_->WaitForGpuIdle();
         } catch (const std::exception& e) {
@@ -108,9 +102,7 @@ namespace CoreEngine
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "GraphicsCore::Shutdown: GPU同期完了。全マネージャーを解放します\n");
 
-        // unique_ptr を明示的にリセットして破棄順序を制御する
-        // （デストラクタ任せにすると宣言逆順になるため意図を明示）
-        // UploadContext / DeferredReleaseQueue はコマンドキューの作業に紐づくため先に落とす。
+        // 破棄順序を明示する。UploadContext / DeferredReleaseQueue はキューに紐づくので先に落とす
         if (uploadContext_) {
             uploadContext_->Shutdown();
         }
@@ -232,9 +224,7 @@ namespace CoreEngine
         // 現在のフレームの完了をシグナル（非ブロッキング）
         frameSync_->SignalCurrentFrame();
 
-        // Present（画面に反映）
-        // Present は GPU クラッシュを最初に報告してくる場所なので、戻り値を捨てない。
-        // ここを握り潰すと「突然落ちた」以上のことが分からなくなる。
+        // Present。GPU クラッシュを最初に報告してくる場所なので戻り値を捨てない
         static constexpr UINT kPresentFlags = 0;
         const HRESULT presentResult = swapChain_->Present(syncInterval, kPresentFlags);
         if (FAILED(presentResult)) {
@@ -248,12 +238,8 @@ namespace CoreEngine
         }
 
         // ── 次フレームの準備 ──────────────────────────────────
-        // ここで Reset まで済ませることで、フレーム外（Update 中など）でも
-        // コマンドリストが常に記録可能な状態に保たれる。
-        // アロケータ／フェンスのローテーションは FrameSync が持つスロット番号を使う。
-        // スワップチェーンの CurrentBackBufferIndex() は ResizeBuffers で 0 に
-        // リセットされるため、アロケータ選択に使うと実行中アロケータを Reset して
-        // しまう（D3D12 ERROR #552）。
+        // ここで Reset まで済ませ、フレーム外でもコマンドリストを記録可能に保つ。
+        // スロット番号は FrameSync のものを使う（CurrentBackBufferIndex() は ResizeBuffers で 0 に戻る）
         frameSync_->AdvanceToNextFrame();
         commandContext_->Begin(frameSync_->FrameIndex(), descriptorAllocator_->GetSRVHeap());
         // 定数リングの巻き戻しはコマンドアロケータの Reset と同じ条件（このスロットの
@@ -265,10 +251,8 @@ namespace CoreEngine
     DeferredReleaseQueue& GraphicsCore::DeferredRelease() const { return *deferredRelease_; }
 
     // ================================================================
-    // アクセッサ
+    // アクセッサ（ヘッダを軽く保つため実装はここに置く）
     // ================================================================
-    // ヘッダを軽く保つために実装をここへ置いている（inline にはしない）。
-    // 呼び出し頻度はフレームあたり数十回程度で、ホットループではない。
 
     ID3D12Device* GraphicsCore::GetDevice() const { return deviceManager_->GetDevice(); }
     IDXGIFactory7* GraphicsCore::GetDXGIFactory() const { return deviceManager_->GetDXGIFactory(); }

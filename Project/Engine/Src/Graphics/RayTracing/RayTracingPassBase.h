@@ -65,8 +65,7 @@ namespace CoreEngine
         /// @param declCount  宣言数
         /// @param config     ルートシグネチャ設定（RootConstants 等はここで明示する）
         /// @return 成功したら true。失敗・契約違反はログ済み
-        /// @note DXR のグローバルルートシグネチャは全エントリが ALL 可視である必要があるが、
-        ///       ライブラリのリフレクションは可視性を ALL で返すのでそのまま通る。
+        /// @note DXR は全エントリ ALL 可視が必須だが、ライブラリのリフレクションは ALL を返す
         bool BuildGlobalRootSignature(
             const ShaderProgram& program,
             const ShaderBindingDecl* decls,

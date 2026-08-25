@@ -11,8 +11,7 @@ namespace CoreEngine
 {
     /// @brief フレーム描画用のコマンドアロケータ＋コマンドリスト
     /// @details アロケータはフレームスロットごとに持ち、リストは 1 本を使い回す。
-    /// @note 記録はメインスレッド専用。ワーカースレッドからのアップロードは
-    ///       UploadContext を使うこと（フレームの記録に割り込むとフレームごと submit される）。
+    /// @note 記録はメインスレッド専用（ワーカースレッドからのアップロードは UploadContext）
     class CommandContext
     {
     public:
@@ -29,16 +28,12 @@ namespace CoreEngine
         bool Close();
 
         /// @brief 指定スロットのアロケータで記録を開始する
-        /// @details アロケータの Reset は「そのスロットの GPU 作業が完了済み」が前提。
-        ///          呼び出し前に FrameSync::WaitForFrame() を通すこと。
+        /// @details 呼び出し前に FrameSync::WaitForFrame() を通すこと（Reset は GPU 完了が前提）
         /// @param srvHeap フレーム先頭で 1 回だけバインドするシェーダ可視ヒープ（nullptr 可）
         void Begin(uint32_t frameIndex, ID3D12DescriptorHeap* srvHeap);
 
         /// @brief シェーダ可視ヒープを今のリストへバインドする
-        /// @details **フレーム 0 用**。Initialize 直後のコマンドリストは Begin() を通らずに
-        ///          そのまま記録されるため、ここで一度バインドしておかないと
-        ///          最初のフレームだけディスクリプタヒープ未設定のまま
-        ///          SetGraphicsRootDescriptorTable が呼ばれる（D3D12 ERROR）。
+        /// @details フレーム 0 用。Initialize 直後のリストは Begin() を通らないのでここでバインドする
         void BindDescriptorHeap(ID3D12DescriptorHeap* srvHeap);
 
     private:

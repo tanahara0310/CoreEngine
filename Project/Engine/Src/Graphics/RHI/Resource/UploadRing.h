@@ -21,37 +21,9 @@ namespace CoreEngine
         bool IsValid() const noexcept { return cpu != nullptr; }
     };
 
-    /// @brief フレーム単位で巻き戻る UPLOAD ヒープのリニアアロケータ
-    ///
-    /// @details
-    /// **解決する問題**: 定数バッファを「クラスごとに 1 本作って常時 Map し、毎フレーム上書き」
-    /// すると、CPU は GPU より 1 フレーム先行しているので **GPU が読んでいる最中の値を
-    /// CPU が書き潰す**（フレーム N のパスがフレーム N+1 の行列を読む）。
-    /// 実際に SSAO でこれを踏み、その場しのぎに `FrameRingConstantBuffer` という
-    /// 同じ仕組みがレンダリング技術のヘッダの中に作られていた。ここはその一般化であり、
-    /// 「per-frame 二重化」を各クラスが自前で意識しなくてよくするのが目的。
-    ///
-    /// **使い方**:
-    /// @code
-    /// MyConstants c{ ... };
-    /// const auto cbAddress = graphicsCore_->GetUploadRing().AllocateConstants(c);
-    /// cmdList->SetGraphicsRootConstantBufferView(index, cbAddress);
-    /// @endcode
-    /// リソースの生成・Map・メンバ保持・解放はどれも要らない。
-    ///
-    /// **寿命**: 確保したメモリが有効なのは **そのフレームの記録中だけ**。
-    /// フレームスロットは framesInFlight 本あり、`Reset()` で巻き戻る。
-    /// スロットの再利用は `FrameSync::AdvanceToNextFrame()` が該当スロットの
-    /// フェンス完了を待った後なので、GPU がまだ読んでいる領域を踏むことはない。
-    ///
-    /// @warning 確保した領域を次のフレームへ持ち越さないこと（内容は上書きされる）。
-    ///          持ち越したいものは通常どおり自前のバッファを持つこと。
-    /// @warning 確保はコマンド記録スレッド（メインスレッド）からのみ。
-    ///          ワーカースレッドからのアップロードは UploadContext を使うこと。
-    ///
-    /// @note UPLOAD ヒープ＝システムメモリ常駐なので、毎フレーム GPU が何度も読む
-    ///       頂点／インデックスバッファをここへ置いてはならない（PCIe 帯域律速になる）。
-    ///       用途は「毎フレーム内容が変わる小さな定数」。
+    /// @brief 毎フレーム内容が変わる小さな定数を置く、フレーム単位で巻き戻る UPLOAD ヒープ
+    /// @warning 確保した領域が有効なのはそのフレームの記録中だけ。持ち越さないこと
+    /// @warning 確保はコマンド記録スレッドからのみ（ワーカースレッドからは UploadContext）
     class UploadRing {
     public:
         /// @brief 1 フレームあたりの既定容量（足りなければ自動で増える）
@@ -75,10 +47,7 @@ namespace CoreEngine
 
         /// @brief 指定スロットの確保位置を先頭へ巻き戻す
         /// @param frameIndex これから記録するフレームのスロット番号
-        /// @details 呼ぶのは **そのスロットの GPU 完了を待った後**。
-        ///          GraphicsCore がコマンドアロケータの Reset と同じ場所で呼ぶ
-        ///          （どちらも「このスロットはもう GPU が使っていない」が前提なので、
-        ///           2 つの巻き戻しが別の場所にあると片方だけずれる）。
+        /// @details そのスロットの GPU 完了を待った後に呼ぶこと（コマンドアロケータの Reset と同じ場所）
         void Reset(uint32_t frameIndex);
 
         /// @brief 生のバイト列を確保する
@@ -93,8 +62,7 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS AllocateConstants(const void* src, uint32_t size);
 
         /// @brief 定数バッファを 1 つ確保して構造体をそのままコピーする
-        /// @note HLSL 側のパッキングと一致していること（CB_VERIFY_LAYOUT で検証されている型を渡す）。
-        ///       パッキングが一致しない型は Allocate() を使い Cb::Upload() で詰めること。
+        /// @note HLSL 側のパッキングと一致する型を渡すこと（一致しない型は Allocate + Cb::Upload）
         template <class T>
         D3D12_GPU_VIRTUAL_ADDRESS AllocateConstants(const T& value)
         {

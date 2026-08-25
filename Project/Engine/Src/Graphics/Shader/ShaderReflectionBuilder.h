@@ -51,11 +51,8 @@ namespace CoreEngine
         /// @param libraryBlob ライブラリのコンパイル済み Blob
         /// @param shaderName シェーダー識別名（ログ出力用）
         /// @return リフレクション結果のデータ
-        /// @note ライブラリは ID3D12ShaderReflection では読めない（ID3D12LibraryReflection が要る）。
-        ///       全エクスポート関数のバウンドリソースをマージし、可視性は DXR の要件どおり
-        ///       すべて D3D12_SHADER_VISIBILITY_ALL にする。
-        /// @warning lib_6_6 は「宣言はあるが使っていない」リソースを削除しない。
-        ///          リフレクション結果には未使用の宣言も出てくる。
+        /// @note 全エクスポート関数のバウンドリソースをマージし、可視性はすべて ALL にする
+        /// @warning lib_6_6 は未使用の宣言を削除しないので、結果には使っていないリソースも出てくる
         std::unique_ptr<ShaderReflectionData> BuildFromLibrary(
             IDxcBlob* libraryBlob,
             const std::string& shaderName = "");

@@ -28,16 +28,8 @@ namespace CoreEngine
     };
 
     /// @brief HWND 1 つ分のスワップチェーン（バックバッファ＋RTV＋ステート追跡）
-    /// @details メインウィンドウも GameOutputWindow（ゲーム映像専用ウィンドウ）も同じクラスを使う。
-    ///          旧 SwapChainManager はメインウィンドウ専用（BufferCount 2 固定・フォーマット固定）で、
-    ///          第 2 ウィンドウ側が CreateSwapChainForHwnd / ResizeBuffers / RTV 作成を丸ごと再実装していた。
-    ///
-    ///          RTV は DescriptorAllocator から確保し、Shutdown() で返す。
-    ///          バックバッファは GpuResource で持つので PRESENT ⇔ RENDER_TARGET の遷移は
-    ///          BarrierBatch に任せればよい（1 枚ごとに独立して追跡される）。
-    ///
-    /// @warning Resize() / Shutdown() は GPU がバックバッファを使い終わってから呼ぶこと
-    ///          （呼び出し側が WaitForGpuIdle する。ここでは待たない）。
+    /// @details メインウィンドウも GameOutputWindow も同じクラスを使う
+    /// @warning Resize() / Shutdown() は呼び出し側が WaitForGpuIdle してから呼ぶこと
     class SwapChain {
     public:
         SwapChain() = default;
@@ -70,9 +62,7 @@ namespace CoreEngine
         IDXGISwapChain4* Get() const noexcept { return swapChain_.Get(); }
 
         /// @brief 今描くべきバックバッファの番号
-        /// @warning per-frame リソース（アロケータ・定数バッファ）の添字に使ってはならない。
-        ///          ResizeBuffers で 0 に戻るため、使うと実行中のアロケータを Reset する（#552）。
-        ///          per-frame の添字は FrameSync::FrameIndex() から取る。
+        /// @warning per-frame リソースの添字に使わないこと（ResizeBuffers で 0 に戻る）
         uint32_t CurrentBackBufferIndex() const;
 
         uint32_t BufferCount() const noexcept { return static_cast<uint32_t>(backBuffers_.size()); }
